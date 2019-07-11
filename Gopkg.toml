@@ -1,0 +1,26 @@
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+
+required = [
+  "github.com/tektoncd/plumbing/scripts",
+  "github.com/knative/test-infra/tools/dep-collector",
+]
+
+[[constraint]]
+  name = "github.com/tektoncd/plumbing"
+  # HEAD as of 2019-06-24
+  revision = "a51e87c5261fdb718470c077c155e070aca690a8"
+
+[[constraint]]
+  name = "github.com/knative/test-infra"
+  # HEAD as of 2019-06-25
+  revision = "69af8af1d3fec861ada88efc72409b3467b0588d"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+  non-go = true
+
+[[prune.project]]
+  name = "github.com/tektoncd/plumbing"
+  non-go = false
