@@ -1,36 +1,59 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: configs.operator.tekton.dev
+  name: config.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
     kind: Config
     listKind: ConfigList
-    plural: configs
+    plural: config
     singular: config
-  scope: Namespaced
+  scope: Cluster
   subresources:
     status: {}
   validation:
     openAPIV3Schema:
       properties:
         apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
           type: string
         kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
           type: string
         metadata:
           type: object
         spec:
+          properties:
+            targetNamespace:
+              description: namespace where OpenShift pipelines will be installed
+              type: string
+          required:
+          - targetNamespace
           type: object
         status:
+          properties:
+            conditions:
+              description: installation status sorted in reverse chronological order
+              items:
+                properties:
+                  code:
+                    description: Code indicates the status of installation of pipeline resources.
+                    type: string
+                  details:
+                    description: Additional details about the Code
+                    type: string
+                  version:
+                    description: The version of tekton pipelines
+                    type: string
+                required:
+                - code
+                - version
+                type: object
+              type: array
           type: object
+  additionalPrinterColumns:
+  - JSONPath: ".status.conditions[0].code"
+    name: status
+    type: string
   version: v1alpha1
   versions:
   - name: v1alpha1

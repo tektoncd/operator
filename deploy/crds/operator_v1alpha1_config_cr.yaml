@@ -1,7 +1,6 @@
 apiVersion: operator.tekton.dev/v1alpha1
 kind: Config
 metadata:
-  name: example-config
+  name: cluster
 spec:
-  # Add fields here
-  size: 3
+  targetNamespace: openshift-pipelines
