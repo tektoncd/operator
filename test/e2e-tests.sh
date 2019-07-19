@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# Copyright 2019 The Tekton Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This script calls out to scripts in tektoncd/plumbing to setup a cluster
+# and deploy Tekton Pipelines to it for running integration tests.
+declare -r SCRIPT_PATH=$(readlink -f "$0")
+declare -r SCRIPT_DIR=$(cd $(dirname "$SCRIPT_PATH") && pwd)
+cd $SCRIPT_DIR/../
+
+export GO111MODULE=on
+export GOPROXY="https://proxy.golang.org"
+go mod download
+
+plumbing_dir_name="$(grep github.com/tektoncd/plumbing go.sum |
+  grep -v go.mod |
+  head -1 | awk '{ print $1 "@" $2 }')"
+plumbing_path="$(go env GOPATH)/pkg/mod/$plumbing_dir_name"
+source "$plumbing_path/scripts/e2e-tests.sh"
+
+# Script entry point.
+
+initialize $@
+
+header "Running operator-sdk test"
+
+operator-sdk test local ./test/e2e  \
+  --up-local --namespace operators \
+  --debug  \
+  --verbose || fail_test
+success

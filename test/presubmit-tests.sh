@@ -23,14 +23,45 @@
 
 # Markdown linting failures don't show up properly in Gubernator resulting
 # in a net-negative contributor experience.
+declare -r SCRIPT_PATH=$(readlink -f "$0")
+declare -r SCRIPT_DIR=$(cd $(dirname "$SCRIPT_PATH") && pwd)
+cd $SCRIPT_DIR/../
+
+export GO111MODULE=on
+export GOPROXY="https://proxy.golang.org"
+go mod download
+
 export DISABLE_MD_LINTING=1
+plumbing_dir_name="$(grep github.com/tektoncd/plumbing go.sum |
+  grep -v go.mod |
+  head -1 | awk '{ print $1 "@" $2 }')"
+plumbing_path="$(go env GOPATH)/pkg/mod/$plumbing_dir_name"
+source "$plumbing_path/scripts/presubmit-tests.sh"
 
-source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
-
-function post_build_tests() {
-    golangci-lint run
+unit_tests() {
+ :
 }
 
-# We use the default build, unit and integration test runners.
+build_tests() {
+  header "Running operator-sdk build"
+  operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
+}
 
-main $@
+install_operator_sdk() {
+  local sdk_rel="v0.9.0"
+  curl -JL \
+    https://github.com/operator-framework/operator-sdk/releases/download/${sdk_rel}/operator-sdk-${sdk_rel}-x86_64-linux-gnu \
+    -o /usr/bin/operator-sdk
+  chmod +x /usr/bin/operator-sdk
+}
+
+extra_initialization() {
+  echo "Running as $(whoami) on $(hostname) under $(pwd) dir"
+
+  install_operator_sdk
+  echo ">> operator sdk version"
+  operator-sdk version
+}
+
+
+main "$@"
