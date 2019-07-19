@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: tekton-operator
+  template:
+    metadata:
+      labels:
+        name: tekton-operator
+    spec:
+      serviceAccountName: tekton-operator
+      containers:
+        - name: tekton-operator
+          # Replace this with the built image name
+          image: REPLACE_IMAGE
+          command:
+          - tekton-operator
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "tekton-operator"
