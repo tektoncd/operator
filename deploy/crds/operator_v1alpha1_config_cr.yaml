@@ -3,4 +3,4 @@ kind: Config
 metadata:
   name: cluster
 spec:
-  targetNamespace: openshift-pipelines
+  targetNamespace: tekton-pipelines

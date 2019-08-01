@@ -1,0 +1,121 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[{"apiVersion":"operator.tekton.dev/v1alpha1","kind":"Config","metadata":{"name":"cluster"},"spec":{"targetNamespace":"tekton-pipelines"}}]'
+    capabilities: Basic Install
+  name: tekton-operator.v0.5.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - kind: Config
+      name: config.operator.tekton.dev
+      version: v1alpha1
+  description: Placeholder description
+  displayName: Tekton Operator
+  install:
+    spec:
+      deployments:
+      - name: operator
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              name: operator
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                name: operator
+            spec:
+              containers:
+              - command:
+                - operator
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAME
+                  value: operator
+                image: REPLACE_IMAGE
+                imagePullPolicy: Always
+                name: operator
+                resources: {}
+              serviceAccountName: operator
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          - services
+          - endpoints
+          - persistentvolumeclaims
+          - events
+          - configmaps
+          - secrets
+          verbs:
+          - '*'
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          - daemonsets
+          - replicasets
+          - statefulsets
+          verbs:
+          - '*'
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - get
+          - create
+        - apiGroups:
+          - apps
+          resourceNames:
+          - operator
+          resources:
+          - deployments/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          verbs:
+          - get
+        - apiGroups:
+          - apps
+          resources:
+          - replicasets
+          verbs:
+          - get
+        - apiGroups:
+          - operator.tekton.dev
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        serviceAccountName: operator
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: true
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  maturity: alpha
+  provider: {}
+  version: 0.5.0

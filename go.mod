@@ -7,7 +7,7 @@ require (
 	github.com/operator-framework/operator-sdk v0.9.1-0.20190715204459-936584d47ff9
 	github.com/prometheus/common v0.2.0
 	github.com/spf13/pflag v1.0.3
-	github.com/tektoncd/plumbing v0.0.0-20190717191452-4154fc13136c
+	github.com/tektoncd/plumbing v0.0.0-20190731030558-283e91c83abb
 	k8s.io/api v0.0.0-20190612125737-db0771252981
 	k8s.io/apimachinery v0.0.0-20190612125636-6a5db36e93ad
 	k8s.io/client-go v11.0.0+incompatible

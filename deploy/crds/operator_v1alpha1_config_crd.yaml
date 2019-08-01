@@ -24,7 +24,7 @@ spec:
         spec:
           properties:
             targetNamespace:
-              description: namespace where OpenShift pipelines will be installed
+              description: namespace where tekton pipelines will be installed
               type: string
           required:
           - targetNamespace
