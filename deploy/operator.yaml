@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: operator
+  name: tekton-operator
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: operator
+      name: tekton-operator
   template:
     metadata:
       labels:
-        name: operator
+        name: tekton-operator
     spec:
-      serviceAccountName: operator
+      serviceAccountName: tekton-operator
       containers:
-        - name: operator
+        - name: tekton-operator
           # Replace this with the built image name
           image: REPLACE_IMAGE
           command:
-          - operator
+          - tekton-operator
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
@@ -30,4 +30,4 @@ spec:
                 fieldRef:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
-              value: "operator"
+              value: "tekton-operator"

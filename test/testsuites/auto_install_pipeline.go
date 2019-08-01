@@ -10,7 +10,7 @@ import (
 )
 
 // ValidateAutoInstall creates an instance of install.tekton.dev
-// and checks whether openshift pipelines deployment are created
+// and checks whether pipelines deployments are created
 func ValidateAutoInstall(t *testing.T) {
 	ctx := test.NewTestCtx(t)
 	defer ctx.Cleanup()

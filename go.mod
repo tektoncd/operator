@@ -1,7 +1,6 @@
 module github.com/tektoncd/operator
 
 require (
-	github.com/NYTimes/gziphandler v1.0.1 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/jcrossley3/manifestival v0.0.0-20190621184852-78b6b04ae6ff
 	github.com/operator-framework/operator-sdk v0.9.1-0.20190715204459-936584d47ff9

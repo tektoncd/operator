@@ -20,5 +20,5 @@ const (
 	CleanupTimeout = time.Second * 180
 
 	// TestOperatorName specifies the name of the operator being tested
-	TestOperatorName = "openshift-pipelines-operator"
+	TestOperatorName = "tekton-operator"
 )
