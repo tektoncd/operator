@@ -7,7 +7,7 @@ import (
 // ConfigSpec defines the desired state of Config
 // +k8s:openapi-gen=true
 type ConfigSpec struct {
-	// namespace where OpenShift pipelines will be installed
+	// namespace where pipelines will be installed
 	TargetNamespace string `json:"targetNamespace"`
 }
 
@@ -32,7 +32,7 @@ type ConfigCondition struct {
 	// Additional details about the Code
 	Details string `json:"details,omitempty"`
 
-	// The version of OpenShift pipelines
+	// The version of pipelines
 	Version string `json:"version"`
 }
 

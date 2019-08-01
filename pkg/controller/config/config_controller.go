@@ -27,7 +27,7 @@ import (
 
 const (
 	ClusterCRName   = "cluster"
-	DefaultTargetNs = "openshift-pipelines"
+	DefaultTargetNs = "tekton-pipelines"
 
 	// Name of the pipeline controller deployment
 	PipelineControllerName = "tekton-pipelines-controller"
@@ -37,7 +37,7 @@ const (
 )
 
 var (
-	tektonVersion   = "v0.4.0"
+	tektonVersion   = "v0.5.2"
 	resourceWatched string
 	resourceDir     string
 	targetNamespace string
