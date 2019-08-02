@@ -27,11 +27,43 @@ export DISABLE_MD_LINTING=1
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
 
-function post_build_tests() {
-  operator-sdk test local ./test/e2e --debug --verbose
+
+unit_tests() {
+ :
+}
+
+
+build() {
+  operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
+}
+
+install_operator_sdk() {
+  local sdk_rel="v0.9.0"
+  mkdir -p tmp/bin/
+
+  curl -JL \
+    https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu \
+    -o tmp/bin/operator-sdk
+  chmod +x tmp/bin/operator-sdk
+}
+
+post_build_tests() {
   golangci-lint run
+  operator-sdk test local ./test/e2e --up-local --namespace operators --debug --verbose
+}
+
+extra_initialization() {
+
+  echo "Running as $(whoami) on $(hostname) under $(pwd) dir"
+
+  install_operator_sdk
+  export PATH="$PATH:$PWD/tmp/bin/"
+
+  echo ">> operator sdk version"
+  operator-sdk version
 }
 
 # We use the default build, unit and integration test runners.
+#extra_initialization
 
-main $@
+main "$@"
