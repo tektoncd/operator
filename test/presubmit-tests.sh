@@ -34,7 +34,7 @@ unit_tests() {
 
 
 build() {
-  operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
+  GO111MODULE=on operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
 }
 
 install_operator_sdk() {
@@ -48,8 +48,9 @@ install_operator_sdk() {
 }
 
 post_build_tests() {
-  golangci-lint run
-  operator-sdk test local ./test/e2e --up-local --namespace operators --debug --verbose
+  ## TODO: enab
+  #golangci-lint run
+  GO111MODULE=on operator-sdk test local ./test/e2e --up-local --namespace operators --debug --verbose
 }
 
 extra_initialization() {
@@ -64,6 +65,5 @@ extra_initialization() {
 }
 
 # We use the default build, unit and integration test runners.
-#extra_initialization
 
 main "$@"
