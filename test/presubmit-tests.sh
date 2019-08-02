@@ -48,9 +48,11 @@ install_operator_sdk() {
 }
 
 post_build_tests() {
-  ## TODO: enab
+  ## TODO: enable this back on the next pr
   #golangci-lint run
-  GO111MODULE=on operator-sdk test local ./test/e2e --up-local --namespace operators --debug --verbose
+  GO111MODULE=on operator-sdk test local ./test/e2e  \
+    --up-local --namespace operators \
+    --debug --verbose
 }
 
 extra_initialization() {
