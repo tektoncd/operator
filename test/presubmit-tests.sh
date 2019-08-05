@@ -34,9 +34,13 @@ unit_tests() {
  :
 }
 
+execute() {
+  echo "$@"
+  $@
+}
 
 build() {
-  operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
+ execute operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
 }
 
 build_tests() {
@@ -60,18 +64,14 @@ extra_initialization() {
 }
 
 integration_tests() {
-  :
-  #export GO111MODULE=on
-  #operator-sdk version
+  operator-sdk version
 
-  #pwd; ls
-  #echo operator-sdk test local ./test/e2e  \
-    #--up-local --namespace operators \
-    #--debug --verbose
+  echo "ls $(PWD)"
+  ls
 
- #operator-sdk test local ./test/e2e  \
-   #--up-local --namespace operators \
-   #--debug --verbose
+  execute operator-sdk test local ./test/e2e  \
+    --up-local --namespace operators \
+    --debug --verbose
 }
 
 # We use the default build, unit and integration test runners.
