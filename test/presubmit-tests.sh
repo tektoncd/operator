@@ -24,8 +24,10 @@
 # Markdown linting failures don't show up properly in Gubernator resulting
 # in a net-negative contributor experience.
 export DISABLE_MD_LINTING=1
+export GO111MODULE=on
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
+
 
 
 unit_tests() {
@@ -34,7 +36,7 @@ unit_tests() {
 
 
 build() {
-  GO111MODULE=on operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
+  operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
 }
 
 install_operator_sdk() {
