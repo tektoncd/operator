@@ -54,17 +54,18 @@ extra_initialization() {
 }
 
 integration_tests() {
-  export GO111MODULE=on
-  operator-sdk version
+  :
+  #export GO111MODULE=on
+  #operator-sdk version
 
-  pwd; ls
-  echo operator-sdk test local ./test/e2e  \
-    --up-local --namespace operators \
-    --debug --verbose
+  #pwd; ls
+  #echo operator-sdk test local ./test/e2e  \
+    #--up-local --namespace operators \
+    #--debug --verbose
 
- operator-sdk test local ./test/e2e  \
-   --up-local --namespace operators \
-   --debug --verbose
+ #operator-sdk test local ./test/e2e  \
+   #--up-local --namespace operators \
+   #--debug --verbose
 }
 
 # We use the default build, unit and integration test runners.
