@@ -40,6 +40,8 @@ execute() {
 }
 
 build_tests() {
+  # HACK: -mod=vendor fails to build
+  rm -rf vendor
   execute operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
 }
 
@@ -61,8 +63,12 @@ extra_initialization() {
 
 integration_tests() {
   operator-sdk version
-  kubectl version
+
+  echo "============================================="
   env
+  echo "============================================="
+
+  kubectl version
 
   echo "ls $(pwd)"
   ls
