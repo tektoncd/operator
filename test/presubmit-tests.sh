@@ -73,7 +73,6 @@ integration_tests() {
   rm -rf vendor
   execute operator-sdk test local ./test/e2e  \
     --up-local --namespace operators \
-    --go-test-flags "-v -timeout=15m" \
     --debug  \
     --verbose
 }
