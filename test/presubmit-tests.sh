@@ -61,6 +61,8 @@ extra_initialization() {
 
 integration_tests() {
   operator-sdk version
+  kubectl version
+  env
 
   echo "ls $(pwd)"
   ls
