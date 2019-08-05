@@ -39,6 +39,10 @@ build() {
   operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
 }
 
+build_tests() {
+  :
+}
+
 install_operator_sdk() {
   local sdk_rel="v0.9.0"
   curl -JL \
