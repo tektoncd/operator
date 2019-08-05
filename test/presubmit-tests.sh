@@ -81,6 +81,4 @@ integration_tests() {
     --verbose
 }
 
-# We use the default build, unit and integration test runners.
-
 main "$@"
