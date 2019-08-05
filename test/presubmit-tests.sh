@@ -39,31 +39,24 @@ build() {
 
 install_operator_sdk() {
   local sdk_rel="v0.9.0"
-  mkdir -p tmp/bin/
-
   curl -JL \
-    https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu \
-    -o tmp/bin/operator-sdk
-  chmod +x tmp/bin/operator-sdk
-}
-
-post_build_tests() {
-  ## TODO: enable this back on the next pr
-  #golangci-lint run
-  GO111MODULE=on operator-sdk test local ./test/e2e  \
-    --up-local --namespace operators \
-    --debug --verbose
+    https://github.com/operator-framework/operator-sdk/releases/download/${sdk_rel}/operator-sdk-${sdk_rel}-x86_64-linux-gnu \
+    -o /usr/bin/operator-sdk
+  chmod +x /usr/bin/operator-sdk
 }
 
 extra_initialization() {
-
   echo "Running as $(whoami) on $(hostname) under $(pwd) dir"
 
   install_operator_sdk
-  export PATH="$PATH:$PWD/tmp/bin/"
-
   echo ">> operator sdk version"
   operator-sdk version
+}
+
+integration_tests() {
+  GO111MODULE=on operator-sdk test local ./test/e2e  \
+    --up-local --namespace operators \
+    --debug --verbose
 }
 
 # We use the default build, unit and integration test runners.
