@@ -66,12 +66,16 @@ extra_initialization() {
 integration_tests() {
   operator-sdk version
 
-  echo "ls $(PWD)"
+  echo "ls $(pwd)"
   ls
 
+  # HACK: -mod=vendor fails to build
+  rm -rf vendor
   execute operator-sdk test local ./test/e2e  \
     --up-local --namespace operators \
-    --debug --verbose
+    --go-test-flags "-v -timeout=15m" \
+    --debug  \
+    --verbose
 }
 
 # We use the default build, unit and integration test runners.
