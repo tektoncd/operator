@@ -39,12 +39,8 @@ execute() {
   $@
 }
 
-build() {
- execute operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
-}
-
 build_tests() {
-  :
+  execute operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
 }
 
 install_operator_sdk() {
