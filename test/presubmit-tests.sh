@@ -23,9 +23,19 @@
 
 # Markdown linting failures don't show up properly in Gubernator resulting
 # in a net-negative contributor experience.
+
 declare -r SCRIPT_PATH=$(readlink -f "$0")
 declare -r SCRIPT_DIR=$(cd $(dirname "$SCRIPT_PATH") && pwd)
+
+# ensure the current working dir is the root of the project
 cd $SCRIPT_DIR/../
+
+# This script needs helper functions from tektoncd/plumbing/scripts and
+# although github.com/tektoncd/plumbing is added as a go mod dependency,
+# the package may not exists when the test is running, so, it ensure the
+# package is available, run go mod download which downloads the packages to
+# $GOPATH/pkg/mod/repo/path@version
+# GOPROXY ensures the downloads is faster
 
 export GO111MODULE=on
 export GOPROXY="https://proxy.golang.org"
