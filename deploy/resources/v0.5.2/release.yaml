@@ -534,6 +534,11 @@ spec:
         volumeMounts:
         - mountPath: /etc/config-logging
           name: config-logging
+        env:
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
       serviceAccountName: tekton-pipelines-controller
       volumes:
       - configMap:
@@ -561,6 +566,11 @@ spec:
         volumeMounts:
         - mountPath: /etc/config-logging
           name: config-logging
+        env:
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
       serviceAccountName: tekton-pipelines-controller
       volumes:
       - configMap:
