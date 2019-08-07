@@ -1,0 +1,7 @@
+apiVersion: operator.tekton.dev/v1alpha1
+kind: Addon
+metadata:
+  name: example-addon
+spec:
+  # Add fields here
+  size: 3
