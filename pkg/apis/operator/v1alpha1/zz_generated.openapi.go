@@ -12,6 +12,7 @@ import (
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
 		"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1.Addon":           schema_pkg_apis_operator_v1alpha1_Addon(ref),
+		"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1.AddonCondition":  schema_pkg_apis_operator_v1alpha1_AddonCondition(ref),
 		"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1.AddonSpec":       schema_pkg_apis_operator_v1alpha1_AddonSpec(ref),
 		"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1.AddonStatus":     schema_pkg_apis_operator_v1alpha1_AddonStatus(ref),
 		"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1.Config":          schema_pkg_apis_operator_v1alpha1_Config(ref),
@@ -64,6 +65,41 @@ func schema_pkg_apis_operator_v1alpha1_Addon(ref common.ReferenceCallback) commo
 	}
 }
 
+func schema_pkg_apis_operator_v1alpha1_AddonCondition(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "AddonCondition defines the observed state of installation at a point in time",
+				Properties: map[string]spec.Schema{
+					"code": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Code indicates the status of installation of addon resources Valid values are:\n  - \"error\"\n  - \"installing\"\n  - \"installed\"",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"details": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Additional details about the Code",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"version": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The version of OpenShift pipelines",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+				Required: []string{"code", "version"},
+			},
+		},
+		Dependencies: []string{},
+	}
+}
+
 func schema_pkg_apis_operator_v1alpha1_AddonSpec(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -90,10 +126,25 @@ func schema_pkg_apis_operator_v1alpha1_AddonStatus(ref common.ReferenceCallback)
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "AddonStatus defines the observed state of Addon",
-				Properties:  map[string]spec.Schema{},
+				Properties: map[string]spec.Schema{
+					"conditions": {
+						SchemaProps: spec.SchemaProps{
+							Description: "installation status sorted in reverse chronological order",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Ref: ref("github.com/tektoncd/operator/pkg/apis/operator/v1alpha1.ConfigCondition"),
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 		},
-		Dependencies: []string{},
+		Dependencies: []string{
+			"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1.ConfigCondition"},
 	}
 }
 

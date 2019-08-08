@@ -22,6 +22,26 @@ type AddonStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+
+	// installation status sorted in reverse chronological order
+	Conditions []ConfigCondition `json:"conditions,omitempty"`
+}
+
+// AddonCondition defines the observed state of installation at a point in time
+// +k8s:openapi-gen=true
+type AddonCondition struct {
+	// Code indicates the status of installation of addon resources
+	// Valid values are:
+	//   - "error"
+	//   - "installing"
+	//   - "installed"
+	Code InstallStatus `json:"code"`
+
+	// Additional details about the Code
+	Details string `json:"details,omitempty"`
+
+	// The version of OpenShift pipelines
+	Version string `json:"version"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
