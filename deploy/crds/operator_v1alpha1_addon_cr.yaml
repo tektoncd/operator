@@ -4,4 +4,4 @@ metadata:
   name: example-addon
 spec:
   # Add fields here
-  size: 3
+  version: 0.0.1

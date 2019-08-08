@@ -39,6 +39,27 @@ spec:
           - version
           type: object
         status:
+          properties:
+            conditions:
+              description: installation status sorted in reverse chronological order
+              items:
+                properties:
+                  code:
+                    description: 'Code indicates the status of installation of pipeline
+                      resources Valid values are:   - "error"   - "installing"   -
+                      "installed"'
+                    type: string
+                  details:
+                    description: Additional details about the Code
+                    type: string
+                  version:
+                    description: The version of pipelines
+                    type: string
+                required:
+                - code
+                - version
+                type: object
+              type: array
           type: object
   version: v1alpha1
   versions:
