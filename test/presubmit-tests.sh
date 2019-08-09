@@ -24,11 +24,11 @@
 # Markdown linting failures don't show up properly in Gubernator resulting
 # in a net-negative contributor experience.
 
-declare -r SCRIPT_PATH=$(readlink -f "$0")
-declare -r SCRIPT_DIR=$(cd $(dirname "$SCRIPT_PATH") && pwd)
+#declare -r SCRIPT_PATH=$(readlink -f "$0")
+#declare -r SCRIPT_DIR=$(cd $(dirname "$SCRIPT_PATH") && pwd)
 
 # ensure the current working dir is the root of the project
-cd $SCRIPT_DIR/../
+#cd $SCRIPT_DIR/../
 
 # This script needs helper functions from tektoncd/plumbing/scripts and
 # although github.com/tektoncd/plumbing is added as a go mod dependency,
@@ -38,15 +38,9 @@ cd $SCRIPT_DIR/../
 # GOPROXY ensures the downloads is faster
 
 export GO111MODULE=on
-export GOPROXY="https://proxy.golang.org"
-go mod download
-
+#export GOPROXY="https://proxy.golang.org"
 export DISABLE_MD_LINTING=1
-plumbing_dir_name="$(grep github.com/tektoncd/plumbing go.sum |
-  grep -v go.mod |
-  head -1 | awk '{ print $1 "@" $2 }')"
-plumbing_path="$(go env GOPATH)/pkg/mod/$plumbing_dir_name"
-source "$plumbing_path/scripts/presubmit-tests.sh"
+source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
 
 unit_tests() {
  :

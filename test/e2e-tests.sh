@@ -16,11 +16,11 @@
 
 # This script calls out to scripts in tektoncd/plumbing to setup a cluster
 # and deploy Tekton Pipelines to it for running integration tests.
-declare -r SCRIPT_PATH=$(readlink -f "$0")
-declare -r SCRIPT_DIR=$(cd $(dirname "$SCRIPT_PATH") && pwd)
+#declare -r SCRIPT_PATH=$(readlink -f "$0")
+#declare -r SCRIPT_DIR=$(cd $(dirname "$SCRIPT_PATH") && pwd)
 
 # ensure the current working dir is the root of the project
-cd $SCRIPT_DIR/../
+#cd $SCRIPT_DIR/../
 
 # This script needs helper functions from tektoncd/plumbing/scripts and
 # although github.com/tektoncd/plumbing is added as a go mod dependency,
@@ -30,14 +30,8 @@ cd $SCRIPT_DIR/../
 # GOPROXY ensures the downloads is faster
 
 export GO111MODULE=on
-export GOPROXY="https://proxy.golang.org"
-go mod download
-
-plumbing_dir_name="$(grep github.com/tektoncd/plumbing go.sum |
-  grep -v go.mod |
-  head -1 | awk '{ print $1 "@" $2 }')"
-plumbing_path="$(go env GOPATH)/pkg/mod/$plumbing_dir_name"
-source "$plumbing_path/scripts/e2e-tests.sh"
+#export GOPROXY="https://proxy.golang.org"
+source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
 
 # Script entry point.
 

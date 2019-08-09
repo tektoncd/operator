@@ -23,6 +23,6 @@ source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/library.sh
 cd ${REPO_ROOT_DIR}
 
 # Ensure we have everything we need under vendor/
-dep ensure
+go mod vendor
 
 update_licenses third_party/VENDOR-LICENSE "./cmd/*"
