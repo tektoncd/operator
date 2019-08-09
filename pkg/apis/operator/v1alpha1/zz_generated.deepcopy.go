@@ -106,7 +106,7 @@ func (in *AddonStatus) DeepCopyInto(out *AddonStatus) {
 	*out = *in
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
-		*out = make([]ConfigCondition, len(*in))
+		*out = make([]AddonCondition, len(*in))
 		copy(*out, *in)
 	}
 	return
