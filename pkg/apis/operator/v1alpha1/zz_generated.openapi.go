@@ -87,7 +87,7 @@ func schema_pkg_apis_operator_v1alpha1_AddonCondition(ref common.ReferenceCallba
 					},
 					"version": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The version of OpenShift pipelines",
+							Description: "The version of installed addon",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -134,7 +134,7 @@ func schema_pkg_apis_operator_v1alpha1_AddonStatus(ref common.ReferenceCallback)
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
-										Ref: ref("github.com/tektoncd/operator/pkg/apis/operator/v1alpha1.ConfigCondition"),
+										Ref: ref("github.com/tektoncd/operator/pkg/apis/operator/v1alpha1.AddonCondition"),
 									},
 								},
 							},
@@ -144,7 +144,7 @@ func schema_pkg_apis_operator_v1alpha1_AddonStatus(ref common.ReferenceCallback)
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1.ConfigCondition"},
+			"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1.AddonCondition"},
 	}
 }
 

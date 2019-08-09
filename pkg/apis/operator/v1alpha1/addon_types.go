@@ -24,7 +24,7 @@ type AddonStatus struct {
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 
 	// installation status sorted in reverse chronological order
-	Conditions []ConfigCondition `json:"conditions,omitempty"`
+	Conditions []AddonCondition `json:"conditions,omitempty"`
 }
 
 // AddonCondition defines the observed state of installation at a point in time
@@ -40,7 +40,7 @@ type AddonCondition struct {
 	// Additional details about the Code
 	Details string `json:"details,omitempty"`
 
-	// The version of OpenShift pipelines
+	// The version of installed addon
 	Version string `json:"version"`
 }
 

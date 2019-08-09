@@ -9,7 +9,7 @@ spec:
     listKind: AddonList
     plural: addons
     singular: addon
-  scope: Namespaced
+  scope: Cluster
   subresources:
     status: {}
   validation:
@@ -45,7 +45,7 @@ spec:
               items:
                 properties:
                   code:
-                    description: 'Code indicates the status of installation of pipeline
+                    description: 'Code indicates the status of installation of addon
                       resources Valid values are:   - "error"   - "installing"   -
                       "installed"'
                     type: string
@@ -53,7 +53,7 @@ spec:
                     description: Additional details about the Code
                     type: string
                   version:
-                    description: The version of pipelines
+                    description: The version of installed addon
                     type: string
                 required:
                 - code
