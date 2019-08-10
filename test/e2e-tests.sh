@@ -30,23 +30,32 @@ cd $SCRIPT_DIR/../
 # GOPROXY ensures the downloads is faster
 
 export GO111MODULE=on
-export GOPROXY="https://proxy.golang.org"
-go mod download
+source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
 
-plumbing_dir_name="$(grep github.com/tektoncd/plumbing go.sum |
-  grep -v go.mod |
-  head -1 | awk '{ print $1 "@" $2 }')"
-plumbing_path="$(go env GOPATH)/pkg/mod/$plumbing_dir_name"
-source "$plumbing_path/scripts/e2e-tests.sh"
+function install_tekton_operator() {
+  header "Installing Tekton operator"
+
+  # Deploy the operator
+  kubectl apply -f deploy/crds/*_crd.yaml
+  ko apply -f deploy/
+}
+
+function tekton_setup() {
+  install_tekton_operator
+}
 
 # Script entry point.
 
 initialize $@
 
-header "Running operator-sdk test"
+header "Running integration test"
 
-operator-sdk test local ./test/e2e  \
-  --up-local --namespace operators \
-  --debug  \
-  --verbose || fail_test
+failed=0
+
+# Run the integration tests
+go_test_e2e -timeout=20m ./test/e2e || failed=1
+
+# Require that tests succeeded.
+(( failed )) && fail_test
+
 success
