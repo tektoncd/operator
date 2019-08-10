@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"flag"
+	"os"
 	"path/filepath"
 
 	"github.com/go-logr/logr"
@@ -78,7 +79,8 @@ func init() {
 // Add creates a new Config Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	m, err := mf.NewManifest(resourceDir, recursive, mgr.GetClient())
+	koDataDir := os.Getenv("KO_DATA_PATH")
+	m, err := mf.NewManifest(filepath.Join(koDataDir, "pipeline/"), recursive, mgr.GetClient())
 	if err != nil {
 		return err
 	}
