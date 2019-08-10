@@ -53,8 +53,8 @@ unit_tests() {
 }
 
 build_tests() {
-  header "Running operator-sdk build"
-  operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
+  header "Running ko build"
+  ko publish --local github.com/tektoncd/operator/cmd/manager
 }
 
 install_operator_sdk() {
