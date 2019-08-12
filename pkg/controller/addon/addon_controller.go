@@ -8,6 +8,7 @@ import (
 
 	mf "github.com/jcrossley3/manifestival"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	pConfig "github.com/tektoncd/operator/pkg/controller/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,6 +24,10 @@ import (
 
 var (
 	ctrlLog = logf.Log.WithName("ctrl").WithName("config")
+)
+
+const (
+	DefaultTargetNs = "tekton-pipelines"
 )
 
 /**
@@ -140,10 +145,16 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 		// handle error
 	}
 
-	// TODO: targetNamspace should be decided from current tekton pipelines installation
-	// if there is no pipeline installation then the default namespace 'tekton-pipelines'
-	// can be used
-	targetNamespace := "tekton-pipelines"
+	pipeline, err := r.getPipelineRes()
+	if err != nil {
+		_ = r.updateStatus(res, op.AddonCondition{
+			Code:    op.ErrorStatus,
+			Details: err.Error(),
+			Version: res.Spec.Version,
+		})
+		return reconcile.Result{}, err
+	}
+	targetNamespace := pipeline.Namespace
 	tfs := []mf.Transformer{
 		mf.InjectOwner(res),
 		mf.InjectNamespace(targetNamespace),
@@ -220,4 +231,18 @@ func (r *ReconcileAddon) refreshCR(res *op.Addon) error {
 		Name:      res.Name,
 	}
 	return r.client.Get(context.TODO(), objKey, res)
+}
+
+func (r *ReconcileAddon) getPipelineRes() (*op.Config, error) {
+	res := &op.Config{}
+	namespacedName := types.NamespacedName{
+		Namespace: "",
+		Name:      pConfig.ClusterCRName,
+	}
+	err := r.client.Get(context.TODO(), namespacedName, res)
+
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
