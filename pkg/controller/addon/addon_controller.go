@@ -3,16 +3,16 @@ package addon
 import (
 	"context"
 	"github.com/go-logr/logr"
-	"github.com/prometheus/common/log"
-	"path/filepath"
-
 	mf "github.com/jcrossley3/manifestival"
+	"github.com/prometheus/common/log"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	pConfig "github.com/tektoncd/operator/pkg/controller/config"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	ctrlLog = logf.Log.WithName("ctrl").WithName("config")
+	ctrlLog = logf.Log.WithName("ctrl").WithName("addon")
 )
 
 const (
@@ -105,6 +105,9 @@ func (r *ReconcileAddon) Reconcile(req reconcile.Request) (reconcile.Result, err
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			// User deleted the cluster resource so delete the pipeine resources
+			log.Info("resource has been deleted")
+			//return r.reconcileDeletion(req, res)
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
@@ -139,14 +142,10 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 		return reconcile.Result{}, err
 	}
 
-	addonPath := filepath.Join("deploy", "resources", "addons", res.Name, res.Spec.Version)
+	addonPath := getAddonPath(res)
 	manifest, err := mf.NewManifest(addonPath, true, r.client)
 	if err != nil {
-		// handle error
-	}
-
-	pipeline, err := r.getPipelineRes()
-	if err != nil {
+		log.Error(err, "failed to create addon manifest")
 		_ = r.updateStatus(res, op.AddonCondition{
 			Code:    op.ErrorStatus,
 			Details: err.Error(),
@@ -154,7 +153,48 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 		})
 		return reconcile.Result{}, err
 	}
-	targetNamespace := pipeline.Namespace
+
+	piplnRes, err := r.getPipelineRes()
+
+	if err != nil {
+		message := err.Error()
+		if errors.IsNotFound(err) {
+			message = "pipelines installation not found"
+		}
+		_ = r.updateStatus(res, op.AddonCondition{
+			Code:    op.ErrorStatus,
+			Details: message,
+			Version: res.Spec.Version,
+		})
+		return reconcile.Result{}, err
+	}
+
+
+	tmp := res.DeepCopy()
+	controller := false
+	blockOwnerDeletion := true
+	tmp.SetOwnerReferences(
+		[]v1.OwnerReference{
+			{
+				APIVersion:         piplnRes.APIVersion,
+				Kind:               piplnRes.Kind,
+				Name:               piplnRes.Name,
+				UID:                piplnRes.UID,
+				Controller:         &controller,
+				BlockOwnerDeletion: &blockOwnerDeletion,
+			},
+		})
+
+	err = r.client.Update(context.TODO(), tmp)
+	if err != nil {
+		log.Info("ownerRef", "update", err)
+	}
+
+	r.refreshCR(res)
+
+	targetNamespace := piplnRes.Spec.TargetNamespace
+
+	log.Info("reconcile addon", "targetNamespace", targetNamespace)
 	tfs := []mf.Transformer{
 		mf.InjectOwner(res),
 		mf.InjectNamespace(targetNamespace),
@@ -168,6 +208,7 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 			Details: err.Error(),
 			Version: res.Spec.Version,
 		})
+
 		return reconcile.Result{}, err
 	}
 
@@ -193,7 +234,54 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 
 	err = r.updateStatus(res, op.AddonCondition{
 		Code: op.InstalledStatus, Version: res.Spec.Version})
-	return reconcile.Result{}, err
+
+	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileAddon) reconcileDeletion(req reconcile.Request, res *op.Addon) (reconcile.Result, error) {
+	log := requestLogger(req, "delete")
+
+	log.Info("deleting addon resources", "Addon", res.Name)
+
+	//addonPath := getAddonPath(res)
+	//manifest, err := mf.NewManifest(addonPath, true, r.client)
+	//if err != nil {
+	//	log.Error(err, "failed to create addon manifest")
+	//	_ = r.updateStatus(res, op.AddonCondition{
+	//		Code:    op.ErrorStatus,
+	//		Details: err.Error(),
+	//		Version: res.Spec.Version,
+	//	})
+	//	return reconcile.Result{}, err
+	//}
+	//// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+	//// Requested object not found, could have been deleted after reconcile request.
+	//propPolicy := client.PropagationPolicy(metav1.DeletePropagationForeground)
+	//
+	//if err := manifest.DeleteAll(propPolicy); err != nil {
+	//	log.Error(err, "failed to delete pipeline resources")
+	//	return reconcile.Result{}, err
+	//}
+
+	// Return and don't requeue
+	return reconcile.Result{}, nil
+
+}
+
+func getAddonPath(res *op.Addon) string {
+	version := res.Spec.Version
+	if version == "" {
+		version = getLatestVersion(res.Name)
+
+	}
+	path := filepath.Join("deploy", "resources", "addons", res.Name, version)
+	return path
+}
+
+func getLatestVersion(name string) string {
+	// implement logic to find latest version from
+	// available releases packaged with operator (deploy/resources/addons/<name>)
+	return "v0.1.0"
 }
 
 func requestLogger(req reconcile.Request, context string) logr.Logger {
@@ -240,9 +328,5 @@ func (r *ReconcileAddon) getPipelineRes() (*op.Config, error) {
 		Name:      pConfig.ClusterCRName,
 	}
 	err := r.client.Get(context.TODO(), namespacedName, res)
-
-	if err != nil {
-		return nil, err
-	}
-	return res, nil
+	return res, err
 }
