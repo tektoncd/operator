@@ -22,6 +22,9 @@ declare -r SCRIPT_DIR=$(cd $(dirname "$SCRIPT_PATH") && pwd)
 # ensure the current working dir is the root of the project
 cd $SCRIPT_DIR/../
 
+# Backup the vendor directory, since operator-sdk commands cannot find the modules available under vendor.
+#mv vendor vendor_backup
+
 # This script needs helper functions from tektoncd/plumbing/scripts and
 # although github.com/tektoncd/plumbing is added as a go mod dependency,
 # the package may not exists when the test is running, so, it ensure the
@@ -30,14 +33,16 @@ cd $SCRIPT_DIR/../
 # GOPROXY ensures the downloads is faster
 
 export GO111MODULE=on
-export GOPROXY="https://proxy.golang.org"
-go mod download
+export GOFLAGS=-mod=vendor
+#export GOPROXY="https://proxy.golang.org"
+#go mod vendor
 
-plumbing_dir_name="$(grep github.com/tektoncd/plumbing go.sum |
-  grep -v go.mod |
-  head -1 | awk '{ print $1 "@" $2 }')"
-plumbing_path="$(go env GOPATH)/pkg/mod/$plumbing_dir_name"
-source "$plumbing_path/scripts/e2e-tests.sh"
+#plumbing_dir_name="$(grep github.com/tektoncd/plumbing go.sum |
+#  grep -v go.mod |
+#  head -1 | awk '{ print $1 "@" $2 }')"
+#plumbing_path="$(go env GOPATH)/pkg/mod/$plumbing_dir_name"
+#source "$plumbing_path/scripts/e2e-tests.sh"
+source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
 
 # Script entry point.
 
@@ -50,3 +55,6 @@ operator-sdk test local ./test/e2e  \
   --debug  \
   --verbose || fail_test
 success
+
+# Restore the vendor directory.
+#mv vendor_backup vendor
