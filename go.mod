@@ -2,6 +2,7 @@ module github.com/tektoncd/operator
 
 require (
 	github.com/NYTimes/gziphandler v1.0.1 // indirect
+	github.com/coreos/prometheus-operator v0.31.1 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/jcrossley3/manifestival v0.0.0-20190621184852-78b6b04ae6ff
 	github.com/operator-framework/operator-sdk v0.9.1-0.20190715204459-936584d47ff9
@@ -9,9 +10,11 @@ require (
 	github.com/spf13/pflag v1.0.3
 	github.com/tektoncd/plumbing v0.0.0-20190731030558-283e91c83abb
 	k8s.io/api v0.0.0-20190612125737-db0771252981
+	k8s.io/apiextensions-apiserver v0.0.0-20190820104113-47893d27d7f7 // indirect
 	k8s.io/apimachinery v0.0.0-20190612125636-6a5db36e93ad
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/kube-openapi v0.0.0-20190603182131-db7b694dc208 // indirect
+	k8s.io/kube-state-metrics v1.7.2 // indirect
 	sigs.k8s.io/controller-runtime v0.1.12
 	sigs.k8s.io/controller-tools v0.1.10
 )
