@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"flag"
+	"k8s.io/apimachinery/pkg/types"
 	"os"
 	"path/filepath"
 
@@ -12,11 +13,10 @@ import (
 	"github.com/prometheus/common/log"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
-
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -191,19 +191,28 @@ func (r *ReconcileConfig) Reconcile(req reconcile.Request) (reconcile.Result, er
 		return reconcile.Result{}, err
 	}
 
-	if isUpToDate(res) {
-		log.Info("skipping installation, resource already up to date")
-		return reconcile.Result{}, nil
-	}
-
 	log.Info("installing pipelines", "path", resourceDir)
 
-	return r.reconcileInstall(req, res)
+	stages := []func(req reconcile.Request, res *op.Config) (reconcile.Result, error) {
+		r.reconcileInstall,
+		r.checkDeployments,
+	}
 
+	for _, stage := range stages {
+		if result, err := stage(req, res); err != nil {
+			return result, err
+		}
+	}
+	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileConfig) reconcileInstall(req reconcile.Request, res *op.Config) (reconcile.Result, error) {
 	log := requestLogger(req, "install")
+
+	if isInstalling(res) {
+		log.Info("skipping installation, since the installation is undergoing.")
+		return reconcile.Result{}, nil
+	}
 
 	err := r.updateStatus(res, op.ConfigCondition{Code: op.InstallingStatus, Version: tektonVersion})
 	if err != nil {
@@ -245,6 +254,47 @@ func (r *ReconcileConfig) reconcileInstall(req reconcile.Request, res *op.Config
 	}
 
 	err = r.updateStatus(res, op.ConfigCondition{
+		Code: op.CRInstalledStatus, Version: tektonVersion})
+	return reconcile.Result{}, err
+}
+
+func (r *ReconcileConfig) checkDeployments(req reconcile.Request, res *op.Config) (reconcile.Result, error) {
+	log := requestLogger(req, "checking the deployments of the pipeline")
+
+	available := func(d *appsv1.Deployment) bool {
+		for _, c := range d.Status.Conditions {
+			if c.Type == appsv1.DeploymentAvailable && c.Status == v1.ConditionTrue {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, u := range r.manifest.Resources {
+		if u.GetKind() == "Deployment" {
+			deployment := &appsv1.Deployment{}
+			key := client.ObjectKey{Namespace: u.GetNamespace(), Name: u.GetName()}
+			if err := r.client.Get(context.TODO(), key, deployment); err != nil {
+				if errors.IsNotFound(err) {
+					return reconcile.Result{}, nil
+				}
+				log.Error(err, "Error fetching deployment", "deployment", deployment)
+				return reconcile.Result{}, err
+			}
+			if !available(deployment) {
+				log.Info("Deployment not ready", "deployment", deployment)
+				return reconcile.Result{}, nil
+			}
+		}
+	}
+
+	log.Info("All deployments are available")
+
+	if err := r.refreshCR(res); err != nil {
+		log.Error(err, "status update failed to refresh object")
+		return reconcile.Result{}, err
+	}
+	err := r.updateStatus(res, op.ConfigCondition{
 		Code: op.InstalledStatus, Version: tektonVersion})
 	return reconcile.Result{}, err
 }
@@ -304,7 +354,6 @@ func (r *ReconcileConfig) updateStatus(res *op.Config, c op.ConfigCondition) err
 
 func (r *ReconcileConfig) refreshCR(res *op.Config) error {
 	objKey := types.NamespacedName{
-		Namespace: res.Namespace,
 		Name:      res.Name,
 	}
 	return r.client.Get(context.TODO(), objKey, res)
@@ -328,7 +377,7 @@ func createCR(c client.Client) error {
 	return err
 }
 
-func isUpToDate(r *op.Config) bool {
+func isInstalling(r *op.Config) bool {
 	c := r.Status.Conditions
 	if len(c) == 0 {
 		return false
@@ -336,7 +385,7 @@ func isUpToDate(r *op.Config) bool {
 
 	latest := c[0]
 	return latest.Version == tektonVersion &&
-		latest.Code == op.InstalledStatus
+		(latest.Code == op.InstallingStatus || latest.Code == op.CRInstalledStatus)
 }
 
 func requestLogger(req reconcile.Request, context string) logr.Logger {

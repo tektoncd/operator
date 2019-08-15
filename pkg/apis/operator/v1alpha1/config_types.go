@@ -44,14 +44,19 @@ const (
 	// InstalledStatus indicates that the pipeline resources are installed
 	InstalledStatus InstallStatus = "installed"
 
+	// CRInstalledStatus indicates that the config is installed
+	CRInstalledStatus InstallStatus = "crInstalled"
+
 	// InstallingStatus indicates that the pipeline resources are being installed
 	InstallingStatus InstallStatus = "installing"
 
 	// ErrorStatus indicates that there was an error installing pipeline resources
 	// Check details field for additional details
 	ErrorStatus InstallStatus = "error"
-)
 
+	// DeploymentNotReady indicates that the pipeline deployment is not ready
+	DeploymentNotReady  InstallStatus = "deploymentNotReady"
+)
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Config is the Schema for the configs API

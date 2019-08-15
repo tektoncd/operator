@@ -42,7 +42,7 @@ install_operator
 header "Running operator-sdk test"
 
 operator-sdk test local ./test/e2e  \
-  --up-local --namespace operators \
+  --up-local --namespace default \
   --debug  \
   --verbose || fail_test
 success

@@ -7,6 +7,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	appsv1 "k8s.io/api/apps/v1"
 
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
@@ -63,11 +64,35 @@ func WaitForClusterCR(t *testing.T, name string) *op.Config {
 			return false, err
 		}
 
+		// If the CR does not reach the expected status, we should continue to wait.
+		if len(cr.Status.Conditions) == 0 {
+			return false, nil
+		}
+
+		if code := cr.Status.Conditions[0].Code; code != op.InstalledStatus {
+			return false, nil
+		}
+
 		return true, nil
 	})
 
 	AssertNoError(t, err)
 	return cr
+}
+
+func DeletePipelineDeployment(t *testing.T, dep *appsv1.Deployment) {
+	t.Helper()
+	err := wait.Poll(config.APIRetry, config.APITimeout, func() (bool, error) {
+		err := test.Global.Client.Delete(context.TODO(), dep)
+		if err != nil {
+			t.Logf("Deletion of deployment %s failed %s \n", dep.GetName(), err)
+			return false, err
+		}
+
+		return true, nil
+	})
+
+	AssertNoError(t, err)
 }
 
 func DeleteClusterCR(t *testing.T, name string) {
