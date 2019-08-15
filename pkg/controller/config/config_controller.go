@@ -174,11 +174,6 @@ func (r *ReconcileConfig) Reconcile(req reconcile.Request) (reconcile.Result, er
 		return reconcile.Result{}, err
 	}
 
-	if isUpToDate(res) {
-		log.Info("skipping installation, resource already up to date")
-		return reconcile.Result{}, nil
-	}
-
 	log.Info("installing pipelines", "path", resourceDir)
 
 	return r.reconcileInstall(req, res)
