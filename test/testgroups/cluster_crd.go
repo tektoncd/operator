@@ -18,5 +18,6 @@ func ClusterCRD(t *testing.T) {
 	helpers.AssertNoError(t, err)
 
 	t.Run("auto-installs-pipelines", testsuites.ValidateAutoInstall)
+	t.Run("deployment-recreation", testsuites.ValidateDeploymentRecreate)
 	t.Run("delete-pipelines", testsuites.ValidateDeletion)
 }
