@@ -15,11 +15,7 @@ spec:
       serviceAccountName: tekton-operator
       containers:
         - name: tekton-operator
-          # Replace this with the built image name
-          image: REPLACE_IMAGE
-          command:
-          - tekton-operator
-          imagePullPolicy: Always
+          image: github.com/tektoncd/operator/cmd/manager
           env:
             - name: WATCH_NAMESPACE
               value: ""
@@ -29,3 +25,5 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "tekton-operator"
+          args:
+            - --no-auto-install=true

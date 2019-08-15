@@ -19,7 +19,25 @@ source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
 
 # Script entry point.
 
+function install_operator() {
+    echo ">> install operator"
+    kubectl apply -f deploy/crds/*_crd.yaml
+    ko apply -f config/ || fail_test "Operator installation failed"
+    wait_until_pods_running default || fail_test "Operator did not come up"
+}
+
+function test_teardown() {
+    subheader "Tearing down Operator"
+    ko delete --ignore-not-found=true -f config/
+    kubectl delete -f deploy/crds/*_crd.yaml
+    kubectl delete Config cluster
+}
+
 initialize $@
+
+header "Setting up environment"
+
+install_operator
 
 header "Running operator-sdk test"
 
