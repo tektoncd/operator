@@ -1,3 +1,15 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-operator
+subjects:
+  - kind: ServiceAccount
+    name: tekton-operator
+roleRef:
+  kind: Role
+  name: tekton-operator
+  apiGroup: rbac.authorization.k8s.io
+---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:

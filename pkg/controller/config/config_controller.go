@@ -80,7 +80,11 @@ func init() {
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	koDataDir := os.Getenv("KO_DATA_PATH")
-	m, err := mf.NewManifest(filepath.Join(koDataDir, "pipeline/"), recursive, mgr.GetClient())
+	dir := filepath.Join(koDataDir, "pipeline/")
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		dir = resourceDir
+	}
+	m, err := mf.NewManifest(dir, recursive, mgr.GetClient())
 	if err != nil {
 		return err
 	}
