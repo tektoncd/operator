@@ -24,12 +24,6 @@
 # Markdown linting failures don't show up properly in Gubernator resulting
 # in a net-negative contributor experience.
 
-declare -r SCRIPT_PATH=$(readlink -f "$0")
-declare -r SCRIPT_DIR=$(cd $(dirname "$SCRIPT_PATH") && pwd)
-
-# ensure the current working dir is the root of the project
-cd $SCRIPT_DIR/../
-
 # Backup the vendor directory, since operator-sdk commands cannot find the modules available under vendor.
 mv vendor vendor_backup
 
@@ -41,20 +35,10 @@ mv vendor vendor_backup
 # GOPROXY ensures the downloads is faster
 
 export GO111MODULE=on
-#export GOPROXY="https://proxy.golang.org"
+export GOPROXY="https://proxy.golang.org"
 go mod vendor
 
-diff -bur vendor/ vendor_backup/
-
-rm -rf vendor/modules.txt
-
 export DISABLE_MD_LINTING=1
-export GOFLAGS=-mod=vendor
-#plumbing_dir_name="$(grep github.com/tektoncd/plumbing go.sum |
-#  grep -v go.mod |
-#  head -1 | awk '{ print $1 "@" $2 }')"
-#plumbing_path="$(go env GOPATH)/pkg/mod/$plumbing_dir_name"
-#source "$plumbing_path/scripts/presubmit-tests.sh"
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
 
 unit_tests() {
@@ -67,7 +51,7 @@ build_tests() {
 }
 
 install_operator_sdk() {
-  local sdk_rel="v0.4.0"
+  local sdk_rel="v0.10.0"
   curl -JL \
     https://github.com/operator-framework/operator-sdk/releases/download/${sdk_rel}/operator-sdk-${sdk_rel}-x86_64-linux-gnu \
     -o /usr/bin/operator-sdk
@@ -79,11 +63,11 @@ extra_initialization() {
 
   install_operator_sdk
   echo ">> operator sdk version"
-  #operator-sdk version
+  operator-sdk version
 }
 
 
 main "$@"
 
 # Restore the vendor directory.
-mv vendor_backup vendor
+#mv vendor_backup vendor
