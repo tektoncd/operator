@@ -7,7 +7,7 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
 
     `kubectl create namespace tekton-operator`
     
-2. Apply Operator crd  
+2. Apply Operator CRD
 
     `kubectl apply -f deploy/crds/*_crd.yaml`
     
@@ -26,9 +26,13 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
 1. operator-sdk: https://github.com/operator-framework/operator-sdk
 
 
-## Running Operator Locally
+## Running Operator Locally (Development)
 
-To run the operator lcoally during development:
+1. Apply Operator CRD
+
+    `kubectl apply -f deploy/crds/*_crd.yaml`
+
+1. start operator
 
     `make local-dev`
 
