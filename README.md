@@ -25,6 +25,13 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
    interacting with your kube cluster
 1. operator-sdk: https://github.com/operator-framework/operator-sdk
 
+
+## Running Operator Locally
+
+To run the operator lcoally during development:
+
+    `make local-dev`
+
 ## Building the Operator Image
 1. Enable go mod  
 
