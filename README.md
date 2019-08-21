@@ -36,6 +36,10 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
 
     `make local-dev`
 
+1. Update the dependencies
+
+    `make update-deps`
+
 ## Building the Operator Image
 1. Enable go mod  
 
