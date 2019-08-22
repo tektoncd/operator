@@ -13,6 +13,7 @@ import (
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/test/config"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // AssertNoError confirms the error returned is nil
@@ -47,14 +48,14 @@ func WaitForDeploymentDeletion(t *testing.T, namespace, name string) error {
 	return err
 }
 
-func WaitForClusterCR(t *testing.T, name string) *op.Config {
+func WaitForClusterCR(t *testing.T, name string, obj runtime.Object) {
 	t.Helper()
 
 	objKey := types.NamespacedName{Name: name}
-	cr := &op.Config{}
+	//cr := &op.Config{}
 
 	err := wait.Poll(config.APIRetry, config.APITimeout, func() (bool, error) {
-		err := test.Global.Client.Get(context.TODO(), objKey, cr)
+		err := test.Global.Client.Get(context.TODO(), objKey, obj)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				t.Logf("Waiting for availability of %s cr\n", name)
@@ -67,7 +68,7 @@ func WaitForClusterCR(t *testing.T, name string) *op.Config {
 	})
 
 	AssertNoError(t, err)
-	return cr
+	//return cr
 }
 
 func DeleteClusterCR(t *testing.T, name string) {
@@ -121,4 +122,32 @@ func ValidatePipelineCleanup(t *testing.T, cr *op.Config, deployments ...string)
 		err := WaitForDeploymentDeletion(t, ns, d)
 		AssertNoError(t, err)
 	}
+}
+
+func DeployOperator(t *testing.T, ctx *test.TestCtx) error {
+	err := ctx.InitializeClusterResources(
+		&test.CleanupOptions{
+			TestContext:   ctx,
+			Timeout:       config.CleanupTimeout,
+			RetryInterval: config.CleanupRetry,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	namespace, err := ctx.GetNamespace()
+	if err != nil {
+		return err
+	}
+
+	return e2eutil.WaitForOperatorDeployment(
+		t,
+		test.Global.KubeClient,
+		namespace,
+		config.TestOperatorName,
+		1,
+		config.APIRetry,
+		config.APITimeout,
+	)
 }

@@ -135,7 +135,7 @@ func (r *ReconcileAddon) ensureAddonVersion(res *op.Addon) (bool, error) {
 	if version != "" {
 		return true, nil
 	}
-	version, err := getLatestVersion(res)
+	version, err := GetLatestVersion(res)
 	if err != nil {
 		return false, err
 	}
@@ -263,7 +263,7 @@ func getAddonPath(res *op.Addon) (string) {
 	return path
 }
 
-func getLatestVersion(res *op.Addon) (string, error) {
+func GetLatestVersion(res *op.Addon) (string, error) {
 	dirName := getAddonBase(res)
 	items, err := ioutil.ReadDir(dirName)
 	if err != nil || len(items) == 0 {

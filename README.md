@@ -40,6 +40,16 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
 
     `make update-deps`
 
+## Running E2E Tests Locally (Development)
+
+1. run
+
+    `local-test-e2e`
+
+1. to watch resources getting created/deleted, run in a separate terminal:
+
+    `watch -d -n 1 kubectl get all -n tekton-pipelines`
+
 ## Building the Operator Image
 1. Enable go mod  
 
