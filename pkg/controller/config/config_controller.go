@@ -157,13 +157,8 @@ func (r *ReconcileConfig) Reconcile(req reconcile.Request) (reconcile.Result, er
 
 	log.Info("reconciling config change")
 
-	if ignoreRequest(req) {
-		log.Info("ignoring event of resource watched that is not cluster-wide")
-		return reconcile.Result{}, nil
-	}
-
 	res := &op.Config{}
-	err := r.client.Get(context.TODO(), req.NamespacedName, res)
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: req.Name}, res)
 
 	// ignore all resources except the `resourceWatched`
 	if req.Name != resourceWatched {
@@ -342,13 +337,4 @@ func requestLogger(req reconcile.Request, context string) logr.Logger {
 		"Request.Namespace", req.Namespace,
 		"Request.NamespaceName", req.NamespacedName,
 		"Request.Name", req.Name)
-}
-
-func ignoreRequest(req reconcile.Request) bool {
-	// NOTE: only interested in the clusterwide events of the resource watched
-	// Otherwise, when release.yaml is applied and onwer-ref is set to the
-	// clusterwide resource, events are generated for "targetNamespace/resourceWatched"
-	// and as the GET call for that resource fails, the pipeline resources get
-	// deleted. this filter prevents that from happening
-	return req.Name == resourceWatched && req.Namespace != ""
 }
