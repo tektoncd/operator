@@ -100,8 +100,16 @@ func (r *ReconcileAddon) Reconcile(req reconcile.Request) (reconcile.Result, err
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("resource has been deleted")
-			// reconcile delete
 			return reconcile.Result{}, nil
+			// addon components (items in yaml manifest) will be deleted
+			// as the owner reference is set, technically we don't have to explicitly delete them
+			// if we wan't to delete them manually (if in case of orphaned items)
+			// a more complex reconcile logic can be implemented here
+			// for example: 1. read manifest, 2. find pipeline-installation,
+			// 3. note: can't set owner reference as the addon resource is not found
+			// 4. inject namespace into resources suing target namespace from pipeline
+			// 5. delete all resources
+			// NT: aug-22-2019
 		}
 		return reconcile.Result{}, err
 	}
@@ -226,36 +234,6 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 
 	//requeue true as isUptodate will be validated in the next reconcile loop
 	return reconcile.Result{Requeue: true}, err
-}
-
-func (r *ReconcileAddon) reconcileDeletion(req reconcile.Request, res *op.Addon) (reconcile.Result, error) {
-	log := requestLogger(req, "delete")
-
-	log.Info("deleting addon resources", "Addon", res.Name)
-
-	//addonPath := getAddonPath(res)
-	//manifest, err := mf.NewManifest(addonPath, true, r.client)
-	//if err != nil {
-	//	log.Error(err, "failed to create addon manifest")
-	//	_ = r.updateStatus(res, op.AddonCondition{
-	//		Code:    op.ErrorStatus,
-	//		Details: err.Error(),
-	//		Version: res.Spec.Version,
-	//	})
-	//	return reconcile.Result{}, err
-	//}
-	//// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-	//// Requested object not found, could have been deleted after reconcile request.
-	//propPolicy := client.PropagationPolicy(metav1.DeletePropagationForeground)
-	//
-	//if err := manifest.DeleteAll(propPolicy); err != nil {
-	//	log.Error(err, "failed to delete pipeline resources")
-	//	return reconcile.Result{}, err
-	//}
-
-	// Return and don't requeue
-	return reconcile.Result{}, nil
-
 }
 
 func (r *ReconcileAddon) processPayload(res *op.Addon, targetNS string) (*mf.Manifest, error) {
