@@ -12,8 +12,8 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/test/config"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // AssertNoError confirms the error returned is nil

@@ -159,3 +159,16 @@ rules:
   - '*'
   verbs:
   - '*'
+- apiGroups:
+  - dashboard.tekton.dev
+  resources:
+  - '*'
+  - addons
+  verbs:
+  - '*'
+- apiGroups:
+  - security.openshift.io
+  resources:
+  - securitycontextconstraints
+  verbs:
+  - use

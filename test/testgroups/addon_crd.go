@@ -1,10 +1,11 @@
 package testgroups
 
 import (
+	"testing"
+
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/tektoncd/operator/test/helpers"
 	"github.com/tektoncd/operator/test/testsuites"
-	"testing"
 )
 
 // AddonCRD is the test group for testing addon.operator.tekton.dev CRD

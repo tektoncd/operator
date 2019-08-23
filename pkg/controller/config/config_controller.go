@@ -10,6 +10,7 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/predicate"
 	"github.com/prometheus/common/log"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/controller/setup"
 	appsv1 "k8s.io/api/apps/v1"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,17 +26,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const (
-	ClusterCRName   = "cluster"
-	DefaultTargetNs = "tekton-pipelines"
-
-	// Name of the pipeline controller deployment
-	PipelineControllerName = "tekton-pipelines-controller"
-
-	// Name of the pipeline webhook deployment
-	PipelineWebhookName = "tekton-pipelines-webhook"
-)
-
 var (
 	tektonVersion   = "v0.5.2"
 	resourceWatched string
@@ -48,12 +38,12 @@ var (
 
 func init() {
 	flag.StringVar(
-		&resourceWatched, "watch-resource", ClusterCRName,
-		"cluster-wide resource that operator honours, default: "+ClusterCRName)
+		&resourceWatched, "watch-resource", setup.ClusterCRName,
+		"cluster-wide resource that operator honours, default: "+setup.ClusterCRName)
 
 	flag.StringVar(
-		&targetNamespace, "target-namespace", DefaultTargetNs,
-		"Namespace where pipeline will be installed default: "+DefaultTargetNs)
+		&targetNamespace, "target-namespace", setup.DefaultTargetNs,
+		"Namespace where pipeline will be installed default: "+setup.DefaultTargetNs)
 
 	defaultResDir := filepath.Join("deploy", "resources", tektonVersion)
 	flag.StringVar(

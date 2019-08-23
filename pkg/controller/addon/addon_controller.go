@@ -2,19 +2,21 @@ package addon
 
 import (
 	"context"
+	"io/ioutil"
+	"path/filepath"
+	"time"
+
 	"github.com/go-logr/logr"
 	mf "github.com/jcrossley3/manifestival"
 	"github.com/prometheus/common/log"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	pConfig "github.com/tektoncd/operator/pkg/controller/config"
-	"io/ioutil"
+	"github.com/tektoncd/operator/pkg/controller/setup"
+	"golang.org/x/xerrors"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"golang.org/x/xerrors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -22,17 +24,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"time"
 )
 
 var (
-	ctrlLog = logf.Log.WithName("ctrl").WithName("addon")
-	ErrPipelineNotReady = xerrors.Errorf("tekton-pipelines not ready")
-	ErrAddonVersionUnresolved = xerrors.Errorf("tekton-pipelines not ready")
-)
-
-const (
-	DefaultTargetNs = "tekton-pipelines"
+	ctrlLog                   = logf.Log.WithName("ctrl").WithName("addon")
+	errPipelineNotReady       = xerrors.Errorf("tekton-pipelines not ready")
+	errAddonVersionUnresolved = xerrors.Errorf("tekton-pipelines not ready")
 )
 
 // Add creates a new Addon Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -167,7 +164,7 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 	err := r.updateStatus(res, op.AddonCondition{Code: op.InstallingStatus, Version: res.Spec.Version})
 	if err != nil {
 		log.Error(err, "failed to set status")
-		return reconcile.Result{Requeue:true}, err
+		return reconcile.Result{Requeue: true}, err
 	}
 
 	//find the valid clusterwide tekton-pipeline installation
@@ -179,7 +176,7 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 			Version: res.Spec.Version,
 		})
 
-		if err == ErrPipelineNotReady {
+		if err == errPipelineNotReady {
 			// wait for pipeline status to change
 			return reconcile.Result{RequeueAfter: 30 * time.Second}, nil
 		}
@@ -257,7 +254,7 @@ func (r *ReconcileAddon) processPayload(res *op.Addon, targetNS string) (*mf.Man
 	return &manifest, nil
 }
 
-func getAddonPath(res *op.Addon) (string) {
+func getAddonPath(res *op.Addon) string {
 	addonDir := getAddonBase(res)
 	path := filepath.Join(addonDir, res.Spec.Version)
 	return path
@@ -267,7 +264,7 @@ func GetLatestVersion(res *op.Addon) (string, error) {
 	dirName := getAddonBase(res)
 	items, err := ioutil.ReadDir(dirName)
 	if err != nil || len(items) == 0 {
-		return "", ErrAddonVersionUnresolved
+		return "", errAddonVersionUnresolved
 	}
 
 	return items[len(items)-1].Name(), nil
@@ -318,7 +315,7 @@ func (r *ReconcileAddon) getPipelineRes() (*op.Config, error) {
 	res := &op.Config{}
 	namespacedName := types.NamespacedName{
 		Namespace: "",
-		Name:      pConfig.ClusterCRName,
+		Name:      setup.ClusterCRName,
 	}
 	err := r.client.Get(context.TODO(), namespacedName, res)
 	return res, err
@@ -327,10 +324,10 @@ func (r *ReconcileAddon) getPipelineRes() (*op.Config, error) {
 func (r *ReconcileAddon) pipelineReady() (*op.Config, error) {
 	ppln, err := r.getPipelineRes()
 	if err != nil {
-		return nil, xerrors.Errorf(ErrPipelineNotReady.Error(), err)
+		return nil, xerrors.Errorf(errPipelineNotReady.Error(), err)
 	}
 	if ppln.Status.Conditions[0].Code != op.InstalledStatus {
-		return nil, ErrPipelineNotReady
+		return nil, errPipelineNotReady
 	}
 	return ppln, nil
 }
