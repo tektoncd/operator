@@ -2,17 +2,18 @@ package testsuites
 
 import (
 	"context"
-	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
-	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/controller/addon"
-	"github.com/tektoncd/operator/pkg/controller/config"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
 	"time"
 
+	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/controller/addon"
+	"github.com/tektoncd/operator/pkg/controller/setup"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/operator-framework/operator-sdk/pkg/test"
-	"github.com/tektoncd/operator/test/helpers"
 	testConfig "github.com/tektoncd/operator/test/config"
+	"github.com/tektoncd/operator/test/helpers"
 )
 
 // ValidateAddonInstall creates an instance of addon.operator.tekton.dev
@@ -40,15 +41,15 @@ func ValidateAddonDeletion(t *testing.T) {
 
 func installPipeline(t *testing.T, ctx *test.TestCtx) {
 	configCR := &v1alpha1.Config{
-		TypeMeta:   v1.TypeMeta{
-			Kind: "config",
+		TypeMeta: v1.TypeMeta{
+			Kind:       "config",
 			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name: config.ClusterCRName,
+			Name: setup.ClusterCRName,
 		},
-		Spec:       v1alpha1.ConfigSpec{
-			TargetNamespace: config.DefaultTargetNs,
+		Spec: v1alpha1.ConfigSpec{
+			TargetNamespace: setup.DefaultTargetNs,
 		},
 	}
 	cleanupOptions := &test.CleanupOptions{
@@ -59,7 +60,7 @@ func installPipeline(t *testing.T, ctx *test.TestCtx) {
 
 	err := test.Global.Client.Create(context.TODO(), configCR, cleanupOptions)
 	helpers.AssertNoError(t, err)
-	helpers.WaitForClusterCR(t, config.ClusterCRName, configCR)
+	helpers.WaitForClusterCR(t, setup.ClusterCRName, configCR)
 }
 
 func addonCRWithVersion(t *testing.T) {
@@ -67,14 +68,14 @@ func addonCRWithVersion(t *testing.T) {
 	defer ctx.Cleanup()
 
 	addonCR := &v1alpha1.Addon{
-		TypeMeta:   v1.TypeMeta{
-			Kind: "Addon",
+		TypeMeta: v1.TypeMeta{
+			Kind:       "Addon",
 			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name: "dashboard",
 		},
-		Spec:       v1alpha1.AddonSpec{
+		Spec: v1alpha1.AddonSpec{
 			Version: "v0.1.0",
 		},
 	}
@@ -93,7 +94,7 @@ func addonCRWithVersion(t *testing.T) {
 	helpers.AssertNoError(t, err)
 
 	err = e2eutil.WaitForDeployment(
-		t, test.Global.KubeClient, config.DefaultTargetNs,
+		t, test.Global.KubeClient, setup.DefaultTargetNs,
 		"tekton-dashboard",
 		1,
 		testConfig.APIRetry,
@@ -112,8 +113,8 @@ func addonCRWithoutVersion(t *testing.T) {
 	defer ctx.Cleanup()
 
 	addonCR := &v1alpha1.Addon{
-		TypeMeta:   v1.TypeMeta{
-			Kind: "Addon",
+		TypeMeta: v1.TypeMeta{
+			Kind:       "Addon",
 			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: v1.ObjectMeta{
@@ -135,7 +136,7 @@ func addonCRWithoutVersion(t *testing.T) {
 	helpers.AssertNoError(t, err)
 
 	err = e2eutil.WaitForDeployment(
-		t, test.Global.KubeClient, config.DefaultTargetNs,
+		t, test.Global.KubeClient, setup.DefaultTargetNs,
 		"tekton-dashboard",
 		1,
 		testConfig.APIRetry,
@@ -163,8 +164,8 @@ func addonCRDeletion(t *testing.T) {
 	defer ctx.Cleanup()
 
 	addonCR := &v1alpha1.Addon{
-		TypeMeta:   v1.TypeMeta{
-			Kind: "Addon",
+		TypeMeta: v1.TypeMeta{
+			Kind:       "Addon",
 			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: v1.ObjectMeta{
@@ -186,7 +187,7 @@ func addonCRDeletion(t *testing.T) {
 	helpers.AssertNoError(t, err)
 
 	err = e2eutil.WaitForDeployment(
-		t, test.Global.KubeClient, config.DefaultTargetNs,
+		t, test.Global.KubeClient, setup.DefaultTargetNs,
 		"tekton-dashboard",
 		1,
 		testConfig.APIRetry,
@@ -197,7 +198,7 @@ func addonCRDeletion(t *testing.T) {
 	helpers.WaitForClusterCR(t, "dashboard", addonCR)
 
 	err = e2eutil.WaitForDeployment(
-		t, test.Global.KubeClient, config.DefaultTargetNs,
+		t, test.Global.KubeClient, setup.DefaultTargetNs,
 		"tekton-dashboard",
 		1,
 		testConfig.APIRetry,
@@ -211,5 +212,5 @@ func addonCRDeletion(t *testing.T) {
 
 	helpers.AssertNoError(t, err)
 
-	helpers.WaitForDeploymentDeletion(t, config.DefaultTargetNs, "tekton-dashboard")
+	helpers.WaitForDeploymentDeletion(t, setup.DefaultTargetNs, "tekton-dashboard")
 }
