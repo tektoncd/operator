@@ -52,6 +52,7 @@ const (
 	ErrorStatus InstallStatus = "error"
 )
 
+// +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Config is the Schema for the configs API

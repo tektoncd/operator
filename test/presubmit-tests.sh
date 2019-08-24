@@ -46,12 +46,26 @@ install_operator_sdk() {
   chmod +x /usr/bin/operator-sdk
 }
 
+update_go() {
+  local sdk_rel="1.12.9"
+  curl -JL \
+    https://dl.google.com/go/go${sdk_rel}.linux-amd64.tar.gz
+    -o /usr/bin/go${sdk_rel}.linux-amd64.tar.gz
+  tar -C /usr/local -xzf /usr/bin/go${sdk_rel}.linux-amd64.tar.gz
+}
+
 extra_initialization() {
   echo "Running as $(whoami) on $(hostname) under $(pwd) dir"
 
   install_operator_sdk
   echo ">> operator sdk version"
   operator-sdk version
+
+  echo ">> which go"
+  which go
+  update_go
+  echo ">> go version updated"
+  go version
 }
 
 
