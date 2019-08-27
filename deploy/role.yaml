@@ -171,3 +171,12 @@ rules:
   - securitycontextconstraints
   verbs:
   - use
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-operator
+rules:
+  - apiGroups: ["*"]
+    resources: ["*"]
+    verbs: ["*"]
