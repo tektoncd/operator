@@ -16,10 +16,10 @@ spec:
       containers:
         - name: tekton-operator
           # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: docker.io/houshengbo/tektoncd-operator:latest
           command:
           - tekton-operator
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           env:
             - name: WATCH_NAMESPACE
               value: ""

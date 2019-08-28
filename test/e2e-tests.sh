@@ -23,7 +23,7 @@ function tekton_setup() {
   header "Installing Tekton Operator"
   kubectl create namespace $TEST_NAMESPACE
   kubectl apply -n $TEST_NAMESPACE -f deploy/crds/*_crd.yaml
-  ko apply -n $TEST_NAMESPACE -f config/
+  kubectl apply -n $TEST_NAMESPACE -f deploy/
   wait_until_pods_running $TEST_NAMESPACE
 }
 
