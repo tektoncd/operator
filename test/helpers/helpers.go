@@ -52,7 +52,6 @@ func WaitForClusterCR(t *testing.T, name string, obj runtime.Object) {
 	t.Helper()
 
 	objKey := types.NamespacedName{Name: name}
-	//cr := &op.Config{}
 
 	err := wait.Poll(config.APIRetry, config.APITimeout, func() (bool, error) {
 		err := test.Global.Client.Get(context.TODO(), objKey, obj)
@@ -68,7 +67,6 @@ func WaitForClusterCR(t *testing.T, name string, obj runtime.Object) {
 	})
 
 	AssertNoError(t, err)
-	//return cr
 }
 
 func DeleteClusterCR(t *testing.T, name string) {

@@ -29,7 +29,7 @@ import (
 var (
 	ctrlLog                   = logf.Log.WithName("ctrl").WithName("addon")
 	errPipelineNotReady       = xerrors.Errorf("tekton-pipelines not ready")
-	errAddonVersionUnresolved = xerrors.Errorf("tekton-pipelines not ready")
+	errAddonVersionUnresolved = xerrors.Errorf("could not resolve to a valid addon version")
 )
 
 // Add creates a new Addon Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -87,8 +87,7 @@ type ReconcileAddon struct {
 // Reconcile reads that state of the cluster for a Addon object and makes changes based on the state read
 // and what is in the Addon.Spec
 func (r *ReconcileAddon) Reconcile(req reconcile.Request) (reconcile.Result, error) {
-	log := requestLogger(req, "addon reconcile")
-	//reqLogger := log.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
+	log := requestLogger(req, "reconcile")
 	log.Info("Reconciling Addon")
 
 	// Fetch the Addon instance
@@ -314,8 +313,7 @@ func (r *ReconcileAddon) refreshCR(res *op.Addon) error {
 func (r *ReconcileAddon) getPipelineRes() (*op.Config, error) {
 	res := &op.Config{}
 	namespacedName := types.NamespacedName{
-		Namespace: "",
-		Name:      setup.ClusterCRName,
+		Name: setup.ClusterCRName,
 	}
 	err := r.client.Get(context.TODO(), namespacedName, res)
 	return res, err
