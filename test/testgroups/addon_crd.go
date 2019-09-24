@@ -19,5 +19,5 @@ func AddonCRD(t *testing.T) {
 	t.Log("deployed operaot for addomn")
 
 	t.Run("addon-install", testsuites.ValidateAddonInstall)
-	//t.Run("addon-delete", testsuites.ValidateAddonDeletion)
+	t.Run("addon-delete", testsuites.ValidateAddonDeletion)
 }
