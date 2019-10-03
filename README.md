@@ -88,3 +88,28 @@ args:
 Then install `Tekton Pipeline` manually:  
 
 `kubectl apply -f deploy/crds/*_cr.yaml`
+
+## Addon components
+
+Supported addon components are installed by creating the 'addon' CR for the component.
+
+Sample CR
+
+```
+apiVersion: operator.tekton.dev/v1alpha1
+kind: Addon
+metadata:
+  name: dashboard
+spec:
+  version: v0.1.0
+```
+
+The current supported components and versions are:
+
+- dashboard
+  - v0.1.1
+  - v0.2.0
+  - openshift-v0.2.0
+- extensionwebhooks
+  - v0.2.0
+  - openshift-v0.2.0
