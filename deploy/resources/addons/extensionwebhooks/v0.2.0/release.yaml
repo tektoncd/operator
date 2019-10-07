@@ -384,6 +384,5 @@ spec:
           name: $(inputs.params.secret)
     image: maiwj/kubernetes-python-client:latest@sha256:74a868a0dff5c8ada64472db3efd09d205d4f877d14d2d3226511adbb25cfea3
     name: check
---- null
 
 ---
