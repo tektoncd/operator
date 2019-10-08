@@ -9,7 +9,7 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
     
 2. Apply Operator CRD
 
-    `kubectl apply -f deploy/crds/*_crd.yaml`
+    `kubectl apply -f deploy/crds/`
     
 3. Deploy the Operator  
 
@@ -30,7 +30,7 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
 
 1. Apply Operator CRD
 
-    `kubectl apply -f deploy/crds/*_crd.yaml`
+    `kubectl apply -f deploy/crds/`
 
 1. start operator
 
@@ -87,7 +87,7 @@ args:
 
 Then install `Tekton Pipeline` manually:  
 
-`kubectl apply -f deploy/crds/*_cr.yaml`
+`kubectl apply -f deploy/crs/*_cr.yaml`
 
 ## Addon components
 

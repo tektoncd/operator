@@ -3,6 +3,7 @@ all: local-dev
 
 .PHONY: clean
 clean:
+	-kubectl delete -f deploy/crs/
 	-kubectl delete -f deploy/crds/
 	-kubectl delete -f deploy/
 	-kubectl delete namespace tekton-pipelines
