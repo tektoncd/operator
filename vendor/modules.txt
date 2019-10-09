@@ -181,7 +181,7 @@ github.com/spf13/afero/mem
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.3
 github.com/spf13/pflag
-# github.com/tektoncd/plumbing v0.0.0-20190731030558-283e91c83abb
+# github.com/tektoncd/plumbing v0.0.0-20191008065817-933f0722e02c
 github.com/tektoncd/plumbing/scripts
 # go.opencensus.io v0.20.0
 go.opencensus.io/plugin/ochttp
