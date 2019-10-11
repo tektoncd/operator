@@ -6,16 +6,16 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
 1. Create namespace: `tekton-operator`  
 
     `kubectl create namespace tekton-operator`
-    
+
 2. Apply Operator CRD
 
     `kubectl apply -f deploy/crds/`
     
 3. Deploy the Operator  
 
-    `kubectl -n tekton-operator apply -f deploy/`  
+    `kubectl -n tekton-operator apply -f deploy/`
     
-    The Operator will automatic install `Tekton pipeline` with `v0.5.2` in the namespace `tekton-pipeline`
+The Operator will automatic install `Tekton pipeline` with `v0.5.2` in the namespace `tekton-pipeline`
 
 ## Development Prerequisites
 1. [`go`](https://golang.org/doc/install): The language Tektoncd-pipeline-operator is
@@ -23,22 +23,34 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
 1. [`git`](https://help.github.com/articles/set-up-git/): For source control
 1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
    interacting with your kube cluster
+
+If you choose to use `operator-sdk`, make sure you install the following tool:
 1. operator-sdk: https://github.com/operator-framework/operator-sdk
 
+If you choose to use `ko`, make sure you install the following tool:
+1. ko: https://github.com/google/ko
 
 ## Running Operator Locally (Development)
+
+### If you use `operator-sdk`:
 
 1. Apply Operator CRD
 
     `kubectl apply -f deploy/crds/`
 
-1. start operator
+1. Start operator
 
     `make local-dev`
 
 1. Update the dependencies
 
     `make update-deps`
+
+### If you use `ko`:
+
+1. Start operator
+
+    `kubectl apply -f config/`
 
 ## Running E2E Tests Locally (Development)
 
