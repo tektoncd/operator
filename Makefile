@@ -8,7 +8,7 @@ clean:
 	-kubectl delete namespace tekton-pipelines
 
 .PHONY: local-dev
-local-dev: dev-setup
+local-dev: clean dev-setup
 	GO111MODULE=on operator-sdk up local --namespace "" --operator-flags '--zap-encoder=console'
 
 .PHONY: update-deps dev-setup

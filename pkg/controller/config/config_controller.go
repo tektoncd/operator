@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"flag"
+	"github.com/tektoncd/operator/pkg/controller/transform"
 	"path/filepath"
 
 	"github.com/go-logr/logr"
@@ -197,6 +198,7 @@ func (r *ReconcileConfig) reconcileInstall(req reconcile.Request, res *op.Config
 	tfs := []mf.Transformer{
 		mf.InjectOwner(res),
 		mf.InjectNamespace(res.Spec.TargetNamespace),
+		transform.InjectDefaultSA("pipeline"),
 	}
 
 	if err := r.manifest.Transform(tfs...); err != nil {
