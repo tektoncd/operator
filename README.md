@@ -113,3 +113,5 @@ The current supported components and versions are:
 - extensionwebhooks
   - v0.2.0
   - openshift-v0.2.0
+- trigger
+  - v0.1.0
