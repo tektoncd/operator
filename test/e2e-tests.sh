@@ -22,16 +22,14 @@ readonly TEST_NAMESPACE="operator-tests"
 function tekton_setup() {
   header "Installing Tekton Operator"
   kubectl create namespace $TEST_NAMESPACE
-  kubectl apply -n $TEST_NAMESPACE -f deploy/crds/
   ko apply -n $TEST_NAMESPACE -f config/
   wait_until_pods_running $TEST_NAMESPACE
 }
 
 function tekton_teardown() {
   header "Removing Tekton Operator"
-  kubectl delete --ignore-not-found Config cluster
-  ko apply -n $TEST_NAMESPACE -f config/
-  kubectl delete -n $TEST_NAMESPACE -f deploy/crds/
+  kubectl delete --ignore-not-found config.opeator.tekton.dev cluster
+  ko delete -n $TEST_NAMESPACE -f config/
   kubectl delete all --all --ignore-not-found --now --timeout 60s -n $TEST_NAMESPACE
   kubectl delete --ignore-not-found --now --timeout 300s namespace $TEST_NAMESPACE
 }
