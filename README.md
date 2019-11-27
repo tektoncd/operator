@@ -9,7 +9,8 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
     
 2. Apply Operator CRD
 
-    `kubectl apply -f deploy/crds/*_crd.yaml`
+    `kubectl apply -f deploy/crds/operator_v1alpha1_config_crd.yaml`
+    `kubectl apply -f deploy/crds/operator_v1alpha1_addon_crd.yaml`
     
 3. Deploy the Operator  
 
