@@ -9,14 +9,14 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
     
 2. Apply Operator CRD
 
-    `kubectl apply -f deploy/crds/operator_v1alpha1_config_crd.yaml`
+    `kubectl apply -f deploy/crds/operator_v1alpha1_config_crd.yaml`  
     `kubectl apply -f deploy/crds/operator_v1alpha1_addon_crd.yaml`
     
 3. Deploy the Operator  
 
     `kubectl -n tekton-operator apply -f deploy/`  
     
-    The Operator will automatic install `Tekton pipeline` with `v0.8.0` in the namespace `tekton-pipeline`
+    The Operator will automatic install `Tekton pipeline` with `v0.9.0` in the namespace `tekton-pipeline`
 
 ## Development Prerequisites
 1. [`go`](https://golang.org/doc/install): The language Tektoncd-pipeline-operator is
