@@ -131,7 +131,7 @@ github.com/mitchellh/go-homedir
 github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.1
 github.com/modern-go/reflect2
-# github.com/operator-framework/operator-sdk v0.9.1-0.20190715204459-936584d47ff9 => github.com/operator-framework/operator-sdk v0.9.0
+# github.com/operator-framework/operator-sdk v0.10.1
 github.com/operator-framework/operator-sdk/internal/pkg/scaffold
 github.com/operator-framework/operator-sdk/internal/pkg/scaffold/input
 github.com/operator-framework/operator-sdk/internal/pkg/scaffold/internal/deps

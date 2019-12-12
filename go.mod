@@ -4,7 +4,7 @@ require (
 	github.com/coreos/prometheus-operator v0.31.1 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/jcrossley3/manifestival v0.0.0-20190621184852-78b6b04ae6ff
-	github.com/operator-framework/operator-sdk v0.9.1-0.20190715204459-936584d47ff9
+	github.com/operator-framework/operator-sdk v0.10.1
 	github.com/prometheus/common v0.2.0
 	github.com/spf13/pflag v1.0.3
 	github.com/tektoncd/plumbing v0.0.0-20191211210440-290f11513ac9
@@ -34,7 +34,5 @@ replace (
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.1.12
 	sigs.k8s.io/controller-tools => sigs.k8s.io/controller-tools v0.1.11-0.20190411181648-9d55346c2bde
 )
-
-replace github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v0.9.0
 
 go 1.13
