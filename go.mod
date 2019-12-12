@@ -1,14 +1,13 @@
 module github.com/tektoncd/operator
 
 require (
-	github.com/NYTimes/gziphandler v1.0.1 // indirect
 	github.com/coreos/prometheus-operator v0.31.1 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/jcrossley3/manifestival v0.0.0-20190621184852-78b6b04ae6ff
 	github.com/operator-framework/operator-sdk v0.9.1-0.20190715204459-936584d47ff9
 	github.com/prometheus/common v0.2.0
 	github.com/spf13/pflag v1.0.3
-	github.com/tektoncd/plumbing v0.0.0-20191008065817-933f0722e02c
+	github.com/tektoncd/plumbing v0.0.0-20191211210440-290f11513ac9
 	golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 	k8s.io/api v0.0.0-20190612125737-db0771252981
 	k8s.io/apiextensions-apiserver v0.0.0-20190820104113-47893d27d7f7 // indirect
@@ -37,3 +36,5 @@ replace (
 )
 
 replace github.com/operator-framework/operator-sdk => github.com/operator-framework/operator-sdk v0.9.0
+
+go 1.13
