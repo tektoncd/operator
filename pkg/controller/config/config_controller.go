@@ -10,9 +10,9 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/predicate"
 	"github.com/prometheus/common/log"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/controller/common"
 	"github.com/tektoncd/operator/pkg/controller/setup"
 	appsv1 "k8s.io/api/apps/v1"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,6 +34,7 @@ var (
 	noAutoInstall   bool
 	recursive       bool
 	ctrlLog         = logf.Log.WithName("ctrl").WithName("config")
+	activities      common.Activities
 )
 
 func init() {
@@ -199,7 +200,19 @@ func (r *ReconcileConfig) reconcileInstall(req reconcile.Request, res *op.Config
 		mf.InjectNamespace(res.Spec.TargetNamespace),
 	}
 
-	if err := r.manifest.Transform(tfs...); err != nil {
+	var extensionWrapper *op.ExtensionWapper
+	extensionWrapper = res.Spec.ConvertExtensionwapper()
+	extensions, err := activities.Extend(r.client, r.scheme, extensionWrapper)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	tfs = append(tfs, extensions.Transform()...)
+	err = r.manifest.Transform(tfs...)
+	if err == nil {
+		err = r.manifest.ApplyAll()
+	}
+	if err != nil {
 		log.Error(err, "failed to apply manifest transformations")
 		// ignoring failure to update
 		_ = r.updateStatus(res, op.ConfigCondition{
@@ -209,15 +222,6 @@ func (r *ReconcileConfig) reconcileInstall(req reconcile.Request, res *op.Config
 		return reconcile.Result{}, err
 	}
 
-	if err := r.manifest.ApplyAll(); err != nil {
-		log.Error(err, "failed to apply release.yaml")
-		// ignoring failure to update
-		_ = r.updateStatus(res, op.ConfigCondition{
-			Code:    op.ErrorStatus,
-			Details: err.Error(),
-			Version: tektonVersion})
-		return reconcile.Result{}, err
-	}
 	log.Info("successfully applied all resources")
 
 	// NOTE: manifest when updating (not installing) already installed resources

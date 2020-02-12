@@ -8,6 +8,12 @@ import (
 // +k8s:openapi-gen=true
 type AddonSpec struct {
 	Version string `json:"version"`
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
+	// Add custom validation using kubebuilder tags: https://book.kubebuilder.io/beyond_basics/generating_crd.html
+	// ExtensionWapper containes attribute Extension used
+	// +optional
+	ExtensionWapper `json:",inline"`
 }
 
 // AddonStatus defines the observed state of Addon
@@ -58,4 +64,10 @@ type AddonList struct {
 
 func init() {
 	SchemeBuilder.Register(&Addon{}, &AddonList{})
+}
+
+func (addonSpec AddonSpec) ConvertExtensionwapper() *ExtensionWapper {
+	return &ExtensionWapper{
+		Registry: addonSpec.Registry,
+	}
 }

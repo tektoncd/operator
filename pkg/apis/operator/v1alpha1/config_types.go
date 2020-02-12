@@ -9,6 +9,12 @@ import (
 type ConfigSpec struct {
 	// namespace where pipelines will be installed
 	TargetNamespace string `json:"targetNamespace"`
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
+	// Add custom validation using kubebuilder tags: https://book.kubebuilder.io/beyond_basics/generating_crd.html
+	// ExtensionWapper containes attribute Extension used
+	// +optional
+	ExtensionWapper `json:",inline"`
 }
 
 // ConfigStatus defines the observed state of Config
@@ -77,4 +83,10 @@ type ConfigList struct {
 
 func init() {
 	SchemeBuilder.Register(&Config{}, &ConfigList{})
+}
+
+func (configSpec ConfigSpec) ConvertExtensionwapper() *ExtensionWapper {
+	return &ExtensionWapper{
+		Registry: configSpec.Registry,
+	}
 }
