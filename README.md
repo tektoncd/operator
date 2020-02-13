@@ -116,4 +116,4 @@ The current supported components and versions are:
   - openshift-v0.2.0
 - trigger
   - v0.1.0
-  - v0.2.0
+  - v0.2.1
