@@ -16,7 +16,7 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
 
     `kubectl -n tekton-operator apply -f deploy/`  
     
-    The Operator will automatic install `Tekton pipeline` with `v0.10.0` in the namespace `tekton-pipeline`
+    The Operator will automatic install `Tekton pipeline` with `v0.11.0` in the namespace `tekton-pipeline`
 
 ## Development Prerequisites
 1. [`go`](https://golang.org/doc/install): The language Tektoncd-pipeline-operator is
