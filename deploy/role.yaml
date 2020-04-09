@@ -165,6 +165,7 @@ rules:
   - '*'
 - apiGroups:
   - tekton.dev
+  - triggers.tekton.dev
   resources:
   - '*'
   verbs:
