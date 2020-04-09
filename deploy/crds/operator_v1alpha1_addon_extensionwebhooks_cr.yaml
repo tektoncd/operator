@@ -1,0 +1,7 @@
+apiVersion: operator.tekton.dev/v1alpha1
+kind: Addon
+metadata:
+  name: extensionwebhooks
+spec:
+  # Add fields here
+  version: v0.2.0

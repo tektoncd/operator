@@ -10,6 +10,7 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/predicate"
 	"github.com/prometheus/common/log"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/controller/setup"
 	appsv1 "k8s.io/api/apps/v1"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -25,19 +26,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const (
-	ClusterCRName   = "cluster"
-	DefaultTargetNs = "tekton-pipelines"
-
-	// Name of the pipeline controller deployment
-	PipelineControllerName = "tekton-pipelines-controller"
-
-	// Name of the pipeline webhook deployment
-	PipelineWebhookName = "tekton-pipelines-webhook"
-)
-
 var (
-	tektonVersion   = "v0.5.2"
+	tektonVersion   = "v0.11.0"
 	resourceWatched string
 	resourceDir     string
 	targetNamespace string
@@ -48,12 +38,12 @@ var (
 
 func init() {
 	flag.StringVar(
-		&resourceWatched, "watch-resource", ClusterCRName,
-		"cluster-wide resource that operator honours, default: "+ClusterCRName)
+		&resourceWatched, "watch-resource", setup.ClusterCRName,
+		"cluster-wide resource that operator honours, default: "+setup.ClusterCRName)
 
 	flag.StringVar(
-		&targetNamespace, "target-namespace", DefaultTargetNs,
-		"Namespace where pipeline will be installed default: "+DefaultTargetNs)
+		&targetNamespace, "target-namespace", setup.DefaultTargetNs,
+		"Namespace where pipeline will be installed default: "+setup.DefaultTargetNs)
 
 	defaultResDir := filepath.Join("deploy", "resources", tektonVersion)
 	flag.StringVar(
@@ -157,13 +147,8 @@ func (r *ReconcileConfig) Reconcile(req reconcile.Request) (reconcile.Result, er
 
 	log.Info("reconciling config change")
 
-	if ignoreRequest(req) {
-		log.Info("ignoring event of resource watched that is not cluster-wide")
-		return reconcile.Result{}, nil
-	}
-
 	res := &op.Config{}
-	err := r.client.Get(context.TODO(), req.NamespacedName, res)
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: req.Name}, res)
 
 	// ignore all resources except the `resourceWatched`
 	if req.Name != resourceWatched {
@@ -342,13 +327,4 @@ func requestLogger(req reconcile.Request, context string) logr.Logger {
 		"Request.Namespace", req.Namespace,
 		"Request.NamespaceName", req.NamespacedName,
 		"Request.Name", req.Name)
-}
-
-func ignoreRequest(req reconcile.Request) bool {
-	// NOTE: only interested in the clusterwide events of the resource watched
-	// Otherwise, when release.yaml is applied and onwer-ref is set to the
-	// clusterwide resource, events are generated for "targetNamespace/resourceWatched"
-	// and as the GET call for that resource fails, the pipeline resources get
-	// deleted. this filter prevents that from happening
-	return req.Name == resourceWatched && req.Namespace != ""
 }
