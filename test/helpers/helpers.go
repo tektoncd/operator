@@ -31,7 +31,7 @@ func WaitForDeploymentDeletion(t *testing.T, namespace, name string) error {
 
 	err := wait.Poll(config.APIRetry, config.APITimeout, func() (bool, error) {
 		kc := test.Global.KubeClient
-		_, err := kc.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{IncludeUninitialized: true})
+		_, err := kc.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsGone(err) || apierrors.IsNotFound(err) {
 				return true, nil

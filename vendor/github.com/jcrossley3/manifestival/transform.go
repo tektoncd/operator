@@ -9,15 +9,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// Transform a resource from the manifest
+// Transformer transforms a resource from the manifest in place.
 type Transformer func(u *unstructured.Unstructured) error
 
+// Owner is a partial Kubernetes metadata schema.
 type Owner interface {
 	v1.Object
 	schema.ObjectKind
 }
 
-// If an error occurs, no resources are transformed
+// Transform applies an ordered set of Transformer functions to the
+// `Resources` in this Manifest.  If an error occurs, no resources are
+// transformed.
 func (f *Manifest) Transform(fns ...Transformer) error {
 	var results []unstructured.Unstructured
 	for i := 0; i < len(f.Resources); i++ {
@@ -34,7 +37,9 @@ func (f *Manifest) Transform(fns ...Transformer) error {
 	return nil
 }
 
-// We assume all resources in the manifest live in the same namespace
+// InjectNamespace creates a Transformer which adds a namespace to existing
+// resources if appropriate. We assume all resources in the manifest live in
+// the same namespace.
 func InjectNamespace(ns string) Transformer {
 	namespace := resolveEnv(ns)
 	return func(u *unstructured.Unstructured) error {
@@ -49,6 +54,18 @@ func InjectNamespace(ns string) Transformer {
 					m["namespace"] = namespace
 				}
 			}
+		case "validatingwebhookconfiguration", "mutatingwebhookconfiguration":
+			hooks, _, _ := unstructured.NestedFieldNoCopy(u.Object, "webhooks")
+			for _, hook := range hooks.([]interface{}) {
+				m := hook.(map[string]interface{})
+				if c, ok := m["clientConfig"]; ok {
+					cfg := c.(map[string]interface{})
+					if s, ok := cfg["service"]; ok {
+						srv := s.(map[string]interface{})
+						srv["namespace"] = namespace
+					}
+				}
+			}
 		}
 		if !isClusterScoped(u.GetKind()) {
 			u.SetNamespace(namespace)
@@ -57,6 +74,8 @@ func InjectNamespace(ns string) Transformer {
 	}
 }
 
+// InjectOwner creates a Tranformer which adds an OwnerReference pointing to
+// `owner` to namespace-scoped objects.
 func InjectOwner(owner Owner) Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if !isClusterScoped(u.GetKind()) {
