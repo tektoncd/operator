@@ -1,1 +1,6 @@
 vendor/
+.idea
+
+### VisualStudioCode ###
+.vscode/*
+.history

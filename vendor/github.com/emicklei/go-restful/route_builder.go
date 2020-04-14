@@ -35,7 +35,6 @@ type RouteBuilder struct {
 	readSample, writeSample interface{}
 	parameters              []*Parameter
 	errorMap                map[int]ResponseError
-	defaultResponse         *ResponseError
 	metadata                map[string]interface{}
 	deprecated              bool
 }
@@ -165,7 +164,7 @@ func (b *RouteBuilder) Returns(code int, message string, model interface{}) *Rou
 		Code:      code,
 		Message:   message,
 		Model:     model,
-		IsDefault: false, // this field is deprecated, use default response instead.
+		IsDefault: false,
 	}
 	// lazy init because there is no NewRouteBuilder (yet)
 	if b.errorMap == nil {
@@ -175,11 +174,17 @@ func (b *RouteBuilder) Returns(code int, message string, model interface{}) *Rou
 	return b
 }
 
-// DefaultReturns is a special Returns call that sets the default of the response.
+// DefaultReturns is a special Returns call that sets the default of the response ; the code is zero.
 func (b *RouteBuilder) DefaultReturns(message string, model interface{}) *RouteBuilder {
-	b.defaultResponse = &ResponseError{
-		Message: message,
-		Model:   model,
+	b.Returns(0, message, model)
+	// Modify the ResponseError just added/updated
+	re := b.errorMap[0]
+	// errorMap is initialized
+	b.errorMap[0] = ResponseError{
+		Code:      re.Code,
+		Message:   re.Message,
+		Model:     re.Model,
+		IsDefault: true,
 	}
 	return b
 }
@@ -269,25 +274,24 @@ func (b *RouteBuilder) Build() Route {
 		operationName = nameOfFunction(b.function)
 	}
 	route := Route{
-		Method:          b.httpMethod,
-		Path:            concatPath(b.rootPath, b.currentPath),
-		Produces:        b.produces,
-		Consumes:        b.consumes,
-		Function:        b.function,
-		Filters:         b.filters,
-		If:              b.conditions,
-		relativePath:    b.currentPath,
-		pathExpr:        pathExpr,
-		Doc:             b.doc,
-		Notes:           b.notes,
-		Operation:       operationName,
-		ParameterDocs:   b.parameters,
-		ResponseErrors:  b.errorMap,
-		DefaultResponse: b.defaultResponse,
-		ReadSample:      b.readSample,
-		WriteSample:     b.writeSample,
-		Metadata:        b.metadata,
-		Deprecated:      b.deprecated}
+		Method:         b.httpMethod,
+		Path:           concatPath(b.rootPath, b.currentPath),
+		Produces:       b.produces,
+		Consumes:       b.consumes,
+		Function:       b.function,
+		Filters:        b.filters,
+		If:             b.conditions,
+		relativePath:   b.currentPath,
+		pathExpr:       pathExpr,
+		Doc:            b.doc,
+		Notes:          b.notes,
+		Operation:      operationName,
+		ParameterDocs:  b.parameters,
+		ResponseErrors: b.errorMap,
+		ReadSample:     b.readSample,
+		WriteSample:    b.writeSample,
+		Metadata:       b.metadata,
+		Deprecated:     b.deprecated}
 	route.postBuild()
 	return route
 }
