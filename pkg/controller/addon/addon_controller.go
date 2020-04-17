@@ -136,13 +136,11 @@ func (r *ReconcileAddon) ensureAddonVersion(res *op.Addon) (bool, error) {
 		return false, err
 	}
 
-	tmpRes := res.DeepCopy()
-	tmpRes.Spec.Version = version
-	err = r.client.Update(context.TODO(), tmpRes)
+	res.Spec.Version = version
+	err = r.client.Update(context.TODO(), res)
 	if err != nil {
 		return false, err
 	}
-	r.refreshCR(res)
 
 	return true, nil
 }
@@ -220,15 +218,10 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 
 	log.Info("successfully applied all resources")
 
-	if err := r.refreshCR(res); err != nil {
-		log.Error(err, "status update failed to refresh object")
-		return reconcile.Result{Requeue: true}, err
-	}
-
 	err = r.updateStatus(res, op.AddonCondition{
 		Code: op.InstalledStatus, Version: res.Spec.Version})
 
-	//requeue true as isUptodate will be validated in the next reconcile loop
+	// requeue true as isUptodate will be validated in the next reconcile loop
 	return reconcile.Result{Requeue: true}, err
 }
 
@@ -282,32 +275,15 @@ func requestLogger(req reconcile.Request, context string) logr.Logger {
 
 // updateStatus set the status of res to s and refreshes res to the lastest version
 func (r *ReconcileAddon) updateStatus(res *op.Addon, c op.AddonCondition) error {
+	res.Status.Conditions = append([]op.AddonCondition{c}, res.Status.Conditions...)
 
-	// NOTE: need to use a deepcopy since Status().Update() seems to reset the
-	// APIVersion of the res to "" making the object invalid; may be a mechanism
-	// to prevent us from using stale version of the object
-
-	tmp := res.DeepCopy()
-	tmp.Status.Conditions = append([]op.AddonCondition{c}, tmp.Status.Conditions...)
-
-	if err := r.client.Status().Update(context.TODO(), tmp); err != nil {
+	res.GetObjectMeta()
+	if err := r.client.Status().Update(context.TODO(), res); err != nil {
 		log.Error(err, "status update failed")
 		return err
 	}
 
-	if err := r.refreshCR(res); err != nil {
-		log.Error(err, "status update failed to refresh object")
-		return err
-	}
 	return nil
-}
-
-func (r *ReconcileAddon) refreshCR(res *op.Addon) error {
-	objKey := types.NamespacedName{
-		Namespace: res.Namespace,
-		Name:      res.Name,
-	}
-	return r.client.Get(context.TODO(), objKey, res)
 }
 
 func (r *ReconcileAddon) getPipelineRes() (*op.Config, error) {
@@ -331,10 +307,9 @@ func (r *ReconcileAddon) pipelineReady() (*op.Config, error) {
 }
 
 func (r *ReconcileAddon) setOwnerReference(res *op.Addon, owner *op.Config) error {
-	resCpy := res.DeepCopy()
 	controller := false
 	blockOwnerDeletion := true
-	resCpy.SetOwnerReferences(
+	res.SetOwnerReferences(
 		[]v1.OwnerReference{
 			{
 				APIVersion:         owner.APIVersion,
@@ -346,7 +321,7 @@ func (r *ReconcileAddon) setOwnerReference(res *op.Addon, owner *op.Config) erro
 			},
 		})
 
-	err := r.client.Update(context.TODO(), resCpy)
+	err := r.client.Update(context.TODO(), res)
 	if err != nil {
 		log.Info("ownerRef", "update", err)
 		return err
