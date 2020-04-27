@@ -23,8 +23,10 @@ initialize $@
 
 header "Running operator-sdk test"
 
-operator-sdk test local ./test/e2e  \
-  --up-local --namespace operators \
+ operator-sdk test local ./test/e2e  \
+  --up-local \
+  --operator-namespace operators \
+  --watch-namespace tekton-pipelines \
   --debug  \
   --verbose || fail_test
 success

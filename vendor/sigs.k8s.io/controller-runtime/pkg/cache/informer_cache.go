@@ -38,6 +38,13 @@ var (
 	_ Cache         = &informerCache{}
 )
 
+// ErrCacheNotStarted is returned when trying to read from the cache that wasn't started.
+type ErrCacheNotStarted struct{}
+
+func (*ErrCacheNotStarted) Error() string {
+	return "the cache is not started, can not read objects"
+}
+
 // informerCache is a Kubernetes Object cache populated from InformersMap.  informerCache wraps an InformersMap.
 type informerCache struct {
 	*internal.InformersMap
@@ -50,52 +57,77 @@ func (ip *informerCache) Get(ctx context.Context, key client.ObjectKey, out runt
 		return err
 	}
 
-	cache, err := ip.InformersMap.Get(gvk, out)
+	started, cache, err := ip.InformersMap.Get(ctx, gvk, out)
 	if err != nil {
 		return err
+	}
+
+	if !started {
+		return &ErrCacheNotStarted{}
 	}
 	return cache.Reader.Get(ctx, key, out)
 }
 
 // List implements Reader
 func (ip *informerCache) List(ctx context.Context, out runtime.Object, opts ...client.ListOption) error {
-	gvk, err := apiutil.GVKForObject(out, ip.Scheme)
+
+	gvk, cacheTypeObj, err := ip.objectTypeForListObject(out)
 	if err != nil {
 		return err
 	}
 
+	started, cache, err := ip.InformersMap.Get(ctx, *gvk, cacheTypeObj)
+	if err != nil {
+		return err
+	}
+
+	if !started {
+		return &ErrCacheNotStarted{}
+	}
+
+	return cache.Reader.List(ctx, out, opts...)
+}
+
+// objectTypeForListObject tries to find the runtime.Object and associated GVK
+// for a single object corresponding to the passed-in list type. We need them
+// because they are used as cache map key.
+func (ip *informerCache) objectTypeForListObject(list runtime.Object) (*schema.GroupVersionKind, runtime.Object, error) {
+	gvk, err := apiutil.GVKForObject(list, ip.Scheme)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if !strings.HasSuffix(gvk.Kind, "List") {
-		return fmt.Errorf("non-list type %T (kind %q) passed as output", out, gvk)
+		return nil, nil, fmt.Errorf("non-list type %T (kind %q) passed as output", list, gvk)
 	}
 	// we need the non-list GVK, so chop off the "List" from the end of the kind
 	gvk.Kind = gvk.Kind[:len(gvk.Kind)-4]
-	_, isUnstructured := out.(*unstructured.UnstructuredList)
+	_, isUnstructured := list.(*unstructured.UnstructuredList)
 	var cacheTypeObj runtime.Object
 	if isUnstructured {
 		u := &unstructured.Unstructured{}
 		u.SetGroupVersionKind(gvk)
 		cacheTypeObj = u
 	} else {
-		itemsPtr, err := apimeta.GetItemsPtr(out)
+		itemsPtr, err := apimeta.GetItemsPtr(list)
 		if err != nil {
-			return nil
+			return nil, nil, err
 		}
 		// http://knowyourmeme.com/memes/this-is-fine
 		elemType := reflect.Indirect(reflect.ValueOf(itemsPtr)).Type().Elem()
-		cacheTypeValue := reflect.Zero(reflect.PtrTo(elemType))
+		if elemType.Kind() != reflect.Ptr {
+			elemType = reflect.PtrTo(elemType)
+		}
+
+		cacheTypeValue := reflect.Zero(elemType)
 		var ok bool
 		cacheTypeObj, ok = cacheTypeValue.Interface().(runtime.Object)
 		if !ok {
-			return fmt.Errorf("cannot get cache for %T, its element %T is not a runtime.Object", out, cacheTypeValue.Interface())
+			return nil, nil, fmt.Errorf("cannot get cache for %T, its element %T is not a runtime.Object", list, cacheTypeValue.Interface())
 		}
 	}
 
-	cache, err := ip.InformersMap.Get(gvk, cacheTypeObj)
-	if err != nil {
-		return err
-	}
-
-	return cache.Reader.List(ctx, out, opts...)
+	return &gvk, cacheTypeObj, nil
 }
 
 // GetInformerForKind returns the informer for the GroupVersionKind
@@ -105,7 +137,10 @@ func (ip *informerCache) GetInformerForKind(gvk schema.GroupVersionKind) (Inform
 	if err != nil {
 		return nil, err
 	}
-	i, err := ip.InformersMap.Get(gvk, obj)
+
+	// TODO(djzager): before a context can be passed down, the Informers interface
+	// must be updated to accept a context when getting an informer
+	_, i, err := ip.InformersMap.Get(context.TODO(), gvk, obj)
 	if err != nil {
 		return nil, err
 	}
@@ -118,11 +153,20 @@ func (ip *informerCache) GetInformer(obj runtime.Object) (Informer, error) {
 	if err != nil {
 		return nil, err
 	}
-	i, err := ip.InformersMap.Get(gvk, obj)
+
+	// TODO(djzager): before a context can be passed down, the Informers interface
+	// must be updated to accept a context when getting an informer
+	_, i, err := ip.InformersMap.Get(context.TODO(), gvk, obj)
 	if err != nil {
 		return nil, err
 	}
 	return i.Informer, err
+}
+
+// NeedLeaderElection implements the LeaderElectionRunnable interface
+// to indicate that this can be started without requiring the leader lock
+func (ip *informerCache) NeedLeaderElection() bool {
+	return false
 }
 
 // IndexField adds an indexer to the underlying cache, using extraction function to get
