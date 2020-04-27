@@ -17,7 +17,6 @@ package kubemetrics
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
@@ -30,17 +29,17 @@ import (
 func newClientForGVK(cfg *rest.Config, apiVersion, kind string) (dynamic.NamespaceableResourceInterface, error) {
 	apiResourceList, apiResource, err := getAPIResource(cfg, apiVersion, kind)
 	if err != nil {
-		return nil, errors.Wrapf(err, "discovering resource information failed for %s in %s", kind, apiVersion)
+		return nil, fmt.Errorf("discovering resource information failed for %s in %s: %w", kind, apiVersion, err)
 	}
 
 	dc, err := newForConfig(cfg, apiResourceList.GroupVersion)
 	if err != nil {
-		return nil, errors.Wrapf(err, "creating dynamic client failed for %s", apiResourceList.GroupVersion)
+		return nil, fmt.Errorf("creating dynamic client failed for %s: %w", apiResourceList.GroupVersion, err)
 	}
 
 	gv, err := schema.ParseGroupVersion(apiResourceList.GroupVersion)
 	if err != nil {
-		return nil, errors.Wrapf(err, "parsing GroupVersion %s failed", apiResourceList.GroupVersion)
+		return nil, fmt.Errorf("parsing GroupVersion %s failed: %w", apiResourceList.GroupVersion, err)
 	}
 
 	gvr := schema.GroupVersionResource{
@@ -58,7 +57,7 @@ func getAPIResource(cfg *rest.Config, apiVersion, kind string) (*metav1.APIResou
 		return nil, nil, err
 	}
 
-	apiResourceLists, err := kclient.Discovery().ServerResources()
+	_, apiResourceLists, err := kclient.Discovery().ServerGroupsAndResources()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -73,7 +72,8 @@ func getAPIResource(cfg *rest.Config, apiVersion, kind string) (*metav1.APIResou
 		}
 	}
 
-	return nil, nil, fmt.Errorf("apiVersion %s and kind %s not found available in Kubernetes cluster", apiVersion, kind)
+	return nil, nil, fmt.Errorf("apiVersion %s and kind %s not found available in Kubernetes cluster",
+		apiVersion, kind)
 }
 
 func newForConfig(c *rest.Config, groupVersion string) (dynamic.Interface, error) {
@@ -97,6 +97,6 @@ func setConfigDefaults(groupVersion string, config *rest.Config) error {
 	if config.GroupVersion.Group == "" && config.GroupVersion.Version == "v1" {
 		config.APIPath = "/api"
 	}
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
+	config.NegotiatedSerializer = serializer.WithoutConversionCodecFactory{CodecFactory: scheme.Codecs}
 	return nil
 }

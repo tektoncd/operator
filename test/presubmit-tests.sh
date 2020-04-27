@@ -39,7 +39,7 @@ build_tests() {
 }
 
 install_operator_sdk() {
-  local sdk_rel="v0.9.0"
+  local sdk_rel="v0.17.0"
   curl -JL \
     https://github.com/operator-framework/operator-sdk/releases/download/${sdk_rel}/operator-sdk-${sdk_rel}-x86_64-linux-gnu \
     -o /usr/bin/operator-sdk

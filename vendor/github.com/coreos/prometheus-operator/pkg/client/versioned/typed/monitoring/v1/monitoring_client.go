@@ -19,7 +19,6 @@ package v1
 import (
 	v1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/coreos/prometheus-operator/pkg/client/versioned/scheme"
-	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
 )
 
@@ -30,6 +29,7 @@ type MonitoringV1Interface interface {
 	PrometheusesGetter
 	PrometheusRulesGetter
 	ServiceMonitorsGetter
+	ThanosRulersGetter
 }
 
 // MonitoringV1Client is used to interact with features provided by the monitoring.coreos.com group.
@@ -55,6 +55,10 @@ func (c *MonitoringV1Client) PrometheusRules(namespace string) PrometheusRuleInt
 
 func (c *MonitoringV1Client) ServiceMonitors(namespace string) ServiceMonitorInterface {
 	return newServiceMonitors(c, namespace)
+}
+
+func (c *MonitoringV1Client) ThanosRulers(namespace string) ThanosRulerInterface {
+	return newThanosRulers(c, namespace)
 }
 
 // NewForConfig creates a new MonitoringV1Client for the given config.
@@ -89,7 +93,7 @@ func setConfigDefaults(config *rest.Config) error {
 	gv := v1.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
-	config.NegotiatedSerializer = serializer.DirectCodecFactory{CodecFactory: scheme.Codecs}
+	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
 
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()
