@@ -145,7 +145,7 @@ github.com/spf13/afero/mem
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/tektoncd/plumbing v0.0.0-20191211210440-290f11513ac9
+# github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887
 github.com/tektoncd/plumbing/scripts
 # go.uber.org/atomic v1.6.0
 go.uber.org/atomic
