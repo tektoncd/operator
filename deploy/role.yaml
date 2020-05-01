@@ -60,6 +60,7 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - clusterroles
+  - roles
   verbs:
   - get
   - create
@@ -81,6 +82,7 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - clusterrolebindings
+  - rolebindings
   verbs:
   - get
   - create
@@ -90,11 +92,15 @@ rules:
   - apiextensions.k8s.io
   resources:
   - customresourcedefinitions
+  - customresourcedefinitions/status
   verbs:
   - get
   - create
   - update
   - delete
+  - list
+  - patch
+  - watch
 - apiGroups:
   - admissionregistration.k8s.io
   resources:
