@@ -111,9 +111,11 @@ The current supported components and versions are:
   - v0.1.1
   - v0.2.0
   - openshift-v0.2.0
+  - v0.6.1
 - extensionwebhooks
   - v0.2.0
   - openshift-v0.2.0
+  - v0.6.1
 - trigger
   - v0.1.0
   - v0.2.1
