@@ -1,0 +1,656 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: tekton-webhooks-extension
+  name: tekton-webhooks-extension
+  namespace: tekton-pipelines
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app: tekton-webhooks-extension
+  name: tekton-webhooks-extension-eventlistener
+  namespace: tekton-pipelines
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tekton-webhooks-extension-minimal
+  namespace: tekton-pipelines
+rules:
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses
+  - ingresses/status
+  verbs:
+  - delete
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods/log
+  - namespaces
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  - configmaps
+  verbs:
+  - get
+  - list
+  - create
+  - delete
+  - update
+  - watch
+- apiGroups:
+  - extensions
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - tekton.dev
+  resources:
+  - tasks
+  - clustertasks
+  - taskruns
+  - pipelines
+  - pipelineruns
+  - pipelineresources
+  - conditions
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - triggers.tekton.dev
+  resources:
+  - eventlisteners
+  - triggerbindings
+  - triggertemplates
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - tekton.dev
+  resources:
+  - taskruns/finalizers
+  - pipelineruns/finalizers
+  - tasks/status
+  - clustertasks/status
+  - taskruns/status
+  - pipelines/status
+  - pipelineruns/status
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-triggers-minimal
+rules:
+- apiGroups:
+  - tekton.dev
+  resources:
+  - tasks
+  - taskruns
+  verbs:
+  - get
+- apiGroups:
+  - triggers.tekton.dev
+  resources:
+  - triggerbindings
+  - triggertemplates
+  - eventlisteners
+  verbs:
+  - get
+- apiGroups:
+  - tekton.dev
+  resources:
+  - pipelineruns
+  - pipelineresources
+  - taskruns
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - list
+  - get
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-webhooks-extension-minimal-cluster-powers
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - tekton.dev
+  resources:
+  - pipelines
+  - pipelineruns
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - triggers.tekton.dev
+  resources:
+  - pipelines
+  - pipelineruns
+  - tasks
+  - taskruns
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tekton-webhooks-extension-minimal
+  namespace: tekton-pipelines
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-webhooks-extension-minimal
+subjects:
+- kind: ServiceAccount
+  name: tekton-webhooks-extension
+  namespace: tekton-pipelines
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-webhooks-extension-eventlistener-minimal
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-triggers-minimal
+subjects:
+- kind: ServiceAccount
+  name: tekton-webhooks-extension-eventlistener
+  namespace: tekton-pipelines
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-webhooks-extension-minimal-cluster-powers
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-webhooks-extension-minimal-cluster-powers
+subjects:
+- kind: ServiceAccount
+  name: tekton-webhooks-extension
+  namespace: tekton-pipelines
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-webhooks-extension-validator
+  namespace: tekton-pipelines
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: tekton-webhooks-extension-validator
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    tekton-dashboard-bundle-location: web/extension.c591f714.js
+    tekton-dashboard-display-name: Webhooks
+    tekton-dashboard-endpoints: webhooks.web
+  labels:
+    app: webhooks-extension
+    tekton-dashboard-extension: "true"
+  name: webhooks-extension
+  namespace: tekton-pipelines
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: webhooks-extension
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-webhooks-extension-validator
+  namespace: tekton-pipelines
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tekton-webhooks-extension-validator
+  template:
+    metadata:
+      labels:
+        app: tekton-webhooks-extension-validator
+    spec:
+      containers:
+      - env:
+        - name: INSTALLED_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: gcr.io/tekton-releases/github.com/tektoncd/experimental/webhooks-extension/cmd/interceptor@sha256:657d40a9116ef0b6f886f94fa7980755e3267dd34017f2fd9b713b63ddfc0d55
+        name: validate
+      serviceAccountName: tekton-webhooks-extension
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: webhooks-extension
+  name: webhooks-extension
+  namespace: tekton-pipelines
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: webhooks-extension
+  template:
+    metadata:
+      labels:
+        app: webhooks-extension
+    spec:
+      containers:
+      - env:
+        - name: PORT
+          value: "8080"
+        - name: INSTALLED_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: DOCKER_REGISTRY_LOCATION
+          value: DOCKER_REPO
+        - name: WEB_RESOURCES_DIR
+          value: web
+        - name: WEBHOOK_CALLBACK_URL
+          value: http://listener.IPADDRESS.nip.io
+        - name: SSL_VERIFICATION_ENABLED
+          value: "false"
+        - name: SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+        image: gcr.io/tekton-releases/github.com/tektoncd/experimental/webhooks-extension/cmd/extension@sha256:e7bcffbd2db6b874dbb4b4e71fc0c089acf7ccb803df896d9592063b649ac292
+        imagePullPolicy: Always
+        livenessProbe:
+          httpGet:
+            path: /liveness
+            port: 8080
+        name: webhooks-extension
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /readiness
+            port: 8080
+      serviceAccountName: tekton-webhooks-extension
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: monitor-task
+  namespace: tekton-pipelines
+spec:
+  params:
+  - description: The statuses url
+    name: statusesurl
+    type: string
+  - default: Success
+    description: The text to use in the situation where a PipelineRun has succeeded.
+    name: commentsuccess
+    type: string
+  - default: Failed
+    description: The text to use in the situation where a PipelineRun has failed.
+    name: commentfailure
+    type: string
+  - default: Unknown
+    description: The text to use in the situation where a PipelineRun has timed out.
+    name: commenttimeout
+    type: string
+  - default: Missing
+    description: The text to use in the situation where a PipelineRun cannot be found.
+    name: commentmissing
+    type: string
+  - default: http://localhost:9097/
+    description: The URL to the PipelineRuns page of the dashboard
+    name: dashboard-url
+    type: string
+  - default: github
+    description: The Git provider ("github" or "gitlab")
+    name: provider
+    type: string
+  - description: The Git API URL for the repository
+    name: apiurl
+    type: string
+  - default: "false"
+    description: Whether or not to verify SSL Certificates from the git server ("true"
+      or "false")
+    name: insecure-skip-tls-verify
+    type: string
+  - description: The secret containing the access token to access the git server
+    name: secret
+    type: string
+  resources:
+    inputs:
+    - name: pull-request
+      type: pullRequest
+    outputs:
+    - name: pull-request
+      type: pullRequest
+  steps:
+  - args:
+    - -ce
+    - "set -e\ncat <<EOF | python\nimport time, os, json, requests, pprint, shutil,
+      distutils.util\nfrom kubernetes import client, config\ndef diff(li1, li2): \n
+      \ li_dif = [i for i in li1 + li2 if i not in li1 or i not in li2] \n  return
+      li_dif\nconfig.load_incluster_config()\napi_instance = client.CustomObjectsApi(client.ApiClient(client.Configuration()))\ngitPRcontext
+      = \"Tekton\"\ngitPRurl = \"\"  \nif not \"$URL\".startswith(\"http\"):\n  pipelineRunURLPrefix
+      = \"http://\" + \"$URL\"\nelse:\n  pipelineRunURLPrefix = \"$URL\"    \nverifySSL
+      = not bool(distutils.util.strtobool(\"$SKIPSSLVERIFY\"))\nif \"$GITPROVIDER\"
+      == \"github\":\n  statusurl = \"$STATUSES_URL\"\n  pendingData = {\n    \"state\":
+      \"pending\",\n    \"description\": \"pipelines in progress\",\n    \"target_url\":
+      pipelineRunURLPrefix + \"/#/pipelineruns\",\n    \"context\": \"Tekton\"\n  }\n
+      \ resp = requests.post(statusurl, json.dumps(pendingData), headers = {'Content-Type':
+      'application/json', 'Authorization': \"Token $GITTOKEN\"}, verify=verifySSL)\n
+      \ print(resp)\nif \"$GITPROVIDER\" == \"gitlab\":\n  statusurl = \"$GITAPIURL\"
+      + \"/\" + \"$STATUSES_URL\" + \"?state=pending&name=Tekton&target_url=\" + pipelineRunURLPrefix
+      + \"/#/pipelineruns\"\n  resp = requests.post(statusurl, headers = {'Authorization':
+      \"Bearer $GITTOKEN\"}, verify=verifySSL)\n  print(resp)\nlabelToCheck = \"triggers.tekton.dev/triggers-eventid=$EVENTID\"\nrunsPassed
+      = []\nrunsFailed = []\nrunsIncomplete = []\nrunsMissing = []\nfailed = 0\ni
+      = range(180)\ninitial_runs = api_instance.list_cluster_custom_object(\"tekton.dev\",
+      \"v1beta1\", \"pipelineruns\", label_selector=labelToCheck)[\"items\"]\nfor
+      x in i:\n    time.sleep( 10 )\n    runsPassed = []\n    runsFailed = []\n    runsIncomplete
+      = []\n    # To test this we need a webhook that will kick off two Pipelines\n
+      \   # We will then delete one PipelineRun and observe it is correctly picked
+      up as missing\n    # This is easiest done by reopening an existing PullRequest\n
+      \   # It's important to delete the PipelineRun only after the monitor task is
+      already running because \n    # the first thing it's going to do is figure out
+      the PipelineRuns to watch over\n    failed = 0\n    \n    found_runs = api_instance.list_cluster_custom_object(\"tekton.dev\",
+      \"v1beta1\", \"pipelineruns\", label_selector=labelToCheck)[\"items\"]\n    missingRuns
+      = diff(initial_runs, found_runs)\n    if len(missingRuns) > 0:\n      for missingRun
+      in missingRuns:\n        pr = missingRun[\"metadata\"][\"name\"]\n        namespace
+      = missingRun[\"metadata\"][\"namespace\"]\n        pipeline = missingRun[\"spec\"][\"pipelineRef\"][\"name\"]\n
+      \       link = pipelineRunURLPrefix + \"/#/namespaces/\" + namespace + \"/pipelineruns/\"\n
+      \       data = \"[**$COMMENT_MISSING**](\" + link + \") | \" + pipeline + \"
+      | \" + pr + \" | \" + namespace\n        if data not in runsMissing:\n          #
+      Don't add duplicates. Fear not, once this run is found it'll be removed\n          runsMissing.append(data)\n
+      \   if len(found_runs) > 0:\n      for entry in found_runs:\n        pr = entry[\"metadata\"][\"name\"]\n
+      \       namespace = entry[\"metadata\"][\"namespace\"]\n        pipeline = entry[\"spec\"][\"pipelineRef\"][\"name\"]\n
+      \       link = pipelineRunURLPrefix + \"/#/namespaces/\" + namespace + \"/pipelineruns/\"
+      + pr\n        missingLink = pipelineRunURLPrefix + \"/#/namespaces/\" + namespace
+      + \"/pipelineruns/\"\n        missingDataEntry = \"[**$COMMENT_MISSING**](\"
+      + missingLink + \") | \" + pipeline + \" | \" + pr + \" | \" + namespace\n        if
+      missingDataEntry in runsMissing:\n          runsMissing.remove(missingDataEntry)\n
+      \       print(\"Checking PipelineRun \" + pr + \" in namespace \" + namespace)\n
+      \       if entry[\"status\"][\"conditions\"][0][\"status\"] == u'True' and entry[\"status\"][\"conditions\"][0][\"type\"]
+      == u'Succeeded':\n          print(\"Success - pipelinerun \" + pr + \" in namespace
+      \" + namespace)\n          runsPassed.append(\"[**$COMMENT_SUCCESS**](\" + link
+      + \") | \" + pipeline + \" | \" +  pr + \" | \" + namespace)\n          continue\n
+      \       if entry[\"status\"][\"conditions\"][0][\"status\"] == u'False' and
+      entry[\"status\"][\"conditions\"][0][\"type\"] == u'Succeeded':\n          failed
+      =+ 1\n          print(\"Failed - PipelineRun \" + pr + \" in namespace \" +
+      namespace)\n          runsFailed.append(\"[**$COMMENT_FAILURE**](\" + link +
+      \") | \" + pipeline + \" | \" + pr + \" | \" + namespace)\n          continue\n
+      \       link = pipelineRunURLPrefix + \"/#/namespaces/\" + namespace + \"/pipelineruns/\"
+      + pr\n        runsIncomplete.append(\"[**$COMMENT_TIMEOUT**](\" + link + \")
+      | \" + pipeline + \" | \" + pr + \" | \" + namespace)\n      if len(runsIncomplete)
+      == 0:\n        break\n    else:\n      break\ngitPRdescription = \"All pipelines
+      succeeded!\"\ngitPRcode = \"success\"\nif failed > 0:\n  gitPRdescription =
+      str(failed) + \" pipeline(s) failed!\"\n  gitPRcode = \"failure\"\nif len(runsMissing)
+      > 0:\n  gitPRdescription = \"Pipeline(s) missing!\"\n  gitPRcode = \"failure\"\nif
+      len(runsIncomplete) > 0:\n  print(\"Some PipelineRuns had not completed when
+      the monitor reached its timeout\")\n  gitPRdescription = \"timed out monitoring
+      PipelineRuns\"\n  gitPRcode = \"error\"\n\nresults = runsPassed + runsFailed
+      + runsIncomplete + runsMissing\n\nif (results == []):\n  gitPRdescription =
+      \"No PipelineRuns were ever found for my PullRequest!\"\n  gitPRcode = \"error\"\n
+      \ data = \"**$COMMENT_MISSING** | N/A | No PipelineRuns were ever detected,
+      failing the build | N/A\"\n  runsMissing.append(data)    \n       \n  results
+      = runsMissing\n\ncomment = (\"## Tekton Status Report \\n\\n\"\n           \"Status
+      | Pipeline | PipelineRun | Namespace\\n\"\n           \":----- | :------- |
+      :--------------- | :--------\\n\"\n           ) + \"\\n\".join(results)\n\nshutil.copyfile(\"/workspace/pull-request/pr.json\",\"/workspace/output/pull-request/pr.json\")\n#
+      Preserve existing comments\nshutil.copytree(\"/workspace/pull-request/comments\",\"/workspace/output/pull-request/comments\")\nhandle
+      = open(\"/workspace/output/pull-request/comments/newcomment.json\", 'w')\nhandle.write(comment)\nhandle.close()\nif
+      not \"$URL\".startswith(\"http\"):\n  detailsURL = \"http://\" + \"$URL\" +
+      \"/#/pipelineruns\"\nelse:\n  detailsURL = \"$URL\" + \"/#/pipelineruns\"\nprint(\"Set
+      details url to \" + detailsURL)\nstatus = json.dumps(dict(Label=gitPRcontext,state=gitPRcode,Desc=gitPRdescription,Target=detailsURL))\nprint(\"Setting
+      status to \" + status)\nif not os.path.exists(\"/workspace/output/pull-request/status\"):\n
+      \ os.makedirs(\"/workspace/output/pull-request/status\")\nhandle = open(\"/workspace/output/pull-request/status/Tekton.json\",
+      'w')\nhandle.write(status)\nhandle.close()\nif not os.path.exists(\"/workspace/output/pull-request/labels\"):\n
+      \ shutil.copytree(\"/workspace/pull-request/labels\",\"/workspace/output/pull-request/labels\")\nshutil.copyfile(\"/workspace/pull-request/base.json\",\"/workspace/output/pull-request/base.json\")
+      \nshutil.copyfile(\"/workspace/pull-request/head.json\",\"/workspace/output/pull-request/head.json\")\nEOF\n"
+    command:
+    - /bin/bash
+    env:
+    - name: EVENTID
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.labels['triggers.tekton.dev/triggers-eventid']
+    - name: COMMENT_SUCCESS
+      value: $(inputs.params.commentsuccess)
+    - name: COMMENT_FAILURE
+      value: $(inputs.params.commentfailure)
+    - name: COMMENT_TIMEOUT
+      value: $(inputs.params.commenttimeout)
+    - name: COMMENT_MISSING
+      value: $(inputs.params.commentmissing)
+    - name: URL
+      value: $(inputs.params.dashboard-url)
+    - name: STATUSES_URL
+      value: $(inputs.params.statusesurl)
+    - name: GITPROVIDER
+      value: $(inputs.params.provider)
+    - name: GITAPIURL
+      value: $(inputs.params.apiurl)
+    - name: SKIPSSLVERIFY
+      value: $(inputs.params.insecure-skip-tls-verify)
+    - name: GITTOKEN
+      valueFrom:
+        secretKeyRef:
+          key: accessToken
+          name: $(inputs.params.secret)
+    image: maiwj/kubernetes-python-client@sha256:74a868a0dff5c8ada64472db3efd09d205d4f877d14d2d3226511adbb25cfea3
+    name: check
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: monitor-task-github-binding
+  namespace: tekton-pipelines
+spec:
+  params:
+  - name: pullrequesturl
+    value: $(body.pull_request.html_url)
+  - name: statusesurl
+    value: $(body.pull_request.statuses_url)
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: monitor-task-gitlab-binding
+  namespace: tekton-pipelines
+spec:
+  params:
+  - name: pullrequesturl
+    value: $(body.object_attributes.url)
+  - name: statusesurl
+    value: projects/$(body.project.id)/statuses/$(body.object_attributes.last_commit.id)
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: monitor-task-template
+  namespace: tekton-pipelines
+spec:
+  params:
+  - description: The pull request url
+    name: pullrequesturl
+    type: string
+  - description: The statuses url
+    name: statusesurl
+    type: string
+  - default: github-secrets
+    description: The git secret name
+    name: gitsecretname
+    type: string
+  - default: token
+    description: The git secret key name
+    name: gitsecretkeyname
+    type: string
+  - default: Success
+    description: The text of the success comment
+    name: commentsuccess
+    type: string
+  - default: Failed
+    description: The text of the failure comment
+    name: commentfailure
+    type: string
+  - default: Unknown
+    description: The text of the timeout comment
+    name: commenttimeout
+    type: string
+  - default: Missing
+    description: The text of the missing comment
+    name: commentmissing
+    type: string
+  - default: http://localhost:9097/
+    description: The URL to the pipelineruns page of the dashboard
+    name: dashboardurl
+    type: string
+  - default: github
+    description: The git provider, "github" or "gitlab"
+    name: provider
+    type: string
+  - default: ""
+    description: The git api URL for the repository
+    name: apiurl
+    type: string
+  - default: "false"
+    description: Whether or not to skip SSL validation of certificates ("true" or
+      "false")
+    name: insecure-skip-tls-verify
+    type: string
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1alpha1
+    kind: PipelineResource
+    metadata:
+      name: pull-request-$(uid)
+      namespace: tekton-pipelines
+    spec:
+      params:
+      - name: url
+        value: $(params.pullrequesturl)
+      - name: insecure-skip-tls-verify
+        value: $(params.insecure-skip-tls-verify)
+      secrets:
+      - fieldName: authToken
+        secretKey: $(params.gitsecretkeyname)
+        secretName: $(params.gitsecretname)
+      type: pullRequest
+  - apiVersion: tekton.dev/v1beta1
+    kind: TaskRun
+    metadata:
+      generateName: monitor-taskrun-
+      namespace: tekton-pipelines
+    spec:
+      params:
+      - name: commentsuccess
+        value: $(params.commentsuccess)
+      - name: commentfailure
+        value: $(params.commentfailure)
+      - name: commenttimeout
+        value: $(params.commenttimeout)
+      - name: dashboard-url
+        value: $(params.dashboardurl)
+      - name: secret
+        value: $(params.gitsecretname)
+      - name: statusesurl
+        value: $(params.statusesurl)
+      - name: provider
+        value: $(params.provider)
+      - name: apiurl
+        value: $(params.apiurl)
+      - name: insecure-skip-tls-verify
+        value: $(params.insecure-skip-tls-verify)
+      resources:
+        inputs:
+        - name: pull-request
+          resourceRef:
+            name: pull-request-$(uid)
+        outputs:
+        - name: pull-request
+          resourceRef:
+            name: pull-request-$(uid)
+      serviceAccountName: tekton-webhooks-extension
+      taskRef:
+        name: monitor-task
+
+---

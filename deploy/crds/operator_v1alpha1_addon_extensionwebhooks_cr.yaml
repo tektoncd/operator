@@ -4,4 +4,4 @@ metadata:
   name: extensionwebhooks
 spec:
   # Add fields here
-  version: v0.2.0
+  version: v0.6.1

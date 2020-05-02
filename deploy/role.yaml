@@ -22,10 +22,15 @@ rules:
   - apps
   resources:
   - ingresses
+  - ingresses/status
   verbs:
+  - delete
+  - create
+  - patch
   - get
   - list
-  - watch  
+  - update
+  - watch
 - apiGroups:
   - ""
   resources:
@@ -189,3 +194,10 @@ rules:
   - securitycontextconstraints
   verbs:
   - use
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  - list
