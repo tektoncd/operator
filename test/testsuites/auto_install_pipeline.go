@@ -3,11 +3,11 @@ package testsuites
 import (
 	"testing"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/controller/setup"
 	"github.com/tektoncd/operator/test/helpers"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // ValidateAutoInstall creates an instance of install.tekton.dev
@@ -16,7 +16,7 @@ func ValidateAutoInstall(t *testing.T) {
 	ctx := test.NewTestCtx(t)
 	defer ctx.Cleanup()
 
-	cr := &op.Config{}
+	cr := &op.TektonPipeline{}
 	helpers.WaitForClusterCR(t, setup.ClusterCRName, cr)
 	helpers.ValidatePipelineSetup(t, cr,
 		setup.PipelineControllerName,
@@ -33,7 +33,7 @@ func ValidateDeploymentRecreate(t *testing.T) {
 	ctx := test.NewTestCtx(t)
 	defer ctx.Cleanup()
 
-	cr := &op.Config{}
+	cr := &op.TektonPipeline{}
 	helpers.WaitForClusterCR(t, setup.ClusterCRName, cr)
 
 	kc := test.Global.KubeClient
@@ -61,7 +61,7 @@ func ValidateDeletion(t *testing.T) {
 	ctx := test.NewTestCtx(t)
 	defer ctx.Cleanup()
 
-	cr := &op.Config{}
+	cr := &op.TektonPipeline{}
 	helpers.WaitForClusterCR(t, setup.ClusterCRName, cr)
 	helpers.ValidatePipelineSetup(t, cr,
 		setup.PipelineControllerName,

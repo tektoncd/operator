@@ -4,24 +4,24 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ConfigSpec defines the desired state of Config
+// TektonPipelineSpec defines the desired state of TektonPipeline
 // +k8s:openapi-gen=true
-type ConfigSpec struct {
+type TektonPipelineSpec struct {
 	// namespace where pipelines will be installed
 	TargetNamespace string `json:"targetNamespace"`
 }
 
-// ConfigStatus defines the observed state of Config
+// TektonPipelineStatus defines the observed state of TektonPipeline
 // +k8s:openapi-gen=true
-type ConfigStatus struct {
+type TektonPipelineStatus struct {
 
 	// installation status sorted in reverse chronological order
-	Conditions []ConfigCondition `json:"conditions,omitempty"`
+	Conditions []TektonPipelineCondition `json:"conditions,omitempty"`
 }
 
-// ConfigCondition defines the observed state of installation at a point in time
+// TektonPipelineCondition defines the observed state of installation at a point in time
 // +k8s:openapi-gen=true
-type ConfigCondition struct {
+type TektonPipelineCondition struct {
 	// Code indicates the status of installation of pipeline resources
 	// Valid values are:
 	//   - "error"
@@ -54,27 +54,27 @@ const (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Config is the Schema for the configs API
+// TektonPipeline is the Schema for the tektonpipelines API
 // +k8s:openapi-gen=true
-// +kubebuilder:resource:path=config
+// +kubebuilder:resource:path=tektonpipeline
 // +kubebuilder:subresource:status
-type Config struct {
+type TektonPipeline struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ConfigSpec   `json:"spec,omitempty"`
-	Status ConfigStatus `json:"status,omitempty"`
+	Spec   TektonPipelineSpec   `json:"spec,omitempty"`
+	Status TektonPipelineStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// ConfigList contains a list of Config
-type ConfigList struct {
+// TektonPipelineList contains a list of TektonPipeline
+type TektonPipelineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Config `json:"items"`
+	Items           []TektonPipeline `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Config{}, &ConfigList{})
+	SchemeBuilder.Register(&TektonPipeline{}, &TektonPipelineList{})
 }

@@ -4,15 +4,15 @@ import (
 	"context"
 	"testing"
 
+	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	appsv1 "k8s.io/api/apps/v1"
 
 	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/test/config"
+	"github.com/tektoncd/operator/test/tektonpipeline"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 )
@@ -30,7 +30,7 @@ func AssertNoError(t *testing.T, err error) {
 func WaitForDeploymentDeletion(t *testing.T, namespace, name string) error {
 	t.Helper()
 
-	err := wait.Poll(config.APIRetry, config.APITimeout, func() (bool, error) {
+	err := wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
 		kc := test.Global.KubeClient
 		_, err := kc.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
@@ -54,7 +54,7 @@ func WaitForClusterCR(t *testing.T, name string, obj runtime.Object) {
 
 	objKey := types.NamespacedName{Name: name}
 
-	err := wait.Poll(config.APIRetry, config.APITimeout, func() (bool, error) {
+	err := wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
 		err := test.Global.Client.Get(context.TODO(), objKey, obj)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
@@ -72,7 +72,7 @@ func WaitForClusterCR(t *testing.T, name string, obj runtime.Object) {
 
 func DeletePipelineDeployment(t *testing.T, dep *appsv1.Deployment) {
 	t.Helper()
-	err := wait.Poll(config.APIRetry, config.APITimeout, func() (bool, error) {
+	err := wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
 		err := test.Global.Client.Delete(context.TODO(), dep)
 		if err != nil {
 			t.Logf("Deletion of deployment %s failed %s \n", dep.GetName(), err)
@@ -90,14 +90,14 @@ func DeleteClusterCR(t *testing.T, name string) {
 
 	// ensure object exists before deletion
 	objKey := types.NamespacedName{Name: name}
-	cr := &op.Config{}
+	cr := &op.TektonPipeline{}
 	err := test.Global.Client.Get(context.TODO(), objKey, cr)
 	if err != nil {
 		t.Logf("Failed to find cluster CR: %s : %s\n", name, err)
 	}
 	AssertNoError(t, err)
 
-	err = wait.Poll(config.APIRetry, config.APITimeout, func() (bool, error) {
+	err = wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
 		err := test.Global.Client.Delete(context.TODO(), cr)
 		if err != nil {
 			t.Logf("Deletion of CR %s failed %s \n", name, err)
@@ -110,7 +110,7 @@ func DeleteClusterCR(t *testing.T, name string) {
 	AssertNoError(t, err)
 }
 
-func ValidatePipelineSetup(t *testing.T, cr *op.Config, deployments ...string) {
+func ValidatePipelineSetup(t *testing.T, cr *op.TektonPipeline, deployments ...string) {
 	t.Helper()
 
 	kc := test.Global.KubeClient
@@ -121,14 +121,14 @@ func ValidatePipelineSetup(t *testing.T, cr *op.Config, deployments ...string) {
 			t, kc, ns,
 			d,
 			1,
-			config.APIRetry,
-			config.APITimeout,
+			tektonpipeline.APIRetry,
+			tektonpipeline.APITimeout,
 		)
 		AssertNoError(t, err)
 	}
 }
 
-func ValidatePipelineCleanup(t *testing.T, cr *op.Config, deployments ...string) {
+func ValidatePipelineCleanup(t *testing.T, cr *op.TektonPipeline, deployments ...string) {
 	t.Helper()
 
 	ns := cr.Spec.TargetNamespace
@@ -142,8 +142,8 @@ func DeployOperator(t *testing.T, ctx *test.TestCtx) error {
 	err := ctx.InitializeClusterResources(
 		&test.CleanupOptions{
 			TestContext:   ctx,
-			Timeout:       config.CleanupTimeout,
-			RetryInterval: config.CleanupRetry,
+			Timeout:       tektonpipeline.CleanupTimeout,
+			RetryInterval: tektonpipeline.CleanupRetry,
 		},
 	)
 	if err != nil {
@@ -159,9 +159,9 @@ func DeployOperator(t *testing.T, ctx *test.TestCtx) error {
 		t,
 		test.Global.KubeClient,
 		namespace,
-		config.TestOperatorName,
+		tektonpipeline.TestOperatorName,
 		1,
-		config.APIRetry,
-		config.APITimeout,
+		tektonpipeline.APIRetry,
+		tektonpipeline.APITimeout,
 	)
 }

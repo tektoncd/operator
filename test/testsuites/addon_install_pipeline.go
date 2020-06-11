@@ -12,8 +12,8 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/operator-framework/operator-sdk/pkg/test"
-	testConfig "github.com/tektoncd/operator/test/config"
 	"github.com/tektoncd/operator/test/helpers"
+	testTektonPipeline "github.com/tektoncd/operator/test/tektonpipeline"
 )
 
 // ValidateAddonInstall creates an instance of addon.operator.tekton.dev
@@ -37,19 +37,19 @@ func ValidateAddonDeletion(t *testing.T) {
 	installPipeline(t, ctx)
 
 	t.Run("deleting-addon-cr", addonCRDeletion)
-	t.Run("deleting-config-cr-deletes-addon", addonCRDeletionOnConfigDelete)
+	t.Run("deleting-tektonpipeline-cr-deletes-addon", addonCRDeletionOnTektonPipelineDelete)
 }
 
 func installPipeline(t *testing.T, ctx *test.TestCtx) {
-	configCR := &v1alpha1.Config{
+	tektonPipelineCR := &v1alpha1.TektonPipeline{
 		TypeMeta: v1.TypeMeta{
-			Kind:       "config",
+			Kind:       "TektonPipeline",
 			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name: setup.ClusterCRName,
 		},
-		Spec: v1alpha1.ConfigSpec{
+		Spec: v1alpha1.TektonPipelineSpec{
 			TargetNamespace: setup.DefaultTargetNs,
 		},
 	}
@@ -59,10 +59,10 @@ func installPipeline(t *testing.T, ctx *test.TestCtx) {
 		RetryInterval: 1 * time.Second,
 	}
 
-	err := test.Global.Client.Create(context.TODO(), configCR, cleanupOptions)
+	err := test.Global.Client.Create(context.TODO(), tektonPipelineCR, cleanupOptions)
 	helpers.AssertNoError(t, err)
-	helpers.WaitForClusterCR(t, setup.ClusterCRName, configCR)
-	helpers.ValidatePipelineSetup(t, configCR,
+	helpers.WaitForClusterCR(t, setup.ClusterCRName, tektonPipelineCR)
+	helpers.ValidatePipelineSetup(t, tektonPipelineCR,
 		setup.PipelineControllerName,
 		setup.PipelineWebhookName)
 }
@@ -101,8 +101,8 @@ func addonCRWithVersion(t *testing.T) {
 		t, test.Global.KubeClient, setup.DefaultTargetNs,
 		"tekton-dashboard",
 		1,
-		testConfig.APIRetry,
-		testConfig.APITimeout,
+		testTektonPipeline.APIRetry,
+		testTektonPipeline.APITimeout,
 	)
 	helpers.AssertNoError(t, err)
 
@@ -143,8 +143,8 @@ func addonCRWithoutVersion(t *testing.T) {
 		t, test.Global.KubeClient, setup.DefaultTargetNs,
 		"tekton-dashboard",
 		1,
-		testConfig.APIRetry,
-		testConfig.APITimeout,
+		testTektonPipeline.APIRetry,
+		testTektonPipeline.APITimeout,
 	)
 	helpers.AssertNoError(t, err)
 
@@ -194,8 +194,8 @@ func addonCRDeletion(t *testing.T) {
 		t, test.Global.KubeClient, setup.DefaultTargetNs,
 		"tekton-dashboard",
 		1,
-		testConfig.APIRetry,
-		testConfig.APITimeout,
+		testTektonPipeline.APIRetry,
+		testTektonPipeline.APITimeout,
 	)
 	helpers.AssertNoError(t, err)
 
@@ -205,8 +205,8 @@ func addonCRDeletion(t *testing.T) {
 		t, test.Global.KubeClient, setup.DefaultTargetNs,
 		"tekton-dashboard",
 		1,
-		testConfig.APIRetry,
-		testConfig.APITimeout,
+		testTektonPipeline.APIRetry,
+		testTektonPipeline.APITimeout,
 	)
 	helpers.AssertNoError(t, err)
 
@@ -220,7 +220,7 @@ func addonCRDeletion(t *testing.T) {
 	helpers.AssertNoError(t, err)
 }
 
-func addonCRDeletionOnConfigDelete(t *testing.T) {
+func addonCRDeletionOnTektonPipelineDelete(t *testing.T) {
 	ctx := test.NewTestCtx(t)
 	defer ctx.Cleanup()
 
@@ -251,8 +251,8 @@ func addonCRDeletionOnConfigDelete(t *testing.T) {
 		t, test.Global.KubeClient, setup.DefaultTargetNs,
 		"tekton-dashboard",
 		1,
-		testConfig.APIRetry,
-		testConfig.APITimeout,
+		testTektonPipeline.APIRetry,
+		testTektonPipeline.APITimeout,
 	)
 	helpers.AssertNoError(t, err)
 
@@ -262,14 +262,14 @@ func addonCRDeletionOnConfigDelete(t *testing.T) {
 		t, test.Global.KubeClient, setup.DefaultTargetNs,
 		"tekton-dashboard",
 		1,
-		testConfig.APIRetry,
-		testConfig.APITimeout,
+		testTektonPipeline.APIRetry,
+		testTektonPipeline.APITimeout,
 	)
 	helpers.AssertNoError(t, err)
 
-	// delete the instance of config.operator.tekton.dev
+	// delete the instance of tektonpipelines.operator.tekton.dev
 	// this should delete the addon CR as the owner of addonCR
-	// is set to the instance (name: cluster)  of config.operator.tekton.dev
+	// is set to the instance (name: cluster)  of tektonpipelines.operator.tekton.dev
 	helpers.DeleteClusterCR(t, setup.ClusterCRName)
 
 	err = helpers.WaitForDeploymentDeletion(t, setup.DefaultTargetNs, "tekton-dashboard")

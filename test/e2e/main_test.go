@@ -19,22 +19,22 @@ func TestPipelineOperator(t *testing.T) {
 	initTestingFramework(t)
 
 	// Run test groups (test each CRDs)
-	t.Run("config-crd", testgroups.ClusterCRD)
+	t.Run("tektonpipeline-crd", testgroups.ClusterCRD)
 	t.Run("addon-crd", testgroups.AddonCRD)
 }
 
 func initTestingFramework(t *testing.T) {
 	apiVersion := "operator.tekton.dev/v1alpha1"
-	kind := "Config"
+	kind := "TektonPipeline"
 
-	configList := &op.ConfigList{
+	tektonPipelineList := &op.TektonPipelineList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       kind,
 			APIVersion: apiVersion,
 		},
 	}
 
-	if err := test.AddToFrameworkScheme(apis.AddToScheme, configList); err != nil {
+	if err := test.AddToFrameworkScheme(apis.AddToScheme, tektonPipelineList); err != nil {
 		t.Fatalf("failed to add '%s %s': %v", apiVersion, kind, err)
 	}
 }
