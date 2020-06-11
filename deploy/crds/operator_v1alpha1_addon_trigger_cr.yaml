@@ -1,5 +1,5 @@
 apiVersion: operator.tekton.dev/v1alpha1
-kind: Addon
+kind: TektonAddon
 metadata:
   name: trigger
 spec:

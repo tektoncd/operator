@@ -27,12 +27,12 @@ import (
 )
 
 var (
-	ctrlLog                   = logf.Log.WithName("ctrl").WithName("addon")
+	ctrlLog                   = logf.Log.WithName("ctrl").WithName("tektonaddon")
 	errPipelineNotReady       = xerrors.Errorf("tekton-pipelines not ready")
-	errAddonVersionUnresolved = xerrors.Errorf("could not resolve to a valid addon version")
+	errAddonVersionUnresolved = xerrors.Errorf("could not resolve to a valid tektonaddon version")
 )
 
-// Add creates a new Addon Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new Tekton Addon Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
@@ -46,13 +46,13 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("addon-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("tektonaddon-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to primary resource Addon
-	err = c.Watch(&source.Kind{Type: &op.Addon{}}, &handler.EnqueueRequestForObject{})
+	// Watch for changes to primary resource Tekton Addon
+	err = c.Watch(&source.Kind{Type: &op.TektonAddon{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		&source.Kind{Type: &appsv1.Deployment{}},
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &op.Addon{},
+			OwnerType:    &op.TektonAddon{},
 		})
 	if err != nil {
 		return err
@@ -84,25 +84,25 @@ type ReconcileAddon struct {
 	addons map[string]mf.Manifest
 }
 
-// Reconcile reads that state of the cluster for a Addon object and makes changes based on the state read
-// and what is in the Addon.Spec
+// Reconcile reads that state of the cluster for a TektonAddon object and makes changes based on the state read
+// and what is in the TektonAddon.Spec
 func (r *ReconcileAddon) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	log := requestLogger(req, "reconcile")
-	log.Info("Reconciling Addon")
+	log.Info("Reconciling TektonAddon")
 
 	// Fetch the Addon instance
-	instance := &op.Addon{}
+	instance := &op.TektonAddon{}
 	err := r.client.Get(context.TODO(), req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("resource has been deleted")
 			return reconcile.Result{}, nil
-			// addon components (items in yaml manifest) will be deleted
+			// TektonAddon components (items in yaml manifest) will be deleted
 			// as the owner reference is set, technically we don't have to explicitly delete them
 			// if we wan't to delete them manually (if in case of orphaned items)
 			// a more complex reconcile logic can be implemented here
 			// for example: 1. read manifest, 2. find pipeline-installation,
-			// 3. note: can't set owner reference as the addon resource is not found
+			// 3. note: can't set owner reference as the TektonAddon resource is not found
 			// 4. inject namespace into resources suing target namespace from pipeline
 			// 5. delete all resources
 			// NT: aug-22-2019
@@ -126,7 +126,7 @@ func (r *ReconcileAddon) Reconcile(req reconcile.Request) (reconcile.Result, err
 	return r.reconcileAddon(req, instance)
 }
 
-func (r *ReconcileAddon) ensureAddonVersion(res *op.Addon) (bool, error) {
+func (r *ReconcileAddon) ensureAddonVersion(res *op.TektonAddon) (bool, error) {
 	version := res.Spec.Version
 	if version != "" {
 		return true, nil
@@ -145,7 +145,7 @@ func (r *ReconcileAddon) ensureAddonVersion(res *op.Addon) (bool, error) {
 	return true, nil
 }
 
-func isAddOnUpToDate(res *op.Addon) bool {
+func isAddOnUpToDate(res *op.TektonAddon) bool {
 	c := res.Status.Conditions
 	if len(c) == 0 {
 		return false
@@ -155,10 +155,10 @@ func isAddOnUpToDate(res *op.Addon) bool {
 		latest.Code == op.InstalledStatus
 }
 
-func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (reconcile.Result, error) {
+func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.TektonAddon) (reconcile.Result, error) {
 	log := requestLogger(req, "addon install")
 
-	err := r.updateStatus(res, op.AddonCondition{Code: op.InstallingStatus, Version: res.Spec.Version})
+	err := r.updateStatus(res, op.TektonAddonCondition{Code: op.InstallingStatus, Version: res.Spec.Version})
 	if err != nil {
 		log.Error(err, "failed to set status")
 		return reconcile.Result{Requeue: true}, err
@@ -167,7 +167,7 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 	//find the valid clusterwide tekton-pipeline installation
 	piplnRes, err := r.pipelineReady()
 	if err != nil {
-		_ = r.updateStatus(res, op.AddonCondition{
+		_ = r.updateStatus(res, op.TektonAddonCondition{
 			Code:    op.ErrorStatus,
 			Details: err.Error(),
 			Version: res.Spec.Version,
@@ -185,7 +185,7 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 	// set the tekton-pipeline installation as the owner for this addon
 	err = r.setOwnerReference(res, piplnRes)
 	if err != nil {
-		_ = r.updateStatus(res, op.AddonCondition{
+		_ = r.updateStatus(res, op.TektonAddonCondition{
 			Code:    op.ErrorStatus,
 			Details: err.Error(),
 			Version: res.Spec.Version,
@@ -197,7 +197,7 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 	manifest, err := r.processPayload(res, piplnRes.Spec.TargetNamespace)
 	if err != nil {
 		log.Error(err, "failed to create addon manifest")
-		_ = r.updateStatus(res, op.AddonCondition{
+		_ = r.updateStatus(res, op.TektonAddonCondition{
 			Code:    op.ErrorStatus,
 			Details: err.Error(),
 			Version: res.Spec.Version,
@@ -208,7 +208,7 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 	//deploy addon components
 	if err := manifest.ApplyAll(); err != nil {
 		log.Error(err, "failed to apply release.yaml")
-		_ = r.updateStatus(res, op.AddonCondition{
+		_ = r.updateStatus(res, op.TektonAddonCondition{
 			Code:    op.ErrorStatus,
 			Details: err.Error(),
 			Version: res.Spec.Version,
@@ -218,14 +218,14 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 
 	log.Info("successfully applied all resources")
 
-	err = r.updateStatus(res, op.AddonCondition{
+	err = r.updateStatus(res, op.TektonAddonCondition{
 		Code: op.InstalledStatus, Version: res.Spec.Version})
 
 	// requeue true as isUptodate will be validated in the next reconcile loop
 	return reconcile.Result{Requeue: true}, err
 }
 
-func (r *ReconcileAddon) processPayload(res *op.Addon, targetNS string) (*mf.Manifest, error) {
+func (r *ReconcileAddon) processPayload(res *op.TektonAddon, targetNS string) (*mf.Manifest, error) {
 	addonPath := getAddonPath(res)
 	manifest, err := mf.NewManifest(addonPath, true, r.client)
 	if err != nil {
@@ -246,13 +246,13 @@ func (r *ReconcileAddon) processPayload(res *op.Addon, targetNS string) (*mf.Man
 	return &manifest, nil
 }
 
-func getAddonPath(res *op.Addon) string {
+func getAddonPath(res *op.TektonAddon) string {
 	addonDir := getAddonBase(res)
 	path := filepath.Join(addonDir, res.Spec.Version)
 	return path
 }
 
-func GetLatestVersion(res *op.Addon) (string, error) {
+func GetLatestVersion(res *op.TektonAddon) (string, error) {
 	dirName := getAddonBase(res)
 	items, err := ioutil.ReadDir(dirName)
 	if err != nil || len(items) == 0 {
@@ -262,7 +262,7 @@ func GetLatestVersion(res *op.Addon) (string, error) {
 	return items[len(items)-1].Name(), nil
 }
 
-func getAddonBase(res *op.Addon) string {
+func getAddonBase(res *op.TektonAddon) string {
 	return filepath.Join("deploy", "resources", "addons", res.Name)
 }
 
@@ -274,8 +274,8 @@ func requestLogger(req reconcile.Request, context string) logr.Logger {
 }
 
 // updateStatus set the status of res to s and refreshes res to the lastest version
-func (r *ReconcileAddon) updateStatus(res *op.Addon, c op.AddonCondition) error {
-	res.Status.Conditions = append([]op.AddonCondition{c}, res.Status.Conditions...)
+func (r *ReconcileAddon) updateStatus(res *op.TektonAddon, c op.TektonAddonCondition) error {
+	res.Status.Conditions = append([]op.TektonAddonCondition{c}, res.Status.Conditions...)
 
 	res.GetObjectMeta()
 	if err := r.client.Status().Update(context.TODO(), res); err != nil {
@@ -306,7 +306,7 @@ func (r *ReconcileAddon) pipelineReady() (*op.TektonPipeline, error) {
 	return ppln, nil
 }
 
-func (r *ReconcileAddon) setOwnerReference(res *op.Addon, owner *op.TektonPipeline) error {
+func (r *ReconcileAddon) setOwnerReference(res *op.TektonAddon, owner *op.TektonPipeline) error {
 	controller := false
 	blockOwnerDeletion := true
 	res.SetOwnerReferences(
