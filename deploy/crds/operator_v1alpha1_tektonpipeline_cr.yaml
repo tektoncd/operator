@@ -1,5 +1,5 @@
 apiVersion: operator.tekton.dev/v1alpha1
-kind: Config
+kind: TektonPipeline
 metadata:
   name: cluster
 spec:

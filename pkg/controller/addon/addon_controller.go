@@ -178,7 +178,7 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.Addon) (r
 			return reconcile.Result{RequeueAfter: 30 * time.Second}, nil
 		}
 		// wait longer as pipeline-install not found
-		// (config.opeator.tekton.dev instance not available yet)
+		// (tektonpipeline.opeator.tekton.dev instance not available yet)
 		return reconcile.Result{RequeueAfter: 2 * time.Minute}, err
 	}
 
@@ -286,8 +286,8 @@ func (r *ReconcileAddon) updateStatus(res *op.Addon, c op.AddonCondition) error 
 	return nil
 }
 
-func (r *ReconcileAddon) getPipelineRes() (*op.Config, error) {
-	res := &op.Config{}
+func (r *ReconcileAddon) getPipelineRes() (*op.TektonPipeline, error) {
+	res := &op.TektonPipeline{}
 	namespacedName := types.NamespacedName{
 		Name: setup.ClusterCRName,
 	}
@@ -295,7 +295,7 @@ func (r *ReconcileAddon) getPipelineRes() (*op.Config, error) {
 	return res, err
 }
 
-func (r *ReconcileAddon) pipelineReady() (*op.Config, error) {
+func (r *ReconcileAddon) pipelineReady() (*op.TektonPipeline, error) {
 	ppln, err := r.getPipelineRes()
 	if err != nil {
 		return nil, xerrors.Errorf(errPipelineNotReady.Error(), err)
@@ -306,7 +306,7 @@ func (r *ReconcileAddon) pipelineReady() (*op.Config, error) {
 	return ppln, nil
 }
 
-func (r *ReconcileAddon) setOwnerReference(res *op.Addon, owner *op.Config) error {
+func (r *ReconcileAddon) setOwnerReference(res *op.Addon, owner *op.TektonPipeline) error {
 	controller := false
 	blockOwnerDeletion := true
 	res.SetOwnerReferences(

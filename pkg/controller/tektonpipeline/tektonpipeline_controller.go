@@ -1,4 +1,4 @@
-package config
+package tektonpipeline
 
 import (
 	"context"
@@ -33,7 +33,7 @@ var (
 	targetNamespace string
 	noAutoInstall   bool
 	recursive       bool
-	ctrlLog         = logf.Log.WithName("ctrl").WithName("config")
+	ctrlLog         = logf.Log.WithName("ctrl").WithName("tektonpipeline")
 )
 
 func init() {
@@ -65,7 +65,7 @@ func init() {
 	)
 }
 
-// Add creates a new Config Controller and adds it to the Manager. The Manager will set fields on the Controller
+// Add creates a new TektonPipeline Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	m, err := mf.NewManifest(resourceDir, recursive, mgr.GetClient())
@@ -77,7 +77,7 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager, m mf.Manifest) reconcile.Reconciler {
-	return &ReconcileConfig{
+	return &ReconcileTektonPipeline{
 		client:   mgr.GetClient(),
 		scheme:   mgr.GetScheme(),
 		manifest: m,
@@ -88,15 +88,15 @@ func newReconciler(mgr manager.Manager, m mf.Manifest) reconcile.Reconciler {
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	log := ctrlLog.WithName("add")
 	// Create a new controller
-	c, err := controller.New("config-controller", mgr, controller.Options{Reconciler: r})
+	c, err := controller.New("tektonpipeline-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to primary resource Config
-	log.Info("Watching operator config CR")
+	// Watch for changes to primary resource TektonPipeline
+	log.Info("Watching operator tektonpipeline CR")
 	err = c.Watch(
-		&source.Kind{Type: &op.Config{}},
+		&source.Kind{Type: &op.TektonPipeline{}},
 		&handler.EnqueueRequestForObject{},
 		predicate.GenerationChangedPredicate{},
 	)
@@ -108,7 +108,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		&source.Kind{Type: &appsv1.Deployment{}},
 		&handler.EnqueueRequestForOwner{
 			IsController: true,
-			OwnerType:    &op.Config{},
+			OwnerType:    &op.TektonPipeline{},
 		})
 	if err != nil {
 		return err
@@ -119,17 +119,17 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	if err := createCR(mgr.GetClient()); err != nil {
-		log.Error(err, "creation of config resource failed")
+		log.Error(err, "creation of tektonpipeline resource failed")
 		return err
 	}
 	return nil
 }
 
-// blank assignment to verify that ReconcileConfig implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileConfig{}
+// blank assignment to verify that ReconcileTektonPipeline implements reconcile.Reconciler
+var _ reconcile.Reconciler = &ReconcileTektonPipeline{}
 
-// ReconcileConfig reconciles a Config object
-type ReconcileConfig struct {
+// ReconcileTektonPipeline reconciles a TektonPipeline object
+type ReconcileTektonPipeline struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
 	client   client.Client
@@ -137,17 +137,17 @@ type ReconcileConfig struct {
 	manifest mf.Manifest
 }
 
-// Reconcile reads that state of the cluster for a Config object and makes changes based on the state read
-// and what is in the Config.Spec
+// Reconcile reads that state of the cluster for a TektonPipeline object and makes changes based on the state read
+// and what is in the TektonPipeline.Spec
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *ReconcileConfig) Reconcile(req reconcile.Request) (reconcile.Result, error) {
+func (r *ReconcileTektonPipeline) Reconcile(req reconcile.Request) (reconcile.Result, error) {
 	log := requestLogger(req, "reconcile")
 
-	log.Info("reconciling config change")
+	log.Info("reconciling tektonpipeline change")
 
-	res := &op.Config{}
+	res := &op.TektonPipeline{}
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: req.Name}, res)
 
 	// ignore all resources except the `resourceWatched`
@@ -180,10 +180,10 @@ func (r *ReconcileConfig) Reconcile(req reconcile.Request) (reconcile.Result, er
 
 }
 
-func (r *ReconcileConfig) reconcileInstall(req reconcile.Request, res *op.Config) (reconcile.Result, error) {
+func (r *ReconcileTektonPipeline) reconcileInstall(req reconcile.Request, res *op.TektonPipeline) (reconcile.Result, error) {
 	log := requestLogger(req, "install")
 
-	err := r.updateStatus(res, op.ConfigCondition{Code: op.InstallingStatus, Version: tektonVersion})
+	err := r.updateStatus(res, op.TektonPipelineCondition{Code: op.InstallingStatus, Version: tektonVersion})
 	if err != nil {
 		log.Error(err, "failed to set status")
 		return reconcile.Result{}, err
@@ -197,7 +197,7 @@ func (r *ReconcileConfig) reconcileInstall(req reconcile.Request, res *op.Config
 	if err := r.manifest.Transform(tfs...); err != nil {
 		log.Error(err, "failed to apply manifest transformations")
 		// ignoring failure to update
-		_ = r.updateStatus(res, op.ConfigCondition{
+		_ = r.updateStatus(res, op.TektonPipelineCondition{
 			Code:    op.ErrorStatus,
 			Details: err.Error(),
 			Version: tektonVersion})
@@ -207,7 +207,7 @@ func (r *ReconcileConfig) reconcileInstall(req reconcile.Request, res *op.Config
 	if err := r.manifest.ApplyAll(); err != nil {
 		log.Error(err, "failed to apply release.yaml")
 		// ignoring failure to update
-		_ = r.updateStatus(res, op.ConfigCondition{
+		_ = r.updateStatus(res, op.TektonPipelineCondition{
 			Code:    op.ErrorStatus,
 			Details: err.Error(),
 			Version: tektonVersion})
@@ -222,12 +222,12 @@ func (r *ReconcileConfig) reconcileInstall(req reconcile.Request, res *op.Config
 		return reconcile.Result{}, err
 	}
 
-	err = r.updateStatus(res, op.ConfigCondition{
+	err = r.updateStatus(res, op.TektonPipelineCondition{
 		Code: op.InstalledStatus, Version: tektonVersion})
 	return reconcile.Result{}, err
 }
 
-func (r *ReconcileConfig) reconcileDeletion(req reconcile.Request, res *op.Config) (reconcile.Result, error) {
+func (r *ReconcileTektonPipeline) reconcileDeletion(req reconcile.Request, res *op.TektonPipeline) (reconcile.Result, error) {
 	log := requestLogger(req, "delete")
 
 	log.Info("deleting pipeline resources")
@@ -247,9 +247,9 @@ func (r *ReconcileConfig) reconcileDeletion(req reconcile.Request, res *op.Confi
 }
 
 // markInvalidResource sets the status of resourse as invalid
-func (r *ReconcileConfig) markInvalidResource(res *op.Config) {
+func (r *ReconcileTektonPipeline) markInvalidResource(res *op.TektonPipeline) {
 	err := r.updateStatus(res,
-		op.ConfigCondition{
+		op.TektonPipelineCondition{
 			Code:    op.ErrorStatus,
 			Details: "metadata.name must be " + resourceWatched,
 			Version: "unknown"})
@@ -259,14 +259,14 @@ func (r *ReconcileConfig) markInvalidResource(res *op.Config) {
 }
 
 // updateStatus set the status of res to s and refreshes res to the lastest version
-func (r *ReconcileConfig) updateStatus(res *op.Config, c op.ConfigCondition) error {
+func (r *ReconcileTektonPipeline) updateStatus(res *op.TektonPipeline, c op.TektonPipelineCondition) error {
 
 	// NOTE: need to use a deepcopy since Status().Update() seems to reset the
 	// APIVersion of the res to "" making the object invalid; may be a mechanism
 	// to prevent us from using stale version of the object
 
 	tmp := res.DeepCopy()
-	tmp.Status.Conditions = append([]op.ConfigCondition{c}, tmp.Status.Conditions...)
+	tmp.Status.Conditions = append([]op.TektonPipelineCondition{c}, tmp.Status.Conditions...)
 
 	if err := r.client.Status().Update(context.TODO(), tmp); err != nil {
 		log.Error(err, "status update failed")
@@ -280,7 +280,7 @@ func (r *ReconcileConfig) updateStatus(res *op.Config, c op.ConfigCondition) err
 	return nil
 }
 
-func (r *ReconcileConfig) refreshCR(res *op.Config) error {
+func (r *ReconcileTektonPipeline) refreshCR(res *op.TektonPipeline) error {
 	objKey := types.NamespacedName{
 		Namespace: res.Namespace,
 		Name:      res.Name,
@@ -290,11 +290,11 @@ func (r *ReconcileConfig) refreshCR(res *op.Config) error {
 
 func createCR(c client.Client) error {
 	log := ctrlLog.WithName("create-cr").WithValues("name", resourceWatched)
-	log.Info("creating a clusterwide resource of config crd")
+	log.Info("creating a clusterwide resource of tektonpipeline crd")
 
-	cr := &op.Config{
+	cr := &op.TektonPipeline{
 		ObjectMeta: metav1.ObjectMeta{Name: resourceWatched},
-		Spec:       op.ConfigSpec{TargetNamespace: targetNamespace},
+		Spec:       op.TektonPipelineSpec{TargetNamespace: targetNamespace},
 	}
 
 	err := c.Create(context.TODO(), cr)
@@ -306,7 +306,7 @@ func createCR(c client.Client) error {
 	return err
 }
 
-func isUpToDate(r *op.Config) bool {
+func isUpToDate(r *op.TektonPipeline) bool {
 	c := r.Status.Conditions
 	if len(c) == 0 {
 		return false

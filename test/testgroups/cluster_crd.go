@@ -9,7 +9,7 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/test"
 )
 
-// ClusterCRD is the test group for testing config.operator.tekton.dev CRD
+// ClusterCRD is the test group for testing tektonpipelines.operator.tekton.dev CRD
 func ClusterCRD(t *testing.T) {
 	ctx := test.NewTestCtx(t)
 	defer ctx.Cleanup()
