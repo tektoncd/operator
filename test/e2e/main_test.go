@@ -19,8 +19,8 @@ func TestPipelineOperator(t *testing.T) {
 	initTestingFramework(t)
 
 	// Run test groups (test each CRDs)
-	t.Run("tektonpipeline-crd", testgroups.ClusterCRD)
-	t.Run("tektonaddon-crd", testgroups.AddonCRD)
+	t.Run("pipeline-crd", testgroups.ClusterCRD)
+	t.Run("addon-crd", testgroups.AddonCRD)
 }
 
 func initTestingFramework(t *testing.T) {

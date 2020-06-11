@@ -37,7 +37,7 @@ func ValidateAddonDeletion(t *testing.T) {
 	installPipeline(t, ctx)
 
 	t.Run("deleting-addon-cr", addonCRDeletion)
-	t.Run("deleting-tektonpipeline-cr-deletes-addon", addonCRDeletionOnTektonPipelineDelete)
+	t.Run("deleting-pipeline-cr-deletes-addon", addonCRDeletionOnTektonPipelineDelete)
 }
 
 func installPipeline(t *testing.T, ctx *test.TestCtx) {
