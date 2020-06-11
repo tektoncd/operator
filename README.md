@@ -9,7 +9,7 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
     
 2. Apply Operator CRD
 
-    `kubectl apply -f deploy/crds/operator_v1alpha1_config_crd.yaml`  
+    `kubectl apply -f deploy/crds/operator_v1alpha1_pipeline_crd.yaml`  
     `kubectl apply -f deploy/crds/operator_v1alpha1_addon_crd.yaml`
     
 3. Deploy the Operator  
@@ -67,10 +67,10 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
 4. Edit the 'image' value in deploy/operator.yaml to match to your image  
 
 ## The CRD
-This is a sample of [crd](https://github.com/tektoncd/operator/blob/master/deploy/crds/operator_v1alpha1_config_cr.yaml)
+This is a sample of [crd](https://github.com/tektoncd/operator/blob/master/deploy/crds/operator_v1alpha1_pipeline_cr.yaml)
 ```
 apiVersion: operator.tekton.dev/v1alpha1
-kind: Config
+kind: TektonPipeline
 metadata:
   name: cluster
 spec:
@@ -90,15 +90,15 @@ Then install `Tekton Pipeline` manually:
 
 `kubectl apply -f deploy/crds/*_cr.yaml`
 
-## Addon components
+## TektonAddon components
 
-Supported addon components are installed by creating the 'addon' CR for the component.
+Supported tektonaddon components are installed by creating the 'tektonaddon' CR for the component.
 
 Sample CR
 
 ```
 apiVersion: operator.tekton.dev/v1alpha1
-kind: Addon
+kind: TektonAddon
 metadata:
   name: dashboard
 spec:
