@@ -1,14 +1,14 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: addons.operator.tekton.dev
+  name: tektonaddons.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: Addon
-    listKind: AddonList
-    plural: addons
-    singular: addon
+    kind: TektonAddon
+    listKind: TektonAddonList
+    plural: tektonaddons
+    singular: tektonaddon
   scope: Cluster
   subresources:
     status: {}
@@ -45,7 +45,7 @@ spec:
               items:
                 properties:
                   code:
-                    description: 'Code indicates the status of installation of addon
+                    description: 'Code indicates the status of installation of tektonaddon
                       resources Valid values are:   - "error"   - "installing"   -
                       "installed"'
                     type: string
@@ -53,7 +53,7 @@ spec:
                     description: Additional details about the Code
                     type: string
                   version:
-                    description: The version of installed addon
+                    description: The version of installed tektonaddon
                     type: string
                 required:
                 - code

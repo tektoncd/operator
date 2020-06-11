@@ -71,7 +71,7 @@ func addonCRWithVersion(t *testing.T) {
 	ctx := test.NewTestCtx(t)
 	defer ctx.Cleanup()
 
-	addonCR := &v1alpha1.Addon{
+	addonCR := &v1alpha1.TektonAddon{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "Addon",
 			APIVersion: "v1alpha1",
@@ -79,7 +79,7 @@ func addonCRWithVersion(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{
 			Name: "dashboard",
 		},
-		Spec: v1alpha1.AddonSpec{
+		Spec: v1alpha1.TektonAddonSpec{
 			Version: "v0.1.1",
 		},
 	}
@@ -116,7 +116,7 @@ func addonCRWithoutVersion(t *testing.T) {
 	ctx := test.NewTestCtx(t)
 	defer ctx.Cleanup()
 
-	addonCR := &v1alpha1.Addon{
+	addonCR := &v1alpha1.TektonAddon{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "Addon",
 			APIVersion: "v1alpha1",
@@ -167,7 +167,7 @@ func addonCRDeletion(t *testing.T) {
 	ctx := test.NewTestCtx(t)
 	defer ctx.Cleanup()
 
-	addonCR := &v1alpha1.Addon{
+	addonCR := &v1alpha1.TektonAddon{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "Addon",
 			APIVersion: "v1alpha1",
@@ -224,7 +224,7 @@ func addonCRDeletionOnTektonPipelineDelete(t *testing.T) {
 	ctx := test.NewTestCtx(t)
 	defer ctx.Cleanup()
 
-	addonCR := &v1alpha1.Addon{
+	addonCR := &v1alpha1.TektonAddon{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "Addon",
 			APIVersion: "v1alpha1",

@@ -4,23 +4,23 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// AddonSpec defines the desired state of Addon
+// TektonAddonSpec defines the desired state of TektonAddon
 // +k8s:openapi-gen=true
-type AddonSpec struct {
+type TektonAddonSpec struct {
 	Version string `json:"version"`
 }
 
-// AddonStatus defines the observed state of Addon
+// TektonAddonStatus defines the observed state of TektonAddon
 // +k8s:openapi-gen=true
-type AddonStatus struct {
+type TektonAddonStatus struct {
 	// installation status sorted in reverse chronological order
-	Conditions []AddonCondition `json:"conditions,omitempty"`
+	Conditions []TektonAddonCondition `json:"conditions,omitempty"`
 }
 
-// AddonCondition defines the observed state of installation at a point in time
+// TektonAddonCondition defines the observed state of installation at a point in time
 // +k8s:openapi-gen=true
-type AddonCondition struct {
-	// Code indicates the status of installation of addon resources
+type TektonAddonCondition struct {
+	// Code indicates the status of installation of tektonaddon resources
 	// Valid values are:
 	//   - "error"
 	//   - "installing"
@@ -36,26 +36,26 @@ type AddonCondition struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Addon is the Schema for the addons API
+// Addon is the Schema for the tektonaddons API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
-type Addon struct {
+type TektonAddon struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   AddonSpec   `json:"spec,omitempty"`
-	Status AddonStatus `json:"status,omitempty"`
+	Spec   TektonAddonSpec   `json:"spec,omitempty"`
+	Status TektonAddonStatus `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// AddonList contains a list of Addon
-type AddonList struct {
+// TektonAddonList contains a list of Addon
+type TektonAddonList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Addon `json:"items"`
+	Items           []TektonAddon `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Addon{}, &AddonList{})
+	SchemeBuilder.Register(&TektonAddon{}, &TektonAddonList{})
 }

@@ -8,15 +8,15 @@ import (
 	"github.com/tektoncd/operator/test/testsuites"
 )
 
-// AddonCRD is the test group for testing addon.operator.tekton.dev CRD
+// AddonCRD is the test group for testing tektonaddons.operator.tekton.dev CRD
 func AddonCRD(t *testing.T) {
 	ctx := test.NewTestCtx(t)
 	defer ctx.Cleanup()
 
-	t.Log("deploying operaot for addomn")
+	t.Log("deploying operator for addon")
 	err := helpers.DeployOperator(t, ctx)
 	helpers.AssertNoError(t, err)
-	t.Log("deployed operaot for addomn")
+	t.Log("deployed operator for addon")
 
 	t.Run("addon-install", testsuites.ValidateAddonInstall)
 	t.Run("addon-delete", testsuites.ValidateAddonDeletion)
