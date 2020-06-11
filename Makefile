@@ -15,7 +15,7 @@ local-dev: dev-setup
 dev-setup:
 	kubectl create namespace tekton-pipelines
 	kubectl apply -f deploy/crds/operator_v1alpha1_addon_crd.yaml
-	kubectl apply -f deploy/crds/operator_v1alpha1_config_crd.yaml
+	kubectl apply -f deploy/crds/operator_v1alpha1_pipeline_crd.yaml
 	kubectl apply -f deploy/service_account.yaml
 	kubectl apply -f deploy/role.yaml
 	kubectl apply -f deploy/role_binding.yaml
