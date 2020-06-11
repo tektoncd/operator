@@ -1,4 +1,4 @@
-package tektonpipeline
+package pipeline
 
 import (
 	"context"
