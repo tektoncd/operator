@@ -29,6 +29,7 @@ local-test-e2e:
 	GO111MODULE=on \
 	operator-sdk test local ./test/e2e  \
 	--up-local \
+	--watch-namespace "" \
 	--operator-namespace operators \
 	--debug  \
 	--verbose

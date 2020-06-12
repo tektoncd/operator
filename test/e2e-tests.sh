@@ -26,7 +26,7 @@ header "Running operator-sdk test"
  operator-sdk test local ./test/e2e  \
   --up-local \
   --operator-namespace operators \
-  --watch-namespace tekton-pipelines \
+  --watch-namespace "" \
   --debug  \
   --verbose || fail_test
 success
