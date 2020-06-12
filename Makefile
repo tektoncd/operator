@@ -3,13 +3,13 @@ all: local-dev
 
 .PHONY: clean
 clean:
-	-kubectl delete -f deploy/crds/
 	-kubectl delete -f deploy/
+	-kubectl delete -f deploy/crds/
 	-kubectl delete namespace tekton-pipelines
 
 .PHONY: local-dev
 local-dev: dev-setup
-	GO111MODULE=on operator-sdk up local --namespace "" --operator-flags '--zap-encoder=console'
+	GO111MODULE=on operator-sdk run local --watch-namespace "" --operator-flags '--zap-encoder=console'
 
 .PHONY: update-deps dev-setup
 dev-setup:
@@ -29,6 +29,6 @@ local-test-e2e:
 	GO111MODULE=on \
 	operator-sdk test local ./test/e2e  \
 	--up-local \
-	--namespace operators \
+	--operator-namespace operators \
 	--debug  \
 	--verbose
