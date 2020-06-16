@@ -44,10 +44,4 @@ do
   update_module "${dep}" "${K8S_VERSION}"
 done
 
-IFS='.' semver=(${K8S_VERSION}) #turn the version into an array where the period is the separator
-OPENAPI_BRANCH="release-1.${semver[1]}"
-OPENAPI_SHA=$(curl -L "https://api.github.com/repos/kubernetes/kube-openapi/git/ref/heads/${OPENAPI_BRANCH}" | jq -r .object.sha)
-
-update_module "k8s.io/kube-openapi" "${OPENAPI_SHA}"
-
-./hack/update-deps.sh
+$(dirname $0)/update-deps.sh
