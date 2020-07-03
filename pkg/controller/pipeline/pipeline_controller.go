@@ -6,13 +6,13 @@ import (
 	"path/filepath"
 
 	"github.com/go-logr/logr"
-	mf "github.com/jcrossley3/manifestival"
+	mfc "github.com/manifestival/controller-runtime-client"
+	mf "github.com/manifestival/manifestival"
 	"github.com/operator-framework/operator-sdk/pkg/predicate"
 	"github.com/prometheus/common/log"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/controller/setup"
 	appsv1 "k8s.io/api/apps/v1"
-
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -68,11 +68,19 @@ func init() {
 // Add creates a new TektonPipeline Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
-	m, err := mf.NewManifest(resourceDir, recursive, mgr.GetClient())
+	m, err := mf.ManifestFrom(sourceBasedOnRecursion(resourceDir), mf.UseClient(mfc.NewClient(mgr.GetClient())))
 	if err != nil {
 		return err
 	}
 	return add(mgr, newReconciler(mgr, m))
+}
+
+// return source based on recursion flag
+func sourceBasedOnRecursion(path string) mf.Source {
+	if recursive {
+		return mf.Recursive(path)
+	}
+	return mf.Path(path)
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -194,7 +202,8 @@ func (r *ReconcileTektonPipeline) reconcileInstall(req reconcile.Request, res *o
 		mf.InjectNamespace(res.Spec.TargetNamespace),
 	}
 
-	if err := r.manifest.Transform(tfs...); err != nil {
+	r.manifest, err = r.manifest.Transform(tfs...)
+	if err != nil {
 		log.Error(err, "failed to apply manifest transformations")
 		// ignoring failure to update
 		_ = r.updateStatus(res, op.TektonPipelineCondition{
@@ -204,7 +213,7 @@ func (r *ReconcileTektonPipeline) reconcileInstall(req reconcile.Request, res *o
 		return reconcile.Result{}, err
 	}
 
-	if err := r.manifest.ApplyAll(); err != nil {
+	if err := r.manifest.Apply(); err != nil {
 		log.Error(err, "failed to apply release.yaml")
 		// ignoring failure to update
 		_ = r.updateStatus(res, op.TektonPipelineCondition{
@@ -234,9 +243,8 @@ func (r *ReconcileTektonPipeline) reconcileDeletion(req reconcile.Request, res *
 
 	// Requested object not found, could have been deleted after reconcile request.
 	// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-	propPolicy := client.PropagationPolicy(metav1.DeletePropagationForeground)
-
-	if err := r.manifest.DeleteAll(propPolicy); err != nil {
+	propPolicy := mf.PropagationPolicy(metav1.DeletePropagationForeground)
+	if err := r.manifest.Delete(propPolicy); err != nil {
 		log.Error(err, "failed to delete pipeline resources")
 		return reconcile.Result{}, err
 	}
