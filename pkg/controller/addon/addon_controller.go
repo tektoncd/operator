@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	mf "github.com/jcrossley3/manifestival"
+	mfc "github.com/manifestival/controller-runtime-client"
+	mf "github.com/manifestival/manifestival"
 	"github.com/prometheus/common/log"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/controller/setup"
@@ -206,7 +207,7 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.TektonAdd
 	}
 
 	//deploy addon components
-	if err := manifest.ApplyAll(); err != nil {
+	if err := manifest.Apply(); err != nil {
 		log.Error(err, "failed to apply release.yaml")
 		_ = r.updateStatus(res, op.TektonAddonCondition{
 			Code:    op.ErrorStatus,
@@ -225,11 +226,11 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.TektonAdd
 	return reconcile.Result{Requeue: true}, err
 }
 
-func (r *ReconcileAddon) processPayload(res *op.TektonAddon, targetNS string) (*mf.Manifest, error) {
+func (r *ReconcileAddon) processPayload(res *op.TektonAddon, targetNS string) (mf.Manifest, error) {
 	addonPath := getAddonPath(res)
-	manifest, err := mf.NewManifest(addonPath, true, r.client)
+	manifest, err := mf.ManifestFrom(mf.Recursive(addonPath), mf.UseClient(mfc.NewClient(r.client)))
 	if err != nil {
-		return nil, err
+		return mf.Manifest{}, err
 	}
 
 	// set the currnet addon CRD instance as owner for all items in manifest
@@ -240,10 +241,11 @@ func (r *ReconcileAddon) processPayload(res *op.TektonAddon, targetNS string) (*
 		mf.InjectNamespace(targetNS),
 	}
 
-	if err := manifest.Transform(tfs...); err != nil {
-		return nil, err
+	manifest, err = manifest.Transform(tfs...)
+	if err != nil {
+		return mf.Manifest{}, err
 	}
-	return &manifest, nil
+	return manifest, nil
 }
 
 func getAddonPath(res *op.TektonAddon) string {

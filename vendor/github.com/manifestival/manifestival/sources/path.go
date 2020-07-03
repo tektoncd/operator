@@ -1,7 +1,6 @@
-package manifestival
+package sources
 
 import (
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -10,7 +9,6 @@ import (
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 // Parse parses YAML files into Unstructured objects.
@@ -65,7 +63,7 @@ func readFile(pathname string) ([]unstructured.Unstructured, error) {
 	}
 	defer file.Close()
 
-	return decode(file)
+	return Decode(file)
 }
 
 // readDir parses all files in a single directory and it's descendant directories
@@ -81,7 +79,7 @@ func readDir(pathname string, recursive bool) ([]unstructured.Unstructured, erro
 		name := path.Join(pathname, f.Name())
 		pathDirOrFile, err := os.Stat(name)
 		var els []unstructured.Unstructured
-		
+
 		if os.IsNotExist(err) || os.IsPermission(err) {
 			return aggregated, err
 		}
@@ -109,29 +107,7 @@ func readURL(url string) ([]unstructured.Unstructured, error) {
 	}
 	defer resp.Body.Close()
 
-	return decode(resp.Body)
-}
-
-// decode consumes the given reader and parses its contents as YAML.
-func decode(reader io.Reader) ([]unstructured.Unstructured, error) {
-	decoder := yaml.NewYAMLToJSONDecoder(reader)
-	objs := []unstructured.Unstructured{}
-	var err error
-	for {
-		out := unstructured.Unstructured{}
-		err = decoder.Decode(&out)
-		if err != nil {
-			break
-		}
-		if len(out.Object) == 0 {
-			continue
-		}
-		objs = append(objs, out)
-	}
-	if err != io.EOF {
-		return nil, err
-	}
-	return objs, nil
+	return Decode(resp.Body)
 }
 
 // isURL checks whether or not the given path parses as a URL.
