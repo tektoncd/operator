@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	tektonVersion   = "v0.13.0"
+	tektonVersion   = "v0.14.0"
 	resourceWatched string
 	resourceDir     string
 	targetNamespace string
