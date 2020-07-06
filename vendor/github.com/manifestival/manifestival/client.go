@@ -5,6 +5,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+// Client includes the operations required by the Manifestival interface
 type Client interface {
 	Create(obj *unstructured.Unstructured, options ...ApplyOption) error
 	Update(obj *unstructured.Unstructured, options ...ApplyOption) error
@@ -53,14 +54,27 @@ type DeleteOptions struct {
 	IgnoreNotFound bool // default to true in DeleteWith()
 }
 
+// Indicates that changes should not be persisted
 var DryRunAll = dryRunAll{}
 
+// FieldManager is the name of the actor applying changes
 type FieldManager string
+
+// The duration in seconds before the object should be deleted
 type GracePeriodSeconds int64
+
+// Must be fulfilled before a deletion is carried out
 type Preconditions metav1.Preconditions
+
+// Whether and how garbage collection will be performed.
 type PropagationPolicy metav1.DeletionPropagation
+
+// Whether to error when deleting a non-existent resource [true]
 type IgnoreNotFound bool
+
+// Resolve conflicts by using values from the manifest values
 type Overwrite bool
+
 type dryRunAll struct{} // for both apply and delete
 
 func (dryRunAll) ApplyWith(opts *ApplyOptions) {
@@ -71,12 +85,9 @@ func (i Overwrite) ApplyWith(opts *ApplyOptions) {
 	opts.Overwrite = bool(i)
 }
 func (f FieldManager) ApplyWith(opts *ApplyOptions) {
-	// TODO: The FM was introduced in k8s 1.14, but not ready to
-	// abandon pre-1.14 users yet. Uncomment when ready.
-
-	// fm := string(f)
-	// opts.ForCreate.FieldManager = fm
-	// opts.ForUpdate.FieldManager = fm
+	fm := string(f)
+	opts.ForCreate.FieldManager = fm
+	opts.ForUpdate.FieldManager = fm
 }
 
 func (dryRunAll) DeleteWith(opts *DeleteOptions) {

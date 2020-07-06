@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/testing"
-	"github.com/manifestival/manifestival/overlay"
-	"github.com/manifestival/manifestival/patch"
+	"github.com/manifestival/manifestival/internal/overlay"
+	"github.com/manifestival/manifestival/internal/patch"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -23,6 +23,8 @@ type Manifestival interface {
 	Transform(fns ...Transformer) (Manifest, error)
 	// Filters resources in a Manifest; Predicates are AND'd
 	Filter(fns ...Predicate) Manifest
+	// Append the resources from other Manifests to create a new one
+	Append(mfs ...Manifest) Manifest
 	// Show how applying the manifest would change the cluster
 	DryRun() ([]MergePatch, error)
 }
@@ -37,8 +39,26 @@ type Manifest struct {
 
 var _ Manifestival = &Manifest{}
 
-// NewManifest creates a Manifest from a comma-separated set of yaml
-// files, directories, or URLs
+// Option follows the "functional object" idiom
+type Option func(*Manifest)
+
+// UseLogger will cause manifestival to log its actions
+func UseLogger(log logr.Logger) Option {
+	return func(m *Manifest) {
+		m.log = log
+	}
+}
+
+// UseClient enables interaction with the k8s API server
+func UseClient(client Client) Option {
+	return func(m *Manifest) {
+		m.Client = client
+	}
+}
+
+// NewManifest creates a Manifest from a comma-separated set of YAML
+// files, directories, or URLs. It's equivalent to
+// `ManifestFrom(Path(pathname))`
 func NewManifest(pathname string, opts ...Option) (Manifest, error) {
 	return ManifestFrom(Path(pathname), opts...)
 }
@@ -52,6 +72,18 @@ func ManifestFrom(src Source, opts ...Option) (m Manifest, err error) {
 	m.log.Info("Parsing manifest")
 	m.resources, err = src.Parse()
 	return
+}
+
+// Append creates a new Manifest by appending the resources from other
+// Manifests onto this one. No equality checking is done, so for any
+// resources sharing the same GVK+name, the last one will "win".
+func (m Manifest) Append(mfs ...Manifest) Manifest {
+	result := m
+	result.resources = m.Resources() // deep copies
+	for _, mf := range mfs {
+		result.resources = append(result.resources, mf.Resources()...)
+	}
+	return result
 }
 
 // Resources returns a deep copy of the Manifest resources
@@ -100,6 +132,7 @@ func (m Manifest) apply(spec *unstructured.Unstructured, opts ...ApplyOption) er
 	if current == nil {
 		m.logResource("Creating", spec)
 		current = spec.DeepCopy()
+		annotate(spec, "manifestival", resourceCreated)
 		annotate(current, v1.LastAppliedConfigAnnotation, lastApplied(current))
 		annotate(current, "manifestival", resourceCreated)
 		return m.Client.Create(current, opts...)
@@ -117,7 +150,6 @@ func (m Manifest) apply(spec *unstructured.Unstructured, opts ...ApplyOption) er
 		}
 		return m.update(current, spec, opts...)
 	}
-	return nil
 }
 
 // update a single resource
