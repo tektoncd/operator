@@ -9,7 +9,7 @@ clean:
 
 .PHONY: local-dev
 local-dev: dev-setup
-	GO111MODULE=on operator-sdk run local --watch-namespace "" --operator-flags '--zap-encoder=console'
+	GO111MODULE=on operator-sdk run --local --watch-namespace "" --operator-flags '--zap-encoder=console'
 
 .PHONY: update-deps dev-setup
 dev-setup:
