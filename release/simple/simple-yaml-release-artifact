@@ -1,0 +1,2 @@
+add simple yaml artifact here
+which can be used with `kubectl apply -f`

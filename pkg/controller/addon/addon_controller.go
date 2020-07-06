@@ -265,7 +265,7 @@ func GetLatestVersion(res *op.TektonAddon) (string, error) {
 }
 
 func getAddonBase(res *op.TektonAddon) string {
-	return filepath.Join("deploy", "resources", "addons", res.Name)
+	return filepath.Join("tekton-components", "addons", res.Name)
 }
 
 func requestLogger(req reconcile.Request, context string) logr.Logger {

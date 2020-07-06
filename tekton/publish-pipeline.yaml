@@ -1,0 +1,2 @@
+#artifacts publish pipeline spec
+# similar to https://github.com/tektoncd/triggers/blob/master/tekton/publish.yaml

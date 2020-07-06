@@ -45,7 +45,7 @@ func init() {
 		&targetNamespace, "target-namespace", setup.DefaultTargetNs,
 		"Namespace where pipeline will be installed default: "+setup.DefaultTargetNs)
 
-	defaultResDir := filepath.Join("deploy", "resources", tektonVersion)
+	defaultResDir := filepath.Join("tekton-components", tektonVersion)
 	flag.StringVar(
 		&resourceDir, "resource-dir", defaultResDir,
 		"Path to resource manifests, default: "+defaultResDir)
