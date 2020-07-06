@@ -7,10 +7,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- Migrated from [dep](https://github.com/golang/dep) to [go
+  modules](https://blog.golang.org/using-go-modules)
+  [#47](https://github.com/manifestival/manifestival/pull/47)
+- Restored `FieldManager` option for creates and updates, essentially
+  reverting [#17](https://github.com/manifestival/manifestival/issues/17).
+  [#26](https://github.com/manifestival/manifestival/issues/26)
+- Fixed the `InjectNamespace` transformer to properly update the
+  `spec.conversion` field in a `CustomResourceDefinition`
+  [#55](https://github.com/manifestival/manifestival/issues/55)
+- Predicate changes: `None` was removed and replaced with `Not`, which
+  only accepts a single predicate. `Any` and `All` now require at
+  least one predicate since it wasn't clear how they should behave
+  without one. [#56](https://github.com/manifestival/manifestival/pull/56)
+- Fixed bug where manifestival wasn't deleting namespaces it created.
+  (It should never delete a namespace it didn't create)
+  [#61](https://github.com/manifestival/manifestival/issues/61)
+
 ### Added
+
+- Introduced `Append` to the `Manifestival` interface. This enables
+  the creation of new manifests from the concatenation of others. The
+  resulting manifest retains the options, e.g. client and logger, of
+  the receiver. [#41](https://github.com/manifestival/manifestival/issues/41)
+- New fake `Client` to facilitate testing. Provides both a simple
+  in-memory object store and easily-override-able stubs for all the
+  `Client` functions: `Create`, `Update`, `Delete`, or `Get`
+  [#43](https://github.com/manifestival/manifestival/pull/43)
+- More [docs](README.md), including
+  [godoc](https://godoc.org/github.com/manifestival/manifestival)
+  [#42](https://github.com/manifestival/manifestival/pull/42)
+- New filter `Predicate`, `In`, that returns true if a resource is in
+  a given manifest, uniquely identified by GVK, namespace, and name
+  [#50](https://github.com/manifestival/manifestival/pull/50)
+- New filter `Predicate`, `ByAnnotation`, that does for annotations
+  what `ByLabel` did for labels!
+  [#52](https://github.com/manifestival/manifestival/pull/52)
 
 ### Removed
 
+- Removed dependency on `k8s.io/kubernetes`. It was only used in a
+  test, to verify a proper response to server-side validation errors,
+  but 'go modules' doesn't distinguish test-only dependencies, and
+  `k8s.io/kubernetes` was never intended to be consumed as a module,
+  so we replicated the validation logic in the test itself.
+  
 
 ## [0.5.0] - 2020-03-31
 
