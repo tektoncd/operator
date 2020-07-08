@@ -5,6 +5,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+const (
+	defaultManager = FieldManager("manifestival")
+)
+
 // Client includes the operations required by the Manifestival interface
 type Client interface {
 	Create(obj *unstructured.Unstructured, options ...ApplyOption) error
@@ -19,6 +23,7 @@ func ApplyWith(options []ApplyOption) *ApplyOptions {
 		ForUpdate: &metav1.UpdateOptions{},
 		Overwrite: true,
 	}
+	defaultManager.ApplyWith(result)
 	for _, f := range options {
 		f.ApplyWith(result)
 	}

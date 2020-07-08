@@ -35,7 +35,7 @@ func (m Manifest) DryRun() ([]MergePatch, error) {
 func (m Manifest) diff() ([][]byte, error) {
 	result := make([][]byte, 0, len(m.resources))
 	for _, spec := range m.resources {
-		original, err := m.Client.Get(&spec)
+		current, err := m.Client.Get(&spec)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				// this resource will be created when applied
@@ -45,7 +45,14 @@ func (m Manifest) diff() ([][]byte, error) {
 			}
 			return nil, err
 		}
-		diff, err := patch.New(original, &spec)
+		// ignore manifestival metadata by forcing it to match
+		if anns := current.GetAnnotations(); anns != nil {
+			if v, ok := anns["manifestival"]; ok {
+				annotate(&spec, "manifestival", v)
+			}
+		}
+		// create diff
+		diff, err := patch.New(current, &spec)
 		if err != nil {
 			return nil, err
 		}
@@ -53,15 +60,16 @@ func (m Manifest) diff() ([][]byte, error) {
 			// ignore things that won't change
 			continue
 		}
-		modified := original.DeepCopy()
+		// apply diff
+		modified := current.DeepCopy()
 		if err := diff.Merge(modified); err != nil {
 			return nil, err
 		}
 		// Remove these fields so they'll be included in the patch
-		original.SetAPIVersion("")
-		original.SetKind("")
-		original.SetName("")
-		jmp, err := mergePatch(original, modified)
+		current.SetAPIVersion("")
+		current.SetKind("")
+		current.SetName("")
+		jmp, err := mergePatch(current, modified)
 		if err != nil {
 			return nil, err
 		}

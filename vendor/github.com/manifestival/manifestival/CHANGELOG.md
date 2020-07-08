@@ -7,6 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+### Added
+
+### Removed
+
+
+## [0.6.0] - 2020-07-07
+
+### Changed
+
 - Migrated from [dep](https://github.com/golang/dep) to [go
   modules](https://blog.golang.org/using-go-modules)
   [#47](https://github.com/manifestival/manifestival/pull/47)
@@ -43,6 +52,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - New filter `Predicate`, `ByAnnotation`, that does for annotations
   what `ByLabel` did for labels!
   [#52](https://github.com/manifestival/manifestival/pull/52)
+- Defaulting the `FieldManager` for create/updates to "manifestival"
+  to help reconcile changes in `metadata.managedFields`, in
+  anticipation of server-side apply. [#64](https://github.com/manifestival/manifestival/pull/64)
 
 ### Removed
 
@@ -211,7 +223,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 [controller-runtime]: https://github.com/manifestival/controller-runtime-client
 [client-go]: https://github.com/manifestival/client-go-client
-[unreleased]: https://github.com/manifestival/manifestival/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/manifestival/manifestival/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/manifestival/manifestival/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/manifestival/manifestival/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/manifestival/manifestival/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/manifestival/manifestival/compare/v0.3.0...v0.3.1
