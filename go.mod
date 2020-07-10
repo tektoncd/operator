@@ -8,6 +8,7 @@ require (
 	github.com/prometheus/common v0.9.1
 	github.com/spf13/pflag v1.0.5
 	github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887
+	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	k8s.io/api v0.17.6
 	k8s.io/apimachinery v0.17.6
