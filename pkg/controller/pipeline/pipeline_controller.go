@@ -3,8 +3,10 @@ package pipeline
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	mfc "github.com/manifestival/controller-runtime-client"
 
@@ -16,9 +18,11 @@ import (
 	"github.com/tektoncd/operator/pkg/controller/setup"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -28,6 +32,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+const replaceTimeout = 60
+
 var (
 	tektonVersion   = "v0.14.0"
 	resourceWatched string
@@ -36,6 +42,7 @@ var (
 	noAutoInstall   bool
 	recursive       bool
 	ctrlLog         = logf.Log.WithName("ctrl").WithName("tektonpipeline")
+	deployment      = mf.Any(mf.ByKind("Deployment"))
 )
 
 func init() {
@@ -213,14 +220,33 @@ func (r *ReconcileTektonPipeline) reconcileInstall(req reconcile.Request, res *o
 		return reconcile.Result{}, err
 	}
 
-	if err := r.manifest.Apply(); err != nil {
-		log.Error(err, "failed to apply release.yaml")
-		// ignoring failure to update
+	if err := r.manifest.Filter(mf.Not(deployment)).Apply(); err != nil {
 		_ = r.updateStatus(res, op.TektonPipelineCondition{
 			Code:    op.ErrorStatus,
 			Details: err.Error(),
 			Version: tektonVersion})
-		return reconcile.Result{}, err
+
+		return reconcile.Result{}, fmt.Errorf("failed to apply non deployment manifest: %w", err)
+	}
+
+	if err := r.manifest.Filter(deployment).Apply(); err != nil {
+		if errors.IsInvalid(err) {
+			if err := r.deleteAndCreate(); err != nil {
+				_ = r.updateStatus(res, op.TektonPipelineCondition{
+					Code:    op.ErrorStatus,
+					Details: err.Error(),
+					Version: tektonVersion})
+
+				return reconcile.Result{}, fmt.Errorf("failed to recreate deployments: %w", err)
+			}
+		} else {
+			_ = r.updateStatus(res, op.TektonPipelineCondition{
+				Code:    op.ErrorStatus,
+				Details: err.Error(),
+				Version: tektonVersion})
+
+			return reconcile.Result{}, fmt.Errorf("failed to apply deployments: %w", err)
+		}
 	}
 	log.Info("successfully applied all resources")
 
@@ -264,6 +290,29 @@ func (r *ReconcileTektonPipeline) markInvalidResource(res *op.TektonPipeline) {
 	if err != nil {
 		ctrlLog.Info("failed to update status as invalid")
 	}
+}
+
+func (r *ReconcileTektonPipeline) deleteAndCreate() error {
+	timeout := time.Duration(replaceTimeout) * time.Second
+
+	propPolicy := mf.PropagationPolicy(metav1.DeletePropagationForeground)
+	if err := r.manifest.Filter(deployment).Delete(propPolicy); err != nil {
+		log.Error(err, "failed to delete Deployment resources")
+		return err
+	}
+
+	if err := wait.PollImmediate(1*time.Second, timeout, func() (bool, error) {
+		for _, deploy := range r.manifest.Filter(deployment).Resources() {
+			if _, err := r.manifest.Client.Get(&deploy); !apierrors.IsNotFound(err) {
+				return false, err
+			}
+		}
+		return true, nil
+	}); err != nil {
+		return err
+	}
+
+	return r.manifest.Filter(deployment).Apply()
 }
 
 // updateStatus set the status of res to s and refreshes res to the lastest version
