@@ -15,8 +15,7 @@ spec:
       serviceAccountName: tekton-operator
       containers:
         - name: tekton-operator
-          # Replace this with the built image name
-          image: REPLACE_IMAGE
+          image: github.com/tektoncd/operator/cmd/manager
           command:
           - tekton-operator
           imagePullPolicy: Always
