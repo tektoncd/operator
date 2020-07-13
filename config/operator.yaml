@@ -15,9 +15,7 @@ spec:
       serviceAccountName: tekton-operator
       containers:
         - name: tekton-operator
-          image: github.com/tektoncd/operator/cmd/manager
-          command:
-          - tekton-operator
+          image: ko://github.com/tektoncd/operator/cmd/manager
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
