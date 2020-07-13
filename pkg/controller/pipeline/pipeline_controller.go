@@ -3,10 +3,12 @@ package pipeline
 import (
 	"context"
 	"flag"
+	"os"
 	"path/filepath"
 
-	"github.com/go-logr/logr"
 	mfc "github.com/manifestival/controller-runtime-client"
+
+	"github.com/go-logr/logr"
 	mf "github.com/manifestival/manifestival"
 	"github.com/operator-framework/operator-sdk/pkg/predicate"
 	"github.com/prometheus/common/log"
@@ -45,11 +47,6 @@ func init() {
 		&targetNamespace, "target-namespace", setup.DefaultTargetNs,
 		"Namespace where pipeline will be installed default: "+setup.DefaultTargetNs)
 
-	defaultResDir := filepath.Join("deploy", "resources", tektonVersion)
-	flag.StringVar(
-		&resourceDir, "resource-dir", defaultResDir,
-		"Path to resource manifests, default: "+defaultResDir)
-
 	flag.BoolVar(
 		&noAutoInstall, "no-auto-install", false,
 		"Do not automatically install tekton pipelines, default: false")
@@ -68,7 +65,10 @@ func init() {
 // Add creates a new TektonPipeline Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
+	koDataDir := os.Getenv("KO_DATA_PATH")
+	resourceDir := filepath.Join(koDataDir, "resources", tektonVersion)
 	m, err := mf.ManifestFrom(sourceBasedOnRecursion(resourceDir), mf.UseClient(mfc.NewClient(mgr.GetClient())))
+
 	if err != nil {
 		return err
 	}

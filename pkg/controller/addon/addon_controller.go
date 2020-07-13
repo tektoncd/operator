@@ -3,6 +3,7 @@ package addon
 import (
 	"context"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -265,7 +266,8 @@ func GetLatestVersion(res *op.TektonAddon) (string, error) {
 }
 
 func getAddonBase(res *op.TektonAddon) string {
-	return filepath.Join("deploy", "resources", "addons", res.Name)
+	koDataDir := os.Getenv("KO_DATA_PATH")
+	return filepath.Join(koDataDir, "resources", "addons", res.Name)
 }
 
 func requestLogger(req reconcile.Request, context string) logr.Logger {
