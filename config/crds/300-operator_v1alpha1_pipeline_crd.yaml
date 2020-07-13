@@ -8,7 +8,7 @@ spec:
     kind: TektonPipeline
     listKind: TektonPipelineList
     plural: tektonpipelines
-    singular: tektonipeline
+    singular: tektonpipeline
   scope: Cluster
   subresources:
     status: {}

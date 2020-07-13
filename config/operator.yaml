@@ -26,5 +26,3 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "tekton-operator"
-          args:
-            - --no-auto-install=true
