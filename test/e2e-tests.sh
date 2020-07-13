@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2019 The Tekton Authors
+# Copyright 2020 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,19 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export GO111MODULE=on
-source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
+# This script calls out to scripts in tektoncd/plumbing to setup a cluster
+# and deploy Tekton Operator to it for running integration tests.
 
+source $(dirname $0)/e2e-common.sh
 # Script entry point.
 
 initialize $@
+failed=0
 
-header "Running operator-sdk test"
+header "Setting up environment"
+install_operator_crd
 
- operator-sdk test local ./test/e2e  \
-  --up-local \
-  --operator-namespace operators \
-  --watch-namespace "" \
-  --debug  \
-  --verbose || fail_test
+# Run the integration tests
+header "Running Go e2e tests"
+go_test_e2e -timeout=20m ./test || failed=1
+
+(( failed )) && fail_test
 success
