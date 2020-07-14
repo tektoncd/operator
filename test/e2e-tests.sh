@@ -28,7 +28,7 @@ install_operator_crd
 
 # Run the integration tests
 header "Running Go e2e tests"
-go_test_e2e -timeout=20m ./test || failed=1
+go_test_e2e -timeout=20m ./test/e2e || failed=1
 
 (( failed )) && fail_test
 success
