@@ -28,8 +28,6 @@ function install_operator_crd() {
   echo ">> Deploying Tekton Operator"
   ko apply -f config/ || fail_test "Build operator installation failed"
   verify_operator_installation
-  echo "Check the log of the pod"
-  kubectl logs -f deploy/tekton-operator
 }
 
 function verify_operator_installation() {

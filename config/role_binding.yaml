@@ -19,7 +19,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: tekton-operator
-  namespace: tekton-operator
+  namespace: default
 roleRef:
   kind: ClusterRole
   name: tekton-operator
@@ -32,6 +32,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: tekton-operator
+    namespace: default
 roleRef:
   kind: Role
   name: tekton-operator

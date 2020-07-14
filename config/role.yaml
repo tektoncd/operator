@@ -184,8 +184,10 @@ rules:
 - apiGroups:
   - operator.tekton.dev
   resources:
-  - '*'
+  - tektonpipelines
+  - tektonpipelines/status
   - tektonaddons
+  - tektonaddons/status
   verbs:
   - '*'
 - apiGroups:
