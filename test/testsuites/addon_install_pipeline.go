@@ -19,7 +19,7 @@ import (
 // ValidateAddonInstall creates an instance of addon.operator.tekton.dev
 // and checks whether dashboard deployments are created
 func ValidateAddonInstall(t *testing.T) {
-	ctx := test.NewTestCtx(t)
+	ctx := test.NewContext(t)
 	defer ctx.Cleanup()
 
 	installPipeline(t, ctx)
@@ -31,7 +31,7 @@ func ValidateAddonInstall(t *testing.T) {
 // ValidateAddonDeletion ensures that deleting the addon CR  deletes the already
 // installed addon pipeline
 func ValidateAddonDeletion(t *testing.T) {
-	ctx := test.NewTestCtx(t)
+	ctx := test.NewContext(t)
 	defer ctx.Cleanup()
 
 	installPipeline(t, ctx)
@@ -40,7 +40,7 @@ func ValidateAddonDeletion(t *testing.T) {
 	t.Run("deleting-pipeline-cr-deletes-addon", addonCRDeletionOnTektonPipelineDelete)
 }
 
-func installPipeline(t *testing.T, ctx *test.TestCtx) {
+func installPipeline(t *testing.T, ctx *test.Context) {
 	tektonPipelineCR := &v1alpha1.TektonPipeline{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "TektonPipeline",
@@ -68,7 +68,7 @@ func installPipeline(t *testing.T, ctx *test.TestCtx) {
 }
 
 func addonCRWithVersion(t *testing.T) {
-	ctx := test.NewTestCtx(t)
+	ctx := test.NewContext(t)
 	defer ctx.Cleanup()
 
 	addonCR := &v1alpha1.TektonAddon{
@@ -113,7 +113,7 @@ func addonCRWithVersion(t *testing.T) {
 }
 
 func addonCRWithoutVersion(t *testing.T) {
-	ctx := test.NewTestCtx(t)
+	ctx := test.NewContext(t)
 	defer ctx.Cleanup()
 
 	addonCR := &v1alpha1.TektonAddon{
@@ -155,6 +155,7 @@ func addonCRWithoutVersion(t *testing.T) {
 		t.Errorf("Expected version to be %s but got %s", version, addonCR.Spec.Version)
 	}
 
+	helpers.AssertNoError(t, err)
 	// the check on code is disabled because, dashboard v0.1.1 has a dependency on service.knative.dev
 	// eventhough the dashboard components are installed the conditions[0] will not reach 'Installed' in
 	// the current implementation because of the above case.
@@ -164,7 +165,7 @@ func addonCRWithoutVersion(t *testing.T) {
 }
 
 func addonCRDeletion(t *testing.T) {
-	ctx := test.NewTestCtx(t)
+	ctx := test.NewContext(t)
 	defer ctx.Cleanup()
 
 	addonCR := &v1alpha1.TektonAddon{
@@ -221,7 +222,7 @@ func addonCRDeletion(t *testing.T) {
 }
 
 func addonCRDeletionOnTektonPipelineDelete(t *testing.T) {
-	ctx := test.NewTestCtx(t)
+	ctx := test.NewContext(t)
 	defer ctx.Cleanup()
 
 	addonCR := &v1alpha1.TektonAddon{

@@ -314,17 +314,6 @@ func createCR(c client.Client) error {
 	return err
 }
 
-func isUpToDate(r *op.TektonPipeline) bool {
-	c := r.Status.Conditions
-	if len(c) == 0 {
-		return false
-	}
-
-	latest := c[0]
-	return latest.Version == tektonVersion &&
-		latest.Code == op.InstalledStatus
-}
-
 func requestLogger(req reconcile.Request, context string) logr.Logger {
 	return ctrlLog.WithName(context).WithValues(
 		"Request.Namespace", req.Namespace,

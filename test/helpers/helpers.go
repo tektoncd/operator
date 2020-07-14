@@ -138,7 +138,7 @@ func ValidatePipelineCleanup(t *testing.T, cr *op.TektonPipeline, deployments ..
 	}
 }
 
-func DeployOperator(t *testing.T, ctx *test.TestCtx) error {
+func DeployOperator(t *testing.T, ctx *test.Context) error {
 	err := ctx.InitializeClusterResources(
 		&test.CleanupOptions{
 			TestContext:   ctx,

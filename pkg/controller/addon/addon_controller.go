@@ -83,7 +83,6 @@ type ReconcileAddon struct {
 	// that reads objects from the cache and writes to the apiserver
 	client client.Client
 	scheme *runtime.Scheme
-	addons map[string]mf.Manifest
 }
 
 // Reconcile reads that state of the cluster for a TektonAddon object and makes changes based on the state read

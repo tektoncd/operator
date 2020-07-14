@@ -13,7 +13,7 @@ import (
 // ValidateAutoInstall creates an instance of install.tekton.dev
 // and checks whether pipelines deployments are created
 func ValidateAutoInstall(t *testing.T) {
-	ctx := test.NewTestCtx(t)
+	ctx := test.NewContext(t)
 	defer ctx.Cleanup()
 
 	cr := &op.TektonPipeline{}
@@ -30,7 +30,7 @@ func ValidateAutoInstall(t *testing.T) {
 
 // ValidateDeploymentRecreate verifies the recreation of deployment, if it is deleted.
 func ValidateDeploymentRecreate(t *testing.T) {
-	ctx := test.NewTestCtx(t)
+	ctx := test.NewContext(t)
 	defer ctx.Cleanup()
 
 	cr := &op.TektonPipeline{}
@@ -58,7 +58,7 @@ func ValidateDeploymentRecreate(t *testing.T) {
 // ValidateDeletion ensures that deleting the cluster CR  deletes the already
 // installed tekton pipeline
 func ValidateDeletion(t *testing.T) {
-	ctx := test.NewTestCtx(t)
+	ctx := test.NewContext(t)
 	defer ctx.Cleanup()
 
 	cr := &op.TektonPipeline{}

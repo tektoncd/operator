@@ -10,7 +10,7 @@ import (
 
 // AddonCRD is the test group for testing tektonaddons.operator.tekton.dev CRD
 func AddonCRD(t *testing.T) {
-	ctx := test.NewTestCtx(t)
+	ctx := test.NewContext(t)
 	defer ctx.Cleanup()
 
 	t.Log("deploying operator for addon")

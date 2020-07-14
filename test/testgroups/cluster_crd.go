@@ -11,7 +11,7 @@ import (
 
 // ClusterCRD is the test group for testing tektonpipelines.operator.tekton.dev CRD
 func ClusterCRD(t *testing.T) {
-	ctx := test.NewTestCtx(t)
+	ctx := test.NewContext(t)
 	defer ctx.Cleanup()
 
 	err := helpers.DeployOperator(t, ctx)
