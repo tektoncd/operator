@@ -1,76 +1,51 @@
 package testsuites
 
 import (
-	"context"
 	"testing"
-	"time"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/controller/addon"
 	"github.com/tektoncd/operator/pkg/controller/setup"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/tektoncd/operator/test/helpers"
 	testTektonPipeline "github.com/tektoncd/operator/test/tektonpipeline"
 )
 
 // ValidateAddonInstall creates an instance of addon.operator.tekton.dev
 // and checks whether dashboard deployments are created
-func ValidateAddonInstall(t *testing.T) {
-	ctx := test.NewContext(t)
-	defer ctx.Cleanup()
+func ValidateAddonInstall(t *testing.T, clients *helpers.Clients) {
+	pipelineCR := helpers.WaitForTektonPipelineCR(t, clients.TektonPipeline(), setup.TektonPipelineCRName)
+	helpers.ValidatePipelineSetup(t, clients.KubeClient, pipelineCR, setup.PipelineControllerName, setup.PipelineWebhookName)
 
-	installPipeline(t, ctx)
+	t.Run("creating-addon-with-version", func(t *testing.T) {
+		addonCRWithVersion(t, clients)
+	})
 
-	t.Run("creating-addon-with-version", addonCRWithVersion)
-	t.Run("creating-addon-without-version", addonCRWithoutVersion)
+	t.Run("creating-addon-without-version", func(t *testing.T) {
+		addonCRWithoutVersion(t, clients)
+	})
 }
 
 // ValidateAddonDeletion ensures that deleting the addon CR  deletes the already
 // installed addon pipeline
-func ValidateAddonDeletion(t *testing.T) {
-	ctx := test.NewContext(t)
-	defer ctx.Cleanup()
+func ValidateAddonDeletion(t *testing.T, clients *helpers.Clients) {
+	pipelineCR := helpers.WaitForTektonPipelineCR(t, clients.TektonPipeline(), setup.TektonPipelineCRName)
+	helpers.ValidatePipelineSetup(t, clients.KubeClient, pipelineCR, setup.PipelineControllerName, setup.PipelineWebhookName)
 
-	installPipeline(t, ctx)
+	t.Run("deleting-addon-cr", func(t *testing.T) {
+		addonCRDeletion(t, clients)
+	})
 
-	t.Run("deleting-addon-cr", addonCRDeletion)
-	t.Run("deleting-pipeline-cr-deletes-addon", addonCRDeletionOnTektonPipelineDelete)
+	t.Run("deleting-pipeline-cr-deletes-addon", func(t *testing.T) {
+		addonCRDeletionOnTektonPipelineDelete(t, clients)
+	})
+
 }
 
-func installPipeline(t *testing.T, ctx *test.Context) {
-	tektonPipelineCR := &v1alpha1.TektonPipeline{
-		TypeMeta: v1.TypeMeta{
-			Kind:       "TektonPipeline",
-			APIVersion: "v1alpha1",
-		},
-		ObjectMeta: v1.ObjectMeta{
-			Name: setup.ClusterCRName,
-		},
-		Spec: v1alpha1.TektonPipelineSpec{
-			TargetNamespace: setup.DefaultTargetNs,
-		},
-	}
-	cleanupOptions := &test.CleanupOptions{
-		TestContext:   ctx,
-		Timeout:       5 * time.Second,
-		RetryInterval: 1 * time.Second,
-	}
-
-	err := test.Global.Client.Create(context.TODO(), tektonPipelineCR, cleanupOptions)
-	helpers.AssertNoError(t, err)
-	helpers.WaitForClusterCR(t, setup.ClusterCRName, tektonPipelineCR)
-	helpers.ValidatePipelineSetup(t, tektonPipelineCR,
-		setup.PipelineControllerName,
-		setup.PipelineWebhookName)
-}
-
-func addonCRWithVersion(t *testing.T) {
-	ctx := test.NewContext(t)
-	defer ctx.Cleanup()
-
+func addonCRWithVersion(t *testing.T, clients *helpers.Clients) {
 	addonCR := &v1alpha1.TektonAddon{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "Addon",
@@ -84,38 +59,10 @@ func addonCRWithVersion(t *testing.T) {
 		},
 	}
 
-	cleanupOpetions := &test.CleanupOptions{
-		TestContext:   ctx,
-		Timeout:       5 * time.Second,
-		RetryInterval: 1 * time.Second,
-	}
-
-	err := test.Global.Client.Create(
-		context.TODO(),
-		addonCR,
-		cleanupOpetions)
-
-	helpers.AssertNoError(t, err)
-
-	err = e2eutil.WaitForDeployment(
-		t, test.Global.KubeClient, setup.DefaultTargetNs,
-		"tekton-dashboard",
-		1,
-		testTektonPipeline.APIRetry,
-		testTektonPipeline.APITimeout,
-	)
-	helpers.AssertNoError(t, err)
-
-	helpers.WaitForClusterCR(t, "dashboard", addonCR)
-	if code := addonCR.Status.Conditions[0].Code; code != v1alpha1.InstalledStatus {
-		t.Errorf("Expected code to be %s but got %s", v1alpha1.InstalledStatus, code)
-	}
+	verifyAddonCRDep(t, clients, addonCR)
 }
 
-func addonCRWithoutVersion(t *testing.T) {
-	ctx := test.NewContext(t)
-	defer ctx.Cleanup()
-
+func addonCRWithoutVersion(t *testing.T, clients *helpers.Clients) {
 	addonCR := &v1alpha1.TektonAddon{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "Addon",
@@ -126,48 +73,37 @@ func addonCRWithoutVersion(t *testing.T) {
 		},
 	}
 
-	cleanupOpetions := &test.CleanupOptions{
-		TestContext:   ctx,
-		Timeout:       5 * time.Second,
-		RetryInterval: 1 * time.Second,
+	verifyAddonCRDep(t, clients, addonCR)
+}
+
+func deepCloneAddonCR(source *v1alpha1.TektonAddon, target *v1alpha1.TektonAddon) {
+	target.APIVersion = source.APIVersion
+	target.Spec.Version = source.Spec.Version
+}
+
+func verifyAddonCRDep(t *testing.T, clients *helpers.Clients, addonCR *v1alpha1.TektonAddon) {
+	if existingAddonCR, err := clients.TektonAddon().Get(addonCR.Name, v1.GetOptions{}); apierrors.IsNotFound(err) {
+		_, err = clients.TektonAddon().Create(addonCR)
+		helpers.AssertNoError(t, err)
+	} else {
+		deepCloneAddonCR(addonCR, existingAddonCR)
+		_, err := clients.TektonAddon().Update(existingAddonCR)
+		helpers.AssertNoError(t, err)
 	}
 
-	err := test.Global.Client.Create(
-		context.TODO(),
-		addonCR,
-		cleanupOpetions)
+	helpers.WaitForAddonCR(t, clients.TektonAddon(), "dashboard")
 
-	helpers.AssertNoError(t, err)
-
-	err = e2eutil.WaitForDeployment(
-		t, test.Global.KubeClient, setup.DefaultTargetNs,
+	err := e2eutil.WaitForDeployment(
+		t, clients.KubeClient.Kube, setup.DefaultTargetNs,
 		"tekton-dashboard",
 		1,
 		testTektonPipeline.APIRetry,
 		testTektonPipeline.APITimeout,
 	)
 	helpers.AssertNoError(t, err)
-
-	helpers.WaitForClusterCR(t, "dashboard", addonCR)
-
-	version, err := addon.GetLatestVersion(addonCR)
-	if addonCR.Spec.Version != version {
-		t.Errorf("Expected version to be %s but got %s", version, addonCR.Spec.Version)
-	}
-
-	helpers.AssertNoError(t, err)
-	// the check on code is disabled because, dashboard v0.1.1 has a dependency on service.knative.dev
-	// eventhough the dashboard components are installed the conditions[0] will not reach 'Installed' in
-	// the current implementation because of the above case.
-	//if code := addonCR.Status.Conditions[0].Code; code != v1alpha1.InstalledStatus {
-	//	t.Errorf("Expected code to be %s but got %s", v1alpha1.InstalledStatus, code)
-	//}
 }
 
-func addonCRDeletion(t *testing.T) {
-	ctx := test.NewContext(t)
-	defer ctx.Cleanup()
-
+func addonCRDeletion(t *testing.T, clients *helpers.Clients) {
 	addonCR := &v1alpha1.TektonAddon{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "Addon",
@@ -178,53 +114,16 @@ func addonCRDeletion(t *testing.T) {
 		},
 	}
 
-	cleanupOptions := &test.CleanupOptions{
-		TestContext:   ctx,
-		Timeout:       5 * time.Second,
-		RetryInterval: 1 * time.Second,
-	}
+	verifyAddonCRDep(t, clients, addonCR)
 
-	err := test.Global.Client.Create(
-		context.TODO(),
-		addonCR,
-		cleanupOptions)
-
+	err := clients.TektonAddon().Delete(addonCR.Name, &v1.DeleteOptions{})
 	helpers.AssertNoError(t, err)
 
-	err = e2eutil.WaitForDeployment(
-		t, test.Global.KubeClient, setup.DefaultTargetNs,
-		"tekton-dashboard",
-		1,
-		testTektonPipeline.APIRetry,
-		testTektonPipeline.APITimeout,
-	)
-	helpers.AssertNoError(t, err)
-
-	helpers.WaitForClusterCR(t, "dashboard", addonCR)
-
-	err = e2eutil.WaitForDeployment(
-		t, test.Global.KubeClient, setup.DefaultTargetNs,
-		"tekton-dashboard",
-		1,
-		testTektonPipeline.APIRetry,
-		testTektonPipeline.APITimeout,
-	)
-	helpers.AssertNoError(t, err)
-
-	err = test.Global.Client.Delete(
-		context.TODO(),
-		addonCR)
-
-	helpers.AssertNoError(t, err)
-
-	err = helpers.WaitForDeploymentDeletion(t, setup.DefaultTargetNs, "tekton-dashboard")
+	err = helpers.WaitForDeploymentDeletion(t, clients.KubeClient, setup.DefaultTargetNs, "tekton-dashboard")
 	helpers.AssertNoError(t, err)
 }
 
-func addonCRDeletionOnTektonPipelineDelete(t *testing.T) {
-	ctx := test.NewContext(t)
-	defer ctx.Cleanup()
-
+func addonCRDeletionOnTektonPipelineDelete(t *testing.T, clients *helpers.Clients) {
 	addonCR := &v1alpha1.TektonAddon{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "Addon",
@@ -235,44 +134,13 @@ func addonCRDeletionOnTektonPipelineDelete(t *testing.T) {
 		},
 	}
 
-	cleanupOptions := &test.CleanupOptions{
-		TestContext:   ctx,
-		Timeout:       5 * time.Second,
-		RetryInterval: 1 * time.Second,
-	}
-
-	err := test.Global.Client.Create(
-		context.TODO(),
-		addonCR,
-		cleanupOptions)
-
-	helpers.AssertNoError(t, err)
-
-	err = e2eutil.WaitForDeployment(
-		t, test.Global.KubeClient, setup.DefaultTargetNs,
-		"tekton-dashboard",
-		1,
-		testTektonPipeline.APIRetry,
-		testTektonPipeline.APITimeout,
-	)
-	helpers.AssertNoError(t, err)
-
-	helpers.WaitForClusterCR(t, "dashboard", addonCR)
-
-	err = e2eutil.WaitForDeployment(
-		t, test.Global.KubeClient, setup.DefaultTargetNs,
-		"tekton-dashboard",
-		1,
-		testTektonPipeline.APIRetry,
-		testTektonPipeline.APITimeout,
-	)
-	helpers.AssertNoError(t, err)
+	verifyAddonCRDep(t, clients, addonCR)
 
 	// delete the instance of tektonpipelines.operator.tekton.dev
 	// this should delete the addon CR as the owner of addonCR
 	// is set to the instance (name: cluster)  of tektonpipelines.operator.tekton.dev
-	helpers.DeleteClusterCR(t, setup.ClusterCRName)
+	helpers.DeleteClusterCR(t, clients.TektonPipeline(), setup.TektonPipelineCRName)
 
-	err = helpers.WaitForDeploymentDeletion(t, setup.DefaultTargetNs, "tekton-dashboard")
+	err := helpers.WaitForDeploymentDeletion(t, clients.KubeClient, setup.DefaultTargetNs, "tekton-dashboard")
 	helpers.AssertNoError(t, err)
 }

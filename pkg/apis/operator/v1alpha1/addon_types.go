@@ -34,9 +34,10 @@ type TektonAddonCondition struct {
 	Version string `json:"version"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // Addon is the Schema for the tektonaddons API
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +genclient
+// +genclient:nonNamespaced
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 type TektonAddon struct {
@@ -47,15 +48,14 @@ type TektonAddon struct {
 	Status TektonAddonStatus `json:"status,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // TektonAddonList contains a list of Addon
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TektonAddonList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonAddon `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&TektonAddon{}, &TektonAddonList{})
-}
+//func init() {
+//	SchemeBuilder.Register(&TektonAddon{}, &TektonAddonList{})
+//}

@@ -28,29 +28,9 @@ export DISABLE_MD_LINTING=1
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
 
-function post_build_tests() {
-    golangci-lint run
-}
-
 function build_tests() {
     # TODO add build tests for operator, since the default build tests fail on checking the bundled yamls.
     echo "Skip all the build tests for now"
-}
-
-install_operator_sdk() {
-  local sdk_rel="v0.17.0"
-  curl -JL \
-    https://github.com/operator-framework/operator-sdk/releases/download/${sdk_rel}/operator-sdk-${sdk_rel}-x86_64-linux-gnu \
-    -o /usr/bin/operator-sdk
-  chmod +x /usr/bin/operator-sdk
-}
-
-extra_initialization() {
-  echo "Running as $(whoami) on $(hostname) under $(pwd) dir"
-
-  install_operator_sdk
-  echo ">> operator sdk version"
-  operator-sdk version
 }
 
 # We use the default build, unit and integration test runners.

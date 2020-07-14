@@ -28,10 +28,7 @@ install_operator_crd
 
 # Run the integration tests
 header "Running Go e2e tests"
-operator-sdk test local ./test/e2e  \
-  --up-local \
-  --operator-namespace operators \
-  --watch-namespace "" \
-  --debug  \
-  --verbose || fail_test
+go_test_e2e -timeout=20m ./test/e2e || failed=1
+
+(( failed )) && fail_test
 success

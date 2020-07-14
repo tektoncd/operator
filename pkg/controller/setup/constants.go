@@ -3,7 +3,9 @@ package setup
 const (
 	DefaultTargetNs = "tekton-pipelines"
 
-	ClusterCRName = "cluster"
+	TektonPipelineCRName = "cluster"
+
+	TektonAddonCRName = "dashboard"
 
 	// Name of the pipeline controller deployment
 	PipelineControllerName = "tekton-pipelines-controller"

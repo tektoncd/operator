@@ -52,9 +52,10 @@ const (
 	ErrorStatus InstallStatus = "error"
 )
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // TektonPipeline is the Schema for the tektonpipelines API
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +genclient
+// +genclient:nonNamespaced
 // +k8s:openapi-gen=true
 // +kubebuilder:resource:path=tektonpipeline
 // +kubebuilder:subresource:status
@@ -66,15 +67,14 @@ type TektonPipeline struct {
 	Status TektonPipelineStatus `json:"status,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // TektonPipelineList contains a list of TektonPipeline
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TektonPipelineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonPipeline `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&TektonPipeline{}, &TektonPipelineList{})
-}
+//func init() {
+//	SchemeBuilder.Register(&TektonPipeline{}, &TektonPipelineList{})
+//}
