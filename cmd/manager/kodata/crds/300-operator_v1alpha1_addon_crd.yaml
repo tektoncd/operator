@@ -1,0 +1,68 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: tektonaddons.operator.tekton.dev
+spec:
+  group: operator.tekton.dev
+  names:
+    kind: TektonAddon
+    listKind: TektonAddonList
+    plural: tektonaddons
+    singular: tektonaddon
+  scope: Cluster
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            version:
+              description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                Important: Run "operator-sdk generate k8s" to regenerate code after
+                modifying this file Add custom validation using kubebuilder tags:
+                https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html'
+              type: string
+          required:
+          - version
+          type: object
+        status:
+          properties:
+            conditions:
+              description: installation status sorted in reverse chronological order
+              items:
+                properties:
+                  code:
+                    description: 'Code indicates the status of installation of tektonaddon
+                      resources Valid values are:   - "error"   - "installing"   -
+                      "installed"'
+                    type: string
+                  details:
+                    description: Additional details about the Code
+                    type: string
+                  version:
+                    description: The version of installed tektonaddon
+                    type: string
+                required:
+                - code
+                - version
+                type: object
+              type: array
+          type: object
+  version: v1alpha1
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
