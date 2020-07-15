@@ -1,21 +1,28 @@
 package helpers
 
 import (
-	"context"
 	"testing"
+
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/controller/setup"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 
-	"github.com/operator-framework/operator-sdk/pkg/test"
 	"github.com/operator-framework/operator-sdk/pkg/test/e2eutil"
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/test/tektonpipeline"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	knativeTest "knative.dev/pkg/test"
 )
+
+type ResourceNames struct {
+	TektonPipeline string
+	TektonAddon    string
+}
 
 // AssertNoError confirms the error returned is nil
 func AssertNoError(t *testing.T, err error) {
@@ -27,12 +34,9 @@ func AssertNoError(t *testing.T, err error) {
 
 // WaitForDeploymentDeletion checks to see if a given deployment is deleted
 // the function returns an error if the given deployment is not deleted within the timeout
-func WaitForDeploymentDeletion(t *testing.T, namespace, name string) error {
-	t.Helper()
-
+func WaitForDeploymentDeletion(t *testing.T, kc *knativeTest.KubeClient, namespace, name string) error {
 	err := wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
-		kc := test.Global.KubeClient
-		_, err := kc.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
+		_, err := kc.Kube.AppsV1().Deployments(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsGone(err) || apierrors.IsNotFound(err) {
 				return true, nil
@@ -49,13 +53,11 @@ func WaitForDeploymentDeletion(t *testing.T, namespace, name string) error {
 	return err
 }
 
-func WaitForClusterCR(t *testing.T, name string, obj runtime.Object) {
-	t.Helper()
-
-	objKey := types.NamespacedName{Name: name}
-
-	err := wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
-		err := test.Global.Client.Get(context.TODO(), objKey, obj)
+func WaitForAddonCR(t *testing.T, tektonAddonClient operatorv1alpha1.TektonAddonInterface, name string) *v1alpha1.TektonAddon {
+	var addon *v1alpha1.TektonAddon
+	var err error
+	errMessage := wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
+		addon, err = tektonAddonClient.Get(name, metav1.GetOptions{})
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				t.Logf("Waiting for availability of %s cr\n", name)
@@ -64,40 +66,52 @@ func WaitForClusterCR(t *testing.T, name string, obj runtime.Object) {
 			return false, err
 		}
 
-		return true, nil
-	})
-
-	AssertNoError(t, err)
-}
-
-func WaitForClusterCRStatus(t *testing.T, name string, installStatus op.InstallStatus) error {
-	t.Helper()
-
-	objKey := types.NamespacedName{Name: name}
-	cr := &op.TektonPipeline{}
-
-	err := wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
-		err := test.Global.Client.Get(context.TODO(), objKey, cr)
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				t.Logf("Waiting for availability of %s cr\n", name)
-				return false, nil
-			}
-			return false, err
-		}
-		if cr.Status.Conditions[0].Code != installStatus {
-			t.Logf("Waiting for InstallStatus %s\n", installStatus)
+		if code := addon.Status.Conditions[0].Code; code != v1alpha1.InstalledStatus {
 			return false, nil
 		}
 		return true, nil
 	})
-	return err
+	AssertNoError(t, errMessage)
+	return addon
 }
 
-func DeletePipelineDeployment(t *testing.T, dep *appsv1.Deployment) {
-	t.Helper()
+func WaitForTektonPipelineCR(t *testing.T, tektonPipelineClient operatorv1alpha1.TektonPipelineInterface, name string) *v1alpha1.TektonPipeline {
+	var pipeline *v1alpha1.TektonPipeline
+	var err error
+	errMessage := wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
+		pipeline, err = tektonPipelineClient.Get(name, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				pipeline := &v1alpha1.TektonPipeline{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: name,
+					},
+					Spec: op.TektonPipelineSpec{
+						TargetNamespace: setup.DefaultTargetNs,
+					},
+				}
+				_, err = tektonPipelineClient.Create(pipeline)
+				if err != nil {
+					return false, err
+				}
+				t.Logf("Waiting for availability of TektonPipeline cr %s\n", name)
+				return false, nil
+			}
+			return false, err
+		}
+
+		if code := pipeline.Status.Conditions[0].Code; code != v1alpha1.InstalledStatus {
+			return false, nil
+		}
+		return true, nil
+	})
+	AssertNoError(t, errMessage)
+	return pipeline
+}
+
+func DeletePipelineDeployment(t *testing.T, clientset *kubernetes.Clientset, dep *appsv1.Deployment) {
 	err := wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
-		err := test.Global.Client.Delete(context.TODO(), dep)
+		err := clientset.AppsV1().Deployments(dep.Namespace).Delete(dep.Name, &metav1.DeleteOptions{})
 		if err != nil {
 			t.Logf("Deletion of deployment %s failed %s \n", dep.GetName(), err)
 			return false, err
@@ -109,20 +123,15 @@ func DeletePipelineDeployment(t *testing.T, dep *appsv1.Deployment) {
 	AssertNoError(t, err)
 }
 
-func DeleteClusterCR(t *testing.T, name string) {
-	t.Helper()
-
-	// ensure object exists before deletion
-	objKey := types.NamespacedName{Name: name}
-	cr := &op.TektonPipeline{}
-	err := test.Global.Client.Get(context.TODO(), objKey, cr)
-	if err != nil {
+func DeleteClusterCR(t *testing.T, tektonPipelineClient operatorv1alpha1.TektonPipelineInterface, name string) {
+	_, err := tektonPipelineClient.Get(name, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
 		t.Logf("Failed to find cluster CR: %s : %s\n", name, err)
 	}
 	AssertNoError(t, err)
 
 	err = wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
-		err := test.Global.Client.Delete(context.TODO(), cr)
+		err := tektonPipelineClient.Delete(name, &metav1.DeleteOptions{})
 		if err != nil {
 			t.Logf("Deletion of CR %s failed %s \n", name, err)
 			return false, err
@@ -134,15 +143,12 @@ func DeleteClusterCR(t *testing.T, name string) {
 	AssertNoError(t, err)
 }
 
-func ValidatePipelineSetup(t *testing.T, cr *op.TektonPipeline, deployments ...string) {
-	t.Helper()
-
-	kc := test.Global.KubeClient
+func ValidatePipelineSetup(t *testing.T, kc *knativeTest.KubeClient, cr *op.TektonPipeline, deployments ...string) {
 	ns := cr.Spec.TargetNamespace
 
 	for _, d := range deployments {
 		err := e2eutil.WaitForDeployment(
-			t, kc, ns,
+			t, kc.Kube, ns,
 			d,
 			1,
 			tektonpipeline.APIRetry,
@@ -152,37 +158,19 @@ func ValidatePipelineSetup(t *testing.T, cr *op.TektonPipeline, deployments ...s
 	}
 }
 
-func ValidatePipelineCleanup(t *testing.T, cr *op.TektonPipeline, deployments ...string) {
-	t.Helper()
-
+func ValidatePipelineCleanup(t *testing.T, kc *knativeTest.KubeClient, cr *op.TektonPipeline, deployments ...string) {
 	ns := cr.Spec.TargetNamespace
 	for _, d := range deployments {
-		err := WaitForDeploymentDeletion(t, ns, d)
+		err := WaitForDeploymentDeletion(t, kc, ns, d)
 		AssertNoError(t, err)
 	}
 }
 
-func DeployOperator(t *testing.T, ctx *test.TestCtx) error {
-	err := ctx.InitializeClusterResources(
-		&test.CleanupOptions{
-			TestContext:   ctx,
-			Timeout:       tektonpipeline.CleanupTimeout,
-			RetryInterval: tektonpipeline.CleanupRetry,
-		},
-	)
-	if err != nil {
-		return err
-	}
-
-	namespace, err := ctx.GetNamespace()
-	if err != nil {
-		return err
-	}
-
-	return e2eutil.WaitForOperatorDeployment(
+func DeployOperator(t *testing.T, kubeclient kubernetes.Interface) error {
+	return e2eutil.WaitForDeployment(
 		t,
-		test.Global.KubeClient,
-		namespace,
+		kubeclient,
+		tektonpipeline.TestOperatorNS,
 		tektonpipeline.TestOperatorName,
 		1,
 		tektonpipeline.APIRetry,

@@ -26,6 +26,7 @@
 
 export GO111MODULE=on
 export DISABLE_MD_LINTING=1
+export DISABLE_MD_LINK_CHECK=1
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-tests.sh
 
@@ -36,6 +37,7 @@ unit_tests() {
 build_tests() {
   header "Running operator-sdk build"
   operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
+  go build -v ./...
 }
 
 install_operator_sdk() {
