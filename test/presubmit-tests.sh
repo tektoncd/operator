@@ -30,7 +30,7 @@ source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/presubmit-te
 
 function build_tests() {
     # TODO add build tests for operator, since the default build tests fail on checking the bundled yamls.
-    echo "Skip all the build tests for now"
+    go build -v ./...
 }
 
 # We use the default build, unit and integration test runners.
