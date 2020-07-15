@@ -5,7 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: tekton-operator
-  namespace: tekton-operator
+  namespace: default
 roleRef:
   kind: ClusterRole
   name: tekton-operator
