@@ -17,7 +17,7 @@ package tools
 
 // This package imports things required by this repository, to force `go mod` to see them as dependencies
 import (
-	_ "github.com/tektoncd/plumbing"
+	_ "github.com/tektoncd/plumbing/scripts"
 	_ "k8s.io/code-generator"
 	_ "knative.dev/pkg/hack"
 )

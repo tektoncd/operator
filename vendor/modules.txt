@@ -256,7 +256,7 @@ github.com/spf13/cobra
 github.com/spf13/pflag
 # github.com/tektoncd/plumbing v0.0.0-20200430135134-e53521e1d887
 ## explicit
-github.com/tektoncd/plumbing
+github.com/tektoncd/plumbing/scripts
 # go.opencensus.io v0.22.4
 go.opencensus.io
 go.opencensus.io/internal
