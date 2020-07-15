@@ -13,18 +13,9 @@ const (
 	// when waiting for a specific condition to be true.
 	APITimeout = time.Minute * 5
 
-	// CleanupRetry is the interval at which test framework attempts cleanup
-	CleanupRetry = time.Second * 10
-
-	// CleanupTimeout is the wait time for test framework cleanup
-	CleanupTimeout = time.Second * 180
-
 	// TestOperatorNS specifies the namespace of the operator being tested
 	TestOperatorNS = "default"
 
 	// TestOperatorName specifies the name of the operator being tested
 	TestOperatorName = "tekton-operator"
-
-	// TektonPipelineCRName is the name of the TektonPipeline CR
-	TektonPipelineCRName = "cluster"
 )

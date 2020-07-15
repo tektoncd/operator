@@ -340,7 +340,7 @@ func (r *ReconcileAddon) updateStatus(res *op.TektonAddon, c op.TektonAddonCondi
 func (r *ReconcileAddon) getPipelineRes() (*op.TektonPipeline, error) {
 	res := &op.TektonPipeline{}
 	namespacedName := types.NamespacedName{
-		Name: setup.ClusterCRName,
+		Name: setup.TektonPipelineCRName,
 	}
 	err := r.client.Get(context.TODO(), namespacedName, res)
 	return res, err

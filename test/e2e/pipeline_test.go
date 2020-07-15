@@ -18,8 +18,8 @@ package e2e
 import (
 	"testing"
 
+	"github.com/tektoncd/operator/pkg/controller/setup"
 	"github.com/tektoncd/operator/test/helpers"
-	"github.com/tektoncd/operator/test/tektonpipeline"
 	"github.com/tektoncd/operator/test/testgroups"
 )
 
@@ -28,7 +28,7 @@ func TestTektonPipeline(t *testing.T) {
 	clients := helpers.Setup(t)
 
 	names := helpers.ResourceNames{
-		TektonPipeline: tektonpipeline.TektonPipelineCRName,
+		TektonPipeline: setup.TektonPipelineCRName,
 	}
 
 	helpers.CleanupOnInterrupt(func() { helpers.TearDown(t, clients, names) })

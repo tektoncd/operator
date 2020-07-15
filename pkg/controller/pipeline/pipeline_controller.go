@@ -46,8 +46,8 @@ var (
 
 func init() {
 	flag.StringVar(
-		&resourceWatched, "watch-resource", setup.ClusterCRName,
-		"cluster-wide resource that operator honours, default: "+setup.ClusterCRName)
+		&resourceWatched, "watch-resource", setup.TektonPipelineCRName,
+		"cluster-wide resource that operator honours, default: "+setup.TektonPipelineCRName)
 
 	flag.StringVar(
 		&targetNamespace, "target-namespace", setup.DefaultTargetNs,
