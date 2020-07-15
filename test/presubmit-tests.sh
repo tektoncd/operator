@@ -35,26 +35,8 @@ unit_tests() {
 }
 
 build_tests() {
-  header "Running operator-sdk build"
-  operator-sdk build gcr.io/tekton-nightly/tektoncd-operator
+  header "Build the source code of operator"
   go build -v ./...
 }
-
-install_operator_sdk() {
-  local sdk_rel="v0.17.0"
-  curl -JL \
-    https://github.com/operator-framework/operator-sdk/releases/download/${sdk_rel}/operator-sdk-${sdk_rel}-x86_64-linux-gnu \
-    -o /usr/bin/operator-sdk
-  chmod +x /usr/bin/operator-sdk
-}
-
-extra_initialization() {
-  echo "Running as $(whoami) on $(hostname) under $(pwd) dir"
-
-  install_operator_sdk
-  echo ">> operator sdk version"
-  operator-sdk version
-}
-
 
 main "$@"
