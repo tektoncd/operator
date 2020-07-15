@@ -74,7 +74,3 @@ type TektonPipelineList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonPipeline `json:"items"`
 }
-
-//func init() {
-//	SchemeBuilder.Register(&TektonPipeline{}, &TektonPipelineList{})
-//}

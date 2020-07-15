@@ -16,7 +16,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tekton-operator
-  namespace: default
 spec:
   replicas: 1
   selector:
