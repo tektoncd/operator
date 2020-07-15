@@ -1,5 +1,3 @@
-// +build e2e
-
 /*
 Copyright 2020 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,34 +11,40 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package helpers
 
 import (
+	"os"
+	"os/signal"
 	"testing"
 
-	"github.com/tektoncd/operator/pkg/controller/setup"
-	"github.com/tektoncd/operator/test/client"
-	"github.com/tektoncd/operator/test/helpers"
-	"github.com/tektoncd/operator/test/testgroups"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TestTektonPipeline verifies the TektonPipeline creation, deployment recreation, and TektonPipeline deletion.
-func TestTektonPipeline(t *testing.T) {
-	clients := client.Setup(t)
+// CleanupOnInterrupt will execute the function cleanup if an interrupt signal is caught
+func CleanupOnInterrupt(cleanup func()) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		for range c {
+			cleanup()
+			os.Exit(1)
+		}
+	}()
+}
 
-	names := helpers.ResourceNames{
-		TektonPipeline: setup.TektonPipelineCRName,
+// TearDown will delete created names using clients.
+func TearDown(t *testing.T, clients *Clients, names ResourceNames) {
+	if clients != nil && clients.Operator != nil {
+		err := clients.TektonPipeline().Delete(names.TektonPipeline, &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Fatalf("Failed to delete the TektonPipeline CR: %v", err)
+		}
+		err = clients.TektonAddon().Delete(names.TektonPipeline, &metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Fatalf("Failed to delete the TektonAddon CR: %v", err)
+		}
 	}
-
-	helpers.CleanupOnInterrupt(func() { helpers.TearDown(t, clients, names) })
-	defer helpers.TearDown(t, clients, names)
-
-	// Run the TektonPipeline test
-	t.Run("tektonpipeline-cr-test", func(t *testing.T) {
-		testgroups.TektonPipelineCRD(t, clients)
-	})
-
-	t.Run("tektonaddon-crd", func(t *testing.T) {
-		testgroups.AddonCRD(t, clients)
-	})
 }

@@ -24,4 +24,7 @@ const (
 
 	// TestOperatorName specifies the name of the operator being tested
 	TestOperatorName = "tekton-operator"
+
+	// TektonPipelineCRName is the name of the TektonPipeline CR
+	TektonPipelineCRName = "cluster"
 )
