@@ -32,7 +32,6 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: tekton-operator
-    namespace: default
 roleRef:
   kind: Role
   name: tekton-operator
