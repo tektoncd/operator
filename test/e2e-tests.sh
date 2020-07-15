@@ -20,6 +20,9 @@ source $(dirname $0)/e2e-common.sh
 initialize $@
 failed=0
 
+header "Setting up environment"
+install_operator_crd
+
 # Run the integration tests
 header "Running Go e2e tests"
 go_test_e2e -timeout=20m ./test/e2e || failed=1
