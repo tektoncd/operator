@@ -66,7 +66,7 @@ func init() {
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	koDataDir := os.Getenv("KO_DATA_PATH")
-	resourceDir := filepath.Join(koDataDir, "resources", tektonVersion)
+	resourceDir = filepath.Join(koDataDir, "resources", tektonVersion)
 	m, err := mf.ManifestFrom(sourceBasedOnRecursion(resourceDir), mf.UseClient(mfc.NewClient(mgr.GetClient())))
 
 	if err != nil {

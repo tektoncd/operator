@@ -23,10 +23,6 @@ initialize $@
 
 header "Running operator-sdk test"
 
- operator-sdk test local ./test/e2e  \
-  --up-local \
-  --operator-namespace operators \
-  --watch-namespace "" \
-  --debug  \
-  --verbose || fail_test
+ make local-test-e2e || fail_test
+
 success
