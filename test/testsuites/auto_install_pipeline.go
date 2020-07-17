@@ -22,10 +22,8 @@ func ValidateAutoInstall(t *testing.T) {
 		setup.PipelineControllerName,
 		setup.PipelineWebhookName)
 
-	helpers.WaitForClusterCR(t, setup.ClusterCRName, cr)
-	if code := cr.Status.Conditions[0].Code; code != op.InstalledStatus {
-		t.Errorf("Expected code to be %s but got %s", op.InstalledStatus, code)
-	}
+	err := helpers.WaitForClusterCRStatus(t, setup.ClusterCRName, op.InstalledStatus)
+	helpers.AssertNoError(t, err)
 }
 
 // ValidateDeploymentRecreate verifies the recreation of deployment, if it is deleted.

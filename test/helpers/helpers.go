@@ -70,6 +70,30 @@ func WaitForClusterCR(t *testing.T, name string, obj runtime.Object) {
 	AssertNoError(t, err)
 }
 
+func WaitForClusterCRStatus(t *testing.T, name string, installStatus op.InstallStatus) error {
+	t.Helper()
+
+	objKey := types.NamespacedName{Name: name}
+	cr := &op.TektonPipeline{}
+
+	err := wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
+		err := test.Global.Client.Get(context.TODO(), objKey, cr)
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				t.Logf("Waiting for availability of %s cr\n", name)
+				return false, nil
+			}
+			return false, err
+		}
+		if cr.Status.Conditions[0].Code != installStatus {
+			t.Logf("Waiting for InstallStatus %s\n", installStatus)
+			return false, nil
+		}
+		return true, nil
+	})
+	return err
+}
+
 func DeletePipelineDeployment(t *testing.T, dep *appsv1.Deployment) {
 	t.Helper()
 	err := wait.Poll(tektonpipeline.APIRetry, tektonpipeline.APITimeout, func() (bool, error) {
