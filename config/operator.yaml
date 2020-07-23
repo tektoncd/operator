@@ -3,6 +3,9 @@ kind: Deployment
 metadata:
   name: tekton-operator
   namespace: tekton-operator
+  labels:
+    version: "devel"
+    operator.tekton.dev/release: "devel"
 spec:
   replicas: 1
   selector:
