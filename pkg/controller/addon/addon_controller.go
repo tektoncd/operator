@@ -2,6 +2,7 @@ package addon
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,9 +17,12 @@ import (
 	"golang.org/x/xerrors"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -28,10 +32,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+const replaceTimeout = 60
+
 var (
 	ctrlLog                   = logf.Log.WithName("ctrl").WithName("tektonaddon")
 	errPipelineNotReady       = xerrors.Errorf("tekton-pipelines not ready")
 	errAddonVersionUnresolved = xerrors.Errorf("could not resolve to a valid tektonaddon version")
+	deployment                = mf.Any(mf.ByKind("Deployment"))
 )
 
 // Add creates a new Tekton Addon Controller and adds it to the Manager. The Manager will set fields on the Controller
@@ -207,15 +214,33 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.TektonAdd
 		return reconcile.Result{Requeue: true}, err
 	}
 
-	//deploy addon components
-	if err := manifest.Apply(); err != nil {
-		log.Error(err, "failed to apply release.yaml")
+	if err := manifest.Filter(mf.Not(deployment)).Apply(); err != nil {
 		_ = r.updateStatus(res, op.TektonAddonCondition{
 			Code:    op.ErrorStatus,
 			Details: err.Error(),
-			Version: res.Spec.Version,
-		})
-		return reconcile.Result{Requeue: true}, err
+			Version: res.Spec.Version})
+
+		return reconcile.Result{}, fmt.Errorf("failed to apply non deployment manifest: %w", err)
+	}
+
+	if err := manifest.Filter(deployment).Apply(); err != nil {
+		if errors.IsInvalid(err) {
+			if err := r.deleteAndCreate(manifest); err != nil {
+				_ = r.updateStatus(res, op.TektonAddonCondition{
+					Code:    op.ErrorStatus,
+					Details: err.Error(),
+					Version: res.Spec.Version})
+
+				return reconcile.Result{}, fmt.Errorf("failed to recreate deployments: %w", err)
+			}
+		} else {
+			_ = r.updateStatus(res, op.TektonAddonCondition{
+				Code:    op.ErrorStatus,
+				Details: err.Error(),
+				Version: res.Spec.Version})
+
+			return reconcile.Result{}, fmt.Errorf("failed to apply deployments: %w", err)
+		}
 	}
 
 	log.Info("successfully applied all resources")
@@ -225,6 +250,29 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.TektonAdd
 
 	// requeue true as isUptodate will be validated in the next reconcile loop
 	return reconcile.Result{Requeue: true}, err
+}
+
+func (r *ReconcileAddon) deleteAndCreate(manifest mf.Manifest) error {
+	timeout := time.Duration(replaceTimeout) * time.Second
+
+	propPolicy := mf.PropagationPolicy(metav1.DeletePropagationForeground)
+	if err := manifest.Filter(deployment).Delete(propPolicy); err != nil {
+		log.Error(err, "failed to delete Deployment resources")
+		return err
+	}
+
+	if err := wait.PollImmediate(1*time.Second, timeout, func() (bool, error) {
+		for _, deploy := range manifest.Filter(deployment).Resources() {
+			if _, err := manifest.Client.Get(&deploy); !apierrors.IsNotFound(err) {
+				return false, err
+			}
+		}
+		return true, nil
+	}); err != nil {
+		return err
+	}
+
+	return manifest.Filter(deployment).Apply()
 }
 
 func (r *ReconcileAddon) processPayload(res *op.TektonAddon, targetNS string) (mf.Manifest, error) {
