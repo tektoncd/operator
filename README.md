@@ -9,12 +9,12 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
     
 2. Apply Operator CRD
 
-    `kubectl apply -f deploy/crds/operator_v1alpha1_pipeline_crd.yaml`  
-    `kubectl apply -f deploy/crds/operator_v1alpha1_addon_crd.yaml`
+    `kubectl apply -f config/crds/operator_v1alpha1_pipeline_crd.yaml`  
+    `kubectl apply -f config/crds/operator_v1alpha1_addon_crd.yaml`
     
 3. Deploy the Operator  
 
-    `kubectl -n tekton-operator apply -f deploy/`  
+    `kubectl -n tekton-operator apply -f config/`  
     
     The Operator will automatic install `Tekton pipeline` with `v0.14.0` in the namespace `tekton-pipeline`
 
@@ -31,7 +31,7 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
 
 1. Apply Operator CRD
 
-    `kubectl apply -f deploy/crds/*_crd.yaml`
+    `kubectl apply -f config/crds/*_crd.yaml`
 
 1. start operator
 
@@ -64,10 +64,10 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
 
     `docker push ${YOUR-REGISTORY}/openshift-pipelines-operator:${IMAGE-TAG}`
     
-4. Edit the 'image' value in deploy/operator.yaml to match to your image  
+4. Edit the 'image' value in config/operator.yaml to match to your image  
 
 ## The CRD
-This is a sample of [crd](https://github.com/tektoncd/operator/blob/master/deploy/crds/operator_v1alpha1_pipeline_cr.yaml)
+This is a sample of [crd](https://github.com/tektoncd/operator/blob/master/config/crds/operator_v1alpha1_pipeline_cr.yaml)
 ```
 apiVersion: operator.tekton.dev/v1alpha1
 kind: TektonPipeline
@@ -79,7 +79,7 @@ spec:
 The crd is `Cluster scope`, and `targetNamespace` means `Tekton Pipleine` will installed in it.  
 
 By default the cr will be created automatic, means `Tekton Pipeline` will be installed automatic when Operator installed.
-To change the behavior, you could add argument: `no-auto-install=true` to deploy/operator.yaml, like this:  
+To change the behavior, you could add argument: `no-auto-install=true` to config/operator.yaml, like this:  
 
 ```
 args:
@@ -88,7 +88,7 @@ args:
 
 Then install `Tekton Pipeline` manually:  
 
-`kubectl apply -f deploy/crds/*_cr.yaml`
+`kubectl apply -f config/crds/*_cr.yaml`
 
 ## TektonAddon components
 
