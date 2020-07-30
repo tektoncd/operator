@@ -14,7 +14,7 @@ const (
 	APITimeout = time.Minute * 5
 
 	// TestOperatorNS specifies the namespace of the operator being tested
-	TestOperatorNS = "default"
+	TestOperatorNS = "tekton-operator"
 
 	// TestOperatorName specifies the name of the operator being tested
 	TestOperatorName = "tekton-operator"

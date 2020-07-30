@@ -18,19 +18,24 @@
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
 
+# Namespace of Tekton Operator
+readonly OPERATOR_NAMESPACE="tekton-operator"
+
 function teardown() {
     subheader "Tearing down Tekton operator"
     ko delete --ignore-not-found=true -f config/
-    wait_until_object_does_not_exist namespace default
+    wait_until_object_does_not_exist namespace ${OPERATOR_NAMESPACE}
 }
 
-function install_operator_crd() {
+function install_operator() {
   echo ">> Deploying Tekton Operator"
   ko apply -f config/ || fail_test "Build operator installation failed"
   verify_operator_installation
+  echo ">> Creating the cluster-admin role to the operator service account"
+  kubectl create clusterrolebinding tekton-operator-cluster-admin --clusterrole cluster-admin --serviceaccount tekton-operator:tekton-operator
 }
 
 function verify_operator_installation() {
   # Wait for pods to be running in the namespaces we are deploying to
-  wait_until_pods_running default || fail_test "Tekton Operator did not come up"
+  wait_until_pods_running ${OPERATOR_NAMESPACE} || fail_test "Tekton Operator did not come up"
 }

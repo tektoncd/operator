@@ -63,10 +63,13 @@ func WaitForAddonCR(t *testing.T, tektonAddonClient operatorv1alpha1.TektonAddon
 				t.Logf("Waiting for availability of %s cr\n", name)
 				return false, nil
 			}
+			t.Logf("the error is %s\n", err.Error())
 			return false, err
 		}
 
+		t.Logf("no error is found\n")
 		if code := addon.Status.Conditions[0].Code; code != v1alpha1.InstalledStatus {
+			t.Logf("the code is %s\n", code)
 			return false, nil
 		}
 		return true, nil

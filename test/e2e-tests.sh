@@ -21,7 +21,7 @@ initialize $@
 failed=0
 
 header "Setting up environment"
-install_operator_crd
+install_operator
 
 # Run the integration tests
 header "Running Go e2e tests"
