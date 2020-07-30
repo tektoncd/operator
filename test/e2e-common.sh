@@ -20,13 +20,13 @@ source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
 
 function teardown() {
     subheader "Tearing down Tekton operator"
-    ko delete --ignore-not-found=true -f deploy/
+    ko delete --ignore-not-found=true -f config/
     wait_until_object_does_not_exist namespace default
 }
 
 function install_operator_crd() {
   echo ">> Deploying Tekton Operator"
-  ko apply -f deploy/ || fail_test "Build operator installation failed"
+  ko apply -f config/ || fail_test "Build operator installation failed"
   verify_operator_installation
 }
 
