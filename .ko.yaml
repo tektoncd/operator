@@ -1,1 +1,1 @@
-defaultBaseImage: http://gcr.io/distroless/static:nonroot
+defaultBaseImage: gcr.io/distroless/static:nonroot
