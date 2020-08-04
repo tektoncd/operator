@@ -7,8 +7,9 @@ all: local-dev
 clean:
 	-ko delete -f config/
 	-kubectl delete ns tekton-pipelines --ignore-not-found
+	echo ${KO_DATA_PATH}
 	-kubectl delete \
-		-f $$KO_DATA_PATH \
+		-f $$KO_DATA_PATH/resources/ \
 		--ignore-not-found \
 		--recursive
 
@@ -31,7 +32,7 @@ update-deps:
 
 .PHONY: ko-apply
 ko-apply: clean
-	ko apply -f config/
+	ko apply -n tekton-operator -f config/
 
 .PHONY: local-test-e2e
 local-test-e2e: clean dev-setup

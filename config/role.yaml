@@ -177,6 +177,7 @@ rules:
 - apiGroups:
   - tekton.dev
   - triggers.tekton.dev
+  - operator.tekton.dev
   resources:
   - '*'
   verbs:

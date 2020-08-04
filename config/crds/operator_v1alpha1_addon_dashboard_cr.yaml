@@ -4,4 +4,4 @@ metadata:
   name: dashboard
 spec:
   # Add fields here
-  version: v0.6.1
+  version: v0.8.2

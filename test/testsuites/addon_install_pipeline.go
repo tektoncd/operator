@@ -80,7 +80,7 @@ func addonCRWithVersion(t *testing.T) {
 			Name: "dashboard",
 		},
 		Spec: v1alpha1.TektonAddonSpec{
-			Version: "v0.1.1",
+			Version: "v0.8.2",
 		},
 	}
 
