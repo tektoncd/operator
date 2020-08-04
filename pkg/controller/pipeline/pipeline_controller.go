@@ -35,7 +35,7 @@ import (
 const replaceTimeout = 60
 
 var (
-	tektonVersion   = "v0.14.0"
+	tektonVersion   = "v0.15.0"
 	resourceWatched string
 	resourceDir     string
 	targetNamespace string
@@ -73,7 +73,7 @@ func init() {
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager) error {
 	koDataDir := os.Getenv("KO_DATA_PATH")
-	resourceDir = filepath.Join(koDataDir, "resources", tektonVersion)
+	resourceDir = filepath.Join(koDataDir, "resources", "pipelines", tektonVersion)
 	m, err := mf.ManifestFrom(sourceBasedOnRecursion(resourceDir), mf.UseClient(mfc.NewClient(mgr.GetClient())))
 
 	if err != nil {
