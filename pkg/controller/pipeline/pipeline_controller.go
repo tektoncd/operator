@@ -17,7 +17,6 @@ import (
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/controller/setup"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -170,14 +169,14 @@ func (r *ReconcileTektonPipeline) Reconcile(req reconcile.Request) (reconcile.Re
 		log.Info("ignoring incorrect object")
 
 		// handle resources that are not interesting as error
-		if !errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
 			r.markInvalidResource(res)
 		}
 		return reconcile.Result{}, nil
 	}
 
 	// handle deletion of resource
-	if errors.IsNotFound(err) {
+	if apierrors.IsNotFound(err) {
 		// User deleted the cluster resource so delete the pipeine resources
 		log.Info("resource has been deleted")
 		return r.reconcileDeletion(req, res)
@@ -230,7 +229,7 @@ func (r *ReconcileTektonPipeline) reconcileInstall(req reconcile.Request, res *o
 	}
 
 	if err := r.manifest.Filter(deployment).Apply(); err != nil {
-		if errors.IsInvalid(err) {
+		if apierrors.IsInvalid(err) {
 			if err := r.deleteAndCreate(); err != nil {
 				_ = r.updateStatus(res, op.TektonPipelineCondition{
 					Code:    op.ErrorStatus,
@@ -355,7 +354,7 @@ func createCR(c client.Client) error {
 	}
 
 	err := c.Create(context.TODO(), cr)
-	if errors.IsAlreadyExists(err) {
+	if apierrors.IsAlreadyExists(err) {
 		log.Info("skipped creation", "reason", "resoure already exists")
 		return nil
 	}

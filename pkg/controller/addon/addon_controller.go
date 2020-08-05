@@ -16,7 +16,6 @@ import (
 	"github.com/tektoncd/operator/pkg/controller/setup"
 	"golang.org/x/xerrors"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -103,7 +102,7 @@ func (r *ReconcileAddon) Reconcile(req reconcile.Request) (reconcile.Result, err
 	instance := &op.TektonAddon{}
 	err := r.client.Get(context.TODO(), req.NamespacedName, instance)
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			log.Info("resource has been deleted")
 			return reconcile.Result{}, nil
 			// TektonAddon components (items in yaml manifest) will be deleted
@@ -224,7 +223,7 @@ func (r *ReconcileAddon) reconcileAddon(req reconcile.Request, res *op.TektonAdd
 	}
 
 	if err := manifest.Filter(deployment).Apply(); err != nil {
-		if errors.IsInvalid(err) {
+		if apierrors.IsInvalid(err) {
 			if err := r.deleteAndCreate(manifest); err != nil {
 				_ = r.updateStatus(res, op.TektonAddonCondition{
 					Code:    op.ErrorStatus,

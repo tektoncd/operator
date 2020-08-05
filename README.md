@@ -9,8 +9,8 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
     
 2. Apply Operator CRD
 
-    `kubectl apply -f config/crds/operator_v1alpha1_pipeline_crd.yaml`  
-    `kubectl apply -f config/crds/operator_v1alpha1_addon_crd.yaml`
+    `kubectl apply -f config/crds/300-operator_v1alpha1_pipeline_crd.yaml`
+    `kubectl apply -f config/crds/300-operator_v1alpha1_addon_crd.yaml`
     
 3. Deploy the Operator  
 
@@ -58,16 +58,16 @@ The following steps will install [Tekton Pipeline](https://github.com/tektoncd/p
     
 2. Build go and the container image  
 
-    `operator-sdk build ${YOUR_REGISTORY}/openshift-pipelines-operator:${IMAGE_TAG}`
+    `operator-sdk build ${YOUR_REGISTORY}/tekton-operator:${IMAGE_TAG}`
     
 3. Push the container image  
 
-    `docker push ${YOUR-REGISTORY}/openshift-pipelines-operator:${IMAGE-TAG}`
+    `docker push ${YOUR_REGISTORY}/tekton-operator:${IMAGE_TAG}`
     
 4. Edit the 'image' value in config/operator.yaml to match to your image  
 
 ## The CRD
-This is a sample of [crd](https://github.com/tektoncd/operator/blob/master/config/crds/operator_v1alpha1_pipeline_cr.yaml)
+This is a sample of [cr](https://github.com/tektoncd/operator/blob/master/config/crds/operator_v1alpha1_pipeline_cr.yaml)
 ```
 apiVersion: operator.tekton.dev/v1alpha1
 kind: TektonPipeline
@@ -88,13 +88,13 @@ args:
 
 Then install `Tekton Pipeline` manually:  
 
-`kubectl apply -f config/crds/*_cr.yaml`
+`kubectl apply -f config/crds/operator_v1alpha1_pipeline_cr.yaml`
 
 ## TektonAddon components
 
 Supported tektonaddon components are installed by creating the 'tektonaddon' CR for the component.
 
-Sample CR
+Sample [cr](https://github.com/tektoncd/operator/blob/master/config/crds/operator_v1alpha1_addon_dashboard_cr.yaml)
 
 ```
 apiVersion: operator.tekton.dev/v1alpha1
@@ -102,7 +102,8 @@ kind: TektonAddon
 metadata:
   name: dashboard
 spec:
-  version: v0.1.0
+  # Add fields here
+  version: v0.8.2
 ```
 
 The current supported components and versions are:
@@ -112,6 +113,7 @@ The current supported components and versions are:
   - v0.2.0
   - openshift-v0.2.0
   - v0.6.1
+  - v0.8.2
 - extensionwebhooks
   - v0.2.0
   - openshift-v0.2.0
@@ -123,3 +125,5 @@ The current supported components and versions are:
   - v0.4.0
   - v0.5.0
   - v0.6.0
+  - v0.6.1
+  - v0.7.0
