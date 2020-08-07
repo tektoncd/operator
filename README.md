@@ -1,73 +1,204 @@
 # Tektoncd Operator
 
-Kubernetes [Operator](https://operatorhub.io/getting-started) to manage installations, updates and removal of Tektoncd projects (pipeline, dashboard, …)
+The quickest and easiest way to install, upgrade and manage TektonCD [Pipelines](https://github.com/tektoncd/pipeline),
+[Dashboard](https://github.com/tektoncd/dashboard), [Triggers](https://github.com/tektoncd/triggers)
+on any Kubernetes Cluster.
 
-The following steps will install [Tekton Pipeline](https://github.com/tektoncd/pipeline) and configure it appropriately for your cluster.
-1. Create namespace: `tekton-operator`  
+## Prerequisites
 
-    `kubectl create namespace tekton-operator`
-    
-2. Apply Operator CRD
+- Kubernetes Cluster
+- `kubectl`
+- `tkn` ([tektoncd/cli](https://github.com/tektoncd/cli#installing-tkn))
 
-    `kubectl apply -f config/crds/300-operator_v1alpha1_pipeline_crd.yaml`
-    `kubectl apply -f config/crds/300-operator_v1alpha1_addon_crd.yaml`
-    
-3. Deploy the Operator  
+# Quick Start
 
-    `kubectl -n tekton-operator apply -f config/`  
-    
-    The Operator will automatic install `Tekton pipeline` with `v0.14.0` in the namespace `tekton-pipeline`
+## Install Tektoncd Operator
 
-## Development Prerequisites
-1. [`go`](https://golang.org/doc/install): The language Tektoncd-pipeline-operator is
-   built in
-1. [`git`](https://help.github.com/articles/set-up-git/): For source control
-1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
-   interacting with your kube cluster
-1. operator-sdk: https://github.com/operator-framework/operator-sdk
+To install the latest version of Tektoncd Operator, run
 
+```shell script
+kubectl apply -f https://storage.googleapis.com/tekton-releases/operator/latest/release.notags.yaml
+...
+namespace/tekton-operator created
+customresourcedefinition.apiextensions.k8s.io/tektonaddons.operator.tekton.dev created
+customresourcedefinition.apiextensions.k8s.io/tektonpipelines.operator.tekton.dev created
+deployment.apps/tekton-operator created
+clusterrole.rbac.authorization.k8s.io/tekton-operator created
+clusterrolebinding.rbac.authorization.k8s.io/tekton-operator created
+serviceaccount/tekton-operator created
+```
 
-## Running Operator Locally (Development)
+This will install the operator in `tekton-operator` namespace. Then the operator will automatically install
+ Tekton Pipelines in the `tekton-pipelines` namespace.
 
-1. Apply Operator CRD
+### Check Tektoncd Pipelines Installation
 
-    `kubectl apply -f config/crds/*_crd.yaml`
+ Run
+ ```shell script
+tkn version
+...
+Client version: 0.10.0
+Pipeline version: v0.15.1
+Triggers version: unknown
+```
 
-1. start operator
+or check
 
-    `make local-dev`
+```shell script
+kubectl get tektonpipelines cluster -o jsonpath='{.status.conditions[0]}'
+---
+map[code:installed version:v0.15.1]
+```
 
-1. Update the dependencies
+### Run an Example Pipeline
 
-    `make update-deps`
+Run an example pipeline from Tektoncd Pipelines examples: [Pipeline Run with Params](https://github.com/tektoncd/pipeline/blob/release-v0.15.x/examples/v1beta1/pipelineruns/pipelinerun-with-params.yaml)
 
-## Running E2E Tests Locally (Development)
+```shell script
+kubectl apply -f https://raw.githubusercontent.com/tektoncd/pipeline/release-v0.15.x/examples/v1beta1/pipelineruns/pipelinerun-with-params.yaml
+...
+pipeline.tekton.dev/pipeline-with-params created
+task.tekton.dev/sum-params created
+task.tekton.dev/multiply-params created
+pipelinerun.tekton.dev/pipelinerun-with-params created
+```
 
-1. run
+### Get PipelineRun Logs
 
-    `local-test-e2e`
+```shell script
+tkn pipelinerun ls
+...
+NAME                      STARTED        DURATION     STATUS
+pipelinerun-with-params   1 minute ago   10 seconds   Succeeded
+```
 
-1. to watch resources getting created/deleted, run in a separate terminal:
+```shell script
+tkn pipelinerun logs -f pipelinerun-with-params
+...
+[sum-params : sum] 600
 
-    `watch -d -n 1 kubectl get all -n tekton-pipelines`
+[multiply-params : product] 50000
+```
 
-## Building the Operator Image
-1. Enable go mod  
+## Installing Dashboard
 
-    `export GO111MODULE=on`
-    
-2. Build go and the container image  
+### Prerequisite
 
-    `operator-sdk build ${YOUR_REGISTORY}/tekton-operator:${IMAGE_TAG}`
-    
-3. Push the container image  
+At present the operator need to add `cluster-admin` clusterrole to install Tektoncd Dashboard.
 
-    `docker push ${YOUR_REGISTORY}/tekton-operator:${IMAGE_TAG}`
-    
-4. Edit the 'image' value in config/operator.yaml to match to your image  
+```shell script
+kc create clusterrolebinding tekton-operator-cluster-admin --clusterrole cluster-admin --serviceaccount tekton-operator:tekton-operator
+---
+clusterrolebinding.rbac.authorization.k8s.io/tekton-operator-cluster-admin created
+```
+### Install Dashboard
 
-## The CRD
-This is a sample of [cr](https://github.com/tektoncd/operator/blob/master/config/crds/operator_v1alpha1_pipeline_cr.yaml)
+Tektoncd Dashboard can be installed by creating an instance of TektonAddon CRD.
+
+create `tekton-dashboard.yaml`
+
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonAddon
+metadata:
+  name: dashboard
+spec:
+  # Add fields here
+  version: v0.8.2
+```
+
+Create the resource on the cluster.
+
+```shell script
+kubectl apply -f tekton-dashboard.yaml
+...
+tektonaddon.operator.tekton.dev/dashboard created
+```
+
+### Check Install status
+
+```shell script
+kubectl get tektonaddon dashboard -o jsonpath='{.status.conditions[0]}'
+---
+map[code:installed version:v0.8.2]
+```
+
+wait the Tekton Dashboard Deployment and Service comes up
+
+```shell script
+kubectl get deploy,svc -n tekton-pipelines
+---
+NAME                                          READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/tekton-dashboard              1/1     1            1           8m55s
+deployment.apps/tekton-pipelines-controller   1/1     1            1           31m
+deployment.apps/tekton-pipelines-webhook      1/1     1            1           30m
+
+NAME                                  TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                     AGE
+service/tekton-dashboard              ClusterIP   10.0.5.197   <none>        9097/TCP                    8m56s
+service/tekton-pipelines-controller   ClusterIP   10.0.14.97   <none>        9090/TCP                    31m
+service/tekton-pipelines-webhook      ClusterIP   10.0.0.201   <none>        9090/TCP,8008/TCP,443/TCP   31m
+```
+
+### Accessing Tekton Dashboard
+
+we can access the Tekton Dashboard by exposing the `service/tekton-dashboard`. ([port-forward](https://kubernetes.io/docs/tasks/access-application-cluster/port-forward-access-application-cluster/) or by creating an ingress)
+Reference:
+- on minikube: https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/
+- on KIND:  https://kind.sigs.k8s.io/docs/user/ingress/
+- refer to platform specific documentation if your using a managed Kubernets cluster (eg: AKS, EKS, GKE...)
+
+Once the Tekton Dashboard is accesible, we can see Pipelines, PipelineRuns, logs etc.
+
+**PipelineRuns**
+![pipelineruns](docs/images/tekton-dashboard-v0.8.2-pipelineruns.png)
+
+**PipelineRun Logs**
+![pipelinerunlogs](docs/images/tekton-dashboard-v0.8.2-pipelinerunlogs.png)
+
+## Installing Tekton Triggers
+
+Tektoncd Triggers can be installed by creating an instance of TektonAddon CRD.
+
+create `tekton-triggers.yaml`
+
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonAddon
+metadata:
+  name: trigger
+spec:
+  # Add fields here
+  version: v0.7.0
+```
+
+Create the resource on the cluster.
+
+```shell script
+kubectl apply -f tekton-triggers.yaml
+---
+tektonaddon.operator.tekton.dev/triggers created
+```
+
+### Check Install status
+
+```shell script
+tkn version
+---
+Client version: 0.10.0
+Pipeline version: v0.15.1
+Triggers version: v0.7.0
+```
+
+### Using Tekton Triggers
+
+Please refer [Tektoncd/Triggers: Event Triggering with Tekton](https://github.com/tektoncd/triggers)
+
+# Tekton Operator CRDs
+
+## The TektonPipelines CRD
+
+This is a sample of [TektonPipelines cr](config/crds/operator_v1alpha1_pipeline_cr.yaml)
+
 ```
 apiVersion: operator.tekton.dev/v1alpha1
 kind: TektonPipeline
@@ -78,23 +209,35 @@ spec:
 ```
 The crd is `Cluster scope`, and `targetNamespace` means `Tekton Pipleine` will installed in it.  
 
-By default the cr will be created automatic, means `Tekton Pipeline` will be installed automatic when Operator installed.
+Note: The operator creates the cr automatically, means `Tekton Pipeline` will be installed automatic when Operator installed.
 To change the behavior, you could add argument: `no-auto-install=true` to config/operator.yaml, like this:  
 
 ```
-args:
-- --no-auto-install=true
+...
+    spec:
+      serviceAccountName: tekton-operator
+      containers:
+        - name: tekton-operator
+          image: ko://github.com/tektoncd/operator/cmd/manager
+          imagePullPolicy: Always
+          args:
+          - --no-auto-install=true
+...
 ```
 
-Then install `Tekton Pipeline` manually:  
+Then reset the Operator `Tekton Pipeline` manually:
 
-`kubectl apply -f config/crds/operator_v1alpha1_pipeline_cr.yaml`
+```shell script
+ko delete -f config
+
+ko apply -f config
+```
 
 ## TektonAddon components
 
 Supported tektonaddon components are installed by creating the 'tektonaddon' CR for the component.
 
-Sample [cr](https://github.com/tektoncd/operator/blob/master/config/crds/operator_v1alpha1_addon_dashboard_cr.yaml)
+Sample CR
 
 ```
 apiVersion: operator.tekton.dev/v1alpha1
@@ -102,28 +245,21 @@ kind: TektonAddon
 metadata:
   name: dashboard
 spec:
-  # Add fields here
   version: v0.8.2
 ```
 
 The current supported components and versions are:
 
 - dashboard
-  - v0.1.1
-  - v0.2.0
-  - openshift-v0.2.0
-  - v0.6.1
+  - openshift-v0.8.2
   - v0.8.2
 - extensionwebhooks
   - v0.2.0
   - openshift-v0.2.0
   - v0.6.1
 - trigger
-  - v0.1.0
-  - v0.2.1
-  - v0.3.1
-  - v0.4.0
-  - v0.5.0
-  - v0.6.0
-  - v0.6.1
   - v0.7.0
+
+# References
+
+- [Development Guide](docs/README.md)
