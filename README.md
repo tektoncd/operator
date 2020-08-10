@@ -87,7 +87,7 @@ tkn pipelinerun logs -f pipelinerun-with-params
 At present the operator need to add `cluster-admin` clusterrole to install Tektoncd Dashboard.
 
 ```shell script
-kc create clusterrolebinding tekton-operator-cluster-admin --clusterrole cluster-admin --serviceaccount tekton-operator:tekton-operator
+kubectl create clusterrolebinding tekton-operator-cluster-admin --clusterrole cluster-admin --serviceaccount tekton-operator:tekton-operator
 ---
 clusterrolebinding.rbac.authorization.k8s.io/tekton-operator-cluster-admin created
 ```
