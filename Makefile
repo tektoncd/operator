@@ -43,5 +43,5 @@ local-test-e2e: clean dev-setup
 	--operator-namespace tekton-operators \
 	--no-setup \
 	--verbose \
-	--go-test-flags "-v -timeout 20m -tags=e2e"
+	--go-test-flags "-v -timeout 20m -tags=e2e" \
 	--debug
