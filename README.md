@@ -229,7 +229,6 @@ Then reset the Operator `Tekton Pipeline` manually:
 
 ```shell script
 ko delete -f config
-
 ko apply -f config
 ```
 
