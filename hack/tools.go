@@ -1,3 +1,5 @@
+// +build tools
+
 /*
 Copyright 2019 The Tekton Authors
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,7 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package v1alpha1 contains API Schema definitions for the operator v1alpha1 API group
-// +k8s:deepcopy-gen=package,register
-// +groupName=operator.tekton.dev
-package v1alpha1
+package tools
+
+// This package imports things required by this repository, to force `go mod` to see them as dependencies
+import (
+	_ "k8s.io/code-generator"
+	_ "knative.dev/pkg/hack"
+	_ "knative.dev/test-infra/scripts"
+)
