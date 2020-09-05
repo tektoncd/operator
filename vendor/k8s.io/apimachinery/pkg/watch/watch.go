@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"k8s.io/klog/v2"
+	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -32,8 +32,8 @@ type Interface interface {
 	Stop()
 
 	// Returns a chan which will receive all the events. If an error occurs
-	// or Stop() is called, the implementation will close this channel and
-	// release any resources used by the watch.
+	// or Stop() is called, this channel will be closed, in which case the
+	// watch should be completely cleaned up.
 	ResultChan() <-chan Event
 }
 
@@ -46,9 +46,7 @@ const (
 	Deleted  EventType = "DELETED"
 	Bookmark EventType = "BOOKMARK"
 	Error    EventType = "ERROR"
-)
 
-var (
 	DefaultChanSize int32 = 100
 )
 
@@ -92,7 +90,7 @@ func (w emptyWatch) ResultChan() <-chan Event {
 // FakeWatcher lets you test anything that consumes a watch.Interface; threadsafe.
 type FakeWatcher struct {
 	result  chan Event
-	stopped bool
+	Stopped bool
 	sync.Mutex
 }
 
@@ -112,24 +110,24 @@ func NewFakeWithChanSize(size int, blocking bool) *FakeWatcher {
 func (f *FakeWatcher) Stop() {
 	f.Lock()
 	defer f.Unlock()
-	if !f.stopped {
+	if !f.Stopped {
 		klog.V(4).Infof("Stopping fake watcher.")
 		close(f.result)
-		f.stopped = true
+		f.Stopped = true
 	}
 }
 
 func (f *FakeWatcher) IsStopped() bool {
 	f.Lock()
 	defer f.Unlock()
-	return f.stopped
+	return f.Stopped
 }
 
 // Reset prepares the watcher to be reused.
 func (f *FakeWatcher) Reset() {
 	f.Lock()
 	defer f.Unlock()
-	f.stopped = false
+	f.Stopped = false
 	f.result = make(chan Event)
 }
 
