@@ -36,22 +36,22 @@ func (ks *TektonPipeline) GroupVersionKind() schema.GroupVersionKind {
 
 // GetCondition returns the current condition of a given condition type
 func (is *TektonPipelineStatus) GetCondition(t apis.ConditionType) *apis.Condition {
-	return servingCondSet.Manage(is).GetCondition(t)
+	return pipelineCondSet.Manage(is).GetCondition(t)
 }
 
 // InitializeConditions initializes conditions of an TektonPipelineStatus
 func (is *TektonPipelineStatus) InitializeConditions() {
-	servingCondSet.Manage(is).InitializeConditions()
+	pipelineCondSet.Manage(is).InitializeConditions()
 }
 
 // IsReady looks at the conditions returns true if they are all true.
 func (is *TektonPipelineStatus) IsReady() bool {
-	return servingCondSet.Manage(is).IsHappy()
+	return pipelineCondSet.Manage(is).IsHappy()
 }
 
 // MarkInstallSucceeded marks the InstallationSucceeded status as true.
 func (is *TektonPipelineStatus) MarkInstallSucceeded() {
-	servingCondSet.Manage(is).MarkTrue(InstallSucceeded)
+	pipelineCondSet.Manage(is).MarkTrue(InstallSucceeded)
 	if is.GetCondition(DependenciesInstalled).IsUnknown() {
 		// Assume deps are installed if we're not sure
 		is.MarkDependenciesInstalled()
@@ -61,7 +61,7 @@ func (is *TektonPipelineStatus) MarkInstallSucceeded() {
 // MarkInstallFailed marks the InstallationSucceeded status as false with the given
 // message.
 func (is *TektonPipelineStatus) MarkInstallFailed(msg string) {
-	servingCondSet.Manage(is).MarkFalse(
+	pipelineCondSet.Manage(is).MarkFalse(
 		InstallSucceeded,
 		"Error",
 		"Install failed with message: %s", msg)
@@ -69,12 +69,12 @@ func (is *TektonPipelineStatus) MarkInstallFailed(msg string) {
 
 // MarkVersionMigrationEligible marks the VersionMigrationEligible status as false with given message.
 func (is *TektonPipelineStatus) MarkVersionMigrationEligible() {
-	servingCondSet.Manage(is).MarkTrue(VersionMigrationEligible)
+	pipelineCondSet.Manage(is).MarkTrue(VersionMigrationEligible)
 }
 
 // MarkVersionMigrationNotEligible marks the DeploymentsAvailable status as true.
 func (is *TektonPipelineStatus) MarkVersionMigrationNotEligible(msg string) {
-	servingCondSet.Manage(is).MarkFalse(
+	pipelineCondSet.Manage(is).MarkFalse(
 		VersionMigrationEligible,
 		"Error",
 		"Version migration is not eligible with message: %s", msg)
@@ -82,13 +82,13 @@ func (is *TektonPipelineStatus) MarkVersionMigrationNotEligible(msg string) {
 
 // MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
 func (is *TektonPipelineStatus) MarkDeploymentsAvailable() {
-	servingCondSet.Manage(is).MarkTrue(DeploymentsAvailable)
+	pipelineCondSet.Manage(is).MarkTrue(DeploymentsAvailable)
 }
 
 // MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
 // it's waiting for deployments.
 func (is *TektonPipelineStatus) MarkDeploymentsNotReady() {
-	servingCondSet.Manage(is).MarkFalse(
+	pipelineCondSet.Manage(is).MarkFalse(
 		DeploymentsAvailable,
 		"NotReady",
 		"Waiting on deployments")
@@ -96,13 +96,13 @@ func (is *TektonPipelineStatus) MarkDeploymentsNotReady() {
 
 // MarkDependenciesInstalled marks the DependenciesInstalled status as true.
 func (is *TektonPipelineStatus) MarkDependenciesInstalled() {
-	servingCondSet.Manage(is).MarkTrue(DependenciesInstalled)
+	pipelineCondSet.Manage(is).MarkTrue(DependenciesInstalled)
 }
 
 // MarkDependencyInstalling marks the DependenciesInstalled status as false with the
 // given message.
 func (is *TektonPipelineStatus) MarkDependencyInstalling(msg string) {
-	servingCondSet.Manage(is).MarkFalse(
+	pipelineCondSet.Manage(is).MarkFalse(
 		DependenciesInstalled,
 		"Installing",
 		"Dependency installing: %s", msg)
@@ -111,7 +111,7 @@ func (is *TektonPipelineStatus) MarkDependencyInstalling(msg string) {
 // MarkDependencyMissing marks the DependenciesInstalled status as false with the
 // given message.
 func (is *TektonPipelineStatus) MarkDependencyMissing(msg string) {
-	servingCondSet.Manage(is).MarkFalse(
+	pipelineCondSet.Manage(is).MarkFalse(
 		DependenciesInstalled,
 		"Error",
 		"Dependency missing: %s", msg)

@@ -41,6 +41,7 @@ func addKnownTypes(s *runtime.Scheme) error {
 	s.AddKnownTypes(SchemeGroupVersion,
 		&TektonPipeline{},
 		&TektonPipelineList{},
+	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil
 }
