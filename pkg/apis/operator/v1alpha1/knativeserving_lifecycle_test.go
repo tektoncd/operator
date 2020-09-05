@@ -23,20 +23,20 @@ import (
 	apistest "knative.dev/pkg/apis/testing"
 )
 
-func TestTekonPipelineGroupVersionKind(t *testing.T) {
-	r := &TekonPipeline{}
+func TestTektonPipelineGroupVersionKind(t *testing.T) {
+	r := &TektonPipeline{}
 	want := schema.GroupVersionKind{
 		Group:   GroupName,
 		Version: SchemaVersion,
-		Kind:    KindTekonPipeline,
+		Kind:    KindTektonPipeline,
 	}
 	if got := r.GroupVersionKind(); got != want {
 		t.Errorf("got: %v, want: %v", got, want)
 	}
 }
 
-func TestTekonPipelineHappyPath(t *testing.T) {
-	ks := &TekonPipelineStatus{}
+func TestTektonPipelineHappyPath(t *testing.T) {
+	ks := &TektonPipelineStatus{}
 	ks.InitializeConditions()
 
 	apistest.CheckConditionOngoing(ks, DependenciesInstalled, t)
@@ -71,8 +71,8 @@ func TestTekonPipelineHappyPath(t *testing.T) {
 	}
 }
 
-func TestTekonPipelineErrorPath(t *testing.T) {
-	ks := &TekonPipelineStatus{}
+func TestTektonPipelineErrorPath(t *testing.T) {
+	ks := &TektonPipelineStatus{}
 	ks.InitializeConditions()
 
 	apistest.CheckConditionOngoing(ks, DependenciesInstalled, t)
@@ -121,8 +121,8 @@ func TestTekonPipelineErrorPath(t *testing.T) {
 	}
 }
 
-func TestTekonPipelineExternalDependency(t *testing.T) {
-	ks := &TekonPipelineStatus{}
+func TestTektonPipelineExternalDependency(t *testing.T) {
+	ks := &TektonPipelineStatus{}
 	ks.InitializeConditions()
 
 	// External marks dependency as failed.
@@ -141,8 +141,8 @@ func TestTekonPipelineExternalDependency(t *testing.T) {
 	apistest.CheckConditionSucceeded(ks, InstallSucceeded, t)
 }
 
-func TestTekonPipelineVersionMigrationNotEligible(t *testing.T) {
-	ks := &TekonPipelineStatus{}
+func TestTektonPipelineVersionMigrationNotEligible(t *testing.T) {
+	ks := &TektonPipelineStatus{}
 	ks.InitializeConditions()
 
 	ks.MarkVersionMigrationNotEligible("Version migration not eligible.")
