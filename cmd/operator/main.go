@@ -13,9 +13,12 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
+	"github.com/tektoncd/operator/pkg/reconciler/tektonpipeline"
+	"knative.dev/pkg/injection/sharedmain"
 )
 
 func main() {
-	fmt.Println("TektonCD Operator")
+	sharedmain.Main("tekton-operator",
+		tektonpipeline.NewController,
+	)
 }

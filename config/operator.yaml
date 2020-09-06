@@ -19,11 +19,15 @@ spec:
       serviceAccountName: tekton-operator
       containers:
         - name: tekton-operator
-          image: ko://github.com/tektoncd/operator/cmd/manager
+          image: ko://github.com/tektoncd/operator/cmd/operator
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE
               value: ""
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
             - name: POD_NAME
               valueFrom:
                 fieldRef:
