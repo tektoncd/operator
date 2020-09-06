@@ -14,7 +14,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
@@ -48,16 +47,8 @@ type TektonComponent interface {
 
 // TektonComponentSpec is a common interface for accessing the common spec of all known types.
 type TektonComponentSpec interface {
-	// GetConfig returns means to override entries in upstream configmaps.
-	GetConfig() ConfigMapData
-	// GetRegistry returns means to override deployment images.
-	GetRegistry() *Registry
-	// GetResources returns a list of container resource overrides.
-	GetResources() []ResourceRequirementsOverride
-	// GetVersion gets the version to be installed
-	GetVersion() string
-	// GetManifests gets the list of manifests, which should ultimately be installed
-	GetManifests() []Manifest
+	// GetTargetNamespace gets the version to be installed
+	GetTargetNamespace() string
 }
 
 // TektonComponentStatus is a common interface for status mutations of all known types.
@@ -105,90 +96,12 @@ type TektonComponentStatus interface {
 
 // CommonSpec unifies common fields and functions on the Spec.
 type CommonSpec struct {
-	// A means to override the corresponding entries in the upstream configmaps
+	// TargetNamespace is where resources will be installed
 	// +optional
-	Config ConfigMapData `json:"config,omitempty"`
-
-	// A means to override the corresponding deployment images in the upstream.
-	// If no registry is provided, the knative release images will be used.
-	// +optional
-	Registry Registry `json:"registry,omitempty"`
-
-	// Override containers' resource requirements
-	// +optional
-	Resources []ResourceRequirementsOverride `json:"resources,omitempty"`
-
-	// Override containers' resource requirements
-	// +optional
-	Version string `json:"version,omitempty"`
-
-	// A means to specify the manifests to install
-	// +optional
-	Manifests []Manifest `json:"manifests,omitempty"`
+	TargetNamespace string `json:"targetNamespace,omitempty"`
 }
 
-// GetConfig implements KComponentSpec.
-func (c *CommonSpec) GetConfig() ConfigMapData {
-	return c.Config
-}
-
-// GetRegistry implements KComponentSpec.
-func (c *CommonSpec) GetRegistry() *Registry {
-	return &c.Registry
-}
-
-// GetResources implements KComponentSpec.
-func (c *CommonSpec) GetResources() []ResourceRequirementsOverride {
-	return c.Resources
-}
-
-// GetVersion implements KComponentSpec.
-func (c *CommonSpec) GetVersion() string {
-	return c.Version
-}
-
-// GetManifests implements KComponentSpec.
-func (c *CommonSpec) GetManifests() []Manifest {
-	return c.Manifests
-}
-
-// ConfigMapData is a nested map of maps representing all upstream ConfigMaps. The first
-// level key is the key to the ConfigMap itself (i.e. "logging") while the second level
-// is the data to be filled into the respective ConfigMap.
-type ConfigMapData map[string]map[string]string
-
-// Registry defines image overrides of knative images.
-// This affects both apps/v1.Deployment and caching.internal.knative.dev/v1alpha1.Image.
-// The default value is used as a default format to override for all knative deployments.
-// The override values are specific to each knative deployment.
-type Registry struct {
-	// The default image reference template to use for all knative images.
-	// It takes the form of example-registry.io/custom/path/${NAME}:custom-tag
-	// ${NAME} will be replaced by the deployment container name, or caching.internal.knative.dev/v1alpha1/Image name.
-	// +optional
-	Default string `json:"default,omitempty"`
-
-	// A map of a container name or image name to the full image location of the individual knative image.
-	// +optional
-	Override map[string]string `json:"override,omitempty"`
-
-	// A list of secrets to be used when pulling the knative images. The secret must be created in the
-	// same namespace as the knative-serving deployments, and not the namespace of this resource.
-	// +optional
-	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
-}
-
-// ResourceRequirementsOverride enables the user to override any container's
-// resource requests/limits specified in the embedded manifest
-type ResourceRequirementsOverride struct {
-	// The container name
-	Container string `json:"container"`
-	// The desired ResourceRequirements
-	corev1.ResourceRequirements
-}
-
-// Manifest enables the user to specify the links to the manifests' URLs
-type Manifest struct {
-	// The link of the manifest URL
-	Url string `json:"URL"`
+// GetTargetNamespace implements KComponentSpec.
+func (c *CommonSpec) GetTargetNamespace() string {
+	return c.TargetNamespace
 }
