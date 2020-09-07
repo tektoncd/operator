@@ -23,6 +23,7 @@ import (
 )
 
 var (
+	namespace   mf.Predicate = mf.ByKind("Namespace")
 	role        mf.Predicate = mf.Any(mf.ByKind("ClusterRole"), mf.ByKind("Role"))
 	rolebinding mf.Predicate = mf.Any(mf.ByKind("ClusterRoleBinding"), mf.ByKind("RoleBinding"))
 )
@@ -36,6 +37,10 @@ func Install(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.Tekto
 	// The Operator needs a higher level of permissions if it 'bind's non-existent roles.
 	// To avoid this, we strictly order the manifest application as (Cluster)Roles, then
 	// (Cluster)RoleBindings, then the rest of the manifest.
+	if err := manifest.Filter(namespace).Apply(); err != nil {
+		status.MarkInstallFailed(err.Error())
+		return fmt.Errorf("failed to apply namespaces: %w", err)
+	}
 	if err := manifest.Filter(role).Apply(); err != nil {
 		status.MarkInstallFailed(err.Error())
 		return fmt.Errorf("failed to apply (cluster)roles: %w", err)

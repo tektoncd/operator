@@ -56,7 +56,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	logger := logging.FromContext(ctx)
 
 	// List all TektonPipelines to determine if cluster-scoped resources should be deleted.
-	kss, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines("").List(metav1.ListOptions{})
+	kss, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines().List(metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list all TektonPipelines: %w", err)
 	}
@@ -85,23 +85,14 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two.
-func (r *Reconciler) ReconcileKind(ctx context.Context, ks *v1alpha1.TektonPipeline) pkgreconciler.Event {
+func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipeline) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
-	ks.Status.InitializeConditions()
-	ks.Status.ObservedGeneration = ks.Generation
+	tp.Status.InitializeConditions()
+	tp.Status.ObservedGeneration = tp.Generation
 
-	logger.Infow("Reconciling TektonPipeline", "status", ks.Status)
+	logger.Infow("Reconciling TektonPipeline", "status", tp.Status)
 
-	if !common.IsUpDowngradeEligible(ks) {
-		msg := fmt.Errorf("It is not supported to upgrade or downgrade across multiple MINOR versions. The "+
-			"installed TektonPipeline version is %v.", ks.Status.Version)
-		ks.Status.MarkVersionMigrationNotEligible(msg.Error())
-		return nil
-	} else {
-		ks.Status.MarkVersionMigrationEligible()
-	}
-
-	if err := r.extension.Reconcile(ctx, ks); err != nil {
+	if err := r.extension.Reconcile(ctx, tp); err != nil {
 		return err
 	}
 	stages := common.Stages{
@@ -109,10 +100,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ks *v1alpha1.TektonPipel
 		r.transform,
 		common.Install,
 		common.CheckDeployments,
-		common.DeleteObsoleteResources(ctx, ks, r.installed),
 	}
 	manifest := r.manifest.Append()
-	return stages.Execute(ctx, &manifest, ks)
+	return stages.Execute(ctx, &manifest, tp)
 }
 
 // transform mutates the passed manifest to one with common, component

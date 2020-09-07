@@ -204,7 +204,7 @@ func (r *reconcilerImpl) Reconcile(ctx context.Context, key string) error {
 
 	// Get the resource with this namespace/name.
 
-	getter := r.Lister.TektonPipelines(s.namespace)
+	getter := r.Lister
 
 	original, err := getter.Get(s.name)
 
@@ -305,7 +305,7 @@ func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1alpha1.Te
 		// The first iteration tries to use the injectionInformer's state, subsequent attempts fetch the latest state via API.
 		if attempts > 0 {
 
-			getter := r.Client.OperatorV1alpha1().TektonPipelines(desired.Namespace)
+			getter := r.Client.OperatorV1alpha1().TektonPipelines()
 
 			existing, err = getter.Get(desired.Name, metav1.GetOptions{})
 			if err != nil {
@@ -324,7 +324,7 @@ func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1alpha1.Te
 
 		existing.Status = desired.Status
 
-		updater := r.Client.OperatorV1alpha1().TektonPipelines(existing.Namespace)
+		updater := r.Client.OperatorV1alpha1().TektonPipelines()
 
 		_, err = updater.UpdateStatus(existing)
 		return err
@@ -336,7 +336,7 @@ func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1alpha1.Te
 // updates defaultFinalizerName or its override.
 func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource *v1alpha1.TektonPipeline) (*v1alpha1.TektonPipeline, error) {
 
-	getter := r.Lister.TektonPipelines(resource.Namespace)
+	getter := r.Lister
 
 	actual, err := getter.Get(resource.Name)
 	if err != nil {
@@ -381,7 +381,7 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource 
 		return resource, err
 	}
 
-	patcher := r.Client.OperatorV1alpha1().TektonPipelines(resource.Namespace)
+	patcher := r.Client.OperatorV1alpha1().TektonPipelines()
 
 	resourceName := resource.Name
 	resource, err = patcher.Patch(resourceName, types.MergePatchType, patch)
