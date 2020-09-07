@@ -34,8 +34,8 @@ type OperatorV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *OperatorV1alpha1Client) TektonPipelines(namespace string) TektonPipelineInterface {
-	return newTektonPipelines(c, namespace)
+func (c *OperatorV1alpha1Client) TektonPipelines() TektonPipelineInterface {
+	return newTektonPipelines(c)
 }
 
 // NewForConfig creates a new OperatorV1alpha1Client for the given config.

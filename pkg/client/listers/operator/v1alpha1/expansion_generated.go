@@ -21,7 +21,3 @@ package v1alpha1
 // TektonPipelineListerExpansion allows custom methods to be added to
 // TektonPipelineLister.
 type TektonPipelineListerExpansion interface{}
-
-// TektonPipelineNamespaceListerExpansion allows custom methods to be added to
-// TektonPipelineNamespaceLister.
-type TektonPipelineNamespaceListerExpansion interface{}

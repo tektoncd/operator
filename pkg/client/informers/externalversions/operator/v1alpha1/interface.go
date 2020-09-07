@@ -41,5 +41,5 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 
 // TektonPipelines returns a TektonPipelineInformer.
 func (v *version) TektonPipelines() TektonPipelineInformer {
-	return &tektonPipelineInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+	return &tektonPipelineInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

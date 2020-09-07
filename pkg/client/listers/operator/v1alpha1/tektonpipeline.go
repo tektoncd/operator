@@ -29,8 +29,8 @@ import (
 type TektonPipelineLister interface {
 	// List lists all TektonPipelines in the indexer.
 	List(selector labels.Selector) (ret []*v1alpha1.TektonPipeline, err error)
-	// TektonPipelines returns an object that can list and get TektonPipelines.
-	TektonPipelines(namespace string) TektonPipelineNamespaceLister
+	// Get retrieves the TektonPipeline from the index for a given name.
+	Get(name string) (*v1alpha1.TektonPipeline, error)
 	TektonPipelineListerExpansion
 }
 
@@ -52,38 +52,9 @@ func (s *tektonPipelineLister) List(selector labels.Selector) (ret []*v1alpha1.T
 	return ret, err
 }
 
-// TektonPipelines returns an object that can list and get TektonPipelines.
-func (s *tektonPipelineLister) TektonPipelines(namespace string) TektonPipelineNamespaceLister {
-	return tektonPipelineNamespaceLister{indexer: s.indexer, namespace: namespace}
-}
-
-// TektonPipelineNamespaceLister helps list and get TektonPipelines.
-type TektonPipelineNamespaceLister interface {
-	// List lists all TektonPipelines in the indexer for a given namespace.
-	List(selector labels.Selector) (ret []*v1alpha1.TektonPipeline, err error)
-	// Get retrieves the TektonPipeline from the indexer for a given namespace and name.
-	Get(name string) (*v1alpha1.TektonPipeline, error)
-	TektonPipelineNamespaceListerExpansion
-}
-
-// tektonPipelineNamespaceLister implements the TektonPipelineNamespaceLister
-// interface.
-type tektonPipelineNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all TektonPipelines in the indexer for a given namespace.
-func (s tektonPipelineNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.TektonPipeline, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TektonPipeline))
-	})
-	return ret, err
-}
-
-// Get retrieves the TektonPipeline from the indexer for a given namespace and name.
-func (s tektonPipelineNamespaceLister) Get(name string) (*v1alpha1.TektonPipeline, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
+// Get retrieves the TektonPipeline from the index for a given name.
+func (s *tektonPipelineLister) Get(name string) (*v1alpha1.TektonPipeline, error) {
+	obj, exists, err := s.indexer.GetByKey(name)
 	if err != nil {
 		return nil, err
 	}

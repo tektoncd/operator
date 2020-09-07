@@ -201,7 +201,6 @@ func manifestPath(version string, instance v1alpha1.TektonComponent) string {
 	if manifestPath := componentURL(version, instance); manifestPath != "" {
 		return manifestPath
 	}
-
 	localPath := filepath.Join(componentDir(instance), version)
 	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
 		return localPath

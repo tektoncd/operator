@@ -28,8 +28,8 @@ type FakeOperatorV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeOperatorV1alpha1) TektonPipelines(namespace string) v1alpha1.TektonPipelineInterface {
-	return &FakeTektonPipelines{c, namespace}
+func (c *FakeOperatorV1alpha1) TektonPipelines() v1alpha1.TektonPipelineInterface {
+	return &FakeTektonPipelines{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

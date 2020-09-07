@@ -32,7 +32,7 @@ import (
 // TektonPipelinesGetter has a method to return a TektonPipelineInterface.
 // A group's client should implement this interface.
 type TektonPipelinesGetter interface {
-	TektonPipelines(namespace string) TektonPipelineInterface
+	TektonPipelines() TektonPipelineInterface
 }
 
 // TektonPipelineInterface has methods to work with TektonPipeline resources.
@@ -52,14 +52,12 @@ type TektonPipelineInterface interface {
 // tektonPipelines implements TektonPipelineInterface
 type tektonPipelines struct {
 	client rest.Interface
-	ns     string
 }
 
 // newTektonPipelines returns a TektonPipelines
-func newTektonPipelines(c *OperatorV1alpha1Client, namespace string) *tektonPipelines {
+func newTektonPipelines(c *OperatorV1alpha1Client) *tektonPipelines {
 	return &tektonPipelines{
 		client: c.RESTClient(),
-		ns:     namespace,
 	}
 }
 
@@ -67,7 +65,6 @@ func newTektonPipelines(c *OperatorV1alpha1Client, namespace string) *tektonPipe
 func (c *tektonPipelines) Get(name string, options v1.GetOptions) (result *v1alpha1.TektonPipeline, err error) {
 	result = &v1alpha1.TektonPipeline{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("tektonpipelines").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -84,7 +81,6 @@ func (c *tektonPipelines) List(opts v1.ListOptions) (result *v1alpha1.TektonPipe
 	}
 	result = &v1alpha1.TektonPipelineList{}
 	err = c.client.Get().
-		Namespace(c.ns).
 		Resource("tektonpipelines").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -101,7 +97,6 @@ func (c *tektonPipelines) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	}
 	opts.Watch = true
 	return c.client.Get().
-		Namespace(c.ns).
 		Resource("tektonpipelines").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -112,7 +107,6 @@ func (c *tektonPipelines) Watch(opts v1.ListOptions) (watch.Interface, error) {
 func (c *tektonPipelines) Create(tektonPipeline *v1alpha1.TektonPipeline) (result *v1alpha1.TektonPipeline, err error) {
 	result = &v1alpha1.TektonPipeline{}
 	err = c.client.Post().
-		Namespace(c.ns).
 		Resource("tektonpipelines").
 		Body(tektonPipeline).
 		Do().
@@ -124,7 +118,6 @@ func (c *tektonPipelines) Create(tektonPipeline *v1alpha1.TektonPipeline) (resul
 func (c *tektonPipelines) Update(tektonPipeline *v1alpha1.TektonPipeline) (result *v1alpha1.TektonPipeline, err error) {
 	result = &v1alpha1.TektonPipeline{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("tektonpipelines").
 		Name(tektonPipeline.Name).
 		Body(tektonPipeline).
@@ -139,7 +132,6 @@ func (c *tektonPipelines) Update(tektonPipeline *v1alpha1.TektonPipeline) (resul
 func (c *tektonPipelines) UpdateStatus(tektonPipeline *v1alpha1.TektonPipeline) (result *v1alpha1.TektonPipeline, err error) {
 	result = &v1alpha1.TektonPipeline{}
 	err = c.client.Put().
-		Namespace(c.ns).
 		Resource("tektonpipelines").
 		Name(tektonPipeline.Name).
 		SubResource("status").
@@ -152,7 +144,6 @@ func (c *tektonPipelines) UpdateStatus(tektonPipeline *v1alpha1.TektonPipeline) 
 // Delete takes name of the tektonPipeline and deletes it. Returns an error if one occurs.
 func (c *tektonPipelines) Delete(name string, options *v1.DeleteOptions) error {
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("tektonpipelines").
 		Name(name).
 		Body(options).
@@ -167,7 +158,6 @@ func (c *tektonPipelines) DeleteCollection(options *v1.DeleteOptions, listOption
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Namespace(c.ns).
 		Resource("tektonpipelines").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -180,7 +170,6 @@ func (c *tektonPipelines) DeleteCollection(options *v1.DeleteOptions, listOption
 func (c *tektonPipelines) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TektonPipeline, err error) {
 	result = &v1alpha1.TektonPipeline{}
 	err = c.client.Patch(pt).
-		Namespace(c.ns).
 		Resource("tektonpipelines").
 		SubResource(subresources...).
 		Name(name).
