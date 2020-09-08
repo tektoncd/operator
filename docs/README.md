@@ -14,7 +14,7 @@
 
 1. Apply Operator CRD
 
-    `kubectl apply -f config/crds/*_crd.yaml`
+    `kubectl apply -f config/crds/300-operator_v1alpha1_addon_crd.yaml,config/crds/300-operator_v1alpha1_pipeline_crd.yaml`
 
 1. start operator
 
