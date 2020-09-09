@@ -20,7 +20,6 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
@@ -48,7 +47,7 @@ func TargetVersion(instance v1alpha1.TektonComponent) string {
 
 // TargetManifest returns the manifest for the TargetVersion
 func TargetManifest(instance v1alpha1.TektonComponent) (mf.Manifest, error) {
-	return versionValidation(TargetVersion(instance), instance)
+	return fetch(manifestPath(TargetVersion(instance), instance))
 }
 
 // InstalledManifest returns the version currently installed, which is
@@ -63,94 +62,12 @@ func InstalledManifest(instance v1alpha1.TektonComponent) (mf.Manifest, error) {
 	return fetch(installedManifestPath(current, instance))
 }
 
-// IsUpDowngradeEligible returns the bool indicate whether the installed manifest is able to upgrade or downgrade to
-// the target manifest.
-func IsUpDowngradeEligible(instance v1alpha1.TektonComponent) bool {
-	current := instance.GetStatus().GetVersion()
-	// If there is no manifest installed, return true, because the target manifest is able to install.
-	if current == "" {
-		return true
-	}
-	current = sanitizeSemver(current)
-	target := sanitizeSemver(TargetVersion(instance))
-
-	currentMajor := semver.Major(current)
-	targetMajor := semver.Major(target)
-	if currentMajor != targetMajor {
-		// All the official releases of Knative are under the same Major version number. If target and current versions
-		// are different in terms of major version, upgrade or downgrade is not supported.
-		// TODO We need to deal with the the case of bumping major version later.
-		return false
-	}
-
-	currentMinor, err := strconv.Atoi(strings.Split(current, ".")[1])
-	if err != nil {
-		return false
-	}
-
-	targetMinor, err := strconv.Atoi(strings.Split(target, ".")[1])
-	if err != nil {
-		return false
-	}
-
-	// If the diff between minor versions are less than 2, return true.
-	if abs(currentMinor-targetMinor) < 2 {
-		return true
-	}
-
-	return false
-}
-
 func getVersionKey(instance v1alpha1.TektonComponent) string {
 	switch instance.(type) {
 	case *v1alpha1.TektonPipeline:
 		return "pipeline.tekton.dev/release"
 	}
 	return ""
-}
-
-func versionValidation(version string, instance v1alpha1.TektonComponent) (mf.Manifest, error) {
-	manifestsPath := componentURL(version, instance)
-	if manifestsPath == "" {
-		// The spec.manifests are empty. There is no need to check whether the versions match.
-		return fetch(manifestPath(version, instance))
-	}
-
-	manifests, err := fetch(manifestsPath)
-	if err != nil {
-		// If we cannot access the manifests, there is no need to check whether the versions match.
-		return manifests, err
-	}
-
-	if len(manifests.Resources()) == 0 {
-		// If we cannot find any resources in the manifests, we need to return an error.
-		return manifests, fmt.Errorf("There is no resource available in the target manifests %s.", manifestsPath)
-	}
-
-	if version == "" {
-		// If target version is empty, there is no need to check whether the versions match.
-		return manifests, nil
-	}
-
-	targetVersion := sanitizeSemver(version)
-	key := getVersionKey(instance)
-	for _, u := range manifests.Resources() {
-		// Check the labels of the resources one by one to see if the version matches the target version.
-		manifestVersion := u.GetLabels()[key]
-		if targetVersion != manifestVersion && manifestVersion != "" {
-			return mf.Manifest{}, fmt.Errorf("The version of the manifests %s does not match the target "+
-				"version of the operator CR %s. The resource name is %s.", manifestVersion, targetVersion, u.GetName())
-		}
-	}
-
-	return manifests, nil
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
 }
 
 func fetch(path string) (mf.Manifest, error) {
@@ -173,34 +90,11 @@ func componentDir(instance v1alpha1.TektonComponent) string {
 	return ""
 }
 
-func componentURL(version string, instance v1alpha1.TektonComponent) string {
-	//manifests := instance.GetSpec().GetManifests()
-	//// Create the comma-separated string as the URL to retrieve the manifest
-	//urls := make([]string, 0, len(manifests))
-	//for _, manifest := range manifests {
-	//	url := strings.ReplaceAll(manifest.Url, VersionVariable, version)
-	//	urls = append(urls, url)
-	//}
-	//return strings.Join(urls, COMMA)
-	return ""
-}
-
-func createManifestsPath(instance v1alpha1.TektonComponent) []string {
-	//if len(instance.GetSpec().GetManifests()) > 0 {
-	//	return strings.Split(manifestPath(TargetVersion(instance), instance), COMMA)
-	//}
-
-	return make([]string, 0, 0)
-}
-
 func manifestPath(version string, instance v1alpha1.TektonComponent) string {
 	if !semver.IsValid(sanitizeSemver(version)) {
 		return ""
 	}
 
-	if manifestPath := componentURL(version, instance); manifestPath != "" {
-		return manifestPath
-	}
 	localPath := filepath.Join(componentDir(instance), version)
 	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
 		return localPath

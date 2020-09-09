@@ -55,7 +55,6 @@ func Install(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.Tekto
 	}
 	status.MarkInstallSucceeded()
 	status.SetVersion(TargetVersion(instance))
-	status.SetManifests(createManifestsPath(instance))
 	return nil
 }
 

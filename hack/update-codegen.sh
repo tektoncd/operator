@@ -19,14 +19,11 @@ set -o nounset
 set -o pipefail
 
 export GO111MODULE=on
-# If we run with -mod=vendor here, then generate-groups.sh looks for vendor files in the wrong place.
-export GOFLAGS=-mod=
 
 if [ -z "${GOPATH:-}" ]; then
   export GOPATH=$(go env GOPATH)
 fi
 
-#source $(dirname $0)/../vendor/knative.dev/test-infra/scripts/library.sh
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/library.sh
 
 CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${REPO_ROOT_DIR}; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
@@ -37,14 +34,12 @@ KNATIVE_CODEGEN_PKG=${KNATIVE_CODEGEN_PKG:-$(cd ${REPO_ROOT_DIR}; ls -d -1 ./ven
 # --output-base    because this script should also be able to run inside the vendor dir of
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
-chmod +x ${CODEGEN_PKG}/generate-groups.sh
-${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
+bash ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/tektoncd/operator/pkg/client github.com/tektoncd/operator/pkg/apis \
   "operator:v1alpha1" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt
 
-chmod +x ${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh
-${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh "injection" \
+bash ${KNATIVE_CODEGEN_PKG}/hack/generate-knative.sh "injection" \
   github.com/tektoncd/operator/pkg/client github.com/tektoncd/operator/pkg/apis \
   "operator:v1alpha1" \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt

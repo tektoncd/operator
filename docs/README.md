@@ -9,35 +9,18 @@
 1. [operator-sdk v0.17.0](https://github.com/operator-framework/operator-sdk)
 1. [ko](https://github.com/google/ko#installation)
 
+## Running Codegen
 
-## Running Operator Locally (Development)
+If the files in `pkg/apis` are updated we need to run `codegen` scripts
 
-1. Apply Operator CRD
+```shell script
+./hack/update-codegen.sh
+```
 
-    `kubectl apply -f config/crds/*_crd.yaml`
-
-1. start operator
-
-    `make local-dev`
-
-1. Update the dependencies
-
-    `make update-deps`
-
-## Running E2E Tests Locally (Development)
-
-1. run
-
-    `make local-test-e2e`
-
-1. to watch resources getting created/deleted, run in a separate terminal:
-
-    `watch -d -n 1 kubectl get all -n tekton-pipelines`
-
-## KO based development workflow
+## Running Operator (Development)
 
 1. Set `KO_DOCKER_ENV` environment variable ([ko#usage](https://github.com/google/ko#usage))
 
-1. Set `KO_DATA_PATH=${GOPATH}/src/github.com/tektoncd/operator/cmd/manager/kodata`
+1. Set `KO_DATA_PATH=${GOPATH}/src/github.com/tektoncd/operator/cmd/operator/kodata`
 
 1. run `make ko-apply`
