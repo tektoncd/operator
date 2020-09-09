@@ -30,79 +30,79 @@ var (
 )
 
 // GroupVersionKind returns SchemeGroupVersion of a TektonPipeline
-func (ks *TektonPipeline) GroupVersionKind() schema.GroupVersionKind {
+func (tp *TektonPipeline) GroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind(KindTektonPipeline)
 }
 
 // GetCondition returns the current condition of a given condition type
-func (is *TektonPipelineStatus) GetCondition(t apis.ConditionType) *apis.Condition {
-	return pipelineCondSet.Manage(is).GetCondition(t)
+func (tps *TektonPipelineStatus) GetCondition(t apis.ConditionType) *apis.Condition {
+	return pipelineCondSet.Manage(tps).GetCondition(t)
 }
 
 // InitializeConditions initializes conditions of an TektonPipelineStatus
-func (is *TektonPipelineStatus) InitializeConditions() {
-	pipelineCondSet.Manage(is).InitializeConditions()
+func (tps *TektonPipelineStatus) InitializeConditions() {
+	pipelineCondSet.Manage(tps).InitializeConditions()
 }
 
 // IsReady looks at the conditions returns true if they are all true.
-func (is *TektonPipelineStatus) IsReady() bool {
-	return pipelineCondSet.Manage(is).IsHappy()
+func (tps *TektonPipelineStatus) IsReady() bool {
+	return pipelineCondSet.Manage(tps).IsHappy()
 }
 
 // MarkInstallSucceeded marks the InstallationSucceeded status as true.
-func (is *TektonPipelineStatus) MarkInstallSucceeded() {
-	pipelineCondSet.Manage(is).MarkTrue(InstallSucceeded)
-	if is.GetCondition(DependenciesInstalled).IsUnknown() {
+func (tps *TektonPipelineStatus) MarkInstallSucceeded() {
+	pipelineCondSet.Manage(tps).MarkTrue(InstallSucceeded)
+	if tps.GetCondition(DependenciesInstalled).IsUnknown() {
 		// Assume deps are installed if we're not sure
-		is.MarkDependenciesInstalled()
+		tps.MarkDependenciesInstalled()
 	}
 }
 
 // MarkInstallFailed marks the InstallationSucceeded status as false with the given
 // message.
-func (is *TektonPipelineStatus) MarkInstallFailed(msg string) {
-	pipelineCondSet.Manage(is).MarkFalse(
+func (tps *TektonPipelineStatus) MarkInstallFailed(msg string) {
+	pipelineCondSet.Manage(tps).MarkFalse(
 		InstallSucceeded,
 		"Error",
 		"Install failed with message: %s", msg)
 }
 
 // MarkVersionMigrationEligible marks the VersionMigrationEligible status as false with given message.
-func (is *TektonPipelineStatus) MarkVersionMigrationEligible() {
-	pipelineCondSet.Manage(is).MarkTrue(VersionMigrationEligible)
+func (tps *TektonPipelineStatus) MarkVersionMigrationEligible() {
+	pipelineCondSet.Manage(tps).MarkTrue(VersionMigrationEligible)
 }
 
 // MarkVersionMigrationNotEligible marks the DeploymentsAvailable status as true.
-func (is *TektonPipelineStatus) MarkVersionMigrationNotEligible(msg string) {
-	pipelineCondSet.Manage(is).MarkFalse(
+func (tps *TektonPipelineStatus) MarkVersionMigrationNotEligible(msg string) {
+	pipelineCondSet.Manage(tps).MarkFalse(
 		VersionMigrationEligible,
 		"Error",
 		"Version migration is not eligible with message: %s", msg)
 }
 
 // MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
-func (is *TektonPipelineStatus) MarkDeploymentsAvailable() {
-	pipelineCondSet.Manage(is).MarkTrue(DeploymentsAvailable)
+func (tps *TektonPipelineStatus) MarkDeploymentsAvailable() {
+	pipelineCondSet.Manage(tps).MarkTrue(DeploymentsAvailable)
 }
 
 // MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
 // it's waiting for deployments.
-func (is *TektonPipelineStatus) MarkDeploymentsNotReady() {
-	pipelineCondSet.Manage(is).MarkFalse(
+func (tps *TektonPipelineStatus) MarkDeploymentsNotReady() {
+	pipelineCondSet.Manage(tps).MarkFalse(
 		DeploymentsAvailable,
 		"NotReady",
 		"Waiting on deployments")
 }
 
 // MarkDependenciesInstalled marks the DependenciesInstalled status as true.
-func (is *TektonPipelineStatus) MarkDependenciesInstalled() {
-	pipelineCondSet.Manage(is).MarkTrue(DependenciesInstalled)
+func (tps *TektonPipelineStatus) MarkDependenciesInstalled() {
+	pipelineCondSet.Manage(tps).MarkTrue(DependenciesInstalled)
 }
 
 // MarkDependencyInstalling marks the DependenciesInstalled status as false with the
 // given message.
-func (is *TektonPipelineStatus) MarkDependencyInstalling(msg string) {
-	pipelineCondSet.Manage(is).MarkFalse(
+func (tps *TektonPipelineStatus) MarkDependencyInstalling(msg string) {
+	pipelineCondSet.Manage(tps).MarkFalse(
 		DependenciesInstalled,
 		"Installing",
 		"Dependency installing: %s", msg)
@@ -110,29 +110,29 @@ func (is *TektonPipelineStatus) MarkDependencyInstalling(msg string) {
 
 // MarkDependencyMissing marks the DependenciesInstalled status as false with the
 // given message.
-func (is *TektonPipelineStatus) MarkDependencyMissing(msg string) {
-	pipelineCondSet.Manage(is).MarkFalse(
+func (tps *TektonPipelineStatus) MarkDependencyMissing(msg string) {
+	pipelineCondSet.Manage(tps).MarkFalse(
 		DependenciesInstalled,
 		"Error",
 		"Dependency missing: %s", msg)
 }
 
 // GetVersion gets the currently installed version of the component.
-func (is *TektonPipelineStatus) GetVersion() string {
-	return is.Version
+func (tps *TektonPipelineStatus) GetVersion() string {
+	return tps.Version
 }
 
 // SetVersion sets the currently installed version of the component.
-func (is *TektonPipelineStatus) SetVersion(version string) {
-	is.Version = version
+func (tps *TektonPipelineStatus) SetVersion(version string) {
+	tps.Version = version
 }
 
 // GetManifests gets the url links of the manifests.
-func (is *TektonPipelineStatus) GetManifests() []string {
-	return is.Manifests
+func (tps *TektonPipelineStatus) GetManifests() []string {
+	return tps.Manifests
 }
 
 // SetVersion sets the url links of the manifests.
-func (is *TektonPipelineStatus) SetManifests(manifests []string) {
-	is.Manifests = manifests
+func (tps *TektonPipelineStatus) SetManifests(manifests []string) {
+	tps.Manifests = manifests
 }
