@@ -87,8 +87,6 @@ type TektonComponentStatus interface {
 
 	// GetManifests gets the url links of the manifests
 	GetManifests() []string
-	// SetManifests sets the url links of the manifests
-	SetManifests(manifests []string)
 
 	// IsReady return true if all conditions are satisfied
 	IsReady() bool
