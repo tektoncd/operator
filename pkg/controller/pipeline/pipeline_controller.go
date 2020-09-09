@@ -322,6 +322,12 @@ func (r *ReconcileTektonPipeline) updateStatus(res *op.TektonPipeline, c op.Tekt
 	// to prevent us from using stale version of the object
 
 	tmp := res.DeepCopy()
+	for _, condition := range tmp.Status.Conditions {
+		if condition.Code == c.Code && condition.Version == c.Version {
+			return nil
+		}
+	}
+
 	tmp.Status.Conditions = append([]op.TektonPipelineCondition{c}, tmp.Status.Conditions...)
 
 	if err := r.client.Status().Update(context.TODO(), tmp); err != nil {
