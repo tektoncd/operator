@@ -32,6 +32,8 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
+var watchedResourceName string = "cluster"
+
 // Reconciler implements controller.Reconciler for Knativeserving resources.
 type Reconciler struct {
 	// kubeClientSet allows us to talk to the k8s for core APIs
@@ -56,13 +58,13 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	logger := logging.FromContext(ctx)
 
 	// List all TektonPipelines to determine if cluster-scoped resources should be deleted.
-	kss, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines().List(metav1.ListOptions{})
+	tps, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines().List(metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list all TektonPipelines: %w", err)
 	}
 
-	for _, ks := range kss.Items {
-		if ks.GetDeletionTimestamp().IsZero() {
+	for _, tp := range tps.Items {
+		if tp.GetDeletionTimestamp().IsZero() {
 			// Not deleting all TektonPipelines. Nothing to do here.
 			return nil
 		}
@@ -91,6 +93,15 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	tp.Status.ObservedGeneration = tp.Generation
 
 	logger.Infow("Reconciling TektonPipeline", "status", tp.Status)
+	if tp.GetName() != watchedResourceName {
+		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
+			watchedResourceName,
+			tp.GetName(),
+		)
+		logger.Error(msg)
+		tp.GetStatus().MarkInstallFailed(msg)
+		return nil
+	}
 
 	if err := r.extension.Reconcile(ctx, tp); err != nil {
 		return err

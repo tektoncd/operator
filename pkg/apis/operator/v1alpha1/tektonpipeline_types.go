@@ -37,13 +37,13 @@ type TektonPipeline struct {
 }
 
 // GetSpec implements TektonComponent
-func (ks *TektonPipeline) GetSpec() TektonComponentSpec {
-	return &ks.Spec
+func (tp *TektonPipeline) GetSpec() TektonComponentSpec {
+	return &tp.Spec
 }
 
 // GetStatus implements TektonComponent
-func (ks *TektonPipeline) GetStatus() TektonComponentStatus {
-	return &ks.Status
+func (tp *TektonPipeline) GetStatus() TektonComponentStatus {
+	return &tp.Status
 }
 
 // TektonPipelineSpec defines the desired state of TektonPipeline

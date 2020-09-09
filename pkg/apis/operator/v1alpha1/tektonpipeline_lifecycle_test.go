@@ -36,115 +36,115 @@ func TestTektonPipelineGroupVersionKind(t *testing.T) {
 }
 
 func TestTektonPipelineHappyPath(t *testing.T) {
-	ks := &TektonPipelineStatus{}
-	ks.InitializeConditions()
+	tp := &TektonPipelineStatus{}
+	tp.InitializeConditions()
 
-	apistest.CheckConditionOngoing(ks, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionOngoing(ks, InstallSucceeded, t)
+	apistest.CheckConditionOngoing(tp, DependenciesInstalled, t)
+	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionOngoing(tp, InstallSucceeded, t)
 
-	ks.MarkVersionMigrationEligible()
+	tp.MarkVersionMigrationEligible()
 
 	// Install succeeds.
-	ks.MarkInstallSucceeded()
+	tp.MarkInstallSucceeded()
 	// Dependencies are assumed successful too.
-	apistest.CheckConditionSucceeded(ks, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(ks, InstallSucceeded, t)
+	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
+	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
 
 	// Deployments are not available at first.
-	ks.MarkDeploymentsNotReady()
-	apistest.CheckConditionSucceeded(ks, DependenciesInstalled, t)
-	apistest.CheckConditionFailed(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(ks, InstallSucceeded, t)
-	if ready := ks.IsReady(); ready {
-		t.Errorf("ks.IsReady() = %v, want false", ready)
+	tp.MarkDeploymentsNotReady()
+	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
+	apistest.CheckConditionFailed(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
+	if ready := tp.IsReady(); ready {
+		t.Errorf("tp.IsReady() = %v, want false", ready)
 	}
 
 	// Deployments become ready and we're good.
-	ks.MarkDeploymentsAvailable()
-	apistest.CheckConditionSucceeded(ks, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(ks, InstallSucceeded, t)
-	if ready := ks.IsReady(); !ready {
-		t.Errorf("ks.IsReady() = %v, want true", ready)
+	tp.MarkDeploymentsAvailable()
+	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
+	apistest.CheckConditionSucceeded(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
+	if ready := tp.IsReady(); !ready {
+		t.Errorf("tp.IsReady() = %v, want true", ready)
 	}
 }
 
 func TestTektonPipelineErrorPath(t *testing.T) {
-	ks := &TektonPipelineStatus{}
-	ks.InitializeConditions()
+	tp := &TektonPipelineStatus{}
+	tp.InitializeConditions()
 
-	apistest.CheckConditionOngoing(ks, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionOngoing(ks, InstallSucceeded, t)
+	apistest.CheckConditionOngoing(tp, DependenciesInstalled, t)
+	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionOngoing(tp, InstallSucceeded, t)
 
-	ks.MarkVersionMigrationEligible()
+	tp.MarkVersionMigrationEligible()
 
 	// Install fails.
-	ks.MarkInstallFailed("test")
-	apistest.CheckConditionOngoing(ks, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionFailed(ks, InstallSucceeded, t)
+	tp.MarkInstallFailed("test")
+	apistest.CheckConditionOngoing(tp, DependenciesInstalled, t)
+	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionFailed(tp, InstallSucceeded, t)
 
 	// Dependencies are installing.
-	ks.MarkDependencyInstalling("testing")
-	apistest.CheckConditionFailed(ks, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionFailed(ks, InstallSucceeded, t)
+	tp.MarkDependencyInstalling("testing")
+	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
+	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionFailed(tp, InstallSucceeded, t)
 
 	// Install now succeeds.
-	ks.MarkInstallSucceeded()
-	apistest.CheckConditionFailed(ks, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(ks, InstallSucceeded, t)
-	if ready := ks.IsReady(); ready {
-		t.Errorf("ks.IsReady() = %v, want false", ready)
+	tp.MarkInstallSucceeded()
+	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
+	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
+	if ready := tp.IsReady(); ready {
+		t.Errorf("tp.IsReady() = %v, want false", ready)
 	}
 
 	// Deployments become ready
-	ks.MarkDeploymentsAvailable()
-	apistest.CheckConditionFailed(ks, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(ks, InstallSucceeded, t)
-	if ready := ks.IsReady(); ready {
-		t.Errorf("ks.IsReady() = %v, want false", ready)
+	tp.MarkDeploymentsAvailable()
+	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
+	apistest.CheckConditionSucceeded(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
+	if ready := tp.IsReady(); ready {
+		t.Errorf("tp.IsReady() = %v, want false", ready)
 	}
 
 	// Finally, dependencies become available.
-	ks.MarkDependenciesInstalled()
-	apistest.CheckConditionSucceeded(ks, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(ks, InstallSucceeded, t)
-	if ready := ks.IsReady(); !ready {
-		t.Errorf("ks.IsReady() = %v, want true", ready)
+	tp.MarkDependenciesInstalled()
+	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
+	apistest.CheckConditionSucceeded(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
+	if ready := tp.IsReady(); !ready {
+		t.Errorf("tp.IsReady() = %v, want true", ready)
 	}
 }
 
 func TestTektonPipelineExternalDependency(t *testing.T) {
-	ks := &TektonPipelineStatus{}
-	ks.InitializeConditions()
+	tp := &TektonPipelineStatus{}
+	tp.InitializeConditions()
 
 	// External marks dependency as failed.
-	ks.MarkDependencyMissing("test")
+	tp.MarkDependencyMissing("test")
 
 	// Install succeeds.
-	ks.MarkInstallSucceeded()
-	apistest.CheckConditionFailed(ks, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(ks, InstallSucceeded, t)
+	tp.MarkInstallSucceeded()
+	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
+	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
 
 	// Dependencies are now ready.
-	ks.MarkDependenciesInstalled()
-	apistest.CheckConditionSucceeded(ks, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(ks, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(ks, InstallSucceeded, t)
+	tp.MarkDependenciesInstalled()
+	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
+	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
+	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
 }
 
 func TestTektonPipelineVersionMigrationNotEligible(t *testing.T) {
-	ks := &TektonPipelineStatus{}
-	ks.InitializeConditions()
+	tp := &TektonPipelineStatus{}
+	tp.InitializeConditions()
 
-	ks.MarkVersionMigrationNotEligible("Version migration not eligible.")
-	apistest.CheckConditionFailed(ks, VersionMigrationEligible, t)
+	tp.MarkVersionMigrationNotEligible("Version migration not eligible.")
+	apistest.CheckConditionFailed(tp, VersionMigrationEligible, t)
 }
