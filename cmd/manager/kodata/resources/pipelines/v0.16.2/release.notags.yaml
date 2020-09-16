@@ -53,7 +53,7 @@ spec:
   hostIPC: false
   hostPID: false
   runAsUser:
-    rule: 'RunAsAny'
+    rule: 'MustRunAsNonRoot'
   seLinux:
     rule: 'RunAsAny'
   supplementalGroups:
@@ -111,10 +111,6 @@ rules:
   resources: ["tasks/status", "clustertasks/status", "taskruns/status", "pipelines/status",
     "pipelineruns/status", "pipelineresources/status"]
   verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
-- apiGroups: ["policy"]
-  resources: ["podsecuritypolicies"]
-  resourceNames: ["tekton-pipelines"]
-  verbs: ["use"]
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -227,6 +223,10 @@ rules:
   verbs: ["get"]
   resourceNames: ["config-logging", "config-observability", "config-artifact-bucket",
     "config-artifact-pvc", "feature-flags", "config-leader-election"]
+- apiGroups: ["policy"]
+  resources: ["podsecuritypolicies"]
+  resourceNames: ["tekton-pipelines"]
+  verbs: ["use"]
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
@@ -256,6 +256,10 @@ rules:
   resources: ["secrets"]
   verbs: ["get", "update"]
   resourceNames: ["webhook-certs"]
+- apiGroups: ["policy"]
+  resources: ["podsecuritypolicies"]
+  resourceNames: ["tekton-pipelines"]
+  verbs: ["use"]
 
 ---
 # Copyright 2019 The Tekton Authors
@@ -468,8 +472,8 @@ metadata:
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
-    version: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
+    version: "v0.16.2"
 spec:
   group: tekton.dev
   preserveUnknownFields: false
@@ -531,8 +535,8 @@ metadata:
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
-    version: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
+    version: "v0.16.2"
 spec:
   group: tekton.dev
   names:
@@ -609,8 +613,8 @@ metadata:
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
-    version: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
+    version: "v0.16.2"
 spec:
   group: tekton.dev
   preserveUnknownFields: false
@@ -672,8 +676,8 @@ metadata:
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
-    version: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
+    version: "v0.16.2"
 spec:
   group: tekton.dev
   preserveUnknownFields: false
@@ -751,8 +755,8 @@ metadata:
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
-    version: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
+    version: "v0.16.2"
 spec:
   group: tekton.dev
   names:
@@ -790,8 +794,8 @@ metadata:
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
-    version: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
+    version: "v0.16.2"
 spec:
   group: tekton.dev
   preserveUnknownFields: false
@@ -863,8 +867,8 @@ metadata:
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
-    version: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
+    version: "v0.16.2"
 spec:
   group: tekton.dev
   preserveUnknownFields: false
@@ -926,8 +930,8 @@ metadata:
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
-    version: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
+    version: "v0.16.2"
 spec:
   group: tekton.dev
   preserveUnknownFields: false
@@ -1007,7 +1011,7 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
 # The data is populated at install time.
 ---
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -1018,7 +1022,7 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
 webhooks:
 - admissionReviewVersions:
   - v1beta1
@@ -1038,7 +1042,7 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
 webhooks:
 - admissionReviewVersions:
   - v1beta1
@@ -1058,7 +1062,7 @@ metadata:
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    pipeline.tekton.dev/release: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
 webhooks:
 - admissionReviewVersions:
   - v1beta1
@@ -1178,17 +1182,17 @@ metadata:
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
-    #  data:
-    #    # location of the gcs bucket to be used for artifact storage
-    #    location: "gs://bucket-name"
-    #    # name of the secret that will contain the credentials for the service account
-    #    # with access to the bucket
-    #    bucket.service.account.secret.name:
-    #    # The key in the secret with the required service account json
-    #    bucket.service.account.secret.key:
-    #    # The field name that should be used for the service account
-    #    # Valid values: GOOGLE_APPLICATION_CREDENTIALS, BOTO_CONFIG.
-    #    bucket.service.account.field.name: GOOGLE_APPLICATION_CREDENTIALS
+# data:
+#  # location of the gcs bucket to be used for artifact storage
+#  location: "gs://bucket-name"
+#  # name of the secret that will contain the credentials for the service account
+#  # with access to the bucket
+#  bucket.service.account.secret.name:
+#  # The key in the secret with the required service account json
+#  bucket.service.account.secret.key:
+#  # The field name that should be used for the service account
+#  # Valid values: GOOGLE_APPLICATION_CREDENTIALS, BOTO_CONFIG.
+#  bucket.service.account.field.name: GOOGLE_APPLICATION_CREDENTIALS
 
 ---
 # Copyright 2019 The Tekton Authors
@@ -1244,31 +1248,53 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
-  _example: "################################\n#                              #\n#
-    \   EXAMPLE CONFIGURATION     #\n#                              #\n################################\n\n#
-    This block is not actually functional configuration,\n# but serves to illustrate
-    the available configuration\n# options and document them in a way that is accessible\n#
-    to users that `kubectl edit` this config map.\n#\n# These sample configuration
-    options may be copied out of\n# this example block and unindented to be in the
-    data block\n# to actually change the configuration.\n\n# default-timeout-minutes
-    contains the default number of\n# minutes to use for TaskRun and PipelineRun,
-    if none is specified.\ndefault-timeout-minutes: \"60\"  # 60 minutes\n\n# default-service-account
-    contains the default service account name\n# to use for TaskRun and PipelineRun,
-    if none is specified.\ndefault-service-account: \"default\"\n\n# default-managed-by-label-value
-    contains the default value given to the\n# \"app.kubernetes.io/managed-by\" label
-    applied to all Pods created for\n# TaskRuns. If a user's requested TaskRun specifies
-    another value for this\n# label, the user's request supercedes.\ndefault-managed-by-label-value:
-    \"tekton-pipelines\"\n\n# default-pod-template contains the default pod template
-    to use\n# TaskRun and PipelineRun, if none is specified. If a pod template\n#
-    is specified, the default pod template is ignored.\n# default-pod-template:\n\n#
-    default-cloud-events-sink contains the default CloudEvents sink to be\n# used
-    for TaskRun and PipelineRun, when no sink is specified.\n# Note that right now
-    it is still not possible to set a PipelineRun or\n# TaskRun specific sink, so
-    the default is the only option available.\n# If no sink is specified, no CloudEvent
-    is generated\n# default-cloud-events-sink:\n  \n# default-task-run-workspace-binding
-    contains the default workspace\n# configuration provided for any Workspaces that
-    a Task declares\n# but that a TaskRun does not explicitly provide.\n# default-task-run-workspace-binding:
-    |\n#   emptyDir: {}\n"
+  _example: |
+    ################################
+    #                              #
+    #    EXAMPLE CONFIGURATION     #
+    #                              #
+    ################################
+
+    # This block is not actually functional configuration,
+    # but serves to illustrate the available configuration
+    # options and document them in a way that is accessible
+    # to users that `kubectl edit` this config map.
+    #
+    # These sample configuration options may be copied out of
+    # this example block and unindented to be in the data block
+    # to actually change the configuration.
+
+    # default-timeout-minutes contains the default number of
+    # minutes to use for TaskRun and PipelineRun, if none is specified.
+    default-timeout-minutes: "60"  # 60 minutes
+
+    # default-service-account contains the default service account name
+    # to use for TaskRun and PipelineRun, if none is specified.
+    default-service-account: "default"
+
+    # default-managed-by-label-value contains the default value given to the
+    # "app.kubernetes.io/managed-by" label applied to all Pods created for
+    # TaskRuns. If a user's requested TaskRun specifies another value for this
+    # label, the user's request supercedes.
+    default-managed-by-label-value: "tekton-pipelines"
+
+    # default-pod-template contains the default pod template to use
+    # TaskRun and PipelineRun, if none is specified. If a pod template
+    # is specified, the default pod template is ignored.
+    # default-pod-template:
+
+    # default-cloud-events-sink contains the default CloudEvents sink to be
+    # used for TaskRun and PipelineRun, when no sink is specified.
+    # Note that right now it is still not possible to set a PipelineRun or
+    # TaskRun specific sink, so the default is the only option available.
+    # If no sink is specified, no CloudEvent is generated
+    # default-cloud-events-sink:
+
+    # default-task-run-workspace-binding contains the default workspace
+    # configuration provided for any Workspaces that a Task declares
+    # but that a TaskRun does not explicitly provide.
+    # default-task-run-workspace-binding: |
+    #   emptyDir: {}
 
 ---
 # Copyright 2019 The Tekton Authors
@@ -1498,12 +1524,12 @@ metadata:
     app.kubernetes.io/name: controller
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: default
-    app.kubernetes.io/version: "v0.15.2"
+    app.kubernetes.io/version: "v0.16.2"
     app.kubernetes.io/part-of: tekton-pipelines
     # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
-    pipeline.tekton.dev/release: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
     # labels below are related to istio and should not be used for resource lookup
-    version: "v0.15.2"
+    version: "v0.16.2"
 spec:
   replicas: 1
   selector:
@@ -1520,33 +1546,33 @@ spec:
         app.kubernetes.io/name: controller
         app.kubernetes.io/component: controller
         app.kubernetes.io/instance: default
-        app.kubernetes.io/version: "v0.15.2"
+        app.kubernetes.io/version: "v0.16.2"
         app.kubernetes.io/part-of: tekton-pipelines
         # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
-        pipeline.tekton.dev/release: "v0.15.2"
+        pipeline.tekton.dev/release: "v0.16.2"
         # labels below are related to istio and should not be used for resource lookup
         app: tekton-pipelines-controller
-        version: "v0.15.2"
+        version: "v0.16.2"
     spec:
       serviceAccountName: tekton-pipelines-controller
       containers:
       - name: tekton-pipelines-controller
-        image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/controller@sha256:3b9194dbb1ec6282469e1371abb52dce4f462706d08469d29893550f3e2debdf
+        image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/controller@sha256:cebc178b884426eb52ccd27311871ac2b4c4f31076741d9efdbcfc1259126c46
         args: [
           # These images are built on-demand by `ko resolve` and are replaced
           # by image references by digest.
-          "-kubeconfig-writer-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/kubeconfigwriter@sha256:fafe062ebf497187b3ce7b47573580b4330f78b4924fb38e4c1e8db128711720",
-          "-creds-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/creds-init@sha256:23387311d42bc6290645a864b2c967b857c531e4178fd5b79e31b2b8eb1ffa5c",
-          "-git-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init@sha256:c6cb2257d718bbd6281f0d028c801c26333221a2c38ce85ae8e23b24bf20e781",
-          "-entrypoint-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/entrypoint@sha256:51037dc2b572748ef2f42e8e0f2d55e67a4dbc014cdaecba083de6280f422f2d",
-          "-nop-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/nop@sha256:e418612699877caba09cae4ed8c73cfaf84aa8840a3c09aadda8c7c4934b857a",
-          "-imagedigest-exporter-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/imagedigestexporter@sha256:e8cc95b323e85788dc82398cd37a259aff1a0bf2ca5489d5af4201aa4eca3743",
-          "-pr-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/pullrequest-init@sha256:af9aea0ccca79b26e60e8f02ad0d46a20772bcb447201f21d477729c01d8e71e",
-          "-build-gcs-fetcher-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/vendor/github.com/googlecloudplatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher@sha256:6b008c9eded786360ccc7bbc8d18f21a3ae049ff4604072c38763205346ca14c",
-          # This is google/cloud-sdk:293.0.0-slim
-          "-gsutil-image", "google/cloud-sdk@sha256:37654ada9b7afbc32828b537030e85de672a9dd468ac5c92a36da1e203a98def",
+          "-kubeconfig-writer-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/kubeconfigwriter@sha256:fd9385d5ce1ebbf8468612b1a6b94435620ab1ab5d15cbf6595c04bcea2e6465",
+          "-creds-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/creds-init@sha256:1fac0b7540e82f24eb6fc2537812332fae76886cfc16a840775b519d55839a05",
+          "-git-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init@sha256:ab6902b9ff24c838792668f246fe70aa6ca3767d72b258aacccb0c5914fc44bf",
+          "-entrypoint-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/entrypoint@sha256:b0cb4b5bf69c14848447757174dbff1fb3d6179fb1f5fb95804c199577d91118",
+          "-nop-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/nop@sha256:61b616bbe4dbbfccb08b6584a4ed2ba41cd9794791683cfc2aad39314e551211",
+          "-imagedigest-exporter-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/imagedigestexporter@sha256:c756458c29ef62cc1d660e6118057f2dae33926eefb6950b6a6a5455cdf35250",
+          "-pr-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/pullrequest-init@sha256:bc3b5aaf95214b3a552dad0c1609c120d45651e93c7140a163460ccef1f7fb0b",
+          "-build-gcs-fetcher-image", "gcr.io/tekton-releases/github.com/tektoncd/pipeline/vendor/github.com/googlecloudplatform/cloud-builders/gcs-fetcher/cmd/gcs-fetcher@sha256:6f71d0c53a6f29482dc6e7a86c93825264acfacfb687f4e1bb44e0929886f745",
+          # This is google/cloud-sdk:302.0.0-slim
+          "-gsutil-image", "google/cloud-sdk@sha256:27b2c22bf259d9bc1a291e99c63791ba0c27a04d2db0a43241ba0f1f20f4067f",
           # The shell image must be root in order to create directories and copy files to PVCs.
-          # gcr.io/distroless/base:debug as of July 23, 2020
+          # gcr.io/distroless/base:debug-nonroot as of July 23, 2020
           "-shell-image", "gcr.io/distroless/base@sha256:60f5ffe6fc481e9102747b043b3873a01893a5a8138f970c5f5fc06fb7494656"]
         volumeMounts:
         - name: config-logging
@@ -1575,6 +1601,9 @@ spec:
           value: config-leader-election
         - name: METRICS_DOMAIN
           value: tekton.dev/pipeline
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 1001
       volumes:
       - name: config-logging
         configMap:
@@ -1587,13 +1616,13 @@ metadata:
     app.kubernetes.io/name: controller
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: default
-    app.kubernetes.io/version: "v0.15.2"
+    app.kubernetes.io/version: "v0.16.2"
     app.kubernetes.io/part-of: tekton-pipelines
     # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
-    pipeline.tekton.dev/release: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
     # labels below are related to istio and should not be used for resource lookup
     app: tekton-pipelines-controller
-    version: "v0.15.2"
+    version: "v0.16.2"
   name: tekton-pipelines-controller
   namespace: tekton-pipelines
 spec:
@@ -1635,12 +1664,12 @@ metadata:
     app.kubernetes.io/name: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
-    app.kubernetes.io/version: "v0.15.2"
+    app.kubernetes.io/version: "v0.16.2"
     app.kubernetes.io/part-of: tekton-pipelines
     # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
-    pipeline.tekton.dev/release: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
     # labels below are related to istio and should not be used for resource lookup
-    version: "v0.15.2"
+    version: "v0.16.2"
 spec:
   replicas: 1
   selector:
@@ -1657,20 +1686,20 @@ spec:
         app.kubernetes.io/name: webhook
         app.kubernetes.io/component: webhook
         app.kubernetes.io/instance: default
-        app.kubernetes.io/version: "v0.15.2"
+        app.kubernetes.io/version: "v0.16.2"
         app.kubernetes.io/part-of: tekton-pipelines
         # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
-        pipeline.tekton.dev/release: "v0.15.2"
+        pipeline.tekton.dev/release: "v0.16.2"
         # labels below are related to istio and should not be used for resource lookup
         app: tekton-pipelines-webhook
-        version: "v0.15.2"
+        version: "v0.16.2"
     spec:
       serviceAccountName: tekton-pipelines-webhook
       containers:
       - name: webhook
         # This is the Go import path for the binary that is containerized
         # and substituted here.
-        image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/webhook@sha256:ef0f1858607e176a5393bcbf043b9276b0ba6c03ad4f157ff379c558bf00732e
+        image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/webhook@sha256:df7ca5966982f5fbe556df3b5a223f59474b497177864f067108fd44595f142b
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -1693,6 +1722,7 @@ spec:
           value: tekton.dev/pipeline
         securityContext:
           allowPrivilegeEscalation: false
+          runAsUser: 1001
         ports:
         - name: metrics
           containerPort: 9090
@@ -1700,6 +1730,17 @@ spec:
           containerPort: 8008
         - name: https-webhook
           containerPort: 8443
+        livenessProbe:
+          tcpSocket:
+            port: https-webhook
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          tcpSocket:
+            port: https-webhook
+          initialDelaySeconds: 5
+          periodSeconds: 10
 ---
 apiVersion: v1
 kind: Service
@@ -1708,13 +1749,13 @@ metadata:
     app.kubernetes.io/name: webhook
     app.kubernetes.io/component: webhook
     app.kubernetes.io/instance: default
-    app.kubernetes.io/version: "v0.15.2"
+    app.kubernetes.io/version: "v0.16.2"
     app.kubernetes.io/part-of: tekton-pipelines
     # tekton.dev/release value replaced with inputs.params.versionTag in pipeline/tekton/publish.yaml
-    pipeline.tekton.dev/release: "v0.15.2"
+    pipeline.tekton.dev/release: "v0.16.2"
     # labels below are related to istio and should not be used for resource lookup
     app: tekton-pipelines-webhook
-    version: "v0.15.2"
+    version: "v0.16.2"
   name: tekton-pipelines-webhook
   namespace: tekton-pipelines
 spec:
