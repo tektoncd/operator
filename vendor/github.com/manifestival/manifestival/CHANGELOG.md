@@ -7,9 +7,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ### Changed
 
+- It is no longer possible to mutate manifest resources with the
+  `Filter` method, since now only deep copies of each resource are
+  passed to each `Predicate`. The only way to change a manifest's
+  resources is via the `Transform` method. [#75](https://github.com/manifestival/manifestival/issues/75)
+
 ### Added
 
 ### Removed
+
+
+## [0.6.1] - 2020-08-19
+
+### Added
+
+- Support for generated names: if `metadata.generateName` is set and
+  `metadata.name` is *not* set on any resource in a manifest, that resource will
+  always be _created_ when the manifest is _applied_. [#65](https://github.com/manifestival/manifestival/issues/65)
+- Support for CRD apiextensions.k8s.io/v1: CRD v1/v1beta has a difference 
+  in the specification on the conversion webhook field, which needs to be 
+  compatible in the InjectNamespace function.
+
+### Changed
+
+- Fixed the `In` predicate to not incorporate the API version in its comparison
+  of manifest resources. Only Group, Kind, Namespace, and Name are used to test
+  for equality. [#67](https://github.com/manifestival/manifestival/issues/67)
+- After experimenting with dynamically constructing `Any` and `All`
+  predicates, we decided to partially revert
+  [#56](https://github.com/manifestival/manifestival/pull/56): `Any`
+  and `All` no longer require at least one argument as it has become
+  clear that `All()` should match `Everything` and `Any()` should
+  match `Nothing`. [#69](https://github.com/manifestival/manifestival/issues/69)
 
 
 ## [0.6.0] - 2020-07-07
@@ -223,7 +252,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 [controller-runtime]: https://github.com/manifestival/controller-runtime-client
 [client-go]: https://github.com/manifestival/client-go-client
-[Unreleased]: https://github.com/manifestival/manifestival/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/manifestival/manifestival/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/manifestival/manifestival/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/manifestival/manifestival/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/manifestival/manifestival/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/manifestival/manifestival/compare/v0.3.1...v0.4.0

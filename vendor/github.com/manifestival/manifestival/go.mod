@@ -16,10 +16,8 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.4.0 // indirect
-	golang.org/x/net v0.0.0-20200219183655-46282727080f // indirect
-	golang.org/x/sys v0.0.0-20191022100944-742c48ecaeb7 // indirect
 	golang.org/x/text v0.3.2 // indirect
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
+	golang.org/x/tools/gopls v0.4.4 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/api v0.15.7
 	k8s.io/apimachinery v0.15.7

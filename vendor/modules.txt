@@ -53,7 +53,7 @@ github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/google/go-cmp v0.4.0
+# github.com/google/go-cmp v0.5.0
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
@@ -90,7 +90,7 @@ github.com/json-iterator/go
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/manifestival/controller-runtime-client v0.3.0
 github.com/manifestival/controller-runtime-client
-# github.com/manifestival/manifestival v0.6.0
+# github.com/manifestival/manifestival v0.6.2-0.20200915141520-5b6d351476e3
 github.com/manifestival/manifestival
 github.com/manifestival/manifestival/internal/overlay
 github.com/manifestival/manifestival/internal/patch
@@ -140,7 +140,7 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/rogpeppe/go-internal v1.5.0
+# github.com/rogpeppe/go-internal v1.6.0
 github.com/rogpeppe/go-internal/modfile
 github.com/rogpeppe/go-internal/module
 github.com/rogpeppe/go-internal/semver
@@ -166,12 +166,12 @@ go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
+# golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 golang.org/x/crypto/ssh/terminal
-# golang.org/x/mod v0.2.0
+# golang.org/x/mod v0.3.0
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
+# golang.org/x/net v0.0.0-20200625001655-4c5254603344
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
 golang.org/x/net/http/httpguts
@@ -184,7 +184,7 @@ golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4
+# golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
@@ -196,9 +196,13 @@ golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
 # golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 golang.org/x/time/rate
-# golang.org/x/tools v0.0.0-20200327195553-82bb89366a1e
+# golang.org/x/tools v0.0.0-20200729181040-64cdafbe085c
 golang.org/x/tools/go/ast/astutil
 golang.org/x/tools/imports
+golang.org/x/tools/internal/event
+golang.org/x/tools/internal/event/core
+golang.org/x/tools/internal/event/keys
+golang.org/x/tools/internal/event/label
 golang.org/x/tools/internal/fastwalk
 golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/gopathwalk

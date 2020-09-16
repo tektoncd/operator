@@ -1,6 +1,7 @@
 # Manifestival
 
 [![Build Status](https://travis-ci.org/manifestival/manifestival.svg?branch=master)](https://travis-ci.org/manifestival/manifestival)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/manifestival/manifestival)](https://pkg.go.dev/github.com/manifestival/manifestival)
 
 Manifestival is a library for manipulating a set of unstructured
 Kubernetes resources. Essentially, it enables you to toss a "bag of
@@ -112,9 +113,14 @@ whether the resource should be included in the filtered results.
 There are a few built-in predicates and some helper functions for
 creating your own:
 
-* `All` returns true iff *all* its predicates return true
-* `Any` returns true iff *any* of its predicates return true
-* `Not` negates its argument, returning false if its predicate returns true
+* `All` returns a `Predicate` that returns true unless any of its
+  arguments returns false
+* `Everything` is equivalent to `All()`
+* `Any` returns a `Predicate` that returns false unless any of its
+  arguments returns true
+* `Nothing` is equivalent to `Any()`
+* `Not` negates its argument, returning false if its argument returns
+  true
 * `ByName`, `ByKind`, `ByLabel`, `ByAnnotation`, and `ByGVK` filter
   resources by their respective attributes.
 * `CRDs` and its complement `NoCRDs` are handy filters for
@@ -133,12 +139,10 @@ theRest := manifest.Filter(Not(rbac))
 m := manifest.Filter(ByLabel("foo", "bar"), ByName("controller"), NoCRDs)
 ```
 
-Because the `Predicate` receives the resource by reference, any
-changes you make to it will be reflected in the returned `Manifest`,
-but _not_ in the one being filtered -- manifests are immutable. Since
-errors are not in the `Predicate` interface, you should limit changes
-to those that won't error. For more complex mutations, use `Transform`
-instead.
+The `Predicate` receives a deep copy of each resource, so no
+modifications made to any resource will be reflected in the returned
+`Manifest`, which is immutable. The only way to alter resources in a
+`Manifest` is with its `Transform` method.
 
 
 ### Transform
@@ -221,11 +225,11 @@ override in your unit tests. For example,
 ```go
 func verifySomething(t *testing.T, expected *unstructured.Unstructured) {
     client := fake.Client{
-        Stubs{
+        fake.Stubs{
             Create: func(u *unstructured.Unstructured) error {
                 if !reflect.DeepEqual(u, expected) {
-    				t.Error("You did it wrong!")
-    			}
+                    t.Error("You did it wrong!")
+                }
                 return nil
             },
         },

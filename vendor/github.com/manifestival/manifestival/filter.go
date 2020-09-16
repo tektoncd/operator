@@ -12,23 +12,20 @@ import (
 type Predicate func(u *unstructured.Unstructured) bool
 
 var (
-	Everything = func(u *unstructured.Unstructured) bool { return true }
-	Nothing    = Not(Everything)
+	Everything = All()
+	Nothing    = Any()
 )
 
-// Filter returns a Manifest containing only the resources for which
-// *all* Predicates return true. Any changes callers make to the
+// Filter returns a Manifest containing only those resources for which
+// *no* Predicate returns false. Any changes callers make to the
 // resources passed to their Predicate[s] will only be reflected in
 // the returned Manifest.
 func (m Manifest) Filter(preds ...Predicate) Manifest {
 	result := m
 	result.resources = []unstructured.Unstructured{}
-	pred := Everything
-	if len(preds) > 0 {
-		pred = All(preds[0], preds[1:]...)
-	}
-	for _, spec := range m.Resources() {
-		if !pred(&spec) {
+	pred := All(preds...)
+	for _, spec := range m.resources {
+		if !pred(spec.DeepCopy()) {
 			continue
 		}
 		result.resources = append(result.resources, spec)
@@ -36,10 +33,11 @@ func (m Manifest) Filter(preds ...Predicate) Manifest {
 	return result
 }
 
-// All returns true iff all of the predicates are true
-func All(pred Predicate, preds ...Predicate) Predicate {
+// All returns a predicate that returns true unless any of its passed
+// predicates return false.
+func All(preds ...Predicate) Predicate {
 	return func(u *unstructured.Unstructured) bool {
-		for _, p := range append([]Predicate{pred}, preds...) {
+		for _, p := range preds {
 			if !p(u) {
 				return false
 			}
@@ -48,10 +46,11 @@ func All(pred Predicate, preds ...Predicate) Predicate {
 	}
 }
 
-// Any returns true iff any of the predicates are true
-func Any(pred Predicate, preds ...Predicate) Predicate {
+// Any returns a predicate that returns false unless any of its passed
+// predicates return true.
+func Any(preds ...Predicate) Predicate {
 	return func(u *unstructured.Unstructured) bool {
-		for _, p := range append([]Predicate{pred}, preds...) {
+		for _, p := range preds {
 			if p(u) {
 				return true
 			}
@@ -131,10 +130,10 @@ func ByGVK(gvk schema.GroupVersionKind) Predicate {
 }
 
 // In(m) returns a Predicate that tests for membership in m, using
-// "gvk|namespace/name" as a unique identifier
+// "gk|ns/name" as a unique identifier
 func In(manifest Manifest) Predicate {
 	key := func(u *unstructured.Unstructured) string {
-		return fmt.Sprintf("%s|%s/%s", u.GroupVersionKind(), u.GetNamespace(), u.GetName())
+		return fmt.Sprintf("%s|%s/%s", u.GroupVersionKind().GroupKind(), u.GetNamespace(), u.GetName())
 	}
 	index := sets.NewString()
 	for _, u := range manifest.resources {
