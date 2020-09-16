@@ -3,7 +3,7 @@ module github.com/tektoncd/operator
 require (
 	github.com/go-logr/logr v0.1.0
 	github.com/manifestival/controller-runtime-client v0.3.0
-	github.com/manifestival/manifestival v0.6.0
+	github.com/manifestival/manifestival v0.6.2-0.20200915141520-5b6d351476e3
 	github.com/operator-framework/operator-sdk v0.17.0
 	github.com/prometheus/common v0.9.1
 	github.com/spf13/pflag v1.0.5

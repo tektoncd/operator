@@ -177,6 +177,10 @@ func (m Manifest) delete(spec *unstructured.Unstructured, opts ...DeleteOption) 
 // get collects a full resource body (or `nil`) from a partial
 // resource supplied in `spec`
 func (m Manifest) get(spec *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	if spec.GetName() == "" && spec.GetGenerateName() != "" {
+		// expected to be created; never fetched
+		return nil, nil
+	}
 	result, err := m.Client.Get(spec)
 	if err != nil {
 		result = nil

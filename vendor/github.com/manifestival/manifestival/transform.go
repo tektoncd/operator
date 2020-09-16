@@ -81,6 +81,9 @@ func InjectNamespace(ns string) Transformer {
 		case "apiservice":
 			return updateService(u.Object, "spec", "service")
 		case "customresourcedefinition":
+			if u.GroupVersionKind().Version == "v1" {
+				return updateService(u.Object, "spec", "conversion", "webhook", "clientConfig", "service")
+			}
 			return updateService(u.Object, "spec", "conversion", "webhookClientConfig", "service")
 		}
 		return nil
