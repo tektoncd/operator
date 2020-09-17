@@ -34,7 +34,7 @@ import (
 const replaceTimeout = 60
 
 var (
-	tektonVersion   = "v0.15.2"
+	tektonVersion   = "v0.16.3"
 	resourceWatched string
 	resourceDir     string
 	targetNamespace string
