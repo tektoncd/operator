@@ -326,6 +326,12 @@ func requestLogger(req reconcile.Request, context string) logr.Logger {
 
 // updateStatus set the status of res to s and refreshes res to the lastest version
 func (r *ReconcileAddon) updateStatus(res *op.TektonAddon, c op.TektonAddonCondition) error {
+	for _, condition := range res.Status.Conditions {
+		if condition.Code == c.Code && condition.Version == c.Version {
+			return nil
+		}
+	}
+
 	res.Status.Conditions = append([]op.TektonAddonCondition{c}, res.Status.Conditions...)
 
 	res.GetObjectMeta()
