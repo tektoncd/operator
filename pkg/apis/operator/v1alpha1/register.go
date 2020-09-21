@@ -1,9 +1,12 @@
 /*
 Copyright 2020 The Tekton Authors
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,8 +29,11 @@ const (
 	// SchemaVersion is the current version of the API.
 	SchemaVersion = "v1alpha1"
 
-	// KindTektonPipeline is the Kind of Knative Serving in a GVK context.
+	// KindTektonPipeline is the Kind of Tekton Pipeline in a GVK context.
 	KindTektonPipeline = "TektonPipeline"
+
+	// KindTektonTrigger is the Kind of Tekton Trigger in a GVK context.
+	KindTektonTrigger = "TektonTrigger"
 )
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
@@ -41,6 +47,8 @@ func addKnownTypes(s *runtime.Scheme) error {
 	s.AddKnownTypes(SchemeGroupVersion,
 		&TektonPipeline{},
 		&TektonPipelineList{},
+		&TektonTrigger{},
+		&TektonTriggerList{},
 	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil

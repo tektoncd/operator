@@ -22,40 +22,40 @@ import (
 )
 
 var (
-	_ TektonComponent     = (*TektonPipeline)(nil)
-	_ TektonComponentSpec = (*TektonPipelineSpec)(nil)
+	_ TektonComponent     = (*TektonTrigger)(nil)
+	_ TektonComponentSpec = (*TektonTriggerSpec)(nil)
 )
 
-// TektonPipeline is the Schema for the tektonpipelines API
+// TektonTrigger is the Schema for the tektontriggers API
 // +genclient
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
-type TektonPipeline struct {
+type TektonTrigger struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   TektonPipelineSpec   `json:"spec,omitempty"`
-	Status TektonPipelineStatus `json:"status,omitempty"`
+	Spec   TektonTriggerSpec   `json:"spec,omitempty"`
+	Status TektonTriggerStatus `json:"status,omitempty"`
 }
 
 // GetSpec implements TektonComponent
-func (tp *TektonPipeline) GetSpec() TektonComponentSpec {
+func (tp *TektonTrigger) GetSpec() TektonComponentSpec {
 	return &tp.Spec
 }
 
 // GetStatus implements TektonComponent
-func (tp *TektonPipeline) GetStatus() TektonComponentStatus {
+func (tp *TektonTrigger) GetStatus() TektonComponentStatus {
 	return &tp.Status
 }
 
-// TektonPipelineSpec defines the desired state of TektonPipeline
-type TektonPipelineSpec struct {
+// TektonTriggerSpec defines the desired state of TektonTrigger
+type TektonTriggerSpec struct {
 	CommonSpec `json:",inline"`
 }
 
-// TektonPipelineStatus defines the observed state of TektonPipeline
-type TektonPipelineStatus struct {
+// TektonPipelineStatus defines the observed state of TektonTrigger
+type TektonTriggerStatus struct {
 	duckv1.Status `json:",inline"`
 
 	// The version of the installed release
@@ -67,10 +67,10 @@ type TektonPipelineStatus struct {
 	Manifests []string `json:"manifests,omitempty"`
 }
 
-// TektonPipelineList contains a list of TektonPipeline
+// TektonTriggersList contains a list of TektonTrigger
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type TektonPipelineList struct {
+type TektonTriggerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []TektonPipeline `json:"items"`
+	Items           []TektonTrigger `json:"items"`
 }

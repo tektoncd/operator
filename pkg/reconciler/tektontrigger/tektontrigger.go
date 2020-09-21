@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonpipeline
+package tektontrigger
 
 import (
 	"context"
@@ -26,7 +26,8 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
-	tektonpipelinereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
+	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
+	tektontriggerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektontrigger"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -45,25 +46,29 @@ type Reconciler struct {
 	manifest mf.Manifest
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
+
+	pipelineInformer pipelineinformer.TektonPipelineInformer
 }
 
 // Check that our Reconciler implements controller.Reconciler
-var _ tektonpipelinereconciler.Interface = (*Reconciler)(nil)
-var _ tektonpipelinereconciler.Finalizer = (*Reconciler)(nil)
+var _ tektontriggerreconciler.Interface = (*Reconciler)(nil)
+var _ tektontriggerreconciler.Finalizer = (*Reconciler)(nil)
 
-// FinalizeKind removes all resources after deletion of a TektonPipeline.
-func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonPipeline) pkgreconciler.Event {
+var watchedResourceName = "trigger"
+
+// FinalizeKind removes all resources after deletion of a TektonTriggers.
+func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonTrigger) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 
-	// List all TektonPipelines to determine if cluster-scoped resources should be deleted.
-	tps, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines().List(metav1.ListOptions{})
+	// List all TektonTriggers to determine if cluster-scoped resources should be deleted.
+	tps, err := r.operatorClientSet.OperatorV1alpha1().TektonTriggers().List(metav1.ListOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to list all TektonPipelines: %w", err)
+		return fmt.Errorf("failed to list all TektonTriggers: %w", err)
 	}
 
 	for _, tp := range tps.Items {
 		if tp.GetDeletionTimestamp().IsZero() {
-			// Not deleting all TektonPipelines. Nothing to do here.
+			// Not deleting all TektonTriggers. Nothing to do here.
 			return nil
 		}
 	}
@@ -85,23 +90,37 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two.
-func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipeline) pkgreconciler.Event {
+func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigger) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
-	tp.Status.InitializeConditions()
-	tp.Status.ObservedGeneration = tp.Generation
+	tt.Status.InitializeConditions()
+	tt.Status.ObservedGeneration = tt.Generation
 
-	logger.Infow("Reconciling TektonPipeline", "status", tp.Status)
-	if tp.GetName() != common.WatchedResourceName {
+	logger.Infow("Reconciling TektonTriggers", "status", tt.Status)
+
+	if tt.GetName() != watchedResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
-			common.WatchedResourceName,
-			tp.GetName(),
+			watchedResourceName,
+			tt.GetName(),
 		)
 		logger.Error(msg)
-		tp.GetStatus().MarkInstallFailed(msg)
+		tt.GetStatus().MarkInstallFailed(msg)
 		return nil
 	}
 
-	if err := r.extension.Reconcile(ctx, tp); err != nil {
+	//find the valid tekton-pipeline installation
+	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
+		if err.Error() == common.PipelineNotReady {
+			tt.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
+			// wait for pipeline status to change
+			return fmt.Errorf(common.PipelineNotReady)
+		}
+		// (tektonpipeline.opeator.tekton.dev instance not available yet)
+		tt.Status.MarkDependencyMissing("tekton-pipelines does not exist")
+		return err
+	}
+	tt.Status.MarkDependenciesInstalled()
+
+	if err := r.extension.Reconcile(ctx, tt); err != nil {
 		return err
 	}
 	stages := common.Stages{
@@ -111,14 +130,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		common.CheckDeployments,
 	}
 	manifest := r.manifest.Append()
-	return stages.Execute(ctx, &manifest, tp)
+	return stages.Execute(ctx, &manifest, tt)
 }
 
 // transform mutates the passed manifest to one with common, component
 // and platform transformations applied
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	//logger := logging.FromContext(ctx)
-	instance := comp.(*v1alpha1.TektonPipeline)
+	instance := comp.(*v1alpha1.TektonTrigger)
 	extra := []mf.Transformer{}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)

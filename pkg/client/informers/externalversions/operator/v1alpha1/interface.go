@@ -26,6 +26,8 @@ import (
 type Interface interface {
 	// TektonPipelines returns a TektonPipelineInformer.
 	TektonPipelines() TektonPipelineInformer
+	// TektonTriggers returns a TektonTriggerInformer.
+	TektonTriggers() TektonTriggerInformer
 }
 
 type version struct {
@@ -42,4 +44,9 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // TektonPipelines returns a TektonPipelineInformer.
 func (v *version) TektonPipelines() TektonPipelineInformer {
 	return &tektonPipelineInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// TektonTriggers returns a TektonTriggerInformer.
+func (v *version) TektonTriggers() TektonTriggerInformer {
+	return &tektonTriggerInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

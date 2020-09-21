@@ -32,6 +32,10 @@ func (c *FakeOperatorV1alpha1) TektonPipelines() v1alpha1.TektonPipelineInterfac
 	return &FakeTektonPipelines{c}
 }
 
+func (c *FakeOperatorV1alpha1) TektonTriggers() v1alpha1.TektonTriggerInterface {
+	return &FakeTektonTriggers{c}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeOperatorV1alpha1) RESTClient() rest.Interface {
