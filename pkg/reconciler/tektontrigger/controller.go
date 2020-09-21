@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonpipeline
+package tektontrigger
 
 import (
 	"context"
@@ -28,7 +28,8 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
-	tektonPipelinereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
+	tektonTriggerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektontrigger"
+	tektonTriggerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektontrigger"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
@@ -48,6 +49,7 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 func NewExtendedController(generator common.ExtensionGenerator) injection.ControllerConstructor {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		tektonPipelineInformer := tektonPipelineinformer.Get(ctx)
+		tektonTriggersInformer := tektonTriggerinformer.Get(ctx)
 		deploymentInformer := deploymentinformer.Get(ctx)
 		kubeClient := kubeclient.Get(ctx)
 		logger := logging.FromContext(ctx)
@@ -64,15 +66,16 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			operatorClientSet: operatorclient.Get(ctx),
 			extension:         generator(ctx),
 			manifest:          manifest,
+			pipelineInformer:  tektonPipelineInformer,
 		}
-		impl := tektonPipelinereconciler.NewImpl(ctx, c)
+		impl := tektonTriggerreconciler.NewImpl(ctx, c)
 
 		logger.Info("Setting up event handlers")
 
-		tektonPipelineInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		tektonTriggersInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonPipeline")),
+			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonTriggers")),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 

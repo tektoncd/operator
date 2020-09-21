@@ -1,7 +1,6 @@
 apiVersion: operator.tekton.dev/v1alpha1
-kind: TektonAddon
+kind: TektonTrigger
 metadata:
   name: trigger
 spec:
-  # Add fields here
-  version: v0.7.0
+  targetNamespace: tekton-pipelines
