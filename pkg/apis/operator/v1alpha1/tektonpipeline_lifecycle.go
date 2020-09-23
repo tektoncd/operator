@@ -25,7 +25,6 @@ var (
 		DependenciesInstalled,
 		DeploymentsAvailable,
 		InstallSucceeded,
-		VersionMigrationEligible,
 	)
 )
 
@@ -65,19 +64,6 @@ func (tps *TektonPipelineStatus) MarkInstallFailed(msg string) {
 		InstallSucceeded,
 		"Error",
 		"Install failed with message: %s", msg)
-}
-
-// MarkVersionMigrationEligible marks the VersionMigrationEligible status as false with given message.
-func (tps *TektonPipelineStatus) MarkVersionMigrationEligible() {
-	pipelineCondSet.Manage(tps).MarkTrue(VersionMigrationEligible)
-}
-
-// MarkVersionMigrationNotEligible marks the DeploymentsAvailable status as true.
-func (tps *TektonPipelineStatus) MarkVersionMigrationNotEligible(msg string) {
-	pipelineCondSet.Manage(tps).MarkFalse(
-		VersionMigrationEligible,
-		"Error",
-		"Version migration is not eligible with message: %s", msg)
 }
 
 // MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.

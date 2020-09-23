@@ -43,8 +43,6 @@ func TestTektonPipelineHappyPath(t *testing.T) {
 	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
 	apistest.CheckConditionOngoing(tp, InstallSucceeded, t)
 
-	tp.MarkVersionMigrationEligible()
-
 	// Install succeeds.
 	tp.MarkInstallSucceeded()
 	// Dependencies are assumed successful too.
@@ -78,8 +76,6 @@ func TestTektonPipelineErrorPath(t *testing.T) {
 	apistest.CheckConditionOngoing(tp, DependenciesInstalled, t)
 	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
 	apistest.CheckConditionOngoing(tp, InstallSucceeded, t)
-
-	tp.MarkVersionMigrationEligible()
 
 	// Install fails.
 	tp.MarkInstallFailed("test")
@@ -139,12 +135,4 @@ func TestTektonPipelineExternalDependency(t *testing.T) {
 	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
 	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
 	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
-}
-
-func TestTektonPipelineVersionMigrationNotEligible(t *testing.T) {
-	tp := &TektonPipelineStatus{}
-	tp.InitializeConditions()
-
-	tp.MarkVersionMigrationNotEligible("Version migration not eligible.")
-	apistest.CheckConditionFailed(tp, VersionMigrationEligible, t)
 }
