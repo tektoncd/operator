@@ -24,8 +24,8 @@ import (
 )
 
 func TestNamespacedResource(t *testing.T) {
-	got := NamespacedResource("v1", "ConfigMap", "testns", "testname")
-	want := &unstructured.Unstructured{}
+	got := namespacedResource("v1", "ConfigMap", "testns", "testname")
+	want := unstructured.Unstructured{}
 	want.SetAPIVersion("v1")
 	want.SetKind("ConfigMap")
 	want.SetNamespace("testns")
@@ -37,8 +37,8 @@ func TestNamespacedResource(t *testing.T) {
 }
 
 func TestClusterScopedResource(t *testing.T) {
-	got := ClusterScopedResource("v1", "ConfigMap", "testname")
-	want := &unstructured.Unstructured{}
+	got := clusterScopedResource("v1", "ConfigMap", "testname")
+	want := unstructured.Unstructured{}
 	want.SetAPIVersion("v1")
 	want.SetKind("ConfigMap")
 	want.SetName("testname")

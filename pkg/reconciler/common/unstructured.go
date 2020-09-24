@@ -20,9 +20,9 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// NamespacedResource is an unstructured resource with the given apiVersion, kind, ns and name.
-func NamespacedResource(apiVersion, kind, ns, name string) *unstructured.Unstructured {
-	resource := &unstructured.Unstructured{}
+// namespacedResource is an unstructured resource with the given apiVersion, kind, ns and name.
+func namespacedResource(apiVersion, kind, ns, name string) unstructured.Unstructured {
+	resource := unstructured.Unstructured{}
 	resource.SetAPIVersion(apiVersion)
 	resource.SetKind(kind)
 	resource.SetNamespace(ns)
@@ -30,7 +30,7 @@ func NamespacedResource(apiVersion, kind, ns, name string) *unstructured.Unstruc
 	return resource
 }
 
-// ClusterScopedResource is an unstructured resource with the given apiVersion, kind and name.
-func ClusterScopedResource(apiVersion, kind, name string) *unstructured.Unstructured {
-	return NamespacedResource(apiVersion, kind, "", name)
+// clusterScopedResource is an unstructured resource with the given apiVersion, kind and name.
+func clusterScopedResource(apiVersion, kind, name string) unstructured.Unstructured {
+	return namespacedResource(apiVersion, kind, "", name)
 }

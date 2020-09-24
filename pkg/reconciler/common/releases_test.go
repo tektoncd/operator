@@ -25,57 +25,25 @@ import (
 )
 
 const (
-	VERSION          = "0.15.2"
-	TEKTON_PIPELINES = "testdata/kodata/tekton-pipeline/" + VERSION + "/release.notags.yaml"
+	VERSION = "0.15.2"
 )
 
 func TestGetLatestRelease(t *testing.T) {
 	koPath := "testdata/kodata"
-
-	tests := []struct {
-		name      string
-		component v1alpha1.TektonComponent
-		expected  string
-	}{
-		{
-			name:      "tekton-pipeline",
-			component: &v1alpha1.TektonPipeline{},
-			expected:  VERSION,
-		},
-	}
-
 	os.Setenv(KoEnvKey, koPath)
 	defer os.Unsetenv(KoEnvKey)
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			version := latestRelease(test.component)
-			util.AssertEqual(t, version, test.expected)
-		})
-	}
+
+	version := latestRelease(&v1alpha1.TektonPipeline{})
+	util.AssertEqual(t, version, VERSION)
 }
 
 func TestListReleases(t *testing.T) {
 	koPath := "testdata/kodata"
-
-	tests := []struct {
-		name      string
-		component v1alpha1.TektonComponent
-		expected  []string
-	}{
-		{
-			name:      "tekton-pipeline",
-			component: &v1alpha1.TektonPipeline{},
-			expected:  []string{"0.15.2"},
-		},
-	}
-
 	os.Setenv(KoEnvKey, koPath)
 	defer os.Unsetenv(KoEnvKey)
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			version, err := allReleases(test.component)
-			util.AssertEqual(t, err, nil)
-			util.AssertDeepEqual(t, version, test.expected)
-		})
-	}
+	expectedVersionList := []string{"0.15.2", "0.14.3", "0.13.2"}
+
+	version, err := allReleases(&v1alpha1.TektonPipeline{})
+	util.AssertEqual(t, err, nil)
+	util.AssertDeepEqual(t, version, expectedVersionList)
 }
