@@ -66,7 +66,7 @@ func TestCheckDeployments(t *testing.T) {
 	}{{
 		name: "ready deployment",
 		inManifest: []unstructured.Unstructured{
-			*NamespacedResource("apps/v1", "Deployment", "test", "ready"),
+			namespacedResource("apps/v1", "Deployment", "test", "ready"),
 		},
 		inAPI:      []runtime.Object{readyDeployment},
 		wantError:  false,
@@ -74,7 +74,7 @@ func TestCheckDeployments(t *testing.T) {
 	}, {
 		name: "not ready deployment",
 		inManifest: []unstructured.Unstructured{
-			*NamespacedResource("apps/v1", "Deployment", "test", "notReady"),
+			namespacedResource("apps/v1", "Deployment", "test", "notReady"),
 		},
 		inAPI:      []runtime.Object{notReadyDeployment},
 		wantError:  false,
@@ -82,8 +82,8 @@ func TestCheckDeployments(t *testing.T) {
 	}, {
 		name: "ready and not ready deployment",
 		inManifest: []unstructured.Unstructured{
-			*NamespacedResource("apps/v1", "Deployment", "test", "ready"),
-			*NamespacedResource("apps/v1", "Deployment", "test", "notReady"),
+			namespacedResource("apps/v1", "Deployment", "test", "ready"),
+			namespacedResource("apps/v1", "Deployment", "test", "notReady"),
 		},
 		inAPI:      []runtime.Object{},
 		wantError:  false,
@@ -91,7 +91,7 @@ func TestCheckDeployments(t *testing.T) {
 	}, {
 		name: "not found deployment",
 		inManifest: []unstructured.Unstructured{
-			*NamespacedResource("apps/v1", "Deployment", "test", "notFound"),
+			namespacedResource("apps/v1", "Deployment", "test", "notFound"),
 		},
 		inAPI:      []runtime.Object{},
 		wantError:  false,

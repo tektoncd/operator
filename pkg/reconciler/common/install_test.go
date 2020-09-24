@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -30,31 +29,18 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func setKoDataPath() (string, bool) {
-	oldKODATAPATH, found := os.LookupEnv("KO_DATA_PATH")
-	os.Setenv(KoEnvKey, filepath.Join(os.Getenv("GOPATH"), "src", "github.com", "tektoncd", "operator", "cmd", "operator", "kodata"))
-	return oldKODATAPATH, found
-}
-
-func resetKoDataPath(oldVal string, found bool) {
-	if !found {
-		os.Unsetenv(KoEnvKey)
-		return
-	}
-	os.Setenv(KoEnvKey, oldVal)
-}
-
 func TestInstall(t *testing.T) {
+	koPath := "testdata/kodata"
+	os.Setenv(KoEnvKey, koPath)
+	defer os.Unsetenv(KoEnvKey)
+
 	// Resources in the manifest
 	targetNamespace := "tekton-pipelines"
-	deployment := *NamespacedResource("apps/v1", "Deployment", "test", "test-deployment")
-	role := *NamespacedResource("rbac.authorization.k8s.io/v1", "Role", "test", "test-role")
-	roleBinding := *NamespacedResource("rbac.authorization.k8s.io/v1", "RoleBinding", "test", "test-role-binding")
-	clusterRole := *ClusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRole", "test-cluster-role")
-	clusterRoleBinding := *ClusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", "test-cluster-role-binding")
-
-	oldKoDataPath, found := setKoDataPath()
-	defer resetKoDataPath(oldKoDataPath, found)
+	deployment := namespacedResource("apps/v1", "Deployment", "test", "test-deployment")
+	role := namespacedResource("rbac.authorization.k8s.io/v1", "Role", "test", "test-role")
+	roleBinding := namespacedResource("rbac.authorization.k8s.io/v1", "RoleBinding", "test", "test-role-binding")
+	clusterRole := clusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRole", "test-cluster-role")
+	clusterRoleBinding := clusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", "test-cluster-role-binding")
 
 	// Deliberately mixing the order in the manifest.
 	in := []unstructured.Unstructured{deployment, role, roleBinding, clusterRole, clusterRoleBinding}
@@ -90,12 +76,13 @@ func TestInstall(t *testing.T) {
 
 func TestInstallError(t *testing.T) {
 	targetNamespace := "tekton-pipelines"
-	oldKoDataPath, found := setKoDataPath()
-	defer resetKoDataPath(oldKoDataPath, found)
+	koPath := "testdata/kodata"
+	os.Setenv(KoEnvKey, koPath)
+	defer os.Unsetenv(KoEnvKey)
 
 	client := &fakeClient{err: errors.New("test")}
 	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{
-		*NamespacedResource("apps/v1", "Deployment", "test", "test-deployment"),
+		namespacedResource("apps/v1", "Deployment", "test", "test-deployment"),
 	}), mf.UseClient(client))
 	if err != nil {
 		t.Fatalf("Failed to generate manifest: %v", err)
@@ -120,12 +107,12 @@ func TestInstallError(t *testing.T) {
 
 func TestUninstall(t *testing.T) {
 	// Resources in the manifest
-	deployment := *NamespacedResource("apps/v1", "Deployment", "test", "test-deployment")
-	role := *NamespacedResource("rbac.authorization.k8s.io/v1", "Role", "test", "test-role")
-	roleBinding := *NamespacedResource("rbac.authorization.k8s.io/v1", "RoleBinding", "test", "test-role-binding")
-	clusterRole := *ClusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRole", "test-cluster-role")
-	clusterRoleBinding := *ClusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", "test-cluster-role-binding")
-	crd := *ClusterScopedResource("apiextensions.k8s.io/v1beta1", "CustomResourceDefinition", "test-crd")
+	deployment := namespacedResource("apps/v1", "Deployment", "test", "test-deployment")
+	role := namespacedResource("rbac.authorization.k8s.io/v1", "Role", "test", "test-role")
+	roleBinding := namespacedResource("rbac.authorization.k8s.io/v1", "RoleBinding", "test", "test-role-binding")
+	clusterRole := clusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRole", "test-cluster-role")
+	clusterRoleBinding := clusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", "test-cluster-role-binding")
+	crd := clusterScopedResource("apiextensions.k8s.io/v1beta1", "CustomResourceDefinition", "test-crd")
 
 	// Deliberately mixing the order in the manifest.
 	in := []unstructured.Unstructured{deployment, role, roleBinding, clusterRole, clusterRoleBinding, crd}

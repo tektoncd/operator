@@ -40,7 +40,7 @@ func TestCommonTransformers(t *testing.T) {
 			},
 		},
 	}
-	in := []unstructured.Unstructured{*NamespacedResource("test/v1", "TestCR", "another-ns", "test-resource")}
+	in := []unstructured.Unstructured{namespacedResource("test/v1", "TestCR", "another-ns", "test-resource")}
 	manifest, err := mf.ManifestFrom(mf.Slice(in))
 	if err != nil {
 		t.Fatalf("Failed to generate manifest: %v", err)
