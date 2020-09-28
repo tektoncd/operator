@@ -25,7 +25,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-var WatchedResourceName = "cluster"
+var WatchedResourceName = "pipeline"
 
 const (
 	PipelineNotReady = "tekton-pipelines not ready"
