@@ -18,6 +18,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 
 	mf "github.com/manifestival/manifestival"
 	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -46,7 +47,7 @@ func CheckDeployments(ctx context.Context, manifest *mf.Manifest, instance v1alp
 		}
 		if !isDeploymentAvailable(deployment) {
 			status.MarkDeploymentsNotReady()
-			return nil
+			return fmt.Errorf("deployment not yet ready")
 		}
 	}
 	status.MarkDeploymentsAvailable()

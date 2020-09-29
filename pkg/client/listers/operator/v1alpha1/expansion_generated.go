@@ -18,6 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
+// TektonDashboardListerExpansion allows custom methods to be added to
+// TektonDashboardLister.
+type TektonDashboardListerExpansion interface{}
+
 // TektonPipelineListerExpansion allows custom methods to be added to
 // TektonPipelineLister.
 type TektonPipelineListerExpansion interface{}

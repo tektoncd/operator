@@ -18,6 +18,8 @@ limitations under the License.
 
 package v1alpha1
 
+type TektonDashboardExpansion interface{}
+
 type TektonPipelineExpansion interface{}
 
 type TektonTriggerExpansion interface{}

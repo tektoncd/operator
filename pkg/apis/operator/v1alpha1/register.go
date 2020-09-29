@@ -34,6 +34,9 @@ const (
 
 	// KindTektonTrigger is the Kind of Tekton Trigger in a GVK context.
 	KindTektonTrigger = "TektonTrigger"
+
+	// KindTektonDashboard is the Kind of Tekton Dashboard in a GVK context.
+	KindTektonDashboard = "TektonDashboard"
 )
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
@@ -49,6 +52,8 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&TektonPipelineList{},
 		&TektonTrigger{},
 		&TektonTriggerList{},
+		&TektonDashboard{},
+		&TektonDashboardList{},
 	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil
