@@ -22,40 +22,40 @@ import (
 )
 
 var (
-	_ TektonComponent     = (*TektonTrigger)(nil)
-	_ TektonComponentSpec = (*TektonTriggerSpec)(nil)
+	_ TektonComponent     = (*TektonDashboard)(nil)
+	_ TektonComponentSpec = (*TektonDashboardSpec)(nil)
 )
 
-// TektonTrigger is the Schema for the tektontriggers API
+// TektonDashboard is the Schema for the tektondashboards API
 // +genclient
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
-type TektonTrigger struct {
+type TektonDashboard struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   TektonTriggerSpec   `json:"spec,omitempty"`
-	Status TektonTriggerStatus `json:"status,omitempty"`
+	Spec   TektonDashboardSpec   `json:"spec,omitempty"`
+	Status TektonDashboardStatus `json:"status,omitempty"`
 }
 
 // GetSpec implements TektonComponent
-func (tp *TektonTrigger) GetSpec() TektonComponentSpec {
+func (tp *TektonDashboard) GetSpec() TektonComponentSpec {
 	return &tp.Spec
 }
 
 // GetStatus implements TektonComponent
-func (tp *TektonTrigger) GetStatus() TektonComponentStatus {
+func (tp *TektonDashboard) GetStatus() TektonComponentStatus {
 	return &tp.Status
 }
 
-// TektonTriggerSpec defines the desired state of TektonTrigger
-type TektonTriggerSpec struct {
+// TektonDashboardSpec defines the desired state of TektonDashboard
+type TektonDashboardSpec struct {
 	CommonSpec `json:",inline"`
 }
 
-// TektonTriggerStatus defines the observed state of TektonTrigger
-type TektonTriggerStatus struct {
+// TektonDashboardStatus defines the observed state of TektonDashboard
+type TektonDashboardStatus struct {
 	duckv1.Status `json:",inline"`
 
 	// The version of the installed release
@@ -67,10 +67,10 @@ type TektonTriggerStatus struct {
 	Manifests []string `json:"manifests,omitempty"`
 }
 
-// TektonTriggersList contains a list of TektonTrigger
+// TektonDashboardsList contains a list of TektonDashboard
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type TektonTriggerList struct {
+type TektonDashboardList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []TektonTrigger `json:"items"`
+	Items           []TektonDashboard `json:"items"`
 }
