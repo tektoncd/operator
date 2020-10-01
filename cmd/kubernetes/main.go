@@ -17,8 +17,8 @@ limitations under the License.
 package main
 
 import (
-	"github.com/tektoncd/operator/pkg/reconciler/tektonpipeline"
-	"github.com/tektoncd/operator/pkg/reconciler/tektontrigger"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
 	"knative.dev/pkg/injection/sharedmain"
 )
 
