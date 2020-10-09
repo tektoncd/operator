@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Tekton Authors
+Copyright 2020 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,17 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package tektontrigger
 
 import (
-	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
-	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektontrigger"
-	"knative.dev/pkg/injection/sharedmain"
+	"context"
+
+	k8s_ctrl "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
+	"knative.dev/pkg/configmap"
+	"knative.dev/pkg/controller"
 )
 
-func main() {
-	sharedmain.Main("tekton-operator",
-		tektonpipeline.NewController,
-		tektontrigger.NewController,
-	)
+// NewController initializes the controller and is called by the generated code
+// Registers eventhandlers to enqueue events
+func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	return k8s_ctrl.NewExtendedController(OpenShiftExtension)(ctx, cmw)
 }
