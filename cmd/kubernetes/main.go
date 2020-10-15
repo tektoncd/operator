@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektondashboard"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
 	"knative.dev/pkg/injection/sharedmain"
@@ -26,5 +27,6 @@ func main() {
 	sharedmain.Main("tekton-operator",
 		tektonpipeline.NewController,
 		tektontrigger.NewController,
+		tektondashboard.NewController,
 	)
 }
