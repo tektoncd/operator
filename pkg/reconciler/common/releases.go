@@ -91,6 +91,8 @@ func componentDir(instance v1alpha1.TektonComponent) string {
 		return filepath.Join(koDataDir, "tekton-pipeline")
 	case *v1alpha1.TektonTrigger:
 		return filepath.Join(koDataDir, "tekton-trigger")
+	case *v1alpha1.TektonDashboard:
+		return filepath.Join(koDataDir, "tekton-dashboard")
 	}
 	return ""
 }
