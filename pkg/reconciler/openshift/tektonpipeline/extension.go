@@ -33,7 +33,6 @@ type openshiftExtension struct{}
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{}
-	//return nil
 }
 func (oe openshiftExtension) Reconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil
