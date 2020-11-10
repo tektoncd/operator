@@ -50,7 +50,7 @@ func TargetVersion(instance v1alpha1.TektonComponent) string {
 
 // TargetManifest returns the manifest for the TargetVersion
 func TargetManifest(instance v1alpha1.TektonComponent) (mf.Manifest, error) {
-	return fetch(manifestPath(TargetVersion(instance), instance))
+	return Fetch(manifestPath(TargetVersion(instance), instance))
 }
 
 // InstalledManifest returns the version currently installed, which is
@@ -62,7 +62,7 @@ func InstalledManifest(instance v1alpha1.TektonComponent) (mf.Manifest, error) {
 	if len(instance.GetStatus().GetManifests()) == 0 && current == "" {
 		return TargetManifest(instance)
 	}
-	return fetch(installedManifestPath(current, instance))
+	return Fetch(installedManifestPath(current, instance))
 }
 
 func getVersionKey(instance v1alpha1.TektonComponent) string {
@@ -73,7 +73,7 @@ func getVersionKey(instance v1alpha1.TektonComponent) string {
 	return ""
 }
 
-func fetch(path string) (mf.Manifest, error) {
+func Fetch(path string) (mf.Manifest, error) {
 	if m, ok := cache[path]; ok {
 		return m, nil
 	}
@@ -93,6 +93,8 @@ func componentDir(instance v1alpha1.TektonComponent) string {
 		return filepath.Join(koDataDir, "tekton-trigger")
 	case *v1alpha1.TektonDashboard:
 		return filepath.Join(koDataDir, "tekton-dashboard")
+	case *v1alpha1.TektonAddon:
+		return filepath.Join(koDataDir, "tekton-addon")
 	}
 	return ""
 }

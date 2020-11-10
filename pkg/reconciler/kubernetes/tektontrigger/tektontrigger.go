@@ -54,8 +54,6 @@ type Reconciler struct {
 var _ tektontriggerreconciler.Interface = (*Reconciler)(nil)
 var _ tektontriggerreconciler.Finalizer = (*Reconciler)(nil)
 
-var watchedResourceName = "trigger"
-
 // FinalizeKind removes all resources after deletion of a TektonTriggers.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonTrigger) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
@@ -97,9 +95,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 
 	logger.Infow("Reconciling TektonTriggers", "status", tt.Status)
 
-	if tt.GetName() != watchedResourceName {
+	if tt.GetName() != common.TriggerResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
-			watchedResourceName,
+			common.TriggerResourceName,
 			tt.GetName(),
 		)
 		logger.Error(msg)

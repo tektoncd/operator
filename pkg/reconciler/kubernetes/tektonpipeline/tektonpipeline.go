@@ -91,9 +91,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	tp.Status.ObservedGeneration = tp.Generation
 
 	logger.Infow("Reconciling TektonPipeline", "status", tp.Status)
-	if tp.GetName() != common.WatchedResourceName {
+	if tp.GetName() != common.PipelineResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
-			common.WatchedResourceName,
+			common.PipelineResourceName,
 			tp.GetName(),
 		)
 		logger.Error(msg)

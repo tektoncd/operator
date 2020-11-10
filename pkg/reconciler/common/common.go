@@ -20,19 +20,24 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
+	informer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
-var WatchedResourceName = "pipeline"
+var (
+	PipelineResourceName = "pipeline"
+	TriggerResourceName  = "trigger"
+)
 
 const (
 	PipelineNotReady = "tekton-pipelines not ready"
 	PipelineNotFound = "tekton-pipelines not installed"
+	TriggerNotReady  = "tekton-triggers not ready"
+	TriggerNotFound  = "tekton-triggers not installed"
 )
 
-func PipelineReady(informer pipelineinformer.TektonPipelineInformer) (*v1alpha1.TektonPipeline, error) {
+func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPipeline, error) {
 	ppln, err := getPipelineRes(informer)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -49,7 +54,29 @@ func PipelineReady(informer pipelineinformer.TektonPipelineInformer) (*v1alpha1.
 	return ppln, nil
 }
 
-func getPipelineRes(informer pipelineinformer.TektonPipelineInformer) (*v1alpha1.TektonPipeline, error) {
-	res, err := informer.Lister().Get(WatchedResourceName)
+func getPipelineRes(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPipeline, error) {
+	res, err := informer.Lister().Get(PipelineResourceName)
+	return res, err
+}
+
+func TriggerReady(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrigger, error) {
+	trigger, err := getTriggerRes(informer)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf(TriggerNotFound)
+		}
+		return nil, err
+	}
+
+	if len(trigger.Status.Conditions) != 0 {
+		if trigger.Status.Conditions[0].Status != corev1.ConditionTrue {
+			return nil, fmt.Errorf(TriggerNotReady)
+		}
+	}
+	return trigger, nil
+}
+
+func getTriggerRes(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrigger, error) {
+	res, err := informer.Lister().Get(TriggerResourceName)
 	return res, err
 }

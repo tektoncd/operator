@@ -24,6 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// TektonAddons returns a TektonAddonInformer.
+	TektonAddons() TektonAddonInformer
 	// TektonDashboards returns a TektonDashboardInformer.
 	TektonDashboards() TektonDashboardInformer
 	// TektonPipelines returns a TektonPipelineInformer.
@@ -41,6 +43,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// TektonAddons returns a TektonAddonInformer.
+func (v *version) TektonAddons() TektonAddonInformer {
+	return &tektonAddonInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // TektonDashboards returns a TektonDashboardInformer.

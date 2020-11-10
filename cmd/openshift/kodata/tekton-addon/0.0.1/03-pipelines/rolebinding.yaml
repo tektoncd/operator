@@ -1,0 +1,30 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-default-pipelines-view
+  namespace: openshift
+  annotations:
+    operator.tekton.dev/preserve-namespace: "true"
+roleRef:
+  kind: ClusterRole
+  name: tekton-default-pipelines-view
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: system:authenticated
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-default-openshift-pipelines-view
+  namespace: openshift-pipelines
+roleRef:
+  kind: Role
+  name: tekton-default-openshift-pipelines-view
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:authenticated
