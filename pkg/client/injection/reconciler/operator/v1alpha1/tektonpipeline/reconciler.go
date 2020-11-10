@@ -307,7 +307,7 @@ func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1alpha1.Te
 
 			getter := r.Client.OperatorV1alpha1().TektonPipelines()
 
-			existing, err = getter.Get(desired.Name, metav1.GetOptions{})
+			existing, err = getter.Get(ctx, desired.Name, metav1.GetOptions{})
 			if err != nil {
 				return err
 			}
@@ -326,7 +326,7 @@ func (r *reconcilerImpl) updateStatus(ctx context.Context, existing *v1alpha1.Te
 
 		updater := r.Client.OperatorV1alpha1().TektonPipelines()
 
-		_, err = updater.UpdateStatus(existing)
+		_, err = updater.UpdateStatus(ctx, existing, metav1.UpdateOptions{})
 		return err
 	})
 }
@@ -384,15 +384,15 @@ func (r *reconcilerImpl) updateFinalizersFiltered(ctx context.Context, resource 
 	patcher := r.Client.OperatorV1alpha1().TektonPipelines()
 
 	resourceName := resource.Name
-	resource, err = patcher.Patch(resourceName, types.MergePatchType, patch)
+	updated, err := patcher.Patch(ctx, resourceName, types.MergePatchType, patch, metav1.PatchOptions{})
 	if err != nil {
-		r.Recorder.Eventf(resource, v1.EventTypeWarning, "FinalizerUpdateFailed",
+		r.Recorder.Eventf(existing, v1.EventTypeWarning, "FinalizerUpdateFailed",
 			"Failed to update finalizers for %q: %v", resourceName, err)
 	} else {
-		r.Recorder.Eventf(resource, v1.EventTypeNormal, "FinalizerUpdate",
+		r.Recorder.Eventf(updated, v1.EventTypeNormal, "FinalizerUpdate",
 			"Updated %q finalizers", resource.GetName())
 	}
-	return resource, err
+	return updated, err
 }
 
 func (r *reconcilerImpl) setFinalizerIfFinalizer(ctx context.Context, resource *v1alpha1.TektonPipeline) (*v1alpha1.TektonPipeline, error) {

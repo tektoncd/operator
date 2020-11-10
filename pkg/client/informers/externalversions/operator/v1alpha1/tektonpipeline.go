@@ -19,6 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	time "time"
 
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -60,13 +61,13 @@ func NewFilteredTektonPipelineInformer(client versioned.Interface, resyncPeriod 
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().TektonPipelines().List(options)
+				return client.OperatorV1alpha1().TektonPipelines().List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().TektonPipelines().Watch(options)
+				return client.OperatorV1alpha1().TektonPipelines().Watch(context.TODO(), options)
 			},
 		},
 		&operatorv1alpha1.TektonPipeline{},

@@ -61,7 +61,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	logger := logging.FromContext(ctx)
 
 	// List all TektonDashboards to determine if cluster-scoped resources should be deleted.
-	tps, err := r.operatorClientSet.OperatorV1alpha1().TektonDashboards().List(metav1.ListOptions{})
+	tps, err := r.operatorClientSet.OperatorV1alpha1().TektonDashboards().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list all TektonDashboards: %w", err)
 	}

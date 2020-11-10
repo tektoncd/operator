@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -38,7 +40,7 @@ var tektontriggersResource = schema.GroupVersionResource{Group: "operator.tekton
 var tektontriggersKind = schema.GroupVersionKind{Group: "operator.tekton.dev", Version: "v1alpha1", Kind: "TektonTrigger"}
 
 // Get takes name of the tektonTrigger, and returns the corresponding tektonTrigger object, and an error if there is any.
-func (c *FakeTektonTriggers) Get(name string, options v1.GetOptions) (result *v1alpha1.TektonTrigger, err error) {
+func (c *FakeTektonTriggers) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TektonTrigger, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootGetAction(tektontriggersResource, name), &v1alpha1.TektonTrigger{})
 	if obj == nil {
@@ -48,7 +50,7 @@ func (c *FakeTektonTriggers) Get(name string, options v1.GetOptions) (result *v1
 }
 
 // List takes label and field selectors, and returns the list of TektonTriggers that match those selectors.
-func (c *FakeTektonTriggers) List(opts v1.ListOptions) (result *v1alpha1.TektonTriggerList, err error) {
+func (c *FakeTektonTriggers) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TektonTriggerList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootListAction(tektontriggersResource, tektontriggersKind, opts), &v1alpha1.TektonTriggerList{})
 	if obj == nil {
@@ -69,13 +71,13 @@ func (c *FakeTektonTriggers) List(opts v1.ListOptions) (result *v1alpha1.TektonT
 }
 
 // Watch returns a watch.Interface that watches the requested tektonTriggers.
-func (c *FakeTektonTriggers) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeTektonTriggers) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(tektontriggersResource, opts))
 }
 
 // Create takes the representation of a tektonTrigger and creates it.  Returns the server's representation of the tektonTrigger, and an error, if there is any.
-func (c *FakeTektonTriggers) Create(tektonTrigger *v1alpha1.TektonTrigger) (result *v1alpha1.TektonTrigger, err error) {
+func (c *FakeTektonTriggers) Create(ctx context.Context, tektonTrigger *v1alpha1.TektonTrigger, opts v1.CreateOptions) (result *v1alpha1.TektonTrigger, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootCreateAction(tektontriggersResource, tektonTrigger), &v1alpha1.TektonTrigger{})
 	if obj == nil {
@@ -85,7 +87,7 @@ func (c *FakeTektonTriggers) Create(tektonTrigger *v1alpha1.TektonTrigger) (resu
 }
 
 // Update takes the representation of a tektonTrigger and updates it. Returns the server's representation of the tektonTrigger, and an error, if there is any.
-func (c *FakeTektonTriggers) Update(tektonTrigger *v1alpha1.TektonTrigger) (result *v1alpha1.TektonTrigger, err error) {
+func (c *FakeTektonTriggers) Update(ctx context.Context, tektonTrigger *v1alpha1.TektonTrigger, opts v1.UpdateOptions) (result *v1alpha1.TektonTrigger, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateAction(tektontriggersResource, tektonTrigger), &v1alpha1.TektonTrigger{})
 	if obj == nil {
@@ -96,7 +98,7 @@ func (c *FakeTektonTriggers) Update(tektonTrigger *v1alpha1.TektonTrigger) (resu
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTektonTriggers) UpdateStatus(tektonTrigger *v1alpha1.TektonTrigger) (*v1alpha1.TektonTrigger, error) {
+func (c *FakeTektonTriggers) UpdateStatus(ctx context.Context, tektonTrigger *v1alpha1.TektonTrigger, opts v1.UpdateOptions) (*v1alpha1.TektonTrigger, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootUpdateSubresourceAction(tektontriggersResource, "status", tektonTrigger), &v1alpha1.TektonTrigger{})
 	if obj == nil {
@@ -106,22 +108,22 @@ func (c *FakeTektonTriggers) UpdateStatus(tektonTrigger *v1alpha1.TektonTrigger)
 }
 
 // Delete takes name of the tektonTrigger and deletes it. Returns an error if one occurs.
-func (c *FakeTektonTriggers) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeTektonTriggers) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewRootDeleteAction(tektontriggersResource, name), &v1alpha1.TektonTrigger{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeTektonTriggers) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(tektontriggersResource, listOptions)
+func (c *FakeTektonTriggers) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewRootDeleteCollectionAction(tektontriggersResource, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.TektonTriggerList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched tektonTrigger.
-func (c *FakeTektonTriggers) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.TektonTrigger, err error) {
+func (c *FakeTektonTriggers) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TektonTrigger, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewRootPatchSubresourceAction(tektontriggersResource, name, pt, data, subresources...), &v1alpha1.TektonTrigger{})
 	if obj == nil {

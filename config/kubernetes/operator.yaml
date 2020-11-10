@@ -29,6 +29,7 @@ spec:
     metadata:
       labels:
         name: tekton-operator
+        app: tekton-operator
     spec:
       serviceAccountName: tekton-operator
       containers:
