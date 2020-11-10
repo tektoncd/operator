@@ -16,6 +16,7 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tekton-operator
+  namespace: tekton-operator
 subjects:
 - kind: ServiceAccount
   name: tekton-operator

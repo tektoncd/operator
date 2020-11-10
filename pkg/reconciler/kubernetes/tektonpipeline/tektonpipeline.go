@@ -56,7 +56,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	logger := logging.FromContext(ctx)
 
 	// List all TektonPipelines to determine if cluster-scoped resources should be deleted.
-	tps, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines().List(metav1.ListOptions{})
+	tps, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list all TektonPipelines: %w", err)
 	}
