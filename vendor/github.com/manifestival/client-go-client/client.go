@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	mfDynamic "github.com/manifestival/client-go-client/pkg/dynamic"
 	mf "github.com/manifestival/manifestival"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -47,7 +48,7 @@ func (c *clientGoClient) Create(obj *unstructured.Unstructured, options ...mf.Ap
 		return err
 	}
 	opts := mf.ApplyWith(options)
-	_, err = resource.Create(obj, *opts.ForCreate)
+	_, err = resource.Create(context.TODO(), obj, *opts.ForCreate)
 	return err
 }
 
@@ -57,7 +58,7 @@ func (c *clientGoClient) Update(obj *unstructured.Unstructured, options ...mf.Ap
 		return err
 	}
 	opts := mf.ApplyWith(options)
-	_, err = resource.Update(obj, *opts.ForUpdate)
+	_, err = resource.Update(context.TODO(), obj, *opts.ForUpdate)
 	return err
 }
 
@@ -67,7 +68,7 @@ func (c *clientGoClient) Delete(obj *unstructured.Unstructured, options ...mf.De
 		return err
 	}
 	opts := mf.DeleteWith(options)
-	err = resource.Delete(obj.GetName(), opts.ForDelete)
+	err = resource.Delete(context.TODO(), obj.GetName(), *opts.ForDelete)
 	if apierrors.IsNotFound(err) && opts.IgnoreNotFound {
 		return nil
 	}
@@ -79,5 +80,5 @@ func (c *clientGoClient) Get(obj *unstructured.Unstructured) (*unstructured.Unst
 	if err != nil {
 		return nil, err
 	}
-	return resource.Get(obj.GetName(), metav1.GetOptions{})
+	return resource.Get(context.TODO(), obj.GetName(), metav1.GetOptions{})
 }
