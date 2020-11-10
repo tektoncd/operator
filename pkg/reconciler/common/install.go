@@ -26,9 +26,11 @@ import (
 )
 
 var (
-	namespace   mf.Predicate = mf.ByKind("Namespace")
-	role        mf.Predicate = mf.Any(mf.ByKind("ClusterRole"), mf.ByKind("Role"))
-	rolebinding mf.Predicate = mf.Any(mf.ByKind("ClusterRoleBinding"), mf.ByKind("RoleBinding"))
+	namespace             mf.Predicate = mf.ByKind("Namespace")
+	role                  mf.Predicate = mf.Any(mf.ByKind("ClusterRole"), mf.ByKind("Role"))
+	rolebinding           mf.Predicate = mf.Any(mf.ByKind("ClusterRoleBinding"), mf.ByKind("RoleBinding"))
+	consoleCLIDownload    mf.Predicate = mf.Any(mf.ByKind("ConsoleCLIDownload"))
+	clusterTriggerBinding mf.Predicate = mf.Any(mf.ByKind("ClusterTriggerBinding"))
 )
 
 // Install applies the manifest resources for the given version and updates the given
@@ -51,6 +53,14 @@ func Install(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.Tekto
 	if err := manifest.Filter(rolebinding).Apply(); err != nil {
 		status.MarkInstallFailed(err.Error())
 		return fmt.Errorf("failed to apply (cluster)rolebindings: %w", err)
+	}
+	if err := manifest.Filter(consoleCLIDownload).Apply(); err != nil {
+		status.MarkInstallFailed(err.Error())
+		return fmt.Errorf("failed to apply consoleCLIdownload: %w", err)
+	}
+	if err := manifest.Filter(clusterTriggerBinding).Apply(); err != nil {
+		status.MarkInstallFailed(err.Error())
+		return fmt.Errorf("failed to apply clusterTriggerBinding: %w", err)
 	}
 	if err := manifest.Filter(mf.Not(mf.Any(role, rolebinding))).Apply(); err != nil {
 		status.MarkInstallFailed(err.Error())

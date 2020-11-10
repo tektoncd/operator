@@ -228,3 +228,10 @@ rules:
   - delete
   - patch
   - watch
+- apiGroups:
+  - console.openshift.io
+  resources:
+  - consoleyamlsamples
+  - consoleclidownloads
+  verbs:
+  - '*'

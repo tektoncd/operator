@@ -26,6 +26,7 @@ import (
 
 type OperatorV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	TektonAddonsGetter
 	TektonDashboardsGetter
 	TektonPipelinesGetter
 	TektonTriggersGetter
@@ -34,6 +35,10 @@ type OperatorV1alpha1Interface interface {
 // OperatorV1alpha1Client is used to interact with features provided by the operator.tekton.dev group.
 type OperatorV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *OperatorV1alpha1Client) TektonAddons() TektonAddonInterface {
+	return newTektonAddons(c)
 }
 
 func (c *OperatorV1alpha1Client) TektonDashboards() TektonDashboardInterface {

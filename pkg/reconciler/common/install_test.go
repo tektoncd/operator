@@ -41,6 +41,8 @@ func TestInstall(t *testing.T) {
 	roleBinding := namespacedResource("rbac.authorization.k8s.io/v1", "RoleBinding", "test", "test-role-binding")
 	clusterRole := clusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRole", "test-cluster-role")
 	clusterRoleBinding := clusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", "test-cluster-role-binding")
+	//clusterTriggerBinding := clusterScopedResource("triggers.tekton.dev/v1alpha1", "ClusterTriggerBinding", "test-cluster-trigger-binding")
+	//consoleCLIDownload := clusterScopedResource("console.openshift.io/v1", "ConsoleCLIDownload", "test-console-cli")
 
 	// Deliberately mixing the order in the manifest.
 	in := []unstructured.Unstructured{deployment, role, roleBinding, clusterRole, clusterRoleBinding}
@@ -100,6 +102,29 @@ func TestInstallError(t *testing.T) {
 	}
 
 	condition := instance.Status.GetCondition(v1alpha1.InstallSucceeded)
+	if condition == nil || condition.Status != corev1.ConditionFalse {
+		t.Fatalf("InstallSucceeded = %v, want %v", condition, corev1.ConditionFalse)
+	}
+
+	addonManifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{
+		clusterScopedResource("triggers.tekton.dev/v1alpha1", "ClusterTriggerBinding", "test-cluster-trigger-binding"),
+	}), mf.UseClient(client))
+	if err != nil {
+		t.Fatalf("Failed to generate manifest: %v", err)
+	}
+
+	addonInstance := &v1alpha1.TektonAddon{
+		Spec: v1alpha1.TektonAddonSpec{
+			CommonSpec: v1alpha1.CommonSpec{
+				TargetNamespace: targetNamespace,
+			},
+		},
+	}
+	if err := Install(context.TODO(), &addonManifest, addonInstance); err == nil {
+		t.Fatalf("Install() = nil, wanted an error")
+	}
+
+	condition = addonInstance.Status.GetCondition(v1alpha1.InstallSucceeded)
 	if condition == nil || condition.Status != corev1.ConditionFalse {
 		t.Fatalf("InstallSucceeded = %v, want %v", condition, corev1.ConditionFalse)
 	}
