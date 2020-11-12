@@ -32,7 +32,6 @@ function update_module {
   local dep="${1}"
   local version="${2}"
 
-
   echo "Updating ${dep} to ${version}"
 
   go mod edit \

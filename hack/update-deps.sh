@@ -18,15 +18,11 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-export GO111MODULE=on
-export GOFLAGS=-mod=vendor
+source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scripts/library.sh
 
-# This controls the release branch we track.
-VERSION="release-0.17"
+cd ${REPO_ROOT_DIR}
 
-source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/library.sh
-
-cd "${REPO_ROOT_DIR}"
+VERSION="release-0.18"
 
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.
@@ -47,12 +43,12 @@ done
 readonly GO_GET
 
 if (( GO_GET )); then
-  go get -d "${FLOATING_DEPS[@]}"
+  go get -d ${FLOATING_DEPS[@]}
 fi
 
+
+# Prune modules.
 go mod tidy
 go mod vendor
 
-update_licenses third_party/VENDOR-LICENSE
-
-remove_broken_symlinks ./vendor
+update_licenses third_party/
