@@ -22,7 +22,7 @@ export GO111MODULE=on
 export GOFLAGS=-mod=vendor
 
 # This controls the release branch we track.
-VERSION="release-0.17"
+VERSION="release-0.18"
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/library.sh
 

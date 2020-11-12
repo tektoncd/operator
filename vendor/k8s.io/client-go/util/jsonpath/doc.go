@@ -1,7 +1,5 @@
-// +build e2e
-
 /*
-Copyright 2020 The Tekton Authors
+Copyright 2015 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,13 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package test
-
-import (
-	"testing"
-)
-
-// TestTektonPipelinesDeployment verifies the TektonPipelines creation, deployment recreation, and TektonPipelines deletion.
-func TestTektonPipelinesDeployment(t *testing.T) {
-	t.Logf("TektonPipelineDeployment tests passed")
-}
+// package jsonpath is a template engine using jsonpath syntax,
+// which can be seen at http://goessner.net/articles/JsonPath/.
+// In addition, it has {range} {end} function to iterate list and slice.
+package jsonpath // import "k8s.io/client-go/util/jsonpath"
