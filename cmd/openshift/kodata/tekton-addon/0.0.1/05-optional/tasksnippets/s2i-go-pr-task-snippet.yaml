@@ -1,0 +1,34 @@
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleYAMLSample
+metadata:
+  name: s2i-go-pr-snippet
+spec:
+  targetResource:
+    apiVersion: tekton.dev/v1beta1
+    kind: Pipeline
+  title: S2I-Go Pipeline Resource based Task
+  description: |
+    An s2i task to build go based source.
+    Source-to-Image (S2I) is a toolkit and workflow for building reproducible container images from source code.
+    S2I produces images by injecting source code into a base S2I container image and letting the container prepare that source code for execution.
+    The base S2I container images contains the language runtime and build tools needed for building and running the source code.
+
+  snippet: true
+  yaml: |
+    - name: build
+      taskRef:
+        name: s2i-go-pr
+        kind: ClusterTask
+      resources:
+        inputs:
+          - name: source
+            resource: app-source
+        outputs:
+          - name: image
+            resource: app-image
+      params:
+        - name: PATH_CONTEXT
+          value: .
+        - name: TLSVERIFY
+          value: "true"
