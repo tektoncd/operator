@@ -91,3 +91,10 @@ func AssertDeepEqual(t *testing.T, actual, expected interface{}) {
 	}
 	t.Fatalf("expected does not deep equal actual. \nExpected: %T %+v\nActual:   %T %+v", expected, expected, actual, actual)
 }
+
+func AssertNoError(t *testing.T, err error) {
+	t.Helper()
+	if err != nil {
+		t.Fatalf("expected no error, error: %q", err)
+	}
+}

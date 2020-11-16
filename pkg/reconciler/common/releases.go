@@ -65,14 +65,6 @@ func InstalledManifest(instance v1alpha1.TektonComponent) (mf.Manifest, error) {
 	return Fetch(installedManifestPath(current, instance))
 }
 
-func getVersionKey(instance v1alpha1.TektonComponent) string {
-	switch instance.(type) {
-	case *v1alpha1.TektonPipeline:
-		return "pipeline.tekton.dev/release"
-	}
-	return ""
-}
-
 func Fetch(path string) (mf.Manifest, error) {
 	if m, ok := cache[path]; ok {
 		return m, nil

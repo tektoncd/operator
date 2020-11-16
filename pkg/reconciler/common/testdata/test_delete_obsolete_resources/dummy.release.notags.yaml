@@ -102,14 +102,14 @@ rules:
   # managing.
 - apiGroups: ["tekton.dev"]
   resources: ["tasks", "clustertasks", "taskruns", "pipelines", "pipelineruns", "pipelineresources",
-    "conditions"]
+              "conditions"]
   verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 - apiGroups: ["tekton.dev"]
   resources: ["taskruns/finalizers", "pipelineruns/finalizers"]
   verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 - apiGroups: ["tekton.dev"]
   resources: ["tasks/status", "clustertasks/status", "taskruns/status", "pipelines/status",
-    "pipelineruns/status", "pipelineresources/status"]
+              "pipelineruns/status", "pipelineresources/status"]
   verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 - apiGroups: ["policy"]
   resources: ["podsecuritypolicies"]
@@ -128,7 +128,7 @@ metadata:
 rules:
 - apiGroups: [""]
   resources: ["pods", "pods/log", "secrets", "events", "serviceaccounts", "configmaps",
-    "persistentvolumeclaims", "limitranges"]
+              "persistentvolumeclaims", "limitranges"]
   verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   # Unclear if this access is actually required.  Simply a hold-over from the previous
   # incarnation of the controller's ClusterRole.
@@ -226,7 +226,7 @@ rules:
   resources: ["configmaps"]
   verbs: ["get"]
   resourceNames: ["config-logging", "config-observability", "config-artifact-bucket",
-    "config-artifact-pvc", "feature-flags", "config-leader-election"]
+                  "config-artifact-pvc", "feature-flags", "config-leader-election"]
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
