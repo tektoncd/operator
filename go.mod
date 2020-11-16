@@ -1,7 +1,6 @@
 module github.com/tektoncd/operator
 
 require (
-	github.com/emicklei/go-restful v2.11.1+incompatible // indirect
 	github.com/go-logr/zapr v0.1.1
 	github.com/google/go-cmp v0.5.2
 	github.com/manifestival/client-go-client v0.4.0
