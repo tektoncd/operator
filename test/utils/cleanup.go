@@ -39,6 +39,6 @@ func CleanupOnInterrupt(cleanup func()) {
 // TearDown will delete created names using clients.
 func TearDown(clients *Clients, names ResourceNames) {
 	if clients != nil && clients.Operator != nil {
-		clients.TektonPipeline().Delete(context.TODO(), names.TektonPipeline, metav1.DeleteOptions{})
+		_ = clients.TektonPipeline().Delete(context.TODO(), names.TektonPipeline, metav1.DeleteOptions{})
 	}
 }

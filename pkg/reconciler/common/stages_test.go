@@ -35,7 +35,8 @@ func TestStagesExecute(t *testing.T) {
 	manifest, _ := mf.ManifestFrom(mf.Slice{})
 	stages := Stages{AppendTarget, AppendInstalled}
 	util.AssertEqual(t, len(manifest.Resources()), 0)
-	stages.Execute(context.TODO(), &manifest, &v1alpha1.TektonPipeline{})
+	err := stages.Execute(context.TODO(), &manifest, &v1alpha1.TektonPipeline{})
+	util.AssertNoError(t, err)
 	util.AssertEqual(t, len(manifest.Resources()), 4)
 }
 
@@ -67,7 +68,8 @@ func TestDeleteObsoleteResources(t *testing.T) {
 			return &manifest, nil
 		})
 	nocms := manifest.Filter(mf.Not(mf.ByKind("ConfigMap")))
-	deleteObsoleteResources(context.TODO(), &nocms, nil)
+	err = deleteObsoleteResources(context.TODO(), &nocms, nil)
+	util.AssertNoError(t, err)
 	// Now verify all the ConfigMaps are gone
 	for _, cm := range cms {
 		if _, err := manifest.Client.Get(&cm); !errors.IsNotFound(err) {
@@ -87,7 +89,8 @@ func TestDeleteObsoleteResources(t *testing.T) {
 		}
 		return nil
 	})
-	deleteObsoleteResources(context.TODO(), &v1crds, nil)
+	err = deleteObsoleteResources(context.TODO(), &v1crds, nil)
+	util.AssertNoError(t, err)
 	// And verify the old ones are still there
 	for _, cm := range manifest.Filter(mf.CRDs).Resources() {
 		if _, err := manifest.Client.Get(&cm); err != nil {

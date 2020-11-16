@@ -78,11 +78,11 @@ rules:
   verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 - apiGroups: ["triggers.tekton.dev"]
   resources: ["clustertriggerbindings", "eventlisteners", "triggerbindings", "triggertemplates",
-    "triggers", "eventlisteners/finalizers"]
+              "triggers", "eventlisteners/finalizers"]
   verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 - apiGroups: ["triggers.tekton.dev"]
   resources: ["clustertriggerbindings/status", "eventlisteners/status", "triggerbindings/status",
-    "triggertemplates/status", "triggers/status"]
+              "triggertemplates/status", "triggers/status"]
   verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 - apiGroups: ["policy"]
   resources: ["podsecuritypolicies"]
@@ -760,7 +760,7 @@ spec:
       - name: tekton-triggers-controller
         image: gcr.io/tekton-releases/github.com/tektoncd/triggers/cmd/controller:v0.7.0@sha256:da7607497bad57e9d9dba644d010069b7525e0563acc3a4f874f49d357363ed2
         args: ["-logtostderr", "-stderrthreshold", "INFO", "-el-image", "gcr.io/tekton-releases/github.com/tektoncd/triggers/cmd/eventlistenersink:v0.7.0@sha256:b9acf112299bc84d5e1612cce54df83a64e0ea2149a6e6ae57b639c99857e87b",
-          "-el-port", "8080", "-period-seconds", "10", "-failure-threshold", "1"]
+               "-el-port", "8080", "-period-seconds", "10", "-failure-threshold", "1"]
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
