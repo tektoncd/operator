@@ -75,7 +75,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		tektonTriggersInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonTriggers")),
+			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonTrigger")),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 

@@ -36,9 +36,16 @@ func CleanupOnInterrupt(cleanup func()) {
 	}()
 }
 
-// TearDown will delete created names using clients.
-func TearDown(clients *Clients, names ResourceNames) {
+// TearDownPipeline will delete created TektonTrigger CRs using clients.
+func TearDownPipeline(clients *Clients, name string) {
 	if clients != nil && clients.Operator != nil {
-		_ = clients.TektonPipeline().Delete(context.TODO(), names.TektonPipeline, metav1.DeleteOptions{})
+		_ = clients.TektonPipeline().Delete(context.TODO(), name, metav1.DeleteOptions{})
+	}
+}
+
+// TearDownTrigger will delete created TektonTrigger CRs using clients.
+func TearDownTrigger(clients *Clients, name string) {
+	if clients != nil && clients.Operator != nil {
+		_ = clients.TektonTrigger().Delete(context.TODO(), name, metav1.DeleteOptions{})
 	}
 }

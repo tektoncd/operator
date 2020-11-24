@@ -94,3 +94,11 @@ func (c *Clients) TektonPipeline() operatorv1alpha1.TektonPipelineInterface {
 func (c *Clients) TektonPipelineAll() operatorv1alpha1.TektonPipelineInterface {
 	return c.Operator.TektonPipelines()
 }
+
+func (c *Clients) TektonTrigger() operatorv1alpha1.TektonTriggerInterface {
+	return c.Operator.TektonTriggers()
+}
+
+func (c *Clients) TektonTriggerAll() operatorv1alpha1.TektonTriggerInterface {
+	return c.Operator.TektonTriggers()
+}

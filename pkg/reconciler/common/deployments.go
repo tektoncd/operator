@@ -18,11 +18,12 @@ package common
 
 import (
 	"context"
+	"errors"
+
 	mf "github.com/manifestival/manifestival"
 	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -34,9 +35,6 @@ func CheckDeployments(ctx context.Context, manifest *mf.Manifest, instance v1alp
 		resource, err := manifest.Client.Get(&u)
 		if err != nil {
 			status.MarkDeploymentsNotReady()
-			if errors.IsNotFound(err) {
-				return nil
-			}
 			return err
 		}
 		deployment := &appsv1.Deployment{}
@@ -45,8 +43,7 @@ func CheckDeployments(ctx context.Context, manifest *mf.Manifest, instance v1alp
 		}
 		if !isDeploymentAvailable(deployment) {
 			status.MarkDeploymentsNotReady()
-			//return fmt.Errorf("deployment not yet ready")
-			return nil
+			return errors.New("deployment not available")
 		}
 	}
 	status.MarkDeploymentsAvailable()
