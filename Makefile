@@ -1,38 +1,84 @@
-export KO_DATA_PATH=$(shell pwd)/cmd/manager/kodata
+MODULE   = $(shell env GO111MODULE=on $(GO) list -m)
+DATE         ?= $(shell date +%FT%T%z)
+KO_DATA_PATH  = $(shell pwd)/cmd/$(TARGET)/kodata
+TARGET        = kubernetes
 
-.PHONY: all
-all: local-dev
+GOLANGCI_VERSION  = v1.30.0
 
-.PHONY: clean
-clean:
-	-ko delete -f config/
+BIN      = $(CURDIR)/.bin
+
+GO           = go
+TIMEOUT_UNIT = 5m
+TIMEOUT_E2E  = 20m
+V = 0
+Q = $(if $(filter 1,$V),,@)
+M = $(shell printf "\033[34;1m🐱\033[0m")
+
+export GO111MODULE=on
+
+$(BIN):
+	@mkdir -p $@
+$(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
+	$Q tmp=$$(mktemp -d); \
+	   env GO111MODULE=off GOPATH=$$tmp GOBIN=$(BIN) $(GO) get $(PACKAGE) \
+		|| ret=$$?; \
+	   rm -rf $$tmp ; exit $$ret
+
+KO = $(or ${KO_BIN},${KO_BIN},$(BIN)/ko)
+$(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
+
+KUSTOMIZE = $(or ${KUSTOMIZE_BIN},${KUSTOMIZE_BIN},$(BIN)/kustomize)
+$(BIN)/kustomize: | $(BIN) ; $(info $(M) getting kustomize)
+	@curl -sSfL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+	@mv ./kustomize $(BIN)/kustomize
+
+GOLANGCILINT = $(or ${GOLANGCILINT_BIN},${GOLANGCILINT_BIN},$(BIN)/golangci-lint)
+$(BIN)/golangci-lint: | $(BIN) ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
+	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BIN) $(GOLANGCI_VERSION)
+
+.PHONY: clean-cluster
+clean-cluster: | $(KO) $(KUSTOMIZE); $(info $(M) clean $(TARGET)…) @ ## Cleanup cluster
+	-$(KUSTOMIZE) build config/$(TARGET) | $(KO) delete -f -
 	-kubectl delete ns tekton-pipelines --ignore-not-found
-	echo ${KO_DATA_PATH}
 	-kubectl delete \
-		-f $$KO_DATA_PATH/resources/ \
+		-f $(KO_DATA_PATH)/ \
 		--ignore-not-found \
 		--recursive
 
-.PHONY: update-deps dev-setup
-dev-setup:
-	kubectl apply -f config/100-namespace.yaml
-	kubectl apply -f config/300-operator_v1alpha1_addon_crd.yaml
-	kubectl apply -f config/300-operator_v1alpha1_pipeline_crd.yaml
+.PHONY: clean-bin
+clean-bin:
+	-rm -rf $(BIN)
+	-rm -rf bin
+	-rm -rf test/tests.* test/coverage.*
 
-.PHONY: local-dev
-local-dev: clean dev-setup
-	GO111MODULE=on \
-	operator-sdk run --local \
-		--watch-namespace "" \
-		--operator-flags '--zap-encoder=console'
+.PHONY: clean
+clean: clean-cluster clean-bin; $(info $(M) clean all) @ ## Cleanup everything
 
-.PHONY: update-deps
-update-deps:
-	GO111MODULE=on go mod tidy
+.PHONY: help
+help:
+	@grep -hE '^[ a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-17s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: ko-apply
-ko-apply:
-	ko apply -n tekton-operator -f config/
+FORCE:
+
+bin/%: cmd/% FORCE
+	$Q $(GO) build -mod=vendor $(LDFLAGS) -v -o $@ ./$<
+
+.PHONY: apply
+apply: | $(KO) $(KUSTOMIZE) ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
+	$Q $(KUSTOMIZE) build config/$(TARGET) | $(KO) apply -f -
+
+.PHONY: resolve
+resolve: | $(KO) $(KUSTOMIZE) ; $(info $(M) ko resolve on $(TARGET)) @ ## Resolve config to the current cluster
+	$Q $(KUSTOMIZE) build config/$(TARGET) | $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f -
+
+.PHONY: generated
+generated: | vendor ; $(info $(M) update generated files) ## Update generated files
+	$Q ./hack/update-codegen.sh
+
+.PHONY: vendor
+vendor: ; $(info $(M) update vendor folder)  ## Update vendor folder
+	$Q ./hack/update-deps.sh
 
 .PHONY: local-test-e2e
 local-test-e2e: clean dev-setup

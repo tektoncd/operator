@@ -11,9 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+namespace: tekton-operator
 
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: tekton-operator
-  namespace: tekton-operator
+resources:
+- 100-namespace.yaml
+- 300-operator_v1alpha1_pipeline_crd.yaml
+- 300-operator_v1alpha1_trigger_crd.yaml
+- 300-operator_v1alpha1_dashboard_crd.yaml
+- 300-operator_v1alpha1_addon_crd.yaml
+- role.yaml
+- role_binding.yaml
+- service_account.yaml
+- operator.yaml
