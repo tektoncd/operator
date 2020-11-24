@@ -11,14 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+namespace: tekton-operator
 
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: tekton-operator
-spec:
-  template:
-    spec:
-      containers:
-        - name: tekton-operator
-          image: ko://github.com/tektoncd/operator/cmd/kubernetes
+bases:
+- ../base/
+patches:
+- path: operator.yaml
+  target:
+    kind: Deployment
+    name: tekton-operator
