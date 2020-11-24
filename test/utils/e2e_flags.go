@@ -17,5 +17,6 @@ limitations under the License.
 package utils
 
 var (
-	TektonPipelineTargetNamespace = "tekton-pipelines"
+	TektonPipelineDeploymentLabel = "app.kubernetes.io/part-of=tekton-pipelines"
+	TektonTriggerDeploymentLabel  = "app.kubernetes.io/part-of=tekton-triggers"
 )
