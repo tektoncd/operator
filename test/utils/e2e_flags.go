@@ -17,6 +17,7 @@ limitations under the License.
 package utils
 
 var (
-	TektonPipelineDeploymentLabel = "app.kubernetes.io/part-of=tekton-pipelines"
-	TektonTriggerDeploymentLabel  = "app.kubernetes.io/part-of=tekton-triggers"
+	TektonPipelineDeploymentLabel  = "app.kubernetes.io/part-of=tekton-pipelines"
+	TektonTriggerDeploymentLabel   = "app.kubernetes.io/part-of=tekton-triggers"
+	TektonDashboardDeploymentLabel = "app.kubernetes.io/part-of=tekton-dashboard"
 )
