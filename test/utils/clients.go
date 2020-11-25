@@ -102,3 +102,11 @@ func (c *Clients) TektonTrigger() operatorv1alpha1.TektonTriggerInterface {
 func (c *Clients) TektonTriggerAll() operatorv1alpha1.TektonTriggerInterface {
 	return c.Operator.TektonTriggers()
 }
+
+func (c *Clients) TektonDashboard() operatorv1alpha1.TektonDashboardInterface {
+	return c.Operator.TektonDashboards()
+}
+
+func (c *Clients) TektonDashboardAll() operatorv1alpha1.TektonDashboardInterface {
+	return c.Operator.TektonDashboards()
+}

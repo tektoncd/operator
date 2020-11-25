@@ -75,7 +75,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		tektonDashboardInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonDashboards")),
+			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonDashboard")),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
