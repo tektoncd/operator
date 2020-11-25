@@ -26,15 +26,15 @@
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
 
 function install_operator_resources() {
-  # Make sure that everything is cleaned up in the current namespace.
-  for res in tektonpipelines tektontriggers tektondashboards; do
-    kubectl delete --ignore-not-found=true ${res}.operator.tekton.dev --all
-  done
-
-  echo ">> Deploying Tekton Operator Controller"
+  echo ">> Deploying Tekton Operator Resources"
   make apply || fail_test "Tekton Operator installation failed"
 
   # Wait for pods to be running in the namespaces we are deploying to
   # TODO: parameterize namespace, operator can run in a namespace different from the namespace where tektonpipelines is installed
   wait_until_pods_running tekton-operator || fail_test "Tekton Operator controller did not come up"
+
+  # Make sure that everything is cleaned up in the current namespace.
+  for res in tektonpipelines tektontriggers tektondashboards; do
+    kubectl delete --ignore-not-found=true ${res}.operator.tekton.dev --all
+  done
 }

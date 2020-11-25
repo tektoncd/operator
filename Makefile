@@ -79,15 +79,3 @@ generated: | vendor ; $(info $(M) update generated files) ## Update generated fi
 .PHONY: vendor
 vendor: ; $(info $(M) update vendor folder)  ## Update vendor folder
 	$Q ./hack/update-deps.sh
-
-.PHONY: local-test-e2e
-local-test-e2e: clean dev-setup
-	GO111MODULE=on \
-	operator-sdk test local ./test/e2e  \
-	--up-local \
-	--watch-namespace "" \
-	--operator-namespace tekton-operators \
-	--no-setup \
-	--verbose \
-	--go-test-flags "-v -timeout 20m -tags=e2e"
-	--debug
