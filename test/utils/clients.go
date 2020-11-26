@@ -110,3 +110,10 @@ func (c *Clients) TektonDashboard() operatorv1alpha1.TektonDashboardInterface {
 func (c *Clients) TektonDashboardAll() operatorv1alpha1.TektonDashboardInterface {
 	return c.Operator.TektonDashboards()
 }
+func (c *Clients) TektonAddon() operatorv1alpha1.TektonAddonInterface {
+	return c.Operator.TektonAddons()
+}
+
+func (c *Clients) TektonAddonAll() operatorv1alpha1.TektonAddonInterface {
+	return c.Operator.TektonAddons()
+}

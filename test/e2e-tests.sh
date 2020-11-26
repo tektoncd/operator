@@ -18,18 +18,20 @@
 # and deploy Tekton Pipelines to it for running integration tests.
 
 source $(dirname $0)/e2e-common.sh
-# Script entry point.
 
-E2E_TEST_PLATFORM=kubernetes
+# Script entry point.
+TARGET=${TARGET:-kubernetes}
+echo "Running tests on ${TARGET}"
 
 [[ -z ${E2E_DEBUG} ]] && initialize $@
 failed=0
 
 header "Setting up environment"
-install_operator_resources ${E2E_TEST_PLATFORM}
+install_operator_resources
 
 header "Running Go e2e tests"
-go_test_e2e -timeout=20m ./test/e2e || failed=1
+go_test_e2e -timeout=20m ./test/e2e/common || failed=1
+go_test_e2e -timeout=20m ./test/e2e/${TARGET} || failed=1
 
 (( failed )) && fail_test
 success

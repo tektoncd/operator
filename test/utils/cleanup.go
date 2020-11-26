@@ -56,3 +56,10 @@ func TearDownDashboard(clients *Clients, name string) {
 		_ = clients.TektonDashboard().Delete(context.TODO(), name, metav1.DeleteOptions{})
 	}
 }
+
+// TearDownAddon will delete created TektonAddon CRs using clients.
+func TearDownAddon(clients *Clients, name string) {
+	if clients != nil && clients.Operator != nil {
+		_ = clients.TektonAddon().Delete(context.TODO(), name, metav1.DeleteOptions{})
+	}
+}
