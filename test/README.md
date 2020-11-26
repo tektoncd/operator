@@ -17,3 +17,22 @@ Then run:
 ```shell script
 ./test/e2e-tests.sh
 ```
+## Running TESTS
+
+if a cluster is already setup, then set `E2E_DEBUG` variable to skip initialization of a GKE cluster.
+
+```shell script
+export E2E_DEBUG=on
+```
+
+## Running e2e Tests on Kubernetes
+
+```shell script
+    ./test/e2e-tests.sh
+```
+
+## Running e2e Tests on Openshift
+
+```shell script
+    TARGET=openshift ./test/e2e-tests.sh
+```

@@ -41,7 +41,7 @@ func TestTektonDashboardsDeployment(t *testing.T) {
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
 	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
 
-	utils.CleanupOnInterrupt(func() { utils.TearDownDashboard(clients, crNames.TektonPipeline) })
+	utils.CleanupOnInterrupt(func() { utils.TearDownDashboard(clients, crNames.TektonDashboard) })
 	defer utils.TearDownDashboard(clients, crNames.TektonDashboard)
 
 	// Create a TektonPipeline
