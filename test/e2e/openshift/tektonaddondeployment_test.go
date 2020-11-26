@@ -43,7 +43,10 @@ func TestTektonAddonsDeployment(t *testing.T) {
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
 	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
 
-	utils.CleanupOnInterrupt(func() { utils.TearDownAddon(clients, crNames.TektonPipeline) })
+	utils.CleanupOnInterrupt(func() { utils.TearDownTrigger(clients, crNames.TektonTrigger) })
+	defer utils.TearDownTrigger(clients, crNames.TektonTrigger)
+
+	utils.CleanupOnInterrupt(func() { utils.TearDownAddon(clients, crNames.TektonAddon) })
 	defer utils.TearDownAddon(clients, crNames.TektonAddon)
 
 	// Create a TektonPipeline

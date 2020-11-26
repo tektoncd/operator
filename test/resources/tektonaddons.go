@@ -33,13 +33,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	pipelinev1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	addonv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // EnsureTektonAddonExists creates a TektonAddon with the name names.TektonAddon, if it does not exist.
-func EnsureTektonAddonExists(clients pipelinev1alpha1.TektonAddonInterface, names utils.ResourceNames) (*v1alpha1.TektonAddon, error) {
+func EnsureTektonAddonExists(clients addonv1alpha1.TektonAddonInterface, names utils.ResourceNames) (*v1alpha1.TektonAddon, error) {
 	// If this function is called by the upgrade tests, we only create the custom resource, if it does not exist.
 	ks, err := clients.Get(context.TODO(), names.TektonAddon, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
@@ -61,7 +61,7 @@ func EnsureTektonAddonExists(clients pipelinev1alpha1.TektonAddonInterface, name
 // WaitForTektonAddonState polls the status of the TektonAddon called name
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout.
-func WaitForTektonAddonState(clients pipelinev1alpha1.TektonAddonInterface, name string,
+func WaitForTektonAddonState(clients addonv1alpha1.TektonAddonInterface, name string,
 	inState func(s *v1alpha1.TektonAddon, err error) (bool, error)) (*v1alpha1.TektonAddon, error) {
 	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForTektonAddonState/%s/%s", name, "TektonAddonIsReady"))
 	defer span.End()
@@ -73,7 +73,7 @@ func WaitForTektonAddonState(clients pipelinev1alpha1.TektonAddonInterface, name
 	})
 
 	if waitErr != nil {
-		return lastState, fmt.Errorf("tektonpipeline %s is not in desired state, got: %+v: %w", name, lastState, waitErr)
+		return lastState, fmt.Errorf("tektonaddon %s is not in desired state, got: %+v: %w", name, lastState, waitErr)
 	}
 	return lastState, nil
 }
@@ -130,11 +130,11 @@ func TektonAddonCRDelete(t *testing.T, clients *utils.Clients, crNames utils.Res
 }
 
 func verifyNoTektonAddonCR(clients *utils.Clients) error {
-	pipelines, err := clients.TektonAddonAll().List(context.TODO(), metav1.ListOptions{})
+	addons, err := clients.TektonAddonAll().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
-	if len(pipelines.Items) > 0 {
+	if len(addons.Items) > 0 {
 		return errors.New("Unable to verify cluster-scoped resources are deleted if any TektonAddon exists")
 	}
 	return nil
