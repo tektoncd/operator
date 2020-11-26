@@ -21,6 +21,7 @@ type ResourceNames struct {
 	TektonPipeline  string
 	TektonTrigger   string
 	TektonDashboard string
+	TektonAddon     string
 	Namespace       string
 	TargetNamespace string
 }

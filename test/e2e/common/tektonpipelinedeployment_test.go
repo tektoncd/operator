@@ -16,7 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package e2e
+package common
 
 import (
 	"testing"
@@ -28,21 +28,17 @@ import (
 	"github.com/tektoncd/operator/test/resources"
 )
 
-// TestTektonDashboardsDeployment verifies the TektonDashboards creation, deployment recreation, and TektonDashboards deletion.
-func TestTektonDashboardsDeployment(t *testing.T) {
+// TestTektonPipelinesDeployment verifies the TektonPipelines creation, deployment recreation, and TektonPipelines deletion.
+func TestTektonPipelinesDeployment(t *testing.T) {
 	clients := client.Setup(t)
 
 	crNames := utils.ResourceNames{
 		TektonPipeline:  "pipeline",
-		TektonDashboard: "dashboard",
 		TargetNamespace: "tekton-pipelines",
 	}
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
 	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
-
-	utils.CleanupOnInterrupt(func() { utils.TearDownDashboard(clients, crNames.TektonPipeline) })
-	defer utils.TearDownDashboard(clients, crNames.TektonDashboard)
 
 	// Create a TektonPipeline
 	if _, err := resources.EnsureTektonPipelineExists(clients.TektonPipeline(), crNames); err != nil {
@@ -54,27 +50,11 @@ func TestTektonDashboardsDeployment(t *testing.T) {
 		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
 	})
 
-	// Create a TektonDashboard
-	if _, err := resources.EnsureTektonDashboardExists(clients.TektonDashboard(), crNames); err != nil {
-		t.Fatalf("TektonDashboard %q failed to create: %v", crNames.TektonDashboard, err)
-	}
-
-	// Test if TektonDashboard can reach the READY status
-	t.Run("create-dashboard", func(t *testing.T) {
-		resources.AssertTektonDashboardCRReadyStatus(t, clients, crNames)
-	})
-
 	// Delete the deployments one by one to see if they will be recreated.
-	t.Run("restore-dashboard-deployments", func(t *testing.T) {
-		resources.AssertTektonDashboardCRReadyStatus(t, clients, crNames)
-		resources.DeleteAndVerifyDeployments(t, clients, crNames.TargetNamespace, utils.TektonDashboardDeploymentLabel)
-		resources.AssertTektonDashboardCRReadyStatus(t, clients, crNames)
-	})
-
-	// Delete the TektonDashboard CR instance to see if all resources will be removed
-	t.Run("delete-dashboard", func(t *testing.T) {
-		resources.AssertTektonDashboardCRReadyStatus(t, clients, crNames)
-		resources.TektonDashboardCRDelete(t, clients, crNames)
+	t.Run("restore-pipeline-deployments", func(t *testing.T) {
+		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
+		resources.DeleteAndVerifyDeployments(t, clients, crNames.TargetNamespace, utils.TektonPipelineDeploymentLabel)
+		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
 	})
 
 	// Delete the TektonPipeline CR instance to see if all resources will be removed
@@ -82,5 +62,4 @@ func TestTektonDashboardsDeployment(t *testing.T) {
 		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
 		resources.TektonPipelineCRDelete(t, clients, crNames)
 	})
-
 }
