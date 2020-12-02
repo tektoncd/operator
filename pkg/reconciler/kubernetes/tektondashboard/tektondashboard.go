@@ -120,7 +120,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonDashb
 	}
 	tt.Status.MarkDependenciesInstalled()
 
-	if err := r.extension.Reconcile(ctx, tt); err != nil {
+	if err := r.extension.PreReconcile(ctx, tt); err != nil {
 		return err
 	}
 	stages := common.Stages{

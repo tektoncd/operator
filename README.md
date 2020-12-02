@@ -9,8 +9,6 @@ on any Kubernetes Cluster.
 
 ## Install Tektoncd Operator
 
-
-
 # References
 
 - [Development Guide](docs/README.md)

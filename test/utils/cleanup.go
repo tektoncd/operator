@@ -70,3 +70,10 @@ func TearDownNamespace(clients *Clients, name string) {
 		_ = clients.KubeClient.Kube.CoreV1().Namespaces().Delete(context.TODO(), name, metav1.DeleteOptions{})
 	}
 }
+
+// TearDownConfig will delete created TektonConfig CRs using clients.
+func TearDownConfig(clients *Clients, name string) {
+	if clients != nil && clients.Operator != nil {
+		_ = clients.TektonConfig().Delete(context.TODO(), name, metav1.DeleteOptions{})
+	}
+}
