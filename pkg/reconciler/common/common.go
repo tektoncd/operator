@@ -18,6 +18,7 @@ package common
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	informer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
@@ -26,8 +27,16 @@ import (
 )
 
 var (
-	PipelineResourceName = "pipeline"
-	TriggerResourceName  = "trigger"
+	PipelineResourceName  = "pipeline"
+	TriggerResourceName   = "trigger"
+	DashboardResourceName = "dashboard"
+	AddonResourceName     = "addon"
+	ConfigResourceName    = "config"
+	ProfileBasic          = "basic"
+	ProfileDefault        = "default"
+	ProfileAll            = "all"
+	Interval              = 10 * time.Second
+	Timeout               = 1 * time.Minute
 )
 
 const (

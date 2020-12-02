@@ -101,7 +101,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		return nil
 	}
 
-	if err := r.extension.Reconcile(ctx, tp); err != nil {
+	if err := r.extension.PreReconcile(ctx, tp); err != nil {
 		return err
 	}
 	stages := common.Stages{

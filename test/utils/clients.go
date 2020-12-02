@@ -117,3 +117,11 @@ func (c *Clients) TektonAddon() operatorv1alpha1.TektonAddonInterface {
 func (c *Clients) TektonAddonAll() operatorv1alpha1.TektonAddonInterface {
 	return c.Operator.TektonAddons()
 }
+
+func (c *Clients) TektonConfig() operatorv1alpha1.TektonConfigInterface {
+	return c.Operator.TektonConfigs()
+}
+
+func (c *Clients) TektonConfigAll() operatorv1alpha1.TektonConfigInterface {
+	return c.Operator.TektonConfigs()
+}

@@ -26,6 +26,8 @@ import (
 type Interface interface {
 	// TektonAddons returns a TektonAddonInformer.
 	TektonAddons() TektonAddonInformer
+	// TektonConfigs returns a TektonConfigInformer.
+	TektonConfigs() TektonConfigInformer
 	// TektonDashboards returns a TektonDashboardInformer.
 	TektonDashboards() TektonDashboardInformer
 	// TektonPipelines returns a TektonPipelineInformer.
@@ -48,6 +50,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // TektonAddons returns a TektonAddonInformer.
 func (v *version) TektonAddons() TektonAddonInformer {
 	return &tektonAddonInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// TektonConfigs returns a TektonConfigInformer.
+func (v *version) TektonConfigs() TektonConfigInformer {
+	return &tektonConfigInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // TektonDashboards returns a TektonDashboardInformer.

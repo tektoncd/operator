@@ -33,7 +33,10 @@ func (t TestExtension) Transformers(v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{mf.InjectNamespace(string(t))}
 }
 
-func (t TestExtension) Reconcile(context.Context, v1alpha1.TektonComponent) error {
+func (t TestExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
+	return nil
+}
+func (t TestExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil
 }
 func (t TestExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
@@ -71,10 +74,13 @@ func TestExtensions(t *testing.T) {
 				if len(transformers) != test.length {
 					t.Error("Unexpected result")
 				}
-				if ext.Reconcile(context.TODO(), nil) != nil {
+				if ext.PreReconcile(context.TODO(), nil) != nil {
 					t.Error("Unexpected result")
 				}
 				if ext.Finalize(context.TODO(), nil) != nil {
+					t.Error("Unexpected result")
+				}
+				if ext.PostReconcile(context.TODO(), nil) != nil {
 					t.Error("Unexpected result")
 				}
 			}

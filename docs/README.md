@@ -44,6 +44,26 @@ If the files in `pkg/apis` are updated we need to run `codegen` scripts
 ```shell script
     make TARGET=openshift apply
 ```
+### Install Tekton components
+Operator provides an option to choose which components needs to be installed by specifying `profile`.
+
+`profile` is an optional field and supported `profile` are
+* **basic** 
+* **default**
+* **all**
+
+1. If profile is `basic` **TektonPipeline** will be installed
+1. If profile is `default` or `" "` **TektonPipeline** and **TektonTrigger** will be installed
+1. If profile is `all` then all the Tekton Components installed
+
+To create Tekton Components run
+```shell script
+kubectl apply -f config/crs/operator_v1alpha1_config_cr.yaml
+```
+To delete installed Tekton Components run
+```shell script
+kubectl delete -f config/crs/operator_v1alpha1_config_cr.yaml
+```
 
 ## Running Tests
 
