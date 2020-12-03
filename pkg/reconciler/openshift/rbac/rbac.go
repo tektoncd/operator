@@ -2,7 +2,6 @@ package rbac
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -47,33 +46,6 @@ const (
 
 // FinalizeKind removes all resources after deletion of a TektonPipelines.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonPipeline) pkgreconciler.Event {
-	logger := logging.FromContext(ctx)
-
-	// List all TektonPipelines to determine if cluster-scoped resources should be deleted.
-	tps, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to list all TektonPipelines: %w", err)
-	}
-
-	for _, ks := range tps.Items {
-		if ks.GetDeletionTimestamp().IsZero() {
-			// Not deleting all TektonPipelines. Nothing to do here.
-			return nil
-		}
-	}
-
-	if err := r.extension.Finalize(ctx, original); err != nil {
-		logger.Error("Failed to finalize platform resources", err)
-	}
-	logger.Info("Deleting cluster-scoped resources")
-	manifest, err := r.installed(ctx, original)
-	if err != nil {
-		logger.Error("Unable to fetch installed manifest; no cluster-scoped resources will be finalized", err)
-		return nil
-	}
-	if err := common.Uninstall(ctx, manifest); err != nil {
-		logger.Error("Failed to finalize platform resources", err)
-	}
 	return nil
 }
 
@@ -115,7 +87,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ns *corev1.Namespace) pk
 
 func (r *Reconciler) ensureSA(ctx context.Context, ns *corev1.Namespace) (*corev1.ServiceAccount, error) {
 	logger := logging.FromContext(ctx)
-	logger.Info("finding sa", "pipeline-sa", "ns", ns.Name)
+	logger.Info("finding sa: %s/%s", ns.Name, "pipeline")
 	saInterface := r.kubeClientSet.CoreV1().ServiceAccounts(ns.Name)
 	sa, err := saInterface.Get(ctx, pipelineSA, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
@@ -173,16 +145,6 @@ func (r *Reconciler) createRoleBinding(ctx context.Context, sa *corev1.ServiceAc
 		logger.Error(err, "creation of 'edit' rolebinding failed, in Namespace", sa.GetNamespace())
 	}
 	return err
-}
-
-func (r *Reconciler) installed(ctx context.Context, instance v1alpha1.TektonComponent) (*mf.Manifest, error) {
-	// Create new, empty manifest with valid client and logger
-	installed := r.manifest.Append()
-	// TODO: add ingress, etc
-	//stages := common.Stages{common.AppendInstalled, r.transform}
-	stages := common.Stages{common.AppendInstalled}
-	err := stages.Execute(ctx, &installed, instance)
-	return &installed, err
 }
 
 func (r *Reconciler) ensureSCClusterRole(ctx context.Context) error {
