@@ -20,3 +20,7 @@ patches:
   target:
     kind: Deployment
     name: tekton-operator
+- path: role.yaml
+  target:
+    kind: ClusterRole
+    name: tekton-operator
