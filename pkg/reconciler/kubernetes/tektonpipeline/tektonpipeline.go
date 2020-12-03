@@ -77,7 +77,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 		logger.Error("Unable to fetch installed manifest; no cluster-scoped resources will be finalized", err)
 		return nil
 	}
-	if err := common.Uninstall(manifest); err != nil {
+	if err := common.Uninstall(ctx, manifest); err != nil {
 		logger.Error("Failed to finalize platform resources", err)
 	}
 	return nil
