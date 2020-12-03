@@ -40,7 +40,10 @@ type Reconciler struct {
 // Check that our Reconciler implements controller.Reconciler
 var _ nsreconciler.Interface = (*Reconciler)(nil)
 
-const pipelineAnyuid = "pipeline-anyuid"
+const (
+	pipelineAnyuid = "pipeline-anyuid"
+	pipelineSA     = "pipeline"
+)
 
 // FinalizeKind removes all resources after deletion of a TektonPipelines.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonPipeline) pkgreconciler.Event {
@@ -114,12 +117,12 @@ func (r *Reconciler) ensureSA(ctx context.Context, ns *corev1.Namespace) (*corev
 	logger := logging.FromContext(ctx)
 	logger.Info("finding sa", "pipeline-sa", "ns", ns.Name)
 	saInterface := r.kubeClientSet.CoreV1().ServiceAccounts(ns.Name)
-	sa, err := saInterface.Get(ctx, "pipeline-sa", metav1.GetOptions{})
+	sa, err := saInterface.Get(ctx, pipelineSA, metav1.GetOptions{})
 	if err != nil && !errors.IsNotFound(err) {
 		return nil, err
 	}
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info("creating sa", "sa", "pipeline-sa", "ns", ns.Name)
+		logger.Info("creating sa", "sa", pipelineSA, "ns", ns.Name)
 		return createSA(ctx, saInterface, ns.Name)
 	}
 
@@ -131,33 +134,45 @@ func (r *Reconciler) ensureRoleBindings(ctx context.Context, sa *corev1.ServiceA
 
 	logger.Info("finding role-binding edit")
 	rbacClient := r.kubeClientSet.RbacV1()
-	editRB, rbErr := rbacClient.RoleBindings(sa.Namespace).Get(ctx, "edit", metav1.GetOptions{})
-	if rbErr != nil && !errors.IsNotFound(rbErr) {
-		logger.Error(rbErr, "rbac edit get error")
-		return rbErr
+
+	editRB, err := rbacClient.RoleBindings(sa.Namespace).Get(ctx, "edit", metav1.GetOptions{})
+
+	if err == nil {
+		logger.Infof("found rolebinding %s/%s", editRB.Namespace, editRB.Name)
+		return r.updateRoleBinding(ctx, editRB, sa)
 	}
 
-	logger.Info("finding cluster role edit")
-	if _, err := rbacClient.ClusterRoles().Get(ctx, "edit", metav1.GetOptions{}); err != nil {
-		logger.Error(err, "finding edit cluster role failed")
-		return err
+	if errors.IsNotFound(err) {
+		return r.createRoleBinding(ctx, sa)
 	}
 
-	if rbErr != nil && errors.IsNotFound(rbErr) {
-		_, err := rbacClient.RoleBindings(sa.Namespace).Create(ctx, editRB, metav1.CreateOptions{})
-		return err
-	}
-
-	logger.Info("found rbac", "subjects", editRB.Subjects)
-	_, err := rbacClient.RoleBindings(sa.Namespace).Update(ctx, editRB, metav1.UpdateOptions{})
 	return err
 }
 
-type Stage func(context.Context, *mf.Manifest, v1alpha1.TektonComponent) error
+func (r *Reconciler) createRoleBinding(ctx context.Context, sa *corev1.ServiceAccount) error {
+	logger := logging.FromContext(ctx)
 
-func AddPayload(ctx context.Context, m *mf.Manifest, instance v1alpha1.TektonComponent) error {
+	logger.Info("create new rolebinding edit, in Namespace", sa.GetNamespace())
+	rbacClient := r.kubeClientSet.RbacV1()
 
-	return nil
+	logger.Info("finding clusterrole edit")
+	_, err := rbacClient.ClusterRoles().Get(ctx, "edit", metav1.GetOptions{})
+	if err != nil {
+		logger.Error(err, "getting clusterRole 'edit' failed")
+		return err
+	}
+
+	rb := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{Name: "edit", Namespace: sa.Namespace},
+		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: "edit"},
+		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: sa.Name, Namespace: sa.Namespace}},
+	}
+
+	_, err = rbacClient.RoleBindings(sa.Namespace).Create(ctx, rb, metav1.CreateOptions{})
+	if err != nil {
+		logger.Error(err, "creation of 'edit' rolebinding failed, in Namespace", sa.GetNamespace())
+	}
+	return err
 }
 
 func (r *Reconciler) installed(ctx context.Context, instance v1alpha1.TektonComponent) (*mf.Manifest, error) {
@@ -285,7 +300,7 @@ func (r *Reconciler) updateRoleBinding(ctx context.Context, rb *rbacv1.RoleBindi
 func createSA(ctx context.Context, saInterface v1.ServiceAccountInterface, ns string) (*corev1.ServiceAccount, error) {
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pipeline-sa",
+			Name:      pipelineSA,
 			Namespace: ns,
 		},
 	}
