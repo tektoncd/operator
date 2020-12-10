@@ -33,13 +33,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	pipelinev1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	triggerv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // EnsureTektonTriggerExists creates a TektonTrigger with the name names.TektonTrigger, if it does not exist.
-func EnsureTektonTriggerExists(clients pipelinev1alpha1.TektonTriggerInterface, names utils.ResourceNames) (*v1alpha1.TektonTrigger, error) {
+func EnsureTektonTriggerExists(clients triggerv1alpha1.TektonTriggerInterface, names utils.ResourceNames) (*v1alpha1.TektonTrigger, error) {
 	// If this function is called by the upgrade tests, we only create the custom resource, if it does not exist.
 	ks, err := clients.Get(context.TODO(), names.TektonTrigger, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
@@ -61,7 +61,7 @@ func EnsureTektonTriggerExists(clients pipelinev1alpha1.TektonTriggerInterface, 
 // WaitForTektonTriggerState polls the status of the TektonTrigger called name
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout.
-func WaitForTektonTriggerState(clients pipelinev1alpha1.TektonTriggerInterface, name string,
+func WaitForTektonTriggerState(clients triggerv1alpha1.TektonTriggerInterface, name string,
 	inState func(s *v1alpha1.TektonTrigger, err error) (bool, error)) (*v1alpha1.TektonTrigger, error) {
 	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForTektonTriggerState/%s/%s", name, "TektonTriggerIsReady"))
 	defer span.End()
@@ -130,11 +130,11 @@ func TektonTriggerCRDelete(t *testing.T, clients *utils.Clients, crNames utils.R
 }
 
 func verifyNoTektonTriggerCR(clients *utils.Clients) error {
-	pipelines, err := clients.TektonTriggerAll().List(context.TODO(), metav1.ListOptions{})
+	triggers, err := clients.TektonTriggerAll().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
-	if len(pipelines.Items) > 0 {
+	if len(triggers.Items) > 0 {
 		return errors.New("Unable to verify cluster-scoped resources are deleted if any TektonTrigger exists")
 	}
 	return nil

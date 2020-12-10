@@ -33,13 +33,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	pipelinev1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	configv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // EnsureTektonConfigExists creates a TektonConfig with the name names.TektonConfig, if it does not exist.
-func EnsureTektonConfigExists(clients pipelinev1alpha1.TektonConfigInterface, names utils.ResourceNames) (*v1alpha1.TektonConfig, error) {
+func EnsureTektonConfigExists(clients configv1alpha1.TektonConfigInterface, names utils.ResourceNames) (*v1alpha1.TektonConfig, error) {
 	// If this function is called by the upgrade tests, we only create the custom resource, if it does not exist.
 	tcCR, err := clients.Get(context.TODO(), names.TektonConfig, metav1.GetOptions{})
 	if err == nil {
@@ -64,7 +64,7 @@ func EnsureTektonConfigExists(clients pipelinev1alpha1.TektonConfigInterface, na
 // WaitForTektonConfigState polls the status of the TektonConfig called name
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout.
-func WaitForTektonConfigState(clients pipelinev1alpha1.TektonConfigInterface, name string,
+func WaitForTektonConfigState(clients configv1alpha1.TektonConfigInterface, name string,
 	inState func(s *v1alpha1.TektonConfig, err error) (bool, error)) (*v1alpha1.TektonConfig, error) {
 	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForTektonConfigState/%s/%s", name, "TektonConfigIsReady"))
 	defer span.End()
