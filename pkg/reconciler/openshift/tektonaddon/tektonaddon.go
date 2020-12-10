@@ -19,17 +19,20 @@ package tektonaddon
 import (
 	"context"
 	"fmt"
-	mf "github.com/manifestival/manifestival"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 
+	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	informer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektonaddonreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -56,7 +59,17 @@ type Reconciler struct {
 var _ tektonaddonreconciler.Interface = (*Reconciler)(nil)
 var _ tektonaddonreconciler.Finalizer = (*Reconciler)(nil)
 
-var addonResourceName = "addon"
+var communityResourceURLs = []string{
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/jib-maven/0.1/jib-maven.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/maven/0.1/maven.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/tkn/0.1/tkn.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-source/0.1/helm-upgrade-from-source.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-repo/0.1/helm-upgrade-from-repo.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/trigger-jenkins-job/0.1/trigger-jenkins-job.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/git-cli/0.1/git-cli.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/pull-request/0.1/pull-request.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/kubeconfig-creator/0.1/kubeconfig-creator.yaml",
+}
 
 // FinalizeKind removes all resources after deletion of a TektonTriggers.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonAddon) pkgreconciler.Event {
@@ -99,9 +112,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonAddon
 
 	logger.Infow("Reconciling TektonAddons", "status", tt.Status)
 
-	if tt.GetName() != addonResourceName {
+	if tt.GetName() != common.AddonResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
-			addonResourceName,
+			common.AddonResourceName,
 			tt.GetName(),
 		)
 		logger.Error(msg)
@@ -149,6 +162,15 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonAddon
 // transform mutates the passed manifest to one with common, component
 // and platform transformations applied
 func (r *Reconciler) appendTarget(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
+	if runtime.GOARCH == "amd64" {
+		if err := applyCommunityResources(manifest); err != nil {
+			return err
+		}
+	}
+	return applyAddons(manifest)
+}
+
+func applyAddons(manifest *mf.Manifest) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
 	addonLocation := filepath.Join(koDataDir, "tekton-addon")
 	var files []string
@@ -168,11 +190,23 @@ func (r *Reconciler) appendTarget(ctx context.Context, manifest *mf.Manifest, co
 	return nil
 }
 
+func applyCommunityResources(manifest *mf.Manifest) error {
+	urls := strings.Join(communityResourceURLs, ",")
+	m, err := mf.ManifestFrom(mf.Path(urls))
+	if err != nil {
+		return err
+	}
+	*manifest = manifest.Append(m)
+	return nil
+}
+
 // transform mutates the passed manifest to one with common, component
 // and platform transformations applied
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	instance := comp.(*v1alpha1.TektonAddon)
-	extra := []mf.Transformer{}
+	extra := []mf.Transformer{
+		replaceKind("Task", "ClusterTask"),
+	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
 }
@@ -184,4 +218,24 @@ func (r *Reconciler) installed(ctx context.Context, instance v1alpha1.TektonComp
 	stages := common.Stages{common.AppendInstalled, r.transform}
 	err := stages.Execute(ctx, &installed, instance)
 	return &installed, err
+}
+
+func replaceKind(fromKind, toKind string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := u.GetKind()
+		if kind != fromKind {
+			return nil
+		}
+		err := unstructured.SetNestedField(u.Object, toKind, "kind")
+		if err != nil {
+			return fmt.Errorf(
+				"failed to change resource Name:%s, KIND from %s to %s, %s",
+				u.GetName(),
+				fromKind,
+				toKind,
+				err,
+			)
+		}
+		return nil
+	}
 }
