@@ -33,13 +33,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	pipelinev1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	dashboardv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // EnsureTektonDashboardExists creates a TektonDashboard with the name names.TektonDashboard, if it does not exist.
-func EnsureTektonDashboardExists(clients pipelinev1alpha1.TektonDashboardInterface, names utils.ResourceNames) (*v1alpha1.TektonDashboard, error) {
+func EnsureTektonDashboardExists(clients dashboardv1alpha1.TektonDashboardInterface, names utils.ResourceNames) (*v1alpha1.TektonDashboard, error) {
 	// If this function is called by the upgrade tests, we only create the custom resource, if it does not exist.
 	ks, err := clients.Get(context.TODO(), names.TektonDashboard, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
@@ -61,7 +61,7 @@ func EnsureTektonDashboardExists(clients pipelinev1alpha1.TektonDashboardInterfa
 // WaitForTektonDashboardState polls the status of the TektonDashboard called name
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout.
-func WaitForTektonDashboardState(clients pipelinev1alpha1.TektonDashboardInterface, name string,
+func WaitForTektonDashboardState(clients dashboardv1alpha1.TektonDashboardInterface, name string,
 	inState func(s *v1alpha1.TektonDashboard, err error) (bool, error)) (*v1alpha1.TektonDashboard, error) {
 	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForTektonDashboardState/%s/%s", name, "TektonDashboardIsReady"))
 	defer span.End()
@@ -73,7 +73,7 @@ func WaitForTektonDashboardState(clients pipelinev1alpha1.TektonDashboardInterfa
 	})
 
 	if waitErr != nil {
-		return lastState, fmt.Errorf("tektonpipeline %s is not in desired state, got: %+v: %w", name, lastState, waitErr)
+		return lastState, fmt.Errorf("tektondashboard %s is not in desired state, got: %+v: %w", name, lastState, waitErr)
 	}
 	return lastState, nil
 }
@@ -130,11 +130,11 @@ func TektonDashboardCRDelete(t *testing.T, clients *utils.Clients, crNames utils
 }
 
 func verifyNoTektonDashboardCR(clients *utils.Clients) error {
-	pipelines, err := clients.TektonDashboardAll().List(context.TODO(), metav1.ListOptions{})
+	dashboards, err := clients.TektonDashboardAll().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
-	if len(pipelines.Items) > 0 {
+	if len(dashboards.Items) > 0 {
 		return errors.New("Unable to verify cluster-scoped resources are deleted if any TektonDashboard exists")
 	}
 	return nil
