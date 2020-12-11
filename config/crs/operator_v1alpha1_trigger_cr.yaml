@@ -1,6 +1,0 @@
-apiVersion: operator.tekton.dev/v1alpha1
-kind: TektonTrigger
-metadata:
-  name: trigger
-spec:
-  targetNamespace: tekton-pipelines

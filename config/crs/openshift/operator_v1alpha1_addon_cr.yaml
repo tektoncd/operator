@@ -1,6 +1,0 @@
-apiVersion: operator.tekton.dev/v1alpha1
-kind: TektonAddon
-metadata:
-  name: addon
-spec:
-  targetNamespace: tekton-pipelines

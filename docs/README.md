@@ -48,7 +48,7 @@ If the files in `pkg/apis` are updated we need to run `codegen` scripts
 Operator provides an option to choose which components needs to be installed by specifying `profile`.
 
 `profile` is an optional field and supported `profile` are
-* **basic** 
+* **basic**
 * **default**
 * **all**
 
@@ -58,11 +58,13 @@ Operator provides an option to choose which components needs to be installed by 
 
 To create Tekton Components run
 ```shell script
-kubectl apply -f config/crs/operator_v1alpha1_config_cr.yaml
+make apply-cr
+make CR=config/basic apply-cr
 ```
 To delete installed Tekton Components run
 ```shell script
-kubectl delete -f config/crs/operator_v1alpha1_config_cr.yaml
+make clean-cr
+make CR=config/basic clean-cr
 ```
 
 ## Running Tests

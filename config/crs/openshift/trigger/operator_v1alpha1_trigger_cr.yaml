@@ -11,16 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-namespace: openshift-operators
 
-bases:
-- ../base/
-patches:
-- path: operator.yaml
-  target:
-    kind: Deployment
-    name: openshift-operators
-- path: role.yaml
-  target:
-    kind: ClusterRole
-    name: openshift-operators
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonTrigger
+metadata:
+  name: trigger
+spec:
+  targetNamespace: openshift-pipelines
