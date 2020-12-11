@@ -419,6 +419,16 @@ gopkg.in/alecthomas/kingpin.v2
 gopkg.in/inf.v0
 # gopkg.in/yaml.v2 v2.3.0
 gopkg.in/yaml.v2
+# gotest.tools/v3 v3.0.3
+## explicit
+gotest.tools/v3/assert
+gotest.tools/v3/assert/cmp
+gotest.tools/v3/env
+gotest.tools/v3/internal/assert
+gotest.tools/v3/internal/cleanup
+gotest.tools/v3/internal/difflib
+gotest.tools/v3/internal/format
+gotest.tools/v3/internal/source
 # honnef.co/go/tools v0.0.1-2020.1.5
 ## explicit
 honnef.co/go/tools/arg

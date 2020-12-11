@@ -137,7 +137,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonDashb
 // and platform transformations applied
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	instance := comp.(*v1alpha1.TektonDashboard)
-	extra := []mf.Transformer{}
+	extra := []mf.Transformer{
+		common.ApplyProxySettings,
+	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
 }
