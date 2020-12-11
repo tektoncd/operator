@@ -2,6 +2,7 @@ MODULE   = $(shell env GO111MODULE=on $(GO) list -m)
 DATE         ?= $(shell date +%FT%T%z)
 KO_DATA_PATH  = $(shell pwd)/cmd/$(TARGET)/kodata
 TARGET        = kubernetes
+CR            = config/default
 
 GOLANGCI_VERSION  = v1.30.0
 
@@ -37,7 +38,7 @@ $(BIN)/golangci-lint: | $(BIN) ; $(info $(M) getting golangci-lint $(GOLANGCI_VE
 	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BIN) $(GOLANGCI_VERSION)
 
 .PHONY: clean-cluster
-clean-cluster: | $(KO) $(KUSTOMIZE); $(info $(M) clean $(TARGET)…) @ ## Cleanup cluster
+clean-cluster: | $(KO) $(KUSTOMIZE) clean-cr; $(info $(M) clean $(TARGET)…) @ ## Cleanup cluster
 	-$(KUSTOMIZE) build config/$(TARGET) | $(KO) delete -f -
 	-kubectl delete ns tekton-pipelines --ignore-not-found
 	-kubectl delete \
@@ -67,6 +68,14 @@ bin/%: cmd/% FORCE
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
 	$Q $(KUSTOMIZE) build config/$(TARGET) | $(KO) apply -f -
+
+.PHONY: apply-cr
+apply-cr: | ; $(info $(M) apply CRs on $(TARGET)) @ ## Apply the CRs to the current cluster
+	$Q kubectl apply -f config/crs/$(TARGET)/$(CR)
+
+.PHONY: clean-cr
+clean-cr: | ; $(info $(M) clean CRs on $(TARGET)) @ ## Clean the CRs to the current cluster
+	-$Q kubectl delete -f config/crs/$(TARGET)/$(CR)
 
 .PHONY: resolve
 resolve: | $(KO) $(KUSTOMIZE) ; $(info $(M) ko resolve on $(TARGET)) @ ## Resolve config to the current cluster
