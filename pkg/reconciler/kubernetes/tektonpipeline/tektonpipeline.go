@@ -119,7 +119,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	//logger := logging.FromContext(ctx)
 	instance := comp.(*v1alpha1.TektonPipeline)
-	extra := []mf.Transformer{}
+	extra := []mf.Transformer{
+		common.ApplyProxySettings,
+	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
 }

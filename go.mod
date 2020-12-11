@@ -9,6 +9,7 @@ require (
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
 	golang.org/x/mod v0.3.0
+	gotest.tools/v3 v3.0.3
 	honnef.co/go/tools v0.0.1-2020.1.5 // indirect
 	k8s.io/api v0.18.8
 	k8s.io/apimachinery v0.18.8
