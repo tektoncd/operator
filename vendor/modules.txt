@@ -138,6 +138,9 @@ github.com/konsorten/go-windows-terminal-sequences
 ## explicit
 github.com/manifestival/client-go-client
 github.com/manifestival/client-go-client/pkg/dynamic
+# github.com/manifestival/controller-runtime-client v0.3.0
+## explicit
+github.com/manifestival/controller-runtime-client
 # github.com/manifestival/manifestival v0.6.1
 ## explicit
 github.com/manifestival/manifestival
@@ -432,6 +435,14 @@ gopkg.in/alecthomas/kingpin.v2
 gopkg.in/inf.v0
 # gopkg.in/yaml.v2 v2.3.0
 gopkg.in/yaml.v2
+# gotest.tools v2.2.0+incompatible
+## explicit
+gotest.tools/assert
+gotest.tools/assert/cmp
+gotest.tools/golden
+gotest.tools/internal/difflib
+gotest.tools/internal/format
+gotest.tools/internal/source
 # gotest.tools/v3 v3.0.3
 ## explicit
 gotest.tools/v3/assert
@@ -555,6 +566,7 @@ k8s.io/apimachinery/pkg/util/jsonmergepatch
 k8s.io/apimachinery/pkg/util/mergepatch
 k8s.io/apimachinery/pkg/util/naming
 k8s.io/apimachinery/pkg/util/net
+k8s.io/apimachinery/pkg/util/rand
 k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/util/sets
 k8s.io/apimachinery/pkg/util/strategicpatch
@@ -838,7 +850,11 @@ knative.dev/pkg/webhook
 knative.dev/pkg/webhook/certificates
 knative.dev/pkg/webhook/certificates/resources
 # sigs.k8s.io/controller-runtime v0.6.2
+## explicit
+sigs.k8s.io/controller-runtime/pkg/client
 sigs.k8s.io/controller-runtime/pkg/client/apiutil
+sigs.k8s.io/controller-runtime/pkg/client/fake
+sigs.k8s.io/controller-runtime/pkg/internal/objectutil
 # sigs.k8s.io/structured-merge-diff/v3 v3.0.1-0.20200706213357-43c19bbb7fba
 sigs.k8s.io/structured-merge-diff/v3/value
 # sigs.k8s.io/yaml v1.2.0

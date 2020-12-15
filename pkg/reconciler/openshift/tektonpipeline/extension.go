@@ -18,10 +18,21 @@ package tektonpipeline
 
 import (
 	"context"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+)
+
+const (
+	// DefaultSA is the default service account
+	DefaultSA = "pipeline"
+	// DefaultDisableAffinityAssistant is default value of disable affinity assistant flag
+	DefaultDisableAffinityAssistant = "true"
 )
 
 // NoPlatform "generates" a NilExtension
@@ -32,7 +43,10 @@ func OpenShiftExtension(context.Context) common.Extension {
 type openshiftExtension struct{}
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return []mf.Transformer{}
+	return []mf.Transformer{
+		InjectDefaultSA(DefaultSA),
+		SetDisableAffinityAssistant(DefaultDisableAffinityAssistant),
+	}
 }
 func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil
@@ -42,4 +56,58 @@ func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonCompo
 }
 func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
 	return nil
+}
+
+// InjectDefaultSA adds default service account into config-defaults configMap
+func InjectDefaultSA(defaultSA string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if strings.ToLower(u.GetKind()) != "configmap" {
+			return nil
+		}
+		if u.GetName() != "config-defaults" {
+			return nil
+		}
+
+		cm := &corev1.ConfigMap{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return err
+		}
+
+		cm.Data["default-service-account"] = defaultSA
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return err
+		}
+
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
+// SetDisableAffinityAssistant set value of disable-affinity-assistant into feature-flags configMap
+func SetDisableAffinityAssistant(disableAffinityAssistant string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if strings.ToLower(u.GetKind()) != "configmap" {
+			return nil
+		}
+		if u.GetName() != "feature-flags" {
+			return nil
+		}
+
+		cm := &corev1.ConfigMap{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return err
+		}
+
+		cm.Data["disable-affinity-assistant"] = disableAffinityAssistant
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return err
+		}
+
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
 }

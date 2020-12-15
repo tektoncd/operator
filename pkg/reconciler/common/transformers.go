@@ -18,17 +18,25 @@ package common
 
 import (
 	"context"
+	"strings"
+
 	mf "github.com/manifestival/manifestival"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"knative.dev/pkg/logging"
+)
+
+const (
+	AnnotationPreserveNS = "operator.tekton.dev/preserve-namespace"
 )
 
 // transformers that are common to all components.
 func transformers(ctx context.Context, obj v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
 		mf.InjectOwner(obj),
-		mf.InjectNamespace(obj.GetSpec().GetTargetNamespace()),
+		injectNamespaceConditional(AnnotationPreserveNS, obj.GetSpec().GetTargetNamespace()),
+		injectNamespaceCRDWebhookClientConfig(obj.GetSpec().GetTargetNamespace()),
 	}
 }
 
@@ -48,4 +56,34 @@ func Transform(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.Tek
 	}
 	*manifest = m
 	return nil
+}
+
+func injectNamespaceConditional(preserveNamespace, targetNamespace string) mf.Transformer {
+	tf := mf.InjectNamespace(targetNamespace)
+	return func(u *unstructured.Unstructured) error {
+		annotations := u.GetAnnotations()
+		val, ok := annotations[preserveNamespace]
+		if ok && val == "true" {
+			return nil
+		}
+		return tf(u)
+	}
+}
+
+func injectNamespaceCRDWebhookClientConfig(targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := strings.ToLower(u.GetKind())
+		if kind != "customresourcedefinition" {
+			return nil
+		}
+		service, found, err := unstructured.NestedFieldNoCopy(u.Object, "spec", "conversion", "webhookClientConfig", "service")
+		if !found || err != nil {
+			return err
+		}
+		m := service.(map[string]interface{})
+		if _, ok := m["namespace"]; ok {
+			m["namespace"] = targetNamespace
+		}
+		return nil
+	}
 }

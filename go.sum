@@ -818,6 +818,8 @@ github.com/mailru/easyjson v0.7.1-0.20191009090205-6c0755d89d1e h1:jcoUdG1TzY/M/
 github.com/mailru/easyjson v0.7.1-0.20191009090205-6c0755d89d1e/go.mod h1:KAzv3t3aY1NaHWoQz1+4F1ccyAH66Jk7yos7ldAVICs=
 github.com/manifestival/client-go-client v0.4.0 h1:yGhuO/0JPouzSilatEVhKmO90ukTVIWNN4KvvB9SUkk=
 github.com/manifestival/client-go-client v0.4.0/go.mod h1:owh5niEChTR28jc8hJVGnXjm7n4/9OE+YpJ1jt3nbS8=
+github.com/manifestival/controller-runtime-client v0.3.0 h1:lEUcXcKH1uDy/9Lw3t6mHeHpOjhEhmWNiobdDtfuqCM=
+github.com/manifestival/controller-runtime-client v0.3.0/go.mod h1:07AzU4XrP6l8TOfiagre17bVbf1zvFvlRP+DkFMlT1g=
 github.com/manifestival/manifestival v0.6.0/go.mod h1:3Qq9cnPy7sv7FVhg2Kvw0ebb35R4OdctS4UjTjHlHm4=
 github.com/manifestival/manifestival v0.6.1 h1:sq7bo3j3NdPsswM4IGoq5qyiKjMsNHK2OEj9BP4v0jI=
 github.com/manifestival/manifestival v0.6.1/go.mod h1:3Qq9cnPy7sv7FVhg2Kvw0ebb35R4OdctS4UjTjHlHm4=
