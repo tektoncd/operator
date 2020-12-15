@@ -6,7 +6,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: ClusterTask
 metadata:
-  name: s2i-perl
+  name: s2i-perl-v0-19-0
   labels:
     app.kubernetes.io/version: "0.1"
   annotations:
