@@ -25,6 +25,7 @@ import (
 
 // Extension enables platform-specific features
 type Extension interface {
+	Append(context.Context, *mf.Manifest) error
 	Transformers(v1alpha1.TektonComponent) []mf.Transformer
 	PreReconcile(context.Context, v1alpha1.TektonComponent) error
 	PostReconcile(context.Context, v1alpha1.TektonComponent) error
@@ -41,6 +42,9 @@ func NoExtension(context.Context) Extension {
 
 type nilExtension struct{}
 
+func (nilExtension) Append(context.Context, *mf.Manifest) error {
+	return nil
+}
 func (nilExtension) Transformers(v1alpha1.TektonComponent) []mf.Transformer {
 	return nil
 }

@@ -19,6 +19,8 @@ package tektonpipeline
 import (
 	"context"
 	"strings"
+	"os"
+	"path/filepath"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -26,6 +28,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 )
 
 const (
@@ -44,10 +47,20 @@ func OpenShiftExtension(context.Context) common.Extension {
 
 type openshiftExtension struct{}
 
+func (oe openshiftExtension) Append(ctx context.Context, m *mf.Manifest) error {
+	koDataDir := os.Getenv(common.KoEnvKey)
+	cm, err := common.Fetch(filepath.Join(koDataDir, "config-trusted-cabundle.yaml"))
+	if err != nil {
+		return err
+	}
+	*m = m.Append(cm)
+	return nil
+}
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
 		injectDefaultSA(DefaultSA),
 		setDisableAffinityAssistant(DefaultDisableAffinityAssistant),
+		occommon.ApplyTrustedCABundle,
 	}
 }
 func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
