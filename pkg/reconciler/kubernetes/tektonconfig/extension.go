@@ -37,6 +37,9 @@ type kubernetesExtension struct {
 	operatorClientSet versioned.Interface
 }
 
+func (oe kubernetesExtension) Append(ctx context.Context, m *mf.Manifest) error {
+	return nil
+}
 func (oe kubernetesExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{}
 }

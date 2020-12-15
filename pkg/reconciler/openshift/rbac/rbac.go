@@ -40,8 +40,9 @@ type Reconciler struct {
 var _ nsreconciler.Interface = (*Reconciler)(nil)
 
 const (
-	pipelineAnyuid = "pipeline-anyuid"
-	pipelineSA     = "pipeline"
+	pipelineAnyuid  = "pipeline-anyuid"
+	pipelineSA      = "pipeline"
+	trustedCABundle = "config-trusted-cabundle"
 )
 
 // FinalizeKind removes all resources after deletion of a TektonPipelines.
@@ -60,6 +61,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ns *corev1.Namespace) pk
 		logger.Infow("Reconciling Namespace: IGNORE", "status", ns.GetName())
 		return nil
 	}
+
+	logger.Infow("Reconciling Trusted CABundle configmap in ", "Namespace", ns.GetName())
+	if err := r.ensureTrustedCABundle(ctx, ns); err != nil {
+		return err
+	}
+
 	logger.Infow("Reconciling Default SA in ", "Namespace", ns.GetName())
 
 	sa, err := r.ensureSA(ctx, ns)
@@ -82,6 +89,21 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ns *corev1.Namespace) pk
 		return err
 	}
 
+	return nil
+}
+
+func (r *Reconciler) ensureTrustedCABundle(ctx context.Context, ns *corev1.Namespace) error {
+	logger := logging.FromContext(ctx)
+	logger.Info("finding configmap: %s/%s", ns.Name, trustedCABundle)
+	cfgInterface := r.kubeClientSet.CoreV1().ConfigMaps(ns.Name)
+	_, err := cfgInterface.Get(ctx, trustedCABundle, metav1.GetOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+	if err != nil && errors.IsNotFound(err) {
+		logger.Info("creating configmap", trustedCABundle, "ns", ns.Name)
+		return createTrustedCABundleConfigMap(ctx, cfgInterface, trustedCABundle, ns.Name)
+	}
 	return nil
 }
 
@@ -273,4 +295,22 @@ func createSA(ctx context.Context, saInterface v1.ServiceAccountInterface, ns st
 	}
 
 	return sa, nil
+}
+
+func createTrustedCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigMapInterface, name, ns string) error {
+	c := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: ns,
+			Labels: map[string]string{
+				"config.openshift.io/inject-trusted-cabundle": "true",
+			},
+		},
+	}
+
+	_, err := cfgInterface.Create(ctx, c, metav1.CreateOptions{})
+	if err != nil && !errors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
 }
