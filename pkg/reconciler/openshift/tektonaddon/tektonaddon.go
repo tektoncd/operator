@@ -19,6 +19,7 @@ package tektonaddon
 import (
 	"context"
 	"fmt"
+	tektonaddon "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon/pipelinetemplates"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -159,6 +160,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonAddon
 	return stages.Execute(ctx, &manifest, tt)
 }
 
+// ToDo need to update the comment
 // transform mutates the passed manifest to one with common, component
 // and platform transformations applied
 func (r *Reconciler) appendTarget(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
@@ -167,7 +169,18 @@ func (r *Reconciler) appendTarget(ctx context.Context, manifest *mf.Manifest, co
 			return err
 		}
 	}
+
+	if err := addPipelineTemplates(manifest); err != nil {
+		return err
+	}
+
 	return applyAddons(manifest)
+}
+
+func addPipelineTemplates(manifest *mf.Manifest) error {
+	koDataDir := os.Getenv(common.KoEnvKey)
+	addonLocation := filepath.Join(koDataDir, "tekton-pipeline-template")
+	return tektonaddon.GeneratePipelineTemplates(addonLocation, manifest)
 }
 
 func applyAddons(manifest *mf.Manifest) error {
