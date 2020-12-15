@@ -18,10 +18,13 @@ package tektonpipeline
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 )
 
 // NoPlatform "generates" a NilExtension
@@ -31,8 +34,19 @@ func OpenShiftExtension(context.Context) common.Extension {
 
 type openshiftExtension struct{}
 
+func (oe openshiftExtension) Append(ctx context.Context, m *mf.Manifest) error {
+	koDataDir := os.Getenv(common.KoEnvKey)
+	cm, err := common.Fetch(filepath.Join(koDataDir, "config-trusted-cabundle.yaml"))
+	if err != nil {
+		return err
+	}
+	*m = m.Append(cm)
+	return nil
+}
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return []mf.Transformer{}
+	return []mf.Transformer{
+		occommon.ApplyTrustedCABundle,
+	}
 }
 func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil

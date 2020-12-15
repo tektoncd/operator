@@ -105,13 +105,21 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		return err
 	}
 	stages := common.Stages{
-		common.AppendTarget,
+		r.append,
 		r.transform,
 		common.Install,
 		common.CheckDeployments,
 	}
 	manifest := r.manifest.Append()
 	return stages.Execute(ctx, &manifest, tp)
+}
+
+// append appends content to the passed manifest
+func (r *Reconciler) append(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
+	if err := common.AppendTarget(ctx, manifest, comp); err != nil {
+		return err
+	}
+	return r.extension.Append(ctx, manifest)
 }
 
 // transform mutates the passed manifest to one with common, component
