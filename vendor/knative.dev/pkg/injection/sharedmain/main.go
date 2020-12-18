@@ -225,16 +225,7 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 		cfg.Burst = len(ctors) * rest.DefaultBurst
 	}
 
-	// Respect user provided settings, but if omitted customize the default behavior.
-	if cfg.QPS == 0 {
-		cfg.QPS = rest.DefaultQPS
-	}
-	if cfg.Burst == 0 {
-		cfg.Burst = rest.DefaultBurst
-	}
-	ctx = injection.WithConfig(ctx, cfg)
-
-	ctx, informers := injection.Default.SetupInformers(ctx, cfg)
+	ctx = EnableInjectionOrDie(ctx, cfg)
 
 	logger, atomicLevel := SetupLoggerOrDie(ctx, component)
 	defer flush(logger)
@@ -287,11 +278,7 @@ func MainWithConfig(ctx context.Context, component string, cfg *rest.Config, cto
 			return wh.Run(ctx.Done())
 		})
 	}
-	// Start the injection clients and informers.
-	logging.FromContext(ctx).Info("Starting informers...")
-	if err := controller.StartInformers(ctx.Done(), informers...); err != nil {
-		logging.FromContext(ctx).Fatalw("Failed to start informers", zap.Error(err))
-	}
+
 	// Wait for webhook informers to sync.
 	if wh != nil {
 		wh.InformersHaveSynced()
