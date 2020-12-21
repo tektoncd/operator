@@ -1,0 +1,36 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  labels:
+    operator.tekton.dev/provider-type: community
+spec:
+  containers:
+  - name: busy
+    image: busybox
+---
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: echo-hello-world
+spec:
+  steps:
+  - name: echo
+    image: ubuntu
+    command:
+    - echo
+    args:
+    - "hello world"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: MyApp
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 9376

@@ -18,13 +18,18 @@ package common
 
 import (
 	"context"
+	"os"
+	"path"
+	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/ptr"
 )
 
@@ -86,4 +91,243 @@ func TestCommonTransformers(t *testing.T) {
 	if !cmp.Equal(ownerRef, wantOwnerRef) {
 		t.Fatalf("Unexpected ownerRef: %s", cmp.Diff(ownerRef, wantOwnerRef))
 	}
+}
+
+func TestImagesFromEnv(t *testing.T) {
+	os.Setenv("IMAGE_PIPELINES_CONTROLLER", "docker.io/pipeline")
+	data := ImagesFromEnv(PipelinesImagePrefix)
+	if !cmp.Equal(data, map[string]string{"CONTROLLER": "docker.io/pipeline"}) {
+		t.Fatalf("Unexpected ImageFromEnv: %s", cmp.Diff(data, map[string]string{"CONTROLLER": "docker.io/pipeline"}))
+	}
+	convertToLower := ToLowerCaseKeys(data)
+	if !cmp.Equal(convertToLower, map[string]string{"controller": "docker.io/pipeline"}) {
+		t.Fatalf("Unexpected ToLowerCaseKeys: %s", cmp.Diff(convertToLower, map[string]string{"controller": "docker.io/pipeline"}))
+	}
+}
+
+func TestReplaceImages(t *testing.T) {
+	t.Run("ignore non deployment", func(t *testing.T) {
+		testData := path.Join("testdata", "test-replace-kind.yaml")
+		expected, _ := mf.ManifestFrom(mf.Recursive(testData))
+
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assertNoEror(t, err)
+		newManifest, err := manifest.Transform(DeploymentImages(map[string]string{}))
+		assertNoEror(t, err)
+		assertEqual(t, newManifest.Resources(), expected.Resources())
+	})
+
+	t.Run("replace containers by name", func(t *testing.T) {
+		image := "foo.bar/image/controller"
+		images := map[string]string{
+			"controller_deployment": image,
+		}
+		testData := path.Join("testdata", "test-replace-image.yaml")
+
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assertNoEror(t, err)
+		newManifest, err := manifest.Transform(DeploymentImages(images))
+		assertNoEror(t, err)
+		assertDeployContainersHasImage(t, newManifest.Resources(), "controller-deployment", image)
+		assertDeployContainersHasImage(t, newManifest.Resources(), "sidecar", "busybox")
+	})
+
+	t.Run("replace containers args by space", func(t *testing.T) {
+		arg := ArgPrefix + "__bash_image"
+		image := "foo.bar/image/bash"
+		images := map[string]string{
+			arg: image,
+		}
+		testData := path.Join("testdata", "test-replace-image.yaml")
+
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assertNoEror(t, err)
+		newManifest, err := manifest.Transform(DeploymentImages(images))
+		assertNoEror(t, err)
+		assertDeployContainerArgsHasImage(t, newManifest.Resources(), "-bash", image)
+		assertDeployContainerArgsHasImage(t, newManifest.Resources(), "-git", "git")
+	})
+
+	t.Run("of_container_args_has_equal", func(t *testing.T) {
+		arg := ArgPrefix + "__nop"
+		image := "foo.bar/image/nop"
+		images := map[string]string{
+			arg: image,
+		}
+		testData := path.Join("testdata", "test-replace-image.yaml")
+
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assertNoEror(t, err)
+		newManifest, err := manifest.Transform(DeploymentImages(images))
+		assertNoEror(t, err)
+		assertDeployContainerArgsHasImage(t, newManifest.Resources(), "-nop", image)
+		assertDeployContainerArgsHasImage(t, newManifest.Resources(), "-git", "git")
+	})
+
+	t.Run("replace task addons step image", func(t *testing.T) {
+		stepName := "push_image"
+		image := "foo.bar/image/buildah"
+		images := map[string]string{
+			stepName: image,
+		}
+		testData := path.Join("testdata", "test-replace-addon-image.yaml")
+
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assertNoEror(t, err)
+		newManifest, err := manifest.Transform(TaskImages(images))
+		assertNoEror(t, err)
+		assertTaskImage(t, newManifest.Resources(), "push", image)
+		assertTaskImage(t, newManifest.Resources(), "build", "$(inputs.params.BUILDER_IMAGE)")
+	})
+
+	t.Run("replace task addons param image", func(t *testing.T) {
+		paramName := ParamPrefix + "builder_image"
+		image := "foo.bar/image/buildah"
+		images := map[string]string{
+			paramName: image,
+		}
+		testData := path.Join("testdata", "test-replace-addon-image.yaml")
+
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assertNoEror(t, err)
+		newManifest, err := manifest.Transform(TaskImages(images))
+		assertNoEror(t, err)
+		assertParamHasImage(t, newManifest.Resources(), "BUILDER_IMAGE", image)
+		assertTaskImage(t, newManifest.Resources(), "push", "buildah")
+	})
+}
+
+func assertNoEror(t *testing.T, err error) {
+	t.Helper()
+
+	if err != nil {
+		t.Errorf("assertion failed; expected no error %v", err)
+	}
+}
+
+func assertEqual(t *testing.T, result []unstructured.Unstructured, expected []unstructured.Unstructured) {
+	t.Helper()
+
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("assertion failed; not equal: expected %v, got %v", expected, result)
+	}
+}
+
+func assertDeployContainersHasImage(t *testing.T, resources []unstructured.Unstructured, name string, image string) {
+	t.Helper()
+
+	for _, resource := range resources {
+		deployment := deploymentFor(t, resource)
+		containers := deployment.Spec.Template.Spec.Containers
+
+		for _, container := range containers {
+			if container.Name != name {
+				continue
+			}
+
+			if container.Image != image {
+				t.Errorf("assertion failed; unexpected image: expected %s and got %s", image, container.Image)
+			}
+		}
+	}
+}
+
+func assertDeployContainerArgsHasImage(t *testing.T, resources []unstructured.Unstructured, arg string, image string) {
+	t.Helper()
+
+	for _, resource := range resources {
+		deployment := deploymentFor(t, resource)
+		containers := deployment.Spec.Template.Spec.Containers
+
+		for _, container := range containers {
+			if len(container.Args) == 0 {
+				continue
+			}
+
+			for a, argument := range container.Args {
+				if argument == arg && container.Args[a+1] != image {
+					t.Errorf("not equal: expected %v, got %v", image, container.Args[a+1])
+				}
+			}
+		}
+	}
+}
+
+func assertParamHasImage(t *testing.T, resources []unstructured.Unstructured, name string, image string) {
+	t.Helper()
+
+	for _, r := range resources {
+		params, found, err := unstructured.NestedSlice(r.Object, "spec", "params")
+		if err != nil {
+			t.Errorf("assertion failed; %v", err)
+		}
+		if !found {
+			continue
+		}
+
+		for _, p := range params {
+			param := p.(map[string]interface{})
+			n, ok := param["name"].(string)
+			if !ok {
+				t.Errorf("assertion failed; step name not found")
+				continue
+			}
+			if n != name {
+				continue
+			}
+
+			i, ok := param["default"].(string)
+			if !ok {
+				t.Errorf("assertion failed; default image not found")
+				continue
+			}
+			if i != image {
+				t.Errorf("assertion failed; unexpected image: expected %s, got %s", image, i)
+			}
+		}
+	}
+}
+
+func assertTaskImage(t *testing.T, resources []unstructured.Unstructured, name string, image string) {
+	t.Helper()
+
+	for _, r := range resources {
+		steps, found, err := unstructured.NestedSlice(r.Object, "spec", "steps")
+		if err != nil {
+			t.Errorf("assertion failed; %v", err)
+		}
+		if !found {
+			continue
+		}
+
+		for _, s := range steps {
+			step := s.(map[string]interface{})
+			n, ok := step["name"].(string)
+			if !ok {
+				t.Errorf("assertion failed; step name not found")
+				continue
+			}
+			if n != name {
+				continue
+			}
+
+			i, ok := step["image"].(string)
+			if !ok {
+				t.Errorf("assertion failed; image not found")
+				continue
+			}
+			if i != image {
+				t.Errorf("assertion failed; unexpected image: expected %s, got %s", image, i)
+			}
+		}
+	}
+}
+
+func deploymentFor(t *testing.T, unstr unstructured.Unstructured) *appsv1.Deployment {
+	deployment := &appsv1.Deployment{}
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstr.Object, deployment)
+	if err != nil {
+		t.Errorf("failed to load deployment yaml")
+	}
+	return deployment
 }

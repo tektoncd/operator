@@ -18,14 +18,14 @@ package tektonpipeline
 
 import (
 	"context"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -45,10 +45,12 @@ func OpenShiftExtension(context.Context) common.Extension {
 type openshiftExtension struct{}
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
+	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
 	return []mf.Transformer{
-		InjectDefaultSA(DefaultSA),
-		SetDisableAffinityAssistant(DefaultDisableAffinityAssistant),
-		InjectNamespaceRoleBindingConditional(AnnotationPreserveNS,
+		common.DeploymentImages(images),
+		injectDefaultSA(DefaultSA),
+		setDisableAffinityAssistant(DefaultDisableAffinityAssistant),
+		injectNamespaceRoleBindingConditional(AnnotationPreserveNS,
 			AnnotationPreserveRBSubjectNS, comp.GetSpec().GetTargetNamespace()),
 	}
 }
@@ -62,8 +64,8 @@ func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent)
 	return nil
 }
 
-// InjectDefaultSA adds default service account into config-defaults configMap
-func InjectDefaultSA(defaultSA string) mf.Transformer {
+// injectDefaultSA adds default service account into config-defaults configMap
+func injectDefaultSA(defaultSA string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if strings.ToLower(u.GetKind()) != "configmap" {
 			return nil
@@ -89,8 +91,8 @@ func InjectDefaultSA(defaultSA string) mf.Transformer {
 	}
 }
 
-// SetDisableAffinityAssistant set value of disable-affinity-assistant into feature-flags configMap
-func SetDisableAffinityAssistant(disableAffinityAssistant string) mf.Transformer {
+// setDisableAffinityAssistant set value of disable-affinity-assistant into feature-flags configMap
+func setDisableAffinityAssistant(disableAffinityAssistant string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if strings.ToLower(u.GetKind()) != "configmap" {
 			return nil
@@ -116,8 +118,8 @@ func SetDisableAffinityAssistant(disableAffinityAssistant string) mf.Transformer
 	}
 }
 
-func InjectNamespaceRoleBindingConditional(preserveNS, preserveRBSubjectNS, targetNamespace string) mf.Transformer {
-	tf := InjectNamespaceRoleBindingSubjects(targetNamespace)
+func injectNamespaceRoleBindingConditional(preserveNS, preserveRBSubjectNS, targetNamespace string) mf.Transformer {
+	tf := injectNamespaceRoleBindingSubjects(targetNamespace)
 
 	return func(u *unstructured.Unstructured) error {
 		annotations := u.GetAnnotations()
@@ -133,7 +135,7 @@ func InjectNamespaceRoleBindingConditional(preserveNS, preserveRBSubjectNS, targ
 	}
 }
 
-func InjectNamespaceRoleBindingSubjects(targetNamespace string) mf.Transformer {
+func injectNamespaceRoleBindingSubjects(targetNamespace string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		kind := strings.ToLower(u.GetKind())
 		if kind != "rolebinding" {
