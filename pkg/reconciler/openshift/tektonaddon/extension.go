@@ -32,7 +32,10 @@ func OpenShiftExtension(context.Context) common.Extension {
 type openshiftExtension struct{}
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return []mf.Transformer{}
+	addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+	return []mf.Transformer{
+		common.TaskImages(addonImages),
+	}
 }
 func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil

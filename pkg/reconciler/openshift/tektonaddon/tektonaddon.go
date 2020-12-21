@@ -19,7 +19,6 @@ package tektonaddon
 import (
 	"context"
 	"fmt"
-	tektonaddon "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon/pipelinetemplates"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -31,6 +30,7 @@ import (
 	informer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektonaddonreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	tektonaddon "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon/pipelinetemplates"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
@@ -55,6 +55,15 @@ type Reconciler struct {
 	pipelineInformer informer.TektonPipelineInformer
 	triggerInformer  informer.TektonTriggerInformer
 }
+
+const (
+	retain int = iota
+	overwrite
+
+	labelProviderType     = "operator.tekton.dev/provider-type"
+	providerTypeCommunity = "community"
+	providerTypeRedHat    = "redhat"
+)
 
 // Check that our Reconciler implements controller.Reconciler
 var _ tektonaddonreconciler.Interface = (*Reconciler)(nil)
@@ -151,25 +160,29 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonAddon
 		return err
 	}
 	stages := common.Stages{
-		r.appendTarget,
-		r.transform,
+		r.appendAddonTarget,
+		r.addonTransform,
 		common.Install,
 		common.CheckDeployments,
 	}
 	manifest := r.manifest.Append()
+	if err := stages.Execute(ctx, &manifest, tt); err != nil {
+		return err
+	}
+	// Install addon for community tasks
+	stages = common.Stages{
+		r.appendCommunityTarget,
+		r.communityTransform,
+		common.Install,
+		common.CheckDeployments,
+	}
+	manifest = r.manifest.Append()
 	return stages.Execute(ctx, &manifest, tt)
 }
 
-// ToDo need to update the comment
-// transform mutates the passed manifest to one with common, component
-// and platform transformations applied
-func (r *Reconciler) appendTarget(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	if runtime.GOARCH == "amd64" {
-		if err := applyCommunityResources(manifest); err != nil {
-			return err
-		}
-	}
-
+// appendAddonTarget mutates the passed manifest by appending one
+// appropriate for the passed TektonComponent
+func (r *Reconciler) appendAddonTarget(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	if err := addPipelineTemplates(manifest); err != nil {
 		return err
 	}
@@ -203,7 +216,12 @@ func applyAddons(manifest *mf.Manifest) error {
 	return nil
 }
 
-func applyCommunityResources(manifest *mf.Manifest) error {
+// appendCommunityTarget mutates the passed manifest by appending one
+// appropriate for the passed TektonComponent
+func (r *Reconciler) appendCommunityTarget(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
+	if runtime.GOARCH == "ppc64le" || runtime.GOARCH == "s390x" {
+		return nil
+	}
 	urls := strings.Join(communityResourceURLs, ",")
 	m, err := mf.ManifestFrom(mf.Path(urls))
 	if err != nil {
@@ -213,12 +231,24 @@ func applyCommunityResources(manifest *mf.Manifest) error {
 	return nil
 }
 
-// transform mutates the passed manifest to one with common, component
+// addonTransform mutates the passed manifest to one with common, component
 // and platform transformations applied
-func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
+func (r *Reconciler) addonTransform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
+	instance := comp.(*v1alpha1.TektonAddon)
+	extra := []mf.Transformer{
+		injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
+	}
+	extra = append(extra, r.extension.Transformers(instance)...)
+	return common.Transform(ctx, manifest, instance, extra...)
+}
+
+// communityTransform mutates the passed manifest to one with common component
+// and platform transformations applied
+func (r *Reconciler) communityTransform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	instance := comp.(*v1alpha1.TektonAddon)
 	extra := []mf.Transformer{
 		replaceKind("Task", "ClusterTask"),
+		injectLabel(labelProviderType, providerTypeCommunity, overwrite, "ClusterTask"),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
@@ -228,7 +258,7 @@ func (r *Reconciler) installed(ctx context.Context, instance v1alpha1.TektonComp
 	// Create new, empty manifest with valid client and logger
 	installed := r.manifest.Append()
 	// TODO: add ingress, etc
-	stages := common.Stages{common.AppendInstalled, r.transform}
+	stages := common.Stages{r.appendAddonTarget, r.addonTransform, r.appendCommunityTarget, r.communityTransform}
 	err := stages.Execute(ctx, &installed, instance)
 	return &installed, err
 }
@@ -251,4 +281,44 @@ func replaceKind(fromKind, toKind string) mf.Transformer {
 		}
 		return nil
 	}
+}
+
+//injectLabel adds label key:value to a resource
+// overwritePolicy (Retain/Overwrite) decides whehther to overwrite an already existing label
+// []kinds specify the Kinds on which the label should be applied
+// if len(kinds) = 0, label will be apllied to all/any resources irrespective of its Kind
+func injectLabel(key, value string, overwritePolicy int, kinds ...string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := u.GetKind()
+		if len(kinds) != 0 && !itemInSlice(kind, kinds) {
+			return nil
+		}
+		labels, found, err := unstructured.NestedStringMap(u.Object, "metadata", "labels")
+		if err != nil {
+			return fmt.Errorf("could not find labels set, %q", err)
+		}
+		if overwritePolicy == retain && found {
+			if _, ok := labels[key]; ok {
+				return nil
+			}
+		}
+		if !found {
+			labels = map[string]string{}
+		}
+		labels[key] = value
+		err = unstructured.SetNestedStringMap(u.Object, labels, "metadata", "labels")
+		if err != nil {
+			return fmt.Errorf("error updating labels for %s:%s, %s", kind, u.GetName(), err)
+		}
+		return nil
+	}
+}
+
+func itemInSlice(item string, items []string) bool {
+	for _, v := range items {
+		if v == item {
+			return true
+		}
+	}
+	return false
 }
