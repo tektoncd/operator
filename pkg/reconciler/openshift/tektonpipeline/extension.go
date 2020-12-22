@@ -33,6 +33,8 @@ const (
 	DefaultSA = "pipeline"
 	// DefaultDisableAffinityAssistant is default value of disable affinity assistant flag
 	DefaultDisableAffinityAssistant = "true"
+	AnnotationPreserveNS            = "operator.tekton.dev/preserve-namespace"
+	AnnotationPreserveRBSubjectNS   = "operator.tekton.dev/preserve-rb-subject-namespace"
 )
 
 // NoPlatform "generates" a NilExtension
@@ -46,6 +48,8 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	return []mf.Transformer{
 		InjectDefaultSA(DefaultSA),
 		SetDisableAffinityAssistant(DefaultDisableAffinityAssistant),
+		InjectNamespaceRoleBindingConditional(AnnotationPreserveNS,
+			AnnotationPreserveRBSubjectNS, comp.GetSpec().GetTargetNamespace()),
 	}
 }
 func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
@@ -108,6 +112,43 @@ func SetDisableAffinityAssistant(disableAffinityAssistant string) mf.Transformer
 		}
 
 		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
+func InjectNamespaceRoleBindingConditional(preserveNS, preserveRBSubjectNS, targetNamespace string) mf.Transformer {
+	tf := InjectNamespaceRoleBindingSubjects(targetNamespace)
+
+	return func(u *unstructured.Unstructured) error {
+		annotations := u.GetAnnotations()
+		val, ok := annotations[preserveNS]
+		if !(ok && val == "true") {
+			u.SetNamespace(targetNamespace)
+		}
+		val, ok = annotations[preserveRBSubjectNS]
+		if ok && val == "true" {
+			return nil
+		}
+		return tf(u)
+	}
+}
+
+func InjectNamespaceRoleBindingSubjects(targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := strings.ToLower(u.GetKind())
+		if kind != "rolebinding" {
+			return nil
+		}
+		subjects, found, err := unstructured.NestedFieldNoCopy(u.Object, "subjects")
+		if !found || err != nil {
+			return err
+		}
+		for _, subject := range subjects.([]interface{}) {
+			m := subject.(map[string]interface{})
+			if _, ok := m["namespace"]; ok {
+				m["namespace"] = targetNamespace
+			}
+		}
 		return nil
 	}
 }
