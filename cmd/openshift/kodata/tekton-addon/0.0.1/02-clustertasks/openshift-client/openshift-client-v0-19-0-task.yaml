@@ -40,7 +40,7 @@ spec:
         optional: true
   steps:
     - name: oc
-      image: quay.io/openshift/origin-cli:4.4
+      image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
       script: "$(params.SCRIPT)"
       args:
         - "$(params.ARGS)"
