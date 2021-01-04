@@ -24,6 +24,7 @@ import (
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	k8s_ctrl "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -51,6 +52,8 @@ func createCR(ctx context.Context) {
 		},
 	}
 	if _, err := c.TektonConfigs().Create(context.TODO(), tcCR, metav1.CreateOptions{}); err != nil {
-		log.Panic("Failed to autocreate TektonConfig with error: ", err)
+		if !errors.IsAlreadyExists(err) {
+			log.Panic("Failed to autocreate TektonConfig with error: ", err)
+		}
 	}
 }
