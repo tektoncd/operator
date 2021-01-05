@@ -36,8 +36,6 @@ spec:
           image: ko://github.com/tektoncd/operator/cmd/kubernetes
           imagePullPolicy: Always
           env:
-            - name: WATCH_NAMESPACE
-              value: ""
             - name: SYSTEM_NAMESPACE
               valueFrom:
                 fieldRef:
