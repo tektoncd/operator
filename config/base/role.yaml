@@ -204,18 +204,11 @@ rules:
   verbs:
   - '*'
 - apiGroups:
-  - security.openshift.io
+    - security.openshift.io
   resources:
-  - securitycontextconstraints
+    - securitycontextconstraints
   verbs:
-  - use
-- apiGroups:
-  - route.openshift.io
-  resources:
-  - routes
-  verbs:
-  - get
-  - list
+    - use
 - apiGroups:
   - coordination.k8s.io
   resources:
@@ -228,13 +221,6 @@ rules:
   - delete
   - patch
   - watch
-- apiGroups:
-  - console.openshift.io
-  resources:
-  - consoleyamlsamples
-  - consoleclidownloads
-  verbs:
-  - '*'
 - apiGroups:
   - autoscaling
   resources:
