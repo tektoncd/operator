@@ -76,7 +76,7 @@ func Fetch(path string) (mf.Manifest, error) {
 	return result, err
 }
 
-func componentDir(instance v1alpha1.TektonComponent) string {
+func ComponentDir(instance v1alpha1.TektonComponent) string {
 	koDataDir := os.Getenv(KoEnvKey)
 	switch instance.(type) {
 	case *v1alpha1.TektonPipeline:
@@ -87,6 +87,8 @@ func componentDir(instance v1alpha1.TektonComponent) string {
 		return filepath.Join(koDataDir, "tekton-dashboard")
 	case *v1alpha1.TektonAddon:
 		return filepath.Join(koDataDir, "tekton-addon")
+	case *v1alpha1.TektonConfig:
+		return filepath.Join(koDataDir, "tekton-config")
 	}
 	return ""
 }
@@ -96,7 +98,7 @@ func manifestPath(version string, instance v1alpha1.TektonComponent) string {
 		return ""
 	}
 
-	localPath := filepath.Join(componentDir(instance), version)
+	localPath := filepath.Join(ComponentDir(instance), version)
 	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
 		return localPath
 	}
@@ -109,7 +111,7 @@ func installedManifestPath(version string, instance v1alpha1.TektonComponent) st
 		return strings.Join(manifests, COMMA)
 	}
 
-	localPath := filepath.Join(componentDir(instance), version)
+	localPath := filepath.Join(ComponentDir(instance), version)
 	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
 		return localPath
 	}
@@ -128,7 +130,7 @@ func sanitizeSemver(version string) string {
 // available under kodata directory for Knative component.
 func allReleases(instance v1alpha1.TektonComponent) ([]string, error) {
 	// List all the directories available under kodata
-	pathname := componentDir(instance)
+	pathname := ComponentDir(instance)
 	fileList, err := ioutil.ReadDir(pathname)
 	if err != nil {
 		return nil, err
