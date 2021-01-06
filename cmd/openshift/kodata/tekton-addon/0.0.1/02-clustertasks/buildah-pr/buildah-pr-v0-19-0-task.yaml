@@ -27,7 +27,7 @@ spec:
   params:
     - name: BUILDER_IMAGE
       description: The location of the buildah builder image.
-      default: registry.redhat.io/rhel8/buildah@sha256:3e0377c19d3ad2bb4f6753120aac5d4fa228c2d3bade9f246220e0dd18d40fa1
+      default: registry.redhat.io/rhel8/buildah@sha256:785f0d039113ba978c4ee467f0554de7b72411b5c555a16abe60062759799497
     - name: DOCKERFILE
       description: Path to the Dockerfile to build.
       default: ./Dockerfile
