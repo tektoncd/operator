@@ -1,0 +1,15 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: proxy.operator.tekton.dev
+webhooks:
+  - admissionReviewVersions:
+      - v1
+      - v1beta1
+    clientConfig:
+      service:
+        name: tekton-operator-proxy-webhook
+        namespace: openshift-operators
+    failurePolicy: Fail
+    sideEffects: None
+    name: proxy.operator.tekton.dev

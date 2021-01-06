@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-operator-proxy-webhook
+  labels:
+    version: "devel"
+    operator.tekton.dev/release: "devel"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: tekton-operator
+  template:
+    metadata:
+      labels:
+        name: tekton-operator
+        app: tekton-operator
+    spec:
+      serviceAccountName: tekton-operators-proxy-webhook
+      containers:
+        - name: proxy
+          image: "ko://github.com/tektoncd/operator/cmd/proxy"
+          env:
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: WEBHOOK_SERVICE_NAME
+              value: tekton-operator-proxy-webhook
+            - name: WEBHOOK_SECRET_NAME
+              value: proxy-webhook-certs
+          ports:
+            - name: https-webhook
+              containerPort: 8443
+          securityContext:
+            allowPrivilegeEscalation: false

@@ -28,3 +28,15 @@ patches:
   target:
     kind: ClusterRoleBinding
     name: tekton-operator
+- path: proxy_role_binding.yaml
+  target:
+    kind: RoleBinding
+    name: tekton-operators-proxy-webhook-admin
+- path: proxy_cluster_role_binding.yaml
+  target:
+    kind: ClusterRoleBinding
+    name: tekton-operators-proxy-webhook-admin
+- path: proxy_webhook_config.yaml
+  target:
+    kind: MutatingWebhookConfiguration
+    name: proxy.operator.tekton.dev

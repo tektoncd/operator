@@ -20,3 +20,7 @@ patches:
   target:
     kind: Deployment
     name: tekton-operator
+- path: proxy_webhook.yaml
+  target:
+    kind: Deployment
+    name: tekton-operator-proxy-webhook
