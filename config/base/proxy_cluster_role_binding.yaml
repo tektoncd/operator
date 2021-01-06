@@ -1,0 +1,12 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-operators-proxy-webhook-admin
+subjects:
+  - kind: ServiceAccount
+    name: tekton-operators-proxy-webhook
+    namespace: tekton-operator
+roleRef:
+  kind: ClusterRole
+  name: tekton-operators-proxy-admin
+  apiGroup: rbac.authorization.k8s.io

@@ -35,10 +35,10 @@ func newProxyDefaultingAdmissionController(ctx context.Context, cmw configmap.Wa
 	return proxy.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
-		"proxy-webhook.operator.tekton.dev",
+		"proxy.operator.tekton.dev",
 
 		// The path on which to serve the webhook.
-		"/proxy-defaulting",
+		"/defaulting",
 
 		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
 		func(ctx context.Context) context.Context {
