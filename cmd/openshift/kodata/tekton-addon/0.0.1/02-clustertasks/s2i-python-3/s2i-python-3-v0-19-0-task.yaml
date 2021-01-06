@@ -46,7 +46,7 @@ spec:
         - name: gen-source
           mountPath: /gen-source
     - name: build
-      image: registry.redhat.io/rhel8/buildah@sha256:3e0377c19d3ad2bb4f6753120aac5d4fa228c2d3bade9f246220e0dd18d40fa1
+      image: registry.redhat.io/rhel8/buildah@sha256:785f0d039113ba978c4ee467f0554de7b72411b5c555a16abe60062759799497
       workingDir: /gen-source
       command: ['buildah', 'bud', '--tls-verify=$(params.TLSVERIFY)', '--layers', '-f', '/gen-source/Dockerfile.gen', '-t', '$(params.IMAGE)', '.']
       volumeMounts:
@@ -58,7 +58,7 @@ spec:
       - name: STORAGE_DRIVER
         value: vfs
     - name: push
-      image: registry.redhat.io/rhel8/buildah@sha256:3e0377c19d3ad2bb4f6753120aac5d4fa228c2d3bade9f246220e0dd18d40fa1
+      image: registry.redhat.io/rhel8/buildah@sha256:785f0d039113ba978c4ee467f0554de7b72411b5c555a16abe60062759799497
       command: ['buildah', 'push', '--tls-verify=$(params.TLSVERIFY)', '$(params.IMAGE)', 'docker://$(params.IMAGE)']
       volumeMounts:
         - name: varlibcontainers
