@@ -52,23 +52,17 @@ spec:
     - name: build
       image: $(params.BUILDER_IMAGE)
       workingDir: /workspace/source
-      command: ['buildah', 'bud', '--format=$(params.FORMAT)', '--tls-verify=$(params.TLSVERIFY)', '--layers', '-f', '$(params.DOCKERFILE)', '-t', '$(resources.outputs.image.url)', '$(params.CONTEXT)']
+      command: ['buildah', 'bud', '--storage-driver=vfs', '--format=$(params.FORMAT)', '--tls-verify=$(params.TLSVERIFY)', '--layers', '-f', '$(params.DOCKERFILE)', '-t', '$(resources.outputs.image.url)', '$(params.CONTEXT)']
       volumeMounts:
         - name: varlibcontainers
           mountPath: /var/lib/containers
-      env:
-      - name: STORAGE_DRIVER
-        value: vfs
     - name: push
       image: $(params.BUILDER_IMAGE)
       workingDir: /workspace/source
-      command: ['buildah', 'push', '--tls-verify=$(params.TLSVERIFY)', '$(resources.outputs.image.url)', 'docker://$(resources.outputs.image.url)']
+      command: ['buildah', 'push', '--storage-driver=vfs', '--tls-verify=$(params.TLSVERIFY)', '$(resources.outputs.image.url)', 'docker://$(resources.outputs.image.url)']
       volumeMounts:
         - name: varlibcontainers
           mountPath: /var/lib/containers
-      env:
-      - name: STORAGE_DRIVER
-        value: vfs
   volumes:
     - name: varlibcontainers
       emptyDir: {}
