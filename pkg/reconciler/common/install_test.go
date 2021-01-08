@@ -140,10 +140,9 @@ func TestUninstall(t *testing.T) {
 	crd := clusterScopedResource("apiextensions.k8s.io/v1beta1", "CustomResourceDefinition", "test-crd")
 
 	// Deliberately mixing the order in the manifest.
-	in := []unstructured.Unstructured{deployment, role, roleBinding, clusterRole, clusterRoleBinding, crd}
+	in := []unstructured.Unstructured{crd, deployment, role, roleBinding, clusterRole, clusterRoleBinding}
 	// Expect things to be deleted, non-rbac resources first and then in reversed order.
-	// CRDs are not removed.
-	want := []unstructured.Unstructured{deployment, clusterRoleBinding, clusterRole, roleBinding, role}
+	want := []unstructured.Unstructured{deployment, crd, clusterRoleBinding, clusterRole, roleBinding, role}
 
 	client := &fakeClient{resourcesExist: true}
 	manifest, err := mf.ManifestFrom(mf.Slice(in), mf.UseClient(client))
