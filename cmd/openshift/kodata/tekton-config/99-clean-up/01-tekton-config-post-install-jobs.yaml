@@ -41,5 +41,49 @@ spec:
           args:
             - "-c"
             - |
+              #!/usr/bin/env bash
+
+              OWNER_KIND="TektonAddon"
+              OWNER_APIVERSION="operator.tekton.dev/v1alpha1"
+              OWNER_NAME="addon"
+              OWNER_UID=""
+
+              function findNewOwnerUID {
+                  OWNER_UID=$(kubectl get ${OWNER_KIND} ${OWNER_NAME} -o=jsonpath='{.metadata.uid}')
+                  echo OWNER_APIVERSION=$OWNER_APIVERSION
+                  echo OWNER_KIND=$OWNER_KIND
+                  echo OWNER_NAME=$OWNER_NAME
+                  echo OWNER_UID=$OWNER_UID
+              }
+
+              function checkOwner() {
+                  CT=${1}
+                  CONFIGOWNER=$(kubectl get clustertasks ${CT} -o=jsonpath='{.metadata.ownerReferences[?(@.kind=="Config")].name}')
+                  if [[ -n $CONFIGOWNER ]]; then
+                    return 0
+                  fi
+                  return 1
+              }
+
+              function updateOwnerReference() {
+                  CT=${1}
+                  kubectl patch clustertask ${CT} --type='json' -p='[{"op": "remove", "path": "/metadata/ownerReferences"}]'
+
+                  kubectl patch clustertask ${CT} --type='json' -p=\[\{\"op\":\ \"add\",\ \"path\":\ \"/metadata/ownerReferences\",\ \"value\":\ \[\{\"name\":\"${OWNER_NAME}\",\ \"kind\":\"${OWNER_KIND}\",\ \"apiVersion\":\ \"${OWNER_APIVERSION}\",\ \"blockOwnerDeletion\":\ \true,\ \"uid\":\ \ \"${OWNER_UID}\"\}\]\ \}\]
+              }
+
+              findNewOwnerUID
+
+              CLUSTERTASKS=$(kubectl get clustertasks -o=jsonpath='{.items[*].metadata.name}')
+
+              for CTASK in ${CLUSTERTASKS}; do
+                  if checkOwner ${CTASK}; then
+                    echo changing owner of ${CTASK}
+                    updateOwnerReference ${CTASK}
+                  fi
+              done
+
+              echo 'ownerReference reset'
               oc delete config.operator.tekton.dev cluster --ignore-not-found
+              echo 'old config cr deleted'
 ---
