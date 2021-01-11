@@ -298,16 +298,33 @@ func setDefaults(ctx context.Context, patches duck.JSONPatch, pod corev1.Pod) (d
 // precedence will be given to second input if exist with same name key
 func updateAndMergeEnv(containerenvs []corev1.EnvVar, proxyEnv []corev1.EnvVar) []corev1.EnvVar {
 	for _, env := range proxyEnv {
-		var updated bool
-		for i := range containerenvs {
-			if env.Name == containerenvs[i].Name {
-				containerenvs[i].Value = env.Value
-				updated = true
+		if env.Value == "" {
+			// If value is empty then remove that key from container
+			containerenvs = remove(containerenvs, env.Name)
+		} else {
+			var updated bool
+			for i := range containerenvs {
+				if env.Name == containerenvs[i].Name {
+					containerenvs[i].Value = env.Value
+					updated = true
+				}
 			}
-		}
-		if !updated {
-			containerenvs = append(containerenvs, env)
+			if !updated {
+				containerenvs = append(containerenvs, corev1.EnvVar{
+					Name:  env.Name,
+					Value: env.Value,
+				})
+			}
 		}
 	}
 	return containerenvs
+}
+
+func remove(env []corev1.EnvVar, key string) []corev1.EnvVar {
+	for i := range env {
+		if env[i].Name == key {
+			return append(env[:i], env[i+1:]...)
+		}
+	}
+	return env
 }
