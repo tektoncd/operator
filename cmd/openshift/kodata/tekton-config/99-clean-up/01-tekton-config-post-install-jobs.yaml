@@ -35,7 +35,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: delete-config-crd
-          image: quay.io/openshift/origin-cli:4.6.0
+          image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
           command:
             - "bash"
           args:
@@ -85,5 +85,6 @@ spec:
 
               echo 'ownerReference reset'
               oc delete config.operator.tekton.dev cluster --ignore-not-found
+              oc delete crd config.operator.tekton.dev
               echo 'old config cr deleted'
 ---
