@@ -84,7 +84,11 @@ spec:
               done
 
               echo 'ownerReference reset'
-              oc delete config.operator.tekton.dev cluster --ignore-not-found
-              oc delete crd config.operator.tekton.dev
-              echo 'old config cr deleted'
+
+              # remove the config.operator.tekton.dev crd as the operator reconcilers will not remove it.
+              # this crd was added to the cluster by OLM with the past operator release(s)
+              # however, OLM will not remove this crd, so this job will handle it
+              # this should remove its instance as well (name: cluster, kind: Config, apiVersion: config.operator.tekton.dev/v1alpha1)
+              oc delete crd config.operator.tekton.dev --ignore-not-found
+              echo 'obsolete config.operator.tekton.dev instance deleted'
 ---
