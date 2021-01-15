@@ -32,7 +32,7 @@ spec:
     default: registry.redhat.io/rhel8/buildah@sha256:785f0d039113ba978c4ee467f0554de7b72411b5c555a16abe60062759799497
   - name: STORAGE_DRIVER
     description: Set buildah storage driver
-    default: overlay
+    default: vfs
   - name: DOCKERFILE
     description: Path to the Dockerfile to build.
     default: ./Dockerfile
@@ -71,8 +71,6 @@ spec:
     volumeMounts:
     - name: varlibcontainers
       mountPath: /var/lib/containers
-    securityContext:
-      privileged: true
 
   - name: push
     image: $(params.BUILDER_IMAGE)
@@ -85,8 +83,6 @@ spec:
     volumeMounts:
     - name: varlibcontainers
       mountPath: /var/lib/containers
-    securityContext:
-      privileged: true
 
   - name: digest-to-results
     image: $(params.BUILDER_IMAGE)
