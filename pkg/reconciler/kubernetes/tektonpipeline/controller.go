@@ -57,8 +57,10 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatalw("Error creating client from injected config", zap.Error(err))
 		}
 		mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
-		// FIXME(vdemeester) why ignoring error ?
-		manifest, _ := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
+		manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
+		if err != nil {
+			logger.Fatalw("Error creating initial manifest", zap.Error(err))
+		}
 
 		c := &Reconciler{
 			kubeClientSet:     kubeClient,
