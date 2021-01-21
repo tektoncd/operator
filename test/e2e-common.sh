@@ -30,9 +30,12 @@ function install_operator_resources() {
 
   make TARGET=${TARGET:-kubernetes} apply || fail_test "Tekton Operator installation failed"
 
+  OPERATOR_NAMESPACE="tekton-operator"
+  [[ "${TARGET}" == "openshift" ]] && OPERATOR_NAMESPACE="openshift-operators"
+
   # Wait for pods to be running in the namespaces we are deploying to
   # TODO: parameterize namespace, operator can run in a namespace different from the namespace where tektonpipelines is installed
-  wait_until_pods_running tekton-operator || fail_test "Tekton Operator controller did not come up"
+  wait_until_pods_running ${OPERATOR_NAMESPACE} || fail_test "Tekton Operator controller did not come up"
 
   # Make sure that everything is cleaned up in the current namespace.
   for res in tektonpipelines tektontriggers tektondashboards; do
