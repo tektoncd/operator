@@ -18,9 +18,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/tektoncd/operator/pkg/reconciler/proxy"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
@@ -32,10 +36,15 @@ import (
 
 func newProxyDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 
+	webhook, err := getWebhookName(ctx)
+	if err != nil {
+		webhook = "proxy.operator.tekton.dev"
+	}
+
 	return proxy.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
-		"proxy.operator.tekton.dev",
+		webhook,
 
 		// The path on which to serve the webhook.
 		"/defaulting",
@@ -77,4 +86,18 @@ func main() {
 		certificates.NewController,
 		newProxyDefaultingAdmissionController,
 	)
+}
+
+func getWebhookName(ctx context.Context) (string, error) {
+	client := kubeclient.Get(ctx)
+	webhookList, err := client.AdmissionregistrationV1().MutatingWebhookConfigurations().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+	for _, w := range webhookList.Items {
+		if strings.HasPrefix(w.Name, "proxy.operator.tekton.dev") {
+			return w.Name, nil
+		}
+	}
+	return "", fmt.Errorf("not able to find any webhook for proxy")
 }
