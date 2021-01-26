@@ -51,6 +51,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		tektonAddonInformer := tektonAddoninformer.Get(ctx)
 		kubeClient := kubeclient.Get(ctx)
 		logger := logging.FromContext(ctx)
+		restConfig := injection.GetConfig(ctx)
 
 		mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
 		if err != nil {
@@ -69,6 +70,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			manifest:          manifest,
 			pipelineInformer:  tektonPipelineInformer,
 			triggerInformer:   tektonTriggerInformer,
+			config:            restConfig,
 		}
 		impl := tektonAddonreconciler.NewImpl(ctx, c)
 

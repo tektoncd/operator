@@ -31,9 +31,12 @@ import (
 	tektonaddonreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	tektonaddon "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon/pipelinetemplates"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -54,6 +57,7 @@ type Reconciler struct {
 
 	pipelineInformer informer.TektonPipelineInformer
 	triggerInformer  informer.TektonTriggerInformer
+	config           *rest.Config
 }
 
 const (
@@ -63,6 +67,8 @@ const (
 	labelProviderType     = "operator.tekton.dev/provider-type"
 	providerTypeCommunity = "community"
 	providerTypeRedHat    = "redhat"
+	consoleYamlSamples    = "consoleyamlsamples.console.openshift.io"
+	consoleQuickStart     = "consolequickstarts.console.openshift.io"
 )
 
 // Check that our Reconciler implements controller.Reconciler
@@ -186,8 +192,11 @@ func (r *Reconciler) appendAddonTarget(ctx context.Context, manifest *mf.Manifes
 	if err := addPipelineTemplates(manifest); err != nil {
 		return err
 	}
-
-	return applyAddons(manifest)
+	if err := applyAddons(manifest, comp); err != nil {
+		return err
+	}
+	// add optionals to addons if any
+	return applyOptionalAddons(ctx, manifest, comp, r.config)
 }
 
 func addPipelineTemplates(manifest *mf.Manifest) error {
@@ -196,11 +205,55 @@ func addPipelineTemplates(manifest *mf.Manifest) error {
 	return tektonaddon.GeneratePipelineTemplates(addonLocation, manifest)
 }
 
-func applyAddons(manifest *mf.Manifest) error {
+func applyAddons(manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
-	addonLocation := filepath.Join(koDataDir, "tekton-addon")
+	addonLocation := filepath.Join(koDataDir, "tekton-addon/"+common.TargetVersion(comp)+"/addons")
+	return appendManifest(manifest, addonLocation)
+}
+
+func applyOptionalAddons(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent, cfg *rest.Config) error {
+	koDataDir := os.Getenv(common.KoEnvKey)
+	consoleYamlCRDinstalled, err := isCRDExist(ctx, cfg, consoleYamlSamples)
+	if err != nil {
+		return err
+	}
+	if consoleYamlCRDinstalled {
+		optionalLocation := filepath.Join(koDataDir, "tekton-addon/"+common.TargetVersion(comp)+"/optional/samples")
+		if err := appendManifest(manifest, optionalLocation); err != nil {
+			return err
+		}
+	}
+	consoleQuickStartCRDinstalled, err := isCRDExist(ctx, cfg, consoleQuickStart)
+	if err != nil {
+		return err
+	}
+	if consoleQuickStartCRDinstalled {
+		optionalLocation := filepath.Join(koDataDir, "tekton-addon/"+common.TargetVersion(comp)+"/optional/quickstarts")
+		return appendManifest(manifest, optionalLocation)
+	}
+	return nil
+}
+
+func isCRDExist(ctx context.Context, config *rest.Config, crdName string) (bool, error) {
+	apiextensionsclientset, err := apiextensionsclient.NewForConfig(config)
+	if err != nil {
+		return false, err
+	}
+	_, err = apiextensionsclientset.ApiextensionsV1beta1().
+		CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	return err == nil, ignoreNotFound(err)
+}
+
+func ignoreNotFound(err error) error {
+	if errors.IsNotFound(err) {
+		return nil
+	}
+	return err
+}
+
+func appendManifest(manifest *mf.Manifest, yamlLocation string) error {
 	var files []string
-	if err := filepath.Walk(addonLocation, func(path string, info os.FileInfo, err error) error {
+	if err := filepath.Walk(yamlLocation, func(path string, info os.FileInfo, err error) error {
 		files = append(files, path)
 		return nil
 	}); err != nil {

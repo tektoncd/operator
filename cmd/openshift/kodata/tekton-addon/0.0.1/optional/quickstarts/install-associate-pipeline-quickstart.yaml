@@ -1,3 +1,4 @@
+---
 apiVersion: console.openshift.io/v1
 kind: ConsoleQuickStart
 metadata:

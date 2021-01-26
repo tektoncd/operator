@@ -14,6 +14,7 @@ require (
 	gotest.tools v2.2.0+incompatible
 	gotest.tools/v3 v3.0.3
 	k8s.io/api v0.18.8
+	k8s.io/apiextensions-apiserver v0.18.6
 	k8s.io/apimachinery v0.19.0
 	k8s.io/client-go v11.0.1-0.20190805182717-6502b5e7b1b5+incompatible
 	k8s.io/code-generator v0.18.8
@@ -26,6 +27,7 @@ go 1.14
 // Pin k8s deps to 0.18.8
 replace (
 	k8s.io/api => k8s.io/api v0.18.8
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.8
 	k8s.io/apimachinery => k8s.io/apimachinery v0.18.8
 	k8s.io/client-go => k8s.io/client-go v0.18.8
 	k8s.io/code-generator => k8s.io/code-generator v0.18.8
