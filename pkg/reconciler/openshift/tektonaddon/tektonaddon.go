@@ -208,7 +208,7 @@ func addPipelineTemplates(manifest *mf.Manifest) error {
 func applyAddons(manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
 	addonLocation := filepath.Join(koDataDir, "tekton-addon/"+common.TargetVersion(comp)+"/addons")
-	return appendManifest(manifest, addonLocation)
+	return common.AppendManifest(manifest, addonLocation)
 }
 
 func applyOptionalAddons(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent, cfg *rest.Config) error {
@@ -219,7 +219,7 @@ func applyOptionalAddons(ctx context.Context, manifest *mf.Manifest, comp v1alph
 	}
 	if consoleYamlCRDinstalled {
 		optionalLocation := filepath.Join(koDataDir, "tekton-addon/"+common.TargetVersion(comp)+"/optional/samples")
-		if err := appendManifest(manifest, optionalLocation); err != nil {
+		if err := common.AppendManifest(manifest, optionalLocation); err != nil {
 			return err
 		}
 	}
@@ -229,7 +229,7 @@ func applyOptionalAddons(ctx context.Context, manifest *mf.Manifest, comp v1alph
 	}
 	if consoleQuickStartCRDinstalled {
 		optionalLocation := filepath.Join(koDataDir, "tekton-addon/"+common.TargetVersion(comp)+"/optional/quickstarts")
-		return appendManifest(manifest, optionalLocation)
+		return common.AppendManifest(manifest, optionalLocation)
 	}
 	return nil
 }
@@ -249,24 +249,6 @@ func ignoreNotFound(err error) error {
 		return nil
 	}
 	return err
-}
-
-func appendManifest(manifest *mf.Manifest, yamlLocation string) error {
-	var files []string
-	if err := filepath.Walk(yamlLocation, func(path string, info os.FileInfo, err error) error {
-		files = append(files, path)
-		return nil
-	}); err != nil {
-		return err
-	}
-	for i := range files {
-		m, err := common.Fetch(files[i])
-		if err != nil {
-			return err
-		}
-		*manifest = manifest.Append(m)
-	}
-	return nil
 }
 
 // appendCommunityTarget mutates the passed manifest by appending one

@@ -19,15 +19,16 @@ package tektonpipeline
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	mf "github.com/manifestival/manifestival"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonpipelinereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -105,7 +106,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		return err
 	}
 	stages := common.Stages{
-		common.AppendTarget,
+		r.appendPipelineTarget,
 		r.transform,
 		common.Install,
 		common.CheckDeployments,
@@ -114,13 +115,31 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	return stages.Execute(ctx, &manifest, tp)
 }
 
+// appendPipelineTarget mutates the passed manifest by appending one
+// appropriate for the passed TektonComponent
+func (r *Reconciler) appendPipelineTarget(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
+	if err := common.AppendTarget(ctx, manifest, comp); err != nil {
+		return err
+	}
+	// add proxy configs to pipeline if any
+	return addProxy(manifest)
+}
+
+func addProxy(manifest *mf.Manifest) error {
+	koDataDir := os.Getenv(common.KoEnvKey)
+	proxyLocation := filepath.Join(koDataDir, "proxy")
+	return common.AppendManifest(manifest, proxyLocation)
+}
+
 // transform mutates the passed manifest to one with common, component
 // and platform transformations applied
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	//logger := logging.FromContext(ctx)
+	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
 	instance := comp.(*v1alpha1.TektonPipeline)
 	extra := []mf.Transformer{
 		common.ApplyProxySettings,
+		common.DeploymentImages(images),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
@@ -130,7 +149,7 @@ func (r *Reconciler) installed(ctx context.Context, instance v1alpha1.TektonComp
 	// Create new, empty manifest with valid client and logger
 	installed := r.manifest.Append()
 	// TODO: add ingress, etc
-	stages := common.Stages{common.AppendInstalled, r.transform}
+	stages := common.Stages{r.appendPipelineTarget, r.transform}
 	err := stages.Execute(ctx, &installed, instance)
 	return &installed, err
 }

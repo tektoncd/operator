@@ -45,9 +45,7 @@ func OpenShiftExtension(context.Context) common.Extension {
 type openshiftExtension struct{}
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
 	return []mf.Transformer{
-		common.DeploymentImages(images),
 		injectDefaultSA(DefaultSA),
 		setDisableAffinityAssistant(DefaultDisableAffinityAssistant),
 		injectNamespaceRoleBindingConditional(AnnotationPreserveNS,

@@ -46,3 +46,5 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "tekton-operator"
+            - name: IMAGE_PIPELINES_PROXY
+              value: ko://github.com/tektoncd/operator/cmd/proxy
