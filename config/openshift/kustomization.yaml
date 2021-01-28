@@ -20,10 +20,6 @@ patches:
   target:
     kind: Deployment
     name: tekton-operator
-- path: role.yaml
-  target:
-    kind: ClusterRole
-    name: tekton-operator
 - path: role_binding.yaml
   target:
     kind: ClusterRoleBinding
@@ -40,3 +36,10 @@ patches:
   target:
     kind: MutatingWebhookConfiguration
     name: proxy.operator.tekton.dev
+patchesJson6902:
+- target:
+    group: rbac.authorization.k8s.io
+    version: v1
+    kind: ClusterRole
+    name: tekton-operator
+  path: role.yaml
