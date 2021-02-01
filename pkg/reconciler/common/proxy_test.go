@@ -17,9 +17,11 @@ package common
 
 import (
 	"encoding/json"
+	"path"
 	"sort"
 	"testing"
 
+	mf "github.com/manifestival/manifestival"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/env"
 	appsv1 "k8s.io/api/apps/v1"
@@ -181,4 +183,26 @@ func toEnvVar(env map[string]string) []corev1.EnvVar {
 		})
 	}
 	return envvar
+}
+
+func TestInjectLabelOnNamespace(t *testing.T) {
+	t.Run("TestInjectLabel", func(t *testing.T) {
+		testData := path.Join("testdata", "test-namespace-inject.yaml")
+
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assertNoEror(t, err)
+		newManifest, err := manifest.Transform(InjectLabelOnNamespace())
+		assertNoEror(t, err)
+		for _, resource := range newManifest.Resources() {
+			labels := resource.GetLabels()
+			value, ok := labels["operator.tekton.dev/disable-proxy"]
+			if ok {
+				assert.DeepEqual(t, value, "true")
+			}
+			if !ok {
+				t.Errorf("namespace did not have label")
+
+			}
+		}
+	})
 }

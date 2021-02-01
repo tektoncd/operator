@@ -93,6 +93,7 @@ func InjectLabelOnNamespace() mf.Transformer {
 		if name == "tekton-pipelines" || name == "openshift-pipelines" {
 			labels := u.GetLabels()
 			labels["operator.tekton.dev/disable-proxy"] = "true"
+			u.SetLabels(labels)
 		}
 		return nil
 	}
