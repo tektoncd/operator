@@ -18,7 +18,9 @@ package common
 import (
 	"os"
 	"sort"
+	"strings"
 
+	mf "github.com/manifestival/manifestival"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -77,6 +79,23 @@ func ApplyProxySettings(u *unstructured.Unstructured) error {
 
 	u.SetUnstructuredContent(m)
 	return nil
+}
+
+// InjectLabelOnNamespace will add a label on tekton-pipelines and
+// openshift-pipelines namespace to disable proxy in these namespace
+func InjectLabelOnNamespace() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := strings.ToLower(u.GetKind())
+		if kind != "namespace" {
+			return nil
+		}
+		name := u.GetName()
+		if name == "tekton-pipelines" || name == "openshift-pipelines" {
+			labels := u.GetLabels()
+			labels["operator.tekton.dev/disable-proxy"] = "true"
+		}
+		return nil
+	}
 }
 
 func extractEnvs(uc map[string]interface{}) (map[string]interface{}, error) {

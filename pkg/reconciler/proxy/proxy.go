@@ -149,7 +149,7 @@ func (ac *reconciler) reconcileMutatingWebhook(ctx context.Context, caCert []byt
 		webhook.Webhooks[i].Rules = rules
 		webhook.Webhooks[i].NamespaceSelector = &metav1.LabelSelector{
 			MatchExpressions: []metav1.LabelSelectorRequirement{{
-				Key:      "webhooks.knative.dev/exclude",
+				Key:      "operator.tekton.dev/disable-proxy",
 				Operator: metav1.LabelSelectorOpDoesNotExist,
 			}, {
 				// "control-plane" is added to support Azure's AKS, otherwise the controllers fight.
