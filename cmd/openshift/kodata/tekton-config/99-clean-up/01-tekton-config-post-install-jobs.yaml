@@ -31,7 +31,7 @@ spec:
       labels:
         app: "tekton-config"
     spec:
-      serviceAccountName: tekton-operator
+      serviceAccountName: openshift-pipelines-operator
       restartPolicy: OnFailure
       containers:
         - name: delete-config-crd
