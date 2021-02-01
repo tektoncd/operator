@@ -76,7 +76,7 @@ spec:
         - 's2i'
         - 'build'
         - '$(params.PATH_CONTEXT)'
-        - 'registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift'
+        - 'image-registry.openshift-image-registry.svc:5000/openshift/java:8'
         - '--image-scripts-url'
         - 'image:///usr/local/s2i'
         - '--as-dockerfile'
