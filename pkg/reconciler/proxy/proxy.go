@@ -158,6 +158,11 @@ func (ac *reconciler) reconcileMutatingWebhook(ctx context.Context, caCert []byt
 				Operator: metav1.LabelSelectorOpDoesNotExist,
 			}},
 		}
+		webhook.Webhooks[i].ObjectSelector = &metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				"app.kubernetes.io/managed-by": "tekton-pipelines",
+			},
+		}
 		webhook.Webhooks[i].ClientConfig.CABundle = caCert
 		if webhook.Webhooks[i].ClientConfig.Service == nil {
 			return fmt.Errorf("missing service reference for webhook: %s", wh.Name)
@@ -266,23 +271,21 @@ func roundTripPatch(bytes []byte, unmarshalled interface{}) (duck.JSONPatch, err
 func setDefaults(ctx context.Context, patches duck.JSONPatch, pod corev1.Pod) (duck.JSONPatch, error) {
 	before, after := pod.DeepCopyObject(), pod
 
-	if value, ok := after.GetLabels()["app.kubernetes.io/managed-by"]; ok && value == "tekton-pipelines" {
-		var proxyEnv = []corev1.EnvVar{{
-			Name:  "HTTPS_PROXY",
-			Value: os.Getenv("HTTPS_PROXY"),
-		}, {
-			Name:  "HTTP_PROXY",
-			Value: os.Getenv("HTTP_PROXY"),
-		}, {
-			Name:  "NO_PROXY",
-			Value: os.Getenv("NO_PROXY"),
-		}}
+	var proxyEnv = []corev1.EnvVar{{
+		Name:  "HTTPS_PROXY",
+		Value: os.Getenv("HTTPS_PROXY"),
+	}, {
+		Name:  "HTTP_PROXY",
+		Value: os.Getenv("HTTP_PROXY"),
+	}, {
+		Name:  "NO_PROXY",
+		Value: os.Getenv("NO_PROXY"),
+	}}
 
-		if after.Spec.Containers != nil {
-			for i, container := range after.Spec.Containers {
-				newEnvs := updateAndMergeEnv(container.Env, proxyEnv)
-				after.Spec.Containers[i].Env = newEnvs
-			}
+	if after.Spec.Containers != nil {
+		for i, container := range after.Spec.Containers {
+			newEnvs := updateAndMergeEnv(container.Env, proxyEnv)
+			after.Spec.Containers[i].Env = newEnvs
 		}
 	}
 
