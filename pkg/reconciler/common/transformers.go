@@ -25,6 +25,7 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -144,6 +145,32 @@ func DeploymentImages(images map[string]string) mf.Transformer {
 		replaceContainerImages(containers, images)
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
+// JobImages replaces container and args images.
+func JobImages(images map[string]string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Job" {
+			return nil
+		}
+
+		jb := &batchv1.Job{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, jb)
+		if err != nil {
+			return err
+		}
+
+		containers := jb.Spec.Template.Spec.Containers
+		replaceContainerImages(containers, images)
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(jb)
 		if err != nil {
 			return err
 		}

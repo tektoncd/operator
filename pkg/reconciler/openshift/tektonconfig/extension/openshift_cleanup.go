@@ -12,6 +12,10 @@ import (
 	"knative.dev/pkg/logging"
 )
 
+const (
+	TP12SeamlessPrefix = "IMAGE_TP12_SEAMLESS_"
+)
+
 func AppendCleanupTarget(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.TektonComponent) error {
 	manifestPath := filepath.Join(common.ComponentDir(instance), "99-clean-up")
 	m, err := common.Fetch(manifestPath)
@@ -23,7 +27,9 @@ func AppendCleanupTarget(ctx context.Context, manifest *mf.Manifest, instance v1
 }
 
 func CleanupTransforms(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.TektonComponent) error {
-	return common.Transform(ctx, manifest, instance)
+	images := common.ToLowerCaseKeys(common.ImagesFromEnv(TP12SeamlessPrefix))
+	tf := common.JobImages(images)
+	return common.Transform(ctx, manifest, instance, tf)
 }
 
 func RunCleanup(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.TektonComponent) error {

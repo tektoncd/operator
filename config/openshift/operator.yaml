@@ -22,3 +22,6 @@ spec:
       containers:
         - name: tekton-operator
           image: ko://github.com/tektoncd/operator/cmd/openshift
+          env:
+          - name: IMAGE_TP12_SEAMLESS_DELETE_CONFIG_CRD
+            value: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
