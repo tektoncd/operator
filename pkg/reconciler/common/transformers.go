@@ -33,10 +33,11 @@ import (
 )
 
 const (
-	AnnotationPreserveNS = "operator.tekton.dev/preserve-namespace"
-	PipelinesImagePrefix = "IMAGE_PIPELINES_"
-	TriggersImagePrefix  = "IMAGE_TRIGGERS_"
-	AddonsImagePrefix    = "IMAGE_ADDONS_"
+	AnnotationPreserveNS          = "operator.tekton.dev/preserve-namespace"
+	AnnotationPreserveRBSubjectNS = "operator.tekton.dev/preserve-rb-subject-namespace"
+	PipelinesImagePrefix          = "IMAGE_PIPELINES_"
+	TriggersImagePrefix           = "IMAGE_TRIGGERS_"
+	AddonsImagePrefix             = "IMAGE_ADDONS_"
 
 	ArgPrefix   = "arg_"
 	ParamPrefix = "param_"
@@ -51,21 +52,40 @@ func transformers(ctx context.Context, obj v1alpha1.TektonComponent) []mf.Transf
 	}
 }
 
+// TODO for now added here but planning to refactor so that we can avoid openshift specific changes as part of common
+func roleBindingTransformers(ctx context.Context, obj v1alpha1.TektonComponent) []mf.Transformer {
+	return []mf.Transformer{
+		mf.InjectOwner(obj),
+		injectNamespaceRoleBindingConditional(AnnotationPreserveNS,
+			AnnotationPreserveRBSubjectNS, obj.GetSpec().GetTargetNamespace()),
+	}
+}
+
 // Transform will mutate the passed-by-reference manifest with one
 // transformed by platform, common, and any extra passed in
 func Transform(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.TektonComponent, extra ...mf.Transformer) error {
 	logger := logging.FromContext(ctx)
 	logger.Debug("Transforming manifest")
 
+	roleBindingManifest := manifest.Filter(mf.Any(mf.ByKind("RoleBinding")))
+	remainingManifest := manifest.Filter(mf.Not(mf.Any(mf.ByKind("RoleBinding"))))
+
 	transformers := transformers(ctx, instance)
 	transformers = append(transformers, extra...)
 
-	m, err := manifest.Transform(transformers...)
+	t1 := roleBindingTransformers(ctx, instance)
+
+	remainingManifest, err := remainingManifest.Transform(transformers...)
 	if err != nil {
 		instance.GetStatus().MarkInstallFailed(err.Error())
 		return err
 	}
-	*manifest = m
+	roleBindingManifest, err = roleBindingManifest.Transform(t1...)
+	if err != nil {
+		instance.GetStatus().MarkInstallFailed(err.Error())
+		return err
+	}
+	*manifest = remainingManifest.Append(roleBindingManifest)
 	return nil
 }
 
@@ -297,5 +317,42 @@ func replaceParamsImage(params []interface{}, override map[string]string) {
 			continue
 		}
 		param["default"] = image
+	}
+}
+
+func injectNamespaceRoleBindingConditional(preserveNS, preserveRBSubjectNS, targetNamespace string) mf.Transformer {
+	tf := injectNamespaceRoleBindingSubjects(targetNamespace)
+
+	return func(u *unstructured.Unstructured) error {
+		annotations := u.GetAnnotations()
+		val, ok := annotations[preserveNS]
+		if !(ok && val == "true") {
+			u.SetNamespace(targetNamespace)
+		}
+		val, ok = annotations[preserveRBSubjectNS]
+		if ok && val == "true" {
+			return nil
+		}
+		return tf(u)
+	}
+}
+
+func injectNamespaceRoleBindingSubjects(targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := strings.ToLower(u.GetKind())
+		if kind != "rolebinding" {
+			return nil
+		}
+		subjects, found, err := unstructured.NestedFieldNoCopy(u.Object, "subjects")
+		if !found || err != nil {
+			return err
+		}
+		for _, subject := range subjects.([]interface{}) {
+			m := subject.(map[string]interface{})
+			if _, ok := m["namespace"]; ok {
+				m["namespace"] = targetNamespace
+			}
+		}
+		return nil
 	}
 }
