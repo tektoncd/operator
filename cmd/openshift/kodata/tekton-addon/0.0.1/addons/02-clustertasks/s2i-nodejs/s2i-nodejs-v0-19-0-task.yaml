@@ -20,7 +20,7 @@ spec:
 
   params:
     - name: VERSION
-      description: The version of the nodejs
+      description: The tag of nodejs imagestream for nodejs version
       default: '12'
       type: string
     - name: PATH_CONTEXT
