@@ -19,6 +19,10 @@ spec:
     pushes a container image using S2I and a Go builder image.
 
   params:
+    - name: VERSION
+      description: The tag of go imagestream for go version
+      default: '1.13.4-ubi8'
+      type: string
     - name: PATH_CONTEXT
       description: The location of the path to run s2i from.
       default: .
@@ -37,7 +41,7 @@ spec:
     - name: generate
       image: registry.redhat.io/ocp-tools-43-tech-preview/source-to-image-rhel8@sha256:9c761a0a0bb607913fbc04d3d435c70a6f90900583b52bd0e6a6187dad3f90cb
       workingDir: $(workspaces.source.path)
-      command: ['s2i', 'build', '$(params.PATH_CONTEXT)', 'image-registry.openshift-image-registry.svc:5000/openshift/golang', '--as-dockerfile', '/gen-source/Dockerfile.gen']
+      command: ['s2i', 'build', '$(params.PATH_CONTEXT)', 'image-registry.openshift-image-registry.svc:5000/openshift/golang:$(params.VERSION)', '--as-dockerfile', '/gen-source/Dockerfile.gen']
       volumeMounts:
         - name: gen-source
           mountPath: /gen-source

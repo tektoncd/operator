@@ -24,8 +24,7 @@ func TestSomething(t *testing.T) {
 	)
 	config := newConfig(configName, namespace)
 	cl := feedConfigMock(config)
-	//cls:=mfc.NewClient(cl)
-	//var manifest *mf.Manifest
+
 	manifest := mf.Manifest{Client: mfc.NewClient(cl)}
 
 	err := GeneratePipelineTemplates(addonLocation, &manifest)

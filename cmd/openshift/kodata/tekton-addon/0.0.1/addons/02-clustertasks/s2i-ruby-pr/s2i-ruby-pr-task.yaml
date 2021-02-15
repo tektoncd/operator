@@ -19,9 +19,9 @@ spec:
     pushes a container image using S2I and a Ruby builder image.
 
   params:
-    - name: MINOR_VERSION
-      description: The minor version of the ruby
-      default: '7'
+    - name: VERSION
+      description: The tag of ruby imagestream for ruby version
+      default: '2.7'
       type: string
     - name: PATH_CONTEXT
       description: The location of the path to run s2i from.
@@ -42,7 +42,7 @@ spec:
     - name: generate
       image: registry.redhat.io/ocp-tools-43-tech-preview/source-to-image-rhel8@sha256:9c761a0a0bb607913fbc04d3d435c70a6f90900583b52bd0e6a6187dad3f90cb
       workingDir: /workspace/source
-      command: ['s2i', 'build', '$(params.PATH_CONTEXT)', 'image-registry.openshift-image-registry.svc:5000/openshift/ruby:2.$(params.MINOR_VERSION)', '--as-dockerfile', '/gen-source/Dockerfile.gen']
+      command: ['s2i', 'build', '$(params.PATH_CONTEXT)', 'image-registry.openshift-image-registry.svc:5000/openshift/ruby:$(params.VERSION)', '--as-dockerfile', '/gen-source/Dockerfile.gen']
       volumeMounts:
         - name: gen-source
           mountPath: /gen-source

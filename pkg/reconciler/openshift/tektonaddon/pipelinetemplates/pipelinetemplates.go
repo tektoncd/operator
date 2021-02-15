@@ -17,9 +17,10 @@ limitations under the License.
 package tektonaddon
 
 import (
+	"path"
+
 	mf "github.com/manifestival/manifestival"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"path"
 )
 
 type generateDeployTask func(map[string]interface{}) map[string]interface{}
@@ -34,33 +35,30 @@ type pipeline struct {
 }
 
 type RuntimeSpec struct {
-	Runtime           string
-	Version           string
-	MinorVersion      string
-	SupportedVersions string
-	Default           string
+	Runtime      string
+	Version      string
+	MinorVersion string
+	Default      string
 }
 
 const (
-	LabelPipelineEnvironmentType        = "pipeline.openshift.io/type"
-	LabelPipelineStrategy               = "pipeline.openshift.io/strategy"
-	LabelPipelineRuntime                = "pipeline.openshift.io/runtime"
-	AnnotationPreserveNS                = "operator.tekton.dev/preserve-namespace"
-	AnnotationPipelineSupportedVersions = "pipeline.openshift.io/supported-versions"
+	LabelPipelineEnvironmentType = "pipeline.openshift.io/type"
+	LabelPipelineStrategy        = "pipeline.openshift.io/strategy"
+	LabelPipelineRuntime         = "pipeline.openshift.io/runtime"
+	AnnotationPreserveNS         = "operator.tekton.dev/preserve-namespace"
 )
 
 var (
 	Runtimes = map[string]RuntimeSpec{
-		"s2i-dotnet-3": {Runtime: "dotnet", MinorVersion: "$(params.MINOR_VERSION)", SupportedVersions: "[3.1,3.0]", Default: "1"},
-		"s2i-go":       {Runtime: "golang"},
-		"s2i-java-8":   {Runtime: "java", SupportedVersions: "[8]"},
-		"s2i-java-11":  {Runtime: "java", SupportedVersions: "[11]"},
-		"s2i-nodejs":   {Runtime: "nodejs", Version: "$(params.MAJOR_VERSION)", SupportedVersions: "[10,12]", Default: "12"},
-		"s2i-perl":     {Runtime: "perl", MinorVersion: "$(params.MINOR_VERSION)", SupportedVersions: "[5.30,5.26]", Default: "30"},
-		"s2i-php":      {Runtime: "php", MinorVersion: "$(params.MINOR_VERSION)", SupportedVersions: "[7.2,7.3]", Default: "3"},
-		"s2i-python-3": {Runtime: "python", MinorVersion: "$(params.MINOR_VERSION)", SupportedVersions: "[3.8,3.6-ubi8]", Default: "8"},
-		"s2i-ruby":     {Runtime: "ruby", MinorVersion: "$(params.MINOR_VERSION)", SupportedVersions: "[2.7,2.6,2.5]", Default: "7"},
-		"buildah":      {},
+		"s2i-dotnet": {Runtime: "dotnet", Version: "$(params.VERSION)", Default: "3.1"},
+		"s2i-go":     {Runtime: "golang", Version: "$(params.VERSION)", Default: "1.13.4-ubi8"},
+		"s2i-java":   {Runtime: "java", Version: "$(params.VERSION)", Default: "11"},
+		"s2i-nodejs": {Runtime: "nodejs", Version: "$(params.VERSION)", Default: "12"},
+		"s2i-perl":   {Runtime: "perl", Version: "$(params.VERSION)", Default: "5.30"},
+		"s2i-php":    {Runtime: "php", Version: "$(params.VERSION)", Default: "7.3"},
+		"s2i-python": {Runtime: "python", Version: "$(params.VERSION)", Default: "3.8"},
+		"s2i-ruby":   {Runtime: "ruby", Version: "$(params.VERSION)", Default: "2.7"},
+		"buildah":    {},
 	}
 )
 
@@ -191,9 +189,6 @@ func generateBasePipeline(template mf.Manifest, taskGenerators []taskGenerator, 
 		}
 
 		annotations[AnnotationPreserveNS] = "true"
-		if spec.SupportedVersions != "" {
-			annotations[AnnotationPipelineSupportedVersions] = spec.SupportedVersions
-		}
 		newTempRes.SetAnnotations(annotations)
 		newTempRes.SetLabels(labels)
 		newTempRes.SetName(name)
@@ -225,11 +220,7 @@ func generateBasePipeline(template mf.Manifest, taskGenerators []taskGenerator, 
 
 		if spec.Version != "" {
 			taskParams = append(taskParams.([]interface{}), map[string]interface{}{"name": "VERSION", "value": spec.Version})
-			pipelineParams = append(pipelineParams.([]interface{}), map[string]interface{}{"name": "MAJOR_VERSION", "type": "string", "default": spec.Default})
-		}
-		if spec.MinorVersion != "" {
-			taskParams = append(taskParams.([]interface{}), map[string]interface{}{"name": "MINOR_VERSION", "value": spec.MinorVersion})
-			pipelineParams = append(pipelineParams.([]interface{}), map[string]interface{}{"name": "MINOR_VERSION", "type": "string", "default": spec.Default})
+			pipelineParams = append(pipelineParams.([]interface{}), map[string]interface{}{"name": "VERSION", "type": "string", "default": spec.Default})
 		}
 
 		if err := unstructured.SetNestedField(newTempRes.Object, pipelineParams, "spec", "params"); err != nil {
