@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
@@ -76,11 +75,11 @@ var _ tektonaddonreconciler.Interface = (*Reconciler)(nil)
 var _ tektonaddonreconciler.Finalizer = (*Reconciler)(nil)
 
 var communityResourceURLs = []string{
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/jib-maven/0.1/jib-maven.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/jib-maven/0.2/jib-maven.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/maven/0.1/maven.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/tkn/0.1/tkn.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-source/0.1/helm-upgrade-from-source.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-repo/0.1/helm-upgrade-from-repo.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-source/0.2/helm-upgrade-from-source.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-repo/0.2/helm-upgrade-from-repo.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/trigger-jenkins-job/0.1/trigger-jenkins-job.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/git-cli/0.1/git-cli.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/pull-request/0.1/pull-request.yaml",
@@ -254,9 +253,6 @@ func ignoreNotFound(err error) error {
 // appendCommunityTarget mutates the passed manifest by appending one
 // appropriate for the passed TektonComponent
 func (r *Reconciler) appendCommunityTarget(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	if runtime.GOARCH == "ppc64le" || runtime.GOARCH == "s390x" {
-		return nil
-	}
 	urls := strings.Join(communityResourceURLs, ",")
 	m, err := mf.ManifestFrom(mf.Path(urls))
 	if err != nil {
