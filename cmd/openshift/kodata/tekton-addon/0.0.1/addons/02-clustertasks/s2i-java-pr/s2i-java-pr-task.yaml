@@ -21,7 +21,7 @@ spec:
   params:
     - name: VERSION
       description: The tag of java imagestream for java version
-      default: '11'
+      default: 'openjdk-11-ubi8'
       type: string
     - name: PATH_CONTEXT
       description: The location of the path to run s2i from

@@ -21,7 +21,7 @@ spec:
   params:
     - name: VERSION
       description: The tag of php imagestream for php version
-      default: '7.3'
+      default: '7.3-ubi8'
       type: string
     - name: PATH_CONTEXT
       description: The location of the path to run s2i from.
