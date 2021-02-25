@@ -35,10 +35,9 @@ type pipeline struct {
 }
 
 type RuntimeSpec struct {
-	Runtime      string
-	Version      string
-	MinorVersion string
-	Default      string
+	Runtime string
+	Version string
+	Default string
 }
 
 const (
@@ -50,14 +49,14 @@ const (
 
 var (
 	Runtimes = map[string]RuntimeSpec{
-		"s2i-dotnet": {Runtime: "dotnet", Version: "$(params.VERSION)", Default: "3.1"},
+		"s2i-dotnet": {Runtime: "dotnet", Version: "$(params.VERSION)", Default: "3.1-ubi8"},
 		"s2i-go":     {Runtime: "golang", Version: "$(params.VERSION)", Default: "1.13.4-ubi8"},
-		"s2i-java":   {Runtime: "java", Version: "$(params.VERSION)", Default: "11"},
-		"s2i-nodejs": {Runtime: "nodejs", Version: "$(params.VERSION)", Default: "12"},
-		"s2i-perl":   {Runtime: "perl", Version: "$(params.VERSION)", Default: "5.30"},
-		"s2i-php":    {Runtime: "php", Version: "$(params.VERSION)", Default: "7.3"},
-		"s2i-python": {Runtime: "python", Version: "$(params.VERSION)", Default: "3.8"},
-		"s2i-ruby":   {Runtime: "ruby", Version: "$(params.VERSION)", Default: "2.7"},
+		"s2i-java":   {Runtime: "java", Version: "$(params.VERSION)", Default: "openjdk-11-ubi8"},
+		"s2i-nodejs": {Runtime: "nodejs", Version: "$(params.VERSION)", Default: "12-ubi8"},
+		"s2i-perl":   {Runtime: "perl", Version: "$(params.VERSION)", Default: "5.30-el7"},
+		"s2i-php":    {Runtime: "php", Version: "$(params.VERSION)", Default: "7.3-ubi8"},
+		"s2i-python": {Runtime: "python", Version: "$(params.VERSION)", Default: "3.8-ubi8"},
+		"s2i-ruby":   {Runtime: "ruby", Version: "$(params.VERSION)", Default: "2.7-ubi7"},
 		"buildah":    {},
 	}
 )
