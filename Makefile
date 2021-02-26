@@ -3,6 +3,7 @@ DATE         ?= $(shell date +%FT%T%z)
 KO_DATA_PATH  = $(shell pwd)/cmd/$(TARGET)/kodata
 TARGET        = kubernetes
 CR            = config/default
+PLATFORM := $(if $(PLATFORM),--platform $(PLATFORM))
 
 GOLANGCI_VERSION  = v1.30.0
 
@@ -67,7 +68,7 @@ bin/%: cmd/% FORCE
 
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
-	$Q $(KUSTOMIZE) build config/$(TARGET) | $(KO) apply -f -
+	$Q $(KUSTOMIZE) build config/$(TARGET) | $(KO) apply $(PLATFORM) -f -
 
 .PHONY: apply-cr
 apply-cr: | ; $(info $(M) apply CRs on $(TARGET)) @ ## Apply the CRs to the current cluster
