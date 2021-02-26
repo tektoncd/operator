@@ -21,6 +21,9 @@ source $(dirname $0)/e2e-common.sh
 
 # Script entry point.
 TARGET=${TARGET:-kubernetes}
+# In case if KUBECONFIG variable is specified, it will be used for `go test`
+KUBECONFIG_PARAM=${KUBECONFIG:+"--kubeconfig $KUBECONFIG"}
+
 echo "Running tests on ${TARGET}"
 
 [[ -z ${E2E_DEBUG} ]] && initialize $@
@@ -30,8 +33,8 @@ header "Setting up environment"
 install_operator_resources
 
 header "Running Go e2e tests"
-go_test_e2e -timeout=20m ./test/e2e/common || failed=1
-go_test_e2e -timeout=20m ./test/e2e/${TARGET} || failed=1
+go_test_e2e -timeout=20m ./test/e2e/common ${KUBECONFIG_PARAM} || failed=1
+go_test_e2e -timeout=20m ./test/e2e/${TARGET} ${KUBECONFIG_PARAM} || failed=1
 
 (( failed )) && fail_test
 success
