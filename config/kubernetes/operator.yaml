@@ -22,3 +22,6 @@ spec:
       containers:
         - name: tekton-operator
           image: ko://github.com/tektoncd/operator/cmd/kubernetes
+          env:
+            - name: IMAGE_PIPELINES_PROXY
+              value: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook

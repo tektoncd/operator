@@ -36,7 +36,10 @@ func AssertServiceAccount(t *testing.T, clients *utils.Clients, ns, targetSA str
 	t.Helper()
 
 	err := wait.Poll(Interval, Timeout, func() (bool, error) {
-		saList, err := clients.KubeClient.Kube.CoreV1().ServiceAccounts(ns).List(context.TODO(), metav1.ListOptions{})
+		saList, err := clients.KubeClient.CoreV1().ServiceAccounts(ns).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return false, err
+		}
 		for _, item := range saList.Items {
 			if item.Name == targetSA {
 				return true, nil
@@ -52,7 +55,10 @@ func AssertRoleBinding(t *testing.T, clients *utils.Clients, ns, roleBindingName
 	t.Helper()
 
 	err := wait.Poll(Interval, Timeout, func() (bool, error) {
-		rbList, err := clients.KubeClient.Kube.RbacV1().RoleBindings(ns).List(context.TODO(), metav1.ListOptions{})
+		rbList, err := clients.KubeClient.RbacV1().RoleBindings(ns).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return false, err
+		}
 		for _, item := range rbList.Items {
 			if item.Name == roleBindingName {
 				return true, nil
