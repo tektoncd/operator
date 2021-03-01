@@ -33,7 +33,7 @@ import (
 // DeleteAndVerifyDeployments verify whether all the deployments for tektonpipelines are able to recreate, when they are deleted.
 func DeleteAndVerifyDeployments(t *testing.T, clients *utils.Clients, namespace, labelSelector string) {
 	listOptions := metav1.ListOptions{LabelSelector: labelSelector}
-	dpList, err := clients.KubeClient.Kube.AppsV1().Deployments(namespace).List(context.TODO(), listOptions)
+	dpList, err := clients.KubeClient.AppsV1().Deployments(namespace).List(context.TODO(), listOptions)
 	if err != nil {
 		t.Fatalf("Failed to get any deployment under the namespace %q: %v",
 			namespace, err)
@@ -43,14 +43,14 @@ func DeleteAndVerifyDeployments(t *testing.T, clients *utils.Clients, namespace,
 	}
 	// Delete the first deployment and verify the operator recreates it
 	deployment := dpList.Items[0]
-	err = clients.KubeClient.Kube.AppsV1().Deployments(deployment.Namespace).Delete(context.TODO(), deployment.Name, metav1.DeleteOptions{})
+	err = clients.KubeClient.AppsV1().Deployments(deployment.Namespace).Delete(context.TODO(), deployment.Name, metav1.DeleteOptions{})
 	if err != nil {
 		t.Fatalf("Failed to delete deployment %s/%s: %v", deployment.Namespace, deployment.Name, err)
 	}
 
 	waitErr := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
 		dep, err := clients.KubeClient.
-			Kube.AppsV1().Deployments(deployment.Namespace).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
+			AppsV1().Deployments(deployment.Namespace).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
 		if err != nil {
 			// If the deployment is not found, we continue to wait for the availability.
 			if apierrs.IsNotFound(err) {

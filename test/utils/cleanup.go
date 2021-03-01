@@ -67,7 +67,7 @@ func TearDownAddon(clients *Clients, name string) {
 // TearDownNamespace will delete created test Namespace
 func TearDownNamespace(clients *Clients, name string) {
 	if clients != nil && clients.KubeClient != nil {
-		_ = clients.KubeClient.Kube.CoreV1().Namespaces().Delete(context.TODO(), name, metav1.DeleteOptions{})
+		_ = clients.KubeClient.CoreV1().Namespaces().Delete(context.TODO(), name, metav1.DeleteOptions{})
 	}
 }
 

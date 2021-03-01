@@ -2,7 +2,11 @@ package proxy
 
 import (
 	"context"
+	"knative.dev/pkg/configmap"
+	"os"
 
+	"knative.dev/pkg/injection"
+	"knative.dev/pkg/signals"
 	// Injection stuff
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
@@ -72,4 +76,48 @@ func NewAdmissionController(
 	})
 
 	return c
+}
+
+func Getctx() context.Context {
+	serviceName := os.Getenv("WEBHOOK_SERVICE_NAME")
+	if serviceName == "" {
+		serviceName = "tekton-operator-proxy-webhook"
+	}
+
+	secretName := os.Getenv("WEBHOOK_SECRET_NAME")
+	if secretName == "" {
+		secretName = "proxy-webhook-certs"
+	}
+	systemNamespace := os.Getenv("SYSTEM_NAMESPACE")
+
+	// Scope informers to the webhook's namespace instead of cluster-wide
+	ctx := injection.WithNamespaceScope(signals.NewContext(), systemNamespace)
+
+	// Set up a signal context with our webhook options
+	ctx = webhook.WithOptions(ctx, webhook.Options{
+		ServiceName: serviceName,
+		Port:        8443,
+		SecretName:  secretName,
+	})
+	return ctx
+}
+
+func NewProxyDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+
+	return NewAdmissionController(ctx,
+
+		// Name of the resource webhook.
+		"proxy.operator.tekton.dev",
+
+		// The path on which to serve the webhook.
+		"/defaulting",
+
+		// A function that infuses the context passed to Validate/SetDefaults with custom metadata.
+		func(ctx context.Context) context.Context {
+			return ctx
+		},
+
+		// Whether to disallow unknown fields.
+		true,
+	)
 }

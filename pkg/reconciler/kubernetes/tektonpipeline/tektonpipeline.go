@@ -127,7 +127,7 @@ func (r *Reconciler) appendPipelineTarget(ctx context.Context, manifest *mf.Mani
 
 func addProxy(manifest *mf.Manifest) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
-	proxyLocation := filepath.Join(koDataDir, "proxy")
+	proxyLocation := filepath.Join(koDataDir, "webhook")
 	return common.AppendManifest(manifest, proxyLocation)
 }
 
