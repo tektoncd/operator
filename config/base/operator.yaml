@@ -33,7 +33,7 @@ spec:
       serviceAccountName: tekton-operator
       containers:
         - name: tekton-operator
-          image: ko://github.com/tektoncd/operator/cmd/kubernetes
+          image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
           imagePullPolicy: Always
           env:
             - name: SYSTEM_NAMESPACE
