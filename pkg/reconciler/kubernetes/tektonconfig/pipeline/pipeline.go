@@ -20,8 +20,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"log"
+
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"

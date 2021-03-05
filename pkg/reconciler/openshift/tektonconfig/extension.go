@@ -82,9 +82,6 @@ type openshiftExtension struct {
 	manifest          mf.Manifest
 }
 
-func (oe openshiftExtension) Append(ctx context.Context, m *mf.Manifest) error {
-	return nil
-}
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{}
 }

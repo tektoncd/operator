@@ -19,6 +19,7 @@ package common
 import (
 	"context"
 	"fmt"
+
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"knative.dev/pkg/logging"
