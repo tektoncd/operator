@@ -18,17 +18,25 @@ package tektonpipeline
 
 import (
 	"context"
-	"strings"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/go-logr/zapr"
+	mfc "github.com/manifestival/client-go-client"
+	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
+	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
+	"go.uber.org/zap"
+	"knative.dev/pkg/injection"
+	"knative.dev/pkg/logging"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 )
 
 const (
@@ -36,36 +44,60 @@ const (
 	DefaultSA = "pipeline"
 	// DefaultDisableAffinityAssistant is default value of disable affinity assistant flag
 	DefaultDisableAffinityAssistant = "true"
+	DefaultTargetNamespace          = "openshift-pipelines"
 	AnnotationPreserveNS            = "operator.tekton.dev/preserve-namespace"
 	AnnotationPreserveRBSubjectNS   = "operator.tekton.dev/preserve-rb-subject-namespace"
 )
 
 // NoPlatform "generates" a NilExtension
-func OpenShiftExtension(context.Context) common.Extension {
-	return openshiftExtension{}
-}
-
-type openshiftExtension struct{}
-
-func (oe openshiftExtension) Append(ctx context.Context, m *mf.Manifest) error {
-	koDataDir := os.Getenv(common.KoEnvKey)
-	cm, err := common.Fetch(filepath.Join(koDataDir, "config-trusted-cabundle.yaml"))
+func OpenShiftExtension(ctx context.Context) common.Extension {
+	logger := logging.FromContext(ctx)
+	mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
 	if err != nil {
-		return err
+		logger.Fatalw("error creating client from injected config", zap.Error(err))
 	}
-	*m = m.Append(cm)
-	return nil
+	mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
+	manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
+	if err != nil {
+		logger.Fatalw("error creating initial manifest", zap.Error(err))
+	}
+	ext := openshiftExtension{
+		operatorClientSet: operatorclient.Get(ctx),
+		manifest:          manifest,
+	}
+	return ext
 }
+
+type openshiftExtension struct {
+	operatorClientSet versioned.Interface
+	manifest          mf.Manifest
+}
+
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
 		injectDefaultSA(DefaultSA),
 		setDisableAffinityAssistant(DefaultDisableAffinityAssistant),
-		occommon.ApplyTrustedCABundle,
+		occommon.ApplyCABundles,
 	}
 }
-func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
-	return nil
+func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+	koDataDir := os.Getenv(common.KoEnvKey)
+
+	// make sure that openshift-pipelines namespace exists
+	namespaceLocation := filepath.Join(koDataDir, "tekton-namespace")
+	if err := common.AppendManifest(&oe.manifest, namespaceLocation); err != nil {
+		return err
+	}
+
+	// add inject CA bundles manifests
+	cabundlesLocation := filepath.Join(koDataDir, "cabundles")
+	if err := common.AppendManifest(&oe.manifest, cabundlesLocation); err != nil {
+		return err
+	}
+
+	return common.Install(ctx, &oe.manifest, tc)
 }
+
 func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil
 }

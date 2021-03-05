@@ -18,8 +18,6 @@ package tektontrigger
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -34,20 +32,11 @@ func OpenShiftExtension(context.Context) common.Extension {
 
 type openshiftExtension struct{}
 
-func (oe openshiftExtension) Append(ctx context.Context, m *mf.Manifest) error {
-	koDataDir := os.Getenv(common.KoEnvKey)
-	cm, err := common.Fetch(filepath.Join(koDataDir, "config-trusted-cabundle.yaml"))
-	if err != nil {
-		return err
-	}
-	*m = m.Append(cm)
-	return nil
-}
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	triggerImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.TriggersImagePrefix))
 	return []mf.Transformer{
 		common.DeploymentImages(triggerImages),
-		occommon.ApplyTrustedCABundle,
+		occommon.ApplyCABundles,
 	}
 }
 func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {

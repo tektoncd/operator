@@ -26,10 +26,6 @@ import (
 
 type TestExtension string
 
-func (t TestExtension) Append(context.Context, *mf.Manifest) error {
-	return nil
-}
-
 func (t TestExtension) Transformers(v1alpha1.TektonComponent) []mf.Transformer {
 	if t == "fail" {
 		return nil

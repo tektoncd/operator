@@ -18,6 +18,7 @@ package tektonaddon
 
 import (
 	"context"
+
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
@@ -27,6 +28,7 @@ import (
 	tektonTriggerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektontrigger"
 	tektonAddonreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonaddon"
 	"go.uber.org/zap"
+
 	//deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"

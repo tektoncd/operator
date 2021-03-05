@@ -18,11 +18,13 @@ package proxy
 
 import (
 	"context"
-	"knative.dev/pkg/configmap"
 	"os"
+
+	"knative.dev/pkg/configmap"
 
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/signals"
+
 	// Injection stuff
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"

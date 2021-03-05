@@ -18,7 +18,7 @@ package common
 
 import (
 	"encoding/json"
-	"sort"
+	"path/filepath"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -29,29 +29,52 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func TestApplyTrustedCABundle(t *testing.T) {
+func TestApplyCABundles(t *testing.T) {
 	actual := unstructuredDeployment(t)
 	expected := unstructuredDeployment(t,
 		withVolumes(corev1.Volume{
-			Name: volumeName,
+			Name: trustedCAConfigMapVolume,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: cfgMapName},
-					Items: []corev1.KeyToPath{{
-						Key:  cfgMapItemKey,
-						Path: cfgMapItemPath,
-					}},
+					LocalObjectReference: corev1.LocalObjectReference{Name: trustedCAConfigMapName},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  trustedCAKey,
+							Path: trustedCAKey,
+						},
+					},
 				},
 			},
-		}),
+		},
+			corev1.Volume{
+				Name: serviceCAConfigMapVolume,
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{Name: serviceCAConfigMapName},
+						Items: []corev1.KeyToPath{
+							{
+								Key:  serviceCAKey,
+								Path: serviceCAKey,
+							},
+						},
+					},
+				},
+			}),
 		withVolumeMounts(corev1.VolumeMount{
-			Name:      volumeName,
-			MountPath: "/etc/config-registry-cert/",
+			Name:      trustedCAConfigMapVolume,
+			MountPath: filepath.Join("/etc/ssl/certs", trustedCAKey),
+			SubPath:   trustedCAKey,
 			ReadOnly:  true,
-		}),
+		},
+			corev1.VolumeMount{
+				Name:      serviceCAConfigMapVolume,
+				MountPath: filepath.Join("/etc/ssl/certs", serviceCAKey),
+				SubPath:   serviceCAKey,
+				ReadOnly:  true,
+			}),
 	)
 
-	if err := ApplyTrustedCABundle(actual); err != nil {
+	if err := ApplyCABundles(actual); err != nil {
 		t.Fatal(err)
 	}
 
@@ -118,20 +141,6 @@ func withVolumeMounts(volumeMounts ...corev1.VolumeMount) func(*appsv1.Deploymen
 	return func(d *appsv1.Deployment) {
 		for i, c := range d.Spec.Template.Spec.Containers {
 			c.VolumeMounts = append(c.VolumeMounts, volumeMounts...)
-			d.Spec.Template.Spec.Containers[i] = c
-		}
-	}
-}
-
-func withEnv(envs ...[]corev1.EnvVar) func(*appsv1.Deployment) {
-	return func(d *appsv1.Deployment) {
-		for i, c := range d.Spec.Template.Spec.Containers {
-			for _, env := range envs {
-				c.Env = append(c.Env, env...)
-			}
-			sort.Slice(c.Env, func(i, j int) bool {
-				return c.Env[i].Name < c.Env[j].Name
-			})
 			d.Spec.Template.Spec.Containers[i] = c
 		}
 	}

@@ -18,6 +18,7 @@ package common
 
 import (
 	"encoding/json"
+	"path/filepath"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,15 +28,20 @@ import (
 )
 
 const (
-	volumeName     = "config-registry-cert" // override default one
-	cfgMapName     = "config-trusted-cabundle"
-	cfgMapItemKey  = "ca-bundle.crt"
-	cfgMapItemPath = "tls-ca-bundle.pem"
+	// user-provided and system CA certificates
+	trustedCAConfigMapName   = "config-trusted-cabundle"
+	trustedCAConfigMapVolume = "config-trusted-cabundle-volume"
+	trustedCAKey             = "ca-bundle.crt"
+
+	// service serving certificates (required to talk to the internal registry)
+	serviceCAConfigMapName   = "config-service-cabundle"
+	serviceCAConfigMapVolume = "config-service-cabundle-volume"
+	serviceCAKey             = "service-ca.crt"
 )
 
-// ApplyTrustedCABundle is a transformer that add the trustedCA volume, mount and
+// ApplyCABundles is a transformer that add the trustedCA volume, mount and
 // environment variables so that the deployment uses it.
-func ApplyTrustedCABundle(u *unstructured.Unstructured) error {
+func ApplyCABundles(u *unstructured.Unstructured) error {
 	if u.GetKind() != "Deployment" {
 		// Don't do anything on something else than Deployment
 		return nil
@@ -47,39 +53,92 @@ func ApplyTrustedCABundle(u *unstructured.Unstructured) error {
 	}
 
 	volumes := deployment.Spec.Template.Spec.Volumes
-	for i, v := range volumes {
-		if v.Name == volumeName {
-			volumes = append(volumes[:i], volumes[i+1:]...)
-			break
-		}
-	}
-	volumes = append(volumes, corev1.Volume{
-		Name: volumeName,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: cfgMapName},
-				Items: []corev1.KeyToPath{{
-					Key:  cfgMapItemKey,
-					Path: cfgMapItemPath,
-				}},
-			},
-		},
-	})
-	deployment.Spec.Template.Spec.Volumes = volumes
 
-	for i, c := range deployment.Spec.Template.Spec.Containers {
-		volumeMounts := c.VolumeMounts
-		for i, vm := range volumeMounts {
-			if vm.Name == volumeName {
-				volumeMounts = append(volumeMounts[:i], volumeMounts[i+1:]...)
+	// If CA bundle volumes already exists in the PodSpec, then remove it
+	for _, volumeName := range []string{trustedCAConfigMapVolume, serviceCAConfigMapVolume} {
+		for i, v := range volumes {
+			if v.Name == volumeName {
+				volumes = append(volumes[:i], volumes[i+1:]...)
 				break
 			}
 		}
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{
-			Name:      volumeName,
-			MountPath: "/etc/config-registry-cert/",
-			ReadOnly:  true,
+	}
+
+	// Let's add the trusted and service CA bundle ConfigMaps as a volume in
+	// the PodSpec which will later be mounted to add certs in the pod.
+	volumes = append(volumes,
+		// Add trusted CA bundle
+		corev1.Volume{
+			Name: trustedCAConfigMapVolume,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: trustedCAConfigMapName},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  trustedCAKey,
+							Path: trustedCAKey,
+						},
+					},
+				},
+			},
+		},
+		// Add service serving certificates bundle
+		corev1.Volume{
+			Name: serviceCAConfigMapVolume,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: serviceCAConfigMapName},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  serviceCAKey,
+							Path: serviceCAKey,
+						},
+					},
+				},
+			},
 		})
+	deployment.Spec.Template.Spec.Volumes = volumes
+
+	// Now that the injected certificates have been added as a volume, let's
+	// mount them via volumeMounts in the containers
+	for i, c := range deployment.Spec.Template.Spec.Containers {
+		volumeMounts := c.VolumeMounts
+
+		// If volume mounts for injected certificates already exist then remove them
+		for _, volumeName := range []string{trustedCAConfigMapVolume, serviceCAConfigMapVolume} {
+			for i, vm := range volumeMounts {
+				if vm.Name == volumeName {
+					volumeMounts = append(volumeMounts[:i], volumeMounts[i+1:]...)
+					break
+				}
+			}
+		}
+
+		// /etc/ssl/certs is the default place where CA certs reside in *nix
+		// however this can be overridden using SSL_CERT_DIR, let's check for
+		// that here.
+		sslCertDir := "/etc/ssl/certs"
+		for _, env := range c.Env {
+			if env.Name == "SSL_CERT_DIR" {
+				sslCertDir = env.Value
+			}
+		}
+
+		// Let's mount the certificates now.
+		volumeMounts = append(volumeMounts,
+			corev1.VolumeMount{
+				Name:      trustedCAConfigMapVolume,
+				MountPath: filepath.Join(sslCertDir, trustedCAKey),
+				SubPath:   trustedCAKey,
+				ReadOnly:  true,
+			},
+			corev1.VolumeMount{
+				Name:      serviceCAConfigMapVolume,
+				MountPath: filepath.Join(sslCertDir, serviceCAKey),
+				SubPath:   serviceCAKey,
+				ReadOnly:  true,
+			},
+		)
 		c.VolumeMounts = volumeMounts
 		deployment.Spec.Template.Spec.Containers[i] = c
 	}

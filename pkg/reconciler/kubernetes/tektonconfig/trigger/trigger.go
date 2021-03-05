@@ -20,8 +20,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"log"
+
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

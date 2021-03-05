@@ -13,9 +13,9 @@
 # limitations under the License.
 
 apiVersion: v1
-kind: ConfigMap
+kind: Namespace
 metadata:
-  name: config-trusted-cabundle
+  name: openshift-pipelines
   labels:
-    operator.tekton.dev/release: devel
-    config.openshift.io/inject-trusted-cabundle: "true"
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
