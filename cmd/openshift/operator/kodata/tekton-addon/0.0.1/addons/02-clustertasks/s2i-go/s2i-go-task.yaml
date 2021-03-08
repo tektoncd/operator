@@ -10,7 +10,7 @@ metadata:
   labels:
     app.kubernetes.io/version: "0.1"
   annotations:
-    tekton.dev/pipelines.minVersion: "0.11.3"
+    tekton.dev/pipelines.minVersion: "0.19"
     tekton.dev/tags: s2i, go, workspace
     tekton.dev/displayName: "s2i go"
 spec:
@@ -21,7 +21,7 @@ spec:
   params:
     - name: VERSION
       description: The tag of go imagestream for go version
-      default: '1.13.4-ubi8'
+      default: '1.14.7-ubi8'
       type: string
     - name: PATH_CONTEXT
       description: The location of the path to run s2i from.

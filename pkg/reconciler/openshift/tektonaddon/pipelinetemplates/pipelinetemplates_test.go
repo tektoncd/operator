@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestSomething(t *testing.T) {
+func TestGeneratePipelineTemplates(t *testing.T) {
 	addonLocation := filepath.Join("testdata")
 	var (
 		configName = "cluster"
