@@ -2,6 +2,10 @@ package tektonaddon
 
 import (
 	"fmt"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	mfc "github.com/manifestival/controller-runtime-client"
 	mf "github.com/manifestival/manifestival"
 	op "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -9,14 +13,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
-	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"strings"
-	"testing"
 )
 
-func TestSomething(t *testing.T) {
+func TestGeneratePipelineTemplates(t *testing.T) {
 	addonLocation := filepath.Join("testdata")
 	var (
 		configName = "cluster"

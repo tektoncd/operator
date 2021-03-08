@@ -10,7 +10,7 @@ metadata:
   labels:
     app.kubernetes.io/version: "0.1"
   annotations:
-    tekton.dev/pipelines.minVersion: "0.11.3"
+    tekton.dev/pipelines.minVersion: "0.19"
     tekton.dev/tags: s2i, php, workspace
     tekton.dev/displayName: "s2i php"
 spec:
@@ -21,7 +21,7 @@ spec:
   params:
     - name: VERSION
       description: The tag of php imagestream for php version
-      default: '7.3-ubi8'
+      default: '7.4-ubi8'
       type: string
     - name: PATH_CONTEXT
       description: The location of the path to run s2i from.
