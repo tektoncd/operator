@@ -1,0 +1,3 @@
+namePrefix: tektoncd
+resources:
+- ../../bases
