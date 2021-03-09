@@ -1,0 +1,3 @@
+namePrefix: openshift
+resources:
+- ../../bases
