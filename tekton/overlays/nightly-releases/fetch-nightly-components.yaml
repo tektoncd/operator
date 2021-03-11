@@ -22,9 +22,7 @@ spec:
         mkdir -p ${componentPath}/nightly
         if [[ ${component} == "dashboard" ]]; then
           curl -L -o ${componentPath}/nightly/release.notags.yaml https://storage.googleapis.com/tekton-releases-nightly/${component}/latest/tekton-dashboard-release.yaml
-          wc -l ${componentPath}/nightly/release.notags.yaml
           sed -i '/aggregationRule/,+3d' ${componentPath}/nightly/release.notags.yaml
-          wc -l ${componentPath}/nightly/release.notags.yaml
           continue
         fi
         curl -L -o ${componentPath}/nightly/release.notags.yaml https://storage.googleapis.com/tekton-releases-nightly/${component}/latest/release.notags.yaml
