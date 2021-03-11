@@ -1,0 +1,3 @@
+resources:
+- ../../bases
+- operator-release-pipeline.yaml

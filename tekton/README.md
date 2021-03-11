@@ -20,7 +20,7 @@ To create an official release, follow the steps in the [release-cheat-sheet](./r
 
 ## Nightly releases
 
-[The nightly release pipeline](operator-release-pipeline.yaml) is
+[The nightly release pipeline](overlays/nightly-releases/operator-nightly-release-pipeline.yaml) is
 [triggered nightly by Tekton](https://github.com/tektoncd/plumbing/tree/master/tekton).
 
 ## Setup from scratch
