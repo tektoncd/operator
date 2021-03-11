@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: fetch-component-nightly-releases
+spec:
+  workspaces:
+  - name: source
+    mountPath: /go/src/github.com/tektoncd/operator
+  steps:
+  - name: fetch-component-nightlies
+    image: docker.io/curlimages/curl:7.75.0
+    securityContext:
+      runAsUser: 0
+    script: |
+      #!/usr/bin/env sh
+      set -ex
+      cd /go/src/github.com/tektoncd/operator
+      components="pipeline trigger dashboard"
+      for component in ${components}; do
+        componentPath=cmd/kubernetes/operator/kodata/tekton-${component}
+        rm -rf ${componentPath}/*
+        mkdir -p ${componentPath}/nightly
+        if [[ ${component} == "dashboard" ]]; then
+          curl -L -o ${componentPath}/nightly/release.notags.yaml https://storage.googleapis.com/tekton-releases-nightly/${component}/latest/tekton-dashboard-release.yaml
+          wc -l ${componentPath}/nightly/release.notags.yaml
+          sed -i '/aggregationRule/,+3d' ${componentPath}/nightly/release.notags.yaml
+          wc -l ${componentPath}/nightly/release.notags.yaml
+          continue
+        fi
+        curl -L -o ${componentPath}/nightly/release.notags.yaml https://storage.googleapis.com/tekton-releases-nightly/${component}/latest/release.notags.yaml
+      done
+      find cmd/kubernetes/operator/kodata/
