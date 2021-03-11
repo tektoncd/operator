@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: operator-nightly-release
+  name: nightly-release
 spec:
   params:
   - name: package
