@@ -19,12 +19,13 @@ spec:
       for component in ${components}; do
         componentPath=cmd/kubernetes/operator/kodata/tekton-${component}
         rm -rf ${componentPath}/*
-        mkdir -p ${componentPath}/0.0.0-nightly
+        dest=${componentPath}/0.0.0-nightly
+        mkdir -p ${dest}
         if [[ ${component} == "dashboard" ]]; then
-          curl -L -o ${componentPath}/nightly/release.notags.yaml https://storage.googleapis.com/tekton-releases-nightly/${component}/latest/tekton-dashboard-release.yaml
-          sed -i '/aggregationRule/,+3d' ${componentPath}/nightly/release.notags.yaml
+          curl -L -o ${dest}/tekton-dashboard-release.yaml https://storage.googleapis.com/tekton-releases-nightly/${component}/latest/tekton-dashboard-release.yaml
+          sed -i '/aggregationRule/,+3d' ${dest}/tekton-dashboard-release.yaml
           continue
         fi
-        curl -L -o ${componentPath}/nightly/release.notags.yaml https://storage.googleapis.com/tekton-releases-nightly/${component}/latest/release.notags.yaml
+        curl -L -o ${dest}/release.notags.yaml https://storage.googleapis.com/tekton-releases-nightly/${component}/latest/release.notags.yaml
       done
       find cmd/kubernetes/operator/kodata/
