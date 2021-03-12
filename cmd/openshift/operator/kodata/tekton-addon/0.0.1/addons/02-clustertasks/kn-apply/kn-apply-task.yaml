@@ -1,0 +1,27 @@
+apiVersion: tekton.dev/v1beta1
+kind: ClusterTask
+metadata:
+  name: kn-apply
+  labels:
+    app.kubernetes.io/version: "1.4.0"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.19"
+    tekton.dev/tags: cli
+spec:
+  description: >-
+    This task deploys a given image to a Knative Service.
+
+    It uses `kn service apply` to create or update given knative service.
+  params:
+    - name: KN_IMAGE
+      description: kn CLI container image to run this task
+      default: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:e912d6731df784ad030f8e26f012036acadd6aad0f2f25834575dd0c8573cad1
+    - name: SERVICE
+      description: Knative service name
+    - name: IMAGE
+      description: Image to deploy
+  steps:
+    - name: kn
+      image: "$(params.KN_IMAGE)"
+      command: ["/ko-app/kn"]
+      args: ["service", "apply", "$(params.SERVICE)", "--image", "$(params.IMAGE)"]
