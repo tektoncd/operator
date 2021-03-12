@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
@@ -207,7 +208,23 @@ func addPipelineTemplates(manifest *mf.Manifest) error {
 func applyAddons(manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
 	addonLocation := filepath.Join(koDataDir, "tekton-addon/"+common.TargetVersion(comp)+"/addons")
-	return common.AppendManifest(manifest, addonLocation)
+	addons, err := mf.ManifestFrom(mf.Recursive(addonLocation))
+	if err != nil {
+		return err
+	}
+	if runtime.GOARCH == "ppc64le" || runtime.GOARCH == "s390x" {
+		version := common.TargetVersion((*v1alpha1.TektonPipeline)(nil))
+		version_formated := strings.Replace(version, ".", "-", -1)
+		addons = addons.Filter(
+			mf.Not(mf.Any(
+				mf.ByName("kn"),
+				mf.ByName("kn-v"+version_formated),
+				mf.ByName("kn-apply"),
+				mf.ByName("kn-apply-v"+version_formated),
+			)))
+	}
+	*manifest = manifest.Append(addons)
+	return nil
 }
 
 func applyOptionalAddons(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent, cfg *rest.Config) error {
