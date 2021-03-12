@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/markbates/inflect"
@@ -30,6 +31,7 @@ import (
 	admissionv1 "k8s.io/api/admission/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,6 +48,18 @@ import (
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
+)
+
+const (
+	// user-provided and system CA certificates
+	trustedCAConfigMapName   = "config-trusted-cabundle"
+	trustedCAConfigMapVolume = "config-trusted-cabundle-volume"
+	trustedCAKey             = "ca-bundle.crt"
+
+	// service serving certificates (required to talk to the internal registry)
+	serviceCAConfigMapName   = "config-service-cabundle"
+	serviceCAConfigMapVolume = "config-service-cabundle-volume"
+	serviceCAKey             = "service-ca.crt"
 )
 
 // reconciler implements the AdmissionController for resources
@@ -255,7 +269,7 @@ func (ac *reconciler) mutate(ctx context.Context, req *admissionv1.AdmissionRequ
 	ctx = apis.WithUserInfo(ctx, &req.UserInfo)
 
 	// Default the new object.
-	if patches, err = setDefaults(ctx, patches, newObj); err != nil {
+	if patches, err = setDefaults(ac.client, ctx, patches, newObj); err != nil {
 		logger.Errorw("Failed the resource specific defaulter", zap.Error(err))
 		// Return the error message as-is to give the defaulter callback
 		// discretion over (our portion of) the message that the user sees.
@@ -284,7 +298,7 @@ func roundTripPatch(bytes []byte, unmarshalled interface{}) (duck.JSONPatch, err
 }
 
 // setDefaults simply leverages apis.Defaultable to set defaults.
-func setDefaults(ctx context.Context, patches duck.JSONPatch, pod corev1.Pod) (duck.JSONPatch, error) {
+func setDefaults(client kubernetes.Interface, ctx context.Context, patches duck.JSONPatch, pod corev1.Pod) (duck.JSONPatch, error) {
 	before, after := pod.DeepCopyObject(), pod
 
 	var proxyEnv = []corev1.EnvVar{{
@@ -305,12 +319,112 @@ func setDefaults(ctx context.Context, patches duck.JSONPatch, pod corev1.Pod) (d
 		}
 	}
 
+	exist, err := checkConfigMapExist(client, ctx, after.Namespace, trustedCAConfigMapName)
+	if err != nil {
+		return nil, err
+	}
+	if exist {
+		after = updateVolume(after, trustedCAConfigMapVolume, trustedCAConfigMapName, trustedCAKey)
+	}
+
+	exist, err = checkConfigMapExist(client, ctx, after.Namespace, serviceCAConfigMapName)
+	if err != nil {
+		return nil, err
+	}
+	if exist {
+		after = updateVolume(after, serviceCAConfigMapVolume, serviceCAConfigMapName, serviceCAKey)
+	}
+
 	patch, err := duck.CreatePatch(before, after)
 	if err != nil {
 		return nil, err
 	}
 
 	return append(patches, patch...), nil
+}
+
+// Ensure Configmap exist or not
+func checkConfigMapExist(client kubernetes.Interface, ctx context.Context, ns string, name string) (bool, error) {
+	logger := logging.FromContext(ctx)
+	logger.Info("finding configmap: %s/%s", ns, name)
+	_, err := client.CoreV1().ConfigMaps(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil && errors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil && !errors.IsNotFound(err) {
+		return false, err
+	}
+	return true, nil
+}
+
+// update volume and volume mounts to mount the certs configmap
+func updateVolume(pod corev1.Pod, volumeName, configmapName, key string) corev1.Pod {
+	volumes := pod.Spec.Volumes
+
+	for i, v := range volumes {
+		if v.Name == volumeName {
+			volumes = append(volumes[:i], volumes[i+1:]...)
+			break
+		}
+	}
+
+	// Let's add the trusted and service CA bundle ConfigMaps as a volume in
+	// the PodSpec which will later be mounted to add certs in the pod.
+	volumes = append(volumes,
+		// Add trusted CA bundle
+		corev1.Volume{
+			Name: volumeName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: configmapName},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  key,
+							Path: key,
+						},
+					},
+				},
+			},
+		},
+	)
+	pod.Spec.Volumes = volumes
+
+	// Now that the injected certificates have been added as a volume, let's
+	// mount them via volumeMounts in the containers
+	for i, c := range pod.Spec.Containers {
+		volumeMounts := c.VolumeMounts
+
+		// If volume mounts for injected certificates already exist then remove them
+		for i, vm := range volumeMounts {
+			if vm.Name == volumeName {
+				volumeMounts = append(volumeMounts[:i], volumeMounts[i+1:]...)
+				break
+			}
+		}
+
+		// /etc/ssl/certs is the default place where CA certs reside in *nix
+		// however this can be overridden using SSL_CERT_DIR, let's check for
+		// that here.
+		sslCertDir := "/etc/ssl/certs"
+		for _, env := range c.Env {
+			if env.Name == "SSL_CERT_DIR" {
+				sslCertDir = env.Value
+			}
+		}
+
+		// Let's mount the certificates now.
+		volumeMounts = append(volumeMounts,
+			corev1.VolumeMount{
+				Name:      volumeName,
+				MountPath: filepath.Join(sslCertDir, key),
+				SubPath:   key,
+				ReadOnly:  true,
+			},
+		)
+		c.VolumeMounts = volumeMounts
+		pod.Spec.Containers[i] = c
+	}
+	return pod
 }
 
 // updateAndMergeEnv will merge two slices of env
