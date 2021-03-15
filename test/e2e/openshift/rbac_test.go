@@ -41,7 +41,7 @@ func TestRBACReconciler(t *testing.T) {
 	defer utils.TearDownNamespace(clients, crNames.Namespace)
 
 	//// Create a Test Namespace
-	if _, err := resources.EnsureTestNamespaceExists(clients.KubeClient, crNames.Namespace); err != nil {
+	if _, err := resources.EnsureTestNamespaceExists(clients, crNames.Namespace); err != nil {
 		t.Fatalf("failed to create test namespace: %s, %q", crNames.Namespace, err)
 	}
 

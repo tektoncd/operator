@@ -4,8 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"k8s.io/client-go/kubernetes"
-
 	corev1 "k8s.io/api/core/v1"
 
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -18,16 +16,16 @@ import (
 )
 
 // EnsureTestNamespaceExists creates a Test Namespace
-func EnsureTestNamespaceExists(clientSet *kubernetes.Clientset, name string) (*corev1.Namespace, error) {
+func EnsureTestNamespaceExists(clients *utils.Clients, name string) (*corev1.Namespace, error) {
 	// If this function is called by the upgrade tests, we only create the custom resource, if it does not exist.
-	ns, err := clientSet.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
+	ns, err := clients.KubeClient.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
 		ns = &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 			},
 		}
-		return clientSet.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
+		return clients.KubeClient.CoreV1().Namespaces().Create(context.TODO(), ns, metav1.CreateOptions{})
 	}
 	return ns, err
 }
