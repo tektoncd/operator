@@ -89,3 +89,9 @@ generated: | vendor ; $(info $(M) update generated files) ## Update generated fi
 .PHONY: vendor
 vendor: ; $(info $(M) update vendor folder)  ## Update vendor folder
 	$Q ./hack/update-deps.sh
+
+.PHONY: bundle
+#generate stubs
+bundle:
+#update image reference
+#generate bundle

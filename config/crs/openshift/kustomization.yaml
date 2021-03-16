@@ -1,0 +1,2 @@
+resources:
+- addon/operator_v1alpha1_addon_cr.yaml
