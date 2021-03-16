@@ -1,3 +1,2 @@
-namePrefix: openshift
 resources:
 - ../../bases
