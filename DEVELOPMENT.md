@@ -185,3 +185,15 @@ watch this space!**
 
 **Note: this needs to be completed! We don't yet have any code or config to deploy,
 watch this space!**
+
+## Updating the clustertasks in OpenShift addons
+
+You can update the clustertasks present in the codebase with the latest using the script present at `/hack/openshift/update-tasks.sh`
+
+You can edit the script to mention the specific version of the task or to add a new task.
+
+Then all the tasks mentioned in the script can be added to codebase using
+
+```shell
+./hack/openshift/update-tasks.sh release-v0.22 cmd/openshift/operator/kodata/tekton-addon/1.4.0 v0.22.0
+```
