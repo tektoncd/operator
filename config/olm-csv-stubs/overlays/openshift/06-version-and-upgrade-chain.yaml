@@ -1,0 +1,7 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  name: placeholder
+spec:
+  replaces: redhat-openshift-pipelines.v1.3.0
+  version: 1.4.0

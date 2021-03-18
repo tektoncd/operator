@@ -3,12 +3,12 @@ annotations:
   operators.operatorframework.io.bundle.mediatype.v1: registry+v1
   operators.operatorframework.io.bundle.manifests.v1: manifests/
   operators.operatorframework.io.bundle.metadata.v1: metadata/
-  operators.operatorframework.io.bundle.package.v1: tektoncd-operator
+  operators.operatorframework.io.bundle.package.v1: openshift-pipelines-operator-rh
   operators.operatorframework.io.bundle.channels.v1: stable,preview
   operators.operatorframework.io.bundle.channel.default.v1: stable
   operators.operatorframework.io.metrics.mediatype.v1: metrics+v1
   operators.operatorframework.io.metrics.builder: operator-sdk-v1.5.0
-  operators.operatorframework.io.metrics.project_layout: go
+  operators.operatorframework.io.metrics.project_layout: unknown
 
   # Annotations for testing.
   operators.operatorframework.io.test.mediatype.v1: scorecard+v1
