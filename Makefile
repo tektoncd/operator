@@ -90,8 +90,20 @@ generated: | vendor ; $(info $(M) update generated files) ## Update generated fi
 vendor: ; $(info $(M) update vendor folder)  ## Update vendor folder
 	$Q ./hack/update-deps.sh
 
-.PHONY: bundle
-#generate stubs
+.PHONY: bundlegen
+bundlegen:
+	mkdir csv-stub
+	kustomize build ../../config/olm-csv-stubs/overlays/openshift > csv-stub/csv-stub.yaml
+	pwd
+	kustomize build ../../config/olm-bundle-config/openshift | operator-sdk generate bundle \
+		--channels stable,preview \
+		--default-channel stable \
+		--kustomize-dir csv-stub \
+		--overwrite \
+		--package openshift-pipelines-operator-rh \
+		--version 0.22.0-1
+	rm -rf csv-stub
+
+
 bundle:
-#update image reference
-#generate bundle
+	$(MAKE) -C operatorhub/openshift --file ../../Makefile bundlegen

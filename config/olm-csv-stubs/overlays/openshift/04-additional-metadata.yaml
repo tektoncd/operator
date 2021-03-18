@@ -1,0 +1,21 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  name: placeholder
+spec:
+  keywords:
+  - tektoncd
+  - openshift
+  - build
+  - pipeline
+  links:
+  - name: OpenShift Tekton Pipeline GitHub Repository
+    url: https://github.com/openshift/tektoncd-pipeline
+  - name: OpenShift Pipelines Operator GitHub Repository
+    url: https://github.com/openshift/tektoncd-operator
+  maintainers:
+  - email: pipelines-dev@redhat.com
+    name: Red Hat
+  maturity: alpha
+  provider:
+    name: Red Hat
