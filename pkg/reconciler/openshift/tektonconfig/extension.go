@@ -96,31 +96,12 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		}
 	}
 
-	// Run clean up jobs for OpenShift
-	if err := RemoveDeprecatedConfigCRD(ctx, &oe.manifest, configInstance); err != nil {
-		return err
-	}
 	return nil
 }
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 	if configInstance.Spec.Profile == common.ProfileAll {
 		return extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), common.AddonResourceName)
-	}
-	return nil
-}
-
-func RemoveDeprecatedConfigCRD(ctx context.Context, manifest *mf.Manifest, config *v1alpha1.TektonConfig) error {
-	// Remove deprecated config.operator.tekton.dev CRD
-	// by running 'oc delete crd config.operator.tekton.dev' in a kubernetes job
-	stages := common.Stages{
-		extension.AppendCleanupTarget,
-		extension.CleanupTransforms,
-		extension.RunCleanup,
-		extension.CheckCleanup,
-	}
-	if err := stages.Execute(ctx, manifest, config); err != nil {
-		return err
 	}
 	return nil
 }
