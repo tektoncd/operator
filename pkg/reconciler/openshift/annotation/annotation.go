@@ -166,9 +166,9 @@ func (ac *reconciler) reconcileMutatingWebhook(ctx context.Context, caCert []byt
 		webhook.Webhooks[i].Rules = rules
 		webhook.Webhooks[i].NamespaceSelector = &metav1.LabelSelector{
 			MatchExpressions: []metav1.LabelSelectorRequirement{{
-				Key:      "operator.tekton.dev/disable-annotation",
-				Operator: metav1.LabelSelectorOpNotIn,
-				Values:   []string{"disabled"},
+				Key:      "operator.tekton.dev/enable-annotation",
+				Operator: metav1.LabelSelectorOpIn,
+				Values:   []string{"enabled"},
 			}, {
 				// "control-plane" is added to support Azure's AKS, otherwise the controllers fight.
 				// See knative/pkg#1590 for details.
