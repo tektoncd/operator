@@ -1,4 +1,4 @@
-# Tekton Pipelines Official Release Cheat Sheet
+# Tekton Operator Official Release Cheat Sheet
 
 These steps provide a no-frills guide to performing an official release
 of Tekton Operator. To follow these steps you'll need a checkout of
@@ -7,6 +7,20 @@ the operator repo, a terminal window and a text editor.
 1. [Setup a context to connect to the dogfooding cluster](#setup-dogfooding-context) if you haven't already.
 
 1. `cd` to root of Operator git checkout.
+
+1. Make sure the release `Task` and `Pipeline` are up-to-date on the
+   cluster.
+
+   - [publish-operator-release](https://github.com/tektoncd/operator/blob/main/tekton/build-publish-images-manifests.yaml)
+
+     This task uses [ko](https://github.com/google/ko) to build all container images we release and generate the `release.yaml`
+     ```shell script
+     kubectl apply -f tekton/bases/build-publish-images-manifests.yaml
+     ```
+   - [operator-release](https://github.com/tektoncd/operator/blob/main/tekton/operator-release-pipeline.yaml)
+     ```shell script
+     kubectl apply -f tekton/overlays/versioned-releases/operator-release-pipeline.yaml
+     ```
 
 1. Select the commit you would like to build the release from, most likely the
    most recent commit at https://github.com/tektoncd/operator/commits/main
@@ -24,9 +38,8 @@ the operator repo, a terminal window and a text editor.
 1. Create environment variables for bash scripts in later steps.
 
     ```bash
-    TEKTON_VERSION=# Example: 0.21.0-1
+    TEKTON_VERSION=# Example: v0.21.0-1
     TEKTON_RELEASE_GIT_SHA=# SHA of the release to be released
-    TEKTON_IMAGE_REGISTRY=tekton-releases # only change if you want to publish to a different registry
     ```
 
 1. Confirm commit SHA matches what you want to release.
@@ -53,7 +66,6 @@ the operator repo, a terminal window and a text editor.
     tkn --context dogfooding pipeline start operator-release \
       --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
       --param=versionTag="${TEKTON_VERSION}" \
-      --param=imageRegistryPath="${TEKTON_IMAGE_REGISTRY}" \
       --param=serviceAccountPath=release.json \
       --param=releaseBucket=gs://tekton-releases/operator \
       --workspace name=release-secret,secret=release-secret \
@@ -83,7 +95,7 @@ the operator repo, a terminal window and a text editor.
 
 1. The YAMLs are now uploaded to publically accesible gcs bucket! Anyone installing Tekton Pipelines will now get the new version. Time to create a new GitHub release announcement:
 
-    1. The release announcement draft is created by the [create-draf-release](https://github.com/tektoncd/plumbing/blob/main/tekton/resources/release/base/github_release.yaml) task.
+    1. The release announcement draft is created by the [create-draft-release](https://github.com/tektoncd/plumbing/blob/main/tekton/resources/release/base/github_release.yaml) task.
        The task requires a `pipelineResource` to work with the operator repository. Create the pipelineresource:
        ```shell script
         cat <<EOF | kubectl apply -f -                                                                                                                                             130 ↵
@@ -107,7 +119,6 @@ the operator repo, a terminal window and a text editor.
        VERSION_TAG=v0.21.0-1
        PREVIOUS_VERSION_TAG=v0.19.0-1
        GIT_RESOURCE_NAME=tekton-operator-git-v0-21-0-1
-       IMAGE_REGISTRY=tekton-releases
         ```
 
     1. Execute the Draft Release task.

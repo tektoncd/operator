@@ -43,12 +43,13 @@ Add all the `Tasks` and `Pipelines` needed for creating to the cluster:,
 
   This task uses [ko](https://github.com/google/ko) to build all container images we release and generate the `release.yaml`
     ```shell script
-    kubectl apply -f tekton/build-publish-images-manifests.yaml
+    kubectl apply -f tekton/bases/build-publish-images-manifests.yaml
     ```
 - [operator-release](https://github.com/tektoncd/operator/blob/main/tekton/operator-release-pipeline.yaml)
   ```shell script
-  kubectl apply -f tekton/operator-release-pipeline.yaml
+  kubectl apply -f tekton/overlays/versioned-releases/operator-release-pipeline.yaml
   ```
+
 ### Service account and secrets
 
 In order to release, these Pipelines use the `release-right-meow` service account,
