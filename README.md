@@ -9,6 +9,16 @@ on any Kubernetes Cluster.
 
 ## Install Tektoncd Operator
 
+1. Install operator
+    ```
+    $ kubectl apply -f https://storage.googleapis.com/tekton-releases/operator/latest/release.yaml
+    ```
+1. Install Components (uses [installation profiles](https://github.com/tektoncd/operator/tree/main/config/crs/kubernetes/config): `default`, `all`, `basic`)
+    ```
+    # to installl pipelines, triggers and dashboard (use profile 'all')
+    $ kubectl apply -f https://raw.githubusercontent.com/tektoncd/operator/main/config/crs/kubernetes/config/all/operator_v1alpha1_config_cr.yaml
+    ```
+
 # References
 
 - [Development Guide](docs/README.md)
