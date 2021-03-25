@@ -46,6 +46,7 @@ const (
 	pipelineSA               = "pipeline"
 	serviceCABundleCofigMap  = "config-service-cabundle"
 	trustedCABundleConfigMap = "config-trusted-cabundle"
+	NamespaceIgnorePattern   = "^(openshift|kube)-"
 )
 
 // FinalizeKind removes all resources after deletion of a TektonPipelines.
@@ -59,8 +60,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ns *corev1.Namespace) pk
 	logger := logging.FromContext(ctx)
 	logger.Infow("Reconciling Namespace: Platform Openshift", "status", ns.GetName())
 
-	ignorePattern := "^(openshift|kube)-"
-	if ignore, _ := regexp.MatchString(ignorePattern, ns.GetName()); ignore {
+	if ignore, _ := regexp.MatchString(NamespaceIgnorePattern, ns.GetName()); ignore {
 		logger.Infow("Reconciling Namespace: IGNORE", "status", ns.GetName())
 		return nil
 	}
