@@ -35,6 +35,8 @@ import (
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
 )
 
@@ -70,6 +72,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 	}
 	ext := openshiftExtension{
 		operatorClientSet: operatorclient.Get(ctx),
+		kubeClientSet:     kubeclient.Get(ctx),
 		manifest:          manifest,
 	}
 	// try to ensure that there is an instance of tektonConfig
@@ -79,6 +82,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 
 type openshiftExtension struct {
 	operatorClientSet versioned.Interface
+	kubeClientSet     kubernetes.Interface
 	manifest          mf.Manifest
 }
 
@@ -96,6 +100,11 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		}
 	}
 
+	//TODO: Remove this cleanup after 1.4 GA release
+	// cleanup orphaned `pipeline-anyuid` rolebindings and clusterrole
+	if err := extension.RbacCleanup(ctx, oe.kubeClientSet); err != nil {
+		return err
+	}
 	return nil
 }
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
