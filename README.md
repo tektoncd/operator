@@ -29,4 +29,5 @@ on any Kubernetes Cluster.
 | Version | Docs |
 | ------- | ---- |
 | [HEAD](/README.md) | [Docs @ HEAD](/docs/README.md) |
+| [v0.22.0-1](https://github.com/tektoncd/operator/releases/tag/v0.22.0-1) | [Docs @ v0.22.0-1](https://github.com/tektoncd/operator/tree/v0.22.0-1/docs) | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.22.0/examples#examples) |
 | [v0.21.0-1](https://github.com/tektoncd/operator/releases/tag/v0.21.0-1) | [Docs @ v0.21.0-1](https://github.com/tektoncd/operator/tree/v0.21.0-1/docs) | [Examples @ v0.21.0](https://github.com/tektoncd/pipeline/tree/v0.21.0/examples#examples) |
