@@ -15,7 +15,7 @@ on any Kubernetes Cluster.
     ```
 1. Install Components (uses [installation profiles](https://github.com/tektoncd/operator/tree/main/config/crs/kubernetes/config): `default`, `all`, `basic`)
     ```
-    # to installl pipelines, triggers and dashboard (use profile 'all')
+    # to install pipelines, triggers and dashboard (use profile 'all')
     $ kubectl apply -f https://raw.githubusercontent.com/tektoncd/operator/main/config/crs/kubernetes/config/all/operator_v1alpha1_config_cr.yaml
     ```
 
