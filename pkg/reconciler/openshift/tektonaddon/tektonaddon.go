@@ -76,9 +76,9 @@ var _ tektonaddonreconciler.Interface = (*Reconciler)(nil)
 var _ tektonaddonreconciler.Finalizer = (*Reconciler)(nil)
 
 var communityResourceURLs = []string{
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/jib-maven/0.2/jib-maven.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/maven/0.1/maven.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/tkn/0.1/tkn.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/jib-maven/0.3/jib-maven.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/maven/0.2/maven.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/tkn/0.2/tkn.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-source/0.2/helm-upgrade-from-source.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-repo/0.2/helm-upgrade-from-repo.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/trigger-jenkins-job/0.1/trigger-jenkins-job.yaml",
