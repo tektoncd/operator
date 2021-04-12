@@ -40,7 +40,9 @@ type Reconciler struct {
 var _ nsreconciler.Interface = (*Reconciler)(nil)
 
 const (
-	pipelineAnyuid           = "pipeline-anyuid"
+	pipelinesSCCClusterRole  = "pipelines-scc-clusterrole"
+	pipelinesSCCRoleBinding  = "pipelines-scc-rolebinding"
+	pipelinesSCC             = "pipelines-scc"
 	pipelineSA               = "pipeline"
 	serviceCABundleCofigMap  = "config-service-cabundle"
 	trustedCABundleConfigMap = "config-trusted-cabundle"
@@ -78,11 +80,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ns *corev1.Namespace) pk
 	// Maintaining a separate cluster role for the scc declaration.
 	// to assist us in managing this the scc association in a
 	// granular way.
-	if err := r.ensureSCClusterRole(ctx); err != nil {
+	if err := r.ensurePipelinesSCClusterRole(ctx); err != nil {
 		return err
 	}
 
-	if err := r.ensureSCCRoleBinding(ctx, sa); err != nil {
+	if err := r.ensurePipelinesSCCRoleBinding(ctx, sa); err != nil {
 		return err
 	}
 
@@ -188,20 +190,20 @@ func (r *Reconciler) createRoleBinding(ctx context.Context, sa *corev1.ServiceAc
 	return err
 }
 
-func (r *Reconciler) ensureSCClusterRole(ctx context.Context) error {
+func (r *Reconciler) ensurePipelinesSCClusterRole(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
 
-	logger.Info("finding cluster role pipeline-anyuid")
+	logger.Info("finding cluster role:", pipelinesSCCClusterRole)
 
 	clusterRole := &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{Name: pipelineAnyuid},
+		ObjectMeta: metav1.ObjectMeta{Name: pipelinesSCCClusterRole},
 		Rules: []rbacv1.PolicyRule{
 			{
 				APIGroups: []string{
 					"security.openshift.io",
 				},
 				ResourceNames: []string{
-					"anyuid",
+					pipelinesSCC,
 				},
 				Resources: []string{
 					"securitycontextconstraints",
@@ -214,7 +216,7 @@ func (r *Reconciler) ensureSCClusterRole(ctx context.Context) error {
 	}
 
 	rbacClient := r.kubeClientSet.RbacV1()
-	_, err := rbacClient.ClusterRoles().Get(ctx, pipelineAnyuid, metav1.GetOptions{})
+	_, err := rbacClient.ClusterRoles().Get(ctx, pipelinesSCCClusterRole, metav1.GetOptions{})
 
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -226,20 +228,20 @@ func (r *Reconciler) ensureSCClusterRole(ctx context.Context) error {
 	return err
 }
 
-func (r *Reconciler) ensureSCCRoleBinding(ctx context.Context, sa *corev1.ServiceAccount) error {
+func (r *Reconciler) ensurePipelinesSCCRoleBinding(ctx context.Context, sa *corev1.ServiceAccount) error {
 	logger := logging.FromContext(ctx)
 
-	logger.Info("finding role-binding pipeline-anyuid")
+	logger.Info("finding role-binding", pipelinesSCCRoleBinding)
 	rbacClient := r.kubeClientSet.RbacV1()
-	pipelineRB, rbErr := rbacClient.RoleBindings(sa.Namespace).Get(ctx, pipelineAnyuid, metav1.GetOptions{})
+	pipelineRB, rbErr := rbacClient.RoleBindings(sa.Namespace).Get(ctx, pipelinesSCCRoleBinding, metav1.GetOptions{})
 	if rbErr != nil && !errors.IsNotFound(rbErr) {
-		logger.Error(rbErr, "rbac pipeline-anyuid get error")
+		logger.Error(rbErr, "rbac get error", pipelinesSCCRoleBinding)
 		return rbErr
 	}
 
-	logger.Info("finding cluster role pipeline-anyuid")
-	if _, err := rbacClient.ClusterRoles().Get(ctx, pipelineAnyuid, metav1.GetOptions{}); err != nil {
-		logger.Error(err, "finding pipeline-anyuid cluster role failed")
+	logger.Info("finding cluster role:", pipelinesSCCClusterRole)
+	if _, err := rbacClient.ClusterRoles().Get(ctx, pipelinesSCCClusterRole, metav1.GetOptions{}); err != nil {
+		logger.Error(err, "finding cluster role failed:", pipelinesSCCClusterRole)
 		return err
 	}
 
@@ -254,17 +256,17 @@ func (r *Reconciler) ensureSCCRoleBinding(ctx context.Context, sa *corev1.Servic
 func (r *Reconciler) createSCCRoleBinding(ctx context.Context, sa *corev1.ServiceAccount) error {
 	logger := logging.FromContext(ctx)
 
-	logger.Info("create new rolebinding pipeline-anyuid")
+	logger.Info("create new rolebinding:", pipelinesSCCRoleBinding)
 	rbacClient := r.kubeClientSet.RbacV1()
 	rb := &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{Name: pipelineAnyuid, Namespace: sa.Namespace},
-		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: pipelineAnyuid},
+		ObjectMeta: metav1.ObjectMeta{Name: pipelinesSCCRoleBinding, Namespace: sa.Namespace},
+		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: pipelinesSCCClusterRole},
 		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: sa.Name, Namespace: sa.Namespace}},
 	}
 
 	_, err := rbacClient.RoleBindings(sa.Namespace).Create(ctx, rb, metav1.CreateOptions{})
 	if err != nil {
-		logger.Error(err, "creation of pipeline-anyuid rb failed")
+		logger.Error(err, "creation of rolebinding failed:", pipelinesSCCRoleBinding)
 	}
 	return err
 }

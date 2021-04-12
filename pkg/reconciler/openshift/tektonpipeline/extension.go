@@ -95,6 +95,12 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		return err
 	}
 
+	// add pipelines-scc
+	pipelinesSCCLocation := filepath.Join(koDataDir, "tekton-pipeline", "00-prereconcile")
+	if err := common.AppendManifest(&oe.manifest, pipelinesSCCLocation); err != nil {
+		return err
+	}
+
 	return common.Install(ctx, &oe.manifest, tc)
 }
 
