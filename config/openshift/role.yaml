@@ -206,6 +206,9 @@ rules:
   - securitycontextconstraints
   verbs:
   - use
+  - get
+  - create
+  - update
 - apiGroups:
   - route.openshift.io
   resources:
