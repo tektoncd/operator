@@ -1,17 +1,4 @@
-allowHostDirVolumePlugin: false
-allowHostIPC: false
-allowHostNetwork: false
-allowHostPID: false
-allowHostPorts: false
-allowPrivilegeEscalation: true
-allowPrivilegedContainer: false
-allowedCapabilities: null
 apiVersion: security.openshift.io/v1
-defaultAddCapabilities: null
-fsGroup:
-  type: MustRunAs
-groups:
-- system:cluster-admins
 kind: SecurityContextConstraints
 metadata:
   annotations:
@@ -21,6 +8,19 @@ metadata:
     kubernetes.io/description: pipelines-scc is a close replica of anyuid scc. pipelines-scc has fsGroup - MustRunAs.
     release.openshift.io/create-only: "true"
   name: pipelines-scc
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegeEscalation: true
+allowPrivilegedContainer: false
+allowedCapabilities: null
+defaultAddCapabilities: null
+fsGroup:
+  type: MustRunAs
+groups:
+- system:cluster-admins
 priority: 10
 readOnlyRootFilesystem: false
 requiredDropCapabilities:
