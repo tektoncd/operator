@@ -18,8 +18,10 @@ import (
 )
 
 const (
-	cleanupClusterRoleName = "pipeline-anyuid"
-	cleanupRoleBindingName = "pipeline-anyuid"
+	cleanupClusterRoleName       = "pipeline-anyuid"
+	cleanupRoleBindingName       = "pipeline-anyuid"
+	cleanupClusterRoleTP12       = "privileged-scc-role"
+	clenupClusterRoleBindingTP12 = "openshift-pipelines-privileged"
 )
 
 func RbacCleanup(ctx context.Context, client kubernetes.Interface) error {
@@ -55,6 +57,11 @@ func RbacCleanup(ctx context.Context, client kubernetes.Interface) error {
 		return err
 	}
 
+	err = cleanUpTP12Rbac(ctx, rbacClient)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -75,5 +82,22 @@ func cleanUpClusterRole(ctx context.Context, rbacClient v1.RbacV1Interface) erro
 			return err
 		}
 	}
+	return nil
+}
+
+func cleanUpTP12Rbac(ctx context.Context, rbacClient v1.RbacV1Interface) error {
+	err := rbacClient.ClusterRoles().Delete(ctx, cleanupClusterRoleTP12, metav1.DeleteOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+	err = rbacClient.ClusterRoleBindings().Delete(ctx, clenupClusterRoleBindingTP12, metav1.DeleteOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return err
+		}
+	}
+
 	return nil
 }
