@@ -41,6 +41,7 @@ type reconcilerReconcilerGenerator struct {
 	hasReconcilerClass bool
 	nonNamespaced      bool
 	isKRShaped         bool
+	hasStatus          bool
 
 	groupGoName  string
 	groupVersion clientgentypes.GroupVersion
@@ -76,6 +77,7 @@ func (g *reconcilerReconcilerGenerator) GenerateType(c *generator.Context, t *ty
 		"class":         g.reconcilerClass,
 		"hasClass":      g.hasReconcilerClass,
 		"isKRShaped":    g.isKRShaped,
+		"hasStatus":     g.hasStatus,
 		"nonNamespaced": g.nonNamespaced,
 		"controllerImpl": c.Universe.Type(types.Name{
 			Package: "knative.dev/pkg/controller",
@@ -88,6 +90,10 @@ func (g *reconcilerReconcilerGenerator) GenerateType(c *generator.Context, t *ty
 		"controllerWithEventRecorder": c.Universe.Type(types.Name{
 			Package: "knative.dev/pkg/controller",
 			Name:    "WithEventRecorder",
+		}),
+		"controllerNewSkipKey": c.Universe.Type(types.Name{
+			Package: "knative.dev/pkg/controller",
+			Name:    "NewSkipKey",
 		}),
 		"corev1EventSource": c.Universe.Function(types.Name{
 			Package: "k8s.io/api/core/v1",
@@ -209,7 +215,9 @@ func (g *reconcilerReconcilerGenerator) GenerateType(c *generator.Context, t *ty
 	sw.Do(reconcilerInterfaceFactory, m)
 	sw.Do(reconcilerNewReconciler, m)
 	sw.Do(reconcilerImplFactory, m)
-	sw.Do(reconcilerStatusFactory, m)
+	if g.hasStatus {
+		sw.Do(reconcilerStatusFactory, m)
+	}
 	sw.Do(reconcilerFinalizerFactory, m)
 
 	return sw.Error()
@@ -285,9 +293,11 @@ type reconcilerImpl struct {
 	// finalizerName is the name of the finalizer to reconcile.
 	finalizerName string
 
+	{{if .hasStatus}}
 	// skipStatusUpdates configures whether or not this reconciler automatically updates
 	// the status of the reconciled resource.
 	skipStatusUpdates bool
+	{{end}}
 
 	{{if .hasClass}}
 	// classValue is the resource annotation[{{ .class }}] instance value this reconciler instance filters on.
@@ -348,8 +358,13 @@ func NewReconciler(ctx {{.contextContext|raw}}, logger *{{.zapSugaredLogger|raw}
 		if opts.FinalizerName != "" {
 			rec.finalizerName = opts.FinalizerName
 		}
+		{{- if .hasStatus}}
 		if opts.SkipStatusUpdates {
 			rec.skipStatusUpdates = true
+		}
+		{{- end}}
+		if opts.DemoteFunc != nil {
+			rec.DemoteFunc = opts.DemoteFunc
 		}
 	}
 
@@ -375,7 +390,7 @@ func (r *reconcilerImpl) Reconcile(ctx {{.contextContext|raw}}, key string) erro
 	// If we are not the leader, and we don't implement either ReadOnly
 	// observer interfaces, then take a fast-path out.
 	if s.isNotLeaderNorObserver() {
-		return nil
+		return {{.controllerNewSkipKey|raw}}(key)
 	}
 
 	// If configStore is set, attach the frozen configuration to the context.
@@ -456,6 +471,7 @@ func (r *reconcilerImpl) Reconcile(ctx {{.contextContext|raw}}, key string) erro
 
 	}
 
+	{{if .hasStatus}}
 	// Synchronize the status.
 	switch {
 	case r.skipStatusUpdates:
@@ -478,6 +494,7 @@ func (r *reconcilerImpl) Reconcile(ctx {{.contextContext|raw}}, key string) erro
 			return err
 		}
 	}
+	{{end}}
 
 	// Report the reconciler event, if any.
 	if reconcileEvent != nil {
