@@ -26,10 +26,13 @@ import (
 )
 
 // TektonDashboardLister helps list TektonDashboards.
+// All objects returned here must be treated as read-only.
 type TektonDashboardLister interface {
 	// List lists all TektonDashboards in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TektonDashboard, err error)
 	// Get retrieves the TektonDashboard from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TektonDashboard, error)
 	TektonDashboardListerExpansion
 }

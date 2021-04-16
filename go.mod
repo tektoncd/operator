@@ -27,9 +27,9 @@ go 1.14
 
 // Pin k8s deps to 0.18.8
 replace (
-	k8s.io/api => k8s.io/api v0.18.8
+	k8s.io/api => k8s.io/api v0.19.7
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.8
-	k8s.io/apimachinery => k8s.io/apimachinery v0.18.8
-	k8s.io/client-go => k8s.io/client-go v0.18.8
-	k8s.io/code-generator => k8s.io/code-generator v0.18.8
+	k8s.io/apimachinery => k8s.io/apimachinery v0.19.7
+	k8s.io/client-go => k8s.io/client-go v0.19.7
+	k8s.io/code-generator => k8s.io/code-generator v0.19.7
 )

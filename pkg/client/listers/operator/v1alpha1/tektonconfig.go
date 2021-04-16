@@ -26,10 +26,13 @@ import (
 )
 
 // TektonConfigLister helps list TektonConfigs.
+// All objects returned here must be treated as read-only.
 type TektonConfigLister interface {
 	// List lists all TektonConfigs in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TektonConfig, err error)
 	// Get retrieves the TektonConfig from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TektonConfig, error)
 	TektonConfigListerExpansion
 }
