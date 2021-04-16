@@ -26,10 +26,13 @@ import (
 )
 
 // TektonPipelineLister helps list TektonPipelines.
+// All objects returned here must be treated as read-only.
 type TektonPipelineLister interface {
 	// List lists all TektonPipelines in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TektonPipeline, err error)
 	// Get retrieves the TektonPipeline from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TektonPipeline, error)
 	TektonPipelineListerExpansion
 }

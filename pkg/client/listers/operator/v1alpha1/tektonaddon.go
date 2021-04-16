@@ -26,10 +26,13 @@ import (
 )
 
 // TektonAddonLister helps list TektonAddons.
+// All objects returned here must be treated as read-only.
 type TektonAddonLister interface {
 	// List lists all TektonAddons in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.TektonAddon, err error)
 	// Get retrieves the TektonAddon from the index for a given name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.TektonAddon, error)
 	TektonAddonListerExpansion
 }
