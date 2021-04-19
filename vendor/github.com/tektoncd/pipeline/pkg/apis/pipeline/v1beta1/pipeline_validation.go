@@ -21,15 +21,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
 )
 
@@ -49,7 +46,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrGeneric("expected at least one, got none", "description", "params", "resources", "tasks", "workspaces"))
 	}
 	// PipelineTask must have a valid unique label and at least one of taskRef or taskSpec should be specified
-	errs = errs.Also(validatePipelineTasks(ctx, ps.Tasks, ps.Finally))
+	errs = errs.Also(ValidatePipelineTasks(ctx, ps.Tasks, ps.Finally))
 	// All declared resources should be used, and the Pipeline shouldn't try to use any resources
 	// that aren't declared
 	errs = errs.Also(validateDeclaredResources(ps.Resources, ps.Tasks, ps.Finally))
@@ -61,125 +58,26 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// The parameter variables should be valid
 	errs = errs.Also(validatePipelineParameterVariables(ps.Tasks, ps.Params).ViaField("tasks"))
 	errs = errs.Also(validatePipelineParameterVariables(ps.Finally, ps.Params).ViaField("finally"))
-	errs = errs.Also(validatePipelineContextVariables(ps.Tasks))
+	errs = errs.Also(validatePipelineContextVariables(ps.Tasks).ViaField("tasks"))
+	errs = errs.Also(validatePipelineContextVariables(ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateExecutionStatusVariables(ps.Tasks, ps.Finally))
 	// Validate the pipeline's workspaces.
 	errs = errs.Also(validatePipelineWorkspaces(ps.Workspaces, ps.Tasks, ps.Finally))
 	// Validate the pipeline's results
 	errs = errs.Also(validatePipelineResults(ps.Results))
 	errs = errs.Also(validateTasksAndFinallySection(ps))
-	errs = errs.Also(validateFinalTasks(ps.Finally))
-	errs = errs.Also(validateWhenExpressions(ps.Tasks))
+	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
+	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
 	return errs
 }
 
-// validatePipelineTasks ensures that pipeline tasks has unique label, pipeline tasks has specified one of
+// ValidatePipelineTasks ensures that pipeline tasks has unique label, pipeline tasks has specified one of
 // taskRef or taskSpec, and in case of a pipeline task with taskRef, it has a reference to a valid task (task name)
-func validatePipelineTasks(ctx context.Context, tasks []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
-	// Names cannot be duplicated
+func ValidatePipelineTasks(ctx context.Context, tasks []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
 	taskNames := sets.NewString()
 	var errs *apis.FieldError
-	for i, t := range tasks {
-		errs = errs.Also(validatePipelineTask(ctx, t, taskNames).ViaFieldIndex("tasks", i))
-	}
-	for i, t := range finalTasks {
-		errs = errs.Also(validatePipelineTask(ctx, t, taskNames).ViaFieldIndex("finally", i))
-	}
-	return errs
-}
-
-func validatePipelineTaskName(name string) *apis.FieldError {
-	if err := validation.IsDNS1123Label(name); len(err) > 0 {
-		return &apis.FieldError{
-			Message: fmt.Sprintf("invalid value %q", name),
-			Paths:   []string{"name"},
-			Details: "Pipeline Task name must be a valid DNS Label." +
-				"For more info refer to https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names",
-		}
-	}
-	return nil
-}
-
-func validatePipelineTask(ctx context.Context, t PipelineTask, taskNames sets.String) *apis.FieldError {
-	cfg := config.FromContextOrDefaults(ctx)
-	errs := validatePipelineTaskName(t.Name)
-
-	hasTaskRef := t.TaskRef != nil
-	hasTaskSpec := t.TaskSpec != nil
-	isCustomTask := cfg.FeatureFlags.EnableCustomTasks && hasTaskRef && t.TaskRef.APIVersion != ""
-
-	// can't have both taskRef and taskSpec at the same time
-	if hasTaskRef && hasTaskSpec {
-		errs = errs.Also(apis.ErrMultipleOneOf("taskRef", "taskSpec"))
-	}
-	// Check that one of TaskRef and TaskSpec is present
-	if !hasTaskRef && !hasTaskSpec {
-		errs = errs.Also(apis.ErrMissingOneOf("taskRef", "taskSpec"))
-	}
-	// Validate TaskSpec if it's present
-	if hasTaskSpec {
-		errs = errs.Also(t.TaskSpec.Validate(ctx).ViaField("taskSpec"))
-	}
-
-	// Check that PipelineTask names are unique.
-	if _, ok := taskNames[t.Name]; ok {
-		errs = errs.Also(apis.ErrMultipleOneOf("name"))
-	}
-	taskNames[t.Name] = struct{}{}
-
-	if hasTaskRef {
-		if t.TaskRef.Name != "" {
-			// TaskRef name must be a valid k8s name
-			if errSlice := validation.IsQualifiedName(t.TaskRef.Name); len(errSlice) != 0 {
-				errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
-			}
-		} else {
-			// Custom Task refs are allowed to have no name.
-			if !isCustomTask {
-				errs = errs.Also(apis.ErrInvalidValue("taskRef must specify name", "taskRef.name"))
-			}
-		}
-	}
-
-	if isCustomTask {
-		if t.TaskRef.Kind == "" {
-			errs = errs.Also(apis.ErrInvalidValue("custom task ref must specify kind", "taskRef.kind"))
-		}
-		// Conditions are deprecated so the effort to support them with custom tasks is not justified.
-		// When expressions should be used instead.
-		if len(t.Conditions) > 0 {
-			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support conditions - use when expressions instead", "conditions"))
-		}
-		// TODO(#3133): Support these features if possible.
-		if t.Retries > 0 {
-			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support retries", "retries"))
-		}
-		if t.Resources != nil {
-			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support PipelineResources", "resources"))
-		}
-		if t.Timeout != nil {
-			errs = errs.Also(apis.ErrInvalidValue("custom tasks do not support timeout", "timeout"))
-		}
-	}
-
-	// If EnableTektonOCIBundles feature flag is on validate it.
-	// Otherwise, fail if it is present (as it won't be allowed nor used)
-	if cfg.FeatureFlags.EnableTektonOCIBundles {
-		// Check that if a bundle is specified, that a TaskRef is specified as well.
-		if (t.TaskRef != nil && t.TaskRef.Bundle != "") && t.TaskRef.Name == "" {
-			errs = errs.Also(apis.ErrMissingField("taskref.name"))
-		}
-
-		// If a bundle url is specified, ensure it is parseable.
-		if t.TaskRef != nil && t.TaskRef.Bundle != "" {
-			if _, err := name.ParseReference(t.TaskRef.Bundle); err != nil {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("invalid bundle reference (%s)", err.Error()), "taskref.bundle"))
-			}
-		}
-	} else if t.TaskRef != nil && t.TaskRef.Bundle != "" {
-		errs = errs.Also(apis.ErrDisallowedFields("taskref.bundle"))
-	}
-
+	errs = errs.Also(PipelineTaskList(tasks).Validate(ctx, taskNames, "tasks"))
+	errs = errs.Also(PipelineTaskList(finalTasks).Validate(ctx, taskNames, "finally"))
 	return errs
 }
 
@@ -291,37 +189,79 @@ func validatePipelineContextVariables(tasks []PipelineTask) *apis.FieldError {
 	return errs.Also(validatePipelineContextVariablesInParamValues(paramValues, "context\\.pipeline", pipelineContextNames))
 }
 
-func validateExecutionStatusVariables(tasks []PipelineTask, finallyTasks []PipelineTask) (errs *apis.FieldError) {
-	// creating a list of pipelineTask names to validate tasks.<name>.status
-	pipelineRunTasksContextNames := sets.String{}
+func containsExecutionStatusRef(p string) bool {
+	if strings.HasPrefix(p, "tasks.") && strings.HasSuffix(p, ".status") {
+		return true
+	}
+	return false
+}
+
+// validate dag pipeline tasks, task params can not access execution status of any other task
+// dag tasks cannot have param value as $(tasks.pipelineTask.status)
+func validateExecutionStatusVariablesInTasks(tasks []PipelineTask) (errs *apis.FieldError) {
 	for idx, t := range tasks {
 		for _, param := range t.Params {
-			// validate dag pipeline tasks not accessing execution status of other pipeline task
+			// retrieve a list of substitution expression from a param
 			if ps, ok := GetVarSubstitutionExpressionsForParam(param); ok {
-				for _, p := range ps {
-					if strings.HasPrefix(p, "tasks.") && strings.HasSuffix(p, ".status") {
-						errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline tasks can not refer to execution status of any other pipeline task"),
-							"value").ViaFieldKey("params", param.Name).ViaFieldIndex("tasks", idx))
+				// validate tasks.pipelineTask.status if this expression is not a result reference
+				if !LooksLikeContainsResultRefs(ps) {
+					for _, p := range ps {
+						// check if it contains context variable accessing execution status - $(tasks.taskname.status)
+						if containsExecutionStatusRef(p) {
+							errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline tasks can not refer to execution status of any other pipeline task"),
+								"value").ViaFieldKey("params", param.Name).ViaFieldIndex("tasks", idx))
+						}
 					}
 				}
 			}
 		}
-		pipelineRunTasksContextNames.Insert(t.Name)
 	}
+	return errs
+}
 
-	// validate finally tasks accessing execution status of a dag task specified in the pipeline
-	var paramValues []string
-	for _, t := range finallyTasks {
+// validate finally tasks accessing execution status of a dag task specified in the pipeline
+// $(tasks.pipelineTask.status) is invalid if pipelineTask is not defined as a dag task
+func validateExecutionStatusVariablesInFinally(tasks []PipelineTask, finally []PipelineTask) (errs *apis.FieldError) {
+	// creating a list of pipelineTask names to validate tasks.<name>.status
+	ptNames := PipelineTaskList(tasks).Names()
+	for idx, t := range finally {
 		for _, param := range t.Params {
-			paramValues = append(paramValues, param.Value.StringVal)
-			paramValues = append(paramValues, param.Value.ArrayVal...)
+			if expressions, ok := GetVarSubstitutionExpressionsForParam(param); ok {
+				errs = errs.Also(validateExecutionStatusVariablesExpressions(expressions, ptNames, "value").ViaFieldKey(
+					"params", param.Name).ViaFieldIndex("finally", idx))
+			}
+		}
+		for i, we := range t.WhenExpressions {
+			if expressions, ok := we.GetVarSubstitutionExpressions(); ok {
+				errs = errs.Also(validateExecutionStatusVariablesExpressions(expressions, ptNames, "").ViaFieldIndex(
+					"when", i).ViaFieldIndex("finally", idx))
+			}
 		}
 	}
-	for _, paramValue := range paramValues {
-		if strings.HasPrefix(stripVarSubExpression(paramValue), "tasks.") && strings.HasSuffix(stripVarSubExpression(paramValue), ".status") {
-			errs = errs.Also(substitution.ValidateVariablePS(paramValue, "tasks", "status", pipelineRunTasksContextNames).ViaField("value"))
+	return errs
+}
+
+func validateExecutionStatusVariablesExpressions(expressions []string, ptNames sets.String, fieldPath string) (errs *apis.FieldError) {
+	// validate tasks.pipelineTask.status if this expression is not a result reference
+	if !LooksLikeContainsResultRefs(expressions) {
+		for _, expression := range expressions {
+			// check if it contains context variable accessing execution status - $(tasks.taskname.status)
+			if containsExecutionStatusRef(expression) {
+				// strip tasks. and .status from tasks.taskname.status to further verify task name
+				pt := strings.TrimSuffix(strings.TrimPrefix(expression, "tasks."), ".status")
+				// report an error if the task name does not exist in the list of dag tasks
+				if !ptNames.Has(pt) {
+					errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline task %s is not defined in the pipeline", pt), fieldPath))
+				}
+			}
 		}
 	}
+	return errs
+}
+
+func validateExecutionStatusVariables(tasks []PipelineTask, finallyTasks []PipelineTask) (errs *apis.FieldError) {
+	errs = errs.Also(validateExecutionStatusVariablesInTasks(tasks))
+	errs = errs.Also(validateExecutionStatusVariablesInFinally(tasks, finallyTasks))
 	return errs
 }
 
@@ -388,7 +328,7 @@ func validateTasksAndFinallySection(ps *PipelineSpec) *apis.FieldError {
 	return nil
 }
 
-func validateFinalTasks(finalTasks []PipelineTask) *apis.FieldError {
+func validateFinalTasks(tasks []PipelineTask, finalTasks []PipelineTask) *apis.FieldError {
 	for idx, f := range finalTasks {
 		if len(f.RunAfter) != 0 {
 			return apis.ErrInvalidValue(fmt.Sprintf("no runAfter allowed under spec.finally, final task %s has runAfter specified", f.Name), "").ViaFieldIndex("finally", idx)
@@ -396,12 +336,12 @@ func validateFinalTasks(finalTasks []PipelineTask) *apis.FieldError {
 		if len(f.Conditions) != 0 {
 			return apis.ErrInvalidValue(fmt.Sprintf("no conditions allowed under spec.finally, final task %s has conditions specified", f.Name), "").ViaFieldIndex("finally", idx)
 		}
-		if len(f.WhenExpressions) != 0 {
-			return apis.ErrInvalidValue(fmt.Sprintf("no when expressions allowed under spec.finally, final task %s has when expressions specified", f.Name), "").ViaFieldIndex("finally", idx)
-		}
 	}
 
-	if err := validateTaskResultReferenceNotUsed(finalTasks).ViaField("finally"); err != nil {
+	ts := PipelineTaskList(tasks).Names()
+	fts := PipelineTaskList(finalTasks).Names()
+
+	if err := validateTaskResultReference(finalTasks, ts, fts).ViaField("finally"); err != nil {
 		return err
 	}
 
@@ -412,14 +352,22 @@ func validateFinalTasks(finalTasks []PipelineTask) *apis.FieldError {
 	return nil
 }
 
-func validateTaskResultReferenceNotUsed(tasks []PipelineTask) *apis.FieldError {
-	for idx, t := range tasks {
+func validateTaskResultReference(finalTasks []PipelineTask, ts, fts sets.String) *apis.FieldError {
+	for idx, t := range finalTasks {
 		for _, p := range t.Params {
 			expressions, ok := GetVarSubstitutionExpressionsForParam(p)
 			if ok {
 				if LooksLikeContainsResultRefs(expressions) {
-					return apis.ErrInvalidValue(fmt.Sprintf("no task result allowed under params,"+
-						"final task param %s has set task result as its value", p.Name), "params").ViaIndex(idx)
+					resultRefs := NewResultRefs(expressions)
+					for _, resultRef := range resultRefs {
+						if fts.Has(resultRef.PipelineTask) {
+							return apis.ErrInvalidValue(fmt.Sprintf("invalid task result reference, "+
+								"final task param %s has task result reference from a final task", p.Name), "params").ViaIndex(idx)
+						} else if !ts.Has(resultRef.PipelineTask) {
+							return apis.ErrInvalidValue(fmt.Sprintf("invalid task result reference, "+
+								"final task param %s has task result reference from a task which is not defined in the pipeline", p.Name), "params").ViaIndex(idx)
+						}
+					}
 				}
 			}
 		}
@@ -443,10 +391,13 @@ func validateTasksInputFrom(tasks []PipelineTask) (errs *apis.FieldError) {
 	return errs
 }
 
-func validateWhenExpressions(tasks []PipelineTask) (errs *apis.FieldError) {
+func validateWhenExpressions(tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
 	for i, t := range tasks {
 		errs = errs.Also(validateOneOfWhenExpressionsOrConditions(t).ViaFieldIndex("tasks", i))
 		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("tasks", i))
+	}
+	for i, t := range finalTasks {
+		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("finally", i))
 	}
 	return errs
 }

@@ -18,6 +18,8 @@ package v1alpha1
 
 import (
 	"context"
+
+	"knative.dev/pkg/logging"
 )
 
 type triggerSpecBindingArray []*TriggerSpecBinding
@@ -28,7 +30,15 @@ func (t *Trigger) SetDefaults(ctx context.Context) {
 		return
 	}
 	triggerSpecBindingArray(t.Spec.Bindings).defaultBindings()
-	templateNameToRef(&t.Spec.Template)
+	for _, ti := range t.Spec.Interceptors {
+		ti.defaultInterceptorKind()
+		if err := ti.updateCoreInterceptors(); err != nil {
+			// The err only happens due to malformed JSON and should never really happen
+			// We can't return an error here, so print out the error
+			logger := logging.FromContext(ctx)
+			logger.Errorf("failed to setDefaults for trigger: %s; err: %s", t.Name, err)
+		}
+	}
 }
 
 // set default TriggerBinding kind for Bindings in TriggerSpec
@@ -39,14 +49,5 @@ func (t triggerSpecBindingArray) defaultBindings() {
 				b.Kind = NamespacedTriggerBindingKind
 			}
 		}
-	}
-}
-
-// To be Removed in a later release #911
-func templateNameToRef(template *TriggerSpecTemplate) {
-	name := template.DeprecatedName
-	if name != "" && template.Ref == nil {
-		template.Ref = &name
-		template.DeprecatedName = ""
 	}
 }

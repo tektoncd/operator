@@ -54,7 +54,7 @@ type InterceptorResponse struct {
 	// Extensions are additional fields that is added to the interceptor event.
 	Extensions map[string]interface{} `json:"extensions,omitempty"`
 	// Continue indicates if the EventListener should continue processing the Trigger or not
-	Continue bool `json:"continue"` //Don't add omitempty -- it  will remove the continue field when the value is false.
+	Continue bool `json:"continue"` // Don't add omitempty -- it  will remove the continue field when the value is false.
 	// Status is an Error status containing details on any interceptor processing errors
 	Status Status `json:"status"`
 }
