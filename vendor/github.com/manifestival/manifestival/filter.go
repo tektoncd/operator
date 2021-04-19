@@ -24,8 +24,8 @@ func (m Manifest) Filter(preds ...Predicate) Manifest {
 	result := m
 	result.resources = []unstructured.Unstructured{}
 	pred := All(preds...)
-	for _, spec := range m.Resources() {
-		if !pred(&spec) {
+	for _, spec := range m.resources {
+		if !pred(spec.DeepCopy()) {
 			continue
 		}
 		result.resources = append(result.resources, spec)

@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/manifestival/client-go-client.svg?branch=master)](https://travis-ci.org/manifestival/client-go-client)
+[![Build Status](https://github.com/manifestival/client-go-client/workflows/Build%20and%20Test/badge.svg)](https://github.com/manifestival/client-go-client/actions)
 
 # client-go-client
 
