@@ -66,5 +66,5 @@ func feedConfigMock(config *op.TektonConfig) client.Client {
 	s.AddKnownTypes(op.SchemeGroupVersion, config)
 
 	// Create a fake client to mock API calls.
-	return fake.NewFakeClientWithScheme(s, objs...)
+	return fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 }

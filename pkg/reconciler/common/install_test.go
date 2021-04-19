@@ -19,6 +19,7 @@ package common
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -36,6 +37,11 @@ func TestInstall(t *testing.T) {
 
 	// Resources in the manifest
 	targetNamespace := "tekton-pipelines"
+	wantdeployment := namespacedResource("apps/v1", "Deployment", "test", "test-deployment")
+	wantrole := namespacedResource("rbac.authorization.k8s.io/v1", "Role", "test", "test-role")
+	wantroleBinding := namespacedResource("rbac.authorization.k8s.io/v1", "RoleBinding", "test", "test-role-binding")
+	wantclusterRole := clusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRole", "test-cluster-role")
+	wantclusterRoleBinding := clusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", "test-cluster-role-binding")
 	deployment := namespacedResource("apps/v1", "Deployment", "test", "test-deployment")
 	role := namespacedResource("rbac.authorization.k8s.io/v1", "Role", "test", "test-role")
 	roleBinding := namespacedResource("rbac.authorization.k8s.io/v1", "RoleBinding", "test", "test-role-binding")
@@ -47,7 +53,7 @@ func TestInstall(t *testing.T) {
 	// Deliberately mixing the order in the manifest.
 	in := []unstructured.Unstructured{deployment, role, roleBinding, clusterRole, clusterRoleBinding}
 	// Expect things to be applied in order.
-	want := []unstructured.Unstructured{role, clusterRole, roleBinding, clusterRoleBinding, deployment}
+	want := []unstructured.Unstructured{wantrole, wantclusterRole, wantroleBinding, wantclusterRoleBinding, wantdeployment}
 
 	client := &fakeClient{}
 	manifest, err := mf.ManifestFrom(mf.Slice(in), mf.UseClient(client))
@@ -67,7 +73,7 @@ func TestInstall(t *testing.T) {
 	}
 
 	if !cmp.Equal(client.creates, want) {
-		t.Fatalf("Unexpected creates: %s", cmp.Diff(client.creates, want))
+		t.Fatalf("Unexpected creates: %s", fmt.Sprintf("(-got, +want): %s", cmp.Diff(client.creates, want)))
 	}
 
 	condition := instance.Status.GetCondition(v1alpha1.InstallSucceeded)
