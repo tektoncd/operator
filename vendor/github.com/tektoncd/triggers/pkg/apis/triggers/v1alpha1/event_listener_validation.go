@@ -17,13 +17,16 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
+	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
 var (
@@ -35,25 +38,77 @@ var (
 
 // Validate EventListener.
 func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
-	return e.Spec.validate(ctx)
+	errs := e.validate(ctx)
+	errs = errs.Also(e.Spec.validate(ctx))
+	return errs
 }
 
-func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError) {
-	if s.Replicas != nil {
-		if *s.Replicas < 0 {
-			errs = errs.Also(apis.ErrInvalidValue(*s.Replicas, "spec.replicas"))
-		}
-	}
-	for i, trigger := range s.Triggers {
-		errs = errs.Also(trigger.validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", i)))
-	}
-	if s.Resources.KubernetesResource != nil {
-		errs = errs.Also(validateKubernetesObject(s.Resources.KubernetesResource).ViaField("spec.resources.kubernetesResource"))
+func (e *EventListener) validate(ctx context.Context) (errs *apis.FieldError) {
+	if len(e.ObjectMeta.Name) > 60 {
+		// Since `el-` is added as the prefix of EventListener services, the name of EventListener must be no more than 60 characters long.
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("eventListener name '%s' must be no more than 60 characters long", e.ObjectMeta.Name), "metadata.name"))
 	}
 	return errs
 }
 
+func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError) {
+	for i, trigger := range s.Triggers {
+		errs = errs.Also(trigger.validate(ctx).ViaField(fmt.Sprintf("spec.triggers[%d]", i)))
+	}
+
+	// To be removed in a later release #1020
+	if s.DeprecatedReplicas != nil {
+		if *s.DeprecatedReplicas < 0 {
+			errs = errs.Also(apis.ErrInvalidValue(*s.DeprecatedReplicas, "spec.replicas"))
+		}
+	}
+
+	// Both Kubernetes and Custom resource can't be present at the same time
+	if s.Resources.KubernetesResource != nil && s.Resources.CustomResource != nil {
+		return apis.ErrMultipleOneOf("spec.resources.kubernetesResource", "spec.resources.customResource")
+	}
+
+	if s.Resources.KubernetesResource != nil {
+		errs = errs.Also(validateKubernetesObject(s.Resources.KubernetesResource).ViaField("spec.resources.kubernetesResource"))
+	}
+
+	if s.Resources.CustomResource != nil {
+		errs = errs.Also(validateCustomObject(s.Resources.CustomResource).ViaField("spec.resources.customResource"))
+	}
+	return errs
+}
+
+func validateCustomObject(customData *CustomResource) (errs *apis.FieldError) {
+	orig := duckv1.WithPod{}
+	decoder := json.NewDecoder(bytes.NewBuffer(customData.RawExtension.Raw))
+
+	if err := decoder.Decode(&orig); err != nil {
+		errs = errs.Also(apis.ErrInvalidValue(err, "spec"))
+	}
+
+	if len(orig.Spec.Template.Spec.Containers) > 1 {
+		errs = errs.Also(apis.ErrMultipleOneOf("containers").ViaField("spec.template.spec"))
+	}
+	errs = errs.Also(apis.CheckDisallowedFields(orig.Spec.Template.Spec,
+		*podSpecMask(&orig.Spec.Template.Spec)).ViaField("spec.template.spec"))
+
+	// bounded by condition because containers fields are optional so there is a chance that containers can be nil.
+	if len(orig.Spec.Template.Spec.Containers) == 1 {
+		errs = errs.Also(apis.CheckDisallowedFields(orig.Spec.Template.Spec.Containers[0],
+			*containerFieldMask(&orig.Spec.Template.Spec.Containers[0])).ViaField("spec.template.spec.containers[0]"))
+		// validate env
+		errs = errs.Also(validateEnv(orig.Spec.Template.Spec.Containers[0].Env).ViaField("spec.template.spec.containers[0].env"))
+	}
+
+	return errs
+}
+
 func validateKubernetesObject(orig *KubernetesResource) (errs *apis.FieldError) {
+	if orig.Replicas != nil {
+		if *orig.Replicas < 0 {
+			errs = errs.Also(apis.ErrInvalidValue(*orig.Replicas, "spec.replicas"))
+		}
+	}
 	if len(orig.Template.Spec.Containers) > 1 {
 		errs = errs.Also(apis.ErrMultipleOneOf("containers").ViaField("spec.template.spec"))
 	}
@@ -158,7 +213,6 @@ func containerFieldMask(in *corev1.Container) *corev1.Container {
 	out.VolumeMounts = nil
 	out.ImagePullPolicy = ""
 	out.Lifecycle = nil
-	out.SecurityContext = nil
 	out.Stdin = false
 	out.StdinOnce = false
 	out.TerminationMessagePath = ""
@@ -185,7 +239,6 @@ func podSpecMask(in *corev1.PodSpec) *corev1.PodSpec {
 	// Disallowed fields
 	// This list clarifies which all podspec fields are not allowed.
 	out.Volumes = nil
-	out.ImagePullSecrets = nil
 	out.EnableServiceLinks = nil
 	out.ImagePullSecrets = nil
 	out.InitContainers = nil

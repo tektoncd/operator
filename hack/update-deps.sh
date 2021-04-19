@@ -23,11 +23,20 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 cd ${REPO_ROOT_DIR}
 
 VERSION="release-0.22"
+K8S_VERSION="v0.19.7"
+TRIGGERS_VERSION="v0.13.0"
+PIPELINE_VERSION="v0.23.0"
 
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.
 FLOATING_DEPS=(
   "knative.dev/pkg@${VERSION}"
+  "k8s.io/api@${K8S_VERSION}"
+  "k8s.io/apimachinery@${K8S_VERSION}"
+  "k8s.io/client-go@${K8S_VERSION}"
+  "k8s.io/code-generator@${K8S_VERSION}"
+  "github.com/tektoncd/pipeline@${PIPELINE_VERSION}"
+  "github.com/tektoncd/triggers@${TRIGGERS_VERSION}"
 )
 
 # Parse flags to determine any we should pass to dep.

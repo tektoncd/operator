@@ -22,10 +22,12 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	duckv1alpha1 "knative.dev/pkg/apis/duck/v1alpha1"
+	"knative.dev/pkg/apis/duck/v1beta1"
 )
 
 // Check that EventListener may be validated and defaulted.
@@ -55,20 +57,28 @@ type EventListener struct {
 type EventListenerSpec struct {
 	ServiceAccountName string                 `json:"serviceAccountName"`
 	Triggers           []EventListenerTrigger `json:"triggers"`
+	// To be removed in a later release #1020
+	DeprecatedReplicas *int32 `json:"replicas,omitempty"`
 	// To be removed in a later release #904
 	DeprecatedServiceType corev1.ServiceType `json:"serviceType,omitempty"`
-	Replicas              *int32             `json:"replicas,omitempty"`
 	// To be removed in a later release #904
-	DeprecatedPodTemplate PodTemplate       `json:"podTemplate,omitempty"`
-	NamespaceSelector     NamespaceSelector `json:"namespaceSelector,omitempty"`
-	Resources             Resources         `json:"resources,omitempty"`
+	DeprecatedPodTemplate PodTemplate           `json:"podTemplate,omitempty"`
+	NamespaceSelector     NamespaceSelector     `json:"namespaceSelector,omitempty"`
+	LabelSelector         *metav1.LabelSelector `json:"labelSelector,omitempty"`
+	Resources             Resources             `json:"resources,omitempty"`
 }
 
 type Resources struct {
 	KubernetesResource *KubernetesResource `json:"kubernetesResource,omitempty"`
+	CustomResource     *CustomResource     `json:"customResource,omitempty"`
+}
+
+type CustomResource struct {
+	runtime.RawExtension `json:",inline"`
 }
 
 type KubernetesResource struct {
+	Replicas           *int32             `json:"replicas,omitempty"`
 	ServiceType        corev1.ServiceType `json:"serviceType,omitempty"`
 	duckv1.WithPodSpec `json:"spec,omitempty"`
 }
@@ -217,6 +227,17 @@ func (els *EventListenerStatus) SetDeploymentConditions(deploymentConditions []a
 	for _, cond := range deploymentConditions {
 		els.SetCondition(&apis.Condition{
 			Type:    apis.ConditionType(cond.Type),
+			Status:  cond.Status,
+			Reason:  cond.Reason,
+			Message: cond.Message,
+		})
+	}
+}
+
+func (els *EventListenerStatus) SetConditionsForDynamicObjects(conditions v1beta1.Conditions) {
+	for _, cond := range conditions {
+		els.SetCondition(&apis.Condition{
+			Type:    cond.Type,
 			Status:  cond.Status,
 			Reason:  cond.Reason,
 			Message: cond.Message,

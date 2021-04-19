@@ -55,16 +55,6 @@ func (t TriggerSpecTemplate) validate(ctx context.Context) (errs *apis.FieldErro
 		}
 	}
 
-	// Validate only one of Name or Ref is set.
-	if t.DeprecatedName != "" && t.Ref != nil {
-		errs = errs.Also(apis.ErrMultipleOneOf("template.name", "template.ref"))
-	}
-
-	// Set Ref to Name
-	if t.DeprecatedName != "" {
-		t.Ref = &t.DeprecatedName
-	}
-
 	switch {
 	case t.Spec != nil && t.Ref != nil:
 		errs = errs.Also(apis.ErrMultipleOneOf("template.spec", "template.ref"))
@@ -100,8 +90,10 @@ func (t triggerSpecBindingArray) validate(ctx context.Context) (errs *apis.Field
 }
 
 func (i *TriggerInterceptor) validate(ctx context.Context) (errs *apis.FieldError) {
-	if i.Webhook == nil && i.GitHub == nil && i.GitLab == nil && i.CEL == nil && i.Bitbucket == nil {
-		errs = errs.Also(apis.ErrMissingField("interceptor"))
+	if i.Webhook == nil && i.DeprecatedGitHub == nil && i.DeprecatedGitLab == nil && i.DeprecatedCEL == nil && i.DeprecatedBitbucket == nil {
+		if i.Ref.Name == "" { // Check to see if Interceptor referenced using Ref
+			errs = errs.Also(apis.ErrMissingField("interceptor"))
+		}
 	}
 
 	// Enforce oneof
@@ -109,13 +101,13 @@ func (i *TriggerInterceptor) validate(ctx context.Context) (errs *apis.FieldErro
 	if i.Webhook != nil {
 		numSet++
 	}
-	if i.GitHub != nil {
+	if i.DeprecatedGitHub != nil {
 		numSet++
 	}
-	if i.GitLab != nil {
+	if i.DeprecatedGitLab != nil {
 		numSet++
 	}
-	if i.Bitbucket != nil {
+	if i.DeprecatedBitbucket != nil {
 		numSet++
 	}
 
@@ -153,32 +145,22 @@ func (i *TriggerInterceptor) validate(ctx context.Context) (errs *apis.FieldErro
 		}
 	}
 
-	// No github validation required yet.
-	// if i.GitHub != nil {
-	//
-	// }
-
-	// No gitlab validation required yet.
-	// if i.GitLab != nil {
-	//
-	// }
-
-	if i.CEL != nil {
-		if i.CEL.Filter == "" && len(i.CEL.Overlays) == 0 {
+	if i.DeprecatedCEL != nil {
+		if i.DeprecatedCEL.Filter == "" && len(i.DeprecatedCEL.Overlays) == 0 {
 			errs = errs.Also(apis.ErrMultipleOneOf("cel.filter", "cel.overlays"))
 		}
 		env, err := cel.NewEnv()
 		if err != nil {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("failed to create a CEL env: %s", err), "cel.filter"))
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("failed to create a DeprecatedCEL env: %s", err), "cel.filter"))
 		}
-		if i.CEL.Filter != "" {
-			if _, issues := env.Parse(i.CEL.Filter); issues != nil && issues.Err() != nil {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("failed to parse the CEL filter: %s", issues.Err()), "cel.filter"))
+		if i.DeprecatedCEL.Filter != "" {
+			if _, issues := env.Parse(i.DeprecatedCEL.Filter); issues != nil && issues.Err() != nil {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("failed to parse the DeprecatedCEL filter: %s", issues.Err()), "cel.filter"))
 			}
 		}
-		for _, v := range i.CEL.Overlays {
+		for _, v := range i.DeprecatedCEL.Overlays {
 			if _, issues := env.Parse(v.Expression); issues != nil && issues.Err() != nil {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("failed to parse the CEL overlay: %s", issues.Err()), "cel.overlay"))
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("failed to parse the DeprecatedCEL overlay: %s", issues.Err()), "cel.overlay"))
 			}
 		}
 	}
