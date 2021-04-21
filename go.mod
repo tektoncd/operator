@@ -8,7 +8,7 @@ require (
 	github.com/manifestival/manifestival v0.7.0
 	github.com/markbates/inflect v1.0.4
 	github.com/tektoncd/pipeline v0.23.0 // indirect
-	github.com/tektoncd/plumbing v0.0.0-20201021153918-6b7e894737b5
+	github.com/tektoncd/plumbing v0.0.0-20210420200944-17170d5e7bc9
 	github.com/tektoncd/triggers v0.13.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/mod v0.4.1
