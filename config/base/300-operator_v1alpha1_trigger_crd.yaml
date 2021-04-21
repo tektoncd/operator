@@ -101,7 +101,7 @@ spec:
                 description: The version of the installed release
                 type: string
               manifests:
-                description: The list of serving manifests, which have been installed by the operator
+                description: The list of trigger manifests, which have been installed by the operator
                 type: array
                 items:
                   type: string
