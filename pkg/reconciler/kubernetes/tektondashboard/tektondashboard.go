@@ -33,7 +33,7 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
-// Reconciler implements controller.Reconciler for Knativeserving resources.
+// Reconciler implements controller.Reconciler for TektonDashboard resources.
 type Reconciler struct {
 	// kubeClientSet allows us to talk to the k8s for core APIs
 	kubeClientSet kubernetes.Interface
