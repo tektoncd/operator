@@ -32,11 +32,11 @@ Tekton Operator defines the following entities:
   </tr>
   <tr>
     <td><code>TektonPipeline</code></td>
-    <td>Configure the [Tekton Pipeline](https://github.com/tektoncd/dashboard) component to be installed and managed.</td>
+    <td>Configure the [Tekton Pipeline](https://github.com/tektoncd/pipeline) component to be installed and managed.</td>
   </tr>
   <tr>
     <td><code>TektonTrigger</code></td>
-    <td>Configure the [Tekton Trigger](https://github.com/tektoncd/dashboard) component to be installed and managed.</td>
+    <td>Configure the [Tekton Trigger](https://github.com/tektoncd/triggers) component to be installed and managed.</td>
   </tr>
   <tr>
     <td><code>TektonDashboard</code></td>
@@ -60,7 +60,7 @@ See the following topics to learn how to use Tekton Pipelines in your project:
 
 ## Contributing to Tekton Operator
 
-If you'd like to contribute to the Tekton Pipelines project, see the [Tekton Pipeline Contributor's Guide](https://github.com/tektoncd/operator/blob/main/CONTRIBUTING.md).
+If you'd like to contribute to the Tekton Operator project, see the [Tekton Operator Contributor's Guide](https://github.com/tektoncd/operator/blob/main/CONTRIBUTING.md).
 
 ---
 
