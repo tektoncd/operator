@@ -53,26 +53,28 @@ spec:
       success: You just located the associated Pipeline! Next, we'll start and explore
         your Pipeline.
       failed: Check your work to locate the associated pipeline.
-  - title: Starting your pipeline
+  - title: Exploring your pipeline run
     description: |-
-      ### You’ve just explored the topology of your application and seen it’s related resources.  Now let’s start your pipeline.
+      ### You’ve just explored the topology of your application and seen it’s related resources.  Now let’s explore your pipeline run.
       Notice the Pipeline Runs section of the Side Panel
-      1. The first row shows the Pipeline associated with the application and an action button to **Start Last Run**.
-      2. Click on the Pipeline link, which should bring you to the **Pipeline Details** page.
-      3. From the Action menu, click on **Start** to start your Pipeline.
+      1. The first row shows the Pipeline associated with the application.
+      2. The second row shows the recently created Pipeline Run, its status and a link to view its logs.
+      3. Click on the Pipeline Run link to view the **Pipeline Runs details** page.
     review:
       instructions: |-
-        #### Momentarily, you should be brought to the **Pipeline Run Details** page. To verify that your pipeline has started,
-        1. Note that the **Pipeline Runs Details** section shows a visualization of the pipeline run status and the tasks in the pipeline.
+        #### Momentarily, you should be brought to the **Pipeline Run details** page.
+        1. Note that the **Pipeline Runs details** section shows a visualization of the pipeline run status and the tasks in the pipeline.
         2. Hovering over a task shows a tooltip with the details of the associated steps.
-        3. Click on the **Logs** tab to watch the progress of your pipeline run.
-        4. When the pipeline run is complete, you will see a **Succeeded** badge on the page title.
+        3. Click on the **Task Runs** tab to view all the task runs associated with the pipeline run.
+        4. Click on the **Logs** tab to watch the progress of your pipeline run.
+        5. Click on the **Events** tab to watch the event streams of your pipeline run.
+        6. When the Pipeline Run is complete, the **Running** badge on the page title will change to **Succeeded**.
 
         Is the status Succeeded?
       failedTaskHelp: This task isn’t verified yet. Try the task again.
     summary:
-      success: You have run your pipeline successfully
+      success: You have explored your pipeline successfully
       failed: This task is not verified yet. Try the task again,
   conclusion: You just created an application and associated a pipeline with it, and
-    successfully started the pipeline.
+    successfully explored the pipeline.
   nextQuickStart: ['']
