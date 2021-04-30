@@ -145,7 +145,7 @@ spec:
           subpath: bucket
       params:
         - name: location
-          value: $(params.releaseBucket)/previous/$(params.versionTag)
+          value: $(params.releaseBucket)/previous/v$(params.versionTag)
         - name: path
           value: $(params.versionTag)
         - name: serviceAccountPath
