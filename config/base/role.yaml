@@ -233,3 +233,18 @@ rules:
   - poddisruptionbudgets
   verbs:
   - '*'
+- apiGroups:
+  - serving.knative.dev
+  resources:
+  - "*"
+  - "*/status"
+  - "*/finalizers"
+  verbs:
+  - "get"
+  - "list"
+  - "create"
+  - "update"
+  - "delete"
+  - "deletecollection"
+  - "patch"
+  - "watch"
