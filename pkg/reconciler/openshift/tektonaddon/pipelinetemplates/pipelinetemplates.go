@@ -141,11 +141,11 @@ func kubernetesDeployTask(deployTask map[string]interface{}) map[string]interfac
 }
 
 func knativeDeployTask(deployTask map[string]interface{}) map[string]interface{} {
-	deployTask["name"] = "kn-service-create"
+	deployTask["name"] = "kn-service-apply"
 	deployTask["taskRef"] = map[string]interface{}{"name": "kn", "kind": "ClusterTask"}
 	deployTask["runAfter"] = []interface{}{"build"}
 	deployTask["params"] = []interface{}{
-		map[string]interface{}{"name": "ARGS", "value": []interface{}{"service", "create", "$(params.APP_NAME)", "--image=$(params.IMAGE_NAME)", "--force"}},
+		map[string]interface{}{"name": "ARGS", "value": []interface{}{"service", "apply", "$(params.APP_NAME)", "--image=$(params.IMAGE_NAME)"}},
 	}
 	return deployTask
 }
