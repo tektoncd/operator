@@ -18,6 +18,7 @@ package tektonconfig
 
 import (
 	"context"
+	"os"
 
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
@@ -78,6 +79,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
+
+		if os.Getenv("AUTOINSTALL_COMPONENTS") == "true" {
+			// try to ensure that there is an instance of tektonConfig
+			newTektonConfig(operatorclient.Get(ctx), kubeclient.Get(ctx), manifest).ensureInstance(ctx)
+		}
 
 		return impl
 	}

@@ -20,6 +20,7 @@ package utils
 
 import (
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -30,10 +31,11 @@ import (
 
 // Clients holds instances of interfaces for making requests to Tekton Pipelines.
 type Clients struct {
-	KubeClient *test.KubeClient
-	Dynamic    dynamic.Interface
-	Operator   operatorv1alpha1.OperatorV1alpha1Interface
-	Config     *rest.Config
+	KubeClient    *test.KubeClient
+	Dynamic       dynamic.Interface
+	Operator      operatorv1alpha1.OperatorV1alpha1Interface
+	Config        *rest.Config
+	KubeClientSet *kubernetes.Clientset
 }
 
 // NewClients instantiates and returns several clientsets required for making request to the
@@ -60,6 +62,11 @@ func NewClients(configPath string, clusterName string) (*Clients, error) {
 	}
 
 	clients.Operator, err = newTektonOperatorAlphaClients(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	clients.KubeClientSet, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}

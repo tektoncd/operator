@@ -33,6 +33,7 @@ func TestTektonConfigDeployment(t *testing.T) {
 
 	crNames := utils.ResourceNames{
 		TektonConfig:    common.ConfigResourceName,
+		Namespace:       "tekton-operator",
 		TargetNamespace: "tekton-pipelines",
 	}
 
@@ -41,7 +42,7 @@ func TestTektonConfigDeployment(t *testing.T) {
 
 	// Create a TektonConfig
 	t.Run("create-config", func(t *testing.T) {
-		if _, err := resources.EnsureTektonConfigExists(clients.TektonConfig(), crNames); err != nil {
+		if _, err := resources.EnsureTektonConfigExists(clients.KubeClientSet, clients.TektonConfig(), crNames); err != nil {
 			t.Fatalf("TektonConfig %q failed to create: %v", crNames.TektonConfig, err)
 		}
 	})

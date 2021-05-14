@@ -21,6 +21,7 @@ resources:
 - 300-operator_v1alpha1_addon_crd.yaml
 - 300-operator_v1alpha1_config_crd.yaml
 - config-logging.yaml
+- tekton-config-defaults.yaml
 - role.yaml
 - role_binding.yaml
 - service_account.yaml
