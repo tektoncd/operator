@@ -31,6 +31,7 @@ import (
 
 	"github.com/tektoncd/operator/test/utils"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	configv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
@@ -39,12 +40,23 @@ import (
 )
 
 // EnsureTektonConfigExists creates a TektonConfig with the name names.TektonConfig, if it does not exist.
-func EnsureTektonConfigExists(clients configv1alpha1.TektonConfigInterface, names utils.ResourceNames) (*v1alpha1.TektonConfig, error) {
+func EnsureTektonConfigExists(kubeClientSet *kubernetes.Clientset, clients configv1alpha1.TektonConfigInterface, names utils.ResourceNames) (*v1alpha1.TektonConfig, error) {
 	// If this function is called by the upgrade tests, we only create the custom resource, if it does not exist.
-	tcCR, err := clients.Get(context.TODO(), names.TektonConfig, metav1.GetOptions{})
-	if err == nil {
-		return tcCR, err
+
+	cm, err := kubeClientSet.CoreV1().ConfigMaps(names.Namespace).Get(context.TODO(), "tekton-config-defaults", metav1.GetOptions{})
+	if err != nil {
+		return nil, err
 	}
+
+	tcCR, err := clients.Get(context.TODO(), names.TektonConfig, metav1.GetOptions{})
+
+	if cm.Data["AUTOINSTALL_COMPONENTS"] == "true" {
+		if err != nil {
+			return nil, err
+		}
+		return tcCR, nil
+	}
+
 	if apierrs.IsNotFound(err) {
 		tcCR = &v1alpha1.TektonConfig{
 			ObjectMeta: metav1.ObjectMeta{

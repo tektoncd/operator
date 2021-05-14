@@ -20,3 +20,9 @@ patches:
   target:
     kind: Deployment
     name: tekton-operator
+
+configMapGenerator:
+- name: tekton-config-defaults
+  literals:
+  - DEFAULT_TARGET_NAMESPACE=tekton-pipelines
+  behavior: merge

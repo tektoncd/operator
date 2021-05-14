@@ -1,4 +1,4 @@
-# Copyright 2020 The Tekton Authors
+# Copyright 2021 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,26 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-namespace: openshift-operators
 
-bases:
-- ../base/
-patches:
-- path: operator.yaml
-  target:
-    kind: Deployment
-    name: tekton-operator
-- path: role.yaml
-  target:
-    kind: ClusterRole
-    name: tekton-operator
-- path: role_binding.yaml
-  target:
-    kind: ClusterRoleBinding
-    name: tekton-operator
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tekton-config-defaults
+  labels:
+    operator.tekton.dev/release: devel
 
-configMapGenerator:
-- name: tekton-config-defaults
-  literals:
-  - DEFAULT_TARGET_NAMESPACE=openshift-pipelines
-  behavior: merge
+data:
+  AUTOINSTALL_COMPONENTS: "true"
+  DEFAULT_TARGET_NAMESPACE: ""

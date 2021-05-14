@@ -46,3 +46,13 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "tekton-operator"
+            - name: AUTOINSTALL_COMPONENTS
+              valueFrom:
+                configMapKeyRef:
+                  name: tekton-config-defaults
+                  key: AUTOINSTALL_COMPONENTS
+            - name: DEFAULT_TARGET_NAMESPACE
+              valueFrom:
+                configMapKeyRef:
+                  name: tekton-config-defaults
+                  key: DEFAULT_TARGET_NAMESPACE
