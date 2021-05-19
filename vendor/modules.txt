@@ -252,7 +252,7 @@ github.com/tektoncd/pipeline/pkg/contexts
 github.com/tektoncd/pipeline/pkg/list
 github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag
 github.com/tektoncd/pipeline/pkg/substitution
-# github.com/tektoncd/plumbing v0.0.0-20210420200944-17170d5e7bc9
+# github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
 ## explicit
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
