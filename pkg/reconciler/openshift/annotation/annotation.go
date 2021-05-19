@@ -284,8 +284,9 @@ func roundTripPatch(bytes []byte, unmarshalled interface{}) (duck.JSONPatch, err
 func setDefaults(ctx context.Context, patches duck.JSONPatch, el v1alpha1.EventListener) (duck.JSONPatch, error) {
 	before, after := el.DeepCopyObject(), el
 
+	secretName := "el-" + el.Name
 	after.Annotations = map[string]string{
-		"service.beta.openshift.io/serving-cert-secret-name": "tls-secret-key",
+		"service.beta.openshift.io/serving-cert-secret-name": secretName,
 	}
 	if after.Spec.Resources.KubernetesResource == nil {
 		after.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{}
@@ -293,7 +294,7 @@ func setDefaults(ctx context.Context, patches duck.JSONPatch, el v1alpha1.EventL
 			WithPodSpec: duckv1.WithPodSpec{
 				Template: duckv1.PodSpecable{
 					Spec: corev1.PodSpec{
-						Containers: getContainers(),
+						Containers: getContainers(secretName),
 					},
 				},
 			},
@@ -302,17 +303,17 @@ func setDefaults(ctx context.Context, patches duck.JSONPatch, el v1alpha1.EventL
 	envNames := map[string]string{}
 	if after.Spec.Resources.KubernetesResource != nil {
 		if len(after.Spec.Resources.KubernetesResource.Template.Spec.Containers) == 0 {
-			after.Spec.Resources.KubernetesResource.Template.Spec.Containers = getContainers()
+			after.Spec.Resources.KubernetesResource.Template.Spec.Containers = getContainers(secretName)
 		} else {
 			for i := range after.Spec.Resources.KubernetesResource.Template.Spec.Containers {
 				if len(after.Spec.Resources.KubernetesResource.Template.Spec.Containers[i].Env) == 0 {
-					after.Spec.Resources.KubernetesResource.Template.Spec.Containers[i].Env = getEnv()
+					after.Spec.Resources.KubernetesResource.Template.Spec.Containers[i].Env = getEnv(secretName)
 				} else {
 					for _, v := range after.Spec.Resources.KubernetesResource.Template.Spec.Containers[i].Env {
 						envNames[v.Name] = v.Name
 					}
 					if envNames["TLS_CERT"] != "TLS_CERT" && envNames["TLS_KEY"] != "TLS_KEY" {
-						after.Spec.Resources.KubernetesResource.Template.Spec.Containers[i].Env = getEnv()
+						after.Spec.Resources.KubernetesResource.Template.Spec.Containers[i].Env = getEnv(secretName)
 					}
 				}
 			}
@@ -327,19 +328,19 @@ func setDefaults(ctx context.Context, patches duck.JSONPatch, el v1alpha1.EventL
 	return append(patches, patch...), nil
 }
 
-func getContainers() []corev1.Container {
+func getContainers(secretName string) []corev1.Container {
 	return []corev1.Container{{
-		Env: getEnv(),
+		Env: getEnv(secretName),
 	}}
 }
 
-func getEnv() []corev1.EnvVar {
+func getEnv(secretName string) []corev1.EnvVar {
 	return []corev1.EnvVar{{
 		Name: "TLS_CERT",
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: "tls-secret-key",
+					Name: secretName,
 				},
 				Key: "tls.crt",
 			},
@@ -349,7 +350,7 @@ func getEnv() []corev1.EnvVar {
 		ValueFrom: &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
-					Name: "tls-secret-key",
+					Name: secretName,
 				},
 				Key: "tls.key",
 			},
