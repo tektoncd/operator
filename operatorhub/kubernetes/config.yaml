@@ -1,0 +1,32 @@
+platform: "kubernetes"
+strategy:
+  #type: release-manifest # use an already existing release.yaml as the main input for bundle generation
+  type: local # use kustomize build to generate all operator resources
+
+operator-release-version: 0.24.1-1
+previous-operator-release-version: 0.24.1-1
+channels: "alpha,stable"
+default-channel: "stable"
+operator-packagename: "tektoncd-operator"
+
+image-substitutions:
+#- image: "ko://github.com/tektoncd/operator/cmd/kubernetes/operator" # <image-name>:<tag> or <image>@<sha>
+#  replaceLocations:
+#  - deploymentName: "" # name of deployment where this image has to be substituted
+#    containerName: ""  # name of container within the deployment where this image has to be substituted
+#    replaceAsEnvVars: []   # is this image be set as one or more ENV.
+                        #(if this list is empty, the image will be replaced on the container's image)
+- image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator:devel
+  replaceLocations:
+  - deploymentName: tekton-operator
+    containerName: tekton-operator
+- image: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook:devel
+  replaceLocations:
+  - deploymentName: tekton-operator
+    containerName: tekton-operator
+    replaceAsEnvVars:
+    - IMAGE_PIPELINES_PROXY
+
+defaultRelatedImages: []
+#- image: "" ##<imagename>:<tag> or <imagename>@<sha>
+#  name: "" # ENV key name value

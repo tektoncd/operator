@@ -46,7 +46,7 @@ $(BIN)/golangci-lint: | $(BIN) ; $(info $(M) getting golangci-lint $(GOLANGCI_VE
 
 .PHONY: clean-cluster
 clean-cluster: | $(KO) $(KUSTOMIZE) clean-cr; $(info $(M) clean $(TARGET)…) @ ## Cleanup cluster
-	-$(KUSTOMIZE) build config/$(TARGET) | $(KO) delete -f -
+	-$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET) | $(KO) delete -f -
 	-kubectl delete ns tekton-pipelines --ignore-not-found
 	-kubectl delete \
 		-f $(KO_DATA_PATH)/ \
@@ -87,7 +87,7 @@ get-releases: |
 
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
-	$Q $(KUSTOMIZE) build config/$(TARGET) | $(KO) apply $(PLATFORM) -f -
+	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET) | $(KO) apply $(PLATFORM) -f -
 
 .PHONY: apply-cr
 apply-cr: | ; $(info $(M) apply CRs on $(TARGET)) @ ## Apply the CRs to the current cluster
@@ -99,7 +99,7 @@ clean-cr: | ; $(info $(M) clean CRs on $(TARGET)) @ ## Clean the CRs to the curr
 
 .PHONY: resolve
 resolve: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko resolve on $(TARGET)) @ ## Resolve config to the current cluster
-	$Q $(KUSTOMIZE) build config/$(TARGET) | $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f -
+	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET) | $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f -
 
 .PHONY: generated
 generated: | vendor ; $(info $(M) update generated files) ## Update generated files

@@ -1,2 +1,7 @@
 resources:
 - addon/operator_v1alpha1_addon_cr.yaml
+- config/all/operator_v1alpha1_config_cr.yaml
+- pipeline/operator_v1alpha1_pipeline_cr.yaml
+- trigger/operator_v1alpha1_trigger_cr.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization

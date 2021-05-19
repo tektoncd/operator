@@ -1,0 +1,9 @@
+apiVersion: v1
+data:
+  AUTOINSTALL_COMPONENTS: "true"
+  DEFAULT_TARGET_NAMESPACE: tekton-pipelines
+kind: ConfigMap
+metadata:
+  labels:
+    operator.tekton.dev/release: devel
+  name: tekton-config-defaults

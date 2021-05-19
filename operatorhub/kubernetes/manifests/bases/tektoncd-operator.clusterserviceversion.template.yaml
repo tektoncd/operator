@@ -1,0 +1,210 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+    categories: Developer Tools, Integration & Delivery
+    certified: "false"
+    description: Tekton Pipelines is a Kubernetes-Native CI/CD solution for building CICD pipelines.
+    operators.operatorframework.io/builder: operator-sdk-v1.7.2
+    operators.operatorframework.io/project_layout: unknown
+    repository: https://github.com/tektoncd/operator
+    support: The Tetkon Authors
+  name: tektoncd-operator.v0.0.0-0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: |
+        TektonConfig description
+      kind: TektonConfig
+      name: tektonconfigs.operator.tekton.dev
+      version: v1alpha1
+    - description: |
+        TektonDashboard description
+      displayName: TektonDashboard
+      kind: TektonDashboard
+      name: tektondashboards.operator.tekton.dev
+      version: v1alpha1
+    - description: |
+        TektonPipeline is the Schema for the tektonpipelines API. The operator install Tekton Pipelines on you cluster
+        if an instnce of this CRD is created on your cluster with name `cluster`. At present, the operaotor honours only
+        the instance with the name `cluster` to ensure only one set of TektonPipeline controlelrs exist on a cluster.
+      displayName: TektonPipeline
+      kind: TektonPipeline
+      name: tektonpipelines.operator.tekton.dev
+      version: v1alpha1
+    - description: |
+        TektonTriggers description
+      displayName: TektonTriggers
+      kind: TektonTrigger
+      name: tektontriggers.operator.tekton.dev
+      version: v1alpha1
+  description: |
+    Tekton is a powerful and flexible open-source framework for creating CI/CD systems, allowing developers to build,
+    test, and deploy across cloud providers and on-premise systems.
+
+    Read more: https://tekton.dev/docs/
+
+    Tekconcd Operator makes is easy to install and maintain Tekton Pipelines, Tekton Dashboard and Tekton Triggers on
+    you cluster.
+
+    Note: This operator creates an intance of this on install (with name: cluster). So additional steps
+
+    ## Tekton Pipeline
+
+    The Tekton Pipelines project provides k8s-style resources for declaring CI/CD-style pipelines.
+
+    Tekton Pipelines are Cloud Native:
+
+    Run on Kubernetes
+    Have Kubernetes clusters as a first class type
+    Use containers as their building blocks
+    Tekton Pipelines are Decoupled:
+
+    One Pipeline can be used to deploy to any k8s cluster
+    The Tasks which make up a Pipeline can easily be run in isolation
+    Resources such as git repos can easily be swapped between runs
+    Tekton Pipelines are Typed:
+
+    The concept of typed resources means that for a resource such as an Image, implementations can easily be swapped out (e.g. building with kaniko v.s. buildkit)
+
+    ## Tekton Dashboard
+
+    Tekton Dashboard is a general purpose, web-based UI for Tekton Pipelines and Tekton triggers resources.
+
+    It allows users to manage and view Tekton resource creation, execution, and completion.
+
+    Among other things, the Tekton Dashboard supports:
+
+    Filtering resources by label
+    Realtime view of PipelineRun and TaskRun logs
+    View resource details and YAML
+    Show resources for the whole cluster or limit visibility to a particular namespace
+    Import resources directly from a git repository
+    Adding functionality through extensions, like automatically triggering pipelines on git events (GitHub and GitLab supported)
+
+    ## Tekton Triggers
+
+    Triggers is a Kubernetes Custom Resource Definition (CRD) controller that allows you to extract information from events payloads (a "trigger") to create Kubernetes resources.
+  displayName: Tektoncd Operator
+  icon:
+  - base64data: |
+      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
+      KzAwOjAw9Ka6oAAAAABJRU5ErkJggg==
+    mediatype: image/png
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - tekton
+  - tektoncd
+  - build
+  - pipeline
+  - cicd
+  links:
+  - name: Tekton Documentation
+    url: https://tekton.dev/
+  - name: Tekton Pipeline
+    url: https://github.com/tektoncd/pipeline
+  - name: Tekton Dashboard
+    url: https://github.com/tektoncd/dashboard
+  - name: Tekton Triggers
+    url: https://github.com/tektoncd/triggers
+  maintainers:
+  - email: tekton-dev@googlegroups.com
+    name: The Tekton Authors
+  maturity: alpha
+  provider:
+    name: The Tekton Authors
+  version: 0.0.0-0
