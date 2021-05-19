@@ -1,0 +1,6 @@
+resources:
+- ../../../config/openshift
+- ../../../config/crs/openshift
+- bases/openshift-pipelines-operator-rh.clusterserviceversion.template.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization

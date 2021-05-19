@@ -11,11 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-namespace: openshift-operators
 
-bases:
-- ../base/
+namespace: openshift-operators
 patches:
+- target:
+    kind: Deployment
+    name: tekton-operator
+  patch: |-
+    - op: replace
+      path: /metadata/name
+      value: openshift-pipelines-operator
 - path: operator.yaml
   target:
     kind: Deployment
@@ -35,6 +40,12 @@ patches:
 
 patchesStrategicMerge:
   - 500-webhooks.yaml
+resources:
+- ../base/
+- ../base/300-operator_v1alpha1_addon_crd.yaml
+- service_account.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
 configMapGenerator:
 - name: tekton-config-defaults

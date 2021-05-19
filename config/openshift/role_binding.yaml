@@ -18,7 +18,7 @@ metadata:
   name: tekton-operator
 subjects:
 - kind: ServiceAccount
-  name: tekton-operator
+  name: openshift-pipelines-operator
   namespace: openshift-operators
 roleRef:
   kind: ClusterRole

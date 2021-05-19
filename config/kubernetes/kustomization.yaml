@@ -13,8 +13,6 @@
 # limitations under the License.
 namespace: tekton-operator
 
-bases:
-- ../base/
 patches:
 - path: operator.yaml
   target:
@@ -26,3 +24,9 @@ configMapGenerator:
   literals:
   - DEFAULT_TARGET_NAMESPACE=tekton-pipelines
   behavior: merge
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+- ../base/
+- ../base/300-operator_v1alpha1_dashboard_crd.yaml
+- service_account.yaml
