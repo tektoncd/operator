@@ -20,9 +20,8 @@ import (
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 
-	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
@@ -122,7 +121,7 @@ func (p *astPruner) maybeCreateLiteral(id int64, val ref.Val) (*exprpb.Expr, boo
 		return &exprpb.Expr{
 			Id: id,
 			ExprKind: &exprpb.Expr_ListExpr{
-				ListExpr: &expr.Expr_CreateList{
+				ListExpr: &exprpb.Expr_CreateList{
 					Elements: elemExprs,
 				},
 			},
@@ -381,14 +380,13 @@ func (p *astPruner) existsWithKnownValue(id int64) bool {
 }
 
 func (p *astPruner) nextID() int64 {
-	for true {
+	for {
 		_, found := p.state.Value(p.nextExprID)
-		if found {
-			break
+		if !found {
+			next := p.nextExprID
+			p.nextExprID++
+			return next
 		}
 		p.nextExprID++
 	}
-	next := p.nextExprID
-	p.nextExprID++
-	return next
 }

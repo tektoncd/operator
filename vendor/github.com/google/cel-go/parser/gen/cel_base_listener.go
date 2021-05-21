@@ -1,4 +1,4 @@
-// Generated from /Users/tswadell/lace/go/src/github.com/google/cel-go/bin/../parser/gen/CEL.g4 by ANTLR 4.7.
+// Generated from /Users/tswadell/go/src/github.com/google/cel-go/bin/../parser/gen/CEL.g4 by ANTLR 4.7.
 
 package gen // CEL
 import "github.com/antlr/antlr4/runtime/Go/antlr"

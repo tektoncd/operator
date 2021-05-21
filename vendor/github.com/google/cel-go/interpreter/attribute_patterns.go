@@ -255,7 +255,7 @@ func (fac *partialAttributeFactory) matchesUnknownPatterns(
 	// Resolve the attribute qualifiers into a static set. This prevents more dynamic
 	// Attribute resolutions than necessary when there are multiple unknown patterns
 	// that traverse the same Attribute-based qualifier field.
-	newQuals := make([]Qualifier, len(qualifiers), len(qualifiers))
+	newQuals := make([]Qualifier, len(qualifiers))
 	for i, qual := range qualifiers {
 		attr, isAttr := qual.(Attribute)
 		if isAttr {

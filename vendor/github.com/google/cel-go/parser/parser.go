@@ -28,7 +28,7 @@ import (
 	"github.com/google/cel-go/common/operators"
 	"github.com/google/cel-go/parser/gen"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 

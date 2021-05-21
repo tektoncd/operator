@@ -21,22 +21,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/google/cel-go/common/overloads"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	tpb "github.com/golang/protobuf/ptypes/timestamp"
+	anypb "google.golang.org/protobuf/types/known/anypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
+	tpb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Timestamp type implementation which supports add, compare, and subtract
 // operations. Timestamps are also capable of participating in dynamic
 // function dispatch to instance methods.
 type Timestamp struct {
-	*tpb.Timestamp
+	time.Time
 }
 
 var (
@@ -62,14 +60,8 @@ func (t Timestamp) Compare(other ref.Val) ref.Val {
 	if TimestampType != other.Type() {
 		return ValOrErr(other, "no such overload")
 	}
-	ts1, err := ptypes.Timestamp(t.Timestamp)
-	if err != nil {
-		return &Err{err}
-	}
-	ts2, err := ptypes.Timestamp(other.(Timestamp).Timestamp)
-	if err != nil {
-		return &Err{err}
-	}
+	ts1 := t.Time
+	ts2 := other.(Timestamp).Time
 	ts := ts1.Sub(ts2)
 	if ts < 0 {
 		return IntNegOne
@@ -82,10 +74,17 @@ func (t Timestamp) Compare(other ref.Val) ref.Val {
 
 // ConvertToNative implements ref.Val.ConvertToNative.
 func (t Timestamp) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
+	// If the timestamp is already assignable to the desired type return it.
+	if reflect.TypeOf(t.Time).AssignableTo(typeDesc) {
+		return t.Time, nil
+	}
+	if reflect.TypeOf(t).AssignableTo(typeDesc) {
+		return t, nil
+	}
 	switch typeDesc {
 	case anyValueType:
-		// Pack the underlying protobuf.Timestamp to an Any value.
-		return ptypes.MarshalAny(t.Timestamp)
+		// Pack the underlying time as a tpb.Timestamp into an Any value.
+		return anypb.New(tpb.New(t.Time))
 	case jsonValueType:
 		// CEL follows the proto3 to JSON conversion which formats as an RFC 3339 encoded JSON
 		// string.
@@ -93,31 +92,22 @@ func (t Timestamp) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 		if IsError(v) {
 			return nil, v.(*Err)
 		}
-		return &structpb.Value{
-			Kind: &structpb.Value_StringValue{StringValue: string(v.(String))},
-		}, nil
+		return structpb.NewStringValue(string(v.(String))), nil
 	case timestampValueType:
-		// Unwrap the underlying protobuf.Timestamp.
-		return t.Value(), nil
+		// Unwrap the underlying tpb.Timestamp.
+		return tpb.New(t.Time), nil
 	}
-	// If the timestamp is already assignable to the desired type return it.
-	if reflect.TypeOf(t).AssignableTo(typeDesc) {
-		return t, nil
-	}
-	return nil, fmt.Errorf("type conversion error from "+
-		"'google.protobuf.Timestamp' to '%v'", typeDesc)
+	return nil, fmt.Errorf("type conversion error from 'Timestamp' to '%v'", typeDesc)
 }
 
 // ConvertToType implements ref.Val.ConvertToType.
 func (t Timestamp) ConvertToType(typeVal ref.Type) ref.Val {
 	switch typeVal {
 	case StringType:
-		return String(ptypes.TimestampString(t.Timestamp))
+		return String(t.Format(time.RFC3339))
 	case IntType:
-		if ts, err := ptypes.Timestamp(t.Timestamp); err == nil {
-			// Return the Unix time in seconds since 1970
-			return Int(ts.Unix())
-		}
+		// Return the Unix time in seconds since 1970
+		return Int(t.Unix())
 	case TimestampType:
 		return t
 	case TypeType:
@@ -129,26 +119,21 @@ func (t Timestamp) ConvertToType(typeVal ref.Type) ref.Val {
 // Equal implements ref.Val.Equal.
 func (t Timestamp) Equal(other ref.Val) ref.Val {
 	if TimestampType != other.Type() {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
-	return Bool(proto.Equal(t.Timestamp, other.Value().(proto.Message)))
+	return Bool(t.Time.Equal(other.(Timestamp).Time))
 }
 
 // Receive implements traits.Reciever.Receive.
 func (t Timestamp) Receive(function string, overload string, args []ref.Val) ref.Val {
-	ts := t.Timestamp
-	tstamp, err := ptypes.Timestamp(ts)
-	if err != nil {
-		return &Err{err}
-	}
 	switch len(args) {
 	case 0:
 		if f, found := timestampZeroArgOverloads[function]; found {
-			return f(tstamp)
+			return f(t.Time)
 		}
 	case 1:
 		if f, found := timestampOneArgOverloads[function]; found {
-			return f(tstamp, args[0])
+			return f(t.Time, args[0])
 		}
 	}
 	return NewErr("no such overload")
@@ -158,29 +143,11 @@ func (t Timestamp) Receive(function string, overload string, args []ref.Val) ref
 func (t Timestamp) Subtract(subtrahend ref.Val) ref.Val {
 	switch subtrahend.Type() {
 	case DurationType:
-		ts, err := ptypes.Timestamp(t.Timestamp)
-		if err != nil {
-			return &Err{err}
-		}
-		dur, err := ptypes.Duration(subtrahend.(Duration).Duration)
-		if err != nil {
-			return &Err{err}
-		}
-		tstamp, err := ptypes.TimestampProto(ts.Add(-dur))
-		if err != nil {
-			return &Err{err}
-		}
-		return Timestamp{tstamp}
+		dur := subtrahend.(Duration)
+		return Timestamp{Time: t.Time.Add(-dur.Duration)}
 	case TimestampType:
-		ts1, err := ptypes.Timestamp(t.Timestamp)
-		if err != nil {
-			return &Err{err}
-		}
-		ts2, err := ptypes.Timestamp(subtrahend.(Timestamp).Timestamp)
-		if err != nil {
-			return &Err{err}
-		}
-		return Duration{ptypes.DurationProto(ts1.Sub(ts2))}
+		t2 := subtrahend.(Timestamp).Time
+		return Duration{Duration: t.Time.Sub(t2)}
 	}
 	return ValOrErr(subtrahend, "no such overload")
 }
@@ -192,7 +159,7 @@ func (t Timestamp) Type() ref.Type {
 
 // Value implements ref.Val.Value.
 func (t Timestamp) Value() interface{} {
-	return t.Timestamp
+	return t.Time
 }
 
 var (
@@ -306,7 +273,6 @@ func timeZone(tz ref.Val, visitor timestampVisitor) timestampVisitor {
 
 		// If the input is not the name of a timezone (for example, 'US/Central'), it should be a numerical offset from UTC
 		// in the format ^(+|-)(0[0-9]|1[0-4]):[0-5][0-9]$. The numerical input is parsed in terms of hours and minutes.
-
 		hr, err := strconv.Atoi(string(val[0:ind]))
 		if err != nil {
 			return &Err{err}

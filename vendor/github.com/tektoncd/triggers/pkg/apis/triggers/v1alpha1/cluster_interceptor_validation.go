@@ -24,6 +24,9 @@ import (
 
 // Validate ClusterInterceptor
 func (it *ClusterInterceptor) Validate(ctx context.Context) *apis.FieldError {
+	if apis.IsInDelete(ctx) {
+		return nil
+	}
 	return it.Spec.validate(ctx)
 }
 

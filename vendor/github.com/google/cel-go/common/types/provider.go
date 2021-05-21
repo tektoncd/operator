@@ -15,22 +15,22 @@
 package types
 
 import (
+	"fmt"
 	"reflect"
-
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
+	"time"
 
 	"github.com/google/cel-go/common/types/pb"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/common/types/traits"
 
-	descpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
-	anypb "github.com/golang/protobuf/ptypes/any"
-	dpb "github.com/golang/protobuf/ptypes/duration"
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	tpb "github.com/golang/protobuf/ptypes/timestamp"
-	wrapperspb "github.com/golang/protobuf/ptypes/wrappers"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
+	anypb "google.golang.org/protobuf/types/known/anypb"
+	dpb "google.golang.org/protobuf/types/known/durationpb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
+	tpb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type protoTypeRegistry struct {
@@ -41,12 +41,12 @@ type protoTypeRegistry struct {
 // NewRegistry accepts a list of proto message instances and returns a type
 // provider which can create new instances of the provided message or any
 // message that proto depends upon in its FileDescriptor.
-func NewRegistry(types ...proto.Message) ref.TypeRegistry {
+func NewRegistry(types ...proto.Message) (ref.TypeRegistry, error) {
 	p := &protoTypeRegistry{
 		revTypeMap: make(map[string]ref.Type),
 		pbdb:       pb.NewDb(),
 	}
-	p.RegisterType(
+	err := p.RegisterType(
 		BoolType,
 		BytesType,
 		DoubleType,
@@ -59,14 +59,23 @@ func NewRegistry(types ...proto.Message) ref.TypeRegistry {
 		TimestampType,
 		TypeType,
 		UintType)
-
-	for _, msgType := range types {
-		err := p.RegisterMessage(msgType)
+	if err != nil {
+		return nil, err
+	}
+	// This block ensures that the well-known protobuf types are registered by default.
+	for _, fd := range p.pbdb.FileDescriptions() {
+		err = p.registerAllTypes(fd)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 	}
-	return p
+	for _, msgType := range types {
+		err = p.RegisterMessage(msgType)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return p, nil
 }
 
 // NewEmptyRegistry returns a registry which is completely unconfigured.
@@ -91,8 +100,8 @@ func (p *protoTypeRegistry) Copy() ref.TypeRegistry {
 }
 
 func (p *protoTypeRegistry) EnumValue(enumName string) ref.Val {
-	enumVal, err := p.pbdb.DescribeEnum(enumName)
-	if err != nil {
+	enumVal, found := p.pbdb.DescribeEnum(enumName)
+	if !found {
 		return NewErr("unknown enum name '%s'", enumName)
 	}
 	return Int(enumVal.Value())
@@ -100,8 +109,8 @@ func (p *protoTypeRegistry) EnumValue(enumName string) ref.Val {
 
 func (p *protoTypeRegistry) FindFieldType(messageType string,
 	fieldName string) (*ref.FieldType, bool) {
-	msgType, err := p.pbdb.DescribeType(messageType)
-	if err != nil {
+	msgType, found := p.pbdb.DescribeType(messageType)
+	if !found {
 		return nil, false
 	}
 	field, found := msgType.FieldByName(fieldName)
@@ -119,14 +128,14 @@ func (p *protoTypeRegistry) FindIdent(identName string) (ref.Val, bool) {
 	if t, found := p.revTypeMap[identName]; found {
 		return t.(ref.Val), true
 	}
-	if enumVal, err := p.pbdb.DescribeEnum(identName); err == nil {
+	if enumVal, found := p.pbdb.DescribeEnum(identName); found {
 		return Int(enumVal.Value()), true
 	}
 	return nil, false
 }
 
 func (p *protoTypeRegistry) FindType(typeName string) (*exprpb.Type, bool) {
-	if _, err := p.pbdb.DescribeType(typeName); err != nil {
+	if _, found := p.pbdb.DescribeType(typeName); !found {
 		return nil, false
 	}
 	if typeName != "" && typeName[0] == '.' {
@@ -140,45 +149,26 @@ func (p *protoTypeRegistry) FindType(typeName string) (*exprpb.Type, bool) {
 }
 
 func (p *protoTypeRegistry) NewValue(typeName string, fields map[string]ref.Val) ref.Val {
-	td, err := p.pbdb.DescribeType(typeName)
-	if err != nil {
+	td, found := p.pbdb.DescribeType(typeName)
+	if !found {
 		return NewErr("unknown type '%s'", typeName)
 	}
-	refType := td.ReflectType()
-	// create the new type instance.
-	value := reflect.New(refType.Elem())
-	pbValue := value.Elem()
-
-	// for all of the field names referenced, set the provided value.
+	msg := td.New()
+	fieldMap := td.FieldMap()
 	for name, value := range fields {
-		fd, found := td.FieldByName(name)
+		field, found := fieldMap[name]
 		if !found {
-			return NewErr("no such field '%s'", name)
+			return NewErr("no such field: %s", name)
 		}
-		refField := pbValue.Field(fd.Index())
-		if !refField.IsValid() {
-			return NewErr("no such field '%s'", name)
-		}
-
-		dstType := refField.Type()
-		// Oneof fields are defined with wrapper structs that have a single proto.Message
-		// field value. The oneof wrapper is not a proto.Message instance.
-		if fd.IsOneof() {
-			oneofVal := reflect.New(fd.OneofType().Elem())
-			refField.Set(oneofVal)
-			refField = oneofVal.Elem().Field(0)
-			dstType = refField.Type()
-		}
-		fieldValue, err := value.ConvertToNative(dstType)
+		err := msgSetField(msg, field, value)
 		if err != nil {
 			return &Err{err}
 		}
-		refField.Set(reflect.ValueOf(fieldValue))
 	}
-	return p.NativeToValue(value.Interface())
+	return p.NativeToValue(msg.Interface())
 }
 
-func (p *protoTypeRegistry) RegisterDescriptor(fileDesc *descpb.FileDescriptorProto) error {
+func (p *protoTypeRegistry) RegisterDescriptor(fileDesc protoreflect.FileDescriptor) error {
 	fd, err := p.pbdb.RegisterDescriptor(fileDesc)
 	if err != nil {
 		return err
@@ -202,6 +192,42 @@ func (p *protoTypeRegistry) RegisterType(types ...ref.Type) error {
 	return nil
 }
 
+// NativeToValue converts various "native" types to ref.Val with this specific implementation
+// providing support for custom proto-based types.
+//
+// This method should be the inverse of ref.Val.ConvertToNative.
+func (p *protoTypeRegistry) NativeToValue(value interface{}) ref.Val {
+	if val, found := nativeToValue(p, value); found {
+		return val
+	}
+	switch v := value.(type) {
+	case proto.Message:
+		typeName := string(v.ProtoReflect().Descriptor().FullName())
+		td, found := p.pbdb.DescribeType(typeName)
+		if !found {
+			return NewErr("unknown type: '%s'", typeName)
+		}
+		unwrapped, isUnwrapped := td.MaybeUnwrap(v)
+		if isUnwrapped {
+			return p.NativeToValue(unwrapped)
+		}
+		typeVal, found := p.FindIdent(typeName)
+		if !found {
+			return NewErr("unknown type: '%s'", typeName)
+		}
+		return NewObject(p, td, typeVal.(*TypeValue), v)
+	case *pb.Map:
+		return NewProtoMap(p, v)
+	case protoreflect.List:
+		return NewProtoList(p, v)
+	case protoreflect.Message:
+		return p.NativeToValue(v.Interface())
+	case protoreflect.Value:
+		return p.NativeToValue(v.Interface())
+	}
+	return UnsupportedRefValConversionErr(value)
+}
+
 func (p *protoTypeRegistry) registerAllTypes(fd *pb.FileDescription) error {
 	for _, typeName := range fd.GetTypeNames() {
 		err := p.RegisterType(NewObjectTypeValue(typeName))
@@ -210,86 +236,6 @@ func (p *protoTypeRegistry) registerAllTypes(fd *pb.FileDescription) error {
 		}
 	}
 	return nil
-}
-
-// NativeToValue converts various "native" types to ref.Val with this specific implementation
-// providing support for custom proto-based types.
-//
-// This method should be the inverse of ref.Val.ConvertToNative.
-func (p *protoTypeRegistry) NativeToValue(value interface{}) ref.Val {
-	switch v := value.(type) {
-	case ref.Val:
-		return v
-	// Adapt common types and aggregate specializations using the DefaultTypeAdapter.
-	case bool, *bool,
-		float32, *float32, float64, *float64,
-		int, *int, int32, *int32, int64, *int64,
-		string, *string,
-		uint, *uint, uint32, *uint32, uint64, *uint64,
-		[]byte,
-		[]string,
-		map[string]string:
-		return DefaultTypeAdapter.NativeToValue(value)
-	// Adapt well-known proto-types using the DefaultTypeAdapter.
-	case *dpb.Duration,
-		*tpb.Timestamp,
-		*structpb.ListValue,
-		structpb.NullValue,
-		*structpb.Struct,
-		*structpb.Value,
-		*wrapperspb.BoolValue,
-		*wrapperspb.BytesValue,
-		*wrapperspb.DoubleValue,
-		*wrapperspb.FloatValue,
-		*wrapperspb.Int32Value,
-		*wrapperspb.Int64Value,
-		*wrapperspb.StringValue,
-		*wrapperspb.UInt32Value,
-		*wrapperspb.UInt64Value:
-		return DefaultTypeAdapter.NativeToValue(value)
-	// Override the Any type by ensuring that custom proto-types are considered on recursive calls.
-	case *anypb.Any:
-		if v == nil {
-			return NewErr("unsupported type conversion: '%T'", value)
-		}
-		unpackedAny := ptypes.DynamicAny{}
-		if ptypes.UnmarshalAny(v, &unpackedAny) != nil {
-			return NewErr("unknown type: '%s'", v.GetTypeUrl())
-		}
-		return p.NativeToValue(unpackedAny.Message)
-	// Convert custom proto types to CEL values based on type's presence within the pb.Db.
-	case proto.Message:
-		typeName := proto.MessageName(v)
-		td, err := p.pbdb.DescribeType(typeName)
-		if err != nil {
-			return NewErr("unknown type: '%s'", typeName)
-		}
-		typeVal, found := p.FindIdent(typeName)
-		if !found {
-			return NewErr("unknown type: '%s'", typeName)
-		}
-		return NewObject(p, td, typeVal.(*TypeValue), v)
-	// Override default handling for list and maps to ensure that blends of Go + proto types
-	// are appropriately adapted on recursive calls or subsequent inspection of the aggregate
-	// value.
-	default:
-		refValue := reflect.ValueOf(value)
-		if refValue.Kind() == reflect.Ptr {
-			if refValue.IsNil() {
-				return NewErr("unsupported type conversion: '%T'", value)
-			}
-			refValue = refValue.Elem()
-		}
-		refKind := refValue.Kind()
-		switch refKind {
-		case reflect.Array, reflect.Slice:
-			return NewDynamicList(p, value)
-		case reflect.Map:
-			return NewDynamicMap(p, value)
-		}
-	}
-	// By default return the default type adapter's conversion to CEL.
-	return DefaultTypeAdapter.NativeToValue(value)
 }
 
 // defaultTypeAdapter converts go native types to CEL values.
@@ -302,237 +248,287 @@ var (
 
 // NativeToValue implements the ref.TypeAdapter interface.
 func (a *defaultTypeAdapter) NativeToValue(value interface{}) ref.Val {
-	switch value.(type) {
+	if val, found := nativeToValue(a, value); found {
+		return val
+	}
+	return UnsupportedRefValConversionErr(value)
+}
+
+// nativeToValue returns the converted (ref.Val, true) of a conversion is found,
+// otherwise (nil, false)
+func nativeToValue(a ref.TypeAdapter, value interface{}) (ref.Val, bool) {
+	switch v := value.(type) {
 	case nil:
-		return NullValue
+		return NullValue, true
 	case *Bool:
-		if ptr := value.(*Bool); ptr != nil {
-			return ptr
+		if v != nil {
+			return *v, true
 		}
 	case *Bytes:
-		if ptr := value.(*Bytes); ptr != nil {
-			return ptr
+		if v != nil {
+			return *v, true
 		}
 	case *Double:
-		if ptr := value.(*Double); ptr != nil {
-			return ptr
+		if v != nil {
+			return *v, true
 		}
 	case *Int:
-		if ptr := value.(*Int); ptr != nil {
-			return ptr
+		if v != nil {
+			return *v, true
 		}
 	case *String:
-		if ptr := value.(*String); ptr != nil {
-			return ptr
+		if v != nil {
+			return *v, true
 		}
 	case *Uint:
-		if ptr := value.(*Uint); ptr != nil {
-			return ptr
+		if v != nil {
+			return *v, true
 		}
-	case ref.Val:
-		return value.(ref.Val)
 	case bool:
-		return Bool(value.(bool))
+		return Bool(v), true
 	case int:
-		return Int(value.(int))
+		return Int(v), true
 	case int32:
-		return Int(value.(int32))
+		return Int(v), true
 	case int64:
-		return Int(value.(int64))
+		return Int(v), true
 	case uint:
-		return Uint(value.(uint))
+		return Uint(v), true
 	case uint32:
-		return Uint(value.(uint32))
+		return Uint(v), true
 	case uint64:
-		return Uint(value.(uint64))
+		return Uint(v), true
 	case float32:
-		return Double(value.(float32))
+		return Double(v), true
 	case float64:
-		return Double(value.(float64))
+		return Double(v), true
 	case string:
-		return String(value.(string))
+		return String(v), true
+	case *dpb.Duration:
+		return Duration{Duration: v.AsDuration()}, true
+	case time.Duration:
+		return Duration{Duration: v}, true
+	case *tpb.Timestamp:
+		return Timestamp{Time: v.AsTime()}, true
+	case time.Time:
+		return Timestamp{Time: v}, true
 	case *bool:
-		if ptr := value.(*bool); ptr != nil {
-			return Bool(*ptr)
+		if v != nil {
+			return Bool(*v), true
 		}
 	case *float32:
-		if ptr := value.(*float32); ptr != nil {
-			return Double(*ptr)
+		if v != nil {
+			return Double(*v), true
 		}
 	case *float64:
-		if ptr := value.(*float64); ptr != nil {
-			return Double(*ptr)
+		if v != nil {
+			return Double(*v), true
 		}
 	case *int:
-		if ptr := value.(*int); ptr != nil {
-			return Int(*ptr)
+		if v != nil {
+			return Int(*v), true
 		}
 	case *int32:
-		if ptr := value.(*int32); ptr != nil {
-			return Int(*ptr)
+		if v != nil {
+			return Int(*v), true
 		}
 	case *int64:
-		if ptr := value.(*int64); ptr != nil {
-			return Int(*ptr)
+		if v != nil {
+			return Int(*v), true
 		}
 	case *string:
-		if ptr := value.(*string); ptr != nil {
-			return String(*ptr)
+		if v != nil {
+			return String(*v), true
 		}
 	case *uint:
-		if ptr := value.(*uint); ptr != nil {
-			return Uint(*ptr)
+		if v != nil {
+			return Uint(*v), true
 		}
 	case *uint32:
-		if ptr := value.(*uint32); ptr != nil {
-			return Uint(*ptr)
+		if v != nil {
+			return Uint(*v), true
 		}
 	case *uint64:
-		if ptr := value.(*uint64); ptr != nil {
-			return Uint(*ptr)
+		if v != nil {
+			return Uint(*v), true
 		}
 	case []byte:
-		return Bytes(value.([]byte))
+		return Bytes(v), true
+	// specializations for common lists types.
 	case []string:
-		return NewStringList(a, value.([]string))
+		return NewStringList(a, v), true
+	case []ref.Val:
+		return NewRefValList(a, v), true
+	// specializations for common map types.
 	case map[string]string:
-		return NewStringStringMap(a, value.(map[string]string))
-	case *dpb.Duration:
-		if ptr := value.(*dpb.Duration); ptr != nil {
-			return Duration{ptr}
-		}
-	case *structpb.ListValue:
-		if ptr := value.(*structpb.ListValue); ptr != nil {
-			return NewJSONList(a, ptr)
-		}
-	case structpb.NullValue, *structpb.NullValue:
-		return NullValue
-	case *structpb.Struct:
-		if ptr := value.(*structpb.Struct); ptr != nil {
-			return NewJSONStruct(a, ptr)
-		}
-	case *structpb.Value:
-		v := value.(*structpb.Value)
-		if v == nil {
-			return NullValue
-		}
-		switch v.Kind.(type) {
-		case *structpb.Value_BoolValue:
-			return a.NativeToValue(v.GetBoolValue())
-		case *structpb.Value_ListValue:
-			return a.NativeToValue(v.GetListValue())
-		case *structpb.Value_NullValue:
-			return NullValue
-		case *structpb.Value_NumberValue:
-			return a.NativeToValue(v.GetNumberValue())
-		case *structpb.Value_StringValue:
-			return a.NativeToValue(v.GetStringValue())
-		case *structpb.Value_StructValue:
-			return a.NativeToValue(v.GetStructValue())
-		}
-	case *tpb.Timestamp:
-		if ptr := value.(*tpb.Timestamp); ptr != nil {
-			return Timestamp{ptr}
-		}
+		return NewStringStringMap(a, v), true
+	case map[string]interface{}:
+		return NewStringInterfaceMap(a, v), true
+	case map[ref.Val]ref.Val:
+		return NewRefValMap(a, v), true
+	// additional specializations may be added upon request / need.
 	case *anypb.Any:
-		val := value.(*anypb.Any)
-		if val == nil {
-			return NewErr("unsupported type conversion")
+		if v == nil {
+			return UnsupportedRefValConversionErr(v), true
 		}
-		unpackedAny := ptypes.DynamicAny{}
-		if ptypes.UnmarshalAny(val, &unpackedAny) != nil {
-			return NewErr("unknown type: %s", val.GetTypeUrl())
+		unpackedAny, err := v.UnmarshalNew()
+		if err != nil {
+			return NewErr("anypb.UnmarshalNew() failed for type %q: %v", v.GetTypeUrl(), err), true
 		}
-		return a.NativeToValue(unpackedAny.Message)
-	case *wrapperspb.BoolValue:
-		val := value.(*wrapperspb.BoolValue)
-		if val == nil {
-			return NewErr("unsupported type conversion")
+		return a.NativeToValue(unpackedAny), true
+	case *structpb.NullValue, structpb.NullValue:
+		return NullValue, true
+	case *structpb.ListValue:
+		return NewJSONList(a, v), true
+	case *structpb.Struct:
+		return NewJSONStruct(a, v), true
+	case ref.Val:
+		return v, true
+	case protoreflect.EnumNumber:
+		return Int(v), true
+	case proto.Message:
+		if v == nil {
+			return UnsupportedRefValConversionErr(v), true
 		}
-		return Bool(val.GetValue())
-	case *wrapperspb.BytesValue:
-		val := value.(*wrapperspb.BytesValue)
-		if val == nil {
-			return NewErr("unsupported type conversion")
+		typeName := string(v.ProtoReflect().Descriptor().FullName())
+		td, found := pb.DefaultDb.DescribeType(typeName)
+		if !found {
+			return nil, false
 		}
-		return Bytes(val.GetValue())
-	case *wrapperspb.DoubleValue:
-		val := value.(*wrapperspb.DoubleValue)
-		if val == nil {
-			return NewErr("unsupported type conversion")
+		val, unwrapped := td.MaybeUnwrap(v)
+		if !unwrapped {
+			return nil, false
 		}
-		return Double(val.GetValue())
-	case *wrapperspb.FloatValue:
-		val := value.(*wrapperspb.FloatValue)
-		if val == nil {
-			return NewErr("unsupported type conversion")
-		}
-		return Double(val.GetValue())
-	case *wrapperspb.Int32Value:
-		val := value.(*wrapperspb.Int32Value)
-		if val == nil {
-			return NewErr("unsupported type conversion")
-		}
-		return Int(val.GetValue())
-	case *wrapperspb.Int64Value:
-		val := value.(*wrapperspb.Int64Value)
-		if val == nil {
-			return NewErr("unsupported type conversion")
-		}
-		return Int(val.GetValue())
-	case *wrapperspb.StringValue:
-		val := value.(*wrapperspb.StringValue)
-		if val == nil {
-			return NewErr("unsupported type conversion")
-		}
-		return String(val.GetValue())
-	case *wrapperspb.UInt32Value:
-		val := value.(*wrapperspb.UInt32Value)
-		if val == nil {
-			return NewErr("unsupported type conversion")
-		}
-		return Uint(val.GetValue())
-	case *wrapperspb.UInt64Value:
-		val := value.(*wrapperspb.UInt64Value)
-		if val == nil {
-			return NewErr("unsupported type conversion")
-		}
-		return Uint(val.GetValue())
+		return a.NativeToValue(val), true
+	// Note: dynamicpb.Message implements the proto.Message _and_ protoreflect.Message interfaces
+	// which means that this case must appear after handling a proto.Message type.
+	case protoreflect.Message:
+		return a.NativeToValue(v.Interface()), true
 	default:
-		refValue := reflect.ValueOf(value)
+		refValue := reflect.ValueOf(v)
 		if refValue.Kind() == reflect.Ptr {
 			if refValue.IsNil() {
-				return NewErr("unsupported type conversion: '%T'", value)
+				return UnsupportedRefValConversionErr(v), true
 			}
 			refValue = refValue.Elem()
 		}
 		refKind := refValue.Kind()
 		switch refKind {
 		case reflect.Array, reflect.Slice:
-			return NewDynamicList(a, value)
+			return NewDynamicList(a, v), true
 		case reflect.Map:
-			return NewDynamicMap(a, value)
+			return NewDynamicMap(a, v), true
 		// type aliases of primitive types cannot be asserted as that type, but rather need
 		// to be downcast to int32 before being converted to a CEL representation.
 		case reflect.Int32:
 			intType := reflect.TypeOf(int32(0))
-			return Int(refValue.Convert(intType).Interface().(int32))
+			return Int(refValue.Convert(intType).Interface().(int32)), true
 		case reflect.Int64:
 			intType := reflect.TypeOf(int64(0))
-			return Int(refValue.Convert(intType).Interface().(int64))
+			return Int(refValue.Convert(intType).Interface().(int64)), true
 		case reflect.Uint32:
 			uintType := reflect.TypeOf(uint32(0))
-			return Uint(refValue.Convert(uintType).Interface().(uint32))
+			return Uint(refValue.Convert(uintType).Interface().(uint32)), true
 		case reflect.Uint64:
 			uintType := reflect.TypeOf(uint64(0))
-			return Uint(refValue.Convert(uintType).Interface().(uint64))
+			return Uint(refValue.Convert(uintType).Interface().(uint64)), true
 		case reflect.Float32:
 			doubleType := reflect.TypeOf(float32(0))
-			return Double(refValue.Convert(doubleType).Interface().(float32))
+			return Double(refValue.Convert(doubleType).Interface().(float32)), true
 		case reflect.Float64:
 			doubleType := reflect.TypeOf(float64(0))
-			return Double(refValue.Convert(doubleType).Interface().(float64))
+			return Double(refValue.Convert(doubleType).Interface().(float64)), true
 		}
 	}
-	return NewErr("unsupported type conversion: '%T'", value)
+	return nil, false
+}
+
+func msgSetField(target protoreflect.Message, field *pb.FieldDescription, val ref.Val) error {
+	if field.IsList() {
+		lv := target.NewField(field.Descriptor())
+		list, ok := val.(traits.Lister)
+		if !ok {
+			return unsupportedTypeConversionError(field, val)
+		}
+		err := msgSetListField(lv.List(), field, list)
+		if err != nil {
+			return err
+		}
+		target.Set(field.Descriptor(), lv)
+		return nil
+	}
+	if field.IsMap() {
+		mv := target.NewField(field.Descriptor())
+		mp, ok := val.(traits.Mapper)
+		if !ok {
+			return unsupportedTypeConversionError(field, val)
+		}
+		err := msgSetMapField(mv.Map(), field, mp)
+		if err != nil {
+			return err
+		}
+		target.Set(field.Descriptor(), mv)
+		return nil
+	}
+	v, err := val.ConvertToNative(field.ReflectType())
+	if err != nil {
+		return fieldTypeConversionError(field, err)
+	}
+	switch v.(type) {
+	case proto.Message:
+		v = v.(proto.Message).ProtoReflect()
+	}
+	target.Set(field.Descriptor(), protoreflect.ValueOf(v))
+	return nil
+}
+
+func msgSetListField(target protoreflect.List, listField *pb.FieldDescription, listVal traits.Lister) error {
+	elemReflectType := listField.ReflectType().Elem()
+	for i := Int(0); i < listVal.Size().(Int); i++ {
+		elem := listVal.Get(i)
+		elemVal, err := elem.ConvertToNative(elemReflectType)
+		if err != nil {
+			return fieldTypeConversionError(listField, err)
+		}
+		switch ev := elemVal.(type) {
+		case proto.Message:
+			elemVal = ev.ProtoReflect()
+		}
+		target.Append(protoreflect.ValueOf(elemVal))
+	}
+	return nil
+}
+
+func msgSetMapField(target protoreflect.Map, mapField *pb.FieldDescription, mapVal traits.Mapper) error {
+	targetKeyType := mapField.KeyType.ReflectType()
+	targetValType := mapField.ValueType.ReflectType()
+	it := mapVal.Iterator()
+	for it.HasNext() == True {
+		key := it.Next()
+		val := mapVal.Get(key)
+		k, err := key.ConvertToNative(targetKeyType)
+		if err != nil {
+			return fieldTypeConversionError(mapField, err)
+		}
+		v, err := val.ConvertToNative(targetValType)
+		if err != nil {
+			return fieldTypeConversionError(mapField, err)
+		}
+		switch v.(type) {
+		case proto.Message:
+			v = v.(proto.Message).ProtoReflect()
+		}
+		target.Set(protoreflect.ValueOf(k).MapKey(), protoreflect.ValueOf(v))
+	}
+	return nil
+}
+
+func unsupportedTypeConversionError(field *pb.FieldDescription, val ref.Val) error {
+	msgName := field.Descriptor().ContainingMessage().FullName()
+	return fmt.Errorf("unsupported field type for %v.%v: %v", msgName, field.Name(), val.Type())
+}
+
+func fieldTypeConversionError(field *pb.FieldDescription, err error) error {
+	msgName := field.Descriptor().ContainingMessage().FullName()
+	return fmt.Errorf("field type conversion error for %v.%v value type: %v", msgName, field.Name(), err)
 }

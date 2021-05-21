@@ -25,12 +25,20 @@ import (
 
 // CheckedExprToAst converts a checked expression proto message to an Ast.
 func CheckedExprToAst(checkedExpr *exprpb.CheckedExpr) *Ast {
+	refMap := checkedExpr.GetReferenceMap()
+	if refMap == nil {
+		refMap = map[int64]*exprpb.Reference{}
+	}
+	typeMap := checkedExpr.GetTypeMap()
+	if typeMap == nil {
+		typeMap = map[int64]*exprpb.Type{}
+	}
 	return &Ast{
 		expr:    checkedExpr.GetExpr(),
 		info:    checkedExpr.GetSourceInfo(),
 		source:  common.NewInfoSource(checkedExpr.GetSourceInfo()),
-		refMap:  checkedExpr.GetReferenceMap(),
-		typeMap: checkedExpr.GetTypeMap(),
+		refMap:  refMap,
+		typeMap: typeMap,
 	}
 }
 

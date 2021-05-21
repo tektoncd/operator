@@ -18,13 +18,14 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+
+	anypb "google.golang.org/protobuf/types/known/anypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 var (
@@ -41,24 +42,58 @@ var (
 // value should be an array of "native" types, i.e. any type that
 // NativeToValue() can convert to a ref.Val.
 func NewDynamicList(adapter ref.TypeAdapter, value interface{}) traits.Lister {
+	refValue := reflect.ValueOf(value)
 	return &baseList{
 		TypeAdapter: adapter,
 		value:       value,
-		refValue:    reflect.ValueOf(value)}
+		size:        refValue.Len(),
+		get: func(i int) interface{} {
+			return refValue.Index(i).Interface()
+		},
+	}
 }
 
 // NewStringList returns a traits.Lister containing only strings.
 func NewStringList(adapter ref.TypeAdapter, elems []string) traits.Lister {
-	return &stringList{
-		baseList: NewDynamicList(adapter, elems).(*baseList),
-		elems:    elems}
+	return &baseList{
+		TypeAdapter: adapter,
+		value:       elems,
+		size:        len(elems),
+		get:         func(i int) interface{} { return elems[i] },
+	}
 }
 
-// NewValueList returns a traits.Lister with ref.Val elements.
-func NewValueList(adapter ref.TypeAdapter, elems []ref.Val) traits.Lister {
-	return &valueList{
-		baseList: NewDynamicList(adapter, elems).(*baseList),
-		elems:    elems}
+// NewRefValList returns a traits.Lister with ref.Val elements.
+//
+// This type specialization is used with list literals within CEL expressions.
+func NewRefValList(adapter ref.TypeAdapter, elems []ref.Val) traits.Lister {
+	return &baseList{
+		TypeAdapter: adapter,
+		value:       elems,
+		size:        len(elems),
+		get:         func(i int) interface{} { return elems[i] },
+	}
+}
+
+// NewProtoList returns a traits.Lister based on a pb.List instance.
+func NewProtoList(adapter ref.TypeAdapter, list protoreflect.List) traits.Lister {
+	return &baseList{
+		TypeAdapter: adapter,
+		value:       list,
+		size:        list.Len(),
+		get:         func(i int) interface{} { return list.Get(i).Interface() },
+	}
+}
+
+// NewJSONList returns a traits.Lister based on structpb.ListValue instance.
+func NewJSONList(adapter ref.TypeAdapter, l *structpb.ListValue) traits.Lister {
+	vals := l.GetValues()
+	return &baseList{
+		TypeAdapter: adapter,
+		value:       l,
+		size:        len(vals),
+		get:         func(i int) interface{} { return vals[i] },
+	}
 }
 
 // baseList points to a list containing elements of any type.
@@ -66,15 +101,22 @@ func NewValueList(adapter ref.TypeAdapter, elems []ref.Val) traits.Lister {
 // The `ref.TypeAdapter` enables native type to CEL type conversions.
 type baseList struct {
 	ref.TypeAdapter
-	value    interface{}
-	refValue reflect.Value
+	value interface{}
+
+	// size indicates the number of elements within the list.
+	// Since objects are immutable the size of a list is static.
+	size int
+
+	// get returns a value at the specified integer index.
+	// The index is guaranteed to be checked against the list index range.
+	get func(int) interface{}
 }
 
 // Add implements the traits.Adder interface method.
 func (l *baseList) Add(other ref.Val) ref.Val {
 	otherList, ok := other.(traits.Lister)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
 	if l.Size() == IntZero {
 		return other
@@ -94,9 +136,8 @@ func (l *baseList) Contains(elem ref.Val) ref.Val {
 		return elem
 	}
 	var err ref.Val
-	sz := l.Size().(Int)
-	for i := Int(0); i < sz; i++ {
-		val := l.Get(i)
+	for i := 0; i < l.size; i++ {
+		val := l.NativeToValue(l.get(i))
 		cmp := elem.Equal(val)
 		b, ok := cmp.(Bool)
 		// When there is an error on the contain check, this is not necessarily terminal.
@@ -118,15 +159,22 @@ func (l *baseList) Contains(elem ref.Val) ref.Val {
 
 // ConvertToNative implements the ref.Val interface method.
 func (l *baseList) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
-	// TODO: Add support for conversion to Any
-	// JSON conversions are a special case since the 'native' type is a proto message.
+	// If the underlying list value is assignable to the reflected type return it.
+	if reflect.TypeOf(l.value).AssignableTo(typeDesc) {
+		return l.value, nil
+	}
+	// If the list wrapper is assignable to the desired type return it.
+	if reflect.TypeOf(l).AssignableTo(typeDesc) {
+		return l, nil
+	}
+	// Attempt to convert the list to a set of well known protobuf types.
 	switch typeDesc {
 	case anyValueType:
 		json, err := l.ConvertToNative(jsonListValueType)
 		if err != nil {
 			return nil, err
 		}
-		return ptypes.MarshalAny(json.(proto.Message))
+		return anypb.New(json.(proto.Message))
 	case jsonValueType, jsonListValueType:
 		jsonValues, err :=
 			l.ConvertToNative(reflect.TypeOf([]*structpb.Value{}))
@@ -137,35 +185,21 @@ func (l *baseList) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 		if typeDesc == jsonListValueType {
 			return jsonList, nil
 		}
-		return &structpb.Value{Kind: &structpb.Value_ListValue{ListValue: jsonList}}, nil
+		return structpb.NewListValue(jsonList), nil
 	}
-
 	// Non-list conversion.
 	if typeDesc.Kind() != reflect.Slice && typeDesc.Kind() != reflect.Array {
 		return nil, fmt.Errorf("type conversion error from list to '%v'", typeDesc)
 	}
 
-	// If the list is already assignable to the desired type return it.
-	if reflect.TypeOf(l).AssignableTo(typeDesc) {
-		return l, nil
-	}
-
 	// List conversion.
-	thisType := l.refValue.Type()
-	thisElem := thisType.Elem()
-	thisElemKind := thisElem.Kind()
-
-	otherElem := typeDesc.Elem()
-	otherElemKind := otherElem.Kind()
-	if otherElemKind == thisElemKind {
-		return l.value, nil
-	}
 	// Allow the element ConvertToNative() function to determine whether conversion is possible.
-	elemCount := int(l.Size().(Int))
+	otherElemType := typeDesc.Elem()
+	elemCount := l.size
 	nativeList := reflect.MakeSlice(typeDesc, elemCount, elemCount)
 	for i := 0; i < elemCount; i++ {
-		elem := l.Get(Int(i))
-		nativeElemVal, err := elem.ConvertToNative(otherElem)
+		elem := l.NativeToValue(l.get(i))
+		nativeElemVal, err := elem.ConvertToNative(otherElemType)
 		if err != nil {
 			return nil, err
 		}
@@ -189,7 +223,7 @@ func (l *baseList) ConvertToType(typeVal ref.Type) ref.Val {
 func (l *baseList) Equal(other ref.Val) ref.Val {
 	otherList, ok := other.(traits.Lister)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
 	if l.Size() != otherList.Size() {
 		return False
@@ -211,25 +245,22 @@ func (l *baseList) Get(index ref.Val) ref.Val {
 	if !ok {
 		return ValOrErr(index, "unsupported index type '%s' in list", index.Type())
 	}
-	if i < 0 || i >= l.Size().(Int) {
+	iv := int(i)
+	if iv < 0 || iv >= l.size {
 		return NewErr("index '%d' out of range in list size '%d'", i, l.Size())
 	}
-	elem := l.refValue.Index(int(i)).Interface()
+	elem := l.get(iv)
 	return l.NativeToValue(elem)
 }
 
 // Iterator implements the traits.Iterable interface method.
 func (l *baseList) Iterator() traits.Iterator {
-	return &listIterator{
-		baseIterator: &baseIterator{},
-		listValue:    l,
-		cursor:       0,
-		len:          l.Size().(Int)}
+	return newListIterator(l)
 }
 
 // Size implements the traits.Sizer interface method.
 func (l *baseList) Size() ref.Val {
-	return Int(l.refValue.Len())
+	return Int(l.size)
 }
 
 // Type implements the ref.Val interface method.
@@ -255,7 +286,7 @@ type concatList struct {
 func (l *concatList) Add(other ref.Val) ref.Val {
 	otherList, ok := other.(traits.Lister)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
 	if l.Size() == IntZero {
 		return other
@@ -293,10 +324,7 @@ func (l *concatList) Contains(elem ref.Val) ref.Val {
 
 // ConvertToNative implements the ref.Val interface method.
 func (l *concatList) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
-	combined := &baseList{
-		TypeAdapter: l.TypeAdapter,
-		value:       l.Value(),
-		refValue:    reflect.ValueOf(l.Value())}
+	combined := NewDynamicList(l.TypeAdapter, l.Value().([]interface{}))
 	return combined.ConvertToNative(typeDesc)
 }
 
@@ -315,7 +343,7 @@ func (l *concatList) ConvertToType(typeVal ref.Type) ref.Val {
 func (l *concatList) Equal(other ref.Val) ref.Val {
 	otherList, ok := other.(traits.Lister)
 	if !ok {
-		return ValOrErr(other, "no such overload")
+		return MaybeNoSuchOverloadErr(other)
 	}
 	if l.Size() != otherList.Size() {
 		return False
@@ -335,7 +363,7 @@ func (l *concatList) Equal(other ref.Val) ref.Val {
 func (l *concatList) Get(index ref.Val) ref.Val {
 	i, ok := index.(Int)
 	if !ok {
-		return ValOrErr(index, "no such overload")
+		return MaybeNoSuchOverloadErr(index)
 	}
 	if i < l.prevList.Size().(Int) {
 		return l.prevList.Get(i)
@@ -346,11 +374,7 @@ func (l *concatList) Get(index ref.Val) ref.Val {
 
 // Iterator implements the traits.Iterable interface method.
 func (l *concatList) Iterator() traits.Iterator {
-	return &listIterator{
-		baseIterator: &baseIterator{},
-		listValue:    l,
-		cursor:       0,
-		len:          l.Size().(Int)}
+	return newListIterator(l)
 }
 
 // Size implements the traits.Sizer interface method.
@@ -366,7 +390,7 @@ func (l *concatList) Type() ref.Type {
 // Value implements the ref.Val interface method.
 func (l *concatList) Value() interface{} {
 	if l.value == nil {
-		merged := make([]interface{}, l.Size().(Int), l.Size().(Int))
+		merged := make([]interface{}, l.Size().(Int))
 		prevLen := l.prevList.Size().(Int)
 		for i := Int(0); i < prevLen; i++ {
 			merged[i] = l.prevList.Get(i).Value()
@@ -380,131 +404,11 @@ func (l *concatList) Value() interface{} {
 	return l.value
 }
 
-// stringList is a specialization of the traits.Lister interface which is
-// present to demonstrate the ability to specialize Lister implementations.
-type stringList struct {
-	*baseList
-	elems []string
-}
-
-// Add implments the traits.Adder interface method.
-func (l *stringList) Add(other ref.Val) ref.Val {
-	if other.Type() != ListType {
-		return ValOrErr(other, "no such overload")
+func newListIterator(listValue traits.Lister) traits.Iterator {
+	return &listIterator{
+		listValue: listValue,
+		len:       listValue.Size().(Int),
 	}
-	if l.Size() == IntZero {
-		return other
-	}
-	if other.(traits.Sizer).Size() == IntZero {
-		return l
-	}
-	switch other.(type) {
-	case *stringList:
-		concatElems := append(l.elems, other.(*stringList).elems...)
-		return NewStringList(l.TypeAdapter, concatElems)
-	}
-	return &concatList{
-		TypeAdapter: l.TypeAdapter,
-		prevList:    l.baseList,
-		nextList:    other.(traits.Lister)}
-}
-
-// ConvertToNative implements the ref.Val interface method.
-func (l *stringList) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
-	switch typeDesc.Kind() {
-	case reflect.Array, reflect.Slice:
-		if typeDesc.Elem().Kind() == reflect.String {
-			return l.elems, nil
-		}
-		if typeDesc.Elem().Kind() == reflect.Interface {
-			iface := make([]interface{}, len(l.elems), len(l.elems))
-			for i, str := range l.elems {
-				iface[i] = str
-			}
-			return iface, nil
-		}
-	case reflect.Ptr:
-		switch typeDesc {
-		case anyValueType:
-			json, err := l.ConvertToNative(jsonListValueType)
-			if err != nil {
-				return nil, err
-			}
-			return ptypes.MarshalAny(json.(proto.Message))
-		case jsonValueType, jsonListValueType:
-			elemCount := len(l.elems)
-			listVals := make([]*structpb.Value, elemCount, elemCount)
-			for i := 0; i < elemCount; i++ {
-				listVals[i] = &structpb.Value{
-					Kind: &structpb.Value_StringValue{StringValue: l.elems[i]}}
-			}
-			jsonList := &structpb.ListValue{Values: listVals}
-			if typeDesc == jsonListValueType {
-				return jsonList, nil
-			}
-			return &structpb.Value{
-				Kind: &structpb.Value_ListValue{
-					ListValue: jsonList}}, nil
-		}
-	}
-	// If the list is already assignable to the desired type return it.
-	if reflect.TypeOf(l).AssignableTo(typeDesc) {
-		return l, nil
-	}
-	return nil, fmt.Errorf("no conversion found from list type to native type."+
-		" list elem: string, native type: %v", typeDesc)
-}
-
-// Get implements the traits.Indexer interface method.
-func (l *stringList) Get(index ref.Val) ref.Val {
-	i, ok := index.(Int)
-	if !ok {
-		return ValOrErr(index, "no such overload")
-	}
-	if i < 0 || i >= l.Size().(Int) {
-		return NewErr("index '%d' out of range in list size '%d'", i, l.Size())
-	}
-	return String(l.elems[i])
-}
-
-// Size implements the traits.Sizer interface method.
-func (l *stringList) Size() ref.Val {
-	return Int(len(l.elems))
-}
-
-// valueList is a specialization of traits.Lister for ref.Val.
-type valueList struct {
-	*baseList
-	elems []ref.Val
-}
-
-// Add implements the traits.Adder interface method.
-func (l *valueList) Add(other ref.Val) ref.Val {
-	otherList, ok := other.(traits.Lister)
-	if !ok {
-		return ValOrErr(other, "no such overload")
-	}
-	return &concatList{
-		TypeAdapter: l.TypeAdapter,
-		prevList:    l,
-		nextList:    otherList}
-}
-
-// Get implements the traits.Indexer interface method.
-func (l *valueList) Get(index ref.Val) ref.Val {
-	i, ok := index.(Int)
-	if !ok {
-		return ValOrErr(index, "no such overload")
-	}
-	if i < 0 || i >= l.Size().(Int) {
-		return NewErr("index '%d' out of range in list size '%d'", i, l.Size())
-	}
-	return l.elems[i]
-}
-
-// Size implements the traits.Sizer interface method.
-func (l *valueList) Size() ref.Val {
-	return Int(len(l.elems))
 }
 
 type listIterator struct {

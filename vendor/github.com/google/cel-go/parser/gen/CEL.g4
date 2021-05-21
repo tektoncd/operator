@@ -54,14 +54,14 @@ member
     : primary                                                       # PrimaryExpr
     | member op='.' id=IDENTIFIER (open='(' args=exprList? ')')?    # SelectOrCall
     | member op='[' index=expr ']'                                  # Index
-    | member op='{' entries=fieldInitializerList? '}'               # CreateMessage
+    | member op='{' entries=fieldInitializerList? ','? '}'          # CreateMessage
     ;
 
 primary
     : leadingDot='.'? id=IDENTIFIER (op='(' args=exprList? ')')?    # IdentOrGlobalCall
     | '(' e=expr ')'                                                # Nested
     | op='[' elems=exprList? ','? ']'                               # CreateList
-    | op='{' entries=mapInitializerList? '}'                        # CreateStruct
+    | op='{' entries=mapInitializerList? ','? '}'                   # CreateStruct
     | literal                                                       # ConstantLiteral
     ;
 

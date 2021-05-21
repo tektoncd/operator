@@ -82,7 +82,7 @@ func (d *defaultDispatcher) FindOverload(overload string) (*functions.Overload, 
 // OverloadIds implements the Dispatcher interface method.
 func (d *defaultDispatcher) OverloadIds() []string {
 	i := 0
-	overloads := make([]string, len(d.overloads), len(d.overloads))
+	overloads := make([]string, len(d.overloads))
 	for name := range d.overloads {
 		overloads[i] = name
 		i++

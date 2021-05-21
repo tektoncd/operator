@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/config"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -35,6 +36,9 @@ var paramsRegexp = regexp.MustCompile(`\$\(tt.params.(?P<var>[_a-zA-Z][_a-zA-Z0-
 // Validate validates a TriggerTemplate.
 func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
+	if apis.IsInDelete(ctx) {
+		return nil
+	}
 	return errs.Also(t.Spec.validate(ctx).ViaField("spec"))
 }
 
@@ -53,7 +57,7 @@ func (s *TriggerTemplateSpec) validate(ctx context.Context) (errs *apis.FieldErr
 
 func validateResourceTemplates(templates []TriggerResourceTemplate) (errs *apis.FieldError) {
 	for i, trt := range templates {
-		if err := trt.IsAllowedType(); err != nil {
+		if err := config.EnsureAllowedType(trt.RawExtension); err != nil {
 			if runtime.IsMissingVersion(err) {
 				errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("[%d].apiVersion", i)))
 			}

@@ -75,6 +75,11 @@ func (ast *Ast) Source() Source {
 	return ast.source
 }
 
+// FormatType converts a type message into a string representation.
+func FormatType(t *exprpb.Type) string {
+	return checker.FormatCheckedType(t)
+}
+
 // Env encapsulates the context necessary to perform parsing, type checking, or generation of
 // evaluable programs for different expressions.
 type Env struct {
@@ -115,7 +120,10 @@ func NewEnv(opts ...EnvOption) (*Env, error) {
 // See the EnvOption helper functions for the options that can be used to configure the
 // environment.
 func NewCustomEnv(opts ...EnvOption) (*Env, error) {
-	registry := types.NewRegistry()
+	registry, err := types.NewRegistry()
+	if err != nil {
+		return nil, err
+	}
 	return (&Env{
 		declarations: []*exprpb.Decl{},
 		macros:       []parser.Macro{},

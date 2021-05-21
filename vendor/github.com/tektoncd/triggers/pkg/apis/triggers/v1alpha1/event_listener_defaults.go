@@ -45,12 +45,29 @@ func (el *EventListener) SetDefaults(ctx context.Context) {
 				}
 			}
 		}
-		// Remove Deprecated Resource Fields
-		// To be removed in a later release #904
 		el.Spec.updatePodTemplate()
-		el.Spec.updateServiceType()
 		// To be removed in a later release #1020
 		el.Spec.updateReplicas()
+	}
+}
+
+func (spec *EventListenerSpec) updatePodTemplate() {
+	if spec.DeprecatedPodTemplate != nil {
+		if spec.DeprecatedPodTemplate.NodeSelector != nil {
+			if spec.Resources.KubernetesResource == nil {
+				spec.Resources.KubernetesResource = &KubernetesResource{}
+			}
+			spec.Resources.KubernetesResource.Template.Spec.NodeSelector = spec.DeprecatedPodTemplate.NodeSelector
+			spec.DeprecatedPodTemplate.NodeSelector = nil
+		}
+		if spec.DeprecatedPodTemplate.Tolerations != nil {
+			if spec.Resources.KubernetesResource == nil {
+				spec.Resources.KubernetesResource = &KubernetesResource{}
+			}
+			spec.Resources.KubernetesResource.Template.Spec.Tolerations = spec.DeprecatedPodTemplate.Tolerations
+			spec.DeprecatedPodTemplate.Tolerations = nil
+		}
+		spec.DeprecatedPodTemplate = nil
 	}
 }
 
@@ -70,34 +87,5 @@ func (spec *EventListenerSpec) updateReplicas() {
 			spec.Resources.KubernetesResource.Replicas = spec.DeprecatedReplicas
 			spec.DeprecatedReplicas = nil
 		}
-	}
-}
-
-// To be Removed in a later release #904
-func (spec *EventListenerSpec) updatePodTemplate() {
-	if spec.DeprecatedPodTemplate.NodeSelector != nil {
-		if spec.Resources.KubernetesResource == nil {
-			spec.Resources.KubernetesResource = &KubernetesResource{}
-		}
-		spec.Resources.KubernetesResource.Template.Spec.NodeSelector = spec.DeprecatedPodTemplate.NodeSelector
-		spec.DeprecatedPodTemplate.NodeSelector = nil
-	}
-	if spec.DeprecatedPodTemplate.Tolerations != nil {
-		if spec.Resources.KubernetesResource == nil {
-			spec.Resources.KubernetesResource = &KubernetesResource{}
-		}
-		spec.Resources.KubernetesResource.Template.Spec.Tolerations = spec.DeprecatedPodTemplate.Tolerations
-		spec.DeprecatedPodTemplate.Tolerations = nil
-	}
-}
-
-// To be Removed in a later release #904
-func (spec *EventListenerSpec) updateServiceType() {
-	if spec.DeprecatedServiceType != "" {
-		if spec.Resources.KubernetesResource == nil {
-			spec.Resources.KubernetesResource = &KubernetesResource{}
-		}
-		spec.Resources.KubernetesResource.ServiceType = spec.DeprecatedServiceType
-		spec.DeprecatedServiceType = ""
 	}
 }

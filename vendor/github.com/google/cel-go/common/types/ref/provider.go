@@ -15,9 +15,9 @@
 package ref
 
 import (
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
-	descpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
@@ -67,7 +67,7 @@ type TypeRegistry interface {
 	TypeProvider
 
 	// RegisterDescriptor registers the contents of a protocol buffer `FileDescriptor`.
-	RegisterDescriptor(fileDesc *descpb.FileDescriptorProto) error
+	RegisterDescriptor(fileDesc protoreflect.FileDescriptor) error
 
 	// RegisterMessage registers a protocol buffer message and its dependencies.
 	RegisterMessage(message proto.Message) error

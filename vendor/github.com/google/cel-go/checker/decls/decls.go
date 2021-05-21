@@ -16,8 +16,8 @@
 package decls
 
 import (
-	emptypb "github.com/golang/protobuf/ptypes/empty"
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 

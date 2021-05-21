@@ -1,6 +1,6 @@
-T__0=1
-EQUALS=2
-NOT_EQUALS=3
+EQUALS=1
+NOT_EQUALS=2
+IN=3
 LESS=4
 LESS_EQUALS=5
 GREATER_EQUALS=6
@@ -34,9 +34,9 @@ NUM_UINT=33
 STRING=34
 BYTES=35
 IDENTIFIER=36
-'in'=1
-'=='=2
-'!='=3
+'=='=1
+'!='=2
+'in'=3
 '<'=4
 '<='=5
 '>='=6

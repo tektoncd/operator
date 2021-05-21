@@ -256,7 +256,7 @@ func (p *prog) Eval(input interface{}) (v ref.Val, det *EvalDetails, err error) 
 	// translates the CEL value to a Go error response. This interface does not quite match the
 	// RPC signature which allows for multiple errors to be returned, but should be sufficient.
 	if types.IsError(v) {
-		err = v.Value().(error)
+		err = v.(*types.Err)
 	}
 	return
 }

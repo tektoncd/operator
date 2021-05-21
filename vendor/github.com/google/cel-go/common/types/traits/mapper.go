@@ -24,10 +24,10 @@ type Mapper interface {
 	Iterable
 	Sizer
 
-	// Find a value by key if it exists.
+	// Find returns a value, if one exists, for the input key.
 	//
-	// When the value exists, the result will be non-nil, true. When the value does not exist,
-	// the result will be nil, false. When an error occurs, the value will be non-nil and the
-	// found result false.
+	// If the key is not found the function returns (nil, false).
+	// If the input key is not valid for the map, or is Err or Unknown the function returns
+	// (Unknown|Err, false).
 	Find(key ref.Val) (ref.Val, bool)
 }

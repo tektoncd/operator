@@ -20,13 +20,12 @@ import (
 	"reflect"
 	"strconv"
 
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	wrapperspb "github.com/golang/protobuf/ptypes/wrappers"
+	anypb "google.golang.org/protobuf/types/known/anypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
+	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // Uint type implementation which supports comparison and math operators.
@@ -58,6 +57,9 @@ func (i Uint) Add(other ref.Val) ref.Val {
 	if !ok {
 		return ValOrErr(other, "no such overload")
 	}
+	if otherUint > 0 && i > math.MaxUint64-otherUint {
+		return NewErr("unsigned integer overflow")
+	}
 	return i + otherUint
 }
 
@@ -85,29 +87,21 @@ func (i Uint) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 		switch typeDesc {
 		case anyValueType:
 			// Primitives must be wrapped before being set on an Any field.
-			return ptypes.MarshalAny(&wrapperspb.UInt64Value{Value: uint64(i)})
+			return anypb.New(wrapperspb.UInt64(uint64(i)))
 		case jsonValueType:
 			// JSON can accurately represent 32-bit uints as floating point values.
 			if i.isJSONSafe() {
-				return &structpb.Value{
-					Kind: &structpb.Value_NumberValue{
-						NumberValue: float64(i),
-					},
-				}, nil
+				return structpb.NewNumberValue(float64(i)), nil
 			}
 			// Proto3 to JSON conversion requires string-formatted uint64 values
 			// since the conversion to floating point would result in truncation.
-			return &structpb.Value{
-				Kind: &structpb.Value_StringValue{
-					StringValue: strconv.FormatUint(uint64(i), 10),
-				},
-			}, nil
+			return structpb.NewStringValue(strconv.FormatUint(uint64(i), 10)), nil
 		case uint32WrapperType:
-			// Convert the value to a protobuf.UInt32Value (with truncation).
-			return &wrapperspb.UInt32Value{Value: uint32(i)}, nil
+			// Convert the value to a wrapperspb.UInt32Value (with truncation).
+			return wrapperspb.UInt32(uint32(i)), nil
 		case uint64WrapperType:
-			// Convert the value to a protobuf.UInt64Value.
-			return &wrapperspb.UInt64Value{Value: uint64(i)}, nil
+			// Convert the value to a wrapperspb.UInt64Value.
+			return wrapperspb.UInt64(uint64(i)), nil
 		}
 		switch typeDesc.Elem().Kind() {
 		case reflect.Uint32:
@@ -122,6 +116,10 @@ func (i Uint) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 			return p.Interface(), nil
 		}
 	case reflect.Interface:
+		iv := i.Value()
+		if reflect.TypeOf(iv).Implements(typeDesc) {
+			return iv, nil
+		}
 		if reflect.TypeOf(i).Implements(typeDesc) {
 			return i, nil
 		}
@@ -188,6 +186,9 @@ func (i Uint) Multiply(other ref.Val) ref.Val {
 	if !ok {
 		return ValOrErr(other, "no such overload")
 	}
+	if otherUint != 0 && i > math.MaxUint64/otherUint {
+		return NewErr("unsigned integer overflow")
+	}
 	return i * otherUint
 }
 
@@ -196,6 +197,9 @@ func (i Uint) Subtract(subtrahend ref.Val) ref.Val {
 	subtraUint, ok := subtrahend.(Uint)
 	if !ok {
 		return ValOrErr(subtrahend, "no such overload")
+	}
+	if subtraUint > i {
+		return NewErr("unsigned integer overflow")
 	}
 	return i - subtraUint
 }

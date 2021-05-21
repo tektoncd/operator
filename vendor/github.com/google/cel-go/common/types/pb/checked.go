@@ -15,30 +15,31 @@
 package pb
 
 import (
-	descpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
-	emptypb "github.com/golang/protobuf/ptypes/empty"
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	"google.golang.org/protobuf/reflect/protoreflect"
+
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 var (
 	// CheckedPrimitives map from proto field descriptor type to expr.Type.
-	CheckedPrimitives = map[descpb.FieldDescriptorProto_Type]*exprpb.Type{
-		descpb.FieldDescriptorProto_TYPE_BOOL:     checkedBool,
-		descpb.FieldDescriptorProto_TYPE_BYTES:    checkedBytes,
-		descpb.FieldDescriptorProto_TYPE_DOUBLE:   checkedDouble,
-		descpb.FieldDescriptorProto_TYPE_FLOAT:    checkedDouble,
-		descpb.FieldDescriptorProto_TYPE_INT32:    checkedInt,
-		descpb.FieldDescriptorProto_TYPE_INT64:    checkedInt,
-		descpb.FieldDescriptorProto_TYPE_SINT32:   checkedInt,
-		descpb.FieldDescriptorProto_TYPE_SINT64:   checkedInt,
-		descpb.FieldDescriptorProto_TYPE_UINT32:   checkedUint,
-		descpb.FieldDescriptorProto_TYPE_UINT64:   checkedUint,
-		descpb.FieldDescriptorProto_TYPE_FIXED32:  checkedUint,
-		descpb.FieldDescriptorProto_TYPE_FIXED64:  checkedUint,
-		descpb.FieldDescriptorProto_TYPE_SFIXED32: checkedInt,
-		descpb.FieldDescriptorProto_TYPE_SFIXED64: checkedInt,
-		descpb.FieldDescriptorProto_TYPE_STRING:   checkedString}
+	CheckedPrimitives = map[protoreflect.Kind]*exprpb.Type{
+		protoreflect.BoolKind:     checkedBool,
+		protoreflect.BytesKind:    checkedBytes,
+		protoreflect.DoubleKind:   checkedDouble,
+		protoreflect.FloatKind:    checkedDouble,
+		protoreflect.Int32Kind:    checkedInt,
+		protoreflect.Int64Kind:    checkedInt,
+		protoreflect.Sint32Kind:   checkedInt,
+		protoreflect.Sint64Kind:   checkedInt,
+		protoreflect.Uint32Kind:   checkedUint,
+		protoreflect.Uint64Kind:   checkedUint,
+		protoreflect.Fixed32Kind:  checkedUint,
+		protoreflect.Fixed64Kind:  checkedUint,
+		protoreflect.Sfixed32Kind: checkedInt,
+		protoreflect.Sfixed64Kind: checkedInt,
+		protoreflect.StringKind:   checkedString}
 
 	// CheckedWellKnowns map from qualified proto type name to expr.Type for
 	// well-known proto types.
