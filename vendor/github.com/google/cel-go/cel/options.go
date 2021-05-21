@@ -17,7 +17,6 @@ package cel
 import (
 	"fmt"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/google/cel-go/common/containers"
 	"github.com/google/cel-go/common/types/pb"
 	"github.com/google/cel-go/common/types/ref"
@@ -25,8 +24,13 @@ import (
 	"github.com/google/cel-go/interpreter/functions"
 	"github.com/google/cel-go/parser"
 
-	descpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
+
 	exprpb "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
+	descpb "google.golang.org/protobuf/types/descriptorpb"
 )
 
 // These constants beginning with "Feature" enable optional behavior in
@@ -205,12 +209,9 @@ func Types(addTypes ...interface{}) EnvOption {
 		for _, t := range addTypes {
 			switch v := t.(type) {
 			case proto.Message:
-				fds, err := pb.CollectFileDescriptorSet(v)
-				if err != nil {
-					return nil, err
-				}
-				for _, fd := range fds.GetFile() {
-					err = reg.RegisterDescriptor(fd)
+				fdMap := pb.CollectFileDescriptorSet(v)
+				for _, fd := range fdMap {
+					err := reg.RegisterDescriptor(fd)
 					if err != nil {
 						return nil, err
 					}
@@ -228,36 +229,79 @@ func Types(addTypes ...interface{}) EnvOption {
 	}
 }
 
-// TypeDescs adds type declarations for one or more protocol buffer
-// FileDescriptorProtos or FileDescriptorSets.  Note that types added
-// via descriptor will not be able to instantiate messages, and so are
-// only useful for Check() operations.
+// TypeDescs adds type declarations from any protoreflect.FileDescriptor, protoregistry.Files,
+// google.protobuf.FileDescriptorProto or google.protobuf.FileDescriptorSet provided.
+//
+// Note that messages instantiated from these descriptors will be *dynamicpb.Message values
+// rather than the concrete message type.
+//
+// TypeDescs are hermetic to a single Env object, but may be copied to other Env values via
+// extension or by re-using the same EnvOption with another NewEnv() call.
 func TypeDescs(descs ...interface{}) EnvOption {
 	return func(e *Env) (*Env, error) {
 		reg, isReg := e.provider.(ref.TypeRegistry)
 		if !isReg {
 			return nil, fmt.Errorf("custom types not supported by provider: %T", e.provider)
 		}
+		// Scan the input descriptors for FileDescriptorProto messages and accumulate them into a
+		// synthetic FileDescriptorSet as the FileDescriptorProto messages may refer to each other
+		// and will not resolve properly unless they are part of the same set.
+		var fds *descpb.FileDescriptorSet
 		for _, d := range descs {
-			switch p := d.(type) {
-			case *descpb.FileDescriptorSet:
-				for _, fd := range p.File {
-					err := reg.RegisterDescriptor(fd)
-					if err != nil {
-						return nil, err
+			switch f := d.(type) {
+			case *descpb.FileDescriptorProto:
+				if fds == nil {
+					fds = &descpb.FileDescriptorSet{
+						File: []*descpb.FileDescriptorProto{},
 					}
 				}
-			case *descpb.FileDescriptorProto:
-				err := reg.RegisterDescriptor(p)
-				if err != nil {
+				fds.File = append(fds.File, f)
+			}
+		}
+		if fds != nil {
+			if err := registerFileSet(reg, fds); err != nil {
+				return nil, err
+			}
+		}
+		for _, d := range descs {
+			switch f := d.(type) {
+			case *protoregistry.Files:
+				if err := registerFiles(reg, f); err != nil {
 					return nil, err
 				}
+			case protoreflect.FileDescriptor:
+				if err := reg.RegisterDescriptor(f); err != nil {
+					return nil, err
+				}
+			case *descpb.FileDescriptorSet:
+				if err := registerFileSet(reg, f); err != nil {
+					return nil, err
+				}
+			case *descpb.FileDescriptorProto:
+				// skip, handled as a synthetic file descriptor set.
 			default:
 				return nil, fmt.Errorf("unsupported type descriptor: %T", d)
 			}
 		}
 		return e, nil
 	}
+}
+
+func registerFileSet(reg ref.TypeRegistry, fileSet *descpb.FileDescriptorSet) error {
+	files, err := protodesc.NewFiles(fileSet)
+	if err != nil {
+		return fmt.Errorf("protodesc.NewFiles(%v) failed: %v", fileSet, err)
+	}
+	return registerFiles(reg, files)
+}
+
+func registerFiles(reg ref.TypeRegistry, files *protoregistry.Files) error {
+	var err error
+	files.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+		err = reg.RegisterDescriptor(fd)
+		return err == nil
+	})
+	return err
 }
 
 // ProgramOption is a functional interface for configuring evaluation bindings and behaviors.

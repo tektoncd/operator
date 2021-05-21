@@ -18,12 +18,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/google/cel-go/common/types/ref"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
+	anypb "google.golang.org/protobuf/types/known/anypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 )
 
 // Null type implementation.
@@ -42,9 +42,7 @@ var (
 func (n Null) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 	switch typeDesc.Kind() {
 	case reflect.Int32:
-		if typeDesc == jsonNullType {
-			return structpb.NullValue_NULL_VALUE, nil
-		}
+		return reflect.ValueOf(n).Convert(typeDesc).Interface(), nil
 	case reflect.Ptr:
 		switch typeDesc {
 		case anyValueType:
@@ -54,15 +52,15 @@ func (n Null) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
-			return ptypes.MarshalAny(pb.(proto.Message))
+			return anypb.New(pb.(proto.Message))
 		case jsonValueType:
-			return &structpb.Value{
-				Kind: &structpb.Value_NullValue{
-					NullValue: structpb.NullValue_NULL_VALUE,
-				},
-			}, nil
+			return structpb.NewNullValue(), nil
 		}
 	case reflect.Interface:
+		nv := n.Value()
+		if reflect.TypeOf(nv).Implements(typeDesc) {
+			return nv, nil
+		}
 		if reflect.TypeOf(n).Implements(typeDesc) {
 			return n, nil
 		}

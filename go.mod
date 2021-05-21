@@ -7,9 +7,8 @@ require (
 	github.com/manifestival/controller-runtime-client v0.4.0
 	github.com/manifestival/manifestival v0.7.0
 	github.com/markbates/inflect v1.0.4
-	github.com/tektoncd/pipeline v0.23.0 // indirect
 	github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
-	github.com/tektoncd/triggers v0.13.0
+	github.com/tektoncd/triggers v0.14.1
 	go.uber.org/zap v1.16.0
 	golang.org/x/mod v0.4.1
 	gomodules.xyz/jsonpatch/v2 v2.1.0

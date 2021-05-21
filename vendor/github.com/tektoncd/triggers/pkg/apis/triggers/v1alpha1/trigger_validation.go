@@ -30,6 +30,9 @@ import (
 // Validate validates a Trigger
 func (t *Trigger) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
+	if apis.IsInDelete(ctx) {
+		return nil
+	}
 	return errs.Also(t.Spec.validate(ctx).ViaField("spec"))
 }
 

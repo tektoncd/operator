@@ -382,7 +382,7 @@ func (a *conditionalAttribute) Qualify(vars Activation, obj interface{}) (interf
 func (a *conditionalAttribute) Resolve(vars Activation) (interface{}, error) {
 	val := a.expr.Eval(vars)
 	if types.IsError(val) {
-		return nil, val.Value().(error)
+		return nil, val.(*types.Err)
 	}
 	if val == types.True {
 		return a.truthy.Resolve(vars)
@@ -393,7 +393,7 @@ func (a *conditionalAttribute) Resolve(vars Activation) (interface{}, error) {
 	if types.IsUnknown(val) {
 		return val, nil
 	}
-	return nil, types.ValOrErr(val, "no such overload").Value().(error)
+	return nil, types.MaybeNoSuchOverloadErr(val).(*types.Err)
 }
 
 // String is an implementation of the Stringer interface method.
@@ -476,14 +476,15 @@ func (a *maybeAttribute) AddQualifier(qual Qualifier) (Attribute, error) {
 	for _, attr := range a.attrs {
 		if isStr && len(attr.Qualifiers()) == 0 {
 			candidateVars := attr.CandidateVariableNames()
-			augmentedNames = make([]string,
-				len(candidateVars),
-				len(candidateVars))
+			augmentedNames = make([]string, len(candidateVars))
 			for i, name := range candidateVars {
 				augmentedNames[i] = fmt.Sprintf("%s.%s", name, str)
 			}
 		}
-		attr.AddQualifier(qual)
+		_, err := attr.AddQualifier(qual)
+		if err != nil {
+			return nil, err
+		}
 	}
 	// Next, ensure the most specific variable / type reference is searched first.
 	a.attrs = append([]NamespacedAttribute{
@@ -584,7 +585,7 @@ func (a *relativeAttribute) Resolve(vars Activation) (interface{}, error) {
 	// First, evaluate the operand.
 	v := a.operand.Eval(vars)
 	if types.IsError(v) {
-		return nil, v.Value().(error)
+		return nil, v.(*types.Err)
 	}
 	if types.IsUnknown(v) {
 		return v, nil
@@ -1006,7 +1007,7 @@ func refResolve(adapter ref.TypeAdapter, idx ref.Val, obj interface{}) (ref.Val,
 			return nil, fmt.Errorf("no such key: %v", idx)
 		}
 		if types.IsError(elem) {
-			return nil, elem.Value().(error)
+			return nil, elem.(*types.Err)
 		}
 		return elem, nil
 	}
@@ -1014,7 +1015,7 @@ func refResolve(adapter ref.TypeAdapter, idx ref.Val, obj interface{}) (ref.Val,
 	if isIndexer {
 		elem := indexer.Get(idx)
 		if types.IsError(elem) {
-			return nil, elem.Value().(error)
+			return nil, elem.(*types.Err)
 		}
 		return elem, nil
 	}
@@ -1025,7 +1026,7 @@ func refResolve(adapter ref.TypeAdapter, idx ref.Val, obj interface{}) (ref.Val,
 	// future, then it would be reasonable to return error values as ref.Val types rather than
 	// simple go error types.
 	if types.IsError(celVal) {
-		return nil, celVal.Value().(error)
+		return nil, celVal.(*types.Err)
 	}
 	return nil, errors.New("no such overload")
 }

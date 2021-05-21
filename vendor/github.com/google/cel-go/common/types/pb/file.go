@@ -17,13 +17,12 @@ package pb
 import (
 	"fmt"
 
-	descpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // NewFileDescription returns a FileDescription instance with a complete listing of all the message
 // types and enum values declared within any scope in the file.
-func NewFileDescription(fileDesc *descpb.FileDescriptorProto, pbdb *Db) *FileDescription {
-	isProto3 := fileDesc.GetSyntax() == "proto3"
+func NewFileDescription(fileDesc protoreflect.FileDescriptor, pbdb *Db) *FileDescription {
 	metadata := collectFileMetadata(fileDesc)
 	enums := make(map[string]*EnumValueDescription)
 	for name, enumVal := range metadata.enumValues {
@@ -31,7 +30,7 @@ func NewFileDescription(fileDesc *descpb.FileDescriptorProto, pbdb *Db) *FileDes
 	}
 	types := make(map[string]*TypeDescription)
 	for name, msgType := range metadata.msgTypes {
-		types[name] = NewTypeDescription(name, msgType, isProto3, pbdb.DescribeType)
+		types[name] = NewTypeDescription(name, msgType)
 	}
 	return &FileDescription{
 		types: types,
@@ -47,11 +46,9 @@ type FileDescription struct {
 
 // GetEnumDescription returns an EnumDescription for a qualified enum value
 // name declared within the .proto file.
-func (fd *FileDescription) GetEnumDescription(enumName string) (*EnumValueDescription, error) {
-	if ed, found := fd.enums[sanitizeProtoName(enumName)]; found {
-		return ed, nil
-	}
-	return nil, fmt.Errorf("no such enum value '%s'", enumName)
+func (fd *FileDescription) GetEnumDescription(enumName string) (*EnumValueDescription, bool) {
+	ed, found := fd.enums[sanitizeProtoName(enumName)]
+	return ed, found
 }
 
 // GetEnumNames returns the string names of all enum values in the file.
@@ -65,13 +62,11 @@ func (fd *FileDescription) GetEnumNames() []string {
 	return enumNames
 }
 
-// GetTypeDescription returns a TypeDescription for a qualified type name
+// GetTypeDescription returns a TypeDescription for a qualified protobuf message type name
 // declared within the .proto file.
-func (fd *FileDescription) GetTypeDescription(typeName string) (*TypeDescription, error) {
-	if td, found := fd.types[sanitizeProtoName(typeName)]; found {
-		return td, nil
-	}
-	return nil, fmt.Errorf("no such type '%s'", typeName)
+func (fd *FileDescription) GetTypeDescription(typeName string) (*TypeDescription, bool) {
+	td, found := fd.types[sanitizeProtoName(typeName)]
+	return td, found
 }
 
 // GetTypeNames returns the list of all type names contained within the file.
@@ -96,56 +91,51 @@ func sanitizeProtoName(name string) string {
 // fileMetadata is a flattened view of message types and enum values within a file descriptor.
 type fileMetadata struct {
 	// msgTypes maps from fully-qualified message name to descriptor.
-	msgTypes map[string]*descpb.DescriptorProto
+	msgTypes map[string]protoreflect.MessageDescriptor
 	// enumValues maps from fully-qualified enum value to enum value descriptor.
-	enumValues map[string]*descpb.EnumValueDescriptorProto
+	enumValues map[string]protoreflect.EnumValueDescriptor
+	// TODO: support enum type definitions for use in future type-check enhancements.
 }
 
 // collectFileMetadata traverses the proto file object graph to collect message types and enum
 // values and index them by their fully qualified names.
-func collectFileMetadata(fileDesc *descpb.FileDescriptorProto) *fileMetadata {
-	pkg := fileDesc.GetPackage()
-	msgTypes := make(map[string]*descpb.DescriptorProto)
-	collectMsgTypes(pkg, fileDesc.GetMessageType(), msgTypes)
-	enumValues := make(map[string]*descpb.EnumValueDescriptorProto)
-	collectEnumValues(pkg, fileDesc.GetEnumType(), enumValues)
-	for container, msgType := range msgTypes {
-		nestedEnums := msgType.GetEnumType()
-		if len(nestedEnums) == 0 {
-			continue
-		}
-		collectEnumValues(container, nestedEnums, enumValues)
-	}
+func collectFileMetadata(fileDesc protoreflect.FileDescriptor) *fileMetadata {
+	msgTypes := make(map[string]protoreflect.MessageDescriptor)
+	enumValues := make(map[string]protoreflect.EnumValueDescriptor)
+	collectMsgTypes(fileDesc.Messages(), msgTypes, enumValues)
+	collectEnumValues(fileDesc.Enums(), enumValues)
 	return &fileMetadata{
 		msgTypes:   msgTypes,
 		enumValues: enumValues,
 	}
 }
 
-// collectMsgTypes recursively collects messages and nested messages into a map of fully
-// qualified message names to message descriptors.
-func collectMsgTypes(container string,
-	msgTypes []*descpb.DescriptorProto,
-	msgTypeMap map[string]*descpb.DescriptorProto) {
-	for _, msgType := range msgTypes {
-		msgName := fmt.Sprintf("%s.%s", container, msgType.GetName())
-		msgTypeMap[msgName] = msgType
-		nestedTypes := msgType.GetNestedType()
-		if len(nestedTypes) == 0 {
-			continue
+// collectMsgTypes recursively collects messages, nested messages, and nested enums into a map of
+// fully qualified protobuf names to descriptors.
+func collectMsgTypes(msgTypes protoreflect.MessageDescriptors, msgTypeMap map[string]protoreflect.MessageDescriptor, enumValueMap map[string]protoreflect.EnumValueDescriptor) {
+	for i := 0; i < msgTypes.Len(); i++ {
+		msgType := msgTypes.Get(i)
+		msgTypeMap[string(msgType.FullName())] = msgType
+		nestedMsgTypes := msgType.Messages()
+		if nestedMsgTypes.Len() != 0 {
+			collectMsgTypes(nestedMsgTypes, msgTypeMap, enumValueMap)
 		}
-		collectMsgTypes(msgName, nestedTypes, msgTypeMap)
+		nestedEnumTypes := msgType.Enums()
+		if nestedEnumTypes.Len() != 0 {
+			collectEnumValues(nestedEnumTypes, enumValueMap)
+		}
 	}
 }
 
 // collectEnumValues accumulates the enum values within an enum declaration.
-func collectEnumValues(container string,
-	enumTypes []*descpb.EnumDescriptorProto,
-	enumValueMap map[string]*descpb.EnumValueDescriptorProto) {
-	for _, enumType := range enumTypes {
-		for _, enumValue := range enumType.GetValue() {
-			name := fmt.Sprintf("%s.%s.%s", container, enumType.GetName(), enumValue.GetName())
-			enumValueMap[name] = enumValue
+func collectEnumValues(enumTypes protoreflect.EnumDescriptors, enumValueMap map[string]protoreflect.EnumValueDescriptor) {
+	for i := 0; i < enumTypes.Len(); i++ {
+		enumType := enumTypes.Get(i)
+		enumTypeValues := enumType.Values()
+		for j := 0; j < enumTypeValues.Len(); j++ {
+			enumValue := enumTypeValues.Get(j)
+			enumValueName := fmt.Sprintf("%s.%s", string(enumType.FullName()), string(enumValue.Name()))
+			enumValueMap[enumValueName] = enumValue
 		}
 	}
 }

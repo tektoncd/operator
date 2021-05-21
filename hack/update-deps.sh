@@ -24,8 +24,8 @@ cd ${REPO_ROOT_DIR}
 
 VERSION="release-0.22"
 K8S_VERSION="v0.19.7"
-TRIGGERS_VERSION="v0.13.0"
-PIPELINE_VERSION="v0.23.0"
+TRIGGERS_VERSION="v0.14.1"
+PIPELINE_VERSION="v0.24.1"
 
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.

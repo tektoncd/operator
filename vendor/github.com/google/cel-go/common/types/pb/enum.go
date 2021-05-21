@@ -15,13 +15,12 @@
 package pb
 
 import (
-	descpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // NewEnumValueDescription produces an enum value description with the fully qualified enum value
 // name and the enum value descriptor.
-func NewEnumValueDescription(name string,
-	desc *descpb.EnumValueDescriptorProto) *EnumValueDescription {
+func NewEnumValueDescription(name string, desc protoreflect.EnumValueDescriptor) *EnumValueDescription {
 	return &EnumValueDescription{
 		enumValueName: name,
 		desc:          desc,
@@ -31,7 +30,7 @@ func NewEnumValueDescription(name string,
 // EnumValueDescription maps a fully-qualified enum value name to its numeric value.
 type EnumValueDescription struct {
 	enumValueName string
-	desc          *descpb.EnumValueDescriptorProto
+	desc          protoreflect.EnumValueDescriptor
 }
 
 // Name returns the fully-qualified identifier name for the enum value.
@@ -41,5 +40,5 @@ func (ed *EnumValueDescription) Name() string {
 
 // Value returns the (numeric) value of the enum.
 func (ed *EnumValueDescription) Value() int32 {
-	return ed.desc.GetNumber()
+	return int32(ed.desc.Number())
 }

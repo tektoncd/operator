@@ -16,17 +16,17 @@ package types
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	wrapperspb "github.com/golang/protobuf/ptypes/wrappers"
+	anypb "google.golang.org/protobuf/types/known/anypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
+	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // Int type that implements ref.Val as well as comparison and math operators.
@@ -64,6 +64,9 @@ func (i Int) Add(other ref.Val) ref.Val {
 	if !ok {
 		return ValOrErr(other, "no such overload")
 	}
+	if (otherInt > 0 && i > math.MaxInt64-otherInt) || (otherInt < 0 && i < math.MinInt64-otherInt) {
+		return NewErr("integer overflow")
+	}
 	return i + otherInt
 }
 
@@ -95,13 +98,13 @@ func (i Int) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 		switch typeDesc {
 		case anyValueType:
 			// Primitives must be wrapped before being set on an Any field.
-			return ptypes.MarshalAny(&wrapperspb.Int64Value{Value: int64(i)})
+			return anypb.New(wrapperspb.Int64(int64(i)))
 		case int32WrapperType:
-			// Convert the value to a protobuf.Int32Value (with truncation).
-			return &wrapperspb.Int32Value{Value: int32(i)}, nil
+			// Convert the value to a wrapperspb.Int32Value (with truncation).
+			return wrapperspb.Int32(int32(i)), nil
 		case int64WrapperType:
-			// Convert the value to a protobuf.Int64Value.
-			return &wrapperspb.Int64Value{Value: int64(i)}, nil
+			// Convert the value to a wrapperspb.Int64Value.
+			return wrapperspb.Int64(int64(i)), nil
 		case jsonValueType:
 			// The proto-to-JSON conversion rules would convert all 64-bit integer values to JSON
 			// decimal strings. Because CEL ints might come from the automatic widening of 32-bit
@@ -118,17 +121,11 @@ func (i Int) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 			// however, it is best to simply stay within the JSON number range when building JSON
 			// objects in CEL.
 			if i.isJSONSafe() {
-				return &structpb.Value{
-					Kind: &structpb.Value_NumberValue{NumberValue: float64(i)},
-				}, nil
+				return structpb.NewNumberValue(float64(i)), nil
 			}
 			// Proto3 to JSON conversion requires string-formatted int64 values
 			// since the conversion to floating point would result in truncation.
-			return &structpb.Value{
-				Kind: &structpb.Value_StringValue{
-					StringValue: strconv.FormatInt(int64(i), 10),
-				},
-			}, nil
+			return structpb.NewStringValue(strconv.FormatInt(int64(i), 10)), nil
 		}
 		switch typeDesc.Elem().Kind() {
 		case reflect.Int32:
@@ -143,6 +140,10 @@ func (i Int) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 			return p.Interface(), nil
 		}
 	case reflect.Interface:
+		iv := i.Value()
+		if reflect.TypeOf(iv).Implements(typeDesc) {
+			return iv, nil
+		}
 		if reflect.TypeOf(i).Implements(typeDesc) {
 			return i, nil
 		}
@@ -165,12 +166,8 @@ func (i Int) ConvertToType(typeVal ref.Type) ref.Val {
 	case StringType:
 		return String(fmt.Sprintf("%d", int64(i)))
 	case TimestampType:
-		t := time.Unix(int64(i), 0)
-		ts, err := ptypes.TimestampProto(t)
-		if err != nil {
-			return NewErr(err.Error())
-		}
-		return Timestamp{Timestamp: ts}
+		t := time.Unix(int64(i), 0).UTC()
+		return Timestamp{Time: t}
 	case TypeType:
 		return IntType
 	}
@@ -185,6 +182,10 @@ func (i Int) Divide(other ref.Val) ref.Val {
 	}
 	if otherInt == IntZero {
 		return NewErr("divide by zero")
+	}
+	// In twos complement, negating MinInt64 would result in a valid of MaxInt64+1.
+	if i == math.MinInt64 && otherInt == -1 {
+		return NewErr("integer overflow")
 	}
 	return i / otherInt
 }
@@ -207,6 +208,10 @@ func (i Int) Modulo(other ref.Val) ref.Val {
 	if otherInt == IntZero {
 		return NewErr("modulus by zero")
 	}
+	// In twos complement, negating MinInt64 would result in a valid of MaxInt64+1.
+	if i == math.MinInt64 && otherInt == -1 {
+		return NewErr("integer overflow")
+	}
 	return i % otherInt
 }
 
@@ -216,11 +221,23 @@ func (i Int) Multiply(other ref.Val) ref.Val {
 	if !ok {
 		return ValOrErr(other, "no such overload")
 	}
+	// Detecting multiplication overflow is more complicated than the others. The first two detect
+	// attempting to negate MinInt64, which would result in MaxInt64+1. The other four detect normal
+	// overflow conditions.
+	if (i == -1 && otherInt == math.MinInt64) || (otherInt == -1 && i == math.MinInt64) ||
+		(i > 0 && otherInt > 0 && i > math.MaxInt64/otherInt) || (i > 0 && otherInt < 0 && otherInt < math.MinInt64/i) ||
+		(i < 0 && otherInt > 0 && i < math.MinInt64/otherInt) || (i < 0 && otherInt < 0 && otherInt < math.MaxInt64/i) {
+		return NewErr("integer overflow")
+	}
 	return i * otherInt
 }
 
 // Negate implements traits.Negater.Negate.
 func (i Int) Negate() ref.Val {
+	// In twos complement, negating MinInt64 would result in a valid of MaxInt64+1.
+	if i == math.MinInt64 {
+		return NewErr("integer overflow")
+	}
 	return -i
 }
 
@@ -229,6 +246,9 @@ func (i Int) Subtract(subtrahend ref.Val) ref.Val {
 	subtraInt, ok := subtrahend.(Int)
 	if !ok {
 		return ValOrErr(subtrahend, "no such overload")
+	}
+	if (subtraInt < 0 && i > math.MaxInt64+subtraInt) || (subtraInt > 0 && i < math.MinInt64+subtraInt) {
+		return NewErr("integer overflow")
 	}
 	return i - subtraInt
 }

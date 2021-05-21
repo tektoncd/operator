@@ -82,10 +82,3 @@ type TriggerTemplateList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TriggerTemplate `json:"items"`
 }
-
-// IsAllowedType returns true if the resourceTemplate has an apiVersion
-// and kind field set to one of the allowed ones.
-func (trt *TriggerResourceTemplate) IsAllowedType() error {
-	_, err := runtime.Decode(Decoder, trt.RawExtension.Raw)
-	return err
-}

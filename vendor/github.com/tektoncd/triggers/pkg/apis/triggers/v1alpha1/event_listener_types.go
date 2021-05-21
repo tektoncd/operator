@@ -55,14 +55,11 @@ type EventListener struct {
 // EventListenerSpec defines the desired state of the EventListener, represented
 // by a list of Triggers.
 type EventListenerSpec struct {
-	ServiceAccountName string                 `json:"serviceAccountName"`
+	ServiceAccountName string                 `json:"serviceAccountName,omitempty"`
 	Triggers           []EventListenerTrigger `json:"triggers"`
 	// To be removed in a later release #1020
-	DeprecatedReplicas *int32 `json:"replicas,omitempty"`
-	// To be removed in a later release #904
-	DeprecatedServiceType corev1.ServiceType `json:"serviceType,omitempty"`
-	// To be removed in a later release #904
-	DeprecatedPodTemplate PodTemplate           `json:"podTemplate,omitempty"`
+	DeprecatedReplicas    *int32                `json:"replicas,omitempty"`
+	DeprecatedPodTemplate *PodTemplate          `json:"podTemplate,omitempty"`
 	NamespaceSelector     NamespaceSelector     `json:"namespaceSelector,omitempty"`
 	LabelSelector         *metav1.LabelSelector `json:"labelSelector,omitempty"`
 	Resources             Resources             `json:"resources,omitempty"`
@@ -193,7 +190,10 @@ const (
 	ClusterTriggerBindingKind TriggerBindingKind = "ClusterTriggerBinding"
 )
 
-var eventListenerCondSet = apis.NewLivingConditionSet(ServiceExists, DeploymentExists)
+var eventListenerCondSet = apis.NewLivingConditionSet(
+	ServiceExists,
+	DeploymentExists,
+)
 
 // GetCondition returns the Condition matching the given type.
 func (els *EventListenerStatus) GetCondition(t apis.ConditionType) *apis.Condition {
@@ -205,8 +205,33 @@ func (els *EventListenerStatus) GetCondition(t apis.ConditionType) *apis.Conditi
 // K8s API elsewhere.
 func (els *EventListenerStatus) SetCondition(newCond *apis.Condition) {
 	if newCond != nil {
+		// TODO: Should the ConditionManager be set somewhere?
 		eventListenerCondSet.Manage(els).SetCondition(*newCond)
 	}
+}
+
+func (els *EventListenerStatus) SetReadyCondition() {
+	for _, ct := range []apis.ConditionType{
+		ServiceExists,
+		DeploymentExists,
+		apis.ConditionType(appsv1.DeploymentProgressing),
+		apis.ConditionType(appsv1.DeploymentAvailable)} {
+		if sc := els.GetCondition(ct); sc != nil {
+			if sc.Status != corev1.ConditionTrue {
+				els.SetCondition(&apis.Condition{
+					Type:    apis.ConditionReady,
+					Status:  corev1.ConditionFalse,
+					Message: fmt.Sprintf("Condition %s has status: %s with message: %s", sc.Type, sc.Status, sc.Message),
+				})
+				return
+			}
+		}
+	}
+	els.SetCondition(&apis.Condition{
+		Type:    apis.ConditionReady,
+		Status:  corev1.ConditionTrue,
+		Message: "EventListener is ready",
+	})
 }
 
 // SetDeploymentConditions sets the Deployment conditions on the EventListener,
@@ -271,6 +296,7 @@ func (els *EventListenerStatus) InitializeConditions() {
 	for _, condition := range []apis.ConditionType{
 		ServiceExists,
 		DeploymentExists,
+		apis.ConditionReady,
 	} {
 		els.SetCondition(&apis.Condition{
 			Type:   condition,

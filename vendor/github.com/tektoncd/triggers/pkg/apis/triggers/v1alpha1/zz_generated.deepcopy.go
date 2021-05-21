@@ -383,7 +383,11 @@ func (in *EventListenerSpec) DeepCopyInto(out *EventListenerSpec) {
 		*out = new(int32)
 		**out = **in
 	}
-	in.DeprecatedPodTemplate.DeepCopyInto(&out.DeprecatedPodTemplate)
+	if in.DeprecatedPodTemplate != nil {
+		in, out := &in.DeprecatedPodTemplate, &out.DeprecatedPodTemplate
+		*out = new(PodTemplate)
+		(*in).DeepCopyInto(*out)
+	}
 	in.NamespaceSelector.DeepCopyInto(&out.NamespaceSelector)
 	if in.LabelSelector != nil {
 		in, out := &in.LabelSelector, &out.LabelSelector

@@ -1,4 +1,4 @@
-// Generated from /Users/tswadell/lace/go/src/github.com/google/cel-go/bin/../parser/gen/CEL.g4 by ANTLR 4.7.
+// Generated from /Users/tswadell/go/src/github.com/google/cel-go/bin/../parser/gen/CEL.g4 by ANTLR 4.7.
 
 package gen
 
@@ -94,9 +94,9 @@ var serializedLexerAtn = []uint16{
 	3, 2, 2, 2, 73, 195, 3, 2, 2, 2, 75, 198, 3, 2, 2, 2, 77, 203, 3, 2, 2,
 	2, 79, 226, 3, 2, 2, 2, 81, 229, 3, 2, 2, 2, 83, 235, 3, 2, 2, 2, 85, 276,
 	3, 2, 2, 2, 87, 291, 3, 2, 2, 2, 89, 310, 3, 2, 2, 2, 91, 408, 3, 2, 2,
-	2, 93, 410, 3, 2, 2, 2, 95, 415, 3, 2, 2, 2, 97, 98, 7, 107, 2, 2, 98,
-	99, 7, 112, 2, 2, 99, 4, 3, 2, 2, 2, 100, 101, 7, 63, 2, 2, 101, 102, 7,
-	63, 2, 2, 102, 6, 3, 2, 2, 2, 103, 104, 7, 35, 2, 2, 104, 105, 7, 63, 2,
+	2, 93, 410, 3, 2, 2, 2, 95, 415, 3, 2, 2, 2, 97, 98, 7, 63, 2, 2, 98, 99,
+	7, 63, 2, 2, 99, 4, 3, 2, 2, 2, 100, 101, 7, 35, 2, 2, 101, 102, 7, 63,
+	2, 2, 102, 6, 3, 2, 2, 2, 103, 104, 7, 107, 2, 2, 104, 105, 7, 112, 2,
 	2, 105, 8, 3, 2, 2, 2, 106, 107, 7, 62, 2, 2, 107, 10, 3, 2, 2, 2, 108,
 	109, 7, 62, 2, 2, 109, 110, 7, 63, 2, 2, 110, 12, 3, 2, 2, 2, 111, 112,
 	7, 64, 2, 2, 112, 113, 7, 63, 2, 2, 113, 14, 3, 2, 2, 2, 114, 115, 7, 64,
@@ -224,13 +224,13 @@ var lexerModeNames = []string{
 }
 
 var lexerLiteralNames = []string{
-	"", "'in'", "'=='", "'!='", "'<'", "'<='", "'>='", "'>'", "'&&'", "'||'",
+	"", "'=='", "'!='", "'in'", "'<'", "'<='", "'>='", "'>'", "'&&'", "'||'",
 	"'['", "']'", "'{'", "'}'", "'('", "')'", "'.'", "','", "'-'", "'!'", "'?'",
 	"':'", "'+'", "'*'", "'/'", "'%'", "'true'", "'false'", "'null'",
 }
 
 var lexerSymbolicNames = []string{
-	"", "", "EQUALS", "NOT_EQUALS", "LESS", "LESS_EQUALS", "GREATER_EQUALS",
+	"", "EQUALS", "NOT_EQUALS", "IN", "LESS", "LESS_EQUALS", "GREATER_EQUALS",
 	"GREATER", "LOGICAL_AND", "LOGICAL_OR", "LBRACKET", "RPRACKET", "LBRACE",
 	"RBRACE", "LPAREN", "RPAREN", "DOT", "COMMA", "MINUS", "EXCLAM", "QUESTIONMARK",
 	"COLON", "PLUS", "STAR", "SLASH", "PERCENT", "TRUE", "FALSE", "NULL", "WHITESPACE",
@@ -238,7 +238,7 @@ var lexerSymbolicNames = []string{
 }
 
 var lexerRuleNames = []string{
-	"T__0", "EQUALS", "NOT_EQUALS", "LESS", "LESS_EQUALS", "GREATER_EQUALS",
+	"EQUALS", "NOT_EQUALS", "IN", "LESS", "LESS_EQUALS", "GREATER_EQUALS",
 	"GREATER", "LOGICAL_AND", "LOGICAL_OR", "LBRACKET", "RPRACKET", "LBRACE",
 	"RBRACE", "LPAREN", "RPAREN", "DOT", "COMMA", "MINUS", "EXCLAM", "QUESTIONMARK",
 	"COLON", "PLUS", "STAR", "SLASH", "PERCENT", "TRUE", "FALSE", "NULL", "BACKSLASH",
@@ -280,9 +280,9 @@ func NewCELLexer(input antlr.CharStream) *CELLexer {
 
 // CELLexer tokens.
 const (
-	CELLexerT__0           = 1
-	CELLexerEQUALS         = 2
-	CELLexerNOT_EQUALS     = 3
+	CELLexerEQUALS         = 1
+	CELLexerNOT_EQUALS     = 2
+	CELLexerIN             = 3
 	CELLexerLESS           = 4
 	CELLexerLESS_EQUALS    = 5
 	CELLexerGREATER_EQUALS = 6

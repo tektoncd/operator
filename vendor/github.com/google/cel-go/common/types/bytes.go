@@ -21,13 +21,12 @@ import (
 	"reflect"
 	"unicode/utf8"
 
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	wrapperspb "github.com/golang/protobuf/ptypes/wrappers"
+	anypb "google.golang.org/protobuf/types/known/anypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
+	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // Bytes type that implements ref.Val and supports add, compare, and size
@@ -67,27 +66,27 @@ func (b Bytes) Compare(other ref.Val) ref.Val {
 func (b Bytes) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 	switch typeDesc.Kind() {
 	case reflect.Array, reflect.Slice:
-		if typeDesc.Elem().Kind() == reflect.Uint8 {
-			return b.Value(), nil
-		}
+		return reflect.ValueOf(b).Convert(typeDesc).Interface(), nil
 	case reflect.Ptr:
 		switch typeDesc {
 		case anyValueType:
 			// Primitives must be wrapped before being set on an Any field.
-			return ptypes.MarshalAny(&wrapperspb.BytesValue{Value: []byte(b)})
+			return anypb.New(wrapperspb.Bytes([]byte(b)))
 		case byteWrapperType:
-			// Convert the bytes to a protobuf.BytesValue.
-			return &wrapperspb.BytesValue{Value: []byte(b)}, nil
+			// Convert the bytes to a wrapperspb.BytesValue.
+			return wrapperspb.Bytes([]byte(b)), nil
 		case jsonValueType:
 			// CEL follows the proto3 to JSON conversion by encoding bytes to a string via base64.
 			// The encoding below matches the golang 'encoding/json' behavior during marshaling,
 			// which uses base64.StdEncoding.
 			str := base64.StdEncoding.EncodeToString([]byte(b))
-			return &structpb.Value{
-				Kind: &structpb.Value_StringValue{StringValue: str},
-			}, nil
+			return structpb.NewStringValue(str), nil
 		}
 	case reflect.Interface:
+		bv := b.Value()
+		if reflect.TypeOf(bv).Implements(typeDesc) {
+			return bv, nil
+		}
 		if reflect.TypeOf(b).Implements(typeDesc) {
 			return b, nil
 		}

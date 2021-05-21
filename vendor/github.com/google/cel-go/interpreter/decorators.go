@@ -113,11 +113,6 @@ func decOptimize() InterpretableDecorator {
 			if overloads.IsTypeConversionFunction(inst.Function()) {
 				return maybeOptimizeConstUnary(i, inst)
 			}
-		case *evalUnary:
-			return maybeOptimizeConstUnary(i, inst)
-		case *evalBinary:
-			if inst.overload == overloads.InList {
-			}
 		}
 		return i, nil
 	}

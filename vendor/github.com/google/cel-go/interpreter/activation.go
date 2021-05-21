@@ -77,7 +77,6 @@ func NewActivation(bindings interface{}) (Activation, error) {
 // Named bindings may lazily supply values by providing a function which accepts no arguments and
 // produces an interface value.
 type mapActivation struct {
-	adapter  ref.TypeAdapter
 	bindings map[string]interface{}
 }
 
@@ -163,14 +162,6 @@ type partActivation struct {
 // UnknownAttributePatterns implements the PartialActivation interface method.
 func (a *partActivation) UnknownAttributePatterns() []*AttributePattern {
 	return a.unknowns
-}
-
-// newVarActivation returns a new varActivation instance.
-func newVarActivation(parent Activation, name string) *varActivation {
-	return &varActivation{
-		parent: parent,
-		name:   name,
-	}
 }
 
 // varActivation represents a single mutable variable binding.

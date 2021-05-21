@@ -256,7 +256,7 @@ func (p *planner) planCall(expr *exprpb.Expr) (Interpretable, error) {
 		offset++
 	}
 
-	args := make([]Interpretable, argCount, argCount)
+	args := make([]Interpretable, argCount)
 	if target != nil {
 		arg, err := p.Plan(target)
 		if err != nil {
@@ -513,7 +513,7 @@ func (p *planner) planCallIndex(expr *exprpb.Expr,
 // planCreateList generates a list construction Interpretable.
 func (p *planner) planCreateList(expr *exprpb.Expr) (Interpretable, error) {
 	list := expr.GetListExpr()
-	elems := make([]Interpretable, len(list.GetElements()), len(list.GetElements()))
+	elems := make([]Interpretable, len(list.GetElements()))
 	for i, elem := range list.GetElements() {
 		elemVal, err := p.Plan(elem)
 		if err != nil {
@@ -639,7 +639,7 @@ func (p *planner) constValue(c *exprpb.Constant) (ref.Val, error) {
 	case *exprpb.Constant_DoubleValue:
 		return types.Double(c.GetDoubleValue()), nil
 	case *exprpb.Constant_DurationValue:
-		return types.Duration{Duration: c.GetDurationValue()}, nil
+		return types.Duration{Duration: c.GetDurationValue().AsDuration()}, nil
 	case *exprpb.Constant_Int64Value:
 		return types.Int(c.GetInt64Value()), nil
 	case *exprpb.Constant_NullValue:
@@ -647,7 +647,7 @@ func (p *planner) constValue(c *exprpb.Constant) (ref.Val, error) {
 	case *exprpb.Constant_StringValue:
 		return types.String(c.GetStringValue()), nil
 	case *exprpb.Constant_TimestampValue:
-		return types.Timestamp{Timestamp: c.GetTimestampValue()}, nil
+		return types.Timestamp{Time: c.GetTimestampValue().AsTime()}, nil
 	case *exprpb.Constant_Uint64Value:
 		return types.Uint(c.GetUint64Value()), nil
 	}

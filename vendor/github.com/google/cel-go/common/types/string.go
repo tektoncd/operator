@@ -22,14 +22,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/google/cel-go/common/overloads"
 	"github.com/google/cel-go/common/types/ref"
 	"github.com/google/cel-go/common/types/traits"
 
-	structpb "github.com/golang/protobuf/ptypes/struct"
-	wrapperspb "github.com/golang/protobuf/ptypes/wrappers"
+	anypb "google.golang.org/protobuf/types/known/anypb"
+	structpb "google.golang.org/protobuf/types/known/structpb"
+	wrapperspb "google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // String type implementation which supports addition, comparison, matching,
@@ -76,26 +75,31 @@ func (s String) Compare(other ref.Val) ref.Val {
 func (s String) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 	switch typeDesc.Kind() {
 	case reflect.String:
+		if reflect.TypeOf(s).AssignableTo(typeDesc) {
+			return s, nil
+		}
 		return s.Value(), nil
 	case reflect.Ptr:
 		switch typeDesc {
 		case anyValueType:
 			// Primitives must be wrapped before being set on an Any field.
-			return ptypes.MarshalAny(&wrapperspb.StringValue{Value: string(s)})
+			return anypb.New(wrapperspb.String(string(s)))
 		case jsonValueType:
 			// Convert to a protobuf representation of a JSON String.
-			return &structpb.Value{
-				Kind: &structpb.Value_StringValue{StringValue: string(s)},
-			}, nil
+			return structpb.NewStringValue(string(s)), nil
 		case stringWrapperType:
-			// Convert to a protobuf.StringValue.
-			return &wrapperspb.StringValue{Value: string(s)}, nil
+			// Convert to a wrapperspb.StringValue.
+			return wrapperspb.String(string(s)), nil
 		}
 		if typeDesc.Elem().Kind() == reflect.String {
 			p := s.Value().(string)
 			return &p, nil
 		}
 	case reflect.Interface:
+		sv := s.Value()
+		if reflect.TypeOf(sv).Implements(typeDesc) {
+			return sv, nil
+		}
 		if reflect.TypeOf(s).Implements(typeDesc) {
 			return s, nil
 		}
@@ -127,13 +131,11 @@ func (s String) ConvertToType(typeVal ref.Type) ref.Val {
 		return Bytes(s)
 	case DurationType:
 		if d, err := time.ParseDuration(s.Value().(string)); err == nil {
-			return Duration{ptypes.DurationProto(d)}
+			return Duration{Duration: d}
 		}
 	case TimestampType:
 		if t, err := time.Parse(time.RFC3339, s.Value().(string)); err == nil {
-			if ts, err := ptypes.TimestampProto(t); err == nil {
-				return Timestamp{ts}
-			}
+			return Timestamp{Time: t}
 		}
 	case StringType:
 		return s

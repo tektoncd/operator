@@ -34,22 +34,22 @@ var (
 // interpreter.
 type baseIterator struct{}
 
-func (it *baseIterator) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
+func (*baseIterator) ConvertToNative(typeDesc reflect.Type) (interface{}, error) {
 	return nil, fmt.Errorf("type conversion on iterators not supported")
 }
 
-func (it *baseIterator) ConvertToType(typeVal ref.Type) ref.Val {
+func (*baseIterator) ConvertToType(typeVal ref.Type) ref.Val {
 	return NewErr("no such overload")
 }
 
-func (it *baseIterator) Equal(other ref.Val) ref.Val {
+func (*baseIterator) Equal(other ref.Val) ref.Val {
 	return NewErr("no such overload")
 }
 
-func (it *baseIterator) Type() ref.Type {
+func (*baseIterator) Type() ref.Type {
 	return IteratorType
 }
 
-func (it *baseIterator) Value() interface{} {
+func (*baseIterator) Value() interface{} {
 	return nil
 }

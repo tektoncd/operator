@@ -180,24 +180,3 @@ func (s *sourceImpl) findLine(characterOffset int32) (int32, int32) {
 	}
 	return line, s.lineOffsets[line-2]
 }
-
-// idOffset returns the raw character offset of an expression within the
-// source, or false if the expression cannot be found.
-func (s *sourceImpl) idOffset(exprID int64) (int32, bool) {
-	if offset, found := s.idOffsets[exprID]; found {
-		return offset, true
-	}
-	return -1, false
-}
-
-// idLocation returns a Location for the given expression id, or false if one
-// cannot be found. It behaves as the composition of idOffset() and
-// offsetLocation().
-func (s *sourceImpl) idLocation(exprID int64) (Location, bool) {
-	if offset, found := s.idOffset(exprID); found {
-		if location, found := s.OffsetLocation(offset); found {
-			return location, true
-		}
-	}
-	return NewLocation(1, 0), false
-}
