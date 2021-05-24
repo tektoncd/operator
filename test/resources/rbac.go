@@ -49,6 +49,7 @@ func AssertServiceAccount(t *testing.T, clients *utils.Clients, ns, targetSA str
 		t.Fatalf("could not find serviceaccount %s/%s: %q", ns, targetSA, err)
 	}
 }
+
 func AssertRoleBinding(t *testing.T, clients *utils.Clients, ns, roleBindingName string) {
 	t.Helper()
 
@@ -65,6 +66,46 @@ func AssertRoleBinding(t *testing.T, clients *utils.Clients, ns, roleBindingName
 		return false, err
 	})
 	if err != nil {
-		t.Fatalf("could not find serviceaccount %s/%s: %q", ns, roleBindingName, err)
+		t.Fatalf("could not find rolebinding %s/%s: %q", ns, roleBindingName, err)
+	}
+}
+
+func AssertConfigMap(t *testing.T, clients *utils.Clients, ns, configMapName string) {
+	t.Helper()
+
+	err := wait.Poll(Interval, Timeout, func() (bool, error) {
+		rbList, err := clients.KubeClient.CoreV1().ConfigMaps(ns).List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return false, err
+		}
+		for _, item := range rbList.Items {
+			if item.Name == configMapName {
+				return true, nil
+			}
+		}
+		return false, err
+	})
+	if err != nil {
+		t.Fatalf("could not find ConfigMap %s/%s: %q", ns, configMapName, err)
+	}
+}
+
+func AssertClusterRole(t *testing.T, clients *utils.Clients, clusterRoleName string) {
+	t.Helper()
+
+	err := wait.Poll(Interval, Timeout, func() (bool, error) {
+		rbList, err := clients.KubeClient.RbacV1().ClusterRoles().List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			return false, err
+		}
+		for _, item := range rbList.Items {
+			if item.Name == clusterRoleName {
+				return true, nil
+			}
+		}
+		return false, err
+	})
+	if err != nil {
+		t.Fatalf("could not find ClusterRole %s: %q", clusterRoleName, err)
 	}
 }

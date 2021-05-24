@@ -56,9 +56,64 @@ func TestTektonConfigDeployment(t *testing.T) {
 		resources.AssertTektonConfigCRReadyStatus(t, clients, crNames)
 	})
 
+	if os.Getenv("TARGET") == "openshift" {
+		runRbacTest(t, clients)
+	}
+
 	// Delete the TektonConfig CR instance to see if all resources will be removed
 	t.Run("delete-config", func(t *testing.T) {
 		resources.AssertTektonConfigCRReadyStatus(t, clients, crNames)
 		resources.TektonConfigCRDelete(t, clients, crNames)
 	})
+}
+
+func runRbacTest(t *testing.T, clients *utils.Clients) {
+
+	// Test whether the supporting rbac resources are created for existing namespace and
+	// newly created namespace
+
+	existingNamespace := "default"
+	testNamespace := "operator-test-rbac"
+
+	// Create a Test Namespace
+	if _, err := resources.EnsureTestNamespaceExists(clients, testNamespace); err != nil {
+		t.Fatalf("failed to create test namespace: %s, %q", testNamespace, err)
+	}
+
+	clusterRoleName := "pipelines-scc-clusterrole"
+
+	t.Run("verify-clusterrole", func(t *testing.T) {
+		resources.AssertClusterRole(t, clients, clusterRoleName)
+	})
+
+	expectedSAName := "pipeline"
+
+	// Test whether the `pipelineSa` is created in a "default" namespace
+	t.Run("verify-service-account", func(t *testing.T) {
+		resources.AssertServiceAccount(t, clients, existingNamespace, expectedSAName)
+		resources.AssertServiceAccount(t, clients, testNamespace, expectedSAName)
+	})
+
+	serviceCABundleConfigMap := "config-service-cabundle"
+	trustedCABundleConfigMap := "config-trusted-cabundle"
+
+	// Test whether the configMaps are created
+	t.Run("verify-configmaps", func(t *testing.T) {
+		resources.AssertConfigMap(t, clients, existingNamespace, serviceCABundleConfigMap)
+		resources.AssertConfigMap(t, clients, testNamespace, trustedCABundleConfigMap)
+		resources.AssertConfigMap(t, clients, existingNamespace, serviceCABundleConfigMap)
+		resources.AssertConfigMap(t, clients, testNamespace, trustedCABundleConfigMap)
+	})
+
+	pipelinesSCCRoleBinding := "pipelines-scc-rolebinding"
+	editRoleBinding := "edit"
+
+	// Test whether the roleBindings are created
+	t.Run("verify-rolebindings", func(t *testing.T) {
+		resources.AssertRoleBinding(t, clients, existingNamespace, pipelinesSCCRoleBinding)
+		resources.AssertRoleBinding(t, clients, testNamespace, pipelinesSCCRoleBinding)
+		resources.AssertRoleBinding(t, clients, existingNamespace, editRoleBinding)
+		resources.AssertRoleBinding(t, clients, testNamespace, editRoleBinding)
+	})
+
 }

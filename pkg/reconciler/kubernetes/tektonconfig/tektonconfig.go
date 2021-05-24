@@ -107,6 +107,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		return nil
 	}
 
+	if err := r.extension.PreReconcile(ctx, tc); err != nil {
+		tc.GetStatus().MarkInstallFailed(err.Error())
+		return err
+	}
+
 	var stages common.Stages
 	if tc.Spec.Profile == common.ProfileBasic {
 		stages = common.Stages{
