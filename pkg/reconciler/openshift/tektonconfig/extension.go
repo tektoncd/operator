@@ -30,6 +30,7 @@ import (
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
@@ -66,8 +67,15 @@ type openshiftExtension struct {
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{}
 }
-func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
-	return nil
+func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+
+	r := rbac{
+		kubeClientSet:     oe.kubeClientSet,
+		operatorClientSet: oe.operatorClientSet,
+		manifest:          oe.manifest,
+		ownerRef:          configOwnerRef(tc),
+	}
+	return r.createResources(ctx)
 }
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
@@ -75,12 +83,6 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		if err := extension.CreateAddonCR(comp, oe.operatorClientSet.OperatorV1alpha1()); err != nil {
 			return err
 		}
-	}
-
-	//TODO: Remove this cleanup after 1.4 GA release
-	// cleanup orphaned `pipeline-anyuid` rolebindings and clusterrole
-	if err := extension.RbacCleanup(ctx, oe.kubeClientSet); err != nil {
-		return err
 	}
 	return nil
 }
@@ -90,4 +92,9 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 		return extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), common.AddonResourceName)
 	}
 	return nil
+}
+
+// configOwnerRef returns owner reference pointing to passed instance
+func configOwnerRef(tc v1alpha1.TektonComponent) metav1.OwnerReference {
+	return *metav1.NewControllerRef(tc, tc.GroupVersionKind())
 }

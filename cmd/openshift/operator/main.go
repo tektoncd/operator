@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"github.com/tektoncd/operator/pkg/reconciler/openshift/rbac"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
@@ -31,6 +30,5 @@ func main() {
 		tektontrigger.NewController,
 		tektonaddon.NewController,
 		tektonconfig.NewController,
-		rbac.NewController,
 	)
 }
