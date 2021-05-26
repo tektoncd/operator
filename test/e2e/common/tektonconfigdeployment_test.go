@@ -19,6 +19,7 @@ limitations under the License.
 package common
 
 import (
+	"os"
 	"testing"
 
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -32,9 +33,12 @@ func TestTektonConfigDeployment(t *testing.T) {
 	clients := client.Setup(t)
 
 	crNames := utils.ResourceNames{
-		TektonConfig:    common.ConfigResourceName,
-		Namespace:       "tekton-operator",
-		TargetNamespace: "tekton-pipelines",
+		TektonConfig: common.ConfigResourceName,
+		Namespace:    "tekton-operator",
+	}
+
+	if os.Getenv("TARGET") == "openshift" {
+		crNames.Namespace = "openshift-operators"
 	}
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownConfig(clients, crNames.TektonConfig) })

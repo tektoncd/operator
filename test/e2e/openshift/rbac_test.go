@@ -53,6 +53,5 @@ func TestRBACReconciler(t *testing.T) {
 	// Test whether the roleBindings are created in a "default" namespace
 	t.Run("verify-rolebindings", func(t *testing.T) {
 		resources.AssertRoleBinding(t, clients, crNames.Namespace, "edit")
-		resources.AssertRoleBinding(t, clients, crNames.Namespace, "pipeline-anyuid")
 	})
 }

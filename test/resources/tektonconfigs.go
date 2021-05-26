@@ -64,7 +64,7 @@ func EnsureTektonConfigExists(kubeClientSet *kubernetes.Clientset, clients confi
 			},
 			Spec: v1alpha1.TektonConfigSpec{
 				CommonSpec: v1alpha1.CommonSpec{
-					TargetNamespace: names.TargetNamespace,
+					TargetNamespace: cm.Data["DEFAULT_TARGET_NAMESPACE"],
 				},
 			},
 		}
