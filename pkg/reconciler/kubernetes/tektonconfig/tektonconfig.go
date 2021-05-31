@@ -70,10 +70,10 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 		}
 	}
 
-	if original.Spec.Profile == common.ProfileBasic {
+	if original.Spec.Profile == common.ProfileLite {
 		return pipeline.TektonPipelineCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), common.PipelineResourceName)
 	} else {
-		// TektonPipeline and TektonTrigger is common for profile type default and all
+		// TektonPipeline and TektonTrigger is common for profile type basic and all
 		if err := pipeline.TektonPipelineCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), common.PipelineResourceName); err != nil {
 			return err
 		}
@@ -113,12 +113,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	var stages common.Stages
-	if tc.Spec.Profile == common.ProfileBasic {
+	if tc.Spec.Profile == common.ProfileLite {
 		stages = common.Stages{
 			r.createPipelineCR,
 		}
 	} else {
-		// TektonPipeline and TektonTrigger is common for profile type default and all
+		// TektonPipeline and TektonTrigger is common for profile type basic and all
 		stages = common.Stages{
 			r.createPipelineCR,
 			r.createTriggerCR,

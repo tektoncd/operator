@@ -17,5 +17,5 @@ kind: TektonConfig
 metadata:
   name: config
 spec:
-  profile: default
-  targetNamespace: tekton-pipelines
+  profile: lite
+  targetNamespace: openshift-pipelines

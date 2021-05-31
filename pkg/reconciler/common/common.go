@@ -32,8 +32,8 @@ var (
 	DashboardResourceName = "dashboard"
 	AddonResourceName     = "addon"
 	ConfigResourceName    = "config"
+	ProfileLite           = "lite"
 	ProfileBasic          = "basic"
-	ProfileDefault        = "default"
 	ProfileAll            = "all"
 	Interval              = 10 * time.Second
 	Timeout               = 1 * time.Minute
