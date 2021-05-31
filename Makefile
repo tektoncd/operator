@@ -2,7 +2,7 @@ MODULE   = $(shell env GO111MODULE=on $(GO) list -m)
 DATE         ?= $(shell date +%FT%T%z)
 KO_DATA_PATH  = $(shell pwd)/cmd/$(TARGET)/operator/kodata
 TARGET        = kubernetes
-CR            = config/default
+CR            = config/basic
 PLATFORM := $(if $(PLATFORM),--platform $(PLATFORM))
 
 GOLANGCI_VERSION  = v1.30.0
