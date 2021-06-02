@@ -402,14 +402,21 @@ func updateVolume(pod corev1.Pod, volumeName, configmapName, key string) corev1.
 			}
 		}
 
-		// /etc/ssl/certs is the default place where CA certs reside in *nix
-		// however this can be overridden using SSL_CERT_DIR, let's check for
-		// that here.
-		sslCertDir := "/etc/ssl/certs"
+		// we wiil mount the certs at this location so we don't override the existing certs
+		sslCertDir := "/tekton-custom-certs"
+		certEnvAvaiable := false
 		for _, env := range c.Env {
 			if env.Name == "SSL_CERT_DIR" {
 				sslCertDir = env.Value
+				certEnvAvaiable = true
 			}
+		}
+
+		if !certEnvAvaiable {
+			c.Env = append(c.Env, corev1.EnvVar{
+				Name:  "SSL_CERT_DIR",
+				Value: sslCertDir,
+			})
 		}
 
 		// Let's mount the certificates now.

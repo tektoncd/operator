@@ -114,10 +114,8 @@ func ApplyCABundles(u *unstructured.Unstructured) error {
 			}
 		}
 
-		// /etc/ssl/certs is the default place where CA certs reside in *nix
-		// however this can be overridden using SSL_CERT_DIR, let's check for
-		// that here.
-		sslCertDir := "/etc/ssl/certs"
+		// we wiil mount the certs at this location so we don't override the existing certs
+		sslCertDir := "/tekton-custom-certs"
 		for _, env := range c.Env {
 			if env.Name == "SSL_CERT_DIR" {
 				sslCertDir = env.Value

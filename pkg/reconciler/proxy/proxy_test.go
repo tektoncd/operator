@@ -37,6 +37,9 @@ func TestUpdateVolume(t *testing.T) {
 	}
 	podUpdated := updateVolume(pod, "testv", "testcm", "testkey")
 	assert.DeepEqual(t, len(podUpdated.Spec.Volumes), 1)
+	assert.DeepEqual(t, len(podUpdated.Spec.Containers[0].Env), 1)
+	assert.DeepEqual(t, podUpdated.Spec.Containers[0].Env[0].Name, "SSL_CERT_DIR")
+	assert.DeepEqual(t, podUpdated.Spec.Containers[0].Env[0].Value, "/tekton-custom-certs")
 	assert.DeepEqual(t, podUpdated.Spec.Volumes[0].Name, "testv")
 	assert.DeepEqual(t, podUpdated.Spec.Volumes[0].ConfigMap.Name, "testcm")
 	assert.DeepEqual(t, len(podUpdated.Spec.Containers[0].VolumeMounts), 1)
