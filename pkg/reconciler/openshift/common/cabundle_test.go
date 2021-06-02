@@ -60,18 +60,20 @@ func TestApplyCABundles(t *testing.T) {
 					},
 				},
 			}),
-		withVolumeMounts(corev1.VolumeMount{
-			Name:      trustedCAConfigMapVolume,
-			MountPath: filepath.Join("/etc/ssl/certs", trustedCAKey),
-			SubPath:   trustedCAKey,
-			ReadOnly:  true,
-		},
+		withVolumeMounts(
+			corev1.VolumeMount{
+				Name:      trustedCAConfigMapVolume,
+				MountPath: filepath.Join("/tekton-custom-certs", trustedCAKey),
+				SubPath:   trustedCAKey,
+				ReadOnly:  true,
+			},
 			corev1.VolumeMount{
 				Name:      serviceCAConfigMapVolume,
-				MountPath: filepath.Join("/etc/ssl/certs", serviceCAKey),
+				MountPath: filepath.Join("/tekton-custom-certs", serviceCAKey),
 				SubPath:   serviceCAKey,
 				ReadOnly:  true,
-			}),
+			},
+		),
 	)
 
 	if err := ApplyCABundles(actual); err != nil {
