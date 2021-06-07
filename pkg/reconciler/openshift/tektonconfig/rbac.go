@@ -40,6 +40,7 @@ const (
 	serviceCABundleConfigMap = "config-service-cabundle"
 	trustedCABundleConfigMap = "config-trusted-cabundle"
 	namespaceIgnorePattern   = "^(openshift|kube)-"
+	clusterInterceptors      = "openshift-pipelines-clusterinterceptors"
 )
 
 type rbac struct {
@@ -90,6 +91,10 @@ func (r *rbac) createResources(ctx context.Context) error {
 		}
 
 		if err := r.ensureRoleBindings(ctx, sa); err != nil {
+			return err
+		}
+
+		if err := r.ensureClusterRoleBindings(ctx, sa); err != nil {
 			return err
 		}
 	}
@@ -383,8 +388,7 @@ func (r *rbac) createRoleBinding(ctx context.Context, sa *corev1.ServiceAccount)
 	rbacClient := r.kubeClientSet.RbacV1()
 
 	logger.Info("finding clusterrole edit")
-	_, err := rbacClient.ClusterRoles().Get(ctx, "edit", metav1.GetOptions{})
-	if err != nil {
+	if _, err := rbacClient.ClusterRoles().Get(ctx, "edit", metav1.GetOptions{}); err != nil {
 		logger.Error(err, "getting clusterRole 'edit' failed")
 		return err
 	}
@@ -399,9 +403,118 @@ func (r *rbac) createRoleBinding(ctx context.Context, sa *corev1.ServiceAccount)
 		Subjects: []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: sa.Name, Namespace: sa.Namespace}},
 	}
 
-	_, err = rbacClient.RoleBindings(sa.Namespace).Create(ctx, rb, metav1.CreateOptions{})
-	if err != nil {
+	if _, err := rbacClient.RoleBindings(sa.Namespace).Create(ctx, rb, metav1.CreateOptions{}); err != nil {
 		logger.Error(err, "creation of 'edit' rolebinding failed, in Namespace", sa.GetNamespace())
+		return err
 	}
+	return nil
+}
+
+func (r *rbac) ensureClusterRoleBindings(ctx context.Context, sa *corev1.ServiceAccount) error {
+	logger := logging.FromContext(ctx)
+
+	rbacClient := r.kubeClientSet.RbacV1()
+	logger.Info("finding cluster-role ", clusterInterceptors)
+	if _, err := rbacClient.ClusterRoles().Get(ctx, clusterInterceptors, metav1.GetOptions{}); errors.IsNotFound(err) {
+		return r.createClusterRole(ctx)
+	}
+
+	logger.Info("finding cluster-role-binding ", clusterInterceptors)
+
+	viewCRB, err := rbacClient.ClusterRoleBindings().Get(ctx, clusterInterceptors, metav1.GetOptions{})
+
+	if err == nil {
+		logger.Infof("found clusterrolebinding %s", viewCRB.Name)
+		return r.updateClusterRoleBinding(ctx, viewCRB, sa)
+	}
+
+	if errors.IsNotFound(err) {
+		return r.createClusterRoleBinding(ctx, sa)
+	}
+
 	return err
+}
+
+func (r *rbac) updateClusterRoleBinding(ctx context.Context, rb *rbacv1.ClusterRoleBinding, sa *corev1.ServiceAccount) error {
+	logger := logging.FromContext(ctx)
+
+	subject := rbacv1.Subject{Kind: rbacv1.ServiceAccountKind, Name: sa.Name, Namespace: sa.Namespace}
+
+	hasSubject := hasSubject(rb.Subjects, subject)
+	if !hasSubject {
+		rb.Subjects = append(rb.Subjects, subject)
+	}
+
+	ownerRef := rb.GetOwnerReferences()
+	if len(ownerRef) == 0 {
+		rb.SetOwnerReferences([]metav1.OwnerReference{r.ownerRef})
+	}
+
+	if hasSubject && (len(ownerRef) != 0) {
+		logger.Info("clusterrolebinding is up to date", "action", "none")
+		return nil
+	}
+
+	logger.Info("update existing clusterrolebinding ", clusterInterceptors)
+	rbacClient := r.kubeClientSet.RbacV1()
+
+	if _, err := rbacClient.ClusterRoleBindings().Update(ctx, rb, metav1.UpdateOptions{}); err != nil {
+		logger.Error(err, "failed to update "+clusterInterceptors+" crb")
+		return err
+	}
+	logger.Info("successfully updated ", clusterInterceptors)
+	return nil
+}
+
+func (r *rbac) createClusterRoleBinding(ctx context.Context, sa *corev1.ServiceAccount) error {
+	logger := logging.FromContext(ctx)
+
+	logger.Info("create new clusterrolebinding ", clusterInterceptors)
+	rbacClient := r.kubeClientSet.RbacV1()
+
+	logger.Info("finding clusterrole ", clusterInterceptors)
+	if _, err := rbacClient.ClusterRoles().Get(ctx, clusterInterceptors, metav1.GetOptions{}); err != nil {
+		logger.Error(err, " getting clusterRole "+clusterInterceptors+" failed")
+		return err
+	}
+
+	crb := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            clusterInterceptors,
+			OwnerReferences: []metav1.OwnerReference{r.ownerRef},
+		},
+		RoleRef:  rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: clusterInterceptors},
+		Subjects: []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: sa.Name, Namespace: sa.Namespace}},
+	}
+
+	if _, err := rbacClient.ClusterRoleBindings().Create(ctx, crb, metav1.CreateOptions{}); err != nil {
+		logger.Error(err, " creation of "+clusterInterceptors+" failed")
+		return err
+	}
+	return nil
+}
+
+func (r *rbac) createClusterRole(ctx context.Context) error {
+	logger := logging.FromContext(ctx)
+
+	logger.Info("create new clusterrole ", clusterInterceptors)
+	rbacClient := r.kubeClientSet.RbacV1()
+
+	cr := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            clusterInterceptors,
+			OwnerReferences: []metav1.OwnerReference{r.ownerRef},
+		},
+		Rules: []rbacv1.PolicyRule{{
+			APIGroups: []string{"triggers.tekton.dev"},
+			Resources: []string{"clusterinterceptors"},
+			Verbs:     []string{"get", "list", "watch"},
+		}},
+	}
+
+	if _, err := rbacClient.ClusterRoles().Create(ctx, cr, metav1.CreateOptions{}); err != nil {
+		logger.Error(err, "creation of "+clusterInterceptors+" clusterrole failed")
+		return err
+	}
+	return nil
 }
