@@ -49,9 +49,23 @@ func (tp *TektonConfig) GetStatus() TektonComponentStatus {
 	return &tp.Status
 }
 
+// Prune defines the pruner
+type Prune struct {
+	// The resources which need to be pruned
+	Resources []string `json:"resources,omitempty"`
+	// The number of resource to keep
+	// You dont want to delete all the pipelinerun/taskrun's by a cron
+	Keep int `json:"keep,omitempty"`
+	// How frequent pruning should happen
+	Schedule string `json:"schedule" protobuf:"bytes,1,opt,name=schedule"`
+}
+
 // TektonConfigSpec defines the desired state of TektonConfig
 type TektonConfigSpec struct {
-	Profile    string `json:"profile,omitempty"`
+	Profile string `json:"profile,omitempty"`
+	// Pruner holds the prune config
+	// +optional
+	Pruner     Prune `json:"pruner,omitempty"`
 	CommonSpec `json:",inline"`
 }
 

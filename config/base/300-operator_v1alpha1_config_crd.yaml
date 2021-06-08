@@ -67,6 +67,22 @@ spec:
               targetNamespace:
                 description: namespace where tekton components will be installed
                 type: string
+              pruner:
+                description: this enables to prune pipelinerun/taskrun
+                properties:
+                  resources:
+                    description: list of resources which needs to be pruned
+                    type: array
+                    items:
+                      type: string
+                  schedule:
+                    description: schedule cronjob
+                    type: string
+                  keep:
+                    description: number of resources to keep
+                    type: integer
+                    default: 1
+                type: object
             type: object
           status:
             description: Status defines the observed state of TektonConfig

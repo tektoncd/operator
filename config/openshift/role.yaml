@@ -258,5 +258,6 @@ rules:
   - batch
   resources:
   - jobs
+  - cronjobs
   verbs:
   - '*'
