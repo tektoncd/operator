@@ -248,3 +248,15 @@ rules:
   - "deletecollection"
   - "patch"
   - "watch"
+- apiGroups:
+    - batch
+  resources:
+    - cronjobs
+  verbs:
+    - delete
+    - create
+    - patch
+    - get
+    - list
+    - update
+    - watch
