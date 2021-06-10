@@ -37,10 +37,14 @@ const (
 	AnnotationPreserveRBSubjectNS = "operator.tekton.dev/preserve-rb-subject-namespace"
 	PipelinesImagePrefix          = "IMAGE_PIPELINES_"
 	TriggersImagePrefix           = "IMAGE_TRIGGERS_"
+	ResultsImagePrefix            = "IMAGE_RESULTS_"
 	AddonsImagePrefix             = "IMAGE_ADDONS_"
 
 	ArgPrefix   = "arg_"
 	ParamPrefix = "param_"
+
+	resultAPIDeployment     = "tekton-results-api"
+	resultWatcherDeployment = "tekton-results-watcher"
 )
 
 // transformers that are common to all components.
@@ -354,5 +358,74 @@ func injectNamespaceRoleBindingSubjects(targetNamespace string) mf.Transformer {
 			}
 		}
 		return nil
+	}
+}
+
+// ReplaceNamespaceInDeploymentEnv replaces namespace in deployment's env var
+func ReplaceNamespaceInDeploymentEnv(targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" || u.GetName() != resultAPIDeployment {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		container := d.Spec.Template.Spec.Containers[0]
+		d.Spec.Template.Spec.Containers[0].Env = replaceNamespaceInDBAddress(container.Env, targetNamespace)
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
+func replaceNamespaceInDBAddress(envs []corev1.EnvVar, targetNamespace string) []corev1.EnvVar {
+	for i, e := range envs {
+		if e.Name == "DB_ADDR" {
+			envs[i].Value = strings.ReplaceAll(e.Value, "tekton-pipelines", targetNamespace)
+		}
+	}
+	return envs
+}
+
+// ReplaceNamespaceInDeploymentArgs replaces namespace in deployment's args
+func ReplaceNamespaceInDeploymentArgs(targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" || u.GetName() != resultWatcherDeployment {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		container := d.Spec.Template.Spec.Containers[0]
+		replaceNamespaceInContainerArg(&container, targetNamespace)
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
+func replaceNamespaceInContainerArg(container *corev1.Container, targetNamespace string) {
+	for i, a := range container.Args {
+		if strings.Contains(a, "tekton-pipelines") {
+			container.Args[i] = strings.ReplaceAll(a, "tekton-pipelines", targetNamespace)
+		}
 	}
 }

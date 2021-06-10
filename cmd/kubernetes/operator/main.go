@@ -20,6 +20,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektondashboard"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonresult"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
 	"knative.dev/pkg/injection/sharedmain"
 )
@@ -30,5 +31,6 @@ func main() {
 		tektontrigger.NewController,
 		tektondashboard.NewController,
 		tektonconfig.NewController,
+		tektonresult.NewController,
 	)
 }

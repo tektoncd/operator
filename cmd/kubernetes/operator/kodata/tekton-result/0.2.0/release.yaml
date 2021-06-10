@@ -1,0 +1,333 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-results-api
+  namespace: tekton-pipelines
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tekton-results-watcher
+  namespace: tekton-pipelines
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-results-admin
+rules:
+  - apiGroups:
+      - results.tekton.dev
+    resources:
+      - results
+      - records
+    verbs:
+      - create
+      - update
+      - get
+      - list
+      - admin
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-results-api
+rules:
+  - apiGroups:
+      - authentication.k8s.io
+    resources:
+      - tokenreviews
+    verbs:
+      - create
+  - apiGroups:
+      - authorization.k8s.io
+    resources:
+      - subjectaccessreviews
+    verbs:
+      - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-results-readonly
+rules:
+  - apiGroups:
+      - results.tekton.dev
+    resources:
+      - results
+      - records
+    verbs:
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-results-readwrite
+rules:
+  - apiGroups:
+      - results.tekton.dev
+    resources:
+      - results
+      - records
+    verbs:
+      - create
+      - update
+      - get
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-results-watcher
+rules:
+  - apiGroups:
+      - results.tekton.dev
+    resources:
+      - results
+      - records
+    verbs:
+      - create
+      - get
+      - update
+  - apiGroups:
+      - tekton.dev
+    resources:
+      - pipelineruns
+      - taskruns
+    verbs:
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-results-api
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-results-api
+subjects:
+  - kind: ServiceAccount
+    name: tekton-results-api
+    namespace: tekton-pipelines
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-results-watcher
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-results-watcher
+subjects:
+  - kind: ServiceAccount
+    name: tekton-results-watcher
+    namespace: tekton-pipelines
+---
+apiVersion: v1
+data:
+  results.sql: "-- Copyright 2020 The Tekton Authors\n--\n-- Licensed under the Apache License, Version 2.0 (the \"License\");\n-- you may not use this file except in compliance with the License.\n-- You may obtain a copy of the License at\n--\n--      http://www.apache.org/licenses/LICENSE-2.0\n--\n-- Unless required by applicable law or agreed to in writing, software\n-- distributed under the License is distributed on an \"AS IS\" BASIS,\n-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n-- See the License for the specific language governing permissions and\n-- limitations under the License.\n\nCREATE TABLE results (\n\tparent varchar(64),\n\tid varchar(64),\n\n\tname varchar(64),\n\tannotations BLOB,\n\n\tcreated_time timestamp default current_timestamp not null,\n\tupdated_time timestamp default current_timestamp not null,\n\t\n\tetag varchar(128),\n\n\tPRIMARY KEY(parent, id)\n);\nCREATE UNIQUE INDEX results_by_name ON results(parent, name);\n\nCREATE TABLE records (\n\tparent varchar(64),\n\tresult_id varchar(64),\n\tid varchar(64),\n\n\tresult_name varchar(64),\n\tname varchar(64),\n\tdata BLOB,\n\n\tcreated_time timestamp default current_timestamp not null,\n\tupdated_time timestamp default current_timestamp not null,\n\n\tetag varchar(128),\n\n\tPRIMARY KEY(parent, result_id, id),\n\tFOREIGN KEY(parent, result_id) REFERENCES results(parent, id) ON DELETE CASCADE\n);\nCREATE UNIQUE INDEX records_by_name ON records(parent, result_name, name);\n"
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: mysql-initdb-config
+  namespace: tekton-pipelines
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-results-api-service
+  namespace: tekton-pipelines
+spec:
+  ports:
+    - name: grpc
+      port: 50051
+      protocol: TCP
+      targetPort: 50051
+    - name: prometheus
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: tekton-results-api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-results-mysql
+  namespace: tekton-pipelines
+spec:
+  ports:
+    - port: 3306
+  selector:
+    app: tekton-results-mysql
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: api
+    app.kubernetes.io/name: tekton-results
+    results.tekton.dev/release: devel
+    version: devel
+  name: tekton-results-api
+  namespace: tekton-pipelines
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tekton-results-api
+  template:
+    metadata:
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+      labels:
+        app: tekton-results-api
+        app.kubernetes.io/component: api
+        app.kubernetes.io/name: tekton-results
+        results.tekton.dev/release: devel
+        version: devel
+    spec:
+      containers:
+        - env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  key: user
+                  name: tekton-results-mysql
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: tekton-results-mysql
+            - name: DB_PROTOCOL
+              value: tcp
+            - name: DB_ADDR
+              value: tekton-results-mysql.tekton-pipelines.svc.cluster.local
+            - name: DB_NAME
+              value: results
+          image: gcr.io/tekton-releases/github.com/tektoncd/results/cmd/api:v0.2.0@sha256:02fb9f7d8791dc0145b4cc6fa3bc4e4843da1a51f1503c4fcb6d15df9702fd00
+          name: tekton-results-api
+          volumeMounts:
+            - mountPath: /etc/tls
+              name: tls
+              readOnly: true
+      serviceAccountName: tekton-results-api
+      volumes:
+        - name: tls
+          secret:
+            secretName: tekton-results-tls
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-results-mysql
+  namespace: tekton-pipelines
+spec:
+  selector:
+    matchLabels:
+      app: tekton-results-mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: tekton-results-mysql
+    spec:
+      containers:
+        - env:
+            - name: MYSQL_DATABASE
+              value: results
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: tekton-results-mysql
+          image: mysql:5.6
+          name: mysql
+          ports:
+            - containerPort: 3306
+              name: mysql
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: mysql-persistent-storage
+            - mountPath: /docker-entrypoint-initdb.d
+              name: mysql-initdb
+      serviceAccountName: tekton-results-api
+      volumes:
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: results-mysql-pv-claim
+        - configMap:
+            name: mysql-initdb-config
+          name: mysql-initdb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: watcher
+    app.kubernetes.io/name: tekton-results
+    results.tekton.dev/release: devel
+    version: devel
+  name: tekton-results-watcher
+  namespace: tekton-pipelines
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tekton-results-watcher
+  template:
+    metadata:
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+      labels:
+        app: tekton-results-watcher
+        app.kubernetes.io/component: watcher
+        app.kubernetes.io/name: tekton-results
+        results.tekton.dev/release: devel
+        version: devel
+    spec:
+      containers:
+        - args:
+            - -api_addr
+            - tekton-results-api-service.tekton-pipelines.svc.cluster.local:50051
+            - -auth_mode
+            - token
+          image: gcr.io/tekton-releases/github.com/tektoncd/results/cmd/watcher:v0.2.0@sha256:20f429b003fc8fc32532afef64810f45f81c20e6e86d35a049df481488023a7b
+          name: tekton-results-watcher
+          volumeMounts:
+            - mountPath: /etc/tls
+              name: tls
+              readOnly: true
+      serviceAccountName: tekton-results-watcher
+      volumes:
+        - name: tls
+          secret:
+            secretName: tekton-results-tls
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: results-mysql-pv-claim
+  namespace: tekton-pipelines
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: standard
+
+---

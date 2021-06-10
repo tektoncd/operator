@@ -1,0 +1,18 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-results-watcher
+  namespace: tekton-pipelines
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tekton-results-watcher
+  template:
+    spec:
+      serviceAccountName: tekton-results-watcher
+      containers:
+        - name: tekton-results-watcher
+          image: gcr.io/tekton-releases/github.com/tektoncd/results/cmd/watcher:v0.1.1@sha256:7f30cbd391f8d808e17c5de0b95cc1f314b1835bdc625547eb4f9d5a02804902
+          args: ["-api_addr", "tekton-results-api-service.tekton-pipelines.svc.cluster.local:50051", "-auth_mode", "insecure"]
