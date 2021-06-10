@@ -23,6 +23,7 @@ type ResourceNames struct {
 	TektonDashboard string
 	TektonAddon     string
 	TektonConfig    string
+	TektonResult    string
 	Namespace       string
 	TargetNamespace string
 }

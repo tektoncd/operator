@@ -18,6 +18,7 @@ package common
 
 import (
 	"context"
+	"gotest.tools/assert"
 	"os"
 	"path"
 	"reflect"
@@ -330,4 +331,38 @@ func deploymentFor(t *testing.T, unstr unstructured.Unstructured) *appsv1.Deploy
 		t.Errorf("failed to load deployment yaml")
 	}
 	return deployment
+}
+
+func TestReplaceNamespaceInDeploymentEnv(t *testing.T) {
+	testData := path.Join("testdata", "test-replace-env-in-result-deployment.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	manifest, err = manifest.Transform(ReplaceNamespaceInDeploymentEnv("openshift-pipelines"))
+	assertNoEror(t, err)
+
+	d := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, d)
+	assertNoEror(t, err)
+
+	env := d.Spec.Template.Spec.Containers[0].Env
+	assert.Equal(t, env[0].Value, "tcp")
+	assert.Equal(t, env[1].Value, "tekton-results-mysql.openshift-pipelines.svc.cluster.local")
+}
+
+func TestReplaceNamespaceInDeploymentArgs(t *testing.T) {
+	testData := path.Join("testdata", "test-replace-arg-in-result-deployment.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	manifest, err = manifest.Transform(ReplaceNamespaceInDeploymentArgs("openshift-pipelines"))
+	assertNoEror(t, err)
+
+	d := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, d)
+	assertNoEror(t, err)
+
+	args := d.Spec.Template.Spec.Containers[0].Args
+	assert.Equal(t, args[0], "-api_addr")
+	assert.Equal(t, args[1], "tekton-results-api-service.openshift-pipelines.svc.cluster.local:50051")
 }

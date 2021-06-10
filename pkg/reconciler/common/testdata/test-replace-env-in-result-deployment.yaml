@@ -1,0 +1,22 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-results-api
+  namespace: tekton-pipelines
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tekton-results-api
+  template:
+    spec:
+      serviceAccountName: tekton-results-api
+      containers:
+        - name: tekton-results-api
+          image: gcr.io/tekton-releases/github.com/tektoncd/results/cmd/api:v0.1.1@sha256:8c8dfd9d88c415db6182c2c7d318865aa32cb3e45f6f0eb2dd53112e6a6ebc2f
+          env:
+            - name: DB_PROTOCOL
+              value: tcp
+            - name: DB_ADDR
+              value: tekton-results-mysql.tekton-pipelines.svc.cluster.local

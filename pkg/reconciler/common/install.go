@@ -31,6 +31,7 @@ var (
 	rolebinding           mf.Predicate = mf.Any(mf.ByKind("ClusterRoleBinding"), mf.ByKind("RoleBinding"))
 	consoleCLIDownload    mf.Predicate = mf.Any(mf.ByKind("ConsoleCLIDownload"))
 	clusterTriggerBinding mf.Predicate = mf.Any(mf.ByKind("ClusterTriggerBinding"))
+	persistentVolumeClaim mf.Predicate = mf.Any(mf.ByKind("PersistentVolumeClaim"))
 )
 
 // Install applies the manifest resources for the given version and updates the given
@@ -53,6 +54,10 @@ func Install(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.Tekto
 	if err := manifest.Filter(rolebinding).Apply(); err != nil {
 		status.MarkInstallFailed(err.Error())
 		return fmt.Errorf("failed to apply (cluster)rolebindings: %w", err)
+	}
+	if err := manifest.Filter(persistentVolumeClaim).Apply(); err != nil {
+		status.MarkInstallFailed(err.Error())
+		return fmt.Errorf("failed to apply persistentVolumeClaim: %w", err)
 	}
 	if err := manifest.Filter(consoleCLIDownload).Apply(); err != nil {
 		status.MarkInstallFailed(err.Error())

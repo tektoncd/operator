@@ -26,4 +26,6 @@ type TektonDashboardExpansion interface{}
 
 type TektonPipelineExpansion interface{}
 
+type TektonResultExpansion interface{}
+
 type TektonTriggerExpansion interface{}

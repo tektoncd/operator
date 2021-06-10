@@ -77,3 +77,10 @@ func TearDownConfig(clients *Clients, name string) {
 		_ = clients.TektonConfig().Delete(context.TODO(), name, metav1.DeleteOptions{})
 	}
 }
+
+// TearDownResult will delete created TektonResult CRs using clients.
+func TearDownResult(clients *Clients, name string) {
+	if clients != nil && clients.Operator != nil {
+		_ = clients.TektonResult().Delete(context.TODO(), name, metav1.DeleteOptions{})
+	}
+}

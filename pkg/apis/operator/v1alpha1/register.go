@@ -43,6 +43,9 @@ const (
 
 	// KindTektonConfig is the Kind of Tekton Config in a GVK context.
 	KindTektonConfig = "TektonConfig"
+
+	// KindTektonResult is the Kind of Tekton Config in a GVK context.
+	KindTektonResult = "TektonResult"
 )
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
@@ -64,6 +67,8 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&TektonAddonList{},
 		&TektonConfig{},
 		&TektonConfigList{},
+		&TektonResult{},
+		&TektonResultList{},
 	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil
