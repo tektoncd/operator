@@ -32,15 +32,19 @@ Tekton Operator defines the following entities:
   </tr>
   <tr>
     <td><code>TektonPipeline</code></td>
-    <td>Configure the [Tekton Pipeline](https://github.com/tektoncd/pipeline) component to be installed and managed.</td>
+    <td>Configure the <a HREF="https://github.com/tektoncd/pipeline">Tekton Pipeline</a> component to be installed and managed.</td>
   </tr>
   <tr>
     <td><code>TektonTrigger</code></td>
-    <td>Configure the [Tekton Trigger](https://github.com/tektoncd/triggers) component to be installed and managed.</td>
+    <td>Configure the <a HREF="https://github.com/tektoncd/triggers">Tekton Trigger</a> component to be installed and managed.</td>
   </tr>
   <tr>
     <td><code>TektonDashboard</code></td>
-    <td>Configure the [Tekton Dashboard](https://github.com/tektoncd/dashboard) component to be installed and managed.</td>
+    <td>Configure the <a HREF="https://github.com/tektoncd/dashboard">Tekton Dashboard</a> component to be installed and managed.</td>
+  </tr>
+  <tr>
+    <td><code>TektonResult</code></td>
+    <td>Configure the <a HREF="https://github.com/tektoncd/results">Tekton Result</a> component to be installed and managed.</td>
   </tr>
   <tr>
     <td><code>TektonAddon</code></td>
