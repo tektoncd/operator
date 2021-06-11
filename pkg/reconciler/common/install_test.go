@@ -156,7 +156,7 @@ func TestUninstall(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	if err := Uninstall(context.TODO(), &manifest); err != nil {
+	if err := Uninstall(context.TODO(), &manifest, nil); err != nil {
 		t.Fatalf("Uninstall() = %v, want no error", err)
 	}
 

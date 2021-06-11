@@ -83,6 +83,22 @@ spec:
                     type: integer
                     default: 1
                 type: object
+              addon:
+                type: object
+                description: defines fields to customize installation of addon components
+                properties:
+                  params:
+                    type: array
+                    description: list of params to customize installation of addon components
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          description: name of param
+                          type: string
+                        value:
+                          description: value of param
+                          type: string
             type: object
           status:
             description: Status defines the observed state of TektonConfig

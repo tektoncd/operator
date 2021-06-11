@@ -19,6 +19,7 @@ limitations under the License.
 package common
 
 import (
+	"os"
 	"testing"
 
 	"github.com/tektoncd/operator/test/utils"
@@ -35,6 +36,10 @@ func TestTektonPipelinesDeployment(t *testing.T) {
 	crNames := utils.ResourceNames{
 		TektonPipeline:  "pipeline",
 		TargetNamespace: "tekton-pipelines",
+	}
+
+	if os.Getenv("TARGET") == "openshift" {
+		crNames.TargetNamespace = "openshift-pipelines"
 	}
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })

@@ -67,6 +67,7 @@ type TektonConfigSpec struct {
 	// +optional
 	Pruner     Prune `json:"pruner,omitempty"`
 	CommonSpec `json:",inline"`
+	Addon      Addon `json:"addon,omitempty"`
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
@@ -88,4 +89,11 @@ type TektonConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonConfig `json:"items"`
+}
+
+// Addon defines the field to customize Addon component
+type Addon struct {
+	// Params is the list of params passed for Addon customization
+	// +optional
+	Params []Param `json:"params,omitempty"`
 }

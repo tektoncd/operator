@@ -108,6 +108,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	if err := r.extension.PreReconcile(ctx, tc); err != nil {
+		// If prereconcile updates the TektonConfig CR, it returns an error
+		// to reconcile
+		if err.Error() == "reconcile" {
+			return err
+		}
 		tc.GetStatus().MarkInstallFailed(err.Error())
 		return err
 	}
