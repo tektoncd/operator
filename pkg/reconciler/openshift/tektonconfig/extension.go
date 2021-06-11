@@ -18,6 +18,8 @@ package tektonconfig
 
 import (
 	"context"
+	"fmt"
+
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
 	"go.uber.org/zap"
@@ -28,6 +30,7 @@ import (
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -35,7 +38,6 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-// NoPlatform "generates" a NilExtension
 func OpenShiftExtension(ctx context.Context) common.Extension {
 
 	logger := logging.FromContext(ctx)
@@ -67,6 +69,25 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	return []mf.Transformer{}
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+	configInstance := tc.(*v1alpha1.TektonConfig)
+
+	// If profile is all then validates the passed addon params and
+	// add the missing params with their default values
+	if configInstance.Spec.Profile == common.ProfileAll {
+		updated, err := common.ValidateParamsAndSetDefault(ctx, &configInstance.Spec.Addon.Params, tektonaddon.AddonParams,
+			tektonaddon.ValidateParamsConditions())
+		if err != nil {
+			return err
+		}
+		if updated {
+			_, err := oe.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, configInstance, metav1.UpdateOptions{})
+			if err != nil {
+				return err
+			}
+			// Returning error just to make reconcile it again so that further code gets updated TektonConfig
+			return fmt.Errorf("reconcile")
+		}
+	}
 
 	r := rbac{
 		kubeClientSet:     oe.kubeClientSet,

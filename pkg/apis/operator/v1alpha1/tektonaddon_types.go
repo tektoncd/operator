@@ -52,6 +52,9 @@ func (tp *TektonAddon) GetStatus() TektonComponentStatus {
 // TektonAddonSpec defines the desired state of TektonAddon
 type TektonAddonSpec struct {
 	CommonSpec `json:",inline"`
+	// The params to customize different components of Addon
+	// +optional
+	Params []Param `json:"params,omitempty"`
 }
 
 // TektonAddonStatus defines the observed state of TektonAddon

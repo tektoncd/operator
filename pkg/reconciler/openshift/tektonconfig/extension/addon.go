@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
@@ -34,7 +35,7 @@ import (
 
 func CreateAddonCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
 	configInstance := instance.(*v1alpha1.TektonConfig)
-	if _, err := ensureTektonAddonExists(client.TektonAddons(), configInstance.Spec.TargetNamespace); err != nil {
+	if _, err := ensureTektonAddonExists(client.TektonAddons(), configInstance); err != nil {
 		return errors.New(err.Error())
 	}
 	if _, err := waitForTektonAddonState(client.TektonAddons(), common.AddonResourceName,
@@ -45,9 +46,18 @@ func CreateAddonCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.Op
 	return nil
 }
 
-func ensureTektonAddonExists(clients op.TektonAddonInterface, targetNS string) (*v1alpha1.TektonAddon, error) {
+func ensureTektonAddonExists(clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
 	taCR, err := GetAddon(clients, common.AddonResourceName)
 	if err == nil {
+		// If addon params are changed in TektonConfig spec, then only update the Addon CR
+		if !reflect.DeepEqual(config.Spec.Addon.Params, taCR.Spec.Params) {
+			taCR.Spec.Params = config.Spec.Addon.Params
+			updated, err := clients.Update(context.TODO(), taCR, metav1.UpdateOptions{})
+			if err != nil {
+				return nil, err
+			}
+			return updated, nil
+		}
 		return taCR, err
 	}
 	if apierrs.IsNotFound(err) {
@@ -57,8 +67,9 @@ func ensureTektonAddonExists(clients op.TektonAddonInterface, targetNS string) (
 			},
 			Spec: v1alpha1.TektonAddonSpec{
 				CommonSpec: v1alpha1.CommonSpec{
-					TargetNamespace: targetNS,
+					TargetNamespace: config.Spec.TargetNamespace,
 				},
+				Params: config.Spec.Addon.Params,
 			},
 		}
 		return clients.Create(context.TODO(), taCR, metav1.CreateOptions{})

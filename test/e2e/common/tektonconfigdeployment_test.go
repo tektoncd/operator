@@ -19,13 +19,17 @@ limitations under the License.
 package common
 
 import (
+	"context"
 	"os"
+	"reflect"
 	"testing"
 
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/test/client"
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // TestTektonPipelinesDeployment verifies the TektonPipelines creation, deployment recreation, and TektonPipelines deletion.
@@ -37,16 +41,24 @@ func TestTektonConfigDeployment(t *testing.T) {
 		Namespace:    "tekton-operator",
 	}
 
-	if os.Getenv("TARGET") == "openshift" {
+	platform := os.Getenv("TARGET")
+
+	if platform == "openshift" {
 		crNames.Namespace = "openshift-operators"
 	}
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownConfig(clients, crNames.TektonConfig) })
 	defer utils.TearDownPipeline(clients, crNames.TektonConfig)
 
+	var (
+		tc  *v1alpha1.TektonConfig
+		err error
+	)
+
 	// Create a TektonConfig
 	t.Run("create-config", func(t *testing.T) {
-		if _, err := resources.EnsureTektonConfigExists(clients.KubeClientSet, clients.TektonConfig(), crNames); err != nil {
+		tc, err = resources.EnsureTektonConfigExists(clients.KubeClientSet, clients.TektonConfig(), crNames)
+		if err != nil {
 			t.Fatalf("TektonConfig %q failed to create: %v", crNames.TektonConfig, err)
 		}
 	})
@@ -56,14 +68,41 @@ func TestTektonConfigDeployment(t *testing.T) {
 		resources.AssertTektonConfigCRReadyStatus(t, clients, crNames)
 	})
 
-	if os.Getenv("TARGET") == "openshift" {
+	if platform == "openshift" {
 		runRbacTest(t, clients)
+	}
+
+	if platform == "openshift" && tc.Spec.Profile == common.ProfileAll {
+		runAddonTest(t, clients, tc)
 	}
 
 	// Delete the TektonConfig CR instance to see if all resources will be removed
 	t.Run("delete-config", func(t *testing.T) {
 		resources.AssertTektonConfigCRReadyStatus(t, clients, crNames)
 		resources.TektonConfigCRDelete(t, clients, crNames)
+	})
+}
+
+func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfig) {
+
+	var (
+		addon *v1alpha1.TektonAddon
+		err   error
+	)
+
+	// Make sure TektonAddon is created
+	t.Run("ensure-addon-is-created", func(t *testing.T) {
+		addon, err = clients.Operator.TektonAddons().Get(context.TODO(), common.AddonResourceName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("failed to get TektonAddon CR: %s : %v", common.AddonResourceName, err)
+		}
+	})
+
+	// Check if number of params passed in TektonConfig would be passed in TektonAddons
+	t.Run("check-addon-params", func(t *testing.T) {
+		if !reflect.DeepEqual(tc.Spec.Addon.Params, addon.Spec.Params) {
+			t.Fatalf("Addon params in TektonConfig not equal to TektonAddon params")
+		}
 	})
 }
 

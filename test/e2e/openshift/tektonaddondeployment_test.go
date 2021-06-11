@@ -19,6 +19,7 @@ limitations under the License.
 package openshift
 
 import (
+	"os"
 	"testing"
 
 	"github.com/tektoncd/operator/test/utils"
@@ -38,6 +39,10 @@ func TestTektonAddonsDeployment(t *testing.T) {
 		TektonAddon:     "addon",
 		Namespace:       "",
 		TargetNamespace: "tekton-pipelines",
+	}
+
+	if os.Getenv("TARGET") == "openshift" {
+		crNames.TargetNamespace = "openshift-pipelines"
 	}
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
