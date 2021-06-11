@@ -24,7 +24,6 @@ import (
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
 	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -34,7 +33,6 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
-	namespaceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
@@ -52,7 +50,6 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		tektonConfigInformer := tektonConfiginformer.Get(ctx)
 		deploymentInformer := deploymentinformer.Get(ctx)
-		namespaceInformer := namespaceinformer.Get(ctx)
 		kubeClient := kubeclient.Get(ctx)
 		logger := logging.FromContext(ctx)
 
@@ -83,24 +80,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
-		namespaceInformer.Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(impl, common.ConfigResourceName)))
-
 		if os.Getenv("AUTOINSTALL_COMPONENTS") == "true" {
 			// try to ensure that there is an instance of tektonConfig
 			newTektonConfig(operatorclient.Get(ctx), kubeclient.Get(ctx), manifest).ensureInstance(ctx)
 		}
 
 		return impl
-	}
-}
-
-// enqueueCustomName adds an event with name `config` in work queue so that
-// whenever a namespace event occurs, the TektonConfig reconciler get triggered.
-// This is required because we want to get our TektonConfig reconciler triggered
-// for already existing and new namespaces, without manual intervention like adding
-// a label/annotation on namespace to make it manageable by Tekton controller.
-func enqueueCustomName(impl *controller.Impl, name string) func(obj interface{}) {
-	return func(obj interface{}) {
-		impl.EnqueueKey(types.NamespacedName{Namespace: "", Name: name})
 	}
 }
