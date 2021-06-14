@@ -85,7 +85,7 @@ func TestCreateCronJob(t *testing.T) {
 	if cron.Name != cronName {
 		t.Error("cronjob not matched")
 	}
-	jobName := resource + "-pruner-tkn-" + nsList[0]
+	jobName := "pruner-tkn-" + nsList[0]
 	if cron.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Name != jobName {
 		t.Error("Job Name not matched")
 	}

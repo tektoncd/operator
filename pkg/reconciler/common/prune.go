@@ -130,33 +130,27 @@ func createCronJob(k kubernetes.Interface, ctx context.Context, pru v1alpha1.Pru
 
 func getPruningContainers(resources, namespaces []string, keep int, tknImage string) []corev1.Container {
 	containers := []corev1.Container{}
-
-	for _, res := range resources {
-		for _, ns := range namespaces {
-			cmdArgs := deleteCommand(res, keep, ns)
-			cName := res + "-pruner-tkn-" + ns
-			container := corev1.Container{
-				Name:                     cName,
-				Image:                    tknImage,
-				Command:                  []string{"tkn"},
-				Args:                     cmdArgs,
-				TerminationMessagePolicy: "FallbackToLogsOnError",
-			}
-			containers = append(containers, container)
+	for _, ns := range namespaces {
+		cmdArgs := deleteCommand(resources, keep, ns)
+		cName := "pruner-tkn-" + ns
+		container := corev1.Container{
+			Name:                     cName,
+			Image:                    tknImage,
+			Command:                  []string{"/bin/sh", "-c"},
+			Args:                     cmdArgs,
+			TerminationMessagePolicy: "FallbackToLogsOnError",
 		}
+		containers = append(containers, container)
 	}
 
 	return containers
 }
 
-func deleteCommand(res string, keep int, ns string) []string {
+func deleteCommand(resources []string, keep int, ns string) []string {
 	cmdArgs := []string{}
-	cmdArgs = append(cmdArgs, strings.ToLower(res))
-	cmdArgs = append(cmdArgs, "delete")
-	cmdArgs = append(cmdArgs, "--keep")
-	cmdArgs = append(cmdArgs, fmt.Sprint(keep))
-	cmdArgs = append(cmdArgs, "-f")
-	cmdArgs = append(cmdArgs, "-n")
-	cmdArgs = append(cmdArgs, ns)
+	for _, res := range resources {
+		cmd := "tkn " + strings.ToLower(res) + " delete --keep " + fmt.Sprint(keep) + " -f -n " + ns
+		cmdArgs = append(cmdArgs, cmd)
+	}
 	return cmdArgs
 }
