@@ -125,10 +125,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		}
 	}
 
-	if err := common.Prune(r.kubeClientSet, ctx, tc); err != nil {
-		logger.Error(err)
-	}
-
 	manifest := r.manifest.Append()
 	if err := stages.Execute(ctx, &manifest, tc); err != nil {
 		tc.GetStatus().MarkInstallFailed(err.Error())
@@ -138,6 +134,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		tc.GetStatus().MarkInstallFailed(err.Error())
 		return err
 	}
+
+	if err := common.Prune(r.kubeClientSet, ctx, tc); err != nil {
+		logger.Error(err)
+	}
+
 	tc.Status.MarkInstallSucceeded()
 	tc.Status.MarkDeploymentsAvailable()
 	return nil
