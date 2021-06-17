@@ -1,4 +1,4 @@
-# Copyright 2020 The Tekton Authors
+# Copyright 2021 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,21 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-namespace: tekton-operator
 
-resources:
-- 100-namespace.yaml
-- 300-operator_v1alpha1_pipeline_crd.yaml
-- 300-operator_v1alpha1_trigger_crd.yaml
-- 300-operator_v1alpha1_dashboard_crd.yaml
-- 300-operator_v1alpha1_addon_crd.yaml
-- 300-operator_v1alpha1_config_crd.yaml
-- 500-webhooks.yaml
-- config-logging.yaml
-- tekton-config-defaults.yaml
-- role.yaml
-- role_binding.yaml
-- service_account.yaml
-- operator.yaml
-- webhook.yaml
-- webhook-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-operator-webhook
+  labels:
+    version: "devel"
+    operator.tekton.dev/release: "devel"
+    name: tekton-operator-webhook
+    app: tekton-operator
+spec:
+  ports:
+    - name: https-webhook
+      port: 443
+      targetPort: 8443
+  selector:
+    name: tekton-operator-webhook
+    app: tekton-operator

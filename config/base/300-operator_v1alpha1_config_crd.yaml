@@ -81,7 +81,6 @@ spec:
                   keep:
                     description: number of resources to keep
                     type: integer
-                    default: 1
                 type: object
               addon:
                 type: object

@@ -260,3 +260,16 @@ rules:
     - list
     - update
     - watch
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
+  verbs:
+    - delete
+    - create
+    - patch
+    - get
+    - list
+    - update
+    - watch

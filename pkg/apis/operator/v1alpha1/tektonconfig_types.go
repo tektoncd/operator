@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"reflect"
 )
 
 var (
@@ -60,6 +61,10 @@ type Prune struct {
 	Schedule string `json:"schedule" protobuf:"bytes,1,opt,name=schedule"`
 }
 
+func (p Prune) IsEmpty() bool {
+	return reflect.DeepEqual(p, Prune{})
+}
+
 // TektonConfigSpec defines the desired state of TektonConfig
 type TektonConfigSpec struct {
 	Profile string `json:"profile,omitempty"`
@@ -96,4 +101,8 @@ type Addon struct {
 	// Params is the list of params passed for Addon customization
 	// +optional
 	Params []Param `json:"params,omitempty"`
+}
+
+func (a Addon) IsEmpty() bool {
+	return reflect.DeepEqual(a, Addon{})
 }
