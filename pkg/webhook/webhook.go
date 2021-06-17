@@ -31,7 +31,10 @@ import (
 )
 
 var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
-	v1alpha1.SchemeGroupVersion.WithKind("TektonConfig"): &v1alpha1.TektonConfig{},
+	v1alpha1.SchemeGroupVersion.WithKind("TektonConfig"):    &v1alpha1.TektonConfig{},
+	v1alpha1.SchemeGroupVersion.WithKind("TektonPipeline"):  &v1alpha1.TektonPipeline{},
+	v1alpha1.SchemeGroupVersion.WithKind("TektonTrigger"):   &v1alpha1.TektonTrigger{},
+	v1alpha1.SchemeGroupVersion.WithKind("TektonDashboard"): &v1alpha1.TektonDashboard{},
 }
 
 func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
