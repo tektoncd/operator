@@ -102,7 +102,7 @@ spec:
       serviceAccountName: tekton-operators-proxy-webhook
       containers:
         - name: proxy
-          image: "ko://github.com/tektoncd/operator/cmd/openshift/webhook"
+          image: "ko://github.com/tektoncd/operator/cmd/openshift/proxy-webhook"
           env:
             - name: SYSTEM_NAMESPACE
               valueFrom:

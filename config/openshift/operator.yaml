@@ -26,6 +26,6 @@ spec:
           - name: IMAGE_TP12_SEAMLESS_DELETE_CONFIG_CRD
             value: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
           - name: IMAGE_PIPELINES_PROXY
-            value: ko://github.com/tektoncd/operator/cmd/openshift/webhook
+            value: ko://github.com/tektoncd/operator/cmd/openshift/proxy-webhook
           - name: IMAGE_JOB_PRUNER_TKN
             value: gcr.io/tekton-releases/dogfooding/tkn@sha256:f69a02ef099d8915e9e4ea1b74e43b7a9309fc97cf23cb457ebf191e73491677
