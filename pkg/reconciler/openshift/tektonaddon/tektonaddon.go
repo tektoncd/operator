@@ -69,27 +69,12 @@ const (
 	providerTypeRedHat    = "redhat"
 	consoleYamlSamples    = "consoleyamlsamples.console.openshift.io"
 	consoleQuickStart     = "consolequickstarts.console.openshift.io"
-
-	// Addon Params
-	clusterTasksParam      = "clusterTasks"
-	pipelineTemplatesParam = "pipelineTemplates"
 )
 
 var (
 	pipeline    mf.Predicate = mf.ByKind("Pipeline")
 	clusterTask mf.Predicate = mf.ByKind("ClusterTask")
 )
-
-var defaultParamValue = v1alpha1.ParamValue{
-	Default:  "true",
-	Possible: []string{"true", "false"},
-}
-
-// AddonParams defines the params defined for Addons with their default value
-var AddonParams = map[string]v1alpha1.ParamValue{
-	clusterTasksParam:      defaultParamValue,
-	pipelineTemplatesParam: defaultParamValue,
-}
 
 // Check that our Reconciler implements controller.Reconciler
 var _ tektonaddonreconciler.Interface = (*Reconciler)(nil)
@@ -158,21 +143,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonAddon
 		return nil
 	}
 
-	// If the TektonAddon is created through TektonConfig then validation can be skipped
-	if len(tt.GetOwnerReferences()) == 0 {
-		updated, err := common.ValidateParamsAndSetDefault(ctx, &tt.Spec.Params, AddonParams, ValidateParamsConditions())
-		if err != nil {
-			tt.GetStatus().MarkInstallFailed(err.Error())
-			return err
-		}
-		if updated {
-			_, err := r.operatorClientSet.OperatorV1alpha1().TektonAddons().Update(ctx, tt, metav1.UpdateOptions{})
-			if err != nil {
-				return err
-			}
-		}
-	}
-
 	//find the valid tekton-pipeline installation
 	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
 		if err.Error() == common.PipelineNotReady {
@@ -223,7 +193,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonAddon
 
 func (r *Reconciler) checkAndInstall(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	ta := comp.(*v1alpha1.TektonAddon)
-	val, ok := findValue(ta.Spec.Params, clusterTasksParam)
+	val, ok := findValue(ta.Spec.Params, v1alpha1.ClusterTasksParam)
 	if !ok {
 		return fmt.Errorf("clusterTasks Param missing in spec")
 	}
@@ -235,11 +205,11 @@ func (r *Reconciler) checkAndInstall(ctx context.Context, manifest *mf.Manifest,
 
 func (r *Reconciler) filterAndInstall(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	ta := comp.(*v1alpha1.TektonAddon)
-	ptVal, ok := findValue(ta.Spec.Params, pipelineTemplatesParam)
+	ptVal, ok := findValue(ta.Spec.Params, v1alpha1.PipelineTemplatesParam)
 	if !ok {
 		return fmt.Errorf("pipelineTemplates Param missing in spec")
 	}
-	ctVal, ok := findValue(ta.Spec.Params, clusterTasksParam)
+	ctVal, ok := findValue(ta.Spec.Params, v1alpha1.ClusterTasksParam)
 	if !ok {
 		return fmt.Errorf("clusterTasks Param missing in spec")
 	}
@@ -452,34 +422,6 @@ func itemInSlice(item string, items []string) bool {
 		}
 	}
 	return false
-}
-
-// ValidateParamsConditions validates the param conditions, to be used while
-// validating params and setting default values
-func ValidateParamsConditions() func(params *[]v1alpha1.Param) error {
-	return func(params *[]v1alpha1.Param) error {
-		paramsMap := common.ParseParams(*params)
-
-		// If pipelinesTemplate is true then clusterTask cannot be false
-		// As pipelines created uses this clusterTasks
-		if paramsMap[pipelineTemplatesParam] == "true" && paramsMap[clusterTasksParam] == "false" {
-			return fmt.Errorf("clusterTasks value cannot be false if pipelineTemplates is true")
-		}
-
-		// If user passes clusterTasks as false and pipelinesTemplates param is not passed
-		// then set pipelineTemplatesParam as false, as pipeline template cannot be created
-		// without clusterTask
-		if paramsMap[clusterTasksParam] == "false" {
-			if _, ok := paramsMap[pipelineTemplatesParam]; !ok {
-				*params = append(*params, v1alpha1.Param{
-					Name:  clusterTasksParam,
-					Value: "false",
-				})
-			}
-		}
-
-		return nil
-	}
 }
 
 func findValue(params []v1alpha1.Param, name string) (string, bool) {

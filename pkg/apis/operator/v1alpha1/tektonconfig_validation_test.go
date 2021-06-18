@@ -175,5 +175,5 @@ func Test_ValidateTektonConfig_InvalidAddonParamValue(t *testing.T) {
 	}
 
 	err := tc.Validate(context.TODO())
-	assert.Equal(t, "invalid value: test: spec.addon.paramsclusterTasks[0]", err.Error())
+	assert.Equal(t, "invalid value: test: spec.addon.params.clusterTasks[0]", err.Error())
 }

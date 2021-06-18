@@ -28,6 +28,13 @@ patches:
   target:
     kind: ClusterRoleBinding
     name: tekton-operator
+- path: webhook.yaml
+  target:
+    kind: Deployment
+    name: tekton-operator-webhook
+
+patchesStrategicMerge:
+  - 500-webhooks.yaml
 
 configMapGenerator:
 - name: tekton-config-defaults

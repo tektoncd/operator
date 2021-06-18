@@ -45,7 +45,7 @@ func main() {
 		SecretName:  secretName,
 	})
 
-	webhook.SetTypes("kubernetes")
+	webhook.SetTypes("openshift")
 
 	sharedmain.WebhookMainWithConfig(ctx, serviceName,
 		injection.ParseAndGetRESTConfigOrDie(),

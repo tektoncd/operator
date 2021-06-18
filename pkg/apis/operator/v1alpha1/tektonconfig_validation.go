@@ -42,24 +42,7 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	if !tc.Spec.Addon.IsEmpty() {
-		errs = errs.Also(tc.Spec.Addon.validate())
-	}
-
-	return errs
-}
-
-func (a Addon) validate() *apis.FieldError {
-	var errs *apis.FieldError
-
-	for i, p := range a.Params {
-		paramValue, ok := AddonParams[p.Name]
-		if !ok {
-			errs = errs.Also(apis.ErrInvalidKeyName(p.Name, "spec.addon.params"))
-			continue
-		}
-		if !isValueInArray(paramValue.Possible, p.Value) {
-			errs = errs.Also(apis.ErrInvalidArrayValue(p.Value, "spec.addon.params"+p.Name, i))
-		}
+		errs = errs.Also(validateAddonParams(tc.Spec.Addon.Params, "spec.addon.params"))
 	}
 
 	return errs
