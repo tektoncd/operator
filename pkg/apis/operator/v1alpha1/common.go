@@ -109,3 +109,12 @@ type ParamValue struct {
 	Default  string
 	Possible []string
 }
+
+// ParseParams returns the params array as map
+func ParseParams(params []Param) map[string]string {
+	paramsMap := map[string]string{}
+	for _, p := range params {
+		paramsMap[p.Name] = p.Value
+	}
+	return paramsMap
+}
