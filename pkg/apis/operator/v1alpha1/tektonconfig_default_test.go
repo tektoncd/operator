@@ -42,28 +42,3 @@ func Test_SetDefaults_Profile(t *testing.T) {
 		t.Error("Setting default failed for TektonConfig (spec.profile)")
 	}
 }
-
-func Test_SetDefaults_PruneKeep(t *testing.T) {
-
-	tc := &TektonConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
-			Namespace: "namespace",
-		},
-		Spec: TektonConfigSpec{
-			CommonSpec: CommonSpec{
-				TargetNamespace: "namespace",
-			},
-			Profile: ProfileLite,
-			Pruner: Prune{
-				Resources: []string{"taskrun"},
-				Schedule:  "* * * * *",
-			},
-		},
-	}
-
-	tc.SetDefaults(context.TODO())
-	if tc.Spec.Pruner.Keep != 1 {
-		t.Error("Setting default failed for TektonConfig (spec.pruner.keep)")
-	}
-}

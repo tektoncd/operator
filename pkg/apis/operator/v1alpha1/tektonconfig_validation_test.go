@@ -99,10 +99,10 @@ func Test_ValidateTektonConfig_InvalidPruningResource(t *testing.T) {
 	}
 
 	err := tc.Validate(context.TODO())
-	assert.Equal(t, "invalid value: task: spec.pruner.resources[0]\nmissing field(s): spec.pruner.schedule", err.Error())
+	assert.Equal(t, "invalid value: task: spec.pruner.resources[0]\nmissing field(s): spec.pruner.keep, spec.pruner.schedule", err.Error())
 }
 
-func Test_ValidateTektonConfig_MissingSchedule(t *testing.T) {
+func Test_ValidateTektonConfig_MissingKeepSchedule(t *testing.T) {
 
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -121,7 +121,7 @@ func Test_ValidateTektonConfig_MissingSchedule(t *testing.T) {
 	}
 
 	err := tc.Validate(context.TODO())
-	assert.Equal(t, "missing field(s): spec.pruner.schedule", err.Error())
+	assert.Equal(t, "missing field(s): spec.pruner.keep, spec.pruner.schedule", err.Error())
 }
 
 func Test_ValidateTektonConfig_InvalidAddonParam(t *testing.T) {

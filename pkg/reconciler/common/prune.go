@@ -89,7 +89,7 @@ func GetPrunableNamespaces(k kubernetes.Interface, ctx context.Context) ([]strin
 }
 
 func createCronJob(k kubernetes.Interface, ctx context.Context, pru v1alpha1.Prune, targetNs string, pruningNs []string, oR v1.OwnerReference, tknImage string) error {
-	pruneContainers := getPruningContainers(pru.Resources, pruningNs, pru.Keep, tknImage)
+	pruneContainers := getPruningContainers(pru.Resources, pruningNs, *pru.Keep, tknImage)
 	backOffLimit := int32(3)
 	ttlSecondsAfterFinished := int32(3600)
 	cj := &v1beta1.CronJob{
@@ -133,7 +133,7 @@ func createCronJob(k kubernetes.Interface, ctx context.Context, pru v1alpha1.Pru
 	return nil
 }
 
-func getPruningContainers(resources, namespaces []string, keep int, tknImage string) []corev1.Container {
+func getPruningContainers(resources, namespaces []string, keep uint, tknImage string) []corev1.Container {
 	containers := []corev1.Container{}
 	for _, ns := range namespaces {
 		cmdArgs := deleteCommand(resources, keep, ns)
@@ -151,7 +151,7 @@ func getPruningContainers(resources, namespaces []string, keep int, tknImage str
 	return containers
 }
 
-func deleteCommand(resources []string, keep int, ns string) []string {
+func deleteCommand(resources []string, keep uint, ns string) []string {
 	cmdArgs := []string{}
 	for _, res := range resources {
 		cmd := "tkn " + strings.ToLower(res) + " delete --keep " + fmt.Sprint(keep) + " -f -n " + ns

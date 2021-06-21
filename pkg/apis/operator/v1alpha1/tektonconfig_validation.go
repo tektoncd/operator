@@ -57,17 +57,21 @@ func (p Prune) validate() *apis.FieldError {
 				errs = errs.Also(apis.ErrInvalidArrayValue(r, "spec.pruner.resources", i))
 			}
 		}
-		if p.Schedule == "" {
-			errs = errs.Also(apis.ErrMissingField("spec.pruner.schedule"))
-		}
-		return errs
+	} else {
+		errs = errs.Also(apis.ErrMissingField("spec.pruner.resources"))
+	}
+
+	if p.Keep == nil {
+		errs = errs.Also(apis.ErrMissingField("spec.pruner.keep"))
+	} else if *p.Keep == 0 {
+		errs = errs.Also(apis.ErrInvalidValue(*p.Keep, "spec.pruner.keep"))
 	}
 
 	if p.Schedule == "" {
 		errs = errs.Also(apis.ErrMissingField("spec.pruner.schedule"))
 	}
 
-	return errs.Also(apis.ErrMissingField("spec.pruner.resources"))
+	return errs
 }
 
 func isValueInArray(arr []string, key string) bool {

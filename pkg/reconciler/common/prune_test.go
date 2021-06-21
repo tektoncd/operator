@@ -69,9 +69,10 @@ func TestCreateCronJob(t *testing.T) {
 
 	nsObj1 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one"}}
 
+	var keep = uint(2)
 	pru := v1alpha1.Prune{
 		Resources: resource,
-		Keep:      2,
+		Keep:      &keep,
 		Schedule:  "*/5 * * * *",
 	}
 	client := fake.NewSimpleClientset(cronJob, nsObj1)

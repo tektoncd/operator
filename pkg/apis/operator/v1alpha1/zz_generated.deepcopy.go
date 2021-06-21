@@ -106,6 +106,11 @@ func (in *Prune) DeepCopyInto(out *Prune) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Keep != nil {
+		in, out := &in.Keep, &out.Keep
+		*out = new(uint)
+		**out = **in
+	}
 	return
 }
 
