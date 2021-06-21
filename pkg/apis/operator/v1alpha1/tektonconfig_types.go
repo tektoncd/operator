@@ -17,9 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"reflect"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
-	"reflect"
 )
 
 var (
@@ -75,6 +76,9 @@ type TektonConfigSpec struct {
 	// Addon holds the addons config
 	// +optional
 	Addon Addon `json:"addon,omitempty"`
+	// Pipeline holds the customizable option for pipeline component
+	// +optional
+	Pipeline Pipeline `json:"pipeline,omitempty"`
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
@@ -107,4 +111,9 @@ type Addon struct {
 
 func (a Addon) IsEmpty() bool {
 	return reflect.DeepEqual(a, Addon{})
+}
+
+// Pipeline defines the field to customize Pipeline component
+type Pipeline struct {
+	PipelineProperties `json:",inline"`
 }

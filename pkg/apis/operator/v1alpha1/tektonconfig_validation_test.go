@@ -18,11 +18,11 @@ package v1alpha1
 
 import (
 	"context"
-	"gotest.tools/assert"
-	"knative.dev/pkg/apis"
 	"testing"
 
+	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 func Test_ValidateTektonConfig_OnDelete(t *testing.T) {
@@ -176,4 +176,28 @@ func Test_ValidateTektonConfig_InvalidAddonParamValue(t *testing.T) {
 
 	err := tc.Validate(context.TODO())
 	assert.Equal(t, "invalid value: test: spec.addon.params.clusterTasks[0]", err.Error())
+}
+
+func Test_ValidateTektonConfig_InvalidPipelineProperties(t *testing.T) {
+
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Profile: "all",
+			Pipeline: Pipeline{
+				PipelineProperties: PipelineProperties{
+					EnableApiFields: "test",
+				},
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Equal(t, "invalid value: test: spec.pipeline.enable-api-fields", err.Error())
 }

@@ -33,6 +33,12 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
+// Pipelines ConfigMap
+const (
+	featureFlag    = "feature-flags"
+	configDefaults = "config-defaults"
+)
+
 // Reconciler implements controller.Reconciler for TektonPipeline resources.
 type Reconciler struct {
 	// kubeClientSet allows us to talk to the k8s for core APIs
@@ -134,10 +140,12 @@ func addProxy(manifest *mf.Manifest) error {
 // transform mutates the passed manifest to one with common, component
 // and platform transformations applied
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	//logger := logging.FromContext(ctx)
+	pipeline := comp.(*v1alpha1.TektonPipeline)
 	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
 	instance := comp.(*v1alpha1.TektonPipeline)
 	extra := []mf.Transformer{
+		common.AddConfigMapValues(featureFlag, pipeline.Spec.PipelineProperties),
+		common.AddConfigMapValues(configDefaults, pipeline.Spec.OptionalPipelineProperties),
 		common.ApplyProxySettings,
 		common.DeploymentImages(images),
 		common.InjectLabelOnNamespace(),

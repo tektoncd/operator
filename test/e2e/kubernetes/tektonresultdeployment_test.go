@@ -21,8 +21,9 @@ package kubernetes
 import (
 	"context"
 	"io/ioutil"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"testing"
+
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonresult"
 	"github.com/tektoncd/operator/test/client"

@@ -20,6 +20,8 @@ import (
 	"context"
 	"log"
 	"os"
+	"reflect"
+	"strconv"
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
@@ -446,5 +448,61 @@ func replaceNamespaceInContainerArg(container *corev1.Container, targetNamespace
 		if strings.Contains(a, "tekton-pipelines") {
 			container.Args[i] = strings.ReplaceAll(a, "tekton-pipelines", targetNamespace)
 		}
+	}
+}
+
+// AddConfigMapValues will loop on the interface passed and add the fields in configmap
+// with key as json tag of the struct field
+func AddConfigMapValues(configMapName string, prop interface{}) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := strings.ToLower(u.GetKind())
+		if kind != "configmap" {
+			return nil
+		}
+		if u.GetName() != configMapName {
+			return nil
+		}
+
+		cm := &corev1.ConfigMap{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return err
+		}
+
+		values := reflect.ValueOf(prop)
+		types := values.Type()
+
+		for i := 0; i < values.NumField(); i++ {
+			key := strings.Split(types.Field(i).Tag.Get("json"), ",")[0]
+			if key == "" {
+				continue
+			}
+			if values.Field(i).Kind() == reflect.Ptr {
+				innerElem := values.Field(i).Elem()
+
+				if !innerElem.IsValid() {
+					continue
+				}
+				if innerElem.Kind() == reflect.Bool {
+					cm.Data[key] = strconv.FormatBool(innerElem.Bool())
+				} else if innerElem.Kind() == reflect.Uint {
+					cm.Data[key] = strconv.FormatUint(innerElem.Uint(), 10)
+				}
+				continue
+			}
+
+			if value := values.Field(i).String(); value != "" {
+				cm.Data[key] = value
+			}
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return err
+		}
+
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
 	}
 }

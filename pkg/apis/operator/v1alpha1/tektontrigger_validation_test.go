@@ -18,11 +18,11 @@ package v1alpha1
 
 import (
 	"context"
-	"gotest.tools/assert"
-	"knative.dev/pkg/apis"
 	"testing"
 
+	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 func Test_ValidateTektonTrigger_MissingTargetNamespace(t *testing.T) {

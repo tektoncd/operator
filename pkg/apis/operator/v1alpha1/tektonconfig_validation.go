@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+
 	"knative.dev/pkg/apis"
 )
 
@@ -45,7 +46,7 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(validateAddonParams(tc.Spec.Addon.Params, "spec.addon.params"))
 	}
 
-	return errs
+	return errs.Also(tc.Spec.Pipeline.PipelineProperties.validate("spec.pipeline"))
 }
 
 func (p Prune) validate() *apis.FieldError {

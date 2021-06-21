@@ -18,30 +18,16 @@ package v1alpha1
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
-	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/apis"
+	"knative.dev/pkg/ptr"
 )
 
-func Test_ValidateTektonPipeline_MissingTargetNamespace(t *testing.T) {
+func Test_SetDefaults_PipelineProperties(t *testing.T) {
 
 	tp := &TektonPipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
-			Namespace: "namespace",
-		},
-		Spec: TektonPipelineSpec{},
-	}
-
-	err := tp.Validate(context.TODO())
-	assert.Equal(t, "missing field(s): spec.targetNamespace", err.Error())
-}
-
-func Test_ValidateTektonPipeline_OnDelete(t *testing.T) {
-
-	td := &TektonPipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "name",
 			Namespace: "namespace",
@@ -53,8 +39,20 @@ func Test_ValidateTektonPipeline_OnDelete(t *testing.T) {
 		},
 	}
 
-	err := td.Validate(apis.WithinDelete(context.Background()))
-	if err != nil {
-		t.Errorf("ValidateTektonPipeline.Validate() on Delete expected no error, but got one, ValidateTektonPipeline: %v", err)
+	properties := PipelineProperties{
+		DisableAffinityAssistant:                 ptr.Bool(false),
+		DisableHomeEnvOverwrite:                  ptr.Bool(true),
+		DisableWorkingDirectoryOverwrite:         ptr.Bool(true),
+		DisableCredsInit:                         ptr.Bool(false),
+		RunningInEnvironmentWithInjectedSidecars: ptr.Bool(true),
+		RequireGitSshSecretKnownHosts:            ptr.Bool(false),
+		EnableTektonOciBundles:                   ptr.Bool(false),
+		EnableCustomTasks:                        ptr.Bool(false),
+		EnableApiFields:                          PipelineApiFieldStable,
+	}
+
+	tp.SetDefaults(context.TODO())
+	if !reflect.DeepEqual(tp.Spec.PipelineProperties, properties) {
+		t.Error("Setting default failed for pipeline properties (spec)")
 	}
 }

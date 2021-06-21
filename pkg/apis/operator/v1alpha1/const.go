@@ -25,6 +25,9 @@ const (
 	// Addon Params
 	ClusterTasksParam      = "clusterTasks"
 	PipelineTemplatesParam = "pipelineTemplates"
+
+	PipelineApiFieldAlpha  = "alpha"
+	PipelineApiFieldStable = "stable"
 )
 
 var (
