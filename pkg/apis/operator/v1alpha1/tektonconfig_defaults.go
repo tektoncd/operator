@@ -24,10 +24,4 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	if tc.Spec.Profile == "" {
 		tc.Spec.Profile = ProfileBasic
 	}
-
-	if !tc.Spec.Pruner.IsEmpty() {
-		if tc.Spec.Pruner.Keep == 0 {
-			tc.Spec.Pruner.Keep = 1
-		}
-	}
 }

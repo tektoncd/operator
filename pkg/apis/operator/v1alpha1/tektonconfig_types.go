@@ -56,9 +56,9 @@ type Prune struct {
 	Resources []string `json:"resources,omitempty"`
 	// The number of resource to keep
 	// You dont want to delete all the pipelinerun/taskrun's by a cron
-	Keep int `json:"keep,omitempty"`
+	Keep *uint `json:"keep,omitempty"`
 	// How frequent pruning should happen
-	Schedule string `json:"schedule" protobuf:"bytes,1,opt,name=schedule"`
+	Schedule string `json:"schedule,omitempty"`
 }
 
 func (p Prune) IsEmpty() bool {
@@ -72,7 +72,9 @@ type TektonConfigSpec struct {
 	// +optional
 	Pruner     Prune `json:"pruner,omitempty"`
 	CommonSpec `json:",inline"`
-	Addon      Addon `json:"addon,omitempty"`
+	// Addon holds the addons config
+	// +optional
+	Addon Addon `json:"addon,omitempty"`
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
