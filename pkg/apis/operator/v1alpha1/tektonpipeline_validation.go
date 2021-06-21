@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+
 	"knative.dev/pkg/apis"
 )
 
@@ -31,8 +32,21 @@ func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) 
 		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
 	}
 
-	return errs
+	return errs.Also(tp.Spec.PipelineProperties.validate("spec"))
 }
 
-func (tp *TektonPipeline) SetDefaults(ctx context.Context) {
+func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
+
+	if p.EnableApiFields != "" {
+		if p.EnableApiFields == PipelineApiFieldStable || p.EnableApiFields == PipelineApiFieldAlpha {
+			return errs
+		}
+		errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, path+".enable-api-fields"))
+	}
+	if p.DefaultTimeoutMinutes != nil {
+		if *p.DefaultTimeoutMinutes == 0 {
+			errs = errs.Also(apis.ErrInvalidValue(p.DefaultTimeoutMinutes, path+".default-timeout-minutes"))
+		}
+	}
+	return errs
 }

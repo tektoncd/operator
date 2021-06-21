@@ -24,4 +24,6 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	if tc.Spec.Profile == "" {
 		tc.Spec.Profile = ProfileBasic
 	}
+
+	tc.Spec.Pipeline.PipelineProperties.setDefaults()
 }

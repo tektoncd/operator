@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -380,4 +381,54 @@ func TestReplaceNamespaceInClusterInterceptor(t *testing.T) {
 	m := service.(map[string]interface{})
 	assertNoEror(t, err)
 	assert.Equal(t, "foobar", m["namespace"])
+}
+
+func TestAddConfigMapValues_PipelineProperties(t *testing.T) {
+
+	testData := path.Join("testdata", "test-replace-cm-values.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	prop := v1alpha1.PipelineProperties{
+		EnableTektonOciBundles: ptr.Bool(true),
+		EnableApiFields:        "stable",
+	}
+
+	manifest, err = manifest.Transform(AddConfigMapValues("test1", prop))
+	assertNoEror(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
+	assertNoEror(t, err)
+
+	assert.Equal(t, cm.Data["foo"], "bar")
+	assert.Equal(t, cm.Data["enable-tekton-oci-bundles"], "true")
+	assert.Equal(t, cm.Data["enable-api-fields"], "stable")
+}
+
+func TestAddConfigMapValues_OptionalPipelineProperties(t *testing.T) {
+
+	testData := path.Join("testdata", "test-replace-cm-values.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	min := uint(120)
+	prop := v1alpha1.OptionalPipelineProperties{
+		DefaultTimeoutMinutes:      &min,
+		DefaultManagedByLabelValue: "abc-pipeline",
+		DefaultCloudEventsSink:     "abc",
+	}
+
+	manifest, err = manifest.Transform(AddConfigMapValues("test2", prop))
+	assertNoEror(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[1].Object, cm)
+	assertNoEror(t, err)
+	// ConfigMap will have only fields which are defined in `prop` OptionalPipelineProperties above
+	assert.Equal(t, cm.Data["default-cloud-events-sink"], "abc")
+	assert.Equal(t, cm.Data["default-timeout-minutes"], "120")
+	assert.Equal(t, cm.Data["default-managed-by-label-value"], "abc-pipeline")
+	// this was not defined in struct so will be missing from configmap
+	assert.Equal(t, cm.Data["default-pod-template"], "")
 }

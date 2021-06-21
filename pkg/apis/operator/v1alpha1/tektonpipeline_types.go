@@ -51,7 +51,8 @@ func (tp *TektonPipeline) GetStatus() TektonComponentStatus {
 
 // TektonPipelineSpec defines the desired state of TektonPipeline
 type TektonPipelineSpec struct {
-	CommonSpec `json:",inline"`
+	CommonSpec         `json:",inline"`
+	PipelineProperties `json:",inline"`
 }
 
 // TektonPipelineStatus defines the observed state of TektonPipeline
@@ -73,4 +74,30 @@ type TektonPipelineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonPipeline `json:"items"`
+}
+
+// PipelineProperties defines customizable flags for Pipeline Component.
+type PipelineProperties struct {
+	DisableAffinityAssistant                 *bool  `json:"disable-affinity-assistant,omitempty"`
+	DisableHomeEnvOverwrite                  *bool  `json:"disable-home-env-overwrite,omitempty"`
+	DisableWorkingDirectoryOverwrite         *bool  `json:"disable-working-directory-overwrite,omitempty"`
+	DisableCredsInit                         *bool  `json:"disable-creds-init,omitempty"`
+	RunningInEnvironmentWithInjectedSidecars *bool  `json:"running-in-environment-with-injected-sidecars,omitempty"`
+	RequireGitSshSecretKnownHosts            *bool  `json:"require-git-ssh-secret-known-hosts,omitempty"`
+	EnableTektonOciBundles                   *bool  `json:"enable-tekton-oci-bundles,omitempty"`
+	EnableCustomTasks                        *bool  `json:"enable-custom-tasks,omitempty"`
+	EnableApiFields                          string `json:"enable-api-fields,omitempty"`
+	// +optional
+	OptionalPipelineProperties `json:",inline"`
+}
+
+// OptionalPipelineProperties defines the fields which are to be
+// defined for pipelines only if user pass them
+type OptionalPipelineProperties struct {
+	DefaultTimeoutMinutes          *uint  `json:"default-timeout-minutes,omitempty"`
+	DefaultServiceAccount          string `json:"default-service-account,omitempty"`
+	DefaultManagedByLabelValue     string `json:"default-managed-by-label-value,omitempty"`
+	DefaultPodTemplate             string `json:"default-pod-template,omitempty"`
+	DefaultCloudEventsSink         string `json:"default-cloud-events-sink,omitempty"`
+	DefaultTaskRunWorkspaceBinding string `json:"default-task-run-workspace-binding,omitempty"`
 }

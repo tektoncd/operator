@@ -20,6 +20,8 @@ import (
 	"context"
 	"testing"
 
+	"knative.dev/pkg/ptr"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -40,5 +42,32 @@ func Test_SetDefaults_Profile(t *testing.T) {
 	tc.SetDefaults(context.TODO())
 	if tc.Spec.Profile != ProfileBasic {
 		t.Error("Setting default failed for TektonConfig (spec.profile)")
+	}
+}
+
+func Test_SetDefaults_Pipeline_Properties(t *testing.T) {
+
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Profile: ProfileLite,
+			Pipeline: Pipeline{
+				PipelineProperties: PipelineProperties{
+					EnableCustomTasks: ptr.Bool(true),
+				},
+			},
+		},
+	}
+
+	tc.SetDefaults(context.TODO())
+	if *tc.Spec.Pipeline.EnableCustomTasks != true ||
+		*tc.Spec.Pipeline.EnableTektonOciBundles != false {
+		t.Error("Setting default failed for TektonConfig (spec.pipeline.pipelineProperties)")
 	}
 }
