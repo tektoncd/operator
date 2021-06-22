@@ -1,0 +1,8 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tekton-default-pipelines-view
+rules:
+  - apiGroups: ["tekton.dev"]
+    resources: ["tasks", "clustertasks", "pipelines", "conditions"]
+    verbs: ["get", "list"]

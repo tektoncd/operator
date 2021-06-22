@@ -45,12 +45,13 @@ declare -r TEKTON_CATALOG="https://raw.githubusercontent.com/openshift/tektoncd-
 declare -A TEKTON_CATALOG_TASKS=(
   # Need to remove version param
   ["openshift-client"]="0.1"
-  ["git-clone"]="0.3"
+  ["git-clone"]="0.4"
   # Need to fix the task upstream for removing priviledged
   # ["buildah"]="0.1"
   ["kn"]="0.1"
   ["kn-apply"]="0.1"
   ["skopeo-copy"]="0.1"
+  ["tkn"]="0.2"
 )
 
 declare -r OPENSHIFT_CATALOG="https://raw.githubusercontent.com/openshift/pipelines-catalog"
@@ -185,7 +186,7 @@ main() {
     "registry.redhat.io/rhel8/buildah@sha256:6a68ece207bc5fd8db2dd5cc2d0b53136236fb5178eb5b71eebe5d07a3c33d13"
 
   change_task_image "$dest_dir" "$version"  \
-    "openshift-client"  "quay.io/openshift/origin-cli:$(params.VERSION)"  \
+    "openshift-client"  'quay.io/openshift/origin-cli:$(params.VERSION)'  \
     "image-registry.openshift-image-registry.svc:5000/openshift/cli:latest"
 
   # ./manifest-tool inspect registry.redhat.io/openshift-serverless-1/client-kn-rhel8:0.19
