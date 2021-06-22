@@ -1,0 +1,21 @@
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleYAMLSample
+metadata:
+  name: openshift-client-snippet
+spec:
+  targetResource:
+    apiVersion: tekton.dev/v1beta1
+    kind: Pipeline
+  title: Openshift-client Task
+  description: |
+    OpenShift is a Kubernetes distribution from Red Hat which provides oc, the OpenShift CLI that complements kubectl for simplifying deployment and configuration applications on OpenShift.
+  snippet: true
+  yaml: |
+    - name: deploy
+      taskRef:
+        name: openshift-client
+        kind: ClusterTask
+      params:
+        - name: ARGS
+          value: "help"

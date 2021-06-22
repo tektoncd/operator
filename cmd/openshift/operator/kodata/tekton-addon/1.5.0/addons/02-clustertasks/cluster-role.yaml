@@ -1,0 +1,15 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+  name: tekton-clustertasks-view
+rules:
+- apiGroups:
+  - tekton.dev
+  resources:
+  - clustertasks
+  verbs:
+  - get
+  - list
+  - watch
