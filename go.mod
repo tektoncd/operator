@@ -11,6 +11,7 @@ require (
 	github.com/tektoncd/pipeline v0.27.3
 	github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
 	github.com/tektoncd/triggers v0.16.0
+	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.19.0
 	golang.org/x/mod v0.5.0
 	gomodules.xyz/jsonpatch/v2 v2.2.0

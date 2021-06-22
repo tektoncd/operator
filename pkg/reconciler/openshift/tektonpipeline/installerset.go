@@ -18,6 +18,7 @@ package tektonpipeline
 
 import (
 	"context"
+	stdError "errors"
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
@@ -110,7 +111,7 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, tp *v1alpha
 		return err
 	}
 
-	return nil
+	return stdError.New("ensuring TektonPipeline status update")
 }
 
 func makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.Manifest, prefix, releaseVersion string) *v1alpha1.TektonInstallerSet {

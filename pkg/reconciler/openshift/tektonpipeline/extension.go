@@ -18,6 +18,7 @@ package tektonpipeline
 
 import (
 	"context"
+	stdError "errors"
 	"os"
 	"path/filepath"
 
@@ -103,6 +104,13 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Tek
 	koDataDir := os.Getenv(common.KoEnvKey)
 	tp := comp.(*v1alpha1.TektonPipeline)
 
+	if crUpdated := SetDefault(&tp.Spec.Pipeline); crUpdated {
+		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonPipelines().Update(ctx, tp, v1.UpdateOptions{}); err != nil {
+			return err
+		}
+		return stdError.New("ensuring PreReconcile TektonPipeline spec update")
+	}
+
 	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, tp, prePipelineInstallerSet)
 	if err != nil {
 		return err
@@ -135,12 +143,6 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Tek
 
 		if err := createInstallerSet(ctx, oe.operatorClientSet, tp, oe.manifest, oe.version,
 			prePipelineInstallerSet, "pre-pipeline"); err != nil {
-			return err
-		}
-	}
-
-	if crUpdated := SetDefault(&tp.Spec.Pipeline); crUpdated {
-		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonPipelines().Update(ctx, tp, v1.UpdateOptions{}); err != nil {
 			return err
 		}
 	}

@@ -51,6 +51,8 @@ spec:
           value: tekton.dev/operator
         - name: VERSION
           value: "devel"
+        - name: CONFIG_OBSERVABILITY_NAME
+          value: tekton-config-observability
         - name: AUTOINSTALL_COMPONENTS
           valueFrom:
             configMapKeyRef:
