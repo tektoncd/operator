@@ -64,12 +64,18 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatalw("Error creating initial manifest", zap.Error(err))
 		}
 
+		metrics, err := NewRecorder()
+		if err != nil {
+			logger.Errorf("Failed to create trigger metrics recorder %v", err)
+		}
+
 		c := &Reconciler{
 			kubeClientSet:     kubeClient,
 			operatorClientSet: operatorclient.Get(ctx),
 			extension:         generator(ctx),
 			manifest:          manifest,
 			pipelineInformer:  tektonPipelineInformer,
+			metrics:           metrics,
 		}
 		impl := tektonTriggerreconciler.NewImpl(ctx, c)
 

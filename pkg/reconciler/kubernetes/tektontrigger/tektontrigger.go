@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
+	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -51,6 +52,8 @@ type Reconciler struct {
 	manifest mf.Manifest
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
+	// metrics handles metrics for trigger install
+	metrics *Recorder
 
 	pipelineInformer pipelineinformer.TektonPipelineInformer
 }
@@ -124,6 +127,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	tt.Status.MarkDependenciesInstalled()
 
 	if err := r.extension.PreReconcile(ctx, tt); err != nil {
+		r.metrics.logMetrics(metricsFail, logger)
 		return err
 	}
 	stages := common.Stages{
@@ -133,7 +137,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		common.CheckDeployments,
 	}
 	manifest := r.manifest.Append()
-	return stages.Execute(ctx, &manifest, tt)
+	err := stages.Execute(ctx, &manifest, tt)
+	if err != nil {
+		r.metrics.logMetrics(metricsFail, logger)
+		return err
+	}
+	r.metrics.logMetrics(metricsSuccess, logger)
+	return err
 }
 
 // transform mutates the passed manifest to one with common, component
@@ -160,4 +170,12 @@ func (r *Reconciler) installed(ctx context.Context, instance v1alpha1.TektonComp
 	stages := common.Stages{common.AppendInstalled, r.transform}
 	err := stages.Execute(ctx, &installed, instance)
 	return &installed, err
+}
+
+func (m *Recorder) logMetrics(status string, logger *zap.SugaredLogger) {
+	err := m.Count(status)
+	if err != nil {
+		logger.Warnf("Failed to log the metrics : %v", err)
+	}
+
 }

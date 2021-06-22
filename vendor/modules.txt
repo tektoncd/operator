@@ -253,6 +253,7 @@ github.com/tektoncd/plumbing/scripts
 github.com/tektoncd/triggers/pkg/apis/triggers/config
 github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1
 # go.opencensus.io v0.23.0
+## explicit
 go.opencensus.io
 go.opencensus.io/internal
 go.opencensus.io/internal/tagencoding
@@ -566,7 +567,7 @@ k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1
-# k8s.io/apimachinery v0.19.7
+# k8s.io/apimachinery v0.20.2
 ## explicit
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors

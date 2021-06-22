@@ -23,6 +23,7 @@ resources:
 - 300-operator_v1alpha1_result_crd.yaml
 - 500-webhooks.yaml
 - config-logging.yaml
+- config-observability.yaml
 - tekton-config-defaults.yaml
 - role.yaml
 - role_binding.yaml

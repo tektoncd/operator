@@ -18,6 +18,7 @@ metadata:
   name: tekton-operator
   labels:
     version: "devel"
+    app.kubernetes.io/name: tekton-operator
     operator.tekton.dev/release: "devel"
 spec:
   replicas: 1
@@ -57,3 +58,22 @@ spec:
                 configMapKeyRef:
                   name: tekton-config-defaults
                   key: DEFAULT_TARGET_NAMESPACE
+            - name: METRICS_DOMAIN
+              value: tekton.dev/operator
+            - name: CONFIG_OBSERVABILITY_NAME
+              value: config-observability
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    version: "devel"
+  name: tekton-operator
+spec:
+  ports:
+  - name: http-metrics
+    port: 9090
+    protocol: TCP
+    targetPort: 9090
+  selector:
+    app.kubernetes.io/name: tekton-operator
