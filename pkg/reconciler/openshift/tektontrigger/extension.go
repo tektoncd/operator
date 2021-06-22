@@ -18,6 +18,7 @@ package tektontrigger
 
 import (
 	"context"
+	stdError "errors"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -52,6 +53,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonTriggers().Update(ctx, tt, v1.UpdateOptions{}); err != nil {
 			return err
 		}
+		return stdError.New("ensuring PreReconcile TektonTrigger spec update")
 	}
 
 	return nil

@@ -11,10 +11,14 @@ metadata:
       \     {\n            \"name\": \"clusterTasks\",\n            \"value\": \"\
       true\"\n          },\n          {\n            \"name\": \"pipelineTemplates\"\
       ,\n            \"value\": \"true\"\n          }\n        ]\n      },\n     \
-      \ \"profile\": \"all\",\n      \"targetNamespace\": \"openshift-pipelines\"\n\
-      \    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n \
-      \   \"kind\": \"TektonInstallerSet\",\n    \"metadata\": {\n      \"name\":\
-      \ \"foo\"\n    },\n    \"spec\": {\n      \"manifests\": []\n    }\n  },\n \
+      \ \"params\": [\n        {\n          \"name\": \"createRbacResource\",\n  \
+      \        \"value\": \"true\"\n        }\n      ],\n      \"profile\": \"all\"\
+      ,\n      \"pruner\": {\n        \"keep\": 100,\n        \"resources\": [\n \
+      \         \"pipelinerun\",\n          \"taskrun\"\n        ],\n        \"schedule\"\
+      : \"0 8 * * *\"\n      },\n      \"targetNamespace\": \"openshift-pipelines\"\
+      \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
+      \    \"kind\": \"TektonInstallerSet\",\n    \"metadata\": {\n      \"name\"\
+      : \"foo\"\n    },\n    \"spec\": {\n      \"manifests\": []\n    }\n  },\n \
       \ {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n    \"kind\": \"\
       TektonPipeline\",\n    \"metadata\": {\n      \"name\": \"pipeline\"\n    },\n\
       \    \"spec\": {\n      \"targetNamespace\": \"openshift-pipelines\"\n    }\n\
@@ -763,6 +767,7 @@ spec:
           replicas: 1
           selector:
             matchLabels:
+              app: openshift-pipelines-operator
               name: openshift-pipelines-operator
           strategy: {}
           template:
@@ -801,6 +806,8 @@ spec:
                     configMapKeyRef:
                       key: DEFAULT_TARGET_NAMESPACE
                       name: tekton-config-defaults
+                - name: CONFIG_OBSERVABILITY_NAME
+                  value: tekton-config-observability
                 - name: IMAGE_PIPELINES_TEKTON_PIPELINES_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-controller-rhel8@
                 - name: IMAGE_PIPELINES_WEBHOOK

@@ -40,11 +40,14 @@ patches:
 
 patchesStrategicMerge:
 - 500-webhooks.yaml
+- 100-namespace.yaml
 
 resources:
 - ../base/
 - 300-operator_v1alpha1_addon_crd.yaml
 - service_account.yaml
+- operator_service.yaml
+- operator_servicemonitor.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
