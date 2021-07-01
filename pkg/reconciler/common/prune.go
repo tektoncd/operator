@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -77,10 +78,12 @@ func GetPrunableNamespaces(k kubernetes.Interface, ctx context.Context) ([]strin
 	}
 
 	var allNameSpaces []string
+	re := regexp.MustCompile(NamespaceIgnorePattern)
 	for _, ns := range nsList.Items {
-		if !strings.HasPrefix(ns.Name, openshiftPrefix) && !strings.HasPrefix(ns.Name, kubePrefix) {
-			allNameSpaces = append(allNameSpaces, ns.Name)
+		if ignore := re.MatchString(ns.GetName()); ignore {
+			continue
 		}
+		allNameSpaces = append(allNameSpaces, ns.Name)
 	}
 	return allNameSpaces, nil
 }
