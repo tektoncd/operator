@@ -130,7 +130,7 @@ spec:
         - name: serviceAccountPath
           value: $(params.serviceAccountPath)
         - name: images
-          value: "operator webhook"
+          value: "operator webhook proxy-webhook"
         - name: kubeDistro
           value: $(params.kubeDistro)
       workspaces:
