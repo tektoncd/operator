@@ -1,6 +1,11 @@
-# Tekton Results
+# Tekton Result
 
-We have added support for installing and managing [Tekton Results](https://github.com/tektoncd/results) through Operator.
+TektonResult custom resource allows user to install and manage [Tekton Result][result].
+
+TektonResult is an optional component and currently cannot be installed through TektonConfig. It has to be installed seperately.
+
+NOTE: TektonResult is enabled only on Kubernetes Platform and not on OpenShift.
+
 To install Tekton Result on your cluster follow steps as given below:
 - Make sure Tekton Pipelines is installed on your cluster, using the Operator.
 - Generate a database root password.
@@ -8,7 +13,7 @@ To install Tekton Result on your cluster follow steps as given below:
   before installing results. By default, Tekton Results expects this secret to have
   the following properties:
 
-    - namespace: `tekton-pipelin  es`
+    - namespace: `tekton-pipelines`
     - name: `tekton-results-mysql`
     - contains the fields:
         - `user=root`
@@ -50,3 +55,5 @@ To install Tekton Result on your cluster follow steps as given below:
   ```sh
   kubectl get tektonresults.operator.tekton.dev
   ```
+
+[result]:https://github.com/tektoncd/results
