@@ -49,7 +49,7 @@ func TestGetPrunableNamespaces(t *testing.T) {
 
 func TestCreateCronJob(t *testing.T) {
 	cronName := "resource-pruner"
-	resource := "pipelinerun"
+	resource := []string{"pipelinerun", "taskrun"}
 	cronJob := &v1beta1.CronJob{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "CronJob",
@@ -67,13 +67,14 @@ func TestCreateCronJob(t *testing.T) {
 		},
 	}
 
-	nsObj := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one"}}
+	nsObj1 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one"}}
+
 	pru := v1alpha1.Prune{
-		Resources: []string{resource},
+		Resources: resource,
 		Keep:      2,
 		Schedule:  "*/5 * * * *",
 	}
-	client := fake.NewSimpleClientset(cronJob, nsObj)
+	client := fake.NewSimpleClientset(cronJob, nsObj1)
 	nsList := []string{"ns-one"}
 	if err := createCronJob(client, context.TODO(), pru, nsList[0], nsList, metav1.OwnerReference{}, "some-image"); err != nil {
 		t.Error("failed creating cronjob")
@@ -86,8 +87,8 @@ func TestCreateCronJob(t *testing.T) {
 		t.Error("cronjob not matched")
 	}
 	jobName := "pruner-tkn-" + nsList[0]
-	if cron.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Name != jobName {
+	nameAfterRemovingRand := cron.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Name[:len(jobName)]
+	if nameAfterRemovingRand != jobName {
 		t.Error("Job Name not matched")
 	}
-
 }
