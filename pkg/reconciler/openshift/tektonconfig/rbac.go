@@ -20,6 +20,8 @@ import (
 	"context"
 	"regexp"
 
+	"github.com/tektoncd/operator/pkg/reconciler/common"
+
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -39,7 +41,6 @@ const (
 	pipelineSA               = "pipeline"
 	serviceCABundleConfigMap = "config-service-cabundle"
 	trustedCABundleConfigMap = "config-trusted-cabundle"
-	namespaceIgnorePattern   = "^(openshift|kube)-"
 	clusterInterceptors      = "openshift-pipelines-clusterinterceptors"
 )
 
@@ -66,7 +67,7 @@ func (r *rbac) createResources(ctx context.Context) error {
 		return err
 	}
 
-	re := regexp.MustCompile(namespaceIgnorePattern)
+	re := regexp.MustCompile(common.NamespaceIgnorePattern)
 
 	for _, n := range namespaces.Items {
 

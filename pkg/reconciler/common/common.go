@@ -40,10 +40,11 @@ var (
 )
 
 const (
-	PipelineNotReady = "tekton-pipelines not ready"
-	PipelineNotFound = "tekton-pipelines not installed"
-	TriggerNotReady  = "tekton-triggers not ready"
-	TriggerNotFound  = "tekton-triggers not installed"
+	PipelineNotReady       = "tekton-pipelines not ready"
+	PipelineNotFound       = "tekton-pipelines not installed"
+	TriggerNotReady        = "tekton-triggers not ready"
+	TriggerNotFound        = "tekton-triggers not installed"
+	NamespaceIgnorePattern = "^(openshift|kube)-"
 )
 
 func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPipeline, error) {
