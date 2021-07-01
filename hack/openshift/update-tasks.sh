@@ -34,7 +34,7 @@ USAGE:
     $SCRIPT_NAME CATALOG_VERSION DEST_DIR VERSION
 
 Example:
-  $SCRIPT_NAME release-v0.7 deploy/resources v0.7.0
+  $SCRIPT_NAME release-v0.24 cmd/openshift/operator/kodata/tekton-addon/1.5.0 1.5.0
 EOF
   exit 1
 }
