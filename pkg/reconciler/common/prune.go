@@ -137,9 +137,9 @@ func getPruningContainers(resources, namespaces []string, keep int, tknImage str
 	containers := []corev1.Container{}
 	for _, ns := range namespaces {
 		cmdArgs := deleteCommand(resources, keep, ns)
-		cName := "pruner-tkn-" + ns
+		jobName := SimpleNameGenerator.RestrictLengthWithRandomSuffix("pruner-tkn-" + ns)
 		container := corev1.Container{
-			Name:                     cName,
+			Name:                     jobName,
 			Image:                    tknImage,
 			Command:                  []string{"/bin/sh", "-c"},
 			Args:                     cmdArgs,
