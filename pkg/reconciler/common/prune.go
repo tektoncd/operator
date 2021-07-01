@@ -42,28 +42,30 @@ const (
 )
 
 func Prune(k kubernetes.Interface, ctx context.Context, tC *v1alpha1.TektonConfig) error {
-	if 0 < len(tC.Spec.Pruner.Resources) {
-		tknImage := os.Getenv(JobsTKNImageName)
-		if tknImage == "" {
-			return fmt.Errorf("%s environment variable not found", JobsTKNImageName)
-		}
-		pru := tC.Spec.Pruner
-		logger := logging.FromContext(ctx)
-		ownerRef := v1.OwnerReference{
-			APIVersion: ownerAPIVer,
-			Kind:       ownerKind,
-			Name:       tC.Name,
-			UID:        tC.ObjectMeta.UID,
-		}
+	if tC.Spec.Pruner.IsEmpty() {
+		return checkAndDelete(k, ctx, tC.Spec.TargetNamespace)
+	}
 
-		pruningNamespaces, err := GetPrunableNamespaces(k, ctx)
-		if err != nil {
-			return err
-		}
-		if err := createCronJob(k, ctx, pru, tC.Spec.TargetNamespace, pruningNamespaces, ownerRef, tknImage); err != nil {
-			logger.Error("failed to create cronjob ", err)
+	tknImage := os.Getenv(JobsTKNImageName)
+	if tknImage == "" {
+		return fmt.Errorf("%s environment variable not found", JobsTKNImageName)
+	}
+	pru := tC.Spec.Pruner
+	logger := logging.FromContext(ctx)
+	ownerRef := v1.OwnerReference{
+		APIVersion: ownerAPIVer,
+		Kind:       ownerKind,
+		Name:       tC.Name,
+		UID:        tC.ObjectMeta.UID,
+	}
 
-		}
+	pruningNamespaces, err := GetPrunableNamespaces(k, ctx)
+	if err != nil {
+		return err
+	}
+	if err := createCronJob(k, ctx, pru, tC.Spec.TargetNamespace, pruningNamespaces, ownerRef, tknImage); err != nil {
+		logger.Error("failed to create cronjob ", err)
+
 	}
 	return nil
 }
@@ -153,4 +155,17 @@ func deleteCommand(resources []string, keep int, ns string) []string {
 		cmdArgs = append(cmdArgs, cmd)
 	}
 	return cmdArgs
+}
+
+func checkAndDelete(k kubernetes.Interface, ctx context.Context, targetNamespace string) error {
+	if _, err := k.BatchV1beta1().CronJobs(targetNamespace).Get(ctx, CronName, v1.GetOptions{}); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil
+		} else {
+			return err
+		}
+	}
+
+	//if there is no error it means cron is exists, but no prune in config it means delete it
+	return k.BatchV1beta1().CronJobs(targetNamespace).Delete(ctx, CronName, v1.DeleteOptions{})
 }
