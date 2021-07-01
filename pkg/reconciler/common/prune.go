@@ -33,8 +33,6 @@ import (
 )
 
 const (
-	openshiftPrefix  = "openshift"
-	kubePrefix       = "kube"
 	tektonSA         = "tekton-pipelines-controller"
 	CronName         = "resource-pruner"
 	JobsTKNImageName = "IMAGE_JOB_PRUNER_TKN"
@@ -43,7 +41,8 @@ const (
 )
 
 func Prune(k kubernetes.Interface, ctx context.Context, tC *v1alpha1.TektonConfig) error {
-	if tC.Spec.Pruner.IsEmpty() {
+
+	if len(tC.Spec.Pruner.Resources) == 0 || tC.Spec.Pruner.Schedule == "" {
 		return checkAndDelete(k, ctx, tC.Spec.TargetNamespace)
 	}
 
@@ -68,6 +67,7 @@ func Prune(k kubernetes.Interface, ctx context.Context, tC *v1alpha1.TektonConfi
 		logger.Error("failed to create cronjob ", err)
 
 	}
+
 	return nil
 }
 
