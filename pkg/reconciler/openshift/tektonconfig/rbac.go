@@ -330,10 +330,8 @@ func (r *rbac) updateRoleBinding(ctx context.Context, rb *rbacv1.RoleBinding, sa
 		rb.Subjects = append(rb.Subjects, subject)
 	}
 
-	ownerRef := rb.GetOwnerReferences()
-	if len(ownerRef) == 0 {
-		rb.SetOwnerReferences([]metav1.OwnerReference{r.ownerRef})
-	}
+	ownerRef := r.updateOwnerRefs(rb.GetOwnerReferences())
+	rb.SetOwnerReferences(ownerRef)
 
 	if hasSubject && (len(ownerRef) != 0) {
 		logger.Info("rolebinding is up to date", "action", "none")
@@ -445,10 +443,8 @@ func (r *rbac) updateClusterRoleBinding(ctx context.Context, rb *rbacv1.ClusterR
 		rb.Subjects = append(rb.Subjects, subject)
 	}
 
-	ownerRef := rb.GetOwnerReferences()
-	if len(ownerRef) == 0 {
-		rb.SetOwnerReferences([]metav1.OwnerReference{r.ownerRef})
-	}
+	ownerRef := r.updateOwnerRefs(rb.GetOwnerReferences())
+	rb.SetOwnerReferences(ownerRef)
 
 	if hasSubject && (len(ownerRef) != 0) {
 		logger.Info("clusterrolebinding is up to date", "action", "none")
@@ -517,4 +513,24 @@ func (r *rbac) createClusterRole(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (r *rbac) updateOwnerRefs(ownerRef []metav1.OwnerReference) []metav1.OwnerReference {
+	if len(ownerRef) == 0 {
+		return []metav1.OwnerReference{r.ownerRef}
+	}
+
+	doUpdateOwnerRef := true
+
+	for _, ref := range ownerRef {
+		if ref.APIVersion == r.ownerRef.APIVersion && ref.Kind == r.ownerRef.Kind && ref.Name == r.ownerRef.Name {
+			doUpdateOwnerRef = false
+			break
+		}
+	}
+
+	if doUpdateOwnerRef {
+		ownerRef = append(ownerRef, r.ownerRef)
+	}
+	return ownerRef
 }
