@@ -9,7 +9,7 @@ spec:
       default: github.com/tektoncd/operator
     - name: images
       description: List of cmd/<kubeDistro>/* paths to be published as images
-      default: "operator webhook"
+      default: "operator webhook proxy-webhook"
     - name: versionTag
       description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
     - name: imageRegistry
