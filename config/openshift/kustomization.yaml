@@ -25,6 +25,10 @@ patches:
   target:
     kind: Deployment
     name: tekton-operator
+- path: webhook.yaml
+  target:
+    kind: Deployment
+    name: tekton-operator-webhook
 - path: role.yaml
   target:
     kind: ClusterRole
@@ -38,8 +42,6 @@ patches:
     kind: Deployment
     name: tekton-operator-webhook
 
-patchesStrategicMerge:
-  - 500-webhooks.yaml
 resources:
 - ../base/
 - ../base/300-operator_v1alpha1_addon_crd.yaml

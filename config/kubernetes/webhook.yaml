@@ -33,7 +33,7 @@ spec:
       serviceAccountName: tekton-operator
       containers:
       - name: tekton-operator-webhook
-        image: ko://github.com/tektoncd/operator/cmd/openshift/webhook
+        image: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:

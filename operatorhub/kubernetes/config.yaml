@@ -20,6 +20,11 @@ image-substitutions:
       containerName: tekton-operator
       envKeys:
       - IMAGE_JOB_PRUNER_TKN
+- image: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook
+  replaceLocations:
+    containerTargets:
+    - deploymentName: tekton-operator-webhook
+      containerName: tekton-operator-webhook
 
 # add thrid party images which are not replaced by operator
 # but pulled directly by tasks here

@@ -67,7 +67,6 @@ spec:
                 description: this enables to prune pipelinerun/taskrun
                 properties:
                   keep:
-                    default: 1
                     description: number of resources to keep
                     type: integer
                   resources:

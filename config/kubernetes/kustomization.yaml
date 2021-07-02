@@ -18,6 +18,10 @@ patches:
   target:
     kind: Deployment
     name: tekton-operator
+- path: webhook.yaml
+  target:
+    kind: Deployment
+    name: tekton-operator-webhook
 
 configMapGenerator:
 - name: tekton-config-defaults
