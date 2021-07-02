@@ -31,6 +31,7 @@ var (
 	rolebinding           mf.Predicate = mf.Any(mf.ByKind("ClusterRoleBinding"), mf.ByKind("RoleBinding"))
 	consoleCLIDownload    mf.Predicate = mf.Any(mf.ByKind("ConsoleCLIDownload"))
 	clusterTriggerBinding mf.Predicate = mf.Any(mf.ByKind("ClusterTriggerBinding"))
+	deployment            mf.Predicate = mf.Any(mf.ByKind("Deployment"))
 )
 
 // Install applies the manifest resources for the given version and updates the given
@@ -73,8 +74,14 @@ func Install(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.Tekto
 
 // Uninstall removes all resources
 func Uninstall(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.TektonComponent) error {
-	if err := manifest.Filter(mf.Not(mf.Any(role, rolebinding))).Delete(); err != nil {
+	if err := manifest.Filter(mf.Not(mf.Any(role, rolebinding, deployment))).Delete(); err != nil {
 		return fmt.Errorf("failed to remove non-crd/non-rbac resources: %w", err)
+	}
+	// delete deployment separately (after delete call to CRDs)
+	// to improve the chance of the finalizers to be handled before the controllers are deleted
+	// ref: https://github.com/tektoncd/triggers/issues/775#issuecomment-700271144
+	if err := manifest.Filter(mf.Any(deployment)).Delete(); err != nil {
+		return fmt.Errorf("failed to remove deployments: %w", err)
 	}
 	// Delete Roles last, as they may be useful for human operators to clean up.
 	if err := manifest.Filter(mf.Any(role, rolebinding)).Delete(); err != nil {
