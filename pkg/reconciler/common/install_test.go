@@ -148,7 +148,7 @@ func TestUninstall(t *testing.T) {
 	// Deliberately mixing the order in the manifest.
 	in := []unstructured.Unstructured{crd, deployment, role, roleBinding, clusterRole, clusterRoleBinding}
 	// Expect things to be deleted, non-rbac resources first and then in reversed order.
-	want := []unstructured.Unstructured{deployment, crd, clusterRoleBinding, clusterRole, roleBinding, role}
+	want := []unstructured.Unstructured{crd, deployment, clusterRoleBinding, clusterRole, roleBinding, role}
 
 	client := &fakeClient{resourcesExist: true}
 	manifest, err := mf.ManifestFrom(mf.Slice(in), mf.UseClient(client))
