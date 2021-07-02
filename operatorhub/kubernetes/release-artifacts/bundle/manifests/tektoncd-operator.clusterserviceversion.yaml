@@ -19,45 +19,72 @@ metadata:
     categories: Developer Tools, Integration & Delivery
     certified: 'false'
     description: Tekton Pipelines is a Kubernetes-Native CI/CD solution for building
-      CICD pipelines.
-    operators.operatorframework.io/builder: operator-sdk-v1.7.2
+      CI/CD pipelines.
+    operators.operatorframework.io/builder: operator-sdk-v1.8.0
     operators.operatorframework.io/project_layout: unknown
     repository: https://github.com/tektoncd/operator
     support: The Tetkon Authors
-  name: tektoncd-operator.v0.24.1-1
+  name: tektoncd-operator.v1.2.3
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: 'TektonConfig description
+    - description: 'TektonConfig installs Tekton Pipelines, Tekton Triggers and Tekton
+        Dashboard on a cluster. The operator installs
+
+        the 3 components on a cluster if an instnce of this CRD is created on your
+        cluster with name `config`.
+
+        At present, the operator honors only one CustomResource instance with the
+        name `config` to ensure only one set
+
+        of the three components (Pipelines, Triggers, Dashboard) exists on a cluster.
+        An instance of this CRD will automatically
+
+        create instances of the other CRDs (TektonPipeline, TektonDashboard and TektonTriggers).
 
         '
+      displayName: TektonConfig
       kind: TektonConfig
       name: tektonconfigs.operator.tekton.dev
       version: v1alpha1
-    - description: 'TektonDashboard description
+    - description: 'TektonDashboard installs Tekton Dashboard on a cluster. The operator
+        installs Tekton Dashboard on a cluster
+
+        if an instnce of this CRD is created on your cluster with name `dashboard`.
+        At present, the operator honors only
+
+        one CustomResource instance with the name `dashboard` to ensure only one set
+        of Tekton Dashboard exists on a cluster.
 
         '
       displayName: TektonDashboard
       kind: TektonDashboard
       name: tektondashboards.operator.tekton.dev
       version: v1alpha1
-    - description: 'TektonPipeline is the Schema for the tektonpipelines API. The
-        operator install Tekton Pipelines on you cluster
+    - description: 'TektonPipeline installs Tekton Pipelines on a cluster. The operator
+        installs Tekton Pipelines on a cluster
 
-        if an instnce of this CRD is created on your cluster with name `cluster`.
-        At present, the operaotor honours only
+        if an instnce of this CRD is created on your cluster with name `pipeline`.
+        At present, the operator honors only
 
-        the instance with the name `cluster` to ensure only one set of TektonPipeline
-        controlelrs exist on a cluster.
+        one CustomResource instance with the name `pipeline` to ensure only one set
+        of Tekton Pipeline exists on a cluster.
 
         '
       displayName: TektonPipeline
       kind: TektonPipeline
       name: tektonpipelines.operator.tekton.dev
       version: v1alpha1
-    - description: 'TektonTriggers description
+    - description: 'TektonTrigger installs Tekton Triggers on a cluster. The operator
+        installs Tekton Triggers on a cluster
+
+        if an instnce of this CRD is created on your cluster with name `trigger`.
+        At present, the operator honors only
+
+        one CustomResource instance with the name `trigger` to ensure only one set
+        of Tekton Triggers exists on a cluster.
 
         '
       displayName: TektonTriggers
@@ -566,6 +593,8 @@ spec:
             spec:
               containers:
               - env:
+                - name: IMAGE_PIPELINES_PROXY
+                  value: gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/kubernetes/webhook@sha256:2dd7d2670830c805e523c5f383b11c69682eaa802f663ba8f93698f5f5d67aa3
                 - name: SYSTEM_NAMESPACE
                   valueFrom:
                     fieldRef:
@@ -576,9 +605,17 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: tekton-operator
-                - name: IMAGE_PIPELINES_PROXY
-                  value: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook:devel
-                image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator:devel
+                - name: AUTOINSTALL_COMPONENTS
+                  valueFrom:
+                    configMapKeyRef:
+                      key: AUTOINSTALL_COMPONENTS
+                      name: tekton-config-defaults
+                - name: DEFAULT_TARGET_NAMESPACE
+                  valueFrom:
+                    configMapKeyRef:
+                      key: DEFAULT_TARGET_NAMESPACE
+                      name: tekton-config-defaults
+                image: gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/kubernetes/operator@sha256:7e55e79a3da2fe96a61af5731abab59eb8fb33c4024e9975a391797ed7ca05dc
                 imagePullPolicy: Always
                 name: tekton-operator
                 resources: {}
@@ -614,9 +651,4 @@ spec:
   maturity: alpha
   provider:
     name: The Tekton Authors
-  relatedImages:
-  - image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator:devel
-    name: TEKTON_OPERATOR
-  - image: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook:devel
-    name: IMAGE_PIPELINES_PROXY
-  version: 0.24.1-1
+  version: 1.2.3
