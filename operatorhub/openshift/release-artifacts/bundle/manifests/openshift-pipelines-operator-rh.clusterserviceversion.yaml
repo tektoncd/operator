@@ -2,56 +2,32 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    alm-examples: |-
-      [
-        {
-          "apiVersion": "operator.tekton.dev/v1alpha1",
-          "kind": "TektonAddon",
-          "metadata": {
-            "name": "addon"
-          },
-          "spec": {
-            "targetNamespace": "openshift-pipelines"
-          }
-        },
-        {
-          "apiVersion": "operator.tekton.dev/v1alpha1",
-          "kind": "TektonConfig",
-          "metadata": {
-            "name": "config"
-          },
-          "spec": {
-            "profile": "all",
-            "targetNamespace": "openshift-pipelines"
-          }
-        },
-        {
-          "apiVersion": "operator.tekton.dev/v1alpha1",
-          "kind": "TektonPipeline",
-          "metadata": {
-            "name": "pipeline"
-          },
-          "spec": {
-            "targetNamespace": "openshift-pipelines"
-          }
-        },
-        {
-          "apiVersion": "operator.tekton.dev/v1alpha1",
-          "kind": "TektonTrigger",
-          "metadata": {
-            "name": "trigger"
-          },
-          "spec": {
-            "targetNamespace": "openshift-pipelines"
-          }
-        }
-      ]
+    alm-examples: "[\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
+      \    \"kind\": \"TektonAddon\",\n    \"metadata\": {\n      \"name\": \"addon\"\
+      \n    },\n    \"spec\": {\n      \"targetNamespace\": \"openshift-pipelines\"\
+      \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
+      \    \"kind\": \"TektonConfig\",\n    \"metadata\": {\n      \"name\": \"config\"\
+      \n    },\n    \"spec\": {\n      \"addon\": {\n        \"params\": [\n     \
+      \     {\n            \"name\": \"clusterTasks\",\n            \"value\": \"\
+      true\"\n          },\n          {\n            \"name\": \"pipelineTemplates\"\
+      ,\n            \"value\": \"true\"\n          }\n        ]\n      },\n     \
+      \ \"profile\": \"all\",\n      \"targetNamespace\": \"openshift-pipelines\"\n\
+      \    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n \
+      \   \"kind\": \"TektonPipeline\",\n    \"metadata\": {\n      \"name\": \"pipeline\"\
+      \n    },\n    \"spec\": {\n      \"targetNamespace\": \"openshift-pipelines\"\
+      \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
+      \    \"kind\": \"TektonTrigger\",\n    \"metadata\": {\n      \"name\": \"trigger\"\
+      \n    },\n    \"spec\": {\n      \"targetNamespace\": \"openshift-pipelines\"\
+      \n    }\n  }\n]"
     capabilities: Seamless Upgrades
     categories: Developer Tools, Integration & Delivery
-    certified: "false"
+    certified: 'false'
     containerImage: registry.redhat.io/openshift-pipelines/pipelines-rhel8-operator@sha256:782e1fbb7c81effe0cae9133c6d13ddc62e6156533c5037193ae730d630c028a
-    description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for building pipelines using Tekton concepts which run natively on OpenShift and Kubernetes.
-    operators.operatorframework.io/builder: operator-sdk-v1.7.2
+    description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for
+      building pipelines using Tekton concepts which run natively on OpenShift and
+      Kubernetes.
+    olm.skipRange: '>=1.5.0 <1.6.0'
+    operators.operatorframework.io/builder: operator-sdk-v1.8.0
     operators.operatorframework.io/internal-objects: '["tektonconfig.operator.tekton.dev",,"tektonpipeline.operator.tekton.dev","tektontrigger.operator.tekton.dev","tektonaddon.operator.tekton.dev"]'
     operators.operatorframework.io/project_layout: unknown
     repository: https://github.com/openshift/tektoncd-operator
@@ -60,13 +36,14 @@ metadata:
     operatorframework.io/arch.amd64: supported
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
-  name: openshift-pipelines-operator-rh.v1.5.0
+  name: openshift-pipelines-operator-rh.v1.6.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: Represents an installation of latest version of Addons (exclusively ClusterTasks, consoleyamlsamples, consoleclidownloads and consolequickstarts)
+    - description: Represents an installation of latest version of Addons (exclusively
+        ClusterTasks, consoleyamlsamples, consoleclidownloads and consolequickstarts)
       displayName: Tekton Addons
       kind: TektonAddon
       name: tektonaddons.operator.tekton.dev
@@ -83,7 +60,8 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
-    - description: Represents an installation of latest version of Tekton components, TektonPipeline, TektonTrigger and TektonAddon
+    - description: Represents an installation of latest version of Tekton components,
+        TektonPipeline, TektonTrigger and TektonAddon
       displayName: Tekton Configuration
       kind: TektonConfig
       name: tektonconfigs.operator.tekton.dev
@@ -93,7 +71,8 @@ spec:
         path: targetNamespace
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
-      - description: Installation Profile (specifies which of the Tekton components are installed)
+      - description: Installation Profile (specifies which of the Tekton components
+          are installed)
         displayName: Profile
         path: profile
         x-descriptors:
@@ -139,124 +118,237 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
-  description: |
-    Red Hat OpenShift Pipelines is a cloud-native continuous integration and delivery
+  description: 'Red Hat OpenShift Pipelines is a cloud-native continuous integration
+    and delivery
+
     (CI/CD) solution for building pipelines using [Tekton](https://tekton.dev).
+
     Tekton is a flexible Kubernetes-native open-source CI/CD framework, which
+
     enables automating deployments across multiple platforms (Kubernetes,
+
     serverless, VMs, etc) by abstracting away the underlying details.
 
+
     ## Features
+
     * Standard CI/CD pipelines definition
-    * Build images with Kubernetes tools such as S2I, Buildah, Buildpacks, Kaniko, etc
-    * Deploy applications to multiple platforms such as Kubernetes, serverless and VMs
+
+    * Build images with Kubernetes tools such as S2I, Buildah, Buildpacks, Kaniko,
+    etc
+
+    * Deploy applications to multiple platforms such as Kubernetes, serverless and
+    VMs
+
     * Easy to extend and integrate with existing tools
+
     * Scale pipelines on-demand
+
     * Portable across any Kubernetes platform
+
     * Designed for microservices and decentralized team
+
     * Integrated with OpenShift Developer Console
 
+
     ## Installation
-    _Red Hat OpenShift Pipelines Operator_ gets installed into a single namespace (openshift-operators) which would then install _Red Hat OpenShift Pipelines_ into the openshift-pipelines namespace. _Red Hat OpenShift Pipelines_ is however cluster-wide and can run pipelines created in any namespace.
+
+    _Red Hat OpenShift Pipelines Operator_ gets installed into a single namespace
+    (openshift-operators) which would then install _Red Hat OpenShift Pipelines_ into
+    the openshift-pipelines namespace. _Red Hat OpenShift Pipelines_ is however cluster-wide
+    and can run pipelines created in any namespace.
+
     ### Components
+
     - Tekton Pipelines: v0.22.0
+
     - Tekton Triggers: v0.12.1
+
     - ClusterTasks based on Tekton Catalog 0.22
+
     ## Getting Started
-    In order to get familiar with _OpenShift Pipelines_ concepts and create your first pipeline, follow the [OpenShift Pipelines Docs](https://docs.openshift.com/container-platform/latest/pipelines/creating-applications-with-cicd-pipelines.html).
+
+    In order to get familiar with _OpenShift Pipelines_ concepts and create your first
+    pipeline, follow the [OpenShift Pipelines Docs](https://docs.openshift.com/container-platform/latest/pipelines/creating-applications-with-cicd-pipelines.html).
+
     ## CLI (tkn)
-    Tekton Pipelines cli project provides a CLI (tkn) for interacting with OpenShift Pipelines.
+
+    Tekton Pipelines cli project provides a CLI (tkn) for interacting with OpenShift
+    Pipelines.
+
     - [Download tkn for Linux](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-amd64-0.17.2.tar.gz)
+
     - [Download tkn for Mac](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-macos-amd64-0.17.2.tar.gz)
+
     - [Download tkn for Windows](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-windows-amd64-0.17.2.zip)
+
     - [Download tkn for IBM Power](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-ppc64le-0.17.2.tar.gz)
+
     - [Download tkn for IBM Z](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-s390x-0.17.2.tar.gz)
+
+    '
   displayName: Red Hat OpenShift Pipelines
   icon:
-  - base64data: |
-      iVBORw0KGgoAAAANSUhEUgAAAGUAAABlCAYAAABUfC3PAAAQrElEQVR4Xu2dd3wU1RbHfymkQBom
+  - base64data: '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
+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
+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
+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
+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
+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
+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
+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
+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
+
       A9TDDR3f34jAQaNstrHNH7gKEFp6p+EozRfkHpqwFq1KdigcCUgd/QOAm5s2MDZDoSX23Ncec0ot
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+
       b6CVYDqrYfmUpa4HHdN29MxdLyB+veIQPjkZfr0ah8kWbF8vLlpW37yehLm2yCRseV9sA5T0Xqpb
+
       E6rlWFsBlj6mTbOcpKGoltlRVC1AQwK9gLR5fQlajZ1iVYK6smJkrngbeZ8t0iDpH59QtIsuUFiA
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+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
+
       dEueLBQqQW9vsRz2UqAbdepSM0Pzgc7/+QnNgkNR+O0mpM8cI6uoNGRVs4K0p25tz5zK7LhkK3y7
+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
+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
+
       DwhGxJR3EfTQSHi3jUZNXjZy1r6H3A3a75O0x22ULmBT9RRKYM+BIq1ATJUlz2k1+iV4t6HABQFw
+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
+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
+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
+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
+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
+
       0WZwSCHhxlUUfDoPpbv5HgtXk1ELEMpTMxT6+OJTPYTiM7fWT9KqgZDeawViNxTK4OzQaMFw5SKr
+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
+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
+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
+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
+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
+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
+
       9w9xKQiWOrs8FDWvqs1rOLJn+fh07eXShrem1/8BWjy0OmdfIfEAAAAASUVORK5CYII=
+
+      '
     mediatype: image/png
   install:
     spec:
       clusterPermissions:
       - rules:
         - apiGroups:
-          - ""
+          - ''
           resources:
           - pods
           - services
@@ -284,7 +376,7 @@ spec:
           - update
           - watch
         - apiGroups:
-          - ""
+          - ''
           resources:
           - namespaces
           verbs:
@@ -321,7 +413,7 @@ spec:
           verbs:
           - '*'
         - apiGroups:
-          - ""
+          - ''
           resources:
           - serviceaccounts
           verbs:
@@ -496,6 +588,7 @@ spec:
           - batch
           resources:
           - jobs
+          - cronjobs
           verbs:
           - '*'
         serviceAccountName: openshift-pipelines-operator
@@ -526,8 +619,48 @@ spec:
                 - name: OPERATOR_NAME
                   value: redhat-openshift-pipelines-operator
                 - name: IMAGE_PIPELINES_PROXY
-                  value: ko://github.com/tektoncd/operator/cmd/openshift/webhook
-                image: ko://github.com/tektoncd/operator/cmd/openshift/operator
+                  value: registry.redhat.io/openshift-pipelines/pipelines-operator-proxy-rhel8@
+                - name: IMAGE_JOB_PRUNER_TKN
+                  value: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
+                - name: IMAGE_PIPELINES_TEKTON_PIPELINES_CONTROLLER
+                  value: registry.redhat.io/openshift-pipelines/pipelines-controller-rhel8@
+                - name: IMAGE_PIPELINES_WEBHOOK
+                  value: registry.redhat.io/openshift-pipelines/pipelines-webhook-rhel8@
+                - name: IMAGE_PIPELINES_ARG__ENTRYPOINT_IMAGE
+                  value: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel8@
+                - name: IMAGE_PIPELINES_ARG__GIT_IMAGE
+                  value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@
+                - name: IMAGE_ADDONS_PARAM_GITINITIMAGE
+                  value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@
+                - name: IMAGE_PIPELINES_ARG__IMAGEDIGEST_EXPORTER_IMAGE
+                  value: registry.redhat.io/openshift-pipelines/pipelines-imagedigestexporter-rhel8@
+                - name: IMAGE_PIPELINES_ARG__KUBECONFIG_WRITER_IMAGE
+                  value: registry.redhat.io/openshift-pipelines/pipelines-kubeconfigwriter-rhel8@
+                - name: IMAGE_PIPELINES_ARG__PR_IMAGE
+                  value: registry.redhat.io/openshift-pipelines/pipelines-pullrequest-init-rhel8@
+                - name: IMAGE_PIPELINES_ARG__NOP_IMAGE
+                  value: registry.redhat.io/openshift-pipelines/pipelines-nop-rhel8@
+                - name: IMAGE_PIPELINES_ARG__SHELL_IMAGE
+                  value: registry.access.redhat.com/ubi8/ubi-minimal@
+                - name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CONTROLLER
+                  value: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel8@
+                - name: IMAGE_TRIGGERS_WEBHOOK
+                  value: registry.redhat.io/openshift-pipelines/pipelines-triggers-webhook-rhel8@
+                - name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CORE_INTERCEPTORS
+                  value: registry.redhat.io/openshift-pipelines/pipelines-triggers-core-interceptors-rhel8@
+                - name: IMAGE_TRIGGERS_ARG__EL_IMAGE
+                  value: registry.redhat.io/openshift-pipelines/pipelines-triggers-eventlistenersink-rhel8@
+                - name: IMAGE_ADDONS_PARAM_KN_IMAGE
+                  value: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@
+                - name: IMAGE_ADDONS_SKOPEO_COPY
+                  value: registry.redhat.io/rhel8/skopeo@
+                - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
+                  value: registry.redhat.io/rhel8/buildah@
+                - name: IMAGE_ADDONS_GENERATE
+                  value: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@
+                - name: IMAGE_ADDONS_PARAM_TKN_IMAGE
+                  value: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
+                image: registry.redhat.io/openshift-pipelines/pipelines-rhel8-operator@
                 imagePullPolicy: Always
                 name: openshift-pipelines-operator
                 resources: {}
@@ -558,4 +691,50 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat
-  version: 1.5.0
+  relatedImages:
+  - image: registry.redhat.io/openshift-pipelines/pipelines-rhel8-operator@
+    name: OPENSHIFT_PIPELINES_OPERATOR
+  - image: registry.redhat.io/openshift-pipelines/pipelines-operator-proxy-rhel8@
+    name: IMAGE_PIPELINES_PROXY
+  - image: registry.redhat.io/openshift-pipelines/pipelines-controller-rhel8@
+    name: IMAGE_PIPELINES_TEKTON_PIPELINES_CONTROLLER
+  - image: registry.redhat.io/openshift-pipelines/pipelines-webhook-rhel8@
+    name: IMAGE_PIPELINES_WEBHOOK
+  - image: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel8@
+    name: IMAGE_PIPELINES_ARG__ENTRYPOINT_IMAGE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@
+    name: IMAGE_PIPELINES_ARG__GIT_IMAGE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@
+    name: IMAGE_ADDONS_PARAM_GITINITIMAGE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-imagedigestexporter-rhel8@
+    name: IMAGE_PIPELINES_ARG__IMAGEDIGEST_EXPORTER_IMAGE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-kubeconfigwriter-rhel8@
+    name: IMAGE_PIPELINES_ARG__KUBECONFIG_WRITER_IMAGE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-pullrequest-init-rhel8@
+    name: IMAGE_PIPELINES_ARG__PR_IMAGE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-nop-rhel8@
+    name: IMAGE_PIPELINES_ARG__NOP_IMAGE
+  - image: registry.access.redhat.com/ubi8/ubi-minimal@
+    name: IMAGE_PIPELINES_ARG__SHELL_IMAGE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel8@
+    name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CONTROLLER
+  - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-webhook-rhel8@
+    name: IMAGE_TRIGGERS_WEBHOOK
+  - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-core-interceptors-rhel8@
+    name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CORE_INTERCEPTORS
+  - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-eventlistenersink-rhel8@
+    name: IMAGE_TRIGGERS_ARG__EL_IMAGE
+  - image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@
+    name: IMAGE_ADDONS_PARAM_KN_IMAGE
+  - image: registry.redhat.io/rhel8/skopeo@
+    name: IMAGE_ADDONS_SKOPEO_COPY
+  - image: registry.redhat.io/rhel8/buildah@
+    name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
+  - image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@
+    name: IMAGE_ADDONS_GENERATE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
+    name: IMAGE_JOB_PRUNER_TKN
+  - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
+    name: IMAGE_ADDONS_PARAM_TKN_IMAGE
+  replaces: 1.5.0
+  version: 1.6.0
