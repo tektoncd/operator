@@ -141,7 +141,11 @@ image-substitutions:
       envKeys:
       - IMAGE_JOB_PRUNER_TKN
       - IMAGE_ADDONS_PARAM_TKN_IMAGE
-
+- image: ko://github.com/tektoncd/operator/cmd/openshift/webhook
+  replaceLocations:
+    containerTargets:
+    - deploymentName: tekton-operator-webhook
+      containerName: tekton-operator-webhook
 
         # add thrid party images which are not replaced by operator
 # but pulled directly by tasks here

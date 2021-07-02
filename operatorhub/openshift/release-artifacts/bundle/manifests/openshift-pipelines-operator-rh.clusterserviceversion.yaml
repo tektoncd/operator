@@ -665,6 +665,57 @@ spec:
                 name: openshift-pipelines-operator
                 resources: {}
               serviceAccountName: openshift-pipelines-operator
+      - name: tekton-operator-webhook
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              name: tekton-operator-webhook
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                app: tekton-operator
+                name: tekton-operator-webhook
+            spec:
+              containers:
+              - env:
+                - name: SYSTEM_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: CONFIG_LOGGING_NAME
+                  value: config-logging
+                - name: WEBHOOK_SERVICE_NAME
+                  value: tekton-operator-webhook
+                - name: WEBHOOK_SECRET_NAME
+                  value: tekton-operator-webhook-certs
+                image: ko://github.com/tektoncd/operator/cmd/openshift/webhook123
+                name: tekton-operator-webhook
+                ports:
+                - containerPort: 8443
+                  name: https-webhook
+                resources: {}
+              - env:
+                - name: SYSTEM_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAME
+                  value: redhat-openshift-pipelines-operator
+                - name: IMAGE_PIPELINES_PROXY
+                  value: ko://github.com/tektoncd/operator/cmd/openshift/proxy-webhook
+                - name: IMAGE_JOB_PRUNER_TKN
+                  value: gcr.io/tekton-releases/dogfooding/tkn@sha256:f69a02ef099d8915e9e4ea1b74e43b7a9309fc97cf23cb457ebf191e73491677
+                image: ko://github.com/tektoncd/operator/cmd/openshift/operator
+                imagePullPolicy: Always
+                name: openshift-pipelines-operator
+                resources: {}
+              serviceAccountName: tekton-operator
     strategy: deployment
   installModes:
   - supported: false
@@ -736,5 +787,38 @@ spec:
     name: IMAGE_JOB_PRUNER_TKN
   - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
     name: IMAGE_ADDONS_PARAM_TKN_IMAGE
+  - image: ko://github.com/tektoncd/operator/cmd/openshift/webhook123
+    name: TEKTON_OPERATOR_WEBHOOK
   replaces: 1.5.0
   version: 1.6.0
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1beta1
+    - v1
+    containerPort: 443
+    deploymentName: tekton-operator-webhook
+    failurePolicy: Fail
+    generateName: config.webhook.operator.tekton.dev
+    sideEffects: None
+    targetPort: 8443
+    type: ValidatingAdmissionWebhook
+  - admissionReviewVersions:
+    - v1beta1
+    - v1
+    containerPort: 443
+    deploymentName: tekton-operator-webhook
+    failurePolicy: Fail
+    generateName: validation.webhook.operator.tekton.dev
+    sideEffects: None
+    targetPort: 8443
+    type: ValidatingAdmissionWebhook
+  - admissionReviewVersions:
+    - v1beta1
+    - v1
+    containerPort: 443
+    deploymentName: tekton-operator-webhook
+    failurePolicy: Fail
+    generateName: webhook.operator.tekton.dev
+    sideEffects: None
+    targetPort: 8443
+    type: MutatingAdmissionWebhook

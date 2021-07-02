@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  creationTimestamp: null
+  labels:
+    app: tekton-operator
+    name: tekton-operator-webhook
+    operator.tekton.dev/release: devel
+    version: devel
+  name: tekton-operator-webhook
+spec:
+  ports:
+  - name: https-webhook
+    port: 443
+    targetPort: 8443
+  selector:
+    app: tekton-operator
+    name: tekton-operator-webhook
+status:
+  loadBalancer: {}
