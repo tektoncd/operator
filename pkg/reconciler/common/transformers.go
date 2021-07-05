@@ -53,6 +53,7 @@ func transformers(ctx context.Context, obj v1alpha1.TektonComponent) []mf.Transf
 		mf.InjectOwner(obj),
 		injectNamespaceConditional(AnnotationPreserveNS, obj.GetSpec().GetTargetNamespace()),
 		injectNamespaceCRDWebhookClientConfig(obj.GetSpec().GetTargetNamespace()),
+		injectNamespaceCRClusterInterceptorClientConfig(obj.GetSpec().GetTargetNamespace()),
 	}
 }
 
@@ -112,6 +113,24 @@ func injectNamespaceCRDWebhookClientConfig(targetNamespace string) mf.Transforme
 			return nil
 		}
 		service, found, err := unstructured.NestedFieldNoCopy(u.Object, "spec", "conversion", "webhookClientConfig", "service")
+		if !found || err != nil {
+			return err
+		}
+		m := service.(map[string]interface{})
+		if _, ok := m["namespace"]; ok {
+			m["namespace"] = targetNamespace
+		}
+		return nil
+	}
+}
+
+func injectNamespaceCRClusterInterceptorClientConfig(targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := strings.ToLower(u.GetKind())
+		if kind != "clusterinterceptor" {
+			return nil
+		}
+		service, found, err := unstructured.NestedFieldNoCopy(u.Object, "spec", "clientConfig", "service")
 		if !found || err != nil {
 			return err
 		}

@@ -1,0 +1,11 @@
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterInterceptor
+metadata:
+  name: cel
+spec:
+  clientConfig:
+    service:
+      name: tekton-triggers-core-interceptors
+      path: "cel"
+      namespace: tekton-pipelines
