@@ -8,34 +8,63 @@ spec:
     apiVersion: tekton.dev/v1beta1
     kind: Pipeline
   title: simple-pipeline
-  description: An example of simple pipeline
+  description: An example of simple pipeline to build and deploy
   snippet: false
   yaml: |
     apiVersion: tekton.dev/v1beta1
     kind: Pipeline
     metadata:
-      name: simple-pipeline
+      name: build-and-deploy
     spec:
       params:
-        - name: PARAM_NAME
+        - name: IMAGE_NAME
           type: string
-          default: defaultValue
-      resources:
-        - name: app-source
-          type: git
-        - name: app-image
-          type: image
+        - name: GIT_REPO
+          type: string
+        - name: GIT_REVISION
+          type: string
+      workspaces:
+        - name: workspace
       tasks:
-        - name: first-task
+        - name: fetch-repository
           taskRef:
-            name: task-name
-          resources:
-            inputs:
-              - name: source
-                resource: app-source
-            outputs:
-              - name: image
-                resource: app-image
+            name: git-clone
+            kind: ClusterTask
+          workspaces:
+            - name: output
+              workspace: workspace
           params:
-            - name: PARAM
-              value: $(params.PARAM_NAME)
+            - name: url
+              value: $(params.GIT_REPO)
+            - name: revision
+              value: $(params.GIT_REVISION)
+            - name: subdirectory
+              value: ""
+            - name: deleteExisting
+              value: "true"
+
+        - name: build
+          taskRef:
+            name: s2i-nodejs
+            kind: ClusterTask
+          runAfter:
+            - fetch-repository
+          workspaces:
+            - name: source
+              workspace: workspace
+          params:
+            - name: IMAGE
+              value: $(params.IMAGE_NAME)
+            - name: TLSVERIFY
+              value: "false"
+
+        - name: deploy
+          taskRef:
+            name: openshift-client
+            kind: ClusterTask
+          runAfter:
+            - build
+          params:
+          - name: SCRIPT
+            value: |
+              oc new-app --docker-image $(params.IMAGE_NAME)

@@ -65,8 +65,6 @@ spec:
           runAfter:
             - build
           params:
-            - name: ARGS
-              value:
-                - "new-app"
-                - "--docker-image"
-                - "$(params.IMAGE_NAME)"
+          - name: SCRIPT
+            value: |
+              oc new-app --docker-image $(params.IMAGE_NAME)
