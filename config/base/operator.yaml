@@ -19,39 +19,4 @@ metadata:
   labels:
     version: "devel"
     operator.tekton.dev/release: "devel"
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      name: tekton-operator
-  template:
-    metadata:
-      labels:
-        name: tekton-operator
-        app: tekton-operator
-    spec:
-      serviceAccountName: tekton-operator
-      containers:
-        - name: tekton-operator
-          image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
-          env:
-            - name: SYSTEM_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: OPERATOR_NAME
-              value: "tekton-operator"
-            - name: AUTOINSTALL_COMPONENTS
-              valueFrom:
-                configMapKeyRef:
-                  name: tekton-config-defaults
-                  key: AUTOINSTALL_COMPONENTS
-            - name: DEFAULT_TARGET_NAMESPACE
-              valueFrom:
-                configMapKeyRef:
-                  name: tekton-config-defaults
-                  key: DEFAULT_TARGET_NAMESPACE
+spec: {}

@@ -17,13 +17,33 @@ kind: Deployment
 metadata:
   name: tekton-operator
 spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: tekton-operator
   template:
+    metadata:
+      labels:
+        name: tekton-operator
+        app: tekton-operator
     spec:
+      serviceAccountName: tekton-operator
       containers:
-        - name: tekton-operator
-          image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
-          env:
-            - name: IMAGE_PIPELINES_PROXY
+      - name: tekton-operator
+        image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
+        imagePullPolicy: Always
+        env:
+        - name: SYSTEM_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: OPERATOR_NAME
+          value: "tekton-operator"
+        - name: IMAGE_PIPELINES_PROXY
               value: ko://github.com/tektoncd/operator/cmd/kubernetes/proxy-webhook
-            - name: IMAGE_JOB_PRUNER_TKN
-              value: gcr.io/tekton-releases/dogfooding/tkn@sha256:f69a02ef099d8915e9e4ea1b74e43b7a9309fc97cf23cb457ebf191e73491677
+        - name: IMAGE_JOB_PRUNER_TKN
+          value: gcr.io/tekton-releases/dogfooding/tkn@sha256:f69a02ef099d8915e9e4ea1b74e43b7a9309fc97cf23cb457ebf191e73491677

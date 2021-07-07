@@ -40,7 +40,7 @@ $(BIN)/golangci-lint: | $(BIN) ; $(info $(M) getting golangci-lint $(GOLANGCI_VE
 
 .PHONY: clean-cluster
 clean-cluster: | $(KO) $(KUSTOMIZE) clean-cr; $(info $(M) clean $(TARGET)…) @ ## Cleanup cluster
-	-$(KUSTOMIZE) build config/$(TARGET) | $(KO) delete -f -
+	-$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET) | $(KO) delete -f -
 	-kubectl delete ns tekton-pipelines --ignore-not-found
 	-kubectl delete \
 		-f $(KO_DATA_PATH)/ \
@@ -68,7 +68,7 @@ bin/%: cmd/% FORCE
 
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
-	$Q $(KUSTOMIZE) build config/$(TARGET) | $(KO) apply $(PLATFORM) -f -
+	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET) | $(KO) apply $(PLATFORM) -f -
 
 .PHONY: apply-cr
 apply-cr: | ; $(info $(M) apply CRs on $(TARGET)) @ ## Apply the CRs to the current cluster
@@ -80,7 +80,7 @@ clean-cr: | ; $(info $(M) clean CRs on $(TARGET)) @ ## Clean the CRs to the curr
 
 .PHONY: resolve
 resolve: | $(KO) $(KUSTOMIZE) ; $(info $(M) ko resolve on $(TARGET)) @ ## Resolve config to the current cluster
-	$Q $(KUSTOMIZE) build config/$(TARGET) | $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f -
+	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET) | $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f -
 
 .PHONY: generated
 generated: | vendor ; $(info $(M) update generated files) ## Update generated files
@@ -89,3 +89,21 @@ generated: | vendor ; $(info $(M) update generated files) ## Update generated fi
 .PHONY: vendor
 vendor: ; $(info $(M) update vendor folder)  ## Update vendor folder
 	$Q ./hack/update-deps.sh
+
+.PHONY: bundlegen
+bundlegen:
+	mkdir csv-stub
+	kustomize build ../../config/olm-csv-stubs/overlays/openshift > csv-stub/csv-stub.yaml
+	pwd
+	kustomize build ../../config/olm-bundle-config/openshift | operator-sdk generate bundle \
+		--channels stable,preview \
+		--default-channel stable \
+		--kustomize-dir csv-stub \
+		--overwrite \
+		--package openshift-pipelines-operator-rh \
+		--version 0.22.0-1
+	rm -rf csv-stub
+
+
+bundle:
+	$(MAKE) -C operatorhub/openshift --file ../../Makefile bundlegen

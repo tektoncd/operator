@@ -18,9 +18,10 @@ package v1alpha1
 
 import (
 	"context"
+	"testing"
+
 	"gotest.tools/assert"
 	"knative.dev/pkg/apis"
-	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

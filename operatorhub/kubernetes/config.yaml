@@ -1,0 +1,33 @@
+platform: "kubernetes"
+operator-packagename: "tektoncd-operator"
+image-substitutions:
+- image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator:develContainer
+  replaceLocations:
+    containerTargets:
+    - deploymentName: tekton-operator
+      containerName: tekton-operator
+- image: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook:develEnv
+  replaceLocations:
+    envTargets:
+    - deploymentName: tekton-operator
+      containerName: tekton-operator
+      envKeys:
+      - IMAGE_PIPELINES_PROXY
+- image: gcr.io/tekton-releases/dogfooding/tkn@sha256:f69a02ef099d8915e9e4ea1b74e43b7a9309fc97cf23cb457ebf191e73491677DEVEL
+  replaceLocations:
+    envTargets:
+    - deploymentName: tekton-operator
+      containerName: tekton-operator
+      envKeys:
+      - IMAGE_JOB_PRUNER_TKN
+- image: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook
+  replaceLocations:
+    containerTargets:
+    - deploymentName: tekton-operator-webhook
+      containerName: tekton-operator-webhook
+
+# add thrid party images which are not replaced by operator
+# but pulled directly by tasks here
+defaultRelatedImages: []
+#- image: "" ##<imagename>:<tag> or <imagename>@<sha>
+#  name: "" # ENV key name value
