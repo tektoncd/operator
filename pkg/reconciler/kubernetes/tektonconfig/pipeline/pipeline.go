@@ -29,13 +29,14 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"knative.dev/pkg/test/logging"
 )
 
 func CreatePipelineCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
 	configInstance := instance.(*v1alpha1.TektonConfig)
-	if _, err := ensureTektonPipelineExists(client.TektonPipelines(), configInstance.Spec.TargetNamespace); err != nil {
+	if _, err := ensureTektonPipelineExists(client.TektonPipelines(), configInstance.Spec.TargetNamespace, configInstance); err != nil {
 		return errors.New(err.Error())
 	}
 	if _, err := waitForTektonPipelineState(client.TektonPipelines(), common.PipelineResourceName,
@@ -46,15 +47,23 @@ func CreatePipelineCR(instance v1alpha1.TektonComponent, client operatorv1alpha1
 	return nil
 }
 
-func ensureTektonPipelineExists(clients op.TektonPipelineInterface, targetNS string) (*v1alpha1.TektonPipeline, error) {
+func ensureTektonPipelineExists(clients op.TektonPipelineInterface, targetNS string, instance *v1alpha1.TektonConfig) (*v1alpha1.TektonPipeline, error) {
 	tpCR, err := GetPipeline(clients, common.PipelineResourceName)
 	if err == nil {
 		return tpCR, err
 	}
+
+	ownerRef := v1.OwnerReference{
+		APIVersion: "operator.tekton.dev/v1alpha1",
+		Kind:       "TektonPipeline",
+		Name:       instance.Name,
+		UID:        instance.ObjectMeta.UID,
+	}
 	if apierrs.IsNotFound(err) {
 		tpCR = &v1alpha1.TektonPipeline{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: common.PipelineResourceName,
+				Name:            common.PipelineResourceName,
+				OwnerReferences: []v1.OwnerReference{ownerRef},
 			},
 			Spec: v1alpha1.TektonPipelineSpec{
 				CommonSpec: v1alpha1.CommonSpec{

@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
+	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -49,6 +50,7 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 func NewExtendedController(generator common.ExtensionGenerator) injection.ControllerConstructor {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		tektonConfigInformer := tektonConfiginformer.Get(ctx)
+		tektonPipelineInformer := tektonPipelineinformer.Get(ctx)
 		deploymentInformer := deploymentinformer.Get(ctx)
 		kubeClient := kubeclient.Get(ctx)
 		logger := logging.FromContext(ctx)
@@ -74,6 +76,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		logger.Info("Setting up event handlers")
 
 		tektonConfigInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+
+		tektonPipelineInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		})
 
 		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
