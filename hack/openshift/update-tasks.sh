@@ -44,7 +44,7 @@ EOF
 declare -r TEKTON_CATALOG="https://raw.githubusercontent.com/openshift/tektoncd-catalog"
 declare -A TEKTON_CATALOG_TASKS=(
   # Need to remove version param
-  ["openshift-client"]="0.1"
+  ["openshift-client"]="0.2"
   ["git-clone"]="0.4"
   # Need to fix the task upstream for removing priviledged
   # ["buildah"]="0.1"
