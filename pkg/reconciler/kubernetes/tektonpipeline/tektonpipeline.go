@@ -149,6 +149,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.ApplyProxySettings,
 		common.DeploymentImages(images),
 		common.InjectLabelOnNamespace(),
+		common.AddConfiguration(pipeline.Spec.Config),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)

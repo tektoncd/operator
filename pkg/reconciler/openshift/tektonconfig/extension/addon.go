@@ -49,9 +49,13 @@ func CreateAddonCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.Op
 func ensureTektonAddonExists(clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
 	taCR, err := GetAddon(clients, common.AddonResourceName)
 	if err == nil {
-		// If addon params are changed in TektonConfig spec, then only update the Addon CR
-		if !reflect.DeepEqual(config.Spec.Addon.Params, taCR.Spec.Params) {
+		// if the addon spec is changed then update the instance
+		if config.Spec.TargetNamespace != taCR.Spec.TargetNamespace ||
+			!reflect.DeepEqual(config.Spec.Addon.Params, taCR.Spec.Params) {
+
+			taCR.Spec.TargetNamespace = config.Spec.TargetNamespace
 			taCR.Spec.Params = config.Spec.Addon.Params
+
 			updated, err := clients.Update(context.TODO(), taCR, metav1.UpdateOptions{})
 			if err != nil {
 				return nil, err

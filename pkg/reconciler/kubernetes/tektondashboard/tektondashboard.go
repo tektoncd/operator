@@ -139,6 +139,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	instance := comp.(*v1alpha1.TektonDashboard)
 	extra := []mf.Transformer{
 		common.ApplyProxySettings,
+		common.AddConfiguration(instance.Spec.Config),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
