@@ -20,30 +20,26 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
-	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
-	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
-	"go.uber.org/zap"
-	"knative.dev/pkg/injection"
-	"knative.dev/pkg/logging"
-
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
+	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
+	"go.uber.org/zap"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/injection"
+	"knative.dev/pkg/logging"
 )
 
 const (
 	// DefaultSA is the default service account
 	DefaultSA = "pipeline"
 	// DefaultDisableAffinityAssistant is default value of disable affinity assistant flag
-	DefaultDisableAffinityAssistant = "true"
+	DefaultDisableAffinityAssistant = true
 	DefaultTargetNamespace          = "openshift-pipelines"
 	AnnotationPreserveNS            = "operator.tekton.dev/preserve-namespace"
 	AnnotationPreserveRBSubjectNS   = "operator.tekton.dev/preserve-rb-subject-namespace"
@@ -84,8 +80,6 @@ type openshiftExtension struct {
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
 		common.InjectLabelOnNamespace(monitoringLabel),
-		injectDefaultSA(DefaultSA),
-		setDisableAffinityAssistant(DefaultDisableAffinityAssistant),
 		occommon.ApplyCABundles,
 		occommon.UpdateDeployments(pipelinesPrefix, replaceImgs, skipImgs),
 	}
@@ -111,7 +105,20 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		return err
 	}
 
-	return common.Install(ctx, &oe.manifest, tc)
+	if err := common.Install(ctx, &oe.manifest, tc); err != nil {
+		return err
+	}
+
+	tp := tc.(*v1alpha1.TektonPipeline)
+	crUpdated := SetDefault(&tp.Spec.PipelineProperties)
+
+	if crUpdated {
+		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonPipelines().Update(ctx, tp, v1.UpdateOptions{}); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
@@ -121,56 +128,22 @@ func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent)
 	return nil
 }
 
-// injectDefaultSA adds default service account into config-defaults configMap
-func injectDefaultSA(defaultSA string) mf.Transformer {
-	return func(u *unstructured.Unstructured) error {
-		if strings.ToLower(u.GetKind()) != "configmap" {
-			return nil
-		}
-		if u.GetName() != "config-defaults" {
-			return nil
-		}
+func SetDefault(properties *v1alpha1.PipelineProperties) bool {
 
-		cm := &corev1.ConfigMap{}
-		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
-		if err != nil {
-			return err
-		}
+	var updated = false
 
-		cm.Data["default-service-account"] = defaultSA
-		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
-		if err != nil {
-			return err
-		}
-
-		u.SetUnstructuredContent(unstrObj)
-		return nil
+	// Set default service account as pipeline
+	if properties.DefaultServiceAccount == "" {
+		properties.DefaultServiceAccount = DefaultSA
+		updated = true
 	}
-}
 
-// setDisableAffinityAssistant set value of disable-affinity-assistant into feature-flags configMap
-func setDisableAffinityAssistant(disableAffinityAssistant string) mf.Transformer {
-	return func(u *unstructured.Unstructured) error {
-		if strings.ToLower(u.GetKind()) != "configmap" {
-			return nil
-		}
-		if u.GetName() != "feature-flags" {
-			return nil
-		}
-
-		cm := &corev1.ConfigMap{}
-		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
-		if err != nil {
-			return err
-		}
-
-		cm.Data["disable-affinity-assistant"] = disableAffinityAssistant
-		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
-		if err != nil {
-			return err
-		}
-
-		u.SetUnstructuredContent(unstrObj)
-		return nil
+	// Set `disable-affinity-assistant` to true
+	// webhook will set `false` as default value
+	if properties.DisableAffinityAssistant == nil || !*properties.DisableAffinityAssistant {
+		*properties.DisableAffinityAssistant = DefaultDisableAffinityAssistant
+		updated = true
 	}
+
+	return updated
 }
