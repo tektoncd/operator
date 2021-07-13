@@ -88,9 +88,15 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 	if configInstance.Spec.Profile == common.ProfileAll {
-		return extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), common.AddonResourceName)
+		if err := extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), common.AddonResourceName); err != nil {
+			return err
+		}
 	}
-	return nil
+
+	r := rbac{
+		kubeClientSet: oe.kubeClientSet,
+	}
+	return r.cleanUp(ctx)
 }
 
 // configOwnerRef returns owner reference pointing to passed instance

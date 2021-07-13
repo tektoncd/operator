@@ -18,20 +18,19 @@ package tektonconfig
 
 import (
 	"context"
+	"fmt"
 	"regexp"
-
-	"github.com/tektoncd/operator/pkg/reconciler/common"
-
-	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"knative.dev/pkg/logging"
 
 	mf "github.com/manifestival/manifestival"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
+	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -42,7 +41,11 @@ const (
 	serviceCABundleConfigMap = "config-service-cabundle"
 	trustedCABundleConfigMap = "config-trusted-cabundle"
 	clusterInterceptors      = "openshift-pipelines-clusterinterceptors"
+	namespaceRbacLabel       = "openshift-pipelines.tekton.dev/namespace-ready"
 )
+
+// Namespace Regex to ignore the namespace for creating rbac resources.
+var nsRegex = regexp.MustCompile(common.NamespaceIgnorePattern)
 
 type rbac struct {
 	kubeClientSet     kubernetes.Interface
@@ -51,9 +54,56 @@ type rbac struct {
 	ownerRef          metav1.OwnerReference
 }
 
+func (r *rbac) cleanUp(ctx context.Context) error {
+
+	// fetch the list of all namespaces which have label
+	// `openshift-pipelines.tekton.dev/namespace-ready: true`
+	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s = true", namespaceRbacLabel),
+	})
+	if err != nil {
+		return err
+	}
+	// loop on namespaces and remove label if exist
+	for _, n := range namespaces.Items {
+		labels := n.GetLabels()
+		delete(labels, namespaceRbacLabel)
+		n.SetLabels(labels)
+		if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &n, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *rbac) createResources(ctx context.Context) error {
 
 	logger := logging.FromContext(ctx)
+
+	// fetch the list of all namespaces which doesn't have label
+	// `openshift-pipelines.tekton.dev/namespace-ready: true`
+	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s != true", namespaceRbacLabel),
+	})
+	if err != nil {
+		return err
+	}
+
+	// list of namespaces rbac resources need to be created
+	var rbacNamespaces []corev1.Namespace
+
+	// filter namespaces:
+	// ignore ns with name passing regex `^(openshift|kube)-`
+	for _, n := range namespaces.Items {
+		if ignore := nsRegex.MatchString(n.GetName()); ignore {
+			continue
+		}
+		rbacNamespaces = append(rbacNamespaces, n)
+	}
+
+	if len(rbacNamespaces) == 0 {
+		return nil
+	}
 
 	// Maintaining a separate cluster role for the scc declaration.
 	// to assist us in managing this the scc association in a
@@ -62,19 +112,7 @@ func (r *rbac) createResources(ctx context.Context) error {
 		return err
 	}
 
-	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-
-	re := regexp.MustCompile(common.NamespaceIgnorePattern)
-
-	for _, n := range namespaces.Items {
-
-		if ignore := re.MatchString(n.GetName()); ignore {
-			logger.Info("IGNORES Namespace: ", n.GetName())
-			continue
-		}
+	for _, n := range rbacNamespaces {
 
 		logger.Infow("Inject CA bundle configmap in ", "Namespace", n.GetName())
 		if err := r.ensureCABundles(ctx, &n); err != nil {
@@ -96,6 +134,15 @@ func (r *rbac) createResources(ctx context.Context) error {
 		}
 
 		if err := r.ensureClusterRoleBindings(ctx, sa); err != nil {
+			return err
+		}
+
+		// Add `openshift-pipelines.tekton.dev/namespace-ready` label to namespace
+		// so that rbac won't loop on it again
+		nsLabels := n.GetLabels()
+		nsLabels[namespaceRbacLabel] = "true"
+		n.SetLabels(nsLabels)
+		if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &n, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
 	}

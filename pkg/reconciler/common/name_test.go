@@ -17,9 +17,10 @@ limitations under the License.
 package common
 
 import (
-	utilrand "k8s.io/apimachinery/pkg/util/rand"
 	"strings"
 	"testing"
+
+	utilrand "k8s.io/apimachinery/pkg/util/rand"
 )
 
 func TestRestrictLengthWithRandomSuffix(t *testing.T) {
