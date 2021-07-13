@@ -25,6 +25,7 @@ import (
 	namespaceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/kmeta"
 )
 
 // NewController initializes the controller and is called by the generated code
@@ -41,8 +42,13 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 // This is required because we want to get our TektonConfig reconciler triggered
 // for already existing and new namespaces, without manual intervention like adding
 // a label/annotation on namespace to make it manageable by Tekton controller.
+// This will also filter the namespaces by regex `^(openshift|kube)-`
+// and enqueue only when namespace doesn't match the regex
 func enqueueCustomName(impl *controller.Impl, name string) func(obj interface{}) {
 	return func(obj interface{}) {
-		impl.EnqueueKey(types.NamespacedName{Namespace: "", Name: name})
+		object, err := kmeta.DeletionHandlingAccessor(obj)
+		if err == nil && !nsRegex.MatchString(object.GetName()) {
+			impl.EnqueueKey(types.NamespacedName{Namespace: "", Name: name})
+		}
 	}
 }
