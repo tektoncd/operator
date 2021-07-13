@@ -125,7 +125,7 @@ func openshiftDeployTask(deployTask map[string]interface{}) map[string]interface
 	deployTask["taskRef"] = map[string]interface{}{"name": "openshift-client", "kind": "ClusterTask"}
 	deployTask["runAfter"] = []interface{}{"build"}
 	deployTask["params"] = []interface{}{
-		map[string]interface{}{"name": "ARGS", "value": []interface{}{"rollout", "status", "dc/$(params.APP_NAME)"}},
+		map[string]interface{}{"name": "SCRIPT", "value": "oc rollout status dc/$(params.APP_NAME)"},
 	}
 	return deployTask
 }
@@ -134,8 +134,7 @@ func kubernetesDeployTask(deployTask map[string]interface{}) map[string]interfac
 	deployTask["taskRef"] = map[string]interface{}{"name": "openshift-client", "kind": "ClusterTask"}
 	deployTask["runAfter"] = []interface{}{"build"}
 	deployTask["params"] = []interface{}{
-		map[string]interface{}{"name": "SCRIPT", "value": "kubectl $@"},
-		map[string]interface{}{"name": "ARGS", "value": []interface{}{"rollout", "status", "deploy/$(params.APP_NAME)"}},
+		map[string]interface{}{"name": "SCRIPT", "value": "oc rollout status deploy/$(params.APP_NAME)"},
 	}
 	return deployTask
 }

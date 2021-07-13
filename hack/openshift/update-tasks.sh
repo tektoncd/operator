@@ -187,7 +187,7 @@ main() {
 
   change_task_image "$dest_dir" "$version"  \
     "openshift-client"  'quay.io/openshift/origin-cli:$(params.VERSION)'  \
-    "image-registry.openshift-image-registry.svc:5000/openshift/cli:latest"
+    'image-registry.openshift-image-registry.svc:5000/openshift/cli:$(params.VERSION)'
 
   # ./manifest-tool inspect registry.redhat.io/openshift-serverless-1/client-kn-rhel8:0.19
   change_task_image "$dest_dir" "$version"  \
