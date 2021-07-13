@@ -40,10 +40,10 @@ spec:
     - name: VERSION
       description: The OpenShift Version to use
       type: string
-      default: "4.7"
+      default: "latest"
   steps:
     - name: oc
-      image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+      image: image-registry.openshift-image-registry.svc:5000/openshift/cli:$(params.VERSION)
       script: |
         #!/usr/bin/env bash
 
