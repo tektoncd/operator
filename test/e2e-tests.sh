@@ -32,6 +32,9 @@ failed=0
 header "Setting up environment"
 install_operator_resources
 
+echo "Wait for TektonConfig creation"
+sleep 30
+
 header "Running Go e2e tests"
 go_test_e2e -timeout=20m ./test/e2e/common ${KUBECONFIG_PARAM} || failed=1
 go_test_e2e -timeout=20m ./test/e2e/${TARGET} ${KUBECONFIG_PARAM} || failed=1
