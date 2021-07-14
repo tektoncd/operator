@@ -140,6 +140,9 @@ func (r *rbac) createResources(ctx context.Context) error {
 		// Add `openshift-pipelines.tekton.dev/namespace-ready` label to namespace
 		// so that rbac won't loop on it again
 		nsLabels := n.GetLabels()
+		if len(nsLabels) == 0 {
+			nsLabels = map[string]string{}
+		}
 		nsLabels[namespaceRbacLabel] = "true"
 		n.SetLabels(nsLabels)
 		if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &n, metav1.UpdateOptions{}); err != nil {
