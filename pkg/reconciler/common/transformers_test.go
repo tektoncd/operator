@@ -432,3 +432,25 @@ func TestAddConfigMapValues_OptionalPipelineProperties(t *testing.T) {
 	// this was not defined in struct so will be missing from configmap
 	assert.Equal(t, cm.Data["default-pod-template"], "")
 }
+
+func TestInjectLabelOnNamespace(t *testing.T) {
+	t.Run("TestInjectLabel", func(t *testing.T) {
+		testData := path.Join("testdata", "test-namespace-inject.yaml")
+
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assertNoEror(t, err)
+		newManifest, err := manifest.Transform(InjectLabelOnNamespace("operator.tekton.dev/disable-proxy=true"))
+		assertNoEror(t, err)
+		for _, resource := range newManifest.Resources() {
+			labels := resource.GetLabels()
+			value, ok := labels["operator.tekton.dev/disable-proxy"]
+			if ok {
+				assert.DeepEqual(t, value, "true")
+			}
+			if !ok {
+				t.Errorf("namespace did not have label")
+
+			}
+		}
+	})
+}

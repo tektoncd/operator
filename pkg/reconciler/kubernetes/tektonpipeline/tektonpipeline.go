@@ -54,6 +54,8 @@ type Reconciler struct {
 	extension common.Extension
 }
 
+const proxyLabel = "operator.tekton.dev/disable-proxy=true"
+
 // Check that our Reconciler implements controller.Reconciler
 var _ tektonpipelinereconciler.Interface = (*Reconciler)(nil)
 var _ tektonpipelinereconciler.Finalizer = (*Reconciler)(nil)
@@ -143,15 +145,17 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	pipeline := comp.(*v1alpha1.TektonPipeline)
 	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
 	instance := comp.(*v1alpha1.TektonPipeline)
+	// adding extension's transformers first to run them before `extra` transformers
+	trns := r.extension.Transformers(instance)
 	extra := []mf.Transformer{
 		common.AddConfigMapValues(featureFlag, pipeline.Spec.PipelineProperties),
 		common.AddConfigMapValues(configDefaults, pipeline.Spec.OptionalPipelineProperties),
 		common.ApplyProxySettings,
 		common.DeploymentImages(images),
-		common.InjectLabelOnNamespace(),
+		common.InjectLabelOnNamespace(proxyLabel),
 	}
-	extra = append(extra, r.extension.Transformers(instance)...)
-	return common.Transform(ctx, manifest, instance, extra...)
+	trns = append(trns, extra...)
+	return common.Transform(ctx, manifest, instance, trns...)
 }
 
 func (r *Reconciler) installed(ctx context.Context, instance v1alpha1.TektonComponent) (*mf.Manifest, error) {
