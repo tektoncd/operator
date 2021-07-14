@@ -135,11 +135,15 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 // and platform transformations applied
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	instance := comp.(*v1alpha1.TektonTrigger)
+	triggerImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.TriggersImagePrefix))
+	// adding extension's transformers first to run them before `extra` transformers
+	trns := r.extension.Transformers(instance)
 	extra := []mf.Transformer{
 		common.ApplyProxySettings,
+		common.DeploymentImages(triggerImages),
 	}
-	extra = append(extra, r.extension.Transformers(instance)...)
-	return common.Transform(ctx, manifest, instance, extra...)
+	trns = append(trns, extra...)
+	return common.Transform(ctx, manifest, instance, trns...)
 }
 
 func (r *Reconciler) installed(ctx context.Context, instance v1alpha1.TektonComponent) (*mf.Manifest, error) {

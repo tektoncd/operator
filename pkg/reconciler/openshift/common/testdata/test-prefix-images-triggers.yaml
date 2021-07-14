@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-triggers-controller
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: "v0.14.2"
+    app.kubernetes.io/part-of: tekton-triggers
+    # tekton.dev/release value replaced with inputs.params.versionTag in triggers/tekton/publish.yaml
+    triggers.tekton.dev/release: "v0.14.2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: controller
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: tekton-triggers
+  template:
+    metadata:
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+      labels:
+        app.kubernetes.io/name: controller
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/version: "v0.14.2"
+        app.kubernetes.io/part-of: tekton-triggers
+        app: tekton-triggers-controller
+        triggers.tekton.dev/release: "v0.14.2"
+        # version value replaced with inputs.params.versionTag in triggers/tekton/publish.yaml
+        version: "v0.14.2"
+    spec:
+      serviceAccountName: tekton-triggers-controller
+      containers:
+        - name: tekton-triggers-controller
+          image: "gcr.io/tekton-releases/github.com/tektoncd/triggers/cmd/controller:v0.14.2@sha256:58baa0aa0eaca368b8090bcb6e88024847d14df2952cdfe7f22be6132a7732c9"
+          args: ["-logtostderr", "-stderrthreshold", "INFO", "-el-image", "gcr.io/tekton-releases/github.com/tektoncd/triggers/cmd/eventlistenersink:v0.14.2@sha256:b653776331a65a239df4bf833fc91bd0fe4dc28008ff4475f4cdd19415d93e55", "-el-port", "8080", "-el-readtimeout", "5", "-el-writetimeout", "40", "-el-idletimeout", "120", "-el-timeouthandler", "30", "-period-seconds", "10", "-failure-threshold", "1"]
+          env:
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONFIG_LOGGING_NAME
+              value: config-logging-triggers
+            - name: CONFIG_OBSERVABILITY_NAME
+              value: config-observability-triggers
+            - name: METRICS_DOMAIN
+              value: tekton.dev/triggers
+            - name: METRICS_PROMETHEUS_PORT
+              value: "9000"
+          securityContext:
+            allowPrivilegeEscalation: false
+            # User 65532 is the distroless nonroot user ID
+            runAsUser: 65532
