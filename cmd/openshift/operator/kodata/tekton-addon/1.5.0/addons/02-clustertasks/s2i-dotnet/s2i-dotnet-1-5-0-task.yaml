@@ -24,7 +24,7 @@ spec:
   params:
     - name: BUILDER_IMAGE
       description: The location of the buildah builder image.
-      default: registry.redhat.io/rhel8/buildah@sha256:6a68ece207bc5fd8db2dd5cc2d0b53136236fb5178eb5b71eebe5d07a3c33d13
+      default: registry.redhat.io/rhel8/buildah@sha256:99cae35f40c7ec050fed3765b2b27e0b8bbea2aa2da7c16408e2ca13c60ff8ee
     - name: VERSION
       description: The tag of .NET imagestream for .NET version
       default: '3.1-ubi8'
@@ -45,7 +45,7 @@ spec:
       mountPath: /workspace/source
   steps:
     - name: generate
-      image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:ba51e5e74ff5a29fd429b0bb77bc2130e5284826a60d042fc4e4374381a7a308
+      image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:637c15600359cb45bc01445b5e811b6240ca239f0ebfe406b50146e34f68f631
       workingDir: $(workspaces.source.path)
       command: ['s2i', 'build', '$(params.PATH_CONTEXT)', 'image-registry.openshift-image-registry.svc:5000/openshift/dotnet:$(params.VERSION)', '--as-dockerfile', '/gen-source/Dockerfile.gen']
       volumeMounts:
