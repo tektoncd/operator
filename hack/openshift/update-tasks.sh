@@ -183,36 +183,35 @@ main() {
   # ./manifest-tool inspect registry.redhat.io/rhel8/buildah:latest
   change_task_image "$dest_dir" "$version"  \
     "buildah"  "quay.io/buildah"  \
-    "registry.redhat.io/rhel8/buildah@sha256:6a68ece207bc5fd8db2dd5cc2d0b53136236fb5178eb5b71eebe5d07a3c33d13"
+    "registry.redhat.io/rhel8/buildah@sha256:99cae35f40c7ec050fed3765b2b27e0b8bbea2aa2da7c16408e2ca13c60ff8ee"
 
   change_task_image "$dest_dir" "$version"  \
     "openshift-client"  'quay.io/openshift/origin-cli:$(params.VERSION)'  \
     "image-registry.openshift-image-registry.svc:5000/openshift/cli:latest"
 
-  # ./manifest-tool inspect registry.redhat.io/openshift-serverless-1/client-kn-rhel8:0.19
+  # ./manifest-tool inspect registry.redhat.io/openshift-serverless-1/client-kn-rhel8:0.22
   change_task_image "$dest_dir" "$version"  \
     "kn"  "gcr.io/knative-releases/knative.dev/client/cmd/kn:latest"  \
-    "registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:efb51d4a337566ca8532073cd598cc2cfbbec260f037ce4de19d4c67ee411358"
+    "registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:286f6b4c008307df1bc369891ef9e806050d3a5f5e77ee0c9313ffdb350abbcb"
 
   change_task_image "$dest_dir" "$version"  \
     "kn-apply"  "gcr.io/knative-releases/knative.dev/client/cmd/kn:latest"  \
-    "registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:efb51d4a337566ca8532073cd598cc2cfbbec260f037ce4de19d4c67ee411358"
+    "registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:286f6b4c008307df1bc369891ef9e806050d3a5f5e77ee0c9313ffdb350abbcb"
 
   # ./manifest-tool inspect registry.redhat.io/rhel8/skopeo:latest
   change_task_image "$dest_dir" "$version"  \
     "skopeo-copy"  "quay.io/skopeo/stable"  \
-    "registry.redhat.io/rhel8/skopeo@sha256:34e2d9e273bf610509984193a19aeea44e6061e86baca62a969661d122298bbf"
+    "registry.redhat.io/rhel8/skopeo@sha256:7297e3b42ef1d56a5bc1d64a979d05c157bf31b476cc526386c873a89459610a"
 
-  # this will do the change for all pipelines catalog tasks except buildah-pr
   for t in ${!OPENSHIFT_CATALOG_TASKS[@]} ; do
     # ./manifest-tool inspect registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8:v1.3.1
     change_task_image "$dest_dir" "$version"  \
       "$t"  "quay.io/openshift-pipeline/s2i"  \
-      "registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:ba51e5e74ff5a29fd429b0bb77bc2130e5284826a60d042fc4e4374381a7a308"
+      "registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:637c15600359cb45bc01445b5e811b6240ca239f0ebfe406b50146e34f68f631"
 
     change_task_image "$dest_dir" "$version"  \
       "$t"  "quay.io/buildah"  \
-      "registry.redhat.io/rhel8/buildah@sha256:6a68ece207bc5fd8db2dd5cc2d0b53136236fb5178eb5b71eebe5d07a3c33d13"
+      "registry.redhat.io/rhel8/buildah@sha256:99cae35f40c7ec050fed3765b2b27e0b8bbea2aa2da7c16408e2ca13c60ff8ee"
 
   done
 

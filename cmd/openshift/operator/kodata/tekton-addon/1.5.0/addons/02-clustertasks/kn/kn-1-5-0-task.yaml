@@ -20,7 +20,7 @@ spec:
   params:
   - name: kn-image
     description: kn CLI container image to run this task
-    default: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:efb51d4a337566ca8532073cd598cc2cfbbec260f037ce4de19d4c67ee411358
+    default: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:286f6b4c008307df1bc369891ef9e806050d3a5f5e77ee0c9313ffdb350abbcb
   - name: ARGS
     type: array
     description: kn CLI arguments to run
