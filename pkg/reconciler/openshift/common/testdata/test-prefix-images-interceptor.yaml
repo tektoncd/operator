@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-triggers-core-interceptors
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: core-interceptors
+    app.kubernetes.io/component: interceptors
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/version: "v0.14.2"
+    app.kubernetes.io/part-of: tekton-triggers
+    # tekton.dev/release value replaced with inputs.params.versionTag in triggers/tekton/publish.yaml
+    triggers.tekton.dev/release: "v0.14.2"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: core-interceptors
+      app.kubernetes.io/component: interceptors
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: tekton-triggers
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: core-interceptors
+        app.kubernetes.io/component: interceptors
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/version: "v0.14.2"
+        app.kubernetes.io/part-of: tekton-triggers
+        app: tekton-triggers-core-interceptors
+        triggers.tekton.dev/release: "v0.14.2"
+        # version value replaced with inputs.params.versionTag in triggers/tekton/publish.yaml
+        version: "v0.14.2"
+    spec:
+      serviceAccountName: tekton-triggers-core-interceptors
+      containers:
+        - name: tekton-triggers-core-interceptors
+          image: "gcr.io/tekton-releases/github.com/tektoncd/triggers/cmd/interceptors:v0.14.2@sha256:d62beb1410c8200837176799f6424da6eafebc577af067743399a31360cca63e"
+          args: ["-logtostderr", "-stderrthreshold", "INFO"]
+          env:
+          - name: SYSTEM_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: CONFIG_LOGGING_NAME
+            value: config-logging-triggers
+          - name: CONFIG_OBSERVABILITY_NAME
+            value: config-observability-triggers
+          - name: METRICS_DOMAIN
+            value: tekton.dev/triggers
+          securityContext:
+            allowPrivilegeEscalation: false
+            # User 65532 is the distroless nonroot user ID
+            runAsUser: 65532
+            runAsGroup: 65532
+            capabilities:
+              drop:
+                - all
