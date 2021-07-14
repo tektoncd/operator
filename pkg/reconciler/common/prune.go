@@ -142,7 +142,7 @@ func getPruningContainers(resources, namespaces []string, keep uint, tknImage st
 			Name:                     jobName,
 			Image:                    tknImage,
 			Command:                  []string{"/bin/sh", "-c"},
-			Args:                     cmdArgs,
+			Args:                     []string{cmdArgs},
 			TerminationMessagePolicy: "FallbackToLogsOnError",
 		}
 		containers = append(containers, container)
@@ -151,11 +151,11 @@ func getPruningContainers(resources, namespaces []string, keep uint, tknImage st
 	return containers
 }
 
-func deleteCommand(resources []string, keep uint, ns string) []string {
-	cmdArgs := []string{}
+func deleteCommand(resources []string, keep uint, ns string) string {
+	var cmdArgs string
 	for _, res := range resources {
-		cmd := "tkn " + strings.ToLower(res) + " delete --keep " + fmt.Sprint(keep) + " -f -n " + ns
-		cmdArgs = append(cmdArgs, cmd)
+		cmd := "tkn " + strings.ToLower(res) + " delete --keep=" + fmt.Sprint(keep) + " -n " + ns + " -f ; "
+		cmdArgs = cmdArgs + cmd
 	}
 	return cmdArgs
 }
