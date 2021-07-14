@@ -18,7 +18,6 @@ package tektonaddon
 
 import (
 	"path"
-	"runtime"
 
 	mf "github.com/manifestival/manifestival"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -74,12 +73,7 @@ func GeneratePipelineTemplates(templatePath string, manifest *mf.Manifest) error
 	workspacedTaskGenerators := []taskGenerator{
 		&pipeline{environment: "openshift", nameSuffix: "", generateDeployTask: openshiftDeployTask},
 		&pipeline{environment: "kubernetes", nameSuffix: "-deployment", generateDeployTask: kubernetesDeployTask},
-	}
-
-	if runtime.GOARCH == "amd64" {
-		workspacedTaskGenerators = append(workspacedTaskGenerators,
-			&pipeline{environment: "knative", nameSuffix: "-knative", generateDeployTask: knativeDeployTask},
-		)
+		&pipeline{environment: "knative", nameSuffix: "-knative", generateDeployTask: knativeDeployTask},
 	}
 
 	wps, err := generateBasePipeline(workspacedTemplate, workspacedTaskGenerators, !usingPipelineResource)
