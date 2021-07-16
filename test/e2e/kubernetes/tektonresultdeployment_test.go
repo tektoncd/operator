@@ -21,6 +21,7 @@ package kubernetes
 import (
 	"context"
 	"io/ioutil"
+	"os"
 	"testing"
 
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +36,10 @@ import (
 
 // TestTektonResultDeployment verifies the TektonResult creation, deployment recreation, and TektonResult deletion.
 func TestTektonResultDeployment(t *testing.T) {
+	platform := os.Getenv("PLATFORM")
+	if platform == "linux/ppc64le" || platform == "linux/s390x" {
+		t.Skipf("Tekton Result is not available for %q", platform)
+	}
 	clients := client.Setup(t)
 
 	crNames := utils.ResourceNames{
