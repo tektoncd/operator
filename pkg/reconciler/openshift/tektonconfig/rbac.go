@@ -41,7 +41,8 @@ const (
 	serviceCABundleConfigMap = "config-service-cabundle"
 	trustedCABundleConfigMap = "config-trusted-cabundle"
 	clusterInterceptors      = "openshift-pipelines-clusterinterceptors"
-	namespaceRbacLabel       = "openshift-pipelines.tekton.dev/namespace-ready"
+	namespaceVersionLabel    = "openshift-pipelines.tekton.dev/namespace-reconcile-version"
+	version                  = "v1.5"
 )
 
 // Namespace Regex to ignore the namespace for creating rbac resources.
@@ -59,7 +60,7 @@ func (r *rbac) cleanUp(ctx context.Context) error {
 	// fetch the list of all namespaces which have label
 	// `openshift-pipelines.tekton.dev/namespace-ready: true`
 	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s = true", namespaceRbacLabel),
+		LabelSelector: fmt.Sprintf("%s = %s", namespaceVersionLabel, version),
 	})
 	if err != nil {
 		return err
@@ -67,7 +68,7 @@ func (r *rbac) cleanUp(ctx context.Context) error {
 	// loop on namespaces and remove label if exist
 	for _, n := range namespaces.Items {
 		labels := n.GetLabels()
-		delete(labels, namespaceRbacLabel)
+		delete(labels, namespaceVersionLabel)
 		n.SetLabels(labels)
 		if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &n, metav1.UpdateOptions{}); err != nil {
 			return err
@@ -83,7 +84,7 @@ func (r *rbac) createResources(ctx context.Context) error {
 	// fetch the list of all namespaces which doesn't have label
 	// `openshift-pipelines.tekton.dev/namespace-ready: true`
 	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s != true", namespaceRbacLabel),
+		LabelSelector: fmt.Sprintf("%s != %s", namespaceVersionLabel, version),
 	})
 	if err != nil {
 		return err
@@ -143,7 +144,7 @@ func (r *rbac) createResources(ctx context.Context) error {
 		if len(nsLabels) == 0 {
 			nsLabels = map[string]string{}
 		}
-		nsLabels[namespaceRbacLabel] = "true"
+		nsLabels[namespaceVersionLabel] = version
 		n.SetLabels(nsLabels)
 		if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &n, metav1.UpdateOptions{}); err != nil {
 			return err
