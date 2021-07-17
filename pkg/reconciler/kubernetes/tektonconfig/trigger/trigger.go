@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 
@@ -36,7 +37,7 @@ import (
 
 func CreateTriggerCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
 	configInstance := instance.(*v1alpha1.TektonConfig)
-	if _, err := ensureTektonTriggerExists(client.TektonTriggers(), configInstance.Spec.TargetNamespace); err != nil {
+	if _, err := ensureTektonTriggerExists(client.TektonTriggers(), configInstance); err != nil {
 		return errors.New(err.Error())
 	}
 	if _, err := waitForTektonTriggerState(client.TektonTriggers(), common.TriggerResourceName,
@@ -47,9 +48,19 @@ func CreateTriggerCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.
 	return nil
 }
 
-func ensureTektonTriggerExists(clients op.TektonTriggerInterface, targetNS string) (*v1alpha1.TektonTrigger, error) {
+func ensureTektonTriggerExists(clients op.TektonTriggerInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonTrigger, error) {
 	ttCR, err := GetTrigger(clients, common.TriggerResourceName)
 	if err == nil {
+		// if the trigger spec is changed then update the instance
+		if config.Spec.TargetNamespace != ttCR.Spec.TargetNamespace ||
+			!reflect.DeepEqual(ttCR.Spec.Config, config.Spec.Config) {
+
+			ttCR.Spec.TargetNamespace = config.Spec.TargetNamespace
+			ttCR.Spec.Config = config.Spec.Config
+
+			return clients.Update(context.TODO(), ttCR, metav1.UpdateOptions{})
+		}
+
 		return ttCR, err
 	}
 	if apierrs.IsNotFound(err) {
@@ -59,8 +70,9 @@ func ensureTektonTriggerExists(clients op.TektonTriggerInterface, targetNS strin
 			},
 			Spec: v1alpha1.TektonTriggerSpec{
 				CommonSpec: v1alpha1.CommonSpec{
-					TargetNamespace: targetNS,
+					TargetNamespace: config.Spec.TargetNamespace,
 				},
+				Config: config.Spec.Config,
 			},
 		}
 		return clients.Create(context.TODO(), ttCR, metav1.CreateOptions{})

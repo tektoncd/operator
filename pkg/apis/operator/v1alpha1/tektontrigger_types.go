@@ -52,6 +52,9 @@ func (tp *TektonTrigger) GetStatus() TektonComponentStatus {
 // TektonTriggerSpec defines the desired state of TektonTrigger
 type TektonTriggerSpec struct {
 	CommonSpec `json:",inline"`
+	// Config holds the configuration for resources created by TektonTrigger
+	// +optional
+	Config Config `json:"config,omitempty"`
 }
 
 // TektonTriggerStatus defines the observed state of TektonTrigger
