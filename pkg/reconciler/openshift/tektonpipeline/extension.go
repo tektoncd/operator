@@ -47,9 +47,17 @@ const (
 	DefaultTargetNamespace          = "openshift-pipelines"
 	AnnotationPreserveNS            = "operator.tekton.dev/preserve-namespace"
 	AnnotationPreserveRBSubjectNS   = "operator.tekton.dev/preserve-rb-subject-namespace"
+	monitoringLabel                 = "openshift.io/cluster-monitoring=true"
+	pipelinesPrefix                 = "quay.io/openshift-pipeline/tektoncd-pipeline-"
 )
 
-// NoPlatform "generates" a NilExtension
+var (
+	replaceImgs = map[string]string{
+		"-shell-image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+	}
+	skipImgs = []string{"-gsutil-image"}
+)
+
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	logger := logging.FromContext(ctx)
 	mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
@@ -75,9 +83,11 @@ type openshiftExtension struct {
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
+		common.InjectLabelOnNamespace(monitoringLabel),
 		injectDefaultSA(DefaultSA),
 		setDisableAffinityAssistant(DefaultDisableAffinityAssistant),
 		occommon.ApplyCABundles,
+		occommon.UpdateDeployments(pipelinesPrefix, replaceImgs, skipImgs),
 	}
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {

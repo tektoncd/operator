@@ -25,7 +25,8 @@ import (
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 )
 
-// NoPlatform "generates" a NilExtension
+const triggersPrefix = "quay.io/openshift-pipeline/tektoncd-triggers-"
+
 func OpenShiftExtension(context.Context) common.Extension {
 	return openshiftExtension{}
 }
@@ -33,9 +34,9 @@ func OpenShiftExtension(context.Context) common.Extension {
 type openshiftExtension struct{}
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	triggerImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.TriggersImagePrefix))
 	return []mf.Transformer{
-		common.DeploymentImages(triggerImages),
+		occommon.UpdateDeployments(triggersPrefix, map[string]string{}, []string{}),
+		occommon.RemoveRunAsGroup(),
 		occommon.ApplyCABundles,
 	}
 }
