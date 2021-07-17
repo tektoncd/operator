@@ -502,6 +502,18 @@ func (r *rbac) updateClusterRoleBinding(ctx context.Context, rb *rbacv1.ClusterR
 		rb.SetOwnerReferences([]metav1.OwnerReference{r.ownerRef})
 	}
 
+	doUpdateOwnerRef := true
+	for _, ref := range ownerRef {
+		if ref.APIVersion == r.ownerRef.APIVersion && ref.Kind == r.ownerRef.Kind && ref.Name == r.ownerRef.Name {
+			doUpdateOwnerRef = false
+			break
+		}
+	}
+
+	if doUpdateOwnerRef {
+		ownerRef = append(ownerRef, r.ownerRef)
+	}
+
 	if hasSubject && (len(ownerRef) != 0) {
 		logger.Info("clusterrolebinding is up to date", "action", "none")
 		return nil
