@@ -141,6 +141,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	extra := []mf.Transformer{
 		common.ApplyProxySettings,
 		common.DeploymentImages(triggerImages),
+		common.AddConfiguration(instance.Spec.Config),
 	}
 	trns = append(trns, extra...)
 	return common.Transform(ctx, manifest, instance, trns...)

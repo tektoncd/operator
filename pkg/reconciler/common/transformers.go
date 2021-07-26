@@ -525,3 +525,28 @@ func InjectLabelOnNamespace(label string) mf.Transformer {
 		return nil
 	}
 }
+
+func AddConfiguration(config v1alpha1.Config) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		d.Spec.Template.Spec.NodeSelector = config.NodeSelector
+		d.Spec.Template.Spec.Tolerations = config.Tolerations
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}

@@ -53,6 +53,9 @@ func (tp *TektonPipeline) GetStatus() TektonComponentStatus {
 type TektonPipelineSpec struct {
 	CommonSpec         `json:",inline"`
 	PipelineProperties `json:",inline"`
+	// Config holds the configuration for resources created by TektonPipeline
+	// +optional
+	Config Config `json:"config,omitempty"`
 }
 
 // TektonPipelineStatus defines the observed state of TektonPipeline

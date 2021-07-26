@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"reflect"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -69,6 +70,9 @@ func (p Prune) IsEmpty() bool {
 // TektonConfigSpec defines the desired state of TektonConfig
 type TektonConfigSpec struct {
 	Profile string `json:"profile,omitempty"`
+	// Config holds the configuration for resources created by TektonConfig
+	// +optional
+	Config Config `json:"config,omitempty"`
 	// Pruner holds the prune config
 	// +optional
 	Pruner     Prune `json:"pruner,omitempty"`
@@ -116,4 +120,9 @@ func (a Addon) IsEmpty() bool {
 // Pipeline defines the field to customize Pipeline component
 type Pipeline struct {
 	PipelineProperties `json:",inline"`
+}
+
+type Config struct {
+	NodeSelector map[string]string   `json:"nodeSelector,omitempty"`
+	Tolerations  []corev1.Toleration `json:"tolerations,omitempty"`
 }

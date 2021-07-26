@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -453,4 +454,35 @@ func TestInjectLabelOnNamespace(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestAddConfiguration(t *testing.T) {
+
+	testData := path.Join("testdata", "test-add-configurations.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	config := v1alpha1.Config{
+		NodeSelector: map[string]string{
+			"foo": "bar",
+		},
+		Tolerations: []corev1.Toleration{
+			{
+				Key:      "foo",
+				Operator: "equals",
+				Value:    "bar",
+				Effect:   "noSchedule",
+			},
+		},
+	}
+
+	manifest, err = manifest.Transform(AddConfiguration(config))
+	assertNoEror(t, err)
+
+	d := &v1beta1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, d)
+	assertNoEror(t, err)
+
+	assert.Equal(t, d.Spec.Template.Spec.NodeSelector["foo"], config.NodeSelector["foo"])
+	assert.Equal(t, d.Spec.Template.Spec.Tolerations[0].Key, config.Tolerations[0].Key)
 }
