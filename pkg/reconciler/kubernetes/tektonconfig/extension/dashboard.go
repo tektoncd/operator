@@ -21,9 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -35,7 +35,7 @@ import (
 
 func CreateDashboardCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
 	configInstance := instance.(*v1alpha1.TektonConfig)
-	if _, err := ensureTektonDashboardExists(client.TektonDashboards(), configInstance.Spec.TargetNamespace); err != nil {
+	if _, err := ensureTektonDashboardExists(client.TektonDashboards(), configInstance); err != nil {
 		return errors.New(err.Error())
 	}
 	if _, err := waitForTektonDashboardState(client.TektonDashboards(), common.DashboardResourceName,
@@ -46,9 +46,19 @@ func CreateDashboardCR(instance v1alpha1.TektonComponent, client operatorv1alpha
 	return nil
 }
 
-func ensureTektonDashboardExists(clients op.TektonDashboardInterface, targetNS string) (*v1alpha1.TektonDashboard, error) {
+func ensureTektonDashboardExists(clients op.TektonDashboardInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonDashboard, error) {
 	tdCR, err := GetDashboard(clients, common.DashboardResourceName)
 	if err == nil {
+		// if the dashboard spec is changed then update the instance
+		if config.Spec.TargetNamespace != tdCR.Spec.TargetNamespace ||
+			!reflect.DeepEqual(tdCR.Spec.Config, config.Spec.Config) {
+
+			tdCR.Spec.TargetNamespace = config.Spec.TargetNamespace
+			tdCR.Spec.Config = config.Spec.Config
+
+			return clients.Update(context.TODO(), tdCR, metav1.UpdateOptions{})
+		}
+
 		return tdCR, err
 	}
 	if apierrs.IsNotFound(err) {
@@ -58,8 +68,9 @@ func ensureTektonDashboardExists(clients op.TektonDashboardInterface, targetNS s
 			},
 			Spec: v1alpha1.TektonDashboardSpec{
 				CommonSpec: v1alpha1.CommonSpec{
-					TargetNamespace: targetNS,
+					TargetNamespace: config.Spec.TargetNamespace,
 				},
+				Config: config.Spec.Config,
 			},
 		}
 		return clients.Create(context.TODO(), tdCR, metav1.CreateOptions{})

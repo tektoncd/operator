@@ -52,6 +52,9 @@ func (tp *TektonDashboard) GetStatus() TektonComponentStatus {
 // TektonDashboardSpec defines the desired state of TektonDashboard
 type TektonDashboardSpec struct {
 	CommonSpec `json:",inline"`
+	// Config holds the configuration for resources created by TektonDashboard
+	// +optional
+	Config Config `json:"config,omitempty"`
 }
 
 // TektonDashboardStatus defines the observed state of TektonDashboard

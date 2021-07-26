@@ -52,10 +52,12 @@ func ensureTektonPipelineExists(clients op.TektonPipelineInterface, config *v1al
 	if err == nil {
 		// if the pipeline spec is changed then update the instance
 		if config.Spec.TargetNamespace != tpCR.Spec.TargetNamespace ||
-			!reflect.DeepEqual(tpCR.Spec.PipelineProperties, config.Spec.Pipeline.PipelineProperties) {
+			!reflect.DeepEqual(tpCR.Spec.PipelineProperties, config.Spec.Pipeline.PipelineProperties) ||
+			!reflect.DeepEqual(tpCR.Spec.Config, config.Spec.Config) {
 
 			tpCR.Spec.TargetNamespace = config.Spec.TargetNamespace
 			tpCR.Spec.PipelineProperties = config.Spec.Pipeline.PipelineProperties
+			tpCR.Spec.Config = config.Spec.Config
 
 			return clients.Update(context.TODO(), tpCR, metav1.UpdateOptions{})
 		}
@@ -72,6 +74,7 @@ func ensureTektonPipelineExists(clients op.TektonPipelineInterface, config *v1al
 					TargetNamespace: config.Spec.TargetNamespace,
 				},
 				PipelineProperties: config.Spec.Pipeline.PipelineProperties,
+				Config:             config.Spec.Config,
 			},
 		}
 		return clients.Create(context.TODO(), tpCR, metav1.CreateOptions{})
