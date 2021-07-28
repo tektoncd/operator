@@ -14,6 +14,8 @@ FETCH_STRATEGY_RELEASE_MANIFEST = "fetch-strategy-release-manifest"
 UPGRADE_STRATEGY_SEMVER = "upgrade-strategy-sermver-mode"
 UPGRADE_STRATEGY_REPLACE = "upgrade-strategy-replaces-mode"
 VERBOSE = False
+OPERATOR_SDK = os.getenv("OPERATOR_SDK", "operator-sdk")
+
 
 def buildConfig():
     parser = setParser()
@@ -184,7 +186,7 @@ def genBundleCmd(config):
     # https://github.com/operator-framework/operator-sdk/issues/4951
     return '''
     {resource_gen} | \
-            operator-sdk generate bundle \
+            {operator_sdk} generate bundle \
                 --channels {channels} \
                 --default-channel {default_channel} \
                 --kustomize-dir manifests \
@@ -192,6 +194,7 @@ def genBundleCmd(config):
                 --package {packagename} \
                 --version {version};
     '''.format(
+        operator_sdk=OPERATOR_SDK,
         resource_gen=aggregate_resources,
         channels=config["channels"],
         default_channel=config["default-channel"],
