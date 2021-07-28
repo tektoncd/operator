@@ -12,7 +12,10 @@ metadata:
       \    \"kind\": \"TektonPipeline\",\n    \"metadata\": {\n      \"name\": \"\
       pipeline\"\n    },\n    \"spec\": {\n      \"targetNamespace\": \"tekton-pipelines\"\
       \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
-      \    \"kind\": \"TektonTrigger\",\n    \"metadata\": {\n      \"name\": \"trigger\"\
+      \    \"kind\": \"TektonResult\",\n    \"metadata\": {\n      \"name\": \"result\"\
+      \n    },\n    \"spec\": {\n      \"targetNamespace\": \"tekton-pipelines\"\n\
+      \    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n \
+      \   \"kind\": \"TektonTrigger\",\n    \"metadata\": {\n      \"name\": \"trigger\"\
       \n    },\n    \"spec\": {\n      \"targetNamespace\": \"tekton-pipelines\"\n\
       \    }\n  }\n]"
     capabilities: Basic Install
@@ -20,11 +23,11 @@ metadata:
     certified: 'false'
     description: Tekton Pipelines is a Kubernetes-Native CI/CD solution for building
       CI/CD pipelines.
-    operators.operatorframework.io/builder: operator-sdk-v1.8.0
+    operators.operatorframework.io/builder: operator-sdk-v1.7.1+git
     operators.operatorframework.io/project_layout: unknown
     repository: https://github.com/tektoncd/operator
     support: The Tetkon Authors
-  name: tektoncd-operator.v1.2.3
+  name: tektoncd-operator.v1.1.1
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -76,6 +79,9 @@ spec:
       displayName: TektonPipeline
       kind: TektonPipeline
       name: tektonpipelines.operator.tekton.dev
+      version: v1alpha1
+    - kind: TektonResult
+      name: tektonresults.operator.tekton.dev
       version: v1alpha1
     - description: 'TektonTrigger installs Tekton Triggers on a cluster. The operator
         installs Tekton Triggers on a cluster
@@ -576,6 +582,49 @@ spec:
           - deletecollection
           - patch
           - watch
+        - apiGroups:
+          - batch
+          resources:
+          - cronjobs
+          verbs:
+          - delete
+          - create
+          - patch
+          - get
+          - list
+          - update
+          - watch
+        - apiGroups:
+          - admissionregistration.k8s.io
+          resources:
+          - mutatingwebhookconfigurations
+          - validatingwebhookconfigurations
+          verbs:
+          - delete
+          - create
+          - patch
+          - get
+          - list
+          - update
+          - watch
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        - apiGroups:
+          - results.tekton.dev
+          resources:
+          - '*'
+          verbs:
+          - '*'
         serviceAccountName: tekton-operator
       deployments:
       - name: tekton-operator
@@ -593,8 +642,6 @@ spec:
             spec:
               containers:
               - env:
-                - name: IMAGE_PIPELINES_PROXY
-                  value: gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/kubernetes/webhook@sha256:2dd7d2670830c805e523c5f383b11c69682eaa802f663ba8f93698f5f5d67aa3
                 - name: SYSTEM_NAMESPACE
                   valueFrom:
                     fieldRef:
@@ -605,19 +652,45 @@ spec:
                       fieldPath: metadata.name
                 - name: OPERATOR_NAME
                   value: tekton-operator
-                - name: AUTOINSTALL_COMPONENTS
-                  valueFrom:
-                    configMapKeyRef:
-                      key: AUTOINSTALL_COMPONENTS
-                      name: tekton-config-defaults
-                - name: DEFAULT_TARGET_NAMESPACE
-                  valueFrom:
-                    configMapKeyRef:
-                      key: DEFAULT_TARGET_NAMESPACE
-                      name: tekton-config-defaults
-                image: gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/kubernetes/operator@sha256:7e55e79a3da2fe96a61af5731abab59eb8fb33c4024e9975a391797ed7ca05dc
+                - name: IMAGE_PIPELINES_PROXY
+                  value: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook:develEnv
+                - name: IMAGE_JOB_PRUNER_TKN
+                  value: gcr.io/tekton-releases/dogfooding/tkn@sha256:f69a02ef099d8915e9e4ea1b74e43b7a9309fc97cf23cb457ebf191e73491677DEVEL
+                image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator:develContainer
                 imagePullPolicy: Always
                 name: tekton-operator
+                resources: {}
+              serviceAccountName: tekton-operator
+      - name: tekton-operator-webhook
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              name: tekton-operator-webhook
+          strategy: {}
+          template:
+            metadata:
+              labels:
+                app: tekton-operator
+                name: tekton-operator-webhook
+            spec:
+              containers:
+              - env:
+                - name: SYSTEM_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: CONFIG_LOGGING_NAME
+                  value: config-logging
+                - name: WEBHOOK_SERVICE_NAME
+                  value: tekton-operator-webhook
+                - name: WEBHOOK_SECRET_NAME
+                  value: tekton-operator-webhook-certs
+                image: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook
+                name: tekton-operator-webhook
+                ports:
+                - containerPort: 8443
+                  name: https-webhook
                 resources: {}
               serviceAccountName: tekton-operator
     strategy: deployment
@@ -651,4 +724,44 @@ spec:
   maturity: alpha
   provider:
     name: The Tekton Authors
-  version: 1.2.3
+  relatedImages:
+  - image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator:develContainer
+    name: TEKTON_OPERATOR
+  - image: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook:develEnv
+    name: IMAGE_PIPELINES_PROXY
+  - image: gcr.io/tekton-releases/dogfooding/tkn@sha256:f69a02ef099d8915e9e4ea1b74e43b7a9309fc97cf23cb457ebf191e73491677DEVEL
+    name: IMAGE_JOB_PRUNER_TKN
+  - image: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook
+    name: TEKTON_OPERATOR_WEBHOOK
+  version: 1.1.1
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1beta1
+    - v1
+    containerPort: 443
+    deploymentName: tekton-operator-webhook
+    failurePolicy: Fail
+    generateName: config.webhook.operator.tekton.dev
+    sideEffects: None
+    targetPort: 8443
+    type: ValidatingAdmissionWebhook
+  - admissionReviewVersions:
+    - v1beta1
+    - v1
+    containerPort: 443
+    deploymentName: tekton-operator-webhook
+    failurePolicy: Fail
+    generateName: validation.webhook.operator.tekton.dev
+    sideEffects: None
+    targetPort: 8443
+    type: ValidatingAdmissionWebhook
+  - admissionReviewVersions:
+    - v1beta1
+    - v1
+    containerPort: 443
+    deploymentName: tekton-operator-webhook
+    failurePolicy: Fail
+    generateName: webhook.operator.tekton.dev
+    sideEffects: None
+    targetPort: 8443
+    type: MutatingAdmissionWebhook

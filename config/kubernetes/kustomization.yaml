@@ -33,4 +33,5 @@ kind: Kustomization
 resources:
 - ../base/
 - ../base/300-operator_v1alpha1_dashboard_crd.yaml
+- ../base/300-operator_v1alpha1_result_crd.yaml
 - service_account.yaml

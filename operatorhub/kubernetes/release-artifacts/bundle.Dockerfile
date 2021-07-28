@@ -7,7 +7,7 @@ LABEL operators.operatorframework.io.bundle.metadata.v1=metadata/
 LABEL operators.operatorframework.io.bundle.package.v1=tektoncd-operator
 LABEL operators.operatorframework.io.bundle.channels.v1=a,b
 LABEL operators.operatorframework.io.bundle.channel.default.v1=a
-LABEL operators.operatorframework.io.metrics.builder=operator-sdk-v1.8.0
+LABEL operators.operatorframework.io.metrics.builder=operator-sdk-v1.7.1+git
 LABEL operators.operatorframework.io.metrics.mediatype.v1=metrics+v1
 LABEL operators.operatorframework.io.metrics.project_layout=unknown
 
