@@ -39,12 +39,11 @@ func TestUpdateDeployments(t *testing.T) {
 	pipelinesPrefix := "quay.io/openshift-pipeline/tektoncd-pipeline-"
 
 	replaceImages := map[string]string{
-		"-shell-image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+		"-shell-image":  "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+		"-gsutil-image": "no-image-available",
 	}
-	skip := []string{
-		"-gsutil-image",
-	}
-	newManifest, err := manifest.Transform(UpdateDeployments(pipelinesPrefix, replaceImages, skip))
+
+	newManifest, err := manifest.Transform(UpdateDeployments(pipelinesPrefix, replaceImages))
 	assert.NilError(t, err)
 
 	got := &appsv1.Deployment{}
@@ -75,7 +74,7 @@ func TestUpdateDeploymentsTriggers(t *testing.T) {
 
 	triggersPrefix := "quay.io/openshift-pipeline/tektoncd-triggers-"
 
-	newManifest, err := manifest.Transform(UpdateDeployments(triggersPrefix, map[string]string{}, []string{}))
+	newManifest, err := manifest.Transform(UpdateDeployments(triggersPrefix, map[string]string{}))
 	assert.NilError(t, err)
 	newManifest, err = newManifest.Transform(RemoveRunAsGroup())
 	assert.NilError(t, err)
@@ -108,7 +107,7 @@ func TestUpdateDeploymentsInterceptor(t *testing.T) {
 
 	triggersPrefix := "quay.io/openshift-pipeline/tektoncd-triggers-"
 
-	newManifest, err := manifest.Transform(UpdateDeployments(triggersPrefix, map[string]string{}, []string{}))
+	newManifest, err := manifest.Transform(UpdateDeployments(triggersPrefix, map[string]string{}))
 	assert.NilError(t, err)
 	newManifest, err = newManifest.Transform(RemoveRunAsGroup())
 	assert.NilError(t, err)
