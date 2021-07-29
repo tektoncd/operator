@@ -49,9 +49,9 @@ const (
 
 var (
 	replaceImgs = map[string]string{
-		"-shell-image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+		"-shell-image":  "registry.access.redhat.com/ubi8/ubi-minimal:latest",
+		"-gsutil-image": "no-image-available",
 	}
-	skipImgs = []string{"-gsutil-image"}
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -81,7 +81,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	return []mf.Transformer{
 		common.InjectLabelOnNamespace(monitoringLabel),
 		occommon.ApplyCABundles,
-		occommon.UpdateDeployments(pipelinesPrefix, replaceImgs, skipImgs),
+		occommon.UpdateDeployments(pipelinesPrefix, replaceImgs),
 	}
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {

@@ -39,7 +39,7 @@ import (
 
 // UpdateDeployments will also remove runAsUser from container
 
-func UpdateDeployments(prefix string, replaceImg map[string]string, skipImages []string) mf.Transformer {
+func UpdateDeployments(prefix string, replaceImg map[string]string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() != "Deployment" {
 			return nil
@@ -59,10 +59,6 @@ func UpdateDeployments(prefix string, replaceImg map[string]string, skipImages [
 
 			// Prefix Images in Args if there
 			for i := 0; i < len(c.Args); i++ {
-				if valueInArr(skipImages, c.Args[i]) {
-					i++
-					continue
-				}
 				val, ok := replaceImg[c.Args[i]]
 				if ok {
 					c.Args[i+1] = val
@@ -92,15 +88,6 @@ func prefixImage(prefix, img string) string {
 	}
 	arr := strings.Split(strings.Split(img, "@")[0], "/")
 	return prefix + arr[len(arr)-1]
-}
-
-func valueInArr(arr []string, val string) bool {
-	for _, v := range arr {
-		if v == val {
-			return true
-		}
-	}
-	return false
 }
 
 // RemoveRunAsGroup will remove runAsGroup from all container in a deployment

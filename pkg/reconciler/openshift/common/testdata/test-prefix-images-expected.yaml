@@ -63,7 +63,7 @@ spec:
             "-pr-image", "quay.io/openshift-pipeline/tektoncd-pipeline-pullrequest-init:v0.24.3",
 
             # This is gcr.io/google.com/cloudsdktool/cloud-sdk:302.0.0-slim
-            "-gsutil-image", "gcr.io/google.com/cloudsdktool/cloud-sdk@sha256:27b2c22bf259d9bc1a291e99c63791ba0c27a04d2db0a43241ba0f1f20f4067f",
+            "-gsutil-image", "no-image-available",
             # The shell image must be root in order to create directories and copy files to PVCs.
             # gcr.io/distroless/base:debug as of Apirl 17, 2021
             # image shall not contains tag, so it will be supported on a runtime like cri-o

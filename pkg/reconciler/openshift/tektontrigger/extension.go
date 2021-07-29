@@ -35,7 +35,7 @@ type openshiftExtension struct{}
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
-		occommon.UpdateDeployments(triggersPrefix, map[string]string{}, []string{}),
+		occommon.UpdateDeployments(triggersPrefix, map[string]string{}),
 		occommon.RemoveRunAsGroup(),
 		occommon.ApplyCABundles,
 	}
