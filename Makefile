@@ -27,6 +27,10 @@ $(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
 	   rm -rf $$tmp ; exit $$ret
 
 KO = $(or ${KO_BIN},${KO_BIN},$(BIN)/ko)
+
+PIPELINES ?= latest
+TRIGGERS ?= latest
+
 $(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
 
 KUSTOMIZE = $(or ${KUSTOMIZE_BIN},${KUSTOMIZE_BIN},$(BIN)/kustomize)
@@ -66,8 +70,12 @@ FORCE:
 bin/%: cmd/% FORCE
 	$Q $(GO) build -mod=vendor $(LDFLAGS) -v -o $@ ./$<
 
+.PHONY: get-releases
+get-releases: |
+	$Q ./hack/fetch-releases.sh $(TARGET) $(PIPELINES) $(TRIGGERS)|| exit ;
+
 .PHONY: apply
-apply: | $(KO) $(KUSTOMIZE) ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
+apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
 	$Q $(KUSTOMIZE) build config/$(TARGET) | $(KO) apply $(PLATFORM) -f -
 
 .PHONY: apply-cr
@@ -79,7 +87,7 @@ clean-cr: | ; $(info $(M) clean CRs on $(TARGET)) @ ## Clean the CRs to the curr
 	-$Q kubectl delete -f config/crs/$(TARGET)/$(CR)
 
 .PHONY: resolve
-resolve: | $(KO) $(KUSTOMIZE) ; $(info $(M) ko resolve on $(TARGET)) @ ## Resolve config to the current cluster
+resolve: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko resolve on $(TARGET)) @ ## Resolve config to the current cluster
 	$Q $(KUSTOMIZE) build config/$(TARGET) | $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f -
 
 .PHONY: generated
