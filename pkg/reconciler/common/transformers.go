@@ -39,7 +39,6 @@ const (
 	AnnotationPreserveRBSubjectNS = "operator.tekton.dev/preserve-rb-subject-namespace"
 	PipelinesImagePrefix          = "IMAGE_PIPELINES_"
 	TriggersImagePrefix           = "IMAGE_TRIGGERS_"
-	ResultsImagePrefix            = "IMAGE_RESULTS_"
 	AddonsImagePrefix             = "IMAGE_ADDONS_"
 
 	ArgPrefix   = "arg_"

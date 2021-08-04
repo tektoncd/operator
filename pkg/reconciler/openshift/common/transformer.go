@@ -32,11 +32,6 @@ import (
 //		"-shell-image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
 //	}
 // here `-shell-image` images will be replace by one in map
-// skip := []string{
-//		"-gsutil-image",
-//	}
-// here `-gsutil-image` image will be skipped
-
 // UpdateDeployments will also remove runAsUser from container
 
 func UpdateDeployments(prefix string, replaceImg map[string]string) mf.Transformer {

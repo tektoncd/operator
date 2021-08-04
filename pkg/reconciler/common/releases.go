@@ -33,8 +33,6 @@ import (
 const (
 	// KoEnvKey is the key of the environment variable to specify the path to the ko data directory
 	KoEnvKey = "KO_DATA_PATH"
-	// VersionVariable is a string, which can be replaced with the value of spec.version
-	VersionVariable = "${VERSION}"
 	// COMMA is the character comma
 	COMMA = ","
 )
