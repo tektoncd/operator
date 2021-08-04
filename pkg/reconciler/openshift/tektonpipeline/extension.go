@@ -40,9 +40,6 @@ const (
 	DefaultSA = "pipeline"
 	// DefaultDisableAffinityAssistant is default value of disable affinity assistant flag
 	DefaultDisableAffinityAssistant = true
-	DefaultTargetNamespace          = "openshift-pipelines"
-	AnnotationPreserveNS            = "operator.tekton.dev/preserve-namespace"
-	AnnotationPreserveRBSubjectNS   = "operator.tekton.dev/preserve-rb-subject-namespace"
 	monitoringLabel                 = "openshift.io/cluster-monitoring=true"
 	pipelinesPrefix                 = "quay.io/openshift-pipeline/tektoncd-pipeline-"
 )
