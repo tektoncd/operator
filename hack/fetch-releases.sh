@@ -39,17 +39,12 @@ release_yaml() {
       ;;
   esac
 
-  # remove existing versions
-  comp_dir=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata/tekton-${dir}
+  ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
+  comp_dir=${ko_data}/tekton-${dir}
 
-  # In case of openshift pipelines we have 00-prereconcile preserve it
-  # when removing and adding new version
-  if [[ ${TARGET} == "openshift" ]] && [[ ${comp} == "pipeline" ]]; then
-    mv ${comp_dir}/00-prereconcile /tmp/00-prereconcile/ || true
-    rm -rf ${comp_dir}/*
-    mv /tmp/00-prereconcile/ ${comp_dir}/00-prereconcile/ || true
-  # while adding release for interceptor ignore removing existing version
-  elif [[ ${releaseFileName} != "interceptors" ]] ; then
+  # before adding releases, remove existing version directories
+  # ignore while adding for interceptors
+  if [[ ${releaseFileName} != "interceptors" ]] ; then
     rm -rf ${comp_dir}/*
   fi
 
@@ -65,6 +60,12 @@ release_yaml() {
   if [ $http_response != "200" ]; then
       echo "Error: failed to get $comp yaml, status code: $http_response"
       exit 1
+  fi
+
+  # Add OpenShift specific files for pipelines
+  if [[ ${TARGET} == "openshift" ]] && [[ ${comp} == "pipeline" ]]; then
+    cp -r ${ko_data}/openshift/00-prereconcile ${comp_dir}/
+    cp ${ko_data}/openshift/pipelines-rbac/* ${dirPath}/
   fi
 
   echo "Info: Added $comp/$releaseFileName:$version release yaml !!"
