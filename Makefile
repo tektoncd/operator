@@ -30,6 +30,8 @@ KO = $(or ${KO_BIN},${KO_BIN},$(BIN)/ko)
 
 PIPELINES ?= latest
 TRIGGERS ?= latest
+DASHBOARD ?= latest
+RESULTS ?= latest
 
 $(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
 
@@ -72,7 +74,7 @@ bin/%: cmd/% FORCE
 
 .PHONY: get-releases
 get-releases: |
-	$Q ./hack/fetch-releases.sh $(TARGET) $(PIPELINES) $(TRIGGERS)|| exit ;
+	$Q ./hack/fetch-releases.sh $(TARGET) $(PIPELINES) $(TRIGGERS) $(DASHBOARD) $(RESULTS) || exit ;
 
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster

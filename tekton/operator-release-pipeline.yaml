@@ -32,6 +32,19 @@ spec:
   - name: kubeDistro
     description: The kubernetes platform (e.g. kubernetes or openshift ... ) targeted by a pipeline run
     default: kubernetes
+  - name: TektonCDPipelinesVersion
+    description: Version of TektonCD Pipelines Release to be packaged with this operator build
+    default: "nightly"
+  - name: TektonCDTriggersVersion
+    description: Version of TektonCD Triggers Release to be packaged with this operator build
+    default: "nightly"
+  - name: TektonCDDashboardVersion
+    description: Version of TektonCD Dashboard Release to be packaged with this operator build
+    default: "nightly"
+  - name: TektonCDResultsVersion
+    description: Version of TektonCD Results Release to be packaged with this operator build
+    # TODO: Set default to nightly. Aug 10, 2021 - no nightly releases available for Results
+    default: "latest"
   workspaces:
     - name: workarea
       description: The workspace where the repo will be cloned.
@@ -65,16 +78,35 @@ spec:
       taskRef:
         name: prerelease-checks
       params:
-        - name: package
-          value: $(params.package)
-        - name: versionTag
-          value: $(params.versionTag)
-        - name: releaseBucket
-          value: $(params.releaseBucket)
+      - name: package
+        value: $(params.package)
+      - name: versionTag
+        value: $(params.versionTag)
+      - name: releaseBucket
+        value: $(params.releaseBucket)
       workspaces:
-        - name: source-to-release
-          workspace: workarea
-          subpath: git
+      - name: source-to-release
+        workspace: workarea
+        subpath: git
+    - name: fetch-component-releases
+      taskRef:
+        name: operator-fetch-component-releases
+      runAfter: [precheck]
+      workspaces:
+      - name: source
+        workspace: workarea
+        subpath: git
+      params:
+      - name: PIPELINES_VERSION
+        value: $(params.TektonCDPipelinesVersion)
+      - name: TRIGGERS_VERSION
+        value: $(params.TektonCDTriggersVersion)
+      - name: DASHBOARD_VERSION
+        value: $(params.TektonCDDashboardVersion)
+      - name: RESULTS_VERSION
+        value: $(params.TektonCDResultsVersion)
+      - name: TARGET_PLATFORM
+        value: $(params.kubeDistro)
     - name: unit-tests
       runAfter: [precheck]
       taskRef:
@@ -89,7 +121,7 @@ spec:
           workspace: workarea
           subpath: git
     - name: build
-      runAfter: [precheck]
+      runAfter: [precheck, fetch-component-releases]
       taskRef:
         name: golang-build
       params:
@@ -120,8 +152,6 @@ spec:
           value: $(params.platforms)
         - name: serviceAccountPath
           value: $(params.serviceAccountPath)
-        - name: images
-          value: "operator webhook"
         - name: kubeDistro
           value: $(params.kubeDistro)
       workspaces:

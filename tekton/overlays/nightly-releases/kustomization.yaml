@@ -1,4 +1,0 @@
-resources:
-  - ../../bases
-  - fetch-nightly-components.yaml
-  - operator-nightly-release-pipeline.yaml
