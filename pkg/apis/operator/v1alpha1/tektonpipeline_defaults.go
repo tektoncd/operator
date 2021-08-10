@@ -27,9 +27,6 @@ func (tp *TektonPipeline) SetDefaults(ctx context.Context) {
 }
 
 func (p *PipelineProperties) setDefaults() {
-	if p.DisableAffinityAssistant == nil {
-		p.DisableAffinityAssistant = ptr.Bool(false)
-	}
 	if p.DisableHomeEnvOverwrite == nil {
 		p.DisableHomeEnvOverwrite = ptr.Bool(true)
 	}

@@ -33,6 +33,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -135,10 +136,10 @@ func SetDefault(properties *v1alpha1.PipelineProperties) bool {
 		updated = true
 	}
 
-	// Set `disable-affinity-assistant` to true
-	// webhook will set `false` as default value
-	if properties.DisableAffinityAssistant == nil || !*properties.DisableAffinityAssistant {
-		*properties.DisableAffinityAssistant = DefaultDisableAffinityAssistant
+	// Set `disable-affinity-assistant` to true if not set in CR
+	// webhook will not set any value but by default in pipelines configmap it will be false
+	if properties.DisableAffinityAssistant == nil {
+		properties.DisableAffinityAssistant = ptr.Bool(DefaultDisableAffinityAssistant)
 		updated = true
 	}
 

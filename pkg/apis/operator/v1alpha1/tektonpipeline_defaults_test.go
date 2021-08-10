@@ -40,7 +40,6 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 	}
 
 	properties := PipelineProperties{
-		DisableAffinityAssistant:                 ptr.Bool(false),
 		DisableHomeEnvOverwrite:                  ptr.Bool(true),
 		DisableWorkingDirectoryOverwrite:         ptr.Bool(true),
 		DisableCredsInit:                         ptr.Bool(false),
