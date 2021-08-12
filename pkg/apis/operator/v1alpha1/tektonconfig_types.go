@@ -83,6 +83,9 @@ type TektonConfigSpec struct {
 	// Pipeline holds the customizable option for pipeline component
 	// +optional
 	Pipeline Pipeline `json:"pipeline,omitempty"`
+	// Trigger holds the customizable option for triggers component
+	// +optional
+	Trigger Trigger `json:"trigger,omitempty"`
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
@@ -120,6 +123,11 @@ func (a Addon) IsEmpty() bool {
 // Pipeline defines the field to customize Pipeline component
 type Pipeline struct {
 	PipelineProperties `json:",inline"`
+}
+
+// Trigger defines the field to customize Trigger component
+type Trigger struct {
+	TriggersProperties `json:",inline"`
 }
 
 type Config struct {

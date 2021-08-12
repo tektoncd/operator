@@ -32,6 +32,9 @@ func TestTektonTriggerCreateAndDeleteCR(t *testing.T) {
 	tConfig := pipeline.GetTektonConfig()
 	err := CreateTriggerCR(tConfig, c.OperatorV1alpha1())
 	util.AssertNotEqual(t, err, nil)
+	// recheck triggers creation
+	err = CreateTriggerCR(tConfig, c.OperatorV1alpha1())
+	util.AssertNotEqual(t, err, nil)
 	err = TektonTriggerCRDelete(c.OperatorV1alpha1().TektonTriggers(), common.TriggerResourceName)
 	util.AssertEqual(t, err, nil)
 }

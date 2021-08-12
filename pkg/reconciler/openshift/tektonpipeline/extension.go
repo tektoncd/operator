@@ -36,8 +36,6 @@ import (
 )
 
 const (
-	// DefaultSA is the default service account
-	DefaultSA = "pipeline"
 	// DefaultDisableAffinityAssistant is default value of disable affinity assistant flag
 	DefaultDisableAffinityAssistant = true
 	monitoringLabel                 = "openshift.io/cluster-monitoring=true"
@@ -107,9 +105,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	}
 
 	tp := tc.(*v1alpha1.TektonPipeline)
-	crUpdated := SetDefault(&tp.Spec.PipelineProperties)
-
-	if crUpdated {
+	if crUpdated := SetDefault(&tp.Spec.PipelineProperties); crUpdated {
 		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonPipelines().Update(ctx, tp, v1.UpdateOptions{}); err != nil {
 			return err
 		}
@@ -131,7 +127,7 @@ func SetDefault(properties *v1alpha1.PipelineProperties) bool {
 
 	// Set default service account as pipeline
 	if properties.DefaultServiceAccount == "" {
-		properties.DefaultServiceAccount = DefaultSA
+		properties.DefaultServiceAccount = common.DefaultSA
 		updated = true
 	}
 

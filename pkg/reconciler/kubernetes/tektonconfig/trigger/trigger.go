@@ -53,9 +53,11 @@ func ensureTektonTriggerExists(clients op.TektonTriggerInterface, config *v1alph
 	if err == nil {
 		// if the trigger spec is changed then update the instance
 		if config.Spec.TargetNamespace != ttCR.Spec.TargetNamespace ||
+			!reflect.DeepEqual(ttCR.Spec.TriggersProperties, config.Spec.Trigger.TriggersProperties) ||
 			!reflect.DeepEqual(ttCR.Spec.Config, config.Spec.Config) {
 
 			ttCR.Spec.TargetNamespace = config.Spec.TargetNamespace
+			ttCR.Spec.TriggersProperties = config.Spec.Trigger.TriggersProperties
 			ttCR.Spec.Config = config.Spec.Config
 
 			return clients.Update(context.TODO(), ttCR, metav1.UpdateOptions{})
@@ -72,7 +74,8 @@ func ensureTektonTriggerExists(clients op.TektonTriggerInterface, config *v1alph
 				CommonSpec: v1alpha1.CommonSpec{
 					TargetNamespace: config.Spec.TargetNamespace,
 				},
-				Config: config.Spec.Config,
+				Config:             config.Spec.Config,
+				TriggersProperties: config.Spec.Trigger.TriggersProperties,
 			},
 		}
 		return clients.Create(context.TODO(), ttCR, metav1.CreateOptions{})
