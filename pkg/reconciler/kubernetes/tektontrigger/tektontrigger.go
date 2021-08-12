@@ -33,6 +33,11 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
+// Triggers ConfigMap
+const (
+	configDefaults = "config-defaults-triggers"
+)
+
 // Reconciler implements controller.Reconciler for TektonTrigger resources.
 type Reconciler struct {
 	// kubeClientSet allows us to talk to the k8s for core APIs
@@ -134,17 +139,18 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 // transform mutates the passed manifest to one with common, component
 // and platform transformations applied
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	instance := comp.(*v1alpha1.TektonTrigger)
+	trigger := comp.(*v1alpha1.TektonTrigger)
 	triggerImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.TriggersImagePrefix))
 	// adding extension's transformers first to run them before `extra` transformers
-	trns := r.extension.Transformers(instance)
+	trns := r.extension.Transformers(trigger)
 	extra := []mf.Transformer{
+		common.AddConfigMapValues(configDefaults, trigger.Spec.TriggersProperties),
 		common.ApplyProxySettings,
 		common.DeploymentImages(triggerImages),
-		common.AddConfiguration(instance.Spec.Config),
+		common.AddConfiguration(trigger.Spec.Config),
 	}
 	trns = append(trns, extra...)
-	return common.Transform(ctx, manifest, instance, trns...)
+	return common.Transform(ctx, manifest, trigger, trns...)
 }
 
 func (r *Reconciler) installed(ctx context.Context, instance v1alpha1.TektonComponent) (*mf.Manifest, error) {

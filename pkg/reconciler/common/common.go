@@ -27,6 +27,8 @@ import (
 )
 
 var (
+	// DefaultSA is the default service account
+	DefaultSA             = "pipeline"
 	PipelineResourceName  = "pipeline"
 	TriggerResourceName   = "trigger"
 	DashboardResourceName = "dashboard"

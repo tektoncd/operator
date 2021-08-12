@@ -51,7 +51,8 @@ func (tp *TektonTrigger) GetStatus() TektonComponentStatus {
 
 // TektonTriggerSpec defines the desired state of TektonTrigger
 type TektonTriggerSpec struct {
-	CommonSpec `json:",inline"`
+	CommonSpec         `json:",inline"`
+	TriggersProperties `json:",inline"`
 	// Config holds the configuration for resources created by TektonTrigger
 	// +optional
 	Config Config `json:"config,omitempty"`
@@ -76,4 +77,10 @@ type TektonTriggerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonTrigger `json:"items"`
+}
+
+// TriggersProperties defines the fields which are to be
+// defined for triggers only if user pass them
+type TriggersProperties struct {
+	DefaultServiceAccount string `json:"default-service-account,omitempty"`
 }

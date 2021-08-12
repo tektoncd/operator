@@ -18,7 +18,6 @@ package tektonconfig
 
 import (
 	"context"
-
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
@@ -28,6 +27,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
 	openshiftPipeline "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
+	openshiftTrigger "github.com/tektoncd/operator/pkg/reconciler/openshift/tektontrigger"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,8 +70,9 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 
 	config := tc.(*v1alpha1.TektonConfig)
-	updated := openshiftPipeline.SetDefault(&config.Spec.Pipeline.PipelineProperties)
-	if updated {
+	pipelineUpdated := openshiftPipeline.SetDefault(&config.Spec.Pipeline.PipelineProperties)
+	triggerUpdated := openshiftTrigger.SetDefault(&config.Spec.Trigger.TriggersProperties)
+	if pipelineUpdated || triggerUpdated {
 		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, config, v1.UpdateOptions{}); err != nil {
 			return err
 		}
