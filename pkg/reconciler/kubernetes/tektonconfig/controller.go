@@ -29,6 +29,9 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
+	tektonDashboardinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektondashboard"
+	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
+	tektonTriggerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektontrigger"
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -42,13 +45,21 @@ import (
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	return NewExtendedController(KubernetesExtension)(ctx, cmw)
+
+	ctrl := NewExtendedController(KubernetesExtension)(ctx, cmw)
+	tektonDashboardinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
+		Handler:    controller.HandleAll(ctrl.EnqueueControllerOf),
+	})
+	return ctrl
 }
 
 // NewExtendedController returns a controller extended to a specific platform
 func NewExtendedController(generator common.ExtensionGenerator) injection.ControllerConstructor {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		tektonConfigInformer := tektonConfiginformer.Get(ctx)
+		tektonPipelineInformer := tektonPipelineinformer.Get(ctx)
+		tektonTriggerInformer := tektonTriggerinformer.Get(ctx)
 		deploymentInformer := deploymentinformer.Get(ctx)
 		kubeClient := kubeclient.Get(ctx)
 		logger := logging.FromContext(ctx)
@@ -74,6 +85,16 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		logger.Info("Setting up event handlers")
 
 		tektonConfigInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+
+		tektonPipelineInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		})
+
+		tektonTriggerInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		})
 
 		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),

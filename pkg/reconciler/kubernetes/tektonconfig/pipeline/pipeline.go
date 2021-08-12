@@ -51,19 +51,36 @@ func ensureTektonPipelineExists(clients op.TektonPipelineInterface, config *v1al
 	tpCR, err := GetPipeline(clients, common.PipelineResourceName)
 	if err == nil {
 		// if the pipeline spec is changed then update the instance
-		if config.Spec.TargetNamespace != tpCR.Spec.TargetNamespace ||
-			!reflect.DeepEqual(tpCR.Spec.PipelineProperties, config.Spec.Pipeline.PipelineProperties) ||
-			!reflect.DeepEqual(tpCR.Spec.Config, config.Spec.Config) {
+		updated := false
 
+		if config.Spec.TargetNamespace != tpCR.Spec.TargetNamespace {
 			tpCR.Spec.TargetNamespace = config.Spec.TargetNamespace
-			tpCR.Spec.PipelineProperties = config.Spec.Pipeline.PipelineProperties
-			tpCR.Spec.Config = config.Spec.Config
+			updated = true
+		}
 
+		if !reflect.DeepEqual(tpCR.Spec.PipelineProperties, config.Spec.Pipeline.PipelineProperties) {
+			tpCR.Spec.PipelineProperties = config.Spec.Pipeline.PipelineProperties
+			updated = true
+		}
+
+		if !reflect.DeepEqual(tpCR.Spec.Config, config.Spec.Config) {
+			tpCR.Spec.Config = config.Spec.Config
+			updated = true
+		}
+
+		if tpCR.ObjectMeta.OwnerReferences == nil {
+			ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
+			tpCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
+			updated = true
+		}
+
+		if updated {
 			return clients.Update(context.TODO(), tpCR, metav1.UpdateOptions{})
 		}
 
 		return tpCR, err
 	}
+
 	if apierrs.IsNotFound(err) {
 		tpCR = &v1alpha1.TektonPipeline{
 			ObjectMeta: metav1.ObjectMeta{
@@ -77,6 +94,7 @@ func ensureTektonPipelineExists(clients op.TektonPipelineInterface, config *v1al
 				Config:             config.Spec.Config,
 			},
 		}
+
 		return clients.Create(context.TODO(), tpCR, metav1.CreateOptions{})
 	}
 	return tpCR, err

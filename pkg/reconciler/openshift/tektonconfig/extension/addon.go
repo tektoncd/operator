@@ -50,24 +50,38 @@ func ensureTektonAddonExists(clients op.TektonAddonInterface, config *v1alpha1.T
 	taCR, err := GetAddon(clients, common.AddonResourceName)
 	if err == nil {
 		// if the addon spec is changed then update the instance
-		if config.Spec.TargetNamespace != taCR.Spec.TargetNamespace ||
-			!reflect.DeepEqual(config.Spec.Addon.Params, taCR.Spec.Params) {
+		updated := false
 
+		if config.Spec.TargetNamespace != taCR.Spec.TargetNamespace {
 			taCR.Spec.TargetNamespace = config.Spec.TargetNamespace
-			taCR.Spec.Params = config.Spec.Addon.Params
-
-			updated, err := clients.Update(context.TODO(), taCR, metav1.UpdateOptions{})
-			if err != nil {
-				return nil, err
-			}
-			return updated, nil
+			updated = true
 		}
+
+		if !reflect.DeepEqual(config.Spec.Addon.Params, taCR.Spec.Params) {
+			taCR.Spec.Params = config.Spec.Addon.Params
+			updated = true
+		}
+
+		if taCR.ObjectMeta.OwnerReferences == nil {
+			ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
+			taCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
+			updated = true
+		}
+
+		if updated {
+			return clients.Update(context.TODO(), taCR, metav1.UpdateOptions{})
+		}
+
 		return taCR, err
 	}
+
+	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
+
 	if apierrs.IsNotFound(err) {
 		taCR = &v1alpha1.TektonAddon{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: common.AddonResourceName,
+				Name:            common.AddonResourceName,
+				OwnerReferences: []metav1.OwnerReference{ownerRef},
 			},
 			Spec: v1alpha1.TektonAddonSpec{
 				CommonSpec: v1alpha1.CommonSpec{
