@@ -50,17 +50,31 @@ func ensureTektonDashboardExists(clients op.TektonDashboardInterface, config *v1
 	tdCR, err := GetDashboard(clients, common.DashboardResourceName)
 	if err == nil {
 		// if the dashboard spec is changed then update the instance
-		if config.Spec.TargetNamespace != tdCR.Spec.TargetNamespace ||
-			!reflect.DeepEqual(tdCR.Spec.Config, config.Spec.Config) {
+		updated := false
 
+		if config.Spec.TargetNamespace != tdCR.Spec.TargetNamespace {
 			tdCR.Spec.TargetNamespace = config.Spec.TargetNamespace
-			tdCR.Spec.Config = config.Spec.Config
+			updated = true
+		}
 
+		if !reflect.DeepEqual(tdCR.Spec.Config, config.Spec.Config) {
+			tdCR.Spec.Config = config.Spec.Config
+			updated = true
+		}
+
+		if tdCR.ObjectMeta.OwnerReferences == nil {
+			ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
+			tdCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
+			updated = true
+		}
+
+		if updated {
 			return clients.Update(context.TODO(), tdCR, metav1.UpdateOptions{})
 		}
 
 		return tdCR, err
 	}
+
 	if apierrs.IsNotFound(err) {
 		tdCR = &v1alpha1.TektonDashboard{
 			ObjectMeta: metav1.ObjectMeta{

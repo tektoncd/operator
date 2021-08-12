@@ -52,19 +52,36 @@ func ensureTektonTriggerExists(clients op.TektonTriggerInterface, config *v1alph
 	ttCR, err := GetTrigger(clients, common.TriggerResourceName)
 	if err == nil {
 		// if the trigger spec is changed then update the instance
-		if config.Spec.TargetNamespace != ttCR.Spec.TargetNamespace ||
-			!reflect.DeepEqual(ttCR.Spec.TriggersProperties, config.Spec.Trigger.TriggersProperties) ||
-			!reflect.DeepEqual(ttCR.Spec.Config, config.Spec.Config) {
+		updated := false
 
+		if config.Spec.TargetNamespace != ttCR.Spec.TargetNamespace {
 			ttCR.Spec.TargetNamespace = config.Spec.TargetNamespace
-			ttCR.Spec.TriggersProperties = config.Spec.Trigger.TriggersProperties
-			ttCR.Spec.Config = config.Spec.Config
+			updated = true
+		}
 
+		if !reflect.DeepEqual(ttCR.Spec.TriggersProperties, config.Spec.Trigger.TriggersProperties) {
+			ttCR.Spec.TriggersProperties = config.Spec.Trigger.TriggersProperties
+			updated = true
+		}
+
+		if !reflect.DeepEqual(ttCR.Spec.Config, config.Spec.Config) {
+			ttCR.Spec.Config = config.Spec.Config
+			updated = true
+		}
+
+		if ttCR.ObjectMeta.OwnerReferences == nil {
+			ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
+			ttCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
+			updated = true
+		}
+
+		if updated {
 			return clients.Update(context.TODO(), ttCR, metav1.UpdateOptions{})
 		}
 
 		return ttCR, err
 	}
+
 	if apierrs.IsNotFound(err) {
 		ttCR = &v1alpha1.TektonTrigger{
 			ObjectMeta: metav1.ObjectMeta{

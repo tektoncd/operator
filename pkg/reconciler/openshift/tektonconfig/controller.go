@@ -19,9 +19,12 @@ package tektonconfig
 import (
 	"context"
 
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	tektonAddoninformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	k8s_ctrl "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/cache"
 	namespaceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -34,6 +37,12 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 	ctrl := k8s_ctrl.NewExtendedController(OpenShiftExtension)(ctx, cmw)
 	namespaceInformer := namespaceinformer.Get(ctx)
 	namespaceInformer.Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(ctrl, common.ConfigResourceName)))
+
+	tektonAddoninformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
+		Handler:    controller.HandleAll(ctrl.EnqueueControllerOf),
+	})
+
 	return ctrl
 }
 
