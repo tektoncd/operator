@@ -45,6 +45,8 @@ spec:
           value: tekton-operator-webhook
         - name: WEBHOOK_SECRET_NAME
           value: tekton-operator-webhook-certs
+        - name: METRICS_DOMAIN
+          value: tekton.dev/operator
         ports:
         - name: https-webhook
           containerPort: 8443
