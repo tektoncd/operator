@@ -53,6 +53,15 @@ clean-cluster: | $(KO) $(KUSTOMIZE) clean-cr; $(info $(M) clean $(TARGET)…) @ 
 		--ignore-not-found \
 		--recursive
 
+.PHONY: clean-manifest
+clean-manifest:
+ifeq ($(TARGET), openshift)
+	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-pipeline
+	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-trigger
+else
+	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton*
+endif
+
 .PHONY: clean-bin
 clean-bin:
 	-rm -rf $(BIN)
@@ -60,7 +69,7 @@ clean-bin:
 	-rm -rf test/tests.* test/coverage.*
 
 .PHONY: clean
-clean: clean-cluster clean-bin; $(info $(M) clean all) @ ## Cleanup everything
+clean: clean-cluster clean-bin clean-manifest; $(info $(M) clean all) @ ## Cleanup everything
 
 .PHONY: help
 help:
