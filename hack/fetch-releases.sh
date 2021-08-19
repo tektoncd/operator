@@ -45,7 +45,7 @@ release_yaml() {
 
     # before adding releases, remove existing version directories
     # ignore while adding for interceptors
-    if [[ ${releaseFileName} != "interceptors.notags" ]] ; then
+    if [[ ${releaseFileName} != "interceptors" ]] ; then
       rm -rf ${comp_dir}/*
     fi
 
@@ -89,10 +89,10 @@ main() {
   t_version=${3}
 
 
-  release_yaml pipeline release.notags 00-pipelines ${p_version}
+  release_yaml pipeline release 00-pipelines ${p_version}
 
-  release_yaml triggers release.notags 00-triggers ${t_version}
-  release_yaml triggers interceptors.notags 01-interceptors ${t_version}
+  release_yaml triggers release 00-triggers ${t_version}
+  release_yaml triggers interceptors 01-interceptors ${t_version}
 
   if [[ ${TARGET} != "openshift" ]]; then
     d_version=${4}
