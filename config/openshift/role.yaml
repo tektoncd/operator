@@ -30,7 +30,14 @@ rules:
   - pods/log
   - limitranges
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - extensions
   - apps
@@ -66,7 +73,14 @@ rules:
   - statefulsets
   - deployments/finalizers
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - monitoring.coreos.com
   resources:
@@ -81,7 +95,14 @@ rules:
   - clusterroles
   - roles
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - ""
   resources:
@@ -184,7 +205,14 @@ rules:
   - '*'
   - tektonaddons
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - tekton.dev
   - triggers.tekton.dev
@@ -192,14 +220,29 @@ rules:
   resources:
   - '*'
   verbs:
-  - '*'
+  - add
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - dashboard.tekton.dev
   resources:
   - '*'
   - tektonaddons
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - security.openshift.io
   resources:
@@ -235,29 +278,63 @@ rules:
   - consoleclidownloads
   - consolequickstarts
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - autoscaling
   resources:
   - horizontalpodautoscalers
   verbs:
-  - '*'
+  - delete
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - policy
   resources:
   - poddisruptionbudgets
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - monitoring.coreos.com
   resources:
   - servicemonitors
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - batch
   resources:
   - jobs
   - cronjobs
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch

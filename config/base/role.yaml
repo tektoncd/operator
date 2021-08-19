@@ -30,7 +30,14 @@ rules:
   - pods/log
   - limitranges
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - extensions
   - apps
@@ -66,7 +73,14 @@ rules:
   - statefulsets
   - deployments/finalizers
   verbs:
-  - '*'
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
 - apiGroups:
   - monitoring.coreos.com
   resources:
@@ -187,22 +201,74 @@ rules:
   - '*'
   - tektonaddons
   verbs:
-  - '*'
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
 - apiGroups:
   - tekton.dev
+  resources:
+  - tasks
+  - clustertasks
+  - taskruns
+  - pipelines
+  - pipelineruns
+  - pipelineresources
+  - conditions
+  - tasks/status
+  - clustertasks/status
+  - taskruns/status
+  - pipelines/status
+  - pipelineruns/status
+  - pipelineresources/status
+  - taskruns/finalizers
+  - pipelineruns/finalizers
+  - runs
+  - runs/status
+  - runs/finalizers
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
+- apiGroups:
   - triggers.tekton.dev
   - operator.tekton.dev
   resources:
   - '*'
   verbs:
-  - '*'
+  - add
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
 - apiGroups:
   - dashboard.tekton.dev
   resources:
   - '*'
   - tektonaddons
+  - extensions
   verbs:
-  - '*'
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
 - apiGroups:
     - security.openshift.io
   resources:
@@ -226,13 +292,27 @@ rules:
   resources:
   - horizontalpodautoscalers
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - policy
   resources:
   - poddisruptionbudgets
   verbs:
-  - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - serving.knative.dev
   resources:
@@ -290,4 +370,11 @@ rules:
   resources:
     - '*'
   verbs:
-    - '*'
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
