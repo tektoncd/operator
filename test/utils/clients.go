@@ -26,12 +26,11 @@ import (
 
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	"knative.dev/pkg/test"
 )
 
 // Clients holds instances of interfaces for making requests to Tekton Pipelines.
 type Clients struct {
-	KubeClient    *test.KubeClient
+	KubeClient    kubernetes.Interface
 	Dynamic       dynamic.Interface
 	Operator      operatorv1alpha1.OperatorV1alpha1Interface
 	Config        *rest.Config
@@ -51,7 +50,7 @@ func NewClients(configPath string, clusterName string) (*Clients, error) {
 	cfg.QPS = 100
 	cfg.Burst = 200
 
-	clients.KubeClient, err = test.NewKubeClient(configPath, clusterName)
+	clients.KubeClient, err = kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
 	}

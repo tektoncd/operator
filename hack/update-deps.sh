@@ -23,9 +23,9 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 cd ${REPO_ROOT_DIR}
 
 VERSION="release-0.22"
-K8S_VERSION="v0.19.7"
-TRIGGERS_VERSION="v0.14.1"
-PIPELINE_VERSION="v0.24.1"
+K8S_VERSION="v0.21.4"
+TRIGGERS_VERSION="v0.16.0"
+PIPELINE_VERSION="v0.27.3"
 
 # The list of dependencies that we track at HEAD and periodically
 # float forward in this repository.
