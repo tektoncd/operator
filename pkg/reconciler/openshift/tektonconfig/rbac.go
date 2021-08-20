@@ -42,7 +42,6 @@ const (
 	trustedCABundleConfigMap = "config-trusted-cabundle"
 	clusterInterceptors      = "openshift-pipelines-clusterinterceptors"
 	namespaceVersionLabel    = "openshift-pipelines.tekton.dev/namespace-reconcile-version"
-	version                  = "v1.5"
 )
 
 // Namespace Regex to ignore the namespace for creating rbac resources.
@@ -53,14 +52,15 @@ type rbac struct {
 	operatorClientSet clientset.Interface
 	manifest          mf.Manifest
 	ownerRef          metav1.OwnerReference
+	version           string
 }
 
 func (r *rbac) cleanUp(ctx context.Context) error {
 
 	// fetch the list of all namespaces which have label
-	// `openshift-pipelines.tekton.dev/namespace-ready: true`
+	// `openshift-pipelines.tekton.dev/namespace-ready: <release-version>`
 	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s = %s", namespaceVersionLabel, version),
+		LabelSelector: fmt.Sprintf("%s = %s", namespaceVersionLabel, r.version),
 	})
 	if err != nil {
 		return err
@@ -82,9 +82,9 @@ func (r *rbac) createResources(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
 
 	// fetch the list of all namespaces which doesn't have label
-	// `openshift-pipelines.tekton.dev/namespace-ready: true`
+	// `openshift-pipelines.tekton.dev/namespace-ready: <release-version>`
 	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s != %s", namespaceVersionLabel, version),
+		LabelSelector: fmt.Sprintf("%s != %s", namespaceVersionLabel, r.version),
 	})
 	if err != nil {
 		return err
@@ -144,7 +144,7 @@ func (r *rbac) createResources(ctx context.Context) error {
 		if len(nsLabels) == 0 {
 			nsLabels = map[string]string{}
 		}
-		nsLabels[namespaceVersionLabel] = version
+		nsLabels[namespaceVersionLabel] = r.version
 		n.SetLabels(nsLabels)
 		if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &n, metav1.UpdateOptions{}); err != nil {
 			return err

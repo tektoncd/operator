@@ -18,6 +18,7 @@ package tektonconfig
 
 import (
 	"context"
+	"os"
 
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
@@ -36,6 +37,10 @@ import (
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
+)
+
+const (
+	versionKey = "VERSION"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -84,6 +89,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		operatorClientSet: oe.operatorClientSet,
 		manifest:          oe.manifest,
 		ownerRef:          configOwnerRef(tc),
+		version:           os.Getenv(versionKey),
 	}
 	return r.createResources(ctx)
 }
@@ -106,6 +112,7 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 
 	r := rbac{
 		kubeClientSet: oe.kubeClientSet,
+		version:       os.Getenv(versionKey),
 	}
 	return r.cleanUp(ctx)
 }

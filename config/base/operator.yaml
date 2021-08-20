@@ -35,6 +35,8 @@ spec:
         - name: tekton-operator
           image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
           env:
+            - name: VERSION
+              value: "devel"
             - name: SYSTEM_NAMESPACE
               valueFrom:
                 fieldRef:
