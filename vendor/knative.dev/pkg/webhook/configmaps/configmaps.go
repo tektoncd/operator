@@ -17,7 +17,6 @@ limitations under the License.
 package configmaps
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -137,9 +136,13 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 
 	webhook := configuredWebhook.DeepCopy()
 
-	// Clear out any previous (bad) OwnerReferences.
-	// See: https://github.com/knative/serving/issues/5845
-	webhook.OwnerReferences = nil
+	// Set the owner to namespace.
+	ns, err := ac.client.CoreV1().Namespaces().Get(ctx, system.Namespace(), metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to fetch namespace: %w", err)
+	}
+	nsRef := *metav1.NewControllerRef(ns, corev1.SchemeGroupVersion.WithKind("Namespace"))
+	webhook.OwnerReferences = []metav1.OwnerReference{nsRef}
 
 	for i, wh := range webhook.Webhooks {
 		if wh.Name != webhook.Name {
@@ -188,8 +191,7 @@ func (ac *reconciler) validate(ctx context.Context, req *admissionv1.AdmissionRe
 
 	var newObj corev1.ConfigMap
 	if len(newBytes) != 0 {
-		newDecoder := json.NewDecoder(bytes.NewBuffer(newBytes))
-		if err := newDecoder.Decode(&newObj); err != nil {
+		if err := json.Unmarshal(newBytes, &newObj); err != nil {
 			return fmt.Errorf("cannot decode incoming new object: %w", err)
 		}
 	}

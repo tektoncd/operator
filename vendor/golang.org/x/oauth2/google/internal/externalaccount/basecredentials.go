@@ -7,36 +7,120 @@ package externalaccount
 import (
 	"context"
 	"fmt"
-	"golang.org/x/oauth2"
 	"net/http"
+	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
+
+	"golang.org/x/oauth2"
 )
 
 // now aliases time.Now for testing
-var now = time.Now
+var now = func() time.Time {
+	return time.Now().UTC()
+}
 
 // Config stores the configuration for fetching tokens with external credentials.
 type Config struct {
-	Audience                       string
-	SubjectTokenType               string
-	TokenURL                       string
-	TokenInfoURL                   string
+	// Audience is the Secure Token Service (STS) audience which contains the resource name for the workload
+	// identity pool or the workforce pool and the provider identifier in that pool.
+	Audience string
+	// SubjectTokenType is the STS token type based on the Oauth2.0 token exchange spec
+	// e.g. `urn:ietf:params:oauth:token-type:jwt`.
+	SubjectTokenType string
+	// TokenURL is the STS token exchange endpoint.
+	TokenURL string
+	// TokenInfoURL is the token_info endpoint used to retrieve the account related information (
+	// user attributes like account identifier, eg. email, username, uid, etc). This is
+	// needed for gCloud session account identification.
+	TokenInfoURL string
+	// ServiceAccountImpersonationURL is the URL for the service account impersonation request. This is only
+	// required for workload identity pools when APIs to be accessed have not integrated with UberMint.
 	ServiceAccountImpersonationURL string
-	ClientSecret                   string
-	ClientID                       string
-	CredentialSource               CredentialSource
-	QuotaProjectID                 string
-	Scopes                         []string
+	// ClientSecret is currently only required if token_info endpoint also
+	// needs to be called with the generated GCP access token. When provided, STS will be
+	// called with additional basic authentication using client_id as username and client_secret as password.
+	ClientSecret string
+	// ClientID is only required in conjunction with ClientSecret, as described above.
+	ClientID string
+	// CredentialSource contains the necessary information to retrieve the token itself, as well
+	// as some environmental information.
+	CredentialSource CredentialSource
+	// QuotaProjectID is injected by gCloud. If the value is non-empty, the Auth libraries
+	// will set the x-goog-user-project which overrides the project associated with the credentials.
+	QuotaProjectID string
+	// Scopes contains the desired scopes for the returned access token.
+	Scopes []string
+}
+
+// Each element consists of a list of patterns.  validateURLs checks for matches
+// that include all elements in a given list, in that order.
+
+var (
+	validTokenURLPatterns = []*regexp.Regexp{
+		// The complicated part in the middle matches any number of characters that
+		// aren't period, spaces, or slashes.
+		regexp.MustCompile(`(?i)^[^\.\s\/\\]+\.sts\.googleapis\.com$`),
+		regexp.MustCompile(`(?i)^sts\.googleapis\.com$`),
+		regexp.MustCompile(`(?i)^sts\.[^\.\s\/\\]+\.googleapis\.com$`),
+		regexp.MustCompile(`(?i)^[^\.\s\/\\]+-sts\.googleapis\.com$`),
+	}
+	validImpersonateURLPatterns = []*regexp.Regexp{
+		regexp.MustCompile(`^[^\.\s\/\\]+\.iamcredentials\.googleapis\.com$`),
+		regexp.MustCompile(`^iamcredentials\.googleapis\.com$`),
+		regexp.MustCompile(`^iamcredentials\.[^\.\s\/\\]+\.googleapis\.com$`),
+		regexp.MustCompile(`^[^\.\s\/\\]+-iamcredentials\.googleapis\.com$`),
+	}
+)
+
+func validateURL(input string, patterns []*regexp.Regexp, scheme string) bool {
+	parsed, err := url.Parse(input)
+	if err != nil {
+		return false
+	}
+	if !strings.EqualFold(parsed.Scheme, scheme) {
+		return false
+	}
+	toTest := parsed.Host
+
+	for _, pattern := range patterns {
+
+		if valid := pattern.MatchString(toTest); valid {
+			return true
+		}
+	}
+	return false
 }
 
 // TokenSource Returns an external account TokenSource struct. This is to be called by package google to construct a google.Credentials.
-func (c *Config) TokenSource(ctx context.Context) oauth2.TokenSource {
+func (c *Config) TokenSource(ctx context.Context) (oauth2.TokenSource, error) {
+	return c.tokenSource(ctx, validTokenURLPatterns, validImpersonateURLPatterns, "https")
+}
+
+// tokenSource is a private function that's directly called by some of the tests,
+// because the unit test URLs are mocked, and would otherwise fail the
+// validity check.
+func (c *Config) tokenSource(ctx context.Context, tokenURLValidPats []*regexp.Regexp, impersonateURLValidPats []*regexp.Regexp, scheme string) (oauth2.TokenSource, error) {
+	valid := validateURL(c.TokenURL, tokenURLValidPats, scheme)
+	if !valid {
+		return nil, fmt.Errorf("oauth2/google: invalid TokenURL provided while constructing tokenSource")
+	}
+
+	if c.ServiceAccountImpersonationURL != "" {
+		valid := validateURL(c.ServiceAccountImpersonationURL, impersonateURLValidPats, scheme)
+		if !valid {
+			return nil, fmt.Errorf("oauth2/google: invalid ServiceAccountImpersonationURL provided while constructing tokenSource")
+		}
+	}
+
 	ts := tokenSource{
 		ctx:  ctx,
 		conf: c,
 	}
 	if c.ServiceAccountImpersonationURL == "" {
-		return oauth2.ReuseTokenSource(nil, ts)
+		return oauth2.ReuseTokenSource(nil, ts), nil
 	}
 	scopes := c.Scopes
 	ts.conf.Scopes = []string{"https://www.googleapis.com/auth/cloud-platform"}
@@ -44,9 +128,9 @@ func (c *Config) TokenSource(ctx context.Context) oauth2.TokenSource {
 		ctx:    ctx,
 		url:    c.ServiceAccountImpersonationURL,
 		scopes: scopes,
-		ts: oauth2.ReuseTokenSource(nil, ts),
+		ts:     oauth2.ReuseTokenSource(nil, ts),
 	}
-	return oauth2.ReuseTokenSource(nil, imp)
+	return oauth2.ReuseTokenSource(nil, imp), nil
 }
 
 // Subject token file types.
@@ -56,13 +140,15 @@ const (
 )
 
 type format struct {
-	// Type is either "text" or "json".  When not provided "text" type is assumed.
+	// Type is either "text" or "json". When not provided "text" type is assumed.
 	Type string `json:"type"`
-	// SubjectTokenFieldName is only required for JSON format.  This would be "access_token" for azure.
+	// SubjectTokenFieldName is only required for JSON format. This would be "access_token" for azure.
 	SubjectTokenFieldName string `json:"subject_token_field_name"`
 }
 
 // CredentialSource stores the information necessary to retrieve the credentials for the STS exchange.
+// Either the File or the URL field should be filled, depending on the kind of credential in question.
+// The EnvironmentID should start with AWS if being used for an AWS credential.
 type CredentialSource struct {
 	File string `json:"file"`
 
@@ -77,20 +163,34 @@ type CredentialSource struct {
 }
 
 // parse determines the type of CredentialSource needed
-func (c *Config) parse(ctx context.Context) baseCredentialSource {
-	if c.CredentialSource.File != "" {
-		return fileCredentialSource{File: c.CredentialSource.File, Format: c.CredentialSource.Format}
+func (c *Config) parse(ctx context.Context) (baseCredentialSource, error) {
+	if len(c.CredentialSource.EnvironmentID) > 3 && c.CredentialSource.EnvironmentID[:3] == "aws" {
+		if awsVersion, err := strconv.Atoi(c.CredentialSource.EnvironmentID[3:]); err == nil {
+			if awsVersion != 1 {
+				return nil, fmt.Errorf("oauth2/google: aws version '%d' is not supported in the current build", awsVersion)
+			}
+			return awsCredentialSource{
+				EnvironmentID:               c.CredentialSource.EnvironmentID,
+				RegionURL:                   c.CredentialSource.RegionURL,
+				RegionalCredVerificationURL: c.CredentialSource.RegionalCredVerificationURL,
+				CredVerificationURL:         c.CredentialSource.URL,
+				TargetResource:              c.Audience,
+				ctx:                         ctx,
+			}, nil
+		}
+	} else if c.CredentialSource.File != "" {
+		return fileCredentialSource{File: c.CredentialSource.File, Format: c.CredentialSource.Format}, nil
 	} else if c.CredentialSource.URL != "" {
-		return urlCredentialSource{URL: c.CredentialSource.URL, Format: c.CredentialSource.Format, ctx: ctx}
+		return urlCredentialSource{URL: c.CredentialSource.URL, Headers: c.CredentialSource.Headers, Format: c.CredentialSource.Format, ctx: ctx}, nil
 	}
-	return nil
+	return nil, fmt.Errorf("oauth2/google: unable to parse credential source")
 }
 
 type baseCredentialSource interface {
 	subjectToken() (string, error)
 }
 
-// tokenSource is the source that handles external credentials.
+// tokenSource is the source that handles external credentials. It is used to retrieve Tokens.
 type tokenSource struct {
 	ctx  context.Context
 	conf *Config
@@ -100,15 +200,16 @@ type tokenSource struct {
 func (ts tokenSource) Token() (*oauth2.Token, error) {
 	conf := ts.conf
 
-	credSource := conf.parse(ts.ctx)
-	if credSource == nil {
-		return nil, fmt.Errorf("oauth2/google: unable to parse credential source")
-	}
-	subjectToken, err := credSource.subjectToken()
+	credSource, err := conf.parse(ts.ctx)
 	if err != nil {
 		return nil, err
 	}
-	stsRequest := STSTokenExchangeRequest{
+	subjectToken, err := credSource.subjectToken()
+
+	if err != nil {
+		return nil, err
+	}
+	stsRequest := stsTokenExchangeRequest{
 		GrantType:          "urn:ietf:params:oauth:grant-type:token-exchange",
 		Audience:           conf.Audience,
 		Scope:              conf.Scopes,
@@ -118,12 +219,12 @@ func (ts tokenSource) Token() (*oauth2.Token, error) {
 	}
 	header := make(http.Header)
 	header.Add("Content-Type", "application/x-www-form-urlencoded")
-	clientAuth := ClientAuthentication{
+	clientAuth := clientAuthentication{
 		AuthStyle:    oauth2.AuthStyleInHeader,
 		ClientID:     conf.ClientID,
 		ClientSecret: conf.ClientSecret,
 	}
-	stsResp, err := ExchangeToken(ts.ctx, conf.TokenURL, &stsRequest, clientAuth, header, nil)
+	stsResp, err := exchangeToken(ts.ctx, conf.TokenURL, &stsRequest, clientAuth, header, nil)
 	if err != nil {
 		return nil, err
 	}

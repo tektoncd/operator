@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/markbates/inflect"
-	"github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -142,7 +142,7 @@ func (ac *reconciler) reconcileMutatingWebhook(ctx context.Context, caCert []byt
 			},
 			Rule: admissionregistrationv1.Rule{
 				APIGroups:   []string{"triggers.tekton.dev"},
-				APIVersions: []string{"v1alpha1"},
+				APIVersions: []string{"v1alpha1", "v1beta1"},
 				Resources:   []string{pluralEL, pluralEL + "/status"},
 			},
 		},
@@ -209,13 +209,13 @@ func (ac *reconciler) mutate(ctx context.Context, req *admissionv1.AdmissionRequ
 	}
 
 	logger := logging.FromContext(ctx)
-	if gvk.Group != "triggers.tekton.dev" || gvk.Version != "v1alpha1" || gvk.Kind != "EventListener" {
+	if gvk.Group != "triggers.tekton.dev" || !(gvk.Version == "v1alpha1" || gvk.Version == "v1beta1") || gvk.Kind != "EventListener" {
 		logger.Error("Unhandled kind: ", gvk)
 		return nil, fmt.Errorf("unhandled kind: %v", gvk)
 	}
 
 	// nil values denote absence of `old` (create) or `new` (delete) objects.
-	var oldObj, newObj v1alpha1.EventListener
+	var oldObj, newObj v1beta1.EventListener
 
 	if len(newBytes) != 0 {
 		newDecoder := json.NewDecoder(bytes.NewBuffer(newBytes))
@@ -281,7 +281,7 @@ func roundTripPatch(bytes []byte, unmarshalled interface{}) (duck.JSONPatch, err
 }
 
 // setDefaults simply leverages apis.Defaultable to set defaults.
-func setDefaults(ctx context.Context, patches duck.JSONPatch, el v1alpha1.EventListener) (duck.JSONPatch, error) {
+func setDefaults(ctx context.Context, patches duck.JSONPatch, el v1beta1.EventListener) (duck.JSONPatch, error) {
 	before, after := el.DeepCopyObject(), el
 
 	secretName := "el-" + el.Name
@@ -289,8 +289,8 @@ func setDefaults(ctx context.Context, patches duck.JSONPatch, el v1alpha1.EventL
 		"service.beta.openshift.io/serving-cert-secret-name": secretName,
 	}
 	if after.Spec.Resources.KubernetesResource == nil {
-		after.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{}
-		after.Spec.Resources.KubernetesResource = &v1alpha1.KubernetesResource{
+		after.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{}
+		after.Spec.Resources.KubernetesResource = &v1beta1.KubernetesResource{
 			WithPodSpec: duckv1.WithPodSpec{
 				Template: duckv1.PodSpecable{
 					Spec: corev1.PodSpec{

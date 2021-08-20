@@ -18,13 +18,14 @@ package main
 
 import (
 	"github.com/tektoncd/operator/pkg/reconciler/proxy"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/webhook/certificates"
 )
 
 func main() {
 	sharedmain.WebhookMainWithConfig(proxy.Getctx(), "webhook-operator",
-		sharedmain.ParseAndGetConfigOrDie(),
+		injection.ParseAndGetRESTConfigOrDie(),
 		certificates.NewController,
 		proxy.NewProxyDefaultingAdmissionController,
 	)
