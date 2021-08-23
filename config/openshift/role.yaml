@@ -103,6 +103,8 @@ rules:
   - list
   - update
   - watch
+  - bind
+  - escalate
 - apiGroups:
   - ""
   resources:
