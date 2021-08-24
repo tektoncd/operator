@@ -51,4 +51,7 @@ func (p *PipelineProperties) setDefaults() {
 	if p.EnableApiFields == "" {
 		p.EnableApiFields = PipelineApiFieldStable
 	}
+	if p.ScopeWhenExpressionsToTask == nil {
+		p.ScopeWhenExpressionsToTask = ptr.Bool(false)
+	}
 }

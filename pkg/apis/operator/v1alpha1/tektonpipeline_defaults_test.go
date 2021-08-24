@@ -48,6 +48,7 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 		EnableTektonOciBundles:                   ptr.Bool(false),
 		EnableCustomTasks:                        ptr.Bool(false),
 		EnableApiFields:                          PipelineApiFieldStable,
+		ScopeWhenExpressionsToTask:               ptr.Bool(false),
 	}
 
 	tp.SetDefaults(context.TODO())

@@ -90,6 +90,7 @@ type PipelineProperties struct {
 	EnableTektonOciBundles                   *bool  `json:"enable-tekton-oci-bundles,omitempty"`
 	EnableCustomTasks                        *bool  `json:"enable-custom-tasks,omitempty"`
 	EnableApiFields                          string `json:"enable-api-fields,omitempty"`
+	ScopeWhenExpressionsToTask               *bool  `json:"scope-when-expressions-to-task,omitempty"`
 	// +optional
 	OptionalPipelineProperties `json:",inline"`
 }
