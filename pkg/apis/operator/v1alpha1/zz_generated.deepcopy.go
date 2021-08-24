@@ -210,6 +210,11 @@ func (in *PipelineProperties) DeepCopyInto(out *PipelineProperties) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ScopeWhenExpressionsToTask != nil {
+		in, out := &in.ScopeWhenExpressionsToTask, &out.ScopeWhenExpressionsToTask
+		*out = new(bool)
+		**out = **in
+	}
 	in.OptionalPipelineProperties.DeepCopyInto(&out.OptionalPipelineProperties)
 	return
 }
