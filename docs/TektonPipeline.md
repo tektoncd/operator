@@ -21,6 +21,7 @@ spec:
   enable-tekton-oci-bundles: false
   require-git-ssh-secret-known-hosts: false
   running-in-environment-with-injected-sidecars: true
+  scope-when-expressions-to-task: false
 ```
 You can install this component using [TektonConfig](./TektonConfig.md) by choosing appropriate `profile`.
 
@@ -92,6 +93,11 @@ You can install this component using [TektonConfig](./TektonConfig.md) by choosi
 - `enable-api-fields` (Default: `stable`)
 
     Setting this flag will determine which gated features are enabled. Acceptable values are "stable" or "alpha".
+
+
+- `scope-when-expressions-to-task` (Default: `false`)
+
+  Setting this flag to "true" scopes when expressions to guard a Task only instead of a Task and its dependent Tasks.
 
 ### Optional Properties
 This fields doesn't have default values so will be considered only if user passes them. By default Operator won't add 
