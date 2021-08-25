@@ -21,14 +21,15 @@ package common
 import (
 	"context"
 	"os"
-	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/test/client"
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
+	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -100,8 +101,8 @@ func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfi
 
 	// Check if number of params passed in TektonConfig would be passed in TektonAddons
 	t.Run("check-addon-params", func(t *testing.T) {
-		if !reflect.DeepEqual(tc.Spec.Addon.Params, addon.Spec.Params) {
-			t.Fatalf("Addon params in TektonConfig not equal to TektonAddon params")
+		if d := cmp.Diff(tc.Spec.Addon.Params, addon.Spec.Params); d != "" {
+			t.Errorf("Addon params in TektonConfig not equal to TektonAddon params: %s", diff.PrintWantGot(d))
 		}
 	})
 }

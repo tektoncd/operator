@@ -18,10 +18,11 @@ package common
 
 import (
 	"path"
-	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	mf "github.com/manifestival/manifestival"
+	"github.com/tektoncd/pipeline/test/diff"
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -58,8 +59,8 @@ func TestUpdateDeployments(t *testing.T) {
 		t.Errorf("failed to load deployment yaml")
 	}
 
-	if !reflect.DeepEqual(expected, got) {
-		t.Fatalf("failed to update deployment")
+	if d := cmp.Diff(expected, got); d != "" {
+		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -91,8 +92,8 @@ func TestUpdateDeploymentsTriggers(t *testing.T) {
 		t.Errorf("failed to load deployment yaml")
 	}
 
-	if !reflect.DeepEqual(expected, got) {
-		t.Fatalf("failed to update deployment")
+	if d := cmp.Diff(expected, got); d != "" {
+		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
 	}
 }
 
@@ -124,7 +125,7 @@ func TestUpdateDeploymentsInterceptor(t *testing.T) {
 		t.Errorf("failed to load deployment yaml")
 	}
 
-	if !reflect.DeepEqual(expected, got) {
-		t.Fatalf("failed to update deployment")
+	if d := cmp.Diff(expected, got); d != "" {
+		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
 	}
 }

@@ -232,6 +232,7 @@ github.com/spf13/pflag
 # github.com/stoewer/go-strcase v1.2.0
 github.com/stoewer/go-strcase
 # github.com/tektoncd/pipeline v0.24.1
+## explicit
 github.com/tektoncd/pipeline/pkg/apis/config
 github.com/tektoncd/pipeline/pkg/apis/pipeline
 github.com/tektoncd/pipeline/pkg/apis/pipeline/pod
@@ -244,6 +245,7 @@ github.com/tektoncd/pipeline/pkg/contexts
 github.com/tektoncd/pipeline/pkg/list
 github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag
 github.com/tektoncd/pipeline/pkg/substitution
+github.com/tektoncd/pipeline/test/diff
 # github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
 ## explicit
 github.com/tektoncd/plumbing

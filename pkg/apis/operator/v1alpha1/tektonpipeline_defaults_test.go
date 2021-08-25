@@ -18,9 +18,10 @@ package v1alpha1
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
 )
@@ -51,7 +52,8 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 	}
 
 	tp.SetDefaults(context.TODO())
-	if !reflect.DeepEqual(tp.Spec.PipelineProperties, properties) {
-		t.Error("Setting default failed for pipeline properties (spec)")
+
+	if d := cmp.Diff(properties, tp.Spec.PipelineProperties); d != "" {
+		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
 	}
 }
