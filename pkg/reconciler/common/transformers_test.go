@@ -20,12 +20,12 @@ import (
 	"context"
 	"os"
 	"path"
-	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/pipeline/test/diff"
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/apps/v1beta1"
@@ -117,7 +117,10 @@ func TestReplaceImages(t *testing.T) {
 		assertNoEror(t, err)
 		newManifest, err := manifest.Transform(DeploymentImages(map[string]string{}))
 		assertNoEror(t, err)
-		assertEqual(t, newManifest.Resources(), expected.Resources())
+
+		if d := cmp.Diff(expected.Resources(), newManifest.Resources()); d != "" {
+			t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
+		}
 	})
 
 	t.Run("replace containers by name", func(t *testing.T) {
@@ -205,14 +208,6 @@ func assertNoEror(t *testing.T, err error) {
 
 	if err != nil {
 		t.Errorf("assertion failed; expected no error %v", err)
-	}
-}
-
-func assertEqual(t *testing.T, result []unstructured.Unstructured, expected []unstructured.Unstructured) {
-	t.Helper()
-
-	if !reflect.DeepEqual(result, expected) {
-		t.Errorf("assertion failed; not equal: expected %v, got %v", expected, result)
 	}
 }
 
