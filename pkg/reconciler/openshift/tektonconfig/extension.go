@@ -31,6 +31,7 @@ import (
 	openshiftPipeline "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
 	openshiftTrigger "github.com/tektoncd/operator/pkg/reconciler/openshift/tektontrigger"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -95,11 +96,23 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 }
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
+
 	if configInstance.Spec.Profile == common.ProfileAll {
 		if err := extension.CreateAddonCR(comp, oe.operatorClientSet.OperatorV1alpha1()); err != nil {
 			return err
 		}
 	}
+
+	if configInstance.Spec.Profile == common.ProfileBasic || configInstance.Spec.Profile == common.ProfileLite {
+		err := extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), common.AddonResourceName)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {

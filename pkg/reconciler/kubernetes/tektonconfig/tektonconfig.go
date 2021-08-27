@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -30,6 +31,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig/trigger"
+	tt "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig/trigger"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -119,6 +121,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	var stages common.Stages
 	if tc.Spec.Profile == common.ProfileLite {
+		err := tt.TektonTriggerCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), common.TriggerResourceName)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
 		stages = common.Stages{
 			r.createPipelineCR,
 		}
