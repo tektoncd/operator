@@ -247,12 +247,12 @@ If the files in `pkg/apis` are updated we need to run `codegen` scripts
 Operator provides an option to choose which components needs to be installed by specifying `profile`.
 
 `profile` is an optional field and supported `profile` are
+* **lite**
 * **basic**
-* **default**
 * **all**
 
-1. If profile is `basic` **TektonPipeline** will be installed
-1. If profile is `default` or `" "` **TektonPipeline** and **TektonTrigger** will be installed
+1. If profile is `lite` **TektonPipeline** will be installed
+1. If profile is `basic` **TektonPipeline** and **TektonTrigger** will be installed
 1. If profile is `all` then all the Tekton Components installed
 
 To create Tekton Components run
