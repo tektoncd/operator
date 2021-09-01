@@ -4,6 +4,7 @@ data:
   DEFAULT_TARGET_NAMESPACE: tekton-pipelines
 kind: ConfigMap
 metadata:
+  annotations: {}
   labels:
     operator.tekton.dev/release: devel
   name: tekton-config-defaults

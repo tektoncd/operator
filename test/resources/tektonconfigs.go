@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
@@ -50,7 +51,9 @@ func EnsureTektonConfigExists(kubeClientSet *kubernetes.Clientset, clients confi
 	}
 
 	tcCR, err := clients.Get(context.TODO(), names.TektonConfig, metav1.GetOptions{})
-
+	// this timeout is needed to make sure that the e2e tests work
+	// TODO: https://github.com/tektoncd/operator/issues/401
+	time.Sleep(120 * time.Second)
 	if cm.Data["AUTOINSTALL_COMPONENTS"] == "true" {
 		if err != nil {
 			return nil, err

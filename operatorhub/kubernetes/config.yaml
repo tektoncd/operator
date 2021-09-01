@@ -1,7 +1,7 @@
 platform: "kubernetes"
 operator-packagename: "tektoncd-operator"
 image-substitutions:
-- image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator:develContainer
+- image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator:devel
   replaceLocations:
     containerTargets:
     - deploymentName: tekton-operator
@@ -13,7 +13,7 @@ image-substitutions:
       containerName: tekton-operator
       envKeys:
       - IMAGE_PIPELINES_PROXY
-- image: gcr.io/tekton-releases/dogfooding/tkn@sha256:f69a02ef099d8915e9e4ea1b74e43b7a9309fc97cf23cb457ebf191e73491677DEVEL
+- image: gcr.io/tekton-releases/dogfooding/tkn@sha256:f69a02ef099d8915e9e4ea1b74e43b7a9309fc97cf23cb457ebf191e73491677
   replaceLocations:
     envTargets:
     - deploymentName: tekton-operator

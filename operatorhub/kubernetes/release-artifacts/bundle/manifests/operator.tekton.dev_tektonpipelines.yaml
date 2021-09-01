@@ -4,7 +4,7 @@ metadata:
   creationTimestamp: null
   labels:
     operator.tekton.dev/release: devel
-    version: devel
+    version: v0.49.0
   name: tektonpipelines.operator.tekton.dev
 spec:
   group: operator.tekton.dev

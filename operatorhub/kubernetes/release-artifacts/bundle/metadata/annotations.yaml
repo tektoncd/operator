@@ -4,8 +4,8 @@ annotations:
   operators.operatorframework.io.bundle.manifests.v1: manifests/
   operators.operatorframework.io.bundle.metadata.v1: metadata/
   operators.operatorframework.io.bundle.package.v1: tektoncd-operator
-  operators.operatorframework.io.bundle.channels.v1: a,b
-  operators.operatorframework.io.bundle.channel.default.v1: a
+  operators.operatorframework.io.bundle.channels.v1: alpha
+  operators.operatorframework.io.bundle.channel.default.v1: alpha
   operators.operatorframework.io.metrics.builder: operator-sdk-v1.7.1+git
   operators.operatorframework.io.metrics.mediatype.v1: metrics+v1
   operators.operatorframework.io.metrics.project_layout: unknown

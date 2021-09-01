@@ -20,5 +20,3 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec: {}
-        - name: METRICS_DOMAIN
-          value: tekton.dev/operator
