@@ -48,6 +48,8 @@ $(BIN)/golangci-lint: | $(BIN) ; $(info $(M) getting golangci-lint $(GOLANGCI_VE
 
 .PHONY: clean-cluster
 clean-cluster: | $(KO) $(KUSTOMIZE) clean-cr; $(info $(M) clean $(TARGET)…) @ ## Cleanup cluster
+	@ ## --load-restrictor LoadRestrictionsNone is needed in kustomize build as files which not in child tree of kustomize base are pulled
+	@ ## https://github.com/kubernetes-sigs/kustomize/issues/766
 	-$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET) | $(KO) delete -f -
 	-kubectl delete ns tekton-pipelines --ignore-not-found
 	-kubectl delete \
@@ -89,6 +91,8 @@ get-releases: |
 
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
+	@ ## --load-restrictor LoadRestrictionsNone is needed in kustomize build as files which not in child tree of kustomize base are pulled
+	@ ## https://github.com/kubernetes-sigs/kustomize/issues/766
 	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET) | $(KO) apply $(PLATFORM) -f -
 
 .PHONY: apply-cr
@@ -101,6 +105,8 @@ clean-cr: | ; $(info $(M) clean CRs on $(TARGET)) @ ## Clean the CRs to the curr
 
 .PHONY: resolve
 resolve: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko resolve on $(TARGET)) @ ## Resolve config to the current cluster
+	@ ## --load-restrictor LoadRestrictionsNone is needed in kustomize build as files which not in child tree of kustomize base are pulled
+	@ ## https://github.com/kubernetes-sigs/kustomize/issues/766
 	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET) | $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f -
 
 .PHONY: generated

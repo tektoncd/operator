@@ -29,12 +29,31 @@ on any Kubernetes Cluster.
     $ kubectl apply -f https://raw.githubusercontent.com/tektoncd/operator/main/config/crs/kubernetes/config/all/operator_v1alpha1_config_cr.yaml
     ```
 
-# References
+# Detailed Documentation
 
-- [Development Guide](docs/README.md)
-- [Testing Guide](test/README.md)
+[Concepts and Guides](docs/README.md)
 
-### Read the docs
+# Development Guide
+
+[Development Guide](docs/README.md)
+
+# Running E2E tests
+
+[Testing Guide](test/README.md)
+
+# Release Guide
+
+[How to make a TektonCD/Operator Release](tekton/README.md)
+
+# Gerating OperatorHub Bundle(s)
+
+[OperatorHub Bundles](operatorhub/README.md)
+
+# Roadmap
+
+[Roadmap](./ROADMAP.md)
+
+# Read the docs
 
 | Version | Docs |
 | ------- | ---- |

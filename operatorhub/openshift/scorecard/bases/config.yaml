@@ -1,0 +1,11 @@
+---
+# Required for bundle generation to work.
+# TODO: add scorecard tests plugins.
+# eg: https://github.com/operator-framework/operator-sdk/tree/master/testdata/go/v3/memcached-operator/config/scorecard
+apiVersion: scorecard.operatorframework.io/v1alpha3
+kind: Configuration
+metadata:
+  name: config
+stages:
+- parallel: true
+  tests: []
