@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
-	fake "github.com/manifestival/manifestival/fake"
-	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/manifestival/manifestival/fake"
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -105,7 +105,7 @@ func TestCheckDeployments(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to generate manifest: %v", err)
 			}
-			tpln := &v1alpha1.TektonPipeline{}
+			tpln := &v1alpha1.TektonTrigger{}
 			tpln.Status.InitializeConditions()
 
 			err = CheckDeployments(context.TODO(), &manifest, tpln)

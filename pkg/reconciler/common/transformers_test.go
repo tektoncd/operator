@@ -77,7 +77,7 @@ func TestCommonTransformers(t *testing.T) {
 	}
 
 	// Verify OwnerReference is set.
-	if len(resource.GetOwnerReferences()) < 0 {
+	if len(resource.GetOwnerReferences()) == 0 {
 		t.Fatalf("len(GetOwnerReferences()) = 0, expected at least 1")
 	}
 	ownerRef := resource.GetOwnerReferences()[0]

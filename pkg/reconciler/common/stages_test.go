@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
-	fake "github.com/manifestival/manifestival/fake"
+	"github.com/manifestival/manifestival/fake"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -35,7 +35,7 @@ func TestStagesExecute(t *testing.T) {
 	manifest, _ := mf.ManifestFrom(mf.Slice{})
 	stages := Stages{AppendTarget, AppendInstalled}
 	util.AssertEqual(t, len(manifest.Resources()), 0)
-	err := stages.Execute(context.TODO(), &manifest, &v1alpha1.TektonPipeline{})
+	err := stages.Execute(context.TODO(), &manifest, &v1alpha1.TektonTrigger{})
 	util.AssertNoError(t, err)
 	util.AssertEqual(t, len(manifest.Resources()), 4)
 }
@@ -63,7 +63,7 @@ func TestDeleteObsoleteResources(t *testing.T) {
 			t.Error(err)
 		}
 	}
-	deleteObsoleteResources := DeleteObsoleteResources(context.TODO(), &v1alpha1.TektonPipeline{},
+	deleteObsoleteResources := DeleteObsoleteResources(context.TODO(), &v1alpha1.TektonTrigger{},
 		func(context.Context, v1alpha1.TektonComponent) (*mf.Manifest, error) {
 			return &manifest, nil
 		})

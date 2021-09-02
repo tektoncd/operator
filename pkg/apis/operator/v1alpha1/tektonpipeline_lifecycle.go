@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"reflect"
-
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
 )
@@ -50,10 +48,6 @@ func (tp *TektonPipeline) GroupVersionKind() schema.GroupVersionKind {
 
 func (tp *TektonPipeline) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind(KindTektonPipeline)
-}
-
-func (t TektonPipelineStatus) IsInitialized() bool {
-	return !reflect.DeepEqual(t, TektonPipelineStatus{})
 }
 
 func (tps *TektonPipelineStatus) GetCondition(t apis.ConditionType) *apis.Condition {

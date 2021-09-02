@@ -61,8 +61,8 @@ func TestInstall(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	instance := &v1alpha1.TektonPipeline{
-		Spec: v1alpha1.TektonPipelineSpec{
+	instance := &v1alpha1.TektonTrigger{
+		Spec: v1alpha1.TektonTriggerSpec{
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: targetNamespace,
 			},
@@ -83,7 +83,7 @@ func TestInstall(t *testing.T) {
 }
 
 func TestInstallError(t *testing.T) {
-	targetNamespace := "tekton-pipelines"
+	targetNamespace := "tekton-trigger"
 	koPath := "testdata/kodata"
 	os.Setenv(KoEnvKey, koPath)
 	defer os.Unsetenv(KoEnvKey)
@@ -96,8 +96,8 @@ func TestInstallError(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	instance := &v1alpha1.TektonPipeline{
-		Spec: v1alpha1.TektonPipelineSpec{
+	instance := &v1alpha1.TektonTrigger{
+		Spec: v1alpha1.TektonTriggerSpec{
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: targetNamespace,
 			},
