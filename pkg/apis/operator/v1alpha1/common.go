@@ -29,9 +29,6 @@ const (
 	// InstallSucceeded is a Condition indiciating that the installation of the component
 	// itself has been successful.
 	InstallSucceeded apis.ConditionType = "InstallSucceeded"
-	// DeploymentsAvailable is a Condition indicating whether or not the Deployments of
-	// the respective component have come up successfully.
-	DeploymentsAvailable apis.ConditionType = "DeploymentsAvailable"
 )
 
 // TektonComponent is a common interface for accessing meta, spec and status of all known types.

@@ -18,20 +18,21 @@ package tektonpipeline
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
-	"go.uber.org/zap"
-	"k8s.io/client-go/tools/cache"
-
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
-	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
-	tektonPipelinereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
+	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
+	tektonPipelineInformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
+	tektonPipelineReconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
+	"go.uber.org/zap"
+	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
@@ -39,7 +40,7 @@ import (
 )
 
 // NewController initializes the controller and is called by the generated code
-// Registers eventhandlers to enqueue events
+// Registers event handlers to enqueue events
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	return NewExtendedController(common.NoExtension)(ctx, cmw)
 }
@@ -47,12 +48,10 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 // NewExtendedController returns a controller extended to a specific platform
 func NewExtendedController(generator common.ExtensionGenerator) injection.ControllerConstructor {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-		tektonPipelineInformer := tektonPipelineinformer.Get(ctx)
-		deploymentInformer := deploymentinformer.Get(ctx)
-		kubeClient := kubeclient.Get(ctx)
 		logger := logging.FromContext(ctx)
+		restConfig := injection.GetConfig(ctx)
 
-		mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
+		mfclient, err := mfc.NewClient(restConfig)
 		if err != nil {
 			logger.Fatalw("Error creating client from injected config", zap.Error(err))
 		}
@@ -62,23 +61,69 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatalw("Error creating initial manifest", zap.Error(err))
 		}
 
+		// Reads the source manifest from kodata while initializing the contoller
+		if err := fetchSourceManifests(context.TODO(), &manifest); err != nil {
+			logger.Fatalw("failed to read manifest", err)
+		}
+
+		// Read the release version of pipelines
+		releaseVersion, err := fetchVersion(manifest)
+		if err != nil {
+			logger.Fatalw("failed to read release version from manifest", err)
+		}
+
 		c := &Reconciler{
-			kubeClientSet:     kubeClient,
 			operatorClientSet: operatorclient.Get(ctx),
 			extension:         generator(ctx),
 			manifest:          manifest,
+			releaseVersion:    releaseVersion,
 		}
-		impl := tektonPipelinereconciler.NewImpl(ctx, c)
+		impl := tektonPipelineReconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers")
+		// Add enqueue func in reconciler
+		c.enqueueAfter = impl.EnqueueAfter
 
-		tektonPipelineInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		logger.Info("Setting up event handlers for TektonPipeline")
 
-		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonPipeline")),
+		tektonPipelineInformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+
+		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TektonPipeline{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
 		return impl
 	}
+}
+
+// fetchSourceManifests mutates the passed manifest by appending one
+// appropriate for the passed TektonComponent
+func fetchSourceManifests(ctx context.Context, manifest *mf.Manifest) error {
+	var pipeline *v1alpha1.TektonPipeline
+	if err := common.AppendTarget(ctx, manifest, pipeline); err != nil {
+		return err
+	}
+	// add proxy configs to pipeline if any
+	return addProxy(manifest)
+}
+
+func addProxy(manifest *mf.Manifest) error {
+	koDataDir := os.Getenv(common.KoEnvKey)
+	proxyLocation := filepath.Join(koDataDir, "webhook")
+	return common.AppendManifest(manifest, proxyLocation)
+}
+
+func fetchVersion(manifest mf.Manifest) (string, error) {
+	crds := manifest.Filter(mf.CRDs)
+	if len(crds.Resources()) == 0 {
+		return "", fmt.Errorf("failed to find crds to get release version")
+	}
+
+	crd := crds.Resources()[0]
+	version, ok := crd.GetLabels()["pipeline.tekton.dev/release"]
+	if !ok {
+		return version, fmt.Errorf("failed to find release label on crd")
+	}
+
+	return version, nil
 }

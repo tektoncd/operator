@@ -21,11 +21,6 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
-var (
-	_ TektonComponent     = (*TektonPipeline)(nil)
-	_ TektonComponentSpec = (*TektonPipelineSpec)(nil)
-)
-
 // TektonPipeline is the Schema for the tektonpipelines API
 // +genclient
 // +genreconciler:krshapedlogic=false
@@ -39,12 +34,10 @@ type TektonPipeline struct {
 	Status TektonPipelineStatus `json:"status,omitempty"`
 }
 
-// GetSpec implements TektonComponent
 func (tp *TektonPipeline) GetSpec() TektonComponentSpec {
 	return &tp.Spec
 }
 
-// GetStatus implements TektonComponent
 func (tp *TektonPipeline) GetStatus() TektonComponentStatus {
 	return &tp.Status
 }
@@ -61,14 +54,13 @@ type TektonPipelineSpec struct {
 // TektonPipelineStatus defines the observed state of TektonPipeline
 type TektonPipelineStatus struct {
 	duckv1.Status `json:",inline"`
-
 	// The version of the installed release
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// The url links of the manifests, separated by comma
 	// +optional
-	Manifests []string `json:"manifests,omitempty"`
+	// The current installer set name
+	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
 }
 
 // TektonPipelineList contains a list of TektonPipeline

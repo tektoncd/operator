@@ -514,13 +514,12 @@ func InjectLabelOnNamespace(label string) mf.Transformer {
 		if kind != "namespace" {
 			return nil
 		}
-		name := u.GetName()
-		if name == "tekton-pipelines" || name == "openshift-pipelines" {
-			labels := u.GetLabels()
-			arr := strings.Split(label, "=")
-			labels[arr[0]] = arr[1]
-			u.SetLabels(labels)
-		}
+
+		labels := u.GetLabels()
+		arr := strings.Split(label, "=")
+		labels[arr[0]] = arr[1]
+		u.SetLabels(labels)
+
 		return nil
 	}
 }
