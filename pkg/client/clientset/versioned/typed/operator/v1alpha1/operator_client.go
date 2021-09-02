@@ -29,6 +29,7 @@ type OperatorV1alpha1Interface interface {
 	TektonAddonsGetter
 	TektonConfigsGetter
 	TektonDashboardsGetter
+	TektonInstallerSetsGetter
 	TektonPipelinesGetter
 	TektonResultsGetter
 	TektonTriggersGetter
@@ -49,6 +50,10 @@ func (c *OperatorV1alpha1Client) TektonConfigs() TektonConfigInterface {
 
 func (c *OperatorV1alpha1Client) TektonDashboards() TektonDashboardInterface {
 	return newTektonDashboards(c)
+}
+
+func (c *OperatorV1alpha1Client) TektonInstallerSets() TektonInstallerSetInterface {
+	return newTektonInstallerSets(c)
 }
 
 func (c *OperatorV1alpha1Client) TektonPipelines() TektonPipelineInterface {
