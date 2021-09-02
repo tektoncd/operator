@@ -33,7 +33,7 @@ func TestGetLatestRelease(t *testing.T) {
 	os.Setenv(KoEnvKey, koPath)
 	defer os.Unsetenv(KoEnvKey)
 
-	version := latestRelease(&v1alpha1.TektonPipeline{})
+	version := latestRelease(&v1alpha1.TektonTrigger{})
 	util.AssertEqual(t, version, VERSION)
 }
 
@@ -43,7 +43,7 @@ func TestListReleases(t *testing.T) {
 	defer os.Unsetenv(KoEnvKey)
 	expectedVersionList := []string{"0.15.2", "0.14.3", "0.13.2"}
 
-	version, err := allReleases(&v1alpha1.TektonPipeline{})
+	version, err := allReleases(&v1alpha1.TektonTrigger{})
 	util.AssertEqual(t, err, nil)
 	util.AssertDeepEqual(t, version, expectedVersionList)
 }
@@ -52,12 +52,12 @@ func TestManifestPath(t *testing.T) {
 	koPath := "testdata/kodata"
 	os.Setenv(KoEnvKey, koPath)
 	defer os.Unsetenv(KoEnvKey)
-	expectedPath := "testdata/kodata/tekton-pipeline/0.15.2"
+	expectedPath := "testdata/kodata/tekton-trigger/0.15.2"
 
-	path := manifestPath(VERSION, &v1alpha1.TektonPipeline{})
+	path := manifestPath(VERSION, &v1alpha1.TektonTrigger{})
 	util.AssertEqual(t, path, expectedPath)
 
-	path = installedManifestPath(VERSION, &v1alpha1.TektonPipeline{})
+	path = installedManifestPath(VERSION, &v1alpha1.TektonTrigger{})
 	util.AssertEqual(t, path, expectedPath)
 
 	path = installedManifestPath(VERSION, &v1alpha1.TektonAddon{})

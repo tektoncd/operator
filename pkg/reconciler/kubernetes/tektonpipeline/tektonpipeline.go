@@ -93,10 +93,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 // converge the two.
 func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipeline) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
-
-	if !tp.Status.IsInitialized() {
-		tp.Status.InitializeConditions()
-	}
+	tp.Status.InitializeConditions()
 
 	if tp.GetName() != common.PipelineResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
