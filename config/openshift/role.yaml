@@ -117,6 +117,7 @@ rules:
   - delete
   - patch
   - watch
+  - impersonate
 - apiGroups:
   - rbac.authorization.k8s.io
   resources:
