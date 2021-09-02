@@ -30,7 +30,7 @@ func TestTektonPipelineGroupVersionKind(t *testing.T) {
 		Version: SchemaVersion,
 		Kind:    KindTektonPipeline,
 	}
-	if got := r.GroupVersionKind(); got != want {
+	if got := r.GetGroupVersionKind(); got != want {
 		t.Errorf("got: %v, want: %v", got, want)
 	}
 }
@@ -39,31 +39,30 @@ func TestTektonPipelineHappyPath(t *testing.T) {
 	tp := &TektonPipelineStatus{}
 	tp.InitializeConditions()
 
-	apistest.CheckConditionOngoing(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionOngoing(tp, InstallSucceeded, t)
+	apistest.CheckConditionOngoing(tp, PreReconciler, t)
+	apistest.CheckConditionOngoing(tp, InstallerSetAvailable, t)
+	apistest.CheckConditionOngoing(tp, InstallerSetReady, t)
+	apistest.CheckConditionOngoing(tp, PostReconciler, t)
 
-	// Install succeeds.
-	tp.MarkInstallSucceeded()
-	// Dependencies are assumed successful too.
-	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
+	// Pre reconciler completes execution
+	tp.MarkPreReconcilerComplete()
+	apistest.CheckConditionSucceeded(tp, PreReconciler, t)
 
-	// Deployments are not available at first.
-	tp.MarkDeploymentsNotReady()
-	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
-	apistest.CheckConditionFailed(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
-	if ready := tp.IsReady(); ready {
-		t.Errorf("tp.IsReady() = %v, want false", ready)
-	}
+	// Installer set created
+	tp.MarkInstallerSetAvailable()
+	apistest.CheckConditionSucceeded(tp, InstallerSetAvailable, t)
 
-	// Deployments become ready and we're good.
-	tp.MarkDeploymentsAvailable()
-	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
+	// InstallerSet is not ready when deployment pods are not up
+	tp.MarkInstallerSetNotReady("waiting for deployments")
+	apistest.CheckConditionFailed(tp, InstallerSetReady, t)
+
+	// InstallerSet and then PostReconciler become ready and we're good.
+	tp.MarkInstallerSetReady()
+	apistest.CheckConditionSucceeded(tp, InstallerSetReady, t)
+
+	tp.MarkPostReconcilerComplete()
+	apistest.CheckConditionSucceeded(tp, PostReconciler, t)
+
 	if ready := tp.IsReady(); !ready {
 		t.Errorf("tp.IsReady() = %v, want true", ready)
 	}
@@ -73,66 +72,40 @@ func TestTektonPipelineErrorPath(t *testing.T) {
 	tp := &TektonPipelineStatus{}
 	tp.InitializeConditions()
 
-	apistest.CheckConditionOngoing(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionOngoing(tp, InstallSucceeded, t)
+	apistest.CheckConditionOngoing(tp, PreReconciler, t)
+	apistest.CheckConditionOngoing(tp, InstallerSetAvailable, t)
+	apistest.CheckConditionOngoing(tp, InstallerSetReady, t)
+	apistest.CheckConditionOngoing(tp, PostReconciler, t)
 
-	// Install fails.
-	tp.MarkInstallFailed("test")
-	apistest.CheckConditionOngoing(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionFailed(tp, InstallSucceeded, t)
+	// Pre reconciler completes execution
+	tp.MarkPreReconcilerComplete()
+	apistest.CheckConditionSucceeded(tp, PreReconciler, t)
 
-	// Dependencies are installing.
-	tp.MarkDependencyInstalling("testing")
-	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionFailed(tp, InstallSucceeded, t)
+	// Installer set created
+	tp.MarkInstallerSetAvailable()
+	apistest.CheckConditionSucceeded(tp, InstallerSetAvailable, t)
 
-	// Install now succeeds.
-	tp.MarkInstallSucceeded()
-	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
-	if ready := tp.IsReady(); ready {
-		t.Errorf("tp.IsReady() = %v, want false", ready)
-	}
+	// InstallerSet is not ready when deployment pods are not up
+	tp.MarkInstallerSetNotReady("waiting for deployments")
+	apistest.CheckConditionFailed(tp, InstallerSetReady, t)
 
-	// Deployments become ready
-	tp.MarkDeploymentsAvailable()
-	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
-	if ready := tp.IsReady(); ready {
-		t.Errorf("tp.IsReady() = %v, want false", ready)
-	}
+	// InstallerSet and then PostReconciler become ready and we're good.
+	tp.MarkInstallerSetReady()
+	apistest.CheckConditionSucceeded(tp, InstallerSetReady, t)
 
-	// Finally, dependencies become available.
-	tp.MarkDependenciesInstalled()
-	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
+	tp.MarkPostReconcilerComplete()
+	apistest.CheckConditionSucceeded(tp, PostReconciler, t)
+
 	if ready := tp.IsReady(); !ready {
 		t.Errorf("tp.IsReady() = %v, want true", ready)
 	}
-}
 
-func TestTektonPipelineExternalDependency(t *testing.T) {
-	tp := &TektonPipelineStatus{}
-	tp.InitializeConditions()
+	// In further reconciliation deployment might fail and installer
+	// set will change to not ready
 
-	// External marks dependency as failed.
-	tp.MarkDependencyMissing("test")
-
-	// Install succeeds.
-	tp.MarkInstallSucceeded()
-	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
-
-	// Dependencies are now ready.
-	tp.MarkDependenciesInstalled()
-	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
+	tp.MarkInstallerSetNotReady("webhook not ready")
+	apistest.CheckConditionFailed(tp, InstallerSetReady, t)
+	if ready := tp.IsReady(); ready {
+		t.Errorf("tp.IsReady() = %v, want false", ready)
+	}
 }
