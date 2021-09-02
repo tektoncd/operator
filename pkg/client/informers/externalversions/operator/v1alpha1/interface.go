@@ -30,6 +30,8 @@ type Interface interface {
 	TektonConfigs() TektonConfigInformer
 	// TektonDashboards returns a TektonDashboardInformer.
 	TektonDashboards() TektonDashboardInformer
+	// TektonInstallerSets returns a TektonInstallerSetInformer.
+	TektonInstallerSets() TektonInstallerSetInformer
 	// TektonPipelines returns a TektonPipelineInformer.
 	TektonPipelines() TektonPipelineInformer
 	// TektonResults returns a TektonResultInformer.
@@ -62,6 +64,11 @@ func (v *version) TektonConfigs() TektonConfigInformer {
 // TektonDashboards returns a TektonDashboardInformer.
 func (v *version) TektonDashboards() TektonDashboardInformer {
 	return &tektonDashboardInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// TektonInstallerSets returns a TektonInstallerSetInformer.
+func (v *version) TektonInstallerSets() TektonInstallerSetInformer {
+	return &tektonInstallerSetInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // TektonPipelines returns a TektonPipelineInformer.

@@ -1,6 +1,7 @@
 module github.com/tektoncd/operator
 
 require (
+	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0
 	github.com/google/go-cmp v0.5.6
 	github.com/manifestival/client-go-client v0.5.0

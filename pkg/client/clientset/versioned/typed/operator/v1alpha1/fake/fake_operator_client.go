@@ -40,6 +40,10 @@ func (c *FakeOperatorV1alpha1) TektonDashboards() v1alpha1.TektonDashboardInterf
 	return &FakeTektonDashboards{c}
 }
 
+func (c *FakeOperatorV1alpha1) TektonInstallerSets() v1alpha1.TektonInstallerSetInterface {
+	return &FakeTektonInstallerSets{c}
+}
+
 func (c *FakeOperatorV1alpha1) TektonPipelines() v1alpha1.TektonPipelineInterface {
 	return &FakeTektonPipelines{c}
 }
