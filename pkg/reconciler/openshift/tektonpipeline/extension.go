@@ -93,7 +93,8 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		return err
 	}
 
-	if err := common.Install(ctx, &oe.manifest, tc); err != nil {
+	// Apply the resources
+	if err := oe.manifest.Apply(); err != nil {
 		return err
 	}
 
