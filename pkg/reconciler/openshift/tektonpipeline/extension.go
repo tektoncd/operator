@@ -40,14 +40,6 @@ const (
 	// DefaultDisableAffinityAssistant is default value of disable affinity assistant flag
 	DefaultDisableAffinityAssistant = true
 	monitoringLabel                 = "openshift.io/cluster-monitoring=true"
-	pipelinesPrefix                 = "quay.io/openshift-pipeline/tektoncd-pipeline-"
-)
-
-var (
-	replaceImgs = map[string]string{
-		"-shell-image":  "registry.access.redhat.com/ubi8/ubi-minimal:latest",
-		"-gsutil-image": "no-image-available",
-	}
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -77,7 +69,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	return []mf.Transformer{
 		common.InjectLabelOnNamespace(monitoringLabel),
 		occommon.ApplyCABundles,
-		occommon.UpdateDeployments(pipelinesPrefix, replaceImgs),
+		occommon.RemoveRunAsUser(),
 	}
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {

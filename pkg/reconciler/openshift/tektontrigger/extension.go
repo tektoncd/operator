@@ -28,8 +28,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const triggersPrefix = "quay.io/openshift-pipeline/tektoncd-triggers-"
-
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	ext := openshiftExtension{
 		operatorClientSet: operatorclient.Get(ctx),
@@ -43,7 +41,7 @@ type openshiftExtension struct {
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
-		occommon.UpdateDeployments(triggersPrefix, map[string]string{}),
+		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
 		occommon.ApplyCABundles,
 	}

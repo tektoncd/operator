@@ -17,24 +17,14 @@ limitations under the License.
 package common
 
 import (
-	"strings"
-
 	mf "github.com/manifestival/manifestival"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// UpdateDeployments will add a prefix to container image and images in args
-// a list of images can be passed to with their name to replace them with any specific image
-// a list of tags can be passed so their images will be skipped
-// eg. replaceImages := map[string]string{
-//		"-shell-image": "registry.access.redhat.com/ubi8/ubi-minimal:latest",
-//	}
-// here `-shell-image` images will be replace by one in map
-// UpdateDeployments will also remove runAsUser from container
-
-func UpdateDeployments(prefix string, replaceImg map[string]string) mf.Transformer {
+// RemoveRunAsUser will remove RunAsUser from all container in a deployment
+func RemoveRunAsUser() mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() != "Deployment" {
 			return nil
@@ -47,22 +37,7 @@ func UpdateDeployments(prefix string, replaceImg map[string]string) mf.Transform
 		}
 
 		for i := range d.Spec.Template.Spec.Containers {
-
-			// Prefix Container Image
 			c := &d.Spec.Template.Spec.Containers[i]
-			c.Image = prefixImage(prefix, c.Image)
-
-			// Prefix Images in Args if there
-			for i := 0; i < len(c.Args); i++ {
-				val, ok := replaceImg[c.Args[i]]
-				if ok {
-					c.Args[i+1] = val
-					i++
-					continue
-				}
-				c.Args[i] = prefixImage(prefix, c.Args[i])
-			}
-
 			// Remove runAsUser
 			c.SecurityContext.RunAsUser = nil
 		}
@@ -75,14 +50,6 @@ func UpdateDeployments(prefix string, replaceImg map[string]string) mf.Transform
 
 		return nil
 	}
-}
-
-func prefixImage(prefix, img string) string {
-	if !strings.Contains(img, ".io/") {
-		return img
-	}
-	arr := strings.Split(strings.Split(img, "@")[0], "/")
-	return prefix + arr[len(arr)-1]
 }
 
 // RemoveRunAsGroup will remove runAsGroup from all container in a deployment
