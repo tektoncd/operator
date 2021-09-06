@@ -125,6 +125,7 @@ spec:
 
         d_version=${4}
         release_yaml dashboard tekton-dashboard-release 00-dashboard ${d_version}
+        release_yaml dashboard tekton-dashboard-release-readonly 00-dashboard-readonly ${d_version}
 
         r_version=${5}
         release_yaml results release 00-results ${r_version}

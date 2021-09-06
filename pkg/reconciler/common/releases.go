@@ -76,13 +76,16 @@ func Fetch(path string) (mf.Manifest, error) {
 
 func ComponentDir(instance v1alpha1.TektonComponent) string {
 	koDataDir := os.Getenv(KoEnvKey)
-	switch instance.(type) {
+	switch ins := instance.(type) {
 	case *v1alpha1.TektonPipeline:
 		return filepath.Join(koDataDir, "tekton-pipeline")
 	case *v1alpha1.TektonTrigger:
 		return filepath.Join(koDataDir, "tekton-trigger")
 	case *v1alpha1.TektonDashboard:
-		return filepath.Join(koDataDir, "tekton-dashboard")
+		if ins.Spec.Readonly {
+			return filepath.Join(koDataDir, "tekton-dashboard/tekton-dashboard-readonly")
+		}
+		return filepath.Join(koDataDir, "tekton-dashboard/tekton-dashboard-fullaccess")
 	case *v1alpha1.TektonAddon:
 		return filepath.Join(koDataDir, "tekton-addon")
 	case *v1alpha1.TektonConfig:

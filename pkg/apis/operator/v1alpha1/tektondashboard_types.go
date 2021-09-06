@@ -51,7 +51,8 @@ func (tp *TektonDashboard) GetStatus() TektonComponentStatus {
 
 // TektonDashboardSpec defines the desired state of TektonDashboard
 type TektonDashboardSpec struct {
-	CommonSpec `json:",inline"`
+	CommonSpec          `json:",inline"`
+	DashboardProperties `json:",inline"`
 	// Config holds the configuration for resources created by TektonDashboard
 	// +optional
 	Config Config `json:"config,omitempty"`
@@ -76,4 +77,10 @@ type TektonDashboardList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonDashboard `json:"items"`
+}
+
+// Dashboard degines the fields to customize the Dashboard component
+type DashboardProperties struct {
+	// Readonly when set to true configures the Tekton dashboard in read-only mode
+	Readonly bool `json:"readonly"`
 }

@@ -1,6 +1,6 @@
 # Tekton Config
 
-TektonConfig custom resource is the top most component of the operator which allows user to install and customize all other 
+TektonConfig custom resource is the top most component of the operator which allows user to install and customize all other
 components at a single place.
 
 Operator provides support for installing and managing following operator components through `TektonConfig`:
@@ -11,7 +11,7 @@ Other than the above components depending on the platform operator also provides
 - On Kubernetes
     - [TektonDashboard](./TekonDashboard.md)
 - On OpenShift
-    - [TektonAddon](./TektonAddon.md)  
+    - [TektonAddon](./TektonAddon.md)
 
 The TektonConfig CR provides the following features
 
@@ -35,7 +35,8 @@ The TektonConfig CR provides the following features
       require-git-ssh-secret-known-hosts: false
       running-in-environment-with-injected-sidecars: true
     pruner: {}
-    addon: {}   
+    addon: {}
+    dashboard: {}
 ```
 Look for the particular section to understand a particular field in the spec.
 
@@ -45,13 +46,13 @@ This allows user to choose a namespace to install all the pipelines, triggers an
 By default, namespace would be `tekton-pipelines` for Kubernetes and `openshift-pipelines` for OpenShift.
 
 ### Profile
-This allows user to choose which all components to install on the cluster. 
+This allows user to choose which all components to install on the cluster.
 There are 3 profiles available:
-- `all`: This profile will install all components 
+- `all`: This profile will install all components
 - `basic`:  This profile will install TektonPipeline and TektonTrigger component
 - `lite`: This profile will install only TektonPipeline component
 
-On Kubernetes, `all` profile will install `TektonDashboard` and on OpenShift `TektonAddon` will be installed. 
+On Kubernetes, `all` profile will install `TektonDashboard` and on OpenShift `TektonAddon` will be installed.
 
 
 ### Config
@@ -59,7 +60,7 @@ Config provides fields to configure deployments created by the Operator.
 This provides following fields:
 - [`nodeSelector`][node-selector]
 - [`toleration`][toleration]
-  
+
 User can pass the required fields and this would be passed to all Operator components which will get added in all
 deployments created by Operator.
 
@@ -72,7 +73,7 @@ config:
   - key: "key1"
     operator: "Equal"
     value: "value1"
-    effect: "NoSchedule"                                                                                                                     
+    effect: "NoSchedule"
 ```
 
 This is an `Optional` section.
@@ -122,7 +123,7 @@ This is an `Optional` section.
 
 ### Addon
 
-TektonAddon install some resources along with Tekton Pipelines on the cluster. This provides few ClusterTasks, PipelineTemplates. 
+TektonAddon install some resources along with Tekton Pipelines on the cluster. This provides few ClusterTasks, PipelineTemplates.
 
 This section allows to customize installation of those resources through params. You can read more about the supported params [here](./TektonAddon.md).
 
@@ -138,6 +139,22 @@ addon:
 
 **NOTE**: TektonAddon is currently available for OpenShift Platform only. Enabling this for Kubernetes platform is in roadmap
 of Operator.
+
+### Dashboard
+
+Dashboard provides configuration options for the Tekton Dashboard if the specified profile value includes the Dashboard component. (E.g. `all` on Kubernetes)
+
+Example:
+
+```yaml
+dashboard:
+  readonly: true
+```
+
+- `readonly`: If set to true, install the Dashboard in read-only mode
+
+This is an `Optional` section.
+
 
 [node-selector]:https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
 [toleration]:https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
