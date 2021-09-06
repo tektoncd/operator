@@ -20,7 +20,18 @@ release_yaml() {
      dir="trigger"
     fi
 
-    #nightly -> 0.0.0-nightly
+    if [[ $comp == "dashboard" ]]; then
+      if [[ ${releaseFileName} == "tekton-dashboard-release" ]]; then
+        dir="dashboard/tekton-dashboard-fullaccess"
+      fi
+
+      if [[ ${releaseFileName} == "tekton-dashboard-release-readonly" ]]; then
+        dir="dashboard/tekton-dashboard-readonly"
+      fi
+    fi
+
+
+    #nightly -> 0.0.0-nightly`
     #latest -> find version till then -> 0.0.0-latest
     #version -> directory with version
 
@@ -97,6 +108,7 @@ main() {
   if [[ ${TARGET} != "openshift" ]]; then
     d_version=${4}
     release_yaml dashboard tekton-dashboard-release 00-dashboard ${d_version}
+    release_yaml dashboard tekton-dashboard-release-readonly 00-dashboard ${d_version}
 
     r_version=${5}
     release_yaml results release 00-results ${r_version}

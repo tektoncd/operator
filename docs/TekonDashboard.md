@@ -12,6 +12,7 @@ metadata:
   name: dashboard
 spec:
   targetNamespace: tekton-pipelines
+  readonly: false
 ```
 You can install this component using [TektonConfig](./TektonConfig.md) by choosing appropriate `profile`.
 

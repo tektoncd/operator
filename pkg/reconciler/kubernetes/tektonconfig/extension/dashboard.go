@@ -57,6 +57,11 @@ func ensureTektonDashboardExists(clients op.TektonDashboardInterface, config *v1
 			updated = true
 		}
 
+		if !reflect.DeepEqual(tdCR.Spec.DashboardProperties, config.Spec.Dashboard.DashboardProperties) {
+			tdCR.Spec.DashboardProperties = config.Spec.Dashboard.DashboardProperties
+			updated = true
+		}
+
 		if !reflect.DeepEqual(tdCR.Spec.Config, config.Spec.Config) {
 			tdCR.Spec.Config = config.Spec.Config
 			updated = true
@@ -84,7 +89,8 @@ func ensureTektonDashboardExists(clients op.TektonDashboardInterface, config *v1
 				CommonSpec: v1alpha1.CommonSpec{
 					TargetNamespace: config.Spec.TargetNamespace,
 				},
-				Config: config.Spec.Config,
+				Config:              config.Spec.Config,
+				DashboardProperties: config.Spec.Dashboard.DashboardProperties,
 			},
 		}
 		return clients.Create(context.TODO(), tdCR, metav1.CreateOptions{})

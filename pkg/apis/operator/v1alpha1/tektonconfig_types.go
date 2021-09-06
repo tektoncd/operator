@@ -86,6 +86,9 @@ type TektonConfigSpec struct {
 	// Trigger holds the customizable option for triggers component
 	// +optional
 	Trigger Trigger `json:"trigger,omitempty"`
+	// Dashboard holds the customizable options for dashboards component
+	// +optional
+	Dashboard Dashboard `json:"dashboard,omitempty"`
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
@@ -128,6 +131,11 @@ type Pipeline struct {
 // Trigger defines the field to customize Trigger component
 type Trigger struct {
 	TriggersProperties `json:",inline"`
+}
+
+// Dashboard degines the fields to customize the Dashboard component
+type Dashboard struct {
+	DashboardProperties `json:",inline"`
 }
 
 type Config struct {
