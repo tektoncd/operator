@@ -44,8 +44,8 @@ func (tp *TektonPipeline) GetStatus() TektonComponentStatus {
 
 // TektonPipelineSpec defines the desired state of TektonPipeline
 type TektonPipelineSpec struct {
-	CommonSpec         `json:",inline"`
-	PipelineProperties `json:",inline"`
+	CommonSpec `json:",inline"`
+	Pipeline   `json:",inline"`
 	// Config holds the configuration for resources created by TektonPipeline
 	// +optional
 	Config Config `json:"config,omitempty"`
@@ -69,6 +69,14 @@ type TektonPipelineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonPipeline `json:"items"`
+}
+
+// Pipeline defines the field to customize Pipeline component
+type Pipeline struct {
+	PipelineProperties `json:",inline"`
+	// The params to customize different components of Pipelines
+	// +optional
+	Params []Param `json:"params,omitempty"`
 }
 
 // PipelineProperties defines customizable flags for Pipeline Component.

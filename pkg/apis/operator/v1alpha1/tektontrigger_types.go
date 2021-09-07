@@ -79,6 +79,11 @@ type TektonTriggerList struct {
 	Items           []TektonTrigger `json:"items"`
 }
 
+// Trigger defines the field to customize Trigger component
+type Trigger struct {
+	TriggersProperties `json:",inline"`
+}
+
 // TriggersProperties defines the fields which are to be
 // defined for triggers only if user pass them
 type TriggersProperties struct {

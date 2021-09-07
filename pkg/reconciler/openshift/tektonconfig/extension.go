@@ -77,7 +77,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 
 	config := tc.(*v1alpha1.TektonConfig)
-	pipelineUpdated := openshiftPipeline.SetDefault(&config.Spec.Pipeline.PipelineProperties)
+	pipelineUpdated := openshiftPipeline.SetDefault(&config.Spec.Pipeline)
 	triggerUpdated := openshiftTrigger.SetDefault(&config.Spec.Trigger.TriggersProperties)
 	if pipelineUpdated || triggerUpdated {
 		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, config, v1.UpdateOptions{}); err != nil {

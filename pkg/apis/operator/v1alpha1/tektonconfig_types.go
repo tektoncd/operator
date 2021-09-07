@@ -123,21 +123,6 @@ func (a Addon) IsEmpty() bool {
 	return reflect.DeepEqual(a, Addon{})
 }
 
-// Pipeline defines the field to customize Pipeline component
-type Pipeline struct {
-	PipelineProperties `json:",inline"`
-}
-
-// Trigger defines the field to customize Trigger component
-type Trigger struct {
-	TriggersProperties `json:",inline"`
-}
-
-// Dashboard degines the fields to customize the Dashboard component
-type Dashboard struct {
-	DashboardProperties `json:",inline"`
-}
-
 type Config struct {
 	NodeSelector map[string]string   `json:"nodeSelector,omitempty"`
 	Tolerations  []corev1.Toleration `json:"tolerations,omitempty"`

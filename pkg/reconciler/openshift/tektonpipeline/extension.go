@@ -40,6 +40,9 @@ const (
 	// DefaultDisableAffinityAssistant is default value of disable affinity assistant flag
 	DefaultDisableAffinityAssistant = true
 	monitoringLabel                 = "openshift.io/cluster-monitoring=true"
+
+	enableMetricsKey          = "enableMetrics"
+	enableMetricsDefaultValue = "true"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -66,11 +69,20 @@ type openshiftExtension struct {
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return []mf.Transformer{
-		common.InjectLabelOnNamespace(monitoringLabel),
+	trns := []mf.Transformer{
 		occommon.ApplyCABundles,
 		occommon.RemoveRunAsUser(),
 	}
+
+	pipeline := comp.(*v1alpha1.TektonPipeline)
+
+	// Add monitoring label if metrics is enabled
+	value := findParam(pipeline.Spec.Params, enableMetricsKey)
+	if value == "" || value == "true" {
+		trns = append(trns, common.InjectLabelOnNamespace(monitoringLabel))
+	}
+
+	return trns
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
@@ -99,7 +111,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	}
 
 	tp := tc.(*v1alpha1.TektonPipeline)
-	if crUpdated := SetDefault(&tp.Spec.PipelineProperties); crUpdated {
+	if crUpdated := SetDefault(&tp.Spec.Pipeline); crUpdated {
 		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonPipelines().Update(ctx, tp, v1.UpdateOptions{}); err != nil {
 			return err
 		}
@@ -108,29 +120,85 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	return nil
 }
 
-func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
-	return nil
+func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
+	koDataDir := os.Getenv(common.KoEnvKey)
+	pipeline := comp.(*v1alpha1.TektonPipeline)
+
+	// Install monitoring if metrics is enabled
+	value := findParam(pipeline.Spec.Params, enableMetricsKey)
+
+	monitoringLocation := filepath.Join(koDataDir, "openshift-monitoring")
+	if err := common.AppendManifest(&oe.manifest, monitoringLocation); err != nil {
+		return err
+	}
+
+	trns, err := oe.manifest.Transform(
+		mf.InjectNamespace(pipeline.Spec.TargetNamespace),
+		mf.InjectOwner(pipeline),
+	)
+	if err != nil {
+		return err
+	}
+
+	if value == "true" {
+		return trns.Apply()
+	}
+	return trns.Delete()
 }
 func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
 	return nil
 }
 
-func SetDefault(properties *v1alpha1.PipelineProperties) bool {
+func SetDefault(pipeline *v1alpha1.Pipeline) bool {
 
 	var updated = false
 
 	// Set default service account as pipeline
-	if properties.DefaultServiceAccount == "" {
-		properties.DefaultServiceAccount = common.DefaultSA
+	if pipeline.DefaultServiceAccount == "" {
+		pipeline.DefaultServiceAccount = common.DefaultSA
 		updated = true
 	}
 
 	// Set `disable-affinity-assistant` to true if not set in CR
 	// webhook will not set any value but by default in pipelines configmap it will be false
-	if properties.DisableAffinityAssistant == nil {
-		properties.DisableAffinityAssistant = ptr.Bool(DefaultDisableAffinityAssistant)
+	if pipeline.DisableAffinityAssistant == nil {
+		pipeline.DisableAffinityAssistant = ptr.Bool(DefaultDisableAffinityAssistant)
+		updated = true
+	}
+
+	// Add params with default values if not defined by user
+	var found = false
+	for i, p := range pipeline.Params {
+		if p.Name == enableMetricsKey {
+			found = true
+			// If the value set is invalid then set key to default value
+			// Not returning an error if the values is invalid as
+			// we validate in reconciler and this would affect the
+			// rest of the installation
+			if p.Value != "false" && p.Value != "true" {
+				pipeline.Params[i].Value = enableMetricsDefaultValue
+				updated = true
+			}
+			break
+		}
+	}
+
+	if !found {
+		pipeline.Params = append(pipeline.Params, v1alpha1.Param{
+			Name:  enableMetricsKey,
+			Value: enableMetricsDefaultValue,
+		})
 		updated = true
 	}
 
 	return updated
+}
+
+func findParam(params []v1alpha1.Param, param string) string {
+	for _, p := range params {
+		if p.Name == param {
+			return p.Value
+		}
+	}
+	return ""
 }
