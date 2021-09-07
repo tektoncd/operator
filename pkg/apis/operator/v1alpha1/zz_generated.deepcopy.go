@@ -188,6 +188,11 @@ func (in *ParamValue) DeepCopy() *ParamValue {
 func (in *Pipeline) DeepCopyInto(out *Pipeline) {
 	*out = *in
 	in.PipelineProperties.DeepCopyInto(&out.PipelineProperties)
+	if in.Params != nil {
+		in, out := &in.Params, &out.Params
+		*out = make([]Param, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -768,7 +773,7 @@ func (in *TektonPipelineList) DeepCopyObject() runtime.Object {
 func (in *TektonPipelineSpec) DeepCopyInto(out *TektonPipelineSpec) {
 	*out = *in
 	out.CommonSpec = in.CommonSpec
-	in.PipelineProperties.DeepCopyInto(&out.PipelineProperties)
+	in.Pipeline.DeepCopyInto(&out.Pipeline)
 	in.Config.DeepCopyInto(&out.Config)
 	return
 }

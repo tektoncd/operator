@@ -80,6 +80,11 @@ type TektonDashboardList struct {
 }
 
 // Dashboard degines the fields to customize the Dashboard component
+type Dashboard struct {
+	DashboardProperties `json:",inline"`
+}
+
+// Dashboard degines the fields to customize the Dashboard component
 type DashboardProperties struct {
 	// Readonly when set to true configures the Tekton dashboard in read-only mode
 	Readonly bool `json:"readonly"`

@@ -58,8 +58,8 @@ func ensureTektonPipelineExists(clients op.TektonPipelineInterface, config *v1al
 			updated = true
 		}
 
-		if !reflect.DeepEqual(tpCR.Spec.PipelineProperties, config.Spec.Pipeline.PipelineProperties) {
-			tpCR.Spec.PipelineProperties = config.Spec.Pipeline.PipelineProperties
+		if !reflect.DeepEqual(tpCR.Spec.Pipeline, config.Spec.Pipeline) {
+			tpCR.Spec.Pipeline = config.Spec.Pipeline
 			updated = true
 		}
 
@@ -90,8 +90,8 @@ func ensureTektonPipelineExists(clients op.TektonPipelineInterface, config *v1al
 				CommonSpec: v1alpha1.CommonSpec{
 					TargetNamespace: config.Spec.TargetNamespace,
 				},
-				PipelineProperties: config.Spec.Pipeline.PipelineProperties,
-				Config:             config.Spec.Config,
+				Pipeline: config.Spec.Pipeline,
+				Config:   config.Spec.Config,
 			},
 		}
 
