@@ -28,4 +28,20 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	tc.Spec.Pipeline.PipelineProperties.setDefaults()
 
 	setAddonDefaults(&tc.Spec.Addon.Params)
+
+	// before adding webhook we had default value for pruner's keep as 1
+	// but we expect user to define all values now otherwise webhook reject
+	// request so if a user has installed prev version and has not enabled
+	// pruner then `keep` will have a value 1 and after upgrading
+	// to newer version webhook will fail if keep has a value and
+	// other fields are not defined
+	// this handles that case by removing the default for keep if
+	// other pruner fields are not defined
+	if len(tc.Spec.Pruner.Resources) == 0 {
+		tc.Spec.Pruner.Keep = nil
+		tc.Spec.Pruner.Schedule = ""
+	} else if tc.Spec.Pruner.Schedule == "" {
+		tc.Spec.Pruner.Keep = nil
+		tc.Spec.Pruner.Resources = []string{}
+	}
 }
