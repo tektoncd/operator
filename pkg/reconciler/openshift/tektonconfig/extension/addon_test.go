@@ -22,7 +22,7 @@ import (
 	"github.com/tektoncd/operator/pkg/client/injection/client/fake"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig/pipeline"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	ts "knative.dev/pkg/reconciler/testing"
 )
 

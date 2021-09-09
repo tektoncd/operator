@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Tekton Authors
+Copyright 2021 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pipeline
+package trigger
 
 import (
 	"testing"
@@ -22,22 +22,26 @@ import (
 	"github.com/tektoncd/operator/pkg/client/injection/client/fake"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	ts "knative.dev/pkg/reconciler/testing"
 )
 
-func TestTektonPipelineCreateAndDeleteCR(t *testing.T) {
+func TestTektonTriggerCreateAndDeleteCR(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	tConfig := GetTektonConfig()
-	err := CreatePipelineCR(tConfig, c.OperatorV1alpha1())
+	tConfig := pipeline.GetTektonConfig()
+	err := CreateTriggerCR(tConfig, c.OperatorV1alpha1())
 	util.AssertNotEqual(t, err, nil)
-	err = TektonPipelineCRDelete(c.OperatorV1alpha1().TektonPipelines(), common.PipelineResourceName)
+	// recheck triggers creation
+	err = CreateTriggerCR(tConfig, c.OperatorV1alpha1())
+	util.AssertNotEqual(t, err, nil)
+	err = TektonTriggerCRDelete(c.OperatorV1alpha1().TektonTriggers(), common.TriggerResourceName)
 	util.AssertEqual(t, err, nil)
 }
 
-func TestTektonPipelineCRDelete(t *testing.T) {
+func TestTektonTriggerCRDelete(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	err := TektonPipelineCRDelete(c.OperatorV1alpha1().TektonPipelines(), common.PipelineResourceName)
+	err := TektonTriggerCRDelete(c.OperatorV1alpha1().TektonTriggers(), common.TriggerResourceName)
 	util.AssertEqual(t, err, nil)
 }
