@@ -138,7 +138,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 
 	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
 	// Check if Release Version in TektonInstallerSet is same as expected
-	// If any of the thing above is not same the delete the existing TektonInstallerSet
+	// If any of the thing above is not same then delete the existing TektonInstallerSet
 	// and create a new with expected properties
 
 	if installerSetTargetNamespace != tp.Spec.TargetNamespace || installerSetReleaseVersion != r.releaseVersion {

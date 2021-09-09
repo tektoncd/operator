@@ -44,7 +44,7 @@ const (
 	// KindTektonConfig is the Kind of Tekton Config in a GVK context.
 	KindTektonConfig = "TektonConfig"
 
-	// KindTektonResult is the Kind of Tekton Config in a GVK context.
+	// KindTektonResult is the Kind of Tekton Result in a GVK context.
 	KindTektonResult = "TektonResult"
 
 	// KindTektonInstallerSet is the Kind of TektonInstallerSet in a GVK context.
