@@ -37,14 +37,10 @@ patches:
   target:
     kind: ClusterRoleBinding
     name: tekton-operator
-- path: webhook.yaml
-  target:
-    kind: Deployment
-    name: tekton-operator-webhook
 
 resources:
 - ../base/
-- ../base/300-operator_v1alpha1_addon_crd.yaml
+- 300-operator_v1alpha1_addon_crd.yaml
 - service_account.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
