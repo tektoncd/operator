@@ -30,7 +30,7 @@ spec:
         name: tekton-operator-webhook
         app: tekton-operator
     spec:
-      serviceAccountName: tekton-operator
+      serviceAccountName: openshift-pipelines-operator
       containers:
       - name: tekton-operator-webhook
         image: ko://github.com/tektoncd/operator/cmd/openshift/webhook
