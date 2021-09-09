@@ -71,3 +71,23 @@ func Test_SetDefaults_Pipeline_Properties(t *testing.T) {
 		t.Error("Setting default failed for TektonConfig (spec.pipeline.pipelineProperties)")
 	}
 }
+
+func Test_SetDefaults_Addon_Params(t *testing.T) {
+
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+		},
+	}
+
+	tc.SetDefaults(context.TODO())
+	if len(tc.Spec.Addon.Params) != 2 {
+		t.Error("Setting default failed for TektonConfig (spec.addon.params)")
+	}
+}
