@@ -22,7 +22,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	tektonAddoninformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	k8s_ctrl "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	namespaceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
@@ -34,7 +34,7 @@ import (
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	ctrl := k8s_ctrl.NewExtendedController(OpenShiftExtension)(ctx, cmw)
+	ctrl := tektonconfig.NewExtensibleController(OpenShiftExtension)(ctx, cmw)
 	namespaceInformer := namespaceinformer.Get(ctx)
 	namespaceInformer.Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(ctrl, common.ConfigResourceName)))
 

@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Tekton Authors
+Copyright 2021 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,9 +29,8 @@ import (
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig/pipeline"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig/trigger"
-	tt "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig/trigger"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -121,7 +120,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	var stages common.Stages
 	if tc.Spec.Profile == common.ProfileLite {
-		err := tt.TektonTriggerCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), common.TriggerResourceName)
+		err := trigger.TektonTriggerCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), common.TriggerResourceName)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return nil
