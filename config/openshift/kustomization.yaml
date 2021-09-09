@@ -38,6 +38,9 @@ patches:
     kind: ClusterRoleBinding
     name: tekton-operator
 
+patchesStrategicMerge:
+- 500-webhooks.yaml
+
 resources:
 - ../base/
 - 300-operator_v1alpha1_addon_crd.yaml
