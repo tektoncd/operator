@@ -28,6 +28,7 @@ const (
 	DeploymentsAvailable apis.ConditionType = "DeploymentsAvailable"
 	WebhookReady         apis.ConditionType = "WebhooksReady"
 	ControllerReady      apis.ConditionType = "ControllersReady"
+	AllDeploymentsReady  apis.ConditionType = "AllDeploymentsReady"
 )
 
 var (
@@ -38,6 +39,7 @@ var (
 		DeploymentsAvailable,
 		WebhookReady,
 		ControllerReady,
+		AllDeploymentsReady,
 	)
 )
 
@@ -83,6 +85,10 @@ func (tis *TektonInstallerSetStatus) MarkWebhookReady() {
 
 func (tis *TektonInstallerSetStatus) MarkControllerReady() {
 	installerSetCondSet.Manage(tis).MarkTrue(ControllerReady)
+}
+
+func (tis *TektonInstallerSetStatus) MarkAllDeploymentsReady() {
+	installerSetCondSet.Manage(tis).MarkTrue(AllDeploymentsReady)
 }
 
 func (tis *TektonInstallerSetStatus) MarkNotReady(msg string) {
@@ -138,4 +144,12 @@ func (tis *TektonInstallerSetStatus) MarkControllerNotReady(msg string) {
 		ControllerReady,
 		"Error",
 		"Controller: %s", msg)
+}
+
+func (tis *TektonInstallerSetStatus) MarkAllDeploymentsNotReady(msg string) {
+	tis.MarkNotReady("All Deployments not available")
+	installerSetCondSet.Manage(tis).MarkFalse(
+		AllDeploymentsReady,
+		"Error",
+		"Deployment: %s", msg)
 }
