@@ -21,107 +21,156 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+const (
+	DependenciesInstalled apis.ConditionType = "DependenciesInstalled"
+)
+
 var (
-	_ TektonComponentStatus = (*TektonTriggerStatus)(nil)
+	// TODO: Add this back after refactoring all components
+	// and updating TektonComponentStatus to have updated
+	// conditions
+	//_ TektonComponentStatus = (*TektonTriggerStatus)(nil)
 
 	triggersCondSet = apis.NewLivingConditionSet(
 		DependenciesInstalled,
-		DeploymentsAvailable,
-		InstallSucceeded,
+		PreReconciler,
+		InstallerSetAvailable,
+		InstallerSetReady,
+		PostReconciler,
 	)
 )
 
-// GroupVersionKind returns SchemeGroupVersion of a TektonTrigger
-func (tp *TektonTrigger) GroupVersionKind() schema.GroupVersionKind {
+func (tr *TektonTrigger) GroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind(KindTektonTrigger)
 }
 
-// GetCondition returns the current condition of a given condition type
-func (tps *TektonTriggerStatus) GetCondition(t apis.ConditionType) *apis.Condition {
-	return triggersCondSet.Manage(tps).GetCondition(t)
+func (tr *TektonTrigger) GetGroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind(KindTektonTrigger)
 }
 
-// InitializeConditions initializes conditions of an TektonTriggerStatus
-func (tps *TektonTriggerStatus) InitializeConditions() {
-	triggersCondSet.Manage(tps).InitializeConditions()
+func (tts *TektonTriggerStatus) GetCondition(t apis.ConditionType) *apis.Condition {
+	return triggersCondSet.Manage(tts).GetCondition(t)
 }
 
-// IsReady looks at the conditions returns true if they are all true.
-func (tps *TektonTriggerStatus) IsReady() bool {
-	return triggersCondSet.Manage(tps).IsHappy()
+func (tts *TektonTriggerStatus) InitializeConditions() {
+	triggersCondSet.Manage(tts).InitializeConditions()
 }
 
-// MarkInstallSucceeded marks the InstallationSucceeded status as true.
-func (tps *TektonTriggerStatus) MarkInstallSucceeded() {
-	triggersCondSet.Manage(tps).MarkTrue(InstallSucceeded)
-	if tps.GetCondition(DependenciesInstalled).IsUnknown() {
-		// Assume deps are installed if we're not sure
-		tps.MarkDependenciesInstalled()
-	}
+func (tts *TektonTriggerStatus) IsReady() bool {
+	return triggersCondSet.Manage(tts).IsHappy()
 }
 
-// MarkInstallFailed marks the InstallationSucceeded status as false with the given
-// message.
-func (tps *TektonTriggerStatus) MarkInstallFailed(msg string) {
-	triggersCondSet.Manage(tps).MarkFalse(
-		InstallSucceeded,
+func (tts *TektonTriggerStatus) MarkPreReconcilerComplete() {
+	triggersCondSet.Manage(tts).MarkTrue(PreReconciler)
+}
+
+func (tts *TektonTriggerStatus) MarkInstallerSetAvailable() {
+	triggersCondSet.Manage(tts).MarkTrue(InstallerSetAvailable)
+}
+
+func (tts *TektonTriggerStatus) MarkInstallerSetReady() {
+	triggersCondSet.Manage(tts).MarkTrue(InstallerSetReady)
+}
+
+func (tts *TektonTriggerStatus) MarkPostReconcilerComplete() {
+	triggersCondSet.Manage(tts).MarkTrue(PostReconciler)
+}
+
+func (tts *TektonTriggerStatus) MarkDependenciesInstalled() {
+	triggersCondSet.Manage(tts).MarkTrue(DependenciesInstalled)
+}
+
+func (tts *TektonTriggerStatus) MarkNotReady(msg string) {
+	triggersCondSet.Manage(tts).MarkFalse(
+		apis.ConditionReady,
 		"Error",
-		"Install failed with message: %s", msg)
+		"Ready: %s", msg)
 }
 
-// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
-func (tps *TektonTriggerStatus) MarkDeploymentsAvailable() {
-	triggersCondSet.Manage(tps).MarkTrue(DeploymentsAvailable)
+func (tts *TektonTriggerStatus) MarkPreReconcilerFailed(msg string) {
+	tts.MarkNotReady("PreReconciliation failed")
+	triggersCondSet.Manage(tts).MarkFalse(
+		PreReconciler,
+		"Error",
+		"PreReconciliation failed with message: %s", msg)
 }
 
-// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
-// it's waiting for deployments.
-func (tps *TektonTriggerStatus) MarkDeploymentsNotReady() {
-	triggersCondSet.Manage(tps).MarkFalse(
-		DeploymentsAvailable,
-		"NotReady",
-		"Waiting on deployments")
+func (tts *TektonTriggerStatus) MarkInstallerSetNotAvailable(msg string) {
+	tts.MarkNotReady("TektonInstallerSet not ready")
+	triggersCondSet.Manage(tts).MarkFalse(
+		InstallerSetAvailable,
+		"Error",
+		"Installer set not ready: %s", msg)
 }
 
-// MarkDependenciesInstalled marks the DependenciesInstalled status as true.
-func (tps *TektonTriggerStatus) MarkDependenciesInstalled() {
-	triggersCondSet.Manage(tps).MarkTrue(DependenciesInstalled)
+func (tts *TektonTriggerStatus) MarkInstallerSetNotReady(msg string) {
+	tts.MarkNotReady("TektonInstallerSet not ready")
+	triggersCondSet.Manage(tts).MarkFalse(
+		InstallerSetReady,
+		"Error",
+		"Installer set not ready: %s", msg)
 }
 
-// MarkDependencyInstalling marks the DependenciesInstalled status as false with the
-// given message.
-func (tps *TektonTriggerStatus) MarkDependencyInstalling(msg string) {
-	triggersCondSet.Manage(tps).MarkFalse(
-		DependenciesInstalled,
-		"Installing",
-		"Dependency installing: %s", msg)
+func (tts *TektonTriggerStatus) MarkPostReconcilerFailed(msg string) {
+	tts.MarkNotReady("PostReconciliation failed")
+	triggersCondSet.Manage(tts).MarkFalse(
+		PostReconciler,
+		"Error",
+		"PostReconciliation failed with message: %s", msg)
 }
 
-// MarkDependencyMissing marks the DependenciesInstalled status as false with the
-// given message.
-func (tps *TektonTriggerStatus) MarkDependencyMissing(msg string) {
-	triggersCondSet.Manage(tps).MarkFalse(
+func (tts *TektonTriggerStatus) MarkDependencyInstalling(msg string) {
+	tts.MarkNotReady("Dependencies installing")
+	triggersCondSet.Manage(tts).MarkFalse(
 		DependenciesInstalled,
 		"Error",
-		"Dependency missing: %s", msg)
+		"Dependencies are installing: %s", msg)
 }
 
-// GetVersion gets the currently installed version of the component.
-func (tps *TektonTriggerStatus) GetVersion() string {
-	return tps.Version
+func (tts *TektonTriggerStatus) MarkDependencyMissing(msg string) {
+	tts.MarkNotReady("Missing Dependencies for TektonTriggers")
+	triggersCondSet.Manage(tts).MarkFalse(
+		DependenciesInstalled,
+		"Error",
+		"Dependencies are missing: %s", msg)
 }
 
-// SetVersion sets the currently installed version of the component.
-func (tps *TektonTriggerStatus) SetVersion(version string) {
-	tps.Version = version
+// TODO: below methods are not required for TektonTrigger
+// but as extension implements TektonComponent we need to define them
+// this will be removed
+
+func (tts *TektonTriggerStatus) GetTektonInstallerSet() string {
+	return tts.TektonInstallerSet
 }
 
-// GetManifests gets the url links of the manifests.
-func (tps *TektonTriggerStatus) GetManifests() []string {
-	return tps.Manifests
+func (tts *TektonTriggerStatus) SetTektonInstallerSet(installerSet string) {
+	tts.TektonInstallerSet = installerSet
 }
 
-// SetVersion sets the url links of the manifests.
-func (tps *TektonTriggerStatus) SetManifests(manifests []string) {
-	tps.Manifests = manifests
+func (tts *TektonTriggerStatus) GetVersion() string {
+	return tts.Version
+}
+
+func (tts *TektonTriggerStatus) SetVersion(version string) {
+	tts.Version = version
+}
+
+func (tts *TektonTriggerStatus) MarkInstallSucceeded() {
+	panic("implement me")
+}
+
+func (tts *TektonTriggerStatus) MarkInstallFailed(msg string) {
+	panic("implement me")
+}
+
+func (tts *TektonTriggerStatus) MarkDeploymentsAvailable() {
+	panic("implement me")
+}
+
+func (tts *TektonTriggerStatus) MarkDeploymentsNotReady() {
+	panic("implement me")
+}
+
+func (tts *TektonTriggerStatus) GetManifests() []string {
+	panic("implement me")
 }

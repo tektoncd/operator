@@ -21,11 +21,6 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
-var (
-	_ TektonComponent     = (*TektonTrigger)(nil)
-	_ TektonComponentSpec = (*TektonTriggerSpec)(nil)
-)
-
 // TektonTrigger is the Schema for the tektontriggers API
 // +genclient
 // +genreconciler:krshapedlogic=false
@@ -51,8 +46,8 @@ func (tp *TektonTrigger) GetStatus() TektonComponentStatus {
 
 // TektonTriggerSpec defines the desired state of TektonTrigger
 type TektonTriggerSpec struct {
-	CommonSpec         `json:",inline"`
-	TriggersProperties `json:",inline"`
+	CommonSpec `json:",inline"`
+	Trigger    `json:",inline"`
 	// Config holds the configuration for resources created by TektonTrigger
 	// +optional
 	Config Config `json:"config,omitempty"`
@@ -66,9 +61,9 @@ type TektonTriggerStatus struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// The url links of the manifests, separated by comma
+	// The current installer set name
 	// +optional
-	Manifests []string `json:"manifests,omitempty"`
+	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
 }
 
 // TektonTriggersList contains a list of TektonTrigger
