@@ -42,6 +42,7 @@ var (
 	validatingWebhookConfigurationPred = mf.ByKind("ValidatingWebhookConfiguration")
 	mutatingWebhookConfigurationPred   = mf.ByKind("MutatingWebhookConfiguration")
 	horizontalPodAutoscalerPred        = mf.ByKind("HorizontalPodAutoscaler")
+	clusterInterceptor                 = mf.ByKind("ClusterInterceptor")
 )
 
 type installer struct {
@@ -63,6 +64,7 @@ func (i *installer) EnsureClusterScopedResources() error {
 			podSecurityPolicyPred,
 			validatingWebhookConfigurationPred,
 			mutatingWebhookConfigurationPred,
+			clusterInterceptor,
 		)).Apply(); err != nil {
 		return err
 	}

@@ -970,7 +970,7 @@ func (in *TektonTriggerList) DeepCopyObject() runtime.Object {
 func (in *TektonTriggerSpec) DeepCopyInto(out *TektonTriggerSpec) {
 	*out = *in
 	out.CommonSpec = in.CommonSpec
-	out.TriggersProperties = in.TriggersProperties
+	out.Trigger = in.Trigger
 	in.Config.DeepCopyInto(&out.Config)
 	return
 }
@@ -989,11 +989,6 @@ func (in *TektonTriggerSpec) DeepCopy() *TektonTriggerSpec {
 func (in *TektonTriggerStatus) DeepCopyInto(out *TektonTriggerStatus) {
 	*out = *in
 	in.Status.DeepCopyInto(&out.Status)
-	if in.Manifests != nil {
-		in, out := &in.Manifests, &out.Manifests
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	return
 }
 

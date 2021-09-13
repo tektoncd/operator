@@ -18,26 +18,28 @@ package tektontrigger
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
+	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
+	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
-	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	tektonTriggerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektontrigger"
 	tektonTriggerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektontrigger"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
+
+const releaseLabel = "triggers.tekton.dev/release"
 
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
@@ -48,10 +50,6 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 // NewExtendedController returns a controller extended to a specific platform
 func NewExtendedController(generator common.ExtensionGenerator) injection.ControllerConstructor {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-		tektonPipelineInformer := tektonPipelineinformer.Get(ctx)
-		tektonTriggersInformer := tektonTriggerinformer.Get(ctx)
-		deploymentInformer := deploymentinformer.Get(ctx)
-		kubeClient := kubeclient.Get(ctx)
 		logger := logging.FromContext(ctx)
 
 		mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
@@ -64,24 +62,60 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatalw("Error creating initial manifest", zap.Error(err))
 		}
 
+		// Reads the source manifest from kodata while initializing the contoller
+		if err := fetchSourceManifests(context.TODO(), &manifest); err != nil {
+			logger.Fatalw("failed to read manifest", err)
+		}
+
+		// Read the release version of pipelines
+		releaseVersion, err := fetchVersion(manifest)
+		if err != nil {
+			logger.Fatalw("failed to read release version from manifest", err)
+		}
+
 		c := &Reconciler{
-			kubeClientSet:     kubeClient,
 			operatorClientSet: operatorclient.Get(ctx),
+			pipelineInformer:  tektonPipelineinformer.Get(ctx),
 			extension:         generator(ctx),
 			manifest:          manifest,
-			pipelineInformer:  tektonPipelineInformer,
+			releaseVersion:    releaseVersion,
 		}
 		impl := tektonTriggerreconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers")
+		// Add enqueue func in reconciler
+		c.enqueueAfter = impl.EnqueueAfter
 
-		tektonTriggersInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		logger.Info("Setting up event handlers for TektonTrigger")
 
-		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonTrigger")),
+		tektonTriggerinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+
+		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TektonTrigger{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
 		return impl
 	}
+}
+
+// fetchSourceManifests mutates the passed manifest by appending one
+// appropriate for the passed TektonComponent
+func fetchSourceManifests(ctx context.Context, manifest *mf.Manifest) error {
+	var trigger *v1alpha1.TektonTrigger
+	return common.AppendTarget(ctx, manifest, trigger)
+}
+
+func fetchVersion(manifest mf.Manifest) (string, error) {
+	crds := manifest.Filter(mf.CRDs)
+	if len(crds.Resources()) == 0 {
+		return "", fmt.Errorf("failed to find crds to get release version")
+	}
+
+	crd := crds.Resources()[0]
+	version, ok := crd.GetLabels()[releaseLabel]
+	if !ok {
+		return version, fmt.Errorf("failed to find release label on crd")
+	}
+
+	return version, nil
 }

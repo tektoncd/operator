@@ -59,8 +59,8 @@ func ensureTektonTriggerExists(clients op.TektonTriggerInterface, config *v1alph
 			updated = true
 		}
 
-		if !reflect.DeepEqual(ttCR.Spec.TriggersProperties, config.Spec.Trigger.TriggersProperties) {
-			ttCR.Spec.TriggersProperties = config.Spec.Trigger.TriggersProperties
+		if !reflect.DeepEqual(ttCR.Spec.Trigger, config.Spec.Trigger) {
+			ttCR.Spec.Trigger = config.Spec.Trigger
 			updated = true
 		}
 
@@ -91,8 +91,8 @@ func ensureTektonTriggerExists(clients op.TektonTriggerInterface, config *v1alph
 				CommonSpec: v1alpha1.CommonSpec{
 					TargetNamespace: config.Spec.TargetNamespace,
 				},
-				Config:             config.Spec.Config,
-				TriggersProperties: config.Spec.Trigger.TriggersProperties,
+				Config:  config.Spec.Config,
+				Trigger: config.Spec.Trigger,
 			},
 		}
 		return clients.Create(context.TODO(), ttCR, metav1.CreateOptions{})
