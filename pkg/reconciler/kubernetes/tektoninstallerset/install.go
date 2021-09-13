@@ -17,12 +17,13 @@ limitations under the License.
 package tektoninstallerset
 
 import (
-	"errors"
+	"fmt"
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -96,35 +97,72 @@ func (i *installer) EnsureDeploymentResources() error {
 }
 
 func (i *installer) IsWebhookReady() error {
-	return i.IsDeploymentReady("webhook")
-}
-
-func (i *installer) IsControllerReady() error {
-	return i.IsDeploymentReady("controller")
-}
-
-func (i *installer) IsDeploymentReady(name string) error {
 
 	for _, u := range i.Manifest.Filter(deploymentPred).Resources() {
 
-		if !strings.Contains(u.GetName(), name) {
+		if !strings.Contains(u.GetName(), "webhook") {
 			continue
 		}
 
-		resource, err := i.Manifest.Client.Get(&u)
+		err := i.isDeploymentReady(&u)
 		if err != nil {
 			return err
 		}
+	}
 
-		deployment := &appsv1.Deployment{}
-		err = runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, deployment)
+	return nil
+}
+
+func (i *installer) IsControllerReady() error {
+
+	for _, u := range i.Manifest.Filter(deploymentPred).Resources() {
+
+		if !strings.Contains(u.GetName(), "controller") {
+			continue
+		}
+
+		err := i.isDeploymentReady(&u)
 		if err != nil {
 			return err
 		}
+	}
 
-		if !isDeploymentAvailable(deployment) {
-			return errors.New("deployment not available")
+	return nil
+}
+
+func (i *installer) AllDeploymentsReady() error {
+
+	for _, u := range i.Manifest.Filter(deploymentPred).Resources() {
+
+		if strings.Contains(u.GetName(), "controller") ||
+			strings.Contains(u.GetName(), "webhook") {
+			continue
 		}
+
+		err := i.isDeploymentReady(&u)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (i *installer) isDeploymentReady(d *unstructured.Unstructured) error {
+
+	resource, err := i.Manifest.Client.Get(d)
+	if err != nil {
+		return err
+	}
+
+	deployment := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, deployment)
+	if err != nil {
+		return err
+	}
+
+	if !isDeploymentAvailable(deployment) {
+		return fmt.Errorf("%s deployment not ready", deployment.GetName())
 	}
 
 	return nil

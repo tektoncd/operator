@@ -58,8 +58,8 @@ type TektonPipelineStatus struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// +optional
 	// The current installer set name
+	// +optional
 	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
 }
 

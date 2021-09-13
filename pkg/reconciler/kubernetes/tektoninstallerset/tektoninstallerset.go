@@ -164,5 +164,17 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	// Update Ready status of Controller
 	installerSet.Status.MarkControllerReady()
 
+	// Check if any other deployment exists other than controller
+	// and webhook and is ready
+	err = installer.AllDeploymentsReady()
+	if err != nil {
+		installerSet.Status.MarkAllDeploymentsNotReady(err.Error())
+		r.enqueueAfter(installerSet, time.Second*10)
+		return nil
+	}
+
+	// Mark all deployments ready
+	installerSet.Status.MarkAllDeploymentsReady()
+
 	return nil
 }

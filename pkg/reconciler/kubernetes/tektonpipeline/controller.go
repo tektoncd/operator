@@ -39,6 +39,8 @@ import (
 	"knative.dev/pkg/logging"
 )
 
+const releaseLabel = "pipeline.tekton.dev/release"
+
 // NewController initializes the controller and is called by the generated code
 // Registers event handlers to enqueue events
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -49,9 +51,8 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 func NewExtendedController(generator common.ExtensionGenerator) injection.ControllerConstructor {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
-		restConfig := injection.GetConfig(ctx)
 
-		mfclient, err := mfc.NewClient(restConfig)
+		mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
 		if err != nil {
 			logger.Fatalw("Error creating client from injected config", zap.Error(err))
 		}
@@ -120,7 +121,7 @@ func fetchVersion(manifest mf.Manifest) (string, error) {
 	}
 
 	crd := crds.Resources()[0]
-	version, ok := crd.GetLabels()["pipeline.tekton.dev/release"]
+	version, ok := crd.GetLabels()[releaseLabel]
 	if !ok {
 		return version, fmt.Errorf("failed to find release label on crd")
 	}
