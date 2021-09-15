@@ -29,17 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func TestStagesExecute(t *testing.T) {
-	os.Setenv(KoEnvKey, "testdata/kodata")
-	defer os.Unsetenv(KoEnvKey)
-	manifest, _ := mf.ManifestFrom(mf.Slice{})
-	stages := Stages{AppendTarget, AppendInstalled}
-	util.AssertEqual(t, len(manifest.Resources()), 0)
-	err := stages.Execute(context.TODO(), &manifest, &v1alpha1.TektonTrigger{})
-	util.AssertNoError(t, err)
-	util.AssertEqual(t, len(manifest.Resources()), 4)
-}
-
 func TestDeleteObsoleteResources(t *testing.T) {
 	os.Setenv(KoEnvKey, "testdata/kodata")
 	defer os.Unsetenv(KoEnvKey)
