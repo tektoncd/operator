@@ -18,8 +18,6 @@ package tektonpipeline
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -172,7 +170,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		// TektonInstallerSet with computing new hash of TektonPipeline Spec
 
 		// Hash of TektonPipeline Spec
-		expectedSpecHash, err := computeHashOf(tp.Spec)
+		expectedSpecHash, err := common.ComputeHashOf(tp.Spec)
 		if err != nil {
 			return err
 		}
@@ -255,7 +253,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.Tekton
 	// in further reconciliation we compute hash of tp spec and check with
 	// annotation, if they are same then we skip updating the object
 	// otherwise we update the manifest
-	specHash, err := computeHashOf(tp.Spec)
+	specHash, err := common.ComputeHashOf(tp.Spec)
 	if err != nil {
 		return err
 	}
@@ -323,14 +321,4 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	}
 	trns = append(trns, extra...)
 	return common.Transform(ctx, manifest, instance, trns...)
-}
-
-func computeHashOf(obj interface{}) (string, error) {
-	h := sha256.New()
-	d, err := json.Marshal(obj)
-	if err != nil {
-		return "", err
-	}
-	h.Write(d)
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
