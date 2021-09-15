@@ -18,7 +18,6 @@ package tektontrigger
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
@@ -68,7 +67,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		// Read the release version of pipelines
-		releaseVersion, err := fetchVersion(manifest)
+		releaseVersion, err := common.FetchVersionFromCRD(manifest, releaseLabel)
 		if err != nil {
 			logger.Fatalw("failed to read release version from manifest", err)
 		}
@@ -103,19 +102,4 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 func fetchSourceManifests(ctx context.Context, manifest *mf.Manifest) error {
 	var trigger *v1alpha1.TektonTrigger
 	return common.AppendTarget(ctx, manifest, trigger)
-}
-
-func fetchVersion(manifest mf.Manifest) (string, error) {
-	crds := manifest.Filter(mf.CRDs)
-	if len(crds.Resources()) == 0 {
-		return "", fmt.Errorf("failed to find crds to get release version")
-	}
-
-	crd := crds.Resources()[0]
-	version, ok := crd.GetLabels()[releaseLabel]
-	if !ok {
-		return version, fmt.Errorf("failed to find release label on crd")
-	}
-
-	return version, nil
 }

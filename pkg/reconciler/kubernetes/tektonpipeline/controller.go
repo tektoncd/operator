@@ -18,7 +18,6 @@ package tektonpipeline
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -68,7 +67,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		// Read the release version of pipelines
-		releaseVersion, err := fetchVersion(manifest)
+		releaseVersion, err := common.FetchVersionFromCRD(manifest, releaseLabel)
 		if err != nil {
 			logger.Fatalw("failed to read release version from manifest", err)
 		}
@@ -112,19 +111,4 @@ func addProxy(manifest *mf.Manifest) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
 	proxyLocation := filepath.Join(koDataDir, "webhook")
 	return common.AppendManifest(manifest, proxyLocation)
-}
-
-func fetchVersion(manifest mf.Manifest) (string, error) {
-	crds := manifest.Filter(mf.CRDs)
-	if len(crds.Resources()) == 0 {
-		return "", fmt.Errorf("failed to find crds to get release version")
-	}
-
-	crd := crds.Resources()[0]
-	version, ok := crd.GetLabels()[releaseLabel]
-	if !ok {
-		return version, fmt.Errorf("failed to find release label on crd")
-	}
-
-	return version, nil
 }

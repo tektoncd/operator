@@ -18,8 +18,6 @@ package tektontrigger
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -186,7 +184,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		// TektonInstallerSet with computing new hash of TektonTrigger Spec
 
 		// Hash of TektonPipeline Spec
-		expectedSpecHash, err := computeHashOf(tt.Spec)
+		expectedSpecHash, err := common.ComputeHashOf(tt.Spec)
 		if err != nil {
 			return err
 		}
@@ -289,7 +287,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tt *v1alpha1.Tekton
 	// in further reconciliation we compute hash of tt spec and check with
 	// annotation, if they are same then we skip updating the object
 	// otherwise we update the manifest
-	specHash, err := computeHashOf(tt.Spec)
+	specHash, err := common.ComputeHashOf(tt.Spec)
 	if err != nil {
 		return err
 	}
@@ -337,14 +335,4 @@ func makeInstallerSet(tt *v1alpha1.TektonTrigger, manifest mf.Manifest, ttSpecHa
 			Manifests: manifest.Resources(),
 		},
 	}
-}
-
-func computeHashOf(obj interface{}) (string, error) {
-	h := sha256.New()
-	d, err := json.Marshal(obj)
-	if err != nil {
-		return "", err
-	}
-	h.Write(d)
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
