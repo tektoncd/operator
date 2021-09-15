@@ -47,20 +47,3 @@ func TestListReleases(t *testing.T) {
 	util.AssertEqual(t, err, nil)
 	util.AssertDeepEqual(t, version, expectedVersionList)
 }
-
-func TestManifestPath(t *testing.T) {
-	koPath := "testdata/kodata"
-	os.Setenv(KoEnvKey, koPath)
-	defer os.Unsetenv(KoEnvKey)
-	expectedPath := "testdata/kodata/tekton-trigger/0.15.2"
-
-	path := manifestPath(VERSION, &v1alpha1.TektonTrigger{})
-	util.AssertEqual(t, path, expectedPath)
-
-	path = installedManifestPath(VERSION, &v1alpha1.TektonTrigger{})
-	util.AssertEqual(t, path, expectedPath)
-
-	path = installedManifestPath(VERSION, &v1alpha1.TektonAddon{})
-	util.AssertNotEqual(t, path, expectedPath)
-
-}
