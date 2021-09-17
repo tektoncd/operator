@@ -32,8 +32,16 @@ func (tr *TektonTrigger) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
 	}
 
-	return errs
+	return errs.Also(tr.Spec.TriggersProperties.validate("spec"))
 }
 
-func (tr *TektonTrigger) SetDefaults(ctx context.Context) {
+func (tr *TriggersProperties) validate(path string) (errs *apis.FieldError) {
+
+	if tr.EnableApiFields != "" {
+		if tr.EnableApiFields == ApiFieldStable || tr.EnableApiFields == ApiFieldAlpha {
+			return errs
+		}
+		errs = errs.Also(apis.ErrInvalidValue(tr.EnableApiFields, path+".enable-api-fields"))
+	}
+	return errs
 }

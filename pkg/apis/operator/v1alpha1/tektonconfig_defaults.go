@@ -26,6 +26,7 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	}
 
 	tc.Spec.Pipeline.PipelineProperties.setDefaults()
+	tc.Spec.Trigger.TriggersProperties.setDefaults()
 
 	setAddonDefaults(&tc.Spec.Addon.Params)
 

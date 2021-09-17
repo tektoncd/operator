@@ -26,8 +26,8 @@ const (
 	ClusterTasksParam      = "clusterTasks"
 	PipelineTemplatesParam = "pipelineTemplates"
 
-	PipelineApiFieldAlpha  = "alpha"
-	PipelineApiFieldStable = "stable"
+	ApiFieldAlpha  = "alpha"
+	ApiFieldStable = "stable"
 )
 
 var (

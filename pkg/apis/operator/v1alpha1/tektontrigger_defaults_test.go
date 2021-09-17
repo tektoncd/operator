@@ -23,38 +23,29 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/ptr"
 )
 
-func Test_SetDefaults_PipelineProperties(t *testing.T) {
+func Test_SetDefaults_TriggersProperties(t *testing.T) {
 
-	tp := &TektonPipeline{
+	tt := &TektonTrigger{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "name",
 			Namespace: "namespace",
 		},
-		Spec: TektonPipelineSpec{
+		Spec: TektonTriggerSpec{
 			CommonSpec: CommonSpec{
 				TargetNamespace: "namespace",
 			},
 		},
 	}
 
-	properties := PipelineProperties{
-		DisableHomeEnvOverwrite:                  ptr.Bool(true),
-		DisableWorkingDirectoryOverwrite:         ptr.Bool(true),
-		DisableCredsInit:                         ptr.Bool(false),
-		RunningInEnvironmentWithInjectedSidecars: ptr.Bool(true),
-		RequireGitSshSecretKnownHosts:            ptr.Bool(false),
-		EnableTektonOciBundles:                   ptr.Bool(false),
-		EnableCustomTasks:                        ptr.Bool(false),
-		EnableApiFields:                          ApiFieldStable,
-		ScopeWhenExpressionsToTask:               ptr.Bool(false),
+	properties := TriggersProperties{
+		EnableApiFields: ApiFieldStable,
 	}
 
-	tp.SetDefaults(context.TODO())
+	tt.SetDefaults(context.TODO())
 
-	if d := cmp.Diff(properties, tp.Spec.PipelineProperties); d != "" {
+	if d := cmp.Diff(properties, tt.Spec.TriggersProperties); d != "" {
 		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
 	}
 }
