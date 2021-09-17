@@ -91,3 +91,29 @@ func Test_SetDefaults_Addon_Params(t *testing.T) {
 		t.Error("Setting default failed for TektonConfig (spec.addon.params)")
 	}
 }
+
+func Test_SetDefaults_Triggers_Properties(t *testing.T) {
+
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Profile: ProfileLite,
+			Trigger: Trigger{
+				TriggersProperties: TriggersProperties{
+					EnableApiFields: "alpha",
+				},
+			},
+		},
+	}
+
+	tc.SetDefaults(context.TODO())
+	if tc.Spec.Trigger.EnableApiFields == "stable" {
+		t.Error("Setting default failed for TektonConfig (spec.trigger.triggersProperties)")
+	}
+}

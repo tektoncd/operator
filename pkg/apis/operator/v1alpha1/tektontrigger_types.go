@@ -88,4 +88,5 @@ type Trigger struct {
 // defined for triggers only if user pass them
 type TriggersProperties struct {
 	DefaultServiceAccount string `json:"default-service-account,omitempty"`
+	EnableApiFields       string `json:"enable-api-fields,omitempty"`
 }

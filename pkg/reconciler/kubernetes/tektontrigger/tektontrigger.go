@@ -110,6 +110,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		return nil
 	}
 
+	// Pass the object through defaulting
+	tt.SetDefaults(ctx)
+
 	//find the valid tekton-pipeline installation
 	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
 		if err.Error() == common.PipelineNotReady {

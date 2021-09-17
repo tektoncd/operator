@@ -201,3 +201,27 @@ func Test_ValidateTektonConfig_InvalidPipelineProperties(t *testing.T) {
 	err := tc.Validate(context.TODO())
 	assert.Equal(t, "invalid value: test: spec.pipeline.enable-api-fields", err.Error())
 }
+
+func Test_ValidateTektonConfig_InvalidTriggerProperties(t *testing.T) {
+
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Profile: "all",
+			Trigger: Trigger{
+				TriggersProperties: TriggersProperties{
+					EnableApiFields: "test",
+				},
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Equal(t, "invalid value: test: spec.trigger.enable-api-fields", err.Error())
+}
