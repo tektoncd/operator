@@ -84,6 +84,9 @@ type TektonConfigSpec struct {
 	// Dashboard holds the customizable options for dashboards component
 	// +optional
 	Dashboard Dashboard `json:"dashboard,omitempty"`
+	// Params is the list of params passed for all platforms
+	// +optional
+	Params []Param `json:"params,omitempty"`
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
@@ -97,6 +100,10 @@ type TektonConfigStatus struct {
 	// The version of the installed release
 	// +optional
 	Version string `json:"version,omitempty"`
+
+	// The current installer set name
+	// +optional
+	TektonInstallerSet map[string]string `json:"tektonInstallerSets,omitempty"`
 }
 
 // TektonConfigList contains a list of TektonConfig
