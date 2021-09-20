@@ -56,22 +56,44 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 
 	config := tc.(*v1alpha1.TektonConfig)
+	r := rbac{
+		kubeClientSet:     oe.kubeClientSet,
+		operatorClientSet: oe.operatorClientSet,
+		version:           os.Getenv(versionKey),
+		tektonConfig:      config,
+	}
+
 	pipelineUpdated := openshiftPipeline.SetDefault(&config.Spec.Pipeline)
 	triggerUpdated := openshiftTrigger.SetDefault(&config.Spec.Trigger.TriggersProperties)
-	if pipelineUpdated || triggerUpdated {
+	if pipelineUpdated || triggerUpdated || r.setDefault() {
 		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, config, v1.UpdateOptions{}); err != nil {
 			return err
 		}
 	}
 
-	r := rbac{
-		kubeClientSet:     oe.kubeClientSet,
-		operatorClientSet: oe.operatorClientSet,
-		ownerRef:          configOwnerRef(tc),
-		version:           os.Getenv(versionKey),
+	createRBACResource := true
+	for _, v := range config.Spec.Params {
+		// check for param name and if its matches to createRbacResource
+		// then disable auto creation of RBAC resources by deleting installerSet
+		if v.Name == rbacParamName && v.Value == "false" {
+			createRBACResource = false
+			if err := deleteInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, componentName); err != nil {
+				return err
+			}
+			// remove openshift-pipelines.tekton.dev/namespace-reconcile-version label from namespaces while deleting RBAC resources.
+			if err := r.cleanUp(ctx); err != nil {
+				return err
+			}
+		}
 	}
-	return r.createResources(ctx)
+
+	if createRBACResource {
+		return r.createResources(ctx)
+	}
+
+	return nil
 }
+
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 
@@ -103,6 +125,6 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 }
 
 // configOwnerRef returns owner reference pointing to passed instance
-func configOwnerRef(tc v1alpha1.TektonComponent) metav1.OwnerReference {
-	return *metav1.NewControllerRef(tc, tc.GroupVersionKind())
+func configOwnerRef(tc v1alpha1.TektonInstallerSet) metav1.OwnerReference {
+	return *metav1.NewControllerRef(&tc, tc.GetGroupVersionKind())
 }

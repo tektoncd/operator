@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	corev1 "k8s.io/api/core/v1"
@@ -41,6 +42,12 @@ const (
 	trustedCABundleConfigMap = "config-trusted-cabundle"
 	clusterInterceptors      = "openshift-pipelines-clusterinterceptors"
 	namespaceVersionLabel    = "openshift-pipelines.tekton.dev/namespace-reconcile-version"
+	createdByKey             = "operator.tekton.dev/created-by"
+	createdByValue           = "RBAC"
+	releaseVersionKey        = "operator.tekton.dev/release-version"
+	targetNamespaceKey       = "operator.tekton.dev/target-namespace"
+	componentName            = "rhosp-rbac"
+	rbacParamName            = "createRbacResource"
 )
 
 // Namespace Regex to ignore the namespace for creating rbac resources.
@@ -51,12 +58,13 @@ type rbac struct {
 	operatorClientSet clientset.Interface
 	ownerRef          metav1.OwnerReference
 	version           string
+	tektonConfig      *v1alpha1.TektonConfig
 }
 
 func (r *rbac) cleanUp(ctx context.Context) error {
 
 	// fetch the list of all namespaces which have label
-	// `openshift-pipelines.tekton.dev/namespace-ready: <release-version>`
+	// `openshift-pipelines.tekton.dev/namespace-reconcile-version: <release-version>`
 	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s = %s", namespaceVersionLabel, r.version),
 	})
@@ -75,12 +83,39 @@ func (r *rbac) cleanUp(ctx context.Context) error {
 	return nil
 }
 
+func (r *rbac) setDefault() bool {
+	var (
+		updated = false
+		found   = false
+	)
+
+	for i, v := range r.tektonConfig.Spec.Params {
+		if v.Name == rbacParamName {
+			found = true
+			// If the value set is invalid then set key to default value as true.
+			if v.Value != "false" && v.Value != "true" {
+				r.tektonConfig.Spec.Params[i].Value = "true"
+				updated = true
+			}
+			break
+		}
+	}
+	if !found {
+		r.tektonConfig.Spec.Params = append(r.tektonConfig.Spec.Params, v1alpha1.Param{
+			Name:  rbacParamName,
+			Value: "true",
+		})
+		updated = true
+	}
+	return updated
+}
+
 func (r *rbac) createResources(ctx context.Context) error {
 
 	logger := logging.FromContext(ctx)
 
 	// fetch the list of all namespaces which doesn't have label
-	// `openshift-pipelines.tekton.dev/namespace-ready: <release-version>`
+	// `openshift-pipelines.tekton.dev/namespace-reconcile-version: <release-version>`
 	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("%s != %s", namespaceVersionLabel, r.version),
 	})
@@ -103,6 +138,26 @@ func (r *rbac) createResources(ctx context.Context) error {
 	if len(rbacNamespaces) == 0 {
 		return nil
 	}
+
+	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, r.tektonConfig, componentName)
+	if err != nil {
+		return err
+	}
+	if !exist {
+		if err := createInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, map[string]string{
+			createdByKey: createdByValue,
+		}, r.version, componentName, "rbac-resources"); err != nil {
+			return err
+		}
+	}
+
+	getdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		Get(ctx, "rbac-resources", metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	r.ownerRef = configOwnerRef(*getdIs)
 
 	// Maintaining a separate cluster role for the scc declaration.
 	// to assist us in managing this the scc association in a
@@ -136,7 +191,7 @@ func (r *rbac) createResources(ctx context.Context) error {
 			return err
 		}
 
-		// Add `openshift-pipelines.tekton.dev/namespace-ready` label to namespace
+		// Add `openshift-pipelines.tekton.dev/namespace-reconcile-version` label to namespace
 		// so that rbac won't loop on it again
 		nsLabels := n.GetLabels()
 		if len(nsLabels) == 0 {
@@ -168,12 +223,11 @@ func (r *rbac) ensureCABundles(ctx context.Context, ns *corev1.Namespace) error 
 			return err
 		}
 	}
-	// set owner reference if not set
-	if err == nil && len(caBundleCM.GetOwnerReferences()) == 0 {
-		caBundleCM.SetOwnerReferences([]metav1.OwnerReference{r.ownerRef})
-		if _, err := cfgInterface.Update(ctx, caBundleCM, metav1.UpdateOptions{}); err != nil {
-			return err
-		}
+	// set owner reference if not set or update owner reference if different owners are set
+	caBundleCM.SetOwnerReferences(r.updateOwnerRefs(caBundleCM.GetOwnerReferences()))
+
+	if _, err = cfgInterface.Update(ctx, caBundleCM, metav1.UpdateOptions{}); err != nil {
+		return err
 	}
 
 	// Ensure service CA bundle
@@ -188,12 +242,10 @@ func (r *rbac) ensureCABundles(ctx context.Context, ns *corev1.Namespace) error 
 			return err
 		}
 	}
-	// set owner reference if not set
-	if err == nil && len(serviceCABundleCM.GetOwnerReferences()) == 0 {
-		serviceCABundleCM.SetOwnerReferences([]metav1.OwnerReference{r.ownerRef})
-		if _, err := cfgInterface.Update(ctx, serviceCABundleCM, metav1.UpdateOptions{}); err != nil {
-			return err
-		}
+	// set owner reference if not set or update owner reference if different owners are set
+	serviceCABundleCM.SetOwnerReferences(r.updateOwnerRefs(serviceCABundleCM.GetOwnerReferences()))
+	if _, err := cfgInterface.Update(ctx, serviceCABundleCM, metav1.UpdateOptions{}); err != nil {
+		return err
 	}
 
 	return nil
@@ -257,12 +309,10 @@ func (r *rbac) ensureSA(ctx context.Context, ns *corev1.Namespace) (*corev1.Serv
 		return createSA(ctx, saInterface, ns.Name, r.ownerRef)
 	}
 
-	if len(sa.GetOwnerReferences()) == 0 {
-		sa.SetOwnerReferences([]metav1.OwnerReference{r.ownerRef})
-		return saInterface.Update(ctx, sa, metav1.UpdateOptions{})
-	}
+	// set owner reference if not set or update owner reference if different owners are set
+	sa.SetOwnerReferences(r.updateOwnerRefs(sa.GetOwnerReferences()))
 
-	return sa, nil
+	return saInterface.Update(ctx, sa, metav1.UpdateOptions{})
 }
 
 func createSA(ctx context.Context, saInterface v1.ServiceAccountInterface, ns string, ownerRef metav1.OwnerReference) (*corev1.ServiceAccount, error) {
@@ -311,15 +361,13 @@ func (r *rbac) ensurePipelinesSCClusterRole(ctx context.Context) error {
 	}
 
 	rbacClient := r.kubeClientSet.RbacV1()
-	_, err := rbacClient.ClusterRoles().Get(ctx, pipelinesSCCClusterRole, metav1.GetOptions{})
-
-	if err != nil {
+	if _, err := rbacClient.ClusterRoles().Get(ctx, pipelinesSCCClusterRole, metav1.GetOptions{}); err != nil {
 		if errors.IsNotFound(err) {
 			_, err = rbacClient.ClusterRoles().Create(ctx, clusterRole, metav1.CreateOptions{})
 		}
 		return err
 	}
-	_, err = rbacClient.ClusterRoles().Update(ctx, clusterRole, metav1.UpdateOptions{})
+	_, err := rbacClient.ClusterRoles().Update(ctx, clusterRole, metav1.UpdateOptions{})
 	return err
 }
 
@@ -380,16 +428,26 @@ func (r *rbac) updateRoleBinding(ctx context.Context, rb *rbacv1.RoleBinding, sa
 		rb.Subjects = append(rb.Subjects, subject)
 	}
 
+	rbacClient := r.kubeClientSet.RbacV1()
+	hasOwnerRef := hasOwnerRefernce(rb.GetOwnerReferences(), r.ownerRef)
+
 	ownerRef := r.updateOwnerRefs(rb.GetOwnerReferences())
 	rb.SetOwnerReferences(ownerRef)
 
+	// If owners are different then we need to set from r.ownerRef and update the roleBinding.
+	if !hasOwnerRef {
+		if _, err := rbacClient.RoleBindings(sa.Namespace).Update(ctx, rb, metav1.UpdateOptions{}); err != nil {
+			logger.Error(err, "failed to update edit rb")
+			return err
+		}
+	}
+
 	if hasSubject && (len(ownerRef) != 0) {
-		logger.Info("rolebinding is up to date", "action", "none")
+		logger.Info("rolebinding is up to date ", "action ", "none")
 		return nil
 	}
 
 	logger.Info("update existing rolebinding edit")
-	rbacClient := r.kubeClientSet.RbacV1()
 
 	_, err := rbacClient.RoleBindings(sa.Namespace).Update(ctx, rb, metav1.UpdateOptions{})
 	if err != nil {
@@ -403,6 +461,15 @@ func (r *rbac) updateRoleBinding(ctx context.Context, rb *rbacv1.RoleBinding, sa
 func hasSubject(subjects []rbacv1.Subject, x rbacv1.Subject) bool {
 	for _, v := range subjects {
 		if v.Name == x.Name && v.Kind == x.Kind && v.Namespace == x.Namespace {
+			return true
+		}
+	}
+	return false
+}
+
+func hasOwnerRefernce(old []metav1.OwnerReference, new metav1.OwnerReference) bool {
+	for _, v := range old {
+		if v.APIVersion == new.APIVersion && v.Kind == new.Kind && v.Name == new.Name {
 			return true
 		}
 	}
@@ -495,8 +562,19 @@ func (r *rbac) updateClusterRoleBinding(ctx context.Context, rb *rbacv1.ClusterR
 		rb.Subjects = append(rb.Subjects, subject)
 	}
 
+	rbacClient := r.kubeClientSet.RbacV1()
+	hasOwnerRef := hasOwnerRefernce(rb.GetOwnerReferences(), r.ownerRef)
+
 	ownerRef := r.updateOwnerRefs(rb.GetOwnerReferences())
 	rb.SetOwnerReferences(ownerRef)
+
+	// If owners are different then we need to set from r.ownerRef and update the clusterRolebinding.
+	if !hasOwnerRef {
+		if _, err := rbacClient.ClusterRoleBindings().Update(ctx, rb, metav1.UpdateOptions{}); err != nil {
+			logger.Error(err, "failed to update "+clusterInterceptors+" crb")
+			return err
+		}
+	}
 
 	if hasSubject && (len(ownerRef) != 0) {
 		logger.Info("clusterrolebinding is up to date", "action", "none")
@@ -504,7 +582,6 @@ func (r *rbac) updateClusterRoleBinding(ctx context.Context, rb *rbacv1.ClusterR
 	}
 
 	logger.Info("update existing clusterrolebinding ", clusterInterceptors)
-	rbacClient := r.kubeClientSet.RbacV1()
 
 	if _, err := rbacClient.ClusterRoleBindings().Update(ctx, rb, metav1.UpdateOptions{}); err != nil {
 		logger.Error(err, "failed to update "+clusterInterceptors+" crb")
@@ -572,17 +649,18 @@ func (r *rbac) updateOwnerRefs(ownerRef []metav1.OwnerReference) []metav1.OwnerR
 		return []metav1.OwnerReference{r.ownerRef}
 	}
 
-	doUpdateOwnerRef := true
-
-	for _, ref := range ownerRef {
-		if ref.APIVersion == r.ownerRef.APIVersion && ref.Kind == r.ownerRef.Kind && ref.Name == r.ownerRef.Name {
-			doUpdateOwnerRef = false
-			break
+	for i, ref := range ownerRef {
+		if ref.APIVersion != r.ownerRef.APIVersion || ref.Kind != r.ownerRef.Kind || ref.Name != r.ownerRef.Name {
+			// if owner reference are different remove the existing oand override with r.ownerRef
+			return r.removeAndUpdate(ownerRef, i)
 		}
 	}
 
-	if doUpdateOwnerRef {
-		ownerRef = append(ownerRef, r.ownerRef)
-	}
+	return ownerRef
+}
+
+func (r *rbac) removeAndUpdate(slice []metav1.OwnerReference, s int) []metav1.OwnerReference {
+	ownerRef := append(slice[:s], slice[s+1:]...)
+	ownerRef = append(ownerRef, r.ownerRef)
 	return ownerRef
 }

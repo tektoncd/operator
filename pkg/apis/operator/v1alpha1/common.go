@@ -94,8 +94,8 @@ func (c *CommonSpec) GetTargetNamespace() string {
 
 // Param declares an string value to use for the parameter called name.
 type Param struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
+	Name  string `json:"name,omitempty"`
+	Value string `json:"value,omitempty"`
 }
 
 // ParamValue defines a default value and possible values for a param

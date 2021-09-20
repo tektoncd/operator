@@ -505,6 +505,11 @@ func (in *TektonConfigSpec) DeepCopyInto(out *TektonConfigSpec) {
 	in.Pipeline.DeepCopyInto(&out.Pipeline)
 	out.Trigger = in.Trigger
 	out.Dashboard = in.Dashboard
+	if in.Params != nil {
+		in, out := &in.Params, &out.Params
+		*out = make([]Param, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
@@ -522,6 +527,13 @@ func (in *TektonConfigSpec) DeepCopy() *TektonConfigSpec {
 func (in *TektonConfigStatus) DeepCopyInto(out *TektonConfigStatus) {
 	*out = *in
 	in.Status.DeepCopyInto(&out.Status)
+	if in.TektonInstallerSet != nil {
+		in, out := &in.TektonInstallerSet, &out.TektonInstallerSet
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 

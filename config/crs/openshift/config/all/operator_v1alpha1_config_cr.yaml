@@ -25,3 +25,6 @@ spec:
       value: "true"
     - name: pipelineTemplates
       value: "true"
+  params:
+  - name: createRbacResource
+    value: "true"
