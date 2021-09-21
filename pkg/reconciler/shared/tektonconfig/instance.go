@@ -91,7 +91,7 @@ func (tc tektonConfig) ensureInstance(ctx context.Context) {
 			logger.Errorf("error getting Tektonconfig, Name: ", instance.GetName())
 			return false, nil
 		}
-		err = tc.createInstance()
+		err = tc.createInstance(ctx)
 		if err != nil {
 			//log error and retry
 			logger.Errorf("error creating Tektonconfig instance, Name: ", instance.GetName())
@@ -108,7 +108,7 @@ func (tc tektonConfig) ensureInstance(ctx context.Context) {
 	}
 }
 
-func (tc tektonConfig) createInstance() error {
+func (tc tektonConfig) createInstance(ctx context.Context) error {
 	tcCR := &v1alpha1.TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: common.ConfigResourceName,
@@ -120,7 +120,8 @@ func (tc tektonConfig) createInstance() error {
 			},
 		},
 	}
+	tcCR.SetDefaults(ctx)
 	_, err := tc.operatorClientSet.OperatorV1alpha1().
-		TektonConfigs().Create(context.TODO(), tcCR, metav1.CreateOptions{})
+		TektonConfigs().Create(ctx, tcCR, metav1.CreateOptions{})
 	return err
 }
