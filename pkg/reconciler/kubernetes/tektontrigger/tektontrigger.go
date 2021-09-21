@@ -203,7 +203,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 
 			// Update the spec hash
 			current := installedTIS.GetAnnotations()
-			current[lastAppliedHash] = expectedSpecHash
+			current[lastAppliedHashKey] = expectedSpecHash
 			installedTIS.SetAnnotations(current)
 
 			// Update the manifests

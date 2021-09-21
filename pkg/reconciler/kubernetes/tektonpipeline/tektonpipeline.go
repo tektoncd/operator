@@ -188,7 +188,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 
 			// Update the spec hash
 			current := installedTIS.GetAnnotations()
-			current[lastAppliedHash] = expectedSpecHash
+			current[lastAppliedHashKey] = expectedSpecHash
 			installedTIS.SetAnnotations(current)
 
 			// Update the manifests
