@@ -6,3 +6,4 @@ resources:
 - pipeline/operator_v1alpha1_pipeline_cr.yaml
 - trigger/operator_v1alpha1_trigger_cr.yaml
 - config/all/operator_v1alpha1_config_cr.yaml
+- installerset/operator_v1alpha1_installerset_cr.yaml

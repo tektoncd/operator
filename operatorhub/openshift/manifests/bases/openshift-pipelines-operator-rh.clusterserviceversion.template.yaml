@@ -6,10 +6,10 @@ metadata:
     capabilities: Seamless Upgrades
     categories: Developer Tools, Integration & Delivery
     certified: "false"
-    containerImage: registry.redhat.io/openshift-pipelines/pipelines-rhel8-operator@sha256:782e1fbb7c81effe0cae9133c6d13ddc62e6156533c5037193ae730d630c028a
     description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for building pipelines using Tekton concepts which run natively on OpenShift and Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.7.2
-    operators.operatorframework.io/internal-objects: '["tektonconfig.operator.tekton.dev",,"tektonpipeline.operator.tekton.dev","tektontrigger.operator.tekton.dev","tektonaddon.operator.tekton.dev"]'
+    operators.openshift.io/infrastructure-features: '["disconnected","proxy-aware"]'
+    operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev", "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev"]'
     repository: https://github.com/openshift/tektoncd-operator
     support: Red Hat
   labels:
@@ -22,27 +22,20 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: Represents an installation of latest version of Addons (exclusively ClusterTasks, consoleyamlsamples, consoleclidownloads and consolequickstarts)
-      displayName: Tekton Addons
-      kind: TektonAddon
-      name: tektonaddons.operator.tekton.dev
-      specDescriptors:
-      - description: Namespace where Addons installed
-        displayName: Target Namespace
-        path: targetNamespace
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:label
-      statusDescriptors:
-      - description: The version of Addons installed
-        displayName: Version
-        path: version
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:label
-      version: v1alpha1
     - description: Represents an installation of latest version of Tekton components, TektonPipeline, TektonTrigger and TektonAddon
       displayName: Tekton Configuration
       kind: TektonConfig
       name: tektonconfigs.operator.tekton.dev
+      resources:
+      - kind: tektonpipelines
+        name: 'pipeline'
+        version: v1alpha1
+      - kind: tektontriggers
+        name: 'trigger'
+        version: v1alpha1
+      - kind: tektonaddons
+        name: 'addon'
+        version: v1alpha1
       specDescriptors:
       - description: Namespace where Tekton components are installed
         displayName: Target Namespace
@@ -65,6 +58,10 @@ spec:
       displayName: Tekton Pipelines
       kind: TektonPipeline
       name: tektonpipelines.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
       specDescriptors:
       - description: Namespace where Tekton Pipelines installed
         displayName: Target Namespace
@@ -82,6 +79,10 @@ spec:
       displayName: Tekton Triggers
       kind: TektonTrigger
       name: tektontriggers.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
       specDescriptors:
       - description: Namespace where Tekton Triggers installed
         displayName: Target Namespace
@@ -95,6 +96,78 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
+    - description: Represents an installation of latest version of Addons (exclusively ClusterTasks, consoleyamlsamples, consoleclidownloads and consolequickstarts)
+      displayName: Tekton Addons
+      kind: TektonAddon
+      name: tektonaddons.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
+      specDescriptors:
+      - description: Namespace where Addons installed
+        displayName: Target Namespace
+        path: targetNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Addons installed
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
+    - description: This CustomResourceDefinition (CRD) is used internally by the other OpenShift Pipelines CRDs to maintain the lifecycle of OpenShift Pipelines Components
+      displayName: Tekton Installer Set
+      kind: TektonInstallerSet
+      name: tektoninstallersets.operator.tekton.dev
+      resources:
+      - kind: clusterroles
+        name: ''
+        version: v1
+      - kind: customresourcedefinitions
+        name: ''
+        version: v1beta1
+      - kind: deployments
+        name: ''
+        version: v1beta1
+      - kind: podsecuritypolicies
+        name: ''
+        version: v1beta1
+      - kind: clusterrolebindings
+        name: ''
+        version: v1beta1
+      - kind: services
+        name: ''
+        version: v1
+      - kind: pods
+        name: ''
+        version: v1
+      - kind: configmaps
+        name: ''
+        version: v1
+      - kind: config
+        name: ''
+        version: v1alpha1
+      - kind: namespaces
+        name: ''
+        version: v1
+      - kind: serviceaccounts
+        name: ''
+        version: v1
+      specDescriptors:
+      - description: List of OpenShift API resources managed by this InstallerSet
+        displayName: Manifests
+        path: manifests
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+        statusDescriptors:
+        - description: The version of Operator installed
+          displayName: ObservedGeneration
+          path: observedGeneration
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
   description: |
     Red Hat OpenShift Pipelines is a cloud-native continuous integration and delivery
     (CI/CD) solution for building pipelines using [Tekton](https://tekton.dev).
@@ -103,6 +176,7 @@ spec:
     serverless, VMs, etc) by abstracting away the underlying details.
 
     ## Features
+
     * Standard CI/CD pipelines definition
     * Build images with Kubernetes tools such as S2I, Buildah, Buildpacks, Kaniko, etc
     * Deploy applications to multiple platforms such as Kubernetes, serverless and VMs
@@ -113,13 +187,18 @@ spec:
     * Integrated with OpenShift Developer Console
 
     ## Installation
+
     _Red Hat OpenShift Pipelines Operator_ gets installed into a single namespace (openshift-operators) which would then install _Red Hat OpenShift Pipelines_ into the openshift-pipelines namespace. _Red Hat OpenShift Pipelines_ is however cluster-wide and can run pipelines created in any namespace.
+
     ### Components
-    - Tekton Pipelines: v0.22.0
-    - Tekton Triggers: v0.12.1
-    - ClusterTasks based on Tekton Catalog 0.22
+
+    - Tekton Pipelines: v0.28.0
+    - Tekton Triggers: v0.16.0
+    - ClusterTasks based on Tekton Catalog 0.28
+
     ## Getting Started
     In order to get familiar with _OpenShift Pipelines_ concepts and create your first pipeline, follow the [OpenShift Pipelines Docs](https://docs.openshift.com/container-platform/latest/pipelines/creating-applications-with-cicd-pipelines.html).
+
     ## CLI (tkn)
     Tekton Pipelines cli project provides a CLI (tkn) for interacting with OpenShift Pipelines.
     - [Download tkn for Linux](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-amd64-0.17.2.tar.gz)
