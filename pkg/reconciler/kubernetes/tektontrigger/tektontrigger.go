@@ -100,7 +100,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 			tt.GetName(),
 		)
 		logger.Error(msg)
-		tt.GetStatus().MarkInstallFailed(msg)
+		tt.Status.MarkNotReady(msg)
 		return nil
 	}
 

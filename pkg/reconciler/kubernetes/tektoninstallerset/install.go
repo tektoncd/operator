@@ -42,7 +42,15 @@ var (
 	validatingWebhookConfigurationPred = mf.ByKind("ValidatingWebhookConfiguration")
 	mutatingWebhookConfigurationPred   = mf.ByKind("MutatingWebhookConfiguration")
 	horizontalPodAutoscalerPred        = mf.ByKind("HorizontalPodAutoscaler")
-	clusterInterceptor                 = mf.ByKind("ClusterInterceptor")
+	clusterInterceptorPred             = mf.ByKind("ClusterInterceptor")
+	clusterTaskPred                    = mf.ByKind("ClusterTask")
+	clusterTriggerBindingPred          = mf.ByKind("ClusterTriggerBinding")
+	pipelinePred                       = mf.ByKind("Pipeline")
+
+	// OpenShift Specific
+	consoleCLIDownloadPred = mf.ByKind("ConsoleCLIDownload")
+	consoleQuickStartPred  = mf.ByKind("ConsoleQuickStart")
+	ConsoleYAMLSamplePred  = mf.ByKind("ConsoleYAMLSample")
 )
 
 type installer struct {
@@ -64,7 +72,12 @@ func (i *installer) EnsureClusterScopedResources() error {
 			podSecurityPolicyPred,
 			validatingWebhookConfigurationPred,
 			mutatingWebhookConfigurationPred,
-			clusterInterceptor,
+			clusterInterceptorPred,
+			clusterTaskPred,
+			clusterTriggerBindingPred,
+			consoleCLIDownloadPred,
+			consoleQuickStartPred,
+			ConsoleYAMLSamplePred,
 		)).Apply(); err != nil {
 		return err
 	}
@@ -81,6 +94,7 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 			configMapPred,
 			secretPred,
 			horizontalPodAutoscalerPred,
+			pipelinePred,
 		)).Apply(); err != nil {
 		return err
 	}
