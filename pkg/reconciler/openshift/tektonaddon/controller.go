@@ -18,25 +18,29 @@ package tektonaddon
 
 import (
 	"context"
+	"os"
 
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonAddoninformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonaddon"
+	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
 	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	tektonTriggerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektontrigger"
 	tektonAddonreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonaddon"
-	"go.uber.org/zap"
-
-	//deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	"knative.dev/pkg/injection"
-
+	"go.uber.org/zap"
+	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
+)
+
+const (
+	versionKey = "VERSION"
 )
 
 // NewController initializes the controller and is called by the generated code
@@ -48,12 +52,7 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 // NewExtendedController returns a controller extended to a specific platform
 func NewExtendedController(generator common.ExtensionGenerator) injection.ControllerConstructor {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-		tektonPipelineInformer := tektonPipelineinformer.Get(ctx)
-		tektonTriggerInformer := tektonTriggerinformer.Get(ctx)
-		tektonAddonInformer := tektonAddoninformer.Get(ctx)
-		kubeClient := kubeclient.Get(ctx)
 		logger := logging.FromContext(ctx)
-		restConfig := injection.GetConfig(ctx)
 
 		mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
 		if err != nil {
@@ -65,20 +64,30 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatalw("Error creating initial manifest", zap.Error(err))
 		}
 
+		version := os.Getenv(versionKey)
+		if version == "" {
+			logger.Fatal("Failed to find version from env")
+		}
+
 		c := &Reconciler{
-			kubeClientSet:     kubeClient,
 			operatorClientSet: operatorclient.Get(ctx),
 			extension:         generator(ctx),
+			pipelineInformer:  tektonPipelineinformer.Get(ctx),
+			triggerInformer:   tektonTriggerinformer.Get(ctx),
 			manifest:          manifest,
-			pipelineInformer:  tektonPipelineInformer,
-			triggerInformer:   tektonTriggerInformer,
-			config:            restConfig,
+			version:           version,
 		}
 		impl := tektonAddonreconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers")
+		logger.Info("Setting up event handlers for TektonAddon")
 
-		tektonAddonInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		tektonAddoninformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+
+		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TektonAddon{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		})
+
 		return impl
 	}
 }

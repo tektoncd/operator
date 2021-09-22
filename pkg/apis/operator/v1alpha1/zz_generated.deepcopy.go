@@ -397,10 +397,12 @@ func (in *TektonAddonSpec) DeepCopy() *TektonAddonSpec {
 func (in *TektonAddonStatus) DeepCopyInto(out *TektonAddonStatus) {
 	*out = *in
 	in.Status.DeepCopyInto(&out.Status)
-	if in.Manifests != nil {
-		in, out := &in.Manifests, &out.Manifests
-		*out = make([]string, len(*in))
-		copy(*out, *in)
+	if in.AddonsInstallerSet != nil {
+		in, out := &in.AddonsInstallerSet, &out.AddonsInstallerSet
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	return
 }

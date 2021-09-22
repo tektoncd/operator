@@ -21,11 +21,6 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
-var (
-	_ TektonComponent     = (*TektonAddon)(nil)
-	_ TektonComponentSpec = (*TektonAddonSpec)(nil)
-)
-
 // TektonAddon is the Schema for the tektonaddons API
 // +genclient
 // +genreconciler:krshapedlogic=false
@@ -65,9 +60,9 @@ type TektonAddonStatus struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// The url links of the manifests, separated by comma
+	// TektonInstallerSet created to install addons
 	// +optional
-	Manifests []string `json:"manifests,omitempty"`
+	AddonsInstallerSet map[string]string `json:"installerSets,omitempty"`
 }
 
 // TektonAddonsList contains a list of TektonAddon
