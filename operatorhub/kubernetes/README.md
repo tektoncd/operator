@@ -1,4 +1,4 @@
-# How to generate Operator Bundles for OpenShift
+# How to generate Operator Bundles for Kubernetes
 
 For Kubernetes Platform ([operatorhub.io](https://operatorhub.io)) release we generate the
 bundle for using `release-manifest` strategy.

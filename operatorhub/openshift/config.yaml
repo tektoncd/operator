@@ -147,7 +147,7 @@ image-substitutions:
     - deploymentName: tekton-operator-webhook
       containerName: tekton-operator-webhook
 
-        # add thrid party images which are not replaced by operator
+# add thrid party images which are not replaced by operator
 # but pulled directly by tasks here
 defaultRelatedImages: []
 #- image: "" ##<imagename>:<tag> or <imagename>@<sha>
