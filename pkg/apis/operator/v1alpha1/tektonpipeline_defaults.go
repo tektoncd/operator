@@ -22,6 +22,13 @@ import (
 	"knative.dev/pkg/ptr"
 )
 
+const (
+	DefaultMetricsPipelinerunLevel       = "pipeline"
+	DefaultMetricsTaskrunLevel           = "task"
+	DefaultMetricsPipelierunDurationType = "histogram"
+	DefaultMetricsTaskrunDurationType    = "histogram"
+)
+
 func (tp *TektonPipeline) SetDefaults(ctx context.Context) {
 	tp.Spec.PipelineProperties.setDefaults()
 }
@@ -54,4 +61,17 @@ func (p *PipelineProperties) setDefaults() {
 	if p.ScopeWhenExpressionsToTask == nil {
 		p.ScopeWhenExpressionsToTask = ptr.Bool(false)
 	}
+	if p.MetricsPipelinerunDurationType == "" {
+		p.MetricsPipelinerunDurationType = DefaultMetricsPipelierunDurationType
+	}
+	if p.MetricsPipelinerunLevel == "" {
+		p.MetricsPipelinerunLevel = DefaultMetricsPipelinerunLevel
+	}
+	if p.MetricsTaskrunDurationType == "" {
+		p.MetricsTaskrunDurationType = DefaultMetricsTaskrunDurationType
+	}
+	if p.MetricsTaskrunLevel == "" {
+		p.MetricsTaskrunLevel = DefaultMetricsTaskrunLevel
+	}
+
 }

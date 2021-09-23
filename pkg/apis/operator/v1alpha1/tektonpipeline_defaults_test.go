@@ -50,6 +50,12 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 		EnableCustomTasks:                        ptr.Bool(false),
 		EnableApiFields:                          ApiFieldStable,
 		ScopeWhenExpressionsToTask:               ptr.Bool(false),
+		PipelineMetricsProperties: PipelineMetricsProperties{
+			MetricsPipelinerunDurationType: DefaultMetricsPipelierunDurationType,
+			MetricsPipelinerunLevel:        DefaultMetricsPipelinerunLevel,
+			MetricsTaskrunDurationType:     DefaultMetricsTaskrunDurationType,
+			MetricsTaskrunLevel:            DefaultMetricsTaskrunLevel,
+		},
 	}
 
 	tp.SetDefaults(context.TODO())

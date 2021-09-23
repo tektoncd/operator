@@ -38,6 +38,7 @@ const (
 	// Pipelines ConfigMap
 	featureFlag    = "feature-flags"
 	configDefaults = "config-defaults"
+	configMetrics  = "config-observability"
 
 	proxyLabel = "operator.tekton.dev/disable-proxy=true"
 
@@ -314,6 +315,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	extra := []mf.Transformer{
 		common.AddConfigMapValues(featureFlag, pipeline.Spec.PipelineProperties),
 		common.AddConfigMapValues(configDefaults, pipeline.Spec.OptionalPipelineProperties),
+		common.AddConfigMapValues(configMetrics, pipeline.Spec.PipelineMetricsProperties),
 		common.ApplyProxySettings,
 		common.DeploymentImages(images),
 		common.InjectLabelOnNamespace(proxyLabel),
