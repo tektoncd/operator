@@ -32,6 +32,10 @@ The TektonConfig CR provides the following features
       enable-api-fields: stable
       enable-custom-tasks: false
       enable-tekton-oci-bundles: false
+      metrics.pipelinerun.duration-type: histogram
+      metrics.pipelinerun.level: pipelinerun
+      metrics.taskrun.duration-type: histogram
+      metrics.taskrun.level: taskrun
       require-git-ssh-secret-known-hosts: false
       running-in-environment-with-injected-sidecars: true
     pruner: {}
@@ -98,6 +102,10 @@ pipeline:
   enable-api-fields: stable
   enable-custom-tasks: false
   enable-tekton-oci-bundles: false
+  metrics.pipelinerun.duration-type: histogram
+  metrics.pipelinerun.level: pipelinerun
+  metrics.taskrun.duration-type: histogram
+  metrics.taskrun.level: taskrun
   require-git-ssh-secret-known-hosts: false
   running-in-environment-with-injected-sidecars: true
 ```

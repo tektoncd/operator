@@ -95,6 +95,7 @@ type PipelineProperties struct {
 	EnableCustomTasks                        *bool  `json:"enable-custom-tasks,omitempty"`
 	EnableApiFields                          string `json:"enable-api-fields,omitempty"`
 	ScopeWhenExpressionsToTask               *bool  `json:"scope-when-expressions-to-task,omitempty"`
+	PipelineMetricsProperties                `json:",inline"`
 	// +optional
 	OptionalPipelineProperties `json:",inline"`
 }
@@ -108,4 +109,13 @@ type OptionalPipelineProperties struct {
 	DefaultPodTemplate             string `json:"default-pod-template,omitempty"`
 	DefaultCloudEventsSink         string `json:"default-cloud-events-sink,omitempty"`
 	DefaultTaskRunWorkspaceBinding string `json:"default-task-run-workspace-binding,omitempty"`
+}
+
+// PipelineMetricsProperties defines the fields which are configurable for
+// metrics
+type PipelineMetricsProperties struct {
+	MetricsTaskrunLevel            string `json:"metrics.taskrun.level,omitempty"`
+	MetricsTaskrunDurationType     string `json:"metrics.taskrun.duration-type,omitempty"`
+	MetricsPipelinerunLevel        string `json:"metrics.pipelinerun.level,omitempty"`
+	MetricsPipelinerunDurationType string `json:"metrics.pipelinerun.duration-type,omitempty"`
 }
