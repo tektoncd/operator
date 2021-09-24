@@ -255,7 +255,7 @@ func (r *rbac) ensureSA(ctx context.Context, ns *corev1.Namespace) (*corev1.Serv
 		return nil, err
 	}
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info("creating sa", "sa", pipelineSA, "ns", ns.Name)
+		logger.Info("creating sa ", pipelineSA, " ns", ns.Name)
 		return createSA(ctx, saInterface, ns.Name, r.ownerRef)
 	}
 
@@ -466,7 +466,9 @@ func (r *rbac) ensureClusterRoleBindings(ctx context.Context, sa *corev1.Service
 	rbacClient := r.kubeClientSet.RbacV1()
 	logger.Info("finding cluster-role ", clusterInterceptors)
 	if _, err := rbacClient.ClusterRoles().Get(ctx, clusterInterceptors, metav1.GetOptions{}); errors.IsNotFound(err) {
-		return r.createClusterRole(ctx)
+		if e := r.createClusterRole(ctx); e != nil {
+			return e
+		}
 	}
 
 	logger.Info("finding cluster-role-binding ", clusterInterceptors)
