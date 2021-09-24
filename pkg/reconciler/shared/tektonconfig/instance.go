@@ -75,11 +75,6 @@ func (tc tektonConfig) ensureInstance(ctx context.Context) {
 			OperatorV1alpha1().
 			TektonConfigs().Get(context.TODO(), DefaultCRName, metav1.GetOptions{})
 		if err == nil {
-			if !instance.GetDeletionTimestamp().IsZero() {
-				// log deleting timestamp error and retry
-				logger.Errorf("deletionTimestamp is set on existing Tektonconfig instance, Name: %w", instance.GetName())
-				return false, nil
-			}
 			return true, nil
 		}
 		if !apierrs.IsNotFound(err) {
