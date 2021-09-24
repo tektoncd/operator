@@ -22,24 +22,38 @@ import (
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// FetchVersionFromCRD finds the component version from the crd labels, it looks for the
-// label on the first crd it finds after filtering
-// It will return error if crds are not found in manifest or label is not found
-func FetchVersionFromCRD(manifest mf.Manifest, releaseLabel string) (string, error) {
-	crds := manifest.Filter(mf.CRDs)
-	if len(crds.Resources()) == 0 {
-		return "", fmt.Errorf("failed to find crds to get release version")
+type VersionError error
+
+var (
+	configMapError VersionError = fmt.Errorf("version information could not be determined from ConfigMap")
+)
+
+func IsFetchVersionError(err error) bool {
+	return err == configMapError
+}
+
+// FetchVersionFromConfigMap finds the component version from the ConfigMap data field. It looks
+// for the version key in the ConfigMap and if the ConfigMap or version key is not found
+// then return the error.
+func FetchVersionFromConfigMap(manifest mf.Manifest, configMapName string) (string, error) {
+	configMaps := manifest.Filter(mf.ByKind("ConfigMap"), mf.ByName(configMapName))
+
+	if len(configMaps.Resources()) == 0 {
+		return "", configMapError
 	}
 
-	crd := crds.Resources()[0]
-	version, ok := crd.GetLabels()[releaseLabel]
-	if !ok {
-		return version, fmt.Errorf("failed to find release label on crd")
+	versionConfigMap := configMaps.Resources()[0]
+	dataObj, _, _ := unstructured.NestedStringMap(versionConfigMap.Object, "data")
+	version := dataObj["version"]
+
+	if version != "" {
+		return version, nil
 	}
 
-	return version, nil
+	return "", configMapError
 }
 
 // ComputeHashOf generates an unique hash/string for the

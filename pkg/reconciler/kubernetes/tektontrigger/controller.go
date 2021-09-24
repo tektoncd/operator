@@ -38,7 +38,7 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-const releaseLabel = "triggers.tekton.dev/release"
+const versionConfigMap = "triggers-info"
 
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
@@ -66,10 +66,16 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatalw("failed to read manifest", err)
 		}
 
-		// Read the release version of pipelines
-		releaseVersion, err := common.FetchVersionFromCRD(manifest, releaseLabel)
+		var releaseVersion string
+		// Read the release version of triggers
+		releaseVersion, err = common.FetchVersionFromConfigMap(manifest, versionConfigMap)
 		if err != nil {
-			logger.Fatalw("failed to read release version from manifest", err)
+			if common.IsFetchVersionError(err) {
+				logger.Warnf("failed to read version information from ConfigMap %s", versionConfigMap, err)
+				releaseVersion = "Unknown"
+			} else {
+				logger.Fatalw("Error while reading ConfigMap", zap.Error(err))
+			}
 		}
 
 		c := &Reconciler{
