@@ -21,7 +21,6 @@ import (
 	"os"
 	"time"
 
-	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -48,17 +47,14 @@ const (
 type tektonConfig struct {
 	operatorClientSet versioned.Interface
 	kubeClientSet     kubernetes.Interface
-	manifest          mf.Manifest
 	namespace         string
 }
 
-func newTektonConfig(operatorClientSet versioned.Interface, kubeClientSet kubernetes.Interface,
-	manifest mf.Manifest) tektonConfig {
+func newTektonConfig(operatorClientSet versioned.Interface, kubeClientSet kubernetes.Interface) tektonConfig {
 
 	return tektonConfig{
 		operatorClientSet: operatorClientSet,
 		kubeClientSet:     kubeClientSet,
-		manifest:          manifest,
 		namespace:         os.Getenv("DEFAULT_TARGET_NAMESPACE"),
 	}
 }

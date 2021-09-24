@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"reflect"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -75,7 +73,7 @@ type Addon struct {
 }
 
 func (a Addon) IsEmpty() bool {
-	return reflect.DeepEqual(a, Addon{})
+	return len(a.Params) == 0
 }
 
 // TektonAddonsList contains a list of TektonAddon

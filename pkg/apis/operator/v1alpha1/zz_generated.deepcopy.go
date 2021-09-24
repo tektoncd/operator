@@ -505,11 +505,6 @@ func (in *TektonConfigSpec) DeepCopy() *TektonConfigSpec {
 func (in *TektonConfigStatus) DeepCopyInto(out *TektonConfigStatus) {
 	*out = *in
 	in.Status.DeepCopyInto(&out.Status)
-	if in.Manifests != nil {
-		in, out := &in.Manifests, &out.Manifests
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	return
 }
 

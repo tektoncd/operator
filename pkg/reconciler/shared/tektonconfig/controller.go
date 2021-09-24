@@ -20,9 +20,6 @@ import (
 	"context"
 	"os"
 
-	"github.com/go-logr/zapr"
-	mfc "github.com/manifestival/client-go-client"
-	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
@@ -30,10 +27,8 @@ import (
 	tektonTriggerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektontrigger"
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
@@ -43,53 +38,32 @@ import (
 // NewExtensibleController returns a controller extended to a specific platform
 func NewExtensibleController(generator common.ExtensionGenerator) injection.ControllerConstructor {
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-		tektonConfigInformer := tektonConfiginformer.Get(ctx)
-		tektonPipelineInformer := tektonPipelineinformer.Get(ctx)
-		tektonTriggerInformer := tektonTriggerinformer.Get(ctx)
-		deploymentInformer := deploymentinformer.Get(ctx)
-		kubeClient := kubeclient.Get(ctx)
 		logger := logging.FromContext(ctx)
 
-		mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
-		if err != nil {
-			logger.Fatalw("Error creating client from injected config", zap.Error(err))
-		}
-		mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
-		manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
-		if err != nil {
-			logger.Fatalw("Error creating initial manifest", zap.Error(err))
-		}
-
 		c := &Reconciler{
-			kubeClientSet:     kubeClient,
+			kubeClientSet:     kubeclient.Get(ctx),
 			operatorClientSet: operatorclient.Get(ctx),
 			extension:         generator(ctx),
-			manifest:          manifest,
 		}
 		impl := tektonConfigreconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers")
+		logger.Info("Setting up event handlers for TektonConfig")
 
-		tektonConfigInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		tektonConfiginformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
-		tektonPipelineInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
+		tektonPipelineinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
-		tektonTriggerInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
-			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
-
-		deploymentInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
+		tektonTriggerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
 		if os.Getenv("AUTOINSTALL_COMPONENTS") == "true" {
 			// try to ensure that there is an instance of tektonConfig
-			newTektonConfig(operatorclient.Get(ctx), kubeclient.Get(ctx), manifest).ensureInstance(ctx)
+			newTektonConfig(operatorclient.Get(ctx), kubeclient.Get(ctx)).ensureInstance(ctx)
 		}
 
 		return impl

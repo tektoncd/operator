@@ -25,7 +25,6 @@ import (
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig/extension"
-	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 func KubernetesExtension(ctx context.Context) common.Extension {
@@ -52,13 +51,7 @@ func (oe kubernetesExtension) PostReconcile(ctx context.Context, comp v1alpha1.T
 	}
 
 	if configInstance.Spec.Profile == common.ProfileLite || configInstance.Spec.Profile == common.ProfileBasic {
-		err := extension.TektonDashboardCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonDashboards(), common.DashboardResourceName)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return nil
-			}
-			return err
-		}
+		return extension.TektonDashboardCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonDashboards(), common.DashboardResourceName)
 	}
 
 	return nil
