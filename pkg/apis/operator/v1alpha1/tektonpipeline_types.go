@@ -58,9 +58,13 @@ type TektonPipelineStatus struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// The current installer set name
+	// The current installer set name for TektonPipeline
 	// +optional
 	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
+
+	// The installer sets created for extension components
+	// +optional
+	ExtentionInstallerSets map[string]string `json:"extTektonInstallerSets,omitempty"`
 }
 
 // TektonPipelineList contains a list of TektonPipeline

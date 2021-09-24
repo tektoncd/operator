@@ -810,6 +810,13 @@ func (in *TektonPipelineSpec) DeepCopy() *TektonPipelineSpec {
 func (in *TektonPipelineStatus) DeepCopyInto(out *TektonPipelineStatus) {
 	*out = *in
 	in.Status.DeepCopyInto(&out.Status)
+	if in.ExtentionInstallerSets != nil {
+		in, out := &in.ExtentionInstallerSets, &out.ExtentionInstallerSets
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	return
 }
 

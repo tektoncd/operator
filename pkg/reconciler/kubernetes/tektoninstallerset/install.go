@@ -48,6 +48,7 @@ var (
 	pipelinePred                       = mf.ByKind("Pipeline")
 
 	// OpenShift Specific
+	serviceMonitorPred     = mf.ByKind("ServiceMonitor")
 	consoleCLIDownloadPred = mf.ByKind("ConsoleCLIDownload")
 	consoleQuickStartPred  = mf.ByKind("ConsoleQuickStart")
 	ConsoleYAMLSamplePred  = mf.ByKind("ConsoleYAMLSample")
@@ -95,6 +96,7 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 			secretPred,
 			horizontalPodAutoscalerPred,
 			pipelinePred,
+			serviceMonitorPred,
 		)).Apply(); err != nil {
 		return err
 	}
