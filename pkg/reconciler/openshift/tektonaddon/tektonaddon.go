@@ -185,7 +185,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		}
 	} else {
 		// if disabled then delete the installer Set if exist
-		return r.deleteInstallerSet(ctx, ta, clusterTaskInstallerSet)
+		if err := r.deleteInstallerSet(ctx, ta, clusterTaskInstallerSet); err != nil {
+			return err
+		}
 	}
 
 	err := r.checkComponentStatus(ctx, ta, clusterTaskInstallerSet)
@@ -207,7 +209,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		}
 	} else {
 		// if disabled then delete the installer Set if exist
-		return r.deleteInstallerSet(ctx, ta, pipelinesTemplateInstallerSet)
+		if err := r.deleteInstallerSet(ctx, ta, pipelinesTemplateInstallerSet); err != nil {
+			return err
+		}
 	}
 
 	err = r.checkComponentStatus(ctx, ta, pipelinesTemplateInstallerSet)

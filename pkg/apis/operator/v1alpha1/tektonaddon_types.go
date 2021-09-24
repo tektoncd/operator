@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"reflect"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -63,6 +65,17 @@ type TektonAddonStatus struct {
 	// TektonInstallerSet created to install addons
 	// +optional
 	AddonsInstallerSet map[string]string `json:"installerSets,omitempty"`
+}
+
+// Addon defines the field to customize Addon component
+type Addon struct {
+	// Params is the list of params passed for Addon customization
+	// +optional
+	Params []Param `json:"params,omitempty"`
+}
+
+func (a Addon) IsEmpty() bool {
+	return reflect.DeepEqual(a, Addon{})
 }
 
 // TektonAddonsList contains a list of TektonAddon
