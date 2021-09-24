@@ -30,6 +30,8 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
@@ -43,6 +45,11 @@ const (
 
 	enableMetricsKey          = "enableMetrics"
 	enableMetricsDefaultValue = "true"
+
+	versionKey = "VERSION"
+
+	prePipelineInstallerSet  = "PrePipelineInstallerSet"
+	postPipelineInstallerSet = "PostPipelineInstallerSet"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -56,9 +63,16 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 	if err != nil {
 		logger.Fatalw("error creating initial manifest", zap.Error(err))
 	}
+
+	version := os.Getenv(versionKey)
+	if version == "" {
+		logger.Fatal("Failed to find version from env")
+	}
+
 	ext := openshiftExtension{
 		operatorClientSet: operatorclient.Get(ctx),
 		manifest:          manifest,
+		version:           version,
 	}
 	return ext
 }
@@ -66,6 +80,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 type openshiftExtension struct {
 	operatorClientSet versioned.Interface
 	manifest          mf.Manifest
+	version           string
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -84,33 +99,46 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 
 	return trns
 }
-func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
+	tp := comp.(*v1alpha1.TektonPipeline)
 
-	// make sure that openshift-pipelines namespace exists
-	namespaceLocation := filepath.Join(koDataDir, "tekton-namespace")
-	if err := common.AppendManifest(&oe.manifest, namespaceLocation); err != nil {
+	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, tp, prePipelineInstallerSet)
+	if err != nil {
 		return err
 	}
 
-	// add inject CA bundles manifests
-	cabundlesLocation := filepath.Join(koDataDir, "cabundles")
-	if err := common.AppendManifest(&oe.manifest, cabundlesLocation); err != nil {
-		return err
+	// If installer set doesn't exist then create a new one
+	if !exist {
+
+		// make sure that openshift-pipelines namespace exists
+		namespaceLocation := filepath.Join(koDataDir, "tekton-namespace")
+		if err := common.AppendManifest(&oe.manifest, namespaceLocation); err != nil {
+			return err
+		}
+
+		// add inject CA bundles manifests
+		cabundlesLocation := filepath.Join(koDataDir, "cabundles")
+		if err := common.AppendManifest(&oe.manifest, cabundlesLocation); err != nil {
+			return err
+		}
+
+		// add pipelines-scc
+		pipelinesSCCLocation := filepath.Join(koDataDir, "tekton-pipeline", "00-prereconcile")
+		if err := common.AppendManifest(&oe.manifest, pipelinesSCCLocation); err != nil {
+			return err
+		}
+
+		if err := common.Transform(ctx, &oe.manifest, tp); err != nil {
+			return err
+		}
+
+		if err := createInstallerSet(ctx, oe.operatorClientSet, tp, oe.manifest, oe.version,
+			prePipelineInstallerSet, "pre-pipeline"); err != nil {
+			return err
+		}
 	}
 
-	// add pipelines-scc
-	pipelinesSCCLocation := filepath.Join(koDataDir, "tekton-pipeline", "00-prereconcile")
-	if err := common.AppendManifest(&oe.manifest, pipelinesSCCLocation); err != nil {
-		return err
-	}
-
-	// Apply the resources
-	if err := oe.manifest.Apply(); err != nil {
-		return err
-	}
-
-	tp := tc.(*v1alpha1.TektonPipeline)
 	if crUpdated := SetDefault(&tp.Spec.Pipeline); crUpdated {
 		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonPipelines().Update(ctx, tp, v1.UpdateOptions{}); err != nil {
 			return err
@@ -127,25 +155,50 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	// Install monitoring if metrics is enabled
 	value := findParam(pipeline.Spec.Params, enableMetricsKey)
 
-	monitoringLocation := filepath.Join(koDataDir, "openshift-monitoring")
-	if err := common.AppendManifest(&oe.manifest, monitoringLocation); err != nil {
-		return err
-	}
-
-	trns, err := oe.manifest.Transform(
-		mf.InjectNamespace(pipeline.Spec.TargetNamespace),
-		mf.InjectOwner(pipeline),
-	)
-	if err != nil {
-		return err
-	}
-
 	if value == "true" {
-		return trns.Apply()
+		exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, pipeline, postPipelineInstallerSet)
+		if err != nil {
+			return err
+		}
+
+		if !exist {
+
+			monitoringLocation := filepath.Join(koDataDir, "openshift-monitoring")
+			if err := common.AppendManifest(&oe.manifest, monitoringLocation); err != nil {
+				return err
+			}
+
+			if err := common.Transform(ctx, &oe.manifest, pipeline); err != nil {
+				return err
+			}
+
+			if err := createInstallerSet(ctx, oe.operatorClientSet, pipeline, oe.manifest, oe.version,
+				postPipelineInstallerSet, "post-pipeline"); err != nil {
+				return err
+			}
+		}
+
+	} else {
+		return deleteInstallerSet(ctx, oe.operatorClientSet, pipeline, postPipelineInstallerSet)
 	}
-	return trns.Delete()
+
+	return nil
 }
-func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
+func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
+	pipeline := comp.(*v1alpha1.TektonPipeline)
+
+	installerSets := pipeline.Status.ExtentionInstallerSets
+	if len(installerSets) == 0 {
+		return nil
+	}
+
+	for _, value := range installerSets {
+		err := oe.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().Delete(ctx, value, metav1.DeleteOptions{})
+		if err != nil && !errors.IsNotFound(err) {
+			return err
+		}
+	}
+
 	return nil
 }
 
