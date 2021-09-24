@@ -22,15 +22,16 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"gotest.tools/v3/assert"
 )
 
-func TestFetchVersionFromCRD(t *testing.T) {
+func TestFetchVersionFromConfigMap(t *testing.T) {
 
-	testData := path.Join("testdata", "test-fetch-version-from-crds.yaml")
+	testData := path.Join("testdata", "test-fetch-version-from-configmap.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assertNoEror(t, err)
 
-	version, err := FetchVersionFromCRD(manifest, "pipeline.tekton.dev/release")
+	version, err := FetchVersionFromConfigMap(manifest, "pipelines-info")
 	if err != nil {
 		t.Fatal("Unexpected Error: ", err)
 	}
@@ -38,6 +39,34 @@ func TestFetchVersionFromCRD(t *testing.T) {
 	if version != "devel" {
 		t.Fatal("invalid label fetched from crd: ", version)
 	}
+}
+
+func TestFetchVersionFromConfigMap_ConfigMapNotFound(t *testing.T) {
+
+	testData := path.Join("testdata", "test-fetch-version-from-configmap.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	_, err = FetchVersionFromConfigMap(manifest, "triggers-info")
+	if err == nil {
+		t.Fatal("Expected error found nil")
+	}
+
+	assert.Error(t, err, configMapError.Error())
+}
+
+func TestFetchVersionFromConfigMap_VersionKeyNotFound(t *testing.T) {
+
+	testData := path.Join("testdata", "test-fetch-version-from-configmap-invalid.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	_, err = FetchVersionFromConfigMap(manifest, "pipelines-info")
+	if err == nil {
+		t.Fatal("Expected error found nil")
+	}
+
+	assert.Error(t, err, configMapError.Error())
 }
 
 func TestComputeHashOf(t *testing.T) {
