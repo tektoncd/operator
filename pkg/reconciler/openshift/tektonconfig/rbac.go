@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"regexp"
 
-	mf "github.com/manifestival/manifestival"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	corev1 "k8s.io/api/core/v1"
@@ -50,7 +49,6 @@ var nsRegex = regexp.MustCompile(common.NamespaceIgnorePattern)
 type rbac struct {
 	kubeClientSet     kubernetes.Interface
 	operatorClientSet clientset.Interface
-	manifest          mf.Manifest
 	ownerRef          metav1.OwnerReference
 	version           string
 }

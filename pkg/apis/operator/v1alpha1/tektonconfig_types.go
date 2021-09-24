@@ -24,11 +24,6 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
-var (
-	_ TektonComponent     = (*TektonConfig)(nil)
-	_ TektonComponentSpec = (*TektonConfigSpec)(nil)
-)
-
 // TektonConfig is the Schema for the TektonConfigs API
 // +genclient
 // +genreconciler:krshapedlogic=false
@@ -95,13 +90,13 @@ type TektonConfigSpec struct {
 type TektonConfigStatus struct {
 	duckv1.Status `json:",inline"`
 
+	// The profile installed
+	// +optional
+	Profile string `json:"profile,omitempty"`
+
 	// The version of the installed release
 	// +optional
 	Version string `json:"version,omitempty"`
-
-	// The url links of the manifests, separated by comma
-	// +optional
-	Manifests []string `json:"manifests,omitempty"`
 }
 
 // TektonConfigList contains a list of TektonConfig
@@ -110,17 +105,6 @@ type TektonConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonConfig `json:"items"`
-}
-
-// Addon defines the field to customize Addon component
-type Addon struct {
-	// Params is the list of params passed for Addon customization
-	// +optional
-	Params []Param `json:"params,omitempty"`
-}
-
-func (a Addon) IsEmpty() bool {
-	return reflect.DeepEqual(a, Addon{})
 }
 
 type Config struct {

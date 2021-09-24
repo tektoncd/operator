@@ -20,8 +20,6 @@ import (
 	"context"
 	"os"
 
-	"github.com/go-logr/zapr"
-	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -30,14 +28,10 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
 	openshiftPipeline "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
 	openshiftTrigger "github.com/tektoncd/operator/pkg/reconciler/openshift/tektontrigger"
-	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	"knative.dev/pkg/injection"
-	"knative.dev/pkg/logging"
 )
 
 const (
@@ -45,30 +39,15 @@ const (
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
-
-	logger := logging.FromContext(ctx)
-	mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
-	if err != nil {
-		logger.Fatalw("error creating client from injected config", zap.Error(err))
-	}
-	mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
-	manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
-	if err != nil {
-		logger.Fatalw("error creating initial manifest", zap.Error(err))
-	}
-	ext := openshiftExtension{
+	return openshiftExtension{
 		operatorClientSet: operatorclient.Get(ctx),
 		kubeClientSet:     kubeclient.Get(ctx),
-		manifest:          manifest,
 	}
-
-	return ext
 }
 
 type openshiftExtension struct {
 	operatorClientSet versioned.Interface
 	kubeClientSet     kubernetes.Interface
-	manifest          mf.Manifest
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -88,7 +67,6 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	r := rbac{
 		kubeClientSet:     oe.kubeClientSet,
 		operatorClientSet: oe.operatorClientSet,
-		manifest:          oe.manifest,
 		ownerRef:          configOwnerRef(tc),
 		version:           os.Getenv(versionKey),
 	}
@@ -97,27 +75,21 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 
-	if configInstance.Spec.Profile == common.ProfileAll {
+	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
 		if err := extension.CreateAddonCR(comp, oe.operatorClientSet.OperatorV1alpha1()); err != nil {
 			return err
 		}
 	}
 
-	if configInstance.Spec.Profile == common.ProfileBasic || configInstance.Spec.Profile == common.ProfileLite {
-		err := extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), common.AddonResourceName)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return nil
-			}
-			return err
-		}
+	if configInstance.Spec.Profile == v1alpha1.ProfileBasic || configInstance.Spec.Profile == v1alpha1.ProfileLite {
+		return extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), common.AddonResourceName)
 	}
 
 	return nil
 }
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
-	if configInstance.Spec.Profile == common.ProfileAll {
+	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
 		if err := extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), common.AddonResourceName); err != nil {
 			return err
 		}

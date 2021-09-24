@@ -20,17 +20,13 @@ import (
 	"context"
 	"fmt"
 
-	mf "github.com/manifestival/manifestival"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -41,11 +37,6 @@ type Reconciler struct {
 	kubeClientSet kubernetes.Interface
 	// operatorClientSet allows us to configure operator objects
 	operatorClientSet clientset.Interface
-	// manifest is empty, but with a valid client and logger. all
-	// manifests are immutable, and any created during reconcile are
-	// expected to be appended to this one, obviating the passing of
-	// client & logger
-	manifest mf.Manifest
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
 }
@@ -58,20 +49,7 @@ var _ tektonConfigreconciler.Finalizer = (*Reconciler)(nil)
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonConfig) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 
-	// List all TektonConfigs to determine if cluster-scoped resources should be deleted.
-	tps, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to list all TektonConfigs: %w", err)
-	}
-
-	for _, tp := range tps.Items {
-		if tp.GetDeletionTimestamp().IsZero() {
-			// Not deleting all TektonPipelines. Nothing to do here.
-			return nil
-		}
-	}
-
-	if original.Spec.Profile == common.ProfileLite {
+	if original.Spec.Profile == v1alpha1.ProfileLite {
 		return pipeline.TektonPipelineCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), common.PipelineResourceName)
 	} else {
 		// TektonPipeline and TektonTrigger is common for profile type basic and all
@@ -95,7 +73,6 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfig) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 	tc.Status.InitializeConditions()
-	tc.Status.ObservedGeneration = tc.Generation
 
 	logger.Infow("Reconciling TektonConfig", "status", tc.Status)
 	if tc.GetName() != common.ConfigResourceName {
@@ -104,65 +81,55 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			tc.GetName(),
 		)
 		logger.Error(msg)
-		tc.GetStatus().MarkInstallFailed(msg)
+		tc.Status.MarkNotReady(msg)
 		return nil
 	}
 
 	tc.SetDefaults(ctx)
 
 	if err := r.extension.PreReconcile(ctx, tc); err != nil {
-		// If prereconcile updates the TektonConfig CR, it returns an error
+		// If pre-reconcile updates the TektonConfig CR, it returns an error
 		// to reconcile
 		if err.Error() == "reconcile" {
 			return err
 		}
-		tc.GetStatus().MarkInstallFailed(err.Error())
+		tc.Status.MarkPreInstallFailed(err.Error())
 		return err
 	}
 
-	var stages common.Stages
-	if tc.Spec.Profile == common.ProfileLite {
-		err := trigger.TektonTriggerCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), common.TriggerResourceName)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return nil
-			}
+	tc.Status.MarkPreInstallComplete()
+
+	// Create TektonPipeline CR
+	if err := pipeline.CreatePipelineCR(tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
+		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPipeline: %s", err.Error()))
+		return err
+	}
+
+	// Create TektonTrigger CR if the profile is all or basic
+	if tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic {
+		if err := trigger.CreateTriggerCR(tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
 			return err
 		}
-		stages = common.Stages{
-			r.createPipelineCR,
-		}
 	} else {
-		// TektonPipeline and TektonTrigger is common for profile type basic and all
-		stages = common.Stages{
-			r.createPipelineCR,
-			r.createTriggerCR,
+		if err := trigger.TektonTriggerCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), common.TriggerResourceName); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
+			return err
 		}
-	}
-
-	manifest := r.manifest.Append()
-	if err := stages.Execute(ctx, &manifest, tc); err != nil {
-		tc.GetStatus().MarkInstallFailed(err.Error())
-		return err
-	}
-	if err := r.extension.PostReconcile(ctx, tc); err != nil {
-		tc.GetStatus().MarkInstallFailed(err.Error())
-		return err
 	}
 
 	if err := common.Prune(r.kubeClientSet, ctx, tc); err != nil {
 		logger.Error(err)
 	}
 
-	tc.Status.MarkInstallSucceeded()
-	tc.Status.MarkDeploymentsAvailable()
+	tc.Status.MarkComponentsReady()
+
+	if err := r.extension.PostReconcile(ctx, tc); err != nil {
+		tc.Status.MarkPostInstallFailed(err.Error())
+		return err
+	}
+
+	tc.Status.MarkPostInstallComplete()
+
 	return nil
-}
-
-func (r *Reconciler) createPipelineCR(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	return pipeline.CreatePipelineCR(comp, r.operatorClientSet.OperatorV1alpha1())
-}
-
-func (r *Reconciler) createTriggerCR(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	return trigger.CreateTriggerCR(comp, r.operatorClientSet.OperatorV1alpha1())
 }

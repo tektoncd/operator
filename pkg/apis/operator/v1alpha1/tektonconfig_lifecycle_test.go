@@ -30,109 +30,69 @@ func TestTektonConfigGroupVersionKind(t *testing.T) {
 		Version: SchemaVersion,
 		Kind:    KindTektonConfig,
 	}
-	if got := r.GroupVersionKind(); got != want {
+	if got := r.GetGroupVersionKind(); got != want {
 		t.Errorf("got: %v, want: %v", got, want)
 	}
 }
 
 func TestTektonConfigHappyPath(t *testing.T) {
-	tp := &TektonConfigStatus{}
-	tp.InitializeConditions()
+	tc := &TektonConfigStatus{}
+	tc.InitializeConditions()
 
-	apistest.CheckConditionOngoing(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionOngoing(tp, InstallSucceeded, t)
+	apistest.CheckConditionOngoing(tc, PreInstall, t)
+	apistest.CheckConditionOngoing(tc, ComponentsReady, t)
+	apistest.CheckConditionOngoing(tc, PostInstall, t)
 
-	// Install succeeds.
-	tp.MarkInstallSucceeded()
-	// Dependencies are assumed successful too.
-	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
+	// Pre install completes execution
+	tc.MarkPreInstallComplete()
+	apistest.CheckConditionSucceeded(tc, PreInstall, t)
 
-	// Deployments are not available at first.
-	tp.MarkDeploymentsNotReady()
-	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
-	apistest.CheckConditionFailed(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
-	if ready := tp.IsReady(); ready {
-		t.Errorf("tp.IsReady() = %v, want false", ready)
+	// Components and then PostInstall completes and we're good.
+	tc.MarkComponentsReady()
+	apistest.CheckConditionSucceeded(tc, ComponentsReady, t)
+
+	tc.MarkPostInstallComplete()
+	apistest.CheckConditionSucceeded(tc, PostInstall, t)
+
+	if ready := tc.IsReady(); !ready {
+		t.Errorf("tc.IsReady() = %v, want true", ready)
 	}
 
-	// Deployments become ready and we're good.
-	tp.MarkDeploymentsAvailable()
-	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
-	if ready := tp.IsReady(); !ready {
-		t.Errorf("tp.IsReady() = %v, want true", ready)
-	}
 }
 
 func TestTektonConfigErrorPath(t *testing.T) {
-	tp := &TektonConfigStatus{}
-	tp.InitializeConditions()
+	tc := &TektonConfigStatus{}
+	tc.InitializeConditions()
 
-	apistest.CheckConditionOngoing(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionOngoing(tp, InstallSucceeded, t)
+	apistest.CheckConditionOngoing(tc, PreInstall, t)
+	apistest.CheckConditionOngoing(tc, ComponentsReady, t)
+	apistest.CheckConditionOngoing(tc, PostInstall, t)
 
-	// Install fails.
-	tp.MarkInstallFailed("test")
-	apistest.CheckConditionOngoing(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionFailed(tp, InstallSucceeded, t)
+	// Pre install completes execution
+	tc.MarkPreInstallComplete()
+	apistest.CheckConditionSucceeded(tc, PreInstall, t)
 
-	// Dependencies are installing.
-	tp.MarkDependencyInstalling("testing")
-	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionFailed(tp, InstallSucceeded, t)
+	// ComponentsReady is not ready when components are not in ready state
+	tc.MarkComponentNotReady("waiting for component")
+	apistest.CheckConditionFailed(tc, ComponentsReady, t)
 
-	// Install now succeeds.
-	tp.MarkInstallSucceeded()
-	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
-	if ready := tp.IsReady(); ready {
-		t.Errorf("tp.IsReady() = %v, want false", ready)
+	// ComponentsReady and then PostInstall become ready and we're good.
+	tc.MarkComponentsReady()
+	apistest.CheckConditionSucceeded(tc, ComponentsReady, t)
+
+	tc.MarkPostInstallComplete()
+	apistest.CheckConditionSucceeded(tc, PostInstall, t)
+
+	if ready := tc.IsReady(); !ready {
+		t.Errorf("tc.IsReady() = %v, want true", ready)
 	}
 
-	// Deployments become ready
-	tp.MarkDeploymentsAvailable()
-	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
-	if ready := tp.IsReady(); ready {
-		t.Errorf("tp.IsReady() = %v, want false", ready)
+	// In further reconciliation component might fail
+
+	tc.MarkComponentNotReady("pipeline not ready")
+	apistest.CheckConditionFailed(tc, ComponentsReady, t)
+	if ready := tc.IsReady(); ready {
+		t.Errorf("tc.IsReady() = %v, want false", ready)
 	}
 
-	// Finally, dependencies become available.
-	tp.MarkDependenciesInstalled()
-	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
-	if ready := tp.IsReady(); !ready {
-		t.Errorf("tp.IsReady() = %v, want true", ready)
-	}
-}
-
-func TestTektonConfigExternalDependency(t *testing.T) {
-	tp := &TektonConfigStatus{}
-	tp.InitializeConditions()
-
-	// External marks dependency as failed.
-	tp.MarkDependencyMissing("test")
-
-	// Install succeeds.
-	tp.MarkInstallSucceeded()
-	apistest.CheckConditionFailed(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
-
-	// Dependencies are now ready.
-	tp.MarkDependenciesInstalled()
-	apistest.CheckConditionSucceeded(tp, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tp, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tp, InstallSucceeded, t)
 }
