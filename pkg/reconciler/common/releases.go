@@ -174,19 +174,10 @@ func latestRelease(instance v1alpha1.TektonComponent) string {
 }
 
 func AppendManifest(manifest *mf.Manifest, yamlLocation string) error {
-	var files []string
-	if err := filepath.Walk(yamlLocation, func(path string, info os.FileInfo, err error) error {
-		files = append(files, path)
-		return nil
-	}); err != nil {
+	m, err := mf.ManifestFrom(mf.Recursive(yamlLocation))
+	if err != nil {
 		return err
 	}
-	for i := range files {
-		m, err := Fetch(files[i])
-		if err != nil {
-			return err
-		}
-		*manifest = manifest.Append(m)
-	}
+	*manifest = manifest.Append(m)
 	return nil
 }

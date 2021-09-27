@@ -1,0 +1,22 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: bitbucket-pullreq-no-version
+spec:
+  params:
+    - name: gitrepo-url
+      value: $(body.pullRequest.fromRef.repository.links.clone[0].href)
+    - name: pullreq-sha
+      value: $(body.pullRequest.fromRef.latestCommit)
+    - name: pullreq-state
+      value: $(body.pullRequest.state)
+    - name: pullreq-number
+      value: $(body.pullRequest.id)
+    - name: pullreq-repo-name
+      value: $(body.pullRequest.toRef.repository.name)
+    - name: pullreq-html-url
+      value: $(body.pullRequest.links.self[0].href)
+    - name: pullreq-title
+      value: $(body.pullRequest.title)
+    - name: user-type
+      value: $(body.pullRequest.author.user.type)
