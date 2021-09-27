@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
 )
@@ -46,4 +47,29 @@ func TestListReleases(t *testing.T) {
 	version, err := allReleases(&v1alpha1.TektonTrigger{})
 	util.AssertEqual(t, err, nil)
 	util.AssertDeepEqual(t, version, expectedVersionList)
+}
+
+func TestAppendManifest(t *testing.T) {
+
+	// Case 1
+	var manifest mf.Manifest
+	err := AppendManifest(&manifest, "testdata/kodata/tekton-addon")
+	if err != nil {
+		t.Fatal("failed to read yaml: ", err)
+	}
+
+	if len(manifest.Resources()) != 3 {
+		t.Fatalf("failed to find expected number of resource: %d found, expected 3", len(manifest.Resources()))
+	}
+
+	// Case 2
+	var newManifest mf.Manifest
+	err = AppendManifest(&newManifest, "testdata/kodata/tekton-addon/0.0.1")
+	if err != nil {
+		t.Fatal("failed to read yaml: ", err)
+	}
+
+	if len(newManifest.Resources()) != 1 {
+		t.Fatalf("failed to find expected number of resource: %d found, expected 3", len(newManifest.Resources()))
+	}
 }
