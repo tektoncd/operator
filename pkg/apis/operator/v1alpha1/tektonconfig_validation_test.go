@@ -99,10 +99,10 @@ func Test_ValidateTektonConfig_InvalidPruningResource(t *testing.T) {
 	}
 
 	err := tc.Validate(context.TODO())
-	assert.Equal(t, "invalid value: task: spec.pruner.resources[0]\nmissing field(s): spec.pruner.keep, spec.pruner.schedule", err.Error())
+	assert.Equal(t, "expected exactly one, got neither: spec.pruner.keep, spec.pruner.keep-since\ninvalid value: task: spec.pruner.resources[0]\nmissing field(s): spec.pruner.schedule", err.Error())
 }
 
-func Test_ValidateTektonConfig_MissingKeepSchedule(t *testing.T) {
+func Test_ValidateTektonConfig_MissingKeepKeepsinceSchedule(t *testing.T) {
 
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -121,7 +121,30 @@ func Test_ValidateTektonConfig_MissingKeepSchedule(t *testing.T) {
 	}
 
 	err := tc.Validate(context.TODO())
-	assert.Equal(t, "missing field(s): spec.pruner.keep, spec.pruner.schedule", err.Error())
+	assert.Equal(t, "expected exactly one, got neither: spec.pruner.keep, spec.pruner.keep-since\nmissing field(s): spec.pruner.schedule", err.Error())
+}
+
+func Test_ValidateTektonConfig_MissingSchedule(t *testing.T) {
+	keep := uint(2)
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Profile: "all",
+			Pruner: Prune{
+				Keep:      &keep,
+				Resources: []string{"taskrun"},
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Equal(t, "missing field(s): spec.pruner.schedule", err.Error())
 }
 
 func Test_ValidateTektonConfig_InvalidAddonParam(t *testing.T) {

@@ -314,6 +314,11 @@ func (in *Prune) DeepCopyInto(out *Prune) {
 		*out = new(uint)
 		**out = **in
 	}
+	if in.KeepSince != nil {
+		in, out := &in.KeepSince, &out.KeepSince
+		*out = new(uint)
+		**out = **in
+	}
 	return
 }
 

@@ -19,6 +19,12 @@ package tektonconfig
 import (
 	"context"
 	"os"
+	"regexp"
+
+	"knative.dev/pkg/kmeta"
+
+	"k8s.io/apimachinery/pkg/types"
+	namespaceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
@@ -61,11 +67,30 @@ func NewExtensibleController(generator common.ExtensionGenerator) injection.Cont
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
+		namespaceinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(impl, common.ConfigResourceName)))
+
 		if os.Getenv("AUTOINSTALL_COMPONENTS") == "true" {
 			// try to ensure that there is an instance of tektonConfig
 			newTektonConfig(operatorclient.Get(ctx), kubeclient.Get(ctx)).ensureInstance(ctx)
 		}
 
 		return impl
+	}
+}
+
+// enqueueCustomName adds an event with name `config` in work queue so that
+// whenever a namespace event occurs, the TektonConfig reconciler get triggered.
+// This is required because we want to get our TektonConfig reconciler triggered
+// for already existing and new namespaces, without manual intervention like adding
+// a label/annotation on namespace to make it manageable by Tekton controller.
+// This will also filter the namespaces by regex `^(openshift|kube)-`
+// and enqueue only when namespace doesn't match the regex
+func enqueueCustomName(impl *controller.Impl, name string) func(obj interface{}) {
+	return func(obj interface{}) {
+		var nsRegex = regexp.MustCompile(common.NamespaceIgnorePattern)
+		object, err := kmeta.DeletionHandlingAccessor(obj)
+		if err == nil && !nsRegex.MatchString(object.GetName()) {
+			impl.EnqueueKey(types.NamespacedName{Namespace: "", Name: name})
+		}
 	}
 }

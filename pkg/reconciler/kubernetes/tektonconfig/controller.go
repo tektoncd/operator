@@ -18,7 +18,6 @@ package tektonconfig
 
 import (
 	"context"
-
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -31,7 +30,6 @@ import (
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-
 	ctrl := tektonconfig.NewExtensibleController(KubernetesExtension)(ctx, cmw)
 	tektonDashboardinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 		FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),

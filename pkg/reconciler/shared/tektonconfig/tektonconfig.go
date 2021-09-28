@@ -118,7 +118,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		}
 	}
 
-	if err := common.Prune(r.kubeClientSet, ctx, tc); err != nil {
+	if err := common.Prune(ctx, r.kubeClientSet, tc); err != nil {
 		logger.Error(err)
 	}
 

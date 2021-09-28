@@ -19,3 +19,9 @@ metadata:
 spec:
   profile: all
   targetNamespace: tekton-pipelines
+  pruner:
+    resources:
+      - pipelinerun
+      - taskrun
+    keep: 100
+    schedule: "0 8 * * *"
