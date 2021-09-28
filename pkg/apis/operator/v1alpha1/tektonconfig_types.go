@@ -53,7 +53,12 @@ type Prune struct {
 	Resources []string `json:"resources,omitempty"`
 	// The number of resource to keep
 	// You dont want to delete all the pipelinerun/taskrun's by a cron
+	// +optional
 	Keep *uint `json:"keep,omitempty"`
+	// KeepSince keeps the resources younger than the specified value
+	// Its value is taken in minutes
+	// +optional
+	KeepSince *uint `json:"keep-since,omitempty"`
 	// How frequent pruning should happen
 	Schedule string `json:"schedule,omitempty"`
 }

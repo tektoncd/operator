@@ -21,43 +21,20 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	tektonAddoninformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonaddon"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
-	namespaceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
-	"knative.dev/pkg/kmeta"
 )
 
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 	ctrl := tektonconfig.NewExtensibleController(OpenShiftExtension)(ctx, cmw)
-	namespaceInformer := namespaceinformer.Get(ctx)
-	namespaceInformer.Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(ctrl, common.ConfigResourceName)))
-
 	tektonAddoninformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 		FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
 		Handler:    controller.HandleAll(ctrl.EnqueueControllerOf),
 	})
 
 	return ctrl
-}
-
-// enqueueCustomName adds an event with name `config` in work queue so that
-// whenever a namespace event occurs, the TektonConfig reconciler get triggered.
-// This is required because we want to get our TektonConfig reconciler triggered
-// for already existing and new namespaces, without manual intervention like adding
-// a label/annotation on namespace to make it manageable by Tekton controller.
-// This will also filter the namespaces by regex `^(openshift|kube)-`
-// and enqueue only when namespace doesn't match the regex
-func enqueueCustomName(impl *controller.Impl, name string) func(obj interface{}) {
-	return func(obj interface{}) {
-		object, err := kmeta.DeletionHandlingAccessor(obj)
-		if err == nil && !nsRegex.MatchString(object.GetName()) {
-			impl.EnqueueKey(types.NamespacedName{Namespace: "", Name: name})
-		}
-	}
 }

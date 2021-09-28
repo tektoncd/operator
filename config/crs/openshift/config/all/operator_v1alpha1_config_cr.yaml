@@ -28,3 +28,9 @@ spec:
   params:
   - name: createRbacResource
     value: "true"
+  pruner:
+    resources:
+    - pipelinerun
+    - taskrun
+    keep: 100
+    schedule: "0 8 * * *"

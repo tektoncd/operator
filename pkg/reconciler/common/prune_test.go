@@ -18,20 +18,36 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"gotest.tools/v3/assert"
-	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
+const (
+	scheduleCommon = "*/2 * * * *"
+	scheduleUnique = "*/4 * * * *"
+)
+
 func TestGetPrunableNamespaces(t *testing.T) {
-	expected := []string{"ns-one", "ns-two"}
+	keep := uint(3)
+	anno1 := map[string]string{pruneSchedule: scheduleCommon}
+	anno2 := map[string]string{pruneSchedule: scheduleUnique}
+	defaultPrune := v1alpha1.Prune{
+		Resources: []string{"something"},
+		Keep:      &keep,
+		Schedule:  scheduleCommon,
+	}
+	expected1 := map[string]struct{}{"ns-one": struct{}{}, "ns-two": struct{}{}, "ns-three": struct{}{}}
+	expected2 := map[string]struct{}{"ns-four": struct{}{}}
+
 	client := fake.NewSimpleClientset(
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api"}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api-url"}},
@@ -39,57 +55,183 @@ func TestGetPrunableNamespaces(t *testing.T) {
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-api"}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one"}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-two"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-three", Annotations: anno1}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-four", Annotations: anno2}},
 	)
-	prunableNSList, err := GetPrunableNamespaces(client, context.TODO())
+	pruningNamespaces, err := prunableNamespaces(context.TODO(), client, defaultPrune)
 	if err != nil {
 		assert.Error(t, err, "unable to get ns list")
 	}
-	assert.Equal(t, fmt.Sprint(expected), fmt.Sprint(prunableNSList))
+	assert.Equal(t, len(expected1), len(pruningNamespaces.commonScheduleNs))
+	for ns := range pruningNamespaces.commonScheduleNs {
+		if _, ok := expected1[ns]; !ok {
+			assert.Error(t, errors.New("namespace not found"), ns)
+		}
+	}
+	assert.Equal(t, len(expected2), len(pruningNamespaces.uniqueScheduleNS))
+	for ns := range pruningNamespaces.uniqueScheduleNS {
+		if _, ok := expected2[ns]; !ok {
+			assert.Error(t, errors.New("namespace not found"), ns)
+		}
+	}
 }
 
-func TestCreateCronJob(t *testing.T) {
-	cronName := "resource-pruner"
-	resource := []string{"pipelinerun", "taskrun"}
-	cronJob := &v1beta1.CronJob{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "CronJob",
-			APIVersion: "batch/v1beta1",
-		},
+func TestCompleteFlowPrune(t *testing.T) {
+
+	keep := uint(3)
+	anno1 := map[string]string{pruneSchedule: scheduleCommon}
+	anno2 := map[string]string{pruneSchedule: scheduleUnique}
+	anno4 := map[string]string{pruneSchedule: scheduleCommon}
+
+	defaultPrune := &v1alpha1.Prune{
+		Resources: []string{"pipelinerun"},
+		Keep:      &keep,
+		Schedule:  scheduleCommon,
+	}
+	config := &v1alpha1.TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: cronName,
+			Name: "config",
 		},
-		Spec: v1beta1.CronJobSpec{
-			JobTemplate: v1beta1.JobTemplateSpec{
-				Spec: batchv1.JobSpec{
-					Template: corev1.PodTemplateSpec{},
-				},
+		Spec: v1alpha1.TektonConfigSpec{
+			Profile:    "all",
+			Pruner:     *defaultPrune,
+			CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "openshift-pipelines"},
+		},
+	}
+	client := fake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api-url"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-api"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-two", Annotations: anno2}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-three", Annotations: anno1}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-four", Annotations: anno4}},
+	)
+	os.Setenv(JobsTKNImageName, "some")
+
+	err := Prune(context.TODO(), client, config)
+	if err != nil {
+		assert.Error(t, err, "unable to initiate prune")
+	}
+	cronjobs, err := client.BatchV1beta1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		assert.Error(t, err, "unable to get cronjobs ")
+	}
+	// Only one ns with unique schedule than default
+	if len(cronjobs.Items) != 2 {
+		assert.Error(t, err, "number of cronjobs not correct")
+	}
+}
+
+func TestPruneCommands(t *testing.T) {
+	keep := uint(2)
+	keepsince := uint(300)
+	expected := []string{
+		"tkn pipelinerun delete --keep=2 -n=ns -f ; tkn taskrun delete --keep=2 -n=ns -f ; ",
+		"tkn pipelinerun delete --keep-since=300 -n=ns -f ; tkn taskrun delete --keep-since=300 -n=ns -f ; ",
+	}
+	ns := "ns"
+	configs := []*pruneConfigPerNS{
+		{
+			config: v1alpha1.Prune{
+				Resources: []string{"pipelinerun", "taskrun"},
+				Keep:      &keep,
+				KeepSince: nil,
+				Schedule:  scheduleCommon,
+			},
+		},
+		{
+			config: v1alpha1.Prune{
+				Resources: []string{"pipelinerun", "taskrun"},
+				Keep:      nil,
+				KeepSince: &keepsince,
+				Schedule:  scheduleCommon,
 			},
 		},
 	}
 
-	nsObj1 := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one"}}
+	for i, config := range configs {
+		cmd := pruneCommand(config, ns)
+		assert.Equal(t, cmd, expected[i])
+	}
+}
 
-	var keep = uint(2)
-	pru := v1alpha1.Prune{
-		Resources: resource,
+func TestAnnotationCmd(t *testing.T) {
+	keep := uint(3)
+	annoUniqueSchedule := map[string]string{pruneSchedule: scheduleUnique}
+	annoCommonSchedule := map[string]string{pruneSchedule: scheduleCommon}
+	annoStrategyKeepSince := map[string]string{pruneStrategy: "keep-since", pruneKeepSince: "3200"}
+	annoStrategyKeep := map[string]string{pruneStrategy: "keep", pruneKeep: "50"}
+	annoKeepSinceAndKeep := map[string]string{pruneKeepSince: "3200", pruneKeep: "5"}
+	annoResourceTr := map[string]string{pruneResources: "taskrun"}
+	annoResourceTrPr := map[string]string{pruneResources: "taskrun, pipelinerun"}
+	annoSkip := map[string]string{pruneSkip: "true"}
+	defaultPrune := &v1alpha1.Prune{
+		Resources: []string{"pipelinerun"},
 		Keep:      &keep,
-		Schedule:  "*/5 * * * *",
+		Schedule:  scheduleCommon,
 	}
-	client := fake.NewSimpleClientset(cronJob, nsObj1)
-	nsList := []string{"ns-one"}
-	if err := createCronJob(client, context.TODO(), pru, nsList[0], nsList, metav1.OwnerReference{}, "some-image"); err != nil {
-		t.Error("failed creating cronjob")
+	config := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "config",
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Profile:    "all",
+			Pruner:     *defaultPrune,
+			CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "openshift-pipelines"},
+		},
 	}
-	cron, err := client.BatchV1beta1().CronJobs(nsList[0]).Get(context.TODO(), cronName, metav1.GetOptions{})
+	client := fake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api-url"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-api"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-two", Annotations: annoUniqueSchedule}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-four", Annotations: annoCommonSchedule}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-six", Annotations: annoSkip}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-seven", Annotations: annoStrategyKeepSince}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-eight", Annotations: annoKeepSinceAndKeep}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-nine", Annotations: annoResourceTr}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-ten", Annotations: annoResourceTrPr}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-thirteen", Annotations: annoStrategyKeep}},
+	)
+	expected := map[string]string{
+		"one-" + scheduleCommon:        "tkn pipelinerun delete --keep=3 -n=ns-one -f ; ",
+		"two-" + scheduleUnique:        "tkn pipelinerun delete --keep=3 -n=ns-two -f ; ",
+		"four-" + scheduleCommon:       "tkn pipelinerun delete --keep=3 -n=ns-four -f ; ",
+		"seven-" + scheduleCommon:      "tkn pipelinerun delete --keep-since=3200 -n=ns-seven -f ; ",
+		"eight-" + scheduleCommon:      "tkn pipelinerun delete --keep=5 -n=ns-eight -f ; ",
+		"nine-" + scheduleCommon:       "tkn taskrun delete --keep=3 -n=ns-nine -f ; ",
+		"ten-" + scheduleCommon:        "tkn taskrun delete --keep=3 -n=ns-ten -f ; tkn pipelinerun delete --keep=3 -n=ns-ten -f ; ",
+		"ns-thirteen" + scheduleCommon: "tkn pipelinerun delete --keep=50 -n=ns-thirteen -f ; ",
+	}
+	os.Setenv(JobsTKNImageName, "some")
+
+	err := Prune(context.TODO(), client, config)
 	if err != nil {
-		t.Error("failed getting cronjob")
+		assert.Error(t, err, "unable to get ns list")
 	}
-	if cron.Name != cronName {
-		t.Error("cronjob not matched")
+	cronjobs, err := client.BatchV1beta1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		assert.Error(t, err, "unable to get ns list")
 	}
-	jobName := "pruner-tkn-" + nsList[0]
-	nameAfterRemovingRand := cron.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Name[:len(jobName)]
-	if nameAfterRemovingRand != jobName {
-		t.Error("Job Name not matched")
+	// Only one ns with unique schedule than default
+	if len(cronjobs.Items) != 2 {
+		assert.Error(t, err, "unable to get ns list")
+	}
+	for _, cronjob := range cronjobs.Items {
+		for _, container := range cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers {
+			if _, ok := expected[container.Name[14:len(container.Name)-5]+cronjob.Spec.Schedule]; ok {
+				if expected[container.Name[14:len(container.Name)-5]+cronjob.Spec.Schedule] != strings.Join(container.Args, " ") {
+					msg := fmt.Sprintf("expected : %s\n actual : %s \n", expected[container.Name[14:len(container.Name)-5]+cronjob.Spec.Schedule], strings.Join(container.Args, " "))
+					assert.Error(t, errors.New("command created is not as expected"), msg)
+				}
+			}
+			if container.Name == "ns-six" {
+				assert.Error(t, errors.New("Should not be created as Ns have skip prune annotation"), "")
+			}
+		}
 	}
 }
