@@ -73,6 +73,14 @@ var _ tektontriggerreconciler.Finalizer = (*Reconciler)(nil)
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonTrigger) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 
+	// Delete CRDs before deleting rest of resources so that any instance
+	// of CRDs which has finalizer set will get deleted before we remove
+	// the controller;s deployment for it
+	if err := r.manifest.Filter(mf.CRDs).Delete(); err != nil {
+		logger.Error("Failed to deleted CRDs for TektonTrigger")
+		return err
+	}
+
 	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 			LabelSelector: fmt.Sprintf("%s=%s", createdByKey, createdByValue),
