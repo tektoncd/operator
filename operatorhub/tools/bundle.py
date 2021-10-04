@@ -33,6 +33,7 @@ def buildConfig():
     config["release-version"] = args.operator_release_version
     config["channels"] = args.channels
     config["default-channel"] = args.default_channel
+    config["olm-skip-range"] = args.olm_skip_range
     config["verbose"] = args.verbose
     debug(config, yaml.dump(config))
     return config
@@ -74,6 +75,7 @@ def setParser():
                         help='previous version')
     parser.add_argument('--channels', help='channels',required=True)
     parser.add_argument('--default-channel', help='default channel', required=True)
+    parser.add_argument('--olm-skip-range', help='value for olm.skipRange annotation in CSV file in the bundle', required=False)
     parser.add_argument('--addn-annotations',
                         help='additional annotations to be added to CSV file',
                         metavar='<key1>=<val1>,<key2><val2>,...<keyn>=<valn>')
@@ -222,8 +224,8 @@ def newCSVmods(config):
                 csv['spec']['version']
                 if config["upgrade-strategy"] == UPGRADE_STRATEGY_REPLACE:
                     csv['spec']['replaces'] = config["previous-release-version"]
-                    olm_skipRange = f'>={config["previous-release-version"]} <{config["release-version"]}'
-                    csv['metadata']['annotations']['olm.skipRange'] = olm_skipRange
+                if config["olm-skip-range"]:
+                    csv['metadata']['annotations']['olm.skipRange'] = config["olm-skip-range"]
                 if "addn-annotations" in config.keys():
                     csv['metadata']['annotations'].update(config["addn-annotations"])
                 if "addn-labels" in config.keys():
