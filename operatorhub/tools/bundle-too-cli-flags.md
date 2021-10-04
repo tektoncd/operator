@@ -32,6 +32,8 @@ optional arguments:
   --channels CHANNELS   channels
   --default-channel DEFAULT_CHANNEL
                         default channel
+  --olm-skip-range OLM_SKIP_RANGE
+                        value for olm.skipRange annotation in CSV file in the bundle
   --addn-annotations <key1>=<val1>,<key2><val2>,...<keyn>=<valn>
                         additional annotations to be added to CSV file
   --addn-labels <key1>=<val1>,<key2><val2>,...<keyn>=<valn>
