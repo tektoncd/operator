@@ -78,10 +78,10 @@ var _ tektonaddonreconciler.Finalizer = (*Reconciler)(nil)
 var communityResourceURLs = []string{
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/jib-maven/0.4/jib-maven.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/maven/0.2/maven.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-source/0.2/helm-upgrade-from-source.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-source/0.3/helm-upgrade-from-source.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-repo/0.2/helm-upgrade-from-repo.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/trigger-jenkins-job/0.1/trigger-jenkins-job.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/git-cli/0.1/git-cli.yaml",
+	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/git-cli/0.2/git-cli.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/pull-request/0.1/pull-request.yaml",
 	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/kubeconfig-creator/0.1/kubeconfig-creator.yaml",
 }
