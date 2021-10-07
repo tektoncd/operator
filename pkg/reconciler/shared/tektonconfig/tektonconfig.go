@@ -119,6 +119,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	if err := common.Prune(ctx, r.kubeClientSet, tc); err != nil {
+		tc.Status.MarkComponentNotReady(fmt.Sprintf("tekton-resource-pruner: %s", err.Error()))
 		logger.Error(err)
 	}
 

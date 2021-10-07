@@ -78,6 +78,8 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 		return pruner.checkAndDeleteCron(ctx, CronName, tC.Spec.TargetNamespace)
 	}
 
+	//may be reconciled by removing/adding annotation on a Namespace
+	// if schedule is removed or prune.skip is added we delete pre-existing cron.
 	annotationRemovedNamespaces, err := pruner.checkAnnotationsRemovedNamespaces(ctx, tC.Spec.TargetNamespace)
 	if err != nil {
 		return err
@@ -105,15 +107,16 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 	}
 
 	if pruningNamespaces.commonScheduleNs != nil && len(pruningNamespaces.commonScheduleNs) > 0 {
-		jobs := pruner.createAllJobs(pruningNamespaces.commonScheduleNs)
+		jobs := pruner.createAllJobContainers(pruningNamespaces.commonScheduleNs)
 
 		if err := pruner.createCronJob(ctx, tC.Spec.TargetNamespace, tC.Spec.Pruner.Schedule, jobs, ownerRef); err != nil {
 			logger.Error("failed to create cronjob ", err)
 		}
 	}
+
 	if pruningNamespaces.uniqueScheduleNS != nil {
 		for ns, con := range pruningNamespaces.uniqueScheduleNS {
-			jobs := pruner.createJobs(con, ns)
+			jobs := pruner.createJobContainers(con, ns)
 
 			if err := pruner.createCronJob(ctx, ns, con.config.Schedule, jobs, ownerRef); err != nil {
 				logger.Errorf("failed to create cronjob in ns %s:", ns, err)
@@ -209,16 +212,16 @@ func prunableNamespaces(ctx context.Context, k kubernetes.Interface, defaultPrun
 	return prunableNs, nil
 }
 
-func (pruner *Pruner) createAllJobs(nsConfig map[string]*pruneConfigPerNS) []corev1.Container {
+func (pruner *Pruner) createAllJobContainers(nsConfig map[string]*pruneConfigPerNS) []corev1.Container {
 	var containers []corev1.Container
 	for ns, con := range nsConfig {
-		jobContainers := pruner.createJobs(con, ns)
+		jobContainers := pruner.createJobContainers(con, ns)
 		containers = append(containers, jobContainers...)
 	}
 	return containers
 }
 
-func (pruner *Pruner) createJobs(nsConfig *pruneConfigPerNS, ns string) []corev1.Container {
+func (pruner *Pruner) createJobContainers(nsConfig *pruneConfigPerNS, ns string) []corev1.Container {
 	var containers []corev1.Container
 
 	cmdArgs := pruneCommand(nsConfig, ns)
@@ -235,7 +238,7 @@ func (pruner *Pruner) createJobs(nsConfig *pruneConfigPerNS, ns string) []corev1
 	return containers
 }
 
-func (pruner *Pruner) createCronJob(ctx context.Context, targetNs, schedule string, jobs []corev1.Container, oR v1.OwnerReference) error {
+func (pruner *Pruner) createCronJob(ctx context.Context, targetNs, schedule string, pruneContainers []corev1.Container, oR v1.OwnerReference) error {
 	backOffLimit := int32(3)
 	ttlSecondsAfterFinished := int32(3600)
 	cj := &v1beta1.CronJob{
@@ -259,7 +262,7 @@ func (pruner *Pruner) createCronJob(ctx context.Context, targetNs, schedule stri
 
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
-							Containers:         jobs,
+							Containers:         pruneContainers,
 							RestartPolicy:      "OnFailure",
 							ServiceAccountName: tektonSA,
 						},
@@ -299,11 +302,10 @@ func pruneCommand(pru *pruneConfigPerNS, ns string) string {
 
 func (pruner *Pruner) checkAndDeleteCron(ctx context.Context, cronName, ns string) error {
 	if _, err := pruner.kc.BatchV1beta1().CronJobs(ns).Get(ctx, cronName, v1.GetOptions{}); err != nil {
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		} else if err != nil && errors.IsNotFound(err) {
+		if err != nil && errors.IsNotFound(err) {
 			return nil
 		}
+		return err
 	}
 
 	//if there is no error it means cron is exists, but no prune in config it means delete it
