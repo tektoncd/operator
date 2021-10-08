@@ -192,7 +192,7 @@ spec:
 
     ### Components
 
-    - Tekton Pipelines: v0.28.0
+    - Tekton Pipelines: v0.28.1
     - Tekton Triggers: v0.16.0
     - ClusterTasks based on Tekton Catalog 0.28
 
@@ -201,11 +201,16 @@ spec:
 
     ## CLI (tkn)
     Tekton Pipelines cli project provides a CLI (tkn) for interacting with OpenShift Pipelines.
-    - [Download tkn for Linux](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-amd64-0.17.2.tar.gz)
-    - [Download tkn for Mac](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-macos-amd64-0.17.2.tar.gz)
-    - [Download tkn for Windows](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-windows-amd64-0.17.2.zip)
-    - [Download tkn for IBM Power](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-ppc64le-0.17.2.tar.gz)
-    - [Download tkn for IBM Z](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-s390x-0.17.2.tar.gz)
+
+    - [Download tkn for Linux](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.21.0/tkn-linux-amd64-0.21.0.tar.gz)
+
+    - [Download tkn for Mac](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.21.0/tkn-macos-amd64-0.21.0.tar.gz)
+
+    - [Download tkn for Windows](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.21.0/tkn-windows-amd64-0.21.0.zip)
+
+    - [Download tkn for IBM Power](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.21.0/tkn-linux-ppc64le-0.21.0.tar.gz)
+
+    - [Download tkn for IBM Z](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.21.0/tkn-linux-s390x-0.21.0.tar.gz)
   displayName: Red Hat OpenShift Pipelines
   icon:
   - base64data: |
