@@ -114,7 +114,7 @@ func TestCompleteFlowPrune(t *testing.T) {
 	if err != nil {
 		assert.Error(t, err, "unable to initiate prune")
 	}
-	cronjobs, err := client.BatchV1beta1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
+	cronjobs, err := client.BatchV1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		assert.Error(t, err, "unable to get cronjobs ")
 	}
@@ -213,7 +213,7 @@ func TestAnnotationCmd(t *testing.T) {
 	if err != nil {
 		assert.Error(t, err, "unable to get ns list")
 	}
-	cronjobs, err := client.BatchV1beta1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
+	cronjobs, err := client.BatchV1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		assert.Error(t, err, "unable to get ns list")
 	}

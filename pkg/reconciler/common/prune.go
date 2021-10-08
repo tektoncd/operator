@@ -26,7 +26,6 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/api/batch/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -241,20 +240,20 @@ func (pruner *Pruner) createJobContainers(nsConfig *pruneConfigPerNS, ns string)
 func (pruner *Pruner) createCronJob(ctx context.Context, targetNs, schedule string, pruneContainers []corev1.Container, oR v1.OwnerReference) error {
 	backOffLimit := int32(3)
 	ttlSecondsAfterFinished := int32(3600)
-	cj := &v1beta1.CronJob{
+	cj := &batchv1.CronJob{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "CronJob",
-			APIVersion: "batch/v1beta1",
+			APIVersion: "batch/v1",
 		},
 		ObjectMeta: v1.ObjectMeta{
 			Name:            CronName,
 			OwnerReferences: []v1.OwnerReference{oR},
 			Labels:          map[string]string{pruneCronLabel: "true"},
 		},
-		Spec: v1beta1.CronJobSpec{
+		Spec: batchv1.CronJobSpec{
 			Schedule:          schedule,
 			ConcurrencyPolicy: "Forbid",
-			JobTemplate: v1beta1.JobTemplateSpec{
+			JobTemplate: batchv1.JobTemplateSpec{
 
 				Spec: batchv1.JobSpec{
 					TTLSecondsAfterFinished: &ttlSecondsAfterFinished,
@@ -272,9 +271,9 @@ func (pruner *Pruner) createCronJob(ctx context.Context, targetNs, schedule stri
 		},
 	}
 
-	if _, err := pruner.kc.BatchV1beta1().CronJobs(targetNs).Create(ctx, cj, v1.CreateOptions{}); err != nil {
+	if _, err := pruner.kc.BatchV1().CronJobs(targetNs).Create(ctx, cj, v1.CreateOptions{}); err != nil {
 		if strings.Contains(err.Error(), "already exists") {
-			if _, err := pruner.kc.BatchV1beta1().CronJobs(targetNs).Update(ctx, cj, v1.UpdateOptions{}); err != nil {
+			if _, err := pruner.kc.BatchV1().CronJobs(targetNs).Update(ctx, cj, v1.UpdateOptions{}); err != nil {
 				return err
 			}
 		}
@@ -301,7 +300,7 @@ func pruneCommand(pru *pruneConfigPerNS, ns string) string {
 }
 
 func (pruner *Pruner) checkAndDeleteCron(ctx context.Context, cronName, ns string) error {
-	if _, err := pruner.kc.BatchV1beta1().CronJobs(ns).Get(ctx, cronName, v1.GetOptions{}); err != nil {
+	if _, err := pruner.kc.BatchV1().CronJobs(ns).Get(ctx, cronName, v1.GetOptions{}); err != nil {
 		if err != nil && errors.IsNotFound(err) {
 			return nil
 		}
@@ -309,7 +308,7 @@ func (pruner *Pruner) checkAndDeleteCron(ctx context.Context, cronName, ns strin
 	}
 
 	//if there is no error it means cron is exists, but no prune in config it means delete it
-	return pruner.kc.BatchV1beta1().CronJobs(ns).Delete(ctx, cronName, v1.DeleteOptions{})
+	return pruner.kc.BatchV1().CronJobs(ns).Delete(ctx, cronName, v1.DeleteOptions{})
 }
 
 func (pruner *Pruner) removedFromTektonConfig(prune v1alpha1.Prune) bool {
@@ -324,7 +323,7 @@ func (pruner *Pruner) checkAnnotationsRemovedNamespaces(ctx context.Context, tar
 	var opts = v1.ListOptions{
 		LabelSelector: fmt.Sprint(pruneCronLabel),
 	}
-	cronJobs, err := pruner.kc.BatchV1beta1().CronJobs("").List(ctx, opts)
+	cronJobs, err := pruner.kc.BatchV1().CronJobs("").List(ctx, opts)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return namespaces, nil
