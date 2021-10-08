@@ -21,7 +21,7 @@ spec:
   targetNamespace: openshift-pipelines
   pruner:
     resources:
-      - pipelinerun
-      - taskrun
+    - pipelinerun
+    - taskrun
     keep: 100
     schedule: "0 8 * * *"
