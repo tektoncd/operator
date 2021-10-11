@@ -25,7 +25,6 @@ spec:
     metadata:
       labels:
         name: openshift-pipelines-operator
-        app: openshift-pipelines-operator
     spec:
       serviceAccountName: openshift-pipelines-operator
       containers:
@@ -61,5 +60,7 @@ spec:
             configMapKeyRef:
               name: tekton-config-defaults
               key: DEFAULT_TARGET_NAMESPACE
+        - name: CONFIG_OBSERVABILITY_NAME
+          value: tekton-config-observability
 #          - name: IMAGE_ADDONS_PARAM_TKN_IMAGE
 #            value: gcr.io/tekton-releases/dogfooding/tkn@sha256:f69a02ef099d8915e9e4ea1b74e43b7a9309fc97cf23cb457ebf191e73491677

@@ -26,6 +26,7 @@ import (
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonpipelinereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -63,6 +64,8 @@ type Reconciler struct {
 	enqueueAfter func(obj interface{}, after time.Duration)
 	// releaseVersion describes the current pipelines version
 	releaseVersion string
+	// metrics handles metrics for pipeline install
+	metrics *Recorder
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -126,7 +129,17 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	// Check if an tekton installer set already exists, if not then create
 	existingInstallerSet := tp.Status.GetTektonInstallerSet()
 	if existingInstallerSet == "" {
-		return r.createInstallerSet(ctx, tp)
+		createdIs, err := r.createInstallerSet(ctx, tp)
+		if err != nil && !apierrors.IsAlreadyExists(err) {
+			return err
+		}
+
+		if createdIs.Name != "" && err == nil {
+			// If there was no existing installer set, that means its a new install
+			r.metrics.logMetrics(metricsNew, r.releaseVersion, logger)
+		}
+
+		return r.updateTektonPipelineStatus(tp, createdIs)
 	}
 
 	// If exists, then fetch the TektonInstallerSet
@@ -134,7 +147,15 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		Get(context.TODO(), existingInstallerSet, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return r.createInstallerSet(ctx, tp)
+			// if there is version diff then its a call for upgrade
+			if tp.Status.Version != r.releaseVersion {
+				r.metrics.logMetrics(metricsUpgrade, r.releaseVersion, logger)
+			}
+			createdIs, err := r.createInstallerSet(ctx, tp)
+			if err != nil {
+				return err
+			}
+			return r.updateTektonPipelineStatus(tp, createdIs)
 		}
 		logger.Error("failed to get InstallerSet: %s", err)
 		return err
@@ -149,7 +170,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	// and create a new with expected properties
 
 	if installerSetTargetNamespace != tp.Spec.TargetNamespace || installerSetReleaseVersion != r.releaseVersion {
-
 		// Delete the existing TektonInstallerSet
 		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 			Delete(context.TODO(), existingInstallerSet, metav1.DeleteOptions{})
@@ -170,7 +190,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 			logger.Error("failed to get InstallerSet: %s", err)
 			return err
 		}
-
 		return nil
 
 	} else {
@@ -188,7 +207,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		lastAppliedHash := installedTIS.GetAnnotations()[lastAppliedHashKey]
 
 		if lastAppliedHash != expectedSpecHash {
-
 			manifest := r.manifest
 			if err := r.transform(ctx, &manifest, tp); err != nil {
 				logger.Error("manifest transformation failed:  ", err)
@@ -250,12 +268,25 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	return nil
 }
 
-func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.TektonPipeline) error {
+func (r *Reconciler) updateTektonPipelineStatus(tp *v1alpha1.TektonPipeline, createdIs *v1alpha1.TektonInstallerSet) error {
+	// update the tp with TektonInstallerSet and releaseVersion
+	tp.Status.SetTektonInstallerSet(createdIs.Name)
+	tp.Status.SetVersion(r.releaseVersion)
+
+	// Update the status with TektonInstallerSet so that any new thread
+	// reconciling with know that TektonInstallerSet is created otherwise
+	// there will be 2 instance created if we don't update status here
+	_, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines().
+		UpdateStatus(context.TODO(), tp, metav1.UpdateOptions{})
+	return err
+}
+
+func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.TektonPipeline) (*v1alpha1.TektonInstallerSet, error) {
 
 	manifest := r.manifest
 	if err := r.transform(ctx, &manifest, tp); err != nil {
 		tp.Status.MarkNotReady("transformation failed: " + err.Error())
-		return err
+		return nil, err
 	}
 
 	// compute the hash of tektonpipeline spec and store as an annotation
@@ -264,7 +295,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.Tekton
 	// otherwise we update the manifest
 	specHash, err := common.ComputeHashOf(tp.Spec)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// create installer set
@@ -272,30 +303,20 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.Tekton
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Create(context.TODO(), tis, metav1.CreateOptions{})
 	if err != nil {
-		return err
+		if apierrors.IsAlreadyExists(err) {
+			return createdIs, err
+		} else {
+			return nil, err
+		}
 	}
-
-	// update the tp with TektonInstallerSet and releaseVersion
-	tp.Status.SetTektonInstallerSet(createdIs.Name)
-	tp.Status.SetVersion(r.releaseVersion)
-
-	// Update the status with TektonInstallerSet so that any new thread
-	// reconciling with know that TektonInstallerSet is created otherwise
-	// there will be 2 instance created if we don't update status here
-	_, err = r.operatorClientSet.OperatorV1alpha1().TektonPipelines().
-		UpdateStatus(context.TODO(), tp, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return createdIs, nil
 }
 
 func makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.Manifest, tpSpecHash, releaseVersion string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(tp, tp.GetGroupVersionKind())
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("%s-", common.PipelineResourceName),
+			Name: common.PipelineResourceName + "-installerset",
 			Labels: map[string]string{
 				createdByKey: createdByValue,
 			},
@@ -331,4 +352,11 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	}
 	trns = append(trns, extra...)
 	return common.Transform(ctx, manifest, instance, trns...)
+}
+
+func (m *Recorder) logMetrics(status, version string, logger *zap.SugaredLogger) {
+	err := m.Count(status, version)
+	if err != nil {
+		logger.Warnf("Failed to log the metrics : %v", err)
+	}
 }

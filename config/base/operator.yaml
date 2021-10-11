@@ -18,5 +18,6 @@ metadata:
   name: tekton-operator
   labels:
     version: "devel"
+    app.kubernetes.io/name: tekton-operator
     operator.tekton.dev/release: "devel"
 spec: {}
