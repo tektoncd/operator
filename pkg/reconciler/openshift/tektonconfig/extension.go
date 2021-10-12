@@ -69,6 +69,10 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, config, v1.UpdateOptions{}); err != nil {
 			return err
 		}
+
+		// here we return an error intentionally so that we reconcile again
+		// and proceed further with an updated object
+		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
 	createRBACResource := true

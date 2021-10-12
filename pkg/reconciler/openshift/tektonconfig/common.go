@@ -44,10 +44,20 @@ func createInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha
 	tc.Status.TektonInstallerSet[component] = createdIs.Name
 	tc.Status.SetVersion(releaseVersion)
 
-	_, err = oc.OperatorV1alpha1().TektonConfigs().
-		UpdateStatus(ctx, tc, metav1.UpdateOptions{})
+	return updateTektonConfigStatus(ctx, oc, tc)
+}
 
-	return err
+func updateTektonConfigStatus(ctx context.Context, oc versioned.Interface, tc *v1alpha1.TektonConfig) error {
+
+	_, err := oc.OperatorV1alpha1().TektonConfigs().
+		UpdateStatus(ctx, tc, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+
+	// here we return an error intentionally so that we reconcile again
+	// and proceed further with updated object instead
+	return v1alpha1.RECONCILE_AGAIN_ERR
 }
 
 func makeInstallerSet(tc *v1alpha1.TektonConfig, name, releaseVersion string, labels map[string]string) *v1alpha1.TektonInstallerSet {
@@ -82,11 +92,8 @@ func deleteInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha
 
 		// clear the name of installer set from TektonConfig status
 		delete(tc.Status.TektonInstallerSet, component)
-		_, err = oc.OperatorV1alpha1().TektonConfigs().
-			UpdateStatus(ctx, tc, metav1.UpdateOptions{})
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		}
+
+		return updateTektonConfigStatus(ctx, oc, tc)
 	}
 
 	return nil

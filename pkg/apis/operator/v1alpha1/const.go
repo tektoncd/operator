@@ -16,6 +16,15 @@ limitations under the License.
 
 package v1alpha1
 
+import "fmt"
+
+var (
+	// RECONCILE_AGAIN_ERR
+	// When we updates spec or status we reconcile again and then proceed so
+	// that we proceed ahead with updated object
+	RECONCILE_AGAIN_ERR = fmt.Errorf("reconcile again and proceed")
+)
+
 const (
 	// Profiles
 	ProfileAll   = "all"
