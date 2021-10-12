@@ -18,11 +18,11 @@ package tektonconfig
 
 import (
 	"context"
-	"k8s.io/client-go/tools/cache"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	tektonDashboardinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektondashboard"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig"
+	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 )

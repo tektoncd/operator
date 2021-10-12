@@ -213,45 +213,59 @@ func (r *rbac) ensureCABundles(ctx context.Context, ns *corev1.Namespace) error 
 
 	// Ensure trusted CA bundle
 	logger.Infof("finding configmap: %s/%s", ns.Name, trustedCABundleConfigMap)
-	caBundleCM, err := cfgInterface.Get(ctx, trustedCABundleConfigMap, metav1.GetOptions{})
-	if err != nil && !errors.IsNotFound(err) {
-		return err
+	caBundleCM, getErr := cfgInterface.Get(ctx, trustedCABundleConfigMap, metav1.GetOptions{})
+	if getErr != nil && !errors.IsNotFound(getErr) {
+		return getErr
 	}
-	if err != nil && errors.IsNotFound(err) {
+
+	if getErr != nil && errors.IsNotFound(getErr) {
 		logger.Infof("creating configmap %s in %s namespace", trustedCABundleConfigMap, ns.Name)
-		if err := createTrustedCABundleConfigMap(ctx, cfgInterface, trustedCABundleConfigMap, ns.Name, r.ownerRef); err != nil {
+		var err error
+		if caBundleCM, err = createTrustedCABundleConfigMap(ctx, cfgInterface, trustedCABundleConfigMap, ns.Name, r.ownerRef); err != nil {
 			return err
 		}
 	}
-	// set owner reference if not set or update owner reference if different owners are set
-	caBundleCM.SetOwnerReferences(r.updateOwnerRefs(caBundleCM.GetOwnerReferences()))
 
-	if _, err = cfgInterface.Update(ctx, caBundleCM, metav1.UpdateOptions{}); err != nil {
-		return err
+	// If config map already exist then update the owner ref
+	if getErr == nil {
+		// set owner reference if not set or update owner reference if different owners are set
+		caBundleCM.SetOwnerReferences(r.updateOwnerRefs(caBundleCM.GetOwnerReferences()))
+
+		if _, err := cfgInterface.Update(ctx, caBundleCM, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
 	}
 
 	// Ensure service CA bundle
 	logger.Infof("finding configmap: %s/%s", ns.Name, serviceCABundleConfigMap)
-	serviceCABundleCM, err := cfgInterface.Get(ctx, serviceCABundleConfigMap, metav1.GetOptions{})
-	if err != nil && !errors.IsNotFound(err) {
-		return err
+	serviceCABundleCM, getErr := cfgInterface.Get(ctx, serviceCABundleConfigMap, metav1.GetOptions{})
+	if getErr != nil && !errors.IsNotFound(getErr) {
+		return getErr
 	}
-	if err != nil && errors.IsNotFound(err) {
+
+	if getErr != nil && errors.IsNotFound(getErr) {
 		logger.Infof("creating configmap %s in %s namespace", serviceCABundleConfigMap, ns.Name)
-		if err := createServiceCABundleConfigMap(ctx, cfgInterface, serviceCABundleConfigMap, ns.Name, r.ownerRef); err != nil {
+		var err error
+		if serviceCABundleCM, err = createServiceCABundleConfigMap(ctx, cfgInterface, serviceCABundleConfigMap, ns.Name, r.ownerRef); err != nil {
 			return err
 		}
 	}
-	// set owner reference if not set or update owner reference if different owners are set
-	serviceCABundleCM.SetOwnerReferences(r.updateOwnerRefs(serviceCABundleCM.GetOwnerReferences()))
-	if _, err := cfgInterface.Update(ctx, serviceCABundleCM, metav1.UpdateOptions{}); err != nil {
-		return err
+
+	// If config map already exist then update the owner ref
+	if getErr == nil {
+		// set owner reference if not set or update owner reference if different owners are set
+		serviceCABundleCM.SetOwnerReferences(r.updateOwnerRefs(serviceCABundleCM.GetOwnerReferences()))
+
+		if _, err := cfgInterface.Update(ctx, serviceCABundleCM, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func createTrustedCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigMapInterface, name, ns string, ownerRef metav1.OwnerReference) error {
+func createTrustedCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigMapInterface,
+	name, ns string, ownerRef metav1.OwnerReference) (*corev1.ConfigMap, error) {
 	c := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -265,14 +279,15 @@ func createTrustedCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigM
 		},
 	}
 
-	_, err := cfgInterface.Create(ctx, c, metav1.CreateOptions{})
+	cm, err := cfgInterface.Create(ctx, c, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
+		return nil, err
 	}
-	return nil
+	return cm, nil
 }
 
-func createServiceCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigMapInterface, name, ns string, ownerRef metav1.OwnerReference) error {
+func createServiceCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigMapInterface,
+	name, ns string, ownerRef metav1.OwnerReference) (*corev1.ConfigMap, error) {
 	c := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -288,11 +303,11 @@ func createServiceCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigM
 		},
 	}
 
-	_, err := cfgInterface.Create(ctx, c, metav1.CreateOptions{})
+	cm, err := cfgInterface.Create(ctx, c, metav1.CreateOptions{})
 	if err != nil && !errors.IsAlreadyExists(err) {
-		return err
+		return nil, err
 	}
-	return nil
+	return cm, nil
 }
 
 func (r *rbac) ensureSA(ctx context.Context, ns *corev1.Namespace) (*corev1.ServiceAccount, error) {
