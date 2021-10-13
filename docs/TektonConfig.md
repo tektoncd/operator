@@ -139,7 +139,7 @@ Example:
 ```yaml
 addon:
   params:
-    - name: "clusterTask"
+    - name: "clusterTasks"
       value: "true"
     - name: "pipelineTemplates"
       value: "true"
