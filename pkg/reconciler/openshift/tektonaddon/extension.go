@@ -18,17 +18,23 @@ package tektonaddon
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
+	routev1 "github.com/openshift/api/route/v1"
+	"github.com/openshift/client-go/route/clientset/versioned/scheme"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
@@ -75,28 +81,83 @@ func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonCompon
 	return nil
 }
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
+	logger := logging.FromContext(ctx)
 	addon := comp.(*v1alpha1.TektonAddon)
 
+	miscellaneousManifest := oe.manifest
 	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, addon, miscellaneousResourcesInstallerSet)
 	if err != nil {
 		return err
 	}
 	if !exist {
 
-		if err := applyAddons(&oe.manifest, "04-consolecli"); err != nil {
+		if err := applyAddons(&miscellaneousManifest, "05-tkncliserve"); err != nil {
 			return err
 		}
 
-		if err := getOptionalAddons(&oe.manifest, comp); err != nil {
+		if err := getOptionalAddons(&miscellaneousManifest, comp); err != nil {
 			return err
 		}
 
-		if err := addonTransform(ctx, &oe.manifest, addon); err != nil {
+		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+		extraTranformers := []mf.Transformer{
+			common.DeploymentImages(images),
+		}
+		if err := addonTransform(ctx, &miscellaneousManifest, addon, extraTranformers...); err != nil {
 			return err
 		}
 
-		if err := createInstallerSet(ctx, oe.operatorClientSet, addon, oe.manifest, oe.version,
+		if err := createInstallerSet(ctx, oe.operatorClientSet, addon, miscellaneousManifest, oe.version,
 			miscellaneousResourcesInstallerSet, "addon-openshift"); err != nil {
+			return err
+		}
+	}
+
+	existingInstallerSet, ok := addon.Status.AddonsInstallerSet[miscellaneousResourcesInstallerSet]
+	if !ok {
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
+	installedAddonIS, err := oe.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		Get(ctx, existingInstallerSet, metav1.GetOptions{})
+	if err != nil {
+		logger.Error("failed to get InstallerSet: %s", err)
+		return err
+	}
+
+	ready := installedAddonIS.Status.GetCondition(apis.ConditionReady)
+	if ready == nil {
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
+
+	if ready.Status != corev1.ConditionTrue {
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
+
+	consolecliManifest := oe.manifest
+	exist, err = checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, addon, consoleCLIInstallerSet)
+	if err != nil {
+		return err
+	}
+	if !exist {
+		tknservecliManifest := oe.manifest
+		if err := applyAddons(&tknservecliManifest, "05-tkncliserve"); err != nil {
+			return err
+		}
+		routeHost, err := getRouteHost(&tknservecliManifest)
+		if err != nil {
+			return err
+		}
+
+		if err := applyAddons(&consolecliManifest, "04-consolecli"); err != nil {
+			return err
+		}
+
+		if err := consoleCLITransform(ctx, &consolecliManifest, routeHost); err != nil {
+			return err
+		}
+
+		if err := createInstallerSet(ctx, oe.operatorClientSet, addon, consolecliManifest, oe.version,
+			consoleCLIInstallerSet, "addon-consolecli"); err != nil {
 			return err
 		}
 	}
@@ -119,6 +180,44 @@ func getOptionalAddons(manifest *mf.Manifest, comp v1alpha1.TektonComponent) err
 	return common.AppendManifest(manifest, optionalLocation)
 }
 
-func addonTransform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	return common.Transform(ctx, manifest, comp)
+func addonTransform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent, extra ...mf.Transformer) error {
+	return common.Transform(ctx, manifest, comp, extra...)
+}
+
+func consoleCLITransform(ctx context.Context, manifest *mf.Manifest, baseURL string) error {
+	if baseURL == "" {
+		return fmt.Errorf("route url should not be empty")
+	}
+	logger := logging.FromContext(ctx)
+	logger.Debug("Transforming manifest")
+
+	transformers := []mf.Transformer{
+		replaceURLCCD(baseURL),
+	}
+
+	transformManifest, err := manifest.Transform(transformers...)
+	if err != nil {
+		return err
+	}
+
+	*manifest = transformManifest
+	return nil
+}
+
+func getRouteHost(manifest *mf.Manifest) (string, error) {
+	var hostUrl string
+	for _, r := range manifest.Filter(mf.ByKind("Route")).Resources() {
+		u, err := manifest.Client.Get(&r)
+		if err != nil {
+			return "", err
+		}
+		if u.GetName() == "tkn-cli-serve" {
+			route := &routev1.Route{}
+			if err := scheme.Scheme.Convert(u, route, nil); err != nil {
+				return "", err
+			}
+			hostUrl = route.Spec.Host
+		}
+	}
+	return hostUrl, nil
 }

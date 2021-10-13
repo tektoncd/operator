@@ -1,0 +1,56 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tkn-cli-serve
+  namespace: openshift-pipelines
+  labels:
+    app.kubernetes.io/component: tkncliserve
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tkn-cli-serve
+  template:
+    metadata:
+      labels:
+        app: tkn-cli-serve
+    spec:
+      containers:
+        - name: tkn-cli-serve
+          image: docker.io/rupali/serve-tkn:v2
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tkn-cli-serve
+  namespace: openshift-pipelines
+  labels:
+    app.kubernetes.io/component: tkncliserve
+spec:
+  selector:
+    app: tkn-cli-serve
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: tkn-cli-serve
+  namespace: openshift-pipelines
+  labels:
+    app.kubernetes.io/component: tkncliserve
+spec:
+  path: /tkn
+  to:
+    kind: Service
+    name: tkn-cli-serve
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

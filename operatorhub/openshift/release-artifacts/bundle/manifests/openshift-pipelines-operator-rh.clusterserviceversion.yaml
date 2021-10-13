@@ -675,6 +675,9 @@ spec:
           verbs:
           - get
           - list
+          - create
+          - update
+          - delete
         - apiGroups:
           - coordination.k8s.io
           resources:
