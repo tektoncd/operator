@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -44,6 +45,9 @@ type Reconciler struct {
 	operatorClientSet clientset.Interface
 	extension         common.Extension
 
+	// enqueueAfter enqueues a obj after a duration
+	enqueueAfter func(obj interface{}, after time.Duration)
+
 	pipelineInformer informer.TektonPipelineInformer
 	triggerInformer  informer.TektonTriggerInformer
 
@@ -63,6 +67,7 @@ const (
 	clusterTaskInstallerSet            = "ClusterTaskInstallerSet"
 	pipelinesTemplateInstallerSet      = "PipelinesTemplateInstallerSet"
 	triggersResourcesInstallerSet      = "TriggersResourcesInstallerSet"
+	consoleCLIInstallerSet             = "ConsoleCLIInstallerSet"
 	miscellaneousResourcesInstallerSet = "MiscellaneousResourcesInstallerSet"
 
 	createdByKey       = "operator.tekton.dev/created-by"
@@ -239,6 +244,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	ta.Status.MarkInstallerSetReady()
 
 	if err := r.extension.PostReconcile(ctx, ta); err != nil {
+		if err == v1alpha1.RECONCILE_AGAIN_ERR {
+			r.enqueueAfter(ta, 10*time.Second)
+			return nil
+		}
 		ta.Status.MarkPostReconcilerFailed(err.Error())
 		return err
 	}

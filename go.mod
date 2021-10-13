@@ -8,6 +8,8 @@ require (
 	github.com/manifestival/controller-runtime-client v0.4.0
 	github.com/manifestival/manifestival v0.7.0
 	github.com/markbates/inflect v1.0.4
+	github.com/openshift/api v0.0.0-20210910062324-a41d3573a3ba
+	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
 	github.com/tektoncd/pipeline v0.27.3
 	github.com/tektoncd/plumbing v0.0.0-20210514044347-f8a9689d5bd5
 	github.com/tektoncd/triggers v0.16.0

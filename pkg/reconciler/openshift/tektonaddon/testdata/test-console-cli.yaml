@@ -1,0 +1,7 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleCLIDownload
+metadata:
+  name: tkn
+spec:
+  description: The OpenShift Pipeline client `tkn` is a CLI tool that allows you to manage OpenShift Pipeline resources.
+  displayName: tkn - OpenShift Pipeline Command Line Interface (CLI)

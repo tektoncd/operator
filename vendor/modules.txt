@@ -137,6 +137,13 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 github.com/modern-go/concurrent
 # github.com/modern-go/reflect2 v1.0.1
 github.com/modern-go/reflect2
+# github.com/openshift/api v0.0.0-20210910062324-a41d3573a3ba
+## explicit
+github.com/openshift/api/console/v1
+github.com/openshift/api/route/v1
+# github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
+## explicit
+github.com/openshift/client-go/route/clientset/versioned/scheme
 # github.com/openzipkin/zipkin-go v0.2.5
 github.com/openzipkin/zipkin-go/model
 # github.com/pkg/errors v0.9.1

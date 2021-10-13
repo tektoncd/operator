@@ -20,7 +20,9 @@ import (
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
+	console "github.com/openshift/api/console/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func replaceKind(fromKind, toKind string) mf.Transformer {
@@ -81,4 +83,49 @@ func itemInSlice(item string, items []string) bool {
 		}
 	}
 	return false
+}
+
+func getlinks(baseURL string) []console.CLIDownloadLink {
+	platforms := []struct {
+		key   string
+		value string
+	}{
+		{"Linux", "tkn/tkn-linux-amd64-0.21.0.tar.gz"},
+		{"IBM Power", "tkn/tkn-linux-ppc64le-0.21.0.tar.gz"},
+		{"IBM Z", "tkn/tkn-linux-s390x-0.21.0.tar.gz"},
+		{"Mac", "tkn/tkn-macos-amd64-0.21.0.tar.gz"},
+		{"Windows", "tkn/tkn-windows-amd64-0.21.0.zip"},
+	}
+	links := []console.CLIDownloadLink{}
+	for _, platform := range platforms {
+		links = append(links, console.CLIDownloadLink{
+			Href: getURL(baseURL, platform.value),
+			Text: fmt.Sprintf("Download tkn for %s", platform.key),
+		})
+	}
+	return links
+}
+
+func getURL(baseURL string, path string) string {
+	return fmt.Sprintf("https://%s/%s", baseURL, path)
+}
+
+func replaceURLCCD(baseURL string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "ConsoleCLIDownload" {
+			return nil
+		}
+		ccd := &console.ConsoleCLIDownload{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, ccd)
+		if err != nil {
+			return err
+		}
+		ccd.Spec.Links = getlinks(baseURL)
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ccd)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
 }

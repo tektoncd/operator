@@ -49,6 +49,7 @@ var (
 
 	// OpenShift Specific
 	serviceMonitorPred     = mf.ByKind("ServiceMonitor")
+	routePred              = mf.ByKind("Route")
 	consoleCLIDownloadPred = mf.ByKind("ConsoleCLIDownload")
 	consoleQuickStartPred  = mf.ByKind("ConsoleQuickStart")
 	ConsoleYAMLSamplePred  = mf.ByKind("ConsoleYAMLSample")
@@ -108,6 +109,7 @@ func (i *installer) EnsureDeploymentResources() error {
 		mf.Any(
 			deploymentPred,
 			servicePred,
+			routePred,
 		)).Apply(); err != nil {
 		return err
 	}
