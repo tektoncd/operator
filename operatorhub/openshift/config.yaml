@@ -141,7 +141,7 @@ image-substitutions:
       envKeys:
       - IMAGE_JOB_PRUNER_TKN
       - IMAGE_ADDONS_PARAM_TKN_IMAGE
-- image: http://registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel8@
+- image: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
