@@ -52,17 +52,35 @@ Tekton Operator defines the following entities:
   </tr>
 </table>
 
-## Getting started
+### Getting started
 
-TBD
+To install Operator there are multiple ways
 
-## Understanding Tekton Operator
+- Install from Operator Hub 
+  
+  You can find the instruction [here](https://operatorhub.io/operator/tektoncd-operator). The lifecycle will be managed by Operator Lifecycle Manager (OLM).
 
-See the following topics to learn how to use Tekton Pipelines in your project:
+- Install using release file
+  
+  You can find the release file for latest version [here](https://github.com/tektoncd/operator/releases). In this case, you will have to manage the lifecycle for the Operator.
 
-- TBD
+- Install from code
 
-## Contributing to Tekton Operator
+  You can clone and repository and install the Operator. You can find the instruction in [here](../DEVELOPMENT.md)
+
+After installing the Operator, to install the required Tekton Component such as Tekton Pipeline, Tekton Triggers.
+
+Create an instance of `TektonConfig` which will create the required components. You can find more details and the available configuration in [TektonConfig](TektonConfig.md).
+
+NOTE: `TektonResult` is an optional component added recently and is not installed through `TektonConfig` currently. You can find the installation steps in its [doc](TektonResult.md).
+
+
+### Understanding Tekton Operator
+
+To understand how Tekton Operator works, you can find the details [here](TektonOperator.md)
+
+
+### Contributing to Tekton Operator
 
 If you'd like to contribute to the Tekton Operator project, see the [Tekton Operator Contributor's Guide](https://github.com/tektoncd/operator/blob/main/CONTRIBUTING.md).
 
