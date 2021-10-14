@@ -63,7 +63,7 @@ On Kubernetes, `all` profile will install `TektonDashboard` and on OpenShift `Te
 Config provides fields to configure deployments created by the Operator.
 This provides following fields:
 - [`nodeSelector`][node-selector]
-- [`toleration`][toleration]
+- [`tolerations`][tolerations]
 
 User can pass the required fields and this would be passed to all Operator components which will get added in all
 deployments created by Operator.
@@ -73,7 +73,7 @@ Example:
 config:
   nodeSelector:
     key: value
-  toleration:
+  tolerations:
   - key: "key1"
     operator: "Equal"
     value: "value1"
@@ -165,5 +165,5 @@ This is an `Optional` section.
 
 
 [node-selector]:https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
-[toleration]:https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+[tolerations]:https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 [schedule]:https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#cron-schedule-syntax
