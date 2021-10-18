@@ -16,7 +16,7 @@ metadata:
     operatorframework.io/arch.amd64: supported
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
-  name: openshift-pipelines-operator-rh.v0.0.0
+  name: redhat-openshift-pipelines.v0.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
