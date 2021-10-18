@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "TektonDashboard"
+weight: 4
+---
+-->
 # Tekton Dashboard
 
 TektonDashboard custom resource allows user to install and manage [Tekton Dashboard][dashboard].
@@ -15,5 +21,12 @@ spec:
   readonly: false
 ```
 You can install this component using [TektonConfig](./TektonConfig.md) by choosing appropriate `profile`.
+
+
+### Properties
+
+- `readonly` (Default: `false`)
+
+    If set to true, installs the Dashboard in read-only mode.
 
 [dashboard]:https://github.com/tektoncd/dashboard

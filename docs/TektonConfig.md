@@ -1,13 +1,21 @@
+<!--
+---
+linkTitle: "TektonConfig"
+weight: 1
+---
+-->
 # Tekton Config
 
 TektonConfig custom resource is the top most component of the operator which allows user to install and customize all other
 components at a single place.
 
 Operator provides support for installing and managing following operator components through `TektonConfig`:
+
 - [TektonPipeline](./TektonPipeline.md)
 - [TektonTrigger](./TektonTrigger.md)
 
 Other than the above components depending on the platform operator also provides support for
+
 - On Kubernetes
     - [TektonDashboard](./TekonDashboard.md)
 - On OpenShift
@@ -23,7 +31,9 @@ The TektonConfig CR provides the following features
   spec:
     targetNamespace: tekton-pipelines
     profile: all
-    config: {}
+    config:
+      nodeSelector: <>
+      tolerations: []
     pipeline:
       disable-affinity-assistant: false
       disable-creds-init: false
@@ -38,28 +48,36 @@ The TektonConfig CR provides the following features
       metrics.taskrun.level: taskrun
       require-git-ssh-secret-known-hosts: false
       running-in-environment-with-injected-sidecars: true
-    pruner: {}
-    addon: {}
-    dashboard: {}
+    pruner:
+      resources:
+      - taskrun
+      - pipelinerun
+      keep: 3
+      schedule: "* * * * *"
+    dashboard:
+      readonly: true
 ```
 Look for the particular section to understand a particular field in the spec.
 
 ### Target Namespace
-This allows user to choose a namespace to install all the pipelines, triggers and other components.
+
+This allows user to choose a namespace to install the Tekton Components such as pipelines, triggers.
 
 By default, namespace would be `tekton-pipelines` for Kubernetes and `openshift-pipelines` for OpenShift.
 
 ### Profile
+
 This allows user to choose which all components to install on the cluster.
 There are 3 profiles available:
 - `all`: This profile will install all components
-- `basic`:  This profile will install TektonPipeline and TektonTrigger component
+- `basic`:  This profile will install only TektonPipeline and TektonTrigger component
 - `lite`: This profile will install only TektonPipeline component
 
 On Kubernetes, `all` profile will install `TektonDashboard` and on OpenShift `TektonAddon` will be installed.
 
 
 ### Config
+
 Config provides fields to configure deployments created by the Operator.
 This provides following fields:
 - [`nodeSelector`][node-selector]

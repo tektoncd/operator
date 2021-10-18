@@ -1,4 +1,10 @@
-# Tekton Operator :cat:
+<!--
+---
+linkTitle: "Internals of Operator"
+weight: 7
+---
+-->
+# Internals of Operator
 
 Tekton Operator installs and manages lifecycle of Tekton Projects.
 
@@ -10,17 +16,19 @@ For ex. `tektoncd/pipeline` is managed by `TektonPipeline` CRD and its controlle
 
 ### TektonConfig
 
-As each subproject has a CRD, to install them user has to create a CR instance for each one of them. To simplify the installation for users, there is an additional CRD `TektonConfig` which will creates other CR for subprojects on behalf of user and user just have to deal with only one CR.
+As each subproject has a CRD, to install them user has to create a CR instance for each one of them. 
+
+To simplify the installation for users, there is an additional CRD `TektonConfig` which will creates other CR for subprojects on behalf of user and user just have to deal with only one CR.
 
 TektonConfig will create TektonPipeline, TektonTriggers and other component CR based on the profile passed to it.
 
-`profile` is a field in `spec` of `TektonConfig` which determines which all components to install.
+- `profile` is a field in `spec` of `TektonConfig` which determines which all components to install.
 
 TektonConfig also provide feature of autopruning, so it is recommended to install components through TektonConfig instead of creating each CR individually.
 
 Below, we have an example for `basic` profile where `TektonConfig` will create only `TektonPipeline` and `TektonTriggers`.
 
-![Installation Floe](./images/install-flow.png)
+![Installation Flow](./images/install-flow.png)
 
 
 ### TektonInstallerSet
@@ -47,12 +55,12 @@ spec:
   manifests: []
 ```
 
-#### Internals of TektonInstallerSet
+### Internals of TektonInstallerSet
 
 Before creating resources, TektonInstallerSet adds owner reference in the resources.
 - For CRDs, the owner will be the owner of TektonInstallerSet.
 
-Ex. `TekonPipeline` creates `TektonInstallerSet` which has CRDs, the owner of CRDs will be `TektonPipeline` because we don't want CRDs to get deleted when we delete `TektonInstallerSet`. Why? we will see in the `Benefits of TektonInstallerSet` section.
+Ex. `TekonPipeline` creates `TektonInstallerSet` which has CRDs, the owner of CRDs will be `TektonPipeline` because we don't want CRDs to get deleted when we delete `TektonInstallerSet`. Why? we will see in the `Why TektonInstallerSet?` section.
 
 - All Resources except CRDs, the owner will be the `TektonInstallerSet` which is creating them.
 
@@ -62,7 +70,7 @@ If something goes wrong at the first step, then it will return from there and sk
 
 After installing the resources, `TektonInstallerSet` waits for deployment pods to come in running state and then report back the status through CR status.
 
-#### Benefits of TektonInstallerSet
+### Why TektonInstallerSet?
 
 - Seamless Upgrades
 
