@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "Proxy"
+weight: 10
+---
+-->
 # Proxy Support
 
 We have added the support for running the tekton components in a proxy environment through operator.

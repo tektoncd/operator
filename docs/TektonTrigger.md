@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "TektonTrigger"
+weight: 3
+---
+-->
 # Tekton Trigger
 
 TektonTrigger custom resource allows user to install and manage [Tekton Trigger][trigger]. 
