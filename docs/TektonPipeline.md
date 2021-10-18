@@ -1,8 +1,14 @@
+<!--
+---
+linkTitle: "TektonPipeline"
+weight: 2
+---
+-->
 # Tekton Pipeline
 
 TektonPipeline custom resource allows user to install and manage [Tekton Pipeline][Pipeline].
 
-It is recommended to install the components through [TektonConfig](./TektonConfig.md).
+It is recommended to install the component through [TektonConfig](./TektonConfig.md).
 
 The TektonPipeline CR is as below:
 ```yaml

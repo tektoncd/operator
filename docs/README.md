@@ -52,7 +52,7 @@ Tekton Operator defines the following entities:
   </tr>
 </table>
 
-### Getting started
+## Getting started
 
 To install Operator there are multiple ways
 
@@ -75,12 +75,26 @@ Create an instance of `TektonConfig` which will create the required components. 
 NOTE: `TektonResult` is an optional component added recently and is not installed through `TektonConfig` currently. You can find the installation steps in its [doc](TektonResult.md).
 
 
-### Understanding Tekton Operator
+## Understanding Tekton Operator
+
+Each Tekton Component has a Custom Resource which installs the component and manages it. 
+
+`TektonConfig` is a top level Custom Resource which creates other components.
+
+So, the user just need to create TektonConfig with the required configurations, and it will handle the installation of required components.
+
+You can find more about the Resources and its available configurations in their docs 
+
+- [TektonConfig](./TektonConfig.md)
+- [TektonPipeline](./TektonPipeline.md)
+- [TektonTrigger](./TektonTrigger.md)
+- [TektonDashboard](./TekonDashboard.md)
+- [TektonResult](./TektonResult.md)
+- [TektonAddon](./TektonAddon.md)
 
 To understand how Tekton Operator works, you can find the details [here](TektonOperator.md)
 
-
-### Contributing to Tekton Operator
+## Contributing to Tekton Operator
 
 If you'd like to contribute to the Tekton Operator project, see the [Tekton Operator Contributor's Guide](https://github.com/tektoncd/operator/blob/main/CONTRIBUTING.md).
 

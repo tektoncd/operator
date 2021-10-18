@@ -1,3 +1,9 @@
+<!--
+---
+linkTitle: "TektonResult"
+weight: 5
+---
+-->
 # Tekton Result
 
 TektonResult custom resource allows user to install and manage [Tekton Result][result].
