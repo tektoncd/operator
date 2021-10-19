@@ -881,7 +881,7 @@ spec:
                   value: tekton-operator-webhook-certs
                 - name: METRICS_DOMAIN
                   value: tekton.dev/operator
-                image: ko://github.com/tektoncd/operator/cmd/openshift/webhook
+                image: registry.redhat.io/openshift-pipelines/pipelines-operator-webhook-rhel8@
                 name: tekton-operator-webhook
                 ports:
                 - containerPort: 8443

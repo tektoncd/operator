@@ -148,7 +148,7 @@ image-substitutions:
       containerName: openshift-pipelines-operator
       envKeys:
       - IMAGE_ADDONS_TKN_CLI_SERVE
-- image: ko://github.com/tektoncd/operator/cmd/openshift/webhook
+- image: registry.redhat.io/openshift-pipelines/pipelines-operator-webhook-rhel8@
   replaceLocations:
     containerTargets:
     - deploymentName: tekton-operator-webhook
