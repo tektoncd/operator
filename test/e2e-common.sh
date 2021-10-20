@@ -24,8 +24,19 @@
 # Helper functions for E2E tests.
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
+source $(dirname $0)/config.sh
 
 function install_operator_resources() {
+
+  echo :Payload Targets:
+  echo Pipelines: ${PIPELINES}
+  echo Triggers: ${TRIGGERS}
+  if [[ ${TARGET} != "openshift" ]]; then
+    echo Results: ${RESULTS}
+    echo Dashboard: ${DASHBOARD}
+  fi
+  echo '------------------------------'
+
   echo ">> Deploying Tekton Operator Resources"
 
   make TARGET=${TARGET:-kubernetes} apply || fail_test "Tekton Operator installation failed"
