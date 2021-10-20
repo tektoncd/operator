@@ -65,6 +65,12 @@ rules:
   - patch
   - watch
 - apiGroups:
+  - ""
+  resources:
+  - namespaces/finalizers
+  verbs:
+  - update
+- apiGroups:
   - apps
   resources:
   - deployments
