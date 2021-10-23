@@ -48,6 +48,16 @@ spec:
           dir="trigger"
         fi
 
+        if [[ $comp == "dashboard" ]]; then
+          if [[ ${releaseFileName} == "tekton-dashboard-release" ]]; then
+            dir="dashboard/tekton-dashboard-fullaccess"
+          fi
+
+          if [[ ${releaseFileName} == "tekton-dashboard-release-readonly" ]]; then
+            dir="dashboard/tekton-dashboard-readonly"
+          fi
+        fi
+
         #nightly -> 0.0.0-nightly
         #latest -> find version till then -> 0.0.0-latest
         #version -> directory with version
@@ -73,7 +83,7 @@ spec:
 
         # before adding releases, remove existing version directories
         # ignore while adding for interceptors
-        if [[ ${releaseFileName} != "interceptors.notags" ]] ; then
+        if [[ ${releaseFileName} != "interceptors" ]] ; then
           rm -rf ${comp_dir}/*
         fi
 
@@ -96,6 +106,7 @@ spec:
           cp -r ${ko_data}/openshift/00-prereconcile ${comp_dir}/
           cp ${ko_data}/openshift/pipelines-rbac/* ${dirPath}/
         fi
+
 
         if [[ ${comp} == "dashboard" ]]; then
           sed -i '/aggregationRule/,+3d' ${dest}
