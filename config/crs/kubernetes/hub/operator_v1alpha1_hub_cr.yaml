@@ -1,4 +1,4 @@
-# Copyright 2020 The Tekton Authors
+# Copyright 2022 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,20 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-namespace: tekton-operator
 
-resources:
-- 100-namespace.yaml
-- 300-operator_v1alpha1_pipeline_crd.yaml
-- 300-operator_v1alpha1_trigger_crd.yaml
-- 300-operator_v1alpha1_config_crd.yaml
-- 300-operator_v1alpha1_installer_set_crd.yaml
-- 300-operator_v1alpha1_hub_crd.yaml
-- config-logging.yaml
-- config-observability.yaml
-- tekton-config-defaults.yaml
-- role.yaml
-- role_binding.yaml
-- operator.yaml
-- tekton_config_role.yaml
-- tekton_config_role_binding.yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonHub
+metadata:
+  name: hub
+spec:
+  api:
+    hubConfigUrl: https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml

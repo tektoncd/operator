@@ -24,10 +24,12 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"knative.dev/pkg/ptr"
 )
 
@@ -38,6 +40,8 @@ const (
 var (
 	namespacePred                      = mf.ByKind("Namespace")
 	configMapPred                      = mf.ByKind("ConfigMap")
+	pvcPred                            = mf.ByKind("PersistentVolumeClaim")
+	jobPred                            = mf.ByKind("Job")
 	secretPred                         = mf.ByKind("Secret")
 	deploymentPred                     = mf.ByKind("Deployment")
 	servicePred                        = mf.ByKind("Service")
@@ -134,6 +138,8 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 			roleBindingPred,
 			configMapPred,
 			secretPred,
+			pvcPred,
+			jobPred,
 			horizontalPodAutoscalerPred,
 			pipelinePred,
 			serviceMonitorPred,
@@ -348,6 +354,24 @@ func (i *installer) AllDeploymentsReady() error {
 	return nil
 }
 
+func (i *installer) IsJobCompleted() error {
+	for _, u := range i.Manifest.Filter(jobPred).Resources() {
+		resource, err := i.Manifest.Client.Get(&u)
+		if err != nil {
+			return err
+		}
+		job := &batchv1.Job{}
+		if err := scheme.Scheme.Convert(resource, job, nil); err != nil {
+			return err
+		}
+		if !isJobCompleted(job) {
+			return fmt.Errorf("Job not successful")
+		}
+	}
+
+	return nil
+}
+
 func (i *installer) isDeploymentReady(d *unstructured.Unstructured) error {
 
 	resource, err := i.Manifest.Client.Get(d)
@@ -397,4 +421,13 @@ func resourceExists(c mf.Client, u *unstructured.Unstructured) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func isJobCompleted(d *batchv1.Job) bool {
+	for _, c := range d.Status.Conditions {
+		if c.Type == batchv1.JobComplete && c.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }

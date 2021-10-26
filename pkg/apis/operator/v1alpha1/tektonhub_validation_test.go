@@ -77,3 +77,90 @@ func Test_ValidateTektonConfig_InvalidHubParamValue(t *testing.T) {
 	err := tc.Validate(context.TODO())
 	assert.Equal(t, "invalid value: test: spec.hub.params.enable-devconsole-integration[0]", err.Error())
 }
+
+func Test_ValidateTektonHub_MissingHubConfigUrl(t *testing.T) {
+
+	th := &TektonHub{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonHubSpec{
+			Db: DbSpec{
+				DbSecretName: "db",
+			},
+			Api: ApiSpec{
+				ApiSecretName: "api",
+			},
+		},
+	}
+
+	err := th.Validate(context.TODO())
+	assert.Equal(t, "missing field(s): spec.api.HubConfigUrl", err.Error())
+}
+
+func Test_ValidateTektonHub_InvalidDbSecretName(t *testing.T) {
+
+	th := &TektonHub{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonHubSpec{
+			Db: DbSpec{
+				DbSecretName: "invalid-value",
+			},
+			Api: ApiSpec{
+				ApiSecretName: "api",
+				HubConfigUrl:  "https://hubconfigurl.com",
+			},
+		},
+	}
+
+	err := th.Validate(context.TODO())
+	assert.Equal(t, "invalid value: invalid-value: spec.db.DbSecretName", err.Error())
+}
+
+func Test_ValidateTektonHub_InvalidApiSecretName(t *testing.T) {
+
+	th := &TektonHub{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonHubSpec{
+			Db: DbSpec{
+				DbSecretName: "db",
+			},
+			Api: ApiSpec{
+				ApiSecretName: "invalid-value",
+				HubConfigUrl:  "https://hubconfigurl.com",
+			},
+		},
+	}
+
+	err := th.Validate(context.TODO())
+	assert.Equal(t, "invalid value: invalid-value: spec.api.ApiSecretName", err.Error())
+}
+
+func Test_ValidateTektonHub_InvalidHubConfigUrl(t *testing.T) {
+
+	th := &TektonHub{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonHubSpec{
+			Db: DbSpec{
+				DbSecretName: "db",
+			},
+			Api: ApiSpec{
+				ApiSecretName: "api",
+				HubConfigUrl:  "hubconfigurl",
+			},
+		},
+	}
+
+	err := th.Validate(context.TODO())
+	assert.Equal(t, "invalid value: hubconfigurl: spec.api.HubConfigUrl", err.Error())
+}

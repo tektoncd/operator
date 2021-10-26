@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektondashboard"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonhub"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonresult"
@@ -34,5 +35,6 @@ func main() {
 		tektondashboard.NewController,
 		tektonresult.NewController,
 		tektoninstallerset.NewController,
+		tektonhub.NewController,
 	)
 }

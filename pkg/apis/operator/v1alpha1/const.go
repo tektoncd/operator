@@ -40,6 +40,7 @@ const (
 	LastAppliedHashKey     = "operator.tekton.dev/last-applied-hash"
 	CreatedByKey           = "operator.tekton.dev/created-by"
 	ReleaseVersionKey      = "operator.tekton.dev/release-version"
+	Component              = "operator.tekton.dev/component" // Used in case a component has sub-components eg TektonHub
 	ReleaseMinorVersionKey = "operator.tekton.dev/release-minor-version"
 	TargetNamespaceKey     = "operator.tekton.dev/target-namespace"
 	InstallerSetType       = "operator.tekton.dev/type"
@@ -96,4 +97,5 @@ var (
 	AddonResourceName     = "addon"
 	ConfigResourceName    = "config"
 	ResultResourceName    = "result"
+	HubResourceName       = "hub"
 )
