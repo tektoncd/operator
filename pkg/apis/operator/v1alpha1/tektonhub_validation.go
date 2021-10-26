@@ -17,6 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
+	"net/url"
+
 	"knative.dev/pkg/apis"
 )
 
@@ -33,6 +36,44 @@ func validateHubParams(params []Param, pathToParams string) *apis.FieldError {
 			path := pathToParams + "." + p.Name
 			errs = errs.Also(apis.ErrInvalidArrayValue(p.Value, path, i))
 		}
+	}
+
+	return errs
+}
+
+func (th *TektonHub) Validate(ctx context.Context) (errs *apis.FieldError) {
+
+	if apis.IsInDelete(ctx) {
+		return nil
+	}
+
+	errs = errs.Also(th.Spec.Db.validate("spec.db"))
+
+	return errs.Also(th.Spec.Api.validate("spec.api"))
+}
+
+func (db *DbSpec) validate(path string) (errs *apis.FieldError) {
+	if db.DbSecretName != "" && db.DbSecretName != "db" {
+		return errs.Also(apis.ErrInvalidValue(db.DbSecretName, path+".DbSecretName"))
+	}
+	return errs
+}
+
+func (api *ApiSpec) validate(path string) (errs *apis.FieldError) {
+
+	if api.HubConfigUrl != "" {
+		_, err := url.ParseRequestURI(api.HubConfigUrl)
+		if err != nil {
+			errs = errs.Also(apis.ErrInvalidValue(api.HubConfigUrl, path+".HubConfigUrl"))
+		}
+	}
+
+	if api.HubConfigUrl == "" {
+		errs = errs.Also(apis.ErrMissingField(path + ".HubConfigUrl"))
+	}
+
+	if api.ApiSecretName != "" && api.ApiSecretName != "api" {
+		return errs.Also(apis.ErrInvalidValue(api.ApiSecretName, path+".ApiSecretName"))
 	}
 
 	return errs

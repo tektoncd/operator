@@ -261,11 +261,14 @@ rules:
   resources:
   - routes
   verbs:
+  - delete
+  - deletecollection
+  - create
+  - patch
   - get
   - list
-  - create
   - update
-  - delete
+  - watch
 - apiGroups:
   - coordination.k8s.io
   resources:

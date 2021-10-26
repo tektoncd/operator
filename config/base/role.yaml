@@ -41,6 +41,7 @@ rules:
 - apiGroups:
   - extensions
   - apps
+  - networking.k8s.io
   resources:
   - ingresses
   - ingresses/status
@@ -339,6 +340,7 @@ rules:
     - batch
   resources:
     - cronjobs
+    - jobs
   verbs:
     - delete
     - create

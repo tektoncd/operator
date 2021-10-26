@@ -49,6 +49,9 @@ const (
 
 	// KindTektonInstallerSet is the Kind of TektonInstallerSet in a GVK context.
 	KindTektonInstallerSet = "TektonInstallerSet"
+
+	// KindTektonHub is the Kind of TektonHub in a GVK context.
+	KindTektonHub = "TektonHub"
 )
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
@@ -74,6 +77,8 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&TektonResultList{},
 		&TektonInstallerSet{},
 		&TektonInstallerSetList{},
+		&TektonHub{},
+		&TektonHubList{},
 	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil
