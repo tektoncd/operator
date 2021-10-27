@@ -1,5 +1,5 @@
 resources:
-- ../../../../config/openshift
+- ../../../../config/openshift/overlays/operatorhub
 - ../../../../config/crs/openshift
 - ../bases/openshift-pipelines-operator-rh.clusterserviceversion.template.yaml
 - ../../scorecard

@@ -11,9 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-namespace: tekton-operator
 
+namespace: openshift-operators
 patches:
+- target:
+    kind: Deployment
+    name: tekton-operator
+  patch: |-
+    - op: replace
+      path: /metadata/name
+      value: openshift-pipelines-operator
 - path: operator.yaml
   target:
     kind: Deployment
@@ -22,17 +29,29 @@ patches:
   target:
     kind: Deployment
     name: tekton-operator-webhook
+- path: role.yaml
+  target:
+    kind: ClusterRole
+    name: tekton-operator
+- path: role_binding.yaml
+  target:
+    kind: ClusterRoleBinding
+    name: tekton-operator
+
+patchesStrategicMerge:
+- 500-webhooks.yaml
+- 100-namespace.yaml
+
+resources:
+- ../../base/
+- 300-operator_v1alpha1_addon_crd.yaml
+- operator_service.yaml
+- operator_servicemonitor.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 
 configMapGenerator:
 - name: tekton-config-defaults
   literals:
-  - DEFAULT_TARGET_NAMESPACE=tekton-pipelines
+  - DEFAULT_TARGET_NAMESPACE=openshift-pipelines
   behavior: merge
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-- ../base/
-- 300-operator_v1alpha1_dashboard_crd.yaml
-- 300-operator_v1alpha1_result_crd.yaml
-- service_account.yaml
-- operator_service.yaml
