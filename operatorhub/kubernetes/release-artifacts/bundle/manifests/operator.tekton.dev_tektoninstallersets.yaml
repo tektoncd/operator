@@ -3,22 +3,19 @@ kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
   labels:
-    operator.tekton.dev/release: devel
-    version: devel
-  name: tektondashboards.operator.tekton.dev
+    operator.tekton.dev/release: v0.50.0
+    version: v0.50.0
+  name: tektoninstallersets.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: TektonDashboard
-    listKind: TektonDashboardList
-    plural: tektondashboards
-    singular: tektondashboard
+    kind: TektonInstallerSet
+    listKind: TektonInstallerSetList
+    plural: tektoninstallersets
+    singular: tektoninstallerset
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.version
-      name: Version
-      type: string
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
@@ -28,7 +25,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Schema for the tektondashboards API
+        description: Schema for the tektoninstallerset API
         type: object
         x-kubernetes-preserve-unknown-fields: true
     served: true

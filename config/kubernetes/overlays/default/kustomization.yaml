@@ -1,0 +1,4 @@
+namespace: tekton-operator
+resources:
+- ../../base/
+- service_account.yaml

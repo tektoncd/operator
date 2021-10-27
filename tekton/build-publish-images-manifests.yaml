@@ -116,15 +116,17 @@ spec:
 
       # Rewrite "devel" to params.versionTag
       sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/base/*.yaml
+      sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/${KUBE_DISTRO}/base/*.yaml
+      sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default/*.yaml
 
       # Publish images and create release.yaml
       mkdir -p $OUTPUT_RELEASE_DIR
 
-      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO} | ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -f - > $OUTPUT_RELEASE_DIR/release.yaml
+      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -f - > $OUTPUT_RELEASE_DIR/release.yaml
       # Publish images and create release.notags.yaml
       # This is useful if your container runtime doesn't support the `image-reference:tag@digest` notation
       # This is currently the case for `cri-o` (and most likely others)
-      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO} | ko resolve --platform=$(params.platforms) --preserve-import-paths -f - > $OUTPUT_RELEASE_DIR/release.notags.yaml
+      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | ko resolve --platform=$(params.platforms) --preserve-import-paths -f - > $OUTPUT_RELEASE_DIR/release.notags.yaml
 
   - name: koparse
     image: gcr.io/tekton-releases/dogfooding/koparse:latest

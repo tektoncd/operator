@@ -3,7 +3,7 @@ kind: ClusterServiceVersion
 metadata:
   annotations:
     alm-examples: '[]'
-    capabilities: Seamless Upgrades
+    capabilities: Full Lifecycle
     categories: Developer Tools, Integration & Delivery
     certified: "false"
     description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for building pipelines using Tekton concepts which run natively on OpenShift and Kubernetes.
@@ -16,7 +16,7 @@ metadata:
     operatorframework.io/arch.amd64: supported
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
-  name: redhat-openshift-pipelines.v0.0.0
+  name: openshift-pipelines-operator-rh.v0.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -202,15 +202,8 @@ spec:
     ## CLI (tkn)
     Tekton Pipelines cli project provides a CLI (tkn) for interacting with OpenShift Pipelines.
 
-    - [Download tkn for Linux](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.21.0/tkn-linux-amd64-0.21.0.tar.gz)
+    [Download tkn](/command-line-tools) (links will be available on `command line tools` page after this operator is installed).
 
-    - [Download tkn for Mac](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.21.0/tkn-macos-amd64-0.21.0.tar.gz)
-
-    - [Download tkn for Windows](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.21.0/tkn-windows-amd64-0.21.0.zip)
-
-    - [Download tkn for IBM Power](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.21.0/tkn-linux-ppc64le-0.21.0.tar.gz)
-
-    - [Download tkn for IBM Z](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.21.0/tkn-linux-s390x-0.21.0.tar.gz)
   displayName: Red Hat OpenShift Pipelines
   icon:
   - base64data: |
