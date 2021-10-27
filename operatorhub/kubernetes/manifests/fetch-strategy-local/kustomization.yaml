@@ -1,5 +1,5 @@
 resources:
-- ../../../../config/kubernetes
+- ../../../../config/kubernetes/overlays/operatorhub
 - ../../../../config/crs/kubernetes
 - ../bases/tektoncd-operator.clusterserviceversion.template.yaml
 - ../../scorecard

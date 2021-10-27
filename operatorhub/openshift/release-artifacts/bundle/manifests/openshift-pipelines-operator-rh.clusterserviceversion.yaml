@@ -26,7 +26,7 @@ metadata:
       : \"TektonTrigger\",\n    \"metadata\": {\n      \"name\": \"trigger\"\n   \
       \ },\n    \"spec\": {\n      \"targetNamespace\": \"openshift-pipelines\"\n\
       \    }\n  }\n]"
-    capabilities: Seamless Upgrades
+    capabilities: Full Lifecycle
     categories: Developer Tools, Integration & Delivery
     certified: 'false'
     description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for
@@ -241,7 +241,7 @@ spec:
     ### Components
 
 
-    - Tekton Pipelines: v0.28.0
+    - Tekton Pipelines: v0.28.1
 
     - Tekton Triggers: v0.16.0
 
@@ -259,15 +259,9 @@ spec:
     Tekton Pipelines cli project provides a CLI (tkn) for interacting with OpenShift
     Pipelines.
 
-    - [Download tkn for Linux](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-amd64-0.17.2.tar.gz)
 
-    - [Download tkn for Mac](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-macos-amd64-0.17.2.tar.gz)
-
-    - [Download tkn for Windows](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-windows-amd64-0.17.2.zip)
-
-    - [Download tkn for IBM Power](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-ppc64le-0.17.2.tar.gz)
-
-    - [Download tkn for IBM Z](https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-s390x-0.17.2.tar.gz)
+    [Download tkn](/command-line-tools) (links will be available on `command line
+    tools` page after this operator is installed).
 
     '
   displayName: Red Hat OpenShift Pipelines
@@ -849,6 +843,8 @@ spec:
                   value: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@
                 - name: IMAGE_ADDONS_PARAM_TKN_IMAGE
                   value: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
+                - name: IMAGE_ADDONS_TKN_CLI_SERVE
+                  value: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel8@
                 image: registry.redhat.io/openshift-pipelines/pipelines-rhel8-operator@
                 imagePullPolicy: Always
                 name: openshift-pipelines-operator
@@ -959,7 +955,9 @@ spec:
     name: IMAGE_JOB_PRUNER_TKN
   - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
     name: IMAGE_ADDONS_PARAM_TKN_IMAGE
-  - image: ko://github.com/tektoncd/operator/cmd/openshift/webhook
+  - image: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel8@
+    name: IMAGE_ADDONS_TKN_CLI_SERVE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-operator-webhook-rhel8@
     name: TEKTON_OPERATOR_WEBHOOK
   replaces: 1.5.2
   version: 1.6.0
