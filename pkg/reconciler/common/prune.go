@@ -73,8 +73,20 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 	}
 
 	//may be reconciled by removing pruning spec from tektonConfig
+	//in this case delete all the cronjobs with the label pruneCronLabel
 	if pruner.removedFromTektonConfig(tC.Spec.Pruner) {
-		return pruner.checkAndDeleteCron(ctx, CronName, tC.Spec.TargetNamespace)
+		cronJobs, err := pruner.listCronJobs(ctx)
+		if err != nil {
+			return err
+		}
+		if len(cronJobs.Items) > 0 {
+			for _, cronJob := range cronJobs.Items {
+				if err := pruner.deleteCronJob(ctx, cronJob.Name, cronJob.Namespace); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
 	}
 
 	//may be reconciled by removing/adding annotation on a Namespace
@@ -299,6 +311,24 @@ func pruneCommand(pru *pruneConfigPerNS, ns string) string {
 	return cmdArgs
 }
 
+func (pruner *Pruner) listCronJobs(ctx context.Context) (*batchv1.CronJobList, error) {
+	var opts = v1.ListOptions{
+		LabelSelector: fmt.Sprint(pruneCronLabel),
+	}
+	cronJobs, err := pruner.kc.BatchV1().CronJobs("").List(ctx, opts)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return cronJobs, nil
+		}
+		return cronJobs, err
+	}
+	return cronJobs, nil
+}
+
+func (pruner *Pruner) deleteCronJob(ctx context.Context, cronName, ns string) error {
+	return pruner.kc.BatchV1().CronJobs(ns).Delete(ctx, cronName, v1.DeleteOptions{})
+}
+
 func (pruner *Pruner) checkAndDeleteCron(ctx context.Context, cronName, ns string) error {
 	if _, err := pruner.kc.BatchV1().CronJobs(ns).Get(ctx, cronName, v1.GetOptions{}); err != nil {
 		if err != nil && errors.IsNotFound(err) {
@@ -308,7 +338,7 @@ func (pruner *Pruner) checkAndDeleteCron(ctx context.Context, cronName, ns strin
 	}
 
 	//if there is no error it means cron is exists, but no prune in config it means delete it
-	return pruner.kc.BatchV1().CronJobs(ns).Delete(ctx, cronName, v1.DeleteOptions{})
+	return pruner.deleteCronJob(ctx, cronName, ns)
 }
 
 func (pruner *Pruner) removedFromTektonConfig(prune v1alpha1.Prune) bool {
@@ -320,16 +350,8 @@ func (pruner *Pruner) removedFromTektonConfig(prune v1alpha1.Prune) bool {
 
 func (pruner *Pruner) checkAnnotationsRemovedNamespaces(ctx context.Context, targetNs string) ([]string, error) {
 	var namespaces []string
-	var opts = v1.ListOptions{
-		LabelSelector: fmt.Sprint(pruneCronLabel),
-	}
-	cronJobs, err := pruner.kc.BatchV1().CronJobs("").List(ctx, opts)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return namespaces, nil
-		}
-		return namespaces, err
-	}
+
+	cronJobs, err := pruner.listCronJobs(ctx)
 	for _, cronjob := range cronJobs.Items {
 		cronNameSpace := cronjob.ObjectMeta.Namespace
 		ns, err := pruner.kc.CoreV1().Namespaces().Get(ctx, cronNameSpace, v1.GetOptions{})
