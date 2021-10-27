@@ -1,0 +1,4 @@
+namespace: openshift-operators
+resources:
+- ../../base/
+- service_account.yaml
