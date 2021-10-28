@@ -379,6 +379,38 @@ func TestReplaceNamespaceInClusterInterceptor(t *testing.T) {
 	assert.Equal(t, "foobar", m["namespace"])
 }
 
+func TestReplaceNamespaceInClusterRole(t *testing.T) {
+	testData := path.Join("testdata", "test-replace-namespace-in-cluster-role.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	manifest, err = manifest.Transform(injectNamespaceClusterRole("foobar"))
+	assertNoEror(t, err)
+
+	clusterRole := manifest.Resources()[0].Object
+	rules, _, err := unstructured.NestedSlice(clusterRole, "rules")
+	assertNoEror(t, err)
+	//  The file has 3 rules — hard-coding this a bit
+	podsecuritypolicyRule := rules[0].(map[string]interface{})
+	for _, name := range podsecuritypolicyRule["resourceNames"].([]interface{}) {
+		if name.(string) != "tekton-pipelines" {
+			t.Errorf("Replace 'tekton-pipelines' in the wrong rule (podsecuritypolicies)")
+		}
+	}
+	namespaceRule := rules[1].(map[string]interface{})
+	for _, name := range namespaceRule["resourceNames"].([]interface{}) {
+		if name.(string) != "foobar" {
+			t.Errorf("Didn't replace 'tekton-pipelines' in the namespace rule")
+		}
+	}
+	namespaceFinalizerRule := rules[2].(map[string]interface{})
+	for _, name := range namespaceFinalizerRule["resourceNames"].([]interface{}) {
+		if name.(string) != "foobar" {
+			t.Errorf("Didn't replace 'tekton-pipelines' in the namespace rule")
+		}
+	}
+}
+
 func TestAddConfigMapValues_PipelineProperties(t *testing.T) {
 
 	testData := path.Join("testdata", "test-replace-cm-values.yaml")

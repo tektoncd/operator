@@ -55,6 +55,7 @@ func transformers(ctx context.Context, obj v1alpha1.TektonComponent) []mf.Transf
 		injectNamespaceConditional(AnnotationPreserveNS, obj.GetSpec().GetTargetNamespace()),
 		injectNamespaceCRDWebhookClientConfig(obj.GetSpec().GetTargetNamespace()),
 		injectNamespaceCRClusterInterceptorClientConfig(obj.GetSpec().GetTargetNamespace()),
+		injectNamespaceClusterRole(obj.GetSpec().GetTargetNamespace()),
 	}
 }
 
@@ -375,6 +376,44 @@ func injectNamespaceRoleBindingSubjects(targetNamespace string) mf.Transformer {
 			m := subject.(map[string]interface{})
 			if _, ok := m["namespace"]; ok {
 				m["namespace"] = targetNamespace
+			}
+		}
+		return nil
+	}
+}
+
+func injectNamespaceClusterRole(targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if strings.ToLower(u.GetKind()) != "clusterrole" {
+			return nil
+		}
+		rules, found, err := unstructured.NestedFieldNoCopy(u.Object, "rules")
+		if !found || err != nil {
+			return err
+		}
+		for _, rule := range rules.([]interface{}) {
+			m := rule.(map[string]interface{})
+			resources, ok := m["resources"]
+			if !ok || len(resources.([]interface{})) == 0 {
+				continue
+			}
+			containsNamespaceResource := false
+			for _, resource := range resources.([]interface{}) {
+				if strings.HasPrefix(resource.(string), "namespaces") {
+					containsNamespaceResource = true
+				}
+			}
+			resourceNames, ok := m["resourceNames"]
+			if containsNamespaceResource && ok {
+				nm := []interface{}{}
+				for _, rn := range resourceNames.([]interface{}) {
+					if rn.(string) == "tekton-pipelines" {
+						nm = append(nm, targetNamespace)
+					} else {
+						nm = append(nm, rn)
+					}
+				}
+				m["resourceNames"] = nm
 			}
 		}
 		return nil
