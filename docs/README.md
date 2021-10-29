@@ -2,7 +2,7 @@
 ---
 title: "Operator"
 linkTitle: "Operator"
-weight: 2
+weight: 8
 description: >
   Manage Tekton CI/CD Building Blocks
 cascade:
