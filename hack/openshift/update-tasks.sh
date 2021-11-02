@@ -44,14 +44,14 @@ EOF
 declare -r TEKTON_CATALOG="https://raw.githubusercontent.com/openshift/tektoncd-catalog"
 declare -A TEKTON_CATALOG_TASKS=(
   # Need to remove version param
-  ["openshift-client"]="0.2"
   ["git-clone"]="0.4"
-  # Need to fix the task upstream for removing priviledged
-  # ["buildah"]="0.1"
   ["kn"]="0.1"
   ["kn-apply"]="0.1"
   ["skopeo-copy"]="0.1"
   ["tkn"]="0.2"
+  # Those tasks are managed directly in the repository
+  # ["buildah"]="0.1"
+  # ["openshift-client"]="0.2"
 )
 
 declare -r OPENSHIFT_CATALOG="https://raw.githubusercontent.com/openshift/pipelines-catalog"
