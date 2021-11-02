@@ -48,11 +48,12 @@ var (
 	pipelinePred                       = mf.ByKind("Pipeline")
 
 	// OpenShift Specific
-	serviceMonitorPred     = mf.ByKind("ServiceMonitor")
-	routePred              = mf.ByKind("Route")
-	consoleCLIDownloadPred = mf.ByKind("ConsoleCLIDownload")
-	consoleQuickStartPred  = mf.ByKind("ConsoleQuickStart")
-	ConsoleYAMLSamplePred  = mf.ByKind("ConsoleYAMLSample")
+	securityContextConstraints = mf.ByKind("SecurityContextConstraints")
+	serviceMonitorPred         = mf.ByKind("ServiceMonitor")
+	routePred                  = mf.ByKind("Route")
+	consoleCLIDownloadPred     = mf.ByKind("ConsoleCLIDownload")
+	consoleQuickStartPred      = mf.ByKind("ConsoleQuickStart")
+	ConsoleYAMLSamplePred      = mf.ByKind("ConsoleYAMLSample")
 )
 
 type installer struct {
@@ -80,6 +81,7 @@ func (i *installer) EnsureClusterScopedResources() error {
 			consoleCLIDownloadPred,
 			consoleQuickStartPred,
 			ConsoleYAMLSamplePred,
+			securityContextConstraints,
 		)).Apply(); err != nil {
 		return err
 	}
