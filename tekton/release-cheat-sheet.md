@@ -40,6 +40,10 @@ the operator repo, a terminal window and a text editor.
     ```bash
     TEKTON_VERSION=# Example: v0.21.0-1
     TEKTON_RELEASE_GIT_SHA=# SHA of the release to be released
+    TEKTON_PIPELINE_VERSION=# v0.28.0
+    TEKTON_TRIGGERS_VERSION=# v0.27.0
+    TEKTON_DASHBOARD_VERSION=# v0.21.0
+    TEKTON_RESULTS_VERSION=# v0.1.1
     ```
 
 1. Confirm commit SHA matches what you want to release.
@@ -66,6 +70,10 @@ the operator repo, a terminal window and a text editor.
     tkn --context dogfooding pipeline start operator-release \
       --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
       --param=versionTag="${TEKTON_VERSION}" \
+      --param=TektonCDPipelinesVersion=${TEKTON_PIPELINE_VERSION} \
+      --param=TektonCDTriggersVersion=${TEKTON_TRIGGERS_VERSION} \
+      --param=TektonCDDashboardVersion=${TEKTON_DASHBOARD_VERSION} \
+      --param=TektonCDResultsVersion=${TEKTON_RESULTS_VERSION} \
       --param=serviceAccountPath=release.json \
       --param=releaseBucket=gs://tekton-releases/operator \
       --workspace name=release-secret,secret=release-secret \
@@ -95,41 +103,42 @@ the operator repo, a terminal window and a text editor.
 
 1. The YAMLs are now uploaded to publically accesible gcs bucket! Anyone installing Tekton Pipelines will now get the new version. Time to create a new GitHub release announcement:
 
-    1. The release announcement draft is created by the [create-draft-release](https://github.com/tektoncd/plumbing/blob/main/tekton/resources/release/base/github_release.yaml) task.
-       The task requires a `pipelineResource` to work with the operator repository. Create the pipelineresource:
-       ```shell script
-        cat <<EOF | kubectl apply -f -                                                                                                                                             130 ↵
-        apiVersion: tekton.dev/v1alpha1
-        kind: PipelineResource
-        metadata:
-          name: tekton-operator-git-v0-21-0-1
-        spec:
-          type: git
-          params:
-          - name: url
-            value: https://github.com/tektoncd/operator
-          - name: revision
-            value: <commit SHA of the release to be released> #eg:01ac5500e0335c9cdadbe1a76e133bb33c13d87
-        EOF
-
-       ```
     1. Create additional environment variables
 
         ```bash
-       VERSION_TAG=v0.21.0-1
-       PREVIOUS_VERSION_TAG=v0.19.0-1
-       GIT_RESOURCE_NAME=tekton-operator-git-v0-21-0-1
+        TEKTON_OLD_VERSION=# Example: v0.11.1
+        TEKTON_PACKAGE=tektoncd/operator
         ```
+
+    1. The release announcement draft is created by the [create-draft-release](https://github.com/tektoncd/plumbing/blob/main/tekton/resources/release/base/github_release.yaml) task.
+       The task requires a `pipelineResource` to work with the operator repository. Create the pipelineresource:
+       ```shell script
+       cat <<EOF | kubectl --context dogfooding create -f -
+       apiVersion: tekton.dev/v1alpha1
+       kind: PipelineResource
+       metadata:
+         name: tekton-operator-$(echo $TEKTON_VERSION | tr '.' '-')
+         namespace: default
+       spec:
+         type: git
+         params:
+           - name: url
+             value: 'https://github.com/tektoncd/operator'
+           - name: revision
+             value: ${TEKTON_RELEASE_GIT_SHA}
+       EOF
+       ```
+       cat <<EOF | kubectl --context dogfooding create -f -
 
     1. Execute the Draft Release task.
 
         ```bash
         tkn --context dogfooding task start \
-          -i source="${GIT_RESOURCE_NAME}" \
+          -i source="tekton-operator-$(echo $TEKTON_VERSION | tr '.' '-')" \
           -i release-bucket=tekton-operator-bucket \
-          -p package=tektoncd/operator \
-          -p release-tag="${VERSION_TAG}" \
-          -p previous-release-tag="${PREVIOUS_VERSION_TAG}" \
+          -p package="${TEKTON_PACKAGE}" \
+          -p release-tag="${TEKTON_VERSION}" \
+          -p previous-release-tag="${TEKTON_OLD_VERSION}" \
           -p release-name="" \
           create-draft-release
         ```
