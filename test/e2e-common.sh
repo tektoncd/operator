@@ -29,11 +29,11 @@ source $(dirname $0)/config.sh
 function install_operator_resources() {
 
   echo :Payload Targets:
-  echo Pipelines: ${PIPELINES}
-  echo Triggers: ${TRIGGERS}
+  echo Pipelines: ${PIPELINES_VERSION}
+  echo Triggers: ${TRIGGERS_VERSION}
   if [[ ${TARGET} != "openshift" ]]; then
-    echo Results: ${RESULTS}
-    echo Dashboard: ${DASHBOARD}
+    echo Results: ${RESULTS_VERSION}
+    echo Dashboard: ${DASHBOARD_VERSION}
   fi
   echo '------------------------------'
 

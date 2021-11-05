@@ -1,4 +1,4 @@
-export PIPELINES=latest
-export TRIGGERS=latest
-export RESULTS=latest
-export DASHBOARD=latest
+export PIPELINES_VERSION=latest
+export TRIGGERS_VERSION=latest
+export RESULTS_VERSION=latest
+export DASHBOARD_VERSION=latest

@@ -30,10 +30,10 @@ $(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
 
 KO = $(or ${KO_BIN},${KO_BIN},$(BIN)/ko)
 
-PIPELINES ?= latest
-TRIGGERS ?= latest
-DASHBOARD ?= latest
-RESULTS ?= latest
+PIPELINES_VERSION ?= latest
+TRIGGERS_VERSION ?= latest
+DASHBOARD_VERSION ?= latest
+RESULTS_VERSION ?= latest
 
 $(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
 
@@ -87,7 +87,7 @@ bin/%: cmd/% FORCE
 
 .PHONY: get-releases
 get-releases: |
-	$Q ./hack/fetch-releases.sh $(TARGET) $(PIPELINES) $(TRIGGERS) $(DASHBOARD) $(RESULTS) || exit ;
+	$Q ./hack/fetch-releases.sh $(TARGET) $(PIPELINES_VERSION) $(TRIGGERS_VERSION) $(DASHBOARD_VERSION) $(RESULTS_VERSION) || exit ;
 
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
@@ -116,4 +116,3 @@ generated: | vendor ; $(info $(M) update generated files) ## Update generated fi
 .PHONY: vendor
 vendor: ; $(info $(M) update vendor folder)  ## Update vendor folder
 	$Q ./hack/update-deps.sh
-
