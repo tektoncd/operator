@@ -35,7 +35,7 @@ import (
 )
 
 const (
-	DbSecretName  = "tekton-results-mysql"
+	DbSecretName  = "tekton-results-postgres"
 	TlsSecretName = "tekton-results-tls"
 )
 
