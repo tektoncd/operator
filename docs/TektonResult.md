@@ -20,7 +20,7 @@ To install Tekton Result on your cluster follow steps as given below:
   the following properties:
 
     - namespace: `tekton-pipelines`
-    - name: `tekton-results-mysql`
+    - name: `tekton-results-postgres`
     - contains the fields:
         - `user=root`
         - `password=<your password>`
@@ -30,7 +30,7 @@ To install Tekton Result on your cluster follow steps as given below:
   Update namespace value in the command if Tekton Pipelines is installed in a different namespace..
 
    ```sh
-   $ kubectl create secret generic tekton-results-mysql --namespace=tekton-pipelines --from-literal=user=root --from-literal=password=$(openssl rand -base64 20)
+   $ kubectl create secret generic tekton-results-postgres --namespace="tekton-pipelines" --from-literal=POSTGRES_USER=postgres --from-literal=POSTGRES_PASSWORD=$(openssl rand -base64 20)
    ```
 - Generate cert/key pair. 
   Note: Feel free to use any cert management software to do this!

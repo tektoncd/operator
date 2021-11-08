@@ -125,8 +125,8 @@ func createSecret(t *testing.T, clients *utils.Clients, namespace string) {
 			Name: tektonresult.DbSecretName,
 		},
 		Data: map[string][]byte{
-			"user":     []byte("root"),
-			"password": []byte("test"),
+			"POSTGRES_USER":     []byte("postgres"),
+			"POSTGRES_PASSWORD": []byte("test"),
 		},
 	}
 

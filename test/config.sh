@@ -1,4 +1,4 @@
 export PIPELINES_VERSION=latest
 export TRIGGERS_VERSION=latest
-export RESULTS_VERSION=latest
+export RESULTS_VERSION=v0.3.1
 export DASHBOARD_VERSION=latest

@@ -33,7 +33,7 @@ KO = $(or ${KO_BIN},${KO_BIN},$(BIN)/ko)
 PIPELINES_VERSION ?= latest
 TRIGGERS_VERSION ?= latest
 DASHBOARD_VERSION ?= latest
-RESULTS_VERSION ?= latest
+RESULTS_VERSION ?= v0.3.1 # latest returns an older version hence hard coding to v0.3.1 for now (tektoncd/results#138)
 
 $(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
 
