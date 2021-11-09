@@ -185,9 +185,9 @@ main() {
     "buildah"  "quay.io/buildah"  \
     "registry.redhat.io/rhel8/buildah@sha256:99cae35f40c7ec050fed3765b2b27e0b8bbea2aa2da7c16408e2ca13c60ff8ee"
 
-  change_task_image "$dest_dir" "$version"  \
-    "openshift-client"  'quay.io/openshift/origin-cli:$(params.VERSION)'  \
-    'image-registry.openshift-image-registry.svc:5000/openshift/cli:$(params.VERSION)'
+#  change_task_image "$dest_dir" "$version"  \
+#    "openshift-client"  'quay.io/openshift/origin-cli:$(params.VERSION)'  \
+#    'image-registry.openshift-image-registry.svc:5000/openshift/cli:$(params.VERSION)'
 
   # ./manifest-tool inspect registry.redhat.io/openshift-serverless-1/client-kn-rhel8:0.22
   change_task_image "$dest_dir" "$version"  \
