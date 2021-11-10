@@ -255,6 +255,7 @@ rules:
   - get
   - create
   - update
+  - delete
 - apiGroups:
   - route.openshift.io
   resources:
