@@ -402,10 +402,13 @@ func updateVolume(pod corev1.Pod, volumeName, configmapName, key string) corev1.
 			}
 		}
 
-		// we wiil mount the certs at this location so we don't override the existing certs
+		// We will mount the certs at this location so we don't override the existing certs
 		sslCertDir := "/tekton-custom-certs"
 		certEnvAvaiable := false
+
 		for _, env := range c.Env {
+			// If SSL_CERT_DIR env var already exists, then we don't mess with
+			// it and simply carry it forward as it is
 			if env.Name == "SSL_CERT_DIR" {
 				sslCertDir = env.Value
 				certEnvAvaiable = true
@@ -413,9 +416,29 @@ func updateVolume(pod corev1.Pod, volumeName, configmapName, key string) corev1.
 		}
 
 		if !certEnvAvaiable {
+			// Here, we need to set the default value for SSL_CERT_DIR.
+			// Keep in mind that if SSL_CERT_DIR is set, then it overrides the
+			// system default, i.e. the system default directories will "NOT"
+			// be scanned for certificates. This is risky and we don't want to
+			// do this because users mount certificates at these locations or
+			// build images with certificates "in" them and expect certificates
+			// to get picked up, and rightfully so since this is the documented
+			// way of achieving this.
+			// So, let's keep the system wide default locations in place and
+			// "append" our custom location to those.
+			//
+			// Copied from https://golang.org/src/crypto/x509/root_linux.go
+			var certDirectories = []string{
+				sslCertDir,                     // /tekton-custom-certs
+				"/etc/ssl/certs",               // SLES10/SLES11, https://golang.org/issue/12139
+				"/etc/pki/tls/certs",           // Fedora/RHEL
+				"/system/etc/security/cacerts", // Android
+			}
+
 			c.Env = append(c.Env, corev1.EnvVar{
-				Name:  "SSL_CERT_DIR",
-				Value: sslCertDir,
+				Name: "SSL_CERT_DIR",
+				// SSL_CERT_DIR accepts a colon separated list of directories
+				Value: strings.Join(certDirectories, ":"),
 			})
 		}
 
