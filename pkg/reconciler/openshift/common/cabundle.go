@@ -114,7 +114,7 @@ func ApplyCABundles(u *unstructured.Unstructured) error {
 			}
 		}
 
-		// we wiil mount the certs at this location so we don't override the existing certs
+		// We will mount the certs at this location so we don't override the existing certs
 		sslCertDir := "/tekton-custom-certs"
 		for _, env := range c.Env {
 			if env.Name == "SSL_CERT_DIR" {
