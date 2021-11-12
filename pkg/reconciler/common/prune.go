@@ -44,6 +44,7 @@ const (
 	pruneKeepSince   = "operator.tekton.dev/prune.keep-since"
 	pruneSchedule    = "operator.tekton.dev/prune.schedule"
 	pruneCronLabel   = "tektonconfig.operator.tekton.dev/pruner"
+	pruneCronNsLabel = "tektonconfig.operator.tekton.dev/pruner.ns"
 	keep             = "keep"
 	keepSince        = "keep-since"
 )
@@ -67,7 +68,7 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 	pruner := &Pruner{kc: k}
 
 	//to remove cronjob created by older version of operator.
-	oldCronName := CronName[7:] + "-" + tC.Spec.TargetNamespace
+	oldCronName := CronName[7:]
 	if err := pruner.checkAndDeleteCron(ctx, oldCronName, tC.Spec.TargetNamespace); err != nil {
 		return err
 	}
@@ -75,7 +76,7 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 	//may be reconciled by removing pruning spec from tektonConfig
 	//in this case delete all the cronjobs with the label pruneCronLabel
 	if pruner.removedFromTektonConfig(tC.Spec.Pruner) {
-		cronJobs, err := pruner.listCronJobs(ctx)
+		cronJobs, err := pruner.listCronJobs(ctx, tC.Spec.TargetNamespace, pruneCronLabel)
 		if err != nil {
 			return err
 		}
@@ -91,13 +92,13 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 
 	//may be reconciled by removing/adding annotation on a Namespace
 	// if schedule is removed or prune.skip is added we delete pre-existing cron.
-	annotationRemovedNamespaces, err := pruner.checkAnnotationsRemovedNamespaces(ctx, tC.Spec.TargetNamespace)
+	annotationRemovedUniqueCron, err := pruner.checkAnnotationsRemovedNamespaces(ctx)
 	if err != nil {
 		return err
 	}
-	if len(annotationRemovedNamespaces) > 0 {
-		for _, ns := range annotationRemovedNamespaces {
-			if err := pruner.checkAndDeleteCron(ctx, CronName, ns); err != nil {
+	if len(annotationRemovedUniqueCron) > 0 {
+		for _, uniqueCron := range annotationRemovedUniqueCron {
+			if err := pruner.checkAndDeleteCron(ctx, uniqueCron, tC.Spec.TargetNamespace); err != nil {
 				return err
 			}
 		}
@@ -116,11 +117,10 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 	if err != nil {
 		return err
 	}
-
 	if pruningNamespaces.commonScheduleNs != nil && len(pruningNamespaces.commonScheduleNs) > 0 {
 		jobs := pruner.createAllJobContainers(pruningNamespaces.commonScheduleNs)
-
-		if err := pruner.createCronJob(ctx, tC.Spec.TargetNamespace, tC.Spec.Pruner.Schedule, jobs, ownerRef); err != nil {
+		cronNameWithRandomSuffix := SimpleNameGenerator.RestrictLengthWithRandomSuffix(CronName)
+		if err := pruner.checkAndCreate(ctx, cronNameWithRandomSuffix, tC.Spec.TargetNamespace, tC.Spec.TargetNamespace, tC.Spec.Pruner.Schedule, jobs, ownerRef, pruneCronLabel); err != nil {
 			logger.Error("failed to create cronjob ", err)
 		}
 	}
@@ -128,9 +128,10 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 	if pruningNamespaces.uniqueScheduleNS != nil {
 		for ns, con := range pruningNamespaces.uniqueScheduleNS {
 			jobs := pruner.createJobContainers(con, ns)
-
-			if err := pruner.createCronJob(ctx, ns, con.config.Schedule, jobs, ownerRef); err != nil {
-				logger.Errorf("failed to create cronjob in ns %s:", ns, err)
+			cronNameWithRandomSuffix := SimpleNameGenerator.RestrictLengthWithRandomSuffix(CronName)
+			listOpt := pruneCronNsLabel + "=" + ns
+			if err := pruner.checkAndCreate(ctx, cronNameWithRandomSuffix, tC.Spec.TargetNamespace, ns, con.config.Schedule, jobs, ownerRef, listOpt); err != nil {
+				logger.Error("failed to create cronjob ", err)
 			}
 		}
 	}
@@ -249,7 +250,24 @@ func (pruner *Pruner) createJobContainers(nsConfig *pruneConfigPerNS, ns string)
 	return containers
 }
 
-func (pruner *Pruner) createCronJob(ctx context.Context, targetNs, schedule string, pruneContainers []corev1.Container, oR v1.OwnerReference) error {
+func (pruner *Pruner) checkAndCreate(ctx context.Context, cronName, targetNs, uniquePruneNs, schedule string, pruneContainers []corev1.Container, oR v1.OwnerReference, listOpt string) error {
+	cronList, err := pruner.listCronJobs(ctx, targetNs, listOpt)
+	if err != nil {
+		return err
+	}
+	if len(cronList.Items) == 1 {
+		if err := pruner.deleteCronJob(ctx, cronList.Items[0].Name, targetNs); err != nil {
+			return err
+		}
+		return createCronJob(ctx, pruner.kc, cronName, targetNs, uniquePruneNs, schedule, pruneContainers, oR)
+	}
+	if err := createCronJob(ctx, pruner.kc, cronName, targetNs, uniquePruneNs, schedule, pruneContainers, oR); err != nil {
+		return err
+	}
+	return nil
+}
+
+func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targetNs, pruneNs, schedule string, pruneContainers []corev1.Container, oR v1.OwnerReference) error {
 	backOffLimit := int32(3)
 	ttlSecondsAfterFinished := int32(3600)
 	cj := &batchv1.CronJob{
@@ -258,7 +276,7 @@ func (pruner *Pruner) createCronJob(ctx context.Context, targetNs, schedule stri
 			APIVersion: "batch/v1",
 		},
 		ObjectMeta: v1.ObjectMeta{
-			Name:            CronName,
+			Name:            cronName,
 			OwnerReferences: []v1.OwnerReference{oR},
 			Labels:          map[string]string{pruneCronLabel: "true"},
 		},
@@ -282,10 +300,15 @@ func (pruner *Pruner) createCronJob(ctx context.Context, targetNs, schedule stri
 			},
 		},
 	}
+	if pruneNs != "" {
+		labels := cj.GetLabels()
+		labels[pruneCronNsLabel] = pruneNs
+		cj.SetLabels(labels)
+	}
 
-	if _, err := pruner.kc.BatchV1().CronJobs(targetNs).Create(ctx, cj, v1.CreateOptions{}); err != nil {
+	if _, err := kc.BatchV1().CronJobs(targetNs).Create(ctx, cj, v1.CreateOptions{}); err != nil {
 		if strings.Contains(err.Error(), "already exists") {
-			if _, err := pruner.kc.BatchV1().CronJobs(targetNs).Update(ctx, cj, v1.UpdateOptions{}); err != nil {
+			if _, err := kc.BatchV1().CronJobs(targetNs).Update(ctx, cj, v1.UpdateOptions{}); err != nil {
 				return err
 			}
 		}
@@ -311,11 +334,12 @@ func pruneCommand(pru *pruneConfigPerNS, ns string) string {
 	return cmdArgs
 }
 
-func (pruner *Pruner) listCronJobs(ctx context.Context) (*batchv1.CronJobList, error) {
+func (pruner *Pruner) listCronJobs(ctx context.Context, ns, option string) (*batchv1.CronJobList, error) {
 	var opts = v1.ListOptions{
-		LabelSelector: fmt.Sprint(pruneCronLabel),
+		LabelSelector: fmt.Sprint(option),
 	}
-	cronJobs, err := pruner.kc.BatchV1().CronJobs("").List(ctx, opts)
+
+	cronJobs, err := pruner.kc.BatchV1().CronJobs(ns).List(ctx, opts)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return cronJobs, nil
@@ -331,13 +355,13 @@ func (pruner *Pruner) deleteCronJob(ctx context.Context, cronName, ns string) er
 
 func (pruner *Pruner) checkAndDeleteCron(ctx context.Context, cronName, ns string) error {
 	if _, err := pruner.kc.BatchV1().CronJobs(ns).Get(ctx, cronName, v1.GetOptions{}); err != nil {
-		if err != nil && errors.IsNotFound(err) {
+		if errors.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
 
-	//if there is no error it means cron is exists, but no prune in config it means delete it
+	//if there is no error it means cron does exists, but no prune in config it means delete it
 	return pruner.deleteCronJob(ctx, cronName, ns)
 }
 
@@ -348,25 +372,27 @@ func (pruner *Pruner) removedFromTektonConfig(prune v1alpha1.Prune) bool {
 	return false
 }
 
-func (pruner *Pruner) checkAnnotationsRemovedNamespaces(ctx context.Context, targetNs string) ([]string, error) {
-	var namespaces []string
+func (pruner *Pruner) checkAnnotationsRemovedNamespaces(ctx context.Context) ([]string, error) {
+	var uniqueCronName []string
+	cronJobs, err := pruner.listCronJobs(ctx, "", pruneCronLabel)
+	if err != nil {
+		return uniqueCronName, err
+	}
 
-	cronJobs, err := pruner.listCronJobs(ctx)
 	for _, cronjob := range cronJobs.Items {
-		cronNameSpace := cronjob.ObjectMeta.Namespace
-		ns, err := pruner.kc.CoreV1().Namespaces().Get(ctx, cronNameSpace, v1.GetOptions{})
-		if err != nil {
-			return namespaces, err
-		}
-		ano := ns.GetAnnotations()
-		if _, ok := ano[pruneSchedule]; !ok || ano[pruneSkip] == "true" {
-			if cronNameSpace == targetNs {
-				continue
+		cronNs := cronjob.GetLabels()[pruneCronNsLabel]
+		if cronNs != "" {
+			ns, err := pruner.kc.CoreV1().Namespaces().Get(ctx, cronNs, v1.GetOptions{})
+			if err != nil {
+				return uniqueCronName, err
 			}
-			namespaces = append(namespaces, cronNameSpace)
+			ano := ns.GetAnnotations()
+			if _, ok := ano[pruneSchedule]; !ok || ano[pruneSkip] == "true" {
+				uniqueCronName = append(uniqueCronName, cronjob.Name)
+			}
 		}
 	}
-	return namespaces, err
+	return uniqueCronName, err
 }
 
 func stringToUint(num string) *uint {
