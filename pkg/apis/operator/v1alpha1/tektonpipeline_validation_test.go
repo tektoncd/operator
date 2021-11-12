@@ -29,7 +29,7 @@ func Test_ValidateTektonPipeline_MissingTargetNamespace(t *testing.T) {
 
 	tp := &TektonPipeline{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "pipeline",
 			Namespace: "namespace",
 		},
 		Spec: TektonPipelineSpec{},

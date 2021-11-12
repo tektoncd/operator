@@ -67,7 +67,7 @@ func NewExtensibleController(generator common.ExtensionGenerator) injection.Cont
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
-		namespaceinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(impl, common.ConfigResourceName)))
+		namespaceinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(impl, v1alpha1.ConfigResourceName)))
 
 		if os.Getenv("AUTOINSTALL_COMPONENTS") == "true" {
 			// try to ensure that there is an instance of tektonConfig

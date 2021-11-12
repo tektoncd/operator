@@ -101,9 +101,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 
 	logger.Infow("Reconciling TektonResults", "status", tr.Status)
 
-	if tr.GetName() != common.ResultResourceName {
+	if tr.GetName() != v1alpha1.ResultResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
-			common.ResultResourceName,
+			v1alpha1.ResultResourceName,
 			tr.GetName(),
 		)
 		logger.Error(msg)

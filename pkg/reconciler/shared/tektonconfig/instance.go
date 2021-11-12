@@ -23,7 +23,6 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -102,10 +101,10 @@ func (tc tektonConfig) ensureInstance(ctx context.Context) {
 func (tc tektonConfig) createInstance(ctx context.Context) error {
 	tcCR := &v1alpha1.TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: common.ConfigResourceName,
+			Name: v1alpha1.ConfigResourceName,
 		},
 		Spec: v1alpha1.TektonConfigSpec{
-			Profile: common.ProfileAll,
+			Profile: v1alpha1.ProfileAll,
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: tc.namespace,
 			},

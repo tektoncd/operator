@@ -16,7 +16,9 @@ limitations under the License.
 
 package v1alpha1
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var (
 	// RECONCILE_AGAIN_ERR
@@ -61,4 +63,13 @@ var (
 		ClusterTasksParam:      defaultParamValue,
 		PipelineTemplatesParam: defaultParamValue,
 	}
+)
+
+var (
+	PipelineResourceName  = "pipeline"
+	TriggerResourceName   = "trigger"
+	DashboardResourceName = "dashboard"
+	AddonResourceName     = "addon"
+	ConfigResourceName    = "config"
+	ResultResourceName    = "result"
 )

@@ -27,7 +27,6 @@ import (
 
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 
 	"knative.dev/pkg/test/logging"
 
@@ -67,7 +66,7 @@ func EnsureTektonConfigExists(kubeClientSet *kubernetes.Clientset, clients confi
 				Name: names.TektonConfig,
 			},
 			Spec: v1alpha1.TektonConfigSpec{
-				Profile: common.ProfileAll,
+				Profile: v1alpha1.ProfileAll,
 				CommonSpec: v1alpha1.CommonSpec{
 					TargetNamespace: cm.Data["DEFAULT_TARGET_NAMESPACE"],
 				},

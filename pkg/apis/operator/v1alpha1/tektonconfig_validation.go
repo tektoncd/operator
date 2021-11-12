@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 
 	"knative.dev/pkg/apis"
 )
@@ -26,6 +27,11 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	if apis.IsInDelete(ctx) {
 		return nil
+	}
+
+	if tc.GetName() != ConfigResourceName {
+		errMsg := fmt.Sprintf("metadata.name,  Only one instance of TektonConfig is allowed by name, %s", ConfigResourceName)
+		errs = errs.Also(apis.ErrInvalidValue(tc.GetName(), errMsg))
 	}
 
 	if tc.Spec.TargetNamespace == "" {

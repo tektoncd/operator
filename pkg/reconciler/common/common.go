@@ -27,19 +27,10 @@ import (
 )
 
 var (
+	Interval = 10 * time.Second
+	Timeout  = 1 * time.Minute
 	// DefaultSA is the default service account
-	DefaultSA             = "pipeline"
-	PipelineResourceName  = "pipeline"
-	TriggerResourceName   = "trigger"
-	DashboardResourceName = "dashboard"
-	AddonResourceName     = "addon"
-	ConfigResourceName    = "config"
-	ResultResourceName    = "result"
-	ProfileLite           = "lite"
-	ProfileBasic          = "basic"
-	ProfileAll            = "all"
-	Interval              = 10 * time.Second
-	Timeout               = 1 * time.Minute
+	DefaultSA = "pipeline"
 )
 
 const (
@@ -68,7 +59,7 @@ func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPi
 }
 
 func getPipelineRes(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPipeline, error) {
-	res, err := informer.Lister().Get(PipelineResourceName)
+	res, err := informer.Lister().Get(v1alpha1.PipelineResourceName)
 	return res, err
 }
 
@@ -90,6 +81,6 @@ func TriggerReady(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrig
 }
 
 func getTriggerRes(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrigger, error) {
-	res, err := informer.Lister().Get(TriggerResourceName)
+	res, err := informer.Lister().Get(v1alpha1.TriggerResourceName)
 	return res, err
 }

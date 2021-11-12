@@ -29,7 +29,7 @@ func Test_ValidateTektonDashboard_MissingTargetNamespace(t *testing.T) {
 
 	td := &TektonDashboard{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "dashboard",
 			Namespace: "namespace",
 		},
 		Spec: TektonDashboardSpec{},

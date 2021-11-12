@@ -39,7 +39,7 @@ func CreatePipelineCR(instance v1alpha1.TektonComponent, client operatorv1alpha1
 	if _, err := ensureTektonPipelineExists(client.TektonPipelines(), configInstance); err != nil {
 		return errors.New(err.Error())
 	}
-	if _, err := waitForTektonPipelineState(client.TektonPipelines(), common.PipelineResourceName,
+	if _, err := waitForTektonPipelineState(client.TektonPipelines(), v1alpha1.PipelineResourceName,
 		isTektonPipelineReady); err != nil {
 		log.Println("TektonPipeline is not in ready state: ", err)
 		return err
@@ -48,7 +48,7 @@ func CreatePipelineCR(instance v1alpha1.TektonComponent, client operatorv1alpha1
 }
 
 func ensureTektonPipelineExists(clients op.TektonPipelineInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonPipeline, error) {
-	tpCR, err := GetPipeline(clients, common.PipelineResourceName)
+	tpCR, err := GetPipeline(clients, v1alpha1.PipelineResourceName)
 	if err == nil {
 		// if the pipeline spec is changed then update the instance
 		updated := false
@@ -84,7 +84,7 @@ func ensureTektonPipelineExists(clients op.TektonPipelineInterface, config *v1al
 	if apierrs.IsNotFound(err) {
 		tpCR = &v1alpha1.TektonPipeline{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: common.PipelineResourceName,
+				Name: v1alpha1.PipelineResourceName,
 			},
 			Spec: v1alpha1.TektonPipelineSpec{
 				CommonSpec: v1alpha1.CommonSpec{
@@ -131,7 +131,7 @@ func isTektonPipelineReady(s *v1alpha1.TektonPipeline, err error) (bool, error) 
 
 // TektonPipelineCRDelete deletes tha TektonPipeline to see if all resources will be deleted
 func TektonPipelineCRDelete(clients op.TektonPipelineInterface, name string) error {
-	if _, err := GetPipeline(clients, common.PipelineResourceName); err != nil {
+	if _, err := GetPipeline(clients, v1alpha1.PipelineResourceName); err != nil {
 		if apierrs.IsNotFound(err) {
 			return nil
 		}
@@ -167,7 +167,7 @@ func verifyNoTektonPipelineCR(clients op.TektonPipelineInterface) error {
 func GetTektonConfig() *v1alpha1.TektonConfig {
 	return &v1alpha1.TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: common.ConfigResourceName,
+			Name: v1alpha1.ConfigResourceName,
 		},
 		Spec: v1alpha1.TektonConfigSpec{
 			Profile: "all",

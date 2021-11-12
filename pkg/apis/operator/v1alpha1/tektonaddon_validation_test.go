@@ -49,7 +49,7 @@ func Test_ValidateTektonAddon_InvalidParam(t *testing.T) {
 
 	ta := &TektonAddon{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "addon",
 			Namespace: "namespace",
 		},
 		Spec: TektonAddonSpec{
@@ -73,7 +73,7 @@ func Test_ValidateTektonAddon_InvalidParamValue(t *testing.T) {
 
 	ta := &TektonAddon{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "addon",
 			Namespace: "namespace",
 		},
 		Spec: TektonAddonSpec{
@@ -97,7 +97,7 @@ func Test_ValidateTektonAddon_ClusterTaskIsFalseAndPipelineTemplateIsTrue(t *tes
 
 	ta := &TektonAddon{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "addon",
 			Namespace: "namespace",
 		},
 		Spec: TektonAddonSpec{
