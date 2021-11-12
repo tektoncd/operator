@@ -29,7 +29,7 @@ func Test_ValidateTektonTrigger_MissingTargetNamespace(t *testing.T) {
 
 	tr := &TektonTrigger{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "trigger",
 			Namespace: "namespace",
 		},
 		Spec: TektonTriggerSpec{},

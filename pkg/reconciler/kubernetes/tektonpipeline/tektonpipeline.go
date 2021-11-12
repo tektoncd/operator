@@ -106,9 +106,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	logger := logging.FromContext(ctx)
 	tp.Status.InitializeConditions()
 
-	if tp.GetName() != common.PipelineResourceName {
+	if tp.GetName() != v1alpha1.PipelineResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
-			common.PipelineResourceName,
+			v1alpha1.PipelineResourceName,
 			tp.GetName(),
 		)
 		logger.Error(msg)
@@ -312,7 +312,7 @@ func makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.Manifest, tpSpecH
 	ownerRef := *metav1.NewControllerRef(tp, tp.GetGroupVersionKind())
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("%s-", common.PipelineResourceName),
+			GenerateName: fmt.Sprintf("%s-", v1alpha1.PipelineResourceName),
 			Labels: map[string]string{
 				createdByKey: createdByValue,
 			},

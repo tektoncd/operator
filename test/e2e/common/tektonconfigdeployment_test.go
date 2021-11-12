@@ -25,7 +25,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/test/client"
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
@@ -38,7 +37,7 @@ func TestTektonConfigDeployment(t *testing.T) {
 	clients := client.Setup(t)
 
 	crNames := utils.ResourceNames{
-		TektonConfig: common.ConfigResourceName,
+		TektonConfig: v1alpha1.ConfigResourceName,
 		Namespace:    "tekton-operator",
 	}
 
@@ -73,7 +72,7 @@ func TestTektonConfigDeployment(t *testing.T) {
 		runRbacTest(t, clients)
 	}
 
-	if platform == "openshift" && tc.Spec.Profile == common.ProfileAll {
+	if platform == "openshift" && tc.Spec.Profile == v1alpha1.ProfileAll {
 		runAddonTest(t, clients, tc)
 	}
 
@@ -93,9 +92,9 @@ func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfi
 
 	// Make sure TektonAddon is created
 	t.Run("ensure-addon-is-created", func(t *testing.T) {
-		addon, err = clients.Operator.TektonAddons().Get(context.TODO(), common.AddonResourceName, metav1.GetOptions{})
+		addon, err = clients.Operator.TektonAddons().Get(context.TODO(), v1alpha1.AddonResourceName, metav1.GetOptions{})
 		if err != nil {
-			t.Fatalf("failed to get TektonAddon CR: %s : %v", common.AddonResourceName, err)
+			t.Fatalf("failed to get TektonAddon CR: %s : %v", v1alpha1.AddonResourceName, err)
 		}
 	})
 

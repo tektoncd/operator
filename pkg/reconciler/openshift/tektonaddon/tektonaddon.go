@@ -120,9 +120,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	logger := logging.FromContext(ctx)
 	ta.Status.InitializeConditions()
 
-	if ta.GetName() != common.AddonResourceName {
+	if ta.GetName() != v1alpha1.AddonResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
-			common.AddonResourceName,
+			v1alpha1.AddonResourceName,
 			ta.GetName(),
 		)
 		logger.Error(msg)

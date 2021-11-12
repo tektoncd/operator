@@ -46,20 +46,20 @@ func (oe kubernetesExtension) PreReconcile(context.Context, v1alpha1.TektonCompo
 func (oe kubernetesExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 
-	if configInstance.Spec.Profile == common.ProfileAll {
+	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
 		return extension.CreateDashboardCR(comp, oe.operatorClientSet.OperatorV1alpha1())
 	}
 
-	if configInstance.Spec.Profile == common.ProfileLite || configInstance.Spec.Profile == common.ProfileBasic {
-		return extension.TektonDashboardCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonDashboards(), common.DashboardResourceName)
+	if configInstance.Spec.Profile == v1alpha1.ProfileLite || configInstance.Spec.Profile == v1alpha1.ProfileBasic {
+		return extension.TektonDashboardCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonDashboards(), v1alpha1.DashboardResourceName)
 	}
 
 	return nil
 }
 func (oe kubernetesExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
-	if configInstance.Spec.Profile == common.ProfileAll {
-		return extension.TektonDashboardCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonDashboards(), common.DashboardResourceName)
+	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
+		return extension.TektonDashboardCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonDashboards(), v1alpha1.DashboardResourceName)
 	}
 	return nil
 }

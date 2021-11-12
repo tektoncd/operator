@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 
 	"knative.dev/pkg/apis"
 )
@@ -26,6 +27,11 @@ func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) 
 
 	if apis.IsInDelete(ctx) {
 		return nil
+	}
+
+	if tp.GetName() != PipelineResourceName {
+		errMsg := fmt.Sprintf("metadata.name, Only one instance of TektonPipeline is allowed by name, %s", PipelineResourceName)
+		errs = errs.Also(apis.ErrInvalidValue(tp.GetName(), errMsg))
 	}
 
 	if tp.Spec.TargetNamespace == "" {

@@ -19,8 +19,8 @@ package extension
 import (
 	"testing"
 
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/injection/client/fake"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	ts "knative.dev/pkg/reconciler/testing"
@@ -32,13 +32,13 @@ func TestTektonAddonCreateAndDeleteCR(t *testing.T) {
 	tConfig := pipeline.GetTektonConfig()
 	err := CreateAddonCR(tConfig, c.OperatorV1alpha1())
 	util.AssertNotEqual(t, err, nil)
-	err = TektonAddonCRDelete(c.OperatorV1alpha1().TektonAddons(), common.AddonResourceName)
+	err = TektonAddonCRDelete(c.OperatorV1alpha1().TektonAddons(), v1alpha1.AddonResourceName)
 	util.AssertEqual(t, err, nil)
 }
 
 func TestTektonAddonCRDelete(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	err := TektonAddonCRDelete(c.OperatorV1alpha1().TektonAddons(), common.AddonResourceName)
+	err := TektonAddonCRDelete(c.OperatorV1alpha1().TektonAddons(), v1alpha1.AddonResourceName)
 	util.AssertEqual(t, err, nil)
 }

@@ -50,7 +50,7 @@ func Test_ValidateTektonConfig_MissingTargetNamespace(t *testing.T) {
 
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "config",
 			Namespace: "namespace",
 		},
 		Spec: TektonConfigSpec{},
@@ -64,7 +64,7 @@ func Test_ValidateTektonConfig_InvalidProfile(t *testing.T) {
 
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "config",
 			Namespace: "namespace",
 		},
 		Spec: TektonConfigSpec{
@@ -83,7 +83,7 @@ func Test_ValidateTektonConfig_InvalidPruningResource(t *testing.T) {
 
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "config",
 			Namespace: "namespace",
 		},
 		Spec: TektonConfigSpec{
@@ -106,7 +106,7 @@ func Test_ValidateTektonConfig_MissingKeepKeepsinceSchedule(t *testing.T) {
 
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "config",
 			Namespace: "namespace",
 		},
 		Spec: TektonConfigSpec{
@@ -128,7 +128,7 @@ func Test_ValidateTektonConfig_MissingSchedule(t *testing.T) {
 	keep := uint(2)
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "config",
 			Namespace: "namespace",
 		},
 		Spec: TektonConfigSpec{
@@ -151,7 +151,7 @@ func Test_ValidateTektonConfig_InvalidAddonParam(t *testing.T) {
 
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "config",
 			Namespace: "namespace",
 		},
 		Spec: TektonConfigSpec{
@@ -178,7 +178,7 @@ func Test_ValidateTektonConfig_InvalidAddonParamValue(t *testing.T) {
 
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "config",
 			Namespace: "namespace",
 		},
 		Spec: TektonConfigSpec{
@@ -205,7 +205,7 @@ func Test_ValidateTektonConfig_InvalidPipelineProperties(t *testing.T) {
 
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "config",
 			Namespace: "namespace",
 		},
 		Spec: TektonConfigSpec{
@@ -229,7 +229,7 @@ func Test_ValidateTektonConfig_InvalidTriggerProperties(t *testing.T) {
 
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
+			Name:      "config",
 			Namespace: "namespace",
 		},
 		Spec: TektonConfigSpec{

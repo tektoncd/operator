@@ -19,8 +19,8 @@ package extension
 import (
 	"testing"
 
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/injection/client/fake"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	ts "knative.dev/pkg/reconciler/testing"
@@ -32,13 +32,13 @@ func TestTektonDashboardCreateAndDeleteCR(t *testing.T) {
 	tConfig := pipeline.GetTektonConfig()
 	err := CreateDashboardCR(tConfig, c.OperatorV1alpha1())
 	util.AssertNotEqual(t, err, nil)
-	err = TektonDashboardCRDelete(c.OperatorV1alpha1().TektonDashboards(), common.DashboardResourceName)
+	err = TektonDashboardCRDelete(c.OperatorV1alpha1().TektonDashboards(), v1alpha1.DashboardResourceName)
 	util.AssertEqual(t, err, nil)
 }
 
 func TestTektonDashboardCRDelete(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	err := TektonDashboardCRDelete(c.OperatorV1alpha1().TektonDashboards(), common.DashboardResourceName)
+	err := TektonDashboardCRDelete(c.OperatorV1alpha1().TektonDashboards(), v1alpha1.DashboardResourceName)
 	util.AssertEqual(t, err, nil)
 }

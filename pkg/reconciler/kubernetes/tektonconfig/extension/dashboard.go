@@ -38,7 +38,7 @@ func CreateDashboardCR(instance v1alpha1.TektonComponent, client operatorv1alpha
 	if _, err := ensureTektonDashboardExists(client.TektonDashboards(), configInstance); err != nil {
 		return errors.New(err.Error())
 	}
-	if _, err := waitForTektonDashboardState(client.TektonDashboards(), common.DashboardResourceName,
+	if _, err := waitForTektonDashboardState(client.TektonDashboards(), v1alpha1.DashboardResourceName,
 		isTektonDashboardReady); err != nil {
 		log.Println("TektonDashboard is not in ready state: ", err)
 		return err
@@ -47,7 +47,7 @@ func CreateDashboardCR(instance v1alpha1.TektonComponent, client operatorv1alpha
 }
 
 func ensureTektonDashboardExists(clients op.TektonDashboardInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonDashboard, error) {
-	tdCR, err := GetDashboard(clients, common.DashboardResourceName)
+	tdCR, err := GetDashboard(clients, v1alpha1.DashboardResourceName)
 	if err == nil {
 		// if the dashboard spec is changed then update the instance
 		updated := false
@@ -83,7 +83,7 @@ func ensureTektonDashboardExists(clients op.TektonDashboardInterface, config *v1
 	if apierrs.IsNotFound(err) {
 		tdCR = &v1alpha1.TektonDashboard{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: common.DashboardResourceName,
+				Name: v1alpha1.DashboardResourceName,
 			},
 			Spec: v1alpha1.TektonDashboardSpec{
 				CommonSpec: v1alpha1.CommonSpec{
@@ -128,7 +128,7 @@ func isTektonDashboardReady(s *v1alpha1.TektonDashboard, err error) (bool, error
 
 // TektonDashboardCRDelete deletes tha TektonDashboard to see if all resources will be deleted
 func TektonDashboardCRDelete(clients op.TektonDashboardInterface, name string) error {
-	if _, err := GetDashboard(clients, common.DashboardResourceName); err != nil {
+	if _, err := GetDashboard(clients, v1alpha1.DashboardResourceName); err != nil {
 		if apierrs.IsNotFound(err) {
 			return nil
 		}

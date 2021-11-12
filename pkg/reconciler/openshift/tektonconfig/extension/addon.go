@@ -38,7 +38,7 @@ func CreateAddonCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.Op
 	if _, err := ensureTektonAddonExists(client.TektonAddons(), configInstance); err != nil {
 		return errors.New(err.Error())
 	}
-	if _, err := waitForTektonAddonState(client.TektonAddons(), common.AddonResourceName,
+	if _, err := waitForTektonAddonState(client.TektonAddons(), v1alpha1.AddonResourceName,
 		isTektonAddonReady); err != nil {
 		log.Println("TektonAddon is not in ready state: ", err)
 		return err
@@ -47,7 +47,7 @@ func CreateAddonCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.Op
 }
 
 func ensureTektonAddonExists(clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
-	taCR, err := GetAddon(clients, common.AddonResourceName)
+	taCR, err := GetAddon(clients, v1alpha1.AddonResourceName)
 	if err == nil {
 		// if the addon spec is changed then update the instance
 		updated := false
@@ -80,7 +80,7 @@ func ensureTektonAddonExists(clients op.TektonAddonInterface, config *v1alpha1.T
 	if apierrs.IsNotFound(err) {
 		taCR = &v1alpha1.TektonAddon{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            common.AddonResourceName,
+				Name:            v1alpha1.AddonResourceName,
 				OwnerReferences: []metav1.OwnerReference{ownerRef},
 			},
 			Spec: v1alpha1.TektonAddonSpec{
@@ -126,7 +126,7 @@ func isTektonAddonReady(s *v1alpha1.TektonAddon, err error) (bool, error) {
 
 // TektonAddonCRDelete deletes tha TektonAddon to see if all resources will be deleted
 func TektonAddonCRDelete(clients op.TektonAddonInterface, name string) error {
-	if _, err := GetAddon(clients, common.AddonResourceName); err != nil {
+	if _, err := GetAddon(clients, v1alpha1.AddonResourceName); err != nil {
 		if apierrs.IsNotFound(err) {
 			return nil
 		}

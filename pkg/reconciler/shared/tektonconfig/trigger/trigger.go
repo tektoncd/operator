@@ -25,6 +25,7 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -32,7 +33,6 @@ import (
 
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 )
 
 func CreateTriggerCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
@@ -40,7 +40,7 @@ func CreateTriggerCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.
 	if _, err := ensureTektonTriggerExists(client.TektonTriggers(), configInstance); err != nil {
 		return errors.New(err.Error())
 	}
-	if _, err := waitForTektonTriggerState(client.TektonTriggers(), common.TriggerResourceName,
+	if _, err := waitForTektonTriggerState(client.TektonTriggers(), v1alpha1.TriggerResourceName,
 		isTektonTriggerReady); err != nil {
 		log.Println("TektonTrigger is not in ready state: ", err)
 		return err
@@ -49,7 +49,7 @@ func CreateTriggerCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.
 }
 
 func ensureTektonTriggerExists(clients op.TektonTriggerInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonTrigger, error) {
-	ttCR, err := GetTrigger(clients, common.TriggerResourceName)
+	ttCR, err := GetTrigger(clients, v1alpha1.TriggerResourceName)
 	if err == nil {
 		// if the trigger spec is changed then update the instance
 		updated := false
@@ -85,7 +85,7 @@ func ensureTektonTriggerExists(clients op.TektonTriggerInterface, config *v1alph
 	if apierrs.IsNotFound(err) {
 		ttCR = &v1alpha1.TektonTrigger{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: common.TriggerResourceName,
+				Name: v1alpha1.TriggerResourceName,
 			},
 			Spec: v1alpha1.TektonTriggerSpec{
 				CommonSpec: v1alpha1.CommonSpec{
@@ -131,7 +131,7 @@ func isTektonTriggerReady(s *v1alpha1.TektonTrigger, err error) (bool, error) {
 
 // TektonTriggerCRDelete deletes tha TektonTrigger to see if all resources will be deleted
 func TektonTriggerCRDelete(clients op.TektonTriggerInterface, name string) error {
-	if _, err := GetTrigger(clients, common.TriggerResourceName); err != nil {
+	if _, err := GetTrigger(clients, v1alpha1.TriggerResourceName); err != nil {
 		if apierrs.IsNotFound(err) {
 			return nil
 		}

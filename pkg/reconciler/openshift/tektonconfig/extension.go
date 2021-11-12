@@ -108,7 +108,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	}
 
 	if configInstance.Spec.Profile == v1alpha1.ProfileBasic || configInstance.Spec.Profile == v1alpha1.ProfileLite {
-		return extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), common.AddonResourceName)
+		return extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), v1alpha1.AddonResourceName)
 	}
 
 	return nil
@@ -116,7 +116,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
-		if err := extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), common.AddonResourceName); err != nil {
+		if err := extension.TektonAddonCRDelete(oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), v1alpha1.AddonResourceName); err != nil {
 			return err
 		}
 	}
