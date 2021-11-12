@@ -99,6 +99,7 @@ func TestCompleteFlowPrune(t *testing.T) {
 		},
 	}
 	client := fake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-pipelines"}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api"}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api-url"}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system"}},
@@ -120,6 +121,18 @@ func TestCompleteFlowPrune(t *testing.T) {
 	}
 	// Only one ns with unique schedule than default
 	if len(cronjobs.Items) != 2 {
+		assert.Error(t, err, "number of cronjobs not correct")
+	}
+	if _, err := client.CoreV1().Namespaces().Update(context.TODO(), &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-two"}}, metav1.UpdateOptions{}); err != nil {
+		assert.Error(t, err, "unexpected error")
+	}
+
+	err = Prune(context.TODO(), client, config)
+	if err != nil {
+		assert.Error(t, err, "unable to initiate prune")
+	}
+	cronjobs1, err := client.BatchV1().CronJobs("openshift-pipelines").List(context.TODO(), metav1.ListOptions{})
+	if len(cronjobs1.Items) != 1 {
 		assert.Error(t, err, "number of cronjobs not correct")
 	}
 }
