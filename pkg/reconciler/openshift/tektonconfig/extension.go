@@ -29,7 +29,6 @@ import (
 	openshiftPipeline "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
 	openshiftTrigger "github.com/tektoncd/operator/pkg/reconciler/openshift/tektontrigger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 )
@@ -63,17 +62,10 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		tektonConfig:      config,
 	}
 
-	pipelineUpdated := openshiftPipeline.SetDefault(&config.Spec.Pipeline)
-	triggerUpdated := openshiftTrigger.SetDefault(&config.Spec.Trigger.TriggersProperties)
-	if pipelineUpdated || triggerUpdated || r.setDefault() {
-		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, config, v1.UpdateOptions{}); err != nil {
-			return err
-		}
-
-		// here we return an error intentionally so that we reconcile again
-		// and proceed further with an updated object
-		return v1alpha1.RECONCILE_AGAIN_ERR
-	}
+	// set openshift specific defaults
+	openshiftPipeline.SetDefault(&config.Spec.Pipeline)
+	openshiftTrigger.SetDefault(&config.Spec.Trigger.TriggersProperties)
+	r.setDefault()
 
 	createRBACResource := true
 	for _, v := range config.Spec.Params {
