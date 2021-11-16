@@ -18,7 +18,6 @@ package tektontrigger
 
 import (
 	"context"
-	stdError "errors"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -26,7 +25,6 @@ import (
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -49,12 +47,8 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	tt := tc.(*v1alpha1.TektonTrigger)
-	if crUpdated := SetDefault(&tt.Spec.TriggersProperties); crUpdated {
-		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonTriggers().Update(ctx, tt, v1.UpdateOptions{}); err != nil {
-			return err
-		}
-		return stdError.New("ensuring PreReconcile TektonTrigger spec update")
-	}
+
+	SetDefault(&tt.Spec.TriggersProperties)
 
 	return nil
 }
@@ -65,14 +59,10 @@ func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent)
 	return nil
 }
 
-func SetDefault(properties *v1alpha1.TriggersProperties) bool {
-
-	var updated = false
+func SetDefault(properties *v1alpha1.TriggersProperties) {
 
 	// Set default service account as pipeline
 	if properties.DefaultServiceAccount == "" {
 		properties.DefaultServiceAccount = common.DefaultSA
-		updated = true
 	}
-	return updated
 }

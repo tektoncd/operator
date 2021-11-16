@@ -18,7 +18,6 @@ package tektonpipeline
 
 import (
 	"context"
-	stdError "errors"
 	"os"
 	"path/filepath"
 
@@ -33,7 +32,6 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
@@ -104,12 +102,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Tek
 	koDataDir := os.Getenv(common.KoEnvKey)
 	tp := comp.(*v1alpha1.TektonPipeline)
 
-	if crUpdated := SetDefault(&tp.Spec.Pipeline); crUpdated {
-		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonPipelines().Update(ctx, tp, v1.UpdateOptions{}); err != nil {
-			return err
-		}
-		return stdError.New("ensuring PreReconcile TektonPipeline spec update")
-	}
+	SetDefault(&tp.Spec.Pipeline)
 
 	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, tp, prePipelineInstallerSet)
 	if err != nil {
@@ -204,21 +197,17 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 	return nil
 }
 
-func SetDefault(pipeline *v1alpha1.Pipeline) bool {
-
-	var updated = false
+func SetDefault(pipeline *v1alpha1.Pipeline) {
 
 	// Set default service account as pipeline
 	if pipeline.DefaultServiceAccount == "" {
 		pipeline.DefaultServiceAccount = common.DefaultSA
-		updated = true
 	}
 
 	// Set `disable-affinity-assistant` to true if not set in CR
 	// webhook will not set any value but by default in pipelines configmap it will be false
 	if pipeline.DisableAffinityAssistant == nil {
 		pipeline.DisableAffinityAssistant = ptr.Bool(DefaultDisableAffinityAssistant)
-		updated = true
 	}
 
 	// Add params with default values if not defined by user
@@ -232,7 +221,6 @@ func SetDefault(pipeline *v1alpha1.Pipeline) bool {
 			// rest of the installation
 			if p.Value != "false" && p.Value != "true" {
 				pipeline.Params[i].Value = enableMetricsDefaultValue
-				updated = true
 			}
 			break
 		}
@@ -243,10 +231,7 @@ func SetDefault(pipeline *v1alpha1.Pipeline) bool {
 			Name:  enableMetricsKey,
 			Value: enableMetricsDefaultValue,
 		})
-		updated = true
 	}
-
-	return updated
 }
 
 func findParam(params []v1alpha1.Param, param string) string {
