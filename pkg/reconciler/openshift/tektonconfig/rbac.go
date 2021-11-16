@@ -83,10 +83,9 @@ func (r *rbac) cleanUp(ctx context.Context) error {
 	return nil
 }
 
-func (r *rbac) setDefault() bool {
+func (r *rbac) setDefault() {
 	var (
-		updated = false
-		found   = false
+		found = false
 	)
 
 	for i, v := range r.tektonConfig.Spec.Params {
@@ -95,7 +94,6 @@ func (r *rbac) setDefault() bool {
 			// If the value set is invalid then set key to default value as true.
 			if v.Value != "false" && v.Value != "true" {
 				r.tektonConfig.Spec.Params[i].Value = "true"
-				updated = true
 			}
 			break
 		}
@@ -105,9 +103,7 @@ func (r *rbac) setDefault() bool {
 			Name:  rbacParamName,
 			Value: "true",
 		})
-		updated = true
 	}
-	return updated
 }
 
 func (r *rbac) createResources(ctx context.Context) error {
