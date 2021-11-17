@@ -18,14 +18,14 @@ bundle for using `local` strategy.
 
    **CLI flags explained**
 
-   Flag                                                    | Description
-       ----------------------------------------------------| -----------
-   `--workspace operatorhub/openshift`                     | the working directory where the operator bundle should be assembled
-   `--operator-release-version 1.6.0`                      | version of the release (version of bundle)
-   `--channels stable,preview`                             | target release channel(s) (eg: stable,preview)
-   `--default-channel stable`                              | set default channel of the operator
-   `--fetch-strategy-local`                                | gather input resources definitions from a local yaml files
-   `--upgrade-strategy-replaces`                           | specify update strategy (use `replaces` or `semver`)
-   `--operator-release-previous-version 1.5.0`             | version of the previous operator release that will be replaced by the bundle being built
-   `--olm-skip-range '>=1.5.0 <1.6.0'`                     | add olm.skipRange to the CSV file in the bundle
-    ````
+
+   | Flag                                        | Description                                                                              |
+   |---------------------------------------------|------------------------------------------------------------------------------------------|
+   | `--workspace operatorhub/openshift`         | the working directory where the operator bundle should be assembled                      |
+   | `--operator-release-version 1.6.0`          | version of the release (version of bundle)                                               |
+   | `--channels stable,preview`                 | target release channel(s) (eg: stable,preview)                                           |
+   | `--default-channel stable`                  | set default channel of the operator                                                      |
+   | `--fetch-strategy-local`                    | gather input resources definitions from a local yaml files                               |
+   | `--upgrade-strategy-replaces`               | specify update strategy (use `replaces` or `semver`)                                     |
+   | `--operator-release-previous-version 1.5.0` | version of the previous operator release that will be replaced by the bundle being built |
+   | `--olm-skip-range '>=1.5.0 <1.6.0'`         | add olm.skipRange to the CSV file in the bundle                                          |
