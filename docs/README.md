@@ -94,6 +94,10 @@ You can find more about the Resources and its available configurations in their 
 
 To understand how Tekton Operator works, you can find the details [here](TektonOperator.md)
 
+## Tektoncd Operator Releases
+
+  [Tektoncd Releases](./release/README.md)
+
 ## Contributing to Tekton Operator
 
 If you'd like to contribute to the Tekton Operator project, see the [Tekton Operator Contributor's Guide](https://github.com/tektoncd/operator/blob/main/CONTRIBUTING.md).
