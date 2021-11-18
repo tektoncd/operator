@@ -100,6 +100,7 @@ func (tc tektonConfig) ensureInstance(ctx context.Context) {
 }
 
 func (tc tektonConfig) createInstance(ctx context.Context) error {
+	pruneKeep := uint(100)
 	tcCR := &v1alpha1.TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: common.ConfigResourceName,
@@ -108,6 +109,12 @@ func (tc tektonConfig) createInstance(ctx context.Context) error {
 			Profile: common.ProfileAll,
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: tc.namespace,
+			},
+			Pruner: v1alpha1.Prune{
+				Resources: []string{"pipelinerun", "taskrun"},
+				Keep:      &pruneKeep,
+				KeepSince: nil,
+				Schedule:  "0 8 * * *",
 			},
 		},
 	}
