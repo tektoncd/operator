@@ -24,10 +24,6 @@ patches:
   target:
     kind: Deployment
     name: tekton-operator
-- path: webhook.yaml
-  target:
-    kind: Deployment
-    name: tekton-operator-webhook
 - path: role.yaml
   target:
     kind: ClusterRole
@@ -38,7 +34,6 @@ patches:
     name: tekton-operator
 
 patchesStrategicMerge:
-- 500-webhooks.yaml
 - 100-namespace.yaml
 
 resources:
