@@ -11,21 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-patches:
-- path: operator.yaml
-  target:
-    kind: Deployment
-    name: tekton-operator
+namespace: tekton-operator
 
-configMapGenerator:
-- name: tekton-config-defaults
-  literals:
-  - DEFAULT_TARGET_NAMESPACE=tekton-pipelines
-  behavior: merge
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
 resources:
-- ../../base/
-- 300-operator_v1alpha1_dashboard_crd.yaml
-- 300-operator_v1alpha1_result_crd.yaml
-- operator_service.yaml
+- 500-webhooks.yaml
+- webhook.yaml
+- webhook-service.yaml
