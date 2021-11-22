@@ -18,9 +18,12 @@ package webhook
 
 import (
 	"context"
+	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/logging"
@@ -45,11 +48,11 @@ func SetTypes(platform string) {
 }
 
 func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	name := findMutatingWebhookConfigurationNameOrDie(ctx, "webhook.operator.tekton.dev")
 	return defaulting.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
-		"webhook.operator.tekton.dev",
-
+		name,
 		// The path on which to serve the webhook.
 		"/defaulting",
 
@@ -67,10 +70,11 @@ func NewDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher
 }
 
 func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	name := findValidatingWebhookConfigurationNameOrDie(ctx, "validation.webhook.operator.tekton.dev")
 	return validation.NewAdmissionController(ctx,
 
 		// Name of the resource webhook.
-		"validation.webhook.operator.tekton.dev",
+		name,
 
 		// The path on which to serve the webhook.
 		"/resource-validation",
@@ -89,10 +93,10 @@ func NewValidationAdmissionController(ctx context.Context, cmw configmap.Watcher
 }
 
 func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	name := findValidatingWebhookConfigurationNameOrDie(ctx, "config.webhook.operator.tekton.dev")
 	return configmaps.NewAdmissionController(ctx,
-
 		// Name of the configmap webhook.
-		"config.webhook.operator.tekton.dev",
+		name,
 
 		// The path on which to serve the webhook.
 		"/config-validation",
@@ -101,4 +105,42 @@ func NewConfigValidationController(ctx context.Context, cmw configmap.Watcher) *
 			logging.ConfigMapName(): logging.NewConfigFromConfigMap,
 		},
 	)
+}
+
+func findMutatingWebhookConfigurationNameOrDie(ctx context.Context, namePrefix string) string {
+	logger := logging.FromContext(ctx)
+
+	kubeClientSet := kubeclient.Get(ctx)
+	mutatingWebhookConfigurations, err := kubeClientSet.AdmissionregistrationV1().MutatingWebhookConfigurations().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		logger.Error(err)
+		logger.Fatal("MutatingWebhookConfiguration with prefix ", namePrefix, " not found")
+		return ""
+	}
+	for _, item := range mutatingWebhookConfigurations.Items {
+		if strings.HasPrefix(item.Name, namePrefix) {
+			return item.Name
+		}
+	}
+	logger.Fatal("MutatingWebhookConfiguration with prefix ", namePrefix, " not found")
+	return ""
+}
+
+func findValidatingWebhookConfigurationNameOrDie(ctx context.Context, namePrefix string) string {
+	logger := logging.FromContext(ctx)
+
+	kubeClientSet := kubeclient.Get(ctx)
+	validatingWebhookConfigurations, err := kubeClientSet.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		logger.Error(err)
+		logger.Fatal("ValidatingWebhookConfiguration with prefix ", namePrefix, " not found")
+		return ""
+	}
+	for _, item := range validatingWebhookConfigurations.Items {
+		if strings.HasPrefix(item.Name, namePrefix) {
+			return item.Name
+		}
+	}
+	logger.Fatal("ValidatingWebhookConfiguration with prefix ", namePrefix, " not found")
+	return ""
 }
