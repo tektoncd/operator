@@ -1,13 +1,4 @@
 namespace: openshift-operators
 resources:
 - ../../base/
-- ../../../webhooks/
 - service_account.yaml
-patches:
-- path: webhook.yaml
-  target:
-    kind: Deployment
-    name: tekton-operator-webhook
-
-patchesStrategicMerge:
-- 500-webhooks.yaml
