@@ -346,14 +346,15 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 	communityClusterTaskManifest := r.manifest
 
 	if err := r.appendCommunityTarget(ctx, &communityClusterTaskManifest, ta); err != nil {
-		return err
+		// Continue if failed to resolve community task URL.
+		// (Ex: on disconnected cluster community tasks won't be reachable because of proxy).
+		logging.FromContext(ctx).Error("Failed to get community task: Skipping community tasks installation ", err)
+	} else {
+		if err := r.communityTransform(ctx, &communityClusterTaskManifest, ta); err != nil {
+			return err
+		}
+		clusterTaskManifest = clusterTaskManifest.Append(communityClusterTaskManifest)
 	}
-
-	if err := r.communityTransform(ctx, &communityClusterTaskManifest, ta); err != nil {
-		return err
-	}
-
-	clusterTaskManifest = clusterTaskManifest.Append(communityClusterTaskManifest)
 
 	if err := createInstallerSet(ctx, r.operatorClientSet, ta, clusterTaskManifest,
 		r.version, clusterTaskInstallerSet, "addon-clustertasks"); err != nil {
