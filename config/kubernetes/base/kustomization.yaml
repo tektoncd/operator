@@ -16,6 +16,10 @@ patches:
   target:
     kind: Deployment
     name: tekton-operator
+- path: webhook.yaml
+  target:
+    kind: Deployment
+    name: tekton-operator-webhook
 
 configMapGenerator:
 - name: tekton-config-defaults
@@ -26,6 +30,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
 - ../../base/
+- ../../webhooks/
 - 300-operator_v1alpha1_dashboard_crd.yaml
 - 300-operator_v1alpha1_result_crd.yaml
 - operator_service.yaml
