@@ -1,10 +1,4 @@
 namespace: tekton-operator
 resources:
 - ../../base/
-- ../../../webhooks/
 - service_account.yaml
-patches:
-- path: webhook.yaml
-  target:
-    kind: Deployment
-    name: tekton-operator-webhook
