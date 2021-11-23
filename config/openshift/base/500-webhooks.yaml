@@ -47,3 +47,9 @@ webhooks:
       name: tekton-operator-webhook
       namespace: openshift-operators
   name: config.webhook.operator.tekton.dev
+  objectSelector:
+    matchExpressions:
+      - key: operator.tekton.dev/release
+        operator: Exists
+    #matchLabels:
+    #  app.kubernetes.io/part-of: tekton-operator
