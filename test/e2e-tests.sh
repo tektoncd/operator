@@ -32,7 +32,7 @@ failed=0
 header "Setting up environment"
 install_operator_resources
 
-echo "Wait for TektonConfig creation"
+echo "Wait for controller to start and create TektonConfig"
 sleep 30
 
 header "Running Go e2e tests"

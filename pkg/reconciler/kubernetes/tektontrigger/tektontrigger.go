@@ -40,8 +40,8 @@ import (
 
 // Triggers ConfigMap
 const (
-	configDefaults = "config-defaults-triggers"
-	featureFlag    = "feature-flags-triggers"
+	ConfigDefaults = "config-defaults-triggers"
+	FeatureFlag    = "feature-flags-triggers"
 
 	createdByKey       = "operator.tekton.dev/created-by"
 	createdByValue     = "TektonTrigger"
@@ -300,8 +300,8 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	// adding extension's transformers first to run them before `extra` transformers
 	trns := r.extension.Transformers(trigger)
 	extra := []mf.Transformer{
-		common.AddConfigMapValues(configDefaults, trigger.Spec.OptionalTriggersProperties),
-		common.AddConfigMapValues(featureFlag, trigger.Spec.TriggersProperties),
+		common.AddConfigMapValues(ConfigDefaults, trigger.Spec.OptionalTriggersProperties),
+		common.AddConfigMapValues(FeatureFlag, trigger.Spec.TriggersProperties),
 		common.ApplyProxySettings,
 		common.DeploymentImages(triggerImages),
 		common.AddConfiguration(trigger.Spec.Config),
