@@ -39,9 +39,9 @@ import (
 
 const (
 	// Pipelines ConfigMap
-	featureFlag    = "feature-flags"
-	configDefaults = "config-defaults"
-	configMetrics  = "config-observability"
+	FeatureFlag    = "feature-flags"
+	ConfigDefaults = "config-defaults"
+	ConfigMetrics  = "config-observability"
 
 	proxyLabel = "operator.tekton.dev/disable-proxy=true"
 
@@ -344,9 +344,9 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	// adding extension's transformers first to run them before `extra` transformers
 	trns := r.extension.Transformers(instance)
 	extra := []mf.Transformer{
-		common.AddConfigMapValues(featureFlag, pipeline.Spec.PipelineProperties),
-		common.AddConfigMapValues(configDefaults, pipeline.Spec.OptionalPipelineProperties),
-		common.AddConfigMapValues(configMetrics, pipeline.Spec.PipelineMetricsProperties),
+		common.AddConfigMapValues(FeatureFlag, pipeline.Spec.PipelineProperties),
+		common.AddConfigMapValues(ConfigDefaults, pipeline.Spec.OptionalPipelineProperties),
+		common.AddConfigMapValues(ConfigMetrics, pipeline.Spec.PipelineMetricsProperties),
 		common.ApplyProxySettings,
 		common.DeploymentImages(images),
 		common.InjectLabelOnNamespace(proxyLabel),

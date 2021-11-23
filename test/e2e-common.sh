@@ -48,8 +48,4 @@ function install_operator_resources() {
   # TODO: parameterize namespace, operator can run in a namespace different from the namespace where tektonpipelines is installed
   wait_until_pods_running ${OPERATOR_NAMESPACE} || fail_test "Tekton Operator controller did not come up"
 
-  # Make sure that everything is cleaned up in the current namespace.
-  for res in tektonpipelines tektontriggers tektondashboards; do
-    kubectl delete --ignore-not-found=true ${res}.operator.tekton.dev --all
-  done
 }
