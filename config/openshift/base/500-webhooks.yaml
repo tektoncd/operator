@@ -47,3 +47,10 @@ webhooks:
       name: tekton-operator-webhook
       namespace: openshift-operators
   name: config.webhook.operator.tekton.dev
+  # Only watch configmap from openshift-operators
+  # The other way would be to watch object with operator.tekton.dev/release but it's broader
+  namespaceSelector:
+    matchExpressions:
+    - key: kubernetes.io/metadata.name
+      operator: In
+      values: ["openshift-operators"]
