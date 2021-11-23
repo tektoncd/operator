@@ -111,7 +111,7 @@ func (tc tektonConfig) createInstance(ctx context.Context) error {
 				TargetNamespace: tc.namespace,
 			},
 			Pruner: v1alpha1.Prune{
-				Resources: []string{"pipelinerun", "taskrun"},
+				Resources: []string{"pipelinerun"},
 				Keep:      &pruneKeep,
 				KeepSince: nil,
 				Schedule:  "0 8 * * *",
