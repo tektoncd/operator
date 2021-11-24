@@ -31,7 +31,6 @@ metadata:
     app: tekton-operator
 webhooks:
 - admissionReviewVersions:
-  - v1beta1
   - v1
   clientConfig:
     service:
@@ -51,7 +50,6 @@ metadata:
     app: tekton-operator
 webhooks:
 - admissionReviewVersions:
-  - v1beta1
   - v1
   clientConfig:
     service:
@@ -70,7 +68,6 @@ metadata:
     app: tekton-operator
 webhooks:
 - admissionReviewVersions:
-  - v1beta1
   - v1
   clientConfig:
     service:
