@@ -44,11 +44,13 @@ func main() {
 		Port:        8443,
 		SecretName:  secretName,
 	})
-
+	cfg := injection.ParseAndGetRESTConfigOrDie()
+	ctx, _ = injection.EnableInjectionOrDie(ctx, cfg)
+	webhook.CreateWebhookResources(ctx)
 	webhook.SetTypes("kubernetes")
 
 	sharedmain.WebhookMainWithConfig(ctx, serviceName,
-		injection.ParseAndGetRESTConfigOrDie(),
+		cfg,
 		certificates.NewController,
 		webhook.NewDefaultingAdmissionController,
 		webhook.NewValidationAdmissionController,
