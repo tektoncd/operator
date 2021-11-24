@@ -38,7 +38,6 @@ patches:
     name: tekton-operator
 
 patchesStrategicMerge:
-- 500-webhooks.yaml
 - 100-namespace.yaml
 
 resources:
