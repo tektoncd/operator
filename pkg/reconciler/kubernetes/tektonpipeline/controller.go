@@ -18,19 +18,14 @@ package tektonpipeline
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 
-	"github.com/go-logr/zapr"
-	mfc "github.com/manifestival/client-go-client"
-	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
 	tektonPipelineInformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	tektonPipelineReconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"go.uber.org/zap"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/initcontroller"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -51,32 +46,12 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 
-		mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
-		if err != nil {
-			logger.Fatalw("Error creating client from injected config", zap.Error(err))
-		}
-		mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
-		manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
-		if err != nil {
-			logger.Fatalw("Error creating initial manifest", zap.Error(err))
+		ctrl := initcontroller.Controller{
+			Logger:           logger,
+			VersionConfigMap: versionConfigMap,
 		}
 
-		// Reads the source manifest from kodata while initializing the contoller
-		if err := fetchSourceManifests(context.TODO(), &manifest); err != nil {
-			logger.Fatalw("failed to read manifest", err)
-		}
-
-		var releaseVersion string
-		// Read the release version of pipelines
-		releaseVersion, err = common.FetchVersionFromConfigMap(manifest, versionConfigMap)
-		if err != nil {
-			if common.IsFetchVersionError(err) {
-				logger.Warnf("failed to read version information from ConfigMap %s", versionConfigMap, err)
-				releaseVersion = "Unknown"
-			} else {
-				logger.Fatalw("Error while reading ConfigMap", zap.Error(err))
-			}
-		}
+		manifest, releaseVersion := ctrl.InitController(ctx)
 
 		metrics, err := NewRecorder()
 		if err != nil {
@@ -106,21 +81,4 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 
 		return impl
 	}
-}
-
-// fetchSourceManifests mutates the passed manifest by appending one
-// appropriate for the passed TektonComponent
-func fetchSourceManifests(ctx context.Context, manifest *mf.Manifest) error {
-	var pipeline *v1alpha1.TektonPipeline
-	if err := common.AppendTarget(ctx, manifest, pipeline); err != nil {
-		return err
-	}
-	// add proxy configs to pipeline if any
-	return addProxy(manifest)
-}
-
-func addProxy(manifest *mf.Manifest) error {
-	koDataDir := os.Getenv(common.KoEnvKey)
-	proxyLocation := filepath.Join(koDataDir, "webhook")
-	return common.AppendManifest(manifest, proxyLocation)
 }
