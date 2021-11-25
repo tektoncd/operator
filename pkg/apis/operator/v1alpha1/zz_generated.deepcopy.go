@@ -637,11 +637,6 @@ func (in *TektonDashboardSpec) DeepCopy() *TektonDashboardSpec {
 func (in *TektonDashboardStatus) DeepCopyInto(out *TektonDashboardStatus) {
 	*out = *in
 	in.Status.DeepCopyInto(&out.Status)
-	if in.Manifests != nil {
-		in, out := &in.Manifests, &out.Manifests
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	return
 }
 
