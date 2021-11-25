@@ -66,9 +66,9 @@ type TektonDashboardStatus struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// The url links of the manifests, separated by comma
+	// The current installer set name for TektonDashboard
 	// +optional
-	Manifests []string `json:"manifests,omitempty"`
+	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
 }
 
 // TektonDashboardsList contains a list of TektonDashboard
