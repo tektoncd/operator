@@ -25,7 +25,9 @@ import (
 func injectOwner(owner []v1.OwnerReference) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		kind := u.GetKind()
-		if kind == "CustomResourceDefinition" {
+		if kind == "CustomResourceDefinition" ||
+			kind == "ValidatingWebhookConfiguration" ||
+			kind == "MutatingWebhookConfiguration" {
 			return nil
 		}
 		u.SetOwnerReferences(owner)
