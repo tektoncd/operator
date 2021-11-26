@@ -35,12 +35,12 @@ import (
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 )
 
-func CreateTriggerCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
+func CreateTriggerCR(ctx context.Context, instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
 	configInstance := instance.(*v1alpha1.TektonConfig)
-	if _, err := ensureTektonTriggerExists(client.TektonTriggers(), configInstance); err != nil {
+	if _, err := ensureTektonTriggerExists(ctx, client.TektonTriggers(), configInstance); err != nil {
 		return errors.New(err.Error())
 	}
-	if _, err := waitForTektonTriggerState(client.TektonTriggers(), v1alpha1.TriggerResourceName,
+	if _, err := waitForTektonTriggerState(ctx, client.TektonTriggers(), v1alpha1.TriggerResourceName,
 		isTektonTriggerReady); err != nil {
 		log.Println("TektonTrigger is not in ready state: ", err)
 		return err
@@ -48,8 +48,8 @@ func CreateTriggerCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.
 	return nil
 }
 
-func ensureTektonTriggerExists(clients op.TektonTriggerInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonTrigger, error) {
-	ttCR, err := GetTrigger(clients, v1alpha1.TriggerResourceName)
+func ensureTektonTriggerExists(ctx context.Context, clients op.TektonTriggerInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonTrigger, error) {
+	ttCR, err := GetTrigger(ctx, clients, v1alpha1.TriggerResourceName)
 	if err == nil {
 		// if the trigger spec is changed then update the instance
 		updated := false
@@ -76,7 +76,7 @@ func ensureTektonTriggerExists(clients op.TektonTriggerInterface, config *v1alph
 		}
 
 		if updated {
-			return clients.Update(context.TODO(), ttCR, metav1.UpdateOptions{})
+			return clients.Update(ctx, ttCR, metav1.UpdateOptions{})
 		}
 
 		return ttCR, err
@@ -95,26 +95,26 @@ func ensureTektonTriggerExists(clients op.TektonTriggerInterface, config *v1alph
 				Trigger: config.Spec.Trigger,
 			},
 		}
-		return clients.Create(context.TODO(), ttCR, metav1.CreateOptions{})
+		return clients.Create(ctx, ttCR, metav1.CreateOptions{})
 	}
 	return ttCR, err
 }
 
-func GetTrigger(clients op.TektonTriggerInterface, name string) (*v1alpha1.TektonTrigger, error) {
-	return clients.Get(context.TODO(), name, metav1.GetOptions{})
+func GetTrigger(ctx context.Context, clients op.TektonTriggerInterface, name string) (*v1alpha1.TektonTrigger, error) {
+	return clients.Get(ctx, name, metav1.GetOptions{})
 }
 
 // waitForTektonTriggerState polls the status of the TektonTrigger called name
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout.
-func waitForTektonTriggerState(clients op.TektonTriggerInterface, name string,
+func waitForTektonTriggerState(ctx context.Context, clients op.TektonTriggerInterface, name string,
 	inState func(s *v1alpha1.TektonTrigger, err error) (bool, error)) (*v1alpha1.TektonTrigger, error) {
-	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForTektonTriggerState/%s/%s", name, "TektonTriggerIsReady"))
+	span := logging.GetEmitableSpan(ctx, fmt.Sprintf("WaitForTektonTriggerState/%s/%s", name, "TektonTriggerIsReady"))
 	defer span.End()
 
 	var lastState *v1alpha1.TektonTrigger
 	waitErr := wait.PollImmediate(common.Interval, common.Timeout, func() (bool, error) {
-		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
+		lastState, err := clients.Get(ctx, name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
 
@@ -130,18 +130,18 @@ func isTektonTriggerReady(s *v1alpha1.TektonTrigger, err error) (bool, error) {
 }
 
 // TektonTriggerCRDelete deletes tha TektonTrigger to see if all resources will be deleted
-func TektonTriggerCRDelete(clients op.TektonTriggerInterface, name string) error {
-	if _, err := GetTrigger(clients, v1alpha1.TriggerResourceName); err != nil {
+func TektonTriggerCRDelete(ctx context.Context, clients op.TektonTriggerInterface, name string) error {
+	if _, err := GetTrigger(ctx, clients, v1alpha1.TriggerResourceName); err != nil {
 		if apierrs.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
-	if err := clients.Delete(context.TODO(), name, metav1.DeleteOptions{}); err != nil {
+	if err := clients.Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
 		return fmt.Errorf("TektonTrigger %q failed to delete: %v", name, err)
 	}
 	err := wait.PollImmediate(common.Interval, common.Timeout, func() (bool, error) {
-		_, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
+		_, err := clients.Get(ctx, name, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil
 		}
@@ -150,11 +150,11 @@ func TektonTriggerCRDelete(clients op.TektonTriggerInterface, name string) error
 	if err != nil {
 		return fmt.Errorf("Timed out waiting on TektonTrigger to delete %v", err)
 	}
-	return verifyNoTektonTriggerCR(clients)
+	return verifyNoTektonTriggerCR(ctx, clients)
 }
 
-func verifyNoTektonTriggerCR(clients op.TektonTriggerInterface) error {
-	triggers, err := clients.List(context.TODO(), metav1.ListOptions{})
+func verifyNoTektonTriggerCR(ctx context.Context, clients op.TektonTriggerInterface) error {
+	triggers, err := clients.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

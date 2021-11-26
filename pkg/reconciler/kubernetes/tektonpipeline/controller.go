@@ -62,7 +62,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		// Reads the source manifest from kodata while initializing the contoller
-		if err := fetchSourceManifests(context.TODO(), &manifest); err != nil {
+		if err := fetchSourceManifests(ctx, &manifest); err != nil {
 			logger.Fatalw("failed to read manifest", err)
 		}
 

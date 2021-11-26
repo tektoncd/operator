@@ -51,13 +51,13 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	logger := logging.FromContext(ctx)
 
 	if original.Spec.Profile == v1alpha1.ProfileLite {
-		return pipeline.TektonPipelineCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName)
+		return pipeline.TektonPipelineCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName)
 	} else {
 		// TektonPipeline and TektonTrigger is common for profile type basic and all
-		if err := pipeline.TektonPipelineCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName); err != nil {
+		if err := pipeline.TektonPipelineCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName); err != nil {
 			return err
 		}
-		if err := trigger.TektonTriggerCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName); err != nil {
+		if err := trigger.TektonTriggerCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName); err != nil {
 			return err
 		}
 	}
@@ -99,19 +99,19 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	tc.Status.MarkPreInstallComplete()
 
 	// Create TektonPipeline CR
-	if err := pipeline.CreatePipelineCR(tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
+	if err := pipeline.CreatePipelineCR(ctx, tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
 		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPipeline: %s", err.Error()))
 		return err
 	}
 
 	// Create TektonTrigger CR if the profile is all or basic
 	if tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic {
-		if err := trigger.CreateTriggerCR(tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
+		if err := trigger.CreateTriggerCR(ctx, tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
 			return err
 		}
 	} else {
-		if err := trigger.TektonTriggerCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName); err != nil {
+		if err := trigger.TektonTriggerCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
 			return err
 		}

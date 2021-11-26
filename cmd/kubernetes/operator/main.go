@@ -28,10 +28,10 @@ import (
 
 func main() {
 	sharedmain.Main("tekton-operator",
+		tektonconfig.NewController,
 		tektonpipeline.NewController,
 		tektontrigger.NewController,
 		tektondashboard.NewController,
-		tektonconfig.NewController,
 		tektonresult.NewController,
 		tektoninstallerset.NewController,
 	)
