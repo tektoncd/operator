@@ -25,9 +25,11 @@ import (
 	"github.com/manifestival/manifestival/fake"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 var (
@@ -50,6 +52,8 @@ var (
 
 type fakeClient struct {
 	err            error
+	getErr         error
+	createErr      error
 	resourcesExist bool
 	creates        []unstructured.Unstructured
 	deletes        []unstructured.Unstructured
@@ -60,7 +64,7 @@ func (f *fakeClient) Get(obj *unstructured.Unstructured) (*unstructured.Unstruct
 	if f.resourcesExist {
 		resource = &unstructured.Unstructured{}
 	}
-	return resource, f.err
+	return resource, f.getErr
 }
 
 func (f *fakeClient) Delete(obj *unstructured.Unstructured, options ...mf.DeleteOption) error {
@@ -71,7 +75,7 @@ func (f *fakeClient) Delete(obj *unstructured.Unstructured, options ...mf.Delete
 func (f *fakeClient) Create(obj *unstructured.Unstructured, options ...mf.ApplyOption) error {
 	obj.SetAnnotations(nil) // Deleting the extra annotation. Irrelevant for the test.
 	f.creates = append(f.creates, *obj)
-	return f.err
+	return f.createErr
 }
 
 func (f *fakeClient) Update(obj *unstructured.Unstructured, options ...mf.ApplyOption) error {
@@ -150,6 +154,11 @@ func TestInstaller(t *testing.T) {
 
 	// reset created array
 	client.creates = []unstructured.Unstructured{}
+	client.resourcesExist = false
+	client.getErr = errors.NewNotFound(schema.GroupResource{
+		Group:    "apps/v1",
+		Resource: "Deployment",
+	}, "test-deployment")
 
 	want = []unstructured.Unstructured{deployment, service}
 
