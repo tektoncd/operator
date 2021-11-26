@@ -21,10 +21,18 @@ import (
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/pkg/ptr"
+)
+
+const (
+	replicasForHash    = 999
+	lastAppliedHashKey = "operator.tekton.dev/last-applied-hash"
 )
 
 var (
@@ -107,15 +115,151 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 }
 
 func (i *installer) EnsureDeploymentResources() error {
+
+	for _, d := range i.Manifest.Filter(mf.Any(deploymentPred)).Resources() {
+		if err := i.ensureDeployment(&d); err != nil {
+			return err
+		}
+	}
+
 	if err := i.Manifest.Filter(
 		mf.Any(
-			deploymentPred,
 			servicePred,
 			routePred,
 		)).Apply(); err != nil {
 		return err
 	}
 	return nil
+}
+
+func computeDeploymentHash(d appsv1.Deployment) (string, error) {
+	// set replicas to a constant value and then calculate hash so
+	// that later if user updates replicas, we can exclude that change.
+	// setting the replicas to same const and checking the hash
+	// so that we can allow only replica change revert any other change
+	// done to the deployment spec
+	d.Spec.Replicas = ptr.Int32(replicasForHash)
+
+	return common.ComputeHashOf(d.Spec)
+}
+
+func (i *installer) createDeployment(expected *unstructured.Unstructured) error {
+
+	dep := &appsv1.Deployment{}
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(expected.Object, dep)
+	if err != nil {
+		return err
+	}
+
+	hash, err := computeDeploymentHash(*dep)
+	if err != nil {
+		return fmt.Errorf("failed to compute hash of deployment: %v", err)
+	}
+
+	if len(dep.Annotations) == 0 {
+		dep.Annotations = map[string]string{}
+	}
+	dep.Annotations[lastAppliedHashKey] = hash
+
+	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(dep)
+	if err != nil {
+		return err
+	}
+	expected.SetUnstructuredContent(unstrObj)
+
+	return i.Manifest.Client.Create(expected)
+}
+
+func (i *installer) updateDeployment(existing *unstructured.Unstructured, existingDeployment, expectedDeployment *appsv1.Deployment) error {
+
+	// save on cluster replicas in a var and assign it back to deployment
+	onClusterReplicas := existingDeployment.Spec.Replicas
+
+	existingDeployment.Spec = expectedDeployment.Spec
+	existingDeployment.Spec.Replicas = onClusterReplicas
+
+	// compute new hash of spec and add as annotation
+	newHash, err := computeDeploymentHash(*existingDeployment)
+	if err != nil {
+		return fmt.Errorf("failed to compute new hash of existing deployment: %v", err)
+	}
+
+	if len(existingDeployment.Annotations) == 0 {
+		existingDeployment.Annotations = map[string]string{}
+	}
+
+	existingDeployment.Annotations[lastAppliedHashKey] = newHash
+
+	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(existingDeployment)
+	if err != nil {
+		return err
+	}
+	existing.SetUnstructuredContent(unstrObj)
+
+	return i.Manifest.Client.Update(existing)
+}
+
+func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error {
+
+	// check if deployment already exist
+	existing, err := i.Manifest.Client.Get(expected)
+	if err != nil {
+
+		// If deployment doesn't exist, then create new
+		if apierrs.IsNotFound(err) {
+			return i.createDeployment(expected)
+		}
+		return err
+	}
+
+	// if already exist then check if spec is changed
+	existingDeployment := &appsv1.Deployment{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(existing.Object, existingDeployment); err != nil {
+		return err
+	}
+
+	expectedDeployment := &appsv1.Deployment{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(expected.Object, expectedDeployment); err != nil {
+		return err
+	}
+
+	// compare existing deployment spec hash with the one saved in annotation
+	// if annotation doesn't exist then update the deployment
+
+	existingDepSpecHash, err := computeDeploymentHash(*existingDeployment)
+	if err != nil {
+		return fmt.Errorf("failed to compute hash of existing deployment: %v", err)
+	}
+
+	hashFromAnnotation, hashExist := existingDeployment.Annotations[lastAppliedHashKey]
+
+	// if hash doesn't exist then update the deployment with hash
+	if !hashExist {
+		return i.updateDeployment(existing, existingDeployment, expectedDeployment)
+	}
+
+	// if both hashes are same, that means deployment on cluster is the same as when it
+	// was created (there may be change in replica which we allow)
+	if existingDepSpecHash == hashFromAnnotation {
+
+		// there might be a case where deployment in installerSet spec might have changed
+		// compare the expected deployment spec hash with the hash in annotation
+		expectedDepSpecHash, err := computeDeploymentHash(*expectedDeployment)
+		if err != nil {
+			return fmt.Errorf("failed to compute hash of expected deployment: %v", err)
+		}
+
+		if expectedDepSpecHash != hashFromAnnotation {
+			return i.updateDeployment(existing, existingDeployment, expectedDeployment)
+		}
+
+		return nil
+	}
+
+	// hash is changed so revert back to original deployment
+	// keeping the replicas change if exist
+
+	return i.updateDeployment(existing, existingDeployment, expectedDeployment)
 }
 
 func (i *installer) IsWebhookReady() error {
