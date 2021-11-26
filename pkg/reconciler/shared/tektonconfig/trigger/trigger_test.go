@@ -30,18 +30,18 @@ func TestTektonTriggerCreateAndDeleteCR(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
 	tConfig := pipeline.GetTektonConfig()
-	err := CreateTriggerCR(tConfig, c.OperatorV1alpha1())
+	err := CreateTriggerCR(ctx, tConfig, c.OperatorV1alpha1())
 	util.AssertNotEqual(t, err, nil)
 	// recheck triggers creation
-	err = CreateTriggerCR(tConfig, c.OperatorV1alpha1())
+	err = CreateTriggerCR(ctx, tConfig, c.OperatorV1alpha1())
 	util.AssertNotEqual(t, err, nil)
-	err = TektonTriggerCRDelete(c.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName)
+	err = TektonTriggerCRDelete(ctx, c.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName)
 	util.AssertEqual(t, err, nil)
 }
 
 func TestTektonTriggerCRDelete(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	err := TektonTriggerCRDelete(c.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName)
+	err := TektonTriggerCRDelete(ctx, c.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName)
 	util.AssertEqual(t, err, nil)
 }

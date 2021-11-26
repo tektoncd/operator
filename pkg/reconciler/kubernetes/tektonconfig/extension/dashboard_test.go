@@ -30,15 +30,15 @@ func TestTektonDashboardCreateAndDeleteCR(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
 	tConfig := pipeline.GetTektonConfig()
-	err := CreateDashboardCR(tConfig, c.OperatorV1alpha1())
+	err := CreateDashboardCR(ctx, tConfig, c.OperatorV1alpha1())
 	util.AssertNotEqual(t, err, nil)
-	err = TektonDashboardCRDelete(c.OperatorV1alpha1().TektonDashboards(), v1alpha1.DashboardResourceName)
+	err = TektonDashboardCRDelete(ctx, c.OperatorV1alpha1().TektonDashboards(), v1alpha1.DashboardResourceName)
 	util.AssertEqual(t, err, nil)
 }
 
 func TestTektonDashboardCRDelete(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	err := TektonDashboardCRDelete(c.OperatorV1alpha1().TektonDashboards(), v1alpha1.DashboardResourceName)
+	err := TektonDashboardCRDelete(ctx, c.OperatorV1alpha1().TektonDashboards(), v1alpha1.DashboardResourceName)
 	util.AssertEqual(t, err, nil)
 }

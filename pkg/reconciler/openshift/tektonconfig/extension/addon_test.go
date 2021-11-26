@@ -30,15 +30,15 @@ func TestTektonAddonCreateAndDeleteCR(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
 	tConfig := pipeline.GetTektonConfig()
-	err := CreateAddonCR(tConfig, c.OperatorV1alpha1())
+	err := CreateAddonCR(ctx, tConfig, c.OperatorV1alpha1())
 	util.AssertNotEqual(t, err, nil)
-	err = TektonAddonCRDelete(c.OperatorV1alpha1().TektonAddons(), v1alpha1.AddonResourceName)
+	err = TektonAddonCRDelete(ctx, c.OperatorV1alpha1().TektonAddons(), v1alpha1.AddonResourceName)
 	util.AssertEqual(t, err, nil)
 }
 
 func TestTektonAddonCRDelete(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	err := TektonAddonCRDelete(c.OperatorV1alpha1().TektonAddons(), v1alpha1.AddonResourceName)
+	err := TektonAddonCRDelete(ctx, c.OperatorV1alpha1().TektonAddons(), v1alpha1.AddonResourceName)
 	util.AssertEqual(t, err, nil)
 }

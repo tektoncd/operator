@@ -33,12 +33,12 @@ import (
 	"knative.dev/pkg/test/logging"
 )
 
-func CreateDashboardCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
+func CreateDashboardCR(ctx context.Context, instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
 	configInstance := instance.(*v1alpha1.TektonConfig)
-	if _, err := ensureTektonDashboardExists(client.TektonDashboards(), configInstance); err != nil {
+	if _, err := ensureTektonDashboardExists(ctx, client.TektonDashboards(), configInstance); err != nil {
 		return errors.New(err.Error())
 	}
-	if _, err := waitForTektonDashboardState(client.TektonDashboards(), v1alpha1.DashboardResourceName,
+	if _, err := waitForTektonDashboardState(ctx, client.TektonDashboards(), v1alpha1.DashboardResourceName,
 		isTektonDashboardReady); err != nil {
 		log.Println("TektonDashboard is not in ready state: ", err)
 		return err
@@ -46,8 +46,8 @@ func CreateDashboardCR(instance v1alpha1.TektonComponent, client operatorv1alpha
 	return nil
 }
 
-func ensureTektonDashboardExists(clients op.TektonDashboardInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonDashboard, error) {
-	tdCR, err := GetDashboard(clients, v1alpha1.DashboardResourceName)
+func ensureTektonDashboardExists(ctx context.Context, clients op.TektonDashboardInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonDashboard, error) {
+	tdCR, err := GetDashboard(ctx, clients, v1alpha1.DashboardResourceName)
 	if err == nil {
 		// if the dashboard spec is changed then update the instance
 		updated := false
@@ -74,7 +74,7 @@ func ensureTektonDashboardExists(clients op.TektonDashboardInterface, config *v1
 		}
 
 		if updated {
-			return clients.Update(context.TODO(), tdCR, metav1.UpdateOptions{})
+			return clients.Update(ctx, tdCR, metav1.UpdateOptions{})
 		}
 
 		return tdCR, err
@@ -93,26 +93,26 @@ func ensureTektonDashboardExists(clients op.TektonDashboardInterface, config *v1
 				DashboardProperties: config.Spec.Dashboard.DashboardProperties,
 			},
 		}
-		return clients.Create(context.TODO(), tdCR, metav1.CreateOptions{})
+		return clients.Create(ctx, tdCR, metav1.CreateOptions{})
 	}
 	return tdCR, err
 }
 
-func GetDashboard(clients op.TektonDashboardInterface, name string) (*v1alpha1.TektonDashboard, error) {
-	return clients.Get(context.TODO(), name, metav1.GetOptions{})
+func GetDashboard(ctx context.Context, clients op.TektonDashboardInterface, name string) (*v1alpha1.TektonDashboard, error) {
+	return clients.Get(ctx, name, metav1.GetOptions{})
 }
 
 // waitForTektonDashboardState polls the status of the TektonDashboard called name
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout.
-func waitForTektonDashboardState(clients op.TektonDashboardInterface, name string,
+func waitForTektonDashboardState(ctx context.Context, clients op.TektonDashboardInterface, name string,
 	inState func(s *v1alpha1.TektonDashboard, err error) (bool, error)) (*v1alpha1.TektonDashboard, error) {
-	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForTektonDashboardState/%s/%s", name, "TektonDashboardIsReady"))
+	span := logging.GetEmitableSpan(ctx, fmt.Sprintf("WaitForTektonDashboardState/%s/%s", name, "TektonDashboardIsReady"))
 	defer span.End()
 
 	var lastState *v1alpha1.TektonDashboard
 	waitErr := wait.PollImmediate(common.Interval, common.Timeout, func() (bool, error) {
-		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
+		lastState, err := clients.Get(ctx, name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
 	if waitErr != nil {
@@ -127,18 +127,18 @@ func isTektonDashboardReady(s *v1alpha1.TektonDashboard, err error) (bool, error
 }
 
 // TektonDashboardCRDelete deletes tha TektonDashboard to see if all resources will be deleted
-func TektonDashboardCRDelete(clients op.TektonDashboardInterface, name string) error {
-	if _, err := GetDashboard(clients, v1alpha1.DashboardResourceName); err != nil {
+func TektonDashboardCRDelete(ctx context.Context, clients op.TektonDashboardInterface, name string) error {
+	if _, err := GetDashboard(ctx, clients, v1alpha1.DashboardResourceName); err != nil {
 		if apierrs.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
-	if err := clients.Delete(context.TODO(), name, metav1.DeleteOptions{}); err != nil {
+	if err := clients.Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
 		return fmt.Errorf("TektonDashboard %q failed to delete: %v", name, err)
 	}
 	err := wait.PollImmediate(common.Interval, common.Timeout, func() (bool, error) {
-		_, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
+		_, err := clients.Get(ctx, name, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil
 		}
@@ -147,11 +147,11 @@ func TektonDashboardCRDelete(clients op.TektonDashboardInterface, name string) e
 	if err != nil {
 		return fmt.Errorf("Timed out waiting on TektonDashboard to delete %v", err)
 	}
-	return verifyNoTektonDashboardCR(clients)
+	return verifyNoTektonDashboardCR(ctx, clients)
 }
 
-func verifyNoTektonDashboardCR(clients op.TektonDashboardInterface) error {
-	dashboards, err := clients.List(context.TODO(), metav1.ListOptions{})
+func verifyNoTektonDashboardCR(ctx context.Context, clients op.TektonDashboardInterface) error {
+	dashboards, err := clients.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

@@ -33,12 +33,12 @@ import (
 	"knative.dev/pkg/test/logging"
 )
 
-func CreateAddonCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
+func CreateAddonCR(ctx context.Context, instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
 	configInstance := instance.(*v1alpha1.TektonConfig)
-	if _, err := ensureTektonAddonExists(client.TektonAddons(), configInstance); err != nil {
+	if _, err := ensureTektonAddonExists(ctx, client.TektonAddons(), configInstance); err != nil {
 		return errors.New(err.Error())
 	}
-	if _, err := waitForTektonAddonState(client.TektonAddons(), v1alpha1.AddonResourceName,
+	if _, err := waitForTektonAddonState(ctx, client.TektonAddons(), v1alpha1.AddonResourceName,
 		isTektonAddonReady); err != nil {
 		log.Println("TektonAddon is not in ready state: ", err)
 		return err
@@ -46,8 +46,8 @@ func CreateAddonCR(instance v1alpha1.TektonComponent, client operatorv1alpha1.Op
 	return nil
 }
 
-func ensureTektonAddonExists(clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
-	taCR, err := GetAddon(clients, v1alpha1.AddonResourceName)
+func ensureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
+	taCR, err := GetAddon(ctx, clients, v1alpha1.AddonResourceName)
 	if err == nil {
 		// if the addon spec is changed then update the instance
 		updated := false
@@ -69,7 +69,7 @@ func ensureTektonAddonExists(clients op.TektonAddonInterface, config *v1alpha1.T
 		}
 
 		if updated {
-			return clients.Update(context.TODO(), taCR, metav1.UpdateOptions{})
+			return clients.Update(ctx, taCR, metav1.UpdateOptions{})
 		}
 
 		return taCR, err
@@ -90,26 +90,26 @@ func ensureTektonAddonExists(clients op.TektonAddonInterface, config *v1alpha1.T
 				Params: config.Spec.Addon.Params,
 			},
 		}
-		return clients.Create(context.TODO(), taCR, metav1.CreateOptions{})
+		return clients.Create(ctx, taCR, metav1.CreateOptions{})
 	}
 	return taCR, err
 }
 
-func GetAddon(clients op.TektonAddonInterface, name string) (*v1alpha1.TektonAddon, error) {
-	return clients.Get(context.TODO(), name, metav1.GetOptions{})
+func GetAddon(ctx context.Context, clients op.TektonAddonInterface, name string) (*v1alpha1.TektonAddon, error) {
+	return clients.Get(ctx, name, metav1.GetOptions{})
 }
 
 // waitForTektonAddonState polls the status of the TektonAddon called name
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout.
-func waitForTektonAddonState(clients op.TektonAddonInterface, name string,
+func waitForTektonAddonState(ctx context.Context, clients op.TektonAddonInterface, name string,
 	inState func(s *v1alpha1.TektonAddon, err error) (bool, error)) (*v1alpha1.TektonAddon, error) {
-	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForTektonAddonState/%s/%s", name, "TektonAddonIsReady"))
+	span := logging.GetEmitableSpan(ctx, fmt.Sprintf("WaitForTektonAddonState/%s/%s", name, "TektonAddonIsReady"))
 	defer span.End()
 
 	var lastState *v1alpha1.TektonAddon
 	waitErr := wait.PollImmediate(common.Interval, common.Timeout, func() (bool, error) {
-		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
+		lastState, err := clients.Get(ctx, name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
 
@@ -125,18 +125,18 @@ func isTektonAddonReady(s *v1alpha1.TektonAddon, err error) (bool, error) {
 }
 
 // TektonAddonCRDelete deletes tha TektonAddon to see if all resources will be deleted
-func TektonAddonCRDelete(clients op.TektonAddonInterface, name string) error {
-	if _, err := GetAddon(clients, v1alpha1.AddonResourceName); err != nil {
+func TektonAddonCRDelete(ctx context.Context, clients op.TektonAddonInterface, name string) error {
+	if _, err := GetAddon(ctx, clients, v1alpha1.AddonResourceName); err != nil {
 		if apierrs.IsNotFound(err) {
 			return nil
 		}
 		return err
 	}
-	if err := clients.Delete(context.TODO(), name, metav1.DeleteOptions{}); err != nil {
+	if err := clients.Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
 		return fmt.Errorf("TektonAddon %q failed to delete: %v", name, err)
 	}
 	err := wait.PollImmediate(common.Interval, common.Timeout, func() (bool, error) {
-		_, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
+		_, err := clients.Get(ctx, name, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil
 		}
@@ -145,11 +145,11 @@ func TektonAddonCRDelete(clients op.TektonAddonInterface, name string) error {
 	if err != nil {
 		return fmt.Errorf("Timed out waiting on TektonAddon to delete %v", err)
 	}
-	return verifyNoTektonAddonCR(clients)
+	return verifyNoTektonAddonCR(ctx, clients)
 }
 
-func verifyNoTektonAddonCR(clients op.TektonAddonInterface) error {
-	addons, err := clients.List(context.TODO(), metav1.ListOptions{})
+func verifyNoTektonAddonCR(ctx context.Context, clients op.TektonAddonInterface) error {
+	addons, err := clients.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}

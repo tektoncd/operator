@@ -72,7 +72,7 @@ func (tc tektonConfig) ensureInstance(ctx context.Context) {
 		// timeout
 		instance, err := tc.operatorClientSet.
 			OperatorV1alpha1().
-			TektonConfigs().Get(context.TODO(), DefaultCRName, metav1.GetOptions{})
+			TektonConfigs().Get(ctx, DefaultCRName, metav1.GetOptions{})
 		if err == nil {
 			return true, nil
 		}
