@@ -291,6 +291,55 @@ func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfi
 			t.Errorf("Addon params in TektonConfig not equal to TektonAddon params: %s", diff.PrintWantGot(d))
 		}
 	})
+
+	t.Run("validate-addon-params", func(t *testing.T) {
+
+		addonsIS, err := clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{
+			LabelSelector: "operator.tekton.dev/created-by=TektonAddon",
+		})
+		if err != nil {
+			t.Fatalf("failed to get InstallerSet: %v", err)
+		}
+
+		// there must be 5 installerSet created for addons
+		if len(addonsIS.Items) != 5 {
+			t.Fatalf("expected 5 installerSets for Addon but got %v", len(addonsIS.Items))
+		}
+
+		// Now, disable clusterTasks and pipelineTemplates through TektonConfig
+		tc, err := clients.Operator.TektonConfigs().Get(context.TODO(), v1alpha1.ConfigResourceName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("failed to get tektonconfig: %v", err)
+		}
+		tc.Spec.Addon.Params = []v1alpha1.Param{
+			{
+				Name:  v1alpha1.ClusterTasksParam,
+				Value: "false",
+			},
+			{
+				Name:  v1alpha1.PipelineTemplatesParam,
+				Value: "false",
+			},
+		}
+		tc, err = clients.Operator.TektonConfigs().Update(context.TODO(), tc, metav1.UpdateOptions{})
+		if err != nil {
+			t.Fatalf("failed to update tektonconfig: %v", err)
+		}
+
+		// wait till the installer set is deleted
+		time.Sleep(time.Second * 10)
+
+		addonsIS, err = clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{
+			LabelSelector: "operator.tekton.dev/created-by=TektonAddon",
+		})
+		if err != nil {
+			t.Fatalf("failed to get InstallerSet: %v", err)
+		}
+		// Now, there must be 3 installerSet
+		if len(addonsIS.Items) != 3 {
+			t.Fatalf("expected 3 installerSets after disabling params for Addon but got %v", len(addonsIS.Items))
+		}
+	})
 }
 
 func runRbacTest(t *testing.T, clients *utils.Clients) {
