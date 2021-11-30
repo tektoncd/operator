@@ -26,11 +26,11 @@ KUBECONFIG_PARAM=${KUBECONFIG:+"--kubeconfig $KUBECONFIG"}
 
 echo "Running tests on ${TARGET}"
 
-[[ -z ${E2E_DEBUG} ]] && initialize $@
+[[ -z ${E2E_SKIP_CLUSTER_CREATION} ]] && initialize $@
 failed=0
 
 header "Setting up environment"
-install_operator_resources
+[[ -z ${E2E_SKIP_OPERATOR_INSTALLATION} ]] && install_operator_resources
 
 echo "Wait for controller to start and create TektonConfig"
 sleep 30
