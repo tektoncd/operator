@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: v1
-kind: Secret
-metadata:
-  name: tekton-operator-webhook-certs
-  labels:
-    name: tekton-operator-webhook
-    app: tekton-operator
-# The data is populated at install time.
-
----
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
