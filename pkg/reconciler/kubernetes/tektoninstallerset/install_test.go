@@ -36,7 +36,6 @@ import (
 
 var (
 	namespace          = clusterScopedResource("v1", "Namespace", "test-ns")
-	podSecurityPolicy  = clusterScopedResource("policy/v1beta1", "PodSecurityPolicy", "test-pod-security-policy")
 	clusterRole        = clusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRole", "test-cluster-role")
 	role               = namespacedResource("rbac.authorization.k8s.io/v1", "Role", "test", "test-role")
 	serviceAccount     = namespacedResource("v1", "ServiceAccount", "test", "test-service-account")
@@ -107,7 +106,7 @@ func clusterScopedResource(apiVersion, kind, name string) unstructured.Unstructu
 
 func TestInstaller(t *testing.T) {
 	crd.SetDeletionTimestamp(&metav1.Time{})
-	in := []unstructured.Unstructured{namespace, podSecurityPolicy, deployment, clusterRole, role,
+	in := []unstructured.Unstructured{namespace, deployment, clusterRole, role,
 		roleBinding, clusterRoleBinding, serviceAccount, crd, validatingWebhook, mutatingWebhook, configMap, service, hpa, secret}
 
 	client := &fakeClient{}
@@ -134,7 +133,7 @@ func TestInstaller(t *testing.T) {
 	// reset created array
 	client.creates = []unstructured.Unstructured{}
 
-	want = []unstructured.Unstructured{namespace, podSecurityPolicy, clusterRole, validatingWebhook, mutatingWebhook}
+	want = []unstructured.Unstructured{namespace, clusterRole, validatingWebhook, mutatingWebhook}
 
 	err = i.EnsureClusterScopedResources()
 	if err != nil {
