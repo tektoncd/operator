@@ -46,7 +46,6 @@ var (
 	roleBindingPred                    = mf.ByKind("RoleBinding")
 	clusterRolePred                    = mf.ByKind("ClusterRole")
 	clusterRoleBindingPred             = mf.ByKind("ClusterRoleBinding")
-	podSecurityPolicyPred              = mf.ByKind("PodSecurityPolicy")
 	validatingWebhookConfigurationPred = mf.ByKind("ValidatingWebhookConfiguration")
 	mutatingWebhookConfigurationPred   = mf.ByKind("MutatingWebhookConfiguration")
 	horizontalPodAutoscalerPred        = mf.ByKind("HorizontalPodAutoscaler")
@@ -80,7 +79,6 @@ func (i *installer) EnsureClusterScopedResources() error {
 		mf.Any(
 			namespacePred,
 			clusterRolePred,
-			podSecurityPolicyPred,
 			validatingWebhookConfigurationPred,
 			mutatingWebhookConfigurationPred,
 			clusterInterceptorPred,
