@@ -248,3 +248,79 @@ func TestAnnotationCmd(t *testing.T) {
 		}
 	}
 }
+
+// test the cronjob creation with only relevant config change
+func TestConfigChange(t *testing.T) {
+	keep := uint(3)
+	anno1 := map[string]string{pruneKeep: "200"}
+
+	defaultPrune := &v1alpha1.Prune{
+		Resources: []string{"pipelinerun"},
+		Keep:      &keep,
+		Schedule:  scheduleCommon,
+	}
+
+	config := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "config",
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Profile:    "all",
+			Pruner:     *defaultPrune,
+			CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "openshift-pipelines"},
+		},
+	}
+
+	client := fake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-pipelines"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api-url"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-api"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one", Annotations: anno1}},
+	)
+	os.Setenv(JobsTKNImageName, "some")
+
+	err := Prune(context.TODO(), client, config)
+	if err != nil {
+		assert.Error(t, err, "unable to initiate prune")
+	}
+	cronjobs, err := client.BatchV1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		assert.Error(t, err, "unable to get cronjobs ")
+	}
+	oldCronName := cronjobs.Items[0].Name
+	// changes unrelated to prune config, should not give new cron
+	if _, err := client.CoreV1().Namespaces().Update(context.TODO(),
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one",
+			Annotations: map[string]string{pruneKeep: "200", "garbage": "annotation",
+				pruneLastAppliedHash: "dced6f128ff38cd2686fcc2ddc3f38ff9c45f4ea3fddad0f99e722659ca57694"}}}, metav1.UpdateOptions{}); err != nil {
+		assert.Error(t, err, "unexpected error")
+	}
+
+	err = Prune(context.TODO(), client, config)
+	if err != nil {
+		assert.Error(t, err, "unable to initiate prune")
+	}
+	cronjobUnchanged, err := client.BatchV1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
+	if cronjobUnchanged.Items[0].Name != oldCronName {
+		assert.Error(t, err, "cronjob was recreated")
+	}
+
+	// changes related to prune config, should give new cron
+	if _, err := client.CoreV1().Namespaces().Update(context.TODO(),
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one",
+			Annotations: map[string]string{pruneKeep: "200", pruneResources: "pipelinerun, taskrun",
+				pruneLastAppliedHash: "dced6f128ff38cd2686fcc2ddc3f38ff9c45f4ea3fddad0f99e722659ca57694"}}}, metav1.UpdateOptions{}); err != nil {
+		assert.Error(t, err, "unexpected error")
+	}
+
+	err = Prune(context.TODO(), client, config)
+	if err != nil {
+		assert.Error(t, err, "unable to initiate prune")
+	}
+	cronjobChanged, err := client.BatchV1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
+	if oldCronName == cronjobChanged.Items[0].Name {
+		assert.Error(t, err, "a new cronjob expected")
+	}
+}
