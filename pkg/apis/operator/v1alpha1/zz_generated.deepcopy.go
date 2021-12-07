@@ -402,6 +402,7 @@ func (in *TektonAddonSpec) DeepCopyInto(out *TektonAddonSpec) {
 		*out = make([]Param, len(*in))
 		copy(*out, *in)
 	}
+	in.Config.DeepCopyInto(&out.Config)
 	return
 }
 

@@ -32,6 +32,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	tektonaddon "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon/pipelinetemplates"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -410,7 +411,12 @@ func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVe
 func createInstallerSet(ctx context.Context, oc clientset.Interface, ta *v1alpha1.TektonAddon,
 	manifest mf.Manifest, releaseVersion, component, installerSetPrefix string) error {
 
-	is := makeInstallerSet(ta, manifest, installerSetPrefix, releaseVersion)
+	specHash, err := hash.Compute(ta.Spec)
+	if err != nil {
+		return err
+	}
+
+	is := makeInstallerSet(ta, manifest, installerSetPrefix, releaseVersion, specHash)
 
 	createdIs, err := oc.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, is, metav1.CreateOptions{})
@@ -435,7 +441,7 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, ta *v1alpha
 	return nil
 }
 
-func makeInstallerSet(ta *v1alpha1.TektonAddon, manifest mf.Manifest, prefix, releaseVersion string) *v1alpha1.TektonInstallerSet {
+func makeInstallerSet(ta *v1alpha1.TektonAddon, manifest mf.Manifest, prefix, releaseVersion, specHash string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(ta, ta.GetGroupVersionKind())
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -446,6 +452,7 @@ func makeInstallerSet(ta *v1alpha1.TektonAddon, manifest mf.Manifest, prefix, re
 			Annotations: map[string]string{
 				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
 				tektoninstallerset.TargetNamespaceKey: ta.Spec.TargetNamespace,
+				tektoninstallerset.LastAppliedHashKey: specHash,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},

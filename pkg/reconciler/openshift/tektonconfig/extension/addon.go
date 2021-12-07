@@ -62,6 +62,11 @@ func ensureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterfac
 			updated = true
 		}
 
+		if !reflect.DeepEqual(taCR.Spec.Config, config.Spec.Config) {
+			taCR.Spec.Config = config.Spec.Config
+			updated = true
+		}
+
 		if taCR.ObjectMeta.OwnerReferences == nil {
 			ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 			taCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
@@ -88,6 +93,7 @@ func ensureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterfac
 					TargetNamespace: config.Spec.TargetNamespace,
 				},
 				Params: config.Spec.Addon.Params,
+				Config: config.Spec.Config,
 			},
 		}
 		return clients.Create(ctx, taCR, metav1.CreateOptions{})
