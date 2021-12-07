@@ -50,6 +50,9 @@ type TektonAddonSpec struct {
 	// The params to customize different components of Addon
 	// +optional
 	Params []Param `json:"params,omitempty"`
+	// Config holds the configuration for resources created by Addon
+	// +optional
+	Config Config `json:"config,omitempty"`
 }
 
 // TektonAddonStatus defines the observed state of TektonAddon
