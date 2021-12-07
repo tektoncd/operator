@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,19 +35,22 @@ import (
 )
 
 const (
-	tektonSA         = "tekton-pipelines-controller"
-	CronName         = "tekton-resource-pruner"
-	JobsTKNImageName = "IMAGE_JOB_PRUNER_TKN"
-	pruneSkip        = "operator.tekton.dev/prune.skip"
-	pruneResources   = "operator.tekton.dev/prune.resources"
-	pruneStrategy    = "operator.tekton.dev/prune.strategy"
-	pruneKeep        = "operator.tekton.dev/prune.keep"
-	pruneKeepSince   = "operator.tekton.dev/prune.keep-since"
-	pruneSchedule    = "operator.tekton.dev/prune.schedule"
-	pruneCronLabel   = "tektonconfig.operator.tekton.dev/pruner"
-	pruneCronNsLabel = "tektonconfig.operator.tekton.dev/pruner.ns"
-	keep             = "keep"
-	keepSince        = "keep-since"
+	tektonSA             = "tekton-pipelines-controller"
+	CronName             = "tekton-resource-pruner"
+	JobsTKNImageName     = "IMAGE_JOB_PRUNER_TKN"
+	pruneSkip            = "operator.tekton.dev/prune.skip"
+	pruneResources       = "operator.tekton.dev/prune.resources"
+	pruneStrategy        = "operator.tekton.dev/prune.strategy"
+	pruneKeep            = "operator.tekton.dev/prune.keep"
+	pruneKeepSince       = "operator.tekton.dev/prune.keep-since"
+	pruneSchedule        = "operator.tekton.dev/prune.schedule"
+	pruneCronLabel       = "tektonconfig.operator.tekton.dev/pruner"
+	pruneCronNsLabel     = "tektonconfig.operator.tekton.dev/pruner.ns"
+	pruneLastAppliedHash = "operator.tekton.dev/prune.hash"
+	keep                 = "keep"
+	keepSince            = "keep-since"
+	changed              = true
+	unchanged            = false
 )
 
 type Pruner struct {
@@ -62,6 +66,7 @@ type pruneConfigPerNS struct {
 type pruningNs struct {
 	commonScheduleNs map[string]*pruneConfigPerNS
 	uniqueScheduleNS map[string]*pruneConfigPerNS
+	configChanged    bool
 }
 
 func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfig) error {
@@ -111,7 +116,6 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 	pruner.tknImage = tknImageFromEnv
 	logger := logging.FromContext(ctx)
 	ownerRef := *v1.NewControllerRef(tC, tC.GetGroupVersionKind())
-
 	// for the default config from the tektonconfig
 	pruningNamespaces, err := prunableNamespaces(ctx, k, tC.Spec.Pruner)
 	if err != nil {
@@ -120,7 +124,7 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 	if pruningNamespaces.commonScheduleNs != nil && len(pruningNamespaces.commonScheduleNs) > 0 {
 		jobs := pruner.createAllJobContainers(pruningNamespaces.commonScheduleNs)
 		cronNameWithRandomSuffix := SimpleNameGenerator.RestrictLengthWithRandomSuffix(CronName)
-		if err := pruner.checkAndCreate(ctx, cronNameWithRandomSuffix, tC.Spec.TargetNamespace, tC.Spec.TargetNamespace, tC.Spec.Pruner.Schedule, jobs, ownerRef, pruneCronLabel); err != nil {
+		if err := pruner.checkAndCreate(ctx, cronNameWithRandomSuffix, tC.Spec.TargetNamespace, "", tC.Spec.Pruner.Schedule, jobs, ownerRef, pruneCronLabel, pruningNamespaces.configChanged); err != nil {
 			logger.Error("failed to create cronjob ", err)
 		}
 	}
@@ -130,7 +134,7 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 			jobs := pruner.createJobContainers(con, ns)
 			cronNameWithRandomSuffix := SimpleNameGenerator.RestrictLengthWithRandomSuffix(CronName)
 			listOpt := pruneCronNsLabel + "=" + ns
-			if err := pruner.checkAndCreate(ctx, cronNameWithRandomSuffix, tC.Spec.TargetNamespace, ns, con.config.Schedule, jobs, ownerRef, listOpt); err != nil {
+			if err := pruner.checkAndCreate(ctx, cronNameWithRandomSuffix, tC.Spec.TargetNamespace, ns, con.config.Schedule, jobs, ownerRef, listOpt, pruningNamespaces.configChanged); err != nil {
 				logger.Error("failed to create cronjob ", err)
 			}
 		}
@@ -153,12 +157,21 @@ func prunableNamespaces(ctx context.Context, k kubernetes.Interface, defaultPrun
 			continue
 		}
 		nsAnnotations := ns.GetAnnotations()
-		//skip all the namespaces if annotated with prune skip
-		if nsAnnotations[pruneSkip] != "" && nsAnnotations[pruneSkip] == "true" {
-			continue
-		}
+
 		pc := &pruneConfigPerNS{
 			config: v1alpha1.Prune{},
+		}
+		changed, err := diffLastAppliedPruneConfig(ctx, k, defaultPruneConfig, &ns)
+		if err != nil {
+			return prunableNs, err
+		}
+		if changed {
+			prunableNs.configChanged = changed
+		}
+
+		//skip all the namespaces if annotated with prune skip
+		if nsAnnotations[pruneSkip] == "true" {
+			continue
 		}
 
 		if nsAnnotations[pruneResources] != "" {
@@ -216,7 +229,6 @@ func prunableNamespaces(ctx context.Context, k kubernetes.Interface, defaultPrun
 				continue
 			}
 		}
-
 		commonSchedule[ns.Name] = pc
 	}
 	prunableNs.commonScheduleNs = commonSchedule
@@ -250,19 +262,24 @@ func (pruner *Pruner) createJobContainers(nsConfig *pruneConfigPerNS, ns string)
 	return containers
 }
 
-func (pruner *Pruner) checkAndCreate(ctx context.Context, cronName, targetNs, uniquePruneNs, schedule string, pruneContainers []corev1.Container, oR v1.OwnerReference, listOpt string) error {
+func (pruner *Pruner) checkAndCreate(ctx context.Context, cronName, targetNs, uniquePruneNs, schedule string, pruneContainers []corev1.Container, oR v1.OwnerReference, listOpt string, configChanged bool) error {
 	cronList, err := pruner.listCronJobs(ctx, targetNs, listOpt)
 	if err != nil {
 		return err
 	}
-	if len(cronList.Items) == 1 {
+	if len(cronList.Items) == 1 && configChanged {
 		if err := pruner.deleteCronJob(ctx, cronList.Items[0].Name, targetNs); err != nil {
 			return err
 		}
 		return createCronJob(ctx, pruner.kc, cronName, targetNs, uniquePruneNs, schedule, pruneContainers, oR)
 	}
-	if err := createCronJob(ctx, pruner.kc, cronName, targetNs, uniquePruneNs, schedule, pruneContainers, oR); err != nil {
-		return err
+
+	if len(cronList.Items) == 0 && !configChanged {
+		return createCronJob(ctx, pruner.kc, cronName, targetNs, uniquePruneNs, schedule, pruneContainers, oR)
+	}
+
+	if configChanged {
+		return createCronJob(ctx, pruner.kc, cronName, targetNs, uniquePruneNs, schedule, pruneContainers, oR)
 	}
 	return nil
 }
@@ -393,6 +410,54 @@ func (pruner *Pruner) checkAnnotationsRemovedNamespaces(ctx context.Context) ([]
 		}
 	}
 	return uniqueCronName, err
+}
+
+func diffLastAppliedPruneConfig(ctx context.Context, k kubernetes.Interface, defaultconf v1alpha1.Prune, ns *corev1.Namespace) (bool, error) {
+	var oldAnnotations string
+	pruneAnnotationList := []string{pruneSkip, pruneResources, pruneStrategy, pruneKeep, pruneKeepSince, pruneSchedule}
+
+	annotations := ns.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+
+	for _, key := range pruneAnnotationList {
+		if val, ok := annotations[key]; ok {
+			oldAnnotations = oldAnnotations + fmt.Sprint(key) + fmt.Sprint(val)
+		}
+	}
+
+	// this will take care of the prune related annotations in the namespace
+	if oldAnnotations != "" {
+		computedAnnotationsHash, err := hash.Compute(oldAnnotations)
+		if err != nil {
+			return changed, err
+		}
+		return checkConfigChangeUpdateHashInNamespace(ctx, k, ns, annotations, computedAnnotationsHash)
+	}
+
+	// if there are no annotations but, change in default config
+	if defaultconf.IsEmpty() {
+		return changed, nil
+	}
+
+	computedDefaultConfigHash, err := hash.Compute(defaultconf)
+	if err != nil {
+		return changed, err
+	}
+
+	return checkConfigChangeUpdateHashInNamespace(ctx, k, ns, annotations, computedDefaultConfigHash)
+}
+
+func checkConfigChangeUpdateHashInNamespace(ctx context.Context, k kubernetes.Interface, ns *corev1.Namespace, annotations map[string]string, currentComputedHash string) (bool, error) {
+	lastHash := annotations[pruneLastAppliedHash]
+	if lastHash != currentComputedHash {
+		annotations[pruneLastAppliedHash] = currentComputedHash
+		ns.SetAnnotations(annotations)
+		_, err := k.CoreV1().Namespaces().Update(ctx, ns, v1.UpdateOptions{})
+		return changed, err
+	}
+	return unchanged, nil
 }
 
 func stringToUint(num string) *uint {
