@@ -33,6 +33,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/injection"
@@ -84,33 +85,76 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	logger := logging.FromContext(ctx)
 	addon := comp.(*v1alpha1.TektonAddon)
 
-	miscellaneousManifest := oe.manifest
 	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, addon, miscellaneousResourcesInstallerSet)
 	if err != nil {
 		return err
 	}
 	if !exist {
 
-		if err := applyAddons(&miscellaneousManifest, "05-tkncliserve"); err != nil {
+		manifest, err := getMiscellaneousManifest(ctx, addon, oe.manifest, comp)
+		if err != nil {
 			return err
 		}
 
-		if err := getOptionalAddons(&miscellaneousManifest, comp); err != nil {
-			return err
-		}
-
-		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
-		extraTranformers := []mf.Transformer{
-			common.DeploymentImages(images),
-		}
-		if err := addonTransform(ctx, &miscellaneousManifest, addon, extraTranformers...); err != nil {
-			return err
-		}
-
-		if err := createInstallerSet(ctx, oe.operatorClientSet, addon, miscellaneousManifest, oe.version,
+		if err := createInstallerSet(ctx, oe.operatorClientSet, addon, manifest, oe.version,
 			miscellaneousResourcesInstallerSet, "addon-openshift"); err != nil {
 			return err
 		}
+	}
+
+	// Check if installer set is already created
+	compInstallerSet, ok := addon.Status.AddonsInstallerSet[miscellaneousResourcesInstallerSet]
+	if !ok {
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
+
+	installedTIS, err := oe.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		Get(ctx, compInstallerSet, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			manifest, err := getMiscellaneousManifest(ctx, addon, oe.manifest, comp)
+			if err != nil {
+				return err
+			}
+
+			if err := createInstallerSet(ctx, oe.operatorClientSet, addon, manifest, oe.version,
+				miscellaneousResourcesInstallerSet, "addon-openshift"); err != nil {
+				return err
+			}
+		}
+		logger.Error("failed to get InstallerSet: %s", err)
+		return err
+	}
+
+	expectedSpecHash, err := common.ComputeHashOf(addon.Spec)
+	if err != nil {
+		return err
+	}
+
+	// spec hash stored on installerSet
+	lastAppliedHash := installedTIS.GetAnnotations()[lastAppliedHashKey]
+
+	if lastAppliedHash != expectedSpecHash {
+
+		manifest, err := getMiscellaneousManifest(ctx, addon, oe.manifest, comp)
+		if err != nil {
+			return err
+		}
+
+		// Update the spec hash
+		current := installedTIS.GetAnnotations()
+		current[lastAppliedHashKey] = expectedSpecHash
+		installedTIS.SetAnnotations(current)
+
+		// Update the manifests
+		installedTIS.Spec.Manifests = manifest.Resources()
+
+		if _, err = oe.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Update(ctx, installedTIS, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
+
+		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
 	existingInstallerSet, ok := addon.Status.AddonsInstallerSet[miscellaneousResourcesInstallerSet]
@@ -220,4 +264,24 @@ func getRouteHost(manifest *mf.Manifest) (string, error) {
 		}
 	}
 	return hostUrl, nil
+}
+
+func getMiscellaneousManifest(ctx context.Context, addon *v1alpha1.TektonAddon, miscellaneousManifest mf.Manifest, comp v1alpha1.TektonComponent) (mf.Manifest, error) {
+	if err := applyAddons(&miscellaneousManifest, "05-tkncliserve"); err != nil {
+		return mf.Manifest{}, err
+	}
+
+	if err := getOptionalAddons(&miscellaneousManifest, comp); err != nil {
+		return mf.Manifest{}, err
+	}
+
+	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+	extraTranformers := []mf.Transformer{
+		common.DeploymentImages(images),
+		common.AddConfiguration(addon.Spec.Config),
+	}
+	if err := addonTransform(ctx, &miscellaneousManifest, addon, extraTranformers...); err != nil {
+		return mf.Manifest{}, err
+	}
+	return miscellaneousManifest, nil
 }
