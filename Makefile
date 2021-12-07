@@ -1,4 +1,4 @@
-include operatorhub/Makefile
+# include operatorhub/Makefile
 
 MODULE   = $(shell env GO111MODULE=on $(GO) list -m)
 DATE         ?= $(shell date +%FT%T%z)
@@ -98,6 +98,10 @@ apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ 
 .PHONY: apply-cr
 apply-cr: | ; $(info $(M) apply CRs on $(TARGET)) @ ## Apply the CRs to the current cluster
 	$Q kubectl apply -f config/crs/$(TARGET)/$(CR)
+
+.PHONY: operator-bundle
+operator-bundle:
+	make -C operatorhub operator-bundle
 
 .PHONY: clean-cr
 clean-cr: | ; $(info $(M) clean CRs on $(TARGET)) @ ## Clean the CRs to the current cluster
