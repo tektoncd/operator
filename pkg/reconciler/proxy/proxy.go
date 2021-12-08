@@ -429,24 +429,28 @@ func updateVolume(pod corev1.Pod, volumeName, configmapName, key string) corev1.
 			//
 			// Copied from https://golang.org/src/crypto/x509/root_linux.go
 			var certDirectories = []string{
+				// Ordering is important here - we will be using the "first"
+				// element in SSL_CERT_DIR to do the volume mounts.
 				sslCertDir,                     // /tekton-custom-certs
 				"/etc/ssl/certs",               // SLES10/SLES11, https://golang.org/issue/12139
 				"/etc/pki/tls/certs",           // Fedora/RHEL
 				"/system/etc/security/cacerts", // Android
 			}
 
+			// SSL_CERT_DIR accepts a colon separated list of directories
+			sslCertDir = strings.Join(certDirectories, ":")
 			c.Env = append(c.Env, corev1.EnvVar{
-				Name: "SSL_CERT_DIR",
-				// SSL_CERT_DIR accepts a colon separated list of directories
-				Value: strings.Join(certDirectories, ":"),
+				Name:  "SSL_CERT_DIR",
+				Value: sslCertDir,
 			})
 		}
 
 		// Let's mount the certificates now.
 		volumeMounts = append(volumeMounts,
 			corev1.VolumeMount{
-				Name:      volumeName,
-				MountPath: filepath.Join(sslCertDir, key),
+				Name: volumeName,
+				// We only want the first entry in SSL_CERT_DIR for the mount
+				MountPath: filepath.Join(strings.Split(sslCertDir, ":")[0], key),
 				SubPath:   key,
 				ReadOnly:  true,
 			},
