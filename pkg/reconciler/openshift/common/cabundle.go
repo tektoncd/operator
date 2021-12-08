@@ -19,6 +19,7 @@ package common
 import (
 	"encoding/json"
 	"path/filepath"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -125,14 +126,16 @@ func ApplyCABundles(u *unstructured.Unstructured) error {
 		// Let's mount the certificates now.
 		volumeMounts = append(volumeMounts,
 			corev1.VolumeMount{
-				Name:      trustedCAConfigMapVolume,
-				MountPath: filepath.Join(sslCertDir, trustedCAKey),
+				Name: trustedCAConfigMapVolume,
+				// We only want the first entry in SSL_CERT_DIR for the mount
+				MountPath: filepath.Join(strings.Split(sslCertDir, ":")[0], trustedCAKey),
 				SubPath:   trustedCAKey,
 				ReadOnly:  true,
 			},
 			corev1.VolumeMount{
-				Name:      serviceCAConfigMapVolume,
-				MountPath: filepath.Join(sslCertDir, serviceCAKey),
+				Name: serviceCAConfigMapVolume,
+				// We only want the first entry in SSL_CERT_DIR for the mount
+				MountPath: filepath.Join(strings.Split(sslCertDir, ":")[0], serviceCAKey),
 				SubPath:   serviceCAKey,
 				ReadOnly:  true,
 			},
