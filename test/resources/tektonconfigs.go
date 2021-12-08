@@ -119,9 +119,11 @@ func AssertTektonConfigCRReadyStatus(t *testing.T, clients *utils.Clients, names
 	}
 }
 
-// TektonConfigCRDelete deletes tha TektonConfig to see if all resources will be deleted
-func TektonConfigCRDelete(t *testing.T, clients *utils.Clients, crNames utils.ResourceNames) {
+func EnsureNoTektonConfigInstance(t *testing.T, clients *utils.Clients, crNames utils.ResourceNames) {
 	if err := clients.TektonConfig().Delete(context.TODO(), crNames.TektonConfig, metav1.DeleteOptions{}); err != nil {
+		if apierrs.IsNotFound(err) {
+			return
+		}
 		t.Fatalf("TektonConfig %q failed to delete: %v", crNames.TektonConfig, err)
 	}
 	err := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
@@ -134,6 +136,11 @@ func TektonConfigCRDelete(t *testing.T, clients *utils.Clients, crNames utils.Re
 	if err != nil {
 		t.Fatal("Timed out waiting on TektonConfig to delete", err)
 	}
+}
+
+// TektonConfigCRDelete deletes tha TektonConfig to see if all resources will be deleted
+func TektonConfigCRDelete(t *testing.T, clients *utils.Clients, crNames utils.ResourceNames) {
+	EnsureNoTektonConfigInstance(t, clients, crNames)
 	_, b, _, _ := runtime.Caller(0)
 	m, err := mfc.NewManifest(filepath.Join((filepath.Dir(b)+"/.."), "manifests/"), clients.Config)
 	if err != nil {

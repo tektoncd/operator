@@ -34,6 +34,7 @@ func TestTektonAddonsDeployment(t *testing.T) {
 	clients := client.Setup(t)
 
 	crNames := utils.ResourceNames{
+		TektonConfig:    "config",
 		TektonPipeline:  "pipeline",
 		TektonTrigger:   "trigger",
 		TektonAddon:     "addon",
@@ -53,6 +54,8 @@ func TestTektonAddonsDeployment(t *testing.T) {
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownAddon(clients, crNames.TektonAddon) })
 	defer utils.TearDownAddon(clients, crNames.TektonAddon)
+
+	resources.EnsureNoTektonConfigInstance(t, clients, crNames)
 
 	// Create a TektonPipeline
 	if _, err := resources.EnsureTektonPipelineExists(clients.TektonPipeline(), crNames); err != nil {

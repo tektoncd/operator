@@ -171,12 +171,12 @@ func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent)
 func getOptionalAddons(manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
 
-	optionalLocation := filepath.Join(koDataDir, "tekton-addon/"+common.TargetVersion(comp)+"/optional/samples")
+	optionalLocation := filepath.Join(koDataDir, "tekton-addon", "optional", "samples")
 	if err := common.AppendManifest(manifest, optionalLocation); err != nil {
 		return err
 	}
 
-	optionalLocation = filepath.Join(koDataDir, "tekton-addon/"+common.TargetVersion(comp)+"/optional/quickstarts")
+	optionalLocation = filepath.Join(koDataDir, "tekton-addon", "optional", "quickstarts")
 	return common.AppendManifest(manifest, optionalLocation)
 }
 

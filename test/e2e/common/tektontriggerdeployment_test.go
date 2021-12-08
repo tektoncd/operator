@@ -34,6 +34,7 @@ func TestTektonTriggersDeployment(t *testing.T) {
 	clients := client.Setup(t)
 
 	crNames := utils.ResourceNames{
+		TektonConfig:    "config",
 		TektonPipeline:  "pipeline",
 		TektonTrigger:   "trigger",
 		TargetNamespace: "tekton-pipelines",
@@ -48,6 +49,8 @@ func TestTektonTriggersDeployment(t *testing.T) {
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownTrigger(clients, crNames.TektonTrigger) })
 	defer utils.TearDownTrigger(clients, crNames.TektonTrigger)
+
+	resources.EnsureNoTektonConfigInstance(t, clients, crNames)
 
 	// Create a TektonPipeline
 	if _, err := resources.EnsureTektonPipelineExists(clients.TektonPipeline(), crNames); err != nil {

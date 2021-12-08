@@ -484,14 +484,13 @@ func (r *Reconciler) deleteInstallerSet(ctx context.Context, ta *v1alpha1.Tekton
 
 func addPipelineTemplates(manifest *mf.Manifest) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
-	addonLocation := filepath.Join(koDataDir, "tekton-pipeline-template")
+	addonLocation := filepath.Join(koDataDir, "tekton-addon", "tekton-pipeline-template")
 	return tektonaddon.GeneratePipelineTemplates(addonLocation, manifest)
 }
 
 func applyAddons(manifest *mf.Manifest, subpath string) error {
-	comp := &v1alpha1.TektonAddon{}
 	koDataDir := os.Getenv(common.KoEnvKey)
-	addonLocation := filepath.Join(koDataDir, "tekton-addon/"+common.TargetVersion(comp)+"/addons/"+subpath)
+	addonLocation := filepath.Join(koDataDir, "tekton-addon", "addons", subpath)
 	return common.AppendManifest(manifest, addonLocation)
 }
 
