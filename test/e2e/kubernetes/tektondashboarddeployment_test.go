@@ -33,6 +33,7 @@ func TestTektonDashboardsDeployment(t *testing.T) {
 	clients := client.Setup(t)
 
 	crNames := utils.ResourceNames{
+		TektonConfig:    "config",
 		TektonPipeline:  "pipeline",
 		TektonDashboard: "dashboard",
 		TargetNamespace: "tekton-pipelines",
@@ -43,6 +44,8 @@ func TestTektonDashboardsDeployment(t *testing.T) {
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownDashboard(clients, crNames.TektonDashboard) })
 	defer utils.TearDownDashboard(clients, crNames.TektonDashboard)
+
+	resources.EnsureNoTektonConfigInstance(t, clients, crNames)
 
 	// Create a TektonPipeline
 	if _, err := resources.EnsureTektonPipelineExists(clients.TektonPipeline(), crNames); err != nil {
