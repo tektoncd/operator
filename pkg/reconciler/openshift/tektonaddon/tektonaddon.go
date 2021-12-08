@@ -30,6 +30,7 @@ import (
 	informer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektonaddonreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	tektonaddon "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon/pipelinetemplates"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -70,10 +71,7 @@ const (
 	consoleCLIInstallerSet             = "ConsoleCLIInstallerSet"
 	miscellaneousResourcesInstallerSet = "MiscellaneousResourcesInstallerSet"
 
-	createdByKey       = "operator.tekton.dev/created-by"
-	createdByValue     = "TektonAddon"
-	releaseVersionKey  = "operator.tekton.dev/release-version"
-	targetNamespaceKey = "operator.tekton.dev/target-namespace"
+	createdByValue = "TektonAddon"
 )
 
 // Check that our Reconciler implements controller.Reconciler
@@ -389,7 +387,7 @@ func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVe
 			return false, err
 		}
 
-		version, ok := ctIs.Annotations[releaseVersionKey]
+		version, ok := ctIs.Annotations[tektoninstallerset.ReleaseVersionKey]
 		if ok && version == relVersion {
 			// if installer set already exist and release version is same
 			// then ignore and move on
@@ -443,11 +441,11 @@ func makeInstallerSet(ta *v1alpha1.TektonAddon, manifest mf.Manifest, prefix, re
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", prefix),
 			Labels: map[string]string{
-				createdByKey: createdByValue,
+				tektoninstallerset.CreatedByKey: createdByValue,
 			},
 			Annotations: map[string]string{
-				releaseVersionKey:  releaseVersion,
-				targetNamespaceKey: ta.Spec.TargetNamespace,
+				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
+				tektoninstallerset.TargetNamespaceKey: ta.Spec.TargetNamespace,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},

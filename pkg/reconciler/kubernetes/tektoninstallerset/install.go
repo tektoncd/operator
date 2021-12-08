@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -31,8 +31,7 @@ import (
 )
 
 const (
-	replicasForHash    = 999
-	lastAppliedHashKey = "operator.tekton.dev/last-applied-hash"
+	replicasForHash = 999
 )
 
 var (
@@ -138,7 +137,7 @@ func computeDeploymentHash(d appsv1.Deployment) (string, error) {
 	// done to the deployment spec
 	d.Spec.Replicas = ptr.Int32(replicasForHash)
 
-	return common.ComputeHashOf(d.Spec)
+	return hash.Compute(d.Spec)
 }
 
 func (i *installer) createDeployment(expected *unstructured.Unstructured) error {
@@ -157,7 +156,7 @@ func (i *installer) createDeployment(expected *unstructured.Unstructured) error 
 	if len(dep.Annotations) == 0 {
 		dep.Annotations = map[string]string{}
 	}
-	dep.Annotations[lastAppliedHashKey] = hash
+	dep.Annotations[LastAppliedHashKey] = hash
 
 	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(dep)
 	if err != nil {
@@ -186,7 +185,7 @@ func (i *installer) updateDeployment(existing *unstructured.Unstructured, existi
 		existingDeployment.Annotations = map[string]string{}
 	}
 
-	existingDeployment.Annotations[lastAppliedHashKey] = newHash
+	existingDeployment.Annotations[LastAppliedHashKey] = newHash
 
 	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(existingDeployment)
 	if err != nil {
@@ -229,7 +228,7 @@ func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error 
 		return fmt.Errorf("failed to compute hash of existing deployment: %v", err)
 	}
 
-	hashFromAnnotation, hashExist := existingDeployment.Annotations[lastAppliedHashKey]
+	hashFromAnnotation, hashExist := existingDeployment.Annotations[LastAppliedHashKey]
 
 	// if hash doesn't exist then update the deployment with hash
 	if !hashExist {
