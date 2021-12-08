@@ -14,22 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package hash
+package tektoninstallerset
 
-import (
-	"crypto/sha256"
-	"encoding/json"
-	"fmt"
+const (
+	LastAppliedHashKey = "operator.tekton.dev/last-applied-hash"
+	CreatedByKey       = "operator.tekton.dev/created-by"
+	ReleaseVersionKey  = "operator.tekton.dev/release-version"
+	TargetNamespaceKey = "operator.tekton.dev/target-namespace"
 )
-
-// Compute generates an unique hash/string for the
-// object pass to it.
-func Compute(obj interface{}) (string, error) {
-	h := sha256.New()
-	d, err := json.Marshal(obj)
-	if err != nil {
-		return "", err
-	}
-	h.Write(d)
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
-}

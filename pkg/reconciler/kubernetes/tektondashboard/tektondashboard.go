@@ -21,19 +21,18 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
-
 	mf "github.com/manifestival/manifestival"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektondashboardreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektondashboard"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -67,14 +66,7 @@ var _ tektondashboardreconciler.Finalizer = (*Reconciler)(nil)
 
 var watchedResourceName = "dashboard"
 
-const (
-	// TektonInstallerSet keys
-	lastAppliedHashKey = "operator.tekton.dev/last-applied-hash"
-	createdByKey       = "operator.tekton.dev/created-by"
-	createdByValue     = "TektonDashboard"
-	releaseVersionKey  = "operator.tekton.dev/release-version"
-	targetNamespaceKey = "operator.tekton.dev/target-namespace"
-)
+const createdByValue = "TektonDashboard"
 
 // FinalizeKind removes all resources after deletion of a TektonDashboards.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonDashboard) pkgreconciler.Event {
@@ -98,7 +90,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 
 	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", createdByKey, createdByValue),
+			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.CreatedByKey, createdByValue),
 		}); err != nil {
 		logger.Error("Failed to delete installer set created by TektonDashboard", err)
 		return err
@@ -181,8 +173,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 		return err
 	}
 
-	installerSetTargetNamespace := installedTIS.Annotations[targetNamespaceKey]
-	installerSetReleaseVersion := installedTIS.Annotations[releaseVersionKey]
+	installerSetTargetNamespace := installedTIS.Annotations[tektoninstallerset.TargetNamespaceKey]
+	installerSetReleaseVersion := installedTIS.Annotations[tektoninstallerset.ReleaseVersionKey]
 
 	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
 	// Check if Release Version in TektonInstallerSet is same as expected
@@ -225,7 +217,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 		}
 
 		// spec hash stored on installerSet
-		lastAppliedHash := installedTIS.GetAnnotations()[lastAppliedHashKey]
+		lastAppliedHash := installedTIS.GetAnnotations()[tektoninstallerset.LastAppliedHashKey]
 
 		if lastAppliedHash != expectedSpecHash {
 
@@ -243,7 +235,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 
 			// Update the spec hash
 			current := installedTIS.GetAnnotations()
-			current[lastAppliedHashKey] = expectedSpecHash
+			current[tektoninstallerset.LastAppliedHashKey] = expectedSpecHash
 			installedTIS.SetAnnotations(current)
 
 			// Update the manifests
@@ -351,11 +343,11 @@ func makeInstallerSet(td *v1alpha1.TektonDashboard, manifest mf.Manifest, releas
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", v1alpha1.DashboardResourceName),
 			Labels: map[string]string{
-				createdByKey: createdByValue,
+				tektoninstallerset.CreatedByKey: createdByValue,
 			},
 			Annotations: map[string]string{
-				releaseVersionKey:  releaseVersion,
-				targetNamespaceKey: td.Spec.TargetNamespace,
+				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
+				tektoninstallerset.TargetNamespaceKey: td.Spec.TargetNamespace,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},

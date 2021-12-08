@@ -17,8 +17,6 @@ limitations under the License.
 package common
 
 import (
-	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
@@ -54,16 +52,4 @@ func FetchVersionFromConfigMap(manifest mf.Manifest, configMapName string) (stri
 	}
 
 	return "", configMapError
-}
-
-// ComputeHashOf generates an unique hash/string for the
-// object pass to it.
-func ComputeHashOf(obj interface{}) (string, error) {
-	h := sha256.New()
-	d, err := json.Marshal(obj)
-	if err != nil {
-		return "", err
-	}
-	h.Write(d)
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }

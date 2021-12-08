@@ -27,6 +27,8 @@ import (
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonpipelinereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -43,14 +45,8 @@ const (
 	ConfigDefaults = "config-defaults"
 	ConfigMetrics  = "config-observability"
 
-	proxyLabel = "operator.tekton.dev/disable-proxy=true"
-
-	// TektonInstallerSet keys
-	lastAppliedHashKey = "operator.tekton.dev/last-applied-hash"
-	createdByKey       = "operator.tekton.dev/created-by"
-	createdByValue     = "TektonPipeline"
-	releaseVersionKey  = "operator.tekton.dev/release-version"
-	targetNamespaceKey = "operator.tekton.dev/target-namespace"
+	proxyLabel     = "operator.tekton.dev/disable-proxy=true"
+	createdByValue = "TektonPipeline"
 )
 
 // Reconciler implements controller.Reconciler for TektonPipeline resources.
@@ -88,7 +84,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 
 	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", createdByKey, createdByValue),
+			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.CreatedByKey, createdByValue),
 		}); err != nil {
 		logger.Error("Failed to delete installer set created by TektonPipeline", err)
 		return err
@@ -160,8 +156,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		return err
 	}
 
-	installerSetTargetNamespace := installedTIS.Annotations[targetNamespaceKey]
-	installerSetReleaseVersion := installedTIS.Annotations[releaseVersionKey]
+	installerSetTargetNamespace := installedTIS.Annotations[tektoninstallerset.TargetNamespaceKey]
+	installerSetReleaseVersion := installedTIS.Annotations[tektoninstallerset.ReleaseVersionKey]
 
 	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
 	// Check if Release Version in TektonInstallerSet is same as expected
@@ -197,13 +193,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		// TektonInstallerSet with computing new hash of TektonPipeline Spec
 
 		// Hash of TektonPipeline Spec
-		expectedSpecHash, err := common.ComputeHashOf(tp.Spec)
+		expectedSpecHash, err := hash.Compute(tp.Spec)
 		if err != nil {
 			return err
 		}
 
 		// spec hash stored on installerSet
-		lastAppliedHash := installedTIS.GetAnnotations()[lastAppliedHashKey]
+		lastAppliedHash := installedTIS.GetAnnotations()[tektoninstallerset.LastAppliedHashKey]
 
 		if lastAppliedHash != expectedSpecHash {
 			manifest := r.manifest
@@ -214,7 +210,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 
 			// Update the spec hash
 			current := installedTIS.GetAnnotations()
-			current[lastAppliedHashKey] = expectedSpecHash
+			current[tektoninstallerset.LastAppliedHashKey] = expectedSpecHash
 			installedTIS.SetAnnotations(current)
 
 			// Update the manifests
@@ -299,7 +295,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.Tekton
 	// in further reconciliation we compute hash of tp spec and check with
 	// annotation, if they are same then we skip updating the object
 	// otherwise we update the manifest
-	specHash, err := common.ComputeHashOf(tp.Spec)
+	specHash, err := hash.Compute(tp.Spec)
 	if err != nil {
 		return nil, err
 	}
@@ -320,12 +316,12 @@ func makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.Manifest, tpSpecH
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", v1alpha1.PipelineResourceName),
 			Labels: map[string]string{
-				createdByKey: createdByValue,
+				tektoninstallerset.CreatedByKey: createdByValue,
 			},
 			Annotations: map[string]string{
-				releaseVersionKey:  releaseVersion,
-				targetNamespaceKey: tp.Spec.TargetNamespace,
-				lastAppliedHashKey: tpSpecHash,
+				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
+				tektoninstallerset.TargetNamespaceKey: tp.Spec.TargetNamespace,
+				tektoninstallerset.LastAppliedHashKey: tpSpecHash,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
