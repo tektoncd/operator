@@ -1,0 +1,50 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: bitbucket-pullreq
+spec:
+  params:
+    - name: gitrepo-url
+      value: $(body.pullRequest.fromRef.repository.links.clone[0].href)
+    - name: pullreq-sha
+      value: $(body.pullRequest.fromRef.latestCommit)
+    - name: pullreq-state
+      value: $(body.pullRequest.state)
+    - name: pullreq-number
+      value: $(body.pullRequest.id)
+    - name: pullreq-repo-name
+      value: $(body.pullRequest.toRef.repository.name)
+    - name: pullreq-html-url
+      value: $(body.pullRequest.links.self[0].href)
+    - name: pullreq-title
+      value: $(body.pullRequest.title)
+    - name: user-type
+      value: $(body.pullRequest.author.user.type)
+
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: bitbucket-push
+spec:
+  params:
+    - name: git-revision
+      value: $(body.changes[0].ref.displayId)
+    - name: gitrepo-url
+      value: $(body.repository.links.clone[0].href)
+    - name: git-repo-name
+      value: $(body.repository.name)
+    - name: pusher-name
+      value: $(body.actor.name)
+
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: bitbucket-pullreq-add-comment
+spec:
+  params:
+    - name: comment
+      value: $(body.comment.text)
+    - name: comment-user-login
+      value: $(body.comment.author.name)

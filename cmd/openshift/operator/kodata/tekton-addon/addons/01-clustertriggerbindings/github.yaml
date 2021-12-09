@@ -1,0 +1,61 @@
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: github-pullreq
+spec:
+  params:
+  - name: git-repo-url
+    value: $(body.repository.html_url)
+  - name: pullreq-sha
+    value: $(body.pull_request.head.sha)
+  - name: pullreq-action
+    value: $(body.action)
+  - name: pullreq-number
+    value: $(body.number)
+  - name: pullreq-repo-full_name
+    value: $(body.repository.full_name)
+  - name: pullreq-html-url
+    value: $(body.pull_request.html_url)
+  - name: pullreq-title
+    value: $(body.pull_request.title)
+  - name: pullreq-issue-url
+    value: $(body.pull_request.issue_url)
+  - name: organisations-url
+    value: $(body.pull_request.user.organizations_url)
+  - name: user-type
+    value: $(body.pull_request.user.type)
+
+
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: github-push
+spec:
+  params:
+  - name: git-revision
+    value: $(body.head_commit.id)
+  - name: git-commit-message
+    value: $(body.head_commit.message)
+  - name: git-repo-url
+    value: $(body.repository.url)
+  - name: git-repo-name
+    value: $(body.repository.name)
+  - name: content-type
+    value: $(header.Content-Type)
+  - name: pusher-name
+    value: $(body.pusher.name)
+
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: github-pullreq-review-comment
+spec:
+  params:
+  - name: comment
+    value: $(body.comment.body)
+  - name: comment-user-login
+    value: $(body.comment.user.login)
+  - name: merge-commit-sha
+    value: $(body.pull_request.merge_commit_sha)

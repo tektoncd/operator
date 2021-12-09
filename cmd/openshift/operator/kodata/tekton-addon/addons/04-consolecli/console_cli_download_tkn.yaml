@@ -1,0 +1,18 @@
+apiVersion: console.openshift.io/v1
+kind: ConsoleCLIDownload
+metadata:
+  name: tkn
+spec:
+  description: The OpenShift Pipeline client `tkn` is a CLI tool that allows you to manage OpenShift Pipeline resources.
+  displayName: tkn - OpenShift Pipeline Command Line Interface (CLI)
+  links:
+    - href: https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-amd64-0.17.2.tar.gz
+      text: Download tkn for Linux
+    - href: https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-macos-amd64-0.17.2.tar.gz
+      text: Download tkn for Mac
+    - href: https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-windows-amd64-0.17.2.zip
+      text: Download tkn for Windows
+    - href: https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-ppc64le-0.17.2.tar.gz
+      text: Download tkn for IBM Power
+    - href: https://mirror.openshift.com/pub/openshift-v4/clients/pipeline/0.17.2/tkn-linux-s390x-0.17.2.tar.gz
+      text: Download tkn for IBM Z

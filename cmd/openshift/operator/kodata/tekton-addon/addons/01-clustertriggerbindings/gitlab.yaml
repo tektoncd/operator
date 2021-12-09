@@ -1,0 +1,107 @@
+# pull/merge_request event https://docs.gitlab.com/ee/user/project/integrations/webhooks.html#merge-request-events
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: gitlab-mergereq
+spec:
+  params:
+  - name: git-repo-url
+    value: $(body.project.git_http_url)
+  - name: mergereq-sha
+    value: $(body.object_attributes.last_commit.id)
+  - name: mergereq-action
+    value: $(body.object_attributes.action)
+  - name: mergereq-number
+    value: $(body.object_attributes.iid)
+  - name: mergereq-repo-name
+    value: $(body.repository.name)
+  - name: mergereq-url
+    value: $(body.object_attributes.url)
+  - name: mergereq-title
+    value: $(body.object_attributes.title)
+
+# push events https://docs.gitlab.com/ee/user/project/integrations/webhooks.html#push-events
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: gitlab-push
+spec:
+  params:
+  - name: git-revision
+    value: $(body.checkout_sha)
+  - name: git-commit-message
+    value: $(body.commits[0].message)
+  - name: git-repo-url
+    value: $(body.repository.git_http_url)
+  - name: git-repo-name
+    value: $(body.repository.name)
+  - name: pusher-name
+    value: $(body.user_name)
+
+# comment events are done at commit, merge_request, issue and code snippet for more info https://docs.gitlab.com/ee/user/project/integrations/webhooks.html#comment-events
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: gitlab-review-comment-on-issues
+spec:
+  params:
+  - name: issue-url
+    value: $(body.issue.url)
+  - name: issue-title
+    value: $(body.issue.title)
+  - name: issue-comment-link
+    value: $(body.object_attributes.url)
+  - name: issue-owner
+    value: $(body.user.name)
+
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: gitlab-review-comment-on-mergerequest
+spec:
+  params:
+    - name: mergereq-url
+      value: $(body.merge_request.url)
+    - name: comment-description
+      value: $(body.object_attributes.description)
+    - name: comment-url
+      value: $(body.object_attributes.url)
+    - name: mr-owner
+      value: $(body.user.name)
+
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: gitlab-review-comment-on-commit
+spec:
+  params:
+    - name: commit-url
+      value: $(body.commit.url)
+    - name: comment-description
+      value: $(body.object_attributes.description)
+    - name: comment-url
+      value: $(body.object_attributes.url)
+    - name: commit-owner
+      value: $(body.user.name)
+
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: ClusterTriggerBinding
+metadata:
+  name: gitlab-review-comment-on-snippet
+spec:
+  params:
+    - name: snippet-comment-description
+      value: $(body.object_attributes.description)
+    - name: snippet-comment-url
+      value: $(body.object_attributes.url)
+    - name: snippet-title
+      value: $(body.snippet.title)
+    - name: snippet-type
+      value: $(body.snippet.type)
+    - name: snippet-owner
+      value: $(body.user.name)
