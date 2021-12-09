@@ -1,0 +1,33 @@
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleYAMLSample
+metadata:
+  name: s2i-nodejs-snippet
+spec:
+  targetResource:
+    apiVersion: tekton.dev/v1beta1
+    kind: Pipeline
+  title: S2I-Nodejs Workspace based Task
+  description: |
+    An s2i task to build nodejs based source.
+    Source-to-Image (S2I) is a toolkit and workflow for building reproducible container images from source code.
+    S2I produces images by injecting source code into a base S2I container image and letting the container prepare that source code for execution.
+    The base S2I container images contains the language runtime and build tools needed for building and running the source code.
+  snippet: true
+  yaml: |
+    - name: build
+      taskRef:
+        name: s2i-nodejs
+        kind: ClusterTask
+      workspaces:
+        - name: source
+          workspace: workspace
+      params:
+        - name: IMAGE
+          value: $(params.IMAGE_NAME)
+        - name: VERSION
+          value: "14-ubi8"
+        - name: PATH_CONTEXT
+          value: .
+        - name: TLSVERIFY
+          value: "true"

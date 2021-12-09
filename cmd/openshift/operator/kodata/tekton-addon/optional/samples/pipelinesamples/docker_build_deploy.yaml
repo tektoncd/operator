@@ -1,0 +1,70 @@
+---
+apiVersion: console.openshift.io/v1
+kind: ConsoleYAMLSample
+metadata:
+  name: docker-build-and-deploy-pipeline
+spec:
+  targetResource:
+    apiVersion: tekton.dev/v1beta1
+    kind: Pipeline
+  title: docker-build-and-deploy-pipeline
+  description: An example of docker build and deploy pipeline
+  snippet: false
+  yaml: |
+    apiVersion: tekton.dev/v1beta1
+    kind: Pipeline
+    metadata:
+      name: docker-build-and-deploy-pr
+    spec:
+      params:
+        - name: IMAGE_NAME
+          type: string
+        - name: GIT_REPO
+          type: string
+        - name: GIT_REVISION
+          type: string
+      workspaces:
+        - name: workspace
+      tasks:
+        - name: fetch-repository
+          taskRef:
+            name: git-clone
+            kind: ClusterTask
+          workspaces:
+            - name: output
+              workspace: workspace
+          params:
+            - name: url
+              value: $(params.GIT_REPO)
+            - name: revision
+              value: $(params.GIT_REVISION)
+            - name: subdirectory
+              value: ""
+            - name: deleteExisting
+              value: "true"
+
+        - name: build
+          taskRef:
+            name: buildah
+            kind: ClusterTask
+          runAfter:
+            - fetch-repository
+          workspaces:
+            - name: source
+              workspace: workspace
+          params:
+            - name: IMAGE
+              value: $(params.IMAGE_NAME)
+            - name: TLSVERIFY
+              value: "false"
+
+        - name: deploy
+          taskRef:
+            name: openshift-client
+            kind: ClusterTask
+          runAfter:
+            - build
+          params:
+          - name: SCRIPT
+            value: |
+              oc new-app --docker-image $(params.IMAGE_NAME)
