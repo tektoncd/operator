@@ -112,8 +112,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 
 	logger.Infow("Reconciling TektonDashboards", "status", td.Status)
 
-	r.releaseVersion = common.TargetVersion(td)
-
 	if td.GetName() != watchedResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
 			watchedResourceName,

@@ -51,7 +51,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			VersionConfigMap: versionConfigMap,
 		}
 
-		manifest, releaseVersion := ctrl.InitController(ctx)
+		manifest, releaseVersion := ctrl.InitController(ctx, initcontroller.PayloadOptions{})
 
 		metrics, err := NewRecorder()
 		if err != nil {
