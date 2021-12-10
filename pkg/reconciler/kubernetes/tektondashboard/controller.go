@@ -18,9 +18,8 @@ package tektondashboard
 
 import (
 	"context"
-	"github.com/go-logr/zapr"
-	mfc "github.com/manifestival/client-go-client"
-	mf "github.com/manifestival/manifestival"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/initcontroller"
+
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
 
@@ -38,6 +37,8 @@ import (
 	"knative.dev/pkg/logging"
 )
 
+const versionConfigMap = "dashboard-info"
+
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
@@ -52,31 +53,14 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		kubeClient := kubeclient.Get(ctx)
 		logger := logging.FromContext(ctx)
 
-		mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
-		if err != nil {
-			logger.Fatalw("Error creating client from injected config", zap.Error(err))
-		}
-		mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
-
-		readonlyManifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
-		if err != nil {
-			logger.Fatalw("Error creating initial manifest", zap.Error(err))
+		ctrl := initcontroller.Controller{
+			Logger:           logger,
+			VersionConfigMap: versionConfigMap,
 		}
 
-		// Reads the source manifest from kodata while initializing the contoller
-		if err := fetchSourceReadOnlyManifests(ctx, &readonlyManifest); err != nil {
-			logger.Fatalw("failed to read manifest", err)
-		}
+		readonlyManifest, releaseVersion := ctrl.InitController(ctx, initcontroller.PayloadOptions{ReadOnly: true})
 
-		fullaccessManifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
-		if err != nil {
-			logger.Fatalw("Error creating initial manifest", zap.Error(err))
-		}
-
-		// Reads the source manifest from kodata while initializing the contoller
-		if err := fetchSourceFullAccessManifests(context.TODO(), &fullaccessManifest); err != nil {
-			logger.Fatalw("failed to read manifest", err)
-		}
+		fullaccessManifest, _ := ctrl.InitController(ctx, initcontroller.PayloadOptions{ReadOnly: false})
 
 		c := &Reconciler{
 			kubeClientSet:      kubeClient,
@@ -85,6 +69,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			readonlyManifest:   readonlyManifest,
 			fullaccessManifest: fullaccessManifest,
 			pipelineInformer:   tektonPipelineInformer,
+			releaseVersion:     releaseVersion,
 		}
 		impl := tektonDashboardreconciler.NewImpl(ctx, c)
 
@@ -102,20 +87,4 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 
 		return impl
 	}
-}
-
-// fetchSourceReadOnlyManifests mutates the passed manifest by appending one
-// appropriate for the passed TektonComponent with readonly value set to true
-func fetchSourceReadOnlyManifests(ctx context.Context, manifest *mf.Manifest) error {
-	var dashboard v1alpha1.TektonDashboard
-	dashboard.Spec.Readonly = true
-	return common.AppendTarget(ctx, manifest, &dashboard)
-}
-
-// fetchSourceFullAccessManifests mutates the passed manifest by appending one
-// appropriate for the passed TektonComponent with readonly value set to false
-func fetchSourceFullAccessManifests(ctx context.Context, manifest *mf.Manifest) error {
-	var dashboard v1alpha1.TektonDashboard
-	dashboard.Spec.Readonly = false
-	return common.AppendTarget(ctx, manifest, &dashboard)
 }
