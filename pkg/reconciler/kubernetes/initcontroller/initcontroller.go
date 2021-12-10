@@ -37,7 +37,11 @@ type Controller struct {
 	VersionConfigMap string
 }
 
-func (ctrl Controller) InitController(ctx context.Context) (mf.Manifest, string) {
+type PayloadOptions struct {
+	ReadOnly bool
+}
+
+func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) (mf.Manifest, string) {
 
 	mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
 	if err != nil {
@@ -51,7 +55,7 @@ func (ctrl Controller) InitController(ctx context.Context) (mf.Manifest, string)
 	}
 
 	ctrl.Manifest = &manifest
-	if err := ctrl.fetchSourceManifests(ctx); err != nil {
+	if err := ctrl.fetchSourceManifests(ctx, opts); err != nil {
 		ctrl.Logger.Fatalw("failed to read manifest", err)
 	}
 
@@ -72,7 +76,7 @@ func (ctrl Controller) InitController(ctx context.Context) (mf.Manifest, string)
 
 // fetchSourceManifests mutates the passed manifest by appending one
 // appropriate for the passed TektonComponent
-func (ctrl Controller) fetchSourceManifests(ctx context.Context) error {
+func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOptions) error {
 	switch {
 	case strings.Contains(ctrl.VersionConfigMap, "pipeline"):
 		var pipeline *v1alpha1.TektonPipeline
@@ -84,6 +88,14 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context) error {
 	case strings.Contains(ctrl.VersionConfigMap, "triggers"):
 		var trigger *v1alpha1.TektonTrigger
 		return common.AppendTarget(ctx, ctrl.Manifest, trigger)
+	case strings.Contains(ctrl.VersionConfigMap, "dashboard") && opts.ReadOnly:
+		var dashboard v1alpha1.TektonDashboard
+		dashboard.Spec.Readonly = true
+		return common.AppendTarget(ctx, ctrl.Manifest, &dashboard)
+	case strings.Contains(ctrl.VersionConfigMap, "dashboard") && !opts.ReadOnly:
+		var dashboard v1alpha1.TektonDashboard
+		dashboard.Spec.Readonly = false
+		return common.AppendTarget(ctx, ctrl.Manifest, &dashboard)
 	}
 
 	return nil
