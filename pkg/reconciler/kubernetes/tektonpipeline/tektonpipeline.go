@@ -34,6 +34,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -63,7 +64,8 @@ type Reconciler struct {
 	// releaseVersion describes the current pipelines version
 	releaseVersion string
 	// metrics handles metrics for pipeline install
-	metrics *Recorder
+	metrics       *Recorder
+	kubeClientSet kubernetes.Interface
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -115,6 +117,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 
 	// Pass the object through defaulting
 	tp.SetDefaults(ctx)
+
+	if err := r.targetNamespaceCheck(ctx, tp); err != nil {
+		return err
+	}
 
 	if err := r.extension.PreReconcile(ctx, tp); err != nil {
 		tp.Status.MarkPreReconcilerFailed(fmt.Sprintf("PreReconciliation failed: %s", err.Error()))
@@ -329,6 +335,22 @@ func makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.Manifest, tpSpecH
 			Manifests: manifest.Resources(),
 		},
 	}
+}
+
+func (r *Reconciler) targetNamespaceCheck(ctx context.Context, tp *v1alpha1.TektonPipeline) error {
+	labels := r.manifest.Filter(mf.ByKind("Namespace")).Resources()[0].GetLabels()
+
+	ns, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, tp.GetSpec().GetTargetNamespace(), metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+	for key, value := range labels {
+		ns.Labels[key] = value
+	}
+	_, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, ns, metav1.UpdateOptions{})
+	return err
 }
 
 // transform mutates the passed manifest to one with common, component

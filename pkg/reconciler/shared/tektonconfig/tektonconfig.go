@@ -19,13 +19,19 @@ package tektonconfig
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
+	corev1 "k8s.io/api/core/v1"
+
+	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
@@ -40,6 +46,7 @@ type Reconciler struct {
 	operatorClientSet clientset.Interface
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
+	manifest  mf.Manifest
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -88,6 +95,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	tc.SetDefaults(ctx)
 
+	if err := r.ensureTargetNamespaceExists(ctx, tc); err != nil {
+		return err
+	}
+
+	if err := r.createOperatorVersionConfigMap(tc); err != nil {
+		return err
+	}
+
 	if err := r.extension.PreReconcile(ctx, tc); err != nil {
 		if err == v1alpha1.RECONCILE_AGAIN_ERR {
 			return err
@@ -131,9 +146,100 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	tc.Status.MarkPostInstallComplete()
 
+	if err := r.deleteObsoleteTargetNamespaces(ctx, tc); err != nil {
+		logger.Error(err)
+	}
+
 	// Update the object for any spec changes
 	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, v1.UpdateOptions{}); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (r *Reconciler) createOperatorVersionConfigMap(tc *v1alpha1.TektonConfig) error {
+	koDataDir := os.Getenv(common.KoEnvKey)
+	operatorDir := filepath.Join(koDataDir, "info")
+
+	if err := common.AppendManifest(&r.manifest, operatorDir); err != nil {
+		return err
+	}
+
+	manifest, err := r.manifest.Transform(
+		mf.InjectNamespace(tc.GetSpec().GetTargetNamespace()),
+		mf.InjectOwner(tc),
+	)
+	if err != nil {
+		return err
+	}
+
+	if err = manifest.Apply(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Reconciler) ensureTargetNamespaceExists(ctx context.Context, tc *v1alpha1.TektonConfig) error {
+
+	ns, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("operator.tekton.dev/targetNamespace=%s", "true"),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	if len(ns.Items) > 0 {
+		for _, namespace := range ns.Items {
+			if namespace.Name != tc.GetSpec().GetTargetNamespace() {
+				namespace.Labels["operator.tekton.dev/targetNamespace/mark-for-deletion"] = "true"
+				_, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &namespace, metav1.UpdateOptions{})
+				if err != nil {
+					return err
+				}
+
+			} else {
+				return nil
+			}
+		}
+	} else {
+		ns := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: tc.GetSpec().GetTargetNamespace(),
+				Labels: map[string]string{
+					"operator.tekton.dev/targetNamespace": "true",
+				},
+			},
+		}
+
+		if _, err = r.kubeClientSet.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *Reconciler) deleteObsoleteTargetNamespaces(ctx context.Context, tc *v1alpha1.TektonConfig) error {
+
+	ns, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("operator.tekton.dev/targetNamespace/mark-for-deletion=%s", "true"),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	for _, namespace := range ns.Items {
+		if namespace.Name != tc.GetSpec().GetTargetNamespace() {
+			if err := r.kubeClientSet.CoreV1().Namespaces().Delete(ctx, tc.GetSpec().GetTargetNamespace(), metav1.DeleteOptions{}); err != nil {
+				return err
+			}
+		} else {
+			return nil
+		}
 	}
 
 	return nil
