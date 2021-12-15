@@ -21,11 +21,16 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/go-logr/zapr"
+	mf "github.com/manifestival/manifestival"
+	"go.uber.org/zap"
+
 	"knative.dev/pkg/kmeta"
 
 	"k8s.io/apimachinery/pkg/types"
 	namespaceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
 
+	mfc "github.com/manifestival/client-go-client"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
@@ -46,10 +51,22 @@ func NewExtensibleController(generator common.ExtensionGenerator) injection.Cont
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 
+		mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
+		if err != nil {
+			logger.Fatalw("Error creating client from injected config", zap.Error(err))
+		}
+		mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
+
+		manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
+		if err != nil {
+			logger.Fatalw("Error creating initial manifest", zap.Error(err))
+		}
+
 		c := &Reconciler{
 			kubeClientSet:     kubeclient.Get(ctx),
 			operatorClientSet: operatorclient.Get(ctx),
 			extension:         generator(ctx),
+			manifest:          manifest,
 		}
 		impl := tektonConfigreconciler.NewImpl(ctx, c)
 
