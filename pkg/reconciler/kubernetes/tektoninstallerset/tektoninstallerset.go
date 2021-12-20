@@ -54,9 +54,10 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, installerSet *v1alpha1.Te
 		return err
 	}
 
-	// Delete all resources except CRDs as they are own by owner of
+	// Delete all resources except CRDs and Namespace as they are own by owner of
 	// TektonInstallerSet
-	err = deleteManifests.Filter(mf.Not(mf.CRDs)).Delete()
+	// They will be deleted when the component CR is deleted
+	err = deleteManifests.Filter(mf.Not(mf.Any(namespacePred, mf.CRDs))).Delete()
 	if err != nil {
 		logger.Error("failed to delete resources")
 		return err
@@ -84,14 +85,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	}
 
 	// Set owner of InstallerSet as owner of CRDs so that
-	// deleting the installer will not delete the CRDs
-	// If installerSet has not set any owner then crds will
+	// deleting the installer will not delete the CRDs and Namespace
+	// If installerSet has not set any owner then CRDs will
 	// not have any owner
 	installerSetOwner := installerSet.GetOwnerReferences()
 
 	installManifests, err = installManifests.Transform(
 		injectOwner(getReference(installerSet)),
-		injectOwnerForCRDs(installerSetOwner),
+		injectOwnerForCRDsAndNamespace(installerSetOwner),
 	)
 	if err != nil {
 		logger.Error("failed to transform manifest")
