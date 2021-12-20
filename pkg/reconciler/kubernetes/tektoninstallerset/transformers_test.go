@@ -39,7 +39,7 @@ func TestInjectOwner_CRDs(t *testing.T) {
 		BlockOwnerDeletion: ptr.Bool(true),
 	}}
 
-	manifest, err := sourceManifest.Transform(injectOwnerForCRDs(owners))
+	manifest, err := sourceManifest.Transform(injectOwnerForCRDsAndNamespace(owners))
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}
@@ -75,7 +75,7 @@ func TestInjectOwner_NonCRDs(t *testing.T) {
 	}}
 
 	// Must not add owner as resource is non-crd
-	manifest, err := sourceManifest.Transform(injectOwnerForCRDs(owners))
+	manifest, err := sourceManifest.Transform(injectOwnerForCRDsAndNamespace(owners))
 	if err != nil {
 		t.Fatal("unexpected error: ", err)
 	}

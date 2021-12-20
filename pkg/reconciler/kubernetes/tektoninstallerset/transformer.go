@@ -27,7 +27,8 @@ func injectOwner(owner []v1.OwnerReference) mf.Transformer {
 		kind := u.GetKind()
 		if kind == "CustomResourceDefinition" ||
 			kind == "ValidatingWebhookConfiguration" ||
-			kind == "MutatingWebhookConfiguration" {
+			kind == "MutatingWebhookConfiguration" ||
+			kind == "Namespace" {
 			return nil
 		}
 		u.SetOwnerReferences(owner)
@@ -35,12 +36,14 @@ func injectOwner(owner []v1.OwnerReference) mf.Transformer {
 	}
 }
 
-func injectOwnerForCRDs(owner []v1.OwnerReference) mf.Transformer {
+func injectOwnerForCRDsAndNamespace(owner []v1.OwnerReference) mf.Transformer {
 	if len(owner) == 0 {
 		return func(u *unstructured.Unstructured) error { return nil }
 	}
 	return func(u *unstructured.Unstructured) error {
-		if u.GetKind() != "CustomResourceDefinition" {
+		kind := u.GetKind()
+		if kind != "CustomResourceDefinition" &&
+			kind != "Namespace" {
 			return nil
 		}
 		u.SetOwnerReferences(owner)
