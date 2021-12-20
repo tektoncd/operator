@@ -31,6 +31,8 @@ import (
 	"knative.dev/pkg/injection"
 )
 
+const versionKey = "VERSION"
+
 type Controller struct {
 	Manifest         *mf.Manifest
 	Logger           *zap.SugaredLogger
@@ -41,7 +43,8 @@ type PayloadOptions struct {
 	ReadOnly bool
 }
 
-func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) (mf.Manifest, string) {
+// InitController returns the component source manifest, operator release version and component release version
+func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) (mf.Manifest, string, string) {
 
 	mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
 	if err != nil {
@@ -54,24 +57,28 @@ func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) 
 		ctrl.Logger.Fatalw("Error creating initial manifest", zap.Error(err))
 	}
 
+	operatorVersion := os.Getenv(versionKey)
+	if operatorVersion == "" {
+		ctrl.Logger.Fatal("Failed to find version from env")
+	}
+
 	ctrl.Manifest = &manifest
 	if err := ctrl.fetchSourceManifests(ctx, opts); err != nil {
 		ctrl.Logger.Fatalw("failed to read manifest", err)
 	}
 
-	var releaseVersion string
 	// Read the release version of component
-	releaseVersion, err = common.FetchVersionFromConfigMap(manifest, ctrl.VersionConfigMap)
+	compReleaseVersion, err := common.FetchVersionFromConfigMap(manifest, ctrl.VersionConfigMap)
 	if err != nil {
 		if common.IsFetchVersionError(err) {
 			ctrl.Logger.Warnf("failed to read version information from ConfigMap %s", ctrl.VersionConfigMap, err)
-			releaseVersion = "Unknown"
+			compReleaseVersion = "Unknown"
 		} else {
 			ctrl.Logger.Fatalw("Error while reading ConfigMap", zap.Error(err))
 		}
 	}
 
-	return manifest, releaseVersion
+	return manifest, operatorVersion, compReleaseVersion
 }
 
 // fetchSourceManifests mutates the passed manifest by appending one

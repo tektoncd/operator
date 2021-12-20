@@ -54,8 +54,10 @@ type Reconciler struct {
 	// enqueueAfter enqueues a obj after a duration
 	enqueueAfter func(obj interface{}, after time.Duration)
 	extension    common.Extension
-
-	releaseVersion string
+	// operatorReleaseVersion describes the current operator version
+	operatorReleaseVersion string
+	// dashboardReleaseVersion describes the current dashboard version
+	dashboardReleaseVersion string
 
 	pipelineInformer pipelineinformer.TektonPipelineInformer
 }
@@ -179,7 +181,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 	// If any of the thing above is not same then delete the existing TektonInstallerSet
 	// and create a new with expected properties
 
-	if installerSetTargetNamespace != td.Spec.TargetNamespace || installerSetReleaseVersion != r.releaseVersion {
+	if installerSetTargetNamespace != td.Spec.TargetNamespace || installerSetReleaseVersion != r.operatorReleaseVersion {
 		// Delete the existing TektonInstallerSet
 		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 			Delete(ctx, existingInstallerSet, metav1.DeleteOptions{})
@@ -286,7 +288,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 func (r *Reconciler) updateTektonDashboardStatus(ctx context.Context, td *v1alpha1.TektonDashboard, createdIs *v1alpha1.TektonInstallerSet) error {
 	// update the td with TektonInstallerSet and releaseVersion
 	td.Status.SetTektonInstallerSet(createdIs.Name)
-	td.Status.SetVersion(r.releaseVersion)
+	td.Status.SetVersion(r.dashboardReleaseVersion)
 
 	// Update the status with TektonInstallerSet so that any new thread
 	// reconciling with know that TektonInstallerSet is created otherwise
@@ -326,7 +328,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, td *v1alpha1.Tekton
 	}
 
 	// create installer set
-	tis := makeInstallerSet(td, manifest, r.releaseVersion)
+	tis := makeInstallerSet(td, manifest, r.operatorReleaseVersion)
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, tis, metav1.CreateOptions{})
 	if err != nil {

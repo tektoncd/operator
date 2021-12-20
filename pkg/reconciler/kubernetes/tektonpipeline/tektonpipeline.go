@@ -18,7 +18,6 @@ package tektonpipeline
 
 import (
 	"context"
-	stdError "errors"
 	"fmt"
 	"time"
 
@@ -60,8 +59,10 @@ type Reconciler struct {
 	extension common.Extension
 	// enqueueAfter enqueues a obj after a duration
 	enqueueAfter func(obj interface{}, after time.Duration)
-	// releaseVersion describes the current pipelines version
-	releaseVersion string
+	// pipelinesReleaseVersion describes the current pipelines version
+	pipelinesReleaseVersion string
+	// operatorReleaseVersion describes the current operator version
+	operatorReleaseVersion string
 	// metrics handles metrics for pipeline install
 	metrics *Recorder
 }
@@ -132,7 +133,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 			return err
 		}
 		// If there was no existing installer set, that means its a new install
-		r.metrics.logMetrics(metricsNew, r.releaseVersion, logger)
+		r.metrics.logMetrics(metricsNew, r.pipelinesReleaseVersion, logger)
 
 		return r.updateTektonPipelineStatus(ctx, tp, createdIs)
 	}
@@ -146,9 +147,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 			if err != nil {
 				return err
 			}
+
+			// TODO: visit the metrics condition for upgrade
+			// whether to use operator version or component version
+
 			// if there is version diff then its a call for upgrade
-			if tp.Status.Version != r.releaseVersion {
-				r.metrics.logMetrics(metricsUpgrade, r.releaseVersion, logger)
+			if tp.Status.Version != r.pipelinesReleaseVersion {
+				r.metrics.logMetrics(metricsUpgrade, r.pipelinesReleaseVersion, logger)
 			}
 			return r.updateTektonPipelineStatus(ctx, tp, createdIs)
 		}
@@ -164,7 +169,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	// If any of the thing above is not same then delete the existing TektonInstallerSet
 	// and create a new with expected properties
 
-	if installerSetTargetNamespace != tp.Spec.TargetNamespace || installerSetReleaseVersion != r.releaseVersion {
+	if installerSetTargetNamespace != tp.Spec.TargetNamespace || installerSetReleaseVersion != r.operatorReleaseVersion {
 		// Delete the existing TektonInstallerSet
 		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 			Delete(ctx, existingInstallerSet, metav1.DeleteOptions{})
@@ -270,7 +275,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 func (r *Reconciler) updateTektonPipelineStatus(ctx context.Context, tp *v1alpha1.TektonPipeline, createdIs *v1alpha1.TektonInstallerSet) error {
 	// update the tp with TektonInstallerSet and releaseVersion
 	tp.Status.SetTektonInstallerSet(createdIs.Name)
-	tp.Status.SetVersion(r.releaseVersion)
+	tp.Status.SetVersion(r.pipelinesReleaseVersion)
 
 	// Update the status with TektonInstallerSet so that any new thread
 	// reconciling with know that TektonInstallerSet is created otherwise
@@ -280,7 +285,7 @@ func (r *Reconciler) updateTektonPipelineStatus(ctx context.Context, tp *v1alpha
 		return err
 	}
 
-	return stdError.New("ensuring Reconcile TektonPipeline status update")
+	return v1alpha1.RECONCILE_AGAIN_ERR
 }
 
 func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.TektonPipeline) (*v1alpha1.TektonInstallerSet, error) {
@@ -301,7 +306,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.Tekton
 	}
 
 	// create installer set
-	tis := makeInstallerSet(tp, manifest, specHash, r.releaseVersion)
+	tis := makeInstallerSet(tp, manifest, specHash, r.operatorReleaseVersion)
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, tis, metav1.CreateOptions{})
 	if err != nil {

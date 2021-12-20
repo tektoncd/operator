@@ -54,7 +54,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			VersionConfigMap: versionConfigMap,
 		}
 
-		manifest, releaseVersion := ctrl.InitController(ctx, initcontroller.PayloadOptions{})
+		manifest, operatorRV, triggersRV := ctrl.InitController(ctx, initcontroller.PayloadOptions{})
 
 		metrics, err := NewRecorder()
 		if err != nil {
@@ -62,12 +62,13 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		c := &Reconciler{
-			operatorClientSet: operatorclient.Get(ctx),
-			pipelineInformer:  tektonPipelineinformer.Get(ctx),
-			extension:         generator(ctx),
-			manifest:          manifest,
-			releaseVersion:    releaseVersion,
-			metrics:           metrics,
+			operatorClientSet:      operatorclient.Get(ctx),
+			pipelineInformer:       tektonPipelineinformer.Get(ctx),
+			extension:              generator(ctx),
+			manifest:               manifest,
+			triggersReleaseVersion: triggersRV,
+			operatorReleaseVersion: operatorRV,
+			metrics:                metrics,
 		}
 		impl := tektonTriggerreconciler.NewImpl(ctx, c)
 
