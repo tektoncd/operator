@@ -50,20 +50,20 @@ var _ tektonConfigreconciler.Finalizer = (*Reconciler)(nil)
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonConfig) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 
+	if err := r.extension.Finalize(ctx, original); err != nil {
+		logger.Error("Failed to finalize platform resources", err)
+	}
+
 	if original.Spec.Profile == v1alpha1.ProfileLite {
 		return pipeline.TektonPipelineCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName)
 	} else {
 		// TektonPipeline and TektonTrigger is common for profile type basic and all
-		if err := pipeline.TektonPipelineCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName); err != nil {
-			return err
-		}
 		if err := trigger.TektonTriggerCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName); err != nil {
 			return err
 		}
-	}
-
-	if err := r.extension.Finalize(ctx, original); err != nil {
-		logger.Error("Failed to finalize platform resources", err)
+		if err := pipeline.TektonPipelineCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName); err != nil {
+			return err
+		}
 	}
 
 	return nil
