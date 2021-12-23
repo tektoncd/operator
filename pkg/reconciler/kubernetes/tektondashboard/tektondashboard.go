@@ -325,8 +325,17 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, td *v1alpha1.Tekton
 		return nil, err
 	}
 
+	// compute the hash of tektondashboard spec and store as an annotation
+	// in further reconciliation we compute hash of td spec and check with
+	// annotation, if they are same then we skip updating the object
+	// otherwise we update the manifest
+	specHash, err := hash.Compute(td.Spec)
+	if err != nil {
+		return nil, err
+	}
+
 	// create installer set
-	tis := makeInstallerSet(td, manifest, r.releaseVersion)
+	tis := makeInstallerSet(td, manifest, specHash, r.releaseVersion)
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, tis, metav1.CreateOptions{})
 	if err != nil {
@@ -335,7 +344,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, td *v1alpha1.Tekton
 	return createdIs, nil
 }
 
-func makeInstallerSet(td *v1alpha1.TektonDashboard, manifest mf.Manifest, releaseVersion string) *v1alpha1.TektonInstallerSet {
+func makeInstallerSet(td *v1alpha1.TektonDashboard, manifest mf.Manifest, tdSpecHash, releaseVersion string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(td, td.GetGroupVersionKind())
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -346,6 +355,7 @@ func makeInstallerSet(td *v1alpha1.TektonDashboard, manifest mf.Manifest, releas
 			Annotations: map[string]string{
 				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
 				tektoninstallerset.TargetNamespaceKey: td.Spec.TargetNamespace,
+				tektoninstallerset.LastAppliedHashKey: tdSpecHash,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
