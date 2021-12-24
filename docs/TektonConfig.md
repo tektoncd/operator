@@ -54,6 +54,10 @@ The TektonConfig CR provides the following features
       - pipelinerun
       keep: 3
       schedule: "* * * * *"
+    hub:
+      params:
+        - name: enable-devconsole-integration
+          value: "true"
     dashboard:
       readonly: true
 ```
@@ -165,6 +169,20 @@ addon:
 
 **NOTE**: TektonAddon is currently available for OpenShift Platform only. Enabling this for Kubernetes platform is in roadmap
 of Operator.
+
+### Hub
+
+This is to enable/disable showing hub resources in pipeline builder of devconsole(OpenShift UI). By default, the field is
+not there in the config object. If you want to disable the integration, you can add the param like below in config with value `false`. 
+The possible values are `true` and `false`.
+
+Example:
+```yaml
+hub:
+  params:
+    - name: enable-devconsole-integration
+      value: "false"
+```
 
 ### Dashboard
 
