@@ -80,6 +80,9 @@ type TektonConfigSpec struct {
 	// Addon holds the addons config
 	// +optional
 	Addon Addon `json:"addon,omitempty"`
+	// Hub holds the hub config
+	// +optional
+	Hub Hub `json:"hub,omitempty"`
 	// Pipeline holds the customizable option for pipeline component
 	// +optional
 	Pipeline Pipeline `json:"pipeline,omitempty"`

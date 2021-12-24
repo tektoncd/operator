@@ -52,6 +52,10 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(validateAddonParams(tc.Spec.Addon.Params, "spec.addon.params"))
 	}
 
+	if !tc.Spec.Hub.IsEmpty() {
+		errs = errs.Also(validateHubParams(tc.Spec.Hub.Params, "spec.hub.params"))
+	}
+
 	errs = errs.Also(tc.Spec.Pipeline.PipelineProperties.validate("spec.pipeline"))
 
 	return errs.Also(tc.Spec.Trigger.TriggersProperties.validate("spec.trigger"))
