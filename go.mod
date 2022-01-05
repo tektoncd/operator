@@ -17,7 +17,6 @@ require (
 	go.uber.org/zap v1.19.0
 	golang.org/x/mod v0.5.0
 	gomodules.xyz/jsonpatch/v2 v2.2.0
-	gotest.tools v2.2.0+incompatible
 	gotest.tools/v3 v3.0.3
 	k8s.io/api v0.21.4
 	k8s.io/apimachinery v0.21.4
