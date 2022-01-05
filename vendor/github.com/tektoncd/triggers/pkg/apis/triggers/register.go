@@ -12,4 +12,7 @@ const (
 
 	// TriggerLabelKey is used as the label identifier for a Trigger
 	TriggerLabelKey = "/trigger"
+
+	// TriggerGroupLabelKey is used as a label identifier for a TriggerGroup
+	TriggerGroupLabelKey = "/triggergroup"
 )

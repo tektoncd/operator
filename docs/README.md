@@ -88,7 +88,7 @@ You can find more about the Resources and its available configurations in their 
 - [TektonConfig](./TektonConfig.md)
 - [TektonPipeline](./TektonPipeline.md)
 - [TektonTrigger](./TektonTrigger.md)
-- [TektonDashboard](./TekonDashboard.md)
+- [TektonDashboard](./TektonDashboard.md)
 - [TektonResult](./TektonResult.md)
 - [TektonAddon](./TektonAddon.md)
 

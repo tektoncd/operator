@@ -68,7 +68,7 @@ func NewAdmissionController(
 	}
 
 	logger := logging.FromContext(ctx)
-	c := controller.NewImpl(wh, logger, "AnnotationDefaultingWebhook")
+	c := controller.NewContext(ctx, wh, controller.ControllerOptions{WorkQueueName: "AnnotationDefaultingWebhook", Logger: logger})
 
 	// Reconcile when the named MutatingWebhookConfiguration changes.
 	mwhInformer.Informer().AddEventHandler(cache.FilteringResourceEventHandler{

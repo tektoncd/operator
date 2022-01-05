@@ -76,16 +76,16 @@ func (t triggerSpecBindingArray) validate(ctx context.Context) (errs *apis.Field
 		case b.Ref != "":
 			switch {
 			case b.Name != "": // Cannot specify both Ref and Name
-				errs = errs.Also(apis.ErrMultipleOneOf(fmt.Sprintf("bindings[%d].Ref", i), fmt.Sprintf("bindings[%d].Name", i)))
+				errs = errs.Also(apis.ErrMultipleOneOf(fmt.Sprintf("bindings[%d].ref", i), fmt.Sprintf("bindings[%d].name", i)))
 			case b.Kind != NamespacedTriggerBindingKind && b.Kind != ClusterTriggerBindingKind: // Kind must be valid
 				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid kind"), fmt.Sprintf("bindings[%d].kind", i)))
 			}
 		case b.Name != "":
 			if b.Value == nil { // Value is mandatory if Name is specified
-				errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("bindings[%d].Value", i)))
+				errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("bindings[%d].value", i)))
 			}
 		default:
-			errs = errs.Also(apis.ErrMissingOneOf(fmt.Sprintf("bindings[%d].Ref", i), fmt.Sprintf("bindings[%d].Spec", i), fmt.Sprintf("bindings[%d].Name", i)))
+			errs = errs.Also(apis.ErrMissingOneOf(fmt.Sprintf("bindings[%d].ref", i), fmt.Sprintf("bindings[%d].spec", i), fmt.Sprintf("bindings[%d].name", i)))
 		}
 	}
 	return errs
@@ -99,17 +99,22 @@ func (i *TriggerInterceptor) validate(ctx context.Context) (errs *apis.FieldErro
 	}
 
 	if i.Webhook != nil { // TODO: This should be an error?
-		if i.Webhook.ObjectRef == nil || i.Webhook.ObjectRef.Name == "" {
-			errs = errs.Also(apis.ErrMissingField("interceptor.webhook.objectRef"))
-		}
 		w := i.Webhook
-		if w.ObjectRef.Kind != "Service" {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid kind"), "interceptor.webhook.objectRef.kind"))
-		}
+		if i.Webhook.ObjectRef == nil {
+			errs = errs.Also(apis.ErrMissingField("interceptor.webhook.objectRef"))
+		} else {
+			if w.ObjectRef.Kind == "" {
+				errs = errs.Also(apis.ErrMissingField("interceptor.webhook.objectRef.kind"))
+			} else if w.ObjectRef.Kind != "Service" {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid kind"), "interceptor.webhook.objectRef.kind"))
+			}
 
-		// Optional explicit match
-		if w.ObjectRef.APIVersion != "v1" {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion"))
+			// Optional explicit match
+			if w.ObjectRef.APIVersion == "" {
+				errs = errs.Also(apis.ErrMissingField("interceptor.webhook.objectRef.apiVersion"))
+			} else if w.ObjectRef.APIVersion != "v1" {
+				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion"))
+			}
 		}
 
 		for i, header := range w.Header {

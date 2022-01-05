@@ -73,7 +73,8 @@ func NewStore(logger configmap.Logger, onAfterStore ...func(name string, value i
 			"defaults/features/artifacts",
 			logger,
 			configmap.Constructors{
-				GetDefaultsConfigName(): NewDefaultsFromConfigMap,
+				GetFeatureFlagsConfigName(): NewFeatureFlagsFromConfigMap,
+				GetDefaultsConfigName():     NewDefaultsFromConfigMap,
 			},
 			onAfterStore...,
 		),
@@ -93,8 +94,13 @@ func (s *Store) Load() *Config {
 	if defaults == nil {
 		defaults, _ = NewDefaultsFromMap(map[string]string{})
 	}
+	featureFlags := s.UntypedLoad(GetFeatureFlagsConfigName())
+	if featureFlags == nil {
+		featureFlags, _ = NewFeatureFlagsFromMap(map[string]string{})
+	}
 
 	return &Config{
-		Defaults: defaults.(*Defaults).DeepCopy(),
+		Defaults:     defaults.(*Defaults).DeepCopy(),
+		FeatureFlags: featureFlags.(*FeatureFlags).DeepCopy(),
 	}
 }
