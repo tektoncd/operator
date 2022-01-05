@@ -19,6 +19,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +30,8 @@ const (
 	AlphaAPIFieldValue     = "alpha"
 	enableAPIFieldsKey     = "enable-api-fields"
 	DefaultEnableAPIFields = StableAPIFieldValue
+
+	labelsExclusionPattern = "labels-exclusion-pattern"
 )
 
 // FeatureFlags holds the features configurations
@@ -37,6 +40,9 @@ type FeatureFlags struct {
 	// EnableAPIFields determines which gated features are enabled.
 	// Acceptable values are "stable" or "alpha". Defaults to "stable"
 	EnableAPIFields string
+	// LabelsExclusionPattern determines the regex pattern to use to exclude
+	// labels being propagated to resources created by the EventListener
+	LabelsExclusionPattern string
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -55,7 +61,27 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if tc.EnableAPIFields, err = getEnabledAPI(cfgMap); err != nil {
 		return nil, err
 	}
+
+	if tc.LabelsExclusionPattern, err = getLabelsExclusionPattern(cfgMap); err != nil {
+		return nil, err
+	}
+
 	return &tc, nil
+}
+
+// getLabelsExclusionPattern gets the "labels-exclusion-pattern" flag based on the content of a given map.
+// If the feature gate is not defined then we ignore it, if the pattern is not
+// valid regex then we return error
+func getLabelsExclusionPattern(cfgMap map[string]string) (string, error) {
+
+	if pattern, ok := cfgMap[labelsExclusionPattern]; ok {
+		if _, err := regexp.Compile(pattern); err != nil {
+			return "", fmt.Errorf("invalid value for feature flag %q: %q", labelsExclusionPattern, pattern)
+		}
+		return pattern, nil
+	}
+
+	return "", nil
 }
 
 // getEnabledAPI gets the "enable-api-fields" flag based on the content of a given map.
