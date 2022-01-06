@@ -19,6 +19,7 @@ limitations under the License.
 package openshift
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -82,6 +83,11 @@ func TestTektonAddonsDeployment(t *testing.T) {
 	// Test if TektonAddon can reach the READY status
 	t.Run("create-addon", func(t *testing.T) {
 		resources.AssertTektonAddonCRReadyStatus(t, clients, crNames)
+	})
+
+	// Test if TektonInstallerSets are created.
+	t.Run("verify-tektoninstallersets", func(t *testing.T) {
+		resources.AssertTektonInstallerSets(t, clients)
 	})
 
 	// Delete the TektonAddon CR instance to see if all resources will be removed

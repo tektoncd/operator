@@ -85,31 +85,29 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	logger := logging.FromContext(ctx)
 	addon := comp.(*v1alpha1.TektonAddon)
 
-	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, addon, miscellaneousResourcesInstallerSet)
+	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version,
+		fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, MiscellaneousResourcesInstallerSet))
 	if err != nil {
 		return err
 	}
 	if !exist {
-
 		manifest, err := getMiscellaneousManifest(ctx, addon, oe.manifest, comp)
 		if err != nil {
 			return err
 		}
 
 		if err := createInstallerSet(ctx, oe.operatorClientSet, addon, manifest, oe.version,
-			miscellaneousResourcesInstallerSet, "addon-openshift"); err != nil {
+			MiscellaneousResourcesInstallerSet, "addon-openshift"); err != nil {
 			return err
 		}
-	}
-
-	// Check if installer set is already created
-	compInstallerSet, ok := addon.Status.AddonsInstallerSet[miscellaneousResourcesInstallerSet]
-	if !ok {
 		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
+	// Check if installer set is already created
 	installedTIS, err := oe.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-		Get(ctx, compInstallerSet, metav1.GetOptions{})
+		List(ctx, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, MiscellaneousResourcesInstallerSet),
+		})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			manifest, err := getMiscellaneousManifest(ctx, addon, oe.manifest, comp)
@@ -118,9 +116,10 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 			}
 
 			if err := createInstallerSet(ctx, oe.operatorClientSet, addon, manifest, oe.version,
-				miscellaneousResourcesInstallerSet, "addon-openshift"); err != nil {
+				MiscellaneousResourcesInstallerSet, "addon-openshift"); err != nil {
 				return err
 			}
+			return v1alpha1.RECONCILE_AGAIN_ERR
 		}
 		logger.Error("failed to get InstallerSet: %s", err)
 		return err
@@ -132,7 +131,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	}
 
 	// spec hash stored on installerSet
-	lastAppliedHash := installedTIS.GetAnnotations()[lastAppliedHashKey]
+	lastAppliedHash := installedTIS.Items[0].GetAnnotations()[tektoninstallerset.LastAppliedHashKey]
 
 	if lastAppliedHash != expectedSpecHash {
 
@@ -142,33 +141,31 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		}
 
 		// Update the spec hash
-		current := installedTIS.GetAnnotations()
-		current[lastAppliedHashKey] = expectedSpecHash
-		installedTIS.SetAnnotations(current)
+		current := installedTIS.Items[0].GetAnnotations()
+		current[tektoninstallerset.LastAppliedHashKey] = expectedSpecHash
+		installedTIS.Items[0].SetAnnotations(current)
 
 		// Update the manifests
-		installedTIS.Spec.Manifests = manifest.Resources()
+		installedTIS.Items[0].Spec.Manifests = manifest.Resources()
 
 		if _, err = oe.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-			Update(ctx, installedTIS, metav1.UpdateOptions{}); err != nil {
+			Update(ctx, &installedTIS.Items[0], metav1.UpdateOptions{}); err != nil {
 			return err
 		}
 
 		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
-	existingInstallerSet, ok := addon.Status.AddonsInstallerSet[miscellaneousResourcesInstallerSet]
-	if !ok {
-		return v1alpha1.RECONCILE_AGAIN_ERR
-	}
 	installedAddonIS, err := oe.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-		Get(ctx, existingInstallerSet, metav1.GetOptions{})
+		List(ctx, metav1.ListOptions{
+			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, MiscellaneousResourcesInstallerSet),
+		})
 	if err != nil {
 		logger.Error("failed to get InstallerSet: %s", err)
 		return err
 	}
 
-	ready := installedAddonIS.Status.GetCondition(apis.ConditionReady)
+	ready := installedAddonIS.Items[0].Status.GetCondition(apis.ConditionReady)
 	if ready == nil {
 		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
@@ -178,7 +175,8 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	}
 
 	consolecliManifest := oe.manifest
-	exist, err = checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, addon, consoleCLIInstallerSet)
+	exist, err = checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version,
+		fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, ConsoleCLIInstallerSet))
 	if err != nil {
 		return err
 	}
@@ -201,7 +199,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		}
 
 		if err := createInstallerSet(ctx, oe.operatorClientSet, addon, consolecliManifest, oe.version,
-			consoleCLIInstallerSet, "addon-consolecli"); err != nil {
+			ConsoleCLIInstallerSet, "addon-consolecli"); err != nil {
 			return err
 		}
 	}
