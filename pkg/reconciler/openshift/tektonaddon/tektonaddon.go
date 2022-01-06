@@ -63,21 +63,6 @@ const (
 	providerTypeRedHat    = "redhat"
 )
 
-const (
-	clusterTaskInstallerSet            = "ClusterTaskInstallerSet"
-	pipelinesTemplateInstallerSet      = "PipelinesTemplateInstallerSet"
-	triggersResourcesInstallerSet      = "TriggersResourcesInstallerSet"
-	consoleCLIInstallerSet             = "ConsoleCLIInstallerSet"
-	miscellaneousResourcesInstallerSet = "MiscellaneousResourcesInstallerSet"
-
-	// TektonInstallerSet keys
-	lastAppliedHashKey = "operator.tekton.dev/last-applied-hash"
-	createdByKey       = "operator.tekton.dev/created-by"
-	createdByValue     = "TektonAddon"
-	releaseVersionKey  = "operator.tekton.dev/release-version"
-	targetNamespaceKey = "operator.tekton.dev/target-namespace"
-)
-
 // Check that our Reconciler implements controller.Reconciler
 var _ tektonaddonreconciler.Interface = (*Reconciler)(nil)
 var _ tektonaddonreconciler.Finalizer = (*Reconciler)(nil)
@@ -182,7 +167,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	// with their manifest
 	if ctVal == "true" {
 
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, ta, clusterTaskInstallerSet)
+		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version,
+			fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, ClusterTaskInstallerSet))
 		if err != nil {
 			return err
 		}
@@ -192,13 +178,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		}
 	} else {
 		// if disabled then delete the installer Set if exist
-		if err := r.deleteInstallerSet(ctx, ta, clusterTaskInstallerSet); err != nil {
+		if err := r.deleteInstallerSet(ctx,
+			fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, ClusterTaskInstallerSet)); err != nil {
 			return err
 		}
 	}
 
-	err := r.checkComponentStatus(ctx, ta, clusterTaskInstallerSet)
-	if err != nil {
+	if err := r.checkComponentStatus(ctx, fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, ClusterTaskInstallerSet)); err != nil {
 		ta.Status.MarkInstallerSetNotReady(err.Error())
 		return nil
 	}
@@ -207,7 +193,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	// with their manifest
 	if ptVal == "true" {
 
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, ta, pipelinesTemplateInstallerSet)
+		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version,
+			fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, PipelinesTemplateInstallerSet))
 		if err != nil {
 			return err
 		}
@@ -216,20 +203,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		}
 	} else {
 		// if disabled then delete the installer Set if exist
-		if err := r.deleteInstallerSet(ctx, ta, pipelinesTemplateInstallerSet); err != nil {
+		if err := r.deleteInstallerSet(ctx, fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, PipelinesTemplateInstallerSet)); err != nil {
 			return err
 		}
 	}
 
-	err = r.checkComponentStatus(ctx, ta, pipelinesTemplateInstallerSet)
-	if err != nil {
+	if err := r.checkComponentStatus(ctx, fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, PipelinesTemplateInstallerSet)); err != nil {
 		ta.Status.MarkInstallerSetNotReady(err.Error())
 		return nil
 	}
 
 	// Ensure Triggers resources
 
-	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, ta, triggersResourcesInstallerSet)
+	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version,
+		fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, TriggersResourcesInstallerSet))
 	if err != nil {
 		return err
 	}
@@ -237,7 +224,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		return r.ensureTriggerResources(ctx, ta)
 	}
 
-	err = r.checkComponentStatus(ctx, ta, triggersResourcesInstallerSet)
+	err = r.checkComponentStatus(ctx, fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, TriggersResourcesInstallerSet))
 	if err != nil {
 		ta.Status.MarkInstallerSetNotReady(err.Error())
 		return nil
@@ -256,34 +243,31 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 
 	ta.Status.MarkPostReconcilerComplete()
 
+	ta.Status.SetVersion(r.version)
+
 	return nil
 }
 
-func (r *Reconciler) checkComponentStatus(ctx context.Context, ta *v1alpha1.TektonAddon, component string) error {
+func (r *Reconciler) checkComponentStatus(ctx context.Context, labelSelector string) error {
 
 	// Check if installer set is already created
-	compInstallerSet, ok := ta.Status.AddonsInstallerSet[component]
-	if !ok {
-		return nil
+	installerSets, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		List(ctx, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		})
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		return err
 	}
 
-	if compInstallerSet != "" {
-
-		ctIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-			Get(ctx, compInstallerSet, metav1.GetOptions{})
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return nil
-			}
-			return err
-		}
-
-		ready := ctIs.Status.GetCondition(apis.ConditionReady)
-		if ready == nil || ready.Status == corev1.ConditionUnknown {
-			return fmt.Errorf("InstallerSet %s: waiting for installation", ctIs.Name)
-		} else if ready.Status == corev1.ConditionFalse {
-			return fmt.Errorf("InstallerSet %s: ", ready.Message)
-		}
+	ready := installerSets.Items[0].Status.GetCondition(apis.ConditionReady)
+	if ready == nil || ready.Status == corev1.ConditionUnknown {
+		return fmt.Errorf("InstallerSet %s: waiting for installation", installerSets.Items[0].Name)
+	} else if ready.Status == corev1.ConditionFalse {
+		return fmt.Errorf("InstallerSet %s: ", ready.Message)
 	}
 
 	return nil
@@ -301,7 +285,7 @@ func (r *Reconciler) ensureTriggerResources(ctx context.Context, ta *v1alpha1.Te
 	}
 
 	if err := createInstallerSet(ctx, r.operatorClientSet, ta, triggerResourcesManifest, r.version,
-		triggersResourcesInstallerSet, "addon-triggers"); err != nil {
+		TriggersResourcesInstallerSet, "addon-triggers"); err != nil {
 		return err
 	}
 
@@ -327,7 +311,7 @@ func (r *Reconciler) ensurePipelineTemplates(ctx context.Context, ta *v1alpha1.T
 	}
 
 	if err := createInstallerSet(ctx, r.operatorClientSet, ta, pipelineTemplateManifest, r.version,
-		pipelinesTemplateInstallerSet, "addon-pipelines"); err != nil {
+		PipelinesTemplateInstallerSet, "addon-pipelines"); err != nil {
 		return err
 	}
 
@@ -359,7 +343,7 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 	}
 
 	if err := createInstallerSet(ctx, r.operatorClientSet, ta, clusterTaskManifest,
-		r.version, clusterTaskInstallerSet, "addon-clustertasks"); err != nil {
+		r.version, ClusterTaskInstallerSet, "addon-clustertasks"); err != nil {
 		return err
 	}
 
@@ -370,40 +354,37 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 // and if installer set which already exist is of older version then it deletes and return false to create a new
 // installer set
 func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVersion string,
-	ta *v1alpha1.TektonAddon, component string) (bool, error) {
+	labelSelector string) (bool, error) {
 
-	// Check if installer set is already created
-	compInstallerSet, ok := ta.Status.AddonsInstallerSet[component]
-	if !ok {
-		return false, nil
+	installerSets, err := oc.OperatorV1alpha1().TektonInstallerSets().
+		List(ctx, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, err
 	}
 
-	if compInstallerSet != "" {
+	if len(installerSets.Items) == 1 {
 		// if already created then check which version it is
-		ctIs, err := oc.OperatorV1alpha1().TektonInstallerSets().
-			Get(ctx, compInstallerSet, metav1.GetOptions{})
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
-		}
-
-		version, ok := ctIs.Annotations[releaseVersionKey]
+		version, ok := installerSets.Items[0].Labels[tektoninstallerset.ReleaseVersionKey]
 		if ok && version == relVersion {
 			// if installer set already exist and release version is same
 			// then ignore and move on
 			return true, nil
 		}
+	}
 
-		// release version doesn't exist or is different from expected
-		// deleted existing InstallerSet and create a new one
-
-		err = oc.OperatorV1alpha1().TektonInstallerSets().
-			Delete(ctx, compInstallerSet, metav1.DeleteOptions{})
-		if err != nil {
-			return false, err
-		}
+	// release version doesn't exist or is different from expected
+	// deleted existing InstallerSet and create a new one
+	// or there is more than one installerset (unexpected)
+	if err = oc.OperatorV1alpha1().TektonInstallerSets().
+		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		}); err != nil {
+		return false, err
 	}
 
 	return false, nil
@@ -417,43 +398,29 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, ta *v1alpha
 		return err
 	}
 
-	is := makeInstallerSet(ta, manifest, installerSetPrefix, releaseVersion, specHash)
+	is := makeInstallerSet(ta, manifest, installerSetPrefix, releaseVersion, component, specHash)
 
-	createdIs, err := oc.OperatorV1alpha1().TektonInstallerSets().
-		Create(ctx, is, metav1.CreateOptions{})
-	if err != nil {
-		return err
-	}
-
-	if len(ta.Status.AddonsInstallerSet) == 0 {
-		ta.Status.AddonsInstallerSet = map[string]string{}
-	}
-
-	// Update the status of addon with created installerSet name
-	ta.Status.AddonsInstallerSet[component] = createdIs.Name
-	ta.Status.SetVersion(releaseVersion)
-
-	_, err = oc.OperatorV1alpha1().TektonAddons().
-		UpdateStatus(ctx, ta, metav1.UpdateOptions{})
-	if err != nil {
+	if _, err := oc.OperatorV1alpha1().TektonInstallerSets().
+		Create(ctx, is, metav1.CreateOptions{}); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func makeInstallerSet(ta *v1alpha1.TektonAddon, manifest mf.Manifest, prefix, releaseVersion, specHash string) *v1alpha1.TektonInstallerSet {
+func makeInstallerSet(ta *v1alpha1.TektonAddon, manifest mf.Manifest, prefix, releaseVersion, component, specHash string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(ta, ta.GetGroupVersionKind())
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", prefix),
 			Labels: map[string]string{
-				createdByKey: createdByValue,
+				tektoninstallerset.CreatedByKey:      CreatedByValue,
+				tektoninstallerset.InstallerSetType:  component,
+				tektoninstallerset.ReleaseVersionKey: releaseVersion,
 			},
 			Annotations: map[string]string{
-				releaseVersionKey:  releaseVersion,
-				targetNamespaceKey: ta.Spec.TargetNamespace,
-				lastAppliedHashKey: specHash,
+				tektoninstallerset.TargetNamespaceKey: ta.Spec.TargetNamespace,
+				tektoninstallerset.LastAppliedHashKey: specHash,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
@@ -463,28 +430,14 @@ func makeInstallerSet(ta *v1alpha1.TektonAddon, manifest mf.Manifest, prefix, re
 	}
 }
 
-func (r *Reconciler) deleteInstallerSet(ctx context.Context, ta *v1alpha1.TektonAddon, component string) error {
+func (r *Reconciler) deleteInstallerSet(ctx context.Context, labelSelector string) error {
 
-	compInstallerSet, ok := ta.Status.AddonsInstallerSet[component]
-	if !ok {
-		return nil
-	}
-
-	if compInstallerSet != "" {
-		// delete the installer set
-		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-			Delete(ctx, ta.Status.AddonsInstallerSet[component], metav1.DeleteOptions{})
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		}
-
-		// clear the name of installer set from TektonAddon status
-		delete(ta.Status.AddonsInstallerSet, component)
-		_, err = r.operatorClientSet.OperatorV1alpha1().TektonAddons().
-			UpdateStatus(ctx, ta, metav1.UpdateOptions{})
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		}
+	err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		})
+	if err != nil && !errors.IsNotFound(err) {
+		return err
 	}
 
 	return nil
