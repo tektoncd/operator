@@ -139,3 +139,11 @@ func (c *Clients) TektonResult() operatorv1alpha1.TektonResultInterface {
 func (c *Clients) TektonResultAll() operatorv1alpha1.TektonResultInterface {
 	return c.Operator.TektonResults()
 }
+
+func (c *Clients) TektonInstallerSet() operatorv1alpha1.TektonInstallerSetInterface {
+	return c.Operator.TektonInstallerSets()
+}
+
+func (c *Clients) TektonInstallerSetAll() operatorv1alpha1.TektonInstallerSetInterface {
+	return c.Operator.TektonInstallerSets()
+}

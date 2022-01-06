@@ -34,6 +34,8 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	addonv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -88,6 +90,27 @@ func AssertTektonAddonCRReadyStatus(t *testing.T, clients *utils.Clients, names 
 	if _, err := WaitForTektonAddonState(clients.TektonAddon(), names.TektonAddon,
 		IsTektonAddonReady); err != nil {
 		t.Fatalf("TektonAddonCR %q failed to get to the READY status: %v", names.TektonAddon, err)
+	}
+}
+
+// AssertTektonInstallerSets verifies if the TektonInstallerSets are created.
+func AssertTektonInstallerSets(t *testing.T, clients *utils.Clients) {
+	assertInstallerSetsForAddon(t, clients, tektonaddon.ClusterTaskInstallerSet)
+	assertInstallerSetsForAddon(t, clients, tektonaddon.PipelinesTemplateInstallerSet)
+	assertInstallerSetsForAddon(t, clients, tektonaddon.TriggersResourcesInstallerSet)
+	assertInstallerSetsForAddon(t, clients, tektonaddon.ConsoleCLIInstallerSet)
+	assertInstallerSetsForAddon(t, clients, tektonaddon.MiscellaneousResourcesInstallerSet)
+}
+
+func assertInstallerSetsForAddon(t *testing.T, clients *utils.Clients, component string) {
+	clusterTaskIS, err := clients.TektonInstallerSet().List(context.TODO(), metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, component),
+	})
+	if err != nil {
+		t.Fatalf("failed to get TektonInstallerSet for %s : %v", component, err)
+	}
+	if len(clusterTaskIS.Items) > 1 {
+		t.Fatalf("multiple installer sets for %s TektonInstallerSet", component)
 	}
 }
 
