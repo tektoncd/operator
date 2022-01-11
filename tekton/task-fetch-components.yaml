@@ -18,20 +18,23 @@ spec:
   - name: RESULTS_VERSION
     description: Version of TektonCD Results being fetched
     default: "latest"
-  - name: TARGET_PLATFORM
+  - name: TARGET_PLATFORMS
     description: Target platform for for which the payload is going to be used
-    default: "kubernetes"
+    default: "kubernetes openshift"
   steps:
   - image: docker.io/curlimages/curl:7.75.0
-    name: fetch-component-nightlies
+    name: fetch-components
     workingDir: /go/src/github.com/tektoncd/operator
     script: |
       #!/usr/bin/env sh
       apk add bash # Bash is not present
-      ./hack/fetch-releases.sh $(params.TARGET_PLATFORM) $(params.PIPELINES_VERSION) $(params.TRIGGERS_VERSION) $(params.DASHBOARD_VERSION) $(params.RESULTS_VERSION)
+      for platform in $(params.TARGET_PLATFORMS); do
+        echo "Fetching Tekton components for ${platform} build"
+        ./hack/fetch-releases.sh ${platform} $(params.PIPELINES_VERSION) $(params.TRIGGERS_VERSION) $(params.DASHBOARD_VERSION) $(params.RESULTS_VERSION)
 
-      # print directory structure of cmd/<target-platform>/operator/kodata
-      find cmd/$(params.TARGET_PLATFORM)/operator/kodata/
+        # print directory structure of cmd/<platform>/operator/kodata
+        find cmd/${platform}/operator/kodata/
+      done
     securityContext:
       runAsUser: 0
   workspaces:

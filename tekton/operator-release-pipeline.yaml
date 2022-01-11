@@ -29,9 +29,9 @@ spec:
     default: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
   - name: serviceAccountPath
     description: The path to the service account file within the release-secret workspace
-  - name: kubeDistro
+  - name: kubeDistros
     description: The kubernetes platform (e.g. kubernetes or openshift ... ) targeted by a pipeline run
-    default: kubernetes
+    default: "kubernetes openshift"
   - name: TektonCDPipelinesVersion
     description: Version of TektonCD Pipelines Release to be packaged with this operator build
     default: "nightly"
@@ -46,183 +46,241 @@ spec:
     # TODO: Set default to nightly. Aug 10, 2021 - no nightly releases available for Results
     default: "latest"
   workspaces:
-    - name: workarea
-      description: The workspace where the repo will be cloned.
-    - name: release-secret
-      description: The secret that contains a service account authorized to push to the imageRegistry and to the output bucket
+  - name: workarea
+    description: The workspace where the repo will be cloned.
+  - name: release-secret
+    description: The secret that contains a service account authorized to push to the imageRegistry and to the output bucket
   results:
-    - name: commit-sha
-      description: the sha of the commit that was released
-      value: $(tasks.git-clone.results.commit)
-    - name: release-file
-      description: the URL of the release file
-      value: $(tasks.report-bucket.results.release)
-    - name: release-file-no-tag
-      description: the URL of the release file
-      value: $(tasks.report-bucket.results.release-no-tag)
+  - name: commit-sha
+    description: the sha of the commit that was released
+    value: $(tasks.git-clone.results.commit)
+  - name: release-file
+    description: the URL of the release file for kubernetes platform
+    value: $(tasks.report-bucket.results.release)
+  - name: release-file-no-tag
+    description: the URL of the release file for kubernetes platform
+    value: $(tasks.report-bucket.results.release-no-tag)
+  - name: openshift-release-file
+    description: the URL of the release file for OpenShift platform
+    value: $(tasks.report-bucket.results.openshift-release)
+  - name: release-file-no-tag
+    description: the URL of the release file for OpenShift platform
+    value: $(tasks.report-bucket.results.openshift-release-no-tag)
   tasks:
-    - name: git-clone
-      taskRef:
-        name: git-clone
-      workspaces:
-        - name: output
-          workspace: workarea
-          subpath: git
+  - name: git-clone
+    taskRef:
+      name: git-clone
+    workspaces:
+    - name: output
+      workspace: workarea
+      subpath: git
+    params:
+    - name: url
+      value: https://$(params.package)
+    - name: revision
+      value: $(params.gitRevision)
+  - name: precheck
+    runAfter:
+    - git-clone
+    taskRef:
+      name: prerelease-checks
+    params:
+    - name: package
+      value: $(params.package)
+    - name: versionTag
+      value: $(params.versionTag)
+    - name: releaseBucket
+      value: $(params.releaseBucket)
+    workspaces:
+    - name: source-to-release
+      workspace: workarea
+      subpath: git
+  - name: unit-tests
+    runAfter:
+    - precheck
+    taskRef:
+      name: golang-test
+    params:
+    - name: package
+      value: $(params.package)
+    - name: flags
+      value: -v -mod=vendor
+    workspaces:
+    - name: source
+      workspace: workarea
+      subpath: git
+  - name: fetch-component-releases
+    taskRef:
+      name: operator-fetch-component-releases
+    runAfter:
+    - unit-tests
+    workspaces:
+    - name: source
+      workspace: workarea
+      subpath: git
+    params:
+    - name: PIPELINES_VERSION
+      value: $(params.TektonCDPipelinesVersion)
+    - name: TRIGGERS_VERSION
+      value: $(params.TektonCDTriggersVersion)
+    - name: DASHBOARD_VERSION
+      value: $(params.TektonCDDashboardVersion)
+    - name: RESULTS_VERSION
+      value: $(params.TektonCDResultsVersion)
+    - name: TARGET_PLATFORMS
+      value: $(params.kubeDistros)
+  - name: build-test
+    runAfter:
+    - fetch-component-releases
+    taskRef:
+      name: golang-build
+    params:
+    - name: package
+      value: $(params.package)
+    - name: packages
+      value: ./cmd/...
+    workspaces:
+    - name: source
+      workspace: workarea
+      subpath: git
+  - name: publish-images-platform-kubernetes
+    runAfter:
+    - build-test
+    taskRef:
+      name: publish-operator-release
+    params:
+    - name: package
+      value: $(params.package)
+    - name: versionTag
+      value: $(params.versionTag)
+    - name: imageRegistry
+      value: $(params.imageRegistry)
+    - name: imageRegistryPath
+      value: $(params.imageRegistryPath)
+    - name: releaseAsLatest
+      value: $(params.releaseAsLatest)
+    - name: platforms
+      value: $(params.platforms)
+    - name: serviceAccountPath
+      value: $(params.serviceAccountPath)
+    - name: kubeDistro
+      value: kubernetes
+    - name: releaseFilePrefix
+      value: ""
+    workspaces:
+    - name: source
+      workspace: workarea
+      subpath: git
+    - name: output
+      workspace: workarea
+      subpath: bucket
+    - name: release-secret
+      workspace: release-secret
+  - name: publish-images-platform-openshift
+    runAfter:
+    - build-test
+    taskRef:
+      name: publish-operator-release
+    params:
+    - name: package
+      value: $(params.package)
+    - name: versionTag
+      value: $(params.versionTag)
+    - name: imageRegistry
+      value: $(params.imageRegistry)
+    - name: imageRegistryPath
+      value: $(params.imageRegistryPath)
+    - name: releaseAsLatest
+      value: $(params.releaseAsLatest)
+    - name: platforms
+      value: $(params.platforms)
+    - name: serviceAccountPath
+      value: $(params.serviceAccountPath)
+    - name: kubeDistro
+      value: openshift
+    - name: releaseFilePrefix
+      value: "openshift-"
+    workspaces:
+    - name: source
+      workspace: workarea
+      subpath: git
+    - name: output
+      workspace: workarea
+      subpath: bucket
+    - name: release-secret
+      workspace: release-secret
+  - name: publish-to-bucket
+    runAfter:
+    - publish-images-platform-kubernetes
+    - publish-images-platform-openshift
+    taskRef:
+      name: gcs-upload
+    workspaces:
+    - name: credentials
+      workspace: release-secret
+    - name: source
+      workspace: workarea
+      subpath: bucket
+    params:
+    - name: location
+      value: $(params.releaseBucket)/previous/$(params.versionTag)
+    - name: path
+      value: $(params.versionTag)
+    - name: serviceAccountPath
+      value: $(params.serviceAccountPath)
+  - name: publish-to-bucket-latest
+    runAfter:
+    - publish-images-platform-kubernetes
+    - publish-images-platform-openshift
+    when:
+    - input: "$(params.releaseAsLatest)"
+      operator: in
+      values:
+      - "true"
+    taskRef:
+      name: gcs-upload
+    workspaces:
+    - name: credentials
+      workspace: release-secret
+    - name: source
+      workspace: workarea
+      subpath: bucket
+    params:
+    - name: location
+      value: $(params.releaseBucket)/latest
+    - name: path
+      value: $(params.versionTag)
+    - name: serviceAccountPath
+      value: $(params.serviceAccountPath)
+  - name: report-bucket
+    runAfter:
+    - publish-to-bucket
+    params:
+    - name: releaseBucket
+      value: $(params.releaseBucket)
+    - name: versionTag
+      value: $(params.versionTag)
+    taskSpec:
       params:
-        - name: url
-          value: https://$(params.package)
-        - name: revision
-          value: $(params.gitRevision)
-    - name: precheck
-      runAfter: [git-clone]
-      taskRef:
-        name: prerelease-checks
-      params:
-      - name: package
-        value: $(params.package)
-      - name: versionTag
-        value: $(params.versionTag)
       - name: releaseBucket
-        value: $(params.releaseBucket)
-      workspaces:
-      - name: source-to-release
-        workspace: workarea
-        subpath: git
-    - name: fetch-component-releases
-      taskRef:
-        name: operator-fetch-component-releases
-      runAfter: [precheck]
-      workspaces:
-      - name: source
-        workspace: workarea
-        subpath: git
-      params:
-      - name: PIPELINES_VERSION
-        value: $(params.TektonCDPipelinesVersion)
-      - name: TRIGGERS_VERSION
-        value: $(params.TektonCDTriggersVersion)
-      - name: DASHBOARD_VERSION
-        value: $(params.TektonCDDashboardVersion)
-      - name: RESULTS_VERSION
-        value: $(params.TektonCDResultsVersion)
-      - name: TARGET_PLATFORM
-        value: $(params.kubeDistro)
-    - name: unit-tests
-      runAfter: [precheck]
-      taskRef:
-        name: golang-test
-      params:
-        - name: package
-          value: $(params.package)
-        - name: flags
-          value: -v -mod=vendor
-      workspaces:
-        - name: source
-          workspace: workarea
-          subpath: git
-    - name: build
-      runAfter: [precheck, fetch-component-releases]
-      taskRef:
-        name: golang-build
-      params:
-        - name: package
-          value: $(params.package)
-        - name: packages
-          value: ./cmd/$(params.kubeDistro)/...
-      workspaces:
-        - name: source
-          workspace: workarea
-          subpath: git
-    - name: publish-images
-      runAfter: [build, unit-tests]
-      taskRef:
-        name: publish-operator-release
-      params:
-        - name: package
-          value: $(params.package)
-        - name: versionTag
-          value: $(params.versionTag)
-        - name: imageRegistry
-          value: $(params.imageRegistry)
-        - name: imageRegistryPath
-          value: $(params.imageRegistryPath)
-        - name: releaseAsLatest
-          value: $(params.releaseAsLatest)
-        - name: platforms
-          value: $(params.platforms)
-        - name: serviceAccountPath
-          value: $(params.serviceAccountPath)
-        - name: kubeDistro
-          value: $(params.kubeDistro)
-      workspaces:
-        - name: source
-          workspace: workarea
-          subpath: git
-        - name: output
-          workspace: workarea
-          subpath: bucket
-        - name: release-secret
-          workspace: release-secret
-    - name: publish-to-bucket
-      runAfter: [publish-images]
-      taskRef:
-        name: gcs-upload
-      workspaces:
-        - name: credentials
-          workspace: release-secret
-        - name: source
-          workspace: workarea
-          subpath: bucket
-      params:
-        - name: location
-          value: $(params.releaseBucket)/previous/$(params.versionTag)
-        - name: path
-          value: $(params.versionTag)
-        - name: serviceAccountPath
-          value: $(params.serviceAccountPath)
-    - name: publish-to-bucket-latest
-      runAfter: [publish-images]
-      when:
-        - input: "$(params.releaseAsLatest)"
-          operator: in
-          values: ["true"]
-      taskRef:
-        name: gcs-upload
-      workspaces:
-        - name: credentials
-          workspace: release-secret
-        - name: source
-          workspace: workarea
-          subpath: bucket
-      params:
-        - name: location
-          value: $(params.releaseBucket)/latest
-        - name: path
-          value: $(params.versionTag)
-        - name: serviceAccountPath
-          value: $(params.serviceAccountPath)
-    - name: report-bucket
-      runAfter: [publish-to-bucket]
-      params:
-        - name: releaseBucket
-          value: $(params.releaseBucket)
-        - name: versionTag
-          value: $(params.versionTag)
-      taskSpec:
-        params:
-          - name: releaseBucket
-          - name: versionTag
-        results:
-          - name: release
-            description: The full URL of the release file in the bucket
-          - name: release-no-tag
-            description: The full URL of the release file (no tag) in the bucket
-        steps:
-          - name: create-results
-            image: alpine
-            script: |
-              BASE_URL=$(echo "$(params.releaseBucket)/previous/$(params.versionTag)")
-              # If the bucket is in the gs:// return the corresponding public https URL
-              BASE_URL=$(echo ${BASE_URL} | sed 's,gs://,https://storage.googleapis.com/,g')
-              echo "${BASE_URL}/release.yaml" > $(results.release.path)
-              echo "${BASE_URL}/release.notag.yaml" > $(results.release-no-tag.path)
+      - name: versionTag
+      results:
+      - name: release
+        description: The full URL of the release file in the bucket
+      - name: release-no-tag
+        description: The full URL of the release file (no tag) in the bucket
+      - name: openshift-release
+        description: The full URL of the release file (platform - OpenShift) in the bucket
+      - name: openshift-release-no-tag
+        description: The full URL of the release file (no tag, platform - OpenShift) in the bucket
+      steps:
+      - name: create-results
+        image: alpine
+        script: |
+          BASE_URL=$(echo "$(params.releaseBucket)/previous/$(params.versionTag)")
+          # If the bucket is in the gs:// return the corresponding public https URL
+          BASE_URL=$(echo ${BASE_URL} | sed 's,gs://,https://storage.googleapis.com/,g')
+          echo "${BASE_URL}/release.yaml" > $(results.release.path)
+          echo "${BASE_URL}/release.notags.yaml" > $(results.release-no-tag.path)
+          echo "${BASE_URL}/openshift-release.yaml" > $(results.openshift-release.path)
+          echo "${BASE_URL}/openshift-release.notags.yaml" > $(results.openshift-release-no-tag.path)

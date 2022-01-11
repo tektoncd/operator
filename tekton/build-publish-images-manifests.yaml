@@ -4,59 +4,64 @@ metadata:
   name: publish-operator-release
 spec:
   params:
-    - name: package
-      description: package to release (e.g. github.com/<org>/<project>)
-      default: github.com/tektoncd/operator
-    - name: images
-      description: List of cmd/<kubeDistro>/* paths to be published as images
-      default: "operator webhook proxy-webhook"
-    - name: versionTag
-      description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
-    - name: imageRegistry
-      description: The target image registry
-      default: gcr.io
-    - name: imageRegistryPath
-      description: The path (project) in the image registry
-    - name: imageRegistryRegions
-      description: The target image registry regions
-      default: "us eu asia"
-    - name: releaseAsLatest
-      description: Whether to tag and publish this release as Pipelines' latest
-      default: "true"
-    - name: platforms
-      description: Platforms to publish for the images (e.g. linux/amd64,linux/arm64)
-      default: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
-    - name: serviceAccountPath
-      description: The name of the service account path within the release-secret workspace
-    - name: kubeDistro
-      description: The kubernetes distro targeted in a build. (kubernetes, openshift ...)
-      default: kubernetes
+  - name: package
+    description: package to release (e.g. github.com/<org>/<project>)
+    default: github.com/tektoncd/operator
+  - name: images
+    description: List of cmd/<kubeDistro>/* paths to be published as images
+    default: "operator webhook proxy-webhook"
+  - name: versionTag
+    description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
+  - name: imageRegistry
+    description: The target image registry
+    default: gcr.io
+  - name: imageRegistryPath
+    description: The path (project) in the image registry
+  - name: imageRegistryRegions
+    description: The target image registry regions
+    default: "us eu asia"
+  - name: releaseAsLatest
+    description: Whether to tag and publish this release as Pipelines' latest
+    default: "true"
+  - name: platforms
+    description: Platforms to publish for the images (e.g. linux/amd64,linux/arm64)
+    default: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
+  - name: serviceAccountPath
+    description: The name of the service account path within the release-secret workspace
+  - name: kubeDistro
+    description: The kubernetes distro targeted in a build. (kubernetes, openshift ...)
+    default: kubernetes
+  - name: releaseFilePrefix
+    description: Prefix to be added to release files
+    default: ""
   workspaces:
-    - name: source
-      description: >-
-        The workspace where the repo has been cloned. This should ideally
-        be /go/src/$(params.package) however that is not possible today,
-        see https://github.com/tektoncd/pipeline/issues/3786. To use this
-        task on a fork of pipeline change the mountPath below
-      mountPath: /go/src/github.com/tektoncd/operator
-    - name: release-secret
-      description: The secret that contains a service account authorized to push to the imageRegistry and to the output bucket
-    - name: output
-      description: The release YAML will be written to this workspace
+  - name: source
+    description: >-
+      The workspace where the repo has been cloned. This should ideally
+      be /go/src/$(params.package) however that is not possible today,
+      see https://github.com/tektoncd/pipeline/issues/3786. To use this
+      task on a fork of pipeline change the mountPath below
+    mountPath: /go/src/github.com/tektoncd/operator
+  - name: release-secret
+    description: The secret that contains a service account authorized to push to the imageRegistry and to the output bucket
+  - name: output
+    description: The release YAML will be written to this workspace
   stepTemplate:
     env:
-      - name: "PROJECT_ROOT"
-        value: "$(workspaces.source.path)"
-      - name: CONTAINER_REGISTY_CREDENTIALS
-        value: "$(workspaces.release-secret.path)/$(params.serviceAccountPath)"
-      - name: CONTAINER_REGISTRY
-        value: "$(params.imageRegistry)/$(params.imageRegistryPath)"
-      - name: REGIONS
-        value: "$(params.imageRegistryRegions)"
-      - name: OUTPUT_RELEASE_DIR
-        value: "$(workspaces.output.path)/$(params.versionTag)"
-      - name: KUBE_DISTRO
-        value: "$(params.kubeDistro)"
+    - name: "PROJECT_ROOT"
+      value: "$(workspaces.source.path)"
+    - name: CONTAINER_REGISTY_CREDENTIALS
+      value: "$(workspaces.release-secret.path)/$(params.serviceAccountPath)"
+    - name: CONTAINER_REGISTRY
+      value: "$(params.imageRegistry)/$(params.imageRegistryPath)"
+    - name: REGIONS
+      value: "$(params.imageRegistryRegions)"
+    - name: OUTPUT_RELEASE_DIR
+      value: "$(workspaces.output.path)/$(params.versionTag)"
+    - name: KUBE_DISTRO
+      value: "$(params.kubeDistro)"
+    - name: FILENAME_PREFIX
+      value: "$(params.releaseFilePrefix)"
   steps:
 
   - name: container-registy-auth
@@ -122,11 +127,11 @@ spec:
       # Publish images and create release.yaml
       mkdir -p $OUTPUT_RELEASE_DIR
 
-      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -f - > $OUTPUT_RELEASE_DIR/release.yaml
+      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -f - > $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.yaml
       # Publish images and create release.notags.yaml
       # This is useful if your container runtime doesn't support the `image-reference:tag@digest` notation
       # This is currently the case for `cri-o` (and most likely others)
-      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | ko resolve --platform=$(params.platforms) --preserve-import-paths -f - > $OUTPUT_RELEASE_DIR/release.notags.yaml
+      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | ko resolve --platform=$(params.platforms) --preserve-import-paths -f - > $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.notags.yaml
 
   - name: koparse
     image: gcr.io/tekton-releases/dogfooding/koparse:latest
@@ -142,7 +147,7 @@ spec:
 
       # Parse the built images from the release.yaml generated by ko
       koparse \
-        --path $OUTPUT_RELEASE_DIR/release.yaml \
+        --path $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.yaml \
         --base ${IMAGES_PATH} --images ${IMAGES} > /workspace/built_images
 
   - name: tag-images
