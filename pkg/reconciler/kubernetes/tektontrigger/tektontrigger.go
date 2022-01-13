@@ -251,9 +251,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	// Mark InstallerSet Available
 	tt.Status.MarkInstallerSetAvailable()
 
-	// Mark InstallerSet Available
-	tt.Status.MarkInstallerSetAvailable()
-
 	ready := installedTIS.Status.GetCondition(apis.ConditionReady)
 	if ready == nil {
 		tt.Status.MarkInstallerSetNotReady("Waiting for installation")
