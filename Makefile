@@ -87,7 +87,7 @@ bin/%: cmd/% FORCE
 
 .PHONY: get-releases
 get-releases: |
-	$Q ./hack/fetch-releases.sh $(TARGET) $(PIPELINES_VERSION) $(TRIGGERS_VERSION) $(DASHBOARD_VERSION) $(RESULTS_VERSION) || exit ;
+	$Q ./hack/fetch-releases.sh $(TARGET) $(TEKTON_PIPELINE_VERSION) $(TEKTON_TRIGGERS_VERSION) $(TEKTON_DASHBOARD_VERSION) $(TEKTON_RESULTS_VERSION) || exit ;
 
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
