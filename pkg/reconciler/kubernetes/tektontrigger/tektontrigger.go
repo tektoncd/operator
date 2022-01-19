@@ -28,6 +28,7 @@ import (
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektontriggerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektontrigger"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -43,11 +44,7 @@ const (
 	configDefaults = "config-defaults-triggers"
 	featureFlag    = "feature-flags-triggers"
 
-	createdByKey       = "operator.tekton.dev/created-by"
-	createdByValue     = "TektonTrigger"
-	releaseVersionKey  = "operator.tekton.dev/release-version"
-	targetNamespaceKey = "operator.tekton.dev/target-namespace"
-	lastAppliedHashKey = "operator.tekton.dev/last-applied-hash"
+	createdByValue = "TektonTrigger"
 )
 
 // Reconciler implements controller.Reconciler for TektonTrigger resources.
@@ -88,7 +85,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 
 	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", createdByKey, createdByValue),
+			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.CreatedByKey, createdByValue),
 		}); err != nil {
 		logger.Error("Failed to delete installer set created by TektonTrigger", err)
 		return err
@@ -175,8 +172,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		return err
 	}
 
-	installerSetTargetNamespace := installedTIS.Annotations[targetNamespaceKey]
-	installerSetReleaseVersion := installedTIS.Annotations[releaseVersionKey]
+	installerSetTargetNamespace := installedTIS.Annotations[tektoninstallerset.TargetNamespaceKey]
+	installerSetReleaseVersion := installedTIS.Annotations[tektoninstallerset.ReleaseVersionKey]
 
 	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
 	// Check if Release Version in TektonInstallerSet is same as expected
@@ -220,7 +217,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		}
 
 		// spec hash stored on installerSet
-		lastAppliedHash := installedTIS.GetAnnotations()[lastAppliedHashKey]
+		lastAppliedHash := installedTIS.GetAnnotations()[tektoninstallerset.LastAppliedHashKey]
 
 		if lastAppliedHash != expectedSpecHash {
 
@@ -232,7 +229,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 
 			// Update the spec hash
 			current := installedTIS.GetAnnotations()
-			current[lastAppliedHashKey] = expectedSpecHash
+			current[tektoninstallerset.LastAppliedHashKey] = expectedSpecHash
 			installedTIS.SetAnnotations(current)
 
 			// Update the manifests
@@ -360,12 +357,12 @@ func makeInstallerSet(tt *v1alpha1.TektonTrigger, manifest mf.Manifest, ttSpecHa
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", common.TriggerResourceName),
 			Labels: map[string]string{
-				createdByKey: createdByValue,
+				tektoninstallerset.CreatedByKey: createdByValue,
 			},
 			Annotations: map[string]string{
-				releaseVersionKey:  releaseVersion,
-				targetNamespaceKey: tt.Spec.TargetNamespace,
-				lastAppliedHashKey: ttSpecHash,
+				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
+				tektoninstallerset.TargetNamespaceKey: tt.Spec.TargetNamespace,
+				tektoninstallerset.LastAppliedHashKey: ttSpecHash,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},

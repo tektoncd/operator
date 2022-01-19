@@ -24,15 +24,13 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	createdByKey       = "operator.tekton.dev/created-by"
-	createdByValue     = "TektonPipeline"
-	releaseVersionKey  = "operator.tekton.dev/release-version"
-	targetNamespaceKey = "operator.tekton.dev/target-namespace"
+	createdByValue = "TektonPipeline"
 )
 
 // checkIfInstallerSetExist checks if installer set exists for a component and return true/false based on it
@@ -62,8 +60,8 @@ func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVe
 		// If anyone of this is not as expected then delete existing
 		// installer set and create a new one
 
-		version, vOk := ctIs.Annotations[releaseVersionKey]
-		namespace, nOk := ctIs.Annotations[targetNamespaceKey]
+		version, vOk := ctIs.Annotations[tektoninstallerset.ReleaseVersionKey]
+		namespace, nOk := ctIs.Annotations[tektoninstallerset.TargetNamespaceKey]
 
 		if vOk && nOk {
 			if version == relVersion && namespace == tp.Spec.TargetNamespace {
@@ -120,11 +118,11 @@ func makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.Manifest, prefix,
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", prefix),
 			Labels: map[string]string{
-				createdByKey: createdByValue,
+				tektoninstallerset.CreatedByKey: createdByValue,
 			},
 			Annotations: map[string]string{
-				releaseVersionKey:  releaseVersion,
-				targetNamespaceKey: tp.Spec.TargetNamespace,
+				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
+				tektoninstallerset.TargetNamespaceKey: tp.Spec.TargetNamespace,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
