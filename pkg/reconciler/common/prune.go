@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -439,7 +438,7 @@ func diffLastAppliedPruneConfig(ctx context.Context, k kubernetes.Interface, def
 
 	// this will take care of the prune related annotations in the namespace
 	if oldAnnotations != "" {
-		computedAnnotationsHash, err := hash.Compute(oldAnnotations)
+		computedAnnotationsHash, err := ComputeHashOf(oldAnnotations)
 		if err != nil {
 			return changed, err
 		}
@@ -451,7 +450,7 @@ func diffLastAppliedPruneConfig(ctx context.Context, k kubernetes.Interface, def
 		return changed, nil
 	}
 
-	computedDefaultConfigHash, err := hash.Compute(defaultconf)
+	computedDefaultConfigHash, err := ComputeHashOf(defaultconf)
 	if err != nil {
 		return changed, err
 	}
