@@ -18,6 +18,7 @@ package tektonpipeline
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -28,10 +29,9 @@ import (
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"go.uber.org/zap"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
@@ -47,8 +47,19 @@ const (
 
 	versionKey = "VERSION"
 
-	prePipelineInstallerSet  = "PrePipelineInstallerSet"
-	postPipelineInstallerSet = "PostPipelineInstallerSet"
+	prePipelineInstallerSet  = "PrePipeline"
+	postPipelineInstallerSet = "PostPipeline"
+)
+
+var (
+	preReconcileSelector = fmt.Sprintf("%s=%s,%s=%s",
+		tektoninstallerset.InstallerSetType, prePipelineInstallerSet,
+		tektoninstallerset.CreatedByKey, createdByValue,
+	)
+	postReconcileSelector = fmt.Sprintf("%s=%s,%s=%s",
+		tektoninstallerset.InstallerSetType, prePipelineInstallerSet,
+		tektoninstallerset.CreatedByKey, createdByValue,
+	)
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -104,7 +115,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Tek
 
 	SetDefault(&tp.Spec.Pipeline)
 
-	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, tp, prePipelineInstallerSet)
+	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, tp, preReconcileSelector)
 	if err != nil {
 		return err
 	}
@@ -135,7 +146,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Tek
 		}
 
 		if err := createInstallerSet(ctx, oe.operatorClientSet, tp, oe.manifest, oe.version,
-			prePipelineInstallerSet, "pre-pipeline"); err != nil {
+			prePipelineInstallerSet); err != nil {
 			return err
 		}
 	}
@@ -151,7 +162,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	value := findParam(pipeline.Spec.Params, enableMetricsKey)
 
 	if value == "true" {
-		exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, pipeline, postPipelineInstallerSet)
+		exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, pipeline, postReconcileSelector)
 		if err != nil {
 			return err
 		}
@@ -168,32 +179,27 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 			}
 
 			if err := createInstallerSet(ctx, oe.operatorClientSet, pipeline, oe.manifest, oe.version,
-				postPipelineInstallerSet, "post-pipeline"); err != nil {
+				postPipelineInstallerSet); err != nil {
 				return err
 			}
 		}
 
 	} else {
-		return deleteInstallerSet(ctx, oe.operatorClientSet, pipeline, postPipelineInstallerSet)
+		return deleteInstallerSet(ctx, oe.operatorClientSet, pipeline, postPipelineInstallerSet, postReconcileSelector)
 	}
 
 	return nil
 }
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	pipeline := comp.(*v1alpha1.TektonPipeline)
-
-	installerSets := pipeline.Status.ExtentionInstallerSets
-	if len(installerSets) == 0 {
-		return nil
+	err := deleteInstallerSet(ctx, oe.operatorClientSet, pipeline, postPipelineInstallerSet, postReconcileSelector)
+	if err != nil {
+		return err
 	}
-
-	for _, value := range installerSets {
-		err := oe.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().Delete(ctx, value, metav1.DeleteOptions{})
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		}
+	err = deleteInstallerSet(ctx, oe.operatorClientSet, pipeline, postPipelineInstallerSet, postReconcileSelector)
+	if err != nil {
+		return err
 	}
-
 	return nil
 }
 
