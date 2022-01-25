@@ -131,7 +131,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	tp.Status.MarkPreReconcilerComplete()
 
 	// Check if an tekton installer set already exists, if not then create
-	existingInstallerSet := tp.Status.GetTektonInstallerSet()
+	existingInstallerSet, err := r.currentInstallerSetName(ctx)
+	if err != nil {
+		return err
+	}
 	if existingInstallerSet == "" {
 		createdIs, err := r.createInstallerSet(ctx, tp)
 		if err != nil {
@@ -307,7 +310,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.Tekton
 	}
 
 	// create installer set
-	tis := makeInstallerSet(tp, manifest, specHash, r.releaseVersion)
+	tis := r.makeInstallerSet(tp, manifest, specHash)
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, tis, metav1.CreateOptions{})
 	if err != nil {
@@ -316,16 +319,18 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.Tekton
 	return createdIs, nil
 }
 
-func makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.Manifest, tpSpecHash, releaseVersion string) *v1alpha1.TektonInstallerSet {
+func (r *Reconciler) makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.Manifest, tpSpecHash string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(tp, tp.GetGroupVersionKind())
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", v1alpha1.PipelineResourceName),
 			Labels: map[string]string{
-				tektoninstallerset.CreatedByKey: createdByValue,
+				tektoninstallerset.CreatedByKey:      createdByValue,
+				tektoninstallerset.InstallerSetType:  v1alpha1.PipelineResourceName,
+				tektoninstallerset.ReleaseVersionKey: r.releaseVersion,
 			},
 			Annotations: map[string]string{
-				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
+				tektoninstallerset.ReleaseVersionKey:  r.releaseVersion,
 				tektoninstallerset.TargetNamespaceKey: tp.Spec.TargetNamespace,
 				tektoninstallerset.LastAppliedHashKey: tpSpecHash,
 			},
@@ -379,4 +384,36 @@ func (m *Recorder) logMetrics(status, version string, logger *zap.SugaredLogger)
 	if err != nil {
 		logger.Warnf("Failed to log the metrics : %v", err)
 	}
+}
+
+func (r *Reconciler) currentInstallerSetName(ctx context.Context) (string, error) {
+	labelSelector := fmt.Sprintf("%s=%s,%s=%s",
+		tektoninstallerset.CreatedByKey, createdByValue,
+		tektoninstallerset.InstallerSetType, v1alpha1.PipelineResourceName,
+	)
+	iSets, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().List(ctx, v1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(iSets.Items) == 0 {
+		return "", nil
+	}
+	if len(iSets.Items) == 1 {
+		iSetName := iSets.Items[0].GetName()
+		return iSetName, nil
+	}
+
+	// len(iSets.Items) > 1
+	// delete all installerSets as it cannot be decided which one is the desired one
+	err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().DeleteCollection(ctx,
+		metav1.DeleteOptions{},
+		v1.ListOptions{
+			LabelSelector: labelSelector,
+		})
+	if err != nil {
+		return "", err
+	}
+	return "", v1alpha1.RECONCILE_AGAIN_ERR
 }
