@@ -34,6 +34,7 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	v1alpha1.SchemeGroupVersion.WithKind("TektonConfig"):   &v1alpha1.TektonConfig{},
 	v1alpha1.SchemeGroupVersion.WithKind("TektonPipeline"): &v1alpha1.TektonPipeline{},
 	v1alpha1.SchemeGroupVersion.WithKind("TektonTrigger"):  &v1alpha1.TektonTrigger{},
+	v1alpha1.SchemeGroupVersion.WithKind("TektonChains"):   &v1alpha1.TektonChains{},
 }
 
 func SetTypes(platform string) {

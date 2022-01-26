@@ -19,6 +19,7 @@ package tektonconfig
 import (
 	"context"
 	"fmt"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chains"
 	"os"
 	"path/filepath"
 
@@ -128,6 +129,19 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	} else {
 		if err := trigger.TektonTriggerCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
+			return err
+		}
+	}
+
+	// Create TektonChains CR if profile is all
+	if tc.Spec.Profile == v1alpha1.ProfileAll {
+		if err := chains.CreateChainsCR(ctx, tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChains: %s", err.Error()))
+			return err
+		}
+	} else {
+		if err := chains.TektonChainsCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChainses(), v1alpha1.ChainsResourceName); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChains: %s", err.Error()))
 			return err
 		}
 	}

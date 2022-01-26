@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonchains"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektondashboard"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
@@ -34,5 +35,6 @@ func main() {
 		tektondashboard.NewController,
 		tektonresult.NewController,
 		tektoninstallerset.NewController,
+		tektonchains.NewController,
 	)
 }

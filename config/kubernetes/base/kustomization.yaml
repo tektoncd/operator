@@ -33,4 +33,5 @@ resources:
 - ../../webhooks/
 - 300-operator_v1alpha1_dashboard_crd.yaml
 - 300-operator_v1alpha1_result_crd.yaml
+- 300-operator_v1alpha1_chains_crd.yaml
 - operator_service.yaml

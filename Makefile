@@ -34,6 +34,7 @@ TEKTON_PIPELINE_VERSION ?= latest
 TEKTON_TRIGGERS_VERSION ?= latest
 TEKTON_DASHBOARD_VERSION ?= latest
 TEKTON_RESULTS_VERSION ?= v0.3.1 # latest returns an older version hence hard coding to v0.3.1 for now (tektoncd/results#138)
+TEKTON_CHAINS_VERSION ?= latest
 
 $(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
 
@@ -87,7 +88,7 @@ bin/%: cmd/% FORCE
 
 .PHONY: get-releases
 get-releases: |
-	$Q ./hack/fetch-releases.sh $(TARGET) $(TEKTON_PIPELINE_VERSION) $(TEKTON_TRIGGERS_VERSION) $(TEKTON_DASHBOARD_VERSION) $(TEKTON_RESULTS_VERSION) || exit ;
+	$Q ./hack/fetch-releases.sh $(TARGET) $(TEKTON_PIPELINE_VERSION) $(TEKTON_TRIGGERS_VERSION) $(TEKTON_DASHBOARD_VERSION) $(TEKTON_RESULTS_VERSION) $(TEKTON_CHAINS_VERSION) || exit ;
 
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster

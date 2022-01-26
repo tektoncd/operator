@@ -83,4 +83,5 @@ var (
 	AddonResourceName     = "addon"
 	ConfigResourceName    = "config"
 	ResultResourceName    = "result"
+	ChainsResourceName    = "chains"
 )
