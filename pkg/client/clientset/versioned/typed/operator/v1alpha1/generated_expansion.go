@@ -20,6 +20,8 @@ package v1alpha1
 
 type TektonAddonExpansion interface{}
 
+type TektonChainsExpansion interface{}
+
 type TektonConfigExpansion interface{}
 
 type TektonDashboardExpansion interface{}

@@ -32,6 +32,10 @@ func (c *FakeOperatorV1alpha1) TektonAddons() v1alpha1.TektonAddonInterface {
 	return &FakeTektonAddons{c}
 }
 
+func (c *FakeOperatorV1alpha1) TektonChainses() v1alpha1.TektonChainsInterface {
+	return &FakeTektonChainses{c}
+}
+
 func (c *FakeOperatorV1alpha1) TektonConfigs() v1alpha1.TektonConfigInterface {
 	return &FakeTektonConfigs{c}
 }

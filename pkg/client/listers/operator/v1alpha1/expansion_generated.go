@@ -22,6 +22,10 @@ package v1alpha1
 // TektonAddonLister.
 type TektonAddonListerExpansion interface{}
 
+// TektonChainsListerExpansion allows custom methods to be added to
+// TektonChainsLister.
+type TektonChainsListerExpansion interface{}
+
 // TektonConfigListerExpansion allows custom methods to be added to
 // TektonConfigLister.
 type TektonConfigListerExpansion interface{}

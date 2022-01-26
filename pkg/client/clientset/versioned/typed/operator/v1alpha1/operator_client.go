@@ -27,6 +27,7 @@ import (
 type OperatorV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	TektonAddonsGetter
+	TektonChainsesGetter
 	TektonConfigsGetter
 	TektonDashboardsGetter
 	TektonHubsGetter
@@ -43,6 +44,10 @@ type OperatorV1alpha1Client struct {
 
 func (c *OperatorV1alpha1Client) TektonAddons() TektonAddonInterface {
 	return newTektonAddons(c)
+}
+
+func (c *OperatorV1alpha1Client) TektonChainses() TektonChainsInterface {
+	return newTektonChainses(c)
 }
 
 func (c *OperatorV1alpha1Client) TektonConfigs() TektonConfigInterface {
