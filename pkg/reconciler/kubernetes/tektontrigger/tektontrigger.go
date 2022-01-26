@@ -86,7 +86,9 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 
 	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.CreatedByKey, createdByValue),
+			LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
+				tektoninstallerset.CreatedByKey, createdByValue,
+				tektoninstallerset.InstallerSetType, v1alpha1.TriggerResourceName),
 		}); err != nil {
 		logger.Error("Failed to delete installer set created by TektonTrigger", err)
 		return err
@@ -141,7 +143,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	tt.Status.MarkPreReconcilerComplete()
 
 	// Check if an tekton installer set already exists, if not then create
-	existingInstallerSet := tt.Status.GetTektonInstallerSet()
+	labelSelector := fmt.Sprintf("%s=%s,%s=%s",
+		tektoninstallerset.CreatedByKey, createdByValue,
+		tektoninstallerset.InstallerSetType, v1alpha1.TriggerResourceName,
+	)
+	existingInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
+	if err != nil {
+		return err
+	}
 	if existingInstallerSet == "" {
 		createdIs, err := r.createInstallerSet(ctx, tt)
 		if err != nil {
@@ -174,7 +183,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	}
 
 	installerSetTargetNamespace := installedTIS.Annotations[tektoninstallerset.TargetNamespaceKey]
-	installerSetReleaseVersion := installedTIS.Annotations[tektoninstallerset.ReleaseVersionKey]
+	installerSetReleaseVersion := installedTIS.Labels[tektoninstallerset.ReleaseVersionKey]
 
 	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
 	// Check if Release Version in TektonInstallerSet is same as expected
@@ -355,10 +364,11 @@ func makeInstallerSet(tt *v1alpha1.TektonTrigger, manifest mf.Manifest, ttSpecHa
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", v1alpha1.TriggerResourceName),
 			Labels: map[string]string{
-				tektoninstallerset.CreatedByKey: createdByValue,
+				tektoninstallerset.CreatedByKey:      createdByValue,
+				tektoninstallerset.ReleaseVersionKey: releaseVersion,
+				tektoninstallerset.InstallerSetType:  v1alpha1.TriggerResourceName,
 			},
 			Annotations: map[string]string{
-				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
 				tektoninstallerset.TargetNamespaceKey: tt.Spec.TargetNamespace,
 				tektoninstallerset.LastAppliedHashKey: ttSpecHash,
 			},
