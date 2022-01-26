@@ -57,9 +57,14 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			VersionConfigMap: versionConfigMap,
 		}
 
-		readonlyManifest, releaseVersion := ctrl.InitController(ctx, initcontroller.PayloadOptions{ReadOnly: true})
+		readonlyManifest, dashboardVer := ctrl.InitController(ctx, initcontroller.PayloadOptions{ReadOnly: true})
 
 		fullaccessManifest, _ := ctrl.InitController(ctx, initcontroller.PayloadOptions{ReadOnly: false})
+
+		operatorVer, err := initcontroller.OperatorVersion(ctx)
+		if err != nil {
+			logger.Fatal(err)
+		}
 
 		c := &Reconciler{
 			kubeClientSet:      kubeClient,
@@ -68,7 +73,8 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			readonlyManifest:   readonlyManifest,
 			fullaccessManifest: fullaccessManifest,
 			pipelineInformer:   tektonPipelineInformer,
-			releaseVersion:     releaseVersion,
+			dashboardVersion:   dashboardVer,
+			operatorVersion:    operatorVer,
 		}
 		impl := tektonDashboardreconciler.NewImpl(ctx, c)
 

@@ -54,11 +54,16 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			VersionConfigMap: versionConfigMap,
 		}
 
-		manifest, releaseVersion := ctrl.InitController(ctx, initcontroller.PayloadOptions{})
+		manifest, triggersVer := ctrl.InitController(ctx, initcontroller.PayloadOptions{})
 
 		metrics, err := NewRecorder()
 		if err != nil {
 			logger.Errorf("Failed to create trigger metrics recorder %v", err)
+		}
+
+		operatorVer, err := initcontroller.OperatorVersion(ctx)
+		if err != nil {
+			logger.Fatal(err)
 		}
 
 		c := &Reconciler{
@@ -66,7 +71,8 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			pipelineInformer:  tektonPipelineinformer.Get(ctx),
 			extension:         generator(ctx),
 			manifest:          manifest,
-			releaseVersion:    releaseVersion,
+			operatorVersion:   operatorVer,
+			triggersVersion:   triggersVer,
 			metrics:           metrics,
 		}
 		impl := tektonTriggerreconciler.NewImpl(ctx, c)

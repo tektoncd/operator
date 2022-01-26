@@ -62,10 +62,10 @@ type Reconciler struct {
 	metrics *Recorder
 
 	pipelineInformer pipelineinformer.TektonPipelineInformer
-	// releaseVersion describes the current triggers version
-	releaseVersion string
 	// enqueueAfter enqueues a obj after a duration
-	enqueueAfter func(obj interface{}, after time.Duration)
+	enqueueAfter    func(obj interface{}, after time.Duration)
+	triggersVersion string
+	operatorVersion string
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -149,7 +149,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		}
 
 		// If there was no existing installer set, that means its a new install
-		r.metrics.logMetrics(metricsNew, r.releaseVersion, logger)
+		r.metrics.logMetrics(metricsNew, r.triggersVersion, logger)
 
 		return r.updateTektonTriggerStatus(ctx, tt, createdIs)
 	}
@@ -164,8 +164,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 				return err
 			}
 			// if there is version diff then its a call for upgrade
-			if tt.Status.Version != r.releaseVersion {
-				r.metrics.logMetrics(metricsUpgrade, r.releaseVersion, logger)
+			if tt.Status.Version != r.triggersVersion {
+				r.metrics.logMetrics(metricsUpgrade, r.triggersVersion, logger)
 			}
 			return r.updateTektonTriggerStatus(ctx, tt, createdIs)
 		}
@@ -181,7 +181,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	// If any of the thing above is not same the delete the existing TektonInstallerSet
 	// and create a new with expected properties
 
-	if installerSetTargetNamespace != tt.Spec.TargetNamespace || installerSetReleaseVersion != r.releaseVersion {
+	if installerSetTargetNamespace != tt.Spec.TargetNamespace || installerSetReleaseVersion != r.operatorVersion {
 
 		// Delete the existing TektonInstallerSet
 		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
@@ -308,7 +308,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 func (r *Reconciler) updateTektonTriggerStatus(ctx context.Context, tt *v1alpha1.TektonTrigger, createdIs *v1alpha1.TektonInstallerSet) error {
 	// update the tt with TektonInstallerSet and releaseVersion
 	tt.Status.SetTektonInstallerSet(createdIs.Name)
-	tt.Status.SetVersion(r.releaseVersion)
+	tt.Status.SetVersion(r.triggersVersion)
 
 	// Update the status with TektonInstallerSet so that any new thread
 	// reconciling with know that TektonInstallerSet is created otherwise
@@ -339,7 +339,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tt *v1alpha1.Tekton
 	}
 
 	// create installer set
-	tis := makeInstallerSet(tt, manifest, specHash, r.releaseVersion)
+	tis := makeInstallerSet(tt, manifest, specHash, r.operatorVersion)
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, tis, metav1.CreateOptions{})
 	if err != nil {
