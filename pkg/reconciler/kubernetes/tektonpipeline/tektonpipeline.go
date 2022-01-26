@@ -84,7 +84,9 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 
 	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.CreatedByKey, createdByValue),
+			LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
+				tektoninstallerset.CreatedByKey, createdByValue,
+				tektoninstallerset.InstallerSetType, v1alpha1.PipelineResourceName),
 		}); err != nil {
 		logger.Error("Failed to delete installer set created by TektonPipeline", err)
 		return err
@@ -125,7 +127,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	tp.Status.MarkPreReconcilerComplete()
 
 	// Check if an tekton installer set already exists, if not then create
-	existingInstallerSet, err := r.currentInstallerSetName(ctx)
+	labelSelector := fmt.Sprintf("%s=%s,%s=%s",
+		tektoninstallerset.CreatedByKey, createdByValue,
+		tektoninstallerset.InstallerSetType, v1alpha1.PipelineResourceName,
+	)
+	existingInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
 	if err != nil {
 		return err
 	}
@@ -362,36 +368,4 @@ func (m *Recorder) logMetrics(status, version string, logger *zap.SugaredLogger)
 	if err != nil {
 		logger.Warnf("Failed to log the metrics : %v", err)
 	}
-}
-
-func (r *Reconciler) currentInstallerSetName(ctx context.Context) (string, error) {
-	labelSelector := fmt.Sprintf("%s=%s,%s=%s",
-		tektoninstallerset.CreatedByKey, createdByValue,
-		tektoninstallerset.InstallerSetType, v1alpha1.PipelineResourceName,
-	)
-	iSets, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().List(ctx, v1.ListOptions{
-		LabelSelector: labelSelector,
-	})
-	if err != nil {
-		return "", err
-	}
-	if len(iSets.Items) == 0 {
-		return "", nil
-	}
-	if len(iSets.Items) == 1 {
-		iSetName := iSets.Items[0].GetName()
-		return iSetName, nil
-	}
-
-	// len(iSets.Items) > 1
-	// delete all installerSets as it cannot be decided which one is the desired one
-	err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().DeleteCollection(ctx,
-		metav1.DeleteOptions{},
-		v1.ListOptions{
-			LabelSelector: labelSelector,
-		})
-	if err != nil {
-		return "", err
-	}
-	return "", v1alpha1.RECONCILE_AGAIN_ERR
 }
