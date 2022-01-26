@@ -238,6 +238,133 @@ func (w *wrapOperatorV1alpha1TektonAddonImpl) Watch(ctx context.Context, opts v1
 	return nil, errors.New("NYI: Watch")
 }
 
+func (w *wrapOperatorV1alpha1) TektonChainses() typedoperatorv1alpha1.TektonChainsInterface {
+	return &wrapOperatorV1alpha1TektonChainsImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "operator.tekton.dev",
+			Version:  "v1alpha1",
+			Resource: "tektonchainses",
+		}),
+	}
+}
+
+type wrapOperatorV1alpha1TektonChainsImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+}
+
+var _ typedoperatorv1alpha1.TektonChainsInterface = (*wrapOperatorV1alpha1TektonChainsImpl)(nil)
+
+func (w *wrapOperatorV1alpha1TektonChainsImpl) Create(ctx context.Context, in *v1alpha1.TektonChains, opts v1.CreateOptions) (*v1alpha1.TektonChains, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "operator.tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "TektonChains",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.TektonChains{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1TektonChainsImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	return w.dyn.Delete(ctx, name, opts)
+}
+
+func (w *wrapOperatorV1alpha1TektonChainsImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	return w.dyn.DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapOperatorV1alpha1TektonChainsImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.TektonChains, error) {
+	uo, err := w.dyn.Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.TektonChains{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1TektonChainsImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.TektonChainsList, error) {
+	uo, err := w.dyn.List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.TektonChainsList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1TektonChainsImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TektonChains, err error) {
+	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.TektonChains{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1TektonChainsImpl) Update(ctx context.Context, in *v1alpha1.TektonChains, opts v1.UpdateOptions) (*v1alpha1.TektonChains, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "operator.tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "TektonChains",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.TektonChains{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1TektonChainsImpl) UpdateStatus(ctx context.Context, in *v1alpha1.TektonChains, opts v1.UpdateOptions) (*v1alpha1.TektonChains, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "operator.tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "TektonChains",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.TektonChains{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1TektonChainsImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
 func (w *wrapOperatorV1alpha1) TektonConfigs() typedoperatorv1alpha1.TektonConfigInterface {
 	return &wrapOperatorV1alpha1TektonConfigImpl{
 		dyn: w.dyn.Resource(schema.GroupVersionResource{
