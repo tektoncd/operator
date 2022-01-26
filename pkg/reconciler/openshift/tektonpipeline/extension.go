@@ -192,12 +192,12 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 }
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	pipeline := comp.(*v1alpha1.TektonPipeline)
-	err := deleteInstallerSet(ctx, oe.operatorClientSet, pipeline, postPipelineInstallerSet, postReconcileSelector)
-	if err != nil {
+	if err := deleteInstallerSet(ctx, oe.operatorClientSet, pipeline,
+		postPipelineInstallerSet, postReconcileSelector); err != nil {
 		return err
 	}
-	err = deleteInstallerSet(ctx, oe.operatorClientSet, pipeline, postPipelineInstallerSet, postReconcileSelector)
-	if err != nil {
+	if err := deleteInstallerSet(ctx, oe.operatorClientSet, pipeline,
+		postPipelineInstallerSet, postReconcileSelector); err != nil {
 		return err
 	}
 	return nil
