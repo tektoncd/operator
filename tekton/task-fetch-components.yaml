@@ -18,6 +18,9 @@ spec:
   - name: RESULTS_VERSION
     description: Version of TektonCD Results being fetched
     default: "latest"
+  - name: CHAINS_VERSION
+    description: Version of TektonCD Chains being fetched
+    default: "latest"
   - name: TARGET_PLATFORMS
     description: Target platform for for which the payload is going to be used
     default: "kubernetes openshift"
@@ -30,7 +33,7 @@ spec:
       apk add bash # Bash is not present
       for platform in $(params.TARGET_PLATFORMS); do
         echo "Fetching Tekton components for ${platform} build"
-        ./hack/fetch-releases.sh ${platform} $(params.PIPELINES_VERSION) $(params.TRIGGERS_VERSION) $(params.DASHBOARD_VERSION) $(params.RESULTS_VERSION)
+        ./hack/fetch-releases.sh ${platform} $(params.PIPELINES_VERSION) $(params.TRIGGERS_VERSION) $(params.DASHBOARD_VERSION) $(params.RESULTS_VERSION) $(params.CHAINS_VERSION)
 
         # print directory structure of cmd/<platform>/operator/kodata
         find cmd/${platform}/operator/kodata/

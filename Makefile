@@ -36,6 +36,7 @@ TEKTON_DASHBOARD_VERSION ?= latest
 TEKTON_RESULTS_VERSION ?= v0.4.0 # latest returns an older version hence hard coding to v0.3.1 for now (tektoncd/results#138)
 PAC_VERSION ?= 0.5.3
 TEKTON_HUB_VERSION ?= v1.6.0 # latest doesn't returns any version hence hard coding to v1.6.0 for now
+TEKTON_CHAINS_VERSION ?= latest
 
 $(BIN)/ko: PACKAGE=github.com/google/ko
 
@@ -64,6 +65,7 @@ clean-manifest:
 ifeq ($(TARGET), openshift)
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-pipeline
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-trigger
+	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-chains
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-hub
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code
 else
@@ -91,7 +93,8 @@ bin/%: cmd/% FORCE
 
 .PHONY: get-releases
 get-releases: |
-	$Q ./hack/fetch-releases.sh $(TARGET) $(TEKTON_PIPELINE_VERSION) $(TEKTON_TRIGGERS_VERSION) $(TEKTON_DASHBOARD_VERSION) $(TEKTON_RESULTS_VERSION) $(PAC_VERSION) $(TEKTON_HUB_VERSION) || exit ;
+	$Q ./hack/fetch-releases.sh $(TARGET) $(TEKTON_PIPELINE_VERSION) $(TEKTON_TRIGGERS_VERSION) $(TEKTON_DASHBOARD_VERSION) $(TEKTON_RESULTS_VERSION) $(PAC_VERSION) $(TEKTON_HUB_VERSION) $(TEKTON_CHAINS_VERSION) || exit ;
+
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
 	@ ## --load-restrictor LoadRestrictionsNone is needed in kustomize build as files which not in child tree of kustomize base are pulled

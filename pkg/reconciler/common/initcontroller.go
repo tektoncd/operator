@@ -31,6 +31,8 @@ import (
 	"knative.dev/pkg/logging"
 )
 
+const ReleaseVersionUnknown = "Unknown"
+
 type Controller struct {
 	Manifest         *mf.Manifest
 	Logger           *zap.SugaredLogger
@@ -75,7 +77,7 @@ func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) 
 	if err != nil {
 		if IsFetchVersionError(err) {
 			ctrl.Logger.Warnf("failed to read version information from ConfigMap %s", ctrl.VersionConfigMap, err)
-			releaseVersion = "Unknown"
+			releaseVersion = ReleaseVersionUnknown
 		} else {
 			ctrl.Logger.Fatalw("Error while reading ConfigMap", zap.Error(err))
 		}
@@ -106,6 +108,9 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 		var dashboard v1alpha1.TektonDashboard
 		dashboard.Spec.Readonly = false
 		return AppendTarget(ctx, ctrl.Manifest, &dashboard)
+	case strings.Contains(ctrl.VersionConfigMap, "chains"):
+		var chains v1alpha1.TektonChains
+		return AppendTarget(ctx, ctrl.Manifest, &chains)
 	}
 
 	return nil

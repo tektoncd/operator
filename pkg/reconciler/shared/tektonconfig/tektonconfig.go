@@ -26,6 +26,7 @@ import (
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chains"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -141,6 +142,19 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
 			r.enqueueAfter(tc, 10*time.Second)
 			return nil
+		}
+	}
+
+	// Create TektonChains CR if profile is all
+	if tc.Spec.Profile == v1alpha1.ProfileAll {
+		if err := chains.CreateChainsCR(ctx, tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChains: %s", err.Error()))
+			return err
+		}
+	} else {
+		if err := chains.TektonChainsCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChainses(), v1alpha1.ChainsResourceName); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChains: %s", err.Error()))
+			return err
 		}
 	}
 
