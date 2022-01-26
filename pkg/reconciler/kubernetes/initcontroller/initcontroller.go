@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"go.uber.org/zap"
 	"knative.dev/pkg/injection"
+	"knative.dev/pkg/logging"
 )
 
 type Controller struct {
@@ -39,6 +40,16 @@ type Controller struct {
 
 type PayloadOptions struct {
 	ReadOnly bool
+}
+
+func OperatorVersion(ctx context.Context) (string, error) {
+	logger := logging.FromContext(ctx)
+	operatorVersion, ok := os.LookupEnv(v1alpha1.VersionEnvKey)
+	if !ok || operatorVersion == "" {
+		logger.Errorf(v1alpha1.VERSION_ENV_NOT_SET_ERR.Error())
+		return "", v1alpha1.VERSION_ENV_NOT_SET_ERR
+	}
+	return operatorVersion, nil
 }
 
 func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) (mf.Manifest, string) {

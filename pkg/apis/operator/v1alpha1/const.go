@@ -18,14 +18,10 @@ package v1alpha1
 
 import "fmt"
 
-var (
-	// RECONCILE_AGAIN_ERR
-	// When we updates spec or status we reconcile again and then proceed so
-	// that we proceed ahead with updated object
-	RECONCILE_AGAIN_ERR = fmt.Errorf("reconcile again and proceed")
-)
-
 const (
+	// operatorVersion
+	VersionEnvKey = "VERSION"
+
 	// Profiles
 	ProfileAll   = "all"
 	ProfileBasic = "basic"
@@ -37,6 +33,16 @@ const (
 
 	ApiFieldAlpha  = "alpha"
 	ApiFieldStable = "stable"
+)
+
+var (
+	// RECONCILE_AGAIN_ERR
+	// When we updates spec or status we reconcile again and then proceed so
+	// that we proceed ahead with updated object
+	RECONCILE_AGAIN_ERR = fmt.Errorf("reconcile again and proceed")
+
+	// VERSION_ENV_NOT_SET_ERR Error when VERSION environment variable is not set
+	VERSION_ENV_NOT_SET_ERR = fmt.Errorf("version environment variable %s is not set or empty", VersionEnvKey)
 )
 
 var (
