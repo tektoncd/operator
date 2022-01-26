@@ -156,24 +156,31 @@ release_yaml_hub() {
   done
 }
 
-#Args: <target-platform> <pipelines version> <triggers version> <dashboard version> <results version> <pac version> <hub version>
+#Args: <target-platform> <pipelines version> <triggers version> <dashboard version> <results version> <pac version> <hub version> <chains version>
 main() {
   TARGET=$1
   p_version=${2}
   t_version=${3}
+  c_version=${8}
 
-
+  # get release YAML for Pipelines
   release_yaml pipeline release 00-pipelines ${p_version}
 
+  # get release YAML for Triggers
   release_yaml triggers release 00-triggers ${t_version}
   release_yaml triggers interceptors 01-interceptors ${t_version}
 
+  # get release YAML for Chains
+  release_yaml chains release 00-chains ${c_version}
+
   if [[ ${TARGET} != "openshift" ]]; then
     d_version=${4}
+    # get release YAML for Dashboard
     release_yaml dashboard tekton-dashboard-release 00-dashboard ${d_version}
     release_yaml dashboard tekton-dashboard-release-readonly 00-dashboard ${d_version}
 
     r_version=${5}
+    # get release YAML for Results
     release_yaml results release 00-results ${r_version}
   else
     pac_version=${6}

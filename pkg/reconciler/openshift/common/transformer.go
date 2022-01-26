@@ -38,8 +38,10 @@ func RemoveRunAsUser() mf.Transformer {
 
 		for i := range d.Spec.Template.Spec.Containers {
 			c := &d.Spec.Template.Spec.Containers[i]
-			// Remove runAsUser
-			c.SecurityContext.RunAsUser = nil
+			if c.SecurityContext != nil {
+				// Remove runAsUser
+				c.SecurityContext.RunAsUser = nil
+			}
 		}
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
@@ -67,8 +69,10 @@ func RemoveRunAsGroup() mf.Transformer {
 
 		for i := range d.Spec.Template.Spec.Containers {
 			c := &d.Spec.Template.Spec.Containers[i]
-			// Remove runAsGroup
-			c.SecurityContext.RunAsGroup = nil
+			if c.SecurityContext != nil {
+				// Remove runAsGroup
+				c.SecurityContext.RunAsGroup = nil
+			}
 		}
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)

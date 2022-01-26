@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonchains"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonhub"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
@@ -34,5 +35,6 @@ func main() {
 		tektonconfig.NewController,
 		tektoninstallerset.NewController,
 		tektonhub.NewController,
+		tektonchains.NewController,
 	)
 }

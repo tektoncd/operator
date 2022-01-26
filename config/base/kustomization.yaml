@@ -18,6 +18,7 @@ resources:
 - 300-operator_v1alpha1_pipeline_crd.yaml
 - 300-operator_v1alpha1_trigger_crd.yaml
 - 300-operator_v1alpha1_config_crd.yaml
+- 300-operator_v1alpha1_chains_crd.yaml
 - 300-operator_v1alpha1_installer_set_crd.yaml
 - 300-operator_v1alpha1_hub_crd.yaml
 - config-logging.yaml
