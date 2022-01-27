@@ -133,6 +133,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	// Pass the object through defaulting
 	tt.SetDefaults(ctx)
 
+	if err := tektoninstallerset.CleanUpObsoleteResources(ctx, r.operatorClientSet, createdByValue); err != nil {
+		return err
+	}
+
 	if err := r.extension.PreReconcile(ctx, tt); err != nil {
 		tt.Status.MarkPreReconcilerFailed(fmt.Sprintf("PreReconciliation failed: %s", err.Error()))
 		return err
