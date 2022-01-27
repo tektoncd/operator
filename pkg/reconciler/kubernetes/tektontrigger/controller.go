@@ -20,6 +20,7 @@ import (
 	"context"
 
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/initcontroller"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 
 	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
 	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
@@ -62,6 +63,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		c := &Reconciler{
+			kubeClientSet:     kubeclient.Get(ctx),
 			operatorClientSet: operatorclient.Get(ctx),
 			pipelineInformer:  tektonPipelineinformer.Get(ctx),
 			extension:         generator(ctx),
