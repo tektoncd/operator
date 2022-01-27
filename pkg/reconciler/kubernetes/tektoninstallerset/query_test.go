@@ -116,3 +116,42 @@ func TestCurrentInstallerSetNameWithDuplicates(t *testing.T) {
 	assert.Error(t, err, v1alpha1.RECONCILE_AGAIN_ERR.Error())
 	assert.Equal(t, name, "")
 }
+
+func TestCleanUpObsoleteResources(t *testing.T) {
+
+	iSets := v1alpha1.TektonInstallerSetList{
+		Items: []v1alpha1.TektonInstallerSet{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipeline-1",
+					Labels: map[string]string{
+						CreatedByKey: "Abc",
+					},
+				},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pipeline-2",
+					Labels: map[string]string{
+						CreatedByKey:     "Abc",
+						InstallerSetType: "pipeline",
+					},
+				},
+			},
+		},
+	}
+
+	// initially there are 2 installerSet
+	client := fake.NewSimpleClientset(&iSets)
+
+	err := CleanUpObsoleteResources(context.TODO(), client, "Abc")
+	assert.NilError(t, err)
+
+	// now only one installerSet should exist
+	// which doesn't have InstallerSetType label
+	is, err := client.OperatorV1alpha1().TektonInstallerSets().List(context.TODO(), metav1.ListOptions{})
+	assert.NilError(t, err)
+
+	// pipeline-1 is obsolete resources, so must be deleted
+	assert.Equal(t, is.Items[0].Name, "pipeline-2")
+}
