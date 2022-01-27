@@ -120,6 +120,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	// Pass the object through defaulting
 	tp.SetDefaults(ctx)
 
+	if err := tektoninstallerset.CleanUpObsoleteResources(ctx, r.operatorClientSet, createdByValue); err != nil {
+		return err
+	}
+
 	if err := r.targetNamespaceCheck(ctx, tp); err != nil {
 		return err
 	}
