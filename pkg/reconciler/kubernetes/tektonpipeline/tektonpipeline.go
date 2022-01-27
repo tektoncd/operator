@@ -263,8 +263,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		return nil
 	} else if ready.Status == corev1.ConditionFalse {
 		tp.Status.MarkInstallerSetNotReady(ready.Message)
+		manifest := r.manifest
+		if err := r.transform(ctx, &manifest, tp); err != nil {
+			logger.Error("manifest transformation failed:  ", err)
+			return err
+		}
+		err = common.PreemptDeadlock(ctx, &manifest, r.kubeClientSet, v1alpha1.PipelineResourceName)
 		r.enqueueAfter(tp, 10*time.Second)
-		return nil
+		return err
 	}
 
 	// Mark InstallerSet Ready

@@ -35,6 +35,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -66,6 +67,7 @@ type Reconciler struct {
 	enqueueAfter    func(obj interface{}, after time.Duration)
 	triggersVersion string
 	operatorVersion string
+	kubeClientSet   kubernetes.Interface
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -277,8 +279,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		return nil
 	} else if ready.Status == corev1.ConditionFalse {
 		tt.Status.MarkInstallerSetNotReady(ready.Message)
+		manifest := r.manifest
+		if err := r.transform(ctx, &manifest, tt); err != nil {
+			logger.Error("manifest transformation failed:  ", err)
+			return err
+		}
+		err = common.PreemptDeadlock(ctx, &manifest, r.kubeClientSet, v1alpha1.TriggerResourceName)
 		r.enqueueAfter(tt, 10*time.Second)
-		return nil
+		return err
 	}
 
 	// Mark InstallerSet Ready
