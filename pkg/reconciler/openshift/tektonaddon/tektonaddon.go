@@ -150,6 +150,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	// Pass the object through defaulting
 	ta.SetDefaults(ctx)
 
+	if err := tektoninstallerset.CleanUpObsoleteResources(ctx, r.operatorClientSet, CreatedByValue); err != nil {
+		return err
+	}
+
 	// validate the params
 	ptVal, _ := findValue(ta.Spec.Params, v1alpha1.PipelineTemplatesParam)
 	ctVal, _ := findValue(ta.Spec.Params, v1alpha1.ClusterTasksParam)
