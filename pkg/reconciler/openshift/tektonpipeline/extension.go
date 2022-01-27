@@ -57,7 +57,7 @@ var (
 		tektoninstallerset.CreatedByKey, createdByValue,
 	)
 	postReconcileSelector = fmt.Sprintf("%s=%s,%s=%s",
-		tektoninstallerset.InstallerSetType, prePipelineInstallerSet,
+		tektoninstallerset.InstallerSetType, postPipelineInstallerSet,
 		tektoninstallerset.CreatedByKey, createdByValue,
 	)
 )
@@ -197,7 +197,7 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 		return err
 	}
 	if err := deleteInstallerSet(ctx, oe.operatorClientSet, pipeline,
-		postPipelineInstallerSet, postReconcileSelector); err != nil {
+		prePipelineInstallerSet, preReconcileSelector); err != nil {
 		return err
 	}
 	return nil
