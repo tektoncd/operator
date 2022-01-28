@@ -33,6 +33,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -63,7 +64,8 @@ type Reconciler struct {
 	// releaseVersion describes the current pipelines version
 	releaseVersion string
 	// metrics handles metrics for pipeline install
-	metrics *Recorder
+	metrics       *Recorder
+	kubeClientSet kubernetes.Interface
 }
 
 // Check that our Reconciler implements controller.Reconciler
