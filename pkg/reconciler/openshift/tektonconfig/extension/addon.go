@@ -57,8 +57,8 @@ func ensureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterfac
 			updated = true
 		}
 
-		if !reflect.DeepEqual(config.Spec.Addon.Params, taCR.Spec.Params) {
-			taCR.Spec.Params = config.Spec.Addon.Params
+		if !reflect.DeepEqual(config.Spec.Addon, taCR.Spec.Addon) {
+			taCR.Spec.Addon = config.Spec.Addon
 			updated = true
 		}
 
@@ -92,7 +92,9 @@ func ensureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterfac
 				CommonSpec: v1alpha1.CommonSpec{
 					TargetNamespace: config.Spec.TargetNamespace,
 				},
-				Params: config.Spec.Addon.Params,
+				Addon: v1alpha1.Addon{
+					Params: config.Spec.Addon.Params,
+				},
 				Config: config.Spec.Config,
 			},
 		}

@@ -58,10 +58,12 @@ func Test_AddonSetDefaults_ClusterTaskIsFalse(t *testing.T) {
 			CommonSpec: CommonSpec{
 				TargetNamespace: "namespace",
 			},
-			Params: []Param{
-				{
-					Name:  "clusterTasks",
-					Value: "false",
+			Addon: Addon{
+				Params: []Param{
+					{
+						Name:  "clusterTasks",
+						Value: "false",
+					},
 				},
 			},
 		},

@@ -18,33 +18,35 @@ package v1alpha1
 
 import (
 	"context"
+
+	"knative.dev/pkg/ptr"
 )
 
 func (ta *TektonAddon) SetDefaults(ctx context.Context) {
-	setAddonDefaults(&ta.Spec.Params)
+	setAddonDefaults(&ta.Spec.Addon)
 }
 
-func setAddonDefaults(params *[]Param) {
+func setAddonDefaults(addon *Addon) {
 
-	paramsMap := ParseParams(*params)
+	paramsMap := ParseParams(addon.Params)
 	_, ptOk := paramsMap[PipelineTemplatesParam]
 	ct, ctOk := paramsMap[ClusterTasksParam]
 
 	// If clusterTasks is false and pipelineTemplate is not set, then set it as false
 	// as pipelines templates are created using clusterTasks
 	if ctOk && (ct == "false" && !ptOk) {
-		*params = append(*params, Param{
+		addon.Params = append(addon.Params, Param{
 			Name:  PipelineTemplatesParam,
 			Value: "false",
 		})
-		paramsMap = ParseParams(*params)
+		paramsMap = ParseParams(addon.Params)
 	}
 
 	// set the params with default values if not set in cr
 	for d := range AddonParams {
 		_, ok := paramsMap[d]
 		if !ok {
-			*params = append(*params,
+			addon.Params = append(addon.Params,
 				Param{
 					Name:  d,
 					Value: AddonParams[d].Default,
@@ -52,4 +54,8 @@ func setAddonDefaults(params *[]Param) {
 		}
 	}
 
+	// by default enable pac
+	if addon.EnablePAC == nil {
+		addon.EnablePAC = ptr.Bool(true)
+	}
 }

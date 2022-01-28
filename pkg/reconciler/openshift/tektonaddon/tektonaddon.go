@@ -322,6 +322,27 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		return nil
 	}
 
+	// Check if PAC is enabled
+
+	if *ta.Spec.EnablePAC {
+
+		// make sure pac is installed
+		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version,
+			fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, PACInstallerSet))
+		if err != nil {
+			return err
+		}
+		if !exist {
+			return r.ensurePAC(ctx, ta)
+		}
+
+	} else {
+		// if disabled then delete the installer Set if exist
+		if err := r.deleteInstallerSet(ctx, fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, PACInstallerSet)); err != nil {
+			return err
+		}
+	}
+
 	ta.Status.MarkInstallerSetReady()
 
 	if err := r.extension.PostReconcile(ctx, ta); err != nil {
@@ -364,6 +385,28 @@ func (r *Reconciler) checkComponentStatus(ctx context.Context, labelSelector str
 			return fmt.Errorf("InstallerSet %s: ", ready.Message)
 		}
 	}
+	return nil
+}
+
+func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) error {
+	pacManifest := r.manifest
+
+	koDataDir := os.Getenv(common.KoEnvKey)
+	pacLocation := filepath.Join(koDataDir, "tekton-addon", "pipelines-as-code")
+	if err := common.AppendManifest(&pacManifest, pacLocation); err != nil {
+		return err
+	}
+
+	// Run transformers
+	if err := r.addonTransform(ctx, &pacManifest, ta); err != nil {
+		return err
+	}
+
+	if err := createInstallerSet(ctx, r.operatorClientSet, ta, pacManifest, r.version,
+		PACInstallerSet, "addon-pac"); err != nil {
+		return err
+	}
+
 	return nil
 }
 
