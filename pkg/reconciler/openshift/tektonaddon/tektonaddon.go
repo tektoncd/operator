@@ -35,6 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -194,6 +195,35 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		return nil
 	}
 
+	// If clusterTasks are enabled then create an InstallerSet
+	// with the versioned clustertask manifest
+	if ctVal == "true" {
+
+		// here pass two labels one for type and other for minor release version to remove the previous minor release installerset only not all
+		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version,
+			fmt.Sprintf("%s=%s,%s=%s", tektoninstallerset.InstallerSetType, VersionedClusterTaskInstallerSet, tektoninstallerset.ReleaseMinorVersionKey, getPatchVersionTrimmed(r.version)),
+		)
+		if err != nil {
+			return err
+		}
+
+		if !exist {
+			return r.ensureVersionedClusterTasks(ctx, ta)
+		}
+	} else {
+		// if disabled then delete the installer Set if exist
+		if err := r.deleteInstallerSet(ctx,
+			fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, VersionedClusterTaskInstallerSet)); err != nil {
+			return err
+		}
+	}
+
+	// here pass two labels one for type and other for operator release version to get the latest installerset of current version
+	if err := r.checkComponentStatus(ctx, fmt.Sprintf("%s=%s,%s=%s", tektoninstallerset.InstallerSetType, VersionedClusterTaskInstallerSet, tektoninstallerset.ReleaseVersionKey, r.version)); err != nil {
+		ta.Status.MarkInstallerSetNotReady(err.Error())
+		return nil
+	}
+
 	// If pipeline templates are enabled then create an InstallerSet
 	// with their manifest
 	if ptVal == "true" {
@@ -323,6 +353,7 @@ func (r *Reconciler) ensurePipelineTemplates(ctx context.Context, ta *v1alpha1.T
 	return nil
 }
 
+// installerset for non versioned clustertask like buildah and community clustertask
 func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.TektonAddon) error {
 	clusterTaskManifest := r.manifest
 	// Read clusterTasks from ko data
@@ -334,8 +365,11 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 		return err
 	}
 
-	communityClusterTaskManifest := r.manifest
+	clusterTaskManifest = clusterTaskManifest.Filter(
+		mf.Not(byContains(getFormattedVersion(r.version))),
+	)
 
+	communityClusterTaskManifest := r.manifest
 	if err := r.appendCommunityTarget(ctx, &communityClusterTaskManifest, ta); err != nil {
 		// Continue if failed to resolve community task URL.
 		// (Ex: on disconnected cluster community tasks won't be reachable because of proxy).
@@ -349,6 +383,30 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 
 	if err := createInstallerSet(ctx, r.operatorClientSet, ta, clusterTaskManifest,
 		r.version, ClusterTaskInstallerSet, "addon-clustertasks"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// installerset for versioned clustertask like buildah-1-6-0
+func (r *Reconciler) ensureVersionedClusterTasks(ctx context.Context, ta *v1alpha1.TektonAddon) error {
+	clusterTaskManifest := r.manifest
+	// Read clusterTasks from ko data
+	if err := applyAddons(&clusterTaskManifest, "02-clustertasks"); err != nil {
+		return err
+	}
+	// Run transformers
+	if err := r.addonTransform(ctx, &clusterTaskManifest, ta); err != nil {
+		return err
+	}
+
+	clusterTaskManifest = clusterTaskManifest.Filter(
+		byContains(getFormattedVersion(r.version)),
+	)
+
+	if err := createInstallerSet(ctx, r.operatorClientSet, ta, clusterTaskManifest,
+		r.version, VersionedClusterTaskInstallerSet, "addon-versioned-clustertasks"); err != nil {
 		return err
 	}
 
@@ -415,14 +473,20 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, ta *v1alpha
 
 func makeInstallerSet(ta *v1alpha1.TektonAddon, manifest mf.Manifest, prefix, releaseVersion, component, specHash string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(ta, ta.GetGroupVersionKind())
+	labels := map[string]string{
+		tektoninstallerset.CreatedByKey:      CreatedByValue,
+		tektoninstallerset.InstallerSetType:  component,
+		tektoninstallerset.ReleaseVersionKey: releaseVersion,
+	}
+	// special label to make sure no two versioned clustertask installerset exist
+	// for all patch releases
+	if component == VersionedClusterTaskInstallerSet {
+		labels[tektoninstallerset.ReleaseMinorVersionKey] = getPatchVersionTrimmed(releaseVersion)
+	}
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", prefix),
-			Labels: map[string]string{
-				tektoninstallerset.CreatedByKey:      CreatedByValue,
-				tektoninstallerset.InstallerSetType:  component,
-				tektoninstallerset.ReleaseVersionKey: releaseVersion,
-			},
+			Labels:       labels,
 			Annotations: map[string]string{
 				tektoninstallerset.TargetNamespaceKey: ta.Spec.TargetNamespace,
 				tektoninstallerset.LastAppliedHashKey: specHash,
@@ -503,4 +567,26 @@ func findValue(params []v1alpha1.Param, name string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// byContains returns resources with specific string in name
+func byContains(name string) mf.Predicate {
+	return func(u *unstructured.Unstructured) bool {
+		return strings.Contains(u.GetName(), name)
+	}
+}
+
+// To get the version in the format as in clustertask name i.e. 1-6
+func getFormattedVersion(version string) string {
+	version = strings.TrimPrefix(getPatchVersionTrimmed(version), "v")
+	return strings.Replace(version, ".", "-", -1)
+}
+
+// To get the minor major version for label i.e. v1.6
+func getPatchVersionTrimmed(version string) string {
+	endIndex := strings.LastIndex(version, ".")
+	if endIndex != -1 {
+		version = version[:endIndex]
+	}
+	return version
 }
