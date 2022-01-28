@@ -62,3 +62,12 @@ var (
 		PipelineTemplatesParam: defaultParamValue,
 	}
 )
+
+var (
+	PipelineResourceName  = "pipeline"
+	TriggerResourceName   = "trigger"
+	DashboardResourceName = "dashboard"
+	AddonResourceName     = "addon"
+	ConfigResourceName    = "config"
+	ResultResourceName    = "result"
+)

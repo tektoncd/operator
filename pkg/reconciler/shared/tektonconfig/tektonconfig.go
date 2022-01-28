@@ -61,7 +61,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 		if err := trigger.TektonTriggerCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), common.TriggerResourceName); err != nil {
 			return err
 		}
-		if err := pipeline.TektonPipelineCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName); err != nil {
+		if err := pipeline.TektonPipelineCRDelete(r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName); err != nil {
 			return err
 		}
 	}
