@@ -379,8 +379,15 @@ func (r *Reconciler) targetNamespaceCheck(ctx context.Context, tp *v1alpha1.Tekt
 	ns, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, tp.GetSpec().GetTargetNamespace(), metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return err
+			if err := common.CreateTargetNamespace(ctx, labels, tp, r.kubeClientSet); err != nil {
+				return err
+			}
+			if err := common.CreateOperatorVersionConfigMap(r.manifest, tp); err != nil {
+				return err
+			}
+			return nil
 		}
+		return err
 	}
 	for key, value := range labels {
 		ns.Labels[key] = value
