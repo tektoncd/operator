@@ -19,12 +19,7 @@ package tektonconfig
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -33,6 +28,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -108,7 +104,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		return err
 	}
 
-	if err := r.createOperatorVersionConfigMap(tc); err != nil {
+	if err := common.CreateOperatorVersionConfigMap(r.manifest, tc); err != nil {
 		return err
 	}
 
@@ -172,29 +168,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	return nil
 }
 
-func (r *Reconciler) createOperatorVersionConfigMap(tc *v1alpha1.TektonConfig) error {
-	koDataDir := os.Getenv(common.KoEnvKey)
-	operatorDir := filepath.Join(koDataDir, "info")
-
-	if err := common.AppendManifest(&r.manifest, operatorDir); err != nil {
-		return err
-	}
-
-	manifest, err := r.manifest.Transform(
-		mf.InjectNamespace(tc.GetSpec().GetTargetNamespace()),
-		mf.InjectOwner(tc),
-	)
-	if err != nil {
-		return err
-	}
-
-	if err = manifest.Apply(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (r *Reconciler) ensureTargetNamespaceExists(ctx context.Context, tc *v1alpha1.TektonConfig) error {
 
 	ns, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
@@ -219,15 +192,7 @@ func (r *Reconciler) ensureTargetNamespaceExists(ctx context.Context, tc *v1alph
 			}
 		}
 	} else {
-		ns := &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: tc.GetSpec().GetTargetNamespace(),
-				Labels: map[string]string{
-					"operator.tekton.dev/targetNamespace": "true",
-				},
-			},
-		}
-		if _, err = r.kubeClientSet.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil {
+		if err := common.CreateTargetNamespace(ctx, nil, tc, r.kubeClientSet); err != nil {
 			if errors.IsAlreadyExists(err) {
 				return r.addTargetNamespaceLabel(ctx, tc.GetSpec().GetTargetNamespace())
 			}
