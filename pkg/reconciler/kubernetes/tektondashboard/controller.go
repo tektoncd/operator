@@ -18,9 +18,9 @@ package tektondashboard
 
 import (
 	"context"
+
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/initcontroller"
 
-	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"

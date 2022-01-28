@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 
 	mf "github.com/manifestival/manifestival"
@@ -331,7 +332,14 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, td *v1alpha1.Tekton
 		td.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err
 	}
-
+	// compute the hash of tektondashboard spec and store as an annotation
+	// in further reconciliation we compute hash of td spec and check with
+	// annotation, if they are same then we skip updating the object
+	// otherwise we update the manifest
+	specHash, err := hash.Compute(td.Spec)
+	if err != nil {
+		return nil, err
+	}
 	// create installer set
 	tis := makeInstallerSet(td, manifest, specHash, r.operatorVersion)
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
@@ -342,17 +350,18 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, td *v1alpha1.Tekton
 	return createdIs, nil
 }
 
-func makeInstallerSet(td *v1alpha1.TektonDashboard, manifest mf.Manifest, releaseVersion string) *v1alpha1.TektonInstallerSet {
+func makeInstallerSet(td *v1alpha1.TektonDashboard, manifest mf.Manifest, tdSpecHash, releaseVersion string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(td, td.GetGroupVersionKind())
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", v1alpha1.DashboardResourceName),
 			Labels: map[string]string{
-				createdByKey: createdByValue,
+				tektoninstallerset.CreatedByKey: createdByValue,
 			},
 			Annotations: map[string]string{
-				releaseVersionKey:  releaseVersion,
-				targetNamespaceKey: td.Spec.TargetNamespace,
+				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
+				tektoninstallerset.TargetNamespaceKey: td.Spec.TargetNamespace,
+				tektoninstallerset.LastAppliedHashKey: tdSpecHash,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
