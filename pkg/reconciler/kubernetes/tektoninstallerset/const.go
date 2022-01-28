@@ -17,9 +17,10 @@ limitations under the License.
 package tektoninstallerset
 
 const (
-	LastAppliedHashKey = "operator.tekton.dev/last-applied-hash"
-	CreatedByKey       = "operator.tekton.dev/created-by"
-	ReleaseVersionKey  = "operator.tekton.dev/release-version"
-	TargetNamespaceKey = "operator.tekton.dev/target-namespace"
-	InstallerSetType   = "operator.tekton.dev/type"
+	LastAppliedHashKey     = "operator.tekton.dev/last-applied-hash"
+	CreatedByKey           = "operator.tekton.dev/created-by"
+	ReleaseVersionKey      = "operator.tekton.dev/release-version"
+	ReleaseMinorVersionKey = "operator.tekton.dev/release-minor-version"
+	TargetNamespaceKey     = "operator.tekton.dev/target-namespace"
+	InstallerSetType       = "operator.tekton.dev/type"
 )
