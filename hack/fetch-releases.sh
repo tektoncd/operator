@@ -93,7 +93,34 @@ release_yaml() {
     echo ""
 }
 
-#Args: <target-platform> <pipelines version> <triggers version> <dashboard version> <results version>
+# release_yaml_pac <component> <release-yaml-name> <version>
+release_yaml_pac() {
+    echo fetching '|' component: ${1} '|' file: ${2} '|' version: ${3}
+    local comp=$1
+    local fileName=$2
+    local version=$3
+
+    ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
+    dirPath=${ko_data}/tekton-addon/pipelines-as-code/${version}
+    rm -rf ${dirPath} || true
+    mkdir -p ${dirPath} || true
+
+    url="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/release-${version}/release-${version}.yaml"
+
+    dest=${dirPath}/${fileName}.yaml
+    http_response=$(curl -s -o ${dest} -w "%{http_code}" ${url})
+    echo url: ${url}
+
+    if [[ $http_response != "200" ]]; then
+        echo "Error: failed to get $comp yaml, status code: $http_response"
+        exit 1
+    fi
+
+    echo "Info: Added $comp/$fileName:$version release yaml !!"
+    echo ""
+}
+
+#Args: <target-platform> <pipelines version> <triggers version> <dashboard version> <results version> <pac version>
 main() {
   TARGET=$1
   p_version=${2}
@@ -112,6 +139,9 @@ main() {
 
     r_version=${5}
     release_yaml results release 00-results ${r_version}
+  else
+    pac_version=${6}
+    release_yaml_pac pipelinesascode release ${pac_version}
   fi
 }
 
