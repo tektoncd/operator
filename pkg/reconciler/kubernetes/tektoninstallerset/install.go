@@ -42,6 +42,10 @@ var (
 	deploymentPred                     = mf.ByKind("Deployment")
 	servicePred                        = mf.ByKind("Service")
 	serviceAccountPred                 = mf.ByKind("ServiceAccount")
+	cronJobPred                        = mf.ByKind("CronJob")
+	eventListenerPred                  = mf.ByKind("EventListener")
+	triggerBindingPred                 = mf.ByKind("TriggerBinding")
+	triggerTemplatePred                = mf.ByKind("TriggerTemplate")
 	rolePred                           = mf.ByKind("Role")
 	roleBindingPred                    = mf.ByKind("RoleBinding")
 	clusterRolePred                    = mf.ByKind("ClusterRole")
@@ -106,6 +110,10 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 			horizontalPodAutoscalerPred,
 			pipelinePred,
 			serviceMonitorPred,
+			cronJobPred,
+			eventListenerPred,
+			triggerBindingPred,
+			triggerTemplatePred,
 		)).Apply(); err != nil {
 		return err
 	}

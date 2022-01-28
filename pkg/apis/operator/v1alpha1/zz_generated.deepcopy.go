@@ -35,6 +35,11 @@ func (in *Addon) DeepCopyInto(out *Addon) {
 		*out = make([]Param, len(*in))
 		copy(*out, *in)
 	}
+	if in.EnablePAC != nil {
+		in, out := &in.EnablePAC, &out.EnablePAC
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -419,11 +424,7 @@ func (in *TektonAddonList) DeepCopyObject() runtime.Object {
 func (in *TektonAddonSpec) DeepCopyInto(out *TektonAddonSpec) {
 	*out = *in
 	out.CommonSpec = in.CommonSpec
-	if in.Params != nil {
-		in, out := &in.Params, &out.Params
-		*out = make([]Param, len(*in))
-		copy(*out, *in)
-	}
+	in.Addon.DeepCopyInto(&out.Addon)
 	in.Config.DeepCopyInto(&out.Config)
 	return
 }

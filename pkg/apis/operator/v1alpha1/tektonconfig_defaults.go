@@ -28,7 +28,7 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	tc.Spec.Pipeline.PipelineProperties.setDefaults()
 	tc.Spec.Trigger.TriggersProperties.setDefaults()
 
-	setAddonDefaults(&tc.Spec.Addon.Params)
+	setAddonDefaults(&tc.Spec.Addon)
 
 	// before adding webhook we had default value for pruner's keep as 1
 	// but we expect user to define all values now otherwise webhook reject

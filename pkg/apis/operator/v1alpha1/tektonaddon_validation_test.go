@@ -56,10 +56,12 @@ func Test_ValidateTektonAddon_InvalidParam(t *testing.T) {
 			CommonSpec: CommonSpec{
 				TargetNamespace: "namespace",
 			},
-			Params: []Param{
-				{
-					Name:  "foo",
-					Value: "test",
+			Addon: Addon{
+				Params: []Param{
+					{
+						Name:  "foo",
+						Value: "test",
+					},
 				},
 			},
 		},
@@ -80,10 +82,12 @@ func Test_ValidateTektonAddon_InvalidParamValue(t *testing.T) {
 			CommonSpec: CommonSpec{
 				TargetNamespace: "namespace",
 			},
-			Params: []Param{
-				{
-					Name:  "clusterTasks",
-					Value: "test",
+			Addon: Addon{
+				Params: []Param{
+					{
+						Name:  "clusterTasks",
+						Value: "test",
+					},
 				},
 			},
 		},
@@ -104,14 +108,16 @@ func Test_ValidateTektonAddon_ClusterTaskIsFalseAndPipelineTemplateIsTrue(t *tes
 			CommonSpec: CommonSpec{
 				TargetNamespace: "namespace",
 			},
-			Params: []Param{
-				{
-					Name:  "clusterTasks",
-					Value: "false",
-				},
-				{
-					Name:  "pipelineTemplates",
-					Value: "true",
+			Addon: Addon{
+				Params: []Param{
+					{
+						Name:  "clusterTasks",
+						Value: "false",
+					},
+					{
+						Name:  "pipelineTemplates",
+						Value: "true",
+					},
 				},
 			},
 		},
