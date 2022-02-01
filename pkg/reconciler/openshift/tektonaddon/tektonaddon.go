@@ -300,13 +300,14 @@ func (r *Reconciler) checkComponentStatus(ctx context.Context, labelSelector str
 		return err
 	}
 
-	ready := installerSets.Items[0].Status.GetCondition(apis.ConditionReady)
-	if ready == nil || ready.Status == corev1.ConditionUnknown {
-		return fmt.Errorf("InstallerSet %s: waiting for installation", installerSets.Items[0].Name)
-	} else if ready.Status == corev1.ConditionFalse {
-		return fmt.Errorf("InstallerSet %s: ", ready.Message)
+	if len(installerSets.Items) > 0 {
+		ready := installerSets.Items[0].Status.GetCondition(apis.ConditionReady)
+		if ready == nil || ready.Status == corev1.ConditionUnknown {
+			return fmt.Errorf("InstallerSet %s: waiting for installation", installerSets.Items[0].Name)
+		} else if ready.Status == corev1.ConditionFalse {
+			return fmt.Errorf("InstallerSet %s: ", ready.Message)
+		}
 	}
-
 	return nil
 }
 
