@@ -300,7 +300,8 @@ func (r *Reconciler) checkComponentStatus(ctx context.Context, labelSelector str
 		return err
 	}
 
-	if len(installerSets.Items) > 0 {
+	// To make sure there won't be duplicate installersets.
+	if len(installerSets.Items) == 1 {
 		ready := installerSets.Items[0].Status.GetCondition(apis.ConditionReady)
 		if ready == nil || ready.Status == corev1.ConditionUnknown {
 			return fmt.Errorf("InstallerSet %s: waiting for installation", installerSets.Items[0].Name)
