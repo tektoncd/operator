@@ -46,7 +46,7 @@ on any Kubernetes Cluster.
 
 [How to make a TektonCD/Operator Release](tekton/README.md)
 
-# Gerating OperatorHub Bundle(s)
+# Generating OperatorHub Bundle(s)
 
 [OperatorHub Bundles](operatorhub/README.md)
 
