@@ -19,7 +19,6 @@ limitations under the License.
 package openshift
 
 import (
-	"fmt"
 	"os"
 	"testing"
 

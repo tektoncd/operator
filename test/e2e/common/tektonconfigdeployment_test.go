@@ -304,8 +304,8 @@ func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfi
 		}
 
 		// there must be 5 installerSet created for addons
-		if len(addonsIS.Items) != 5 {
-			t.Fatalf("expected 5 installerSets for Addon but got %v", len(addonsIS.Items))
+		if len(addonsIS.Items) != 6 {
+			t.Fatalf("expected 6 installerSets for Addon but got %v", len(addonsIS.Items))
 		}
 
 		// Now, disable clusterTasks and pipelineTemplates through TektonConfig
