@@ -22,7 +22,6 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	informer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
@@ -49,11 +48,8 @@ func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPi
 		}
 		return nil, err
 	}
-
-	if len(ppln.Status.Conditions) != 0 {
-		if ppln.Status.Conditions[0].Status != corev1.ConditionTrue {
-			return nil, fmt.Errorf(PipelineNotReady)
-		}
+	if !ppln.Status.IsReady() {
+		return nil, fmt.Errorf(PipelineNotReady)
 	}
 	return ppln, nil
 }
@@ -71,11 +67,8 @@ func TriggerReady(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrig
 		}
 		return nil, err
 	}
-
-	if len(trigger.Status.Conditions) != 0 {
-		if trigger.Status.Conditions[0].Status != corev1.ConditionTrue {
-			return nil, fmt.Errorf(TriggerNotReady)
-		}
+	if !trigger.Status.IsReady() {
+		return nil, fmt.Errorf(TriggerNotReady)
 	}
 	return trigger, nil
 }
