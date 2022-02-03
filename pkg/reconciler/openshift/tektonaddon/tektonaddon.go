@@ -327,8 +327,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	if *ta.Spec.EnablePAC {
 
 		// make sure pac is installed
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version,
-			fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, PACInstallerSet))
+		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion,
+			fmt.Sprintf("%s=%s", v1alpha1.InstallerSetType, PACInstallerSet))
 		if err != nil {
 			return err
 		}
@@ -338,7 +338,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 
 	} else {
 		// if disabled then delete the installer Set if exist
-		if err := r.deleteInstallerSet(ctx, fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, PACInstallerSet)); err != nil {
+		if err := r.deleteInstallerSet(ctx, fmt.Sprintf("%s=%s", v1alpha1.InstallerSetType, PACInstallerSet)); err != nil {
 			return err
 		}
 	}
@@ -389,7 +389,7 @@ func (r *Reconciler) checkComponentStatus(ctx context.Context, labelSelector str
 }
 
 func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) error {
-	pacManifest := r.manifest
+	pacManifest := mf.Manifest{}
 
 	koDataDir := os.Getenv(common.KoEnvKey)
 	pacLocation := filepath.Join(koDataDir, "tekton-addon", "pipelines-as-code")
@@ -402,7 +402,7 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 		return err
 	}
 
-	if err := createInstallerSet(ctx, r.operatorClientSet, ta, pacManifest, r.version,
+	if err := createInstallerSet(ctx, r.operatorClientSet, ta, pacManifest, r.operatorVersion,
 		PACInstallerSet, "addon-pac"); err != nil {
 		return err
 	}
@@ -411,7 +411,7 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 }
 
 func (r *Reconciler) ensureTriggerResources(ctx context.Context, ta *v1alpha1.TektonAddon) error {
-	triggerResourcesManifest := r.manifest
+	triggerResourcesManifest := mf.Manifest{}
 
 	if err := applyAddons(&triggerResourcesManifest, "01-clustertriggerbindings"); err != nil {
 		return err
@@ -430,7 +430,7 @@ func (r *Reconciler) ensureTriggerResources(ctx context.Context, ta *v1alpha1.Te
 }
 
 func (r *Reconciler) ensurePipelineTemplates(ctx context.Context, ta *v1alpha1.TektonAddon) error {
-	pipelineTemplateManifest := r.manifest
+	pipelineTemplateManifest := mf.Manifest{}
 
 	// Read pipeline template manifest from kodata
 	if err := applyAddons(&pipelineTemplateManifest, "03-pipelines"); err != nil {
@@ -457,7 +457,7 @@ func (r *Reconciler) ensurePipelineTemplates(ctx context.Context, ta *v1alpha1.T
 
 // installerset for non versioned clustertask like buildah and community clustertask
 func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.TektonAddon) error {
-	clusterTaskManifest := r.manifest
+	clusterTaskManifest := mf.Manifest{}
 	// Read clusterTasks from ko data
 	if err := applyAddons(&clusterTaskManifest, "02-clustertasks"); err != nil {
 		return err
@@ -494,7 +494,7 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 
 // installerset for versioned clustertask like buildah-1-6-0
 func (r *Reconciler) ensureVersionedClusterTasks(ctx context.Context, ta *v1alpha1.TektonAddon) error {
-	clusterTaskManifest := r.manifest
+	clusterTaskManifest := mf.Manifest{}
 	// Read clusterTasks from ko data
 	if err := applyAddons(&clusterTaskManifest, "02-clustertasks"); err != nil {
 		return err
