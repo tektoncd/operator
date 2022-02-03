@@ -33,8 +33,12 @@ import (
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektondashboardreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektondashboard"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -67,14 +71,7 @@ var _ tektondashboardreconciler.Finalizer = (*Reconciler)(nil)
 
 var watchedResourceName = "dashboard"
 
-const (
-	// TektonInstallerSet keys
-	lastAppliedHashKey = "operator.tekton.dev/last-applied-hash"
-	createdByKey       = "operator.tekton.dev/created-by"
-	createdByValue     = "TektonDashboard"
-	releaseVersionKey  = "operator.tekton.dev/release-version"
-	targetNamespaceKey = "operator.tekton.dev/target-namespace"
-)
+const createdByValue = "TektonDashboard"
 
 // FinalizeKind removes all resources after deletion of a TektonDashboards.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonDashboard) pkgreconciler.Event {
@@ -96,9 +93,18 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 		return err
 	}
 
+	ls := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.CreatedByKey: createdByValue,
+		},
+	}
+	labelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		return err
+	}
 	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", createdByKey, createdByValue),
+			LabelSelector: labelSelector,
 		}); err != nil {
 		logger.Error("Failed to delete installer set created by TektonDashboard", err)
 		return err
@@ -179,8 +185,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 		return err
 	}
 
-	installerSetTargetNamespace := installedTIS.Annotations[targetNamespaceKey]
-	installerSetReleaseVersion := installedTIS.Annotations[releaseVersionKey]
+	installerSetTargetNamespace := installedTIS.Annotations[tektoninstallerset.TargetNamespaceKey]
+	installerSetReleaseVersion := installedTIS.Annotations[tektoninstallerset.ReleaseVersionKey]
 
 	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
 	// Check if Release Version in TektonInstallerSet is same as expected
@@ -223,7 +229,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 		}
 
 		// spec hash stored on installerSet
-		lastAppliedHash := installedTIS.GetAnnotations()[lastAppliedHashKey]
+		lastAppliedHash := installedTIS.GetAnnotations()[tektoninstallerset.LastAppliedHashKey]
 
 		if lastAppliedHash != expectedSpecHash {
 
@@ -241,7 +247,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 
 			// Update the spec hash
 			current := installedTIS.GetAnnotations()
-			current[lastAppliedHashKey] = expectedSpecHash
+			current[tektoninstallerset.LastAppliedHashKey] = expectedSpecHash
 			installedTIS.SetAnnotations(current)
 
 			// Update the manifests
@@ -332,6 +338,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, td *v1alpha1.Tekton
 		td.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err
 	}
+
 	// compute the hash of tektondashboard spec and store as an annotation
 	// in further reconciliation we compute hash of td spec and check with
 	// annotation, if they are same then we skip updating the object
@@ -340,6 +347,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, td *v1alpha1.Tekton
 	if err != nil {
 		return nil, err
 	}
+
 	// create installer set
 	tis := makeInstallerSet(td, manifest, specHash, r.operatorVersion)
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
