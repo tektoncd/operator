@@ -87,9 +87,18 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 		return err
 	}
 
+	ls := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.CreatedByKey: createdByValue,
+		},
+	}
+	labelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		return err
+	}
 	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.CreatedByKey, createdByValue),
+			LabelSelector: labelSelector,
 		}); err != nil {
 		logger.Error("Failed to delete installer set created by TektonDashboard", err)
 		return err
