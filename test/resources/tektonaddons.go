@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -103,8 +104,17 @@ func AssertTektonInstallerSets(t *testing.T, clients *utils.Clients) {
 }
 
 func assertInstallerSetsForAddon(t *testing.T, clients *utils.Clients, component string) {
+	ls := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.InstallerSetType: component,
+		},
+	}
+	labelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		t.Fatal(err)
+	}
 	clusterTaskIS, err := clients.TektonInstallerSet().List(context.TODO(), metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, component),
+		LabelSelector: labelSelector,
 	})
 	if err != nil {
 		t.Fatalf("failed to get TektonInstallerSet for %s : %v", component, err)

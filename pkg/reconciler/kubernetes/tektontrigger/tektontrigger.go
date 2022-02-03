@@ -69,6 +69,15 @@ type Reconciler struct {
 	operatorVersion string
 }
 
+var (
+	ls = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.CreatedByKey:     createdByValue,
+			tektoninstallerset.InstallerSetType: v1alpha1.TriggerResourceName,
+		},
+	}
+)
+
 // Check that our Reconciler implements controller.Reconciler
 var _ tektontriggerreconciler.Interface = (*Reconciler)(nil)
 var _ tektontriggerreconciler.Finalizer = (*Reconciler)(nil)
@@ -85,11 +94,13 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 		return err
 	}
 
+	labelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		return err
+	}
 	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s,%s=%s",
-				tektoninstallerset.CreatedByKey, createdByValue,
-				tektoninstallerset.InstallerSetType, v1alpha1.TriggerResourceName),
+			LabelSelector: labelSelector,
 		}); err != nil {
 		logger.Error("Failed to delete installer set created by TektonTrigger", err)
 		return err
@@ -148,10 +159,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	tt.Status.MarkPreReconcilerComplete()
 
 	// Check if an tekton installer set already exists, if not then create
-	labelSelector := fmt.Sprintf("%s=%s,%s=%s",
-		tektoninstallerset.CreatedByKey, createdByValue,
-		tektoninstallerset.InstallerSetType, v1alpha1.TriggerResourceName,
-	)
+	labelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		return err
+	}
 	existingInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
 	if err != nil {
 		return err
