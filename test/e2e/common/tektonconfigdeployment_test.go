@@ -312,9 +312,8 @@ func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfi
 			t.Fatalf("failed to get InstallerSet: %v", err)
 		}
 
-		// there must be 5 installerSet created for addons
-		if len(addonsIS.Items) != 6 {
-			t.Fatalf("expected 6 installerSets for Addon but got %v", len(addonsIS.Items))
+		if len(addonsIS.Items) != 7 {
+			t.Fatalf("expected 7 installerSets for Addon but got %v", len(addonsIS.Items))
 		}
 
 		// Now, disable clusterTasks and pipelineTemplates through TektonConfig
@@ -346,9 +345,48 @@ func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfi
 		if err != nil {
 			t.Fatalf("failed to get InstallerSet: %v", err)
 		}
+		// Now, there must be 4 installerSet
+		if len(addonsIS.Items) != 4 {
+			t.Fatalf("expected 4 installerSets after disabling params for Addon but got %v", len(addonsIS.Items))
+		}
+	})
+
+	t.Run("disable-pac", func(t *testing.T) {
+
+		tc, err := clients.Operator.TektonConfigs().Get(context.TODO(), v1alpha1.ConfigResourceName, metav1.GetOptions{})
+		if err != nil {
+			t.Fatalf("failed to get tektonconfig: %v", err)
+		}
+
+		// Now, disable pipelinesAsCode
+		tc.Spec.Addon.EnablePAC = ptr.Bool(false)
+
+		tc, err = clients.Operator.TektonConfigs().Update(context.TODO(), tc, metav1.UpdateOptions{})
+		if err != nil {
+			t.Fatalf("failed to update tektonconfig: %v", err)
+		}
+
+		// wait till the installer set is deleted
+		time.Sleep(time.Second * 10)
+
+		ls := metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				v1alpha1.CreatedByKey: "TektonAddon",
+			},
+		}
+		labelSelector, err := common.LabelSelector(ls)
+		if err != nil {
+			t.Fatal(err)
+		}
+		addonsIS, err := clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{
+			LabelSelector: labelSelector,
+		})
+		if err != nil {
+			t.Fatalf("failed to get InstallerSet: %v", err)
+		}
 		// Now, there must be 3 installerSet
 		if len(addonsIS.Items) != 3 {
-			t.Fatalf("expected 3 installerSets after disabling params for Addon but got %v", len(addonsIS.Items))
+			t.Fatalf("expected 3 installerSets after disabling pac for Addon but got %v", len(addonsIS.Items))
 		}
 	})
 }
