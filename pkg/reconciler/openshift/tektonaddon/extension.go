@@ -87,8 +87,16 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	logger := logging.FromContext(ctx)
 	addon := comp.(*v1alpha1.TektonAddon)
 
-	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version,
-		fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, MiscellaneousResourcesInstallerSet))
+	miscellaneousLS := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.InstallerSetType: MiscellaneousResourcesInstallerSet,
+		},
+	}
+	miscellaneousLabelSelector, err := common.LabelSelector(miscellaneousLS)
+	if err != nil {
+		return err
+	}
+	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, miscellaneousLabelSelector)
 	if err != nil {
 		return err
 	}
@@ -108,7 +116,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	// Check if installer set is already created
 	installedTIS, err := oe.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		List(ctx, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, MiscellaneousResourcesInstallerSet),
+			LabelSelector: miscellaneousLabelSelector,
 		})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -160,7 +168,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 
 	installedAddonIS, err := oe.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		List(ctx, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, MiscellaneousResourcesInstallerSet),
+			LabelSelector: miscellaneousLabelSelector,
 		})
 	if err != nil {
 		logger.Error("failed to get InstallerSet: %s", err)
@@ -177,8 +185,17 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	}
 
 	consolecliManifest := oe.manifest
-	exist, err = checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version,
-		fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, ConsoleCLIInstallerSet))
+
+	consoleCLILS := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.InstallerSetType: ConsoleCLIInstallerSet,
+		},
+	}
+	consoleCLILabelSelector, err := common.LabelSelector(consoleCLILS)
+	if err != nil {
+		return err
+	}
+	exist, err = checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, consoleCLILabelSelector)
 	if err != nil {
 		return err
 	}

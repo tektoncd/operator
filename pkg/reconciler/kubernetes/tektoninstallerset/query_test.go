@@ -18,13 +18,28 @@ package tektoninstallerset
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+var (
+	pipelineLS = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			CreatedByKey:     "TektonPipeline",
+			InstallerSetType: "pipeline",
+		},
+	}
+	triggersLS = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			CreatedByKey:     "TektonTriggers",
+			InstallerSetType: "triggers",
+		},
+	}
 )
 
 func TestCurrentInstallerSetName(t *testing.T) {
@@ -44,10 +59,10 @@ func TestCurrentInstallerSetName(t *testing.T) {
 		},
 	}
 	client := fake.NewSimpleClientset(&iSets)
-	labelSelector := fmt.Sprintf("%s=%s,%s=%s",
-		CreatedByKey, "TektonPipeline",
-		InstallerSetType, "pipeline",
-	)
+	labelSelector, err := common.LabelSelector(pipelineLS)
+	if err != nil {
+		t.Error(err)
+	}
 	name, err := CurrentInstallerSetName(context.TODO(), client, labelSelector)
 
 	assert.NilError(t, err)
@@ -71,10 +86,10 @@ func TestCurrentInstallerSetNameNoMatching(t *testing.T) {
 		},
 	}
 	client := fake.NewSimpleClientset(&iSets)
-	labelSelector := fmt.Sprintf("%s=%s,%s=%s",
-		CreatedByKey, "TektonTriggers",
-		InstallerSetType, "triggers",
-	)
+	labelSelector, err := common.LabelSelector(triggersLS)
+	if err != nil {
+		t.Error(err)
+	}
 	name, err := CurrentInstallerSetName(context.TODO(), client, labelSelector)
 
 	assert.NilError(t, err)
@@ -107,10 +122,10 @@ func TestCurrentInstallerSetNameWithDuplicates(t *testing.T) {
 		},
 	}
 	client := fake.NewSimpleClientset(&iSets)
-	labelSelector := fmt.Sprintf("%s=%s,%s=%s",
-		CreatedByKey, "TektonPipeline",
-		InstallerSetType, "pipeline",
-	)
+	labelSelector, err := common.LabelSelector(pipelineLS)
+	if err != nil {
+		t.Error(err)
+	}
 
 	name, err := CurrentInstallerSetName(context.TODO(), client, labelSelector)
 	assert.Error(t, err, v1alpha1.RECONCILE_AGAIN_ERR.Error())

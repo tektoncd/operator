@@ -20,13 +20,13 @@ package common
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
@@ -296,8 +296,18 @@ func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfi
 
 	t.Run("validate-addon-params", func(t *testing.T) {
 
+		ls := metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				tektoninstallerset.CreatedByKey: "TektonAddon",
+			},
+		}
+		labelSelector, err := common.LabelSelector(ls)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		addonsIS, err := clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.CreatedByKey, "TektonAddon"),
+			LabelSelector: labelSelector,
 		})
 		if err != nil {
 			t.Fatalf("failed to get InstallerSet: %v", err)
@@ -332,7 +342,7 @@ func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfi
 		time.Sleep(time.Second * 10)
 
 		addonsIS, err = clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", tektoninstallerset.CreatedByKey, "TektonAddon"),
+			LabelSelector: labelSelector,
 		})
 		if err != nil {
 			t.Fatalf("failed to get InstallerSet: %v", err)

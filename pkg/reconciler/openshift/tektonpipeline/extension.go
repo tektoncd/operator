@@ -18,7 +18,6 @@ package tektonpipeline
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -32,6 +31,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
@@ -52,14 +52,18 @@ const (
 )
 
 var (
-	preReconcileSelector = fmt.Sprintf("%s=%s,%s=%s",
-		tektoninstallerset.InstallerSetType, prePipelineInstallerSet,
-		tektoninstallerset.CreatedByKey, createdByValue,
-	)
-	postReconcileSelector = fmt.Sprintf("%s=%s,%s=%s",
-		tektoninstallerset.InstallerSetType, postPipelineInstallerSet,
-		tektoninstallerset.CreatedByKey, createdByValue,
-	)
+	preReconcileSelector = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.CreatedByKey:     createdByValue,
+			tektoninstallerset.InstallerSetType: prePipelineInstallerSet,
+		},
+	}
+	postReconcileSelector = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.CreatedByKey:     createdByValue,
+			tektoninstallerset.InstallerSetType: postPipelineInstallerSet,
+		},
+	}
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -115,7 +119,11 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Tek
 
 	SetDefault(&tp.Spec.Pipeline)
 
-	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, tp, preReconcileSelector)
+	preReconcilerLS, err := common.LabelSelector(preReconcileSelector)
+	if err != nil {
+		return err
+	}
+	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, tp, preReconcilerLS)
 	if err != nil {
 		return err
 	}
@@ -158,11 +166,15 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	koDataDir := os.Getenv(common.KoEnvKey)
 	pipeline := comp.(*v1alpha1.TektonPipeline)
 
+	postReconcilerLS, err := common.LabelSelector(postReconcileSelector)
+	if err != nil {
+		return err
+	}
 	// Install monitoring if metrics is enabled
 	value := findParam(pipeline.Spec.Params, enableMetricsKey)
 
 	if value == "true" {
-		exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, pipeline, postReconcileSelector)
+		exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, pipeline, postReconcilerLS)
 		if err != nil {
 			return err
 		}
@@ -185,19 +197,27 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		}
 
 	} else {
-		return deleteInstallerSet(ctx, oe.operatorClientSet, pipeline, postPipelineInstallerSet, postReconcileSelector)
+		return deleteInstallerSet(ctx, oe.operatorClientSet, pipeline, postPipelineInstallerSet, postReconcilerLS)
 	}
 
 	return nil
 }
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	pipeline := comp.(*v1alpha1.TektonPipeline)
-	if err := deleteInstallerSet(ctx, oe.operatorClientSet, pipeline,
-		postPipelineInstallerSet, postReconcileSelector); err != nil {
+	postReconcilerLS, err := common.LabelSelector(postReconcileSelector)
+	if err != nil {
 		return err
 	}
 	if err := deleteInstallerSet(ctx, oe.operatorClientSet, pipeline,
-		prePipelineInstallerSet, preReconcileSelector); err != nil {
+		postPipelineInstallerSet, postReconcilerLS); err != nil {
+		return err
+	}
+	preReconcilerLS, err := common.LabelSelector(preReconcileSelector)
+	if err != nil {
+		return err
+	}
+	if err := deleteInstallerSet(ctx, oe.operatorClientSet, pipeline,
+		prePipelineInstallerSet, preReconcilerLS); err != nil {
 		return err
 	}
 	return nil

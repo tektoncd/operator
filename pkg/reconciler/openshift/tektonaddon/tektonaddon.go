@@ -173,10 +173,19 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 
 	// If clusterTasks are enabled then create an InstallerSet
 	// with their manifest
+	clusterTaskLS := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.InstallerSetType: ClusterTaskInstallerSet,
+		},
+	}
+	clusterTaskLabelSelector, err := common.LabelSelector(clusterTaskLS)
+	if err != nil {
+		return err
+	}
+
 	if ctVal == "true" {
 
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version,
-			fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, ClusterTaskInstallerSet))
+		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, clusterTaskLabelSelector)
 		if err != nil {
 			return err
 		}
@@ -186,25 +195,32 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		}
 	} else {
 		// if disabled then delete the installer Set if exist
-		if err := r.deleteInstallerSet(ctx,
-			fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, ClusterTaskInstallerSet)); err != nil {
+		if err := r.deleteInstallerSet(ctx, clusterTaskLabelSelector); err != nil {
 			return err
 		}
 	}
 
-	if err := r.checkComponentStatus(ctx, fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, ClusterTaskInstallerSet)); err != nil {
+	if err := r.checkComponentStatus(ctx, clusterTaskLabelSelector); err != nil {
 		ta.Status.MarkInstallerSetNotReady(err.Error())
 		return nil
 	}
 
 	// If clusterTasks are enabled then create an InstallerSet
 	// with the versioned clustertask manifest
+	versionedClusterTaskLS := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.InstallerSetType:       VersionedClusterTaskInstallerSet,
+			tektoninstallerset.ReleaseMinorVersionKey: getPatchVersionTrimmed(r.version),
+		},
+	}
+	versionedClusterTaskLabelSelector, err := common.LabelSelector(versionedClusterTaskLS)
+	if err != nil {
+		return err
+	}
 	if ctVal == "true" {
 
 		// here pass two labels one for type and other for minor release version to remove the previous minor release installerset only not all
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version,
-			fmt.Sprintf("%s=%s,%s=%s", tektoninstallerset.InstallerSetType, VersionedClusterTaskInstallerSet, tektoninstallerset.ReleaseMinorVersionKey, getPatchVersionTrimmed(r.version)),
-		)
+		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, versionedClusterTaskLabelSelector)
 		if err != nil {
 			return err
 		}
@@ -214,24 +230,41 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		}
 	} else {
 		// if disabled then delete the installer Set if exist
-		if err := r.deleteInstallerSet(ctx,
-			fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, VersionedClusterTaskInstallerSet)); err != nil {
+		if err := r.deleteInstallerSet(ctx, versionedClusterTaskLabelSelector); err != nil {
 			return err
 		}
 	}
 
 	// here pass two labels one for type and other for operator release version to get the latest installerset of current version
-	if err := r.checkComponentStatus(ctx, fmt.Sprintf("%s=%s,%s=%s", tektoninstallerset.InstallerSetType, VersionedClusterTaskInstallerSet, tektoninstallerset.ReleaseVersionKey, r.version)); err != nil {
+	vClusterTaskLS := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.InstallerSetType:  VersionedClusterTaskInstallerSet,
+			tektoninstallerset.ReleaseVersionKey: r.version,
+		},
+	}
+	vClusterTaskLabelSelector, err := common.LabelSelector(vClusterTaskLS)
+	if err != nil {
+		return err
+	}
+	if err := r.checkComponentStatus(ctx, vClusterTaskLabelSelector); err != nil {
 		ta.Status.MarkInstallerSetNotReady(err.Error())
 		return nil
 	}
 
 	// If pipeline templates are enabled then create an InstallerSet
 	// with their manifest
+	pipelineTemplateLS := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.InstallerSetType: PipelinesTemplateInstallerSet,
+		},
+	}
+	pipelineTemplateLSLabelSelector, err := common.LabelSelector(pipelineTemplateLS)
+	if err != nil {
+		return err
+	}
 	if ptVal == "true" {
 
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version,
-			fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, PipelinesTemplateInstallerSet))
+		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, pipelineTemplateLSLabelSelector)
 		if err != nil {
 			return err
 		}
@@ -240,20 +273,27 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		}
 	} else {
 		// if disabled then delete the installer Set if exist
-		if err := r.deleteInstallerSet(ctx, fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, PipelinesTemplateInstallerSet)); err != nil {
+		if err := r.deleteInstallerSet(ctx, pipelineTemplateLSLabelSelector); err != nil {
 			return err
 		}
 	}
 
-	if err := r.checkComponentStatus(ctx, fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, PipelinesTemplateInstallerSet)); err != nil {
+	if err := r.checkComponentStatus(ctx, pipelineTemplateLSLabelSelector); err != nil {
 		ta.Status.MarkInstallerSetNotReady(err.Error())
 		return nil
 	}
 
 	// Ensure Triggers resources
-
-	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version,
-		fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, TriggersResourcesInstallerSet))
+	triggerResourceLS := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			tektoninstallerset.InstallerSetType: TriggersResourcesInstallerSet,
+		},
+	}
+	triggerResourceLabelSelector, err := common.LabelSelector(triggerResourceLS)
+	if err != nil {
+		return err
+	}
+	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, triggerResourceLabelSelector)
 	if err != nil {
 		return err
 	}
@@ -261,7 +301,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		return r.ensureTriggerResources(ctx, ta)
 	}
 
-	err = r.checkComponentStatus(ctx, fmt.Sprintf("%s=%s", tektoninstallerset.InstallerSetType, TriggersResourcesInstallerSet))
+	err = r.checkComponentStatus(ctx, triggerResourceLabelSelector)
 	if err != nil {
 		ta.Status.MarkInstallerSetNotReady(err.Error())
 		return nil
