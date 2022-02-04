@@ -96,15 +96,15 @@ func AssertTektonAddonCRReadyStatus(t *testing.T, clients *utils.Clients, names 
 
 // AssertTektonInstallerSets verifies if the TektonInstallerSets are created.
 func AssertTektonInstallerSets(t *testing.T, clients *utils.Clients) {
-	assertInstallerSetsForAddon(t, clients, tektonaddon.ClusterTaskInstallerSet)
-	assertInstallerSetsForAddon(t, clients, tektonaddon.VersionedClusterTaskInstallerSet)
-	assertInstallerSetsForAddon(t, clients, tektonaddon.PipelinesTemplateInstallerSet)
-	assertInstallerSetsForAddon(t, clients, tektonaddon.TriggersResourcesInstallerSet)
-	assertInstallerSetsForAddon(t, clients, tektonaddon.ConsoleCLIInstallerSet)
-	assertInstallerSetsForAddon(t, clients, tektonaddon.MiscellaneousResourcesInstallerSet)
+	assertInstallerSets(t, clients, tektonaddon.ClusterTaskInstallerSet)
+	assertInstallerSets(t, clients, tektonaddon.VersionedClusterTaskInstallerSet)
+	assertInstallerSets(t, clients, tektonaddon.PipelinesTemplateInstallerSet)
+	assertInstallerSets(t, clients, tektonaddon.TriggersResourcesInstallerSet)
+	assertInstallerSets(t, clients, tektonaddon.ConsoleCLIInstallerSet)
+	assertInstallerSets(t, clients, tektonaddon.MiscellaneousResourcesInstallerSet)
 }
 
-func assertInstallerSetsForAddon(t *testing.T, clients *utils.Clients, component string) {
+func assertInstallerSets(t *testing.T, clients *utils.Clients, component string) {
 	ls := metav1.LabelSelector{
 		MatchLabels: map[string]string{
 			v1alpha1.InstallerSetType: component,
@@ -114,13 +114,13 @@ func assertInstallerSetsForAddon(t *testing.T, clients *utils.Clients, component
 	if err != nil {
 		t.Fatal(err)
 	}
-	clusterTaskIS, err := clients.TektonInstallerSet().List(context.TODO(), metav1.ListOptions{
+	installerSets, err := clients.TektonInstallerSet().List(context.TODO(), metav1.ListOptions{
 		LabelSelector: labelSelector,
 	})
 	if err != nil {
 		t.Fatalf("failed to get TektonInstallerSet for %s : %v", component, err)
 	}
-	if len(clusterTaskIS.Items) > 1 {
+	if len(installerSets.Items) > 1 {
 		t.Fatalf("multiple installer sets for %s TektonInstallerSet", component)
 	}
 }

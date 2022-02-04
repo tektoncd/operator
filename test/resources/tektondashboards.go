@@ -83,6 +83,11 @@ func IsTektonDashboardReady(s *v1alpha1.TektonDashboard, err error) (bool, error
 	return s.Status.IsReady(), err
 }
 
+// AssertTektonInstallerSets verifies if the TektonInstallerSets are created.
+func AssertDashboardInstallerSets(t *testing.T, clients *utils.Clients) {
+	assertInstallerSets(t, clients, v1alpha1.DashboardResourceName)
+}
+
 // AssertTektonDashboardCRReadyStatus verifies if the TektonDashboard reaches the READY status.
 func AssertTektonDashboardCRReadyStatus(t *testing.T, clients *utils.Clients, names utils.ResourceNames) {
 	if _, err := WaitForTektonDashboardState(clients.TektonDashboard(), names.TektonDashboard,
