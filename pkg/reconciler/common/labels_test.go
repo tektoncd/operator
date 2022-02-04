@@ -35,11 +35,10 @@ func TestLabelSelector(t *testing.T) {
 		name: "non empty label selector",
 		ls: metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				"createdByKey":     "createdByValue",
 				"installerSetType": "pipelineResourceName",
 			},
 		},
-		want: "createdByKey=createdByValue,installerSetType=pipelineResourceName",
+		want: "installerSetType=pipelineResourceName",
 	}} {
 		t.Run(c.name, func(t *testing.T) {
 			got, _ := LabelSelector(c.ls)
