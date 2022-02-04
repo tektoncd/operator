@@ -30,14 +30,14 @@ import (
 var (
 	pipelineLS = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			CreatedByKey:     "TektonPipeline",
-			InstallerSetType: "pipeline",
+			v1alpha1.CreatedByKey:     "TektonPipeline",
+			v1alpha1.InstallerSetType: "pipeline",
 		},
 	}
 	triggersLS = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			CreatedByKey:     "TektonTriggers",
-			InstallerSetType: "triggers",
+			v1alpha1.CreatedByKey:     "TektonTriggers",
+			v1alpha1.InstallerSetType: "triggers",
 		},
 	}
 )
@@ -51,8 +51,8 @@ func TestCurrentInstallerSetName(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipeline",
 					Labels: map[string]string{
-						CreatedByKey:     "TektonPipeline",
-						InstallerSetType: "pipeline",
+						v1alpha1.CreatedByKey:     "TektonPipeline",
+						v1alpha1.InstallerSetType: "pipeline",
 					},
 				},
 			},
@@ -78,8 +78,8 @@ func TestCurrentInstallerSetNameNoMatching(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipeline",
 					Labels: map[string]string{
-						CreatedByKey:     "TektonPipeline",
-						InstallerSetType: "pipeline",
+						v1alpha1.CreatedByKey:     "TektonPipeline",
+						v1alpha1.InstallerSetType: "pipeline",
 					},
 				},
 			},
@@ -105,8 +105,8 @@ func TestCurrentInstallerSetNameWithDuplicates(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipeline-1",
 					Labels: map[string]string{
-						CreatedByKey:     "TektonPipeline",
-						InstallerSetType: "pipeline",
+						v1alpha1.CreatedByKey:     "TektonPipeline",
+						v1alpha1.InstallerSetType: "pipeline",
 					},
 				},
 			},
@@ -114,8 +114,8 @@ func TestCurrentInstallerSetNameWithDuplicates(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipeline-2",
 					Labels: map[string]string{
-						CreatedByKey:     "TektonPipeline",
-						InstallerSetType: "pipeline",
+						v1alpha1.CreatedByKey:     "TektonPipeline",
+						v1alpha1.InstallerSetType: "pipeline",
 					},
 				},
 			},
@@ -140,7 +140,7 @@ func TestCleanUpObsoleteResources(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipeline-1",
 					Labels: map[string]string{
-						CreatedByKey: "Abc",
+						v1alpha1.CreatedByKey: "Abc",
 					},
 				},
 			},
@@ -148,8 +148,8 @@ func TestCleanUpObsoleteResources(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipeline-2",
 					Labels: map[string]string{
-						CreatedByKey:     "Abc",
-						InstallerSetType: "pipeline",
+						v1alpha1.CreatedByKey:     "Abc",
+						v1alpha1.InstallerSetType: "pipeline",
 					},
 				},
 			},

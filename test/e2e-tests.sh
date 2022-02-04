@@ -32,8 +32,7 @@ failed=0
 header "Setting up environment"
 [[ -z ${E2E_SKIP_OPERATOR_INSTALLATION} ]] && install_operator_resources
 
-echo "Wait for controller to start and create TektonConfig"
-sleep 30
+tektonconfig_ready_wait
 
 header "Running Go e2e tests"
 go_test_e2e -timeout=20m ./test/e2e/common ${KUBECONFIG_PARAM} || failed=1

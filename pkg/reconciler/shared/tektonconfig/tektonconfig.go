@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -46,7 +48,10 @@ type Reconciler struct {
 	operatorClientSet clientset.Interface
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
-	manifest  mf.Manifest
+	// enqueueAfter enqueues a obj after a duration
+	enqueueAfter    func(obj interface{}, after time.Duration)
+	manifest        mf.Manifest
+	operatorVersion string
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -94,6 +99,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	tc.SetDefaults(ctx)
+	// Mark TektonConfig Instance as Not Ready if an upgrade is needed
+	if err := r.markUpgrade(ctx, tc); err != nil {
+		return err
+	}
 
 	if err := r.ensureTargetNamespaceExists(ctx, tc); err != nil {
 		return err
@@ -105,7 +114,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	if err := r.extension.PreReconcile(ctx, tc); err != nil {
 		if err == v1alpha1.RECONCILE_AGAIN_ERR {
-			return err
+			r.enqueueAfter(tc, 10*time.Second)
+			return nil
 		}
 		tc.Status.MarkPreInstallFailed(err.Error())
 		return err
@@ -116,19 +126,22 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	// Create TektonPipeline CR
 	if err := pipeline.CreatePipelineCR(ctx, tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
 		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPipeline: %s", err.Error()))
-		return err
+		r.enqueueAfter(tc, 10*time.Second)
+		return nil
 	}
 
 	// Create TektonTrigger CR if the profile is all or basic
 	if tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic {
 		if err := trigger.CreateTriggerCR(ctx, tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
-			return err
+			r.enqueueAfter(tc, 10*time.Second)
+			return nil
 		}
 	} else {
 		if err := trigger.TektonTriggerCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
-			return err
+			r.enqueueAfter(tc, 10*time.Second)
+			return nil
 		}
 	}
 
@@ -141,7 +154,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	if err := r.extension.PostReconcile(ctx, tc); err != nil {
 		tc.Status.MarkPostInstallFailed(err.Error())
-		return err
+		r.enqueueAfter(tc, 10*time.Second)
+		return nil
 	}
 
 	tc.Status.MarkPostInstallComplete()
@@ -213,12 +227,13 @@ func (r *Reconciler) ensureTargetNamespaceExists(ctx context.Context, tc *v1alph
 				},
 			},
 		}
-
 		if _, err = r.kubeClientSet.CoreV1().Namespaces().Create(ctx, ns, metav1.CreateOptions{}); err != nil {
+			if errors.IsAlreadyExists(err) {
+				return r.addTargetNamespaceLabel(ctx, tc.GetSpec().GetTargetNamespace())
+			}
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -243,4 +258,45 @@ func (r *Reconciler) deleteObsoleteTargetNamespaces(ctx context.Context, tc *v1a
 	}
 
 	return nil
+}
+
+func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonConfig) error {
+	labels := tc.GetLabels()
+	ver, ok := labels[v1alpha1.ReleaseVersionKey]
+	if ok && ver == r.operatorVersion {
+		return nil
+	}
+	if ok && ver != r.operatorVersion {
+		tc.Status.MarkComponentNotReady("Upgrade Pending")
+		tc.Status.MarkPreInstallFailed(v1alpha1.UpgradePending)
+		tc.Status.MarkPostInstallFailed(v1alpha1.UpgradePending)
+		tc.Status.MarkNotReady("Upgrade Pending")
+	}
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	labels[v1alpha1.ReleaseVersionKey] = r.operatorVersion
+	tc.SetLabels(labels)
+	// Update the object for any spec changes
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx,
+		tc, v1.UpdateOptions{}); err != nil {
+		return err
+	}
+	return v1alpha1.RECONCILE_AGAIN_ERR
+}
+
+func (r *Reconciler) addTargetNamespaceLabel(ctx context.Context, targetNamespace string) error {
+	ns, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, targetNamespace, v1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	labels := ns.GetLabels()
+	if labels == nil {
+		labels = map[string]string{
+			"operator.tekton.dev/targetNamespace": "true",
+		}
+	}
+	ns.SetLabels(labels)
+	_, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, ns, v1.UpdateOptions{})
+	return err
 }

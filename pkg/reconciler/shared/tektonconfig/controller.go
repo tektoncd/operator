@@ -62,13 +62,22 @@ func NewExtensibleController(generator common.ExtensionGenerator) injection.Cont
 			logger.Fatalw("Error creating initial manifest", zap.Error(err))
 		}
 
+		operatorVer, err := common.OperatorVersion(ctx)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
 		c := &Reconciler{
 			kubeClientSet:     kubeclient.Get(ctx),
 			operatorClientSet: operatorclient.Get(ctx),
 			extension:         generator(ctx),
 			manifest:          manifest,
+			operatorVersion:   operatorVer,
 		}
 		impl := tektonConfigreconciler.NewImpl(ctx, c)
+
+		// Add enqueue func in reconciler
+		c.enqueueAfter = impl.EnqueueAfter
 
 		logger.Info("Setting up event handlers for TektonConfig")
 

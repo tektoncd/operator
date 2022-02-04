@@ -28,7 +28,6 @@ import (
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,14 +53,14 @@ const (
 var (
 	preReconcileSelector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.CreatedByKey:     createdByValue,
-			tektoninstallerset.InstallerSetType: prePipelineInstallerSet,
+			v1alpha1.CreatedByKey:     createdByValue,
+			v1alpha1.InstallerSetType: prePipelineInstallerSet,
 		},
 	}
 	postReconcileSelector = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.CreatedByKey:     createdByValue,
-			tektoninstallerset.InstallerSetType: postPipelineInstallerSet,
+			v1alpha1.CreatedByKey:     createdByValue,
+			v1alpha1.InstallerSetType: postPipelineInstallerSet,
 		},
 	}
 )
