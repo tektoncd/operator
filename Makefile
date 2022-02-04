@@ -107,7 +107,7 @@ clean-cr: | ; $(info $(M) clean CRs on $(TARGET)) @ ## Clean the CRs to the curr
 resolve: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko resolve on $(TARGET)) @ ## Resolve config to the current cluster
 	@ ## --load-restrictor LoadRestrictionsNone is needed in kustomize build as files which not in child tree of kustomize base are pulled
 	@ ## https://github.com/kubernetes-sigs/kustomize/issues/766
-	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET) | $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f -
+	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET)/overlays/default | $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f -
 
 .PHONY: generated
 generated: | vendor ; $(info $(M) update generated files) ## Update generated files

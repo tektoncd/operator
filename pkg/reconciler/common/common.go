@@ -17,6 +17,7 @@ limitations under the License.
 package common
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -57,6 +58,13 @@ func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPi
 		}
 		return nil, err
 	}
+	upgradePending, err := CheckUpgradePending(ppln)
+	if err != nil {
+		return nil, err
+	}
+	if upgradePending {
+		return nil, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
+	}
 	if !ppln.Status.IsReady() {
 		return nil, fmt.Errorf(PipelineNotReady)
 	}
@@ -76,6 +84,13 @@ func TriggerReady(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrig
 		}
 		return nil, err
 	}
+	upgradePending, err := CheckUpgradePending(trigger)
+	if err != nil {
+		return nil, err
+	}
+	if upgradePending {
+		return nil, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
+	}
 	if !trigger.Status.IsReady() {
 		return nil, fmt.Errorf(TriggerNotReady)
 	}
@@ -85,4 +100,20 @@ func TriggerReady(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrig
 func getTriggerRes(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrigger, error) {
 	res, err := informer.Lister().Get(TriggerResourceName)
 	return res, err
+}
+
+func CheckUpgradePending(tc v1alpha1.TektonComponent) (bool, error) {
+	labels := tc.GetLabels()
+	ver, ok := labels[v1alpha1.ReleaseVersionKey]
+	if !ok {
+		return true, nil
+	}
+	operatorVersion, err := OperatorVersion(context.TODO())
+	if err != nil {
+		return false, err
+	}
+	if ver != operatorVersion {
+		return true, nil
+	}
+	return false, nil
 }

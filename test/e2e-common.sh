@@ -47,9 +47,21 @@ function install_operator_resources() {
   # Wait for pods to be running in the namespaces we are deploying to
   # TODO: parameterize namespace, operator can run in a namespace different from the namespace where tektonpipelines is installed
   wait_until_pods_running ${OPERATOR_NAMESPACE} || fail_test "Tekton Operator controller did not come up"
+}
 
-  # Make sure that everything is cleaned up in the current namespace.
-  for res in tektonpipelines tektontriggers tektondashboards; do
-    kubectl delete --ignore-not-found=true ${res}.operator.tekton.dev --all
+function tektonconfig_ready_wait() {
+  echo "Wait for controller to start and create TektonConfig"
+  TEKTONCONFIG_READY=False
+  until [[ "${TEKTONCONFIG_READY}" = "True" ]]; do
+    echo waiting for TektonConfig config Ready status
+    sleep 5
+    kubectl get TektonConfig config > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+      echo TektonConfig config not yet created
+      continue
+    fi
+    TEKTONCONFIG_READY=$(kubectl get tektonconfig config -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}')
+
   done
+  echo "TektonConfig config Ready: True"
 }

@@ -75,7 +75,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			pipelineInformer:  tektonPipelineinformer.Get(ctx),
 			triggerInformer:   tektonTriggerinformer.Get(ctx),
 			manifest:          manifest,
-			version:           version,
+			operatorVersion:   version,
 		}
 		impl := tektonAddonreconciler.NewImpl(ctx, c)
 

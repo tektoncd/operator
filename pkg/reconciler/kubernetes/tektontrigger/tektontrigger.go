@@ -42,8 +42,8 @@ import (
 
 // Triggers ConfigMap
 const (
-	configDefaults = "config-defaults-triggers"
-	featureFlag    = "feature-flags-triggers"
+	ConfigDefaults = "config-defaults-triggers"
+	FeatureFlag    = "feature-flags-triggers"
 
 	createdByValue = "TektonTrigger"
 )
@@ -72,8 +72,8 @@ type Reconciler struct {
 var (
 	ls = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.CreatedByKey:     createdByValue,
-			tektoninstallerset.InstallerSetType: v1alpha1.TriggerResourceName,
+			v1alpha1.CreatedByKey:     createdByValue,
+			v1alpha1.InstallerSetType: v1alpha1.TriggerResourceName,
 		},
 	}
 )
@@ -135,7 +135,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		if err.Error() == common.PipelineNotReady {
 			tt.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
 			// wait for pipeline status to change
-			return fmt.Errorf(common.PipelineNotReady)
+			r.enqueueAfter(tt, 10*time.Second)
+			return nil
 		}
 		// (tektonpipeline.operator.tekton.dev instance not available yet)
 		tt.Status.MarkDependencyMissing("tekton-pipelines does not exist")
@@ -145,6 +146,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 
 	// Pass the object through defaulting
 	tt.SetDefaults(ctx)
+	// Mark TektonTrigger Instance as Not Ready if an upgrade is needed
+	if err := r.markUpgrade(ctx, tt); err != nil {
+		return err
+	}
 
 	if err := tektoninstallerset.CleanUpObsoleteResources(ctx, r.operatorClientSet, createdByValue); err != nil {
 		return err
@@ -198,8 +203,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		return err
 	}
 
-	installerSetTargetNamespace := installedTIS.Annotations[tektoninstallerset.TargetNamespaceKey]
-	installerSetReleaseVersion := installedTIS.Labels[tektoninstallerset.ReleaseVersionKey]
+	installerSetTargetNamespace := installedTIS.Annotations[v1alpha1.TargetNamespaceKey]
+	installerSetReleaseVersion := installedTIS.Labels[v1alpha1.ReleaseVersionKey]
 
 	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
 	// Check if Release Version in TektonInstallerSet is same as expected
@@ -243,7 +248,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		}
 
 		// spec hash stored on installerSet
-		lastAppliedHash := installedTIS.GetAnnotations()[tektoninstallerset.LastAppliedHashKey]
+		lastAppliedHash := installedTIS.GetAnnotations()[v1alpha1.LastAppliedHashKey]
 
 		if lastAppliedHash != expectedSpecHash {
 
@@ -255,7 +260,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 
 			// Update the spec hash
 			current := installedTIS.GetAnnotations()
-			current[tektoninstallerset.LastAppliedHashKey] = expectedSpecHash
+			current[v1alpha1.LastAppliedHashKey] = expectedSpecHash
 			installedTIS.SetAnnotations(current)
 
 			// Update the manifests
@@ -329,8 +334,8 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	// adding extension's transformers first to run them before `extra` transformers
 	trns := r.extension.Transformers(trigger)
 	extra := []mf.Transformer{
-		common.AddConfigMapValues(configDefaults, trigger.Spec.OptionalTriggersProperties),
-		common.AddConfigMapValues(featureFlag, trigger.Spec.TriggersProperties),
+		common.AddConfigMapValues(ConfigDefaults, trigger.Spec.OptionalTriggersProperties),
+		common.AddConfigMapValues(FeatureFlag, trigger.Spec.TriggersProperties),
 		common.ApplyProxySettings,
 		common.DeploymentImages(triggerImages),
 		common.AddConfiguration(trigger.Spec.Config),
@@ -389,13 +394,13 @@ func makeInstallerSet(tt *v1alpha1.TektonTrigger, manifest mf.Manifest, ttSpecHa
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", common.TriggerResourceName),
 			Labels: map[string]string{
-				tektoninstallerset.CreatedByKey:      createdByValue,
-				tektoninstallerset.ReleaseVersionKey: releaseVersion,
-				tektoninstallerset.InstallerSetType:  v1alpha1.TriggerResourceName,
+				v1alpha1.CreatedByKey:      createdByValue,
+				v1alpha1.ReleaseVersionKey: releaseVersion,
+				v1alpha1.InstallerSetType:  v1alpha1.TriggerResourceName,
 			},
 			Annotations: map[string]string{
-				tektoninstallerset.TargetNamespaceKey: tt.Spec.TargetNamespace,
-				tektoninstallerset.LastAppliedHashKey: ttSpecHash,
+				v1alpha1.TargetNamespaceKey: tt.Spec.TargetNamespace,
+				v1alpha1.LastAppliedHashKey: ttSpecHash,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
@@ -410,4 +415,29 @@ func (m *Recorder) logMetrics(status, version string, logger *zap.SugaredLogger)
 	if err != nil {
 		logger.Warnf("Failed to log the metrics : %v", err)
 	}
+}
+
+func (r *Reconciler) markUpgrade(ctx context.Context, tt *v1alpha1.TektonTrigger) error {
+	labels := tt.GetLabels()
+	ver, ok := labels[v1alpha1.ReleaseVersionKey]
+	if ok && ver == r.operatorVersion {
+		return nil
+	}
+	if ok && ver != r.operatorVersion {
+		tt.Status.MarkInstallerSetNotReady(v1alpha1.UpgradePending)
+		tt.Status.MarkPreReconcilerFailed(v1alpha1.UpgradePending)
+		tt.Status.MarkPostReconcilerFailed(v1alpha1.UpgradePending)
+		tt.Status.MarkNotReady(v1alpha1.UpgradePending)
+	}
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	labels[v1alpha1.ReleaseVersionKey] = r.operatorVersion
+	tt.SetLabels(labels)
+
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonTriggers().Update(ctx,
+		tt, v1.UpdateOptions{}); err != nil {
+		return err
+	}
+	return v1alpha1.RECONCILE_AGAIN_ERR
 }

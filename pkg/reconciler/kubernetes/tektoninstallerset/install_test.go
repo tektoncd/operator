@@ -126,7 +126,7 @@ func TestInstaller(t *testing.T) {
 	// reset created array
 	client.creates = []unstructured.Unstructured{}
 
-	want = []unstructured.Unstructured{namespace, clusterRole, podSecurityPolicy, validatingWebhook, mutatingWebhook}
+	want = []unstructured.Unstructured{namespace, podSecurityPolicy, clusterRole, validatingWebhook, mutatingWebhook}
 
 	err = i.EnsureClusterScopedResources()
 	if err != nil {
