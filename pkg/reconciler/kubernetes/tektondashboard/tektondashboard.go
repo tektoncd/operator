@@ -27,6 +27,7 @@ import (
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektondashboardreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektondashboard"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -62,7 +63,14 @@ type Reconciler struct {
 var _ tektondashboardreconciler.Interface = (*Reconciler)(nil)
 var _ tektondashboardreconciler.Finalizer = (*Reconciler)(nil)
 
-var watchedResourceName = "dashboard"
+var (
+	ls = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			v1alpha1.CreatedByKey:     createdByValue,
+			v1alpha1.InstallerSetType: v1alpha1.DashboardResourceName,
+		},
+	}
+)
 
 const createdByValue = "TektonDashboard"
 
@@ -86,11 +94,6 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 		return err
 	}
 
-	ls := metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			v1alpha1.CreatedByKey: createdByValue,
-		},
-	}
 	labelSelector, err := common.LabelSelector(ls)
 	if err != nil {
 		return err
@@ -119,9 +122,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 
 	logger.Infow("Reconciling TektonDashboards", "status", td.Status)
 
-	if td.GetName() != watchedResourceName {
+	if td.GetName() != v1alpha1.DashboardResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
-			watchedResourceName,
+			v1alpha1.DashboardResourceName,
 			td.GetName(),
 		)
 		logger.Error(msg)
@@ -152,11 +155,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 	// Mark PreReconcile Complete
 	td.Status.MarkPreReconcilerComplete()
 
-	// Check if an tekton installer set already exists, if not then create
-	existingInstallerSet := td.Status.GetTektonInstallerSet()
+	// Check if an tektoninstallerset already exists, if not then create
+	labelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		return err
+	}
+	existingInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
+	if err != nil {
+		return err
+	}
 	if existingInstallerSet == "" {
-		td.Status.MarkInstallerSetNotAvailable("Dashboard Installer Set Not Available")
-
 		createdIs, err := r.createInstallerSet(ctx, td)
 		if err != nil {
 			return err
@@ -181,7 +189,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 	}
 
 	installerSetTargetNamespace := installedTIS.Annotations[v1alpha1.TargetNamespaceKey]
-	installerSetReleaseVersion := installedTIS.Annotations[v1alpha1.ReleaseVersionKey]
+	installerSetReleaseVersion := installedTIS.Labels[v1alpha1.ReleaseVersionKey]
 
 	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
 	// Check if Release Version in TektonInstallerSet is same as expected
@@ -344,7 +352,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, td *v1alpha1.Tekton
 	}
 
 	// create installer set
-	tis := makeInstallerSet(td, manifest, specHash, r.operatorVersion)
+	tis := r.makeInstallerSet(td, manifest, specHash)
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, tis, metav1.CreateOptions{})
 	if err != nil {
@@ -353,16 +361,17 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, td *v1alpha1.Tekton
 	return createdIs, nil
 }
 
-func makeInstallerSet(td *v1alpha1.TektonDashboard, manifest mf.Manifest, tdSpecHash, releaseVersion string) *v1alpha1.TektonInstallerSet {
+func (r *Reconciler) makeInstallerSet(td *v1alpha1.TektonDashboard, manifest mf.Manifest, tdSpecHash string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(td, td.GetGroupVersionKind())
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", v1alpha1.DashboardResourceName),
 			Labels: map[string]string{
-				v1alpha1.CreatedByKey: createdByValue,
+				v1alpha1.CreatedByKey:      createdByValue,
+				v1alpha1.InstallerSetType:  v1alpha1.DashboardResourceName,
+				v1alpha1.ReleaseVersionKey: r.operatorVersion,
 			},
 			Annotations: map[string]string{
-				v1alpha1.ReleaseVersionKey:  releaseVersion,
 				v1alpha1.TargetNamespaceKey: td.Spec.TargetNamespace,
 				v1alpha1.LastAppliedHashKey: tdSpecHash,
 			},

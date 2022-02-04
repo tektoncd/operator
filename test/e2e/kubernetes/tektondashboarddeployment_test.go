@@ -74,6 +74,11 @@ func TestTektonDashboardsDeployment(t *testing.T) {
 		resources.AssertTektonDashboardCRReadyStatus(t, clients, crNames)
 	})
 
+	// Test if TektonInstallerSets are created.
+	t.Run("verify-dashboard-installersets", func(t *testing.T) {
+		resources.AssertDashboardInstallerSets(t, clients)
+	})
+
 	// Delete the TektonDashboard CR instance to see if all resources will be removed
 	t.Run("delete-dashboard", func(t *testing.T) {
 		resources.AssertTektonDashboardCRReadyStatus(t, clients, crNames)
