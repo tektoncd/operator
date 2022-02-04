@@ -27,7 +27,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
 	"github.com/tektoncd/operator/test/client"
@@ -298,7 +297,7 @@ func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfi
 
 		ls := metav1.LabelSelector{
 			MatchLabels: map[string]string{
-				tektoninstallerset.CreatedByKey: "TektonAddon",
+				v1alpha1.CreatedByKey: "TektonAddon",
 			},
 		}
 		labelSelector, err := common.LabelSelector(ls)

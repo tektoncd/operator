@@ -19,7 +19,6 @@ package tektontrigger
 import (
 	"context"
 
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/initcontroller"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 
 	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
@@ -50,19 +49,19 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 
-		ctrl := initcontroller.Controller{
+		ctrl := common.Controller{
 			Logger:           logger,
 			VersionConfigMap: versionConfigMap,
 		}
 
-		manifest, triggersVer := ctrl.InitController(ctx, initcontroller.PayloadOptions{})
+		manifest, triggersVer := ctrl.InitController(ctx, common.PayloadOptions{})
 
 		metrics, err := NewRecorder()
 		if err != nil {
 			logger.Errorf("Failed to create trigger metrics recorder %v", err)
 		}
 
-		operatorVer, err := initcontroller.OperatorVersion(ctx)
+		operatorVer, err := common.OperatorVersion(ctx)
 		if err != nil {
 			logger.Fatal(err)
 		}

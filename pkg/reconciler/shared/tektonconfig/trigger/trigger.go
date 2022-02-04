@@ -126,6 +126,13 @@ func waitForTektonTriggerState(clients op.TektonTriggerInterface, name string,
 
 // isTektonTriggerReady will check the status conditions of the TektonTrigger and return true if the TektonTrigger is ready.
 func isTektonTriggerReady(s *v1alpha1.TektonTrigger, err error) (bool, error) {
+	upgradePending, errInternal := common.CheckUpgradePending(s)
+	if err != nil {
+		return false, errInternal
+	}
+	if upgradePending {
+		return false, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
+	}
 	return s.Status.IsReady(), err
 }
 

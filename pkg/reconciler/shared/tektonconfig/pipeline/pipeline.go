@@ -126,6 +126,13 @@ func waitForTektonPipelineState(clients op.TektonPipelineInterface, name string,
 
 // IsTektonPipelineReady will check the status conditions of the TektonPipeline and return true if the TektonPipeline is ready.
 func isTektonPipelineReady(s *v1alpha1.TektonPipeline, err error) (bool, error) {
+	upgradePending, errInternal := common.CheckUpgradePending(s)
+	if err != nil {
+		return false, errInternal
+	}
+	if upgradePending {
+		return false, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
+	}
 	return s.Status.IsReady(), err
 }
 

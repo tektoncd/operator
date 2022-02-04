@@ -31,7 +31,6 @@ import (
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -88,7 +87,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 
 	miscellaneousLS := metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.InstallerSetType: MiscellaneousResourcesInstallerSet,
+			v1alpha1.InstallerSetType: MiscellaneousResourcesInstallerSet,
 		},
 	}
 	miscellaneousLabelSelector, err := common.LabelSelector(miscellaneousLS)
@@ -140,7 +139,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	}
 
 	// spec hash stored on installerSet
-	lastAppliedHash := installedTIS.Items[0].GetAnnotations()[tektoninstallerset.LastAppliedHashKey]
+	lastAppliedHash := installedTIS.Items[0].GetAnnotations()[v1alpha1.LastAppliedHashKey]
 
 	if lastAppliedHash != expectedSpecHash {
 
@@ -151,7 +150,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 
 		// Update the spec hash
 		current := installedTIS.Items[0].GetAnnotations()
-		current[tektoninstallerset.LastAppliedHashKey] = expectedSpecHash
+		current[v1alpha1.LastAppliedHashKey] = expectedSpecHash
 		installedTIS.Items[0].SetAnnotations(current)
 
 		// Update the manifests
@@ -187,7 +186,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 
 	consoleCLILS := metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.InstallerSetType: ConsoleCLIInstallerSet,
+			v1alpha1.InstallerSetType: ConsoleCLIInstallerSet,
 		},
 	}
 	consoleCLILabelSelector, err := common.LabelSelector(consoleCLILS)

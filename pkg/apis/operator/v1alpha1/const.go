@@ -33,6 +33,15 @@ const (
 
 	ApiFieldAlpha  = "alpha"
 	ApiFieldStable = "stable"
+
+	LastAppliedHashKey     = "operator.tekton.dev/last-applied-hash"
+	CreatedByKey           = "operator.tekton.dev/created-by"
+	ReleaseVersionKey      = "operator.tekton.dev/release-version"
+	ReleaseMinorVersionKey = "operator.tekton.dev/release-minor-version"
+	TargetNamespaceKey     = "operator.tekton.dev/target-namespace"
+	InstallerSetType       = "operator.tekton.dev/type"
+
+	UpgradePending = "upgrade pending"
 )
 
 var (
@@ -40,6 +49,10 @@ var (
 	// When we updates spec or status we reconcile again and then proceed so
 	// that we proceed ahead with updated object
 	RECONCILE_AGAIN_ERR = fmt.Errorf("reconcile again and proceed")
+
+	// DEPENDENCY_UPGRADE_PENDING_ERR
+	// When a reconciler cannot proceed due to an upgrade in progress of a dependency
+	DEPENDENCY_UPGRADE_PENDING_ERR = fmt.Errorf("dependency upgrade pending")
 
 	// VERSION_ENV_NOT_SET_ERR Error when VERSION environment variable is not set
 	VERSION_ENV_NOT_SET_ERR = fmt.Errorf("version environment variable %s is not set or empty", VersionEnvKey)

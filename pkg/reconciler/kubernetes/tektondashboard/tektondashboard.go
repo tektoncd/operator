@@ -21,19 +21,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
-	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
-
 	mf "github.com/manifestival/manifestival"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektondashboardreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektondashboard"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -95,7 +89,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 
 	ls := metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.CreatedByKey: createdByValue,
+			v1alpha1.CreatedByKey: createdByValue,
 		},
 	}
 	labelSelector, err := common.LabelSelector(ls)
@@ -141,7 +135,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 		if err.Error() == common.PipelineNotReady {
 			td.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
 			// wait for pipeline status to change
-			return fmt.Errorf(common.PipelineNotReady)
+			r.enqueueAfter(td, 10*time.Second)
+			return nil
+
 		}
 		// (tektonpipeline.opeator.tekton.dev instance not available yet)
 		td.Status.MarkDependencyMissing("tekton-pipelines does not exist")
@@ -185,8 +181,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 		return err
 	}
 
-	installerSetTargetNamespace := installedTIS.Annotations[tektoninstallerset.TargetNamespaceKey]
-	installerSetReleaseVersion := installedTIS.Annotations[tektoninstallerset.ReleaseVersionKey]
+	installerSetTargetNamespace := installedTIS.Annotations[v1alpha1.TargetNamespaceKey]
+	installerSetReleaseVersion := installedTIS.Annotations[v1alpha1.ReleaseVersionKey]
 
 	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
 	// Check if Release Version in TektonInstallerSet is same as expected
@@ -229,7 +225,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 		}
 
 		// spec hash stored on installerSet
-		lastAppliedHash := installedTIS.GetAnnotations()[tektoninstallerset.LastAppliedHashKey]
+		lastAppliedHash := installedTIS.GetAnnotations()[v1alpha1.LastAppliedHashKey]
 
 		if lastAppliedHash != expectedSpecHash {
 
@@ -247,7 +243,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 
 			// Update the spec hash
 			current := installedTIS.GetAnnotations()
-			current[tektoninstallerset.LastAppliedHashKey] = expectedSpecHash
+			current[v1alpha1.LastAppliedHashKey] = expectedSpecHash
 			installedTIS.SetAnnotations(current)
 
 			// Update the manifests
@@ -364,12 +360,12 @@ func makeInstallerSet(td *v1alpha1.TektonDashboard, manifest mf.Manifest, tdSpec
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", v1alpha1.DashboardResourceName),
 			Labels: map[string]string{
-				tektoninstallerset.CreatedByKey: createdByValue,
+				v1alpha1.CreatedByKey: createdByValue,
 			},
 			Annotations: map[string]string{
-				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
-				tektoninstallerset.TargetNamespaceKey: td.Spec.TargetNamespace,
-				tektoninstallerset.LastAppliedHashKey: tdSpecHash,
+				v1alpha1.ReleaseVersionKey:  releaseVersion,
+				v1alpha1.TargetNamespaceKey: td.Spec.TargetNamespace,
+				v1alpha1.LastAppliedHashKey: tdSpecHash,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},

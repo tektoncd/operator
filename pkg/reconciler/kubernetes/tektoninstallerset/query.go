@@ -64,7 +64,7 @@ func CurrentInstallerSetName(ctx context.Context, client clientset.Interface, la
 func CleanUpObsoleteResources(ctx context.Context, client clientset.Interface, createdBy string) error {
 
 	labelSelector := labels.NewSelector()
-	createdReq, _ := labels.NewRequirement(CreatedByKey, selection.Equals, []string{createdBy})
+	createdReq, _ := labels.NewRequirement(v1alpha1.CreatedByKey, selection.Equals, []string{createdBy})
 	if createdReq != nil {
 		labelSelector = labelSelector.Add(*createdReq)
 	}
@@ -81,7 +81,7 @@ func CleanUpObsoleteResources(ctx context.Context, client clientset.Interface, c
 	for _, i := range list.Items {
 		// check if installerSet has InstallerSetType label
 		// if it doesn't exist then delete it
-		if _, ok := i.Labels[InstallerSetType]; !ok {
+		if _, ok := i.Labels[v1alpha1.InstallerSetType]; !ok {
 			err := client.OperatorV1alpha1().TektonInstallerSets().Delete(ctx, i.Name, v1.DeleteOptions{})
 			if err != nil {
 				return err

@@ -41,9 +41,9 @@ import (
 
 const (
 	// Pipelines ConfigMap
-	featureFlag    = "feature-flags"
-	configDefaults = "config-defaults"
-	configMetrics  = "config-observability"
+	FeatureFlag    = "feature-flags"
+	ConfigDefaults = "config-defaults"
+	ConfigMetrics  = "config-observability"
 
 	proxyLabel = "operator.tekton.dev/disable-proxy=true"
 
@@ -71,8 +71,8 @@ type Reconciler struct {
 var (
 	ls = metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.CreatedByKey:     createdByValue,
-			tektoninstallerset.InstallerSetType: v1alpha1.PipelineResourceName,
+			v1alpha1.CreatedByKey:     createdByValue,
+			v1alpha1.InstallerSetType: v1alpha1.PipelineResourceName,
 		},
 	}
 )
@@ -131,6 +131,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	// Pass the object through defaulting
 	tp.SetDefaults(ctx)
 
+	// Mark TektonPipeline Instance as Not Ready if an upgrade is needed
+	if err := r.markUpgrade(ctx, tp); err != nil {
+		return err
+	}
+
 	if err := tektoninstallerset.CleanUpObsoleteResources(ctx, r.operatorClientSet, createdByValue); err != nil {
 		return err
 	}
@@ -182,8 +187,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		return err
 	}
 
-	installerSetTargetNamespace := installedTIS.Annotations[tektoninstallerset.TargetNamespaceKey]
-	installerSetReleaseVersion := installedTIS.Labels[tektoninstallerset.ReleaseVersionKey]
+	installerSetTargetNamespace := installedTIS.Annotations[v1alpha1.TargetNamespaceKey]
+	installerSetReleaseVersion := installedTIS.Labels[v1alpha1.ReleaseVersionKey]
 
 	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
 	// Check if Release Version in TektonInstallerSet is same as expected
@@ -225,7 +230,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		}
 
 		// spec hash stored on installerSet
-		lastAppliedHash := installedTIS.GetAnnotations()[tektoninstallerset.LastAppliedHashKey]
+		lastAppliedHash := installedTIS.GetAnnotations()[v1alpha1.LastAppliedHashKey]
 
 		if lastAppliedHash != expectedSpecHash {
 			manifest := r.manifest
@@ -236,7 +241,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 
 			// Update the spec hash
 			current := installedTIS.GetAnnotations()
-			current[tektoninstallerset.LastAppliedHashKey] = expectedSpecHash
+			current[v1alpha1.LastAppliedHashKey] = expectedSpecHash
 			installedTIS.SetAnnotations(current)
 
 			// Update the manifests
@@ -348,13 +353,13 @@ func (r *Reconciler) makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.M
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", common.PipelineResourceName),
 			Labels: map[string]string{
-				tektoninstallerset.CreatedByKey:      createdByValue,
-				tektoninstallerset.InstallerSetType:  v1alpha1.PipelineResourceName,
-				tektoninstallerset.ReleaseVersionKey: r.operatorVersion,
+				v1alpha1.CreatedByKey:      createdByValue,
+				v1alpha1.InstallerSetType:  v1alpha1.PipelineResourceName,
+				v1alpha1.ReleaseVersionKey: r.operatorVersion,
 			},
 			Annotations: map[string]string{
-				tektoninstallerset.TargetNamespaceKey: tp.Spec.TargetNamespace,
-				tektoninstallerset.LastAppliedHashKey: tpSpecHash,
+				v1alpha1.TargetNamespaceKey: tp.Spec.TargetNamespace,
+				v1alpha1.LastAppliedHashKey: tpSpecHash,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
@@ -373,9 +378,9 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	// adding extension's transformers first to run them before `extra` transformers
 	trns := r.extension.Transformers(instance)
 	extra := []mf.Transformer{
-		common.AddConfigMapValues(featureFlag, pipeline.Spec.PipelineProperties),
-		common.AddConfigMapValues(configDefaults, pipeline.Spec.OptionalPipelineProperties),
-		common.AddConfigMapValues(configMetrics, pipeline.Spec.PipelineMetricsProperties),
+		common.AddConfigMapValues(FeatureFlag, pipeline.Spec.PipelineProperties),
+		common.AddConfigMapValues(ConfigDefaults, pipeline.Spec.OptionalPipelineProperties),
+		common.AddConfigMapValues(ConfigMetrics, pipeline.Spec.PipelineMetricsProperties),
 		common.ApplyProxySettings,
 		common.DeploymentImages(images),
 		common.InjectLabelOnNamespace(proxyLabel),
@@ -390,4 +395,29 @@ func (m *Recorder) logMetrics(status, version string, logger *zap.SugaredLogger)
 	if err != nil {
 		logger.Warnf("Failed to log the metrics : %v", err)
 	}
+}
+
+func (r *Reconciler) markUpgrade(ctx context.Context, tp *v1alpha1.TektonPipeline) error {
+	labels := tp.GetLabels()
+	ver, ok := labels[v1alpha1.ReleaseVersionKey]
+	if ok && ver == r.operatorVersion {
+		return nil
+	}
+	if ok && ver != r.operatorVersion {
+		tp.Status.MarkInstallerSetNotReady(v1alpha1.UpgradePending)
+		tp.Status.MarkPreReconcilerFailed(v1alpha1.UpgradePending)
+		tp.Status.MarkPostReconcilerFailed(v1alpha1.UpgradePending)
+		tp.Status.MarkNotReady(v1alpha1.UpgradePending)
+	}
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	labels[v1alpha1.ReleaseVersionKey] = r.operatorVersion
+	tp.SetLabels(labels)
+
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines().Update(ctx,
+		tp, v1.UpdateOptions{}); err != nil {
+		return err
+	}
+	return v1alpha1.RECONCILE_AGAIN_ERR
 }

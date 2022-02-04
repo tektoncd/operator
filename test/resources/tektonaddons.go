@@ -20,10 +20,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"path/filepath"
 	"runtime"
 	"testing"
+
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
@@ -35,7 +36,6 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	addonv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,6 +97,7 @@ func AssertTektonAddonCRReadyStatus(t *testing.T, clients *utils.Clients, names 
 // AssertTektonInstallerSets verifies if the TektonInstallerSets are created.
 func AssertTektonInstallerSets(t *testing.T, clients *utils.Clients) {
 	assertInstallerSetsForAddon(t, clients, tektonaddon.ClusterTaskInstallerSet)
+	assertInstallerSetsForAddon(t, clients, tektonaddon.VersionedClusterTaskInstallerSet)
 	assertInstallerSetsForAddon(t, clients, tektonaddon.PipelinesTemplateInstallerSet)
 	assertInstallerSetsForAddon(t, clients, tektonaddon.TriggersResourcesInstallerSet)
 	assertInstallerSetsForAddon(t, clients, tektonaddon.ConsoleCLIInstallerSet)
@@ -106,7 +107,7 @@ func AssertTektonInstallerSets(t *testing.T, clients *utils.Clients) {
 func assertInstallerSetsForAddon(t *testing.T, clients *utils.Clients, component string) {
 	ls := metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.InstallerSetType: component,
+			v1alpha1.InstallerSetType: component,
 		},
 	}
 	labelSelector, err := common.LabelSelector(ls)

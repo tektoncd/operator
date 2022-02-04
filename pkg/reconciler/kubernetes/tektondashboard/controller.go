@@ -19,8 +19,6 @@ package tektondashboard
 import (
 	"context"
 
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/initcontroller"
-
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -53,16 +51,16 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		kubeClient := kubeclient.Get(ctx)
 		logger := logging.FromContext(ctx)
 
-		ctrl := initcontroller.Controller{
+		ctrl := common.Controller{
 			Logger:           logger,
 			VersionConfigMap: versionConfigMap,
 		}
 
-		readonlyManifest, dashboardVer := ctrl.InitController(ctx, initcontroller.PayloadOptions{ReadOnly: true})
+		readonlyManifest, dashboardVer := ctrl.InitController(ctx, common.PayloadOptions{ReadOnly: true})
 
-		fullaccessManifest, _ := ctrl.InitController(ctx, initcontroller.PayloadOptions{ReadOnly: false})
+		fullaccessManifest, _ := ctrl.InitController(ctx, common.PayloadOptions{ReadOnly: false})
 
-		operatorVer, err := initcontroller.OperatorVersion(ctx)
+		operatorVer, err := common.OperatorVersion(ctx)
 		if err != nil {
 			logger.Fatal(err)
 		}
