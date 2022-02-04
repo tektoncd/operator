@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package initcontroller
+package common
 
 import (
 	"context"
@@ -26,7 +26,6 @@ import (
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"go.uber.org/zap"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
@@ -72,9 +71,9 @@ func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) 
 
 	var releaseVersion string
 	// Read the release version of component
-	releaseVersion, err = common.FetchVersionFromConfigMap(manifest, ctrl.VersionConfigMap)
+	releaseVersion, err = FetchVersionFromConfigMap(manifest, ctrl.VersionConfigMap)
 	if err != nil {
-		if common.IsFetchVersionError(err) {
+		if IsFetchVersionError(err) {
 			ctrl.Logger.Warnf("failed to read version information from ConfigMap %s", ctrl.VersionConfigMap, err)
 			releaseVersion = "Unknown"
 		} else {
@@ -91,29 +90,29 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 	switch {
 	case strings.Contains(ctrl.VersionConfigMap, "pipeline"):
 		var pipeline *v1alpha1.TektonPipeline
-		if err := common.AppendTarget(ctx, ctrl.Manifest, pipeline); err != nil {
+		if err := AppendTarget(ctx, ctrl.Manifest, pipeline); err != nil {
 			return err
 		}
 		// add proxy configs to pipeline if any
 		return addProxy(ctrl.Manifest)
 	case strings.Contains(ctrl.VersionConfigMap, "triggers"):
 		var trigger *v1alpha1.TektonTrigger
-		return common.AppendTarget(ctx, ctrl.Manifest, trigger)
+		return AppendTarget(ctx, ctrl.Manifest, trigger)
 	case strings.Contains(ctrl.VersionConfigMap, "dashboard") && opts.ReadOnly:
 		var dashboard v1alpha1.TektonDashboard
 		dashboard.Spec.Readonly = true
-		return common.AppendTarget(ctx, ctrl.Manifest, &dashboard)
+		return AppendTarget(ctx, ctrl.Manifest, &dashboard)
 	case strings.Contains(ctrl.VersionConfigMap, "dashboard") && !opts.ReadOnly:
 		var dashboard v1alpha1.TektonDashboard
 		dashboard.Spec.Readonly = false
-		return common.AppendTarget(ctx, ctrl.Manifest, &dashboard)
+		return AppendTarget(ctx, ctrl.Manifest, &dashboard)
 	}
 
 	return nil
 }
 
 func addProxy(manifest *mf.Manifest) error {
-	koDataDir := os.Getenv(common.KoEnvKey)
+	koDataDir := os.Getenv(KoEnvKey)
 	proxyLocation := filepath.Join(koDataDir, "webhook")
-	return common.AppendManifest(manifest, proxyLocation)
+	return AppendManifest(manifest, proxyLocation)
 }

@@ -127,6 +127,13 @@ func waitForTektonAddonState(ctx context.Context, clients op.TektonAddonInterfac
 
 // isTektonAddonReady will check the status conditions of the TektonAddon and return true if the TektonAddon is ready.
 func isTektonAddonReady(s *v1alpha1.TektonAddon, err error) (bool, error) {
+	upgradePending, errInternal := common.CheckUpgradePending(s)
+	if err != nil {
+		return false, errInternal
+	}
+	if upgradePending {
+		return false, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
+	}
 	return s.Status.IsReady(), err
 }
 

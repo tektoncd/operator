@@ -54,7 +54,7 @@ type Reconciler struct {
 	pipelineInformer informer.TektonPipelineInformer
 	triggerInformer  informer.TektonTriggerInformer
 
-	version string
+	operatorVersion string
 }
 
 const (
@@ -121,6 +121,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		return nil
 	}
 
+	// Pass the object through defaulting
+	ta.SetDefaults(ctx)
+
+	// Mark TektonAddon Instance as Not Ready if an upgrade is needed
+	if err := r.markUpgrade(ctx, ta); err != nil {
+		return err
+	}
+
 	// Make sure TektonPipeline & TektonTrigger is installed before proceeding with
 	// TektonAddons
 
@@ -128,7 +136,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		if err.Error() == common.PipelineNotReady {
 			ta.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
 			// wait for pipeline status to change
-			return fmt.Errorf(common.PipelineNotReady)
+			r.enqueueAfter(ta, 10*time.Second)
+			return nil
 		}
 		// (tektonpipeline.operator.tekton.dev instance not available yet)
 		ta.Status.MarkDependencyMissing("tekton-pipelines does not exist")
@@ -139,7 +148,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		if err.Error() == common.TriggerNotReady {
 			ta.Status.MarkDependencyInstalling("tekton-triggers is still installing")
 			// wait for trigger status to change
-			return fmt.Errorf(common.TriggerNotReady)
+			r.enqueueAfter(ta, 10*time.Second)
+			return nil
 		}
 		// (tektontrigger.operator.tekton.dev instance not available yet)
 		ta.Status.MarkDependencyMissing("tekton-triggers does not exist")
@@ -147,9 +157,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	}
 
 	ta.Status.MarkDependenciesInstalled()
-
-	// Pass the object through defaulting
-	ta.SetDefaults(ctx)
 
 	if err := tektoninstallerset.CleanUpObsoleteResources(ctx, r.operatorClientSet, CreatedByValue); err != nil {
 		return err
@@ -175,7 +182,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	// with their manifest
 	clusterTaskLS := metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.InstallerSetType: ClusterTaskInstallerSet,
+			v1alpha1.InstallerSetType: ClusterTaskInstallerSet,
 		},
 	}
 	clusterTaskLabelSelector, err := common.LabelSelector(clusterTaskLS)
@@ -185,12 +192,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 
 	if ctVal == "true" {
 
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, clusterTaskLabelSelector)
+		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, clusterTaskLabelSelector)
 		if err != nil {
 			return err
 		}
 
 		if !exist {
+			msg := fmt.Sprintf("%s being created/upgraded", ClusterTaskInstallerSet)
+			ta.Status.MarkInstallerSetNotReady(msg)
 			return r.ensureClusterTasks(ctx, ta)
 		}
 	} else {
@@ -209,8 +218,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	// with the versioned clustertask manifest
 	versionedClusterTaskLS := metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.InstallerSetType:       VersionedClusterTaskInstallerSet,
-			tektoninstallerset.ReleaseMinorVersionKey: getPatchVersionTrimmed(r.version),
+			v1alpha1.InstallerSetType:       VersionedClusterTaskInstallerSet,
+			v1alpha1.ReleaseMinorVersionKey: getPatchVersionTrimmed(r.operatorVersion),
 		},
 	}
 	versionedClusterTaskLabelSelector, err := common.LabelSelector(versionedClusterTaskLS)
@@ -220,12 +229,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	if ctVal == "true" {
 
 		// here pass two labels one for type and other for minor release version to remove the previous minor release installerset only not all
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, versionedClusterTaskLabelSelector)
+		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, versionedClusterTaskLabelSelector)
 		if err != nil {
 			return err
 		}
 
 		if !exist {
+			msg := fmt.Sprintf("%s being created/upgraded", VersionedClusterTaskInstallerSet)
+			ta.Status.MarkInstallerSetNotReady(msg)
 			return r.ensureVersionedClusterTasks(ctx, ta)
 		}
 	} else {
@@ -238,8 +249,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	// here pass two labels one for type and other for operator release version to get the latest installerset of current version
 	vClusterTaskLS := metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.InstallerSetType:  VersionedClusterTaskInstallerSet,
-			tektoninstallerset.ReleaseVersionKey: r.version,
+			v1alpha1.InstallerSetType:  VersionedClusterTaskInstallerSet,
+			v1alpha1.ReleaseVersionKey: r.operatorVersion,
 		},
 	}
 	vClusterTaskLabelSelector, err := common.LabelSelector(vClusterTaskLS)
@@ -255,7 +266,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	// with their manifest
 	pipelineTemplateLS := metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.InstallerSetType: PipelinesTemplateInstallerSet,
+			v1alpha1.InstallerSetType: PipelinesTemplateInstallerSet,
 		},
 	}
 	pipelineTemplateLSLabelSelector, err := common.LabelSelector(pipelineTemplateLS)
@@ -264,11 +275,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	}
 	if ptVal == "true" {
 
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, pipelineTemplateLSLabelSelector)
+		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, pipelineTemplateLSLabelSelector)
 		if err != nil {
 			return err
 		}
 		if !exist {
+			msg := fmt.Sprintf("%s being created/upgraded", PipelinesTemplateInstallerSet)
+			ta.Status.MarkInstallerSetNotReady(msg)
 			return r.ensurePipelineTemplates(ctx, ta)
 		}
 	} else {
@@ -286,18 +299,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	// Ensure Triggers resources
 	triggerResourceLS := metav1.LabelSelector{
 		MatchLabels: map[string]string{
-			tektoninstallerset.InstallerSetType: TriggersResourcesInstallerSet,
+			v1alpha1.InstallerSetType: TriggersResourcesInstallerSet,
 		},
 	}
 	triggerResourceLabelSelector, err := common.LabelSelector(triggerResourceLS)
 	if err != nil {
 		return err
 	}
-	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, triggerResourceLabelSelector)
+	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, triggerResourceLabelSelector)
 	if err != nil {
 		return err
 	}
 	if !exist {
+		msg := fmt.Sprintf("%s being created/upgraded", TriggersResourcesInstallerSet)
+		ta.Status.MarkInstallerSetNotReady(msg)
 		return r.ensureTriggerResources(ctx, ta)
 	}
 
@@ -320,7 +335,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 
 	ta.Status.MarkPostReconcilerComplete()
 
-	ta.Status.SetVersion(r.version)
+	ta.Status.SetVersion(r.operatorVersion)
 
 	return nil
 }
@@ -363,7 +378,7 @@ func (r *Reconciler) ensureTriggerResources(ctx context.Context, ta *v1alpha1.Te
 		return err
 	}
 
-	if err := createInstallerSet(ctx, r.operatorClientSet, ta, triggerResourcesManifest, r.version,
+	if err := createInstallerSet(ctx, r.operatorClientSet, ta, triggerResourcesManifest, r.operatorVersion,
 		TriggersResourcesInstallerSet, "addon-triggers"); err != nil {
 		return err
 	}
@@ -389,7 +404,7 @@ func (r *Reconciler) ensurePipelineTemplates(ctx context.Context, ta *v1alpha1.T
 		return err
 	}
 
-	if err := createInstallerSet(ctx, r.operatorClientSet, ta, pipelineTemplateManifest, r.version,
+	if err := createInstallerSet(ctx, r.operatorClientSet, ta, pipelineTemplateManifest, r.operatorVersion,
 		PipelinesTemplateInstallerSet, "addon-pipelines"); err != nil {
 		return err
 	}
@@ -410,7 +425,7 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 	}
 
 	clusterTaskManifest = clusterTaskManifest.Filter(
-		mf.Not(byContains(getFormattedVersion(r.version))),
+		mf.Not(byContains(getFormattedVersion(r.operatorVersion))),
 	)
 
 	communityClusterTaskManifest := r.manifest
@@ -427,7 +442,7 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 	}
 
 	if err := createInstallerSet(ctx, r.operatorClientSet, ta, clusterTaskManifest,
-		r.version, ClusterTaskInstallerSet, "addon-clustertasks"); err != nil {
+		r.operatorVersion, ClusterTaskInstallerSet, "addon-clustertasks"); err != nil {
 		return err
 	}
 
@@ -447,11 +462,11 @@ func (r *Reconciler) ensureVersionedClusterTasks(ctx context.Context, ta *v1alph
 	}
 
 	clusterTaskManifest = clusterTaskManifest.Filter(
-		byContains(getFormattedVersion(r.version)),
+		byContains(getFormattedVersion(r.operatorVersion)),
 	)
 
 	if err := createInstallerSet(ctx, r.operatorClientSet, ta, clusterTaskManifest,
-		r.version, VersionedClusterTaskInstallerSet, "addon-versioned-clustertasks"); err != nil {
+		r.operatorVersion, VersionedClusterTaskInstallerSet, "addon-versioned-clustertasks"); err != nil {
 		return err
 	}
 
@@ -469,15 +484,16 @@ func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVe
 			LabelSelector: labelSelector,
 		})
 	if err != nil {
-		if errors.IsNotFound(err) {
-			return false, nil
-		}
 		return false, err
+	}
+
+	if len(installerSets.Items) == 0 {
+		return false, nil
 	}
 
 	if len(installerSets.Items) == 1 {
 		// if already created then check which version it is
-		version, ok := installerSets.Items[0].Labels[tektoninstallerset.ReleaseVersionKey]
+		version, ok := installerSets.Items[0].Labels[v1alpha1.ReleaseVersionKey]
 		if ok && version == relVersion {
 			// if installer set already exist and release version is same
 			// then ignore and move on
@@ -495,7 +511,7 @@ func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVe
 		return false, err
 	}
 
-	return false, nil
+	return false, v1alpha1.RECONCILE_AGAIN_ERR
 }
 
 func createInstallerSet(ctx context.Context, oc clientset.Interface, ta *v1alpha1.TektonAddon,
@@ -513,28 +529,30 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, ta *v1alpha
 		return err
 	}
 
-	return nil
+	return v1alpha1.RECONCILE_AGAIN_ERR
 }
 
 func makeInstallerSet(ta *v1alpha1.TektonAddon, manifest mf.Manifest, prefix, releaseVersion, component, specHash string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(ta, ta.GetGroupVersionKind())
 	labels := map[string]string{
-		tektoninstallerset.CreatedByKey:      CreatedByValue,
-		tektoninstallerset.InstallerSetType:  component,
-		tektoninstallerset.ReleaseVersionKey: releaseVersion,
+		v1alpha1.CreatedByKey:      CreatedByValue,
+		v1alpha1.InstallerSetType:  component,
+		v1alpha1.ReleaseVersionKey: releaseVersion,
 	}
+	namePrefix := fmt.Sprintf("%s-", prefix)
 	// special label to make sure no two versioned clustertask installerset exist
 	// for all patch releases
 	if component == VersionedClusterTaskInstallerSet {
-		labels[tektoninstallerset.ReleaseMinorVersionKey] = getPatchVersionTrimmed(releaseVersion)
+		labels[v1alpha1.ReleaseMinorVersionKey] = getPatchVersionTrimmed(releaseVersion)
+		namePrefix = fmt.Sprintf("%s%s-", namePrefix, getFormattedVersion(releaseVersion))
 	}
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("%s-", prefix),
+			GenerateName: namePrefix,
 			Labels:       labels,
 			Annotations: map[string]string{
-				tektoninstallerset.TargetNamespaceKey: ta.Spec.TargetNamespace,
-				tektoninstallerset.LastAppliedHashKey: specHash,
+				v1alpha1.TargetNamespaceKey: ta.Spec.TargetNamespace,
+				v1alpha1.LastAppliedHashKey: specHash,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
@@ -633,4 +651,29 @@ func getPatchVersionTrimmed(version string) string {
 		version = version[:endIndex]
 	}
 	return version
+}
+
+func (r *Reconciler) markUpgrade(ctx context.Context, ta *v1alpha1.TektonAddon) error {
+	labels := ta.GetLabels()
+	ver, ok := labels[v1alpha1.ReleaseVersionKey]
+	if ok && ver == r.operatorVersion {
+		return nil
+	}
+	if ok && ver != r.operatorVersion {
+		ta.Status.MarkInstallerSetNotReady(v1alpha1.UpgradePending)
+		ta.Status.MarkPreReconcilerFailed(v1alpha1.UpgradePending)
+		ta.Status.MarkPostReconcilerFailed(v1alpha1.UpgradePending)
+		ta.Status.MarkNotReady(v1alpha1.UpgradePending)
+	}
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	labels[v1alpha1.ReleaseVersionKey] = r.operatorVersion
+	ta.SetLabels(labels)
+
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonAddons().Update(ctx,
+		ta, metav1.UpdateOptions{}); err != nil {
+		return err
+	}
+	return v1alpha1.RECONCILE_AGAIN_ERR
 }

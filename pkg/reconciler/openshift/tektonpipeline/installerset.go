@@ -25,7 +25,6 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -74,8 +73,8 @@ func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVe
 	// If anyone of this is not as expected then delete existing
 	// InstallerSet and return false
 
-	version, vOk := installerSets.Items[0].Labels[tektoninstallerset.ReleaseVersionKey]
-	namespace, nOk := installerSets.Items[0].Annotations[tektoninstallerset.TargetNamespaceKey]
+	version, vOk := installerSets.Items[0].Labels[v1alpha1.ReleaseVersionKey]
+	namespace, nOk := installerSets.Items[0].Annotations[v1alpha1.TargetNamespaceKey]
 
 	if vOk && nOk {
 		if version == relVersion && namespace == tp.Spec.TargetNamespace {
@@ -131,13 +130,13 @@ func makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.Manifest, install
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", strings.ToLower(installerSetType)),
 			Labels: map[string]string{
-				tektoninstallerset.CreatedByKey:      createdByValue,
-				tektoninstallerset.ReleaseVersionKey: releaseVersion,
-				tektoninstallerset.InstallerSetType:  installerSetType,
+				v1alpha1.CreatedByKey:      createdByValue,
+				v1alpha1.ReleaseVersionKey: releaseVersion,
+				v1alpha1.InstallerSetType:  installerSetType,
 			},
 			Annotations: map[string]string{
-				tektoninstallerset.ReleaseVersionKey:  releaseVersion,
-				tektoninstallerset.TargetNamespaceKey: tp.Spec.TargetNamespace,
+				v1alpha1.ReleaseVersionKey:  releaseVersion,
+				v1alpha1.TargetNamespaceKey: tp.Spec.TargetNamespace,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},

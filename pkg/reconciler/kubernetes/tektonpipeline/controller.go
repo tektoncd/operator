@@ -25,7 +25,6 @@ import (
 	tektonPipelineInformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	tektonPipelineReconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/initcontroller"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
@@ -47,19 +46,19 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 
-		ctrl := initcontroller.Controller{
+		ctrl := common.Controller{
 			Logger:           logger,
 			VersionConfigMap: versionConfigMap,
 		}
 
-		manifest, pipelineVer := ctrl.InitController(ctx, initcontroller.PayloadOptions{})
+		manifest, pipelineVer := ctrl.InitController(ctx, common.PayloadOptions{})
 
 		metrics, err := NewRecorder()
 		if err != nil {
 			logger.Errorf("Failed to create pipeline metrics recorder %v", err)
 		}
 
-		operatorVer, err := initcontroller.OperatorVersion(ctx)
+		operatorVer, err := common.OperatorVersion(ctx)
 		if err != nil {
 			logger.Fatal(err)
 		}

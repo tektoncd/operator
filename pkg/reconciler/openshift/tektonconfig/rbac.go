@@ -24,7 +24,6 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -139,7 +138,7 @@ func (r *rbac) createResources(ctx context.Context) error {
 	}
 	if !exist {
 		if err := createInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, map[string]string{
-			tektoninstallerset.CreatedByKey: createdByValue,
+			v1alpha1.CreatedByKey: createdByValue,
 		}, r.version, componentName, "rbac-resources"); err != nil {
 			return err
 		}
