@@ -68,15 +68,44 @@ type installer struct {
 	Manifest mf.Manifest
 }
 
-func (i *installer) EnsureCRDs() error {
-	if err := i.Manifest.Filter(mf.Any(mf.CRDs)).Apply(); err != nil {
+func ensureResources(mani *mf.Manifest) error {
+	freshCreate := true
+	// check if all resources in a given set of resources exists
+	ok, err := allResourcesExists(mani)
+	if err != nil {
+		if !apierrs.IsNotFound(err) {
+			return err
+		}
+	}
+	// if error == NotFound error or !ok
+	// then Apply all resources
+	// if ok, that means the reosource already exists
+	// but this reconcile could be an modification eg: concig-defaults change
+	// set freshCreate flag to false, and then Apply all
+	// so that we can skip (break) RECONCILE_AGAIN loop path
+	if ok {
+		freshCreate = false
+	}
+
+	if err := mani.Apply(); err != nil {
 		return err
+	}
+	// on err == nil after Apply() return RECONCILE_AGAIN
+	// if freshCreate == true return RECONCILE_AGAIN
+	// this ensures freshly created resources are in place before proceeding to next stages of reconciler
+	if freshCreate {
+		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
 	return nil
 }
 
+func (i *installer) EnsureCRDs() error {
+	resourceList := i.Manifest.Filter(mf.Any(mf.CRDs))
+	return ensureResources(&resourceList)
+}
+
 func (i *installer) EnsureClusterScopedResources() error {
-	if err := i.Manifest.Filter(
+	resourceList := i.Manifest.Filter(
 		mf.Any(
 			namespacePred,
 			clusterRolePred,
@@ -90,14 +119,12 @@ func (i *installer) EnsureClusterScopedResources() error {
 			consoleQuickStartPred,
 			ConsoleYAMLSamplePred,
 			securityContextConstraints,
-		)).Apply(); err != nil {
-		return err
-	}
-	return nil
+		))
+	return ensureResources(&resourceList)
 }
 
 func (i *installer) EnsureNamespaceScopedResources() error {
-	if err := i.Manifest.Filter(
+	resourceList := i.Manifest.Filter(
 		mf.Any(
 			serviceAccountPred,
 			clusterRoleBindingPred,
@@ -108,10 +135,10 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 			horizontalPodAutoscalerPred,
 			pipelinePred,
 			serviceMonitorPred,
-		)).Apply(); err != nil {
-		return err
-	}
-	return nil
+			servicePred,
+			routePred,
+		))
+	return ensureResources(&resourceList)
 }
 
 func (i *installer) EnsureDeploymentResources() error {
@@ -122,13 +149,6 @@ func (i *installer) EnsureDeploymentResources() error {
 		}
 	}
 
-	if err := i.Manifest.Filter(
-		mf.Any(
-			servicePred,
-			routePred,
-		)).Apply(); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -196,7 +216,11 @@ func (i *installer) updateDeployment(existing *unstructured.Unstructured, existi
 	}
 	existing.SetUnstructuredContent(unstrObj)
 
-	return i.Manifest.Client.Update(existing)
+	err = i.Manifest.Client.Update(existing)
+	if err != nil {
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
+	return err
 }
 
 func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error {
@@ -207,7 +231,11 @@ func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error 
 
 		// If deployment doesn't exist, then create new
 		if apierrs.IsNotFound(err) {
-			return i.createDeployment(expected)
+			errInner := i.createDeployment(expected)
+			if errInner == nil {
+				return v1alpha1.RECONCILE_AGAIN_ERR
+			}
+			return errInner
 		}
 		return err
 	}
@@ -341,4 +369,26 @@ func isDeploymentAvailable(d *appsv1.Deployment) bool {
 		}
 	}
 	return false
+}
+
+func allResourcesExists(m *mf.Manifest) (bool, error) {
+	c := m.Client
+	for _, item := range m.Resources() {
+		ok, err := resourceExists(c, &item)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func resourceExists(c mf.Client, u *unstructured.Unstructured) (bool, error) {
+	_, err := c.Get(u)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
