@@ -119,10 +119,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	tc.Status.MarkPreInstallComplete()
 
-	// Create TektonPipeline CR
-	if err := pipeline.CreatePipelineCR(ctx, tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
+	// Ensure if the pipeline CR already exists, if not create Pipeline CR
+	if _, err := pipeline.EnsureTektonPipelineExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), tc); err != nil {
 		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPipeline: %s", err.Error()))
-		r.enqueueAfter(tc, 10*time.Second)
+		if err == v1alpha1.RECONCILE_AGAIN_ERR {
+			r.enqueueAfter(tc, 10*time.Second)
+			return nil
+		}
 		return nil
 	}
 
