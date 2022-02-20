@@ -29,8 +29,8 @@ func TestTektonPipelineCreateAndDeleteCR(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
 	tConfig := GetTektonConfig()
-	err := CreatePipelineCR(ctx, tConfig, c.OperatorV1alpha1())
-	util.AssertNotEqual(t, err, nil)
+	_, err := EnsureTektonPipelineExists(ctx, c.OperatorV1alpha1().TektonPipelines(), tConfig)
+	util.AssertEqual(t, err.Error(), "reconcile again and proceed")
 	err = TektonPipelineCRDelete(ctx, c.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName)
 	util.AssertEqual(t, err, nil)
 }
