@@ -31,8 +31,9 @@ import (
 )
 
 const (
-	scheduleCommon = "*/2 * * * *"
-	scheduleUnique = "*/4 * * * *"
+	scheduleCommon  = "*/2 * * * *"
+	scheduleUnique  = "*/4 * * * *"
+	scheduleUnique2 = "*/6 * * * *"
 )
 
 func TestGetPrunableNamespaces(t *testing.T) {
@@ -109,6 +110,7 @@ func TestCompleteFlowPrune(t *testing.T) {
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-four", Annotations: anno4}},
 	)
 	os.Setenv(JobsTKNImageName, "some")
+	defer os.Unsetenv(JobsTKNImageName)
 
 	err := Prune(context.TODO(), client, config)
 	if err != nil {
@@ -210,6 +212,7 @@ func TestAnnotationCmd(t *testing.T) {
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-thirteen", Annotations: annoStrategyKeep}},
 	)
 	os.Setenv(JobsTKNImageName, "some")
+	defer os.Unsetenv(JobsTKNImageName)
 
 	err := Prune(context.TODO(), client, config)
 	if err != nil {
@@ -282,6 +285,7 @@ func TestConfigChange(t *testing.T) {
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one", Annotations: anno1}},
 	)
 	os.Setenv(JobsTKNImageName, "some")
+	defer os.Unsetenv(JobsTKNImageName)
 
 	err := Prune(context.TODO(), client, config)
 	if err != nil {
@@ -325,4 +329,109 @@ func TestConfigChange(t *testing.T) {
 	if oldCronName == cronjobChanged.Items[0].Name {
 		assert.Error(t, err, "a new cronjob expected")
 	}
+}
+
+// test the cronjob creation when NodeSelector and Toleration changes
+func TestNodeSelectorOrTolerationsChange(t *testing.T) {
+	keep := uint(3)
+	annoUniqueSchedule := map[string]string{pruneSchedule: scheduleUnique}
+	annoUniqueSchedule2 := map[string]string{pruneSchedule: scheduleUnique2}
+	defaultPrune := &v1alpha1.Prune{
+		Resources: []string{"pipelinerun"},
+		Keep:      &keep,
+		Schedule:  scheduleCommon,
+	}
+	tektonConfigSpecConfig := v1alpha1.Config{
+		NodeSelector: map[string]string{
+			"foo": "bar",
+		},
+		Tolerations: []corev1.Toleration{
+			{
+				Key:      "foo",
+				Operator: "equals",
+				Value:    "bar",
+				Effect:   "noSchedule",
+			},
+		},
+	}
+	tektonConfigSpecConfigEmpty := v1alpha1.Config{}
+
+	config1 := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "config",
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Profile:    "all",
+			Pruner:     *defaultPrune,
+			CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "openshift-pipelines"},
+			Config:     tektonConfigSpecConfig,
+		},
+	}
+
+	config2 := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "config",
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Profile:    "all",
+			Pruner:     *defaultPrune,
+			CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "openshift-pipelines"},
+			Config:     tektonConfigSpecConfigEmpty,
+		},
+	}
+	client := fake.NewSimpleClientset(
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-pipelines"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api-url"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-system"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-api"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one"}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-two", Annotations: annoUniqueSchedule}},
+		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-three", Annotations: annoUniqueSchedule2}},
+	)
+	os.Setenv(JobsTKNImageName, "some")
+	defer os.Unsetenv(JobsTKNImageName)
+
+	// Pruning with the nodes and Tolerations
+	err := Prune(context.TODO(), client, config1)
+	if err != nil {
+		assert.Error(t, err, "unable to initiate prune")
+	}
+
+	oldCronjobs, err := client.BatchV1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		assert.Error(t, err, "unable to get cronjobs ")
+	}
+	oldCronList := []string{}
+	for _, cronjob := range oldCronjobs.Items {
+		oldCronList = append(oldCronList, cronjob.Name)
+	}
+
+	// Pruning after removing nodes and Tolerations
+	err = Prune(context.TODO(), client, config2)
+	if err != nil {
+		assert.Error(t, err, "unable to initiate prune")
+	}
+
+	newCronjobs, err := client.BatchV1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		assert.Error(t, err, "unable to get cronjobs ")
+	}
+	newCronList := []string{}
+	for _, cronjob := range newCronjobs.Items {
+		newCronList = append(newCronList, cronjob.Name)
+	}
+	assert.Assert(t, len(oldCronList) == len(newCronList), "Number of cronJobs should be same after nodeselector and Toleration config change")
+	// checking if config change recreated all the cron Jobs
+	cronjobChanged := true
+	for _, oldCronName := range oldCronList {
+		for _, newCronName := range newCronList {
+			if oldCronName == newCronName {
+				cronjobChanged = false
+				break
+			}
+		}
+		assert.Assert(t, cronjobChanged, "nodeselector and Toleration Config change should recreate all the cron Jobs")
+	}
+
 }
