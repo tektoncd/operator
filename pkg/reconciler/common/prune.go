@@ -129,7 +129,7 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 	}
 	if pruningNamespaces.commonScheduleNs != nil && len(pruningNamespaces.commonScheduleNs) > 0 {
 		jobs := getJobContainer(generateAllPruneConfig(pruningNamespaces.commonScheduleNs), pruner.targetNamespace, pruner.tknImage)
-		if err := pruner.checkAndCreate(ctx, "", tC.Spec.Pruner.Schedule, jobs, pruneCronLabel, pruningNamespaces.configChanged); err != nil {
+		if err := pruner.checkAndCreate(ctx, "", tC.Spec.Pruner.Schedule, jobs, pruneCronLabel, pruningNamespaces.configChanged, tC); err != nil {
 			logger.Error("failed to create cronjob ", err)
 		}
 	}
@@ -138,7 +138,7 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 		for ns, con := range pruningNamespaces.uniqueScheduleNS {
 			jobs := getJobContainer(generatePruneConfigPerNamespace(con, ns), ns, pruner.tknImage)
 			listOpt := pruneCronNsLabel + "=" + ns
-			if err := pruner.checkAndCreate(ctx, ns, con.config.Schedule, jobs, listOpt, pruningNamespaces.configChanged); err != nil {
+			if err := pruner.checkAndCreate(ctx, ns, con.config.Schedule, jobs, listOpt, pruningNamespaces.configChanged, tC); err != nil {
 				logger.Error("failed to create cronjob ", err)
 			}
 		}
@@ -262,7 +262,12 @@ func getJobContainer(cmdArgs, ns string, tknImage string) []corev1.Container {
 	return []corev1.Container{container}
 }
 
-func (pruner *Pruner) checkAndCreate(ctx context.Context, uniquePruneNs, schedule string, pruneContainers []corev1.Container, listOpt string, configChanged bool) error {
+func (pruner *Pruner) checkAndCreate(ctx context.Context, uniquePruneNs, schedule string, pruneContainers []corev1.Container, listOpt string, configChanged bool, tC *v1alpha1.TektonConfig) error {
+	// calculate tektonConfig.Spec.Config hash to check if nodeSelector and tolerations have changed
+	computeTektonConfigSpecConfigHash, err := hash.Compute(tC.Spec.Config)
+	if err != nil {
+		return err
+	}
 	suffixedCronName := SimpleNameGenerator.RestrictLengthWithRandomSuffix(CronName)
 	cronList, err := pruner.listCronJobs(ctx, pruner.targetNamespace, listOpt)
 	if err != nil {
@@ -275,22 +280,49 @@ func (pruner *Pruner) checkAndCreate(ctx context.Context, uniquePruneNs, schedul
 				return err
 			}
 		}
-		return createCronJob(ctx, pruner.kc, suffixedCronName, pruner.targetNamespace, uniquePruneNs, schedule, pruneContainers, pruner.ownerRef)
+		return createCronJob(ctx, pruner.kc, suffixedCronName, pruner.targetNamespace, uniquePruneNs, schedule, pruneContainers, pruner.ownerRef, tC, computeTektonConfigSpecConfigHash)
 	}
 
 	// no change in config but the cronjob does not exist
 	if len(cronList.Items) == 0 && !configChanged {
-		return createCronJob(ctx, pruner.kc, suffixedCronName, pruner.targetNamespace, uniquePruneNs, schedule, pruneContainers, pruner.ownerRef)
+		return createCronJob(ctx, pruner.kc, suffixedCronName, pruner.targetNamespace, uniquePruneNs, schedule, pruneContainers, pruner.ownerRef, tC, computeTektonConfigSpecConfigHash)
 	}
 
 	// any case with config change
 	if configChanged {
-		return createCronJob(ctx, pruner.kc, suffixedCronName, pruner.targetNamespace, uniquePruneNs, schedule, pruneContainers, pruner.ownerRef)
+		return createCronJob(ctx, pruner.kc, suffixedCronName, pruner.targetNamespace, uniquePruneNs, schedule, pruneContainers, pruner.ownerRef, tC, computeTektonConfigSpecConfigHash)
+	}
+	// In case nodeSelector or Tolerations changed
+	if len(cronList.Items) > 0 {
+		// get the cronjob to check previous annotations
+		annotations := cronList.Items[0].Annotations
+		nodeSelectorOrTolerationsChanged := checkTektonConfigSpecConfigHashChange(annotations, computeTektonConfigSpecConfigHash)
+
+		if nodeSelectorOrTolerationsChanged {
+			for _, cronjob := range cronList.Items {
+				if err := pruner.deleteCronJob(ctx, cronjob.Name); err != nil {
+					return err
+				}
+			}
+
+			return createCronJob(ctx, pruner.kc, suffixedCronName, pruner.targetNamespace, uniquePruneNs, schedule, pruneContainers, pruner.ownerRef, tC, computeTektonConfigSpecConfigHash)
+
+		}
 	}
 	return nil
 }
 
-func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targetNs, pruneNs, schedule string, pruneContainers []corev1.Container, oR v1.OwnerReference) error {
+func checkTektonConfigSpecConfigHashChange(annotations map[string]string, currentComputedHash string) bool {
+	// check if the annotation in the cronJob is same or changed.
+	lastHash, ok := annotations[v1alpha1.LastAppliedHashKey]
+	if ok {
+		return lastHash != currentComputedHash
+	}
+	return true
+}
+
+func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targetNs, pruneNs, schedule string, pruneContainers []corev1.Container, oR v1.OwnerReference, tC *v1alpha1.TektonConfig, computedTektonConfigSpecConfigHash string) error {
+
 	backOffLimit := int32(3)
 	ttlSecondsAfterFinished := int32(3600)
 	cj := &batchv1.CronJob{
@@ -302,6 +334,7 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 			Name:            cronName,
 			OwnerReferences: []v1.OwnerReference{oR},
 			Labels:          map[string]string{pruneCronLabel: "true"},
+			Annotations:     map[string]string{v1alpha1.LastAppliedHashKey: computedTektonConfigSpecConfigHash},
 		},
 		Spec: batchv1.CronJobSpec{
 			Schedule:          schedule,
@@ -317,6 +350,8 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 							Containers:         pruneContainers,
 							RestartPolicy:      "OnFailure",
 							ServiceAccountName: tektonSA,
+							NodeSelector:       tC.Spec.Config.NodeSelector,
+							Tolerations:        tC.Spec.Config.Tolerations,
 						},
 					},
 				},
