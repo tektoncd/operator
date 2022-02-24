@@ -201,16 +201,17 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 			ta.Status.MarkInstallerSetNotReady(msg)
 			return r.ensureClusterTasks(ctx, ta)
 		}
+
+		if err := r.checkComponentStatus(ctx, clusterTaskLabelSelector); err != nil {
+			ta.Status.MarkInstallerSetNotReady(err.Error())
+			return nil
+		}
+
 	} else {
 		// if disabled then delete the installer Set if exist
 		if err := r.deleteInstallerSet(ctx, clusterTaskLabelSelector); err != nil {
 			return err
 		}
-	}
-
-	if err := r.checkComponentStatus(ctx, clusterTaskLabelSelector); err != nil {
-		ta.Status.MarkInstallerSetNotReady(err.Error())
-		return nil
 	}
 
 	// If clusterTasks are enabled then create an InstallerSet
@@ -283,16 +284,17 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 			ta.Status.MarkInstallerSetNotReady(msg)
 			return r.ensurePipelineTemplates(ctx, ta)
 		}
+
+		if err := r.checkComponentStatus(ctx, pipelineTemplateLSLabelSelector); err != nil {
+			ta.Status.MarkInstallerSetNotReady(err.Error())
+			return nil
+		}
+
 	} else {
 		// if disabled then delete the installer Set if exist
 		if err := r.deleteInstallerSet(ctx, pipelineTemplateLSLabelSelector); err != nil {
 			return err
 		}
-	}
-
-	if err := r.checkComponentStatus(ctx, pipelineTemplateLSLabelSelector); err != nil {
-		ta.Status.MarkInstallerSetNotReady(err.Error())
-		return nil
 	}
 
 	// Ensure Triggers resources
