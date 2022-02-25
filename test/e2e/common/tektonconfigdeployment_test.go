@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
+	tconfig "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
 	"github.com/tektoncd/operator/test/client"
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
@@ -392,7 +393,7 @@ func runRbacTest(t *testing.T, clients *utils.Clients) {
 	})
 
 	pipelinesSCCRoleBinding := "pipelines-scc-rolebinding"
-	editRoleBinding := "edit"
+	editRoleBinding := tconfig.PipelineRoleBinding
 
 	// Test whether the roleBindings are created
 	t.Run("verify-rolebindings", func(t *testing.T) {
