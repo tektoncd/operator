@@ -35,6 +35,7 @@ import (
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonChainsinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonchains"
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
+	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
 	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	tektonTriggerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektontrigger"
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
@@ -95,6 +96,11 @@ func NewExtensibleController(generator common.ExtensionGenerator) injection.Cont
 		})
 
 		tektonChainsinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		})
+
+		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})

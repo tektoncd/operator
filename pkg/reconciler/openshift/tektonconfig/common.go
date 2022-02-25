@@ -103,40 +103,37 @@ func deleteInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha
 // and if installer set which already exist is of older version then it deletes and return false to create a new
 // installer set
 func checkIfInstallerSetExist(ctx context.Context, oc versioned.Interface, relVersion string,
-	tc *v1alpha1.TektonConfig, component string) (bool, error) {
+	tc *v1alpha1.TektonConfig, component string) (*v1alpha1.TektonInstallerSet, error) {
 
 	// Check if installer set is already created
 	compInstallerSet, ok := tc.Status.TektonInstallerSet[component]
-	if !ok {
-		return false, nil
+	if !ok || compInstallerSet == "" {
+		return nil, nil
 	}
 
-	if compInstallerSet != "" {
-		// if already created then check which version it is
-		ctIs, err := oc.OperatorV1alpha1().TektonInstallerSets().
-			Get(ctx, compInstallerSet, metav1.GetOptions{})
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
+	// if already created then check which version it is
+	ctIs, err := oc.OperatorV1alpha1().TektonInstallerSets().
+		Get(ctx, compInstallerSet, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil, nil
 		}
-
-		if version, ok := ctIs.Annotations[v1alpha1.ReleaseVersionKey]; ok && version == relVersion {
-			// if installer set already exist and release version is same
-			// then ignore and move on
-			return true, nil
-		}
-
-		// release version doesn't exist or is different from expected
-		// deleted existing InstallerSet and create a new one
-
-		err = oc.OperatorV1alpha1().TektonInstallerSets().
-			Delete(ctx, compInstallerSet, metav1.DeleteOptions{})
-		if err != nil {
-			return false, err
-		}
+		return nil, err
 	}
 
-	return false, nil
+	if version, ok := ctIs.Annotations[v1alpha1.ReleaseVersionKey]; ok && version == relVersion {
+		// if installer set already exist and release version is same
+		// then ignore and move on
+		return ctIs, nil
+	}
+
+	// release version doesn't exist or is different from expected
+	// deleted existing InstallerSet and create a new one
+
+	err = oc.OperatorV1alpha1().TektonInstallerSets().
+		Delete(ctx, compInstallerSet, metav1.DeleteOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return nil, v1alpha1.RECONCILE_AGAIN_ERR
 }
