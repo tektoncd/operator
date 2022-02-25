@@ -73,7 +73,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		// then disable auto creation of RBAC resources by deleting installerSet
 		if v.Name == rbacParamName && v.Value == "false" {
 			createRBACResource = false
-			if err := deleteInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, componentName); err != nil {
+			if err := deleteInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, componentNameRBAC); err != nil {
 				return err
 			}
 			// remove openshift-pipelines.tekton.dev/namespace-reconcile-version label from namespaces while deleting RBAC resources.
@@ -83,10 +83,16 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		}
 	}
 
+	// TODO: Remove this after v0.55.0 release, by following a depreciation notice
+	// --------------------
+	if err := r.cleanUpRBACNameChange(ctx); err != nil {
+		return err
+	}
+	// --------------------
+
 	if createRBACResource {
 		return r.createResources(ctx)
 	}
-
 	return nil
 }
 
