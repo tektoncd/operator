@@ -19,6 +19,7 @@ package tektonconfig
 import (
 	"context"
 	"fmt"
+	"math"
 	"regexp"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -34,16 +35,21 @@ import (
 )
 
 const (
-	pipelinesSCCClusterRole  = "pipelines-scc-clusterrole"
-	pipelinesSCCRoleBinding  = "pipelines-scc-rolebinding"
-	pipelinesSCC             = "pipelines-scc"
-	pipelineSA               = "pipeline"
+	pipelinesSCCClusterRole = "pipelines-scc-clusterrole"
+	pipelinesSCCRoleBinding = "pipelines-scc-rolebinding"
+	pipelinesSCC            = "pipelines-scc"
+	pipelineSA              = "pipeline"
+	PipelineRoleBinding     = "openshift-pipelines-edit"
+	// TODO: Remove this after v0.55.0 release, by following a depreciation notice
+	// --------------------
+	pipelineRoleBindingOld = "edit"
+	// --------------------
 	serviceCABundleConfigMap = "config-service-cabundle"
 	trustedCABundleConfigMap = "config-trusted-cabundle"
 	clusterInterceptors      = "openshift-pipelines-clusterinterceptors"
 	namespaceVersionLabel    = "openshift-pipelines.tekton.dev/namespace-reconcile-version"
 	createdByValue           = "RBAC"
-	componentName            = "rhosp-rbac"
+	componentNameRBAC        = "rhosp-rbac"
 	rbacParamName            = "createRbacResource"
 )
 
@@ -80,6 +86,34 @@ func (r *rbac) cleanUp(ctx context.Context) error {
 	return nil
 }
 
+func (r *rbac) EnsureRBACInstallerSet(ctx context.Context) (*v1alpha1.TektonInstallerSet, error) {
+	rbacISet, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, r.tektonConfig, componentNameRBAC)
+	if err != nil {
+		return nil, err
+	}
+
+	if rbacISet != nil {
+		return rbacISet, nil
+	}
+	// A new installer needs to be created
+	// either because of operator version upgrade or installerSet gone missing;
+	// therefore all relevant namespaces need to be reconciled for RBAC resources.
+	// Hence, remove the necessary labels to ensure that the namespaces will be 'not skipped'
+	// RBAC reconcile logic
+	err = r.cleanUp(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = createInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, map[string]string{
+		v1alpha1.CreatedByKey: createdByValue,
+	}, r.version, componentNameRBAC, "rbac-resources")
+	if err != nil {
+		return nil, err
+	}
+	return nil, v1alpha1.RECONCILE_AGAIN_ERR
+}
+
 func (r *rbac) setDefault() {
 	var (
 		found = false
@@ -107,6 +141,13 @@ func (r *rbac) createResources(ctx context.Context) error {
 
 	logger := logging.FromContext(ctx)
 
+	rbacISet, err := r.EnsureRBACInstallerSet(ctx)
+	if err != nil {
+		return err
+	}
+
+	r.ownerRef = configOwnerRef(*rbacISet)
+
 	// fetch the list of all namespaces which doesn't have label
 	// `openshift-pipelines.tekton.dev/namespace-reconcile-version: <release-version>`
 	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
@@ -131,26 +172,6 @@ func (r *rbac) createResources(ctx context.Context) error {
 	if len(rbacNamespaces) == 0 {
 		return nil
 	}
-
-	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, r.tektonConfig, componentName)
-	if err != nil {
-		return err
-	}
-	if !exist {
-		if err := createInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, map[string]string{
-			v1alpha1.CreatedByKey: createdByValue,
-		}, r.version, componentName, "rbac-resources"); err != nil {
-			return err
-		}
-	}
-
-	getdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-		Get(ctx, "rbac-resources", metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	r.ownerRef = configOwnerRef(*getdIs)
 
 	// Maintaining a separate cluster role for the scc declaration.
 	// to assist us in managing this the scc association in a
@@ -455,14 +476,14 @@ func (r *rbac) updateRoleBinding(ctx context.Context, rb *rbacv1.RoleBinding, sa
 		return nil
 	}
 
-	logger.Info("update existing rolebinding edit")
+	logger.Infof("update existing rolebinding %s/%s", rb.Namespace, rb.Name)
 
 	_, err := rbacClient.RoleBindings(sa.Namespace).Update(ctx, rb, metav1.UpdateOptions{})
 	if err != nil {
-		logger.Error(err, "failed to update edit rb")
+		logger.Errorf("%v: failed to update rolebinding %s/%s", err, rb.Namespace, rb.Name)
 		return err
 	}
-	logger.Error(err, "successfully updated edit rb")
+	logger.Infof("successfully updated rolebinding %s/%s", rb.Namespace, rb.Name)
 	return nil
 }
 
@@ -487,10 +508,10 @@ func hasOwnerRefernce(old []metav1.OwnerReference, new metav1.OwnerReference) bo
 func (r *rbac) ensureRoleBindings(ctx context.Context, sa *corev1.ServiceAccount) error {
 	logger := logging.FromContext(ctx)
 
-	logger.Info("finding role-binding edit")
+	logger.Infof("finding role-binding: %s/%s", sa.Namespace, PipelineRoleBinding)
 	rbacClient := r.kubeClientSet.RbacV1()
 
-	editRB, err := rbacClient.RoleBindings(sa.Namespace).Get(ctx, "edit", metav1.GetOptions{})
+	editRB, err := rbacClient.RoleBindings(sa.Namespace).Get(ctx, PipelineRoleBinding, metav1.GetOptions{})
 
 	if err == nil {
 		logger.Infof("found rolebinding %s/%s", editRB.Namespace, editRB.Name)
@@ -507,7 +528,7 @@ func (r *rbac) ensureRoleBindings(ctx context.Context, sa *corev1.ServiceAccount
 func (r *rbac) createRoleBinding(ctx context.Context, sa *corev1.ServiceAccount) error {
 	logger := logging.FromContext(ctx)
 
-	logger.Info("create new rolebinding edit, in Namespace", sa.GetNamespace())
+	logger.Infof("create new rolebinding %s/%s", sa.Namespace, sa.Name)
 	rbacClient := r.kubeClientSet.RbacV1()
 
 	logger.Info("finding clusterrole edit")
@@ -518,7 +539,7 @@ func (r *rbac) createRoleBinding(ctx context.Context, sa *corev1.ServiceAccount)
 
 	rb := &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            "edit",
+			Name:            PipelineRoleBinding,
 			Namespace:       sa.Namespace,
 			OwnerReferences: []metav1.OwnerReference{r.ownerRef},
 		},
@@ -527,7 +548,7 @@ func (r *rbac) createRoleBinding(ctx context.Context, sa *corev1.ServiceAccount)
 	}
 
 	if _, err := rbacClient.RoleBindings(sa.Namespace).Create(ctx, rb, metav1.CreateOptions{}); err != nil {
-		logger.Error(err, "creation of 'edit' rolebinding failed, in Namespace", sa.GetNamespace())
+		logger.Errorf("%v: failed creation of rolebinding %s/%s", err, rb.Namespace, rb.Name)
 		return err
 	}
 	return nil
@@ -672,3 +693,91 @@ func (r *rbac) removeAndUpdate(slice []metav1.OwnerReference, s int) []metav1.Ow
 	ownerRef = append(ownerRef, r.ownerRef)
 	return ownerRef
 }
+
+// TODO: Remove this after v0.55.0 release, by following a depreciation notice
+// --------------------
+// cleanUpRBACNameChange will check remove ownerReference: RBAC installerset from
+// 'edit' rolebindings from all relevant namespaces
+// it will also remove 'pipeline' sa from subject list as
+// the new 'openshift-pipelines-edit' rolebinding
+func (r *rbac) cleanUpRBACNameChange(ctx context.Context) error {
+	rbacClient := r.kubeClientSet.RbacV1()
+
+	// fetch the list of all namespaces
+	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+
+	for _, ns := range namespaces.Items {
+		nsName := ns.GetName()
+
+		// filter namespaces:
+		// ignore ns with name passing regex `^(openshift|kube)-`
+		if ignore := nsRegex.MatchString(nsName); ignore {
+			continue
+		}
+
+		// check if "edit" rolebinding exists in "ns" namespace
+		editRB, err := rbacClient.RoleBindings(ns.GetName()).
+			Get(ctx, pipelineRoleBindingOld, metav1.GetOptions{})
+		if err != nil {
+			// if "edit" rolebinding does not exists in "ns" namesapce, then do nothing
+			if errors.IsNotFound(err) {
+				continue
+			}
+			return err
+		}
+
+		// check if 'pipeline' serviceaccount is listed as a subject in 'edit' rolebinding
+		depSub := rbacv1.Subject{Kind: rbacv1.ServiceAccountKind, Name: pipelineSA, Namespace: nsName}
+		subIdx := math.MinInt16
+		for i, s := range editRB.Subjects {
+			if s.Name == depSub.Name && s.Kind == depSub.Kind && s.Namespace == depSub.Namespace {
+				subIdx = i
+				break
+			}
+		}
+
+		// if 'pipeline' serviceaccount is listed as a subject in 'edit' rolebinding
+		// remove 'pipeline' serviceaccount from subject list
+		if subIdx >= 0 {
+			editRB.Subjects = append(editRB.Subjects[:subIdx], editRB.Subjects[subIdx+1:]...)
+		}
+
+		// if 'pipeline' serviceaccount was the only item in the subject list of 'edit' rolebinding,
+		// then we can delete 'edit' rolebinding as nobody else is using it
+		if len(editRB.Subjects) == 0 {
+			if err := rbacClient.RoleBindings(nsName).Delete(ctx, editRB.GetName(), metav1.DeleteOptions{}); err != nil {
+				return err
+			}
+			continue
+		}
+
+		// remove TektonInstallerSet ownerReferece from "edit" rolebinding
+		ownerRefs := editRB.GetOwnerReferences()
+		ownerRefIdx := math.MinInt16
+		for i, ownerRef := range ownerRefs {
+			if ownerRef.Kind == "TektonInstallerSet" {
+				ownerRefIdx = i
+				break
+			}
+		}
+		if ownerRefIdx >= 0 {
+			ownerRefs := append(ownerRefs[:ownerRefIdx], ownerRefs[ownerRefIdx+1:]...)
+			editRB.SetOwnerReferences(ownerRefs)
+
+		}
+
+		// if ownerReference or subject was updated, then update editRB resource on cluster
+		if ownerRefIdx < 0 && subIdx < 0 {
+			continue
+		}
+		if _, err := rbacClient.RoleBindings(nsName).Update(ctx, editRB, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// --------------------
