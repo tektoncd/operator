@@ -13,6 +13,7 @@ Operator provides support for installing and managing following operator compone
 
 - [TektonPipeline](./TektonPipeline.md)
 - [TektonTrigger](./TektonTrigger.md)
+- [TektonChains](./TektonChains.md)
 
 Other than the above components depending on the platform operator also provides support for
 
@@ -69,11 +70,13 @@ This allows user to choose a namespace to install the Tekton Components such as 
 
 By default, namespace would be `tekton-pipelines` for Kubernetes and `openshift-pipelines` for OpenShift.
 
+Tekton Chains component will be installet in tekton-chains namespace on both Kubernetes and OpenShift.
+
 ### Profile
 
 This allows user to choose which all components to install on the cluster.
 There are 3 profiles available:
-- `all`: This profile will install all components
+- `all`: This profile will install all components (TektonPipeline, TektonTrigger and TektonChains)
 - `basic`:  This profile will install only TektonPipeline and TektonTrigger component
 - `lite`: This profile will install only TektonPipeline component
 

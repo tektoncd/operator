@@ -27,6 +27,7 @@ import (
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektonchainsreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonchains"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -47,8 +48,9 @@ type Reconciler struct {
 	// enqueueAfter enqueues a obj after a duration
 	enqueueAfter func(obj interface{}, after time.Duration)
 	extension    common.Extension
-	// releaseVersion describes the current chains version
-	releaseVersion string
+	// chainsVersion describes the current chains version
+	chainsVersion   string
+	operatorVersion string
 	// pipelineInformer provides access to a shared informer and lister for
 	// TektonPipelines
 	pipelineInformer pipelineinformer.TektonPipelineInformer
@@ -59,6 +61,15 @@ var _ tektonchainsreconciler.Interface = (*Reconciler)(nil)
 var _ tektonchainsreconciler.Finalizer = (*Reconciler)(nil)
 
 const createdByValue = "TektonChains"
+
+var (
+	ls = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			v1alpha1.CreatedByKey:     createdByValue,
+			v1alpha1.InstallerSetType: v1alpha1.ChainsResourceName,
+		},
+	}
+)
 
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two.
@@ -75,7 +86,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 			tc.GetName(),
 		)
 		logger.Error(msg)
-		tc.GetStatus().MarkInstallFailed(msg)
+		tc.Status.MarkNotReady(msg)
 		return nil
 	}
 
@@ -95,6 +106,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 	// Pass the object through defaulting
 	tc.SetDefaults(ctx)
 
+	// Mark TektonChains Instance as Not Ready if an upgrade is needed
+	if err := r.markUpgrade(ctx, tc); err != nil {
+		return err
+	}
+
 	if err := r.extension.PreReconcile(ctx, tc); err != nil {
 		tc.Status.MarkPreReconcilerFailed(fmt.Sprintf("PreReconciliation failed: %s", err.Error()))
 		return err
@@ -104,7 +120,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 	tc.Status.MarkPreReconcilerComplete()
 
 	// Check if a Tekton InstallerSet already exists, if not then create one
-	existingInstallerSet := tc.Status.GetTektonInstallerSet()
+	labelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		return err
+	}
+	existingInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
+	if err != nil {
+		return err
+	}
 	if existingInstallerSet == "" {
 		tc.Status.MarkInstallerSetNotAvailable("Chains InstallerSet not available")
 
@@ -132,14 +155,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 	}
 
 	installerSetTargetNamespace := installedTIS.Annotations[v1alpha1.TargetNamespaceKey]
-	installerSetReleaseVersion := installedTIS.Annotations[v1alpha1.ReleaseVersionKey]
+	installerSetReleaseVersion := installedTIS.Labels[v1alpha1.ReleaseVersionKey]
 
 	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
 	// Check if Release Version in TektonInstallerSet is same as expected
 	// If any of the above things is not same then delete the existing TektonInstallerSet
 	// and create a new with expected properties
 
-	if installerSetTargetNamespace != tc.Spec.TargetNamespace || installerSetReleaseVersion != r.releaseVersion {
+	if installerSetTargetNamespace != tc.Spec.TargetNamespace || installerSetReleaseVersion != r.operatorVersion {
 		// Delete the existing TektonInstallerSet
 		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 			Delete(ctx, existingInstallerSet, metav1.DeleteOptions{})
@@ -232,7 +255,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 		return err
 	}
 
+	// Mark PostReconcile Complete
 	tc.Status.MarkPostReconcilerComplete()
+
+	// Update the object for any spec changes
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonChainses().Update(ctx, tc, metav1.UpdateOptions{}); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -248,9 +278,13 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 		return err
 	}
 
+	labelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		return err
+	}
 	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: fmt.Sprintf("%s=%s", v1alpha1.CreatedByKey, createdByValue),
+			LabelSelector: labelSelector,
 		}); err != nil {
 		logger.Error("Failed to delete installer set created by TektonChains", err)
 		return err
@@ -266,7 +300,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 func (r *Reconciler) updateTektonChainsStatus(ctx context.Context, tc *v1alpha1.TektonChains, createdIs *v1alpha1.TektonInstallerSet) error {
 	// update the tc with TektonInstallerSet and releaseVersion
 	tc.Status.SetTektonInstallerSet(createdIs.Name)
-	tc.Status.SetVersion(r.releaseVersion)
+	tc.Status.SetVersion(r.chainsVersion)
 
 	return v1alpha1.RECONCILE_AGAIN_ERR
 }
@@ -275,8 +309,10 @@ func (r *Reconciler) updateTektonChainsStatus(ctx context.Context, tc *v1alpha1.
 // and platform transformations applied
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	instance := comp.(*v1alpha1.TektonChains)
+	chainsImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ChainsImagePrefix))
 	extra := []mf.Transformer{
 		common.ApplyProxySettings,
+		common.DeploymentImages(chainsImages),
 		common.AddConfiguration(instance.Spec.Config),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
@@ -301,7 +337,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tc *v1alpha1.Tekton
 	}
 
 	// create installer set
-	tis := makeInstallerSet(tc, manifest, specHash, r.releaseVersion)
+	tis := makeInstallerSet(tc, manifest, specHash, r.operatorVersion)
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, tis, metav1.CreateOptions{})
 	if err != nil {
@@ -316,10 +352,11 @@ func makeInstallerSet(tc *v1alpha1.TektonChains, manifest mf.Manifest, tdSpecHas
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", v1alpha1.ChainsResourceName),
 			Labels: map[string]string{
-				v1alpha1.CreatedByKey: createdByValue,
+				v1alpha1.CreatedByKey:      createdByValue,
+				v1alpha1.ReleaseVersionKey: releaseVersion,
+				v1alpha1.InstallerSetType:  v1alpha1.ChainsResourceName,
 			},
 			Annotations: map[string]string{
-				v1alpha1.ReleaseVersionKey:  releaseVersion,
 				v1alpha1.TargetNamespaceKey: tc.Spec.TargetNamespace,
 				v1alpha1.LastAppliedHashKey: tdSpecHash,
 			},
@@ -329,4 +366,29 @@ func makeInstallerSet(tc *v1alpha1.TektonChains, manifest mf.Manifest, tdSpecHas
 			Manifests: manifest.Resources(),
 		},
 	}
+}
+
+func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonChains) error {
+	labels := tc.GetLabels()
+	ver, ok := labels[v1alpha1.ReleaseVersionKey]
+	if ok && ver == r.operatorVersion {
+		return nil
+	}
+	if ok && ver != r.operatorVersion {
+		tc.Status.MarkInstallerSetNotReady(v1alpha1.UpgradePending)
+		tc.Status.MarkPreReconcilerFailed(v1alpha1.UpgradePending)
+		tc.Status.MarkPostReconcilerFailed(v1alpha1.UpgradePending)
+		tc.Status.MarkNotReady(v1alpha1.UpgradePending)
+	}
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	labels[v1alpha1.ReleaseVersionKey] = r.operatorVersion
+	tc.SetLabels(labels)
+
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonChainses().Update(ctx,
+		tc, metav1.UpdateOptions{}); err != nil {
+		return err
+	}
+	return v1alpha1.RECONCILE_AGAIN_ERR
 }

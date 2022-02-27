@@ -53,9 +53,14 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			VersionConfigMap: versionConfigMap,
 		}
 
-		manifest, releaseVersion := ctrl.InitController(ctx, common.PayloadOptions{})
-		if releaseVersion == common.ReleaseVersionUnknown {
-			releaseVersion = "devel"
+		manifest, chainsVer := ctrl.InitController(ctx, common.PayloadOptions{})
+		if chainsVer == common.ReleaseVersionUnknown {
+			chainsVer = "devel"
+		}
+
+		operatorVer, err := common.OperatorVersion(ctx)
+		if err != nil {
+			logger.Fatal(err)
 		}
 
 		c := &Reconciler{
@@ -63,7 +68,8 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			extension:         generator(ctx),
 			manifest:          manifest,
 			pipelineInformer:  tektonPipelineinformer.Get(ctx),
-			releaseVersion:    releaseVersion,
+			operatorVersion:   operatorVer,
+			chainsVersion:     chainsVer,
 		}
 		impl := tektonChainsreconciler.NewImpl(ctx, c)
 
