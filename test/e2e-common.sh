@@ -31,6 +31,7 @@ function install_operator_resources() {
   echo :Payload Targets:
   echo Pipelines: ${PIPELINES_VERSION}
   echo Triggers: ${TRIGGERS_VERSION}
+  echo Chains: ${CHAINS_VERSION}
   if [[ ${TARGET} != "openshift" ]]; then
     echo Results: ${RESULTS_VERSION}
     echo Dashboard: ${DASHBOARD_VERSION}

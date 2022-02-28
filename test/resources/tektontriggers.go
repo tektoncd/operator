@@ -73,7 +73,7 @@ func WaitForTektonTriggerState(clients triggerv1alpha1.TektonTriggerInterface, n
 	})
 
 	if waitErr != nil {
-		return lastState, fmt.Errorf("tektonpipeline %s is not in desired state, got: %+v: %w", name, lastState, waitErr)
+		return lastState, fmt.Errorf("tektontriggers %s is not in desired state, got: %+v: %w", name, lastState, waitErr)
 	}
 	return lastState, nil
 }

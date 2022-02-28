@@ -84,3 +84,10 @@ func TearDownResult(clients *Clients, name string) {
 		_ = clients.TektonResult().Delete(context.TODO(), name, metav1.DeleteOptions{})
 	}
 }
+
+// TearDownChains will delete created TektonChains CRs using clients.
+func TearDownChains(clients *Clients, name string) {
+	if clients != nil && clients.Operator != nil {
+		_ = clients.TektonChains().Delete(context.TODO(), name, metav1.DeleteOptions{})
+	}
+}
