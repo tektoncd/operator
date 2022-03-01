@@ -46,21 +46,6 @@ them as per their need.
     See more in the workspace documentation about [Affinity Assistant](https://github.com/tektoncd/pipeline/blob/main/docs/workspaces.md#affinity-assistant-and-specifying-workspace-order-in-a-pipeline)
     or more info [here](https://github.com/tektoncd/pipeline/pull/2630).
 
-
-- `disable-home-env-overwrite` (Default: `true`)
-
-    Setting this flag to "false" will allow Tekton to override your Task container's $HOME environment variable.
-
-    See more info [here](https://github.com/tektoncd/pipeline/issues/2013).
-
-
-- `disable-working-directory-overwrite` (Default: `true`)
-
-    Setting this flag to "false" will allow Tekton to override your Task container's working directory.
-
-    See more info [here](https://github.com/tektoncd/pipeline/issues/1836).
-
-
 - `disable-creds-init` (Default: `false`)
 
     Setting this flag to "true" will prevent Tekton scanning attached service accounts and injecting any credentials it

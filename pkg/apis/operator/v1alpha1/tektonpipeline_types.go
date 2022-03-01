@@ -85,9 +85,13 @@ type Pipeline struct {
 
 // PipelineProperties defines customizable flags for Pipeline Component.
 type PipelineProperties struct {
-	DisableAffinityAssistant                 *bool  `json:"disable-affinity-assistant,omitempty"`
-	DisableHomeEnvOverwrite                  *bool  `json:"disable-home-env-overwrite,omitempty"`
-	DisableWorkingDirectoryOverwrite         *bool  `json:"disable-working-directory-overwrite,omitempty"`
+	DisableAffinityAssistant *bool `json:"disable-affinity-assistant,omitempty"`
+
+	// DEPRECATED:  (Removed in Pipelines v0.33.0): to be removed in next release
+	DisableHomeEnvOverwrite *bool `json:"disable-home-env-overwrite,omitempty"`
+	// DEPRECATED: (Removed in Pipelines v0.33.0): to be removed in next release
+	DisableWorkingDirectoryOverwrite *bool `json:"disable-working-directory-overwrite,omitempty"`
+
 	DisableCredsInit                         *bool  `json:"disable-creds-init,omitempty"`
 	RunningInEnvironmentWithInjectedSidecars *bool  `json:"running-in-environment-with-injected-sidecars,omitempty"`
 	RequireGitSshSecretKnownHosts            *bool  `json:"require-git-ssh-secret-known-hosts,omitempty"`
