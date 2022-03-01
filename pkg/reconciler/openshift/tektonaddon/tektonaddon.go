@@ -30,7 +30,6 @@ import (
 	tektonaddonreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -64,20 +63,26 @@ const (
 var _ tektonaddonreconciler.Interface = (*Reconciler)(nil)
 var _ tektonaddonreconciler.Finalizer = (*Reconciler)(nil)
 
+var ls = metav1.LabelSelector{
+	MatchLabels: map[string]string{
+		v1alpha1.CreatedByKey: CreatedByValue,
+	},
+}
+
 // FinalizeKind removes all resources after deletion of a TektonTriggers.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonAddon) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 
-	installerSets := original.Status.AddonsInstallerSet
-	if len(installerSets) == 0 {
-		return nil
+	labelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		return err
 	}
-
-	for _, value := range installerSets {
-		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().Delete(ctx, value, metav1.DeleteOptions{})
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		}
+	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		}); err != nil {
+		logger.Error("Failed to delete installer set created by TektonAddon", err)
+		return err
 	}
 
 	if err := r.extension.Finalize(ctx, original); err != nil {
