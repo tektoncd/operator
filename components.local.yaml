@@ -1,0 +1,44 @@
+# List components that the operator fetches payload from
+tekton-pipeline:
+  version: latest
+  internal: pipeline
+  targets:
+  - name: release
+    url: ../pipeline/resolved.yaml
+tekton-trigger:
+  version: latest
+  internal: triggers
+  targets:
+  - name: release
+    url: ../triggers/resolved.release.yaml
+  - name: interceptors
+    url: ../triggers/resolved.interceptors.yaml
+tekton-dasbhoard:
+  version: latest
+  internal: dashboard
+  platforms: [ "kubernetes" ]
+  targets:
+  - name: release
+    prefix: tekton-dashboard-fullaccess
+    url: https://storage.googleapis.com/tekton-releases/dashboard/latest/tekton-dashboard-release.yaml
+  - name: release-readonly
+    prefix: tekton-dashboard-readonly
+    url: https://storage.googleapis.com/tekton-releases/dashboard/latest/tekton-dashboard-release-readonly.yaml
+tekton-results:
+  version: v0.4.0
+  internal: results
+  platforms: [ "kubernetes" ]
+  targets:
+  - name: release
+    url: ../results/resolved.yaml
+tekton-chains:
+  version: latest
+  internal: chains
+  targets:
+  - name: release
+    url: ../chains/resolved.yaml
+tekton-addon/pipelines-as-code:
+  version: 0.5.3
+  targets:
+  - name: release
+    url: https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/release-0.5.3/release-0.5.3.yaml
