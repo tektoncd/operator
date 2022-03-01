@@ -131,7 +131,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	// Create TektonTrigger CR if the profile is all or basic
 	if tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic {
-		if err := trigger.CreateTriggerCR(ctx, tc, r.operatorClientSet.OperatorV1alpha1()); err != nil {
+		if _, err := trigger.EnsureTektonTriggerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), tc); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
 			r.enqueueAfter(tc, 10*time.Second)
 			return nil

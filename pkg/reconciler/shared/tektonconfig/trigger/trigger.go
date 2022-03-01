@@ -20,83 +20,44 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 
+	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"knative.dev/pkg/test/logging"
-
-	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 )
 
-func CreateTriggerCR(ctx context.Context, instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
-	configInstance := instance.(*v1alpha1.TektonConfig)
-	if _, err := ensureTektonTriggerExists(ctx, client.TektonTriggers(), configInstance); err != nil {
-		return errors.New(err.Error())
-	}
-	if _, err := waitForTektonTriggerState(ctx, client.TektonTriggers(), v1alpha1.TriggerResourceName,
-		isTektonTriggerReady); err != nil {
-		log.Println("TektonTrigger is not in ready state: ", err)
-		return err
-	}
-	return nil
-}
-
-func ensureTektonTriggerExists(ctx context.Context, clients op.TektonTriggerInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonTrigger, error) {
+func EnsureTektonTriggerExists(ctx context.Context, clients op.TektonTriggerInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonTrigger, error) {
 	ttCR, err := GetTrigger(ctx, clients, v1alpha1.TriggerResourceName)
-	if err == nil {
-		// if the trigger spec is changed then update the instance
-		updated := false
 
-		if config.Spec.TargetNamespace != ttCR.Spec.TargetNamespace {
-			ttCR.Spec.TargetNamespace = config.Spec.TargetNamespace
-			updated = true
+	if err != nil {
+		if !apierrs.IsNotFound(err) {
+			return nil, err
 		}
-
-		if !reflect.DeepEqual(ttCR.Spec.Trigger, config.Spec.Trigger) {
-			ttCR.Spec.Trigger = config.Spec.Trigger
-			updated = true
+		_, err = CreateTrigger(ctx, clients, config)
+		if err != nil {
+			return nil, err
 		}
-
-		if !reflect.DeepEqual(ttCR.Spec.Config, config.Spec.Config) {
-			ttCR.Spec.Config = config.Spec.Config
-			updated = true
-		}
-
-		if ttCR.ObjectMeta.OwnerReferences == nil {
-			ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
-			ttCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
-			updated = true
-		}
-
-		if updated {
-			return clients.Update(ctx, ttCR, metav1.UpdateOptions{})
-		}
-
-		return ttCR, err
+		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
-	if apierrs.IsNotFound(err) {
-		ttCR = &v1alpha1.TektonTrigger{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: v1alpha1.TriggerResourceName,
-			},
-			Spec: v1alpha1.TektonTriggerSpec{
-				CommonSpec: v1alpha1.CommonSpec{
-					TargetNamespace: config.Spec.TargetNamespace,
-				},
-				Config:  config.Spec.Config,
-				Trigger: config.Spec.Trigger,
-			},
-		}
-		return clients.Create(ctx, ttCR, metav1.CreateOptions{})
+	ttCR, err = UpdateTrigger(ctx, ttCR, config, clients)
+	if err != nil {
+		return nil, err
 	}
+
+	ok, err := isTektonTriggerReady(ttCR, err)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, v1alpha1.RECONCILE_AGAIN_ERR
+	}
+
 	return ttCR, err
 }
 
@@ -104,24 +65,59 @@ func GetTrigger(ctx context.Context, clients op.TektonTriggerInterface, name str
 	return clients.Get(ctx, name, metav1.GetOptions{})
 }
 
-// waitForTektonTriggerState polls the status of the TektonTrigger called name
-// from client every `interval` until `inState` returns `true` indicating it
-// is done, returns an error or timeout.
-func waitForTektonTriggerState(ctx context.Context, clients op.TektonTriggerInterface, name string,
-	inState func(s *v1alpha1.TektonTrigger, err error) (bool, error)) (*v1alpha1.TektonTrigger, error) {
-	span := logging.GetEmitableSpan(ctx, fmt.Sprintf("WaitForTektonTriggerState/%s/%s", name, "TektonTriggerIsReady"))
-	defer span.End()
-
-	var lastState *v1alpha1.TektonTrigger
-	waitErr := wait.PollImmediate(common.Interval, common.Timeout, func() (bool, error) {
-		lastState, err := clients.Get(ctx, name, metav1.GetOptions{})
-		return inState(lastState, err)
-	})
-
-	if waitErr != nil {
-		return lastState, fmt.Errorf("tektontrigger %s is not in desired state, got: %+v: %w: For more info Please check TektonTrigger CR status", name, lastState, waitErr)
+func CreateTrigger(ctx context.Context, clients op.TektonTriggerInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonTrigger, error) {
+	ttCR := &v1alpha1.TektonTrigger{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1alpha1.TriggerResourceName,
+		},
+		Spec: v1alpha1.TektonTriggerSpec{
+			CommonSpec: v1alpha1.CommonSpec{
+				TargetNamespace: config.Spec.TargetNamespace,
+			},
+			Config:  config.Spec.Config,
+			Trigger: config.Spec.Trigger,
+		},
 	}
-	return lastState, nil
+	_, err := clients.Create(ctx, ttCR, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return ttCR, err
+}
+
+func UpdateTrigger(ctx context.Context, ttCR *v1alpha1.TektonTrigger, config *v1alpha1.TektonConfig, clients op.TektonTriggerInterface) (*v1alpha1.TektonTrigger, error) {
+	// if the trigger spec is changed then update the instance
+	updated := false
+
+	if config.Spec.TargetNamespace != ttCR.Spec.TargetNamespace {
+		ttCR.Spec.TargetNamespace = config.Spec.TargetNamespace
+		updated = true
+	}
+
+	if !reflect.DeepEqual(ttCR.Spec.Trigger, config.Spec.Trigger) {
+		ttCR.Spec.Trigger = config.Spec.Trigger
+		updated = true
+	}
+
+	if !reflect.DeepEqual(ttCR.Spec.Config, config.Spec.Config) {
+		ttCR.Spec.Config = config.Spec.Config
+		updated = true
+	}
+
+	if ttCR.ObjectMeta.OwnerReferences == nil {
+		ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
+		ttCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
+		updated = true
+	}
+
+	if updated {
+		_, err := clients.Update(ctx, ttCR, metav1.UpdateOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return nil, v1alpha1.RECONCILE_AGAIN_ERR
+	}
+	return ttCR, nil
 }
 
 // isTektonTriggerReady will check the status conditions of the TektonTrigger and return true if the TektonTrigger is ready.
@@ -169,4 +165,18 @@ func verifyNoTektonTriggerCR(ctx context.Context, clients op.TektonTriggerInterf
 		return errors.New("Unable to verify cluster-scoped resources are deleted if any TektonTrigger exists")
 	}
 	return nil
+}
+
+func GetTektonConfig() *v1alpha1.TektonConfig {
+	return &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1alpha1.ConfigResourceName,
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Profile: "all",
+			CommonSpec: v1alpha1.CommonSpec{
+				TargetNamespace: "tekton-pipelines",
+			},
+		},
+	}
 }

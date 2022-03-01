@@ -22,19 +22,15 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/injection/client/fake"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
-	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	ts "knative.dev/pkg/reconciler/testing"
 )
 
 func TestTektonTriggerCreateAndDeleteCR(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	tConfig := pipeline.GetTektonConfig()
-	err := CreateTriggerCR(ctx, tConfig, c.OperatorV1alpha1())
-	util.AssertNotEqual(t, err, nil)
-	// recheck triggers creation
-	err = CreateTriggerCR(ctx, tConfig, c.OperatorV1alpha1())
-	util.AssertNotEqual(t, err, nil)
+	tConfig := GetTektonConfig()
+	_, err := EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tConfig)
+	util.AssertEqual(t, err.Error(), "reconcile again and proceed")
 	err = TektonTriggerCRDelete(ctx, c.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName)
 	util.AssertEqual(t, err, nil)
 }
