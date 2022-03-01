@@ -41,8 +41,8 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 	}
 
 	properties := PipelineProperties{
-		DisableHomeEnvOverwrite:                  ptr.Bool(true),
-		DisableWorkingDirectoryOverwrite:         ptr.Bool(true),
+		DisableHomeEnvOverwrite:                  nil,
+		DisableWorkingDirectoryOverwrite:         nil,
 		DisableCredsInit:                         ptr.Bool(false),
 		RunningInEnvironmentWithInjectedSidecars: ptr.Bool(true),
 		RequireGitSshSecretKnownHosts:            ptr.Bool(false),
