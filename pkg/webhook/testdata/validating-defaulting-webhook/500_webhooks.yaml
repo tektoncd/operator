@@ -1,0 +1,61 @@
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  labels:
+    app: tekton-operator
+    name: tekton-operator-webhook
+  name: webhook.operator.tekton.dev
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    service:
+      name: tekton-operator-webhook
+      namespace: openshift-operators
+  failurePolicy: Fail
+  name: webhook.operator.tekton.dev
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  labels:
+    app: tekton-operator
+    name: tekton-operator-webhook
+  name: config.webhook.operator.tekton.dev
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    service:
+      name: tekton-operator-webhook
+      namespace: openshift-operators
+  failurePolicy: Fail
+  name: config.webhook.operator.tekton.dev
+  namespaceSelector:
+    matchExpressions:
+    - key: operator.tekton.dev/release
+      operator: Exists
+  sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  labels:
+    app: tekton-operator
+    name: tekton-operator-webhook
+  name: validation.webhook.operator.tekton.dev
+webhooks:
+- admissionReviewVersions:
+  - v1beta1
+  - v1
+  clientConfig:
+    service:
+      name: tekton-operator-webhook
+      namespace: openshift-operators
+  failurePolicy: Fail
+  name: validation.webhook.operator.tekton.dev
+  sideEffects: None
