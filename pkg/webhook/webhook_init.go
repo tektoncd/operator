@@ -12,7 +12,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -22,24 +22,17 @@ import (
 )
 
 const WEBHOOK_INSTALLERSET_LABEL = "validating-defaulting-webhooks.operator.tekton.dev"
+const POD_NAMESPACE_ENV_KEY = "SYSTEM_NAMESPACE"
+
+var (
+	ERR_NAMESPACE_ENV_NOT_SET = fmt.Errorf("Pod namespace env %q not set", POD_NAMESPACE_ENV_KEY)
+)
 
 func CreateWebhookResources(ctx context.Context) {
 	logger := logging.FromContext(ctx)
 
-	mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
+	manifest, err := fetchManifests(ctx)
 	if err != nil {
-		logger.Fatalw("error creating client from injected config", zap.Error(err))
-	}
-	mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
-	manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
-	if err != nil {
-		logger.Fatalw("error creating initial manifest", zap.Error(err))
-	}
-
-	// Read manifests
-	koDataDir := os.Getenv(common.KoEnvKey)
-	validating_defaulting_webhooks := filepath.Join(koDataDir, "validating-defaulting-webhook")
-	if err := common.AppendManifest(&manifest, validating_defaulting_webhooks); err != nil {
 		logger.Fatalw("error creating initial manifest", zap.Error(err))
 	}
 
@@ -49,9 +42,42 @@ func CreateWebhookResources(ctx context.Context) {
 		logger.Fatalw("error creating client from injected config", zap.Error(err))
 	}
 
-	if err := createInstallerSet(ctx, client, manifest); err != nil {
+	if err := createInstallerSet(ctx, client, *manifest); err != nil {
 		logger.Fatalw("error creating client from injected config", zap.Error(err))
 	}
+}
+
+func fetchManifests(ctx context.Context) (*mf.Manifest, error) {
+	logger := logging.FromContext(ctx)
+	mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
+	if err != nil {
+		return nil, err
+	}
+	mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
+	manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
+	if err != nil {
+		return nil, err
+	}
+
+	// Read manifests
+	koDataDir := os.Getenv(common.KoEnvKey)
+	validating_defaulting_webhooks := filepath.Join(koDataDir, "validating-defaulting-webhook")
+	if err := common.AppendManifest(&manifest, validating_defaulting_webhooks); err != nil {
+		return nil, err
+	}
+	return manifestTransform(&manifest)
+}
+
+func manifestTransform(m *mf.Manifest) (*mf.Manifest, error) {
+	ns, ok := os.LookupEnv(POD_NAMESPACE_ENV_KEY)
+	if !ok || ns == "" {
+		return nil, ERR_NAMESPACE_ENV_NOT_SET
+	}
+	tfs := []mf.Transformer{
+		mf.InjectNamespace(ns),
+	}
+	result, err := m.Transform(tfs...)
+	return &result, err
 }
 
 func checkAndDeleteInstallerSet(ctx context.Context, oc clientset.Interface) error {
@@ -60,7 +86,7 @@ func checkAndDeleteInstallerSet(ctx context.Context, oc clientset.Interface) err
 			LabelSelector: WEBHOOK_INSTALLERSET_LABEL,
 		})
 	if err != nil {
-		if errors.IsNotFound(err) {
+		if apierror.IsNotFound(err) {
 			return nil
 		}
 		return err
