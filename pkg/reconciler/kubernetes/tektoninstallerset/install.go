@@ -17,6 +17,7 @@ limitations under the License.
 package tektoninstallerset
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -30,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
 )
 
@@ -354,7 +356,7 @@ func (i *installer) AllDeploymentsReady() error {
 	return nil
 }
 
-func (i *installer) IsJobCompleted() error {
+func (i *installer) IsJobCompleted(ctx context.Context, labels map[string]string, installSetName string) error {
 	for _, u := range i.Manifest.Filter(jobPred).Resources() {
 		resource, err := i.Manifest.Client.Get(&u)
 		if err != nil {
@@ -364,7 +366,10 @@ func (i *installer) IsJobCompleted() error {
 		if err := scheme.Scheme.Convert(resource, job, nil); err != nil {
 			return err
 		}
+
+		logger := logging.FromContext(ctx)
 		if !isJobCompleted(job) {
+			logger.Info("job not ready in installerset, name: %s, created-by: %s, in namespace: %s", installSetName, labels[v1alpha1.CreatedByKey], job.GetNamespace())
 			return fmt.Errorf("Job not successful")
 		}
 	}
