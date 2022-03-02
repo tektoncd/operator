@@ -152,6 +152,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	// validate the params
 	ptVal, _ := findValue(ta.Spec.Params, v1alpha1.PipelineTemplatesParam)
 	ctVal, _ := findValue(ta.Spec.Params, v1alpha1.ClusterTasksParam)
+	cctVal, _ := findValue(ta.Spec.Params, v1alpha1.CommunityClusterTasks)
 
 	if ptVal == "true" && ctVal == "false" {
 		ta.Status.MarkNotReady("pipelineTemplates cannot be true if clusterTask is false")
@@ -170,6 +171,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	}
 
 	if err := r.EnsureVersionedClusterTask(ctx, ctVal, ta); err != nil {
+		return err
+	}
+
+	if err := r.EnsureCommunityClusterTask(ctx, cctVal, ta); err != nil {
 		return err
 	}
 

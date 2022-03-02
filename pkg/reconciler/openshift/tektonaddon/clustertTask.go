@@ -19,14 +19,12 @@ package tektonaddon
 import (
 	"context"
 	"fmt"
-	"strings"
-
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"knative.dev/pkg/logging"
+	"strings"
 )
 
 var clusterTaskLS = metav1.LabelSelector{
@@ -40,17 +38,6 @@ func byContains(name string) mf.Predicate {
 	return func(u *unstructured.Unstructured) bool {
 		return strings.Contains(u.GetName(), name)
 	}
-}
-
-var communityResourceURLs = []string{
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/jib-maven/0.4/jib-maven.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-source/0.3/helm-upgrade-from-source.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/helm-upgrade-from-repo/0.2/helm-upgrade-from-repo.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/trigger-jenkins-job/0.1/trigger-jenkins-job.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/git-cli/0.3/git-cli.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/pull-request/0.1/pull-request.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/master/task/kubeconfig-creator/0.1/kubeconfig-creator.yaml",
-	"https://raw.githubusercontent.com/tektoncd/catalog/main/task/argocd-task-sync-and-wait/0.2/argocd-task-sync-and-wait.yaml",
 }
 
 func (r *Reconciler) EnsureClusterTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
@@ -104,49 +91,12 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 		mf.Not(byContains(getFormattedVersion(r.operatorVersion))),
 	)
 
-	communityClusterTaskManifest := r.manifest
-	if err := r.appendCommunityTarget(ctx, &communityClusterTaskManifest, ta); err != nil {
-		// Continue if failed to resolve community task URL.
-		// (Ex: on disconnected cluster community tasks won't be reachable because of proxy).
-		logging.FromContext(ctx).Error("Failed to get community task: Skipping community tasks installation  ", err)
-	} else {
-		if err := r.communityTransform(ctx, &communityClusterTaskManifest, ta); err != nil {
-			return err
-		}
-
-		clusterTaskManifest = clusterTaskManifest.Append(communityClusterTaskManifest)
-	}
-
 	if err := createInstallerSet(ctx, r.operatorClientSet, ta, clusterTaskManifest,
 		r.operatorVersion, ClusterTaskInstallerSet, "addon-clustertasks"); err != nil {
 		return err
 	}
 
 	return nil
-}
-
-// appendCommunityTarget mutates the passed manifest by appending one
-// appropriate for the passed TektonComponent
-func (r *Reconciler) appendCommunityTarget(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	urls := strings.Join(communityResourceURLs, ",")
-	m, err := mf.ManifestFrom(mf.Path(urls))
-	if err != nil {
-		return err
-	}
-	*manifest = manifest.Append(m)
-	return nil
-}
-
-// communityTransform mutates the passed manifest to one with common component
-// and platform transformations applied
-func (r *Reconciler) communityTransform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	instance := comp.(*v1alpha1.TektonAddon)
-	extra := []mf.Transformer{
-		replaceKind("Task", "ClusterTask"),
-		injectLabel(labelProviderType, providerTypeCommunity, overwrite, "ClusterTask"),
-	}
-	extra = append(extra, r.extension.Transformers(instance)...)
-	return common.Transform(ctx, manifest, instance, extra...)
 }
 
 // To get the version in the format as in clustertask name i.e. 1-6

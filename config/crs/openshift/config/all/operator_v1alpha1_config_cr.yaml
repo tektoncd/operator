@@ -25,6 +25,8 @@ spec:
       value: "true"
     - name: pipelineTemplates
       value: "true"
+    - name: communityClusterTasks
+      value: "true"
   params:
   - name: createRbacResource
     value: "true"

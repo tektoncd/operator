@@ -30,6 +30,7 @@ const (
 	// Addon Params
 	ClusterTasksParam      = "clusterTasks"
 	PipelineTemplatesParam = "pipelineTemplates"
+	CommunityClusterTasks  = "communityClusterTasks"
 
 	// Hub Params
 	EnableDevconsoleIntegrationParam = "enable-devconsole-integration"
@@ -83,6 +84,7 @@ var (
 	AddonParams = map[string]ParamValue{
 		ClusterTasksParam:      defaultParamValue,
 		PipelineTemplatesParam: defaultParamValue,
+		CommunityClusterTasks:  defaultParamValue,
 	}
 
 	HubParams = map[string]ParamValue{
