@@ -17,4 +17,4 @@ kind: TektonChains
 metadata:
   name: chains
 spec:
-  targetNamespace: tekton-chains
+  targetNamespace: tekton-pipelines

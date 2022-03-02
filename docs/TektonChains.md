@@ -17,10 +17,8 @@ kind: TektonChains
 metadata:
   name: chains
 spec:
-  targetNamespace: tekton-chains
+  targetNamespace: tekton-pipelines
 ```
 You can install this component using [TektonConfig](./TektonConfig.md) by choosing appropriate `profile`.
-
-Note: TektonChains will be installed in namespace `tekton-chains` on both Kubernetes and OpenShift. Support for any other namespace is not provided yet. 
 
 [chains]:https://github.com/tektoncd/chains

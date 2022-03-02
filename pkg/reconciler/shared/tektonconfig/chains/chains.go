@@ -35,9 +35,7 @@ import (
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 )
 
-const tektonChainsNamespace = "tekton-chains"
-
-// CreateChainsCR creates a Tekton Chains CR in tekton-chains namespace
+// CreateChainsCR creates a Tekton Chains CR
 func CreateChainsCR(ctx context.Context, instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
 	configInstance := instance.(*v1alpha1.TektonConfig)
 
@@ -66,9 +64,7 @@ func ensureTektonChainsExists(ctx context.Context, clients op.TektonChainsInterf
 				},
 				Spec: v1alpha1.TektonChainsSpec{
 					CommonSpec: v1alpha1.CommonSpec{
-						// TektonChains is installed in tekton-chains namespace
-						// and not with other components
-						TargetNamespace: tektonChainsNamespace,
+						TargetNamespace: config.Spec.TargetNamespace,
 					},
 					Config: config.Spec.Config,
 				},
@@ -81,13 +77,6 @@ func ensureTektonChainsExists(ctx context.Context, clients op.TektonChainsInterf
 	// so TektonChains CR does exist in the cluster, checking if any updates are required.
 	// if the chains spec is changed then update the instance
 	updated := false
-
-	// Chains is installed in tekton-chains namespace, we do not take the target namespace
-	// from TektonConfig
-	if tcCR.Spec.TargetNamespace != tektonChainsNamespace {
-		tcCR.Spec.TargetNamespace = tektonChainsNamespace
-		updated = true
-	}
 
 	if !reflect.DeepEqual(tcCR.Spec.Config, config.Spec.Config) {
 		tcCR.Spec.Config = config.Spec.Config

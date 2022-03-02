@@ -36,7 +36,6 @@ func TestTektonChainsDeployment(t *testing.T) {
 		TektonPipeline:  "pipeline",
 		TektonChains:    "chains",
 		TargetNamespace: "tekton-pipelines",
-		ChainsNamespace: "tekton-chains",
 	}
 
 	if os.Getenv("TARGET") == "openshift" {
@@ -74,7 +73,7 @@ func TestTektonChainsDeployment(t *testing.T) {
 	// Delete the deployments one by one to see if they will be recreated.
 	t.Run("restore-chains-deployments", func(t *testing.T) {
 		resources.AssertTektonChainsCRReadyStatus(t, clients, crNames)
-		resources.DeleteAndVerifyDeployments(t, clients, crNames.ChainsNamespace, utils.TektonChainsDeploymentLabel)
+		resources.DeleteAndVerifyDeployments(t, clients, crNames.TargetNamespace, utils.TektonChainsDeploymentLabel)
 		resources.AssertTektonChainsCRReadyStatus(t, clients, crNames)
 	})
 

@@ -46,7 +46,7 @@ func EnsureTektonChainsExists(clients typedv1alpha1.TektonChainsInterface, names
 			},
 			Spec: v1alpha1.TektonChainsSpec{
 				CommonSpec: v1alpha1.CommonSpec{
-					TargetNamespace: names.ChainsNamespace,
+					TargetNamespace: names.TargetNamespace,
 				},
 			},
 		}

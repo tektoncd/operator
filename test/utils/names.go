@@ -26,6 +26,5 @@ type ResourceNames struct {
 	TektonResult    string
 	TektonChains    string
 	Namespace       string
-	ChainsNamespace string
 	TargetNamespace string
 }
