@@ -17,6 +17,7 @@ limitations under the License.
 package tektoninstallerset
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -416,7 +417,7 @@ func TestJobCompleted(t *testing.T) {
 		Manifest: manifest,
 	}
 
-	err = i.IsJobCompleted()
+	err = i.IsJobCompleted(context.Background(), nil, "")
 	if err != nil {
 		t.Fatal("Unexpected Error: ", err)
 	}
@@ -435,7 +436,7 @@ func TestJobFailed(t *testing.T) {
 		Manifest: manifest,
 	}
 
-	err = i.IsJobCompleted()
+	err = i.IsJobCompleted(context.Background(), nil, "")
 	if err == nil {
 		t.Fatal("Expected Error but got nil ")
 	}

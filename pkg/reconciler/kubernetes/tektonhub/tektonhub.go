@@ -139,19 +139,19 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, th *v1alpha1.TektonHub) 
 
 	// Manage DB
 	if err := r.manageDbComponent(ctx, th, hubDir, version); err != nil {
-		return err
+		return r.handleError(err, th)
 	}
 	th.Status.MarkDbInstallerSetAvailable()
 
 	// Manage DB migration
 	if err := r.manageDbMigrationComponent(ctx, th, hubDir, version); err != nil {
-		return err
+		return r.handleError(err, th)
 	}
 	th.Status.MarkDatabasebMigrationDone()
 
 	// Manage API
 	if err := r.manageApiComponent(ctx, th, hubDir, version); err != nil {
-		return err
+		return r.handleError(err, th)
 	}
 	th.Status.MarkApiInstallerSetAvailable()
 
@@ -162,6 +162,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, th *v1alpha1.TektonHub) 
 	th.Status.MarkPostReconcilerComplete()
 
 	return nil
+}
+
+func (r *Reconciler) handleError(err error, th *v1alpha1.TektonHub) error {
+	if err == v1alpha1.RECONCILE_AGAIN_ERR {
+		r.enqueueAfter(th, 10*time.Second)
+		return nil
+	}
+	return err
 }
 
 func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
@@ -191,8 +199,7 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 	err = r.checkComponentStatus(ctx, th, apiInstallerSet)
 	if err != nil {
 		th.Status.MarkApiInstallerSetNotAvailable(err.Error())
-		r.enqueueAfter(th, 10*time.Second)
-		return err
+		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
 	return nil
 }
@@ -216,8 +223,7 @@ func (r *Reconciler) manageDbMigrationComponent(ctx context.Context, th *v1alpha
 	err = r.checkComponentStatus(ctx, th, dbMigrationInstallerSet)
 	if err != nil {
 		th.Status.MarkDatabasebMigrationFailed(err.Error())
-		r.enqueueAfter(th, 10*time.Second)
-		return err
+		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
 	return nil
 }
@@ -247,8 +253,7 @@ func (r *Reconciler) manageDbComponent(ctx context.Context, th *v1alpha1.TektonH
 	err = r.checkComponentStatus(ctx, th, dbInstallerSet)
 	if err != nil {
 		th.Status.MarkDbInstallerSetNotAvailable(err.Error())
-		r.enqueueAfter(th, 10*time.Second)
-		return err
+		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
 	return nil

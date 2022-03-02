@@ -166,6 +166,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	// Update Ready status of Controller
 	installerSet.Status.MarkControllerReady()
 
+	// job
+	labels := installerSet.GetLabels()
+	installSetname := installerSet.GetName()
+	err = installer.IsJobCompleted(ctx, labels, installSetname)
+	if err != nil {
+		return err
+	}
+
 	// Check if any other deployment exists other than controller
 	// and webhook and is ready
 	err = installer.AllDeploymentsReady()
@@ -177,12 +185,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 
 	// Mark all deployments ready
 	installerSet.Status.MarkAllDeploymentsReady()
-
-	// job
-	err = installer.IsJobCompleted()
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
