@@ -87,7 +87,7 @@ func Test_SetDefaults_Addon_Params(t *testing.T) {
 	}
 
 	tc.SetDefaults(context.TODO())
-	if len(tc.Spec.Addon.Params) != 2 {
+	if len(tc.Spec.Addon.Params) != 3 {
 		t.Error("Setting default failed for TektonConfig (spec.addon.params)")
 	}
 }

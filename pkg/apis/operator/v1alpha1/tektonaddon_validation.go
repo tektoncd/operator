@@ -64,6 +64,9 @@ func validateAddonParams(params []Param, pathToParams string) *apis.FieldError {
 	if (paramsMap[ClusterTasksParam] == "false") && (paramsMap[PipelineTemplatesParam] == "true") {
 		errs = errs.Also(apis.ErrGeneric("pipelineTemplates cannot be true if clusterTask is false", pathToParams))
 	}
+	if (paramsMap[ClusterTasksParam] == "false") && (paramsMap[CommunityClusterTasks] == "true") {
+		errs = errs.Also(apis.ErrGeneric("communityClusterTasks cannot be true if clusterTask is false", pathToParams))
+	}
 
 	return errs
 }

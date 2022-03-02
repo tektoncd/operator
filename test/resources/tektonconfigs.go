@@ -77,6 +77,10 @@ func EnsureTektonConfigExists(kubeClientSet *kubernetes.Clientset, clients confi
 							Name:  "clusterTasks",
 							Value: "true",
 						},
+						{
+							Name:  "communityClusterTasks",
+							Value: "true",
+						},
 					},
 				},
 			},

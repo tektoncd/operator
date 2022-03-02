@@ -18,6 +18,7 @@ package tektonaddon
 
 const (
 	ClusterTaskInstallerSet            = "ClusterTask"
+	CommunityClusterTaskInstallerSet   = "CommunityClusterTask"
 	VersionedClusterTaskInstallerSet   = "VersionedClusterTask"
 	PipelinesTemplateInstallerSet      = "PipelinesTemplate"
 	TriggersResourcesInstallerSet      = "TriggersResources"
