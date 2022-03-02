@@ -203,6 +203,10 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		if err := applyAddons(&tknservecliManifest, "05-tkncliserve"); err != nil {
 			return err
 		}
+		if err := addonTransform(ctx, &tknservecliManifest, addon); err != nil {
+			return err
+		}
+
 		routeHost, err := getRouteHost(&tknservecliManifest)
 		if err != nil {
 			return err
