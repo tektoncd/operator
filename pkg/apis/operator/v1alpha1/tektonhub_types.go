@@ -83,6 +83,10 @@ type TektonHubStatus struct {
 	// +optional
 	AuthRouteUrl string `json:"authUrl,omitempty"`
 
+	// The URL route for UI which needs to be exposed
+	// +optional
+	UiRouteUrl string `json:"uiUrl,omitempty"`
+
 	// The current installer set name
 	// +optional
 	HubInstallerSet map[string]string `json:"hubInstallerSets,omitempty"`

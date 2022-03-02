@@ -30,6 +30,9 @@ const (
 	// API
 	ApiDependenciesInstalled apis.ConditionType = "ApiDependenciesInstalled"
 	ApiInstallerSetAvailable apis.ConditionType = "ApiInstallSetAvailable"
+	// UI
+	UiDependenciesInstalled apis.ConditionType = "UiDependenciesInstalled"
+	UiInstallerSetAvailable apis.ConditionType = "UiInstallSetAvailable"
 )
 
 var (
@@ -45,6 +48,8 @@ var (
 		PreReconciler,
 		ApiDependenciesInstalled,
 		ApiInstallerSetAvailable,
+		UiDependenciesInstalled,
+		UiInstallerSetAvailable,
 		PostReconciler,
 	)
 )
@@ -159,6 +164,49 @@ func (ths *TektonHubStatus) MarkApiInstallerSetNotAvailable(msg string) {
 
 func (ths *TektonHubStatus) MarkApiInstallerSetAvailable() {
 	hubCondSet.Manage(ths).MarkTrue(ApiInstallerSetAvailable)
+}
+
+// UI
+func (ths *TektonHubStatus) MarkUiDependencyInstalling(msg string) {
+	ths.MarkNotReady("Dependencies installing for UI")
+	hubCondSet.Manage(ths).MarkFalse(
+		UiDependenciesInstalled,
+		"Error",
+		"Dependencies are installing for UI: %s", msg)
+}
+
+func (ths *TektonHubStatus) MarkUiDependencyMissing(msg string) {
+	ths.MarkNotReady("Missing Dependencies for UI")
+	hubCondSet.Manage(ths).MarkFalse(
+		UiDependenciesInstalled,
+		"Error",
+		"Dependencies are missing for UI: %s", msg)
+}
+
+func (ths *TektonHubStatus) MarkUiDependenciesInstalled() {
+	hubCondSet.Manage(ths).MarkTrue(UiDependenciesInstalled)
+}
+
+func (ths *TektonHubStatus) MarkUiInstallerSetNotAvailable(msg string) {
+	ths.MarkNotReady("TektonInstallerSet not ready for UI")
+	hubCondSet.Manage(ths).MarkFalse(
+		UiInstallerSetAvailable,
+		"Error",
+		"Installer set not ready for UI: %s", msg)
+}
+
+func (ths *TektonHubStatus) MarkUiInstallerSetAvailable() {
+	hubCondSet.Manage(ths).MarkTrue(UiInstallerSetAvailable)
+}
+
+// GetManifests gets the url links of the manifests.
+func (ths *TektonHubStatus) GetUiRoute() string {
+	return ths.UiRouteUrl
+}
+
+// SetManifests sets the url links of the manifests.
+func (ths *TektonHubStatus) SetUiRoute(routeUrl string) {
+	ths.UiRouteUrl = routeUrl
 }
 
 func (ths *TektonHubStatus) MarkPreReconcilerFailed(msg string) {

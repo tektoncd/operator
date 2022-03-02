@@ -56,9 +56,11 @@ type Reconciler struct {
 }
 
 var (
-	apiConfigMapName string = "api"
-	errKeyMissing    error  = fmt.Errorf("secret doesn't contains all the keys")
-	namespace        string
+	apiConfigMapName       string = "api"
+	errKeyMissing          error  = fmt.Errorf("secret doesn't contains all the keys")
+	namespace              string
+	uiConfigMapName        string = "ui"
+	errconfigMapKeyMissing error  = fmt.Errorf("configMap doesn't contains all the keys")
 	// Check that our Reconciler implements controller.Reconciler
 	_ tektonhubconciler.Interface = (*Reconciler)(nil)
 	_ tektonhubconciler.Finalizer = (*Reconciler)(nil)
@@ -75,8 +77,10 @@ const (
 	dbInstallerSet          = "DbInstallerSet"
 	dbMigrationInstallerSet = "DbMigrationInstallerSet"
 	apiInstallerSet         = "ApiInstallerSet"
+	uiInstallerSet          = "UiInstallerSet"
 	dbComponent             = "tekton-hub-db"
 	apiComponent            = "tekton-hub-api"
+	uiComponent             = "tekton-hub-ui"
 	dbMigrationComponent    = "tekton-hub-db-migration"
 	createdByValue          = "TektonHub"
 )
@@ -155,6 +159,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, th *v1alpha1.TektonHub) 
 	}
 	th.Status.MarkApiInstallerSetAvailable()
 
+	// Manage UI
+	if err := r.manageUiComponent(ctx, th, hubDir, version); err != nil {
+		return r.handleError(err, th)
+	}
+	th.Status.MarkUiInstallerSetAvailable()
+
 	if err := r.extension.PostReconcile(ctx, th); err != nil {
 		return err
 	}
@@ -170,6 +180,38 @@ func (r *Reconciler) handleError(err error, th *v1alpha1.TektonHub) error {
 		return nil
 	}
 	return err
+}
+
+func (r *Reconciler) manageUiComponent(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
+	if err := r.validateUiConfigMap(ctx, th); err != nil {
+		th.Status.MarkUiDependencyMissing(fmt.Sprintf("UI config map not present: %v", err.Error()))
+		r.enqueueAfter(th, 10*time.Second)
+		return nil
+	}
+
+	th.Status.MarkUiDependenciesInstalled()
+
+	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, uiInstallerSet)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		th.Status.MarkUiInstallerSetNotAvailable("UI installer set not available")
+		uiLocation := filepath.Join(hubDir, "ui")
+		err := r.setupAndCreateInstallerSet(ctx, uiLocation, th, uiInstallerSet, version, uiComponent)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = r.checkComponentStatus(ctx, th, uiInstallerSet)
+	if err != nil {
+		th.Status.MarkUiInstallerSetNotAvailable(err.Error())
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
+
+	return nil
 }
 
 func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
@@ -341,6 +383,52 @@ func (r *Reconciler) validateApiDependencies(ctx context.Context, th *v1alpha1.T
 	}
 
 	return nil
+}
+
+func (r *Reconciler) validateUiConfigMap(ctx context.Context, th *v1alpha1.TektonHub) error {
+	logger := logging.FromContext(ctx)
+
+	uiConfigMapKeys := []string{"API_URL", "AUTH_BASE_URL", "API_VERSION", "REDIRECT_URI"}
+	_, err := r.getConfigMap(ctx, uiConfigMapName, namespace, uiConfigMapKeys)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			configMap := createUiConfigMap(uiConfigMapName, namespace, th)
+			_, err = r.kubeClientSet.CoreV1().ConfigMaps(namespace).Create(ctx, configMap, metav1.CreateOptions{})
+			if err != nil {
+				logger.Error(err)
+				th.Status.MarkUiDependencyMissing(fmt.Sprintf("%s configMap is missing", uiConfigMapName))
+				return err
+			}
+			return nil
+		}
+		if err == errconfigMapKeyMissing {
+			th.Status.MarkUiDependencyMissing(fmt.Sprintf("%s configMap is missing the keys", uiConfigMapName))
+			return err
+		} else {
+			logger.Error(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func createUiConfigMap(name, namespace string, th *v1alpha1.TektonHub) *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"ui": "tektonhub-ui",
+			},
+		},
+		Data: map[string]string{
+			"API_URL":       th.Status.ApiRouteUrl,
+			"AUTH_BASE_URL": th.Status.AuthRouteUrl,
+			"API_VERSION":   "v1",
+			"REDIRECT_URI":  "https://" + th.Status.UiRouteUrl,
+		},
+	}
 }
 
 func (r *Reconciler) setupAndCreateInstallerSet(ctx context.Context, manifestLocation string, th *v1alpha1.TektonHub, installerSetName, version, prefixName string) error {

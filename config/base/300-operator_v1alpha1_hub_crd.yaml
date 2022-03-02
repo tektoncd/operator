@@ -47,6 +47,9 @@ spec:
         - jsonPath: .status.apiUrl
           name: ApiUrl
           type: string
+        - jsonPath: .status.uiUrl
+          name: UiUrl
+          type: string
       schema:
         openAPIV3Schema:
           type: object
