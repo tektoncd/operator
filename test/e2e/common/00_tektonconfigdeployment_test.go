@@ -52,7 +52,6 @@ func TestTektonConfigDeployment(t *testing.T) {
 		TektonConfig:    v1alpha1.ConfigResourceName,
 		Namespace:       "tekton-operator",
 		TargetNamespace: "tekton-pipelines",
-		ChainsNamespace: "tekton-chains",
 	}
 
 	platform := os.Getenv("TARGET")
