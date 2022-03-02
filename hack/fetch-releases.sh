@@ -131,7 +131,7 @@ release_yaml_hub() {
   mkdir -p ${dirPath} || true
 
   url=""
-  components="db db-migration api"
+  components="db db-migration api ui"
 
   for component in ${components}; do
     dest=${dirPath}/${component}
@@ -142,6 +142,9 @@ release_yaml_hub() {
 
     [[ ${component} == "api" ]] && fileName=${component}-k8s.yaml
     [[ ${component} == "api" ]] && [[ ${TARGET} == "openshift" ]] && fileName=${component}-openshift.yaml
+
+    [[ ${component} == "ui" ]] && fileName=${component}-k8s.yaml
+    [[ ${component} == "ui" ]] && [[ ${TARGET} == "openshift" ]] && fileName=${component}-openshift.yaml
 
     url="https://github.com/tektoncd/hub/releases/download/${version}/${fileName}"
     echo $url

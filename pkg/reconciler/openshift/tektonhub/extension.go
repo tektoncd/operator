@@ -41,6 +41,7 @@ import (
 const (
 	tektonHubAPIResourceKey  string = "api"
 	tektonHubAuthResourceKey string = "auth"
+	tektonHubUiResourceKey   string = "ui"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -83,7 +84,9 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	if err := common.AppendManifest(&manifest, hubDir); err != nil {
 		return err
 	}
-	manifest, err := manifest.Transform(
+
+	apiRouteManifest := manifest.Filter(mf.ByKind("Route"))
+	apiRouteManifest, err := apiRouteManifest.Transform(
 		mf.InjectOwner(th),
 		mf.InjectNamespace(targetNs),
 	)
@@ -91,21 +94,19 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		logger.Error("failed to transform manifest")
 		return err
 	}
-
-	// Just apply the routes and nothing else
-	if err := manifest.Filter(mf.ByKind("Route")).Apply(); err != nil {
+	if err := apiRouteManifest.Apply(); err != nil {
 		return err
 	}
 
 	// Get the host of API route
-	apiRoute, err := getRouteHost(&manifest, tektonHubAPIResourceKey)
+	apiRoute, err := getRouteHost(&apiRouteManifest, tektonHubAPIResourceKey)
 	if err != nil {
 		return err
 	}
 	th.Status.SetApiRoute(fmt.Sprintf("https://%s", apiRoute))
 
 	// Get the host of Auth route
-	authRoute, err := getRouteHost(&manifest, tektonHubAuthResourceKey)
+	authRoute, err := getRouteHost(&apiRouteManifest, tektonHubAuthResourceKey)
 	if err != nil {
 		return err
 	}
@@ -115,6 +116,35 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	if err := oe.updateApiSecret(ctx, authRoute, targetNs); err != nil {
 		return err
 	}
+
+	// Create UI route based on the value of ui i.e. false/true
+
+	uiHubDir := filepath.Join(common.ComponentDir(th), common.TargetVersion(th), tektonHubUiResourceKey)
+	uiManifest := oe.manifest.Append()
+
+	if err := common.AppendManifest(&uiManifest, uiHubDir); err != nil {
+		return err
+	}
+
+	uiRouteManifest := uiManifest.Filter(mf.ByKind("Route"))
+	uiRouteManifest, err = uiRouteManifest.Transform(
+		mf.InjectOwner(th),
+		mf.InjectNamespace(targetNs),
+	)
+	if err != nil {
+		logger.Error("failed to transform manifest")
+		return err
+	}
+	if err := uiRouteManifest.Apply(); err != nil {
+		return err
+	}
+
+	uiRoute, err := getRouteHost(&uiRouteManifest, "ui")
+	if err != nil {
+		return err
+	}
+
+	th.Status.SetUiRoute(fmt.Sprintf("https://%s", uiRoute))
 
 	return nil
 }

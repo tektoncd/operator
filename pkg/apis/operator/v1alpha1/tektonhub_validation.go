@@ -50,6 +50,7 @@ func (th *TektonHub) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(th.Spec.Db.validate("spec.db"))
 
 	return errs.Also(th.Spec.Api.validate("spec.api"))
+
 }
 
 func (db *DbSpec) validate(path string) (errs *apis.FieldError) {

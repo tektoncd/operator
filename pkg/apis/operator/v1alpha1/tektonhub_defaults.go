@@ -34,4 +34,5 @@ func (th *TektonHub) SetDefaults(ctx context.Context) {
 	if th.Spec.CommonSpec.TargetNamespace == "" {
 		th.Spec.CommonSpec.TargetNamespace = os.Getenv("DEFAULT_TARGET_NAMESPACE")
 	}
+
 }
