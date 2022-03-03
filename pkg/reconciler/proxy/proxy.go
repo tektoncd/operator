@@ -21,8 +21,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/markbates/inflect"
@@ -48,18 +48,6 @@ import (
 	"knative.dev/pkg/system"
 	"knative.dev/pkg/webhook"
 	certresources "knative.dev/pkg/webhook/certificates/resources"
-)
-
-const (
-	// user-provided and system CA certificates
-	trustedCAConfigMapName   = "config-trusted-cabundle"
-	trustedCAConfigMapVolume = "config-trusted-cabundle-volume"
-	trustedCAKey             = "ca-bundle.crt"
-
-	// service serving certificates (required to talk to the internal registry)
-	serviceCAConfigMapName   = "config-service-cabundle"
-	serviceCAConfigMapVolume = "config-service-cabundle-volume"
-	serviceCAKey             = "service-ca.crt"
 )
 
 // reconciler implements the AdmissionController for resources
@@ -319,22 +307,17 @@ func setDefaults(client kubernetes.Interface, ctx context.Context, patches duck.
 		}
 	}
 
-	exist, err := checkConfigMapExist(client, ctx, after.Namespace, trustedCAConfigMapName)
+	trustedConfigMapExists, err := checkConfigMapExist(client, ctx, after.Namespace, common.TrustedCAConfigMapName)
 	if err != nil {
 		return nil, err
 	}
-	if exist {
-		after = updateVolume(after, trustedCAConfigMapVolume, trustedCAConfigMapName, trustedCAKey)
-	}
-
-	exist, err = checkConfigMapExist(client, ctx, after.Namespace, serviceCAConfigMapName)
+	serviceConfigMapExists, err := checkConfigMapExist(client, ctx, after.Namespace, common.ServiceCAConfigMapName)
 	if err != nil {
 		return nil, err
 	}
-	if exist {
-		after = updateVolume(after, serviceCAConfigMapVolume, serviceCAConfigMapName, serviceCAKey)
+	if trustedConfigMapExists && serviceConfigMapExists {
+		after = updateVolume(after)
 	}
-
 	patch, err := duck.CreatePatch(before, after)
 	if err != nil {
 		return nil, err
@@ -358,104 +341,15 @@ func checkConfigMapExist(client kubernetes.Interface, ctx context.Context, ns st
 }
 
 // update volume and volume mounts to mount the certs configmap
-func updateVolume(pod corev1.Pod, volumeName, configmapName, key string) corev1.Pod {
-	volumes := pod.Spec.Volumes
-
-	for i, v := range volumes {
-		if v.Name == volumeName {
-			volumes = append(volumes[:i], volumes[i+1:]...)
-			break
-		}
-	}
-
+func updateVolume(pod corev1.Pod) corev1.Pod {
 	// Let's add the trusted and service CA bundle ConfigMaps as a volume in
-	// the PodSpec which will later be mounted to add certs in the pod.
-	volumes = append(volumes,
-		// Add trusted CA bundle
-		corev1.Volume{
-			Name: volumeName,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: configmapName},
-					Items: []corev1.KeyToPath{
-						{
-							Key:  key,
-							Path: key,
-						},
-					},
-				},
-			},
-		},
-	)
-	pod.Spec.Volumes = volumes
+	// the PodSpec which will later be mounted to add certs in the pod
+	pod.Spec.Volumes = common.AddCABundleConfigMapsToVolumes(pod.Spec.Volumes)
 
-	// Now that the injected certificates have been added as a volume, let's
-	// mount them via volumeMounts in the containers
+	// Now that the ConfigMaps have been added as volumes, let's
+	// mount them via VolumeMounts in the containers
 	for i, c := range pod.Spec.Containers {
-		volumeMounts := c.VolumeMounts
-
-		// If volume mounts for injected certificates already exist then remove them
-		for i, vm := range volumeMounts {
-			if vm.Name == volumeName {
-				volumeMounts = append(volumeMounts[:i], volumeMounts[i+1:]...)
-				break
-			}
-		}
-
-		// We will mount the certs at this location so we don't override the existing certs
-		sslCertDir := "/tekton-custom-certs"
-		certEnvAvaiable := false
-
-		for _, env := range c.Env {
-			// If SSL_CERT_DIR env var already exists, then we don't mess with
-			// it and simply carry it forward as it is
-			if env.Name == "SSL_CERT_DIR" {
-				sslCertDir = env.Value
-				certEnvAvaiable = true
-			}
-		}
-
-		if !certEnvAvaiable {
-			// Here, we need to set the default value for SSL_CERT_DIR.
-			// Keep in mind that if SSL_CERT_DIR is set, then it overrides the
-			// system default, i.e. the system default directories will "NOT"
-			// be scanned for certificates. This is risky and we don't want to
-			// do this because users mount certificates at these locations or
-			// build images with certificates "in" them and expect certificates
-			// to get picked up, and rightfully so since this is the documented
-			// way of achieving this.
-			// So, let's keep the system wide default locations in place and
-			// "append" our custom location to those.
-			//
-			// Copied from https://golang.org/src/crypto/x509/root_linux.go
-			var certDirectories = []string{
-				// Ordering is important here - we will be using the "first"
-				// element in SSL_CERT_DIR to do the volume mounts.
-				sslCertDir,                     // /tekton-custom-certs
-				"/etc/ssl/certs",               // SLES10/SLES11, https://golang.org/issue/12139
-				"/etc/pki/tls/certs",           // Fedora/RHEL
-				"/system/etc/security/cacerts", // Android
-			}
-
-			// SSL_CERT_DIR accepts a colon separated list of directories
-			sslCertDir = strings.Join(certDirectories, ":")
-			c.Env = append(c.Env, corev1.EnvVar{
-				Name:  "SSL_CERT_DIR",
-				Value: sslCertDir,
-			})
-		}
-
-		// Let's mount the certificates now.
-		volumeMounts = append(volumeMounts,
-			corev1.VolumeMount{
-				Name: volumeName,
-				// We only want the first entry in SSL_CERT_DIR for the mount
-				MountPath: filepath.Join(strings.Split(sslCertDir, ":")[0], key),
-				SubPath:   key,
-				ReadOnly:  true,
-			},
-		)
-		c.VolumeMounts = volumeMounts
+		common.AddCABundlesToContainerVolumes(&c)
 		pod.Spec.Containers[i] = c
 	}
 	return pod
