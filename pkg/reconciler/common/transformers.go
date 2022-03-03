@@ -41,6 +41,7 @@ const (
 	TriggersImagePrefix           = "IMAGE_TRIGGERS_"
 	AddonsImagePrefix             = "IMAGE_ADDONS_"
 	ChainsImagePrefix             = "IMAGE_CHAINS_"
+	HubDbImagePrefix              = "IMAGE_HUB_"
 
 	ArgPrefix   = "arg_"
 	ParamPrefix = "param_"
