@@ -22,18 +22,17 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/injection/client/fake"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
-	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	ts "knative.dev/pkg/reconciler/testing"
 )
 
 func TestTektonChainsCreateAndDeleteCR(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	tConfig := pipeline.GetTektonConfig()
-	err := CreateChainsCR(ctx, tConfig, c.OperatorV1alpha1())
+	tConfig := GetTektonConfig()
+	_, err := EnsureTektonChainsExists(ctx, c.OperatorV1alpha1().TektonChainses(), tConfig)
 	util.AssertNotEqual(t, err, nil)
 	// recheck chains creation
-	err = CreateChainsCR(ctx, tConfig, c.OperatorV1alpha1())
+	_, err = EnsureTektonChainsExists(ctx, c.OperatorV1alpha1().TektonChainses(), tConfig)
 	util.AssertNotEqual(t, err, nil)
 	err = TektonChainsCRDelete(ctx, c.OperatorV1alpha1().TektonChainses(), v1alpha1.ChainsResourceName)
 	util.AssertEqual(t, err, nil)
