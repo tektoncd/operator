@@ -37,7 +37,7 @@ TEKTON_RESULTS_VERSION ?= v0.4.0 # latest returns an older version hence hard co
 PAC_VERSION ?= 0.5.3
 TEKTON_HUB_VERSION ?= v1.6.0 # latest doesn't returns any version hence hard coding to v1.6.0 for now
 
-$(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
+$(BIN)/ko: PACKAGE=github.com/google/ko
 
 KUSTOMIZE = $(or ${KUSTOMIZE_BIN},${KUSTOMIZE_BIN},$(BIN)/kustomize)
 $(BIN)/kustomize: | $(BIN) ; $(info $(M) getting kustomize)
