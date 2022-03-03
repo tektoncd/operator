@@ -18,6 +18,7 @@ package common
 
 import (
 	"encoding/json"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"path/filepath"
 	"testing"
 
@@ -32,29 +33,35 @@ import (
 func TestApplyCABundles(t *testing.T) {
 	actual := unstructuredDeployment(t)
 	expected := unstructuredDeployment(t,
+		withEnvs(
+			corev1.EnvVar{
+				Name:  "SSL_CERT_DIR",
+				Value: "/tekton-custom-certs:/etc/ssl/certs:/etc/pki/tls/certs:/system/etc/security/cacerts",
+			},
+		),
 		withVolumes(corev1.Volume{
-			Name: trustedCAConfigMapVolume,
+			Name: common.TrustedCAConfigMapVolume,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					LocalObjectReference: corev1.LocalObjectReference{Name: trustedCAConfigMapName},
+					LocalObjectReference: corev1.LocalObjectReference{Name: common.TrustedCAConfigMapName},
 					Items: []corev1.KeyToPath{
 						{
-							Key:  trustedCAKey,
-							Path: trustedCAKey,
+							Key:  common.TrustedCAKey,
+							Path: common.TrustedCAKey,
 						},
 					},
 				},
 			},
 		},
 			corev1.Volume{
-				Name: serviceCAConfigMapVolume,
+				Name: common.ServiceCAConfigMapVolume,
 				VolumeSource: corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: serviceCAConfigMapName},
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.ServiceCAConfigMapName},
 						Items: []corev1.KeyToPath{
 							{
-								Key:  serviceCAKey,
-								Path: serviceCAKey,
+								Key:  common.ServiceCAKey,
+								Path: common.ServiceCAKey,
 							},
 						},
 					},
@@ -62,15 +69,15 @@ func TestApplyCABundles(t *testing.T) {
 			}),
 		withVolumeMounts(
 			corev1.VolumeMount{
-				Name:      trustedCAConfigMapVolume,
-				MountPath: filepath.Join("/tekton-custom-certs", trustedCAKey),
-				SubPath:   trustedCAKey,
+				Name:      common.TrustedCAConfigMapVolume,
+				MountPath: filepath.Join("/tekton-custom-certs", common.TrustedCAKey),
+				SubPath:   common.TrustedCAKey,
 				ReadOnly:  true,
 			},
 			corev1.VolumeMount{
-				Name:      serviceCAConfigMapVolume,
-				MountPath: filepath.Join("/tekton-custom-certs", serviceCAKey),
-				SubPath:   serviceCAKey,
+				Name:      common.ServiceCAConfigMapVolume,
+				MountPath: filepath.Join("/tekton-custom-certs", common.ServiceCAKey),
+				SubPath:   common.ServiceCAKey,
 				ReadOnly:  true,
 			},
 		),
@@ -131,6 +138,15 @@ func unstructuredDeployment(t *testing.T, modifiers ...deploymentModifier) *unst
 		t.Fatal(err)
 	}
 	return ud
+}
+
+func withEnvs(envs ...corev1.EnvVar) func(*appsv1.Deployment) {
+	return func(d *appsv1.Deployment) {
+		for i, c := range d.Spec.Template.Spec.Containers {
+			c.Env = append(c.Env, envs...)
+			d.Spec.Template.Spec.Containers[i] = c
+		}
+	}
 }
 
 func withVolumes(volumes ...corev1.Volume) func(*appsv1.Deployment) {

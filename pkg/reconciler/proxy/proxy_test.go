@@ -35,14 +35,20 @@ func TestUpdateVolume(t *testing.T) {
 			},
 		},
 	}
-	podUpdated := updateVolume(pod, "testv", "testcm", "testkey")
-	assert.DeepEqual(t, len(podUpdated.Spec.Volumes), 1)
+	podUpdated := updateVolume(pod)
 	assert.DeepEqual(t, len(podUpdated.Spec.Containers[0].Env), 1)
 	assert.DeepEqual(t, podUpdated.Spec.Containers[0].Env[0].Name, "SSL_CERT_DIR")
 	assert.DeepEqual(t, podUpdated.Spec.Containers[0].Env[0].Value, "/tekton-custom-certs:/etc/ssl/certs:/etc/pki/tls/certs:/system/etc/security/cacerts")
-	assert.DeepEqual(t, podUpdated.Spec.Volumes[0].Name, "testv")
-	assert.DeepEqual(t, podUpdated.Spec.Volumes[0].ConfigMap.Name, "testcm")
-	assert.DeepEqual(t, len(podUpdated.Spec.Containers[0].VolumeMounts), 1)
-	assert.DeepEqual(t, podUpdated.Spec.Containers[0].VolumeMounts[0].Name, "testv")
-	assert.DeepEqual(t, podUpdated.Spec.Containers[0].VolumeMounts[0].SubPath, "testkey")
+
+	assert.DeepEqual(t, len(podUpdated.Spec.Volumes), 2)
+	assert.DeepEqual(t, podUpdated.Spec.Volumes[0].Name, "config-trusted-cabundle-volume")
+	assert.DeepEqual(t, podUpdated.Spec.Volumes[0].ConfigMap.Name, "config-trusted-cabundle")
+	assert.DeepEqual(t, podUpdated.Spec.Volumes[1].Name, "config-service-cabundle-volume")
+	assert.DeepEqual(t, podUpdated.Spec.Volumes[1].ConfigMap.Name, "config-service-cabundle")
+
+	assert.DeepEqual(t, len(podUpdated.Spec.Containers[0].VolumeMounts), 2)
+	assert.DeepEqual(t, podUpdated.Spec.Containers[0].VolumeMounts[0].Name, "config-trusted-cabundle-volume")
+	assert.DeepEqual(t, podUpdated.Spec.Containers[0].VolumeMounts[0].SubPath, "ca-bundle.crt")
+	assert.DeepEqual(t, podUpdated.Spec.Containers[0].VolumeMounts[1].Name, "config-service-cabundle-volume")
+	assert.DeepEqual(t, podUpdated.Spec.Containers[0].VolumeMounts[1].SubPath, "service-ca.crt")
 }
