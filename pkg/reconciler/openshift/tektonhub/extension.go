@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
@@ -31,7 +32,11 @@ import (
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"go.uber.org/zap"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/injection"
@@ -43,6 +48,12 @@ const (
 	tektonHubAuthResourceKey string = "auth"
 	tektonHubUiResourceKey   string = "ui"
 )
+
+var replaceVal = map[string]string{
+	"POSTGRES_DB":       "POSTGRESQL_DATABASE",
+	"POSTGRES_USER":     "POSTGRESQL_USER",
+	"POSTGRES_PASSWORD": "POSTGRESQL_PASSWORD",
+}
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	logger := logging.FromContext(ctx)
@@ -71,7 +82,7 @@ type openshiftExtension struct {
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return nil
+	return []mf.Transformer{UpdateDbDeployment()}
 }
 
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
@@ -196,4 +207,60 @@ func getRouteHost(manifest *mf.Manifest, routeName string) (string, error) {
 		}
 	}
 	return hostUrl, nil
+}
+
+func UpdateDbDeployment() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		if d.Name == "db" {
+			env := d.Spec.Template.Spec.Containers[0].Env
+
+			replaceEnv(env)
+
+			d.Spec.Template.Spec.Containers[0].Env = env
+
+			mountPath := "/var/lib/pgsql/data"
+			d.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = mountPath
+
+			replaceProbeCommand(d.Spec.Template.Spec.Containers[0].ReadinessProbe.Exec.Command)
+			replaceProbeCommand(d.Spec.Template.Spec.Containers[0].LivenessProbe.Exec.Command)
+
+			unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+			if err != nil {
+				return err
+			}
+			u.SetUnstructuredContent(unstrObj)
+
+			return nil
+		}
+
+		return nil
+	}
+}
+
+func replaceProbeCommand(data []string) {
+	if strings.Contains(data[2], "POSTGRES_USER") {
+		data[2] = strings.ReplaceAll(data[2], "POSTGRES_USER", "POSTGRESQL_USER")
+	}
+	if strings.Contains(data[2], "POSTGRES_DB") {
+		data[2] = strings.ReplaceAll(data[2], "POSTGRES_DB", "POSTGRESQL_DATABASE")
+	}
+}
+
+func replaceEnv(envs []corev1.EnvVar) {
+	for i, e := range envs {
+		_, ok := replaceVal[e.Name]
+		if ok {
+			envs[i].Name = replaceVal[e.Name]
+		}
+	}
 }

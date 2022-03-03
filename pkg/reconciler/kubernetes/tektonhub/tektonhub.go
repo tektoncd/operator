@@ -441,10 +441,17 @@ func (r *Reconciler) setupAndCreateInstallerSet(ctx context.Context, manifestLoc
 
 	manifest = manifest.Filter(mf.Not(mf.Any(mf.ByKind("Secret"), mf.ByKind("Namespace"), mf.ByKind("ConfigMap"))))
 
-	manifest, err := manifest.Transform(
+	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.HubDbImagePrefix))
+	trans := r.extension.Transformers(th)
+	extra := []mf.Transformer{
 		mf.InjectOwner(th),
 		mf.InjectNamespace(namespace),
-	)
+		common.DeploymentImages(images),
+	}
+	trans = append(trans, extra...)
+
+	manifest, err := manifest.Transform(trans...)
+
 	if err != nil {
 		logger.Error("failed to transform manifest")
 		return err
