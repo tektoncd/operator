@@ -202,6 +202,17 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 		if lastAppliedHash != expectedSpecHash {
 
 			manifest := r.manifest
+			// installerSet adds it's owner as namespace's owner
+			// so deleting tekton chain deletes target namespace too
+			// to skip it we filter out namespace if pipeline have same namespace
+			pipelineNamespace, err := common.PipelineTargetNamspace(r.pipelineInformer)
+			if err != nil {
+				logger.Error("unable to fetch pipeline namespace:  ", err)
+				return err
+			}
+			if tc.Spec.GetTargetNamespace() == pipelineNamespace {
+				manifest = manifest.Filter(mf.Not(mf.ByKind("Namespace")))
+			}
 			if err := r.transform(ctx, &manifest, tc); err != nil {
 				logger.Error("manifest transformation failed:  ", err)
 				return err
@@ -322,6 +333,16 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 func (r *Reconciler) createInstallerSet(ctx context.Context, tc *v1alpha1.TektonChains) (*v1alpha1.TektonInstallerSet, error) {
 
 	manifest := r.manifest
+	// installerSet adds it's owner as namespace's owner
+	// so deleting tekton chain deletes target namespace too
+	// to skip it we filter out namespace if pipeline have same namespace
+	pipelineNamespace, err := common.PipelineTargetNamspace(r.pipelineInformer)
+	if err != nil {
+		return nil, err
+	}
+	if tc.Spec.GetTargetNamespace() == pipelineNamespace {
+		manifest = manifest.Filter(mf.Not(mf.ByKind("Namespace")))
+	}
 	if err := r.transform(ctx, &manifest, tc); err != nil {
 		tc.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err
