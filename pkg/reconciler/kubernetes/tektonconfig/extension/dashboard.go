@@ -81,9 +81,12 @@ func ensureTektonDashboardExists(ctx context.Context, clients op.TektonDashboard
 	}
 
 	if apierrs.IsNotFound(err) {
+		ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
+
 		tdCR = &v1alpha1.TektonDashboard{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: v1alpha1.DashboardResourceName,
+				Name:            v1alpha1.DashboardResourceName,
+				OwnerReferences: []metav1.OwnerReference{ownerRef},
 			},
 			Spec: v1alpha1.TektonDashboardSpec{
 				CommonSpec: v1alpha1.CommonSpec{

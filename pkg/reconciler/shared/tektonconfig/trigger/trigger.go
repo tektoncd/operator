@@ -66,9 +66,12 @@ func GetTrigger(ctx context.Context, clients op.TektonTriggerInterface, name str
 }
 
 func CreateTrigger(ctx context.Context, clients op.TektonTriggerInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonTrigger, error) {
+	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
+
 	ttCR := &v1alpha1.TektonTrigger{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: v1alpha1.TriggerResourceName,
+			Name:            v1alpha1.TriggerResourceName,
+			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
 		Spec: v1alpha1.TektonTriggerSpec{
 			CommonSpec: v1alpha1.CommonSpec{
