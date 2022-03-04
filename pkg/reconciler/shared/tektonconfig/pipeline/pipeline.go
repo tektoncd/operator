@@ -66,9 +66,12 @@ func GetPipeline(ctx context.Context, clients op.TektonPipelineInterface, name s
 }
 
 func CreatePipeline(ctx context.Context, clients op.TektonPipelineInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonPipeline, error) {
+	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
+
 	tpCR := &v1alpha1.TektonPipeline{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: v1alpha1.PipelineResourceName,
+			Name:            v1alpha1.PipelineResourceName,
+			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
 		Spec: v1alpha1.TektonPipelineSpec{
 			CommonSpec: v1alpha1.CommonSpec{
