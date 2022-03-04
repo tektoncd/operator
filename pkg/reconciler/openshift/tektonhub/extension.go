@@ -44,9 +44,9 @@ import (
 )
 
 const (
-	tektonHubAPIResourceKey  string = "api"
-	tektonHubAuthResourceKey string = "auth"
-	tektonHubUiResourceKey   string = "ui"
+	hubprefix               string = "tekton-hub"
+	tektonHubAPIResourceKey string = "api"
+	tektonHubUiResourceKey  string = "ui"
 )
 
 var replaceVal = map[string]string{
@@ -54,6 +54,11 @@ var replaceVal = map[string]string{
 	"POSTGRES_USER":     "POSTGRESQL_USER",
 	"POSTGRES_PASSWORD": "POSTGRESQL_PASSWORD",
 }
+
+var (
+	api string = fmt.Sprintf("%s-%s", hubprefix, "api")
+	ui  string = fmt.Sprintf("%s-%s", hubprefix, "ui")
+)
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	logger := logging.FromContext(ctx)
@@ -110,14 +115,14 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	}
 
 	// Get the host of API route
-	apiRoute, err := getRouteHost(&apiRouteManifest, tektonHubAPIResourceKey)
+	apiRoute, err := getRouteHost(&apiRouteManifest, api)
 	if err != nil {
 		return err
 	}
 	th.Status.SetApiRoute(fmt.Sprintf("https://%s", apiRoute))
 
 	// Get the host of Auth route
-	authRoute, err := getRouteHost(&apiRouteManifest, tektonHubAuthResourceKey)
+	authRoute, err := getRouteHost(&apiRouteManifest, "tekton-hub-auth")
 	if err != nil {
 		return err
 	}
@@ -150,7 +155,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		return err
 	}
 
-	uiRoute, err := getRouteHost(&uiRouteManifest, "ui")
+	uiRoute, err := getRouteHost(&uiRouteManifest, ui)
 	if err != nil {
 		return err
 	}
@@ -170,7 +175,7 @@ func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent)
 
 // Updates the AUTH_BASE_URL in the API secret with the Auth Route value
 func (oe openshiftExtension) updateApiSecret(ctx context.Context, authRoute, namespace string) error {
-	secret, err := oe.kubeClientSet.CoreV1().Secrets(namespace).Get(ctx, tektonHubAPIResourceKey, metav1.GetOptions{})
+	secret, err := oe.kubeClientSet.CoreV1().Secrets(namespace).Get(ctx, api, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}

@@ -35,12 +35,12 @@ func TestSetDefault(t *testing.T) {
 		Spec: TektonHubSpec{
 			Api: ApiSpec{
 				HubConfigUrl:  "https://hubconfig.url",
-				ApiSecretName: "api",
+				ApiSecretName: "tetkon-hub-api",
 			},
 		},
 	}
 	th.SetDefaults(context.TODO())
-	if th.Spec.Db.DbSecretName != "db" {
+	if th.Spec.Db.DbSecretName != "tekton-hub-db" {
 		t.Error("Setting default failed for TektonHub (spec.db.dbSecretName)")
 	}
 	if th.Spec.TargetNamespace != "tekton-pipelines" {

@@ -24,11 +24,11 @@ import (
 func (th *TektonHub) SetDefaults(ctx context.Context) {
 
 	if th.Spec.Db.DbSecretName == "" {
-		th.Spec.Db.DbSecretName = "db"
+		th.Spec.Db.DbSecretName = "tekton-hub-db"
 	}
 
 	if th.Spec.Api.ApiSecretName == "" {
-		th.Spec.Api.ApiSecretName = "api"
+		th.Spec.Api.ApiSecretName = "tekton-hub-api"
 	}
 
 	if th.Spec.CommonSpec.TargetNamespace == "" {

@@ -54,7 +54,7 @@ func (th *TektonHub) Validate(ctx context.Context) (errs *apis.FieldError) {
 }
 
 func (db *DbSpec) validate(path string) (errs *apis.FieldError) {
-	if db.DbSecretName != "" && db.DbSecretName != "db" {
+	if db.DbSecretName != "" && db.DbSecretName != "tekton-hub-db" {
 		return errs.Also(apis.ErrInvalidValue(db.DbSecretName, path+".DbSecretName"))
 	}
 	return errs
@@ -73,7 +73,7 @@ func (api *ApiSpec) validate(path string) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrMissingField(path + ".HubConfigUrl"))
 	}
 
-	if api.ApiSecretName != "" && api.ApiSecretName != "api" {
+	if api.ApiSecretName != "" && api.ApiSecretName != "tekton-hub-api" {
 		return errs.Also(apis.ErrInvalidValue(api.ApiSecretName, path+".ApiSecretName"))
 	}
 

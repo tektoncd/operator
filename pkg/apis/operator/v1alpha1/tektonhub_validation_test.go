@@ -87,10 +87,10 @@ func Test_ValidateTektonHub_MissingHubConfigUrl(t *testing.T) {
 		},
 		Spec: TektonHubSpec{
 			Db: DbSpec{
-				DbSecretName: "db",
+				DbSecretName: "tekton-hub-db",
 			},
 			Api: ApiSpec{
-				ApiSecretName: "api",
+				ApiSecretName: "tekton-hub-api",
 			},
 		},
 	}
@@ -111,7 +111,7 @@ func Test_ValidateTektonHub_InvalidDbSecretName(t *testing.T) {
 				DbSecretName: "invalid-value",
 			},
 			Api: ApiSpec{
-				ApiSecretName: "api",
+				ApiSecretName: "tekton-hub-api",
 				HubConfigUrl:  "https://hubconfigurl.com",
 			},
 		},
@@ -130,7 +130,7 @@ func Test_ValidateTektonHub_InvalidApiSecretName(t *testing.T) {
 		},
 		Spec: TektonHubSpec{
 			Db: DbSpec{
-				DbSecretName: "db",
+				DbSecretName: "tekton-hub-db",
 			},
 			Api: ApiSpec{
 				ApiSecretName: "invalid-value",
@@ -152,10 +152,10 @@ func Test_ValidateTektonHub_InvalidHubConfigUrl(t *testing.T) {
 		},
 		Spec: TektonHubSpec{
 			Db: DbSpec{
-				DbSecretName: "db",
+				DbSecretName: "tekton-hub-db",
 			},
 			Api: ApiSpec{
-				ApiSecretName: "api",
+				ApiSecretName: "tekton-hub-api",
 				HubConfigUrl:  "hubconfigurl",
 			},
 		},
