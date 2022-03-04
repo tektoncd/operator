@@ -62,6 +62,17 @@ func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPi
 	return ppln, nil
 }
 
+func PipelineTargetNamspace(informer informer.TektonPipelineInformer) (string, error) {
+	ppln, err := getPipelineRes(informer)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	return ppln.Spec.TargetNamespace, nil
+}
+
 func getPipelineRes(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPipeline, error) {
 	res, err := informer.Lister().Get(v1alpha1.PipelineResourceName)
 	return res, err
