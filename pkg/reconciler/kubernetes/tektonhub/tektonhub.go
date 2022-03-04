@@ -56,11 +56,13 @@ type Reconciler struct {
 }
 
 var (
-	apiConfigMapName       string = "api"
-	errKeyMissing          error  = fmt.Errorf("secret doesn't contains all the keys")
+	errKeyMissing          error = fmt.Errorf("secret doesn't contains all the keys")
 	namespace              string
-	uiConfigMapName        string = "ui"
 	errconfigMapKeyMissing error  = fmt.Errorf("configMap doesn't contains all the keys")
+	db                     string = fmt.Sprintf("%s-%s", hubprefix, "db")
+	dbMigration            string = fmt.Sprintf("%s-%s", hubprefix, "db-migration")
+	api                    string = fmt.Sprintf("%s-%s", hubprefix, "api")
+	ui                     string = fmt.Sprintf("%s-%s", hubprefix, "ui")
 	// Check that our Reconciler implements controller.Reconciler
 	_ tektonhubconciler.Interface = (*Reconciler)(nil)
 	_ tektonhubconciler.Finalizer = (*Reconciler)(nil)
@@ -74,14 +76,11 @@ var (
 )
 
 const (
+	hubprefix               = "tekton-hub"
 	dbInstallerSet          = "DbInstallerSet"
 	dbMigrationInstallerSet = "DbMigrationInstallerSet"
 	apiInstallerSet         = "ApiInstallerSet"
 	uiInstallerSet          = "UiInstallerSet"
-	dbComponent             = "tekton-hub-db"
-	apiComponent            = "tekton-hub-api"
-	uiComponent             = "tekton-hub-ui"
-	dbMigrationComponent    = "tekton-hub-db-migration"
 	createdByValue          = "TektonHub"
 )
 
@@ -199,7 +198,7 @@ func (r *Reconciler) manageUiComponent(ctx context.Context, th *v1alpha1.TektonH
 	if !exist {
 		th.Status.MarkUiInstallerSetNotAvailable("UI installer set not available")
 		uiLocation := filepath.Join(hubDir, "ui")
-		err := r.setupAndCreateInstallerSet(ctx, uiLocation, th, uiInstallerSet, version, uiComponent)
+		err := r.setupAndCreateInstallerSet(ctx, uiLocation, th, uiInstallerSet, version, ui)
 		if err != nil {
 			return err
 		}
@@ -232,7 +231,7 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 	if !exist {
 		th.Status.MarkApiInstallerSetNotAvailable("API installer set not available")
 		apiLocation := filepath.Join(hubDir, "api")
-		err := r.setupAndCreateInstallerSet(ctx, apiLocation, th, apiInstallerSet, version, apiComponent)
+		err := r.setupAndCreateInstallerSet(ctx, apiLocation, th, apiInstallerSet, version, api)
 		if err != nil {
 			return err
 		}
@@ -256,7 +255,7 @@ func (r *Reconciler) manageDbMigrationComponent(ctx context.Context, th *v1alpha
 	if !exist {
 		dbMigrationLocation := filepath.Join(hubDir, "db-migration")
 		th.Status.MarkDatabasebMigrationFailed("DB migration installerset not available")
-		err = r.setupAndCreateInstallerSet(ctx, dbMigrationLocation, th, dbMigrationInstallerSet, version, dbMigrationComponent)
+		err = r.setupAndCreateInstallerSet(ctx, dbMigrationLocation, th, dbMigrationInstallerSet, version, dbMigration)
 		if err != nil {
 			return err
 		}
@@ -286,7 +285,7 @@ func (r *Reconciler) manageDbComponent(ctx context.Context, th *v1alpha1.TektonH
 	if !exist {
 		th.Status.MarkDbInstallerSetNotAvailable("DB installer set not available")
 		dbLocation := filepath.Join(hubDir, "db")
-		err := r.setupAndCreateInstallerSet(ctx, dbLocation, th, dbInstallerSet, version, dbComponent)
+		err := r.setupAndCreateInstallerSet(ctx, dbLocation, th, dbInstallerSet, version, db)
 		if err != nil {
 			return err
 		}
@@ -361,20 +360,20 @@ func (r *Reconciler) validateApiDependencies(ctx context.Context, th *v1alpha1.T
 		}
 	}
 
-	_, err = r.getConfigMap(ctx, apiConfigMapName, namespace, apiConfigMapKeys)
+	_, err = r.getConfigMap(ctx, api, namespace, apiConfigMapKeys)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			configMap := createApiConfigMap(apiConfigMapName, namespace, th)
+			configMap := createApiConfigMap(api, namespace, th)
 			_, err = r.kubeClientSet.CoreV1().ConfigMaps(namespace).Create(ctx, configMap, metav1.CreateOptions{})
 			if err != nil {
 				logger.Error(err)
-				th.Status.MarkApiDependencyMissing(fmt.Sprintf("%s configMap is missing", apiConfigMapName))
+				th.Status.MarkApiDependencyMissing(fmt.Sprintf("%s configMap is missing", api))
 				return err
 			}
 			return nil
 		}
 		if err == errKeyMissing {
-			th.Status.MarkApiDependencyMissing(fmt.Sprintf("%s configMap is missing the keys", apiConfigMapName))
+			th.Status.MarkApiDependencyMissing(fmt.Sprintf("%s configMap is missing the keys", api))
 			return err
 		} else {
 			logger.Error(err)
@@ -389,20 +388,20 @@ func (r *Reconciler) validateUiConfigMap(ctx context.Context, th *v1alpha1.Tekto
 	logger := logging.FromContext(ctx)
 
 	uiConfigMapKeys := []string{"API_URL", "AUTH_BASE_URL", "API_VERSION", "REDIRECT_URI"}
-	_, err := r.getConfigMap(ctx, uiConfigMapName, namespace, uiConfigMapKeys)
+	_, err := r.getConfigMap(ctx, ui, namespace, uiConfigMapKeys)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			configMap := createUiConfigMap(uiConfigMapName, namespace, th)
+			configMap := createUiConfigMap(ui, namespace, th)
 			_, err = r.kubeClientSet.CoreV1().ConfigMaps(namespace).Create(ctx, configMap, metav1.CreateOptions{})
 			if err != nil {
 				logger.Error(err)
-				th.Status.MarkUiDependencyMissing(fmt.Sprintf("%s configMap is missing", uiConfigMapName))
+				th.Status.MarkUiDependencyMissing(fmt.Sprintf("%s configMap is missing", ui))
 				return err
 			}
 			return nil
 		}
 		if err == errconfigMapKeyMissing {
-			th.Status.MarkUiDependencyMissing(fmt.Sprintf("%s configMap is missing the keys", uiConfigMapName))
+			th.Status.MarkUiDependencyMissing(fmt.Sprintf("%s configMap is missing the keys", ui))
 			return err
 		} else {
 			logger.Error(err)
