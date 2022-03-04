@@ -69,6 +69,11 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 		return err
 	}
 
+	// installerSet adds it's owner as namespace's owner
+	// so deleting tekton addon deletes target namespace too
+	// to skip it we filter out namespace
+	pacManifest = pacManifest.Filter(mf.Not(mf.ByKind("Namespace")))
+
 	// Run transformers
 	if err := r.addonTransform(ctx, &pacManifest, ta); err != nil {
 		return err
