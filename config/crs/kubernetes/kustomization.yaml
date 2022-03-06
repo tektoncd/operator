@@ -7,4 +7,4 @@ resources:
 - trigger/operator_v1alpha1_trigger_cr.yaml
 - config/all/operator_v1alpha1_config_cr.yaml
 - installerset/operator_v1alpha1_installerset_cr.yaml
-- chains/operator_v1alpha1_chains_cr.yaml
+- chain/operator_v1alpha1_chain_cr.yaml

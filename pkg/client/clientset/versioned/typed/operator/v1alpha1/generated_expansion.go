@@ -20,7 +20,7 @@ package v1alpha1
 
 type TektonAddonExpansion interface{}
 
-type TektonChainsExpansion interface{}
+type TektonChainExpansion interface{}
 
 type TektonConfigExpansion interface{}
 

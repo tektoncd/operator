@@ -98,5 +98,5 @@ var (
 	ConfigResourceName    = "config"
 	ResultResourceName    = "result"
 	HubResourceName       = "hub"
-	ChainsResourceName    = "chains"
+	ChainResourceName     = "chain"
 )

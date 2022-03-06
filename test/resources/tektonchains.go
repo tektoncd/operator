@@ -35,16 +35,16 @@ import (
 	"knative.dev/pkg/test/logging"
 )
 
-// EnsureTektonChainsExists creates a TektonChains with the name names.TektonChains, if it does not exist.
-func EnsureTektonChainsExists(clients typedv1alpha1.TektonChainsInterface, names utils.ResourceNames) (*v1alpha1.TektonChains, error) {
+// EnsureTektonChainExists creates a TektonChain with the name names.TektonChain, if it does not exist.
+func EnsureTektonChainExists(clients typedv1alpha1.TektonChainInterface, names utils.ResourceNames) (*v1alpha1.TektonChain, error) {
 	// If this function is called by the upgrade tests, we only create the custom resource, if it does not exist.
-	ks, err := clients.Get(context.TODO(), names.TektonChains, metav1.GetOptions{})
+	ks, err := clients.Get(context.TODO(), names.TektonChain, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
-		ks := &v1alpha1.TektonChains{
+		ks := &v1alpha1.TektonChain{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: names.TektonChains,
+				Name: names.TektonChain,
 			},
-			Spec: v1alpha1.TektonChainsSpec{
+			Spec: v1alpha1.TektonChainSpec{
 				CommonSpec: v1alpha1.CommonSpec{
 					TargetNamespace: names.TargetNamespace,
 				},
@@ -55,60 +55,60 @@ func EnsureTektonChainsExists(clients typedv1alpha1.TektonChainsInterface, names
 	return ks, err
 }
 
-// WaitForTektonChainsState polls the status of the TektonChains called name
+// WaitForTektonChainState polls the status of the TektonChain called name
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout.
-func WaitForTektonChainsState(clients typedv1alpha1.TektonChainsInterface, name string,
-	inState func(s *v1alpha1.TektonChains, err error) (bool, error)) (*v1alpha1.TektonChains, error) {
-	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForTektonChainsState/%s/%s", name, "TektonChainsIsReady"))
+func WaitForTektonChainState(clients typedv1alpha1.TektonChainInterface, name string,
+	inState func(s *v1alpha1.TektonChain, err error) (bool, error)) (*v1alpha1.TektonChain, error) {
+	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForTektonChainState/%s/%s", name, "TektonChainIsReady"))
 	defer span.End()
 
-	var lastState *v1alpha1.TektonChains
+	var lastState *v1alpha1.TektonChain
 	waitErr := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
 		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
 
 	if waitErr != nil {
-		return lastState, fmt.Errorf("tektonchains %s is not in desired state, got: %+v: %w", name, lastState, waitErr)
+		return lastState, fmt.Errorf("tektonchain %s is not in desired state, got: %+v: %w", name, lastState, waitErr)
 	}
 	return lastState, nil
 }
 
-// IsTektonChainsReady will check the status conditions of the TektonChains and return true if the TektonChains is ready.
-func IsTektonChainsReady(s *v1alpha1.TektonChains, err error) (bool, error) {
+// IsTektonChainReady will check the status conditions of the TektonChain and return true if the TektonChain is ready.
+func IsTektonChainReady(s *v1alpha1.TektonChain, err error) (bool, error) {
 	return s.Status.IsReady(), err
 }
 
-// AssertTektonChainsCRReadyStatus verifies if the TektonChains reaches the READY status.
-func AssertTektonChainsCRReadyStatus(t *testing.T, clients *utils.Clients, names utils.ResourceNames) {
-	if _, err := WaitForTektonChainsState(clients.TektonChains(), names.TektonChains,
-		IsTektonChainsReady); err != nil {
-		t.Fatalf("TektonChainsCR %q failed to get to the READY status: %v", names.TektonChains, err)
+// AssertTektonChainCRReadyStatus verifies if the TektonChain reaches the READY status.
+func AssertTektonChainCRReadyStatus(t *testing.T, clients *utils.Clients, names utils.ResourceNames) {
+	if _, err := WaitForTektonChainState(clients.TektonChains(), names.TektonChain,
+		IsTektonChainReady); err != nil {
+		t.Fatalf("TektonChainCR %q failed to get to the READY status: %v", names.TektonChain, err)
 	}
 }
 
-// TektonChainsCRDelete deletes tha TektonChains to see if all resources will be deleted
-func TektonChainsCRDelete(t *testing.T, clients *utils.Clients, crNames utils.ResourceNames) {
-	if err := clients.TektonChains().Delete(context.TODO(), crNames.TektonChains, metav1.DeleteOptions{}); err != nil {
-		t.Fatalf("TektonChains %q failed to delete: %v", crNames.TektonChains, err)
+// TektonChainCRDelete deletes tha TektonChain to see if all resources will be deleted
+func TektonChainCRDelete(t *testing.T, clients *utils.Clients, crNames utils.ResourceNames) {
+	if err := clients.TektonChains().Delete(context.TODO(), crNames.TektonChain, metav1.DeleteOptions{}); err != nil {
+		t.Fatalf("TektonChain %q failed to delete: %v", crNames.TektonChain, err)
 	}
 	err := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
-		_, err := clients.TektonChains().Get(context.TODO(), crNames.TektonChains, metav1.GetOptions{})
+		_, err := clients.TektonChains().Get(context.TODO(), crNames.TektonChain, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil
 		}
 		return false, err
 	})
 	if err != nil {
-		t.Fatal("Timed out waiting on TektonChains to delete", err)
+		t.Fatal("Timed out waiting on TektonChain to delete", err)
 	}
 	_, b, _, _ := runtime.Caller(0)
 	m, err := mfc.NewManifest(filepath.Join((filepath.Dir(b)+"/.."), "manifests/"), clients.Config)
 	if err != nil {
 		t.Fatal("Failed to load manifest", err)
 	}
-	if err := verifyNoTektonChainsCR(clients); err != nil {
+	if err := verifyNoTektonChainCR(clients); err != nil {
 		t.Fatal(err)
 	}
 
@@ -126,13 +126,13 @@ func TektonChainsCRDelete(t *testing.T, clients *utils.Clients, crNames utils.Re
 	}
 }
 
-func verifyNoTektonChainsCR(clients *utils.Clients) error {
+func verifyNoTektonChainCR(clients *utils.Clients) error {
 	chains, err := clients.TektonChainsAll().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 	if len(chains.Items) > 0 {
-		return errors.New("Unable to verify cluster-scoped resources are deleted if any TektonChains exists")
+		return errors.New("Unable to verify cluster-scoped resources are deleted if any TektonChain exists")
 	}
 	return nil
 }
