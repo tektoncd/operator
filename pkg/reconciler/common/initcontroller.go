@@ -109,8 +109,8 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 		dashboard.Spec.Readonly = false
 		return AppendTarget(ctx, ctrl.Manifest, &dashboard)
 	case strings.Contains(ctrl.VersionConfigMap, "chains"):
-		var chains v1alpha1.TektonChains
-		return AppendTarget(ctx, ctrl.Manifest, &chains)
+		var chain v1alpha1.TektonChain
+		return AppendTarget(ctx, ctrl.Manifest, &chain)
 	}
 
 	return nil

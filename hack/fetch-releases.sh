@@ -159,7 +159,7 @@ release_yaml_hub() {
   done
 }
 
-#Args: <target-platform> <pipelines version> <triggers version> <dashboard version> <results version> <pac version> <hub version> <chains version>
+#Args: <target-platform> <pipelines version> <triggers version> <dashboard version> <results version> <pac version> <hub version> <chain version>
 main() {
   TARGET=$1
   p_version=${2}

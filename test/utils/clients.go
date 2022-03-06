@@ -140,12 +140,12 @@ func (c *Clients) TektonResultAll() operatorv1alpha1.TektonResultInterface {
 	return c.Operator.TektonResults()
 }
 
-func (c *Clients) TektonChains() operatorv1alpha1.TektonChainsInterface {
-	return c.Operator.TektonChainses()
+func (c *Clients) TektonChains() operatorv1alpha1.TektonChainInterface {
+	return c.Operator.TektonChains()
 }
 
-func (c *Clients) TektonChainsAll() operatorv1alpha1.TektonChainsInterface {
-	return c.Operator.TektonChainses()
+func (c *Clients) TektonChainsAll() operatorv1alpha1.TektonChainInterface {
+	return c.Operator.TektonChains()
 }
 
 func (c *Clients) TektonInstallerSet() operatorv1alpha1.TektonInstallerSetInterface {

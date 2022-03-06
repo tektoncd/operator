@@ -47,8 +47,8 @@ Tekton Operator defines the following entities:
     <td>Configure the <a HREF="https://github.com/tektoncd/results">Tekton Result</a> component to be installed and managed.</td>
   </tr>
   <tr>
-    <td><code>TektonChains</code></td>
-    <td>Configure the <a HREF="https://github.com/tektoncd/chains">Tekton Chains</a> component to be installed and managed.</td>
+    <td><code>TektonChain</code></td>
+    <td>Configure the <a HREF="https://github.com/tektoncd/chains">Tekton Chain</a> component to be installed and managed.</td>
   </tr>
   <tr>
     <td><code>TektonAddon</code></td>
@@ -94,7 +94,7 @@ You can find more about the Resources and its available configurations in their 
 - [TektonTrigger](./TektonTrigger.md)
 - [TektonDashboard](./TektonDashboard.md)
 - [TektonResult](./TektonResult.md)
-- [TektonChains](./TektonChains.md)
+- [TektonChain](./TektonChain.md)
 - [TektonAddon](./TektonAddon.md)
 
 To understand how Tekton Operator works, you can find the details [here](TektonOperator.md)

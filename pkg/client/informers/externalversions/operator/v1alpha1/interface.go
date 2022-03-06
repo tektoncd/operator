@@ -26,8 +26,8 @@ import (
 type Interface interface {
 	// TektonAddons returns a TektonAddonInformer.
 	TektonAddons() TektonAddonInformer
-	// TektonChainses returns a TektonChainsInformer.
-	TektonChainses() TektonChainsInformer
+	// TektonChains returns a TektonChainInformer.
+	TektonChains() TektonChainInformer
 	// TektonConfigs returns a TektonConfigInformer.
 	TektonConfigs() TektonConfigInformer
 	// TektonDashboards returns a TektonDashboardInformer.
@@ -60,9 +60,9 @@ func (v *version) TektonAddons() TektonAddonInformer {
 	return &tektonAddonInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonChainses returns a TektonChainsInformer.
-func (v *version) TektonChainses() TektonChainsInformer {
-	return &tektonChainsInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+// TektonChains returns a TektonChainInformer.
+func (v *version) TektonChains() TektonChainInformer {
+	return &tektonChainInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // TektonConfigs returns a TektonConfigInformer.
