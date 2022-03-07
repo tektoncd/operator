@@ -72,11 +72,11 @@ To install Operator there are multiple ways
 
   You can clone and repository and install the Operator. You can find the instruction in [here](../DEVELOPMENT.md)
 
-After installing the Operator, to install the required Tekton Component such as Tekton Pipeline, Tekton Triggers, Tekton Chains.
+After installing the Operator, to install the required Tekton Component such as Tekton Pipeline, Tekton Triggers.
 
 Create an instance of `TektonConfig` which will create the required components. You can find more details and the available configuration in [TektonConfig](TektonConfig.md).
 
-NOTE: `TektonResult` is an optional component added recently and is not installed through `TektonConfig` currently. You can find the installation steps in its [doc](TektonResult.md).
+NOTE: `TektonResult` and `TektonChain` are optional components and are not installed through `TektonConfig` currently. You can find the installation steps in their docs.
 
 
 ## Understanding Tekton Operator

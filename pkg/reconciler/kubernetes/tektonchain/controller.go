@@ -27,7 +27,6 @@ import (
 	tektonChainreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonchain"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"k8s.io/client-go/tools/cache"
-	//kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
