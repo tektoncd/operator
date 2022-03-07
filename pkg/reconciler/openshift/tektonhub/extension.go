@@ -129,7 +129,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	th.Status.SetAuthRoute(fmt.Sprintf("https://%s", authRoute))
 
 	// Update the secrets of API with the Auth Route value
-	if err := oe.updateApiSecret(ctx, authRoute, targetNs); err != nil {
+	if err := oe.updateApiSecret(ctx, th, authRoute, targetNs); err != nil {
 		return err
 	}
 
@@ -174,9 +174,10 @@ func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent)
 }
 
 // Updates the AUTH_BASE_URL in the API secret with the Auth Route value
-func (oe openshiftExtension) updateApiSecret(ctx context.Context, authRoute, namespace string) error {
+func (oe openshiftExtension) updateApiSecret(ctx context.Context, th *v1alpha1.TektonHub, authRoute, namespace string) error {
 	secret, err := oe.kubeClientSet.CoreV1().Secrets(namespace).Get(ctx, api, metav1.GetOptions{})
 	if err != nil {
+		th.Status.MarkApiDependencyMissing(fmt.Sprintf("API secret is not present %v", err.Error()))
 		return err
 	}
 
