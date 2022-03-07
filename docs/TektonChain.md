@@ -8,17 +8,40 @@ weight: 9
 
 TektonChain custom resource allows user to install and manage [Tekton Chains][chains].
 
-It is recommended to install the components through [TektonConfig](./TektonConfig.md).
+TektonChain is an optional component and currently cannot be installed through TektonConfig. It has to be installed separately.
 
-The TektonChain CR is as below:
-```yaml
-apiVersion: operator.tekton.dev/v1alpha1
-kind: TektonChain
-metadata:
-  name: chain
-spec:
-  targetNamespace: tekton-pipelines
-```
-You can install this component using [TektonConfig](./TektonConfig.md) by choosing appropriate `profile`.
+To install TektonChain on your cluster follow steps as given below:
+
+- Make sure Tekton Pipelines is installed on your cluster, using the Operator.
+
+- Create the TektonChain CR.
+
+    - On Kubernetes, TektonChain CR is as below:
+
+    ```yaml
+    apiVersion: operator.tekton.dev/v1alpha1
+    kind: TektonChain
+    metadata:
+      name: chain
+    spec:
+      targetNamespace: tekton-pipelines
+    ```
+
+    - On OpenShift, TektonChain CR is as below:
+
+    ```yaml
+    apiVersion: operator.tekton.dev/v1alpha1
+    kind: TektonChain
+    metadata:
+      name: chain
+    spec:
+      targetNamespace: openshift-pipelines
+    ```
+
+- Check the status of installation using following command:
+
+    ```sh
+    kubectl get tektonchains.operator.tekton.dev
+    ```
 
 [chains]:https://github.com/tektoncd/chains

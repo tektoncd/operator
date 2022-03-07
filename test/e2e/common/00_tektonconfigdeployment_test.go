@@ -121,11 +121,6 @@ func runFeatureTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonCon
 			}
 		}
 
-		// make sure chain is created
-		if _, err := clients.Operator.TektonChains().Get(context.TODO(), v1alpha1.ChainResourceName, metav1.GetOptions{}); err != nil {
-			t.Fatalf("failed to get tektonchain")
-		}
-
 		// change the profile and make sure it is reflected on the cluster
 		// ALL -> BASIC
 		tc.Spec.Profile = v1alpha1.ProfileBasic
@@ -152,11 +147,6 @@ func runFeatureTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonCon
 			if _, err := clients.Operator.TektonDashboards().Get(context.TODO(), v1alpha1.DashboardResourceName, metav1.GetOptions{}); err == nil {
 				t.Fatalf("expected error but got nil, tektondashboard not deleted")
 			}
-		}
-
-		// make sure chain is deleted
-		if _, err := clients.Operator.TektonChains().Get(context.TODO(), v1alpha1.ChainResourceName, metav1.GetOptions{}); err == nil {
-			t.Fatalf("expected error but got nil, tektonchain not deleted")
 		}
 	})
 
