@@ -140,11 +140,7 @@ release_yaml_hub() {
 
     fileName=${component}.yaml
 
-    [[ ${component} == "api" ]] && fileName=${component}-k8s.yaml
-    [[ ${component} == "api" ]] && [[ ${TARGET} == "openshift" ]] && fileName=${component}-openshift.yaml
-
-    [[ ${component} == "ui" ]] && fileName=${component}-k8s.yaml
-    [[ ${component} == "ui" ]] && [[ ${TARGET} == "openshift" ]] && fileName=${component}-openshift.yaml
+    [[ ${component} == "api" ]] || [[ ${component} == "ui" ]] && fileName=${component}-${TARGET}.yaml
 
     url="https://github.com/tektoncd/hub/releases/download/${version}/${fileName}"
     echo $url
