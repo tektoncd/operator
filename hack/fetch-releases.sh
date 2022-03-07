@@ -155,6 +155,12 @@ release_yaml_hub() {
   done
 }
 
+fetch_openshift_addon_tasks() {
+  fetch_addon_task_script="${SCRIPT_DIR}/hack/openshift"
+  local dest_dir="cmd/openshift/operator/kodata/tekton-addon/addons/02-clustertasks/source_external"
+  ${fetch_addon_task_script}/fetch-tektoncd-catalog-tasks.sh ${dest_dir}
+}
+
 #Args: <target-platform> <pipelines version> <triggers version> <dashboard version> <results version> <pac version> <hub version> <chain version>
 main() {
   TARGET=$1
@@ -184,6 +190,7 @@ main() {
   else
     pac_version=${6}
     release_yaml_pac pipelinesascode release ${pac_version}
+    fetch_openshift_addon_tasks
   fi
 
   hub_version=${7}

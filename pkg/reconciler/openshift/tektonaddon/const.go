@@ -26,4 +26,6 @@ const (
 	MiscellaneousResourcesInstallerSet = "MiscellaneousResources"
 	PACInstallerSet                    = "PipelinesAsCode"
 	CreatedByValue                     = "TektonAddon"
+	KindTask                           = "Task"
+	KindClusterTask                    = "ClusterTask"
 )
