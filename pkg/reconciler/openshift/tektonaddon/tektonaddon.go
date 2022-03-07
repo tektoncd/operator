@@ -216,13 +216,14 @@ func applyAddons(manifest *mf.Manifest, subpath string) error {
 
 // addonTransform mutates the passed manifest to one with common, component
 // and platform transformations applied
-func (r *Reconciler) addonTransform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
+func (r *Reconciler) addonTransform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent, addnTfs ...mf.Transformer) error {
 	instance := comp.(*v1alpha1.TektonAddon)
-	extra := []mf.Transformer{
+	addonTfs := []mf.Transformer{
 		injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
 	}
-	extra = append(extra, r.extension.Transformers(instance)...)
-	return common.Transform(ctx, manifest, instance, extra...)
+	addonTfs = append(addonTfs, addnTfs...)
+	addonTfs = append(addonTfs, r.extension.Transformers(instance)...)
+	return common.Transform(ctx, manifest, instance, addonTfs...)
 }
 
 func findValue(params []v1alpha1.Param, name string) (string, bool) {

@@ -88,13 +88,13 @@ func (r *Reconciler) ensureVersionedClusterTasks(ctx context.Context, ta *v1alph
 		return err
 	}
 	// Run transformers
-	if err := r.addonTransform(ctx, &clusterTaskManifest, ta); err != nil {
+	tfs := []mf.Transformer{
+		replaceKind(KindTask, KindClusterTask),
+		setVersionedNames(r.operatorVersion),
+	}
+	if err := r.addonTransform(ctx, &clusterTaskManifest, ta, tfs...); err != nil {
 		return err
 	}
-
-	clusterTaskManifest = clusterTaskManifest.Filter(
-		byContains(getFormattedVersion(r.operatorVersion)),
-	)
 
 	if err := createInstallerSet(ctx, r.operatorClientSet, ta, clusterTaskManifest,
 		r.operatorVersion, VersionedClusterTaskInstallerSet, "addon-versioned-clustertasks"); err != nil {

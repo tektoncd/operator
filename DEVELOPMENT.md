@@ -205,7 +205,7 @@ You can edit the script to mention the specific version of the task or to add a 
 Then all the tasks mentioned in the script can be added to codebase using
 
 ```shell
-./hack/openshift/update-tasks.sh release-v0.22 cmd/openshift/operator/kodata/tekton-addon/1.4.0 v0.22.0
+./hack/openshift/fetch-tektoncd-catalog-tasks.sh cmd/openshift/operator/kodata/tekton-addon/addons/02-clustertasks/source_external
 ```
 ## Running Codegen
 

@@ -23,7 +23,6 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"strings"
 )
 
@@ -31,13 +30,6 @@ var clusterTaskLS = metav1.LabelSelector{
 	MatchLabels: map[string]string{
 		v1alpha1.InstallerSetType: ClusterTaskInstallerSet,
 	},
-}
-
-// byContains returns resources with specific string in name
-func byContains(name string) mf.Predicate {
-	return func(u *unstructured.Unstructured) bool {
-		return strings.Contains(u.GetName(), name)
-	}
 }
 
 func (r *Reconciler) EnsureClusterTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
@@ -83,13 +75,12 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 		return err
 	}
 	// Run transformers
-	if err := r.addonTransform(ctx, &clusterTaskManifest, ta); err != nil {
+	tfs := []mf.Transformer{
+		replaceKind(KindTask, KindClusterTask),
+	}
+	if err := r.addonTransform(ctx, &clusterTaskManifest, ta, tfs...); err != nil {
 		return err
 	}
-
-	clusterTaskManifest = clusterTaskManifest.Filter(
-		mf.Not(byContains(getFormattedVersion(r.operatorVersion))),
-	)
 
 	if err := createInstallerSet(ctx, r.operatorClientSet, ta, clusterTaskManifest,
 		r.operatorVersion, ClusterTaskInstallerSet, "addon-clustertasks"); err != nil {

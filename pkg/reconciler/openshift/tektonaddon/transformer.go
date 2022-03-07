@@ -31,16 +31,7 @@ func replaceKind(fromKind, toKind string) mf.Transformer {
 		if kind != fromKind {
 			return nil
 		}
-		err := unstructured.SetNestedField(u.Object, toKind, "kind")
-		if err != nil {
-			return fmt.Errorf(
-				"failed to change resource Name:%s, KIND from %s to %s, %s",
-				u.GetName(),
-				fromKind,
-				toKind,
-				err,
-			)
-		}
+		u.SetKind(toKind)
 		return nil
 	}
 }
@@ -126,6 +117,19 @@ func replaceURLCCD(baseURL string) mf.Transformer {
 			return err
 		}
 		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
+func setVersionedNames(operatorVersion string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "ClusterTask" {
+			return nil
+		}
+		name := u.GetName()
+		formattedVersion := getFormattedVersion(operatorVersion)
+		name = fmt.Sprintf("%s-%s", name, formattedVersion)
+		u.SetName(name)
 		return nil
 	}
 }
