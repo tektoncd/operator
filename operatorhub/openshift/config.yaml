@@ -160,6 +160,35 @@ image-substitutions:
         containerName: openshift-pipelines-operator
         envKeys:
           - IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
+- image: registry.redhat.io/rhel8/postgresql-13@sha256:6032adb3eac903ee8aa61f296ca9aaa57f5709e5673504b609222e042823f195
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator
+        envKeys:
+          - IMAGE_HUB_TEKTON_HUB_DB
+- image: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel8@
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator
+        envKeys:
+          - IMAGE_HUB_TEKTON_HUB_DB_MIGRATION
+- image: registry.redhat.io/openshift-pipelines/pipelines-hub-api-rhel8@
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator
+        envKeys:
+          - IMAGE_HUB_TEKTON_HUB_API
+- image: registry.redhat.io/openshift-pipelines/pipelines-hub-ui-rhel8@
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator
+        envKeys:
+          - IMAGE_HUB_TEKTON_HUB_UI
+
 # add thrid party images which are not replaced by operator
 # but pulled directly by tasks here
 defaultRelatedImages: []

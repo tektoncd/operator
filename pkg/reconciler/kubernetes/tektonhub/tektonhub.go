@@ -440,7 +440,7 @@ func (r *Reconciler) setupAndCreateInstallerSet(ctx context.Context, manifestLoc
 
 	manifest = manifest.Filter(mf.Not(mf.Any(mf.ByKind("Secret"), mf.ByKind("Namespace"), mf.ByKind("ConfigMap"))))
 
-	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.HubDbImagePrefix))
+	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.HubImagePrefix))
 	trans := r.extension.Transformers(th)
 	extra := []mf.Transformer{
 		mf.InjectOwner(th),
