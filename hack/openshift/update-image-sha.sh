@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+set -e -u -o pipefail
+
+declare -r SCRIPT_NAME=$(basename "$0")
+declare -r SCRIPT_DIR=$(cd $(dirname "$0") && pwd)
+declare -r USERNAME=${REGISTRY_USER}
+declare -r PASSWORD=${REGISTRY_PASSWORD}
+
+log() {
+    local level=$1; shift
+    echo -e "$level: $@"
+}
+
+
+err() {
+    log "ERROR" "$@" >&2
+}
+
+info() {
+    log "INFO" "$@"
+}
+
+die() {
+    local code=$1; shift
+    local msg="$@"; shift
+    err $msg
+    exit $code
+}
+
+usage() {
+  local msg="$1"
+  cat <<-EOF
+Error: $msg
+
+USAGE:
+    REGISTRY_USER=<registry user name> REGISTRY_PASSWORD=<registry password> $SCRIPT_NAME
+
+Example:
+  REGISTRY_USER=johnsmith REGISTRY_PASSWORD=pass123 $SCRIPT_NAME
+EOF
+  exit 1
+}
+
+#declare -r CATALOG_VERSION="release-v0.7"
+
+declare -A IMAGES=(
+  ["buildah"]="registry.redhat.io/rhel8/buildah"
+  ["kn"]="registry.redhat.io/openshift-serverless-1/client-kn-rhel8"
+  ["skopeo-copy"]="registry.redhat.io/rhel8/skopeo"
+  ["s2i"]="registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8"
+)
+
+find_latest_versions() {
+  local image_registry=${1:-""}
+  local latest_version=""
+  podman search --list-tags ${image_registry}  | grep -v NAME | sort -r | tr -s ' ' | cut -d ' ' -f 2  | grep -v '\-[a-z0-9\.]*$' | head -n 1
+
+}
+
+find_sha_from_tag() {
+  local image_url=${1:-""}
+  podman run docker.io/mplatform/manifest-tool:v2.0.0 --username=${USERNAME} --password=${PASSWORD}  inspect $image_url --raw | jq '.digest' | tr -d '"'
+}
+
+update_image_sha() {
+  local image_prefix=${1:-""}
+  shift
+  local image_sha=${1:-""}
+  shift
+  echo replacemnet var = ${image_prefix}
+  sed -i -E 's%('${image_prefix}').*%\1@'${image_sha}'%' config/openshift/base/operator.yaml
+  sed -i -E 's%('${image_prefix}').*%\1@'${image_sha}'%' operatorhub/openshift/config.yaml
+}
+
+
+main() {
+
+  for image in ${!IMAGES[@]}; do
+    latest_version=$(find_latest_versions ${IMAGES[$image]})
+    echo latest_version=$latest_version
+    image_url="${IMAGES[$image]}":"${latest_version}"
+    echo $image_url
+    image_sha=$(find_sha_from_tag "${image_url}")
+    echo image_sha=${image_sha}
+    update_image_sha "${IMAGES[$image]}" $image_sha
+
+  done
+
+  return $?
+}
+
+main "$@"
