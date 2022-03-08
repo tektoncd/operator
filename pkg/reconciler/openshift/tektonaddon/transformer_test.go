@@ -56,3 +56,21 @@ func TestUpdateConsoleCLIDownload(t *testing.T) {
 		t.Errorf("failed to update consoleclidownload %s", diff.PrintWantGot(d))
 	}
 }
+
+func TestSetVersionedNames(t *testing.T) {
+	testData := path.Join("testdata", "test-versioned-clustertask-name.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	testData = path.Join("testdata", "test-versioned-clustertask-name-expected.yaml")
+	expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	operatorVersion := "v1.7.0"
+	newManifest, err := manifest.Transform(setVersionedNames(operatorVersion))
+	assert.NilError(t, err)
+
+	if d := cmp.Diff(expectedManifest.Resources(), newManifest.Resources()); d != "" {
+		t.Errorf("failed to update versioned clustertask name %s", diff.PrintWantGot(d))
+	}
+}
