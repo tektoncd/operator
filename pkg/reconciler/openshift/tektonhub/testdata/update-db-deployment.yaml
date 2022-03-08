@@ -15,21 +15,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: db
+  name: tekton-hub-db
   labels:
-    app: db
+    app: tekton-hub-db
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: db
+      app: tekton-hub-db
   template:
     metadata:
       labels:
-        app: db
+        app: tekton-hub-db
     spec:
       containers:
-        - name: db
+        - name: tekton-hub-db
           image: postgres:13@sha256:260a98d976574b439712c35914fdcb840755233f79f3e27ea632543f78b7a21e
           imagePullPolicy: IfNotPresent
           ports:
@@ -39,22 +39,22 @@ spec:
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: db
+                  name: tekton-hub-db
                   key: POSTGRES_DB
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: db
+                  name: tekton-hub-db
                   key: POSTGRES_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: db
+                  name: tekton-hub-db
                   key: POSTGRES_PASSWORD
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           volumeMounts:
-            - name: db
+            - name: tekton-hub-db
               mountPath: /var/lib/postgresql/data
           readinessProbe:
             exec:
@@ -69,7 +69,7 @@ spec:
             timeoutSeconds: 2
             periodSeconds: 15
       volumes:
-        - name: db
+        - name: tekton-hub-db
           persistentVolumeClaim:
-            claimName: db
+            claimName: tekton-hub-db
       restartPolicy: Always
