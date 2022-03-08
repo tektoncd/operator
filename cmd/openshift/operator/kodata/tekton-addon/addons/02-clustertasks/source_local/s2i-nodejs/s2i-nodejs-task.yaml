@@ -20,7 +20,7 @@ spec:
   params:
     - name: VERSION
       description: The tag of nodejs imagestream for nodejs version
-      default: '14-ubi8'
+      default: 'latest'
       type: string
     - name: PATH_CONTEXT
       description: The location of the path to run s2i from.

@@ -20,7 +20,7 @@ spec:
   params:
     - name: VERSION
       description: The tag of ruby imagestream for ruby version
-      default: '2.7-ubi8'
+      default: 'latest'
       type: string
     - name: PATH_CONTEXT
       description: The location of the path to run s2i from.
