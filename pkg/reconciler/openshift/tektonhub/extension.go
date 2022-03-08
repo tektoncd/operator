@@ -56,6 +56,7 @@ var replaceVal = map[string]string{
 }
 
 var (
+	db  string = fmt.Sprintf("%s-%s", hubprefix, "db")
 	api string = fmt.Sprintf("%s-%s", hubprefix, "api")
 	ui  string = fmt.Sprintf("%s-%s", hubprefix, "ui")
 )
@@ -227,7 +228,7 @@ func UpdateDbDeployment() mf.Transformer {
 			return err
 		}
 
-		if d.Name == "db" {
+		if d.Name == db {
 			env := d.Spec.Template.Spec.Containers[0].Env
 
 			replaceEnv(env)
