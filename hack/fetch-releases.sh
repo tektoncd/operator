@@ -147,7 +147,7 @@ release_yaml_hub() {
     http_response=$(curl -s -L -o ${dest}/${fileName} -w "%{http_code}" ${url})
     echo url: ${url}
     if [[ $http_response != "200" ]]; then
-      echo "Error: failed to get $comp yaml, status code: $http_response"
+      echo "Error: failed to get ${component} yaml, status code: $http_response"
       exit 1
     fi
     echo "Info: Added Hub/$fileName:$version release yaml !!"
