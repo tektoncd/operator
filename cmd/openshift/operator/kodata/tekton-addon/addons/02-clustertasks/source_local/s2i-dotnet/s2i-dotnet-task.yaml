@@ -23,7 +23,7 @@ spec:
       default: registry.redhat.io/rhel8/buildah@sha256:99cae35f40c7ec050fed3765b2b27e0b8bbea2aa2da7c16408e2ca13c60ff8ee
     - name: VERSION
       description: The tag of .NET imagestream for .NET version
-      default: '3.1-ubi8'
+      default: 'latest'
       type: string
     - name: PATH_CONTEXT
       description: The location of the path to run s2i from.

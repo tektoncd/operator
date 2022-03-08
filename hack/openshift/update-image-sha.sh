@@ -53,8 +53,7 @@ declare -A IMAGES=(
 find_latest_versions() {
   local image_registry=${1:-""}
   local latest_version=""
-  podman search --list-tags ${image_registry}  | grep -v NAME | sort -r | tr -s ' ' | cut -d ' ' -f 2  | grep -v '\-[a-z0-9\.]*$' | head -n 1
-
+  podman search --list-tags ${image_registry}  | grep -v NAME | tr -s ' ' | cut -d ' ' -f 2  | sort -r | grep -v '\-[a-z0-9\.]*$' | head -n 1
 }
 
 find_sha_from_tag() {
