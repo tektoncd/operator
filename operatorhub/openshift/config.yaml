@@ -188,6 +188,13 @@ image-substitutions:
         containerName: openshift-pipelines-operator
         envKeys:
           - IMAGE_HUB_TEKTON_HUB_UI
+- image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator
+        envKeys:
+          - IMAGE_PAC_TRIGGERTEMPLATE_APPLY_AND_LAUNCH
 
 # add thrid party images which are not replaced by operator
 # but pulled directly by tasks here

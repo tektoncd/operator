@@ -17,7 +17,11 @@ limitations under the License.
 package tektonaddon
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 
 	mf "github.com/manifestival/manifestival"
 	console "github.com/openshift/api/console/v1"
@@ -130,6 +134,87 @@ func setVersionedNames(operatorVersion string) mf.Transformer {
 		formattedVersion := getFormattedVersion(operatorVersion)
 		name = fmt.Sprintf("%s-%s", name, formattedVersion)
 		u.SetName(name)
+		return nil
+	}
+}
+
+// replacePACTriggerTemplateImages replaces images in all the TriggerTemplates that
+// PAC creates. It takes a map with key as step name and value as image and replaces
+// it in TaskRun.Spec.TaskSpec.Steps if that step is present.
+func replacePACTriggerTemplateImages(stepsImages map[string]string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "TriggerTemplate" {
+			return nil
+		}
+
+		tt := &triggersv1beta1.TriggerTemplate{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, tt)
+		if err != nil {
+			return err
+		}
+
+		// we want the label "app.kubernetes.io/part-of: pipelines-as-code" on the
+		// TriggerTemplate to make sure we are working with a PAC TriggerTemplate
+		if partOfValue, ok := tt.ObjectMeta.Labels["app.kubernetes.io/part-of"]; ok {
+			if partOfValue != "pipelines-as-code" {
+				return nil
+			}
+		}
+
+		for i, resourceTemplate := range tt.Spec.ResourceTemplates {
+			// let' start by checking that we are only dealing with a TaskRun
+
+			// first we need to decode the raw ResourceTemplate
+			rawReader := mf.Reader(bytes.NewReader(resourceTemplate.RawExtension.Raw))
+			rawObjects, err := rawReader.Parse()
+			if err != nil {
+				return err
+			}
+
+			if len(rawObjects) == 0 {
+				// if no object is present in the ResourceTemplate, we don't want to proceed
+				return nil
+			} else if len(rawObjects) > 1 {
+				// while this will never happen, let's check for it just in case
+				return fmt.Errorf("more than one resources present in a ResourceTemplate")
+			}
+
+			// we only care about TaskRuns in ResourceTemplate for image replacement
+			if rawObjects[0].GetKind() != "TaskRun" {
+				return nil
+			}
+
+			// now that we know it's a TaskRun, let's decode and move forward
+			taskRun := pipelinev1beta1.TaskRun{}
+			decoder := json.NewDecoder(bytes.NewBuffer(resourceTemplate.RawExtension.Raw))
+			if err := decoder.Decode(&taskRun); err != nil {
+				return err
+			}
+
+			for j, step := range taskRun.Spec.TaskSpec.Steps {
+				// if the step exists, then replace the image
+				if image, ok := stepsImages[step.Name]; ok {
+					step.Container.Image = image
+					taskRun.Spec.TaskSpec.Steps[j] = step
+				}
+			}
+
+			// encode the TaskRun back to []byte
+			trJson, err := json.Marshal(taskRun)
+			if err != nil {
+				return err
+			}
+
+			resourceTemplate.RawExtension.Raw = trJson
+			tt.Spec.ResourceTemplates[i] = resourceTemplate
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
 		return nil
 	}
 }
