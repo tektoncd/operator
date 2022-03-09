@@ -40,6 +40,7 @@ const (
 	PipelinesImagePrefix          = "IMAGE_PIPELINES_"
 	TriggersImagePrefix           = "IMAGE_TRIGGERS_"
 	AddonsImagePrefix             = "IMAGE_ADDONS_"
+	PacImagePrefix                = "IMAGE_PAC_"
 	ChainsImagePrefix             = "IMAGE_CHAINS_"
 	HubImagePrefix                = "IMAGE_HUB_"
 
