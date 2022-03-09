@@ -6,18 +6,25 @@ metadata:
       \    \"kind\": \"TektonAddon\",\n    \"metadata\": {\n      \"name\": \"addon\"\
       \n    },\n    \"spec\": {\n      \"targetNamespace\": \"openshift-pipelines\"\
       \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
+      \    \"kind\": \"TektonChain\",\n    \"metadata\": {\n      \"name\": \"chain\"\
+      \n    },\n    \"spec\": {\n      \"targetNamespace\": \"openshift-pipelines\"\
+      \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
       \    \"kind\": \"TektonConfig\",\n    \"metadata\": {\n      \"name\": \"config\"\
       \n    },\n    \"spec\": {\n      \"addon\": {\n        \"params\": [\n     \
       \     {\n            \"name\": \"clusterTasks\",\n            \"value\": \"\
       true\"\n          },\n          {\n            \"name\": \"pipelineTemplates\"\
-      ,\n            \"value\": \"true\"\n          }\n        ]\n      },\n     \
-      \ \"params\": [\n        {\n          \"name\": \"createRbacResource\",\n  \
-      \        \"value\": \"true\"\n        }\n      ],\n      \"profile\": \"all\"\
-      ,\n      \"pruner\": {\n        \"keep\": 100,\n        \"resources\": [\n \
-      \         \"pipelinerun\",\n          \"taskrun\"\n        ],\n        \"schedule\"\
-      : \"0 8 * * *\"\n      },\n      \"targetNamespace\": \"openshift-pipelines\"\
-      \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
-      \    \"kind\": \"TektonInstallerSet\",\n    \"metadata\": {\n      \"name\"\
+      ,\n            \"value\": \"true\"\n          },\n          {\n            \"\
+      name\": \"communityClusterTasks\",\n            \"value\": \"true\"\n      \
+      \    }\n        ]\n      },\n      \"params\": [\n        {\n          \"name\"\
+      : \"createRbacResource\",\n          \"value\": \"true\"\n        }\n      ],\n\
+      \      \"profile\": \"all\",\n      \"pruner\": {\n        \"keep\": 100,\n\
+      \        \"resources\": [\n          \"pipelinerun\",\n          \"taskrun\"\
+      \n        ],\n        \"schedule\": \"0 8 * * *\"\n      },\n      \"targetNamespace\"\
+      : \"openshift-pipelines\"\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
+      ,\n    \"kind\": \"TektonHub\",\n    \"metadata\": {\n      \"name\": \"hub\"\
+      \n    },\n    \"spec\": {\n      \"api\": {\n        \"hubConfigUrl\": \"https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml\"\
+      \n      }\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
+      ,\n    \"kind\": \"TektonInstallerSet\",\n    \"metadata\": {\n      \"name\"\
       : \"foo\"\n    },\n    \"spec\": {\n      \"manifests\": []\n    }\n  },\n \
       \ {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n    \"kind\": \"\
       TektonPipeline\",\n    \"metadata\": {\n      \"name\": \"pipeline\"\n    },\n\
@@ -32,11 +39,12 @@ metadata:
     description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for
       building pipelines using Tekton concepts which run natively on OpenShift and
       Kubernetes.
-    olm.skipRange: '>=1.5.0 <1.6.0'
+    olm.skipRange: '>=1.6.0 <1.7.0'
     operators.openshift.io/infrastructure-features: '["disconnected","proxy-aware"]'
     operators.operatorframework.io/builder: operator-sdk-v1.7.1+git
     operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev",
-      "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev"]'
+      "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev",
+      "tektonhubs.operator.tekton.dev", "tektonchains.operator.tekton.dev"]'
     operators.operatorframework.io/project_layout: unknown
     repository: https://github.com/openshift/tektoncd-operator
     support: Red Hat
@@ -44,7 +52,7 @@ metadata:
     operatorframework.io/arch.amd64: supported
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
-  name: openshift-pipelines-operator-rh.v1.6.0
+  name: openshift-pipelines-operator-rh.v1.7.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -71,6 +79,9 @@ spec:
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
+    - kind: TektonChain
+      name: tektonchains.operator.tekton.dev
       version: v1alpha1
     - description: Represents an installation of latest version of Tekton components,
         TektonPipeline, TektonTrigger and TektonAddon
@@ -105,6 +116,9 @@ spec:
         path: version
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
+    - kind: TektonHub
+      name: tektonhubs.operator.tekton.dev
       version: v1alpha1
     - description: This CustomResourceDefinition (CRD) is used internally by the other
         OpenShift Pipelines CRDs to maintain the lifecycle of OpenShift Pipelines
@@ -241,11 +255,15 @@ spec:
     ### Components
 
 
-    - Tekton Pipelines: v0.28.1
+    - Tekton Pipelines: v0.33.2
 
-    - Tekton Triggers: v0.16.0
+    - Tekton Triggers: v0.19.0
 
-    - ClusterTasks based on Tekton Catalog 0.28
+    - Tekton Chains (tech-preview): v0.8.0
+
+    - Tekton Hub (tech-preview): v1.7.0
+
+    - Pipelines as Code (tech-preview): v0.5.3
 
 
     ## Getting Started
@@ -662,16 +680,20 @@ spec:
           - get
           - create
           - update
+          - delete
         - apiGroups:
           - route.openshift.io
           resources:
           - routes
           verbs:
+          - delete
+          - deletecollection
+          - create
+          - patch
           - get
           - list
-          - create
           - update
-          - delete
+          - watch
         - apiGroups:
           - coordination.k8s.io
           resources:
@@ -805,6 +827,16 @@ spec:
                       name: tekton-config-defaults
                 - name: CONFIG_OBSERVABILITY_NAME
                   value: tekton-config-observability
+                - name: IMAGE_HUB_TEKTON_HUB_DB
+                  value: registry.redhat.io/rhel8/postgresql-13@sha256:6032adb3eac903ee8aa61f296ca9aaa57f5709e5673504b609222e042823f195
+                - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
+                  value: registry.redhat.io/rhel8/buildah@sha256:31f84b19a0774be7cfad751be38fc97f5e86cefd26e0abaec8047ddc650b00bf
+                - name: IMAGE_ADDONS_PARAM_KN_IMAGE
+                  value: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:b8b992e36f76d80b1daeed0532adf94b1ce570a6aaef1dbcc2a28c666f8cd296
+                - name: IMAGE_ADDONS_SKOPEO_COPY
+                  value: registry.redhat.io/rhel8/skopeo@sha256:a458abaee565344e8c31468bb5bec26bdc622c559678ab73b07ee4998de68bd0
+                - name: IMAGE_ADDONS_GENERATE
+                  value: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
                 - name: IMAGE_PIPELINES_TEKTON_PIPELINES_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-controller-rhel8@
                 - name: IMAGE_PIPELINES_WEBHOOK
@@ -824,7 +856,7 @@ spec:
                 - name: IMAGE_PIPELINES_ARG__NOP_IMAGE
                   value: registry.redhat.io/openshift-pipelines/pipelines-nop-rhel8@
                 - name: IMAGE_PIPELINES_ARG__SHELL_IMAGE
-                  value: registry.access.redhat.com/ubi8/ubi-minimal@
+                  value: registry.access.redhat.com/ubi8/ubi-minimal@sha256:cf1c63e3247e4074ee3549a064b8798a1a2513ad57dd79c9edb979836355b469
                 - name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel8@
                 - name: IMAGE_TRIGGERS_WEBHOOK
@@ -833,18 +865,18 @@ spec:
                   value: registry.redhat.io/openshift-pipelines/pipelines-triggers-core-interceptors-rhel8@
                 - name: IMAGE_TRIGGERS_ARG__EL_IMAGE
                   value: registry.redhat.io/openshift-pipelines/pipelines-triggers-eventlistenersink-rhel8@
-                - name: IMAGE_ADDONS_PARAM_KN_IMAGE
-                  value: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@
-                - name: IMAGE_ADDONS_SKOPEO_COPY
-                  value: registry.redhat.io/rhel8/skopeo@
-                - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-                  value: registry.redhat.io/rhel8/buildah@
-                - name: IMAGE_ADDONS_GENERATE
-                  value: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@
                 - name: IMAGE_ADDONS_PARAM_TKN_IMAGE
                   value: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
                 - name: IMAGE_ADDONS_TKN_CLI_SERVE
                   value: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel8@
+                - name: IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
+                  value: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel8@
+                - name: IMAGE_HUB_TEKTON_HUB_DB_MIGRATION
+                  value: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel8@
+                - name: IMAGE_HUB_TEKTON_HUB_API
+                  value: registry.redhat.io/openshift-pipelines/pipelines-hub-api-rhel8@
+                - name: IMAGE_HUB_TEKTON_HUB_UI
+                  value: registry.redhat.io/openshift-pipelines/pipelines-hub-ui-rhel8@
                 image: registry.redhat.io/openshift-pipelines/pipelines-rhel8-operator@
                 imagePullPolicy: Always
                 name: openshift-pipelines-operator
@@ -911,6 +943,14 @@ spec:
   provider:
     name: Red Hat
   relatedImages:
+  - image: registry.redhat.io/rhel8/buildah@sha256:31f84b19a0774be7cfad751be38fc97f5e86cefd26e0abaec8047ddc650b00bf
+    name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
+  - image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:b8b992e36f76d80b1daeed0532adf94b1ce570a6aaef1dbcc2a28c666f8cd296
+    name: IMAGE_ADDONS_PARAM_KN_IMAGE
+  - image: registry.redhat.io/rhel8/skopeo@sha256:a458abaee565344e8c31468bb5bec26bdc622c559678ab73b07ee4998de68bd0
+    name: IMAGE_ADDONS_SKOPEO_COPY
+  - image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
+    name: IMAGE_ADDONS_GENERATE
   - image: registry.redhat.io/openshift-pipelines/pipelines-rhel8-operator@
     name: OPENSHIFT_PIPELINES_OPERATOR
   - image: registry.redhat.io/openshift-pipelines/pipelines-operator-proxy-rhel8@
@@ -933,7 +973,7 @@ spec:
     name: IMAGE_PIPELINES_ARG__PR_IMAGE
   - image: registry.redhat.io/openshift-pipelines/pipelines-nop-rhel8@
     name: IMAGE_PIPELINES_ARG__NOP_IMAGE
-  - image: registry.access.redhat.com/ubi8/ubi-minimal@
+  - image: registry.access.redhat.com/ubi8/ubi-minimal@sha256:cf1c63e3247e4074ee3549a064b8798a1a2513ad57dd79c9edb979836355b469
     name: IMAGE_PIPELINES_ARG__SHELL_IMAGE
   - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel8@
     name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CONTROLLER
@@ -943,13 +983,13 @@ spec:
     name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CORE_INTERCEPTORS
   - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-eventlistenersink-rhel8@
     name: IMAGE_TRIGGERS_ARG__EL_IMAGE
-  - image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@
+  - image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:b8b992e36f76d80b1daeed0532adf94b1ce570a6aaef1dbcc2a28c666f8cd296
     name: IMAGE_ADDONS_PARAM_KN_IMAGE
-  - image: registry.redhat.io/rhel8/skopeo@
+  - image: registry.redhat.io/rhel8/skopeo@sha256:a458abaee565344e8c31468bb5bec26bdc622c559678ab73b07ee4998de68bd0
     name: IMAGE_ADDONS_SKOPEO_COPY
-  - image: registry.redhat.io/rhel8/buildah@
+  - image: registry.redhat.io/rhel8/buildah@sha256:31f84b19a0774be7cfad751be38fc97f5e86cefd26e0abaec8047ddc650b00bf
     name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-  - image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@
+  - image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
     name: IMAGE_ADDONS_GENERATE
   - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
     name: IMAGE_JOB_PRUNER_TKN
@@ -959,36 +999,15 @@ spec:
     name: IMAGE_ADDONS_TKN_CLI_SERVE
   - image: registry.redhat.io/openshift-pipelines/pipelines-operator-webhook-rhel8@
     name: TEKTON_OPERATOR_WEBHOOK
-  replaces: 1.5.2
-  version: 1.6.0
-  webhookdefinitions:
-  - admissionReviewVersions:
-    - v1beta1
-    - v1
-    containerPort: 443
-    deploymentName: tekton-operator-webhook
-    failurePolicy: Fail
-    generateName: config.webhook.operator.tekton.dev
-    sideEffects: None
-    targetPort: 8443
-    type: ValidatingAdmissionWebhook
-  - admissionReviewVersions:
-    - v1beta1
-    - v1
-    containerPort: 443
-    deploymentName: tekton-operator-webhook
-    failurePolicy: Fail
-    generateName: validation.webhook.operator.tekton.dev
-    sideEffects: None
-    targetPort: 8443
-    type: ValidatingAdmissionWebhook
-  - admissionReviewVersions:
-    - v1beta1
-    - v1
-    containerPort: 443
-    deploymentName: tekton-operator-webhook
-    failurePolicy: Fail
-    generateName: webhook.operator.tekton.dev
-    sideEffects: None
-    targetPort: 8443
-    type: MutatingAdmissionWebhook
+  - image: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel8@
+    name: IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
+  - image: registry.redhat.io/rhel8/postgresql-13@sha256:6032adb3eac903ee8aa61f296ca9aaa57f5709e5673504b609222e042823f195
+    name: IMAGE_HUB_TEKTON_HUB_DB
+  - image: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel8@
+    name: IMAGE_HUB_TEKTON_HUB_DB_MIGRATION
+  - image: registry.redhat.io/openshift-pipelines/pipelines-hub-api-rhel8@
+    name: IMAGE_HUB_TEKTON_HUB_API
+  - image: registry.redhat.io/openshift-pipelines/pipelines-hub-ui-rhel8@
+    name: IMAGE_HUB_TEKTON_HUB_UI
+  replaces: 1.6.2
+  version: 1.7.0
