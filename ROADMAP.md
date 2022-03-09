@@ -1,11 +1,5 @@
 # Roadmap
 
-## Towards seamless upgrades
-
-Support seamless upgrades from a version to another. This mean being
-able to update some object pre-reconcile (upgrade) if need be (in case
-of deprecated fields, …).
-
 ## Driving adoption
 
 - Add more docs, and have it publish as part of the tekton.dev/docs
@@ -16,29 +10,6 @@ of deprecated fields, …).
 An acceptance criteria for this would be to use the operator in our
 own CI (aka dogfooding).
 
-## Pipeline
-
-### Support feature flags
-
-Support setting feature flags, such as:
-
-- Affinity Assistant
-- Custom Tasks
-- API feature flag (stable, …)
-
-### Support configuration options
-
-Support configuration options of `tektoncd/pipeline`, such as:
-
-- Support managing the content of pipeline's configmap (default, …)
-- Enabling/configuring High availability
-
-## Triggers
-
-- Ship and configure custom interceptors (built-in, from experimental,
-  …)
-- Multi-tenant eventlistener support
-
 ## New Component integration
 
 As of today, the operator is capable of installing Pipeline, Triggers
@@ -46,9 +17,7 @@ and the dasbhoard. We may want to support shipping more components
 
 ### Components
 
-- results
-- chains
-- self-hosted hub
+- New "graduated" components
 
 ### Experimental projects
 
@@ -60,6 +29,16 @@ and the dasbhoard. We may want to support shipping more components
 Today, we are shipping ClusterTask only for the OpenShift target. We
 should aim towards shipping this for all targets (k8s, …)
 
+## Tekton CLI integration
+
+User should be able to get `tkn` and install, upgrade and manage the
+operator lifecycle directly from it. *This should help adoption as well*.
+
+## Support rollback
+
+In case of a failed upgrade, it should be possible to roll-back into
+the previous known good state.
+
 ## More targets
 
 We are currently targeting and releasing only two target:
@@ -69,6 +48,16 @@ We are currently targeting and releasing only two target:
 We should aim to support more, starting with GKE. GKE is a easy target
 as we could use this in dogfooding. An idea of what could be specific
 for GKE is around the ingress configuration, …
+
+## More tests, more confidence
+
+The operator codebase integrates all tektoncd component into one
+place, it is a critical piece and need to be heavily tested so that we
+feel confident to release it.
+
+- Upgrade tests
+- Running component tests on top of an operator installation
+- etc…
 
 ## Releases
 
