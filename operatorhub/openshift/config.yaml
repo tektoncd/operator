@@ -189,7 +189,7 @@ image-substitutions:
         envKeys:
           - IMAGE_HUB_TEKTON_HUB_UI
 
-# add thrid party images which are not replaced by operator
+# add third party images which are not replaced by operator
 # but pulled directly by tasks here
 defaultRelatedImages:
 - image: registry.redhat.io/rhel8/buildah@sha256:31f84b19a0774be7cfad751be38fc97f5e86cefd26e0abaec8047ddc650b00bf
