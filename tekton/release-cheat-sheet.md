@@ -30,8 +30,8 @@ need a checkout of the operator repo, a terminal window and a text editor.
        commit identified in step1.
 
        ```bash
-   TEKTON_RELEASE_BRANCH=release-v0.52.x git checkout -b ${TEKTON_RELEASE_BRANCH}
-   ```
+       TEKTON_RELEASE_BRANCH=release-v0.52.x git checkout -b ${TEKTON_RELEASE_BRANCH}
+       ```
     2. If this is a **patch release** make sure that the correct branch is checkout. eg: If we are making release
        v0.52.1, then make sure the `release-v0.52.x` is checked out.
 
@@ -48,7 +48,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
    commit the `test/config.sh` file.
 
-6. minor version release vs patch release:
+4. minor version release vs patch release:
     1. if this is a minor version release push the branch to `github.com/tektoncd/operator`
 
     ```bash

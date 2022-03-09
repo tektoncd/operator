@@ -1,10 +1,12 @@
 BUNDLE_ARGS := $(or ${BUNDLE_ARGS},--help)
 
+BIN = $(CURDIR)/.bin
+
 OPERATOR_SDK = $(or ${OPERATOR_SDK_BIN},$(BIN)/operator-sdk)
 
 $(BIN)/operator-sdk: | $(BIN) ; $(info $(M) getting operator-sdk)
 	ls $(BIN)
-	@./operatorhub/tools/install_operator-sdk.sh $(BIN)
+	@./tools/install_operator-sdk.sh $(BIN)
 
 .PHONY: operator-bundle
 operator-bundle: | $(OPERATOR_SDK) openshift/release-artifacts/bundle/manifests
