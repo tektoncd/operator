@@ -304,5 +304,7 @@ def divider(title=''):
 if __name__ == "__main__":
     divider("BundleGen")
     config = buildConfig()
-    generate_bundle(config)
+    return_code = generate_bundle(config)
+    if return_code is not 0:
+        exit(return_code)
     newCSVmods(config)
