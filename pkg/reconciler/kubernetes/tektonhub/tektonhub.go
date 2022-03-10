@@ -425,7 +425,7 @@ func createUiConfigMap(name, namespace string, th *v1alpha1.TektonHub) *corev1.C
 			"API_URL":       th.Status.ApiRouteUrl,
 			"AUTH_BASE_URL": th.Status.AuthRouteUrl,
 			"API_VERSION":   "v1",
-			"REDIRECT_URI":  "https://" + th.Status.UiRouteUrl,
+			"REDIRECT_URI":  th.Status.UiRouteUrl,
 		},
 	}
 }
