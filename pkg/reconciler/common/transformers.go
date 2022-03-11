@@ -240,7 +240,7 @@ func replaceContainerImages(containers []corev1.Container, images map[string]str
 
 func replaceContainersArgsImage(container *corev1.Container, images map[string]string) {
 	for a, arg := range container.Args {
-		if argVal, hasArg := splitsByEqual(arg); hasArg {
+		if argVal, hasArg := SplitsByEqual(arg); hasArg {
 			argument := formKey(ArgPrefix, argVal[0])
 			if url, exist := images[argument]; exist {
 				container.Args[a] = argVal[0] + "=" + url
@@ -264,7 +264,7 @@ func formKey(prefix, arg string) string {
 	return strings.ReplaceAll(argument, "-", "_")
 }
 
-func splitsByEqual(arg string) ([]string, bool) {
+func SplitsByEqual(arg string) ([]string, bool) {
 	values := strings.Split(arg, "=")
 	if len(values) == 2 {
 		return values, true
