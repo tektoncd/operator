@@ -90,6 +90,7 @@ func (r *Reconciler) ensureVersionedClusterTasks(ctx context.Context, ta *v1alph
 	// Run transformers
 	tfs := []mf.Transformer{
 		replaceKind(KindTask, KindClusterTask),
+		injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
 		setVersionedNames(r.operatorVersion),
 	}
 	if err := r.addonTransform(ctx, &clusterTaskManifest, ta, tfs...); err != nil {
