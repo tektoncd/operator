@@ -77,6 +77,7 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 	// Run transformers
 	tfs := []mf.Transformer{
 		replaceKind(KindTask, KindClusterTask),
+		injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
 	}
 	if err := r.addonTransform(ctx, &clusterTaskManifest, ta, tfs...); err != nil {
 		return err
