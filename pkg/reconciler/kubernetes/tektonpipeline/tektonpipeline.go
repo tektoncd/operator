@@ -18,7 +18,6 @@ package tektonpipeline
 
 import (
 	"context"
-	stdError "errors"
 	"fmt"
 	"time"
 
@@ -312,16 +311,7 @@ func (r *Reconciler) updateTektonPipelineStatus(ctx context.Context, tp *v1alpha
 	// update the tp with TektonInstallerSet and releaseVersion
 	tp.Status.SetTektonInstallerSet(createdIs.Name)
 	tp.Status.SetVersion(r.pipelineVersion)
-
-	// Update the status with TektonInstallerSet so that any new thread
-	// reconciling with know that TektonInstallerSet is created otherwise
-	// there will be 2 instance created if we don't update status here
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines().
-		UpdateStatus(ctx, tp, metav1.UpdateOptions{}); err != nil {
-		return err
-	}
-
-	return stdError.New("ensuring Reconcile TektonPipeline status update")
+	return nil
 }
 
 func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.TektonPipeline) (*v1alpha1.TektonInstallerSet, error) {

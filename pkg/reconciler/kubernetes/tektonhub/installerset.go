@@ -72,13 +72,6 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, th *v1alpha
 	// Update the status of addon with created installerSet name
 	th.Status.HubInstallerSet[component] = createdIs.Name
 	th.Status.SetVersion(releaseVersion)
-
-	_, err = oc.OperatorV1alpha1().TektonHubs().
-		UpdateStatus(ctx, th, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
