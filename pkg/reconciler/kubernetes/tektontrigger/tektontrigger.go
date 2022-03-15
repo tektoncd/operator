@@ -18,7 +18,6 @@ package tektontrigger
 
 import (
 	"context"
-	stdError "errors"
 	"fmt"
 	"time"
 
@@ -348,16 +347,7 @@ func (r *Reconciler) updateTektonTriggerStatus(ctx context.Context, tt *v1alpha1
 	// update the tt with TektonInstallerSet and releaseVersion
 	tt.Status.SetTektonInstallerSet(createdIs.Name)
 	tt.Status.SetVersion(r.triggersVersion)
-
-	// Update the status with TektonInstallerSet so that any new thread
-	// reconciling with know that TektonInstallerSet is created otherwise
-	// there will be 2 instance created if we don't update status here
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonTriggers().
-		UpdateStatus(ctx, tt, metav1.UpdateOptions{}); err != nil {
-		return err
-	}
-
-	return stdError.New("ensuring Reconcile TektonTrigger status update")
+	return nil
 }
 
 func (r *Reconciler) createInstallerSet(ctx context.Context, tt *v1alpha1.TektonTrigger) (*v1alpha1.TektonInstallerSet, error) {

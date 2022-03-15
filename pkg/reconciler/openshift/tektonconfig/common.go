@@ -43,21 +43,7 @@ func createInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha
 	// Update the status of tektonConfig with created installerSet name
 	tc.Status.TektonInstallerSet[component] = createdIs.Name
 	tc.Status.SetVersion(releaseVersion)
-
-	return updateTektonConfigStatus(ctx, oc, tc)
-}
-
-func updateTektonConfigStatus(ctx context.Context, oc versioned.Interface, tc *v1alpha1.TektonConfig) error {
-
-	_, err := oc.OperatorV1alpha1().TektonConfigs().
-		UpdateStatus(ctx, tc, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-
-	// here we return an error intentionally so that we reconcile again
-	// and proceed further with updated object instead
-	return v1alpha1.RECONCILE_AGAIN_ERR
+	return nil
 }
 
 func makeInstallerSet(tc *v1alpha1.TektonConfig, name, releaseVersion string, labels map[string]string) *v1alpha1.TektonInstallerSet {
@@ -78,23 +64,19 @@ func makeInstallerSet(tc *v1alpha1.TektonConfig, name, releaseVersion string, la
 func deleteInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha1.TektonConfig, component string) error {
 
 	compInstallerSet, ok := tc.Status.TektonInstallerSet[component]
-	if !ok {
+	if !ok || compInstallerSet == "" {
 		return nil
 	}
 
-	if compInstallerSet != "" {
-		// delete the installer set
-		err := oc.OperatorV1alpha1().TektonInstallerSets().
-			Delete(ctx, tc.Status.TektonInstallerSet[component], metav1.DeleteOptions{})
-		if err != nil && !errors.IsNotFound(err) {
-			return err
-		}
-
-		// clear the name of installer set from TektonConfig status
-		delete(tc.Status.TektonInstallerSet, component)
-
-		return updateTektonConfigStatus(ctx, oc, tc)
+	// delete the installer set
+	err := oc.OperatorV1alpha1().TektonInstallerSets().
+		Delete(ctx, tc.Status.TektonInstallerSet[component], metav1.DeleteOptions{})
+	if err != nil && !errors.IsNotFound(err) {
+		return err
 	}
+
+	// clear the name of installer set from TektonConfig status
+	delete(tc.Status.TektonInstallerSet, component)
 
 	return nil
 }

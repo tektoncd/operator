@@ -297,16 +297,7 @@ func (r *Reconciler) updateTektonDashboardStatus(ctx context.Context, td *v1alph
 	// update the td with TektonInstallerSet and releaseVersion
 	td.Status.SetTektonInstallerSet(createdIs.Name)
 	td.Status.SetVersion(r.dashboardVersion)
-
-	// Update the status with TektonInstallerSet so that any new thread
-	// reconciling with know that TektonInstallerSet is created otherwise
-	// there will be 2 instance created if we don't update status here
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonDashboards().
-		UpdateStatus(ctx, td, metav1.UpdateOptions{}); err != nil {
-		return err
-	}
-
-	return v1alpha1.RECONCILE_AGAIN_ERR
+	return nil
 }
 
 // transform mutates the passed manifest to one with common, component
