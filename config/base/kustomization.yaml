@@ -29,3 +29,4 @@ resources:
 - operator.yaml
 - tekton_config_role.yaml
 - tekton_config_role_binding.yaml
+- operator-config.yaml

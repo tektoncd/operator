@@ -372,9 +372,6 @@ func (r *Reconciler) targetNamespaceCheck(ctx context.Context, tp *v1alpha1.Tekt
 			if err := common.CreateTargetNamespace(ctx, labels, tp, r.kubeClientSet); err != nil {
 				return err
 			}
-			if err := common.CreateOperatorVersionConfigMap(r.manifest, tp); err != nil {
-				return err
-			}
 			return nil
 		}
 		return err
