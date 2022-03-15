@@ -34,7 +34,7 @@ TEKTON_PIPELINE_VERSION ?= latest
 TEKTON_TRIGGERS_VERSION ?= latest
 TEKTON_DASHBOARD_VERSION ?= latest
 TEKTON_RESULTS_VERSION ?= v0.4.0 # latest returns an older version hence hard coding to v0.3.1 for now (tektoncd/results#138)
-PAC_VERSION ?= 0.5.3
+PAC_VERSION ?= 0.5.4
 TEKTON_HUB_VERSION ?= v1.7.0 # latest doesn't returns any version hence hard coding to v1.7.0 for now
 TEKTON_CHAINS_VERSION ?= latest
 
