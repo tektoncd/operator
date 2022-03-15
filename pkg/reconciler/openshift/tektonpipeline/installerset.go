@@ -18,14 +18,12 @@ package tektonpipeline
 
 import (
 	"context"
-	stdError "errors"
 	"fmt"
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -112,16 +110,9 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, tp *v1alpha
 		tp.Status.ExtentionInstallerSets = map[string]string{}
 	}
 
-	// Update the status of pipeline with created installerSet name
+	//// Update the status of pipeline with created installerSet name
 	tp.Status.ExtentionInstallerSets[component] = createdIs.Name
-
-	_, err = oc.OperatorV1alpha1().TektonPipelines().
-		UpdateStatus(ctx, tp, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return stdError.New("ensuring TektonPipeline status update")
+	return nil
 }
 
 func makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.Manifest, installerSetType, releaseVersion string) *v1alpha1.TektonInstallerSet {
@@ -160,10 +151,5 @@ func deleteInstallerSet(ctx context.Context, oc clientset.Interface, ta *v1alpha
 
 	// clear the name of installer set from TektonPipeline status
 	delete(ta.Status.ExtentionInstallerSets, component)
-	_, err = oc.OperatorV1alpha1().TektonPipelines().UpdateStatus(ctx, ta, metav1.UpdateOptions{})
-	if err != nil && !errors.IsNotFound(err) {
-		return err
-	}
-
 	return nil
 }
