@@ -24,6 +24,7 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
+	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
 	tektonPipelineInformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	tektonResultInformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonresult"
 	tektonResultReconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonresult"
@@ -31,7 +32,6 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
-	deploymentInformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
@@ -59,21 +59,31 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatalw("Error creating initial manifest", zap.Error(err))
 		}
 
+		operatorVer, err := common.OperatorVersion(ctx)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
+		if err := common.AppendTarget(ctx, &manifest, &v1alpha1.TektonResult{}); err != nil {
+			logger.Fatalw("Error fetching manifests", zap.Error(err))
+		}
+
 		c := &Reconciler{
 			kubeClientSet:     kubeclient.Get(ctx),
 			operatorClientSet: operatorclient.Get(ctx),
 			extension:         generator(ctx),
 			manifest:          manifest,
 			pipelineInformer:  tektonPipelineInformer.Get(ctx),
+			operatorVersion:   operatorVer,
 		}
 		impl := tektonResultReconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers")
+		logger.Info("Setting up event handlers for tekton-results")
 
 		tektonResultInformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
-		deploymentInformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonResult")),
+		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TektonResult{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 

@@ -29,7 +29,11 @@ import (
 	pipelineInformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektonresultconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonresult"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -54,39 +58,42 @@ type Reconciler struct {
 	extension common.Extension
 
 	pipelineInformer pipelineInformer.TektonPipelineInformer
+
+	operatorVersion string
 }
 
 // Check that our Reconciler implements controller.Reconciler
 var _ tektonresultconciler.Interface = (*Reconciler)(nil)
 var _ tektonresultconciler.Finalizer = (*Reconciler)(nil)
 
+var (
+	ls = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			v1alpha1.CreatedByKey:     createdByValue,
+			v1alpha1.InstallerSetType: v1alpha1.ResultResourceName,
+		},
+	}
+)
+
+const createdByValue = "TektonResult"
+
 // FinalizeKind removes all resources after deletion of a TektonResult.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonResult) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 
-	// List all TektonResults to determine if cluster-scoped resources should be deleted.
-	tps, err := r.operatorClientSet.OperatorV1alpha1().TektonResults().List(ctx, metav1.ListOptions{})
+	labelSelector, err := common.LabelSelector(ls)
 	if err != nil {
-		return fmt.Errorf("failed to list all TektonResults: %w", err)
+		return err
 	}
-
-	for _, tp := range tps.Items {
-		if tp.GetDeletionTimestamp().IsZero() {
-			// Not deleting all TektonResults. Nothing to do here.
-			return nil
-		}
+	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		}); err != nil {
+		logger.Error("Failed to delete installer set created by TektonResult", err)
+		return err
 	}
 
 	if err := r.extension.Finalize(ctx, original); err != nil {
-		logger.Error("Failed to finalize platform resources", err)
-	}
-	logger.Info("Deleting cluster-scoped resources")
-	manifest, err := r.installed(ctx, original)
-	if err != nil {
-		logger.Error("Unable to fetch installed manifest; no cluster-scoped resources will be finalized", err)
-		return nil
-	}
-	if err := common.Uninstall(ctx, manifest, nil); err != nil {
 		logger.Error("Failed to finalize platform resources", err)
 	}
 	return nil
@@ -136,14 +143,136 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	}
 	tr.Status.MarkDependenciesInstalled()
 
-	stages := common.Stages{
-		common.AppendTarget,
-		r.transform,
-		common.Install,
-		common.CheckDeployments,
+	// Check if an tektoninstallerset already exists, if not then create
+	labelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		return err
 	}
-	manifest := r.manifest.Append()
-	return stages.Execute(ctx, &manifest, tr)
+	existingInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
+	if err != nil {
+		return err
+	}
+	if existingInstallerSet == "" {
+		createdIs, err := r.createInstallerSet(ctx, tr)
+		if err != nil {
+			return err
+		}
+
+		return r.updateTektonResultsStatus(ctx, tr, createdIs)
+	}
+
+	// If exists, then fetch the TektonInstallerSet
+	installedTIS, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		Get(ctx, existingInstallerSet, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			createdIs, err := r.createInstallerSet(ctx, tr)
+			if err != nil {
+				return err
+			}
+			return r.updateTektonResultsStatus(ctx, tr, createdIs)
+		}
+		logger.Error("failed to get InstallerSet: %s", err)
+		return err
+	}
+
+	installerSetTargetNamespace := installedTIS.Annotations[v1alpha1.TargetNamespaceKey]
+	installerSetReleaseVersion := installedTIS.Labels[v1alpha1.ReleaseVersionKey]
+
+	// Check if TargetNamespace of existing TektonInstallerSet is same as expected
+	// Check if Release Version in TektonInstallerSet is same as expected
+	// If any of the thing above is not same then delete the existing TektonInstallerSet
+	// and create a new with expected properties
+	if installerSetTargetNamespace != tr.Spec.TargetNamespace || installerSetReleaseVersion != r.operatorVersion {
+		// Delete the existing TektonInstallerSet
+		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Delete(ctx, existingInstallerSet, metav1.DeleteOptions{})
+		if err != nil {
+			logger.Error("failed to delete InstallerSet: %s", err)
+			return err
+		}
+
+		// Make sure the TektonInstallerSet is deleted
+		_, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Get(ctx, existingInstallerSet, metav1.GetOptions{})
+		if err == nil {
+			tr.Status.MarkNotReady("Waiting for previous installer set to get deleted")
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		if !apierrors.IsNotFound(err) {
+			logger.Error("failed to get InstallerSet: %s", err)
+			return err
+		}
+		return nil
+
+	} else {
+		// If target namespace and version are not changed then check if spec
+		// of TektonResult is changed by checking hash stored as annotation on
+		// TektonInstallerSet with computing new hash of TektonResult Spec
+
+		// Hash of TektonResult Spec
+		expectedSpecHash, err := hash.Compute(tr.Spec)
+		if err != nil {
+			return err
+		}
+
+		// spec hash stored on installerSet
+		lastAppliedHash := installedTIS.GetAnnotations()[v1alpha1.LastAppliedHashKey]
+
+		if lastAppliedHash != expectedSpecHash {
+
+			if err := r.transform(ctx, &r.manifest, tr); err != nil {
+				logger.Error("manifest transformation failed:  ", err)
+				return err
+			}
+
+			// Update the spec hash
+			current := installedTIS.GetAnnotations()
+			current[v1alpha1.LastAppliedHashKey] = expectedSpecHash
+			installedTIS.SetAnnotations(current)
+
+			// Update the manifests
+			installedTIS.Spec.Manifests = r.manifest.Resources()
+
+			if _, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+				Update(ctx, installedTIS, metav1.UpdateOptions{}); err != nil {
+				return err
+			}
+
+			// after updating installer set enqueue after a duration
+			// to allow changes to get deployed
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	}
+
+	// Mark InstallerSetAvailable
+	tr.Status.MarkInstallerSetAvailable()
+
+	ready := installedTIS.Status.GetCondition(apis.ConditionReady)
+	if ready == nil {
+		tr.Status.MarkInstallerSetNotReady("Waiting for installation")
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	}
+
+	if ready.Status == corev1.ConditionUnknown {
+		tr.Status.MarkInstallerSetNotReady("Waiting for installation")
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	} else if ready.Status == corev1.ConditionFalse {
+		tr.Status.MarkInstallerSetNotReady(ready.Message)
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	}
+
+	// Mark InstallerSet Ready
+	tr.Status.MarkInstallerSetReady()
+
+	return nil
+}
+
+func (r *Reconciler) updateTektonResultsStatus(ctx context.Context, tr *v1alpha1.TektonResult, createdIs *v1alpha1.TektonInstallerSet) error {
+	// update the tr with TektonInstallerSet
+	tr.Status.SetTektonInstallerSet(createdIs.Name)
+
+	return nil
 }
 
 // TektonResults expects secrets to be created before installing
@@ -184,12 +313,4 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
-}
-
-func (r *Reconciler) installed(ctx context.Context, instance v1alpha1.TektonComponent) (*mf.Manifest, error) {
-	// Create new, empty manifest with valid client and logger
-	installed := r.manifest.Append()
-	stages := common.Stages{common.AppendInstalled, r.transform}
-	err := stages.Execute(ctx, &installed, instance)
-	return &installed, err
 }

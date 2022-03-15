@@ -46,6 +46,7 @@ var (
 	jobPred                            = mf.ByKind("Job")
 	secretPred                         = mf.ByKind("Secret")
 	deploymentPred                     = mf.ByKind("Deployment")
+	statefulSetPred                    = mf.ByKind("StatefulSet")
 	servicePred                        = mf.ByKind("Service")
 	serviceAccountPred                 = mf.ByKind("ServiceAccount")
 	cronJobPred                        = mf.ByKind("CronJob")
@@ -151,6 +152,7 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 			triggerTemplatePred,
 			servicePred,
 			routePred,
+			statefulSetPred,
 		))
 	return ensureResources(&resourceList)
 }

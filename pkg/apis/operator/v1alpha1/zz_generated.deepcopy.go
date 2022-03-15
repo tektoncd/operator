@@ -1199,11 +1199,6 @@ func (in *TektonResultSpec) DeepCopy() *TektonResultSpec {
 func (in *TektonResultStatus) DeepCopyInto(out *TektonResultStatus) {
 	*out = *in
 	in.Status.DeepCopyInto(&out.Status)
-	if in.Manifests != nil {
-		in, out := &in.Manifests, &out.Manifests
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	return
 }
 
