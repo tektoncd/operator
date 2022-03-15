@@ -104,10 +104,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		return err
 	}
 
-	if err := common.CreateOperatorVersionConfigMap(r.manifest, tc); err != nil {
-		return err
-	}
-
 	if err := r.extension.PreReconcile(ctx, tc); err != nil {
 		if err == v1alpha1.RECONCILE_AGAIN_ERR {
 			r.enqueueAfter(tc, 10*time.Second)
