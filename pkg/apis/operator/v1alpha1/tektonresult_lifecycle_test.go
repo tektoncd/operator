@@ -40,30 +40,19 @@ func TestTektonResultHappyPath(t *testing.T) {
 	tt.InitializeConditions()
 
 	apistest.CheckConditionOngoing(tt, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionOngoing(tt, InstallSucceeded, t)
+	apistest.CheckConditionOngoing(tt, InstallerSetAvailable, t)
+	apistest.CheckConditionOngoing(tt, InstallerSetReady, t)
 
-	// Install succeeds.
-	tt.MarkInstallSucceeded()
-	// Dependencies are assumed successful too.
+	// Dependencies installed
+	tt.MarkDependenciesInstalled()
 	apistest.CheckConditionSucceeded(tt, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tt, InstallSucceeded, t)
 
-	// Deployments are not available at first.
-	tt.MarkDeploymentsNotReady()
-	apistest.CheckConditionSucceeded(tt, DependenciesInstalled, t)
-	apistest.CheckConditionFailed(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tt, InstallSucceeded, t)
-	if ready := tt.IsReady(); ready {
-		t.Errorf("tt.IsReady() = %v, want false", ready)
-	}
+	tt.MarkInstallerSetAvailable()
+	apistest.CheckConditionSucceeded(tt, InstallerSetAvailable, t)
 
-	// Deployments become ready and we're good.
-	tt.MarkDeploymentsAvailable()
-	apistest.CheckConditionSucceeded(tt, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tt, InstallSucceeded, t)
+	tt.MarkInstallerSetReady()
+	apistest.CheckConditionSucceeded(tt, InstallerSetReady, t)
+
 	if ready := tt.IsReady(); !ready {
 		t.Errorf("tt.IsReady() = %v, want true", ready)
 	}
@@ -74,44 +63,24 @@ func TestTektonResultErrorPath(t *testing.T) {
 	tt.InitializeConditions()
 
 	apistest.CheckConditionOngoing(tt, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionOngoing(tt, InstallSucceeded, t)
+	apistest.CheckConditionOngoing(tt, InstallerSetAvailable, t)
+	apistest.CheckConditionOngoing(tt, InstallerSetReady, t)
 
-	// Install fails.
-	tt.MarkInstallFailed("test")
-	apistest.CheckConditionOngoing(tt, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionFailed(tt, InstallSucceeded, t)
-
-	// Dependencies are installing.
-	tt.MarkDependencyInstalling("testing")
-	apistest.CheckConditionFailed(tt, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionFailed(tt, InstallSucceeded, t)
-
-	// Install now succeeds.
-	tt.MarkInstallSucceeded()
-	apistest.CheckConditionFailed(tt, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tt, InstallSucceeded, t)
-	if ready := tt.IsReady(); ready {
-		t.Errorf("tt.IsReady() = %v, want false", ready)
-	}
-
-	// Deployments become ready
-	tt.MarkDeploymentsAvailable()
-	apistest.CheckConditionFailed(tt, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tt, InstallSucceeded, t)
-	if ready := tt.IsReady(); ready {
-		t.Errorf("tt.IsReady() = %v, want false", ready)
-	}
-
-	// Finally, dependencies become available.
+	// Dependencies installed
 	tt.MarkDependenciesInstalled()
 	apistest.CheckConditionSucceeded(tt, DependenciesInstalled, t)
-	apistest.CheckConditionSucceeded(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tt, InstallSucceeded, t)
+
+	tt.MarkInstallerSetAvailable()
+	apistest.CheckConditionSucceeded(tt, InstallerSetAvailable, t)
+
+	// InstallerSet is not ready when deployment pods are not up
+	tt.MarkInstallerSetNotReady("waiting for deployments")
+	apistest.CheckConditionFailed(tt, InstallerSetReady, t)
+
+	// InstallerSet and then PostReconciler become ready and we're good.
+	tt.MarkInstallerSetReady()
+	apistest.CheckConditionSucceeded(tt, InstallerSetReady, t)
+
 	if ready := tt.IsReady(); !ready {
 		t.Errorf("tt.IsReady() = %v, want true", ready)
 	}
@@ -123,16 +92,15 @@ func TestTektonResultExternalDependency(t *testing.T) {
 
 	// External marks dependency as failed.
 	tt.MarkDependencyMissing("test")
+	tt.MarkInstallerSetReady()
 
-	// Install succeeds.
-	tt.MarkInstallSucceeded()
 	apistest.CheckConditionFailed(tt, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tt, InstallSucceeded, t)
+	apistest.CheckConditionOngoing(tt, InstallerSetAvailable, t)
+	apistest.CheckConditionSucceeded(tt, InstallerSetReady, t)
 
 	// Dependencies are now ready.
 	tt.MarkDependenciesInstalled()
 	apistest.CheckConditionSucceeded(tt, DependenciesInstalled, t)
-	apistest.CheckConditionOngoing(tt, DeploymentsAvailable, t)
-	apistest.CheckConditionSucceeded(tt, InstallSucceeded, t)
+	apistest.CheckConditionOngoing(tt, InstallerSetAvailable, t)
+	apistest.CheckConditionSucceeded(tt, InstallerSetReady, t)
 }

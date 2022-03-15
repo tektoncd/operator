@@ -25,13 +25,17 @@ var (
 	_              TektonComponentStatus = (*TektonResultStatus)(nil)
 	resultsCondSet                       = apis.NewLivingConditionSet(
 		DependenciesInstalled,
-		DeploymentsAvailable,
-		InstallSucceeded,
+		InstallerSetAvailable,
+		InstallerSetReady,
 	)
 )
 
 // GroupVersionKind returns SchemeGroupVersion of a TektonResult
 func (tr *TektonResult) GroupVersionKind() schema.GroupVersionKind {
+	return SchemeGroupVersion.WithKind(KindTektonResult)
+}
+
+func (tr *TektonResult) GetGroupVersionKind() schema.GroupVersionKind {
 	return SchemeGroupVersion.WithKind(KindTektonResult)
 }
 
@@ -50,36 +54,35 @@ func (trs *TektonResultStatus) IsReady() bool {
 	return resultsCondSet.Manage(trs).IsHappy()
 }
 
-// MarkInstallSucceeded marks the InstallationSucceeded status as true.
-func (trs *TektonResultStatus) MarkInstallSucceeded() {
-	resultsCondSet.Manage(trs).MarkTrue(InstallSucceeded)
-	if trs.GetCondition(DependenciesInstalled).IsUnknown() {
-		// Assume deps are installed if we're not sure
-		trs.MarkDependenciesInstalled()
-	}
-}
-
-// MarkInstallFailed marks the InstallationSucceeded status as false with the given
-// message.
-func (trs *TektonResultStatus) MarkInstallFailed(msg string) {
+func (trs *TektonResultStatus) MarkNotReady(msg string) {
 	resultsCondSet.Manage(trs).MarkFalse(
-		InstallSucceeded,
+		apis.ConditionReady,
 		"Error",
-		"Install failed with message: %s", msg)
+		"Ready: %s", msg)
 }
 
-// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
-func (trs *TektonResultStatus) MarkDeploymentsAvailable() {
-	resultsCondSet.Manage(trs).MarkTrue(DeploymentsAvailable)
+func (trs *TektonResultStatus) MarkInstallerSetAvailable() {
+	resultsCondSet.Manage(trs).MarkTrue(InstallerSetAvailable)
 }
 
-// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
-// it's waiting for deployments.
-func (trs *TektonResultStatus) MarkDeploymentsNotReady() {
+func (trs *TektonResultStatus) MarkInstallerSetNotAvailable(msg string) {
+	trs.MarkNotReady("TektonInstallerSet not ready")
 	resultsCondSet.Manage(trs).MarkFalse(
-		DeploymentsAvailable,
-		"NotReady",
-		"Waiting on deployments")
+		InstallerSetAvailable,
+		"Error",
+		"Installer set not ready: %s", msg)
+}
+
+func (trs *TektonResultStatus) MarkInstallerSetReady() {
+	resultsCondSet.Manage(trs).MarkTrue(InstallerSetReady)
+}
+
+func (trs *TektonResultStatus) MarkInstallerSetNotReady(msg string) {
+	trs.MarkNotReady("TektonInstallerSet not ready")
+	resultsCondSet.Manage(trs).MarkFalse(
+		InstallerSetReady,
+		"Error",
+		"Installer set not ready: %s", msg)
 }
 
 // MarkDependenciesInstalled marks the DependenciesInstalled status as true.
@@ -105,6 +108,14 @@ func (trs *TektonResultStatus) MarkDependencyMissing(msg string) {
 		"Dependency missing: %s", msg)
 }
 
+func (trs *TektonResultStatus) GetTektonInstallerSet() string {
+	return trs.TektonInstallerSet
+}
+
+func (trs *TektonResultStatus) SetTektonInstallerSet(installerSet string) {
+	trs.TektonInstallerSet = installerSet
+}
+
 // GetVersion gets the currently installed version of the component.
 func (trs *TektonResultStatus) GetVersion() string {
 	return trs.Version
@@ -115,12 +126,29 @@ func (trs *TektonResultStatus) SetVersion(version string) {
 	trs.Version = version
 }
 
-// GetManifests gets the url links of the manifests.
-func (trs *TektonResultStatus) GetManifests() []string {
-	return trs.Manifests
+// MarkInstallSucceeded marks the InstallationSucceeded status as true.
+func (trs *TektonResultStatus) MarkInstallSucceeded() {
+	panic("implement me")
 }
 
-// SetManifests sets the url links of the manifests.
-func (trs *TektonResultStatus) SetManifests(manifests []string) {
-	trs.Manifests = manifests
+// MarkInstallFailed marks the InstallationSucceeded status as false with the given
+// message.
+func (trs *TektonResultStatus) MarkInstallFailed(msg string) {
+	panic("implement me")
+}
+
+// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
+func (trs *TektonResultStatus) MarkDeploymentsAvailable() {
+	panic("implement me")
+}
+
+// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
+// it's waiting for deployments.
+func (trs *TektonResultStatus) MarkDeploymentsNotReady() {
+	panic("implement me")
+}
+
+// GetManifests gets the url links of the manifests.
+func (trs *TektonResultStatus) GetManifests() []string {
+	panic("Implement me")
 }

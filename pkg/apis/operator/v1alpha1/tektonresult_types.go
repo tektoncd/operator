@@ -62,9 +62,9 @@ type TektonResultStatus struct {
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// The url links of the manifests, separated by comma
+	// The current installer set name for TektonResult
 	// +optional
-	Manifests []string `json:"manifests,omitempty"`
+	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
 }
 
 // TektonResultsList contains a list of TektonResult
