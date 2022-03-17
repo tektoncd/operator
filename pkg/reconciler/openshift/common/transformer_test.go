@@ -118,3 +118,32 @@ func TestUpdateDeploymentsInterceptor(t *testing.T) {
 		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
 	}
 }
+
+func TestRemoveFsGroup(t *testing.T) {
+	testData := path.Join("testdata", "test-remove-fs-group.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	testData = path.Join("testdata", "test-remove-fs-group-expected.yaml")
+	expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	newManifest, err := expectedManifest.Transform(RemoveFsGroup("tekton-hub-api"))
+	assert.NilError(t, err)
+
+	got := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(newManifest.Resources()[0].Object, got)
+	if err != nil {
+		t.Errorf("failed to load deployment yaml")
+	}
+
+	expected := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, expected)
+	if err != nil {
+		t.Errorf("failed to load deployment yaml")
+	}
+
+	if d := cmp.Diff(expected, got); d != "" {
+		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
+	}
+}

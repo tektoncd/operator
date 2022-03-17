@@ -84,3 +84,34 @@ func RemoveRunAsGroup() mf.Transformer {
 		return nil
 	}
 }
+
+// RemoveFsGroup will remove FsGroup in a deployment
+func RemoveFsGroup(obj string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		if d.Name == obj {
+			if d.Spec.Template.Spec.SecurityContext != nil {
+				d.Spec.Template.Spec.SecurityContext = nil
+			}
+
+			unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+			if err != nil {
+				return err
+			}
+			u.SetUnstructuredContent(unstrObj)
+
+			return nil
+		}
+
+		return nil
+	}
+}

@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	openshiftCommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -88,7 +89,7 @@ type openshiftExtension struct {
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return []mf.Transformer{UpdateDbDeployment()}
+	return []mf.Transformer{UpdateDbDeployment(), openshiftCommon.RemoveFsGroup(api)}
 }
 
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
