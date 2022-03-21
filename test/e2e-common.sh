@@ -29,12 +29,13 @@ source $(dirname $0)/config.sh
 function install_operator_resources() {
 
   echo :Payload Targets:
-  echo Pipelines: ${PIPELINES_VERSION}
-  echo Triggers: ${TRIGGERS_VERSION}
-  echo Chains: ${CHAINS_VERSION}
+  echo Pipelines: ${TEKTON_PIPELINE_VERSION}
+  echo Triggers: ${TEKTON_TRIGGERS_VERSION}
+  echo Chains: ${TEKTON_CHAINS_VERSION}
+  echo Hub: ${TEKTON_HUB_VERSION}
   if [[ ${TARGET} != "openshift" ]]; then
-    echo Results: ${RESULTS_VERSION}
-    echo Dashboard: ${DASHBOARD_VERSION}
+    echo Results: ${TEKTON_RESULTS_VERSION}
+    echo Dashboard: ${TEKTON_DASHBOARD_VERSION}
   fi
   echo '------------------------------'
 

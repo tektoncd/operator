@@ -62,7 +62,7 @@ func DeleteAndVerifyDeployments(t *testing.T, clients *utils.Clients, namespace,
 	})
 
 	if waitErr != nil {
-		t.Fatalf("The deployment %s/%s failed to reach the desired state: %v", deployment.Namespace, deployment.Name, err)
+		t.Fatalf("The deployment %s/%s failed to reach the desired state: %v", deployment.Namespace, deployment.Name, waitErr)
 	}
 }
 
