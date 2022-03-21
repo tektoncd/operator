@@ -23,10 +23,13 @@ export GO111MODULE=on
 $(BIN):
 	@mkdir -p $@
 $(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
-	$Q tmp=$$(mktemp -d); \
-	   env GO111MODULE=off GOPATH=$$tmp GOBIN=$(BIN) $(GO) get $(PACKAGE) \
+	$Q tmp=$$(mktemp -d); cd $$tmp; \
+  		env GO111MODULE=on GOPATH=$$tmp GOBIN=$(BIN) $(GO) get $(PACKAGE) \
 		|| ret=$$?; \
-	   rm -rf $$tmp ; exit $$ret
+  		env GO111MODULE=on GOPATH=$$tmp GOBIN=$(BIN) $(GO) clean -modcache \
+        || ret=$$?; \
+		cd - ; \
+	  	rm -rf $$tmp ; exit $$ret
 
 KO = $(or ${KO_BIN},${KO_BIN},$(BIN)/ko)
 
@@ -35,7 +38,9 @@ TRIGGERS ?= latest
 DASHBOARD ?= latest
 RESULTS ?= latest
 
-$(BIN)/ko: PACKAGE=github.com/google/ko
+# TODO: after updating go version to 1.17 uncommnent the line below to install latest version of ko
+# $(BIN)/ko: PACKAGE=github.com/google/ko
+$(BIN)/ko: PACKAGE=github.com/google/ko@v0.9.3
 
 KUSTOMIZE = $(or ${KUSTOMIZE_BIN},${KUSTOMIZE_BIN},$(BIN)/kustomize)
 $(BIN)/kustomize: | $(BIN) ; $(info $(M) getting kustomize)
