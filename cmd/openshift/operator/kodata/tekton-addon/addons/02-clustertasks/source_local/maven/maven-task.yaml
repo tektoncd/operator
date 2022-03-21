@@ -23,7 +23,7 @@ spec:
     - name: MAVEN_IMAGE
       type: string
       description: Maven base image
-      default: image-registry.openshift-image-registry.svc:5000/openshift/openjdk-11-rhel8:1.0
+      default: image-registry.openshift-image-registry.svc:5000/openshift/java:latest
     - name: GOALS
       description: maven goals to run
       type: array
