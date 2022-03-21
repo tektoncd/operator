@@ -40,7 +40,7 @@ function install_operator_resources() {
 
   echo ">> Deploying Tekton Operator Resources"
 
-  make TARGET=${TARGET:-kubernetes} apply || fail_test "Tekton Operator installation failed"
+  make KO_BIN=$(which ko) KUSTOMIZE_BIN=$(which kustomize) TARGET=${TARGET:-kubernetes} apply || fail_test "Tekton Operator installation failed"
 
   OPERATOR_NAMESPACE="tekton-operator"
   [[ "${TARGET}" == "openshift" ]] && OPERATOR_NAMESPACE="openshift-operators"
