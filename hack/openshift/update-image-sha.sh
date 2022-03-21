@@ -48,6 +48,7 @@ declare -A IMAGES=(
   ["kn"]="registry.redhat.io/openshift-serverless-1/client-kn-rhel8"
   ["skopeo-copy"]="registry.redhat.io/rhel8/skopeo"
   ["s2i"]="registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8"
+  ["ubi-minimal"]="registry.redhat.io/ubi8/ubi-minimal"
 )
 
 find_latest_versions() {

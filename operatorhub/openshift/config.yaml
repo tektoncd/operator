@@ -112,14 +112,14 @@ image-substitutions:
       containerName: openshift-pipelines-operator
       envKeys:
       - IMAGE_ADDONS_PARAM_KN_IMAGE
-- image: registry.redhat.io/rhel8/skopeo@sha256:a458abaee565344e8c31468bb5bec26bdc622c559678ab73b07ee4998de68bd0
+- image: registry.redhat.io/rhel8/skopeo@sha256:cc58da50c3842f5f2a4ba8781b60f6052919a5555a000cb4eb18a0bd0241b2b3
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
       containerName: openshift-pipelines-operator
       envKeys:
       - IMAGE_ADDONS_SKOPEO_COPY
-- image: registry.redhat.io/rhel8/buildah@sha256:31f84b19a0774be7cfad751be38fc97f5e86cefd26e0abaec8047ddc650b00bf
+- image: registry.redhat.io/rhel8/buildah@sha256:23fb7971ea6ac4aaaaa1139473a602df0df19222a3b5a76b551b2b9ddd92e927
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
@@ -133,6 +133,14 @@ image-substitutions:
       containerName: openshift-pipelines-operator
       envKeys:
       - IMAGE_ADDONS_GENERATE
+
+- image: registry.redhat.io/ubi8/ubi-minimal@sha256:574f201d7ed185a9932c91cef5d397f5298dff9df08bc2ebb266c6d1e6284cd1
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator
+        envKeys:
+          - IMAGE_ADDONS_MVN_SETTINGS
 - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
   replaceLocations:
     envTargets:
@@ -199,13 +207,15 @@ image-substitutions:
 # add thrid party images which are not replaced by operator
 # but pulled directly by tasks here
 defaultRelatedImages:
-- image: registry.redhat.io/rhel8/buildah@sha256:31f84b19a0774be7cfad751be38fc97f5e86cefd26e0abaec8047ddc650b00bf
+- image: registry.redhat.io/rhel8/buildah@sha256:23fb7971ea6ac4aaaaa1139473a602df0df19222a3b5a76b551b2b9ddd92e927
   name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
 - image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:b8b992e36f76d80b1daeed0532adf94b1ce570a6aaef1dbcc2a28c666f8cd296
   name: IMAGE_ADDONS_PARAM_KN_IMAGE
-- image: registry.redhat.io/rhel8/skopeo@sha256:a458abaee565344e8c31468bb5bec26bdc622c559678ab73b07ee4998de68bd0
+- image: registry.redhat.io/rhel8/skopeo@sha256:cc58da50c3842f5f2a4ba8781b60f6052919a5555a000cb4eb18a0bd0241b2b3
   name: IMAGE_ADDONS_SKOPEO_COPY
 - image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
   name: IMAGE_ADDONS_GENERATE
+- image: registry.redhat.io/ubi8/ubi-minimal@sha256:574f201d7ed185a9932c91cef5d397f5298dff9df08bc2ebb266c6d1e6284cd1
+  name: IMAGE_ADDONS_MVN_SETTINGS
 #- image: "" ##<imagename>:<tag> or <imagename>@<sha>
 #  name: "" # ENV key name value
