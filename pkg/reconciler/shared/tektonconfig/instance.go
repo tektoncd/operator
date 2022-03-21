@@ -84,7 +84,7 @@ func (tc tektonConfig) ensureInstance(ctx context.Context) {
 		err = tc.createInstance(ctx)
 		if err != nil {
 			//log error and retry
-			logger.Errorf("error creating Tektonconfig instance, Name: ", instance.GetName())
+			logger.Errorf("error creating Tektonconfig instance, Name: %s, Err: %v", instance.GetName(), err)
 			return false, nil
 		}
 		// even if there is no error after create,
