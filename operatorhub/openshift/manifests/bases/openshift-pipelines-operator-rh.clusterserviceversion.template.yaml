@@ -199,7 +199,7 @@ spec:
     - Pipelines as Code (tech-preview): v0.5.3
 
     ## Getting Started
-    In order to get familiar with _OpenShift Pipelines_ concepts and create your first pipeline, follow the [OpenShift Pipelines Docs](https://docs.openshift.com/container-platform/latest/pipelines/creating-applications-with-cicd-pipelines.html).
+    In order to get familiar with _OpenShift Pipelines_ concepts and create your first pipeline, follow the [OpenShift Pipelines Docs](https://docs.openshift.com/container-platform/OPENSHIFT_DOCS_VERSION/cicd/pipelines/creating-applications-with-cicd-pipelines.html).
 
     ## CLI (tkn)
     Tekton Pipelines cli project provides a CLI (tkn) for interacting with OpenShift Pipelines.
