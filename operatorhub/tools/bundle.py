@@ -305,6 +305,6 @@ if __name__ == "__main__":
     divider("BundleGen")
     config = buildConfig()
     return_code = generate_bundle(config)
-    if return_code is not 0:
+    if return_code != 0:
         exit(return_code)
     newCSVmods(config)
