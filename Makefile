@@ -24,7 +24,7 @@ $(BIN):
 	@mkdir -p $@
 $(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
 	$Q tmp=$$(mktemp -d); cd $$tmp; \
-  		env GO111MODULE=on GOPATH=$$tmp GOBIN=$(BIN) $(GO) get $(PACKAGE) \
+  		env GO111MODULE=on GOPATH=$$tmp GOBIN=$(BIN) $(GO) install $(PACKAGE) \
 		|| ret=$$?; \
   		env GO111MODULE=on GOPATH=$$tmp GOBIN=$(BIN) $(GO) clean -modcache \
         || ret=$$?; \
