@@ -17,33 +17,12 @@ limitations under the License.
 package main
 
 import (
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
-	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon"
-	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonchain"
-	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
-	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonhub"
-	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
-	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektontrigger"
-	installer "github.com/tektoncd/operator/pkg/reconciler/shared/tektoninstallerset"
-	"knative.dev/pkg/injection"
-	"knative.dev/pkg/injection/sharedmain"
-	"knative.dev/pkg/signals"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift/openshiftplatform"
+	"github.com/tektoncd/operator/pkg/reconciler/platform"
 )
 
 func main() {
-
-	cfg := injection.ParseAndGetRESTConfigOrDie()
-	ctx, _ := injection.EnableInjectionOrDie(signals.NewContext(), cfg)
-
-	installer.InitTektonInstallerSetClient(ctx)
-
-	sharedmain.MainWithConfig(ctx, "tekton-operator", cfg,
-		tektonpipeline.NewController,
-		tektontrigger.NewController,
-		tektonaddon.NewController,
-		tektonconfig.NewController,
-		tektoninstallerset.NewController,
-		tektonhub.NewController,
-		tektonchain.NewController,
-	)
+	pConfig := platform.NewConfigFromFlags()
+	p := openshiftplatform.NewOpenShiftPlatform(pConfig)
+	platform.StartMainWithSelectedControllers(p)
 }

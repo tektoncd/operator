@@ -259,10 +259,9 @@ func runFeatureTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonCon
 		// wait till the component is recreated
 		time.Sleep(time.Second * 20)
 
-		// component must be recreated
-		if _, err := clients.Operator.TektonPipelines().Get(context.TODO(), v1alpha1.PipelineResourceName, metav1.GetOptions{}); err != nil {
-			t.Fatalf("failed to get tektonpipeline, component not recreated")
-		}
+		resources.AssertTektonPipelineCRReadyStatus(t, clients, names)
+
+		resources.AssertTektonConfigCRReadyStatus(t, clients, names)
 	})
 
 	t.Run("delete-current-config", func(t *testing.T) {

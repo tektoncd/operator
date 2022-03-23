@@ -5,40 +5,40 @@ image-substitutions:
   replaceLocations:
     containerTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
 - image: registry.redhat.io/openshift-pipelines/pipelines-operator-proxy-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_PROXY
 - image: registry.redhat.io/openshift-pipelines/pipelines-controller-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_TEKTON_PIPELINES_CONTROLLER
 - image: registry.redhat.io/openshift-pipelines/pipelines-webhook-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_WEBHOOK
 - image: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_ARG__ENTRYPOINT_IMAGE
 - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_ARG__GIT_IMAGE
       - IMAGE_ADDONS_PARAM_GITINITIMAGE
@@ -46,98 +46,98 @@ image-substitutions:
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_ARG__IMAGEDIGEST_EXPORTER_IMAGE
 - image: registry.redhat.io/openshift-pipelines/pipelines-kubeconfigwriter-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_ARG__KUBECONFIG_WRITER_IMAGE
 - image: registry.redhat.io/openshift-pipelines/pipelines-workingdirinit-rhel8@
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
-        containerName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_PIPELINES_ARG__WORKINGDIRINIT_IMAGE
 - image: registry.redhat.io/openshift-pipelines/pipelines-pullrequest-init-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_ARG__PR_IMAGE
 - image: registry.redhat.io/openshift-pipelines/pipelines-nop-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_ARG__NOP_IMAGE
 - image: registry.redhat.io/ubi8/ubi-minimal@sha256:eb98682661cc5fe83bbe583af9d55a90d698cfc0d14af5b83e4568c3e26b4516
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_ARG__SHELL_IMAGE
 - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_TRIGGERS_TEKTON_TRIGGERS_CONTROLLER
 - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-webhook-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_TRIGGERS_WEBHOOK
 - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-core-interceptors-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_TRIGGERS_TEKTON_TRIGGERS_CORE_INTERCEPTORS
 - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-eventlistenersink-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_TRIGGERS_ARG__EL_IMAGE
 - image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:87b02aba2a5ff86900c1f13c6de8d4f8091fa0bf36afbb4a582f8f76189aed80
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_ADDONS_PARAM_KN_IMAGE
 - image: registry.redhat.io/rhel8/skopeo@sha256:60ac283d14e1e2870e37a10954e7a14b41372bb929a5b134455c3e36516f030a
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_ADDONS_SKOPEO_COPY
 - image: registry.redhat.io/rhel8/buildah@sha256:30fc759d3453a0f9aba2164a0ea7b1aacd65c801abb07f3478ebd4ed7a90aa8f
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_ADDONS_PARAM_BUILDER_IMAGE
 - image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_ADDONS_GENERATE
 
@@ -145,14 +145,14 @@ image-substitutions:
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
-        containerName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_ADDONS_MVN_SETTINGS
 - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_JOB_PRUNER_TKN
       - IMAGE_ADDONS_PARAM_TKN_IMAGE
@@ -160,7 +160,7 @@ image-substitutions:
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_ADDONS_TKN_CLI_SERVE
 - image: registry.redhat.io/openshift-pipelines/pipelines-operator-webhook-rhel8@
@@ -172,42 +172,42 @@ image-substitutions:
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
-        containerName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
 - image: registry.redhat.io/rhel8/postgresql-13@sha256:6032adb3eac903ee8aa61f296ca9aaa57f5709e5673504b609222e042823f195
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
-        containerName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_HUB_TEKTON_HUB_DB
 - image: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel8@
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
-        containerName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_HUB_TEKTON_HUB_DB_MIGRATION
 - image: registry.redhat.io/openshift-pipelines/pipelines-hub-api-rhel8@
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
-        containerName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_HUB_TEKTON_HUB_API
 - image: registry.redhat.io/openshift-pipelines/pipelines-hub-ui-rhel8@
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
-        containerName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_HUB_TEKTON_HUB_UI
 - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
-        containerName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_PAC_PAC_CONTROLLER
           - IMAGE_PAC_PAC_WEBHOOK
