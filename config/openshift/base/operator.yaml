@@ -51,7 +51,7 @@ spec:
         - name: METRICS_DOMAIN
           value: tekton.dev/operator
         - name: VERSION
-          value: "devel"
+          value: v0.55.1
         - name: AUTOINSTALL_COMPONENTS
           valueFrom:
             configMapKeyRef:
