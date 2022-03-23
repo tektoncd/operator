@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: v1
-kind: ConfigMap
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
 metadata:
-  name: operators-info
+  name: tekton-operator-info
   labels:
     app.kubernetes.io/instance: default
-data:
-  # Contains operator version which can be queried by external
-  # tools such as CLI.
-  version: 'devel'
+subjects:
+  # Giving all system:authenticated users the access to the
+  # ConfigMap which contains version information
+  - kind: Group
+    name: system:authenticated
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-operator-info

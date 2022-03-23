@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: v1
-kind: ConfigMap
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
 metadata:
-  name: operators-info
+  name: tekton-operator-info
   labels:
     app.kubernetes.io/instance: default
-data:
-  # Contains operator version which can be queried by external
-  # tools such as CLI.
-  version: 'devel'
+rules:
+  # All system:authenticated users need to have access
+  # to the tekton-operator-info ConfigMap even if they don't
+  # have access to other resources present in the
+  # installed namespace
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["tekton-operator-info"]
+    verbs: ["get"]
