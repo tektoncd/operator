@@ -123,7 +123,6 @@ spec:
       sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/base/*.yaml
       sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/${KUBE_DISTRO}/base/*.yaml
       sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default/*.yaml
-      sed -i -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${PROJECT_ROOT}/cmd/${KUBE_DISTRO}/operator/kodata/info/operator-config.yaml
 
       # Publish images and create release.yaml
       mkdir -p $OUTPUT_RELEASE_DIR
