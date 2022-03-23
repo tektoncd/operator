@@ -59,9 +59,6 @@ func NewExtendedController() injection.ControllerConstructor {
 		}
 		impl := tektonInstallerReconciler.NewImpl(ctx, c)
 
-		// Add enqueue func in reconciler
-		c.enqueueAfter = impl.EnqueueAfter
-
 		logger.Info("Setting up event handlers for TektonInstallerSet")
 
 		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
