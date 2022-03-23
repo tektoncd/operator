@@ -74,9 +74,6 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 		impl := tektonPipelineReconciler.NewImpl(ctx, c)
 
-		// Add enqueue func in reconciler
-		c.enqueueAfter = impl.EnqueueAfter
-
 		logger.Info("Setting up event handlers for TektonPipeline")
 
 		tektonPipelineInformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))

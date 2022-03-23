@@ -19,10 +19,6 @@ package tektonaddon
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"time"
-
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -33,6 +29,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
+	"os"
+	"path/filepath"
 )
 
 // Reconciler implements controller.Reconciler for TektonAddon resources.
@@ -40,9 +38,6 @@ type Reconciler struct {
 	manifest          mf.Manifest
 	operatorClientSet clientset.Interface
 	extension         common.Extension
-
-	// enqueueAfter enqueues a obj after a duration
-	enqueueAfter func(obj interface{}, after time.Duration)
 
 	pipelineInformer informer.TektonPipelineInformer
 	triggerInformer  informer.TektonTriggerInformer
@@ -123,8 +118,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		if err.Error() == common.PipelineNotReady {
 			ta.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
 			// wait for pipeline status to change
-			r.enqueueAfter(ta, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		// (tektonpipeline.operator.tekton.dev instance not available yet)
 		ta.Status.MarkDependencyMissing("tekton-pipelines does not exist")
@@ -135,8 +129,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		if err.Error() == common.TriggerNotReady {
 			ta.Status.MarkDependencyInstalling("tekton-triggers is still installing")
 			// wait for trigger status to change
-			r.enqueueAfter(ta, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		// (tektontrigger.operator.tekton.dev instance not available yet)
 		ta.Status.MarkDependencyMissing("tekton-triggers does not exist")
@@ -194,8 +187,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 
 	if err := r.extension.PostReconcile(ctx, ta); err != nil {
 		if err == v1alpha1.RECONCILE_AGAIN_ERR {
-			r.enqueueAfter(ta, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		ta.Status.MarkPostReconcilerFailed(err.Error())
 		return err
