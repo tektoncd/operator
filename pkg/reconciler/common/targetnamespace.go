@@ -18,10 +18,7 @@ package common
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 
-	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,29 +46,5 @@ func CreateTargetNamespace(ctx context.Context, labels map[string]string, obj v1
 	if _, err := kubeClientSet.CoreV1().Namespaces().Create(ctx, namespace, metav1.CreateOptions{}); err != nil {
 		return err
 	}
-	return nil
-}
-
-func CreateOperatorVersionConfigMap(manifest mf.Manifest, obj v1alpha1.TektonComponent) error {
-	koDataDir := os.Getenv(KoEnvKey)
-	operatorDir := filepath.Join(koDataDir, "info")
-
-	if err := AppendManifest(&manifest, operatorDir); err != nil {
-		return err
-	}
-
-	manifest, err := manifest.Transform(
-		mf.InjectNamespace(obj.GetSpec().GetTargetNamespace()),
-		mf.InjectOwner(obj),
-	)
-
-	if err != nil {
-		return err
-	}
-
-	if err = manifest.Apply(); err != nil {
-		return err
-	}
-
 	return nil
 }
