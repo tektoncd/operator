@@ -16,7 +16,11 @@ limitations under the License.
 
 package v1alpha1
 
-import "fmt"
+import (
+	"fmt"
+	"knative.dev/pkg/controller"
+	"time"
+)
 
 const (
 	// operatorVersion
@@ -47,6 +51,8 @@ const (
 	InstallerSetType       = "operator.tekton.dev/type"
 
 	UpgradePending = "upgrade pending"
+
+	RequeueDelay = 10 * time.Second
 )
 
 var (
@@ -54,6 +60,8 @@ var (
 	// When we updates spec or status we reconcile again and then proceed so
 	// that we proceed ahead with updated object
 	RECONCILE_AGAIN_ERR = fmt.Errorf("reconcile again and proceed")
+
+	REQUEUE_EVENT_AFTER = controller.NewRequeueAfter(RequeueDelay)
 
 	// DEPENDENCY_UPGRADE_PENDING_ERR
 	// When a reconciler cannot proceed due to an upgrade in progress of a dependency

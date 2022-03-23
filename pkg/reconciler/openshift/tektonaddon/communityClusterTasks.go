@@ -19,13 +19,14 @@ package tektonaddon
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
+
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/logging"
-	"strings"
-	"time"
 )
 
 var communityClusterTaskLS = metav1.LabelSelector{
@@ -103,8 +104,7 @@ func (r *Reconciler) ensureCommunityClusterTasks(ctx context.Context, ta *v1alph
 		// Continue if failed to resolve community task URL.
 		// (Ex: on disconnected cluster community tasks won't be reachable because of proxy).
 		logging.FromContext(ctx).Error("Failed to get community task: Skipping community tasks installation  ", err)
-		r.enqueueAfter(r, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	if err := r.communityTransform(ctx, &communityClusterTaskManifest, ta); err != nil {

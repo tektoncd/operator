@@ -20,12 +20,10 @@ package tektonhub
 import (
 	"context"
 	"fmt"
-	"path/filepath"
-	"time"
-
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"path/filepath"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -51,8 +49,6 @@ type Reconciler struct {
 	manifest mf.Manifest
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
-	// enqueueAfter enqueues a obj after a duration
-	enqueueAfter func(obj interface{}, after time.Duration)
 }
 
 var (
@@ -175,8 +171,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, th *v1alpha1.TektonHub) 
 
 func (r *Reconciler) handleError(err error, th *v1alpha1.TektonHub) error {
 	if err == v1alpha1.RECONCILE_AGAIN_ERR {
-		r.enqueueAfter(th, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 	return err
 }
@@ -184,8 +179,7 @@ func (r *Reconciler) handleError(err error, th *v1alpha1.TektonHub) error {
 func (r *Reconciler) manageUiComponent(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
 	if err := r.validateUiConfigMap(ctx, th); err != nil {
 		th.Status.MarkUiDependencyMissing(fmt.Sprintf("UI config map not present: %v", err.Error()))
-		r.enqueueAfter(th, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	th.Status.MarkUiDependenciesInstalled()
@@ -217,8 +211,7 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 	// Validate whether the secrets and configmap are created for API
 	if err := r.validateApiDependencies(ctx, th); err != nil {
 		th.Status.MarkApiDependencyMissing("api secrets not present")
-		r.enqueueAfter(th, 10*time.Second)
-		return err
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	th.Status.MarkApiDependenciesInstalled()

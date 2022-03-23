@@ -19,8 +19,6 @@ package tektonpipeline
 import (
 	"context"
 	"fmt"
-	"time"
-
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -58,8 +56,6 @@ type Reconciler struct {
 	manifest mf.Manifest
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
-	// enqueueAfter enqueues a obj after a duration
-	enqueueAfter func(obj interface{}, after time.Duration)
 	// metrics handles metrics for pipeline install
 	metrics         *Recorder
 	kubeClientSet   kubernetes.Interface
@@ -212,8 +208,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 			Get(ctx, existingInstallerSet, metav1.GetOptions{})
 		if err == nil {
 			tp.Status.MarkNotReady("Waiting for previous installer set to get deleted")
-			r.enqueueAfter(tp, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		if !apierrors.IsNotFound(err) {
 			logger.Error("failed to get InstallerSet: %s", err)
@@ -257,8 +252,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 
 			// after updating installer set enqueue after a duration
 			// to allow changes to get deployed
-			r.enqueueAfter(tp, 20*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
 
@@ -268,14 +262,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	ready := installedTIS.Status.GetCondition(apis.ConditionReady)
 	if ready == nil {
 		tp.Status.MarkInstallerSetNotReady("Waiting for installation")
-		r.enqueueAfter(tp, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	if ready.Status == corev1.ConditionUnknown {
 		tp.Status.MarkInstallerSetNotReady("Waiting for installation")
-		r.enqueueAfter(tp, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	} else if ready.Status == corev1.ConditionFalse {
 		tp.Status.MarkInstallerSetNotReady(ready.Message)
 		manifest := r.manifest
@@ -284,8 +276,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 			return err
 		}
 		err = common.PreemptDeadlock(ctx, &manifest, r.kubeClientSet, v1alpha1.PipelineResourceName)
-		r.enqueueAfter(tp, 10*time.Second)
-		return err
+		if err != nil {
+			logger.Error("preempt deadlock error: %v", err)
+		}
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// Mark InstallerSet Ready
