@@ -29,8 +29,13 @@ spec:
     spec:
       serviceAccountName: tekton-operator
       containers:
-      - name: tekton-operator
+      - name: tekton-operator-lifecycle # all reconcilers except tektoninstallerset reconciler
         image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
+        args:
+        - "-controllers"
+        - "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresults,tektondashboard"
+        - "-unique-process-name"
+        - "tekton-operator-lifecycle"
         imagePullPolicy: Always
         env:
         - name: SYSTEM_NAMESPACE
@@ -63,3 +68,26 @@ spec:
             configMapKeyRef:
               name: tekton-config-defaults
               key: DEFAULT_TARGET_NAMESPACE
+      - name: tekton-operator-cluster-operations # tektoninstallerset reconciler
+        image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
+        args:
+        - "-controllers"
+        - "tektoninstallerset"
+        - "-unique-process-name"
+        - "tekton-operator-cluster-operations"
+        imagePullPolicy: Always
+        env:
+          - name: SYSTEM_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: OPERATOR_NAME
+            value: "tekton-operator"
+          - name: PROFILING_PORT
+            value: "9009"
+          - name: VERSION
+            value: "devel"
