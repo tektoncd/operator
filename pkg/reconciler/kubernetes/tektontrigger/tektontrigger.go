@@ -19,8 +19,6 @@ package tektontrigger
 import (
 	"context"
 	"fmt"
-	"time"
-
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -62,11 +60,9 @@ type Reconciler struct {
 	metrics *Recorder
 
 	pipelineInformer pipelineinformer.TektonPipelineInformer
-	// enqueueAfter enqueues a obj after a duration
-	enqueueAfter    func(obj interface{}, after time.Duration)
-	triggersVersion string
-	operatorVersion string
-	kubeClientSet   kubernetes.Interface
+	triggersVersion  string
+	operatorVersion  string
+	kubeClientSet    kubernetes.Interface
 }
 
 var (
@@ -135,8 +131,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		if err.Error() == common.PipelineNotReady {
 			tt.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
 			// wait for pipeline status to change
-			r.enqueueAfter(tt, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		// (tektonpipeline.operator.tekton.dev instance not available yet)
 		tt.Status.MarkDependencyMissing("tekton-pipelines does not exist")
@@ -226,8 +221,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 			Get(ctx, existingInstallerSet, metav1.GetOptions{})
 		if err == nil {
 			tt.Status.MarkNotReady("Waiting for previous installer set to get deleted")
-			r.enqueueAfter(tt, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		if !apierrors.IsNotFound(err) {
 			logger.Error("failed to get InstallerSet: %s", err)
@@ -273,8 +267,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 
 			// after updating installer set enqueue after a duration
 			// to allow changes to get deployed
-			r.enqueueAfter(tt, 20*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
 
@@ -284,14 +277,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	ready := installedTIS.Status.GetCondition(apis.ConditionReady)
 	if ready == nil {
 		tt.Status.MarkInstallerSetNotReady("Waiting for installation")
-		r.enqueueAfter(tt, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	if ready.Status == corev1.ConditionUnknown {
 		tt.Status.MarkInstallerSetNotReady("Waiting for installation")
-		r.enqueueAfter(tt, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	} else if ready.Status == corev1.ConditionFalse {
 		tt.Status.MarkInstallerSetNotReady(ready.Message)
 		manifest := r.manifest
@@ -300,8 +291,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 			return err
 		}
 		err = common.PreemptDeadlock(ctx, &manifest, r.kubeClientSet, v1alpha1.TriggerResourceName)
-		r.enqueueAfter(tt, 10*time.Second)
-		return err
+		if err != nil {
+			logger.Error("preempt deadlock error: %v", err)
+		}
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// Mark InstallerSet Ready

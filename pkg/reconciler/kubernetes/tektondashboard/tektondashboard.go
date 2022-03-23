@@ -19,8 +19,6 @@ package tektondashboard
 import (
 	"context"
 	"fmt"
-	"time"
-
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -51,8 +49,6 @@ type Reconciler struct {
 	// a particular version with readonly value as false
 	fullaccessManifest mf.Manifest
 	// Platform-specific behavior to affect the transform
-	// enqueueAfter enqueues a obj after a duration
-	enqueueAfter     func(obj interface{}, after time.Duration)
 	extension        common.Extension
 	pipelineInformer pipelineinformer.TektonPipelineInformer
 	operatorVersion  string
@@ -137,8 +133,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 		if err.Error() == common.PipelineNotReady {
 			td.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
 			// wait for pipeline status to change
-			r.enqueueAfter(td, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 
 		}
 		// (tektonpipeline.opeator.tekton.dev instance not available yet)
@@ -210,8 +205,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 			Get(ctx, existingInstallerSet, metav1.GetOptions{})
 		if err == nil {
 			td.Status.MarkNotReady("Waiting for previous installer set to get deleted")
-			r.enqueueAfter(td, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		if !apierrors.IsNotFound(err) {
 			logger.Error("failed to get InstallerSet: %s", err)
@@ -263,8 +257,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 
 			// after updating installer set enqueue after a duration
 			// to allow changes to get deployed
-			r.enqueueAfter(td, 20*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
 
@@ -274,18 +267,15 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 	ready := installedTIS.Status.GetCondition(apis.ConditionReady)
 	if ready == nil {
 		td.Status.MarkInstallerSetNotReady("Waiting for installation")
-		r.enqueueAfter(td, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	if ready.Status == corev1.ConditionUnknown {
 		td.Status.MarkInstallerSetNotReady("Waiting for installation")
-		r.enqueueAfter(td, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	} else if ready.Status == corev1.ConditionFalse {
 		td.Status.MarkInstallerSetNotReady(ready.Message)
-		r.enqueueAfter(td, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// Mark InstallerSet Ready

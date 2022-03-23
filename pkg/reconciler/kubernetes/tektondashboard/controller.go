@@ -76,9 +76,6 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 		impl := tektonDashboardreconciler.NewImpl(ctx, c)
 
-		// Add enqueue func in reconciler
-		c.enqueueAfter = impl.EnqueueAfter
-
 		logger.Info("Setting up event handlers for tekton-dashboard")
 
 		tektonDashboardInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))

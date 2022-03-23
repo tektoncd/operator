@@ -19,8 +19,6 @@ package tektonconfig
 import (
 	"context"
 	"fmt"
-	"time"
-
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -43,9 +41,7 @@ type Reconciler struct {
 	// operatorClientSet allows us to configure operator objects
 	operatorClientSet clientset.Interface
 	// Platform-specific behavior to affect the transform
-	extension common.Extension
-	// enqueueAfter enqueues a obj after a duration
-	enqueueAfter    func(obj interface{}, after time.Duration)
+	extension       common.Extension
 	manifest        mf.Manifest
 	operatorVersion string
 }
@@ -106,8 +102,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	if err := r.extension.PreReconcile(ctx, tc); err != nil {
 		if err == v1alpha1.RECONCILE_AGAIN_ERR {
-			r.enqueueAfter(tc, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		tc.Status.MarkPreInstallFailed(err.Error())
 		return err
@@ -119,8 +114,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	if _, err := pipeline.EnsureTektonPipelineExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), tc); err != nil {
 		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPipeline: %s", err.Error()))
 		if err == v1alpha1.RECONCILE_AGAIN_ERR {
-			r.enqueueAfter(tc, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		return nil
 	}
@@ -129,14 +123,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	if tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic {
 		if _, err := trigger.EnsureTektonTriggerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), tc); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
-			r.enqueueAfter(tc, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	} else {
 		if err := trigger.TektonTriggerCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
-			r.enqueueAfter(tc, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
 
@@ -149,8 +141,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	if err := r.extension.PostReconcile(ctx, tc); err != nil {
 		tc.Status.MarkPostInstallFailed(err.Error())
-		r.enqueueAfter(tc, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	tc.Status.MarkPostInstallComplete()

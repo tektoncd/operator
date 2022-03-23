@@ -19,8 +19,6 @@ package tektonchain
 import (
 	"context"
 	"fmt"
-	"time"
-
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -45,9 +43,7 @@ type Reconciler struct {
 	// particular version
 	manifest mf.Manifest
 	// Platform-specific behavior to affect the transform
-	// enqueueAfter enqueues a obj after a duration
-	enqueueAfter func(obj interface{}, after time.Duration)
-	extension    common.Extension
+	extension common.Extension
 	// chainVersion describes the current chain version
 	chainVersion    string
 	operatorVersion string
@@ -176,8 +172,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 			Get(ctx, existingInstallerSet, metav1.GetOptions{})
 		if err == nil {
 			tc.Status.MarkNotReady("Waiting for previous installer set to get deleted")
-			r.enqueueAfter(tc, 10*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		if !apierrors.IsNotFound(err) {
 			logger.Error("failed to get InstallerSet: %s", err)
@@ -233,8 +228,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 
 			// after updating installer set enqueue after a duration
 			// to allow changes to get deployed
-			r.enqueueAfter(tc, 20*time.Second)
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
 
@@ -244,18 +238,15 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 	ready := installedTIS.Status.GetCondition(apis.ConditionReady)
 	if ready == nil {
 		tc.Status.MarkInstallerSetNotReady("Waiting for installation")
-		r.enqueueAfter(tc, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	if ready.Status == corev1.ConditionUnknown {
 		tc.Status.MarkInstallerSetNotReady("Waiting for installation")
-		r.enqueueAfter(tc, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	} else if ready.Status == corev1.ConditionFalse {
 		tc.Status.MarkInstallerSetNotReady(ready.Message)
-		r.enqueueAfter(tc, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// Mark InstallerSet Ready

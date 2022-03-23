@@ -19,8 +19,6 @@ package tektoninstallerset
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/go-logr/logr"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -36,7 +34,6 @@ type Reconciler struct {
 	operatorClientSet clientset.Interface
 	mfClient          mf.Client
 	mfLogger          logr.Logger
-	enqueueAfter      func(obj interface{}, after time.Duration)
 }
 
 // Reconciler implements controller.Reconciler
@@ -148,8 +145,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	err = installer.IsWebhookReady()
 	if err != nil {
 		installerSet.Status.MarkWebhookNotReady(err.Error())
-		r.enqueueAfter(installerSet, time.Second*10)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// Update Status for Webhook
@@ -159,8 +155,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	err = installer.IsControllerReady()
 	if err != nil {
 		installerSet.Status.MarkControllerNotReady(err.Error())
-		r.enqueueAfter(installerSet, time.Second*10)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// Update Ready status of Controller
@@ -179,8 +174,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	err = installer.AllDeploymentsReady()
 	if err != nil {
 		installerSet.Status.MarkAllDeploymentsNotReady(err.Error())
-		r.enqueueAfter(installerSet, time.Second*10)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// Mark all deployments ready
@@ -191,8 +185,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 
 func (r *Reconciler) handleError(err error, installerSet *v1alpha1.TektonInstallerSet) error {
 	if err == v1alpha1.RECONCILE_AGAIN_ERR {
-		r.enqueueAfter(installerSet, 10*time.Second)
-		return nil
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 	return err
 }
