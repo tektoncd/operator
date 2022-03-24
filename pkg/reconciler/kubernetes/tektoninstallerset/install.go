@@ -69,6 +69,7 @@ var (
 	serviceMonitorPred         = mf.ByKind("ServiceMonitor")
 	routePred                  = mf.ByKind("Route")
 	consoleCLIDownloadPred     = mf.ByKind("ConsoleCLIDownload")
+	consoleLinkHubPred         = mf.ByKind("ConsoleLink")
 	consoleQuickStartPred      = mf.ByKind("ConsoleQuickStart")
 	ConsoleYAMLSamplePred      = mf.ByKind("ConsoleYAMLSample")
 )
@@ -124,6 +125,7 @@ func (i *installer) EnsureClusterScopedResources() error {
 			clusterTaskPred,
 			clusterTriggerBindingPred,
 			consoleCLIDownloadPred,
+			consoleLinkHubPred,
 			consoleQuickStartPred,
 			ConsoleYAMLSamplePred,
 			securityContextConstraints,
