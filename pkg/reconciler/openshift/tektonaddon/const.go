@@ -23,6 +23,7 @@ const (
 	PipelinesTemplateInstallerSet      = "PipelinesTemplate"
 	TriggersResourcesInstallerSet      = "TriggersResources"
 	ConsoleCLIInstallerSet             = "ConsoleCLI"
+	ConsoleHubLinkInstallerSet         = "ConsoleHub"
 	MiscellaneousResourcesInstallerSet = "MiscellaneousResources"
 	PACInstallerSet                    = "PipelinesAsCode"
 	CreatedByValue                     = "TektonAddon"
