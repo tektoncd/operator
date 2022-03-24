@@ -19,16 +19,19 @@ package tektonhub
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
+	console "github.com/openshift/api/console/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/client-go/route/clientset/versioned/scheme"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
+	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	openshiftCommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
@@ -45,9 +48,11 @@ import (
 )
 
 const (
-	hubprefix               string = "tekton-hub"
-	tektonHubAPIResourceKey string = "api"
-	tektonHubUiResourceKey  string = "ui"
+	hubprefix                  string = "tekton-hub"
+	tektonHubAPIResourceKey    string = "api"
+	tektonHubUiResourceKey     string = "ui"
+	CreatedByValue             string = "TektonHub"
+	ConsoleHubLinkInstallerSet        = "ConsoleHubLink"
 )
 
 var replaceVal = map[string]string{
@@ -168,9 +173,165 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 }
 
 func (oe openshiftExtension) PostReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+	th := tc.(*v1alpha1.TektonHub)
+	consoleCLILS := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			v1alpha1.InstallerSetType: ConsoleHubLinkInstallerSet,
+		},
+	}
+
+	consoleHubLinkLabelSelector, err := common.LabelSelector(consoleCLILS)
+	if err != nil {
+		return err
+	}
+
+	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, common.TargetVersion(th), consoleHubLinkLabelSelector)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		hubConsoleLinkManifest := oe.manifest.Append()
+		if err := applyHubConsoleLinkManifest(&hubConsoleLinkManifest); err != nil {
+			return err
+		}
+
+		if err := consoleLinkTransform(ctx, &hubConsoleLinkManifest, th.Status.GetUiRoute()); err != nil {
+			return err
+		}
+
+		if err := createInstallerSet(ctx, oe.operatorClientSet, th, hubConsoleLinkManifest,
+			common.TargetVersion(th), ConsoleHubLinkInstallerSet, "console-link-hub"); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
+
+func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVersion string,
+	labelSelector string) (bool, error) {
+
+	installerSets, err := oc.OperatorV1alpha1().TektonInstallerSets().
+		List(ctx, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		})
+	if err != nil {
+		return false, err
+	}
+
+	if len(installerSets.Items) == 0 {
+		return false, nil
+	}
+
+	if len(installerSets.Items) == 1 {
+		// if already created then check which version it is
+		version, ok := installerSets.Items[0].Labels[v1alpha1.ReleaseVersionKey]
+		if ok && version == relVersion {
+			// if installer set already exist and release version is same
+			// then ignore and move on
+			return true, nil
+		}
+	}
+
+	// release version doesn't exist or is different from expected
+	// deleted existing InstallerSet and create a new one
+	// or there is more than one installerset (unexpected)
+	if err = oc.OperatorV1alpha1().TektonInstallerSets().
+		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: labelSelector,
+		}); err != nil {
+		return false, err
+	}
+
+	return false, v1alpha1.RECONCILE_AGAIN_ERR
+}
+
+func createInstallerSet(ctx context.Context, oc clientset.Interface, ta *v1alpha1.TektonHub,
+	manifest mf.Manifest, releaseVersion, component, installerSetPrefix string) error {
+
+	is := makeInstallerSet(ta, manifest, installerSetPrefix, releaseVersion, component)
+
+	if _, err := oc.OperatorV1alpha1().TektonInstallerSets().
+		Create(ctx, is, metav1.CreateOptions{}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func makeInstallerSet(ta *v1alpha1.TektonHub, manifest mf.Manifest, prefix, releaseVersion, component string) *v1alpha1.TektonInstallerSet {
+	ownerRef := *metav1.NewControllerRef(ta, ta.GetGroupVersionKind())
+	labels := map[string]string{
+		v1alpha1.CreatedByKey:      CreatedByValue,
+		v1alpha1.InstallerSetType:  component,
+		v1alpha1.ReleaseVersionKey: releaseVersion,
+	}
+	namePrefix := fmt.Sprintf("%s-", prefix)
+
+	return &v1alpha1.TektonInstallerSet{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: namePrefix,
+			Labels:       labels,
+			Annotations: map[string]string{
+				v1alpha1.TargetNamespaceKey: ta.Spec.TargetNamespace,
+			},
+			OwnerReferences: []metav1.OwnerReference{ownerRef},
+		},
+		Spec: v1alpha1.TektonInstallerSetSpec{
+			Manifests: manifest.Resources(),
+		},
+	}
+}
+
+func applyHubConsoleLinkManifest(manifest *mf.Manifest) error {
+	koDataDir := os.Getenv(common.KoEnvKey)
+	location := filepath.Join(koDataDir, "openshift", "tekton-hub")
+	return common.AppendManifest(manifest, location)
+}
+
+func consoleLinkTransform(ctx context.Context, manifest *mf.Manifest, baseURL string) error {
+	if baseURL == "" {
+		return fmt.Errorf("route url should not be empty")
+	}
+	logger := logging.FromContext(ctx)
+	logger.Debug("Transforming manifest")
+
+	transformers := []mf.Transformer{
+		replaceURLConsoleLink(baseURL),
+	}
+
+	transformManifest, err := manifest.Transform(transformers...)
+	if err != nil {
+		return err
+	}
+
+	*manifest = transformManifest
+	return nil
+}
+
+func replaceURLConsoleLink(baseURL string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "ConsoleLink" {
+			return nil
+		}
+		cl := &console.ConsoleLink{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cl)
+		if err != nil {
+			return err
+		}
+
+		cl.Spec.Href = baseURL
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cl)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
 func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
 	return nil
 }
