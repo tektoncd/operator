@@ -50,7 +50,17 @@ const (
 	namespaceVersionLabel    = "openshift-pipelines.tekton.dev/namespace-reconcile-version"
 	createdByValue           = "RBAC"
 	componentNameRBAC        = "rhosp-rbac"
+	rbacInstallerSetType     = "rhosp-rbac"
 	rbacParamName            = "createRbacResource"
+)
+
+var (
+	rbacInstallerSetSelector = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			v1alpha1.CreatedByKey:     createdByValue,
+			v1alpha1.InstallerSetType: componentNameRBAC,
+		},
+	}
 )
 
 // Namespace Regex to ignore the namespace for creating rbac resources.
@@ -105,9 +115,7 @@ func (r *rbac) EnsureRBACInstallerSet(ctx context.Context) (*v1alpha1.TektonInst
 		return nil, err
 	}
 
-	err = createInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, map[string]string{
-		v1alpha1.CreatedByKey: createdByValue,
-	}, r.version, componentNameRBAC, "rbac-resources")
+	err = createInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, r.version, componentNameRBAC, "rbac-resources")
 	if err != nil {
 		return nil, err
 	}
