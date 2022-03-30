@@ -261,9 +261,9 @@ spec:
 
     - Tekton Chains (tech-preview): v0.8.0
 
-    - Tekton Hub (tech-preview): v1.7.0
+    - Tekton Hub (tech-preview): v1.7.1
 
-    - Pipelines as Code (tech-preview): v0.5.3
+    - Pipelines as Code (tech-preview): v0.5.5
 
 
     ## Getting Started
