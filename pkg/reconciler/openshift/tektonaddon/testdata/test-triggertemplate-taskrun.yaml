@@ -1068,7 +1068,7 @@ spec:
                 - name: PAC_WEBHOOK_TYPE
                   value: "$(params.event_type)"
               imagePullPolicy: Always
-              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.3"
+              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.5"
               script: |
                 #!/usr/bin/env bash
                 set -euf
@@ -1249,7 +1249,7 @@ spec:
           steps:
             - name: apply-and-launch
               imagePullPolicy: Always
-              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.3"
+              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.5"
               env:
                 - name: PAC_GIT_PROVIDER_APIURL
                   value: $(params.ghe_host)
@@ -1416,7 +1416,7 @@ spec:
           steps:
             - name: apply-and-launch
               imagePullPolicy: Always
-              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.3"
+              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.5"
               env:
                 - name: PAC_GIT_PROVIDER_APIURL
                   value: $(params.ghe_host)
@@ -1682,7 +1682,7 @@ spec:
                 - name: PAC_SOURCE_IP
                   value: $(params.source_ip)
               imagePullPolicy: Always
-              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.3"
+              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.5"
               script: |
                 #!/usr/bin/env bash
                 set -euf
@@ -1877,7 +1877,7 @@ spec:
                 - name: PAC_SOURCE_IP
                   value: $(params.source_ip)
               imagePullPolicy: Always
-              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.3"
+              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.5"
               script: |
                 #!/usr/bin/env bash
                 set -euf
@@ -2168,7 +2168,7 @@ spec:
                 - name: PAC_PAYLOAD_FILE
                   value: "/tmp/payload.json"
               imagePullPolicy: Always
-              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.3"
+              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.5"
               script: |
                 #!/usr/bin/env bash
                 set -euf
@@ -2373,7 +2373,7 @@ spec:
                 - name: PAC_PAYLOAD_FILE
                   value: "/tmp/payload.json"
               imagePullPolicy: Always
-              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.3"
+              image: "quay.io/openshift-pipeline/pipelines-as-code:0.5.5"
               script: |
                 #!/usr/bin/env bash
                 set -euf
