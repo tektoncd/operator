@@ -20,7 +20,7 @@ spec:
       ### Follow these steps to create an application.
       1. From the **Developer** perspective, in the navigation menu, click **+Add**.
       2. At the top of the page, in the Projects list, select a project or create a new project to put the application in.
-      3. Click **From Git**.
+      3. Click **Import from Git**.
       4. In the **Git Repo URL** field, enter `https://github.com/sclorg/django-ex.git`.
       4. In the **Pipelines** section, click the checkbox to add a pipeline to your application.
       5. Click **Create** when you’re done.
