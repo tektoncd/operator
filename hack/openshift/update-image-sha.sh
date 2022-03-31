@@ -51,6 +51,10 @@ declare -A IMAGES=(
   ["ubi-minimal"]="registry.redhat.io/ubi8/ubi-minimal"
 )
 
+registry_login() {
+  podman login --username=${USERNAME} --password=${PASSWORD} registry.redhat.io
+}
+
 find_latest_versions() {
   local image_registry=${1:-""}
   local latest_version=""
@@ -74,7 +78,7 @@ update_image_sha() {
 
 
 main() {
-
+  registry_login
   for image in ${!IMAGES[@]}; do
     latest_version=$(find_latest_versions ${IMAGES[$image]})
     echo latest_version=$latest_version
