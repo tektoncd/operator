@@ -17,9 +17,10 @@ limitations under the License.
 package common
 
 import (
-	corev1 "k8s.io/api/core/v1"
 	"path/filepath"
 	"strings"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (

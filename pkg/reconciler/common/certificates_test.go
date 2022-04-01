@@ -17,10 +17,11 @@ limitations under the License.
 package common
 
 import (
-	"gotest.tools/v3/assert"
-	corev1 "k8s.io/api/core/v1"
 	"path/filepath"
 	"testing"
+
+	"gotest.tools/v3/assert"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestAddCABundleConfigMapsToVolumes(t *testing.T) {
