@@ -19,8 +19,6 @@ package tektonaddon
 import (
 	"bytes"
 	"encoding/json"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"os"
 	"path"
 	"testing"
@@ -28,7 +26,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 	mf "github.com/manifestival/manifestival"
 	console "github.com/openshift/api/console/v1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"gotest.tools/v3/assert"
 	"k8s.io/apimachinery/pkg/runtime"
 )

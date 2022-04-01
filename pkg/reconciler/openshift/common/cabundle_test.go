@@ -18,9 +18,10 @@ package common
 
 import (
 	"encoding/json"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"path/filepath"
 	"testing"
+
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"

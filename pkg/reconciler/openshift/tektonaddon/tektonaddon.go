@@ -19,6 +19,9 @@ package tektonaddon
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -29,8 +32,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
-	"os"
-	"path/filepath"
 )
 
 // Reconciler implements controller.Reconciler for TektonAddon resources.

@@ -1,12 +1,13 @@
 package webhook
 
 import (
-	mf "github.com/manifestival/manifestival"
-	"gotest.tools/v3/assert"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"os"
 	"path/filepath"
 	"testing"
+
+	mf "github.com/manifestival/manifestival"
+	"gotest.tools/v3/assert"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 const (
