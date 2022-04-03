@@ -32,8 +32,6 @@ import (
 
 // TestTektonAddonsDeployment verifies the TektonAddons creation, deployment recreation, and TektonAddons deletion.
 func TestTektonAddonsDeployment(t *testing.T) {
-	clients := client.Setup(t)
-
 	crNames := utils.ResourceNames{
 		TektonConfig:    "config",
 		TektonPipeline:  "pipeline",
@@ -42,6 +40,8 @@ func TestTektonAddonsDeployment(t *testing.T) {
 		Namespace:       "",
 		TargetNamespace: "tekton-pipelines",
 	}
+
+	clients := client.Setup(t, crNames.TargetNamespace)
 
 	if os.Getenv("TARGET") == "openshift" {
 		crNames.TargetNamespace = "openshift-pipelines"

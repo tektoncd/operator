@@ -41,7 +41,6 @@ func TestTektonResultDeployment(t *testing.T) {
 	if platform == "linux/ppc64le" || platform == "linux/s390x" {
 		t.Skipf("Tekton Result is not available for %q", platform)
 	}
-	clients := client.Setup(t)
 
 	crNames := utils.ResourceNames{
 		TektonConfig:    "config",
@@ -49,6 +48,8 @@ func TestTektonResultDeployment(t *testing.T) {
 		TektonResult:    "result",
 		TargetNamespace: "tekton-pipelines",
 	}
+
+	clients := client.Setup(t, crNames.TargetNamespace)
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
 	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)

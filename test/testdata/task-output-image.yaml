@@ -1,0 +1,65 @@
+# Copyright 2021 The Tekton Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  name: build-push-run-output-image-test
+spec:
+  serviceAccountName: ""
+  taskSpec:
+    resources:
+      inputs:
+      - name: sourcerepo
+        type: git
+      outputs:
+      - name: builtImage
+        type: image
+        targetPath: /workspace/sourcerepo
+    steps:
+    - name: build-and-push
+      image: busybox
+      script: |
+        set -e
+        cat <<EOF > $(inputs.resources.sourcerepo.path)/index.json
+        {
+        "schemaVersion": 2,
+        "manifests": [
+            {
+            "mediaType": "application/vnd.oci.image.index.v1+json",
+            "size": 314,
+            "digest": "sha256:05f95b26ed10668b7183c1e2da98610e91372fa9f510046d4ce5812addad86b5"
+            }
+        ]
+        }
+    - name: echo
+      image: busybox
+      script: cat $(inputs.resources.sourcerepo.path)/index.json
+  resources:
+    inputs:
+    - name: sourcerepo
+      resourceSpec:
+        type: git
+        params:
+        - name: revision
+          value: v0.32.0
+        - name: url
+          value: https://github.com/GoogleContainerTools/skaffold
+    outputs:
+    - name: builtImage
+      resourceSpec:
+        type: image
+        params:
+        - name: url
+          value: gcr.io/foo/bar

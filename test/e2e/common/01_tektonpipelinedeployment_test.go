@@ -32,8 +32,6 @@ import (
 
 // TestTektonPipelinesDeployment verifies the TektonPipelines creation, deployment recreation, and TektonPipelines deletion.
 func TestTektonPipelinesDeployment(t *testing.T) {
-	clients := client.Setup(t)
-
 	crNames := utils.ResourceNames{
 		TektonConfig:    "config",
 		TektonPipeline:  "pipeline",
@@ -43,6 +41,8 @@ func TestTektonPipelinesDeployment(t *testing.T) {
 	if os.Getenv("TARGET") == "openshift" {
 		crNames.TargetNamespace = "openshift-pipelines"
 	}
+
+	clients := client.Setup(t, crNames.TargetNamespace)
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
 	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)

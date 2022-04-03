@@ -31,14 +31,14 @@ import (
 
 // TestTektonDashboardsDeployment verifies the TektonDashboards creation, deployment recreation, and TektonDashboards deletion.
 func TestTektonDashboardsDeployment(t *testing.T) {
-	clients := client.Setup(t)
-
 	crNames := utils.ResourceNames{
 		TektonConfig:    "config",
 		TektonPipeline:  "pipeline",
 		TektonDashboard: "dashboard",
 		TargetNamespace: "tekton-pipelines",
 	}
+
+	clients := client.Setup(t, crNames.TargetNamespace)
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
 	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
