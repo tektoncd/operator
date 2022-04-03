@@ -48,13 +48,13 @@ import (
 // - updates field in TektonConfig Spec and make sure they are reflected in configmaps
 // - Deletes and recreates TektonConfig and validates webhook adds all defaults
 func TestTektonConfigDeployment(t *testing.T) {
-	clients := client.Setup(t)
-
 	crNames := utils.ResourceNames{
 		TektonConfig:    v1alpha1.ConfigResourceName,
 		Namespace:       "tekton-operator",
 		TargetNamespace: "tekton-pipelines",
 	}
+
+	clients := client.Setup(t, crNames.TargetNamespace)
 
 	platform := os.Getenv("TARGET")
 

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/client-go/kubernetes"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -133,6 +134,22 @@ func verifyNoTektonChainCR(clients *utils.Clients) error {
 	}
 	if len(chains.Items) > 0 {
 		return errors.New("Unable to verify cluster-scoped resources are deleted if any TektonChain exists")
+	}
+	return nil
+}
+
+func DeleteChainsPod(kubeclient kubernetes.Interface, namespace string) error {
+	podList, err := kubeclient.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "app=tekton-chains-controller",
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, pod := range podList.Items {
+		if err := kubeclient.CoreV1().Pods(namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{}); err != nil {
+			return err
+		}
 	}
 	return nil
 }
