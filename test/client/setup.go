@@ -30,10 +30,11 @@ import (
 )
 
 // Setup creates the client objects needed in the e2e tests.
-func Setup(t *testing.T) *utils.Clients {
+func Setup(t *testing.T, namespace string) *utils.Clients {
 	clients, err := utils.NewClients(
 		pkgTest.Flags.Kubeconfig,
-		pkgTest.Flags.Cluster)
+		pkgTest.Flags.Cluster,
+		namespace)
 	if err != nil {
 		t.Fatalf("Couldn't initialize clients: %v", err)
 	}

@@ -1,3 +1,4 @@
+//go:build e2e
 // +build e2e
 
 /*
@@ -29,8 +30,6 @@ import (
 
 // TestTektonChainDeployment verifies the TektonChain creation, deployment recreation, and TektonChain deletion.
 func TestTektonChainDeployment(t *testing.T) {
-	clients := client.Setup(t)
-
 	crNames := utils.ResourceNames{
 		TektonConfig:    "config",
 		TektonPipeline:  "pipeline",
@@ -41,6 +40,8 @@ func TestTektonChainDeployment(t *testing.T) {
 	if os.Getenv("TARGET") == "openshift" {
 		crNames.TargetNamespace = "openshift-pipelines"
 	}
+
+	clients := client.Setup(t, crNames.TargetNamespace)
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
 	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)

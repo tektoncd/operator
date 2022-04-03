@@ -32,14 +32,14 @@ import (
 
 // TestTektonTriggersDeployment verifies the TektonTriggers creation, deployment recreation, and TektonTriggers deletion.
 func TestTektonTriggersDeployment(t *testing.T) {
-	clients := client.Setup(t)
-
 	crNames := utils.ResourceNames{
 		TektonConfig:    "config",
 		TektonPipeline:  "pipeline",
 		TektonTrigger:   "trigger",
 		TargetNamespace: "tekton-pipelines",
 	}
+
+	clients := client.Setup(t, crNames.TargetNamespace)
 
 	if os.Getenv("TARGET") == "openshift" {
 		crNames.TargetNamespace = "openshift-pipelines"
