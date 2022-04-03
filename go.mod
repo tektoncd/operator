@@ -3,13 +3,23 @@ module github.com/tektoncd/operator
 require (
 	github.com/go-logr/logr v0.4.0
 	github.com/go-logr/zapr v0.4.0
+	github.com/golang/snappy v0.0.4
 	github.com/google/go-cmp v0.5.6
+	github.com/hashicorp/errwrap v1.1.0
+	github.com/hashicorp/go-multierror v1.1.1
+	github.com/hashicorp/go-sockaddr v1.0.2
+	github.com/hashicorp/hcl v1.0.0
+	github.com/hashicorp/vault/sdk v0.2.1
 	github.com/manifestival/client-go-client v0.5.0
 	github.com/manifestival/controller-runtime-client v0.4.0
 	github.com/manifestival/manifestival v0.7.0
 	github.com/markbates/inflect v1.0.4
+	github.com/mitchellh/mapstructure v1.4.1
 	github.com/openshift/api v0.0.0-20210910062324-a41d3573a3ba
 	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
+	github.com/pierrec/lz4 v2.6.1+incompatible
+	github.com/ryanuber/go-glob v1.0.0
+	github.com/sigstore/cosign v1.2.1
 	github.com/tektoncd/pipeline v0.31.0
 	github.com/tektoncd/plumbing v0.0.0-20211012143332-c7cc43d9bc0c
 	github.com/tektoncd/triggers v0.18.0
