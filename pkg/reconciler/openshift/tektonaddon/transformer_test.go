@@ -42,7 +42,7 @@ func TestUpdateConsoleCLIDownload(t *testing.T) {
 	expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assert.NilError(t, err)
 
-	newManifest, err := manifest.Transform(replaceURLCCD("testserver.com"))
+	newManifest, err := manifest.Transform(replaceURLCCD("testserver.com", "1.2.3"))
 	assert.NilError(t, err)
 
 	got := &console.ConsoleCLIDownload{}

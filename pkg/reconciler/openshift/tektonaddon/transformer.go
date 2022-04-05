@@ -80,23 +80,52 @@ func itemInSlice(item string, items []string) bool {
 	return false
 }
 
-func getlinks(baseURL string) []console.CLIDownloadLink {
-	platforms := []struct {
-		key   string
-		value string
+func getlinks(baseURL, tknVersion string) []console.CLIDownloadLink {
+	platformURLs := []struct {
+		platform  string
+		tknURL    string
+		tknPacURL string
 	}{
-		{"Linux", "tkn/tkn-linux-amd64-0.21.0.tar.gz"},
-		{"IBM Power", "tkn/tkn-linux-ppc64le-0.21.0.tar.gz"},
-		{"IBM Z", "tkn/tkn-linux-s390x-0.21.0.tar.gz"},
-		{"Mac", "tkn/tkn-macos-amd64-0.21.0.tar.gz"},
-		{"Windows", "tkn/tkn-windows-amd64-0.21.0.zip"},
+		{
+			"Linux",
+			fmt.Sprintf("tkn/tkn-linux-amd64-%s.tar.gz", tknVersion),
+			fmt.Sprintf("tkn/tkn-pac-linux-amd64-%s.tar.gz", tknVersion),
+		},
+		{
+			"IBM Power",
+			fmt.Sprintf("tkn/tkn-linux-ppc64le-%s.tar.gz", tknVersion),
+			fmt.Sprintf("tkn/tkn-pac-linux-ppc64le-%s.tar.gz", tknVersion),
+		},
+		{
+			"IBM Z",
+			fmt.Sprintf("tkn/tkn-linux-s390x-%s.tar.gz", tknVersion),
+			fmt.Sprintf("tkn/tkn-pac-linux-s390x-%s.tar.gz", tknVersion),
+		},
+		{
+			"Mac",
+			fmt.Sprintf("tkn/tkn-macos-amd64-%s.tar.gz", tknVersion),
+			fmt.Sprintf("tkn/tkn-pac-macos-amd64-%s.tar.gz", tknVersion),
+		},
+		{
+			"Windows",
+			fmt.Sprintf("tkn/tkn-windows-amd64-%s.zip", tknVersion),
+			fmt.Sprintf("tkn/tkn-pac-windows-amd64-%s.zip", tknVersion),
+		},
 	}
 	links := []console.CLIDownloadLink{}
-	for _, platform := range platforms {
-		links = append(links, console.CLIDownloadLink{
-			Href: getURL(baseURL, platform.value),
-			Text: fmt.Sprintf("Download tkn for %s", platform.key),
-		})
+	for _, platformURL := range platformURLs {
+		links = append(links,
+			// tkn
+			console.CLIDownloadLink{
+				Href: getURL(baseURL, platformURL.tknURL),
+				Text: fmt.Sprintf("Download tkn for %s", platformURL.platform),
+			},
+			// tkn-pac
+			console.CLIDownloadLink{
+				Href: getURL(baseURL, platformURL.tknPacURL),
+				Text: fmt.Sprintf("Download tkn-pac for %s", platformURL.platform),
+			},
+		)
 	}
 	return links
 }
@@ -105,7 +134,7 @@ func getURL(baseURL string, path string) string {
 	return fmt.Sprintf("https://%s/%s", baseURL, path)
 }
 
-func replaceURLCCD(baseURL string) mf.Transformer {
+func replaceURLCCD(baseURL, tknVersion string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() != "ConsoleCLIDownload" {
 			return nil
@@ -115,7 +144,7 @@ func replaceURLCCD(baseURL string) mf.Transformer {
 		if err != nil {
 			return err
 		}
-		ccd.Spec.Links = getlinks(baseURL)
+		ccd.Spec.Links = getlinks(baseURL, tknVersion)
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ccd)
 		if err != nil {
 			return err

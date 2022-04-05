@@ -6,13 +6,23 @@ spec:
   description: The OpenShift Pipeline client `tkn` is a CLI tool that allows you to manage OpenShift Pipeline resources.
   displayName: tkn - OpenShift Pipeline Command Line Interface (CLI)
   links:
-    - href: https://testserver.com/tkn/tkn-linux-amd64-0.21.0.tar.gz
+    - href: https://testserver.com/tkn/tkn-linux-amd64-1.2.3.tar.gz
       text: Download tkn for Linux
-    - href: https://testserver.com/tkn/tkn-linux-ppc64le-0.21.0.tar.gz
+    - href: https://testserver.com/tkn/tkn-pac-linux-amd64-1.2.3.tar.gz
+      text: Download tkn-pac for Linux
+    - href: https://testserver.com/tkn/tkn-linux-ppc64le-1.2.3.tar.gz
       text: Download tkn for IBM Power
-    - href: https://testserver.com/tkn/tkn-linux-s390x-0.21.0.tar.gz
+    - href: https://testserver.com/tkn/tkn-pac-linux-ppc64le-1.2.3.tar.gz
+      text: Download tkn-pac for IBM Power
+    - href: https://testserver.com/tkn/tkn-linux-s390x-1.2.3.tar.gz
       text: Download tkn for IBM Z
-    - href: https://testserver.com/tkn/tkn-macos-amd64-0.21.0.tar.gz
+    - href: https://testserver.com/tkn/tkn-pac-linux-s390x-1.2.3.tar.gz
+      text: Download tkn-pac for IBM Z
+    - href: https://testserver.com/tkn/tkn-macos-amd64-1.2.3.tar.gz
       text: Download tkn for Mac
-    - href: https://testserver.com/tkn/tkn-windows-amd64-0.21.0.zip
+    - href: https://testserver.com/tkn/tkn-pac-macos-amd64-1.2.3.tar.gz
+      text: Download tkn-pac for Mac
+    - href: https://testserver.com/tkn/tkn-windows-amd64-1.2.3.zip
       text: Download tkn for Windows
+    - href: https://testserver.com/tkn/tkn-pac-windows-amd64-1.2.3.zip
+      text: Download tkn-pac for Windows
