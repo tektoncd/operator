@@ -47,7 +47,7 @@ spec:
     default: "latest"
   - name: PACVersion
     description: Version of Pipeline as Code (OpnenShift only)
-    default: "0.5.6"
+    default: "0.5.7"
   - name: TektonCDChainsVersion
     description: Version of TektonCD Chains Release to be packaged with this operator build
     default: "nightly"
