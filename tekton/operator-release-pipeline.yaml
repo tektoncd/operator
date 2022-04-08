@@ -46,15 +46,15 @@ spec:
     # TODO: Set default to nightly. Aug 10, 2021 - no nightly releases available for Results
     default: "latest"
   - name: PACVersion
-    description: Version of Pipeline as Code (OpnenShift only)
-    default: "0.5.3"
+    description: Version of Pipelines as Code (OpenShift only)
+    default: "0.5.7"
   - name: TektonCDChainsVersion
     description: Version of TektonCD Chains Release to be packaged with this operator build
     default: "nightly"
   - name: TektonCDHubVersion
     description: Version of TektonCD Hub Release to be packaged with this operator build
     # TODO: Set default to nightly. Mar 09, 2022 - no nightly ("latest") releases available for Hub
-    default: "v1.7.0"
+    default: "v1.7.1"
   workspaces:
   - name: workarea
     description: The workspace where the repo will be cloned.
