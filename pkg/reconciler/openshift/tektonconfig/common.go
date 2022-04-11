@@ -26,9 +26,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func createInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha1.TektonConfig, releaseVersion, component, installerSetName string) error {
+func createInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha1.TektonConfig, releaseVersion string) error {
 
-	is := makeInstallerSet(tc, installerSetName, releaseVersion)
+	is := makeInstallerSet(tc, releaseVersion)
 
 	createdIs, err := oc.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, is, metav1.CreateOptions{})
@@ -41,16 +41,16 @@ func createInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha
 	}
 
 	// Update the status of tektonConfig with created installerSet name
-	tc.Status.TektonInstallerSet[component] = createdIs.Name
+	tc.Status.TektonInstallerSet[rbacInstallerSetType] = createdIs.Name
 	tc.Status.SetVersion(releaseVersion)
 	return nil
 }
 
-func makeInstallerSet(tc *v1alpha1.TektonConfig, name, releaseVersion string) *v1alpha1.TektonInstallerSet {
+func makeInstallerSet(tc *v1alpha1.TektonConfig, releaseVersion string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(tc, tc.GetGroupVersionKind())
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			GenerateName: rbacInstalelrSetNamePrefix,
 			Labels: map[string]string{
 				v1alpha1.CreatedByKey:      createdByValue,
 				v1alpha1.InstallerSetType:  rbacInstallerSetType,
@@ -89,7 +89,7 @@ func deleteInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha
 // and if installer set which already exist is of older version then it deletes and return false to create a new
 // installer set
 func checkIfInstallerSetExist(ctx context.Context, oc versioned.Interface, relVersion string,
-	tc *v1alpha1.TektonConfig, component string) (*v1alpha1.TektonInstallerSet, error) {
+	tc *v1alpha1.TektonConfig) (*v1alpha1.TektonInstallerSet, error) {
 
 	labelSelector, err := common.LabelSelector(rbacInstallerSetSelector)
 	if err != nil {
