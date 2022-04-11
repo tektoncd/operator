@@ -101,7 +101,7 @@ func makeInstallerSet(ta *v1alpha1.TektonAddon, manifest mf.Manifest, prefix, re
 	// for all patch releases
 	if component == VersionedClusterTaskInstallerSet {
 		labels[v1alpha1.ReleaseMinorVersionKey] = getPatchVersionTrimmed(releaseVersion)
-		namePrefix = fmt.Sprintf("%s%s-", namePrefix, getFormattedVersion(releaseVersion))
+		namePrefix = fmt.Sprintf("%s%s-", namePrefix, formattedVersionMajorMinor(releaseVersion))
 	}
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
