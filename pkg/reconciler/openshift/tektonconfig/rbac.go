@@ -42,16 +42,18 @@ const (
 	PipelineRoleBinding     = "openshift-pipelines-edit"
 	// TODO: Remove this after v0.55.0 release, by following a depreciation notice
 	// --------------------
-	pipelineRoleBindingOld = "edit"
+	pipelineRoleBindingOld  = "edit"
+	rbacInstallerSetNameOld = "rbac-resources"
 	// --------------------
-	serviceCABundleConfigMap = "config-service-cabundle"
-	trustedCABundleConfigMap = "config-trusted-cabundle"
-	clusterInterceptors      = "openshift-pipelines-clusterinterceptors"
-	namespaceVersionLabel    = "openshift-pipelines.tekton.dev/namespace-reconcile-version"
-	createdByValue           = "RBAC"
-	componentNameRBAC        = "rhosp-rbac"
-	rbacInstallerSetType     = "rhosp-rbac"
-	rbacParamName            = "createRbacResource"
+	serviceCABundleConfigMap   = "config-service-cabundle"
+	trustedCABundleConfigMap   = "config-trusted-cabundle"
+	clusterInterceptors        = "openshift-pipelines-clusterinterceptors"
+	namespaceVersionLabel      = "openshift-pipelines.tekton.dev/namespace-reconcile-version"
+	createdByValue             = "RBAC"
+	componentNameRBAC          = "rhosp-rbac"
+	rbacInstallerSetType       = "rhosp-rbac"
+	rbacInstalelrSetNamePrefix = "rhosp-rbac-"
+	rbacParamName              = "createRbacResource"
 )
 
 var (
@@ -97,7 +99,11 @@ func (r *rbac) cleanUp(ctx context.Context) error {
 }
 
 func (r *rbac) EnsureRBACInstallerSet(ctx context.Context) (*v1alpha1.TektonInstallerSet, error) {
-	rbacISet, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, r.tektonConfig, componentNameRBAC)
+	if err := r.removeObsoleteRBACInstallerSet(ctx); err != nil {
+		return nil, err
+	}
+
+	rbacISet, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.version, r.tektonConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +121,7 @@ func (r *rbac) EnsureRBACInstallerSet(ctx context.Context) (*v1alpha1.TektonInst
 		return nil, err
 	}
 
-	err = createInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, r.version, componentNameRBAC, "rbac-resources")
+	err = createInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, r.version)
 	if err != nil {
 		return nil, err
 	}
@@ -702,6 +708,8 @@ func (r *rbac) removeAndUpdate(slice []metav1.OwnerReference, s int) []metav1.Ow
 	return ownerRef
 }
 
+//func (r *rbac) ensureRbacInstallerSetIsDeleted(ctx context.Context)
+
 // TODO: Remove this after v0.55.0 release, by following a depreciation notice
 // --------------------
 // cleanUpRBACNameChange will check remove ownerReference: RBAC installerset from
@@ -782,6 +790,21 @@ func (r *rbac) cleanUpRBACNameChange(ctx context.Context) error {
 			continue
 		}
 		if _, err := rbacClient.RoleBindings(nsName).Update(ctx, editRB, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// --------------------
+
+// TODO: Remove this after v0.55.0 release, by following a depreciation notice
+// --------------------
+func (r *rbac) removeObsoleteRBACInstallerSet(ctx context.Context) error {
+	isClient := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets()
+	err := isClient.Delete(ctx, rbacInstallerSetNameOld, metav1.DeleteOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
 			return err
 		}
 	}
