@@ -91,10 +91,20 @@ func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.Tekton
 	return nil
 }
 
-// To get the version in the format as in clustertask name i.e. 1-6
-func getFormattedVersion(version string) string {
-	version = strings.TrimPrefix(getPatchVersionTrimmed(version), "v")
-	return strings.Replace(version, ".", "-", -1)
+func formattedVersionMajorMinorX(version, x string) string {
+	ver := getPatchVersionTrimmed(version)
+	ver = fmt.Sprintf("%s.%s", ver, x)
+	return formattedVersionSnake(ver)
+}
+
+func formattedVersionMajorMinor(version string) string {
+	ver := getPatchVersionTrimmed(version)
+	return formattedVersionSnake(ver)
+}
+
+func formattedVersionSnake(version string) string {
+	ver := strings.TrimPrefix(version, "v")
+	return strings.Replace(ver, ".", "-", -1)
 }
 
 // To get the minor major version for label i.e. v1.6
