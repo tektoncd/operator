@@ -38,7 +38,7 @@ TEKTON_TRIGGERS_VERSION ?= latest
 TEKTON_DASHBOARD_VERSION ?= latest
 TEKTON_RESULTS_VERSION ?= v0.4.0 # latest returns an older version hence hard coding to v0.3.1 for now (tektoncd/results#138)
 PAC_VERSION ?= stable
-TEKTON_HUB_VERSION ?= v1.7.1 # latest doesn't returns any version hence hard coding to v1.7.1 for now
+TEKTON_HUB_VERSION ?= v1.7.2 # latest doesn't returns any version hence hard coding to v1.7.2 for now
 TEKTON_CHAINS_VERSION ?= latest
 
 # TODO: after updating go version to 1.17 uncommnent the line below to install latest version of ko

@@ -38,13 +38,12 @@ To install Tekton Hub on your cluster follow steps as given below:
 
 - Commit the changes and push the changes to your fork
 
-
 2. Create the secrets for the API before we install Tekton Hub. By default, Tekton Hub expects this secret to have the
    following properties:
 
     - namespace: TargetNamespace defined in TektonHub CR at the time of applying. If nothing is specified then based on
       platform create the secrets. `openshift-pipelines` in case of OpenShift, `tekton-pipelines` in case of Kubernetes.
-    - name: `api`
+    - name: `tekton-hub-api`
     - contains the fields:
 
         - `GH_CLIENT_ID=<github-client-id>`
@@ -92,8 +91,8 @@ To install Tekton Hub on your cluster follow steps as given below:
 
     ```sh
     $ kubectl get tektonhub.operator.tekton.dev
-    NAME   VERSION   READY   REASON   APIURL
-    hub    v1.6.0    True             https://api.route.url
+    NAME   VERSION   READY   REASON   APIURL                  UIURL
+    hub    v1.6.0    True             https://api.route.url   https://ui.route.url
     ```
 
 [hub]: https://github.com/tektoncd/hub
