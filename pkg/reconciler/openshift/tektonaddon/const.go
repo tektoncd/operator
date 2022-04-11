@@ -20,6 +20,7 @@ const (
 	ClusterTaskInstallerSet            = "ClusterTask"
 	CommunityClusterTaskInstallerSet   = "CommunityClusterTask"
 	VersionedClusterTaskInstallerSet   = "VersionedClusterTask"
+	versionedClusterTaskPatchChar      = "0"
 	PipelinesTemplateInstallerSet      = "PipelinesTemplate"
 	TriggersResourcesInstallerSet      = "TriggersResources"
 	ConsoleCLIInstallerSet             = "ConsoleCLI"
