@@ -160,7 +160,7 @@ func setVersionedNames(operatorVersion string) mf.Transformer {
 			return nil
 		}
 		name := u.GetName()
-		formattedVersion := getFormattedVersion(operatorVersion)
+		formattedVersion := formattedVersionMajorMinorX(operatorVersion, versionedClusterTaskPatchChar)
 		name = fmt.Sprintf("%s-%s", name, formattedVersion)
 		u.SetName(name)
 		return nil
