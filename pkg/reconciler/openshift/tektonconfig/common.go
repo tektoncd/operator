@@ -50,7 +50,7 @@ func makeInstallerSet(tc *v1alpha1.TektonConfig, releaseVersion string) *v1alpha
 	ownerRef := *metav1.NewControllerRef(tc, tc.GetGroupVersionKind())
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: rbacInstalelrSetNamePrefix,
+			GenerateName: rbacInstallerSetNamePrefix,
 			Labels: map[string]string{
 				v1alpha1.CreatedByKey:      createdByValue,
 				v1alpha1.InstallerSetType:  rbacInstallerSetType,
@@ -66,19 +66,16 @@ func makeInstallerSet(tc *v1alpha1.TektonConfig, releaseVersion string) *v1alpha
 }
 
 func deleteInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha1.TektonConfig, component string) error {
-
-	compInstallerSet, ok := tc.Status.TektonInstallerSet[component]
-	if !ok || compInstallerSet == "" {
-		return nil
-	}
-
-	// delete the installer set
-	err := oc.OperatorV1alpha1().TektonInstallerSets().
-		Delete(ctx, tc.Status.TektonInstallerSet[component], metav1.DeleteOptions{})
-	if err != nil && !errors.IsNotFound(err) {
+	labelSelector, err := common.LabelSelector(rbacInstallerSetSelector)
+	if err != nil {
 		return err
 	}
-
+	err = oc.OperatorV1alpha1().TektonInstallerSets().DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return err
+	}
 	// clear the name of installer set from TektonConfig status
 	delete(tc.Status.TektonInstallerSet, component)
 

@@ -52,7 +52,7 @@ const (
 	createdByValue             = "RBAC"
 	componentNameRBAC          = "rhosp-rbac"
 	rbacInstallerSetType       = "rhosp-rbac"
-	rbacInstalelrSetNamePrefix = "rhosp-rbac-"
+	rbacInstallerSetNamePrefix = "rhosp-rbac-"
 	rbacParamName              = "createRbacResource"
 )
 
@@ -707,8 +707,6 @@ func (r *rbac) removeAndUpdate(slice []metav1.OwnerReference, s int) []metav1.Ow
 	ownerRef = append(ownerRef, r.ownerRef)
 	return ownerRef
 }
-
-//func (r *rbac) ensureRbacInstallerSetIsDeleted(ctx context.Context)
 
 // TODO: Remove this after v0.55.0 release, by following a depreciation notice
 // --------------------
