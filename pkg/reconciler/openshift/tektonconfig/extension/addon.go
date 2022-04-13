@@ -20,111 +20,104 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"reflect"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"knative.dev/pkg/test/logging"
 )
 
-func CreateAddonCR(ctx context.Context, instance v1alpha1.TektonComponent, client operatorv1alpha1.OperatorV1alpha1Interface) error {
-	configInstance := instance.(*v1alpha1.TektonConfig)
-	if _, err := ensureTektonAddonExists(ctx, client.TektonAddons(), configInstance); err != nil {
-		return errors.New(err.Error())
+func EnsureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
+	taCR, err := GetAddon(ctx, clients, v1alpha1.AddonResourceName)
+
+	if err != nil {
+		if !apierrs.IsNotFound(err) {
+			return nil, err
+		}
+		if _, err = createAddon(ctx, clients, config); err != nil {
+			return nil, err
+		}
+		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
-	if _, err := waitForTektonAddonState(ctx, client.TektonAddons(), v1alpha1.AddonResourceName,
-		isTektonAddonReady); err != nil {
-		log.Println("TektonAddon is not in ready state: ", err)
-		return err
+
+	taCR, err = updateAddon(ctx, taCR, config, clients)
+	if err != nil {
+		return nil, err
 	}
-	return nil
+
+	ok, err := isTektonAddonReady(taCR, err)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, v1alpha1.RECONCILE_AGAIN_ERR
+	}
+
+	return taCR, err
 }
 
-func ensureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
-	taCR, err := GetAddon(ctx, clients, v1alpha1.AddonResourceName)
-	if err == nil {
-		// if the addon spec is changed then update the instance
-		updated := false
-
-		if config.Spec.TargetNamespace != taCR.Spec.TargetNamespace {
-			taCR.Spec.TargetNamespace = config.Spec.TargetNamespace
-			updated = true
-		}
-
-		if !reflect.DeepEqual(config.Spec.Addon, taCR.Spec.Addon) {
-			taCR.Spec.Addon = config.Spec.Addon
-			updated = true
-		}
-
-		if !reflect.DeepEqual(taCR.Spec.Config, config.Spec.Config) {
-			taCR.Spec.Config = config.Spec.Config
-			updated = true
-		}
-
-		if taCR.ObjectMeta.OwnerReferences == nil {
-			ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
-			taCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
-			updated = true
-		}
-
-		if updated {
-			return clients.Update(ctx, taCR, metav1.UpdateOptions{})
-		}
-
-		return taCR, err
-	}
-
+func createAddon(ctx context.Context, clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
 	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 
-	if apierrs.IsNotFound(err) {
-		taCR = &v1alpha1.TektonAddon{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            v1alpha1.AddonResourceName,
-				OwnerReferences: []metav1.OwnerReference{ownerRef},
+	taCR := &v1alpha1.TektonAddon{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            v1alpha1.AddonResourceName,
+			OwnerReferences: []metav1.OwnerReference{ownerRef},
+		},
+		Spec: v1alpha1.TektonAddonSpec{
+			CommonSpec: v1alpha1.CommonSpec{
+				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Spec: v1alpha1.TektonAddonSpec{
-				CommonSpec: v1alpha1.CommonSpec{
-					TargetNamespace: config.Spec.TargetNamespace,
-				},
-				Addon: v1alpha1.Addon{
-					Params: config.Spec.Addon.Params,
-				},
-				Config: config.Spec.Config,
+			Addon: v1alpha1.Addon{
+				Params: config.Spec.Addon.Params,
 			},
-		}
-		return clients.Create(ctx, taCR, metav1.CreateOptions{})
+			Config: config.Spec.Config,
+		},
 	}
-	return taCR, err
+	if _, err := clients.Create(ctx, taCR, metav1.CreateOptions{}); err != nil {
+		return nil, err
+	}
+	return taCR, nil
 }
 
 func GetAddon(ctx context.Context, clients op.TektonAddonInterface, name string) (*v1alpha1.TektonAddon, error) {
 	return clients.Get(ctx, name, metav1.GetOptions{})
 }
 
-// waitForTektonAddonState polls the status of the TektonAddon called name
-// from client every `interval` until `inState` returns `true` indicating it
-// is done, returns an error or timeout.
-func waitForTektonAddonState(ctx context.Context, clients op.TektonAddonInterface, name string,
-	inState func(s *v1alpha1.TektonAddon, err error) (bool, error)) (*v1alpha1.TektonAddon, error) {
-	span := logging.GetEmitableSpan(ctx, fmt.Sprintf("WaitForTektonAddonState/%s/%s", name, "TektonAddonIsReady"))
-	defer span.End()
+func updateAddon(ctx context.Context, taCR *v1alpha1.TektonAddon, config *v1alpha1.TektonConfig,
+	clients op.TektonAddonInterface) (*v1alpha1.TektonAddon, error) {
+	// if the addon spec is changed then update the instance
+	updated := false
 
-	var lastState *v1alpha1.TektonAddon
-	waitErr := wait.PollImmediate(common.Interval, common.Timeout, func() (bool, error) {
-		lastState, err := clients.Get(ctx, name, metav1.GetOptions{})
-		return inState(lastState, err)
-	})
-
-	if waitErr != nil {
-		return lastState, fmt.Errorf("TektonAddon %s is not in desired state, got: %+v: %w: For more info Please check TektonAddon CR status", name, lastState, waitErr)
+	if config.Spec.TargetNamespace != taCR.Spec.TargetNamespace {
+		taCR.Spec.TargetNamespace = config.Spec.TargetNamespace
+		updated = true
 	}
-	return lastState, nil
+
+	if !reflect.DeepEqual(config.Spec.Addon, taCR.Spec.Addon) {
+		taCR.Spec.Addon = config.Spec.Addon
+		updated = true
+	}
+
+	if !reflect.DeepEqual(taCR.Spec.Config, config.Spec.Config) {
+		taCR.Spec.Config = config.Spec.Config
+		updated = true
+	}
+
+	if taCR.ObjectMeta.OwnerReferences == nil {
+		ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
+		taCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
+		updated = true
+	}
+
+	if updated {
+		return clients.Update(ctx, taCR, metav1.UpdateOptions{})
+	}
+
+	return taCR, nil
 }
 
 // isTektonAddonReady will check the status conditions of the TektonAddon and return true if the TektonAddon is ready.
