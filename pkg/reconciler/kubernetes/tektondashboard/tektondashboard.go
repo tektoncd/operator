@@ -143,6 +143,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 	}
 	td.Status.MarkDependenciesInstalled()
 
+	// Mark TektonDashboard Instance as Not Ready if an upgrade is needed
+	if err := r.markUpgrade(ctx, td); err != nil {
+		return err
+	}
+
 	if err := r.extension.PreReconcile(ctx, td); err != nil {
 		td.Status.MarkPreReconcilerFailed(fmt.Sprintf("PreReconciliation failed: %s", err.Error()))
 		return err
@@ -363,4 +368,29 @@ func (r *Reconciler) makeInstallerSet(td *v1alpha1.TektonDashboard, manifest mf.
 			Manifests: manifest.Resources(),
 		},
 	}
+}
+
+func (r *Reconciler) markUpgrade(ctx context.Context, td *v1alpha1.TektonDashboard) error {
+	labels := td.GetLabels()
+	ver, ok := labels[v1alpha1.ReleaseVersionKey]
+	if ok && ver == r.operatorVersion {
+		return nil
+	}
+	if ok && ver != r.operatorVersion {
+		td.Status.MarkInstallerSetNotReady(v1alpha1.UpgradePending)
+		td.Status.MarkPreReconcilerFailed(v1alpha1.UpgradePending)
+		td.Status.MarkPostReconcilerFailed(v1alpha1.UpgradePending)
+		td.Status.MarkNotReady(v1alpha1.UpgradePending)
+	}
+	if labels == nil {
+		labels = map[string]string{}
+	}
+	labels[v1alpha1.ReleaseVersionKey] = r.operatorVersion
+	td.SetLabels(labels)
+
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonDashboards().Update(ctx,
+		td, metav1.UpdateOptions{}); err != nil {
+		return err
+	}
+	return v1alpha1.RECONCILE_AGAIN_ERR
 }

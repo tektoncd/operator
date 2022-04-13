@@ -18,6 +18,7 @@ package tektonconfig
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	mf "github.com/manifestival/manifestival"
@@ -100,12 +101,13 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	configInstance := comp.(*v1alpha1.TektonConfig)
 
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
-		if err := extension.CreateAddonCR(ctx, comp, oe.operatorClientSet.OperatorV1alpha1()); err != nil {
-			return err
+		if _, err := extension.EnsureTektonAddonExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), configInstance); err != nil {
+			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("TektonAddon: %s", err.Error()))
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
 
-	if configInstance.Spec.Profile == v1alpha1.ProfileBasic || configInstance.Spec.Profile == v1alpha1.ProfileLite {
+	if configInstance.Spec.Profile == v1alpha1.ProfileLite || configInstance.Spec.Profile == v1alpha1.ProfileBasic {
 		return extension.TektonAddonCRDelete(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), v1alpha1.AddonResourceName)
 	}
 
