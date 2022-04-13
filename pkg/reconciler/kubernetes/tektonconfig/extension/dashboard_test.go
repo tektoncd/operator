@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/operator/pkg/client/injection/client/fake"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ts "knative.dev/pkg/reconciler/testing"
 )
 
@@ -30,7 +31,41 @@ func TestTektonDashboardCreateAndDeleteCR(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
 	tConfig := pipeline.GetTektonConfig()
-	err := CreateDashboardCR(ctx, tConfig, c.OperatorV1alpha1())
+	_, err := EnsureTektonDashboardExists(ctx, c.OperatorV1alpha1().TektonDashboards(), tConfig)
+	util.AssertNotEqual(t, err, nil)
+	err = TektonDashboardCRDelete(ctx, c.OperatorV1alpha1().TektonDashboards(), v1alpha1.DashboardResourceName)
+	util.AssertEqual(t, err, nil)
+}
+
+func TestTektonDashboardUpdate(t *testing.T) {
+	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
+	c := fake.Get(ctx)
+	tConfig := pipeline.GetTektonConfig()
+	_, err := createDashboard(ctx, c.OperatorV1alpha1().TektonDashboards(), tConfig)
+	util.AssertEqual(t, err, nil)
+	// to update dashboard instance
+	tConfig = &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1alpha1.ConfigResourceName,
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Profile: "all",
+			CommonSpec: v1alpha1.CommonSpec{
+				TargetNamespace: "tekton-pipelines1",
+			},
+			Dashboard: v1alpha1.Dashboard{
+				DashboardProperties: v1alpha1.DashboardProperties{
+					Readonly: false,
+				},
+			},
+			Config: v1alpha1.Config{
+				NodeSelector: map[string]string{
+					"key": "value",
+				},
+			},
+		},
+	}
+	_, err = EnsureTektonDashboardExists(ctx, c.OperatorV1alpha1().TektonDashboards(), tConfig)
 	util.AssertNotEqual(t, err, nil)
 	err = TektonDashboardCRDelete(ctx, c.OperatorV1alpha1().TektonDashboards(), v1alpha1.DashboardResourceName)
 	util.AssertEqual(t, err, nil)

@@ -18,6 +18,7 @@ package tektonconfig
 
 import (
 	"context"
+	"fmt"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -47,7 +48,10 @@ func (oe kubernetesExtension) PostReconcile(ctx context.Context, comp v1alpha1.T
 	configInstance := comp.(*v1alpha1.TektonConfig)
 
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
-		return extension.CreateDashboardCR(ctx, comp, oe.operatorClientSet.OperatorV1alpha1())
+		if _, err := extension.EnsureTektonDashboardExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonDashboards(), configInstance); err != nil {
+			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("TektonDashboard: %s", err.Error()))
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
 	}
 
 	if configInstance.Spec.Profile == v1alpha1.ProfileLite || configInstance.Spec.Profile == v1alpha1.ProfileBasic {
