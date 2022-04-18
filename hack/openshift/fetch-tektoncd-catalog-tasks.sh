@@ -108,7 +108,7 @@ create_dir_or_die() {
 
 main() {
 
-  local dest_dir=${1:-''}
+  local dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/02-clustertasks/source_external'}
   [[ -z "$dest_dir"  ]] && usage "missing destination directory"
   shift
 
