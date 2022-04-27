@@ -20,5 +20,5 @@ var (
 	TektonPipelineDeploymentLabel  = "app.kubernetes.io/part-of=tekton-pipelines"
 	TektonTriggerDeploymentLabel   = "app.kubernetes.io/part-of=tekton-triggers"
 	TektonDashboardDeploymentLabel = "app.kubernetes.io/part-of=tekton-dashboard"
-	TektonChainDeploymentLabel     = "app.kubernetes.io/name=tekton-pipelines"
+	TektonChainDeploymentLabel     = "app.kubernetes.io/part-of=tekton-chains"
 )
