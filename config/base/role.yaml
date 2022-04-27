@@ -387,3 +387,13 @@ rules:
   - list
   - update
   - watch
+- apiGroups:
+  - resolution.tekton.dev
+  resources:
+  - resolutionrequests
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
