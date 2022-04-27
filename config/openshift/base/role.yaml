@@ -356,3 +356,13 @@ rules:
   - "namespaces/finalizers"
   verbs:
   - "update"
+- apiGroups:
+  - resolution.tekton.dev
+  resources:
+  - resolutionrequests
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
