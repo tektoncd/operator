@@ -77,7 +77,7 @@ image-substitutions:
       containerName: openshift-pipelines-operator
       envKeys:
       - IMAGE_PIPELINES_ARG__NOP_IMAGE
-- image: registry.redhat.io/ubi8/ubi-minimal@sha256:574f201d7ed185a9932c91cef5d397f5298dff9df08bc2ebb266c6d1e6284cd1
+- image: registry.redhat.io/ubi8/ubi-minimal@sha256:eb98682661cc5fe83bbe583af9d55a90d698cfc0d14af5b83e4568c3e26b4516
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
@@ -112,21 +112,21 @@ image-substitutions:
       containerName: openshift-pipelines-operator
       envKeys:
       - IMAGE_TRIGGERS_ARG__EL_IMAGE
-- image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:9bc475db01697e6d6eac2e47a655971cbee7f821684aa48f30729fb49976559d
+- image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:87b02aba2a5ff86900c1f13c6de8d4f8091fa0bf36afbb4a582f8f76189aed80
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
       containerName: openshift-pipelines-operator
       envKeys:
       - IMAGE_ADDONS_PARAM_KN_IMAGE
-- image: registry.redhat.io/rhel8/skopeo@sha256:cc58da50c3842f5f2a4ba8781b60f6052919a5555a000cb4eb18a0bd0241b2b3
+- image: registry.redhat.io/rhel8/skopeo@sha256:60ac283d14e1e2870e37a10954e7a14b41372bb929a5b134455c3e36516f030a
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
       containerName: openshift-pipelines-operator
       envKeys:
       - IMAGE_ADDONS_SKOPEO_COPY
-- image: registry.redhat.io/rhel8/buildah@sha256:23fb7971ea6ac4aaaaa1139473a602df0df19222a3b5a76b551b2b9ddd92e927
+- image: registry.redhat.io/rhel8/buildah@sha256:30fc759d3453a0f9aba2164a0ea7b1aacd65c801abb07f3478ebd4ed7a90aa8f
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
@@ -141,7 +141,7 @@ image-substitutions:
       envKeys:
       - IMAGE_ADDONS_GENERATE
 
-- image: registry.redhat.io/ubi8/ubi-minimal@sha256:574f201d7ed185a9932c91cef5d397f5298dff9df08bc2ebb266c6d1e6284cd1
+- image: registry.redhat.io/ubi8/ubi-minimal@sha256:eb98682661cc5fe83bbe583af9d55a90d698cfc0d14af5b83e4568c3e26b4516
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
@@ -214,15 +214,15 @@ image-substitutions:
 # add third party images which are not replaced by operator
 # but pulled directly by tasks here
 defaultRelatedImages:
-- image: registry.redhat.io/rhel8/buildah@sha256:23fb7971ea6ac4aaaaa1139473a602df0df19222a3b5a76b551b2b9ddd92e927
+- image: registry.redhat.io/rhel8/buildah@sha256:30fc759d3453a0f9aba2164a0ea7b1aacd65c801abb07f3478ebd4ed7a90aa8f
   name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-- image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:9bc475db01697e6d6eac2e47a655971cbee7f821684aa48f30729fb49976559d
+- image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:87b02aba2a5ff86900c1f13c6de8d4f8091fa0bf36afbb4a582f8f76189aed80
   name: IMAGE_ADDONS_PARAM_KN_IMAGE
-- image: registry.redhat.io/rhel8/skopeo@sha256:cc58da50c3842f5f2a4ba8781b60f6052919a5555a000cb4eb18a0bd0241b2b3
+- image: registry.redhat.io/rhel8/skopeo@sha256:60ac283d14e1e2870e37a10954e7a14b41372bb929a5b134455c3e36516f030a
   name: IMAGE_ADDONS_SKOPEO_COPY
 - image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
   name: IMAGE_ADDONS_GENERATE
-- image: registry.redhat.io/ubi8/ubi-minimal@sha256:574f201d7ed185a9932c91cef5d397f5298dff9df08bc2ebb266c6d1e6284cd1
+- image: registry.redhat.io/ubi8/ubi-minimal@sha256:eb98682661cc5fe83bbe583af9d55a90d698cfc0d14af5b83e4568c3e26b4516
   name: IMAGE_ADDONS_MVN_SETTINGS
 #- image: "" ##<imagename>:<tag> or <imagename>@<sha>
 #  name: "" # ENV key name value
