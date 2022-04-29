@@ -105,7 +105,11 @@ release_yaml_pac() {
     rm -rf ${dirPath} || true
     mkdir -p ${dirPath} || true
 
-    url="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/${version}/release.yaml"
+    if [[ ${version} == "stable" ]]; then
+      url="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/stable/release.yaml"
+    else
+      url="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/release-${version}/release.yaml"
+    fi
 
     dest=${dirPath}/${fileName}.yaml
     http_response=$(curl -s -o ${dest} -w "%{http_code}" ${url})
