@@ -49,6 +49,7 @@ const (
 	ReleaseMinorVersionKey = "operator.tekton.dev/release-minor-version"
 	TargetNamespaceKey     = "operator.tekton.dev/target-namespace"
 	InstallerSetType       = "operator.tekton.dev/type"
+	LabelOperandName       = "operator.tekton.dev/operand-name"
 
 	UpgradePending = "upgrade pending"
 
@@ -101,12 +102,18 @@ var (
 )
 
 var (
-	PipelineResourceName  = "pipeline"
-	TriggerResourceName   = "trigger"
-	DashboardResourceName = "dashboard"
-	AddonResourceName     = "addon"
-	ConfigResourceName    = "config"
-	ResultResourceName    = "result"
-	HubResourceName       = "hub"
-	ChainResourceName     = "chain"
+	ConfigResourceName       = "config"
+	PipelineResourceName     = "pipeline"
+	OperandTektoncdPipeline  = "tektoncd-pipelines"
+	TriggerResourceName      = "trigger"
+	OperandTektoncdTriggers  = "tektoncd-triggers"
+	DashboardResourceName    = "dashboard"
+	OperandTektoncdDashboard = "tektoncd-dashboard"
+	AddonResourceName        = "addon"
+	ResultResourceName       = "result"
+	OperandTektoncdResults   = "tektoncd-results"
+	HubResourceName          = "hub"
+	OperandTektoncdHub       = "tektoncd-hub"
+	ChainResourceName        = "chain"
+	OperandTektoncdChains    = "tektoncd-chains"
 )

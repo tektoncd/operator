@@ -387,6 +387,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	// adding extension's transformers first to run them before `extra` transformers
 	trns := r.extension.Transformers(instance)
 	extra := []mf.Transformer{
+		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdPipeline),
 		common.AddConfigMapValues(FeatureFlag, pipeline.Spec.PipelineProperties),
 		common.AddConfigMapValues(ConfigDefaults, pipeline.Spec.OptionalPipelineProperties),
 		common.AddConfigMapValues(ConfigMetrics, pipeline.Spec.PipelineMetricsProperties),
