@@ -18,6 +18,7 @@ package tektonaddon
 
 import (
 	"context"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 	"os"
 	"path/filepath"
 	"strings"
@@ -76,7 +77,9 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 	pacManifest = pacManifest.Filter(mf.Not(mf.ByKind("Namespace")))
 
 	// Run transformers
-	var tfs []mf.Transformer
+	tfs := []mf.Transformer{
+		common.InjectOperandNameLabelOverwriteExisting(openshift.OperandOpenShiftPipelineAsCode),
+	}
 	// don't run the transformer if no replace images are found
 	if triggerTemplateSteps := pacTriggerTemplateStepImages(); len(triggerTemplateSteps) > 0 {
 		tfs = append(tfs, replacePACTriggerTemplateImages(triggerTemplateSteps))

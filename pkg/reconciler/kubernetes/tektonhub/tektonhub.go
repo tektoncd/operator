@@ -436,6 +436,7 @@ func (r *Reconciler) setupAndCreateInstallerSet(ctx context.Context, manifestLoc
 	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.HubImagePrefix))
 	trans := r.extension.Transformers(th)
 	extra := []mf.Transformer{
+		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdPipeline),
 		mf.InjectOwner(th),
 		mf.InjectNamespace(namespace),
 		common.DeploymentImages(images),

@@ -325,6 +325,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	// adding extension's transformers first to run them before `extra` transformers
 	trns := r.extension.Transformers(trigger)
 	extra := []mf.Transformer{
+		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdTriggers),
 		common.AddConfigMapValues(ConfigDefaults, trigger.Spec.OptionalTriggersProperties),
 		common.AddConfigMapValues(FeatureFlag, trigger.Spec.TriggersProperties),
 		common.ApplyProxySettings,

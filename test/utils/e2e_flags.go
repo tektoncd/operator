@@ -16,9 +16,18 @@ limitations under the License.
 
 package utils
 
-var (
-	TektonPipelineDeploymentLabel  = "app.kubernetes.io/part-of=tekton-pipelines"
-	TektonTriggerDeploymentLabel   = "app.kubernetes.io/part-of=tekton-triggers"
-	TektonDashboardDeploymentLabel = "app.kubernetes.io/part-of=tekton-dashboard"
-	TektonChainDeploymentLabel     = "app.kubernetes.io/part-of=tekton-chains"
+import (
+	"fmt"
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 )
+
+var (
+	TektonPipelineDeploymentLabel  = labelString(v1alpha1.OperandTektoncdPipeline)
+	TektonTriggerDeploymentLabel   = labelString(v1alpha1.OperandTektoncdTriggers)
+	TektonDashboardDeploymentLabel = labelString(v1alpha1.OperandTektoncdDashboard)
+	TektonChainDeploymentLabel     = labelString(v1alpha1.OperandTektoncdChains)
+)
+
+func labelString(operandName string) string {
+	return fmt.Sprintf("%s=%s", v1alpha1.LabelOperandName, operandName)
+}
