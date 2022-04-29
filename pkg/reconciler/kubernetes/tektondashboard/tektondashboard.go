@@ -308,6 +308,7 @@ func (r *Reconciler) updateTektonDashboardStatus(ctx context.Context, td *v1alph
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	instance := comp.(*v1alpha1.TektonDashboard)
 	extra := []mf.Transformer{
+		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdDashboard),
 		common.ApplyProxySettings,
 		common.AddConfiguration(instance.Spec.Config),
 	}

@@ -19,6 +19,7 @@ package tektonaddon
 import (
 	"context"
 	"fmt"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 	"os"
 	"path/filepath"
 
@@ -212,6 +213,13 @@ func applyAddons(manifest *mf.Manifest, subpath string) error {
 func (r *Reconciler) addonTransform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent, addnTfs ...mf.Transformer) error {
 	instance := comp.(*v1alpha1.TektonAddon)
 	addonTfs := []mf.Transformer{
+		// using common.InjectOperandNameLabelPreserveExisting instead of common.InjectLabelOverwriteExisting
+		// to highlight that TektonAddon is a basket of various operands(components)
+		// note: using common.InjectLabelOverwriteExisting here  doesnot affect the ability to
+		// use InjectOperandNameLabelPreserveExisting or InjectLabelOverwriteExisting again in the transformer chain
+		// However, it is recomended to use InjectOperandNameLabelPreserveExisting here (in Addons) as we cannot be sure
+		// about order of future addition of transformers in this reconciler or in sub functions which take care of various addons
+		common.InjectOperandNameLabelPreserveExisting(openshift.OperandOpenShiftPipelinesAddons),
 		injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
 	}
 	addonTfs = append(addonTfs, addnTfs...)

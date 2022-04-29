@@ -307,6 +307,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	instance := comp.(*v1alpha1.TektonResult)
 	targetNs := comp.GetSpec().GetTargetNamespace()
 	extra := []mf.Transformer{
+		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdPipeline),
 		common.ApplyProxySettings,
 		common.ReplaceNamespaceInDeploymentArgs(targetNs),
 		common.ReplaceNamespaceInDeploymentEnv(targetNs),

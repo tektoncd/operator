@@ -313,6 +313,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	instance := comp.(*v1alpha1.TektonChain)
 	chainImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ChainsImagePrefix))
 	extra := []mf.Transformer{
+		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdChains),
 		common.ApplyProxySettings,
 		common.DeploymentImages(chainImages),
 		common.AddConfiguration(instance.Spec.Config),
