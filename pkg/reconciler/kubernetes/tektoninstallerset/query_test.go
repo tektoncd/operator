@@ -46,7 +46,7 @@ func TestCurrentInstallerSetName(t *testing.T) {
 
 	iSets := v1alpha1.TektonInstallerSetList{
 		Items: []v1alpha1.TektonInstallerSet{
-			v1alpha1.TektonInstallerSet{},
+			{},
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipeline",
@@ -73,7 +73,7 @@ func TestCurrentInstallerSetNameNoMatching(t *testing.T) {
 
 	iSets := v1alpha1.TektonInstallerSetList{
 		Items: []v1alpha1.TektonInstallerSet{
-			v1alpha1.TektonInstallerSet{},
+			{},
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipeline",
@@ -100,7 +100,7 @@ func TestCurrentInstallerSetNameWithDuplicates(t *testing.T) {
 
 	iSets := v1alpha1.TektonInstallerSetList{
 		Items: []v1alpha1.TektonInstallerSet{
-			v1alpha1.TektonInstallerSet{},
+			{},
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipeline-1",
@@ -110,7 +110,7 @@ func TestCurrentInstallerSetNameWithDuplicates(t *testing.T) {
 					},
 				},
 			},
-			v1alpha1.TektonInstallerSet{
+			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "pipeline-2",
 					Labels: map[string]string{
