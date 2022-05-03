@@ -65,7 +65,7 @@ func replaceAllowed(preserveExisting bool, existingLabels map[string]string, key
 		return true
 	}
 	_, ok := existingLabels[key]
-	
+
 	// if key exists (ok = true) then donot allow replace, hence return false
 	// else if key not exists (ok = false) the allow replace, hence return true
 	// ie, return !ok

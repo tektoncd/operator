@@ -45,8 +45,8 @@ func TestGetPrunableNamespaces(t *testing.T) {
 		Keep:      &keep,
 		Schedule:  scheduleCommon,
 	}
-	expected1 := map[string]struct{}{"ns-one": struct{}{}, "ns-two": struct{}{}, "ns-three": struct{}{}}
-	expected2 := map[string]struct{}{"ns-four": struct{}{}}
+	expected1 := map[string]struct{}{"ns-one": {}, "ns-two": {}, "ns-three": {}}
+	expected2 := map[string]struct{}{"ns-four": {}}
 
 	client := fake.NewSimpleClientset(
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "openshift-api"}},
