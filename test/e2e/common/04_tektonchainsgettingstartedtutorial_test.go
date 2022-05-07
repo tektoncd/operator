@@ -23,17 +23,18 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"testing"
+
 	"github.com/tektoncd/operator/test/client"
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/parse"
-	"io/ioutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 // TestTektonChainDeployment verifies the TektonChain creation, deployment recreation, and TektonChain deletion.
@@ -209,5 +210,11 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	})
+
+	// Delete the TektonPipeline CR instance to see if all resources will be removed
+	t.Run("delete-pipeline", func(t *testing.T) {
+		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
+		resources.TektonPipelineCRDelete(t, clients, crNames)
 	})
 }

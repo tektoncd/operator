@@ -18,7 +18,9 @@ package utils
 
 import (
 	"fmt"
+
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 )
 
 var (
@@ -26,6 +28,8 @@ var (
 	TektonTriggerDeploymentLabel   = labelString(v1alpha1.OperandTektoncdTriggers)
 	TektonDashboardDeploymentLabel = labelString(v1alpha1.OperandTektoncdDashboard)
 	TektonChainDeploymentLabel     = labelString(v1alpha1.OperandTektoncdChains)
+	TektonResultsDeploymentLabel   = labelString(v1alpha1.OperandTektoncdResults)
+	TektonAddonDeploymentLabel     = labelString(openshift.OperandOpenShiftPipelinesAddons)
 )
 
 func labelString(operandName string) string {
