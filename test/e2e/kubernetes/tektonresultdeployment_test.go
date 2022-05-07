@@ -55,7 +55,7 @@ func TestTektonResultDeployment(t *testing.T) {
 	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownResult(clients, crNames.TektonResult) })
-	defer utils.TearDownResult(clients, crNames.TektonTrigger)
+	defer utils.TearDownResult(clients, crNames.TektonResult)
 
 	resources.EnsureNoTektonConfigInstance(t, clients, crNames)
 
