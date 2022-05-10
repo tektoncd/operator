@@ -160,13 +160,23 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 }
 
 func (i *installer) EnsureDeploymentResources() error {
-
+	reconcileAgain := false
 	for _, d := range i.Manifest.Filter(mf.Any(deploymentPred)).Resources() {
 		if err := i.ensureDeployment(&d); err != nil {
+			// if error is RECONCILER_AGAIN_ERR, then
+			// continue with rest of the Deployments in the manifest list
+			if err == v1alpha1.RECONCILE_AGAIN_ERR {
+				reconcileAgain = true
+				continue
+			}
 			return err
 		}
 	}
-
+	// if atleast 1 instance in the loop returned RECONCILE_AGAIN_ERR, then
+	// return RECONCILE_AGAIN_ERR
+	if reconcileAgain {
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
 	return nil
 }
 
