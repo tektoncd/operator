@@ -35,7 +35,7 @@ TRIGGERS ?= latest
 DASHBOARD ?= latest
 RESULTS ?= latest
 
-$(BIN)/ko: PACKAGE=github.com/google/ko/cmd/ko
+$(BIN)/ko: PACKAGE=github.com/google/ko
 
 KUSTOMIZE = $(or ${KUSTOMIZE_BIN},${KUSTOMIZE_BIN},$(BIN)/kustomize)
 $(BIN)/kustomize: | $(BIN) ; $(info $(M) getting kustomize)
