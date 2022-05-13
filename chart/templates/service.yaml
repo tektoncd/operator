@@ -1,0 +1,56 @@
+---
+# Service used by the tekton-operator to expose its metrics
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tekton-operator.fullname" . }}
+  labels:
+    {{- include "tekton-operator.labels" . | nindent 4 }}
+spec:
+  ports:
+    - name: http-metrics
+      port: 9090
+      protocol: TCP
+      targetPort: 9090
+  selector:
+  {{- include "tekton-operator.operator.selectorLabels" . | nindent 4 }}
+---
+# Service used to expose the webhook endpoint
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "tekton-operator.fullname" . }}-webhook
+  labels:
+    {{- include "tekton-operator.labels" . | nindent 4 }}
+spec:
+  ports:
+    - name: https-webhook
+      port: 443
+      targetPort: 8443
+  selector:
+  {{- include "tekton-operator.webhook.selectorLabels" . | nindent 4 }}
+---
+{{- if .Values.service.createServiceMonitor -}}
+# ServiceMonitor for the tekton-operator, allows Prometheus to auto-discover the metrics endpoint
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  {{- if .Values.openshift.enabled }}
+  annotations:
+    networkoperator.openshift.io/ignore-errors: ""
+  {{- end }}
+  name: {{ include "tekton-operator.fullname" . }}
+  labels:
+    {{- include "tekton-operator.labels" . | nindent 4 }}
+spec:
+  endpoints:
+    - interval: 10s
+      port: http-metrics
+  jobLabel: name
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+    {{- include "tekton-operator.operator.selectorLabels" . | nindent 4 }}
+{{- end }}
