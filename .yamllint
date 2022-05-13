@@ -1,6 +1,7 @@
 ignore: |
   /vendor
   test/**/**
+  /chart/templates/**
 
 rules:
   braces: enable
