@@ -1,0 +1,99 @@
+## Default values.yaml for tekton-operator Helm chart
+
+## Override the full name of this Helm release
+nameOverride: ""
+
+## Choose between the vanilla Kubernetes flavor and the Openshift flavor of this Helm chart
+## Container images, RBAC resources and operator settings will be adjusted automatically,
+## unless explicitly overridden by a Helm value.
+openshift:
+  enabled: false
+
+## If the Tekton-operator CRDs should automatically be installed and upgraded
+## Setting this to true will cause a cascade deletion of all Tekton resources when you uninstall the chart - danger!
+installCRDs: false
+
+## Control the creation of RBAC resources (Serviceaccount, Role, ClusterRole, ClusterRoleBinding)
+rbac:
+  create: true
+  # Annotations to add to the RBAC resources
+  annotations: {}
+  serviceAccount:
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+
+## Configuration for the tekton-operator pod
+operator:
+  # Internal name of the operator. Default value depends on the flavor (k8s/openshift).
+  operatorName: ""
+  image:
+    # Container image for Tekton operator. Default value depends on the flavor (k8s/openshift).
+    repository: ""
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+  autoInstallComponents: true
+  # The namespace in which Tekton components should be deployed
+  # Defaults to "tekton-pipelines" for Kubernetes and to "openshift-pipelines" for Openshift flavor.
+  defaultTargetNamespace: ""
+  # Log level of the operator
+  logLevel: info
+  # Resource requests and limits for the operator pod
+  # see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  resources: {}
+
+## Configuration for the tekton-operator-webhook pod
+webhook:
+  image:
+    # Container image for Tekton operator webhook. Default value depends on the flavor (k8s/openshift).
+    repository: ""
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+  certSecret:
+    name: ""
+    useExistingSecret: ""
+  # Log level of the webhook
+  logLevel: info
+  # Resource requests and limits for the operator pod
+  # see https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+  resources: {}
+
+webhookProxy:
+  image:
+    repository: ""
+    tag: ""
+
+## The webhook is exposed with a service, which can also be used to scrape metrics.
+service:
+  # Enable auto-discovery by Prometheus, requires the ServiceMonitor.monitoring.coreos.com CR
+  createServiceMonitor: false
+  metricsDomain: tekton.dev/operator
+
+## If container images are hosted in a private registry, set pull secrets.
+## Secrets must be manually created in the namespace.
+## see https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+
+## Annotations to be added to all pods deployed by this chart.
+podAnnotations: {}
+
+## Specify privileges for the pods
+## see https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+## Settings for controlling the placement of all pods deployed by this chart.
+## see https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/
+nodeSelector: {}
+tolerations: []
+affinity: {}
