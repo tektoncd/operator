@@ -77,12 +77,12 @@ func NewExtensibleController(generator common.ExtensionGenerator) injection.Cont
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
 
-		namespaceinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(impl, common.ConfigResourceName)))
+		namespaceinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(impl, v1alpha1.ConfigResourceName)))
+
+		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
-
-		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 
 		if os.Getenv("AUTOINSTALL_COMPONENTS") == "true" {
 			// try to ensure that there is an instance of tektonConfig
