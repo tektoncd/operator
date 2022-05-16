@@ -63,7 +63,7 @@ function push_release_branch() {
     case ${confirmation} in
       y|Y|yes|YES|Yes|'')
         echo "pushing ${branch_name} to ${remote_name}"
-        git push ${remote_name} ${branch_name}
+        git push ${remote_name} ${branch_name}:${branch_name}
         break
         ;;
       n|N|no|NO|no)
@@ -95,5 +95,3 @@ function commit_changes() {
 function divider() {
   printf "\n--------------------------------------------------\n"
 }
-
-
