@@ -8,7 +8,7 @@ weight: 7
 
 Tekton Operator installs and manages lifecycle of Tekton Projects.
 
-Tekton has multiple subprojects such as `tekoncd/pipeline`, `tektoncd/triggers`. In Operator each subproject has a CRD and a Controller which manages its lifecycle.
+Tekton has multiple subprojects such as `tektoncd/pipeline`, `tektoncd/triggers`. In Operator each subproject has a CRD and a Controller which manages its lifecycle.
 
 For ex. `tektoncd/pipeline` is managed by `TektonPipeline` CRD and its controller,
 `tektoncd/triggers` is managed by `TektonTrigger` CRD and its controller
@@ -60,7 +60,7 @@ spec:
 Before creating resources, TektonInstallerSet adds owner reference in the resources.
 - For CRDs, the owner will be the owner of TektonInstallerSet.
 
-Ex. `TekonPipeline` creates `TektonInstallerSet` which has CRDs, the owner of CRDs will be `TektonPipeline` because we don't want CRDs to get deleted when we delete `TektonInstallerSet`. Why? we will see in the `Why TektonInstallerSet?` section.
+Ex. `TektonPipeline` creates `TektonInstallerSet` which has CRDs, the owner of CRDs will be `TektonPipeline` because we don't want CRDs to get deleted when we delete `TektonInstallerSet`. Why? we will see in the `Why TektonInstallerSet?` section.
 
 - All Resources except CRDs, the owner will be the `TektonInstallerSet` which is creating them.
 
