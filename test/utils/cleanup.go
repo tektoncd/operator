@@ -176,8 +176,38 @@ func TearDownAddon(clients *Clients, name string) {
 // TearDownNamespace will delete created test Namespace
 func TearDownNamespace(clients *Clients, name string) {
 	ctx := context.Background()
-	if clients != nil && clients.KubeClient != nil {
-		_ = clients.KubeClient.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
+
+	if clients == nil || clients.Operator == nil {
+		return
+	}
+
+	_, err := clients.KubeClient.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			fmt.Printf("error trying to get Namespace instance during teardown, name: %s, error: %v", name, err)
+		}
+		return
+	}
+
+	err = clients.KubeClient.CoreV1().Namespaces().Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		fmt.Printf("error trying to delete Namespace during teardown, name: %s, error: %v", name, err)
+		return
+	}
+
+	err = waitForCondition(ctx, func() (bool, error) {
+		_, err := clients.KubeClient.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	})
+
+	if err != nil {
+		fmt.Printf("error waiting from tearDown of Namespace resource, name: %s, error: %v", name, err)
 	}
 }
 
