@@ -44,11 +44,11 @@ func TestTektonTriggersDeployment(t *testing.T) {
 	if os.Getenv("TARGET") == "openshift" {
 		crNames.TargetNamespace = "openshift-pipelines"
 	}
-
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
-	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
-
 	utils.CleanupOnInterrupt(func() { utils.TearDownTrigger(clients, crNames.TektonTrigger) })
+	utils.CleanupOnInterrupt(func() { utils.TearDownNamespace(clients, crNames.TargetNamespace) })
+	defer utils.TearDownNamespace(clients, crNames.TargetNamespace)
+	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
 	defer utils.TearDownTrigger(clients, crNames.TektonTrigger)
 
 	resources.EnsureNoTektonConfigInstance(t, clients, crNames)
@@ -91,5 +91,4 @@ func TestTektonTriggersDeployment(t *testing.T) {
 		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
 		resources.TektonPipelineCRDelete(t, clients, crNames)
 	})
-
 }

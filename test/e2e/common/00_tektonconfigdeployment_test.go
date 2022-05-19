@@ -50,6 +50,7 @@ import (
 func TestTektonConfigDeployment(t *testing.T) {
 	crNames := utils.ResourceNames{
 		TektonConfig:    v1alpha1.ConfigResourceName,
+		TektonPipeline:  v1alpha1.PipelineResourceName,
 		Namespace:       "tekton-operator",
 		TargetNamespace: "tekton-pipelines",
 	}
@@ -64,6 +65,8 @@ func TestTektonConfigDeployment(t *testing.T) {
 	}
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownConfig(clients, crNames.TektonConfig) })
+	utils.CleanupOnInterrupt(func() { utils.TearDownNamespace(clients, crNames.TargetNamespace) })
+	defer utils.TearDownNamespace(clients, crNames.TargetNamespace)
 	defer utils.TearDownConfig(clients, crNames.TektonConfig)
 
 	var (

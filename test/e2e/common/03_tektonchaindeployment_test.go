@@ -44,9 +44,10 @@ func TestTektonChainDeployment(t *testing.T) {
 	clients := client.Setup(t, crNames.TargetNamespace)
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
-	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
-
 	utils.CleanupOnInterrupt(func() { utils.TearDownChain(clients, crNames.TektonChain) })
+	utils.CleanupOnInterrupt(func() { utils.TearDownNamespace(clients, crNames.TargetNamespace) })
+	defer utils.TearDownNamespace(clients, crNames.TargetNamespace)
+	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
 	defer utils.TearDownChain(clients, crNames.TektonChain)
 
 	resources.EnsureNoTektonConfigInstance(t, clients, crNames)
@@ -89,5 +90,4 @@ func TestTektonChainDeployment(t *testing.T) {
 		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
 		resources.TektonPipelineCRDelete(t, clients, crNames)
 	})
-
 }
