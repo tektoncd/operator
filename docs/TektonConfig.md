@@ -18,7 +18,7 @@ Other than the above components depending on the platform operator also provides
 - On both Kubernetes and OpenShift
     - [TektonChain](./TektonChain.md)
 - On Kubernetes
-    - [TektonDashboard](./TekonDashboard.md)
+    - [TektonDashboard](./TektonDashboard.md)
 - On OpenShift
     - [TektonAddon](./TektonAddon.md)
 
