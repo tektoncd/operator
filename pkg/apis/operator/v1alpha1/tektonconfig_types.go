@@ -125,4 +125,7 @@ type TektonConfigList struct {
 type Config struct {
 	NodeSelector map[string]string   `json:"nodeSelector,omitempty"`
 	Tolerations  []corev1.Toleration `json:"tolerations,omitempty"`
+	// PriorityClassName holds the priority class to be set to pod template
+	// +optional
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 }

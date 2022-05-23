@@ -501,6 +501,7 @@ func TestAddConfiguration(t *testing.T) {
 				Effect:   "noSchedule",
 			},
 		},
+		PriorityClassName: string("system-cluster-critical"),
 	}
 
 	manifest, err = manifest.Transform(AddConfiguration(config))
@@ -509,7 +510,7 @@ func TestAddConfiguration(t *testing.T) {
 	d := &v1beta1.Deployment{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, d)
 	assertNoEror(t, err)
-
 	assert.Equal(t, d.Spec.Template.Spec.NodeSelector["foo"], config.NodeSelector["foo"])
 	assert.Equal(t, d.Spec.Template.Spec.Tolerations[0].Key, config.Tolerations[0].Key)
+	assert.Equal(t, d.Spec.Template.Spec.PriorityClassName, config.PriorityClassName)
 }
