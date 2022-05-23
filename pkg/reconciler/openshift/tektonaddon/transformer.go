@@ -20,8 +20,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
+	v1 "k8s.io/api/batch/v1"
 
 	mf "github.com/manifestival/manifestival"
 	console "github.com/openshift/api/console/v1"
@@ -239,6 +241,31 @@ func replacePACTriggerTemplateImages(stepsImages map[string]string) mf.Transform
 		}
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
+func replaceCronjobServiceAccount(serviceAccount string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "CronJob" {
+			return nil
+		}
+
+		cj := &v1.CronJob{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cj)
+		if err != nil {
+			return err
+		}
+
+		cj.Spec.JobTemplate.Spec.Template.Spec.ServiceAccountName = serviceAccount
+		cj.Spec.JobTemplate.Spec.Template.Spec.DeprecatedServiceAccount = serviceAccount
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cj)
 		if err != nil {
 			return err
 		}

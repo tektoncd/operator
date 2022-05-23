@@ -28,6 +28,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const cjServiceAccount = "tekton-pipelines-controller"
+
 var pacLS = metav1.LabelSelector{
 	MatchLabels: map[string]string{
 		v1alpha1.InstallerSetType: PACInstallerSet,
@@ -82,6 +84,7 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 		tfs = append(tfs, replacePACTriggerTemplateImages(triggerTemplateSteps))
 	}
 
+	tfs = append(tfs, replaceCronjobServiceAccount(cjServiceAccount))
 	if err := r.addonTransform(ctx, &pacManifest, ta, tfs...); err != nil {
 		return err
 	}

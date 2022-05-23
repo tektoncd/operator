@@ -19,8 +19,6 @@ package tektonaddon
 import (
 	"bytes"
 	"encoding/json"
-	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
-	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"os"
 	"path"
 	"testing"
@@ -28,8 +26,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	mf "github.com/manifestival/manifestival"
 	console "github.com/openshift/api/console/v1"
+	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/diff"
+	triggersv1beta1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1"
 	"gotest.tools/v3/assert"
+	v1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -119,4 +120,21 @@ func TestReplacePACTriggerTemplateImages(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestReplaceCronjonServiceAccount(t *testing.T) {
+	testData := path.Join("testdata", "test-pac-cj.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	serviceAccount := "test-abc"
+	transformedManifest, err := manifest.Transform(replaceCronjobServiceAccount(serviceAccount))
+	assert.NilError(t, err)
+
+	cj := &v1.CronJob{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(transformedManifest.Resources()[0].Object, cj)
+	assert.NilError(t, err)
+
+	assert.Equal(t, cj.Spec.JobTemplate.Spec.Template.Spec.ServiceAccountName, serviceAccount)
+	assert.Equal(t, cj.Spec.JobTemplate.Spec.Template.Spec.DeprecatedServiceAccount, serviceAccount)
 }
