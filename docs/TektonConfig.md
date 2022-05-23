@@ -35,6 +35,7 @@ The TektonConfig CR provides the following features
     config:
       nodeSelector: <>
       tolerations: []
+      priorityClassName: system-cluster-critical
     pipeline:
       disable-affinity-assistant: false
       disable-creds-init: false
@@ -86,6 +87,7 @@ Config provides fields to configure deployments created by the Operator.
 This provides following fields:
 - [`nodeSelector`][node-selector]
 - [`tolerations`][tolerations]
+- [`priorityClassName`][priorityClassName]
 
 User can pass the required fields and this would be passed to all Operator components which will get added in all
 deployments created by Operator.
@@ -100,11 +102,13 @@ config:
     operator: "Equal"
     value: "value1"
     effect: "NoSchedule"
+  priorityClassName: system-node-critical
 ```
 
 This is an `Optional` section.
 
-
+**NOTE**: If `spec.config.priorityClassName` is used, then the required [`priorityClass`][priorityClass] is 
+expected to be created by the user to get the Tekton resources pods in running state
 ### Pipeline
 Pipeline section allows user to customize the Tekton pipeline features. This allow user to customize the values in configmaps.
 
@@ -203,3 +207,6 @@ This is an `Optional` section.
 [node-selector]:https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
 [tolerations]:https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 [schedule]:https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#cron-schedule-syntax
+[priorityClassName]: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#pod-priority
+[priorityClass]: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
+

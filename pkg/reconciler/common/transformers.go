@@ -580,6 +580,7 @@ func AddConfiguration(config v1alpha1.Config) mf.Transformer {
 
 		d.Spec.Template.Spec.NodeSelector = config.NodeSelector
 		d.Spec.Template.Spec.Tolerations = config.Tolerations
+		d.Spec.Template.Spec.PriorityClassName = config.PriorityClassName
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
 		if err != nil {
