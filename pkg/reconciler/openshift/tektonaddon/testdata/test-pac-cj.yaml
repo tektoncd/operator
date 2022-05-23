@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pipelines-as-code-pr-cleanup
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "devel"
+    app.kubernetes.io/part-of: pipelines-as-code
+spec:
+  concurrencyPolicy: Replace
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - command:
+                - /bin/bash
+                - -c
+                - test -e /etc/config/max-keep-days && export MAX_DAY_KEEP=$(cat /etc/config/max-keep-days);for pr in $(kubectl get taskruns -l app.kubernetes.io/managed-by=pipelines-as-code -o json | python3 -c "import
+                  os, sys, datetime, json;jeez=json.load(sys.stdin);res=[ i['metadata']['name']
+                  for i in jeez['items'] if datetime.datetime.now() > datetime.datetime.strptime(i['metadata']['creationTimestamp'],
+                  '%Y-%m-%dT%H:%M:%SZ') + datetime.timedelta(days=int(os.environ.get('MAX_DAY_KEEP', 1))) ];print(' '.join(res))");do
+                  kubectl delete taskrun ${pr};done
+              image: quay.io/openshift/origin-cli:4.8
+              imagePullPolicy: IfNotPresent
+              name: cleanup
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+                - name: config-volume
+                  mountPath: /etc/config
+              env:
+                - name: MAX_DAY_KEEP
+                  value: "1"
+          dnsPolicy: ClusterFirst
+          restartPolicy: Never
+          schedulerName: default-scheduler
+          serviceAccount: pipeline
+          serviceAccountName: pipeline
+          terminationGracePeriodSeconds: 30
+          volumes:
+            - name: config-volume
+              configMap:
+                name: pipelines-as-code
+                optional: true
+  schedule: "0 * * * *"
+  successfulJobsHistoryLimit: 1
+  suspend: false
