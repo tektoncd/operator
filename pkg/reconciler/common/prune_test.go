@@ -19,7 +19,6 @@ package common
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -141,8 +140,8 @@ func TestPruneCommands(t *testing.T) {
 	keep := uint(2)
 	keepsince := uint(300)
 	expected := []string{
-		"tkn pipelinerun delete --keep=2 -n=ns -f ; tkn taskrun delete --keep=2 -n=ns -f ; ",
-		"tkn pipelinerun delete --keep-since=300 -n=ns -f ; tkn taskrun delete --keep-since=300 -n=ns -f ; ",
+		"ns;--keep=2;pipelinerun,taskrun",
+		"ns;--keep-since=300;pipelinerun,taskrun",
 	}
 	ns := "ns"
 	configs := []*pruneConfigPerNS{
@@ -165,7 +164,7 @@ func TestPruneCommands(t *testing.T) {
 	}
 
 	for i, config := range configs {
-		cmd := pruneCommand(config, ns)
+		cmd := generatePruneConfigPerNamespace(config, ns)
 		assert.Equal(t, cmd, expected[i])
 	}
 }
@@ -210,21 +209,11 @@ func TestAnnotationCmd(t *testing.T) {
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-ten", Annotations: annoResourceTrPr}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-thirteen", Annotations: annoStrategyKeep}},
 	)
-	expected := map[string]string{
-		"one-" + scheduleCommon:        "tkn pipelinerun delete --keep=3 -n=ns-one -f ; ",
-		"two-" + scheduleUnique:        "tkn pipelinerun delete --keep=3 -n=ns-two -f ; ",
-		"four-" + scheduleCommon:       "tkn pipelinerun delete --keep=3 -n=ns-four -f ; ",
-		"seven-" + scheduleCommon:      "tkn pipelinerun delete --keep-since=3200 -n=ns-seven -f ; ",
-		"eight-" + scheduleCommon:      "tkn pipelinerun delete --keep=5 -n=ns-eight -f ; ",
-		"nine-" + scheduleCommon:       "tkn taskrun delete --keep=3 -n=ns-nine -f ; ",
-		"ten-" + scheduleCommon:        "tkn taskrun delete --keep=3 -n=ns-ten -f ; tkn pipelinerun delete --keep=3 -n=ns-ten -f ; ",
-		"ns-thirteen" + scheduleCommon: "tkn pipelinerun delete --keep=50 -n=ns-thirteen -f ; ",
-	}
 	os.Setenv(JobsTKNImageName, "some")
 
 	err := Prune(context.TODO(), client, config)
 	if err != nil {
-		assert.Error(t, err, "unable to get ns list")
+		assert.Error(t, err, "pruning failed ")
 	}
 	cronjobs, err := client.BatchV1().CronJobs("").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
@@ -232,18 +221,31 @@ func TestAnnotationCmd(t *testing.T) {
 	}
 	// Only one ns with unique schedule than default
 	if len(cronjobs.Items) != 2 {
-		assert.Error(t, err, "unable to get ns list")
+		assert.Error(t, err, "number of cronjobs created is not right")
+	}
+	expected := map[string]struct{}{
+		"ns-two;--keep=3;pipelinerun":            {},
+		"ns-eight;--keep=5;pipelinerun":          {},
+		"ns-four;--keep=3;pipelinerun":           {},
+		"ns-nine;--keep=3;taskrun":               {},
+		"ns-one;--keep=3;pipelinerun":            {},
+		"ns-seven;--keep-since=3200;pipelinerun": {},
+		"ns-ten;--keep=3;taskrun,pipelinerun":    {},
+		"ns-thirteen;--keep=50;pipelinerun":      {},
 	}
 	for _, cronjob := range cronjobs.Items {
+		assert.Equal(t, len(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers), 1)
 		for _, container := range cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers {
-			if _, ok := expected[container.Name[14:len(container.Name)-5]+cronjob.Spec.Schedule]; ok {
-				if expected[container.Name[14:len(container.Name)-5]+cronjob.Spec.Schedule] != strings.Join(container.Args, " ") {
-					msg := fmt.Sprintf("expected : %s\n actual : %s \n", expected[container.Name[14:len(container.Name)-5]+cronjob.Spec.Schedule], strings.Join(container.Args, " "))
-					assert.Error(t, errors.New("command created is not as expected"), msg)
+			args := strings.Split(container.Args[1], " ")
+			if len(args) == 1 {
+				if _, ok := expected[args[0]]; !ok {
+					assert.Error(t, err, "expected args not found")
 				}
 			}
-			if container.Name == "ns-six" {
-				assert.Error(t, errors.New("Should not be created as Ns have skip prune annotation"), "")
+			for _, arg := range args[1:] {
+				if _, ok := expected[arg]; !ok {
+					assert.Error(t, errors.New("not found"), "expected command not found")
+				}
 			}
 		}
 	}
