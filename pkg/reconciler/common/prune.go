@@ -128,7 +128,7 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 		return err
 	}
 	if pruningNamespaces.commonScheduleNs != nil && len(pruningNamespaces.commonScheduleNs) > 0 {
-		jobs := pruner.createAllJobContainers(pruningNamespaces.commonScheduleNs)
+		jobs := getJobContainer(generateAllPruneConfig(pruningNamespaces.commonScheduleNs), pruner.targetNamespace, pruner.tknImage)
 		if err := pruner.checkAndCreate(ctx, "", tC.Spec.Pruner.Schedule, jobs, pruneCronLabel, pruningNamespaces.configChanged); err != nil {
 			logger.Error("failed to create cronjob ", err)
 		}
@@ -136,7 +136,7 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 
 	if pruningNamespaces.uniqueScheduleNS != nil {
 		for ns, con := range pruningNamespaces.uniqueScheduleNS {
-			jobs := pruner.createJobContainers(con, ns)
+			jobs := getJobContainer(generatePruneConfigPerNamespace(con, ns), ns, pruner.tknImage)
 			listOpt := pruneCronNsLabel + "=" + ns
 			if err := pruner.checkAndCreate(ctx, ns, con.config.Schedule, jobs, listOpt, pruningNamespaces.configChanged); err != nil {
 				logger.Error("failed to create cronjob ", err)
@@ -240,30 +240,26 @@ func prunableNamespaces(ctx context.Context, k kubernetes.Interface, defaultPrun
 	return prunableNs, nil
 }
 
-func (pruner *Pruner) createAllJobContainers(nsConfig map[string]*pruneConfigPerNS) []corev1.Container {
-	var containers []corev1.Container
+func generateAllPruneConfig(nsConfig map[string]*pruneConfigPerNS) string {
+	var cmds string
 	for ns, con := range nsConfig {
-		jobContainers := pruner.createJobContainers(con, ns)
-		containers = append(containers, jobContainers...)
+		cmd := generatePruneConfigPerNamespace(con, ns)
+		cmds = cmds + " " + cmd
 	}
-	return containers
+	return cmds
 }
 
-func (pruner *Pruner) createJobContainers(nsConfig *pruneConfigPerNS, ns string) []corev1.Container {
-	var containers []corev1.Container
-
-	cmdArgs := pruneCommand(nsConfig, ns)
+func getJobContainer(cmdArgs, ns string, tknImage string) []corev1.Container {
+	cmd := "function prune() { n=$1; a=$2; resources=$3; old_ifs=\" \"; IFS=\",\"; for r in $resources; do tkn $r delete -n=$n $a -f; done; IFS=$old_ifs; }; echo $conf; for c in $*; do ns=$(echo $c | cut -d \";\" -f 1); args=$(echo $c | cut -d \";\" -f 2); resources=$(echo $c | cut -d \";\" -f 3); prune $ns $args $resources; done;"
 	containerName := SimpleNameGenerator.RestrictLengthWithRandomSuffix("pruner-tkn-" + ns)
 	container := corev1.Container{
 		Name:                     containerName,
-		Image:                    pruner.tknImage,
-		Command:                  []string{"/bin/sh", "-c"},
-		Args:                     []string{cmdArgs},
+		Image:                    tknImage,
+		Command:                  []string{"/bin/sh", "-c", cmd},
+		Args:                     []string{"-s", cmdArgs},
 		TerminationMessagePolicy: "FallbackToLogsOnError",
 	}
-	containers = append(containers, container)
-
-	return containers
+	return []corev1.Container{container}
 }
 
 func (pruner *Pruner) checkAndCreate(ctx context.Context, uniquePruneNs, schedule string, pruneContainers []corev1.Container, listOpt string, configChanged bool) error {
@@ -344,20 +340,35 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 	return nil
 }
 
-func pruneCommand(pru *pruneConfigPerNS, ns string) string {
-	var cmdArgs string
-	for _, resource := range pru.config.Resources {
-		res := strings.TrimSpace(resource)
-		var keepCmd string
-		if pru.config.Keep != nil {
-			keepCmd = "--keep=" + fmt.Sprint(*pru.config.Keep)
-		}
-		if pru.config.Keep == nil && pru.config.KeepSince != nil {
-			keepCmd = "--keep-since=" + fmt.Sprint(*pru.config.KeepSince)
-		}
-		cmd := "tkn " + strings.ToLower(res) + " delete " + keepCmd + " -n=" + ns + " -f ; "
-		cmdArgs = cmdArgs + cmd
+// generatePruneConfigPerNamespace takes config `pruneConfigPerNS` per namespace and return strings like
+// ns-one;--keep=5;pipelinerun
+// ns-two;--keep=3;pipelinerun,taskrun
+// ns-three;--keep=2;taskrun
+// these configs are passed as space seperated string argument to pod container spec
+// for each of this namespaced config below commands are generated
+// tkn pipelinerun delete --keep=5 -n=ns-one -f ;
+// tkn pipelinerun delete --keep=3 -n=ns-two -f ;
+// tkn taskrun delete --keep=3 -n=ns-two -f ;
+// tkn taskrun delete --keep=3 -n=ns-three -f ;
+func generatePruneConfigPerNamespace(pru *pruneConfigPerNS, ns string) string {
+	var keepCmd string
+	if pru.config.Keep != nil {
+		keepCmd = "--keep=" + fmt.Sprint(*pru.config.Keep)
 	}
+	if pru.config.Keep == nil && pru.config.KeepSince != nil {
+		keepCmd = "--keep-since=" + fmt.Sprint(*pru.config.KeepSince)
+	}
+	cmdArgs := ns + ";" + keepCmd + ";"
+	var resources string
+	for i, resource := range pru.config.Resources {
+		res := strings.TrimSpace(resource)
+		if i < len(pru.config.Resources)-1 {
+			resources = resources + res + ","
+		} else {
+			resources = resources + res
+		}
+	}
+	cmdArgs = cmdArgs + resources
 	return cmdArgs
 }
 
