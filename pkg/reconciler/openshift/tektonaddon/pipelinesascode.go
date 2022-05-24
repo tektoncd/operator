@@ -28,7 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const cjServiceAccount = "tekton-pipelines-controller"
+const cjServiceAccount = "pipelines-as-code-cleanup-job"
 
 var pacLS = metav1.LabelSelector{
 	MatchLabels: map[string]string{
@@ -69,6 +69,10 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 	koDataDir := os.Getenv(common.KoEnvKey)
 	pacLocation := filepath.Join(koDataDir, "tekton-addon", "pipelines-as-code")
 	if err := common.AppendManifest(&pacManifest, pacLocation); err != nil {
+		return err
+	}
+
+	if err := applyAddons(&pacManifest, "06-pipelines-as-code"); err != nil {
 		return err
 	}
 
