@@ -23,6 +23,11 @@ spec:
     exposes the metrics data for the pipeline/task. In order to view the
     pipelinerun and taskrun related metrics, you need to configure the pipeline
     metrics level to pipelinrun/taskrun.
+
+
+    ```Note: The pipelinerun and taskrun metrics level collects large volume of
+    metrics over time in unbounded cardinality which may lead to metrics
+    unreliability.```
   tags:
     - pipelines
     - metrics
