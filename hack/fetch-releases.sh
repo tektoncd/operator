@@ -130,7 +130,14 @@ release_yaml_hub() {
   local version=$2
 
   ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
-  dirPath=${ko_data}/tekton-hub/${version}
+  rm -rf ${ko_data}/tekton-hub
+  if [ ${version} == "latest" ]
+  then
+    version=$(curl -sL https://api.github.com/repos/tektoncd/hub/releases | jq -r ".[].tag_name" | sort -Vr | head -n1)
+    dirPath=${ko_data}/tekton-hub/0.0.0-latest
+  else
+    dirPath=${ko_data}/tekton-hub/${version}
+  fi
   rm -rf ${dirPath} || true
   mkdir -p ${dirPath} || true
 
