@@ -20,10 +20,11 @@ package tektonhub
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"path/filepath"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -192,10 +193,17 @@ func (r *Reconciler) manageUiComponent(ctx context.Context, th *v1alpha1.TektonH
 	if !exist {
 		th.Status.MarkUiInstallerSetNotAvailable("UI installer set not available")
 		uiLocation := filepath.Join(hubDir, "ui")
-		err := r.setupAndCreateInstallerSet(ctx, uiLocation, th, uiInstallerSet, version, ui)
+
+		manifest, err := r.getManifest(ctx, th, uiLocation)
 		if err != nil {
 			return err
 		}
+
+		err = r.setUpAndCreateInstallerSet(ctx, *manifest, th, uiInstallerSet, version, ui)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	err = r.checkComponentStatus(ctx, th, uiInstallerSet)
@@ -224,7 +232,18 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 	if !exist {
 		th.Status.MarkApiInstallerSetNotAvailable("API installer set not available")
 		apiLocation := filepath.Join(hubDir, "api")
-		err := r.setupAndCreateInstallerSet(ctx, apiLocation, th, apiInstallerSet, version, api)
+
+		manifest, err := r.getManifest(ctx, th, apiLocation)
+		if err != nil {
+			return err
+		}
+
+		err = applyPVC(ctx, manifest, th)
+		if err != nil {
+			return err
+		}
+
+		err = r.setUpAndCreateInstallerSet(ctx, *manifest, th, apiInstallerSet, version, api)
 		if err != nil {
 			return err
 		}
@@ -248,7 +267,13 @@ func (r *Reconciler) manageDbMigrationComponent(ctx context.Context, th *v1alpha
 	if !exist {
 		dbMigrationLocation := filepath.Join(hubDir, "db-migration")
 		th.Status.MarkDatabasebMigrationFailed("DB migration installerset not available")
-		err = r.setupAndCreateInstallerSet(ctx, dbMigrationLocation, th, dbMigrationInstallerSet, version, dbMigration)
+
+		manifest, err := r.getManifest(ctx, th, dbMigrationLocation)
+		if err != nil {
+			return err
+		}
+
+		err = r.setUpAndCreateInstallerSet(ctx, *manifest, th, dbMigrationInstallerSet, version, dbMigration)
 		if err != nil {
 			return err
 		}
@@ -278,7 +303,17 @@ func (r *Reconciler) manageDbComponent(ctx context.Context, th *v1alpha1.TektonH
 	if !exist {
 		th.Status.MarkDbInstallerSetNotAvailable("DB installer set not available")
 		dbLocation := filepath.Join(hubDir, "db")
-		err := r.setupAndCreateInstallerSet(ctx, dbLocation, th, dbInstallerSet, version, db)
+		manifest, err := r.getManifest(ctx, th, dbLocation)
+		if err != nil {
+			return err
+		}
+
+		err = applyPVC(ctx, manifest, th)
+		if err != nil {
+			return err
+		}
+
+		err = r.setUpAndCreateInstallerSet(ctx, *manifest, th, dbInstallerSet, version, db)
 		if err != nil {
 			return err
 		}
@@ -423,20 +458,28 @@ func createUiConfigMap(name, namespace string, th *v1alpha1.TektonHub) *corev1.C
 	}
 }
 
-func (r *Reconciler) setupAndCreateInstallerSet(ctx context.Context, manifestLocation string, th *v1alpha1.TektonHub, installerSetName, version, prefixName string) error {
+func (r *Reconciler) getManifest(ctx context.Context, th *v1alpha1.TektonHub, manifestLocation string) (*mf.Manifest, error) {
 	manifest := r.manifest.Append()
-	logger := logging.FromContext(ctx)
 
 	if err := common.AppendManifest(&manifest, manifestLocation); err != nil {
-		return err
+		return nil, err
 	}
 
-	manifest = manifest.Filter(mf.Not(mf.Any(mf.ByKind("Secret"), mf.ByKind("Namespace"), mf.ByKind("ConfigMap"))))
+	transformedManifest, err := r.transform(ctx, manifest, th)
+	if err != nil {
+		return nil, err
+	}
+
+	return transformedManifest, nil
+}
+
+func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1alpha1.TektonHub) (*mf.Manifest, error) {
+	logger := logging.FromContext(ctx)
 
 	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.HubImagePrefix))
 	trans := r.extension.Transformers(th)
 	extra := []mf.Transformer{
-		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdPipeline),
+		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdHub),
 		mf.InjectOwner(th),
 		mf.InjectNamespace(namespace),
 		common.DeploymentImages(images),
@@ -447,8 +490,35 @@ func (r *Reconciler) setupAndCreateInstallerSet(ctx context.Context, manifestLoc
 
 	if err != nil {
 		logger.Error("failed to transform manifest")
+		return nil, err
+	}
+
+	return &manifest, nil
+}
+
+func applyPVC(ctx context.Context, manifest *mf.Manifest, th *v1alpha1.TektonHub) error {
+	logger := logging.FromContext(ctx)
+
+	pvc := manifest.Filter(mf.ByKind("PersistentVolumeClaim"))
+	pvcManifest, err := pvc.Transform(
+		mf.InjectOwner(th),
+		mf.InjectNamespace(th.Spec.GetTargetNamespace()),
+	)
+
+	if err != nil {
+		logger.Error("failed to transform manifest")
 		return err
 	}
+
+	if err := pvcManifest.Apply(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Reconciler) setUpAndCreateInstallerSet(ctx context.Context, manifest mf.Manifest, th *v1alpha1.TektonHub, installerSetName, version, prefixName string) error {
+	manifest = manifest.Filter(mf.Not(mf.Any(mf.ByKind("Secret"), mf.ByKind("PersistentVolumeClaim"), mf.ByKind("Namespace"), mf.ByKind("ConfigMap"))))
 
 	if err := createInstallerSet(ctx, r.operatorClientSet, th, manifest,
 		version, installerSetName, prefixName, namespace); err != nil {
