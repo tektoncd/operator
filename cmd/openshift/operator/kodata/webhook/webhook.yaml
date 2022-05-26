@@ -99,6 +99,10 @@ spec:
         name: tekton-operator
         app: tekton-operator
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: tekton-operators-proxy-webhook
       containers:
         - name: proxy
@@ -119,6 +123,9 @@ spec:
               containerPort: 8443
           securityContext:
             allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
 
 ---
 
