@@ -22,6 +22,8 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -205,7 +207,26 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 func applyAddons(manifest *mf.Manifest, subpath string) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
 	addonLocation := filepath.Join(koDataDir, "tekton-addon", "addons", subpath)
-	return common.AppendManifest(manifest, addonLocation)
+	addons, err := mf.ManifestFrom(mf.Recursive(addonLocation))
+	if err != nil {
+		return err
+	}
+	// install knative addons only where knative is available
+	switch runtime.GOARCH {
+	case "amd64", "ppc64le", "s390x":
+	default:
+		version := common.TargetVersion((*v1alpha1.TektonPipeline)(nil))
+		version_formated := strings.Replace(version, ".", "-", -1)
+		addons = addons.Filter(
+			mf.Not(mf.Any(
+				mf.ByName("kn"),
+				mf.ByName("kn-v"+version_formated),
+				mf.ByName("kn-apply"),
+				mf.ByName("kn-apply-v"+version_formated),
+			)))
+	}
+	*manifest = manifest.Append(addons)
+	return nil
 }
 
 // addonTransform mutates the passed manifest to one with common, component
