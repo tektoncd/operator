@@ -28,6 +28,10 @@ spec:
         name: openshift-pipelines-operator
         app: openshift-pipelines-operator
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: openshift-pipelines-operator
       containers:
       - name: openshift-pipelines-operator-lifecycle  # all reconcilers except tektoninstallerset reconciler
@@ -38,6 +42,11 @@ spec:
         - "-unique-process-name"
         - "tekton-operator-lifecycle"
         imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
         env:
         - name: SYSTEM_NAMESPACE
           valueFrom:
@@ -91,6 +100,11 @@ spec:
         - "-unique-process-name"
         - "tekton-operator-cluster-operations"
         imagePullPolicy: Always
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
         env:
           - name: SYSTEM_NAMESPACE
             valueFrom:
