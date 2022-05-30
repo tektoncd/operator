@@ -16,7 +16,8 @@ allowHostPorts: false
 allowPrivilegeEscalation: true
 allowPrivilegedContainer: false
 allowedCapabilities: null
-defaultAddCapabilities: null
+defaultAddCapabilities:
+- SETFCAP
 fsGroup:
   type: MustRunAs
 groups:
