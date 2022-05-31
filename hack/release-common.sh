@@ -20,6 +20,9 @@ function set_version_label() {
     sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: '${operator_version}'/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: '${operator_version}'/g' -e 's/\(version\): "devel"/\1: '${operator_version}'/g' -e 's/\("-version"\), "devel"/\1, '${operator_version}'/g' cmd/${platform}/operator/kodata/webhook/*.yaml
     sed -i 's/\(value\): "devel"/\1: '${operator_version}'/g' config/${platform}/base/operator.yaml
   done
+
+  echo updating Helm chart version to ${operator_version}
+  sed -i 's/appVersion: "devel"/appVersion: "'${operator_version}'"/g' chart/Chart.yaml
 }
 
 function remote_exists_or_fail() {

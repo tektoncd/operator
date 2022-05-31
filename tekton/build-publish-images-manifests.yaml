@@ -133,6 +133,9 @@ spec:
       # This is currently the case for `cri-o` (and most likely others)
       kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | ko resolve --platform=$(params.platforms) --preserve-import-paths -f - > $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.notags.yaml
 
+      # Extract CRDs as separate manifests from release.yaml
+      cat $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.yaml | yq '. | select(.kind == "CustomResourceDefinition") | .' > $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}crds.yaml
+
   - name: koparse
     image: gcr.io/tekton-releases/dogfooding/koparse:latest
     script: |

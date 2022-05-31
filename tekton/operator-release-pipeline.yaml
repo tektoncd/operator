@@ -76,6 +76,12 @@ spec:
   - name: release-file-no-tag
     description: the URL of the release file for OpenShift platform
     value: $(tasks.report-bucket.results.openshift-release-no-tag)
+  - name: crds-file
+    description: the URL of the Kubernetes CRD manifests
+    value: $(tasks.report-bucket.results.crds)
+  - name: openshift-crds-file
+    description: the URL of the Openshift CRD manifests
+    value: $(tasks.report-bucket.results.openshift-crds)
   tasks:
   - name: git-clone
     taskRef:
@@ -289,6 +295,10 @@ spec:
         description: The full URL of the release file (platform - OpenShift) in the bucket
       - name: openshift-release-no-tag
         description: The full URL of the release file (no tag, platform - OpenShift) in the bucket
+      - name: crds
+        description: The full URL of the Kubernetes CRD manifests in the bucket
+      - name: openshift-crds
+        description: The full URL of the Openshift CRD manifests in the bucket
       steps:
       - name: create-results
         image: alpine
@@ -300,3 +310,5 @@ spec:
           echo "${BASE_URL}/release.notags.yaml" > $(results.release-no-tag.path)
           echo "${BASE_URL}/openshift-release.yaml" > $(results.openshift-release.path)
           echo "${BASE_URL}/openshift-release.notags.yaml" > $(results.openshift-release-no-tag.path)
+          echo "${BASE_URL}/crds.yaml" > $(results.crds.path)
+          echo "${BASE_URL}/openshift-crds.yaml" > $(results.openshift-crds.path)
