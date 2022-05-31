@@ -18,7 +18,6 @@ package pipeline
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -28,7 +27,6 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func EnsureTektonPipelineExists(ctx context.Context, clients op.TektonPipelineInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonPipeline, error) {
@@ -135,41 +133,6 @@ func isTektonPipelineReady(s *v1alpha1.TektonPipeline, err error) (bool, error) 
 	return s.Status.IsReady(), err
 }
 
-// TektonPipelineCRDelete deletes tha TektonPipeline to see if all resources will be deleted
-func TektonPipelineCRDelete(ctx context.Context, clients op.TektonPipelineInterface, name string) error {
-	if _, err := GetPipeline(ctx, clients, v1alpha1.PipelineResourceName); err != nil {
-		if apierrs.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	if err := clients.Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
-		return fmt.Errorf("TektonPipeline %q failed to delete: %v", name, err)
-	}
-	err := wait.PollImmediate(common.Interval, common.Timeout, func() (bool, error) {
-		_, err := clients.Get(ctx, name, metav1.GetOptions{})
-		if apierrs.IsNotFound(err) {
-			return true, nil
-		}
-		return false, err
-	})
-	if err != nil {
-		return fmt.Errorf("Timed out waiting on TektonPipeline to delete %v", err)
-	}
-	return verifyNoTektonPipelineCR(ctx, clients)
-}
-
-func verifyNoTektonPipelineCR(ctx context.Context, clients op.TektonPipelineInterface) error {
-	pipelines, err := clients.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	if len(pipelines.Items) > 0 {
-		return errors.New("TektonPipeline still exists")
-	}
-	return nil
-}
-
 func GetTektonConfig() *v1alpha1.TektonConfig {
 	return &v1alpha1.TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
@@ -182,4 +145,26 @@ func GetTektonConfig() *v1alpha1.TektonConfig {
 			},
 		},
 	}
+}
+
+func EnsureTektonPipelineCRNotExists(ctx context.Context, clients op.TektonPipelineInterface) error {
+	if _, err := GetPipeline(ctx, clients, v1alpha1.PipelineResourceName); err != nil {
+		if apierrs.IsNotFound(err) {
+			// TektonPipeline CR is gone, hence return nil
+			return nil
+		}
+		return err
+	}
+	// if the Get was successful, try deleting the CR
+	if err := clients.Delete(ctx, v1alpha1.PipelineResourceName, metav1.DeleteOptions{}); err != nil {
+		if apierrs.IsNotFound(err) {
+			// TektonPipeline CR is gone, hence return nil
+			return nil
+		}
+		return fmt.Errorf("TektonPipeline %q failed to delete: %v", v1alpha1.PipelineResourceName, err)
+	}
+	// if the Delete API call was success,
+	// then return requeue_event
+	// so that in a subsequent reconcile call the absence of the CR is verified by one of the 2 checks above
+	return v1alpha1.RECONCILE_AGAIN_ERR
 }

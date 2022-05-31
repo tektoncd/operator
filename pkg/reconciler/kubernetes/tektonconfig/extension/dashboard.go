@@ -18,7 +18,6 @@ package extension
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -27,7 +26,6 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func EnsureTektonDashboardExists(ctx context.Context, clients op.TektonDashboardInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonDashboard, error) {
@@ -108,7 +106,11 @@ func updateDashboard(ctx context.Context, tdCR *v1alpha1.TektonDashboard, config
 	}
 
 	if updated {
-		return clients.Update(ctx, tdCR, metav1.UpdateOptions{})
+		_, err := clients.Update(ctx, tdCR, metav1.UpdateOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
 	return tdCR, nil
@@ -126,37 +128,26 @@ func isTektonDashboardReady(s *v1alpha1.TektonDashboard, err error) (bool, error
 	return s.Status.IsReady(), err
 }
 
-// TektonDashboardCRDelete deletes tha TektonDashboard to see if all resources will be deleted
-func TektonDashboardCRDelete(ctx context.Context, clients op.TektonDashboardInterface, name string) error {
+// EnsureTektonDashboardCRNotExists deletes the singleton instance of TektonDashboard
+// and ensures the instance is removed checking whether in exists in a subsequent invocation
+func EnsureTektonDashboardCRNotExists(ctx context.Context, clients op.TektonDashboardInterface) error {
 	if _, err := GetDashboard(ctx, clients, v1alpha1.DashboardResourceName); err != nil {
 		if apierrs.IsNotFound(err) {
+			// TektonDashBoard CR is gone, hence return nil
 			return nil
 		}
 		return err
 	}
-	if err := clients.Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
-		return fmt.Errorf("TektonDashboard %q failed to delete: %v", name, err)
-	}
-	err := wait.PollImmediate(common.Interval, common.Timeout, func() (bool, error) {
-		_, err := clients.Get(ctx, name, metav1.GetOptions{})
+	// if the Get was successful, try deleting the CR
+	if err := clients.Delete(ctx, v1alpha1.DashboardResourceName, metav1.DeleteOptions{}); err != nil {
 		if apierrs.IsNotFound(err) {
-			return true, nil
+			// TektonDashBoard CR is gone, hence return nil
+			return nil
 		}
-		return false, err
-	})
-	if err != nil {
-		return fmt.Errorf("Timed out waiting on TektonDashboard to delete %v", err)
+		return fmt.Errorf("TektonDashboard %q failed to delete: %v", v1alpha1.DashboardResourceName, err)
 	}
-	return verifyNoTektonDashboardCR(ctx, clients)
-}
-
-func verifyNoTektonDashboardCR(ctx context.Context, clients op.TektonDashboardInterface) error {
-	dashboards, err := clients.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	if len(dashboards.Items) > 0 {
-		return errors.New("Unable to verify cluster-scoped resources are deleted if any TektonDashboard exists")
-	}
-	return nil
+	// if the Delete API call was success,
+	// then return requeue_event
+	// so that in a subsequent reconcile call the absence of the CR is verified by one of the 2 checks above
+	return v1alpha1.RECONCILE_AGAIN_ERR
 }

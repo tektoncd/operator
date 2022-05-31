@@ -19,7 +19,6 @@ package common
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	informer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
@@ -27,8 +26,6 @@ import (
 )
 
 var (
-	Interval = 10 * time.Second
-	Timeout  = 1 * time.Minute
 	// DefaultSA is the default service account
 	DefaultSA = "pipeline"
 )

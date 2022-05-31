@@ -18,7 +18,6 @@ package extension
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -27,7 +26,6 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func EnsureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
@@ -114,7 +112,11 @@ func updateAddon(ctx context.Context, taCR *v1alpha1.TektonAddon, config *v1alph
 	}
 
 	if updated {
-		return clients.Update(ctx, taCR, metav1.UpdateOptions{})
+		_, err := clients.Update(ctx, taCR, metav1.UpdateOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
 	return taCR, nil
@@ -132,37 +134,24 @@ func isTektonAddonReady(s *v1alpha1.TektonAddon, err error) (bool, error) {
 	return s.Status.IsReady(), err
 }
 
-// TektonAddonCRDelete deletes tha TektonAddon to see if all resources will be deleted
-func TektonAddonCRDelete(ctx context.Context, clients op.TektonAddonInterface, name string) error {
+func EnsureTektonAddonCRNotExists(ctx context.Context, clients op.TektonAddonInterface) error {
 	if _, err := GetAddon(ctx, clients, v1alpha1.AddonResourceName); err != nil {
 		if apierrs.IsNotFound(err) {
+			// TektonAddon CR is gone, hence return nil
 			return nil
 		}
 		return err
 	}
-	if err := clients.Delete(ctx, name, metav1.DeleteOptions{}); err != nil {
-		return fmt.Errorf("TektonAddon %q failed to delete: %v", name, err)
-	}
-	err := wait.PollImmediate(common.Interval, common.Timeout, func() (bool, error) {
-		_, err := clients.Get(ctx, name, metav1.GetOptions{})
+	// if the Get was successful, try deleting the CR
+	if err := clients.Delete(ctx, v1alpha1.AddonResourceName, metav1.DeleteOptions{}); err != nil {
 		if apierrs.IsNotFound(err) {
-			return true, nil
+			// TektonAddon CR is gone, hence return nil
+			return nil
 		}
-		return false, err
-	})
-	if err != nil {
-		return fmt.Errorf("Timed out waiting on TektonAddon to delete %v", err)
+		return fmt.Errorf("TektonAddon %q failed to delete: %v", v1alpha1.AddonResourceName, err)
 	}
-	return verifyNoTektonAddonCR(ctx, clients)
-}
-
-func verifyNoTektonAddonCR(ctx context.Context, clients op.TektonAddonInterface) error {
-	addons, err := clients.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	if len(addons.Items) > 0 {
-		return errors.New("Unable to verify cluster-scoped resources are deleted if any TektonAddon exists")
-	}
-	return nil
+	// if the Delete API call was success,
+	// then return requeue_event
+	// so that in a subsequent reconcile call the absence of the CR is verified by one of the 2 checks above
+	return v1alpha1.RECONCILE_AGAIN_ERR
 }
