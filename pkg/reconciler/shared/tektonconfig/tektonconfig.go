@@ -60,13 +60,13 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	}
 
 	if original.Spec.Profile == v1alpha1.ProfileLite {
-		return pipeline.TektonPipelineCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName)
+		return pipeline.EnsureTektonPipelineCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines())
 	} else {
 		// TektonPipeline and TektonTrigger is common for profile type basic and all
-		if err := trigger.TektonTriggerCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName); err != nil {
+		if err := trigger.EnsureTektonTriggerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers()); err != nil {
 			return err
 		}
-		if err := pipeline.TektonPipelineCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), v1alpha1.PipelineResourceName); err != nil {
+		if err := pipeline.EnsureTektonPipelineCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines()); err != nil {
 			return err
 		}
 	}
@@ -127,7 +127,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	} else {
-		if err := trigger.TektonTriggerCRDelete(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), v1alpha1.TriggerResourceName); err != nil {
+		if err := trigger.EnsureTektonTriggerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers()); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}

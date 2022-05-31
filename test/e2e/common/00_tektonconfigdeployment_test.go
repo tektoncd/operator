@@ -35,6 +35,7 @@ import (
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
 	"github.com/tektoncd/pipeline/test/diff"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
 )
@@ -155,8 +156,8 @@ func runFeatureTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonCon
 	})
 
 	t.Run("change-spec-configuration-and-validate", func(t *testing.T) {
-
-		tc, err := clients.Operator.TektonConfigs().Get(context.TODO(), v1alpha1.ConfigResourceName, metav1.GetOptions{})
+		ctx := context.Background()
+		tc, err := clients.Operator.TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 		if err != nil {
 			t.Fatalf("failed to get tektonconfig: %v", err)
 		}
@@ -176,52 +177,75 @@ func runFeatureTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonCon
 		// triggers config-defaults configMap
 		tc.Spec.Trigger.OptionalTriggersProperties.DefaultServiceAccount = "foo"
 
-		tc, err = clients.Operator.TektonConfigs().Update(context.TODO(), tc, metav1.UpdateOptions{})
+		tc, err = clients.Operator.TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
 		if err != nil {
 			t.Fatalf("failed to update tektonconfig: %v", err)
 		}
 
-		// wait for a few seconds and it reconcile
-		time.Sleep(time.Second * 5)
+		// Validate changes to Pipelines feature-flags ConfigMap
+		err = utils.WaitForCondition(ctx, func() (bool, error) {
+			featureFlags, err := clients.KubeClient.CoreV1().
+				ConfigMaps(tc.Spec.TargetNamespace).
+				Get(context.TODO(), tektonpipeline.FeatureFlag, metav1.GetOptions{})
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return false, nil
+				}
+				return false, err
+			}
+			if featureFlags != nil &&
+				featureFlags.Data["enable-custom-tasks"] != "true" || featureFlags.Data["enable-tekton-oci-bundles"] != "true" {
+				return false, nil
+			}
+			return true, nil
+		})
 
-		// Validate changes to Pipelines ConfigMaps
-
-		featureFlags, err := clients.KubeClient.CoreV1().ConfigMaps(tc.Spec.TargetNamespace).Get(context.TODO(), tektonpipeline.FeatureFlag, metav1.GetOptions{})
 		if err != nil {
-			t.Fatalf("failed to get pipelines configMap: %s : %v", tektonpipeline.FeatureFlag, err)
-		}
-
-		if featureFlags.Data["enable-custom-tasks"] != "true" || featureFlags.Data["enable-tekton-oci-bundles"] != "true" {
 			t.Fatalf("failed to update changes to pipelines configMap: %s ", tektonpipeline.FeatureFlag)
 		}
 
-		configDefaults, err := clients.KubeClient.CoreV1().ConfigMaps(tc.Spec.TargetNamespace).Get(context.TODO(), tektonpipeline.ConfigDefaults, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("failed to get pipelines configMap: %s : %v", tektonpipeline.ConfigDefaults, err)
-		}
+		// Validate changes to Pipelines config-defaults ConfigMap
+		err = utils.WaitForCondition(ctx, func() (bool, error) {
+			configDefaults, err := clients.KubeClient.CoreV1().
+				ConfigMaps(tc.Spec.TargetNamespace).
+				Get(context.TODO(), tektonpipeline.ConfigDefaults, metav1.GetOptions{})
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return false, nil
+				}
+				return false, err
+			}
+			if configDefaults != nil &&
+				configDefaults.Data["default-service-account"] != "foo" {
+				return false, nil
+			}
+			return true, nil
+		})
 
-		if configDefaults.Data["default-service-account"] != "foo" {
+		if err != nil {
 			t.Fatalf("failed to update changes to pipelines configMap: %s ", tektonpipeline.ConfigDefaults)
 		}
 
-		// Validate changes to Triggers ConfigMaps
+		// Validate changes to Triggers feature-flag-triggers configMap
+		err = utils.WaitForCondition(ctx, func() (bool, error) {
+			featureFlags, err := clients.KubeClient.CoreV1().
+				ConfigMaps(tc.Spec.TargetNamespace).
+				Get(context.TODO(), tektontrigger.FeatureFlag, metav1.GetOptions{})
+			if err != nil {
+				if errors.IsNotFound(err) {
+					return false, nil
+				}
+				return false, err
+			}
+			if featureFlags != nil &&
+				featureFlags.Data["enable-api-fields"] != v1alpha1.ApiFieldAlpha {
+				return false, nil
+			}
+			return true, nil
+		})
 
-		featureFlags, err = clients.KubeClient.CoreV1().ConfigMaps(tc.Spec.TargetNamespace).Get(context.TODO(), tektontrigger.FeatureFlag, metav1.GetOptions{})
 		if err != nil {
-			t.Fatalf("failed to get triggers configMap: %s : %v", tektontrigger.FeatureFlag, err)
-		}
-
-		if featureFlags.Data["enable-api-fields"] != v1alpha1.ApiFieldAlpha {
 			t.Fatalf("failed to update changes to triggers configMap: %s", tektontrigger.FeatureFlag)
-		}
-
-		configDefaults, err = clients.KubeClient.CoreV1().ConfigMaps(tc.Spec.TargetNamespace).Get(context.TODO(), tektontrigger.ConfigDefaults, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("failed to get triggers configMap: %s : %v", tektontrigger.ConfigDefaults, err)
-		}
-
-		if configDefaults.Data["default-service-account"] != "foo" {
-			t.Fatalf("failed to update changes to triggers configMap: %s :", tektontrigger.ConfigDefaults)
 		}
 	})
 

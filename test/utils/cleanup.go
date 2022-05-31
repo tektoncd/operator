@@ -22,7 +22,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -195,7 +194,7 @@ func TearDownNamespace(clients *Clients, name string) {
 		return
 	}
 
-	err = waitForCondition(ctx, func() (bool, error) {
+	err = WaitForCondition(ctx, func() (bool, error) {
 		_, err := clients.KubeClient.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -347,15 +346,15 @@ func waitUntilFullDeletion(ctx context.Context, cdcf crDeleteVerifier, ddcf depl
 }
 
 func ensureCustomResourceRemoval(ctx context.Context, verifier crDeleteVerifier) error {
-	return waitForCondition(ctx, wait.ConditionFunc(verifier))
+	return WaitForCondition(ctx, wait.ConditionFunc(verifier))
 }
 
 func ensureDeploymentsRemoval(ctx context.Context, verifier deploymentDeleteVerifier) error {
-	return waitForCondition(ctx, wait.ConditionFunc(verifier))
+	return WaitForCondition(ctx, wait.ConditionFunc(verifier))
 }
 
-func waitForCondition(ctx context.Context, condition wait.ConditionFunc) error {
-	return wait.PollImmediate(common.Interval, common.Timeout, func() (done bool, err error) {
+func WaitForCondition(ctx context.Context, condition wait.ConditionFunc) error {
+	return wait.PollImmediate(Interval, Timeout, func() (done bool, err error) {
 		ok, err := condition()
 		if err != nil {
 			return false, err
