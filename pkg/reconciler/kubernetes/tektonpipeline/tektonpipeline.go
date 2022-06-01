@@ -25,8 +25,10 @@ import (
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonpipelinereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	installer "github.com/tektoncd/operator/pkg/reconciler/common/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
+	tisBuilder "github.com/tektoncd/operator/pkg/reconciler/shared/tektoninstallerset"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -311,51 +313,43 @@ func (r *Reconciler) updateTektonPipelineStatus(ctx context.Context, tp *v1alpha
 
 func (r *Reconciler) createInstallerSet(ctx context.Context, tp *v1alpha1.TektonPipeline) (*v1alpha1.TektonInstallerSet, error) {
 
+	// Creates a new default installer
+	dis := installer.NewDefaultInstaller()
+
 	manifest := r.manifest
 	if err := r.transform(ctx, &manifest, tp); err != nil {
 		tp.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err
 	}
 
-	// compute the hash of tektonpipeline spec and store as an annotation
-	// in further reconciliation we compute hash of tp spec and check with
-	// annotation, if they are same then we skip updating the object
-	// otherwise we update the manifest
+	// Adds the manifest to the installer
+	dis.AddManifest(manifest)
+
+	// Adds the labels to the installer
+	dis.AddCreatedByLabel(createdByValue)
+	dis.AddTypeLabel(v1alpha1.PipelineResourceName)
+	dis.AddReleaseVersionLabel(r.operatorVersion)
+
+	// Adds the ownerRef to the installer
+	ownerRef := *metav1.NewControllerRef(tp, tp.GetGroupVersionKind())
+	dis.AddOwnerReferences(ownerRef)
+
+	// Adds the annotations to the installer
+	dis.AddAnnotationsKeyVal(v1alpha1.TargetNamespaceKey, tp.Spec.TargetNamespace)
+
+	// Hash of TektonPipeline Spec
 	specHash, err := hash.Compute(tp.Spec)
 	if err != nil {
 		return nil, err
 	}
+	dis.AddAnnotationsKeyVal(v1alpha1.LastAppliedHashKey, specHash)
 
-	// create installer set
-	tis := r.makeInstallerSet(tp, manifest, specHash)
-	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-		Create(ctx, tis, metav1.CreateOptions{})
+	// Creates installer set with generate name
+	createdIs, err := tisBuilder.CreateInstallerSetWithGenerateName(ctx, dis, v1alpha1.PipelineResourceName)
 	if err != nil {
 		return nil, err
 	}
 	return createdIs, nil
-}
-
-func (r *Reconciler) makeInstallerSet(tp *v1alpha1.TektonPipeline, manifest mf.Manifest, tpSpecHash string) *v1alpha1.TektonInstallerSet {
-	ownerRef := *metav1.NewControllerRef(tp, tp.GetGroupVersionKind())
-	return &v1alpha1.TektonInstallerSet{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("%s-", v1alpha1.PipelineResourceName),
-			Labels: map[string]string{
-				v1alpha1.CreatedByKey:      createdByValue,
-				v1alpha1.InstallerSetType:  v1alpha1.PipelineResourceName,
-				v1alpha1.ReleaseVersionKey: r.operatorVersion,
-			},
-			Annotations: map[string]string{
-				v1alpha1.TargetNamespaceKey: tp.Spec.TargetNamespace,
-				v1alpha1.LastAppliedHashKey: tpSpecHash,
-			},
-			OwnerReferences: []metav1.OwnerReference{ownerRef},
-		},
-		Spec: v1alpha1.TektonInstallerSetSpec{
-			Manifests: manifest.Resources(),
-		},
-	}
 }
 
 func (r *Reconciler) targetNamespaceCheck(ctx context.Context, tp *v1alpha1.TektonPipeline) error {
