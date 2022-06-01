@@ -19,6 +19,8 @@ package resources
 import (
 	"context"
 	"fmt"
+
+	"github.com/tektoncd/operator/test/utils"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/client/clientset/versioned/typed/pipeline/v1beta1"
 	v1 "k8s.io/api/core/v1"
@@ -43,7 +45,7 @@ func ReplaceConfigMap(kubeClient kubernetes.Interface, configMap *v1.ConfigMap) 
 // WaitForTaskRunHappy polls the status of the TaskRun called name from client
 // every `interval` seconds till it becomes happy with the condition function
 func WaitForTaskRunHappy(client pipelinev1beta1.TaskRunInterface, name string, conditionFunc func(taskRun *v1beta1.TaskRun) (bool, error)) error {
-	waitErr := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
+	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
 		taskRun, err := client.Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			return false, err

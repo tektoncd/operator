@@ -67,7 +67,7 @@ func WaitForTektonDashboardState(clients dashboardv1alpha1.TektonDashboardInterf
 	defer span.End()
 
 	var lastState *v1alpha1.TektonDashboard
-	waitErr := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
+	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
 		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
@@ -101,7 +101,7 @@ func TektonDashboardCRDelete(t *testing.T, clients *utils.Clients, crNames utils
 	if err := clients.TektonDashboard().Delete(context.TODO(), crNames.TektonDashboard, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("TektonDashboard %q failed to delete: %v", crNames.TektonDashboard, err)
 	}
-	err := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
+	err := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
 		_, err := clients.TektonDashboard().Get(context.TODO(), crNames.TektonDashboard, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil

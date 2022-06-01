@@ -48,7 +48,7 @@ func DeleteAndVerifyDeployments(t *testing.T, clients *utils.Clients, namespace,
 		t.Fatalf("Failed to delete deployment %s/%s: %v", deployment.Namespace, deployment.Name, err)
 	}
 
-	waitErr := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
+	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
 		dep, err := clients.KubeClient.
 			AppsV1().Deployments(deployment.Namespace).Get(context.TODO(), deployment.Name, metav1.GetOptions{})
 		if err != nil {
