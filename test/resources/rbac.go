@@ -33,7 +33,7 @@ func EnsureTestNamespaceExists(clients *utils.Clients, name string) (*corev1.Nam
 func AssertServiceAccount(t *testing.T, clients *utils.Clients, ns, targetSA string) {
 	t.Helper()
 
-	err := wait.Poll(Interval, Timeout, func() (bool, error) {
+	err := wait.Poll(utils.Interval, utils.Timeout, func() (bool, error) {
 		saList, err := clients.KubeClient.CoreV1().ServiceAccounts(ns).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return false, err
@@ -53,7 +53,7 @@ func AssertServiceAccount(t *testing.T, clients *utils.Clients, ns, targetSA str
 func AssertRoleBinding(t *testing.T, clients *utils.Clients, ns, roleBindingName string) {
 	t.Helper()
 
-	err := wait.Poll(Interval, Timeout, func() (bool, error) {
+	err := wait.Poll(utils.Interval, utils.Timeout, func() (bool, error) {
 		rbList, err := clients.KubeClient.RbacV1().RoleBindings(ns).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return false, err
@@ -73,7 +73,7 @@ func AssertRoleBinding(t *testing.T, clients *utils.Clients, ns, roleBindingName
 func AssertConfigMap(t *testing.T, clients *utils.Clients, ns, configMapName string) {
 	t.Helper()
 
-	err := wait.Poll(Interval, Timeout, func() (bool, error) {
+	err := wait.Poll(utils.Interval, utils.Timeout, func() (bool, error) {
 		rbList, err := clients.KubeClient.CoreV1().ConfigMaps(ns).List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return false, err
@@ -93,7 +93,7 @@ func AssertConfigMap(t *testing.T, clients *utils.Clients, ns, configMapName str
 func AssertClusterRole(t *testing.T, clients *utils.Clients, clusterRoleName string) {
 	t.Helper()
 
-	err := wait.Poll(Interval, Timeout, func() (bool, error) {
+	err := wait.Poll(utils.Interval, utils.Timeout, func() (bool, error) {
 		rbList, err := clients.KubeClient.RbacV1().ClusterRoles().List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
 			return false, err

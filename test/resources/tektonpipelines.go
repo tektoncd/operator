@@ -70,7 +70,7 @@ func WaitForTektonPipelineState(clients pipelinev1alpha1.TektonPipelineInterface
 	defer span.End()
 
 	var lastState *v1alpha1.TektonPipeline
-	waitErr := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
+	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
 		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
@@ -99,7 +99,7 @@ func TektonPipelineCRDelete(t *testing.T, clients *utils.Clients, crNames utils.
 	if err := clients.TektonPipeline().Delete(context.TODO(), crNames.TektonPipeline, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("TektonPipeline %q failed to delete: %v", crNames.TektonPipeline, err)
 	}
-	err := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
+	err := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
 		_, err := clients.TektonPipeline().Get(context.TODO(), crNames.TektonPipeline, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil

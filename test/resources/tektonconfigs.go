@@ -99,7 +99,7 @@ func WaitForTektonConfigState(clients configv1alpha1.TektonConfigInterface, name
 	defer span.End()
 
 	var lastState *v1alpha1.TektonConfig
-	waitErr := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
+	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
 		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
@@ -130,7 +130,7 @@ func EnsureNoTektonConfigInstance(t *testing.T, clients *utils.Clients, crNames 
 		}
 		t.Fatalf("TektonConfig %q failed to delete: %v", crNames.TektonConfig, err)
 	}
-	err := wait.PollImmediate(Interval, Timeout, func() (bool, error) {
+	err := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
 		_, err := clients.TektonConfig().Get(context.TODO(), crNames.TektonConfig, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil
