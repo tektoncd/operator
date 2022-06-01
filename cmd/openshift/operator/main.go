@@ -24,11 +24,20 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonhub"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektontrigger"
+	installer "github.com/tektoncd/operator/pkg/reconciler/shared/tektoninstallerset"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
+	"knative.dev/pkg/signals"
 )
 
 func main() {
-	sharedmain.Main("tekton-operator",
+
+	cfg := injection.ParseAndGetRESTConfigOrDie()
+	ctx, _ := injection.EnableInjectionOrDie(signals.NewContext(), cfg)
+
+	installer.InitTektonInstallerSetClient(ctx)
+
+	sharedmain.MainWithConfig(ctx, "tekton-operator", cfg,
 		tektonpipeline.NewController,
 		tektontrigger.NewController,
 		tektonaddon.NewController,

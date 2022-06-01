@@ -25,11 +25,20 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonresult"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
+	installer "github.com/tektoncd/operator/pkg/reconciler/shared/tektoninstallerset"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
+	"knative.dev/pkg/signals"
 )
 
 func main() {
-	sharedmain.Main("tekton-operator",
+
+	cfg := injection.ParseAndGetRESTConfigOrDie()
+	ctx, _ := injection.EnableInjectionOrDie(signals.NewContext(), cfg)
+
+	installer.InitTektonInstallerSetClient(ctx)
+
+	sharedmain.MainWithConfig(ctx, "tekton-operator", cfg,
 		tektonconfig.NewController,
 		tektonpipeline.NewController,
 		tektontrigger.NewController,
