@@ -1,0 +1,23 @@
+name: Add issues and pull-requests to board
+
+on:
+  issues:
+    types:
+      - opened
+      - reopened
+      - labeled
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - labeled
+
+jobs:
+  add-to-project:
+    name: Add issue to project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/add-to-project@main
+        with:
+          project-url: https://github.com/orgs/tektoncd/projects/22
+          github-token: ${{ secrets.GH_TOKEN }}
