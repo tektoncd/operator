@@ -18,7 +18,7 @@ spec:
     owned:
     - description: |
         TektonConfig installs Tekton Pipelines, Tekton Triggers and Tekton Dashboard on a cluster. The operator installs
-        the 3 components on a cluster if an instnce of this CRD is created on your cluster with name `config`.
+        the 3 components on a cluster if an instance of this CRD is created on your cluster with name `config`.
         At present, the operator honors only one CustomResource instance with the name `config` to ensure only one set
         of the three components (Pipelines, Triggers, Dashboard) exists on a cluster. An instance of this CRD will automatically
         create instances of the other CRDs (TektonPipeline, TektonDashboard and TektonTriggers).
@@ -28,7 +28,7 @@ spec:
       version: v1alpha1
     - description: |
         TektonDashboard installs Tekton Dashboard on a cluster. The operator installs Tekton Dashboard on a cluster
-        if an instnce of this CRD is created on your cluster with name `dashboard`. At present, the operator honors only
+        if an instance of this CRD is created on your cluster with name `dashboard`. At present, the operator honors only
         one CustomResource instance with the name `dashboard` to ensure only one set of Tekton Dashboard exists on a cluster.
       displayName: TektonDashboard
       kind: TektonDashboard
@@ -36,7 +36,7 @@ spec:
       version: v1alpha1
     - description: |
         TektonPipeline installs Tekton Pipelines on a cluster. The operator installs Tekton Pipelines on a cluster
-        if an instnce of this CRD is created on your cluster with name `pipeline`. At present, the operator honors only
+        if an instance of this CRD is created on your cluster with name `pipeline`. At present, the operator honors only
         one CustomResource instance with the name `pipeline` to ensure only one set of Tekton Pipeline exists on a cluster.
       displayName: TektonPipeline
       kind: TektonPipeline
@@ -44,11 +44,42 @@ spec:
       version: v1alpha1
     - description: |
         TektonTrigger installs Tekton Triggers on a cluster. The operator installs Tekton Triggers on a cluster
-        if an instnce of this CRD is created on your cluster with name `trigger`. At present, the operator honors only
+        if an instance of this CRD is created on your cluster with name `trigger`. At present, the operator honors only
         one CustomResource instance with the name `trigger` to ensure only one set of Tekton Triggers exists on a cluster.
       displayName: TektonTriggers
       kind: TektonTrigger
       name: tektontriggers.operator.tekton.dev
+      version: v1alpha1
+    - description: |
+        TektonHub installs Tekton Hub on a cluster. The operator installs Tekton Hub on a cluster
+        if an instance of this CRD is created on your cluster with name `hub`. At present, the operator honors only
+        one CustomResource instance with the name `hub` to ensure only one set of Tekton Hub exists on a cluster.
+      displayName: TektonHubs
+      kind: TektonHub
+      name: tektonhubs.operator.tekton.dev
+      version: v1alpha1
+    - description: |
+        TektonInstallerSet internal CRD used by other component reconcilers to create kubernetes resources from their
+        release manifests
+      displayName: TektonInstallerSets
+      kind: TektonInstallerSet
+      name: tektoninstallersets.operator.tekton.dev
+      version: v1alpha1
+    - description: |
+        TektonResult installs Tekton Results on a cluster. The operator installs Tekton Results on a cluster
+        if an instance of this CRD is created on your cluster with name `result`. At present, the operator honors only
+        one CustomResource instance with the name `result` to ensure only one set of Tekton Results exists on a cluster.
+      displayName: TektonResults
+      kind: TektonResult
+      name: tektonresults.operator.tekton.dev
+      version: v1alpha1
+    - description: |
+        TektonChain installs Tekton Chain on a cluster. The operator installs Tekton Chain on a cluster
+        if an instance of this CRD is created on your cluster with name `chain`. At present, the operator honors only
+        one CustomResource instance with the name `chain` to ensure only one set of Tekton Chain exists on a cluster.
+      displayName: TektonChain
+      kind: TektonChain
+      name: tektonchains.operator.tekton.dev
       version: v1alpha1
   description: |
     Tekton is a powerful and flexible open-source framework for creating CI/CD systems, allowing developers to build,

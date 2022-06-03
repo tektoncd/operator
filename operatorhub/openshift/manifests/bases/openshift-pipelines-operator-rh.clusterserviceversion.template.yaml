@@ -118,6 +118,48 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
+    - description: Represents an installation of latest version of Chains
+      displayName: Tekton Chains
+      kind: Tekton Chain
+      name: tektonchains.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
+      specDescriptors:
+      - description: Namespace where Addons installed
+        displayName: Target Namespace
+        path: targetNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Addons installed
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
+    - description: Represents an installation of latest version of Hub
+      displayName: Tekton Hub
+      kind: TektonHub
+      name: tektonhubs.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
+      specDescriptors:
+      - description: Namespace where Addons installed
+        displayName: Target Namespace
+        path: targetNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Addons installed
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
     - description: This CustomResourceDefinition (CRD) is used internally by the other OpenShift Pipelines CRDs to maintain the lifecycle of OpenShift Pipelines Components
       displayName: Tekton Installer Set
       kind: TektonInstallerSet
@@ -162,12 +204,12 @@ spec:
         path: manifests
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
-        statusDescriptors:
-        - description: The version of Operator installed
-          displayName: ObservedGeneration
-          path: observedGeneration
-          x-descriptors:
-          - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Operator installed
+        displayName: ObservedGeneration
+        path: observedGeneration
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
   description: |
     Red Hat OpenShift Pipelines is a cloud-native continuous integration and delivery

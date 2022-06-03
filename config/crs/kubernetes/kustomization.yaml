@@ -8,3 +8,4 @@ resources:
 - config/all/operator_v1alpha1_config_cr.yaml
 - installerset/operator_v1alpha1_installerset_cr.yaml
 - chain/operator_v1alpha1_chain_cr.yaml
+- hub/operator_v1alpha1_hub_cr.yaml
