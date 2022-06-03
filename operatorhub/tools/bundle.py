@@ -7,6 +7,7 @@ import yaml
 import argparse
 import os
 import subprocess
+import shutil
 
 WORKSPACE_DIR=""
 FETCH_STRATEGY_LOCAL = "fetch-strategy-local"
@@ -15,7 +16,8 @@ UPGRADE_STRATEGY_SEMVER = "upgrade-strategy-sermver-mode"
 UPGRADE_STRATEGY_REPLACE = "upgrade-strategy-replaces-mode"
 VERBOSE = False
 OPERATOR_SDK = os.getenv("OPERATOR_SDK", "operator-sdk")
-
+SHELL = "bash"
+SHELL_PATH = shutil.which(SHELL)
 
 def buildConfig():
     parser = setParser()
@@ -167,7 +169,8 @@ def generate_bundle(config):
     if not os.path.exists(artifact_dir):
         os.mkdir(artifact_dir)
     os.chdir(artifact_dir)
-    proc = subprocess.run(cmd, shell=True)
+    print(cmd)
+    proc = subprocess.run(cmd, shell=True, executable=SHELL_PATH)
     return proc.returncode
 
 def genBundleCmd(config):
@@ -194,7 +197,7 @@ def genBundleCmd(config):
                 --kustomize-dir manifests \
                 --overwrite \
                 --package {packagename} \
-                --version {version};
+                --version {version}
     '''.format(
         operator_sdk=OPERATOR_SDK,
         resource_gen=aggregate_resources,

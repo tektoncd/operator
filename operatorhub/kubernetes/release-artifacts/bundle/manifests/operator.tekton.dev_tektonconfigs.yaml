@@ -3,8 +3,8 @@ kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
   labels:
-    operator.tekton.dev/release: v0.50.0
-    version: v0.50.0
+    operator.tekton.dev/release: v0.59.0
+    version: v0.59.0
   name: tektonconfigs.operator.tekton.dev
 spec:
   group: operator.tekton.dev
@@ -16,6 +16,9 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .status.version
+      name: Version
+      type: string
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
