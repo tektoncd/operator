@@ -137,6 +137,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, th *v1alpha1.TektonHub) 
 	}
 	th.Status.MarkPreReconcilerComplete()
 
+	// TODO: remove this after operator openshift-build version 1.8
+	if err := r.checkDbApiPVCOwnerRef(ctx, th); err != nil {
+		return err
+	}
+
 	// Manage DB
 	if err := r.manageDbComponent(ctx, th, hubDir, version); err != nil {
 		return r.handleError(err, th)
@@ -494,6 +499,74 @@ func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1
 	}
 
 	return &manifest, nil
+}
+
+// TODO: remove this after operator openshift-build version 1.8
+func (r *Reconciler) checkDbApiPVCOwnerRef(ctx context.Context, th *v1alpha1.TektonHub) error {
+	// Check and update pvc for db component
+	dbPvc, err := r.checkPVC(ctx, th, "tekton-hub-db")
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	if dbPvc != nil {
+		if err := r.checkAndUpdatePVCOwnerRef(ctx, dbPvc, th); err != nil {
+			return err
+		}
+	}
+
+	// Check and update pvc for api component
+	apiPvc, err := r.checkPVC(ctx, th, "tekton-hub-api")
+	if err != nil {
+		if !apierrors.IsNotFound(err) {
+			return err
+		}
+	}
+
+	if apiPvc != nil {
+		if err := r.checkAndUpdatePVCOwnerRef(ctx, apiPvc, th); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// TODO: remove this after operator openshift-build version 1.8
+// This patch checks if the ownerRef is set to `TektonHub`,
+// if not it sets and updates the ownerRef of pvc to `TektonHub`
+func (r *Reconciler) checkAndUpdatePVCOwnerRef(ctx context.Context, pvc *corev1.PersistentVolumeClaim, th *v1alpha1.TektonHub) error {
+	if !r.checkPVCOwnerRef(pvc, th) {
+		ownerRef := *metav1.NewControllerRef(th, th.GroupVersionKind())
+		pvc.SetOwnerReferences([]metav1.OwnerReference{ownerRef})
+
+		_, err := r.kubeClientSet.CoreV1().PersistentVolumeClaims(th.Spec.GetTargetNamespace()).Update(ctx, pvc, metav1.UpdateOptions{})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *Reconciler) checkPVC(ctx context.Context, th *v1alpha1.TektonHub, name string) (*corev1.PersistentVolumeClaim, error) {
+	pvc, err := r.kubeClientSet.CoreV1().PersistentVolumeClaims(th.Spec.GetTargetNamespace()).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	return pvc, nil
+}
+
+// TODO: remove this after operator openshift-build version 1.8
+func (r *Reconciler) checkPVCOwnerRef(pvc *corev1.PersistentVolumeClaim, th *v1alpha1.TektonHub) bool {
+	if len(pvc.GetOwnerReferences()) == 1 {
+		if pvc.GetOwnerReferences()[0].Kind == th.Kind {
+			return true
+		}
+	}
+	return false
 }
 
 func applyPVC(ctx context.Context, manifest *mf.Manifest, th *v1alpha1.TektonHub) error {

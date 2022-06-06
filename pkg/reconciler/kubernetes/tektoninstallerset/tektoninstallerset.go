@@ -55,7 +55,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, installerSet *v1alpha1.Te
 	// Delete all resources except CRDs and Namespace as they are own by owner of
 	// TektonInstallerSet
 	// They will be deleted when the component CR is deleted
-	deleteManifests = deleteManifests.Filter(mf.Not(mf.Any(namespacePred, mf.CRDs)))
+	deleteManifests = deleteManifests.Filter(mf.Not(mf.Any(namespacePred, mf.CRDs, pvcPred)))
 	err = deleteManifests.Delete(mf.PropagationPolicy(v1.DeletePropagationForeground))
 	if err != nil {
 		logger.Error("failed to delete resources")
