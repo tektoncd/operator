@@ -59,6 +59,9 @@ spec:
           mountPath: /var/lib/containers
         - name: gen-source
           mountPath: /gen-source
+      securityContext:
+        capabilities:
+          add: ["SETFCAP"]
     - name: push
       workingDir: $(workspaces.source.path)
       image: $(params.BUILDER_IMAGE)
@@ -66,6 +69,9 @@ spec:
       volumeMounts:
         - name: varlibcontainers
           mountPath: /var/lib/containers
+      securityContext:
+        capabilities:
+          add: ["SETFCAP"]
     - name: digest-to-results
       image: $(params.BUILDER_IMAGE)
       script: cat $(workspaces.source.path)/image-digest | tee /tekton/results/IMAGE_DIGEST
