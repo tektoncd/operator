@@ -26,7 +26,7 @@ spec:
     default: "latest"
   - name: HUB_VERSION
     description: Version of TektonCD Hub being fetched
-    default: "v1.7.1"
+    default: "v1.7.3"
     # TODO: Set default to nightly. Mar 09, 2022 - no nightly ("latest") releases available for Hub
   - name: TARGET_PLATFORMS
     description: Target platform for for which the payload is going to be used

@@ -54,7 +54,7 @@ spec:
   - name: TektonCDHubVersion
     description: Version of TektonCD Hub Release to be packaged with this operator build
     # TODO: Set default to nightly. Mar 09, 2022 - no nightly ("latest") releases available for Hub
-    default: "v1.7.1"
+    default: "v1.7.3"
   workspaces:
   - name: workarea
     description: The workspace where the repo will be cloned.
