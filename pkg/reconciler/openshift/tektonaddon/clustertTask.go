@@ -19,11 +19,12 @@ package tektonaddon
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
 )
 
 var clusterTaskLS = metav1.LabelSelector{
