@@ -21,11 +21,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"os"
 	"strings"
 
 	"github.com/markbates/inflect"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"go.uber.org/zap"
 	"gomodules.xyz/jsonpatch/v2"
 	admissionv1 "k8s.io/api/admission/v1"

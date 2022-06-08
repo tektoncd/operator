@@ -19,6 +19,7 @@ package tektonconfig
 import (
 	"context"
 	"fmt"
+
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -78,6 +79,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfig) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 	tc.Status.InitializeConditions()
+	tc.Status.SetVersion(r.operatorVersion)
 
 	logger.Infow("Reconciling TektonConfig", "status", tc.Status)
 	if tc.GetName() != v1alpha1.ConfigResourceName {
