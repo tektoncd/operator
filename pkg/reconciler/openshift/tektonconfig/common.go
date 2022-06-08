@@ -43,7 +43,6 @@ func createInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha
 
 	// Update the status of tektonConfig with created installerSet name
 	tc.Status.TektonInstallerSet[rbacInstallerSetType] = createdIs.Name
-	tc.Status.SetVersion(releaseVersion)
 	return nil
 }
 
