@@ -1,12 +1,13 @@
 package common
 
 import (
+	"path/filepath"
+	"testing"
+
 	"github.com/google/go-cmp/cmp"
 	mf "github.com/manifestival/manifestival"
 	"gotest.tools/v3/assert"
 	"k8s.io/apimachinery/pkg/labels"
-	"path/filepath"
-	"testing"
 )
 
 func TestInjectOperandNameLabel(t *testing.T) {

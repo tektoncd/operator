@@ -18,10 +18,11 @@ package tektonaddon
 
 import (
 	"context"
-	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"

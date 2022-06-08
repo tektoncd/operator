@@ -19,7 +19,6 @@ package tektonaddon
 import (
 	"context"
 	"fmt"
-	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -32,6 +31,7 @@ import (
 	tektonaddonreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"

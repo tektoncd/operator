@@ -19,9 +19,10 @@ package resources
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/sigstore/cosign/cmd/cosign/cli"
 	"github.com/sigstore/cosign/pkg/cosign/kubernetes"
-	"os"
 )
 
 func CosignGenerateKeyPair(namespace, secretName string) error {

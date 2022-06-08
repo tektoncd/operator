@@ -18,8 +18,9 @@ package v1alpha1
 
 import (
 	"fmt"
-	"knative.dev/pkg/controller"
 	"time"
+
+	"knative.dev/pkg/controller"
 )
 
 const (
