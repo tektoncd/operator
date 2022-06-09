@@ -49,7 +49,8 @@ type Reconciler struct {
 	// client & logger
 	manifest mf.Manifest
 	// Platform-specific behavior to affect the transform
-	extension common.Extension
+	extension       common.Extension
+	operatorVersion string
 }
 
 var (
@@ -142,6 +143,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, th *v1alpha1.TektonHub) 
 		return err
 	}
 
+	// TODO: remove this after operator openshift-build version 1.8
+	if err := r.getAndUpdateHubInstallerSetLabels(ctx); err != nil {
+		return err
+	}
+
 	// Manage DB
 	if err := r.manageDbComponent(ctx, th, hubDir, version); err != nil {
 		return r.handleError(err, th)
@@ -190,7 +196,7 @@ func (r *Reconciler) manageUiComponent(ctx context.Context, th *v1alpha1.TektonH
 
 	th.Status.MarkUiDependenciesInstalled()
 
-	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, uiInstallerSet)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, ui)
 	if err != nil {
 		return err
 	}
@@ -229,7 +235,7 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 
 	th.Status.MarkApiDependenciesInstalled()
 
-	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, apiInstallerSet)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, api)
 	if err != nil {
 		return err
 	}
@@ -264,7 +270,7 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 
 func (r *Reconciler) manageDbMigrationComponent(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
 	// Check if the InstallerSet is available for DB-migration
-	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, dbMigrationInstallerSet)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, dbMigration)
 	if err != nil {
 		return err
 	}
@@ -300,7 +306,7 @@ func (r *Reconciler) manageDbComponent(ctx context.Context, th *v1alpha1.TektonH
 	}
 	th.Status.MarkDbDependenciesInstalled()
 
-	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, dbInstallerSet)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, db)
 	if err != nil {
 		return err
 	}
@@ -501,6 +507,127 @@ func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1
 }
 
 // TODO: remove this after operator openshift-build version 1.8
+func (r *Reconciler) getAndUpdateHubInstallerSetLabels(ctx context.Context) error {
+	// Get and Update db labels
+	dbIs, err := r.getHubInstallerSet(ctx, db)
+	if err != nil {
+		return err
+	}
+
+	if dbIs != nil {
+		dbIs.Labels = r.getLabels(db).MatchLabels
+		if err := r.updateHubInstallerSet(ctx, dbIs); err != nil {
+			return err
+		}
+	}
+
+	// Get and update db-migration labels
+	dbMigrationIs, err := r.getHubInstallerSet(ctx, dbMigration)
+	if err != nil {
+		return err
+	}
+
+	if dbMigrationIs != nil {
+		dbMigrationIs.Labels = r.getLabels(dbMigration).MatchLabels
+		if err := r.updateHubInstallerSet(ctx, dbMigrationIs); err != nil {
+			return err
+		}
+	}
+
+	// Get and update api labels
+	apiIs, err := r.getHubInstallerSet(ctx, api)
+	if err != nil {
+		return err
+	}
+
+	if apiIs != nil {
+		apiIs.Labels = r.getLabels(api).MatchLabels
+		if err := r.updateHubInstallerSet(ctx, apiIs); err != nil {
+			return err
+		}
+	}
+
+	// Get and update ui labels
+	uiIs, err := r.getHubInstallerSet(ctx, ui)
+	if err != nil {
+		return err
+	}
+
+	if uiIs != nil {
+		uiIs.Labels = r.getLabels(ui).MatchLabels
+		if err := r.updateHubInstallerSet(ctx, uiIs); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *Reconciler) getHubInstallerSet(ctx context.Context, prefixName string) (*v1alpha1.TektonInstallerSet, error) {
+	labels := getOldLabels(prefixName)
+
+	labelSelector, err := common.LabelSelector(labels)
+	if err != nil {
+		return nil, err
+	}
+
+	ctIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().List(ctx, metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ctIs.Items) == 0 {
+		return nil, nil
+	}
+
+	if len(ctIs.Items) == 1 {
+		return &ctIs.Items[0], nil
+	}
+
+	// len(iSets.Items) > 1
+	// delete all installerSets as it cannot be decided which one is the desired one
+	err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().DeleteCollection(ctx,
+		metav1.DeleteOptions{},
+		metav1.ListOptions{
+			LabelSelector: labelSelector,
+		})
+	if err != nil {
+		return nil, err
+	}
+	return nil, v1alpha1.RECONCILE_AGAIN_ERR
+}
+
+func (r *Reconciler) updateHubInstallerSet(ctx context.Context, installerSet *v1alpha1.TektonInstallerSet) error {
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().Update(ctx, installerSet, metav1.UpdateOptions{}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getOldLabels(installerSetPrefix string) metav1.LabelSelector {
+	return metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			v1alpha1.CreatedByKey:     createdByValue,
+			v1alpha1.InstallerSetType: v1alpha1.HubResourceName,
+			v1alpha1.Component:        installerSetPrefix,
+		},
+	}
+}
+
+func (r *Reconciler) getLabels(componentInstallerSetType string) metav1.LabelSelector {
+	return metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			v1alpha1.CreatedByKey:      createdByValue,
+			v1alpha1.InstallerSetType:  componentInstallerSetType,
+			v1alpha1.ReleaseVersionKey: r.operatorVersion,
+		},
+	}
+}
+
+// TODO: remove this after operator openshift-build version 1.8
 func (r *Reconciler) checkDbApiPVCOwnerRef(ctx context.Context, th *v1alpha1.TektonHub) error {
 	// Check and update pvc for db component
 	dbPvc, err := r.checkPVC(ctx, th, "tekton-hub-db")
@@ -592,8 +719,9 @@ func applyPVC(ctx context.Context, manifest *mf.Manifest, th *v1alpha1.TektonHub
 func (r *Reconciler) setUpAndCreateInstallerSet(ctx context.Context, manifest mf.Manifest, th *v1alpha1.TektonHub, installerSetName, version, prefixName string) error {
 	manifest = manifest.Filter(mf.Not(mf.Any(mf.ByKind("Secret"), mf.ByKind("PersistentVolumeClaim"), mf.ByKind("Namespace"), mf.ByKind("ConfigMap"))))
 
+	labels := r.getLabels(prefixName).MatchLabels
 	if err := createInstallerSet(ctx, r.operatorClientSet, th, manifest,
-		version, installerSetName, prefixName, namespace); err != nil {
+		version, installerSetName, prefixName, namespace, labels); err != nil {
 		return err
 	}
 
