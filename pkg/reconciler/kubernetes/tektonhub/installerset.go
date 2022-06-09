@@ -7,6 +7,8 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -14,13 +16,18 @@ import (
 // checkIfInstallerSetExist checks if installer set exists for a component and return true/false based on it
 // and if installer set which already exist is of older version then it deletes and return false to create a new
 // installer set
-func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVersion string,
-	th *v1alpha1.TektonHub, component string) (bool, error) {
+func (r *Reconciler) checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVersion string,
+	th *v1alpha1.TektonHub, installerSetType string) (bool, error) {
 
-	// Check if installer set is already created
-	compInstallerSet, ok := th.Status.HubInstallerSet[component]
-	if !ok {
-		return false, nil
+	labels := r.getLabels(installerSetType)
+	labelSelector, err := common.LabelSelector(labels)
+	if err != nil {
+		return false, err
+	}
+
+	compInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
+	if err != nil {
+		return false, err
 	}
 
 	if compInstallerSet != "" {
@@ -55,9 +62,9 @@ func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVe
 }
 
 func createInstallerSet(ctx context.Context, oc clientset.Interface, th *v1alpha1.TektonHub,
-	manifest mf.Manifest, releaseVersion, component, installerSetPrefix, namespace string) error {
+	manifest mf.Manifest, releaseVersion, component, installerSetPrefix, namespace string, labels map[string]string) error {
 
-	is := makeInstallerSet(th, manifest, installerSetPrefix, releaseVersion, namespace)
+	is := makeInstallerSet(th, manifest, installerSetPrefix, releaseVersion, namespace, labels)
 
 	createdIs, err := oc.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, is, metav1.CreateOptions{})
@@ -75,16 +82,12 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, th *v1alpha
 	return nil
 }
 
-func makeInstallerSet(th *v1alpha1.TektonHub, manifest mf.Manifest, prefix, releaseVersion, namespace string) *v1alpha1.TektonInstallerSet {
+func makeInstallerSet(th *v1alpha1.TektonHub, manifest mf.Manifest, prefix, releaseVersion, namespace string, labels map[string]string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(th, th.GetGroupVersionKind())
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", prefix),
-			Labels: map[string]string{
-				v1alpha1.CreatedByKey:     createdByValue,
-				v1alpha1.InstallerSetType: v1alpha1.HubResourceName,
-				v1alpha1.Component:        prefix,
-			},
+			Labels:       labels,
 			Annotations: map[string]string{
 				v1alpha1.ReleaseVersionKey:  releaseVersion,
 				v1alpha1.TargetNamespaceKey: namespace,
