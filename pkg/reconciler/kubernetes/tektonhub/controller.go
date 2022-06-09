@@ -60,11 +60,17 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatalw("Error creating initial manifest", zap.Error(err))
 		}
 
+		operatorVer, err := common.OperatorVersion(ctx)
+		if err != nil {
+			logger.Fatal(err)
+		}
+
 		c := &Reconciler{
 			kubeClientSet:     kubeClient,
 			operatorClientSet: operatorclient.Get(ctx),
 			extension:         generator(ctx),
 			manifest:          manifest,
+			operatorVersion:   operatorVer,
 		}
 		impl := tektonHubReconciler.NewImpl(ctx, c)
 
