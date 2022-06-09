@@ -20,7 +20,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 
@@ -77,13 +76,11 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 	// to skip it we filter out namespace
 	pacManifest = pacManifest.Filter(mf.Not(mf.ByKind("Namespace")))
 
+	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PacImagePrefix))
 	// Run transformers
 	tfs := []mf.Transformer{
 		common.InjectOperandNameLabelOverwriteExisting(openshift.OperandOpenShiftPipelineAsCode),
-	}
-	// don't run the transformer if no replace images are found
-	if triggerTemplateSteps := pacTriggerTemplateStepImages(); len(triggerTemplateSteps) > 0 {
-		tfs = append(tfs, replacePACTriggerTemplateImages(triggerTemplateSteps))
+		common.DeploymentImages(images),
 	}
 
 	if err := r.addonTransform(ctx, &pacManifest, ta, tfs...); err != nil {
@@ -96,27 +93,4 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 	}
 
 	return nil
-}
-
-// pacTriggerTemplateStepImages returns a map[string]string with key as step name and
-// value as image name to be replaced with, from the env vars that start with
-// IMAGE_PAC_
-func pacTriggerTemplateStepImages() map[string]string {
-	triggerTemplateSteps := make(map[string]string)
-
-	// pacImage is a map[string]string which will have key-values like
-	// "triggertemplate_apply_and_launch": "registry.example.io/pac-image"
-	pacImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PacImagePrefix))
-	for env, image := range pacImages {
-		prefix := "triggertemplate_"
-		if strings.HasPrefix(env, prefix) {
-			// step 3: "apply-and-launch": "registry.example.io/pac-image"
-			triggerTemplateSteps[
-			// step 2: apply_and_launch --> apply-and-launch
-			strings.ReplaceAll(
-				// step 1: triggertemplate_apply_and_launch --> apply_and_launch
-				strings.TrimPrefix(env, prefix), "_", "-")] = image
-		}
-	}
-	return triggerTemplateSteps
 }
