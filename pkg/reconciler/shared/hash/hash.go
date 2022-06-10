@@ -30,6 +30,8 @@ func Compute(obj interface{}) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	h.Write(d)
+	if _, err := h.Write(d); err != nil {
+		return "", err
+	}
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }

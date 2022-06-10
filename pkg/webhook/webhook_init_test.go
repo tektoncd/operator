@@ -10,9 +10,9 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-const (
-	KoEnvKey = "KO_DATA_PATH"
-)
+// const (
+// 	KoEnvKey = "KO_DATA_PATH"
+// )
 
 func TestCreateWebhookResources(t *testing.T) {
 	t.Run("transform manifest when pod namespace env is set", func(t *testing.T) {
