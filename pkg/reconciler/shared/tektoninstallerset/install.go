@@ -22,29 +22,24 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	versionedClients "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Creates the installerset using name
-func CreateInstallerSetWithName(ctx context.Context, ci ComponentInstaller, name string) (*v1alpha1.TektonInstallerSet, error) {
+// Generates the installerset with name
+func GenerateInstallerSetWithName(ctx context.Context, ci ComponentInstaller, name string) (*v1alpha1.TektonInstallerSet, error) {
 	newISM := newTisMetaWithName(name)
-
-	return createInstallerSet(ctx, ci, newISM)
+	return generateInstallerSet(ctx, ci, newISM)
 }
 
-// Creates the installerset using generate name
-func CreateInstallerSetWithGenerateName(ctx context.Context, ci ComponentInstaller, namePrefix string) (*v1alpha1.TektonInstallerSet, error) {
+// Generates the installerset with prefix name
+func GenerateInstallerSetWithPrefixName(ctx context.Context, ci ComponentInstaller, namePrefix string) (*v1alpha1.TektonInstallerSet, error) {
 	newISM := newTisMetaWithGenerateName(namePrefix)
-	return createInstallerSet(ctx, ci, newISM)
+	return generateInstallerSet(ctx, ci, newISM)
 }
 
-// Create the installerset
-func createInstallerSet(ctx context.Context, ci ComponentInstaller, tis *tisMeta) (*v1alpha1.TektonInstallerSet, error) {
-	client := getTektonInstallerSetClient()
-	return createInstallerSetWithClient(ctx, client, ci, tis)
-}
-
-func createInstallerSetWithClient(ctx context.Context, client versionedClients.TektonInstallerSetInterface, ci ComponentInstaller, tis *tisMeta) (*v1alpha1.TektonInstallerSet, error) {
+// Generates the installerset without applying on the cluster
+func generateInstallerSet(ctx context.Context, ci ComponentInstaller, tis *tisMeta) (*v1alpha1.TektonInstallerSet, error) {
 	tis.config(ctx, ci)
 
 	manifest, err := ci.GetManifest(ctx)
@@ -52,8 +47,21 @@ func createInstallerSetWithClient(ctx context.Context, client versionedClients.T
 		return nil, err
 	}
 
-	is := makeInstallerSet(manifest, tis)
+	is, err := makeInstallerSet(manifest, tis)
+	if err != nil {
+		return nil, err
+	}
 
+	return is, nil
+}
+
+// Creates the installerset on the cluster
+func Create(ctx context.Context, is *v1alpha1.TektonInstallerSet) (*v1alpha1.TektonInstallerSet, error) {
+	client := getTektonInstallerSetClient()
+	return createWithClient(ctx, client, is)
+}
+
+func createWithClient(ctx context.Context, client versionedClients.TektonInstallerSetInterface, is *v1alpha1.TektonInstallerSet) (*v1alpha1.TektonInstallerSet, error) {
 	createdIs, err := client.Create(ctx, is, metav1.CreateOptions{})
 	if err != nil {
 		return nil, err
@@ -62,8 +70,9 @@ func createInstallerSetWithClient(ctx context.Context, client versionedClients.T
 	return createdIs, nil
 }
 
-func makeInstallerSet(manifest *mf.Manifest, mt *tisMeta) *v1alpha1.TektonInstallerSet {
-	return &v1alpha1.TektonInstallerSet{
+func makeInstallerSet(manifest *mf.Manifest, mt *tisMeta) (*v1alpha1.TektonInstallerSet, error) {
+
+	is := &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            mt.Name,
 			GenerateName:    mt.GenerateName,
@@ -71,8 +80,30 @@ func makeInstallerSet(manifest *mf.Manifest, mt *tisMeta) *v1alpha1.TektonInstal
 			Annotations:     mt.Annotations,
 			OwnerReferences: mt.OwnerReferences,
 		},
-		Spec: v1alpha1.TektonInstallerSetSpec{
-			Manifests: manifest.Resources(),
-		},
+		Spec: installerSpec(manifest),
 	}
+
+	specHash, err := getHash(is.Spec)
+	if err != nil {
+		return nil, err
+	}
+	is.Annotations[v1alpha1.LastAppliedHashKey] = specHash
+
+	return is, nil
+}
+
+// Returns the spec of Installerset
+func installerSpec(manifest *mf.Manifest) v1alpha1.TektonInstallerSetSpec {
+	return v1alpha1.TektonInstallerSetSpec{
+		Manifests: manifest.Resources(),
+	}
+}
+
+// Computes the hash using spec of TektonInstallerSet
+func getHash(spec v1alpha1.TektonInstallerSetSpec) (string, error) {
+	specHash, err := hash.Compute(spec)
+	if err != nil {
+		return "", err
+	}
+	return specHash, nil
 }

@@ -54,11 +54,21 @@ func TestCreateInstallerset(t *testing.T) {
 
 	newISM := newTisMetaWithName("pipeline")
 
-	createdIs, err := createInstallerSetWithClient(context.Background(), client, di, newISM)
+	generateIs, err := generateInstallerSet(context.Background(), di, newISM)
+	assert.NilError(t, err)
+
+	createdIs, err := createWithClient(context.Background(), client, generateIs)
 	assert.Equal(t, err, nil)
 
 	labels := map[string]string{v1alpha1.CreatedByKey: "pipeline"}
-	annotations := map[string]string{"ns": "tekton-pipelines"}
+
+	specHash, err := getHash(installerSpec(&manifest))
+	assert.NilError(t, err)
+
+	annotations := map[string]string{
+		"ns":                                    "tekton-pipelines",
+		"operator.tekton.dev/last-applied-hash": specHash,
+	}
 
 	expectedIs := &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
@@ -88,10 +98,18 @@ func TestMakeInstallerset(t *testing.T) {
 	tis.Labels = map[string]string{v1alpha1.CreatedByKey: "pipeline"}
 	tis.Annotations = map[string]string{"ns": "tekton-pipelines"}
 
-	actual := makeInstallerSet(&manifest, tis)
+	actual, err := makeInstallerSet(&manifest, tis)
+	assert.NilError(t, err)
 
 	labels := map[string]string{v1alpha1.CreatedByKey: "pipeline"}
-	annotations := map[string]string{"ns": "tekton-pipelines"}
+
+	specHash, err := getHash(installerSpec(&manifest))
+	assert.NilError(t, err)
+
+	annotations := map[string]string{
+		"ns":                                    "tekton-pipelines",
+		"operator.tekton.dev/last-applied-hash": specHash,
+	}
 
 	expected := &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
