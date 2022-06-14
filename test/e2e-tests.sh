@@ -22,6 +22,7 @@ source $(dirname $0)/e2e-common.sh
 # Script entry point.
 TARGET=${TARGET:-kubernetes}
 # In case if KUBECONFIG variable is specified, it will be used for `go test`
+KUBECONFIG=${KUBECONFIG:-"${HOME}/.kube/config"}
 KUBECONFIG_PARAM=${KUBECONFIG:+"--kubeconfig $KUBECONFIG"}
 
 echo "Running tests on ${TARGET}"
