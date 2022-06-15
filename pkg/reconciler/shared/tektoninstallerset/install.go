@@ -40,7 +40,9 @@ func GenerateInstallerSetWithPrefixName(ctx context.Context, ci ComponentInstall
 
 // Generates the installerset without applying on the cluster
 func generateInstallerSet(ctx context.Context, ci ComponentInstaller, tis *tisMeta) (*v1alpha1.TektonInstallerSet, error) {
-	tis.config(ctx, ci)
+	if err := tis.config(ctx, ci); err != nil {
+		return nil, err
+	}
 
 	manifest, err := ci.GetManifest(ctx)
 	if err != nil {

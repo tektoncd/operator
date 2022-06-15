@@ -41,7 +41,9 @@ func TestCreateInstallerset(t *testing.T) {
 	di.AddManifest(manifest)
 
 	di.AddLabelsFromMap(map[string]string{
-		v1alpha1.CreatedByKey: "pipeline",
+		v1alpha1.InstallerSetType:  "tekton-pipeline",
+		v1alpha1.CreatedByKey:      "pipeline",
+		v1alpha1.ReleaseVersionKey: "0.55.0",
 	})
 
 	di.AddAnnotationsFromMap(map[string]string{
@@ -60,7 +62,11 @@ func TestCreateInstallerset(t *testing.T) {
 	createdIs, err := createWithClient(context.Background(), client, generateIs)
 	assert.Equal(t, err, nil)
 
-	labels := map[string]string{v1alpha1.CreatedByKey: "pipeline"}
+	labels := map[string]string{
+		v1alpha1.CreatedByKey:      "pipeline",
+		v1alpha1.InstallerSetType:  "tekton-pipeline",
+		v1alpha1.ReleaseVersionKey: "0.55.0",
+	}
 
 	specHash, err := getHash(installerSpec(&manifest))
 	assert.NilError(t, err)

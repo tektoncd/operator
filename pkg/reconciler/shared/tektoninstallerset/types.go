@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -40,6 +41,8 @@ type tisMeta struct {
 	GenerateName    string
 }
 
+var requiredLabels = []string{v1alpha1.InstallerSetType, v1alpha1.CreatedByKey, v1alpha1.ReleaseVersionKey}
+
 func newTisMeta() *tisMeta {
 	return &tisMeta{}
 }
@@ -58,8 +61,31 @@ func newTisMetaWithGenerateName(namePrefix string) *tisMeta {
 	return tis
 }
 
-func (tis *tisMeta) config(ctx context.Context, ci ComponentInstaller) {
+func (tis *tisMeta) config(ctx context.Context, ci ComponentInstaller) error {
 	tis.Labels = ci.GetLabels(ctx)
 	tis.Annotations = ci.GetAnnotations(ctx)
 	tis.OwnerReferences = ci.GetOwnerReferences(ctx)
+
+	if err := validateMetadata(tis); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func validateMetadata(tis *tisMeta) error {
+	key := validatelabels(tis.Labels)
+	if key != "" {
+		return fmt.Errorf("Label with key: `%s` is not been added to create the installerset", key)
+	}
+	return nil
+}
+
+func validatelabels(labels map[string]string) string {
+	for _, keys := range requiredLabels {
+		if _, ok := labels[keys]; !ok {
+			return keys
+		}
+	}
+	return ""
 }
