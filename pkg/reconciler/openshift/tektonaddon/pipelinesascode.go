@@ -81,6 +81,7 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 	tfs := []mf.Transformer{
 		common.InjectOperandNameLabelOverwriteExisting(openshift.OperandOpenShiftPipelineAsCode),
 		common.DeploymentImages(images),
+		common.AddConfiguration(ta.Spec.Config),
 	}
 
 	if err := r.addonTransform(ctx, &pacManifest, ta, tfs...); err != nil {
