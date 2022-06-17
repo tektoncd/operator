@@ -40,9 +40,6 @@ func TestSetDefault(t *testing.T) {
 		},
 	}
 	th.SetDefaults(context.TODO())
-	if th.Spec.Db.DbSecretName != "tekton-hub-db" {
-		t.Error("Setting default failed for TektonHub (spec.db.dbSecretName)")
-	}
 	if th.Spec.TargetNamespace != "tekton-pipelines" {
 		t.Error("Setting default failed for TektonHub (spec.targetNamespace)")
 	}
