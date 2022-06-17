@@ -31,6 +31,7 @@ import (
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonhubconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonhub"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
@@ -71,6 +72,11 @@ var (
 			v1alpha1.InstallerSetType: v1alpha1.HubResourceName,
 		},
 	}
+
+	checkRecreate = map[string]bool{
+		dbMigrationKey: false,
+		apiKey:         false,
+	}
 )
 
 const (
@@ -80,6 +86,9 @@ const (
 	apiInstallerSet         = "ApiInstallerSet"
 	uiInstallerSet          = "UiInstallerSet"
 	createdByValue          = "TektonHub"
+	dbSecretName            = "tekton-hub-db"
+	dbMigrationKey          = "dbMigration"
+	apiKey                  = "api"
 )
 
 // FinalizeKind removes all resources after deletion of a TektonHub.
@@ -148,11 +157,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, th *v1alpha1.TektonHub) 
 		return err
 	}
 
-	// Manage DB
-	if err := r.manageDbComponent(ctx, th, hubDir, version); err != nil {
-		return r.handleError(err, th)
+	if err := r.checkIfUserHasDb(ctx, th, hubDir, version); err != nil {
+		return err
 	}
-	th.Status.MarkDbInstallerSetAvailable()
 
 	// Manage DB migration
 	if err := r.manageDbMigrationComponent(ctx, th, hubDir, version); err != nil {
@@ -227,6 +234,20 @@ func (r *Reconciler) manageUiComponent(ctx context.Context, th *v1alpha1.TektonH
 }
 
 func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
+
+	if th.Spec.Db.DbSecretName != "" && !checkRecreation(apiKey) {
+		if err := r.getAndDeleteInstallerSet(ctx, api); err != nil {
+			return err
+		}
+
+		// This flags make sure that if the secret is provided in
+		// future by user then apply the api installerset again to
+		// populate the data
+		setCheckAndRecreate(apiKey, true)
+
+		return nil
+	}
+
 	// Validate whether the secrets and configmap are created for API
 	if err := r.validateApiDependencies(ctx, th); err != nil {
 		th.Status.MarkApiDependencyMissing("api secrets not present")
@@ -269,6 +290,21 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 }
 
 func (r *Reconciler) manageDbMigrationComponent(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
+
+	if th.Spec.Db.DbSecretName != "" && !checkRecreation(dbMigrationKey) {
+
+		if err := r.getAndDeleteInstallerSet(ctx, dbMigration); err != nil {
+			return err
+		}
+
+		// This flags make sure that if the secret is provided in
+		// future by user then apply the db-migration installerset
+		// again to populate the data
+		setCheckAndRecreate(dbMigrationKey, true)
+
+		return nil
+	}
+
 	// Check if the InstallerSet is available for DB-migration
 	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, dbMigration)
 	if err != nil {
@@ -344,18 +380,18 @@ func (r *Reconciler) manageDbComponent(ctx context.Context, th *v1alpha1.TektonH
 // is not present then create a new secret with default values.
 func (r *Reconciler) validateOrCreateDBSecrets(ctx context.Context, th *v1alpha1.TektonHub) error {
 	logger := logging.FromContext(ctx)
-	dbKeys := []string{"POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_PORT"}
+	dbKeys := []string{"POSTGRES_HOST", "POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_PORT"}
 
 	// th.Status.MarkDbDependencyInstalling("db secrets are being added into the namespace")
 
-	dbSecret, err := r.getSecret(ctx, th.Spec.Db.DbSecretName, namespace, dbKeys)
+	dbSecret, err := r.getSecret(ctx, dbSecretName, namespace, dbKeys)
 	if err != nil {
-		newDbSecret := createDbSecret(th.Spec.Db.DbSecretName, namespace, dbSecret)
+		newDbSecret := createDbSecret(dbSecretName, namespace, dbSecret)
 		if apierrors.IsNotFound(err) {
 			_, err = r.kubeClientSet.CoreV1().Secrets(namespace).Create(ctx, newDbSecret, metav1.CreateOptions{})
 			if err != nil {
 				logger.Error(err)
-				th.Status.MarkDbDependencyMissing(fmt.Sprintf("%s secret is missing", th.Spec.Db.DbSecretName))
+				th.Status.MarkDbDependencyMissing(fmt.Sprintf("%s secret is missing", dbSecretName))
 				return err
 			}
 			return nil
@@ -364,7 +400,7 @@ func (r *Reconciler) validateOrCreateDBSecrets(ctx context.Context, th *v1alpha1
 			_, err = r.kubeClientSet.CoreV1().Secrets(namespace).Update(ctx, newDbSecret, metav1.UpdateOptions{})
 			if err != nil {
 				logger.Error(err)
-				th.Status.MarkDbDependencyMissing(fmt.Sprintf("%s secret is missing", th.Spec.Db.DbSecretName))
+				th.Status.MarkDbDependencyMissing(fmt.Sprintf("%s secret is missing", dbSecretName))
 				return err
 			}
 		} else {
@@ -564,6 +600,46 @@ func (r *Reconciler) getAndUpdateHubInstallerSetLabels(ctx context.Context) erro
 	return nil
 }
 
+// Check if user has it's own db, if not create the default database
+func (r *Reconciler) checkIfUserHasDb(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
+
+	dbKeys := []string{"POSTGRES_HOST", "POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_PORT"}
+
+	if th.Spec.Db.DbSecretName == "" {
+		th.Status.MarkDbDependencyInstalling("db secrets are being added into the namespace")
+		// Manage DB
+		if err := r.manageDbComponent(ctx, th, hubDir, version); err != nil {
+			return r.handleError(err, th)
+		}
+		th.Status.MarkDbInstallerSetAvailable()
+
+		// This flags make sure that if the secret is
+		// provided in future by user then apply the
+		// api and db-migration installerset again
+		setCheckAndRecreate(dbMigrationKey, false)
+		setCheckAndRecreate(apiKey, false)
+
+	} else {
+		_, err := r.getSecret(ctx, th.Spec.Db.DbSecretName, th.Spec.GetTargetNamespace(), dbKeys)
+		if err != nil {
+			return err
+		}
+
+		// Mark the databse as ready state as the
+		// database is already installed by the user
+		th.Status.MarkDbDependenciesInstalled()
+		th.Status.MarkDbInstallerSetAvailable()
+
+		// Get and delete db installerset
+		if err := r.getAndDeleteDbInstallerSet(ctx); err != nil {
+			return err
+		}
+
+	}
+
+	return nil
+}
+
 func (r *Reconciler) getHubInstallerSet(ctx context.Context, prefixName string) (*v1alpha1.TektonInstallerSet, error) {
 	labels := getOldLabels(prefixName)
 
@@ -603,6 +679,38 @@ func (r *Reconciler) getHubInstallerSet(ctx context.Context, prefixName string) 
 func (r *Reconciler) updateHubInstallerSet(ctx context.Context, installerSet *v1alpha1.TektonInstallerSet) error {
 	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().Update(ctx, installerSet, metav1.UpdateOptions{}); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (r *Reconciler) getAndDeleteDbInstallerSet(ctx context.Context) error {
+	labels := r.getLabels(db)
+	labelSelector, err := common.LabelSelector(labels)
+	if err != nil {
+		return err
+	}
+
+	compInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
+	if err != nil {
+		return err
+	}
+
+	if compInstallerSet != "" {
+		_, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Get(ctx, compInstallerSet, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+
+		err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Delete(ctx, compInstallerSet, metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -659,6 +767,14 @@ func (r *Reconciler) checkDbApiPVCOwnerRef(ctx context.Context, th *v1alpha1.Tek
 	}
 
 	return nil
+}
+
+func checkRecreation(key string) bool {
+	return checkRecreate[key]
+}
+
+func setCheckAndRecreate(key string, value bool) {
+	checkRecreate[key] = value
 }
 
 // TODO: remove this after operator openshift-build version 1.8
@@ -724,6 +840,38 @@ func (r *Reconciler) setUpAndCreateInstallerSet(ctx context.Context, manifest mf
 	if err := createInstallerSet(ctx, r.operatorClientSet, th, manifest,
 		version, installerSetName, prefixName, namespace, labels); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (r *Reconciler) getAndDeleteInstallerSet(ctx context.Context, installerSetType string) error {
+	labels := r.getLabels(installerSetType)
+	labelSelector, err := common.LabelSelector(labels)
+	if err != nil {
+		return err
+	}
+
+	compInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
+	if err != nil {
+		return err
+	}
+
+	if compInstallerSet != "" {
+		_, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Get(ctx, compInstallerSet, metav1.GetOptions{})
+		if err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil
+			}
+			return err
+		}
+
+		err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Delete(ctx, compInstallerSet, metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -836,6 +984,10 @@ func createDbSecret(name, namespace string, existingSecret *corev1.Secret) *core
 
 	if s.Data["POSTGRES_PORT"] == nil || len(s.Data["POSTGRES_PORT"]) == 0 {
 		s.StringData["POSTGRES_PORT"] = "5432"
+	}
+
+	if s.Data["POSTGRES_HOST"] == nil || len(s.Data["POSTGRES_HOST"]) == 0 {
+		s.StringData["POSTGRES_HOST"] = "tekton-hub-db"
 	}
 
 	return s
