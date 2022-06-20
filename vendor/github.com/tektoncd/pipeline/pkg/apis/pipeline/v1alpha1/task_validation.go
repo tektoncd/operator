@@ -87,7 +87,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 	// Validate that the parameters type are correct
-	if err := v1beta1.ValidateParameterTypes(ts.Params); err != nil {
+	if err := v1beta1.ValidateParameterTypes(ctx, ts.Params); err != nil {
 		return err
 	}
 
@@ -130,7 +130,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		}
 	}
 
-	if err := v1beta1.ValidateParameterVariables(ts.Steps, ts.Params); err != nil {
+	if err := v1beta1.ValidateParameterVariables(ctx, ts.Steps, ts.Params); err != nil {
 		return err
 	}
 	// Deprecated
@@ -138,7 +138,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 		return err
 	}
 
-	if err := v1beta1.ValidateResourcesVariables(ts.Steps, ts.Resources); err != nil {
+	if err := v1beta1.ValidateResourcesVariables(ctx, ts.Steps, ts.Resources); err != nil {
 		return err
 	}
 	// Deprecated
@@ -148,7 +148,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) *apis.FieldError {
 // validateDeclaredWorkspaces will make sure that the declared workspaces do not try to use
 // a mount path which conflicts with any other declared workspaces, with the explicitly
 // declared volume mounts, or with the stepTemplate. The names must also be unique.
-func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *corev1.Container) *apis.FieldError {
+func validateDeclaredWorkspaces(workspaces []WorkspaceDeclaration, steps []Step, stepTemplate *StepTemplate) *apis.FieldError {
 	mountPaths := sets.NewString()
 	for _, step := range steps {
 		for _, vm := range step.VolumeMounts {

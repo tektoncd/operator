@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
-	"github.com/go-logr/logr/testing"
 	"github.com/manifestival/manifestival/internal/overlay"
 	"github.com/manifestival/manifestival/internal/patch"
 	v1 "k8s.io/api/core/v1"
@@ -65,7 +64,7 @@ func NewManifest(pathname string, opts ...Option) (Manifest, error) {
 
 // ManifestFrom creates a Manifest from any Source implementation
 func ManifestFrom(src Source, opts ...Option) (m Manifest, err error) {
-	m = Manifest{log: testing.NullLogger{}}
+	m = Manifest{log: logr.Discard()}
 	for _, opt := range opts {
 		opt(&m)
 	}
@@ -114,10 +113,8 @@ func (m Manifest) Delete(opts ...DeleteOption) error {
 		a[left], a[right] = a[right], a[left]
 	}
 	for _, spec := range a {
-		if okToDelete(&spec) {
-			if err := m.delete(&spec, opts...); err != nil {
-				return err
-			}
+		if err := m.delete(&spec, opts...); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -131,8 +128,8 @@ func (m Manifest) apply(spec *unstructured.Unstructured, opts ...ApplyOption) er
 	}
 	if current == nil {
 		m.logResource("Creating", spec)
-		annotate(spec, "manifestival", resourceCreated)
 		current = spec.DeepCopy()
+		annotate(current, "manifestival", resourceCreated)
 		annotate(current, v1.LastAppliedConfigAnnotation, lastApplied(current))
 		return m.Client.Create(current, opts...)
 	} else {
@@ -143,10 +140,18 @@ func (m Manifest) apply(spec *unstructured.Unstructured, opts ...ApplyOption) er
 		if diff == nil {
 			return nil
 		}
+
+		isResourceCreated := current.GetAnnotations()["manifestival"] == resourceCreated
 		m.log.Info("Merging", "diff", diff)
 		if err := diff.Merge(current); err != nil {
 			return err
 		}
+
+		// Make sure the manifestival annotation is carried over.
+		if isResourceCreated {
+			annotate(current, "manifestival", resourceCreated)
+		}
+
 		return m.update(current, spec, opts...)
 	}
 }
@@ -170,6 +175,11 @@ func (m Manifest) delete(spec *unstructured.Unstructured, opts ...DeleteOption) 
 	if current == nil && err == nil {
 		return nil
 	}
+
+	if !okToDelete(current) {
+		return nil
+	}
+
 	m.logResource("Deleting", spec)
 	return m.Client.Delete(spec, opts...)
 }

@@ -40,6 +40,7 @@ func (tb *TriggerBinding) Copy() TriggerBindingInterface {
 // TriggerBindingSpec defines the desired state of the TriggerBinding.
 type TriggerBindingSpec struct {
 	// Params defines the parameter mapping from the given input event.
+	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
 }
 

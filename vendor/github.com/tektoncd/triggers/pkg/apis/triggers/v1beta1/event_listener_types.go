@@ -57,13 +57,16 @@ var _ kmeta.OwnerRefable = (*EventListener)(nil)
 // EventListenerSpec defines the desired state of the EventListener, represented
 // by a list of Triggers.
 type EventListenerSpec struct {
-	ServiceAccountName string                 `json:"serviceAccountName,omitempty"`
-	Triggers           []EventListenerTrigger `json:"triggers,omitempty"`
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+	// +listType=atomic
+	Triggers []EventListenerTrigger `json:"triggers,omitempty"`
 	// Trigger groups allow for centralized processing of an interceptor chain
+	// +listType=atomic
 	TriggerGroups     []EventListenerTriggerGroup `json:"triggerGroups,omitempty"`
 	NamespaceSelector NamespaceSelector           `json:"namespaceSelector,omitempty"`
 	LabelSelector     *metav1.LabelSelector       `json:"labelSelector,omitempty"`
 	Resources         Resources                   `json:"resources,omitempty"`
+	CloudEventURI     string                      `json:"cloudEventURI,omitempty"`
 }
 
 type Resources struct {
@@ -78,19 +81,8 @@ type CustomResource struct {
 type KubernetesResource struct {
 	Replicas           *int32             `json:"replicas,omitempty"`
 	ServiceType        corev1.ServiceType `json:"serviceType,omitempty"`
+	ServicePort        *int32             `json:"servicePort,omitempty"`
 	duckv1.WithPodSpec `json:"spec,omitempty"`
-}
-
-type PodTemplate struct {
-	// If specified, the pod's tolerations.
-	// +optional
-	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-
-	// NodeSelector is a selector which must be true for the pod to fit on a node.
-	// Selector which must match a node's labels for the pod to be scheduled on that node.
-	// More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-	// +optional
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
 // EventListenerTrigger represents a connection between TriggerBinding, Params,
@@ -98,11 +90,13 @@ type PodTemplate struct {
 // TriggerTemplate to then create resources from. TriggerRef can also be
 // provided instead of TriggerBinding, Interceptors and TriggerTemplate
 type EventListenerTrigger struct {
+	// +listType=atomic
 	Bindings   []*EventListenerBinding `json:"bindings,omitempty"`
 	Template   *EventListenerTemplate  `json:"template,omitempty"`
 	TriggerRef string                  `json:"triggerRef,omitempty"`
 	// +optional
-	Name         string              `json:"name,omitempty"`
+	Name string `json:"name,omitempty"`
+	// +listType=atomic
 	Interceptors []*EventInterceptor `json:"interceptors,omitempty"`
 	// ServiceAccountName optionally associates credentials with each trigger;
 	// more granular authorization for
@@ -116,7 +110,8 @@ type EventListenerTrigger struct {
 
 // EventListenerTriggerGroup defines a group of Triggers that share a common set of interceptors
 type EventListenerTriggerGroup struct {
-	Name            string                       `json:"name"`
+	Name string `json:"name"`
+	// +listType=atomic
 	Interceptors    []*TriggerInterceptor        `json:"interceptors"`
 	TriggerSelector EventListenerTriggerSelector `json:"triggerSelector"`
 }
@@ -180,6 +175,7 @@ type EventListenerConfig struct {
 // +k8s:openapi-gen=true
 type NamespaceSelector struct {
 	// List of namespace names.
+	// +listType=atomic
 	MatchNames []string `json:"matchNames,omitempty"`
 }
 

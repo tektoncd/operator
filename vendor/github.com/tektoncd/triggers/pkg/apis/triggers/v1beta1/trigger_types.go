@@ -28,10 +28,12 @@ import (
 // and TriggerSpecTemplate; TriggerSpecBinding provides extracted values for
 // TriggerSpecTemplate to then create resources from.
 type TriggerSpec struct {
+	// +listType=atomic
 	Bindings []*TriggerSpecBinding `json:"bindings"`
 	Template TriggerSpecTemplate   `json:"template"`
 	// +optional
-	Name         string                `json:"name,omitempty"`
+	Name string `json:"name,omitempty"`
+	// +listType=atomic
 	Interceptors []*TriggerInterceptor `json:"interceptors,omitempty"`
 	// ServiceAccountName optionally associates credentials with each trigger;
 	// Unlike EventListeners, this should be scoped to the same namespace
@@ -89,6 +91,7 @@ type TriggerInterceptor struct {
 	// Ref refers to the Interceptor to use
 	Ref InterceptorRef `json:"ref"`
 	// Params are the params to send to the interceptor
+	// +listType=atomic
 	Params []InterceptorParams `json:"params,omitempty"`
 
 	// WebhookInterceptor refers to an old style webhook interceptor service
@@ -148,30 +151,35 @@ type WebhookInterceptor struct {
 	// Header is a group of key-value pairs that can be appended to the
 	// interceptor request headers. This allows the interceptor to make
 	// decisions specific to an EventListenerTrigger.
+	// +listType=atomic
 	Header []v1beta1.Param `json:"header,omitempty"`
 }
 
 // BitbucketInterceptor provides a webhook to intercept and pre-process events
 type BitbucketInterceptor struct {
-	SecretRef  *SecretRef `json:"secretRef,omitempty"`
-	EventTypes []string   `json:"eventTypes,omitempty"`
+	SecretRef *SecretRef `json:"secretRef,omitempty"`
+	// +listType=atomic
+	EventTypes []string `json:"eventTypes,omitempty"`
 }
 
 // GitHubInterceptor provides a webhook to intercept and pre-process events
 type GitHubInterceptor struct {
-	SecretRef  *SecretRef `json:"secretRef,omitempty"`
-	EventTypes []string   `json:"eventTypes,omitempty"`
+	SecretRef *SecretRef `json:"secretRef,omitempty"`
+	// +listType=atomic
+	EventTypes []string `json:"eventTypes,omitempty"`
 }
 
 // GitLabInterceptor provides a webhook to intercept and pre-process events
 type GitLabInterceptor struct {
-	SecretRef  *SecretRef `json:"secretRef,omitempty"`
-	EventTypes []string   `json:"eventTypes,omitempty"`
+	SecretRef *SecretRef `json:"secretRef,omitempty"`
+	// +listType=atomic
+	EventTypes []string `json:"eventTypes,omitempty"`
 }
 
 // CELInterceptor provides a webhook to intercept and pre-process events
 type CELInterceptor struct {
-	Filter   string       `json:"filter,omitempty"`
+	Filter string `json:"filter,omitempty"`
+	// +listType=atomic
 	Overlays []CELOverlay `json:"overlays,omitempty"`
 }
 

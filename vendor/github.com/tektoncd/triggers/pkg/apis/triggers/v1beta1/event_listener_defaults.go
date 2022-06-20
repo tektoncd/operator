@@ -42,7 +42,9 @@ func (el *EventListener) SetDefaults(ctx context.Context) {
 		for i, t := range el.Spec.Triggers {
 			triggerSpecBindingArray(el.Spec.Triggers[i].Bindings).defaultBindings()
 			for _, ti := range t.Interceptors {
-				ti.defaultInterceptorKind()
+				if ti != nil {
+					ti.defaultInterceptorKind()
+				}
 			}
 		}
 	}

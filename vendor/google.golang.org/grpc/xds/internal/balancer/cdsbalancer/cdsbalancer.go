@@ -38,6 +38,7 @@ import (
 	"google.golang.org/grpc/xds/internal/balancer/clusterresolver"
 	"google.golang.org/grpc/xds/internal/balancer/ringhash"
 	"google.golang.org/grpc/xds/internal/xdsclient"
+	"google.golang.org/grpc/xds/internal/xdsclient/xdsresource"
 )
 
 const (
@@ -185,7 +186,7 @@ func (b *cdsBalancer) handleClientConnUpdate(update *ccUpdate) {
 // management server, creates appropriate certificate provider plugins, and
 // updates the HandhakeInfo which is added as an address attribute in
 // NewSubConn() calls.
-func (b *cdsBalancer) handleSecurityConfig(config *xdsclient.SecurityConfig) error {
+func (b *cdsBalancer) handleSecurityConfig(config *xdsresource.SecurityConfig) error {
 	// If xdsCredentials are not in use, i.e, the user did not want to get
 	// security configuration from an xDS server, we should not be acting on the
 	// received security config here. Doing so poses a security threat.
@@ -310,23 +311,32 @@ func (b *cdsBalancer) handleWatchUpdate(update clusterHandlerUpdate) {
 	dms := make([]clusterresolver.DiscoveryMechanism, len(update.updates))
 	for i, cu := range update.updates {
 		switch cu.ClusterType {
-		case xdsclient.ClusterTypeEDS:
+		case xdsresource.ClusterTypeEDS:
 			dms[i] = clusterresolver.DiscoveryMechanism{
 				Type:                  clusterresolver.DiscoveryMechanismTypeEDS,
 				Cluster:               cu.ClusterName,
 				EDSServiceName:        cu.EDSServiceName,
 				MaxConcurrentRequests: cu.MaxRequests,
 			}
-			if cu.EnableLRS {
-				// An empty string here indicates that the cluster_resolver balancer should use the
-				// same xDS server for load reporting as it does for EDS
-				// requests/responses.
-				dms[i].LoadReportingServerName = new(string)
-
+			if cu.LRSServerConfig == xdsresource.ClusterLRSServerSelf {
+				bootstrapConfig := b.xdsClient.BootstrapConfig()
+				parsedName := xdsresource.ParseName(cu.ClusterName)
+				if parsedName.Scheme == xdsresource.FederationScheme {
+					// Is a federation resource name, find the corresponding
+					// authority server config.
+					if cfg, ok := bootstrapConfig.Authorities[parsedName.Authority]; ok {
+						dms[i].LoadReportingServer = cfg.XDSServer
+					}
+				} else {
+					// Not a federation resource name, use the default
+					// authority.
+					dms[i].LoadReportingServer = bootstrapConfig.XDSServer
+				}
 			}
-		case xdsclient.ClusterTypeLogicalDNS:
+		case xdsresource.ClusterTypeLogicalDNS:
 			dms[i] = clusterresolver.DiscoveryMechanism{
 				Type:        clusterresolver.DiscoveryMechanismTypeLogicalDNS,
+				Cluster:     cu.ClusterName,
 				DNSHostname: cu.DNSHostName,
 			}
 		default:
@@ -430,11 +440,11 @@ func (b *cdsBalancer) run() {
 func (b *cdsBalancer) handleErrorFromUpdate(err error, fromParent bool) {
 	// This is not necessary today, because xds client never sends connection
 	// errors.
-	if fromParent && xdsclient.ErrType(err) == xdsclient.ErrorTypeResourceNotFound {
+	if fromParent && xdsresource.ErrType(err) == xdsresource.ErrorTypeResourceNotFound {
 		b.clusterHandler.close()
 	}
 	if b.childLB != nil {
-		if xdsclient.ErrType(err) != xdsclient.ErrorTypeConnection {
+		if xdsresource.ErrType(err) != xdsresource.ErrorTypeConnection {
 			// Connection errors will be sent to the child balancers directly.
 			// There's no need to forward them.
 			b.childLB.ResolverError(err)
