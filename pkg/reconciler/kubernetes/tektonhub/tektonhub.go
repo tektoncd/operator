@@ -386,7 +386,7 @@ func (r *Reconciler) validateOrCreateDBSecrets(ctx context.Context, th *v1alpha1
 
 	dbSecret, err := r.getSecret(ctx, dbSecretName, namespace, dbKeys)
 	if err != nil {
-		newDbSecret := createDbSecret(dbSecretName, namespace, dbSecret)
+		newDbSecret := createDbSecret(dbSecretName, namespace, dbSecret, th)
 		if apierrors.IsNotFound(err) {
 			_, err = r.kubeClientSet.CoreV1().Secrets(namespace).Create(ctx, newDbSecret, metav1.CreateOptions{})
 			if err != nil {
@@ -496,6 +496,7 @@ func createUiConfigMap(name, namespace string, th *v1alpha1.TektonHub) *corev1.C
 			Labels: map[string]string{
 				"ui": "tektonhub-ui",
 			},
+			OwnerReferences: []metav1.OwnerReference{getOwnerRef(th)},
 		},
 		Data: map[string]string{
 			"API_URL":       th.Status.ApiRouteUrl,
@@ -946,6 +947,7 @@ func createApiConfigMap(name, namespace string, th *v1alpha1.TektonHub) *corev1.
 			Labels: map[string]string{
 				"app": "api",
 			},
+			OwnerReferences: []metav1.OwnerReference{getOwnerRef(th)},
 		},
 		Data: map[string]string{
 			"CONFIG_FILE_URL":          th.Spec.Api.HubConfigUrl,
@@ -987,7 +989,7 @@ func (r *Reconciler) getHubManifest(ctx context.Context, th *v1alpha1.TektonHub,
 	return manifest, nil
 }
 
-func createDbSecret(name, namespace string, existingSecret *corev1.Secret) *corev1.Secret {
+func createDbSecret(name, namespace string, existingSecret *corev1.Secret, th *v1alpha1.TektonHub) *corev1.Secret {
 	s := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -995,6 +997,7 @@ func createDbSecret(name, namespace string, existingSecret *corev1.Secret) *core
 			Labels: map[string]string{
 				"app": "db",
 			},
+			OwnerReferences: []metav1.OwnerReference{getOwnerRef(th)},
 		},
 		Type: corev1.SecretTypeOpaque,
 	}
@@ -1026,6 +1029,11 @@ func createDbSecret(name, namespace string, existingSecret *corev1.Secret) *core
 	}
 
 	return s
+}
+
+// Get an ownerRef of TektonHub
+func getOwnerRef(th *v1alpha1.TektonHub) metav1.OwnerReference {
+	return *metav1.NewControllerRef(th, th.GroupVersionKind())
 }
 
 func (r *Reconciler) targetNamespaceCheck(ctx context.Context, th *v1alpha1.TektonHub) error {
