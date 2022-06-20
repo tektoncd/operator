@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/clock"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
@@ -37,6 +38,7 @@ type TaskRunSpec struct {
 	// +optional
 	Debug *TaskRunDebug `json:"debug,omitempty"`
 	// +optional
+	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
 	// +optional
 	Resources *TaskRunResources `json:"resources,omitempty"`
@@ -59,7 +61,22 @@ type TaskRunSpec struct {
 	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
+	// +listType=atomic
 	Workspaces []WorkspaceBinding `json:"workspaces,omitempty"`
+	// Overrides to apply to Steps in this TaskRun.
+	// If a field is specified in both a Step and a StepOverride,
+	// the value from the StepOverride will be used.
+	// This field is only supported when the alpha feature gate is enabled.
+	// +optional
+	// +listType=atomic
+	StepOverrides []TaskRunStepOverride `json:"stepOverrides,omitempty"`
+	// Overrides to apply to Sidecars in this TaskRun.
+	// If a field is specified in both a Sidecar and a SidecarOverride,
+	// the value from the SidecarOverride will be used.
+	// This field is only supported when the alpha feature gate is enabled.
+	// +optional
+	// +listType=atomic
+	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
 }
 
 // TaskRunSpecStatus defines the taskrun spec status the user can provide
@@ -74,20 +91,24 @@ const (
 // TaskRunDebug defines the breakpoint config for a particular TaskRun
 type TaskRunDebug struct {
 	// +optional
+	// +listType=atomic
 	Breakpoint []string `json:"breakpoint,omitempty"`
 }
 
 // TaskRunInputs holds the input values that this task was invoked with.
 type TaskRunInputs struct {
 	// +optional
+	// +listType=atomic
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
 	// +optional
+	// +listType=atomic
 	Params []Param `json:"params,omitempty"`
 }
 
 // TaskRunOutputs holds the output values that this task was invoked with.
 type TaskRunOutputs struct {
 	// +optional
+	// +listType=atomic
 	Resources []TaskResourceBinding `json:"resources,omitempty"`
 }
 
@@ -119,6 +140,9 @@ const (
 	TaskRunReasonCancelled TaskRunReason = "TaskRunCancelled"
 	// TaskRunReasonTimedOut is the reason set when the Taskrun has timed out
 	TaskRunReasonTimedOut TaskRunReason = "TaskRunTimeout"
+	// TaskRunReasonResolvingTaskRef indicates that the TaskRun is waiting for
+	// its taskRef to be asynchronously resolved.
+	TaskRunReasonResolvingTaskRef = "ResolvingTaskRef"
 )
 
 func (t TaskRunReason) String() string {
@@ -132,7 +156,7 @@ func (trs *TaskRunStatus) GetStartedReason() string {
 }
 
 // GetRunningReason returns the reason set to the "Succeeded" condition when
-// the RunsToCompletion starts running. This is used indicate that the resource
+// the TaskRun starts running. This is used indicate that the resource
 // could be validated is starting to perform its job.
 func (trs *TaskRunStatus) GetRunningReason() string {
 	return TaskRunReasonRunning.String()
@@ -179,42 +203,55 @@ type TaskRunStatusFields struct {
 
 	// Steps describes the state of each build step container.
 	// +optional
+	// +listType=atomic
 	Steps []StepState `json:"steps,omitempty"`
 
 	// CloudEvents describe the state of each cloud event requested via a
 	// CloudEventResource.
 	// +optional
+	// +listType=atomic
 	CloudEvents []CloudEventDelivery `json:"cloudEvents,omitempty"`
 
 	// RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures.
 	// All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.
 	// +optional
+	// +listType=atomic
 	RetriesStatus []TaskRunStatus `json:"retriesStatus,omitempty"`
 
 	// Results from Resources built during the taskRun. currently includes
 	// the digest of build container images
 	// +optional
+	// +listType=atomic
 	ResourcesResult []PipelineResourceResult `json:"resourcesResult,omitempty"`
 
 	// TaskRunResults are the list of results written out by the task's containers
 	// +optional
+	// +listType=atomic
 	TaskRunResults []TaskRunResult `json:"taskResults,omitempty"`
 
 	// The list has one entry per sidecar in the manifest. Each entry is
 	// represents the imageid of the corresponding sidecar.
+	// +listType=atomic
 	Sidecars []SidecarState `json:"sidecars,omitempty"`
 
 	// TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 }
 
-// TaskRunResult used to describe the results of a task
-type TaskRunResult struct {
-	// Name the given name
+// TaskRunStepOverride is used to override the values of a Step in the corresponding Task.
+type TaskRunStepOverride struct {
+	// The name of the Step to override.
 	Name string `json:"name"`
+	// The resource requirements to apply to the Step.
+	Resources corev1.ResourceRequirements `json:"resources"`
+}
 
-	// Value the given value of the result
-	Value string `json:"value"`
+// TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.
+type TaskRunSidecarOverride struct {
+	// The name of the Sidecar to override.
+	Name string `json:"name"`
+	// The resource requirements to apply to the Sidecar.
+	Resources corev1.ResourceRequirements `json:"resources"`
 }
 
 // GetGroupVersionKind implements kmeta.OwnerRefable.
@@ -384,7 +421,7 @@ func (tr *TaskRun) IsCancelled() bool {
 }
 
 // HasTimedOut returns true if the TaskRun runtime is beyond the allowed timeout
-func (tr *TaskRun) HasTimedOut(ctx context.Context) bool {
+func (tr *TaskRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
 	if tr.Status.StartTime.IsZero() {
 		return false
 	}
@@ -393,7 +430,7 @@ func (tr *TaskRun) HasTimedOut(ctx context.Context) bool {
 	if timeout == apisconfig.NoTimeoutDuration {
 		return false
 	}
-	runtime := time.Since(tr.Status.StartTime.Time)
+	runtime := c.Since(tr.Status.StartTime.Time)
 	return runtime > timeout
 }
 

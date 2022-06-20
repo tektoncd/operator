@@ -28,7 +28,9 @@ var _ apis.Defaultable = (*TriggerTemplate)(nil)
 
 // TriggerTemplateSpec holds the desired state of TriggerTemplate
 type TriggerTemplateSpec struct {
-	Params            []ParamSpec               `json:"params,omitempty"`
+	// +listType=atomic
+	Params []ParamSpec `json:"params,omitempty"`
+	// +listType=atomic
 	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
 }
 
