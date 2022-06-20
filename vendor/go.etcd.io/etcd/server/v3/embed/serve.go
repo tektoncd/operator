@@ -17,12 +17,13 @@ package embed
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	defaultLog "log"
 	"math"
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	etcdservergw "go.etcd.io/etcd/api/v3/etcdserverpb/gw"
 	"go.etcd.io/etcd/client/pkg/v3/transport"
@@ -92,8 +93,16 @@ func (sctx *serveCtx) serve(
 	handler http.Handler,
 	errHandler func(error),
 	gopts ...grpc.ServerOption) (err error) {
-	logger := defaultLog.New(ioutil.Discard, "etcdhttp", 0)
-	<-s.ReadyNotify()
+	logger := defaultLog.New(io.Discard, "etcdhttp", 0)
+
+	// When the quorum isn't satisfied, then etcd server will be blocked
+	// on <-s.ReadyNotify(). Set a timeout here so that the etcd server
+	// can continue to serve serializable read request.
+	select {
+	case <-time.After(s.Cfg.WaitClusterReadyTimeout):
+		sctx.lg.Warn("timed out waiting for the ready notification")
+	case <-s.ReadyNotify():
+	}
 
 	sctx.lg.Info("ready to serve client requests")
 
@@ -110,7 +119,7 @@ func (sctx *serveCtx) serve(
 	}()
 
 	if sctx.insecure {
-		gs = v3rpc.Server(s, nil, gopts...)
+		gs = v3rpc.Server(s, nil, nil, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
 		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {
@@ -148,7 +157,7 @@ func (sctx *serveCtx) serve(
 		if tlsErr != nil {
 			return tlsErr
 		}
-		gs = v3rpc.Server(s, tlscfg, gopts...)
+		gs = v3rpc.Server(s, tlscfg, nil, gopts...)
 		v3electionpb.RegisterElectionServer(gs, servElection)
 		v3lockpb.RegisterLockServer(gs, servLock)
 		if sctx.serviceRegister != nil {

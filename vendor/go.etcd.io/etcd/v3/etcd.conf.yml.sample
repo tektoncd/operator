@@ -69,9 +69,6 @@ initial-cluster-state: 'new'
 # Reject reconfiguration requests that would cause quorum loss.
 strict-reconfig-check: false
 
-# Accept etcd V2 client requests
-enable-v2: true
-
 # Enable runtime profiling data via HTTP server
 enable-pprof: true
 
@@ -124,6 +121,9 @@ peer-transport-security:
 
   # Peer TLS using generated certificates.
   auto-tls: false
+
+# The validity period of the self-signed certificate, the unit is year.
+self-signed-cert-validity: 1
 
 # Enable debug-level logging for etcd.
 log-level: debug
