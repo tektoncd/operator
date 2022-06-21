@@ -110,7 +110,7 @@ func (c *FakeTektonInstallerSets) UpdateStatus(ctx context.Context, tektonInstal
 // Delete takes name of the tektonInstallerSet and deletes it. Returns an error if one occurs.
 func (c *FakeTektonInstallerSets) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(tektoninstallersetsResource, name), &v1alpha1.TektonInstallerSet{})
+		Invokes(testing.NewRootDeleteActionWithOptions(tektoninstallersetsResource, name, opts), &v1alpha1.TektonInstallerSet{})
 	return err
 }
 

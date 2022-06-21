@@ -110,7 +110,7 @@ func (c *FakeTektonPipelines) UpdateStatus(ctx context.Context, tektonPipeline *
 // Delete takes name of the tektonPipeline and deletes it. Returns an error if one occurs.
 func (c *FakeTektonPipelines) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(tektonpipelinesResource, name), &v1alpha1.TektonPipeline{})
+		Invokes(testing.NewRootDeleteActionWithOptions(tektonpipelinesResource, name, opts), &v1alpha1.TektonPipeline{})
 	return err
 }
 

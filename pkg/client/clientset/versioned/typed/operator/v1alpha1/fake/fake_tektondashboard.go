@@ -110,7 +110,7 @@ func (c *FakeTektonDashboards) UpdateStatus(ctx context.Context, tektonDashboard
 // Delete takes name of the tektonDashboard and deletes it. Returns an error if one occurs.
 func (c *FakeTektonDashboards) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(tektondashboardsResource, name), &v1alpha1.TektonDashboard{})
+		Invokes(testing.NewRootDeleteActionWithOptions(tektondashboardsResource, name, opts), &v1alpha1.TektonDashboard{})
 	return err
 }
 
