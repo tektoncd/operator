@@ -39,11 +39,26 @@ func CreateWebhookResources(ctx context.Context) {
 	client := operatorclient.Get(ctx)
 	err = checkAndDeleteInstallerSet(ctx, client)
 	if err != nil {
-		logger.Fatalw("error creating client from injected config", zap.Error(err))
+		logger.Fatalw("error deleting webhook installerset", zap.Error(err))
 	}
 
 	if err := createInstallerSet(ctx, client, *manifest); err != nil {
-		logger.Fatalw("error creating client from injected config", zap.Error(err))
+		logger.Fatalw("error creating webhook installerset", zap.Error(err))
+	}
+
+}
+
+func CleanupWebhookResources(ctx context.Context) {
+	logger := logging.FromContext(ctx)
+	client := operatorclient.Get(ctx)
+
+	// cannot use the ctx passed from main as it will be cancelled
+	// by the time we use in kube api calls
+	freshContext := context.Background()
+
+	err := checkAndDeleteInstallerSet(freshContext, client)
+	if err != nil {
+		logger.Fatalw("error deleting webhook installerset", zap.Error(err))
 	}
 }
 

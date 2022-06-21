@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"os"
 
 	"github.com/tektoncd/operator/pkg/webhook"
@@ -49,6 +50,8 @@ func main() {
 	webhook.CreateWebhookResources(ctx)
 	webhook.SetTypes("kubernetes")
 
+	go gracefulTermination(ctx)
+
 	sharedmain.WebhookMainWithConfig(ctx, serviceName,
 		cfg,
 		certificates.NewController,
@@ -56,4 +59,9 @@ func main() {
 		webhook.NewValidationAdmissionController,
 		webhook.NewConfigValidationController,
 	)
+}
+
+func gracefulTermination(ctx context.Context) {
+	<-ctx.Done()
+	webhook.CleanupWebhookResources(ctx)
 }
