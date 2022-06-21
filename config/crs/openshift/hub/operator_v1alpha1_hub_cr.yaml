@@ -19,3 +19,4 @@ metadata:
 spec:
   api:
     hubConfigUrl: https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml
+    catalogRefreshInterval: 30m

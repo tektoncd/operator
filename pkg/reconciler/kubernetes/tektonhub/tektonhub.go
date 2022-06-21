@@ -380,7 +380,7 @@ func (r *Reconciler) validateOrCreateDBSecrets(ctx context.Context, th *v1alpha1
 func (r *Reconciler) validateApiDependencies(ctx context.Context, th *v1alpha1.TektonHub) error {
 	logger := logging.FromContext(ctx)
 	apiSecretKeys := []string{"GH_CLIENT_ID", "GH_CLIENT_SECRET", "JWT_SIGNING_KEY", "ACCESS_JWT_EXPIRES_IN", "REFRESH_JWT_EXPIRES_IN", "GHE_URL"}
-	apiConfigMapKeys := []string{"CONFIG_FILE_URL"}
+	apiConfigMapKeys := []string{"CONFIG_FILE_URL", "CATALOG_REFRESH_INTERVAL"}
 
 	th.Status.MarkApiDependencyInstalling("checking for api secrets in the namespace and creating the ConfigMap")
 
@@ -799,7 +799,8 @@ func createApiConfigMap(name, namespace string, th *v1alpha1.TektonHub) *corev1.
 			},
 		},
 		Data: map[string]string{
-			"CONFIG_FILE_URL": th.Spec.Api.HubConfigUrl,
+			"CONFIG_FILE_URL":          th.Spec.Api.HubConfigUrl,
+			"CATALOG_REFRESH_INTERVAL": th.Spec.Api.CatalogRefreshInterval,
 		},
 	}
 }
