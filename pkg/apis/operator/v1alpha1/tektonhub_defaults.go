@@ -35,4 +35,7 @@ func (th *TektonHub) SetDefaults(ctx context.Context) {
 		th.Spec.CommonSpec.TargetNamespace = os.Getenv("DEFAULT_TARGET_NAMESPACE")
 	}
 
+	if th.Spec.Api.CatalogRefreshInterval == "" {
+		th.Spec.Api.CatalogRefreshInterval = "30m"
+	}
 }
