@@ -6,11 +6,11 @@ on:
       - opened
       - reopened
       - labeled
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - labeled
+  # pull_request:
+  #   types:
+  #     - opened
+  #     - reopened
+  #     - labeled
 
 jobs:
   add-to-project:
