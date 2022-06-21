@@ -110,7 +110,7 @@ func (c *FakeTektonResults) UpdateStatus(ctx context.Context, tektonResult *v1al
 // Delete takes name of the tektonResult and deletes it. Returns an error if one occurs.
 func (c *FakeTektonResults) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(tektonresultsResource, name), &v1alpha1.TektonResult{})
+		Invokes(testing.NewRootDeleteActionWithOptions(tektonresultsResource, name, opts), &v1alpha1.TektonResult{})
 	return err
 }
 

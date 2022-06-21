@@ -110,7 +110,7 @@ func (c *FakeTektonHubs) UpdateStatus(ctx context.Context, tektonHub *v1alpha1.T
 // Delete takes name of the tektonHub and deletes it. Returns an error if one occurs.
 func (c *FakeTektonHubs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(tektonhubsResource, name), &v1alpha1.TektonHub{})
+		Invokes(testing.NewRootDeleteActionWithOptions(tektonhubsResource, name, opts), &v1alpha1.TektonHub{})
 	return err
 }
 

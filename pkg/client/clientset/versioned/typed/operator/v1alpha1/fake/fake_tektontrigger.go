@@ -110,7 +110,7 @@ func (c *FakeTektonTriggers) UpdateStatus(ctx context.Context, tektonTrigger *v1
 // Delete takes name of the tektonTrigger and deletes it. Returns an error if one occurs.
 func (c *FakeTektonTriggers) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteAction(tektontriggersResource, name), &v1alpha1.TektonTrigger{})
+		Invokes(testing.NewRootDeleteActionWithOptions(tektontriggersResource, name, opts), &v1alpha1.TektonTrigger{})
 	return err
 }
 
