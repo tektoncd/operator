@@ -172,18 +172,6 @@ func (pr *PipelineRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bo
 	return false
 }
 
-// GetServiceAccountName returns the service account name for a given
-// PipelineTask if configured, otherwise it returns the PipelineRun's serviceAccountName.
-func (pr *PipelineRun) GetServiceAccountName(pipelineTaskName string) string {
-	serviceAccountName := pr.Spec.ServiceAccountName
-	for _, sa := range pr.Spec.ServiceAccountNames {
-		if sa.TaskName == pipelineTaskName {
-			serviceAccountName = sa.ServiceAccountName
-		}
-	}
-	return serviceAccountName
-}
-
 // HasVolumeClaimTemplate returns true if PipelineRun contains volumeClaimTemplates that is
 // used for creating PersistentVolumeClaims with an OwnerReference for each run
 func (pr *PipelineRun) HasVolumeClaimTemplate() bool {
@@ -212,10 +200,6 @@ type PipelineRunSpec struct {
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
-	// Deprecated: use taskRunSpecs.ServiceAccountName instead
-	// +optional
-	// +listType=atomic
-	ServiceAccountNames []PipelineRunSpecServiceAccountName `json:"serviceAccountNames,omitempty"`
 	// Used for cancelling a pipelinerun (and maybe more later on)
 	// +optional
 	Status PipelineRunSpecStatus `json:"status,omitempty"`
@@ -410,30 +394,10 @@ type ChildStatusReference struct {
 	// PipelineTaskName is the name of the PipelineTask this is referencing.
 	PipelineTaskName string `json:"pipelineTaskName,omitempty"`
 
-	// ConditionChecks is the the list of condition checks, including their names and statuses, for the PipelineTask.
-	// Deprecated: This field will be removed when conditions are removed.
-	// +optional
-	// +listType=atomic
-	ConditionChecks []*PipelineRunChildConditionCheckStatus `json:"conditionChecks,omitempty"`
 	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
 	// +optional
 	// +listType=atomic
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
-}
-
-// GetConditionChecks returns a map representation of this ChildStatusReference's ConditionChecks, in the same form
-// as PipelineRunTaskRunStatus.ConditionChecks.
-func (cr ChildStatusReference) GetConditionChecks() map[string]*PipelineRunConditionCheckStatus {
-	if len(cr.ConditionChecks) == 0 {
-		return nil
-	}
-	ccMap := make(map[string]*PipelineRunConditionCheckStatus)
-
-	for _, cc := range cr.ConditionChecks {
-		ccMap[cc.ConditionCheckName] = &cc.PipelineRunConditionCheckStatus
-	}
-
-	return ccMap
 }
 
 // PipelineRunStatusFields holds the fields of PipelineRunStatus' status.
@@ -497,8 +461,6 @@ type SkippingReason string
 const (
 	// WhenExpressionsSkip means the task was skipped due to at least one of its when expressions evaluating to false
 	WhenExpressionsSkip SkippingReason = "When Expressions evaluated to false"
-	// ConditionsSkip means the task was skipped due to at least one of its conditions failing
-	ConditionsSkip SkippingReason = "Conditions failed"
 	// ParentTasksSkip means the task was skipped because its parent was skipped
 	ParentTasksSkip SkippingReason = "Parent Tasks were skipped"
 	// StoppingSkip means the task was skipped because the pipeline run is stopping
@@ -529,9 +491,6 @@ type PipelineRunTaskRunStatus struct {
 	// Status is the TaskRunStatus for the corresponding TaskRun
 	// +optional
 	Status *TaskRunStatus `json:"status,omitempty"`
-	// ConditionChecks maps the name of a condition check to its Status
-	// +optional
-	ConditionChecks map[string]*PipelineRunConditionCheckStatus `json:"conditionChecks,omitempty"`
 	// WhenExpressions is the list of checks guarding the execution of the PipelineTask
 	// +optional
 	// +listType=atomic
@@ -549,28 +508,6 @@ type PipelineRunRunStatus struct {
 	// +optional
 	// +listType=atomic
 	WhenExpressions []WhenExpression `json:"whenExpressions,omitempty"`
-}
-
-// PipelineRunConditionCheckStatus returns the condition check status
-type PipelineRunConditionCheckStatus struct {
-	// ConditionName is the name of the Condition
-	ConditionName string `json:"conditionName,omitempty"`
-	// Status is the ConditionCheckStatus for the corresponding ConditionCheck
-	// +optional
-	Status *ConditionCheckStatus `json:"status,omitempty"`
-}
-
-// PipelineRunChildConditionCheckStatus is used to record the status of condition checks within StatusChildReferences.
-type PipelineRunChildConditionCheckStatus struct {
-	PipelineRunConditionCheckStatus `json:",inline"`
-	ConditionCheckName              string `json:"conditionCheckName,omitempty"`
-}
-
-// PipelineRunSpecServiceAccountName can be used to configure specific
-// ServiceAccountName for a concrete Task
-type PipelineRunSpecServiceAccountName struct {
-	TaskName           string `json:"taskName,omitempty"`
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -610,7 +547,7 @@ type PipelineTaskRunSpec struct {
 func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSpec {
 	s := PipelineTaskRunSpec{
 		PipelineTaskName:       pipelineTaskName,
-		TaskServiceAccountName: pr.GetServiceAccountName(pipelineTaskName),
+		TaskServiceAccountName: pr.Spec.ServiceAccountName,
 		TaskPodTemplate:        pr.Spec.PodTemplate,
 	}
 	for _, task := range pr.Spec.TaskRunSpecs {
