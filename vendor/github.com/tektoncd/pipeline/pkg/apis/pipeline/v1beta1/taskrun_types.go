@@ -143,6 +143,8 @@ const (
 	// TaskRunReasonResolvingTaskRef indicates that the TaskRun is waiting for
 	// its taskRef to be asynchronously resolved.
 	TaskRunReasonResolvingTaskRef = "ResolvingTaskRef"
+	// TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled
+	TaskRunReasonImagePullFailed TaskRunReason = "TaskRunImagePullFailed"
 )
 
 func (t TaskRunReason) String() string {
@@ -412,7 +414,7 @@ func (tr *TaskRun) HasStarted() bool {
 
 // IsSuccessful returns true if the TaskRun's status indicates that it is done.
 func (tr *TaskRun) IsSuccessful() bool {
-	return tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+	return tr != nil && tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
 }
 
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state
