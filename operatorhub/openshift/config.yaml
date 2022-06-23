@@ -209,9 +209,9 @@ image-substitutions:
       - deploymentName: openshift-pipelines-operator
         containerName: openshift-pipelines-operator
         envKeys:
-          - IMAGE_PAC_CONTROLLER
-          - IMAGE_PAC_WEBHOOK
-          - IMAGE_PAC_WATCHER
+          - IMAGE_PAC_PAC_CONTROLLER
+          - IMAGE_PAC_PAC_WEBHOOK
+          - IMAGE_PAC_PAC_WATCHER
 
 # add third party images which are not replaced by operator
 # but pulled directly by tasks here
