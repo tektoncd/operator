@@ -176,9 +176,13 @@ func (r *rbac) createResources(ctx context.Context) error {
 	var rbacNamespaces []corev1.Namespace
 
 	// filter namespaces:
-	// ignore ns with name passing regex `^(openshift|kube)-`
 	for _, n := range namespaces.Items {
+		// ignore namespaces with name passing regex `^(openshift|kube)-`
 		if ignore := nsRegex.MatchString(n.GetName()); ignore {
+			continue
+		}
+		// ignore namespaces with DeletionTimestamp set
+		if n.GetObjectMeta().GetDeletionTimestamp() != nil {
 			continue
 		}
 		rbacNamespaces = append(rbacNamespaces, n)
