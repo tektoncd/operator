@@ -122,6 +122,27 @@ release_yaml_pac() {
 
     echo "Info: Added $comp/$fileName:$version release yaml !!"
     echo ""
+
+    runtime=( go java nodejs python )
+    for run in "${runtime[@]}"
+    do
+    	echo "fetching PipelineRun template for runtime: $run"
+
+    	source="https://raw.githubusercontent.com/sm43/pipelines-as-code/pac-pr-templates/pkg/cmd/tknpac/generate/templates/${run}-template.yaml"
+    	dest_dir="${ko_data}/tekton-addon/pipelines-as-code-templates"
+      mkdir -p ${dest_dir} || true
+      destination="${dest_dir}/${run}-template.yaml"
+
+    	http_response=$(curl -s -o ${destination} -w "%{http_code}" ${source})
+      echo url: ${url}
+
+      if [[ $http_response != "200" ]]; then
+        echo "Error: failed to get pipelinerun template for $run, status code: $http_response"
+        exit 1
+      fi
+
+    done
+
 }
 
 

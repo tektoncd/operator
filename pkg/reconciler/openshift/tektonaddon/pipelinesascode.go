@@ -18,16 +18,33 @@ package tektonaddon
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/tektoncd/operator/pkg/reconciler/openshift"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/yaml"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const pacRuntimeLabel = "pipelinesascode.openshift.io/runtime"
+
+var configmapTemplate = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pipelines-as-code-template
+  labels:
+    app.kubernetes.io/part-of: pipelines-as-code
+data:
+  template: ""`
 
 var pacLS = metav1.LabelSelector{
 	MatchLabels: map[string]string{
@@ -65,9 +82,15 @@ func (r *Reconciler) EnsurePipelinesAsCode(ctx context.Context, ta *v1alpha1.Tek
 func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) error {
 	pacManifest := mf.Manifest{}
 
+	// core manifest
 	koDataDir := os.Getenv(common.KoEnvKey)
 	pacLocation := filepath.Join(koDataDir, "tekton-addon", "pipelines-as-code")
 	if err := common.AppendManifest(&pacManifest, pacLocation); err != nil {
+		return err
+	}
+
+	if err := fetchPRTemplates(&pacManifest); err != nil {
+		fmt.Println("failed here ...")
 		return err
 	}
 
@@ -94,4 +117,53 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 	}
 
 	return nil
+}
+
+func fetchPRTemplates(manifest *mf.Manifest) error {
+	prManifests := mf.Manifest{}
+	koDataDir := os.Getenv(common.KoEnvKey)
+	templateLocation := filepath.Join(koDataDir, "tekton-addon", "pipelines-as-code-templates")
+	if err := common.AppendManifest(&prManifests, templateLocation); err != nil {
+		return err
+	}
+
+	cmManifest, err := pipelineRunToConfigMapConverter(&prManifests)
+	if err != nil {
+		return err
+	}
+	*manifest = manifest.Append(*cmManifest)
+	return nil
+}
+
+func pipelineRunToConfigMapConverter(prManifests *mf.Manifest) (*mf.Manifest, error) {
+	cm := &v1.ConfigMap{}
+	err := yaml.Unmarshal([]byte(configmapTemplate), cm)
+	if err != nil {
+		return nil, err
+	}
+
+	var temp []unstructured.Unstructured
+	for _, pr := range prManifests.Resources() {
+		data, err := yaml.Marshal(pr.Object)
+		if err != nil {
+			return nil, err
+		}
+
+		// set pipelineRun
+		cm.Data["template"] = string(data)
+
+		// set metadata
+		prname := pr.GetName()
+		cm.SetName("pipelines-as-code-" + prname)
+		cm.Labels[pacRuntimeLabel] = strings.TrimRight(prname, "-template")
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return nil, err
+		}
+
+		temp = append(temp, unstructured.Unstructured{Object: unstrObj})
+	}
+	manifest, _ := mf.ManifestFrom(mf.Slice(temp))
+	return &manifest, nil
 }
