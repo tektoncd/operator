@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	routev1 "github.com/openshift/api/route/v1"
+	"github.com/openshift/client-go/route/clientset/versioned/scheme"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -59,7 +61,6 @@ func (r *Reconciler) EnsurePipelinesAsCode(ctx context.Context, ta *v1alpha1.Tek
 	}
 
 	if *ta.Spec.EnablePAC {
-
 		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, pacLabelSelector)
 		if err != nil {
 			return err
@@ -67,6 +68,7 @@ func (r *Reconciler) EnsurePipelinesAsCode(ctx context.Context, ta *v1alpha1.Tek
 		if !exist {
 			return r.ensurePAC(ctx, ta)
 		}
+		return r.updateControllerURL(ta)
 
 	} else {
 		// if disabled then delete the installer Set if exist
@@ -74,7 +76,36 @@ func (r *Reconciler) EnsurePipelinesAsCode(ctx context.Context, ta *v1alpha1.Tek
 			return err
 		}
 	}
+	return nil
+}
 
+func (r *Reconciler) updateControllerURL(ta *v1alpha1.TektonAddon) error {
+	var err error
+	pacManifest := mf.Manifest{
+		Client: r.manifest.Client,
+	}
+
+	koDataDir := os.Getenv(common.KoEnvKey)
+	pacLocation := filepath.Join(koDataDir, "tekton-addon", "pipelines-as-code")
+	if err := common.AppendManifest(&pacManifest, pacLocation); err != nil {
+		return err
+	}
+	pacManifest, err = pacManifest.Transform(mf.InjectNamespace(ta.Spec.TargetNamespace))
+	if err != nil {
+		return err
+	}
+
+	route, err := getControllerRouteHost(&pacManifest)
+	if err != nil {
+		return err
+	}
+	if route == "" {
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
+
+	if err := updateInfoConfigMap(route, &pacManifest); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -158,7 +189,7 @@ func pipelineRunToConfigMapConverter(prManifests *mf.Manifest) (*mf.Manifest, er
 		// set metadata
 		prname := res.GetName()
 		cm.SetName("pipelines-as-code-" + prname)
-		cm.Labels[pacRuntimeLabel] = strings.TrimSuffix(prname, "-template")
+		cm.Labels[pacRuntimeLabel] = strings.TrimPrefix(prname, "pipelinerun-")
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
 		if err != nil {
@@ -169,4 +200,58 @@ func pipelineRunToConfigMapConverter(prManifests *mf.Manifest) (*mf.Manifest, er
 	}
 	manifest, _ := mf.ManifestFrom(mf.Slice(temp))
 	return &manifest, nil
+}
+
+func getControllerRouteHost(manifest *mf.Manifest) (string, error) {
+	var hostUrl string
+	for _, r := range manifest.Filter(mf.ByKind("Route")).Resources() {
+		u, err := manifest.Client.Get(&r)
+		if err != nil {
+			return "", err
+		}
+		if u.GetName() == "pipelines-as-code-controller" {
+			route := &routev1.Route{}
+			if err := scheme.Scheme.Convert(u, route, nil); err != nil {
+				return "", err
+			}
+			hostUrl = route.Spec.Host
+		}
+	}
+	return hostUrl, nil
+}
+
+func updateInfoConfigMap(route string, pacManifest *mf.Manifest) error {
+	for _, r := range pacManifest.Filter(mf.ByKind("ConfigMap")).Resources() {
+		if r.GetName() != "pipelines-as-code-info" {
+			continue
+		}
+		u, err := pacManifest.Client.Get(&r)
+		if err != nil {
+			return err
+		}
+		cm := &v1.ConfigMap{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return err
+		}
+
+		// set controller url
+		if cm.Data["controller-url"] != "" {
+			return nil
+		}
+
+		cm.Data["controller-url"] = "https://" + route
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		err = pacManifest.Client.Update(u)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
