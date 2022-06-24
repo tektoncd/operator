@@ -18,7 +18,6 @@ package tektonaddon
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -90,7 +89,6 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 	}
 
 	if err := fetchPRTemplates(&pacManifest); err != nil {
-		fmt.Println("failed here ...")
 		return err
 	}
 
@@ -143,8 +141,13 @@ func pipelineRunToConfigMapConverter(prManifests *mf.Manifest) (*mf.Manifest, er
 	}
 
 	var temp []unstructured.Unstructured
-	for _, pr := range prManifests.Resources() {
-		data, err := yaml.Marshal(pr.Object)
+	for _, res := range prManifests.Resources() {
+		if res.GetKind() != "PipelineRun" {
+			temp = append(temp, res)
+			continue
+		}
+
+		data, err := yaml.Marshal(res.Object)
 		if err != nil {
 			return nil, err
 		}
@@ -153,9 +156,9 @@ func pipelineRunToConfigMapConverter(prManifests *mf.Manifest) (*mf.Manifest, er
 		cm.Data["template"] = string(data)
 
 		// set metadata
-		prname := pr.GetName()
+		prname := res.GetName()
 		cm.SetName("pipelines-as-code-" + prname)
-		cm.Labels[pacRuntimeLabel] = strings.TrimRight(prname, "-template")
+		cm.Labels[pacRuntimeLabel] = strings.TrimSuffix(prname, "-template")
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
 		if err != nil {
