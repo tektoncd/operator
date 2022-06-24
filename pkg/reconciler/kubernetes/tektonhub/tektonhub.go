@@ -249,7 +249,7 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 	}
 
 	// Validate whether the secrets and configmap are created for API
-	if err := r.validateApiDependencies(ctx, th); err != nil {
+	if err := r.validateApiDependencies(ctx, th, hubDir, "api"); err != nil {
 		th.Status.MarkApiDependencyMissing("api secrets not present")
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
@@ -413,7 +413,7 @@ func (r *Reconciler) validateOrCreateDBSecrets(ctx context.Context, th *v1alpha1
 }
 
 // TektonHub expects API secrets to be created before installing Tekton Hub API
-func (r *Reconciler) validateApiDependencies(ctx context.Context, th *v1alpha1.TektonHub) error {
+func (r *Reconciler) validateApiDependencies(ctx context.Context, th *v1alpha1.TektonHub, hubDir, comp string) error {
 	logger := logging.FromContext(ctx)
 	apiSecretKeys := []string{"GH_CLIENT_ID", "GH_CLIENT_SECRET", "JWT_SIGNING_KEY", "ACCESS_JWT_EXPIRES_IN", "REFRESH_JWT_EXPIRES_IN", "GHE_URL"}
 	apiConfigMapKeys := []string{"CONFIG_FILE_URL", "CATALOG_REFRESH_INTERVAL"}
@@ -423,8 +423,9 @@ func (r *Reconciler) validateApiDependencies(ctx context.Context, th *v1alpha1.T
 	_, err := r.getSecret(ctx, th.Spec.Api.ApiSecretName, namespace, apiSecretKeys)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			th.Status.MarkApiDependencyMissing(fmt.Sprintf("%s secret is missing", th.Spec.Api.ApiSecretName))
-			return err
+			if err := r.createApiSecret(ctx, th, hubDir, comp); err != nil {
+				return err
+			}
 		}
 		if err == errKeyMissing {
 			th.Status.MarkApiDependencyMissing(fmt.Sprintf("%s secret is missing the keys", th.Spec.Api.ApiSecretName))
@@ -951,6 +952,39 @@ func createApiConfigMap(name, namespace string, th *v1alpha1.TektonHub) *corev1.
 			"CATALOG_REFRESH_INTERVAL": th.Spec.Api.CatalogRefreshInterval,
 		},
 	}
+}
+
+func (r *Reconciler) createApiSecret(ctx context.Context, th *v1alpha1.TektonHub, hubDir, comp string) error {
+
+	manifest, err := r.getHubManifest(ctx, th, hubDir, comp)
+	if err != nil {
+		return err
+	}
+
+	secret := manifest.Filter(mf.ByKind("Secret"))
+	secretManifest, err := secret.Transform(
+		mf.InjectNamespace(th.Spec.GetTargetNamespace()),
+	)
+	if err != nil {
+		return err
+	}
+
+	if err := secretManifest.Apply(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Reconciler) getHubManifest(ctx context.Context, th *v1alpha1.TektonHub, hubDir, comp string) (*mf.Manifest, error) {
+	manifestLocation := filepath.Join(hubDir, comp)
+
+	manifest, err := r.getManifest(ctx, th, manifestLocation)
+	if err != nil {
+		return nil, err
+	}
+
+	return manifest, nil
 }
 
 func createDbSecret(name, namespace string, existingSecret *corev1.Secret) *corev1.Secret {
