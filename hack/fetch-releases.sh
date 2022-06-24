@@ -126,14 +126,14 @@ release_yaml_pac() {
     runtime=( go java nodejs python )
     for run in "${runtime[@]}"
     do
-    	echo "fetching PipelineRun template for runtime: $run"
+      echo "fetching PipelineRun template for runtime: $run"
 
-    	source="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/main/pkg/cmd/tknpac/generate/templates/${run}-template.yaml"
-    	dest_dir="${ko_data}/tekton-addon/pipelines-as-code-templates"
+      source="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/${version}/pkg/cmd/tknpac/generate/templates/${run}.yaml"
+      dest_dir="${ko_data}/tekton-addon/pipelines-as-code-templates"
       mkdir -p ${dest_dir} || true
-      destination="${dest_dir}/${run}-template.yaml"
+      destination="${dest_dir}/${run}.yaml"
 
-    	http_response=$(curl -s -o ${destination} -w "%{http_code}" ${source})
+      http_response=$(curl -s -o ${destination} -w "%{http_code}" ${source})
       echo url: ${source}
 
       if [[ $http_response != "200" ]]; then

@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pipelines-as-code-go-template
+  name: pipelines-as-code-pipelinerun-go
   labels:
     pipelinesascode.openshift.io/runtime: "go"
     app.kubernetes.io/part-of: pipelines-as-code
