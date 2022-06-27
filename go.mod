@@ -22,7 +22,7 @@ require (
 	github.com/sigstore/cosign v1.2.1
 	github.com/tektoncd/pipeline v0.37.0
 	github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f
-	github.com/tektoncd/triggers v0.20.0
+	github.com/tektoncd/triggers v0.20.1
 	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/mod v0.5.1
