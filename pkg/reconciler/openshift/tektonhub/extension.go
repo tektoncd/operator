@@ -38,6 +38,7 @@ import (
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -128,20 +129,12 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	}
 	th.Status.SetApiRoute(fmt.Sprintf("https://%s", apiRoute))
 
-	// Get the host of Auth route
-	authRoute, err := getRouteHost(&apiRouteManifest, "tekton-hub-auth")
-	if err != nil {
-		return err
-	}
-	th.Status.SetAuthRoute(fmt.Sprintf("https://%s", authRoute))
-
-	// Update the secrets of API with the Auth Route value
-	if err := oe.updateApiSecret(ctx, th, authRoute, targetNs); err != nil {
+	// Set Auth Url in Tekton Hub Status
+	if err := oe.SetAuthBaseURL(ctx, th, apiRouteManifest); err != nil {
 		return err
 	}
 
 	// Create UI route based on the value of ui i.e. false/true
-
 	uiHubDir := filepath.Join(common.ComponentDir(th), common.TargetVersion(th), tektonHubUiResourceKey)
 	uiManifest := oe.manifest.Append()
 
@@ -336,29 +329,6 @@ func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent)
 	return nil
 }
 
-// Updates the AUTH_BASE_URL in the API secret with the Auth Route value
-func (oe openshiftExtension) updateApiSecret(ctx context.Context, th *v1alpha1.TektonHub, authRoute, namespace string) error {
-	secret, err := oe.kubeClientSet.CoreV1().Secrets(namespace).Get(ctx, api, metav1.GetOptions{})
-	if err != nil {
-		th.Status.MarkApiDependencyMissing(fmt.Sprintf("API secret is not present %v", err.Error()))
-		return err
-	}
-
-	if secret.Data["AUTH_BASE_URL"] != nil && len(secret.Data["AUTH_BASE_URL"]) != 0 {
-		delete(secret.Data, "AUTH_BASE_URL")
-	}
-
-	secret.StringData = make(map[string]string)
-	secret.StringData["AUTH_BASE_URL"] = fmt.Sprintf("https://%s", authRoute)
-
-	_, err = oe.kubeClientSet.CoreV1().Secrets(namespace).Update(ctx, secret, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Get the Host value of the Route created
 func getRouteHost(manifest *mf.Manifest, routeName string) (string, error) {
 	var hostUrl string
@@ -414,6 +384,31 @@ func UpdateDbDeployment() mf.Transformer {
 
 		return nil
 	}
+}
+
+func (oe openshiftExtension) SetAuthBaseURL(ctx context.Context, th *v1alpha1.TektonHub, apiRouteManifest mf.Manifest) error {
+	// Get the api secret
+	secret, err := oe.kubeClientSet.CoreV1().Secrets(th.Spec.GetTargetNamespace()).Get(ctx, "tekton-hub-api", metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			th.Status.SetAuthRoute("")
+		} else {
+			return err
+		}
+	}
+
+	if len(secret.Data["GH_CLIENT_ID"]) != 0 || len(secret.Data["GL_CLIENT_ID"]) != 0 || len(secret.Data["BB_CLIENT_ID"]) != 0 {
+		// Get the host of Auth route
+		authRoute, err := getRouteHost(&apiRouteManifest, "tekton-hub-auth")
+		if err != nil {
+			return err
+		}
+		th.Status.SetAuthRoute(fmt.Sprintf("https://%s", authRoute))
+	} else {
+		th.Status.SetAuthRoute("")
+	}
+
+	return nil
 }
 
 func replaceProbeCommand(data []string) {
