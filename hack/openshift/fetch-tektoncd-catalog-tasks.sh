@@ -44,7 +44,7 @@ EOF
 declare -r TEKTON_CATALOG="https://raw.githubusercontent.com/tektoncd/catalog"
 declare -A TEKTON_CATALOG_TASKS=(
   # Need to remove version param
-  ["git-clone"]="0.6"
+  ["git-clone"]="0.7"
   ["kn"]="0.1"
   ["kn-apply"]="0.1"
   ["skopeo-copy"]="0.1"
