@@ -6,6 +6,11 @@ image-substitutions:
     containerTargets:
     - deploymentName: openshift-pipelines-operator
       containerName: openshift-pipelines-operator-lifecycle
+- image: registry.redhat.io/openshift-pipelines/pipelines-rhel8-operator@
+  replaceLocations:
+    containerTargets:
+    - deploymentName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-cluster-operations
 - image: registry.redhat.io/openshift-pipelines/pipelines-operator-proxy-rhel8@
   replaceLocations:
     envTargets:
