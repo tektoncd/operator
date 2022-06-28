@@ -280,12 +280,15 @@ spec:
     ### Components
 
 
-    - Tekton Pipelines: v0.28.1
+    - Tekton Pipelines: v0.37.0
 
-    - Tekton Triggers: v0.16.0
+    - Tekton Triggers: v0.20.1
 
-    - ClusterTasks based on Tekton Catalog 0.28
+    - Tekton Chains (tech-preview): v0.9.0
 
+    - Tekton Hub (tech-preview): v1.8.0
+
+    - Pipelines as Code (tech-preview): 0.10.0
 
     ## Getting Started
 
