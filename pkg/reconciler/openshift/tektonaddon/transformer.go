@@ -78,48 +78,25 @@ func itemInSlice(item string, items []string) bool {
 
 func getlinks(baseURL, tknVersion string) []console.CLIDownloadLink {
 	platformURLs := []struct {
-		platform  string
-		tknURL    string
-		tknPacURL string
+		platform string
+		tknURL   string
 	}{
-		{
-			"Linux",
-			fmt.Sprintf("tkn/tkn-linux-amd64-%s.tar.gz", tknVersion),
-			fmt.Sprintf("tkn/tkn-pac-linux-amd64-%s.tar.gz", tknVersion),
-		},
-		{
-			"IBM Power",
-			fmt.Sprintf("tkn/tkn-linux-ppc64le-%s.tar.gz", tknVersion),
-			fmt.Sprintf("tkn/tkn-pac-linux-ppc64le-%s.tar.gz", tknVersion),
-		},
-		{
-			"IBM Z",
-			fmt.Sprintf("tkn/tkn-linux-s390x-%s.tar.gz", tknVersion),
-			fmt.Sprintf("tkn/tkn-pac-linux-s390x-%s.tar.gz", tknVersion),
-		},
-		{
-			"Mac",
-			fmt.Sprintf("tkn/tkn-macos-amd64-%s.tar.gz", tknVersion),
-			fmt.Sprintf("tkn/tkn-pac-macos-amd64-%s.tar.gz", tknVersion),
-		},
-		{
-			"Windows",
-			fmt.Sprintf("tkn/tkn-windows-amd64-%s.zip", tknVersion),
-			fmt.Sprintf("tkn/tkn-pac-windows-amd64-%s.zip", tknVersion),
-		},
+		{"Linux x86_64", "tkn/tkn-linux-amd64.tar.gz"},
+		{"Linux ARM 64", "tkn/tkn-linux-arm64.tar.gz"},
+		{"IBM Power", "tkn/tkn-linux-ppc64le.tar.gz"},
+		{"IBM Z", "tkn/tkn-linux-s390x.tar.gz"},
+		{"Mac x86_64", "tkn/tkn-macos-amd64.tar.gz"},
+		{"Mac ARM 64", "tkn/tkn-macos-arm64.tar.gz"},
+		{"Windows x86_64", "tkn/tkn-windows-amd64.zip"},
+		{"Windows ARM 64", "tkn/tkn-windows-arm64.zip"},
 	}
 	links := []console.CLIDownloadLink{}
 	for _, platformURL := range platformURLs {
 		links = append(links,
-			// tkn
+			// tkn and tkn-pac, single archive
 			console.CLIDownloadLink{
 				Href: getURL(baseURL, platformURL.tknURL),
-				Text: fmt.Sprintf("Download tkn for %s", platformURL.platform),
-			},
-			// tkn-pac
-			console.CLIDownloadLink{
-				Href: getURL(baseURL, platformURL.tknPacURL),
-				Text: fmt.Sprintf("Download tkn-pac for %s", platformURL.platform),
+				Text: fmt.Sprintf("Download tkn and tkn-pac for %s", platformURL.platform),
 			},
 		)
 	}

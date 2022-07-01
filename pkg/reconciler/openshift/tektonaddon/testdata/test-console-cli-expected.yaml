@@ -6,23 +6,19 @@ spec:
   description: The OpenShift Pipeline client `tkn` is a CLI tool that allows you to manage OpenShift Pipeline resources.
   displayName: tkn - OpenShift Pipeline Command Line Interface (CLI)
   links:
-    - href: https://testserver.com/tkn/tkn-linux-amd64-1.2.3.tar.gz
-      text: Download tkn for Linux
-    - href: https://testserver.com/tkn/tkn-pac-linux-amd64-1.2.3.tar.gz
-      text: Download tkn-pac for Linux
-    - href: https://testserver.com/tkn/tkn-linux-ppc64le-1.2.3.tar.gz
-      text: Download tkn for IBM Power
-    - href: https://testserver.com/tkn/tkn-pac-linux-ppc64le-1.2.3.tar.gz
-      text: Download tkn-pac for IBM Power
-    - href: https://testserver.com/tkn/tkn-linux-s390x-1.2.3.tar.gz
-      text: Download tkn for IBM Z
-    - href: https://testserver.com/tkn/tkn-pac-linux-s390x-1.2.3.tar.gz
-      text: Download tkn-pac for IBM Z
-    - href: https://testserver.com/tkn/tkn-macos-amd64-1.2.3.tar.gz
-      text: Download tkn for Mac
-    - href: https://testserver.com/tkn/tkn-pac-macos-amd64-1.2.3.tar.gz
-      text: Download tkn-pac for Mac
-    - href: https://testserver.com/tkn/tkn-windows-amd64-1.2.3.zip
-      text: Download tkn for Windows
-    - href: https://testserver.com/tkn/tkn-pac-windows-amd64-1.2.3.zip
-      text: Download tkn-pac for Windows
+    - href: https://testserver.com/tkn/tkn-linux-amd64.tar.gz
+      text: Download tkn and tkn-pac for Linux x86_64
+    - href: https://testserver.com/tkn/tkn-linux-arm64.tar.gz
+      text: Download tkn and tkn-pac for Linux ARM 64
+    - href: https://testserver.com/tkn/tkn-linux-ppc64le.tar.gz
+      text: Download tkn and tkn-pac for IBM Power
+    - href: https://testserver.com/tkn/tkn-linux-s390x.tar.gz
+      text: Download tkn and tkn-pac for IBM Z
+    - href: https://testserver.com/tkn/tkn-macos-amd64.tar.gz
+      text: Download tkn and tkn-pac for Mac x86_64
+    - href: https://testserver.com/tkn/tkn-macos-arm64.tar.gz
+      text: Download tkn and tkn-pac for Mac ARM 64
+    - href: https://testserver.com/tkn/tkn-windows-amd64.zip
+      text: Download tkn and tkn-pac for Windows x86_64
+    - href: https://testserver.com/tkn/tkn-windows-arm64.zip
+      text: Download tkn and tkn-pac for Windows ARM 64
