@@ -20,7 +20,7 @@ spec:
     default: "latest"
   - name: PAC_VERSION
     description: Version of Pipelines as Code (OpenShift only)
-    default: "0.5.7"
+    default: "nightly"
   - name: CHAINS_VERSION
     description: Version of TektonCD Chains being fetched
     default: "latest"
