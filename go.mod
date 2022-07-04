@@ -27,7 +27,7 @@ require (
 	go.uber.org/zap v1.21.0
 	golang.org/x/mod v0.5.1
 	gomodules.xyz/jsonpatch/v2 v2.2.0
-	gotest.tools/v3 v3.1.0
+	gotest.tools/v3 v3.3.0
 	k8s.io/api v0.23.5
 	k8s.io/apimachinery v0.23.5
 	k8s.io/client-go v0.23.5
