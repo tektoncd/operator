@@ -62,9 +62,9 @@ func (r *Reconciler) checkIfInstallerSetExist(ctx context.Context, oc clientset.
 }
 
 func createInstallerSet(ctx context.Context, oc clientset.Interface, th *v1alpha1.TektonHub,
-	manifest mf.Manifest, releaseVersion, component, installerSetPrefix, namespace string, labels map[string]string) error {
+	manifest mf.Manifest, releaseVersion, component, installerSetPrefix, namespace string, labels map[string]string, specHash string) error {
 
-	is := makeInstallerSet(th, manifest, installerSetPrefix, releaseVersion, namespace, labels)
+	is := makeInstallerSet(th, manifest, installerSetPrefix, releaseVersion, namespace, labels, specHash)
 
 	createdIs, err := oc.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, is, metav1.CreateOptions{})
@@ -82,9 +82,10 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, th *v1alpha
 	return nil
 }
 
-func makeInstallerSet(th *v1alpha1.TektonHub, manifest mf.Manifest, prefix, releaseVersion, namespace string, labels map[string]string) *v1alpha1.TektonInstallerSet {
+func makeInstallerSet(th *v1alpha1.TektonHub, manifest mf.Manifest, prefix, releaseVersion, namespace string, labels map[string]string, specHash string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(th, th.GetGroupVersionKind())
-	return &v1alpha1.TektonInstallerSet{
+
+	is := &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", prefix),
 			Labels:       labels,
@@ -98,4 +99,10 @@ func makeInstallerSet(th *v1alpha1.TektonHub, manifest mf.Manifest, prefix, rele
 			Manifests: manifest.Resources(),
 		},
 	}
+
+	if specHash != "" {
+		is.Annotations[v1alpha1.DbSecretHash] = specHash
+	}
+
+	return is
 }
