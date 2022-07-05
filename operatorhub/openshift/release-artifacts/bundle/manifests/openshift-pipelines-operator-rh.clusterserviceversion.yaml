@@ -288,7 +288,7 @@ spec:
 
     - Tekton Hub (tech-preview): v1.8.0
 
-    - Pipelines as Code (tech-preview): 0.10.0
+    - Pipelines as Code (tech-preview): 0.10.1
 
     ## Getting Started
 
