@@ -51,6 +51,7 @@ const (
 	TargetNamespaceKey     = "operator.tekton.dev/target-namespace"
 	InstallerSetType       = "operator.tekton.dev/type"
 	LabelOperandName       = "operator.tekton.dev/operand-name"
+	DbSecretHash           = "operator.tekton.dev/db-secret-hash"
 
 	UpgradePending = "upgrade pending"
 
