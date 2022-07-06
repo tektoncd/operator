@@ -7,38 +7,66 @@ seperately. It is available for both Kubernetes and OpenShift platform.
 
 To install Tekton Hub on your cluster follow steps as given below:
 
-1. Update the [config.yaml](https://raw.githubusercontent.com/tektoncd/hub/master/config.yaml) to add one user with all
-   the scopes such as
-    - refresh a catalog
-    - refresh config file
-    - create an agent token
 
-   **NOTE**:- You can maintain [config.yaml](https://raw.githubusercontent.com/tektoncd/hub/master/config.yaml) in any
-   repo but make sure it is accessible to the Hub API server or you can either fork the project [Tekton Hub][hub]
+  **Note** :
+  - Initially user had to enable Tekton Hub Authentication, get the Hub token with required scopes and then hit the catalog refresh api to load the resources in the database.
+  - Now user doesn't needs to enable login mechanism to get the resources populated in the database as resources will be automatically populated in the database when the api is up and running
+  - Resources in the hub db will be also automatically refreshed with the updated data with the time which is specified in the Hub CR i.e `catalogRefreshInterval: 30m`. Default time interval is 30m
+  -  If you are using your database instead of default one then
+  secret name for the database should be `tekton-hub-db` and you need to create the secret in your targetNamespace with the following keys
 
-   For example:
+  ```yaml
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: tekton-hub-db
+    labels:
+      app: tekton-hub-db
+  type: Opaque
+  stringData:
+    POSTGRES_HOST: <The name of the host of the database>
+    POSTGRES_DB: <Name of the database>
+    POSTGRES_USER: <The name of user account>
+    POSTGRES_PASSWORD: <The password of user account>
+    POSTGRES_PORT: <The port that the database is listening on>
+  ```
+
+### 1. Without login and rating
+
+- This is how TektonHub CR looks
+
+  ```yaml
+  apiVersion: operator.tekton.dev/v1alpha1
+  kind: TektonHub
+  metadata:
+    name: hub
+  spec:
+    targetNamespace:
+    # <namespace> in which you want to install Tekton Hub. Leave it blank if in case you want to install
+    # in default installation namespace ie `openshift-pipelines` in case of OpenShift and `tekton-pipelines` in case of Kubernetes
+    db:                      # 👈 Optional: If user wants to use his database
+      secret: tekton-hub-db  # 👈 Name of db secret should be `tekton-hub-db`
+    api:
+      hubConfigUrl: https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml
+      catalogRefreshInterval: 30m     # After every 30min catalog resources in the hub db would be refreshed to get the updated data from the catalog. Supported time units are As(A seconds), Bm(B minutes) Ch(C hours), Dd(D days) and Ew(E weeks).
     ```
-   scopes:
-   - name: agent:create
-     users: [foo]        <<< Where `foo` is your Github Handle
-   - name: catalog:refresh
-     users: [foo]
-   - name: config:refresh
-     users: [foo]
-      ```
 
-   **NOTE**:-
-    - With the `catalog:refresh` scope user will be able to refresh the catalog and all the resources in db. For more
-      details refere to [here](https://github.com/tektoncd/hub/blob/main/docs/DEPLOYMENT.md#add-resources-in-db)
-    - With the `agent:create` scope user can setup a cronjob which will refresh your db after an interval if there are
-      any changes in your catalog. For more details
-      refer [here](https://github.com/tektoncd/hub/blob/main/docs/DEPLOYMENT.md#setup-catalog-refresh-cronjob-optional)
-    - With the `config:refresh` scope user can get additional scopes. For more details
-      refer [here](https://github.com/tektoncd/hub/blob/main/docs/DEPLOYMENT.md#setup-catalog-refresh-cronjob-optional)
+- You can install Tekton Hub by running the command
 
-- Commit the changes and push the changes to your fork
+    ```sh
+    kubectl apply -f <name>.yaml
+    ```
 
-2. Create the secrets for the API before we install Tekton Hub. By default, Tekton Hub expects this secret to have the
+- Check the status of installation using following command
+
+  ```sh
+  $ kubectl get tektonhub.operator.tekton.dev
+  NAME   VERSION   READY   REASON   APIURL                  UIURL
+  hub    v1.8.0    True             https://api.route.url   https://ui.route.url
+  ```
+
+### 2. With login and rating
+1. Create the secrets for the API before we install Tekton Hub. By default, Tekton Hub expects this secret to have the
    following properties:
 
     - namespace: TargetNamespace defined in TektonHub CR at the time of applying. If nothing is specified then based on
@@ -71,15 +99,12 @@ To install Tekton Hub on your cluster follow steps as given below:
       targetNamespace:
       # <namespace> in which you want to install Tekton Hub. Leave it blank if in case you want to install
       # in default installation namespace ie `openshift-pipelines` in case of OpenShift and `tekton-pipelines` in case of Kubernetes
+      db:                      # 👈 Optional: If user wants to use his database
+        secret: tekton-hub-db  # 👈 Name of db secret should be `tekton-hub-db`
       api:
-        hubConfigUrl: https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml # 👈 MUST: Change the file URL here to point to your fork
+        hubConfigUrl: https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml
+        catalogRefreshInterval: 30m     # After every 30min catalog resources in the hub db would be refreshed to get the updated data from the catalog. Supported time units are As(A seconds), Bm(B minutes) Ch(C hours), Dd(D days) and Ew(E weeks).
     ```
-
-   ### API
-
-   The following field helps to configure the API deployment. Provided fields are:
-
-    - `hubConfigUrl`: The place of Tekton Hub config url as shown above.
 
 4. After configuring the TektonHub spec you can install Tekton Hub by running the command
 
