@@ -3,12 +3,13 @@ package platform
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
+
 	installer "github.com/tektoncd/operator/pkg/reconciler/shared/tektoninstallerset"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
 	"knative.dev/pkg/signals"
-	"log"
-	"strings"
 )
 
 // validateControllerNamesOrDie ensures that the list of controller names to be enabled

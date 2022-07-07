@@ -17,9 +17,10 @@ limitations under the License.
 package platform
 
 import (
-	"knative.dev/pkg/injection"
 	"reflect"
 	"testing"
+
+	"knative.dev/pkg/injection"
 )
 
 func TestActiveControllers(t *testing.T) {
