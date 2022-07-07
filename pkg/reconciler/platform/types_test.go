@@ -18,11 +18,12 @@ package platform_test
 
 import (
 	"context"
+	"testing"
+
 	"github.com/tektoncd/operator/pkg/reconciler/platform"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
-	"testing"
 )
 
 var (

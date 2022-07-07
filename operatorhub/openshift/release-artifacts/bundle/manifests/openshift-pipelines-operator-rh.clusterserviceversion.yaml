@@ -976,12 +976,12 @@ spec:
   - build
   - pipeline
   links:
-  - name: OpenShift Tekton Pipeline GitHub Repository
-    url: https://github.com/openshift/tektoncd-pipeline
-  - name: OpenShift Pipelines Operator GitHub Repository
-    url: https://github.com/openshift/tektoncd-operator
+  - name: Tekton Pipeline GitHub Repository
+    url: https://github.com/tektoncd/pipeline
+  - name: Tekton Operator GitHub Repository
+    url: https://github.com/tektoncd/operator
   maintainers:
-  - email: pipelines-dev@redhat.com
+  - email: pipelines-extcomm@redhat.com
     name: Red Hat
   maturity: alpha
   provider:
