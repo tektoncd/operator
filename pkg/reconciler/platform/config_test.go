@@ -18,10 +18,11 @@ package platform_test
 
 import (
 	"flag"
-	"github.com/google/go-cmp/cmp"
-	"github.com/tektoncd/operator/pkg/reconciler/platform"
 	"os"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/operator/pkg/reconciler/platform"
 )
 
 func TestNewConfigFromFlags(t *testing.T) {
