@@ -1,6 +1,8 @@
 module github.com/tektoncd/operator
 
 require (
+	github.com/Masterminds/semver v1.5.0
+	github.com/cli/go-gh v0.0.3
 	github.com/go-logr/logr v1.2.3
 	github.com/go-logr/zapr v1.2.3
 	github.com/golang/snappy v0.0.4
@@ -26,6 +28,7 @@ require (
 	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/mod v0.5.1
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	gotest.tools/v3 v3.3.0
 	k8s.io/api v0.23.5
@@ -72,6 +75,8 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cli/safeexec v1.0.0 // indirect
+	github.com/cli/shurcooL-graphql v0.0.1 // indirect
 	github.com/cncf/udpa/go v0.0.0-20210930031921-04548b0d99d4 // indirect
 	github.com/cncf/xds/go v0.0.0-20211130200136-a8f946100490 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.11.1 // indirect
@@ -142,6 +147,7 @@ require (
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/vault/api v1.1.1 // indirect
+	github.com/henvic/httpretty v0.0.6 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/in-toto/in-toto-golang v0.2.1-0.20210806133539-f50646681592 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
@@ -231,7 +237,6 @@ require (
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect

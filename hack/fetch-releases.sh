@@ -196,9 +196,10 @@ fetch_openshift_addon_tasks() {
 #Args: <target-platform> <pipelines version> <triggers version> <dashboard version> <results version> <pac version> <hub version> <chain version>
 main() {
   TARGET=$1
-  p_version=${2}
-  t_version=${3}
-  c_version=${8}
+  CONFIG=${2:=components.yaml}
+  p_version=$(go run ./cmd/operator-tool -config ${CONFIG} component-version pipeline)
+  t_version=$(go run ./cmd/operator-tool -config ${CONFIG} component-version triggers)
+  c_version=$(go run ./cmd/operator-tool -config ${CONFIG} component-version chains)
 
   # get release YAML for Pipelines
   release_yaml pipeline release 00-pipelines ${p_version}
@@ -211,21 +212,21 @@ main() {
   release_yaml chains release 00-chains ${c_version}
 
   if [[ ${TARGET} != "openshift" ]]; then
-    d_version=${4}
+    d_version=$(go run ./cmd/operator-tool -config ${CONFIG} component-version dashboard)
     # get release YAML for Dashboard
     release_yaml dashboard tekton-dashboard-release 00-dashboard ${d_version}
     release_yaml dashboard tekton-dashboard-release-readonly 00-dashboard ${d_version}
 
-    r_version=${5}
+    r_version=$(go run ./cmd/operator-tool -config ${CONFIG} component-version results)
     # get release YAML for Results
     release_yaml results release 00-results ${r_version}
   else
-    pac_version=${6}
+    pac_version=$(go run ./cmd/operator-tool -config ${CONFIG} component-version pipelines-as-code)
     release_yaml_pac pipelinesascode release ${pac_version}
     fetch_openshift_addon_tasks
   fi
 
-  hub_version=${7}
+  hub_version=$(go run ./cmd/operator-tool -config ${CONFIG} component-version hub)
   release_yaml_hub hub ${hub_version}
 }
 
