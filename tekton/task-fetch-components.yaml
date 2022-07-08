@@ -6,27 +6,9 @@ metadata:
   name: operator-fetch-component-releases
 spec:
   params:
-  - name: PIPELINES_VERSION
-    description: Version of TektonCD Pipelines being fetched
-    default: "latest"
-  - name: TRIGGERS_VERSION
-    description: Version of TektonCD Triggers being fetched
-    default: "latest"
-  - name: DASHBOARD_VERSION
-    description: Version of TektonCD Dashboard being fetched
-    default: "latest"
-  - name: RESULTS_VERSION
-    description: Version of TektonCD Results being fetched
-    default: "latest"
-  - name: PAC_VERSION
-    description: Version of Pipelines as Code (OpenShift only)
-    default: "nightly"
-  - name: CHAINS_VERSION
-    description: Version of TektonCD Chains being fetched
-    default: "latest"
-  - name: HUB_VERSION
-    description: Version of TektonCD Hub being fetched
-    default: "v1.7.1"
+  - name: components
+    description: configuration file to reade
+    default: components.yaml
     # TODO: Set default to nightly. Mar 09, 2022 - no nightly ("latest") releases available for Hub
   - name: TARGET_PLATFORMS
     description: Target platform for for which the payload is going to be used
@@ -40,7 +22,7 @@ spec:
       apk add bash # Bash is not present
       for platform in $(params.TARGET_PLATFORMS); do
         echo "Fetching Tekton components for ${platform} build"
-        ./hack/fetch-releases.sh ${platform} $(params.PIPELINES_VERSION) $(params.TRIGGERS_VERSION) $(params.DASHBOARD_VERSION) $(params.RESULTS_VERSION) $(params.PAC_VERSION) $(params.HUB_VERSION) $(params.CHAINS_VERSION)
+        ./hack/fetch-releases.sh ${platform} ${params.components}
         [[ "$?" != 0 ]] &&  exit 1
         # print directory structure of cmd/<platform>/operator/kodata
         find cmd/${platform}/operator/kodata/

@@ -24,22 +24,14 @@ $(BIN):
 	@mkdir -p $@
 $(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
 	$Q tmp=$$(mktemp -d); cd $$tmp; \
-  		env GO111MODULE=on GOPATH=$$tmp GOBIN=$(BIN) $(GO) install $(PACKAGE) \
+		env GO111MODULE=on GOPATH=$$tmp GOBIN=$(BIN) $(GO) install $(PACKAGE) \
 		|| ret=$$?; \
-  		env GO111MODULE=on GOPATH=$$tmp GOBIN=$(BIN) $(GO) clean -modcache \
+		env GO111MODULE=on GOPATH=$$tmp GOBIN=$(BIN) $(GO) clean -modcache \
         || ret=$$?; \
 		cd - ; \
 	  	rm -rf $$tmp ; exit $$ret
 
 KO = $(or ${KO_BIN},${KO_BIN},$(BIN)/ko)
-
-TEKTON_PIPELINE_VERSION ?= latest
-TEKTON_TRIGGERS_VERSION ?= latest
-TEKTON_DASHBOARD_VERSION ?= latest
-TEKTON_RESULTS_VERSION ?= v0.4.0 # latest returns an older version hence hard coding to v0.3.1 for now (tektoncd/results#138)
-PAC_VERSION ?= stable
-TEKTON_HUB_VERSION ?= latest
-TEKTON_CHAINS_VERSION ?= latest
 
 # TODO: after updating go version to 1.17 uncommnent the line below to install latest version of ko
 # $(BIN)/ko: PACKAGE=github.com/google/ko
@@ -99,7 +91,7 @@ bin/%: cmd/% FORCE
 
 .PHONY: get-releases
 get-releases: |
-	$Q ./hack/fetch-releases.sh $(TARGET) $(TEKTON_PIPELINE_VERSION) $(TEKTON_TRIGGERS_VERSION) $(TEKTON_DASHBOARD_VERSION) $(TEKTON_RESULTS_VERSION) $(PAC_VERSION) $(TEKTON_HUB_VERSION) $(TEKTON_CHAINS_VERSION) || exit ;
+	$Q ./hack/fetch-releases.sh $(TARGET) components.yaml || exit ;
 
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster

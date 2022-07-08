@@ -32,29 +32,9 @@ spec:
   - name: kubeDistros
     description: The kubernetes platform (e.g. kubernetes or openshift ... ) targeted by a pipeline run
     default: "kubernetes openshift"
-  - name: TektonCDPipelinesVersion
-    description: Version of TektonCD Pipelines Release to be packaged with this operator build
-    default: "nightly"
-  - name: TektonCDTriggersVersion
-    description: Version of TektonCD Triggers Release to be packaged with this operator build
-    default: "nightly"
-  - name: TektonCDDashboardVersion
-    description: Version of TektonCD Dashboard Release to be packaged with this operator build
-    default: "nightly"
-  - name: TektonCDResultsVersion
-    description: Version of TektonCD Results Release to be packaged with this operator build
-    # TODO: Set default to nightly. Aug 10, 2021 - no nightly releases available for Results
-    default: "v0.4.0"
-  - name: PACVersion
-    description: Version of Pipelines as Code (OpenShift only)
-    default: "0.5.7"
-  - name: TektonCDChainsVersion
-    description: Version of TektonCD Chains Release to be packaged with this operator build
-    default: "nightly"
-  - name: TektonCDHubVersion
-    description: Version of TektonCD Hub Release to be packaged with this operator build
-    # TODO: Set default to nightly. Mar 09, 2022 - no nightly ("latest") releases available for Hub
-    default: "v1.7.2"
+  - name: components
+    description: Components file to use
+    default: components.yaml
   workspaces:
   - name: workarea
     description: The workspace where the repo will be cloned.
@@ -129,20 +109,8 @@ spec:
       workspace: workarea
       subpath: git
     params:
-    - name: PIPELINES_VERSION
-      value: $(params.TektonCDPipelinesVersion)
-    - name: TRIGGERS_VERSION
-      value: $(params.TektonCDTriggersVersion)
-    - name: DASHBOARD_VERSION
-      value: $(params.TektonCDDashboardVersion)
-    - name: RESULTS_VERSION
-      value: $(params.TektonCDResultsVersion)
-    - name: PAC_VERSION
-      value: $(params.PACVersion)
-    - name: HUB_VERSION
-      value: $(params.TektonCDHubVersion)
-    - name: CHAINS_VERSION
-      value: $(params.TektonCDChainsVersion)
+    - name: components
+      value: $(params.components)
     - name: TARGET_PLATFORMS
       value: $(params.kubeDistros)
   - name: build-test
