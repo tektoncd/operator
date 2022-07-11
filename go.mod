@@ -2,7 +2,7 @@ module github.com/tektoncd/operator
 
 require (
 	github.com/go-logr/logr v1.2.3
-	github.com/go-logr/zapr v1.2.0
+	github.com/go-logr/zapr v1.2.3
 	github.com/golang/snappy v0.0.4
 	github.com/google/go-cmp v0.5.8
 	github.com/hashicorp/errwrap v1.1.0
