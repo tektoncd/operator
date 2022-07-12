@@ -79,7 +79,7 @@ func Install(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.Tekto
 
 // Uninstall removes all resources
 func Uninstall(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.TektonComponent) error {
-	if err := manifest.Filter(mf.Not(mf.Any(role, rolebinding, deployment))).Delete(); err != nil {
+	if err := manifest.Filter(mf.NoCRDs, mf.Not(mf.Any(role, rolebinding, deployment))).Delete(); err != nil {
 		return fmt.Errorf("failed to remove non-crd/non-rbac resources: %w", err)
 	}
 	// delete deployment separately (after delete call to CRDs)
