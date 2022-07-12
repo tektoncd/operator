@@ -1,0 +1,34 @@
+kind: Build
+apiVersion: builds.katanomi.dev/v1alpha1
+spec:
+  workspaces:
+  - name: source
+  tasks:
+    ## read oss version
+    - name: oss-version
+      taskRef:
+        kind: ClusterTask
+        name: alauda-read-oss-version
+      params:
+      - name: version-file-path
+        value: ".build/opensource-version"
+      workspaces:
+      - name: source
+        workspace: source
+    ## ko publish image
+    - name: build-operator
+      taskRef:
+        kind: ClusterTask
+        name: alauda-ko-build
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: verbose
+          value: "false"
+        - name: import-path
+          value: "./cmd/kubernetes/operator"
+        - name: container-image
+          value: "build-harbor.alauda.cn/devops/tekton/operator"
+        - name: container-image-tag
+          value: v$(tasks.oss-version.results.oss-version)-$(tasks.oss-version.results.commit-short-id)
