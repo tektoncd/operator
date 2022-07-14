@@ -493,6 +493,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1
 		mf.InjectOwner(th),
 		mf.InjectNamespace(namespace),
 		common.DeploymentImages(images),
+		common.JobImages(images),
 	}
 	trans = append(trans, extra...)
 
