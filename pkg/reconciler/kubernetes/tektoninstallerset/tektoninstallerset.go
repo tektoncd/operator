@@ -56,7 +56,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, installerSet *v1alpha1.Te
 	// TektonInstallerSet
 	// They will be deleted when the component CR is deleted
 	deleteManifests = deleteManifests.Filter(mf.Not(mf.Any(namespacePred, mf.CRDs, pvcPred)))
-	err = deleteManifests.Delete(mf.PropagationPolicy(v1.DeletePropagationForeground))
+	err = deleteManifests.Delete()
 	if err != nil {
 		logger.Error("failed to delete resources")
 		return err
