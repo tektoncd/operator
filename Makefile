@@ -132,3 +132,39 @@ generated: | vendor ; $(info $(M) update generated files) ## Update generated fi
 .PHONY: vendor
 vendor: ; $(info $(M) update vendor folder)  ## Update vendor folder
 	$Q ./hack/update-deps.sh
+
+
+## Tests
+GO           = go
+TEST_UNIT_TARGETS := test-unit-verbose test-unit-race test-unit-failfast
+test-unit-verbose: ARGS=-v
+test-unit-failfast: ARGS=-failfast
+test-unit-race:    ARGS=-race
+$(TEST_UNIT_TARGETS): test-unit
+test-clean:  ## Clean testcache
+	@echo "Cleaning test cache"
+	@go clean -testcache ./...
+.PHONY: $(TEST_UNIT_TARGETS) test test-unit
+test: test-clean test-unit ## Run test-unit
+test-unit: ## Run unit tests
+	@echo "Running unit tests..."
+	@set -o pipefail ; \
+		$(GO) test -timeout $(TIMEOUT_UNIT) $(ARGS) ./... | { grep -v 'no test files'; true; }
+
+
+.PHONY: lint
+lint: lint-go lint-yaml ## run all linters
+
+.PHONY: lint-go
+lint-go: ## runs go linter on all go files
+	@echo "Linting go files..."
+	@golangci-lint run ./... --modules-download-mode=vendor \
+							--max-issues-per-linter=0 \
+							--max-same-issues=0 \
+							--deadline 5m
+
+YAML_FILES := $(shell find . -type f -regex ".*y[a]ml" -print)
+.PHONY: lint-yaml
+lint-yaml: ${YAML_FILES} ## runs yamllint on all yaml files
+	@echo "Linting yaml files..."
+	@yamllint -c .yamllint $(YAML_FILES)
