@@ -336,16 +336,6 @@ func (in *PipelineProperties) DeepCopyInto(out *PipelineProperties) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.DisableHomeEnvOverwrite != nil {
-		in, out := &in.DisableHomeEnvOverwrite, &out.DisableHomeEnvOverwrite
-		*out = new(bool)
-		**out = **in
-	}
-	if in.DisableWorkingDirectoryOverwrite != nil {
-		in, out := &in.DisableWorkingDirectoryOverwrite, &out.DisableWorkingDirectoryOverwrite
-		*out = new(bool)
-		**out = **in
-	}
 	if in.DisableCredsInit != nil {
 		in, out := &in.DisableCredsInit, &out.DisableCredsInit
 		*out = new(bool)
