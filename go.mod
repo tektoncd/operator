@@ -2,33 +2,16 @@ module github.com/tektoncd/operator
 
 require (
 	github.com/Masterminds/semver v1.5.0
-	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/cli/go-gh v0.1.0
 	github.com/go-logr/logr v1.2.3
 	github.com/go-logr/zapr v1.2.3
-	github.com/golang/snappy v0.0.4
 	github.com/google/go-cmp v0.5.8
-	github.com/hashicorp/errwrap v1.1.0
-	github.com/hashicorp/go-cleanhttp v0.5.2
-	github.com/hashicorp/go-multierror v1.1.1
-	github.com/hashicorp/go-retryablehttp v0.7.1
-	github.com/hashicorp/go-rootcerts v1.0.2
-	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.7
-	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2
-	github.com/hashicorp/go-sockaddr v1.0.2
-	github.com/hashicorp/golang-lru v0.5.4
-	github.com/hashicorp/hcl v1.0.0
-	github.com/hashicorp/vault/sdk v0.5.3
 	github.com/manifestival/client-go-client v0.5.0
 	github.com/manifestival/controller-runtime-client v0.4.0
 	github.com/manifestival/manifestival v0.7.1
 	github.com/markbates/inflect v1.0.4
-	github.com/mitchellh/go-homedir v1.1.0
-	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openshift/api v0.0.0-20210910062324-a41d3573a3ba
 	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
-	github.com/pierrec/lz4 v2.6.1+incompatible
-	github.com/ryanuber/go-glob v1.0.0
 	github.com/sigstore/cosign v1.2.1
 	github.com/tektoncd/pipeline v0.38.3
 	github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f
@@ -36,11 +19,8 @@ require (
 	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.22.0
 	golang.org/x/mod v0.5.1
-	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65
 	gomodules.xyz/jsonpatch/v2 v2.2.0
-	gopkg.in/square/go-jose.v2 v2.6.0
 	gotest.tools/v3 v3.3.0
 	k8s.io/api v0.23.9
 	k8s.io/apimachinery v0.23.9
@@ -82,6 +62,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/blendle/zapdriver v1.3.1 // indirect
+	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -138,6 +119,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/certificate-transparency-go v1.1.2-0.20210728111105-5f7e9ba4be3d // indirect
 	github.com/google/go-containerregistry v0.8.1-0.20220414143355-892d7a808387 // indirect
@@ -150,7 +132,18 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
+	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.7 // indirect
+	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
+	github.com/hashicorp/go-sockaddr v1.0.2 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/vault/api v1.1.1 // indirect
+	github.com/hashicorp/vault/sdk v0.5.3 // indirect
 	github.com/henvic/httpretty v0.0.6 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/in-toto/in-toto-golang v0.2.1-0.20210806133539-f50646681592 // indirect
@@ -169,6 +162,8 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
@@ -179,6 +174,7 @@ require (
 	github.com/openzipkin/zipkin-go v0.3.0 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/peterbourgon/ff/v3 v3.1.0 // indirect
+	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.11.1 // indirect
@@ -189,6 +185,7 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.6.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sassoftware/relic v0.0.0-20210427151427-dfb082b79b74 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/shibumi/go-pathspec v1.2.0 // indirect
@@ -239,10 +236,12 @@ require (
 	go.uber.org/automaxprocs v1.4.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
 	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 	golang.org/x/tools v0.1.9 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/api v0.70.0 // indirect
@@ -254,6 +253,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
+	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.23.8 // indirect

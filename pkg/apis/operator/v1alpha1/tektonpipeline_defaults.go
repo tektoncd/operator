@@ -34,15 +34,6 @@ func (tp *TektonPipeline) SetDefaults(ctx context.Context) {
 }
 
 func (p *PipelineProperties) setDefaults() {
-	// Disabling this for now and will be removed in next release
-	// disabling will hide this from users in TektonConfig/TektonPipeline
-	if p.DisableHomeEnvOverwrite != nil {
-		p.DisableHomeEnvOverwrite = nil
-	}
-	if p.DisableWorkingDirectoryOverwrite != nil {
-		p.DisableWorkingDirectoryOverwrite = nil
-	}
-
 	if p.DisableCredsInit == nil {
 		p.DisableCredsInit = ptr.Bool(false)
 	}
