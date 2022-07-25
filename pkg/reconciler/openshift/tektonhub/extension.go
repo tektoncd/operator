@@ -404,6 +404,20 @@ func (oe openshiftExtension) SetAuthBaseURL(ctx context.Context, th *v1alpha1.Te
 			return err
 		}
 		th.Status.SetAuthRoute(fmt.Sprintf("https://%s", authRoute))
+
+		if secret.Data == nil || string(secret.Data["AUTH_BASE_URL"]) != th.Status.AuthRouteUrl {
+
+			if secret.StringData == nil {
+				secret.StringData = make(map[string]string)
+			}
+
+			secret.StringData["AUTH_BASE_URL"] = th.Status.AuthRouteUrl
+
+			_, err = oe.kubeClientSet.CoreV1().Secrets(th.Spec.GetTargetNamespace()).Update(ctx, secret, metav1.UpdateOptions{})
+			if err != nil {
+				return err
+			}
+		}
 	} else {
 		th.Status.SetAuthRoute("")
 	}
