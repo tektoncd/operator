@@ -42,6 +42,12 @@ spec:
   workspaces:
     - name: source
       mountPath: /workspace/source
+    - name: dockerconfig
+      description: >-
+        An optional workspace that allows providing a .docker/config.json file
+        for Buildah to access the container registry.
+        The file should be placed at the root of the Workspace with name config.json.
+      optional: true
   steps:
     - name: generate
       image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:637c15600359cb45bc01445b5e811b6240ca239f0ebfe406b50146e34f68f631
@@ -61,6 +67,7 @@ spec:
            --layers -f /gen-source/Dockerfile.gen -t $(params.IMAGE) .
 
         [[ "$(params.SKIP_PUSH)" == "true" ]] && echo "Push skipped" && exit 0
+        [[ "$(workspaces.dockerconfig.bound)" == "true" ]] && export DOCKER_CONFIG="$(workspaces.dockerconfig.path)"
         buildah push --storage-driver=vfs --tls-verify=$(params.TLSVERIFY) \
           --digestfile $(workspaces.source.path)/image-digest $(params.IMAGE) \
           docker://$(params.IMAGE)
