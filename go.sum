@@ -1375,8 +1375,8 @@ github.com/hashicorp/vault/sdk v0.1.14-0.20200519221530-14615acda45f/go.mod h1:W
 github.com/hashicorp/vault/sdk v0.1.14-0.20200519221838-e0cfd64bc267/go.mod h1:WX57W2PwkrOPQ6rVQk+dy5/htHIaB4aBM70EwKThu10=
 github.com/hashicorp/vault/sdk v0.2.0/go.mod h1:cAGI4nVnEfAyMeqt9oB+Mase8DNn3qA/LDNHURiwssY=
 github.com/hashicorp/vault/sdk v0.2.1/go.mod h1:WfUiO1vYzfBkz1TmoE4ZGU7HD0T0Cl/rZwaxjBkgN4U=
-github.com/hashicorp/vault/sdk v0.5.2 h1:Lub3cuwra6ifGmVYqX0x2pehWmUZl3zTElIjnyvBe2M=
-github.com/hashicorp/vault/sdk v0.5.2/go.mod h1:DoGraE9kKGNcVgPmTuX357Fm6WAx1Okvde8Vp3dPDoU=
+github.com/hashicorp/vault/sdk v0.5.3 h1:PWY8sq/9pRrK9vUIy75qCH2Jd8oeENAgkaa/qbhzFrs=
+github.com/hashicorp/vault/sdk v0.5.3/go.mod h1:DoGraE9kKGNcVgPmTuX357Fm6WAx1Okvde8Vp3dPDoU=
 github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb/go.mod h1:+NfK9FKeTrX5uv1uIXGdwYDTeHna2qgaIlx54MXqjAM=
 github.com/henvic/httpretty v0.0.6 h1:JdzGzKZBajBfnvlMALXXMVQWxWMF/ofTy8C3/OSUTxs=
 github.com/henvic/httpretty v0.0.6/go.mod h1:X38wLjWXHkXT7r2+uK8LjCMne9rsuNaBLJ+5cU2/Pmo=
