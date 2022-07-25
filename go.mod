@@ -32,7 +32,7 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	gotest.tools/v3 v3.3.0
 	k8s.io/api v0.23.5
-	k8s.io/apimachinery v0.23.5
+	k8s.io/apimachinery v0.23.9
 	k8s.io/client-go v0.23.5
 	k8s.io/code-generator v0.23.5
 	knative.dev/pkg v0.0.0-20220329144915-0a1ec2e0d46c
