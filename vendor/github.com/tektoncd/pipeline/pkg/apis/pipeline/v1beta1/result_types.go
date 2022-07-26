@@ -13,6 +13,8 @@ limitations under the License.
 
 package v1beta1
 
+import "strings"
+
 // TaskResult used to describe the results of a task
 type TaskResult struct {
 	// Name the given name
@@ -22,6 +24,10 @@ type TaskResult struct {
 	// is currently "string" and will support "array" in following work.
 	// +optional
 	Type ResultsType `json:"type,omitempty"`
+
+	// Properties is the JSON Schema properties to support key-value pairs results.
+	// +optional
+	Properties map[string]PropertySpec `json:"properties,omitempty"`
 
 	// Description is a human-readable description of the result
 	// +optional
@@ -60,3 +66,8 @@ const (
 
 // AllResultsTypes can be used for ResultsTypes validation.
 var AllResultsTypes = []ResultsType{ResultsTypeString, ResultsTypeArray, ResultsTypeObject}
+
+// ResultsArrayReference returns the reference of the result. e.g. results.resultname from $(results.resultname[*])
+func ResultsArrayReference(a string) string {
+	return strings.TrimSuffix(strings.TrimSuffix(strings.TrimPrefix(a, "$("), ")"), "[*]")
+}

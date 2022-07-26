@@ -707,7 +707,7 @@
       }
     },
     "v1beta1.PipelineRef": {
-      "description": "PipelineRef can be used to refer to a specific instance of a Pipeline. Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64",
+      "description": "PipelineRef can be used to refer to a specific instance of a Pipeline.",
       "type": "object",
       "properties": {
         "apiVersion": {
@@ -799,10 +799,14 @@
           "type": "string",
           "default": ""
         },
+        "type": {
+          "description": "Type is the user-specified type of the result. The possible types are 'string', 'array', and 'object', with 'string' as the default. 'array' and 'object' types are alpha features.",
+          "type": "string"
+        },
         "value": {
           "description": "Value the expression used to retrieve the value",
-          "type": "string",
-          "default": ""
+          "default": {},
+          "$ref": "#/definitions/v1beta1.ArrayOrString"
         }
       }
     },
@@ -872,8 +876,8 @@
         },
         "value": {
           "description": "Value is the result returned from the execution of this PipelineRun",
-          "type": "string",
-          "default": ""
+          "default": {},
+          "$ref": "#/definitions/v1beta1.ArrayOrString"
         }
       }
     },
@@ -1394,6 +1398,10 @@
       "description": "PipelineTaskRunSpec  can be used to configure specific specs for a concrete Task",
       "type": "object",
       "properties": {
+        "computeResources": {
+          "description": "Compute resources to use for this TaskRun",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "metadata": {
           "$ref": "#/definitions/v1beta1.PipelineTaskMetadata"
         },
@@ -1844,6 +1852,10 @@
           "description": "Deprecated. This field will be removed in a future release. DeprecatedStartupProbe indicates that the Pod has successfully initialized. If specified, no other probes are executed until this completes successfully. If this probe fails, the Pod will be restarted, just as if the livenessProbe failed. This can be used to provide different probe parameters at the beginning of a Pod's lifecycle, when it might take a long time to load data or warm a cache, than during steady-state operation. This cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
           "$ref": "#/definitions/v1.Probe"
         },
+        "stderrConfig": {
+          "description": "Stores configuration for the stderr stream of the step.",
+          "$ref": "#/definitions/v1beta1.StepOutputConfig"
+        },
         "stdin": {
           "description": "Deprecated. This field will be removed in a future release. Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.",
           "type": "boolean"
@@ -1851,6 +1863,10 @@
         "stdinOnce": {
           "description": "Deprecated. This field will be removed in a future release. Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false",
           "type": "boolean"
+        },
+        "stdoutConfig": {
+          "description": "Stores configuration for the stdout stream of the step.",
+          "$ref": "#/definitions/v1beta1.StepOutputConfig"
         },
         "terminationMessagePath": {
           "description": "Deprecated. This field will be removed in a future release. Optional: Path at which the file to which the container's termination message will be written is mounted into the container's filesystem. Message written is intended to be brief final status, such as an assertion failure message. Will be truncated by the node if greater than 4096 bytes. The total message length across all containers will be limited to 12kb. Defaults to /dev/termination-log. Cannot be updated.",
@@ -1902,6 +1918,16 @@
             "$ref": "#/definitions/v1beta1.WorkspaceUsage"
           },
           "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1beta1.StepOutputConfig": {
+      "description": "StepOutputConfig stores configuration for a step output stream.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "Path to duplicate stdout stream to on container's local filesystem.",
+          "type": "string"
         }
       }
     },
@@ -2130,7 +2156,7 @@
       }
     },
     "v1beta1.TaskRef": {
-      "description": "TaskRef can be used to refer to a specific instance of a task. Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64",
+      "description": "TaskRef can be used to refer to a specific instance of a task.",
       "type": "object",
       "properties": {
         "apiVersion": {
@@ -2249,6 +2275,14 @@
           "description": "Name the given name",
           "type": "string",
           "default": ""
+        },
+        "properties": {
+          "description": "Properties is the JSON Schema properties to support key-value pairs results.",
+          "type": "object",
+          "additionalProperties": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.PropertySpec"
+          }
         },
         "type": {
           "description": "Type is the user-specified type of the result. The possible type is currently \"string\" and will support \"array\" in following work.",
@@ -2432,6 +2466,10 @@
       "description": "TaskRunSpec defines the desired state of TaskRun",
       "type": "object",
       "properties": {
+        "computeResources": {
+          "description": "Compute resources to use for this TaskRun",
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "debug": {
           "$ref": "#/definitions/v1beta1.TaskRunDebug"
         },
@@ -2832,6 +2870,10 @@
           "description": "ConfigMap represents a configMap that should populate this workspace.",
           "$ref": "#/definitions/v1.ConfigMapVolumeSource"
         },
+        "csi": {
+          "description": "CSI (Container Storage Interface) represents ephemeral storage that is handled by certain external CSI drivers.",
+          "$ref": "#/definitions/v1.CSIVolumeSource"
+        },
         "emptyDir": {
           "description": "EmptyDir represents a temporary directory that shares a Task's lifetime. More info: https://kubernetes.io/docs/concepts/storage/volumes#emptydir Either this OR PersistentVolumeClaim can be used.",
           "$ref": "#/definitions/v1.EmptyDirVolumeSource"
@@ -2844,6 +2886,10 @@
         "persistentVolumeClaim": {
           "description": "PersistentVolumeClaimVolumeSource represents a reference to a PersistentVolumeClaim in the same namespace. Either this OR EmptyDir can be used.",
           "$ref": "#/definitions/v1.PersistentVolumeClaimVolumeSource"
+        },
+        "projected": {
+          "description": "Projected represents a projected volume that should populate this workspace.",
+          "$ref": "#/definitions/v1.ProjectedVolumeSource"
         },
         "secret": {
           "description": "Secret represents a secret that should populate this workspace.",

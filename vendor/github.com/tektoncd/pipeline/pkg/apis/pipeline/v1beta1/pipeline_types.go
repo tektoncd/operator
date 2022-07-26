@@ -24,6 +24,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
 
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -122,12 +123,17 @@ type PipelineResult struct {
 	// Name the given name
 	Name string `json:"name"`
 
+	// Type is the user-specified type of the result.
+	// The possible types are 'string', 'array', and 'object', with 'string' as the default.
+	// 'array' and 'object' types are alpha features.
+	Type ResultsType `json:"type,omitempty"`
+
 	// Description is a human-readable description of the result
 	// +optional
 	Description string `json:"description"`
 
 	// Value the expression used to retrieve the value
-	Value string `json:"value"`
+	Value ArrayOrString `json:"value"`
 }
 
 // PipelineTaskMetadata contains the labels or annotations for an EmbeddedTask
@@ -301,7 +307,10 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 	if len(pt.Matrix) != 0 {
 		// This is an alpha feature and will fail validation if it's used in a pipeline spec
 		// when the enable-api-fields feature gate is anything but "alpha".
-		errs = errs.Also(ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
+		// Matrix requires "embedded-status" feature gate to be set to "minimal", and will fail
+		// validation if it is anything but "minimal".
+		errs = errs.Also(ValidateEmbeddedStatus(ctx, "matrix", config.MinimalEmbeddedStatus))
 		errs = errs.Also(pt.validateMatrixCombinationsCount(ctx))
 	}
 	errs = errs.Also(validateParameterInOneOfMatrixOrParams(pt.Matrix, pt.Params))
@@ -316,6 +325,26 @@ func (pt *PipelineTask) validateMatrixCombinationsCount(ctx context.Context) (er
 		errs = errs.Also(apis.ErrOutOfBoundsValue(matrixCombinationsCount, 0, maxMatrixCombinationsCount, "matrix"))
 	}
 	return errs
+}
+
+func (pt PipelineTask) validateEmbeddedOrType() (errs *apis.FieldError) {
+	// Reject cases where APIVersion and/or Kind are specified alongside an embedded Task.
+	// We determine if this is an embedded Task by checking of TaskSpec.TaskSpec.Steps has items.
+	if pt.TaskSpec != nil && len(pt.TaskSpec.TaskSpec.Steps) > 0 {
+		if pt.TaskSpec.APIVersion != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "taskSpec.apiVersion cannot be specified when using taskSpec.steps",
+				Paths:   []string{"taskSpec.apiVersion"},
+			})
+		}
+		if pt.TaskSpec.Kind != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "taskSpec.kind cannot be specified when using taskSpec.steps",
+				Paths:   []string{"taskSpec.kind"},
+			})
+		}
+	}
+	return
 }
 
 // GetMatrixCombinationsCount returns the count of combinations of Parameters generated from the Matrix in PipelineTask.
@@ -461,6 +490,9 @@ func (pt PipelineTask) ValidateName() *apis.FieldError {
 // calls the validation routine based on the type of the task
 func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(pt.validateRefOrSpec())
+
+	errs = errs.Also(pt.validateEmbeddedOrType())
+
 	cfg := config.FromContextOrDefaults(ctx)
 	// If EnableCustomTasks feature flag is on, validate custom task specifications
 	// pipeline task having taskRef with APIVersion is classified as custom task
