@@ -19,15 +19,34 @@ package substitution
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
 
-const parameterSubstitution = `[_a-zA-Z][_a-zA-Z0-9.-]*(\[\*\])?`
+const (
+	parameterSubstitution = `.*?(\[\*\])?`
 
-const braceMatchingRegex = "(\\$(\\(%s(\\.(?P<var1>%s)|\\[\"(?P<var2>%s)\"\\]|\\['(?P<var3>%s)'\\])\\)))"
+	// braceMatchingRegex is a regex for parameter references including dot notation, bracket notation with single and double quotes.
+	braceMatchingRegex = "(\\$(\\(%s(\\.(?P<var1>%s)|\\[\"(?P<var2>%s)\"\\]|\\['(?P<var3>%s)'\\])\\)))"
+	// arrayIndexing will match all `[int]` and `[*]` for parseExpression
+	arrayIndexing = `\[([0-9])*\*?\]`
+	// paramIndex will match all `$(params.paramName[int])` expressions
+	paramIndexing = `\$\(params(\.[_a-zA-Z0-9.-]+|\[\'[_a-zA-Z0-9.-\/]+\'\]|\[\"[_a-zA-Z0-9.-\/]+\"\])\[[0-9]+\]\)`
+	// intIndex will match all `[int]` expressions
+	intIndex = `\[[0-9]+\]`
+)
+
+// arrayIndexingRegex is used to match `[int]` and `[*]`
+var arrayIndexingRegex = regexp.MustCompile(arrayIndexing)
+
+// paramIndexingRegex will match all `$(params.paramName[int])` expressions
+var paramIndexingRegex = regexp.MustCompile(paramIndexing)
+
+// intIndexRegex will match all `[int]` for param expression
+var intIndexRegex = regexp.MustCompile(intIndex)
 
 // ValidateVariable makes sure all variables in the provided string are known
 func ValidateVariable(name, value, prefix, locationName, path string, vars sets.String) *apis.FieldError {
@@ -56,7 +75,7 @@ func ValidateVariableP(value, prefix string, vars sets.String) *apis.FieldError 
 
 		}
 		for _, v := range vs {
-			v = strings.TrimSuffix(v, "[*]")
+			v = TrimArrayIndex(v)
 			if !vars.Has(v) {
 				return &apis.FieldError{
 					Message: fmt.Sprintf("non-existent variable in %q", value),
@@ -180,6 +199,29 @@ func ValidateVariableIsolatedP(value, prefix string, vars sets.String) *apis.Fie
 	return nil
 }
 
+// ValidateWholeArrayOrObjectRefInStringVariable validates if a single string field uses references to the whole array/object appropriately
+// valid example: "$(params.myObject[*])"
+// invalid example: "$(params.name-not-exist[*])"
+func ValidateWholeArrayOrObjectRefInStringVariable(name, value, prefix string, vars sets.String) (isIsolated bool, errs *apis.FieldError) {
+	nameSubstitution := `[_a-zA-Z0-9.-]+\[\*\]`
+
+	// a regex to check if the stringValue is an isolated reference to the whole array/object param without extra string literal.
+	isolatedVariablePattern := fmt.Sprintf(fmt.Sprintf("^%s$", braceMatchingRegex), prefix, nameSubstitution, nameSubstitution, nameSubstitution)
+	isolatedVariableRegex, err := regexp.Compile(isolatedVariablePattern)
+	if err != nil {
+		return false, &apis.FieldError{
+			Message: fmt.Sprint("Fail to parse the regex: ", err),
+			Paths:   []string{fmt.Sprintf("%s.%s", prefix, name)},
+		}
+	}
+
+	if isolatedVariableRegex.MatchString(value) {
+		return true, ValidateVariableP(value, prefix, vars).ViaFieldKey(prefix, name)
+	}
+
+	return false, nil
+}
+
 // Extract a the first full string expressions found (e.g "$(input.params.foo)"). Return
 // "" and false if nothing is found.
 func extractExpressionFromString(s, prefix string) (string, bool) {
@@ -298,4 +340,29 @@ func ApplyArrayReplacements(in string, stringReplacements map[string]string, arr
 
 	// Otherwise return a size-1 array containing the input string with standard stringReplacements applied.
 	return []string{ApplyReplacements(in, stringReplacements)}
+}
+
+// TrimArrayIndex replaces all `[i]` and `[*]` to "".
+func TrimArrayIndex(s string) string {
+	return arrayIndexingRegex.ReplaceAllString(s, "")
+}
+
+// ExtractParamsExpressions will find all  `$(params.paramName[int])` expressions
+func ExtractParamsExpressions(s string) []string {
+	return paramIndexingRegex.FindAllString(s, -1)
+}
+
+// ExtractIndexString will find the leftmost match of `[int]`
+func ExtractIndexString(s string) string {
+	return intIndexRegex.FindString(s)
+}
+
+// ExtractIndex will extract int from `[int]`
+func ExtractIndex(s string) (int, error) {
+	return strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(s, "["), "]"))
+}
+
+// StripStarVarSubExpression strips "$(target[*])"" to get "target"
+func StripStarVarSubExpression(s string) string {
+	return strings.TrimSuffix(strings.TrimSuffix(strings.TrimPrefix(s, "$("), ")"), "[*]")
 }

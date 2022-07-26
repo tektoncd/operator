@@ -20,6 +20,7 @@ import (
 	"context"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -83,7 +84,7 @@ func (pr *PipelineRun) HasStarted() bool {
 
 // IsCancelled returns true if the PipelineRun's spec status is set to Cancelled state
 func (pr *PipelineRun) IsCancelled() bool {
-	return pr.Spec.Status == PipelineRunSpecStatusCancelled || pr.Spec.Status == PipelineRunSpecStatusCancelledDeprecated
+	return pr.Spec.Status == PipelineRunSpecStatusCancelled
 }
 
 // IsGracefullyCancelled returns true if the PipelineRun's spec status is set to CancelledRunFinally state
@@ -242,10 +243,6 @@ type TimeoutFields struct {
 type PipelineRunSpecStatus string
 
 const (
-	// PipelineRunSpecStatusCancelledDeprecated Deprecated: indicates that the user wants to cancel the task,
-	// if not already cancelled or terminated (replaced by "Cancelled")
-	PipelineRunSpecStatusCancelledDeprecated = "PipelineRunCancelled"
-
 	// PipelineRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	PipelineRunSpecStatusCancelled = "Cancelled"
@@ -263,25 +260,6 @@ const (
 	// until some condition is met
 	PipelineRunSpecStatusPending = "PipelineRunPending"
 )
-
-// PipelineRef can be used to refer to a specific instance of a Pipeline.
-// Copied from CrossVersionObjectReference: https://github.com/kubernetes/kubernetes/blob/169df7434155cbbc22f1532cba8e0a9588e29ad8/pkg/apis/autoscaling/types.go#L64
-type PipelineRef struct {
-	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
-	Name string `json:"name,omitempty"`
-	// API version of the referent
-	// +optional
-	APIVersion string `json:"apiVersion,omitempty"`
-	// Bundle url reference to a Tekton Bundle.
-	// +optional
-	Bundle string `json:"bundle,omitempty"`
-
-	// ResolverRef allows referencing a Pipeline in a remote location
-	// like a git repo. This field is only supported when the alpha
-	// feature gate is enabled.
-	// +optional
-	ResolverRef `json:",omitempty"`
-}
 
 // PipelineRunStatus defines the observed state of PipelineRun
 type PipelineRunStatus struct {
@@ -481,7 +459,7 @@ type PipelineRunResult struct {
 	Name string `json:"name"`
 
 	// Value is the result returned from the execution of this PipelineRun
-	Value string `json:"value"`
+	Value ArrayOrString `json:"value"`
 }
 
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status
@@ -540,6 +518,9 @@ type PipelineTaskRunSpec struct {
 
 	// +optional
 	Metadata *PipelineTaskMetadata `json:"metadata,omitempty"`
+
+	// Compute resources to use for this TaskRun
+	ComputeResources *corev1.ResourceRequirements `json:"computeResources,omitempty"`
 }
 
 // GetTaskRunSpec returns the task specific spec for a given
