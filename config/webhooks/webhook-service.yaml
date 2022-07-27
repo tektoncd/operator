@@ -17,8 +17,8 @@ kind: Service
 metadata:
   name: tekton-operator-webhook
   labels:
-    version: v0.60.0
-    operator.tekton.dev/release: v0.60.0
+    version: v0.60.1
+    operator.tekton.dev/release: v0.60.1
     name: tekton-operator-webhook
     app: tekton-operator
 spec:
