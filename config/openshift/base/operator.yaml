@@ -56,7 +56,7 @@ spec:
         - name: METRICS_DOMAIN
           value: tekton.dev/operator
         - name: VERSION
-          value: v0.60.0
+          value: v0.60.1
         - name: AUTOINSTALL_COMPONENTS
           valueFrom:
             configMapKeyRef:
@@ -103,4 +103,4 @@ spec:
           - name: PROFILING_PORT
             value: "9009"
           - name: VERSION
-            value: v0.60.0
+            value: v0.60.1
