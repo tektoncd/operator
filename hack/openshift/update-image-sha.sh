@@ -46,6 +46,7 @@ EOF
 declare -A IMAGES=(
   ["buildah"]="registry.redhat.io/rhel8/buildah"
   ["kn"]="registry.redhat.io/openshift-serverless-1/client-kn-rhel8"
+  ["postgresql"]="registry.redhat.io/rhel8/postgresql-13"
   ["skopeo-copy"]="registry.redhat.io/rhel8/skopeo"
   ["s2i"]="registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8"
   ["ubi-minimal"]="registry.redhat.io/ubi8/ubi-minimal"
@@ -58,7 +59,10 @@ registry_login() {
 find_latest_versions() {
   local image_registry=${1:-""}
   local latest_version=""
-  podman search --list-tags ${image_registry}  | grep -v NAME | tr -s ' ' | cut -d ' ' -f 2  | sort -r | grep -v '\-[a-z0-9\.]*$' | head -n 1
+  if ! skopeo inspect docker://${image_registry} 2>/dev/null | jq '.Labels.version' | tr -d '"'
+  then
+    podman search --list-tags ${image_registry}  | grep -v NAME | tr -s ' ' | cut -d ' ' -f 2  | sort -r | grep -v '\-[a-z0-9\.]*$' | head -n 1
+  fi
 }
 
 find_sha_from_tag() {
