@@ -23,8 +23,8 @@ import (
 )
 
 type component struct {
-	Github  string
-	Version string
+	Github  string `json:"github"`
+	Version string `json:"version"`
 }
 
 func readCompoments(filename string) (map[string]component, error) {
@@ -38,6 +38,14 @@ func readCompoments(filename string) (map[string]component, error) {
 		return nil, err
 	}
 	return components, nil
+}
+
+func writeComponents(filename string, components map[string]component) error {
+	data, err := yaml.Marshal(components)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filename, data, 0644)
 }
 
 func componentVersion(filename string, args []string) error {

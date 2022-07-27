@@ -42,6 +42,10 @@ func main() {
 		err = check(config, false)
 	case "check-bugfix":
 		err = check(config, true)
+	case "bump":
+		err = bump(config, false)
+	case "bump-bugfix":
+		err = bump(config, true)
 	default:
 		os.Exit(1)
 	}
