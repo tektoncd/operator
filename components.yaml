@@ -1,26 +1,21 @@
-# List of components shipped by the operator
-# This files contains the name, url and version of each component.
-#
-# This is considered the source of truth for component shipped in the operator.
-# The rest of the operator tooling uses this as such.
-pipeline:
-  github: tektoncd/pipeline
-  version: v0.37.0
-triggers:
-  github: tektoncd/triggers
-  version: v0.20.0
-dashboard:
-  github: tektoncd/dashboard
-  version: v0.27.0
 chains:
   github: tektoncd/chains
   version: v0.9.0
-results:
-  github: tektoncd/results
-  version: v0.4.0
+dashboard:
+  github: tektoncd/dashboard
+  version: v0.27.0
 hub:
   github: tektoncd/hub
   version: v1.8.0
+pipeline:
+  github: tektoncd/pipeline
+  version: v0.37.2
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
   version: 0.10.1
+results:
+  github: tektoncd/results
+  version: v0.4.0
+triggers:
+  github: tektoncd/triggers
+  version: v0.20.1
