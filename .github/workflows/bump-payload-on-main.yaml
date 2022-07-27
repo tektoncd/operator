@@ -1,0 +1,31 @@
+name: Bump components.yaml on main branch
+
+on:
+  schedule:
+  # Run this every week day at 1AM
+  - cron: '0 1 * * 1-5'
+
+jobs:
+  bump-payloads:
+    name: "Bump payloads"
+    runs-one: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: 1.18.x
+    - uses: actions/checkout@v2
+    - name: run operator-tool bump
+      run: |
+        go run ./cmd/operator-tool -config components.yaml bump
+    - name: create pull request
+      uses: peter-evans/create-pull-request@v4
+      with:
+        token: ${{ secrets.PAT }}
+        commit-message: Bump payloads versions
+        committer: GitHub <noreply@github.com>
+        author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+        branch: bot-bump-payload
+        delete-branch: true
+        title: "[bot] bump payload versions"
+        labels: |
+          release-note-none
