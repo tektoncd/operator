@@ -160,3 +160,13 @@ YAML_FILES := $(shell find . -type f -regex ".*y[a]ml" -print)
 lint-yaml: ${YAML_FILES} ## runs yamllint on all yaml files
 	@echo "Linting yaml files..."
 	@yamllint -c .yamllint $(YAML_FILES)
+
+
+# Prerequisite: docker and kind
+# this will deploy a local registry using docker and create a kind cluster
+# configuring with the registry
+# then does make apply to deploy the operator
+# and show the location of kubeconfig at last
+.PHONY: dev-setup
+dev-setup: # setup kind with local registry for local development
+	@cd ./hack/dev/kind/;./install.sh
