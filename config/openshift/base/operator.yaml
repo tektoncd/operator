@@ -104,3 +104,5 @@ spec:
             value: "9009"
           - name: VERSION
             value: "devel"
+          - name: METRICS_DOMAIN
+            value: tekton.dev/operator
