@@ -105,6 +105,7 @@ func contextWithPlatformName(ctx context.Context, pName string) context.Context 
 func startMain(p Platform, ctrls ControllerMap) {
 	pParams := p.PlatformParams()
 	cfg := injection.ParseAndGetRESTConfigOrDie()
+	cfg.QPS = 50
 	ctx, _ := injection.EnableInjectionOrDie(signals.NewContext(), cfg)
 	ctx = contextWithPlatformName(ctx, pParams.Name)
 	installer.InitTektonInstallerSetClient(ctx)
