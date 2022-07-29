@@ -173,7 +173,7 @@ func (r *Reconciler) ensureTargetNamespaceExists(ctx context.Context, tc *v1alph
 	if len(ns.Items) > 0 {
 		for _, namespace := range ns.Items {
 			if namespace.Name != tc.GetSpec().GetTargetNamespace() {
-				namespace.Labels["operator.tekton.dev/targetNamespace/mark-for-deletion"] = "true"
+				namespace.Labels["operator.tekton.dev/mark-for-deletion"] = "true"
 				_, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &namespace, metav1.UpdateOptions{})
 				if err != nil {
 					return err
@@ -197,7 +197,7 @@ func (r *Reconciler) ensureTargetNamespaceExists(ctx context.Context, tc *v1alph
 func (r *Reconciler) deleteObsoleteTargetNamespaces(ctx context.Context, tc *v1alpha1.TektonConfig) error {
 
 	ns, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("operator.tekton.dev/targetNamespace/mark-for-deletion=%s", "true"),
+		LabelSelector: fmt.Sprintf("operator.tekton.dev/mark-for-deletion=%s", "true"),
 	})
 
 	if err != nil {
