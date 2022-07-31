@@ -345,8 +345,8 @@ func (r *Reconciler) generateInstallerSet(ctx context.Context, tp *v1alpha1.Tekt
 	dis.AddReleaseVersionLabel(r.operatorVersion)
 
 	// Adds the ownerRef to the installer
-	ownerRef := *metav1.NewControllerRef(tp, tp.GetGroupVersionKind())
-	dis.AddOwnerReferences(ownerRef)
+	// ownerRef := *metav1.NewControllerRef(tp, tp.GetGroupVersionKind())
+	// dis.AddOwnerReferences(ownerRef)
 
 	// Adds the annotations to the installer
 	dis.AddAnnotationsKeyVal(v1alpha1.TargetNamespaceKey, tp.Spec.TargetNamespace)
