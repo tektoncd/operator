@@ -230,7 +230,8 @@ If the files in `pkg/apis` are updated we need to run `codegen` scripts
 ```
 
 ### Setup
-- Set `KO_DOCKER_ENV` environment variable ([ko#usage](https://github.com/google/ko#usage))
+- Set `KO_DOCKER_REPO` environment variable ([ko#usage](https://github.com/google/ko#usage))
+- If you want to use local image rather than pushing image to registry you can set flags with `KO_FLAGS=--local` when you run operator
 
 ### Run operator
 
