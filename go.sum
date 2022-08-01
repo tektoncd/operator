@@ -2106,8 +2106,8 @@ github.com/tektoncd/plumbing v0.0.0-20220304154415-13228ac1f4a4/go.mod h1:b9esRu
 github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f h1:74OqGOB+R3aobu2j9fxKnsgupS9c7KH1bZaR5LSXICw=
 github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f/go.mod h1:b9esRuV1absBvaPzKkjYdKXjC5Tgs8/vh1sz++RiTdc=
 github.com/tektoncd/resolution v0.0.0-20220331203013-e4203c70c5eb/go.mod h1:u7+LospaKMTW8f1mKHpul2XmGXYSG86kMrbJqUr2w0Q=
-github.com/tektoncd/triggers v0.20.1 h1:83RFwnvMSIOODNXhKSm1K3G9pcFaskjp/aFYWPnu/+k=
-github.com/tektoncd/triggers v0.20.1/go.mod h1:3WRvQuSV0hmAU42DEEiHNGiPosXobhpkB5IL3Zzxwj0=
+github.com/tektoncd/triggers v0.20.2 h1:ORX3zy/2kKRa3Y7F1FHh5rXe41BAG4QPV2QbJQu2lys=
+github.com/tektoncd/triggers v0.20.2/go.mod h1:3WRvQuSV0hmAU42DEEiHNGiPosXobhpkB5IL3Zzxwj0=
 github.com/tenntenn/modver v1.0.1/go.mod h1:bePIyQPb7UeioSRkw3Q0XeMhYZSMx9B8ePqg6SAMGH0=
 github.com/tenntenn/text/transform v0.0.0-20200319021203-7eef512accb3/go.mod h1:ON8b8w4BN/kE1EOhwT0o+d62W65a6aPw1nouo9LMgyY=
 github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 h1:iGnD/q9160NWqKZZ5vY4p0dMiYMRknzctfSkqA4nBDw=
