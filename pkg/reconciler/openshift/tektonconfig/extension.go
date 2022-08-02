@@ -67,6 +67,19 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	openshiftTrigger.SetDefault(&config.Spec.Trigger.TriggersProperties)
 	r.setDefault()
 
+	// below code helps to retain state of pre-existing SA at the time of upgrade
+	if existingSAWithOwnerRef(r.tektonConfig) {
+		if err := removeOwnerRefFromPreExistingSA(ctx, r.kubeClientSet); err != nil {
+			return err
+		}
+		tcLabels := config.GetLabels()
+		tcLabels[serviceAccountCreationLabel] = "true"
+		config.SetLabels(tcLabels)
+		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, config, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
+	}
+
 	createRBACResource := true
 	for _, v := range config.Spec.Params {
 		// check for param name and if its matches to createRbacResource
@@ -129,4 +142,30 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 // configOwnerRef returns owner reference pointing to passed instance
 func configOwnerRef(tc v1alpha1.TektonInstallerSet) metav1.OwnerReference {
 	return *metav1.NewControllerRef(&tc, tc.GetGroupVersionKind())
+}
+
+func removeOwnerRefFromPreExistingSA(ctx context.Context, kc kubernetes.Interface) error {
+	allSAs, err := kc.CoreV1().ServiceAccounts("").List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, sa := range allSAs.Items {
+		if sa.Name == "pipeline" && !nsRegex.MatchString(sa.Namespace) {
+			sa.SetOwnerReferences([]metav1.OwnerReference{})
+			if _, err := kc.CoreV1().ServiceAccounts(sa.Namespace).Update(ctx, &sa, metav1.UpdateOptions{}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// existingSAWithOwnerRef checks if openshift-pipelines.tekton.dev/sa-created label is present on tektonconfig
+// we add this label from pipelines 1.8, and do not add tektoninstaller set as owner of serviceaccount created
+// if label not present it means SA was created earlier and we need to remove ownerRef before we do the update
+// this helps us to keep pre-existing SA as it is.
+func existingSAWithOwnerRef(tc *v1alpha1.TektonConfig) bool {
+	tcLabels := tc.GetLabels()
+	_, ok := tcLabels[serviceAccountCreationLabel]
+	return !ok
 }
