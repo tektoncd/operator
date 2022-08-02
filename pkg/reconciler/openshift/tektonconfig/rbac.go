@@ -45,15 +45,16 @@ const (
 	pipelineRoleBindingOld  = "edit"
 	rbacInstallerSetNameOld = "rbac-resources"
 	// --------------------
-	serviceCABundleConfigMap   = "config-service-cabundle"
-	trustedCABundleConfigMap   = "config-trusted-cabundle"
-	clusterInterceptors        = "openshift-pipelines-clusterinterceptors"
-	namespaceVersionLabel      = "openshift-pipelines.tekton.dev/namespace-reconcile-version"
-	createdByValue             = "RBAC"
-	componentNameRBAC          = "rhosp-rbac"
-	rbacInstallerSetType       = "rhosp-rbac"
-	rbacInstallerSetNamePrefix = "rhosp-rbac-"
-	rbacParamName              = "createRbacResource"
+	serviceCABundleConfigMap    = "config-service-cabundle"
+	trustedCABundleConfigMap    = "config-trusted-cabundle"
+	clusterInterceptors         = "openshift-pipelines-clusterinterceptors"
+	namespaceVersionLabel       = "openshift-pipelines.tekton.dev/namespace-reconcile-version"
+	createdByValue              = "RBAC"
+	componentNameRBAC           = "rhosp-rbac"
+	rbacInstallerSetType        = "rhosp-rbac"
+	rbacInstallerSetNamePrefix  = "rhosp-rbac-"
+	rbacParamName               = "createRbacResource"
+	serviceAccountCreationLabel = "openshift-pipelines.tekton.dev/sa-created"
 )
 
 var (
@@ -349,21 +350,17 @@ func (r *rbac) ensureSA(ctx context.Context, ns *corev1.Namespace) (*corev1.Serv
 	}
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info("creating sa ", pipelineSA, " ns", ns.Name)
-		return createSA(ctx, saInterface, ns.Name, r.ownerRef)
+		return createSA(ctx, saInterface, ns.Name, r.tektonConfig)
 	}
-
-	// set owner reference if not set or update owner reference if different owners are set
-	sa.SetOwnerReferences(r.updateOwnerRefs(sa.GetOwnerReferences()))
 
 	return saInterface.Update(ctx, sa, metav1.UpdateOptions{})
 }
 
-func createSA(ctx context.Context, saInterface v1.ServiceAccountInterface, ns string, ownerRef metav1.OwnerReference) (*corev1.ServiceAccount, error) {
+func createSA(ctx context.Context, saInterface v1.ServiceAccountInterface, ns string, tc *v1alpha1.TektonConfig) (*corev1.ServiceAccount, error) {
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            pipelineSA,
-			Namespace:       ns,
-			OwnerReferences: []metav1.OwnerReference{ownerRef},
+			Name:      pipelineSA,
+			Namespace: ns,
 		},
 	}
 
@@ -372,6 +369,9 @@ func createSA(ctx context.Context, saInterface v1.ServiceAccountInterface, ns st
 		return nil, err
 	}
 
+	tektonConfigLabels := tc.GetLabels()
+	tektonConfigLabels[serviceAccountCreationLabel] = "true"
+	tc.SetLabels(tektonConfigLabels)
 	return sa, nil
 }
 
