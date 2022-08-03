@@ -44,10 +44,9 @@ func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) 
 func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 
 	if p.EnableApiFields != "" {
-		if p.EnableApiFields == ApiFieldStable || p.EnableApiFields == ApiFieldAlpha {
-			return errs
+		if p.EnableApiFields != ApiFieldStable && p.EnableApiFields != ApiFieldAlpha {
+			errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, path+".enable-api-fields"))
 		}
-		errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, path+".enable-api-fields"))
 	}
 	if p.DefaultTimeoutMinutes != nil {
 		if *p.DefaultTimeoutMinutes == 0 {
