@@ -19,9 +19,13 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
+
+var allowedArtifactsStorage = sets.NewString("tekton", "oci", "gcs", "docdb", "grafeas", "kafka")
 
 func (tc *TektonChain) Validate(ctx context.Context) (errs *apis.FieldError) {
 
@@ -38,8 +42,53 @@ func (tc *TektonChain) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
 	}
 
-	return errs
+	return errs.Also(tc.Spec.ValidateChainConfig("spec"))
 }
 
-func (tc *TektonChain) SetDefaults(ctx context.Context) {
+func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldError) {
+	if tcs.ArtifactsTaskRunFormat != "" {
+		if tcs.ArtifactsTaskRunFormat != "tekton" && tcs.ArtifactsTaskRunFormat != "in-toto" {
+			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsTaskRunFormat, path+".artifacts.taskrun.format"))
+		}
+	}
+
+	if tcs.ArtifactsTaskRunStorage != "" {
+		input := strings.Split(tcs.ArtifactsTaskRunStorage, ",")
+		for i, v := range input {
+			input[i] = strings.TrimSpace(v)
+			if !allowedArtifactsStorage.Has(input[i]) {
+				errs = errs.Also(apis.ErrInvalidValue(input[i], path+".artifacts.taskrun.storage"))
+			}
+		}
+	}
+
+	if tcs.ArtifactsTaskRunSigner != "" {
+		if tcs.ArtifactsTaskRunSigner != "x509" && tcs.ArtifactsTaskRunSigner != "kms" {
+			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsTaskRunSigner, path+".artifacts.taskrun.signer"))
+		}
+	}
+
+	if tcs.ArtifactsOCIFormat != "" {
+		if tcs.ArtifactsOCIFormat != "simplesigning" {
+			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsOCIFormat, path+".artifacts.oci.format"))
+		}
+	}
+
+	if tcs.ArtifactsOCIStorage != "" {
+		input := strings.Split(tcs.ArtifactsOCIStorage, ",")
+		for i, v := range input {
+			input[i] = strings.TrimSpace(v)
+			if !allowedArtifactsStorage.Has(input[i]) {
+				errs = errs.Also(apis.ErrInvalidValue(input[i], path+".artifacts.oci.storage"))
+			}
+		}
+	}
+
+	if tcs.ArtifactsOCISigner != "" {
+		if tcs.ArtifactsOCISigner != "x509" && tcs.ArtifactsOCISigner != "kms" {
+			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsOCISigner, path+".artifacts.oci.signer"))
+		}
+	}
+
+	return errs
 }
