@@ -22,7 +22,7 @@ require (
 	github.com/pierrec/lz4 v2.6.1+incompatible
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sigstore/cosign v1.2.1
-	github.com/tektoncd/pipeline v0.38.0
+	github.com/tektoncd/pipeline v0.38.1
 	github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f
 	github.com/tektoncd/triggers v0.20.2
 	go.opencensus.io v0.23.0
