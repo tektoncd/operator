@@ -509,6 +509,9 @@ func AddConfigMapValues(configMapName string, prop interface{}) mf.Transformer {
 		if err != nil {
 			return err
 		}
+		if cm.Data == nil {
+			cm.Data = map[string]string{}
+		}
 
 		values := reflect.ValueOf(prop)
 		types := values.Type()

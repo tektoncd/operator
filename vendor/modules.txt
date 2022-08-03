@@ -577,7 +577,6 @@ github.com/hashicorp/vault/sdk/helper/consts
 github.com/hashicorp/vault/sdk/helper/hclutil
 github.com/hashicorp/vault/sdk/helper/jsonutil
 github.com/hashicorp/vault/sdk/helper/parseutil
-github.com/hashicorp/vault/sdk/helper/strutil
 # github.com/henvic/httpretty v0.0.6
 ## explicit; go 1.13
 github.com/henvic/httpretty
