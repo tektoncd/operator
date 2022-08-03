@@ -58,3 +58,85 @@ func Test_ValidateTektonChain_OnDelete(t *testing.T) {
 		t.Errorf("ValidateTektonChain.Validate() on Delete expected no error, but got one, ValidateTektonChain: %v", err)
 	}
 }
+
+func Test_ValidateTektonChain_ConfigFormat(t *testing.T) {
+	td := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				ArtifactsTaskRunFormat: "test",
+			},
+		},
+	}
+
+	err := td.Validate(context.TODO())
+	assert.Equal(t, "invalid value: test: spec.artifacts.taskrun.format", err.Error())
+}
+
+func Test_ValidateTektonChain_ConfigStorage(t *testing.T) {
+	td := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				ArtifactsTaskRunStorage: "test",
+			},
+		},
+	}
+
+	err := td.Validate(context.TODO())
+	assert.Equal(t, "invalid value: test: spec.artifacts.taskrun.storage", err.Error())
+}
+
+func Test_ValidateTektonChain_ConfigStorageInvalidValidMix(t *testing.T) {
+	td := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				ArtifactsTaskRunStorage: "tekton, test",
+			},
+		},
+	}
+
+	err := td.Validate(context.TODO())
+	assert.Equal(t, "invalid value: test: spec.artifacts.taskrun.storage", err.Error())
+}
+
+func Test_ValidateTektonChain_ConfigStorageValid(t *testing.T) {
+	td := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				ArtifactsTaskRunStorage: "tekton, oci",
+			},
+		},
+	}
+
+	err := td.Validate(context.TODO())
+	if err != nil {
+		t.Errorf("ValidateTektonChain.Validate() expected no error for the given config, but got one, ValidateTektonChain: %v", err)
+	}
+}
