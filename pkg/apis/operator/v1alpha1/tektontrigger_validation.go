@@ -44,10 +44,9 @@ func (tr *TektonTrigger) Validate(ctx context.Context) (errs *apis.FieldError) {
 func (tr *TriggersProperties) validate(path string) (errs *apis.FieldError) {
 
 	if tr.EnableApiFields != "" {
-		if tr.EnableApiFields == ApiFieldStable || tr.EnableApiFields == ApiFieldAlpha {
-			return errs
+		if tr.EnableApiFields != ApiFieldStable && tr.EnableApiFields != ApiFieldAlpha {
+			errs = errs.Also(apis.ErrInvalidValue(tr.EnableApiFields, path+".enable-api-fields"))
 		}
-		errs = errs.Also(apis.ErrInvalidValue(tr.EnableApiFields, path+".enable-api-fields"))
 	}
 	return errs
 }

@@ -39,6 +39,29 @@ func Test_ValidateTektonTrigger_MissingTargetNamespace(t *testing.T) {
 	assert.Equal(t, "missing field(s): spec.targetNamespace", err.Error())
 }
 
+func Test_ValidateTektonTrigger_APIField(t *testing.T) {
+
+	tp := &TektonTrigger{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "trigger",
+			Namespace: "namespace",
+		},
+		Spec: TektonTriggerSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Trigger: Trigger{
+				TriggersProperties: TriggersProperties{
+					EnableApiFields: "prod",
+				},
+			},
+		},
+	}
+
+	err := tp.Validate(context.TODO())
+	assert.Equal(t, "invalid value: prod: spec.enable-api-fields", err.Error())
+}
+
 func Test_ValidateTektonTrigger_OnDelete(t *testing.T) {
 
 	td := &TektonTrigger{

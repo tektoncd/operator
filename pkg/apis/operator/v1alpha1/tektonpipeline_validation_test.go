@@ -39,6 +39,29 @@ func Test_ValidateTektonPipeline_MissingTargetNamespace(t *testing.T) {
 	assert.Equal(t, "missing field(s): spec.targetNamespace", err.Error())
 }
 
+func Test_ValidateTektonPipeline_APIField(t *testing.T) {
+
+	tp := &TektonPipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipeline",
+			Namespace: "namespace",
+		},
+		Spec: TektonPipelineSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Pipeline: Pipeline{
+				PipelineProperties: PipelineProperties{
+					EnableApiFields: "prod",
+				},
+			},
+		},
+	}
+
+	err := tp.Validate(context.TODO())
+	assert.Equal(t, "invalid value: prod: spec.enable-api-fields", err.Error())
+}
+
 func Test_ValidateTektonPipeline_OnDelete(t *testing.T) {
 
 	td := &TektonPipeline{
