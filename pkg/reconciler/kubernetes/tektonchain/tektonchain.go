@@ -36,6 +36,11 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
+const (
+	// Chains ConfigMap
+	ChainsConfig = "chains-config"
+)
+
 // Reconciler implements controller.Reconciler for TektonChain resources.
 type Reconciler struct {
 	// operatorClientSet allows us to configure operator objects
@@ -387,6 +392,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.ApplyProxySettings,
 		common.DeploymentImages(chainImages),
 		common.AddConfiguration(instance.Spec.Config),
+		common.AddConfigMapValues(ChainsConfig, instance.Spec.Chain),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
