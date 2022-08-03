@@ -70,7 +70,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 
 	// below code helps to retain state of pre-existing SA at the time of upgrade
 	if existingSAWithOwnerRef(r.tektonConfig) {
-		if err := removeOwnerRefFromPreExistingSA(ctx, r.kubeClientSet); err != nil {
+		if err := changeOwnerRefOfPreExistingSA(ctx, r.kubeClientSet, *config); err != nil {
 			return err
 		}
 		tcLabels := config.GetLabels()
@@ -146,14 +146,21 @@ func configOwnerRef(tc v1alpha1.TektonInstallerSet) metav1.OwnerReference {
 	return *metav1.NewControllerRef(&tc, tc.GetGroupVersionKind())
 }
 
-func removeOwnerRefFromPreExistingSA(ctx context.Context, kc kubernetes.Interface) error {
+// tektonConfigOwnerRef returns owner reference of tektonConfig
+func tektonConfigOwnerRef(tc v1alpha1.TektonConfig) metav1.OwnerReference {
+	return *metav1.NewControllerRef(&tc, tc.GetGroupVersionKind())
+}
+
+func changeOwnerRefOfPreExistingSA(ctx context.Context, kc kubernetes.Interface, tc v1alpha1.TektonConfig) error {
 	allSAs, err := kc.CoreV1().ServiceAccounts("").List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return err
 	}
 	for _, sa := range allSAs.Items {
 		if sa.Name == "pipeline" && !nsRegex.MatchString(sa.Namespace) {
-			sa.SetOwnerReferences([]metav1.OwnerReference{})
+			// set tektonconfig ownerRef
+			tcOwnerRef := tektonConfigOwnerRef(tc)
+			sa.SetOwnerReferences([]metav1.OwnerReference{tcOwnerRef})
 			if _, err := kc.CoreV1().ServiceAccounts(sa.Namespace).Update(ctx, &sa, metav1.UpdateOptions{}); err != nil {
 				return err
 			}
