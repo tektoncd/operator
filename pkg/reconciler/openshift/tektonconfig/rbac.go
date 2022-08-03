@@ -350,17 +350,23 @@ func (r *rbac) ensureSA(ctx context.Context, ns *corev1.Namespace) (*corev1.Serv
 	}
 	if err != nil && errors.IsNotFound(err) {
 		logger.Info("creating sa ", pipelineSA, " ns", ns.Name)
-		return createSA(ctx, saInterface, ns.Name, r.tektonConfig)
+		return createSA(ctx, saInterface, ns.Name, *r.tektonConfig)
 	}
+
+	// set tektonConfig ownerRef
+	tcOwnerRef := tektonConfigOwnerRef(*r.tektonConfig)
+	sa.SetOwnerReferences([]metav1.OwnerReference{tcOwnerRef})
 
 	return saInterface.Update(ctx, sa, metav1.UpdateOptions{})
 }
 
-func createSA(ctx context.Context, saInterface v1.ServiceAccountInterface, ns string, tc *v1alpha1.TektonConfig) (*corev1.ServiceAccount, error) {
+func createSA(ctx context.Context, saInterface v1.ServiceAccountInterface, ns string, tc v1alpha1.TektonConfig) (*corev1.ServiceAccount, error) {
+	tcOwnerRef := tektonConfigOwnerRef(tc)
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      pipelineSA,
-			Namespace: ns,
+			Name:            pipelineSA,
+			Namespace:       ns,
+			OwnerReferences: []metav1.OwnerReference{tcOwnerRef},
 		},
 	}
 
