@@ -8,7 +8,7 @@ on:
 jobs:
   bump-payloads:
     name: "Bump payloads"
-    runs-one: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/setup-go@v2
       with:
