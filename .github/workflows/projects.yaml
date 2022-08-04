@@ -1,16 +1,16 @@
 name: Add issues and pull-requests to board
 
-on:
+on:  # yamllint disable-line rule:truthy
   issues:
     types:
       - opened
       - reopened
       - labeled
-  # pull_request:
-  #   types:
-  #     - opened
-  #     - reopened
-  #     - labeled
+# pull_request:
+#   types:
+#     - opened
+#     - reopened
+#     - labeled
 
 jobs:
   add-to-project:

@@ -148,9 +148,9 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 rules:
-- # The webhook needs to be able to list and update customresourcedefinitions,
+- apiGroups: ["apiextensions.k8s.io"]
+  # The webhook needs to be able to list and update customresourcedefinitions,
   # mainly to update the webhook certificates.
-  apiGroups: ["apiextensions.k8s.io"]
   resources: ["customresourcedefinitions", "customresourcedefinitions/status"]
   verbs: ["get", "list", "update", "patch", "watch"]
 - apiGroups: ["admissionregistration.k8s.io"]
@@ -188,8 +188,8 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 rules:
-- # We uses leases for leaderelection
-  apiGroups: ["coordination.k8s.io"]
+- apiGroups: ["coordination.k8s.io"]
+  # We uses leases for leaderelection
   resources: ["leases"]
   verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
 
@@ -221,10 +221,10 @@ rules:
 - apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["list", "watch"]
-- # The controller needs access to these configmaps for logging information and runtime configuration.
-  apiGroups: [""]
+- apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get"]
+  # The controller needs access to these configmaps for logging information and runtime configuration.
   resourceNames: ["config-logging", "config-observability", "config-artifact-bucket",
                   "config-artifact-pvc", "feature-flags", "config-leader-election"]
 ---
@@ -241,20 +241,20 @@ rules:
 - apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["list", "watch"]
-- # The webhook needs access to these configmaps for logging information.
-  apiGroups: [""]
+- apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get"]
+  # The webhook needs access to these configmaps for logging information.
   resourceNames: ["config-logging", "config-observability", "config-leader-election"]
 - apiGroups: [""]
   resources: ["secrets"]
   verbs: ["list", "watch"]
-- # The webhook daemon makes a reconciliation loop on webhook-certs. Whenever
-  # the secret changes it updates the webhook configurations with the certificates
-  # stored in the secret.
-  apiGroups: [""]
+- apiGroups: [""]
   resources: ["secrets"]
   verbs: ["get", "update"]
+  # The webhook daemon makes a reconciliation loop on webhook-certs. Whenever
+  # the secret changes it updates the webhook configurations with the certificates
+  # stored in the secret.
   resourceNames: ["webhook-certs"]
 
 ---
@@ -1556,10 +1556,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - # If you are changing these names, you will also need to update
-          # the controller's Role in 200-role.yaml to include the new
-          # values in the "configmaps" "get" rule.
-          name: CONFIG_DEFAULTS_NAME
+        # If you are changing these names, you will also need to update
+        # the controller's Role in 200-role.yaml to include the new
+        # values in the "configmaps" "get" rule.
+        - name: CONFIG_DEFAULTS_NAME
           value: config-defaults
         - name: CONFIG_LOGGING_NAME
           value: config-logging
@@ -1676,10 +1676,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        - # If you are changing these names, you will also need to update
-          # the webhook's Role in 200-role.yaml to include the new
-          # values in the "configmaps" "get" rule.
-          name: CONFIG_LOGGING_NAME
+        # If you are changing these names, you will also need to update
+        # the webhook's Role in 200-role.yaml to include the new
+        # values in the "configmaps" "get" rule.
+        - name: CONFIG_LOGGING_NAME
           value: config-logging
         - name: CONFIG_OBSERVABILITY_NAME
           value: config-observability
@@ -1719,8 +1719,8 @@ metadata:
   namespace: tekton-pipelines
 spec:
   ports:
-  - # Define metrics and profiling for them to be accessible within service meshes.
-    name: http-metrics
+  # Define metrics and profiling for them to be accessible within service meshes.
+  - name: http-metrics
     port: 9090
     targetPort: 9090
   - name: http-profiling

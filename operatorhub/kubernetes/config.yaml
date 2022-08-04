@@ -29,5 +29,5 @@ image-substitutions:
 # add thrid party images which are not replaced by operator
 # but pulled directly by tasks here
 defaultRelatedImages: []
-#- image: "" ##<imagename>:<tag> or <imagename>@<sha>
-#  name: "" # ENV key name value
+#  - image: "" ##<imagename>:<tag> or <imagename>@<sha>
+#    name: "" # ENV key name value

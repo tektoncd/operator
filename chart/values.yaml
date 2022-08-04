@@ -82,15 +82,15 @@ podAnnotations: {}
 ## Specify privileges for the pods
 ## see https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
 podSecurityContext: {}
-  # fsGroup: 2000
+# fsGroup: 2000
 
 securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+# capabilities:
+#   drop:
+#   - ALL
+# readOnlyRootFilesystem: true
+# runAsNonRoot: true
+# runAsUser: 1000
 
 ## Settings for controlling the placement of all pods deployed by this chart.
 ## see https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/

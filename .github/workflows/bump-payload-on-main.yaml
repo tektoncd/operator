@@ -1,6 +1,6 @@
 name: Bump components.yaml on main branch
 
-on:
+on:  # yamllint disable-line rule:truthy
   workflow_dispatch: {}
   schedule:
   # Run this every week day at 1AM
