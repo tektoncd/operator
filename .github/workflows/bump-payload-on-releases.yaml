@@ -1,6 +1,6 @@
 name: Bump components.yaml on release branches
 
-on:
+on:  # yamllint disable-line rule:truthy
   schedule:
   # Run this every week day at 2AM
   - cron: '0 2 * * 1-5'

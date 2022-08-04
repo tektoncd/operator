@@ -29,7 +29,7 @@ spec:
     spec:
       serviceAccountName: tekton-operator
       containers:
-      - name: tekton-operator-lifecycle # all reconcilers except tektoninstallerset reconciler
+      - name: tekton-operator-lifecycle  # all reconcilers except tektoninstallerset reconciler
         image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
         args:
         - "-controllers"
@@ -68,7 +68,7 @@ spec:
             configMapKeyRef:
               name: tekton-config-defaults
               key: DEFAULT_TARGET_NAMESPACE
-      - name: tekton-operator-cluster-operations # tektoninstallerset reconciler
+      - name: tekton-operator-cluster-operations  # tektoninstallerset reconciler
         image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
         args:
         - "-controllers"

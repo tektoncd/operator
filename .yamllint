@@ -20,7 +20,7 @@ rules:
   key-duplicates: enable
   key-ordering: disable
   line-length: disable
-  new-line-at-end-of-file: disable
+  new-line-at-end-of-file: enable
   new-lines: enable
   octal-values: enable
   quoted-strings: disable
