@@ -85,10 +85,10 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	// Delete CRDs before deleting rest of resources so that any instance
 	// of CRDs which has finalizer set will get deleted before we remove
 	// the controller;s deployment for it
-	if err := r.manifest.Filter(mf.CRDs).Delete(); err != nil {
-		logger.Error("Failed to deleted CRDs for TektonPipeline")
-		return err
-	}
+	// if err := r.manifest.Filter(mf.CRDs).Delete(); err != nil {
+	// 	logger.Error("Failed to deleted CRDs for TektonPipeline")
+	// 	return err
+	// }
 
 	labelSelector, err := common.LabelSelector(ls)
 	if err != nil {
