@@ -61,6 +61,8 @@ spec:
   results:
   - name: IMAGE_DIGEST
     description: Digest of the image just built.
+  - name: IMAGE_URL
+    description: Image repository where the built image would be pushed to
 
   steps:
   - name: build-and-push
@@ -76,9 +78,10 @@ spec:
       [[ "$(workspaces.dockerconfig.bound)" == "true" ]] && export DOCKER_CONFIG="$(workspaces.dockerconfig.path)"
       buildah --storage-driver=$(params.STORAGE_DRIVER) push \
         $(params.PUSH_EXTRA_ARGS) --tls-verify=$(params.TLSVERIFY) \
-        --digestfile $(workspaces.source.path)/image-digest $(params.IMAGE) \
+        -digestfile /tmp/image-digest $(params.IMAGE) \
         docker://$(params.IMAGE)
-      cat $(workspaces.source.path)/image-digest | tee /tekton/results/IMAGE_DIGEST
+      cat /tmp/image-digest | tee $(results.IMAGE_DIGEST.path)
+      echo "$(params.IMAGE)" | tee $(results.IMAGE_URL.path)
     volumeMounts:
     - name: varlibcontainers
       mountPath: /var/lib/containers
