@@ -2,7 +2,7 @@ module github.com/tektoncd/operator
 
 require (
 	github.com/Masterminds/semver v1.5.0
-	github.com/cenkalti/backoff/v3 v3.0.0
+	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/cli/go-gh v0.0.3
 	github.com/go-logr/logr v1.2.3
 	github.com/go-logr/zapr v1.2.3
