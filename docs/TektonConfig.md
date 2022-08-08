@@ -151,7 +151,10 @@ pruner:
 
 - `resources`: supported resources for auto prune are `taskrun` and `pipelinerun`
 - `keep`: maximum number of resources to keep while deleting removing
+- `keep-since`: retain the resources younger than the specified value in minutes
 - `schedule`: how often to clean up resources. User can understand the schedule syntax [here][schedule].
+
+**NOTE**: `keep` and `keep-since` are mutually exclusive. Specify only one of them.
 
 This is an `Optional` section.
 
