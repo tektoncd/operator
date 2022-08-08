@@ -239,7 +239,7 @@ spec:
     - Tekton Triggers: v0.20.2
     - Tekton Chains (tech-preview): v0.9.0
     - Tekton Hub (tech-preview): v1.8.0
-    - Pipelines as Code (tech-preview): 0.10.1
+    - Pipelines as Code (tech-preview): 0.10.2
 
     ## Getting Started
     In order to get familiar with _OpenShift Pipelines_ concepts and create your first pipeline, follow the [OpenShift Pipelines Docs](https://docs.openshift.com/container-platform/OPENSHIFT_DOCS_VERSION/cicd/pipelines/creating-applications-with-cicd-pipelines.html).
