@@ -21,10 +21,13 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -85,6 +88,7 @@ const (
 	uiInstallerSet          = "UiInstallerSet"
 	createdByValue          = "TektonHub"
 	dbSecretName            = "tekton-hub-db"
+	apiConfigName           = "tekton-hub-api"
 )
 
 // FinalizeKind removes all resources after deletion of a TektonHub.
@@ -116,6 +120,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, th *v1alpha1.TektonHub) 
 	logger := logging.FromContext(ctx)
 	th.Status.InitializeConditions()
 	th.Status.ObservedGeneration = th.Generation
+
+	logger.Infow("Reconciling TektonHub", "status", th.Status)
 
 	if th.GetName() != v1alpha1.HubResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
@@ -288,6 +294,7 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 			}
 
 			lastAppliedDbSecretHash := ctIs.Annotations[v1alpha1.DbSecretHash]
+			lastAppliedTektonHubCRSpecHash := ctIs.Annotations[v1alpha1.LastAppliedHashKey]
 
 			secret, err := r.getSecret(ctx, db, th.Spec.GetTargetNamespace(), dbKeys)
 			if err != nil {
@@ -298,11 +305,16 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 			if err != nil {
 				return err
 			}
+			tektonHubCRSpecHash, err := hash.Compute(th.Spec)
+			if err != nil {
+				return err
+			}
 
-			if lastAppliedDbSecretHash != expectedDbSecretHash {
+			if lastAppliedDbSecretHash != expectedDbSecretHash || tektonHubCRSpecHash != lastAppliedTektonHubCRSpecHash {
 				if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().Delete(ctx, ctIs.Name, metav1.DeleteOptions{}); err != nil {
 					return err
 				}
+				return v1alpha1.RECONCILE_AGAIN_ERR
 			}
 		}
 	}
@@ -469,7 +481,6 @@ func (r *Reconciler) validateOrCreateDBSecrets(ctx context.Context, th *v1alpha1
 func (r *Reconciler) validateApiDependencies(ctx context.Context, th *v1alpha1.TektonHub, hubDir, comp string) error {
 	logger := logging.FromContext(ctx)
 	apiSecretKeys := []string{"GH_CLIENT_ID", "GH_CLIENT_SECRET", "JWT_SIGNING_KEY", "ACCESS_JWT_EXPIRES_IN", "REFRESH_JWT_EXPIRES_IN", "GHE_URL"}
-	apiConfigMapKeys := []string{"CONFIG_FILE_URL", "CATALOG_REFRESH_INTERVAL"}
 
 	th.Status.MarkApiDependencyInstalling("checking for api secrets in the namespace and creating the ConfigMap")
 
@@ -488,32 +499,6 @@ func (r *Reconciler) validateApiDependencies(ctx context.Context, th *v1alpha1.T
 			return err
 		}
 	}
-
-	_, err = r.getConfigMap(ctx, api, namespace, apiConfigMapKeys)
-	if err != nil {
-		configMap := createApiConfigMap(api, namespace, th)
-		if apierrors.IsNotFound(err) {
-			_, err = r.kubeClientSet.CoreV1().ConfigMaps(namespace).Create(ctx, configMap, metav1.CreateOptions{})
-			if err != nil {
-				logger.Error(err)
-				th.Status.MarkApiDependencyMissing(fmt.Sprintf("%s configMap is missing", api))
-				return err
-			}
-			return nil
-		}
-		if err == errKeyMissing {
-			_, err = r.kubeClientSet.CoreV1().ConfigMaps(namespace).Update(ctx, configMap, metav1.UpdateOptions{})
-			if err != nil {
-				logger.Error(err)
-				th.Status.MarkApiDependencyMissing(fmt.Sprintf("%s configMap is missing", api))
-				return err
-			}
-		} else {
-			logger.Error(err)
-			return err
-		}
-	}
-
 	return nil
 }
 
@@ -590,6 +575,8 @@ func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1
 		mf.InjectNamespace(namespace),
 		common.DeploymentImages(images),
 		common.JobImages(images),
+		addConfigMapKeyValue(apiConfigName, "CONFIG_FILE_URL", th.Spec.Api.HubConfigUrl),
+		addConfigMapKeyValue(apiConfigName, "CATALOG_REFRESH_INTERVAL", th.Spec.Api.CatalogRefreshInterval),
 	}
 	trans = append(trans, extra...)
 
@@ -858,13 +845,14 @@ func (r *Reconciler) checkIfUserHasDb(ctx context.Context, th *v1alpha1.TektonHu
 }
 
 func (r *Reconciler) setUpAndCreateInstallerSet(ctx context.Context, manifest mf.Manifest, th *v1alpha1.TektonHub, installerSetName, version, prefixName string) error {
-	manifest = manifest.Filter(mf.Not(mf.Any(mf.ByKind("Secret"), mf.ByKind("PersistentVolumeClaim"), mf.ByKind("Namespace"), mf.ByKind("ConfigMap"))))
+	manifest = manifest.Filter(mf.Not(mf.Any(mf.ByKind("Secret"), mf.ByKind("PersistentVolumeClaim"), mf.ByKind("Namespace"))))
 
 	// If the component is dbMigration or api, then add the specHash of
 	// of db secret as annotation, because if user wants to use his database
 	// in future, then based on the value of db secret hash, reconciler should
 	// delete and recreate the dbMigration and api installerset to connect
 	// api with user's database
+
 	specHash := ""
 	if prefixName == dbMigration || prefixName == api {
 		secret, err := r.kubeClientSet.CoreV1().Secrets(namespace).Get(ctx, db, metav1.GetOptions{})
@@ -983,23 +971,6 @@ func (r *Reconciler) getConfigMap(ctx context.Context, name, targetNs string, ke
 	return configMap, nil
 }
 
-func createApiConfigMap(name, namespace string, th *v1alpha1.TektonHub) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"app": "api",
-			},
-			OwnerReferences: []metav1.OwnerReference{getOwnerRef(th)},
-		},
-		Data: map[string]string{
-			"CONFIG_FILE_URL":          th.Spec.Api.HubConfigUrl,
-			"CATALOG_REFRESH_INTERVAL": th.Spec.Api.CatalogRefreshInterval,
-		},
-	}
-}
-
 func (r *Reconciler) createApiSecret(ctx context.Context, th *v1alpha1.TektonHub, hubDir, comp string) error {
 
 	manifest, err := r.getHubManifest(ctx, th, hubDir, comp)
@@ -1091,4 +1062,37 @@ func (r *Reconciler) targetNamespaceCheck(ctx context.Context, th *v1alpha1.Tekt
 		return err
 	}
 	return nil
+}
+
+// add key value pair to the given configmap name
+func addConfigMapKeyValue(configMapName, key, value string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := strings.ToLower(u.GetKind())
+		if kind != "configmap" {
+			return nil
+		}
+		if u.GetName() != configMapName {
+			return nil
+		}
+
+		cm := &corev1.ConfigMap{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return err
+		}
+
+		if cm.Data == nil {
+			cm.Data = map[string]string{}
+		}
+
+		cm.Data[key] = value
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
 }

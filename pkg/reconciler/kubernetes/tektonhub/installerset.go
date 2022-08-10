@@ -9,6 +9,7 @@ import (
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -65,6 +66,9 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, th *v1alpha
 	manifest mf.Manifest, releaseVersion, component, installerSetPrefix, namespace string, labels map[string]string, specHash string) error {
 
 	is := makeInstallerSet(th, manifest, installerSetPrefix, releaseVersion, namespace, labels, specHash)
+	if is == nil {
+		return fmt.Errorf("Unable to create installerset")
+	}
 
 	createdIs, err := oc.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, is, metav1.CreateOptions{})
@@ -85,6 +89,11 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, th *v1alpha
 func makeInstallerSet(th *v1alpha1.TektonHub, manifest mf.Manifest, prefix, releaseVersion, namespace string, labels map[string]string, specHash string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(th, th.GetGroupVersionKind())
 
+	tektonHubCRSpecHash, err := hash.Compute(th.Spec)
+	if err != nil {
+		return nil
+	}
+
 	is := &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", prefix),
@@ -92,6 +101,7 @@ func makeInstallerSet(th *v1alpha1.TektonHub, manifest mf.Manifest, prefix, rele
 			Annotations: map[string]string{
 				v1alpha1.ReleaseVersionKey:  releaseVersion,
 				v1alpha1.TargetNamespaceKey: namespace,
+				v1alpha1.LastAppliedHashKey: tektonHubCRSpecHash,
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
