@@ -64,7 +64,7 @@ func (r *Reconciler) EnsureCommunityClusterTask(ctx context.Context, enable stri
 
 	if enable == "true" {
 
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, communityClusterTaskLabelSelector)
+		exist, _, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, communityClusterTaskLabelSelector)
 		if err != nil {
 			return err
 		}

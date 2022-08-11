@@ -34,18 +34,18 @@ import (
 // and if installer set which already exist is of older version then it deletes and return false to create a new
 // installer set
 func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVersion string,
-	labelSelector string) (bool, error) {
+	labelSelector string) (bool, *v1alpha1.TektonInstallerSet, error) {
 
 	installerSets, err := oc.OperatorV1alpha1().TektonInstallerSets().
 		List(ctx, metav1.ListOptions{
 			LabelSelector: labelSelector,
 		})
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	if len(installerSets.Items) == 0 {
-		return false, nil
+		return false, nil, nil
 	}
 
 	if len(installerSets.Items) == 1 {
@@ -54,7 +54,7 @@ func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVe
 		if ok && version == relVersion {
 			// if installer set already exist and release version is same
 			// then ignore and move on
-			return true, nil
+			return true, &installerSets.Items[0], nil
 		}
 	}
 
@@ -65,10 +65,10 @@ func checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVe
 		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
 			LabelSelector: labelSelector,
 		}); err != nil {
-		return false, err
+		return false, nil, err
 	}
 
-	return false, v1alpha1.RECONCILE_AGAIN_ERR
+	return false, nil, v1alpha1.RECONCILE_AGAIN_ERR
 }
 
 func createInstallerSet(ctx context.Context, oc clientset.Interface, ta *v1alpha1.TektonAddon,

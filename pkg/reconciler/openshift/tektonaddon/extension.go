@@ -95,7 +95,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	if err != nil {
 		return err
 	}
-	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, miscellaneousLabelSelector)
+	exist, _, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, miscellaneousLabelSelector)
 	if err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	if err != nil {
 		return err
 	}
-	exist, err = checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, consoleCLILabelSelector)
+	exist, _, err = checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, consoleCLILabelSelector)
 	if err != nil {
 		return err
 	}

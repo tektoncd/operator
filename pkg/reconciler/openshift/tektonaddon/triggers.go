@@ -38,7 +38,7 @@ func (r *Reconciler) EnsureTriggersResources(ctx context.Context, ta *v1alpha1.T
 	if err != nil {
 		return err
 	}
-	exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, triggerResourceLabelSelector)
+	exist, _, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, triggerResourceLabelSelector)
 	if err != nil {
 		return err
 	}
