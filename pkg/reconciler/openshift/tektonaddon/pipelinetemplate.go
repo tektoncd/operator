@@ -43,7 +43,7 @@ func (r *Reconciler) EnsurePipelineTemplates(ctx context.Context, enable string,
 	}
 	if enable == "true" {
 
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, pipelineTemplateLSLabelSelector)
+		exist, _, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, pipelineTemplateLSLabelSelector)
 		if err != nil {
 			return err
 		}

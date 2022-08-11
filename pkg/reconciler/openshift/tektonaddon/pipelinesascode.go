@@ -25,6 +25,7 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/client-go/route/clientset/versioned/scheme"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -61,13 +62,34 @@ func (r *Reconciler) EnsurePipelinesAsCode(ctx context.Context, ta *v1alpha1.Tek
 	}
 
 	if *ta.Spec.EnablePAC {
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, pacLabelSelector)
+		exist, currentTIS, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, pacLabelSelector)
 		if err != nil {
 			return err
 		}
 		if !exist {
 			return r.ensurePAC(ctx, ta)
 		}
+
+		expectedHash, err := hash.Compute(ta.Spec)
+		if err != nil {
+			return err
+		}
+
+		hashOnTIS := currentTIS.Annotations[v1alpha1.LastAppliedHashKey]
+		if expectedHash != hashOnTIS {
+			updatedManifest, err := r.getManifest(ctx, ta)
+			if err != nil {
+				return err
+			}
+			currentTIS.Spec.Manifests = updatedManifest.Resources()
+			currentTIS.Annotations[v1alpha1.LastAppliedHashKey] = expectedHash
+
+			if _, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+				Update(ctx, currentTIS, metav1.UpdateOptions{}); err != nil {
+				return err
+			}
+		}
+
 		return r.updateControllerURL(ta)
 
 	} else {
@@ -110,17 +132,31 @@ func (r *Reconciler) updateControllerURL(ta *v1alpha1.TektonAddon) error {
 }
 
 func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) error {
+	pacManifest, err := r.getManifest(ctx, ta)
+	if err != nil {
+		return err
+	}
+
+	if err := createInstallerSet(ctx, r.operatorClientSet, ta, *pacManifest, r.operatorVersion,
+		PACInstallerSet, "addon-pac"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Reconciler) getManifest(ctx context.Context, ta *v1alpha1.TektonAddon) (*mf.Manifest, error) {
 	pacManifest := mf.Manifest{}
 
 	// core manifest
 	koDataDir := os.Getenv(common.KoEnvKey)
 	pacLocation := filepath.Join(koDataDir, "tekton-addon", "pipelines-as-code")
 	if err := common.AppendManifest(&pacManifest, pacLocation); err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := fetchPRTemplates(&pacManifest); err != nil {
-		return err
+		return nil, err
 	}
 
 	// installerSet adds it's owner as namespace's owner
@@ -137,15 +173,10 @@ func (r *Reconciler) ensurePAC(ctx context.Context, ta *v1alpha1.TektonAddon) er
 	}
 
 	if err := r.addonTransform(ctx, &pacManifest, ta, tfs...); err != nil {
-		return err
+		return nil, err
 	}
 
-	if err := createInstallerSet(ctx, r.operatorClientSet, ta, pacManifest, r.operatorVersion,
-		PACInstallerSet, "addon-pac"); err != nil {
-		return err
-	}
-
-	return nil
+	return &pacManifest, nil
 }
 
 func fetchPRTemplates(manifest *mf.Manifest) error {

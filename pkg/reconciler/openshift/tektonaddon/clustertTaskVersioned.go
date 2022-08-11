@@ -43,7 +43,7 @@ func (r *Reconciler) EnsureVersionedClusterTask(ctx context.Context, enable stri
 	if enable == "true" {
 
 		// here pass two labels one for type and other for minor release version to remove the previous minor release installerset only not all
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, versionedClusterTaskLabelSelector)
+		exist, _, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, versionedClusterTaskLabelSelector)
 		if err != nil {
 			return err
 		}
