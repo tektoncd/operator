@@ -79,3 +79,5 @@ tags
 
 ### idea/goland ###
 .idea/*
+
+.bin/

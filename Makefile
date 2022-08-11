@@ -7,7 +7,7 @@ TARGET        = kubernetes
 CR            = config/basic
 PLATFORM := $(if $(PLATFORM),--platform $(PLATFORM))
 
-GOLANGCI_VERSION  = v1.30.0
+GOLANGCI_VERSION  = v1.47.2
 
 BIN      = $(CURDIR)/.bin
 
@@ -148,9 +148,9 @@ test-unit: ## Run unit tests
 lint: lint-go lint-yaml ## run all linters
 
 .PHONY: lint-go
-lint-go: ## runs go linter on all go files
+lint-go: | $(GOLANGCILINT) ## runs go linter on all go files
 	@echo "Linting go files..."
-	@golangci-lint run ./... --modules-download-mode=vendor \
+	@$(GOLANGCILINT) run ./... --modules-download-mode=vendor \
 							--max-issues-per-linter=0 \
 							--max-same-issues=0 \
 							--deadline 5m
