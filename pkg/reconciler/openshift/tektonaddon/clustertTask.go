@@ -42,7 +42,7 @@ func (r *Reconciler) EnsureClusterTask(ctx context.Context, enable string, ta *v
 
 	if enable == "true" {
 
-		exist, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, clusterTaskLabelSelector)
+		exist, _, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, clusterTaskLabelSelector)
 		if err != nil {
 			return err
 		}
