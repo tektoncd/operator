@@ -82,8 +82,23 @@ func (c cache) RoundTripper(rt http.RoundTripper) http.RoundTripper {
 }
 
 func (crt cacheRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	reqDir, reqTTL := requestCacheOptions(req)
+
+	if crt.fs.ttl == 0 && reqTTL == 0 {
+		return crt.rt.RoundTrip(req)
+	}
+
 	if !isCacheableRequest(req) {
 		return crt.rt.RoundTrip(req)
+	}
+
+	origDir := crt.fs.dir
+	if reqDir != "" {
+		crt.fs.dir = reqDir
+	}
+	origTTL := crt.fs.ttl
+	if reqTTL != 0 {
+		crt.fs.ttl = reqTTL
 	}
 
 	key, keyErr := cacheKey(req)
@@ -98,7 +113,22 @@ func (crt cacheRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	if err == nil && keyErr == nil && isCacheableResponse(res) {
 		_ = crt.fs.store(key, res)
 	}
+
+	crt.fs.dir = origDir
+	crt.fs.ttl = origTTL
+
 	return res, err
+}
+
+// Allow an individual request to override cache options.
+func requestCacheOptions(req *http.Request) (string, time.Duration) {
+	var dur time.Duration
+	dir := req.Header.Get("X-GH-CACHE-DIR")
+	ttl := req.Header.Get("X-GH-CACHE-TTL")
+	if ttl != "" {
+		dur, _ = time.ParseDuration(ttl)
+	}
+	return dir, dur
 }
 
 func (fs *fileStorage) filePath(key string) string {

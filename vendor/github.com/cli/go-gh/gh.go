@@ -10,17 +10,17 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 
 	iapi "github.com/cli/go-gh/internal/api"
-	"github.com/cli/go-gh/internal/config"
 	"github.com/cli/go-gh/internal/git"
 	irepo "github.com/cli/go-gh/internal/repository"
-	"github.com/cli/go-gh/internal/ssh"
 	"github.com/cli/go-gh/pkg/api"
+	"github.com/cli/go-gh/pkg/auth"
+	"github.com/cli/go-gh/pkg/config"
 	repo "github.com/cli/go-gh/pkg/repository"
+	"github.com/cli/go-gh/pkg/ssh"
 	"github.com/cli/safeexec"
 )
 
@@ -54,59 +54,57 @@ func run(path string, env []string, args ...string) (stdOut, stdErr bytes.Buffer
 }
 
 // RESTClient builds a client to send requests to GitHub REST API endpoints.
-// As part of the configuration a hostname, auth token, and default set of headers are resolved
-// from the gh environment configuration. These behaviors can be overridden using the opts argument.
+// As part of the configuration a hostname, auth token, default set of headers,
+// and unix domain socket are resolved from the gh environment configuration.
+// These behaviors can be overridden using the opts argument.
 func RESTClient(opts *api.ClientOptions) (api.RESTClient, error) {
 	if opts == nil {
 		opts = &api.ClientOptions{}
 	}
-	cfg, err := config.Load()
-	if err != nil {
-		return nil, err
-	}
-	err = resolveOptions(opts, cfg)
-	if err != nil {
-		return nil, err
+	if optionsNeedResolution(opts) {
+		err := resolveOptions(opts)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return iapi.NewRESTClient(opts.Host, opts), nil
 }
 
 // GQLClient builds a client to send requests to GitHub GraphQL API endpoints.
-// As part of the configuration a hostname, auth token, and default set of headers are resolved
-// from the gh environment configuration. These behaviors can be overridden using the opts argument.
+// As part of the configuration a hostname, auth token, default set of headers,
+// and unix domain socket are resolved from the gh environment configuration.
+// These behaviors can be overridden using the opts argument.
 func GQLClient(opts *api.ClientOptions) (api.GQLClient, error) {
 	if opts == nil {
 		opts = &api.ClientOptions{}
 	}
-	cfg, err := config.Load()
-	if err != nil {
-		return nil, err
-	}
-	err = resolveOptions(opts, cfg)
-	if err != nil {
-		return nil, err
+	if optionsNeedResolution(opts) {
+		err := resolveOptions(opts)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return iapi.NewGQLClient(opts.Host, opts), nil
 }
 
 // HTTPClient builds a client that can be passed to another library.
-// As part of the configuration a hostname, auth token, and default set of headers are resolved
-// from the gh environment configuration. These behaviors can be overridden using the opts argument.
-// In this instance providing opts.Host will not change the destination of your request as it is
-// the responsibility of the consumer to configure this. However, if opts.Host does not match the request
-// host, the auth token will not be added to the headers. This is to protect against the case where tokens
-// could be sent to an arbitrary host.
+// As part of the configuration a hostname, auth token, default set of headers,
+// and unix domain socket are resolved from the gh environment configuration.
+// These behaviors can be overridden using the opts argument. In this instance
+// providing opts.Host will not change the destination of your request as it is
+// the responsibility of the consumer to configure this. However, if opts.Host
+// does not match the request host, the auth token will not be added to the headers.
+// This is to protect against the case where tokens could be sent to an arbitrary
+// host.
 func HTTPClient(opts *api.ClientOptions) (*http.Client, error) {
 	if opts == nil {
 		opts = &api.ClientOptions{}
 	}
-	cfg, err := config.Load()
-	if err != nil {
-		return nil, err
-	}
-	err = resolveOptions(opts, cfg)
-	if err != nil {
-		return nil, err
+	if optionsNeedResolution(opts) {
+		err := resolveOptions(opts)
+		if err != nil {
+			return nil, err
+		}
 	}
 	client := iapi.NewHTTPClient(opts)
 	return &client, nil
@@ -128,15 +126,10 @@ func CurrentRepository() (repo.Repository, error) {
 		return nil, errors.New("unable to determine current repository, no git remotes configured for this repository")
 	}
 
-	sshConfig := ssh.ParseConfig()
-	translateRemotes(remotes, sshConfig.Translator())
+	translator := ssh.NewTranslator()
+	translateRemotes(remotes, translator)
 
-	cfg, err := config.Load()
-	if err != nil {
-		return nil, err
-	}
-
-	hosts := cfg.Hosts()
+	hosts := auth.KnownHosts()
 
 	filteredRemotes := remotes.FilterByHosts(hosts)
 	if len(filteredRemotes) == 0 {
@@ -147,29 +140,43 @@ func CurrentRepository() (repo.Repository, error) {
 	return irepo.New(r.Host, r.Owner, r.Repo), nil
 }
 
-func resolveOptions(opts *api.ClientOptions, cfg config.Config) error {
-	var token string
-	var err error
+func optionsNeedResolution(opts *api.ClientOptions) bool {
 	if opts.Host == "" {
-		opts.Host = cfg.Host()
+		return true
 	}
 	if opts.AuthToken == "" {
-		token, err = cfg.AuthToken(opts.Host)
-		if err != nil {
-			return err
+		return true
+	}
+	if opts.UnixDomainSocket == "" && opts.Transport == nil {
+		return true
+	}
+	return false
+}
+
+func resolveOptions(opts *api.ClientOptions) error {
+	cfg, _ := config.Read()
+	if opts.Host == "" {
+		opts.Host, _ = auth.DefaultHost()
+	}
+	if opts.AuthToken == "" {
+		opts.AuthToken, _ = auth.TokenForHost(opts.Host)
+		if opts.AuthToken == "" {
+			return fmt.Errorf("authentication token not found for host %s", opts.Host)
 		}
-		opts.AuthToken = token
+	}
+	if opts.UnixDomainSocket == "" && cfg != nil {
+		opts.UnixDomainSocket, _ = cfg.Get([]string{"http_unix_socket"})
 	}
 	return nil
 }
 
-func translateRemotes(remotes git.RemoteSet, urlTranslate func(*url.URL) *url.URL) {
+func translateRemotes(remotes git.RemoteSet, translator ssh.Translator) {
 	for _, r := range remotes {
 		if r.FetchURL != nil {
-			r.FetchURL = urlTranslate(r.FetchURL)
+			r.FetchURL = translator.Translate(r.FetchURL)
 		}
 		if r.PushURL != nil {
-			r.PushURL = urlTranslate(r.PushURL)
+			r.PushURL = translator.Translate(r.PushURL)
 		}
 	}
 }
