@@ -3,7 +3,7 @@ module github.com/tektoncd/operator
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/cenkalti/backoff/v3 v3.2.2
-	github.com/cli/go-gh v0.0.3
+	github.com/cli/go-gh v0.1.0
 	github.com/go-logr/logr v1.2.3
 	github.com/go-logr/zapr v1.2.3
 	github.com/golang/snappy v0.0.4
@@ -209,6 +209,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0 // indirect
 	github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 // indirect
 	github.com/theupdateframework/go-tuf v0.0.0-20210722233521-90e262754396 // indirect
+	github.com/thlib/go-timezone-local v0.0.0-20210907160436-ef149e42d28e // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
 	github.com/urfave/cli v1.22.5 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect

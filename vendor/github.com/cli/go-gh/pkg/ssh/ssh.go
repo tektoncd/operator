@@ -1,3 +1,5 @@
+// Package ssh is a set of types and functions for parsing and
+// applying a user's SSH hostname aliases.
 package ssh
 
 import (
@@ -15,34 +17,70 @@ var (
 	tokenRE      = regexp.MustCompile(`%[%h]`)
 )
 
-// Config encapsulates the translation of SSH hostname aliases.
-type Config map[string]string
+// Translator is the interface that encapsulates the SSH hostname alias translate method.
+type Translator interface {
+	Translate(*url.URL) *url.URL
+}
 
-// Translator returns a function that applies hostname aliases to URLs.
-func (m Config) Translator() func(*url.URL) *url.URL {
-	return func(u *url.URL) *url.URL {
-		if u.Scheme != "ssh" {
-			return u
-		}
-		resolvedHost, ok := m[u.Hostname()]
-		if !ok {
-			return u
-		}
-		if strings.EqualFold(u.Hostname(), "github.com") && strings.EqualFold(resolvedHost, "ssh.github.com") {
-			return u
-		}
-		newURL, _ := url.Parse(u.String())
-		newURL.Host = resolvedHost
-		return newURL
-	}
+type config struct {
+	aliases map[string]string
 }
 
 type parser struct {
-	dir    string
-	config Config
-	hosts  []string
-	open   func(string) (io.Reader, error)
-	glob   func(string) ([]string, error)
+	dir   string
+	cfg   config
+	hosts []string
+	open  func(string) (io.Reader, error)
+	glob  func(string) ([]string, error)
+}
+
+// NewTranslator constructs a map of SSH hostname aliases based on user and system configuration files.
+// It returns a Translator to apply these mappings.
+func NewTranslator() Translator {
+	configFiles := []string{
+		"/etc/ssh_config",
+		"/etc/ssh/ssh_config",
+	}
+
+	p := parser{}
+
+	if sshDir, err := homeDirPath(".ssh"); err == nil {
+		userConfig := filepath.Join(sshDir, "config")
+		configFiles = append([]string{userConfig}, configFiles...)
+		p.dir = filepath.Dir(sshDir)
+	}
+
+	for _, file := range configFiles {
+		_ = p.read(file)
+	}
+	return p.cfg
+}
+
+func homeDirPath(subdir string) (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	newPath := filepath.Join(homeDir, subdir)
+	return newPath, nil
+}
+
+// Translate applies applicable SSH hostname aliases to the specified URL and returns the resulting URL.
+func (c config) Translate(u *url.URL) *url.URL {
+	if u.Scheme != "ssh" {
+		return u
+	}
+	resolvedHost, ok := c.aliases[u.Hostname()]
+	if !ok {
+		return u
+	}
+	if strings.EqualFold(u.Hostname(), "github.com") && strings.EqualFold(resolvedHost, "ssh.github.com") {
+		return u
+	}
+	newURL, _ := url.Parse(u.String())
+	newURL.Host = resolvedHost
+	return newURL
 }
 
 func (p *parser) read(fileName string) error {
@@ -80,10 +118,10 @@ func (p *parser) read(fileName string) error {
 		case "hostname":
 			for _, host := range p.hosts {
 				for _, name := range strings.Fields(arguments) {
-					if p.config == nil {
-						p.config = make(Config)
+					if p.cfg.aliases == nil {
+						p.cfg.aliases = make(map[string]string)
 					}
-					p.config[host] = expandTokens(name, host)
+					p.cfg.aliases[host] = expandTokens(name, host)
 				}
 			}
 		case "include":
@@ -130,37 +168,6 @@ func (p *parser) absolutePath(parentFile, path string) string {
 	}
 
 	return filepath.Join(p.dir, ".ssh", path)
-}
-
-// ParseConfig constructs a map of SSH hostname aliases based on user and system configuration files.
-func ParseConfig() Config {
-	configFiles := []string{
-		"/etc/ssh_config",
-		"/etc/ssh/ssh_config",
-	}
-
-	p := parser{}
-
-	if sshDir, err := homeDirPath(".ssh"); err == nil {
-		userConfig := filepath.Join(sshDir, "config")
-		configFiles = append([]string{userConfig}, configFiles...)
-		p.dir = filepath.Dir(sshDir)
-	}
-
-	for _, file := range configFiles {
-		_ = p.read(file)
-	}
-	return p.config
-}
-
-func homeDirPath(subdir string) (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-
-	newPath := filepath.Join(homeDir, subdir)
-	return newPath, nil
 }
 
 func expandTokens(text, host string) string {

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,9 +24,37 @@ func NewRESTClient(host string, opts *api.ClientOptions) api.RESTClient {
 	}
 }
 
-func (c restClient) Do(method string, path string, body io.Reader, response interface{}) error {
+func (c restClient) RequestWithContext(ctx context.Context, method string, path string, body io.Reader) (*http.Response, error) {
 	url := restURL(c.host, path)
-	req, err := http.NewRequest(method, url, body)
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return resp, err
+	}
+
+	success := resp.StatusCode >= 200 && resp.StatusCode < 300
+	if !success {
+		err = api.HTTPError{
+			Headers:    resp.Header,
+			RequestURL: resp.Request.URL,
+			StatusCode: resp.StatusCode,
+		}
+	}
+
+	return resp, err
+}
+
+func (c restClient) Request(method string, path string, body io.Reader) (*http.Response, error) {
+	return c.RequestWithContext(context.Background(), method, path, body)
+}
+
+func (c restClient) DoWithContext(ctx context.Context, method string, path string, body io.Reader, response interface{}) error {
+	url := restURL(c.host, path)
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return err
 	}
@@ -38,7 +67,7 @@ func (c restClient) Do(method string, path string, body io.Reader, response inte
 
 	success := resp.StatusCode >= 200 && resp.StatusCode < 300
 	if !success {
-		return handleHTTPError(resp)
+		return api.HandleHTTPError(resp)
 	}
 
 	if resp.StatusCode == http.StatusNoContent {
@@ -56,6 +85,10 @@ func (c restClient) Do(method string, path string, body io.Reader, response inte
 	}
 
 	return nil
+}
+
+func (c restClient) Do(method string, path string, body io.Reader, response interface{}) error {
+	return c.DoWithContext(context.Background(), method, path, body, response)
 }
 
 func (c restClient) Delete(path string, resp interface{}) error {
@@ -86,8 +119,12 @@ func restURL(hostname string, pathOrURL string) string {
 }
 
 func restPrefix(hostname string) string {
+	hostname = normalizeHostname(hostname)
 	if isEnterprise(hostname) {
 		return fmt.Sprintf("https://%s/api/v3/", hostname)
 	}
-	return "https://api.github.com/"
+	if strings.EqualFold(hostname, localhost) {
+		return fmt.Sprintf("http://api.%s/", hostname)
+	}
+	return fmt.Sprintf("https://api.%s/", hostname)
 }
