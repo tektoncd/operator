@@ -31,11 +31,14 @@ jobs:
         ref: ${{ matrix.branch }}
     - name: run operator-tool bump-bugfix
       run: |
+        export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
         go run ./cmd/operator-tool -config components.yaml bump-bugfix
     - name: create pull request
       uses: peter-evans/create-pull-request@v4
       with:
-        token: ${{ secrets.PAT }}
+        # token: ${{ secrets.PAT }}
+        # repo-token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: Bump payloads bugfix versions
         committer: GitHub <noreply@github.com>
         author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
