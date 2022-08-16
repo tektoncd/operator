@@ -43,6 +43,9 @@ spec:
       default: "latest"
   steps:
     - name: oc
+      env:
+      - name: HOME
+        value: /tekton/home
       image: image-registry.openshift-image-registry.svc:5000/openshift/cli:$(params.VERSION)
       script: |
         #!/usr/bin/env bash

@@ -74,6 +74,12 @@ spec:
   steps:
     - name: mvn-settings
       image: registry.access.redhat.com/ubi8/ubi-minimal:8.2
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      env:
+      - name: HOME
+        value: /tekton/home
       script: |
         #!/usr/bin/env bash
 
@@ -150,3 +156,6 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532
+      env:
+      - name: HOME
+        value: /tekton/home
