@@ -74,6 +74,12 @@ spec:
   steps:
     - name: mvn-settings
       image: registry.access.redhat.com/ubi8/ubi-minimal:8.2
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+      env:
+      - name: HOME
+        value: /tekton/home
       script: |
         #!/usr/bin/env bash
 
@@ -140,6 +146,9 @@ spec:
         fi
 
     - name: mvn-goals
+      env:
+      - name: HOME
+        value: /tekton/home
       image: $(params.MAVEN_IMAGE)
       workingDir: $(workspaces.source.path)/$(params.CONTEXT_DIR)
       command: ["/usr/bin/mvn"]
