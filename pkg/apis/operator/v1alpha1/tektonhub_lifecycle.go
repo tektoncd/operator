@@ -31,7 +31,6 @@ const (
 	ApiDependenciesInstalled apis.ConditionType = "ApiDependenciesInstalled"
 	ApiInstallerSetAvailable apis.ConditionType = "ApiInstallSetAvailable"
 	// UI
-	UiDependenciesInstalled apis.ConditionType = "UiDependenciesInstalled"
 	UiInstallerSetAvailable apis.ConditionType = "UiInstallSetAvailable"
 )
 
@@ -48,7 +47,6 @@ var (
 		PreReconciler,
 		ApiDependenciesInstalled,
 		ApiInstallerSetAvailable,
-		UiDependenciesInstalled,
 		UiInstallerSetAvailable,
 		PostReconciler,
 	)
@@ -164,27 +162,6 @@ func (ths *TektonHubStatus) MarkApiInstallerSetNotAvailable(msg string) {
 
 func (ths *TektonHubStatus) MarkApiInstallerSetAvailable() {
 	hubCondSet.Manage(ths).MarkTrue(ApiInstallerSetAvailable)
-}
-
-// UI
-func (ths *TektonHubStatus) MarkUiDependencyInstalling(msg string) {
-	ths.MarkNotReady("Dependencies installing for UI")
-	hubCondSet.Manage(ths).MarkFalse(
-		UiDependenciesInstalled,
-		"Error",
-		"Dependencies are installing for UI: %s", msg)
-}
-
-func (ths *TektonHubStatus) MarkUiDependencyMissing(msg string) {
-	ths.MarkNotReady("Missing Dependencies for UI")
-	hubCondSet.Manage(ths).MarkFalse(
-		UiDependenciesInstalled,
-		"Error",
-		"Dependencies are missing for UI: %s", msg)
-}
-
-func (ths *TektonHubStatus) MarkUiDependenciesInstalled() {
-	hubCondSet.Manage(ths).MarkTrue(UiDependenciesInstalled)
 }
 
 func (ths *TektonHubStatus) MarkUiInstallerSetNotAvailable(msg string) {
