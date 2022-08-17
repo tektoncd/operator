@@ -17,8 +17,7 @@ import (
 // checkIfInstallerSetExist checks if installer set exists for a component and return true/false based on it
 // and if installer set which already exist is of older version then it deletes and return false to create a new
 // installer set
-func (r *Reconciler) checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVersion string,
-	th *v1alpha1.TektonHub, installerSetType string) (bool, error) {
+func (r *Reconciler) checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVersion string, installerSetType string) (bool, error) {
 
 	labels := r.getLabels(installerSetType)
 	labelSelector, err := common.LabelSelector(labels)

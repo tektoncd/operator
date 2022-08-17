@@ -59,13 +59,12 @@ type Reconciler struct {
 }
 
 var (
-	errKeyMissing          error = fmt.Errorf("secret doesn't contains all the keys")
-	namespace              string
-	errconfigMapKeyMissing error  = fmt.Errorf("configMap doesn't contains all the keys")
-	db                     string = fmt.Sprintf("%s-%s", hubprefix, "db")
-	dbMigration            string = fmt.Sprintf("%s-%s", hubprefix, "db-migration")
-	api                    string = fmt.Sprintf("%s-%s", hubprefix, "api")
-	ui                     string = fmt.Sprintf("%s-%s", hubprefix, "ui")
+	errKeyMissing error = fmt.Errorf("secret doesn't contains all the keys")
+	namespace     string
+	db            string = fmt.Sprintf("%s-%s", hubprefix, "db")
+	dbMigration   string = fmt.Sprintf("%s-%s", hubprefix, "db-migration")
+	api           string = fmt.Sprintf("%s-%s", hubprefix, "api")
+	ui            string = fmt.Sprintf("%s-%s", hubprefix, "ui")
 	// Check that our Reconciler implements controller.Reconciler
 	_ tektonhubconciler.Interface = (*Reconciler)(nil)
 	_ tektonhubconciler.Finalizer = (*Reconciler)(nil)
@@ -89,6 +88,7 @@ const (
 	createdByValue          = "TektonHub"
 	dbSecretName            = "tekton-hub-db"
 	apiConfigName           = "tekton-hub-api"
+	uiConfigName            = "tekton-hub-ui"
 )
 
 // FinalizeKind removes all resources after deletion of a TektonHub.
@@ -200,14 +200,7 @@ func (r *Reconciler) handleError(err error, th *v1alpha1.TektonHub) error {
 }
 
 func (r *Reconciler) manageUiComponent(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
-	if err := r.validateUiConfigMap(ctx, th); err != nil {
-		th.Status.MarkUiDependencyMissing(fmt.Sprintf("UI config map not present: %v", err.Error()))
-		return v1alpha1.REQUEUE_EVENT_AFTER
-	}
-
-	th.Status.MarkUiDependenciesInstalled()
-
-	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, ui)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, ui)
 	if err != nil {
 		return err
 	}
@@ -226,6 +219,42 @@ func (r *Reconciler) manageUiComponent(ctx context.Context, th *v1alpha1.TektonH
 			return err
 		}
 
+	}
+
+	if exist {
+		// Get the installerset, check for the hash of spec
+		// if not same delete the installerset.
+		labels := r.getLabels(ui)
+		labelSelector, err := common.LabelSelector(labels)
+		if err != nil {
+			return err
+		}
+
+		compInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
+		if err != nil {
+			return err
+		}
+
+		if compInstallerSet != "" {
+			ctIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+				Get(ctx, compInstallerSet, metav1.GetOptions{})
+			if err != nil {
+				return err
+			}
+
+			lastAppliedTektonHubCRSpecHash := ctIs.Annotations[v1alpha1.LastAppliedHashKey]
+			tektonHubCRSpecHash, err := hash.Compute(th.Spec)
+			if err != nil {
+				return err
+			}
+
+			if tektonHubCRSpecHash != lastAppliedTektonHubCRSpecHash {
+				if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().Delete(ctx, ctIs.Name, metav1.DeleteOptions{}); err != nil {
+					return err
+				}
+				return v1alpha1.RECONCILE_AGAIN_ERR
+			}
+		}
 	}
 
 	err = r.checkComponentStatus(ctx, th, ui)
@@ -247,7 +276,7 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 
 	th.Status.MarkApiDependenciesInstalled()
 
-	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, api)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, api)
 	if err != nil {
 		return err
 	}
@@ -330,7 +359,7 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 func (r *Reconciler) manageDbMigrationComponent(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
 
 	// Check if the InstallerSet is available for DB-migration
-	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, dbMigration)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, dbMigration)
 	if err != nil {
 		return err
 	}
@@ -408,7 +437,7 @@ func (r *Reconciler) manageDbComponent(ctx context.Context, th *v1alpha1.TektonH
 	}
 	th.Status.MarkDbDependenciesInstalled()
 
-	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, th, db)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, db)
 	if err != nil {
 		return err
 	}
@@ -502,53 +531,6 @@ func (r *Reconciler) validateApiDependencies(ctx context.Context, th *v1alpha1.T
 	return nil
 }
 
-func (r *Reconciler) validateUiConfigMap(ctx context.Context, th *v1alpha1.TektonHub) error {
-	logger := logging.FromContext(ctx)
-
-	uiConfigMapKeys := []string{"API_URL", "AUTH_BASE_URL", "API_VERSION", "REDIRECT_URI"}
-	_, err := r.getConfigMap(ctx, ui, namespace, uiConfigMapKeys)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			configMap := createUiConfigMap(ui, namespace, th)
-			_, err = r.kubeClientSet.CoreV1().ConfigMaps(namespace).Create(ctx, configMap, metav1.CreateOptions{})
-			if err != nil {
-				logger.Error(err)
-				th.Status.MarkUiDependencyMissing(fmt.Sprintf("%s configMap is missing", ui))
-				return err
-			}
-			return nil
-		}
-		if err == errconfigMapKeyMissing {
-			th.Status.MarkUiDependencyMissing(fmt.Sprintf("%s configMap is missing the keys", ui))
-			return err
-		} else {
-			logger.Error(err)
-			return err
-		}
-	}
-
-	return nil
-}
-
-func createUiConfigMap(name, namespace string, th *v1alpha1.TektonHub) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				"ui": "tektonhub-ui",
-			},
-			OwnerReferences: []metav1.OwnerReference{getOwnerRef(th)},
-		},
-		Data: map[string]string{
-			"API_URL":       th.Status.ApiRouteUrl,
-			"AUTH_BASE_URL": th.Status.AuthRouteUrl,
-			"API_VERSION":   "v1",
-			"REDIRECT_URI":  th.Status.UiRouteUrl,
-		},
-	}
-}
-
 func (r *Reconciler) getManifest(ctx context.Context, th *v1alpha1.TektonHub, manifestLocation string) (*mf.Manifest, error) {
 	manifest := r.manifest.Append()
 
@@ -577,6 +559,10 @@ func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1
 		common.JobImages(images),
 		addConfigMapKeyValue(apiConfigName, "CONFIG_FILE_URL", th.Spec.Api.HubConfigUrl),
 		addConfigMapKeyValue(apiConfigName, "CATALOG_REFRESH_INTERVAL", th.Spec.Api.CatalogRefreshInterval),
+		addConfigMapKeyValue(uiConfigName, "API_URL", th.Status.ApiRouteUrl),
+		addConfigMapKeyValue(uiConfigName, "AUTH_BASE_URL", th.Status.AuthRouteUrl),
+		addConfigMapKeyValue(uiConfigName, "API_VERSION", "v1"),
+		addConfigMapKeyValue(uiConfigName, "REDIRECT_URI", th.Status.UiRouteUrl),
 	}
 	trans = append(trans, extra...)
 
@@ -954,21 +940,6 @@ func (r *Reconciler) getSecret(ctx context.Context, name, targetNs string, keys 
 	}
 
 	return secret, nil
-}
-
-func (r *Reconciler) getConfigMap(ctx context.Context, name, targetNs string, keys []string) (*corev1.ConfigMap, error) {
-	configMap, err := r.kubeClientSet.CoreV1().ConfigMaps(targetNs).Get(ctx, name, metav1.GetOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	for _, key := range keys {
-		if _, ok := configMap.Data[key]; !ok {
-			return nil, errKeyMissing
-		}
-	}
-
-	return configMap, nil
 }
 
 func (r *Reconciler) createApiSecret(ctx context.Context, th *v1alpha1.TektonHub, hubDir, comp string) error {
