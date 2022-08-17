@@ -21,12 +21,11 @@ jobs:
     - name: create pull request
       uses: peter-evans/create-pull-request@v4
       with:
-        # token: ${{ secrets.PAT }}
-        # repo-token: ${{ secrets.GITHUB_TOKEN }}
         token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: Bump payloads versions
-        committer: GitHub <noreply@github.com>
-        author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+        committer: tekton-robot <dlorenc+tekton@google.com>
+        author: tekton-robot <dlorenc+tekton@google.com>
+       # author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
         branch: bot-bump-payload
         delete-branch: true
         title: "[bot] bump payload versions"
