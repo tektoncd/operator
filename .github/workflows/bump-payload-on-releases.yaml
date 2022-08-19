@@ -39,7 +39,8 @@ jobs:
         commit-message: Bump payloads versions
         committer: tekton-robot <dlorenc+tekton@google.com>
         author: tekton-robot <dlorenc+tekton@google.com>
-       # author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
+        signoff: true
+        # author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
         branch: bot-bump-payload-${{ matrix.branch }}
         delete-branch: true
         title: "[bot] bump payload versions"
