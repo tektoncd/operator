@@ -14,12 +14,11 @@ spec:
     description: Target platform for for which the payload is going to be used
     default: "kubernetes openshift"
   steps:
-  - image: docker.io/curlimages/curl:7.75.0
+  - image: docker.io/library/golang:latest
     name: fetch-components
     workingDir: /go/src/github.com/tektoncd/operator
     script: |
       #!/usr/bin/env sh
-      apk add bash # Bash is not present
       for platform in $(params.TARGET_PLATFORMS); do
         echo "Fetching Tekton components for ${platform} build"
         ./hack/fetch-releases.sh ${platform} ${params.components}
