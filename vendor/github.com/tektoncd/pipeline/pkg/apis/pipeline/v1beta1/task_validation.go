@@ -52,10 +52,11 @@ var objectVariableNameFormatRegex = regexp.MustCompile(objectVariableNameFormat)
 
 // Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
-	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
+	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
+	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 	return errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
@@ -243,7 +244,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	}
 
 	if s.OnError != "" {
-		if s.OnError != "continue" && s.OnError != "stopAndFail" {
+		if !isParamRefs(string(s.OnError)) && s.OnError != Continue && s.OnError != StopAndFail {
 			errs = errs.Also(&apis.FieldError{
 				Message: fmt.Sprintf("invalid value: %v", s.OnError),
 				Paths:   []string{"onError"},
@@ -362,9 +363,10 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params []Para
 			stringParameterNames.Insert(p.Name)
 		}
 	}
-
 	errs = errs.Also(validateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParamSpecs))
-	errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
+	if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
+		errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
+	}
 	errs = errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
 	errs = errs.Also(validateObjectDefault(objectParamSpecs))
 	return errs.Also(validateObjectUsage(ctx, steps, objectParamSpecs))
@@ -433,7 +435,7 @@ func validateObjectDefault(objectParams []ParamSpec) (errs *apis.FieldError) {
 }
 
 // ValidateObjectKeys validates if object keys defined in properties are all provided in its value provider iff the provider is not nil.
-func ValidateObjectKeys(properties map[string]PropertySpec, propertiesProvider *ArrayOrString) (errs *apis.FieldError) {
+func ValidateObjectKeys(properties map[string]PropertySpec, propertiesProvider *ParamValue) (errs *apis.FieldError) {
 	if propertiesProvider == nil || propertiesProvider.ObjectVal == nil {
 		return nil
 	}
@@ -585,9 +587,7 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 	errs := validateTaskVariable(step.Name, prefix, vars).ViaField("name")
 	errs = errs.Also(validateTaskVariable(step.Image, prefix, vars).ViaField("image"))
 	errs = errs.Also(validateTaskVariable(step.WorkingDir, prefix, vars).ViaField("workingDir"))
-	if !(config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields == "alpha" && prefix == "params") {
-		errs = errs.Also(validateTaskVariable(step.Script, prefix, vars).ViaField("script"))
-	}
+	errs = errs.Also(validateTaskVariable(step.Script, prefix, vars).ViaField("script"))
 	for i, cmd := range step.Command {
 		errs = errs.Also(validateTaskVariable(cmd, prefix, vars).ViaFieldIndex("command", i))
 	}
@@ -602,6 +602,7 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 		errs = errs.Also(validateTaskVariable(v.MountPath, prefix, vars).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
 		errs = errs.Also(validateTaskVariable(v.SubPath, prefix, vars).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
 	}
+	errs = errs.Also(validateTaskVariable(string(step.OnError), prefix, vars).ViaField("onError"))
 	return errs
 }
 
@@ -619,4 +620,10 @@ func validateTaskNoArrayReferenced(value, prefix string, arrayNames sets.String)
 
 func validateTaskArraysIsolated(value, prefix string, arrayNames sets.String) *apis.FieldError {
 	return substitution.ValidateVariableIsolatedP(value, prefix, arrayNames)
+}
+
+// isParamRefs attempts to check if a specified string looks like it contains any parameter reference
+// This is useful to make sure the specified value looks like a Parameter Reference before performing any strict validation
+func isParamRefs(s string) bool {
+	return strings.HasPrefix(s, "$("+ParamsPrefix)
 }
