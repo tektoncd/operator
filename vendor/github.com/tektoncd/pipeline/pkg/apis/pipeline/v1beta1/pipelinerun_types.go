@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	runv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/run/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -217,7 +218,7 @@ type PipelineRunSpec struct {
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// PodTemplate holds pod specific configuration
-	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
+	PodTemplate *pod.PodTemplate `json:"podTemplate,omitempty"`
 	// Workspaces holds a set of workspace bindings that must match names
 	// with those declared in the pipeline.
 	// +optional
@@ -459,7 +460,7 @@ type PipelineRunResult struct {
 	Name string `json:"name"`
 
 	// Value is the result returned from the execution of this PipelineRun
-	Value ArrayOrString `json:"value"`
+	Value ResultValue `json:"value"`
 }
 
 // PipelineRunTaskRunStatus contains the name of the PipelineTask for this TaskRun and the TaskRun's Status
@@ -508,9 +509,9 @@ type PipelineTaskRun struct {
 // PipelineTaskRunSpec  can be used to configure specific
 // specs for a concrete Task
 type PipelineTaskRunSpec struct {
-	PipelineTaskName       string       `json:"pipelineTaskName,omitempty"`
-	TaskServiceAccountName string       `json:"taskServiceAccountName,omitempty"`
-	TaskPodTemplate        *PodTemplate `json:"taskPodTemplate,omitempty"`
+	PipelineTaskName       string           `json:"pipelineTaskName,omitempty"`
+	TaskServiceAccountName string           `json:"taskServiceAccountName,omitempty"`
+	TaskPodTemplate        *pod.PodTemplate `json:"taskPodTemplate,omitempty"`
 	// +listType=atomic
 	StepOverrides []TaskRunStepOverride `json:"stepOverrides,omitempty"`
 	// +listType=atomic
@@ -542,6 +543,7 @@ func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSp
 			s.StepOverrides = task.StepOverrides
 			s.SidecarOverrides = task.SidecarOverrides
 			s.Metadata = task.Metadata
+			s.ComputeResources = task.ComputeResources
 		}
 	}
 	return s

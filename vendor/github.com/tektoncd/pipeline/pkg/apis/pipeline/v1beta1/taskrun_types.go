@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -52,13 +53,16 @@ type TaskRunSpec struct {
 	// Used for cancelling a taskrun (and maybe more later on)
 	// +optional
 	Status TaskRunSpecStatus `json:"status,omitempty"`
+	// Status message for cancellation.
+	// +optional
+	StatusMessage TaskRunSpecStatusMessage `json:"statusMessage,omitempty"`
 	// Time after which the build times out. Defaults to 1 hour.
 	// Specified build timeout should be less than 24h.
 	// Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// PodTemplate holds pod specific configuration
-	PodTemplate *PodTemplate `json:"podTemplate,omitempty"`
+	PodTemplate *pod.PodTemplate `json:"podTemplate,omitempty"`
 	// Workspaces is a list of WorkspaceBindings from volumes to workspaces.
 	// +optional
 	// +listType=atomic
@@ -88,6 +92,15 @@ const (
 	// TaskRunSpecStatusCancelled indicates that the user wants to cancel the task,
 	// if not already cancelled or terminated
 	TaskRunSpecStatusCancelled = "TaskRunCancelled"
+)
+
+// TaskRunSpecStatusMessage defines human readable status messages for the TaskRun.
+type TaskRunSpecStatusMessage string
+
+const (
+	// TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
+	// TaskRun was a part of has been cancelled.
+	TaskRunCancelledByPipelineMsg TaskRunSpecStatusMessage = "TaskRun cancelled as the PipelineRun it belongs to has been cancelled."
 )
 
 // TaskRunDebug defines the breakpoint config for a particular TaskRun

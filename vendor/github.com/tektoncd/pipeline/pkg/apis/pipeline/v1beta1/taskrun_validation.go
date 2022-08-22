@@ -33,10 +33,10 @@ var _ apis.Validatable = (*TaskRun)(nil)
 
 // Validate taskrun
 func (tr *TaskRun) Validate(ctx context.Context) *apis.FieldError {
-	errs := validate.ObjectMetadata(tr.GetObjectMeta()).ViaField("metadata")
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
+	errs := validate.ObjectMetadata(tr.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(tr.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
 
@@ -55,10 +55,15 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 	// Validate TaskSpec if it's present.
 	if ts.TaskSpec != nil {
+		// skip validation of parameter and workspaces variables since we validate them via taskrunspec below.
+		ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, true)
 		errs = errs.Also(ts.TaskSpec.Validate(ctx).ViaField("taskSpec"))
 	}
 
 	errs = errs.Also(ValidateParameters(ctx, ts.Params).ViaField("params"))
+
+	// Validate propagated parameters
+	errs = errs.Also(ts.validateInlineParameters(ctx))
 	errs = errs.Also(ValidateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
 	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 	if ts.Debug != nil {
@@ -83,6 +88,12 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s should be %s", ts.Status, TaskRunSpecStatusCancelled), "status"))
 		}
 	}
+	if ts.Status == "" {
+		if ts.StatusMessage != "" {
+			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("statusMessage should not be set if status is not set, but it is currently set to %s", ts.StatusMessage), "statusMessage"))
+		}
+	}
+
 	if ts.Timeout != nil {
 		// timeout should be a valid duration of at least 0.
 		if ts.Timeout.Duration < 0 {
@@ -90,6 +101,42 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
+	return errs
+}
+
+// validateInlineParameters validates that any parameters called in the
+// Task spec are declared in the TaskRun.
+// This is crucial for propagated parameters because the parameters could
+// be defined under taskRun and then called directly in the task steps.
+// In this case, parameters cannot be validated by the underlying taskSpec
+// since they may not have the parameters declared because of propagation.
+func (ts *TaskRunSpec) validateInlineParameters(ctx context.Context) (errs *apis.FieldError) {
+	if ts.TaskSpec == nil {
+		return errs
+	}
+	var paramSpec []ParamSpec
+	for _, p := range ts.Params {
+		pSpec := ParamSpec{
+			Name:    p.Name,
+			Default: &p.Value,
+		}
+		paramSpec = append(paramSpec, pSpec)
+	}
+	for _, p := range ts.TaskSpec.Params {
+		skip := false
+		for _, ps := range paramSpec {
+			if ps.Name == p.Name {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			paramSpec = append(paramSpec, p)
+		}
+	}
+	if ts.TaskSpec != nil && ts.TaskSpec.Steps != nil {
+		errs = errs.Also(ValidateParameterVariables(config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false), ts.TaskSpec.Steps, paramSpec))
+	}
 	return errs
 }
 

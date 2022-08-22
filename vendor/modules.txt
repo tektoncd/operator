@@ -872,7 +872,7 @@ github.com/spf13/viper/internal/encoding/hcl
 github.com/spf13/viper/internal/encoding/json
 github.com/spf13/viper/internal/encoding/toml
 github.com/spf13/viper/internal/encoding/yaml
-# github.com/stretchr/testify v1.7.0
+# github.com/stretchr/testify v1.8.0
 ## explicit; go 1.13
 github.com/stretchr/testify/assert
 # github.com/subosito/gotenv v1.2.0
@@ -892,7 +892,7 @@ github.com/syndtr/goleveldb/leveldb/opt
 github.com/syndtr/goleveldb/leveldb/storage
 github.com/syndtr/goleveldb/leveldb/table
 github.com/syndtr/goleveldb/leveldb/util
-# github.com/tektoncd/pipeline v0.38.3
+# github.com/tektoncd/pipeline v0.39.0
 ## explicit; go 1.17
 github.com/tektoncd/pipeline/pkg/apis/config
 github.com/tektoncd/pipeline/pkg/apis/pipeline
@@ -914,7 +914,7 @@ github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag
 github.com/tektoncd/pipeline/pkg/substitution
 github.com/tektoncd/pipeline/test/diff
 github.com/tektoncd/pipeline/test/parse
-# github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f
+# github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
 ## explicit; go 1.13
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
@@ -1237,7 +1237,7 @@ golang.org/x/oauth2/jwt
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9
+# golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 ## explicit; go 1.17
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs
@@ -1251,6 +1251,12 @@ golang.org/x/sys/windows/registry
 golang.org/x/term
 # golang.org/x/text v0.3.7
 ## explicit; go 1.17
+golang.org/x/text/cases
+golang.org/x/text/internal
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/tag
+golang.org/x/text/language
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
@@ -1578,7 +1584,7 @@ k8s.io/api/scheduling/v1beta1
 k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
-# k8s.io/apiextensions-apiserver v0.23.8
+# k8s.io/apiextensions-apiserver v0.23.9
 ## explicit; go 1.16
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
@@ -1940,7 +1946,7 @@ k8s.io/code-generator/cmd/lister-gen/args
 k8s.io/code-generator/cmd/lister-gen/generators
 k8s.io/code-generator/pkg/namer
 k8s.io/code-generator/pkg/util
-# k8s.io/gengo v0.0.0-20220307231824-4627b89bbf1b
+# k8s.io/gengo v0.0.0-20220613173612-397b4ae3bce7
 ## explicit; go 1.13
 k8s.io/gengo/args
 k8s.io/gengo/examples/deepcopy-gen/generators
@@ -1950,10 +1956,12 @@ k8s.io/gengo/generator
 k8s.io/gengo/namer
 k8s.io/gengo/parser
 k8s.io/gengo/types
-# k8s.io/klog/v2 v2.60.1-0.20220317184644-43cc75f9ae89
+# k8s.io/klog/v2 v2.70.2-0.20220707122935-0990e81f1a8f
 ## explicit; go 1.13
 k8s.io/klog/v2
 k8s.io/klog/v2/internal/buffer
+k8s.io/klog/v2/internal/clock
+k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 # k8s.io/kube-openapi v0.0.0-20220124234850-424119656bbf
@@ -1972,8 +1980,8 @@ k8s.io/utils/internal/third_party/forked/golang/net
 k8s.io/utils/net
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# knative.dev/pkg v0.0.0-20220705130606-e60d250dc637
-## explicit; go 1.17
+# knative.dev/pkg v0.0.0-20220805012121-7b8b06028e4f
+## explicit; go 1.18
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
 knative.dev/pkg/apis/duck/ducktypes
