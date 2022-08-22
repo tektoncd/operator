@@ -38,8 +38,8 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: Bump payloads versions
-        committer: tekton-robot <dlorenc+tekton@google.com>
-        author: tekton-robot <dlorenc+tekton@google.com>
+        committer: Vincent Demeester <vdemeest@redhat.com>
+        author: Vincent Demeester <vdemeest@redhat.com>
         signoff: true
         # author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
         branch: bot-bump-payload-${{ matrix.branch }}
