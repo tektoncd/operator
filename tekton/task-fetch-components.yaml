@@ -18,10 +18,10 @@ spec:
     name: fetch-components
     workingDir: /go/src/github.com/tektoncd/operator
     script: |
-      #!/usr/bin/env sh
+      #!/usr/bin/env bash
       for platform in $(params.TARGET_PLATFORMS); do
         echo "Fetching Tekton components for ${platform} build"
-        ./hack/fetch-releases.sh ${platform} ${params.components}
+        ./hack/fetch-releases.sh ${platform} $(params.components)
         [[ "$?" != 0 ]] &&  exit 1
         # print directory structure of cmd/<platform>/operator/kodata
         find cmd/${platform}/operator/kodata/
