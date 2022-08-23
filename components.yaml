@@ -6,16 +6,16 @@ dashboard:
   version: v0.28.0
 hub:
   github: tektoncd/hub
-  version: v1.8.0
+  version: v1.9.0
 pipeline:
   github: tektoncd/pipeline
-  version: v0.38.1
+  version: v0.39.0
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
-  version: v0.11.0
+  version: v0.11.1
 results:
   github: tektoncd/results
   version: v0.4.0
 triggers:
   github: tektoncd/triggers
-  version: v0.20.1
+  version: v0.20.2
