@@ -1,5 +1,5 @@
 apiVersion: v2
-name: tekton-operator-chart
+name: tekton-operator
 description: A Helm chart to deploy the Tekton Operator and its CRDs
 type: application
 version: 0.61.0
