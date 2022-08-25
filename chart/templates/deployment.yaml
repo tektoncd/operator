@@ -65,9 +65,64 @@ spec:
               {{- end }}
             - name: CONFIG_OBSERVABILITY_NAME
               value: {{ include "tekton-operator.fullname" . }}-observability
+          args:
+            - "-controllers"
+            - "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresults,tektondashboard"
+            - "-unique-process-name"
+            - "tekton-operator-lifecycle"
           image: {{ include "tekton-operator.operator-image" . }}
           imagePullPolicy: {{ .Values.operator.image.pullPolicy }}
-          name: openshift-pipelines-operator
+          name: tekton-operator-lifecycle
+          resources:
+            {{- toYaml .Values.operator.resources | nindent 12 }}
+
+        - env:
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              {{- if .Values.operator.operatorName }}
+              value: {{- .Values.operator.operatorName }}
+              {{- else }}
+              {{- if .Values.openshift.enabled }}
+              value: redhat-openshift-pipelines-operator
+              {{- else }}
+              value: tekton-operator
+              {{- end }}
+              {{- end }}
+            - name: IMAGE_PIPELINES_PROXY
+              value: {{ include "tekton-operator.webhook-proxy-image" . }}
+            - name: METRICS_DOMAIN
+              value: {{ .Values.service.metricsDomain }}
+            - name: VERSION
+              value: {{ .Values.webhook.image.tag | default .Chart.AppVersion | quote }}
+            - name: AUTOINSTALL_COMPONENTS
+              value: {{ .Values.operator.autoInstallComponents | quote }}
+            - name: DEFAULT_TARGET_NAMESPACE
+              {{- if .Values.operator.defaultTargetNamespace }}
+              value: {{ .Values.operator.defaultTargetNamespace | quote }}
+              {{- else }}
+              {{- if .Values.openshift.enabled }}
+              value: openshift-pipelines
+              {{- else }}
+              value: tekton-pipelines
+              {{- end }}
+              {{- end }}
+            - name: CONFIG_OBSERVABILITY_NAME
+              value: {{ include "tekton-operator.fullname" . }}-observability
+          args:
+            - "-controllers"
+            - "tektoninstallerset"
+            - "-unique-process-name"
+            - "tekton-operator-cluster-operations"
+          image: {{ include "tekton-operator.operator-image" . }}
+          imagePullPolicy: {{ .Values.operator.image.pullPolicy }}
+          name: tekton-operator-cluster-operations
           resources:
             {{- toYaml .Values.operator.resources | nindent 12 }}
       serviceAccountName: {{ include "tekton-operator.serviceAccountName" . }}
@@ -119,7 +174,7 @@ spec:
             - name: WEBHOOK_SERVICE_NAME
               value: {{ include "tekton-operator.fullname" . }}-webhook
             - name: WEBHOOK_SECRET_NAME
-              value: {{ .Values.webhook.certSecret.name | default (include "tekton-operator.fullname" .) }}
+              value: {{ .Values.webhook.certSecret.name | default (include "tekton-operator.fullname" .) }}-webhook-certs
             - name: METRICS_DOMAIN
               value: {{ .Values.service.metricsDomain }}
           image: {{ include "tekton-operator.webhook-image" . }}
