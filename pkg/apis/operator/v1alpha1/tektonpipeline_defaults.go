@@ -37,6 +37,9 @@ func (p *PipelineProperties) setDefaults() {
 	if p.DisableCredsInit == nil {
 		p.DisableCredsInit = ptr.Bool(false)
 	}
+	if p.AwaitSidecarReadiness == nil {
+		p.AwaitSidecarReadiness = ptr.Bool(true)
+	}
 	if p.RunningInEnvironmentWithInjectedSidecars == nil {
 		p.RunningInEnvironmentWithInjectedSidecars = ptr.Bool(true)
 	}
@@ -49,12 +52,19 @@ func (p *PipelineProperties) setDefaults() {
 	if p.EnableCustomTasks == nil {
 		p.EnableCustomTasks = ptr.Bool(false)
 	}
+	if p.SendCloudEventsForRuns == nil {
+		p.SendCloudEventsForRuns = ptr.Bool(false)
+	}
 	if p.EnableApiFields == "" {
 		p.EnableApiFields = ApiFieldStable
 	}
-	if p.ScopeWhenExpressionsToTask == nil {
-		p.ScopeWhenExpressionsToTask = ptr.Bool(false)
+	if p.EmbeddedStatus == "" {
+		p.EmbeddedStatus = FullEmbeddedStatus
 	}
+
+	// Deprecated: set to nil, remove in further release
+	p.ScopeWhenExpressionsToTask = nil
+
 	if p.MetricsPipelinerunDurationType == "" {
 		p.MetricsPipelinerunDurationType = DefaultMetricsPipelierunDurationType
 	}
@@ -67,5 +77,4 @@ func (p *PipelineProperties) setDefaults() {
 	if p.MetricsTaskrunLevel == "" {
 		p.MetricsTaskrunLevel = DefaultMetricsTaskrunLevel
 	}
-
 }

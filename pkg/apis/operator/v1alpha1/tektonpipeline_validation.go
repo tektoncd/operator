@@ -53,5 +53,11 @@ func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 			errs = errs.Also(apis.ErrInvalidValue(p.DefaultTimeoutMinutes, path+".default-timeout-minutes"))
 		}
 	}
+
+	if p.EmbeddedStatus != "" {
+		if p.EmbeddedStatus != FullEmbeddedStatus && p.EmbeddedStatus != BothEmbeddedStatus && p.EmbeddedStatus != MinimalEmbeddedStatus {
+			errs = errs.Also(apis.ErrInvalidValue(p.EmbeddedStatus, path+".embedded-status"))
+		}
+	}
 	return errs
 }

@@ -42,12 +42,15 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 
 	properties := PipelineProperties{
 		DisableCredsInit:                         ptr.Bool(false),
+		AwaitSidecarReadiness:                    ptr.Bool(true),
 		RunningInEnvironmentWithInjectedSidecars: ptr.Bool(true),
 		RequireGitSshSecretKnownHosts:            ptr.Bool(false),
 		EnableTektonOciBundles:                   ptr.Bool(false),
 		EnableCustomTasks:                        ptr.Bool(false),
 		EnableApiFields:                          ApiFieldStable,
-		ScopeWhenExpressionsToTask:               ptr.Bool(false),
+		EmbeddedStatus:                           FullEmbeddedStatus,
+		ScopeWhenExpressionsToTask:               nil,
+		SendCloudEventsForRuns:                   ptr.Bool(false),
 		PipelineMetricsProperties: PipelineMetricsProperties{
 			MetricsPipelinerunDurationType: DefaultMetricsPipelierunDurationType,
 			MetricsPipelinerunLevel:        DefaultMetricsPipelinerunLevel,
