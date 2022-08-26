@@ -341,6 +341,11 @@ func (in *PipelineProperties) DeepCopyInto(out *PipelineProperties) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.AwaitSidecarReadiness != nil {
+		in, out := &in.AwaitSidecarReadiness, &out.AwaitSidecarReadiness
+		*out = new(bool)
+		**out = **in
+	}
 	if in.RunningInEnvironmentWithInjectedSidecars != nil {
 		in, out := &in.RunningInEnvironmentWithInjectedSidecars, &out.RunningInEnvironmentWithInjectedSidecars
 		*out = new(bool)
@@ -358,6 +363,11 @@ func (in *PipelineProperties) DeepCopyInto(out *PipelineProperties) {
 	}
 	if in.EnableCustomTasks != nil {
 		in, out := &in.EnableCustomTasks, &out.EnableCustomTasks
+		*out = new(bool)
+		**out = **in
+	}
+	if in.SendCloudEventsForRuns != nil {
+		in, out := &in.SendCloudEventsForRuns, &out.SendCloudEventsForRuns
 		*out = new(bool)
 		**out = **in
 	}
