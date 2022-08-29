@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        branch: ${{ fromJSON(needs.build-matrix.outputs.branches) }}
+        branch: ${{ fromJSON(needs.build-release-matrix.outputs.branches) }}
     steps:
     - uses: actions/setup-go@v3
       with:
