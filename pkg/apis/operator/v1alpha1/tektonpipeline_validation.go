@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -44,7 +45,7 @@ func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) 
 func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 
 	if p.EnableApiFields != "" {
-		if p.EnableApiFields != ApiFieldStable && p.EnableApiFields != ApiFieldAlpha {
+		if p.EnableApiFields != config.StableAPIFields && p.EnableApiFields != config.AlphaAPIFields {
 			errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, path+".enable-api-fields"))
 		}
 	}
@@ -55,7 +56,7 @@ func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 	}
 
 	if p.EmbeddedStatus != "" {
-		if p.EmbeddedStatus != FullEmbeddedStatus && p.EmbeddedStatus != BothEmbeddedStatus && p.EmbeddedStatus != MinimalEmbeddedStatus {
+		if p.EmbeddedStatus != config.FullEmbeddedStatus && p.EmbeddedStatus != config.BothEmbeddedStatus && p.EmbeddedStatus != config.MinimalEmbeddedStatus {
 			errs = errs.Also(apis.ErrInvalidValue(p.EmbeddedStatus, path+".embedded-status"))
 		}
 	}

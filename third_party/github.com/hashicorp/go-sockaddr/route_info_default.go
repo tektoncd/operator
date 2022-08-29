@@ -1,3 +1,4 @@
+//go:build android || nacl || plan9
 // +build android nacl plan9
 
 package sockaddr

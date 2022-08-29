@@ -18,6 +18,8 @@ package v1alpha1
 
 import (
 	"context"
+
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 )
 
 func (tt *TektonTrigger) SetDefaults(ctx context.Context) {
@@ -27,7 +29,7 @@ func (tt *TektonTrigger) SetDefaults(ctx context.Context) {
 func (p *TriggersProperties) setDefaults() {
 
 	if p.EnableApiFields == "" {
-		p.EnableApiFields = ApiFieldStable
+		p.EnableApiFields = config.DefaultEnableAPIFields
 	}
 
 }

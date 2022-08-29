@@ -172,7 +172,7 @@ func runFeatureTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonCon
 		tc.Spec.Pipeline.OptionalPipelineProperties.DefaultServiceAccount = "foo"
 
 		// triggers feature-flags configMap
-		tc.Spec.Trigger.TriggersProperties.EnableApiFields = v1alpha1.ApiFieldAlpha
+		tc.Spec.Trigger.TriggersProperties.EnableApiFields = "alpha"
 
 		// triggers config-defaults configMap
 		tc.Spec.Trigger.OptionalTriggersProperties.DefaultServiceAccount = "foo"
@@ -238,7 +238,7 @@ func runFeatureTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonCon
 				return false, err
 			}
 			if featureFlags != nil &&
-				featureFlags.Data["enable-api-fields"] != v1alpha1.ApiFieldAlpha {
+				featureFlags.Data["enable-api-fields"] != "alpha" {
 				return false, nil
 			}
 			return true, nil

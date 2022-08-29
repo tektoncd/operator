@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/apis"
 )
 
@@ -44,7 +45,7 @@ func (tr *TektonTrigger) Validate(ctx context.Context) (errs *apis.FieldError) {
 func (tr *TriggersProperties) validate(path string) (errs *apis.FieldError) {
 
 	if tr.EnableApiFields != "" {
-		if tr.EnableApiFields != ApiFieldStable && tr.EnableApiFields != ApiFieldAlpha {
+		if tr.EnableApiFields != config.StableAPIFields && tr.EnableApiFields != config.AlphaAPIFields {
 			errs = errs.Also(apis.ErrInvalidValue(tr.EnableApiFields, path+".enable-api-fields"))
 		}
 	}

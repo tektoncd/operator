@@ -40,7 +40,7 @@ func Test_SetDefaults_TriggersProperties(t *testing.T) {
 	}
 
 	properties := TriggersProperties{
-		EnableApiFields: ApiFieldStable,
+		EnableApiFields: "stable",
 	}
 
 	tt.SetDefaults(context.TODO())

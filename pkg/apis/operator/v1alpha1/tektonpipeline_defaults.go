@@ -19,14 +19,8 @@ package v1alpha1
 import (
 	"context"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"knative.dev/pkg/ptr"
-)
-
-const (
-	DefaultMetricsPipelinerunLevel       = "pipeline"
-	DefaultMetricsTaskrunLevel           = "task"
-	DefaultMetricsPipelierunDurationType = "histogram"
-	DefaultMetricsTaskrunDurationType    = "histogram"
 )
 
 func (tp *TektonPipeline) SetDefaults(ctx context.Context) {
@@ -35,46 +29,46 @@ func (tp *TektonPipeline) SetDefaults(ctx context.Context) {
 
 func (p *PipelineProperties) setDefaults() {
 	if p.DisableCredsInit == nil {
-		p.DisableCredsInit = ptr.Bool(false)
+		p.DisableCredsInit = ptr.Bool(config.DefaultDisableCredsInit)
 	}
 	if p.AwaitSidecarReadiness == nil {
-		p.AwaitSidecarReadiness = ptr.Bool(true)
+		p.AwaitSidecarReadiness = ptr.Bool(config.DefaultAwaitSidecarReadiness)
 	}
 	if p.RunningInEnvironmentWithInjectedSidecars == nil {
-		p.RunningInEnvironmentWithInjectedSidecars = ptr.Bool(true)
+		p.RunningInEnvironmentWithInjectedSidecars = ptr.Bool(config.DefaultRunningInEnvWithInjectedSidecars)
 	}
 	if p.RequireGitSshSecretKnownHosts == nil {
-		p.RequireGitSshSecretKnownHosts = ptr.Bool(false)
+		p.RequireGitSshSecretKnownHosts = ptr.Bool(config.DefaultRequireGitSSHSecretKnownHosts)
 	}
 	if p.EnableTektonOciBundles == nil {
-		p.EnableTektonOciBundles = ptr.Bool(false)
+		p.EnableTektonOciBundles = ptr.Bool(config.DefaultEnableTektonOciBundles)
 	}
 	if p.EnableCustomTasks == nil {
-		p.EnableCustomTasks = ptr.Bool(false)
+		p.EnableCustomTasks = ptr.Bool(config.DefaultEnableCustomTasks)
 	}
 	if p.SendCloudEventsForRuns == nil {
-		p.SendCloudEventsForRuns = ptr.Bool(false)
+		p.SendCloudEventsForRuns = ptr.Bool(config.DefaultSendCloudEventsForRuns)
 	}
 	if p.EnableApiFields == "" {
-		p.EnableApiFields = ApiFieldStable
+		p.EnableApiFields = config.DefaultEnableAPIFields
 	}
 	if p.EmbeddedStatus == "" {
-		p.EmbeddedStatus = FullEmbeddedStatus
+		p.EmbeddedStatus = config.DefaultEmbeddedStatus
 	}
 
 	// Deprecated: set to nil, remove in further release
 	p.ScopeWhenExpressionsToTask = nil
 
 	if p.MetricsPipelinerunDurationType == "" {
-		p.MetricsPipelinerunDurationType = DefaultMetricsPipelierunDurationType
+		p.MetricsPipelinerunDurationType = config.DefaultDurationPipelinerunType
 	}
 	if p.MetricsPipelinerunLevel == "" {
-		p.MetricsPipelinerunLevel = DefaultMetricsPipelinerunLevel
+		p.MetricsPipelinerunLevel = config.DefaultPipelinerunLevel
 	}
 	if p.MetricsTaskrunDurationType == "" {
-		p.MetricsTaskrunDurationType = DefaultMetricsTaskrunDurationType
+		p.MetricsTaskrunDurationType = config.DefaultDurationTaskrunType
 	}
 	if p.MetricsTaskrunLevel == "" {
-		p.MetricsTaskrunLevel = DefaultMetricsTaskrunLevel
+		p.MetricsTaskrunLevel = config.DefaultTaskrunLevel
 	}
 }

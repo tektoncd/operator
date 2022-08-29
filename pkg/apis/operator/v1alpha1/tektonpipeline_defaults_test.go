@@ -47,15 +47,15 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 		RequireGitSshSecretKnownHosts:            ptr.Bool(false),
 		EnableTektonOciBundles:                   ptr.Bool(false),
 		EnableCustomTasks:                        ptr.Bool(false),
-		EnableApiFields:                          ApiFieldStable,
-		EmbeddedStatus:                           FullEmbeddedStatus,
+		EnableApiFields:                          "stable",
+		EmbeddedStatus:                           "full",
 		ScopeWhenExpressionsToTask:               nil,
 		SendCloudEventsForRuns:                   ptr.Bool(false),
 		PipelineMetricsProperties: PipelineMetricsProperties{
-			MetricsPipelinerunDurationType: DefaultMetricsPipelierunDurationType,
-			MetricsPipelinerunLevel:        DefaultMetricsPipelinerunLevel,
-			MetricsTaskrunDurationType:     DefaultMetricsTaskrunDurationType,
-			MetricsTaskrunLevel:            DefaultMetricsTaskrunLevel,
+			MetricsPipelinerunDurationType: "histogram",
+			MetricsPipelinerunLevel:        "pipeline",
+			MetricsTaskrunDurationType:     "histogram",
+			MetricsTaskrunLevel:            "task",
 		},
 	}
 
