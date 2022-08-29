@@ -15,7 +15,7 @@ spec:
       workspaces:
       - name: source
         workspace: source
-    ## ko publish image
+    ## ko publish tekton-operator image
     - name: build-operator
       taskRef:
         kind: ClusterTask
@@ -29,6 +29,40 @@ spec:
         - name: import-path
           value: "./cmd/kubernetes/operator"
         - name: container-image
-          value: "build-harbor.alauda.cn/devops/tekton/operator"
+          value: "build-harbor.alauda.cn/devops/tekton-operator"
+        - name: container-image-tag
+          value: v$(tasks.oss-version.results.oss-version)-$(tasks.oss-version.results.commit-short-id)
+    ## ko publish tekton-proxy-webhook image
+    - name: build-proxy-webhook
+      taskRef:
+        kind: ClusterTask
+        name: alauda-ko-build
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: verbose
+          value: "false"
+        - name: import-path
+          value: "./cmd/kubernetes/proxy-webhook"
+        - name: container-image
+          value: "build-harbor.alauda.cn/devops/tekton-proxy-webhook"
+        - name: container-image-tag
+          value: v$(tasks.oss-version.results.oss-version)-$(tasks.oss-version.results.commit-short-id)
+    ## ko publish tekton-webhook image
+    - name: build-webhook
+      taskRef:
+        kind: ClusterTask
+        name: alauda-ko-build
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: verbose
+          value: "false"
+        - name: import-path
+          value: "./cmd/kubernetes/webhook"
+        - name: container-image
+          value: "build-harbor.alauda.cn/devops/tekton-webhook"
         - name: container-image-tag
           value: v$(tasks.oss-version.results.oss-version)-$(tasks.oss-version.results.commit-short-id)
