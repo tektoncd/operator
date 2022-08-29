@@ -40,12 +40,6 @@ const (
 	// Hub Params
 	EnableDevconsoleIntegrationParam = "enable-devconsole-integration"
 
-	ApiFieldAlpha         = "alpha"
-	ApiFieldStable        = "stable"
-	FullEmbeddedStatus    = "full"
-	BothEmbeddedStatus    = "both"
-	MinimalEmbeddedStatus = "minimal"
-
 	LastAppliedHashKey     = "operator.tekton.dev/last-applied-hash"
 	CreatedByKey           = "operator.tekton.dev/created-by"
 	ReleaseVersionKey      = "operator.tekton.dev/release-version"
