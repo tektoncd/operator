@@ -33,9 +33,7 @@ $(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
 
 KO = $(or ${KO_BIN},${KO_BIN},$(BIN)/ko)
 
-# TODO: after updating go version to 1.17 uncommnent the line below to install latest version of ko
-# $(BIN)/ko: PACKAGE=github.com/google/ko
-$(BIN)/ko: PACKAGE=github.com/google/ko@v0.9.3
+$(BIN)/ko: PACKAGE=github.com/google/ko@latest
 
 KUSTOMIZE = $(or ${KUSTOMIZE_BIN},${KUSTOMIZE_BIN},$(BIN)/kustomize)
 $(BIN)/kustomize: | $(BIN) ; $(info $(M) getting kustomize)
