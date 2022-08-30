@@ -57,6 +57,7 @@ spec:
       An optional workspace that allows providing a .docker/config.json file
       for Buildah to access the container registry.
       The file should be placed at the root of the Workspace with name config.json.
+    optional: true
 
   results:
   - name: IMAGE_DIGEST
