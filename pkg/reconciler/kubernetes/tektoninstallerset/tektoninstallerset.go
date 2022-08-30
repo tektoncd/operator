@@ -74,9 +74,9 @@ func getReference(tis *v1alpha1.TektonInstallerSet) []v1.OwnerReference {
 // converge the two.
 func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.TektonInstallerSet) pkgreconciler.Event {
 	installerSet.Status.InitializeConditions()
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).With("installerSet", fmt.Sprintf("%s/%s", installerSet.Namespace, installerSet.Name))
 
-	installManifests, err := mf.ManifestFrom(installerSet.Spec.Manifests, mf.UseClient(r.mfClient), mf.UseLogger(r.mfLogger))
+	installManifests, err := mf.ManifestFrom(installerSet.Spec.Manifests, mf.UseClient(r.mfClient))
 	if err != nil {
 		logger.Error("Error creating initial manifest: ", err)
 		installerSet.Status.MarkNotReady(fmt.Sprintf("Internal Error: failed to create manifest: %s", err.Error()))
@@ -100,6 +100,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 
 	installer := installer{
 		Manifest: installManifests,
+		MfClient: r.mfClient,
+		Logger:   logger,
 	}
 
 	// Install CRDs

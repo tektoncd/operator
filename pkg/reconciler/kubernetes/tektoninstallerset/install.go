@@ -24,6 +24,7 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
+	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -77,42 +78,72 @@ var (
 
 type installer struct {
 	Manifest mf.Manifest
+	MfClient mf.Client
+	Logger   *zap.SugaredLogger
 }
 
-func ensureResources(mani *mf.Manifest) error {
-	freshCreate := true
-	// check if all resources in a given set of resources exists
-	ok, err := allResourcesExists(mani)
-	if err != nil {
-		if !apierrs.IsNotFound(err) {
+func (i *installer) ensureResources(manifest *mf.Manifest) error {
+	for _, r := range manifest.Resources() {
+		expectedHash, err := hash.Compute(r.Object)
+		if err != nil {
 			return err
 		}
-	}
-	// if error == NotFound error or !ok
-	// then Apply all resources
-	// if ok, that means the reosource already exists
-	// but this reconcile could be an modification eg: concig-defaults change
-	// set freshCreate flag to false, and then Apply all
-	// so that we can skip (break) RECONCILE_AGAIN loop path
-	if ok {
-		freshCreate = false
-	}
 
-	if err := mani.Apply(); err != nil {
-		return err
-	}
-	// on err == nil after Apply() return RECONCILE_AGAIN
-	// if freshCreate == true return RECONCILE_AGAIN
-	// this ensures freshly created resources are in place before proceeding to next stages of reconciler
-	if freshCreate {
-		return v1alpha1.RECONCILE_AGAIN_ERR
+		i.Logger.Infof("fetching resource %s: %s/%s", r.GetKind(), r.GetNamespace(), r.GetName())
+
+		res, err := i.MfClient.Get(&r)
+		if err != nil {
+			if apierrs.IsNotFound(err) {
+				i.Logger.Infof("resource not found, creating %s: %s/%s", r.GetKind(), r.GetNamespace(), r.GetName())
+				// add hash on the resource of expected manifest and create
+				anno := r.GetAnnotations()
+				if anno == nil {
+					anno = map[string]string{}
+				}
+				anno[v1alpha1.LastAppliedHashKey] = expectedHash
+				r.SetAnnotations(anno)
+				err = i.MfClient.Create(&r)
+				if err != nil {
+					return err
+				}
+				continue
+			}
+			return err
+		}
+
+		i.Logger.Infof("found resource %s: %s/%s, checking for update!", r.GetKind(), r.GetNamespace(), r.GetName())
+
+		// if resource exist then check if expected hash is different from the one
+		// on the resource
+		hashOnResource := res.GetAnnotations()[v1alpha1.LastAppliedHashKey]
+
+		if expectedHash == hashOnResource {
+			continue
+		}
+
+		i.Logger.Infof("updating resource %s: %s/%s", r.GetKind(), r.GetNamespace(), r.GetName())
+
+		anno := r.GetAnnotations()
+		if anno == nil {
+			anno = map[string]string{}
+		}
+		anno[v1alpha1.LastAppliedHashKey] = expectedHash
+		r.SetAnnotations(anno)
+
+		installManifests, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{r}), mf.UseClient(i.MfClient))
+		if err != nil {
+			return err
+		}
+		if err := installManifests.Apply(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func (i *installer) EnsureCRDs() error {
 	resourceList := i.Manifest.Filter(mf.Any(mf.CRDs))
-	return ensureResources(&resourceList)
+	return i.ensureResources(&resourceList)
 }
 
 func (i *installer) EnsureClusterScopedResources() error {
@@ -131,7 +162,7 @@ func (i *installer) EnsureClusterScopedResources() error {
 			ConsoleYAMLSamplePred,
 			securityContextConstraints,
 		))
-	return ensureResources(&resourceList)
+	return i.ensureResources(&resourceList)
 }
 
 func (i *installer) EnsureNamespaceScopedResources() error {
@@ -156,7 +187,7 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 			routePred,
 			statefulSetPred,
 		))
-	return ensureResources(&resourceList)
+	return i.ensureResources(&resourceList)
 }
 
 func (i *installer) EnsureDeploymentResources() error {
@@ -418,28 +449,6 @@ func isDeploymentAvailable(d *appsv1.Deployment) bool {
 		}
 	}
 	return false
-}
-
-func allResourcesExists(m *mf.Manifest) (bool, error) {
-	c := m.Client
-	for _, item := range m.Resources() {
-		ok, err := resourceExists(c, &item)
-		if err != nil {
-			return false, err
-		}
-		if !ok {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
-func resourceExists(c mf.Client, u *unstructured.Unstructured) (bool, error) {
-	_, err := c.Get(u)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
 }
 
 func isJobCompleted(d *batchv1.Job) bool {
