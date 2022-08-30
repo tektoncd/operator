@@ -29,7 +29,7 @@ spec:
         - name: import-path
           value: "./cmd/kubernetes/operator"
         - name: container-image
-          value: "build-harbor.alauda.cn/devops/tekton-operator"
+          value: "build-harbor.alauda.cn/devops/tektoncd/operator/cmd/kubernetes/operator"
         - name: container-image-tag
           value: v$(tasks.oss-version.results.oss-version)-$(tasks.oss-version.results.commit-short-id)
     ## ko publish tekton-proxy-webhook image
@@ -46,7 +46,7 @@ spec:
         - name: import-path
           value: "./cmd/kubernetes/proxy-webhook"
         - name: container-image
-          value: "build-harbor.alauda.cn/devops/tekton-proxy-webhook"
+          value: "build-harbor.alauda.cn/devops/tektoncd/operator/cmd/kubernetes/proxy-webhook"
         - name: container-image-tag
           value: v$(tasks.oss-version.results.oss-version)-$(tasks.oss-version.results.commit-short-id)
     ## ko publish tekton-webhook image
@@ -63,6 +63,6 @@ spec:
         - name: import-path
           value: "./cmd/kubernetes/webhook"
         - name: container-image
-          value: "build-harbor.alauda.cn/devops/tekton-webhook"
+          value: "build-harbor.alauda.cn/devops/tektoncd/operator/cmd/kubernetes/webhook"
         - name: container-image-tag
           value: v$(tasks.oss-version.results.oss-version)-$(tasks.oss-version.results.commit-short-id)
