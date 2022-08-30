@@ -18,80 +18,26 @@ package tektoninstallerset
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	mf "github.com/manifestival/manifestival"
 	"github.com/manifestival/manifestival/fake"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
+	"go.uber.org/zap"
+	zapobserver "go.uber.org/zap/zaptest/observer"
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 var (
-	namespace          = clusterScopedResource("v1", "Namespace", "test-ns")
-	clusterRole        = clusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRole", "test-cluster-role")
-	role               = namespacedResource("rbac.authorization.k8s.io/v1", "Role", "test", "test-role")
-	serviceAccount     = namespacedResource("v1", "ServiceAccount", "test", "test-service-account")
-	clusterRoleBinding = clusterScopedResource("rbac.authorization.k8s.io/v1", "ClusterRoleBinding", "test-cluster-role-binding")
-	roleBinding        = namespacedResource("rbac.authorization.k8s.io/v1", "RoleBinding", "test", "test-role-binding")
-	crd                = clusterScopedResource("apiextensions.k8s.io/v1", "CustomResourceDefinition", "test-crd")
-	secret             = namespacedResource("v1", "Secret", "test", "test-secret")
-	validatingWebhook  = clusterScopedResource("admissionregistration.k8s.io/v1", "ValidatingWebhookConfiguration", "test-validating-webhook")
-	mutatingWebhook    = clusterScopedResource("admissionregistration.k8s.io/v1", "MutatingWebhookConfiguration", "test-mutating-webhook")
-	configMap          = namespacedResource("v1", "ConfigMap", "test", "test-configmap")
-	deployment         = namespacedResource("apps/v1", "Deployment", "test", "test-deployment")
-	service            = namespacedResource("v1", "Service", "test", "test-service")
-	hpa                = namespacedResource("autoscaling/v2beta1", "HorizontalPodAutoscaler", "test", "test-hpa")
-	pvc                = namespacedResource("v1", "PersistentVolumeClaim", "test", "test-pvc")
-	job                = namespacedResource("batch/v1", "Job", "test", "test-job")
+	serviceAccount = namespacedResource("v1", "ServiceAccount", "test", "test-service-account")
 )
-
-type fakeClient struct {
-	err            error
-	getErr         error
-	createErr      error
-	resourcesExist bool
-	gets           []unstructured.Unstructured
-	creates        []unstructured.Unstructured
-	deletes        []unstructured.Unstructured
-}
-
-func (f *fakeClient) Get(obj *unstructured.Unstructured) (*unstructured.Unstructured, error) {
-	var resource *unstructured.Unstructured
-	if f.resourcesExist {
-		for _, item := range f.gets {
-			if obj.GetKind() == item.GetKind() && obj.GetName() == item.GetName() {
-				return &item, nil
-			}
-		}
-
-	}
-	return resource, f.getErr
-}
-
-func (f *fakeClient) Delete(obj *unstructured.Unstructured, options ...mf.DeleteOption) error {
-	f.deletes = append(f.deletes, *obj)
-	return f.err
-}
-
-func (f *fakeClient) Create(obj *unstructured.Unstructured, options ...mf.ApplyOption) error {
-	obj.SetAnnotations(nil) // Deleting the extra annotation. Irrelevant for the test.
-	f.creates = append(f.creates, *obj)
-	return f.createErr
-}
-
-func (f *fakeClient) Update(obj *unstructured.Unstructured, options ...mf.ApplyOption) error {
-	return f.err
-}
 
 // namespacedResource is an unstructured resource with the given apiVersion, kind, ns and name.
 func namespacedResource(apiVersion, kind, ns, name string) unstructured.Unstructured {
@@ -103,88 +49,68 @@ func namespacedResource(apiVersion, kind, ns, name string) unstructured.Unstruct
 	return resource
 }
 
-// clusterScopedResource is an unstructured resource with the given apiVersion, kind and name.
-func clusterScopedResource(apiVersion, kind, name string) unstructured.Unstructured {
-	return namespacedResource(apiVersion, kind, "", name)
-}
+func TestEnsureResources_CreateResource(t *testing.T) {
+	fakeClient := fake.New()
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
 
-func TestInstaller(t *testing.T) {
-	crd.SetDeletionTimestamp(&metav1.Time{})
-	in := []unstructured.Unstructured{namespace, deployment, clusterRole, role,
-		roleBinding, clusterRoleBinding, serviceAccount, crd, validatingWebhook, mutatingWebhook, configMap, service, hpa, secret, pvc, job}
-
-	client := &fakeClient{}
-	manifest, err := mf.ManifestFrom(mf.Slice(in), mf.UseClient(client))
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{serviceAccount}))
 	if err != nil {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
 	i := installer{
 		Manifest: manifest,
+		MfClient: fakeClient,
+		Logger:   logger,
 	}
 
-	want := []unstructured.Unstructured{crd}
+	err = i.ensureResources(&manifest)
+	assert.NilError(t, err)
 
-	err = i.EnsureCRDs()
+	res, err := fakeClient.Get(&serviceAccount)
+	assert.NilError(t, err)
+
+	assert.Equal(t, res.GetNamespace(), serviceAccount.GetNamespace())
+	assert.Equal(t, res.GetName(), serviceAccount.GetName())
+}
+
+func TestEnsureResources_UpdateResource(t *testing.T) {
+	// service account already exist on cluster
+	sa := serviceAccount
+	sa.SetAnnotations(map[string]string{
+		v1alpha1.LastAppliedHashKey: "abcd",
+	})
+
+	fakeClient := fake.New(&sa)
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+
+	// pass an updated sa with some different hash than existing
+	newSa := serviceAccount
+
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{newSa}))
 	if err != nil {
-		t.Fatal("Unexpected Error while installing resources: ", err)
+		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	if len(want) != len(client.creates) {
-		t.Fatalf("Unexpected creates: %s", fmt.Sprintf("(-got, +want): %s", cmp.Diff(client.creates, want)))
+	i := installer{
+		Manifest: manifest,
+		MfClient: fakeClient,
+		Logger:   logger,
 	}
 
-	// reset created array
-	client.creates = []unstructured.Unstructured{}
+	err = i.ensureResources(&manifest)
+	assert.NilError(t, err)
 
-	want = []unstructured.Unstructured{namespace, clusterRole, validatingWebhook, mutatingWebhook}
+	res, err := fakeClient.Get(&serviceAccount)
+	assert.NilError(t, err)
 
-	err = i.EnsureClusterScopedResources()
-	if err != nil {
-		t.Fatal("Unexpected Error while installing resources: ", err)
-	}
-
-	if len(want) != len(client.creates) {
-		t.Fatalf("Unexpected creates: %s", fmt.Sprintf("(-got, +want): %s", cmp.Diff(client.creates, want)))
-	}
-
-	// reset created array
-	client.creates = []unstructured.Unstructured{}
-
-	want = []unstructured.Unstructured{serviceAccount, clusterRoleBinding, role,
-		roleBinding, configMap, secret, hpa, job, pvc, service}
-
-	err = i.EnsureNamespaceScopedResources()
-	if err != nil {
-		t.Fatal("Unexpected Error while installing resources: ", err)
-	}
-
-	if len(want) != len(client.creates) {
-		t.Fatalf("Unexpected creates: %s", fmt.Sprintf("(-got, +want): %s", cmp.Diff(client.creates, want)))
-	}
-
-	// reset created array
-	client.creates = []unstructured.Unstructured{}
-	client.resourcesExist = false
-	client.getErr = errors.NewNotFound(schema.GroupResource{
-		Group:    "apps/v1",
-		Resource: "Deployment",
-	}, "test-deployment")
-
-	err = i.EnsureDeploymentResources()
-	assert.Error(t, err, v1alpha1.RECONCILE_AGAIN_ERR.Error())
-
-	want = []unstructured.Unstructured{deployment}
-	if len(want) != len(client.creates) {
-		t.Fatalf("Unexpected creates: %s", fmt.Sprintf("(-got, +want): %s", cmp.Diff(client.creates, want)))
-	}
-
-	client.resourcesExist = true
-	client.gets = []unstructured.Unstructured{deployment}
-	err = i.EnsureDeploymentResources()
-	if err != nil {
-		t.Fatal("Unexpected Error while installing resources: ", err)
-	}
+	assert.Equal(t, res.GetNamespace(), serviceAccount.GetNamespace())
+	assert.Equal(t, res.GetName(), serviceAccount.GetName())
+	expectedHash, err := hash.Compute(serviceAccount.Object)
+	assert.NilError(t, err)
+	assert.Equal(t, res.GetAnnotations()[v1alpha1.LastAppliedHashKey], expectedHash)
 }
 
 var (
