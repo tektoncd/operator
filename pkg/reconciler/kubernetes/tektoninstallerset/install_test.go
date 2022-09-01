@@ -59,13 +59,9 @@ func TestEnsureResources_CreateResource(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := installer{
-		Manifest: manifest,
-		MfClient: fakeClient,
-		Logger:   logger,
-	}
+	i := NewInstaller(&manifest, fakeClient, logger)
 
-	err = i.ensureResources(&manifest)
+	err = i.EnsureNamespaceScopedResources()
 	assert.NilError(t, err)
 
 	res, err := fakeClient.Get(&serviceAccount)
@@ -94,13 +90,9 @@ func TestEnsureResources_UpdateResource(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := installer{
-		Manifest: manifest,
-		MfClient: fakeClient,
-		Logger:   logger,
-	}
+	i := NewInstaller(&manifest, fakeClient, logger)
 
-	err = i.ensureResources(&manifest)
+	err = i.EnsureNamespaceScopedResources()
 	assert.NilError(t, err)
 
 	res, err := fakeClient.Get(&serviceAccount)
@@ -225,9 +217,9 @@ func TestControllerReady(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := installer{
-		Manifest: manifest,
-	}
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+	i := NewInstaller(&manifest, client, logger)
 
 	err = i.IsControllerReady()
 	if err != nil {
@@ -244,9 +236,9 @@ func TestControllerNotReady(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := installer{
-		Manifest: manifest,
-	}
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+	i := NewInstaller(&manifest, client, logger)
 
 	err = i.IsControllerReady()
 	if err == nil {
@@ -263,9 +255,9 @@ func TestWebhookReady(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := installer{
-		Manifest: manifest,
-	}
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+	i := NewInstaller(&manifest, client, logger)
 
 	err = i.IsWebhookReady()
 	if err != nil {
@@ -282,9 +274,9 @@ func TestWebhookNotReady(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := installer{
-		Manifest: manifest,
-	}
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+	i := NewInstaller(&manifest, client, logger)
 
 	err = i.IsWebhookReady()
 	if err == nil {
@@ -301,9 +293,9 @@ func TestAllDeploymentsReady(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := installer{
-		Manifest: manifest,
-	}
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+	i := NewInstaller(&manifest, client, logger)
 
 	err = i.AllDeploymentsReady()
 	if err != nil {
@@ -320,9 +312,9 @@ func TestAllDeploymentsNotReady(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := installer{
-		Manifest: manifest,
-	}
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+	i := NewInstaller(&manifest, client, logger)
 
 	err = i.AllDeploymentsReady()
 	if err == nil {
@@ -339,9 +331,9 @@ func TestJobCompleted(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := installer{
-		Manifest: manifest,
-	}
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+	i := NewInstaller(&manifest, client, logger)
 
 	err = i.IsJobCompleted(context.Background(), nil, "")
 	if err != nil {
@@ -358,9 +350,9 @@ func TestJobFailed(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := installer{
-		Manifest: manifest,
-	}
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+	i := NewInstaller(&manifest, client, logger)
 
 	err = i.IsJobCompleted(context.Background(), nil, "")
 	if err == nil {

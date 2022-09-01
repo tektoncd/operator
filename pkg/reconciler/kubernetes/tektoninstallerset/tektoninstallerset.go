@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -34,7 +33,6 @@ import (
 type Reconciler struct {
 	operatorClientSet clientset.Interface
 	mfClient          mf.Client
-	mfLogger          logr.Logger
 }
 
 // Reconciler implements controller.Reconciler
@@ -45,7 +43,7 @@ var _ tektonInstallerreconciler.Finalizer = (*Reconciler)(nil)
 func (r *Reconciler) FinalizeKind(ctx context.Context, installerSet *v1alpha1.TektonInstallerSet) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 
-	deleteManifests, err := mf.ManifestFrom(installerSet.Spec.Manifests, mf.UseClient(r.mfClient), mf.UseLogger(r.mfLogger))
+	deleteManifests, err := mf.ManifestFrom(installerSet.Spec.Manifests, mf.UseClient(r.mfClient))
 	if err != nil {
 		logger.Error("Error creating initial manifest: ", err)
 		installerSet.Status.MarkNotReady(fmt.Sprintf("Internal Error: failed to create manifest: %s", err.Error()))
@@ -55,7 +53,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, installerSet *v1alpha1.Te
 	// Delete all resources except CRDs and Namespace as they are own by owner of
 	// TektonInstallerSet
 	// They will be deleted when the component CR is deleted
-	deleteManifests = deleteManifests.Filter(mf.Not(mf.Any(namespacePred, mf.CRDs, pvcPred)))
+	deleteManifests = deleteManifests.Filter(mf.Not(mf.Any(mf.ByKind("Namespace"), mf.CRDs, mf.ByKind("PersistentVolumeClaim"))))
 	err = deleteManifests.Delete()
 	if err != nil {
 		logger.Error("failed to delete resources")
@@ -98,11 +96,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 		return err
 	}
 
-	installer := installer{
-		Manifest: installManifests,
-		MfClient: r.mfClient,
-		Logger:   logger,
-	}
+	installer := NewInstaller(&installManifests, r.mfClient, logger)
 
 	// Install CRDs
 	err = installer.EnsureCRDs()
