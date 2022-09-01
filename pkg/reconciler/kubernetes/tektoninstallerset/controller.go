@@ -19,7 +19,6 @@ package tektoninstallerset
 import (
 	"context"
 
-	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
@@ -50,12 +49,10 @@ func NewExtendedController() injection.ControllerConstructor {
 		if err != nil {
 			logger.Fatalw("Error creating client from injected config", zap.Error(err))
 		}
-		mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
 
 		c := &Reconciler{
 			operatorClientSet: operatorclient.Get(ctx),
 			mfClient:          mfclient,
-			mfLogger:          mflogger,
 		}
 		impl := tektonInstallerReconciler.NewImpl(ctx, c)
 

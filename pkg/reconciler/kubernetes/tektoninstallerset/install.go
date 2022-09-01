@@ -40,61 +40,89 @@ const (
 	replicasForHash = 999
 )
 
-var (
-	namespacePred                      = mf.ByKind("Namespace")
-	configMapPred                      = mf.ByKind("ConfigMap")
-	pvcPred                            = mf.ByKind("PersistentVolumeClaim")
-	jobPred                            = mf.ByKind("Job")
-	secretPred                         = mf.ByKind("Secret")
-	deploymentPred                     = mf.ByKind("Deployment")
-	statefulSetPred                    = mf.ByKind("StatefulSet")
-	servicePred                        = mf.ByKind("Service")
-	serviceAccountPred                 = mf.ByKind("ServiceAccount")
-	cronJobPred                        = mf.ByKind("CronJob")
-	eventListenerPred                  = mf.ByKind("EventListener")
-	triggerBindingPred                 = mf.ByKind("TriggerBinding")
-	triggerTemplatePred                = mf.ByKind("TriggerTemplate")
-	rolePred                           = mf.ByKind("Role")
-	roleBindingPred                    = mf.ByKind("RoleBinding")
-	clusterRolePred                    = mf.ByKind("ClusterRole")
-	clusterRoleBindingPred             = mf.ByKind("ClusterRoleBinding")
-	validatingWebhookConfigurationPred = mf.ByKind("ValidatingWebhookConfiguration")
-	mutatingWebhookConfigurationPred   = mf.ByKind("MutatingWebhookConfiguration")
-	horizontalPodAutoscalerPred        = mf.ByKind("HorizontalPodAutoscaler")
-	clusterInterceptorPred             = mf.ByKind("ClusterInterceptor")
-	clusterTaskPred                    = mf.ByKind("ClusterTask")
-	clusterTriggerBindingPred          = mf.ByKind("ClusterTriggerBinding")
-	pipelinePred                       = mf.ByKind("Pipeline")
-
-	// OpenShift Specific
-	securityContextConstraints = mf.ByKind("SecurityContextConstraints")
-	serviceMonitorPred         = mf.ByKind("ServiceMonitor")
-	routePred                  = mf.ByKind("Route")
-	consoleCLIDownloadPred     = mf.ByKind("ConsoleCLIDownload")
-	consoleLinkHubPred         = mf.ByKind("ConsoleLink")
-	consoleQuickStartPred      = mf.ByKind("ConsoleQuickStart")
-	ConsoleYAMLSamplePred      = mf.ByKind("ConsoleYAMLSample")
-)
-
 type installer struct {
-	Manifest mf.Manifest
-	MfClient mf.Client
-	Logger   *zap.SugaredLogger
+	manifest        *mf.Manifest
+	mfClient        mf.Client
+	logger          *zap.SugaredLogger
+	crds            []unstructured.Unstructured
+	clusterScoped   []unstructured.Unstructured
+	namespaceScoped []unstructured.Unstructured
+	deployment      []unstructured.Unstructured
 }
 
-func (i *installer) ensureResources(manifest *mf.Manifest) error {
-	for _, r := range manifest.Resources() {
+func NewInstaller(manifest *mf.Manifest, mfClient mf.Client, logger *zap.SugaredLogger) *installer {
+	installer := &installer{
+		manifest:        manifest,
+		mfClient:        mfClient,
+		logger:          logger,
+		crds:            []unstructured.Unstructured{},
+		clusterScoped:   []unstructured.Unstructured{},
+		namespaceScoped: []unstructured.Unstructured{},
+		deployment:      []unstructured.Unstructured{},
+	}
+
+	// we filter out resource as some resources are dependent on others
+	// for eg. namespace should be created before configmap
+	// non k8s core resources like openshift resources will be classified as
+	// namespace scoped
+	for _, res := range manifest.Resources() {
+		if strings.ToLower(res.GetKind()) == "customresourcedefinition" {
+			installer.crds = append(installer.crds, res)
+			continue
+		} else if res.GetKind() == "Deployment" {
+			installer.deployment = append(installer.deployment, res)
+			continue
+		}
+		if isClusterScoped(res.GetKind()) && strings.ToLower(res.GetKind()) != "clusterrolebinding" {
+			installer.clusterScoped = append(installer.clusterScoped, res)
+			continue
+		}
+		installer.namespaceScoped = append(installer.namespaceScoped, res)
+	}
+	return installer
+}
+
+// https://github.com/manifestival/manifestival/blob/af1baacf01ec54390c3cbd46ee561d52b2b4ab14/transform.go#L107
+func isClusterScoped(kind string) bool {
+	switch strings.ToLower(kind) {
+	case "componentstatus",
+		"namespace",
+		"node",
+		"persistentvolume",
+		"mutatingwebhookconfiguration",
+		"validatingwebhookconfiguration",
+		"customresourcedefinition",
+		"apiservice",
+		"meshpolicy",
+		"tokenreview",
+		"selfsubjectaccessreview",
+		"selfsubjectrulesreview",
+		"subjectaccessreview",
+		"certificatesigningrequest",
+		"podsecuritypolicy",
+		"clusterrolebinding",
+		"clusterrole",
+		"priorityclass",
+		"storageclass",
+		"volumeattachment":
+		return true
+	}
+	return false
+}
+
+func (i *installer) ensureResources(resources []unstructured.Unstructured) error {
+	for _, r := range resources {
 		expectedHash, err := hash.Compute(r.Object)
 		if err != nil {
 			return err
 		}
 
-		i.Logger.Infof("fetching resource %s: %s/%s", r.GetKind(), r.GetNamespace(), r.GetName())
+		i.logger.Infof("fetching resource %s: %s/%s", r.GetKind(), r.GetNamespace(), r.GetName())
 
-		res, err := i.MfClient.Get(&r)
+		res, err := i.mfClient.Get(&r)
 		if err != nil {
 			if apierrs.IsNotFound(err) {
-				i.Logger.Infof("resource not found, creating %s: %s/%s", r.GetKind(), r.GetNamespace(), r.GetName())
+				i.logger.Infof("resource not found, creating %s: %s/%s", r.GetKind(), r.GetNamespace(), r.GetName())
 				// add hash on the resource of expected manifest and create
 				anno := r.GetAnnotations()
 				if anno == nil {
@@ -102,7 +130,7 @@ func (i *installer) ensureResources(manifest *mf.Manifest) error {
 				}
 				anno[v1alpha1.LastAppliedHashKey] = expectedHash
 				r.SetAnnotations(anno)
-				err = i.MfClient.Create(&r)
+				err = i.mfClient.Create(&r)
 				if err != nil {
 					return err
 				}
@@ -111,7 +139,7 @@ func (i *installer) ensureResources(manifest *mf.Manifest) error {
 			return err
 		}
 
-		i.Logger.Infof("found resource %s: %s/%s, checking for update!", r.GetKind(), r.GetNamespace(), r.GetName())
+		i.logger.Infof("found resource %s: %s/%s, checking for update!", r.GetKind(), r.GetNamespace(), r.GetName())
 
 		// if resource exist then check if expected hash is different from the one
 		// on the resource
@@ -121,7 +149,7 @@ func (i *installer) ensureResources(manifest *mf.Manifest) error {
 			continue
 		}
 
-		i.Logger.Infof("updating resource %s: %s/%s", r.GetKind(), r.GetNamespace(), r.GetName())
+		i.logger.Infof("updating resource %s: %s/%s", r.GetKind(), r.GetNamespace(), r.GetName())
 
 		anno := r.GetAnnotations()
 		if anno == nil {
@@ -130,7 +158,7 @@ func (i *installer) ensureResources(manifest *mf.Manifest) error {
 		anno[v1alpha1.LastAppliedHashKey] = expectedHash
 		r.SetAnnotations(anno)
 
-		installManifests, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{r}), mf.UseClient(i.MfClient))
+		installManifests, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{r}), mf.UseClient(i.mfClient))
 		if err != nil {
 			return err
 		}
@@ -142,57 +170,20 @@ func (i *installer) ensureResources(manifest *mf.Manifest) error {
 }
 
 func (i *installer) EnsureCRDs() error {
-	resourceList := i.Manifest.Filter(mf.Any(mf.CRDs))
-	return i.ensureResources(&resourceList)
+	return i.ensureResources(i.crds)
 }
 
 func (i *installer) EnsureClusterScopedResources() error {
-	resourceList := i.Manifest.Filter(
-		mf.Any(
-			namespacePred,
-			clusterRolePred,
-			validatingWebhookConfigurationPred,
-			mutatingWebhookConfigurationPred,
-			clusterInterceptorPred,
-			clusterTaskPred,
-			clusterTriggerBindingPred,
-			consoleCLIDownloadPred,
-			consoleLinkHubPred,
-			consoleQuickStartPred,
-			ConsoleYAMLSamplePred,
-			securityContextConstraints,
-		))
-	return i.ensureResources(&resourceList)
+	return i.ensureResources(i.clusterScoped)
 }
 
 func (i *installer) EnsureNamespaceScopedResources() error {
-	resourceList := i.Manifest.Filter(
-		mf.Any(
-			serviceAccountPred,
-			clusterRoleBindingPred,
-			rolePred,
-			roleBindingPred,
-			configMapPred,
-			secretPred,
-			pvcPred,
-			jobPred,
-			horizontalPodAutoscalerPred,
-			pipelinePred,
-			serviceMonitorPred,
-			cronJobPred,
-			eventListenerPred,
-			triggerBindingPred,
-			triggerTemplatePred,
-			servicePred,
-			routePred,
-			statefulSetPred,
-		))
-	return i.ensureResources(&resourceList)
+	return i.ensureResources(i.namespaceScoped)
 }
 
 func (i *installer) EnsureDeploymentResources() error {
 	reconcileAgain := false
-	for _, d := range i.Manifest.Filter(mf.Any(deploymentPred)).Resources() {
+	for _, d := range i.deployment {
 		if err := i.ensureDeployment(&d); err != nil {
 			// if error is RECONCILER_AGAIN_ERR, then
 			// continue with rest of the Deployments in the manifest list
@@ -246,10 +237,11 @@ func (i *installer) createDeployment(expected *unstructured.Unstructured) error 
 	}
 	expected.SetUnstructuredContent(unstrObj)
 
-	return i.Manifest.Client.Create(expected)
+	return i.mfClient.Create(expected)
 }
 
 func (i *installer) updateDeployment(existing *unstructured.Unstructured, existingDeployment, expectedDeployment *appsv1.Deployment) error {
+	i.logger.Infof("updating resource %s: %s/%s", existing.GetKind(), existing.GetNamespace(), existing.GetName())
 
 	// save on cluster replicas in a var and assign it back to deployment
 	onClusterReplicas := existingDeployment.Spec.Replicas
@@ -275,7 +267,7 @@ func (i *installer) updateDeployment(existing *unstructured.Unstructured, existi
 	}
 	existing.SetUnstructuredContent(unstrObj)
 
-	err = i.Manifest.Client.Update(existing)
+	err = i.mfClient.Update(existing)
 	if err != nil {
 		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
@@ -283,21 +275,23 @@ func (i *installer) updateDeployment(existing *unstructured.Unstructured, existi
 }
 
 func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error {
+	i.logger.Infof("fetching resource %s: %s/%s", expected.GetKind(), expected.GetNamespace(), expected.GetName())
 
 	// check if deployment already exist
-	existing, err := i.Manifest.Client.Get(expected)
+	existing, err := i.mfClient.Get(expected)
 	if err != nil {
-
 		// If deployment doesn't exist, then create new
 		if apierrs.IsNotFound(err) {
-			errInner := i.createDeployment(expected)
-			if errInner == nil {
-				return v1alpha1.RECONCILE_AGAIN_ERR
+			i.logger.Infof("resource not found, creating %s: %s/%s", expected.GetKind(), expected.GetNamespace(), expected.GetName())
+			if err := i.createDeployment(expected); err == nil {
+				return err
 			}
-			return errInner
+			return nil
 		}
 		return err
 	}
+
+	i.logger.Infof("found resource %s: %s/%s, checking for update!", existing.GetKind(), existing.GetNamespace(), existing.GetName())
 
 	// if already exist then check if spec is changed
 	existingDeployment := &appsv1.Deployment{}
@@ -350,60 +344,48 @@ func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error 
 }
 
 func (i *installer) IsWebhookReady() error {
-
-	for _, u := range i.Manifest.Filter(deploymentPred).Resources() {
-
+	for _, u := range i.deployment {
 		if !strings.Contains(u.GetName(), "webhook") {
 			continue
 		}
-
 		err := i.isDeploymentReady(&u)
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
 func (i *installer) IsControllerReady() error {
-
-	for _, u := range i.Manifest.Filter(deploymentPred).Resources() {
-
+	for _, u := range i.deployment {
 		if !strings.Contains(u.GetName(), "controller") {
 			continue
 		}
-
 		err := i.isDeploymentReady(&u)
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
 func (i *installer) AllDeploymentsReady() error {
-
-	for _, u := range i.Manifest.Filter(deploymentPred).Resources() {
-
+	for _, u := range i.deployment {
 		if strings.Contains(u.GetName(), "controller") ||
 			strings.Contains(u.GetName(), "webhook") {
 			continue
 		}
-
 		err := i.isDeploymentReady(&u)
 		if err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
 func (i *installer) IsJobCompleted(ctx context.Context, labels map[string]string, installSetName string) error {
-	for _, u := range i.Manifest.Filter(jobPred).Resources() {
-		resource, err := i.Manifest.Client.Get(&u)
+	for _, u := range i.manifest.Filter(mf.ByKind("Job")).Resources() {
+		resource, err := i.mfClient.Get(&u)
 		if err != nil {
 			return err
 		}
@@ -423,8 +405,7 @@ func (i *installer) IsJobCompleted(ctx context.Context, labels map[string]string
 }
 
 func (i *installer) isDeploymentReady(d *unstructured.Unstructured) error {
-
-	resource, err := i.Manifest.Client.Get(d)
+	resource, err := i.mfClient.Get(d)
 	if err != nil {
 		return err
 	}
