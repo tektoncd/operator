@@ -74,15 +74,14 @@ func (p Prune) validate() *apis.FieldError {
 		errs = errs.Also(apis.ErrMissingField("spec.pruner.resources"))
 	}
 
-	if p.Keep != nil && p.KeepSince != nil {
-		errs = errs.Also(apis.ErrMultipleOneOf("spec.pruner.keep", "spec.pruner.keep-since"))
-	}
 	if p.Keep == nil && p.KeepSince == nil {
 		errs = errs.Also(apis.ErrMissingOneOf("spec.pruner.keep", "spec.pruner.keep-since"))
-	} else if p.Keep != nil && *p.Keep == 0 {
+	}
+	if p.Keep != nil && *p.Keep == 0 {
 		errs = errs.Also(apis.ErrInvalidValue(*p.Keep, "spec.pruner.keep"))
-	} else if p.KeepSince != nil && *p.KeepSince == 0 {
-		errs = errs.Also(apis.ErrInvalidValue(*p.Keep, "spec.pruner.keep-since"))
+	}
+	if p.KeepSince != nil && *p.KeepSince == 0 {
+		errs = errs.Also(apis.ErrInvalidValue(*p.KeepSince, "spec.pruner.keep-since"))
 	}
 
 	if p.Schedule == "" {
