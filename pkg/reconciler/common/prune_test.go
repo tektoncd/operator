@@ -142,6 +142,7 @@ func TestPruneCommands(t *testing.T) {
 	expected := []string{
 		"ns;--keep=2;pipelinerun,taskrun",
 		"ns;--keep-since=300;pipelinerun,taskrun",
+		"ns;--keep=2 --keep-since=300;pipelinerun,taskrun",
 	}
 	ns := "ns"
 	configs := []*pruneConfigPerNS{
@@ -157,6 +158,14 @@ func TestPruneCommands(t *testing.T) {
 			config: v1alpha1.Prune{
 				Resources: []string{"pipelinerun", "taskrun"},
 				Keep:      nil,
+				KeepSince: &keepsince,
+				Schedule:  scheduleCommon,
+			},
+		},
+		{
+			config: v1alpha1.Prune{
+				Resources: []string{"pipelinerun", "taskrun"},
+				Keep:      &keep,
 				KeepSince: &keepsince,
 				Schedule:  scheduleCommon,
 			},
@@ -224,14 +233,15 @@ func TestAnnotationCmd(t *testing.T) {
 		assert.Error(t, err, "number of cronjobs created is not right")
 	}
 	expected := map[string]struct{}{
-		"ns-two;--keep=3;pipelinerun":            {},
-		"ns-eight;--keep=5;pipelinerun":          {},
-		"ns-four;--keep=3;pipelinerun":           {},
-		"ns-nine;--keep=3;taskrun":               {},
-		"ns-one;--keep=3;pipelinerun":            {},
-		"ns-seven;--keep-since=3200;pipelinerun": {},
-		"ns-ten;--keep=3;taskrun,pipelinerun":    {},
-		"ns-thirteen;--keep=50;pipelinerun":      {},
+		"ns-two;--keep=3;pipelinerun":                     {},
+		"ns-eight;--keep=5;pipelinerun":                   {},
+		"ns-four;--keep=3;pipelinerun":                    {},
+		"ns-nine;--keep=3;taskrun":                        {},
+		"ns-one;--keep=3;pipelinerun":                     {},
+		"ns-seven;--keep-since=3200;pipelinerun":          {},
+		"ns-eight;--keep=5 --keep-since=3200;pipelinerun": {},
+		"ns-ten;--keep=3;taskrun,pipelinerun":             {},
+		"ns-thirteen;--keep=50;pipelinerun":               {},
 	}
 	for _, cronjob := range cronjobs.Items {
 		assert.Equal(t, len(cronjob.Spec.JobTemplate.Spec.Template.Spec.Containers), 1)
@@ -429,4 +439,40 @@ func TestNodeSelectorOrTolerationsChange(t *testing.T) {
 		assert.Assert(t, cronjobChanged, "nodeselector and Toleration Config change should recreate all the cron Jobs")
 	}
 
+}
+
+func TestGetJobContainer(t *testing.T) {
+	keep := uint(2)
+	keepsince := uint(300)
+	configs := map[string]*pruneConfigPerNS{
+		"ns-one": {
+			config: v1alpha1.Prune{
+				Resources: []string{"pipelinerun", "taskrun"},
+				Keep:      &keep,
+				KeepSince: nil,
+				Schedule:  scheduleCommon,
+			},
+		},
+		"ns-two": {
+			config: v1alpha1.Prune{
+				Resources: []string{"pipelinerun", "taskrun"},
+				Keep:      nil,
+				KeepSince: &keepsince,
+				Schedule:  scheduleCommon,
+			},
+		},
+		"ns-three": {
+			config: v1alpha1.Prune{
+				Resources: []string{"pipelinerun", "taskrun"},
+				Keep:      &keep,
+				KeepSince: &keepsince,
+				Schedule:  scheduleCommon,
+			},
+		},
+	}
+
+	expected := " ns-one;--keep=2;pipelinerun,taskrun ns-two;--keep-since=300;pipelinerun,taskrun ns-three;--keep=2 --keep-since=300;pipelinerun,taskrun"
+
+	container := getJobContainer(generateAllPruneConfig(configs), "ns", "test-image")
+	assert.Equal(t, container[0].Args[1], expected)
 }

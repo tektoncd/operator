@@ -398,20 +398,24 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 // ns-one;--keep=5;pipelinerun
 // ns-two;--keep=3;pipelinerun,taskrun
 // ns-three;--keep=2;taskrun
+// ns-four;--keep=4 --keep-since=300; pipelinerun
 // these configs are passed as space seperated string argument to pod container spec
 // for each of this namespaced config below commands are generated
 // tkn pipelinerun delete --keep=5 -n=ns-one -f ;
 // tkn pipelinerun delete --keep=3 -n=ns-two -f ;
 // tkn taskrun delete --keep=3 -n=ns-two -f ;
 // tkn taskrun delete --keep=3 -n=ns-three -f ;
+// tkn pipelinerun delete --keep=4 --keep-since=300 -n=ns-four -f ;
 func generatePruneConfigPerNamespace(pru *pruneConfigPerNS, ns string) string {
-	var keepCmd string
+	keepCmd := ""
 	if pru.config.Keep != nil {
-		keepCmd = "--keep=" + fmt.Sprint(*pru.config.Keep)
+		keepCmd = keepCmd + "--keep=" + fmt.Sprint(*pru.config.Keep)
 	}
-	if pru.config.Keep == nil && pru.config.KeepSince != nil {
-		keepCmd = "--keep-since=" + fmt.Sprint(*pru.config.KeepSince)
+	if pru.config.KeepSince != nil {
+		keepCmd = keepCmd + " --keep-since=" + fmt.Sprint(*pru.config.KeepSince)
+
 	}
+	keepCmd = strings.TrimSpace(keepCmd)
 	cmdArgs := ns + ";" + keepCmd + ";"
 	var resources string
 	for i, resource := range pru.config.Resources {
