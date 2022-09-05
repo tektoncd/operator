@@ -61,51 +61,38 @@ spec:
         The file should be placed at the root of the Workspace with name config.json.
       optional: true
   steps:
-    - name: gen-env-file
-      image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
-      workingDir: /env-params
-      command:
-        - '/bin/sh'
-        - '-c'
-      args:
-        - |-
-          echo "MAVEN_CLEAR_REPO=$(params.MAVEN_CLEAR_REPO)" > env-file
-
-          [[ '$(params.MAVEN_ARGS_APPEND)' != "" ]] &&
-            echo "MAVEN_ARGS_APPEND=$(params.MAVEN_ARGS_APPEND)" >> env-file
-
-          [[ '$(params.MAVEN_MIRROR_URL)' != "" ]] &&
-            echo "MAVEN_MIRROR_URL=$(params.MAVEN_MIRROR_URL)" >> env-file
-
-          echo "Generated Env file"
-          echo "------------------------------"
-          cat env-file
-          echo "------------------------------"
-      volumeMounts:
-        - name: envparams
-          mountPath: /env-params
-      env:
-        - name: HOME
-          value: /tekton/home
     - name: generate
       image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
       workingDir: $(workspaces.source.path)
-      command:
-        - 's2i'
-        - 'build'
-        - '$(params.PATH_CONTEXT)'
-        - 'image-registry.openshift-image-registry.svc:5000/openshift/java:$(params.VERSION)'
-        - '--image-scripts-url'
-        - 'image:///usr/local/s2i'
-        - '--as-dockerfile'
-        - '/gen-source/Dockerfile.gen'
-        - '--environment-file'
-        - '/env-params/env-file'
+      args: ["$(params.ENV_VARS[*])"]
+      script: |
+          echo "MAVEN_CLEAR_REPO=$(params.MAVEN_CLEAR_REPO)" > /env-vars/env-file
+
+          [[ '$(params.MAVEN_ARGS_APPEND)' != "" ]] &&
+            echo "MAVEN_ARGS_APPEND=$(params.MAVEN_ARGS_APPEND)" >> /env-vars/env-file
+
+          [[ '$(params.MAVEN_MIRROR_URL)' != "" ]] &&
+            echo "MAVEN_MIRROR_URL=$(params.MAVEN_MIRROR_URL)" >> /env-vars/env-file
+
+          echo "Processing Build Environment Variables"
+          for var in "$@"
+          do
+            echo "$var" >> /env-vars/env-file
+          done
+
+          echo "Generated Build Env Var file"
+          echo "------------------------------"
+          cat /env-vars/env-file
+          echo "------------------------------"
+
+          s2i build $(params.PATH_CONTEXT) image-registry.openshift-image-registry.svc:5000/openshift/java:$(params.VERSION) \
+          --image-scripts-url image:///usr/local/s2i \
+          --as-dockerfile /gen-source/Dockerfile.gen --environment-file /env-vars/env-file
       volumeMounts:
         - name: gen-source
           mountPath: /gen-source
-        - name: envparams
-          mountPath: /env-params
+        - name: env-vars
+          mountPath: /env-vars
       env:
         - name: HOME
           value: /tekton/home
@@ -136,5 +123,5 @@ spec:
       emptyDir: {}
     - name: gen-source
       emptyDir: {}
-    - name: envparams
+    - name: env-vars
       emptyDir: {}
