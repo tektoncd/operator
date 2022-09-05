@@ -10,7 +10,7 @@ metadata:
     operators.operatorframework.io/builder: operator-sdk-v1.7.2
     operators.openshift.io/infrastructure-features: '["disconnected","proxy-aware"]'
     operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev", "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev", "tektonhubs.operator.tekton.dev", "tektonchains.operator.tekton.dev"]'
-    repository: https://github.com/openshift/tektoncd-operator
+    repository: https://github.com/tektoncd/operator
     support: Red Hat
   labels:
     operatorframework.io/arch.amd64: supported
