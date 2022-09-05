@@ -39,6 +39,10 @@ spec:
     - name: SKIP_PUSH
       description: Skip pushing the built image
       default: "false"
+    - name: ENV_VARS
+      type: array
+      description: Environment variables to set during _build-time_.
+      default: []
   workspaces:
     - name: source
       mountPath: /workspace/source
@@ -52,10 +56,27 @@ spec:
     - name: generate
       image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
       workingDir: $(workspaces.source.path)
-      command: ['s2i', 'build', '$(params.PATH_CONTEXT)', 'image-registry.openshift-image-registry.svc:5000/openshift/nodejs:$(params.VERSION)', '--as-dockerfile', '/gen-source/Dockerfile.gen']
+      args: ["$(params.ENV_VARS[*])"]
+      script: |
+        echo "Processing Build Environment Variables"
+        echo "" > /env-vars/env-file
+        for var in "$@"
+        do
+            echo "$var" >> /env-vars/env-file
+        done
+
+        echo "Generated Build Env Var file"
+        echo "------------------------------"
+        cat /env-vars/env-file
+        echo "------------------------------"
+
+        s2i build $(params.PATH_CONTEXT) image-registry.openshift-image-registry.svc:5000/openshift/nodejs:$(params.VERSION) \
+        --as-dockerfile /gen-source/Dockerfile.gen --environment-file /env-vars/env-file
       volumeMounts:
         - name: gen-source
           mountPath: /gen-source
+        - name: env-vars
+          mountPath: /env-vars
       env:
         - name: HOME
           value: /tekton/home
@@ -85,4 +106,6 @@ spec:
     - name: varlibcontainers
       emptyDir: {}
     - name: gen-source
+      emptyDir: {}
+    - name: env-vars
       emptyDir: {}
