@@ -299,6 +299,18 @@ def imageSub(config, csv):
     csv['spec']['relatedImages'] = relatedImages
     return csv
 
+def check_prerequisites():
+    is_ok = True
+
+    # check if commands are installed
+    commands = ["operator-sdk", "kustomize"]
+    for cmd in commands:
+        if shutil.which(cmd) is None:
+            print(f"command not found: {cmd}")
+            is_ok = False
+
+    return is_ok
+
 def debug(config, message):
     if config["verbose"]:
         print(message)
@@ -311,6 +323,9 @@ def divider(title=''):
 
 if __name__ == "__main__":
     divider("BundleGen")
+    if check_prerequisites() is False:
+        print("prerequisites not satisfied")
+        exit(1)
     config = buildConfig()
     return_code = generate_bundle(config)
     if return_code != 0:
