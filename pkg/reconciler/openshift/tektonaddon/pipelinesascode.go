@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/client-go/route/clientset/versioned/scheme"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift"
@@ -170,6 +172,8 @@ func (r *Reconciler) getManifest(ctx context.Context, ta *v1alpha1.TektonAddon) 
 		common.InjectOperandNameLabelOverwriteExisting(openshift.OperandOpenShiftPipelineAsCode),
 		common.DeploymentImages(images),
 		common.AddConfiguration(ta.Spec.Config),
+		common.ApplyProxySettings,
+		occommon.ApplyCABundles,
 	}
 
 	if err := r.addonTransform(ctx, &pacManifest, ta, tfs...); err != nil {
