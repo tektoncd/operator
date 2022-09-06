@@ -199,7 +199,7 @@ def genBundleCmd(config):
                 --kustomize-dir manifests \
                 --overwrite \
                 --package {packagename} \
-                --version {version}
+                --version {version}; exit $((${{PIPESTATUS[0]}} + ${{PIPESTATUS[1]}}))
     '''.format(
         operator_sdk=OPERATOR_SDK,
         resource_gen=aggregate_resources,
