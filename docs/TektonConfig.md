@@ -147,11 +147,22 @@ pruner:
     - pipelinerun
   keep: 3
   schedule: "* * * * *"
+
+# another example
+pruner:
+  resources:
+    - taskrun
+    - pipelinerun
+  keep-since: 1440 # 1d
+  schedule: "* * * * *"
 ```
 
 - `resources`: supported resources for auto prune are `taskrun` and `pipelinerun`
 - `keep`: maximum number of resources to keep while deleting removing
+- `keep-since`: when deleting resources keep the ones that have been completed for less than n minutes
 - `schedule`: how often to clean up resources. User can understand the schedule syntax [here][schedule].
+
+Note: The fields `keep` and `keep-since` are mutually exclusive.
 
 This is an `Optional` section.
 
