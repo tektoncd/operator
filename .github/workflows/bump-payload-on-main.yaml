@@ -18,7 +18,7 @@ jobs:
     - name: run operator-tool bump
       run: |
         export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-        go run ./cmd/operator-tool -config components.yaml bump
+        make components/bump
     - name: create pull request
       uses: peter-evans/create-pull-request@v4
       with:
