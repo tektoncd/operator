@@ -229,9 +229,10 @@ main() {
 
   hub_version=$(${OPERATORTOOL} -config ${CONFIG} component-version hub)
   release_yaml_hub hub ${hub_version}
+  
+  echo updated payload tree
+  find cmd/${TARGET}/operator/kodata
 }
 
 main $@
 
-echo updated payload tree
-find cmd/${1}/operator/kodata
