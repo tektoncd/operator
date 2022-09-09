@@ -32,7 +32,7 @@ jobs:
     - name: run operator-tool bump-bugfix
       run: |
         export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-        go run ./cmd/operator-tool -config components.yaml bump-bugfix
+        make components/bump-bugfix
     - name: create pull request
       uses: peter-evans/create-pull-request@v4
       with:
