@@ -24,9 +24,12 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"knative.dev/pkg/logging"
 )
 
 func CurrentInstallerSetName(ctx context.Context, client clientset.Interface, labelSelector string) (string, error) {
+	logger := logging.FromContext(ctx)
+
 	iSets, err := client.OperatorV1alpha1().TektonInstallerSets().List(ctx, v1.ListOptions{
 		LabelSelector: labelSelector,
 	})
@@ -41,6 +44,10 @@ func CurrentInstallerSetName(ctx context.Context, client clientset.Interface, la
 		return iSetName, nil
 	}
 
+	for _, item := range iSets.Items {
+		logger.Infow("will delete tektoninstallerset", "object", item.Namespace+"/"+item.Name)
+	}
+
 	// len(iSets.Items) > 1
 	// delete all installerSets as it cannot be decided which one is the desired one
 	err = client.OperatorV1alpha1().TektonInstallerSets().DeleteCollection(ctx,
@@ -51,6 +58,7 @@ func CurrentInstallerSetName(ctx context.Context, client clientset.Interface, la
 	if err != nil {
 		return "", err
 	}
+	logger.Infof("deleted all tektoninstallerset by labesselector %s", labelSelector)
 	return "", v1alpha1.RECONCILE_AGAIN_ERR
 }
 
