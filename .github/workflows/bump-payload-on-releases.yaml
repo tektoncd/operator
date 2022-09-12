@@ -17,7 +17,7 @@ jobs:
   #   outputs:
   #     branches: ${{ steps.set-matrix.outputs.branches }}
   bump-payloads:
-    needs: build-release-matrix
+    # needs: build-release-matrix
     runs-on: ubuntu-latest
     strategy:
       matrix:
