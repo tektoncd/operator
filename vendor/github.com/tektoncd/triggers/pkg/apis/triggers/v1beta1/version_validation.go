@@ -28,6 +28,10 @@ import (
 // to the wantVersion value and, if not, returns an error stating which feature
 // is dependent on the version and what the current version actually is.
 func ValidateEnabledAPIFields(ctx context.Context, featureName, wantVersion string) *apis.FieldError {
+	if apis.IsInDelete(ctx) {
+		return nil
+	}
+
 	currentVersion := config.FromContextOrDefaults(ctx).FeatureFlags.EnableAPIFields
 	if currentVersion != wantVersion {
 		var errs *apis.FieldError

@@ -29,10 +29,11 @@ import (
 
 // Validate TriggerBinding.
 func (tb *TriggerBinding) Validate(ctx context.Context) *apis.FieldError {
-	errs := validate.ObjectMetadata(tb.GetObjectMeta()).ViaField("metadata")
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
+
+	errs := validate.ObjectMetadata(tb.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(tb.Spec.Validate(ctx).ViaField("spec"))
 }
 
