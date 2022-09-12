@@ -40,13 +40,16 @@ func (f *fileLocalStore) SetMeta(name string, meta json.RawMessage) error {
 	return f.db.Put([]byte(name), []byte(meta), nil)
 }
 
-func (f *fileLocalStore) Close() error {
-	if err := f.db.Close(); err != nil {
-		return err
-	}
-	if err := f.fd.Close(); err != nil {
-		return err
-	}
+func (f *fileLocalStore) DeleteMeta(name string) error {
+	return f.db.Delete([]byte(name), nil)
+}
 
-	return nil
+func (f *fileLocalStore) Close() error {
+	// Always close both before returning any errors
+	dbCloseErr := f.db.Close()
+	fdCloseErr := f.fd.Close()
+	if dbCloseErr != nil {
+		return dbCloseErr
+	}
+	return fdCloseErr
 }

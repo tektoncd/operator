@@ -18,192 +18,161 @@ package remote
 import (
 	"bytes"
 	"encoding/base64"
-	"io"
-	"io/ioutil"
-	"net/http"
+	"encoding/json"
+	"fmt"
+	"os"
 
-	"github.com/go-openapi/swag"
-	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/mutate"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
-	"github.com/google/go-containerregistry/pkg/v1/types"
-	"github.com/pkg/errors"
-
-	"github.com/sigstore/cosign/internal/oci"
-	"github.com/sigstore/cosign/internal/oci/empty"
-	ociremote "github.com/sigstore/cosign/internal/oci/remote"
-	ctypes "github.com/sigstore/cosign/pkg/types"
+	"github.com/sigstore/cosign/pkg/oci"
+	"github.com/sigstore/cosign/pkg/oci/mutate"
+	"github.com/sigstore/cosign/pkg/oci/static"
 	"github.com/sigstore/sigstore/pkg/signature"
 )
 
-const (
-	sigkey    = "dev.cosignproject.cosign/signature"
-	certkey   = "dev.sigstore.cosign/certificate"
-	chainkey  = "dev.sigstore.cosign/chain"
-	BundleKey = "dev.sigstore.cosign/bundle"
-)
-
-func Descriptors(ref name.Reference, remoteOpts ...remote.Option) ([]v1.Descriptor, error) {
-	img, err := remote.Image(ref, remoteOpts...)
-	if err != nil {
-		return nil, err
-	}
-	m, err := img.Manifest()
-	if err != nil {
-		return nil, err
-	}
-
-	return m.Layers, nil
+// NewDupeDetector creates a new DupeDetector that looks for matching signatures that
+// can verify the provided signature's payload.
+func NewDupeDetector(v signature.Verifier) mutate.DupeDetector {
+	return &dd{verifier: v}
 }
 
-// SignatureImage returns the existing destination image, or a new, empty one.
-func SignatureImage(ref name.Reference, opts ...remote.Option) (oci.Signatures, error) {
-	base, err := ociremote.Signatures(ref, ociremote.WithRemoteOptions(opts...))
-	if err == nil {
-		return base, nil
-	}
-	var te *transport.Error
-	if errors.As(err, &te) {
-		if te.StatusCode != http.StatusNotFound {
-			return nil, te
-		}
-		return empty.Signatures(), nil
-	}
-	return nil, err
+func NewReplaceOp(predicateURI string) mutate.ReplaceOp {
+	return &ro{predicateURI: predicateURI}
 }
 
-func findDuplicate(sigImage oci.Signatures, payload []byte, dupeDetector signature.Verifier, annotations map[string]string) ([]byte, error) {
-	l := &staticLayer{
-		b:  payload,
-		mt: ctypes.SimpleSigningMediaType,
-	}
+type dd struct {
+	verifier signature.Verifier
+}
 
-	sigDigest, err := l.Digest()
+type ro struct {
+	predicateURI string
+}
+
+var _ mutate.DupeDetector = (*dd)(nil)
+var _ mutate.ReplaceOp = (*ro)(nil)
+
+func (dd *dd) Find(sigImage oci.Signatures, newSig oci.Signature) (oci.Signature, error) {
+	newDigest, err := newSig.Digest()
+	if err != nil {
+		return nil, err
+	}
+	newMediaType, err := newSig.MediaType()
+	if err != nil {
+		return nil, err
+	}
+	newAnnotations, err := newSig.Annotations()
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO(mattmoor): Port this to take advantage of the higher-level oci.Signature interface.
-	manifest, err := sigImage.Manifest()
+	sigs, err := sigImage.Get()
 	if err != nil {
 		return nil, err
 	}
 
 LayerLoop:
-	for _, layer := range manifest.Layers {
+	for _, sig := range sigs {
+		existingAnnotations, err := sig.Annotations()
+		if err != nil {
+			continue LayerLoop
+		}
+
 		// if there are any new annotations, then this isn't a duplicate
-		for a, value := range annotations {
-			if val, ok := layer.Annotations[a]; !ok || val != value {
+		for a, value := range newAnnotations {
+			if a == static.SignatureAnnotationKey {
+				continue // Ignore the signature key, we check it with custom logic below.
+			}
+			if val, ok := existingAnnotations[a]; !ok || val != value {
 				continue LayerLoop
 			}
 		}
-		if layer.MediaType == ctypes.SimpleSigningMediaType && layer.Digest == sigDigest && layer.Annotations[sigkey] != "" {
-			uploadedSig, err := base64.StdEncoding.DecodeString(layer.Annotations[sigkey])
-			if err != nil {
-				return nil, err
-			}
-			if err := dupeDetector.VerifySignature(bytes.NewReader(uploadedSig), bytes.NewReader(payload)); err == nil {
-				// An equivalent signature has already been uploaded.
-				return uploadedSig, nil
-			}
+		if existingDigest, err := sig.Digest(); err != nil || existingDigest != newDigest {
+			continue LayerLoop
+		}
+		if existingMediaType, err := sig.MediaType(); err != nil || existingMediaType != newMediaType {
+			continue LayerLoop
+		}
+
+		existingSignature, err := sig.Base64Signature()
+		if err != nil || existingSignature == "" {
+			continue LayerLoop
+		}
+		uploadedSig, err := base64.StdEncoding.DecodeString(existingSignature)
+		if err != nil {
+			continue LayerLoop
+		}
+		r, err := newSig.Uncompressed()
+		if err != nil {
+			return nil, err
+		}
+		if err := dd.verifier.VerifySignature(bytes.NewReader(uploadedSig), r); err == nil {
+			return sig, nil
 		}
 	}
 	return nil, nil
 }
 
-type UploadOpts struct {
-	Cert                  []byte
-	Chain                 []byte
-	DupeDetector          signature.Verifier
-	Bundle                *oci.Bundle
-	AdditionalAnnotations map[string]string
-	RemoteOpts            []remote.Option
-	MediaType             string
-}
-
-func UploadSignature(signature, payload []byte, dst name.Reference, opts UploadOpts) (uploadedSig []byte, err error) {
-	// Preserve the default
-	if opts.MediaType == "" {
-		opts.MediaType = ctypes.SimpleSigningMediaType
-	}
-	l := &staticLayer{
-		b:  payload,
-		mt: types.MediaType(opts.MediaType),
-	}
-
-	base, err := SignatureImage(dst, opts.RemoteOpts...)
+func (r *ro) Replace(signatures oci.Signatures, o oci.Signature) (oci.Signatures, error) {
+	sigs, err := signatures.Get()
 	if err != nil {
 		return nil, err
 	}
 
-	if opts.DupeDetector != nil {
-		if uploadedSig, err = findDuplicate(base, payload, opts.DupeDetector, opts.AdditionalAnnotations); err != nil || uploadedSig != nil {
-			return uploadedSig, err
-		}
+	ros := &replaceOCISignatures{Signatures: signatures}
+
+	sigsCopy := make([]oci.Signature, 0, len(sigs))
+	sigsCopy = append(sigsCopy, o)
+
+	if len(sigs) == 0 {
+		ros.attestations = append(ros.attestations, sigsCopy...)
+		return ros, nil
 	}
 
-	annotations := map[string]string{
-		sigkey: base64.StdEncoding.EncodeToString(signature),
-	}
-	if opts.Cert != nil {
-		annotations[certkey] = string(opts.Cert)
-		annotations[chainkey] = string(opts.Chain)
-	}
-	if opts.Bundle != nil {
-		b, err := swag.WriteJSON(opts.Bundle)
+	for _, s := range sigs {
+		var signaturePayload map[string]interface{}
+		p, err := s.Payload()
 		if err != nil {
-			return nil, errors.Wrap(err, "marshaling bundle")
+			return nil, fmt.Errorf("could not get payload: %w", err)
 		}
-		annotations[BundleKey] = string(b)
+		err = json.Unmarshal(p, &signaturePayload)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal payload data: %w", err)
+		}
+
+		val, ok := signaturePayload["payload"]
+		if !ok {
+			return nil, fmt.Errorf("could not find 'payload' in payload data")
+		}
+		decodedPayload, err := base64.StdEncoding.DecodeString(val.(string))
+		if err != nil {
+			return nil, fmt.Errorf("could not decode 'payload': %w", err)
+		}
+
+		var payloadData map[string]interface{}
+		if err := json.Unmarshal(decodedPayload, &payloadData); err != nil {
+			return nil, fmt.Errorf("unmarshal payloadData: %w", err)
+		}
+		val, ok = payloadData["predicateType"]
+		if !ok {
+			return nil, fmt.Errorf("could not find 'predicateType' in payload data")
+		}
+		if r.predicateURI == val {
+			fmt.Fprintln(os.Stderr, "Replacing attestation predicate:", r.predicateURI)
+			continue
+		} else {
+			fmt.Fprintln(os.Stderr, "Not replacing attestation predicate:", val)
+			sigsCopy = append(sigsCopy, s)
+		}
 	}
-	img, err := mutate.Append(base, mutate.Addendum{
-		Layer:       l,
-		Annotations: annotations,
-	})
-	if err != nil {
-		return nil, err
-	}
 
-	if err := remote.Write(dst, img, opts.RemoteOpts...); err != nil {
-		return nil, err
-	}
-	return signature, nil
+	ros.attestations = append(ros.attestations, sigsCopy...)
+
+	return ros, nil
 }
 
-type staticLayer struct {
-	b  []byte
-	mt types.MediaType
+type replaceOCISignatures struct {
+	oci.Signatures
+	attestations []oci.Signature
 }
 
-func (l *staticLayer) Digest() (v1.Hash, error) {
-	h, _, err := v1.SHA256(bytes.NewReader(l.b))
-	return h, err
-}
-
-// DiffID returns the Hash of the uncompressed layer.
-func (l *staticLayer) DiffID() (v1.Hash, error) {
-	h, _, err := v1.SHA256(bytes.NewReader(l.b))
-	return h, err
-}
-
-// Compressed returns an io.ReadCloser for the compressed layer contents.
-func (l *staticLayer) Compressed() (io.ReadCloser, error) {
-	return ioutil.NopCloser(bytes.NewReader(l.b)), nil
-}
-
-// Uncompressed returns an io.ReadCloser for the uncompressed layer contents.
-func (l *staticLayer) Uncompressed() (io.ReadCloser, error) {
-	return ioutil.NopCloser(bytes.NewReader(l.b)), nil
-}
-
-// Size returns the compressed size of the Layer.
-func (l *staticLayer) Size() (int64, error) {
-	return int64(len(l.b)), nil
-}
-
-// MediaType returns the media type of the Layer.
-func (l *staticLayer) MediaType() (types.MediaType, error) {
-	return l.mt, nil
+func (r *replaceOCISignatures) Get() ([]oci.Signature, error) {
+	return r.attestations, nil
 }

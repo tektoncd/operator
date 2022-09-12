@@ -20,6 +20,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
+	"errors"
 	"io"
 	"io/ioutil"
 	"path/filepath"
@@ -28,13 +29,13 @@ import (
 	_ "crypto/sha256"
 	_ "crypto/sha512"
 
-	"github.com/pkg/errors"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 
 	// these ensure we have the implementations loaded
 	_ "golang.org/x/crypto/sha3"
 )
 
+// Signer creates digital signatures over a message using a specified key pair
 type Signer interface {
 	PublicKeyProvider
 	SignMessage(message io.Reader, opts ...SignOption) ([]byte, error)

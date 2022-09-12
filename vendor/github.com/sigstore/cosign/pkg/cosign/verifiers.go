@@ -18,24 +18,32 @@ package cosign
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/in-toto/in-toto-golang/in_toto"
-	"github.com/in-toto/in-toto-golang/pkg/ssl"
-	"github.com/pkg/errors"
+	"github.com/secure-systems-lab/go-securesystemslib/dsse"
 
+	"github.com/sigstore/cosign/pkg/oci"
 	"github.com/sigstore/sigstore/pkg/signature/payload"
 )
 
-// SimpleClaimVerifier verifies that SignedPayload.Payload is a SimpleContainerImage payload which references the given image digest and contains the given annotations.
-func SimpleClaimVerifier(sp SignedPayload, imageDigest v1.Hash, annotations map[string]interface{}) error {
-	ss := &payload.SimpleContainerImage{}
-	if err := json.Unmarshal(sp.Payload, ss); err != nil {
+// SimpleClaimVerifier verifies that sig.Payload() is a SimpleContainerImage payload which references the given image digest and contains the given annotations.
+func SimpleClaimVerifier(sig oci.Signature, imageDigest v1.Hash, annotations map[string]interface{}) error {
+	p, err := sig.Payload()
+	if err != nil {
 		return err
 	}
 
-	if err := sp.VerifyClaims(imageDigest, ss); err != nil {
+	ss := &payload.SimpleContainerImage{}
+	if err := json.Unmarshal(p, ss); err != nil {
 		return err
+	}
+
+	foundDgst := ss.Critical.Image.DockerManifestDigest
+	if foundDgst != imageDigest.String() {
+		return fmt.Errorf("invalid or missing digest in claim: %s", foundDgst)
 	}
 
 	if annotations != nil {
@@ -43,14 +51,20 @@ func SimpleClaimVerifier(sp SignedPayload, imageDigest v1.Hash, annotations map[
 			return errors.New("missing or incorrect annotation")
 		}
 	}
+
 	return nil
 }
 
-// IntotoSubjectClaimVerifier verifies that SignedPayload.Payload is an Intoto statement which references the given image digest.
-func IntotoSubjectClaimVerifier(sp SignedPayload, imageDigest v1.Hash, _ map[string]interface{}) error {
+// IntotoSubjectClaimVerifier verifies that sig.Payload() is an Intoto statement which references the given image digest.
+func IntotoSubjectClaimVerifier(sig oci.Signature, imageDigest v1.Hash, _ map[string]interface{}) error {
+	p, err := sig.Payload()
+	if err != nil {
+		return err
+	}
+
 	// The payload here is an envelope. We already verified the signature earlier.
-	e := ssl.Envelope{}
-	if err := json.Unmarshal(sp.Payload, &e); err != nil {
+	e := dsse.Envelope{}
+	if err := json.Unmarshal(p, &e); err != nil {
 		return err
 	}
 	stBytes, err := base64.StdEncoding.DecodeString(e.Payload)

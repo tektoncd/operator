@@ -2,16 +2,45 @@
 
 ## HEAD
 
+* `countFromInformationSchema` function to add support for MySQL 8.
+
+### Removals
+
+ * #2710: Unused `storage/tools/dumplib` was removed. The useful storage format
+  regression test moved to `integration/format`.
+ * #2711: Unused `storage/tools/hasher` removed.
+ * #2715: Packages under `merkle` are deprecated and to be removed. Use
+   https://github.com/transparency-dev/merkle instead.
+
+### Misc improvements
+
+ * #2712: Fix MySQL world-writable config warning.
+ * #2726: Check the tile height invariant stricter. No changes required.
+
+### Dependency updates
+ * #2731: Update `protoc` from `v3.12.4` to `v3.20.1`
+
+## v1.4.0
+
+* Recommended go version for development: 1.17
+  * This is the version used by the cloudbuild presubmits. Using a
+    different version can lead to presubmits failing due to unexpected
+    diffs.
 * GCP terraform script updated. GKE 1.19 and updated CPU type to E2
 
 ### Dependency updates
+Many dep updates, including:
  * Upgraded to etcd v3 in order to allow grpc to be upgraded (#2195)
-   * etcd was `v0.5.0-alpha.5`, now `v3.5.0-alpha.0`
- * grpc upgraded from `v1.29.1` to `v1.36.0`
+   * etcd was `v0.5.0-alpha.5`, now `v3.5.0`
+ * grpc upgraded from `v1.29.1` to `v1.40.0`
  * certificate-transparency-go from `v1.0.21` to
    `v1.1.2-0.20210512142713-bed466244fa6`
+ * protobuf upgraded from `v1` to `v2`
+ * MySQL driver from `1.5.0` to `1.6.0`
 
 ### Cleanup
+ * **Removed signatures from LogRoot and EntryTimestamps returned by RPCs** (reflecting that
+   there should not be a trust boundary between Trillian and the personality.)
  * Removed the deprecated crypto.NewSHA256Signer function.
  * Finish removing the `LogMetadata.GetUnsequencedCounts()` method.
  * Removed the following APIs:
@@ -20,6 +49,10 @@
    - `TrillianLog.QueueLeaves`
  * Removed the incomplete Postgres storage backend (#1298).
  * Deprecated `LogRootV1.Revision` field.
+ * Moved `rfc6962` hasher one directory up to eliminate empty leftover package.
+ * Removed unused `log_client` tool.
+ * Various tidyups and improvements to merke & proof generation code.
+ * Remove some remnants of experimental map.
 
 ### Storage refactoring
  * `NodeReader.GetMerkleNodes` does not accept revisions anymore. The
@@ -35,10 +68,14 @@
  * Removed the `ReadOnlyLogTX` interface, and put its only used
    `GetActiveLogIDs` method to `LogStorage`.
  * Inlined the `LogMetadata` interface to `ReadOnlyLogStorage`.
+ * Inlined the `TreeStorage` interfaces to `LogStorage`.
  * Removed the need for the storage layer to return ephemeral node hashes. The
    application layer always requests for complete subtree nodes comprising the
    compact ranges corresponding to the requests.
- * TODO(pavelkalinnikov): More changes are coming, and will be added here.
+ * Removed the single-tile callback from `SubtreeCache`, it uses only
+   `GetSubtreesFunc` now.
+ * Removed `SetSubtreesFunc` callback from `SubtreeCache`. The tiles should be
+   written by the caller now, i.e. the caller must invoke the callback.
 
 ## v1.3.13
 [Published 2021-02-16](https://github.com/google/trillian/releases/tag/v1.3.13)

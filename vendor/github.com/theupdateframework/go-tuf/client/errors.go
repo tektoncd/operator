@@ -3,13 +3,12 @@ package client
 import (
 	"errors"
 	"fmt"
-
-	"github.com/theupdateframework/go-tuf/verify"
 )
 
 var (
 	ErrNoRootKeys       = errors.New("tuf: no root keys found in local meta store")
 	ErrInsufficientKeys = errors.New("tuf: insufficient keys to meet threshold")
+	ErrNoLocalSnapshot  = errors.New("tuf: no snapshot stored locally")
 )
 
 type ErrMissingRemoteMetadata struct {
@@ -38,17 +37,14 @@ func (e ErrDecodeFailed) Error() string {
 	return fmt.Sprintf("tuf: failed to decode %s: %s", e.File, e.Err)
 }
 
-func isDecodeFailedWithErrRoleThreshold(err error) bool {
-	e, ok := err.(ErrDecodeFailed)
-	if !ok {
-		return false
-	}
-	return isErrRoleThreshold(e.Err)
+type ErrMaxDelegations struct {
+	Target          string
+	MaxDelegations  int
+	SnapshotVersion int64
 }
 
-func isErrRoleThreshold(err error) bool {
-	_, ok := err.(verify.ErrRoleThreshold)
-	return ok
+func (e ErrMaxDelegations) Error() string {
+	return fmt.Sprintf("tuf: max delegation of %d reached searching for %s with snapshot version %d", e.MaxDelegations, e.Target, e.SnapshotVersion)
 }
 
 type ErrNotFound struct {
@@ -74,25 +70,13 @@ func (e ErrWrongSize) Error() string {
 	return fmt.Sprintf("tuf: unexpected file size: %s (expected %d bytes, got %d bytes)", e.File, e.Expected, e.Actual)
 }
 
-type ErrLatestSnapshot struct {
-	Version int
-}
-
-func (e ErrLatestSnapshot) Error() string {
-	return fmt.Sprintf("tuf: the local snapshot version (%d) is the latest", e.Version)
-}
-
-func IsLatestSnapshot(err error) bool {
-	_, ok := err.(ErrLatestSnapshot)
-	return ok
-}
-
 type ErrUnknownTarget struct {
-	Name string
+	Name            string
+	SnapshotVersion int64
 }
 
 func (e ErrUnknownTarget) Error() string {
-	return fmt.Sprintf("tuf: unknown target file: %s", e.Name)
+	return fmt.Sprintf("tuf: unknown target file: %s with snapshot version %d", e.Name, e.SnapshotVersion)
 }
 
 type ErrMetaTooLarge struct {
@@ -111,4 +95,13 @@ type ErrInvalidURL struct {
 
 func (e ErrInvalidURL) Error() string {
 	return fmt.Sprintf("tuf: invalid repository URL %s", e.URL)
+}
+
+type ErrRoleNotInSnapshot struct {
+	Role            string
+	SnapshotVersion int64
+}
+
+func (e ErrRoleNotInSnapshot) Error() string {
+	return fmt.Sprintf("tuf: role %s not in snapshot version %d", e.Role, e.SnapshotVersion)
 }

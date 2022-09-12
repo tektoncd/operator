@@ -19,15 +19,18 @@ import (
 	"crypto"
 )
 
+// RequestCryptoSignerOpts implements the functional option pattern for supplying crypto.SignerOpts when signing or verifying
 type RequestCryptoSignerOpts struct {
 	NoOpOptionImpl
 	opts crypto.SignerOpts
 }
 
+// ApplyCryptoSignerOpts sets crypto.SignerOpts as a functional option
 func (r RequestCryptoSignerOpts) ApplyCryptoSignerOpts(opts *crypto.SignerOpts) {
 	*opts = r.opts
 }
 
+// WithCryptoSignerOpts specifies that provided crypto.SignerOpts be used during signing and verification operations
 func WithCryptoSignerOpts(opts crypto.SignerOpts) RequestCryptoSignerOpts {
 	var optsToUse crypto.SignerOpts = crypto.SHA256
 	if opts != nil {

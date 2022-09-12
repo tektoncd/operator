@@ -20,13 +20,14 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
+	"errors"
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 )
 
+// SignerVerifier creates and verifies digital signatures over a message using a specified key pair
 type SignerVerifier interface {
 	Signer
 	Verifier

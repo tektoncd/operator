@@ -50,3 +50,7 @@ linters:
     - ifshort
     - forbidigo
     - cyclop
+    - varnamelen
+    - exhaustruct
+    - nonamedreturns
+    - nosnakecase

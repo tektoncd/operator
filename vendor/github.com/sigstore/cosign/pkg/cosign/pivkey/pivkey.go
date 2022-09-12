@@ -25,20 +25,20 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
+	"syscall"
 
 	"github.com/go-piv/piv-go/piv"
-	"github.com/pkg/errors"
 	"golang.org/x/term"
 
 	"github.com/sigstore/sigstore/pkg/signature"
 )
 
 var (
-	KeyNotInitialized error = errors.New("key not initialzied")
+	KeyNotInitialized error = errors.New("key not initialized")
 	SlotNotSet        error = errors.New("slot not set")
 )
 
@@ -72,7 +72,7 @@ func GetKey() (*Key, error) {
 func GetKeyWithSlot(slot string) (*Key, error) {
 	card, err := GetKey()
 	if err != nil {
-		return nil, errors.Wrap(err, "open key")
+		return nil, fmt.Errorf("open key: %w", err)
 	}
 
 	card.slot = SlotForName(slot)
@@ -166,19 +166,19 @@ func (k *Key) PublicKey(opts ...signature.PublicKeyOption) (crypto.PublicKey, er
 }
 
 func (k *Key) VerifySignature(signature, message io.Reader, opts ...signature.VerifyOption) error {
-	sig, err := ioutil.ReadAll(signature)
+	sig, err := io.ReadAll(signature)
 	if err != nil {
-		return errors.Wrap(err, "read signature")
+		return fmt.Errorf("read signature: %w", err)
 	}
-	msg, err := ioutil.ReadAll(message)
+	msg, err := io.ReadAll(message)
 	if err != nil {
-		return errors.Wrap(err, "read message")
+		return fmt.Errorf("read message: %w", err)
 	}
 	digest := sha256.Sum256(msg)
 
 	att, err := k.Attest()
 	if err != nil {
-		return errors.Wrap(err, "get attestation")
+		return fmt.Errorf("get attestation: %w", err)
 	}
 	switch kt := att.PublicKey.(type) {
 	case *ecdsa.PublicKey:
@@ -195,7 +195,9 @@ func (k *Key) VerifySignature(signature, message io.Reader, opts ...signature.Ve
 
 func getPin() (string, error) {
 	fmt.Fprint(os.Stderr, "Enter PIN for security key: ")
-	b, err := term.ReadPassword(0)
+	// Unnecessary convert of syscall.Stdin on *nix, but Windows is a uintptr
+	// nolint:unconvert
+	b, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", err
 	}
@@ -214,7 +216,7 @@ func (k *Key) Verifier() (signature.Verifier, error) {
 	if err != nil {
 		return nil, err
 	}
-	k.Pub = (*crypto.PublicKey)(&cert.PublicKey)
+	k.Pub = cert.PublicKey
 
 	return k, nil
 }
@@ -241,7 +243,7 @@ func (k *Key) SignerVerifier() (signature.SignerVerifier, error) {
 	if err != nil {
 		return nil, err
 	}
-	k.Pub = (*crypto.PublicKey)(&cert.PublicKey)
+	k.Pub = cert.PublicKey
 
 	var auth piv.KeyAuth
 	if k.pin == "" {

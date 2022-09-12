@@ -5,17 +5,18 @@ import (
 	"strings"
 	"time"
 
-	cjson "github.com/tent/canonical-json-go"
+	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 	"github.com/theupdateframework/go-tuf/data"
+	"github.com/theupdateframework/go-tuf/internal/roles"
 )
 
 type signedMeta struct {
 	Type    string    `json:"_type"`
 	Expires time.Time `json:"expires"`
-	Version int       `json:"version"`
+	Version int64     `json:"version"`
 }
 
-func (db *DB) Verify(s *data.Signed, role string, minVersion int) error {
+func (db *DB) VerifyIgnoreExpiredCheck(s *data.Signed, role string, minVersion int64) error {
 	if err := db.VerifySignatures(s, role); err != nil {
 		return err
 	}
@@ -24,12 +25,20 @@ func (db *DB) Verify(s *data.Signed, role string, minVersion int) error {
 	if err := json.Unmarshal(s.Signed, sm); err != nil {
 		return err
 	}
-	if strings.ToLower(sm.Type) != strings.ToLower(role) {
-		return ErrWrongMetaType
+
+	if roles.IsTopLevelRole(role) {
+		// Top-level roles can only sign metadata of the same type (e.g. snapshot
+		// metadata must be signed by the snapshot role).
+		if !strings.EqualFold(sm.Type, role) {
+			return ErrWrongMetaType
+		}
+	} else {
+		// Delegated (non-top-level) roles may only sign targets metadata.
+		if strings.ToLower(sm.Type) != "targets" {
+			return ErrWrongMetaType
+		}
 	}
-	if IsExpired(sm.Expires) {
-		return ErrExpired{sm.Expires}
-	}
+
 	if sm.Version < minVersion {
 		return ErrLowVersion{sm.Version, minVersion}
 	}
@@ -37,8 +46,28 @@ func (db *DB) Verify(s *data.Signed, role string, minVersion int) error {
 	return nil
 }
 
+func (db *DB) Verify(s *data.Signed, role string, minVersion int64) error {
+	// Verify signatures and versions
+	err := db.VerifyIgnoreExpiredCheck(s, role, minVersion)
+
+	if err != nil {
+		return err
+	}
+
+	sm := &signedMeta{}
+	if err := json.Unmarshal(s.Signed, sm); err != nil {
+		return err
+	}
+	// Verify expiration
+	if IsExpired(sm.Expires) {
+		return ErrExpired{sm.Expires}
+	}
+
+	return nil
+}
+
 var IsExpired = func(t time.Time) bool {
-	return t.Sub(time.Now()) <= 0
+	return time.Until(t) <= 0
 }
 
 func (db *DB) VerifySignatures(s *data.Signed, role string) error {
@@ -55,7 +84,7 @@ func (db *DB) VerifySignatures(s *data.Signed, role string) error {
 	if err := json.Unmarshal(s.Signed, &decoded); err != nil {
 		return err
 	}
-	msg, err := cjson.Marshal(decoded)
+	msg, err := cjson.EncodeCanonical(decoded)
 	if err != nil {
 		return err
 	}
@@ -69,19 +98,19 @@ func (db *DB) VerifySignatures(s *data.Signed, role string) error {
 		if !roleData.ValidKey(sig.KeyID) {
 			continue
 		}
-		key := db.GetKey(sig.KeyID)
-		if key == nil {
+		verifier, err := db.GetVerifier(sig.KeyID)
+		if err != nil {
 			continue
 		}
 
-		if err := Verifiers[key.Type].Verify(key.Value.Public, msg, sig.Signature); err != nil {
-			return err
+		if err := verifier.Verify(msg, sig.Signature); err != nil {
+			return ErrInvalid
 		}
 
 		// Only consider this key valid if we haven't seen any of it's
 		// key ids before.
 		if _, ok := seen[sig.KeyID]; !ok {
-			for _, id := range key.IDs() {
+			for _, id := range verifier.MarshalPublicKey().IDs() {
 				seen[id] = struct{}{}
 			}
 
@@ -95,13 +124,30 @@ func (db *DB) VerifySignatures(s *data.Signed, role string) error {
 	return nil
 }
 
-func (db *DB) Unmarshal(b []byte, v interface{}, role string, minVersion int) error {
+func (db *DB) Unmarshal(b []byte, v interface{}, role string, minVersion int64) error {
 	s := &data.Signed{}
 	if err := json.Unmarshal(b, s); err != nil {
 		return err
 	}
 	if err := db.Verify(s, role, minVersion); err != nil {
 		return err
+	}
+	return json.Unmarshal(s.Signed, v)
+}
+
+// UnmarshalExpired is exactly like Unmarshal except ignores expired timestamp error.
+func (db *DB) UnmarshalIgnoreExpired(b []byte, v interface{}, role string, minVersion int64) error {
+	s := &data.Signed{}
+	if err := json.Unmarshal(b, s); err != nil {
+		return err
+	}
+	// Note: If verification fails, then we wont attempt to unmarshal
+	// unless when verification error is errExpired.
+	verifyErr := db.Verify(s, role, minVersion)
+	if verifyErr != nil {
+		if _, ok := verifyErr.(ErrExpired); !ok {
+			return verifyErr
+		}
 	}
 	return json.Unmarshal(s.Signed, v)
 }

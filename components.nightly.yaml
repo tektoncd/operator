@@ -17,10 +17,10 @@ chains:
   version: nightly
 results:
   github: tektoncd/results
-  version: v0.4.0
+  version: nightly
 hub:
   github: tektoncd/hub
-  version: v1.10.0
+  version: nightly
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
   version: nightly

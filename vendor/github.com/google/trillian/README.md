@@ -69,7 +69,8 @@ The current state of feature implementation is recorded in the
 
 To build and test Trillian you need:
 
- - Go 1.14 or later.
+ - Go 1.14 or later (go 1.17 matches cloudbuild, and is preferred for developers
+   that will be submitting PRs to this project).
 
 To run many of the tests (and production deployment) you need:
 
@@ -180,7 +181,7 @@ the original files; if you do, you'll need to install the prerequisites:
   - protocol buffer definitions for standard Google APIs:
 
     ```bash
-    git clone https://github.com/googleapis/googleapis.git $GOPATH/src/github.com/googleapis/googleapis
+    git clone https://github.com/googleapis/googleapis.git $(go env GOPATH)/src/github.com/googleapis/googleapis
     ```
 
 and run the following:

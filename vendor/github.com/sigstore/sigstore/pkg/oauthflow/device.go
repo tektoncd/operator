@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
@@ -29,9 +30,13 @@ import (
 )
 
 const (
+	// SigstoreDeviceURL specifies the Device Code endpoint for the public good Sigstore service
 	/* #nosec */
+	// Deprecated: this constant (while correct) should not be used
 	SigstoreDeviceURL = "https://oauth2.sigstore.dev/auth/device/code"
+	// SigstoreTokenURL specifies the Token endpoint for the public good Sigstore service
 	/* #nosec */
+	// Deprecated: this constant (while correct) should not be used
 	SigstoreTokenURL = "https://oauth2.sigstore.dev/auth/device/token"
 )
 
@@ -49,40 +54,71 @@ type tokenResp struct {
 	Error   string `json:"error"`
 }
 
+// DeviceFlowTokenGetter fetches an OIDC Identity token using the Device Code Grant flow as specified in RFC8628
 type DeviceFlowTokenGetter struct {
 	MessagePrinter func(string)
 	Sleeper        func(time.Duration)
 	Issuer         string
-	CodeURL        string
-	TokenURL       string
+	codeURL        string
 }
 
-func NewDeviceFlowTokenGetter(issuer, codeURL, tokenURL string) *DeviceFlowTokenGetter {
+// NewDeviceFlowTokenGetter creates a new DeviceFlowTokenGetter that retrieves an OIDC Identity Token using a Device Code Grant
+// Deprecated: NewDeviceFlowTokenGetter is deprecated; use NewDeviceFlowTokenGetterForIssuer() instead
+func NewDeviceFlowTokenGetter(issuer, codeURL, _ string) *DeviceFlowTokenGetter {
 	return &DeviceFlowTokenGetter{
 		MessagePrinter: func(s string) { fmt.Println(s) },
 		Sleeper:        time.Sleep,
 		Issuer:         issuer,
-		CodeURL:        codeURL,
-		TokenURL:       tokenURL,
+		codeURL:        codeURL,
 	}
 }
 
-func (d *DeviceFlowTokenGetter) deviceFlow(clientID string) (string, error) {
-	data := url.Values{
-		"client_id": []string{clientID},
-		"scope":     []string{"openid email"},
+// NewDeviceFlowTokenGetterForIssuer creates a new DeviceFlowTokenGetter that retrieves an OIDC Identity Token using a Device Code Grant
+func NewDeviceFlowTokenGetterForIssuer(issuer string) *DeviceFlowTokenGetter {
+	return &DeviceFlowTokenGetter{
+		MessagePrinter: func(s string) { fmt.Println(s) },
+		Sleeper:        time.Sleep,
+		Issuer:         issuer,
 	}
+}
 
-	/* #nosec */
-	resp, err := http.PostForm(d.CodeURL, data)
+func (d *DeviceFlowTokenGetter) deviceFlow(p *oidc.Provider, clientID, redirectURL string) (string, error) {
+	// require that OIDC provider support PKCE to provide sufficient security for the CLI
+	pkce, err := NewPKCE(p)
 	if err != nil {
 		return "", err
 	}
+
+	data := url.Values{
+		"client_id":             []string{clientID},
+		"scope":                 []string{"openid email"},
+		"code_challenge_method": []string{pkce.Method},
+		"code_challenge":        []string{pkce.Challenge},
+	}
+	if redirectURL != "" {
+		// If a redirect uri is provided then use it
+		data["redirect_uri"] = []string{redirectURL}
+	}
+
+	codeURL, err := d.CodeURL()
+	if err != nil {
+		return "", err
+	}
+	/* #nosec */
+	resp, err := http.PostForm(codeURL, data)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
 
 	b, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("%s: %s", resp.Status, b)
+	}
+
 	parsed := deviceResp{}
 	if err := json.Unmarshal(b, &parsed); err != nil {
 		return "", err
@@ -97,16 +133,19 @@ func (d *DeviceFlowTokenGetter) deviceFlow(clientID string) (string, error) {
 	for {
 		// Some providers use a secret here, we don't need for sigstore oauth one so leave it off.
 		data := url.Values{
-			"grant_type":  []string{"urn:ietf:params:oauth:grant-type:device_code"},
-			"device_code": []string{parsed.DeviceCode},
-			"scope":       []string{"openid", "email"},
+			"grant_type":    []string{"urn:ietf:params:oauth:grant-type:device_code"},
+			"device_code":   []string{parsed.DeviceCode},
+			"scope":         []string{"openid", "email"},
+			"code_verifier": []string{pkce.Value},
 		}
 
 		/* #nosec */
-		resp, err := http.PostForm(d.TokenURL, data)
+		resp, err := http.PostForm(p.Endpoint().TokenURL, data)
 		if err != nil {
 			return "", err
 		}
+		defer resp.Body.Close()
+
 		b, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			return "", err
@@ -134,8 +173,9 @@ func (d *DeviceFlowTokenGetter) deviceFlow(clientID string) (string, error) {
 	}
 }
 
+// GetIDToken gets an OIDC ID Token from the specified provider using the device code grant flow
 func (d *DeviceFlowTokenGetter) GetIDToken(p *oidc.Provider, cfg oauth2.Config) (*OIDCIDToken, error) {
-	idToken, err := d.deviceFlow(cfg.ClientID)
+	idToken, err := d.deviceFlow(p, cfg.ClientID, cfg.RedirectURL)
 	if err != nil {
 		return nil, err
 	}
@@ -154,4 +194,50 @@ func (d *DeviceFlowTokenGetter) GetIDToken(p *oidc.Provider, cfg oauth2.Config) 
 		RawString: idToken,
 		Subject:   subj,
 	}, nil
+}
+
+// CodeURL fetches the device authorization endpoint URL from the provider's well-known configuration endpoint
+func (d *DeviceFlowTokenGetter) CodeURL() (string, error) {
+	if d.codeURL != "" {
+		return d.codeURL, nil
+	}
+
+	wellKnown := strings.TrimSuffix(d.Issuer, "/") + "/.well-known/openid-configuration"
+	/* #nosec */
+	httpClient := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+	resp, err := httpClient.Get(wellKnown)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("unable to read response body: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("%s: %s", resp.Status, body)
+	}
+
+	providerConfig := struct {
+		Issuer         string `json:"issuer"`
+		DeviceEndpoint string `json:"device_authorization_endpoint"`
+	}{}
+	if err = json.Unmarshal(body, &providerConfig); err != nil {
+		return "", fmt.Errorf("oidc: failed to decode provider discovery object: %w", err)
+	}
+
+	if d.Issuer != providerConfig.Issuer {
+		return "", fmt.Errorf("oidc: issuer did not match the issuer returned by provider, expected %q got %q", d.Issuer, providerConfig.Issuer)
+	}
+
+	if providerConfig.DeviceEndpoint == "" {
+		return "", fmt.Errorf("oidc: device authorization endpoint not returned by provider")
+	}
+
+	d.codeURL = providerConfig.DeviceEndpoint
+	return d.codeURL, nil
 }

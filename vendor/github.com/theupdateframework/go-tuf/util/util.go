@@ -30,8 +30,8 @@ func (e ErrWrongLength) Error() string {
 }
 
 type ErrWrongVersion struct {
-	Expected int
-	Actual   int
+	Expected int64
+	Actual   int64
 }
 
 func (e ErrWrongVersion) Error() string {
@@ -72,7 +72,7 @@ func (e ErrUnknownHashAlgorithm) Error() string {
 	return fmt.Sprintf("unknown hash algorithm: %s", e.Name)
 }
 
-type PassphraseFunc func(role string, confirm bool) ([]byte, error)
+type PassphraseFunc func(role string, confirm bool, change bool) ([]byte, error)
 
 func FileMetaEqual(actual data.FileMeta, expected data.FileMeta) error {
 	if actual.Length != expected.Length {
@@ -81,6 +81,32 @@ func FileMetaEqual(actual data.FileMeta, expected data.FileMeta) error {
 
 	if err := hashEqual(actual.Hashes, expected.Hashes); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func BytesMatchLenAndHashes(fetched []byte, length int64, hashes data.Hashes) error {
+	flen := int64(len(fetched))
+	if length != 0 && flen != length {
+		return ErrWrongLength{length, flen}
+	}
+
+	for alg, expected := range hashes {
+		var h hash.Hash
+		switch alg {
+		case "sha256":
+			h = sha256.New()
+		case "sha512":
+			h = sha512.New()
+		default:
+			return ErrUnknownHashAlgorithm{alg}
+		}
+		h.Write(fetched)
+		hash := h.Sum(nil)
+		if !hmac.Equal(hash, expected) {
+			return ErrWrongHash{alg, expected, hash}
+		}
 	}
 
 	return nil
@@ -102,7 +128,7 @@ func hashEqual(actual data.Hashes, expected data.Hashes) error {
 	return nil
 }
 
-func versionEqual(actual int, expected int) error {
+func VersionEqual(actual int64, expected int64) error {
 	if actual != expected {
 		return ErrWrongVersion{expected, actual}
 	}
@@ -118,14 +144,14 @@ func SnapshotFileMetaEqual(actual data.SnapshotFileMeta, expected data.SnapshotF
 	if expected.Length != 0 && actual.Length != expected.Length {
 		return ErrWrongLength{expected.Length, actual.Length}
 	}
-
+	// 5.6.2 - Check against snapshot role's targets hash
 	if len(expected.Hashes) != 0 {
 		if err := hashEqual(actual.Hashes, expected.Hashes); err != nil {
 			return err
 		}
 	}
-
-	if err := versionEqual(actual.Version, expected.Version); err != nil {
+	// 5.6.4 - Check against snapshot role's snapshot version
+	if err := VersionEqual(actual.Version, expected.Version); err != nil {
 		return err
 	}
 
@@ -137,14 +163,19 @@ func TargetFileMetaEqual(actual data.TargetFileMeta, expected data.TargetFileMet
 }
 
 func TimestampFileMetaEqual(actual data.TimestampFileMeta, expected data.TimestampFileMeta) error {
-	// As opposed to snapshots, the length and hashes are still required in
-	// TUF-1.0. See:
-	// https://github.com/theupdateframework/specification/issues/38
-	if err := FileMetaEqual(actual.FileMeta, expected.FileMeta); err != nil {
-		return err
+	// TUF no longer considers the length and hashes to be a required
+	// member of Timestamp.
+	if expected.Length != 0 && actual.Length != expected.Length {
+		return ErrWrongLength{expected.Length, actual.Length}
 	}
-
-	if err := versionEqual(actual.Version, expected.Version); err != nil {
+	// 5.5.2 - Check against timestamp role's snapshot hash
+	if len(expected.Hashes) != 0 {
+		if err := hashEqual(actual.Hashes, expected.Hashes); err != nil {
+			return err
+		}
+	}
+	// 5.5.4 - Check against timestamp role's snapshot version
+	if err := VersionEqual(actual.Version, expected.Version); err != nil {
 		return err
 	}
 
@@ -183,10 +214,10 @@ func GenerateFileMeta(r io.Reader, hashAlgorithms ...string) (data.FileMeta, err
 }
 
 type versionedMeta struct {
-	Version int `json:"version"`
+	Version int64 `json:"version"`
 }
 
-func generateVersionedFileMeta(r io.Reader, hashAlgorithms ...string) (data.FileMeta, int, error) {
+func generateVersionedFileMeta(r io.Reader, hashAlgorithms ...string) (data.FileMeta, int64, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return data.FileMeta{}, 0, err
@@ -215,7 +246,10 @@ func GenerateSnapshotFileMeta(r io.Reader, hashAlgorithms ...string) (data.Snaps
 	if err != nil {
 		return data.SnapshotFileMeta{}, err
 	}
-	return data.SnapshotFileMeta{m, v}, nil
+	return data.SnapshotFileMeta{
+		FileMeta: m,
+		Version:  v,
+	}, nil
 }
 
 func GenerateTargetFileMeta(r io.Reader, hashAlgorithms ...string) (data.TargetFileMeta, error) {
@@ -223,7 +257,9 @@ func GenerateTargetFileMeta(r io.Reader, hashAlgorithms ...string) (data.TargetF
 	if err != nil {
 		return data.TargetFileMeta{}, err
 	}
-	return data.TargetFileMeta{m}, nil
+	return data.TargetFileMeta{
+		FileMeta: m,
+	}, nil
 }
 
 func GenerateTimestampFileMeta(r io.Reader, hashAlgorithms ...string) (data.TimestampFileMeta, error) {
@@ -231,7 +267,10 @@ func GenerateTimestampFileMeta(r io.Reader, hashAlgorithms ...string) (data.Time
 	if err != nil {
 		return data.TimestampFileMeta{}, err
 	}
-	return data.TimestampFileMeta{m, v}, nil
+	return data.TimestampFileMeta{
+		FileMeta: m,
+		Version:  v,
+	}, nil
 }
 
 func NormalizeTarget(p string) string {
@@ -245,8 +284,8 @@ func NormalizeTarget(p string) string {
 	return strings.TrimPrefix(path.Join("/", p), "/")
 }
 
-func VersionedPath(p string, version int) string {
-	return path.Join(path.Dir(p), strconv.Itoa(version)+"."+path.Base(p))
+func VersionedPath(p string, version int64) string {
+	return path.Join(path.Dir(p), strconv.FormatInt(version, 10)+"."+path.Base(p))
 }
 
 func HashedPaths(p string, hashes data.Hashes) []string {
@@ -256,14 +295,6 @@ func HashedPaths(p string, hashes data.Hashes) []string {
 		paths = append(paths, hashedPath)
 	}
 	return paths
-}
-
-func StringSliceToSet(items []string) map[string]struct{} {
-	s := make(map[string]struct{})
-	for _, item := range items {
-		s[item] = struct{}{}
-	}
-	return s
 }
 
 func AtomicallyWriteFile(filename string, data []byte, perm os.FileMode) error {

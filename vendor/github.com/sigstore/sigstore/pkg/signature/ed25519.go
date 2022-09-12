@@ -20,15 +20,16 @@ import (
 	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
+	"errors"
+	"fmt"
 	"io"
-
-	"github.com/pkg/errors"
 )
 
 var ed25519SupportedHashFuncs = []crypto.Hash{
 	crypto.Hash(0),
 }
 
+// ED25519Signer is a signature.Signer that uses the Ed25519 public-key signature system
 type ED25519Signer struct {
 	priv ed25519.PrivateKey
 }
@@ -89,6 +90,7 @@ func (e ED25519Signer) Sign(_ io.Reader, message []byte, _ crypto.SignerOpts) ([
 	return e.SignMessage(bytes.NewReader(message))
 }
 
+// ED25519Verifier is a signature.Verifier that uses the Ed25519 public-key signature system
 type ED25519Verifier struct {
 	publicKey ed25519.PublicKey
 }
@@ -128,7 +130,7 @@ func (e *ED25519Verifier) VerifySignature(signature, message io.Reader, _ ...Ver
 
 	sigBytes, err := io.ReadAll(signature)
 	if err != nil {
-		return errors.Wrap(err, "reading signature")
+		return fmt.Errorf("reading signature: %w", err)
 	}
 
 	if !ed25519.Verify(e.publicKey, messageBytes, sigBytes) {
@@ -137,6 +139,7 @@ func (e *ED25519Verifier) VerifySignature(signature, message io.Reader, _ ...Ver
 	return nil
 }
 
+// ED25519SignerVerifier is a signature.SignerVerifier that uses the Ed25519 public-key signature system
 type ED25519SignerVerifier struct {
 	*ED25519Signer
 	*ED25519Verifier
@@ -147,12 +150,15 @@ type ED25519SignerVerifier struct {
 func LoadED25519SignerVerifier(priv ed25519.PrivateKey) (*ED25519SignerVerifier, error) {
 	signer, err := LoadED25519Signer(priv)
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing signer")
+		return nil, fmt.Errorf("initializing signer: %w", err)
 	}
-	pub := priv.Public().(ed25519.PublicKey)
+	pub, ok := priv.Public().(ed25519.PublicKey)
+	if !ok {
+		return nil, fmt.Errorf("given key is not ed25519.PublicKey")
+	}
 	verifier, err := LoadED25519Verifier(pub)
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing verifier")
+		return nil, fmt.Errorf("initializing verifier: %w", err)
 	}
 
 	return &ED25519SignerVerifier{
@@ -163,7 +169,7 @@ func LoadED25519SignerVerifier(priv ed25519.PrivateKey) (*ED25519SignerVerifier,
 
 // NewDefaultED25519SignerVerifier creates a combined signer and verifier using ED25519.
 // This creates a new ED25519 key using crypto/rand as an entropy source.
-func NewDefaultED25519SignerVerifierE() (*ED25519SignerVerifier, ed25519.PrivateKey, error) {
+func NewDefaultED25519SignerVerifier() (*ED25519SignerVerifier, ed25519.PrivateKey, error) {
 	return NewED25519SignerVerifier(rand.Reader)
 }
 

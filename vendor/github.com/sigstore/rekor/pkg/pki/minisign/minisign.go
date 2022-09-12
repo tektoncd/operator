@@ -24,6 +24,7 @@ import (
 
 	minisign "github.com/jedisct1/go-minisign"
 	sigsig "github.com/sigstore/sigstore/pkg/signature"
+	"golang.org/x/crypto/blake2b"
 )
 
 // Signature Signature that follows the minisign standard; supports both minisign and signify generated signatures
@@ -85,7 +86,7 @@ func (s Signature) CanonicalValue() ([]byte, error) {
 }
 
 // Verify implements the pki.Signature interface
-func (s Signature) Verify(r io.Reader, k interface{}) error {
+func (s Signature) Verify(r io.Reader, k interface{}, opts ...sigsig.VerifyOption) error {
 	if s.signature == nil {
 		return fmt.Errorf("minisign signature has not been initialized")
 	}
@@ -102,6 +103,17 @@ func (s Signature) Verify(r io.Reader, k interface{}) error {
 	if err != nil {
 		return err
 	}
+
+	prehashed := s.signature.SignatureAlgorithm[1] == 0x44
+	if prehashed {
+		h, _ := blake2b.New512(nil)
+		_, err := io.Copy(h, r)
+		if err != nil {
+			return fmt.Errorf("reading minisign data")
+		}
+		r = bytes.NewReader(h.Sum(nil))
+	}
+
 	return verifier.VerifySignature(bytes.NewReader(s.signature.Signature[:]), r)
 }
 
@@ -120,17 +132,31 @@ func NewPublicKey(r io.Reader) (*PublicKey, error) {
 	}
 
 	inputString := inputBuffer.String()
+
+	// There are three ways a minisign key can be stored.
+	// 1. The entire text key
+	// 2. A base64 encoded string
+	// 3. A legacy format we stored of just the key material (no key ID or Algorithm) due to bug fixed in https://github.com/sigstore/rekor/pull/562
 	key, err := minisign.DecodePublicKey(inputString)
-	if err != nil {
-		// try as a standalone base64 string
-		key, err = minisign.NewPublicKey(inputString)
-		if err != nil {
-			return nil, fmt.Errorf("unable to read minisign public key: %w", err)
-		}
+	if err == nil {
+		k.key = &key
+		return &k, nil
+	}
+	key, err = minisign.NewPublicKey(inputString)
+	if err == nil {
+		k.key = &key
+		return &k, nil
 	}
 
-	k.key = &key
-	return &k, nil
+	if len(inputString) == 32 {
+		k.key = &minisign.PublicKey{
+			SignatureAlgorithm: [2]byte{'E', 'd'},
+			KeyId:              [8]byte{},
+		}
+		copy(k.key.PublicKey[:], inputBuffer.Bytes())
+		return &k, nil
+	}
+	return nil, fmt.Errorf("unable to read minisign public key: %w", err)
 }
 
 // CanonicalValue implements the pki.PublicKey interface
@@ -139,11 +165,20 @@ func (k PublicKey) CanonicalValue() ([]byte, error) {
 		return nil, fmt.Errorf("minisign public key has not been initialized")
 	}
 
-	b64Key := base64.StdEncoding.EncodeToString(k.key.PublicKey[:])
+	bin := []byte{}
+	bin = append(bin, k.key.SignatureAlgorithm[:]...)
+	bin = append(bin, k.key.KeyId[:]...)
+	bin = append(bin, k.key.PublicKey[:]...)
+	b64Key := base64.StdEncoding.EncodeToString(bin)
 	return []byte(b64Key), nil
 }
 
 // EmailAddresses implements the pki.PublicKey interface
 func (k PublicKey) EmailAddresses() []string {
+	return nil
+}
+
+// Subjects implements the pki.PublicKey interface
+func (k PublicKey) Subjects() []string {
 	return nil
 }

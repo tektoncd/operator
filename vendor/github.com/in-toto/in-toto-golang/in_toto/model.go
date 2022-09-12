@@ -3,6 +3,7 @@ package in_toto
 import (
 	"crypto/ecdsa"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,7 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/in-toto/in-toto-golang/pkg/ssl"
+	slsa "github.com/in-toto/in-toto-golang/in_toto/slsa_provenance/v0.2"
+
+	"github.com/secure-systems-lab/go-securesystemslib/cjson"
+	"github.com/secure-systems-lab/go-securesystemslib/dsse"
 )
 
 /*
@@ -24,8 +28,9 @@ and private keys in PEM format stored as strings.  For public keys the Private
 field may be an empty string.
 */
 type KeyVal struct {
-	Private string `json:"private"`
-	Public  string `json:"public"`
+	Private     string `json:"private"`
+	Public      string `json:"public"`
+	Certificate string `json:"certificate,omitempty"`
 }
 
 /*
@@ -74,10 +79,10 @@ const (
 	// The SPDX mandates 'spdxVersion' field, so predicate type can omit
 	// version.
 	PredicateSPDX = "https://spdx.dev/Document"
+	// PredicateCycloneDX represents a CycloneDX SBOM
+	PredicateCycloneDX = "https://cyclonedx.org/schema"
 	// PredicateLinkV1 represents an in-toto 0.9 link.
 	PredicateLinkV1 = "https://in-toto.io/Link/v1"
-	// PredicateSLSAProvenanceV01 represents a build provenance for an artifact.
-	PredicateSLSAProvenanceV01 = "https://slsa.dev/provenance/v0.1"
 )
 
 // ErrInvalidPayloadType indicates that the envelope used an unkown payload type
@@ -260,8 +265,8 @@ func validateKey(key Key) error {
 	if key.KeyType == "" {
 		return fmt.Errorf("%w: keytype", ErrEmptyKeyField)
 	}
-	if key.KeyVal.Public == "" {
-		return fmt.Errorf("%w: keyval.public", ErrEmptyKeyField)
+	if key.KeyVal.Public == "" && key.KeyVal.Certificate == "" {
+		return fmt.Errorf("%w: keyval.public and keyval.certificate cannot both be blank", ErrEmptyKeyField)
 	}
 	if key.Scheme == "" {
 		return fmt.Errorf("%w: scheme", ErrEmptyKeyField)
@@ -302,8 +307,21 @@ of the Key, which was used to create the signature and the signature data.  The
 used signature scheme is found in the corresponding Key.
 */
 type Signature struct {
-	KeyID string `json:"keyid"`
-	Sig   string `json:"sig"`
+	KeyID       string `json:"keyid"`
+	Sig         string `json:"sig"`
+	Certificate string `json:"cert,omitempty"`
+}
+
+// GetCertificate returns the parsed x509 certificate attached to the signature,
+// if it exists.
+func (sig Signature) GetCertificate() (Key, error) {
+	key := Key{}
+	if len(sig.Certificate) == 0 {
+		return key, errors.New("Signature has empty Certificate")
+	}
+
+	err := key.LoadKeyReaderDefaults(strings.NewReader(sig.Certificate))
+	return key, err
 }
 
 /*
@@ -399,6 +417,7 @@ the first 8 characters of the signing key id. E.g.:
 	// returns "package.2f89b9272.link"
 */
 const LinkNameFormat = "%s.%.8s.link"
+const PreliminaryLinkNameFormat = ".%s.%.8s.link-unfinished"
 
 /*
 LinkNameFormatShort is for links that are not signed, e.g.:
@@ -406,6 +425,7 @@ LinkNameFormatShort is for links that are not signed, e.g.:
 	// returns "unsigned.link"
 */
 const LinkNameFormatShort = "%s.link"
+const LinkGlobFormat = "%s.????????.link"
 
 /*
 SublayoutLinkDirFormat represents the format of the name of the directory for
@@ -502,11 +522,43 @@ by the step are constrained by the artifact rules in the step's
 ExpectedMaterials and ExpectedProducts fields.
 */
 type Step struct {
-	Type            string   `json:"_type"`
-	PubKeys         []string `json:"pubkeys"`
-	ExpectedCommand []string `json:"expected_command"`
-	Threshold       int      `json:"threshold"`
+	Type                   string                  `json:"_type"`
+	PubKeys                []string                `json:"pubkeys"`
+	CertificateConstraints []CertificateConstraint `json:"cert_constraints,omitempty"`
+	ExpectedCommand        []string                `json:"expected_command"`
+	Threshold              int                     `json:"threshold"`
 	SupplyChainItem
+}
+
+// CheckCertConstraints returns true if the provided certificate matches at least one
+// of the constraints for this step.
+func (s Step) CheckCertConstraints(key Key, rootCAIDs []string, rootCertPool, intermediateCertPool *x509.CertPool) error {
+	if len(s.CertificateConstraints) == 0 {
+		return fmt.Errorf("no constraints found")
+	}
+
+	_, possibleCert, err := decodeAndParse([]byte(key.KeyVal.Certificate))
+	if err != nil {
+		return err
+	}
+
+	cert, ok := possibleCert.(*x509.Certificate)
+	if !ok {
+		return fmt.Errorf("not a valid certificate")
+	}
+
+	for _, constraint := range s.CertificateConstraints {
+		err = constraint.Check(cert, rootCAIDs, rootCertPool, intermediateCertPool)
+		if err == nil {
+			return nil
+		}
+	}
+	if err != nil {
+		return err
+	}
+
+	// this should not be reachable since there is at least one constraint, and the for loop only saw err != nil
+	return fmt.Errorf("unknown certificate constraint error")
 }
 
 /*
@@ -545,12 +597,14 @@ contained in a generic Metablock object, which provides functionality for
 signing and signature verification, and reading from and writing to disk.
 */
 type Layout struct {
-	Type    string         `json:"_type"`
-	Steps   []Step         `json:"steps"`
-	Inspect []Inspection   `json:"inspect"`
-	Keys    map[string]Key `json:"keys"`
-	Expires string         `json:"expires"`
-	Readme  string         `json:"readme"`
+	Type            string         `json:"_type"`
+	Steps           []Step         `json:"steps"`
+	Inspect         []Inspection   `json:"inspect"`
+	Keys            map[string]Key `json:"keys"`
+	RootCas         map[string]Key `json:"rootcas,omitempty"`
+	IntermediateCas map[string]Key `json:"intermediatecas,omitempty"`
+	Expires         string         `json:"expires"`
+	Readme          string         `json:"readme"`
 }
 
 // Go does not allow to pass `[]T` (slice with certain type) to a function
@@ -573,6 +627,29 @@ func (l *Layout) inspectAsInterfaceSlice() []interface{} {
 	return inspectionsI
 }
 
+// RootCAIDs returns a slice of all of the Root CA IDs
+func (l *Layout) RootCAIDs() []string {
+	rootCAIDs := make([]string, 0, len(l.RootCas))
+	for rootCAID := range l.RootCas {
+		rootCAIDs = append(rootCAIDs, rootCAID)
+	}
+	return rootCAIDs
+}
+
+func validateLayoutKeys(keys map[string]Key) error {
+	for keyID, key := range keys {
+		if key.KeyID != keyID {
+			return fmt.Errorf("invalid key found")
+		}
+		err := validatePublicKey(key)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 /*
 validateLayout is a function used to ensure that a passed item of type Layout
 matches the necessary format.
@@ -587,14 +664,16 @@ func validateLayout(layout Layout) error {
 			" invalid or of incorrect format")
 	}
 
-	for keyID, key := range layout.Keys {
-		if key.KeyID != keyID {
-			return fmt.Errorf("invalid key found")
-		}
-		err := validatePublicKey(key)
-		if err != nil {
-			return err
-		}
+	if err := validateLayoutKeys(layout.Keys); err != nil {
+		return err
+	}
+
+	if err := validateLayoutKeys(layout.RootCas); err != nil {
+		return err
+	}
+
+	if err := validateLayoutKeys(layout.IntermediateCas); err != nil {
+		return err
 	}
 
 	var namesSeen = make(map[string]bool)
@@ -640,24 +719,41 @@ type Metablock struct {
 	Signatures []Signature `json:"signatures"`
 }
 
+type jsonField struct {
+	name      string
+	omitempty bool
+}
+
 /*
 checkRequiredJSONFields checks that the passed map (obj) has keys for each of
 the json tags in the passed struct type (typ), and returns an error otherwise.
+Any json tags that contain the "omitempty" option be allowed to be optional.
 */
 func checkRequiredJSONFields(obj map[string]interface{},
 	typ reflect.Type) error {
 
 	// Create list of json tags, e.g. `json:"_type"`
 	attributeCount := typ.NumField()
-	allFields := make([]string, 0)
+	allFields := make([]jsonField, 0)
 	for i := 0; i < attributeCount; i++ {
-		allFields = append(allFields, typ.Field(i).Tag.Get("json"))
+		fieldStr := typ.Field(i).Tag.Get("json")
+		field := jsonField{
+			name:      fieldStr,
+			omitempty: false,
+		}
+
+		if idx := strings.Index(fieldStr, ","); idx != -1 {
+			field.name = fieldStr[:idx]
+			field.omitempty = strings.Contains(fieldStr[idx+1:], "omitempty")
+		}
+
+		allFields = append(allFields, field)
 	}
 
 	// Assert that there's a key in the passed map for each tag
 	for _, field := range allFields {
-		if _, ok := obj[field]; !ok {
-			return fmt.Errorf("required field %s missing", field)
+		if _, ok := obj[field.name]; !ok && !field.omitempty {
+			return fmt.Errorf("required field %s missing", field.name)
 		}
 	}
 	return nil
@@ -668,17 +764,13 @@ Load parses JSON formatted metadata at the passed path into the Metablock
 object on which it was called.  It returns an error if it cannot parse
 a valid JSON formatted Metablock that contains a Link or Layout.
 */
-func (mb *Metablock) Load(path string) (err error) {
+func (mb *Metablock) Load(path string) error {
 	// Open file and close before returning
 	jsonFile, err := os.Open(path)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := jsonFile.Close(); closeErr != nil {
-			err = closeErr
-		}
-	}()
+	defer jsonFile.Close()
 
 	// Read entire file
 	jsonBytes, err := ioutil.ReadAll(jsonFile)
@@ -698,7 +790,7 @@ func (mb *Metablock) Load(path string) (err error) {
 	// one of them has a `null` value, which would lead to a nil pointer
 	// dereference in Unmarshal below.
 	if rawMb["signed"] == nil || rawMb["signatures"] == nil {
-		return fmt.Errorf("In-toto metadata requires 'signed' and" +
+		return fmt.Errorf("in-toto metadata requires 'signed' and" +
 			" 'signatures' parts")
 	}
 
@@ -750,11 +842,11 @@ func (mb *Metablock) Load(path string) (err error) {
 		mb.Signed = layout
 
 	} else {
-		return fmt.Errorf("The '_type' field of the 'signed' part of in-toto" +
+		return fmt.Errorf("the '_type' field of the 'signed' part of in-toto" +
 			" metadata must be one of 'link' or 'layout'")
 	}
 
-	return nil
+	return jsonFile.Close()
 }
 
 /*
@@ -784,7 +876,7 @@ Signed field of the Metablock on which it was called.  If canonicalization
 fails the first return value is nil and the second return value is the error.
 */
 func (mb *Metablock) GetSignableRepresentation() ([]byte, error) {
-	return EncodeCanonical(mb.Signed)
+	return cjson.EncodeCanonical(mb.Signed)
 }
 
 /*
@@ -795,16 +887,9 @@ the passed Key, the object in Signed cannot be canonicalized, or the Signature
 is invalid.
 */
 func (mb *Metablock) VerifySignature(key Key) error {
-	var sig Signature
-	for _, s := range mb.Signatures {
-		if s.KeyID == key.KeyID {
-			sig = s
-			break
-		}
-	}
-
-	if sig == (Signature{}) {
-		return fmt.Errorf("No signature found for key '%s'", key.KeyID)
+	sig, err := mb.GetSignatureForKeyID(key.KeyID)
+	if err != nil {
+		return err
 	}
 
 	dataCanonical, err := mb.GetSignableRepresentation()
@@ -816,6 +901,17 @@ func (mb *Metablock) VerifySignature(key Key) error {
 		return err
 	}
 	return nil
+}
+
+// GetSignatureForKeyID returns the signature that was created by the provided keyID, if it exists.
+func (mb *Metablock) GetSignatureForKeyID(keyID string) (Signature, error) {
+	for _, s := range mb.Signatures {
+		if s.KeyID == keyID {
+			return s, nil
+		}
+	}
+
+	return Signature{}, fmt.Errorf("no signature found for key '%s'", keyID)
 }
 
 /*
@@ -866,16 +962,10 @@ func (mb *Metablock) Sign(key Key) error {
 	return nil
 }
 
-/*
-DigestSet contains a set of digests. It is represented as a map from
-algorithm name to lowercase hex-encoded value.
-*/
-type DigestSet map[string]string
-
 // Subject describes the set of software artifacts the statement applies to.
 type Subject struct {
-	Name   string    `json:"name"`
-	Digest DigestSet `json:"digest"`
+	Name   string         `json:"name"`
+	Digest slsa.DigestSet `json:"digest"`
 }
 
 // StatementHeader defines the common fields for all statements
@@ -895,59 +985,10 @@ type Statement struct {
 	Predicate interface{} `json:"predicate"`
 }
 
-// ProvenanceBuilder idenfifies the entity that executed the build steps.
-type ProvenanceBuilder struct {
-	ID string `json:"id"`
-}
-
-// ProvenanceRecipe describes the actions performed by the builder.
-type ProvenanceRecipe struct {
-	Type string `json:"type"`
-	// DefinedInMaterial can be sent as the null pointer to indicate that
-	// the value is not present.
-	DefinedInMaterial *int        `json:"definedInMaterial,omitempty"`
-	EntryPoint        string      `json:"entryPoint"`
-	Arguments         interface{} `json:"arguments,omitempty"`
-	Environment       interface{} `json:"environment,omitempty"`
-}
-
-// ProvenanceComplete indicates wheter the claims in build/recipe are complete.
-// For in depth information refer to the specifictaion:
-// https://github.com/in-toto/attestation/blob/v0.1.0/spec/predicates/provenance.md
-type ProvenanceComplete struct {
-	Arguments   bool `json:"arguments"`
-	Environment bool `json:"environment"`
-	Materials   bool `json:"materials"`
-}
-
-// ProvenanceMetadata contains metadata for the built artifact.
-type ProvenanceMetadata struct {
-	// Use pointer to make sure that the abscense of a time is not
-	// encoded as the Epoch time.
-	BuildStartedOn  *time.Time         `json:"buildStartedOn,omitempty"`
-	BuildFinishedOn *time.Time         `json:"buildFinishedOn,omitempty"`
-	Completeness    ProvenanceComplete `json:"completeness"`
-	Reproducible    bool               `json:"reproducible"`
-}
-
-// ProvenanceMaterial defines the materials used to build an artifact.
-type ProvenanceMaterial struct {
-	URI    string    `json:"uri"`
-	Digest DigestSet `json:"digest,omitempty"`
-}
-
-// ProvenancePredicate is the provenance predicate definition.
-type ProvenancePredicate struct {
-	Builder   ProvenanceBuilder    `json:"builder"`
-	Recipe    ProvenanceRecipe     `json:"recipe"`
-	Metadata  *ProvenanceMetadata  `json:"metadata,omitempty"`
-	Materials []ProvenanceMaterial `json:"materials,omitempty"`
-}
-
 // ProvenanceStatement is the definition for an entire provenance statement.
 type ProvenanceStatement struct {
 	StatementHeader
-	Predicate ProvenancePredicate `json:"predicate"`
+	Predicate slsa.ProvenancePredicate `json:"predicate"`
 }
 
 // LinkStatement is the definition for an entire link statement.
@@ -958,7 +999,7 @@ type LinkStatement struct {
 
 /*
 SPDXStatement is the definition for an entire SPDX statement.
-Currently not implemented. Some tooling exists here:
+This is currently not implemented. Some tooling exists here:
 https://github.com/spdx/tools-golang, but this software is still in
 early state.
 This struct is the same as the generic Statement struct but is added for
@@ -970,35 +1011,46 @@ type SPDXStatement struct {
 }
 
 /*
-SSLSigner provides signature generation and validation based on the SSL
+CycloneDXStatement defines a cyclonedx sbom in the predicate. It is not
+currently serialized just as its SPDX counterpart. It is an empty
+interface, like the generic Statement.
+*/
+type CycloneDXStatement struct {
+	StatementHeader
+	Predicate interface{} `json:"predicate"`
+}
+
+/*
+DSSESigner provides signature generation and validation based on the SSL
 Signing Spec: https://github.com/secure-systems-lab/signing-spec
 as describe by: https://github.com/MarkLodato/ITE/tree/media-type/ITE/5
 It wraps the generic SSL envelope signer and enforces the correct payload
 type both during signature generation and validation.
 */
-type SSLSigner struct {
-	signer *ssl.EnvelopeSigner
+type DSSESigner struct {
+	signer *dsse.EnvelopeSigner
 }
 
-func NewSSLSigner(p ...ssl.SignVerifier) (*SSLSigner, error) {
-	es, err := ssl.NewEnvelopeSigner(p...)
+func NewDSSESigner(p ...dsse.SignVerifier) (*DSSESigner, error) {
+	es, err := dsse.NewEnvelopeSigner(p...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &SSLSigner{
+	return &DSSESigner{
 		signer: es,
 	}, nil
 }
 
-func (s *SSLSigner) SignPayload(body []byte) (*ssl.Envelope, error) {
+func (s *DSSESigner) SignPayload(body []byte) (*dsse.Envelope, error) {
 	return s.signer.SignPayload(PayloadType, body)
 }
 
-func (s *SSLSigner) Verify(e *ssl.Envelope) error {
+func (s *DSSESigner) Verify(e *dsse.Envelope) error {
 	if e.PayloadType != PayloadType {
 		return ErrInvalidPayloadType
 	}
 
-	return s.signer.Verify(e)
+	_, err := s.signer.Verify(e)
+	return err
 }

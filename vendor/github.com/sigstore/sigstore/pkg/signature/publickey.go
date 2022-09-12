@@ -19,6 +19,7 @@ import (
 	"crypto"
 )
 
+// PublicKeyProvider returns a PublicKey associated with a digital signature
 type PublicKeyProvider interface {
 	PublicKey(opts ...PublicKeyOption) (crypto.PublicKey, error)
 }

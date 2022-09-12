@@ -16,6 +16,8 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 )
 
 // ErrFailedPEMParsing gets returned when PKCS1, PKCS8 or PKIX key parsing fails
@@ -39,12 +41,13 @@ const (
 	ed25519KeyType        string = "ed25519"
 	rsassapsssha256Scheme string = "rsassa-pss-sha256"
 	ecdsaSha2nistp224     string = "ecdsa-sha2-nistp224"
+	ecdsaSha2nistp256     string = "ecdsa-sha2-nistp256"
 	ecdsaSha2nistp384     string = "ecdsa-sha2-nistp384"
 	ecdsaSha2nistp521     string = "ecdsa-sha2-nistp521"
 	ed25519Scheme         string = "ed25519"
 	pemPublicKey          string = "PUBLIC KEY"
 	pemPrivateKey         string = "PRIVATE KEY"
-	pemRSAPrivateKey      string = "PRIVATE RSA KEY"
+	pemRSAPrivateKey      string = "RSA PRIVATE KEY"
 )
 
 /*
@@ -71,7 +74,7 @@ We need to use this function instead of a constant because Go does not support
 global constant slices.
 */
 func getSupportedEcdsaSchemes() []string {
-	return []string{ecdsaSha2nistp224, ecdsaSha2nistp384, ecdsaSha2nistp521}
+	return []string{ecdsaSha2nistp224, ecdsaSha2nistp256, ecdsaSha2nistp384, ecdsaSha2nistp521}
 }
 
 /*
@@ -105,7 +108,7 @@ func (k *Key) generateKeyID() error {
 			"public": k.KeyVal.Public,
 		},
 	}
-	keyCanonical, err := EncodeCanonical(keyToBeHashed)
+	keyCanonical, err := cjson.EncodeCanonical(keyToBeHashed)
 	if err != nil {
 		return err
 	}
@@ -143,6 +146,7 @@ implementation and the securesystemslib.
 */
 func (k *Key) setKeyComponents(pubKeyBytes []byte, privateKeyBytes []byte, keyType string, scheme string, KeyIDHashAlgorithms []string) error {
 	// assume we have a privateKey if the key size is bigger than 0
+
 	switch keyType {
 	case rsaKeyType:
 		if len(privateKeyBytes) > 0 {
@@ -213,6 +217,14 @@ func parseKey(data []byte) (interface{}, error) {
 	if err == nil {
 		return key, nil
 	}
+	key, err = x509.ParseCertificate(data)
+	if err == nil {
+		return key, nil
+	}
+	key, err = x509.ParseECPrivateKey(data)
+	if err == nil {
+		return key, nil
+	}
 	return nil, ErrFailedPEMParsing
 }
 
@@ -233,6 +245,7 @@ func decodeAndParse(pemBytes []byte) (*pem.Block, interface{}, error) {
 	if data == nil {
 		return nil, nil, ErrNoPEMBlock
 	}
+
 	// Try to load private key, if this fails try to load
 	// key as public key
 	key, err := parseKey(data.Bytes)
@@ -281,12 +294,29 @@ func (k *Key) LoadKey(path string, scheme string, KeyIDHashAlgorithms []string) 
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if closeErr := pemFile.Close(); closeErr != nil {
-			err = closeErr
-		}
-	}()
-	return k.LoadKeyReader(pemFile, scheme, KeyIDHashAlgorithms)
+	defer pemFile.Close()
+
+	err = k.LoadKeyReader(pemFile, scheme, KeyIDHashAlgorithms)
+	if err != nil {
+		return err
+	}
+
+	return pemFile.Close()
+}
+
+func (k *Key) LoadKeyDefaults(path string) error {
+	pemFile, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer pemFile.Close()
+
+	err = k.LoadKeyReaderDefaults(pemFile)
+	if err != nil {
+		return err
+	}
+
+	return pemFile.Close()
 }
 
 // LoadKeyReader loads the key from a supplied reader. The logic matches LoadKey otherwise.
@@ -306,14 +336,61 @@ func (k *Key) LoadKeyReader(r io.Reader, scheme string, KeyIDHashAlgorithms []st
 		return err
 	}
 
-	// Use type switch to identify the key format
+	return k.loadKey(key, pemData, scheme, KeyIDHashAlgorithms)
+}
+
+func (k *Key) LoadKeyReaderDefaults(r io.Reader) error {
+	if r == nil {
+		return ErrNoPEMBlock
+	}
+	// Read key bytes
+	pemBytes, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	// decodeAndParse returns the pemData for later use
+	// and a parsed key object (for operations on that key, like extracting the public Key)
+	pemData, key, err := decodeAndParse(pemBytes)
+	if err != nil {
+		return err
+	}
+
+	scheme, keyIDHashAlgorithms, err := getDefaultKeyScheme(key)
+	if err != nil {
+		return err
+	}
+
+	return k.loadKey(key, pemData, scheme, keyIDHashAlgorithms)
+}
+
+func getDefaultKeyScheme(key interface{}) (scheme string, keyIDHashAlgorithms []string, err error) {
+	keyIDHashAlgorithms = []string{"sha256", "sha512"}
+
+	switch key.(type) {
+	case *rsa.PublicKey, *rsa.PrivateKey:
+		scheme = rsassapsssha256Scheme
+	case ed25519.PrivateKey, ed25519.PublicKey:
+		scheme = ed25519Scheme
+	case *ecdsa.PrivateKey, *ecdsa.PublicKey:
+		scheme = ecdsaSha2nistp256
+	case *x509.Certificate:
+		return getDefaultKeyScheme(key.(*x509.Certificate).PublicKey)
+	default:
+		err = ErrUnsupportedKeyType
+	}
+
+	return scheme, keyIDHashAlgorithms, err
+}
+
+func (k *Key) loadKey(key interface{}, pemData *pem.Block, scheme string, keyIDHashAlgorithms []string) error {
+
 	switch key.(type) {
 	case *rsa.PublicKey:
 		pubKeyBytes, err := x509.MarshalPKIXPublicKey(key.(*rsa.PublicKey))
 		if err != nil {
 			return err
 		}
-		if err := k.setKeyComponents(pubKeyBytes, []byte{}, rsaKeyType, scheme, KeyIDHashAlgorithms); err != nil {
+		if err := k.setKeyComponents(pubKeyBytes, []byte{}, rsaKeyType, scheme, keyIDHashAlgorithms); err != nil {
 			return err
 		}
 	case *rsa.PrivateKey:
@@ -323,16 +400,16 @@ func (k *Key) LoadKeyReader(r io.Reader, scheme string, KeyIDHashAlgorithms []st
 		if err != nil {
 			return err
 		}
-		if err := k.setKeyComponents(pubKeyBytes, pemData.Bytes, rsaKeyType, scheme, KeyIDHashAlgorithms); err != nil {
+		if err := k.setKeyComponents(pubKeyBytes, pemData.Bytes, rsaKeyType, scheme, keyIDHashAlgorithms); err != nil {
 			return err
 		}
 	case ed25519.PublicKey:
-		if err := k.setKeyComponents(key.(ed25519.PublicKey), []byte{}, ed25519KeyType, scheme, KeyIDHashAlgorithms); err != nil {
+		if err := k.setKeyComponents(key.(ed25519.PublicKey), []byte{}, ed25519KeyType, scheme, keyIDHashAlgorithms); err != nil {
 			return err
 		}
 	case ed25519.PrivateKey:
 		pubKeyBytes := key.(ed25519.PrivateKey).Public()
-		if err := k.setKeyComponents(pubKeyBytes.(ed25519.PublicKey), key.(ed25519.PrivateKey), ed25519KeyType, scheme, KeyIDHashAlgorithms); err != nil {
+		if err := k.setKeyComponents(pubKeyBytes.(ed25519.PublicKey), key.(ed25519.PrivateKey), ed25519KeyType, scheme, keyIDHashAlgorithms); err != nil {
 			return err
 		}
 	case *ecdsa.PrivateKey:
@@ -340,7 +417,7 @@ func (k *Key) LoadKeyReader(r io.Reader, scheme string, KeyIDHashAlgorithms []st
 		if err != nil {
 			return err
 		}
-		if err := k.setKeyComponents(pubKeyBytes, pemData.Bytes, ecdsaKeyType, scheme, KeyIDHashAlgorithms); err != nil {
+		if err := k.setKeyComponents(pubKeyBytes, pemData.Bytes, ecdsaKeyType, scheme, keyIDHashAlgorithms); err != nil {
 			return err
 		}
 	case *ecdsa.PublicKey:
@@ -348,13 +425,22 @@ func (k *Key) LoadKeyReader(r io.Reader, scheme string, KeyIDHashAlgorithms []st
 		if err != nil {
 			return err
 		}
-		if err := k.setKeyComponents(pubKeyBytes, []byte{}, ecdsaKeyType, scheme, KeyIDHashAlgorithms); err != nil {
+		if err := k.setKeyComponents(pubKeyBytes, []byte{}, ecdsaKeyType, scheme, keyIDHashAlgorithms); err != nil {
 			return err
 		}
+	case *x509.Certificate:
+		err := k.loadKey(key.(*x509.Certificate).PublicKey, pemData, scheme, keyIDHashAlgorithms)
+		if err != nil {
+			return err
+		}
+
+		k.KeyVal.Certificate = string(pem.EncodeToMemory(pemData))
+
 	default:
 		// We should never get here, because we implement all from Go supported Key Types
-		panic("unexpected Error in LoadKey function")
+		return errors.New("unexpected Error in LoadKey function")
 	}
+
 	return nil
 }
 
@@ -440,6 +526,9 @@ func GenerateSignature(signable []byte, key Key) (Signature, error) {
 		// We are marshalling the ecdsaSignature struct as ASN.1 INTEGER SEQUENCES
 		// into an ASN.1 Object.
 		signatureBuffer, err = ecdsa.SignASN1(rand.Reader, parsedKey.(*ecdsa.PrivateKey), hashed[:])
+		if err != nil {
+			return signature, err
+		}
 	case ed25519KeyType:
 		// We do not need a scheme switch here, because ed25519
 		// only consist of sha256 and curve25519.
@@ -457,6 +546,7 @@ func GenerateSignature(signable []byte, key Key) (Signature, error) {
 	}
 	signature.Sig = hex.EncodeToString(signatureBuffer)
 	signature.KeyID = key.KeyID
+	signature.Certificate = key.KeyVal.Certificate
 	return signature, nil
 }
 
@@ -541,7 +631,7 @@ func VerifySignature(key Key, sig Signature, unverified []byte) error {
 		default:
 			panic("unexpected Error in VerifySignature function")
 		}
-		if ok := ecdsa.VerifyASN1(parsedKey.(*ecdsa.PublicKey), hashed, sigBytes); !ok {
+		if ok := ecdsa.VerifyASN1(parsedKey.(*ecdsa.PublicKey), hashed[:], sigBytes); !ok {
 			return ErrInvalidSignature
 		}
 	case ed25519KeyType:
@@ -560,4 +650,20 @@ func VerifySignature(key Key, sig Signature, unverified []byte) error {
 		panic("unexpected Error in VerifySignature function")
 	}
 	return nil
+}
+
+/*
+VerifyCertificateTrust verifies that the certificate has a chain of trust
+to a root in rootCertPool, possibly using any intermediates in
+intermediateCertPool */
+func VerifyCertificateTrust(cert *x509.Certificate, rootCertPool, intermediateCertPool *x509.CertPool) ([][]*x509.Certificate, error) {
+	verifyOptions := x509.VerifyOptions{
+		Roots:         rootCertPool,
+		Intermediates: intermediateCertPool,
+	}
+	chains, err := cert.Verify(verifyOptions)
+	if len(chains) == 0 || err != nil {
+		return nil, fmt.Errorf("cert cannot be verified by provided roots and intermediates")
+	}
+	return chains, nil
 }

@@ -2,6 +2,9 @@ package oidc
 
 import (
 	"context"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -12,14 +15,43 @@ import (
 	jose "gopkg.in/square/go-jose.v2"
 )
 
+// StaticKeySet is a verifier that validates JWT against a static set of public keys.
+type StaticKeySet struct {
+	// PublicKeys used to verify the JWT. Supported types are *rsa.PublicKey and
+	// *ecdsa.PublicKey.
+	PublicKeys []crypto.PublicKey
+}
+
+// VerifySignature compares the signature against a static set of public keys.
+func (s *StaticKeySet) VerifySignature(ctx context.Context, jwt string) ([]byte, error) {
+	jws, err := jose.ParseSigned(jwt)
+	if err != nil {
+		return nil, fmt.Errorf("parsing jwt: %v", err)
+	}
+	for _, pub := range s.PublicKeys {
+		switch pub.(type) {
+		case *rsa.PublicKey:
+		case *ecdsa.PublicKey:
+		default:
+			return nil, fmt.Errorf("invalid public key type provided: %T", pub)
+		}
+		payload, err := jws.Verify(pub)
+		if err != nil {
+			continue
+		}
+		return payload, nil
+	}
+	return nil, fmt.Errorf("no public keys able to verify jwt")
+}
+
 // NewRemoteKeySet returns a KeySet that can validate JSON web tokens by using HTTP
 // GETs to fetch JSON web token sets hosted at a remote URL. This is automatically
 // used by NewProvider using the URLs returned by OpenID Connect discovery, but is
 // exposed for providers that don't support discovery or to prevent round trips to the
 // discovery URL.
 //
-// The returned KeySet is a long lived verifier that caches keys based on cache-control
-// headers. Reuse a common remote key set instead of creating new ones as needed.
+// The returned KeySet is a long lived verifier that caches keys based on any
+// keys change. Reuse a common remote key set instead of creating new ones as needed.
 func NewRemoteKeySet(ctx context.Context, jwksURL string) *RemoteKeySet {
 	return newRemoteKeySet(ctx, jwksURL, time.Now)
 }
@@ -39,7 +71,7 @@ type RemoteKeySet struct {
 	now     func() time.Time
 
 	// guard all other fields
-	mu sync.Mutex
+	mu sync.RWMutex
 
 	// inflight suppresses parallel execution of updateKeys and allows
 	// multiple goroutines to wait for its result.
@@ -131,8 +163,8 @@ func (r *RemoteKeySet) verify(ctx context.Context, jws *jose.JSONWebSignature) (
 }
 
 func (r *RemoteKeySet) keysFromCache() (keys []jose.JSONWebKey) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 	return r.cachedKeys
 }
 
