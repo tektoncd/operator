@@ -50,7 +50,9 @@ func (p *PipelineProperties) setDefaults() {
 		p.SendCloudEventsForRuns = ptr.Bool(config.DefaultSendCloudEventsForRuns)
 	}
 	if p.EnableApiFields == "" {
-		p.EnableApiFields = config.DefaultEnableAPIFields
+		// we change default EnableApiFields to alpha,
+		// avoid upgrade from old version that cannot change to alpha
+		p.EnableApiFields = config.AlphaAPIFields
 	}
 	if p.EmbeddedStatus == "" {
 		p.EmbeddedStatus = config.DefaultEmbeddedStatus
