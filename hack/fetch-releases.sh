@@ -4,6 +4,7 @@ set -u -e
 
 declare -r SCRIPT_DIR=$(cd $(dirname "$0")/.. && pwd)
 TARGET=""
+FORCE_FETCH_RELEASE=""
 
 # release_yaml <component> <release-yaml-name> <target-file-name> <version>
 release_yaml() {
@@ -53,6 +54,22 @@ release_yaml() {
 
     ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
     comp_dir=${ko_data}/tekton-${dir}
+    dirPath=${comp_dir}/${dirVersion}
+
+    # destination file
+    dest=${dirPath}/${destFileName}.yaml
+
+    if [ -f "$dest" ] && [ $FORCE_FETCH_RELEASE = "false" ]; then
+      label="app.kubernetes.io/version: \"$version\""
+      label2="app.kubernetes.io/version: $version"
+      label3="version: \"$version\""
+      if grep -Eq "$label" $dest || grep -Eq "$label2" $dest || grep -Eq "$label3" $dest;
+      then
+          echo "release file already exist with required version, skipping!"
+          echo ""
+          return
+      fi
+    fi
 
     # before adding releases, remove existing version directories
     # ignore while adding for interceptors
@@ -61,11 +78,8 @@ release_yaml() {
     fi
 
     # create a directory
-    dirPath=${comp_dir}/${dirVersion}
     mkdir -p ${dirPath} || true
 
-    # destination file
-    dest=${dirPath}/${destFileName}.yaml
     http_response=$(curl -s -o ${dest} -w "%{http_code}" ${url})
     echo url: ${url}
 
@@ -193,11 +207,11 @@ fetch_openshift_addon_tasks() {
   ${fetch_addon_task_script}/fetch-tektoncd-catalog-tasks.sh ${dest_dir}
 }
 
-#Args: <target-platform> <pipelines version> <triggers version> <dashboard version> <results version> <pac version> <hub version> <chain version>
 main() {
   OPERATORTOOL=$1
   TARGET=$2
   CONFIG=${3:=components.yaml}
+  FORCE_FETCH_RELEASE=$4
   p_version=$(${OPERATORTOOL} -config ${CONFIG} component-version pipeline)
   t_version=$(${OPERATORTOOL} -config ${CONFIG} component-version triggers)
   c_version=$(${OPERATORTOOL} -config ${CONFIG} component-version chains)
