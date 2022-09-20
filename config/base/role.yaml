@@ -391,9 +391,12 @@ rules:
   - resolution.tekton.dev
   resources:
   - resolutionrequests
+  - resolutionrequests/status
   verbs:
   - get
   - list
   - watch
   - create
   - delete
+  - update
+  - patch
