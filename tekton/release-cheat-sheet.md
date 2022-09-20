@@ -20,7 +20,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
    Set the version in a variable.
 
     ```bash
-    TEKTON_RELEASE_VERSION=v0.52.0
+    TEKTON_RELEASE_VERSION=v0.62.0
    ```
 
 3. Set the release branch name
@@ -30,23 +30,14 @@ need a checkout of the operator repo, a terminal window and a text editor.
        commit identified in step1.
 
        ```bash
-   TEKTON_RELEASE_BRANCH=release-v0.52.x git checkout -b ${TEKTON_RELEASE_BRANCH}
+   TEKTON_RELEASE_BRANCH=release-v0.62.x git checkout -b ${TEKTON_RELEASE_BRANCH}
    ```
     2. If this is a **patch release** make sure that the correct branch is checkout. eg: If we are making release
-       v0.52.1, then make sure the `release-v0.52.x` is checked out.
+       v0.52.1, then make sure the `release-v0.62.x` is checked out.
 
-5. Update the Tektoncd Component versions in `test/config.sh` in the project root. This is necessary to pin the
-   component versions in e2e tests for a versioned branch
-
-   eg:
-     ```bash
-     export TEKTON_PIPELINE_VERSION=v0.30.0
-     export TEKTON_TRIGGERS_VERSION=v0.17.1
-     export TEKTON_RESULTS_VERSION=v0.3.1
-     export TEKTON_DASHBOARD_VERSION=v0.22.0
-     ```
-
-   commit the `test/config.sh` file.
+5. Make sure the Tektoncd Component versions are the one you want, in
+   `components.yaml`. Those are kept up-to-date by our bots, but just
+   in case.
 
 6. minor version release vs patch release:
     1. if this is a minor version release push the branch to `github.com/tektoncd/operator`
@@ -65,7 +56,12 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
 2`cd` to root of Operator git checkout.
 
-3. Make sure the release `Task` and `Pipeline` are up-to-date on the cluster.
+3. Make sure the release `Task` and `Pipeline` are up-to-date on the
+   cluster. To do that, you can use `kustomize`:
+   
+   ```bash
+   kustomize build tekton | kubectl replace -f -
+   ```
 
     - [publish-operator-release](https://github.com/tektoncd/operator/blob/main/tekton/build-publish-images-manifests.yaml)
 
@@ -79,18 +75,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
       kubectl apply -f tekton/overlays/versioned-releases/operator-release-pipeline.yaml
       ```
 
-4. Create environment variables for bash scripts in later steps.
-
-    ```bash
-    TEKTON_RELEASE_VERSION=# Example: v0.52.0
-    TEKTON_RELEASE_GIT_SHA=# SHA of the release to be released
-    TEKTON_PIPELINE_VERSION=# v0.28.0
-    TEKTON_TRIGGERS_VERSION=# v0.27.0
-    TEKTON_DASHBOARD_VERSION=# v0.21.0
-    TEKTON_RESULTS_VERSION=# v0.1.1
-    ```
-
-5. Confirm commit SHA matches what you want to release.
+4. Confirm commit SHA matches what you want to release.
 
     ```bash
     git show $TEKTON_RELEASE_GIT_SHA
@@ -113,16 +98,21 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
     ```bash
     tkn --context dogfooding pipeline start operator-release \
-      --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
-      --param=versionTag="${TEKTON_RELEASE_VERSION}" \
-      --param=TektonCDPipelinesVersion=${TEKTON_PIPELINE_VERSION} \
-      --param=TektonCDTriggersVersion=${TEKTON_TRIGGERS_VERSION} \
-      --param=TektonCDDashboardVersion=${TEKTON_DASHBOARD_VERSION} \
-      --param=TektonCDResultsVersion=${TEKTON_RESULTS_VERSION} \
-      --param=serviceAccountPath=release.json \
-      --param=releaseBucket=gs://tekton-releases/operator \
-      --workspace name=release-secret,secret=release-secret \
-      --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml
+        --serviceaccount=release-right-meow \
+        --components=components.yaml \
+        --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
+        --param=versionTag="${TEKTON_RELEASE_VERSION}" \
+        --param=serviceAccountPath=release.json \
+        --param=releaseBucket=gs://tekton-releases/operator \
+        --param=imageRegistry=gcr.io \
+        --param=imageRegistryPath=tekton-releases  \
+        --param=releaseAsLatest=true \
+        --param=platforms=linux/amd64,linux/arm64,linux/s390x,linux/ppc64le \
+        --param=kubeDistros="kubernetes openshift" \
+        --param=package=github.com/tektoncd/operator \
+        --workspace name=release-secret,secret=release-secret \
+        --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
+        --timeout 2h0m0s
     ```
 
 8. Watch logs of resulting PipelineRun.
@@ -153,44 +143,26 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
     1. Create additional environment variables
 
-        ```bash
-        TEKTON_PREV_RELEASE_VERSION=# Example: v0.11.1
-        TEKTON_PACKAGE=tektoncd/operator
-        ```
+    ```bash
+    TEKTON_OLD_VERSION=# Example: v0.11.1
+    TEKTON_RELEASE_NAME=# The release name you just chose, e.g.: "Ragdoll Norby"
+    ```
 
-    1. The release announcement draft is created by
-       the [create-draft-release](https://github.com/tektoncd/plumbing/blob/main/tekton/resources/release/base/github_release.yaml)
-       task. The task requires a `pipelineResource` to work with the operator repository. Create the pipelineresource:
-       ```shell script
-       cat <<EOF | kubectl --context dogfooding create -f -
-       apiVersion: tekton.dev/v1alpha1
-       kind: PipelineResource
-       metadata:
-         name: tekton-operator-$(echo $TEKTON_RELEASE_VERSION | tr '.' '-')
-         namespace: default
-       spec:
-         type: git
-         params:
-           - name: url
-             value: 'https://github.com/tektoncd/operator'
-           - name: revision
-             value: ${TEKTON_RELEASE_GIT_SHA}
-       EOF
-       ```
-       cat <<EOF | kubectl --context dogfooding create -f -
+    1. Execute the Draft Release Pipeline.
 
-    1. Execute the Draft Release task.
-
-        ```bash
-        tkn --context dogfooding task start \
-          -i source="tekton-operator-$(echo $TEKTON_RELEASE_VERSION | tr '.' '-')" \
-          -i release-bucket=tekton-operator-bucket \
-          -p package="${TEKTON_PACKAGE}" \
-          -p release-tag="${TEKTON_RELEASE_VERSION}" \
-          -p previous-release-tag="${TEKTON_PREV_RELEASE_VERSION}" \
-          -p release-name="" \
-          create-draft-release
-        ```
+    ```bash
+    tkn --context dogfooding pipeline start \
+      --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
+      --workspace name=credentials,secret=release-secret \
+      -p package="tektoncd/operator" \
+      -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
+      -p release-tag="${TEKTON_RELEASE_VERSION}" \
+      -p previous-release-tag="${TEKTON_OLD_VERSION}" \
+      -p release-name="" \
+      -p bucket="gs://tekton-releases/operator" \
+      -p rekor-uuid="" \
+      release-draft
+    ```
 
     1. Watch logs of create-draft-release
 
