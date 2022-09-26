@@ -548,8 +548,8 @@ github.com/hashicorp/hcl/json/token
 # github.com/hashicorp/vault/api v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/vault/api
-# github.com/hashicorp/vault/sdk v0.5.3
-## explicit; go 1.17
+# github.com/hashicorp/vault/sdk v0.6.0
+## explicit; go 1.19
 github.com/hashicorp/vault/sdk/helper/compressutil
 github.com/hashicorp/vault/sdk/helper/consts
 github.com/hashicorp/vault/sdk/helper/hclutil
