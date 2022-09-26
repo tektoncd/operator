@@ -60,6 +60,13 @@ func (tts *TektonTriggerStatus) IsReady() bool {
 	return triggersCondSet.Manage(tts).IsHappy()
 }
 
+func (tts *TektonTriggerStatus) IsNewInstallation() bool {
+	if tts.Status.GetCondition(apis.ConditionReady).IsUnknown() {
+		return true
+	}
+	return false
+}
+
 func (tts *TektonTriggerStatus) MarkPreReconcilerComplete() {
 	triggersCondSet.Manage(tts).MarkTrue(PreReconciler)
 }
