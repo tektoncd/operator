@@ -51,6 +51,7 @@ const (
 	DbSecretHash           = "operator.tekton.dev/db-secret-hash"
 
 	UpgradePending = "upgrade pending"
+	Reinstalling   = "reinstalling"
 
 	RequeueDelay = 10 * time.Second
 )

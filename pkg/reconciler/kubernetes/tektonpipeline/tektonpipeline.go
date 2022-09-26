@@ -383,6 +383,10 @@ func (r *Reconciler) targetNamespaceCheck(ctx context.Context, tp *v1alpha1.Tekt
 // and platform transformations applied
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	pipeline := comp.(*v1alpha1.TektonPipeline)
+
+	filteredManifest := manifest.Filter(mf.Not(mf.ByKind("PodSecurityPolicy")))
+	manifest = &filteredManifest
+
 	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
 	instance := comp.(*v1alpha1.TektonPipeline)
 	// adding extension's transformers first to run them before `extra` transformers

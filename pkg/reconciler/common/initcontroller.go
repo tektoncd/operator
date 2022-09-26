@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-logr/zapr"
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -59,9 +58,8 @@ func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) 
 	if err != nil {
 		ctrl.Logger.Fatalw("Error creating client from injected config", zap.Error(err))
 	}
-	mflogger := zapr.NewLogger(ctrl.Logger.Named("manifestival").Desugar())
 
-	manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
+	manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient))
 	if err != nil {
 		ctrl.Logger.Fatalw("Error creating initial manifest", zap.Error(err))
 	}
@@ -76,7 +74,7 @@ func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) 
 	releaseVersion, err = FetchVersionFromConfigMap(manifest, ctrl.VersionConfigMap)
 	if err != nil {
 		if IsFetchVersionError(err) {
-			ctrl.Logger.Warnf("failed to read version information from ConfigMap %s", ctrl.VersionConfigMap, err)
+			ctrl.Logger.Warnf("failed to read version information from ConfigMap %s: %v", ctrl.VersionConfigMap, err)
 			releaseVersion = ReleaseVersionUnknown
 		} else {
 			ctrl.Logger.Fatalw("Error while reading ConfigMap", zap.Error(err))
