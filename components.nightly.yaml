@@ -20,7 +20,7 @@ results:
   version: v0.4.0
 hub:
   github: tektoncd/hub
-  version: v1.8.0
+  version: v1.10.0
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
   version: nightly
