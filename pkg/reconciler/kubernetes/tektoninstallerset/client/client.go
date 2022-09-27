@@ -49,15 +49,21 @@ type FilterAndTransform func(ctx context.Context, manifest *mf.Manifest, comp v1
 type InstallerSetClient struct {
 	clientSet          clientSet.TektonInstallerSetInterface
 	releaseVersion     string
+	componentVersion   string
 	resourceKind       string
 	filterAndTransform FilterAndTransform
+	manifest           *mf.Manifest
+	metrics            Metrics
 }
 
-func NewInstallerSetClient(clientSet clientSet.TektonInstallerSetInterface, releaseVersion string, resourceKind string, filterAndTransform FilterAndTransform) *InstallerSetClient {
+func NewInstallerSetClient(clientSet clientSet.TektonInstallerSetInterface, manifest *mf.Manifest, releaseVersion, componentVersion string, resourceKind string, filterAndTransform FilterAndTransform, metrics Metrics) *InstallerSetClient {
 	return &InstallerSetClient{
 		clientSet:          clientSet,
 		releaseVersion:     releaseVersion,
 		resourceKind:       resourceKind,
 		filterAndTransform: filterAndTransform,
+		manifest:           manifest,
+		metrics:            metrics,
+		componentVersion:   componentVersion,
 	}
 }

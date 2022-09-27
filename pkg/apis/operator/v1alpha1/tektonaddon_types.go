@@ -66,6 +66,11 @@ type TektonAddonStatus struct {
 	AddonsInstallerSet map[string]string `json:"installerSets,omitempty"`
 }
 
+func (in *TektonAddonStatus) MarkInstallerSetAvailable() {
+	//TODO implement me
+	panic("implement me")
+}
+
 // Addon defines the field to customize Addon component
 type Addon struct {
 	// Params is the list of params passed for Addon customization

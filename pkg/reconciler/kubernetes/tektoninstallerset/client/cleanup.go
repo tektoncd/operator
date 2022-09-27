@@ -76,7 +76,7 @@ func (i *InstallerSetClient) CleanupMainSet(ctx context.Context) error {
 	}
 
 	// delete static installerSet first and then deployment one
-	logger.Infof("deleting main-static installer set for %s", static.GetName())
+	logger.Infof("deleting main-static installer set: %s", static.GetName())
 	err = i.clientSet.Delete(ctx, static.GetName(), metav1.DeleteOptions{
 		PropagationPolicy: &deletePropagationPolicy,
 	})
@@ -84,7 +84,7 @@ func (i *InstallerSetClient) CleanupMainSet(ctx context.Context) error {
 		return fmt.Errorf("failed to delete main-static installer set for %s", static.GetName())
 	}
 
-	logger.Infof("deleting main-deployment installer set for %s", deploy.GetName())
+	logger.Infof("deleting main-deployment installer set: %s", deploy.GetName())
 	err = i.clientSet.Delete(ctx, deploy.GetName(), metav1.DeleteOptions{
 		PropagationPolicy: &deletePropagationPolicy,
 	})
@@ -115,9 +115,22 @@ func (i *InstallerSetClient) Cleanup(ctx context.Context, isType string) error {
 		labelSelector = labelSelector.Add(*typeReq)
 	}
 
-	logger.Info("deleting installer sets with label: ", labelSelector.String())
-	err := i.clientSet.DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: labelSelector.String(),
+	list, err := i.clientSet.List(ctx, metav1.ListOptions{LabelSelector: labelSelector.String()})
+	if err != nil {
+		return err
+	}
+
+	if len(list.Items) != 1 {
+		logger.Errorf("found more than 1 installerSet for %s something fishy, cleaning up all", isType)
+		return i.CleanupAll(ctx)
+	}
+
+	logger.Infof("deleting %s installer set: %s", isType, list.Items[0].GetName())
+	err = i.clientSet.Delete(ctx, list.Items[0].GetName(), metav1.DeleteOptions{
+		PropagationPolicy: &deletePropagationPolicy,
 	})
+	if err != nil {
+		return fmt.Errorf("failed to delete %s set: %s", isType, list.Items[0].GetName())
+	}
 	return err
 }

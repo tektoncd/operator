@@ -148,29 +148,22 @@ func TestInstallerSetClient_Update(t *testing.T) {
 			ctx, _ := testing2.SetupFakeContext(t)
 
 			runObj := []runtime.Object{}
-			for i, _ := range tt.existingIS {
+			for i := range tt.existingIS {
 				runObj = append(runObj, &tt.existingIS[i])
 			}
-
-			fakeclient := fake.NewSimpleClientset(runObj...)
-			client := NewInstallerSetClient(fakeclient.OperatorV1alpha1().TektonInstallerSets(), releaseVersion, v1alpha1.KindTektonTrigger,
-				updateFilterAndTransform(common.NoExtension(ctx), updatedNs))
 
 			manifest, err := mf.ManifestFrom(mf.Slice(tt.resources))
 			if err != nil {
 				t.Fatalf("Failed to generate manifest: %v", err)
 			}
 
-			var gotErr error
-			var updatedISs []v1alpha1.TektonInstallerSet
-			switch tt.setType {
-			case InstallerTypeMain:
-				updatedISs, gotErr = client.UpdateMainSet(ctx, comp, tt.existingIS, &manifest)
-			case InstallerTypePre:
-				updatedISs, gotErr = client.UpdatePreSet(ctx, comp, &tt.existingIS[0], &manifest)
-			case InstallerTypePost:
-				updatedISs, gotErr = client.UpdatePostSet(ctx, comp, &tt.existingIS[0], &manifest)
-			}
+			fakeclient := fake.NewSimpleClientset(runObj...)
+			tisClient := fakeclient.OperatorV1alpha1().TektonInstallerSets()
+
+			client := NewInstallerSetClient(tisClient, &manifest, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
+				updateFilterAndTransform(common.NoExtension(ctx), updatedNs), &testMetrics{})
+
+			updatedISs, gotErr := client.Update(ctx, comp, tt.existingIS, &manifest, tt.setType)
 			if tt.wantErr != nil {
 				assert.Equal(t, gotErr, tt.wantErr)
 				return

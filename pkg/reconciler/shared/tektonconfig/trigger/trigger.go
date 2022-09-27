@@ -20,13 +20,13 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 func EnsureTektonTriggerExists(ctx context.Context, clients op.TektonTriggerInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonTrigger, error) {
@@ -123,12 +123,10 @@ func UpdateTrigger(ctx context.Context, ttCR *v1alpha1.TektonTrigger, config *v1
 
 // isTektonTriggerReady will check the status conditions of the TektonTrigger and return true if the TektonTrigger is ready.
 func isTektonTriggerReady(s *v1alpha1.TektonTrigger, err error) (bool, error) {
-	upgradePending, errInternal := common.CheckUpgradePending(s)
-	if err != nil {
-		return false, errInternal
-	}
-	if upgradePending {
-		return false, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
+	if s.GetStatus() != nil && s.GetStatus().GetCondition(apis.ConditionReady) != nil {
+		if strings.Contains(s.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
+			return false, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
+		}
 	}
 	return s.Status.IsReady(), err
 }

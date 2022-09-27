@@ -67,6 +67,16 @@ type TektonResultStatus struct {
 	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
 }
 
+func (in *TektonResultStatus) MarkPreReconcilerFailed(s string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *TektonResultStatus) MarkPostReconcilerFailed(s string) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // TektonResultsList contains a list of TektonResult
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TektonResultList struct {
