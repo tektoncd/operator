@@ -235,7 +235,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 
 		if lastAppliedHash != expectedSpecHash {
 			manifest := r.manifest
-			if err := r.transform(ctx, &manifest, tp); err != nil {
+			manifest, err := r.transform(ctx, &manifest, tp)
+			if err != nil {
 				logger.Error("manifest transformation failed:  ", err)
 				return err
 			}
@@ -273,8 +274,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	} else if ready.Status == corev1.ConditionFalse {
 		tp.Status.MarkInstallerSetNotReady(ready.Message)
-		manifest := r.manifest
-		if err := r.transform(ctx, &manifest, tp); err != nil {
+		manifest, err := r.transform(ctx, &r.manifest, tp)
+		if err != nil {
 			logger.Error("manifest transformation failed:  ", err)
 			return err
 		}
@@ -330,8 +331,8 @@ func (r *Reconciler) generateInstallerSet(ctx context.Context, tp *v1alpha1.Tekt
 	// Creates a new default installer
 	dis := installer.NewDefaultInstaller()
 
-	manifest := r.manifest
-	if err := r.transform(ctx, &manifest, tp); err != nil {
+	manifest, err := r.transform(ctx, &r.manifest, tp)
+	if err != nil {
 		tp.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err
 	}
@@ -381,11 +382,10 @@ func (r *Reconciler) targetNamespaceCheck(ctx context.Context, tp *v1alpha1.Tekt
 
 // transform mutates the passed manifest to one with common, component
 // and platform transformations applied
-func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
+func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (mf.Manifest, error) {
 	pipeline := comp.(*v1alpha1.TektonPipeline)
 
-	filteredManifest := manifest.Filter(mf.Not(mf.ByKind("PodSecurityPolicy")))
-	manifest = &filteredManifest
+	filteredManifest := manifest.Filter(mf.Not(mf.ByKind("PodSecurityPolicy")), mf.Not(mf.ByKind("HorizontalPodAutoscaler")))
 
 	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
 	instance := comp.(*v1alpha1.TektonPipeline)
@@ -402,7 +402,11 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.AddConfiguration(pipeline.Spec.Config),
 	}
 	trns = append(trns, extra...)
-	return common.Transform(ctx, manifest, instance, trns...)
+
+	if err := common.Transform(ctx, &filteredManifest, instance, trns...); err != nil {
+		return mf.Manifest{}, err
+	}
+	return filteredManifest, nil
 }
 
 func (m *Recorder) logMetrics(status, version string, logger *zap.SugaredLogger) {
