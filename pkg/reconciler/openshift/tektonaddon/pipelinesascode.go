@@ -39,7 +39,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const pacRuntimeLabel = "pipelinesascode.openshift.io/runtime"
+const (
+	pacRuntimeLabel = "pipelinesascode.openshift.io/runtime"
+	openshiftNS     = "openshift"
+)
 
 var configmapTemplate = `apiVersion: v1
 kind: ConfigMap
@@ -157,7 +160,13 @@ func (r *Reconciler) getManifest(ctx context.Context, ta *v1alpha1.TektonAddon) 
 		return nil, err
 	}
 
-	if err := fetchPRTemplates(&pacManifest); err != nil {
+	prTemplates := mf.Manifest{}
+	if err := fetchPRTemplates(&prTemplates); err != nil {
+		return nil, err
+	}
+	var err error
+	prTemplates, err = prTemplates.Transform(mf.InjectNamespace(openshiftNS))
+	if err != nil {
 		return nil, err
 	}
 
@@ -179,6 +188,8 @@ func (r *Reconciler) getManifest(ctx context.Context, ta *v1alpha1.TektonAddon) 
 	if err := r.addonTransform(ctx, &pacManifest, ta, tfs...); err != nil {
 		return nil, err
 	}
+
+	pacManifest = pacManifest.Append(prTemplates)
 
 	return &pacManifest, nil
 }
