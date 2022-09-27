@@ -19,10 +19,12 @@ package common
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	informer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"knative.dev/pkg/apis"
 )
 
 var (
@@ -83,11 +85,7 @@ func TriggerReady(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrig
 		}
 		return nil, err
 	}
-	upgradePending, err := CheckUpgradePending(trigger)
-	if err != nil {
-		return nil, err
-	}
-	if upgradePending {
+	if strings.Contains(trigger.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
 		return nil, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
 	}
 	if !trigger.Status.IsReady() {

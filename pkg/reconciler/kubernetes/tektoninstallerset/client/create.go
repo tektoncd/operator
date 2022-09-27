@@ -28,18 +28,6 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-func (i *InstallerSetClient) CreateMainSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest) ([]v1alpha1.TektonInstallerSet, error) {
-	return i.Create(ctx, comp, manifest, InstallerTypeMain)
-}
-
-func (i *InstallerSetClient) CreatePreSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest) ([]v1alpha1.TektonInstallerSet, error) {
-	return i.Create(ctx, comp, manifest, InstallerTypePre)
-}
-
-func (i *InstallerSetClient) CreatePostSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest) ([]v1alpha1.TektonInstallerSet, error) {
-	return i.Create(ctx, comp, manifest, InstallerTypePost)
-}
-
 func (i *InstallerSetClient) Create(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, isType string) ([]v1alpha1.TektonInstallerSet, error) {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", isType)
 

@@ -47,12 +47,23 @@ type TektonComponentSpec interface {
 
 // TektonComponentStatus is a common interface for status mutations of all known types.
 type TektonComponentStatus interface {
+	MarkNotReady(string)
+	MarkInstallerSetReady()
+
+	MarkInstallerSetNotReady(string)
+	MarkInstallerSetAvailable()
+
+	MarkPreReconcilerFailed(string)
+	MarkPostReconcilerFailed(string)
+
 	// GetVersion gets the currently installed version of the component.
 	GetVersion() string
 	// SetVersion sets the currently installed version of the component.
 	SetVersion(version string)
 	// IsReady return true if all conditions are satisfied
 	IsReady() bool
+	// ConditionAccessor Implement to interact with a condition
+	apis.ConditionAccessor
 }
 
 // CommonSpec unifies common fields and functions on the Spec.

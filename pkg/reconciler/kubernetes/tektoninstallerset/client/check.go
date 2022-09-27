@@ -30,20 +30,8 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-func (i *InstallerSetClient) CheckPreSet(ctx context.Context, comp v1alpha1.TektonComponent) ([]v1alpha1.TektonInstallerSet, error) {
-	return i.CheckSet(ctx, comp, InstallerTypePre)
-}
-
-func (i *InstallerSetClient) CheckMainSet(ctx context.Context, comp v1alpha1.TektonComponent) ([]v1alpha1.TektonInstallerSet, error) {
-	return i.CheckSet(ctx, comp, InstallerTypeMain)
-}
-
-func (i *InstallerSetClient) CheckPostSet(ctx context.Context, comp v1alpha1.TektonComponent) ([]v1alpha1.TektonInstallerSet, error) {
-	return i.CheckSet(ctx, comp, InstallerTypePost)
-}
-
 func (i *InstallerSetClient) CheckSet(ctx context.Context, comp v1alpha1.TektonComponent, isType string) ([]v1alpha1.TektonInstallerSet, error) {
-	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", isType)
+	logger := logging.FromContext(ctx)
 
 	labelSelector := labels.NewSelector()
 	createdReq, _ := labels.NewRequirement(v1alpha1.CreatedByKey, selection.Equals, []string{i.resourceKind})
@@ -55,42 +43,42 @@ func (i *InstallerSetClient) CheckSet(ctx context.Context, comp v1alpha1.TektonC
 		labelSelector = labelSelector.Add(*typeReq)
 	}
 
-	logger.Infof("checking installer sets with labels: %v", labelSelector.String())
+	logger.Infof("%v/%v: checking installer sets with labels: %v", i.resourceKind, isType, labelSelector.String())
 
 	is, err := i.clientSet.List(ctx, v1.ListOptions{LabelSelector: labelSelector.String()})
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Infof("found %v installer sets", len(is.Items))
+	logger.Infof("%v/%v: found %v installer sets", i.resourceKind, isType, len(is.Items))
 
 	iSets := is.Items
 
 	if len(iSets) == 0 {
-		logger.Infof("installer sets not found")
+		logger.Infof("%v/%v: installer sets not found", i.resourceKind, isType)
 		return nil, ErrNotFound
 	}
 
 	if len(iSets) == 1 {
 		if iSets[0].DeletionTimestamp != nil {
-			return nil, ErrSetsInDeletionState
+			return iSets, ErrSetsInDeletionState
 		}
 	} else {
 		if iSets[0].DeletionTimestamp != nil || iSets[1].DeletionTimestamp != nil {
-			return nil, ErrSetsInDeletionState
+			return iSets, ErrSetsInDeletionState
 		}
 	}
 
 	switch isType {
 	case InstallerTypeMain:
 		if err := verifyMainInstallerSets(iSets); err != nil {
-			logger.Errorf("failed to verify main sets: %v", err)
-			return nil, err
+			logger.Errorf("%v/%v: failed to verify main sets: %v", i.resourceKind, isType, err)
+			return iSets, err
 		}
 	case InstallerTypePre, InstallerTypePost:
 		if len(iSets) != 1 {
-			logger.Error("found multiple sets, expected one")
-			return nil, ErrInvalidState
+			logger.Errorf("%v/%v: found multiple sets, expected one", i.resourceKind, isType)
+			return iSets, ErrInvalidState
 		}
 	case InstallerTypeCustom:
 		// TODO
@@ -98,11 +86,11 @@ func (i *InstallerSetClient) CheckSet(ctx context.Context, comp v1alpha1.TektonC
 		return nil, fmt.Errorf("invalid installerSet type")
 	}
 
-	if err := verifyMeta(logger, iSets[0], comp, i.releaseVersion); err != nil {
-		logger.Errorf("meta check failed for installer type: %v", err)
-		return nil, err
+	if err := verifyMeta(i.resourceKind, isType, logger, iSets[0], comp, i.releaseVersion); err != nil {
+		logger.Errorf("%v/%v: meta check failed for installer type: %v", i.resourceKind, isType, err)
+		return iSets, err
 	}
-	logger.Info("meta check passed")
+	logger.Infof("%v/%v: meta check passed", i.resourceKind, isType)
 
 	return iSets, nil
 }
@@ -126,9 +114,9 @@ func verifyMainInstallerSets(iSets []v1alpha1.TektonInstallerSet) error {
 	return nil
 }
 
-func verifyMeta(logger *zap.SugaredLogger, set v1alpha1.TektonInstallerSet, comp v1alpha1.TektonComponent, releaseVersion string) error {
+func verifyMeta(resourceKind, isType string, logger *zap.SugaredLogger, set v1alpha1.TektonInstallerSet, comp v1alpha1.TektonComponent, releaseVersion string) error {
 	// Release Version Check
-	logger.Info("release version check")
+	logger.Infof("%v/%v: release version check", resourceKind, isType)
 
 	rVel, ok := set.GetLabels()[v1alpha1.ReleaseVersionKey]
 	if !ok {
@@ -139,7 +127,7 @@ func verifyMeta(logger *zap.SugaredLogger, set v1alpha1.TektonInstallerSet, comp
 	}
 
 	// Target namespace check
-	logger.Info("target namespace check")
+	logger.Infof("%v/%v: target namespace check", resourceKind, isType)
 
 	targetNamespace, ok := set.GetAnnotations()[v1alpha1.TargetNamespaceKey]
 	if !ok {
@@ -150,7 +138,7 @@ func verifyMeta(logger *zap.SugaredLogger, set v1alpha1.TektonInstallerSet, comp
 	}
 
 	// Spec Hash Check
-	logger.Info("spec hash check")
+	logger.Infof("%v/%v: spec hash check", resourceKind, isType)
 
 	expectedHash, err := hash.Compute(comp.GetSpec())
 	if err != nil {

@@ -247,18 +247,13 @@ func TestInstallerSetClient_Check(t *testing.T) {
 			ctx, _ := testing2.SetupFakeContext(t)
 
 			fakeclient := fake.NewSimpleClientset(tt.resources)
-			client := NewInstallerSetClient(fakeclient.OperatorV1alpha1().TektonInstallerSets(), releaseVersion, v1alpha1.KindTektonTrigger,
-				filterAndTransform(common.NoExtension(ctx)))
+			tisClient := fakeclient.OperatorV1alpha1().TektonInstallerSets()
 
-			var gotErr error
-			switch tt.setType {
-			case InstallerTypeMain:
-				_, gotErr = client.CheckMainSet(ctx, comp)
-			case InstallerTypePre:
-				_, gotErr = client.CheckPreSet(ctx, comp)
-			case InstallerTypePost:
-				_, gotErr = client.CheckPostSet(ctx, comp)
-			}
+			client := NewInstallerSetClient(tisClient, nil, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
+				filterAndTransform(common.NoExtension(ctx)), &testMetrics{})
+
+			_, gotErr := client.CheckSet(ctx, comp, tt.setType)
+
 			if tt.wantErr != nil {
 				assert.Equal(t, gotErr, tt.wantErr)
 				return

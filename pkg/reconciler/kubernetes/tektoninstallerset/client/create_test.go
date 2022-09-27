@@ -92,8 +92,15 @@ func TestInstallerSetClient_Create(t *testing.T) {
 			ctx, _ := testing2.SetupFakeContext(t)
 
 			fakeclient := fake.NewSimpleClientset()
-			client := NewInstallerSetClient(fakeclient.OperatorV1alpha1().TektonInstallerSets(), releaseVersion, v1alpha1.KindTektonTrigger,
-				filterAndTransform(common.NoExtension(ctx)))
+			tisClient := fakeclient.OperatorV1alpha1().TektonInstallerSets()
+
+			manifest, err := mf.ManifestFrom(mf.Slice(tt.resources))
+			if err != nil {
+				t.Fatalf("Failed to generate manifest: %v", err)
+			}
+
+			client := NewInstallerSetClient(tisClient, &manifest, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
+				filterAndTransform(common.NoExtension(ctx)), &testMetrics{})
 
 			// fake.NewSimpleClientset() doesn't consider generate name when creating a resources
 			// so we write a fake client to test
@@ -102,25 +109,12 @@ func TestInstallerSetClient_Create(t *testing.T) {
 
 			if tt.setType == InstallerTypeMain {
 				fakeClient := fake2.NewFakeISClient()
-				client = NewInstallerSetClient(fakeClient, releaseVersion, v1alpha1.KindTektonTrigger,
-					filterAndTransform(common.NoExtension(ctx)))
+				client = NewInstallerSetClient(fakeClient, &manifest, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
+					filterAndTransform(common.NoExtension(ctx)), &testMetrics{})
 			}
 
-			manifest, err := mf.ManifestFrom(mf.Slice(tt.resources))
-			if err != nil {
-				t.Fatalf("Failed to generate manifest: %v", err)
-			}
+			iSs, gotErr := client.Create(ctx, comp, &manifest, tt.setType)
 
-			var gotErr error
-			var iSs []v1alpha1.TektonInstallerSet
-			switch tt.setType {
-			case InstallerTypeMain:
-				iSs, gotErr = client.CreateMainSet(ctx, comp, &manifest)
-			case InstallerTypePre:
-				iSs, gotErr = client.CreatePreSet(ctx, comp, &manifest)
-			case InstallerTypePost:
-				iSs, gotErr = client.CreatePostSet(ctx, comp, &manifest)
-			}
 			if tt.wantErr != nil {
 				assert.Equal(t, gotErr, tt.wantErr)
 				return

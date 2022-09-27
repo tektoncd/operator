@@ -61,10 +61,7 @@ func (tts *TektonTriggerStatus) IsReady() bool {
 }
 
 func (tts *TektonTriggerStatus) IsNewInstallation() bool {
-	if tts.Status.GetCondition(apis.ConditionReady).IsUnknown() {
-		return true
-	}
-	return false
+	return tts.Status.GetCondition(apis.ConditionReady).IsUnknown()
 }
 
 func (tts *TektonTriggerStatus) MarkPreReconcilerComplete() {
@@ -142,26 +139,10 @@ func (tts *TektonTriggerStatus) MarkDependencyMissing(msg string) {
 		"Dependencies are missing: %s", msg)
 }
 
-// TODO: below methods are not required for TektonTrigger
-// but as extension implements TektonComponent we need to define them
-// this will be removed
-
-func (tts *TektonTriggerStatus) GetTektonInstallerSet() string {
-	return tts.TektonInstallerSet
-}
-
-func (tts *TektonTriggerStatus) SetTektonInstallerSet(installerSet string) {
-	tts.TektonInstallerSet = installerSet
-}
-
 func (tts *TektonTriggerStatus) GetVersion() string {
 	return tts.Version
 }
 
 func (tts *TektonTriggerStatus) SetVersion(version string) {
 	tts.Version = version
-}
-
-func (tts *TektonTriggerStatus) MarkInstallSucceeded() {
-	panic("implement me")
 }

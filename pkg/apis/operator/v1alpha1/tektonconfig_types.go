@@ -114,6 +114,31 @@ type TektonConfigStatus struct {
 	TektonInstallerSet map[string]string `json:"tektonInstallerSets,omitempty"`
 }
 
+func (in *TektonConfigStatus) MarkInstallerSetReady() {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *TektonConfigStatus) MarkInstallerSetNotReady(s string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *TektonConfigStatus) MarkInstallerSetAvailable() {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *TektonConfigStatus) MarkPreReconcilerFailed(s string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *TektonConfigStatus) MarkPostReconcilerFailed(s string) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // TektonConfigList contains a list of TektonConfig
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TektonConfigList struct {

@@ -17,6 +17,7 @@ limitations under the License.
 package client
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -100,6 +101,33 @@ func TestInstallerSetClient_Cleanup(t *testing.T) {
 			},
 			afterCleanupNumberOfIS: 1,
 		},
+		{
+			name:    "cleanup post set",
+			setType: InstallerTypePost,
+			existingIS: []v1alpha1.TektonInstallerSet{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "abc-pre-sadsa",
+						Labels: map[string]string{
+							v1alpha1.CreatedByKey:     v1alpha1.KindTektonTrigger,
+							v1alpha1.InstallerSetType: InstallerTypePre,
+						},
+					},
+					Spec: v1alpha1.TektonInstallerSetSpec{},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "abc-post-asdad",
+						Labels: map[string]string{
+							v1alpha1.CreatedByKey:     v1alpha1.KindTektonTrigger,
+							v1alpha1.InstallerSetType: InstallerTypePost,
+						},
+					},
+					Spec: v1alpha1.TektonInstallerSetSpec{},
+				},
+			},
+			afterCleanupNumberOfIS: 1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -107,12 +135,14 @@ func TestInstallerSetClient_Cleanup(t *testing.T) {
 			ctx, _ := testing2.SetupFakeContext(t)
 
 			runObj := []runtime.Object{}
-			for i, _ := range tt.existingIS {
+			for i := range tt.existingIS {
 				runObj = append(runObj, &tt.existingIS[i])
 			}
 			fakeClient := fake.NewSimpleClientset(runObj...)
-			client := NewInstallerSetClient(fakeClient.OperatorV1alpha1().TektonInstallerSets(), releaseVersion, v1alpha1.KindTektonTrigger,
-				filterAndTransform(common.NoExtension(ctx)))
+			tisClient := fakeClient.OperatorV1alpha1().TektonInstallerSets()
+
+			client := NewInstallerSetClient(tisClient, nil, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
+				filterAndTransform(common.NoExtension(ctx)), &testMetrics{})
 
 			var gotErr error
 			switch tt.setType {
@@ -130,6 +160,10 @@ func TestInstallerSetClient_Cleanup(t *testing.T) {
 			list, err := fakeClient.OperatorV1alpha1().TektonInstallerSets().List(ctx, metav1.ListOptions{})
 			assert.NilError(t, err)
 			assert.Equal(t, len(list.Items), tt.afterCleanupNumberOfIS)
+
+			if strings.Contains(list.Items[0].GetName(), tt.setType) {
+				t.Fatalf("installer set %s should have been deleted but", list.Items[0].GetName())
+			}
 		})
 	}
 }

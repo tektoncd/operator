@@ -93,6 +93,21 @@ type TektonHubStatus struct {
 	HubInstallerSet map[string]string `json:"hubInstallerSets,omitempty"`
 }
 
+func (in *TektonHubStatus) MarkInstallerSetReady() {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *TektonHubStatus) MarkInstallerSetNotReady(s string) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *TektonHubStatus) MarkInstallerSetAvailable() {
+	//TODO implement me
+	panic("implement me")
+}
+
 // TektonHubList contains a list of TektonHub
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TektonHubList struct {

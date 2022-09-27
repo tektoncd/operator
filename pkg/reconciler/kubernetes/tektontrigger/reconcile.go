@@ -26,10 +26,11 @@ import (
 	tektontriggerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektontrigger"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
-	"go.uber.org/zap"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
+
+const resourceKind = v1alpha1.KindTektonTrigger
 
 // Reconciler implements controller.Reconciler for TektonTrigger resources.
 type Reconciler struct {
@@ -93,60 +94,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	//Mark PreReconcile Complete
 	tt.Status.MarkPreReconcilerComplete()
 
-	sets, err := r.installerSetClient.CheckMainSet(ctx, tt)
-	if err == nil {
-		logger.Infof("found %v installer sets", len(sets))
+	if err := r.installerSetClient.MainSet(ctx, tt); err != nil {
+		logger.Errorf("failed for main set: %v", err)
+		return err
 	}
-
-	switch err {
-	case client.ErrNotFound:
-		logger.Info("installer set not found, creating")
-		sets, err = r.installerSetClient.CreateMainSet(ctx, tt, &r.manifest)
-		if err != nil {
-			return nil
-		}
-		if tt.Status.IsNewInstallation() {
-			r.metrics.logMetrics(metricsNew, r.triggersVersion, logger)
-		}
-
-	case client.ErrInvalidState, client.ErrNsDifferent, client.ErrVersionDifferent:
-		logger.Infof("installer set not in valid state : %v, cleaning up!", err)
-		if err := r.installerSetClient.CleanupMainSet(ctx); err != nil {
-			logger.Errorf("failed to cleanup main installer set: %v", err)
-			return nil
-		}
-		if err == client.ErrVersionDifferent {
-			r.metrics.logMetrics(metricsUpgrade, r.triggersVersion, logger)
-			markUpgrade(tt)
-		} else {
-			markReinstalling(tt)
-		}
-		logger.Infof("returning, will create main installer sets in further reconcile")
-		return v1alpha1.REQUEUE_EVENT_AFTER
-
-	case client.ErrUpdateRequired:
-		logger.Info("updating installer set")
-		sets, err = r.installerSetClient.UpdateMainSet(ctx, tt, sets, &r.manifest)
-		if err != nil {
-			return nil
-		}
-	case client.ErrSetsInDeletionState:
-		logger.Info(err)
-		return v1alpha1.REQUEUE_EVENT_AFTER
-	}
-
-	//Mark InstallerSet Available
-	tt.Status.MarkInstallerSetAvailable()
-
-	for _, set := range sets {
-		if !set.Status.IsReady() {
-			logger.Infof("installer set %v no yet ready, wait !", set.GetName())
-			return nil
-		}
-	}
-
-	//Mark InstallerSet Ready
-	tt.Status.MarkInstallerSetReady()
 
 	if err := r.extension.PostReconcile(ctx, tt); err != nil {
 		tt.Status.MarkPostReconcilerFailed(fmt.Sprintf("PostReconciliation failed: %s", err.Error()))
@@ -156,25 +107,4 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	// Mark PostReconcile Complete
 	tt.Status.MarkPostReconcilerComplete()
 	return nil
-}
-
-func (m *Recorder) logMetrics(status, version string, logger *zap.SugaredLogger) {
-	err := m.Count(status, version)
-	if err != nil {
-		logger.Warnf("Failed to log the metrics : %v", err)
-	}
-}
-
-func markUpgrade(tt *v1alpha1.TektonTrigger) {
-	tt.Status.MarkInstallerSetNotReady(v1alpha1.UpgradePending)
-	tt.Status.MarkPreReconcilerFailed(v1alpha1.UpgradePending)
-	tt.Status.MarkPostReconcilerFailed(v1alpha1.UpgradePending)
-	tt.Status.MarkNotReady(v1alpha1.UpgradePending)
-}
-
-func markReinstalling(tt *v1alpha1.TektonTrigger) {
-	tt.Status.MarkInstallerSetNotReady(v1alpha1.Reinstalling)
-	tt.Status.MarkPreReconcilerFailed(v1alpha1.Reinstalling)
-	tt.Status.MarkPostReconcilerFailed(v1alpha1.Reinstalling)
-	tt.Status.MarkNotReady(v1alpha1.Reinstalling)
 }
