@@ -125,30 +125,3 @@ func (trs *TektonResultStatus) GetVersion() string {
 func (trs *TektonResultStatus) SetVersion(version string) {
 	trs.Version = version
 }
-
-// MarkInstallSucceeded marks the InstallationSucceeded status as true.
-func (trs *TektonResultStatus) MarkInstallSucceeded() {
-	panic("implement me")
-}
-
-// MarkInstallFailed marks the InstallationSucceeded status as false with the given
-// message.
-func (trs *TektonResultStatus) MarkInstallFailed(msg string) {
-	panic("implement me")
-}
-
-// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
-func (trs *TektonResultStatus) MarkDeploymentsAvailable() {
-	panic("implement me")
-}
-
-// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
-// it's waiting for deployments.
-func (trs *TektonResultStatus) MarkDeploymentsNotReady() {
-	panic("implement me")
-}
-
-// GetManifests gets the url links of the manifests.
-func (trs *TektonResultStatus) GetManifests() []string {
-	panic("Implement me")
-}

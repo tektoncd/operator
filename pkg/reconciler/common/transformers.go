@@ -87,12 +87,10 @@ func Transform(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.Tek
 
 	remainingManifest, err := remainingManifest.Transform(transformers...)
 	if err != nil {
-		instance.GetStatus().MarkInstallFailed(err.Error())
 		return err
 	}
 	roleBindingManifest, err = roleBindingManifest.Transform(t1...)
 	if err != nil {
-		instance.GetStatus().MarkInstallFailed(err.Error())
 		return err
 	}
 	*manifest = remainingManifest.Append(roleBindingManifest)

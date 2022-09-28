@@ -158,19 +158,3 @@ func (tts *TektonTriggerStatus) SetVersion(version string) {
 func (tts *TektonTriggerStatus) MarkInstallSucceeded() {
 	panic("implement me")
 }
-
-func (tts *TektonTriggerStatus) MarkInstallFailed(msg string) {
-	panic("implement me")
-}
-
-func (tts *TektonTriggerStatus) MarkDeploymentsAvailable() {
-	panic("implement me")
-}
-
-func (tts *TektonTriggerStatus) MarkDeploymentsNotReady() {
-	panic("implement me")
-}
-
-func (tts *TektonTriggerStatus) GetManifests() []string {
-	panic("implement me")
-}

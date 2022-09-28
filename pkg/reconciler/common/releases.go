@@ -23,7 +23,6 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -49,18 +48,6 @@ func TargetVersion(instance v1alpha1.TektonComponent) string {
 // TargetManifest returns the manifest for the TargetVersion
 func TargetManifest(instance v1alpha1.TektonComponent) (mf.Manifest, error) {
 	return Fetch(manifestPath(TargetVersion(instance), instance))
-}
-
-// InstalledManifest returns the version currently installed, which is
-// harder than it sounds, since status.version isn't set until the
-// target version is successfully installed, which can take some time.
-// So we return the target manifest if status.version is empty.
-func InstalledManifest(instance v1alpha1.TektonComponent) (mf.Manifest, error) {
-	current := instance.GetStatus().GetVersion()
-	if len(instance.GetStatus().GetManifests()) == 0 && current == "" {
-		return TargetManifest(instance)
-	}
-	return Fetch(installedManifestPath(current, instance))
 }
 
 func Fetch(path string) (mf.Manifest, error) {
@@ -103,19 +90,6 @@ func ComponentDir(instance v1alpha1.TektonComponent) string {
 func manifestPath(version string, instance v1alpha1.TektonComponent) string {
 	if !semver.IsValid(sanitizeSemver(version)) {
 		return ""
-	}
-
-	localPath := filepath.Join(ComponentDir(instance), version)
-	if _, err := os.Stat(localPath); !os.IsNotExist(err) {
-		return localPath
-	}
-
-	return ""
-}
-
-func installedManifestPath(version string, instance v1alpha1.TektonComponent) string {
-	if manifests := instance.GetStatus().GetManifests(); len(manifests) != 0 {
-		return strings.Join(manifests, COMMA)
 	}
 
 	localPath := filepath.Join(ComponentDir(instance), version)
