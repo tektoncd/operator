@@ -120,27 +120,3 @@ func (tas *TektonAddonStatus) GetVersion() string {
 func (tas *TektonAddonStatus) SetVersion(version string) {
 	tas.Version = version
 }
-
-// TODO: below methods are not required for TektonAddon
-// but as extension implements TektonComponent we need to define them
-// this will be removed
-
-func (tas *TektonAddonStatus) MarkInstallSucceeded() {
-	panic("implement me")
-}
-
-func (tas *TektonAddonStatus) MarkInstallFailed(msg string) {
-	panic("implement me")
-}
-
-func (tas *TektonAddonStatus) MarkDeploymentsAvailable() {
-	panic("implement me")
-}
-
-func (tas *TektonAddonStatus) MarkDeploymentsNotReady() {
-	panic("implement me")
-}
-
-func (tas *TektonAddonStatus) GetManifests() []string {
-	panic("implement me")
-}

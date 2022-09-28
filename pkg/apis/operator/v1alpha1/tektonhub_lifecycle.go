@@ -249,35 +249,3 @@ func (ths *TektonHubStatus) GetManifests() []string {
 func (ths *TektonHubStatus) SetManifests(manifests []string) {
 	ths.Manifests = manifests
 }
-
-// TODO: below methods are not required for TektonHub
-// but as extension implements TektonComponent we need to define them
-// this will be removed
-
-func (tas *TektonHubStatus) MarkInstallSucceeded() {
-	panic("MarkInstallSucceeded implement me")
-}
-
-func (ths *TektonHubStatus) MarkInstallFailed(msg string) {
-	panic("MarkInstallFailed implement me")
-}
-
-func (ths *TektonHubStatus) MarkDeploymentsAvailable() {
-	panic("MarkDeploymentsAvailable implement me")
-}
-
-func (ths *TektonHubStatus) MarkDeploymentsNotReady() {
-	panic("MarkDeploymentsNotReady implement me")
-}
-
-func (ths *TektonHubStatus) MarkDependenciesInstalled() {
-	panic("MarkDependenciesInstalled implement me")
-}
-
-func (ths *TektonHubStatus) MarkDependencyInstalling(msg string) {
-	panic("MarkDependencyInstalling implement me")
-}
-
-func (ths *TektonHubStatus) MarkDependencyMissing(msg string) {
-	panic("MarkDependencyMissing implement me")
-}

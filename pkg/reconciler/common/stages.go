@@ -56,24 +56,6 @@ func AppendTarget(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.
 	return nil
 }
 
-// AppendInstalled mutates the passed manifest by appending one
-// appropriate for the passed TektonComponent, which may not be the one
-// corresponding to status.version
-func AppendInstalled(ctx context.Context, manifest *mf.Manifest, instance v1alpha1.TektonComponent) error {
-	logger := logging.FromContext(ctx)
-	m, err := InstalledManifest(instance)
-	if err != nil {
-		// TODO: return the oldest instead of the latest?
-		logger.Error("Unable to fetch installed manifest, trying target", err)
-		m, err = TargetManifest(instance)
-	}
-	if err != nil {
-		return err
-	}
-	*manifest = manifest.Append(m)
-	return nil
-}
-
 // ManifestFetcher returns a manifest appropriate for the instance
 type ManifestFetcher func(ctx context.Context, instance v1alpha1.TektonComponent) (*mf.Manifest, error)
 

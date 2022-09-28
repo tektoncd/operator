@@ -47,35 +47,10 @@ type TektonComponentSpec interface {
 
 // TektonComponentStatus is a common interface for status mutations of all known types.
 type TektonComponentStatus interface {
-	// MarkInstallSucceeded marks the InstallationSucceeded status as true.
-	MarkInstallSucceeded()
-	// MarkInstallFailed marks the InstallationSucceeded status as false with the given
-	// message.
-	MarkInstallFailed(msg string)
-
-	// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
-	MarkDeploymentsAvailable()
-	// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
-	// it's waiting for deployments.
-	MarkDeploymentsNotReady()
-
-	// MarkDependenciesInstalled marks the DependenciesInstalled status as true.
-	MarkDependenciesInstalled()
-	// MarkDependencyInstalling marks the DependenciesInstalled status as false with the
-	// given message.
-	MarkDependencyInstalling(msg string)
-	// MarkDependencyMissing marks the DependenciesInstalled status as false with the
-	// given message.
-	MarkDependencyMissing(msg string)
-
 	// GetVersion gets the currently installed version of the component.
 	GetVersion() string
 	// SetVersion sets the currently installed version of the component.
 	SetVersion(version string)
-
-	// GetManifests gets the url links of the manifests
-	GetManifests() []string
-
 	// IsReady return true if all conditions are satisfied
 	IsReady() bool
 }

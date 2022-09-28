@@ -154,29 +154,3 @@ func (tcs *TektonChainStatus) GetVersion() string {
 func (tcs *TektonChainStatus) SetVersion(version string) {
 	tcs.Version = version
 }
-
-// MarkInstallSucceeded marks the InstallationSucceeded status as true.
-func (tcs *TektonChainStatus) MarkInstallSucceeded() {
-	panic("implement me")
-}
-
-// MarkInstallFailed marks the InstallationSucceeded status as false with the given message.
-func (tcs *TektonChainStatus) MarkInstallFailed(msg string) {
-	panic("implement me")
-}
-
-// MarkDeploymentsAvailable marks the DeploymentsAvailable status as true.
-func (tcs *TektonChainStatus) MarkDeploymentsAvailable() {
-	panic("implement me")
-}
-
-// MarkDeploymentsNotReady marks the DeploymentsAvailable status as false and calls out
-// it's waiting for deployments.
-func (tcs *TektonChainStatus) MarkDeploymentsNotReady() {
-	panic("implement me")
-}
-
-// GetManifests gets the url links of the manifests.
-func (tcs *TektonChainStatus) GetManifests() []string {
-	panic("implement me")
-}

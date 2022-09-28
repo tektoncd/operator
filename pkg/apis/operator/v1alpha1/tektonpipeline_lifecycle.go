@@ -136,35 +136,3 @@ func (tps *TektonPipelineStatus) GetVersion() string {
 func (tps *TektonPipelineStatus) SetVersion(version string) {
 	tps.Version = version
 }
-
-func (tps *TektonPipelineStatus) MarkInstallSucceeded() {
-	panic("implement me")
-}
-
-func (tps *TektonPipelineStatus) MarkInstallFailed(msg string) {
-	panic("implement me")
-}
-
-func (tps *TektonPipelineStatus) MarkDeploymentsAvailable() {
-	panic("implement me")
-}
-
-func (tps *TektonPipelineStatus) MarkDeploymentsNotReady() {
-	panic("implement me")
-}
-
-func (tps *TektonPipelineStatus) MarkDependenciesInstalled() {
-	panic("implement me")
-}
-
-func (tps *TektonPipelineStatus) MarkDependencyInstalling(msg string) {
-	panic("implement me")
-}
-
-func (tps *TektonPipelineStatus) MarkDependencyMissing(msg string) {
-	panic("implement me")
-}
-
-func (tps *TektonPipelineStatus) GetManifests() []string {
-	panic("implement me")
-}
