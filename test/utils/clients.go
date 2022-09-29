@@ -166,6 +166,14 @@ func (c *Clients) TektonChainsAll() operatorv1alpha1.TektonChainInterface {
 	return c.Operator.TektonChains()
 }
 
+func (c *Clients) TektonHub() operatorv1alpha1.TektonHubInterface {
+	return c.Operator.TektonHubs()
+}
+
+func (c *Clients) TektonHubAll() operatorv1alpha1.TektonHubInterface {
+	return c.Operator.TektonHubs()
+}
+
 func (c *Clients) TektonInstallerSet() operatorv1alpha1.TektonInstallerSetInterface {
 	return c.Operator.TektonInstallerSets()
 }
