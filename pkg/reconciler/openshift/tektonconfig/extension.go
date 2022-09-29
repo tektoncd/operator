@@ -28,7 +28,6 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
 	openshiftPipeline "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
-	openshiftTrigger "github.com/tektoncd/operator/pkg/reconciler/openshift/tektontrigger"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -65,7 +64,6 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 
 	// set openshift specific defaults
 	openshiftPipeline.SetDefault(&config.Spec.Pipeline)
-	openshiftTrigger.SetDefault(&config.Spec.Trigger.TriggersProperties)
 	r.setDefault()
 
 	// below code helps to retain state of pre-existing SA at the time of upgrade

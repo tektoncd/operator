@@ -21,22 +21,15 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
-	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
-	ext := openshiftExtension{
-		operatorClientSet: operatorclient.Get(ctx),
-	}
-	return ext
+	return openshiftExtension{}
 }
 
-type openshiftExtension struct {
-	operatorClientSet versioned.Interface
-}
+type openshiftExtension struct{}
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
@@ -48,10 +41,6 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	}
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
-	tt := tc.(*v1alpha1.TektonTrigger)
-
-	SetDefault(&tt.Spec.TriggersProperties)
-
 	return nil
 }
 func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
@@ -59,12 +48,4 @@ func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonCompo
 }
 func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
 	return nil
-}
-
-func SetDefault(properties *v1alpha1.TriggersProperties) {
-
-	// Set default service account as pipeline
-	if properties.DefaultServiceAccount == "" {
-		properties.DefaultServiceAccount = common.DefaultSA
-	}
 }
