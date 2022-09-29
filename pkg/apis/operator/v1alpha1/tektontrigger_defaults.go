@@ -22,14 +22,28 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 )
 
+var (
+	// DefaultOpenshiftSA is the default service account for openshift
+	DefaultOpenshiftSA = "pipeline"
+)
+
 func (tt *TektonTrigger) SetDefaults(ctx context.Context) {
 	tt.Spec.TriggersProperties.setDefaults()
 }
 
 func (p *TriggersProperties) setDefaults() {
-
 	if p.EnableApiFields == "" {
 		p.EnableApiFields = config.DefaultEnableAPIFields
 	}
 
+	// run platform specific defaulting
+	if IsOpenShiftPlatform() {
+		p.openshiftDefaulting()
+	}
+}
+
+func (p *TriggersProperties) openshiftDefaulting() {
+	if p.DefaultServiceAccount == "" {
+		p.DefaultServiceAccount = DefaultOpenshiftSA
+	}
 }

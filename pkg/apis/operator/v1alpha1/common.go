@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"os"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
@@ -97,4 +99,8 @@ func ParseParams(params []Param) map[string]string {
 		paramsMap[p.Name] = p.Value
 	}
 	return paramsMap
+}
+
+func IsOpenShiftPlatform() bool {
+	return os.Getenv("PLATFORM") == "openshift"
 }
