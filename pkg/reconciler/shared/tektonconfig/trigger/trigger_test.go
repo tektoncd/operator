@@ -34,37 +34,37 @@ import (
 func TestEnsureTektonTriggerExists(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	tConfig := GetTektonConfig()
+	tt := GetTektonTriggerCR(GetTektonConfig())
 
 	// first invocation should create instance as it is non-existent and return RECONCILE_AGAIN_ERR
-	_, err := EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tConfig)
+	_, err := EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tt)
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// during second invocation instance exists but waiting on dependencies (pipeline, triggers)
 	// hence returns DEPENDENCY_UPGRADE_PENDING_ERR
-	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tConfig)
+	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tt)
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// make upgrade checks pass
 	makeUpgradeCheckPass(t, ctx, c.OperatorV1alpha1().TektonTriggers())
 
 	// next invocation should return RECONCILE_AGAIN_ERR as Dashboard is waiting for installation (prereconcile, postreconcile, installersets...)
-	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tConfig)
+	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tt)
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// mark the instance ready
 	markTriggersReady(t, ctx, c.OperatorV1alpha1().TektonTriggers())
 
 	// next invocation should return nil error as the instance is ready
-	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tConfig)
+	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tt)
 	util.AssertEqual(t, err, nil)
 
 	// test update propagation from tektonConfig
-	tConfig.Spec.TargetNamespace = "foobar"
-	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tConfig)
+	tt.Spec.TargetNamespace = "foobar"
+	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tt)
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
-	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tConfig)
+	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tt)
 	util.AssertEqual(t, err, nil)
 }
 
@@ -77,8 +77,8 @@ func TestEnsureTektonTriggerCRNotExists(t *testing.T) {
 	util.AssertEqual(t, err, nil)
 
 	// create an instance for testing other cases
-	tConfig := GetTektonConfig()
-	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tConfig)
+	tt := GetTektonTriggerCR(GetTektonConfig())
+	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tt)
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// when an instance exists the first invoacation should make the delete API call and
