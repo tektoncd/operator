@@ -152,11 +152,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		logger.Error(err)
 	}
 
-	// Update the object for any spec changes
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, v1.UpdateOptions{}); err != nil {
-		return err
-	}
-
 	return nil
 }
 

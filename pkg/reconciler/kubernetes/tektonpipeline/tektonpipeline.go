@@ -297,11 +297,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	// Mark PostReconcile Complete
 	tp.Status.MarkPostReconcilerComplete()
 
-	// Update the object for any spec changes
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonPipelines().Update(ctx, tp, v1.UpdateOptions{}); err != nil {
-		return err
-	}
-
 	return nil
 }
 

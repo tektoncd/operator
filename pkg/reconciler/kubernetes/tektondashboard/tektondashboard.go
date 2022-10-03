@@ -389,9 +389,5 @@ func (r *Reconciler) markUpgrade(ctx context.Context, td *v1alpha1.TektonDashboa
 	labels[v1alpha1.ReleaseVersionKey] = r.operatorVersion
 	td.SetLabels(labels)
 
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonDashboards().Update(ctx,
-		td, metav1.UpdateOptions{}); err != nil {
-		return err
-	}
 	return v1alpha1.RECONCILE_AGAIN_ERR
 }
