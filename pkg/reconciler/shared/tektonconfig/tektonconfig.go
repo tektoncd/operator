@@ -113,7 +113,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	tc.Status.MarkPreInstallComplete()
 
 	// Ensure if the pipeline CR already exists, if not create Pipeline CR
-	if _, err := pipeline.EnsureTektonPipelineExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), tc); err != nil {
+	tektonpipeline := pipeline.GetTektonPipelineCR(tc)
+	// Ensure it exists
+	if _, err := pipeline.EnsureTektonPipelineExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), tektonpipeline); err != nil {
 		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPipeline: %s", err.Error()))
 		if err == v1alpha1.RECONCILE_AGAIN_ERR {
 			return v1alpha1.REQUEUE_EVENT_AFTER
@@ -123,7 +125,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	// Create TektonTrigger CR if the profile is all or basic
 	if tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic {
-		if _, err := trigger.EnsureTektonTriggerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), tc); err != nil {
+		tektontrigger := trigger.GetTektonTriggerCR(tc)
+		if _, err := trigger.EnsureTektonTriggerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), tektontrigger); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}

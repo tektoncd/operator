@@ -4,15 +4,11 @@ import (
 	"context"
 	"testing"
 
-	corev1 "k8s.io/api/core/v1"
-
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
-
 	"github.com/tektoncd/operator/test/utils"
-
-	"k8s.io/apimachinery/pkg/util/wait"
-
+	corev1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // EnsureTestNamespaceExists creates a Test Namespace

@@ -29,21 +29,20 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func EnsureTektonTriggerExists(ctx context.Context, clients op.TektonTriggerInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonTrigger, error) {
+func EnsureTektonTriggerExists(ctx context.Context, clients op.TektonTriggerInterface, tt *v1alpha1.TektonTrigger) (*v1alpha1.TektonTrigger, error) {
 	ttCR, err := GetTrigger(ctx, clients, v1alpha1.TriggerResourceName)
 
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
 			return nil, err
 		}
-		_, err = CreateTrigger(ctx, clients, config)
-		if err != nil {
+		if err := CreateTrigger(ctx, clients, tt); err != nil {
 			return nil, err
 		}
 		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
-	ttCR, err = UpdateTrigger(ctx, ttCR, config, clients)
+	ttCR, err = UpdateTrigger(ctx, ttCR, tt, clients)
 	if err != nil {
 		return nil, err
 	}
@@ -63,10 +62,9 @@ func GetTrigger(ctx context.Context, clients op.TektonTriggerInterface, name str
 	return clients.Get(ctx, name, metav1.GetOptions{})
 }
 
-func CreateTrigger(ctx context.Context, clients op.TektonTriggerInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonTrigger, error) {
+func GetTektonTriggerCR(config *v1alpha1.TektonConfig) *v1alpha1.TektonTrigger {
 	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
-
-	ttCR := &v1alpha1.TektonTrigger{
+	return &v1alpha1.TektonTrigger{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            v1alpha1.TriggerResourceName,
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
@@ -79,46 +77,45 @@ func CreateTrigger(ctx context.Context, clients op.TektonTriggerInterface, confi
 			Trigger: config.Spec.Trigger,
 		},
 	}
-	_, err := clients.Create(ctx, ttCR, metav1.CreateOptions{})
-	if err != nil {
-		return nil, err
-	}
-	return ttCR, err
 }
 
-func UpdateTrigger(ctx context.Context, ttCR *v1alpha1.TektonTrigger, config *v1alpha1.TektonConfig, clients op.TektonTriggerInterface) (*v1alpha1.TektonTrigger, error) {
+func CreateTrigger(ctx context.Context, clients op.TektonTriggerInterface, tt *v1alpha1.TektonTrigger) error {
+	_, err := clients.Create(ctx, tt, metav1.CreateOptions{})
+	return err
+}
+
+func UpdateTrigger(ctx context.Context, old *v1alpha1.TektonTrigger, new *v1alpha1.TektonTrigger, clients op.TektonTriggerInterface) (*v1alpha1.TektonTrigger, error) {
 	// if the trigger spec is changed then update the instance
 	updated := false
 
-	if config.Spec.TargetNamespace != ttCR.Spec.TargetNamespace {
-		ttCR.Spec.TargetNamespace = config.Spec.TargetNamespace
+	if new.Spec.TargetNamespace != old.Spec.TargetNamespace {
+		old.Spec.TargetNamespace = new.Spec.TargetNamespace
 		updated = true
 	}
 
-	if !reflect.DeepEqual(ttCR.Spec.Trigger, config.Spec.Trigger) {
-		ttCR.Spec.Trigger = config.Spec.Trigger
+	if !reflect.DeepEqual(old.Spec.Trigger, new.Spec.Trigger) {
+		old.Spec.Trigger = new.Spec.Trigger
 		updated = true
 	}
 
-	if !reflect.DeepEqual(ttCR.Spec.Config, config.Spec.Config) {
-		ttCR.Spec.Config = config.Spec.Config
+	if !reflect.DeepEqual(old.Spec.Config, new.Spec.Config) {
+		old.Spec.Config = new.Spec.Config
 		updated = true
 	}
 
-	if ttCR.ObjectMeta.OwnerReferences == nil {
-		ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
-		ttCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
+	if old.ObjectMeta.OwnerReferences == nil {
+		old.ObjectMeta.OwnerReferences = new.ObjectMeta.OwnerReferences
 		updated = true
 	}
 
 	if updated {
-		_, err := clients.Update(ctx, ttCR, metav1.UpdateOptions{})
+		_, err := clients.Update(ctx, old, metav1.UpdateOptions{})
 		if err != nil {
 			return nil, err
 		}
 		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
-	return ttCR, nil
+	return old, nil
 }
 
 // isTektonTriggerReady will check the status conditions of the TektonTrigger and return true if the TektonTrigger is ready.
