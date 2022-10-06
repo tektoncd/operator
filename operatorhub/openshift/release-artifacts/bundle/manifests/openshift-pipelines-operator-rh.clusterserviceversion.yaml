@@ -280,7 +280,7 @@ spec:
     ### Components
 
 
-    - Tekton Pipelines: v0.37.4
+    - Tekton Pipelines: v0.37.5
 
     - Tekton Triggers: v0.20.2
 
