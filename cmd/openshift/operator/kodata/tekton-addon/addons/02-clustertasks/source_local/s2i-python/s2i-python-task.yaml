@@ -65,11 +65,6 @@ spec:
             echo "$var" >> /env-vars/env-file
         done
 
-        echo "Generated Build Env Var file"
-        echo "------------------------------"
-        cat /env-vars/env-file
-        echo "------------------------------"
-
         s2i build $(params.PATH_CONTEXT) image-registry.openshift-image-registry.svc:5000/openshift/python:$(params.VERSION) \
         --as-dockerfile /gen-source/Dockerfile.gen --environment-file /env-vars/env-file
       volumeMounts:
