@@ -803,4 +803,20 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "tekton-operator.fullname" . }}
     namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+  name: tekton-info-aggregate-view
+rules:
+  - apiGroups:
+      - resolution.tekton.dev
+    resources:
+      - resolutionrequests
+    verbs:
+      - get
+      - list
+      - watch
 {{- end }}
