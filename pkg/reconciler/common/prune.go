@@ -250,6 +250,7 @@ func generateAllPruneConfig(nsConfig map[string]*pruneConfigPerNS) string {
 }
 
 func getJobContainer(cmdArgs, ns string, tknImage string) []corev1.Container {
+	allowPriviledgedEscalation := false
 	cmd := "function prune() { n=$1; a=$2; resources=$3; old_ifs=\" \"; IFS=\",\"; for r in $resources; do tkn $r delete -n=$n $a -f; done; IFS=$old_ifs; }; echo $conf; for c in $*; do ns=$(echo $c | cut -d \";\" -f 1); args=$(echo $c | cut -d \";\" -f 2); resources=$(echo $c | cut -d \";\" -f 3); prune $ns $args $resources; done;"
 	containerName := SimpleNameGenerator.RestrictLengthWithRandomSuffix("pruner-tkn-" + ns)
 	container := corev1.Container{
@@ -258,6 +259,12 @@ func getJobContainer(cmdArgs, ns string, tknImage string) []corev1.Container {
 		Command:                  []string{"/bin/sh", "-c", cmd},
 		Args:                     []string{"-s", cmdArgs},
 		TerminationMessagePolicy: "FallbackToLogsOnError",
+		SecurityContext: &corev1.SecurityContext{
+			AllowPrivilegeEscalation: &allowPriviledgedEscalation,
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"ALL"},
+			},
+		},
 	}
 	return []corev1.Container{container}
 }
@@ -325,6 +332,7 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 
 	backOffLimit := int32(3)
 	ttlSecondsAfterFinished := int32(3600)
+	runAsNonRoot := true
 	cj := &batchv1.CronJob{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "CronJob",
@@ -352,6 +360,12 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 							ServiceAccountName: tektonSA,
 							NodeSelector:       tC.Spec.Config.NodeSelector,
 							Tolerations:        tC.Spec.Config.Tolerations,
+							SecurityContext: &corev1.PodSecurityContext{
+								RunAsNonRoot: &runAsNonRoot,
+								SeccompProfile: &corev1.SeccompProfile{
+									Type: corev1.SeccompProfileTypeRuntimeDefault,
+								},
+							},
 						},
 					},
 				},
