@@ -563,6 +563,8 @@ func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1
 		addConfigMapKeyValue(uiConfigName, "AUTH_BASE_URL", th.Status.AuthRouteUrl),
 		addConfigMapKeyValue(uiConfigName, "API_VERSION", "v1"),
 		addConfigMapKeyValue(uiConfigName, "REDIRECT_URI", th.Status.UiRouteUrl),
+		common.AddDeploymentRestrictedPSA(),
+		common.AddJobRestrictedPSA(),
 	}
 	trans = append(trans, extra...)
 
