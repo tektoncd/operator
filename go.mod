@@ -37,7 +37,7 @@ require (
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	gopkg.in/square/go-jose.v2 v2.6.0
-	gotest.tools/v3 v3.3.0
+	gotest.tools/v3 v3.4.0
 	k8s.io/api v0.23.10
 	k8s.io/apimachinery v0.23.10
 	k8s.io/client-go v0.23.10
