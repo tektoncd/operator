@@ -19,6 +19,8 @@ package common
 import (
 	mf "github.com/manifestival/manifestival"
 	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -112,6 +114,94 @@ func RemoveFsGroup(obj string) mf.Transformer {
 			return nil
 		}
 
+		return nil
+	}
+}
+
+// AddDeploymentRestrictedPSA will add the default restricted spec on Deployment to remove errors/warning
+func AddDeploymentRestrictedPSA() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		runAsNonRoot := true
+		allowPrivilegedEscalation := false
+
+		if u.GetKind() != "Deployment" {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		if d.Spec.Template.Spec.SecurityContext == nil {
+			d.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
+		}
+		d.Spec.Template.Spec.SecurityContext.RunAsNonRoot = &runAsNonRoot
+
+		if d.Spec.Template.Spec.SecurityContext.SeccompProfile == nil {
+			d.Spec.Template.Spec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{}
+		}
+		d.Spec.Template.Spec.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
+
+		for i := range d.Spec.Template.Spec.Containers {
+			c := &d.Spec.Template.Spec.Containers[i]
+			if c.SecurityContext == nil {
+				c.SecurityContext = &corev1.SecurityContext{}
+			}
+			c.SecurityContext.AllowPrivilegeEscalation = &allowPrivilegedEscalation
+			c.SecurityContext.Capabilities = &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
+// AddJobRestrictedPSA will add the default restricted spec on Job to remove errors/warning
+func AddJobRestrictedPSA() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		runAsNonRoot := true
+		allowPrivilegedEscalation := false
+
+		if u.GetKind() != "Job" {
+			return nil
+		}
+
+		jb := &batchv1.Job{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, jb)
+		if err != nil {
+			return err
+		}
+
+		if jb.Spec.Template.Spec.SecurityContext == nil {
+			jb.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
+		}
+		jb.Spec.Template.Spec.SecurityContext.RunAsNonRoot = &runAsNonRoot
+
+		if jb.Spec.Template.Spec.SecurityContext.SeccompProfile == nil {
+			jb.Spec.Template.Spec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{}
+		}
+		jb.Spec.Template.Spec.SecurityContext.SeccompProfile.Type = corev1.SeccompProfileTypeRuntimeDefault
+
+		for i := range jb.Spec.Template.Spec.Containers {
+			c := &jb.Spec.Template.Spec.Containers[i]
+			if c.SecurityContext == nil {
+				c.SecurityContext = &corev1.SecurityContext{}
+			}
+			c.SecurityContext.AllowPrivilegeEscalation = &allowPrivilegedEscalation
+			c.SecurityContext.Capabilities = &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(jb)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
 		return nil
 	}
 }

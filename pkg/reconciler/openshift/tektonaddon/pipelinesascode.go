@@ -183,6 +183,7 @@ func (r *Reconciler) getManifest(ctx context.Context, ta *v1alpha1.TektonAddon) 
 		common.AddConfiguration(ta.Spec.Config),
 		common.ApplyProxySettings,
 		occommon.ApplyCABundles,
+		occommon.AddDeploymentRestrictedPSA(),
 	}
 
 	if err := r.addonTransform(ctx, &pacManifest, ta, tfs...); err != nil {

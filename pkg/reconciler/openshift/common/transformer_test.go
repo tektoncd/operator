@@ -147,3 +147,32 @@ func TestRemoveFsGroup(t *testing.T) {
 		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
 	}
 }
+
+func TestAddPSA(t *testing.T) {
+	testData := path.Join("testdata", "test-add-psa.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	newManifest, err := manifest.Transform(AddDeploymentRestrictedPSA())
+	assert.NilError(t, err)
+
+	got := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(newManifest.Resources()[0].Object, got)
+	if err != nil {
+		t.Errorf("failed to load deployment yaml")
+	}
+
+	testData = path.Join("testdata", "test-add-psa-expected.yaml")
+	expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	expected := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(expectedManifest.Resources()[0].Object, expected)
+	if err != nil {
+		t.Errorf("failed to load deployment yaml")
+	}
+
+	if d := cmp.Diff(expected, got); d != "" {
+		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
+	}
+}
