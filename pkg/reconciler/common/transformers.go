@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -49,6 +50,9 @@ const (
 
 	resultAPIDeployment     = "tekton-results-api"
 	resultWatcherDeployment = "tekton-results-watcher"
+
+	runAsNonRootValue              = true
+	allowPrivilegedEscalationValue = false
 )
 
 // transformers that are common to all components.
@@ -59,6 +63,7 @@ func transformers(ctx context.Context, obj v1alpha1.TektonComponent) []mf.Transf
 		injectNamespaceCRDWebhookClientConfig(obj.GetSpec().GetTargetNamespace()),
 		injectNamespaceCRClusterInterceptorClientConfig(obj.GetSpec().GetTargetNamespace()),
 		injectNamespaceClusterRole(obj.GetSpec().GetTargetNamespace()),
+		AddDeploymentRestrictedPSA(),
 	}
 }
 
@@ -589,6 +594,99 @@ func AddConfiguration(config v1alpha1.Config) mf.Transformer {
 		}
 		u.SetUnstructuredContent(unstrObj)
 
+		return nil
+	}
+}
+
+// AddDeploymentRestrictedPSA will add the default restricted spec on Deployment to remove errors/warning
+func AddDeploymentRestrictedPSA() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		if d.Spec.Template.Spec.SecurityContext == nil {
+			d.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
+		}
+
+		if d.Spec.Template.Spec.SecurityContext.RunAsNonRoot == nil {
+			d.Spec.Template.Spec.SecurityContext.RunAsNonRoot = ptr.Bool(runAsNonRootValue)
+		}
+
+		if d.Spec.Template.Spec.SecurityContext.SeccompProfile == nil {
+			d.Spec.Template.Spec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			}
+		}
+
+		for i := range d.Spec.Template.Spec.Containers {
+			c := &d.Spec.Template.Spec.Containers[i]
+			if c.SecurityContext == nil {
+				c.SecurityContext = &corev1.SecurityContext{}
+			}
+			c.SecurityContext.AllowPrivilegeEscalation = ptr.Bool(allowPrivilegedEscalationValue)
+			c.SecurityContext.Capabilities = &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
+// AddJobRestrictedPSA will add the default restricted spec on Job to remove errors/warning
+func AddJobRestrictedPSA() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Job" {
+			return nil
+		}
+
+		jb := &batchv1.Job{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, jb)
+		if err != nil {
+			return err
+		}
+
+		if jb.Spec.Template.Spec.SecurityContext == nil {
+			jb.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
+		}
+
+		if jb.Spec.Template.Spec.SecurityContext.RunAsNonRoot == nil {
+			jb.Spec.Template.Spec.SecurityContext.RunAsNonRoot = ptr.Bool(runAsNonRootValue)
+		}
+
+		if jb.Spec.Template.Spec.SecurityContext.SeccompProfile == nil {
+			jb.Spec.Template.Spec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			}
+		}
+
+		for i := range jb.Spec.Template.Spec.Containers {
+			c := &jb.Spec.Template.Spec.Containers[i]
+			if c.SecurityContext == nil {
+				c.SecurityContext = &corev1.SecurityContext{}
+			}
+			if c.SecurityContext.AllowPrivilegeEscalation == nil {
+				c.SecurityContext.AllowPrivilegeEscalation = ptr.Bool(allowPrivilegedEscalationValue)
+			}
+			if c.SecurityContext.Capabilities == nil {
+				c.SecurityContext.Capabilities = &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}
+			}
+		}
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(jb)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
 		return nil
 	}
 }

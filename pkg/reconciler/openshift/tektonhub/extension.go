@@ -95,7 +95,10 @@ type openshiftExtension struct {
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return []mf.Transformer{UpdateDbDeployment(), openshiftCommon.RemoveFsGroup(api)}
+	return []mf.Transformer{
+		UpdateDbDeployment(),
+		openshiftCommon.RemoveFsGroup(api),
+	}
 }
 
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
