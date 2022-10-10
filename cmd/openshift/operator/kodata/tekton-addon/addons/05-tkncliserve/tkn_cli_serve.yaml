@@ -7,10 +7,6 @@ metadata:
   labels:
     app.kubernetes.io/component: tkncliserve
 spec:
-  securityContext:
-    runAsNonRoot: true
-    seccompProfile:
-      type: RuntimeDefault
   replicas: 1
   selector:
     matchLabels:
@@ -20,6 +16,10 @@ spec:
       labels:
         app: tkn-cli-serve
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: tkn-cli-serve
           image: docker.io/rupali/serve-tkn:v2
