@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/syndtr/goleveldb/leveldb/cache"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/journal"
@@ -37,6 +38,12 @@ type DB struct {
 	cWriteDelayN           int32 // The cumulative number of write delays
 	inWritePaused          int32 // The indicator whether write operation is paused by compaction
 	aliveSnaps, aliveIters int32
+
+	// Compaction statistic
+	memComp       uint32 // The cumulative number of memory compaction
+	level0Comp    uint32 // The cumulative number of level0 compaction
+	nonLevel0Comp uint32 // The cumulative number of non-level0 compaction
+	seekComp      uint32 // The cumulative number of seek compaction
 
 	// Session.
 	s *session
@@ -135,7 +142,6 @@ func openDB(s *session) (*DB, error) {
 			}
 			return nil, err
 		}
-
 	}
 
 	// Doesn't need to be included in the wait group.
@@ -143,7 +149,9 @@ func openDB(s *session) (*DB, error) {
 	go db.mpoolDrain()
 
 	if readOnly {
-		db.SetReadOnly()
+		if err := db.SetReadOnly(); err != nil {
+			return nil, err
+		}
 	} else {
 		db.closeW.Add(2)
 		go db.tCompaction()
@@ -305,15 +313,23 @@ func recoverTable(s *session, o *opt.Options) error {
 			return
 		}
 		defer func() {
-			writer.Close()
+			if cerr := writer.Close(); cerr != nil {
+				if err == nil {
+					err = cerr
+				} else {
+					err = fmt.Errorf("error recovering table (%v); error closing (%v)", err, cerr)
+				}
+			}
 			if err != nil {
-				s.stor.Remove(tmpFd)
+				if rerr := s.stor.Remove(tmpFd); rerr != nil {
+					err = fmt.Errorf("error recovering table (%v); error removing (%v)", err, rerr)
+				}
 				tmpFd = storage.FileDesc{}
 			}
 		}()
 
 		// Copy entries.
-		tw := table.NewWriter(writer, o)
+		tw := table.NewWriter(writer, o, nil, 0)
 		for iter.Next() {
 			key := iter.Key()
 			if validInternalKey(key) {
@@ -391,7 +407,7 @@ func recoverTable(s *session, o *opt.Options) error {
 				tSeq = seq
 			}
 			if imin == nil {
-				imin = append([]byte{}, key...)
+				imin = append([]byte(nil), key...)
 			}
 			imax = append(imax[:0], key...)
 		}
@@ -468,7 +484,7 @@ func recoverTable(s *session, o *opt.Options) error {
 	}
 
 	// Commit.
-	return s.commit(rec)
+	return s.commit(rec, false)
 }
 
 func (db *DB) recoverJournal() error {
@@ -524,7 +540,8 @@ func (db *DB) recoverJournal() error {
 			if jr == nil {
 				jr = journal.NewReader(fr, dropper{db.s, fd}, strict, checksum)
 			} else {
-				jr.Reset(fr, dropper{db.s, fd}, strict, checksum)
+				// Ignore the error here
+				_ = jr.Reset(fr, dropper{db.s, fd}, strict, checksum)
 			}
 
 			// Flush memdb and remove obsolete journal file.
@@ -538,13 +555,16 @@ func (db *DB) recoverJournal() error {
 
 				rec.setJournalNum(fd.Num)
 				rec.setSeqNum(db.seq)
-				if err := db.s.commit(rec); err != nil {
+				if err := db.s.commit(rec, false); err != nil {
 					fr.Close()
 					return err
 				}
 				rec.resetAddedTables()
 
-				db.s.stor.Remove(ofd)
+				if err := db.s.stor.Remove(ofd); err != nil {
+					fr.Close()
+					return err
+				}
 				ofd = storage.FileDesc{}
 			}
 
@@ -617,7 +637,7 @@ func (db *DB) recoverJournal() error {
 	// Commit.
 	rec.setJournalNum(db.journalFd.Num)
 	rec.setSeqNum(db.seq)
-	if err := db.s.commit(rec); err != nil {
+	if err := db.s.commit(rec, false); err != nil {
 		// Close journal on error.
 		if db.journal != nil {
 			db.journal.Close()
@@ -628,7 +648,9 @@ func (db *DB) recoverJournal() error {
 
 	// Remove the last obsolete journal file.
 	if !ofd.Zero() {
-		db.s.stor.Remove(ofd)
+		if err := db.s.stor.Remove(ofd); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -682,7 +704,9 @@ func (db *DB) recoverJournalRO() error {
 			if jr == nil {
 				jr = journal.NewReader(fr, dropper{db.s, fd}, strict, checksum)
 			} else {
-				jr.Reset(fr, dropper{db.s, fd}, strict, checksum)
+				if err := jr.Reset(fr, dropper{db.s, fd}, strict, checksum); err != nil {
+					return err
+				}
 			}
 
 			// Replay journal to memdb.
@@ -759,7 +783,7 @@ func (db *DB) get(auxm *memdb.DB, auxt tFiles, key []byte, seq uint64, ro *opt.R
 
 	if auxm != nil {
 		if ok, mv, me := memGet(auxm, ikey, db.s.icmp); ok {
-			return append([]byte{}, mv...), me
+			return append([]byte(nil), mv...), me
 		}
 	}
 
@@ -771,7 +795,7 @@ func (db *DB) get(auxm *memdb.DB, auxt tFiles, key []byte, seq uint64, ro *opt.R
 		defer m.decref()
 
 		if ok, mv, me := memGet(m.DB, ikey, db.s.icmp); ok {
-			return append([]byte{}, mv...), me
+			return append([]byte(nil), mv...), me
 		}
 	}
 
@@ -957,15 +981,29 @@ func (db *DB) GetProperty(name string) (value string, err error) {
 		value = "Compactions\n" +
 			" Level |   Tables   |    Size(MB)   |    Time(sec)  |    Read(MB)   |   Write(MB)\n" +
 			"-------+------------+---------------+---------------+---------------+---------------\n"
+		var totalTables int
+		var totalSize, totalRead, totalWrite int64
+		var totalDuration time.Duration
 		for level, tables := range v.levels {
 			duration, read, write := db.compStats.getStat(level)
 			if len(tables) == 0 && duration == 0 {
 				continue
 			}
+			totalTables += len(tables)
+			totalSize += tables.size()
+			totalRead += read
+			totalWrite += write
+			totalDuration += duration
 			value += fmt.Sprintf(" %3d   | %10d | %13.5f | %13.5f | %13.5f | %13.5f\n",
 				level, len(tables), float64(tables.size())/1048576.0, duration.Seconds(),
 				float64(read)/1048576.0, float64(write)/1048576.0)
 		}
+		value += "-------+------------+---------------+---------------+---------------+---------------\n"
+		value += fmt.Sprintf(" Total | %10d | %13.5f | %13.5f | %13.5f | %13.5f\n",
+			totalTables, float64(totalSize)/1048576.0, totalDuration.Seconds(),
+			float64(totalRead)/1048576.0, float64(totalWrite)/1048576.0)
+	case p == "compcount":
+		value = fmt.Sprintf("MemComp:%d Level0Comp:%d NonLevel0Comp:%d SeekComp:%d", atomic.LoadUint32(&db.memComp), atomic.LoadUint32(&db.level0Comp), atomic.LoadUint32(&db.nonLevel0Comp), atomic.LoadUint32(&db.seekComp))
 	case p == "iostats":
 		value = fmt.Sprintf("Read(MB):%.5f Write(MB):%.5f",
 			float64(db.s.stor.reads())/1048576.0,
@@ -982,15 +1020,15 @@ func (db *DB) GetProperty(name string) (value string, err error) {
 			}
 		}
 	case p == "blockpool":
-		value = fmt.Sprintf("%v", db.s.tops.bpool)
+		value = fmt.Sprintf("%v", db.s.tops.blockBuffer)
 	case p == "cachedblock":
-		if db.s.tops.bcache != nil {
-			value = fmt.Sprintf("%d", db.s.tops.bcache.Size())
+		if db.s.tops.blockCache != nil {
+			value = fmt.Sprintf("%d", db.s.tops.blockCache.Size())
 		} else {
 			value = "<nil>"
 		}
 	case p == "openedtables":
-		value = fmt.Sprintf("%d", db.s.tops.cache.Size())
+		value = fmt.Sprintf("%d", db.s.tops.fileCache.Size())
 	case p == "alivesnaps":
 		value = fmt.Sprintf("%d", atomic.LoadInt32(&db.aliveSnaps))
 	case p == "aliveiters":
@@ -1017,11 +1055,19 @@ type DBStats struct {
 	BlockCacheSize    int
 	OpenedTablesCount int
 
-	LevelSizes        []int64
+	FileCache  cache.Stats
+	BlockCache cache.Stats
+
+	LevelSizes        Sizes
 	LevelTablesCounts []int
-	LevelRead         []int64
-	LevelWrite        []int64
+	LevelRead         Sizes
+	LevelWrite        Sizes
 	LevelDurations    []time.Duration
+
+	MemComp       uint32
+	Level0Comp    uint32
+	NonLevel0Comp uint32
+	SeekComp      uint32
 }
 
 // Stats populates s with database statistics.
@@ -1037,11 +1083,18 @@ func (db *DB) Stats(s *DBStats) error {
 	s.WriteDelayDuration = time.Duration(atomic.LoadInt64(&db.cWriteDelay))
 	s.WritePaused = atomic.LoadInt32(&db.inWritePaused) == 1
 
-	s.OpenedTablesCount = db.s.tops.cache.Size()
-	if db.s.tops.bcache != nil {
-		s.BlockCacheSize = db.s.tops.bcache.Size()
+	s.OpenedTablesCount = db.s.tops.fileCache.Size()
+	if db.s.tops.blockCache != nil {
+		s.BlockCacheSize = db.s.tops.blockCache.Size()
 	} else {
 		s.BlockCacheSize = 0
+	}
+
+	s.FileCache = db.s.tops.fileCache.GetStats()
+	if db.s.tops.blockCache != nil {
+		s.BlockCache = db.s.tops.blockCache.GetStats()
+	} else {
+		s.BlockCache = cache.Stats{}
 	}
 
 	s.AliveIterators = atomic.LoadInt32(&db.aliveIters)
@@ -1058,16 +1111,17 @@ func (db *DB) Stats(s *DBStats) error {
 
 	for level, tables := range v.levels {
 		duration, read, write := db.compStats.getStat(level)
-		if len(tables) == 0 && duration == 0 {
-			continue
-		}
+
 		s.LevelDurations = append(s.LevelDurations, duration)
 		s.LevelRead = append(s.LevelRead, read)
 		s.LevelWrite = append(s.LevelWrite, write)
 		s.LevelSizes = append(s.LevelSizes, tables.size())
 		s.LevelTablesCounts = append(s.LevelTablesCounts, len(tables))
 	}
-
+	s.MemComp = atomic.LoadUint32(&db.memComp)
+	s.Level0Comp = atomic.LoadUint32(&db.level0Comp)
+	s.NonLevel0Comp = atomic.LoadUint32(&db.nonLevel0Comp)
+	s.SeekComp = atomic.LoadUint32(&db.seekComp)
 	return nil
 }
 

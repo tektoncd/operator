@@ -20,13 +20,14 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
-	"io/ioutil"
+	"errors"
+	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 )
 
+// SignerVerifier creates and verifies digital signatures over a message using a specified key pair
 type SignerVerifier interface {
 	Signer
 	Verifier
@@ -56,7 +57,7 @@ func LoadSignerVerifier(privateKey crypto.PrivateKey, hashFunc crypto.Hash) (Sig
 // RSAPSSSignerVerifier is desired instead, use the LoadRSAPSSSignerVerifier() and
 // cryptoutils.UnmarshalPEMToPrivateKey() methods directly.
 func LoadSignerVerifierFromPEMFile(path string, hashFunc crypto.Hash, pf cryptoutils.PassFunc) (SignerVerifier, error) {
-	fileBytes, err := ioutil.ReadFile(filepath.Clean(path))
+	fileBytes, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}

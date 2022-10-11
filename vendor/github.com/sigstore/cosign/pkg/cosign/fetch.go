@@ -18,16 +18,15 @@ package cosign
 import (
 	"context"
 	"crypto/x509"
+	"encoding/json"
+	"fmt"
+	"os"
 	"runtime"
-	"strings"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/pkg/errors"
-	"knative.dev/pkg/pool"
-
-	"github.com/sigstore/cosign/internal/oci"
-	ociremote "github.com/sigstore/cosign/internal/oci/remote"
+	"github.com/sigstore/cosign/pkg/cosign/bundle"
+	ociremote "github.com/sigstore/cosign/pkg/oci/remote"
+	"golang.org/x/sync/errgroup"
 )
 
 type SignedPayload struct {
@@ -35,36 +34,31 @@ type SignedPayload struct {
 	Payload         []byte
 	Cert            *x509.Certificate
 	Chain           []*x509.Certificate
-	Bundle          *oci.Bundle
-	bundleVerified  bool
+	Bundle          *bundle.RekorBundle
 }
 
-// TODO: marshal the cert correctly.
-// func (sp *SignedPayload) MarshalJSON() ([]byte, error) {
-// 	x509.Certificate.
-// 	pem.EncodeToMemory(&pem.Block{
-// 		Type: "CERTIFICATE",
-// 		Bytes:
-// 	})
-// }
+type LocalSignedPayload struct {
+	Base64Signature string              `json:"base64Signature"`
+	Cert            string              `json:"cert,omitempty"`
+	Bundle          *bundle.RekorBundle `json:"rekorBundle,omitempty"`
+}
 
-const (
-	SignatureTagSuffix   = ".sig"
-	SBOMTagSuffix        = ".sbom"
-	AttestationTagSuffix = ".att"
-)
+type Signatures struct {
+	KeyID string `json:"keyid"`
+	Sig   string `json:"sig"`
+}
+
+type AttestationPayload struct {
+	PayloadType string       `json:"payloadType"`
+	PayLoad     string       `json:"payload"`
+	Signatures  []Signatures `json:"signatures"`
+}
 
 const (
 	Signature   = "signature"
 	SBOM        = "sbom"
 	Attestation = "attestation"
 )
-
-func AttachedImageTag(repo name.Repository, digest v1.Hash, tagSuffix string) name.Tag {
-	// sha256:d34db33f -> sha256-d34db33f.suffix
-	tagStr := strings.ReplaceAll(digest.String(), ":", "-") + tagSuffix
-	return repo.Tag(tagStr)
-}
 
 func FetchSignaturesForReference(ctx context.Context, ref name.Reference, opts ...ociremote.Option) ([]SignedPayload, error) {
 	simg, err := ociremote.SignedEntity(ref, opts...)
@@ -74,18 +68,23 @@ func FetchSignaturesForReference(ctx context.Context, ref name.Reference, opts .
 
 	sigs, err := simg.Signatures()
 	if err != nil {
-		return nil, errors.Wrap(err, "remote image")
+		return nil, fmt.Errorf("remote image: %w", err)
 	}
 	l, err := sigs.Get()
 	if err != nil {
-		return nil, errors.Wrap(err, "fetching signatures")
+		return nil, fmt.Errorf("fetching signatures: %w", err)
+	}
+	if len(l) == 0 {
+		return nil, fmt.Errorf("no signatures associated with %s", ref)
 	}
 
-	g := pool.New(runtime.NumCPU())
 	signatures := make([]SignedPayload, len(l))
+	var g errgroup.Group
+	g.SetLimit(runtime.NumCPU())
 	for i, sig := range l {
 		i, sig := i, sig
-		g.Go(func() (err error) {
+		g.Go(func() error {
+			var err error
 			signatures[i].Payload, err = sig.Payload()
 			if err != nil {
 				return err
@@ -111,4 +110,52 @@ func FetchSignaturesForReference(ctx context.Context, ref name.Reference, opts .
 	}
 
 	return signatures, nil
+}
+
+func FetchAttestationsForReference(ctx context.Context, ref name.Reference, opts ...ociremote.Option) ([]AttestationPayload, error) {
+	simg, err := ociremote.SignedEntity(ref, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	atts, err := simg.Attestations()
+	if err != nil {
+		return nil, fmt.Errorf("remote image: %w", err)
+	}
+	l, err := atts.Get()
+	if err != nil {
+		return nil, fmt.Errorf("fetching attestations: %w", err)
+	}
+	if len(l) == 0 {
+		return nil, fmt.Errorf("no attestations associated with %s", ref)
+	}
+
+	attestations := make([]AttestationPayload, len(l))
+	var g errgroup.Group
+	g.SetLimit(runtime.NumCPU())
+	for i, att := range l {
+		i, att := i, att
+		g.Go(func() error {
+			attestPayload, _ := att.Payload()
+			return json.Unmarshal(attestPayload, &attestations[i])
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	return attestations, nil
+}
+
+// FetchLocalSignedPayloadFromPath fetches a local signed payload from a path to a file
+func FetchLocalSignedPayloadFromPath(path string) (*LocalSignedPayload, error) {
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", path, err)
+	}
+	var b *LocalSignedPayload
+	if err := json.Unmarshal(contents, &b); err != nil {
+		return nil, err
+	}
+	return b, nil
 }

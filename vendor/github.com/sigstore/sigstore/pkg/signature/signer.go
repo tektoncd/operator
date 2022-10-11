@@ -20,21 +20,22 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
+	"errors"
 	"io"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	// these ensure we have the implementations loaded
 	_ "crypto/sha256"
 	_ "crypto/sha512"
 
-	"github.com/pkg/errors"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 
 	// these ensure we have the implementations loaded
 	_ "golang.org/x/crypto/sha3"
 )
 
+// Signer creates digital signatures over a message using a specified key pair
 type Signer interface {
 	PublicKeyProvider
 	SignMessage(message io.Reader, opts ...SignOption) ([]byte, error)
@@ -76,7 +77,7 @@ func LoadSigner(privateKey crypto.PrivateKey, hashFunc crypto.Hash) (Signer, err
 // RSAPSSSigner is desired instead, use the LoadRSAPSSSigner() and
 // cryptoutils.UnmarshalPEMToPrivateKey() methods directly.
 func LoadSignerFromPEMFile(path string, hashFunc crypto.Hash, pf cryptoutils.PassFunc) (Signer, error) {
-	fileBytes, err := ioutil.ReadFile(filepath.Clean(path))
+	fileBytes, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}

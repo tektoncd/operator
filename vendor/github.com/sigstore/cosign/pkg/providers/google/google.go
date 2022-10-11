@@ -17,7 +17,6 @@ package google
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -43,7 +42,7 @@ var gceProductNameFile = "/sys/class/dmi/id/product_name"
 // Enabled implements providers.Interface
 // This is based on k8s.io/kubernetes/pkg/credentialprovider/gcp
 func (gwi *googleWorkloadIdentity) Enabled(ctx context.Context) bool {
-	data, err := ioutil.ReadFile(gceProductNameFile)
+	data, err := os.ReadFile(gceProductNameFile)
 	if err != nil {
 		return false
 	}
@@ -84,7 +83,7 @@ func (gi *googleImpersonate) Enabled(ctx context.Context) bool {
 func (gi *googleImpersonate) Provide(ctx context.Context, audience string) (string, error) {
 	target := os.Getenv("GOOGLE_SERVICE_ACCOUNT_NAME")
 	ts, err := impersonate.IDTokenSource(ctx, impersonate.IDTokenConfig{
-		Audience:        "sigstore",
+		Audience:        audience,
 		TargetPrincipal: target,
 		IncludeEmail:    true,
 	})

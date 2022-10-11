@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package kms implements the interface to access various ksm services
 package kms
 
 import (
@@ -22,58 +23,52 @@ import (
 	"strings"
 
 	"github.com/sigstore/sigstore/pkg/signature"
-	"github.com/sigstore/sigstore/pkg/signature/kms/aws"
-	"github.com/sigstore/sigstore/pkg/signature/kms/azure"
-	"github.com/sigstore/sigstore/pkg/signature/kms/gcp"
-	"github.com/sigstore/sigstore/pkg/signature/kms/hashivault"
 )
 
-func init() {
-	ProvidersMux().AddProvider(aws.ReferenceScheme, func(ctx context.Context, keyResourceID string, hashFunc crypto.Hash) (SignerVerifier, error) {
-		return aws.LoadSignerVerifier(keyResourceID)
-	})
-	ProvidersMux().AddProvider(azure.ReferenceScheme, func(ctx context.Context, keyResourceID string, hashFunc crypto.Hash) (SignerVerifier, error) {
-		return azure.LoadSignerVerifier(ctx, keyResourceID, hashFunc)
-	})
-	ProvidersMux().AddProvider(gcp.ReferenceScheme, func(ctx context.Context, keyResourceID string, _ crypto.Hash) (SignerVerifier, error) {
-		return gcp.LoadSignerVerifier(ctx, keyResourceID)
-	})
-	ProvidersMux().AddProvider(hashivault.ReferenceScheme, func(ctx context.Context, keyResourceID string, hashFunc crypto.Hash) (SignerVerifier, error) {
-		return hashivault.LoadSignerVerifier(keyResourceID, hashFunc)
-	})
+// ProviderNotFoundError indicates that no matching KMS provider was found
+type ProviderNotFoundError struct {
+	ref string
 }
 
-type ProviderInit func(context.Context, string, crypto.Hash) (SignerVerifier, error)
-
-type Providers struct {
-	providers map[string]ProviderInit
+func (e *ProviderNotFoundError) Error() string {
+	return fmt.Sprintf("no kms provider found for key reference: %s", e.ref)
 }
 
-func (p *Providers) AddProvider(keyResourceID string, init ProviderInit) {
-	p.providers[keyResourceID] = init
+// ProviderInit is a function that initializes provider-specific SignerVerifier.
+//
+// It takes a provider-specific resource ID and hash function, and returns a
+// SignerVerifier using that resource, or any error that was encountered.
+type ProviderInit func(context.Context, string, crypto.Hash, ...signature.RPCOption) (SignerVerifier, error)
+
+// AddProvider adds the provider implementation into the local cache
+func AddProvider(keyResourceID string, init ProviderInit) {
+	providersMap[keyResourceID] = init
 }
 
-func (p *Providers) Providers() map[string]ProviderInit {
-	return p.providers
-}
+var providersMap = map[string]ProviderInit{}
 
-var providersMux = &Providers{
-	providers: map[string]ProviderInit{},
-}
-
-func ProvidersMux() *Providers {
-	return providersMux
-}
-
-func Get(ctx context.Context, keyResourceID string, hashFunc crypto.Hash) (SignerVerifier, error) {
-	for ref, providerInit := range providersMux.providers {
+// Get returns a KMS SignerVerifier for the given resource string and hash function.
+// If no matching provider is found, Get returns a ProviderNotFoundError. It
+// also returns an error if initializing the SignerVerifier fails.
+func Get(ctx context.Context, keyResourceID string, hashFunc crypto.Hash, opts ...signature.RPCOption) (SignerVerifier, error) {
+	for ref, pi := range providersMap {
 		if strings.HasPrefix(keyResourceID, ref) {
-			return providerInit(ctx, keyResourceID, hashFunc)
+			return pi(ctx, keyResourceID, hashFunc, opts...)
 		}
 	}
-	return nil, fmt.Errorf("no provider found for that key reference")
+	return nil, &ProviderNotFoundError{ref: keyResourceID}
 }
 
+// SupportedProviders returns list of initialized providers
+func SupportedProviders() []string {
+	keys := make([]string, 0, len(providersMap))
+	for key := range providersMap {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+// SignerVerifier creates and verifies digital signatures over a message using a KMS service
 type SignerVerifier interface {
 	signature.SignerVerifier
 	CreateKey(ctx context.Context, algorithm string) (crypto.PublicKey, error)

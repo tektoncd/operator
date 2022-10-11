@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 
 	tuf_client "github.com/theupdateframework/go-tuf/client"
@@ -16,6 +17,10 @@ func FileLocalStore(path string) (tuf_client.LocalStore, error) {
 	}
 
 	db, err := leveldb.Open(fd, nil)
+	if err != nil && errors.IsCorrupted(err) {
+		db, err = leveldb.Recover(fd, nil)
+	}
+
 	return &fileLocalStore{fd: fd, db: db}, err
 }
 
@@ -40,13 +45,16 @@ func (f *fileLocalStore) SetMeta(name string, meta json.RawMessage) error {
 	return f.db.Put([]byte(name), []byte(meta), nil)
 }
 
-func (f *fileLocalStore) Close() error {
-	if err := f.db.Close(); err != nil {
-		return err
-	}
-	if err := f.fd.Close(); err != nil {
-		return err
-	}
+func (f *fileLocalStore) DeleteMeta(name string) error {
+	return f.db.Delete([]byte(name), nil)
+}
 
-	return nil
+func (f *fileLocalStore) Close() error {
+	// Always close both before returning any errors
+	dbCloseErr := f.db.Close()
+	fdCloseErr := f.fd.Close()
+	if dbCloseErr != nil {
+		return dbCloseErr
+	}
+	return fdCloseErr
 }

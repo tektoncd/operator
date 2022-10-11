@@ -27,7 +27,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
-	"github.com/tektoncd/pipeline/pkg/list"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -246,9 +245,9 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	if s.OnError != "" {
 		if !isParamRefs(string(s.OnError)) && s.OnError != Continue && s.OnError != StopAndFail {
 			errs = errs.Also(&apis.FieldError{
-				Message: fmt.Sprintf("invalid value: %v", s.OnError),
+				Message: fmt.Sprintf("invalid value: \"%v\"", s.OnError),
 				Paths:   []string{"onError"},
-				Details: "Task step onError must be either continue or stopAndFail",
+				Details: "Task step onError must be either \"continue\" or \"stopAndFail\"",
 			})
 		}
 	}
@@ -281,13 +280,13 @@ func ValidateParameterTypes(ctx context.Context, params []ParamSpec) (errs *apis
 			// when the enable-api-fields feature gate is not "alpha".
 			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "object type parameter", config.AlphaAPIFields))
 		}
-		errs = errs.Also(p.ValidateType())
+		errs = errs.Also(p.ValidateType(ctx))
 	}
 	return errs
 }
 
 // ValidateType checks that the type of a ParamSpec is allowed and its default value matches that type
-func (p ParamSpec) ValidateType() *apis.FieldError {
+func (p ParamSpec) ValidateType(ctx context.Context) *apis.FieldError {
 	// Ensure param has a valid type.
 	validType := false
 	for _, allowedType := range AllParamTypes {
@@ -312,15 +311,19 @@ func (p ParamSpec) ValidateType() *apis.FieldError {
 	}
 
 	// Check object type and its PropertySpec type
-	return p.ValidateObjectType()
+	return p.ValidateObjectType(ctx)
 }
 
 // ValidateObjectType checks that object type parameter does not miss the
 // definition of `properties` section and the type of a PropertySpec is allowed.
 // (Currently, only string is allowed)
-func (p ParamSpec) ValidateObjectType() *apis.FieldError {
+func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
 	if p.Type == ParamTypeObject && p.Properties == nil {
-		return apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
+		// If this we are not skipping validation checks due to propagated params
+		// then properties field is required.
+		if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
+			return apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
+		}
 	}
 
 	invalidKeys := []string{}
@@ -366,10 +369,9 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params []Para
 	errs = errs.Also(validateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParamSpecs))
 	if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
 		errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
+		errs = errs.Also(validateObjectUsage(ctx, steps, objectParamSpecs))
 	}
-	errs = errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
-	errs = errs.Also(validateObjectDefault(objectParamSpecs))
-	return errs.Also(validateObjectUsage(ctx, steps, objectParamSpecs))
+	return errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
 }
 
 func validateTaskContextVariables(ctx context.Context, steps []Step) *apis.FieldError {
@@ -423,45 +425,6 @@ func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) 
 	}
 
 	return errs.Also(validateObjectUsageAsWhole(steps, "params", objectParameterNames))
-}
-
-// validateObjectDefault validates the keys of all the object params within a
-// slice of ParamSpecs are provided in default iff the default section is provided.
-func validateObjectDefault(objectParams []ParamSpec) (errs *apis.FieldError) {
-	for _, p := range objectParams {
-		errs = errs.Also(ValidateObjectKeys(p.Properties, p.Default).ViaField(p.Name))
-	}
-	return errs
-}
-
-// ValidateObjectKeys validates if object keys defined in properties are all provided in its value provider iff the provider is not nil.
-func ValidateObjectKeys(properties map[string]PropertySpec, propertiesProvider *ParamValue) (errs *apis.FieldError) {
-	if propertiesProvider == nil || propertiesProvider.ObjectVal == nil {
-		return nil
-	}
-
-	neededKeys := []string{}
-	providedKeys := []string{}
-
-	// collect all needed keys
-	for key := range properties {
-		neededKeys = append(neededKeys, key)
-	}
-
-	// collect all provided keys
-	for key := range propertiesProvider.ObjectVal {
-		providedKeys = append(providedKeys, key)
-	}
-
-	missings := list.DiffLeft(neededKeys, providedKeys)
-	if len(missings) != 0 {
-		return &apis.FieldError{
-			Message: fmt.Sprintf("Required key(s) %s are missing in the value provider.", missings),
-			Paths:   []string{fmt.Sprintf("properties"), fmt.Sprintf("default")},
-		}
-	}
-
-	return nil
 }
 
 // validateObjectUsageAsWhole makes sure the object params are not used as whole when providing values for strings

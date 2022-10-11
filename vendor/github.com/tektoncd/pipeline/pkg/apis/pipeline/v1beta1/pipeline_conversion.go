@@ -21,6 +21,8 @@ import (
 	"fmt"
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	"github.com/tektoncd/pipeline/pkg/apis/version"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
 
@@ -34,6 +36,9 @@ func (p *Pipeline) ConvertTo(ctx context.Context, to apis.Convertible) error {
 	switch sink := to.(type) {
 	case *v1.Pipeline:
 		sink.ObjectMeta = p.ObjectMeta
+		if err := serializePipelineResources(&sink.ObjectMeta, &p.Spec); err != nil {
+			return err
+		}
 		return p.Spec.ConvertTo(ctx, &sink.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", sink)
@@ -79,7 +84,6 @@ func (ps *PipelineSpec) ConvertTo(ctx context.Context, sink *v1.PipelineSpec) er
 		}
 		sink.Finally = append(sink.Finally, new)
 	}
-	// TODO: Handle Resources in #4546
 	return nil
 }
 
@@ -88,6 +92,9 @@ func (p *Pipeline) ConvertFrom(ctx context.Context, from apis.Convertible) error
 	switch source := from.(type) {
 	case *v1.Pipeline:
 		p.ObjectMeta = source.ObjectMeta
+		if err := deserializePipelineResources(&p.ObjectMeta, &p.Spec); err != nil {
+			return err
+		}
 		return p.Spec.ConvertFrom(ctx, &source.Spec)
 	default:
 		return fmt.Errorf("unknown version, got: %T", p)
@@ -164,10 +171,10 @@ func (pt PipelineTask) convertTo(ctx context.Context, sink *v1.PipelineTask) err
 		sink.Params = append(sink.Params, new)
 	}
 	sink.Matrix = nil
-	for _, m := range pt.Matrix {
-		new := v1.Param{}
-		m.convertTo(ctx, &new)
-		sink.Matrix = append(sink.Matrix, new)
+	if pt.IsMatrixed() {
+		new := v1.Matrix{}
+		pt.Matrix.convertTo(ctx, &new)
+		sink.Matrix = &new
 	}
 	sink.Workspaces = nil
 	for _, w := range pt.Workspaces {
@@ -210,10 +217,10 @@ func (pt *PipelineTask) convertFrom(ctx context.Context, source v1.PipelineTask)
 		pt.Params = append(pt.Params, new)
 	}
 	pt.Matrix = nil
-	for _, m := range source.Matrix {
-		new := Param{}
-		new.convertFrom(ctx, m)
-		pt.Matrix = append(pt.Matrix, new)
+	if source.IsMatrixed() {
+		new := Matrix{}
+		new.convertFrom(ctx, *source.Matrix)
+		pt.Matrix = &new
 	}
 	pt.Workspaces = nil
 	for _, w := range source.Workspaces {
@@ -254,6 +261,22 @@ func (we *WhenExpression) convertFrom(ctx context.Context, source v1.WhenExpress
 	we.Values = source.Values
 }
 
+func (m *Matrix) convertTo(ctx context.Context, sink *v1.Matrix) {
+	for _, param := range m.Params {
+		new := v1.Param{}
+		param.convertTo(ctx, &new)
+		sink.Params = append(sink.Params, new)
+	}
+}
+
+func (m *Matrix) convertFrom(ctx context.Context, source v1.Matrix) {
+	for _, param := range source.Params {
+		new := Param{}
+		new.convertFrom(ctx, param)
+		m.Params = append(m.Params, new)
+	}
+}
+
 func (pr PipelineResult) convertTo(ctx context.Context, sink *v1.PipelineResult) {
 	sink.Name = pr.Name
 	sink.Type = v1.ResultsType(pr.Type)
@@ -270,4 +293,33 @@ func (pr *PipelineResult) convertFrom(ctx context.Context, source v1.PipelineRes
 	newValue := ParamValue{}
 	newValue.convertFrom(ctx, source.Value)
 	pr.Value = newValue
+}
+
+func (ptm PipelineTaskMetadata) convertTo(ctx context.Context, sink *v1.PipelineTaskMetadata) {
+	sink.Labels = ptm.Labels
+	sink.Annotations = ptm.Annotations
+}
+
+func (ptm *PipelineTaskMetadata) convertFrom(ctx context.Context, source v1.PipelineTaskMetadata) {
+	ptm.Labels = source.Labels
+	ptm.Annotations = source.Labels
+}
+
+func serializePipelineResources(meta *metav1.ObjectMeta, spec *PipelineSpec) error {
+	if spec.Resources == nil {
+		return nil
+	}
+	return version.SerializeToMetadata(meta, spec.Resources, resourcesAnnotationKey)
+}
+
+func deserializePipelineResources(meta *metav1.ObjectMeta, spec *PipelineSpec) error {
+	resources := &[]PipelineDeclaredResource{}
+	err := version.DeserializeFromMetadata(meta, resources, resourcesAnnotationKey)
+	if err != nil {
+		return err
+	}
+	if len(*resources) != 0 {
+		spec.Resources = *resources
+	}
+	return nil
 }

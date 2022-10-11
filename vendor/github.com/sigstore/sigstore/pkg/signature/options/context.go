@@ -13,21 +13,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package options defines options for KMS clients
 package options
 
 import (
 	"context"
 )
 
+// RequestContext implements the functional option pattern for including a context during RPC
 type RequestContext struct {
 	NoOpOptionImpl
 	ctx context.Context
 }
 
+// ApplyContext sets the specified context as the functional option
 func (r RequestContext) ApplyContext(ctx *context.Context) {
 	*ctx = r.ctx
 }
 
+// WithContext specifies that the given context should be used in RPC to external services
 func WithContext(ctx context.Context) RequestContext {
 	return RequestContext{ctx: ctx}
 }

@@ -29,7 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/clock"
+	"k8s.io/utils/clock"
 	"knative.dev/pkg/apis"
 	duckv1beta1 "knative.dev/pkg/apis/duck/v1beta1"
 )
@@ -101,6 +101,8 @@ const (
 	// TaskRunCancelledByPipelineMsg indicates that the PipelineRun of which this
 	// TaskRun was a part of has been cancelled.
 	TaskRunCancelledByPipelineMsg TaskRunSpecStatusMessage = "TaskRun cancelled as the PipelineRun it belongs to has been cancelled."
+	// TaskRunCancelledByPipelineTimeoutMsg indicates that the TaskRun was cancelled because the PipelineRun running it timed out.
+	TaskRunCancelledByPipelineTimeoutMsg TaskRunSpecStatusMessage = "TaskRun cancelled as the PipelineRun it belongs to has timed out."
 )
 
 // TaskRunDebug defines the breakpoint config for a particular TaskRun
@@ -464,20 +466,6 @@ func (tr *TaskRun) GetTimeout(ctx context.Context) time.Duration {
 // GetNamespacedName returns a k8s namespaced name that identifies this TaskRun
 func (tr *TaskRun) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: tr.Namespace, Name: tr.Name}
-}
-
-// IsPartOfPipeline return true if TaskRun is a part of a Pipeline.
-// It also return the name of Pipeline and PipelineRun
-func (tr *TaskRun) IsPartOfPipeline() (bool, string, string) {
-	if tr == nil || len(tr.Labels) == 0 {
-		return false, "", ""
-	}
-
-	if pl, ok := tr.Labels[pipeline.PipelineLabelKey]; ok {
-		return true, pl, tr.Labels[pipeline.PipelineRunLabelKey]
-	}
-
-	return false, "", ""
 }
 
 // HasVolumeClaimTemplate returns true if TaskRun contains volumeClaimTemplates that is

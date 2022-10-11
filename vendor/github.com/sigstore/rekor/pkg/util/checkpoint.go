@@ -17,19 +17,24 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/pkg/errors"
+	"github.com/google/trillian/types"
+	"github.com/sigstore/sigstore/pkg/signature"
+	"github.com/sigstore/sigstore/pkg/signature/options"
 )
 
 // heavily borrowed from https://github.com/google/trillian-examples/blob/master/formats/log/checkpoint.go
 
 type Checkpoint struct {
-	// Ecosystem is the ecosystem/version string
-	Ecosystem string
+	// Origin is the unique identifier/version string
+	Origin string
 	// Size is the number of entries in the log at this checkpoint.
 	Size uint64
 	// Hash is the hash which commits to the contents of the entire log.
@@ -41,7 +46,7 @@ type Checkpoint struct {
 // String returns the String representation of the Checkpoint
 func (c Checkpoint) String() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s\n%d\n%s\n", c.Ecosystem, c.Size, base64.StdEncoding.EncodeToString(c.Hash))
+	fmt.Fprintf(&b, "%s\n%d\n%s\n", c.Origin, c.Size, base64.StdEncoding.EncodeToString(c.Hash))
 	for _, line := range c.OtherContent {
 		fmt.Fprintf(&b, "%s\n", line)
 	}
@@ -49,7 +54,7 @@ func (c Checkpoint) String() string {
 }
 
 // MarshalText returns the common format representation of this Checkpoint.
-func (c Checkpoint) MarshalText() ([]byte, error) {
+func (c Checkpoint) MarshalCheckpoint() ([]byte, error) {
 	return []byte(c.String()), nil
 }
 
@@ -65,13 +70,13 @@ func (c Checkpoint) MarshalText() ([]byte, error) {
 // <optional non-empty line of other content>...
 //
 // This will discard any content found after the checkpoint (including signatures)
-func (c *Checkpoint) UnmarshalText(data []byte) error {
+func (c *Checkpoint) UnmarshalCheckpoint(data []byte) error {
 	l := bytes.Split(data, []byte("\n"))
 	if len(l) < 4 {
 		return errors.New("invalid checkpoint - too few newlines")
 	}
-	eco := string(l[0])
-	if len(eco) == 0 {
+	origin := string(l[0])
+	if len(origin) == 0 {
 		return errors.New("invalid checkpoint - empty ecosystem")
 	}
 	size, err := strconv.ParseUint(string(l[1]), 10, 64)
@@ -83,11 +88,11 @@ func (c *Checkpoint) UnmarshalText(data []byte) error {
 		return fmt.Errorf("invalid checkpoint - invalid hash: %w", err)
 	}
 	*c = Checkpoint{
-		Ecosystem: eco,
-		Size:      size,
-		Hash:      h,
+		Origin: origin,
+		Size:   size,
+		Hash:   h,
 	}
-	if len(l) >= 5 {
+	if len(l) >= 3 {
 		for _, line := range l[3:] {
 			if len(line) == 0 {
 				break
@@ -104,7 +109,7 @@ type SignedCheckpoint struct {
 }
 
 func CreateSignedCheckpoint(c Checkpoint) (*SignedCheckpoint, error) {
-	text, err := c.MarshalText()
+	text, err := c.MarshalCheckpoint()
 	if err != nil {
 		return nil, err
 	}
@@ -120,22 +125,22 @@ func SignedCheckpointValidator(strToValidate string) bool {
 		return false
 	}
 	c := &Checkpoint{}
-	return c.UnmarshalText([]byte(s.Note)) == nil
+	return c.UnmarshalCheckpoint([]byte(s.Note)) == nil
 }
 
 func CheckpointValidator(strToValidate string) bool {
 	c := &Checkpoint{}
-	return c.UnmarshalText([]byte(strToValidate)) == nil
+	return c.UnmarshalCheckpoint([]byte(strToValidate)) == nil
 }
 
 func (r *SignedCheckpoint) UnmarshalText(data []byte) error {
 	s := SignedNote{}
 	if err := s.UnmarshalText([]byte(data)); err != nil {
-		return errors.Wrap(err, "unmarshalling signed note")
+		return fmt.Errorf("unmarshalling signed note: %w", err)
 	}
 	c := Checkpoint{}
-	if err := c.UnmarshalText([]byte(s.Note)); err != nil {
-		return errors.Wrap(err, "unmarshalling checkpoint")
+	if err := c.UnmarshalCheckpoint([]byte(s.Note)); err != nil {
+		return fmt.Errorf("unmarshalling checkpoint: %w", err)
 	}
 	*r = SignedCheckpoint{Checkpoint: c, SignedNote: s}
 	return nil
@@ -149,6 +154,7 @@ func (r *SignedCheckpoint) SetTimestamp(timestamp uint64) {
 		}
 	}
 	r.OtherContent = append(r.OtherContent, fmt.Sprintf("Timestamp: %d", timestamp))
+	r.SignedNote = SignedNote{Note: string(r.Checkpoint.String())}
 }
 
 func (r *SignedCheckpoint) GetTimestamp() uint64 {
@@ -159,4 +165,25 @@ func (r *SignedCheckpoint) GetTimestamp() uint64 {
 		}
 	}
 	return ts
+}
+
+// CreateAndSignCheckpoint creates a signed checkpoint as a commitment to the current root hash
+func CreateAndSignCheckpoint(ctx context.Context, hostname string, treeID int64, root *types.LogRootV1, signer signature.Signer) ([]byte, error) {
+	sth, err := CreateSignedCheckpoint(Checkpoint{
+		Origin: fmt.Sprintf("%s - %d", hostname, treeID),
+		Size:   root.TreeSize,
+		Hash:   root.RootHash,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error creating checkpoint: %v", err)
+	}
+	sth.SetTimestamp(uint64(time.Now().UnixNano()))
+	if _, err := sth.Sign(hostname, signer, options.WithContext(ctx)); err != nil {
+		return nil, fmt.Errorf("error signing checkpoint: %v", err)
+	}
+	scBytes, err := sth.SignedNote.MarshalText()
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling checkpoint: %v", err)
+	}
+	return scBytes, nil
 }

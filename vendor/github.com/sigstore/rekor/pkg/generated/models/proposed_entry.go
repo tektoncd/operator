@@ -26,7 +26,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime"
@@ -84,7 +83,7 @@ func UnmarshalProposedEntrySlice(reader io.Reader, consumer runtime.Consumer) ([
 // UnmarshalProposedEntry unmarshals polymorphic ProposedEntry
 func UnmarshalProposedEntry(reader io.Reader, consumer runtime.Consumer) (ProposedEntry, error) {
 	// we need to read this twice, so first into a buffer
-	data, err := ioutil.ReadAll(reader)
+	data, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -121,6 +120,18 @@ func unmarshalProposedEntry(data []byte, consumer runtime.Consumer) (ProposedEnt
 			return nil, err
 		}
 		return &result, nil
+	case "cose":
+		var result Cose
+		if err := consumer.Consume(buf2, &result); err != nil {
+			return nil, err
+		}
+		return &result, nil
+	case "hashedrekord":
+		var result Hashedrekord
+		if err := consumer.Consume(buf2, &result); err != nil {
+			return nil, err
+		}
+		return &result, nil
 	case "helm":
 		var result Helm
 		if err := consumer.Consume(buf2, &result); err != nil {
@@ -153,6 +164,12 @@ func unmarshalProposedEntry(data []byte, consumer runtime.Consumer) (ProposedEnt
 		return &result, nil
 	case "rpm":
 		var result Rpm
+		if err := consumer.Consume(buf2, &result); err != nil {
+			return nil, err
+		}
+		return &result, nil
+	case "tuf":
+		var result TUF
 		if err := consumer.Consume(buf2, &result); err != nil {
 			return nil, err
 		}

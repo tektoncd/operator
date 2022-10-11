@@ -47,15 +47,24 @@ type session struct {
 	o        *cachedOptions
 	icmp     *iComparer
 	tops     *tOps
-	fileRef  map[int64]int
 
 	manifest       *journal.Writer
 	manifestWriter storage.Writer
 	manifestFd     storage.FileDesc
 
-	stCompPtrs []internalKey // compaction pointers; need external synchronization
-	stVersion  *version      // current version
-	vmu        sync.Mutex
+	stCompPtrs  []internalKey // compaction pointers; need external synchronization
+	stVersion   *version      // current version
+	ntVersionID int64         // next version id to assign
+	refCh       chan *vTask
+	relCh       chan *vTask
+	deltaCh     chan *vDelta
+	abandon     chan int64
+	closeC      chan struct{}
+	closeW      sync.WaitGroup
+	vmu         sync.Mutex
+
+	// Testing fields
+	fileRefCh chan chan map[int64]int // channel used to pass current reference stat
 }
 
 // Creates new initialized session instance.
@@ -68,13 +77,21 @@ func newSession(stor storage.Storage, o *opt.Options) (s *session, err error) {
 		return
 	}
 	s = &session{
-		stor:     newIStorage(stor),
-		storLock: storLock,
-		fileRef:  make(map[int64]int),
+		stor:      newIStorage(stor),
+		storLock:  storLock,
+		refCh:     make(chan *vTask),
+		relCh:     make(chan *vTask),
+		deltaCh:   make(chan *vDelta),
+		abandon:   make(chan int64),
+		fileRefCh: make(chan chan map[int64]int),
+		closeC:    make(chan struct{}),
 	}
 	s.setOptions(o)
 	s.tops = newTableOps(s)
-	s.setVersion(newVersion(s))
+
+	s.closeW.Add(1)
+	go s.refLoop()
+	s.setVersion(nil, newVersion(s))
 	s.log("log@legend F·NumFile S·FileSize N·Entry C·BadEntry B·BadBlock Ke·KeyError D·DroppedEntry L·Level Q·SeqNum T·TimeElapsed")
 	return
 }
@@ -90,7 +107,11 @@ func (s *session) close() {
 	}
 	s.manifest = nil
 	s.manifestWriter = nil
-	s.setVersion(&version{s: s, closing: true})
+	s.setVersion(nil, &version{s: s, closing: true, id: s.ntVersionID})
+
+	// Close all background goroutines
+	close(s.closeC)
+	s.closeW.Wait()
 }
 
 // Release session lock.
@@ -111,7 +132,7 @@ func (s *session) recover() (err error) {
 			// Don't return os.ErrNotExist if the underlying storage contains
 			// other files that belong to LevelDB. So the DB won't get trashed.
 			if fds, _ := s.stor.List(storage.TypeAll); len(fds) > 0 {
-				err = &errors.ErrCorrupted{Fd: storage.FileDesc{Type: storage.TypeManifest}, Err: &errors.ErrMissingFiles{}}
+				err = &errors.ErrCorrupted{Err: errors.New("database entry point either missing or corrupted")}
 			}
 		}
 	}()
@@ -150,7 +171,7 @@ func (s *session) recover() (err error) {
 		if err == nil {
 			// save compact pointers
 			for _, r := range rec.compPtrs {
-				s.setCompPtr(r.level, internalKey(r.ikey))
+				s.setCompPtr(r.level, r.ikey)
 			}
 			// commit record to version staging
 			staging.commit(rec)
@@ -180,30 +201,41 @@ func (s *session) recover() (err error) {
 	}
 
 	s.manifestFd = fd
-	s.setVersion(staging.finish())
+	s.setVersion(rec, staging.finish(false))
 	s.setNextFileNum(rec.nextFileNum)
 	s.recordCommited(rec)
 	return nil
 }
 
 // Commit session; need external synchronization.
-func (s *session) commit(r *sessionRecord) (err error) {
+func (s *session) commit(r *sessionRecord, trivial bool) (err error) {
 	v := s.version()
 	defer v.release()
 
 	// spawn new version based on current version
-	nv := v.spawn(r)
+	nv := v.spawn(r, trivial)
+
+	// abandon useless version id to prevent blocking version processing loop.
+	defer func() {
+		if err != nil {
+			s.abandon <- nv.id
+			s.logf("commit@abandon useless vid D%d", nv.id)
+		}
+	}()
 
 	if s.manifest == nil {
 		// manifest journal writer not yet created, create one
 		err = s.newManifest(r, nv)
+	} else if s.manifest.Size() >= s.o.GetMaxManifestFileSize() {
+		// pass nil sessionRecord to avoid over-reference table file
+		err = s.newManifest(nil, nv)
 	} else {
 		err = s.flushManifest(r)
 	}
 
 	// finally, apply new version if no error rise
 	if err == nil {
-		s.setVersion(nv)
+		s.setVersion(r, nv)
 	}
 
 	return

@@ -15,15 +15,18 @@
 
 package options
 
+// RequestRemoteVerification implements the functional option pattern for remotely verifiying signatures when possible
 type RequestRemoteVerification struct {
 	NoOpOptionImpl
 	remoteVerification bool
 }
 
+// ApplyRemoteVerification sets remote verification as a functional option
 func (r RequestRemoteVerification) ApplyRemoteVerification(remoteVerification *bool) {
 	*remoteVerification = r.remoteVerification
 }
 
+// WithRemoteVerification specifies that the verification operation should be performed remotely (vs in the process of the caller)
 func WithRemoteVerification(remoteVerification bool) RequestRemoteVerification {
 	return RequestRemoteVerification{remoteVerification: remoteVerification}
 }

@@ -37,10 +37,11 @@ var (
 	DefaultCompressionType               = SnappyCompression
 	DefaultIteratorSamplingRate          = 1 * MiB
 	DefaultOpenFilesCacher               = LRUCacher
-	DefaultOpenFilesCacheCapacity        = 500
 	DefaultWriteBuffer                   = 4 * MiB
 	DefaultWriteL0PauseTrigger           = 12
 	DefaultWriteL0SlowdownTrigger        = 8
+	DefaultFilterBaseLg                  = 11
+	DefaultMaxManifestFileSize           = int64(64 * MiB)
 )
 
 // Cacher is a caching algorithm.
@@ -48,25 +49,60 @@ type Cacher interface {
 	New(capacity int) cache.Cacher
 }
 
-type CacherFunc struct {
+type cacherFunc struct {
 	NewFunc func(capacity int) cache.Cacher
 }
 
-func (f *CacherFunc) New(capacity int) cache.Cacher {
-	if f.NewFunc != nil {
+func (f *cacherFunc) New(capacity int) cache.Cacher {
+	if f != nil && f.NewFunc != nil {
 		return f.NewFunc(capacity)
 	}
 	return nil
 }
 
-func noCacher(int) cache.Cacher { return nil }
+func CacherFunc(f func(capacity int) cache.Cacher) Cacher {
+	return &cacherFunc{f}
+}
+
+type passthroughCacher struct {
+	Cacher cache.Cacher
+}
+
+func (p *passthroughCacher) New(capacity int) cache.Cacher {
+	return p.Cacher
+}
+
+// PassthroughCacher can be used to passthrough pre-initialized
+// 'cacher instance'. This is useful for sharing cache over multiple
+// DB instances.
+//
+// Shared cache example:
+//
+//     fileCache := opt.NewLRU(500)
+//     blockCache := opt.NewLRU(8 * opt.MiB)
+// 	   options := &opt.Options{
+//         OpenFilesCacher: fileCache,
+//         BlockCacher: blockCache,
+//     }
+//     db1, err1 := leveldb.OpenFile("path/to/db1", options)
+//     ...
+//     db2, err2 := leveldb.OpenFile("path/to/db2", options)
+//     ...
+func PassthroughCacher(x cache.Cacher) Cacher {
+	return &passthroughCacher{x}
+}
+
+// NewLRU creates LRU 'passthrough cacher'.
+func NewLRU(capacity int) Cacher {
+	return PassthroughCacher(cache.NewLRU(capacity))
+}
 
 var (
 	// LRUCacher is the LRU-cache algorithm.
-	LRUCacher = &CacherFunc{cache.NewLRU}
+	LRUCacher = CacherFunc(cache.NewLRU)
 
 	// NoCacher is the value to disable caching algorithm.
-	NoCacher = &CacherFunc{}
+	NoCacher = CacherFunc(nil)
 )
 
 // Compression is the 'sorted table' block compression algorithm to use.
@@ -278,6 +314,14 @@ type Options struct {
 	// The default is false.
 	DisableLargeBatchTransaction bool
 
+	// DisableSeeksCompaction allows disabling 'seeks triggered compaction'.
+	// The purpose of 'seeks triggered compaction' is to optimize database so
+	// that 'level seeks' can be minimized, however this might generate many
+	// small compaction which may not preferable.
+	//
+	// The default is false.
+	DisableSeeksCompaction bool
+
 	// ErrorIfExist defines whether an error should returned if the DB already
 	// exist.
 	//
@@ -309,6 +353,8 @@ type Options struct {
 	// IteratorSamplingRate defines approximate gap (in bytes) between read
 	// sampling of an iterator. The samples will be used to determine when
 	// compaction should be triggered.
+	// Use negative value to disable iterator sampling.
+	// The iterator sampling is disabled if DisableSeeksCompaction is true.
 	//
 	// The default is 1MiB.
 	IteratorSamplingRate int
@@ -332,7 +378,7 @@ type Options struct {
 	// OpenFilesCacheCapacity defines the capacity of the open files caching.
 	// Use -1 for zero, this has same effect as specifying NoCacher to OpenFilesCacher.
 	//
-	// The default value is 500.
+	// The default value is 200 on MacOS and 500 on other.
 	OpenFilesCacheCapacity int
 
 	// If true then opens DB in read-only mode.
@@ -363,6 +409,18 @@ type Options struct {
 	//
 	// The default value is 8.
 	WriteL0SlowdownTrigger int
+
+	// FilterBaseLg is the log size for filter block to create a bloom filter.
+	//
+	// The default value is 11(as well as 2KB)
+	FilterBaseLg int
+
+	// MaxManifestFileSize is the maximum size limit of the MANIFEST-****** file.
+	// When the MANIFEST-****** file grows beyond this size, LevelDB will create
+	// a new MANIFEST file.
+	//
+	// The default value is 64 MiB.
+	MaxManifestFileSize int64
 }
 
 func (o *Options) GetAltFilters() []filter.Filter {
@@ -375,8 +433,6 @@ func (o *Options) GetAltFilters() []filter.Filter {
 func (o *Options) GetBlockCacher() Cacher {
 	if o == nil || o.BlockCacher == nil {
 		return DefaultBlockCacher
-	} else if o.BlockCacher == NoCacher {
-		return nil
 	}
 	return o.BlockCacher
 }
@@ -526,6 +582,13 @@ func (o *Options) GetDisableLargeBatchTransaction() bool {
 	return o.DisableLargeBatchTransaction
 }
 
+func (o *Options) GetDisableSeeksCompaction() bool {
+	if o == nil {
+		return false
+	}
+	return o.DisableSeeksCompaction
+}
+
 func (o *Options) GetErrorIfExist() bool {
 	if o == nil {
 		return false
@@ -548,8 +611,10 @@ func (o *Options) GetFilter() filter.Filter {
 }
 
 func (o *Options) GetIteratorSamplingRate() int {
-	if o == nil || o.IteratorSamplingRate <= 0 {
+	if o == nil || o.IteratorSamplingRate == 0 {
 		return DefaultIteratorSamplingRate
+	} else if o.IteratorSamplingRate < 0 {
+		return 0
 	}
 	return o.IteratorSamplingRate
 }
@@ -571,9 +636,6 @@ func (o *Options) GetNoWriteMerge() bool {
 func (o *Options) GetOpenFilesCacher() Cacher {
 	if o == nil || o.OpenFilesCacher == nil {
 		return DefaultOpenFilesCacher
-	}
-	if o.OpenFilesCacher == NoCacher {
-		return nil
 	}
 	return o.OpenFilesCacher
 }
@@ -620,6 +682,13 @@ func (o *Options) GetWriteL0SlowdownTrigger() int {
 		return DefaultWriteL0SlowdownTrigger
 	}
 	return o.WriteL0SlowdownTrigger
+}
+
+func (o *Options) GetFilterBaseLg() int {
+	if o == nil || o.FilterBaseLg <= 0 {
+		return DefaultFilterBaseLg
+	}
+	return o.FilterBaseLg
 }
 
 // ReadOptions holds the optional parameters for 'read operation'. The
@@ -691,7 +760,13 @@ func (wo *WriteOptions) GetSync() bool {
 func GetStrict(o *Options, ro *ReadOptions, strict Strict) bool {
 	if ro.GetStrict(StrictOverride) {
 		return ro.GetStrict(strict)
-	} else {
-		return o.GetStrict(strict) || ro.GetStrict(strict)
 	}
+	return o.GetStrict(strict) || ro.GetStrict(strict)
+}
+
+func (o *Options) GetMaxManifestFileSize() int64 {
+	if o == nil || o.MaxManifestFileSize <= 0 {
+		return DefaultMaxManifestFileSize
+	}
+	return o.MaxManifestFileSize
 }

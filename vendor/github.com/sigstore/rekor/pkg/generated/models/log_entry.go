@@ -46,6 +46,11 @@ func (m LogEntry) Validate(formats strfmt.Registry) error {
 		}
 		if val, ok := m[k]; ok {
 			if err := val.Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName(k)
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName(k)
+				}
 				return err
 			}
 		}
@@ -151,6 +156,8 @@ func (m *LogEntryAnon) validateAttestation(formats strfmt.Registry) error {
 		if err := m.Attestation.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("attestation")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("attestation")
 			}
 			return err
 		}
@@ -212,6 +219,8 @@ func (m *LogEntryAnon) validateVerification(formats strfmt.Registry) error {
 		if err := m.Verification.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("verification")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("verification")
 			}
 			return err
 		}
@@ -244,6 +253,8 @@ func (m *LogEntryAnon) contextValidateAttestation(ctx context.Context, formats s
 		if err := m.Attestation.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("attestation")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("attestation")
 			}
 			return err
 		}
@@ -258,6 +269,8 @@ func (m *LogEntryAnon) contextValidateVerification(ctx context.Context, formats 
 		if err := m.Verification.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("verification")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("verification")
 			}
 			return err
 		}
@@ -292,9 +305,6 @@ type LogEntryAnonAttestation struct {
 	// data
 	// Format: byte
 	Data strfmt.Base64 `json:"data,omitempty"`
-
-	// media type
-	MediaType string `json:"mediaType,omitempty"`
 }
 
 // Validate validates this log entry anon attestation
@@ -361,6 +371,8 @@ func (m *LogEntryAnonVerification) validateInclusionProof(formats strfmt.Registr
 		if err := m.InclusionProof.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("verification" + "." + "inclusionProof")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("verification" + "." + "inclusionProof")
 			}
 			return err
 		}
@@ -389,6 +401,8 @@ func (m *LogEntryAnonVerification) contextValidateInclusionProof(ctx context.Con
 		if err := m.InclusionProof.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("verification" + "." + "inclusionProof")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("verification" + "." + "inclusionProof")
 			}
 			return err
 		}

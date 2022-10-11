@@ -25,6 +25,7 @@ import (
 	sigpayload "github.com/sigstore/sigstore/pkg/signature/payload"
 )
 
+// SignImage signs a container manifest using the specified signer object
 func SignImage(signer SignerVerifier, image name.Digest, optionalAnnotations map[string]interface{}) (payload, signature []byte, err error) {
 	imgPayload := sigpayload.Cosign{
 		Image:       image,
@@ -32,22 +33,23 @@ func SignImage(signer SignerVerifier, image name.Digest, optionalAnnotations map
 	}
 	payload, err = json.Marshal(imgPayload)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to marshal payload to JSON: %v", err)
+		return nil, nil, fmt.Errorf("failed to marshal payload to JSON: %w", err)
 	}
 	signature, err = signer.SignMessage(bytes.NewReader(payload))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to sign payload: %v", err)
+		return nil, nil, fmt.Errorf("failed to sign payload: %w", err)
 	}
 	return payload, signature, nil
 }
 
+// VerifyImageSignature verifies a signature over a container manifest
 func VerifyImageSignature(signer SignerVerifier, payload, signature []byte) (image name.Digest, annotations map[string]interface{}, err error) {
 	if err := signer.VerifySignature(bytes.NewReader(signature), bytes.NewReader(payload)); err != nil {
-		return name.Digest{}, nil, fmt.Errorf("signature verification failed: %v", err)
+		return name.Digest{}, nil, fmt.Errorf("signature verification failed: %w", err)
 	}
 	var imgPayload sigpayload.Cosign
 	if err := json.Unmarshal(payload, &imgPayload); err != nil {
-		return name.Digest{}, nil, fmt.Errorf("could not deserialize image payload: %v", err)
+		return name.Digest{}, nil, fmt.Errorf("could not deserialize image payload: %w", err)
 	}
 	return imgPayload.Image, imgPayload.Annotations, nil
 }

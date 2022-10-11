@@ -20,15 +20,18 @@ import (
 	"io"
 )
 
+// RequestRand implements the functional option pattern for using a specific source of entropy
 type RequestRand struct {
 	NoOpOptionImpl
 	rand io.Reader
 }
 
+// ApplyRand sets the specified source of entropy as the functional option
 func (r RequestRand) ApplyRand(rand *io.Reader) {
 	*rand = r.rand
 }
 
+// WithRand specifies that the given source of entropy should be used in signing operations
 func WithRand(rand io.Reader) RequestRand {
 	r := rand
 	if r == nil {
