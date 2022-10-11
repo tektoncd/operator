@@ -1,5 +1,7 @@
 # envy
-[![Build Status](https://travis-ci.org/gobuffalo/envy.svg?branch=master)](https://travis-ci.org/gobuffalo/envy)
+
+[![Actions Status](https://github.com/gobuffalo/envy/workflows/Tests/badge.svg)](https://github.com/gobuffalo/envy/workflows/actions)
+
 
 Envy makes working with ENV variables in Go trivial.
 

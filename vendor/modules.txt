@@ -527,10 +527,10 @@ github.com/go-playground/universal-translator
 # github.com/go-playground/validator/v10 v10.11.0
 ## explicit; go 1.13
 github.com/go-playground/validator/v10
-# github.com/gobuffalo/envy v1.9.0
+# github.com/gobuffalo/envy v1.10.1
 ## explicit; go 1.13
 github.com/gobuffalo/envy
-# github.com/gobuffalo/flect v0.2.4
+# github.com/gobuffalo/flect v0.2.5
 ## explicit; go 1.13
 github.com/gobuffalo/flect
 # github.com/gobwas/glob v0.2.3
@@ -738,8 +738,8 @@ github.com/jhump/protoreflect/internal/codec
 # github.com/jmespath/go-jmespath v0.4.0
 ## explicit; go 1.14
 github.com/jmespath/go-jmespath
-# github.com/joho/godotenv v1.3.0
-## explicit
+# github.com/joho/godotenv v1.4.0
+## explicit; go 1.12
 github.com/joho/godotenv
 # github.com/jonboulle/clockwork v0.3.0
 ## explicit; go 1.13
@@ -776,7 +776,7 @@ github.com/letsencrypt/boulder/identifier
 github.com/letsencrypt/boulder/probs
 github.com/letsencrypt/boulder/revocation
 github.com/letsencrypt/boulder/sa/proto
-# github.com/lib/pq v1.10.4
+# github.com/lib/pq v1.10.6
 ## explicit; go 1.13
 # github.com/magiconair/properties v1.8.6
 ## explicit; go 1.13
@@ -1532,7 +1532,7 @@ golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
 golang.org/x/mod/sumdb/note
-# golang.org/x/net v0.0.0-20220909164309-bea034e7d591
+# golang.org/x/net v0.0.0-20220926192436-02166a98028e
 ## explicit; go 1.17
 golang.org/x/net/context
 golang.org/x/net/context/ctxhttp
@@ -1567,7 +1567,7 @@ golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.0.0-20220526004731-065cf7ba2467
+# golang.org/x/term v0.0.0-20220722155259-a9ba230a4035
 ## explicit; go 1.17
 golang.org/x/term
 # golang.org/x/text v0.3.8-0.20211004125949-5bd84dd9b33b

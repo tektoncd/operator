@@ -143,8 +143,8 @@ require (
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-playground/validator/v10 v10.11.0 // indirect
-	github.com/gobuffalo/envy v1.9.0 // indirect
-	github.com/gobuffalo/flect v0.2.4 // indirect
+	github.com/gobuffalo/envy v1.10.1 // indirect
+	github.com/gobuffalo/flect v0.2.5 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
@@ -177,14 +177,14 @@ require (
 	github.com/jedisct1/go-minisign v0.0.0-20211028175153-1c139d1cc84b // indirect
 	github.com/jhump/protoreflect v1.12.0 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	github.com/joho/godotenv v1.3.0 // indirect
+	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/jonboulle/clockwork v0.3.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/klauspost/compress v1.15.8 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
-	github.com/lib/pq v1.10.4 // indirect
+	github.com/lib/pq v1.10.6 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
@@ -277,11 +277,11 @@ require (
 	go.uber.org/automaxprocs v1.5.1 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/exp v0.0.0-20220823124025-807a23277127 // indirect
-	golang.org/x/net v0.0.0-20220909164309-bea034e7d591 // indirect
+	golang.org/x/net v0.0.0-20220926192436-02166a98028e // indirect
 	golang.org/x/oauth2 v0.0.0-20220909003341-f21342109be1 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
 	golang.org/x/sys v0.0.0-20220919091848-fb04ddd9f9c8 // indirect
-	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
+	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
 	golang.org/x/text v0.3.8-0.20211004125949-5bd84dd9b33b // indirect
 	golang.org/x/time v0.0.0-20220722155302-e5dcc9cfc0b9 // indirect
 	golang.org/x/tools v0.1.12 // indirect
