@@ -17,7 +17,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -66,11 +65,6 @@ func loadEnv() {
 		pair := strings.Split(e, "=")
 		env[pair[0]] = os.Getenv(pair[0])
 	}
-}
-
-// Mods always returns true, GOPATH isn't supported
-func Mods() bool {
-	return true
 }
 
 // Reload the ENV variables. Useful if
@@ -215,47 +209,18 @@ func GoPaths() []string {
 	return strings.Split(gp, ":")
 }
 
-func importPath(path string) string {
-	path = strings.TrimPrefix(path, "/private")
-	for _, gopath := range GoPaths() {
-		srcpath := filepath.Join(gopath, "src")
-		rel, err := filepath.Rel(srcpath, path)
-		if err == nil {
-			return filepath.ToSlash(rel)
-		}
-	}
-
-	// fallback to trim
-	rel := strings.TrimPrefix(path, filepath.Join(GoPath(), "src"))
-	rel = strings.TrimPrefix(rel, string(filepath.Separator))
-	return filepath.ToSlash(rel)
-}
-
-// CurrentModule will attempt to return the module name from `go.mod` if
-// modules are enabled.
-// If modules are not enabled it will fallback to using CurrentPackage instead.
+// CurrentModule will attempt to return the module name from `go.mod`.
+// GOPATH isn't supported, no fallback to `CurrentPackage()` anymore.
 func CurrentModule() (string, error) {
-	if !Mods() {
-		return CurrentPackage(), nil
-	}
 	moddata, err := ioutil.ReadFile("go.mod")
 	if err != nil {
-		return "", errors.New("go.mod cannot be read or does not exist while go module is enabled")
+		return "", errors.New("go.mod cannot be read or does not exist")
 	}
 	packagePath := modfile.ModulePath(moddata)
 	if packagePath == "" {
 		return "", errors.New("go.mod is malformed")
 	}
 	return packagePath, nil
-}
-
-// CurrentPackage attempts to figure out the current package name from the PWD
-// Use CurrentModule for a more accurate package name.
-func CurrentPackage() string {
-	if Mods() {
-	}
-	pwd, _ := os.Getwd()
-	return importPath(pwd)
 }
 
 func Environ() []string {
