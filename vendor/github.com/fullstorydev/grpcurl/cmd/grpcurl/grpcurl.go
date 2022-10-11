@@ -109,7 +109,7 @@ var (
 		separator.`))
 	allowUnknownFields = flags.Bool("allow-unknown-fields", false, prettify(`
 		When true, the request contents, if 'json' format is used, allows
-		unkown fields to be present. They will be ignored when parsing
+		unknown fields to be present. They will be ignored when parsing
 		the request.`))
 	connectTimeout = flags.Float64("connect-timeout", 0, prettify(`
 		The maximum time, in seconds, to wait for connection to be established.
@@ -408,11 +408,21 @@ func main() {
 		}
 		var creds credentials.TransportCredentials
 		if !*plaintext {
-			var err error
-			creds, err = grpcurl.ClientTransportCredentials(*insecure, *cacert, *cert, *key)
+			tlsConf, err := grpcurl.ClientTLSConfig(*insecure, *cacert, *cert, *key)
 			if err != nil {
-				fail(err, "Failed to configure transport credentials")
+				fail(err, "Failed to create TLS config")
 			}
+
+			sslKeylogFile := os.Getenv("SSLKEYLOGFILE")
+			if sslKeylogFile != "" {
+				w, err := os.OpenFile(sslKeylogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+				if err != nil {
+					fail(err, "Could not open SSLKEYLOGFILE %s", sslKeylogFile)
+				}
+				tlsConf.KeyLogWriter = w
+			}
+
+			creds = credentials.NewTLS(tlsConf)
 
 			// can use either -servername or -authority; but not both
 			if *serverName != "" && *authority != "" {
@@ -428,9 +438,7 @@ func main() {
 			}
 
 			if overrideName != "" {
-				if err := creds.OverrideServerName(overrideName); err != nil {
-					fail(err, "Failed to override server name as %q", overrideName)
-				}
+				opts = append(opts, grpc.WithAuthority(overrideName))
 			}
 		} else if *authority != "" {
 			opts = append(opts, grpc.WithAuthority(*authority))

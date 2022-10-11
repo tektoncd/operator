@@ -21,7 +21,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sigstore/cosign/cmd/cosign/cli"
+	"github.com/sigstore/cosign/cmd/cosign/cli/options"
+	"github.com/sigstore/cosign/cmd/cosign/cli/verify"
 	"github.com/sigstore/cosign/pkg/cosign/kubernetes"
 )
 
@@ -56,5 +57,5 @@ func CosignVerifyBlob(key, signature, payload string) error {
 		return err
 	}
 
-	return cli.VerifyBlobCmd(context.TODO(), cli.KeyOpts{KeyRef: key}, "", signatureFile.Name(), payloadFile.Name())
+	return verify.VerifyBlobCmd(context.TODO(), options.KeyOpts{KeyRef: key}, "", "", "", "", signatureFile.Name(), payloadFile.Name(), "", "", "", "", "", false)
 }

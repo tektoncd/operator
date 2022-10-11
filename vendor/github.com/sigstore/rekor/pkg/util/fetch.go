@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 )
 
@@ -39,12 +38,12 @@ func FileOrURLReadCloser(ctx context.Context, url string, content []byte) (io.Re
 			return nil, err
 		}
 		if resp.StatusCode < 200 || resp.StatusCode > 299 {
-			return nil, fmt.Errorf("error received while fetching artifact: %v", resp.Status)
+			return nil, fmt.Errorf("error received while fetching artifact '%v': %v", url, resp.Status)
 		}
 
 		dataReader = resp.Body
 	} else {
-		dataReader = ioutil.NopCloser(bytes.NewReader(content))
+		dataReader = io.NopCloser(bytes.NewReader(content))
 	}
 	return dataReader, nil
 }

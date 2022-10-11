@@ -17,29 +17,32 @@ package remote
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 
-	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/empty"
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/go-containerregistry/pkg/v1/types"
+	"github.com/sigstore/cosign/pkg/oci/static"
 )
-
-type Digester interface {
-	Digest() (v1.Hash, error)
-}
 
 type File interface {
 	Contents() ([]byte, error)
 	Platform() *v1.Platform
 	String() string
 	Path() string
+}
+
+func FilesFromFlagList(sl []string) []File {
+	files := make([]File, len(sl))
+	for i, s := range sl {
+		files[i] = FileFromFlag(s)
+	}
+	return files
 }
 
 func FileFromFlag(s string) File {
@@ -69,7 +72,7 @@ func (f *file) Path() string {
 }
 
 func (f *file) Contents() ([]byte, error) {
-	return ioutil.ReadFile(f.path)
+	return os.ReadFile(f.path)
 }
 func (f *file) Platform() *v1.Platform {
 	return f.platform
@@ -94,32 +97,43 @@ func DefaultMediaTypeGetter(b []byte) types.MediaType {
 	return types.MediaType(strings.Split(http.DetectContentType(b), ";")[0])
 }
 
-func UploadFiles(ref name.Reference, files []File, getMt MediaTypeGetter, remoteOpts ...remote.Option) (Digester, error) {
-	var img v1.Image
+func UploadFiles(ref name.Reference, files []File, annotations map[string]string, getMt MediaTypeGetter, remoteOpts ...remote.Option) (name.Digest, error) {
+	var lastHash v1.Hash
 	var idx v1.ImageIndex = empty.Index
 
 	for _, f := range files {
 		b, err := f.Contents()
 		if err != nil {
-			return nil, err
+			return name.Digest{}, err
 		}
 		mt := getMt(b)
 		fmt.Fprintf(os.Stderr, "Uploading file from [%s] to [%s] with media type [%s]\n", f.Path(), ref.Name(), mt)
-		_img, err := UploadFile(b, ref, mt, types.OCIConfigJSON, remoteOpts...)
+
+		img, err := static.NewFile(b, static.WithLayerMediaType(mt), static.WithAnnotations(annotations))
 		if err != nil {
-			return nil, err
+			return name.Digest{}, err
 		}
-		img = _img
-		l, err := _img.Layers()
+
+		lastHash, err = img.Digest()
 		if err != nil {
-			return nil, err
+			return name.Digest{}, err
 		}
-		dgst, err := l[0].Digest()
+
+		if err := remote.Write(ref, img, remoteOpts...); err != nil {
+			return name.Digest{}, err
+		}
+		l, err := img.Layers()
 		if err != nil {
-			return nil, err
+			return name.Digest{}, err
 		}
-		blobURL := ref.Context().Registry.RegistryStr() + "/v2/" + ref.Context().RepositoryStr() + "/blobs/sha256:" + dgst.Hex
+		layerHash, err := l[0].Digest()
+		if err != nil {
+			return name.Digest{}, err
+		}
+
+		blobURL := ref.Context().Registry.RegistryStr() + "/v2/" + ref.Context().RepositoryStr() + "/blobs/" + layerHash.String()
 		fmt.Fprintf(os.Stderr, "File [%s] is available directly at [%s]\n", f.Path(), blobURL)
+
 		if f.Platform() != nil {
 			idx = mutate.AppendManifests(idx, mutate.IndexAddendum{
 				Add: img,
@@ -131,34 +145,17 @@ func UploadFiles(ref name.Reference, files []File, getMt MediaTypeGetter, remote
 	}
 
 	if len(files) > 1 {
-		if err := remote.WriteIndex(ref, idx, remote.WithAuthFromKeychain(authn.DefaultKeychain)); err != nil {
-			return nil, err
+		if annotations != nil {
+			idx = mutate.Annotations(idx, annotations).(v1.ImageIndex)
 		}
-		return idx, nil
+		err := remote.WriteIndex(ref, idx, remoteOpts...)
+		if err != nil {
+			return name.Digest{}, err
+		}
+		lastHash, err = idx.Digest()
+		if err != nil {
+			return name.Digest{}, err
+		}
 	}
-	return img, nil
-}
-
-func UploadFile(b []byte, ref name.Reference, layerMt, configMt types.MediaType, remoteOpts ...remote.Option) (v1.Image, error) {
-	l := &staticLayer{
-		b:  b,
-		mt: layerMt,
-	}
-
-	emptyOci := mutate.MediaType(empty.Image, types.OCIManifestSchema1)
-	img, err := mutate.Append(emptyOci, mutate.Addendum{
-		Layer: l,
-	})
-	if err != nil {
-		return nil, err
-	}
-	mfst, err := img.Manifest()
-	if err != nil {
-		return nil, err
-	}
-	mfst.Config.MediaType = configMt
-	if err := remote.Write(ref, img, remoteOpts...); err != nil {
-		return nil, err
-	}
-	return img, nil
+	return ref.Context().Digest(lastHash.String()), nil
 }

@@ -2,10 +2,9 @@ package client
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"io"
-	"io/ioutil"
 
 	"github.com/theupdateframework/go-tuf/data"
 	"github.com/theupdateframework/go-tuf/util"
@@ -18,10 +17,14 @@ const (
 	// big it is.
 	defaultRootDownloadLimit      = 512000
 	defaultTimestampDownloadLimit = 16384
+	defaultMaxDelegations         = 32
+	defaultMaxRootRotations       = 1e3
 )
 
 // LocalStore is local storage for downloaded top-level metadata.
 type LocalStore interface {
+	io.Closer
+
 	// GetMeta returns top-level metadata from local storage. The keys are
 	// in the form `ROLE.json`, with ROLE being a valid top-level role.
 	GetMeta() (map[string]json.RawMessage, error)
@@ -29,6 +32,9 @@ type LocalStore interface {
 	// SetMeta persists the given top-level metadata in local storage, the
 	// name taking the same format as the keys returned by GetMeta.
 	SetMeta(name string, meta json.RawMessage) error
+
+	// DeleteMeta deletes a given metadata.
+	DeleteMeta(name string) error
 }
 
 // RemoteStore downloads top-level metadata and target files from a remote
@@ -62,10 +68,10 @@ type Client struct {
 
 	// The following four fields represent the versions of metatdata either
 	// from local storage or from recently downloaded metadata
-	rootVer      int
-	targetsVer   int
-	snapshotVer  int
-	timestampVer int
+	rootVer      int64
+	targetsVer   int64
+	snapshotVer  int64
+	timestampVer int64
 
 	// targets is the list of available targets, either from local storage
 	// or from recently downloaded targets metadata
@@ -81,261 +87,441 @@ type Client struct {
 	// consistentSnapshot indicates whether the remote storage is using
 	// consistent snapshots (as specified in root.json)
 	consistentSnapshot bool
+
+	// MaxDelegations limits by default the number of delegations visited for any
+	// target
+	MaxDelegations int
+
+	// MaxRootRotations limits the number of downloaded roots in 1.0.19 root updater
+	MaxRootRotations int
 }
 
 func NewClient(local LocalStore, remote RemoteStore) *Client {
 	return &Client{
-		local:  local,
-		remote: remote,
+		local:            local,
+		remote:           remote,
+		MaxDelegations:   defaultMaxDelegations,
+		MaxRootRotations: defaultMaxRootRotations,
 	}
 }
 
-// Init initializes a local repository.
+// Init initializes a local repository from root metadata.
 //
-// The latest root.json is fetched from remote storage, verified using rootKeys
-// and threshold, and then saved in local storage. It is expected that rootKeys
-// were securely distributed with the software being updated.
-func (c *Client) Init(rootKeys []*data.Key, threshold int) error {
-	if len(rootKeys) < threshold {
-		return ErrInsufficientKeys
-	}
-	rootJSON, err := c.downloadMetaUnsafe("root.json", defaultRootDownloadLimit)
+// The root's keys are extracted from the root and saved in local storage.
+// Root expiration is not checked.
+// It is expected that rootJSON was securely distributed with the software
+// being updated.
+func (c *Client) Init(rootJSON []byte) error {
+	err := c.loadAndVerifyRootMeta(rootJSON, true /*ignoreExpiredCheck*/)
 	if err != nil {
 		return err
 	}
-
-	// create a new key database, and add all the public `rootKeys` to it.
-	c.db = verify.NewDB()
-	rootKeyIDs := make([]string, 0, len(rootKeys))
-	for _, key := range rootKeys {
-		for _, id := range key.IDs() {
-			rootKeyIDs = append(rootKeyIDs, id)
-			if err := c.db.AddKey(id, key); err != nil {
-				return err
-			}
-		}
-	}
-
-	// add a mock "root" role that trusts the passed in key ids. These keys
-	// will be used to verify the `root.json` we just fetched.
-	role := &data.Role{Threshold: threshold, KeyIDs: rootKeyIDs}
-	if err := c.db.AddRole("root", role); err != nil {
-		return err
-	}
-
-	// verify that the new root is valid.
-	if err := c.decodeRoot(rootJSON); err != nil {
-		return err
-	}
-
 	return c.local.SetMeta("root.json", rootJSON)
 }
 
 // Update downloads and verifies remote metadata and returns updated targets.
+// It always performs root update (5.2 and 5.3) section of the v1.0.19 spec.
 //
-// It performs the update part of "The client application" workflow from
-// section 5.1 of the TUF spec:
-//
-// https://github.com/theupdateframework/tuf/blob/v0.9.9/docs/tuf-spec.txt#L714
+// https://theupdateframework.github.io/specification/v1.0.19/index.html#load-trusted-root
 func (c *Client) Update() (data.TargetFiles, error) {
-	return c.update(false)
-}
-
-func (c *Client) update(latestRoot bool) (data.TargetFiles, error) {
-	// Always start the update using local metadata
-	if err := c.getLocalMeta(); err != nil {
+	if err := c.UpdateRoots(); err != nil {
 		if _, ok := err.(verify.ErrExpired); ok {
-			if !latestRoot {
-				return c.updateWithLatestRoot(nil)
-			}
-			// this should not be reached as if the latest root has
-			// been downloaded and it is expired, updateWithLatestRoot
-			// should not have continued the update
-			return nil, err
+			// For backward compatibility, we wrap the ErrExpired inside
+			// ErrDecodeFailed.
+			return nil, ErrDecodeFailed{"root.json", err}
 		}
-		if latestRoot && isErrRoleThreshold(err) {
-			// Root was updated with new keys, so our local metadata is no
-			// longer validating. Read only the versions from the local metadata
-			// and re-download everything.
-			if err := c.getRootAndLocalVersionsUnsafe(); err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
+		return nil, err
 	}
 
-	// Get timestamp.json, extract snapshot.json file meta and save the
-	// timestamp.json locally
+	// Load trusted metadata files, if any, and verify them against the latest root
+	c.getLocalMeta()
+
+	// 5.4.1 - Download the timestamp metadata
 	timestampJSON, err := c.downloadMetaUnsafe("timestamp.json", defaultTimestampDownloadLimit)
 	if err != nil {
 		return nil, err
 	}
-	snapshotMeta, err := c.decodeTimestamp(timestampJSON)
+	// 5.4.(2,3 and 4) - Verify timestamp against various attacks
+	// Returns the extracted snapshot metadata
+	snapshotMeta, sameTimestampVersion, err := c.decodeTimestamp(timestampJSON)
+	if sameTimestampVersion {
+		// The new timestamp.json file had the same version; we don't need to
+		// update, so bail early.
+		return c.targets, nil
+	}
+
 	if err != nil {
-		// ErrRoleThreshold could indicate timestamp keys have been
-		// revoked, so retry with the latest root.json
-		if isDecodeFailedWithErrRoleThreshold(err) && !latestRoot {
-			return c.updateWithLatestRoot(nil)
-		}
 		return nil, err
 	}
+	// 5.4.5 - Persist the timestamp metadata
 	if err := c.local.SetMeta("timestamp.json", timestampJSON); err != nil {
 		return nil, err
 	}
 
-	// Return ErrLatestSnapshot if we already have the latest snapshot.json
-	if c.hasMetaFromTimestamp("snapshot.json", snapshotMeta) {
-		return nil, ErrLatestSnapshot{c.snapshotVer}
-	}
-
-	// Get snapshot.json, then extract root.json and targets.json file meta.
-	//
-	// The snapshot.json is only saved locally after checking root.json and
-	// targets.json so that it will be re-downloaded on subsequent updates
-	// if this update fails.
+	// 5.5.1 - Download snapshot metadata
+	// 5.5.2 and 5.5.4 - Check against timestamp role's snapshot hash and version
 	snapshotJSON, err := c.downloadMetaFromTimestamp("snapshot.json", snapshotMeta)
 	if err != nil {
 		return nil, err
 	}
-	rootMeta, targetsMeta, err := c.decodeSnapshot(snapshotJSON)
+	// 5.5.(3,5 and 6) - Verify snapshot against various attacks
+	// Returns the extracted metadata files
+	snapshotMetas, err := c.decodeSnapshot(snapshotJSON)
 	if err != nil {
-		// ErrRoleThreshold could indicate snapshot keys have been
-		// revoked, so retry with the latest root.json
-		if isDecodeFailedWithErrRoleThreshold(err) && !latestRoot {
-			return c.updateWithLatestRoot(nil)
-		}
 		return nil, err
 	}
-
-	// If we don't have the root.json, download it, save it in local
-	// storage and restart the update
-	if !c.hasMetaFromSnapshot("root.json", rootMeta) {
-		return c.updateWithLatestRoot(&rootMeta)
+	// 5.5.7 - Persist snapshot metadata
+	if err := c.local.SetMeta("snapshot.json", snapshotJSON); err != nil {
+		return nil, err
 	}
 
 	// If we don't have the targets.json, download it, determine updated
 	// targets and save targets.json in local storage
 	var updatedTargets data.TargetFiles
+	targetsMeta := snapshotMetas["targets.json"]
 	if !c.hasMetaFromSnapshot("targets.json", targetsMeta) {
+		// 5.6.1 - Download the top-level targets metadata file
+		// 5.6.2 and 5.6.4 - Check against snapshot role's targets hash and version
 		targetsJSON, err := c.downloadMetaFromSnapshot("targets.json", targetsMeta)
 		if err != nil {
 			return nil, err
 		}
+		// 5.6.(3 and 5) - Verify signatures and check against freeze attack
 		updatedTargets, err = c.decodeTargets(targetsJSON)
 		if err != nil {
 			return nil, err
 		}
+		// 5.6.6 - Persist targets metadata
 		if err := c.local.SetMeta("targets.json", targetsJSON); err != nil {
 			return nil, err
 		}
 	}
 
-	// Save the snapshot.json now it has been processed successfully
-	if err := c.local.SetMeta("snapshot.json", snapshotJSON); err != nil {
-		return nil, err
-	}
-
 	return updatedTargets, nil
 }
 
-func (c *Client) updateWithLatestRoot(m *data.SnapshotFileMeta) (data.TargetFiles, error) {
-	var rootJSON json.RawMessage
-	var err error
-	if m == nil {
-		rootJSON, err = c.downloadMetaUnsafe("root.json", defaultRootDownloadLimit)
-	} else {
-		rootJSON, err = c.downloadMetaFromSnapshot("root.json", *m)
+func (c *Client) UpdateRoots() error {
+	// https://theupdateframework.github.io/specification/v1.0.19/index.html#load-trusted-root
+	// 5.2 Load the trusted root metadata file. We assume that a good,
+	// trusted copy of this file was shipped with the package manager
+	// or software updater using an out-of-band process.
+	if err := c.loadAndVerifyLocalRootMeta( /*ignoreExpiredCheck=*/ true); err != nil {
+		return err
 	}
-	if err != nil {
-		return nil, err
-	}
-	if err := c.decodeRoot(rootJSON); err != nil {
-		return nil, err
-	}
-	if err := c.local.SetMeta("root.json", rootJSON); err != nil {
-		return nil, err
-	}
-	return c.update(true)
-}
-
-// getLocalMeta decodes and verifies metadata from local storage.
-//
-// The verification of local files is purely for consistency, if an attacker
-// has compromised the local storage, there is no guarantee it can be trusted.
-func (c *Client) getLocalMeta() error {
-	meta, err := c.local.GetMeta()
+	m, err := c.local.GetMeta()
 	if err != nil {
 		return err
 	}
 
-	if rootJSON, ok := meta["root.json"]; ok {
-		// unmarshal root.json without verifying as we need the root
-		// keys first
-		s := &data.Signed{}
-		if err := json.Unmarshal(rootJSON, s); err != nil {
+	type KeyInfo struct {
+		KeyIDs    map[string]bool
+		Threshold int
+	}
+
+	// Prepare for 5.3.11: If the timestamp and / or snapshot keys have been rotated,
+	// then delete the trusted timestamp and snapshot metadata files.
+	getKeyInfo := func(role string) KeyInfo {
+		keyIDs := make(map[string]bool)
+		for k := range c.db.GetRole(role).KeyIDs {
+			keyIDs[k] = true
+		}
+		return KeyInfo{keyIDs, c.db.GetRole(role).Threshold}
+	}
+
+	// The nonRootKeyInfo looks like this:
+	// {
+	//	"timestamp": {KeyIDs={"KEYID1": true, "KEYID2": true}, Threshold=2},
+	//	"snapshot": {KeyIDs={"KEYID3": true}, Threshold=1},
+	//	"targets": {KeyIDs={"KEYID4": true, "KEYID5": true, "KEYID6": true}, Threshold=1}
+	// }
+
+	nonRootKeyInfo := map[string]KeyInfo{"timestamp": {}, "snapshot": {}, "targets": {}}
+	for k := range nonRootKeyInfo {
+		nonRootKeyInfo[k] = getKeyInfo(k)
+	}
+
+	// 5.3.1 Temorarily turn on the consistent snapshots in order to download
+	// versioned root metadata files as described next.
+	consistentSnapshot := c.consistentSnapshot
+	c.consistentSnapshot = true
+
+	nRootMetadata := m["root.json"]
+
+	// https://theupdateframework.github.io/specification/v1.0.19/index.html#update-root
+
+	// 5.3.1 Since it may now be signed using entirely different keys,
+	// the client MUST somehow be able to establish a trusted line of
+	// continuity to the latest set of keys (see § 6.1 Key
+	// management and migration). To do so, the client MUST
+	// download intermediate root metadata files, until the
+	// latest available one is reached. Therefore, it MUST
+	// temporarily turn on consistent snapshots in order to
+	// download versioned root metadata files as described next.
+
+	// This loop returns on error or breaks after downloading the lastest root metadata.
+	// 5.3.2 Let N denote the version number of the trusted root metadata file.
+	for i := 0; i < c.MaxRootRotations; i++ {
+		// 5.3.3 Try downloading version nPlusOne of the root metadata file.
+		// NOTE: as a side effect, we do update c.rootVer to nPlusOne between iterations.
+		nPlusOne := c.rootVer + 1
+		nPlusOneRootPath := util.VersionedPath("root.json", nPlusOne)
+		nPlusOneRootMetadata, err := c.downloadMetaUnsafe(nPlusOneRootPath, defaultRootDownloadLimit)
+
+		if err != nil {
+			if _, ok := err.(ErrMissingRemoteMetadata); ok {
+				// stop when the next root can't be downloaded
+				break
+			}
 			return err
 		}
-		root := &data.Root{}
-		if err := json.Unmarshal(s.Signed, root); err != nil {
+
+		// 5.3.4 Check for an arbitrary software attack.
+		// 5.3.4.1 Check that N signed N+1
+		nPlusOneRootMetadataSigned, err := c.verifyRoot(nRootMetadata, nPlusOneRootMetadata)
+		if err != nil {
 			return err
 		}
-		c.db = verify.NewDB()
-		for id, k := range root.Keys {
-			if err := c.db.AddKey(id, k); err != nil {
-				// TUF is considering in TAP-12 removing the
-				// requirement that the keyid hash algorithm be derived
-				// from the public key. So to be forwards compatible,
-				// we ignore `ErrWrongID` errors.
-				//
-				// TAP-12: https://github.com/theupdateframework/taps/blob/master/tap12.md
-				if _, ok := err.(verify.ErrWrongID); !ok {
-					return err
-				}
+
+		// 5.3.4.2 check that N+1 signed itself.
+		if _, err := c.verifyRoot(nPlusOneRootMetadata, nPlusOneRootMetadata); err != nil {
+			// 5.3.6 Note that the expiration of the new (intermediate) root
+			// metadata file does not matter yet, because we will check for
+			// it in step 5.3.10.
+			return err
+		}
+
+		// 5.3.5 Check for a rollback attack. Here, we check that nPlusOneRootMetadataSigned.version == nPlusOne.
+		if nPlusOneRootMetadataSigned.Version != nPlusOne {
+			return verify.ErrWrongVersion{
+				Given:    nPlusOneRootMetadataSigned.Version,
+				Expected: nPlusOne,
 			}
 		}
-		for name, role := range root.Roles {
-			if err := c.db.AddRole(name, role); err != nil {
-				return err
-			}
-		}
-		if err := c.db.Verify(s, "root", 0); err != nil {
+
+		// 5.3.7 Set the trusted root metadata file to the new root metadata file.
+		c.rootVer = nPlusOneRootMetadataSigned.Version
+		// NOTE: following up on 5.3.1, we want to always have consistent snapshots on for the duration
+		// of root rotation. AFTER the rotation is over, we will set it to the value of the last root.
+		consistentSnapshot = nPlusOneRootMetadataSigned.ConsistentSnapshot
+		// 5.3.8 Persist root metadata. The client MUST write the file to non-volatile storage as FILENAME.EXT (e.g. root.json).
+		// NOTE: Internally, setMeta stores metadata in LevelDB in a persistent manner.
+		if err := c.local.SetMeta("root.json", nPlusOneRootMetadata); err != nil {
 			return err
 		}
-		c.consistentSnapshot = root.ConsistentSnapshot
-	} else {
-		return ErrNoRootKeys
+		nRootMetadata = nPlusOneRootMetadata
+		// 5.3.9 Repeat steps 5.3.2 to 5.3.9
+
+	} // End of the for loop.
+
+	// 5.3.10 Check for a freeze attack.
+	// NOTE: This will check for any, including freeze, attack.
+	if err := c.loadAndVerifyLocalRootMeta( /*ignoreExpiredCheck=*/ false); err != nil {
+		return err
+	}
+
+	countDeleted := func(s1 map[string]bool, s2 map[string]bool) int {
+		c := 0
+		for k := range s1 {
+			if _, ok := s2[k]; !ok {
+				c++
+			}
+		}
+		return c
+	}
+
+	// 5.3.11 To recover from fast-forward attack, certain metadata files need
+	// to be deleted if a threshold of keys are revoked.
+	// List of metadata that should be deleted per role if a threshold of keys
+	// are revoked:
+	// (based on the ongoing PR: https://github.com/mnm678/specification/tree/e50151d9df632299ddea364c4f44fe8ca9c10184)
+	// timestamp -> delete timestamp.json
+	// snapshot ->  delete timestamp.json and snapshot.json
+	// targets ->   delete snapshot.json and targets.json
+	//
+	// nonRootKeyInfo contains the keys and thresholds from root.json
+	// that were on disk before the root update process begins.
+	for topLevelRolename := range nonRootKeyInfo {
+		// ki contains the keys and thresholds from the latest downloaded root.json.
+		ki := getKeyInfo(topLevelRolename)
+		if countDeleted(nonRootKeyInfo[topLevelRolename].KeyIDs, ki.KeyIDs) >= nonRootKeyInfo[topLevelRolename].Threshold {
+			deleteMeta := map[string][]string{
+				"timestamp": {"timestamp.json"},
+				"snapshot":  {"timestamp.json", "snapshot.json"},
+				"targets":   {"snapshot.json", "targets.json"},
+			}
+
+			for _, r := range deleteMeta[topLevelRolename] {
+				c.local.DeleteMeta(r)
+			}
+		}
+	}
+
+	// 5.3.12 Set whether consistent snapshots are used as per the trusted root metadata file.
+	c.consistentSnapshot = consistentSnapshot
+	return nil
+}
+
+// getLocalMeta decodes and verifies metadata from local storage.
+// The verification of local files is purely for consistency, if an attacker
+// has compromised the local storage, there is no guarantee it can be trusted.
+// Before trying to load the metadata files, it clears the in-memory copy of the local metadata.
+// This is to insure that all of the loaded metadata files at the end are indeed verified by the latest root.
+// If some of the metadata files fail to load it will proceed with trying to load the rest,
+// but still return an error at the end, if such occurred. Otherwise returns nil.
+func (c *Client) getLocalMeta() error {
+	var retErr error
+	loadFailed := false
+	// Clear the in-memory copy of the local metadata. The goal is to reload and take into account
+	// only the metadata files that are verified by the latest root. Otherwise, their content should
+	// be ignored.
+	c.localMeta = make(map[string]json.RawMessage)
+
+	// Load the latest root meta
+	if err := c.loadAndVerifyLocalRootMeta( /*ignoreExpiredCheck=*/ false); err != nil {
+		return err
+	}
+
+	// Load into memory the existing meta, if any, from the local storage
+	meta, err := c.local.GetMeta()
+	if err != nil {
+		return nil
+	}
+
+	// Verify the top-level metadata (timestamp, snapshot and targets) against the latest root and load it, if okay
+	if timestampJSON, ok := meta["timestamp.json"]; ok {
+		timestamp := &data.Timestamp{}
+		if err := c.db.UnmarshalTrusted(timestampJSON, timestamp, "timestamp"); err != nil {
+			loadFailed = true
+			retErr = err
+		} else {
+			c.localMeta["timestamp.json"] = meta["timestamp.json"]
+			c.timestampVer = timestamp.Version
+		}
 	}
 
 	if snapshotJSON, ok := meta["snapshot.json"]; ok {
 		snapshot := &data.Snapshot{}
 		if err := c.db.UnmarshalTrusted(snapshotJSON, snapshot, "snapshot"); err != nil {
-			return err
+			loadFailed = true
+			retErr = err
+		} else {
+			c.localMeta["snapshot.json"] = meta["snapshot.json"]
+			c.snapshotVer = snapshot.Version
 		}
-		c.snapshotVer = snapshot.Version
 	}
 
 	if targetsJSON, ok := meta["targets.json"]; ok {
 		targets := &data.Targets{}
 		if err := c.db.UnmarshalTrusted(targetsJSON, targets, "targets"); err != nil {
-			return err
+			loadFailed = true
+			retErr = err
+		} else {
+			c.localMeta["targets.json"] = meta["targets.json"]
+			c.targetsVer = targets.Version
+			// FIXME(TUF-0.9) temporarily support files with leading path separators.
+			// c.targets = targets.Targets
+			c.loadTargets(targets.Targets)
 		}
-		c.targetsVer = targets.Version
-		// FIXME(TUF-0.9) temporarily support files with leading path separators.
-		// c.targets = targets.Targets
-		c.loadTargets(targets.Targets)
 	}
-
-	if timestampJSON, ok := meta["timestamp.json"]; ok {
-		timestamp := &data.Timestamp{}
-		if err := c.db.UnmarshalTrusted(timestampJSON, timestamp, "timestamp"); err != nil {
-			return err
-		}
-		c.timestampVer = timestamp.Version
+	if loadFailed {
+		// If any of the metadata failed to be verified, return the reason for that failure
+		return retErr
 	}
-
-	c.localMeta = meta
 	return nil
+}
+
+// loadAndVerifyLocalRootMeta decodes and verifies root metadata from
+// local storage and loads the top-level keys. This method first clears
+// the DB for top-level keys and then loads the new keys.
+func (c *Client) loadAndVerifyLocalRootMeta(ignoreExpiredCheck bool) error {
+	meta, err := c.local.GetMeta()
+	if err != nil {
+		return err
+	}
+	rootJSON, ok := meta["root.json"]
+	if !ok {
+		return ErrNoRootKeys
+	}
+	return c.loadAndVerifyRootMeta(rootJSON, ignoreExpiredCheck)
+}
+
+// loadAndVerifyRootMeta decodes and verifies root metadata and loads the top-level keys.
+// This method first clears the DB for top-level keys and then loads the new keys.
+func (c *Client) loadAndVerifyRootMeta(rootJSON []byte, ignoreExpiredCheck bool) error {
+	// unmarshal root.json without verifying as we need the root
+	// keys first
+	s := &data.Signed{}
+	if err := json.Unmarshal(rootJSON, s); err != nil {
+		return err
+	}
+	root := &data.Root{}
+	if err := json.Unmarshal(s.Signed, root); err != nil {
+		return err
+	}
+	ndb := verify.NewDB()
+	for id, k := range root.Keys {
+		if err := ndb.AddKey(id, k); err != nil {
+			return err
+		}
+	}
+	for name, role := range root.Roles {
+		if err := ndb.AddRole(name, role); err != nil {
+			return err
+		}
+	}
+	// Any trusted local root metadata version must be greater than 0.
+	if ignoreExpiredCheck {
+		if err := ndb.VerifyIgnoreExpiredCheck(s, "root", 0); err != nil {
+			return err
+		}
+	} else {
+		if err := ndb.Verify(s, "root", 0); err != nil {
+			return err
+		}
+	}
+	c.consistentSnapshot = root.ConsistentSnapshot
+	c.rootVer = root.Version
+	c.db = ndb
+	return nil
+}
+
+// verifyRoot verifies Signed section of the bJSON
+// using verification keys in aJSON.
+func (c *Client) verifyRoot(aJSON []byte, bJSON []byte) (*data.Root, error) {
+	aSigned := &data.Signed{}
+	if err := json.Unmarshal(aJSON, aSigned); err != nil {
+		return nil, err
+	}
+	aRoot := &data.Root{}
+	if err := json.Unmarshal(aSigned.Signed, aRoot); err != nil {
+		return nil, err
+	}
+
+	bSigned := &data.Signed{}
+	if err := json.Unmarshal(bJSON, bSigned); err != nil {
+		return nil, err
+	}
+	bRoot := &data.Root{}
+	if err := json.Unmarshal(bSigned.Signed, bRoot); err != nil {
+		return nil, err
+	}
+
+	ndb := verify.NewDB()
+	for id, k := range aRoot.Keys {
+		if err := ndb.AddKey(id, k); err != nil {
+			return nil, err
+		}
+	}
+	for name, role := range aRoot.Roles {
+		if err := ndb.AddRole(name, role); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := ndb.VerifySignatures(bSigned, "root"); err != nil {
+		return nil, err
+	}
+	return bRoot, nil
 }
 
 // FIXME(TUF-0.9) TUF is considering removing support for target files starting
@@ -370,57 +556,7 @@ func (c *Client) downloadMetaUnsafe(name string, maxMetaSize int64) ([]byte, err
 	// although the size has been checked above, use a LimitReader in case
 	// the reported size is inaccurate, or size is -1 which indicates an
 	// unknown length
-	return ioutil.ReadAll(io.LimitReader(r, maxMetaSize))
-}
-
-// getRootAndLocalVersionsUnsafe decodes the versions stored in the local
-// metadata without verifying signatures to protect against downgrade attacks
-// when the root is replaced and contains new keys. It also sets the local meta
-// cache to only contain the local root metadata.
-func (c *Client) getRootAndLocalVersionsUnsafe() error {
-	type versionData struct {
-		Signed struct {
-			Version int
-		}
-	}
-
-	meta, err := c.local.GetMeta()
-	if err != nil {
-		return err
-	}
-
-	getVersion := func(name string) (int, error) {
-		m, ok := meta[name]
-		if !ok {
-			return 0, nil
-		}
-		var data versionData
-		if err := json.Unmarshal(m, &data); err != nil {
-			return 0, err
-		}
-		return data.Signed.Version, nil
-	}
-
-	c.timestampVer, err = getVersion("timestamp.json")
-	if err != nil {
-		return err
-	}
-	c.snapshotVer, err = getVersion("snapshot.json")
-	if err != nil {
-		return err
-	}
-	c.targetsVer, err = getVersion("targets.json")
-	if err != nil {
-		return err
-	}
-
-	root, ok := meta["root.json"]
-	if !ok {
-		return errors.New("tuf: missing local root after downloading, this should not be possible")
-	}
-	c.localMeta = map[string]json.RawMessage{"root.json": root}
-
-	return nil
+	return io.ReadAll(io.LimitReader(r, maxMetaSize))
 }
 
 // remoteGetFunc is the type of function the download method uses to download
@@ -456,7 +592,7 @@ func (c *Client) downloadTarget(file string, get remoteGetFunc, hashes data.Hash
 
 // downloadVersionedMeta downloads top-level metadata from remote storage and
 // verifies it using the given file metadata.
-func (c *Client) downloadMeta(name string, version int, m data.FileMeta) ([]byte, error) {
+func (c *Client) downloadMeta(name string, version int64, m data.FileMeta) ([]byte, error) {
 	r, size, err := func() (io.ReadCloser, int64, error) {
 		if c.consistentSnapshot {
 			path := util.VersionedPath(name, version)
@@ -491,70 +627,108 @@ func (c *Client) downloadMeta(name string, version int, m data.FileMeta) ([]byte
 		stream = r
 	}
 
-	return ioutil.ReadAll(stream)
+	return io.ReadAll(stream)
 }
 
 func (c *Client) downloadMetaFromSnapshot(name string, m data.SnapshotFileMeta) ([]byte, error) {
-	b, err := c.downloadMeta(name, m.Version, m.FileMeta)
+	b, err := c.downloadMeta(name, m.Version, data.FileMeta{Length: m.Length, Hashes: m.Hashes})
 	if err != nil {
 		return nil, err
 	}
 
-	meta, err := util.GenerateSnapshotFileMeta(bytes.NewReader(b), m.HashAlgorithms()...)
+	// 5.6.2 – Check length and hashes of fetched bytes *before* parsing metadata
+	if err := util.BytesMatchLenAndHashes(b, m.Length, m.Hashes); err != nil {
+		return nil, ErrDownloadFailed{name, err}
+	}
+
+	meta, err := util.GenerateSnapshotFileMeta(bytes.NewReader(b), m.Hashes.HashAlgorithms()...)
 	if err != nil {
 		return nil, err
 	}
-	if err := util.SnapshotFileMetaEqual(meta, m); err != nil {
+
+	// 5.6.4 - Check against snapshot role's version
+	if err := util.VersionEqual(meta.Version, m.Version); err != nil {
 		return nil, ErrDownloadFailed{name, err}
 	}
+
 	return b, nil
 }
 
 func (c *Client) downloadMetaFromTimestamp(name string, m data.TimestampFileMeta) ([]byte, error) {
-	b, err := c.downloadMeta(name, m.Version, m.FileMeta)
+	b, err := c.downloadMeta(name, m.Version, data.FileMeta{Length: m.Length, Hashes: m.Hashes})
 	if err != nil {
 		return nil, err
 	}
 
-	meta, err := util.GenerateTimestampFileMeta(bytes.NewReader(b), m.HashAlgorithms()...)
-	if err != nil {
-		return nil, err
-	}
-	if err := util.TimestampFileMetaEqual(meta, m); err != nil {
+	// 5.2.2. – Check length and hashes of fetched bytes *before* parsing metadata
+	if err := util.BytesMatchLenAndHashes(b, m.Length, m.Hashes); err != nil {
 		return nil, ErrDownloadFailed{name, err}
 	}
-	return b, nil
-}
 
-// decodeRoot decodes and verifies root metadata.
-func (c *Client) decodeRoot(b json.RawMessage) error {
-	root := &data.Root{}
-	if err := c.db.Unmarshal(b, root, "root", c.rootVer); err != nil {
-		return ErrDecodeFailed{"root.json", err}
+	meta, err := util.GenerateTimestampFileMeta(bytes.NewReader(b), m.Hashes.HashAlgorithms()...)
+	if err != nil {
+		return nil, err
 	}
-	c.rootVer = root.Version
-	c.consistentSnapshot = root.ConsistentSnapshot
-	return nil
+
+	// 5.5.4 - Check against timestamp role's version
+	if err := util.VersionEqual(meta.Version, m.Version); err != nil {
+		return nil, ErrDownloadFailed{name, err}
+	}
+
+	return b, nil
 }
 
 // decodeSnapshot decodes and verifies snapshot metadata, and returns the new
 // root and targets file meta.
-func (c *Client) decodeSnapshot(b json.RawMessage) (data.SnapshotFileMeta, data.SnapshotFileMeta, error) {
+func (c *Client) decodeSnapshot(b json.RawMessage) (data.SnapshotFiles, error) {
 	snapshot := &data.Snapshot{}
+	// 5.5.(3 and 6) - Verify it's signed correctly and it's not expired
 	if err := c.db.Unmarshal(b, snapshot, "snapshot", c.snapshotVer); err != nil {
-		return data.SnapshotFileMeta{}, data.SnapshotFileMeta{}, ErrDecodeFailed{"snapshot.json", err}
+		return data.SnapshotFiles{}, ErrDecodeFailed{"snapshot.json", err}
 	}
-	c.snapshotVer = snapshot.Version
-	return snapshot.Meta["root.json"], snapshot.Meta["targets.json"], nil
+	// 5.5.5 - Check for top-level targets rollback attack
+	// Verify explicitly that current targets meta version is less than or equal to the new one
+	if snapshot.Meta["targets.json"].Version < c.targetsVer {
+		return data.SnapshotFiles{}, verify.ErrLowVersion{Actual: snapshot.Meta["targets.json"].Version, Current: c.targetsVer}
+	}
+
+	// 5.5.5 - Get the local/trusted snapshot metadata, if any, and check all target metafiles against rollback attack
+	// In case the local snapshot metadata was not verified by the keys in the latest root during getLocalMeta(),
+	// snapshot.json won't be present in c.localMeta and thus this check will not be processed.
+	if snapshotJSON, ok := c.localMeta["snapshot.json"]; ok {
+		currentSnapshot := &data.Snapshot{}
+		if err := c.db.UnmarshalTrusted(snapshotJSON, currentSnapshot, "snapshot"); err != nil {
+			return data.SnapshotFiles{}, err
+		}
+		// 5.5.5 - Check for rollback attacks in both top-level and delegated targets roles (note that the Meta object includes both)
+		for path, local := range currentSnapshot.Meta {
+			if newMeta, ok := snapshot.Meta[path]; ok {
+				// 5.5.5 - Check for rollback attack
+				if newMeta.Version < local.Version {
+					return data.SnapshotFiles{}, verify.ErrLowVersion{Actual: newMeta.Version, Current: local.Version}
+				}
+			} else {
+				// 5.5.5 - Abort the update if a target file has been removed from the new snapshot file
+				return data.SnapshotFiles{}, verify.ErrMissingTargetFile
+			}
+		}
+	}
+	// At this point we can trust the new snapshot, the top-level targets, and any delegated targets versions it refers to
+	// so we can update the client's trusted versions and proceed with persisting the new snapshot metadata
+	// c.snapshotVer was already set when we verified the timestamp metadata
+	c.targetsVer = snapshot.Meta["targets.json"].Version
+	return snapshot.Meta, nil
 }
 
 // decodeTargets decodes and verifies targets metadata, sets c.targets and
 // returns updated targets.
 func (c *Client) decodeTargets(b json.RawMessage) (data.TargetFiles, error) {
 	targets := &data.Targets{}
+	// 5.6.(3 and 5) - Verify signatures and check against freeze attack
 	if err := c.db.Unmarshal(b, targets, "targets", c.targetsVer); err != nil {
 		return nil, ErrDecodeFailed{"targets.json", err}
 	}
+	// Generate a list with the updated targets
 	updatedTargets := make(data.TargetFiles)
 	for path, meta := range targets.Targets {
 		if local, ok := c.targets[path]; ok {
@@ -564,7 +738,7 @@ func (c *Client) decodeTargets(b json.RawMessage) (data.TargetFiles, error) {
 		}
 		updatedTargets[path] = meta
 	}
-	c.targetsVer = targets.Version
+	// c.targetsVer was already updated when we verified the snapshot metadata
 	// FIXME(TUF-0.9) temporarily support files with leading path separators.
 	// c.targets = targets.Targets
 	c.loadTargets(targets.Targets)
@@ -572,56 +746,51 @@ func (c *Client) decodeTargets(b json.RawMessage) (data.TargetFiles, error) {
 }
 
 // decodeTimestamp decodes and verifies timestamp metadata, and returns the
-// new snapshot file meta.
-func (c *Client) decodeTimestamp(b json.RawMessage) (data.TimestampFileMeta, error) {
+// new snapshot file meta and signals whether the update should be aborted early
+// (the new timestamp has the same version as the old one, so there's no need to
+// complete the update).
+func (c *Client) decodeTimestamp(b json.RawMessage) (data.TimestampFileMeta, bool, error) {
 	timestamp := &data.Timestamp{}
+
 	if err := c.db.Unmarshal(b, timestamp, "timestamp", c.timestampVer); err != nil {
-		return data.TimestampFileMeta{}, ErrDecodeFailed{"timestamp.json", err}
+		return data.TimestampFileMeta{}, false, ErrDecodeFailed{"timestamp.json", err}
 	}
+	// 5.4.3.1  - Check for timestamp rollback attack
+	// We already checked for timestamp.Version < c.timestampVer in the Unmarshal call above.
+	// Here, we're checking for version equality, which indicates that we can abandon this update.
+	if timestamp.Version == c.timestampVer {
+		return data.TimestampFileMeta{}, true, nil
+	}
+	// 5.4.3.2 - Check for snapshot rollback attack
+	// Verify that the current snapshot meta version is less than or equal to the new one
+	if timestamp.Meta["snapshot.json"].Version < c.snapshotVer {
+		return data.TimestampFileMeta{}, false, verify.ErrLowVersion{Actual: timestamp.Meta["snapshot.json"].Version, Current: c.snapshotVer}
+	}
+	// At this point we can trust the new timestamp and the snapshot version it refers to
+	// so we can update the client's trusted versions and proceed with persisting the new timestamp
 	c.timestampVer = timestamp.Version
-	return timestamp.Meta["snapshot.json"], nil
+	c.snapshotVer = timestamp.Meta["snapshot.json"].Version
+	return timestamp.Meta["snapshot.json"], false, nil
 }
 
-// hasSnapshotMeta checks whether local metadata has the given meta
+// hasMetaFromSnapshot checks whether local metadata has the given meta
 func (c *Client) hasMetaFromSnapshot(name string, m data.SnapshotFileMeta) bool {
-	b, ok := c.localMeta[name]
-	if !ok {
-		return false
-	}
-	meta, err := util.GenerateSnapshotFileMeta(bytes.NewReader(b), m.HashAlgorithms()...)
-	if err != nil {
-		return false
-	}
-	err = util.SnapshotFileMetaEqual(meta, m)
-	return err == nil
+	_, ok := c.localMetaFromSnapshot(name, m)
+	return ok
 }
 
-// hasTargetsMeta checks whether local metadata has the given snapshot meta
-func (c *Client) hasTargetsMeta(m data.SnapshotFileMeta) bool {
-	b, ok := c.localMeta["targets.json"]
-	if !ok {
-		return false
-	}
-	meta, err := util.GenerateSnapshotFileMeta(bytes.NewReader(b), m.HashAlgorithms()...)
-	if err != nil {
-		return false
-	}
-	err = util.SnapshotFileMetaEqual(meta, m)
-	return err == nil
-}
-
-// hasSnapshotMeta checks whether local metadata has the given meta
-func (c *Client) hasMetaFromTimestamp(name string, m data.TimestampFileMeta) bool {
+// localMetaFromSnapshot returns localmetadata if it matches the snapshot
+func (c *Client) localMetaFromSnapshot(name string, m data.SnapshotFileMeta) (json.RawMessage, bool) {
 	b, ok := c.localMeta[name]
 	if !ok {
-		return false
+		return nil, false
 	}
-	meta, err := util.GenerateTimestampFileMeta(bytes.NewReader(b), m.HashAlgorithms()...)
+	meta, err := util.GenerateSnapshotFileMeta(bytes.NewReader(b), m.Hashes.HashAlgorithms()...)
 	if err != nil {
-		return false
+		return nil, false
 	}
-	err = util.TimestampFileMetaEqual(meta, m)
-	return err == nil
+	err = util.SnapshotFileMetaEqual(meta, m)
+	return b, err == nil
 }
 
 type Destination interface {
@@ -633,10 +802,11 @@ type Destination interface {
 //
 // dest will be deleted and an error returned in the following situations:
 //
-//   * The target does not exist in the local targets.json
-//   * The target does not exist in remote storage
-//   * Metadata cannot be generated for the downloaded data
-//   * Generated metadata does not match local metadata for the given file
+//   - The target does not exist in the local targets.json
+//   - Failed to fetch the chain of delegations accessible from local snapshot.json
+//   - The target does not exist in any targets
+//   - Metadata cannot be generated for the downloaded data
+//   - Generated metadata does not match local metadata for the given file
 func (c *Client) Download(name string, dest Destination) (err error) {
 	// delete dest if there is an error
 	defer func() {
@@ -652,11 +822,14 @@ func (c *Client) Download(name string, dest Destination) (err error) {
 		}
 	}
 
-	// return ErrUnknownTarget if the file is not in the local targets.json
 	normalizedName := util.NormalizeTarget(name)
 	localMeta, ok := c.targets[normalizedName]
 	if !ok {
-		return ErrUnknownTarget{name}
+		// search in delegations
+		localMeta, err = c.getTargetFileMeta(normalizedName)
+		if err != nil {
+			return err
+		}
 	}
 
 	// get the data from remote storage
@@ -691,23 +864,46 @@ func (c *Client) Download(name string, dest Destination) (err error) {
 	return nil
 }
 
-// Target returns the target metadata for a specific target if it
-// exists. If it does not, ErrNotFound will be returned.
-func (c *Client) Target(name string) (data.TargetFileMeta, error) {
-	m, err := c.Targets()
-	if err != nil {
-		return data.TargetFileMeta{}, err
+func (c *Client) VerifyDigest(digest string, digestAlg string, length int64, path string) error {
+	localMeta, ok := c.targets[path]
+	if !ok {
+		return ErrUnknownTarget{Name: path, SnapshotVersion: c.snapshotVer}
 	}
 
-	target, ok := m[util.NormalizeTarget(name)]
-	if ok {
+	actual := data.FileMeta{Length: length, Hashes: make(data.Hashes, 1)}
+	var err error
+	actual.Hashes[digestAlg], err = hex.DecodeString(digest)
+	if err != nil {
+		return err
+	}
+
+	if err := util.TargetFileMetaEqual(data.TargetFileMeta{FileMeta: actual}, localMeta); err != nil {
+		if e, ok := err.(util.ErrWrongLength); ok {
+			return ErrWrongSize{path, e.Actual, e.Expected}
+		}
+		return ErrDownloadFailed{path, err}
+	}
+
+	return nil
+}
+
+// Target returns the target metadata for a specific target if it
+// exists, searching from top-level level targets then through
+// all delegations. If it does not, ErrNotFound will be returned.
+func (c *Client) Target(name string) (data.TargetFileMeta, error) {
+	target, err := c.getTargetFileMeta(util.NormalizeTarget(name))
+	if err == nil {
 		return target, nil
 	}
 
-	return data.TargetFileMeta{}, ErrNotFound{name}
+	if _, ok := err.(ErrUnknownTarget); ok {
+		return data.TargetFileMeta{}, ErrNotFound{name}
+	}
+
+	return data.TargetFileMeta{}, err
 }
 
-// Targets returns the complete list of available targets.
+// Targets returns the complete list of available top-level targets.
 func (c *Client) Targets() (data.TargetFiles, error) {
 	// populate c.targets from local storage if not set
 	if c.targets == nil {

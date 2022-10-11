@@ -1,5 +1,6 @@
 # go-tuf
-[![build](https://github.com/theupdateframework/go-tuf/workflows/build/badge.svg)](https://github.com/theupdateframework/go-tuf/actions?query=workflow%3Abuild) [![Coverage Status](https://coveralls.io/repos/github/theupdateframework/go-tuf/badge.svg)](https://coveralls.io/github/theupdateframework/go-tuf) [![PkgGoDev](https://pkg.go.dev/badge/github.com/theupdateframework/go-tuf)](https://pkg.go.dev/github.com/theupdateframework/go-tuf) [![Go Report Card](https://goreportcard.com/badge/github.com/theupdateframework/go-tuf)](https://goreportcard.com/report/github.com/theupdateframework/go-tuf)  
+
+[![build](https://github.com/theupdateframework/go-tuf/workflows/build/badge.svg)](https://github.com/theupdateframework/go-tuf/actions?query=workflow%3Abuild) [![Coverage Status](https://coveralls.io/repos/github/theupdateframework/go-tuf/badge.svg)](https://coveralls.io/github/theupdateframework/go-tuf) [![PkgGoDev](https://pkg.go.dev/badge/github.com/theupdateframework/go-tuf)](https://pkg.go.dev/github.com/theupdateframework/go-tuf) [![Go Report Card](https://goreportcard.com/badge/github.com/theupdateframework/go-tuf)](https://goreportcard.com/report/github.com/theupdateframework/go-tuf)
 
 This is a Go implementation of [The Update Framework (TUF)](http://theupdateframework.com/),
 a framework for securing software update systems.
@@ -8,7 +9,7 @@ a framework for securing software update systems.
 
 A TUF repository has the following directory layout:
 
-```
+```bash
 .
 ├── keys
 ├── repository
@@ -19,11 +20,11 @@ A TUF repository has the following directory layout:
 
 The directories contain the following files:
 
-* `keys/` - signing keys (optionally encrypted) with filename pattern `ROLE.json`
-* `repository/` - signed manifests
-* `repository/targets/` - hashed target files
-* `staged/` - either signed, unsigned or partially signed manifests
-* `staged/targets/` - unhashed target files
+- `keys/` - signing keys (optionally encrypted) with filename pattern `ROLE.json`
+- `repository/` - signed metadata files
+- `repository/targets/` - hashed target files
+- `staged/` - either signed, unsigned or partially signed metadata files
+- `staged/targets/` - unhashed target files
 
 ## CLI
 
@@ -31,7 +32,9 @@ The directories contain the following files:
 
 ### Install
 
-```
+`go-tuf` is tested on Go versions 1.18.
+
+```bash
 go get github.com/theupdateframework/go-tuf/cmd/tuf
 ```
 
@@ -51,38 +54,43 @@ initialized to do so when generating keys.
 Prompts the user for an encryption passphrase (unless the
 `--insecure-plaintext` flag is set), then generates a new signing key and
 writes it to the relevant key file in the `keys` directory. It also stages
-the addition of the new key to the `root` manifest.
+the addition of the new key to the `root` metadata file. Alternatively, passphrases
+can be set via environment variables in the form of `TUF_{{ROLE}}_PASSPHRASE`
 
-#### `tuf set-threshold <role> <threshold>`
+#### `tuf revoke-key [--expires=<days>] <role> <id>`
 
-Sets the `role` threshold, the required number of keys for signing, to
-`threshold`.
+Revoke a signing key
+
+The key will be removed from the root metadata file, but the key will remain in the
+"keys" directory if present.
 
 #### `tuf add [<path>...]`
 
 Hashes files in the `staged/targets` directory at the given path(s), then
-updates and stages the `targets` manifest. Specifying no paths hashes all
+updates and stages the `targets` metadata file. Specifying no paths hashes all
 files in the `staged/targets` directory.
 
 #### `tuf remove [<path>...]`
 
-Stages the removal of files with the given path(s) from the `targets` manifest
+Stages the removal of files with the given path(s) from the `targets` metadata file
 (they get removed from the filesystem when the change is committed). Specifying
-no paths removes all files from the `targets` manifest.
+no paths removes all files from the `targets` metadata file.
 
-#### `tuf snapshot [--compression=<format>]`
+#### `tuf snapshot [--expires=<days>]`
 
-Expects a staged, fully signed `targets` manifest and stages an appropriate
-`snapshot` manifest. It optionally compresses the staged `targets` manifest.
+Expects a staged, fully signed `targets` metadata file and stages an appropriate
+`snapshot` metadata file. Optionally one can set number of days after which
+the `snapshot` metadata will expire.
 
-#### `tuf timestamp`
+#### `tuf timestamp [--expires=<days>]`
 
-Stages an appropriate `timestamp` manifest. If a `snapshot` manifest is staged,
-it must be fully signed.
+Stages an appropriate `timestamp` metadata file. If a `snapshot` metadata file is staged,
+it must be fully signed. Optionally one can set number of days after which
+the timestamp metadata will expire.
 
-#### `tuf sign ROLE`
+#### `tuf sign <metadata>`
 
-Signs the given role's staged manifest with all keys present in the `keys`
+Signs the given role's staged metadata file with all keys present in the `keys`
 directory for that role.
 
 #### `tuf commit`
@@ -90,20 +98,69 @@ directory for that role.
 Verifies that all staged changes contain the correct information and are signed
 to the correct threshold, then moves the staged files into the `repository`
 directory. It also removes any target files which are not in the `targets`
-manifest.
+metadata file.
 
 #### `tuf regenerate [--consistent-snapshot=false]`
 
-Recreates the `targets` manifest based on the files in `repository/targets`.
+Note: Not supported yet
+
+Recreates the `targets` metadata file based on the files in `repository/targets`.
 
 #### `tuf clean`
 
-Removes all staged manifests and targets.
+Removes all staged metadata files and targets.
 
 #### `tuf root-keys`
 
 Outputs a JSON serialized array of root keys to STDOUT. The resulting JSON
 should be distributed to clients for performing initial updates.
+
+#### `tuf set-threshold <role> <threshold>`
+
+Sets `role`'s threshold (required number of keys for signing) to
+`threshold`.
+
+#### `tuf get-threshold <role>`
+
+Outputs `role`'s threshold (required number of keys for signing).
+
+#### `tuf change-passphrase <role>`
+
+Changes the passphrase for given role keys file. The CLI supports reading
+both the existing and the new passphrase via the following environment
+variables - `TUF_{{ROLE}}_PASSPHRASE` and respectively `TUF_NEW_{{ROLE}}_PASSPHRASE`
+
+#### `tuf payload <metadata>`
+
+Outputs the metadata file for a role in a ready-to-sign (canonicalized) format.
+
+See also `tuf sign-payload` and `tuf add-signatures`.
+
+#### `tuf sign-payload --role=<role> <path>`
+
+Sign a file (outside of the TUF repo) using keys (in the TUF keys database,
+typically produced by `tuf gen-key`) for the given `role` (from the TUF repo).
+
+Typically, `path` will be a file containing the output of `tuf payload`.
+
+See also `tuf add-signatures`.
+
+#### `tuf add-signatures --signatures <sig_file> <metadata>`
+
+
+Adds signatures (the output of `tuf sign-payload`) to the given role metadata file.
+
+If the signature does not verify, it will not be added.
+
+#### `tuf status --valid-at <date> <role>`
+
+Check if the role's metadata will be expired on the given date. 
+
+#### Usage of environment variables
+
+The `tuf` CLI supports receiving passphrases via environment variables in
+the form of `TUF_{{ROLE}}_PASSPHRASE` for existing ones and
+`TUF_NEW_{{ROLE}}_PASSPHRASE` for setting new ones.
 
 For a list of supported commands, run `tuf help` from the command line.
 
@@ -120,11 +177,11 @@ staged changes and signing on each machine in turn before finally committing.
 
 Some key IDs are truncated for illustrative purposes.
 
-#### Create signed root manifest
+#### Create signed root metadata file
 
 Generate a root key on the root box:
 
-```
+```bash
 $ tuf gen-key root
 Enter root keys passphrase:
 Repeat root keys passphrase:
@@ -143,7 +200,7 @@ $ tree .
 Copy `staged/root.json` from the root box to the repo box and generate targets,
 snapshot and timestamp keys:
 
-```
+```bash
 $ tree .
 .
 ├── keys
@@ -181,7 +238,7 @@ $ tree .
 
 Copy `staged/root.json` from the repo box back to the root box and sign it:
 
-```
+```bash
 $ tree .
 .
 ├── keys
@@ -196,14 +253,54 @@ Enter root keys passphrase:
 ```
 
 The staged `root.json` can now be copied back to the repo box ready to be
-committed alongside other manifests.
+committed alongside other metadata files.
+
+#### Alternate signing flow
+
+Instead of manually copying `root.json` into the TUF repository on the root box,
+you can use the `tuf payload`, `tuf sign-payload`, `tuf add-signatures` flow.
+
+On the repo box, get the `root.json` payload in a canonical format:
+
+``` bash
+$ tuf payload root.json > root.json.payload
+```
+
+Copy `root.json.payload` to the root box and sign it:
+
+
+``` bash
+$ tuf sign-payload --role=root root.json.payload > root.json.sigs
+Enter root keys passphrase:
+```
+
+Copy `root.json.sigs` back to the repo box and import the signatures:
+
+``` bash
+$ tuf add-signatures --signatures root.json.sigs root.json
+```
+
+This achieves the same state as the above flow for the repo box:
+
+```bash
+$ tree .
+.
+├── keys
+│   ├── snapshot.json
+│   ├── targets.json
+│   └── timestamp.json
+├── repository
+└── staged
+    ├── root.json
+    └── targets
+```
 
 #### Add a target file
 
-Assuming a staged, signed `root` manifest and the file to add exists at
+Assuming a staged, signed `root` metadata file and the file to add exists at
 `staged/targets/foo/bar/baz.txt`:
 
-```
+```bash
 $ tree .
 .
 ├── keys
@@ -283,7 +380,7 @@ $ tree .
 
 Assuming the file to remove is at `repository/targets/foo/bar/baz.txt`:
 
-```
+```bash
 $ tree .
 .
 ├── keys
@@ -364,9 +461,9 @@ $ tree .
 └── staged
 ```
 
-#### Regenerate manifests based on targets tree
+#### Regenerate metadata files based on targets tree (Note: Not supported yet)
 
-```
+```bash
 $ tree .
 .
 ├── keys
@@ -453,7 +550,7 @@ $ tree .
 
 #### Update timestamp.json
 
-```
+```bash
 $ tree .
 .
 ├── keys
@@ -511,3 +608,15 @@ $ tree .
 For the client package, see https://godoc.org/github.com/theupdateframework/go-tuf/client.
 
 For the client CLI, see https://github.com/theupdateframework/go-tuf/tree/master/cmd/tuf-client.
+
+## Contributing and Development
+
+For local development, `go-tuf` requires Go version 1.18.
+
+The [Python interoperability tests](client/python_interop/) require Python 3
+(available as `python` on the `$PATH`) and the [`python-tuf`
+package](https://github.com/theupdateframework/python-tuf) installed (`pip
+install tuf`). To update the data for these tests requires Docker and make (see
+test data [README.md](client/python_interop/testdata/README.md) for details).
+
+Please see [CONTRIBUTING.md](docs/CONTRIBUTING.md) for contribution guidelines before making your first contribution!

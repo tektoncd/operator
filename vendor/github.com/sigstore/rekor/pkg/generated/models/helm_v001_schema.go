@@ -33,7 +33,7 @@ import (
 
 // HelmV001Schema Helm v0.0.1 Schema
 //
-// Schema for Helm object
+// # Schema for Helm object
 //
 // swagger:model helmV001Schema
 type HelmV001Schema struct {
@@ -41,9 +41,6 @@ type HelmV001Schema struct {
 	// chart
 	// Required: true
 	Chart *HelmV001SchemaChart `json:"chart"`
-
-	// Arbitrary content to be included in the verifiable entry in the transparency log
-	ExtraData interface{} `json:"extraData,omitempty"`
 
 	// public key
 	// Required: true
@@ -78,6 +75,8 @@ func (m *HelmV001Schema) validateChart(formats strfmt.Registry) error {
 		if err := m.Chart.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("chart")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("chart")
 			}
 			return err
 		}
@@ -96,6 +95,8 @@ func (m *HelmV001Schema) validatePublicKey(formats strfmt.Registry) error {
 		if err := m.PublicKey.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("publicKey")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("publicKey")
 			}
 			return err
 		}
@@ -128,6 +129,8 @@ func (m *HelmV001Schema) contextValidateChart(ctx context.Context, formats strfm
 		if err := m.Chart.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("chart")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("chart")
 			}
 			return err
 		}
@@ -142,6 +145,8 @@ func (m *HelmV001Schema) contextValidatePublicKey(ctx context.Context, formats s
 		if err := m.PublicKey.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("publicKey")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("publicKey")
 			}
 			return err
 		}
@@ -208,6 +213,8 @@ func (m *HelmV001SchemaChart) validateHash(formats strfmt.Registry) error {
 		if err := m.Hash.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("chart" + "." + "hash")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("chart" + "." + "hash")
 			}
 			return err
 		}
@@ -226,6 +233,8 @@ func (m *HelmV001SchemaChart) validateProvenance(formats strfmt.Registry) error 
 		if err := m.Provenance.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("chart" + "." + "provenance")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("chart" + "." + "provenance")
 			}
 			return err
 		}
@@ -258,6 +267,8 @@ func (m *HelmV001SchemaChart) contextValidateHash(ctx context.Context, formats s
 		if err := m.Hash.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("chart" + "." + "hash")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("chart" + "." + "hash")
 			}
 			return err
 		}
@@ -272,6 +283,8 @@ func (m *HelmV001SchemaChart) contextValidateProvenance(ctx context.Context, for
 		if err := m.Provenance.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("chart" + "." + "provenance")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("chart" + "." + "provenance")
 			}
 			return err
 		}
@@ -419,10 +432,6 @@ type HelmV001SchemaChartProvenance struct {
 
 	// signature
 	Signature *HelmV001SchemaChartProvenanceSignature `json:"signature,omitempty"`
-
-	// Specifies the location of the provenance file
-	// Format: uri
-	URL strfmt.URI `json:"url,omitempty"`
 }
 
 // Validate validates this helm v001 schema chart provenance
@@ -430,10 +439,6 @@ func (m *HelmV001SchemaChartProvenance) Validate(formats strfmt.Registry) error 
 	var res []error
 
 	if err := m.validateSignature(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateURL(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -452,21 +457,11 @@ func (m *HelmV001SchemaChartProvenance) validateSignature(formats strfmt.Registr
 		if err := m.Signature.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("chart" + "." + "provenance" + "." + "signature")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("chart" + "." + "provenance" + "." + "signature")
 			}
 			return err
 		}
-	}
-
-	return nil
-}
-
-func (m *HelmV001SchemaChartProvenance) validateURL(formats strfmt.Registry) error {
-	if swag.IsZero(m.URL) { // not required
-		return nil
-	}
-
-	if err := validate.FormatOf("chart"+"."+"provenance"+"."+"url", "body", "uri", m.URL.String(), formats); err != nil {
-		return err
 	}
 
 	return nil
@@ -492,6 +487,8 @@ func (m *HelmV001SchemaChartProvenance) contextValidateSignature(ctx context.Con
 		if err := m.Signature.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("chart" + "." + "provenance" + "." + "signature")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("chart" + "." + "provenance" + "." + "signature")
 			}
 			return err
 		}
@@ -600,19 +597,16 @@ func (m *HelmV001SchemaChartProvenanceSignature) UnmarshalBinary(b []byte) error
 type HelmV001SchemaPublicKey struct {
 
 	// Specifies the content of the public key inline within the document
+	// Required: true
 	// Format: byte
-	Content strfmt.Base64 `json:"content,omitempty"`
-
-	// Specifies the location of the public key
-	// Format: uri
-	URL strfmt.URI `json:"url,omitempty"`
+	Content *strfmt.Base64 `json:"content"`
 }
 
 // Validate validates this helm v001 schema public key
 func (m *HelmV001SchemaPublicKey) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateURL(formats); err != nil {
+	if err := m.validateContent(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -622,12 +616,9 @@ func (m *HelmV001SchemaPublicKey) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *HelmV001SchemaPublicKey) validateURL(formats strfmt.Registry) error {
-	if swag.IsZero(m.URL) { // not required
-		return nil
-	}
+func (m *HelmV001SchemaPublicKey) validateContent(formats strfmt.Registry) error {
 
-	if err := validate.FormatOf("publicKey"+"."+"url", "body", "uri", m.URL.String(), formats); err != nil {
+	if err := validate.Required("publicKey"+"."+"content", "body", m.Content); err != nil {
 		return err
 	}
 

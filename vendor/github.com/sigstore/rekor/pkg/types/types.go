@@ -22,6 +22,8 @@ import (
 	"sync"
 
 	"github.com/sigstore/rekor/pkg/generated/models"
+	"github.com/sigstore/rekor/pkg/log"
+	"golang.org/x/exp/slices"
 )
 
 // TypeMap stores mapping between type strings and entry constructors
@@ -41,6 +43,7 @@ type TypeImpl interface {
 	CreateProposedEntry(context.Context, string, ArtifactProperties) (models.ProposedEntry, error)
 	DefaultVersion() string
 	SupportedVersions() []string
+	IsSupportedVersion(string) bool
 	UnmarshalEntry(pe models.ProposedEntry) (EntryImpl, error)
 }
 
@@ -61,8 +64,14 @@ func (rt *RekorType) VersionedUnmarshal(pe models.ProposedEntry, version string)
 	return entry, entry.Unmarshal(pe)
 }
 
+// SupportedVersions returns a list of versions of this type that can be currently entered into the log
 func (rt *RekorType) SupportedVersions() []string {
 	return rt.VersionMap.SupportedVersions()
+}
+
+// IsSupportedVersion returns true if the version can be inserted into the log, and false if not
+func (rt *RekorType) IsSupportedVersion(proposedVersion string) bool {
+	return slices.Contains(rt.SupportedVersions(), proposedVersion)
 }
 
 // ListImplementedTypes returns a list of all type strings currently known to
@@ -77,4 +86,19 @@ func ListImplementedTypes() []string {
 		return true
 	})
 	return retVal
+}
+
+type errCloser interface {
+	CloseWithError(error) error
+}
+
+func PipeCloser(errClosers ...errCloser) func(err error) error {
+	return func(err error) error {
+		for _, p := range errClosers {
+			if err := p.CloseWithError(err); err != nil {
+				log.Logger.Error(fmt.Errorf("error closing pipe: %w", err))
+			}
+		}
+		return err
+	}
 }

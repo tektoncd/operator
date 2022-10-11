@@ -17,16 +17,21 @@ package pki
 
 import (
 	"io"
+
+	sigsig "github.com/sigstore/sigstore/pkg/signature"
 )
 
 // PublicKey Generic object representing a public key (regardless of format & algorithm)
 type PublicKey interface {
 	CanonicalValue() ([]byte, error)
+	// Deprecated: EmailAddresses() will be deprecated in favor of Subjects() which will
+	// also return Subject URIs present in public keys.
 	EmailAddresses() []string
+	Subjects() []string
 }
 
 // Signature Generic object representing a signature (regardless of format & algorithm)
 type Signature interface {
 	CanonicalValue() ([]byte, error)
-	Verify(r io.Reader, k interface{}) error
+	Verify(r io.Reader, k interface{}, opts ...sigsig.VerifyOption) error
 }

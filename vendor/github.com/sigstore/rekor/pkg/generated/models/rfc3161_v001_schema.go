@@ -32,13 +32,10 @@ import (
 
 // Rfc3161V001Schema Timestamp v0.0.1 Schema
 //
-// Schema for RFC3161 entries
+// # Schema for RFC3161 entries
 //
 // swagger:model rfc3161V001Schema
 type Rfc3161V001Schema struct {
-
-	// Arbitrary content to be included in the verifiable entry in the transparency log
-	ExtraData interface{} `json:"extraData,omitempty"`
 
 	// tsr
 	// Required: true
@@ -69,6 +66,8 @@ func (m *Rfc3161V001Schema) validateTsr(formats strfmt.Registry) error {
 		if err := m.Tsr.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tsr")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tsr")
 			}
 			return err
 		}
@@ -97,6 +96,8 @@ func (m *Rfc3161V001Schema) contextValidateTsr(ctx context.Context, formats strf
 		if err := m.Tsr.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tsr")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tsr")
 			}
 			return err
 		}

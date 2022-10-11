@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package payload defines a container image
 package payload
 
 import (
@@ -25,34 +26,39 @@ import (
 // CosignSignatureType is the value of `critical.type` in a SimpleContainerImage payload.
 const CosignSignatureType = "cosign container image signature"
 
-// Simple describes the structure of a basic container image signature payload, as defined at:
+// SimpleContainerImage describes the structure of a basic container image signature payload, as defined at:
 // https://github.com/containers/image/blob/master/docs/containers-signature.5.md#json-data-format
 type SimpleContainerImage struct {
-	Critical Critical               `json:"critical"`
-	Optional map[string]interface{} `json:"optional"`
+	Critical Critical               `json:"critical"` // Critical data critical to correctly evaluating the validity of the signature
+	Optional map[string]interface{} `json:"optional"` // Optional optional metadata about the image
 }
 
+// Critical data critical to correctly evaluating the validity of a signature
 type Critical struct {
-	Identity Identity `json:"identity"`
-	Image    Image    `json:"image"`
-	Type     string   `json:"type"`
+	Identity Identity `json:"identity"` // Identity claimed identity of the image
+	Image    Image    `json:"image"`    // Image identifies the container that the signature applies to
+	Type     string   `json:"type"`     // Type must be 'atomic container signature'
 }
 
+// Identity is the claimed identity of the image
 type Identity struct {
-	DockerReference string `json:"docker-reference"`
+	DockerReference string `json:"docker-reference"` // DockerReference is a reference used to refer to or download the image
 }
 
+// Image identifies the container image that the signature applies to
 type Image struct {
-	DockerManifestDigest string `json:"docker-manifest-digest"`
+	DockerManifestDigest string `json:"docker-manifest-digest"` // DockerManifestDigest the manifest digest of the signed container image
 }
 
+// Cosign describes a container image signed using Cosign
 type Cosign struct {
 	Image       name.Digest
 	Annotations map[string]interface{}
 }
 
-func (p Cosign) MarshalJSON() ([]byte, error) {
-	simple := SimpleContainerImage{
+// SimpleContainerImage returns information about a container image in the github.com/containers/image/signature format
+func (p Cosign) SimpleContainerImage() SimpleContainerImage {
+	return SimpleContainerImage{
 		Critical: Critical{
 			Identity: Identity{
 				DockerReference: p.Image.Repository.Name(),
@@ -64,11 +70,16 @@ func (p Cosign) MarshalJSON() ([]byte, error) {
 		},
 		Optional: p.Annotations,
 	}
-	return json.Marshal(simple)
+}
+
+// MarshalJSON marshals the container signature into a []byte of JSON data
+func (p Cosign) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.SimpleContainerImage())
 }
 
 var _ json.Marshaler = Cosign{}
 
+// UnmarshalJSON unmarshals []byte of JSON data into a container signature object
 func (p *Cosign) UnmarshalJSON(data []byte) error {
 	if string(data) == "null" {
 		// JSON "null" is a no-op by convention
@@ -84,7 +95,7 @@ func (p *Cosign) UnmarshalJSON(data []byte) error {
 	digestStr := simple.Critical.Identity.DockerReference + "@" + simple.Critical.Image.DockerManifestDigest
 	digest, err := name.NewDigest(digestStr)
 	if err != nil {
-		return fmt.Errorf("could not parse image digest string %q: %v", digestStr, err)
+		return fmt.Errorf("could not parse image digest string %q: %w", digestStr, err)
 	}
 	p.Image = digest
 	p.Annotations = simple.Optional

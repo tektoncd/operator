@@ -16,12 +16,13 @@ package kubernetes
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
+	"k8s.io/utils/pointer"
+
 	v1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,7 +30,9 @@ import (
 	"github.com/sigstore/cosign/pkg/cosign"
 )
 
-const KeyReference = "k8s://"
+const (
+	KeyReference = "k8s://"
+)
 
 func GetKeyPairSecret(ctx context.Context, k8sRef string) (*v1.Secret, error) {
 	namespace, name, err := parseRef(k8sRef)
@@ -37,14 +40,14 @@ func GetKeyPairSecret(ctx context.Context, k8sRef string) (*v1.Secret, error) {
 		return nil, err
 	}
 
-	client, err := Client()
+	client, err := client()
 	if err != nil {
-		return nil, errors.Wrap(err, "new for config")
+		return nil, fmt.Errorf("new for config: %w", err)
 	}
 
 	var s *v1.Secret
 	if s, err = client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{}); err != nil {
-		return nil, errors.Wrap(err, "checking if secret exists")
+		return nil, fmt.Errorf("checking if secret exists: %w", err)
 	}
 
 	return s, nil
@@ -58,33 +61,37 @@ func KeyPairSecret(ctx context.Context, k8sRef string, pf cosign.PassFunc) error
 	// now, generate the key in memory
 	keys, err := cosign.GenerateKeyPair(pf)
 	if err != nil {
-		return errors.Wrap(err, "generating key pair")
+		return fmt.Errorf("generating key pair: %w", err)
 	}
 
 	// create the k8s client
-	client, err := Client()
+	client, err := client()
 	if err != nil {
-		return errors.Wrap(err, "new for config")
+		return fmt.Errorf("new for config: %w", err)
+	}
+	immutable, err := checkImmutableSecretSupported(client)
+	if err != nil {
+		return fmt.Errorf("check immutable: %w", err)
 	}
 	var s *v1.Secret
 	if s, err = client.CoreV1().Secrets(namespace).Get(ctx, name, metav1.GetOptions{}); err != nil {
 		if k8serrors.IsNotFound(err) {
-			s, err = client.CoreV1().Secrets(namespace).Create(ctx, secret(keys, namespace, name, nil), metav1.CreateOptions{})
+			s, err = client.CoreV1().Secrets(namespace).Create(ctx, secret(keys, namespace, name, nil, immutable), metav1.CreateOptions{})
 			if err != nil {
-				return errors.Wrapf(err, "creating secret %s in ns %s", name, namespace)
+				return fmt.Errorf("creating secret %s in ns %s: %w", name, namespace, err)
 			}
 		} else {
-			return errors.Wrap(err, "checking if secret exists")
+			return fmt.Errorf("checking if secret exists: %w", err)
 		}
 	} else { // Update the existing secret
-		s, err = client.CoreV1().Secrets(namespace).Update(ctx, secret(keys, namespace, name, s.Data), metav1.UpdateOptions{})
+		s, err = client.CoreV1().Secrets(namespace).Update(ctx, secret(keys, namespace, name, s.Data, immutable), metav1.UpdateOptions{})
 		if err != nil {
-			return errors.Wrapf(err, "updating secret %s in ns %s", name, namespace)
+			return fmt.Errorf("updating secret %s in ns %s: %w", name, namespace, err)
 		}
 	}
 
 	fmt.Fprintf(os.Stderr, "Successfully created secret %s in namespace %s\n", s.Name, s.Namespace)
-	if err := ioutil.WriteFile("cosign.pub", keys.PublicBytes, 0600); err != nil {
+	if err := os.WriteFile("cosign.pub", keys.PublicBytes, 0600); err != nil {
 		return err
 	}
 	fmt.Fprintln(os.Stderr, "Public key written to cosign.pub")
@@ -95,7 +102,7 @@ func KeyPairSecret(ctx context.Context, k8sRef string, pf cosign.PassFunc) error
 // * cosign.key
 // * cosign.pub
 // * cosign.password
-func secret(keys *cosign.Keys, namespace, name string, data map[string][]byte) *v1.Secret {
+func secret(keys *cosign.KeysBytes, namespace, name string, data map[string][]byte, immutable bool) *v1.Secret {
 	if data == nil {
 		data = map[string][]byte{}
 	}
@@ -103,12 +110,23 @@ func secret(keys *cosign.Keys, namespace, name string, data map[string][]byte) *
 	data["cosign.pub"] = keys.PublicBytes
 	data["cosign.password"] = keys.Password()
 
+	obj := metav1.ObjectMeta{
+		Name:      name,
+		Namespace: namespace,
+	}
+
+	// For Kubernetes >= 1.21, set Immutable by default
+	if immutable {
+		return &v1.Secret{
+			ObjectMeta: obj,
+			Data:       data,
+			Immutable:  pointer.Bool(true),
+		}
+	}
+
 	return &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-		},
-		Data: data,
+		ObjectMeta: obj,
+		Data:       data,
 	}
 }
 

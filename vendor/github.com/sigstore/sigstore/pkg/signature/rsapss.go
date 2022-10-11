@@ -19,20 +19,29 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"errors"
+	"fmt"
 	"io"
 
-	"github.com/pkg/errors"
 	"github.com/sigstore/sigstore/pkg/signature/options"
 )
 
+// checked on LoadSigner, LoadVerifier, and SignMessage
 var rsaSupportedHashFuncs = []crypto.Hash{
 	crypto.SHA256,
-	crypto.SHA512,
-	crypto.SHA224,
 	crypto.SHA384,
-	crypto.SHA1,
+	crypto.SHA512,
 }
 
+// checked on VerifySignature. Supports SHA1 verification.
+var rsaSupportedVerifyHashFuncs = []crypto.Hash{
+	crypto.SHA1,
+	crypto.SHA256,
+	crypto.SHA384,
+	crypto.SHA512,
+}
+
+// RSAPSSSigner is a signature.Signer that uses the RSA PSS algorithm
 type RSAPSSSigner struct {
 	hashFunc crypto.Hash
 	priv     *rsa.PrivateKey
@@ -44,7 +53,7 @@ type RSAPSSSigner struct {
 // If opts are specified, then they will be stored and used as a default if not overridden
 // by the value passed to Sign().
 //
-// hf must not be crypto.Hash(0).
+// hf must be either SHA256, SHA388, or SHA512. opts.Hash is ignored.
 func LoadRSAPSSSigner(priv *rsa.PrivateKey, hf crypto.Hash, opts *rsa.PSSOptions) (*RSAPSSSigner, error) {
 	if priv == nil {
 		return nil, errors.New("invalid RSA private key specified")
@@ -125,6 +134,7 @@ func (r RSAPSSSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts
 	return r.SignMessage(nil, rsaOpts...)
 }
 
+// RSAPSSVerifier is a signature.Verifier that uses the RSA PSS algorithm
 type RSAPSSVerifier struct {
 	publicKey *rsa.PublicKey
 	hashFunc  crypto.Hash
@@ -133,7 +143,7 @@ type RSAPSSVerifier struct {
 
 // LoadRSAPSSVerifier verifies signatures using the specified public key and hash algorithm.
 //
-// hf must not be crypto.Hash(0). opts.Hash is ignored.
+// hf must be either SHA256, SHA388, or SHA512. opts.Hash is ignored.
 func LoadRSAPSSVerifier(pub *rsa.PublicKey, hashFunc crypto.Hash, opts *rsa.PSSOptions) (*RSAPSSVerifier, error) {
 	if pub == nil {
 		return nil, errors.New("invalid RSA public key specified")
@@ -171,7 +181,7 @@ func (r RSAPSSVerifier) PublicKey(_ ...PublicKeyOption) (crypto.PublicKey, error
 //
 // All other options are ignored if specified.
 func (r RSAPSSVerifier) VerifySignature(signature, message io.Reader, opts ...VerifyOption) error {
-	digest, hf, err := ComputeDigestForVerifying(message, r.hashFunc, rsaSupportedHashFuncs, opts...)
+	digest, hf, err := ComputeDigestForVerifying(message, r.hashFunc, rsaSupportedVerifyHashFuncs, opts...)
 	if err != nil {
 		return err
 	}
@@ -182,7 +192,7 @@ func (r RSAPSSVerifier) VerifySignature(signature, message io.Reader, opts ...Ve
 
 	sigBytes, err := io.ReadAll(signature)
 	if err != nil {
-		return errors.Wrap(err, "reading signature")
+		return fmt.Errorf("reading signature: %w", err)
 	}
 
 	// rsa.VerifyPSS ignores pssOpts.Hash, so we don't set it
@@ -196,6 +206,7 @@ func (r RSAPSSVerifier) VerifySignature(signature, message io.Reader, opts ...Ve
 	return rsa.VerifyPSS(r.publicKey, hf, digest, sigBytes, pssOpts)
 }
 
+// RSAPSSSignerVerifier is a signature.SignerVerifier that uses the RSA PSS algorithm
 type RSAPSSSignerVerifier struct {
 	*RSAPSSSigner
 	*RSAPSSVerifier
@@ -206,11 +217,11 @@ type RSAPSSSignerVerifier struct {
 func LoadRSAPSSSignerVerifier(priv *rsa.PrivateKey, hf crypto.Hash, opts *rsa.PSSOptions) (*RSAPSSSignerVerifier, error) {
 	signer, err := LoadRSAPSSSigner(priv, hf, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing signer")
+		return nil, fmt.Errorf("initializing signer: %w", err)
 	}
 	verifier, err := LoadRSAPSSVerifier(&priv.PublicKey, hf, opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing verifier")
+		return nil, fmt.Errorf("initializing verifier: %w", err)
 	}
 
 	return &RSAPSSSignerVerifier{

@@ -19,12 +19,14 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"errors"
+	"fmt"
 	"io"
 
-	"github.com/pkg/errors"
 	"github.com/sigstore/sigstore/pkg/signature/options"
 )
 
+// RSAPKCS1v15Signer is a signature.Signer that uses the RSA PKCS1v15 algorithm
 type RSAPKCS1v15Signer struct {
 	hashFunc crypto.Hash
 	priv     *rsa.PrivateKey
@@ -32,13 +34,13 @@ type RSAPKCS1v15Signer struct {
 
 // LoadRSAPKCS1v15Signer calculates signatures using the specified private key and hash algorithm.
 //
-// hf must not be crypto.Hash(0).
+// hf must be either SHA256, SHA388, or SHA512.
 func LoadRSAPKCS1v15Signer(priv *rsa.PrivateKey, hf crypto.Hash) (*RSAPKCS1v15Signer, error) {
 	if priv == nil {
 		return nil, errors.New("invalid RSA private key specified")
 	}
 
-	if hf == crypto.Hash(0) {
+	if !isSupportedAlg(hf, rsaSupportedHashFuncs) {
 		return nil, errors.New("invalid hash function specified")
 	}
 
@@ -106,6 +108,7 @@ func (r RSAPKCS1v15Signer) Sign(rand io.Reader, digest []byte, opts crypto.Signe
 	return r.SignMessage(nil, rsaOpts...)
 }
 
+// RSAPKCS1v15Verifier is a signature.Verifier that uses the RSA PKCS1v15 algorithm
 type RSAPKCS1v15Verifier struct {
 	publicKey *rsa.PublicKey
 	hashFunc  crypto.Hash
@@ -114,13 +117,13 @@ type RSAPKCS1v15Verifier struct {
 // LoadRSAPKCS1v15Verifier returns a Verifier that verifies signatures using the specified
 // RSA public key and hash algorithm.
 //
-// hf must not be crypto.Hash(0).
+// hf must be either SHA256, SHA388, or SHA512.
 func LoadRSAPKCS1v15Verifier(pub *rsa.PublicKey, hashFunc crypto.Hash) (*RSAPKCS1v15Verifier, error) {
 	if pub == nil {
 		return nil, errors.New("invalid RSA public key specified")
 	}
 
-	if hashFunc == crypto.Hash(0) {
+	if !isSupportedAlg(hashFunc, rsaSupportedHashFuncs) {
 		return nil, errors.New("invalid hash function specified")
 	}
 
@@ -151,7 +154,7 @@ func (r RSAPKCS1v15Verifier) PublicKey(_ ...PublicKeyOption) (crypto.PublicKey, 
 //
 // All other options are ignored if specified.
 func (r RSAPKCS1v15Verifier) VerifySignature(signature, message io.Reader, opts ...VerifyOption) error {
-	digest, hf, err := ComputeDigestForVerifying(message, r.hashFunc, rsaSupportedHashFuncs, opts...)
+	digest, hf, err := ComputeDigestForVerifying(message, r.hashFunc, rsaSupportedVerifyHashFuncs, opts...)
 	if err != nil {
 		return err
 	}
@@ -162,12 +165,13 @@ func (r RSAPKCS1v15Verifier) VerifySignature(signature, message io.Reader, opts 
 
 	sigBytes, err := io.ReadAll(signature)
 	if err != nil {
-		return errors.Wrap(err, "reading signature")
+		return fmt.Errorf("reading signature: %w", err)
 	}
 
 	return rsa.VerifyPKCS1v15(r.publicKey, hf, digest, sigBytes)
 }
 
+// RSAPKCS1v15SignerVerifier is a signature.SignerVerifier that uses the RSA PKCS1v15 algorithm
 type RSAPKCS1v15SignerVerifier struct {
 	*RSAPKCS1v15Signer
 	*RSAPKCS1v15Verifier
@@ -178,11 +182,11 @@ type RSAPKCS1v15SignerVerifier struct {
 func LoadRSAPKCS1v15SignerVerifier(priv *rsa.PrivateKey, hf crypto.Hash) (*RSAPKCS1v15SignerVerifier, error) {
 	signer, err := LoadRSAPKCS1v15Signer(priv, hf)
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing signer")
+		return nil, fmt.Errorf("initializing signer: %w", err)
 	}
 	verifier, err := LoadRSAPKCS1v15Verifier(&priv.PublicKey, hf)
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing verifier")
+		return nil, fmt.Errorf("initializing verifier: %w", err)
 	}
 
 	return &RSAPKCS1v15SignerVerifier{

@@ -23,6 +23,8 @@ import (
 	"net/url"
 	"reflect"
 
+	"github.com/cyberphone/json-canonicalization/go/src/webpki.org/jsoncanonicalizer"
+	"github.com/go-openapi/strfmt"
 	"github.com/mitchellh/mapstructure"
 	"github.com/sigstore/rekor/pkg/generated/models"
 )
@@ -30,11 +32,25 @@ import (
 // EntryImpl specifies the behavior of a versioned type
 type EntryImpl interface {
 	APIVersion() string                               // the supported versions for this implementation
-	IndexKeys() []string                              // the keys that should be added to the external index for this entry
+	IndexKeys() ([]string, error)                     // the keys that should be added to the external index for this entry
 	Canonicalize(ctx context.Context) ([]byte, error) // marshal the canonical entry to be put into the tlog
 	Unmarshal(e models.ProposedEntry) error           // unmarshal the abstract entry into the specific struct for this versioned type
-	Attestation() (string, []byte)
 	CreateFromArtifactProperties(context.Context, ArtifactProperties) (models.ProposedEntry, error)
+}
+
+// EntryWithAttestationImpl specifies the behavior of a versioned type that also stores attestations
+type EntryWithAttestationImpl interface {
+	EntryImpl
+	AttestationKey() string                // returns the key used to look up the attestation from storage (should be sha256:digest)
+	AttestationKeyValue() (string, []byte) // returns the key to be used when storing the attestation as well as the attestation itself
+}
+
+// ProposedEntryIterator is an iterator over a list of proposed entries
+type ProposedEntryIterator interface {
+	models.ProposedEntry
+	HasNext() bool
+	Get() models.ProposedEntry
+	GetNext() models.ProposedEntry
 }
 
 // EntryFactory describes a factory function that can generate structs for a specific versioned type
@@ -51,8 +67,28 @@ func NewProposedEntry(ctx context.Context, kind, version string, props ArtifactP
 	return nil, fmt.Errorf("could not create entry for kind '%v'", kind)
 }
 
-// NewEntry returns the specific instance for the type and version specified in the doc
-func NewEntry(pe models.ProposedEntry) (EntryImpl, error) {
+// CreateVersionedEntry returns the specific instance for the type and version specified in the doc
+// This method should be used on the insertion flow, which validates that the specific version proposed
+// is permitted to be entered into the log.
+func CreateVersionedEntry(pe models.ProposedEntry) (EntryImpl, error) {
+	ei, err := UnmarshalEntry(pe)
+	if err != nil {
+		return nil, err
+	}
+	kind := pe.Kind()
+	if tf, found := TypeMap.Load(kind); found {
+		if !tf.(func() TypeImpl)().IsSupportedVersion(ei.APIVersion()) {
+			return nil, fmt.Errorf("entry kind '%v' does not support inserting entries of version '%v'", kind, ei.APIVersion())
+		}
+	}
+
+	return ei, nil
+}
+
+// UnmarshalEntry returns the specific instance for the type and version specified in the doc
+// This method does not check for whether the version of the entry could be currently inserted into the log,
+// and is useful when dealing with entries that have been persisted to the log.
+func UnmarshalEntry(pe models.ProposedEntry) (EntryImpl, error) {
 	if pe == nil {
 		return nil, errors.New("proposed entry cannot be nil")
 	}
@@ -65,21 +101,26 @@ func NewEntry(pe models.ProposedEntry) (EntryImpl, error) {
 		}
 		return t.UnmarshalEntry(pe)
 	}
-	return nil, fmt.Errorf("could not create entry for kind '%v'", kind)
+	return nil, fmt.Errorf("could not unmarshal entry for kind '%v'", kind)
 }
 
 // DecodeEntry maps the (abstract) input structure into the specific entry implementation class;
 // while doing so, it detects the case where we need to convert from string to []byte and does
-// the base64 decoding required to make that happen
+// the base64 decoding required to make that happen.
+// This also detects converting from string to strfmt.DateTime
 func DecodeEntry(input, output interface{}) error {
 	cfg := mapstructure.DecoderConfig{
 		DecodeHook: func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
-			if f.Kind() != reflect.String || t.Kind() != reflect.Slice {
+			if f.Kind() != reflect.String || t.Kind() != reflect.Slice && t != reflect.TypeOf(strfmt.DateTime{}) {
 				return data, nil
 			}
 
 			if data == nil {
 				return nil, errors.New("attempted to decode nil data")
+			}
+
+			if t == reflect.TypeOf(strfmt.DateTime{}) {
+				return strfmt.ParseDateTime(data.(string))
 			}
 
 			bytes, err := base64.StdEncoding.DecodeString(data.(string))
@@ -99,15 +140,27 @@ func DecodeEntry(input, output interface{}) error {
 	return dec.Decode(input)
 }
 
+// CanonicalizeEntry returns the entry marshalled in JSON according to the
+// canonicalization rules of RFC8785 to protect against any changes in golang's JSON
+// marshalling logic that may reorder elements
+func CanonicalizeEntry(ctx context.Context, entry EntryImpl) ([]byte, error) {
+	canonicalEntry, err := entry.Canonicalize(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return jsoncanonicalizer.Transform(canonicalEntry)
+}
+
 // ArtifactProperties provide a consistent struct for passing values from
 // CLI flags to the type+version specific CreateProposeEntry() methods
 type ArtifactProperties struct {
-	ArtifactPath   *url.URL
-	ArtifactHash   string
-	ArtifactBytes  []byte
-	SignaturePath  *url.URL
-	SignatureBytes []byte
-	PublicKeyPath  *url.URL
-	PublicKeyBytes []byte
-	PKIFormat      string
+	AdditionalAuthenticatedData []byte
+	ArtifactPath                *url.URL
+	ArtifactHash                string
+	ArtifactBytes               []byte
+	SignaturePath               *url.URL
+	SignatureBytes              []byte
+	PublicKeyPaths              []*url.URL
+	PublicKeyBytes              [][]byte
+	PKIFormat                   string
 }

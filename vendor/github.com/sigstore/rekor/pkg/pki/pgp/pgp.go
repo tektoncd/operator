@@ -24,10 +24,14 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/go-playground/validator"
-	"golang.org/x/crypto/openpgp"
-	"golang.org/x/crypto/openpgp/armor"
-	"golang.org/x/crypto/openpgp/packet"
+	validator "github.com/go-playground/validator/v10"
+
+	//TODO: https://github.com/sigstore/rekor/issues/286
+	"golang.org/x/crypto/openpgp"        //nolint:staticcheck
+	"golang.org/x/crypto/openpgp/armor"  //nolint:staticcheck
+	"golang.org/x/crypto/openpgp/packet" //nolint:staticcheck
+
+	sigsig "github.com/sigstore/sigstore/pkg/signature"
 )
 
 // Signature Signature that follows the PGP standard; supports both armored & binary detached signatures
@@ -130,7 +134,7 @@ func (s Signature) CanonicalValue() ([]byte, error) {
 }
 
 // Verify implements the pki.Signature interface
-func (s Signature) Verify(r io.Reader, k interface{}) error {
+func (s Signature) Verify(r io.Reader, k interface{}, opts ...sigsig.VerifyOption) error {
 	if len(s.signature) == 0 {
 		return fmt.Errorf("PGP signature has not been initialized")
 	}
@@ -293,4 +297,9 @@ func (k PublicKey) EmailAddresses() []string {
 		}
 	}
 	return names
+}
+
+// Subjects implements the pki.PublicKey interface
+func (k PublicKey) Subjects() []string {
+	return k.EmailAddresses()
 }

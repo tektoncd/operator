@@ -18,10 +18,9 @@ package signature
 import (
 	"crypto"
 	crand "crypto/rand"
+	"errors"
 	"fmt"
 	"io"
-
-	"github.com/pkg/errors"
 )
 
 func isSupportedAlg(alg crypto.Hash, supportedAlgs []crypto.Hash) bool {
@@ -36,6 +35,12 @@ func isSupportedAlg(alg crypto.Hash, supportedAlgs []crypto.Hash) bool {
 	return false
 }
 
+// ComputeDigestForSigning calculates the digest value for the specified message using a hash function selected by the following process:
+//
+// - if a digest value is already specified in a SignOption and the length of the digest matches that of the selected hash function, the
+// digest value will be returned without any further computation
+// - if a hash function is given using WithCryptoSignerOpts(opts) as a SignOption, it will be used (if it is in the supported list)
+// - otherwise defaultHashFunc will be used (if it is in the supported list)
 func ComputeDigestForSigning(rawMessage io.Reader, defaultHashFunc crypto.Hash, supportedHashFuncs []crypto.Hash, opts ...SignOption) (digest []byte, hashedWith crypto.Hash, err error) {
 	var cryptoSignerOpts crypto.SignerOpts = defaultHashFunc
 	for _, opt := range opts {
@@ -56,6 +61,12 @@ func ComputeDigestForSigning(rawMessage io.Reader, defaultHashFunc crypto.Hash, 
 	return
 }
 
+// ComputeDigestForVerifying calculates the digest value for the specified message using a hash function selected by the following process:
+//
+// - if a digest value is already specified in a SignOption and the length of the digest matches that of the selected hash function, the
+// digest value will be returned without any further computation
+// - if a hash function is given using WithCryptoSignerOpts(opts) as a SignOption, it will be used (if it is in the supported list)
+// - otherwise defaultHashFunc will be used (if it is in the supported list)
 func ComputeDigestForVerifying(rawMessage io.Reader, defaultHashFunc crypto.Hash, supportedHashFuncs []crypto.Hash, opts ...VerifyOption) (digest []byte, hashedWith crypto.Hash, err error) {
 	var cryptoSignerOpts crypto.SignerOpts = defaultHashFunc
 	for _, opt := range opts {
@@ -86,7 +97,7 @@ func hashMessage(rawMessage io.Reader, hashFunc crypto.Hash) ([]byte, error) {
 	hasher := hashFunc.New()
 	// avoids reading entire message into memory
 	if _, err := io.Copy(hasher, rawMessage); err != nil {
-		return nil, errors.Wrap(err, "hashing message")
+		return nil, fmt.Errorf("hashing message: %w", err)
 	}
 	return hasher.Sum(nil), nil
 }

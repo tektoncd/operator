@@ -25,10 +25,10 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/options"
 	"golang.org/x/mod/sumdb/note"
@@ -46,16 +46,16 @@ type SignedNote struct {
 func (s *SignedNote) Sign(identity string, signer signature.Signer, opts signature.SignOption) (*note.Signature, error) {
 	sig, err := signer.SignMessage(bytes.NewReader([]byte(s.Note)), opts)
 	if err != nil {
-		return nil, errors.Wrap(err, "signing note")
+		return nil, fmt.Errorf("signing note: %w", err)
 	}
 
 	pk, err := signer.PublicKey()
 	if err != nil {
-		return nil, errors.Wrap(err, "retrieving public key")
+		return nil, fmt.Errorf("retrieving public key: %w", err)
 	}
 	pubKeyBytes, err := x509.MarshalPKIXPublicKey(pk)
 	if err != nil {
-		return nil, errors.Wrap(err, "marshalling public key")
+		return nil, fmt.Errorf("marshalling public key: %w", err)
 	}
 
 	pkSha := sha256.Sum256(pubKeyBytes)
@@ -134,10 +134,10 @@ func (s SignedNote) String() string {
 //
 // \u2014 name signature
 //
-// * name is the string associated with the signer
-// * signature is a base64 encoded string; the first 4 bytes of the decoded value is a
-//   hint to the public key; it is a big-endian encoded uint32 representing the first
-//   4 bytes of the SHA256 hash of the public key
+//   - name is the string associated with the signer
+//   - signature is a base64 encoded string; the first 4 bytes of the decoded value is a
+//     hint to the public key; it is a big-endian encoded uint32 representing the first
+//     4 bytes of the SHA256 hash of the public key
 func (s *SignedNote) UnmarshalText(data []byte) error {
 	sigSplit := []byte("\n\n")
 	// Must end with signature block preceded by blank line.
@@ -158,12 +158,12 @@ func (s *SignedNote) UnmarshalText(data []byte) error {
 	for b.Scan() {
 		var name, signature string
 		if _, err := fmt.Fscanf(strings.NewReader(b.Text()), "\u2014 %s %s\n", &name, &signature); err != nil {
-			return errors.Wrap(err, "parsing signature")
+			return fmt.Errorf("parsing signature: %w", err)
 		}
 
 		sigBytes, err := base64.StdEncoding.DecodeString(signature)
 		if err != nil {
-			return errors.Wrap(err, "decoding signature")
+			return fmt.Errorf("decoding signature: %w", err)
 		}
 		if len(sigBytes) < 5 {
 			return errors.New("signature is too small")

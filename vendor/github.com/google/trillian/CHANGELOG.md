@@ -2,16 +2,92 @@
 
 ## HEAD
 
+## v.1.5.0
+
+### Storage
+
+* Ephemeral nodes are no-longer written for any tree by default (and have not been read since the v1.4.0 release), the corresponding `--tree_ids_with_no_ephemeral_nodes` flag is now deprecated (and will be removed in a future release).
+  
+### Cleanup
+* Format code according to go1.19rc2 by @mhutchinson in https://github.com/google/trillian/pull/2785
+* Delete merkle package, use [github.com/transparency-dev/merkle](https://pkg.go.dev/github.com/transparency-dev/merkle) instead.
+
+### Misc
+* Fix order-dependent test by @hickford in https://github.com/google/trillian/pull/2792
+
+### Dependency updates
+* Updated golangci-lint to v1.47.3 (developers should update to this version) by @mhutchinson in https://github.com/google/trillian/pull/2791
+* Bump google.golang.org/api from 0.87.0 to 0.88.0 by @dependabot in https://github.com/google/trillian/pull/2783
+* Bump cloud.google.com/go/spanner from 1.35.0 to 1.36.0 by @dependabot in https://github.com/google/trillian/pull/2784
+* Bump google.golang.org/api from 0.88.0 to 0.90.0 by @dependabot in https://github.com/google/trillian/pull/2789
+* Bump golang.org/x/tools from 0.1.11 to 0.1.12 by @dependabot in https://github.com/google/trillian/pull/2790
+* Bump google.golang.org/protobuf from 1.28.0 to 1.28.1 by @dependabot in https://github.com/google/trillian/pull/2788
+* Bump google.golang.org/api from 0.90.0 to 0.91.0 by @dependabot in https://github.com/google/trillian/pull/2796
+* Bump github.com/prometheus/client_golang from 1.12.2 to 1.13.0 by @dependabot in https://github.com/google/trillian/pull/2795
+* Bump github.com/fullstorydev/grpcurl from 1.8.6 to 1.8.7 by @dependabot in https://github.com/google/trillian/pull/2794
+* Bump google.golang.org/api from 0.91.0 to 0.92.0 by @dependabot in https://github.com/google/trillian/pull/2798
+
+## v1.4.2
+
+* #2568: Allow disabling the writes of ephemeral nodes to storage via the
+  `--tree_ids_with_no_ephemeral_nodes` flag to the sequencer.
+* #2748: `--cloudspanner_max_burst_sessions` deprecated (it hasn't had any
+  effect for a while, now it's more explicit)
+* #2768: update go.mod to use 1.17 compatibility from 1.13.
+
+### Dependency updates
+
+* Updated golangci-lint to v1.46.1 (developers should update to this version)
+* Removed dependency on certificate-transparency-go
+
+### Developer updates
+
+* #2765 copies the required protos from `googleapis` into `third_party` in this
+  repository. This simplifies the preconditions in order to compile the proto
+  definitions, and removes a big dependency on `$GOPATH/src` which was archaic;
+  `$GOPATH/src/github.com/googleapis/googleapis` is no longer required.
+
+## v1.4.1
+
+* `countFromInformationSchema` function to add support for MySQL 8.
+
+### Removals
+
+ * #2710: Unused `storage/tools/dumplib` was removed. The useful storage format
+  regression test moved to `integration/format`.
+ * #2711: Unused `storage/tools/hasher` removed.
+ * #2715: Packages under `merkle` are deprecated and to be removed. Use
+   https://github.com/transparency-dev/merkle instead.
+
+### Misc improvements
+
+ * #2712: Fix MySQL world-writable config warning.
+ * #2726: Check the tile height invariant stricter. No changes required.
+
+### Dependency updates
+ * #2731: Update `protoc` from `v3.12.4` to `v3.20.1`
+
+## v1.4.0
+
+* Recommended go version for development: 1.17
+  * This is the version used by the cloudbuild presubmits. Using a
+    different version can lead to presubmits failing due to unexpected
+    diffs.
 * GCP terraform script updated. GKE 1.19 and updated CPU type to E2
 
 ### Dependency updates
+Many dep updates, including:
  * Upgraded to etcd v3 in order to allow grpc to be upgraded (#2195)
-   * etcd was `v0.5.0-alpha.5`, now `v3.5.0-alpha.0`
- * grpc upgraded from `v1.29.1` to `v1.36.0`
+   * etcd was `v0.5.0-alpha.5`, now `v3.5.0`
+ * grpc upgraded from `v1.29.1` to `v1.40.0`
  * certificate-transparency-go from `v1.0.21` to
    `v1.1.2-0.20210512142713-bed466244fa6`
+ * protobuf upgraded from `v1` to `v2`
+ * MySQL driver from `1.5.0` to `1.6.0`
 
 ### Cleanup
+ * **Removed signatures from LogRoot and EntryTimestamps returned by RPCs** (reflecting that
+   there should not be a trust boundary between Trillian and the personality.)
  * Removed the deprecated crypto.NewSHA256Signer function.
  * Finish removing the `LogMetadata.GetUnsequencedCounts()` method.
  * Removed the following APIs:
@@ -20,6 +96,10 @@
    - `TrillianLog.QueueLeaves`
  * Removed the incomplete Postgres storage backend (#1298).
  * Deprecated `LogRootV1.Revision` field.
+ * Moved `rfc6962` hasher one directory up to eliminate empty leftover package.
+ * Removed unused `log_client` tool.
+ * Various tidyups and improvements to merke & proof generation code.
+ * Remove some remnants of experimental map.
 
 ### Storage refactoring
  * `NodeReader.GetMerkleNodes` does not accept revisions anymore. The
@@ -35,10 +115,14 @@
  * Removed the `ReadOnlyLogTX` interface, and put its only used
    `GetActiveLogIDs` method to `LogStorage`.
  * Inlined the `LogMetadata` interface to `ReadOnlyLogStorage`.
+ * Inlined the `TreeStorage` interfaces to `LogStorage`.
  * Removed the need for the storage layer to return ephemeral node hashes. The
    application layer always requests for complete subtree nodes comprising the
    compact ranges corresponding to the requests.
- * TODO(pavelkalinnikov): More changes are coming, and will be added here.
+ * Removed the single-tile callback from `SubtreeCache`, it uses only
+   `GetSubtreesFunc` now.
+ * Removed `SetSubtreesFunc` callback from `SubtreeCache`. The tiles should be
+   written by the caller now, i.e. the caller must invoke the callback.
 
 ## v1.3.13
 [Published 2021-02-16](https://github.com/google/trillian/releases/tag/v1.3.13)
