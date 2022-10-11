@@ -1,14 +1,14 @@
-# Tektoncd Operator Release
+# Tekton Operator Release
 
-## What is a Tektoncd Operator Release
+## What is a Tekton Operator Release
 
-A release constitutes tagged Github release (release.yaml) and a release to operatorhub.io. At present, our goal is to make an operator releases at on a fixed schedule (eg: every 2 weeks) irrespective of the release cycle of other Tektoncd components (Pipelines, Triggers, Dashboard...). Each release of operator brings the latest available version of each of the components at the time of the release.
+A release constitutes tagged Github release (release.yaml) and a release to operatorhub.io. At present, our goal is to make an operator releases at on a fixed schedule (eg: every 2 weeks) irrespective of the release cycle of other Tekton components (Pipelines, Triggers, Dashboard...). Each release of operator brings the latest available version of each of the components at the time of the release.
 
 # FAQ
 
 1. How often is Tektoncd Operator released?
 
-    First and Fourth Thursday evey month.
+    First and Fourth Thursday every month.
 
 1. How are Tektoncd Operator releases versioned?
     
