@@ -24,6 +24,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
+	"go.uber.org/zap"
 	"knative.dev/pkg/metrics"
 )
 
@@ -31,11 +32,6 @@ var (
 	pReconcileCount = stats.Float64("pipeline_reconcile_count",
 		"number of pipeline install",
 		stats.UnitDimensionless)
-)
-
-const (
-	metricsNew     = "NewInstall"
-	metricsUpgrade = "Upgrade"
 )
 
 // Recorder holds keys for Tekton metrics
@@ -106,4 +102,11 @@ func (r *Recorder) Count(status, version string) error {
 
 	metrics.Record(ctx, pReconcileCount.M(1))
 	return nil
+}
+
+func (m *Recorder) LogMetrics(status, version string, logger *zap.SugaredLogger) {
+	err := m.Count(status, version)
+	if err != nil {
+		logger.Warnf("%v: Failed to log the metrics : %v", resourceKind, err)
+	}
 }
