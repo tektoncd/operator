@@ -43,8 +43,6 @@ type Reconciler struct {
 	manifest mf.Manifest
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
-	// metrics handles metrics for trigger install
-	metrics *Recorder
 	// version of triggers which we are installing
 	triggersVersion string
 }

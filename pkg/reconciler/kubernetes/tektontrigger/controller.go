@@ -74,7 +74,6 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			extension:       generator(ctx),
 			manifest:        manifest,
 			triggersVersion: triggersVer,
-			metrics:         metrics,
 		}
 		impl := tektonTriggerreconciler.NewImpl(ctx, c)
 

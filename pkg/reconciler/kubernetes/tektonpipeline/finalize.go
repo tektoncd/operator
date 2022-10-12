@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Tekton Authors
+Copyright 2022 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,29 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektontrigger
+package tektonpipeline
 
 import (
 	"context"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	tektontriggerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektontrigger"
+	tektonpipelinereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
-var _ tektontriggerreconciler.Finalizer = (*Reconciler)(nil)
+var _ tektonpipelinereconciler.Finalizer = (*Reconciler)(nil)
 
-// FinalizeKind removes all resources after deletion of a TektonTrigger CR.
-func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonTrigger) pkgreconciler.Event {
+// FinalizeKind removes all resources after deletion of a TektonPipeline.
+func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonPipeline) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 
-	//Delete CRDs before deleting rest of resources so that any instance
-	//of CRDs which has finalizer set will get deleted before we remove
-	//the controller;s deployment for it
+	// Delete CRDs before deleting rest of resources so that any instance
+	// of CRDs which has finalizer set will get deleted before we remove
+	// the controller;s deployment for it
 	if err := r.manifest.Filter(mf.CRDs).Delete(); err != nil {
-		logger.Error("Failed to deleted CRDs for TektonTrigger")
+		logger.Error("Failed to delete CRDs for TektonPipeline")
 		return err
 	}
 
@@ -46,7 +46,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	}
 
 	if err := r.extension.Finalize(ctx, original); err != nil {
-		logger.Error("Failed to finalize platform resources", err)
+		logger.Error("Failed to finalize platform resources: ", err)
 	}
 
 	return nil

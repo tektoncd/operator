@@ -48,11 +48,7 @@ func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPi
 		}
 		return nil, err
 	}
-	upgradePending, err := CheckUpgradePending(ppln)
-	if err != nil {
-		return nil, err
-	}
-	if upgradePending {
+	if strings.Contains(ppln.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
 		return nil, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
 	}
 	if !ppln.Status.IsReady() {
