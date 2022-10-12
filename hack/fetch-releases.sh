@@ -116,8 +116,6 @@ release_yaml_pac() {
 
     ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
     dirPath=${ko_data}/tekton-addon/pipelines-as-code/${version}
-    rm -rf ${dirPath} || true
-    mkdir -p ${dirPath} || true
 
     if [[ ${version} == "stable" ||  ${version} == "nightly" ]]; then
       url="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/${version}/release.yaml"
@@ -126,16 +124,30 @@ release_yaml_pac() {
     fi
 
     dest=${dirPath}/${fileName}.yaml
-    http_response=$(curl -s -o ${dest} -w "%{http_code}" ${url})
-    echo url: ${url}
 
-    if [[ $http_response != "200" ]]; then
-        echo "Error: failed to get $comp yaml, status code: $http_response"
-        exit 1
-    fi
+     if [ -f "$dest" ] && [ $FORCE_FETCH_RELEASE = "false" ]; then
+        label="app.kubernetes.io/version: \"$version\""
+        if grep -Eq "$label" $dest;
+          then
+            echo "release file already exist with required version, skipping!"
+            echo ""
+            return
+        fi
+     else
+         rm -rf ${dirPath} || true
+         mkdir -p ${dirPath} || true
 
-    echo "Info: Added $comp/$fileName:$version release yaml !!"
-    echo ""
+         http_response=$(curl -s -o ${dest} -w "%{http_code}" ${url})
+         echo url: ${url}
+
+         if [[ $http_response != "200" ]]; then
+             echo "Error: failed to get $comp yaml, status code: $http_response"
+             exit 1
+         fi
+
+         echo "Info: Added $comp/$fileName:$version release yaml !!"
+         echo ""
+     fi
 
     runtime=( go java nodejs python )
     for run in "${runtime[@]}"
@@ -165,7 +177,6 @@ release_yaml_hub() {
   local version=$2
 
   ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
-  rm -rf ${ko_data}/tekton-hub
   if [ ${version} == "latest" ]
   then
     version=$(curl -sL https://api.github.com/repos/tektoncd/hub/releases | jq -r ".[].tag_name" | sort -Vr | head -n1)
@@ -173,24 +184,35 @@ release_yaml_hub() {
   else
     dirPath=${ko_data}/tekton-hub/${version}
   fi
-  rm -rf ${dirPath} || true
   mkdir -p ${dirPath} || true
 
   url=""
   components="db db-migration api ui"
 
   for component in ${components}; do
+    echo fetching Hub '|' component: ${component} '|' version: ${2}
+
     dest=${dirPath}/${component}
+    fileName=${component}.yaml
+    destinationFile=${dest}/${fileName}
+
+    if [ -f "$destinationFile" ] && [ $FORCE_FETCH_RELEASE = "false" ]; then
+          if grep -Eq "$version" $destinationFile;
+          then
+              echo "release file already exist with required version, skipping!"
+              echo ""
+              continue
+          fi
+    fi
+
     rm -rf ${dest} || true
     mkdir -p ${dest} || true
-
-    fileName=${component}.yaml
 
     [[ ${component} == "api" ]] || [[ ${component} == "ui" ]] && fileName=${component}-${TARGET}.yaml
 
     url="https://github.com/tektoncd/hub/releases/download/${version}/${fileName}"
     echo $url
-    http_response=$(curl -s -L -o ${dest}/${fileName} -w "%{http_code}" ${url})
+    http_response=$(curl -s -L -o ${destinationFile} -w "%{http_code}" ${url})
     echo url: ${url}
     if [[ $http_response != "200" ]]; then
       echo "Error: failed to get ${component} yaml, status code: $http_response"
@@ -249,4 +271,3 @@ main() {
 }
 
 main $@
-
