@@ -22,7 +22,6 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -141,8 +140,7 @@ func TestInstallerSetClient_Cleanup(t *testing.T) {
 			fakeClient := fake.NewSimpleClientset(runObj...)
 			tisClient := fakeClient.OperatorV1alpha1().TektonInstallerSets()
 
-			client := NewInstallerSetClient(tisClient, nil, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
-				filterAndTransform(common.NoExtension(ctx)), &testMetrics{})
+			client := NewInstallerSetClient(tisClient, releaseVersion, "test-version", v1alpha1.KindTektonTrigger, &testMetrics{})
 
 			var gotErr error
 			switch tt.setType {

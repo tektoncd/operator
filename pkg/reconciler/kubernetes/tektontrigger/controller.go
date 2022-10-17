@@ -68,12 +68,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 
 		c := &Reconciler{
-			pipelineInformer: tektonPipelineinformer.Get(ctx),
-			installerSetClient: client.NewInstallerSetClient(tisClient, &manifest,
-				operatorVer, triggersVer, v1alpha1.KindTektonTrigger, filterAndTransform(generator(ctx)), metrics),
-			extension:       generator(ctx),
-			manifest:        manifest,
-			triggersVersion: triggersVer,
+			pipelineInformer:   tektonPipelineinformer.Get(ctx),
+			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, triggersVer, v1alpha1.KindTektonTrigger, metrics),
+			extension:          generator(ctx),
+			manifest:           manifest,
+			triggersVersion:    triggersVer,
 		}
 		impl := tektonTriggerreconciler.NewImpl(ctx, c)
 

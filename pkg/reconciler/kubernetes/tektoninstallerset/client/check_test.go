@@ -249,8 +249,8 @@ func TestInstallerSetClient_Check(t *testing.T) {
 			fakeclient := fake.NewSimpleClientset(tt.resources)
 			tisClient := fakeclient.OperatorV1alpha1().TektonInstallerSets()
 
-			client := NewInstallerSetClient(tisClient, nil, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
-				filterAndTransform(common.NoExtension(ctx)), &testMetrics{})
+			client := NewInstallerSetClient(tisClient, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
+				&testMetrics{})
 
 			_, gotErr := client.checkSet(ctx, comp, tt.setType)
 

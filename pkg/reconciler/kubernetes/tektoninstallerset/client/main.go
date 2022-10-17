@@ -19,6 +19,7 @@ package client
 import (
 	"context"
 
+	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"knative.dev/pkg/logging"
 )
@@ -28,15 +29,15 @@ const (
 	metricsUpgrade = "Upgrade"
 )
 
-func (i *InstallerSetClient) MainSet(ctx context.Context, comp v1alpha1.TektonComponent) error {
-	return i.createTypeSet(ctx, comp, InstallerTypeMain)
+func (i *InstallerSetClient) MainSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
+	return i.createTypeSet(ctx, comp, InstallerTypeMain, manifest, filterAndTransform)
 }
 
-func (i *InstallerSetClient) PreSet(ctx context.Context, comp v1alpha1.TektonComponent) error {
-	return i.createTypeSet(ctx, comp, InstallerTypePre)
+func (i *InstallerSetClient) PreSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
+	return i.createTypeSet(ctx, comp, InstallerTypePre, manifest, filterAndTransform)
 }
 
-func (i *InstallerSetClient) createTypeSet(ctx context.Context, comp v1alpha1.TektonComponent, setType string) error {
+func (i *InstallerSetClient) createTypeSet(ctx context.Context, comp v1alpha1.TektonComponent, setType string, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
 	logger := logging.FromContext(ctx)
 
 	sets, err := i.checkSet(ctx, comp, setType)
@@ -47,7 +48,7 @@ func (i *InstallerSetClient) createTypeSet(ctx context.Context, comp v1alpha1.Te
 	switch err {
 	case ErrNotFound:
 		logger.Infof("%v/%v: installer set not found, creating", i.resourceKind, setType)
-		sets, err = i.create(ctx, comp, i.manifest, setType)
+		sets, err = i.create(ctx, comp, manifest, filterAndTransform, setType)
 		if err != nil {
 			return nil
 		}
@@ -74,7 +75,7 @@ func (i *InstallerSetClient) createTypeSet(ctx context.Context, comp v1alpha1.Te
 
 	case ErrUpdateRequired:
 		logger.Infof("%v/%v: updating installer set", i.resourceKind, setType)
-		sets, err = i.update(ctx, comp, sets, i.manifest, setType)
+		sets, err = i.update(ctx, comp, sets, manifest, filterAndTransform, setType)
 		if err != nil {
 			logger.Errorf("%v/%v: update failed : %v", i.resourceKind, setType, err)
 			return nil

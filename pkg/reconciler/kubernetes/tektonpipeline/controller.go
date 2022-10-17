@@ -66,12 +66,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 
 		c := &Reconciler{
-			kubeClientSet:   kubeclient.Get(ctx),
-			extension:       generator(ctx),
-			manifest:        manifest,
-			pipelineVersion: pipelineVer,
-			installerSetClient: client.NewInstallerSetClient(tisClient, &manifest,
-				operatorVer, pipelineVer, v1alpha1.KindTektonPipeline, filterAndTransform(generator(ctx)), metrics),
+			kubeClientSet:      kubeclient.Get(ctx),
+			extension:          generator(ctx),
+			manifest:           manifest,
+			pipelineVersion:    pipelineVer,
+			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, pipelineVer, v1alpha1.KindTektonPipeline, metrics),
 		}
 		impl := tektonPipelineReconciler.NewImpl(ctx, c)
 

@@ -47,23 +47,19 @@ var (
 type FilterAndTransform func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error)
 
 type InstallerSetClient struct {
-	clientSet          clientSet.TektonInstallerSetInterface
-	releaseVersion     string
-	componentVersion   string
-	resourceKind       string
-	filterAndTransform FilterAndTransform
-	manifest           *mf.Manifest
-	metrics            Metrics
+	clientSet        clientSet.TektonInstallerSetInterface
+	releaseVersion   string
+	componentVersion string
+	resourceKind     string
+	metrics          Metrics
 }
 
-func NewInstallerSetClient(clientSet clientSet.TektonInstallerSetInterface, manifest *mf.Manifest, releaseVersion, componentVersion string, resourceKind string, filterAndTransform FilterAndTransform, metrics Metrics) *InstallerSetClient {
+func NewInstallerSetClient(clientSet clientSet.TektonInstallerSetInterface, releaseVersion, componentVersion string, resourceKind string, metrics Metrics) *InstallerSetClient {
 	return &InstallerSetClient{
-		clientSet:          clientSet,
-		releaseVersion:     releaseVersion,
-		resourceKind:       resourceKind,
-		filterAndTransform: filterAndTransform,
-		manifest:           manifest,
-		metrics:            metrics,
-		componentVersion:   componentVersion,
+		clientSet:        clientSet,
+		releaseVersion:   releaseVersion,
+		resourceKind:     resourceKind,
+		metrics:          metrics,
+		componentVersion: componentVersion,
 	}
 }
