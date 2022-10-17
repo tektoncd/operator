@@ -29,16 +29,17 @@ const (
 	metricsUpgrade = "Upgrade"
 )
 
-func (i *InstallerSetClient) MainSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
-	return i.createTypeSet(ctx, comp, InstallerTypeMain, manifest, filterAndTransform)
-}
-
 func (i *InstallerSetClient) PreSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
-	return i.createTypeSet(ctx, comp, InstallerTypePre, manifest, filterAndTransform)
+	return i.createSet(ctx, comp, InstallerTypePre, manifest, filterAndTransform)
 }
 
-func (i *InstallerSetClient) createTypeSet(ctx context.Context, comp v1alpha1.TektonComponent, setType string, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
+func (i *InstallerSetClient) PostSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
+	return i.createSet(ctx, comp, InstallerTypePost, manifest, filterAndTransform)
+}
+
+func (i *InstallerSetClient) MainSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
 	logger := logging.FromContext(ctx)
+	setType := InstallerTypeMain
 
 	sets, err := i.checkSet(ctx, comp, setType)
 	if err == nil {
@@ -50,22 +51,21 @@ func (i *InstallerSetClient) createTypeSet(ctx context.Context, comp v1alpha1.Te
 		logger.Infof("%v/%v: installer set not found, creating", i.resourceKind, setType)
 		sets, err = i.create(ctx, comp, manifest, filterAndTransform, setType)
 		if err != nil {
-			return nil
+			logger.Errorf("%v/%v: failed to create main installer set: %v", i.resourceKind, setType, err)
+			return err
 		}
-		if comp.GetStatus().GetCondition(v1alpha1.InstallerSetAvailable).IsUnknown() && setType == InstallerTypeMain {
+		if comp.GetStatus().GetCondition(v1alpha1.InstallerSetAvailable).IsUnknown() {
 			i.metrics.LogMetrics(metricsNew, i.componentVersion, logger)
 		}
 
 	case ErrInvalidState, ErrNsDifferent, ErrVersionDifferent:
 		logger.Infof("%v/%v: installer set not in valid state : %v, cleaning up!", i.resourceKind, setType, err)
-		if err := i.cleanupMainSet(ctx); err != nil {
+		if err := i.CleanupMainSet(ctx); err != nil {
 			logger.Errorf("%v/%v: failed to cleanup main installer set: %v", i.resourceKind, setType, err)
-			return nil
+			return err
 		}
 		if err == ErrVersionDifferent {
-			if setType == InstallerTypeMain {
-				i.metrics.LogMetrics(metricsUpgrade, i.componentVersion, logger)
-			}
+			i.metrics.LogMetrics(metricsUpgrade, i.componentVersion, logger)
 			markComponentStatus(comp, v1alpha1.UpgradePending)
 		} else {
 			markComponentStatus(comp, v1alpha1.Reinstalling)
@@ -78,7 +78,7 @@ func (i *InstallerSetClient) createTypeSet(ctx context.Context, comp v1alpha1.Te
 		sets, err = i.update(ctx, comp, sets, manifest, filterAndTransform, setType)
 		if err != nil {
 			logger.Errorf("%v/%v: update failed : %v", i.resourceKind, setType, err)
-			return nil
+			return err
 		}
 	case ErrSetsInDeletionState:
 		logger.Infof("%v/%v: %v", i.resourceKind, setType, err)
@@ -86,20 +86,64 @@ func (i *InstallerSetClient) createTypeSet(ctx context.Context, comp v1alpha1.Te
 	}
 
 	//Mark InstallerSet Available
-	if setType == InstallerTypeMain {
-		comp.GetStatus().MarkInstallerSetAvailable()
+	comp.GetStatus().MarkInstallerSetAvailable()
+
+	for _, set := range sets {
+		if !set.Status.IsReady() {
+			logger.Infof("%v/%v: installer set %v no yet ready, wait !", i.resourceKind, setType, set.GetName())
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	}
+
+	//Mark InstallerSet Ready
+	comp.GetStatus().MarkInstallerSetReady()
+
+	return nil
+}
+
+func (i *InstallerSetClient) createSet(ctx context.Context, comp v1alpha1.TektonComponent, setType string, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
+	logger := logging.FromContext(ctx)
+
+	sets, err := i.checkSet(ctx, comp, setType)
+	if err == nil {
+		logger.Infof("%v/%v: found %v installer sets", i.resourceKind, setType, len(sets))
+	}
+
+	switch err {
+	case ErrNotFound:
+		logger.Infof("%v/%v: installer set not found, creating", i.resourceKind, setType)
+		sets, err = i.create(ctx, comp, manifest, filterAndTransform, setType)
+		if err != nil {
+			logger.Errorf("%v/%v: failed to create installer set: %v", i.resourceKind, setType, err)
+			return err
+		}
+
+	case ErrInvalidState, ErrNsDifferent, ErrVersionDifferent:
+		logger.Infof("%v/%v: installer set not in valid state : %v, cleaning up!", i.resourceKind, setType, err)
+		if err := i.CleanupSet(ctx, setType); err != nil {
+			logger.Errorf("%v/%v: failed to cleanup installer set: %v", i.resourceKind, setType, err)
+			return nil
+		}
+		logger.Infof("%v/%v: returning, will create installer sets in further reconcile", i.resourceKind, setType)
+		return v1alpha1.REQUEUE_EVENT_AFTER
+
+	case ErrUpdateRequired:
+		logger.Infof("%v/%v: updating installer set", i.resourceKind, setType)
+		sets, err = i.update(ctx, comp, sets, manifest, filterAndTransform, setType)
+		if err != nil {
+			logger.Errorf("%v/%v: update failed : %v", i.resourceKind, setType, err)
+			return err
+		}
+	case ErrSetsInDeletionState:
+		logger.Infof("%v/%v: %v", i.resourceKind, setType, err)
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	for _, set := range sets {
 		if !set.Status.IsReady() {
 			logger.Infof("%v/%v: installer set %v no yet ready, wait !", i.resourceKind, setType, set.GetName())
-			return nil
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
-	}
-
-	//Mark InstallerSet Ready
-	if setType == InstallerTypeMain {
-		comp.GetStatus().MarkInstallerSetReady()
 	}
 	return nil
 }

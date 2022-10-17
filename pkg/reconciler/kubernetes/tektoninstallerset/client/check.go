@@ -25,27 +25,16 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	"go.uber.org/zap"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/logging"
 )
 
 func (i *InstallerSetClient) checkSet(ctx context.Context, comp v1alpha1.TektonComponent, isType string) ([]v1alpha1.TektonInstallerSet, error) {
 	logger := logging.FromContext(ctx)
 
-	labelSelector := labels.NewSelector()
-	createdReq, _ := labels.NewRequirement(v1alpha1.CreatedByKey, selection.Equals, []string{i.resourceKind})
-	if createdReq != nil {
-		labelSelector = labelSelector.Add(*createdReq)
-	}
-	typeReq, _ := labels.NewRequirement(v1alpha1.InstallerSetType, selection.Equals, []string{isType})
-	if typeReq != nil {
-		labelSelector = labelSelector.Add(*typeReq)
-	}
+	labelSelector := i.getSetLabels(isType)
+	logger.Infof("%v/%v: checking installer sets with labels: %v", i.resourceKind, isType, labelSelector)
 
-	logger.Infof("%v/%v: checking installer sets with labels: %v", i.resourceKind, isType, labelSelector.String())
-
-	is, err := i.clientSet.List(ctx, v1.ListOptions{LabelSelector: labelSelector.String()})
+	is, err := i.clientSet.List(ctx, v1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return nil, err
 	}

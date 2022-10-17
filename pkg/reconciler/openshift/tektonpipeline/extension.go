@@ -21,78 +21,37 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/go-logr/zapr"
-	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
-	"go.uber.org/zap"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
 
 const (
-	// DefaultDisableAffinityAssistant is default value of disable affinity assistant flag
-	DefaultDisableAffinityAssistant = true
-	monitoringLabel                 = "openshift.io/cluster-monitoring=true"
-
-	enableMetricsKey          = "enableMetrics"
-	enableMetricsDefaultValue = "true"
-
-	versionKey = "VERSION"
-
-	prePipelineInstallerSet  = "PrePipeline"
-	postPipelineInstallerSet = "PostPipeline"
-)
-
-var (
-	preReconcileSelector = metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			v1alpha1.CreatedByKey:     createdByValue,
-			v1alpha1.InstallerSetType: prePipelineInstallerSet,
-		},
-	}
-	postReconcileSelector = metav1.LabelSelector{
-		MatchLabels: map[string]string{
-			v1alpha1.CreatedByKey:     createdByValue,
-			v1alpha1.InstallerSetType: postPipelineInstallerSet,
-		},
-	}
+	monitoringLabel  = "openshift.io/cluster-monitoring=true"
+	enableMetricsKey = "enableMetrics"
+	versionKey       = "VERSION"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	logger := logging.FromContext(ctx)
-	mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
-	if err != nil {
-		logger.Fatalw("error creating client from injected config", zap.Error(err))
-	}
-	mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
-	manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
-	if err != nil {
-		logger.Fatalw("error creating initial manifest", zap.Error(err))
-	}
-
 	version := os.Getenv(versionKey)
 	if version == "" {
 		logger.Fatal("Failed to find version from env")
 	}
 
 	ext := openshiftExtension{
-		operatorClientSet: operatorclient.Get(ctx),
-		manifest:          manifest,
-		version:           version,
+		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
+			version, "pre-pipeline", v1alpha1.KindTektonPipeline, nil),
 	}
 	return ext
 }
 
 type openshiftExtension struct {
-	operatorClientSet versioned.Interface
-	manifest          mf.Manifest
-	version           string
+	installerSetClient *client.InstallerSetClient
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -112,111 +71,91 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	return trns
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
-	koDataDir := os.Getenv(common.KoEnvKey)
-	tp := comp.(*v1alpha1.TektonPipeline)
-
-	preReconcilerLS, err := common.LabelSelector(preReconcileSelector)
+	manifest, err := preManifest()
 	if err != nil {
 		return err
 	}
-	exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, tp, preReconcilerLS)
-	if err != nil {
+	if err := oe.installerSetClient.PreSet(ctx, comp, manifest, filterAndTransform()); err != nil {
 		return err
 	}
-
-	// If installer set doesn't exist then create a new one
-	if !exist {
-
-		// make sure that openshift-pipelines namespace exists
-		namespaceLocation := filepath.Join(koDataDir, "tekton-namespace")
-		if err := common.AppendManifest(&oe.manifest, namespaceLocation); err != nil {
-			return err
-		}
-
-		// add inject CA bundles manifests
-		cabundlesLocation := filepath.Join(koDataDir, "cabundles")
-		if err := common.AppendManifest(&oe.manifest, cabundlesLocation); err != nil {
-			return err
-		}
-
-		// add pipelines-scc
-		pipelinesSCCLocation := filepath.Join(koDataDir, "tekton-pipeline", "00-prereconcile")
-		if err := common.AppendManifest(&oe.manifest, pipelinesSCCLocation); err != nil {
-			return err
-		}
-
-		if err := common.Transform(ctx, &oe.manifest, tp); err != nil {
-			return err
-		}
-
-		if err := createInstallerSet(ctx, oe.operatorClientSet, tp, oe.manifest, oe.version,
-			prePipelineInstallerSet); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
-	koDataDir := os.Getenv(common.KoEnvKey)
 	pipeline := comp.(*v1alpha1.TektonPipeline)
 
-	postReconcilerLS, err := common.LabelSelector(postReconcileSelector)
-	if err != nil {
-		return err
-	}
 	// Install monitoring if metrics is enabled
 	value := findParam(pipeline.Spec.Params, enableMetricsKey)
 
 	if value == "true" {
-		exist, err := checkIfInstallerSetExist(ctx, oe.operatorClientSet, oe.version, pipeline, postReconcilerLS)
+		manifest, err := postManifest()
 		if err != nil {
 			return err
 		}
-
-		if !exist {
-
-			monitoringLocation := filepath.Join(koDataDir, "openshift-monitoring")
-			if err := common.AppendManifest(&oe.manifest, monitoringLocation); err != nil {
-				return err
-			}
-
-			if err := common.Transform(ctx, &oe.manifest, pipeline); err != nil {
-				return err
-			}
-
-			if err := createInstallerSet(ctx, oe.operatorClientSet, pipeline, oe.manifest, oe.version,
-				postPipelineInstallerSet); err != nil {
-				return err
-			}
+		if err := oe.installerSetClient.PostSet(ctx, comp, manifest, filterAndTransform()); err != nil {
+			return err
 		}
-
 	} else {
-		return deleteInstallerSet(ctx, oe.operatorClientSet, pipeline, postPipelineInstallerSet, postReconcilerLS)
+		if err := oe.installerSetClient.CleanupPostSet(ctx); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
-	pipeline := comp.(*v1alpha1.TektonPipeline)
-	postReconcilerLS, err := common.LabelSelector(postReconcileSelector)
-	if err != nil {
+	if err := oe.installerSetClient.CleanupPostSet(ctx); err != nil {
 		return err
 	}
-	if err := deleteInstallerSet(ctx, oe.operatorClientSet, pipeline,
-		postPipelineInstallerSet, postReconcilerLS); err != nil {
-		return err
-	}
-	preReconcilerLS, err := common.LabelSelector(preReconcileSelector)
-	if err != nil {
-		return err
-	}
-	if err := deleteInstallerSet(ctx, oe.operatorClientSet, pipeline,
-		prePipelineInstallerSet, preReconcilerLS); err != nil {
+	if err := oe.installerSetClient.CleanupPreSet(ctx); err != nil {
 		return err
 	}
 	return nil
+}
+
+func preManifest() (*mf.Manifest, error) {
+	koDataDir := os.Getenv(common.KoEnvKey)
+	manifest := &mf.Manifest{}
+
+	// make sure that openshift-pipelines namespace exists
+	namespaceLocation := filepath.Join(koDataDir, "tekton-namespace")
+	if err := common.AppendManifest(manifest, namespaceLocation); err != nil {
+		return nil, err
+	}
+
+	// add inject CA bundles manifests
+	cabundlesLocation := filepath.Join(koDataDir, "cabundles")
+	if err := common.AppendManifest(manifest, cabundlesLocation); err != nil {
+		return nil, err
+	}
+
+	// add pipelines-scc
+	pipelinesSCCLocation := filepath.Join(koDataDir, "tekton-pipeline", "00-prereconcile")
+	if err := common.AppendManifest(manifest, pipelinesSCCLocation); err != nil {
+		return nil, err
+	}
+
+	return manifest, nil
+}
+
+func postManifest() (*mf.Manifest, error) {
+	koDataDir := os.Getenv(common.KoEnvKey)
+	manifest := &mf.Manifest{}
+
+	monitoringLocation := filepath.Join(koDataDir, "openshift-monitoring")
+	if err := common.AppendManifest(manifest, monitoringLocation); err != nil {
+		return nil, err
+	}
+	return manifest, nil
+}
+
+func filterAndTransform() client.FilterAndTransform {
+	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
+		if err := common.Transform(ctx, manifest, comp); err != nil {
+			return nil, err
+		}
+		return manifest, nil
+	}
 }
 
 func findParam(params []v1alpha1.Param, param string) string {

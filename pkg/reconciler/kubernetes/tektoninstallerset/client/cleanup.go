@@ -21,116 +21,85 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/logging"
 )
 
 var deletePropagationPolicy = v1.DeletePropagationForeground
 
-func (i *InstallerSetClient) CleanupAll(ctx context.Context) error {
-	labelSelector := labels.NewSelector()
-	createdReq, _ := labels.NewRequirement(v1alpha1.CreatedByKey, selection.Equals, []string{i.resourceKind})
-	if createdReq != nil {
-		labelSelector = labelSelector.Add(*createdReq)
-	}
-	err := i.clientSet.DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: labelSelector.String(),
-	})
-	return err
-}
-
-func (i *InstallerSetClient) cleanupMainSet(ctx context.Context) error {
+func (i *InstallerSetClient) CleanupMainSet(ctx context.Context) error {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", InstallerTypeMain)
 
-	labelSelector := labels.NewSelector()
-	createdReq, _ := labels.NewRequirement(v1alpha1.CreatedByKey, selection.Equals, []string{i.resourceKind})
-	if createdReq != nil {
-		labelSelector = labelSelector.Add(*createdReq)
-	}
-	typeReq, _ := labels.NewRequirement(v1alpha1.InstallerSetType, selection.Equals, []string{InstallerTypeMain})
-	if typeReq != nil {
-		labelSelector = labelSelector.Add(*typeReq)
-	}
-
-	list, err := i.clientSet.List(ctx, metav1.ListOptions{LabelSelector: labelSelector.String()})
+	list, err := i.clientSet.List(ctx, metav1.ListOptions{LabelSelector: i.getSetLabels(InstallerTypeMain)})
 	if err != nil {
 		return err
 	}
 
 	if len(list.Items) != 2 {
 		logger.Error("found more than 2 installerSet for main, something fishy, cleaning up all")
-		return i.CleanupAll(ctx)
 	}
 
-	var static, deploy *v1alpha1.TektonInstallerSet
-	for i, is := range list.Items {
+	// delete all static installerSet first and then deployment one
+	for _, is := range list.Items {
 		if strings.Contains(is.GetName(), InstallerSubTypeStatic) {
-			static = &list.Items[i]
-		} else {
-			deploy = &list.Items[i]
+			logger.Infof("deleting main-static installer set: %s", is.GetName())
+			err = i.clientSet.Delete(ctx, is.GetName(), metav1.DeleteOptions{
+				PropagationPolicy: &deletePropagationPolicy,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to delete main-static installer set for %s", is.GetName())
+			}
 		}
 	}
 
-	// delete static installerSet first and then deployment one
-	logger.Infof("deleting main-static installer set: %s", static.GetName())
-	err = i.clientSet.Delete(ctx, static.GetName(), metav1.DeleteOptions{
-		PropagationPolicy: &deletePropagationPolicy,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to delete main-static installer set for %s", static.GetName())
+	// now delete all deployment installerSet
+	for _, is := range list.Items {
+		if strings.Contains(is.GetName(), InstallerSubTypeDeployment) {
+			logger.Infof("deleting main-deployment installer set: %s", is.GetName())
+			err = i.clientSet.Delete(ctx, is.GetName(), metav1.DeleteOptions{
+				PropagationPolicy: &deletePropagationPolicy,
+			})
+			if err != nil {
+				return fmt.Errorf("failed to delete main-deployment installer set for %s", is.GetName())
+			}
+		}
 	}
+	return nil
+}
 
-	logger.Infof("deleting main-deployment installer set: %s", deploy.GetName())
-	err = i.clientSet.Delete(ctx, deploy.GetName(), metav1.DeleteOptions{
-		PropagationPolicy: &deletePropagationPolicy,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to delete main-deployment installer set for %s", deploy.GetName())
-	}
-	return err
+func (i *InstallerSetClient) CleanupSet(ctx context.Context, setType string) error {
+	return i.cleanup(ctx, setType)
 }
 
 func (i *InstallerSetClient) CleanupPreSet(ctx context.Context) error {
-	return i.Cleanup(ctx, InstallerTypePre)
+	return i.cleanup(ctx, InstallerTypePre)
 }
 
 func (i *InstallerSetClient) CleanupPostSet(ctx context.Context) error {
-	return i.Cleanup(ctx, InstallerTypePost)
+	return i.cleanup(ctx, InstallerTypePost)
 }
 
-func (i *InstallerSetClient) Cleanup(ctx context.Context, isType string) error {
+func (i *InstallerSetClient) cleanup(ctx context.Context, isType string) error {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", isType)
 
-	labelSelector := labels.NewSelector()
-	createdReq, _ := labels.NewRequirement(v1alpha1.CreatedByKey, selection.Equals, []string{i.resourceKind})
-	if createdReq != nil {
-		labelSelector = labelSelector.Add(*createdReq)
-	}
-	typeReq, _ := labels.NewRequirement(v1alpha1.InstallerSetType, selection.Equals, []string{isType})
-	if typeReq != nil {
-		labelSelector = labelSelector.Add(*typeReq)
-	}
-
-	list, err := i.clientSet.List(ctx, metav1.ListOptions{LabelSelector: labelSelector.String()})
+	list, err := i.clientSet.List(ctx, metav1.ListOptions{LabelSelector: i.getSetLabels(isType)})
 	if err != nil {
 		return err
 	}
 
 	if len(list.Items) != 1 {
 		logger.Errorf("found more than 1 installerSet for %s something fishy, cleaning up all", isType)
-		return i.CleanupAll(ctx)
 	}
 
-	logger.Infof("deleting %s installer set: %s", isType, list.Items[0].GetName())
-	err = i.clientSet.Delete(ctx, list.Items[0].GetName(), metav1.DeleteOptions{
-		PropagationPolicy: &deletePropagationPolicy,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to delete %s set: %s", isType, list.Items[0].GetName())
+	for _, is := range list.Items {
+		logger.Infof("deleting %s installer set: %s", isType, is.GetName())
+		err = i.clientSet.Delete(ctx, is.GetName(), metav1.DeleteOptions{
+			PropagationPolicy: &deletePropagationPolicy,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to delete %s set: %s", isType, is.GetName())
+		}
 	}
-	return err
+	return nil
 }

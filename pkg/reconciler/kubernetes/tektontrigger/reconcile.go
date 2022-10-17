@@ -70,7 +70,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	//Make sure TektonPipeline is installed before proceeding with
 	//TektonTrigger
 	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
-		if err.Error() == common.PipelineNotReady {
+		if err.Error() == common.PipelineNotReady || err == v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR {
 			tt.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
 			// wait for pipeline status to change
 			return v1alpha1.REQUEUE_EVENT_AFTER
@@ -85,7 +85,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	tt.SetDefaults(ctx)
 
 	if err := r.extension.PreReconcile(ctx, tt); err != nil {
-		tt.Status.MarkPreReconcilerFailed(fmt.Sprintf("PreReconciliation failed: %s", err.Error()))
+		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
+		logger.Error(msg)
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return nil
+		}
+		tt.Status.MarkPreReconcilerFailed(msg)
 		return err
 	}
 
@@ -93,12 +98,22 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	tt.Status.MarkPreReconcilerComplete()
 
 	if err := r.installerSetClient.MainSet(ctx, tt, &r.manifest, filterAndTransform(r.extension)); err != nil {
-		logger.Errorf("failed for main set: %v", err)
+		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
+		logger.Error(msg)
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return nil
+		}
+		tt.Status.MarkInstallerSetNotReady(msg)
 		return err
 	}
 
 	if err := r.extension.PostReconcile(ctx, tt); err != nil {
-		tt.Status.MarkPostReconcilerFailed(fmt.Sprintf("PostReconciliation failed: %s", err.Error()))
+		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
+		logger.Error(msg)
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return nil
+		}
+		tt.Status.MarkPostReconcilerFailed(msg)
 		return err
 	}
 
