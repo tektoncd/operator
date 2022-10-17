@@ -27,11 +27,6 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var (
-	// DefaultSA is the default service account
-	DefaultSA = "pipeline"
-)
-
 const (
 	PipelineNotReady       = "tekton-pipelines not ready"
 	PipelineNotFound       = "tekton-pipelines not installed"

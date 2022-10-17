@@ -25,10 +25,14 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 		tc.Spec.Profile = ProfileBasic
 	}
 
-	tc.Spec.Pipeline.PipelineProperties.setDefaults()
-	tc.Spec.Trigger.TriggersProperties.setDefaults()
+	tc.Spec.Pipeline.setDefaults()
+	tc.Spec.Trigger.setDefaults()
 
-	setAddonDefaults(&tc.Spec.Addon)
+	if IsOpenShiftPlatform() {
+		setAddonDefaults(&tc.Spec.Addon)
+	} else {
+		tc.Spec.Addon = Addon{}
+	}
 
 	// before adding webhook we had default value for pruner's keep as 1
 	// but we expect user to define all values now otherwise webhook reject
