@@ -160,10 +160,9 @@ func TestInstallerSetClient_Update(t *testing.T) {
 			fakeclient := fake.NewSimpleClientset(runObj...)
 			tisClient := fakeclient.OperatorV1alpha1().TektonInstallerSets()
 
-			client := NewInstallerSetClient(tisClient, &manifest, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
-				updateFilterAndTransform(common.NoExtension(ctx), updatedNs), &testMetrics{})
+			client := NewInstallerSetClient(tisClient, releaseVersion, "test-version", v1alpha1.KindTektonTrigger, &testMetrics{})
 
-			updatedISs, gotErr := client.update(ctx, comp, tt.existingIS, &manifest, tt.setType)
+			updatedISs, gotErr := client.update(ctx, comp, tt.existingIS, &manifest, updateFilterAndTransform(common.NoExtension(ctx), updatedNs), tt.setType)
 			if tt.wantErr != nil {
 				assert.Equal(t, gotErr, tt.wantErr)
 				return

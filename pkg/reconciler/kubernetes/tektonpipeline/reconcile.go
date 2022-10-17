@@ -88,7 +88,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	// Mark PreReconcile Complete
 	tp.Status.MarkPreReconcilerComplete()
 
-	if err := r.installerSetClient.MainSet(ctx, tp); err != nil {
+	if err := r.installerSetClient.MainSet(ctx, tp, &r.manifest, filterAndTransform(r.extension)); err != nil {
 		logger.Errorf("failed for main set: %v", err)
 		return err
 	}

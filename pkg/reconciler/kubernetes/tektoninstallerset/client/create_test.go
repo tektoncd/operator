@@ -99,8 +99,7 @@ func TestInstallerSetClient_Create(t *testing.T) {
 				t.Fatalf("Failed to generate manifest: %v", err)
 			}
 
-			client := NewInstallerSetClient(tisClient, &manifest, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
-				filterAndTransform(common.NoExtension(ctx)), &testMetrics{})
+			client := NewInstallerSetClient(tisClient, releaseVersion, "test-version", v1alpha1.KindTektonTrigger, &testMetrics{})
 
 			// fake.NewSimpleClientset() doesn't consider generate name when creating a resources
 			// so we write a fake client to test
@@ -109,11 +108,10 @@ func TestInstallerSetClient_Create(t *testing.T) {
 
 			if tt.setType == InstallerTypeMain {
 				fakeClient := fake2.NewFakeISClient()
-				client = NewInstallerSetClient(fakeClient, &manifest, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
-					filterAndTransform(common.NoExtension(ctx)), &testMetrics{})
+				client = NewInstallerSetClient(fakeClient, releaseVersion, "test-version", v1alpha1.KindTektonTrigger, &testMetrics{})
 			}
 
-			iSs, gotErr := client.create(ctx, comp, &manifest, tt.setType)
+			iSs, gotErr := client.create(ctx, comp, &manifest, filterAndTransform(common.NoExtension(ctx)), tt.setType)
 
 			if tt.wantErr != nil {
 				assert.Equal(t, gotErr, tt.wantErr)
