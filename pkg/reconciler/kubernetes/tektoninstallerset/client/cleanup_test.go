@@ -147,7 +147,7 @@ func TestInstallerSetClient_Cleanup(t *testing.T) {
 			var gotErr error
 			switch tt.setType {
 			case InstallerTypeMain:
-				gotErr = client.CleanupMainSet(ctx)
+				gotErr = client.cleanupMainSet(ctx)
 			case InstallerTypePre:
 				gotErr = client.CleanupPreSet(ctx)
 			case InstallerTypePost:

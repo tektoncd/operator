@@ -43,7 +43,7 @@ func (i *InstallerSetClient) CleanupAll(ctx context.Context) error {
 	return err
 }
 
-func (i *InstallerSetClient) CleanupMainSet(ctx context.Context) error {
+func (i *InstallerSetClient) cleanupMainSet(ctx context.Context) error {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", InstallerTypeMain)
 
 	labelSelector := labels.NewSelector()
