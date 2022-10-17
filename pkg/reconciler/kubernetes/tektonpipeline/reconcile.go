@@ -81,7 +81,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	}
 
 	if err := r.extension.PreReconcile(ctx, tp); err != nil {
-		tp.Status.MarkPreReconcilerFailed(fmt.Sprintf("PreReconciliation failed: %s", err.Error()))
+		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
+		logger.Error(msg)
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return nil
+		}
+		tp.Status.MarkPreReconcilerFailed(msg)
 		return err
 	}
 
@@ -89,12 +94,22 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	tp.Status.MarkPreReconcilerComplete()
 
 	if err := r.installerSetClient.MainSet(ctx, tp, &r.manifest, filterAndTransform(r.extension)); err != nil {
-		logger.Errorf("failed for main set: %v", err)
+		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
+		logger.Error(msg)
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return nil
+		}
+		tp.Status.MarkInstallerSetNotReady(msg)
 		return err
 	}
 
 	if err := r.extension.PostReconcile(ctx, tp); err != nil {
-		tp.Status.MarkPostReconcilerFailed(fmt.Sprintf("PostReconciliation failed: %s", err.Error()))
+		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
+		logger.Error(msg)
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return nil
+		}
+		tp.Status.MarkPostReconcilerFailed(msg)
 		return err
 	}
 

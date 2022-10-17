@@ -145,13 +145,13 @@ func TestInstallerSetClient_Cleanup(t *testing.T) {
 			var gotErr error
 			switch tt.setType {
 			case InstallerTypeMain:
-				gotErr = client.cleanupMainSet(ctx)
+				gotErr = client.CleanupMainSet(ctx)
 			case InstallerTypePre:
 				gotErr = client.CleanupPreSet(ctx)
 			case InstallerTypePost:
 				gotErr = client.CleanupPostSet(ctx)
 			default:
-				gotErr = client.CleanupAll(ctx)
+				t.Fatal("invaid set type")
 			}
 			assert.NilError(t, gotErr)
 

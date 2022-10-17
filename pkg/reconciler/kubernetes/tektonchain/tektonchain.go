@@ -103,7 +103,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 
 	// find a valid TektonPipeline installation
 	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
-		if err.Error() == common.PipelineNotReady {
+		if err.Error() == common.PipelineNotReady || err == v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR {
 			tc.Status.MarkDependencyInstalling("TektonPipeline is still installing")
 			// wait for TektonPipeline status to change
 			return fmt.Errorf(common.PipelineNotReady)
