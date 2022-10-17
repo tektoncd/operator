@@ -113,7 +113,7 @@ func TestInstallerSetClient_Create(t *testing.T) {
 					filterAndTransform(common.NoExtension(ctx)), &testMetrics{})
 			}
 
-			iSs, gotErr := client.Create(ctx, comp, &manifest, tt.setType)
+			iSs, gotErr := client.create(ctx, comp, &manifest, tt.setType)
 
 			if tt.wantErr != nil {
 				assert.Equal(t, gotErr, tt.wantErr)

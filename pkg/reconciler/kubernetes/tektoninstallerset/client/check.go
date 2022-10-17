@@ -30,7 +30,7 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-func (i *InstallerSetClient) CheckSet(ctx context.Context, comp v1alpha1.TektonComponent, isType string) ([]v1alpha1.TektonInstallerSet, error) {
+func (i *InstallerSetClient) checkSet(ctx context.Context, comp v1alpha1.TektonComponent, isType string) ([]v1alpha1.TektonInstallerSet, error) {
 	logger := logging.FromContext(ctx)
 
 	labelSelector := labels.NewSelector()

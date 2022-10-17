@@ -28,7 +28,7 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-func (i *InstallerSetClient) Create(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, isType string) ([]v1alpha1.TektonInstallerSet, error) {
+func (i *InstallerSetClient) create(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, isType string) ([]v1alpha1.TektonInstallerSet, error) {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", isType)
 
 	switch isType {

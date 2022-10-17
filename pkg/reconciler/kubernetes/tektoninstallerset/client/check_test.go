@@ -252,7 +252,7 @@ func TestInstallerSetClient_Check(t *testing.T) {
 			client := NewInstallerSetClient(tisClient, nil, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
 				filterAndTransform(common.NoExtension(ctx)), &testMetrics{})
 
-			_, gotErr := client.CheckSet(ctx, comp, tt.setType)
+			_, gotErr := client.checkSet(ctx, comp, tt.setType)
 
 			if tt.wantErr != nil {
 				assert.Equal(t, gotErr, tt.wantErr)
