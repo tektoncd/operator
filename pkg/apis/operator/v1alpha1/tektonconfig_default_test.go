@@ -18,8 +18,10 @@ package v1alpha1
 
 import (
 	"context"
+	"os"
 	"testing"
 
+	"gotest.tools/v3/assert"
 	"knative.dev/pkg/ptr"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,7 +75,6 @@ func Test_SetDefaults_Pipeline_Properties(t *testing.T) {
 }
 
 func Test_SetDefaults_Addon_Params(t *testing.T) {
-
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "name",
@@ -85,6 +86,8 @@ func Test_SetDefaults_Addon_Params(t *testing.T) {
 			},
 		},
 	}
+	assert.NilError(t, os.Setenv("PLATFORM", "openshift"))
+	defer os.Clearenv()
 
 	tc.SetDefaults(context.TODO())
 	if len(tc.Spec.Addon.Params) != 3 {

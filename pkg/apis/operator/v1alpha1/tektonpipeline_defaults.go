@@ -23,11 +23,19 @@ import (
 	"knative.dev/pkg/ptr"
 )
 
+const (
+	// openshift specific
+	enableMetricsKey                         = "enableMetrics"
+	enableMetricsDefaultValue                = "true"
+	openshiftDefaultDisableAffinityAssistant = true
+	ospDefaultSA                             = "pipeline"
+)
+
 func (tp *TektonPipeline) SetDefaults(ctx context.Context) {
-	tp.Spec.PipelineProperties.setDefaults()
+	tp.Spec.setDefaults()
 }
 
-func (p *PipelineProperties) setDefaults() {
+func (p *Pipeline) setDefaults() {
 	if p.DisableCredsInit == nil {
 		p.DisableCredsInit = ptr.Bool(config.DefaultDisableCredsInit)
 	}
@@ -70,5 +78,40 @@ func (p *PipelineProperties) setDefaults() {
 	}
 	if p.MetricsTaskrunLevel == "" {
 		p.MetricsTaskrunLevel = config.DefaultTaskrunLevel
+	}
+
+	// run platform specific defaulting
+	if IsOpenShiftPlatform() {
+		p.openshiftDefaulting()
+	}
+}
+
+func (p *Pipeline) openshiftDefaulting() {
+	if p.DefaultServiceAccount == "" {
+		p.DefaultServiceAccount = ospDefaultSA
+	}
+
+	if p.DisableAffinityAssistant == nil {
+		p.DisableAffinityAssistant = ptr.Bool(openshiftDefaultDisableAffinityAssistant)
+	}
+
+	// Add params with default values if not defined by user
+	var found = false
+	for i, param := range p.Params {
+		if param.Name == enableMetricsKey {
+			found = true
+			// If the value set is invalid then set key to default value
+			if param.Value != "false" && param.Value != "true" {
+				p.Params[i].Value = enableMetricsDefaultValue
+			}
+			break
+		}
+	}
+
+	if !found {
+		p.Params = append(p.Params, Param{
+			Name:  enableMetricsKey,
+			Value: enableMetricsDefaultValue,
+		})
 	}
 }

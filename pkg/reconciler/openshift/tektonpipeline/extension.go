@@ -33,7 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
-	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -115,8 +114,6 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	koDataDir := os.Getenv(common.KoEnvKey)
 	tp := comp.(*v1alpha1.TektonPipeline)
-
-	SetDefault(&tp.Spec.Pipeline)
 
 	preReconcilerLS, err := common.LabelSelector(preReconcileSelector)
 	if err != nil {
@@ -220,43 +217,6 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 		return err
 	}
 	return nil
-}
-
-func SetDefault(pipeline *v1alpha1.Pipeline) {
-
-	// Set default service account as pipeline
-	if pipeline.DefaultServiceAccount == "" {
-		pipeline.DefaultServiceAccount = common.DefaultSA
-	}
-
-	// Set `disable-affinity-assistant` to true if not set in CR
-	// webhook will not set any value but by default in pipelines configmap it will be false
-	if pipeline.DisableAffinityAssistant == nil {
-		pipeline.DisableAffinityAssistant = ptr.Bool(DefaultDisableAffinityAssistant)
-	}
-
-	// Add params with default values if not defined by user
-	var found = false
-	for i, p := range pipeline.Params {
-		if p.Name == enableMetricsKey {
-			found = true
-			// If the value set is invalid then set key to default value
-			// Not returning an error if the values is invalid as
-			// we validate in reconciler and this would affect the
-			// rest of the installation
-			if p.Value != "false" && p.Value != "true" {
-				pipeline.Params[i].Value = enableMetricsDefaultValue
-			}
-			break
-		}
-	}
-
-	if !found {
-		pipeline.Params = append(pipeline.Params, v1alpha1.Param{
-			Name:  enableMetricsKey,
-			Value: enableMetricsDefaultValue,
-		})
-	}
 }
 
 func findParam(params []v1alpha1.Param, param string) string {
