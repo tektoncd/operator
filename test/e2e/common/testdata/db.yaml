@@ -69,7 +69,7 @@ spec:
     spec:
       containers:
         - name: tekton-hub-db
-          image: postgres:13
+          image: postgres:13@sha256:7cc1c1a6a9df06df9e775eccdd77e45a868cb197e8e0981e23a2a814aaf56906
           resources:
             requests:
               cpu: 100m
