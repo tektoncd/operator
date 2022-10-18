@@ -44,6 +44,7 @@ resources:
 - ../../base/
 - ../../webhooks
 - 300-operator_v1alpha1_addon_crd.yaml
+- 300-operator_v1alpha1_openshiftpipelinesascode_crd.yaml
 - operator_service.yaml
 - operator_servicemonitor.yaml
 apiVersion: kustomize.config.k8s.io/v1beta1

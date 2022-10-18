@@ -43,7 +43,7 @@ func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPi
 		}
 		return nil, err
 	}
-	if strings.Contains(ppln.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
+	if ppln.GetStatus() != nil && strings.Contains(ppln.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
 		return nil, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
 	}
 	if !ppln.Status.IsReady() {
@@ -76,7 +76,7 @@ func TriggerReady(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrig
 		}
 		return nil, err
 	}
-	if strings.Contains(trigger.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
+	if trigger.GetStatus() != nil && strings.Contains(trigger.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
 		return nil, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
 	}
 	if !trigger.Status.IsReady() {
