@@ -111,6 +111,133 @@ func (w *wrapOperatorV1alpha1) RESTClient() rest.Interface {
 	panic("RESTClient called on dynamic client!")
 }
 
+func (w *wrapOperatorV1alpha1) OpenShiftPipelinesAsCodes() typedoperatorv1alpha1.OpenShiftPipelinesAsCodeInterface {
+	return &wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl{
+		dyn: w.dyn.Resource(schema.GroupVersionResource{
+			Group:    "operator.tekton.dev",
+			Version:  "v1alpha1",
+			Resource: "openshiftpipelinesascodes",
+		}),
+	}
+}
+
+type wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl struct {
+	dyn dynamic.NamespaceableResourceInterface
+}
+
+var _ typedoperatorv1alpha1.OpenShiftPipelinesAsCodeInterface = (*wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl)(nil)
+
+func (w *wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl) Create(ctx context.Context, in *v1alpha1.OpenShiftPipelinesAsCode, opts v1.CreateOptions) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "operator.tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "OpenShiftPipelinesAsCode",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Create(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.OpenShiftPipelinesAsCode{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+	return w.dyn.Delete(ctx, name, opts)
+}
+
+func (w *wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	return w.dyn.DeleteCollection(ctx, opts, listOpts)
+}
+
+func (w *wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl) Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
+	uo, err := w.dyn.Get(ctx, name, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.OpenShiftPipelinesAsCode{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl) List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.OpenShiftPipelinesAsCodeList, error) {
+	uo, err := w.dyn.List(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.OpenShiftPipelinesAsCodeList{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.OpenShiftPipelinesAsCode, err error) {
+	uo, err := w.dyn.Patch(ctx, name, pt, data, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.OpenShiftPipelinesAsCode{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl) Update(ctx context.Context, in *v1alpha1.OpenShiftPipelinesAsCode, opts v1.UpdateOptions) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "operator.tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "OpenShiftPipelinesAsCode",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.Update(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.OpenShiftPipelinesAsCode{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl) UpdateStatus(ctx context.Context, in *v1alpha1.OpenShiftPipelinesAsCode, opts v1.UpdateOptions) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
+	in.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "operator.tekton.dev",
+		Version: "v1alpha1",
+		Kind:    "OpenShiftPipelinesAsCode",
+	})
+	uo := &unstructured.Unstructured{}
+	if err := convert(in, uo); err != nil {
+		return nil, err
+	}
+	uo, err := w.dyn.UpdateStatus(ctx, uo, opts)
+	if err != nil {
+		return nil, err
+	}
+	out := &v1alpha1.OpenShiftPipelinesAsCode{}
+	if err := convert(uo, out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (w *wrapOperatorV1alpha1OpenShiftPipelinesAsCodeImpl) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+	return nil, errors.New("NYI: Watch")
+}
+
 func (w *wrapOperatorV1alpha1) TektonAddons() typedoperatorv1alpha1.TektonAddonInterface {
 	return &wrapOperatorV1alpha1TektonAddonImpl{
 		dyn: w.dyn.Resource(schema.GroupVersionResource{

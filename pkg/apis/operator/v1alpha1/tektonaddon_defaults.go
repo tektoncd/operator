@@ -56,6 +56,6 @@ func setAddonDefaults(addon *Addon) {
 
 	// by default enable pac
 	if addon.EnablePAC == nil {
-		addon.EnablePAC = ptr.Bool(true)
+		addon.EnablePAC = ptr.Bool(false)
 	}
 }

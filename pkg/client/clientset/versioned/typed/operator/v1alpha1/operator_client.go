@@ -28,6 +28,7 @@ import (
 
 type OperatorV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	OpenShiftPipelinesAsCodesGetter
 	TektonAddonsGetter
 	TektonChainsGetter
 	TektonConfigsGetter
@@ -42,6 +43,10 @@ type OperatorV1alpha1Interface interface {
 // OperatorV1alpha1Client is used to interact with features provided by the operator.tekton.dev group.
 type OperatorV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *OperatorV1alpha1Client) OpenShiftPipelinesAsCodes() OpenShiftPipelinesAsCodeInterface {
+	return newOpenShiftPipelinesAsCodes(c)
 }
 
 func (c *OperatorV1alpha1Client) TektonAddons() TektonAddonInterface {

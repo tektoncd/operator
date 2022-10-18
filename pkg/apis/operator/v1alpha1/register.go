@@ -55,6 +55,9 @@ const (
 
 	// KindTektonChain is the Kind of Tekton Chain in a GVK context.
 	KindTektonChain = "TektonChain"
+
+	// KindOpenShiftPipelinesAsCode is the Kind of OpenShiftPipelinesAsCode in a GVK context.
+	KindOpenShiftPipelinesAsCode = "OpenShiftPipelinesAsCode"
 )
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
@@ -84,6 +87,8 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&TektonHubList{},
 		&TektonChain{},
 		&TektonChainList{},
+		&OpenShiftPipelinesAsCode{},
+		&OpenShiftPipelinesAsCodeList{},
 	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil

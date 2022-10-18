@@ -18,6 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
+// OpenShiftPipelinesAsCodeListerExpansion allows custom methods to be added to
+// OpenShiftPipelinesAsCodeLister.
+type OpenShiftPipelinesAsCodeListerExpansion interface{}
+
 // TektonAddonListerExpansion allows custom methods to be added to
 // TektonAddonLister.
 type TektonAddonListerExpansion interface{}
