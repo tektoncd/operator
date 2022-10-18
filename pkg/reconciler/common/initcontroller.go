@@ -87,28 +87,34 @@ func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) 
 // fetchSourceManifests mutates the passed manifest by appending one
 // appropriate for the passed TektonComponent
 func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOptions) error {
-	switch {
-	case strings.Contains(ctrl.VersionConfigMap, "pipeline"):
+	component := strings.TrimSuffix(ctrl.VersionConfigMap, "-info")
+	switch component {
+	case "pipelines":
 		var pipeline *v1alpha1.TektonPipeline
 		if err := AppendTarget(ctx, ctrl.Manifest, pipeline); err != nil {
 			return err
 		}
 		// add proxy configs to pipeline if any
 		return addProxy(ctrl.Manifest)
-	case strings.Contains(ctrl.VersionConfigMap, "triggers"):
+	case "triggers":
 		var trigger *v1alpha1.TektonTrigger
 		return AppendTarget(ctx, ctrl.Manifest, trigger)
-	case strings.Contains(ctrl.VersionConfigMap, "dashboard") && opts.ReadOnly:
-		var dashboard v1alpha1.TektonDashboard
-		dashboard.Spec.Readonly = true
-		return AppendTarget(ctx, ctrl.Manifest, &dashboard)
-	case strings.Contains(ctrl.VersionConfigMap, "dashboard") && !opts.ReadOnly:
-		var dashboard v1alpha1.TektonDashboard
-		dashboard.Spec.Readonly = false
-		return AppendTarget(ctx, ctrl.Manifest, &dashboard)
-	case strings.Contains(ctrl.VersionConfigMap, "chains"):
+	case "dashboard":
+		if opts.ReadOnly {
+			var dashboard v1alpha1.TektonDashboard
+			dashboard.Spec.Readonly = true
+			return AppendTarget(ctx, ctrl.Manifest, &dashboard)
+		} else {
+			var dashboard v1alpha1.TektonDashboard
+			dashboard.Spec.Readonly = false
+			return AppendTarget(ctx, ctrl.Manifest, &dashboard)
+		}
+	case "chains":
 		var chain v1alpha1.TektonChain
 		return AppendTarget(ctx, ctrl.Manifest, &chain)
+	case "pipelines-as-code":
+		pacLocation := filepath.Join(os.Getenv(KoEnvKey), "tekton-addon", "pipelines-as-code")
+		return AppendManifest(ctrl.Manifest, pacLocation)
 	}
 
 	return nil
