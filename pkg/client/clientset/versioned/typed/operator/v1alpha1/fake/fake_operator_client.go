@@ -28,6 +28,10 @@ type FakeOperatorV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeOperatorV1alpha1) OpenShiftPipelinesAsCodes() v1alpha1.OpenShiftPipelinesAsCodeInterface {
+	return &FakeOpenShiftPipelinesAsCodes{c}
+}
+
 func (c *FakeOperatorV1alpha1) TektonAddons() v1alpha1.TektonAddonInterface {
 	return &FakeTektonAddons{c}
 }

@@ -24,6 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// OpenShiftPipelinesAsCodes returns a OpenShiftPipelinesAsCodeInformer.
+	OpenShiftPipelinesAsCodes() OpenShiftPipelinesAsCodeInformer
 	// TektonAddons returns a TektonAddonInformer.
 	TektonAddons() TektonAddonInformer
 	// TektonChains returns a TektonChainInformer.
@@ -53,6 +55,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// OpenShiftPipelinesAsCodes returns a OpenShiftPipelinesAsCodeInformer.
+func (v *version) OpenShiftPipelinesAsCodes() OpenShiftPipelinesAsCodeInformer {
+	return &openShiftPipelinesAsCodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // TektonAddons returns a TektonAddonInformer.
