@@ -101,8 +101,6 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
       serviceAccountName: tekton-operators-proxy-webhook
       containers:
         - name: proxy
