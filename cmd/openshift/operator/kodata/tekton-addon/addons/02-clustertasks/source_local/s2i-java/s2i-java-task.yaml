@@ -51,6 +51,10 @@ spec:
     - name: SKIP_PUSH
       description: Skip pushing the built image
       default: "false"
+    - name: ENV_VARS
+      type: array
+      description: Environment variables to set during _build-time_.
+      default: []
   workspaces:
     - name: source
       mountPath: /workspace/source
