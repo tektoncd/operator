@@ -21,14 +21,41 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	"knative.dev/pkg/logging"
+)
+
+const (
+	openshiftNS = "openshift"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
-	return openshiftExtension{}
+	logger := logging.FromContext(ctx)
+
+	prTemplates, err := fetchPipelineRunTemplates()
+	if err != nil {
+		logger.Fatalf("failed to fetch pipelineRun templates: %v", err)
+	}
+
+	operatorVer, err := common.OperatorVersion(ctx)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	pacVersion := ctx.Value("pipelines-as-code-version").(string)
+
+	tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
+	return openshiftExtension{
+		installerSetClient:   client.NewInstallerSetClient(tisClient, operatorVer, pacVersion, v1alpha1.KindOpenShiftPipelinesAsCode, nil),
+		pipelineRunTemplates: prTemplates,
+	}
 }
 
 type openshiftExtension struct {
+	installerSetClient   *client.InstallerSetClient
+	pipelineRunTemplates *mf.Manifest
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -38,8 +65,24 @@ func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonCompon
 	return nil
 }
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
+	logger := logging.FromContext(ctx)
+
+	if err := oe.installerSetClient.PostSet(ctx, comp, oe.pipelineRunTemplates, extFilterAndTransform()); err != nil {
+		logger.Error("failed post set creation: ", err)
+		return err
+	}
 	return nil
 }
 func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
 	return nil
+}
+
+func extFilterAndTransform() client.FilterAndTransform {
+	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
+		prTemplates, err := manifest.Transform(mf.InjectNamespace(openshiftNS))
+		if err != nil {
+			return nil, err
+		}
+		return &prTemplates, nil
+	}
 }
