@@ -183,7 +183,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		return err
 	}
 
-	if err := r.EnsurePipelinesAsCode(ctx, ta); err != nil {
+	// Pipelines As Code is installed as a separate component now, so
+	// cleanup any of its installer set created previously
+	// this can be removed in future release
+	if err := r.CleanupPipelinesAsCode(ctx, ta); err != nil {
 		return err
 	}
 
