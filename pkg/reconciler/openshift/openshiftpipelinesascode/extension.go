@@ -18,12 +18,17 @@ package openshiftpipelinesascode
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
+	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	"go.uber.org/zap"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
 
@@ -33,6 +38,20 @@ const (
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	logger := logging.FromContext(ctx)
+
+	mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
+	if err != nil {
+		logger.Fatalw("Error creating client from injected config", zap.Error(err))
+	}
+	pacManifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient))
+	if err != nil {
+		logger.Fatalw("Error creating initial manifest", zap.Error(err))
+	}
+
+	pacLocation := filepath.Join(os.Getenv(common.KoEnvKey), "tekton-addon", "pipelines-as-code")
+	if err := common.AppendManifest(&pacManifest, pacLocation); err != nil {
+		logger.Fatalf("failed to fetch PAC manifest: %v", err)
+	}
 
 	prTemplates, err := fetchPipelineRunTemplates()
 	if err != nil {
@@ -44,17 +63,19 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		logger.Fatal(err)
 	}
 
-	pacVersion := ctx.Value("pipelines-as-code-version").(string)
-
 	tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 	return openshiftExtension{
-		installerSetClient:   client.NewInstallerSetClient(tisClient, operatorVer, pacVersion, v1alpha1.KindOpenShiftPipelinesAsCode, nil),
+		// component version is used for metrics, passing a dummy
+		// value through extension not going to affect execution
+		installerSetClient:   client.NewInstallerSetClient(tisClient, operatorVer, "pipelines-as-code-ext", v1alpha1.KindOpenShiftPipelinesAsCode, nil),
+		pacManifest:          &pacManifest,
 		pipelineRunTemplates: prTemplates,
 	}
 }
 
 type openshiftExtension struct {
 	installerSetClient   *client.InstallerSetClient
+	pacManifest          *mf.Manifest
 	pipelineRunTemplates *mf.Manifest
 }
 
@@ -69,6 +90,11 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 
 	if err := oe.installerSetClient.PostSet(ctx, comp, oe.pipelineRunTemplates, extFilterAndTransform()); err != nil {
 		logger.Error("failed post set creation: ", err)
+		return err
+	}
+
+	if err := updateControllerRouteInConfigMap(oe.pacManifest, comp.GetSpec().GetTargetNamespace()); err != nil {
+		logger.Error("failed to update controller route: ", err)
 		return err
 	}
 	return nil

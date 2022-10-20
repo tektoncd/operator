@@ -58,14 +58,16 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatal(err)
 		}
 
-		// add pipeline-as-code-version for extension to use
-		ctx = context.WithValue(ctx, "pipelines-as-code-version", pacVersion)
-
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
+
+		metrics, err := NewRecorder()
+		if err != nil {
+			logger.Errorf("Failed to create trigger metrics recorder %v", err)
+		}
 
 		c := &Reconciler{
 			pipelineInformer:   tektonPipelineinformer.Get(ctx),
-			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, pacVersion, v1alpha1.KindOpenShiftPipelinesAsCode, nil),
+			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, pacVersion, v1alpha1.KindOpenShiftPipelinesAsCode, metrics),
 			extension:          generator(ctx),
 			manifest:           manifest,
 			pacVersion:         pacVersion,
