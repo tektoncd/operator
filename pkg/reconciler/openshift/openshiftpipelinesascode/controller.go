@@ -58,6 +58,9 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatal(err)
 		}
 
+		// add pipeline-as-code-version for extension to use
+		ctx = context.WithValue(ctx, "pipelines-as-code-version", pacVersion)
+
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 
 		c := &Reconciler{

@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pipelines-as-code-pipelinerun-go
+  labels:
+    pipelinesascode.openshift.io/runtime: "go"
+    app.kubernetes.io/part-of: pipelines-as-code
+data:
+  template: |
+    apiVersion: tekton.dev/v1beta1
+    kind: PipelineRun
+    metadata:
+      annotations:
+        pipelinesascode.tekton.dev/max-keep-runs: "5"
+        pipelinesascode.tekton.dev/on-event: pull_request
+        pipelinesascode.tekton.dev/on-target-branch: main
+        pipelinesascode.tekton.dev/task: git-clone
+        pipelinesascode.tekton.dev/task-1: '[golangci-lint]'
+      name: go-template
+    spec:
+      params:
+        - name: repo_url
+          value: "{{ repo_url }}"
+        - name: revision
+          value: "{{ revision }}"
+      pipelineSpec:
+        params:
+          - name: repo_url
+          - name: revision
+        workspaces:
+          - name: source
+          - name: basic-auth
+        tasks:
+          - name: fetch-repository
+            taskRef:
+              name: git-clone
+            workspaces:
+              - name: output
+                workspace: source
+              - name: basic-auth
+                workspace: basic-auth
+            params:
+              - name: url
+                value: $(params.repo_url)
+              - name: revision
+                value: $(params.revision)
+          - name: golangci-lint
+            taskRef:
+              name: golangci-lint
+            runAfter:
+              - fetch-repository
+            params:
+              - name: package
+                value: .
+            workspaces:
+              - name: source
+                workspace: source
+      workspaces:
+        - name: source
+          volumeClaimTemplate:
+            spec:
+              accessModes:
+                - ReadWriteOnce
+              resources:
+                requests:
+                  storage: 1Gi
+        - name: basic-auth
+          secret:
+            secretName: "{{ git_auth_secret }}"
