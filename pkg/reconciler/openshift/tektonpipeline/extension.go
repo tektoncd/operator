@@ -44,8 +44,10 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 	}
 
 	ext := openshiftExtension{
+		// component version is used for metrics, passing a dummy
+		// value through extension not going to affect execution
 		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
-			version, "pre-pipeline", v1alpha1.KindTektonPipeline, nil),
+			version, "pipelines-ext", v1alpha1.KindTektonPipeline, nil),
 	}
 	return ext
 }
