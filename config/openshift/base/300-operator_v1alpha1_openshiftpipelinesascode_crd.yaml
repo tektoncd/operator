@@ -26,6 +26,9 @@ spec:
     listKind: OpenShiftPipelinesAsCodeList
     plural: openshiftpipelinesascodes
     singular: openshiftpipelinesascode
+    shortNames:
+    - opac
+    - pac
   preserveUnknownFields: false
   scope: Cluster
   versions:
