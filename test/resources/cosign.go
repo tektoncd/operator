@@ -57,5 +57,5 @@ func CosignVerifyBlob(key, signature, payload string) error {
 		return err
 	}
 
-	return verify.VerifyBlobCmd(context.TODO(), options.KeyOpts{KeyRef: key}, "", "", "", "", signatureFile.Name(), payloadFile.Name(), "", "", "", "", "", false)
+	return verify.VerifyBlobCmd(context.TODO(), options.KeyOpts{KeyRef: key}, "", "", "", "", "", signatureFile.Name(), payloadFile.Name(), "", "", "", "", "", false)
 }
