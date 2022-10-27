@@ -37,6 +37,7 @@ import (
 
 var (
 	serviceAccount = namespacedResource("v1", "ServiceAccount", "test", "test-service-account")
+	namespace      = namespacedResource("v1", "Namespace", "", "test-service-account")
 )
 
 // namespacedResource is an unstructured resource with the given apiVersion, kind, ns and name.
@@ -358,4 +359,27 @@ func TestJobFailed(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected Error but got nil ")
 	}
+}
+
+func TestEnsureResources_DeleteResources(t *testing.T) {
+	fakeClient := fake.New(&serviceAccount, &namespace)
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{serviceAccount, namespace}))
+	if err != nil {
+		t.Fatalf("Failed to generate manifest: %v", err)
+	}
+
+	i := NewInstaller(&manifest, fakeClient, logger)
+
+	err = i.DeleteResources()
+	assert.NilError(t, err)
+
+	_, err = fakeClient.Get(&serviceAccount)
+	assert.Error(t, err, "ServiceAccount \"test-service-account\" not found")
+
+	// namespace must be not deleted
+	_, err = fakeClient.Get(&namespace)
+	assert.NilError(t, err)
 }

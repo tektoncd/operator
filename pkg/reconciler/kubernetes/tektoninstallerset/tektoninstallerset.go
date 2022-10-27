@@ -50,16 +50,12 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, installerSet *v1alpha1.Te
 		return err
 	}
 
-	// Delete all resources except CRDs and Namespace as they are own by owner of
-	// TektonInstallerSet
-	// They will be deleted when the component CR is deleted
-	deleteManifests = deleteManifests.Filter(mf.Not(mf.Any(mf.ByKind("Namespace"), mf.CRDs, mf.ByKind("PersistentVolumeClaim"))))
-	err = deleteManifests.Delete()
+	installer := NewInstaller(&deleteManifests, r.mfClient, logger)
+	err = installer.DeleteResources()
 	if err != nil {
-		logger.Error("failed to delete resources")
+		logger.Error("failed to delete resources: ", err)
 		return err
 	}
-
 	return nil
 }
 
