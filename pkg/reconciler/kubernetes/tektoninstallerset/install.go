@@ -450,3 +450,17 @@ func isJobCompleted(d *batchv1.Job) bool {
 	}
 	return false
 }
+
+func (i *installer) DeleteResources() error {
+	for _, u := range i.Manifest.Resources() {
+		resource, err := i.Manifest.Client.Get(&u)
+		if err != nil {
+			continue
+		}
+		err = i.Manifest.Client.Delete(resource)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
