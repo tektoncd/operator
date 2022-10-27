@@ -440,3 +440,51 @@ func isJobCompleted(d *batchv1.Job) bool {
 	}
 	return false
 }
+
+// DeleteResources Deletes all resources except CRDs, PVCs and Namespace as they
+// are own by owner of TektonInstallerSet.
+// They will be deleted when the component CR is deleted
+func (i *installer) DeleteResources() error {
+	// delete clusterScope resources first
+	if err := i.delete(i.clusterScoped); err != nil {
+		return err
+	}
+	if err := i.delete(i.namespaceScoped); err != nil {
+		return err
+	}
+	if err := i.delete(i.deployment); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (i *installer) delete(resources []unstructured.Unstructured) error {
+	for _, r := range resources {
+		if skipDeletion(r.GetKind()) {
+			continue
+		}
+		resource, err := i.mfClient.Get(&r)
+		if err != nil {
+			// if error occurs log and move on, as we have owner reference set for resources, those
+			// will be removed eventually and manifestival breaks the pod during uninstallation,
+			// when CRD is deleted, CRs are removed but when we delete installer set, manifestival
+			// breaks during deleting those CRs
+			i.logger.Errorf("failed to get resource, skipping deletion: %v/%v: %v ", r.GetKind(), r.GetName(), err)
+			continue
+		}
+		err = i.mfClient.Delete(resource)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func skipDeletion(kind string) bool {
+	if kind == "Namespace" ||
+		kind == "PersistentVolumeClaim" ||
+		kind == "CustomResourceDefinition" {
+		return true
+	}
+	return false
+}
