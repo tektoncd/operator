@@ -26,6 +26,8 @@ spec:
     listKind: TektonAddonList
     plural: tektonaddons
     singular: tektonaddon
+    shortNames:
+    - ta
   preserveUnknownFields: false
   scope: Cluster
   versions:

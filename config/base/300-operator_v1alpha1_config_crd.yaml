@@ -26,6 +26,8 @@ spec:
     listKind: TektonConfigList
     plural: tektonconfigs
     singular: tektonconfig
+    shortNames:
+    - tc
   preserveUnknownFields: false
   scope: Cluster
   versions:

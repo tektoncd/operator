@@ -26,6 +26,8 @@ spec:
     listKind: TektonInstallerSetList
     plural: tektoninstallersets
     singular: tektoninstallerset
+    shortNames:
+    - ti
   preserveUnknownFields: false
   scope: Cluster
   versions:

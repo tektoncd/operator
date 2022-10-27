@@ -26,6 +26,8 @@ spec:
     listKind: TektonDashboardList
     plural: tektondashboards
     singular: tektondashboard
+    shortNames:
+    - td
   preserveUnknownFields: false
   scope: Cluster
   versions:

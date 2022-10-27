@@ -26,6 +26,8 @@ spec:
     listKind: TektonHubList
     plural: tektonhubs
     singular: tektonhub
+    shortNames:
+    - th
   preserveUnknownFields: false
   scope: Cluster
   versions:

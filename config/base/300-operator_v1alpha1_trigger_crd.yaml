@@ -26,6 +26,8 @@ spec:
     listKind: TektonTriggerList
     plural: tektontriggers
     singular: tektontrigger
+    shortNames:
+    - tt
   preserveUnknownFields: false
   scope: Cluster
   versions:

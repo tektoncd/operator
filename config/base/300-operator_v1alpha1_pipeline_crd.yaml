@@ -26,6 +26,8 @@ spec:
     listKind: TektonPipelineList
     plural: tektonpipelines
     singular: tektonpipeline
+    shortNames:
+    - tp
   preserveUnknownFields: false
   scope: Cluster
   versions:
