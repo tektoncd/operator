@@ -109,6 +109,18 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 
+	pac := configInstance.Spec.Platforms.OpenShift.PipelinesAsCode
+	if pac != nil && *pac.Enable {
+		if _, err := extension.EnsureOpenShiftPipelinesAsCodeExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), configInstance); err != nil {
+			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("OpenShiftPipelinesAsCode: %s", err.Error()))
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	} else {
+		if err := extension.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
+			return err
+		}
+	}
+
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
 		if _, err := extension.EnsureTektonAddonExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), configInstance); err != nil {
 			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("TektonAddon: %s", err.Error()))
@@ -117,7 +129,9 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	}
 
 	if configInstance.Spec.Profile == v1alpha1.ProfileLite || configInstance.Spec.Profile == v1alpha1.ProfileBasic {
-		return extension.EnsureTektonAddonCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonAddons())
+		if err := extension.EnsureTektonAddonCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonAddons()); err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -95,6 +95,9 @@ type TektonConfigSpec struct {
 	// Params is the list of params passed for all platforms
 	// +optional
 	Params []Param `json:"params,omitempty"`
+	// Platforms allows configuring platform specific configurations
+	// +optional
+	Platforms Platforms `json:"platforms,omitempty"`
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
@@ -153,4 +156,10 @@ type Config struct {
 	// PriorityClassName holds the priority class to be set to pod template
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+}
+
+type Platforms struct {
+	// OpenShift allows configuring openshift specific components and configurations
+	// +optional
+	OpenShift OpenShift `json:"openshift,omitempty"`
 }

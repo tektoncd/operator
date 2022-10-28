@@ -120,3 +120,57 @@ func Test_SetDefaults_Triggers_Properties(t *testing.T) {
 		t.Error("Setting default failed for TektonConfig (spec.trigger.triggersProperties)")
 	}
 }
+
+func Test_SetDefaults_PipelineAsCode(t *testing.T) {
+	assert.NilError(t, os.Setenv("PLATFORM", "openshift"))
+	defer os.Clearenv()
+
+	// PAC disabled through addon
+	tc := &TektonConfig{
+		Spec: TektonConfigSpec{
+			Addon: Addon{
+				EnablePAC: ptr.Bool(false),
+			},
+		},
+	}
+	tc.SetDefaults(context.TODO())
+	assert.Equal(t, *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable, false)
+	assert.Assert(t, tc.Spec.Addon.EnablePAC == nil)
+
+	// PAC enabled through addon, moving to openshiftPipelinesAsCode
+	tc = &TektonConfig{
+		Spec: TektonConfigSpec{
+			Addon: Addon{
+				EnablePAC: ptr.Bool(true),
+			},
+		},
+	}
+	tc.SetDefaults(context.TODO())
+	assert.Equal(t, *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable, true)
+	assert.Assert(t, tc.Spec.Addon.EnablePAC == nil)
+
+	// New installation
+	tc = &TektonConfig{}
+	tc.SetDefaults(context.TODO())
+	assert.Equal(t, *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable, true)
+	assert.Assert(t, tc.Spec.Addon.EnablePAC == nil)
+
+	// if PAC is enabled already then ignore addon pac field
+	tc = &TektonConfig{
+		Spec: TektonConfigSpec{
+			Addon: Addon{
+				EnablePAC: ptr.Bool(false),
+			},
+			Platforms: Platforms{
+				OpenShift: OpenShift{
+					PipelinesAsCode: &PipelinesAsCode{
+						Enable: ptr.Bool(true),
+					},
+				},
+			},
+		},
+	}
+	tc.SetDefaults(context.TODO())
+	assert.Equal(t, *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable, true)
+	assert.Assert(t, tc.Spec.Addon.EnablePAC == nil)
+}
