@@ -18,8 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-
-	"knative.dev/pkg/ptr"
 )
 
 func (ta *TektonAddon) SetDefaults(ctx context.Context) {
@@ -54,8 +52,7 @@ func setAddonDefaults(addon *Addon) {
 		}
 	}
 
-	// by default enable pac
-	if addon.EnablePAC == nil {
-		addon.EnablePAC = ptr.Bool(false)
-	}
+	// Deprecated, will be removed in further releases
+	// moved to OpenShift platform section
+	addon.EnablePAC = nil
 }

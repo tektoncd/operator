@@ -76,6 +76,7 @@ type Addon struct {
 	// Params is the list of params passed for Addon customization
 	// +optional
 	Params []Param `json:"params,omitempty"`
+	// Deprecated, will be removed in further release
 	// EnablePAC field defines whether to install PAC
 	// +optional
 	EnablePAC *bool `json:"enablePipelinesAsCode,omitempty"`
