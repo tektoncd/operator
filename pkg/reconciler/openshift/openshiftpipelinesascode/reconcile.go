@@ -89,14 +89,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, pac *v1alpha1.OpenShiftP
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
 		logger.Error(msg)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
-			return nil
+			return err
 		}
 		pac.Status.MarkInstallerSetNotReady(msg)
-		return err
+		return nil
 	}
 
 	if err := r.extension.PostReconcile(ctx, pac); err != nil {
-		return err
+		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
+		logger.Error(msg)
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		pac.Status.MarkPostReconcilerFailed(msg)
+		return nil
 	}
 
 	// Mark PostReconcile Complete
