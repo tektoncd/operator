@@ -7,13 +7,14 @@
 package proto
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	proto "github.com/letsencrypt/boulder/core/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
