@@ -80,6 +80,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		return err
 	}
 
+	if err := r.installerSetClient.RemoveObsoleteSets(ctx); err != nil {
+		logger.Error("failed to remove obsolete installer sets: %v", err)
+		return err
+	}
+
 	if err := r.extension.PreReconcile(ctx, tp); err != nil {
 		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
 		logger.Error(msg)

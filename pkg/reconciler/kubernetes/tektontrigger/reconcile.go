@@ -84,6 +84,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	// Pass the object through defaulting
 	tt.SetDefaults(ctx)
 
+	if err := r.installerSetClient.RemoveObsoleteSets(ctx); err != nil {
+		logger.Error("failed to remove obsolete installer sets: %v", err)
+		return err
+	}
+
 	if err := r.extension.PreReconcile(ctx, tt); err != nil {
 		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
 		logger.Error(msg)
