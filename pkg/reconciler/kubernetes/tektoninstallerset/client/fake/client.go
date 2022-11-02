@@ -18,6 +18,7 @@ package fake
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	v1alpha12 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
@@ -32,10 +33,15 @@ type fakeClient struct {
 	resource map[string]*v1alpha1.TektonInstallerSet
 }
 
-func NewFakeISClient() v1alpha12.TektonInstallerSetInterface {
-	return &fakeClient{
+func NewFakeISClient(is ...*v1alpha1.TektonInstallerSet) v1alpha12.TektonInstallerSetInterface {
+	client := &fakeClient{
 		resource: map[string]*v1alpha1.TektonInstallerSet{},
 	}
+	for _, r := range is {
+		inst := r
+		client.resource[inst.GetName()] = inst
+	}
+	return client
 }
 
 func (f fakeClient) Create(ctx context.Context, tektonInstallerSet *v1alpha1.TektonInstallerSet, opts metav1.CreateOptions) (*v1alpha1.TektonInstallerSet, error) {
@@ -51,18 +57,18 @@ func (f fakeClient) Create(ctx context.Context, tektonInstallerSet *v1alpha1.Tek
 }
 
 func (f fakeClient) Update(ctx context.Context, tektonInstallerSet *v1alpha1.TektonInstallerSet, opts metav1.UpdateOptions) (*v1alpha1.TektonInstallerSet, error) {
-	//TODO implement me
-	panic("implement me")
+	f.resource[tektonInstallerSet.GetName()] = tektonInstallerSet
+	return f.resource[tektonInstallerSet.GetName()], nil
 }
 
 func (f fakeClient) UpdateStatus(ctx context.Context, tektonInstallerSet *v1alpha1.TektonInstallerSet, opts metav1.UpdateOptions) (*v1alpha1.TektonInstallerSet, error) {
-	//TODO implement me
-	panic("implement me")
+	f.resource[tektonInstallerSet.GetName()] = tektonInstallerSet
+	return f.resource[tektonInstallerSet.GetName()], nil
 }
 
 func (f fakeClient) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
-	//TODO implement me
-	panic("implement me")
+	delete(f.resource, name)
+	return nil
 }
 
 func (f fakeClient) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
@@ -71,13 +77,18 @@ func (f fakeClient) DeleteCollection(ctx context.Context, opts metav1.DeleteOpti
 }
 
 func (f fakeClient) Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1alpha1.TektonInstallerSet, error) {
-	//TODO implement me
-	panic("implement me")
+	if res, ok := f.resource[name]; ok {
+		return res, nil
+	}
+	return nil, fmt.Errorf("resource not found")
 }
 
 func (f fakeClient) List(ctx context.Context, opts metav1.ListOptions) (*v1alpha1.TektonInstallerSetList, error) {
-	//TODO implement me
-	panic("implement me")
+	list := []v1alpha1.TektonInstallerSet{}
+	for i := range f.resource {
+		list = append(list, *f.resource[i])
+	}
+	return &v1alpha1.TektonInstallerSetList{Items: list}, nil
 }
 
 func (f fakeClient) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {

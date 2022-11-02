@@ -20,11 +20,13 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 )
 
@@ -81,6 +83,10 @@ func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.Tek
 		return nil, err
 	}
 
+	if err := i.waitForStatus(ctx, staticIS); err != nil {
+		return nil, err
+	}
+
 	deployName := fmt.Sprintf("%s-%s-%s-", kind, InstallerTypeMain, InstallerSubTypeDeployment)
 	deploymentIS, err := i.makeInstallerSet(ctx, comp, &deploymentManifest, filterAndTransform, deployName, InstallerTypeMain)
 	if err != nil {
@@ -124,4 +130,23 @@ func (i *InstallerSetClient) makeInstallerSet(ctx context.Context, comp v1alpha1
 			Manifests: transformedMf.Resources(),
 		},
 	}, nil
+}
+
+func (i *InstallerSetClient) waitForStatus(ctx context.Context, set *v1alpha1.TektonInstallerSet) error {
+	for cnt := 0; cnt < 3; cnt++ {
+		onClusterSet, err := i.clientSet.Get(ctx, set.GetName(), metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		// once status is initialised for static set we can create deployment set
+		ready := onClusterSet.Status.GetCondition(apis.ConditionReady)
+		if ready != nil {
+			return nil
+		}
+		// if status is not initialised then wait
+		time.Sleep(3 * time.Second)
+	}
+	// if still the status is not initialised then create the next set and let it fail
+	// there may be something else wrong
+	return nil
 }

@@ -89,10 +89,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
 		logger.Error(msg)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
-			return nil
+			return err
 		}
 		tp.Status.MarkPreReconcilerFailed(msg)
-		return err
+		return nil
 	}
 
 	// Mark PreReconcile Complete
@@ -102,20 +102,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
 		logger.Error(msg)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
-			return nil
+			return err
 		}
 		tp.Status.MarkInstallerSetNotReady(msg)
-		return err
+		return nil
 	}
 
 	if err := r.extension.PostReconcile(ctx, tp); err != nil {
 		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
 		logger.Error(msg)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
-			return nil
+			return err
 		}
 		tp.Status.MarkPostReconcilerFailed(msg)
-		return err
+		return nil
 	}
 
 	// Mark PostReconcile Complete
