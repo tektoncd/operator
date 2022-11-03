@@ -1185,7 +1185,7 @@ github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag
 github.com/tektoncd/pipeline/pkg/substitution
 github.com/tektoncd/pipeline/test/diff
 github.com/tektoncd/pipeline/test/parse
-# github.com/tektoncd/plumbing v0.0.0-20220817140952-3da8ce01aeeb
+# github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7
 ## explicit; go 1.13
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
