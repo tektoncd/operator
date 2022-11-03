@@ -169,6 +169,28 @@
         }
       }
     },
+    "v1.ConfigSource": {
+      "description": "ConfigSource identifies the source where a resource came from. This can include Git repositories, Task Bundles, file checksums, or other information that allows users to identify where the resource came from and what version was used.",
+      "type": "object",
+      "properties": {
+        "digest": {
+          "description": "Digest is a collection of cryptographic digests for the contents of the artifact specified by URI. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.digest Example: {\"sha1\": \"f99d13e554ffcb696dee719fa85b695cb5b0f428\"}",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "entryPoint": {
+          "description": "EntryPoint identifies the entry point into the build. This is often a path to a configuration file and/or a target label within that file. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.entryPoint Example: \"task/git-clone/0.8/git-clone.yaml\"",
+          "type": "string"
+        },
+        "uri": {
+          "description": "URI indicates the identity of the source of the config. Definition: https://slsa.dev/provenance/v0.2#invocation.configSource.uri Example: \"https://github.com/tektoncd/catalog\"",
+          "type": "string"
+        }
+      }
+    },
     "v1.EmbeddedTask": {
       "description": "EmbeddedTask is used to define a Task inline within a Pipeline's PipelineTasks.",
       "type": "object",
@@ -643,6 +665,10 @@
           "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
           "$ref": "#/definitions/v1.PipelineSpec"
         },
+        "provenance": {
+          "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+          "$ref": "#/definitions/v1.Provenance"
+        },
         "results": {
           "description": "Results are the list of results written out by the pipeline task's containers",
           "type": "array",
@@ -691,6 +717,10 @@
         "pipelineSpec": {
           "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
           "$ref": "#/definitions/v1.PipelineSpec"
+        },
+        "provenance": {
+          "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+          "$ref": "#/definitions/v1.Provenance"
         },
         "results": {
           "description": "Results are the list of results written out by the pipeline task's containers",
@@ -927,19 +957,19 @@
         "serviceAccountName": {
           "type": "string"
         },
-        "sidecarOverrides": {
+        "sidecarSpecs": {
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunSidecarOverride"
+            "$ref": "#/definitions/v1.TaskRunSidecarSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
-        "stepOverrides": {
+        "stepSpecs": {
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunStepOverride"
+            "$ref": "#/definitions/v1.TaskRunStepSpec"
           },
           "x-kubernetes-list-type": "atomic"
         }
@@ -988,8 +1018,18 @@
         }
       }
     },
+    "v1.Provenance": {
+      "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.). For now, it only contains the subfield `ConfigSource` that identifies the source where a build config file came from. In future, it can be expanded as needed to include more metadata about the build. This field aims to be used to carry minimum amount of the authenticated metadata in *Run status so that Tekton Chains can pick it up and record in the provenance it generates.",
+      "type": "object",
+      "properties": {
+        "configSource": {
+          "description": "ConfigSource identifies the source where a resource came from.",
+          "$ref": "#/definitions/v1.ConfigSource"
+        }
+      }
+    },
     "v1.ResolverRef": {
-      "description": "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in alpha and these fields are only available when the alpha feature gate is enabled.",
+      "description": "ResolverRef can be used to refer to a Pipeline or Task in a remote location like a git repo. This feature is in beta and these fields are only available when the beta feature gate is enabled.",
       "type": "object",
       "properties": {
         "params": {
@@ -1061,6 +1101,11 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "computeResources": {
+          "description": "ComputeResources required by this Sidecar. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "env": {
           "description": "List of environment variables to set in the Sidecar. Cannot be updated.",
           "type": "array",
@@ -1120,11 +1165,6 @@
         "readinessProbe": {
           "description": "Periodic probe of Sidecar service readiness. Container will be removed from service endpoints if the probe fails. Cannot be updated. More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes",
           "$ref": "#/definitions/v1.Probe"
-        },
-        "resources": {
-          "description": "Compute Resources required by this Sidecar. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "script": {
           "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command or Args.",
@@ -1276,6 +1316,11 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "computeResources": {
+          "description": "ComputeResources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "env": {
           "description": "List of environment variables to set in the Step. Cannot be updated.",
           "type": "array",
@@ -1312,11 +1357,6 @@
         "onError": {
           "description": "OnError defines the exiting behavior of a container on error can be set to [ continue | stopAndFail ]",
           "type": "string"
-        },
-        "resources": {
-          "description": "Compute Resources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "script": {
           "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",
@@ -1434,6 +1474,11 @@
           },
           "x-kubernetes-list-type": "atomic"
         },
+        "computeResources": {
+          "description": "ComputeResources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "env": {
           "description": "List of environment variables to set in the Step. Cannot be updated.",
           "type": "array",
@@ -1461,11 +1506,6 @@
         "imagePullPolicy": {
           "description": "Image pull policy. One of Always, Never, IfNotPresent. Defaults to Always if :latest tag is specified, or IfNotPresent otherwise. Cannot be updated. More info: https://kubernetes.io/docs/concepts/containers/images#updating-images",
           "type": "string"
-        },
-        "resources": {
-          "description": "Compute Resources required by this Step. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "securityContext": {
           "description": "SecurityContext defines the security options the Step should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/",
@@ -1704,23 +1744,23 @@
         }
       }
     },
-    "v1.TaskRunSidecarOverride": {
-      "description": "TaskRunSidecarOverride is used to override the values of a Sidecar in the corresponding Task.",
+    "v1.TaskRunSidecarSpec": {
+      "description": "TaskRunSidecarSpec is used to override the values of a Sidecar in the corresponding Task.",
       "type": "object",
       "required": [
         "name",
-        "resources"
+        "computeResources"
       ],
       "properties": {
+        "computeResources": {
+          "description": "The resource requirements to apply to the Sidecar.",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "name": {
           "description": "The name of the Sidecar to override.",
           "type": "string",
           "default": ""
-        },
-        "resources": {
-          "description": "The resource requirements to apply to the Sidecar.",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
         }
       }
     },
@@ -1751,12 +1791,12 @@
           "type": "string",
           "default": ""
         },
-        "sidecarOverrides": {
-          "description": "Overrides to apply to Sidecars in this TaskRun. If a field is specified in both a Sidecar and a SidecarOverride, the value from the SidecarOverride will be used. This field is only supported when the alpha feature gate is enabled.",
+        "sidecarSpecs": {
+          "description": "Specs to apply to Sidecars in this TaskRun. If a field is specified in both a Sidecar and a SidecarSpec, the value from the SidecarSpec will be used. This field is only supported when the alpha feature gate is enabled.",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunSidecarOverride"
+            "$ref": "#/definitions/v1.TaskRunSidecarSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1768,12 +1808,12 @@
           "description": "Status message for cancellation.",
           "type": "string"
         },
-        "stepOverrides": {
-          "description": "Overrides to apply to Steps in this TaskRun. If a field is specified in both a Step and a StepOverride, the value from the StepOverride will be used. This field is only supported when the alpha feature gate is enabled.",
+        "stepSpecs": {
+          "description": "Specs to apply to Steps in this TaskRun. If a field is specified in both a Step and a StepSpec, the value from the StepSpec will be used. This field is only supported when the alpha feature gate is enabled.",
           "type": "array",
           "items": {
             "default": {},
-            "$ref": "#/definitions/v1.TaskRunStepOverride"
+            "$ref": "#/definitions/v1.TaskRunStepSpec"
           },
           "x-kubernetes-list-type": "atomic"
         },
@@ -1838,6 +1878,10 @@
           "type": "string",
           "default": ""
         },
+        "provenance": {
+          "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+          "$ref": "#/definitions/v1.Provenance"
+        },
         "results": {
           "description": "Results are the list of results written out by the task's containers",
           "type": "array",
@@ -1900,6 +1944,10 @@
           "type": "string",
           "default": ""
         },
+        "provenance": {
+          "description": "Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).",
+          "$ref": "#/definitions/v1.Provenance"
+        },
         "results": {
           "description": "Results are the list of results written out by the task's containers",
           "type": "array",
@@ -1946,23 +1994,23 @@
         }
       }
     },
-    "v1.TaskRunStepOverride": {
-      "description": "TaskRunStepOverride is used to override the values of a Step in the corresponding Task.",
+    "v1.TaskRunStepSpec": {
+      "description": "TaskRunStepSpec is used to override the values of a Step in the corresponding Task.",
       "type": "object",
       "required": [
         "name",
-        "resources"
+        "computeResources"
       ],
       "properties": {
+        "computeResources": {
+          "description": "The resource requirements to apply to the Step.",
+          "default": {},
+          "$ref": "#/definitions/v1.ResourceRequirements"
+        },
         "name": {
           "description": "The name of the Step to override.",
           "type": "string",
           "default": ""
-        },
-        "resources": {
-          "description": "The resource requirements to apply to the Step.",
-          "default": {},
-          "$ref": "#/definitions/v1.ResourceRequirements"
         }
       }
     },

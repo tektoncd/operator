@@ -25,20 +25,25 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
 var _ apis.Validatable = (*Pipeline)(nil)
+var _ resourcesemantics.VerbLimited = (*Pipeline)(nil)
+
+// SupportedVerbs returns the operations that validation should be called for
+func (p *Pipeline) SupportedVerbs() []admissionregistrationv1.OperationType {
+	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
+}
 
 // Validate checks that the Pipeline structure is valid but does not validate
 // that any references resources exist, that is done at run time.
 func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(p.GetObjectMeta()).ViaField("metadata")
-	if apis.IsInDelete(ctx) {
-		return nil
-	}
 	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 	return errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
 }
@@ -64,7 +69,7 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineWorkspacesUsage(ctx, ps.Workspaces, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validatePipelineWorkspacesUsage(ctx, ps.Workspaces, ps.Finally).ViaField("finally"))
 	// Validate the pipeline's results
-	errs = errs.Also(validatePipelineResults(ps.Results, ps.Tasks))
+	errs = errs.Also(validatePipelineResults(ps.Results, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
 	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
@@ -242,8 +247,9 @@ func filter(arr []string, cond func(string) bool) []string {
 }
 
 // validatePipelineResults ensure that pipeline result variables are properly configured
-func validatePipelineResults(results []PipelineResult, tasks []PipelineTask) (errs *apis.FieldError) {
+func validatePipelineResults(results []PipelineResult, tasks []PipelineTask, finally []PipelineTask) (errs *apis.FieldError) {
 	pipelineTaskNames := getPipelineTasksNames(tasks)
+	pipelineFinallyTaskNames := getPipelineTasksNames(finally)
 	for idx, result := range results {
 		expressions, ok := GetVarSubstitutionExpressionsForPipelineResult(result)
 		if !ok {
@@ -263,7 +269,7 @@ func validatePipelineResults(results []PipelineResult, tasks []PipelineTask) (er
 				"value").ViaFieldIndex("results", idx))
 		}
 
-		if !taskContainsResult(result.Value.StringVal, pipelineTaskNames) {
+		if !taskContainsResult(result.Value.StringVal, pipelineTaskNames, pipelineFinallyTaskNames) {
 			errs = errs.Also(apis.ErrInvalidValue("referencing a nonexistent task",
 				"value").ViaFieldIndex("results", idx))
 		}
@@ -284,16 +290,26 @@ func getPipelineTasksNames(pipelineTasks []PipelineTask) sets.String {
 
 // taskContainsResult ensures the result value is referenced within the
 // task names
-func taskContainsResult(resultExpression string, pipelineTaskNames sets.String) bool {
+func taskContainsResult(resultExpression string, pipelineTaskNames sets.String, pipelineFinallyTaskNames sets.String) bool {
 	// split incase of multiple resultExpressions in the same result.Value string
 	// i.e "$(task.<task-name).result.<result-name>) - $(task2.<task2-name).result2.<result2-name>)"
 	split := strings.Split(resultExpression, "$")
 	for _, expression := range split {
 		if expression != "" {
-			pipelineTaskName, _, _, _, _ := parseExpression(stripVarSubExpression("$" + expression))
-			if !pipelineTaskNames.Has(pipelineTaskName) {
+			value := stripVarSubExpression("$" + expression)
+			pipelineTaskName, _, _, _, err := parseExpression(value)
+
+			if err != nil {
 				return false
 			}
+
+			if strings.HasPrefix(value, "tasks") && !pipelineTaskNames.Has(pipelineTaskName) {
+				return false
+			}
+			if strings.HasPrefix(value, "finally") && !pipelineFinallyTaskNames.Has(pipelineTaskName) {
+				return false
+			}
+
 		}
 	}
 	return true
