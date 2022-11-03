@@ -18,18 +18,24 @@ package client
 
 import (
 	"context"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"knative.dev/pkg/logging"
 )
 
+func (i *InstallerSetClient) PostSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
+	return i.createSet(ctx, comp, InstallerTypePost, manifest, filterAndTransform)
+}
+
 func (i *InstallerSetClient) PreSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
 	return i.createSet(ctx, comp, InstallerTypePre, manifest, filterAndTransform)
 }
 
-func (i *InstallerSetClient) PostSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
-	return i.createSet(ctx, comp, InstallerTypePost, manifest, filterAndTransform)
+func (i *InstallerSetClient) CustomSet(ctx context.Context, comp v1alpha1.TektonComponent, customName string, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
+	setType := InstallerTypeCustom + "-" + strings.ToLower(customName)
+	return i.createSet(ctx, comp, setType, manifest, filterAndTransform)
 }
 
 func (i *InstallerSetClient) createSet(ctx context.Context, comp v1alpha1.TektonComponent, setType string, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {

@@ -123,7 +123,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
 		if _, err := extension.EnsureTektonAddonExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), configInstance); err != nil {
-			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("TektonAddon: %s", err.Error()))
+			configInstance.Status.MarkPostInstallFailed(fmt.Sprintf("TektonAddon not ready: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}

@@ -44,7 +44,7 @@ func TestEnsureTektonAddonCRExists(t *testing.T) {
 	// during second invocation instance exists but waiting on dependencies (pipeline, triggers)
 	// hence returns DEPENDENCY_UPGRADE_PENDING_ERR
 	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig)
-	util.AssertEqual(t, err, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR)
+	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// make upgrade checks pass
 	makeUpgradeCheckPass(t, ctx, c.OperatorV1alpha1().TektonAddons())

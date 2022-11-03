@@ -16,27 +16,15 @@ limitations under the License.
 
 package tektonaddon
 
-import (
-	"context"
+import "go.uber.org/zap"
 
-	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-var pacLS = metav1.LabelSelector{
-	MatchLabels: map[string]string{
-		v1alpha1.InstallerSetType: PACInstallerSet,
-	},
+type Recorder struct {
 }
 
-func (r *Reconciler) CleanupPipelinesAsCode(ctx context.Context, ta *v1alpha1.TektonAddon) error {
-	pacLabelSelector, err := common.LabelSelector(pacLS)
-	if err != nil {
-		return err
-	}
-	if err := r.deleteInstallerSet(ctx, pacLabelSelector); err != nil {
-		return err
-	}
-	return nil
+func NewRecorder() (*Recorder, error) {
+	return &Recorder{}, nil
+}
+
+func (m *Recorder) LogMetrics(status, version string, logger *zap.SugaredLogger) {
+	// TODO
 }

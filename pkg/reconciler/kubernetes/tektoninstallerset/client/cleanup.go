@@ -21,8 +21,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/logging"
 )
 
@@ -78,6 +81,26 @@ func (i *InstallerSetClient) CleanupPreSet(ctx context.Context) error {
 
 func (i *InstallerSetClient) CleanupPostSet(ctx context.Context) error {
 	return i.cleanup(ctx, InstallerTypePost)
+}
+
+func (i *InstallerSetClient) CleanupCustomSet(ctx context.Context, customName string) error {
+	setType := InstallerTypeCustom + "-" + strings.ToLower(customName)
+	return i.cleanup(ctx, setType)
+}
+
+func (i *InstallerSetClient) CleanupAllCustomSet(ctx context.Context) error {
+	labelSelector := labels.NewSelector()
+	createdReq, _ := labels.NewRequirement(v1alpha1.CreatedByKey, selection.Equals, []string{i.resourceKind})
+	if createdReq != nil {
+		labelSelector = labelSelector.Add(*createdReq)
+	}
+	err := i.clientSet.DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+		LabelSelector: labelSelector.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to delete %s custom sets: %v", i.resourceKind, err)
+	}
+	return nil
 }
 
 func (i *InstallerSetClient) cleanup(ctx context.Context, isType string) error {

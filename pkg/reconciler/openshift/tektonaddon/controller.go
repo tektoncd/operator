@@ -31,6 +31,7 @@ import (
 	tektonTriggerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektontrigger"
 	tektonAddonreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
@@ -46,7 +47,7 @@ const (
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	return NewExtendedController(OpenShiftExtension)(ctx, cmw)
+	return NewExtendedController(common.NoExtension)(ctx, cmw)
 }
 
 // NewExtendedController returns a controller extended to a specific platform
@@ -69,13 +70,60 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatal("Failed to find version from env")
 		}
 
+		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
+		metrics, _ := NewRecorder()
+
+		clusterTaskManifest := &mf.Manifest{}
+		if err := applyAddons(clusterTaskManifest, "02-clustertasks"); err != nil {
+			logger.Fatalf("failed to read clustertask from kodata: %v", err)
+		}
+
+		communityClusterTaskManifest := &mf.Manifest{}
+		if err := fetchCommunityTasks(communityClusterTaskManifest); err != nil {
+			// if unable to fetch community task, don't fail
+			logger.Errorf("failed to read community task: %v", err)
+		}
+
+		triggersResourcesManifest := &mf.Manifest{}
+		if err := applyAddons(triggersResourcesManifest, "01-clustertriggerbindings"); err != nil {
+			logger.Fatalf("failed to read trigger Resources from kodata: %v", err)
+		}
+
+		pipelineTemplateManifest := &mf.Manifest{}
+		if err := applyAddons(pipelineTemplateManifest, "03-pipelines"); err != nil {
+			logger.Fatalf("failed to read pipeline template from kodata: %v", err)
+		}
+		if err := addPipelineTemplates(pipelineTemplateManifest); err != nil {
+			logger.Fatalf("failed to add pipeline templates: %v", err)
+		}
+
+		openShiftConsoleManifest := &mf.Manifest{Client: mfclient}
+		if err := applyAddons(openShiftConsoleManifest, "05-tkncliserve"); err != nil {
+			logger.Fatalf("failed to read openshift console resources from kodata: %v", err)
+		}
+		if err := getOptionalAddons(openShiftConsoleManifest); err != nil {
+			logger.Fatalf("failed to read optional addon resources from kodata: %v", err)
+		}
+
+		consoleCLIManifest := &mf.Manifest{}
+		if err := applyAddons(consoleCLIManifest, "04-consolecli"); err != nil {
+			logger.Fatalf("failed to read console cli from kodata: %v", err)
+		}
+
 		c := &Reconciler{
-			operatorClientSet: operatorclient.Get(ctx),
-			extension:         generator(ctx),
-			pipelineInformer:  tektonPipelineinformer.Get(ctx),
-			triggerInformer:   tektonTriggerinformer.Get(ctx),
-			manifest:          manifest,
-			operatorVersion:   version,
+			installerSetClient:           client.NewInstallerSetClient(tisClient, version, "addon", v1alpha1.KindTektonAddon, metrics),
+			operatorClientSet:            operatorclient.Get(ctx),
+			extension:                    generator(ctx),
+			pipelineInformer:             tektonPipelineinformer.Get(ctx),
+			triggerInformer:              tektonTriggerinformer.Get(ctx),
+			manifest:                     manifest,
+			operatorVersion:              version,
+			clusterTaskManifest:          clusterTaskManifest,
+			triggersResourcesManifest:    triggersResourcesManifest,
+			pipelineTemplateManifest:     pipelineTemplateManifest,
+			communityClusterTaskManifest: communityClusterTaskManifest,
+			openShiftConsoleManifest:     openShiftConsoleManifest,
+			consoleCLIManifest:           consoleCLIManifest,
 		}
 		impl := tektonAddonreconciler.NewImpl(ctx, c)
 

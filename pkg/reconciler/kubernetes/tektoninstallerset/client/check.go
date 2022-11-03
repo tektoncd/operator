@@ -69,10 +69,14 @@ func (i *InstallerSetClient) checkSet(ctx context.Context, comp v1alpha1.TektonC
 			logger.Errorf("%v/%v: found multiple sets, expected one", i.resourceKind, isType)
 			return iSets, ErrInvalidState
 		}
-	case InstallerTypeCustom:
-		// TODO
 	default:
-		return nil, fmt.Errorf("invalid installerSet type")
+		if !strings.HasPrefix(isType, InstallerTypeCustom) {
+			return nil, fmt.Errorf("invalid installerSet type")
+		}
+		if len(iSets) != 1 {
+			logger.Errorf("%v/%v: found multiple sets, expected one", i.resourceKind, isType)
+			return iSets, ErrInvalidState
+		}
 	}
 
 	if err := verifyMeta(i.resourceKind, isType, logger, iSets[0], comp, i.releaseVersion); err != nil {
