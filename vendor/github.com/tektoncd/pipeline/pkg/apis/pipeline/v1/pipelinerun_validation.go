@@ -24,18 +24,22 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
 var _ apis.Validatable = (*PipelineRun)(nil)
+var _ resourcesemantics.VerbLimited = (*PipelineRun)(nil)
+
+// SupportedVerbs returns the operations that validation should be called for
+func (pr *PipelineRun) SupportedVerbs() []admissionregistrationv1.OperationType {
+	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
+}
 
 // Validate pipelinerun
 func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
-	if apis.IsInDelete(ctx) {
-		return nil
-	}
-
 	errs := validate.ObjectMetadata(pr.GetObjectMeta()).ViaField("metadata")
 
 	if pr.IsPending() && pr.HasStarted() {
@@ -275,17 +279,17 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 }
 
 func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *apis.FieldError) {
-	if trs.StepOverrides != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
-		errs = errs.Also(validateStepOverrides(trs.StepOverrides).ViaField("stepOverrides"))
+	if trs.StepSpecs != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "stepSpecs", config.AlphaAPIFields).ViaField("stepSpecs"))
+		errs = errs.Also(validateStepSpecs(trs.StepSpecs).ViaField("stepSpecs"))
 	}
-	if trs.SidecarOverrides != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
-		errs = errs.Also(validateSidecarOverrides(trs.SidecarOverrides).ViaField("sidecarOverrides"))
+	if trs.SidecarSpecs != nil {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.AlphaAPIFields).ViaField("sidecarSpecs"))
+		errs = errs.Also(validateSidecarSpecs(trs.SidecarSpecs).ViaField("sidecarSpecs"))
 	}
 	if trs.ComputeResources != nil {
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
-		errs = errs.Also(validateTaskRunComputeResources(trs.ComputeResources, trs.StepOverrides))
+		errs = errs.Also(validateTaskRunComputeResources(trs.ComputeResources, trs.StepSpecs))
 	}
 	return errs
 }

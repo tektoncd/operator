@@ -427,6 +427,9 @@ type PipelineRunStatusFields struct {
 	// FinallyStartTime is when all non-finally tasks have been completed and only finally tasks are being executed.
 	// +optional
 	FinallyStartTime *metav1.Time `json:"finallyStartTime,omitempty"`
+
+	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
+	Provenance *Provenance `json:"provenance,omitempty"`
 }
 
 // SkippedTask is used to describe the Tasks that were skipped due to their When Expressions
@@ -528,9 +531,9 @@ type PipelineTaskRunSpec struct {
 	ServiceAccountName string           `json:"serviceAccountName,omitempty"`
 	PodTemplate        *pod.PodTemplate `json:"podTemplate,omitempty"`
 	// +listType=atomic
-	StepOverrides []TaskRunStepOverride `json:"stepOverrides,omitempty"`
+	StepSpecs []TaskRunStepSpec `json:"stepSpecs,omitempty"`
 	// +listType=atomic
-	SidecarOverrides []TaskRunSidecarOverride `json:"sidecarOverrides,omitempty"`
+	SidecarSpecs []TaskRunSidecarSpec `json:"sidecarSpecs,omitempty"`
 
 	// +optional
 	Metadata *PipelineTaskMetadata `json:"metadata,omitempty"`
@@ -555,8 +558,8 @@ func (pr *PipelineRun) GetTaskRunSpec(pipelineTaskName string) PipelineTaskRunSp
 			if task.ServiceAccountName != "" {
 				s.ServiceAccountName = task.ServiceAccountName
 			}
-			s.StepOverrides = task.StepOverrides
-			s.SidecarOverrides = task.SidecarOverrides
+			s.StepSpecs = task.StepSpecs
+			s.SidecarSpecs = task.SidecarSpecs
 			s.Metadata = task.Metadata
 			s.ComputeResources = task.ComputeResources
 		}
