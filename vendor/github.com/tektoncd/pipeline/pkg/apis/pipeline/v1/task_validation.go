@@ -28,10 +28,12 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"github.com/tektoncd/pipeline/pkg/substitution"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
 const (
@@ -46,14 +48,18 @@ const (
 )
 
 var _ apis.Validatable = (*Task)(nil)
+var _ resourcesemantics.VerbLimited = (*Task)(nil)
+
+// SupportedVerbs returns the operations that validation should be called for
+func (t *Task) SupportedVerbs() []admissionregistrationv1.OperationType {
+	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
+}
+
 var stringAndArrayVariableNameFormatRegex = regexp.MustCompile(stringAndArrayVariableNameFormat)
 var objectVariableNameFormatRegex = regexp.MustCompile(objectVariableNameFormat)
 
 // Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
-	if apis.IsInDelete(ctx) {
-		return nil
-	}
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
 	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
 	return errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
@@ -204,7 +210,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	if s.Script != "" {
 		if len(s.Command) > 0 {
 			errs = errs.Also(&apis.FieldError{
-				Message: "script cannot be used with command",
+				Message: fmt.Sprintf("script cannot be used with command"),
 				Paths:   []string{"script"},
 			})
 		}
@@ -241,11 +247,11 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	}
 
 	if s.OnError != "" {
-		if s.OnError != Continue && s.OnError != StopAndFail {
+		if !isParamRefs(string(s.OnError)) && s.OnError != Continue && s.OnError != StopAndFail {
 			errs = errs.Also(&apis.FieldError{
-				Message: fmt.Sprintf("invalid value: %v", s.OnError),
+				Message: fmt.Sprintf("invalid value: \"%v\"", s.OnError),
 				Paths:   []string{"onError"},
-				Details: "Task step onError must be either continue or stopAndFail",
+				Details: "Task step onError must be either \"continue\" or \"stopAndFail\"",
 			})
 		}
 	}
@@ -256,6 +262,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "windows script support", config.AlphaAPIFields).ViaField("script"))
 		}
 	}
+
 	// StdoutConfig is an alpha feature and will fail validation if it's used in a task spec
 	// when the enable-api-fields feature gate is not "alpha".
 	if s.StdoutConfig != nil {
@@ -322,6 +329,7 @@ func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
 			return apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
 		}
 	}
+
 	invalidKeys := []string{}
 	for key, propertySpec := range p.Properties {
 		if propertySpec.Type != ParamTypeString {
@@ -362,7 +370,6 @@ func ValidateParameterVariables(ctx context.Context, steps []Step, params []Para
 			stringParameterNames.Insert(p.Name)
 		}
 	}
-
 	errs = errs.Also(validateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParamSpecs))
 	if config.ValidateParameterVariablesAndWorkspaces(ctx) == true {
 		errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
@@ -543,6 +550,7 @@ func validateStepVariables(ctx context.Context, step Step, prefix string, vars s
 		errs = errs.Also(validateTaskVariable(v.MountPath, prefix, vars).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
 		errs = errs.Also(validateTaskVariable(v.SubPath, prefix, vars).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
 	}
+	errs = errs.Also(validateTaskVariable(string(step.OnError), prefix, vars).ViaField("onError"))
 	return errs
 }
 
@@ -560,4 +568,10 @@ func validateTaskNoArrayReferenced(value, prefix string, arrayNames sets.String)
 
 func validateTaskArraysIsolated(value, prefix string, arrayNames sets.String) *apis.FieldError {
 	return substitution.ValidateVariableIsolatedP(value, prefix, arrayNames)
+}
+
+// isParamRefs attempts to check if a specified string looks like it contains any parameter reference
+// This is useful to make sure the specified value looks like a Parameter Reference before performing any strict validation
+func isParamRefs(s string) bool {
+	return strings.HasPrefix(s, "$("+ParamsPrefix)
 }

@@ -31,13 +31,24 @@ func (ref *PipelineRef) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return
 	}
 
-	switch {
-	case ref.Resolver != "":
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver", config.AlphaAPIFields).ViaField("resolver"))
-		if ref.Name != "" {
-			errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
+	if ref.Resolver != "" || ref.Params != nil {
+		if ref.Resolver != "" {
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "resolver", config.BetaAPIFields).ViaField("resolver"))
+			if ref.Name != "" {
+				errs = errs.Also(apis.ErrMultipleOneOf("name", "resolver"))
+			}
 		}
-	case ref.Name == "":
+		if ref.Params != nil {
+			errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "params", config.BetaAPIFields).ViaField("params"))
+			if ref.Name != "" {
+				errs = errs.Also(apis.ErrMultipleOneOf("name", "params"))
+			}
+			if ref.Resolver == "" {
+				errs = errs.Also(apis.ErrMissingField("resolver"))
+			}
+			errs = errs.Also(ValidateParameters(ctx, ref.Params))
+		}
+	} else if ref.Name == "" {
 		errs = errs.Also(apis.ErrMissingField("name"))
 	}
 	return
