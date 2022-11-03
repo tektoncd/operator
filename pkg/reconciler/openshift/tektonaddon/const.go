@@ -18,6 +18,7 @@ package tektonaddon
 
 const (
 	ClusterTaskInstallerSet            = "ClusterTask"
+	OpenShiftConsoleInstallerSet       = "OpenShiftConsole"
 	CommunityClusterTaskInstallerSet   = "CommunityClusterTask"
 	VersionedClusterTaskInstallerSet   = "VersionedClusterTask"
 	versionedClusterTaskPatchChar      = "0"

@@ -20,12 +20,13 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 func EnsureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
@@ -124,14 +125,12 @@ func updateAddon(ctx context.Context, taCR *v1alpha1.TektonAddon, config *v1alph
 
 // isTektonAddonReady will check the status conditions of the TektonAddon and return true if the TektonAddon is ready.
 func isTektonAddonReady(s *v1alpha1.TektonAddon, err error) (bool, error) {
-	upgradePending, errInternal := common.CheckUpgradePending(s)
-	if err != nil {
-		return false, errInternal
+	if s.GetStatus() != nil && s.GetStatus().GetCondition(apis.ConditionReady) != nil {
+		if strings.Contains(s.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
+			return false, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
+		}
 	}
-	if upgradePending {
-		return false, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
-	}
-	return s.Status.IsReady(), err
+	return s.Status.IsReady(), nil
 }
 
 func EnsureTektonAddonCRNotExists(ctx context.Context, clients op.TektonAddonInterface) error {

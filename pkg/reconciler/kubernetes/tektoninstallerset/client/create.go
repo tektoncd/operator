@@ -33,38 +33,28 @@ import (
 func (i *InstallerSetClient) create(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform, isType string) ([]v1alpha1.TektonInstallerSet, error) {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", isType)
 
-	switch isType {
-	case InstallerTypeMain:
+	if isType == InstallerTypeMain {
 		sets, err := i.makeMainSets(ctx, comp, manifest, filterAndTransform)
 		if err != nil {
 			logger.Errorf("installer set creation failed for main type: %v", err)
 			return sets, err
 		}
 		return sets, nil
-
-	case InstallerTypePre, InstallerTypePost:
-		kind := strings.ToLower(strings.TrimPrefix(i.resourceKind, "Tekton"))
-		isName := fmt.Sprintf("%s-%s-", kind, isType)
-
-		iS, err := i.makeInstallerSet(ctx, comp, manifest, filterAndTransform, isName, isType)
-		if err != nil {
-			return nil, err
-		}
-
-		iS, err = i.clientSet.Create(ctx, iS, metav1.CreateOptions{})
-		if err != nil {
-			return nil, err
-		}
-		return []v1alpha1.TektonInstallerSet{*iS}, nil
-
-	case InstallerTypeCustom:
-	// TODO
-
-	default:
-		return nil, fmt.Errorf("invalid installer set type")
 	}
 
-	return nil, nil
+	kind := strings.ToLower(strings.TrimPrefix(i.resourceKind, "Tekton"))
+	isName := fmt.Sprintf("%s-%s-", kind, isType)
+
+	iS, err := i.makeInstallerSet(ctx, comp, manifest, filterAndTransform, isName, isType)
+	if err != nil {
+		return nil, err
+	}
+
+	iS, err = i.clientSet.Create(ctx, iS, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return []v1alpha1.TektonInstallerSet{*iS}, nil
 }
 
 func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) ([]v1alpha1.TektonInstallerSet, error) {
@@ -100,6 +90,25 @@ func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.Tek
 	return []v1alpha1.TektonInstallerSet{*staticIS, *deploymentIS}, nil
 }
 
+func (i *InstallerSetClient) waitForStatus(ctx context.Context, set *v1alpha1.TektonInstallerSet) error {
+	for cnt := 0; cnt < 3; cnt++ {
+		onClusterSet, err := i.clientSet.Get(ctx, set.GetName(), metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		// once status is initialised for static set we can create deployment set
+		ready := onClusterSet.Status.GetCondition(apis.ConditionReady)
+		if ready != nil {
+			return nil
+		}
+		// if status is not initialised then wait
+		time.Sleep(3 * time.Second)
+	}
+	// if still the status is not initialised then create the next set and let it fail
+	// there may be something else wrong
+	return nil
+}
+
 func (i *InstallerSetClient) makeInstallerSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform, isName, isType string) (*v1alpha1.TektonInstallerSet, error) {
 	specHash, err := hash.Compute(comp.GetSpec())
 	if err != nil {
@@ -130,23 +139,4 @@ func (i *InstallerSetClient) makeInstallerSet(ctx context.Context, comp v1alpha1
 			Manifests: transformedMf.Resources(),
 		},
 	}, nil
-}
-
-func (i *InstallerSetClient) waitForStatus(ctx context.Context, set *v1alpha1.TektonInstallerSet) error {
-	for cnt := 0; cnt < 3; cnt++ {
-		onClusterSet, err := i.clientSet.Get(ctx, set.GetName(), metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		// once status is initialised for static set we can create deployment set
-		ready := onClusterSet.Status.GetCondition(apis.ConditionReady)
-		if ready != nil {
-			return nil
-		}
-		// if status is not initialised then wait
-		time.Sleep(3 * time.Second)
-	}
-	// if still the status is not initialised then create the next set and let it fail
-	// there may be something else wrong
-	return nil
 }

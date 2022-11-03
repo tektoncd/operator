@@ -23,83 +23,39 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 )
 
-var clusterTaskLS = metav1.LabelSelector{
-	MatchLabels: map[string]string{
-		v1alpha1.InstallerSetType: ClusterTaskInstallerSet,
-	},
-}
-
 func (r *Reconciler) EnsureClusterTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
-
-	clusterTaskLabelSelector, err := common.LabelSelector(clusterTaskLS)
-	if err != nil {
-		return err
-	}
-
 	if enable == "true" {
-
-		exist, _, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, clusterTaskLabelSelector)
-		if err != nil {
+		if err := r.installerSetClient.CustomSet(ctx, ta, ClusterTaskInstallerSet, r.clusterTaskManifest, filterAndTransformClusterTask()); err != nil {
 			return err
 		}
-
-		if !exist {
-			msg := fmt.Sprintf("%s being created/upgraded", ClusterTaskInstallerSet)
-			ta.Status.MarkInstallerSetNotReady(msg)
-			return r.ensureClusterTasks(ctx, ta)
-		}
-
-		if err := r.checkComponentStatus(ctx, clusterTaskLabelSelector); err != nil {
-			ta.Status.MarkInstallerSetNotReady(err.Error())
-			return nil
-		}
-
 	} else {
-		// if disabled then delete the installer Set if exist
-		if err := r.deleteInstallerSet(ctx, clusterTaskLabelSelector); err != nil {
+		if err := r.installerSetClient.CleanupCustomSet(ctx, ClusterTaskInstallerSet); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
-// installerset for non versioned clustertask like buildah and community clustertask
-func (r *Reconciler) ensureClusterTasks(ctx context.Context, ta *v1alpha1.TektonAddon) error {
-	clusterTaskManifest := mf.Manifest{}
-	// Read clusterTasks from ko data
-	if err := applyAddons(&clusterTaskManifest, "02-clustertasks"); err != nil {
-		return err
+func filterAndTransformClusterTask() client.FilterAndTransform {
+	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
+		addon := comp.(*v1alpha1.TektonAddon)
+		tfs := []mf.Transformer{
+			replaceKind(KindTask, KindClusterTask),
+			injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
+		}
+		if err := transformers(ctx, manifest, addon, tfs...); err != nil {
+			return nil, err
+		}
+		return manifest, nil
 	}
-	// Run transformers
-	tfs := []mf.Transformer{
-		replaceKind(KindTask, KindClusterTask),
-		injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
-	}
-	if err := r.addonTransform(ctx, &clusterTaskManifest, ta, tfs...); err != nil {
-		return err
-	}
-
-	if err := createInstallerSet(ctx, r.operatorClientSet, ta, clusterTaskManifest,
-		r.operatorVersion, ClusterTaskInstallerSet, "addon-clustertasks"); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func formattedVersionMajorMinorX(version, x string) string {
 	ver := getPatchVersionTrimmed(version)
 	ver = fmt.Sprintf("%s.%s", ver, x)
-	return formattedVersionSnake(ver)
-}
-
-func formattedVersionMajorMinor(version string) string {
-	ver := getPatchVersionTrimmed(version)
 	return formattedVersionSnake(ver)
 }
 

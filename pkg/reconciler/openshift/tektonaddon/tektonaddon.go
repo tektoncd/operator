@@ -30,23 +30,27 @@ import (
 	informer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektonaddonreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
-	"github.com/tektoncd/operator/pkg/reconciler/openshift"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
 // Reconciler implements controller.Reconciler for TektonAddon resources.
 type Reconciler struct {
-	manifest          mf.Manifest
-	operatorClientSet clientset.Interface
-	extension         common.Extension
-
-	pipelineInformer informer.TektonPipelineInformer
-	triggerInformer  informer.TektonTriggerInformer
-
-	operatorVersion string
+	// installer Set client to do CRUD operations for components
+	installerSetClient           *client.InstallerSetClient
+	manifest                     mf.Manifest
+	operatorClientSet            clientset.Interface
+	extension                    common.Extension
+	pipelineInformer             informer.TektonPipelineInformer
+	triggerInformer              informer.TektonTriggerInformer
+	operatorVersion              string
+	clusterTaskManifest          *mf.Manifest
+	triggersResourcesManifest    *mf.Manifest
+	pipelineTemplateManifest     *mf.Manifest
+	communityClusterTaskManifest *mf.Manifest
+	openShiftConsoleManifest     *mf.Manifest
+	consoleCLIManifest           *mf.Manifest
 }
 
 const (
@@ -62,32 +66,13 @@ const (
 var _ tektonaddonreconciler.Interface = (*Reconciler)(nil)
 var _ tektonaddonreconciler.Finalizer = (*Reconciler)(nil)
 
-var ls = metav1.LabelSelector{
-	MatchLabels: map[string]string{
-		v1alpha1.CreatedByKey: CreatedByValue,
-	},
-}
-
 // FinalizeKind removes all resources after deletion of a TektonTriggers.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonAddon) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
-
-	labelSelector, err := common.LabelSelector(ls)
-	if err != nil {
+	if err := r.installerSetClient.CleanupAllCustomSet(ctx); err != nil {
+		logger.Errorf("failed to cleanup custom set: %v", err)
 		return err
 	}
-	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-		DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-			LabelSelector: labelSelector,
-		}); err != nil {
-		logger.Error("Failed to delete installer set created by TektonAddon", err)
-		return err
-	}
-
-	if err := r.extension.Finalize(ctx, original); err != nil {
-		logger.Error("Failed to finalize platform resources", err)
-	}
-
 	return nil
 }
 
@@ -96,6 +81,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 	ta.Status.InitializeConditions()
+	ta.Status.SetVersion(r.operatorVersion)
 
 	if ta.GetName() != v1alpha1.AddonResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
@@ -110,16 +96,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	// Pass the object through defaulting
 	ta.SetDefaults(ctx)
 
-	// Mark TektonAddon Instance as Not Ready if an upgrade is needed
-	if err := r.markUpgrade(ctx, ta); err != nil {
-		return err
-	}
-
 	// Make sure TektonPipeline & TektonTrigger is installed before proceeding with
 	// TektonAddons
 
 	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
-		if err.Error() == common.PipelineNotReady {
+		if err.Error() == common.PipelineNotReady || err == v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR {
 			ta.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
 			// wait for pipeline status to change
 			return v1alpha1.REQUEUE_EVENT_AFTER
@@ -130,7 +111,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	}
 
 	if _, err := common.TriggerReady(r.triggerInformer); err != nil {
-		if err.Error() == common.TriggerNotReady {
+		if err.Error() == common.TriggerNotReady || err == v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR {
 			ta.Status.MarkDependencyInstalling("tekton-triggers is still installing")
 			// wait for trigger status to change
 			return v1alpha1.REQUEUE_EVENT_AFTER
@@ -142,10 +123,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 
 	ta.Status.MarkDependenciesInstalled()
 
-	if err := tektoninstallerset.CleanUpObsoleteResources(ctx, r.operatorClientSet, CreatedByValue); err != nil {
-		return err
-	}
-
 	// validate the params
 	ptVal, _ := findValue(ta.Spec.Params, v1alpha1.PipelineTemplatesParam)
 	ctVal, _ := findValue(ta.Spec.Params, v1alpha1.ClusterTasksParam)
@@ -156,6 +133,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		return nil
 	}
 
+	if err := r.installerSetClient.RemoveObsoleteSets(ctx); err != nil {
+		return err
+	}
+
 	if err := r.extension.PreReconcile(ctx, ta); err != nil {
 		ta.Status.MarkPreReconcilerFailed(err.Error())
 		return err
@@ -163,47 +144,65 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 
 	ta.Status.MarkPreReconcilerComplete()
 
+	// this to check if all sets are in ready set
+	ready := true
+	var errorMsg string
+
 	if err := r.EnsureClusterTask(ctx, ctVal, ta); err != nil {
-		return err
+		ready = false
+		errorMsg = fmt.Sprintf("cluster tasks not yet ready: %v", err)
+		logger.Error(errorMsg)
 	}
 
 	if err := r.EnsureVersionedClusterTask(ctx, ctVal, ta); err != nil {
-		return err
+		ready = false
+		errorMsg = fmt.Sprintf("versioned cluster tasks not yet ready:  %v", err)
+		logger.Error(errorMsg)
 	}
 
 	if err := r.EnsureCommunityClusterTask(ctx, cctVal, ta); err != nil {
-		return err
+		ready = false
+		errorMsg = fmt.Sprintf("community cluster tasks not yet ready:  %v", err)
+		logger.Error(errorMsg)
 	}
 
 	if err := r.EnsurePipelineTemplates(ctx, ptVal, ta); err != nil {
-		return err
+		ready = false
+		errorMsg = fmt.Sprintf("pipelines templates not yet ready:  %v", err)
+		logger.Error(errorMsg)
 	}
 
 	if err := r.EnsureTriggersResources(ctx, ta); err != nil {
-		return err
+		ready = false
+		errorMsg = fmt.Sprintf("triggers resources not yet ready:  %v", err)
+		logger.Error(errorMsg)
 	}
 
-	// Pipelines As Code is installed as a separate component now, so
-	// cleanup any of its installer set created previously
-	// this can be removed in future release
-	if err := r.CleanupPipelinesAsCode(ctx, ta); err != nil {
-		return err
+	if err := r.EnsureOpenShiftConsoleResources(ctx, ta); err != nil {
+		ready = false
+		errorMsg = fmt.Sprintf("openshift console resources not yet ready:  %v", err)
+		logger.Error(errorMsg)
+	}
+
+	if err := r.EnsureConsoleCLI(ctx, ta); err != nil {
+		ready = false
+		errorMsg = fmt.Sprintf("console cli not yet ready:  %v", err)
+		logger.Error(errorMsg)
+	}
+
+	if !ready {
+		ta.Status.MarkInstallerSetNotReady(errorMsg)
+		return nil
 	}
 
 	ta.Status.MarkInstallerSetReady()
 
 	if err := r.extension.PostReconcile(ctx, ta); err != nil {
-		if err == v1alpha1.RECONCILE_AGAIN_ERR {
-			return v1alpha1.REQUEUE_EVENT_AFTER
-		}
 		ta.Status.MarkPostReconcilerFailed(err.Error())
 		return err
 	}
 
 	ta.Status.MarkPostReconcilerComplete()
-
-	ta.Status.SetVersion(r.operatorVersion)
-
 	return nil
 }
 
@@ -232,25 +231,6 @@ func applyAddons(manifest *mf.Manifest, subpath string) error {
 	return nil
 }
 
-// addonTransform mutates the passed manifest to one with common, component
-// and platform transformations applied
-func (r *Reconciler) addonTransform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent, addnTfs ...mf.Transformer) error {
-	instance := comp.(*v1alpha1.TektonAddon)
-	addonTfs := []mf.Transformer{
-		// using common.InjectOperandNameLabelPreserveExisting instead of common.InjectLabelOverwriteExisting
-		// to highlight that TektonAddon is a basket of various operands(components)
-		// note: using common.InjectLabelOverwriteExisting here  doesnot affect the ability to
-		// use InjectOperandNameLabelPreserveExisting or InjectLabelOverwriteExisting again in the transformer chain
-		// However, it is recomended to use InjectOperandNameLabelPreserveExisting here (in Addons) as we cannot be sure
-		// about order of future addition of transformers in this reconciler or in sub functions which take care of various addons
-		common.InjectOperandNameLabelPreserveExisting(openshift.OperandOpenShiftPipelinesAddons),
-		injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
-	}
-	addonTfs = append(addonTfs, addnTfs...)
-	addonTfs = append(addonTfs, r.extension.Transformers(instance)...)
-	return common.Transform(ctx, manifest, instance, addonTfs...)
-}
-
 func findValue(params []v1alpha1.Param, name string) (string, bool) {
 	for _, p := range params {
 		if p.Name == name {
@@ -258,29 +238,4 @@ func findValue(params []v1alpha1.Param, name string) (string, bool) {
 		}
 	}
 	return "", false
-}
-
-func (r *Reconciler) markUpgrade(ctx context.Context, ta *v1alpha1.TektonAddon) error {
-	labels := ta.GetLabels()
-	ver, ok := labels[v1alpha1.ReleaseVersionKey]
-	if ok && ver == r.operatorVersion {
-		return nil
-	}
-	if ok && ver != r.operatorVersion {
-		ta.Status.MarkInstallerSetNotReady(v1alpha1.UpgradePending)
-		ta.Status.MarkPreReconcilerFailed(v1alpha1.UpgradePending)
-		ta.Status.MarkPostReconcilerFailed(v1alpha1.UpgradePending)
-		ta.Status.MarkNotReady(v1alpha1.UpgradePending)
-	}
-	if labels == nil {
-		labels = map[string]string{}
-	}
-	labels[v1alpha1.ReleaseVersionKey] = r.operatorVersion
-	ta.SetLabels(labels)
-
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonAddons().Update(ctx,
-		ta, metav1.UpdateOptions{}); err != nil {
-		return err
-	}
-	return v1alpha1.RECONCILE_AGAIN_ERR
 }

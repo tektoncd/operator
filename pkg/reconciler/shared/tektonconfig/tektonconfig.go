@@ -145,8 +145,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	tc.Status.MarkComponentsReady()
 
 	if err := r.extension.PostReconcile(ctx, tc); err != nil {
-		tc.Status.MarkPostInstallFailed(err.Error())
-		return v1alpha1.REQUEUE_EVENT_AFTER
+		return err
 	}
 
 	tc.Status.MarkPostInstallComplete()

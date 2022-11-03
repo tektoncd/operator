@@ -18,30 +18,12 @@ package tektonaddon
 
 import (
 	"context"
-	"fmt"
 	"strings"
-	"time"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/logging"
-)
-
-var communityClusterTaskLS = metav1.LabelSelector{
-	MatchLabels: map[string]string{
-		v1alpha1.InstallerSetType: CommunityClusterTaskInstallerSet,
-	},
-}
-
-// retryWaitTime holds value until the pod lives.
-// ones the pod restart resets the value back to ""
-// this is useful if the pod is not restarted and community task urls are not reachable
-// we see comparable less forbidden events
-var (
-	layout        = "2006-01-02 15:04:05"
-	retryWaitTime = ""
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 )
 
 var communityResourceURLs = []string{
@@ -56,73 +38,39 @@ var communityResourceURLs = []string{
 }
 
 func (r *Reconciler) EnsureCommunityClusterTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
-
-	communityClusterTaskLabelSelector, err := common.LabelSelector(communityClusterTaskLS)
-	if err != nil {
-		return err
-	}
-
-	if enable == "true" {
-
-		exist, _, err := checkIfInstallerSetExist(ctx, r.operatorClientSet, r.operatorVersion, communityClusterTaskLabelSelector)
-		if err != nil {
-			return err
-		}
-
-		if !exist {
-			msg := fmt.Sprintf("%s being created/upgraded", CommunityClusterTaskInstallerSet)
-			ta.Status.MarkInstallerSetNotReady(msg)
-			return r.ensureCommunityClusterTasks(ctx, ta)
-		}
-
-		if err := r.checkComponentStatus(ctx, communityClusterTaskLabelSelector); err != nil {
-			ta.Status.MarkInstallerSetNotReady(err.Error())
-			return nil
-		}
-
-	} else {
-		// if disabled then delete the installer Set if exist
-		if err := r.deleteInstallerSet(ctx, communityClusterTaskLabelSelector); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// installerset for communityclustertask
-func (r *Reconciler) ensureCommunityClusterTasks(ctx context.Context, ta *v1alpha1.TektonAddon) error {
-
-	if SkipCommunityTaskFetch(retryWaitTime) {
+	if len(r.communityClusterTaskManifest.Resources()) == 0 {
 		return nil
 	}
-
-	communityClusterTaskManifest := mf.Manifest{}
-	if err := r.appendCommunityTarget(ctx, &communityClusterTaskManifest, ta); err != nil {
-		retryWaitTime = time.Now().Add(15 * time.Minute).Format(layout)
-
-		// Continue if failed to resolve community task URL.
-		// (Ex: on disconnected cluster community tasks won't be reachable because of proxy).
-		logging.FromContext(ctx).Error("Failed to get community task: Skipping community tasks installation  ", err)
-		return v1alpha1.REQUEUE_EVENT_AFTER
+	if enable == "true" {
+		if err := r.installerSetClient.CustomSet(ctx, ta, CommunityClusterTaskInstallerSet, r.communityClusterTaskManifest, filterAndTransformCommunityClusterTask()); err != nil {
+			return err
+		}
+	} else {
+		if err := r.installerSetClient.CleanupCustomSet(ctx, CommunityClusterTaskInstallerSet); err != nil {
+			return err
+		}
 	}
-
-	if err := r.communityTransform(ctx, &communityClusterTaskManifest, ta); err != nil {
-		return err
-	}
-
-	communityClusterTaskManifest = communityClusterTaskManifest.Append(communityClusterTaskManifest)
-
-	if err := createInstallerSet(ctx, r.operatorClientSet, ta, communityClusterTaskManifest, r.operatorVersion, CommunityClusterTaskInstallerSet, "addon-communityclustertasks"); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-// appendCommunityTarget mutates the passed manifest by appending one
-// appropriate for the passed TektonComponent
-func (r *Reconciler) appendCommunityTarget(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
+func filterAndTransformCommunityClusterTask() client.FilterAndTransform {
+	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
+		instance := comp.(*v1alpha1.TektonAddon)
+		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+
+		extra := []mf.Transformer{
+			replaceKind("Task", "ClusterTask"),
+			injectLabel(labelProviderType, providerTypeCommunity, overwrite, "ClusterTask"),
+			common.TaskImages(addonImages),
+		}
+		if err := common.Transform(ctx, manifest, instance, extra...); err != nil {
+			return nil, err
+		}
+		return manifest, nil
+	}
+}
+
+func appendCommunityTasks(manifest *mf.Manifest) error {
 	urls := strings.Join(communityResourceURLs, ",")
 	m, err := mf.ManifestFrom(mf.Path(urls))
 	if err != nil {
@@ -132,31 +80,9 @@ func (r *Reconciler) appendCommunityTarget(ctx context.Context, manifest *mf.Man
 	return nil
 }
 
-// communityTransform mutates the passed manifest to one with common component
-// and platform transformations applied
-func (r *Reconciler) communityTransform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	instance := comp.(*v1alpha1.TektonAddon)
-	extra := []mf.Transformer{
-		replaceKind("Task", "ClusterTask"),
-		injectLabel(labelProviderType, providerTypeCommunity, overwrite, "ClusterTask"),
+func fetchCommunityTasks(manifest *mf.Manifest) error {
+	if err := appendCommunityTasks(manifest); err != nil {
+		return err
 	}
-	extra = append(extra, r.extension.Transformers(instance)...)
-	return common.Transform(ctx, manifest, instance, extra...)
-}
-
-// SkipCommunityTaskFetch skips community task fetch until retryWaitTime has passed
-// if there is no value int retryWaitTime that means no error occurred prior to the call
-// if there is some value that means error has occurred earlier and must try after 15 minutes
-func SkipCommunityTaskFetch(until string) bool {
-	skip := false
-	if until != "" {
-		t, err := time.Parse(layout, until)
-		if err != nil {
-			return false
-		}
-		if t.After(time.Now()) {
-			skip = true
-		}
-	}
-	return skip
+	return nil
 }

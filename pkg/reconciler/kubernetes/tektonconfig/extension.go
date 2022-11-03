@@ -49,7 +49,7 @@ func (oe kubernetesExtension) PostReconcile(ctx context.Context, comp v1alpha1.T
 
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
 		if _, err := extension.EnsureTektonDashboardExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonDashboards(), configInstance); err != nil {
-			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("TektonDashboard: %s", err.Error()))
+			configInstance.Status.MarkPostInstallFailed(fmt.Sprintf("TektonDashboard: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
