@@ -26,6 +26,9 @@ import (
 	tektontriggerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektontrigger"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -34,6 +37,8 @@ const resourceKind = v1alpha1.KindTektonTrigger
 
 // Reconciler implements controller.Reconciler for TektonTrigger resources.
 type Reconciler struct {
+	// kube client to interact with core k8s resources
+	kubeClientSet kubernetes.Interface
 	// installer Set client to do CRUD operations for components
 	installerSetClient *client.InstallerSetClient
 	// pipelineInformer to query for TektonPipeline
@@ -65,6 +70,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		logger.Error(msg)
 		tt.Status.MarkNotReady(msg)
 		return nil
+	}
+
+	if err := r.targetNamespaceCheck(ctx, tt); err != nil {
+		return err
 	}
 
 	//Make sure TektonPipeline is installed before proceeding with
@@ -125,4 +134,25 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	// Mark PostReconcile Complete
 	tt.Status.MarkPostReconcilerComplete()
 	return nil
+}
+
+func (r *Reconciler) targetNamespaceCheck(ctx context.Context, comp v1alpha1.TektonComponent) error {
+	ns, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, comp.GetSpec().GetTargetNamespace(), metav1.GetOptions{})
+	if err != nil {
+		// if namespace is not there then return wait for it
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	// if the namespace is in deletion state then delete the installerset
+	// and create later otherwise it will keep doing api calls to create resources
+	// and keep failing
+	if ns.DeletionTimestamp != nil {
+		if err := r.installerSetClient.CleanupMainSet(ctx); err != nil {
+			return err
+		}
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	}
+	return err
 }
