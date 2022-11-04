@@ -29,7 +29,7 @@ require (
 	github.com/ryanuber/go-glob v1.0.0
 	github.com/sigstore/cosign v1.2.1
 	github.com/tektoncd/pipeline v0.37.4
-	github.com/tektoncd/plumbing v0.0.0-20220329085922-d765a5cba75f
+	github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7
 	github.com/tektoncd/triggers v0.20.0
 	go.opencensus.io v0.23.0
 	go.uber.org/zap v1.21.0
