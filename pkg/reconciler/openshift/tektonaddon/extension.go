@@ -249,7 +249,7 @@ func addonTransform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.Te
 }
 
 func consoleCLITransform(ctx context.Context, manifest *mf.Manifest, baseURL string) error {
-	tknVersion := "0.24.0"
+	tknVersion := "0.24.1"
 
 	if baseURL == "" {
 		return fmt.Errorf("route url should not be empty")
