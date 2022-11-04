@@ -21,7 +21,7 @@ require (
 	github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7
 	github.com/tektoncd/triggers v0.21.0
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399
-	go.opencensus.io v0.23.0
+	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.23.0
 	golang.org/x/crypto v0.1.0
 	golang.org/x/mod v0.6.0
