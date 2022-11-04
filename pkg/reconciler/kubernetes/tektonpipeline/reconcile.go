@@ -137,6 +137,9 @@ func (r *Reconciler) targetNamespaceCheck(ctx context.Context, tp *v1alpha1.Tekt
 		}
 		return err
 	}
+	if ns.DeletionTimestamp != nil {
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	}
 	for key, value := range labels {
 		ns.Labels[key] = value
 	}

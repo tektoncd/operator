@@ -23,6 +23,7 @@ import (
 	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/tools/cache"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
@@ -68,6 +69,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 
 		c := &Reconciler{
+			kubeClientSet:      kubeclient.Get(ctx),
 			pipelineInformer:   tektonPipelineinformer.Get(ctx),
 			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, triggersVer, v1alpha1.KindTektonTrigger, metrics),
 			extension:          generator(ctx),
