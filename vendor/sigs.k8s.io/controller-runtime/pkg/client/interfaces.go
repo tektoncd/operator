@@ -24,12 +24,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/watch"
 )
 
 // ObjectKey identifies a Kubernetes Object.
 type ObjectKey = types.NamespacedName
 
-// ObjectKeyFromObject returns the ObjectKey given a runtime.Object
+// ObjectKeyFromObject returns the ObjectKey given a runtime.Object.
 func ObjectKeyFromObject(obj Object) ObjectKey {
 	return ObjectKey{Namespace: obj.GetNamespace(), Name: obj.GetName()}
 }
@@ -39,7 +40,7 @@ type Patch interface {
 	// Type is the PatchType of the patch.
 	Type() types.PatchType
 	// Data is the raw data representing the patch.
-	Data(obj runtime.Object) ([]byte, error)
+	Data(obj Object) ([]byte, error)
 }
 
 // TODO(directxman12): is there a sane way to deal with get/delete options?
@@ -49,7 +50,7 @@ type Reader interface {
 	// Get retrieves an obj for the given object key from the Kubernetes Cluster.
 	// obj must be a struct pointer so that obj can be updated with the response
 	// returned by the Server.
-	Get(ctx context.Context, key ObjectKey, obj Object) error
+	Get(ctx context.Context, key ObjectKey, obj Object, opts ...GetOption) error
 
 	// List retrieves list of objects for a given namespace and list options. On a
 	// successful call, Items field in the list will be populated with the
@@ -108,6 +109,14 @@ type Client interface {
 	RESTMapper() meta.RESTMapper
 }
 
+// WithWatch supports Watch on top of the CRUD operations supported by
+// the normal Client. Its intended use-case are CLI apps that need to wait for
+// events.
+type WithWatch interface {
+	Client
+	Watch(ctx context.Context, obj ObjectList, opts ...ListOption) (watch.Interface, error)
+}
+
 // IndexerFunc knows how to take an object and turn it into a series
 // of non-namespaced keys. Namespaced objects are automatically given
 // namespaced and non-spaced variants, so keys do not need to include namespace.
@@ -132,5 +141,15 @@ func IgnoreNotFound(err error) error {
 	if apierrors.IsNotFound(err) {
 		return nil
 	}
+	return err
+}
+
+// IgnoreAlreadyExists returns nil on AlreadyExists errors.
+// All other values that are not AlreadyExists errors or nil are returned unmodified.
+func IgnoreAlreadyExists(err error) error {
+	if apierrors.IsAlreadyExists(err) {
+		return nil
+	}
+
 	return err
 }

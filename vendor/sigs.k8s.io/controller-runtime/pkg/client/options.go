@@ -37,6 +37,12 @@ type DeleteOption interface {
 	ApplyToDelete(*DeleteOptions)
 }
 
+// GetOption is some configuration that modifies options for a get request.
+type GetOption interface {
+	// ApplyToGet applies this configuration to the given get options.
+	ApplyToGet(*GetOptions)
+}
+
 // ListOption is some configuration that modifies options for a list request.
 type ListOption interface {
 	// ApplyToList applies this configuration to the given list options.
@@ -158,7 +164,7 @@ func (o *CreateOptions) ApplyOptions(opts []CreateOption) *CreateOptions {
 	return o
 }
 
-// ApplyToCreate implements CreateOption
+// ApplyToCreate implements CreateOption.
 func (o *CreateOptions) ApplyToCreate(co *CreateOptions) {
 	if o.DryRun != nil {
 		co.DryRun = o.DryRun
@@ -239,7 +245,7 @@ func (o *DeleteOptions) ApplyOptions(opts []DeleteOption) *DeleteOptions {
 
 var _ DeleteOption = &DeleteOptions{}
 
-// ApplyToDelete implements DeleteOption
+// ApplyToDelete implements DeleteOption.
 func (o *DeleteOptions) ApplyToDelete(do *DeleteOptions) {
 	if o.GracePeriodSeconds != nil {
 		do.GracePeriodSeconds = o.GracePeriodSeconds
@@ -311,6 +317,45 @@ func (p PropagationPolicy) ApplyToDeleteAllOf(opts *DeleteAllOfOptions) {
 
 // }}}
 
+// {{{ Get Options
+
+// GetOptions contains options for get operation.
+// Now it only has a Raw field, with support for specific resourceVersion.
+type GetOptions struct {
+	// Raw represents raw GetOptions, as passed to the API server.  Note
+	// that these may not be respected by all implementations of interface.
+	Raw *metav1.GetOptions
+}
+
+var _ GetOption = &GetOptions{}
+
+// ApplyToGet implements GetOption for GetOptions.
+func (o *GetOptions) ApplyToGet(lo *GetOptions) {
+	if o.Raw != nil {
+		lo.Raw = o.Raw
+	}
+}
+
+// AsGetOptions returns these options as a flattened metav1.GetOptions.
+// This may mutate the Raw field.
+func (o *GetOptions) AsGetOptions() *metav1.GetOptions {
+	if o == nil || o.Raw == nil {
+		return &metav1.GetOptions{}
+	}
+	return o.Raw
+}
+
+// ApplyOptions applies the given get options on these options,
+// and then returns itself (for convenient chaining).
+func (o *GetOptions) ApplyOptions(opts []GetOption) *GetOptions {
+	for _, opt := range opts {
+		opt.ApplyToGet(o)
+	}
+	return o
+}
+
+// }}}
+
 // {{{ List Options
 
 // ListOptions contains options for limiting or filtering results.
@@ -318,7 +363,7 @@ func (p PropagationPolicy) ApplyToDeleteAllOf(opts *DeleteAllOfOptions) {
 // pre-parsed selectors (since generally, selectors will be executed
 // against the cache).
 type ListOptions struct {
-	// LabelSelector filters results by label.  Use SetLabelSelector to
+	// LabelSelector filters results by label. Use labels.Parse() to
 	// set from raw string form.
 	LabelSelector labels.Selector
 	// FieldSelector filters results by a particular field.  In order
@@ -349,7 +394,7 @@ type ListOptions struct {
 
 var _ ListOption = &ListOptions{}
 
-// ApplyToList implements ListOption for ListOptions
+// ApplyToList implements ListOption for ListOptions.
 func (o *ListOptions) ApplyToList(lo *ListOptions) {
 	if o.LabelSelector != nil {
 		lo.LabelSelector = o.LabelSelector
@@ -569,7 +614,7 @@ func (o *UpdateOptions) ApplyOptions(opts []UpdateOption) *UpdateOptions {
 
 var _ UpdateOption = &UpdateOptions{}
 
-// ApplyToUpdate implements UpdateOption
+// ApplyToUpdate implements UpdateOption.
 func (o *UpdateOptions) ApplyToUpdate(uo *UpdateOptions) {
 	if o.DryRun != nil {
 		uo.DryRun = o.DryRun
@@ -636,7 +681,7 @@ func (o *PatchOptions) AsPatchOptions() *metav1.PatchOptions {
 
 var _ PatchOption = &PatchOptions{}
 
-// ApplyToPatch implements PatchOptions
+// ApplyToPatch implements PatchOptions.
 func (o *PatchOptions) ApplyToPatch(po *PatchOptions) {
 	if o.DryRun != nil {
 		po.DryRun = o.DryRun
@@ -688,7 +733,7 @@ func (o *DeleteAllOfOptions) ApplyOptions(opts []DeleteAllOfOption) *DeleteAllOf
 
 var _ DeleteAllOfOption = &DeleteAllOfOptions{}
 
-// ApplyToDeleteAllOf implements DeleteAllOfOption
+// ApplyToDeleteAllOf implements DeleteAllOfOption.
 func (o *DeleteAllOfOptions) ApplyToDeleteAllOf(do *DeleteAllOfOptions) {
 	o.ApplyToList(&do.ListOptions)
 	o.ApplyToDelete(&do.DeleteOptions)
