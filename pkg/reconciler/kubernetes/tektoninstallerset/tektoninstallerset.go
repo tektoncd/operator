@@ -138,7 +138,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	err = installer.IsWebhookReady()
 	if err != nil {
 		installerSet.Status.MarkWebhookNotReady(err.Error())
-		return v1alpha1.REQUEUE_EVENT_AFTER
+		return nil
 	}
 
 	// Update Status for Webhook
@@ -148,7 +148,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	err = installer.IsControllerReady()
 	if err != nil {
 		installerSet.Status.MarkControllerNotReady(err.Error())
-		return v1alpha1.REQUEUE_EVENT_AFTER
+		return nil
 	}
 
 	// Update Ready status of Controller
@@ -167,7 +167,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	err = installer.AllDeploymentsReady()
 	if err != nil {
 		installerSet.Status.MarkAllDeploymentsNotReady(err.Error())
-		return v1alpha1.REQUEUE_EVENT_AFTER
+		return nil
 	}
 
 	// Mark all deployments ready
