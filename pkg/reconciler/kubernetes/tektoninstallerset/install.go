@@ -414,6 +414,7 @@ func (i *installer) isDeploymentReady(d *unstructured.Unstructured) error {
 	}
 
 	if !isDeploymentAvailable(deployment) {
+		i.logger.Infof("deployment %v not ready, returning will retry!", deployment.GetName())
 		return fmt.Errorf("%s deployment not ready", deployment.GetName())
 	}
 
