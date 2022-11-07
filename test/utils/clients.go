@@ -35,7 +35,7 @@ type Clients struct {
 	KubeClient    kubernetes.Interface
 	Dynamic       dynamic.Interface
 	Operator      operatorv1alpha1.OperatorV1alpha1Interface
-	TaskRunClient v1beta1.TaskRunInterface
+	TektonClient  v1beta1.TektonV1beta1Interface
 	Config        *rest.Config
 	KubeClientSet *kubernetes.Clientset
 }
@@ -73,12 +73,10 @@ func NewClients(configPath string, clusterName string, namespace string) (*Clien
 		return nil, err
 	}
 
-	tektonBetaClients, err := newTektonBetaClients(cfg)
+	clients.TektonClient, err = newTektonBetaClients(cfg)
 	if err != nil {
 		return nil, err
 	}
-
-	clients.TaskRunClient = tektonBetaClients.TaskRuns(namespace)
 
 	clients.Config = cfg
 	return clients, nil
