@@ -137,11 +137,22 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Run chains test in a new namespace
+	// as pipelines enforce the pod security fields this test would fail if ran
+	// in tekton-pipelines namespace, as pipelines controller doesn't creates pods
+	// with pod security fields
+	testNamespace := "chains-test"
+
+	if _, err := resources.EnsureTestNamespaceExists(clients, testNamespace); err != nil {
+		t.Fatalf("failed to create test namespace: %s, %q", testNamespace, err)
+	}
+
 	taskRunName := "build-push-run-output-image-test"
 	taskOutputImageTaskRun := parse.MustParseTaskRun(t, string(taskRunYAML))
+	taskOutputImageTaskRun.Namespace = testNamespace
 
 	t.Run("create TaskRun", func(t *testing.T) {
-		_, err := resources.EnsureTaskRunExists(clients.TaskRunClient, taskOutputImageTaskRun)
+		_, err := resources.EnsureTaskRunExists(clients.TektonClient, taskOutputImageTaskRun)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -167,7 +178,7 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 	}
 
 	t.Run("wait for TaskRun to succeed", func(t *testing.T) {
-		err := resources.WaitForTaskRunHappy(clients.TaskRunClient, taskRunName, taskRunSucceededFunc)
+		err := resources.WaitForTaskRunHappy(clients.TektonClient, testNamespace, taskRunName, taskRunSucceededFunc)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -181,13 +192,13 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 	}
 
 	t.Run("wait for TaskRun to get signed", func(t *testing.T) {
-		err := resources.WaitForTaskRunHappy(clients.TaskRunClient, taskRunName, taskRunSignedFunc)
+		err := resources.WaitForTaskRunHappy(clients.TektonClient, testNamespace, taskRunName, taskRunSignedFunc)
 		if err != nil {
 			t.Fatal(err)
 		}
 	})
 
-	taskRun, err := clients.TaskRunClient.Get(context.TODO(), taskRunName, metav1.GetOptions{})
+	taskRun, err := clients.TektonClient.TaskRuns(testNamespace).Get(context.TODO(), taskRunName, metav1.GetOptions{})
 
 	// export TASKRUN_UID=$(tkn tr describe --last -o  jsonpath='{.metadata.uid}')
 	taskRunUID := taskRun.ObjectMeta.UID

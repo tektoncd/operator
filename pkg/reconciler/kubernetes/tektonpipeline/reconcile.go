@@ -125,6 +125,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 }
 
 func (r *Reconciler) targetNamespaceCheck(ctx context.Context, tp *v1alpha1.TektonPipeline) error {
+	logger := logging.FromContext(ctx)
 	labels := r.manifest.Filter(mf.ByKind("Namespace")).Resources()[0].GetLabels()
 
 	ns, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, tp.GetSpec().GetTargetNamespace(), metav1.GetOptions{})
@@ -138,6 +139,7 @@ func (r *Reconciler) targetNamespaceCheck(ctx context.Context, tp *v1alpha1.Tekt
 		return err
 	}
 	if ns.DeletionTimestamp != nil {
+		logger.Infof("%v namespace is in deletion state, will retry!", tp.GetSpec().GetTargetNamespace())
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 	for key, value := range labels {

@@ -44,9 +44,9 @@ func ReplaceConfigMap(kubeClient kubernetes.Interface, configMap *v1.ConfigMap) 
 
 // WaitForTaskRunHappy polls the status of the TaskRun called name from client
 // every `interval` seconds till it becomes happy with the condition function
-func WaitForTaskRunHappy(client pipelinev1beta1.TaskRunInterface, name string, conditionFunc func(taskRun *v1beta1.TaskRun) (bool, error)) error {
+func WaitForTaskRunHappy(client pipelinev1beta1.TektonV1beta1Interface, namespace, name string, conditionFunc func(taskRun *v1beta1.TaskRun) (bool, error)) error {
 	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
-		taskRun, err := client.Get(context.TODO(), name, metav1.GetOptions{})
+		taskRun, err := client.TaskRuns(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -60,11 +60,11 @@ func WaitForTaskRunHappy(client pipelinev1beta1.TaskRunInterface, name string, c
 }
 
 // EnsureTaskRunExists creates a TaskRun, if it does not exist.
-func EnsureTaskRunExists(client pipelinev1beta1.TaskRunInterface, taskRun *v1beta1.TaskRun) (*v1beta1.TaskRun, error) {
+func EnsureTaskRunExists(client pipelinev1beta1.TektonV1beta1Interface, taskRun *v1beta1.TaskRun) (*v1beta1.TaskRun, error) {
 	// If this function is called by the upgrade tests, we only create the custom resource, if it does not exist.
-	tr, err := client.Get(context.TODO(), taskRun.Name, metav1.GetOptions{})
+	tr, err := client.TaskRuns(taskRun.Namespace).Get(context.TODO(), taskRun.Name, metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
-		return client.Create(context.TODO(), taskRun, metav1.CreateOptions{})
+		return client.TaskRuns(taskRun.Namespace).Create(context.TODO(), taskRun, metav1.CreateOptions{})
 	}
 	return tr, err
 }
