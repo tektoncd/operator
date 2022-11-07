@@ -32,7 +32,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_HubDeploymentWithExternalDatabase(t *testing.T) {
+func TestTektonHubDeploymentWithExternalDatabase(t *testing.T) {
+	t.Skip()
 	crNames := utils.ResourceNames{
 		TektonConfig:    "config",
 		TektonHub:       "hub",
@@ -119,6 +120,7 @@ func Test_HubDeploymentWithExternalDatabase(t *testing.T) {
 }
 
 func TestTektonHubDeployment(t *testing.T) {
+	t.Skip()
 	crNames := utils.ResourceNames{
 		TektonConfig:    "config",
 		TektonHub:       "hub",
