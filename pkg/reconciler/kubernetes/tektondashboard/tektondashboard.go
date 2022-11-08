@@ -112,10 +112,10 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two.
 func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashboard) pkgreconciler.Event {
-
 	logger := logging.FromContext(ctx)
 	td.Status.InitializeConditions()
 	td.Status.ObservedGeneration = td.Generation
+	td.Status.SetVersion(r.dashboardVersion)
 
 	logger.Infow("Reconciling TektonDashboards", "status", td.Status)
 

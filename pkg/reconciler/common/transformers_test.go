@@ -543,3 +543,33 @@ func TestAddPSA(t *testing.T) {
 		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
 	}
 }
+
+func TestCopyConfigMapValues(t *testing.T) {
+	testData := path.Join("testdata", "test-resolver-config.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	expectedValues := map[string]string{
+		"default-tekton-hub-catalog":        "abc-catalog",
+		"default-artifact-hub-task-catalog": "some-random-catalog",
+		"ignore-me-field":                   "ignore-me",
+	}
+
+	manifest, err = manifest.Transform(CopyConfigMap("hubresolver-config", expectedValues))
+	assertNoEror(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
+	assertNoEror(t, err)
+	// ConfigMap will have values changed only for field which are defined
+	assert.Equal(t, cm.Data["default-tekton-hub-catalog"], "abc-catalog")
+	assert.Equal(t, cm.Data["default-artifact-hub-task-catalog"], "some-random-catalog")
+
+	// fields which are not defined in expected configmap will be same as before
+	assert.Equal(t, cm.Data["default-kind"], "task")
+	assert.Equal(t, cm.Data["default-type"], "artifact")
+
+	// extra fields in expected configmap will be ignore and will not be added
+	assert.Equal(t, cm.Data["ignore-me-field"], "")
+
+}

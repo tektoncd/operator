@@ -27,10 +27,14 @@ import (
 
 const (
 	// Pipelines ConfigMap
-	FeatureFlag         = "feature-flags"
-	ConfigDefaults      = "config-defaults"
-	ConfigMetrics       = "config-observability"
-	ResolverFeatureFlag = "resolvers-feature-flags"
+	FeatureFlag           = "feature-flags"
+	ConfigDefaults        = "config-defaults"
+	ConfigMetrics         = "config-observability"
+	ResolverFeatureFlag   = "resolvers-feature-flags"
+	bundleResolverConfig  = "bundleresolver-config"
+	clusterResolverConfig = "cluster-resolver-config"
+	hubResolverConfig     = "hubresolver-config"
+	gitResolverConfig     = "git-resolver-config"
 )
 
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
@@ -53,6 +57,10 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.DeploymentImages(images),
 			common.InjectLabelOnNamespace(proxyLabel),
 			common.AddConfiguration(pipeline.Spec.Config),
+			common.CopyConfigMap(bundleResolverConfig, pipeline.Spec.BundlesResolverConfig),
+			common.CopyConfigMap(hubResolverConfig, pipeline.Spec.HubResolverConfig),
+			common.CopyConfigMap(clusterResolverConfig, pipeline.Spec.ClusterResolverConfig),
+			common.CopyConfigMap(gitResolverConfig, pipeline.Spec.GitResolverConfig),
 		}
 		trns = append(trns, extra...)
 

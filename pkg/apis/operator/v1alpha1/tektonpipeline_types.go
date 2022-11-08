@@ -133,4 +133,13 @@ type Resolvers struct {
 	EnableHubResolver     *bool `json:"enable-hub-resolver,omitempty"`
 	EnableGitResolver     *bool `json:"enable-git-resolver,omitempty"`
 	EnableClusterResolver *bool `json:"enable-cluster-resolver,omitempty"`
+	ResolversConfig       `json:",inline"`
+}
+
+// ResolversConfig defines the fields to configure each of the resolver
+type ResolversConfig struct {
+	BundlesResolverConfig map[string]string `json:"bundles-resolver-config,omitempty"`
+	HubResolverConfig     map[string]string `json:"hub-resolver-config,omitempty"`
+	GitResolverConfig     map[string]string `json:"git-resolver-config,omitempty"`
+	ClusterResolverConfig map[string]string `json:"cluster-resolver-config,omitempty"`
 }
