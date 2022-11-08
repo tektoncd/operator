@@ -37,6 +37,7 @@ import (
 
 // TestTektonResultDeployment verifies the TektonResult creation, deployment recreation, and TektonResult deletion.
 func TestTektonResultDeployment(t *testing.T) {
+	t.Skip()
 	platform := os.Getenv("PLATFORM")
 	if platform == "linux/ppc64le" || platform == "linux/s390x" {
 		t.Skipf("Tekton Result is not available for %q", platform)
