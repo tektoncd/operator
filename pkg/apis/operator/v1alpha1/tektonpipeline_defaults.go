@@ -80,6 +80,20 @@ func (p *Pipeline) setDefaults() {
 		p.MetricsTaskrunLevel = config.DefaultTaskrunLevel
 	}
 
+	// Resolvers
+	if p.EnableBundlesResolver == nil {
+		p.EnableBundlesResolver = ptr.Bool(true)
+	}
+	if p.EnableClusterResolver == nil {
+		p.EnableClusterResolver = ptr.Bool(true)
+	}
+	if p.EnableHubResolver == nil {
+		p.EnableHubResolver = ptr.Bool(true)
+	}
+	if p.EnableGitResolver == nil {
+		p.EnableGitResolver = ptr.Bool(true)
+	}
+
 	// run platform specific defaulting
 	if IsOpenShiftPlatform() {
 		p.openshiftDefaulting()

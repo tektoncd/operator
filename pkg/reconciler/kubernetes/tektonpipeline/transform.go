@@ -27,9 +27,10 @@ import (
 
 const (
 	// Pipelines ConfigMap
-	FeatureFlag    = "feature-flags"
-	ConfigDefaults = "config-defaults"
-	ConfigMetrics  = "config-observability"
+	FeatureFlag         = "feature-flags"
+	ConfigDefaults      = "config-defaults"
+	ConfigMetrics       = "config-observability"
+	ResolverFeatureFlag = "resolvers-feature-flags"
 )
 
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
@@ -47,6 +48,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfigMapValues(FeatureFlag, pipeline.Spec.PipelineProperties),
 			common.AddConfigMapValues(ConfigDefaults, pipeline.Spec.OptionalPipelineProperties),
 			common.AddConfigMapValues(ConfigMetrics, pipeline.Spec.PipelineMetricsProperties),
+			common.AddConfigMapValues(ResolverFeatureFlag, pipeline.Spec.Resolvers),
 			common.ApplyProxySettings,
 			common.DeploymentImages(images),
 			common.InjectLabelOnNamespace(proxyLabel),
