@@ -16,17 +16,22 @@ limitations under the License.
 
 package v1alpha1
 
-type OpenShift struct {
-	// PipelinesAsCode allows configuring PipelinesAsCode configurations
-	// +optional
-	PipelinesAsCode *PipelinesAsCode `json:"pipelinesAsCode,omitempty"`
+import (
+	"context"
+
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
+)
+
+func (pac *OpenShiftPipelinesAsCode) SetDefaults(ctx context.Context) {
+	if pac.Spec.PACSettings.Settings == nil {
+		pac.Spec.PACSettings.Settings = map[string]string{}
+	}
+	setPACDefaults(pac.Spec.PACSettings)
 }
 
-type PipelinesAsCode struct {
-	// Enable or disable pipelines as code by changing this bool
-	// +optional
-	Enable *bool `json:"enable,omitempty"`
-	// PACSettings allows user to configure PAC configurations
-	// +optional
-	PACSettings `json:",inline"`
+func setPACDefaults(set PACSettings) {
+	if set.Settings == nil {
+		set.Settings = map[string]string{}
+	}
+	settings.SetDefaults(set.Settings)
 }

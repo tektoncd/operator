@@ -15,25 +15,25 @@ package mapper
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"regexp"
 	"sync"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
+	"github.com/prometheus/statsd_exporter/pkg/level"
 	"github.com/prometheus/statsd_exporter/pkg/mapper/fsm"
 )
 
 var (
 	// The first segment of a match cannot start with a number
-	statsdMetricRE = `[a-zA-Z_](-?[a-zA-Z0-9_])*`
+	statsdMetricRE = `[a-zA-Z_]([a-zA-Z0-9_\-])*`
 	// The subsequent segments of a match can start with a number
 	// See https://github.com/prometheus/statsd_exporter/issues/328
-	statsdMetricSubsequentRE = `[a-zA-Z0-9_](-?[a-zA-Z0-9_])*`
+	statsdMetricSubsequentRE = `[a-zA-Z0-9_]([a-zA-Z0-9_\-])*`
 	templateReplaceRE        = `(\$\{?\d+\}?)`
 
 	metricLineRE = regexp.MustCompile(`^(\*|` + statsdMetricRE + `)(\.\*|\.` + statsdMetricSubsequentRE + `)*$`)
@@ -233,6 +233,10 @@ func (m *MetricMapper) InitFromYAMLString(fileContents string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
+	if m.Logger == nil {
+		m.Logger = log.NewNopLogger()
+	}
+
 	m.Defaults = n.Defaults
 	m.Mappings = n.Mappings
 
@@ -259,15 +263,11 @@ func (m *MetricMapper) InitFromYAMLString(fileContents string) error {
 		m.MappingsCount.Set(float64(len(n.Mappings)))
 	}
 
-	if m.Logger == nil {
-		m.Logger = log.NewNopLogger()
-	}
-
 	return nil
 }
 
 func (m *MetricMapper) InitFromFile(fileName string) error {
-	mappingStr, err := ioutil.ReadFile(fileName)
+	mappingStr, err := os.ReadFile(fileName)
 	if err != nil {
 		return err
 	}
@@ -381,7 +381,6 @@ func (m *MetricMapper) GetMapping(statsdMetric string, statsdMetricType MetricTy
 // make a shallow copy so that we do not overwrite name
 // as multiple names can be matched by same mapping
 func copyMetricMapping(in *MetricMapping) *MetricMapping {
-	var out MetricMapping
-	out = *in
+	out := *in
 	return &out
 }

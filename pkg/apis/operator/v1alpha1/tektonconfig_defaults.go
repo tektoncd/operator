@@ -34,6 +34,9 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 		if tc.Spec.Platforms.OpenShift.PipelinesAsCode == nil {
 			tc.Spec.Platforms.OpenShift.PipelinesAsCode = &PipelinesAsCode{
 				Enable: ptr.Bool(true),
+				PACSettings: PACSettings{
+					Settings: map[string]string{},
+				},
 			}
 		} else {
 			tc.Spec.Addon.EnablePAC = nil
@@ -42,6 +45,12 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 		// check if PAC is disabled through addon before enabling through OpenShiftPipelinesAsCode
 		if tc.Spec.Addon.EnablePAC != nil && !*tc.Spec.Addon.EnablePAC {
 			tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable = ptr.Bool(false)
+			tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings = nil
+		}
+
+		// pac defaulting
+		if *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable {
+			setPACDefaults(tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings)
 		}
 
 		setAddonDefaults(&tc.Spec.Addon)
