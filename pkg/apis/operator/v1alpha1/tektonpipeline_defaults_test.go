@@ -57,6 +57,12 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 			MetricsTaskrunDurationType:     "histogram",
 			MetricsTaskrunLevel:            "task",
 		},
+		Resolvers: Resolvers{
+			EnableBundlesResolver: ptr.Bool(true),
+			EnableHubResolver:     ptr.Bool(true),
+			EnableGitResolver:     ptr.Bool(true),
+			EnableClusterResolver: ptr.Bool(true),
+		},
 	}
 
 	tp.SetDefaults(context.TODO())

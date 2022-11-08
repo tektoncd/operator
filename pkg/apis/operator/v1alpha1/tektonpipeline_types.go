@@ -101,6 +101,8 @@ type PipelineProperties struct {
 	PipelineMetricsProperties  `json:",inline"`
 	// +optional
 	OptionalPipelineProperties `json:",inline"`
+	// +optional
+	Resolvers `json:",inline"`
 }
 
 // OptionalPipelineProperties defines the fields which are to be
@@ -123,4 +125,12 @@ type PipelineMetricsProperties struct {
 	MetricsTaskrunDurationType     string `json:"metrics.taskrun.duration-type,omitempty"`
 	MetricsPipelinerunLevel        string `json:"metrics.pipelinerun.level,omitempty"`
 	MetricsPipelinerunDurationType string `json:"metrics.pipelinerun.duration-type,omitempty"`
+}
+
+// Resolvers defines the fields to configure resolvers
+type Resolvers struct {
+	EnableBundlesResolver *bool `json:"enable-bundles-resolver,omitempty"`
+	EnableHubResolver     *bool `json:"enable-hub-resolver,omitempty"`
+	EnableGitResolver     *bool `json:"enable-git-resolver,omitempty"`
+	EnableClusterResolver *bool `json:"enable-cluster-resolver,omitempty"`
 }
