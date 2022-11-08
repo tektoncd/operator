@@ -27,6 +27,8 @@ import (
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 )
 
+const pipelinesAsCodeCM = "pipelines-as-code"
+
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		pac := comp.(*v1alpha1.OpenShiftPipelinesAsCode)
@@ -43,6 +45,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfiguration(pac.Spec.Config),
 			common.ApplyProxySettings,
 			occommon.ApplyCABundles,
+			common.CopyConfigMap(pipelinesAsCodeCM, pac.Spec.Settings),
 		}
 
 		allTfs := append(tfs, extension.Transformers(pac)...)
