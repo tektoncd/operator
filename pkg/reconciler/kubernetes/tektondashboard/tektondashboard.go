@@ -311,6 +311,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdDashboard),
 		common.ApplyProxySettings,
 		common.AddConfiguration(instance.Spec.Config),
+		common.AddDeploymentRestrictedPSA(),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)

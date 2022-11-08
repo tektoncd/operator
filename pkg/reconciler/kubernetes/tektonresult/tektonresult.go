@@ -311,6 +311,8 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.ApplyProxySettings,
 		common.ReplaceNamespaceInDeploymentArgs(targetNs),
 		common.ReplaceNamespaceInDeploymentEnv(targetNs),
+		common.AddDeploymentRestrictedPSA(),
+		common.AddStatefulSetRestrictedPSA(),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)

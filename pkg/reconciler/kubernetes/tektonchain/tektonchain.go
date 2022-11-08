@@ -393,6 +393,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.DeploymentImages(chainImages),
 		common.AddConfiguration(instance.Spec.Config),
 		common.AddConfigMapValues(ChainsConfig, instance.Spec.Chain),
+		common.AddDeploymentRestrictedPSA(),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
