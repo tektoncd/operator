@@ -643,6 +643,51 @@ func AddDeploymentRestrictedPSA() mf.Transformer {
 	}
 }
 
+// AddStatefulSetRestrictedPSA will add the default restricted spec on StatefulSet to remove errors/warning
+func AddStatefulSetRestrictedPSA() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if strings.ToLower(u.GetKind()) != "statefulset" {
+			return nil
+		}
+
+		s := &appsv1.StatefulSet{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, s)
+		if err != nil {
+			return err
+		}
+
+		if s.Spec.Template.Spec.SecurityContext == nil {
+			s.Spec.Template.Spec.SecurityContext = &corev1.PodSecurityContext{}
+		}
+
+		if s.Spec.Template.Spec.SecurityContext.RunAsNonRoot == nil {
+			s.Spec.Template.Spec.SecurityContext.RunAsNonRoot = ptr.Bool(runAsNonRootValue)
+		}
+
+		if s.Spec.Template.Spec.SecurityContext.SeccompProfile == nil {
+			s.Spec.Template.Spec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{
+				Type: corev1.SeccompProfileTypeRuntimeDefault,
+			}
+		}
+
+		for i := range s.Spec.Template.Spec.Containers {
+			c := &s.Spec.Template.Spec.Containers[i]
+			if c.SecurityContext == nil {
+				c.SecurityContext = &corev1.SecurityContext{}
+			}
+			c.SecurityContext.AllowPrivilegeEscalation = ptr.Bool(allowPrivilegedEscalationValue)
+			c.SecurityContext.Capabilities = &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(s)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
 // AddJobRestrictedPSA will add the default restricted spec on Job to remove errors/warning
 func AddJobRestrictedPSA() mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
