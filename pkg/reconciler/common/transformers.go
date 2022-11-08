@@ -690,3 +690,45 @@ func AddJobRestrictedPSA() mf.Transformer {
 		return nil
 	}
 }
+
+// CopyConfigMap will copy all the values from the passed configmap to the configmap
+// in the manifest, the fields which are in manifest configmap will only be copied
+// any extra field will be ignored
+func CopyConfigMap(configMapName string, expectedValues map[string]string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := strings.ToLower(u.GetKind())
+		if kind != "configmap" {
+			return nil
+		}
+		if u.GetName() != configMapName {
+			return nil
+		}
+
+		cm := &corev1.ConfigMap{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return err
+		}
+		if cm.Data == nil {
+			// we don't add any field in the manifest configmap
+			// we will copy any value if defined by user
+			return nil
+		}
+
+		for key := range cm.Data {
+			// check if the key is defined in the expected map
+			value, ok := expectedValues[key]
+			if ok {
+				// if yes then copy the value
+				cm.Data[key] = value
+			}
+		}
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return err
+		}
+
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}

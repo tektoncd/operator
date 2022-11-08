@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hubresolver-config
+  namespace: tekton-pipelines-resolvers
+  labels:
+    app.kubernetes.io/component: resolvers
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  # the default Tekton Hub catalog from where to pull the resource.
+  default-tekton-hub-catalog: "Tekton"
+  # the default Artifact Hub Task catalog from where to pull the resource.
+  default-artifact-hub-task-catalog: "tekton-catalog-tasks"
+  # the default Artifact Hub Pipeline catalog from where to pull the resource.
+  default-artifact-hub-pipeline-catalog: "tekton-catalog-pipelines"
+  # the default layer kind in the hub image.
+  default-kind: "task"
+  # the default hub source to pull the resource from.
+  default-type: "artifact"
