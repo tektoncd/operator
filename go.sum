@@ -1259,8 +1259,8 @@ github.com/manifestival/client-go-client v0.5.0/go.mod h1:sDehep6aHdIEdUKnRSvueG
 github.com/manifestival/controller-runtime-client v0.4.0 h1:AK+nTZ1rhPTfAc3upnSe3TiOvAWuRmxi1vjEr55dSUM=
 github.com/manifestival/controller-runtime-client v0.4.0/go.mod h1:DrsviSegfdlpVsynTUZonKE5gFkMQupenlzVmDbC6S0=
 github.com/manifestival/manifestival v0.6.0/go.mod h1:3Qq9cnPy7sv7FVhg2Kvw0ebb35R4OdctS4UjTjHlHm4=
-github.com/manifestival/manifestival v0.7.1 h1:3y2bhqOV4YjW9p5MXXTomoFzgVu0i5ptI29XT3NXSJ8=
-github.com/manifestival/manifestival v0.7.1/go.mod h1:nl3T6HlfHCeidooWVTMI9vYNTBkQ1GdhLNb+smozbdk=
+github.com/manifestival/manifestival v0.7.2 h1:l4uFdWX/xQK4QcRfqGoMtBvaZeWPEuwD6hVsCwUqZY4=
+github.com/manifestival/manifestival v0.7.2/go.mod h1:nl3T6HlfHCeidooWVTMI9vYNTBkQ1GdhLNb+smozbdk=
 github.com/markbates/inflect v1.0.4 h1:5fh1gzTFhfae06u3hzHYO9xe3l3v3nW5Pwt3naLTP5g=
 github.com/markbates/inflect v1.0.4/go.mod h1:1fR9+pO2KHEO9ZRtto13gDwwZaAKstQzferVeWqbgNs=
 github.com/markbates/oncer v0.0.0-20181203154359-bf2de49a0be2/go.mod h1:Ld9puTsIW75CHf65OeIOkyKbteujpZVXDpWK6YGZbxE=
