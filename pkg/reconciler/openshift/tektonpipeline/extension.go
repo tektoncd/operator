@@ -131,12 +131,6 @@ func preManifest() (*mf.Manifest, error) {
 		return nil, err
 	}
 
-	// add pipelines-scc
-	pipelinesSCCLocation := filepath.Join(koDataDir, "tekton-pipeline", "00-prereconcile")
-	if err := common.AppendManifest(manifest, pipelinesSCCLocation); err != nil {
-		return nil, err
-	}
-
 	return manifest, nil
 }
 

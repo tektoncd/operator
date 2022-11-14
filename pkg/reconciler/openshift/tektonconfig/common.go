@@ -18,7 +18,10 @@ package tektonconfig
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
+	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -29,7 +32,15 @@ import (
 
 func createInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha1.TektonConfig, releaseVersion string) error {
 
+	// add pipelines-scc
+	pipelinescc := &mf.Manifest{}
+	pipelinesSCCLocation := filepath.Join(os.Getenv(common.KoEnvKey), "tekton-pipeline", "00-prereconcile")
+	if err := common.AppendManifest(pipelinescc, pipelinesSCCLocation); err != nil {
+		return err
+	}
+
 	is := makeInstallerSet(tc, releaseVersion)
+	is.Spec.Manifests = pipelinescc.Resources()
 
 	createdIs, err := oc.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, is, metav1.CreateOptions{})
