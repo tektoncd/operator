@@ -97,6 +97,8 @@ type openshiftExtension struct {
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
 		UpdateDbDeployment(),
+		openshiftCommon.RemoveRunAsUser(),
+		openshiftCommon.RemoveRunAsUserForJob(),
 		openshiftCommon.RemoveFsGroup(api),
 	}
 }
