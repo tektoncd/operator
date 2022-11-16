@@ -7,19 +7,19 @@ import (
 )
 
 func Validate(config map[string]string) error {
-	if secretAutoCreation, ok := config[SecretAutoCreateKey]; ok {
+	if secretAutoCreation, ok := config[SecretAutoCreateKey]; ok && secretAutoCreation != "" {
 		if !isValidBool(secretAutoCreation) {
 			return fmt.Errorf("invalid value for key %v, acceptable values: true or false", SecretAutoCreateKey)
 		}
 	}
 
-	if remoteTask, ok := config[RemoteTasksKey]; ok {
+	if remoteTask, ok := config[RemoteTasksKey]; ok && remoteTask != "" {
 		if !isValidBool(remoteTask) {
 			return fmt.Errorf("invalid value for key %v, acceptable values: true or false", RemoteTasksKey)
 		}
 	}
 
-	if check, ok := config[BitbucketCloudCheckSourceIPKey]; ok {
+	if check, ok := config[BitbucketCloudCheckSourceIPKey]; ok && check != "" {
 		if !isValidBool(check) {
 			return fmt.Errorf("invalid value for key %v, acceptable values: true or false", BitbucketCloudCheckSourceIPKey)
 		}
@@ -39,13 +39,13 @@ func Validate(config map[string]string) error {
 		}
 	}
 
-	if check, ok := config[AutoConfigureNewGitHubRepoKey]; ok {
+	if check, ok := config[AutoConfigureNewGitHubRepoKey]; ok && check != "" {
 		if !isValidBool(check) {
 			return fmt.Errorf("invalid value for key %v, acceptable values: true or false", AutoConfigureNewGitHubRepoKey)
 		}
 	}
 
-	if dashboardURL, ok := config[TektonDashboardURLKey]; ok {
+	if dashboardURL, ok := config[TektonDashboardURLKey]; ok && dashboardURL != "" {
 		if _, err := url.ParseRequestURI(dashboardURL); err != nil {
 			return fmt.Errorf("invalid value for key %v, invalid url: %w", TektonDashboardURLKey, err)
 		}
