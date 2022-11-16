@@ -60,7 +60,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 
-		metrics, err := NewRecorder()
+		metrics, err := common.NoMetrics()
 		if err != nil {
 			logger.Errorf("Failed to create trigger metrics recorder %v", err)
 		}
