@@ -3,6 +3,10 @@
 [![Go Report Card](https://goreportcard.com/badge/tektoncd/operator)](https://goreportcard.com/report/tektoncd/operator)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/6548/badge)](https://bestpractices.coreinfrastructure.org/projects/6548)
 
+<p align="center">
+<img width="250" height="325"  src="tekton-operator.png" alt="Operator Icon" title="Operator Icon"></img>
+</p>
+
 The quickest and easiest way to install, upgrade and manage TektonCD [Pipelines](https://github.com/tektoncd/pipeline),
 [Dashboard](https://github.com/tektoncd/dashboard), [Triggers](https://github.com/tektoncd/triggers)
 on any Kubernetes Cluster.
