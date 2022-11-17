@@ -20,7 +20,7 @@ require (
 	github.com/sigstore/cosign v1.13.1
 	github.com/tektoncd/pipeline v0.41.0
 	github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7
-	github.com/tektoncd/triggers v0.21.0
+	github.com/tektoncd/triggers v0.22.0
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.23.0
@@ -295,7 +295,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiextensions-apiserver v0.25.2 // indirect
+	k8s.io/apiextensions-apiserver v0.25.3 // indirect
 	k8s.io/gengo v0.0.0-20220613173612-397b4ae3bce7 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220803162953-67bda5d908f1 // indirect

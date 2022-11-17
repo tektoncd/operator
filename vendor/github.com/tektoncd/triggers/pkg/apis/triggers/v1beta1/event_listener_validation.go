@@ -22,8 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/tektoncd/triggers/pkg/apis/config"
-
 	"github.com/tektoncd/triggers/pkg/apis/triggers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -86,12 +84,6 @@ func (s *EventListenerSpec) validate(ctx context.Context) (errs *apis.FieldError
 		}
 	}
 
-	if s.CloudEventURI != "" {
-		err := ValidateEnabledAPIFields(ctx, "spec.CloudEventURI", config.AlphaAPIFieldValue)
-		if err != nil {
-			errs = errs.Also(err)
-		}
-	}
 	return errs
 }
 

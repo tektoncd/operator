@@ -827,7 +827,7 @@ func schema_pkg_apis_triggers_v1beta1_InterceptorRef(ref common.ReferenceCallbac
 					},
 					"kind": {
 						SchemaProps: spec.SchemaProps{
-							Description: "InterceptorKind indicates the kind of the Interceptor, namespaced or cluster scoped. Currently only InterceptorKind is ClusterInterceptor, so the only valid value is the default one",
+							Description: "InterceptorKind indicates the kind of the Interceptor, namespaced or cluster scoped.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
