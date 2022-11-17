@@ -32,6 +32,14 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_WEBHOOK
+- image: registry.redhat.io/openshift-pipelines/pipelines-resolvers-rhel8@
+  replaceLocations:
+    envTargets:
+    - deploymentName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
+      envKeys:
+      # the container name for resolvers controller is "controller" :)
+      - IMAGE_PIPELINES_CONTROLLER
 - image: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel8@
   replaceLocations:
     envTargets:
