@@ -18,9 +18,13 @@ limitations under the License.
 package tektonhub
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -30,6 +34,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	mf "github.com/manifestival/manifestival"
+	"github.com/spf13/viper"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonhubconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonhub"
@@ -90,6 +95,13 @@ const (
 	apiConfigName           = "tekton-hub-api"
 	uiConfigName            = "tekton-hub-ui"
 )
+
+type Data struct {
+	Catalogs   []v1alpha1.Catalog
+	Categories []v1alpha1.Category
+	Scopes     []v1alpha1.Scope
+	Default    v1alpha1.Default
+}
 
 // FinalizeKind removes all resources after deletion of a TektonHub.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonHub) pkgreconciler.Event {
@@ -340,6 +352,7 @@ func (r *Reconciler) manageApiComponent(ctx context.Context, th *v1alpha1.Tekton
 			}
 
 			if lastAppliedDbSecretHash != expectedDbSecretHash || tektonHubCRSpecHash != lastAppliedTektonHubCRSpecHash {
+
 				if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().Delete(ctx, ctIs.Name, metav1.DeleteOptions{}); err != nil {
 					return err
 				}
@@ -557,8 +570,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1
 		mf.InjectNamespace(namespace),
 		common.DeploymentImages(images),
 		common.JobImages(images),
-		addConfigMapKeyValue(apiConfigName, "CONFIG_FILE_URL", th.Spec.Api.HubConfigUrl),
-		addConfigMapKeyValue(apiConfigName, "CATALOG_REFRESH_INTERVAL", th.Spec.Api.CatalogRefreshInterval),
+		updateApiConfigMap(th, apiConfigName),
 		addConfigMapKeyValue(uiConfigName, "API_URL", th.Status.ApiRouteUrl),
 		addConfigMapKeyValue(uiConfigName, "AUTH_BASE_URL", th.Status.AuthRouteUrl),
 		addConfigMapKeyValue(uiConfigName, "API_VERSION", "v1"),
@@ -566,6 +578,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1
 		common.AddDeploymentRestrictedPSA(),
 		common.AddJobRestrictedPSA(),
 	}
+
 	trans = append(trans, extra...)
 
 	manifest, err := manifest.Transform(trans...)
@@ -833,13 +846,8 @@ func (r *Reconciler) checkIfUserHasDb(ctx context.Context, th *v1alpha1.TektonHu
 }
 
 func (r *Reconciler) setUpAndCreateInstallerSet(ctx context.Context, manifest mf.Manifest, th *v1alpha1.TektonHub, installerSetName, version, prefixName string) error {
-	manifest = manifest.Filter(mf.Not(mf.Any(mf.ByKind("Secret"), mf.ByKind("PersistentVolumeClaim"), mf.ByKind("Namespace"))))
 
-	// If the component is dbMigration or api, then add the specHash of
-	// of db secret as annotation, because if user wants to use his database
-	// in future, then based on the value of db secret hash, reconciler should
-	// delete and recreate the dbMigration and api installerset to connect
-	// api with user's database
+	manifest = manifest.Filter(mf.Not(mf.Any(mf.ByKind("Secret"), mf.ByKind("PersistentVolumeClaim"), mf.ByKind("Namespace"))))
 
 	specHash := ""
 	if prefixName == dbMigration || prefixName == api {
@@ -1068,4 +1076,165 @@ func addConfigMapKeyValue(configMapName, key, value string) mf.Transformer {
 
 		return nil
 	}
+}
+
+func updateApiConfigMap(th *v1alpha1.TektonHub, configMapName string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+
+		kind := strings.ToLower(u.GetKind())
+		if kind != "configmap" {
+			return nil
+		}
+
+		if u.GetName() != configMapName {
+			return nil
+		}
+
+		cm := &corev1.ConfigMap{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return err
+		}
+
+		// TODO: Remove this condition in the next release
+		if th.Spec.Api.HubConfigUrl != "" {
+
+			hubUrlConfigdata, err := getConfigDataFromHubURL(th)
+			if err != nil {
+				return err
+			}
+			cm = updateConfigMapDataFromHubConfigURL(th, cm, hubUrlConfigdata)
+
+		} else {
+
+			if len(th.Spec.Categories) > 0 {
+				categories := ""
+				for _, c := range th.Spec.Categories {
+					categories += fmt.Sprintf("- %s\n", c)
+				}
+				cm.Data["CATEGORIES"] = categories
+			}
+
+			if len(th.Spec.Catalogs) > 0 {
+				catalogs := ""
+				for _, c := range th.Spec.Catalogs {
+					catalogs = catalogs + getCatalogData(c, th)
+				}
+				cm.Data["CATALOGS"] = catalogs
+			}
+
+			if len(th.Spec.Scopes) > 0 {
+				userScopes := ""
+				for _, s := range th.Spec.Scopes {
+					scope := ""
+					scope += fmt.Sprintf("- name: %s\n", s.Name)
+					scope += fmt.Sprintf("  users: [%s]\n", strings.Join(s.Users, ", "))
+					userScopes = userScopes + scope
+				}
+				cm.Data["SCOPES"] = userScopes
+			} else {
+				cm.Data["SCOPES"] = ""
+			}
+
+			if len(th.Spec.Default.Scopes) > 0 {
+				defaultScopes := ""
+				scopes := fmt.Sprintf("%s\n", defaultScopes)
+				for _, d := range th.Spec.Default.Scopes {
+					scopes += fmt.Sprintf("  - %s\n", d)
+				}
+				defaultScopes = fmt.Sprintf(" scopes: \n%s", scopes)
+				cm.Data["DEFAULT"] = defaultScopes
+			}
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
+// TODO: Remove this function in the next release
+// Adds Config Data from HubConfigUrl to API Config Map
+func updateConfigMapDataFromHubConfigURL(th *v1alpha1.TektonHub, cm *corev1.ConfigMap, hubUrlConfigdata *Data) *corev1.ConfigMap {
+	categories := ""
+	for _, c := range hubUrlConfigdata.Categories {
+		categories += fmt.Sprintf("- %s\n", c.Name)
+	}
+	cm.Data["CATEGORIES"] = categories
+
+	catalogs := ""
+	for _, c := range hubUrlConfigdata.Catalogs {
+		catalogs = catalogs + getCatalogData(c, th)
+	}
+	cm.Data["CATALOGS"] = catalogs
+
+	userScopes := ""
+	for _, s := range hubUrlConfigdata.Scopes {
+		scope := ""
+		scope += fmt.Sprintf("- name: %s\n", s.Name)
+		scope += fmt.Sprintf("  users: [%s]\n", strings.Join(s.Users, ", "))
+		userScopes = userScopes + scope
+	}
+	cm.Data["SCOPES"] = userScopes
+
+	defaultScopes := ""
+	scopes := fmt.Sprintf("%s\n", defaultScopes)
+	for _, d := range hubUrlConfigdata.Default.Scopes {
+		scopes += fmt.Sprintf("  - %s\n", d)
+	}
+	defaultScopes = fmt.Sprintf(" scopes: \n%s", scopes)
+	cm.Data["DEFAULT"] = defaultScopes
+
+	return cm
+}
+
+func getCatalogData(c v1alpha1.Catalog, th *v1alpha1.TektonHub) string {
+	catalogs := ""
+	v := reflect.ValueOf(c)
+
+	for i := 0; i < v.NumField(); i++ {
+		cat := ""
+		key := strings.ToLower(v.Type().Field(i).Name)
+
+		if v.Field(i).Interface() != "" {
+			if key == "name" {
+				key = "- " + key
+				cat += fmt.Sprintf("%s: %s\n", key, v.Field(i).Interface())
+			} else {
+				cat += fmt.Sprintf("  %s: %s\n", key, v.Field(i).Interface())
+			}
+			catalogs = catalogs + cat
+		}
+	}
+	return catalogs
+}
+
+// TODO: Remove this function in the next release
+func getConfigDataFromHubURL(th *v1alpha1.TektonHub) (*Data, error) {
+	var data = &Data{}
+	if th.Spec.Api.HubConfigUrl != "" {
+		resp, err := http.Get(th.Spec.Api.HubConfigUrl)
+		if err != nil {
+			return nil, err
+		}
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		viper.SetConfigType("yaml")
+		if err := viper.ReadConfig(bytes.NewBuffer(body)); err != nil {
+			return nil, err
+		}
+		if err := viper.Unmarshal(&data); err != nil {
+			return nil, err
+		}
+	}
+
+	return data, nil
 }

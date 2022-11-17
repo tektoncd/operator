@@ -34,7 +34,6 @@ func TestSetDefault(t *testing.T) {
 		},
 		Spec: TektonHubSpec{
 			Api: ApiSpec{
-				HubConfigUrl:  "https://hubconfig.url",
 				ApiSecretName: "tetkon-hub-api",
 			},
 		},

@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-	"net/url"
 
 	"knative.dev/pkg/apis"
 )
@@ -61,18 +60,6 @@ func (db *DbSpec) validate(path string) (errs *apis.FieldError) {
 }
 
 func (api *ApiSpec) validate(path string) (errs *apis.FieldError) {
-
-	if api.HubConfigUrl != "" {
-		_, err := url.ParseRequestURI(api.HubConfigUrl)
-		if err != nil {
-			errs = errs.Also(apis.ErrInvalidValue(api.HubConfigUrl, path+".HubConfigUrl"))
-		}
-	}
-
-	if api.HubConfigUrl == "" {
-		errs = errs.Also(apis.ErrMissingField(path + ".HubConfigUrl"))
-	}
-
 	if api.ApiSecretName != "" && api.ApiSecretName != "tekton-hub-api" {
 		return errs.Also(apis.ErrInvalidValue(api.ApiSecretName, path+".ApiSecretName"))
 	}
