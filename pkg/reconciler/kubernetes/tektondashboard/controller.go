@@ -19,6 +19,8 @@ package tektondashboard
 import (
 	"context"
 
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonDashboardinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektondashboard"
@@ -27,7 +29,6 @@ import (
 	tektonDashboardreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektondashboard"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"k8s.io/client-go/tools/cache"
-	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
@@ -47,7 +48,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		tektonPipelineInformer := tektonPipelineinformer.Get(ctx)
 		tektonDashboardInformer := tektonDashboardinformer.Get(ctx)
-		kubeClient := kubeclient.Get(ctx)
+
 		logger := logging.FromContext(ctx)
 
 		ctrl := common.Controller{
@@ -64,13 +65,19 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatal(err)
 		}
 
+		metrics, err := common.NoMetrics()
+		if err != nil {
+			logger.Errorf("Failed to create dashboard metrics recorder %v", err)
+		}
+
+		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 		c := &Reconciler{
-			kubeClientSet:      kubeClient,
+			pipelineInformer:   tektonPipelineInformer,
+			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, dashboardVer, v1alpha1.KindTektonDashboard, metrics),
 			operatorClientSet:  operatorclient.Get(ctx),
 			extension:          generator(ctx),
 			readonlyManifest:   readonlyManifest,
 			fullaccessManifest: fullaccessManifest,
-			pipelineInformer:   tektonPipelineInformer,
 			dashboardVersion:   dashboardVer,
 			operatorVersion:    operatorVer,
 		}

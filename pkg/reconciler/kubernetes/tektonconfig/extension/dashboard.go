@@ -19,11 +19,12 @@ package extension
 import (
 	"context"
 	"fmt"
+	"knative.dev/pkg/apis"
 	"reflect"
+	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -118,12 +119,10 @@ func updateDashboard(ctx context.Context, tdCR *v1alpha1.TektonDashboard, config
 
 // isTektonDashboardReady will check the status conditions of the TektonDashboard and return true if the TektonDashboard is ready.
 func isTektonDashboardReady(s *v1alpha1.TektonDashboard, err error) (bool, error) {
-	upgradePending, errInternal := common.CheckUpgradePending(s)
-	if err != nil {
-		return false, errInternal
-	}
-	if upgradePending {
-		return false, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
+	if s.GetStatus() != nil && s.GetStatus().GetCondition(apis.ConditionReady) != nil {
+		if strings.Contains(s.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
+			return false, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
+		}
 	}
 	return s.Status.IsReady(), err
 }

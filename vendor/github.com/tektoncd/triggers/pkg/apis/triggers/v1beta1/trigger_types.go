@@ -109,8 +109,6 @@ type InterceptorRef struct {
 	// Name of the referent; More info: http://kubernetes.io/docs/user-guide/identifiers#names
 	Name string `json:"name,omitempty"`
 	// InterceptorKind indicates the kind of the Interceptor, namespaced or cluster scoped.
-	// Currently only InterceptorKind is ClusterInterceptor, so the only valid value
-	// is the default one
 	// +optional
 	Kind InterceptorKind `json:"kind,omitempty"`
 	// API version of the referent
@@ -122,8 +120,10 @@ type InterceptorRef struct {
 type InterceptorKind string
 
 const (
-	// ClusterTaskKind indicates that task type has a cluster scope.
+	// ClusterInterceptorKind indicates that Interceptor type has a cluster scope.
 	ClusterInterceptorKind InterceptorKind = "ClusterInterceptor"
+	// NamespacedInterceptorKind indicates that Interceptor type has a namespace scope.
+	NamespacedInterceptorKind InterceptorKind = "NamespacedInterceptor"
 )
 
 func (ti *TriggerInterceptor) defaultInterceptorKind() {
