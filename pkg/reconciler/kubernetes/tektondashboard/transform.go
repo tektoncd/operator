@@ -18,15 +18,19 @@ package tektondashboard
 
 import (
 	"context"
+
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 )
 
+const (
+	externalLogsArg = "--external-logs="
+)
+
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
-
 		dashboard := comp.(*v1alpha1.TektonDashboard)
 		trns := extension.Transformers(dashboard)
 		extra := []mf.Transformer{
@@ -36,10 +40,13 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddDeploymentRestrictedPSA(),
 		}
 		trns = append(trns, extra...)
+		if dashboard.Spec.ExternalLogs != "" {
+			updatedExternalLogsArg := externalLogsArg + dashboard.Spec.ExternalLogs
+			trns = append(trns, common.ReplaceDeploymentArg("tekton-dashboard", externalLogsArg, updatedExternalLogsArg))
+		}
 		if err := common.Transform(ctx, manifest, dashboard, trns...); err != nil {
 			return nil, err
 		}
-
 		return manifest, nil
 	}
 }

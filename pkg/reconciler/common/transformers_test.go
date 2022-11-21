@@ -602,3 +602,32 @@ func TestCopyConfigMapValues(t *testing.T) {
 	assert.Equal(t, cm.Data["ignore-me-field"], "")
 
 }
+
+func TestReplaceDeploymentArg(t *testing.T) {
+	testData := path.Join("testdata", "test-dashboard-deployment.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	existingArg := "--external-logs="
+	newArg := "--external-logs=abc"
+
+	newManifest, err := manifest.Transform(ReplaceDeploymentArg("tekton-dashboard", existingArg, newArg))
+	assert.NilError(t, err)
+
+	got := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(newManifest.Resources()[0].Object, got)
+	if err != nil {
+		t.Errorf("failed to load deployment yaml")
+	}
+
+	found := false
+	for _, a := range got.Spec.Template.Spec.Containers[0].Args {
+		if a == newArg {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Fatalf("failed to find new arg in deployment")
+	}
+}

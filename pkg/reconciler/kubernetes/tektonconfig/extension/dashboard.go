@@ -19,7 +19,6 @@ package extension
 import (
 	"context"
 	"fmt"
-	"knative.dev/pkg/apis"
 	"reflect"
 	"strings"
 
@@ -27,6 +26,7 @@ import (
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 func EnsureTektonDashboardExists(ctx context.Context, clients op.TektonDashboardInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonDashboard, error) {
