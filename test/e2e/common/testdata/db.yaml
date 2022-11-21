@@ -16,6 +16,8 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: db
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
 spec: {}
 
 ---
@@ -67,6 +69,11 @@ spec:
       labels:
         app: tekton-hub-db
     spec:
+      securityContext:
+        fsGroup: 65532
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: tekton-hub-db
           image: postgres:13@sha256:7cc1c1a6a9df06df9e775eccdd77e45a868cb197e8e0981e23a2a814aaf56906
@@ -81,6 +88,12 @@ spec:
           ports:
             - containerPort: 5432
               protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 65532
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: POSTGRES_DB
               valueFrom:

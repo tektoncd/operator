@@ -38,6 +38,7 @@ spec:
           optional: true
       securityContext:
         fsGroup: 101
+        runAsNonRoot: true
       containers:
         - name: tekton-hub-api
           image: quay.io/tekton-hub/api

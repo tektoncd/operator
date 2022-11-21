@@ -28,6 +28,8 @@ spec:
       labels:
         app: tekton-hub-api
     spec:
+      securityContext:
+        runAsNonRoot: true
       volumes:
       - name: catalog-source
         persistentVolumeClaim:
