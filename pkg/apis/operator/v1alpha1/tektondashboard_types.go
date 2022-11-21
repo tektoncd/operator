@@ -88,4 +88,6 @@ type Dashboard struct {
 type DashboardProperties struct {
 	// Readonly when set to true configures the Tekton dashboard in read-only mode
 	Readonly bool `json:"readonly"`
+	// +optional
+	ExternalLogs string `json:"external-logs,omitempty"`
 }

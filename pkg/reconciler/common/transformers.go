@@ -777,3 +777,33 @@ func CopyConfigMap(configMapName string, expectedValues map[string]string) mf.Tr
 		return nil
 	}
 }
+
+func ReplaceDeploymentArg(deploymentName, existingArg, newArg string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" {
+			return nil
+		}
+		if u.GetName() != deploymentName {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		for i, arg := range d.Spec.Template.Spec.Containers[0].Args {
+			if arg == existingArg {
+				d.Spec.Template.Spec.Containers[0].Args[i] = newArg
+			}
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}

@@ -27,6 +27,10 @@ You can install this component using [TektonConfig](./TektonConfig.md) by choosi
 
 - `readonly` (Default: `false`)
 
-    If set to true, installs the Dashboard in read-only mode.
+  If set to true, installs the Dashboard in read-only mode.
+
+- `external-logs`
+
+  External URL from which to fetch logs when logs are not available in the cluster  
 
 [dashboard]:https://github.com/tektoncd/dashboard
