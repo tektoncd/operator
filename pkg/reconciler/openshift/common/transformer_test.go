@@ -128,7 +128,7 @@ func TestRemoveFsGroup(t *testing.T) {
 	expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assert.NilError(t, err)
 
-	newManifest, err := expectedManifest.Transform(RemoveFsGroup("tekton-hub-api"))
+	newManifest, err := expectedManifest.Transform(RemoveFsGroupForDeployment())
 	assert.NilError(t, err)
 
 	got := &appsv1.Deployment{}

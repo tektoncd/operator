@@ -33,7 +33,6 @@ import (
 )
 
 func TestTektonHubDeploymentWithExternalDatabase(t *testing.T) {
-	t.Skip()
 	crNames := utils.ResourceNames{
 		TektonConfig:    "config",
 		TektonHub:       "hub",
@@ -120,7 +119,6 @@ func TestTektonHubDeploymentWithExternalDatabase(t *testing.T) {
 }
 
 func TestTektonHubDeployment(t *testing.T) {
-	t.Skip()
 	crNames := utils.ResourceNames{
 		TektonConfig:    "config",
 		TektonHub:       "hub",
