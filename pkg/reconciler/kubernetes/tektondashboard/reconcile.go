@@ -89,6 +89,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 	}
 	td.Status.MarkDependenciesInstalled()
 
+	if err := r.installerSetClient.RemoveObsoleteSets(ctx); err != nil {
+		logger.Error("failed to remove obsolete installer sets: %v", err)
+		return err
+	}
+
 	if err := r.extension.PreReconcile(ctx, td); err != nil {
 		td.Status.MarkPreReconcilerFailed(fmt.Sprintf("PreReconciliation failed: %s", err.Error()))
 		return err
