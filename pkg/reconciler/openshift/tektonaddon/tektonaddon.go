@@ -31,6 +31,7 @@ import (
 	tektonaddonreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonaddon"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -38,7 +39,9 @@ import (
 // Reconciler implements controller.Reconciler for TektonAddon resources.
 type Reconciler struct {
 	// installer Set client to do CRUD operations for components
-	installerSetClient           *client.InstallerSetClient
+	installerSetClient *client.InstallerSetClient
+	// crdClientSet allows us to talk to the k8s for core APIs
+	crdClientSet                 *apiextensionsclient.Clientset
 	manifest                     mf.Manifest
 	operatorClientSet            clientset.Interface
 	extension                    common.Extension
@@ -178,16 +181,19 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		logger.Error(errorMsg)
 	}
 
-	if err := r.EnsureOpenShiftConsoleResources(ctx, ta); err != nil {
+	err, consoleCLIDownloadExist := r.EnsureOpenShiftConsoleResources(ctx, ta)
+	if err != nil {
 		ready = false
 		errorMsg = fmt.Sprintf("openshift console resources not yet ready:  %v", err)
 		logger.Error(errorMsg)
 	}
 
-	if err := r.EnsureConsoleCLI(ctx, ta); err != nil {
-		ready = false
-		errorMsg = fmt.Sprintf("console cli not yet ready:  %v", err)
-		logger.Error(errorMsg)
+	if consoleCLIDownloadExist {
+		if err := r.EnsureConsoleCLI(ctx, ta); err != nil {
+			ready = false
+			errorMsg = fmt.Sprintf("console cli not yet ready:  %v", err)
+			logger.Error(errorMsg)
+		}
 	}
 
 	if !ready {

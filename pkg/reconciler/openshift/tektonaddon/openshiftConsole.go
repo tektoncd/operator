@@ -25,13 +25,54 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (r *Reconciler) EnsureOpenShiftConsoleResources(ctx context.Context, ta *v1alpha1.TektonAddon) error {
-	if err := r.installerSetClient.CustomSet(ctx, ta, OpenShiftConsoleInstallerSet, r.openShiftConsoleManifest, filterAndTransformOCPResources()); err != nil {
-		return err
+func (r *Reconciler) EnsureOpenShiftConsoleResources(ctx context.Context, ta *v1alpha1.TektonAddon) (error, bool) {
+	filteredManifest := *r.openShiftConsoleManifest
+	consoleYamlSampleExist, err := r.checkCRDExist(ctx, "consoleyamlsamples.console.openshift.io")
+	if err != nil {
+		return err, true
 	}
-	return nil
+	if !consoleYamlSampleExist {
+		filteredManifest = filteredManifest.Filter(mf.Not(mf.ByKind("ConsoleYAMLSample")))
+	}
+
+	consoleQuickStartExist, err := r.checkCRDExist(ctx, "consolequickstarts.console.openshift.io")
+	if err != nil {
+		return err, true
+	}
+	if !consoleQuickStartExist {
+		filteredManifest = filteredManifest.Filter(mf.Not(mf.ByKind("ConsoleQuickStart")))
+	}
+
+	consoleCLIDownloadExist, err := r.checkCRDExist(ctx, "consoleclidownloads.console.openshift.io")
+	if err != nil {
+		return err, true
+	}
+	if !consoleCLIDownloadExist {
+		filteredManifest = filteredManifest.Filter(mf.Not(mf.Any(mf.ByKind("Deployment"), mf.ByKind("Service"), mf.ByKind("Route"))))
+	}
+
+	if len(filteredManifest.Resources()) == 0 {
+		return nil, consoleCLIDownloadExist
+	}
+	if err := r.installerSetClient.CustomSet(ctx, ta, OpenShiftConsoleInstallerSet, &filteredManifest, filterAndTransformOCPResources()); err != nil {
+		return err, consoleCLIDownloadExist
+	}
+	return nil, consoleCLIDownloadExist
+}
+
+func (r *Reconciler) checkCRDExist(ctx context.Context, crdName string) (bool, error) {
+	_, err := r.crdClientSet.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, crdName, v1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return true, err
+	}
+	return true, nil
 }
 
 func filterAndTransformOCPResources() client.FilterAndTransform {
