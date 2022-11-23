@@ -16,6 +16,7 @@
 
 # This script calls out to scripts in tektoncd/plumbing to setup a cluster
 # and deploy Tekton Pipelines to it for running integration tests.
+set -e
 
 source $(dirname $0)/e2e-common.sh
 
@@ -25,14 +26,22 @@ TARGET=${TARGET:-kubernetes}
 KUBECONFIG=${KUBECONFIG:-"${HOME}/.kube/config"}
 KUBECONFIG_PARAM=${KUBECONFIG:+"--kubeconfig $KUBECONFIG"}
 
+E2E_SKIP_CLUSTER_CREATION=${E2E_SKIP_CLUSTER_CREATION:="false"}
+E2E_SKIP_OPERATOR_INSTALLATION=${E2E_SKIP_OPERATOR_INSTALLATION="false"}
+
 echo "Running tests on ${TARGET}"
 
-[[ -z ${E2E_SKIP_CLUSTER_CREATION} ]] && initialize $@
-failed=0
+header "Provision a cluster"
+if [ "${E2E_SKIP_CLUSTER_CREATION}" != "true" ]; then
+    initialize $@
+fi
 
 header "Setting up environment"
-[[ -z ${E2E_SKIP_OPERATOR_INSTALLATION} ]] && install_operator_resources
+if [ "${E2E_SKIP_OPERATOR_INSTALLATION}" != "true" ]; then
+    install_operator_resources $@
+fi
 
+failed=0
 tektonconfig_ready_wait
 
 header "Running Go e2e tests"

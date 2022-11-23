@@ -20,11 +20,11 @@
 # flag, causes all tests to be executed, in the right order.
 # Use the flags --build-tests, --unit-tests and --integration-tests
 # to run a specific set of tests.
+set -e
 
 # Helper functions for E2E tests.
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
-source $(dirname $0)/config.sh
 
 function install_operator_resources() {
 
