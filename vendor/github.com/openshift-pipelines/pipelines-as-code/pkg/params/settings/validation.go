@@ -3,6 +3,7 @@ package settings
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strconv"
 )
 
@@ -48,6 +49,18 @@ func Validate(config map[string]string) error {
 	if dashboardURL, ok := config[TektonDashboardURLKey]; ok && dashboardURL != "" {
 		if _, err := url.ParseRequestURI(dashboardURL); err != nil {
 			return fmt.Errorf("invalid value for key %v, invalid url: %w", TektonDashboardURLKey, err)
+		}
+	}
+
+	if check, ok := config[ErrorDetectionKey]; ok && check != "" {
+		if !isValidBool(check) {
+			return fmt.Errorf("invalid value for key %v, acceptable values: true or false", ErrorDetectionKey)
+		}
+	}
+
+	if errorDetectionSimpleRegexp, ok := config[ErrorDetectionSimpleRegexpKey]; ok && config[ErrorDetectionSimpleRegexpKey] != "" {
+		if _, err := regexp.Compile(errorDetectionSimpleRegexp); err != nil {
+			return fmt.Errorf("cannot use %v as regexp for error detection: %w", config[ErrorDetectionSimpleRegexpKey], err)
 		}
 	}
 	return nil

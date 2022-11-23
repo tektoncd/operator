@@ -1,5 +1,7 @@
 package settings
 
+import "strconv"
+
 func SetDefaults(config map[string]string) {
 	if appName, ok := config[ApplicationNameKey]; !ok || appName == "" {
 		config[ApplicationNameKey] = PACApplicationNameDefaultValue
@@ -27,5 +29,21 @@ func SetDefaults(config map[string]string) {
 
 	if autoConfigure, ok := config[AutoConfigureNewGitHubRepoKey]; !ok || autoConfigure == "" {
 		config[AutoConfigureNewGitHubRepoKey] = AutoConfigureNewGitHubRepoDefaultValue
+	}
+
+	if errorLogSnippet, ok := config[ErrorLogSnippetKey]; !ok || errorLogSnippet == "" {
+		config[ErrorLogSnippetKey] = errorLogSnippetValue
+	}
+
+	if errorDetection, ok := config[ErrorDetectionKey]; !ok || errorDetection == "" {
+		config[ErrorDetectionKey] = errorDetectionValue
+	}
+
+	if errorDetectionNumberOfLines, ok := config[ErrorDetectionNumberOfLinesKey]; !ok || errorDetectionNumberOfLines == "" {
+		config[ErrorDetectionNumberOfLinesKey] = strconv.Itoa(errorDetectionNumberOfLinesValue)
+	}
+
+	if errorDetectionSimpleRegexp, ok := config[ErrorDetectionSimpleRegexpKey]; !ok || errorDetectionSimpleRegexp == "" {
+		config[ErrorDetectionSimpleRegexpKey] = errorDetectionSimpleRegexpValue
 	}
 }
