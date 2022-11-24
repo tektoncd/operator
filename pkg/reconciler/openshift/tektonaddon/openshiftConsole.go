@@ -65,7 +65,7 @@ func (r *Reconciler) EnsureOpenShiftConsoleResources(ctx context.Context, ta *v1
 }
 
 func (r *Reconciler) checkCRDExist(ctx context.Context, crdName string) (bool, error) {
-	_, err := r.crdClientSet.ApiextensionsV1beta1().CustomResourceDefinitions().Get(ctx, crdName, v1.GetOptions{})
+	_, err := r.crdClientSet.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, v1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return false, nil
