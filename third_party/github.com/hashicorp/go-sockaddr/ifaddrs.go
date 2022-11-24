@@ -86,7 +86,7 @@ func (ms *multiIfAddrSorter) Less(i, j int) bool {
 	default:
 		// Still a tie! Now what?
 		return false
-		panic("undefined sort order for remaining items in the list")
+		// panic("undefined sort order for remaining items in the list")
 	}
 }
 
@@ -301,7 +301,7 @@ func GetDefaultInterfaces() (IfAddrs, error) {
 //
 // ```
 // $ sockaddr eval -r '{{GetAllInterfaces | include "type" "ip" | include "flags" "forwardable" | include "flags" "up" | sort "default,type,size" | include "RFC" "6890" }}'
-/// ```
+// / ```
 func GetPrivateInterfaces() (IfAddrs, error) {
 	privateIfs, err := GetAllInterfaces()
 	if err != nil {
@@ -349,7 +349,7 @@ func GetPrivateInterfaces() (IfAddrs, error) {
 //
 // ```
 // $ sockaddr eval -r '{{GetAllInterfaces | include "type" "ip" | include "flags" "forwardable" | include "flags" "up" | sort "default,type,size" | exclude "RFC" "6890" }}'
-/// ```
+// / ```
 func GetPublicInterfaces() (IfAddrs, error) {
 	publicIfs, err := GetAllInterfaces()
 	if err != nil {

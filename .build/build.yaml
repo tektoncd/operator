@@ -66,3 +66,19 @@ spec:
           value: "build-harbor.alauda.cn/devops/tektoncd/operator/cmd/kubernetes/webhook"
         - name: container-image-tag
           value: v$(tasks.oss-version.results.oss-version)-$(tasks.oss-version.results.commit-short-id)
+    #################
+    # code-scan
+    #################
+    - name: code-scan
+      timeout: 30m
+      retries: 0
+      taskRef:
+        kind: ClusterTask
+        name: sonarqube-analysis
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: server
+          value: https://build-sonar.alauda.cn
+
