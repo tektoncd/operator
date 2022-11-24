@@ -85,10 +85,10 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	// Delete CRDs before deleting rest of resources so that any instance
 	// of CRDs which has finalizer set will get deleted before we remove
 	// the controller;s deployment for it
-	if err := r.manifest.Filter(mf.CRDs).Delete(); err != nil {
-		logger.Error("Failed to deleted CRDs for TektonPipeline")
-		return err
-	}
+	// if err := r.manifest.Filter(mf.CRDs).Delete(); err != nil {
+	// 	logger.Error("Failed to deleted CRDs for TektonPipeline")
+	// 	return err
+	// }
 
 	labelSelector, err := common.LabelSelector(ls)
 	if err != nil {
@@ -159,6 +159,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		return err
 	}
 	if existingInstallerSet == "" {
+		logger.Infof("not find existing installer set, will create it")
 		createdIs, err := r.createInstallerSet(ctx, tp)
 		if err != nil {
 			return err
@@ -166,6 +167,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		// If there was no existing installer set, that means its a new install
 		r.metrics.logMetrics(metricsNew, r.pipelineVersion, logger)
 
+		logger.Infof("set tektonpipeline status, installerset: %s, version: %s", createdIs.Name, r.pipelineVersion)
 		return r.updateTektonPipelineStatus(ctx, tp, createdIs)
 	}
 
@@ -174,6 +176,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		Get(ctx, existingInstallerSet, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
+			logger.Infof("can not get existing installerset, creating it")
 			createdIs, err := r.createInstallerSet(ctx, tp)
 			if err != nil {
 				return err
@@ -182,6 +185,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 			if tp.Status.Version != r.pipelineVersion {
 				r.metrics.logMetrics(metricsUpgrade, r.pipelineVersion, logger)
 			}
+			logger.Infof("set tektonpipeline status, installerset: %s, version: %s", createdIs.Name, r.pipelineVersion)
 			return r.updateTektonPipelineStatus(ctx, tp, createdIs)
 		}
 		logger.Error("failed to get InstallerSet: %s", err)
@@ -197,6 +201,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	// and create a new with expected properties
 
 	if installerSetTargetNamespace != tp.Spec.TargetNamespace || installerSetReleaseVersion != r.operatorVersion {
+		logger.Infof("not same with existing installset, will delete it, existing installerset: %s", existingInstallerSet)
 		// Delete the existing TektonInstallerSet
 		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 			Delete(ctx, existingInstallerSet, metav1.DeleteOptions{})
@@ -216,6 +221,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 			logger.Error("failed to get InstallerSet: %s", err)
 			return err
 		}
+		logger.Infof("ensure deleted installerset: %s", existingInstallerSet)
 		return nil
 
 	} else {
@@ -257,6 +263,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 			// to allow changes to get deployed
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
+	}
+
+	// add more log here and reset pipeline status to prevent last reconciling error to update status
+	if tp.Status.GetTektonInstallerSet() != installedTIS.Name || tp.Status.GetVersion() != r.pipelineVersion {
+		logger.Infow("reset tektoninstallerset and version",
+			"old-installerset", tp.Status.GetTektonInstallerSet(), "new-installerset", installedTIS.Name,
+			"old-pipeline-version", tp.Status.GetVersion(), "new-version", r.pipelineVersion)
+		r.updateTektonPipelineStatus(ctx, tp, installedTIS)
 	}
 
 	// Mark InstallerSet Available
@@ -345,8 +359,8 @@ func (r *Reconciler) generateInstallerSet(ctx context.Context, tp *v1alpha1.Tekt
 	dis.AddReleaseVersionLabel(r.operatorVersion)
 
 	// Adds the ownerRef to the installer
-	ownerRef := *metav1.NewControllerRef(tp, tp.GetGroupVersionKind())
-	dis.AddOwnerReferences(ownerRef)
+	// ownerRef := *metav1.NewControllerRef(tp, tp.GetGroupVersionKind())
+	// dis.AddOwnerReferences(ownerRef)
 
 	// Adds the annotations to the installer
 	dis.AddAnnotationsKeyVal(v1alpha1.TargetNamespaceKey, tp.Spec.TargetNamespace)

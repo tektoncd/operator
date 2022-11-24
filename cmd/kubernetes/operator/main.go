@@ -17,12 +17,37 @@ limitations under the License.
 package main
 
 import (
+	"log"
+	"net/http"
+	"os"
+
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/kubernetesplatform"
 	"github.com/tektoncd/operator/pkg/reconciler/platform"
 )
 
 func main() {
+	// sets up liveness and readiness probes.
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/health", handler)
+	mux.HandleFunc("/readiness", handler)
+
+	port := os.Getenv("PROBES_PORT")
+	if port == "" {
+		port = "8081"
+	}
+
+	go func() {
+		// start the web server on port and accept requests
+		log.Printf("Readiness and health check server listening on port %s", port)
+		log.Fatal(http.ListenAndServe(":"+port, mux))
+	}()
+
 	pConfig := platform.NewConfigFromFlags()
 	p := kubernetesplatform.NewKubernetesPlatform(pConfig)
 	platform.StartMainWithSelectedControllers(p)
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }

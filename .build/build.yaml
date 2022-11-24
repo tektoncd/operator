@@ -1,0 +1,68 @@
+kind: Build
+apiVersion: builds.katanomi.dev/v1alpha1
+spec:
+  workspaces:
+  - name: source
+  tasks:
+    ## read oss version
+    - name: oss-version
+      taskRef:
+        kind: ClusterTask
+        name: alauda-read-oss-version
+      params:
+      - name: version-file-path
+        value: ".build/opensource-version"
+      workspaces:
+      - name: source
+        workspace: source
+    ## ko publish tekton-operator image
+    - name: build-operator
+      taskRef:
+        kind: ClusterTask
+        name: alauda-ko-build
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: verbose
+          value: "false"
+        - name: import-path
+          value: "./cmd/kubernetes/operator"
+        - name: container-image
+          value: "build-harbor.alauda.cn/devops/tektoncd/operator/cmd/kubernetes/operator"
+        - name: container-image-tag
+          value: v$(tasks.oss-version.results.oss-version)-$(tasks.oss-version.results.commit-short-id)
+    ## ko publish tekton-proxy-webhook image
+    - name: build-proxy-webhook
+      taskRef:
+        kind: ClusterTask
+        name: alauda-ko-build
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: verbose
+          value: "false"
+        - name: import-path
+          value: "./cmd/kubernetes/proxy-webhook"
+        - name: container-image
+          value: "build-harbor.alauda.cn/devops/tektoncd/operator/cmd/kubernetes/proxy-webhook"
+        - name: container-image-tag
+          value: v$(tasks.oss-version.results.oss-version)-$(tasks.oss-version.results.commit-short-id)
+    ## ko publish tekton-webhook image
+    - name: build-webhook
+      taskRef:
+        kind: ClusterTask
+        name: alauda-ko-build
+      workspaces:
+        - name: source
+          workspace: source
+      params:
+        - name: verbose
+          value: "false"
+        - name: import-path
+          value: "./cmd/kubernetes/webhook"
+        - name: container-image
+          value: "build-harbor.alauda.cn/devops/tektoncd/operator/cmd/kubernetes/webhook"
+        - name: container-image-tag
+          value: v$(tasks.oss-version.results.oss-version)-$(tasks.oss-version.results.commit-short-id)
