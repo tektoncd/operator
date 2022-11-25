@@ -11,7 +11,7 @@ as follows:
   All remaining releases are supported for approximately 1 month (until the next
   release is produced)
     - LTS releases take place in January, April, July and October every year
-    - The first Tekton Operator LTS release will be **v0.63.0** in October 2022
+    - The first Tekton Operator LTS release will be **v0.63.0** in November 2022
 
 Tekton Operator produces nightly builds, publicly available on
 `gcr.io/tekton-nightly`. 
@@ -41,6 +41,13 @@ Further documentation available:
 - Standard for [release notes][release-notes-standards]
 
 ## Releases
+
+### v0.63
+
+- **Latest Release**: [v0.63.0][v0-62-0] (2022-11-25) ([docs][v0-63-0-docs])
+- **Initial Release**: [v0.63.0][v0-63-0] (2022-11-25)
+- **End of Life**: 2023-11-25
+- **Patch Releases**: [v0.63.0][v0-63-0]
 
 ### v0.62
 
