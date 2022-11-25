@@ -11,72 +11,33 @@ The quickest and easiest way to install, upgrade and manage TektonCD [Pipelines]
 [Dashboard](https://github.com/tektoncd/dashboard), [Triggers](https://github.com/tektoncd/triggers)
 on any Kubernetes Cluster.
 
-# Quick Start
+## Want to start using Pipelines
 
-## Install Tektoncd Operator
+- [Installing Tekton Operator](docs/install.md)
+- Take a look at our [roadmap](roadmap.md)
+- Discover our [releases](releases.md)
 
-1. Install operator
-    ```
-    $ kubectl apply -f https://storage.googleapis.com/tekton-releases/operator/latest/release.yaml
-    ```
-2. Install Components (
-   uses [installation profiles](https://github.com/tektoncd/operator/tree/main/config/crs/kubernetes/config): `lite`
-   , `all`, `basic`)
+### Required Kubernetes Version
 
-   Where
-
-   | Profile | Installed Component | Platform |
-   |---------|---------------------|----------|
-   | lite | Pipeline | Kubernetes, Openshift |
-   | basic | Pipeline, Trigger | Kubernetes, Openshift |
-   | all | Pipeline, Trigger, Dashboard | Kubernetes |
-   |  | Pipeline, Trigger, Addons | Openshift |
-
-    ```
-    # to install pipelines, triggers and dashboard (use profile 'all')
-    $ kubectl apply -f https://raw.githubusercontent.com/tektoncd/operator/main/config/crs/kubernetes/config/all/operator_v1alpha1_config_cr.yaml
-    ```
-
-# Detailed Documentation
-
-[Concepts and Guides](docs/README.md)
-
-# Development Guide
-
-[Development Guide](docs/README.md)
-
-# Running E2E tests
-
-[Testing Guide](test/README.md)
-
-# Release Guide
-
-[How to make a TektonCD/Operator Release](tekton/README.md)
-
-# Gerating OperatorHub Bundle(s)
-
-[OperatorHub Bundles](operatorhub/README.md)
-
-# Roadmap
-
-[Roadmap](./ROADMAP.md)
+- Starting from the v0.63.x release of Tekton: **Kubernetes version 1.23 or later**
 
 # Read the docs
 
-| Version                                                                  | Docs                                                                         |
-|--------------------------------------------------------------------------|------------------------------------------------------------------------------|
-| [HEAD](/README.md)                                                       | [Docs @ HEAD](/docs/README.md)                                               |
-| [v0.60.0](https://github.com/tektoncd/operator/releases/tag/v0.60.0)     | [Docs @ v0.60.0](https://github.com/tektoncd/operator/tree/v0.60.0/docs)     | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.60.0/examples#examples) |
-| [v0.59.0](https://github.com/tektoncd/operator/releases/tag/v0.59.0)     | [Docs @ v0.59.0](https://github.com/tektoncd/operator/tree/v0.59.0/docs)     | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.59.0/examples#examples) |
-| [v0.58.0](https://github.com/tektoncd/operator/releases/tag/v0.58.0)     | [Docs @ v0.58.0](https://github.com/tektoncd/operator/tree/v0.58.0/docs)     | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.58.0/examples#examples) |
-| [v0.57.0](https://github.com/tektoncd/operator/releases/tag/v0.57.0)     | [Docs @ v0.57.0](https://github.com/tektoncd/operator/tree/v0.57.0/docs)     | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.57.0/examples#examples) |
-| [v0.56.0](https://github.com/tektoncd/operator/releases/tag/v0.56.0)     | [Docs @ v0.56.0](https://github.com/tektoncd/operator/tree/v0.56.0/docs)     | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.56.0/examples#examples) |
-| [v0.55.1](https://github.com/tektoncd/operator/releases/tag/v0.55.1)     | [Docs @ v0.55.1](https://github.com/tektoncd/operator/tree/v0.55.1/docs)     | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.55.1/examples#examples) |
-| [v0.55.0](https://github.com/tektoncd/operator/releases/tag/v0.55.0)     | [Docs @ v0.55.0](https://github.com/tektoncd/operator/tree/v0.55.0/docs)     | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.55.0/examples#examples) |
-| [v0.54.0](https://github.com/tektoncd/operator/releases/tag/v0.54.0)     | [Docs @ v0.54.0](https://github.com/tektoncd/operator/tree/v0.54.0/docs)     | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.54.0/examples#examples) |
-| [v0.23.0-2](https://github.com/tektoncd/operator/releases/tag/v0.23.0-2) | [Docs @ v0.23.0-2](https://github.com/tektoncd/operator/tree/v0.23.0-2/docs) | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.23.0-2/examples#examples) |
-| [v0.23.0-1](https://github.com/tektoncd/operator/releases/tag/v0.23.0-1) | [Docs @ v0.23.0-1](https://github.com/tektoncd/operator/tree/v0.23.0-1/docs) | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.23.0-1/examples#examples) |
-| [v0.22.0-3](https://github.com/tektoncd/operator/releases/tag/v0.22.0-3) | [Docs @ v0.22.0-3](https://github.com/tektoncd/operator/tree/v0.22.0-3/docs) | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.22.0-3/examples#examples) |
-| [v0.22.0-2](https://github.com/tektoncd/operator/releases/tag/v0.22.0-2) | [Docs @ v0.22.0-2](https://github.com/tektoncd/operator/tree/v0.22.0-2/docs) | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.22.0-2/examples#examples) |
-| [v0.22.0-1](https://github.com/tektoncd/operator/releases/tag/v0.22.0-1) | [Docs @ v0.22.0-1](https://github.com/tektoncd/operator/tree/v0.22.0-1/docs) | [Examples @ v0.22.0](https://github.com/tektoncd/pipeline/tree/v0.22.0-1/examples#examples) |
-| [v0.21.0-1](https://github.com/tektoncd/operator/releases/tag/v0.21.0-1) | [Docs @ v0.21.0-1](https://github.com/tektoncd/operator/tree/v0.21.0-1/docs) | [Examples @ v0.21.0](https://github.com/tektoncd/pipeline/tree/v0.21.0-1/examples#examples) |
+- [Concepts and Guides](docs/README.md)
+- [Development Guide](docs/README.md)
+- [Testing Guide](test/README.md)
+- [How to make a TektonCD/Operator Release](tekton/README.md)
+- [OperatorHub Bundles](operatorhub/README.md)
+
+## Want to contribute
+
+We are so excited to have you!
+
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for an overview of our processes
+- See [DEVELOPMENT.md](DEVELOPMENT.md) for how to get started
+- [Deep dive](./docs/developers/README.md) into demystifying the inner workings
+  (advanced reading material)
+- Look at our
+  [good first issues](https://github.com/tektoncd/operator/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+  and our
+  [help wanted issues](https://github.com/tektoncd/operator/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)

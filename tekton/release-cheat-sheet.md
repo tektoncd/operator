@@ -99,7 +99,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
     ```bash
     tkn --context dogfooding pipeline start operator-release \
         --serviceaccount=release-right-meow \
-        --components=components.yaml \
+        --param=components=components.yaml \
         --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
         --param=versionTag="${TEKTON_RELEASE_VERSION}" \
         --param=serviceAccountPath=release.json \
