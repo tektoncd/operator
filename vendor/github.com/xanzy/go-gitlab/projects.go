@@ -17,6 +17,7 @@
 package gitlab
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -82,7 +83,7 @@ type Project struct {
 	ForksCount                                int                        `json:"forks_count"`
 	StarCount                                 int                        `json:"star_count"`
 	RunnersToken                              string                     `json:"runners_token"`
-	PublicBuilds                              bool                       `json:"public_builds"`
+	PublicJobs                                bool                       `json:"public_jobs"`
 	AllowMergeOnSkippedPipeline               bool                       `json:"allow_merge_on_skipped_pipeline"`
 	OnlyAllowMergeIfPipelineSucceeds          bool                       `json:"only_allow_merge_if_pipeline_succeeds"`
 	OnlyAllowMergeIfAllDiscussionsAreResolved bool                       `json:"only_allow_merge_if_all_discussions_are_resolved"`
@@ -116,15 +117,18 @@ type Project struct {
 	AutoCancelPendingPipelines                string                     `json:"auto_cancel_pending_pipelines"`
 	CIForwardDeploymentEnabled                bool                       `json:"ci_forward_deployment_enabled"`
 	SquashOption                              SquashOptionValue          `json:"squash_option"`
+	EnforceAuthChecksOnUploads                bool                       `json:"enforce_auth_checks_on_uploads,omitempty"`
 	SharedWithGroups                          []struct {
 		GroupID          int    `json:"group_id"`
 		GroupName        string `json:"group_name"`
+		GroupFullPath    string `json:"group_full_path"`
 		GroupAccessLevel int    `json:"group_access_level"`
 	} `json:"shared_with_groups"`
 	Statistics                               *Statistics        `json:"statistics"`
 	Links                                    *Links             `json:"_links,omitempty"`
 	CIConfigPath                             string             `json:"ci_config_path"`
 	CIDefaultGitDepth                        int                `json:"ci_default_git_depth"`
+	CISeperateCache                          bool               `json:"ci_separated_caches"`
 	CustomAttributes                         []*CustomAttribute `json:"custom_attributes"`
 	ComplianceFrameworks                     []string           `json:"compliance_frameworks"`
 	BuildCoverageRegex                       string             `json:"build_coverage_regex"`
@@ -144,6 +148,9 @@ type Project struct {
 	ExternalAuthorizationClassificationLabel string             `json:"external_authorization_classification_label"`
 	RequirementsAccessLevel                  AccessControlValue `json:"requirements_access_level"`
 	SecurityAndComplianceAccessLevel         AccessControlValue `json:"security_and_compliance_access_level"`
+
+	// Deprecated members
+	PublicBuilds bool `json:"public_builds"`
 }
 
 // BasicProject included in other service responses (such as todos).
@@ -622,6 +629,7 @@ type CreateProjectOptions struct {
 	DefaultBranch                             *string                              `url:"default_branch,omitempty" json:"default_branch,omitempty"`
 	Description                               *string                              `url:"description,omitempty" json:"description,omitempty"`
 	EmailsDisabled                            *bool                                `url:"emails_disabled,omitempty" json:"emails_disabled,omitempty"`
+	EnforceAuthChecksOnUploads                *bool                                `url:"enforce_auth_checks_on_uploads,omitempty" json:"enforce_auth_checks_on_uploads,omitempty"`
 	ExternalAuthorizationClassificationLabel  *string                              `url:"external_authorization_classification_label,omitempty" json:"external_authorization_classification_label,omitempty"`
 	ForkingAccessLevel                        *AccessControlValue                  `url:"forking_access_level,omitempty" json:"forking_access_level,omitempty"`
 	GroupWithProjectTemplatesID               *int                                 `url:"group_with_project_templates_id,omitempty" json:"group_with_project_templates_id,omitempty"`
@@ -702,6 +710,15 @@ type ContainerExpirationPolicyAttributes struct {
 type ProjectAvatar struct {
 	Filename string
 	Image    io.Reader
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (a *ProjectAvatar) MarshalJSON() ([]byte, error) {
+	if a.Filename == "" && a.Image == nil {
+		return []byte(`""`), nil
+	}
+	type alias ProjectAvatar
+	return json.Marshal((*alias)(a))
 }
 
 // CreateProject creates a new project owned by the authenticated user.
@@ -805,18 +822,20 @@ type EditProjectOptions struct {
 	AutoDevopsDeployStrategy                  *string                              `url:"auto_devops_deploy_strategy,omitempty" json:"auto_devops_deploy_strategy,omitempty"`
 	AutoDevopsEnabled                         *bool                                `url:"auto_devops_enabled,omitempty" json:"auto_devops_enabled,omitempty"`
 	AutocloseReferencedIssues                 *bool                                `url:"autoclose_referenced_issues,omitempty" json:"autoclose_referenced_issues,omitempty"`
-	Avatar                                    *ProjectAvatar                       `url:"-" json:"-"`
+	Avatar                                    *ProjectAvatar                       `url:"-" json:"avatar,omitempty"`
 	BuildCoverageRegex                        *string                              `url:"build_coverage_regex,omitempty" json:"build_coverage_regex,omitempty"`
 	BuildGitStrategy                          *string                              `url:"build_git_strategy,omitempty" json:"build_git_strategy,omitempty"`
 	BuildTimeout                              *int                                 `url:"build_timeout,omitempty" json:"build_timeout,omitempty"`
 	BuildsAccessLevel                         *AccessControlValue                  `url:"builds_access_level,omitempty" json:"builds_access_level,omitempty"`
 	CIConfigPath                              *string                              `url:"ci_config_path,omitempty" json:"ci_config_path,omitempty"`
 	CIDefaultGitDepth                         *int                                 `url:"ci_default_git_depth,omitempty" json:"ci_default_git_depth,omitempty"`
+	CISeperateCache                           *bool                                `url:"ci_separated_caches,omitempty" json:"ci_separated_caches,omitempty"`
 	ContainerExpirationPolicyAttributes       *ContainerExpirationPolicyAttributes `url:"container_expiration_policy_attributes,omitempty" json:"container_expiration_policy_attributes,omitempty"`
 	ContainerRegistryAccessLevel              *AccessControlValue                  `url:"container_registry_access_level,omitempty" json:"container_registry_access_level,omitempty"`
 	DefaultBranch                             *string                              `url:"default_branch,omitempty" json:"default_branch,omitempty"`
 	Description                               *string                              `url:"description,omitempty" json:"description,omitempty"`
 	EmailsDisabled                            *bool                                `url:"emails_disabled,omitempty" json:"emails_disabled,omitempty"`
+	EnforceAuthChecksOnUploads                *bool                                `url:"enforce_auth_checks_on_uploads,omitempty" json:"enforce_auth_checks_on_uploads,omitempty"`
 	ExternalAuthorizationClassificationLabel  *string                              `url:"external_authorization_classification_label,omitempty" json:"external_authorization_classification_label,omitempty"`
 	ForkingAccessLevel                        *AccessControlValue                  `url:"forking_access_level,omitempty" json:"forking_access_level,omitempty"`
 	ImportURL                                 *string                              `url:"import_url,omitempty" json:"import_url,omitempty"`
@@ -893,11 +912,11 @@ func (s *ProjectsService) EditProject(pid interface{}, opt *EditProjectOptions, 
 
 	var req *retryablehttp.Request
 
-	if opt.Avatar == nil {
+	if opt.Avatar == nil || (opt.Avatar.Filename == "" && opt.Avatar.Image == nil) {
 		req, err = s.client.NewRequest(http.MethodPut, u, opt, options)
 	} else {
 		req, err = s.client.UploadRequest(
-			http.MethodPost,
+			http.MethodPut,
 			u,
 			opt.Avatar.Image,
 			opt.Avatar.Filename,
