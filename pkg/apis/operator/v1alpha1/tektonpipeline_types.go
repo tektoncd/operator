@@ -95,6 +95,8 @@ type PipelineProperties struct {
 	EnableApiFields                          string `json:"enable-api-fields,omitempty"`
 	EmbeddedStatus                           string `json:"embedded-status,omitempty"`
 	SendCloudEventsForRuns                   *bool  `json:"send-cloudevents-for-runs,omitempty"`
+	VerificationMode                         string `json:"verification-mode,omitempty"`
+	EnableProvenanceInStatus                 *bool  `json:"enable-provenance-in-status,omitempty"`
 
 	// ScopeWhenExpressionsToTask Deprecated: remove in next release
 	ScopeWhenExpressionsToTask *bool `json:"scope-when-expressions-to-task,omitempty"`

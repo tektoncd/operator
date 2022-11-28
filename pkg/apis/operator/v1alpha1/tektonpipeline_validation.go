@@ -60,5 +60,12 @@ func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 			errs = errs.Also(apis.ErrInvalidValue(p.EmbeddedStatus, path+".embedded-status"))
 		}
 	}
+
+	if p.VerificationMode != "" {
+		if p.VerificationMode != config.SkipResourceVerificationMode && p.VerificationMode != config.WarnResourceVerificationMode && p.VerificationMode != config.EnforceResourceVerificationMode {
+			errs = errs.Also(apis.ErrInvalidValue(p.VerificationMode, path+".verification-mode"))
+		}
+	}
+
 	return errs
 }
