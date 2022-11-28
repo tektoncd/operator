@@ -565,6 +565,11 @@ func (in *PipelineProperties) DeepCopyInto(out *PipelineProperties) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.EnableProvenanceInStatus != nil {
+		in, out := &in.EnableProvenanceInStatus, &out.EnableProvenanceInStatus
+		*out = new(bool)
+		**out = **in
+	}
 	if in.ScopeWhenExpressionsToTask != nil {
 		in, out := &in.ScopeWhenExpressionsToTask, &out.ScopeWhenExpressionsToTask
 		*out = new(bool)

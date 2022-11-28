@@ -51,6 +51,8 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 		EmbeddedStatus:                           "full",
 		ScopeWhenExpressionsToTask:               nil,
 		SendCloudEventsForRuns:                   ptr.Bool(false),
+		VerificationMode:                         "skip",
+		EnableProvenanceInStatus:                 ptr.Bool(false),
 		PipelineMetricsProperties: PipelineMetricsProperties{
 			MetricsPipelinerunDurationType: "histogram",
 			MetricsPipelinerunLevel:        "pipeline",

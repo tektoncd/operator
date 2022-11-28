@@ -63,6 +63,12 @@ func (p *Pipeline) setDefaults() {
 	if p.EmbeddedStatus == "" {
 		p.EmbeddedStatus = config.DefaultEmbeddedStatus
 	}
+	if p.VerificationMode == "" {
+		p.VerificationMode = config.DefaultResourceVerificationMode
+	}
+	if p.EnableProvenanceInStatus == nil {
+		p.EnableProvenanceInStatus = ptr.Bool(config.DefaultEnableProvenanceInStatus)
+	}
 
 	// Deprecated: set to nil, remove in further release
 	p.ScopeWhenExpressionsToTask = nil
