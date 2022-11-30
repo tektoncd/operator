@@ -29,6 +29,10 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
+	nsV1 "k8s.io/client-go/informers/core/v1"
+	rbacV1 "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"knative.dev/pkg/logging"
@@ -72,6 +76,8 @@ var nsRegex = regexp.MustCompile(common.NamespaceIgnorePattern)
 type rbac struct {
 	kubeClientSet     kubernetes.Interface
 	operatorClientSet clientset.Interface
+	rbacInformer      rbacV1.ClusterRoleBindingInformer
+	nsInformer        nsV1.NamespaceInformer
 	ownerRef          metav1.OwnerReference
 	version           string
 	tektonConfig      *v1alpha1.TektonConfig
@@ -169,6 +175,11 @@ func (r *rbac) createResources(ctx context.Context) error {
 		LabelSelector: fmt.Sprintf("%s != %s", namespaceVersionLabel, r.version),
 	})
 	if err != nil {
+		return err
+	}
+
+	if err := r.removeAndUpdateNSFromCI(ctx); err != nil {
+		logger.Error(err)
 		return err
 	}
 
@@ -603,6 +614,59 @@ func (r *rbac) ensureClusterRoleBindings(ctx context.Context, sa *corev1.Service
 	}
 
 	return err
+}
+
+func (r *rbac) removeAndUpdateNSFromCI(ctx context.Context) error {
+	logger := logging.FromContext(ctx)
+
+	rbacClient := r.kubeClientSet.RbacV1()
+	rb, err := r.rbacInformer.Lister().Get(clusterInterceptors)
+	if err != nil && !errors.IsNotFound(err) {
+		logger.Error(err, "failed to get"+clusterInterceptors)
+		return err
+	}
+	if rb == nil {
+		return nil
+	}
+
+	req, err := labels.NewRequirement(namespaceVersionLabel, selection.Equals, []string{r.version})
+	if err != nil {
+		logger.Error(err, "failed to create requirement: ")
+		return err
+	}
+
+	namespaces, err := r.nsInformer.Lister().List(labels.NewSelector().Add(*req))
+	if err != nil && !errors.IsNotFound(err) {
+		logger.Error(err, "failed to list namespace: ")
+		return err
+	}
+
+	nsMap := map[string]string{}
+	for i := range namespaces {
+		nsMap[namespaces[i].Name] = namespaces[i].Name
+	}
+
+	var update bool
+	for i := 0; i <= len(rb.Subjects)-1; i++ {
+		if len(nsMap) != len(rb.Subjects) {
+			if _, ok := nsMap[rb.Subjects[i].Namespace]; !ok {
+				rb.Subjects = removeIndex(rb.Subjects, i)
+				update = true
+			}
+		}
+	}
+	if update {
+		if _, err := rbacClient.ClusterRoleBindings().Update(ctx, rb, metav1.UpdateOptions{}); err != nil {
+			logger.Error(err, "failed to update "+clusterInterceptors+" crb")
+			return err
+		}
+		logger.Infof("successfully removed namespace and updated %s ", clusterInterceptors)
+	}
+	return nil
+}
+
+func removeIndex(s []rbacv1.Subject, index int) []rbacv1.Subject {
+	return append(s[:index], s[index+1:]...)
 }
 
 func (r *rbac) updateClusterRoleBinding(ctx context.Context, rb *rbacv1.ClusterRoleBinding, sa *corev1.ServiceAccount) error {

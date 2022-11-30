@@ -28,8 +28,12 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	nsV1 "k8s.io/client-go/informers/core/v1"
+	rbacV1 "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
+	namespaceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
+	rbacInformer "knative.dev/pkg/client/injection/kube/informers/rbac/v1/clusterrolebinding"
 )
 
 const (
@@ -40,12 +44,16 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 	return openshiftExtension{
 		operatorClientSet: operatorclient.Get(ctx),
 		kubeClientSet:     kubeclient.Get(ctx),
+		rbacInformer:      rbacInformer.Get(ctx),
+		nsInformer:        namespaceinformer.Get(ctx),
 	}
 }
 
 type openshiftExtension struct {
 	operatorClientSet versioned.Interface
 	kubeClientSet     kubernetes.Interface
+	rbacInformer      rbacV1.ClusterRoleBindingInformer
+	nsInformer        nsV1.NamespaceInformer
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -57,6 +65,8 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	r := rbac{
 		kubeClientSet:     oe.kubeClientSet,
 		operatorClientSet: oe.operatorClientSet,
+		rbacInformer:      oe.rbacInformer,
+		nsInformer:        oe.nsInformer,
 		version:           os.Getenv(versionKey),
 		tektonConfig:      config,
 	}
