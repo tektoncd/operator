@@ -17,5 +17,4 @@ kind: TektonHub
 metadata:
   name: hub
 spec:
-  api:
-    hubConfigUrl: https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml
+  targetNamespace: tekton-pipelines

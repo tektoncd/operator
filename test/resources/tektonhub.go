@@ -47,9 +47,7 @@ func EnsureTektonHubExists(clients typedv1alpha1.TektonHubInterface, names utils
 				CommonSpec: v1alpha1.CommonSpec{
 					TargetNamespace: names.TargetNamespace,
 				},
-				Api: v1alpha1.ApiSpec{
-					HubConfigUrl: "https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml",
-				},
+				Api: v1alpha1.ApiSpec{},
 			},
 		}
 		return clients.Create(context.TODO(), ks, metav1.CreateOptions{})

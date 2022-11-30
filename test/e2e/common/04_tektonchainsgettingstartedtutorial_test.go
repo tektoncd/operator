@@ -148,7 +148,7 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 	}
 
 	taskRunName := "build-push-run-output-image-test"
-	taskOutputImageTaskRun := parse.MustParseTaskRun(t, string(taskRunYAML))
+	taskOutputImageTaskRun := parse.MustParseV1beta1TaskRun(t, string(taskRunYAML))
 	taskOutputImageTaskRun.Namespace = testNamespace
 
 	t.Run("create TaskRun", func(t *testing.T) {

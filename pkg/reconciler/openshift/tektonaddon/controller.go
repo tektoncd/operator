@@ -33,6 +33,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"go.uber.org/zap"
+	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -56,6 +57,10 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		logger := logging.FromContext(ctx)
 
 		mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
+		if err != nil {
+			logger.Fatalw("Error creating client from injected config", zap.Error(err))
+		}
+		crdClient, err := apiextensionsclient.NewForConfig(injection.GetConfig(ctx))
 		if err != nil {
 			logger.Fatalw("Error creating client from injected config", zap.Error(err))
 		}
@@ -111,6 +116,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		c := &Reconciler{
+			crdClientSet:                 crdClient,
 			installerSetClient:           client.NewInstallerSetClient(tisClient, version, "addon", v1alpha1.KindTektonAddon, metrics),
 			operatorClientSet:            operatorclient.Get(ctx),
 			extension:                    generator(ctx),

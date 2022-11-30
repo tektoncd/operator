@@ -8,7 +8,6 @@ package proto
 
 import (
 	context "context"
-
 	proto "github.com/letsencrypt/boulder/core/proto"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"

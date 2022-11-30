@@ -42,8 +42,12 @@ type TektonHub struct {
 type TektonHubSpec struct {
 	CommonSpec `json:",inline"`
 	Hub        `json:",inline"`
-	Db         DbSpec  `json:"db,omitempty"`
-	Api        ApiSpec `json:"api,omitempty"`
+	Categories []string  `json:"categories,omitempty"`
+	Catalogs   []Catalog `json:"catalogs,omitempty"`
+	Scopes     []Scope   `json:"scopes,omitempty"`
+	Default    Default   `json:"default,omitempty"`
+	Db         DbSpec    `json:"db,omitempty"`
+	Api        ApiSpec   `json:"api,omitempty"`
 }
 
 // Hub defines the field to customize Hub component
@@ -58,10 +62,35 @@ type DbSpec struct {
 }
 
 type ApiSpec struct {
+	// Deprecated, will be removed in further release
 	HubConfigUrl           string `json:"hubConfigUrl,omitempty"`
 	ApiSecretName          string `json:"secret,omitempty"`
 	RouteHostUrl           string `json:"routeHostUrl,omitempty"`
 	CatalogRefreshInterval string `json:"catalogRefreshInterval,omitempty"`
+}
+
+type Category struct {
+	Name string `json:"name,omitempty"`
+}
+
+type Catalog struct {
+	Name       string `json:"name,omitempty"`
+	Org        string `json:"org,omitempty"`
+	Type       string `json:"type,omitempty"`
+	URL        string `json:"url,omitempty"`
+	SshUrl     string `json:"sshUrl,omitempty"`
+	ContextDir string `json:"contextDir,omitempty"`
+	Revision   string `json:"revision,omitempty"`
+	Provider   string `json:"provider,omitempty"`
+}
+
+type Scope struct {
+	Name  string   `json:"name,omitempty"`
+	Users []string `json:"users,omitempty"`
+}
+
+type Default struct {
+	Scopes []string `json:"scopes,omitempty"`
 }
 
 // TektonHubStatus defines the observed state of TektonHub

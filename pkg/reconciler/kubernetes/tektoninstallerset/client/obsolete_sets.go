@@ -27,14 +27,19 @@ import (
 
 func (i *InstallerSetClient) RemoveObsoleteSets(ctx context.Context) error {
 	var sets []string
-	if i.resourceKind == v1alpha1.KindTektonPipeline {
+
+	switch i.resourceKind {
+	case v1alpha1.KindTektonPipeline:
 		sets = []string{"pipeline", "PrePipeline", "PostPipeline"}
-	} else if i.resourceKind == v1alpha1.KindTektonTrigger {
+	case v1alpha1.KindTektonTrigger:
 		sets = []string{"trigger"}
-	} else if i.resourceKind == v1alpha1.KindTektonAddon {
+	case v1alpha1.KindTektonAddon:
 		// not adding VersionedClusterTask here, as we keep versioned clustertasks on upgrade
 		sets = []string{"ClusterTask", "CommunityClusterTask", "PipelinesTemplate", "TriggersResources", "ConsoleCLI", "MiscellaneousResources", "PipelinesAsCode"}
+	case v1alpha1.KindTektonDashboard:
+		sets = []string{"dashboard"}
 	}
+
 	labelSelector := labels.NewSelector()
 	createdReq, _ := labels.NewRequirement(v1alpha1.CreatedByKey, selection.Equals, []string{i.resourceKind})
 	if createdReq != nil {

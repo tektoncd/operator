@@ -9,7 +9,7 @@ metadata:
     description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for building pipelines using Tekton concepts which run natively on OpenShift and Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.7.2
     operators.openshift.io/infrastructure-features: '["disconnected","proxy-aware"]'
-    operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev", "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev", "tektonhubs.operator.tekton.dev", "tektonchains.operator.tekton.dev"]'
+    operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev", "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev", "tektonhubs.operator.tekton.dev", "tektonchains.operator.tekton.dev", "openshiftpipelinesascodes.operator.tekton.dev"]'
     repository: https://github.com/tektoncd/operator
     support: Red Hat
   labels:
@@ -36,6 +36,9 @@ spec:
         version: v1alpha1
       - kind: tektonaddons
         name: 'addon'
+        version: v1alpha1
+      - kind: openshiftpipelinesascodes
+        name: 'pipelinesascode'
         version: v1alpha1
       specDescriptors:
       - description: Namespace where Tekton components are installed
@@ -160,6 +163,27 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
+    - description: Represents an installation of latest version of OpenShift Pipelines As Code
+      displayName: OpenShift Pipelines As Code
+      kind: OpenShiftPipelinesAsCode
+      name: openshiftpipelinesascodes.operator.tekton.dev
+      resources:
+        - kind: tektoninstallersets
+          name: ''
+          version: v1alpha1
+      specDescriptors:
+        - description: Namespace where Pipelines As Code installed
+          displayName: Target Namespace
+          path: targetNamespace
+          x-descriptors:
+            - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+        - description: The version of Pipelines As Code installed
+          displayName: Version
+          path: version
+          x-descriptors:
+            - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
     - description: This CustomResourceDefinition (CRD) is used internally by the other OpenShift Pipelines CRDs to maintain the lifecycle of OpenShift Pipelines Components
       displayName: Tekton Installer Set
       kind: TektonInstallerSet
@@ -235,9 +259,11 @@ spec:
 
     ### Components
 
-    - Tekton Pipelines: v0.28.1
-    - Tekton Triggers: v0.16.0
-    - ClusterTasks based on Tekton Catalog 0.28
+    - Tekton Pipelines: v0.41.0
+    - Tekton Triggers: v0.22.0
+    - Pipelines as Code: 0.14.2
+    - Tekton Chains (tech-preview): v0.13.0
+    - Tekton Hub (tech-preview): v1.11.1
 
     ## Getting Started
     In order to get familiar with _OpenShift Pipelines_ concepts and create your first pipeline, follow the [OpenShift Pipelines Docs](https://docs.openshift.com/container-platform/OPENSHIFT_DOCS_VERSION/cicd/pipelines/creating-applications-with-cicd-pipelines.html).
