@@ -7,22 +7,21 @@ on:  # yamllint disable-line rule:truthy
   - cron: '0 2 * * 1-5'
 
 jobs:
-  # build-release-matrix:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - id: set-matrix
-  #     run: |
-  #       RELEASE_BRANCHES=$(git ls-remote --heads https://github.com/tektoncd/operator 'release-*' | grep -v 'v0.2\.*\|v0.5\.*\|v0.60' | awk '{ print $2 }' | cut -d/ -f3- | tr '\n' ' ')
-  #       echo '::set-output name=branches::[${RELEASE_BRANCHES}]'
-  #   outputs:
-  #     branches: ${{ steps.set-matrix.outputs.branches }}
+  build-release-matrix:
+    runs-on: ubuntu-latest
+    steps:
+    - id: set-matrix
+      run: |
+        echo="branches=$(git ls-remote --heads https://github.com/tektoncd/operator 'release-*' | grep -v 'v0.2\.*\|v0.5\.*\|v0.60\|v0.61' | awk '{ print $2 }' | cut -d/ -f3- | tr '\n' ' ')" >> $GITHUB_OUTPUT
+    outputs:
+      branches: ${{ steps.set-matrix.outputs.branches }}
   bump-payloads:
-    # needs: build-release-matrix
+    needs: build-release-matrix
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # branch: ${{ fromJSON(needs.build-release-matrix.outputs.branches) }}
-        branch: [release-v0.62.x, release-v0.63.x]
+        branch: ${{ fromJSON(needs.build-release-matrix.outputs.branches) }}
+        # branch: [release-v0.62.x, release-v0.63.x]
     steps:
     - uses: actions/setup-go@v3
       with:
