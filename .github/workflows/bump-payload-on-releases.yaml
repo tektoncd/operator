@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         # branch: ${{ fromJSON(needs.build-release-matrix.outputs.branches) }}
-        branch: [release-v0.60.x, release-v0.61.x, release-v0.62.x]
+        branch: [release-v0.62.x, release-v0.63.x]
     steps:
     - uses: actions/setup-go@v3
       with:
