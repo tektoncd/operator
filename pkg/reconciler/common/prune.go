@@ -333,6 +333,9 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 	backOffLimit := int32(3)
 	ttlSecondsAfterFinished := int32(3600)
 	runAsNonRoot := true
+	runAsUser := int64(65532)
+	fsGroup := int64(65532)
+
 	cj := &batchv1.CronJob{
 		TypeMeta: v1.TypeMeta{
 			Kind:       "CronJob",
@@ -365,6 +368,8 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 								SeccompProfile: &corev1.SeccompProfile{
 									Type: corev1.SeccompProfileTypeRuntimeDefault,
 								},
+								RunAsUser: &runAsUser,
+								FSGroup:   &fsGroup,
 							},
 						},
 					},
