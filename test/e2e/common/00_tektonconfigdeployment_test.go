@@ -355,6 +355,10 @@ func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfi
 				Value: "false",
 			},
 			{
+				Name:  v1alpha1.CommunityClusterTasks,
+				Value: "false",
+			},
+			{
 				Name:  v1alpha1.PipelineTemplatesParam,
 				Value: "false",
 			},
