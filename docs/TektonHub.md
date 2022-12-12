@@ -14,6 +14,9 @@ To install Tekton Hub on your cluster follow steps as given below:
   - Resources in the hub db will be also automatically refreshed with the updated data with the time which is specified in the Hub CR i.e `catalogRefreshInterval: 30m`. Default time interval is 30m
   -  If you are using your database instead of default one then
   secret name for the database should be `tekton-hub-db` and you need to create the secret in your targetNamespace with the following keys
+  - **The dependency of config.yaml from git is removed and complete config data is moved into API configMap. Now user can add the config data i.e.
+    `categories, catalogs, scopes and defaultScopes` in the Hub CR itself. If user does not add any data then default
+    data provided by Hub in the API configMap will be used**
 
   ```yaml
   apiVersion: v1
@@ -46,10 +49,39 @@ To install Tekton Hub on your cluster follow steps as given below:
     # in default installation namespace ie `openshift-pipelines` in case of OpenShift and `tekton-pipelines` in case of Kubernetes
     db:                      # 👈 Optional: If user wants to use his database
       secret: tekton-hub-db  # 👈 Name of db secret should be `tekton-hub-db`
+  
+    categories:                     # 👈 Optional: If user wants to use his categories 
+      - Automation
+      - Build Tools
+      - CLI
+      - Cloud
+      - Code Quality
+      - ...
+  
+    catalogs:                       # 👈 Optional: If user wants to use his catalogs
+      - name: tekton
+        org: tektoncd
+        type: community
+        provider: github
+        url: https://github.com/tektoncd/catalog
+        revision: main
+
+    scopes:                         # 👈 Optional: User can define his scopes  
+      - name: agent:create
+        users: [abc, qwe, pqr]
+      - name: catalog:refresh
+        users: [abc, qwe, pqr]
+      - name: config:refresh
+        users: [abc, qwe, pqr]
+
+    default:                       # 👈 Optional: User can define his default scopes
+      scopes:
+        - rating:read
+        - rating:write
+
     api:
-      hubConfigUrl: https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml
       catalogRefreshInterval: 30m     # After every 30min catalog resources in the hub db would be refreshed to get the updated data from the catalog. Supported time units are As(A seconds), Bm(B minutes) Ch(C hours), Dd(D days) and Ew(E weeks).
-    ```
+  ```
 
 - You can install Tekton Hub by running the command
 
@@ -101,8 +133,37 @@ To install Tekton Hub on your cluster follow steps as given below:
       # in default installation namespace ie `openshift-pipelines` in case of OpenShift and `tekton-pipelines` in case of Kubernetes
       db:                      # 👈 Optional: If user wants to use his database
         secret: tekton-hub-db  # 👈 Name of db secret should be `tekton-hub-db`
+   
+      categories:                     # 👈 Optional: If user wants to use his categories 
+        - Automation
+        - Build Tools
+        - CLI
+        - Cloud
+        - Code Quality
+        - ...
+  
+      catalogs:                       # 👈 Optional: If user wants to use his catalogs
+        - name: tekton
+          org: tektoncd
+          type: community
+          provider: github
+          url: https://github.com/tektoncd/catalog
+          revision: main
+
+      scopes:                         # 👈 Optional: User can define his scopes 
+        - name: agent:create
+          users: [abc, qwe, pqr]
+        - name: catalog:refresh
+          users: [abc, qwe, pqr]
+        - name: config:refresh
+          users: [abc, qwe, pqr]
+
+      default:                       # 👈 Optional: User can define his default scopes
+        scopes:
+          - rating:read
+          - rating:write
+   
       api:
-        hubConfigUrl: https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml
         catalogRefreshInterval: 30m     # After every 30min catalog resources in the hub db would be refreshed to get the updated data from the catalog. Supported time units are As(A seconds), Bm(B minutes) Ch(C hours), Dd(D days) and Ew(E weeks).
     ```
 
