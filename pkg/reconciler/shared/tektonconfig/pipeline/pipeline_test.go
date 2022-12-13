@@ -18,7 +18,6 @@ package pipeline
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -108,14 +107,16 @@ func makeUpgradeCheckPass(t *testing.T, ctx context.Context, c op.TektonPipeline
 	// set necessary version labels to make upgrade check pass
 	pipeline, err := c.Get(ctx, v1alpha1.PipelineResourceName, metav1.GetOptions{})
 	util.AssertEqual(t, err, nil)
-	setDummyVersionLabel(pipeline)
+	setDummyVersionLabel(t, pipeline)
 	_, err = c.Update(ctx, pipeline, metav1.UpdateOptions{})
 	util.AssertEqual(t, err, nil)
 }
 
-func setDummyVersionLabel(tp *v1alpha1.TektonPipeline) {
+func setDummyVersionLabel(t *testing.T, tp *v1alpha1.TektonPipeline) {
+	t.Helper()
+
 	oprVersion := "v1.2.3"
-	os.Setenv(v1alpha1.VersionEnvKey, oprVersion)
+	t.Setenv(v1alpha1.VersionEnvKey, oprVersion)
 
 	labels := tp.GetLabels()
 	if labels == nil {

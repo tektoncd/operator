@@ -18,13 +18,10 @@ package extension
 
 import (
 	"context"
-	"os"
 	"testing"
 
-	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
-	"gotest.tools/v3/assert"
-
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/injection/client/fake"
@@ -38,8 +35,7 @@ func TestEnsureOpenShiftPipelinesAsCodeExists(t *testing.T) {
 	c := fake.Get(ctx)
 	tConfig := pipeline.GetTektonConfig()
 
-	assert.NilError(t, os.Setenv("PLATFORM", "openshift"))
-	defer os.Clearenv()
+	t.Setenv("PLATFORM", "openshift")
 
 	tConfig.SetDefaults(ctx)
 	// first invocation should create instance as it is non-existent and return RECONCILE_AGAIN_ERR
@@ -71,8 +67,7 @@ func TestEnsureOpenShiftPipelinesAsCodeCRNotExists(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
 
-	assert.NilError(t, os.Setenv("PLATFORM", "openshift"))
-	defer os.Clearenv()
+	t.Setenv("PLATFORM", "openshift")
 
 	// when no instance exists, nil error is returned immediately
 	err := EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes())

@@ -18,7 +18,6 @@ package common
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
@@ -30,8 +29,7 @@ import (
 )
 
 func TestDeleteObsoleteResources(t *testing.T) {
-	os.Setenv(KoEnvKey, "testdata/kodata")
-	defer os.Unsetenv(KoEnvKey)
+	t.Setenv(KoEnvKey, "testdata/kodata")
 	client := fake.New()
 	manifest, err := mf.NewManifest("testdata/test_delete_obsolete_resources/dummy.release.notags.yaml", mf.UseClient(client))
 	if err != nil {

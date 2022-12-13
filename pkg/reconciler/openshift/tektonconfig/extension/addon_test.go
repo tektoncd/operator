@@ -18,7 +18,6 @@ package extension
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
@@ -110,14 +109,16 @@ func makeUpgradeCheckPass(t *testing.T, ctx context.Context, c op.TektonAddonInt
 	// set necessary version labels to make upgrade check pass
 	addon, err := c.Get(ctx, v1alpha1.AddonResourceName, metav1.GetOptions{})
 	util.AssertEqual(t, err, nil)
-	setDummyVersionLabel(addon)
+	setDummyVersionLabel(t, addon)
 	_, err = c.Update(ctx, addon, metav1.UpdateOptions{})
 	util.AssertEqual(t, err, nil)
 }
 
-func setDummyVersionLabel(ta *v1alpha1.TektonAddon) {
+func setDummyVersionLabel(t *testing.T, ta *v1alpha1.TektonAddon) {
+	t.Helper()
+
 	oprVersion := "v1.2.3"
-	os.Setenv(v1alpha1.VersionEnvKey, oprVersion)
+	t.Setenv(v1alpha1.VersionEnvKey, oprVersion)
 
 	labels := ta.GetLabels()
 	if labels == nil {
