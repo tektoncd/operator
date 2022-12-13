@@ -17,7 +17,6 @@ limitations under the License.
 package common
 
 import (
-	"os"
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
@@ -31,8 +30,7 @@ const (
 
 func TestGetLatestRelease(t *testing.T) {
 	koPath := "testdata/kodata"
-	os.Setenv(KoEnvKey, koPath)
-	defer os.Unsetenv(KoEnvKey)
+	t.Setenv(KoEnvKey, koPath)
 
 	version := latestRelease(&v1alpha1.TektonTrigger{})
 	util.AssertEqual(t, version, VERSION)
@@ -40,8 +38,7 @@ func TestGetLatestRelease(t *testing.T) {
 
 func TestListReleases(t *testing.T) {
 	koPath := "testdata/kodata"
-	os.Setenv(KoEnvKey, koPath)
-	defer os.Unsetenv(KoEnvKey)
+	t.Setenv(KoEnvKey, koPath)
 	expectedVersionList := []string{"0.15.2", "0.14.3", "0.13.2"}
 
 	version, err := allReleases(&v1alpha1.TektonTrigger{})

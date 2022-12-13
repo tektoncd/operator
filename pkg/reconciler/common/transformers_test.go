@@ -18,7 +18,6 @@ package common
 
 import (
 	"context"
-	"os"
 	"path"
 	"testing"
 
@@ -97,7 +96,7 @@ func TestCommonTransformers(t *testing.T) {
 }
 
 func TestImagesFromEnv(t *testing.T) {
-	os.Setenv("IMAGE_PIPELINES_CONTROLLER", "docker.io/pipeline")
+	t.Setenv("IMAGE_PIPELINES_CONTROLLER", "docker.io/pipeline")
 	data := ImagesFromEnv(PipelinesImagePrefix)
 	if !cmp.Equal(data, map[string]string{"CONTROLLER": "docker.io/pipeline"}) {
 		t.Fatalf("Unexpected ImageFromEnv: %s", cmp.Diff(data, map[string]string{"CONTROLLER": "docker.io/pipeline"}))

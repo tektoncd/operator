@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -26,8 +25,7 @@ import (
 
 func TestSetDefault(t *testing.T) {
 
-	os.Setenv("DEFAULT_TARGET_NAMESPACE", "tekton-pipelines")
-	defer os.Unsetenv("DEFAULT_TARGET_NAMESPACE")
+	t.Setenv("DEFAULT_TARGET_NAMESPACE", "tekton-pipelines")
 	th := &TektonHub{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "hub",

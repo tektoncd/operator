@@ -18,7 +18,6 @@ package extension
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
@@ -109,14 +108,16 @@ func makeUpgradeCheckPass(t *testing.T, ctx context.Context, c op.TektonDashboar
 	// set necessary version labels to make upgrade check pass
 	dashboard, err := c.Get(ctx, v1alpha1.DashboardResourceName, metav1.GetOptions{})
 	util.AssertEqual(t, err, nil)
-	setDummyVersionLabel(dashboard)
+	setDummyVersionLabel(t, dashboard)
 	_, err = c.Update(ctx, dashboard, metav1.UpdateOptions{})
 	util.AssertEqual(t, err, nil)
 }
 
-func setDummyVersionLabel(td *v1alpha1.TektonDashboard) {
+func setDummyVersionLabel(t *testing.T, td *v1alpha1.TektonDashboard) {
+	t.Helper()
+
 	oprVersion := "v1.2.3"
-	os.Setenv(v1alpha1.VersionEnvKey, oprVersion)
+	t.Setenv(v1alpha1.VersionEnvKey, oprVersion)
 
 	labels := td.GetLabels()
 	if labels == nil {

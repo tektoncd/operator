@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -86,8 +85,7 @@ func Test_SetDefaults_Addon_Params(t *testing.T) {
 			},
 		},
 	}
-	assert.NilError(t, os.Setenv("PLATFORM", "openshift"))
-	defer os.Clearenv()
+	t.Setenv("PLATFORM", "openshift")
 
 	tc.SetDefaults(context.TODO())
 	if len(tc.Spec.Addon.Params) != 3 {
@@ -122,8 +120,7 @@ func Test_SetDefaults_Triggers_Properties(t *testing.T) {
 }
 
 func Test_SetDefaults_PipelineAsCode(t *testing.T) {
-	assert.NilError(t, os.Setenv("PLATFORM", "openshift"))
-	defer os.Clearenv()
+	t.Setenv("PLATFORM", "openshift")
 
 	// PAC disabled through addon
 	tc := &TektonConfig{

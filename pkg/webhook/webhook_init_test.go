@@ -1,7 +1,6 @@
 package webhook
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -20,10 +19,7 @@ func TestCreateWebhookResources(t *testing.T) {
 		testdataPath := filepath.Join("testdata", "validating-defaulting-webhook")
 		m, err := mf.ManifestFrom(mf.Path(testdataPath))
 		assert.NilError(t, err)
-		os.Setenv(POD_NAMESPACE_ENV_KEY, namespace_new)
-		defer func() {
-			os.Unsetenv(POD_NAMESPACE_ENV_KEY)
-		}()
+		t.Setenv(POD_NAMESPACE_ENV_KEY, namespace_new)
 		mOut, err := manifestTransform(&m)
 		assert.NilError(t, err)
 		for _, res := range mOut.Resources() {

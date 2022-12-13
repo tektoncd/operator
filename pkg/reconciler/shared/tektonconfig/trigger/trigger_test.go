@@ -18,7 +18,6 @@ package trigger
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
@@ -109,14 +108,16 @@ func makeUpgradeCheckPass(t *testing.T, ctx context.Context, c op.TektonTriggerI
 	// set necessary version labels to make upgrade check pass
 	trigger, err := c.Get(ctx, v1alpha1.TriggerResourceName, metav1.GetOptions{})
 	util.AssertEqual(t, err, nil)
-	setDummyVersionLabel(trigger)
+	setDummyVersionLabel(t, trigger)
 	_, err = c.Update(ctx, trigger, metav1.UpdateOptions{})
 	util.AssertEqual(t, err, nil)
 }
 
-func setDummyVersionLabel(tr *v1alpha1.TektonTrigger) {
+func setDummyVersionLabel(t *testing.T, tr *v1alpha1.TektonTrigger) {
+	t.Helper()
+
 	oprVersion := "v1.2.3"
-	os.Setenv(v1alpha1.VersionEnvKey, oprVersion)
+	t.Setenv(v1alpha1.VersionEnvKey, oprVersion)
 
 	labels := tr.GetLabels()
 	if labels == nil {

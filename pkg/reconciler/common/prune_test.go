@@ -19,7 +19,6 @@ package common
 import (
 	"context"
 	"errors"
-	"os"
 	"strings"
 	"testing"
 
@@ -109,8 +108,7 @@ func TestCompleteFlowPrune(t *testing.T) {
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-three", Annotations: anno1}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-four", Annotations: anno4}},
 	)
-	os.Setenv(JobsTKNImageName, "some")
-	defer os.Unsetenv(JobsTKNImageName)
+	t.Setenv(JobsTKNImageName, "some")
 
 	err := Prune(context.TODO(), client, config)
 	if err != nil {
@@ -211,8 +209,7 @@ func TestAnnotationCmd(t *testing.T) {
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-ten", Annotations: annoResourceTrPr}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-thirteen", Annotations: annoStrategyKeep}},
 	)
-	os.Setenv(JobsTKNImageName, "some")
-	defer os.Unsetenv(JobsTKNImageName)
+	t.Setenv(JobsTKNImageName, "some")
 
 	err := Prune(context.TODO(), client, config)
 	if err != nil {
@@ -284,8 +281,7 @@ func TestConfigChange(t *testing.T) {
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "kube-api"}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-one", Annotations: anno1}},
 	)
-	os.Setenv(JobsTKNImageName, "some")
-	defer os.Unsetenv(JobsTKNImageName)
+	t.Setenv(JobsTKNImageName, "some")
 
 	err := Prune(context.TODO(), client, config)
 	if err != nil {
@@ -389,8 +385,7 @@ func TestNodeSelectorOrTolerationsChange(t *testing.T) {
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-two", Annotations: annoUniqueSchedule}},
 		&corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-three", Annotations: annoUniqueSchedule2}},
 	)
-	os.Setenv(JobsTKNImageName, "some")
-	defer os.Unsetenv(JobsTKNImageName)
+	t.Setenv(JobsTKNImageName, "some")
 
 	// Pruning with the nodes and Tolerations
 	err := Prune(context.TODO(), client, config1)
