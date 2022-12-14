@@ -32,32 +32,22 @@ import (
 func (i *InstallerSetClient) update(ctx context.Context, comp v1alpha1.TektonComponent, toBeUpdatedIS []v1alpha1.TektonInstallerSet, manifest *mf.Manifest, filterAndTransform FilterAndTransform, isType string) ([]v1alpha1.TektonInstallerSet, error) {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", isType)
 
-	switch isType {
-	case InstallerTypeMain:
+	if isType == InstallerTypeMain {
 		sets, err := i.updateMainSets(ctx, comp, toBeUpdatedIS, manifest, filterAndTransform)
 		if err != nil {
 			logger.Errorf("installer set update failed for main type: %v", err)
 			return sets, err
 		}
 		return sets, nil
-
-	case InstallerTypePre, InstallerTypePost:
-		logger.Infof("updating installer set: %v", toBeUpdatedIS[0].GetName())
-		updatedSet, err := i.updateSet(ctx, comp, toBeUpdatedIS[0], manifest, filterAndTransform)
-		if err != nil {
-			return nil, fmt.Errorf("failed to update installerset : %v", err)
-		}
-		logger.Infof("updated installer set: %v", toBeUpdatedIS[0].GetName())
-		return []v1alpha1.TektonInstallerSet{*updatedSet}, nil
-
-	case InstallerTypeCustom:
-	// TODO
-
-	default:
-		return nil, fmt.Errorf("invalid installer set type")
 	}
 
-	return nil, nil
+	logger.Infof("updating installer set: %v", toBeUpdatedIS[0].GetName())
+	updatedSet, err := i.updateSet(ctx, comp, toBeUpdatedIS[0], manifest, filterAndTransform)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update installerset : %v", err)
+	}
+	logger.Infof("updated installer set: %v", toBeUpdatedIS[0].GetName())
+	return []v1alpha1.TektonInstallerSet{*updatedSet}, nil
 }
 
 func (i *InstallerSetClient) updateMainSets(ctx context.Context, comp v1alpha1.TektonComponent, toBeUpdatedIS []v1alpha1.TektonInstallerSet, manifest *mf.Manifest, filterAndTransform FilterAndTransform) ([]v1alpha1.TektonInstallerSet, error) {
