@@ -66,6 +66,27 @@ func TestInstallerSetClient_Update(t *testing.T) {
 		wantErr    error
 	}{
 		{
+			name:    "update custom set",
+			setType: InstallerTypeCustom,
+			existingIS: []v1alpha1.TektonInstallerSet{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "addon-custom-set-asdas",
+						Annotations: map[string]string{
+							v1alpha1.LastAppliedHashKey: "custom",
+						},
+					},
+					Spec: v1alpha1.TektonInstallerSetSpec{
+						Manifests: []unstructured.Unstructured{
+							serviceAccount, deployment,
+						},
+					},
+				},
+			},
+			resources: []unstructured.Unstructured{serviceAccount, deployment},
+			wantErr:   nil,
+		},
+		{
 			name:    "update pre set",
 			setType: InstallerTypePre,
 			existingIS: []v1alpha1.TektonInstallerSet{
