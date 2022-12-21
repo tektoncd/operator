@@ -9,19 +9,25 @@ import (
 )
 
 const (
-	ApplicationNameKey                      = "application-name"
-	SecretAutoCreateKey                     = "secret-auto-create"
-	HubURLKey                               = "hub-url"
-	HubCatalogNameKey                       = "hub-catalog-name"
-	MaxKeepRunUpperLimitKey                 = "max-keep-run-upper-limit"
-	DefaultMaxKeepRunsKey                   = "default-max-keep-runs"
-	RemoteTasksKey                          = "remote-tasks"
-	BitbucketCloudCheckSourceIPKey          = "bitbucket-cloud-check-source-ip"
-	BitbucketCloudAdditionalSourceIPKey     = "bitbucket-cloud-additional-source-ip"
-	TektonDashboardURLKey                   = "tekton-dashboard-url"
-	AutoConfigureNewGitHubRepoKey           = "auto-configure-new-github-repo"
-	AutoConfigureRepoNamespaceTemplateKey   = "auto-configure-repo-namespace-template"
-	secretAutoCreateDefaultValue            = "true"
+	ApplicationNameKey                    = "application-name"
+	HubURLKey                             = "hub-url"
+	HubCatalogNameKey                     = "hub-catalog-name"
+	MaxKeepRunUpperLimitKey               = "max-keep-run-upper-limit"
+	DefaultMaxKeepRunsKey                 = "default-max-keep-runs"
+	RemoteTasksKey                        = "remote-tasks"
+	BitbucketCloudCheckSourceIPKey        = "bitbucket-cloud-check-source-ip"
+	BitbucketCloudAdditionalSourceIPKey   = "bitbucket-cloud-additional-source-ip"
+	TektonDashboardURLKey                 = "tekton-dashboard-url"
+	AutoConfigureNewGitHubRepoKey         = "auto-configure-new-github-repo"
+	AutoConfigureRepoNamespaceTemplateKey = "auto-configure-repo-namespace-template"
+
+	SecretAutoCreateKey                           = "secret-auto-create"
+	secretAutoCreateDefaultValue                  = "true"
+	SecretGhAppTokenRepoScoppedKey                = "secret-github-app-token-scopped" //nolint: gosec
+	secretGhAppTokenRepoScoppedDefaultValue       = "true"
+	SecretGhAppTokenScoppedExtraReposKey          = "secret-github-app-scope-extra-repos" //nolint: gosec
+	secretGhAppTokenScoppedExtraReposDefaultValue = ""                                    //nolint: gosec
+
 	remoteTasksDefaultValue                 = "true"
 	bitbucketCloudCheckSourceIPDefaultValue = "true"
 	PACApplicationNameDefaultValue          = "Pipelines as Code CI"
@@ -43,7 +49,6 @@ const (
 
 type Settings struct {
 	ApplicationName                    string
-	SecretAutoCreation                 bool
 	HubURL                             string
 	HubCatalogName                     string
 	RemoteTasks                        bool
@@ -54,6 +59,10 @@ type Settings struct {
 	TektonDashboardURL                 string
 	AutoConfigureNewGitHubRepo         bool
 	AutoConfigureRepoNamespaceTemplate string
+
+	SecretAutoCreation                bool
+	SecretGHAppRepoScoped             bool
+	SecretGhAppTokenScoppedExtraRepos string
 
 	ErrorLogSnippet             bool
 	ErrorDetection              bool
@@ -74,11 +83,25 @@ func ConfigToSettings(logger *zap.SugaredLogger, setting *Settings, config map[s
 		logger.Infof("CONFIG: application name set to %v", config[ApplicationNameKey])
 		setting.ApplicationName = config[ApplicationNameKey]
 	}
+
 	secretAutoCreate := StringToBool(config[SecretAutoCreateKey])
 	if setting.SecretAutoCreation != secretAutoCreate {
 		logger.Infof("CONFIG: secret auto create set to %v", secretAutoCreate)
 		setting.SecretAutoCreation = secretAutoCreate
 	}
+
+	secretGHAppRepoScoped := StringToBool(config[SecretGhAppTokenRepoScoppedKey])
+	if setting.SecretGHAppRepoScoped != secretGHAppRepoScoped {
+		logger.Infof("CONFIG: not scopping the token generated from gh %v", secretGHAppRepoScoped)
+		setting.SecretGHAppRepoScoped = secretGHAppRepoScoped
+	}
+
+	secretGHAppScoppedExtraRepos := config[SecretGhAppTokenScoppedExtraReposKey]
+	if setting.SecretGhAppTokenScoppedExtraRepos != secretGHAppScoppedExtraRepos {
+		logger.Infof("CONFIG: adding extra repositories for token scopping %v", secretGHAppRepoScoped)
+		setting.SecretGhAppTokenScoppedExtraRepos = secretGHAppScoppedExtraRepos
+	}
+
 	if setting.HubURL != config[HubURLKey] {
 		logger.Infof("CONFIG: hub URL set to %v", config[HubURLKey])
 		setting.HubURL = config[HubURLKey]
