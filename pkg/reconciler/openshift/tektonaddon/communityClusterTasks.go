@@ -41,8 +41,9 @@ func (r *Reconciler) EnsureCommunityClusterTask(ctx context.Context, enable stri
 	if len(r.communityClusterTaskManifest.Resources()) == 0 {
 		return nil
 	}
+	manifest := *r.communityClusterTaskManifest
 	if enable == "true" {
-		if err := r.installerSetClient.CustomSet(ctx, ta, CommunityClusterTaskInstallerSet, r.communityClusterTaskManifest, filterAndTransformCommunityClusterTask()); err != nil {
+		if err := r.installerSetClient.CustomSet(ctx, ta, CommunityClusterTaskInstallerSet, &manifest, filterAndTransformCommunityClusterTask()); err != nil {
 			return err
 		}
 	} else {
