@@ -28,8 +28,9 @@ import (
 )
 
 func (r *Reconciler) EnsureClusterTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
+	manifest := *r.clusterTaskManifest
 	if enable == "true" {
-		if err := r.installerSetClient.CustomSet(ctx, ta, ClusterTaskInstallerSet, r.clusterTaskManifest, filterAndTransformClusterTask()); err != nil {
+		if err := r.installerSetClient.CustomSet(ctx, ta, ClusterTaskInstallerSet, &manifest, filterAndTransformClusterTask()); err != nil {
 			return err
 		}
 	} else {
