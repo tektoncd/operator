@@ -47,7 +47,7 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 		RequireGitSshSecretKnownHosts:            ptr.Bool(false),
 		EnableTektonOciBundles:                   ptr.Bool(false),
 		EnableCustomTasks:                        ptr.Bool(false),
-		EnableApiFields:                          "stable",
+		EnableApiFields:                          "alpha",
 		EmbeddedStatus:                           "full",
 		ScopeWhenExpressionsToTask:               nil,
 		SendCloudEventsForRuns:                   ptr.Bool(false),
@@ -60,6 +60,15 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 	}
 
 	tp.SetDefaults(context.TODO())
+
+	if d := cmp.Diff(properties, tp.Spec.PipelineProperties); d != "" {
+		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
+	}
+
+	tp.Annotations[KatanomiMigratePipelineApiFields] = "true"
+	tp.Spec.PipelineProperties.EnableApiFields = "stable"
+	tp.SetDefaults(context.TODO())
+	properties.EnableApiFields = "stable"
 
 	if d := cmp.Diff(properties, tp.Spec.PipelineProperties); d != "" {
 		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
