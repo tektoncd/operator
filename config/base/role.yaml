@@ -238,6 +238,9 @@ rules:
   - runs
   - runs/status
   - runs/finalizers
+  - customruns
+  - customruns/status
+  - customruns/finalizers
   verbs:
   - get
   - list
