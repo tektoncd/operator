@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -92,12 +93,25 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
+	errs = errs.Also(validateSidecarNames(ts.Sidecars))
 	errs = errs.Also(ts.Resources.Validate(ctx).ViaField("resources"))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
 	errs = errs.Also(ValidateResourcesVariables(ctx, ts.Steps, ts.Resources))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
+	return errs
+}
+
+func validateSidecarNames(sidecars []Sidecar) (errs *apis.FieldError) {
+	for _, sc := range sidecars {
+		if sc.Name == pipeline.ReservedResultsSidecarName {
+			errs = errs.Also(&apis.FieldError{
+				Message: fmt.Sprintf("Invalid: cannot use reserved sidecar name %v ", sc.Name),
+				Paths:   []string{"sidecars"},
+			})
+		}
+	}
 	return errs
 }
 
@@ -452,7 +466,6 @@ func validateStepObjectUsageAsWhole(step Step, prefix string, vars sets.String) 
 	}
 	for i, arg := range step.Args {
 		errs = errs.Also(validateTaskNoObjectReferenced(arg, prefix, vars).ViaFieldIndex("args", i))
-
 	}
 	for _, env := range step.Env {
 		errs = errs.Also(validateTaskNoObjectReferenced(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
@@ -482,7 +495,6 @@ func validateStepArrayUsage(step Step, prefix string, vars sets.String) *apis.Fi
 	}
 	for i, arg := range step.Args {
 		errs = errs.Also(validateTaskArraysIsolated(arg, prefix, vars).ViaFieldIndex("args", i))
-
 	}
 	for _, env := range step.Env {
 		errs = errs.Also(validateTaskNoArrayReferenced(env.Value, prefix, vars).ViaFieldKey("env", env.Name))

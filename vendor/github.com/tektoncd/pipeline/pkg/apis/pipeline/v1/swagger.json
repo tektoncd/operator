@@ -63,6 +63,17 @@
           "description": "EnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. Optional: Defaults to true.",
           "type": "boolean"
         },
+        "env": {
+          "description": "List of environment variables that can be provided to the containers belonging to the pod.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
         "hostAliases": {
           "description": "HostAliases is an optional list of hosts and IPs that will be injected into the pod's hosts file if specified. This is only valid for non-hostNetwork pods.",
           "type": "array",
@@ -552,7 +563,7 @@
         },
         "status": {
           "description": "Status is the RunStatus for the corresponding Run",
-          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.run.v1alpha1.RunStatus"
+          "$ref": "#/definitions/github.com.tektoncd.pipeline.pkg.apis.run.v1beta1.CustomRunStatus"
         },
         "whenExpressions": {
           "description": "WhenExpressions is the list of checks guarding the execution of the PipelineTask",
@@ -1787,6 +1798,11 @@
           "description": "PodTemplate holds pod specific configuration",
           "$ref": "#/definitions/pod.Template"
         },
+        "retries": {
+          "description": "Retries represents how many times this TaskRun should be retried in the event of task failure.",
+          "type": "integer",
+          "format": "int32"
+        },
         "serviceAccountName": {
           "type": "string",
           "default": ""
@@ -1801,7 +1817,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "status": {
-          "description": "Used for cancelling a taskrun (and maybe more later on)",
+          "description": "Used for cancelling a TaskRun (and maybe more later on)",
           "type": "string"
         },
         "statusMessage": {
@@ -1825,7 +1841,7 @@
           "$ref": "#/definitions/v1.TaskSpec"
         },
         "timeout": {
-          "description": "Time after which the build times out. Defaults to 1 hour. Specified build timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
+          "description": "Time after which one retry attempt times out. Defaults to 1 hour. Specified build timeout should be less than 24h. Refer Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration",
           "$ref": "#/definitions/v1.Duration"
         },
         "workspaces": {
