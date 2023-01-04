@@ -170,3 +170,17 @@ func RemoveFsGroupForJob() mf.Transformer {
 		return nil
 	}
 }
+
+func UpdateServiceMonitorTargetNamespace(targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "ServiceMonitor" {
+			return nil
+		}
+		nsSelector, found, err := unstructured.NestedFieldNoCopy(u.Object, "spec", "namespaceSelector")
+		if !found || err != nil {
+			return err
+		}
+		nsSelector.(map[string]interface{})["matchNames"].([]interface{})[0] = targetNamespace
+		return nil
+	}
+}
