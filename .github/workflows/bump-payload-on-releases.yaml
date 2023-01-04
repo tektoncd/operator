@@ -13,7 +13,7 @@ jobs:
     - id: set-matrix
       run: |
         git ls-remote --heads https://github.com/tektoncd/operator 'release-*' | grep -v 'v0.2\.*\|v0.5\.*\|v0.60\|v0.61' | awk '{ print $2 }' | cut -d/ -f3- | jq -cRs 'split("\n")[:-1]'
-        echo "branches=$(git ls-remote --heads https://github.com/tektoncd/operator 'release-*' | grep -v 'v0.2\.*\|v0.5\.*\|v0.60\|v0.61' | awk '{ print $2 }' | cut -d/ -f3- | jq -cRs 'split(\"\n\")[:-1]'" >> $GITHUB_OUTPUT
+        echo "branches=$(git ls-remote --heads https://github.com/tektoncd/operator 'release-*' | grep -v 'v0.2\.*\|v0.5\.*\|v0.60\|v0.61' | awk '{ print $2 }' | cut -d/ -f3- | jq -cRs 'split("\n")[:-1]')" >> $GITHUB_OUTPUT
     outputs:
       branches: ${{ steps.set-matrix.outputs.branches }}
   bump-payloads:
