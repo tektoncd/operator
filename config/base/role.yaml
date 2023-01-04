@@ -241,6 +241,8 @@ rules:
   - customruns
   - customruns/status
   - customruns/finalizers
+  - verificationpolicies
+  - verificationpolicies/status
   verbs:
   - get
   - list
