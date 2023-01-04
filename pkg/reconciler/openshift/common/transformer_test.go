@@ -147,3 +147,21 @@ func TestRemoveFsGroup(t *testing.T) {
 		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
 	}
 }
+
+func TestUpdateServiceMonitorTargetNamespace(t *testing.T) {
+	targetNs := "its-me-ns"
+	testData := path.Join("testdata", "test-inject-ns-in-servicemonitor.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	updatedManifest, err := manifest.Transform(UpdateServiceMonitorTargetNamespace(targetNs))
+	assert.NilError(t, err)
+
+	testData = path.Join("testdata", "test-inject-ns-in-servicemonitor-expected.yaml")
+	expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	if d := cmp.Diff(updatedManifest.Resources()[0], expectedManifest.Resources()[0]); d != "" {
+		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
+	}
+}

@@ -1,0 +1,21 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pipelines-as-code-monitor
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.15.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+  annotations:
+    networkoperator.openshift.io/ignore-errors: ""
+spec:
+  endpoints:
+    - interval: 10s
+      port: http-metrics
+  jobLabel: app
+  namespaceSelector:
+    matchNames:
+      - pipelines-as-code
+  selector:
+    matchLabels:
+      app: pipelines-as-code-watcher
