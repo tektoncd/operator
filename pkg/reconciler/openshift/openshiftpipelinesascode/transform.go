@@ -46,6 +46,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.ApplyProxySettings,
 			occommon.ApplyCABundles,
 			common.CopyConfigMap(pipelinesAsCodeCM, pac.Spec.Settings),
+			occommon.UpdateServiceMonitorTargetNamespace(pac.Spec.TargetNamespace),
 		}
 
 		allTfs := append(tfs, extension.Transformers(pac)...)
