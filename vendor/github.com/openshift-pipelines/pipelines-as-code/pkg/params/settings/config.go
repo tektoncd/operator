@@ -21,12 +21,12 @@ const (
 	AutoConfigureNewGitHubRepoKey         = "auto-configure-new-github-repo"
 	AutoConfigureRepoNamespaceTemplateKey = "auto-configure-repo-namespace-template"
 
-	SecretAutoCreateKey                           = "secret-auto-create"
-	secretAutoCreateDefaultValue                  = "true"
-	SecretGhAppTokenRepoScoppedKey                = "secret-github-app-token-scopped" //nolint: gosec
-	secretGhAppTokenRepoScoppedDefaultValue       = "true"
-	SecretGhAppTokenScoppedExtraReposKey          = "secret-github-app-scope-extra-repos" //nolint: gosec
-	secretGhAppTokenScoppedExtraReposDefaultValue = ""                                    //nolint: gosec
+	SecretAutoCreateKey                          = "secret-auto-create"
+	secretAutoCreateDefaultValue                 = "true"
+	SecretGhAppTokenRepoScopedKey                = "secret-github-app-token-scoped" //nolint: gosec
+	secretGhAppTokenRepoScopedDefaultValue       = "true"
+	SecretGhAppTokenScopedExtraReposKey          = "secret-github-app-scope-extra-repos" //nolint: gosec
+	secretGhAppTokenScopedExtraReposDefaultValue = ""                                    //nolint: gosec
 
 	remoteTasksDefaultValue                 = "true"
 	bitbucketCloudCheckSourceIPDefaultValue = "true"
@@ -36,15 +36,16 @@ const (
 	AutoConfigureNewGitHubRepoDefaultValue  = "false"
 
 	ErrorLogSnippetKey   = "error-log-snippet"
-	errorLogSnippetValue = "false"
+	errorLogSnippetValue = "true"
 
-	ErrorDetectionKey                 = "error-detection-from-container-logs"
-	ErrorDetectionNumberOfLinesKey    = "error-detection-max-number-of-lines"
-	ErrorDetectionSimpleFilterTaskKey = "error-detection-simple-filter-to-task-labels"
-	ErrorDetectionSimpleRegexpKey     = "error-detection-simple-regexp"
-	errorDetectionValue               = "false"
-	errorDetectionNumberOfLinesValue  = 50
-	errorDetectionSimpleRegexpValue   = `^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([ ]*)?(?P<error>.*)`
+	ErrorDetectionKey   = "error-detection-from-container-logs"
+	errorDetectionValue = "false"
+
+	ErrorDetectionNumberOfLinesKey   = "error-detection-max-number-of-lines"
+	errorDetectionNumberOfLinesValue = 50
+
+	ErrorDetectionSimpleRegexpKey   = "error-detection-simple-regexp"
+	errorDetectionSimpleRegexpValue = `^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([ ]*)?(?P<error>.*)`
 )
 
 type Settings struct {
@@ -60,9 +61,9 @@ type Settings struct {
 	AutoConfigureNewGitHubRepo         bool
 	AutoConfigureRepoNamespaceTemplate string
 
-	SecretAutoCreation                bool
-	SecretGHAppRepoScoped             bool
-	SecretGhAppTokenScoppedExtraRepos string
+	SecretAutoCreation               bool
+	SecretGHAppRepoScoped            bool
+	SecretGhAppTokenScopedExtraRepos string
 
 	ErrorLogSnippet             bool
 	ErrorDetection              bool
@@ -90,16 +91,16 @@ func ConfigToSettings(logger *zap.SugaredLogger, setting *Settings, config map[s
 		setting.SecretAutoCreation = secretAutoCreate
 	}
 
-	secretGHAppRepoScoped := StringToBool(config[SecretGhAppTokenRepoScoppedKey])
+	secretGHAppRepoScoped := StringToBool(config[SecretGhAppTokenRepoScopedKey])
 	if setting.SecretGHAppRepoScoped != secretGHAppRepoScoped {
-		logger.Infof("CONFIG: not scopping the token generated from gh %v", secretGHAppRepoScoped)
+		logger.Infof("CONFIG: not scoping the token generated from gh %v", secretGHAppRepoScoped)
 		setting.SecretGHAppRepoScoped = secretGHAppRepoScoped
 	}
 
-	secretGHAppScoppedExtraRepos := config[SecretGhAppTokenScoppedExtraReposKey]
-	if setting.SecretGhAppTokenScoppedExtraRepos != secretGHAppScoppedExtraRepos {
-		logger.Infof("CONFIG: adding extra repositories for token scopping %v", secretGHAppRepoScoped)
-		setting.SecretGhAppTokenScoppedExtraRepos = secretGHAppScoppedExtraRepos
+	secretGHAppScopedExtraRepos := config[SecretGhAppTokenScopedExtraReposKey]
+	if setting.SecretGhAppTokenScopedExtraRepos != secretGHAppScopedExtraRepos {
+		logger.Infof("CONFIG: adding extra repositories for github app token scope %v", secretGHAppRepoScoped)
+		setting.SecretGhAppTokenScopedExtraRepos = secretGHAppScopedExtraRepos
 	}
 
 	if setting.HubURL != config[HubURLKey] {
