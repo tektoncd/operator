@@ -11,8 +11,8 @@ func SetDefaults(config map[string]string) {
 		config[SecretAutoCreateKey] = secretAutoCreateDefaultValue
 	}
 
-	if ghScoppedToken, ok := config[SecretGhAppTokenRepoScoppedKey]; !ok || ghScoppedToken == "" {
-		config[SecretGhAppTokenRepoScoppedKey] = secretGhAppTokenRepoScoppedDefaultValue
+	if ghScopedToken, ok := config[SecretGhAppTokenRepoScopedKey]; !ok || ghScopedToken == "" {
+		config[SecretGhAppTokenRepoScopedKey] = secretGhAppTokenRepoScopedDefaultValue
 	}
 
 	if hubURL, ok := config[HubURLKey]; !ok || hubURL == "" {
