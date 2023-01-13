@@ -28,6 +28,11 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
@@ -35,6 +40,8 @@ import (
 const (
 	openshiftNS = "openshift"
 )
+
+var isPodRestarted bool
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	logger := logging.FromContext(ctx)
@@ -70,6 +77,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		installerSetClient:   client.NewInstallerSetClient(tisClient, operatorVer, "pipelines-as-code-ext", v1alpha1.KindOpenShiftPipelinesAsCode, nil),
 		pacManifest:          &pacManifest,
 		pipelineRunTemplates: prTemplates,
+		kubeClientSet:        kubeclient.Get(ctx),
 	}
 }
 
@@ -77,6 +85,7 @@ type openshiftExtension struct {
 	installerSetClient   *client.InstallerSetClient
 	pacManifest          *mf.Manifest
 	pipelineRunTemplates *mf.Manifest
+	kubeClientSet        kubernetes.Interface
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -96,6 +105,20 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	if err := updateControllerRouteInConfigMap(oe.pacManifest, comp.GetSpec().GetTargetNamespace()); err != nil {
 		logger.Error("failed to update controller route: ", err)
 		return err
+	}
+	// Hack: restart Pipelines-as-code pods in order to fix watcher issue
+	if !isPodRestarted {
+		labelSelector := labels.NewSelector()
+		createdReq, _ := labels.NewRequirement("app.kubernetes.io/part-of", selection.Equals, []string{"pipelines-as-code"})
+		if createdReq != nil {
+			labelSelector = labelSelector.Add(*createdReq)
+		}
+		if err := oe.kubeClientSet.CoreV1().Pods(comp.GetSpec().GetTargetNamespace()).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: labelSelector.String(),
+		}); err != nil {
+			return err
+		}
+		isPodRestarted = true
 	}
 	return nil
 }
