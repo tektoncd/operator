@@ -205,6 +205,47 @@ dashboard:
 
 This is an `Optional` section.
 
+### Resolvers
+
+As part of TektonPipelines, resolvers are installed which are by default enabled. User can disable them through TektonConfig.
+
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonConfig
+metadata:
+  name: config
+spec:
+  pipeline:
+    enable-bundles-resolver: true
+    enable-cluster-resolver: true
+    enable-git-resolver: true
+    enable-hub-resolver: true
+```
+
+User can also provide resolver specific configurations through TektonConfig. The Default configurations are **not** added by default in TektonConfig.
+To override default configurations, user can provide the configurations as below. You can find the default configurations [here](https://github.com/tektoncd/pipeline/tree/main/config)
+
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonConfig
+metadata:
+  name: config
+spec:
+  pipeline:
+    bundles-resolver-config:
+      default-service-account: pipelines
+    cluster-resolver-config:
+      default-namespace: cluster-resolver-test
+    enable-bundles-resolver: true
+    enable-cluster-resolver: true
+    enable-git-resolver: true
+    enable-hub-resolver: true
+    git-resolver-config:
+      server-url: localhost.com
+    hub-resolver-config:
+      default-tekton-hub-catalog: tekton
+```
+
 
 [node-selector]:https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
 [tolerations]:https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
