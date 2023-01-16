@@ -1,6 +1,7 @@
 package config
 
 import (
+	customrunsv1alpha1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	pipelinev1beta1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	pipelineresourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -13,11 +14,12 @@ var Decoder runtime.Decoder
 // TODO(dibyom): We should have a way of configuring this instead of an init function?
 func init() {
 	scheme := runtime.NewScheme()
+	utilruntime.Must(customrunsv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(pipelineresourcev1alpha1.AddToScheme(scheme))
 	utilruntime.Must(pipelinev1beta1.AddToScheme(scheme))
 	codec := serializer.NewCodecFactory(scheme)
 	Decoder = codec.UniversalDecoder(
-		pipelineresourcev1alpha1.SchemeGroupVersion,
+		pipelineresourcev1alpha1.SchemeGroupVersion, // customrunsv1alpha1 share the same SchemeGroupVersion
 		pipelinev1beta1.SchemeGroupVersion,
 	)
 }
