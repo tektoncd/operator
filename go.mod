@@ -37,7 +37,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.25.4
 	k8s.io/apimachinery v0.25.5
 	k8s.io/client-go v0.25.4
-	k8s.io/code-generator v0.25.4
+	k8s.io/code-generator v0.26.1
 	knative.dev/pkg v0.0.0-20221117013641-f5c1a03ab4f1
 	sigs.k8s.io/controller-runtime v0.13.1
 	sigs.k8s.io/yaml v1.3.0
@@ -288,7 +288,7 @@ require (
 	golang.org/x/term v0.4.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/time v0.2.0 // indirect
-	golang.org/x/tools v0.1.12 // indirect
+	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/api v0.103.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20221118155620-16455021b5e6 // indirect
