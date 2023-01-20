@@ -12,10 +12,10 @@ pipeline:
   version: v0.41.0
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
-  version: v0.15.2
+  version: v0.15.3
 results:
   github: tektoncd/results
   version: v0.4.0
 triggers:
   github: tektoncd/triggers
-  version: v0.22.0
+  version: v0.22.1
