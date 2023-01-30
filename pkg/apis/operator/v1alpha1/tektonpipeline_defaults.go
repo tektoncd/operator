@@ -52,7 +52,8 @@ func (p *Pipeline) setDefaults() {
 		p.EnableTektonOciBundles = ptr.Bool(config.DefaultEnableTektonOciBundles)
 	}
 	if p.EnableCustomTasks == nil {
-		p.EnableCustomTasks = ptr.Bool(config.DefaultEnableCustomTasks)
+		// EnableCustomTask is always enable
+		p.EnableCustomTasks = ptr.Bool(true)
 	}
 	if p.SendCloudEventsForRuns == nil {
 		p.SendCloudEventsForRuns = ptr.Bool(config.DefaultSendCloudEventsForRuns)

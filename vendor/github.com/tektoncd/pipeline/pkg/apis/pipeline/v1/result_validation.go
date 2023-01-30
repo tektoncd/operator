@@ -23,7 +23,7 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// ResultNameFormat Constant used to define the the regex Result.Name should follow
+// ResultNameFormat Constant used to define the regex Result.Name should follow
 const ResultNameFormat = `^([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9]$`
 
 var resultNameFormatRegex = regexp.MustCompile(ResultNameFormat)
@@ -48,7 +48,7 @@ func (tr TaskResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	// By default the result type is string
 	if tr.Type != ResultsTypeString {
-		return apis.ErrInvalidValue(tr.Type, "type", fmt.Sprintf("type must be string"))
+		return apis.ErrInvalidValue(tr.Type, "type", "type must be string")
 	}
 
 	return nil
