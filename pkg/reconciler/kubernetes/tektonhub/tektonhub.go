@@ -575,6 +575,8 @@ func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1
 		addConfigMapKeyValue(uiConfigName, "AUTH_BASE_URL", th.Status.AuthRouteUrl),
 		addConfigMapKeyValue(uiConfigName, "API_VERSION", "v1"),
 		addConfigMapKeyValue(uiConfigName, "REDIRECT_URI", th.Status.UiRouteUrl),
+		addConfigMapKeyValue(uiConfigName, "CUSTOM_LOGO_BASE64_DATA", th.Spec.CustomLogo.Base64Data),
+		addConfigMapKeyValue(uiConfigName, "CUSTOM_LOGO_MEDIA_TYPE", th.Spec.CustomLogo.MediaType),
 		common.AddDeploymentRestrictedPSA(),
 		common.AddJobRestrictedPSA(),
 	}

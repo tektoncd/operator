@@ -42,12 +42,13 @@ type TektonHub struct {
 type TektonHubSpec struct {
 	CommonSpec `json:",inline"`
 	Hub        `json:",inline"`
-	Categories []string  `json:"categories,omitempty"`
-	Catalogs   []Catalog `json:"catalogs,omitempty"`
-	Scopes     []Scope   `json:"scopes,omitempty"`
-	Default    Default   `json:"default,omitempty"`
-	Db         DbSpec    `json:"db,omitempty"`
-	Api        ApiSpec   `json:"api,omitempty"`
+	Categories []string       `json:"categories,omitempty"`
+	Catalogs   []Catalog      `json:"catalogs,omitempty"`
+	Scopes     []Scope        `json:"scopes,omitempty"`
+	Default    Default        `json:"default,omitempty"`
+	Db         DbSpec         `json:"db,omitempty"`
+	Api        ApiSpec        `json:"api,omitempty"`
+	CustomLogo CustomLogoSpec `json:"customLogo,omitempty"`
 }
 
 // Hub defines the field to customize Hub component
@@ -91,6 +92,12 @@ type Scope struct {
 
 type Default struct {
 	Scopes []string `json:"scopes,omitempty"`
+}
+
+// The Base64 Encode data and mediaType of the Custom Logo
+type CustomLogoSpec struct {
+	Base64Data string `json:"base64Data,omitempty"`
+	MediaType  string `json:"mediaType,omitempty"`
 }
 
 // TektonHubStatus defines the observed state of TektonHub
