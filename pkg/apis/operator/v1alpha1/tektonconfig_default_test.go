@@ -60,14 +60,14 @@ func Test_SetDefaults_Pipeline_Properties(t *testing.T) {
 			Profile: ProfileLite,
 			Pipeline: Pipeline{
 				PipelineProperties: PipelineProperties{
-					EnableCustomTasks: ptr.Bool(true),
+					SendCloudEventsForRuns: ptr.Bool(true),
 				},
 			},
 		},
 	}
 
 	tc.SetDefaults(context.TODO())
-	if *tc.Spec.Pipeline.EnableCustomTasks != true ||
+	if *tc.Spec.Pipeline.SendCloudEventsForRuns != true ||
 		*tc.Spec.Pipeline.EnableTektonOciBundles != false {
 		t.Error("Setting default failed for TektonConfig (spec.pipeline.pipelineProperties)")
 	}

@@ -142,7 +142,7 @@ type TaskRunStatus struct {
 	TaskRunStatusFields `json:",inline"`
 }
 
-// TaskRunConditionType is an enum used to store TaskRun custom conditions
+// TaskRunConditionType is an enum used to store TaskRun custom
 // conditions such as one used in spire results verification
 type TaskRunConditionType string
 
@@ -241,11 +241,9 @@ type TaskRunStatusFields struct {
 	PodName string `json:"podName"`
 
 	// StartTime is the time the build is actually started.
-	// +optional
 	StartTime *metav1.Time `json:"startTime,omitempty"`
 
 	// CompletionTime is the time the build completed.
-	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 
 	// Steps describes the state of each build step container.
@@ -253,6 +251,7 @@ type TaskRunStatusFields struct {
 	// +listType=atomic
 	Steps []StepState `json:"steps,omitempty"`
 
+	// Deprecated.
 	// CloudEvents describe the state of each cloud event requested via a
 	// CloudEventResource.
 	// +optional
@@ -285,7 +284,11 @@ type TaskRunStatusFields struct {
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 
 	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
+	// +optional
 	Provenance *Provenance `json:"provenance,omitempty"`
+
+	// SpanContext contains tracing span context fields
+	SpanContext map[string]string `json:"spanContext,omitempty"`
 }
 
 // TaskRunStepOverride is used to override the values of a Step in the corresponding Task.

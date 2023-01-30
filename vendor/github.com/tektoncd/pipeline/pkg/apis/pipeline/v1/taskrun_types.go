@@ -152,6 +152,10 @@ const (
 	TaskRunReasonResolvingTaskRef = "ResolvingTaskRef"
 	// TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled
 	TaskRunReasonImagePullFailed TaskRunReason = "TaskRunImagePullFailed"
+	// TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB
+	TaskRunReasonResultLargerThanAllowedLimit TaskRunReason = "TaskRunResultLargerThanAllowedLimit"
+	// TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.
+	TaskRunReasonStopSidecarFailed = "TaskRunStopSidecarFailed"
 )
 
 func (t TaskRunReason) String() string {
@@ -203,11 +207,9 @@ type TaskRunStatusFields struct {
 	PodName string `json:"podName"`
 
 	// StartTime is the time the build is actually started.
-	// +optional
 	StartTime *metav1.Time `json:"startTime,omitempty"`
 
 	// CompletionTime is the time the build completed.
-	// +optional
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 
 	// Steps describes the state of each build step container.
@@ -235,6 +237,7 @@ type TaskRunStatusFields struct {
 	TaskSpec *TaskSpec `json:"taskSpec,omitempty"`
 
 	// Provenance contains some key authenticated metadata about how a software artifact was built (what sources, what inputs/outputs, etc.).
+	// +optional
 	Provenance *Provenance `json:"provenance,omitempty"`
 }
 
