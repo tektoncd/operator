@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -242,7 +243,13 @@ func prunableNamespaces(ctx context.Context, k kubernetes.Interface, defaultPrun
 
 func generateAllPruneConfig(nsConfig map[string]*pruneConfigPerNS) string {
 	var cmds string
-	for ns, con := range nsConfig {
+	namespaces := []string{}
+	for n := range nsConfig {
+		namespaces = append(namespaces, n)
+	}
+	sort.Strings(namespaces)
+	for _, ns := range namespaces {
+		con := nsConfig[ns]
 		cmd := generatePruneConfigPerNamespace(con, ns)
 		cmds = cmds + " " + cmd
 	}

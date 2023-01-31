@@ -471,7 +471,7 @@ func TestGetJobContainer(t *testing.T) {
 		},
 	}
 
-	expected := " ns-one;--keep=2;pipelinerun,taskrun ns-two;--keep-since=300;pipelinerun,taskrun ns-three;--keep=2 --keep-since=300;pipelinerun,taskrun"
+	expected := " ns-one;--keep=2;pipelinerun,taskrun ns-three;--keep=2 --keep-since=300;pipelinerun,taskrun ns-two;--keep-since=300;pipelinerun,taskrun"
 
 	container := getJobContainer(generateAllPruneConfig(configs), "ns", "test-image")
 	assert.Equal(t, container[0].Args[1], expected)
