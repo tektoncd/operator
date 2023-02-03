@@ -177,8 +177,12 @@ func (ac *reconciler) reconcileMutatingWebhook(ctx context.Context, caCert []byt
 			}},
 		}
 		webhook.Webhooks[i].ObjectSelector = &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"app.kubernetes.io/managed-by": "tekton-pipelines",
+			MatchExpressions: []metav1.LabelSelectorRequirement{
+				{
+					Key:      "app.kubernetes.io/managed-by",
+					Values:   []string{"tekton-pipelines", "pipelinesascode.tekton.dev"},
+					Operator: metav1.LabelSelectorOpIn,
+				},
 			},
 		}
 		webhook.Webhooks[i].ClientConfig.CABundle = caCert
