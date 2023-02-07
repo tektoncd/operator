@@ -9,22 +9,32 @@
 
 ## Getting started
 
-1. [Ramp up on kubernetes and CRDs](#ramp-up-on-crds)
-1. [Ramp Tekton Pipelines](#ramp-up-on-tekton-pipelines)
-1. Create [a GitHub account](https://github.com/join)
-1. Setup
-   [GitHub access via SSH](https://help.github.com/articles/connecting-to-github-with-ssh/)
-1. [Create and checkout a repo fork](#checkout-your-fork)
-1. Set up your [shell environment](#environment-setup)
-1. Install [requirements](#requirements)
-1. [Set up a Kubernetes cluster](#kubernetes-cluster)
-1. [Configure kubectl to use your cluster](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
-1. [Set up a docker repository you can push to](https://github.com/knative/serving/blob/master/docs/setting-up-a-docker-registry.md)
-1. [Install Tekton Operator](#install-operator)
-1. [Iterate!](#iterating)
-1. [Running Codegen](#running-codegen)
-1. [Running Operator](#running-operator-development)
-1. [Running Tests](#running-tests)
+- [Development Guide](#development-guide)
+  - [Development Prerequisites](#development-prerequisites)
+  - [Getting started](#getting-started)
+    - [Ramp up](#ramp-up)
+      - [Ramp up on CRDs](#ramp-up-on-crds)
+      - [Ramp up on Tekton Pipelines](#ramp-up-on-tekton-pipelines)
+      - [Ramp up on Kubernetes Operators](#ramp-up-on-kubernetes-operators)
+    - [Checkout your fork](#checkout-your-fork)
+    - [Requirements](#requirements)
+  - [Kubernetes cluster](#kubernetes-cluster)
+  - [Environment Setup](#environment-setup)
+  - [Iterating](#iterating)
+    - [Install Operator](#install-operator)
+  - [Accessing logs](#accessing-logs)
+  - [Updating the clustertasks in OpenShift addons](#updating-the-clustertasks-in-openshift-addons)
+  - [Running Codegen](#running-codegen)
+  - [Setup development environment on localhost](#setup-development-environment-on-localhost)
+    - [Pre-requests](#pre-requests)
+    - [setup with docker runtime](#setup-with-docker-runtime)
+    - [setup with podman runtime](#setup-with-podman-runtime)
+  - [Running Operator (Development)](#running-operator-development)
+    - [Reset (Clean) Cluster](#reset-clean-cluster)
+    - [Setup](#setup)
+    - [Run operator](#run-operator)
+    - [Install Tekton components](#install-tekton-components)
+  - [Running Tests](#running-tests)
 
 ### Ramp up
 
@@ -214,6 +224,40 @@ If the files in `pkg/apis` are updated we need to run `codegen` scripts
 ```shell script
 ./hack/update-codegen.sh
 ```
+
+## Setup development environment on localhost
+Here are the steps to setup development environment on your localhost with local registry
+
+### Pre-requests
+   - either `docker` or `podman` runtime
+   - [kind](https://github.com/kubernetes-sigs/kind)
+
+### setup with docker runtime
+```bash
+export KO_DOCKER_REPO="localhost:5000"
+
+make dev-setup
+```
+kubernetes cluster ports used
+* `8443` - cluster api access
+* `80` - ingress http
+* `443` - ingress https
+
+### setup with podman runtime
+`podman` is a daemonless container engine. You have to setup a socket service on user space.
+```bash
+$ export KO_DOCKER_REPO="localhost:5000"
+$ export CONTAINER_RUNTIME=podman
+$ systemctl --user start podman.socket
+$ export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
+
+$ make dev-setup
+```
+kubernetes cluster ports used
+* `8443` - cluster api access
+* `7080` - ingress http
+* `7443` - ingress https
+
 
 ## Running Operator (Development)
 

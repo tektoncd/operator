@@ -177,7 +177,7 @@ lint-yaml: ${YAML_FILES} ## runs yamllint on all yaml files
 	@yamllint -c .yamllint $(YAML_FILES)
 
 
-# Prerequisite: docker and kind
+# Prerequisite: docker [or] podman and kind
 # this will deploy a local registry using docker and create a kind cluster
 # configuring with the registry
 # then does make apply to deploy the operator
