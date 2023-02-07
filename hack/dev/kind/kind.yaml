@@ -13,11 +13,11 @@ nodes:
         node-labels: "ingress-ready=true"
   extraMounts:
     - containerPath: /var/lib/kubelet/config.json
-      hostPath: "%DOCKERCFG%"
+      hostPath: "_DOCKERCFG_"
   extraPortMappings:
   - containerPort: 80
-    hostPort: 80
+    hostPort: _HOST_HTTP_PORT_
     protocol: TCP
   - containerPort: 443
-    hostPort: 443
+    hostPort: _HOST_HTTPS_PORT_
     protocol: TCP
