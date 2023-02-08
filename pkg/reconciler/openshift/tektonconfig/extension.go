@@ -57,7 +57,11 @@ type openshiftExtension struct {
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return []mf.Transformer{}
+	return []mf.Transformer{
+		// update namespace in pruner RBAC
+		common.ReplaceNamespaceInServiceAccount(comp.GetSpec().GetTargetNamespace()),
+		common.ReplaceNamespaceInClusterRoleBinding(comp.GetSpec().GetTargetNamespace()),
+	}
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 

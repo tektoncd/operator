@@ -117,4 +117,5 @@ var (
 	ChainResourceName            = "chain"
 	OperandTektoncdChains        = "tektoncd-chains"
 	OpenShiftPipelinesAsCodeName = "pipelines-as-code"
+	PrunerResourceName           = "tektoncd-pruner"
 )

@@ -61,7 +61,7 @@ func Fetch(path string) (mf.Manifest, error) {
 }
 
 func ComponentDir(instance v1alpha1.TektonComponent) string {
-	koDataDir := os.Getenv(KoEnvKey)
+	koDataDir := ComponentBaseDir()
 	switch ins := instance.(type) {
 	case *v1alpha1.TektonPipeline:
 		return filepath.Join(koDataDir, "tekton-pipeline")
@@ -84,6 +84,10 @@ func ComponentDir(instance v1alpha1.TektonComponent) string {
 		return filepath.Join(koDataDir, "tekton-chains")
 	}
 	return ""
+}
+
+func ComponentBaseDir() string {
+	return os.Getenv(KoEnvKey)
 }
 
 func manifestPath(version string, instance v1alpha1.TektonComponent) string {

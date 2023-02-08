@@ -149,7 +149,7 @@ pruner:
   keep-since: 1440
   schedule: "* * * * *"
 ```
-
+- `prune-per-resource`: if the value set as `true` (default value `false`), the `keep` and `keep-since` applied to each resource. example: `tkn pipelinerun delete --pipeline=my-pipeline --keep=10`
 - `resources`: supported resources for auto prune are `taskrun` and `pipelinerun`
 - `keep`: maximum number of resources to keep while deleting or removing resources
 - `keep-since`: retain the resources younger than the specified value in minutes

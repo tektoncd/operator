@@ -1,0 +1,34 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: unit-test-cluster-role-binding-1
+  labels:
+    app.kubernetes.io/part-of: tekton-config
+subjects:
+  - kind: ServiceAccount
+    name: tekton-resource-pruner
+    namespace: tekton-pipelines
+roleRef:
+  kind: ClusterRole
+  name: tekton-resource-pruner
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: unit-test-cluster-role-binding-2
+  labels:
+    app.kubernetes.io/part-of: tekton-config
+subjects:
+  - kind: ServiceAccount
+    name: tekton-resource-pruner
+    namespace: hello
+  - kind: ServiceAccount
+    name: tekton-resource-pruner2
+    namespace: tekton-pipelines
+roleRef:
+  kind: ClusterRole
+  name: tekton-resource-pruner
+  apiGroup: rbac.authorization.k8s.io
