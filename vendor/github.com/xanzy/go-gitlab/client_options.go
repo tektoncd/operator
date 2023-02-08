@@ -94,6 +94,14 @@ func WithCustomRetryWaitMinMax(waitMin, waitMax time.Duration) ClientOptionFunc 
 	}
 }
 
+// WithErrorHandler can be used to configure a custom error handler.
+func WithErrorHandler(handler retryablehttp.ErrorHandler) ClientOptionFunc {
+	return func(c *Client) error {
+		c.client.ErrorHandler = handler
+		return nil
+	}
+}
+
 // WithHTTPClient can be used to configure a custom HTTP client.
 func WithHTTPClient(httpClient *http.Client) ClientOptionFunc {
 	return func(c *Client) error {
@@ -122,6 +130,14 @@ func WithResponseLogHook(hook retryablehttp.ResponseLogHook) ClientOptionFunc {
 func WithoutRetries() ClientOptionFunc {
 	return func(c *Client) error {
 		c.disableRetries = true
+		return nil
+	}
+}
+
+// WithRequestOptions can be used to configure default request options applied to every request.
+func WithRequestOptions(options ...RequestOptionFunc) ClientOptionFunc {
+	return func(c *Client) error {
+		c.defaultRequestOptions = append(c.defaultRequestOptions, options...)
 		return nil
 	}
 }

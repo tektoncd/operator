@@ -48,6 +48,8 @@ const (
 	errorDetectionSimpleRegexpValue = `^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([ ]*)?(?P<error>.*)`
 )
 
+var TknBinaryName = `tkn`
+
 type Settings struct {
 	ApplicationName                    string
 	HubURL                             string
