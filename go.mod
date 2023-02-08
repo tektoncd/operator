@@ -26,7 +26,7 @@ require (
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.5.0
-	golang.org/x/mod v0.7.0
+	golang.org/x/mod v0.8.0
 	gomodules.xyz/jsonpatch/v2 v2.2.0
 	google.golang.org/grpc v1.53.0
 	google.golang.org/protobuf v1.28.1
