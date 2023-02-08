@@ -51,12 +51,12 @@ const (
 
 // AuthType represents an authentication type within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/
+// GitLab API docs: https://docs.gitlab.com/ee/api/
 type AuthType int
 
 // List of available authentication types.
 //
-// GitLab API docs: https://docs.gitlab.com/ce/api/
+// GitLab API docs: https://docs.gitlab.com/ee/api/
 const (
 	BasicAuth AuthType = iota
 	JobToken
@@ -96,6 +96,9 @@ type Client struct {
 	// Protects the token field from concurrent read/write accesses.
 	tokenLock sync.RWMutex
 
+	// Default request options applied to every request.
+	defaultRequestOptions []RequestOptionFunc
+
 	// User agent used when communicating with the GitLab API.
 	UserAgent string
 
@@ -118,6 +121,7 @@ type Client struct {
 	DeploymentMergeRequests *DeploymentMergeRequestsService
 	Deployments             *DeploymentsService
 	Discussions             *DiscussionsService
+	DockerfileTemplate      *DockerfileTemplatesService
 	Environments            *EnvironmentsService
 	EpicIssues              *EpicIssuesService
 	Epics                   *EpicsService
@@ -156,6 +160,7 @@ type Client struct {
 	Markdown                *MarkdownService
 	MergeRequestApprovals   *MergeRequestApprovalsService
 	MergeRequests           *MergeRequestsService
+	Metadata                *MetadataService
 	Milestones              *MilestonesService
 	Namespaces              *NamespacesService
 	Notes                   *NotesService
@@ -323,6 +328,7 @@ func newClient(options ...ClientOptionFunc) (*Client, error) {
 	c.DeploymentMergeRequests = &DeploymentMergeRequestsService{client: c}
 	c.Deployments = &DeploymentsService{client: c}
 	c.Discussions = &DiscussionsService{client: c}
+	c.DockerfileTemplate = &DockerfileTemplatesService{client: c}
 	c.Environments = &EnvironmentsService{client: c}
 	c.EpicIssues = &EpicIssuesService{client: c}
 	c.Epics = &EpicsService{client: c}
@@ -361,6 +367,7 @@ func newClient(options ...ClientOptionFunc) (*Client, error) {
 	c.Markdown = &MarkdownService{client: c}
 	c.MergeRequestApprovals = &MergeRequestApprovalsService{client: c}
 	c.MergeRequests = &MergeRequestsService{client: c, timeStats: timeStats}
+	c.Metadata = &MetadataService{client: c}
 	c.Milestones = &MilestonesService{client: c}
 	c.Namespaces = &NamespacesService{client: c}
 	c.Notes = &NotesService{client: c}
@@ -591,7 +598,7 @@ func (c *Client) NewRequest(method, path string, opt interface{}, options []Requ
 		return nil, err
 	}
 
-	for _, fn := range options {
+	for _, fn := range append(c.defaultRequestOptions, options...) {
 		if fn == nil {
 			continue
 		}
@@ -667,7 +674,7 @@ func (c *Client) UploadRequest(method, path string, content io.Reader, filename 
 		return nil, err
 	}
 
-	for _, fn := range options {
+	for _, fn := range append(c.defaultRequestOptions, options...) {
 		if fn == nil {
 			continue
 		}
@@ -869,7 +876,7 @@ func PathEscape(s string) string {
 // An ErrorResponse reports one or more errors caused by an API request.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ce/api/README.html#data-validation-and-error-reporting
+// https://docs.gitlab.com/ee/api/index.html#data-validation-and-error-reporting
 type ErrorResponse struct {
 	Body     []byte
 	Response *http.Response
