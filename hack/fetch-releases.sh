@@ -229,6 +229,14 @@ fetch_openshift_addon_tasks() {
   ${fetch_addon_task_script}/fetch-tektoncd-catalog-tasks.sh ${dest_dir}
 }
 
+copy_pruner_yaml() {
+  srcPath=${SCRIPT_DIR}/config/pruner
+  ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
+  dstPath=${ko_data}/tekton-pruner
+  rm $dstPath -rf
+  cp $srcPath $dstPath -r
+}
+
 main() {
   OPERATORTOOL=$1
   TARGET=$2
@@ -265,6 +273,9 @@ main() {
 
   hub_version=$(${OPERATORTOOL} -config ${CONFIG} component-version hub)
   release_yaml_hub hub ${hub_version}
+
+  # copy pruner rbac/sa yaml
+  copy_pruner_yaml
   
   echo updated payload tree
   find cmd/${TARGET}/operator/kodata

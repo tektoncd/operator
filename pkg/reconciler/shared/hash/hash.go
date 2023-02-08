@@ -20,6 +20,8 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+
+	"golang.org/x/mod/sumdb/dirhash"
 )
 
 // Compute generates an unique hash/string for the
@@ -32,4 +34,11 @@ func Compute(obj interface{}) (string, error) {
 	}
 	h.Write(d)
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
+// computes has for the given directory, tasks the directory and files recursively
+// "prefix" used internally to produce constant base path,
+// actual location will be replaced with this prefix on hash calculation
+func ComputeHashDir(dirLocation, prefix string) (string, error) {
+	return dirhash.HashDir(dirLocation, prefix, dirhash.DefaultHash)
 }

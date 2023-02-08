@@ -71,6 +71,20 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 		}
 	}
 
+	// remove pruner tektonInstallerSet
+	labelSelector, err := common.LabelSelector(prunerInstallerSetLabel)
+	if err != nil {
+		return err
+	}
+	if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().DeleteCollection(
+		ctx,
+		metav1.DeleteOptions{},
+		metav1.ListOptions{LabelSelector: labelSelector},
+	); err != nil {
+		logger.Error("failed to delete pruner installerSet", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -134,6 +148,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		if err := trigger.EnsureTektonTriggerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers()); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	}
+
+	// reconcile pruner installerSet
+	if !tc.Spec.Pruner.IsEmpty() {
+		err := r.reconcilePrunerInstallerSet(ctx, tc)
+		if err != nil {
+			return err
 		}
 	}
 

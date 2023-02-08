@@ -29,6 +29,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -621,5 +622,43 @@ func TestReplaceDeploymentArg(t *testing.T) {
 
 	if !found {
 		t.Fatalf("failed to find new arg in deployment")
+	}
+}
+
+func TestReplaceNamespaceInServiceAccount(t *testing.T) {
+	testData := path.Join("testdata", "test-replace-namespace-in-service-account.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	targetNamespace := "foobar"
+	manifest, err = manifest.Transform(ReplaceNamespaceInServiceAccount(targetNamespace))
+	assertNoEror(t, err)
+
+	for _, resource := range manifest.Resources() {
+		if resource.GetNamespace() != targetNamespace {
+			t.Errorf("namespace not updated")
+		}
+	}
+}
+
+func TestReplaceNamespaceInClusterRoleBinding(t *testing.T) {
+	testData := path.Join("testdata", "test-replace-namespace-in-cluster-role-binding.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	targetNamespace := "foobar"
+	manifest, err = manifest.Transform(ReplaceNamespaceInClusterRoleBinding(targetNamespace))
+	assertNoEror(t, err)
+
+	for _, resource := range manifest.Resources() {
+		crb := &rbacv1.ClusterRoleBinding{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, crb)
+		assertNoEror(t, err)
+
+		for _, subject := range crb.Subjects {
+			if subject.Namespace != targetNamespace {
+				t.Errorf("namespace not updated")
+			}
+		}
 	}
 }
