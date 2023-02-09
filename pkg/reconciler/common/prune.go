@@ -128,6 +128,28 @@ func Prune(ctx context.Context, k kubernetes.Interface, tC *v1alpha1.TektonConfi
 	if err != nil {
 		return err
 	}
+
+	// fix for https://issues.redhat.com/browse/SRVKP-2810
+	// if there is a change detected, remove all the jobs
+	// required jobs will be recreated
+	if pruningNamespaces.configChanged {
+		labelSelector := fmt.Sprintf("%s=true", pruneCronLabel)
+		cronList, err := pruner.kc.BatchV1().CronJobs(pruner.targetNamespace).List(ctx, v1.ListOptions{LabelSelector: labelSelector})
+		if err != nil {
+			return err
+		}
+		for _, cronJob := range cronList.Items {
+			err = pruner.kc.BatchV1().CronJobs(pruner.targetNamespace).Delete(ctx, cronJob.GetName(), v1.DeleteOptions{})
+			if err != nil {
+				logger.Errorw("error on deleting a cron job",
+					"name", cronJob.GetName(),
+					"namespace", cronJob.GetNamespace(),
+					err,
+				)
+			}
+		}
+	}
+
 	if pruningNamespaces.commonScheduleNs != nil && len(pruningNamespaces.commonScheduleNs) > 0 {
 		jobs := getJobContainer(generateAllPruneConfig(pruningNamespaces.commonScheduleNs), pruner.targetNamespace, pruner.tknImage)
 		if err := pruner.checkAndCreate(ctx, "", tC.Spec.Pruner.Schedule, jobs, pruneCronLabel, pruningNamespaces.configChanged, tC); err != nil {
