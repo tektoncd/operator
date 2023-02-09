@@ -1421,8 +1421,8 @@ github.com/opencontainers/runtime-spec v1.0.3-0.20200929063507-e6143ca7d51d/go.m
 github.com/opencontainers/runtime-tools v0.0.0-20181011054405-1d69bd0f9c39/go.mod h1:r3f7wjNzSs2extwzU3Y+6pKfobzPh+kKFJ3ofN+3nfs=
 github.com/opencontainers/selinux v1.6.0/go.mod h1:VVGKuOLlE7v4PJyT6h7mNWvq1rzqiriPsEqVhc+svHE=
 github.com/opencontainers/selinux v1.8.0/go.mod h1:RScLhm78qiWa2gbVCcGkC7tCGdgk3ogry1nUQF8Evvo=
-github.com/openshift-pipelines/pipelines-as-code v0.15.2 h1:rlLTLpdazW2k+eLkgZFc1lXjyBXiq3ovx69WGUf0c0Y=
-github.com/openshift-pipelines/pipelines-as-code v0.15.2/go.mod h1:o1JU/WQbz6w+Ng7EQu1xko7Hkpycn+b2S4K40zin7lg=
+github.com/openshift-pipelines/pipelines-as-code v0.15.3 h1:noTCnfVhNfWqjRVkrqq8dwk1ShaUkBM0Fsis7bGeFpM=
+github.com/openshift-pipelines/pipelines-as-code v0.15.3/go.mod h1:o1JU/WQbz6w+Ng7EQu1xko7Hkpycn+b2S4K40zin7lg=
 github.com/openshift/api v0.0.0-20210521075222-e273a339932a/go.mod h1:izBmoXbUu3z5kUa4FjZhvekTsyzIWiOoaIgJiZBBMQs=
 github.com/openshift/api v0.0.0-20210910062324-a41d3573a3ba h1:aimcu15biJzq4gp0LPsa4cOucfiILIgy/PimUO9ncpc=
 github.com/openshift/api v0.0.0-20210910062324-a41d3573a3ba/go.mod h1:izBmoXbUu3z5kUa4FjZhvekTsyzIWiOoaIgJiZBBMQs=
@@ -1700,12 +1700,12 @@ github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d/go.mod h1:RRCYJ
 github.com/tchap/go-patricia v2.2.6+incompatible/go.mod h1:bmLyhP68RS6kStMGxByiQ23RP/odRBOTVjwp2cDyi6I=
 github.com/tchap/go-patricia/v2 v2.3.1 h1:6rQp39lgIYZ+MHmdEq4xzuk1t7OdC35z/xm0BGhTkes=
 github.com/tchap/go-patricia/v2 v2.3.1/go.mod h1:VZRHKAb53DLaG+nA9EaYYiaEx6YztwDlLElMsnSHD4k=
-github.com/tektoncd/pipeline v0.41.0 h1:FksQuX83ZRasZygQPNmaR6hKBh6gy822XxRuoKBqPUE=
-github.com/tektoncd/pipeline v0.41.0/go.mod h1:YY4+PGfdsd6Qxn3PZXmCpKeS3heK8pIIcnUt37vRJ2Q=
+github.com/tektoncd/pipeline v0.41.1 h1:WpOzt0NiU/hl3q/PU6genLsS6KCmA6dFgcMHNp3cnD8=
+github.com/tektoncd/pipeline v0.41.1/go.mod h1:YY4+PGfdsd6Qxn3PZXmCpKeS3heK8pIIcnUt37vRJ2Q=
 github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7 h1:YsjQ83UBIIq4k/s2PzQ6pqe4tpPtm1hia3oyNBDDrDU=
 github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7/go.mod h1:uJBaI0AL/kjPThiMYZcWRujEz7D401v643d6s/21GAg=
-github.com/tektoncd/triggers v0.22.0 h1:xe9l+ebuUMuP4wzBLjvmUGUPZCz0qND4osFFLSVCAW0=
-github.com/tektoncd/triggers v0.22.0/go.mod h1:lYxFl8cKbr+DaHMQa47U4Y7uyhTAMsRAT0uOOY8xiGE=
+github.com/tektoncd/triggers v0.22.1 h1:D00BoTf5pS2kFC5RSly010b5qMuQbGhyK7rT/WZc1m0=
+github.com/tektoncd/triggers v0.22.1/go.mod h1:lYxFl8cKbr+DaHMQa47U4Y7uyhTAMsRAT0uOOY8xiGE=
 github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 h1:iGnD/q9160NWqKZZ5vY4p0dMiYMRknzctfSkqA4nBDw=
 github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613/go.mod h1:g6AnIpDSYMcphz193otpSIzN+11Rs+AAIIC6rm1enug=
 github.com/thales-e-security/pool v0.0.2 h1:RAPs4q2EbWsTit6tpzuvTFlgFRJ3S8Evf5gtvVDbmPg=
