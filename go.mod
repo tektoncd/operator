@@ -14,14 +14,14 @@ require (
 	github.com/manifestival/controller-runtime-client v0.4.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
-	github.com/openshift-pipelines/pipelines-as-code v0.15.2
+	github.com/openshift-pipelines/pipelines-as-code v0.15.3
 	github.com/openshift/api v0.0.0-20210910062324-a41d3573a3ba
 	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
 	github.com/sigstore/cosign v1.13.1
 	github.com/spf13/viper v1.14.0
-	github.com/tektoncd/pipeline v0.41.0
+	github.com/tektoncd/pipeline v0.41.1
 	github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7
-	github.com/tektoncd/triggers v0.22.0
+	github.com/tektoncd/triggers v0.22.1
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.23.0
