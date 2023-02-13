@@ -308,7 +308,6 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	targetNs := comp.GetSpec().GetTargetNamespace()
 	extra := []mf.Transformer{
 		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdPipeline),
-		common.ApplyProxySettings,
 		common.ReplaceNamespaceInDeploymentArgs(targetNs),
 		common.ReplaceNamespaceInDeploymentEnv(targetNs),
 		common.AddDeploymentRestrictedPSA(),
