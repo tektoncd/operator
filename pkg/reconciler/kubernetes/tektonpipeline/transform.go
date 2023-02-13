@@ -51,7 +51,6 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfigMapValues(ConfigDefaults, pipeline.Spec.OptionalPipelineProperties),
 			common.AddConfigMapValues(ConfigMetrics, pipeline.Spec.PipelineMetricsProperties),
 			common.AddConfigMapValues(ResolverFeatureFlag, pipeline.Spec.Resolvers),
-			common.ApplyProxySettings,
 			common.DeploymentImages(images),
 			common.InjectLabelOnNamespace(proxyLabel),
 			common.AddConfiguration(pipeline.Spec.Config),

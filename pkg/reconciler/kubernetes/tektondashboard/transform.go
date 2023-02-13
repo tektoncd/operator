@@ -35,7 +35,6 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		trns := extension.Transformers(dashboard)
 		extra := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdDashboard),
-			common.ApplyProxySettings,
 			common.AddConfiguration(dashboard.Spec.Config),
 			common.AddDeploymentRestrictedPSA(),
 		}

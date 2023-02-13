@@ -42,7 +42,6 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdTriggers),
 			common.AddConfigMapValues(ConfigDefaults, trigger.Spec.OptionalTriggersProperties),
 			common.AddConfigMapValues(FeatureFlag, trigger.Spec.TriggersProperties),
-			common.ApplyProxySettings,
 			common.DeploymentImages(triggerImages),
 			common.AddConfiguration(trigger.Spec.Config),
 		}

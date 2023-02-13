@@ -23,6 +23,7 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
@@ -262,28 +263,52 @@ func (i *installer) updateDeployment(existing *unstructured.Unstructured, existi
 }
 
 func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error {
-	i.logger.Infof("fetching resource %s: %s/%s", expected.GetKind(), expected.GetNamespace(), expected.GetName())
+	i.logger.Debugw("verifying a deployment",
+		"name", expected.GetName(),
+		"namespace", expected.GetNamespace(),
+	)
+
+	// update proxy settings
+	err := common.ApplyProxySettings(expected)
+	if err != nil {
+		return err
+	}
 
 	// check if deployment already exist
-	existing, err := i.mfClient.Get(expected)
+	actual, err := i.mfClient.Get(expected)
 	if err != nil {
 		// If deployment doesn't exist, then create new
 		if apierrs.IsNotFound(err) {
-			i.logger.Infof("resource not found, creating %s: %s/%s", expected.GetKind(), expected.GetNamespace(), expected.GetName())
-			if err := i.createDeployment(expected); err == nil {
-				return err
-			}
-			return nil
+			i.logger.Debugw("deployment not found, creating",
+				"name", expected.GetName(),
+				"namespace", expected.GetNamespace(),
+			)
+			return i.createDeployment(expected)
 		}
 		return err
 	}
 
-	i.logger.Infof("found resource %s: %s/%s, checking for update!", existing.GetKind(), existing.GetNamespace(), existing.GetName())
+	// if already exist then check if there is a change in spec
+	// compare expected deployment spec hash with the one saved in annotation
+	// if annotation doesn't exist then update the deployment
 
-	// if already exist then check if spec is changed
-	existingDeployment := &appsv1.Deployment{}
-	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(existing.Object, existingDeployment); err != nil {
+	i.logger.Debugf("existing deployment found, checking for changes",
+		"name", actual.GetName(),
+		"namespace", actual.GetNamespace(),
+	)
+
+	doUpdateDeployment := false
+
+	// get stored hash value from annotation
+	existingAnnotations, _, err := unstructured.NestedStringMap(actual.Object, "metadata", "annotations")
+	if err != nil {
 		return err
+	}
+	existingHashValue, hashFound := existingAnnotations[v1alpha1.LastAppliedHashKey]
+
+	// if hash doesn't exist then update the deployment
+	if !hashFound {
+		doUpdateDeployment = true
 	}
 
 	expectedDeployment := &appsv1.Deployment{}
@@ -291,43 +316,27 @@ func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error 
 		return err
 	}
 
-	// compare existing deployment spec hash with the one saved in annotation
-	// if annotation doesn't exist then update the deployment
-
-	existingDepSpecHash, err := computeDeploymentHash(*existingDeployment)
-	if err != nil {
-		return fmt.Errorf("failed to compute hash of existing deployment: %v", err)
-	}
-
-	hashFromAnnotation, hashExist := existingDeployment.Annotations[v1alpha1.LastAppliedHashKey]
-
-	// if hash doesn't exist then update the deployment with hash
-	if !hashExist {
-		return i.updateDeployment(existing, existingDeployment, expectedDeployment)
-	}
-
-	// if both hashes are same, that means deployment on cluster is the same as when it
-	// was created (there may be change in replica which we allow)
-	if existingDepSpecHash == hashFromAnnotation {
-
-		// there might be a case where deployment in installerSet spec might have changed
-		// compare the expected deployment spec hash with the hash in annotation
-		expectedDepSpecHash, err := computeDeploymentHash(*expectedDeployment)
+	if !doUpdateDeployment {
+		// compute hash value for the expected deployment
+		expectedHashValue, err := computeDeploymentHash(*expectedDeployment)
 		if err != nil {
-			return fmt.Errorf("failed to compute hash of expected deployment: %v", err)
+			return fmt.Errorf("failed to compute hash value of expected deployment, name:%s, error: %v", expected.GetName(), err)
 		}
 
-		if expectedDepSpecHash != hashFromAnnotation {
-			return i.updateDeployment(existing, existingDeployment, expectedDeployment)
-		}
-
-		return nil
+		// if both hashes are same, that means deployment on cluster is the same as when it was created
+		doUpdateDeployment = existingHashValue != expectedHashValue
 	}
 
-	// hash is changed so revert back to original deployment
-	// keeping the replicas change if exist
+	if doUpdateDeployment {
+		// change detected in hash value, update the deployment with changes
+		existingDeployment := &appsv1.Deployment{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(expected.Object, expectedDeployment); err != nil {
+			return err
+		}
+		return i.updateDeployment(actual, existingDeployment, expectedDeployment)
+	}
 
-	return i.updateDeployment(existing, existingDeployment, expectedDeployment)
+	return nil
 }
 
 func (i *installer) IsWebhookReady() error {
