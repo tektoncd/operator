@@ -62,13 +62,6 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_ARG__IMAGEDIGEST_EXPORTER_IMAGE
-- image: registry.redhat.io/openshift-pipelines/pipelines-kubeconfigwriter-rhel8@
-  replaceLocations:
-    envTargets:
-    - deploymentName: openshift-pipelines-operator
-      containerName: openshift-pipelines-operator-lifecycle
-      envKeys:
-      - IMAGE_PIPELINES_ARG__KUBECONFIG_WRITER_IMAGE
 - image: registry.redhat.io/openshift-pipelines/pipelines-workingdirinit-rhel8@
   replaceLocations:
     envTargets:
