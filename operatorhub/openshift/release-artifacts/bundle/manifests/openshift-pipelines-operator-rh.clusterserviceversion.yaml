@@ -886,8 +886,6 @@ spec:
                   value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@
                 - name: IMAGE_PIPELINES_ARG__IMAGEDIGEST_EXPORTER_IMAGE
                   value: registry.redhat.io/openshift-pipelines/pipelines-imagedigestexporter-rhel8@
-                - name: IMAGE_PIPELINES_ARG__KUBECONFIG_WRITER_IMAGE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-kubeconfigwriter-rhel8@
                 - name: IMAGE_PIPELINES_ARG__WORKINGDIRINIT_IMAGE
                   value: registry.redhat.io/openshift-pipelines/pipelines-workingdirinit-rhel8@
                 - name: IMAGE_PIPELINES_ARG__PR_IMAGE
@@ -1013,8 +1011,6 @@ spec:
     name: IMAGE_ADDONS_PARAM_GITINITIMAGE
   - image: registry.redhat.io/openshift-pipelines/pipelines-imagedigestexporter-rhel8@
     name: IMAGE_PIPELINES_ARG__IMAGEDIGEST_EXPORTER_IMAGE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-kubeconfigwriter-rhel8@
-    name: IMAGE_PIPELINES_ARG__KUBECONFIG_WRITER_IMAGE
   - image: registry.redhat.io/openshift-pipelines/pipelines-workingdirinit-rhel8@
     name: IMAGE_PIPELINES_ARG__WORKINGDIRINIT_IMAGE
   - image: registry.redhat.io/openshift-pipelines/pipelines-pullrequest-init-rhel8@
