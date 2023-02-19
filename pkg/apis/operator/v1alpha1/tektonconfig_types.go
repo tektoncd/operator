@@ -156,6 +156,49 @@ type Config struct {
 	// PriorityClassName holds the priority class to be set to pod template
 	// +optional
 	PriorityClassName string `json:"priorityClassName,omitempty"`
+	// HighAvailability allows specification of HA control plane.
+	// +optional
+	HighAvailability HighAvailability `json:"highAvailability,omitempty"`
+	// DeploymentOverride overrides Deployment configurations such as resource.
+	// +optional
+	DeploymentOverride []DeploymentOverride `json:"deployments,omitempty"`
+}
+
+// HighAvailability specifies options for deploying Tekton Pipeline Deployment
+type HighAvailability struct {
+	// Replicas is the number of replicas that HA parts of the control plane
+	// will be scaled to.
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// DeploymentOverride specifies resource override for deployment
+type DeploymentOverride struct {
+	// Name is the name of the deployment to override.
+	Name string `json:"name"`
+	// Resources overrides resources for the containers.
+	// +optional
+	Containers []ContainerOverride `json:"containers,omitempty"`
+	// Replicas is the number of replicas that this deployment will scaled to.
+	// It has a higher priority than HighAvailability.Replicas
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// ContainerOverride enables the user to override any container's
+// configuration specified in the embedded manifest
+type ContainerOverride struct {
+	// Name represent container name
+	Name string `json:"name"`
+	// Resource represent the desired ResourceRequirements
+	// +optional
+	Resource corev1.ResourceRequirements `json:"resource,omitempty"`
+	// Env represent the env that will replace the existing one or append if not existed
+	// +optional
+	Env []corev1.EnvVar `json:"env,omitempty"`
+	// Args represent the args will append to the existing args
+	// +optional
+	Args []string `json:"args,omitempty"`
 }
 
 type Platforms struct {

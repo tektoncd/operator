@@ -37,6 +37,8 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdDashboard),
 			common.ApplyProxySettings,
 			common.AddConfiguration(dashboard.Spec.Config),
+			common.HighAvailabilityTransform(dashboard.Spec.Config.HighAvailability),
+			common.DeploymentOverrideTransform(dashboard.Spec.Config.DeploymentOverride),
 			common.AddDeploymentRestrictedPSA(),
 		}
 		trns = append(trns, extra...)

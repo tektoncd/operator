@@ -82,6 +82,8 @@ func filterAndTransformOCPResources() client.FilterAndTransform {
 		tfs := []mf.Transformer{
 			common.DeploymentImages(images),
 			common.AddConfiguration(addon.Spec.Config),
+			common.HighAvailabilityTransform(addon.Spec.Config.HighAvailability),
+			common.DeploymentOverrideTransform(addon.Spec.Config.DeploymentOverride),
 		}
 		if err := transformers(ctx, manifest, addon, tfs...); err != nil {
 			return nil, err

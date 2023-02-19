@@ -29,6 +29,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/apps/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -512,6 +514,109 @@ func TestAddConfiguration(t *testing.T) {
 	assert.Equal(t, d.Spec.Template.Spec.NodeSelector["foo"], config.NodeSelector["foo"])
 	assert.Equal(t, d.Spec.Template.Spec.Tolerations[0].Key, config.Tolerations[0].Key)
 	assert.Equal(t, d.Spec.Template.Spec.PriorityClassName, config.PriorityClassName)
+}
+
+func TestHighAvailabilityDeploymentResourceTransform(t *testing.T) {
+
+	testData := path.Join("testdata", "test-add-configurations.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	replicasNum := int32(3)
+	containerOverride := []v1alpha1.ContainerOverride{
+		{
+			Name: "controller-deployment",
+			Env: []corev1.EnvVar{
+				{
+					Name:  "KUBERNETES_MIN_VERSION",
+					Value: "v1.23.0",
+				},
+			},
+			Args: []string{
+				"-kube-api-qps", "50",
+			},
+			Resource: corev1.ResourceRequirements{
+				Requests: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("1"),
+					v1.ResourceMemory: resource.MustParse("2"),
+				},
+				Limits: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("2"),
+					v1.ResourceMemory: resource.MustParse("4"),
+				},
+			},
+		},
+	}
+
+	config := v1alpha1.Config{
+		HighAvailability: v1alpha1.HighAvailability{
+			Replicas: &replicasNum,
+		},
+		DeploymentOverride: []v1alpha1.DeploymentOverride{
+			{
+				Name:       "controller",
+				Containers: containerOverride,
+			},
+		},
+	}
+
+	manifest, err = manifest.Transform(HighAvailabilityTransform(config.HighAvailability))
+	assertNoEror(t, err)
+	manifest, err = manifest.Transform(DeploymentOverrideTransform(config.DeploymentOverride))
+	assertNoEror(t, err)
+
+	d := &v1beta1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, d)
+	assertNoEror(t, err)
+
+	assert.Equal(t, *d.Spec.Replicas, int32(replicasNum))
+	assert.Equal(t, d.Spec.Template.Spec.Containers[0].Resources.Requests[corev1.ResourceCPU], resource.MustParse("1"))
+	assert.Equal(t, d.Spec.Template.Spec.Containers[0].Resources.Limits[corev1.ResourceCPU], resource.MustParse("2"))
+	assert.Equal(t, d.Spec.Template.Spec.Containers[0].Resources.Requests[corev1.ResourceMemory], resource.MustParse("2"))
+	assert.Equal(t, d.Spec.Template.Spec.Containers[0].Resources.Limits[corev1.ResourceMemory], resource.MustParse("4"))
+
+	assert.Equal(t, len(d.Spec.Template.Spec.Containers[0].Args), 5)
+	assert.Equal(t, d.Spec.Template.Spec.Containers[0].Args[3], "-kube-api-qps")
+	assert.Equal(t, d.Spec.Template.Spec.Containers[0].Args[4], "50")
+
+	assert.Equal(t, d.Spec.Template.Spec.Containers[0].Env[0], corev1.EnvVar{
+		Name:  "KUBERNETES_MIN_VERSION",
+		Value: "v1.23.0",
+	})
+}
+
+func TestDeploymentReplicasOverrideTransform(t *testing.T) {
+
+	testData := path.Join("testdata", "test-add-configurations.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	HAreplicas := int32(3)
+	overReplicas := int32(2)
+
+	config := v1alpha1.Config{
+		HighAvailability: v1alpha1.HighAvailability{
+			Replicas: &HAreplicas,
+		},
+		DeploymentOverride: []v1alpha1.DeploymentOverride{
+			{
+				Name:     "controller",
+				Replicas: &overReplicas,
+			},
+		},
+	}
+
+	manifest, err = manifest.Transform(HighAvailabilityTransform(config.HighAvailability))
+	assertNoEror(t, err)
+	manifest, err = manifest.Transform(DeploymentOverrideTransform(config.DeploymentOverride))
+	assertNoEror(t, err)
+
+	d := &v1beta1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, d)
+	assertNoEror(t, err)
+
+	assert.Equal(t, *d.Spec.Replicas, overReplicas)
+
 }
 
 func TestAddPSA(t *testing.T) {

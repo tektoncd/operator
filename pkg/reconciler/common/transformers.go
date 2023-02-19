@@ -29,6 +29,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/logging"
@@ -596,6 +597,150 @@ func AddConfiguration(config v1alpha1.Config) mf.Transformer {
 
 		return nil
 	}
+}
+
+// HighAvailabilityTransform mutates
+func HighAvailabilityTransform(ha v1alpha1.HighAvailability) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if ha.Replicas == nil {
+			return nil
+		}
+		replicas := int64(*ha.Replicas)
+
+		// Transform deployments that support HA.
+		if u.GetKind() == "Deployment" {
+			if err := unstructured.SetNestedField(u.Object, replicas, "spec", "replicas"); err != nil {
+				return err
+			}
+		}
+
+		if u.GetKind() == "HorizontalPodAutoscaler" {
+			min, _, err := unstructured.NestedInt64(u.Object, "spec", "minReplicas")
+			if err != nil {
+				return err
+			}
+			// Do nothing if the HPA ships with even more replicas out of the box.
+			if min >= replicas {
+				return nil
+			}
+
+			if err := unstructured.SetNestedField(u.Object, replicas, "spec", "minReplicas"); err != nil {
+				return err
+			}
+
+			max, found, err := unstructured.NestedInt64(u.Object, "spec", "maxReplicas")
+			if err != nil {
+				return err
+			}
+
+			// Do nothing if maxReplicas is not defined.
+			if !found {
+				return nil
+			}
+
+			// Increase maxReplicas to the amount that we increased,
+			// because we need to avoid minReplicas > maxReplicas happenning.
+			if err := unstructured.SetNestedField(u.Object, max+(replicas-min), "spec", "maxReplicas"); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+// DeploymentOverrideTransform configures the resource requests for
+// all containers within all deployments in the manifest
+func DeploymentOverrideTransform(deploymentOverRides []v1alpha1.DeploymentOverride) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" {
+			return nil
+		}
+
+		var deploymentOverRide v1alpha1.DeploymentOverride
+		for _, deployment := range deploymentOverRides {
+			if deployment.Name == u.GetName() {
+				deploymentOverRide = deployment
+				break
+			}
+		}
+		if deploymentOverRide.Name == "" {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d); err != nil {
+			return err
+		}
+		containers := d.Spec.Template.Spec.Containers
+		for i := range containers {
+			if override := find(deploymentOverRide.Containers, containers[i].Name); override != nil {
+				merge(&override.Resource.Limits, &containers[i].Resources.Limits)
+				merge(&override.Resource.Requests, &containers[i].Resources.Requests)
+
+				if len(override.Args) > 0 {
+					containers[i].Args = append(containers[i].Args, override.Args...)
+				}
+
+				if len(override.Env) > 0 {
+					containers[i].Env = upsertEnv(containers[i].Env, override.Env)
+				}
+			}
+		}
+		if deploymentOverRide.Replicas != nil {
+			d.Spec.Replicas = deploymentOverRide.Replicas
+		}
+
+		// Avoid superfluous updates from converted zero defaults
+		d.SetCreationTimestamp(metav1.Time{})
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
+func merge(src, tgt *corev1.ResourceList) {
+	if src == nil || tgt == nil {
+		return
+	}
+	if len(*tgt) > 0 {
+		for k, v := range *src {
+			(*tgt)[k] = v
+		}
+	} else {
+		*tgt = *src
+	}
+}
+
+func find(resources []v1alpha1.ContainerOverride, name string) *v1alpha1.ContainerOverride {
+	for _, override := range resources {
+		if override.Name == name {
+			return &override
+		}
+	}
+	return nil
+}
+
+func upsertEnv(exists, overrides []corev1.EnvVar) []corev1.EnvVar {
+	for _, override := range overrides {
+		var found bool
+		for i, exist := range exists {
+			if override.Name == exist.Name {
+				exists[i] = override
+				found = true
+				break
+			}
+		}
+		if !found {
+			exists = append(exists, override)
+		}
+	}
+	return exists
 }
 
 // AddDeploymentRestrictedPSA will add the default restricted spec on Deployment to remove errors/warning

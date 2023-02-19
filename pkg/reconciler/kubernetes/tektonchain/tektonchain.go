@@ -392,6 +392,8 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.ApplyProxySettings,
 		common.DeploymentImages(chainImages),
 		common.AddConfiguration(instance.Spec.Config),
+		common.HighAvailabilityTransform(instance.Spec.Config.HighAvailability),
+		common.DeploymentOverrideTransform(instance.Spec.Config.DeploymentOverride),
 		common.AddConfigMapValues(ChainsConfig, instance.Spec.Chain),
 		common.AddDeploymentRestrictedPSA(),
 	}

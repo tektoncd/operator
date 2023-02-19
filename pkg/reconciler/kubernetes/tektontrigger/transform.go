@@ -47,6 +47,8 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.ApplyProxySettings,
 			common.DeploymentImages(triggerImages),
 			common.AddConfiguration(trigger.Spec.Config),
+			common.HighAvailabilityTransform(trigger.Spec.Config.HighAvailability),
+			common.DeploymentOverrideTransform(trigger.Spec.Config.DeploymentOverride),
 		}
 		trns = append(trns, extra...)
 		if err := common.Transform(ctx, &filteredManifest, trigger, trns...); err != nil {

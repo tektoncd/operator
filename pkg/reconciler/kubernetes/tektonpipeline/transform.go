@@ -57,6 +57,8 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.DeploymentImages(images),
 			common.InjectLabelOnNamespace(proxyLabel),
 			common.AddConfiguration(pipeline.Spec.Config),
+			common.HighAvailabilityTransform(pipeline.Spec.Config.HighAvailability),
+			common.DeploymentOverrideTransform(pipeline.Spec.Config.DeploymentOverride),
 			common.CopyConfigMap(bundleResolverConfig, pipeline.Spec.BundlesResolverConfig),
 			common.CopyConfigMap(hubResolverConfig, pipeline.Spec.HubResolverConfig),
 			common.CopyConfigMap(clusterResolverConfig, pipeline.Spec.ClusterResolverConfig),

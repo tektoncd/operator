@@ -43,6 +43,8 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.InjectOperandNameLabelOverwriteExisting(openshift.OperandOpenShiftPipelineAsCode),
 			common.DeploymentImages(images),
 			common.AddConfiguration(pac.Spec.Config),
+			common.HighAvailabilityTransform(pac.Spec.Config.HighAvailability),
+			common.DeploymentOverrideTransform(pac.Spec.Config.DeploymentOverride),
 			common.ApplyProxySettings,
 			occommon.ApplyCABundles,
 			common.CopyConfigMap(pipelinesAsCodeCM, pac.Spec.Settings),

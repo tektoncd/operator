@@ -33,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"knative.dev/pkg/logging"
-	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -191,12 +190,6 @@ func (i *installer) EnsureDeploymentResources() error {
 }
 
 func computeDeploymentHash(d appsv1.Deployment) (string, error) {
-	// set replicas to a constant value and then calculate hash so
-	// that later if user updates replicas, we can exclude that change.
-	// setting the replicas to same const and checking the hash
-	// so that we can allow only replica change revert any other change
-	// done to the deployment spec
-	d.Spec.Replicas = ptr.Int32(replicasForHash)
 
 	return hash.Compute(d.Spec)
 }
@@ -231,11 +224,7 @@ func (i *installer) createDeployment(expected *unstructured.Unstructured) error 
 func (i *installer) updateDeployment(existing *unstructured.Unstructured, existingDeployment, expectedDeployment *appsv1.Deployment) error {
 	i.logger.Infof("updating resource %s: %s/%s", existing.GetKind(), existing.GetNamespace(), existing.GetName())
 
-	// save on cluster replicas in a var and assign it back to deployment
-	onClusterReplicas := existingDeployment.Spec.Replicas
-
 	existingDeployment.Spec = expectedDeployment.Spec
-	existingDeployment.Spec.Replicas = onClusterReplicas
 
 	// compute new hash of spec and add as annotation
 	newHash, err := computeDeploymentHash(*existingDeployment)
