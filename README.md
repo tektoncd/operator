@@ -24,7 +24,7 @@ on any Kubernetes Cluster.
 # Read the docs
 
 - [Concepts and Guides](docs/README.md)
-- [Development Guide](docs/README.md)
+- [Development Guide](DEVELOPMENT.md)
 - [Testing Guide](test/README.md)
 - [How to make a TektonCD/Operator Release](tekton/README.md)
 - [OperatorHub Bundles](operatorhub/README.md)
