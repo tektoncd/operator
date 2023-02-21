@@ -35,7 +35,7 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               {{- if .Values.operator.operatorName }}
-              value: {{- .Values.operator.operatorName }}
+              value: {{ .Values.operator.operatorName }}
               {{- else }}
               {{- if .Values.openshift.enabled }}
               value: redhat-openshift-pipelines-operator
@@ -87,7 +87,7 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               {{- if .Values.operator.operatorName }}
-              value: {{- .Values.operator.operatorName }}
+              value: {{ .Values.operator.operatorName }}
               {{- else }}
               {{- if .Values.openshift.enabled }}
               value: redhat-openshift-pipelines-operator
