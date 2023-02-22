@@ -36,7 +36,6 @@ def buildConfig():
     config["channels"] = args.channels
     config["default-channel"] = args.default_channel
     config["olm-skip-range"] = args.olm_skip_range
-    config["max-openshift-version"] = args.max_openshift_version
     config["verbose"] = args.verbose
     debug(config, yaml.dump(config))
     return config
@@ -79,7 +78,6 @@ def setParser():
     parser.add_argument('--channels', help='channels',required=True)
     parser.add_argument('--default-channel', help='default channel', required=True)
     parser.add_argument('--olm-skip-range', help='value for olm.skipRange annotation in CSV file in the bundle', required=False)
-    parser.add_argument('--max-openshift-version', help='value for olm.maxOpenShiftVersion property in the CSV', required=False)
     parser.add_argument('--addn-annotations',
                         help='additional annotations to be added to CSV file',
                         metavar='<key1>=<val1>,<key2><val2>,...<keyn>=<valn>')
@@ -231,9 +229,6 @@ def newCSVmods(config):
                     csv['spec']['replaces'] = config["previous-release-version"]
                 if config["olm-skip-range"]:
                     csv['metadata']['annotations']['olm.skipRange'] = config["olm-skip-range"]
-                if config["max-openshift-version"]:
-                    csv['metadata']['annotations']['olm.properties'] = \
-                        '[{"type": "olm.maxOpenShiftVersion", "value": "%s"}]' % config["max-openshift-version"]
                 if "addn-annotations" in config.keys():
                     csv['metadata']['annotations'].update(config["addn-annotations"])
                 if "addn-labels" in config.keys():
