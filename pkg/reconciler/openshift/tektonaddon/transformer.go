@@ -36,7 +36,7 @@ func replaceKind(fromKind, toKind string) mf.Transformer {
 	}
 }
 
-//injectLabel adds label key:value to a resource
+// injectLabel adds label key:value to a resource
 // overwritePolicy (Retain/Overwrite) decides whehther to overwrite an already existing label
 // []kinds specify the Kinds on which the label should be applied
 // if len(kinds) = 0, label will be apllied to all/any resources irrespective of its Kind
