@@ -22,6 +22,7 @@ import (
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -313,7 +314,28 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.ReplaceNamespaceInDeploymentEnv(targetNs),
 		common.AddDeploymentRestrictedPSA(),
 		common.AddStatefulSetRestrictedPSA(),
+		applyRunAsUser,
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
+}
+
+// postgres container image comes with root user, adding restriction "runAsNonRoot=true" and without "runAsUser" value,
+// leads an error: https://github.com/tektoncd/operator/issues/1148
+// find out the postgres StatefulSet and update "runAsUser=999"
+func applyRunAsUser(u *unstructured.Unstructured) error {
+	if u.GetKind() != "StatefulSet" {
+		// Don't do anything on something else than StatefulSet
+		return nil
+	}
+
+	// labels to filter postgres StatefulSet "app.kubernetes.io/name=tekton-results-postgres"
+	labels := u.GetLabels()
+	if labels == nil || labels["app.kubernetes.io/name"] != "tekton-results-postgres" {
+		return nil
+	}
+
+	// uid=999(postgres)
+	runAsUser := int64(999)
+	return unstructured.SetNestedField(u.Object, runAsUser, "spec", "template", "spec", "securityContext", "runAsUser")
 }
