@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"path/filepath"
 	"reflect"
@@ -1224,7 +1224,7 @@ func getConfigDataFromHubURL(th *v1alpha1.TektonHub) (*Data, error) {
 			return nil, err
 		}
 
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err
 		}
