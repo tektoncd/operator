@@ -1147,6 +1147,10 @@ func updateApiConfigMap(th *v1alpha1.TektonHub, configMapName string) mf.Transfo
 			}
 		}
 
+		if th.Spec.Api.CatalogRefreshInterval != "" {
+			cm.Data["CATALOG_REFRESH_INTERVAL"] = th.Spec.Api.CatalogRefreshInterval
+		}
+
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
 		if err != nil {
 			return err
