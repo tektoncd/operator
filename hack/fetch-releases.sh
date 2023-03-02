@@ -149,7 +149,7 @@ release_yaml_pac() {
          echo ""
      fi
 
-    runtime=( go java nodejs python )
+    runtime=( go java nodejs python generic )
     for run in "${runtime[@]}"
     do
       echo "fetching PipelineRun template for runtime: $run"
