@@ -73,6 +73,7 @@ ifeq ($(TARGET), openshift)
 	rm -rf ./cmd/openshift/operator/kodata/tekton-addon/pipelines-as-code-templates/java.yaml
 	rm -rf ./cmd/openshift/operator/kodata/tekton-addon/pipelines-as-code-templates/nodejs.yaml
 	rm -rf ./cmd/openshift/operator/kodata/tekton-addon/pipelines-as-code-templates/python.yaml
+	rm -rf ./cmd/openshift/operator/kodata/tekton-addon/pipelines-as-code-templates/generic.yaml
 else
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton*
 endif
