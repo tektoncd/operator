@@ -2,7 +2,9 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
 metadata:
   annotations:
-    alm-examples: '[]'
+    # NOTE: Please do not manually modify the alm-examples annotation, you should modify the alm-examples/*yaml file
+    alm-examples: |-
+      '[]'
     capabilities: Basic Install
     categories: Developer Tools, Integration & Delivery
     certified: "false"

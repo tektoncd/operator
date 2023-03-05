@@ -186,3 +186,30 @@ lint-yaml: ${YAML_FILES} ## runs yamllint on all yaml files
 .PHONY: dev-setup
 dev-setup: # setup kind with local registry for local development
 	@cd ./hack/dev/kind/;./install.sh
+
+# go-get-tool will 'go get' any package $2@$3 and install it to $1.
+define go-get-tool
+@set -e; \
+export CGO_ENABLED=1; \
+if [ -f $(1) ]; then \
+  [ -z $(3) ] && exit 0; \
+  install_version=$$(go version -m "$(1)" | grep -E '[[:space:]]+mod[[:space:]]+' | awk '{print $$3}') ; \
+  [ "$${install_version}" == "$(3)" ] && exit 0; \
+  echo ">> $(1) $(2) $${install_version}==$(3)"; \
+fi; \
+module=$(2); \
+if ! [ -z $(3) ]; then module=$(2)@$(3); fi; \
+echo "Downloading $${module}" ;\
+GOBIN=$(shell pwd)/$(BIN) go install $${module} ;
+endef
+
+YQ = $(shell pwd)/$(BIN)/yq
+.PHONY: yq
+yq:  ## Download yq locally if necessary.
+	$(call go-get-tool,$(YQ),github.com/mikefarah/yq/v4,v4.27.3)
+
+.PHONY: update-alm-examples
+update-alm-examples: yq
+	ALM_EXAMPLES_DATA=$$(find alm-examples -type f -name '*.yaml' -print | sort -n | xargs -- $(YQ) ea '. as $$item ireduce ([]; . + $$item )' -oj) && \
+    ALM_EXAMPLES_DATA="$${ALM_EXAMPLES_DATA}" $(YQ) '.metadata.annotations.alm-examples = strenv(ALM_EXAMPLES_DATA)' -i operatorhub/kubernetes/manifests/bases/tektoncd-operator.clusterserviceversion.template.yaml
+	git status && git diff
