@@ -20,13 +20,19 @@ import (
 	"context"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
+var _ resourcesemantics.VerbLimited = (*ClusterTriggerBinding)(nil)
+
+// SupportedVerbs returns the operations that validation should be called for
+func (ctb *ClusterTriggerBinding) SupportedVerbs() []admissionregistrationv1.OperationType {
+	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
+}
+
 func (ctb *ClusterTriggerBinding) Validate(ctx context.Context) *apis.FieldError {
-	if apis.IsInDelete(ctx) {
-		return nil
-	}
 	if err := validate.ObjectMetadata(ctb.GetObjectMeta()); err != nil {
 		return err.ViaField("metadata")
 	}

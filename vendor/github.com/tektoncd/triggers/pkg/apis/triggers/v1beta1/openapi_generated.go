@@ -46,6 +46,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.EventListenerTriggerSelector": schema_pkg_apis_triggers_v1beta1_EventListenerTriggerSelector(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.GitHubInterceptor":            schema_pkg_apis_triggers_v1beta1_GitHubInterceptor(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.GitLabInterceptor":            schema_pkg_apis_triggers_v1beta1_GitLabInterceptor(ref),
+		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.GithubAddChangedFiles":        schema_pkg_apis_triggers_v1beta1_GithubAddChangedFiles(ref),
+		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.GithubOwners":                 schema_pkg_apis_triggers_v1beta1_GithubOwners(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.InterceptorParams":            schema_pkg_apis_triggers_v1beta1_InterceptorParams(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.InterceptorRef":               schema_pkg_apis_triggers_v1beta1_InterceptorRef(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.InterceptorRequest":           schema_pkg_apis_triggers_v1beta1_InterceptorRequest(ref),
@@ -735,11 +737,23 @@ func schema_pkg_apis_triggers_v1beta1_GitHubInterceptor(ref common.ReferenceCall
 							},
 						},
 					},
+					"addChangedFiles": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.GithubAddChangedFiles"),
+						},
+					},
+					"githubOwners": {
+						SchemaProps: spec.SchemaProps{
+							Default: map[string]interface{}{},
+							Ref:     ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.GithubOwners"),
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.SecretRef"},
+			"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.GithubAddChangedFiles", "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.GithubOwners", "github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.SecretRef"},
 	}
 }
 
@@ -772,6 +786,64 @@ func schema_pkg_apis_triggers_v1beta1_GitLabInterceptor(ref common.ReferenceCall
 									},
 								},
 							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.SecretRef"},
+	}
+}
+
+func schema_pkg_apis_triggers_v1beta1_GithubAddChangedFiles(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"enabled": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"personalAccessToken": {
+						SchemaProps: spec.SchemaProps{
+							Ref: ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.SecretRef"),
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.SecretRef"},
+	}
+}
+
+func schema_pkg_apis_triggers_v1beta1_GithubOwners(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"enabled": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"personalAccessToken": {
+						SchemaProps: spec.SchemaProps{
+							Description: "This param/variable is required for private repos or when checkType is set to orgMembers or repoMembers or all",
+							Ref:         ref("github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.SecretRef"),
+						},
+					},
+					"checkType": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Set the value to one of the supported values (orgMembers, repoMembers, both, none)",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 				},
