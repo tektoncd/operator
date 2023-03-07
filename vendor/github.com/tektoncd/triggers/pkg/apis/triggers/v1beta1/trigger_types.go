@@ -166,7 +166,35 @@ type BitbucketInterceptor struct {
 type GitHubInterceptor struct {
 	SecretRef *SecretRef `json:"secretRef,omitempty"`
 	// +listType=atomic
-	EventTypes []string `json:"eventTypes,omitempty"`
+	EventTypes      []string              `json:"eventTypes,omitempty"`
+	AddChangedFiles GithubAddChangedFiles `json:"addChangedFiles,omitempty"`
+	GithubOwners    GithubOwners          `json:"githubOwners,omitempty"`
+}
+
+type CheckType string
+
+const (
+	// Set the checkType to orgMembers to allow org members to submit or comment on PR to proceed
+	OrgMembers CheckType = "orgMembers"
+	// Set the checkType to repoMembers to allow repo members to submit or comment on PR to proceed
+	RepoMembers CheckType = "repoMembers"
+	// Set the checkType to all if both repo members or org members can submit or comment on PR to proceed
+	All CheckType = "all"
+	// Set the checkType to none if neither of repo members or org members can not submit or comment on PR to proceed
+	None CheckType = "none"
+)
+
+type GithubOwners struct {
+	Enabled bool `json:"enabled,omitempty"`
+	// This param/variable is required for private repos or when checkType is set to orgMembers or repoMembers or all
+	PersonalAccessToken *SecretRef `json:"personalAccessToken,omitempty"`
+	// Set the value to one of the supported values (orgMembers, repoMembers, both, none)
+	CheckType CheckType `json:"checkType,omitempty"`
+}
+
+type GithubAddChangedFiles struct {
+	Enabled             bool       `json:"enabled,omitempty"`
+	PersonalAccessToken *SecretRef `json:"personalAccessToken,omitempty"`
 }
 
 // GitLabInterceptor provides a webhook to intercept and pre-process events
