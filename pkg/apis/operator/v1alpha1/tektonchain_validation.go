@@ -47,7 +47,7 @@ func (tc *TektonChain) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldError) {
 	if tcs.ArtifactsTaskRunFormat != "" {
-		if tcs.ArtifactsTaskRunFormat != "tekton" && tcs.ArtifactsTaskRunFormat != "in-toto" {
+		if tcs.ArtifactsTaskRunFormat != "in-toto" {
 			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsTaskRunFormat, path+".artifacts.taskrun.format"))
 		}
 	}

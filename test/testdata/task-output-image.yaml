@@ -19,47 +19,15 @@ metadata:
 spec:
   serviceAccountName: ""
   taskSpec:
-    resources:
-      inputs:
-      - name: sourcerepo
-        type: git
-      outputs:
-      - name: builtImage
-        type: image
-        targetPath: /workspace/sourcerepo
+    results:
+    - name: IMAGE_URL
+      type: string
+    - name: IMAGE_DIGEST
+      type: string
     steps:
-    - name: build-and-push
+    - name: create-image
       image: busybox
-      script: |
-        set -e
-        cat <<EOF > $(inputs.resources.sourcerepo.path)/index.json
-        {
-        "schemaVersion": 2,
-        "manifests": [
-            {
-            "mediaType": "application/vnd.oci.image.index.v1+json",
-            "size": 314,
-            "digest": "sha256:05f95b26ed10668b7183c1e2da98610e91372fa9f510046d4ce5812addad86b5"
-            }
-        ]
-        }
-    - name: echo
-      image: busybox
-      script: cat $(inputs.resources.sourcerepo.path)/index.json
-  resources:
-    inputs:
-    - name: sourcerepo
-      resourceSpec:
-        type: git
-        params:
-        - name: revision
-          value: v0.32.0
-        - name: url
-          value: https://github.com/GoogleContainerTools/skaffold
-    outputs:
-    - name: builtImage
-      resourceSpec:
-        type: image
-        params:
-        - name: url
-          value: gcr.io/foo/bar
+      script: |-
+        #!/usr/bin/env sh
+        echo 'gcr.io/foo/bar' | tee $(results.IMAGE_URL.path)
+        echo 'sha256:05f95b26ed10668b7183c1e2da98610e91372fa9f510046d4ce5812addad86b5' | tee $(results.IMAGE_DIGEST.path)

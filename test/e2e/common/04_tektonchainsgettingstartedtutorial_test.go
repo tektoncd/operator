@@ -96,7 +96,7 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 		}
 	})
 
-	// kubectl patch configmap chains-config -n tekton-chains -p='{"data":{"artifacts.oci.storage": "", "artifacts.taskrun.format":"tekton", "artifacts.taskrun.storage": "tekton"}}'
+	// kubectl patch configmap chains-config -n tekton-chains -p='{"data":{"artifacts.oci.storage": "", "artifacts.taskrun.format":"in-toto", "artifacts.taskrun.storage": "tekton"}}'
 	chainsConfigMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      chainsConfigMapName,
@@ -104,7 +104,7 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 		},
 		Data: map[string]string{
 			"artifacts.oci.storage":     "",
-			"artifacts.taskrun.format":  "tekton",
+			"artifacts.taskrun.format":  "in-toto",
 			"artifacts.taskrun.storage": "tekton",
 		},
 	}
@@ -203,26 +203,29 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 	// export TASKRUN_UID=$(tkn tr describe --last -o  jsonpath='{.metadata.uid}')
 	taskRunUID := taskRun.ObjectMeta.UID
 
-	// tkn tr describe --last -o jsonpath="{.metadata.annotations.chains\.tekton\.dev/signature-taskrun-$TASKRUN_UID}" > signature
-	signature, ok := taskRun.Annotations["chains.tekton.dev/signature-taskrun-"+string(taskRunUID)]
+	// tkn tr describe --last -o jsonpath="{.metadata.annotations.chains\.tekton\.dev/signature-taskrun-$TASKRUN_UID}" | base64 -d > signature
+	encodedSignature, ok := taskRun.Annotations["chains.tekton.dev/signature-taskrun-"+string(taskRunUID)]
 	if !ok {
 		t.Fatal(fmt.Errorf("no signature found on TaskRun %v", taskRunName))
+	}
+	signature, err := base64.StdEncoding.DecodeString(encodedSignature)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	// tkn tr describe --last -o jsonpath="{.metadata.annotations.chains\.tekton\.dev/payload-taskrun-$TASKRUN_UID}" | base64 -d > payload
 	encodedPayload, ok := taskRun.Annotations["chains.tekton.dev/payload-taskrun-"+string(taskRunUID)]
 	if !ok {
-		t.Fatal(fmt.Errorf("no signature found on TaskRun %v", taskRunName))
+		t.Fatal(fmt.Errorf("no payload found on TaskRun %v", taskRunName))
 	}
-
 	payload, err := base64.StdEncoding.DecodeString(encodedPayload)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// cosign verify-blob --key k8s://tekton-pipelines/signing-secrets --signature ./signature ./payload
-	t.Run("cosign verify-blob", func(t *testing.T) {
-		err := resources.CosignVerifyBlob(fmt.Sprintf("k8s://%v/%v", crNames.TargetNamespace, cosignSecret), signature, string(payload))
+	// cosign verify-blob-attestation --insecure-ignore-tlog --key k8s://tekton-chains/signing-secrets --signature signature --type slsaprovenance --check-claims=false /dev/null
+	t.Run("cosign very-blob-attestation", func(t *testing.T) {
+		err := resources.CosignVerifyBlobAttestation(fmt.Sprintf("k8s://%v/%v", crNames.TargetNamespace, cosignSecret), string(signature), string(payload))
 		if err != nil {
 			t.Fatal(err)
 		}
