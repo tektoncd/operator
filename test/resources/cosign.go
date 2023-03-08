@@ -21,9 +21,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sigstore/cosign/cmd/cosign/cli/options"
-	"github.com/sigstore/cosign/cmd/cosign/cli/verify"
-	"github.com/sigstore/cosign/pkg/cosign/kubernetes"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
+	"github.com/sigstore/cosign/v2/pkg/cosign/kubernetes"
 )
 
 func CosignGenerateKeyPair(namespace, secretName string) error {
@@ -35,8 +35,8 @@ func CosignGenerateKeyPair(namespace, secretName string) error {
 	return kubernetes.KeyPairSecret(context.TODO(), fmt.Sprintf("%v/%v", namespace, secretName), passFunc)
 }
 
-// cosign verify-blob --key k8s://tekton-chains/signing-secrets --signature ./signature ./payload
-func CosignVerifyBlob(key, signature, payload string) error {
+// cosign verify-blob-attestation --insecure-ignore-tlog --key k8s://tekton-chains/signing-secrets --signature sig --type slsaprovenance --check-claims=false /dev/null
+func CosignVerifyBlobAttestation(key, signature, payload string) error {
 	signatureFile, err := os.CreateTemp("", "signature")
 	if err != nil {
 		return err
@@ -47,15 +47,25 @@ func CosignVerifyBlob(key, signature, payload string) error {
 		return err
 	}
 
-	payloadFile, err := os.CreateTemp("", "signature")
+	payloadFile, err := os.CreateTemp("", "payload")
 	if err != nil {
 		return err
 	}
 	defer os.Remove(payloadFile.Name())
 
-	if _, err := payloadFile.WriteString(payload); err != nil {
+	if _, err := payloadFile.WriteString(signature); err != nil {
 		return err
 	}
 
-	return verify.VerifyBlobCmd(context.TODO(), options.KeyOpts{KeyRef: key}, "", "", "", "", "", signatureFile.Name(), payloadFile.Name(), "", "", "", "", "", false)
+	command := verify.VerifyBlobAttestationCommand{
+		KeyOpts: options.KeyOpts{
+			KeyRef: key,
+		},
+		CheckClaims:   false,
+		IgnoreTlog:    true,
+		PredicateType: "slsaprovenance",
+		SignaturePath: signatureFile.Name(),
+	}
+
+	return command.Exec(context.TODO(), payloadFile.Name())
 }
