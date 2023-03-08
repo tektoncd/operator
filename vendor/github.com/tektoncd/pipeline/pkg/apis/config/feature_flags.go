@@ -33,15 +33,6 @@ const (
 	AlphaAPIFields = "alpha"
 	// BetaAPIFields is the value used for "enable-api-fields" when beta APIs should be usable as well.
 	BetaAPIFields = "beta"
-	// FullEmbeddedStatus is the value used for "embedded-status" when the full statuses of TaskRuns and Runs should be
-	// embedded in PipelineRunStatusFields, but ChildReferences should not be used.
-	FullEmbeddedStatus = "full"
-	// BothEmbeddedStatus is the value used for "embedded-status" when full embedded statuses of TaskRuns and Runs as
-	// well as ChildReferences should be used in PipelineRunStatusFields.
-	BothEmbeddedStatus = "both"
-	// MinimalEmbeddedStatus is the value used for "embedded-status" when only ChildReferences should be used in
-	// PipelineRunStatusFields.
-	MinimalEmbeddedStatus = "minimal"
 	// EnforceResourceVerificationMode is the value used for "resource-verification-mode" when verification is applied and fail the
 	// TaskRun or PipelineRun when verification fails
 	EnforceResourceVerificationMode = "enforce"
@@ -76,10 +67,12 @@ const (
 	DefaultEnableAPIFields = StableAPIFields
 	// DefaultSendCloudEventsForRuns is the default value for "send-cloudevents-for-runs".
 	DefaultSendCloudEventsForRuns = false
-	// DefaultEmbeddedStatus is the default value for "embedded-status".
-	DefaultEmbeddedStatus = MinimalEmbeddedStatus
-	// DefaultEnableSpire is the default value for "enable-spire".
-	DefaultEnableSpire = false
+	// EnforceNonfalsifiabilityWithSpire is the value used for  "enable-nonfalsifiability" when SPIRE is used to enable non-falsifiability.
+	EnforceNonfalsifiabilityWithSpire = "spire"
+	// EnforceNonfalsifiabilityNone is the value used for  "enable-nonfalsifiability" when non-falsifiability is not enabled.
+	EnforceNonfalsifiabilityNone = ""
+	// DefaultEnforceNonfalsifiability is the default value for "enforce-nonfalsifiability".
+	DefaultEnforceNonfalsifiability = EnforceNonfalsifiabilityNone
 	// DefaultResourceVerificationMode is the default value for "resource-verification-mode".
 	DefaultResourceVerificationMode = SkipResourceVerificationMode
 	// DefaultEnableProvenanceInStatus is the default value for "enable-provenance-status".
@@ -99,8 +92,7 @@ const (
 	enableTektonOCIBundles              = "enable-tekton-oci-bundles"
 	enableAPIFields                     = "enable-api-fields"
 	sendCloudEventsForRuns              = "send-cloudevents-for-runs"
-	embeddedStatus                      = "embedded-status"
-	enableSpire                         = "enable-spire"
+	enforceNonfalsifiability            = "enforce-nonfalsifiability"
 	verificationMode                    = "resource-verification-mode"
 	enableProvenanceInStatus            = "enable-provenance-in-status"
 	resultExtractionMethod              = "results-from"
@@ -120,8 +112,7 @@ type FeatureFlags struct {
 	EnableAPIFields                  string
 	SendCloudEventsForRuns           bool
 	AwaitSidecarReadiness            bool
-	EmbeddedStatus                   string
-	EnableSpire                      bool
+	EnforceNonfalsifiability         string
 	ResourceVerificationMode         string
 	EnableProvenanceInStatus         bool
 	ResultExtractionMethod           string
@@ -136,6 +127,22 @@ func GetFeatureFlagsConfigName() string {
 		return e
 	}
 	return "feature-flags"
+}
+
+func getEnforceNonfalsifiabilityFeature(cfgMap map[string]string) (string, error) {
+	var mapValue struct{}
+	var acceptedValues = map[string]struct{}{
+		EnforceNonfalsifiabilityNone:      mapValue,
+		EnforceNonfalsifiabilityWithSpire: mapValue,
+	}
+	var value = DefaultEnforceNonfalsifiability
+	if cfg, ok := cfgMap[enforceNonfalsifiability]; ok {
+		value = strings.ToLower(cfg)
+	}
+	if _, ok := acceptedValues[value]; !ok {
+		return DefaultEnforceNonfalsifiability, fmt.Errorf("invalid value for feature flag %q: %q", enforceNonfalsifiability, value)
+	}
+	return value, nil
 }
 
 // NewFeatureFlagsFromMap returns a Config given a map corresponding to a ConfigMap
@@ -175,9 +182,6 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setFeature(sendCloudEventsForRuns, DefaultSendCloudEventsForRuns, &tc.SendCloudEventsForRuns); err != nil {
 		return nil, err
 	}
-	if err := setEmbeddedStatus(cfgMap, DefaultEmbeddedStatus, &tc.EmbeddedStatus); err != nil {
-		return nil, err
-	}
 	if err := setResourceVerificationMode(cfgMap, DefaultResourceVerificationMode, &tc.ResourceVerificationMode); err != nil {
 		return nil, err
 	}
@@ -202,13 +206,20 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	// defeat the purpose of having a single shared gate for all alpha features.
 	if tc.EnableAPIFields == AlphaAPIFields {
 		tc.EnableTektonOCIBundles = true
-		tc.EnableSpire = true
+		// Only consider SPIRE if alpha is on.
+		enforceNonfalsifiabilityValue, err := getEnforceNonfalsifiabilityFeature(cfgMap)
+		if err != nil {
+			return nil, err
+		}
+		tc.EnforceNonfalsifiability = enforceNonfalsifiabilityValue
 	} else {
 		if err := setFeature(enableTektonOCIBundles, DefaultEnableTektonOciBundles, &tc.EnableTektonOCIBundles); err != nil {
 			return nil, err
 		}
-		if err := setFeature(enableSpire, DefaultEnableSpire, &tc.EnableSpire); err != nil {
-			return nil, err
+		// Do not enable any form of non-falsifiability enforcement in non-alpha mode.
+		tc.EnforceNonfalsifiability = EnforceNonfalsifiabilityNone
+		if enforceNonfalsifiabilityValue, err := getEnforceNonfalsifiabilityFeature(cfgMap); err != nil || enforceNonfalsifiabilityValue != DefaultEnforceNonfalsifiability {
+			return nil, fmt.Errorf("%q can be set to non-default values (%q) only in alpha", enforceNonfalsifiability, enforceNonfalsifiabilityValue)
 		}
 	}
 	return &tc, nil
@@ -226,22 +237,6 @@ func setEnabledAPIFields(cfgMap map[string]string, defaultValue string, feature 
 		*feature = value
 	default:
 		return fmt.Errorf("invalid value for feature flag %q: %q", enableAPIFields, value)
-	}
-	return nil
-}
-
-// setEmbeddedStatus sets the "embedded-status" flag based on the content of a given map.
-// If the feature gate is invalid or missing then an error is returned.
-func setEmbeddedStatus(cfgMap map[string]string, defaultValue string, feature *string) error {
-	value := defaultValue
-	if cfg, ok := cfgMap[embeddedStatus]; ok {
-		value = strings.ToLower(cfg)
-	}
-	switch value {
-	case FullEmbeddedStatus, BothEmbeddedStatus, MinimalEmbeddedStatus:
-		*feature = value
-	default:
-		return fmt.Errorf("invalid value for feature flag %q: %q", embeddedStatus, value)
 	}
 	return nil
 }
@@ -320,12 +315,17 @@ func NewFeatureFlagsFromConfigMap(config *corev1.ConfigMap) (*FeatureFlags, erro
 
 // EnableAlphaAPIFields enables alpha features in an existing context (for use in testing)
 func EnableAlphaAPIFields(ctx context.Context) context.Context {
-	return setEnableAPIFields(ctx, "alpha")
+	return setEnableAPIFields(ctx, AlphaAPIFields)
 }
 
 // EnableBetaAPIFields enables beta features in an existing context (for use in testing)
 func EnableBetaAPIFields(ctx context.Context) context.Context {
-	return setEnableAPIFields(ctx, "beta")
+	return setEnableAPIFields(ctx, BetaAPIFields)
+}
+
+// EnableStableAPIFields enables stable features in an existing context (for use in testing)
+func EnableStableAPIFields(ctx context.Context) context.Context {
+	return setEnableAPIFields(ctx, StableAPIFields)
 }
 
 // CheckEnforceResourceVerificationMode returns true if the ResourceVerificationMode is EnforceResourceVerificationMode
@@ -340,6 +340,12 @@ func CheckEnforceResourceVerificationMode(ctx context.Context) bool {
 func CheckWarnResourceVerificationMode(ctx context.Context) bool {
 	cfg := FromContextOrDefaults(ctx)
 	return cfg.FeatureFlags.ResourceVerificationMode == WarnResourceVerificationMode
+}
+
+// CheckAlphaOrBetaAPIFields return true if the enable-api-fields is either set to alpha or set to beta
+func CheckAlphaOrBetaAPIFields(ctx context.Context) bool {
+	cfg := FromContextOrDefaults(ctx)
+	return cfg.FeatureFlags.EnableAPIFields == AlphaAPIFields || cfg.FeatureFlags.EnableAPIFields == BetaAPIFields
 }
 
 func setEnableAPIFields(ctx context.Context, want string) context.Context {
