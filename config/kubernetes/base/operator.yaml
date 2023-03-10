@@ -55,7 +55,7 @@ spec:
         - name: METRICS_DOMAIN
           value: tekton.dev/operator
         - name: VERSION
-          value: "devel"
+          value: v0.65.1
         - name: CONFIG_OBSERVABILITY_NAME
           value: tekton-config-observability
         - name: AUTOINSTALL_COMPONENTS
@@ -90,6 +90,6 @@ spec:
           - name: PROFILING_PORT
             value: "9009"
           - name: VERSION
-            value: "devel"
+            value: v0.65.1
           - name: METRICS_DOMAIN
             value: tekton.dev/operator
