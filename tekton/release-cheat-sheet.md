@@ -15,7 +15,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
    and note the commit's hash.
 
 2. Define the version of the operator. At present, for each release we increment the minor version of operator. For more
-   details, refer [Tektoncd Operator Release](../docs/release/README.md). eg: `0.52.0` or `0.52.1` (patch release)
+   details, refer [Tektoncd Operator Release](../docs/release/README.md). eg: `0.62.0` or `0.62.1` (patch release)
 
    Set the version in a variable.
 
@@ -33,7 +33,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
    TEKTON_RELEASE_BRANCH=release-v0.62.x git checkout -b ${TEKTON_RELEASE_BRANCH}
    ```
     2. If this is a **patch release** make sure that the correct branch is checkout. eg: If we are making release
-       v0.52.1, then make sure the `release-v0.62.x` is checked out.
+       v0.62.1, then make sure the `release-v0.62.x` is checked out.
 
 5. Make sure the Tektoncd Component versions are the one you want, in
    `components.yaml`. Those are kept up-to-date by our bots, but just
@@ -47,7 +47,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
     ```
 
     2. if this is a patch release, make a pull request to the appropriate minor version release branch (eg:
-       release-v0.52.x)
+       release-v0.62.x)
        and get it merged before continuing to the next section.
 
 ## Running Release Pipeline
@@ -112,7 +112,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
         --param=package=github.com/tektoncd/operator \
         --workspace name=release-secret,secret=release-secret \
         --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
-        --timeout 2h0m0s
+        --pipeline-timeout 2h0m0s
     ```
 
 8. Watch logs of resulting PipelineRun.
