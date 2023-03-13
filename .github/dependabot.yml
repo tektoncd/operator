@@ -4,7 +4,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
-
   - package-ecosystem: "gomod" # See documentation for possible values
     directory: "/" # Location of package manifests
     schedule:
@@ -12,3 +11,8 @@ updates:
     labels:
     - "ok-to-test"
     - "dependencies"
+    - "kind/misc"
+    - "release-note-none"
+    ignore:
+    - dependency-name: "k8s.io/*"
+      update-types: ["version-update:semver-major", "version-update:semver-minor"]
