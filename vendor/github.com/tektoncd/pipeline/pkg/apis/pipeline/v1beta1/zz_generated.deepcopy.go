@@ -22,6 +22,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	config "github.com/tektoncd/pipeline/pkg/apis/config"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	v1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
 	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
@@ -824,36 +825,6 @@ func (in *PipelineRunStatusFields) DeepCopyInto(out *PipelineRunStatusFields) {
 		in, out := &in.CompletionTime, &out.CompletionTime
 		*out = (*in).DeepCopy()
 	}
-	if in.TaskRuns != nil {
-		in, out := &in.TaskRuns, &out.TaskRuns
-		*out = make(map[string]*PipelineRunTaskRunStatus, len(*in))
-		for key, val := range *in {
-			var outVal *PipelineRunTaskRunStatus
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				in, out := &val, &outVal
-				*out = new(PipelineRunTaskRunStatus)
-				(*in).DeepCopyInto(*out)
-			}
-			(*out)[key] = outVal
-		}
-	}
-	if in.Runs != nil {
-		in, out := &in.Runs, &out.Runs
-		*out = make(map[string]*PipelineRunRunStatus, len(*in))
-		for key, val := range *in {
-			var outVal *PipelineRunRunStatus
-			if val == nil {
-				(*out)[key] = nil
-			} else {
-				in, out := &val, &outVal
-				*out = new(PipelineRunRunStatus)
-				(*in).DeepCopyInto(*out)
-			}
-			(*out)[key] = outVal
-		}
-	}
 	if in.PipelineResults != nil {
 		in, out := &in.PipelineResults, &out.PipelineResults
 		*out = make([]PipelineRunResult, len(*in))
@@ -1289,6 +1260,11 @@ func (in *Provenance) DeepCopyInto(out *Provenance) {
 		in, out := &in.ConfigSource, &out.ConfigSource
 		*out = new(ConfigSource)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.FeatureFlags != nil {
+		in, out := &in.FeatureFlags, &out.FeatureFlags
+		*out = new(config.FeatureFlags)
+		**out = **in
 	}
 	return
 }

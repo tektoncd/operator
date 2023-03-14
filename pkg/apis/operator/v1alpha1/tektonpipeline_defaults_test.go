@@ -48,7 +48,7 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 		EnableTektonOciBundles:                   ptr.Bool(false),
 		EnableCustomTasks:                        ptr.Bool(true),
 		EnableApiFields:                          "stable",
-		EmbeddedStatus:                           "minimal",
+		EmbeddedStatus:                           "",
 		ScopeWhenExpressionsToTask:               nil,
 		SendCloudEventsForRuns:                   ptr.Bool(false),
 		VerificationMode:                         "skip",
