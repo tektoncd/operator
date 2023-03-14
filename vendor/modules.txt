@@ -808,8 +808,8 @@ github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings
 ## explicit; go 1.16
 github.com/openshift/api/console/v1
 github.com/openshift/api/route/v1
-# github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
-## explicit; go 1.16
+# github.com/openshift/client-go v3.9.0+incompatible
+## explicit
 github.com/openshift/client-go/route/clientset/versioned/scheme
 # github.com/opentracing/opentracing-go v1.2.0
 ## explicit; go 1.14

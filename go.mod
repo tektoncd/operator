@@ -16,7 +16,7 @@ require (
 	github.com/markbates/inflect v1.0.4
 	github.com/openshift-pipelines/pipelines-as-code v0.17.1
 	github.com/openshift/api v0.0.0-20210910062324-a41d3573a3ba
-	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
+	github.com/openshift/client-go v3.9.0+incompatible
 	github.com/sigstore/cosign/v2 v2.0.0
 	github.com/spf13/viper v1.15.0
 	github.com/tektoncd/pipeline v0.45.0
