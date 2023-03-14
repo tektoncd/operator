@@ -61,9 +61,6 @@ func (p *Pipeline) setDefaults() {
 	if p.EnableApiFields == "" {
 		p.EnableApiFields = config.DefaultEnableAPIFields
 	}
-	if p.EmbeddedStatus == "" {
-		p.EmbeddedStatus = config.DefaultEmbeddedStatus
-	}
 	if p.VerificationMode == "" {
 		p.VerificationMode = config.DefaultResourceVerificationMode
 	}
