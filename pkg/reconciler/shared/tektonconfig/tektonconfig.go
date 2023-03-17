@@ -251,10 +251,9 @@ func (r *Reconciler) addTargetNamespaceLabel(ctx context.Context, targetNamespac
 	}
 	labels := ns.GetLabels()
 	if labels == nil {
-		labels = map[string]string{
-			"operator.tekton.dev/targetNamespace": "true",
-		}
+		labels = map[string]string{}
 	}
+	labels["operator.tekton.dev/targetNamespace"] = "true"
 	ns.SetLabels(labels)
 	_, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, ns, v1.UpdateOptions{})
 	return err
