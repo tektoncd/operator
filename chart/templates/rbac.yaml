@@ -35,6 +35,8 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: tekton-operator
+  labels:
+    {{- include "tekton-operator.labels" . | nindent 4 }}
 rules:
 - apiGroups:
   - ""
@@ -147,6 +149,8 @@ rules:
   - create
   - update
   - delete
+  - list
+  - watch
 - apiGroups:
   - apiextensions.k8s.io
   resources:
@@ -270,11 +274,14 @@ rules:
   resources:
   - routes
   verbs:
+  - delete
+  - deletecollection
+  - create
+  - patch
   - get
   - list
-  - create
   - update
-  - delete
+  - watch
 - apiGroups:
   - coordination.k8s.io
   resources:
@@ -293,6 +300,7 @@ rules:
   - consoleyamlsamples
   - consoleclidownloads
   - consolequickstarts
+  - consolelinks
   verbs:
   - delete
   - deletecollection
@@ -354,13 +362,12 @@ rules:
   - list
   - update
   - watch
-  # finalizers are needed for the owner reference of the webhook
 - apiGroups:
   - ""
   resources:
-  - "namespaces/finalizers"
+  - namespaces/finalizers
   verbs:
-  - "update"
+  - update
 - apiGroups:
   - resolution.tekton.dev
   resources:
@@ -381,381 +388,383 @@ metadata:
     {{- include "tekton-operator.labels" . | nindent 4 }}
 rules:
 - apiGroups:
-    - ""
+  - ""
   resources:
-    - pods
-    - services
-    - endpoints
-    - persistentvolumeclaims
-    - events
-    - configmaps
-    - secrets
-    - pods/log
-    - limitranges
+  - pods
+  - services
+  - endpoints
+  - persistentvolumeclaims
+  - events
+  - configmaps
+  - secrets
+  - pods/log
+  - limitranges
   verbs:
-    - delete
-    - deletecollection
-    - create
-    - patch
-    - get
-    - list
-    - update
-    - watch
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
-    - extensions
-    - apps
-    - networking.k8s.io
+  - extensions
+  - apps
+  - networking.k8s.io
   resources:
-    - ingresses
-    - ingresses/status
+  - ingresses
+  - ingresses/status
   verbs:
-    - delete
-    - create
-    - patch
-    - get
-    - list
-    - update
-    - watch
+  - delete
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
-    - ""
+  - ""
   resources:
-    - namespaces
+  - namespaces
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - patch
-    - watch
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
 - apiGroups:
-    - ""
+  - ""
   resources:
-    - namespaces/finalizers
+  - namespaces/finalizers
   verbs:
-    - update
+  - update
 - apiGroups:
-    - apps
+  - apps
   resources:
-    - deployments
-    - daemonsets
-    - replicasets
-    - statefulsets
-    - deployments/finalizers
+  - deployments
+  - daemonsets
+  - replicasets
+  - statefulsets
+  - deployments/finalizers
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - deletecollection
-    - patch
-    - watch
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
 - apiGroups:
-    - monitoring.coreos.com
+  - monitoring.coreos.com
   resources:
-    - servicemonitors
+  - servicemonitors
   verbs:
-    - get
-    - create
-    - delete
+  - get
+  - create
+  - delete
 - apiGroups:
-    - rbac.authorization.k8s.io
+  - rbac.authorization.k8s.io
   resources:
-    - clusterroles
-    - roles
+  - clusterroles
+  - roles
   verbs:
-    - get
-    - create
-    - update
-    - delete
+  - get
+  - create
+  - update
+  - delete
 - apiGroups:
-    - ""
+  - ""
   resources:
-    - serviceaccounts
+  - serviceaccounts
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - patch
-    - watch
-    - impersonate
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+  - impersonate
 - apiGroups:
-    - rbac.authorization.k8s.io
+  - rbac.authorization.k8s.io
   resources:
-    - clusterrolebindings
-    - rolebindings
+  - clusterrolebindings
+  - rolebindings
   verbs:
-    - get
-    - create
-    - update
-    - delete
+  - get
+  - create
+  - update
+  - delete
 - apiGroups:
-    - apiextensions.k8s.io
+  - apiextensions.k8s.io
   resources:
-    - customresourcedefinitions
-    - customresourcedefinitions/status
+  - customresourcedefinitions
+  - customresourcedefinitions/status
   verbs:
-    - get
-    - create
-    - update
-    - delete
-    - list
-    - patch
-    - watch
+  - get
+  - create
+  - update
+  - delete
+  - list
+  - patch
+  - watch
 - apiGroups:
-    - admissionregistration.k8s.io
+  - admissionregistration.k8s.io
   resources:
-    - mutatingwebhookconfigurations
-    - validatingwebhookconfigurations
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - patch
-    - watch
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
 - apiGroups:
-    - build.knative.dev
+  - build.knative.dev
   resources:
-    - builds
-    - buildtemplates
-    - clusterbuildtemplates
+  - builds
+  - buildtemplates
+  - clusterbuildtemplates
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - patch
-    - watch
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
 - apiGroups:
-    - extensions
+  - extensions
   resources:
-    - deployments
+  - deployments
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - patch
-    - watch
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
 - apiGroups:
-    - extensions
+  - extensions
   resources:
-    - deployments/finalizers
+  - deployments/finalizers
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - patch
-    - watch
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
 - apiGroups:
-    - operator.tekton.dev
+  - operator.tekton.dev
   resources:
-    - '*'
-    - tektonaddons
+  - '*'
+  - tektonaddons
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - deletecollection
-    - patch
-    - watch
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
 - apiGroups:
-    - tekton.dev
+  - tekton.dev
   resources:
-    - tasks
-    - clustertasks
-    - taskruns
-    - pipelines
-    - pipelineruns
-    - pipelineresources
-    - conditions
-    - tasks/status
-    - clustertasks/status
-    - taskruns/status
-    - pipelines/status
-    - pipelineruns/status
-    - pipelineresources/status
-    - taskruns/finalizers
-    - pipelineruns/finalizers
-    - runs
-    - runs/status
-    - runs/finalizers
-    - customruns
-    - customruns/status
-    - customruns/finalizers
+  - tasks
+  - clustertasks
+  - taskruns
+  - pipelines
+  - pipelineruns
+  - pipelineresources
+  - conditions
+  - tasks/status
+  - clustertasks/status
+  - taskruns/status
+  - pipelines/status
+  - pipelineruns/status
+  - pipelineresources/status
+  - taskruns/finalizers
+  - pipelineruns/finalizers
+  - runs
+  - runs/status
+  - runs/finalizers
+  - customruns
+  - customruns/status
+  - customruns/finalizers
+  - verificationpolicies
+  - verificationpolicies/status
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - deletecollection
-    - patch
-    - watch
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
 - apiGroups:
-    - triggers.tekton.dev
-    - operator.tekton.dev
+  - triggers.tekton.dev
+  - operator.tekton.dev
   resources:
-    - '*'
+  - '*'
   verbs:
-    - add
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - deletecollection
-    - patch
-    - watch
+  - add
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
 - apiGroups:
-    - dashboard.tekton.dev
+  - dashboard.tekton.dev
   resources:
-    - '*'
-    - tektonaddons
-    - extensions
+  - '*'
+  - tektonaddons
+  - extensions
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - deletecollection
-    - patch
-    - watch
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
 - apiGroups:
-    - security.openshift.io
+  - security.openshift.io
   resources:
-    - securitycontextconstraints
+  - securitycontextconstraints
   verbs:
-    - use
+  - use
 - apiGroups:
-    - coordination.k8s.io
+  - coordination.k8s.io
   resources:
-    - leases
+  - leases
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - patch
-    - watch
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
 - apiGroups:
-    - autoscaling
+  - autoscaling
   resources:
-    - horizontalpodautoscalers
+  - horizontalpodautoscalers
   verbs:
-    - delete
-    - deletecollection
-    - create
-    - patch
-    - get
-    - list
-    - update
-    - watch
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
-    - policy
+  - policy
   resources:
-    - poddisruptionbudgets
+  - poddisruptionbudgets
   verbs:
-    - delete
-    - deletecollection
-    - create
-    - patch
-    - get
-    - list
-    - update
-    - watch
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
-    - serving.knative.dev
+  - serving.knative.dev
   resources:
-    - '*'
-    - '*/status'
-    - '*/finalizers'
+  - '*'
+  - '*/status'
+  - '*/finalizers'
   verbs:
-    - get
-    - list
-    - create
-    - update
-    - delete
-    - deletecollection
-    - patch
-    - watch
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
 - apiGroups:
-    - batch
+  - batch
   resources:
-    - cronjobs
-    - jobs
+  - cronjobs
+  - jobs
   verbs:
-    - delete
-    - create
-    - patch
-    - get
-    - list
-    - update
-    - watch
+  - delete
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
-    - admissionregistration.k8s.io
+  - admissionregistration.k8s.io
   resources:
-    - mutatingwebhookconfigurations
-    - validatingwebhookconfigurations
+  - mutatingwebhookconfigurations
+  - validatingwebhookconfigurations
   verbs:
-    - delete
-    - create
-    - patch
-    - get
-    - list
-    - update
-    - watch
+  - delete
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
-    - authentication.k8s.io
+  - authentication.k8s.io
   resources:
-    - tokenreviews
+  - tokenreviews
   verbs:
-    - create
+  - create
 - apiGroups:
-    - authorization.k8s.io
+  - authorization.k8s.io
   resources:
-    - subjectaccessreviews
+  - subjectaccessreviews
   verbs:
-    - create
+  - create
 - apiGroups:
-    - results.tekton.dev
+  - results.tekton.dev
   resources:
-    - '*'
+  - '*'
   verbs:
-    - delete
-    - deletecollection
-    - create
-    - patch
-    - get
-    - list
-    - update
-    - watch
+  - delete
+  - deletecollection
+  - create
+  - patch
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
-    - resolution.tekton.dev
+  - resolution.tekton.dev
   resources:
-    - resolutionrequests
-    - resolutionrequests/status
+  - resolutionrequests
+  - resolutionrequests/status
   verbs:
-    - get
-    - list
-    - watch
-    - create
-    - delete
-    - update
-    - patch
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - update
+  - patch
 {{- end }}
 
 ---
