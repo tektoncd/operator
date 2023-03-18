@@ -68,6 +68,28 @@ func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldEr
 		}
 	}
 
+	if tcs.ArtifactsPipelineRunFormat != "" {
+		if tcs.ArtifactsPipelineRunFormat != "in-toto" {
+			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsPipelineRunFormat, path+".artifacts.pipelinerun.format"))
+		}
+	}
+
+	if tcs.ArtifactsPipelineRunStorage != "" {
+		input := strings.Split(tcs.ArtifactsPipelineRunStorage, ",")
+		for i, v := range input {
+			input[i] = strings.TrimSpace(v)
+			if !allowedArtifactsStorage.Has(input[i]) {
+				errs = errs.Also(apis.ErrInvalidValue(input[i], path+".artifacts.pipelinerun.storage"))
+			}
+		}
+	}
+
+	if tcs.ArtifactsPipelineRunSigner != "" {
+		if tcs.ArtifactsPipelineRunSigner != "x509" && tcs.ArtifactsPipelineRunSigner != "kms" {
+			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsPipelineRunSigner, path+".artifacts.pipelinerun.signer"))
+		}
+	}
+
 	if tcs.ArtifactsOCIFormat != "" {
 		if tcs.ArtifactsOCIFormat != "simplesigning" {
 			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsOCIFormat, path+".artifacts.oci.format"))

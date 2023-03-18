@@ -65,7 +65,12 @@ type Chain struct {
 	ArtifactsTaskRunStorage string `json:"artifacts.taskrun.storage,omitempty"`
 	ArtifactsTaskRunSigner  string `json:"artifacts.taskrun.signer,omitempty"`
 
-	// oci artifacts config
+	// pipelinerun artifacts config
+	ArtifactsPipelineRunFormat  string `json:"artifacts.pipelinerun.format,omitempty"`
+	ArtifactsPipelineRunStorage string `json:"artifacts.pipelinerun.storage,omitempty"`
+	ArtifactsPipelineRunSigner  string `json:"artifacts.pipelinerun.signer,omitempty"`
+
+	// oci artifacts confi	g
 	ArtifactsOCIFormat  string `json:"artifacts.oci.format,omitempty"`
 	ArtifactsOCIStorage string `json:"artifacts.oci.storage,omitempty"`
 	ArtifactsOCISigner  string `json:"artifacts.oci.signer,omitempty"`
