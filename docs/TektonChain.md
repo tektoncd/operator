@@ -73,12 +73,15 @@ metadata:
   name: chain
 spec:
   targetNamespace: tekton-pipelines
-  artifacts.taskrun.format: tekton
+  artifacts.taskrun.format: in-toto
   artifacts.taskrun.storage: tekton,oci (comma separated values)
   artifacts.taskrun.signer: x509
   artifacts.oci.storage: oci (comma separated values)
   artifacts.oci.format: simplesigning
   artifacts.oci.signer: x509
+  artifacts.pipelinerun.format: in-toto
+  artifacts.pipelinerun.storage: tekton,oci (comma separated values)
+  artifacts.pipelinerun.signer: x509
   storage.gcs.bucket: #value
   storage.oci.repository: #value
   storage.oci.repository.insecure: #value (boolean - true/false)
