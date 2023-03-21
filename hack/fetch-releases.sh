@@ -245,6 +245,7 @@ main() {
   p_version=$(${OPERATORTOOL} -config ${CONFIG} component-version pipeline)
   t_version=$(${OPERATORTOOL} -config ${CONFIG} component-version triggers)
   c_version=$(${OPERATORTOOL} -config ${CONFIG} component-version chains)
+  r_version=$(${OPERATORTOOL} -config ${CONFIG} component-version results)
 
   # get release YAML for Pipelines
   release_yaml pipeline release 00-pipelines ${p_version}
@@ -256,15 +257,14 @@ main() {
   # get release YAML for Chains
   release_yaml chains release 00-chains ${c_version}
 
+  # get release YAML for Results
+  release_yaml results release 00-results ${r_version}
+
   if [[ ${TARGET} != "openshift" ]]; then
     d_version=$(${OPERATORTOOL} -config ${CONFIG} component-version dashboard)
     # get release YAML for Dashboard
     release_yaml dashboard release-full 00-dashboard ${d_version}
     release_yaml dashboard release 00-dashboard ${d_version}
-
-    r_version=$(${OPERATORTOOL} -config ${CONFIG} component-version results)
-    # get release YAML for Results
-    release_yaml results release 00-results ${r_version}
   else
     pac_version=$(${OPERATORTOOL} -config ${CONFIG} component-version pipelines-as-code)
     release_yaml_pac pipelinesascode release ${pac_version}
@@ -276,7 +276,7 @@ main() {
 
   # copy pruner rbac/sa yaml
   copy_pruner_yaml
-  
+
   echo updated payload tree
   find cmd/${TARGET}/operator/kodata
 }

@@ -31,7 +31,7 @@ import (
 
 const (
 	ControllerTektonDashboard platform.ControllerName = "tektondashboard"
-	ControllerTektonResults   platform.ControllerName = "tektonresults"
+	ControllerTektonResults   platform.ControllerName = "tektonresult"
 	PlatformNameKubernetes    string                  = "kubernetes"
 )
 

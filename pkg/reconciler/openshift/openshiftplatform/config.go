@@ -24,6 +24,7 @@ import (
 	openshiftConfig "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
 	openshiftHub "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonhub"
 	openshiftPipeline "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
+	openshiftResult "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonresult"
 	openshiftTrigger "github.com/tektoncd/operator/pkg/reconciler/openshift/tektontrigger"
 	"github.com/tektoncd/operator/pkg/reconciler/platform"
 	"knative.dev/pkg/injection"
@@ -58,6 +59,10 @@ var (
 		platform.ControllerTektonChain: injection.NamedControllerConstructor{
 			Name:                  string(platform.ControllerTektonChain),
 			ControllerConstructor: openshiftChain.NewController,
+		},
+		platform.ControllerTektonResult: injection.NamedControllerConstructor{
+			Name:                  string(platform.ControllerTektonResult),
+			ControllerConstructor: openshiftResult.NewController,
 		},
 		ControllerTektonAddon: injection.NamedControllerConstructor{
 			Name:                  string(ControllerTektonAddon),

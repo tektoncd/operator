@@ -891,6 +891,10 @@ spec:
                   value: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel8@
                 - name: IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel8@
+                - name: IMAGE_RESULTS_TEKTON_API
+                  value: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel8@
+                - name: IMAGE_RESULTS_TEKTON_WATCHER
+                  value: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel8@
                 - name: IMAGE_HUB_TEKTON_HUB_DB_MIGRATION
                   value: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel8@
                 - name: IMAGE_HUB_TEKTON_HUB_API

@@ -9,7 +9,7 @@ metadata:
     description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for building pipelines using Tekton concepts which run natively on OpenShift and Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.7.2
     operators.openshift.io/infrastructure-features: '["disconnected","proxy-aware"]'
-    operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev", "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev", "tektonhubs.operator.tekton.dev", "tektonchains.operator.tekton.dev", "openshiftpipelinesascodes.operator.tekton.dev"]'
+    operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev", "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev", "tektonhubs.operator.tekton.dev", "tektonresults.operator.tekton.dev", "tektonchains.operator.tekton.dev", "openshiftpipelinesascodes.operator.tekton.dev"]'
     repository: https://github.com/tektoncd/operator
     support: Red Hat
   labels:
@@ -125,6 +125,27 @@ spec:
       displayName: Tekton Chains
       kind: Tekton Chain
       name: tektonchains.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
+      specDescriptors:
+      - description: Namespace where Addons installed
+        displayName: Target Namespace
+        path: targetNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Addons installed
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
+    - description: Represents an installation of latest version of Tekton Results
+      displayName: Tekton Results
+      kind: Tekton Results
+      name: tektonresults.operator.tekton.dev
       resources:
       - kind: tektoninstallersets
         name: ''
