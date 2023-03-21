@@ -38,6 +38,7 @@ rules:
   - list
   - update
   - watch
+  - describe
 - apiGroups:
   - extensions
   - apps

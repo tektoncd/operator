@@ -24,6 +24,7 @@ const (
 	ControllerTektonInstallerSet ControllerName = "tektoninstallerset"
 	ControllerTektonHub          ControllerName = "tektonhub"
 	ControllerTektonChain        ControllerName = "tektonchain"
+	ControllerTektonResult       ControllerName = "tektonresult"
 	EnvControllerNames           string         = "CONTROLLER_NAMES"
 	EnvSharedMainName            string         = "UNIQUE_PROCESS_NAME"
 )

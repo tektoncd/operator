@@ -44,6 +44,7 @@ const (
 	AddonsImagePrefix             = "IMAGE_ADDONS_"
 	PacImagePrefix                = "IMAGE_PAC_"
 	ChainsImagePrefix             = "IMAGE_CHAINS_"
+	ResultsImagePrefix            = "IMAGE_RESULTS_"
 	HubImagePrefix                = "IMAGE_HUB_"
 
 	ArgPrefix   = "arg_"
