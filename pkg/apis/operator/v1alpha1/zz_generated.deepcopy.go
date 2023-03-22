@@ -114,11 +114,6 @@ func (in *Chain) DeepCopyInto(out *Chain) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.TransparencyConfigEnabled != nil {
-		in, out := &in.TransparencyConfigEnabled, &out.TransparencyConfigEnabled
-		*out = new(bool)
-		**out = **in
-	}
 	return
 }
 

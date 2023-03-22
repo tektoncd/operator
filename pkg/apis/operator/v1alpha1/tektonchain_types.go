@@ -82,15 +82,18 @@ type Chain struct {
 	StorageDocDBURL              string `json:"storage.docdb.url,omitempty"`
 	StorageGrafeasProjectID      string `json:"storage.grafeas.projectid,omitempty"`
 	StorageGrafeasNoteID         string `json:"storage.grafeas.noteid,omitempty"`
+	StorageGrafeasNoteHint       string `json:"storage.grafeas.notehint,omitempty"`
 
 	// builder config
 	BuilderID string `json:"builder.id,omitempty"`
 
 	// x509 signer config
-	X509SignerFulcioEnabled    *bool  `json:"signers.x509.fulcio.enabled,omitempty"`
-	X509SignerFulcioAddr       string `json:"signers.x509.fulcio.address,omitempty"`
-	X509SignerFulcioOIDCIssuer string `json:"signers.x509.fulcio.issuer,omitempty"`
-	X509SignerFulcioProvider   string `json:"signers.x509.fulcio.provider,omitempty"`
+	X509SignerFulcioEnabled     *bool  `json:"signers.x509.fulcio.enabled,omitempty"`
+	X509SignerFulcioAddr        string `json:"signers.x509.fulcio.address,omitempty"`
+	X509SignerFulcioOIDCIssuer  string `json:"signers.x509.fulcio.issuer,omitempty"`
+	X509SignerFulcioProvider    string `json:"signers.x509.fulcio.provider,omitempty"`
+	X509SignerIdentityTokenFile string `json:"signers.x509.identity.token.file,omitempty"`
+	X509SignerTUFMirrorURL      string `json:"signers.x509.tuf.mirror.url,omitempty"`
 
 	// kms signer config
 	KMSRef               string `json:"signers.kms.kmsref,omitempty"`
@@ -102,7 +105,7 @@ type Chain struct {
 	KMSAuthSpireAudience string `json:"signers.kms.auth.spire.audience,omitempty"`
 
 	// transparency config
-	TransparencyConfigEnabled *bool  `json:"transparency.enabled,omitempty"`
+	TransparencyConfigEnabled string `json:"transparency.enabled,omitempty"`
 	TransparencyConfigURL     string `json:"transparency.url,omitempty"`
 }
 
