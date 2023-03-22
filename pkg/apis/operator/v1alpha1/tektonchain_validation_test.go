@@ -222,3 +222,87 @@ func Test_ValidateTektonChain_ConfigPipelineRunStorageValid(t *testing.T) {
 		t.Errorf("ValidateTektonChain.Validate() expected no error for the given config, but got one, ValidateTektonChain: %v", err)
 	}
 }
+
+func Test_ValidateTektonChain_ConfigInvalidX509SignerFulcioProvider(t *testing.T) {
+	tc := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				X509SignerFulcioProvider: "test",
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Equal(t, "invalid value: test: spec.signers.x509.fulcio.provider", err.Error())
+}
+
+func Test_ValidateTektonChain_ConfigX509SignerFulcioProvider(t *testing.T) {
+	tc := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				X509SignerFulcioProvider: "google",
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	if err != nil {
+		t.Errorf("ValidateTektonChain.Validate() expected no error for the given config, but got one, ValidateTektonChain: %v", err)
+	}
+}
+
+func Test_ValidateTektonChain_ConfigInvalidTransparencyConfigEnabled(t *testing.T) {
+	tc := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				TransparencyConfigEnabled: "test",
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Equal(t, "invalid value: test: spec.transparency.enabled", err.Error())
+}
+
+func Test_ValidateTektonChain_ConfigTransparencyConfigEnabled(t *testing.T) {
+	tc := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				TransparencyConfigEnabled: "true",
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	if err != nil {
+		t.Errorf("ValidateTektonChain.Validate() expected no error for the given config, but got one, ValidateTektonChain: %v", err)
+	}
+}

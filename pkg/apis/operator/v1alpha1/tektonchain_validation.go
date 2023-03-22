@@ -25,7 +25,13 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-var allowedArtifactsStorage = sets.NewString("tekton", "oci", "gcs", "docdb", "grafeas", "kafka")
+var (
+	allowedArtifactsTaskRunFormat     = sets.NewString("", "in-toto", "slsa/v1")
+	allowedArtifactsPipelineRunFormat = sets.NewString("", "in-toto", "slsa/v1")
+	allowedX509SignerFulcioProvider   = sets.NewString("", "google", "spiffe", "github", "filesystem")
+	allowedTransparencyConfigEnabled  = sets.NewString("", "true", "false", "manual")
+	allowedArtifactsStorage           = sets.NewString("tekton", "oci", "gcs", "docdb", "grafeas", "kafka")
+)
 
 func (tc *TektonChain) Validate(ctx context.Context) (errs *apis.FieldError) {
 
@@ -46,10 +52,9 @@ func (tc *TektonChain) Validate(ctx context.Context) (errs *apis.FieldError) {
 }
 
 func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldError) {
-	if tcs.ArtifactsTaskRunFormat != "" {
-		if tcs.ArtifactsTaskRunFormat != "in-toto" {
-			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsTaskRunFormat, path+".artifacts.taskrun.format"))
-		}
+
+	if !allowedArtifactsTaskRunFormat.Has(tcs.ArtifactsTaskRunFormat) {
+		errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsTaskRunFormat, path+".artifacts.taskrun.format"))
 	}
 
 	if tcs.ArtifactsTaskRunStorage != "" {
@@ -68,10 +73,8 @@ func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldEr
 		}
 	}
 
-	if tcs.ArtifactsPipelineRunFormat != "" {
-		if tcs.ArtifactsPipelineRunFormat != "in-toto" {
-			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsPipelineRunFormat, path+".artifacts.pipelinerun.format"))
-		}
+	if !allowedArtifactsPipelineRunFormat.Has(tcs.ArtifactsPipelineRunFormat) {
+		errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsPipelineRunFormat, path+".artifacts.pipelinerun.format"))
 	}
 
 	if tcs.ArtifactsPipelineRunStorage != "" {
@@ -110,6 +113,14 @@ func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldEr
 		if tcs.ArtifactsOCISigner != "x509" && tcs.ArtifactsOCISigner != "kms" {
 			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsOCISigner, path+".artifacts.oci.signer"))
 		}
+	}
+
+	if !allowedX509SignerFulcioProvider.Has(tcs.X509SignerFulcioProvider) {
+		errs = errs.Also(apis.ErrInvalidValue(tcs.X509SignerFulcioProvider, path+".signers.x509.fulcio.provider"))
+	}
+
+	if !allowedTransparencyConfigEnabled.Has(tcs.TransparencyConfigEnabled) {
+		errs = errs.Also(apis.ErrInvalidValue(tcs.TransparencyConfigEnabled, path+".transparency.enabled"))
 	}
 
 	return errs
