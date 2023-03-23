@@ -97,6 +97,7 @@ type PipelineProperties struct {
 	SendCloudEventsForRuns                   *bool  `json:"send-cloudevents-for-runs,omitempty"`
 	VerificationMode                         string `json:"verification-mode,omitempty"`
 	EnableProvenanceInStatus                 *bool  `json:"enable-provenance-in-status,omitempty"`
+	DefaultForbiddenEnv                      string `json:"default-forbidden-env,omitempty"`
 
 	// ScopeWhenExpressionsToTask Deprecated: remove in next release
 	ScopeWhenExpressionsToTask *bool `json:"scope-when-expressions-to-task,omitempty"`
