@@ -6,7 +6,7 @@ dashboard:
   version: v0.34.0
 hub:
   github: tektoncd/hub
-  version: v1.12.0
+  version: v1.12.1
 pipeline:
   github: tektoncd/pipeline
   version: v0.46.0
