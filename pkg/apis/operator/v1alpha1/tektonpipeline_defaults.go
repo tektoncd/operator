@@ -28,7 +28,7 @@ const (
 	enableMetricsKey                         = "enableMetrics"
 	enableMetricsDefaultValue                = "true"
 	openshiftDefaultDisableAffinityAssistant = true
-	openshiftDefaultEmbeddedStatus           = "full"
+	openshiftDefaultEmbeddedStatus           = "both"
 	ospDefaultSA                             = "pipeline"
 )
 
