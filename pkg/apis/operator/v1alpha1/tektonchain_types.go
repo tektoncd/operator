@@ -70,7 +70,7 @@ type Chain struct {
 	ArtifactsPipelineRunStorage string `json:"artifacts.pipelinerun.storage,omitempty"`
 	ArtifactsPipelineRunSigner  string `json:"artifacts.pipelinerun.signer,omitempty"`
 
-	// oci artifacts confi	g
+	// oci artifacts config
 	ArtifactsOCIFormat  string `json:"artifacts.oci.format,omitempty"`
 	ArtifactsOCIStorage string `json:"artifacts.oci.storage,omitempty"`
 	ArtifactsOCISigner  string `json:"artifacts.oci.signer,omitempty"`

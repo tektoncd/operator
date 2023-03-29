@@ -59,7 +59,7 @@ func Test_ValidateTektonChain_OnDelete(t *testing.T) {
 	}
 }
 
-func Test_ValidateTektonChain_ConfigFormat(t *testing.T) {
+func Test_ValidateTektonChain_ConfigTaskRunFormat(t *testing.T) {
 	td := &TektonChain{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "chain",
@@ -79,7 +79,7 @@ func Test_ValidateTektonChain_ConfigFormat(t *testing.T) {
 	assert.Equal(t, "invalid value: test: spec.artifacts.taskrun.format", err.Error())
 }
 
-func Test_ValidateTektonChain_ConfigStorage(t *testing.T) {
+func Test_ValidateTektonChain_ConfigTaskRunStorage(t *testing.T) {
 	td := &TektonChain{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "chain",
@@ -99,7 +99,7 @@ func Test_ValidateTektonChain_ConfigStorage(t *testing.T) {
 	assert.Equal(t, "invalid value: test: spec.artifacts.taskrun.storage", err.Error())
 }
 
-func Test_ValidateTektonChain_ConfigStorageInvalidValidMix(t *testing.T) {
+func Test_ValidateTektonChain_ConfigTaskRunStorageInvalidValidMix(t *testing.T) {
 	td := &TektonChain{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "chain",
@@ -119,7 +119,7 @@ func Test_ValidateTektonChain_ConfigStorageInvalidValidMix(t *testing.T) {
 	assert.Equal(t, "invalid value: test: spec.artifacts.taskrun.storage", err.Error())
 }
 
-func Test_ValidateTektonChain_ConfigStorageValid(t *testing.T) {
+func Test_ValidateTektonChain_ConfigTaskRunStorageValid(t *testing.T) {
 	td := &TektonChain{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "chain",
@@ -131,6 +131,88 @@ func Test_ValidateTektonChain_ConfigStorageValid(t *testing.T) {
 			},
 			Chain: Chain{
 				ArtifactsTaskRunStorage: "tekton, oci",
+			},
+		},
+	}
+
+	err := td.Validate(context.TODO())
+	if err != nil {
+		t.Errorf("ValidateTektonChain.Validate() expected no error for the given config, but got one, ValidateTektonChain: %v", err)
+	}
+}
+
+func Test_ValidateTektonChain_ConfigPipelineRunFormat(t *testing.T) {
+	td := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				ArtifactsPipelineRunFormat: "test",
+			},
+		},
+	}
+
+	err := td.Validate(context.TODO())
+	assert.Equal(t, "invalid value: test: spec.artifacts.pipelinerun.format", err.Error())
+}
+
+func Test_ValidateTektonChain_ConfigPipelineRunStorage(t *testing.T) {
+	td := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				ArtifactsPipelineRunStorage: "test",
+			},
+		},
+	}
+
+	err := td.Validate(context.TODO())
+	assert.Equal(t, "invalid value: test: spec.artifacts.pipelinerun.storage", err.Error())
+}
+
+func Test_ValidateTektonChain_ConfigPipelineRunStorageInvalidValidMix(t *testing.T) {
+	td := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				ArtifactsPipelineRunStorage: "tekton, test",
+			},
+		},
+	}
+
+	err := td.Validate(context.TODO())
+	assert.Equal(t, "invalid value: test: spec.artifacts.pipelinerun.storage", err.Error())
+}
+
+func Test_ValidateTektonChain_ConfigPipelineRunStorageValid(t *testing.T) {
+	td := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Chain: Chain{
+				ArtifactsPipelineRunStorage: "tekton, oci",
 			},
 		},
 	}
