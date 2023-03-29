@@ -118,6 +118,7 @@ type OptionalPipelineProperties struct {
 	DefaultAffinityAssistantPodTemplate string `json:"default-affinity-assistant-pod-template,omitempty"`
 	DefaultTaskRunWorkspaceBinding      string `json:"default-task-run-workspace-binding,omitempty"`
 	DefaultMaxMatrixCombinationsCount   string `json:"default-max-matrix-combinations-count,omitempty"`
+	DefaultForbiddenEnv                 string `json:"default-forbidden-env,omitempty"`
 }
 
 // PipelineMetricsProperties defines the fields which are configurable for
