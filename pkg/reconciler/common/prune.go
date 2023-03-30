@@ -33,6 +33,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -340,8 +341,15 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 	backOffLimit := int32(3)
 	ttlSecondsAfterFinished := int32(3600)
 	runAsNonRoot := true
-	runAsUser := int64(65532)
-	fsGroup := int64(65532)
+	runAsUser := ptr.Int64(65532)
+	fsGroup := ptr.Int64(65532)
+
+	// if it is a openshift platform remove the user and fsGroup ids
+	// those ids will be allocated dynamically
+	if v1alpha1.IsOpenShiftPlatform() {
+		runAsUser = nil
+		fsGroup = nil
+	}
 
 	cj := &batchv1.CronJob{
 		TypeMeta: v1.TypeMeta{
@@ -375,8 +383,8 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 								SeccompProfile: &corev1.SeccompProfile{
 									Type: corev1.SeccompProfileTypeRuntimeDefault,
 								},
-								RunAsUser: &runAsUser,
-								FSGroup:   &fsGroup,
+								RunAsUser: runAsUser,
+								FSGroup:   fsGroup,
 							},
 						},
 					},
