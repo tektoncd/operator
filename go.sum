@@ -1106,8 +1106,8 @@ github.com/opencontainers/runtime-spec v1.0.3-0.20200929063507-e6143ca7d51d/go.m
 github.com/opencontainers/runtime-tools v0.0.0-20181011054405-1d69bd0f9c39/go.mod h1:r3f7wjNzSs2extwzU3Y+6pKfobzPh+kKFJ3ofN+3nfs=
 github.com/opencontainers/selinux v1.6.0/go.mod h1:VVGKuOLlE7v4PJyT6h7mNWvq1rzqiriPsEqVhc+svHE=
 github.com/opencontainers/selinux v1.8.0/go.mod h1:RScLhm78qiWa2gbVCcGkC7tCGdgk3ogry1nUQF8Evvo=
-github.com/openshift-pipelines/pipelines-as-code v0.17.1 h1:9+vnu3FMrfMy6R+jhaV6jvmVhDrXRYuGvgHHrCfTdrU=
-github.com/openshift-pipelines/pipelines-as-code v0.17.1/go.mod h1:5gCkO4y2PEFZ842tbF8376rD386DkoSyyQI3vjdqwq4=
+github.com/openshift-pipelines/pipelines-as-code v0.17.2 h1:EbzUI+6VutzXSYq8SFDbWgs+1HG73VQriaTUNwkjkaA=
+github.com/openshift-pipelines/pipelines-as-code v0.17.2/go.mod h1:5gCkO4y2PEFZ842tbF8376rD386DkoSyyQI3vjdqwq4=
 github.com/openshift/api v0.0.0-20210521075222-e273a339932a/go.mod h1:izBmoXbUu3z5kUa4FjZhvekTsyzIWiOoaIgJiZBBMQs=
 github.com/openshift/api v0.0.0-20210910062324-a41d3573a3ba h1:aimcu15biJzq4gp0LPsa4cOucfiILIgy/PimUO9ncpc=
 github.com/openshift/api v0.0.0-20210910062324-a41d3573a3ba/go.mod h1:izBmoXbUu3z5kUa4FjZhvekTsyzIWiOoaIgJiZBBMQs=
