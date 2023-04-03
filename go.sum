@@ -1338,8 +1338,8 @@ github.com/tektoncd/pipeline v0.45.0 h1:Hv9kyutu5GWGXKtcMrM7PXdAULgeQc0F2HWDNg+j
 github.com/tektoncd/pipeline v0.45.0/go.mod h1:20Xs6qk3BTpsLHYWEtLNPM44XKqNH5jYwoomXHOGNs8=
 github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7 h1:YsjQ83UBIIq4k/s2PzQ6pqe4tpPtm1hia3oyNBDDrDU=
 github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7/go.mod h1:uJBaI0AL/kjPThiMYZcWRujEz7D401v643d6s/21GAg=
-github.com/tektoncd/triggers v0.23.0 h1:f0cPgZrwCTegaxr6cCAJxjL1ZI84C9JadsrWKvj2RGU=
-github.com/tektoncd/triggers v0.23.0/go.mod h1:WuV36ciqc7GQD5Qqa+C4kYad0sn8kdBDQkN7YSa3qD8=
+github.com/tektoncd/triggers v0.23.1 h1:hdfjr5R+gC1RnHSrxanEbQGXXmKJ9QtTeV+uy4D+S8s=
+github.com/tektoncd/triggers v0.23.1/go.mod h1:RpZJwmUyeFuQbQGV4tqGukBU/KTJO0ula/4yGSgcVzw=
 github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613 h1:iGnD/q9160NWqKZZ5vY4p0dMiYMRknzctfSkqA4nBDw=
 github.com/tent/canonical-json-go v0.0.0-20130607151641-96e4ba3a7613/go.mod h1:g6AnIpDSYMcphz193otpSIzN+11Rs+AAIIC6rm1enug=
 github.com/thales-e-security/pool v0.0.2 h1:RAPs4q2EbWsTit6tpzuvTFlgFRJ3S8Evf5gtvVDbmPg=

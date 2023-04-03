@@ -1070,7 +1070,7 @@ github.com/tektoncd/pipeline/test/parse
 ## explicit; go 1.13
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
-# github.com/tektoncd/triggers v0.23.0
+# github.com/tektoncd/triggers v0.23.1
 ## explicit; go 1.17
 github.com/tektoncd/triggers/pkg/apis/config
 github.com/tektoncd/triggers/pkg/apis/triggers
@@ -1946,7 +1946,7 @@ k8s.io/utils/net
 k8s.io/utils/pointer
 k8s.io/utils/strings/slices
 k8s.io/utils/trace
-# knative.dev/pkg v0.0.0-20230125083639-408ad0773f47 => knative.dev/pkg v0.0.0-20230125083639-408ad0773f47
+# knative.dev/pkg v0.0.0-20230224205330-75da922ef055 => knative.dev/pkg v0.0.0-20230125083639-408ad0773f47
 ## explicit; go 1.18
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
