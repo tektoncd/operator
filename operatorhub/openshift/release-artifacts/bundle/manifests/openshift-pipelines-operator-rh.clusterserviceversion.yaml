@@ -155,9 +155,6 @@ spec:
       - kind: deployments
         name: ''
         version: v1beta1
-      - kind: podsecuritypolicies
-        name: ''
-        version: v1beta1
       - kind: clusterrolebindings
         name: ''
         version: v1beta1
@@ -638,16 +635,6 @@ spec:
           - delete
           - patch
           - watch
-        - apiGroups:
-          - policy
-          resources:
-          - podsecuritypolicies
-          verbs:
-          - get
-          - create
-          - update
-          - delete
-          - use
         - apiGroups:
           - operator.tekton.dev
           resources:

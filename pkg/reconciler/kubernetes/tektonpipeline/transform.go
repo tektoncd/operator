@@ -41,8 +41,6 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		pipeline := comp.(*v1alpha1.TektonPipeline)
 
-		filteredManifest := manifest.Filter(mf.Not(mf.ByKind("PodSecurityPolicy")), mf.Not(mf.ByKind("HorizontalPodAutoscaler")))
-
 		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
 		instance := comp.(*v1alpha1.TektonPipeline)
 		// adding extension's transformers first to run them before `extra` transformers
@@ -64,9 +62,9 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		}
 		trns = append(trns, extra...)
 
-		if err := common.Transform(ctx, &filteredManifest, instance, trns...); err != nil {
+		if err := common.Transform(ctx, manifest, instance, trns...); err != nil {
 			return &mf.Manifest{}, err
 		}
-		return &filteredManifest, nil
+		return manifest, nil
 	}
 }

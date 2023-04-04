@@ -198,9 +198,6 @@ spec:
       - kind: deployments
         name: ''
         version: v1beta1
-      - kind: podsecuritypolicies
-        name: ''
-        version: v1beta1
       - kind: clusterrolebindings
         name: ''
         version: v1beta1

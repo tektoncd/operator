@@ -99,7 +99,6 @@ func isClusterScoped(kind string) bool {
 		"selfsubjectrulesreview",
 		"subjectaccessreview",
 		"certificatesigningrequest",
-		"podsecuritypolicy",
 		"clusterrolebinding",
 		"clusterrole",
 		"priorityclass",
