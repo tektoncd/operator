@@ -195,16 +195,6 @@ rules:
   - patch
   - watch
 - apiGroups:
-  - policy
-  resources:
-  - podsecuritypolicies
-  verbs:
-  - get
-  - create
-  - update
-  - delete
-  - use
-- apiGroups:
   - operator.tekton.dev
   resources:
   - '*'
