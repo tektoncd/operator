@@ -5,10 +5,6 @@ metadata:
   name: tekton-pipelines-webhook-cluster-access
 rules:
   # […]
-  - apiGroups: ["policy"]
-    resources: ["podsecuritypolicies"]
-    resourceNames: ["tekton-pipelines"]
-    verbs: ["use"]
   - apiGroups: [""]
     resources: ["namespaces"]
     verbs: ["get"]
