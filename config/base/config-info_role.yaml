@@ -26,4 +26,4 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     resourceNames: ["tekton-operator-info"]
-    verbs: ["get"]
+    verbs: ["get", "describe"]

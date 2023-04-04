@@ -68,4 +68,4 @@ if [[ -d hack/patches ]];then
     done
 fi
 
-update_licenses third_party/
+#update_licenses third_party/

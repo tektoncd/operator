@@ -123,7 +123,7 @@ spec:
       version: v1alpha1
     - description: Represents an installation of latest version of Chains
       displayName: Tekton Chains
-      kind: Tekton Chain
+      kind: TektonChain
       name: tektonchains.operator.tekton.dev
       resources:
       - kind: tektoninstallersets
@@ -144,7 +144,7 @@ spec:
       version: v1alpha1
     - description: Represents an installation of latest version of Tekton Results
       displayName: Tekton Results
-      kind: Tekton Results
+      kind: TektonResult
       name: tektonresults.operator.tekton.dev
       resources:
       - kind: tektoninstallersets

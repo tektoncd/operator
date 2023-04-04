@@ -44,7 +44,7 @@ metadata:
   labels:
     operator.tekton.dev/release: v0.64.0
     version: v0.64.0
-  name: tektonchains.operator.tekton.dev
+  name: tektonresults.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:

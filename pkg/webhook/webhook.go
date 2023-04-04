@@ -35,7 +35,7 @@ var types = map[schema.GroupVersionKind]resourcesemantics.GenericCRD{
 	v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.KindTektonPipeline): &v1alpha1.TektonPipeline{},
 	v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.KindTektonTrigger):  &v1alpha1.TektonTrigger{},
 	v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.KindTektonHub):      &v1alpha1.TektonHub{},
-	v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.KindTektonResult):   &v1alpha1.TektonHub{},
+	v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.KindTektonResult):   &v1alpha1.TektonResult{},
 	v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.KindTektonChain):    &v1alpha1.TektonChain{},
 }
 
