@@ -18,3 +18,13 @@ metadata:
   name: result
 spec:
   targetNamespace: tekton-pipelines
+  logs_api: true
+  log_level: debug
+  db_port: 5432
+  logging_pvc_name: tekton-logs
+  logs_path: /logs
+  logs_type: File
+  logs_buffer_size: 32768
+  no_auth: true
+  tls_hostname_override: tekton-results-api-service.tekton-pipelines.svc.cluster.local
+  db_enable_auto_migration: true

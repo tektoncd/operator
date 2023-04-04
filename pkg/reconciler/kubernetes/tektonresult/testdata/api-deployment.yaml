@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: tekton-results-api
+    app.kubernetes.io/part-of: tekton-results
+    app.kubernetes.io/version: 9f84a1f
+  name: tekton-results-api
+  namespace: tekton-pipelines
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tekton-results-api
+      app.kubernetes.io/version: 9f84a1f
+  template:
+    metadata:
+      annotations:
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+      labels:
+        app.kubernetes.io/name: tekton-results-api
+        app.kubernetes.io/version: 9f84a1f
+    spec:
+      containers:
+        - env:
+            - name: DB_HOST
+              value: tekton-results-postgres-service.tekton-pipelines.svc.cluster.local
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_USER
+                  name: tekton-results-postgres
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_PASSWORD
+                  name: tekton-results-postgres
+            - name: DB_NAME
+              value: tekton-results
+          image: gcr.io/tekton-releases/github.com/tektoncd/results/cmd/api:9f84a1f@sha256:606816e51ebecb58fccc28f5a95699255ed8742470df673294ce25f69ffc451c
+          name: api
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /etc/tekton/results
+              name: config
+              readOnly: true
+            - mountPath: /etc/tls
+              name: tls
+              readOnly: true
+      serviceAccountName: tekton-results-api
+      volumes:
+        - configMap:
+            name: tekton-results-api-config
+          name: config
+        - name: tls
+          secret:
+            secretName: tekton-results-tls

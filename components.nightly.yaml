@@ -17,7 +17,7 @@ chains:
   version: nightly
 results:
   github: tektoncd/results
-  version: nightly
+  version: v0.5.0
 hub:
   github: tektoncd/hub
   version: v1.10.0

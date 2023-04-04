@@ -300,19 +300,3 @@ func (r *Reconciler) validateSecretsAreCreated(ctx context.Context, tr *v1alpha1
 	}
 	return nil
 }
-
-// transform mutates the passed manifest to one with common, component
-// and platform transformations applied
-func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	instance := comp.(*v1alpha1.TektonResult)
-	targetNs := comp.GetSpec().GetTargetNamespace()
-	extra := []mf.Transformer{
-		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdPipeline),
-		common.ReplaceNamespaceInDeploymentArgs(targetNs),
-		common.ReplaceNamespaceInDeploymentEnv(targetNs),
-		common.AddDeploymentRestrictedPSA(),
-		common.AddStatefulSetRestrictedPSA(),
-	}
-	extra = append(extra, r.extension.Transformers(instance)...)
-	return common.Transform(ctx, manifest, instance, extra...)
-}

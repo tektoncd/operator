@@ -10,8 +10,6 @@ TektonResult custom resource allows user to install and manage [Tekton Result][r
 
 TektonResult is an optional component and currently cannot be installed through TektonConfig. It has to be installed seperately.
 
-NOTE: TektonResult is enabled only on Kubernetes Platform and not on OpenShift.
-
 To install Tekton Result on your cluster follow steps as given below:
 - Make sure Tekton Pipelines is installed on your cluster, using the Operator.
 - Generate a database root password.
@@ -53,7 +51,7 @@ To install Tekton Result on your cluster follow steps as given below:
    --cert=cert.pem \
    --key=key.pem
    ```
-- Once the secrets are created create a TektonResult CR as below.
+- Once the secrets are created create a TektonResult CR (Check ##Properties) as below.
   ```sh
   kubectl apply -f config/crs/kubernetes/result/operator_v1alpha1_result_cr.yaml
   ```
@@ -62,4 +60,40 @@ To install Tekton Result on your cluster follow steps as given below:
   kubectl get tektonresults.operator.tekton.dev
   ```
 
+## Properties
+The TektonResult CR is like below:
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonResult
+metadata:
+  name: result
+spec:
+  targetNamespace: tekton-pipelines
+  db_user: test
+  db_password: pass
+  db_host: localhost
+  db_port: 5342
+  db_sslmode: false
+  db_enable_auto_migration: true
+  log_level: debug
+  logs_api: true
+  logs_type: File
+  logs_buffer_size: 90kb
+  logs_path: /logs
+  tls_hostname_override: localhost
+  no_auth: true
+  s3_bucket_name: test
+  s3_endpoint: aws.com
+  s3_hostname_immutable: sdf
+  s3_region: west
+  s3_access_key_id: 123r
+  s3_secret_access_key: sdfjg
+  s3_multi_part_size: 888mb
+  logging_pvc_name: tekton-logs
+```
+
+These properties are analogous to the one in configmap of tekton results api `tekton-results-api-config` documented at [api.md]:https://github.com/tektoncd/results/blob/4472848a0fb7c1473cfca8b647553170efac78a1/cmd/api/README.md
+
+
 [result]:https://github.com/tektoncd/results
+

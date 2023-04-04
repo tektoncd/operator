@@ -176,6 +176,7 @@ image-substitutions:
         containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_HUB_TEKTON_HUB_DB
+          - IMAGE_RESULTS_POSTGRES
 - image: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel8@
   replaceLocations:
     envTargets:
@@ -206,6 +207,20 @@ image-substitutions:
           - IMAGE_PAC_PAC_CONTROLLER
           - IMAGE_PAC_PAC_WEBHOOK
           - IMAGE_PAC_PAC_WATCHER
+- image: registry.redhat.io/openshift-pipelines/tekton-results-watcher-rhel8@
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
+        envKeys:
+          - IMAGE_RESULTS_WATCHER
+- image: registry.redhat.io/openshift-pipelines/tekton-results-api-rhel8@
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
+        envKeys:
+          - IMAGE_RESULTS_API
 
 # add third party images which are not replaced by operator
 # but pulled directly by tasks here
