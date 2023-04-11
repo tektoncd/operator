@@ -19,6 +19,7 @@ package tektonconfig
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -231,6 +232,12 @@ func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonConfig)
 		tc.Status.MarkPostInstallFailed(v1alpha1.UpgradePending)
 		tc.Status.MarkNotReady("Upgrade Pending")
 	}
+
+	// TODO: remove later, as it is for handling specific case of one upgrade
+	if ok && !strings.HasPrefix(ver, getPatchVersionTrimmed(r.operatorVersion)) && tc.Spec.Pipeline.EmbeddedStatus == "full" {
+		tc.Spec.Pipeline.EmbeddedStatus = "both"
+	}
+
 	if labels == nil {
 		labels = map[string]string{}
 	}
@@ -258,4 +265,13 @@ func (r *Reconciler) addTargetNamespaceLabel(ctx context.Context, targetNamespac
 	ns.SetLabels(labels)
 	_, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, ns, v1.UpdateOptions{})
 	return err
+}
+
+// To get the minor major version for full version, i.e. 1.10.0 will return 1.10
+func getPatchVersionTrimmed(version string) string {
+	endIndex := strings.LastIndex(version, ".")
+	if endIndex != -1 {
+		version = version[:endIndex]
+	}
+	return version
 }
