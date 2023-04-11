@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
@@ -34,13 +35,13 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	configv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	operatorV1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // EnsureTektonConfigExists creates a TektonConfig with the name names.TektonConfig, if it does not exist.
-func EnsureTektonConfigExists(kubeClientSet *kubernetes.Clientset, clients configv1alpha1.TektonConfigInterface, names utils.ResourceNames) (*v1alpha1.TektonConfig, error) {
+func EnsureTektonConfigExists(kubeClientSet *kubernetes.Clientset, clients operatorV1alpha1.TektonConfigInterface, names utils.ResourceNames) (*v1alpha1.TektonConfig, error) {
 	// If this function is called by the upgrade tests, we only create the custom resource, if it does not exist.
 
 	cm, err := kubeClientSet.CoreV1().ConfigMaps(names.Namespace).Get(context.TODO(), "tekton-config-defaults", metav1.GetOptions{})
@@ -93,7 +94,7 @@ func EnsureTektonConfigExists(kubeClientSet *kubernetes.Clientset, clients confi
 // WaitForTektonConfigState polls the status of the TektonConfig called name
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout.
-func WaitForTektonConfigState(clients configv1alpha1.TektonConfigInterface, name string,
+func WaitForTektonConfigState(clients operatorV1alpha1.TektonConfigInterface, name string,
 	inState func(s *v1alpha1.TektonConfig, err error) (bool, error)) (*v1alpha1.TektonConfig, error) {
 	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForTektonConfigState/%s/%s", name, "TektonConfigIsReady"))
 	defer span.End()
@@ -177,4 +178,19 @@ func verifyNoTektonConfigCR(clients *utils.Clients) error {
 		return errors.New("Unable to verify cluster-scoped resources are deleted if any TektonConfig exists")
 	}
 	return nil
+}
+
+func WaitForTektonConfigReady(client operatorV1alpha1.TektonConfigInterface, name string, interval, timeout time.Duration) error {
+	isReady := func() (bool, error) {
+		configCR, err := client.Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return configCR.Status.IsReady(), nil
+	}
+
+	return wait.PollImmediate(interval, timeout, isReady)
 }

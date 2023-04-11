@@ -41,7 +41,7 @@ func TestTektonHubHappyPath(t *testing.T) {
 
 	apistest.CheckConditionOngoing(th, DbDependenciesInstalled, t)
 	apistest.CheckConditionOngoing(th, DbInstallerSetAvailable, t)
-	apistest.CheckConditionOngoing(th, DatabasebMigrationDone, t)
+	apistest.CheckConditionOngoing(th, DatabaseMigrationDone, t)
 	apistest.CheckConditionOngoing(th, ApiDependenciesInstalled, t)
 	apistest.CheckConditionOngoing(th, PreReconciler, t)
 	apistest.CheckConditionOngoing(th, ApiInstallerSetAvailable, t)
@@ -62,12 +62,12 @@ func TestTektonHubHappyPath(t *testing.T) {
 
 	// Db-migration
 	// InstallerSet is not ready when Job pods are not up
-	th.MarkDatabasebMigrationFailed("waiting for Job to complete")
-	apistest.CheckConditionFailed(th, DatabasebMigrationDone, t)
+	th.MarkDatabaseMigrationFailed("waiting for Job to complete")
+	apistest.CheckConditionFailed(th, DatabaseMigrationDone, t)
 
 	// Installer set created for DB migration
-	th.MarkDatabasebMigrationDone()
-	apistest.CheckConditionSucceeded(th, DatabasebMigrationDone, t)
+	th.MarkDatabaseMigrationDone()
+	apistest.CheckConditionSucceeded(th, DatabaseMigrationDone, t)
 
 	//API
 
@@ -107,7 +107,7 @@ func TestTektonHubErrorPath(t *testing.T) {
 
 	apistest.CheckConditionOngoing(th, DbDependenciesInstalled, t)
 	apistest.CheckConditionOngoing(th, DbInstallerSetAvailable, t)
-	apistest.CheckConditionOngoing(th, DatabasebMigrationDone, t)
+	apistest.CheckConditionOngoing(th, DatabaseMigrationDone, t)
 	apistest.CheckConditionOngoing(th, ApiDependenciesInstalled, t)
 	apistest.CheckConditionOngoing(th, PreReconciler, t)
 	apistest.CheckConditionOngoing(th, ApiInstallerSetAvailable, t)
@@ -126,12 +126,12 @@ func TestTektonHubErrorPath(t *testing.T) {
 	apistest.CheckConditionSucceeded(th, DbInstallerSetAvailable, t)
 
 	// InstallerSet is not ready when Job pods are not up
-	th.MarkDatabasebMigrationFailed("waiting for Job to complete")
-	apistest.CheckConditionFailed(th, DatabasebMigrationDone, t)
+	th.MarkDatabaseMigrationFailed("waiting for Job to complete")
+	apistest.CheckConditionFailed(th, DatabaseMigrationDone, t)
 
 	// Installer set created for DB migration
-	th.MarkDatabasebMigrationDone()
-	apistest.CheckConditionSucceeded(th, DatabasebMigrationDone, t)
+	th.MarkDatabaseMigrationDone()
+	apistest.CheckConditionSucceeded(th, DatabaseMigrationDone, t)
 
 	th.MarkApiDependenciesInstalled()
 	apistest.CheckConditionSucceeded(th, ApiDependenciesInstalled, t)

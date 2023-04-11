@@ -24,7 +24,7 @@ import (
 func (th *TektonHub) SetDefaults(ctx context.Context) {
 
 	if th.Spec.Api.ApiSecretName == "" {
-		th.Spec.Api.ApiSecretName = "tekton-hub-api"
+		th.Spec.Api.ApiSecretName = HubApiSecretName
 	}
 
 	if th.Spec.CommonSpec.TargetNamespace == "" {

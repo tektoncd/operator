@@ -35,22 +35,11 @@ import (
 	"knative.dev/pkg/test/logging"
 )
 
-func EnsureTektonHubExists(clients typedv1alpha1.TektonHubInterface, names utils.ResourceNames) (*v1alpha1.TektonHub, error) {
+func EnsureTektonHubExists(clients typedv1alpha1.TektonHubInterface, hub *v1alpha1.TektonHub) (*v1alpha1.TektonHub, error) {
 	// If this function is called by the upgrade tests, we only create the custom resource, if it does not exist.
-	ks, err := clients.Get(context.TODO(), names.TektonHub, metav1.GetOptions{})
+	ks, err := clients.Get(context.TODO(), hub.GetName(), metav1.GetOptions{})
 	if apierrs.IsNotFound(err) {
-		ks := &v1alpha1.TektonHub{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: names.TektonHub,
-			},
-			Spec: v1alpha1.TektonHubSpec{
-				CommonSpec: v1alpha1.CommonSpec{
-					TargetNamespace: names.TargetNamespace,
-				},
-				Api: v1alpha1.ApiSpec{},
-			},
-		}
-		return clients.Create(context.TODO(), ks, metav1.CreateOptions{})
+		return clients.Create(context.TODO(), hub, metav1.CreateOptions{})
 	}
 	return ks, err
 }
@@ -83,8 +72,7 @@ func IsTektonHubReady(s *v1alpha1.TektonHub, err error) (bool, error) {
 
 // AssertTektonHubCRReadyStatus verifies if the TektonHub reaches the READY status.
 func AssertTektonHubCRReadyStatus(t *testing.T, clients *utils.Clients, names utils.ResourceNames) {
-	if _, err := WaitForTektonHubState(clients.TektonHub(), names.TektonHub,
-		IsTektonHubReady); err != nil {
+	if _, err := WaitForTektonHubState(clients.TektonHub(), names.TektonHub, IsTektonHubReady); err != nil {
 		t.Fatalf("TektonHubCR %q failed to get to the READY status: %v", names.TektonHub, err)
 	}
 }
@@ -92,6 +80,9 @@ func AssertTektonHubCRReadyStatus(t *testing.T, clients *utils.Clients, names ut
 // TektonHubCRDelete deletes tha TektonHub to see if all resources will be deleted
 func TektonHubCRDelete(t *testing.T, clients *utils.Clients, crNames utils.ResourceNames) {
 	if err := clients.TektonHub().Delete(context.TODO(), crNames.TektonHub, metav1.DeleteOptions{}); err != nil {
+		if apierrs.IsNotFound(err) {
+			return
+		}
 		t.Fatalf("TektonHub %q failed to delete: %v", crNames.TektonHub, err)
 	}
 	err := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {

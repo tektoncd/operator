@@ -84,8 +84,7 @@ func IsTektonChainReady(s *v1alpha1.TektonChain, err error) (bool, error) {
 
 // AssertTektonChainCRReadyStatus verifies if the TektonChain reaches the READY status.
 func AssertTektonChainCRReadyStatus(t *testing.T, clients *utils.Clients, names utils.ResourceNames) {
-	if _, err := WaitForTektonChainState(clients.TektonChains(), names.TektonChain,
-		IsTektonChainReady); err != nil {
+	if _, err := WaitForTektonChainState(clients.TektonChains(), names.TektonChain, IsTektonChainReady); err != nil {
 		t.Fatalf("TektonChainCR %q failed to get to the READY status: %v", names.TektonChain, err)
 	}
 }
