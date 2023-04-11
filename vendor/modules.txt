@@ -1042,7 +1042,7 @@ github.com/syndtr/goleveldb/leveldb/util
 # github.com/tchap/go-patricia/v2 v2.3.1
 ## explicit; go 1.16
 github.com/tchap/go-patricia/v2/patricia
-# github.com/tektoncd/pipeline v0.44.0
+# github.com/tektoncd/pipeline v0.44.2
 ## explicit; go 1.18
 github.com/tektoncd/pipeline/pkg/apis/config
 github.com/tektoncd/pipeline/pkg/apis/pipeline
@@ -1069,7 +1069,7 @@ github.com/tektoncd/pipeline/test/parse
 ## explicit; go 1.13
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
-# github.com/tektoncd/triggers v0.22.1
+# github.com/tektoncd/triggers v0.23.1
 ## explicit; go 1.17
 github.com/tektoncd/triggers/pkg/apis/config
 github.com/tektoncd/triggers/pkg/apis/triggers
@@ -1944,7 +1944,7 @@ k8s.io/utils/net
 k8s.io/utils/pointer
 k8s.io/utils/strings/slices
 k8s.io/utils/trace
-# knative.dev/pkg v0.0.0-20230125083639-408ad0773f47 => knative.dev/pkg v0.0.0-20221123011842-b78020c16606
+# knative.dev/pkg v0.0.0-20230224205330-75da922ef055 => knative.dev/pkg v0.0.0-20221123011842-b78020c16606
 ## explicit; go 1.18
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck

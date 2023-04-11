@@ -22,17 +22,22 @@ import (
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/webhook/resourcesemantics"
 )
+
+var _ resourcesemantics.VerbLimited = (*TriggerBinding)(nil)
+
+// SupportedVerbs returns the operations that validation should be called for
+func (tb *TriggerBinding) SupportedVerbs() []admissionregistrationv1.OperationType {
+	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
+}
 
 // Validate TriggerBinding.
 func (tb *TriggerBinding) Validate(ctx context.Context) *apis.FieldError {
-	if apis.IsInDelete(ctx) {
-		return nil
-	}
-
 	errs := validate.ObjectMetadata(tb.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(tb.Spec.Validate(ctx).ViaField("spec"))
 }
