@@ -24,21 +24,26 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/triggers/pkg/apis/config"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
 // paramsRegexp captures TriggerTemplate parameter names $(tt.params.NAME)
 var paramsRegexp = regexp.MustCompile(`\$\(tt.params.(?P<var>[_a-zA-Z][_a-zA-Z0-9.-]*)\)`)
 
+var _ resourcesemantics.VerbLimited = (*TriggerTemplate)(nil)
+
+// SupportedVerbs returns the operations that validation should be called for
+func (t *TriggerTemplate) SupportedVerbs() []admissionregistrationv1.OperationType {
+	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
+}
+
 // Validate validates a TriggerTemplate.
 func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
-	if apis.IsInDelete(ctx) {
-		return nil
-	}
-
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
 	return errs.Also(t.Spec.validate(ctx).ViaField("spec"))
 }

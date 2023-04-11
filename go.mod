@@ -19,9 +19,9 @@ require (
 	github.com/openshift/client-go v0.0.0-20210521082421-73d9475a9142
 	github.com/sigstore/cosign/v2 v2.0.0
 	github.com/spf13/viper v1.15.0
-	github.com/tektoncd/pipeline v0.44.0
+	github.com/tektoncd/pipeline v0.44.2
 	github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7
-	github.com/tektoncd/triggers v0.22.1
+	github.com/tektoncd/triggers v0.23.1
 	github.com/titanous/rocacheck v0.0.0-20171023193734-afe73141d399
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.24.0
@@ -38,7 +38,7 @@ require (
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.1
 	k8s.io/code-generator v0.26.1
-	knative.dev/pkg v0.0.0-20230125083639-408ad0773f47
+	knative.dev/pkg v0.0.0-20230224205330-75da922ef055
 	sigs.k8s.io/controller-runtime v0.13.1
 	sigs.k8s.io/yaml v1.3.0
 )
