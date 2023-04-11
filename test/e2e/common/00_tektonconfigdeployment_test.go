@@ -21,455 +21,776 @@ package common
 
 import (
 	"context"
-	"os"
+	"fmt"
+	"sort"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
 	tconfig "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
 	"github.com/tektoncd/operator/test/client"
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
-	"github.com/tektoncd/pipeline/test/diff"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"go.uber.org/zap"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"knative.dev/pkg/ptr"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-// TestTektonConfigDeployment does following checks
-// - make sure TektonConfig is created if AUTOINSTALL_COMPONENTS is true
-// - waits till TektonConfig ready status becomes true
-// - in case of OpenShift, runs rbac and addon test
-// - changes profile from all to basic and validates changes
-// - deletes a components and make sure it is recreated
-// - updates field in TektonConfig Spec and make sure they are reflected in configmaps
-// - Deletes and recreates TektonConfig and validates webhook adds all defaults
-func TestTektonConfigDeployment(t *testing.T) {
-	crNames := utils.ResourceNames{
-		TektonConfig:    v1alpha1.ConfigResourceName,
-		TektonPipeline:  v1alpha1.PipelineResourceName,
-		Namespace:       "tekton-operator",
-		TargetNamespace: "tekton-pipelines",
+const (
+	namespaceDefault                 = "default"
+	defaultTektonConfigProfile       = v1alpha1.ProfileAll
+	pipelineControllerDeploymentName = "tekton-pipelines-controller"
+)
+
+var (
+	tektonConfigProfileKubernetes = map[string]TektonProfileResource{
+		v1alpha1.ProfileAll: {
+			Deployments: []string{
+				"tekton-dashboard",
+				"tekton-operator-proxy-webhook",
+				pipelineControllerDeploymentName,
+				"tekton-pipelines-remote-resolvers",
+				"tekton-pipelines-webhook",
+				"tekton-triggers-controller",
+				"tekton-triggers-core-interceptors",
+				"tekton-triggers-webhook",
+			},
+			ServiceAccounts: []string{
+				"tekton-dashboard",
+				"tekton-operators-proxy-webhook",
+				"tekton-pipelines-controller",
+				"tekton-pipelines-resolvers",
+				"tekton-pipelines-webhook",
+				"tekton-triggers-controller",
+				"tekton-triggers-core-interceptors",
+				"tekton-triggers-webhook",
+			},
+			AddonsInstallerSets: []string{},
+		},
+		v1alpha1.ProfileBasic: {
+			Deployments: []string{
+				"tekton-operator-proxy-webhook",
+				pipelineControllerDeploymentName,
+				"tekton-pipelines-remote-resolvers",
+				"tekton-pipelines-webhook",
+				"tekton-triggers-controller",
+				"tekton-triggers-core-interceptors",
+				"tekton-triggers-webhook",
+			},
+			ServiceAccounts: []string{
+				"tekton-operators-proxy-webhook",
+				"tekton-pipelines-controller",
+				"tekton-pipelines-resolvers",
+				"tekton-pipelines-webhook",
+				"tekton-triggers-controller",
+				"tekton-triggers-core-interceptors",
+				"tekton-triggers-webhook",
+			},
+			AddonsInstallerSets: []string{},
+		},
+		v1alpha1.ProfileLite: {
+			Deployments: []string{
+				"tekton-operator-proxy-webhook",
+				pipelineControllerDeploymentName,
+				"tekton-pipelines-remote-resolvers",
+				"tekton-pipelines-webhook",
+			},
+			ServiceAccounts: []string{
+				"tekton-operators-proxy-webhook",
+				"tekton-pipelines-controller",
+				"tekton-pipelines-resolvers",
+				"tekton-pipelines-webhook",
+			},
+			AddonsInstallerSets: []string{},
+		},
+	}
+	tektonConfigProfileOpenshift = map[string]TektonProfileResource{
+		v1alpha1.ProfileAll: {
+			Deployments: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
+				"tekton-operator-proxy-webhook",
+				pipelineControllerDeploymentName,
+				"tekton-pipelines-remote-resolvers",
+				"tekton-pipelines-webhook",
+				"tekton-triggers-controller",
+				"tekton-triggers-core-interceptors",
+				"tekton-triggers-webhook",
+				"tkn-cli-serve",
+			},
+			ServiceAccounts: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
+				"tekton-operators-proxy-webhook",
+				"tekton-pipelines-controller",
+				"tekton-pipelines-resolvers",
+				"tekton-pipelines-webhook",
+				"tekton-triggers-controller",
+				"tekton-triggers-core-interceptors",
+				"tekton-triggers-webhook",
+			},
+			AddonsInstallerSets: []string{ // installerset addons prefix
+				"addon-custom-clustertask",
+				"addon-custom-communityclustertask",
+				"addon-custom-consolecli",
+				"addon-custom-openshiftconsole",
+				"addon-custom-pipelinestemplate",
+				"addon-custom-triggersresources",
+				"addon-versioned-clustertasks",
+			},
+		},
+		v1alpha1.ProfileBasic: {
+			Deployments: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
+				"tekton-operator-proxy-webhook",
+				pipelineControllerDeploymentName,
+				"tekton-pipelines-remote-resolvers",
+				"tekton-pipelines-webhook",
+				"tekton-triggers-controller",
+				"tekton-triggers-core-interceptors",
+				"tekton-triggers-webhook",
+			},
+			ServiceAccounts: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
+				"tekton-operators-proxy-webhook",
+				"tekton-pipelines-controller",
+				"tekton-pipelines-resolvers",
+				"tekton-pipelines-webhook",
+				"tekton-triggers-controller",
+				"tekton-triggers-core-interceptors",
+				"tekton-triggers-webhook",
+			},
+			AddonsInstallerSets: []string{},
+		},
+		v1alpha1.ProfileLite: {
+			Deployments: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
+				"tekton-operator-proxy-webhook",
+				pipelineControllerDeploymentName,
+				"tekton-pipelines-remote-resolvers",
+				"tekton-pipelines-webhook",
+			},
+			ServiceAccounts: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
+				"tekton-operators-proxy-webhook",
+				"tekton-pipelines-controller",
+				"tekton-pipelines-resolvers",
+				"tekton-pipelines-webhook",
+			},
+			AddonsInstallerSets: []string{},
+		},
+	}
+)
+
+type TektonProfileResource struct {
+	Deployments         []string
+	ServiceAccounts     []string
+	AddonsInstallerSets []string
+}
+
+type TektonConfigTestSuite struct {
+	resourceNames utils.ResourceNames
+	suite.Suite
+	clients  *utils.Clients
+	interval time.Duration
+	timeout  time.Duration
+	logger   *zap.SugaredLogger
+}
+
+func TestTektonConfigTestSuite(t *testing.T) {
+	ts := NewTestTektonConfigTestSuite(t)
+	// run the actual tests
+	suite.Run(t, ts)
+}
+
+// if other suites want to execute a method on this suite,
+// can create a instance by calling this function
+// also used internally
+func NewTestTektonConfigTestSuite(t *testing.T) *TektonConfigTestSuite {
+	ts := TektonConfigTestSuite{
+		resourceNames: utils.GetResourceNames(),
+		interval:      5 * time.Second,
+		timeout:       5 * time.Minute,
+		logger:        utils.Logger(),
 	}
 
-	clients := client.Setup(t, crNames.TargetNamespace)
+	// setup clients
+	ts.clients = client.Setup(t, ts.resourceNames.TargetNamespace)
+	// if the instance created from other suite, "t" should be added,
+	// other wise nil error when using "t" inside suite
+	ts.SetT(t)
 
-	platform := os.Getenv("TARGET")
+	return &ts
+}
 
-	if platform == "openshift" {
-		crNames.Namespace = "openshift-operators"
-		crNames.TargetNamespace = "openshift-pipelines"
+// before suite
+func (s *TektonConfigTestSuite) SetupSuite() {
+	resources.PrintClusterInformation(s.logger, s.resourceNames)
+	s.recreateOperatorPod()
+}
+
+// before each tests
+// reset the tekton pipelines into it's default state
+func (s *TektonConfigTestSuite) SetupTest() {
+	s.logger.Debug("resetting the tekton config to it's default state")
+	s.resetToDefaults()
+	s.logger.Debug("test environment ready. starting the actual test")
+}
+
+// after each tests
+// if there is a failures, execute debug commands
+func (s *TektonConfigTestSuite) TearDownTest() {
+	t := s.T()
+	if t.Failed() {
+		s.logger.Infow("test failed, executing debug commands", "testName", t.Name())
+		resources.ExecuteDebugCommands(s.logger, s.resourceNames)
+	}
+}
+
+// actual tests
+
+// delete the existing TektonConfig cr and recreate operator pod
+// verify default TektonConfig cr created and resources
+func (s *TektonConfigTestSuite) Test01_AutoInstall() {
+	s.logger.Debug("deleting the tektonConfig cr")
+	s.undeploy()
+
+	// recreates the operator pod, on pod startup TektonConfig 'config' will be created
+	s.recreateOperatorPod()
+
+	// verify the services are up and running
+	s.logger.Debug("verifying the resources")
+	s.verifyProfile(defaultTektonConfigProfile, true)
+}
+
+// change the profile "spec.profile" to different values and verify resources
+func (s *TektonConfigTestSuite) Test02_ChangeProfile() {
+	// switch to "lite"
+	newProfile := v1alpha1.ProfileLite
+	s.changeProfile(newProfile)
+	s.verifyProfile(newProfile, true)
+
+	// switch to "basic"
+	newProfile = v1alpha1.ProfileBasic
+	s.changeProfile(newProfile)
+	s.verifyProfile(newProfile, true)
+
+	// switch to "all"
+	newProfile = v1alpha1.ProfileAll
+	s.changeProfile(newProfile)
+	s.verifyProfile(newProfile, true)
+}
+
+// delete pipeline and verify recreated automatically
+func (s *TektonConfigTestSuite) Test03_DeletePipeline() {
+	t := s.T()
+	interval := s.interval
+	timeout := s.timeout
+
+	// delete pipeline cr
+	s.logger.Debug("deleting pipelines cr")
+	err := s.clients.TektonPipeline().Delete(context.TODO(), s.resourceNames.TektonPipeline, metav1.DeleteOptions{})
+	require.NoError(t, err)
+
+	// verify pipeline controller deployment deleted
+	err = resources.WaitForDeploymentDeletion(s.clients.KubeClient, pipelineControllerDeploymentName, s.resourceNames.TargetNamespace, interval, timeout)
+	require.NoError(t, err, "wait for pipeline deployment removal")
+	s.logger.Debug("deleted pipelines cr")
+
+	// verify pipeline cr, deployments, other resources are recreated
+	s.logger.Debug("waiting to pipelines cr, will be recreated by operator")
+	s.verifyProfile(defaultTektonConfigProfile, true)
+}
+
+// delete the tektonConfig cr and create it manually then verify services
+func (s *TektonConfigTestSuite) Test04_DeleteAndCreateConfig() {
+	t := s.T()
+
+	// delete the existing tektonConfig
+	s.undeploy()
+
+	// create tektonConfig CR
+	configCR := s.getDefaultConfig()
+	_, err := s.clients.TektonConfig().Create(context.TODO(), configCR, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	// verify resources
+	s.verifyProfile(defaultTektonConfigProfile, true)
+}
+
+// disable addons and verify resources
+// applicable only to openshift platform
+func (s *TektonConfigTestSuite) Test05_DisableAndEnableAddons() {
+	t := s.T()
+	if !utils.IsOpenShift() {
+		t.Skip("skipped: This test is only supported in OpenShift")
 	}
 
-	utils.CleanupOnInterrupt(func() { utils.TearDownConfig(clients, crNames.TektonConfig) })
-	utils.CleanupOnInterrupt(func() { utils.TearDownNamespace(clients, crNames.TargetNamespace) })
-	defer utils.TearDownNamespace(clients, crNames.TargetNamespace)
-	defer utils.TearDownConfig(clients, crNames.TektonConfig)
+	timeout := s.timeout
 
-	var (
-		tc  *v1alpha1.TektonConfig
-		err error
+	// disable addons and update
+	tc := s.getCurrentConfig(timeout)
+	tc.Spec.Addon.Params = []v1alpha1.Param{
+		{Name: v1alpha1.ClusterTasksParam, Value: "false"},
+		{Name: v1alpha1.CommunityClusterTasks, Value: "false"},
+		{Name: v1alpha1.PipelineTemplatesParam, Value: "false"},
+	}
+	_, err := s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	// workaround - starts
+	// fix this issue and remove the workaround
+	// disabling addons operator not reacting immediately. takes approx 20 minutes
+	// for now the workaround is, recreate the operator pod
+	s.logger.Warnw("***WARNING*** fix the issue in product. running with workaround. restarting the operator pod",
+		"issue", "https://github.com/tektoncd/operator/issues/1440",
+	)
+	err = resources.DeletePodByLabelSelector(s.clients.KubeClient, s.resourceNames.OperatorPodSelectorLabel, s.resourceNames.Namespace)
+	require.NoError(t, err, "delete operator pod")
+	// workaround - ends
+
+	s.verifyProfile(defaultTektonConfigProfile, false)
+}
+
+// helper functions
+func (s *TektonConfigTestSuite) changeProfile(targetProfile string) {
+	t := s.T()
+	timeout := 30 * time.Second
+
+	s.logger.Debugw("changing profile", "newProfile", targetProfile)
+
+	configCR := s.getCurrentConfig(timeout)
+	require.NotEqual(t, targetProfile, configCR.Spec.Profile)
+
+	configCR.Spec.Profile = targetProfile
+	_, err := s.clients.TektonConfig().Update(context.TODO(), configCR, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+}
+func (s *TektonConfigTestSuite) verifyProfile(targetProfile string, verifyProfileAddons bool) {
+	t := s.T()
+	interval := s.interval
+	timeout := 2 * time.Minute
+
+	s.verifyResources(targetProfile, verifyProfileAddons)
+
+	// verify pipeline cr availability
+	_, err := s.clients.TektonPipeline().Get(context.TODO(), s.resourceNames.TektonPipeline, metav1.GetOptions{})
+	require.NoError(t, err)
+	s.logger.Debug("pipeline cr is available")
+
+	// verify rbac, pac, addons in openshift
+	if utils.IsOpenShift() {
+		s.verifyPAC()
+		s.verifyAddons()
+		s.verifyRbac(namespaceDefault)
+
+		// create a namespace and verify rbac there
+		testNamespace := common.SimpleNameGenerator.RestrictLengthWithRandomSuffix("e2e-tests-rbac")
+		err := resources.CreateNamespace(s.clients.KubeClient, testNamespace)
+		require.NoError(t, err)
+
+		// verify rbac on created namespace
+		s.verifyRbac(testNamespace)
+
+		// delete the namespace
+		err = resources.DeleteNamespaceAndWait(s.clients.KubeClient, testNamespace, interval, timeout)
+		assert.NoError(t, err)
+	}
+}
+
+func (s *TektonConfigTestSuite) verifyResources(expectedProfile string, verifyProfileAddons bool) {
+	t := s.T()
+	interval := s.interval
+	timeout := s.timeout
+	addonsUpdateTimeout := 3 * time.Minute
+
+	profiles := tektonConfigProfileKubernetes
+	if utils.IsOpenShift() {
+		profiles = tektonConfigProfileOpenshift
+	}
+
+	// get tektonConfig cr
+	configCR := s.getCurrentConfig(timeout)
+
+	// verify profile
+	require.Equal(t, expectedProfile, configCR.Spec.Profile, "verify profile match")
+
+	// verify tektonConfig status
+	// workaround - starts
+	err := resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, interval, 3*time.Minute)
+	if err != nil {
+		// fix this issue and remove the following workaround.
+		s.logger.Warnw("***WARNING*** fix the issue in product. running with workaround. restarting the operator pod",
+			"issue", "https://github.com/tektoncd/operator/issues/1441",
+		)
+		retryCount := 3
+		for {
+			if retryCount == 0 {
+				break
+			}
+			// delete operator pod
+			err = resources.DeletePodByLabelSelector(s.clients.KubeClient, s.resourceNames.OperatorPodSelectorLabel, s.resourceNames.Namespace)
+			require.NoError(t, err, "delete operator pod")
+
+			// wait for tektonConfig ready status
+			err = resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, interval, 2*time.Minute)
+			if err == nil {
+				break
+			}
+			retryCount--
+		}
+		// workaround - ends
+		err = resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, interval, timeout)
+		require.NoError(t, err, "waiting for tektonConfig ready status")
+	}
+	s.logger.Debug("tektonConfig becomes ready")
+
+	profileResources, found := profiles[configCR.Spec.Profile]
+	require.True(t, found, "unknown profile received", configCR.Spec.Profile)
+
+	// verify deployments
+	for _, deploymentName := range profileResources.Deployments {
+		namespace := s.resourceNames.TargetNamespace
+		err = resources.WaitForDeploymentReady(s.clients.KubeClient, deploymentName, namespace, interval, timeout)
+		require.NoError(t, err, "verify deployment", deploymentName, namespace)
+	}
+
+	// verify service accounts
+	for _, sa := range profileResources.ServiceAccounts {
+		namespace := s.resourceNames.TargetNamespace
+		err = resources.WaitForServiceAccount(s.clients.KubeClient, sa, namespace, interval, timeout)
+		require.NoError(t, err, "verify serviceAccount", sa, namespace)
+	}
+
+	// addons modified and differ from default profile, skipping addons test
+	if !verifyProfileAddons {
+		return
+	}
+
+	// verify addons
+	labelSelector := fmt.Sprintf("%s=TektonAddon", v1alpha1.CreatedByKey)
+
+	// wait for addons to up to date
+	waitAddonsUpdateFunc := func() (bool, error) {
+		addons, err := s.clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector})
+		if err != nil {
+			return false, err
+		}
+		return len(addons.Items) >= len(profileResources.AddonsInstallerSets), nil
+	}
+	err = wait.PollImmediate(interval, addonsUpdateTimeout, waitAddonsUpdateFunc)
+	require.NoError(t, err)
+
+	addons, err := s.clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(addons.Items), len(profileResources.AddonsInstallerSets), "addons")
+	// verify individual addons
+	actualAddons := make([]string, len(addons.Items))
+	for index, addon := range addons.Items {
+		actualAddons[index] = addon.GetName()
+	}
+	expectedAddons := profileResources.AddonsInstallerSets
+	// addon names appended with random suffix
+	// verify with prefix match
+	for _, expectedAddon := range expectedAddons {
+		found := false
+		for _, actualAddon := range actualAddons {
+			if strings.HasPrefix(actualAddon, expectedAddon) {
+				found = true
+				break
+			}
+		}
+		require.True(t, found, "addon installerSet not found: %s", expectedAddon)
+	}
+
+}
+
+// this function statically referring openshift resources
+// if we plan to use this for kubernetes update this references
+func (s *TektonConfigTestSuite) verifyAddons() {
+	t := s.T()
+	timeout := 2 * time.Minute
+
+	configCR := s.getCurrentConfig(timeout)
+	addonsEnabled := configCR.Spec.Profile == v1alpha1.ProfileAll
+	addonLabelSelector := fmt.Sprintf("%s=TektonAddon", v1alpha1.CreatedByKey)
+
+	// if addons enabled, verify expected resources
+	if addonsEnabled {
+		// verify addons config
+		addon, err := s.clients.Operator.TektonAddons().Get(context.TODO(), v1alpha1.AddonResourceName, metav1.GetOptions{})
+		require.NoError(t, err)
+
+		// check if number of params passed in TektonConfig would be passed in TektonAddons
+		tc := s.getCurrentConfig(timeout)
+		itemsTektonConfig := tc.Spec.Addon.Params
+		itemsTektonAddons := addon.Spec.Params
+		// sort values in the slice
+		sort.Slice(itemsTektonConfig, func(i, j int) bool { return itemsTektonConfig[i].Name < itemsTektonConfig[j].Name })
+		sort.Slice(itemsTektonAddons, func(i, j int) bool { return itemsTektonAddons[i].Name < itemsTektonAddons[j].Name })
+
+		diff := cmp.Diff(itemsTektonConfig, itemsTektonAddons)
+		require.Empty(t, diff)
+
+		// verify addons installer set count
+		installerSets, err := s.clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{LabelSelector: addonLabelSelector})
+		require.NoError(t, err)
+
+		// get addons parameters, to guess the final count
+		enabledAddonsCount := int(0)
+		for _, param := range itemsTektonAddons {
+			if strings.ToLower(param.Value) == "true" {
+				enabledAddonsCount++
+			}
+		}
+
+		addonsAll := tektonConfigProfileOpenshift[v1alpha1.ProfileAll].AddonsInstallerSets
+		addonsNotByParams := []string{
+			"addon-custom-consolecli",
+			"addon-custom-openshiftconsole",
+			"addon-custom-triggersresources",
+		}
+
+		expectedAddonsCount := 7
+		expectedAddons := addonsAll
+
+		// if addon disabled
+		if enabledAddonsCount != 3 {
+			expectedAddonsCount = 3
+			expectedAddons = addonsNotByParams
+		}
+		require.GreaterOrEqual(t, len(installerSets.Items), expectedAddonsCount, "addons count")
+
+		// addon installeset names appended with random suffix
+		// verify with prefix of installerset name
+		actualAddons := make([]string, len(installerSets.Items))
+		for index, addon := range installerSets.Items {
+			actualAddons[index] = addon.GetName()
+		}
+		for _, expectedAddon := range expectedAddons {
+			found := false
+			for _, actualAddon := range actualAddons {
+				if strings.HasPrefix(actualAddon, expectedAddon) {
+					found = true
+					break
+				}
+			}
+			require.True(t, found, "addon installerSet not found: %s", expectedAddon)
+		}
+	}
+
+	if !addonsEnabled {
+		// verify addons config not available
+		_, err := s.clients.Operator.TektonAddons().Get(context.TODO(), v1alpha1.AddonResourceName, metav1.GetOptions{})
+		require.True(t, apierrs.IsNotFound(err))
+
+		// verify no addons installerset available
+		installerSets, err := s.clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{LabelSelector: addonLabelSelector})
+		require.NoError(t, err)
+		require.Equal(t, 0, len(installerSets.Items), "addon installerSets")
+	}
+}
+
+// TODO: verify pac routes, import or implement openshift route api
+func (s *TektonConfigTestSuite) verifyPAC() {
+	t := s.T()
+	interval := s.interval
+	timeout := 3 * time.Minute
+
+	config := s.getCurrentConfig(timeout)
+
+	// pac deployments
+	pacDeployments := []string{
+		"pipelines-as-code-controller",
+		"pipelines-as-code-watcher",
+		"pipelines-as-code-webhook",
+	}
+
+	// get pac enabled status from TektonConfig resource
+	pacEnabled := false
+	if config.Spec.Platforms.OpenShift.PipelinesAsCode != nil &&
+		config.Spec.Platforms.OpenShift.PipelinesAsCode.Enable != nil &&
+		*config.Spec.Platforms.OpenShift.PipelinesAsCode.Enable {
+		pacEnabled = true
+	}
+
+	labelSelector := fmt.Sprintf("%s=OpenShiftPipelinesAsCode", v1alpha1.CreatedByKey)
+	installerSets, err := s.clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector})
+	require.NoError(t, err)
+
+	// verifications on pac enabled
+	if pacEnabled {
+		// verify installersets availability
+		require.Equal(t, 3, len(installerSets.Items))
+
+		// verify deployments
+		for _, deploymentName := range pacDeployments {
+			err = resources.WaitForDeploymentReady(s.clients.KubeClient, deploymentName, s.resourceNames.TargetNamespace, interval, timeout)
+			require.NoError(t, err)
+		}
+
+	}
+
+	// verifications on pac disabled
+	if !pacEnabled {
+		// verify installersets availability
+		require.Equal(t, 0, len(installerSets.Items))
+
+		// verify deployments
+		for _, deploymentName := range pacDeployments {
+			err = resources.WaitForDeploymentDeletion(s.clients.KubeClient, deploymentName, s.resourceNames.TargetNamespace, interval, timeout)
+			require.NoError(t, err)
+		}
+	}
+
+}
+
+func (s *TektonConfigTestSuite) verifyRbac(namespace string) {
+	t := s.T()
+	interval := s.interval
+	timeout := s.timeout
+
+	s.logger.Debugw("running rbac verification",
+		"namespace", namespace,
 	)
 
-	// Create a TektonConfig
-	t.Run("create-config", func(t *testing.T) {
-		tc, err = resources.EnsureTektonConfigExists(clients.KubeClientSet, clients.TektonConfig(), crNames)
-		if err != nil {
-			t.Fatalf("TektonConfig %q failed to create: %v", crNames.TektonConfig, err)
-		}
-	})
+	// resources
+	serviceAccountPipeline := "pipeline"
+	clusterRolePipelinesSCC := "pipelines-scc-clusterrole"
+	configMapServiceCABundle := "config-service-cabundle"
+	configMapTrustedCABundle := "config-trusted-cabundle"
+	roleBindingPipelinesSCC := "pipelines-scc-rolebinding"
+	roleBindingPipelinesEdit := tconfig.PipelineRoleBinding
 
-	// Test if TektonConfig can reach the READY status
-	t.Run("ensure-config-ready-status", func(t *testing.T) {
-		resources.AssertTektonConfigCRReadyStatus(t, clients, crNames)
-	})
+	// verify "pipeline" sa has created
+	err := resources.WaitForServiceAccount(s.clients.KubeClient, serviceAccountPipeline, namespace, interval, timeout)
+	require.NoError(t, err)
 
-	if platform == "openshift" {
-		runRbacTest(t, clients)
-	}
+	// verify cluster role
+	err = resources.WaitForClusterRole(s.clients.KubeClient, clusterRolePipelinesSCC, interval, timeout)
+	require.NoError(t, err)
 
-	if platform == "openshift" && tc.Spec.Profile == v1alpha1.ProfileAll {
-		runAddonTest(t, clients, tc)
-	}
+	// verify the configMaps are available
+	err = resources.WaitForConfigMap(s.clients.KubeClient, configMapServiceCABundle, namespace, interval, timeout)
+	require.NoError(t, err)
+	err = resources.WaitForConfigMap(s.clients.KubeClient, configMapTrustedCABundle, namespace, interval, timeout)
+	require.NoError(t, err)
 
-	runFeatureTest(t, clients, tc, crNames)
-
-	// Delete the TektonConfig CR instance to see if all resources will be removed
-	t.Run("delete-config", func(t *testing.T) {
-		resources.AssertTektonConfigCRReadyStatus(t, clients, crNames)
-		resources.TektonConfigCRDelete(t, clients, crNames)
-	})
+	// verify the roleBindings are available
+	err = resources.WaitForRoleBinding(s.clients.KubeClient, roleBindingPipelinesSCC, namespace, interval, timeout)
+	require.NoError(t, err)
+	err = resources.WaitForRoleBinding(s.clients.KubeClient, roleBindingPipelinesEdit, namespace, interval, timeout)
+	require.NoError(t, err)
 }
 
-func runFeatureTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfig, names utils.ResourceNames) {
-
-	t.Run("change-profile", func(t *testing.T) {
-
-		tc, err := clients.Operator.TektonConfigs().Get(context.TODO(), v1alpha1.ConfigResourceName, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("failed to get tektonconfig: %v", err)
-		}
-
-		// make sure dashboard is created in case of k8s and
-		// addon in case of openshift
-		if os.Getenv("TARGET") == "openshift" {
-			if _, err := clients.Operator.TektonAddons().Get(context.TODO(), v1alpha1.AddonResourceName, metav1.GetOptions{}); err != nil {
-				t.Fatalf("failed to get tektonaddon")
-			}
-		} else {
-			if _, err := clients.Operator.TektonDashboards().Get(context.TODO(), v1alpha1.DashboardResourceName, metav1.GetOptions{}); err != nil {
-				t.Fatalf("failed to get dashboard")
-			}
-		}
-
-		// change the profile and make sure it is reflected on the cluster
-		// ALL -> BASIC
-		tc.Spec.Profile = v1alpha1.ProfileBasic
-
-		tc, err = clients.Operator.TektonConfigs().Update(context.TODO(), tc, metav1.UpdateOptions{})
-		if err != nil {
-			t.Fatalf("failed to update tektonconfig: %v", err)
-		}
-
-		if tc.Spec.Profile != v1alpha1.ProfileBasic {
-			t.Fatal("failed to change profile in TektonConfig")
-		}
-
-		// wait till the component is deleted
-		time.Sleep(time.Second * 20)
-
-		// now, make sure dashboard is deleted in case of k8s and
-		// addon is deleted in case of openshift
-		if os.Getenv("TARGET") == "openshift" {
-			if _, err := clients.Operator.TektonAddons().Get(context.TODO(), v1alpha1.AddonResourceName, metav1.GetOptions{}); err == nil {
-				t.Fatalf("expected error but got nil, tektonaddon not deleted")
-			}
-		} else {
-			if _, err := clients.Operator.TektonDashboards().Get(context.TODO(), v1alpha1.DashboardResourceName, metav1.GetOptions{}); err == nil {
-				t.Fatalf("expected error but got nil, tektondashboard not deleted")
-			}
-		}
-	})
-
-	t.Run("change-spec-configuration-and-validate", func(t *testing.T) {
-		ctx := context.Background()
-		tc, err := clients.Operator.TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("failed to get tektonconfig: %v", err)
-		}
-
-		// Change spec field and check if it has changed in the configmap for components
-
-		// pipelines feature-flags configMap
-		tc.Spec.Pipeline.PipelineProperties.EnableCustomTasks = ptr.Bool(true)
-		tc.Spec.Pipeline.PipelineProperties.EnableTektonOciBundles = ptr.Bool(true)
-
-		// pipeline config-defaults configMap
-		tc.Spec.Pipeline.OptionalPipelineProperties.DefaultServiceAccount = "foo"
-
-		// triggers feature-flags configMap
-		tc.Spec.Trigger.TriggersProperties.EnableApiFields = "alpha"
-
-		// triggers config-defaults configMap
-		tc.Spec.Trigger.OptionalTriggersProperties.DefaultServiceAccount = "foo"
-
-		tc, err = clients.Operator.TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
-		if err != nil {
-			t.Fatalf("failed to update tektonconfig: %v", err)
-		}
-
-		// Validate changes to Pipelines feature-flags ConfigMap
-		err = utils.WaitForCondition(ctx, func() (bool, error) {
-			featureFlags, err := clients.KubeClient.CoreV1().
-				ConfigMaps(tc.Spec.TargetNamespace).
-				Get(context.TODO(), tektonpipeline.FeatureFlag, metav1.GetOptions{})
-			if err != nil {
-				if errors.IsNotFound(err) {
-					return false, nil
-				}
-				return false, err
-			}
-			if featureFlags != nil &&
-				featureFlags.Data["enable-custom-tasks"] != "true" || featureFlags.Data["enable-tekton-oci-bundles"] != "true" {
-				return false, nil
-			}
-			return true, nil
-		})
-
-		if err != nil {
-			t.Fatalf("failed to update changes to pipelines configMap: %s ", tektonpipeline.FeatureFlag)
-		}
-
-		// Validate changes to Pipelines config-defaults ConfigMap
-		err = utils.WaitForCondition(ctx, func() (bool, error) {
-			configDefaults, err := clients.KubeClient.CoreV1().
-				ConfigMaps(tc.Spec.TargetNamespace).
-				Get(context.TODO(), tektonpipeline.ConfigDefaults, metav1.GetOptions{})
-			if err != nil {
-				if errors.IsNotFound(err) {
-					return false, nil
-				}
-				return false, err
-			}
-			if configDefaults != nil &&
-				configDefaults.Data["default-service-account"] != "foo" {
-				return false, nil
-			}
-			return true, nil
-		})
-
-		if err != nil {
-			t.Fatalf("failed to update changes to pipelines configMap: %s ", tektonpipeline.ConfigDefaults)
-		}
-
-		// Validate changes to Triggers feature-flag-triggers configMap
-		err = utils.WaitForCondition(ctx, func() (bool, error) {
-			featureFlags, err := clients.KubeClient.CoreV1().
-				ConfigMaps(tc.Spec.TargetNamespace).
-				Get(context.TODO(), tektontrigger.FeatureFlag, metav1.GetOptions{})
-			if err != nil {
-				if errors.IsNotFound(err) {
-					return false, nil
-				}
-				return false, err
-			}
-			if featureFlags != nil &&
-				featureFlags.Data["enable-api-fields"] != "alpha" {
-				return false, nil
-			}
-			return true, nil
-		})
-
-		if err != nil {
-			t.Fatalf("failed to update changes to triggers configMap: %s", tektontrigger.FeatureFlag)
-		}
-	})
-
-	t.Run("delete-component-and-recreate", func(t *testing.T) {
-
-		// delete a component and make sure it is recreated
-		if err := clients.Operator.TektonPipelines().Delete(context.TODO(), v1alpha1.PipelineResourceName, metav1.DeleteOptions{}); err != nil {
-			t.Fatalf("failed to get delete tektonpipeline")
-		}
-
-		// wait till the component is recreated
-		time.Sleep(time.Second * 20)
-
-		resources.AssertTektonPipelineCRReadyStatus(t, clients, names)
-
-		resources.AssertTektonConfigCRReadyStatus(t, clients, names)
-	})
-
-	t.Run("delete-current-config", func(t *testing.T) {
-		resources.AssertTektonConfigCRReadyStatus(t, clients, names)
-		resources.TektonConfigCRDelete(t, clients, names)
-	})
-
-	t.Run("create-new-config-and-let-webhook-add-defaults", func(t *testing.T) {
-
-		tc := &v1alpha1.TektonConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: v1alpha1.ConfigResourceName,
-			},
-			Spec: v1alpha1.TektonConfigSpec{
-				Profile: v1alpha1.ProfileAll,
-				CommonSpec: v1alpha1.CommonSpec{
-					TargetNamespace: names.TargetNamespace,
-				},
-			},
-		}
-
-		var err error
-		tc, err = clients.Operator.TektonConfigs().Create(context.TODO(), tc, metav1.CreateOptions{})
-		if err != nil {
-			t.Fatalf("failed to create tektonconfig: %v", err)
-		}
-
-		if d := cmp.Diff(tc.Spec.Pipeline, v1alpha1.Pipeline{}); d == "" {
-			t.Fatalf("expected defaulting for pipeline properties but failed: %v", d)
-		}
-
-		if d := cmp.Diff(tc.Spec.Trigger, v1alpha1.Trigger{}); d == "" {
-			t.Fatalf("expected defaulting for triggers properties but failed: %v", d)
-		}
-	})
-}
-
-func runAddonTest(t *testing.T, clients *utils.Clients, tc *v1alpha1.TektonConfig) {
-
-	var (
-		addon *v1alpha1.TektonAddon
-		err   error
+// helper functions
+func (s *TektonConfigTestSuite) undeploy() {
+	t := s.T()
+	interval := s.interval
+	timeout := utils.Timeout
+	resources.TektonConfigCRDelete(t, s.clients, s.resourceNames)
+	err := resources.WaitForNamespaceDeletion(s.clients.KubeClient, s.resourceNames.TargetNamespace, interval, timeout)
+	require.NoError(t, err)
+	s.logger.Debugw("target namespace removed",
+		"namespace", s.resourceNames.TargetNamespace,
 	)
-
-	// Make sure TektonAddon is created
-	t.Run("ensure-addon-is-created", func(t *testing.T) {
-		addon, err = clients.Operator.TektonAddons().Get(context.TODO(), v1alpha1.AddonResourceName, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("failed to get TektonAddon CR: %s : %v", v1alpha1.AddonResourceName, err)
-		}
-	})
-
-	// Check if number of params passed in TektonConfig would be passed in TektonAddons
-	t.Run("check-addon-params", func(t *testing.T) {
-		if d := cmp.Diff(tc.Spec.Addon.Params, addon.Spec.Params); d != "" {
-			t.Errorf("Addon params in TektonConfig not equal to TektonAddon params: %s", diff.PrintWantGot(d))
-		}
-	})
-
-	t.Run("validate-addon-params", func(t *testing.T) {
-
-		ls := metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				v1alpha1.CreatedByKey: "TektonAddon",
-			},
-		}
-		labelSelector, err := common.LabelSelector(ls)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		addonsIS, err := clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{
-			LabelSelector: labelSelector,
-		})
-		if err != nil {
-			t.Fatalf("failed to get InstallerSet: %v", err)
-		}
-
-		if len(addonsIS.Items) != 7 {
-			t.Fatalf("expected 7 installerSets for Addon but got %v", len(addonsIS.Items))
-		}
-
-		// Now, disable clusterTasks and pipelineTemplates through TektonConfig
-		tc, err := clients.Operator.TektonConfigs().Get(context.TODO(), v1alpha1.ConfigResourceName, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("failed to get tektonconfig: %v", err)
-		}
-		tc.Spec.Addon.Params = []v1alpha1.Param{
-			{
-				Name:  v1alpha1.ClusterTasksParam,
-				Value: "false",
-			},
-			{
-				Name:  v1alpha1.CommunityClusterTasks,
-				Value: "false",
-			},
-			{
-				Name:  v1alpha1.PipelineTemplatesParam,
-				Value: "false",
-			},
-		}
-		tc, err = clients.Operator.TektonConfigs().Update(context.TODO(), tc, metav1.UpdateOptions{})
-		if err != nil {
-			t.Fatalf("failed to update tektonconfig: %v", err)
-		}
-
-		// wait till the installer set is deleted
-		time.Sleep(time.Second * 10)
-
-		addonsIS, err = clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{
-			LabelSelector: labelSelector,
-		})
-		if err != nil {
-			t.Fatalf("failed to get InstallerSet: %v", err)
-		}
-		// Now, there must be 4 installerSet
-		if len(addonsIS.Items) != 4 {
-			t.Fatalf("expected 4 installerSets after disabling params for Addon but got %v", len(addonsIS.Items))
-		}
-	})
-
-	t.Run("disable-pac", func(t *testing.T) {
-
-		tc, err := clients.Operator.TektonConfigs().Get(context.TODO(), v1alpha1.ConfigResourceName, metav1.GetOptions{})
-		if err != nil {
-			t.Fatalf("failed to get tektonconfig: %v", err)
-		}
-
-		// Now, disable pipelinesAsCode
-		tc.Spec.Addon.EnablePAC = ptr.Bool(false)
-
-		tc, err = clients.Operator.TektonConfigs().Update(context.TODO(), tc, metav1.UpdateOptions{})
-		if err != nil {
-			t.Fatalf("failed to update tektonconfig: %v", err)
-		}
-
-		// wait till the installer set is deleted
-		time.Sleep(time.Second * 10)
-
-		ls := metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				v1alpha1.CreatedByKey: "TektonAddon",
-			},
-		}
-		labelSelector, err := common.LabelSelector(ls)
-		if err != nil {
-			t.Fatal(err)
-		}
-		addonsIS, err := clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{
-			LabelSelector: labelSelector,
-		})
-		if err != nil {
-			t.Fatalf("failed to get InstallerSet: %v", err)
-		}
-		// Now, there must be 3 installerSet
-		if len(addonsIS.Items) != 3 {
-			t.Fatalf("expected 3 installerSets after disabling pac for Addon but got %v", len(addonsIS.Items))
-		}
-	})
 }
 
-func runRbacTest(t *testing.T, clients *utils.Clients) {
-
-	// Test whether the supporting rbac resources are created for existing namespace and
-	// newly created namespace
-
-	existingNamespace := "default"
-	testNamespace := "operator-test-rbac"
-
-	// Create a Test Namespace
-	if _, err := resources.EnsureTestNamespaceExists(clients, testNamespace); err != nil {
-		t.Fatalf("failed to create test namespace: %s, %q", testNamespace, err)
+func (s *TektonConfigTestSuite) getCurrentConfig(timeout time.Duration) *v1alpha1.TektonConfig {
+	t := s.T()
+	interval := s.interval
+	verifyConfig := func() (bool, error) {
+		_, err := s.clients.TektonConfig().Get(context.Background(), s.resourceNames.TektonConfig, metav1.GetOptions{})
+		if err != nil {
+			if apierrs.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
 	}
 
-	clusterRoleName := "pipelines-scc-clusterrole"
+	err := wait.PollImmediate(interval, timeout, verifyConfig)
+	require.NoError(t, err)
 
-	t.Run("verify-clusterrole", func(t *testing.T) {
-		resources.AssertClusterRole(t, clients, clusterRoleName)
-	})
+	configCR, err := s.clients.TektonConfig().Get(context.Background(), s.resourceNames.TektonConfig, metav1.GetOptions{})
+	require.NoError(t, err)
+	require.NotNil(t, configCR)
+	return configCR
+}
 
-	expectedSAName := "pipeline"
+func (s *TektonConfigTestSuite) getDefaultConfig() *v1alpha1.TektonConfig {
+	pruneKeep := uint(100)
+	configCR := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1alpha1.ConfigResourceName,
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Profile: defaultTektonConfigProfile,
+			CommonSpec: v1alpha1.CommonSpec{
+				TargetNamespace: s.resourceNames.TargetNamespace,
+			},
+			Pruner: v1alpha1.Prune{
+				Resources: []string{"pipelinerun"},
+				Keep:      &pruneKeep,
+				KeepSince: nil,
+				Schedule:  "0 8 * * *",
+			},
+		},
+	}
+	configCR.SetDefaults(context.TODO())
 
-	// Test whether the `pipelineSa` is created in a "default" namespace
-	t.Run("verify-service-account", func(t *testing.T) {
-		resources.AssertServiceAccount(t, clients, existingNamespace, expectedSAName)
-		resources.AssertServiceAccount(t, clients, testNamespace, expectedSAName)
-	})
+	return configCR
+}
 
-	serviceCABundleConfigMap := "config-service-cabundle"
-	trustedCABundleConfigMap := "config-trusted-cabundle"
+// resets the tekton config to its default and make ready to run next tests
+func (s *TektonConfigTestSuite) resetToDefaults() {
+	t := s.T()
+	timeout := s.timeout
 
-	// Test whether the configMaps are created
-	t.Run("verify-configmaps", func(t *testing.T) {
-		resources.AssertConfigMap(t, clients, existingNamespace, serviceCABundleConfigMap)
-		resources.AssertConfigMap(t, clients, testNamespace, trustedCABundleConfigMap)
-		resources.AssertConfigMap(t, clients, existingNamespace, serviceCABundleConfigMap)
-		resources.AssertConfigMap(t, clients, testNamespace, trustedCABundleConfigMap)
-	})
+	tc := s.getCurrentConfig(timeout)
 
-	pipelinesSCCRoleBinding := "pipelines-scc-rolebinding"
-	editRoleBinding := tconfig.PipelineRoleBinding
+	defaultTC := s.getDefaultConfig()
+	// update to defaults
+	tc.Spec = defaultTC.Spec
 
-	// Test whether the roleBindings are created
-	t.Run("verify-rolebindings", func(t *testing.T) {
-		resources.AssertRoleBinding(t, clients, existingNamespace, pipelinesSCCRoleBinding)
-		resources.AssertRoleBinding(t, clients, testNamespace, pipelinesSCCRoleBinding)
-		resources.AssertRoleBinding(t, clients, existingNamespace, editRoleBinding)
-		resources.AssertRoleBinding(t, clients, testNamespace, editRoleBinding)
-	})
+	_, err := s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
 
+	s.verifyProfile(tc.Spec.Profile, true)
+}
+
+// deletes the operator pod
+func (s *TektonConfigTestSuite) recreateOperatorPod() {
+	t := s.T()
+	interval := s.interval
+	timeout := s.timeout
+
+	// delete operator pod
+	// TektonConfig 'config' will be created on operator pod startup
+	s.logger.Debug("deleting the operator pod")
+	err := resources.DeletePodByLabelSelector(s.clients.KubeClient, s.resourceNames.OperatorPodSelectorLabel, s.resourceNames.Namespace)
+	require.NoError(t, err)
+
+	s.logger.Debug("waiting for the operator pod get into running state")
+	err = resources.WaitForPodByLabelSelector(s.clients.KubeClient, s.resourceNames.OperatorPodSelectorLabel, s.resourceNames.Namespace, interval, timeout)
+	require.NoError(t, err)
 }

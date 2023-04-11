@@ -98,7 +98,7 @@ func Test_ValidateTektonHub_InvalidDbSecretName(t *testing.T) {
 	}
 
 	err := th.Validate(context.TODO())
-	assert.Equal(t, "invalid value: invalid-value: spec.db.DbSecretName", err.Error())
+	assert.Equal(t, "invalid value: invalid-value: spec.db.secret", err.Error())
 }
 
 func Test_ValidateTektonHub_InvalidApiSecretName(t *testing.T) {
@@ -119,5 +119,5 @@ func Test_ValidateTektonHub_InvalidApiSecretName(t *testing.T) {
 	}
 
 	err := th.Validate(context.TODO())
-	assert.Equal(t, "invalid value: invalid-value: spec.api.ApiSecretName", err.Error())
+	assert.Equal(t, "invalid value: invalid-value: spec.api.secret", err.Error())
 }

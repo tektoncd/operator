@@ -19,8 +19,10 @@ package resources
 import (
 	"context"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -78,4 +80,37 @@ func getDeploymentStatus(d *appsv1.Deployment) corev1.ConditionStatus {
 		}
 	}
 	return "unknown"
+}
+
+func WaitForDeploymentReady(kubeClient kubernetes.Interface, name, namespace string, interval, timeout time.Duration) error {
+	verifyFunc := func() (bool, error) {
+		dep, err := kubeClient.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil && !apierrs.IsNotFound(err) {
+			return false, err
+		}
+		replicas := int32(1) // default replicas
+		// get actual replicas count
+		if dep.Spec.Replicas != nil {
+			replicas = *dep.Spec.Replicas
+		}
+		isReady := replicas == dep.Status.ReadyReplicas
+		return isReady, nil
+	}
+
+	return wait.PollImmediate(interval, timeout, verifyFunc)
+}
+
+func WaitForDeploymentDeletion(kubeClient kubernetes.Interface, name, namespace string, interval, timeout time.Duration) error {
+	verifyFunc := func() (bool, error) {
+		_, err := kubeClient.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			if apierrs.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	}
+
+	return wait.PollImmediate(interval, timeout, verifyFunc)
 }

@@ -1100,6 +1100,8 @@ github.com/spiffe/go-spiffe/v2/workloadapi
 # github.com/stretchr/testify v1.8.2
 ## explicit; go 1.13
 github.com/stretchr/testify/assert
+github.com/stretchr/testify/require
+github.com/stretchr/testify/suite
 # github.com/subosito/gotenv v1.4.2
 ## explicit; go 1.18
 github.com/subosito/gotenv
@@ -2046,7 +2048,9 @@ knative.dev/pkg/client/injection/kube/informers/admissionregistration/v1/mutatin
 knative.dev/pkg/client/injection/kube/informers/admissionregistration/v1/validatingwebhookconfiguration
 knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment
 knative.dev/pkg/client/injection/kube/informers/core/v1/namespace
+knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount
 knative.dev/pkg/client/injection/kube/informers/factory
+knative.dev/pkg/client/injection/kube/informers/rbac/v1/clusterrole
 knative.dev/pkg/client/injection/kube/informers/rbac/v1/clusterrolebinding
 knative.dev/pkg/codegen/cmd/injection-gen
 knative.dev/pkg/codegen/cmd/injection-gen/args

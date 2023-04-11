@@ -41,27 +41,18 @@ func validateHubParams(params []Param, pathToParams string) *apis.FieldError {
 }
 
 func (th *TektonHub) Validate(ctx context.Context) (errs *apis.FieldError) {
-
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
 
-	errs = errs.Also(th.Spec.Db.validate("spec.db"))
-
-	return errs.Also(th.Spec.Api.validate("spec.api"))
-
-}
-
-func (db *DbSpec) validate(path string) (errs *apis.FieldError) {
-	if db.DbSecretName != "" && db.DbSecretName != "tekton-hub-db" {
-		return errs.Also(apis.ErrInvalidValue(db.DbSecretName, path+".DbSecretName"))
+	// validate database secret name
+	if th.Spec.Db.DbSecretName != "" && th.Spec.Db.DbSecretName != HubDbSecretName {
+		errs = errs.Also(apis.ErrInvalidValue(th.Spec.Db.DbSecretName, "spec.db.secret"))
 	}
-	return errs
-}
 
-func (api *ApiSpec) validate(path string) (errs *apis.FieldError) {
-	if api.ApiSecretName != "" && api.ApiSecretName != "tekton-hub-api" {
-		return errs.Also(apis.ErrInvalidValue(api.ApiSecretName, path+".ApiSecretName"))
+	// validate api secret name
+	if th.Spec.Api.ApiSecretName != "" && th.Spec.Api.ApiSecretName != HubApiSecretName {
+		errs = errs.Also(apis.ErrInvalidValue(th.Spec.Api.ApiSecretName, "spec.api.secret"))
 	}
 
 	return errs

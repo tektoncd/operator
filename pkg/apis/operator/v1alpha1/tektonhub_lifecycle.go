@@ -26,7 +26,8 @@ const (
 	DbDependenciesInstalled apis.ConditionType = "DbDependenciesInstalled"
 	DbInstallerSetAvailable apis.ConditionType = "DbInstallSetAvailable"
 	// DB-migration
-	DatabasebMigrationDone apis.ConditionType = "DatabasebMigrationDone"
+	// TODO: fix the typo on the value: "DatabasebMigrationDone"
+	DatabaseMigrationDone apis.ConditionType = "DatabasebMigrationDone"
 	// API
 	ApiDependenciesInstalled apis.ConditionType = "ApiDependenciesInstalled"
 	ApiInstallerSetAvailable apis.ConditionType = "ApiInstallSetAvailable"
@@ -43,7 +44,7 @@ var (
 	hubCondSet = apis.NewLivingConditionSet(
 		DbDependenciesInstalled,
 		DbInstallerSetAvailable,
-		DatabasebMigrationDone,
+		DatabaseMigrationDone,
 		PreReconciler,
 		ApiDependenciesInstalled,
 		ApiInstallerSetAvailable,
@@ -119,16 +120,16 @@ func (ths *TektonHubStatus) MarkDbInstallerSetAvailable() {
 }
 
 // Lifecycle for the DB migration component of Tekton Hub
-func (ths *TektonHubStatus) MarkDatabasebMigrationFailed(msg string) {
+func (ths *TektonHubStatus) MarkDatabaseMigrationFailed(msg string) {
 	ths.MarkNotReady("Database migration job not ready")
 	hubCondSet.Manage(ths).MarkFalse(
-		DatabasebMigrationDone,
+		DatabaseMigrationDone,
 		"Error",
 		"Database migration job not ready: %s", msg)
 }
 
-func (ths *TektonHubStatus) MarkDatabasebMigrationDone() {
-	hubCondSet.Manage(ths).MarkTrue(DatabasebMigrationDone)
+func (ths *TektonHubStatus) MarkDatabaseMigrationDone() {
+	hubCondSet.Manage(ths).MarkTrue(DatabaseMigrationDone)
 }
 
 // Lifecycle for the API component of Tekton Hub

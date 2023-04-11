@@ -21,6 +21,11 @@ import (
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
 
+const (
+	HubDbSecretName  = "tekton-hub-db"
+	HubApiSecretName = "tekton-hub-api"
+)
+
 var (
 	_ TektonComponent     = (*TektonHub)(nil)
 	_ TektonComponentSpec = (*TektonHubSpec)(nil)

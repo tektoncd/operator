@@ -24,65 +24,114 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/test/client"
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/test/parse"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TestTektonChainDeployment verifies the TektonChain creation, deployment recreation, and TektonChain deletion.
-func TestTektonChainsGettingStartedTutorial(t *testing.T) {
-	crNames := utils.ResourceNames{
-		TektonConfig:    "config",
-		TektonPipeline:  "pipeline",
-		TektonChain:     "chain",
-		TargetNamespace: "tekton-pipelines",
-	}
+const (
+	DeploymentNameTektonChain = "tekton-chains-controller"
+)
 
-	if os.Getenv("TARGET") == "openshift" {
-		crNames.TargetNamespace = "openshift-pipelines"
-	}
-	platform := os.Getenv("PLATFORM")
-	if platform == "linux/ppc64le" || platform == "linux/s390x" {
+type TektonChainTutorialTestSuite struct {
+	resourceNames utils.ResourceNames
+	suite.Suite
+	clients  *utils.Clients
+	interval time.Duration
+	timeout  time.Duration
+	logger   *zap.SugaredLogger
+}
+
+func TestTektonChainTutorialTestSuite(t *testing.T) {
+	platform := utils.GetOSAndArchitecture()
+	if platform == utils.LinuxPPC64LE || platform == utils.LinuxS390X {
 		t.Skipf("Tekton chain is not available for %q", platform)
 	}
 
-	clients := client.Setup(t, crNames.TargetNamespace)
+	ts := NewTektonChainTutorialTestSuite(t)
+	// run the actual tests
+	suite.Run(t, ts)
+}
 
-	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
-	utils.CleanupOnInterrupt(func() { utils.TearDownChain(clients, crNames.TektonChain) })
-	utils.CleanupOnInterrupt(func() { utils.TearDownNamespace(clients, crNames.TargetNamespace) })
-	defer utils.TearDownNamespace(clients, crNames.TargetNamespace)
-	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
-	defer utils.TearDownChain(clients, crNames.TektonChain)
-
-	resources.EnsureNoTektonConfigInstance(t, clients, crNames)
-
-	// Create a TektonPipeline
-	if _, err := resources.EnsureTektonPipelineExists(clients.TektonPipeline(), crNames); err != nil {
-		t.Fatalf("TektonPipeline %q failed to create: %v", crNames.TektonPipeline, err)
+// if other suites want to execute a method on this suite,
+// can create a instance by calling this function
+// also used internally
+func NewTektonChainTutorialTestSuite(t *testing.T) *TektonChainTutorialTestSuite {
+	ts := TektonChainTutorialTestSuite{
+		resourceNames: utils.GetResourceNames(),
+		interval:      5 * time.Second,
+		timeout:       5 * time.Minute,
+		logger:        utils.Logger(),
 	}
 
-	// Test if TektonPipeline can reach the READY status
-	t.Run("create-pipeline", func(t *testing.T) {
-		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
-	})
+	// setup clients
+	ts.clients = client.Setup(t, ts.resourceNames.TargetNamespace)
+	// if the instance created from other suite, "t" should be added,
+	// other wise nil error when using "t" inside suite
+	ts.SetT(t)
+	return &ts
+}
+
+// before suite
+func (s *TektonChainTutorialTestSuite) SetupSuite() {
+	resources.PrintClusterInformation(s.logger, s.resourceNames)
+
+	// reset the pipelines into default state
+	s.logger.Debug("resetting TektonConfig to it's default state")
+	tcSuite := NewTestTektonConfigTestSuite(s.T())
+	tcSuite.recreateOperatorPod()
+	tcSuite.resetToDefaults()
+}
+
+// after suite
+func (s *TektonChainTutorialTestSuite) TearDownSuite() {
+	// noop
+}
+
+// before each tests
+func (s *TektonChainTutorialTestSuite) SetupTest() {
+	// noop
+}
+
+// after each tests
+// if there is a failures, execute debug commands
+func (s *TektonChainTutorialTestSuite) TearDownTest() {
+	t := s.T()
+	if t.Failed() {
+		s.logger.Infow("test failed, executing debug commands", "testName", t.Name())
+		resources.ExecuteDebugCommands(s.logger, s.resourceNames)
+	}
+}
+
+// actual tests
+
+// TestTektonChainDeployment verifies the TektonChain creation, deployment recreation, and TektonChain deletion.
+func (s *TektonChainTutorialTestSuite) Test01() {
+	t := s.T()
+	//interval := s.interval
+	//timeout := s.timeout
 
 	// Create a TektonChain
-	if _, err := resources.EnsureTektonChainExists(clients.TektonChains(), crNames); err != nil {
-		t.Fatalf("TektonChain %q failed to create: %v", crNames.TektonChain, err)
+	if _, err := resources.EnsureTektonChainExists(s.clients.TektonChains(), s.resourceNames); err != nil {
+		t.Fatalf("TektonChain %q failed to create: %v", s.resourceNames.TektonChain, err)
 	}
 
 	// Test if TektonChain can reach the READY status
 	t.Run("create-chain", func(t *testing.T) {
-		resources.AssertTektonChainCRReadyStatus(t, clients, crNames)
+		resources.AssertTektonChainCRReadyStatus(t, s.clients, s.resourceNames)
 	})
 
 	cosignSecret := "signing-secrets"
@@ -90,7 +139,7 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 
 	// cosign generate-key-pair k8s://tekton-chains/signing-secrets
 	t.Run("create cosign key pair", func(t *testing.T) {
-		err := resources.CosignGenerateKeyPair(crNames.TargetNamespace, cosignSecret)
+		err := resources.CosignGenerateKeyPair(s.resourceNames.TargetNamespace, cosignSecret)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -100,7 +149,7 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 	chainsConfigMap := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      chainsConfigMapName,
-			Namespace: crNames.TargetNamespace,
+			Namespace: s.resourceNames.TargetNamespace,
 		},
 		Data: map[string]string{
 			"artifacts.oci.storage":     "",
@@ -110,7 +159,7 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 	}
 
 	t.Run("replace Chains ConfigMap", func(t *testing.T) {
-		_, err := resources.ReplaceConfigMap(clients.KubeClient, chainsConfigMap)
+		_, err := resources.ReplaceConfigMap(s.clients.KubeClient, chainsConfigMap)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -118,17 +167,17 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 
 	// kubectl delete po -n tekton-chains -l app=tekton-chains-controller
 	t.Run("restart chains pod", func(t *testing.T) {
-		err := resources.DeleteChainsPod(clients.KubeClient, crNames.TargetNamespace)
+		err := resources.DeleteChainsPod(s.clients.KubeClient, s.resourceNames.TargetNamespace)
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// make sure the new pod is up and running again
-		resources.AssertTektonChainCRReadyStatus(t, clients, crNames)
+		resources.AssertTektonChainCRReadyStatus(t, s.clients, s.resourceNames)
 	})
 
 	// kubectl create -f https://raw.githubusercontent.com/tektoncd/chains/main/examples/taskruns/task-output-image.yaml
-	taskRunPath, err := filepath.Abs("../../testdata/task-output-image.yaml")
+	taskRunPath, err := filepath.Abs("./testdata/chain_tutorial_task_output_image.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,9 +190,17 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 	// as pipelines enforce the pod security fields this test would fail if ran
 	// in tekton-pipelines namespace, as pipelines controller doesn't creates pods
 	// with pod security fields
-	testNamespace := "chains-test"
+	testNamespace := common.SimpleNameGenerator.RestrictLengthWithRandomSuffix("chains-test")
+	s.logger.Debugw("chain test namespace generated",
+		"namespace", testNamespace,
+	)
+	// delete this namespace on exit
+	defer func() {
+		err := resources.DeleteNamespace(s.clients.KubeClient, testNamespace)
+		require.NoError(t, err)
+	}()
 
-	if _, err := resources.EnsureTestNamespaceExists(clients, testNamespace); err != nil {
+	if _, err := resources.EnsureTestNamespaceExists(s.clients, testNamespace); err != nil {
 		t.Fatalf("failed to create test namespace: %s, %q", testNamespace, err)
 	}
 
@@ -152,7 +209,7 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 	taskOutputImageTaskRun.Namespace = testNamespace
 
 	t.Run("create TaskRun", func(t *testing.T) {
-		_, err := resources.EnsureTaskRunExists(clients.TektonClient, taskOutputImageTaskRun)
+		_, err := resources.EnsureTaskRunExists(s.clients.TektonClient, taskOutputImageTaskRun)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -178,7 +235,7 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 	}
 
 	t.Run("wait for TaskRun to succeed", func(t *testing.T) {
-		err := resources.WaitForTaskRunHappy(clients.TektonClient, testNamespace, taskRunName, taskRunSucceededFunc)
+		err := resources.WaitForTaskRunHappy(s.clients.TektonClient, testNamespace, taskRunName, taskRunSucceededFunc)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -192,13 +249,13 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 	}
 
 	t.Run("wait for TaskRun to get signed", func(t *testing.T) {
-		err := resources.WaitForTaskRunHappy(clients.TektonClient, testNamespace, taskRunName, taskRunSignedFunc)
+		err := resources.WaitForTaskRunHappy(s.clients.TektonClient, testNamespace, taskRunName, taskRunSignedFunc)
 		if err != nil {
 			t.Fatal(err)
 		}
 	})
 
-	taskRun, err := clients.TektonClient.TaskRuns(testNamespace).Get(context.TODO(), taskRunName, metav1.GetOptions{})
+	taskRun, err := s.clients.TektonClient.TaskRuns(testNamespace).Get(context.TODO(), taskRunName, metav1.GetOptions{})
 
 	// export TASKRUN_UID=$(tkn tr describe --last -o  jsonpath='{.metadata.uid}')
 	taskRunUID := taskRun.ObjectMeta.UID
@@ -225,15 +282,25 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 
 	// cosign verify-blob-attestation --insecure-ignore-tlog --key k8s://tekton-chains/signing-secrets --signature signature --type slsaprovenance --check-claims=false /dev/null
 	t.Run("cosign very-blob-attestation", func(t *testing.T) {
-		err := resources.CosignVerifyBlobAttestation(fmt.Sprintf("k8s://%v/%v", crNames.TargetNamespace, cosignSecret), string(signature), string(payload))
+		err := resources.CosignVerifyBlobAttestation(fmt.Sprintf("k8s://%v/%v", s.resourceNames.TargetNamespace, cosignSecret), string(signature), string(payload))
 		if err != nil {
 			t.Fatal(err)
 		}
 	})
 
-	// Delete the TektonPipeline CR instance to see if all resources will be removed
-	t.Run("delete-pipeline", func(t *testing.T) {
-		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
-		resources.TektonPipelineCRDelete(t, clients, crNames)
-	})
+}
+
+func (s *TektonChainTutorialTestSuite) deleteChainCR() {
+	t := s.T()
+	interval := s.interval
+	timeout := s.timeout
+
+	err := s.clients.TektonChains().Delete(context.TODO(), s.resourceNames.TektonChain, metav1.DeleteOptions{})
+	if err != nil && apierrs.IsNotFound(err) {
+		return
+	}
+	require.NoError(t, err, "delete tektonChain cr")
+
+	err = resources.WaitForDeploymentDeletion(s.clients.KubeClient, DeploymentNameTektonChain, s.resourceNames.TargetNamespace, interval, timeout)
+	require.NoError(t, err, "wait for tektonChain deployment deletion")
 }
