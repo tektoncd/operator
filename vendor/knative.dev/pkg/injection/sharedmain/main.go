@@ -195,7 +195,7 @@ func MainWithContext(ctx context.Context, component string, ctors ...injection.C
 	}
 
 	// TODO(mattmoor): Remove this once HA is stable.
-	disableHighAvailability := flag.Bool("disable-ha", false,
+	disableHighAvailability := flag.Bool("disable-ha", true,
 		"Whether to disable high-availability functionality for this component.  This flag will be deprecated "+
 			"and removed when we have promoted this feature to stable, so do not pass it without filing an "+
 			"issue upstream!")
