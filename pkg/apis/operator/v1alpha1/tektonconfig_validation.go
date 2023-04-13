@@ -74,6 +74,14 @@ func (p Prune) validate() *apis.FieldError {
 		errs = errs.Also(apis.ErrMissingField("spec.pruner.resources"))
 	}
 
+	// tkn cli supports both "keep" and "keep-since", even though there is an issue with the logic
+	// when we supply both "keep" and "keep-since", the outcome always equivalent to "keep", "keep-since" ignored
+	// hence we strict with a single flag support until the issue is fixed in tkn cli
+	// cli issue: https://github.com/tektoncd/cli/issues/1990
+	if p.Keep != nil && p.KeepSince != nil {
+		errs = errs.Also(apis.ErrMultipleOneOf("spec.pruner.keep", "spec.pruner.keep-since"))
+	}
+
 	if p.Keep == nil && p.KeepSince == nil {
 		errs = errs.Also(apis.ErrMissingOneOf("spec.pruner.keep", "spec.pruner.keep-since"))
 	}
