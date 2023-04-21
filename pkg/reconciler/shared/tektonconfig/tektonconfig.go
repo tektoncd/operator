@@ -25,6 +25,7 @@ import (
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chain"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -64,6 +65,9 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	} else {
 		// TektonPipeline and TektonTrigger is common for profile type basic and all
 		if err := trigger.EnsureTektonTriggerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers()); err != nil {
+			return err
+		}
+		if err := chain.EnsureTektonChainCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains()); err != nil {
 			return err
 		}
 		if err := pipeline.EnsureTektonPipelineCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines()); err != nil {
@@ -143,10 +147,23 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		if _, err := trigger.EnsureTektonTriggerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), tektontrigger); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
+
 		}
+
+		tektonchain := chain.GetTektonChainCR(tc)
+		if _, err := chain.EnsureTektonChainExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains(), tektonchain); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChain: %s", err.Error()))
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+
 	} else {
 		if err := trigger.EnsureTektonTriggerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers()); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+
+		if err := chain.EnsureTektonChainCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains()); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChain: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}

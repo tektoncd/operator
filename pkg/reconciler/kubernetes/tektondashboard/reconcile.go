@@ -108,6 +108,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, td *v1alpha1.TektonDashb
 	} else {
 		manifest = r.fullaccessManifest
 	}
+
+	// When Tekton Dashboard is insalled targetNamespace is getting updated with the OwnerRef as TektonDashboard
+	// and hence deleting the component in the integration tests, targetNamespace was getting deleted. Hence
+	// filtering out the namespace here
+	manifest = manifest.Filter(mf.Not(mf.ByKind("Namespace")))
 	if err := r.installerSetClient.MainSet(ctx, td, &manifest, filterAndTransform(r.extension)); err != nil {
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
 		logger.Error(msg)

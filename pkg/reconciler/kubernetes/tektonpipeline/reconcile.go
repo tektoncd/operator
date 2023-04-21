@@ -98,7 +98,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	// Mark PreReconcile Complete
 	tp.Status.MarkPreReconcilerComplete()
 
-	if err := r.installerSetClient.MainSet(ctx, tp, &r.manifest, filterAndTransform(r.extension)); err != nil {
+	// When TektonPipeline component is deleted targetNamespace was getting deleted,
+	// because in pipeline reconciler targetNamespace was updated by adding few labels which
+	// in turn also updated the ownerRef of targetNamespace from TektonConfig to TektonPipeline.
+	// Since namespace is created in TektonConfig reconciler hence deleting TektonPipeline
+	// component should not delete the targetNamespace hence filtering out the namespace here
+	manifest := r.manifest.Filter(mf.Not(mf.ByKind("Namespace")))
+	if err := r.installerSetClient.MainSet(ctx, tp, &manifest, filterAndTransform(r.extension)); err != nil {
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
 		logger.Error(msg)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {

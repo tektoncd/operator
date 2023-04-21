@@ -77,6 +77,9 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Tek
 	if err != nil {
 		return err
 	}
+
+	// Filtering out the namespace because it add TektonPipeline as OwnerRef in targetNamespace
+	*manifest = manifest.Filter(mf.Not(mf.ByKind("Namespace")))
 	if err := oe.installerSetClient.PreSet(ctx, comp, manifest, filterAndTransform()); err != nil {
 		return err
 	}
