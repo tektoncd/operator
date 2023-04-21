@@ -1061,6 +1061,7 @@ func (in *TektonConfigSpec) DeepCopyInto(out *TektonConfigSpec) {
 	in.Hub.DeepCopyInto(&out.Hub)
 	in.Pipeline.DeepCopyInto(&out.Pipeline)
 	out.Trigger = in.Trigger
+	in.Chain.DeepCopyInto(&out.Chain)
 	out.Dashboard = in.Dashboard
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params

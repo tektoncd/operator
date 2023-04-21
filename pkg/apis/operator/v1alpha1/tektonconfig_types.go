@@ -92,6 +92,9 @@ type TektonConfigSpec struct {
 	// Trigger holds the customizable option for triggers component
 	// +optional
 	Trigger Trigger `json:"trigger,omitempty"`
+	// Chain holds the customizable option for chains component
+	// +optional
+	Chain Chain `json:"chain,omitempty"`
 	// Dashboard holds the customizable options for dashboards component
 	// +optional
 	Dashboard Dashboard `json:"dashboard,omitempty"`
