@@ -275,7 +275,7 @@ func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error 
 	}
 
 	// check if deployment already exist
-	actual, err := i.mfClient.Get(expected)
+	existing, err := i.mfClient.Get(expected)
 	if err != nil {
 		// If deployment doesn't exist, then create new
 		if apierrs.IsNotFound(err) {
@@ -292,15 +292,15 @@ func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error 
 	// compare expected deployment spec hash with the one saved in annotation
 	// if annotation doesn't exist then update the deployment
 
-	i.logger.Debugf("existing deployment found, checking for changes",
-		"name", actual.GetName(),
-		"namespace", actual.GetNamespace(),
+	i.logger.Debugw("existing deployment found, checking for changes",
+		"name", existing.GetName(),
+		"namespace", existing.GetNamespace(),
 	)
 
 	doUpdateDeployment := false
 
 	// get stored hash value from annotation
-	existingAnnotations, _, err := unstructured.NestedStringMap(actual.Object, "metadata", "annotations")
+	existingAnnotations, _, err := unstructured.NestedStringMap(existing.Object, "metadata", "annotations")
 	if err != nil {
 		return err
 	}
@@ -330,10 +330,10 @@ func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error 
 	if doUpdateDeployment {
 		// change detected in hash value, update the deployment with changes
 		existingDeployment := &appsv1.Deployment{}
-		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(expected.Object, expectedDeployment); err != nil {
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(existing.Object, existingDeployment); err != nil {
 			return err
 		}
-		return i.updateDeployment(actual, existingDeployment, expectedDeployment)
+		return i.updateDeployment(existing, existingDeployment, expectedDeployment)
 	}
 
 	return nil
