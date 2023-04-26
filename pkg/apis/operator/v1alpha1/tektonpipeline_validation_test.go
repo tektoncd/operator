@@ -94,3 +94,50 @@ func Test_ValidateTektonPipeline_OnDelete(t *testing.T) {
 		t.Errorf("ValidateTektonPipeline.Validate() on Delete expected no error, but got one, ValidateTektonPipeline: %v", err)
 	}
 }
+
+func TestTektonPipelinePerformancePropertiesValidate(t *testing.T) {
+	tp := &TektonPipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipeline",
+			Namespace: "bar",
+		},
+		Spec: TektonPipelineSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "foo",
+			},
+		},
+	}
+
+	// return pointer value
+	getBuckets := func(value uint) *uint {
+		return &value
+	}
+
+	// validate buckets minimum range
+	tp.Spec.PipelineProperties.Performance = PipelinePerformanceProperties{}
+	tp.Spec.PipelineProperties.Performance.DisableHA = false
+	tp.Spec.PipelineProperties.Performance.Buckets = getBuckets(0)
+	errs := tp.Validate(context.TODO())
+	assert.Equal(t, "expected 1 <= 0 <= 10: spec.performance.buckets", errs.Error())
+
+	// validate buckets maximum range
+	tp.Spec.PipelineProperties.Performance = PipelinePerformanceProperties{}
+	tp.Spec.PipelineProperties.Performance.DisableHA = false
+	tp.Spec.PipelineProperties.Performance.Buckets = getBuckets(11)
+	errs = tp.Validate(context.TODO())
+	assert.Equal(t, "expected 1 <= 11 <= 10: spec.performance.buckets", errs.Error())
+
+	// validate buckets valid range
+	tp.Spec.PipelineProperties.Performance = PipelinePerformanceProperties{}
+	tp.Spec.PipelineProperties.Performance.DisableHA = false
+	tp.Spec.PipelineProperties.Performance.Buckets = getBuckets(1)
+	errs = tp.Validate(context.TODO())
+	assert.Equal(t, "", errs.Error())
+
+	// validate buckets valid range
+	tp.Spec.PipelineProperties.Performance = PipelinePerformanceProperties{}
+	tp.Spec.PipelineProperties.Performance.DisableHA = false
+	tp.Spec.PipelineProperties.Performance.Buckets = getBuckets(10)
+	errs = tp.Validate(context.TODO())
+	assert.Equal(t, "", errs.Error())
+}

@@ -18,10 +18,12 @@ package common
 
 import (
 	"path"
+	"reflect"
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
 	"gotest.tools/v3/assert"
+	"knative.dev/pkg/ptr"
 )
 
 func TestFetchVersionFromConfigMap(t *testing.T) {
@@ -66,4 +68,48 @@ func TestFetchVersionFromConfigMap_VersionKeyNotFound(t *testing.T) {
 	}
 
 	assert.Error(t, err, configMapError.Error())
+}
+
+func TestStructMap(t *testing.T) {
+	in := struct {
+		StringValue  string  `json:"str"`
+		Int32Ptr     *int32  `json:"int32Ptr"`
+		IntValue     int     `json:"intValue"`
+		Float32Value float32 `json:"float32_value"`
+		BoolValue    bool    `json:"bool-value"`
+	}{
+		StringValue:  "hi",
+		Int32Ptr:     ptr.Int32(1),
+		IntValue:     2,
+		Float32Value: 2.200001,
+		BoolValue:    false,
+	}
+
+	// json Unmarshal converts all the number types into float64
+	expectedOut := map[string]interface{}{
+		"str":           "hi",
+		"int32Ptr":      float64(1),
+		"intValue":      float64(2),
+		"float32_value": float64(2.200001),
+		"bool-value":    false,
+	}
+
+	actualOut := map[string]interface{}{}
+
+	err := StructToMap(&in, &actualOut)
+	assert.NilError(t, err)
+	assert.Check(t, reflect.DeepEqual(actualOut, expectedOut), actualOut)
+}
+
+func TestStructMapError(t *testing.T) {
+	in := struct {
+		StringValue string `json:"str"`
+	}{
+		StringValue: "hi",
+	}
+
+	actualOut := map[string]interface{}{}
+
+	err := StructToMap(&in, actualOut)
+	assert.Error(t, err, "json: Unmarshal(non-pointer map[string]interface {})")
 }

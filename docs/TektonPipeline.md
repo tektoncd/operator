@@ -32,6 +32,12 @@ spec:
   require-git-ssh-secret-known-hosts: false
   running-in-environment-with-injected-sidecars: true
   scope-when-expressions-to-task: false
+  performance:
+    disable-ha: false
+    buckets: 1
+    threads-per-controller: 2
+    kube-api-qps: 5.0
+    kube-api-burst: 10
 ```
 You can install this component using [TektonConfig](./TektonConfig.md) by choosing appropriate `profile`.
 
@@ -165,3 +171,35 @@ default is the only option available. If no sink is specified, no CloudEvent is 
 Task declares but that a TaskRun does not explicitly provide.
 
 [Pipeline]:https://github.com/tektoncd/pipeline
+
+### Performance Properties
+```yaml
+spec:
+  # omitted other fields ...
+  performance:
+    disable-ha: false
+    buckets: 1
+    threads-per-controller: 2
+    kube-api-qps: 5.0
+    kube-api-burst: 10
+```
+These fields are optional and there is no default values. If user passes them, operator will include most of fields into the deployment `tekton-pipelines-controller` under the container `tekton-pipelines-controller` as arguments(duplicate name? No, container and deployment has the same name), otherwise pipelines controller's default values will be considered. and `buckets` field is updated into `config-leader-election` config-map under the namespace `tekton-pipelines`.
+
+A high level descriptions are given here. To get the detailed information please visit pipelines documentation, [High Availability Support](https://tekton.dev/docs/pipelines/enabling-ha/), and [Performance Configuration](https://tekton.dev/docs/pipelines/tekton-controller-performance-configuration/)
+
+
+* `disable-ha` - enable or disable ha feature, defaults in pipelines controller is `disable-ha=false`
+* `buckets` - buckets is the number of buckets used to partition key space of each reconciler. If this number is M and the replica number of the controller is N, the N replicas will compete for the M buckets. The owner of a bucket will take care of the reconciling for the keys partitioned into that bucket. The maximum value of `buckets` at this time is `10`. default value in pipeline controller is `1`
+* `threads-per-controller` - is the number of threads(aka worker) to use when processing the pipelines controller's workqueue, default value in pipelines controller is `2`
+* `kube-api-qps` - QPS indicates the maximum QPS to the cluster master from the REST client, default value in pipeline controller is `5.0`
+* `kube-api-burst` - maximum burst for throttle, default value in pipeline controller is `10`
+
+> #### Note:
+>
+> * Pipelines controller deployments `replicas` will not be handled by operator. User has to change the replicas as follows,
+>   ```
+>   kubectl --namespace tekton-pipelines scale deployment tekton-pipelines-controller --replicas=3
+>   ```
+>
+> * `kube-api-qps` and `kube-api-burst` will be multiplied by 2 in pipelines controller. To get the detailed information visit [Performance Configuration](https://tekton.dev/docs/pipelines/tekton-controller-performance-configuration/) guide
+> * if you modify or remove any of the performance properties, `tekton-pipelines-controller` deployment and `config-leader-election` config-map (if `buckets` changed) will be updated, and `tekton-pipelines-controller` pods will be recreated
