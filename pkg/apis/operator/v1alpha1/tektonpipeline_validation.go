@@ -61,5 +61,22 @@ func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 		}
 	}
 
+	// validate performance properties
+	errs = errs.Also(p.Performance.validate(fmt.Sprintf("%s.performance", path)))
+
+	return errs
+}
+
+func (prof *PipelinePerformanceProperties) validate(path string) *apis.FieldError {
+	var errs *apis.FieldError
+
+	bucketsPath := fmt.Sprintf("%s.buckets", path)
+	// minimum and maximum allowed buckets value
+	if prof.Buckets != nil {
+		if *prof.Buckets < 1 || *prof.Buckets > 10 {
+			errs = errs.Also(apis.ErrOutOfBoundsValue(*prof.Buckets, 1, 10, bucketsPath))
+		}
+	}
+
 	return errs
 }

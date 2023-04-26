@@ -17,6 +17,7 @@ limitations under the License.
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
@@ -52,4 +53,13 @@ func FetchVersionFromConfigMap(manifest mf.Manifest, configMapName string) (stri
 	}
 
 	return "", configMapError
+}
+
+// converts struct to map with json encoding
+func StructToMap(in, out interface{}) error {
+	data, err := json.Marshal(in)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(data, out)
 }
