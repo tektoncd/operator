@@ -50,6 +50,12 @@ The TektonConfig CR provides the following features
       metrics.taskrun.level: taskrun
       require-git-ssh-secret-known-hosts: false
       running-in-environment-with-injected-sidecars: true
+      performance:
+        disable-ha: false
+        buckets: 1
+        threads-per-controller: 2
+        kube-api-qps: 5.0
+        kube-api-burst: 10
     pruner:
       resources:
       - taskrun
@@ -134,6 +140,12 @@ pipeline:
   metrics.taskrun.level: taskrun
   require-git-ssh-secret-known-hosts: false
   running-in-environment-with-injected-sidecars: true
+  performance:
+    disable-ha: false
+    buckets: 1
+    threads-per-controller: 2
+    kube-api-qps: 5.0
+    kube-api-burst: 10
 ```
 
 ### Pruner

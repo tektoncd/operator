@@ -105,6 +105,8 @@ type PipelineProperties struct {
 	OptionalPipelineProperties `json:",inline"`
 	// +optional
 	Resolvers `json:",inline"`
+	// +optional
+	Performance PipelinePerformanceProperties `json:"performance,omitempty"`
 }
 
 // OptionalPipelineProperties defines the fields which are to be
@@ -145,4 +147,38 @@ type ResolversConfig struct {
 	HubResolverConfig     map[string]string `json:"hub-resolver-config,omitempty"`
 	GitResolverConfig     map[string]string `json:"git-resolver-config,omitempty"`
 	ClusterResolverConfig map[string]string `json:"cluster-resolver-config,omitempty"`
+}
+
+// PipelinePerformanceProperties defines the fields which are configurable
+// to tune the performance of pipelines controller
+type PipelinePerformanceProperties struct {
+	// +optional
+	PipelinePerformanceLeaderElectionConfig `json:",inline"`
+	// +optional
+	PipelineDeploymentPerformanceArgs `json:",inline"`
+}
+
+// performance configurations to tune the performance of the pipeline controller
+// these properties will be added/updated in the ConfigMap(config-leader-election)
+// https://tekton.dev/docs/pipelines/enabling-ha/
+type PipelinePerformanceLeaderElectionConfig struct {
+	Buckets *uint `json:"buckets,omitempty"`
+}
+
+// performance configurations to tune the performance of the pipeline controller
+// these properties will be added/updated as arguments in pipeline controller deployment
+// https://tekton.dev/docs/pipelines/tekton-controller-performance-configuration/
+type PipelineDeploymentPerformanceArgs struct {
+	// if it is true, disables the HA feature
+	DisableHA bool `json:"disable-ha"`
+
+	// The number of workers to use when processing the pipelines controller's work queue
+	ThreadsPerController *int `json:"threads-per-controller,omitempty"`
+
+	// queries per second (QPS) and burst to the master from rest API client
+	// actually the number multiplied by 2
+	// https://github.com/pierretasci/pipeline/blob/05d67e427c722a2a57e58328d7097e21429b7524/cmd/controller/main.go#L85-L87
+	// defaults: https://github.com/tektoncd/pipeline/blob/34618964300620dca44d10a595e4af84e9903a55/vendor/k8s.io/client-go/rest/config.go#L45-L46
+	KubeApiQPS   *float32 `json:"kube-api-qps,omitempty"`
+	KubeApiBurst *int     `json:"kube-api-burst,omitempty"`
 }
