@@ -30,7 +30,7 @@ var (
 	allowedArtifactsPipelineRunFormat = sets.NewString("", "in-toto", "slsa/v1")
 	allowedX509SignerFulcioProvider   = sets.NewString("", "google", "spiffe", "github", "filesystem")
 	allowedTransparencyConfigEnabled  = sets.NewString("", "true", "false", "manual")
-	allowedArtifactsStorage           = sets.NewString("tekton", "oci", "gcs", "docdb", "grafeas", "kafka")
+	allowedArtifactsStorage           = sets.NewString("", "tekton", "oci", "gcs", "docdb", "grafeas", "kafka")
 )
 
 func (tc *TektonChain) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -57,8 +57,8 @@ func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldEr
 		errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsTaskRunFormat, path+".artifacts.taskrun.format"))
 	}
 
-	if tcs.ArtifactsTaskRunStorage != "" {
-		input := strings.Split(tcs.ArtifactsTaskRunStorage, ",")
+	if tcs.ArtifactsTaskRunStorage != nil {
+		input := strings.Split(*tcs.ArtifactsTaskRunStorage, ",")
 		for i, v := range input {
 			input[i] = strings.TrimSpace(v)
 			if !allowedArtifactsStorage.Has(input[i]) {
@@ -77,8 +77,8 @@ func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldEr
 		errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsPipelineRunFormat, path+".artifacts.pipelinerun.format"))
 	}
 
-	if tcs.ArtifactsPipelineRunStorage != "" {
-		input := strings.Split(tcs.ArtifactsPipelineRunStorage, ",")
+	if tcs.ArtifactsPipelineRunStorage != nil {
+		input := strings.Split(*tcs.ArtifactsPipelineRunStorage, ",")
 		for i, v := range input {
 			input[i] = strings.TrimSpace(v)
 			if !allowedArtifactsStorage.Has(input[i]) {
@@ -99,8 +99,8 @@ func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldEr
 		}
 	}
 
-	if tcs.ArtifactsOCIStorage != "" {
-		input := strings.Split(tcs.ArtifactsOCIStorage, ",")
+	if tcs.ArtifactsOCIStorage != nil {
+		input := strings.Split(*tcs.ArtifactsOCIStorage, ",")
 		for i, v := range input {
 			input[i] = strings.TrimSpace(v)
 			if !allowedArtifactsStorage.Has(input[i]) {

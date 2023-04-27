@@ -80,6 +80,7 @@ func Test_ValidateTektonChain_ConfigTaskRunFormat(t *testing.T) {
 }
 
 func Test_ValidateTektonChain_ConfigTaskRunStorage(t *testing.T) {
+	value := "test"
 	td := &TektonChain{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "chain",
@@ -90,7 +91,7 @@ func Test_ValidateTektonChain_ConfigTaskRunStorage(t *testing.T) {
 				TargetNamespace: "namespace",
 			},
 			Chain: Chain{
-				ArtifactsTaskRunStorage: "test",
+				ArtifactsTaskRunStorage: &value,
 			},
 		},
 	}
@@ -100,6 +101,7 @@ func Test_ValidateTektonChain_ConfigTaskRunStorage(t *testing.T) {
 }
 
 func Test_ValidateTektonChain_ConfigTaskRunStorageInvalidValidMix(t *testing.T) {
+	value := "tekton, test"
 	td := &TektonChain{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "chain",
@@ -110,7 +112,7 @@ func Test_ValidateTektonChain_ConfigTaskRunStorageInvalidValidMix(t *testing.T) 
 				TargetNamespace: "namespace",
 			},
 			Chain: Chain{
-				ArtifactsTaskRunStorage: "tekton, test",
+				ArtifactsTaskRunStorage: &value,
 			},
 		},
 	}
@@ -120,6 +122,7 @@ func Test_ValidateTektonChain_ConfigTaskRunStorageInvalidValidMix(t *testing.T) 
 }
 
 func Test_ValidateTektonChain_ConfigTaskRunStorageValid(t *testing.T) {
+	value := "tekton, oci"
 	td := &TektonChain{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "chain",
@@ -130,7 +133,7 @@ func Test_ValidateTektonChain_ConfigTaskRunStorageValid(t *testing.T) {
 				TargetNamespace: "namespace",
 			},
 			Chain: Chain{
-				ArtifactsTaskRunStorage: "tekton, oci",
+				ArtifactsTaskRunStorage: &value,
 			},
 		},
 	}
@@ -162,6 +165,7 @@ func Test_ValidateTektonChain_ConfigPipelineRunFormat(t *testing.T) {
 }
 
 func Test_ValidateTektonChain_ConfigPipelineRunStorage(t *testing.T) {
+	value := "test"
 	td := &TektonChain{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "chain",
@@ -172,7 +176,7 @@ func Test_ValidateTektonChain_ConfigPipelineRunStorage(t *testing.T) {
 				TargetNamespace: "namespace",
 			},
 			Chain: Chain{
-				ArtifactsPipelineRunStorage: "test",
+				ArtifactsPipelineRunStorage: &value,
 			},
 		},
 	}
@@ -182,6 +186,7 @@ func Test_ValidateTektonChain_ConfigPipelineRunStorage(t *testing.T) {
 }
 
 func Test_ValidateTektonChain_ConfigPipelineRunStorageInvalidValidMix(t *testing.T) {
+	value := "tekton, test"
 	td := &TektonChain{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "chain",
@@ -192,7 +197,7 @@ func Test_ValidateTektonChain_ConfigPipelineRunStorageInvalidValidMix(t *testing
 				TargetNamespace: "namespace",
 			},
 			Chain: Chain{
-				ArtifactsPipelineRunStorage: "tekton, test",
+				ArtifactsPipelineRunStorage: &value,
 			},
 		},
 	}
@@ -202,6 +207,7 @@ func Test_ValidateTektonChain_ConfigPipelineRunStorageInvalidValidMix(t *testing
 }
 
 func Test_ValidateTektonChain_ConfigPipelineRunStorageValid(t *testing.T) {
+	value := "tekton, oci"
 	td := &TektonChain{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "chain",
@@ -212,7 +218,7 @@ func Test_ValidateTektonChain_ConfigPipelineRunStorageValid(t *testing.T) {
 				TargetNamespace: "namespace",
 			},
 			Chain: Chain{
-				ArtifactsPipelineRunStorage: "tekton, oci",
+				ArtifactsPipelineRunStorage: &value,
 			},
 		},
 	}
