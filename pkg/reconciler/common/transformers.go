@@ -531,10 +531,13 @@ func AddConfigMapValues(configMapName string, prop interface{}) mf.Transformer {
 				if !innerElem.IsValid() {
 					continue
 				}
+
 				if innerElem.Kind() == reflect.Bool {
 					cm.Data[key] = strconv.FormatBool(innerElem.Bool())
 				} else if innerElem.Kind() == reflect.Uint {
 					cm.Data[key] = strconv.FormatUint(innerElem.Uint(), 10)
+				} else if innerElem.Kind() == reflect.String {
+					cm.Data[key] = innerElem.String()
 				}
 				continue
 			}

@@ -61,19 +61,19 @@ type TektonChainSpec struct {
 // Chain defines the field to provide chain configuration
 type Chain struct {
 	// taskrun artifacts config
-	ArtifactsTaskRunFormat  string `json:"artifacts.taskrun.format,omitempty"`
-	ArtifactsTaskRunStorage string `json:"artifacts.taskrun.storage,omitempty"`
-	ArtifactsTaskRunSigner  string `json:"artifacts.taskrun.signer,omitempty"`
+	ArtifactsTaskRunFormat  string  `json:"artifacts.taskrun.format,omitempty"`
+	ArtifactsTaskRunStorage *string `json:"artifacts.taskrun.storage,omitempty"`
+	ArtifactsTaskRunSigner  string  `json:"artifacts.taskrun.signer,omitempty"`
 
 	// pipelinerun artifacts config
-	ArtifactsPipelineRunFormat  string `json:"artifacts.pipelinerun.format,omitempty"`
-	ArtifactsPipelineRunStorage string `json:"artifacts.pipelinerun.storage,omitempty"`
-	ArtifactsPipelineRunSigner  string `json:"artifacts.pipelinerun.signer,omitempty"`
+	ArtifactsPipelineRunFormat  string  `json:"artifacts.pipelinerun.format,omitempty"`
+	ArtifactsPipelineRunStorage *string `json:"artifacts.pipelinerun.storage,omitempty"`
+	ArtifactsPipelineRunSigner  string  `json:"artifacts.pipelinerun.signer,omitempty"`
 
 	// oci artifacts config
-	ArtifactsOCIFormat  string `json:"artifacts.oci.format,omitempty"`
-	ArtifactsOCIStorage string `json:"artifacts.oci.storage,omitempty"`
-	ArtifactsOCISigner  string `json:"artifacts.oci.signer,omitempty"`
+	ArtifactsOCIFormat  string  `json:"artifacts.oci.format,omitempty"`
+	ArtifactsOCIStorage *string `json:"artifacts.oci.storage,omitempty"`
+	ArtifactsOCISigner  string  `json:"artifacts.oci.signer,omitempty"`
 
 	// storage configs
 	StorageGCSBucket             string `json:"storage.gcs.bucket,omitempty"`
