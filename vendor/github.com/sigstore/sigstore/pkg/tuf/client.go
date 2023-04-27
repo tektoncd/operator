@@ -43,7 +43,7 @@ import (
 
 const (
 	// DefaultRemoteRoot is the default remote TUF root location.
-	DefaultRemoteRoot = "https://sigstore-tuf-root.storage.googleapis.com"
+	DefaultRemoteRoot = "https://tuf-repo-cdn.sigstore.dev"
 
 	// TufRootEnv is the name of the environment variable that locates an alternate local TUF root location.
 	TufRootEnv = "TUF_ROOT"
