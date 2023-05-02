@@ -58,6 +58,7 @@ The TektonConfig CR provides the following features
         kube-api-qps: 5.0
         kube-api-burst: 10
     pruner:
+      disabled: false
       resources:
       - taskrun
       - pipelinerun
@@ -155,6 +156,7 @@ Pruner provides auto clean up feature for the Tekton resources.
 Example:
 ```yaml
 pruner:
+  disabled: false
   resources:
     - taskrun
     - pipelinerun
@@ -162,14 +164,31 @@ pruner:
   keep-since: 1440
   schedule: "* * * * *"
 ```
+- `disabled` : if the value set as `true`, pruner feature will be disabled (default: `false`)
 - `prune-per-resource`: if the value set as `true` (default value `false`), the `keep` and `keep-since` applied to each resource. example: `tkn pipelinerun delete --pipeline=my-pipeline --keep=10`
 - `resources`: supported resources for auto prune are `taskrun` and `pipelinerun`
 - `keep`: maximum number of resources to keep while deleting or removing resources
 - `keep-since`: retain the resources younger than the specified value in minutes
 - `schedule`: how often to clean up resources. User can understand the schedule syntax [here][schedule].
 
-This is an `Optional` section.
+> ### Note:
+> if `disabled: false` and `schedule: ` with empty value, global pruner job will be disabled.
+> however, if there is a prune schedule (`operator.tekton.dev/prune.schedule`) annotation present with a value in a namespace. a namespace wide pruner jobs will be created
 
+#### Pruner Namespace annotations
+By default pruner job will be created from the global pruner config (`spec.pruner`), though user can customize a pruner config to a specific namespace with the following annotations. If some of the annotations are not present or has invalid value, for that value, falls back to global value or skipped the namespace.
+- `operator.tekton.dev/prune.skip` - pruner job will be skipped to a namespace, if the value set as `true`
+- `operator.tekton.dev/prune.schedule` - pruner job will be created on a specific schedule
+- `operator.tekton.dev/prune.keep` - maximum number of resources will be kept
+- `operator.tekton.dev/prune.keep-since` - retain the resources younger than the specified value in minutes
+- `operator.tekton.dev/prune.prune-per-resource` - the `keep` and `keep-since` applied to each resource
+- `operator.tekton.dev/prune.resources` - can be `taskrun` and/or `pipelinerun`, both value can be specified with comma separated. example: `taskrun,pipelinerun`
+- `operator.tekton.dev/prune.strategy` - allowed values: either `keep` or `keep-since`
+
+> ### Note: 
+> if a global value is not present the following values will be consider as default value <br> 
+> `resources: pipelinerun` <br>
+> `keep: 100` <br>
 ### Addon
 
 TektonAddon install some resources along with Tekton Pipelines on the cluster. This provides few ClusterTasks, PipelineTemplates.

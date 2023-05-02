@@ -49,6 +49,8 @@ func (tp *TektonConfig) GetStatus() TektonComponentStatus {
 
 // Prune defines the pruner
 type Prune struct {
+	// enable or disable pruner feature
+	Disabled bool `json:"disabled"`
 	// apply the prune job to the individual resources
 	// +optional
 	PrunePerResource bool `json:"prune-per-resource,omitempty"`
