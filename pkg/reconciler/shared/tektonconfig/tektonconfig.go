@@ -152,7 +152,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	// reconcile pruner installerSet
-	if !tc.Spec.Pruner.IsEmpty() {
+	if !tc.Spec.Pruner.Disabled {
 		err := r.reconcilePrunerInstallerSet(ctx, tc)
 		if err != nil {
 			return err

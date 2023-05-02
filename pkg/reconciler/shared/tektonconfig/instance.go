@@ -99,7 +99,7 @@ func (tc tektonConfig) ensureInstance(ctx context.Context) {
 }
 
 func (tc tektonConfig) createInstance(ctx context.Context) error {
-	pruneKeep := uint(100)
+	pruneKeep := v1alpha1.PrunerDefaultKeep
 	tcCR := &v1alpha1.TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: v1alpha1.ConfigResourceName,
@@ -110,10 +110,11 @@ func (tc tektonConfig) createInstance(ctx context.Context) error {
 				TargetNamespace: tc.namespace,
 			},
 			Pruner: v1alpha1.Prune{
-				Resources: []string{"pipelinerun"},
+				Disabled:  false,
+				Resources: v1alpha1.PruningDefaultResources,
 				Keep:      &pruneKeep,
 				KeepSince: nil,
-				Schedule:  "0 8 * * *",
+				Schedule:  v1alpha1.PrunerDefaultSchedule,
 			},
 		},
 	}

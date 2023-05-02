@@ -192,7 +192,7 @@ func (pr *Pruner) reconcileCronJobs() error {
 	pruneConfigsMap := make(map[string][]pruneConfig)
 
 	// verify prune job enabled in TektonConfig CR
-	if pr.tektonConfig.Spec.Pruner.Schedule != "" && len(pr.tektonConfig.Spec.Pruner.Resources) != 0 {
+	if !pr.tektonConfig.Spec.Pruner.Disabled {
 		// collect namespace details
 		namespaceList, err := pr.kubeClientset.CoreV1().Namespaces().List(pr.ctx, metav1.ListOptions{})
 		if err != nil {
@@ -295,6 +295,21 @@ func (pr *Pruner) getPruneConfig(namespace *corev1.Namespace) *pruneConfig {
 	// asked to skip for this namespace?
 	if pr.getMapString(annotations, pruneAnnotationSkip, "") == "true" {
 		return nil
+	}
+
+	// if the global schedule is disabled and there is no prune schedule annotation present in a namespace
+	// skip that namespace
+	if defaultPruneConfig.Schedule == "" && pr.getMapString(annotations, pruneAnnotationSchedule, "") == "" {
+		return nil
+	}
+
+	// update missing values from defaults
+	if defaultPruneConfig.Keep == nil && defaultPruneConfig.KeepSince == nil {
+		keep := v1alpha1.PrunerDefaultKeep
+		defaultPruneConfig.Keep = &keep
+	}
+	if len(defaultPruneConfig.Resources) == 0 {
+		defaultPruneConfig.Resources = v1alpha1.PruningDefaultResources
 	}
 
 	// update keep and keep-since based on the strategy

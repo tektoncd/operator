@@ -54,6 +54,10 @@ const (
 	Reinstalling   = "reinstalling"
 
 	RequeueDelay = 10 * time.Second
+
+	// pruner default schedule, used in auto generate tektonConfig
+	PrunerDefaultSchedule = "0 8 * * *"
+	PrunerDefaultKeep     = uint(100)
 )
 
 var (
@@ -87,6 +91,11 @@ var (
 
 	PruningResource = []string{
 		"taskrun",
+		"pipelinerun",
+	}
+
+	// pruner default resource, used in auto generate tektonConfig
+	PruningDefaultResources = []string{
 		"pipelinerun",
 	}
 

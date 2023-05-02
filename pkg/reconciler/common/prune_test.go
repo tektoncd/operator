@@ -601,6 +601,7 @@ func TestPrunerReconcile(t *testing.T) {
 					name: "TestPrunerEnabled",
 					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
 						tektonConfig.Spec.Pruner = v1alpha1.Prune{
+							Disabled:         false,
 							Keep:             getUintWithReference(20),
 							KeepSince:        nil,
 							Resources:        []string{"pipelinerun", "taskrun"},
@@ -628,14 +629,18 @@ func TestPrunerReconcile(t *testing.T) {
 					},
 				},
 				{ // reconcile #2
-					name: "TestPrunerDisabledWithEmptySchedule",
+					// only global schedule will be disable, if a namespace has prune schedule annotation, there will be a job for that
+					name: "TestPrunerGlobalScheduleDisabledWithEmptySchedule",
 					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
 						tektonConfig.Spec.Pruner.Schedule = ""
 						return nil
 					},
-					scheduleAndArgs: map[string]string{},
+					scheduleAndArgs: map[string]string{
+						"*/12 * * * *": "ns-seven;--keep=20,--keep-since=42;pipelinerun,taskrun;true",
+					},
 				},
 				{ // reconcile #3
+					// re-enables global schedule
 					name: "TestPrunerReEnabledSchedule",
 					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
 						tektonConfig.Spec.Pruner.Schedule = "*/5 * * * *"
@@ -647,15 +652,21 @@ func TestPrunerReconcile(t *testing.T) {
 					},
 				},
 				{ // reconcile #4
-					name: "TestPrunerDisabledWithEmptyResources",
+					// removes global resources
+					name: "TestPrunerWithGlobalEmptyResources",
 					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
 						tektonConfig.Spec.Pruner.Resources = []string{}
 						return nil
 					},
-					scheduleAndArgs: map[string]string{},
+					// default prune resources will be taken
+					scheduleAndArgs: map[string]string{
+						"*/5 * * * *":  "ns-one;--keep=20;pipelinerun;false ns-two;--keep=20;pipelinerun;false",
+						"*/12 * * * *": "ns-seven;--keep=20,--keep-since=42;pipelinerun;true",
+					},
 				},
 				{ // reconcile #5
-					name: "TestPrunerReEnabledWithAResource",
+					// adds global resources
+					name: "TestPrunerWithGlobalResources",
 					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
 						tektonConfig.Spec.Pruner.Resources = []string{"pipelinerun"}
 						return nil
@@ -666,7 +677,8 @@ func TestPrunerReconcile(t *testing.T) {
 					},
 				},
 				{ // reconcile #6
-					name: "TestPrunerReEnabledWithResources",
+					// modifies global resources
+					name: "TestPrunerUpdateGlobalResources",
 					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
 						tektonConfig.Spec.Pruner.Resources = []string{"pipelinerun", "taskrun"}
 						return nil
@@ -677,32 +689,63 @@ func TestPrunerReconcile(t *testing.T) {
 					},
 				},
 				{ // reconcile #7
+					// removes global keep and keepSince
 					name: "TestPrunerWithNilArguments",
 					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
 						tektonConfig.Spec.Pruner.Keep = nil
 						tektonConfig.Spec.Pruner.KeepSince = nil
 						return nil
 					},
+					// uses default keep value
 					scheduleAndArgs: map[string]string{
-						"*/12 * * * *": "ns-seven;--keep-since=42;pipelinerun,taskrun;true",
+						"*/5 * * * *":  "ns-one;--keep=100;pipelinerun,taskrun;false ns-two;--keep=100;pipelinerun,taskrun;false",
+						"*/12 * * * *": "ns-seven;--keep=100,--keep-since=42;pipelinerun,taskrun;true",
 					},
 				},
 				{ // reconcile #9
+					// removes global resources
 					name: "TestPrunerWithWithEmptyResources",
 					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
 						tektonConfig.Spec.Pruner.Resources = nil
 						return nil
 					},
-					scheduleAndArgs: map[string]string{},
+					// takes default resources
+					scheduleAndArgs: map[string]string{
+						"*/5 * * * *":  "ns-one;--keep=100;pipelinerun;false ns-two;--keep=100;pipelinerun;false",
+						"*/12 * * * *": "ns-seven;--keep=100,--keep-since=42;pipelinerun;true",
+					},
 				},
 				{ // reconcile #10
+					// adds global resources
 					name: "TestPrunerWithWithResources",
 					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
 						tektonConfig.Spec.Pruner.Resources = []string{"pipelinerun", "taskrun"}
 						return nil
 					},
 					scheduleAndArgs: map[string]string{
-						"*/12 * * * *": "ns-seven;--keep-since=42;pipelinerun,taskrun;true",
+						"*/5 * * * *":  "ns-one;--keep=100;pipelinerun,taskrun;false ns-two;--keep=100;pipelinerun,taskrun;false",
+						"*/12 * * * *": "ns-seven;--keep=100,--keep-since=42;pipelinerun,taskrun;true",
+					},
+				},
+				{ // reconcile #11
+					name: "TestPrunerDisableAll",
+					// disables pruner feature
+					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
+						tektonConfig.Spec.Pruner.Disabled = true
+						return nil
+					},
+					scheduleAndArgs: map[string]string{},
+				},
+				{ // reconcile #12
+					// re enables pruner feature
+					name: "TestPrunerReEnable",
+					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
+						tektonConfig.Spec.Pruner.Disabled = false
+						return nil
+					},
+					scheduleAndArgs: map[string]string{
+						"*/5 * * * *":  "ns-one;--keep=100;pipelinerun,taskrun;false ns-two;--keep=100;pipelinerun,taskrun;false",
+						"*/12 * * * *": "ns-seven;--keep=100,--keep-since=42;pipelinerun,taskrun;true",
 					},
 				},
 			},

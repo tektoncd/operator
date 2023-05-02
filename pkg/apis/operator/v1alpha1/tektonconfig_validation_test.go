@@ -53,7 +53,9 @@ func Test_ValidateTektonConfig_MissingTargetNamespace(t *testing.T) {
 			Name:      "config",
 			Namespace: "namespace",
 		},
-		Spec: TektonConfigSpec{},
+		Spec: TektonConfigSpec{
+			Pruner: Prune{Disabled: true},
+		},
 	}
 
 	err := tc.Validate(context.TODO())
@@ -72,6 +74,7 @@ func Test_ValidateTektonConfig_InvalidProfile(t *testing.T) {
 				TargetNamespace: "namespace",
 			},
 			Profile: "test",
+			Pruner:  Prune{Disabled: true},
 		},
 	}
 
@@ -80,7 +83,6 @@ func Test_ValidateTektonConfig_InvalidProfile(t *testing.T) {
 }
 
 func Test_ValidateTektonConfig_InvalidPruningResource(t *testing.T) {
-
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "config",
@@ -99,7 +101,7 @@ func Test_ValidateTektonConfig_InvalidPruningResource(t *testing.T) {
 	}
 
 	err := tc.Validate(context.TODO())
-	assert.Equal(t, "expected exactly one, got neither: spec.pruner.keep, spec.pruner.keep-since\ninvalid value: task: spec.pruner.resources[0]\nmissing field(s): spec.pruner.schedule", err.Error())
+	assert.Equal(t, "expected exactly one, got neither: spec.pruner.keep, spec.pruner.keep-since\ninvalid value: task: spec.pruner.resources[0]", err.Error())
 }
 
 func Test_ValidateTektonConfig_MissingKeepKeepsinceSchedule(t *testing.T) {
@@ -121,30 +123,7 @@ func Test_ValidateTektonConfig_MissingKeepKeepsinceSchedule(t *testing.T) {
 	}
 
 	err := tc.Validate(context.TODO())
-	assert.Equal(t, "expected exactly one, got neither: spec.pruner.keep, spec.pruner.keep-since\nmissing field(s): spec.pruner.schedule", err.Error())
-}
-
-func Test_ValidateTektonConfig_MissingSchedule(t *testing.T) {
-	keep := uint(2)
-	tc := &TektonConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "config",
-			Namespace: "namespace",
-		},
-		Spec: TektonConfigSpec{
-			CommonSpec: CommonSpec{
-				TargetNamespace: "namespace",
-			},
-			Profile: "all",
-			Pruner: Prune{
-				Keep:      &keep,
-				Resources: []string{"taskrun"},
-			},
-		},
-	}
-
-	err := tc.Validate(context.TODO())
-	assert.Equal(t, "missing field(s): spec.pruner.schedule", err.Error())
+	assert.Equal(t, "expected exactly one, got neither: spec.pruner.keep, spec.pruner.keep-since", err.Error())
 }
 
 func Test_ValidateTektonConfig_InvalidAddonParam(t *testing.T) {
@@ -167,6 +146,7 @@ func Test_ValidateTektonConfig_InvalidAddonParam(t *testing.T) {
 					},
 				},
 			},
+			Pruner: Prune{Disabled: true},
 		},
 	}
 
@@ -194,6 +174,7 @@ func Test_ValidateTektonConfig_InvalidAddonParamValue(t *testing.T) {
 					},
 				},
 			},
+			Pruner: Prune{Disabled: true},
 		},
 	}
 
@@ -218,6 +199,7 @@ func Test_ValidateTektonConfig_InvalidPipelineProperties(t *testing.T) {
 					EnableApiFields: "test",
 				},
 			},
+			Pruner: Prune{Disabled: true},
 		},
 	}
 
@@ -242,6 +224,7 @@ func Test_ValidateTektonConfig_InvalidTriggerProperties(t *testing.T) {
 					EnableApiFields: "test",
 				},
 			},
+			Pruner: Prune{Disabled: true},
 		},
 	}
 

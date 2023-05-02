@@ -44,6 +44,7 @@ func Test_ValidateTektonConfig_InvalidHubParam(t *testing.T) {
 					},
 				},
 			},
+			Pruner: Prune{Disabled: true},
 		},
 	}
 
@@ -71,6 +72,7 @@ func Test_ValidateTektonConfig_InvalidHubParamValue(t *testing.T) {
 					},
 				},
 			},
+			Pruner: Prune{Disabled: true},
 		},
 	}
 
