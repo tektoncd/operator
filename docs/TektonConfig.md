@@ -14,6 +14,7 @@ Operator provides support for installing and managing following operator compone
 - [TektonPipeline](./TektonPipeline.md)
 - [TektonTrigger](./TektonTrigger.md)
 
+
 Other than the above components depending on the platform operator also provides support for
 - On both Kubernetes and OpenShift
     - [TektonChain](./TektonChain.md)
@@ -81,8 +82,8 @@ By default, namespace would be `tekton-pipelines` for Kubernetes and `openshift-
 
 This allows user to choose which all components to install on the cluster.
 There are 3 profiles available:
-- `all`: This profile will install all components (TektonPipeline and TektonTrigger)
-- `basic`:  This profile will install only TektonPipeline and TektonTrigger component
+- `all`: This profile will install all components (TektonPipeline, TektonTrigger and TektonChain)
+- `basic`:  This profile will install only TektonPipeline, TektonTrigger and TektonChain component
 - `lite`: This profile will install only TektonPipeline component
 
 On Kubernetes, `all` profile will install `TektonDashboard` and on OpenShift `TektonAddon` will be installed.

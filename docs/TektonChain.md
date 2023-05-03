@@ -8,13 +8,9 @@ weight: 9
 
 TektonChain custom resource allows user to install and manage [Tekton Chains][chains].
 
-TektonChain is an optional component and currently cannot be installed through TektonConfig. It has to be installed separately.
+It is recommended to install the component through [TektonConfig](./TektonConfig.md).
 
-To install TektonChain on your cluster follow steps as given below:
-
-- Make sure Tekton Pipelines is installed on your cluster, using the Operator.
-
-- Create the TektonChain CR.
+- TektonChain CR is as below
 
     - On Kubernetes, TektonChain CR is as below:
 
@@ -88,11 +84,14 @@ spec:
   storage.docdb.url: #value
   storage.grafeas.projectid: #value
   storage.grafeas.noteid: #value
+  storage.grafeas.notehint: #value
   builder.id: #value
   signers.x509.fulcio.enabled: #value (boolean - true/false)
   signers.x509.fulcio.address: #value
   signers.x509.fulcio.issuer: #value
   signers.x509.fulcio.provider: #value
+  signers.x509.identity.token.file: #value
+  signers.x509.tuf.mirror.url: #value
   signers.kms.kmsref: #value
   signers.kms.kmsref.auth.address: #value
   signers.kms.kmsref.auth.token: #value
