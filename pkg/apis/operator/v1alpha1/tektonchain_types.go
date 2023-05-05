@@ -17,6 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/json"
+	"fmt"
+	"strconv"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -104,9 +108,29 @@ type Chain struct {
 	KMSAuthSpireSock     string `json:"signers.kms.auth.spire.sock,omitempty"`
 	KMSAuthSpireAudience string `json:"signers.kms.auth.spire.audience,omitempty"`
 
-	// transparency config
-	TransparencyConfigEnabled string `json:"transparency.enabled,omitempty"`
-	TransparencyConfigURL     string `json:"transparency.url,omitempty"`
+	TransparencyConfigEnabled BoolValue `json:"transparency.enabled,omitempty"`
+	TransparencyConfigURL     string    `json:"transparency.url,omitempty"`
+}
+
+type BoolValue string
+
+func (bv *BoolValue) UnmarshalJSON(value []byte) error {
+	var a string
+	var b bool
+	if err := json.Unmarshal(value, &a); err == nil {
+		// no error, it's a string
+		*bv = BoolValue(a)
+		return nil
+	} else if err := json.Unmarshal(value, &b); err == nil {
+		// it is a boolean
+		*bv = BoolValue(strconv.FormatBool(b))
+		return nil
+	}
+	return fmt.Errorf("Invalid value")
+}
+
+func (bv BoolValue) MarshalJson() ([]byte, error) {
+	return []byte(bv), nil
 }
 
 // TektonChainStatus defines the observed state of TektonChain
