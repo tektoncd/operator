@@ -119,7 +119,7 @@ func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldEr
 		errs = errs.Also(apis.ErrInvalidValue(tcs.X509SignerFulcioProvider, path+".signers.x509.fulcio.provider"))
 	}
 
-	if !allowedTransparencyConfigEnabled.Has(tcs.TransparencyConfigEnabled) {
+	if !allowedTransparencyConfigEnabled.Has(string(tcs.TransparencyConfigEnabled)) {
 		errs = errs.Also(apis.ErrInvalidValue(tcs.TransparencyConfigEnabled, path+".transparency.enabled"))
 	}
 
