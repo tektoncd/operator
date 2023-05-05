@@ -20,6 +20,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -50,16 +51,28 @@ func Test_ValidateTektonPipeline_APIField(t *testing.T) {
 			CommonSpec: CommonSpec{
 				TargetNamespace: "namespace",
 			},
-			Pipeline: Pipeline{
-				PipelineProperties: PipelineProperties{
-					EnableApiFields: "prod",
-				},
-			},
 		},
 	}
 
-	err := tp.Validate(context.TODO())
-	assert.Equal(t, "invalid value: prod: spec.enable-api-fields", err.Error())
+	tests := []struct {
+		name     string
+		apiField string
+		err      string
+	}{
+		{name: "api-alpha", apiField: config.AlphaAPIFields, err: ""},
+		{name: "api-beta", apiField: config.AlphaAPIFields, err: ""},
+		{name: "api-stable", apiField: config.AlphaAPIFields, err: ""},
+		{name: "api-invalid", apiField: "prod", err: "invalid value: prod: spec.enable-api-fields"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tp.Spec.Pipeline.EnableApiFields = test.apiField
+			errs := tp.Validate(context.TODO())
+			assert.Equal(t, test.err, errs.Error())
+		})
+	}
+
 }
 
 func Test_ValidateTektonPipeline_OnDelete(t *testing.T) {
