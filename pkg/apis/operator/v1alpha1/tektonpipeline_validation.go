@@ -21,7 +21,12 @@ import (
 	"fmt"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
+)
+
+var (
+	validatePipelineAllowedApiFields = sets.NewString("", config.AlphaAPIFields, config.BetaAPIFields, config.StableAPIFields)
 )
 
 func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -44,11 +49,10 @@ func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) 
 
 func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 
-	if p.EnableApiFields != "" {
-		if p.EnableApiFields != config.StableAPIFields && p.EnableApiFields != config.AlphaAPIFields {
-			errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, path+".enable-api-fields"))
-		}
+	if !validatePipelineAllowedApiFields.Has(p.EnableApiFields) {
+		errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, fmt.Sprintf("%s.enable-api-fields", path)))
 	}
+
 	if p.DefaultTimeoutMinutes != nil {
 		if *p.DefaultTimeoutMinutes == 0 {
 			errs = errs.Also(apis.ErrInvalidValue(p.DefaultTimeoutMinutes, path+".default-timeout-minutes"))
