@@ -21,7 +21,12 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"sort"
+	"time"
 
+	securityv1 "github.com/openshift/api/security/v1"
+	sccSort "github.com/openshift/apiserver-library-go/pkg/securitycontextconstraints/util/sort"
+	security "github.com/openshift/client-go/security/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -39,11 +44,14 @@ import (
 )
 
 const (
+	pipelinesSCCRole        = "pipelines-scc-role"
 	pipelinesSCCClusterRole = "pipelines-scc-clusterrole"
 	pipelinesSCCRoleBinding = "pipelines-scc-rolebinding"
-	pipelinesSCC            = "pipelines-scc"
 	pipelineSA              = "pipeline"
 	PipelineRoleBinding     = "openshift-pipelines-edit"
+	// namespaceSCCAnnotation is used to set SCC for a given namespace
+	namespaceSCCAnnotation = "operator.tekton.dev/scc"
+
 	// TODO: Remove this after v0.55.0 release, by following a depreciation notice
 	// --------------------
 	pipelineRoleBindingOld  = "edit"
@@ -76,6 +84,7 @@ var nsRegex = regexp.MustCompile(common.NamespaceIgnorePattern)
 type rbac struct {
 	kubeClientSet     kubernetes.Interface
 	operatorClientSet clientset.Interface
+	securityClientSet *security.Clientset
 	rbacInformer      rbacV1.ClusterRoleBindingInformer
 	nsInformer        nsV1.NamespaceInformer
 	ownerRef          metav1.OwnerReference
@@ -158,72 +167,255 @@ func (r *rbac) setDefault() {
 	}
 }
 
-func (r *rbac) createResources(ctx context.Context) error {
+func (r *rbac) verifySCCExists(ctx context.Context, sccName string) error {
+	_, err := r.securityClientSet.SecurityV1().SecurityContextConstraints().Get(ctx, sccName, metav1.GetOptions{})
+	return err
+}
 
+// ensurePreRequisites validates the resources before creation
+func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
 
 	rbacISet, err := r.EnsureRBACInstallerSet(ctx)
 	if err != nil {
 		return err
 	}
-
 	r.ownerRef = configOwnerRef(*rbacISet)
 
-	// fetch the list of all namespaces which doesn't have label
-	// `openshift-pipelines.tekton.dev/namespace-reconcile-version: <release-version>`
-	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s != %s", namespaceVersionLabel, r.version),
-	})
+	// make sure default SCC is in place
+	defaultSCC := r.tektonConfig.Spec.Platforms.OpenShift.SCC.Default
+	if defaultSCC == "" {
+		// Should not really happen due to defaulting, but okay...
+		return fmt.Errorf("tektonConfig.Spec.Platforms.OpenShift.SCC.Default cannot be empty")
+	}
+	logger.Infof("default SCC set to: %s", defaultSCC)
+	if err := r.verifySCCExists(ctx, defaultSCC); err != nil {
+		return err
+	}
+
+	prioritizedSCCList, err := r.getPrioritizedSCCList(ctx)
 	if err != nil {
 		return err
 	}
 
-	if err := r.removeAndUpdateNSFromCI(ctx); err != nil {
-		logger.Error(err)
-		return err
-	}
-
-	// list of namespaces rbac resources need to be created
-	var rbacNamespaces []corev1.Namespace
-
-	// filter namespaces:
-	for _, n := range namespaces.Items {
-		// ignore namespaces with name passing regex `^(openshift|kube)-`
-		if ignore := nsRegex.MatchString(n.GetName()); ignore {
-			continue
+	// validate maxAllowed SCC
+	maxAllowedSCC := r.tektonConfig.Spec.Platforms.OpenShift.SCC.MaxAllowed
+	if maxAllowedSCC != "" {
+		if err := r.verifySCCExists(ctx, maxAllowedSCC); err != nil {
+			return err
 		}
-		// ignore namespaces with DeletionTimestamp set
-		if n.GetObjectMeta().GetDeletionTimestamp() != nil {
-			continue
-		}
-		rbacNamespaces = append(rbacNamespaces, n)
-	}
 
-	if len(rbacNamespaces) == 0 {
-		return nil
+		isPriority, err := sccAEqualORPriorityOverB(prioritizedSCCList, maxAllowedSCC, defaultSCC)
+		if err != nil {
+			return err
+		}
+		logger.Infof("Does SCC: %s have >= priority than SCC: %s? %t", maxAllowedSCC, defaultSCC, isPriority)
+		if !isPriority {
+			return fmt.Errorf("maxAllowed SCC: %s must have a higher priority over default SCC: %s", maxAllowedSCC, defaultSCC)
+		}
+		logger.Infof("maxAllowed SCC set to: %s", maxAllowedSCC)
+	} else {
+		logger.Info("No maxAllowed SCC set in TektonConfig")
 	}
 
 	// Maintaining a separate cluster role for the scc declaration.
 	// to assist us in managing this the scc association in a
 	// granular way.
+	// We need to make sure the pipelines-scc-clusterrole is up-to-date
+	// irrespective of the fact that we get reconcilable namespaces or not.
 	if err := r.ensurePipelinesSCClusterRole(ctx); err != nil {
 		return err
 	}
 
-	for _, n := range rbacNamespaces {
+	return nil
+}
 
-		logger.Infow("Inject CA bundle configmap in ", "Namespace", n.GetName())
-		if err := r.ensureCABundles(ctx, &n); err != nil {
+func (r *rbac) getNamespacesToBeReconciled(ctx context.Context) ([]corev1.Namespace, error) {
+	logger := logging.FromContext(ctx)
+
+	// fetch the list of all namespaces which doesn't have label
+	// `openshift-pipelines.tekton.dev/namespace-reconcile-version: <release-version>`
+	allNamespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	var namespaces []corev1.Namespace
+	for _, ns := range allNamespaces.Items {
+		// ignore namespaces with name passing regex `^(openshift|kube)-`
+		if ignore := nsRegex.MatchString(ns.GetName()); ignore {
+			continue
+		}
+
+		// ignore namespaces with DeletionTimestamp set
+		if ns.GetObjectMeta().GetDeletionTimestamp() != nil {
+			continue
+		}
+
+		// We want to monitor namespaces with the SCC annotation set
+		if ns.Annotations[namespaceSCCAnnotation] != "" {
+			namespaces = append(namespaces, ns)
+			continue
+		}
+
+		// Then we want to accept namespaces that have not been reconciled yet
+		if ns.Labels[namespaceVersionLabel] != r.version {
+			namespaces = append(namespaces, ns)
+			continue
+		}
+
+		// Now we're left with namespaces that have already been reconciled.
+		// We must make sure that the default SCC is in force via the ClusterRole.
+		sccRoleBinding, err := r.kubeClientSet.RbacV1().RoleBindings(ns.Name).Get(ctx, pipelinesSCCRoleBinding, metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		if sccRoleBinding.RoleRef.Kind != "ClusterRole" {
+			logger.Infof("RoleBinding %s in namespace: %s should have CluterRole with default SCC, will reconcile again...", pipelinesSCCRoleBinding, ns.Name)
+			namespaces = append(namespaces, ns)
+			continue
+		}
+	}
+
+	return namespaces, nil
+}
+
+func (r *rbac) getSCCRoleInNamespace(ns *corev1.Namespace) *rbacv1.RoleRef {
+	nsAnnotations := ns.GetAnnotations()
+	nsSCC := nsAnnotations[namespaceSCCAnnotation]
+	// If SCC is requested by namespace annotation, then we need a Role
+	if nsSCC != "" {
+		return &rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "Role",
+			Name:     pipelinesSCCRole,
+		}
+	}
+	// If no SCC annotation is present in the namespace, we will use the
+	// pipelines-scc-clusterrole
+	return &rbacv1.RoleRef{
+		APIGroup: rbacv1.GroupName,
+		Kind:     "ClusterRole",
+		Name:     pipelinesSCCClusterRole,
+	}
+}
+
+func (r *rbac) handleSCCInNamespace(ctx context.Context, ns *corev1.Namespace) error {
+	logger := logging.FromContext(ctx)
+
+	nsName := ns.GetName()
+	nsAnnotations := ns.GetAnnotations()
+	nsSCC := nsAnnotations[namespaceSCCAnnotation]
+
+	// No SCC is requested in the namespace
+	if nsSCC == "" {
+		// If we don't have a namespace annotation, then we don't need a
+		// Role in this namespace as we will bind to the ClusterRole.
+		// This happens in cases when the SCC annotation was removed from
+		// the namespace.
+		_, err := r.kubeClientSet.RbacV1().Roles(nsName).Get(ctx, pipelinesSCCRole, metav1.GetOptions{})
+		if err != nil && !errors.IsNotFound(err) {
 			return err
 		}
 
-		logger.Infow("Ensures Default SA in ", "Namespace", n.GetName())
-		sa, err := r.ensureSA(ctx, &n)
+		// If `err == nil` AND role was found, it means that role exists
+		if !errors.IsNotFound(err) {
+			logger.Infof("Found leftover role: %s in namespace: %s, deleting...", pipelinesSCCRole, nsName)
+			err := r.kubeClientSet.RbacV1().Roles(nsName).Delete(ctx, pipelinesSCCRole, metav1.DeleteOptions{})
+			if err != nil && !errors.IsNotFound(err) {
+				return err
+			}
+		}
+		// Don't proceed further if no SCC requested by namespace
+		return nil
+	}
+
+	// We're here, so the namespace has actually requested an SCC
+	logger.Infof("Namespace: %s has requested SCC: %s", nsName, nsSCC)
+
+	// Make sure that SCC exists on cluster
+	if err := r.verifySCCExists(ctx, nsSCC); err != nil {
+		logger.Error(err)
+
+		// Create an event in the namespace if the SCC does not exist
+		eventErr := r.createSCCFailureEventInNamespace(ctx, nsName, nsSCC)
+		if eventErr != nil {
+			logger.Errorf("Failed to create SCC not found event in namepsace: %s", nsName)
+			return eventErr
+		}
+		return err
+	}
+
+	// Make sure SCC requested in the namespace has a lower or equal priority
+	// than the SCC mentioned in maxAllowed
+	maxAllowedSCC := r.tektonConfig.Spec.Platforms.OpenShift.SCC.MaxAllowed
+	if maxAllowedSCC != "" {
+		prioritizedSCCList, err := r.getPrioritizedSCCList(ctx)
+		if err != nil {
+			return err
+		}
+		isPriority, err := sccAEqualORPriorityOverB(prioritizedSCCList, maxAllowedSCC, nsSCC)
+		if err != nil {
+			return err
+		}
+		logger.Infof("Does SCC: %s have >= priority than SCC: %s? %t", maxAllowedSCC, nsSCC, isPriority)
+		if !isPriority {
+			return fmt.Errorf("namespace: %s has requested SCC: %s, but it has a higher priority than 'maxAllowed' SCC: %s", nsName, nsSCC, maxAllowedSCC)
+		}
+	}
+
+	// Make sure a Role exists with the SCC attached in the namespace
+	if err := r.ensureSCCRoleInNamespace(ctx, nsName, nsSCC); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *rbac) createResources(ctx context.Context) error {
+	logger := logging.FromContext(ctx)
+
+	if err := r.ensurePreRequisites(ctx); err != nil {
+		logger.Errorf("Error validating resources: %v", err)
+		return err
+	}
+
+	namespacesToBeReconciled, err := r.getNamespacesToBeReconciled(ctx)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+	logger.Debugf("RBAC: found %d namespaces to be reconciled", len(namespacesToBeReconciled))
+
+	// remove and update namespaces from Cluster Interceptors
+	if err := r.removeAndUpdateNSFromCI(ctx); err != nil {
+		logger.Error(err)
+		return err
+	}
+
+	for _, ns := range namespacesToBeReconciled {
+		logger.Infow("Inject CA bundle configmap in ", "Namespace", ns.GetName())
+		if err := r.ensureCABundles(ctx, &ns); err != nil {
+			return err
+		}
+
+		logger.Infow("Ensures Default SA in ", "Namespace", ns.GetName())
+		sa, err := r.ensureSA(ctx, &ns)
 		if err != nil {
 			return err
 		}
 
-		if err := r.ensurePipelinesSCCRoleBinding(ctx, sa); err != nil {
+		// If "operator.tekton.dev/scc" exists in the namespace, then bind
+		// that SCC to the SA
+		err = r.handleSCCInNamespace(ctx, &ns)
+		if err != nil {
+			return err
+		}
+
+		// We use a namespace scoped Role when SCC annotation is present, and
+		// a cluster scoped ClusterRole when the default SCC is used
+		roleRef := r.getSCCRoleInNamespace(&ns)
+		if err := r.ensurePipelinesSCCRoleBinding(ctx, sa, roleRef); err != nil {
 			return err
 		}
 
@@ -237,18 +429,92 @@ func (r *rbac) createResources(ctx context.Context) error {
 
 		// Add `openshift-pipelines.tekton.dev/namespace-reconcile-version` label to namespace
 		// so that rbac won't loop on it again
-		nsLabels := n.GetLabels()
+		nsLabels := ns.GetLabels()
 		if len(nsLabels) == 0 {
 			nsLabels = map[string]string{}
 		}
 		nsLabels[namespaceVersionLabel] = r.version
-		n.SetLabels(nsLabels)
-		if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &n, metav1.UpdateOptions{}); err != nil {
+		ns.SetLabels(nsLabels)
+		if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &ns, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (r *rbac) createSCCFailureEventInNamespace(ctx context.Context, namespace string, scc string) error {
+	logger := logging.FromContext(ctx)
+
+	failureEvent := corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName:    "pipelines-scc-failure-",
+			Namespace:       namespace,
+			OwnerReferences: []metav1.OwnerReference{r.ownerRef},
+		},
+		EventTime:           metav1.NewMicroTime(time.Now()),
+		Reason:              "RequestedSCCNotFound",
+		Type:                "Warning",
+		Action:              "SCCNotUpdated",
+		Message:             fmt.Sprintf("SCC '%s' requested in annotation '%s' not found, SCC not updated in the namespace", scc, namespaceSCCAnnotation),
+		ReportingController: "openshift-pipelines-operator",
+		ReportingInstance:   r.ownerRef.Name,
+		InvolvedObject: corev1.ObjectReference{
+			Kind:       "Namespace",
+			Name:       namespace,
+			APIVersion: "v1",
+			Namespace:  namespace,
+		},
+	}
+
+	logger.Infof("Creating SCC failure event in namespace: %s", namespace)
+	_, err := r.kubeClientSet.CoreV1().Events(namespace).Create(ctx, &failureEvent, metav1.CreateOptions{})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func sccAEqualORPriorityOverB(prioritizedSCCList []*securityv1.SecurityContextConstraints, sccA string, sccB string) (bool, error) {
+	var sccAIndex, sccBIndex int
+	var sccAFound, sccBFound bool
+	for i, scc := range prioritizedSCCList {
+		if scc.Name == sccA {
+			sccAFound = true
+			sccAIndex = i
+		}
+		if scc.Name == sccB {
+			sccBFound = true
+			sccBIndex = i
+		}
+		if sccAFound && sccBFound {
+			break
+		}
+	}
+
+	if !sccAFound || !sccBFound {
+		return false, fmt.Errorf("SCCs not found while looking up priorities, found SCC %s: %t, found SCC %s: %t", sccA, sccAFound, sccB, sccBFound)
+	}
+
+	return sccAIndex <= sccBIndex, nil
+}
+
+func (r *rbac) getPrioritizedSCCList(ctx context.Context) ([]*securityv1.SecurityContextConstraints, error) {
+	logger := logging.FromContext(ctx)
+	sccList, err := r.securityClientSet.SecurityV1().SecurityContextConstraints().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		logger.Error("Error listing SCCs")
+		return nil, err
+	}
+	var sccPointerList []*securityv1.SecurityContextConstraints
+	for i := range sccList.Items {
+		sccPointerList = append(sccPointerList, &sccList.Items[i])
+	}
+
+	// This will sort the sccPointerList in order of priority
+	sort.Sort(sccSort.ByPriority(sccPointerList))
+	return sccPointerList, nil
 }
 
 func (r *rbac) ensureCABundles(ctx context.Context, ns *corev1.Namespace) error {
@@ -396,6 +662,52 @@ func createSA(ctx context.Context, saInterface v1.ServiceAccountInterface, ns st
 	return sa, nil
 }
 
+// ensureSCCRoleInNamespace ensures that the SCC role exists in the namespace
+func (r *rbac) ensureSCCRoleInNamespace(ctx context.Context, namespace string, scc string) error {
+	logger := logging.FromContext(ctx)
+
+	logger.Infof("finding role: %s in namespace %s", pipelinesSCCRole, namespace)
+
+	sccRole := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            pipelinesSCCRole,
+			Namespace:       namespace,
+			OwnerReferences: []metav1.OwnerReference{r.ownerRef},
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{
+					"security.openshift.io",
+				},
+				ResourceNames: []string{
+					scc,
+				},
+				Resources: []string{
+					"securitycontextconstraints",
+				},
+				Verbs: []string{
+					"use",
+				},
+			},
+		},
+	}
+
+	rbacClient := r.kubeClientSet.RbacV1()
+	if _, err := rbacClient.Roles(namespace).Get(ctx, pipelinesSCCRole, metav1.GetOptions{}); err != nil {
+		// If the role does not exist, then create it and exit
+		if errors.IsNotFound(err) {
+			_, err = rbacClient.Roles(namespace).Create(ctx, sccRole, metav1.CreateOptions{})
+		}
+		return err
+	}
+	// Update the role if it already exists
+	_, err := rbacClient.Roles(namespace).Update(ctx, sccRole, metav1.UpdateOptions{})
+	return err
+}
+
+// ensurePipelinesSCClusterRole ensures that `pipelines-scc` ClusterRole exists
+// in the cluster. The SCC used in the ClusterRole is read from SCC config
+// in TektonConfig (`pipelines-scc` by default)
 func (r *rbac) ensurePipelinesSCClusterRole(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
 
@@ -412,7 +724,7 @@ func (r *rbac) ensurePipelinesSCClusterRole(ctx context.Context) error {
 					"security.openshift.io",
 				},
 				ResourceNames: []string{
-					pipelinesSCC,
+					r.tektonConfig.Spec.Platforms.OpenShift.SCC.Default,
 				},
 				Resources: []string{
 					"securitycontextconstraints",
@@ -435,9 +747,27 @@ func (r *rbac) ensurePipelinesSCClusterRole(ctx context.Context) error {
 	return err
 }
 
-func (r *rbac) ensurePipelinesSCCRoleBinding(ctx context.Context, sa *corev1.ServiceAccount) error {
+func (r *rbac) ensurePipelinesSCCRoleBinding(ctx context.Context, sa *corev1.ServiceAccount, roleRef *rbacv1.RoleRef) error {
 	logger := logging.FromContext(ctx)
 	rbacClient := r.kubeClientSet.RbacV1()
+
+	roleKind := roleRef.Kind
+	roleName := roleRef.Name
+	if roleRef.Kind == "Role" {
+		logger.Infof("finding %s: %s", roleKind, roleName)
+		if _, err := rbacClient.Roles(sa.Namespace).Get(ctx, roleName, metav1.GetOptions{}); err != nil {
+			logger.Error(err, "finding %s failed: %s", roleKind, roleName)
+			return err
+		}
+	} else if roleKind == "ClusterRole" {
+		logger.Infof("finding %s: %s", roleKind, roleName)
+		if _, err := rbacClient.ClusterRoles().Get(ctx, roleName, metav1.GetOptions{}); err != nil {
+			logger.Error(err, "finding %s failed: %s", roleKind, roleName)
+			return err
+		}
+	} else {
+		return fmt.Errorf("incorrect value set for roleKind - %s, needs to be Role or ClusterRole", roleKind)
+	}
 
 	logger.Info("finding role-binding", pipelinesSCCRoleBinding)
 	pipelineRB, rbErr := rbacClient.RoleBindings(sa.Namespace).Get(ctx, pipelinesSCCRoleBinding, metav1.GetOptions{})
@@ -446,21 +776,26 @@ func (r *rbac) ensurePipelinesSCCRoleBinding(ctx context.Context, sa *corev1.Ser
 		return rbErr
 	}
 
-	logger.Info("finding cluster role:", pipelinesSCCClusterRole)
-	if _, err := rbacClient.ClusterRoles().Get(ctx, pipelinesSCCClusterRole, metav1.GetOptions{}); err != nil {
-		logger.Error(err, "finding cluster role failed:", pipelinesSCCClusterRole)
-		return err
+	if rbErr != nil && errors.IsNotFound(rbErr) {
+		return r.createSCCRoleBinding(ctx, sa, roleRef)
 	}
 
-	if rbErr != nil && errors.IsNotFound(rbErr) {
-		return r.createSCCRoleBinding(ctx, sa)
+	// We cannot update RoleRef in a RoleBinding, we need to delete and
+	// recreate the binding in that case
+	if pipelineRB.RoleRef.Kind != roleKind || pipelineRB.RoleRef.Name != roleName {
+		logger.Infof("Need to update RoleRef in RoleBinding %s in namespace: %s, deleting and recreating...", pipelinesSCCRoleBinding, sa.Namespace)
+		err := rbacClient.RoleBindings(sa.Namespace).Delete(ctx, pipelinesSCCRoleBinding, metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
+		return r.createSCCRoleBinding(ctx, sa, roleRef)
 	}
 
 	logger.Info("found rbac", "subjects", pipelineRB.Subjects)
-	return r.updateRoleBinding(ctx, pipelineRB, sa)
+	return r.updateRoleBinding(ctx, pipelineRB, sa, roleRef)
 }
 
-func (r *rbac) createSCCRoleBinding(ctx context.Context, sa *corev1.ServiceAccount) error {
+func (r *rbac) createSCCRoleBinding(ctx context.Context, sa *corev1.ServiceAccount, roleRef *rbacv1.RoleRef) error {
 	logger := logging.FromContext(ctx)
 	rbacClient := r.kubeClientSet.RbacV1()
 
@@ -471,7 +806,7 @@ func (r *rbac) createSCCRoleBinding(ctx context.Context, sa *corev1.ServiceAccou
 			Namespace:       sa.Namespace,
 			OwnerReferences: []metav1.OwnerReference{r.ownerRef},
 		},
-		RoleRef:  rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: pipelinesSCCClusterRole},
+		RoleRef:  *roleRef,
 		Subjects: []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: sa.Name, Namespace: sa.Namespace}},
 	}
 
@@ -482,7 +817,7 @@ func (r *rbac) createSCCRoleBinding(ctx context.Context, sa *corev1.ServiceAccou
 	return err
 }
 
-func (r *rbac) updateRoleBinding(ctx context.Context, rb *rbacv1.RoleBinding, sa *corev1.ServiceAccount) error {
+func (r *rbac) updateRoleBinding(ctx context.Context, rb *rbacv1.RoleBinding, sa *corev1.ServiceAccount, roleRef *rbacv1.RoleRef) error {
 	logger := logging.FromContext(ctx)
 
 	subject := rbacv1.Subject{Kind: rbacv1.ServiceAccountKind, Name: sa.Name, Namespace: sa.Namespace}
@@ -491,6 +826,8 @@ func (r *rbac) updateRoleBinding(ctx context.Context, rb *rbacv1.RoleBinding, sa
 	if !hasSubject {
 		rb.Subjects = append(rb.Subjects, subject)
 	}
+
+	rb.RoleRef = *roleRef
 
 	rbacClient := r.kubeClientSet.RbacV1()
 	hasOwnerRef := hasOwnerRefernce(rb.GetOwnerReferences(), r.ownerRef)
@@ -550,7 +887,11 @@ func (r *rbac) ensureRoleBindings(ctx context.Context, sa *corev1.ServiceAccount
 
 	if err == nil {
 		logger.Infof("found rolebinding %s/%s", editRB.Namespace, editRB.Name)
-		return r.updateRoleBinding(ctx, editRB, sa)
+		return r.updateRoleBinding(ctx, editRB, sa, &rbacv1.RoleRef{
+			APIGroup: rbacv1.GroupName,
+			Kind:     "ClusterRole",
+			Name:     "edit",
+		})
 	}
 
 	if errors.IsNotFound(err) {

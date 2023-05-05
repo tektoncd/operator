@@ -22,6 +22,7 @@ import (
 	"os"
 
 	mf "github.com/manifestival/manifestival"
+	security "github.com/openshift/client-go/security/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
@@ -46,6 +47,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		kubeClientSet:     kubeclient.Get(ctx),
 		rbacInformer:      rbacInformer.Get(ctx),
 		nsInformer:        namespaceinformer.Get(ctx),
+		securityClientSet: getSecurityClient(ctx),
 	}
 }
 
@@ -54,6 +56,10 @@ type openshiftExtension struct {
 	kubeClientSet     kubernetes.Interface
 	rbacInformer      rbacV1.ClusterRoleBindingInformer
 	nsInformer        nsV1.NamespaceInformer
+
+	// OpenShift clientsets are a bit... special, we need to get each
+	// clientset separately
+	securityClientSet *security.Clientset
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -69,6 +75,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	r := rbac{
 		kubeClientSet:     oe.kubeClientSet,
 		operatorClientSet: oe.operatorClientSet,
+		securityClientSet: oe.securityClientSet,
 		rbacInformer:      oe.rbacInformer,
 		nsInformer:        oe.nsInformer,
 		version:           os.Getenv(versionKey),

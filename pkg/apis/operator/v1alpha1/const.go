@@ -58,6 +58,12 @@ const (
 	// pruner default schedule, used in auto generate tektonConfig
 	PrunerDefaultSchedule = "0 8 * * *"
 	PrunerDefaultKeep     = uint(100)
+
+	// SCC params, OpenShift specific
+
+	// PipelinesSCC will be changed to `restricted` or `restricted-v2` once
+	// `pipelines-scc` is deprecated
+	PipelinesSCC = "pipelines-scc"
 )
 
 var (

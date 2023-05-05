@@ -54,6 +54,14 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 			setPACDefaults(tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings)
 		}
 
+		// SCC defaulting
+		if tc.Spec.Platforms.OpenShift.SCC == nil {
+			tc.Spec.Platforms.OpenShift.SCC = &SCC{}
+		}
+		if tc.Spec.Platforms.OpenShift.SCC.Default == "" {
+			tc.Spec.Platforms.OpenShift.SCC.Default = PipelinesSCC
+		}
+
 		setAddonDefaults(&tc.Spec.Addon)
 	} else {
 		tc.Spec.Addon = Addon{}
