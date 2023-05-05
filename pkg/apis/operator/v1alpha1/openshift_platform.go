@@ -20,6 +20,9 @@ type OpenShift struct {
 	// PipelinesAsCode allows configuring PipelinesAsCode configurations
 	// +optional
 	PipelinesAsCode *PipelinesAsCode `json:"pipelinesAsCode,omitempty"`
+	// SCC allows configuring security context constraints used by workloads
+	// +optional
+	SCC *SCC `json:"scc,omitempty"`
 }
 
 type PipelinesAsCode struct {
@@ -29,4 +32,16 @@ type PipelinesAsCode struct {
 	// PACSettings allows user to configure PAC configurations
 	// +optional
 	PACSettings `json:",inline"`
+}
+
+type SCC struct {
+	// Default contains the default SCC that will be attached to the service
+	// account used for workloads (`pipeline` SA by default) and defined in
+	// PipelineProperties.OptionalPipelineProperties.DefaultServiceAccount
+	// +optional
+	Default string `json:"default,omitempty"`
+	// MaxAllowed specifies the highest SCC that can be requested for in a
+	// namespace or in the Default field.
+	// +optional
+	MaxAllowed string `json:"maxAllowed,omitempty"`
 }

@@ -245,9 +245,17 @@ rules:
   verbs:
   - use
   - get
+  - list
   - create
   - update
   - delete
+# We need to create events when SCC requested in a namespace errors out.
+- apiGroups:
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - create
 - apiGroups:
   - route.openshift.io
   resources:

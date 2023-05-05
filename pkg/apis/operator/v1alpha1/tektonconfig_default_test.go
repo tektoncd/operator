@@ -20,6 +20,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"gotest.tools/v3/assert"
 	"knative.dev/pkg/ptr"
 
@@ -170,4 +172,67 @@ func Test_SetDefaults_PipelineAsCode(t *testing.T) {
 	tc.SetDefaults(context.TODO())
 	assert.Equal(t, *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable, true)
 	assert.Assert(t, tc.Spec.Addon.EnablePAC == nil)
+}
+
+func Test_SetDefaults_SCC(t *testing.T) {
+	t.Setenv("PLATFORM", "openshift")
+
+	tests := []struct {
+		name        string
+		inputSCC    *SCC
+		expectedSCC *SCC
+	}{
+		{
+			name:     "default SCC is set to 'pipelines-scc' when nothing is set",
+			inputSCC: nil,
+			expectedSCC: &SCC{
+				Default: PipelinesSCC,
+			},
+		},
+		{
+			name:     "defaulting works when default SCC is empty",
+			inputSCC: &SCC{},
+			expectedSCC: &SCC{
+				Default: PipelinesSCC,
+			},
+		},
+		{
+			name: "defaulting works when default not set, but maxAllowed set",
+			inputSCC: &SCC{
+				MaxAllowed: "coolSCC",
+			},
+			expectedSCC: &SCC{
+				Default:    PipelinesSCC,
+				MaxAllowed: "coolSCC",
+			},
+		},
+		{
+			name: "no defaulting when default is set",
+			inputSCC: &SCC{
+				Default: "alreadyExistingSCC",
+			},
+			expectedSCC: &SCC{
+				Default: "alreadyExistingSCC",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		tektonConfig := TektonConfig{
+			Spec: TektonConfigSpec{
+				Platforms: Platforms{
+					OpenShift: OpenShift{
+						SCC: test.inputSCC,
+					},
+				},
+			},
+		}
+
+		tektonConfig.SetDefaults(context.TODO())
+		t.Run(test.name, func(t *testing.T) {
+			if !cmp.Equal(tektonConfig.Spec.Platforms.OpenShift.SCC, test.expectedSCC) {
+				t.Errorf("expected tektonconfig %#v, got %#v", test.expectedSCC, tektonConfig.Spec.Platforms.OpenShift.SCC)
+			}
+		})
+	}
 }
