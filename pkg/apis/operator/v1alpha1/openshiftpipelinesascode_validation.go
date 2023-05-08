@@ -23,14 +23,19 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func (pac *OpenShiftPipelinesAsCode) Validate(ctx context.Context) (errs *apis.FieldError) {
+func (pac *OpenShiftPipelinesAsCode) Validate(ctx context.Context) *apis.FieldError {
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
-	if err := validatePACSetting(pac.Spec.PACSettings); err != nil {
-		return err
-	}
-	return nil
+
+	var errs *apis.FieldError
+
+	// execute common spec validations
+	errs = errs.Also(pac.Spec.CommonSpec.validate("spec"))
+
+	errs = errs.Also(validatePACSetting(pac.Spec.PACSettings))
+
+	return errs
 }
 
 func validatePACSetting(pacSettings PACSettings) *apis.FieldError {

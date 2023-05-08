@@ -108,6 +108,8 @@ This allows user to choose a namespace to install the Tekton Components such as 
 
 By default, namespace would be `tekton-pipelines` for Kubernetes and `openshift-pipelines` for OpenShift.
 
+**Note:** Namespace `openshift-operators` is not allowed in `OpenShift` as a `targetNamespace`.
+
 ### Profile
 
 This allows user to choose which all components to install on the cluster.

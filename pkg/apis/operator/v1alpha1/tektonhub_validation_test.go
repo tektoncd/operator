@@ -88,6 +88,9 @@ func Test_ValidateTektonHub_InvalidDbSecretName(t *testing.T) {
 			Namespace: "namespace",
 		},
 		Spec: TektonHubSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "tekton-pipelines",
+			},
 			Db: DbSpec{
 				DbSecretName: "invalid-value",
 			},
@@ -109,6 +112,9 @@ func Test_ValidateTektonHub_InvalidApiSecretName(t *testing.T) {
 			Namespace: "namespace",
 		},
 		Spec: TektonHubSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "tekton-pipelines",
+			},
 			Db: DbSpec{
 				DbSecretName: "tekton-hub-db",
 			},

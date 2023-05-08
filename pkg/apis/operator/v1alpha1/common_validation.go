@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Tekton Authors
+Copyright 2023 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,28 +17,21 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
 	"fmt"
 
 	"knative.dev/pkg/apis"
 )
 
-func (td *TektonDashboard) Validate(ctx context.Context) (errs *apis.FieldError) {
-
-	if apis.IsInDelete(ctx) {
-		return nil
+func (ta *CommonSpec) validate(path string) *apis.FieldError {
+	var errs *apis.FieldError
+	targetNamespacePath := fmt.Sprintf("%s.targetNamespace", path)
+	if ta.GetTargetNamespace() == "" {
+		errs = errs.Also(apis.ErrMissingField(targetNamespacePath))
+	} else if IsOpenShiftPlatform() {
+		// "openshift-operators" namespace restricted in openshift environment
+		if ta.GetTargetNamespace() == "openshift-operators" {
+			errs = errs.Also(apis.ErrInvalidValue(ta.GetTargetNamespace(), targetNamespacePath, "'openshift-operators' namespace is not allowed"))
+		}
 	}
-
-	if td.GetName() != DashboardResourceName {
-		errMsg := fmt.Sprintf("metadata.name,  Only one instance of TektonDashboard is allowed by name, %s", DashboardResourceName)
-		errs = errs.Also(apis.ErrInvalidValue(td.GetName(), errMsg))
-	}
-
-	// execute common spec validations
-	errs = errs.Also(td.Spec.CommonSpec.validate("spec"))
-
 	return errs
-}
-
-func (td *TektonDashboard) SetDefaults(ctx context.Context) {
 }
