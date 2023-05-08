@@ -44,7 +44,7 @@ const (
 	errorLogSnippetValue = "true"
 
 	ErrorDetectionKey   = "error-detection-from-container-logs"
-	errorDetectionValue = "false"
+	errorDetectionValue = "true"
 
 	ErrorDetectionNumberOfLinesKey   = "error-detection-max-number-of-lines"
 	errorDetectionNumberOfLinesValue = 50
