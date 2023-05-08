@@ -34,9 +34,8 @@ func (ta *TektonAddon) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrInvalidValue(ta.GetName(), errMsg))
 	}
 
-	if ta.Spec.TargetNamespace == "" {
-		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
-	}
+	// execute common spec validations
+	errs = errs.Also(ta.Spec.CommonSpec.validate("spec"))
 
 	if len(ta.Spec.Params) != 0 {
 		errs = errs.Also(validateAddonParams(ta.Spec.Params, "spec.params"))

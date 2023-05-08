@@ -45,6 +45,9 @@ func (th *TektonHub) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return nil
 	}
 
+	// execute common spec validations
+	errs = errs.Also(th.Spec.CommonSpec.validate("spec"))
+
 	// validate database secret name
 	if th.Spec.Db.DbSecretName != "" && th.Spec.Db.DbSecretName != HubDbSecretName {
 		errs = errs.Also(apis.ErrInvalidValue(th.Spec.Db.DbSecretName, "spec.db.secret"))

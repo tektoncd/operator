@@ -41,9 +41,8 @@ func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) 
 		errs = errs.Also(apis.ErrInvalidValue(tp.GetName(), errMsg))
 	}
 
-	if tp.Spec.TargetNamespace == "" {
-		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
-	}
+	// execute common spec validations
+	errs = errs.Also(tp.Spec.CommonSpec.validate("spec"))
 
 	return errs.Also(tp.Spec.PipelineProperties.validate("spec"))
 }

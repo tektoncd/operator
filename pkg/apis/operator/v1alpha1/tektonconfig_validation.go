@@ -34,9 +34,8 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrInvalidValue(tc.GetName(), errMsg))
 	}
 
-	if tc.Spec.TargetNamespace == "" {
-		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
-	}
+	// execute common spec validations
+	errs = errs.Also(tc.Spec.CommonSpec.validate("spec"))
 
 	if tc.Spec.Profile != "" {
 		if isValid := isValueInArray(Profiles, tc.Spec.Profile); !isValid {

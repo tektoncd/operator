@@ -35,9 +35,8 @@ func (tr *TektonTrigger) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrInvalidValue(tr.GetName(), errMsg))
 	}
 
-	if tr.Spec.TargetNamespace == "" {
-		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
-	}
+	// execute common spec validations
+	errs = errs.Also(tr.Spec.CommonSpec.validate("spec"))
 
 	return errs.Also(tr.Spec.TriggersProperties.validate("spec"))
 }
