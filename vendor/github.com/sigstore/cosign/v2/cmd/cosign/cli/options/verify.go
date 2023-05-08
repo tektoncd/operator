@@ -45,6 +45,7 @@ type VerifyOptions struct {
 	Attachment   string
 	Output       string
 	SignatureRef string
+	PayloadRef   string
 	LocalImage   bool
 
 	CommonVerifyOptions CommonVerifyOptions
@@ -84,6 +85,9 @@ func (o *VerifyOptions) AddFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVar(&o.SignatureRef, "signature", "",
 		"signature content or path or remote URL")
+
+	cmd.Flags().StringVar(&o.PayloadRef, "payload", "",
+		"payload path or remote URL")
 
 	cmd.Flags().BoolVar(&o.LocalImage, "local-image", false,
 		"whether the specified image is a path to an image saved locally via 'cosign save'")
@@ -221,7 +225,7 @@ func (o *VerifyBlobAttestationOptions) AddFlags(cmd *cobra.Command) {
 		"path to bundle FILE")
 
 	cmd.Flags().BoolVar(&o.CheckClaims, "check-claims", true,
-		"whether to check the claims found")
+		"if true, verifies the provided blob's sha256 digest exists as an in-toto subject within the attestation. If false, only the DSSE envelope is verified.")
 
 	cmd.Flags().StringVar(&o.RFC3161TimestampPath, "rfc3161-timestamp", "",
 		"path to RFC3161 timestamp FILE")

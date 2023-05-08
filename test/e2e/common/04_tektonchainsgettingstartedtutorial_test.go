@@ -23,7 +23,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -132,7 +131,7 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	taskRunYAML, err := ioutil.ReadFile(taskRunPath)
+	taskRunYAML, err := os.ReadFile(taskRunPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,19 +212,9 @@ func TestTektonChainsGettingStartedTutorial(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// tkn tr describe --last -o jsonpath="{.metadata.annotations.chains\.tekton\.dev/payload-taskrun-$TASKRUN_UID}" | base64 -d > payload
-	encodedPayload, ok := taskRun.Annotations["chains.tekton.dev/payload-taskrun-"+string(taskRunUID)]
-	if !ok {
-		t.Fatal(fmt.Errorf("no payload found on TaskRun %v", taskRunName))
-	}
-	payload, err := base64.StdEncoding.DecodeString(encodedPayload)
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	// cosign verify-blob-attestation --insecure-ignore-tlog --key k8s://tekton-chains/signing-secrets --signature signature --type slsaprovenance --check-claims=false /dev/null
 	t.Run("cosign very-blob-attestation", func(t *testing.T) {
-		err := resources.CosignVerifyBlobAttestation(fmt.Sprintf("k8s://%v/%v", crNames.TargetNamespace, cosignSecret), string(signature), string(payload))
+		err := resources.CosignVerifyBlobAttestation(fmt.Sprintf("k8s://%v/%v", crNames.TargetNamespace, cosignSecret), string(signature))
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -36,7 +36,7 @@ func CosignGenerateKeyPair(namespace, secretName string) error {
 }
 
 // cosign verify-blob-attestation --insecure-ignore-tlog --key k8s://tekton-chains/signing-secrets --signature sig --type slsaprovenance --check-claims=false /dev/null
-func CosignVerifyBlobAttestation(key, signature, payload string) error {
+func CosignVerifyBlobAttestation(key, signature string) error {
 	signatureFile, err := os.CreateTemp("", "signature")
 	if err != nil {
 		return err
@@ -44,16 +44,6 @@ func CosignVerifyBlobAttestation(key, signature, payload string) error {
 	defer os.Remove(signatureFile.Name())
 
 	if _, err := signatureFile.WriteString(signature); err != nil {
-		return err
-	}
-
-	payloadFile, err := os.CreateTemp("", "payload")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(payloadFile.Name())
-
-	if _, err := payloadFile.WriteString(signature); err != nil {
 		return err
 	}
 
@@ -67,5 +57,5 @@ func CosignVerifyBlobAttestation(key, signature, payload string) error {
 		SignaturePath: signatureFile.Name(),
 	}
 
-	return command.Exec(context.TODO(), payloadFile.Name())
+	return command.Exec(context.TODO(), "/dev/null")
 }
