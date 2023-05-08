@@ -18,8 +18,6 @@ import (
 
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
-	resourcev1alpha1 "github.com/tektoncd/pipeline/pkg/apis/resource/v1alpha1"
-
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
 	"github.com/tektoncd/pipeline/pkg/client/clientset/versioned/scheme"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -45,17 +43,6 @@ kind: TaskRun
 ` + yaml
 	mustParseYAML(t, yaml, &tr)
 	return &tr
-}
-
-// MustParseRun takes YAML and parses it into a *v1alpha1.Run
-func MustParseRun(t *testing.T, yaml string) *v1alpha1.Run {
-	t.Helper()
-	var r v1alpha1.Run
-	yaml = `apiVersion: tekton.dev/v1alpha1
-kind: Run
-` + yaml
-	mustParseYAML(t, yaml, &r)
-	return &r
 }
 
 // MustParseV1beta1Task takes YAML and parses it into a *v1beta1.Task
@@ -144,17 +131,6 @@ kind: Pipeline
 ` + yaml
 	mustParseYAML(t, yaml, &pipeline)
 	return &pipeline
-}
-
-// MustParsePipelineResource takes YAML and parses it into a *resourcev1alpha1.PipelineResource
-func MustParsePipelineResource(t *testing.T, yaml string) *resourcev1alpha1.PipelineResource {
-	t.Helper()
-	var resource resourcev1alpha1.PipelineResource
-	yaml = `apiVersion: tekton.dev/v1alpha1
-kind: PipelineResource
-` + yaml
-	mustParseYAML(t, yaml, &resource)
-	return &resource
 }
 
 // MustParseVerificationPolicy takes YAML and parses it into a *v1alpha1.VerificationPolicy
