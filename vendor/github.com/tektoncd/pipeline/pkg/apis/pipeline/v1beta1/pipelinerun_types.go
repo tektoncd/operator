@@ -18,16 +18,16 @@ package v1beta1
 
 import (
 	"context"
+	"fmt"
 	"time"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	apisconfig "github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
@@ -156,6 +156,22 @@ func (pr *PipelineRun) GetNamespacedName() types.NamespacedName {
 	return types.NamespacedName{Namespace: pr.Namespace, Name: pr.Name}
 }
 
+// IsTimeoutConditionSet returns true when the pipelinerun has the pipelinerun timed out reason
+func (pr *PipelineRun) IsTimeoutConditionSet() bool {
+	condition := pr.Status.GetCondition(apis.ConditionSucceeded)
+	return condition.IsFalse() && condition.Reason == PipelineRunReasonTimedOut.String()
+}
+
+// SetTimeoutCondition sets the status of the PipelineRun to timed out.
+func (pr *PipelineRun) SetTimeoutCondition(ctx context.Context) {
+	pr.Status.SetCondition(&apis.Condition{
+		Type:    apis.ConditionSucceeded,
+		Status:  corev1.ConditionFalse,
+		Reason:  PipelineRunReasonTimedOut.String(),
+		Message: fmt.Sprintf("PipelineRun %q failed to finish within %q", pr.Name, pr.PipelineTimeout(ctx).String()),
+	})
+}
+
 // HasTimedOut returns true if a pipelinerun has exceeded its spec.Timeout based on its status.Timeout
 func (pr *PipelineRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bool {
 	timeout := pr.PipelineTimeout(ctx)
@@ -171,6 +187,19 @@ func (pr *PipelineRun) HasTimedOut(ctx context.Context, c clock.PassiveClock) bo
 		}
 	}
 	return false
+}
+
+// HasTimedOutForALongTime returns true if a pipelinerun has exceeed its spec.Timeout based its status.StartTime
+// by a large margin
+func (pr *PipelineRun) HasTimedOutForALongTime(ctx context.Context, c clock.PassiveClock) bool {
+	if !pr.HasTimedOut(ctx, c) {
+		return false
+	}
+	timeout := pr.PipelineTimeout(ctx)
+	startTime := pr.Status.StartTime
+	runtime := c.Since(startTime.Time)
+	// We are arbitrarily defining large margin as doubling the spec.timeout
+	return runtime >= 2*timeout
 }
 
 // HaveTasksTimedOut returns true if a pipelinerun has exceeded its spec.Timeouts.Tasks
@@ -227,11 +256,13 @@ type PipelineRunSpec struct {
 	// Resources is a list of bindings specifying which actual instances of
 	// PipelineResources to use for the resources the Pipeline has declared
 	// it needs.
+	//
+	// Deprecated: Unused, preserved only for backwards compatibility
 	// +listType=atomic
 	Resources []PipelineResourceBinding `json:"resources,omitempty"`
 	// Params is a list of parameter names and values.
 	// +listType=atomic
-	Params []Param `json:"params,omitempty"`
+	Params Params `json:"params,omitempty"`
 	// +optional
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
@@ -245,9 +276,12 @@ type PipelineRunSpec struct {
 	// +optional
 	Timeouts *TimeoutFields `json:"timeouts,omitempty"`
 
-	// Timeout Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead
-	// Time after which the Pipeline times out. Defaults to never.
+	// Timeout is the Time after which the Pipeline times out.
+	// Defaults to never.
 	// Refer to Go's ParseDuration documentation for expected format: https://golang.org/pkg/time/#ParseDuration
+	//
+	// Deprecated: use pipelineRunSpec.Timeouts.Pipeline instead
+	//
 	// +optional
 	Timeout *metav1.Duration `json:"timeout,omitempty"`
 	// PodTemplate holds pod specific configuration
@@ -416,6 +450,22 @@ type PipelineRunStatusFields struct {
 	// CompletionTime is the time the PipelineRun completed.
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 
+	// TaskRuns is a map of PipelineRunTaskRunStatus with the taskRun name as the key.
+	//
+	// Deprecated: use ChildReferences instead. As of v0.45.0, this field is no
+	// longer populated and is only included for backwards compatibility with
+	// older server versions.
+	// +optional
+	TaskRuns map[string]*PipelineRunTaskRunStatus `json:"taskRuns,omitempty"`
+
+	// Runs is a map of PipelineRunRunStatus with the run name as the key
+	//
+	// Deprecated: use ChildReferences instead. As of v0.45.0, this field is no
+	// longer populated and is only included for backwards compatibility with
+	// older server versions.
+	// +optional
+	Runs map[string]*PipelineRunRunStatus `json:"runs,omitempty"`
+
 	// PipelineResults are the list of results written out by the pipeline task's containers
 	// +optional
 	// +listType=atomic
@@ -482,6 +532,8 @@ const (
 	TasksTimedOutSkip SkippingReason = "PipelineRun Tasks timeout has been reached"
 	// FinallyTimedOutSkip means the task was skipped because the PipelineRun has passed its Timeouts.Finally.
 	FinallyTimedOutSkip SkippingReason = "PipelineRun Finally timeout has been reached"
+	// EmptyArrayInMatrixParams means the task was skipped because Matrix parameters contain empty array.
+	EmptyArrayInMatrixParams SkippingReason = "Matrix Parameters have an empty array"
 	// None means the task was not skipped
 	None SkippingReason = "None"
 )

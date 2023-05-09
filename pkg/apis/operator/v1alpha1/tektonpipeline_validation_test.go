@@ -59,9 +59,10 @@ func Test_ValidateTektonPipeline_APIField(t *testing.T) {
 		apiField string
 		err      string
 	}{
+		{name: "api-empty-value", apiField: "", err: ""},
 		{name: "api-alpha", apiField: config.AlphaAPIFields, err: ""},
-		{name: "api-beta", apiField: config.AlphaAPIFields, err: ""},
-		{name: "api-stable", apiField: config.AlphaAPIFields, err: ""},
+		{name: "api-beta", apiField: config.BetaAPIFields, err: ""},
+		{name: "api-stable", apiField: config.StableAPIFields, err: ""},
 		{name: "api-invalid", apiField: "prod", err: "invalid value: prod: spec.enable-api-fields"},
 	}
 
@@ -72,7 +73,40 @@ func Test_ValidateTektonPipeline_APIField(t *testing.T) {
 			assert.Equal(t, test.err, errs.Error())
 		})
 	}
+}
 
+func TestValidateTektonPipelineVerificationNoMatchPolicy(t *testing.T) {
+	tp := &TektonPipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipeline",
+			Namespace: "tekton-pipelines-ns",
+		},
+		Spec: TektonPipelineSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "tekton-pipelines-ns",
+			},
+		},
+	}
+
+	tests := []struct {
+		name   string
+		policy string
+		err    string
+	}{
+		{name: "policy-empty-value", policy: "", err: ""},
+		{name: "policy-fail", policy: config.FailNoMatchPolicy, err: ""},
+		{name: "policy-warn", policy: config.WarnNoMatchPolicy, err: ""},
+		{name: "policy-ignore", policy: config.IgnoreNoMatchPolicy, err: ""},
+		{name: "policy-invalid", policy: "hello", err: "invalid value: hello: spec.trusted-resources-verification-no-match-policy"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tp.Spec.Pipeline.VerificationNoMatchPolicy = test.policy
+			errs := tp.Validate(context.TODO())
+			assert.Equal(t, test.err, errs.Error())
+		})
+	}
 }
 
 func Test_ValidateTektonPipeline_OnDelete(t *testing.T) {

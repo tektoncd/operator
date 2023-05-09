@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 func Validate(config map[string]string) error {
@@ -71,14 +72,15 @@ func Validate(config map[string]string) error {
 	}
 
 	if v, ok := config[CustomConsolePRTaskLogKey]; ok && v != "" {
-		if _, err := url.ParseRequestURI(v); err != nil {
-			return fmt.Errorf("invalid value for key %v, invalid url: %w", CustomConsolePRTaskLogKey, err)
+		// check if custom console start with http:// or https://
+		if strings.HasPrefix(v, "http://") || !strings.HasPrefix(v, "https://") {
+			return fmt.Errorf("invalid value for key %v, must start with http:// or https://", CustomConsolePRTaskLogKey)
 		}
 	}
 
 	if v, ok := config[CustomConsolePRDetailKey]; ok && v != "" {
-		if _, err := url.ParseRequestURI(v); err != nil {
-			return fmt.Errorf("invalid value for key %v, invalid url: %w", CustomConsolePRDetailKey, err)
+		if strings.HasPrefix(v, "http://") || !strings.HasPrefix(v, "https://") {
+			return fmt.Errorf("invalid value for key %v, must start with http:// or https://", CustomConsolePRTaskLogKey)
 		}
 	}
 	return nil

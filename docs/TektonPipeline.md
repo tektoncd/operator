@@ -32,6 +32,7 @@ spec:
   require-git-ssh-secret-known-hosts: false
   running-in-environment-with-injected-sidecars: true
   scope-when-expressions-to-task: false
+  trusted-resources-verification-no-match-policy: ignore
   performance:
     disable-ha: false
     buckets: 1
@@ -99,6 +100,10 @@ and thus should still be considered an alpha feature.
 - `scope-when-expressions-to-task` (Default: `false`)
 
     Setting this flag to "true" scopes when expressions to guard a Task only instead of a Task and its dependent Tasks.
+
+- `trusted-resources-verification-no-match-policy` (Default: `ignore`)
+
+    Trusted Resources is a feature which can be used to sign Tekton Resources and verify them. Details of design can be found at [TEP–0091](https://github.com/tektoncd/community/blob/main/teps/0091-trusted-resources.md). This feature is under alpha version and support v1beta1 version of Task and Pipeline. To know more about this visit [pipelines documentation](https://tekton.dev/docs/pipelines/trusted-resources/)
 
 ### Metrics Properties
 These fields have default values so even if user have not passed them in CR, operator will add them and override the values
