@@ -429,7 +429,7 @@ func (pr *Pruner) getMapUint(data map[string]string, key string, defaultValue *u
 	if !found {
 		return defaultValueCloned, nil
 	}
-	uintValue, err := strconv.ParseUint(value, 10, 64)
+	uintValue, err := strconv.ParseUint(value, 10, 32)
 	if err != nil {
 		return defaultValueCloned, err
 	}
