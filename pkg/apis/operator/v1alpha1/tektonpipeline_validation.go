@@ -26,7 +26,8 @@ import (
 )
 
 var (
-	validatePipelineAllowedApiFields = sets.NewString("", config.AlphaAPIFields, config.BetaAPIFields, config.StableAPIFields)
+	validatePipelineAllowedApiFields          = sets.NewString("", config.AlphaAPIFields, config.BetaAPIFields, config.StableAPIFields)
+	validatePipelineVerificationNoMatchPolicy = sets.NewString("", config.FailNoMatchPolicy, config.WarnNoMatchPolicy, config.IgnoreNoMatchPolicy)
 )
 
 func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -59,10 +60,9 @@ func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 		}
 	}
 
-	if p.VerificationMode != "" {
-		if p.VerificationMode != config.SkipResourceVerificationMode && p.VerificationMode != config.WarnResourceVerificationMode && p.VerificationMode != config.EnforceResourceVerificationMode {
-			errs = errs.Also(apis.ErrInvalidValue(p.VerificationMode, path+".verification-mode"))
-		}
+	// validate trusted-resources-verification-no-match-policy
+	if !validatePipelineVerificationNoMatchPolicy.Has(p.VerificationNoMatchPolicy) {
+		errs = errs.Also(apis.ErrInvalidValue(p.VerificationNoMatchPolicy, fmt.Sprintf("%s.trusted-resources-verification-no-match-policy", path)))
 	}
 
 	// validate performance properties

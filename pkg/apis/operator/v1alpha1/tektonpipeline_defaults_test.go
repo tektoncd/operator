@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
@@ -51,7 +52,7 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 		EmbeddedStatus:                           "",
 		ScopeWhenExpressionsToTask:               nil,
 		SendCloudEventsForRuns:                   ptr.Bool(false),
-		VerificationMode:                         "skip",
+		VerificationNoMatchPolicy:                config.DefaultNoMatchPolicyConfig,
 		EnableProvenanceInStatus:                 ptr.Bool(false),
 		PipelineMetricsProperties: PipelineMetricsProperties{
 			MetricsPipelinerunDurationType: "histogram",

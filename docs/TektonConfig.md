@@ -51,6 +51,7 @@ The TektonConfig CR provides the following features
       metrics.taskrun.level: taskrun
       require-git-ssh-secret-known-hosts: false
       running-in-environment-with-injected-sidecars: true
+      trusted-resources-verification-no-match-policy: ignore
       performance:
         disable-ha: false
         buckets: 1
@@ -142,6 +143,7 @@ pipeline:
   metrics.taskrun.level: taskrun
   require-git-ssh-secret-known-hosts: false
   running-in-environment-with-injected-sidecars: true
+  trusted-resources-verification-no-match-policy: ignore
   performance:
     disable-ha: false
     buckets: 1

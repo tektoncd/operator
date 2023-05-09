@@ -61,9 +61,11 @@ func (p *Pipeline) setDefaults() {
 	if p.EnableApiFields == "" {
 		p.EnableApiFields = config.DefaultEnableAPIFields
 	}
-	if p.VerificationMode == "" {
-		p.VerificationMode = config.DefaultResourceVerificationMode
+
+	if p.VerificationNoMatchPolicy == "" {
+		p.VerificationNoMatchPolicy = config.DefaultNoMatchPolicyConfig
 	}
+
 	if p.EnableProvenanceInStatus == nil {
 		p.EnableProvenanceInStatus = ptr.Bool(config.DefaultEnableProvenanceInStatus)
 	}
