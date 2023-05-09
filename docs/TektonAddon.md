@@ -25,7 +25,6 @@ spec:
     value: "true"
   - name: pipelineTemplates
     value: "true"
-  enablePipelinesAsCode: true
 ```
 You can install this component using [TektonConfig](./TektonConfig.md) by choosing appropriate `profile`.
 
@@ -40,9 +39,3 @@ Available params are
 User can disable the installation of resources by changing the value to `false`.
 
 Pipelines templates uses clustertasks in them so to install pipelineTemplates, clusterTasks must be `true`.
-
-### PipelinesAsCode
-
-`enablePipelinesAsCode` field is provided in spec to enable/disable PipelinesAsCode installation on the cluster.
-
-User can disable the installation of PipelinesAsCode by changing the value to `false`. By default, it is true.

@@ -22,7 +22,7 @@ weight: 100
    | lite | Pipeline | Kubernetes, Openshift |
    | basic | Pipeline, Trigger | Kubernetes, Openshift |
    | all | Pipeline, Trigger, Dashboard | Kubernetes |
-   |  | Pipeline, Trigger, Addons | Openshift |
+   |  | Pipeline, Trigger, Addons, Pipelines as Code | Openshift |
 
     ```
     # to install pipelines, triggers and dashboard (use profile 'all')
