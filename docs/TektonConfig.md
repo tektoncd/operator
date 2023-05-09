@@ -22,6 +22,7 @@ Other than the above components depending on the platform operator also provides
     - [TektonDashboard](./TektonDashboard.md)
 - On OpenShift
     - [TektonAddon](./TektonAddon.md)
+    - [OpenShiftPipelinesAsCode](./OpenShiftPipelinesAsCode.md)
 
 The TektonConfig CR provides the following features
 
@@ -71,6 +72,28 @@ The TektonConfig CR provides the following features
           value: "true"
     dashboard:
       readonly: true
+    platforms:
+      openshift:
+        pipelinesAsCode:
+          enable: true
+          settings:
+            application-name: Pipelines as Code CI
+            auto-configure-new-github-repo: "false"
+            bitbucket-cloud-check-source-ip: "true"
+            custom-console-name: ""
+            custom-console-url: ""
+            custom-console-url-pr-details: ""
+            custom-console-url-pr-tasklog: ""
+            error-detection-from-container-logs: "false"
+            error-detection-max-number-of-lines: "50"
+            error-detection-simple-regexp: ^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([
+              ]*)?(?P<error>.*)
+            error-log-snippet: "true"
+            hub-catalog-name: tekton
+            hub-url: https://api.hub.tekton.dev/v1
+            remote-tasks: "true"
+            secret-auto-create: "true"
+            secret-github-app-token-scoped: "true"
 ```
 Look for the particular section to understand a particular field in the spec.
 
@@ -280,6 +303,41 @@ spec:
       default-tekton-hub-catalog: tekton
 ```
 
+### OpenShiftPipelinesAsCode
+
+The PipelinesAsCode section allows you to customize the Pipelines as Code features. When you change the TektonConfig CR, the Operator automatically applies the settings to custom resources and configmaps in your installation.
+
+Some of the fields have default values, so operator will add them if the user hasn't passed in CR. Other fields which
+don't have default values unless the user specifies them. User can find those [here](https://pipelinesascode.com/docs/install/settings/#pipelines-as-code-configuration-settings).
+
+Example:
+
+```yaml
+platforms:
+  openshift:
+    pipelinesAsCode:
+      enable: true
+      settings:
+        application-name: Pipelines as Code CI
+        auto-configure-new-github-repo: "false"
+        bitbucket-cloud-check-source-ip: "true"
+        custom-console-name: ""
+        custom-console-url: ""
+        custom-console-url-pr-details: ""
+        custom-console-url-pr-tasklog: ""
+        error-detection-from-container-logs: "false"
+        error-detection-max-number-of-lines: "50"
+        error-detection-simple-regexp: ^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([
+          ]*)?(?P<error>.*)
+        error-log-snippet: "true"
+        hub-catalog-name: tekton
+        hub-url: https://api.hub.tekton.dev/v1
+        remote-tasks: "true"
+        secret-auto-create: "true"
+        secret-github-app-token-scoped: "true"
+```
+
+**NOTE**: OpenShiftPipelinesAsCode is currently available for the OpenShift Platform only.
 
 [node-selector]:https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
 [tolerations]:https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
