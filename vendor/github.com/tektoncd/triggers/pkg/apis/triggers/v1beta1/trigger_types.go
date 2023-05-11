@@ -155,6 +155,13 @@ type WebhookInterceptor struct {
 	Header []v1beta1.Param `json:"header,omitempty"`
 }
 
+type SlackInterceptor struct {
+	// the Requested fields to be extracted from data form
+
+	// +listType=atomic
+	RequestedFields []string `json:"requestedFields,omitempty"`
+}
+
 // BitbucketInterceptor provides a webhook to intercept and pre-process events
 type BitbucketInterceptor struct {
 	SecretRef *SecretRef `json:"secretRef,omitempty"`

@@ -48,6 +48,8 @@ func (t *TriggerTemplate) Validate(ctx context.Context) *apis.FieldError {
 	return errs.Also(t.Spec.validate(ctx).ViaField("spec"))
 }
 
+// revive:disable:unused-parameter
+
 // Validate validates a TriggerTemplateSpec.
 func (s *TriggerTemplateSpec) validate(ctx context.Context) (errs *apis.FieldError) {
 	if equality.Semantic.DeepEqual(s, &TriggerTemplateSpec{}) {
