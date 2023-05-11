@@ -58,6 +58,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.ParamSpec":                    schema_pkg_apis_triggers_v1beta1_ParamSpec(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.Resources":                    schema_pkg_apis_triggers_v1beta1_Resources(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.SecretRef":                    schema_pkg_apis_triggers_v1beta1_SecretRef(ref),
+		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.SlackInterceptor":             schema_pkg_apis_triggers_v1beta1_SlackInterceptor(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.Status":                       schema_pkg_apis_triggers_v1beta1_Status(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.StatusError":                  schema_pkg_apis_triggers_v1beta1_StatusError(ref),
 		"github.com/tektoncd/triggers/pkg/apis/triggers/v1beta1.Trigger":                      schema_pkg_apis_triggers_v1beta1_Trigger(ref),
@@ -1221,6 +1222,37 @@ func schema_pkg_apis_triggers_v1beta1_SecretRef(ref common.ReferenceCallback) co
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},
 							Format: "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func schema_pkg_apis_triggers_v1beta1_SlackInterceptor(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"requestedFields": {
+						VendorExtensible: spec.VendorExtensible{
+							Extensions: spec.Extensions{
+								"x-kubernetes-list-type": "atomic",
+							},
+						},
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
 						},
 					},
 				},

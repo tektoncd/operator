@@ -46,6 +46,8 @@ func (e *EventListener) SupportedVerbs() []admissionregistrationv1.OperationType
 	return []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update}
 }
 
+// revive:disable:unused-parameter
+
 // Validate EventListener.
 func (e *EventListener) Validate(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
@@ -259,6 +261,8 @@ func podSpecMask(in *corev1.PodSpec) *corev1.PodSpec {
 	out.Containers = in.Containers
 	out.Tolerations = in.Tolerations
 	out.NodeSelector = in.NodeSelector
+	out.Affinity = in.Affinity
+	out.TopologySpreadConstraints = in.TopologySpreadConstraints
 
 	// Disallowed fields
 	// This list clarifies which all podspec fields are not allowed.
@@ -279,7 +283,6 @@ func podSpecMask(in *corev1.PodSpec) *corev1.PodSpec {
 	out.SecurityContext = nil
 	out.Hostname = ""
 	out.Subdomain = ""
-	out.Affinity = nil
 	out.SchedulerName = ""
 	out.HostAliases = nil
 	out.PriorityClassName = ""

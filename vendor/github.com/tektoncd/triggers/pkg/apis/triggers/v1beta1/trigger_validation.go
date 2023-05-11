@@ -76,6 +76,8 @@ func (t TriggerSpecTemplate) validate(ctx context.Context) (errs *apis.FieldErro
 	return errs
 }
 
+// revive:disable:unused-parameter
+
 func (t triggerSpecBindingArray) validate(ctx context.Context) (errs *apis.FieldError) {
 	for i, b := range t {
 		switch {

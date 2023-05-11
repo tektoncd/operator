@@ -63,7 +63,7 @@ spec:
         - name: IMAGE_PIPELINES_PROXY
           value: ko://github.com/tektoncd/operator/cmd/openshift/proxy-webhook
         - name: IMAGE_JOB_PRUNER_TKN
-          value: gcr.io/tekton-releases/dogfooding/tkn@sha256:33acedd164a2c520e42d2ec401a9fc46c2c304a4714b6728aa2b8957bbf02dc6
+          value: gcr.io/tekton-releases/dogfooding/tkn@sha256:8a17c7ad0fbb7278b2a4ed99b83078228060b60e474ab6321a7318a118c8b31e
         - name: METRICS_DOMAIN
           value: tekton.dev/operator
         - name: VERSION
