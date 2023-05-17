@@ -67,5 +67,3 @@ if [[ -d hack/patches ]];then
         git apply ${f}
     done
 fi
-
-#update_licenses third_party/
