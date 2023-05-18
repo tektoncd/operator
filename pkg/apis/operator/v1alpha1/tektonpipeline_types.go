@@ -95,8 +95,13 @@ type PipelineProperties struct {
 	EnableApiFields                          string `json:"enable-api-fields,omitempty"`
 	EmbeddedStatus                           string `json:"embedded-status,omitempty"`
 	SendCloudEventsForRuns                   *bool  `json:"send-cloudevents-for-runs,omitempty"`
-	VerificationNoMatchPolicy                string `json:"trusted-resources-verification-no-match-policy,omitempty"`
-	EnableProvenanceInStatus                 *bool  `json:"enable-provenance-in-status,omitempty"`
+	// "verification-mode" is deprecated and never used.
+	// This field will be removed, see https://github.com/tektoncd/operator/issues/1497
+	// originally this field was removed in https://github.com/tektoncd/operator/pull/1481
+	// there is no use with this field, just adding back to unblock the upgrade
+	VerificationMode          string `json:"verification-mode,omitempty"`
+	VerificationNoMatchPolicy string `json:"trusted-resources-verification-no-match-policy,omitempty"`
+	EnableProvenanceInStatus  *bool  `json:"enable-provenance-in-status,omitempty"`
 
 	// ScopeWhenExpressionsToTask Deprecated: remove in next release
 	ScopeWhenExpressionsToTask *bool `json:"scope-when-expressions-to-task,omitempty"`
