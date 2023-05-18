@@ -62,6 +62,10 @@ func (p *Pipeline) setDefaults() {
 		p.EnableApiFields = config.DefaultEnableAPIFields
 	}
 
+	// "verification-mode" is deprecated and never used.
+	// this field will be removed, see https://github.com/tektoncd/operator/issues/1497
+	p.VerificationMode = ""
+
 	if p.VerificationNoMatchPolicy == "" {
 		p.VerificationNoMatchPolicy = config.DefaultNoMatchPolicyConfig
 	}
