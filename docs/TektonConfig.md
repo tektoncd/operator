@@ -176,25 +176,27 @@ pipeline:
 ```
 
 ### Pruner
-Pruner provides auto clean up feature for the Tekton resources.
+Pruner provides auto clean up feature for the Tekton `pipelinerun` and `taskrun` resources. In the background pruner container runs `tkn` command.
 
 Example:
 ```yaml
 pruner:
   disabled: false
+  schedule: "* * * * *"
   resources:
     - taskrun
     - pipelinerun
   keep: 3
-  keep-since: 1440
-  schedule: "* * * * *"
+  # keep-since: 1440
+  # NOTE: you can use either "keep" or "keep-since", not both
+  prune-per-resource: true
 ```
 - `disabled` : if the value set as `true`, pruner feature will be disabled (default: `false`)
-- `prune-per-resource`: if the value set as `true` (default value `false`), the `keep` and `keep-since` applied to each resource. example: `tkn pipelinerun delete --pipeline=my-pipeline --keep=10`
+- `schedule`: how often to run the pruner job. User can understand the schedule syntax [here][schedule].
 - `resources`: supported resources for auto prune are `taskrun` and `pipelinerun`
 - `keep`: maximum number of resources to keep while deleting or removing resources
 - `keep-since`: retain the resources younger than the specified value in minutes
-- `schedule`: how often to clean up resources. User can understand the schedule syntax [here][schedule].
+- `prune-per-resource`: if the value set as `true` (default value `false`), the `keep` or `keep-since` applied to each resource. The resources(`pipeline` and/or `task`) taken dynamically from that namespace and applied. <br> example: in a namespace `ns-1` I have two `pipeline`, named `pipeline-1` and `pipeline-2`, the out come would be: `tkn pipelinerun delete --pipeline=my-pipeline-1 --keep=3 --namespace=ns-1`, `tkn pipelinerun delete --pipeline=my-pipeline-2 --keep=3 --namespace=ns-1`. the same way works for `task` too.
 
 > ### Note:
 > if `disabled: false` and `schedule: ` with empty value, global pruner job will be disabled.
@@ -206,7 +208,7 @@ By default pruner job will be created from the global pruner config (`spec.prune
 - `operator.tekton.dev/prune.schedule` - pruner job will be created on a specific schedule
 - `operator.tekton.dev/prune.keep` - maximum number of resources will be kept
 - `operator.tekton.dev/prune.keep-since` - retain the resources younger than the specified value in minutes
-- `operator.tekton.dev/prune.prune-per-resource` - the `keep` and `keep-since` applied to each resource
+- `operator.tekton.dev/prune.prune-per-resource` - the `keep` or `keep-since` applied to each resource
 - `operator.tekton.dev/prune.resources` - can be `taskrun` and/or `pipelinerun`, both value can be specified with comma separated. example: `taskrun,pipelinerun`
 - `operator.tekton.dev/prune.strategy` - allowed values: either `keep` or `keep-since`
 
