@@ -871,7 +871,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.17
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-pipelines/pipelines-as-code v0.19.0
+# github.com/openshift-pipelines/pipelines-as-code v0.19.1
 ## explicit; go 1.18
 github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings
 # github.com/openshift/api v0.0.0-20230503133300-8bbcb7ca7183
