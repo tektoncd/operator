@@ -61,11 +61,14 @@ The TektonConfig CR provides the following features
         kube-api-burst: 10
     pruner:
       disabled: false
+      schedule: "0 8 * * *"
       resources:
-      - taskrun
-      - pipelinerun
+        - taskrun
+        - pipelinerun
       keep: 3
-      schedule: "* * * * *"
+      # keep-since: 1440
+      # NOTE: you can use either "keep" or "keep-since", not both
+  prune-per-resource: true
     hub:
       params:
         - name: enable-devconsole-integration
@@ -182,7 +185,7 @@ Example:
 ```yaml
 pruner:
   disabled: false
-  schedule: "* * * * *"
+  schedule: "0 8 * * *"
   resources:
     - taskrun
     - pipelinerun
@@ -196,11 +199,11 @@ pruner:
 - `resources`: supported resources for auto prune are `taskrun` and `pipelinerun`
 - `keep`: maximum number of resources to keep while deleting or removing resources
 - `keep-since`: retain the resources younger than the specified value in minutes
-- `prune-per-resource`: if the value set as `true` (default value `false`), the `keep` or `keep-since` applied to each resource. The resources(`pipeline` and/or `task`) taken dynamically from that namespace and applied. <br> example: in a namespace `ns-1` I have two `pipeline`, named `pipeline-1` and `pipeline-2`, the out come would be: `tkn pipelinerun delete --pipeline=my-pipeline-1 --keep=3 --namespace=ns-1`, `tkn pipelinerun delete --pipeline=my-pipeline-2 --keep=3 --namespace=ns-1`. the same way works for `task` too.
+- `prune-per-resource`: if the value set as `true` (default value `false`), the `keep` applied to each resource. The resources(`pipeline` and/or `task`) taken dynamically from that namespace and applied. <br> example: in a namespace `ns-1` I have two `pipeline`, named `pipeline-1` and `pipeline-2`, the out come would be: `tkn pipelinerun delete --pipeline=my-pipeline-1 --keep=3 --namespace=ns-1`, `tkn pipelinerun delete --pipeline=my-pipeline-2 --keep=3 --namespace=ns-1`. the same way works for `task` too.<br> **We do not see any benefit by enabling `prune-per-resource=true`, when you use `keep-since`. As `keep-since` is limiting the resources by time(irrespective of resource count), there is no change on the outcome.**
 
 > ### Note:
 > if `disabled: false` and `schedule: ` with empty value, global pruner job will be disabled.
-> however, if there is a prune schedule (`operator.tekton.dev/prune.schedule`) annotation present with a value in a namespace. a namespace wide pruner jobs will be created
+> however, if there is a prune schedule (`operator.tekton.dev/prune.schedule`) annotation present with a value in a namespace. a namespace wide pruner jobs will be created.
 
 #### Pruner Namespace annotations
 By default pruner job will be created from the global pruner config (`spec.pruner`), though user can customize a pruner config to a specific namespace with the following annotations. If some of the annotations are not present or has invalid value, for that value, falls back to global value or skipped the namespace.
