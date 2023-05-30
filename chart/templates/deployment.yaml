@@ -46,7 +46,7 @@ spec:
             - name: IMAGE_PIPELINES_PROXY
               value: {{ include "tekton-operator.webhook-proxy-image" . }}
             - name: IMAGE_JOB_PRUNER_TKN
-              value: gcr.io/tekton-releases/dogfooding/tkn@sha256:025de221fb059ca24a3b2d988889ea34bce48dc76c0cf0d6b4499edb8c21325f
+              value: gcr.io/tekton-releases/dogfooding/tkn@sha256:8a17c7ad0fbb7278b2a4ed99b83078228060b60e474ab6321a7318a118c8b31e
             - name: METRICS_DOMAIN
               value: {{ .Values.service.metricsDomain }}
             - name: VERSION
@@ -67,7 +67,7 @@ spec:
               value: {{ include "tekton-operator.fullname" . }}-observability
           args:
             - "-controllers"
-            - "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresults,tektondashboard"
+            - "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard"
             - "-unique-process-name"
             - "tekton-operator-lifecycle"
           image: {{ include "tekton-operator.operator-image" . }}
@@ -75,7 +75,6 @@ spec:
           name: tekton-operator-lifecycle
           resources:
             {{- toYaml .Values.operator.resources | nindent 12 }}
-
         - env:
             - name: SYSTEM_NAMESPACE
               valueFrom:
