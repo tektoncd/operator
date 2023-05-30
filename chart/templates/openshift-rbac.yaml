@@ -1,0 +1,462 @@
+{{- if (and .Values.rbac.create .Values.openshift.enabled) -}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: openshift-pipelines-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: openshift-pipelines-operator-read
+  labels:
+    {{- include "tekton-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - endpoints
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/instance: default
+  name: tekton-operator-info
+  labels:
+    {{- include "tekton-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - ""
+    resourceNames:
+      - tekton-operator-info
+    resources:
+      - configmaps
+    verbs:
+      - get
+      - describe
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-config-read-role
+  labels:
+    {{- include "tekton-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - operator.tekton.dev
+    resources:
+      - tektonconfigs
+    verbs:
+      - get
+      - watch
+      - list
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-operator
+  labels:
+    {{- include "tekton-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - services
+      - endpoints
+      - persistentvolumeclaims
+      - events
+      - configmaps
+      - secrets
+      - pods/log
+      - limitranges
+    verbs:
+      - delete
+      - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - extensions
+      - apps
+    resources:
+      - ingresses
+      - ingresses/status
+    verbs:
+      - delete
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+      - patch
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - daemonsets
+      - replicasets
+      - statefulsets
+      - deployments/finalizers
+    verbs:
+      - delete
+      - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - servicemonitors
+    verbs:
+      - get
+      - create
+      - delete
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterroles
+      - roles
+    verbs:
+      - delete
+      - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+      - bind
+      - escalate
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+      - patch
+      - watch
+      - impersonate
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterrolebindings
+      - rolebindings
+    verbs:
+      - get
+      - create
+      - update
+      - delete
+      - list
+      - watch
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+      - customresourcedefinitions/status
+    verbs:
+      - get
+      - create
+      - update
+      - delete
+      - list
+      - patch
+      - watch
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - mutatingwebhookconfigurations
+      - validatingwebhookconfigurations
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+      - patch
+      - watch
+  - apiGroups:
+      - build.knative.dev
+    resources:
+      - builds
+      - buildtemplates
+      - clusterbuildtemplates
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+      - patch
+      - watch
+  - apiGroups:
+      - extensions
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+      - patch
+      - watch
+  - apiGroups:
+      - extensions
+    resources:
+      - deployments/finalizers
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+      - patch
+      - watch
+  - apiGroups:
+      - operator.tekton.dev
+    resources:
+      - '*'
+      - tektonaddons
+    verbs:
+      - delete
+      - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - tekton.dev
+      - triggers.tekton.dev
+      - operator.tekton.dev
+    resources:
+      - '*'
+    verbs:
+      - add
+      - delete
+      - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - dashboard.tekton.dev
+    resources:
+      - '*'
+      - tektonaddons
+    verbs:
+      - delete
+      - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    verbs:
+      - use
+      - get
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - route.openshift.io
+    resources:
+      - routes
+    verbs:
+      - delete
+      - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - delete
+      - patch
+      - watch
+  - apiGroups:
+      - console.openshift.io
+    resources:
+      - consoleyamlsamples
+      - consoleclidownloads
+      - consolequickstarts
+      - consolelinks
+    verbs:
+      - delete
+      - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - delete
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - policy
+    resources:
+      - poddisruptionbudgets
+    verbs:
+      - delete
+      - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - monitoring.coreos.com
+    resources:
+      - servicemonitors
+    verbs:
+      - delete
+      - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - delete
+      - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - resolution.tekton.dev
+    resources:
+      - resolutionrequests
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: openshift-pipelines-operator-prometheus-k8s-read-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: openshift-pipelines-operator-read
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-k8s
+    namespace: openshift-monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/instance: default
+  name: tekton-operator-info
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: tekton-operator-info
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:authenticated
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-config-read-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-config-read-role
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: Group
+    name: system:authenticated
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-operator
+subjects:
+  - kind: ServiceAccount
+    name: openshift-pipelines-operator
+    namespace: {{ .Release.Namespace }}
+{{- end -}}
