@@ -27,7 +27,17 @@ You can install this component using [TektonConfig](./TektonConfig.md) by choosi
 
 - `readonly` (Default: `false`)
 
-  If set to true, installs the Dashboard in read-only mode.
+  If set to `true`, installs the Dashboard in read-only mode.
+  
+  If set to `false`, the following features will be enabled on the Dashboard:
+  
+  - delete a pipeline
+  - create a pipelinerun
+  - rerun a pipelinerun
+  - delete a pipelinerun
+  - create a pipelineresource
+  - create a taskrun
+  - import resources from repository
 
 - `external-logs`
 
