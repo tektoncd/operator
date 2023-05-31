@@ -14,7 +14,7 @@ on any Kubernetes Cluster.
 ## Want to start using Pipelines
 
 - [Installing Tekton Operator](docs/install.md)
-- Take a look at our [roadmap](roadmap.md)
+- Take a look at our [roadmap](ROADMAP.md)
 - Discover our [releases](releases.md)
 
 ### Required Kubernetes Version
