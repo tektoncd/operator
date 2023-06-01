@@ -28,7 +28,6 @@ import (
 )
 
 func Test_SetDefaults_PipelineProperties(t *testing.T) {
-
 	tp := &TektonPipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "name",
@@ -53,7 +52,7 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 		ScopeWhenExpressionsToTask:               nil,
 		SendCloudEventsForRuns:                   ptr.Bool(false),
 		VerificationNoMatchPolicy:                config.DefaultNoMatchPolicyConfig,
-		EnableProvenanceInStatus:                 ptr.Bool(false),
+		EnableProvenanceInStatus:                 ptr.Bool(true),
 		PipelineMetricsProperties: PipelineMetricsProperties{
 			MetricsPipelinerunDurationType: "histogram",
 			MetricsPipelinerunLevel:        "pipeline",

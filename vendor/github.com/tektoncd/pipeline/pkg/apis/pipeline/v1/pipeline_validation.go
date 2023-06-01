@@ -46,8 +46,12 @@ func (p *Pipeline) SupportedVerbs() []admissionregistrationv1.OperationType {
 // that any references resources exist, that is done at run time.
 func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(p.GetObjectMeta()).ViaField("metadata")
-	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
-	return errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
+	errs = errs.Also(p.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
+	// When a Pipeline is created directly, instead of declared inline in a PipelineRun,
+	// we do not support propagated parameters and workspaces.
+	// Validate that all params and workspaces it uses are declared.
+	errs = errs.Also(p.Spec.validatePipelineParameterUsage().ViaField("spec"))
+	return errs.Also(p.Spec.validatePipelineWorkspacesUsage().ViaField("spec"))
 }
 
 // Validate checks that taskNames in the Pipeline are valid and that the graph
@@ -66,10 +70,9 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineContextVariables(ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validatePipelineContextVariables(ps.Finally).ViaField("finally"))
 	errs = errs.Also(validateExecutionStatusVariables(ps.Tasks, ps.Finally))
+	errs = errs.Also(ps.ValidateBetaFeaturesEnabledForParamArrayIndexing(ctx))
 	// Validate the pipeline's workspaces.
 	errs = errs.Also(validatePipelineWorkspacesDeclarations(ps.Workspaces))
-	errs = errs.Also(validatePipelineWorkspacesUsage(ctx, ps.Workspaces, ps.Tasks).ViaField("tasks"))
-	errs = errs.Also(validatePipelineWorkspacesUsage(ctx, ps.Workspaces, ps.Finally).ViaField("finally"))
 	// Validate the pipeline's results
 	errs = errs.Also(validatePipelineResults(ps.Results, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateTasksAndFinallySection(ps))
@@ -126,10 +129,20 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(pt.validateRefOrSpec())
 
 	errs = errs.Also(pt.validateEmbeddedOrType())
-
+	// taskKinds contains the kinds when the apiVersion is not set, they are not custom tasks,
+	// if apiVersion is set they are custom tasks.
+	taskKinds := map[TaskKind]bool{
+		"":                 true,
+		NamespacedTaskKind: true,
+		ClusterTaskRefKind: true,
+	}
 	// Pipeline task having taskRef/taskSpec with APIVersion is classified as custom task
 	switch {
+	case pt.TaskRef != nil && !taskKinds[pt.TaskRef.Kind]:
+		errs = errs.Also(pt.validateCustomTask())
 	case pt.TaskRef != nil && pt.TaskRef.APIVersion != "":
+		errs = errs.Also(pt.validateCustomTask())
+	case pt.TaskSpec != nil && !taskKinds[TaskKind(pt.TaskSpec.Kind)]:
 		errs = errs.Also(pt.validateCustomTask())
 	case pt.TaskSpec != nil && pt.TaskSpec.APIVersion != "":
 		errs = errs.Also(pt.validateCustomTask())
@@ -145,9 +158,10 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		// when the enable-api-fields feature gate is anything but "alpha".
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
+		errs = errs.Also(pt.Matrix.validateNoWholeArrayResults())
+		errs = errs.Also(pt.Matrix.validateUniqueParams())
 	}
 	errs = errs.Also(pt.Matrix.validateParameterInOneOfMatrixOrParams(pt.Params))
-	errs = errs.Also(pt.Matrix.validateParams())
 	return errs
 }
 
@@ -285,12 +299,41 @@ func validatePipelineWorkspacesDeclarations(wss []PipelineWorkspaceDeclaration) 
 	return errs
 }
 
-// validatePipelineWorkspacesUsage validates that all the referenced workspaces (by pipeline tasks) are specified in
-// the pipeline
-func validatePipelineWorkspacesUsage(ctx context.Context, wss []PipelineWorkspaceDeclaration, pts []PipelineTask) (errs *apis.FieldError) {
-	if !config.ValidateParameterVariablesAndWorkspaces(ctx) {
-		return nil
+// validatePipelineParameterUsage validates that parameters referenced in the Pipeline are declared by the Pipeline
+func (ps *PipelineSpec) validatePipelineParameterUsage() (errs *apis.FieldError) {
+	errs = errs.Also(validatePipelineTaskParameterUsage(ps.Tasks, ps.Params).ViaField("tasks"))
+	errs = errs.Also(validatePipelineTaskParameterUsage(ps.Finally, ps.Params).ViaField("finally"))
+	return errs
+}
+
+// validatePipelineTaskParameterUsage validates that parameters referenced in the Pipeline Tasks are declared by the Pipeline
+func validatePipelineTaskParameterUsage(tasks []PipelineTask, params ParamSpecs) (errs *apis.FieldError) {
+	allParamNames := sets.NewString(params.getNames()...)
+	_, arrayParams, objectParams := params.sortByType()
+	arrayParamNames := sets.NewString(arrayParams.getNames()...)
+	objectParameterNameKeys := map[string][]string{}
+	for _, p := range objectParams {
+		for k := range p.Properties {
+			objectParameterNameKeys[p.Name] = append(objectParameterNameKeys[p.Name], k)
+		}
 	}
+	errs = errs.Also(validatePipelineParametersVariables(tasks, "params", allParamNames, arrayParamNames, objectParameterNameKeys))
+	for i, task := range tasks {
+		errs = errs.Also(task.Params.validateDuplicateParameters().ViaFieldIndex("params", i))
+	}
+	return errs
+}
+
+// validatePipelineWorkspacesUsage validates that workspaces referenced in the Pipeline are declared by the Pipeline
+func (ps *PipelineSpec) validatePipelineWorkspacesUsage() (errs *apis.FieldError) {
+	errs = errs.Also(validatePipelineTasksWorkspacesUsage(ps.Workspaces, ps.Tasks).ViaField("tasks"))
+	errs = errs.Also(validatePipelineTasksWorkspacesUsage(ps.Workspaces, ps.Finally).ViaField("finally"))
+	return errs
+}
+
+// validatePipelineTasksWorkspacesUsage validates that all the referenced workspaces (by pipeline tasks) are specified in
+// the pipeline
+func validatePipelineTasksWorkspacesUsage(wss []PipelineWorkspaceDeclaration, pts []PipelineTask) (errs *apis.FieldError) {
 	workspaceNames := sets.NewString()
 	for _, ws := range wss {
 		workspaceNames.Insert(ws.Name)
@@ -304,37 +347,16 @@ func validatePipelineWorkspacesUsage(ctx context.Context, wss []PipelineWorkspac
 
 // ValidatePipelineParameterVariables validates parameters with those specified by each pipeline task,
 // (1) it validates the type of parameter is either string or array (2) parameter default value matches
-// with the type of that param (3) ensures that the referenced param variable is defined is part of the param declarations
-func ValidatePipelineParameterVariables(ctx context.Context, tasks []PipelineTask, params []ParamSpec) (errs *apis.FieldError) {
-	parameterNames := sets.NewString()
-	arrayParameterNames := sets.NewString()
-	objectParameterNameKeys := map[string][]string{}
-
+// with the type of that param
+func ValidatePipelineParameterVariables(ctx context.Context, tasks []PipelineTask, params ParamSpecs) (errs *apis.FieldError) {
 	// validates all the types within a slice of ParamSpecs
 	errs = errs.Also(ValidateParameterTypes(ctx, params).ViaField("params"))
-
-	for _, p := range params {
-		if parameterNames.Has(p.Name) {
-			errs = errs.Also(apis.ErrGeneric("parameter appears more than once", "").ViaFieldKey("params", p.Name))
-		}
-		// Add parameter name to parameterNames, and to arrayParameterNames if type is array.
-		parameterNames.Insert(p.Name)
-		if p.Type == ParamTypeArray {
-			arrayParameterNames.Insert(p.Name)
-		}
-
-		if p.Type == ParamTypeObject {
-			for k := range p.Properties {
-				objectParameterNameKeys[p.Name] = append(objectParameterNameKeys[p.Name], k)
-			}
-		}
-	}
-	if config.ValidateParameterVariablesAndWorkspaces(ctx) {
-		errs = errs.Also(validatePipelineParametersVariables(tasks, "params", parameterNames, arrayParameterNames, objectParameterNameKeys))
+	errs = errs.Also(params.validateNoDuplicateNames())
+	for i, task := range tasks {
+		errs = errs.Also(task.Params.validateDuplicateParameters().ViaField("params").ViaIndex(i))
 	}
 	return errs
 }
-
 func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
 	for idx, task := range tasks {
 		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
@@ -493,7 +515,7 @@ func validateExecutionStatusVariablesExpressions(expressions []string, ptNames s
 }
 func validatePipelineContextVariablesInParamValues(paramValues []string, prefix string, contextNames sets.String) (errs *apis.FieldError) {
 	for _, paramValue := range paramValues {
-		errs = errs.Also(substitution.ValidateVariableP(paramValue, prefix, contextNames).ViaField("value"))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(paramValue, prefix, contextNames).ViaField("value"))
 	}
 	return errs
 }
@@ -678,17 +700,37 @@ func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, f
 // ValidateParamArrayIndex validates if the param reference to an array param is out of bound.
 // error is returned when the array indexing reference is out of bound of the array param
 // e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
+// TODO(#6616): Move this functionality to the reconciler, as it is only used there
 func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
-	if !config.CheckAlphaOrBetaAPIFields(ctx) {
-		return nil
-	}
-
 	// Collect all array params lengths
 	arrayParamsLengths := ps.Params.extractParamArrayLengths()
 	for k, v := range params.extractParamArrayLengths() {
 		arrayParamsLengths[k] = v
 	}
+	// extract all array indexing references, for example []{"$(params.array-params[1])"}
+	arrayIndexParamRefs := ps.GetIndexingReferencesToArrayParams().List()
+	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+}
 
+// ValidateBetaFeaturesEnabledForParamArrayIndexing validates that "enable-api-fields" is set to "alpha" or "beta" if the pipeline spec
+// contains indexing references to array params.
+// This can be removed when array param indexing is moved to "stable".
+func (ps *PipelineSpec) ValidateBetaFeaturesEnabledForParamArrayIndexing(ctx context.Context) (errs *apis.FieldError) {
+	if config.CheckAlphaOrBetaAPIFields(ctx) {
+		return nil
+	}
+	arrayParamIndexingRefs := ps.GetIndexingReferencesToArrayParams()
+	if len(arrayParamIndexingRefs) == 0 {
+		return nil
+	}
+	return apis.ErrGeneric(fmt.Sprintf("cannot index into array parameters when 'enable-api-fields' is 'stable', but found indexing references: %s", arrayParamIndexingRefs))
+}
+
+// GetIndexingReferencesToArrayParams returns all strings referencing indices of PipelineRun array parameters
+// from parameters, workspaces, and when expressions defined in the Pipeline's Tasks and Finally Tasks.
+// For example, if a Task in the Pipeline has a parameter with a value "$(params.array-param-name[1])",
+// this would be one of the strings returned.
+func (ps *PipelineSpec) GetIndexingReferencesToArrayParams() sets.String {
 	paramsRefs := []string{}
 	for i := range ps.Tasks {
 		paramsRefs = append(paramsRefs, ps.Tasks[i].Params.extractValues()...)
@@ -703,22 +745,20 @@ func (ps *PipelineSpec) ValidateParamArrayIndex(ctx context.Context, params Para
 			paramsRefs = append(paramsRefs, wes.Values...)
 		}
 	}
-
 	for i := range ps.Finally {
 		paramsRefs = append(paramsRefs, ps.Finally[i].Params.extractValues()...)
 		if ps.Finally[i].IsMatrixed() {
 			paramsRefs = append(paramsRefs, ps.Finally[i].Matrix.Params.extractValues()...)
 		}
 		for _, wes := range ps.Finally[i].When {
+			paramsRefs = append(paramsRefs, wes.Input)
 			paramsRefs = append(paramsRefs, wes.Values...)
 		}
 	}
-
 	// extract all array indexing references, for example []{"$(params.array-params[1])"}
 	arrayIndexParamRefs := []string{}
 	for _, p := range paramsRefs {
 		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
 	}
-
-	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+	return sets.NewString(arrayIndexParamRefs...)
 }

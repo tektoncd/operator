@@ -103,11 +103,11 @@ github.com/Azure/azure-sdk-for-go/version
 # github.com/Azure/go-autorest v14.2.0+incompatible
 ## explicit
 github.com/Azure/go-autorest
-# github.com/Azure/go-autorest/autorest v0.11.28
+# github.com/Azure/go-autorest/autorest v0.11.29
 ## explicit; go 1.15
 github.com/Azure/go-autorest/autorest
 github.com/Azure/go-autorest/autorest/azure
-# github.com/Azure/go-autorest/autorest/adal v0.9.21
+# github.com/Azure/go-autorest/autorest/adal v0.9.22
 ## explicit; go 1.15
 github.com/Azure/go-autorest/autorest/adal
 # github.com/Azure/go-autorest/autorest/azure/auth v0.5.12
@@ -199,7 +199,7 @@ github.com/aliyun/credentials-go/credentials/utils
 # github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
 ## explicit; go 1.13
 github.com/asaskevich/govalidator
-# github.com/aws/aws-sdk-go-v2 v1.17.8
+# github.com/aws/aws-sdk-go-v2 v1.18.0
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2
 github.com/aws/aws-sdk-go-v2/aws
@@ -220,10 +220,10 @@ github.com/aws/aws-sdk-go-v2/internal/shareddefaults
 github.com/aws/aws-sdk-go-v2/internal/strings
 github.com/aws/aws-sdk-go-v2/internal/sync/singleflight
 github.com/aws/aws-sdk-go-v2/internal/timeconv
-# github.com/aws/aws-sdk-go-v2/config v1.18.21
+# github.com/aws/aws-sdk-go-v2/config v1.18.23
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/config
-# github.com/aws/aws-sdk-go-v2/credentials v1.13.20
+# github.com/aws/aws-sdk-go-v2/credentials v1.13.22
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/credentials
 github.com/aws/aws-sdk-go-v2/credentials/ec2rolecreds
@@ -232,17 +232,17 @@ github.com/aws/aws-sdk-go-v2/credentials/endpointcreds/internal/client
 github.com/aws/aws-sdk-go-v2/credentials/processcreds
 github.com/aws/aws-sdk-go-v2/credentials/ssocreds
 github.com/aws/aws-sdk-go-v2/credentials/stscreds
-# github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.2
+# github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.3
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds
 github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
-# github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.32
+# github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.33
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/internal/configsources
-# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.26
+# github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.27
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2
-# github.com/aws/aws-sdk-go-v2/internal/ini v1.3.33
+# github.com/aws/aws-sdk-go-v2/internal/ini v1.3.34
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/internal/ini
 # github.com/aws/aws-sdk-go-v2/service/ecr v1.17.18
@@ -255,20 +255,20 @@ github.com/aws/aws-sdk-go-v2/service/ecr/types
 github.com/aws/aws-sdk-go-v2/service/ecrpublic
 github.com/aws/aws-sdk-go-v2/service/ecrpublic/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/ecrpublic/types
-# github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.26
+# github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.27
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
-# github.com/aws/aws-sdk-go-v2/service/sso v1.12.8
+# github.com/aws/aws-sdk-go-v2/service/sso v1.12.10
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/sso
 github.com/aws/aws-sdk-go-v2/service/sso/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sso/types
-# github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.8
+# github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.10
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/ssooidc
 github.com/aws/aws-sdk-go-v2/service/ssooidc/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/ssooidc/types
-# github.com/aws/aws-sdk-go-v2/service/sts v1.18.9
+# github.com/aws/aws-sdk-go-v2/service/sts v1.18.11
 ## explicit; go 1.15
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
@@ -606,7 +606,7 @@ github.com/google/go-querystring/query
 ## explicit; go 1.12
 github.com/google/gofuzz
 github.com/google/gofuzz/bytesource
-# github.com/google/s2a-go v0.1.2
+# github.com/google/s2a-go v0.1.3
 ## explicit; go 1.16
 github.com/google/s2a-go
 github.com/google/s2a-go/fallback
@@ -954,7 +954,7 @@ github.com/rogpeppe/go-internal/semver
 ## explicit
 github.com/sassoftware/relic/lib/pkcs7
 github.com/sassoftware/relic/lib/x509tools
-# github.com/secure-systems-lab/go-securesystemslib v0.5.0
+# github.com/secure-systems-lab/go-securesystemslib v0.6.0 => github.com/secure-systems-lab/go-securesystemslib v0.5.0
 ## explicit; go 1.17
 github.com/secure-systems-lab/go-securesystemslib/cjson
 github.com/secure-systems-lab/go-securesystemslib/dsse
@@ -1045,7 +1045,7 @@ github.com/sigstore/rekor/pkg/types/hashedrekord/v0.0.1
 github.com/sigstore/rekor/pkg/types/intoto
 github.com/sigstore/rekor/pkg/types/intoto/v0.0.1
 github.com/sigstore/rekor/pkg/util
-# github.com/sigstore/sigstore v1.6.3
+# github.com/sigstore/sigstore v1.6.4 => github.com/sigstore/sigstore v1.6.3
 ## explicit; go 1.18
 github.com/sigstore/sigstore/pkg/cryptoutils
 github.com/sigstore/sigstore/pkg/fulcioroots
@@ -1134,7 +1134,7 @@ github.com/syndtr/goleveldb/leveldb/util
 # github.com/tchap/go-patricia/v2 v2.3.1
 ## explicit; go 1.16
 github.com/tchap/go-patricia/v2/patricia
-# github.com/tektoncd/pipeline v0.47.0
+# github.com/tektoncd/pipeline v0.48.0
 ## explicit; go 1.19
 github.com/tektoncd/pipeline/pkg/apis/config
 github.com/tektoncd/pipeline/pkg/apis/pipeline
@@ -1428,7 +1428,7 @@ golang.org/x/tools/internal/typesinternal
 # gomodules.xyz/jsonpatch/v2 v2.3.0
 ## explicit; go 1.20
 gomodules.xyz/jsonpatch/v2
-# google.golang.org/api v0.119.0
+# google.golang.org/api v0.121.0
 ## explicit; go 1.19
 google.golang.org/api/googleapi/transport
 google.golang.org/api/idtoken
@@ -2136,6 +2136,8 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.3.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
+# github.com/secure-systems-lab/go-securesystemslib => github.com/secure-systems-lab/go-securesystemslib v0.5.0
+# github.com/sigstore/sigstore => github.com/sigstore/sigstore v1.6.3
 # k8s.io/api => k8s.io/api v0.25.9
 # k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.25.9
 # k8s.io/apimachinery => k8s.io/apimachinery v0.25.9
