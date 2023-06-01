@@ -62,22 +62,16 @@ var objectVariableNameFormatRegex = regexp.MustCompile(objectVariableNameFormat)
 // Validate implements apis.Validatable
 func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 	errs := validate.ObjectMetadata(t.GetObjectMeta()).ViaField("metadata")
-	ctx = config.SkipValidationDueToPropagatedParametersAndWorkspaces(ctx, false)
-	return errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
+	errs = errs.Also(t.Spec.Validate(apis.WithinSpec(ctx)).ViaField("spec"))
+	// When a Task is created directly, instead of declared inline in a TaskRun or PipelineRun,
+	// we do not support propagated parameters. Validate that all params it uses are declared.
+	return errs.Also(ValidateUsageOfDeclaredParameters(ctx, t.Spec.Steps, t.Spec.Params).ViaField("spec"))
 }
 
 // Validate implements apis.Validatable
 func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if len(ts.Steps) == 0 {
 		errs = errs.Also(apis.ErrMissingField("steps"))
-	}
-
-	if config.IsSubstituted(ctx) {
-		// Validate the task's workspaces only.
-		errs = errs.Also(validateDeclaredWorkspaces(ts.Workspaces, ts.Steps, ts.StepTemplate).ViaField("workspaces"))
-		errs = errs.Also(validateWorkspaceUsages(ctx, ts))
-
-		return errs
 	}
 
 	errs = errs.Also(ValidateVolumes(ts.Volumes).ViaField("volumes"))
@@ -96,9 +90,32 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateSidecarNames(ts.Sidecars))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
+	errs = errs.Also(ts.ValidateBetaFeaturesEnabledForParamArrayIndexing(ctx))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
 	errs = errs.Also(validateTaskResultsVariables(ctx, ts.Steps, ts.Results))
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
+	return errs
+}
+
+// ValidateUsageOfDeclaredParameters validates that all parameters referenced in the Task are declared by the Task.
+func ValidateUsageOfDeclaredParameters(ctx context.Context, steps []Step, params ParamSpecs) *apis.FieldError {
+	var errs *apis.FieldError
+	_, _, objectParams := params.sortByType()
+	allParameterNames := sets.NewString(params.getNames()...)
+	errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
+	errs = errs.Also(validateObjectUsage(ctx, steps, objectParams))
+	errs = errs.Also(validateObjectParamsHaveProperties(ctx, params))
+	return errs
+}
+
+// validateObjectParamsHaveProperties returns an error if any declared object params are missing properties
+func validateObjectParamsHaveProperties(ctx context.Context, params ParamSpecs) *apis.FieldError {
+	var errs *apis.FieldError
+	for _, p := range params {
+		if p.Type == ParamTypeObject && p.Properties == nil {
+			errs = errs.Also(apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name)))
+		}
+	}
 	return errs
 }
 
@@ -337,14 +354,6 @@ func (p ParamSpec) ValidateType(ctx context.Context) *apis.FieldError {
 // definition of `properties` section and the type of a PropertySpec is allowed.
 // (Currently, only string is allowed)
 func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
-	if p.Type == ParamTypeObject && p.Properties == nil {
-		// If this we are not skipping validation checks due to propagated params
-		// then properties field is required.
-		if config.ValidateParameterVariablesAndWorkspaces(ctx) {
-			return apis.ErrMissingField(fmt.Sprintf("%s.properties", p.Name))
-		}
-	}
-
 	invalidKeys := []string{}
 	for key, propertySpec := range p.Properties {
 		if propertySpec.Type != ParamTypeString {
@@ -363,38 +372,17 @@ func (p ParamSpec) ValidateObjectType(ctx context.Context) *apis.FieldError {
 }
 
 // ValidateParameterVariables validates all variables within a slice of ParamSpecs against a slice of Steps
-func ValidateParameterVariables(ctx context.Context, steps []Step, params []ParamSpec) *apis.FieldError {
-	allParameterNames := sets.NewString()
-	stringParameterNames := sets.NewString()
-	arrayParameterNames := sets.NewString()
-	objectParamSpecs := []ParamSpec{}
+func ValidateParameterVariables(ctx context.Context, steps []Step, params ParamSpecs) *apis.FieldError {
 	var errs *apis.FieldError
-	for _, p := range params {
-		// validate no duplicate names
-		if allParameterNames.Has(p.Name) {
-			errs = errs.Also(apis.ErrGeneric("parameter appears more than once", "").ViaFieldKey("params", p.Name))
-		}
-		allParameterNames.Insert(p.Name)
-
-		switch p.Type {
-		case ParamTypeArray:
-			arrayParameterNames.Insert(p.Name)
-		case ParamTypeObject:
-			objectParamSpecs = append(objectParamSpecs, p)
-		case ParamTypeString:
-			fallthrough
-		default:
-			stringParameterNames.Insert(p.Name)
-		}
-	}
-	errs = errs.Also(validateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParamSpecs))
-	if config.ValidateParameterVariablesAndWorkspaces(ctx) {
-		errs = errs.Also(validateVariables(ctx, steps, "params", allParameterNames))
-		errs = errs.Also(validateObjectUsage(ctx, steps, objectParamSpecs))
-	}
+	errs = errs.Also(params.validateNoDuplicateNames())
+	stringParams, arrayParams, objectParams := params.sortByType()
+	stringParameterNames := sets.NewString(stringParams.getNames()...)
+	arrayParameterNames := sets.NewString(arrayParams.getNames()...)
+	errs = errs.Also(validateNameFormat(stringParameterNames.Insert(arrayParameterNames.List()...), objectParams))
 	return errs.Also(validateArrayUsage(steps, "params", arrayParameterNames))
 }
 
+// validateTaskContextVariables returns an error if any Steps reference context variables that don't exist.
 func validateTaskContextVariables(ctx context.Context, steps []Step) *apis.FieldError {
 	taskRunContextNames := sets.NewString().Insert(
 		"name",
@@ -416,7 +404,7 @@ func validateTaskResultsVariables(ctx context.Context, steps []Step, results []T
 		resultsNames.Insert(r.Name)
 	}
 	for idx, step := range steps {
-		errs = errs.Also(validateTaskVariable(step.Script, "results", resultsNames).ViaField("script").ViaFieldIndex("steps", idx))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.Script, "results", resultsNames).ViaField("script").ViaFieldIndex("steps", idx))
 	}
 	return errs
 }
@@ -441,8 +429,7 @@ func validateObjectUsage(ctx context.Context, steps []Step, params []ParamSpec) 
 	return errs.Also(validateObjectUsageAsWhole(steps, "params", objectParameterNames))
 }
 
-// validateObjectUsageAsWhole makes sure the object params are not used as whole when providing values for strings
-// i.e. param.objectParam, param.objectParam[*]
+// validateObjectUsageAsWhole returns an error if the Steps contain references to the entire input object params in fields where these references are prohibited
 func validateObjectUsageAsWhole(steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
 	for idx, step := range steps {
 		errs = errs.Also(validateStepObjectUsageAsWhole(step, prefix, vars)).ViaFieldIndex("steps", idx)
@@ -450,59 +437,62 @@ func validateObjectUsageAsWhole(steps []Step, prefix string, vars sets.String) (
 	return errs
 }
 
+// validateStepObjectUsageAsWhole returns an error if the Step contains references to the entire input object params in fields where these references are prohibited
 func validateStepObjectUsageAsWhole(step Step, prefix string, vars sets.String) *apis.FieldError {
-	errs := validateTaskNoObjectReferenced(step.Name, prefix, vars).ViaField("name")
-	errs = errs.Also(validateTaskNoObjectReferenced(step.Image, prefix, vars).ViaField("image"))
-	errs = errs.Also(validateTaskNoObjectReferenced(step.WorkingDir, prefix, vars).ViaField("workingDir"))
-	errs = errs.Also(validateTaskNoObjectReferenced(step.Script, prefix, vars).ViaField("script"))
+	errs := substitution.ValidateNoReferencesToEntireProhibitedVariables(step.Name, prefix, vars).ViaField("name")
+	errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(step.Image, prefix, vars).ViaField("image"))
+	errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(step.WorkingDir, prefix, vars).ViaField("workingDir"))
+	errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(step.Script, prefix, vars).ViaField("script"))
 	for i, cmd := range step.Command {
-		errs = errs.Also(validateTaskNoObjectReferenced(cmd, prefix, vars).ViaFieldIndex("command", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(cmd, prefix, vars).ViaFieldIndex("command", i))
 	}
 	for i, arg := range step.Args {
-		errs = errs.Also(validateTaskNoObjectReferenced(arg, prefix, vars).ViaFieldIndex("args", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(arg, prefix, vars).ViaFieldIndex("args", i))
 	}
 	for _, env := range step.Env {
-		errs = errs.Also(validateTaskNoObjectReferenced(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
+		errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
 	}
 	for i, v := range step.VolumeMounts {
-		errs = errs.Also(validateTaskNoObjectReferenced(v.Name, prefix, vars).ViaField("name").ViaFieldIndex("volumeMount", i))
-		errs = errs.Also(validateTaskNoObjectReferenced(v.MountPath, prefix, vars).ViaField("mountPath").ViaFieldIndex("volumeMount", i))
-		errs = errs.Also(validateTaskNoObjectReferenced(v.SubPath, prefix, vars).ViaField("subPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(v.Name, prefix, vars).ViaField("name").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(v.MountPath, prefix, vars).ViaField("mountPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToEntireProhibitedVariables(v.SubPath, prefix, vars).ViaField("subPath").ViaFieldIndex("volumeMount", i))
 	}
 	return errs
 }
 
-func validateArrayUsage(steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
+// validateArrayUsage returns an error if the Steps contain references to the input array params in fields where these references are prohibited
+func validateArrayUsage(steps []Step, prefix string, arrayParamNames sets.String) (errs *apis.FieldError) {
 	for idx, step := range steps {
-		errs = errs.Also(validateStepArrayUsage(step, prefix, vars)).ViaFieldIndex("steps", idx)
+		errs = errs.Also(validateStepArrayUsage(step, prefix, arrayParamNames)).ViaFieldIndex("steps", idx)
 	}
 	return errs
 }
 
-func validateStepArrayUsage(step Step, prefix string, vars sets.String) *apis.FieldError {
-	errs := validateTaskNoArrayReferenced(step.Name, prefix, vars).ViaField("name")
-	errs = errs.Also(validateTaskNoArrayReferenced(step.Image, prefix, vars).ViaField("image"))
-	errs = errs.Also(validateTaskNoArrayReferenced(step.WorkingDir, prefix, vars).ViaField("workingDir"))
-	errs = errs.Also(validateTaskNoArrayReferenced(step.Script, prefix, vars).ViaField("script"))
+// validateStepArrayUsage returns an error if the Step contains references to the input array params in fields where these references are prohibited
+func validateStepArrayUsage(step Step, prefix string, arrayParamNames sets.String) *apis.FieldError {
+	errs := substitution.ValidateNoReferencesToProhibitedVariables(step.Name, prefix, arrayParamNames).ViaField("name")
+	errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(step.Image, prefix, arrayParamNames).ViaField("image"))
+	errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(step.WorkingDir, prefix, arrayParamNames).ViaField("workingDir"))
+	errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(step.Script, prefix, arrayParamNames).ViaField("script"))
 	for i, cmd := range step.Command {
-		errs = errs.Also(validateTaskArraysIsolated(cmd, prefix, vars).ViaFieldIndex("command", i))
+		errs = errs.Also(substitution.ValidateVariableReferenceIsIsolated(cmd, prefix, arrayParamNames).ViaFieldIndex("command", i))
 	}
 	for i, arg := range step.Args {
-		errs = errs.Also(validateTaskArraysIsolated(arg, prefix, vars).ViaFieldIndex("args", i))
+		errs = errs.Also(substitution.ValidateVariableReferenceIsIsolated(arg, prefix, arrayParamNames).ViaFieldIndex("args", i))
 	}
 	for _, env := range step.Env {
-		errs = errs.Also(validateTaskNoArrayReferenced(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
+		errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(env.Value, prefix, arrayParamNames).ViaFieldKey("env", env.Name))
 	}
 	for i, v := range step.VolumeMounts {
-		errs = errs.Also(validateTaskNoArrayReferenced(v.Name, prefix, vars).ViaField("name").ViaFieldIndex("volumeMount", i))
-		errs = errs.Also(validateTaskNoArrayReferenced(v.MountPath, prefix, vars).ViaField("mountPath").ViaFieldIndex("volumeMount", i))
-		errs = errs.Also(validateTaskNoArrayReferenced(v.SubPath, prefix, vars).ViaField("subPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(v.Name, prefix, arrayParamNames).ViaField("name").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(v.MountPath, prefix, arrayParamNames).ViaField("mountPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToProhibitedVariables(v.SubPath, prefix, arrayParamNames).ViaField("subPath").ViaFieldIndex("volumeMount", i))
 	}
 	return errs
 }
 
+// validateVariables returns an error if the Steps contain references to any unknown variables
 func validateVariables(ctx context.Context, steps []Step, prefix string, vars sets.String) (errs *apis.FieldError) {
-	// We've checked param name format. Now, we want to check if param names are referenced correctly in each step
 	for idx, step := range steps {
 		errs = errs.Also(validateStepVariables(ctx, step, prefix, vars).ViaFieldIndex("steps", idx))
 	}
@@ -558,43 +548,28 @@ func validateNameFormat(stringAndArrayParams sets.String, objectParams []ParamSp
 	return errs
 }
 
+// validateStepVariables returns an error if the Step contains references to any unknown variables
 func validateStepVariables(ctx context.Context, step Step, prefix string, vars sets.String) *apis.FieldError {
-	errs := validateTaskVariable(step.Name, prefix, vars).ViaField("name")
-	errs = errs.Also(validateTaskVariable(step.Image, prefix, vars).ViaField("image"))
-	errs = errs.Also(validateTaskVariable(step.WorkingDir, prefix, vars).ViaField("workingDir"))
-	errs = errs.Also(validateTaskVariable(step.Script, prefix, vars).ViaField("script"))
+	errs := substitution.ValidateNoReferencesToUnknownVariables(step.Name, prefix, vars).ViaField("name")
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.Image, prefix, vars).ViaField("image"))
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.WorkingDir, prefix, vars).ViaField("workingDir"))
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(step.Script, prefix, vars).ViaField("script"))
 	for i, cmd := range step.Command {
-		errs = errs.Also(validateTaskVariable(cmd, prefix, vars).ViaFieldIndex("command", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(cmd, prefix, vars).ViaFieldIndex("command", i))
 	}
 	for i, arg := range step.Args {
-		errs = errs.Also(validateTaskVariable(arg, prefix, vars).ViaFieldIndex("args", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(arg, prefix, vars).ViaFieldIndex("args", i))
 	}
 	for _, env := range step.Env {
-		errs = errs.Also(validateTaskVariable(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(env.Value, prefix, vars).ViaFieldKey("env", env.Name))
 	}
 	for i, v := range step.VolumeMounts {
-		errs = errs.Also(validateTaskVariable(v.Name, prefix, vars).ViaField("name").ViaFieldIndex("volumeMount", i))
-		errs = errs.Also(validateTaskVariable(v.MountPath, prefix, vars).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
-		errs = errs.Also(validateTaskVariable(v.SubPath, prefix, vars).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.Name, prefix, vars).ViaField("name").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.MountPath, prefix, vars).ViaField("MountPath").ViaFieldIndex("volumeMount", i))
+		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(v.SubPath, prefix, vars).ViaField("SubPath").ViaFieldIndex("volumeMount", i))
 	}
-	errs = errs.Also(validateTaskVariable(string(step.OnError), prefix, vars).ViaField("onError"))
+	errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(string(step.OnError), prefix, vars).ViaField("onError"))
 	return errs
-}
-
-func validateTaskVariable(value, prefix string, vars sets.String) *apis.FieldError {
-	return substitution.ValidateVariableP(value, prefix, vars)
-}
-
-func validateTaskNoObjectReferenced(value, prefix string, objectNames sets.String) *apis.FieldError {
-	return substitution.ValidateEntireVariableProhibitedP(value, prefix, objectNames)
-}
-
-func validateTaskNoArrayReferenced(value, prefix string, arrayNames sets.String) *apis.FieldError {
-	return substitution.ValidateVariableProhibitedP(value, prefix, arrayNames)
-}
-
-func validateTaskArraysIsolated(value, prefix string, arrayNames sets.String) *apis.FieldError {
-	return substitution.ValidateVariableIsolatedP(value, prefix, arrayNames)
 }
 
 // isParamRefs attempts to check if a specified string looks like it contains any parameter reference
@@ -603,23 +578,43 @@ func isParamRefs(s string) bool {
 	return strings.HasPrefix(s, "$("+ParamsPrefix)
 }
 
+// ValidateBetaFeaturesEnabledForParamArrayIndexing validates that "enable-api-fields" is set to "alpha" or "beta" if the task spec
+// contains indexing references to array params.
+// This can be removed when array param indexing is moved to "stable".
+func (ts *TaskSpec) ValidateBetaFeaturesEnabledForParamArrayIndexing(ctx context.Context) *apis.FieldError {
+	if config.CheckAlphaOrBetaAPIFields(ctx) {
+		return nil
+	}
+	arrayIndexParamRefs := ts.GetIndexingReferencesToArrayParams()
+	if len(arrayIndexParamRefs) == 0 {
+		return nil
+	}
+	return apis.ErrGeneric(fmt.Sprintf("cannot index into array parameters when 'enable-api-fields' is 'stable', but found indexing references: %s", arrayIndexParamRefs))
+}
+
 // ValidateParamArrayIndex validates if the param reference to an array param is out of bound.
 // error is returned when the array indexing reference is out of bound of the array param
 // e.g. if a param reference of $(params.array-param[2]) and the array param is of length 2.
 // - `trParams` are params from taskrun.
 // - `taskSpec` contains params declarations.
+// TODO(#6616): Move this functionality to the reconciler, as it is only used there
 func (ts *TaskSpec) ValidateParamArrayIndex(ctx context.Context, params Params) error {
-	cfg := config.FromContextOrDefaults(ctx)
-	if cfg.FeatureFlags.EnableAPIFields != config.AlphaAPIFields {
-		return nil
-	}
-
 	// Collect all array params lengths
 	arrayParamsLengths := ts.Params.extractParamArrayLengths()
 	for k, v := range params.extractParamArrayLengths() {
 		arrayParamsLengths[k] = v
 	}
+	// extract all array indexing references, for example []{"$(params.array-params[1])"}
+	arrayIndexParamRefs := ts.GetIndexingReferencesToArrayParams().List()
 
+	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+}
+
+// GetIndexingReferencesToArrayParams returns all strings referencing indices of TaskRun array parameters
+// from parameters, workspaces, and when expressions defined in the Task.
+// For example, if a Task has a parameter with a value "$(params.array-param-name[1])",
+// this would be one of the strings returned.
+func (ts *TaskSpec) GetIndexingReferencesToArrayParams() sets.String {
 	// collect all the possible places to use param references
 	paramsRefs := []string{}
 	paramsRefs = append(paramsRefs, extractParamRefsFromSteps(ts.Steps)...)
@@ -629,12 +624,10 @@ func (ts *TaskSpec) ValidateParamArrayIndex(ctx context.Context, params Params) 
 		paramsRefs = append(paramsRefs, v.MountPath)
 	}
 	paramsRefs = append(paramsRefs, extractParamRefsFromSidecars(ts.Sidecars)...)
-
 	// extract all array indexing references, for example []{"$(params.array-params[1])"}
 	arrayIndexParamRefs := []string{}
 	for _, p := range paramsRefs {
 		arrayIndexParamRefs = append(arrayIndexParamRefs, extractArrayIndexingParamRefs(p)...)
 	}
-
-	return validateOutofBoundArrayParams(arrayIndexParamRefs, arrayParamsLengths)
+	return sets.NewString(arrayIndexParamRefs...)
 }
