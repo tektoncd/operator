@@ -20,6 +20,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -27,13 +28,14 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
 )
 
 const (
-	monitoringLabel  = "openshift.io/cluster-monitoring=true"
-	enableMetricsKey = "enableMetrics"
-	versionKey       = "VERSION"
+	monitoringLabelKey = "openshift.io/cluster-monitoring"
+	enableMetricsKey   = "enableMetrics"
+	versionKey         = "VERSION"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -61,15 +63,6 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.ApplyCABundles,
 		occommon.RemoveRunAsUser(),
 	}
-
-	pipeline := comp.(*v1alpha1.TektonPipeline)
-
-	// Add monitoring label if metrics is enabled
-	value := findParam(pipeline.Spec.Params, enableMetricsKey)
-	if value == "" || value == "true" {
-		trns = append(trns, common.InjectLabelOnNamespace(monitoringLabel))
-	}
-
 	return trns
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
@@ -83,16 +76,30 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Tek
 	if err := oe.installerSetClient.PreSet(ctx, comp, manifest, filterAndTransform()); err != nil {
 		return err
 	}
-	return nil
+
+	// update monitoring label based on metric enable status under params
+	// namespace creation/modifications are not handled by manifests, see above, namespace filtered from manifests
+	pipeline := comp.(*v1alpha1.TektonPipeline)
+	value := strings.ToLower(findParam(pipeline.Spec.Params, enableMetricsKey))
+	labels := map[string]string{
+		monitoringLabelKey: "false",
+	}
+	if value == "" || value == "true" {
+		labels[monitoringLabelKey] = "true"
+	}
+
+	// reconcile namespace with updated labels
+	kubeClientSet := kubeclient.Get(ctx)
+	return common.ReconcileTargetNamespace(ctx, labels, comp, kubeClientSet)
 }
 
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	pipeline := comp.(*v1alpha1.TektonPipeline)
 
 	// Install monitoring if metrics is enabled
-	value := findParam(pipeline.Spec.Params, enableMetricsKey)
+	value := strings.ToLower(findParam(pipeline.Spec.Params, enableMetricsKey))
 
-	if value == "true" {
+	if value == "" || value == "true" {
 		manifest, err := postManifest()
 		if err != nil {
 			return err

@@ -25,8 +25,6 @@ import (
 	tektonpipelinereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -76,7 +74,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	// Pass the object through defaulting
 	tp.SetDefaults(ctx)
 
-	if err := r.targetNamespaceCheck(ctx, tp); err != nil {
+	// reconcile target namespace
+	if err := common.ReconcileTargetNamespace(ctx, nil, tp, r.kubeClientSet); err != nil {
 		return err
 	}
 
@@ -128,29 +127,4 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	tp.Status.MarkPostReconcilerComplete()
 
 	return nil
-}
-
-func (r *Reconciler) targetNamespaceCheck(ctx context.Context, tp *v1alpha1.TektonPipeline) error {
-	logger := logging.FromContext(ctx)
-	labels := r.manifest.Filter(mf.ByKind("Namespace")).Resources()[0].GetLabels()
-
-	ns, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, tp.GetSpec().GetTargetNamespace(), metav1.GetOptions{})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			if err := common.CreateTargetNamespace(ctx, labels, tp, r.kubeClientSet); err != nil {
-				return err
-			}
-			return nil
-		}
-		return err
-	}
-	if ns.DeletionTimestamp != nil {
-		logger.Infof("%v namespace is in deletion state, will retry!", tp.GetSpec().GetTargetNamespace())
-		return v1alpha1.REQUEUE_EVENT_AFTER
-	}
-	for key, value := range labels {
-		ns.Labels[key] = value
-	}
-	_, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, ns, metav1.UpdateOptions{})
-	return err
 }

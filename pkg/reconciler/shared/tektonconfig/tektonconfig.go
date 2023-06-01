@@ -28,7 +28,6 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chain"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -116,7 +115,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		return err
 	}
 
-	if err := r.ensureTargetNamespaceExists(ctx, tc); err != nil {
+	// reconcile target namespace
+	if err := common.ReconcileTargetNamespace(ctx, nil, tc, r.kubeClientSet); err != nil {
 		return err
 	}
 
@@ -189,70 +189,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	tc.Status.MarkPostInstallComplete()
 
-	if err := r.deleteObsoleteTargetNamespaces(ctx, tc); err != nil {
-		logger.Error(err)
-	}
-
 	// Update the object for any spec changes
 	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, v1.UpdateOptions{}); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (r *Reconciler) ensureTargetNamespaceExists(ctx context.Context, tc *v1alpha1.TektonConfig) error {
-
-	ns, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("operator.tekton.dev/targetNamespace=%s", "true"),
-	})
-
-	if err != nil {
-		return err
-	}
-
-	if len(ns.Items) > 0 {
-		for _, namespace := range ns.Items {
-			if namespace.Name != tc.GetSpec().GetTargetNamespace() {
-				namespace.Labels["operator.tekton.dev/mark-for-deletion"] = "true"
-				_, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &namespace, metav1.UpdateOptions{})
-				if err != nil {
-					return err
-				}
-
-			} else {
-				return nil
-			}
-		}
-	} else {
-		if err := common.CreateTargetNamespace(ctx, nil, tc, r.kubeClientSet); err != nil {
-			if errors.IsAlreadyExists(err) {
-				return r.addTargetNamespaceLabel(ctx, tc.GetSpec().GetTargetNamespace())
-			}
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *Reconciler) deleteObsoleteTargetNamespaces(ctx context.Context, tc *v1alpha1.TektonConfig) error {
-
-	ns, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("operator.tekton.dev/mark-for-deletion=%s", "true"),
-	})
-
-	if err != nil {
-		return err
-	}
-
-	for _, namespace := range ns.Items {
-		if namespace.Name != tc.GetSpec().GetTargetNamespace() {
-			if err := r.kubeClientSet.CoreV1().Namespaces().Delete(ctx, tc.GetSpec().GetTargetNamespace(), metav1.DeleteOptions{}); err != nil {
-				return err
-			}
-		} else {
-			return nil
-		}
 	}
 
 	return nil
@@ -281,19 +220,4 @@ func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonConfig)
 		return err
 	}
 	return v1alpha1.RECONCILE_AGAIN_ERR
-}
-
-func (r *Reconciler) addTargetNamespaceLabel(ctx context.Context, targetNamespace string) error {
-	ns, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, targetNamespace, v1.GetOptions{})
-	if err != nil {
-		return err
-	}
-	labels := ns.GetLabels()
-	if labels == nil {
-		labels = map[string]string{}
-	}
-	labels["operator.tekton.dev/targetNamespace"] = "true"
-	ns.SetLabels(labels)
-	_, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, ns, v1.UpdateOptions{})
-	return err
 }
