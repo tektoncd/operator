@@ -186,6 +186,21 @@ func TestReplaceImages(t *testing.T) {
 		assertTaskImage(t, newManifest.Resources(), "build", "$(inputs.params.BUILDER_IMAGE)")
 	})
 
+	t.Run("replace containers by name", func(t *testing.T) {
+		image := "foo.bar/image/controller"
+		images := map[string]string{
+			"controller_deployment": image,
+		}
+		testData := path.Join("testdata", "test-replace-statefulset-image.yaml")
+
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assertNoEror(t, err)
+		newManifest, err := manifest.Transform(StatefulSetImages(images))
+		assertNoEror(t, err)
+		assertStatefulSetContainersHasImage(t, newManifest.Resources(), "controller-deployment", image)
+		assertStatefulSetContainersHasImage(t, newManifest.Resources(), "sidecar", "busybox")
+	})
+
 	t.Run("replace task addons param image", func(t *testing.T) {
 		paramName := ParamPrefix + "builder_image"
 		image := "foo.bar/image/buildah"
@@ -217,6 +232,25 @@ func assertDeployContainersHasImage(t *testing.T, resources []unstructured.Unstr
 	for _, resource := range resources {
 		deployment := deploymentFor(t, resource)
 		containers := deployment.Spec.Template.Spec.Containers
+
+		for _, container := range containers {
+			if container.Name != name {
+				continue
+			}
+
+			if container.Image != image {
+				t.Errorf("assertion failed; unexpected image: expected %s and got %s", image, container.Image)
+			}
+		}
+	}
+}
+
+func assertStatefulSetContainersHasImage(t *testing.T, resources []unstructured.Unstructured, name string, image string) {
+	t.Helper()
+
+	for _, resource := range resources {
+		set := statefulSetFor(t, resource)
+		containers := set.Spec.Template.Spec.Containers
 
 		for _, container := range containers {
 			if container.Name != name {
@@ -328,6 +362,15 @@ func deploymentFor(t *testing.T, unstr unstructured.Unstructured) *appsv1.Deploy
 		t.Errorf("failed to load deployment yaml")
 	}
 	return deployment
+}
+
+func statefulSetFor(t *testing.T, unstr unstructured.Unstructured) *appsv1.StatefulSet {
+	set := &appsv1.StatefulSet{}
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstr.Object, set)
+	if err != nil {
+		t.Errorf("failed to load deployment yaml")
+	}
+	return set
 }
 
 func TestReplaceNamespaceInDeploymentEnv(t *testing.T) {

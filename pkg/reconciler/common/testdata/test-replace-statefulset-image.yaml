@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-results-postgres
+spec:
+  serviceName: "postgres"
+  replicas: 1
+  selector:
+    matchLabels:
+      run: test
+  template:
+    metadata:
+      labels:
+        run: test
+    spec:
+      containers:
+        - image: busybox
+          name: controller-deployment
+          args: [
+            "-bash-image", "busybox",
+            "-nop=nop"
+          ]
+        - image: busybox
+          name: sidecar
+          args: [
+            "-git", "git"
+          ]
