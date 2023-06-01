@@ -47,6 +47,8 @@ const (
 // and platform transformations applied
 func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
 	instance := comp.(*v1alpha1.TektonResult)
+	resultImgs := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ResultsImagePrefix))
+
 	targetNs := comp.GetSpec().GetTargetNamespace()
 	extra := []mf.Transformer{
 		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdResults),
@@ -57,6 +59,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		enablePVCLogging(instance.Spec.ResultsAPIProperties),
 		common.AddDeploymentRestrictedPSA(),
 		common.AddStatefulSetRestrictedPSA(),
+		common.DeploymentImages(resultImgs),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
