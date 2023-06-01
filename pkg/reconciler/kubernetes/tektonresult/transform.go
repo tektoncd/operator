@@ -60,6 +60,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.AddDeploymentRestrictedPSA(),
 		common.AddStatefulSetRestrictedPSA(),
 		common.DeploymentImages(resultImgs),
+		common.StatefulSetImages(resultImgs),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
