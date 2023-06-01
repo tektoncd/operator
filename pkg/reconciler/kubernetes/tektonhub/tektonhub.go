@@ -174,13 +174,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, th *v1alpha1.TektonHub) 
 
 	th.SetDefaults(ctx)
 
-	// creates target namespace, if not available
-	if err := r.reconcileTargetNamespace(ctx, th); err != nil {
-		logger.Errorw("error on reconciling a namespace",
-			"namespace", th.Spec.GetTargetNamespace(),
+	// reconcile target namespace
+	if err := common.ReconcileTargetNamespace(ctx, nil, th, r.kubeClientSet); err != nil {
+		logger.Errorw("error on reconciling targetNamespace",
+			"targetNamespace", th.Spec.GetTargetNamespace(),
 			err,
 		)
-		return nil
+		return err
 	}
 
 	// execute pre-reconcile, used in extension
@@ -859,18 +859,6 @@ func createDbSecret(name, namespace string, existingSecret *corev1.Secret, th *v
 // Get an ownerRef of TektonHub
 func getOwnerRef(th *v1alpha1.TektonHub) metav1.OwnerReference {
 	return *metav1.NewControllerRef(th, th.GroupVersionKind())
-}
-
-// creates target namespace, if doesn't exist
-func (r *Reconciler) reconcileTargetNamespace(ctx context.Context, th *v1alpha1.TektonHub) error {
-	_, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, th.Spec.GetTargetNamespace(), metav1.GetOptions{})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return common.CreateTargetNamespace(ctx, map[string]string{}, th, r.kubeClientSet)
-		}
-		return err
-	}
-	return nil
 }
 
 // add key value pair to the given configmap name
