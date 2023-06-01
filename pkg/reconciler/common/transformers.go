@@ -207,6 +207,32 @@ func DeploymentImages(images map[string]string) mf.Transformer {
 	}
 }
 
+// StatefulSetImages replaces container and args images.
+func StatefulSetImages(images map[string]string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "StatefulSet" {
+			return nil
+		}
+
+		s := &appsv1.StatefulSet{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, s)
+		if err != nil {
+			return err
+		}
+
+		containers := s.Spec.Template.Spec.Containers
+		replaceContainerImages(containers, images)
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(s)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
 // JobImages replaces container and args images.
 func JobImages(images map[string]string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
