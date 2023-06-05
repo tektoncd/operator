@@ -63,12 +63,30 @@ func Test_updateApiConfig(t *testing.T) {
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
 	assert.NilError(t, err)
 	prop := v1alpha1.ResultsAPIProperties{
-		DBUser:              "postgres",
-		DBPassword:          "postgres",
-		DBHost:              "localhost",
-		TLSHostnameOverride: "localhostTest",
-		DBPort:              5432,
-		LogsAPI:             true,
+		DBUser:                "postgres",
+		DBPassword:            "postgres",
+		DBHost:                "localhost",
+		DBName:                "test",
+		DBPort:                5432,
+		ServerPort:            12345,
+		PrometheusPort:        12347,
+		DBSSLMode:             "enable",
+		DBEnableAutoMigration: true,
+		TLSHostnameOverride:   "localhostTest",
+		AuthDisable:           true,
+		AuthImpersonate:       true,
+		LogLevel:              "warn",
+		LogsAPI:               true,
+		LogsPath:              "/logs/test",
+		LogsType:              "s3",
+		LogsBufferSize:        12321,
+		S3BucketName:          "test",
+		S3Endpoint:            "test",
+		S3HostnameImmutable:   true,
+		S3Region:              "west",
+		S3AccessKeyID:         "secret",
+		S3SecretAccessKey:     "secret",
+		S3MultiPartSize:       123,
 	}
 
 	manifest, err = manifest.Transform(updateApiConfig(prop))
@@ -77,29 +95,29 @@ func Test_updateApiConfig(t *testing.T) {
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
 	assert.NilError(t, err)
 
-	assert.Equal(t, cm.Data["config"], `DB_USER=
+	assert.Equal(t, cm.Data["config"], `DB_USER=postgres
 DB_PASSWORD=postgres
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=
-DB_SSLMODE=disable
-DB_ENABLE_AUTO_MIGRATION=false
-GRPC_PORT=50051
-REST_PORT=8080
-PROMETHEUS_PORT=9090
+SERVER_PORT=12345
+PROMETHEUS_PORT=12347
+DB_NAME=test
+DB_SSLMODE=enable
+DB_ENABLE_AUTO_MIGRATION=true
 TLS_HOSTNAME_OVERRIDE=localhostTest
 TLS_PATH=/etc/tls
-NO_AUTH=false
-LOG_LEVEL=debug
+AUTH_DISABLE=true
+AUTH_IMPERSONATE=true
+LOG_LEVEL=warn
 LOGS_API=true
-LOGS_TYPE=File
-LOGS_BUFFER_SIZE=0
-LOGS_PATH=/logs
-S3_BUCKET_NAME=
-S3_ENDPOINT=
-S3_HOSTNAME_IMMUTABLE=false
-S3_REGION=
-S3_ACCESS_KEY_ID=
-S3_SECRET_ACCESS_KEY=
-S3_MULTI_PART_SIZE=0`)
+LOGS_TYPE=s3
+LOGS_BUFFER_SIZE=12321
+LOGS_PATH=/logs/test
+S3_BUCKET_NAME=test
+S3_ENDPOINT=test
+S3_HOSTNAME_IMMUTABLE=true
+S3_REGION=west
+S3_ACCESS_KEY_ID=secret
+S3_SECRET_ACCESS_KEY=secret
+S3_MULTI_PART_SIZE=123`)
 }
