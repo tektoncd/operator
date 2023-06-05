@@ -58,19 +58,23 @@ type TektonResultSpec struct {
 // ResultsAPIProperties defines the fields which are configurable for
 // Results API server config
 type ResultsAPIProperties struct {
-	DBUser                string `JSON:"db_user,omitempty"`
+	DBUser                string `json:"db_user,omitempty"`
 	DBPassword            string `json:"db_password,omitempty"`
 	DBHost                string `json:"db_host,omitempty"`
 	DBPort                int64  `json:"db_port,omitempty"`
+	DBName                string `json:"db_name,omitempty"`
 	DBSSLMode             string `json:"db_sslmode,omitempty"`
 	DBEnableAutoMigration bool   `json:"db_enable_auto_migration,omitempty"`
+	ServerPort            int64  `json:"server_port,omitempty"`
+	PrometheusPort        int64  `json:"prometheus_port,omitempty"`
 	LogLevel              string `json:"log_level,omitempty"`
 	LogsAPI               bool   `json:"logs_api,omitempty"`
 	LogsType              string `json:"logs_type,omitempty"`
 	LogsBufferSize        int64  `json:"logs_buffer_size,omitempty"`
 	LogsPath              string `json:"logs_path,omitempty"`
 	TLSHostnameOverride   string `json:"tls_hostname_override,omitempty"`
-	NoAuth                bool   `json:"no_auth,omitempty"`
+	AuthDisable           bool   `json:"auth_disable,omitempty"`
+	AuthImpersonate       bool   `json:"auth_impersonate,omitempty"`
 	S3BucketName          string `json:"s3_bucket_name,omitempty"`
 	S3Endpoint            string `json:"s3_endpoint,omitempty"`
 	S3HostnameImmutable   bool   `json:"s3_hostname_immutable,omitempty"`
