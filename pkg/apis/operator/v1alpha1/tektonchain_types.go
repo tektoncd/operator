@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -62,8 +63,13 @@ type TektonChainSpec struct {
 	Config Config `json:"config,omitempty"`
 }
 
-// Chain defines the field to provide chain configuration
 type Chain struct {
+	ChainProperties `json:",inline"`
+	ControllerEnvs  []corev1.EnvVar `json:"controllerEnvs,omitempty"`
+}
+
+// ChainProperties defines the field to provide chain configuration
+type ChainProperties struct {
 	// taskrun artifacts config
 	ArtifactsTaskRunFormat  string  `json:"artifacts.taskrun.format,omitempty"`
 	ArtifactsTaskRunStorage *string `json:"artifacts.taskrun.storage,omitempty"`
