@@ -40,7 +40,7 @@ It is recommended to install the component through [TektonConfig](./TektonConfig
     kubectl get tektonchains.operator.tekton.dev
     ```
 
-## Chain Config 
+## Chain Config
 
 There are some fields which you can define on Tekton Chains CR to configure the behaviour of the chains
 
@@ -55,7 +55,7 @@ There are some fields which you can define on Tekton Chains CR to configure the 
 These fields don't have default values so will be considered only if user passes them. By default, Operator won't add
 these fields in CR and won't configure for chains.
 
-The Default values for some of these fields are already set in chains and are not set by Operator. If user passes some 
+The Default values for some of these fields are already set in chains and are not set by Operator. If user passes some
 values then those will be set for the particular field.
 
 Details of the field can be found in [Tekton Chains Config][chains-config]
@@ -69,6 +69,9 @@ metadata:
   name: chain
 spec:
   targetNamespace: tekton-pipelines
+  controllerEnvs:
+    - name: MONGO_SERVER_URL      # This is the only field supported at the moment which is optional and when added by user, it is added as env to Chains controller
+    value: #value               # This can be provided same as env field of container
   artifacts.taskrun.format: in-toto
   artifacts.taskrun.storage: tekton,oci (comma separated values)
   artifacts.taskrun.signer: x509

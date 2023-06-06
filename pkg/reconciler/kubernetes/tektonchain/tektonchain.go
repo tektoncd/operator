@@ -28,9 +28,12 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -39,6 +42,10 @@ import (
 const (
 	// Chains ConfigMap
 	ChainsConfig = "chains-config"
+	// Chains Container Name
+	chainsContainerName = "tekton-chains-controller"
+	// Deployment Name
+	chainsDeploymentName = "tekton-chains-controller"
 )
 
 // Reconciler implements controller.Reconciler for TektonChain resources.
@@ -391,8 +398,9 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdChains),
 		common.DeploymentImages(chainImages),
 		common.AddConfiguration(instance.Spec.Config),
-		common.AddConfigMapValues(ChainsConfig, instance.Spec.Chain),
+		common.AddConfigMapValues(ChainsConfig, instance.Spec.Chain.ChainProperties),
 		common.AddDeploymentRestrictedPSA(),
+		AddControllerEnv(instance.Spec.Chain.ControllerEnvs),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
 	return common.Transform(ctx, manifest, instance, extra...)
@@ -508,4 +516,58 @@ func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonChain) 
 		return err
 	}
 	return v1alpha1.RECONCILE_AGAIN_ERR
+}
+
+func AddControllerEnv(controllerEnvs []corev1.EnvVar) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" || len(controllerEnvs) == 0 || u.GetName() != chainsDeploymentName {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		for i, c := range d.Spec.Template.Spec.Containers {
+			if c.Name != chainsContainerName {
+				continue
+			}
+
+			existingEnv := c.Env
+			for _, v := range controllerEnvs {
+				newEnv := corev1.EnvVar{
+					Name:      v.Name,
+					Value:     v.Value,
+					ValueFrom: v.ValueFrom,
+				}
+				appendNewEnv := true
+				for existingEnvIndex, env := range existingEnv {
+					// Check for the key, if found replace it
+					if env.Name == newEnv.Name {
+						existingEnv[existingEnvIndex] = newEnv
+						appendNewEnv = false
+						break
+					}
+				}
+				// If not found append the new env
+				if appendNewEnv {
+					existingEnv = append(existingEnv, newEnv)
+				}
+			}
+
+			// update the changes into the actual container
+			d.Spec.Template.Spec.Containers[i].Env = existingEnv
+			break
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
 }
