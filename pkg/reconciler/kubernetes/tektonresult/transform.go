@@ -31,6 +31,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -41,6 +42,20 @@ const (
 	configMetrics    = "tekton-results-config-observability"
 	configPostgresDB = "tekton-results-postgres"
 	pvcLoggingVolume = "tekton-logs"
+	apiContainerName = "api"
+)
+
+var (
+	// allowed property secret keys
+	allowedPropertySecretKeys = []string{
+		"S3_BUCKET_NAME",
+		"S3_ENDPOINT",
+		"S3_HOSTNAME_IMMUTABLE",
+		"S3_REGION",
+		"S3_ACCESS_KEY_ID",
+		"S3_SECRET_ACCESS_KEY",
+		"S3_MULTI_PART_SIZE",
+	}
 )
 
 // transform mutates the passed manifest to one with common, component
@@ -57,6 +72,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.ReplaceNamespaceInDeploymentEnv(targetNs),
 		updateApiConfig(instance.Spec.ResultsAPIProperties),
 		enablePVCLogging(instance.Spec.ResultsAPIProperties),
+		updateEnvWithSecretName(instance.Spec.ResultsAPIProperties),
 		common.AddDeploymentRestrictedPSA(),
 		common.AddStatefulSetRestrictedPSA(),
 		common.DeploymentImages(resultImgs),
@@ -207,6 +223,73 @@ func updateApiConfig(p interface{}) mf.Transformer {
 			return err
 		}
 		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
+// updates env keys with the secret name into "tekton-results-api" deployment in "api" container
+func updateEnvWithSecretName(props v1alpha1.ResultsAPIProperties) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if props.SecretName == "" || u.GetKind() != "Deployment" || u.GetName() != deploymentAPI {
+			return nil
+		}
+
+		dep := &appsv1.Deployment{}
+		err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, dep)
+		if err != nil {
+			return err
+		}
+
+		// find the matching container and add env and secret name object
+		for containerIndex, container := range dep.Spec.Template.Spec.Containers {
+			if container.Name != apiContainerName {
+				continue
+			}
+
+			// get existing env from the container
+			existingEnv := container.Env
+			if existingEnv == nil {
+				existingEnv = make([]corev1.EnvVar, 0)
+			}
+
+			// update only allowed properties
+			for _, propertyKey := range allowedPropertySecretKeys {
+				newEnv := corev1.EnvVar{
+					Name: propertyKey,
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: props.SecretName,
+							},
+							Key:      propertyKey,
+							Optional: ptr.Bool(true),
+						},
+					},
+				}
+				// if existing entry found, replace that
+				appendNewEnv := true
+				for existingIndex, _env := range existingEnv {
+					if _env.Name == propertyKey {
+						existingEnv[existingIndex] = newEnv
+						appendNewEnv = false
+						break
+					}
+				}
+				if appendNewEnv {
+					existingEnv = append(existingEnv, newEnv)
+				}
+			}
+
+			// update the changes into the actual container
+			dep.Spec.Template.Spec.Containers[containerIndex].Env = existingEnv
+			break
+		}
+
+		uObj, err := k8sruntime.DefaultUnstructuredConverter.ToUnstructured(dep)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(uObj)
 		return nil
 	}
 }

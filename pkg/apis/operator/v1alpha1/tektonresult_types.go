@@ -83,6 +83,9 @@ type ResultsAPIProperties struct {
 	S3SecretAccessKey     string `json:"s3_secret_access_key,omitempty"`
 	S3MultiPartSize       int64  `json:"s3_multi_part_size,omitempty"`
 	LoggingPVCName        string `json:"logging_pvc_name"`
+	// name of the secret used to get S3 credentials and
+	// pass it as environment variables to the "tekton-results-api" deployment under "api" container
+	SecretName string `json:"secret_name,omitempty"`
 }
 
 // TektonResultStatus defines the observed state of TektonResult

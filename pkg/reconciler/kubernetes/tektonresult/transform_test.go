@@ -17,6 +17,7 @@ limitations under the License.
 package tektonresult
 
 import (
+	"fmt"
 	"path"
 	"testing"
 
@@ -120,4 +121,48 @@ S3_REGION=west
 S3_ACCESS_KEY_ID=secret
 S3_SECRET_ACCESS_KEY=secret
 S3_MULTI_PART_SIZE=123`)
+}
+
+func TestUpdateEnvWithSecretName(t *testing.T) {
+	testData := path.Join("testdata", "api-deployment.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	secretName := "my_custom_secret"
+
+	deployment := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, deployment)
+	assert.NilError(t, err)
+	prop := v1alpha1.ResultsAPIProperties{
+		SecretName: secretName,
+	}
+
+	manifest, err = manifest.Transform(updateEnvWithSecretName(prop))
+	assert.NilError(t, err)
+
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, deployment)
+	assert.NilError(t, err)
+
+	containerFound := false
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		if container.Name != apiContainerName {
+			continue
+		}
+		containerFound = true
+
+		// verify properties are present in env slice
+		for _, propertyKey := range allowedPropertySecretKeys {
+			envFound := false
+			for _, _env := range container.Env {
+				if _env.Name == propertyKey {
+					envFound = true
+					assert.Equal(t, propertyKey, _env.ValueFrom.SecretKeyRef.Key)
+					assert.Equal(t, secretName, _env.ValueFrom.SecretKeyRef.Name)
+					assert.Equal(t, true, *_env.ValueFrom.SecretKeyRef.Optional)
+				}
+			}
+			assert.Equal(t, true, envFound, fmt.Sprintf("property not found in env:%s", propertyKey))
+		}
+	}
+	assert.Equal(t, true, containerFound, "container not found")
 }
