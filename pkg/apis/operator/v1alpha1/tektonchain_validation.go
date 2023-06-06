@@ -31,6 +31,7 @@ var (
 	allowedX509SignerFulcioProvider   = sets.NewString("", "google", "spiffe", "github", "filesystem")
 	allowedTransparencyConfigEnabled  = sets.NewString("", "true", "false", "manual")
 	allowedArtifactsStorage           = sets.NewString("", "tekton", "oci", "gcs", "docdb", "grafeas", "kafka")
+	allowedControllerEnvs             = sets.NewString("MONGO_SERVER_URL")
 )
 
 func (tc *TektonChain) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -48,7 +49,18 @@ func (tc *TektonChain) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrMissingField("spec.targetNamespace"))
 	}
 
-	return errs.Also(tc.Spec.ValidateChainConfig("spec"))
+	return errs.Also(tc.Spec.ValidateControllerEnv(), tc.Spec.ValidateChainConfig("spec"))
+}
+
+func (tcs *TektonChainSpec) ValidateControllerEnv() (errs *apis.FieldError) {
+	if tcs.ControllerEnvs != nil {
+		for _, v := range tcs.ControllerEnvs {
+			if !allowedControllerEnvs.Has(v.Name) {
+				errs = errs.Also(apis.ErrInvalidKeyName(v.Name, fmt.Sprintf("supported keys are %s", strings.Join(allowedControllerEnvs.List(), ","))))
+			}
+		}
+	}
+	return errs
 }
 
 func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldError) {
