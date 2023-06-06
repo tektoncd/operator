@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"k8s.io/client-go/kubernetes"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
 )
@@ -50,12 +51,14 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		// value through extension not going to affect execution
 		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
 			version, "pipelines-ext", v1alpha1.KindTektonPipeline, nil),
+		kubeClientSet: kubeclient.Get(ctx),
 	}
 	return ext
 }
 
 type openshiftExtension struct {
 	installerSetClient *client.InstallerSetClient
+	kubeClientSet      kubernetes.Interface
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -89,8 +92,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Tek
 	}
 
 	// reconcile namespace with updated labels
-	kubeClientSet := kubeclient.Get(ctx)
-	return common.ReconcileTargetNamespace(ctx, labels, comp, kubeClientSet)
+	return common.ReconcileTargetNamespace(ctx, labels, comp, oe.kubeClientSet)
 }
 
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
