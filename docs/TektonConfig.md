@@ -178,6 +178,55 @@ pipeline:
     kube-api-burst: 10
 ```
 
+
+### Chain
+
+Chain section allows user to customize the Tekton Chain features. This allows user to customize the values in configmaps
+
+Refer to [properties](https://github.com/tektoncd/operator/blob/main/docs/TektonChain.md#chain-config) section in TektonChain for available options
+
+Example:
+
+```yaml
+chain:
+  targetNamespace: tekton-pipelines
+  controllerEnvs:
+    - name: MONGO_SERVER_URL      # This is the only field supported at the moment which is optional and when added by user, it is added as env to Chains controller
+      value: #value               # This can be provided same as env field of container
+  artifacts.taskrun.format: in-toto
+  artifacts.taskrun.storage: tekton,oci (comma separated values)
+  artifacts.taskrun.signer: x509
+  artifacts.oci.storage: oci (comma separated values)
+  artifacts.oci.format: simplesigning
+  artifacts.oci.signer: x509
+  artifacts.pipelinerun.format: in-toto
+  artifacts.pipelinerun.storage: tekton,oci (comma separated values)
+  artifacts.pipelinerun.signer: x509
+  storage.gcs.bucket: #value
+  storage.oci.repository: #value
+  storage.oci.repository.insecure: #value (boolean - true/false)
+  storage.docdb.url: #value
+  storage.grafeas.projectid: #value
+  storage.grafeas.noteid: #value
+  storage.grafeas.notehint: #value
+  builder.id: #value
+  signers.x509.fulcio.enabled: #value (boolean - true/false)
+  signers.x509.fulcio.address: #value
+  signers.x509.fulcio.issuer: #value
+  signers.x509.fulcio.provider: #value
+  signers.x509.identity.token.file: #value
+  signers.x509.tuf.mirror.url: #value
+  signers.kms.kmsref: #value
+  signers.kms.kmsref.auth.address: #value
+  signers.kms.kmsref.auth.token: #value
+  signers.kms.kmsref.auth.oidc.path: #value
+  signers.kms.kmsref.auth.oidc.role: #value
+  signers.kms.kmsref.auth.spire.sock: #value
+  signers.kms.kmsref.auth.spire.audience: #value
+  transparency.enabled: #value (boolean - true/false)
+  transparency.url: #value
+```
+
 ### Pruner
 Pruner provides auto clean up feature for the Tekton `pipelinerun` and `taskrun` resources. In the background pruner container runs `tkn` command.
 
