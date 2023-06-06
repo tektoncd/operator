@@ -37,6 +37,8 @@ spec:
                   name: tekton-results-postgres
             - name: DB_NAME
               value: tekton-results
+            - name: S3_BUCKET_NAME  # used to verify that, this value replaced by transformer
+              value: foo
           image: gcr.io/tekton-releases/github.com/tektoncd/results/cmd/api:9f84a1f@sha256:606816e51ebecb58fccc28f5a95699255ed8742470df673294ce25f69ffc451c
           name: api
           securityContext:

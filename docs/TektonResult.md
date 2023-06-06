@@ -110,10 +110,41 @@ spec:
   s3_secret_access_key: sdfjg
   s3_multi_part_size: 888mb
   logging_pvc_name: tekton-logs
+  secret_name: # optional
 ```
 
 These properties are analogous to the one in configmap of tekton results api `tekton-results-api-config` documented at [api.md]:https://github.com/tektoncd/results/blob/4472848a0fb7c1473cfca8b647553170efac78a1/cmd/api/README.md
 
 
 [result]:https://github.com/tektoncd/results
+
+
+### Property "secret_name":
+`secret_name` - name of your custom secret or leave it as empty. It an optional property. The secret should be created by the user on the `targetNamespace`. The secret can contain `S3_` prefixed keys from the [result API properties](https://github.com/tektoncd/results/blob/fded140081468e418aeb860d16aca3306c675d8b/cmd/api/README.md). Please note: the key of the secret should be in UPPER_CASE and values should be in `string` format.
+The following keys are supported by this secret.
+* `S3_BUCKET_NAME`
+* `S3_ENDPOINT`
+* `S3_HOSTNAME_IMMUTABLE`
+* `S3_REGION`
+* `S3_ACCESS_KEY_ID`
+* `S3_SECRET_ACCESS_KEY`
+* `S3_MULTI_PART_SIZE`
+
+#### Sample Secret File
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my_custom_secret
+  namespace: tekton-pipelines
+type: Opaque
+stringData:
+  S3_BUCKET_NAME: foo
+  S3_ENDPOINT: https://example.localhost.com
+  S3_HOSTNAME_IMMUTABLE: "false"
+  S3_REGION: region-1
+  S3_ACCESS_KEY_ID: "1234"
+  S3_SECRET_ACCESS_KEY: secret_key
+  S3_MULTI_PART_SIZE: "5242880"
+```
 
