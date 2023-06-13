@@ -9,7 +9,7 @@ hub:
   version: v1.11.3
 pipeline:
   github: tektoncd/pipeline
-  version: v0.41.2
+  version: v0.41.3
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
   version: v0.15.6
