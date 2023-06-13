@@ -222,6 +222,14 @@ image-substitutions:
         envKeys:
           - IMAGE_RESULTS_API
 
+- image: registry.redhat.io/ubi8/openjdk-17@sha256:923b18a62d892ec23b6bbf714ecb237a0a0fa3cd225fbf89d39966dd8d421c72
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
+        envKeys:
+          - IMAGE_ADDONS_PARAM_MAVEN_IMAGE
+
 # add third party images which are not replaced by operator
 # but pulled directly by tasks here
 defaultRelatedImages: []

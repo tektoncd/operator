@@ -50,6 +50,7 @@ declare -A IMAGES=(
   ["skopeo-copy"]="registry.redhat.io/rhel8/skopeo"
   ["s2i"]="registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8"
   ["ubi-minimal"]="registry.redhat.io/ubi8/ubi-minimal"
+  ["java"]="registry.redhat.io/ubi8/openjdk-17"
 )
 
 registry_login() {
