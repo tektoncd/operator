@@ -28,7 +28,8 @@ To install Tekton Result on your cluster follow steps as given below:
   Update namespace value in the command if Tekton Pipelines is installed in a different namespace..
 
    ```sh
-   $ kubectl create secret generic tekton-results-postgres --namespace="tekton-pipelines" --from-literal=POSTGRES_USER=postgres --from-literal=POSTGRES_PASSWORD=$(openssl rand -base64 20)
+   export NAMESPACE="tekton-pipelines"
+   kubectl create secret generic tekton-results-postgres --namespace=${NAMESPACE} --from-literal=POSTGRES_USER=result --from-literal=POSTGRES_PASSWORD=$(openssl rand -base64 20)
    ```
 - Generate cert/key pair. 
   Note: Feel free to use any cert management software to do this!
@@ -36,9 +37,9 @@ To install Tekton Result on your cluster follow steps as given below:
   Tekton Results expects the cert/key pair to be stored in a [TLS Kubernetes Secret](https://kubernetes.io/docs/concepts/configuration/secret/#tls-secrets).
   Update the namespace value in below export command if Tekton Pipelines is installed in a different namespace.
    ```sh
+   export NAMESPACE="tekton-pipelines"
    # Generate new self-signed cert.
-   $ export NAMESPACE="tekton-pipelines"
-   $ openssl req -x509 \
+   openssl req -x509 \
    -newkey rsa:4096 \
    -keyout key.pem \
    -out cert.pem \
@@ -47,10 +48,29 @@ To install Tekton Result on your cluster follow steps as given below:
    -subj "/CN=tekton-results-api-service.${NAMESPACE}.svc.cluster.local" \
    -addext "subjectAltName = DNS:tekton-results-api-service.${NAMESPACE}.svc.cluster.local"
    # Create new TLS Secret from cert.
-   $ kubectl create secret tls -n ${NAMESPACE} tekton-results-tls \
+   kubectl create secret tls -n ${NAMESPACE} tekton-results-tls \
    --cert=cert.pem \
    --key=key.pem
    ```
+- Create PVC if using PVC for logging
+```!bash
+cat <<EOF > pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tekton-logs
+  namespace: tekton-pipelines
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+// Apply the above PVC
+kubectl apply -f pvc.yaml
+```
+
 - Once the secrets are created create a TektonResult CR (Check ##Properties) as below.
   ```sh
   kubectl apply -f config/crs/kubernetes/result/operator_v1alpha1_result_cr.yaml
@@ -81,7 +101,7 @@ spec:
   logs_buffer_size: 90kb
   logs_path: /logs
   tls_hostname_override: localhost
-  no_auth: true
+  auth_disable: true
   s3_bucket_name: test
   s3_endpoint: aws.com
   s3_hostname_immutable: sdf
