@@ -18,6 +18,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"path"
 	"testing"
 
@@ -703,5 +704,60 @@ func TestReplaceNamespaceInClusterRoleBinding(t *testing.T) {
 				t.Errorf("namespace not updated")
 			}
 		}
+	}
+}
+
+func TestCopyConfigMapWithForceUpdate(t *testing.T) {
+	tests := []struct {
+		name        string
+		forceUpdate bool
+		data        map[string]string
+	}{
+		{
+			name:        "force-update-disabled",
+			forceUpdate: false,
+			data: map[string]string{
+				"default-tekton-hub-catalog": "foo",
+				"default-kind":               "pipeline",
+			},
+		},
+		{
+			name:        "force-update-enabled",
+			forceUpdate: true,
+			data: map[string]string{
+				"default-tekton-hub-catalog": "foo",
+				"default-kind":               "pipeline",
+				"my_custom_field":            "secret_data",
+			},
+		},
+	}
+
+	configMapName := "hubresolver-config"
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// get a manifest
+			testData := path.Join("testdata", "test-resolver-config.yaml")
+			manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+			assert.NilError(t, err)
+
+			manifest, err = manifest.Transform(CopyConfigMapWithForceUpdate(configMapName, test.data, test.forceUpdate))
+			assert.NilError(t, err)
+
+			cm := &corev1.ConfigMap{}
+			err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
+			assert.NilError(t, err)
+
+			for key, value := range test.data {
+				keyFound := false
+				for mapKey, mapValue := range cm.Data {
+					if mapKey == key {
+						assert.Equal(t, value, mapValue)
+						keyFound = true
+					}
+				}
+				assert.Equal(t, true, keyFound, fmt.Sprintf("key[%s] not found in config map", key))
+			}
+		})
 	}
 }

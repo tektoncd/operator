@@ -767,10 +767,10 @@ func AddJobRestrictedPSA() mf.Transformer {
 	}
 }
 
-// CopyConfigMap will copy all the values from the passed configmap to the configmap
+// CopyConfigMapWithForceUpdate will copy all the values from the passed configmap to the configmap
 // in the manifest, the fields which are in manifest configmap will only be copied
-// any extra field will be ignored
-func CopyConfigMap(configMapName string, expectedValues map[string]string) mf.Transformer {
+// any extra fields will be copied only if the "forceUpdate" is true
+func CopyConfigMapWithForceUpdate(configMapName string, expectedValues map[string]string, forceUpdate bool) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		kind := strings.ToLower(u.GetKind())
 		if kind != "configmap" {
@@ -785,17 +785,17 @@ func CopyConfigMap(configMapName string, expectedValues map[string]string) mf.Tr
 		if err != nil {
 			return err
 		}
-		if cm.Data == nil {
-			// we don't add any field in the manifest configmap
+		if cm.Data == nil && !forceUpdate {
+			// we don't add any field in the manifest configmap, if force update is disabled
 			// we will copy any value if defined by user
 			return nil
 		}
 
-		for key := range cm.Data {
-			// check if the key is defined in the expected map
-			value, ok := expectedValues[key]
-			if ok {
-				// if yes then copy the value
+		for key, value := range expectedValues {
+			// check if the key is defined in the config map
+			_, ok := cm.Data[key]
+			// updates values, if the key found or forceUpdate is enabled
+			if ok || forceUpdate {
 				cm.Data[key] = value
 			}
 		}
@@ -807,6 +807,13 @@ func CopyConfigMap(configMapName string, expectedValues map[string]string) mf.Tr
 		u.SetUnstructuredContent(unstrObj)
 		return nil
 	}
+}
+
+// CopyConfigMap will copy all the values from the passed configmap to the configmap
+// in the manifest, the fields which are in manifest configmap will only be copied
+// any extra field will be ignored
+func CopyConfigMap(configMapName string, expectedValues map[string]string) mf.Transformer {
+	return CopyConfigMapWithForceUpdate(configMapName, expectedValues, false)
 }
 
 func ReplaceDeploymentArg(deploymentName, existingArg, newArg string) mf.Transformer {
