@@ -24,7 +24,7 @@ spec:
     description: Reference of the image buildah will produce.
   - name: BUILDER_IMAGE
     description: The location of the buildah builder image.
-    default: registry.redhat.io/rhel8/buildah@sha256:30fc759d3453a0f9aba2164a0ea7b1aacd65c801abb07f3478ebd4ed7a90aa8f  # 8.5
+    default: registry.redhat.io/rhel8/buildah@sha256:87e828a84e18ff4858ee8ac9d26e202389e64e235247b54cec8bd0620d8f8f2c # 8.8-5
   - name: STORAGE_DRIVER
     description: Set buildah storage driver
     default: vfs
