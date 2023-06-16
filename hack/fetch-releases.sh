@@ -238,14 +238,13 @@ copy_pruner_yaml() {
 }
 
 main() {
-  OPERATORTOOL=$1
-  TARGET=$2
-  CONFIG=${3:=components.yaml}
-  FORCE_FETCH_RELEASE=$4
-  p_version=$(${OPERATORTOOL} -config ${CONFIG} component-version pipeline)
-  t_version=$(${OPERATORTOOL} -config ${CONFIG} component-version triggers)
-  c_version=$(${OPERATORTOOL} -config ${CONFIG} component-version chains)
-  r_version=$(${OPERATORTOOL} -config ${CONFIG} component-version results)
+  TARGET=$1
+  CONFIG=${2:=components.yaml}
+  FORCE_FETCH_RELEASE=$3
+  p_version=$(go run ./cmd/tool component-version ${CONFIG} pipeline)
+  t_version=$(go run ./cmd/tool component-version ${CONFIG} triggers)
+  c_version=$(go run ./cmd/tool component-version ${CONFIG} chains)
+  r_version=$(go run ./cmd/tool component-version ${CONFIG} results)
 
   # get release YAML for Pipelines
   release_yaml pipeline release 00-pipelines ${p_version}
@@ -261,17 +260,17 @@ main() {
   release_yaml results release 00-results ${r_version}
 
   if [[ ${TARGET} != "openshift" ]]; then
-    d_version=$(${OPERATORTOOL} -config ${CONFIG} component-version dashboard)
+    d_version=$(go run ./cmd/tool component-version ${CONFIG} dashboard)
     # get release YAML for Dashboard
     release_yaml dashboard release-full 00-dashboard ${d_version}
     release_yaml dashboard release 00-dashboard ${d_version}
   else
-    pac_version=$(${OPERATORTOOL} -config ${CONFIG} component-version pipelines-as-code)
+    pac_version=$(go run ./cmd/tool component-version ${CONFIG} pipelines-as-code)
     release_yaml_pac pipelinesascode release ${pac_version}
     fetch_openshift_addon_tasks
   fi
 
-  hub_version=$(${OPERATORTOOL} -config ${CONFIG} component-version hub)
+  hub_version=$(go run ./cmd/tool component-version ${CONFIG} hub)
   release_yaml_hub hub ${hub_version}
 
   # copy pruner rbac/sa yaml
