@@ -25,7 +25,7 @@ require (
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/mod v0.11.0
-	golang.org/x/sync v0.1.0
+	golang.org/x/sync v0.3.0
 	gomodules.xyz/jsonpatch/v2 v2.3.0
 	gotest.tools/v3 v3.4.0
 	k8s.io/api v0.27.1
