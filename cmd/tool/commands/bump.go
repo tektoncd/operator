@@ -1,5 +1,4 @@
-// Package main is the main package :D
-package main
+package commands
 
 import (
 	"fmt"
