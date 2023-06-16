@@ -9,7 +9,6 @@ CR            = config/basic
 PLATFORM := $(if $(PLATFORM),--platform $(PLATFORM))
 
 GOLANGCI_VERSION  = v1.47.2
-OPERATOR_TOOLING_VERSION = 0.0.2
 
 BIN      = $(CURDIR)/.bin
 
@@ -44,10 +43,6 @@ $(BIN)/kustomize: | $(BIN) ; $(info $(M) getting kustomize)
 GOLANGCILINT = $(or ${GOLANGCILINT_BIN},${GOLANGCILINT_BIN},$(BIN)/golangci-lint)
 $(BIN)/golangci-lint: | $(BIN) ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
 	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BIN) $(GOLANGCI_VERSION)
-
-OPERATORTOOL = $(or ${OPERATORTOOL_BIN},${OPERATORTOOL_BIN},$(BIN)/operator-tool)
-$(BIN)/operator-tool: | $(BIN) ; $(info $(M) getting operator-tool $(OPERATOR_TOOLING_VERSION))
-	curl -sSfL https://github.com/openshift-pipelines/operator-tooling/releases/download/v$(OPERATOR_TOOLING_VERSION)/operator-tool_${OPERATOR_TOOLING_VERSION}_Linux_x86_64.tar.gz | tar -xz -C $(BIN)
 
 .PHONY: clean-cluster
 clean-cluster: | $(KO) $(KUSTOMIZE) clean-cr; $(info $(M) clean $(TARGET)…) @ ## Cleanup cluster
@@ -100,15 +95,15 @@ bin/%: cmd/% FORCE
 
 .PHONY: compoments/bump
 components/bump: $(OPERATORTOOL)
-	@$(OPERATORTOOL) -config components.yaml bump
+	@go run ./cmd/tool bump components.yaml
 
 .PHONY: components/bump-bugfix
 components/bump-bugfix: $(OPERATORTOOL)
-	@$(OPERATORTOOL) -config components.yaml bump-bugfix
+	@go run ./cmd/tool --bugfix components.yaml
 
 .PHONY: get-releases
-get-releases: $(OPERATORTOOL) |
-	$Q ./hack/fetch-releases.sh $(OPERATORTOOL) $(TARGET) components.yaml $(FORCE_FETCH_RELEASE) || exit ;
+get-releases: |
+	$Q ./hack/fetch-releases.sh $(TARGET) components.yaml $(FORCE_FETCH_RELEASE) || exit ;
 
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
