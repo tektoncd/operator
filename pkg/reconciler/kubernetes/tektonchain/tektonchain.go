@@ -72,6 +72,7 @@ var _ tektonchainreconciler.Finalizer = (*Reconciler)(nil)
 const (
 	createdByValue          = "TektonChain"
 	secretChainInstallerset = "chain-secret"
+	configChainInstallerset = "chain-config"
 )
 
 var (
@@ -85,6 +86,12 @@ var (
 		MatchLabels: map[string]string{
 			v1alpha1.CreatedByKey:     createdByValue,
 			v1alpha1.InstallerSetType: secretChainInstallerset,
+		},
+	}
+	configLs = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			v1alpha1.CreatedByKey:     createdByValue,
+			v1alpha1.InstallerSetType: configChainInstallerset,
 		},
 	}
 )
@@ -230,8 +237,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 			if tc.Spec.GetTargetNamespace() == pipelineNamespace {
 				manifest = manifest.Filter(mf.Not(mf.ByKind("Namespace")))
 			}
-			// remove secret from this installerset as this installerset will be deleted on upgrade
-			manifest = manifest.Filter(mf.Not(mf.ByKind("Secret")))
+			// remove secret and `chains-config` configMap from this installerset as this installerset will be deleted on upgrade
+			manifest = manifest.Filter(mf.Not(mf.ByKind("Secret")),
+				mf.Not(mf.All(mf.ByName("chains-config"), mf.ByKind("ConfigMap"))))
+
 			if err := r.transform(ctx, &manifest, tc); err != nil {
 				logger.Error("manifest transformation failed:  ", err)
 				return err
@@ -247,6 +256,99 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 
 			if _, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 				Update(ctx, installedTIS, metav1.UpdateOptions{}); err != nil {
+				return err
+			}
+
+			// after updating installer set enqueue after a duration
+			// to allow changes to get deployed
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	}
+
+	// Check if a Tekton Chain Config InstallerSet already exists, if not then create one
+	configLabelSector, err := common.LabelSelector(configLs)
+	if err != nil {
+		return err
+	}
+
+	existingConfigInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, configLabelSector)
+	if err != nil {
+		return err
+	}
+	if existingConfigInstallerSet == "" {
+		tc.Status.MarkInstallerSetNotAvailable("Chain Config InstallerSet not available")
+
+		createdIs, err := r.createConfigInstallerSet(ctx, tc)
+		if err != nil {
+			return err
+		}
+
+		return r.updateTektonChainStatus(tc, createdIs)
+	}
+
+	// If exists, then fetch the Tekton Chain Config InstallerSet
+	installedConfigTIS, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		Get(ctx, existingConfigInstallerSet, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			createdIs, err := r.createInstallerSet(ctx, tc)
+			if err != nil {
+				return err
+			}
+			return r.updateTektonChainStatus(tc, createdIs)
+		}
+		logger.Error("failed to get InstallerSet: %s", err)
+		return err
+	}
+
+	configInstallerSetTargetNamespace := installedConfigTIS.Annotations[v1alpha1.TargetNamespaceKey]
+	configInstallerSetReleaseVersion := installedConfigTIS.Labels[v1alpha1.ReleaseVersionKey]
+
+	// Check if TargetNamespace of existing Tekton Chain Config InstallerSet is same as expected
+	// Check if Release Version in Tekton Chain Config InstallerSet is same as expected
+	// If any of the above things is not same then delete the existing Tekton Chain InstallerSet
+	// and create a new with expected properties
+
+	if configInstallerSetTargetNamespace != tc.Spec.TargetNamespace || configInstallerSetReleaseVersion != r.operatorVersion {
+		// Delete the existing Tekton Chain InstallerSet
+		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Delete(ctx, existingConfigInstallerSet, metav1.DeleteOptions{})
+		if err != nil {
+			logger.Error("failed to delete InstallerSet: %s", err)
+			return err
+		}
+
+		// Make sure the Tekton Chain Config InstallerSet is deleted
+		_, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Get(ctx, existingConfigInstallerSet, metav1.GetOptions{})
+		if err == nil {
+			tc.Status.MarkNotReady("Waiting for previous installer set to get deleted")
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		if !apierrors.IsNotFound(err) {
+			logger.Error("failed to get InstallerSet: %s", err)
+			return err
+		}
+		return nil
+
+	} else {
+		// If target namespace and version are not changed then check if Chain
+		// spec is changed by checking hash stored as annotation on
+		// Tekton Chain InstallerSet with computing new hash of TektonChain Spec
+
+		// Hash of TektonChain Spec
+		expectedSpecHash, err := hash.Compute(tc.Spec)
+		if err != nil {
+			return err
+		}
+
+		// spec hash stored on installerSet
+		lastAppliedHash := installedConfigTIS.GetAnnotations()[v1alpha1.LastAppliedHashKey]
+
+		if lastAppliedHash != expectedSpecHash {
+
+			if err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+				Delete(ctx, installedConfigTIS.Name, metav1.DeleteOptions{}); err != nil {
 				return err
 			}
 
@@ -420,8 +522,10 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tc *v1alpha1.Tekton
 		manifest = manifest.Filter(mf.Not(mf.ByKind("Namespace")))
 	}
 
-	// remove secret from this installerset as this installerset will be deleted on upgrade
-	manifest = manifest.Filter(mf.Not(mf.ByKind("Secret")))
+	// remove secret and `chains-config` configMap from this installerset as this installerset will be deleted on upgrade
+	manifest = manifest.Filter(mf.Not(mf.ByKind("Secret")),
+		mf.Not(mf.All(mf.ByName("chains-config"), mf.ByKind("ConfigMap"))))
+
 	if err := r.transform(ctx, &manifest, tc); err != nil {
 		tc.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err
@@ -447,6 +551,39 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tc *v1alpha1.Tekton
 		return nil, err
 	}
 	return createdIs, nil
+}
+
+func (r *Reconciler) createConfigInstallerSet(ctx context.Context, tc *v1alpha1.TektonChain) (*v1alpha1.TektonInstallerSet, error) {
+	manifest := r.manifest
+
+	// remove secret from this installerset as this installerset will be deleted on upgrade
+	manifest = manifest.Filter(mf.ByKind("ConfigMap"), mf.ByName("chains-config"))
+	if err := r.transform(ctx, &manifest, tc); err != nil {
+		tc.Status.MarkNotReady("transformation failed: " + err.Error())
+		return nil, err
+	}
+
+	// generate installer set
+	tis := makeInstallerSet(tc, manifest, configChainInstallerset, r.operatorVersion)
+
+	// compute the hash of tektonchain spec and store as an annotation
+	// in further reconciliation we compute hash of tc spec and check with
+	// annotation, if they are same then we skip updating the object
+	// otherwise we update the manifest
+	specHash, err := hash.Compute(tc.Spec)
+	if err != nil {
+		return nil, err
+	}
+	tis.Annotations[v1alpha1.LastAppliedHashKey] = specHash
+
+	// create installer set
+	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		Create(ctx, tis, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return createdIs, nil
+
 }
 
 func (r *Reconciler) createSecretInstallerSet(ctx context.Context, tc *v1alpha1.TektonChain) (*v1alpha1.TektonInstallerSet, error) {
