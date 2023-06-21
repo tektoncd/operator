@@ -38,6 +38,8 @@ The TektonConfig CR provides the following features
       nodeSelector: <>
       tolerations: []
       priorityClassName: system-cluster-critical
+    chain:
+      disabled: false
     pipeline:
       disable-affinity-assistant: false
       disable-creds-init: false
@@ -186,6 +188,7 @@ Example:
 
 ```yaml
 chain:
+  disabled: false                  # - `disabled` : if the value set as `true`, chains feature will be disabled (default: `false`)
   targetNamespace: tekton-pipelines
   controllerEnvs:
     - name: MONGO_SERVER_URL      # This is the only field supported at the moment which is optional and when added by user, it is added as env to Chains controller
