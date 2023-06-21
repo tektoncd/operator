@@ -64,6 +64,8 @@ type TektonChainSpec struct {
 }
 
 type Chain struct {
+	// enable or disable chains feature
+	Disabled        bool `json:"disabled"`
 	ChainProperties `json:",inline"`
 	ControllerEnvs  []corev1.EnvVar `json:"controllerEnvs,omitempty"`
 }

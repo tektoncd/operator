@@ -20,6 +20,7 @@ It is recommended to install the component through [TektonConfig](./TektonConfig
     metadata:
       name: chain
     spec:
+      disabled: false
       targetNamespace: tekton-pipelines
     ```
 
@@ -31,6 +32,7 @@ It is recommended to install the component through [TektonConfig](./TektonConfig
     metadata:
       name: chain
     spec:
+      disabled: false
       targetNamespace: openshift-pipelines
     ```
 
@@ -68,10 +70,11 @@ kind: TektonChain
 metadata:
   name: chain
 spec:
+  disabled: false
   targetNamespace: tekton-pipelines
   controllerEnvs:
     - name: MONGO_SERVER_URL      # This is the only field supported at the moment which is optional and when added by user, it is added as env to Chains controller
-    value: #value               # This can be provided same as env field of container
+      value: #value               # This can be provided same as env field of container
   artifacts.taskrun.format: in-toto
   artifacts.taskrun.storage: tekton,oci (comma separated values)
   artifacts.taskrun.signer: x509
