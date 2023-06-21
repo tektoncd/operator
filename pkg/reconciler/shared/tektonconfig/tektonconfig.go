@@ -149,19 +149,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			return v1alpha1.REQUEUE_EVENT_AFTER
 
 		}
-
-		tektonchain := chain.GetTektonChainCR(tc)
-		if _, err := chain.EnsureTektonChainExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains(), tektonchain); err != nil {
-			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChain: %s", err.Error()))
-			return v1alpha1.REQUEUE_EVENT_AFTER
-		}
-
 	} else {
 		if err := trigger.EnsureTektonTriggerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers()); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
+	}
 
+	if !tc.Spec.Chain.Disabled {
+		tektonchain := chain.GetTektonChainCR(tc)
+		if _, err := chain.EnsureTektonChainExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains(), tektonchain); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChain: %s", err.Error()))
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	} else {
 		if err := chain.EnsureTektonChainCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains()); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChain: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
