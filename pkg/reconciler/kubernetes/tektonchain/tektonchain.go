@@ -63,6 +63,8 @@ type Reconciler struct {
 	// pipelineInformer provides access to a shared informer and lister for
 	// TektonPipelines
 	pipelineInformer pipelineinformer.TektonPipelineInformer
+	// Metrics Recorder
+	recorder *Recorder
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -99,7 +101,10 @@ var (
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two.
 func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain) pkgreconciler.Event {
+
 	logger := logging.FromContext(ctx)
+	defer r.recorder.LogMetrics(r.chainVersion, tc.Spec, logger)
+
 	tc.Status.InitializeConditions()
 	tc.Status.ObservedGeneration = tc.Generation
 
@@ -302,7 +307,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 		if err != nil {
 			return err
 		}
-
 		return r.updateTektonChainStatus(tc, createdIs)
 	}
 
