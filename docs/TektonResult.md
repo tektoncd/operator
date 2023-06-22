@@ -73,7 +73,10 @@ kubectl apply -f pvc.yaml
 
 - Once the secrets are created create a TektonResult CR (Check ##Properties) as below.
   ```sh
+  # For kubernetes, please use:
   kubectl apply -f config/crs/kubernetes/result/operator_v1alpha1_result_cr.yaml
+  # For OpenShift, please use:
+  kubectl apply -f config/crs/openshift/result/operator_v1alpha1_result_cr.yaml
   ```
 - Check the status of installation using following command
   ```sh
