@@ -112,6 +112,9 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 	case "chains":
 		var chain v1alpha1.TektonChain
 		return AppendTarget(ctx, ctrl.Manifest, &chain)
+	case "results":
+		var results v1alpha1.TektonResult
+		return AppendTarget(ctx, ctrl.Manifest, &results)
 	case "pipelines-as-code":
 		pacLocation := filepath.Join(os.Getenv(KoEnvKey), "tekton-addon", "pipelines-as-code")
 		return AppendManifest(ctrl.Manifest, pacLocation)

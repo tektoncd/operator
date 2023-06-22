@@ -60,6 +60,8 @@ type Reconciler struct {
 	pipelineInformer pipelineInformer.TektonPipelineInformer
 
 	operatorVersion string
+	resultsVersion  string
+	recorder        *Recorder
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -103,6 +105,8 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 // converge the two.
 func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResult) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
+	defer r.recorder.LogMetrics(r.resultsVersion, tr.Spec, logger)
+
 	tr.Status.InitializeConditions()
 	tr.Status.ObservedGeneration = tr.Generation
 
@@ -157,7 +161,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 		if err != nil {
 			return err
 		}
-
 		return r.updateTektonResultsStatus(ctx, tr, createdIs)
 	}
 
