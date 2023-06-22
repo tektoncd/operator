@@ -19,9 +19,6 @@ package tektonresult
 import (
 	"context"
 
-	"github.com/go-logr/zapr"
-	mfc "github.com/manifestival/client-go-client"
-	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
@@ -29,7 +26,6 @@ import (
 	tektonResultInformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonresult"
 	tektonResultReconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonresult"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"go.uber.org/zap"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/configmap"
@@ -37,6 +33,8 @@ import (
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
+
+const versionConfigMap = "results-info"
 
 // NewController initializes the controller and is called by the generated code
 // Registers event handlers to enqueue events
@@ -49,14 +47,14 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 	return func(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 		logger := logging.FromContext(ctx)
 
-		mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
-		if err != nil {
-			logger.Fatalw("Error creating client from injected config", zap.Error(err))
+		ctrl := common.Controller{
+			Logger:           logger,
+			VersionConfigMap: versionConfigMap,
 		}
-		mflogger := zapr.NewLogger(logger.Named("manifestival").Desugar())
-		manifest, err := mf.ManifestFrom(mf.Slice{}, mf.UseClient(mfclient), mf.UseLogger(mflogger))
-		if err != nil {
-			logger.Fatalw("Error creating initial manifest", zap.Error(err))
+
+		manifest, resultsVer := ctrl.InitController(ctx, common.PayloadOptions{})
+		if resultsVer == common.ReleaseVersionUnknown {
+			resultsVer = "devel"
 		}
 
 		operatorVer, err := common.OperatorVersion(ctx)
@@ -64,8 +62,9 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatal(err)
 		}
 
-		if err := common.AppendTarget(ctx, &manifest, &v1alpha1.TektonResult{}); err != nil {
-			logger.Fatalw("Error fetching manifests", zap.Error(err))
+		recorder, err := NewRecorder()
+		if err != nil {
+			logger.Fatalw("Error starting Results metrics")
 		}
 
 		c := &Reconciler{
@@ -75,6 +74,8 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			manifest:          manifest,
 			pipelineInformer:  tektonPipelineInformer.Get(ctx),
 			operatorVersion:   operatorVer,
+			resultsVersion:    resultsVer,
+			recorder:          recorder,
 		}
 		impl := tektonResultReconciler.NewImpl(ctx, c)
 
