@@ -62,6 +62,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatal(err)
 		}
 
+		metrics, err := NewRecorder()
+		if err != nil {
+			logger.Fatal(err)
+		}
+
 		c := &Reconciler{
 			operatorClientSet: operatorclient.Get(ctx),
 			extension:         generator(ctx),
@@ -69,6 +74,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			pipelineInformer:  tektonPipelineinformer.Get(ctx),
 			operatorVersion:   operatorVer,
 			chainVersion:      chainVer,
+			recorder:          metrics,
 		}
 		impl := tektonChainreconciler.NewImpl(ctx, c)
 
