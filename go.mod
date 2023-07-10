@@ -19,7 +19,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
-	github.com/tektoncd/pipeline v0.48.0
+	github.com/tektoncd/pipeline v0.49.0
 	github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7
 	github.com/tektoncd/triggers v0.24.1
 	go.opencensus.io v0.24.0
