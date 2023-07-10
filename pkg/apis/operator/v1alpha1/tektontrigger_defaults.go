@@ -19,7 +19,7 @@ package v1alpha1
 import (
 	"context"
 
-	"github.com/tektoncd/pipeline/pkg/apis/config"
+	"github.com/tektoncd/triggers/pkg/apis/config"
 )
 
 var (
