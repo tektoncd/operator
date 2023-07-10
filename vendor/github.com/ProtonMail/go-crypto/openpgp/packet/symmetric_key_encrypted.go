@@ -198,7 +198,7 @@ func SerializeSymmetricKeyEncryptedReuseKey(w io.Writer, sessionKey []byte, pass
 	}
 	cipherFunc := config.Cipher()
 	// cipherFunc must be AES
-	if !cipherFunc.IsSupported() ||  cipherFunc < CipherAES128 || cipherFunc > CipherAES256 {
+	if !cipherFunc.IsSupported() || cipherFunc < CipherAES128 || cipherFunc > CipherAES256 {
 		return errors.UnsupportedError("unsupported cipher: " + strconv.Itoa(int(cipherFunc)))
 	}
 
@@ -232,7 +232,7 @@ func SerializeSymmetricKeyEncryptedReuseKey(w io.Writer, sessionKey []byte, pass
 
 	if version == 5 {
 		// Scalar octet count
-		buf = append(buf, byte(3 + len(s2kBytes) + config.AEAD().Mode().IvLength()))
+		buf = append(buf, byte(3+len(s2kBytes)+config.AEAD().Mode().IvLength()))
 	}
 
 	// Cipher function
