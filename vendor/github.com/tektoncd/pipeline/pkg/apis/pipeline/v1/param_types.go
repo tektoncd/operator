@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/substitution"
@@ -28,12 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"knative.dev/pkg/apis"
 )
-
-// exactVariableSubstitutionFormat matches strings that only contain a single reference to result or param variables, but nothing else
-// i.e. `$(result.resultname)` is a match, but `foo $(result.resultname)` is not.
-const exactVariableSubstitutionFormat = `^\$\([_a-zA-Z0-9.-]+(\.[_a-zA-Z0-9.-]+)*(\[([0-9]+|\*)\])?\)$`
-
-var exactVariableSubstitutionRegex = regexp.MustCompile(exactVariableSubstitutionFormat)
 
 // ParamsPrefix is the prefix used in $(...) expressions referring to parameters
 const ParamsPrefix = "params"
@@ -195,9 +188,9 @@ func (ps Params) extractParamMapArrVals() map[string][]string {
 // Params is a list of Param
 type Params []Param
 
-// extractParamArrayLengths extract and return the lengths of all array params
+// ExtractParamArrayLengths extract and return the lengths of all array params
 // Example of returned value: {"a-array-params": 2,"b-array-params": 2 }
-func (ps Params) extractParamArrayLengths() map[string]int {
+func (ps Params) ExtractParamArrayLengths() map[string]int {
 	// Collect all array params
 	arrayParamsLengths := make(map[string]int)
 
@@ -232,9 +225,9 @@ func (ps Params) ReplaceVariables(stringReplacements map[string]string, arrayRep
 	return params
 }
 
-// extractParamArrayLengths extract and return the lengths of all array params
+// ExtractDefaultParamArrayLengths extract and return the lengths of all array params
 // Example of returned value: {"a-array-params": 2,"b-array-params": 2 }
-func (ps ParamSpecs) extractParamArrayLengths() map[string]int {
+func (ps ParamSpecs) ExtractDefaultParamArrayLengths() map[string]int {
 	// Collect all array params
 	arrayParamsLengths := make(map[string]int)
 
@@ -247,30 +240,6 @@ func (ps ParamSpecs) extractParamArrayLengths() map[string]int {
 		}
 	}
 	return arrayParamsLengths
-}
-
-// validateOutofBoundArrayParams validates if the array indexing params are out of bound
-// example of arrayIndexingParams: ["$(params.a-array-param[1])", "$(params.b-array-param[2])"]
-// example of arrayParamsLengths: {"a-array-params": 2,"b-array-params": 2 }
-func validateOutofBoundArrayParams(arrayIndexingParams []string, arrayParamsLengths map[string]int) error {
-	outofBoundParams := sets.String{}
-	for _, val := range arrayIndexingParams {
-		indexString := substitution.ExtractIndexString(val)
-		idx, _ := substitution.ExtractIndex(indexString)
-		// this will extract the param name from reference
-		// e.g. $(params.a-array-param[1]) -> a-array-param
-		paramName, _, _ := substitution.ExtractVariablesFromString(substitution.TrimArrayIndex(val), "params")
-
-		if paramLength, ok := arrayParamsLengths[paramName[0]]; ok {
-			if idx >= paramLength {
-				outofBoundParams.Insert(val)
-			}
-		}
-	}
-	if outofBoundParams.Len() > 0 {
-		return fmt.Errorf("non-existent param references:%v", outofBoundParams.List())
-	}
-	return nil
 }
 
 // extractArrayIndexingParamRefs takes a string of the form `foo-$(params.array-param[1])-bar` and extracts the portions of the string that reference an element in an array param.
@@ -497,7 +466,7 @@ func (paramValues ParamValue) MarshalJSON() ([]byte, error) {
 func (paramValues *ParamValue) ApplyReplacements(stringReplacements map[string]string, arrayReplacements map[string][]string, objectReplacements map[string]map[string]string) {
 	switch paramValues.Type {
 	case ParamTypeArray:
-		var newArrayVal []string
+		newArrayVal := []string{}
 		for _, v := range paramValues.ArrayVal {
 			newArrayVal = append(newArrayVal, substitution.ApplyArrayReplacements(v, stringReplacements, arrayReplacements)...)
 		}
@@ -529,7 +498,7 @@ func (paramValues *ParamValue) applyOrCorrect(stringReplacements map[string]stri
 
 	// trim the head "$(" and the tail ")" or "[*])"
 	// i.e. get "params.name" from "$(params.name)" or "$(params.name[*])"
-	trimedStringVal := StripStarVarSubExpression(stringVal)
+	trimedStringVal := substitution.StripStarVarSubExpression(stringVal)
 
 	// if the stringVal is a reference to a string param
 	if _, ok := stringReplacements[trimedStringVal]; ok {
@@ -549,11 +518,6 @@ func (paramValues *ParamValue) applyOrCorrect(stringReplacements map[string]stri
 		paramValues.ObjectVal = objectReplacements[trimedStringVal]
 		paramValues.Type = ParamTypeObject
 	}
-}
-
-// StripStarVarSubExpression strips "$(target[*])"" to get "target"
-func StripStarVarSubExpression(s string) string {
-	return strings.TrimSuffix(strings.TrimSuffix(strings.TrimPrefix(s, "$("), ")"), "[*]")
 }
 
 // NewStructuredValues creates an ParamValues of type ParamTypeString or ParamTypeArray, based on
