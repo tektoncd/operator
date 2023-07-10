@@ -47,7 +47,7 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 		RequireGitSshSecretKnownHosts:            ptr.Bool(false),
 		EnableTektonOciBundles:                   ptr.Bool(false),
 		EnableCustomTasks:                        ptr.Bool(true),
-		EnableApiFields:                          "stable",
+		EnableApiFields:                          "beta",
 		EmbeddedStatus:                           "",
 		ScopeWhenExpressionsToTask:               nil,
 		SendCloudEventsForRuns:                   ptr.Bool(false),
