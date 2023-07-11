@@ -90,7 +90,7 @@ func GeneratePipelineTemplates(templatePath string, manifest *mf.Manifest) error
 	}
 	pipelines = append(pipelines, wps...)
 
-	generatedPipelines, err := mf.ManifestFrom(mf.Slice(pipelines), mf.UseClient(manifest.Client))
+	generatedPipelines, err := mf.ManifestFrom(mf.Slice(pipelines))
 	if err != nil {
 		return err
 	}

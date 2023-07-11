@@ -8,7 +8,6 @@ require (
 	github.com/go-logr/zapr v1.2.4
 	github.com/google/go-cmp v0.5.9
 	github.com/manifestival/client-go-client v0.5.0
-	github.com/manifestival/controller-runtime-client v0.4.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
 	github.com/openshift-pipelines/pipelines-as-code v0.19.2
@@ -34,7 +33,6 @@ require (
 	k8s.io/client-go v1.5.2
 	k8s.io/code-generator v0.27.1
 	knative.dev/pkg v0.0.0-20230404101938-ee73c9355c9d
-	sigs.k8s.io/controller-runtime v0.14.6
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -290,6 +288,7 @@ require (
 	k8s.io/klog/v2 v2.100.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2 // indirect
+	sigs.k8s.io/controller-runtime v0.14.6 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/release-utils v0.7.4 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
