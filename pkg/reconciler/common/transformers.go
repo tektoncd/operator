@@ -619,10 +619,8 @@ func AddDeploymentRestrictedPSA() mf.Transformer {
 			d.Spec.Template.Spec.SecurityContext.RunAsNonRoot = ptr.Bool(runAsNonRootValue)
 		}
 
-		if d.Spec.Template.Spec.SecurityContext.SeccompProfile == nil {
-			d.Spec.Template.Spec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			}
+		if d.Spec.Template.Spec.SecurityContext.SeccompProfile != nil {
+			d.Spec.Template.Spec.SecurityContext.SeccompProfile = nil
 		}
 
 		for i := range d.Spec.Template.Spec.Containers {
@@ -664,10 +662,8 @@ func AddStatefulSetRestrictedPSA() mf.Transformer {
 			s.Spec.Template.Spec.SecurityContext.RunAsNonRoot = ptr.Bool(runAsNonRootValue)
 		}
 
-		if s.Spec.Template.Spec.SecurityContext.SeccompProfile == nil {
-			s.Spec.Template.Spec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			}
+		if s.Spec.Template.Spec.SecurityContext.SeccompProfile != nil {
+			s.Spec.Template.Spec.SecurityContext.SeccompProfile = nil
 		}
 
 		for i := range s.Spec.Template.Spec.Containers {
@@ -709,10 +705,8 @@ func AddJobRestrictedPSA() mf.Transformer {
 			jb.Spec.Template.Spec.SecurityContext.RunAsNonRoot = ptr.Bool(runAsNonRootValue)
 		}
 
-		if jb.Spec.Template.Spec.SecurityContext.SeccompProfile == nil {
-			jb.Spec.Template.Spec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{
-				Type: corev1.SeccompProfileTypeRuntimeDefault,
-			}
+		if jb.Spec.Template.Spec.SecurityContext.SeccompProfile != nil {
+			jb.Spec.Template.Spec.SecurityContext.SeccompProfile = nil
 		}
 
 		for i := range jb.Spec.Template.Spec.Containers {

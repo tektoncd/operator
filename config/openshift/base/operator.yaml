@@ -30,8 +30,6 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
       serviceAccountName: openshift-pipelines-operator
       containers:
       - name: openshift-pipelines-operator-lifecycle  # all reconcilers except tektoninstallerset reconciler
