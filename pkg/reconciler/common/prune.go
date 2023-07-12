@@ -384,9 +384,6 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 							Tolerations:        tC.Spec.Config.Tolerations,
 							SecurityContext: &corev1.PodSecurityContext{
 								RunAsNonRoot: &runAsNonRoot,
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
 							},
 						},
 					},
