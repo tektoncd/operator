@@ -47,3 +47,6 @@ spec:
           ports:
             - containerPort: 8000
             - containerPort: 4200
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
