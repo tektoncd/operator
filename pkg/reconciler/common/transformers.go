@@ -630,6 +630,9 @@ func AddDeploymentRestrictedPSA() mf.Transformer {
 			}
 			c.SecurityContext.AllowPrivilegeEscalation = ptr.Bool(allowPrivilegedEscalationValue)
 			c.SecurityContext.Capabilities = &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}
+			if c.SecurityContext.SeccompProfile != nil {
+				c.SecurityContext.SeccompProfile = nil
+			}
 		}
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
@@ -673,6 +676,9 @@ func AddStatefulSetRestrictedPSA() mf.Transformer {
 			}
 			c.SecurityContext.AllowPrivilegeEscalation = ptr.Bool(allowPrivilegedEscalationValue)
 			c.SecurityContext.Capabilities = &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}
+			if c.SecurityContext.SeccompProfile != nil {
+				c.SecurityContext.SeccompProfile = nil
+			}
 		}
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(s)
@@ -719,6 +725,9 @@ func AddJobRestrictedPSA() mf.Transformer {
 			}
 			if c.SecurityContext.Capabilities == nil {
 				c.SecurityContext.Capabilities = &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}}
+			}
+			if c.SecurityContext.SeccompProfile != nil {
+				c.SecurityContext.SeccompProfile = nil
 			}
 		}
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(jb)

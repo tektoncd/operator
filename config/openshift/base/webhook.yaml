@@ -32,6 +32,8 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: openshift-pipelines-operator
       containers:
       - name: tekton-operator-webhook
