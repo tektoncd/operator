@@ -30,8 +30,6 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
       volumes:
         - name: catalog-source
           persistentVolumeClaim:
