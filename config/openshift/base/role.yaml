@@ -358,3 +358,9 @@ rules:
   - watch
   - create
   - delete
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - list
