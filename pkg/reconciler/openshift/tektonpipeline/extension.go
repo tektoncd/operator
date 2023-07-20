@@ -60,6 +60,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	trns := []mf.Transformer{
 		occommon.ApplyCABundles,
 		occommon.RemoveRunAsUser(),
+		occommon.RemoveSecCompForDeployment(),
 	}
 
 	pipeline := comp.(*v1alpha1.TektonPipeline)

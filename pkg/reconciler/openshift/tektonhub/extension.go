@@ -101,6 +101,8 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		openshiftCommon.RemoveRunAsUserForJob(),
 		openshiftCommon.RemoveFsGroupForDeployment(),
 		openshiftCommon.RemoveFsGroupForJob(),
+		openshiftCommon.RemoveSecCompForDeployment(),
+		openshiftCommon.RemoveSecCompForJob(),
 	}
 }
 
