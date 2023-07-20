@@ -18,6 +18,8 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: tkn-cli-serve
           image: docker.io/rupali/serve-tkn:v2

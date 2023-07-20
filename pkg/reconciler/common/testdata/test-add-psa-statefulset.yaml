@@ -22,10 +22,6 @@ spec:
         app.kubernetes.io/part-of: tekton-results
         app.kubernetes.io/version: v0.4.0
     spec:
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
       containers:
         - envFrom:
             - configMapRef:
@@ -42,9 +38,6 @@ spec:
               name: postgredb
             - mountPath: /docker-entrypoint-initdb.d
               name: sql-initdb
-          securityContext:
-            seccompProfile:
-              type: RuntimeDefault
       volumes:
         - configMap:
             name: tekton-results-sql-initdb-config

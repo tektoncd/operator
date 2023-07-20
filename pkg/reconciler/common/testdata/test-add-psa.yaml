@@ -28,10 +28,6 @@ spec:
       labels:
         app: tekton-hub-api
     spec:
-      securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
       volumes:
       - name: catalog-source
         persistentVolumeClaim:
@@ -51,6 +47,3 @@ spec:
           ports:
             - containerPort: 8000
             - containerPort: 4200
-          securityContext:
-            seccompProfile:
-              type: RuntimeDefault
