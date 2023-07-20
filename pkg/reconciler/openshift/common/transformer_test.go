@@ -148,6 +148,35 @@ func TestRemoveFsGroup(t *testing.T) {
 	}
 }
 
+func TestRemoveSecComp(t *testing.T) {
+	testData := path.Join("testdata", "test-add-psa.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	testData = path.Join("testdata", "test-add-psa-expected.yaml")
+	expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	newManifest, err := manifest.Transform(RemoveSecCompForDeployment())
+	assert.NilError(t, err)
+
+	got := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(newManifest.Resources()[0].Object, got)
+	if err != nil {
+		t.Errorf("failed to load deployment yaml")
+	}
+
+	expected := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(expectedManifest.Resources()[0].Object, expected)
+	if err != nil {
+		t.Errorf("failed to load deployment yaml")
+	}
+
+	if d := cmp.Diff(expected, got); d != "" {
+		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
+	}
+}
+
 func TestUpdateServiceMonitorTargetNamespace(t *testing.T) {
 	targetNs := "its-me-ns"
 	testData := path.Join("testdata", "test-inject-ns-in-servicemonitor.yaml")

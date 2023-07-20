@@ -35,6 +35,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	return []mf.Transformer{
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
+		occommon.RemoveSecCompForDeployment(),
 		occommon.ApplyCABundles,
 		replaceDeploymentArgs("-el-security-context", "false"),
 		replaceDeploymentArgs("-el-events", "enable"),

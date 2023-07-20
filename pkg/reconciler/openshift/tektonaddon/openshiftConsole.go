@@ -25,6 +25,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -82,6 +83,7 @@ func filterAndTransformOCPResources() client.FilterAndTransform {
 		tfs := []mf.Transformer{
 			common.DeploymentImages(images),
 			common.AddConfiguration(addon.Spec.Config),
+			occommon.RemoveSecCompForDeployment(),
 		}
 		if err := transformers(ctx, manifest, addon, tfs...); err != nil {
 			return nil, err

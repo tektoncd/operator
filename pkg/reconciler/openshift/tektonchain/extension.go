@@ -43,6 +43,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
 		occommon.ApplyCABundles,
+		occommon.RemoveSecCompForDeployment(),
 	}
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {

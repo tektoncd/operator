@@ -171,6 +171,72 @@ func RemoveFsGroupForJob() mf.Transformer {
 	}
 }
 
+// RemoveSecCompForDeployment will remove seccomp in a deployment
+func RemoveSecCompForDeployment() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		if d.Spec.Template.Spec.SecurityContext.SeccompProfile != nil {
+			d.Spec.Template.Spec.SecurityContext.SeccompProfile = nil
+		}
+
+		for i := range d.Spec.Template.Spec.Containers {
+			c := &d.Spec.Template.Spec.Containers[i]
+			if c.SecurityContext.SeccompProfile != nil {
+				c.SecurityContext.SeccompProfile = nil
+			}
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
+// RemoveSecCompForJob will remove seccomp in a job
+func RemoveSecCompForJob() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Job" {
+			return nil
+		}
+
+		jb := &batchv1.Job{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, jb)
+		if err != nil {
+			return err
+		}
+
+		if jb.Spec.Template.Spec.SecurityContext.SeccompProfile != nil {
+			jb.Spec.Template.Spec.SecurityContext.SeccompProfile = nil
+		}
+
+		for i := range jb.Spec.Template.Spec.Containers {
+			c := &jb.Spec.Template.Spec.Containers[i]
+			if c.SecurityContext.SeccompProfile != nil {
+				c.SecurityContext.SeccompProfile = nil
+			}
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(jb)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
 func UpdateServiceMonitorTargetNamespace(targetNamespace string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() != "ServiceMonitor" {
