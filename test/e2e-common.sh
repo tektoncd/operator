@@ -56,6 +56,9 @@ function tektonconfig_ready_wait() {
     sleep 5
     if is_tektonconfig_cr_created && is_tektonconfig_cr_uptodate && is_tektonconfig_cr_ready; then
       TEKTONCONFIG_READY=True
+    elif is_tektonconfig_cr_created; then
+      echo current status of tektonconfig
+      kubectl get tektonconfig config
     fi
   done
   echo "TektonConfig config Ready: True"

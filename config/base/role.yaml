@@ -400,3 +400,9 @@ rules:
   - delete
   - update
   - patch
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - list
