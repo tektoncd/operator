@@ -365,12 +365,16 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 	runAsNonRoot := true
 	runAsUser := ptr.Int64(65532)
 	fsGroup := ptr.Int64(65532)
+	secCompProfile := &corev1.SeccompProfile{
+		Type: corev1.SeccompProfileTypeRuntimeDefault,
+	}
 
 	// if it is a openshift platform remove the user and fsGroup ids
 	// those ids will be allocated dynamically
 	if v1alpha1.IsOpenShiftPlatform() {
 		runAsUser = nil
 		fsGroup = nil
+		secCompProfile = nil
 	}
 
 	cj := &batchv1.CronJob{
@@ -401,12 +405,10 @@ func createCronJob(ctx context.Context, kc kubernetes.Interface, cronName, targe
 							NodeSelector:       tC.Spec.Config.NodeSelector,
 							Tolerations:        tC.Spec.Config.Tolerations,
 							SecurityContext: &corev1.PodSecurityContext{
-								RunAsNonRoot: &runAsNonRoot,
-								SeccompProfile: &corev1.SeccompProfile{
-									Type: corev1.SeccompProfileTypeRuntimeDefault,
-								},
-								RunAsUser: runAsUser,
-								FSGroup:   fsGroup,
+								RunAsNonRoot:   &runAsNonRoot,
+								SeccompProfile: secCompProfile,
+								RunAsUser:      runAsUser,
+								FSGroup:        fsGroup,
 							},
 						},
 					},
