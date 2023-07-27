@@ -563,8 +563,8 @@ func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1
 	logger := logging.FromContext(ctx)
 
 	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.HubImagePrefix))
-	trans := r.extension.Transformers(th)
-	extra := []mf.Transformer{
+	extensionTransformers := r.extension.Transformers(th)
+	transformers := []mf.Transformer{
 		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdHub),
 		mf.InjectOwner(th),
 		mf.InjectNamespace(namespace),
@@ -581,9 +581,9 @@ func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1
 		common.AddJobRestrictedPSA(),
 	}
 
-	trans = append(trans, extra...)
+	transformers = append(transformers, extensionTransformers...)
 
-	manifest, err := manifest.Transform(trans...)
+	manifest, err := manifest.Transform(transformers...)
 
 	if err != nil {
 		logger.Error("failed to transform manifest")
