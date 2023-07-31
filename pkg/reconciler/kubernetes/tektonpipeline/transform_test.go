@@ -89,10 +89,10 @@ func TestUpdatePerformanceFlagsInDeployment(t *testing.T) {
 	depExpected.Spec.Template.Spec.Containers[1].Args = []string{
 		"-flag1", "v1",
 		"-flag2", "v2",
-		"-disable-ha", "true",
-		"-kube-api-burst", "33",
-		"-kube-api-qps", "40.03",
-		"-threads-per-controller", "3",
+		"-disable-ha=true",
+		"-kube-api-burst=33",
+		"-kube-api-qps=40.03",
+		"-threads-per-controller=3",
 	}
 
 	// convert to unstructured object
