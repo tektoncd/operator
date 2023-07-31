@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -141,19 +142,14 @@ func updatePerformanceFlagsInDeployment(pipelineCR *v1alpha1.TektonPipeline) mf.
 				argStringValue := fmt.Sprintf("%v", flags[flagKey])
 				argUpdated := false
 				for argIndex, existingArg := range container.Args {
-					if existingArg == expectedArg {
-						argValueIndex := argIndex + 1
-						if len(container.Args) > argValueIndex {
-							container.Args[argValueIndex] = argStringValue
-						} else {
-							container.Args = append(container.Args, argStringValue)
-						}
+					if strings.HasPrefix(existingArg, expectedArg) {
+						container.Args[argIndex] = fmt.Sprintf("%s=%s", expectedArg, argStringValue)
 						argUpdated = true
 						break
 					}
 				}
 				if !argUpdated {
-					container.Args = append(container.Args, expectedArg, argStringValue)
+					container.Args = append(container.Args, fmt.Sprintf("%s=%s", expectedArg, argStringValue))
 				}
 			}
 			dep.Spec.Template.Spec.Containers[containerIndex] = container
