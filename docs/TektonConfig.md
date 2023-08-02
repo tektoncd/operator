@@ -355,7 +355,13 @@ spec:
       server-url: localhost.com
     hub-resolver-config:
       default-tekton-hub-catalog: tekton
+      tekton-hub-api: "https://my-custom-tekton-hub.example.com"
+      artifact-hub-api: "https://my-custom-artifact-hub.example.com"
 ```
+Under the `hub-resolver-config`, the `tekton-hub-api` and `artifact-hub-api` will be passed as environment variable into `tekton-pipelines-remote-resolvers` controller.<br>
+In the deployment the environment name will be converted as follows,
+* `tekton-hub-api` => `TEKTON_HUB_API` 
+* `artifact-hub-api` => `ARTIFACT_HUB_API`
 
 ### OpenShiftPipelinesAsCode
 

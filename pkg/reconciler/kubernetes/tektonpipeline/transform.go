@@ -27,23 +27,28 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	apimachineryRuntime "k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
 	// Pipelines ConfigMap
-	FeatureFlag                   = "feature-flags"
-	ConfigDefaults                = "config-defaults"
-	ConfigMetrics                 = "config-observability"
-	ResolverFeatureFlag           = "resolvers-feature-flags"
-	bundleResolverConfig          = "bundleresolver-config"
-	clusterResolverConfig         = "cluster-resolver-config"
-	hubResolverConfig             = "hubresolver-config"
-	gitResolverConfig             = "git-resolver-config"
-	leaderElectionConfig          = "config-leader-election"
-	pipelinesControllerDeployment = "tekton-pipelines-controller"
-	pipelinesControllerContainer  = "tekton-pipelines-controller"
+	FeatureFlag                                  = "feature-flags"
+	ConfigDefaults                               = "config-defaults"
+	ConfigMetrics                                = "config-observability"
+	ResolverFeatureFlag                          = "resolvers-feature-flags"
+	bundleResolverConfig                         = "bundleresolver-config"
+	clusterResolverConfig                        = "cluster-resolver-config"
+	hubResolverConfig                            = "hubresolver-config"
+	gitResolverConfig                            = "git-resolver-config"
+	leaderElectionConfig                         = "config-leader-election"
+	pipelinesControllerDeployment                = "tekton-pipelines-controller"
+	pipelinesControllerContainer                 = "tekton-pipelines-controller"
+	pipelinesRemoteResolversControllerDeployment = "tekton-pipelines-remote-resolvers"
+	pipelinesRemoteResolverControllerContainer   = "controller"
+	resolverEnvKeyTektonHubApi                   = "tekton-hub-api"
+	resolverEnvKeyArtifactHubApi                 = "artifact-hub-api"
 )
 
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
@@ -69,6 +74,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.CopyConfigMap(gitResolverConfig, pipeline.Spec.GitResolverConfig),
 			common.AddConfigMapValues(leaderElectionConfig, pipeline.Spec.Performance.PipelinePerformanceLeaderElectionConfig),
 			updatePerformanceFlagsInDeployment(pipeline),
+			updateResolverConfigEnvironmentsInDeployment(pipeline),
 		}
 		trns = append(trns, extra...)
 
@@ -150,6 +156,85 @@ func updatePerformanceFlagsInDeployment(pipelineCR *v1alpha1.TektonPipeline) mf.
 				}
 				if !argUpdated {
 					container.Args = append(container.Args, fmt.Sprintf("%s=%s", expectedArg, argStringValue))
+				}
+			}
+			dep.Spec.Template.Spec.Containers[containerIndex] = container
+		}
+
+		// convert deployment to unstructured object
+		obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(dep)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(obj)
+
+		return nil
+	}
+}
+
+// updates resolver config environment variables
+func updateResolverConfigEnvironmentsInDeployment(pipelineCR *v1alpha1.TektonPipeline) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" || u.GetName() != pipelinesRemoteResolversControllerDeployment {
+			return nil
+		}
+
+		// holds the variables needs to be added in the container environment section
+		envVariables := map[string]string{}
+
+		// collect all the required environment keys
+		rawEnvKeys := []string{resolverEnvKeyTektonHubApi, resolverEnvKeyArtifactHubApi}
+		// get values from resolver config
+		for _, rawEnvKey := range rawEnvKeys {
+			if value, found := pipelineCR.Spec.ResolversConfig.HubResolverConfig[rawEnvKey]; found && value != "" {
+				envVariables[rawEnvKey] = value
+			}
+		}
+
+		// if there is no variables available to update, return from here
+		if len(envVariables) == 0 {
+			return nil
+		}
+
+		// update environment key to actual format
+		// example: tekton-hub-api => TEKTON_HUB_API
+		envKeys := []string{}
+		for key, value := range envVariables {
+			newKey := strings.ToUpper(strings.ReplaceAll(key, "-", "_"))
+			delete(envVariables, key)
+			envVariables[newKey] = value
+			envKeys = append(envKeys, newKey)
+		}
+		// sort the keys
+		sort.Strings(envKeys)
+
+		// convert unstructured object to deployment
+		dep := &appsv1.Deployment{}
+		err := apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, dep)
+		if err != nil {
+			return err
+		}
+
+		// update environment keys into the target container
+		for containerIndex, container := range dep.Spec.Template.Spec.Containers {
+			if container.Name != pipelinesRemoteResolverControllerContainer {
+				continue
+			}
+			for _, envKey := range envKeys {
+				envUpdated := false
+				envVar := corev1.EnvVar{
+					Name:  envKey,
+					Value: envVariables[envKey],
+				}
+				for envIndex, existingEnv := range container.Env {
+					if existingEnv.Name == envKey {
+						container.Env[envIndex] = envVar
+						envUpdated = true
+						break
+					}
+				}
+				if !envUpdated {
+					container.Env = append(container.Env, envVar)
 				}
 			}
 			dep.Spec.Template.Spec.Containers[containerIndex] = container
