@@ -876,7 +876,7 @@ spec:
                 - name: IMAGE_PIPELINES_ARG__NOP_IMAGE
                   value: registry.redhat.io/openshift-pipelines/pipelines-nop-rhel8@
                 - name: IMAGE_PIPELINES_ARG__SHELL_IMAGE
-                  value: registry.redhat.io/ubi8/ubi-minimal@sha256:eb98682661cc5fe83bbe583af9d55a90d698cfc0d14af5b83e4568c3e26b4516
+                  value: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel8@
                 - name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel8@
                 - name: IMAGE_TRIGGERS_WEBHOOK
@@ -1000,7 +1000,7 @@ spec:
     name: IMAGE_PIPELINES_ARG__WORKINGDIRINIT_IMAGE
   - image: registry.redhat.io/openshift-pipelines/pipelines-nop-rhel8@
     name: IMAGE_PIPELINES_ARG__NOP_IMAGE
-  - image: registry.redhat.io/ubi8/ubi-minimal@sha256:eb98682661cc5fe83bbe583af9d55a90d698cfc0d14af5b83e4568c3e26b4516
+  - image: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel8@
     name: IMAGE_PIPELINES_ARG__SHELL_IMAGE
   - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel8@
     name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CONTROLLER

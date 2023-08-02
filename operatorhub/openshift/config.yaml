@@ -70,7 +70,7 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_ARG__NOP_IMAGE
-- image: registry.redhat.io/ubi8/ubi-minimal@sha256:987ae81ce046652ee4a2c3df54dad5e82faa1b078dab5d09f7cfaae11784ed30
+- image: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
