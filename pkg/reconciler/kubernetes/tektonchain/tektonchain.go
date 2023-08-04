@@ -144,6 +144,147 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 	// Mark PreReconcile Complete
 	tc.Status.MarkPreReconcilerComplete()
 
+	// Fetching and deleting the chains tektoninstallerset to delete `chains-config` configMap
+	// to handle the scenario when user upgrades i.e. in previous version `chains-config` configMap
+	// installerset was not there and with latest version we create separate installerset for
+	// `chains-config` configMap
+	chainlabelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		return err
+	}
+
+	existingChainInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, chainlabelSelector)
+	if err != nil {
+		return err
+	}
+
+	if existingChainInstallerSet != "" {
+		// If exists, then fetch the Tekton Chain InstallerSet
+		installedTIS, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Get(ctx, existingChainInstallerSet, metav1.GetOptions{})
+		if err != nil && apierrors.IsNotFound(err) {
+			return err
+		}
+
+		installerSetReleaseVersion := installedTIS.Labels[v1alpha1.ReleaseVersionKey]
+
+		if installerSetReleaseVersion != r.operatorVersion {
+			// Delete the existing Tekton Chain InstallerSet
+			err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+				Delete(ctx, existingChainInstallerSet, metav1.DeleteOptions{})
+			if err != nil {
+				logger.Errorf("failed to delete InstallerSet: %s", err.Error())
+				return err
+			}
+
+			// Make sure the Tekton Chain InstallerSet is deleted
+			_, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+				Get(ctx, existingChainInstallerSet, metav1.GetOptions{})
+			if err == nil {
+				tc.Status.MarkNotReady("Waiting for previous installer set to get deleted")
+				return v1alpha1.REQUEUE_EVENT_AFTER
+			}
+			if !apierrors.IsNotFound(err) {
+				logger.Errorf("failed to get InstallerSet: %s", err.Error())
+				return err
+			}
+			return nil
+		}
+	}
+
+	// Check if a Tekton Chain Config InstallerSet already exists, if not then create one
+	configLabelSector, err := common.LabelSelector(configLs)
+	if err != nil {
+		return err
+	}
+
+	existingConfigInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, configLabelSector)
+	if err != nil {
+		return err
+	}
+	if existingConfigInstallerSet == "" {
+		tc.Status.MarkInstallerSetNotAvailable("Chain Config InstallerSet not available")
+
+		createdIs, err := r.createConfigInstallerSet(ctx, tc)
+		if err != nil {
+			return err
+		}
+
+		return r.updateTektonChainStatus(tc, createdIs)
+	}
+
+	// If exists, then fetch the Tekton Chain Config InstallerSet
+	installedConfigTIS, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		Get(ctx, existingConfigInstallerSet, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			createdIs, err := r.createConfigInstallerSet(ctx, tc)
+			if err != nil {
+				return err
+			}
+			return r.updateTektonChainStatus(tc, createdIs)
+		}
+		logger.Error("failed to get InstallerSet: %s", err)
+		return err
+	}
+
+	configInstallerSetTargetNamespace := installedConfigTIS.Annotations[v1alpha1.TargetNamespaceKey]
+	configInstallerSetReleaseVersion := installedConfigTIS.Labels[v1alpha1.ReleaseVersionKey]
+
+	// Check if TargetNamespace of existing Tekton Chain Config InstallerSet is same as expected
+	// Check if Release Version in Tekton Chain Config InstallerSet is same as expected
+	// If any of the above things is not same then delete the existing Tekton Chain InstallerSet
+	// and create a new with expected properties
+
+	if configInstallerSetTargetNamespace != tc.Spec.TargetNamespace || configInstallerSetReleaseVersion != r.operatorVersion {
+		// Delete the existing Tekton Chain InstallerSet
+		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Delete(ctx, existingConfigInstallerSet, metav1.DeleteOptions{})
+		if err != nil {
+			logger.Errorf("failed to delete InstallerSet: %s", err.Error())
+			return err
+		}
+
+		// Make sure the Tekton Chain Config InstallerSet is deleted
+		_, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Get(ctx, existingConfigInstallerSet, metav1.GetOptions{})
+		if err == nil {
+			tc.Status.MarkNotReady("Waiting for previous installer set to get deleted")
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		if !apierrors.IsNotFound(err) {
+			logger.Error("failed to get InstallerSet: %s", err)
+			return err
+		}
+		return nil
+
+	} else {
+		// If target namespace and version are not changed then check if Chain
+		// spec is changed by checking hash stored as annotation on
+		// Tekton Chain InstallerSet with computing new hash of TektonChain Spec
+
+		// Hash of TektonChain Spec
+		expectedSpecHash, err := hash.Compute(tc.Spec)
+		if err != nil {
+			return err
+		}
+
+		// spec hash stored on installerSet
+		lastAppliedHash := installedConfigTIS.GetAnnotations()[v1alpha1.LastAppliedHashKey]
+
+		if lastAppliedHash != expectedSpecHash {
+
+			if err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+				Delete(ctx, installedConfigTIS.Name, metav1.DeleteOptions{}); err != nil {
+				return err
+			}
+
+			// after updating installer set enqueue after a duration
+			// to allow changes to get deployed
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	}
+
 	// Check if a Tekton Chain InstallerSet already exists, if not then create one
 	labelSelector, err := common.LabelSelector(ls)
 	if err != nil {
@@ -153,6 +294,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 	if err != nil {
 		return err
 	}
+
 	if existingInstallerSet == "" {
 		tc.Status.MarkInstallerSetNotAvailable("Chain InstallerSet not available")
 
@@ -192,7 +334,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 			Delete(ctx, existingInstallerSet, metav1.DeleteOptions{})
 		if err != nil {
-			logger.Error("failed to delete InstallerSet: %s", err)
+			logger.Errorf("failed to delete InstallerSet: %s", err.Error())
 			return err
 		}
 
@@ -242,7 +384,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 				mf.Not(mf.All(mf.ByName("chains-config"), mf.ByKind("ConfigMap"))))
 
 			if err := r.transform(ctx, &manifest, tc); err != nil {
-				logger.Error("manifest transformation failed:  ", err)
+				logger.Error("manifest transformation failed: ", err.Error())
 				return err
 			}
 
@@ -256,99 +398,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 
 			if _, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 				Update(ctx, installedTIS, metav1.UpdateOptions{}); err != nil {
-				return err
-			}
-
-			// after updating installer set enqueue after a duration
-			// to allow changes to get deployed
-			return v1alpha1.REQUEUE_EVENT_AFTER
-		}
-	}
-
-	// Check if a Tekton Chain Config InstallerSet already exists, if not then create one
-	configLabelSector, err := common.LabelSelector(configLs)
-	if err != nil {
-		return err
-	}
-
-	existingConfigInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, configLabelSector)
-	if err != nil {
-		return err
-	}
-	if existingConfigInstallerSet == "" {
-		tc.Status.MarkInstallerSetNotAvailable("Chain Config InstallerSet not available")
-
-		createdIs, err := r.createConfigInstallerSet(ctx, tc)
-		if err != nil {
-			return err
-		}
-
-		return r.updateTektonChainStatus(tc, createdIs)
-	}
-
-	// If exists, then fetch the Tekton Chain Config InstallerSet
-	installedConfigTIS, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-		Get(ctx, existingConfigInstallerSet, metav1.GetOptions{})
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			createdIs, err := r.createInstallerSet(ctx, tc)
-			if err != nil {
-				return err
-			}
-			return r.updateTektonChainStatus(tc, createdIs)
-		}
-		logger.Error("failed to get InstallerSet: %s", err)
-		return err
-	}
-
-	configInstallerSetTargetNamespace := installedConfigTIS.Annotations[v1alpha1.TargetNamespaceKey]
-	configInstallerSetReleaseVersion := installedConfigTIS.Labels[v1alpha1.ReleaseVersionKey]
-
-	// Check if TargetNamespace of existing Tekton Chain Config InstallerSet is same as expected
-	// Check if Release Version in Tekton Chain Config InstallerSet is same as expected
-	// If any of the above things is not same then delete the existing Tekton Chain InstallerSet
-	// and create a new with expected properties
-
-	if configInstallerSetTargetNamespace != tc.Spec.TargetNamespace || configInstallerSetReleaseVersion != r.operatorVersion {
-		// Delete the existing Tekton Chain InstallerSet
-		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-			Delete(ctx, existingConfigInstallerSet, metav1.DeleteOptions{})
-		if err != nil {
-			logger.Error("failed to delete InstallerSet: %s", err)
-			return err
-		}
-
-		// Make sure the Tekton Chain Config InstallerSet is deleted
-		_, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-			Get(ctx, existingConfigInstallerSet, metav1.GetOptions{})
-		if err == nil {
-			tc.Status.MarkNotReady("Waiting for previous installer set to get deleted")
-			return v1alpha1.REQUEUE_EVENT_AFTER
-		}
-		if !apierrors.IsNotFound(err) {
-			logger.Error("failed to get InstallerSet: %s", err)
-			return err
-		}
-		return nil
-
-	} else {
-		// If target namespace and version are not changed then check if Chain
-		// spec is changed by checking hash stored as annotation on
-		// Tekton Chain InstallerSet with computing new hash of TektonChain Spec
-
-		// Hash of TektonChain Spec
-		expectedSpecHash, err := hash.Compute(tc.Spec)
-		if err != nil {
-			return err
-		}
-
-		// spec hash stored on installerSet
-		lastAppliedHash := installedConfigTIS.GetAnnotations()[v1alpha1.LastAppliedHashKey]
-
-		if lastAppliedHash != expectedSpecHash {
-
-			if err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-				Delete(ctx, installedConfigTIS.Name, metav1.DeleteOptions{}); err != nil {
 				return err
 			}
 
