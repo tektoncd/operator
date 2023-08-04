@@ -219,7 +219,7 @@ func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonConfig)
 	tc.SetLabels(labels)
 
 	var chain v1alpha1.ChainProperties
-	cm, err := r.kubeClientSet.CoreV1().ConfigMaps(tc.GetNamespace()).Get(ctx, "chains-config", metav1.GetOptions{})
+	cm, err := r.kubeClientSet.CoreV1().ConfigMaps(tc.Spec.GetTargetNamespace()).Get(ctx, "chains-config", metav1.GetOptions{})
 	if err != nil {
 		if apierrs.IsNotFound(err) {
 			chain = v1alpha1.ChainProperties{}
