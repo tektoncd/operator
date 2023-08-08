@@ -388,12 +388,13 @@ type CloudEventDeliveryState struct {
 // +genclient
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 
 // TaskRun represents a single execution of a Task. TaskRuns are how the steps
 // specified in a Task are executed; they specify the parameters and resources
 // used to run the steps in a Task.
 //
-// +k8s:openapi-gen=true
+// Deprecated: Please use v1.TaskRun instead.
 type TaskRun struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -449,9 +450,14 @@ func (tr *TaskRun) HasStarted() bool {
 	return tr.Status.StartTime != nil && !tr.Status.StartTime.IsZero()
 }
 
-// IsSuccessful returns true if the TaskRun's status indicates that it is done.
+// IsSuccessful returns true if the TaskRun's status indicates that it has succeeded.
 func (tr *TaskRun) IsSuccessful() bool {
 	return tr != nil && tr.Status.GetCondition(apis.ConditionSucceeded).IsTrue()
+}
+
+// IsFailure returns true if the TaskRun's status indicates that it has failed.
+func (tr *TaskRun) IsFailure() bool {
+	return tr != nil && tr.Status.GetCondition(apis.ConditionSucceeded).IsFalse()
 }
 
 // IsCancelled returns true if the TaskRun's spec status is set to Cancelled state
