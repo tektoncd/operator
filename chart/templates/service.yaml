@@ -26,7 +26,7 @@ spec:
   ports:
     - name: https-webhook
       port: 443
-      targetPort: 8443
+      targetPort: {{ .Values.webhook.httpsWebhookPort }}
   selector:
   {{- include "tekton-operator.webhook.selectorLabels" . | nindent 4 }}
 ---
