@@ -45,6 +45,9 @@ operator:
 
 ## Configuration for the tekton-operator-webhook pod
 webhook:
+  hostNetwork: false
+  dnsPolicy: ""
+  httpsWebhookPort: 8443
   image:
     # Container image for Tekton operator webhook. Default value depends on the flavor (k8s/openshift).
     repository: ""
