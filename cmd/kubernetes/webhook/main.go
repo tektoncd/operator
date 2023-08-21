@@ -18,7 +18,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/tektoncd/operator/pkg/webhook"
 	"knative.dev/pkg/injection"
@@ -39,10 +41,20 @@ func main() {
 		secretName = "tekton-operator-webhook-certs"
 	}
 
+	portStr := os.Getenv("WEBHOOK_PORT")
+	if portStr == "" {
+		portStr = "8443"
+	}
+	portNum, err := strconv.Atoi(portStr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "PORT '%s' is not valid\n", portStr)
+		return
+	}
+
 	//Set up a signal context with our webhook options
 	ctx := kwebhook.WithOptions(signals.NewContext(), kwebhook.Options{
 		ServiceName: serviceName,
-		Port:        8443,
+		Port:        portNum,
 		SecretName:  secretName,
 	})
 	cfg := injection.ParseAndGetRESTConfigOrDie()
