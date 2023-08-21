@@ -183,6 +183,8 @@ spec:
               value: {{ include "tekton-operator.fullname" . }}-webhook
             - name: WEBHOOK_SECRET_NAME
               value: {{ .Values.webhook.certSecret.name | default (include "tekton-operator.fullname" .) }}-webhook-certs
+            - name: WEBHOOK_PORT
+              value: {{ .Values.webhook.httpsWebhookPort | quote }}
             - name: METRICS_DOMAIN
               value: {{ .Values.service.metricsDomain }}
           image: {{ include "tekton-operator.webhook-image" . }}
