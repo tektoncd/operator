@@ -82,10 +82,14 @@ type ResultsAPIProperties struct {
 	S3AccessKeyID         string `json:"s3_access_key_id,omitempty"`
 	S3SecretAccessKey     string `json:"s3_secret_access_key,omitempty"`
 	S3MultiPartSize       int64  `json:"s3_multi_part_size,omitempty"`
-	LoggingPVCName        string `json:"logging_pvc_name"`
+	LoggingPVCName        string `json:"logging_pvc_name,omitempty"`
+	GcsBucketName         string `json:"gcs_bucket_name,omitempty"`
+	StorageEmulatorHost   string `json:"storage_emulator_host,omitempty"`
 	// name of the secret used to get S3 credentials and
 	// pass it as environment variables to the "tekton-results-api" deployment under "api" container
-	SecretName string `json:"secret_name,omitempty"`
+	SecretName         string `json:"secret_name,omitempty"`
+	GCSCredsSecretName string `json:"gcs_creds_secret_name,omitempty"`
+	GCSCredsSecretKey  string `json:"gcs_creds_secret_key,omitempty"`
 }
 
 // TektonResultStatus defines the observed state of TektonResult
