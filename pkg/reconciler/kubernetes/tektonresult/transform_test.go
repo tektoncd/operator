@@ -88,6 +88,7 @@ func Test_updateApiConfig(t *testing.T) {
 		S3AccessKeyID:         "secret",
 		S3SecretAccessKey:     "secret",
 		S3MultiPartSize:       123,
+		StorageEmulatorHost:   "http://localhost:9004",
 	}
 
 	manifest, err = manifest.Transform(updateApiConfig(prop))
@@ -114,6 +115,7 @@ LOGS_API=true
 LOGS_TYPE=s3
 LOGS_BUFFER_SIZE=12321
 LOGS_PATH=/logs/test
+STORAGE_EMULATOR_HOST=http://localhost:9004
 S3_BUCKET_NAME=test
 S3_ENDPOINT=test
 S3_HOSTNAME_IMMUTABLE=true
@@ -121,6 +123,47 @@ S3_REGION=west
 S3_ACCESS_KEY_ID=secret
 S3_SECRET_ACCESS_KEY=secret
 S3_MULTI_PART_SIZE=123`)
+}
+
+func Test_GoogleCred(t *testing.T) {
+	testData := []string{path.Join("testdata", "api-deployment-gcs.yaml"), path.Join("testdata", "api-deployment.yaml")}
+	for i := range testData {
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData[i]))
+		assert.NilError(t, err)
+
+		deployment := &appsv1.Deployment{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, deployment)
+		assert.NilError(t, err)
+		prop := v1alpha1.ResultsAPIProperties{
+			LogsAPI:            true,
+			LogsType:           "GCS",
+			GCSCredsSecretName: "foo-test",
+			GCSCredsSecretKey:  "bar-test",
+		}
+
+		manifest, err = manifest.Transform(populateGoogleCreds(prop))
+		assert.NilError(t, err)
+
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, deployment)
+		assert.NilError(t, err)
+
+		path := googleCredsPath + "/" + prop.GCSCredsSecretKey
+		newEnv := corev1.EnvVar{
+			Name:  googleAPPCredsEnvName,
+			Value: path,
+		}
+
+		var i int
+		for i = range deployment.Spec.Template.Spec.Containers {
+			if deployment.Spec.Template.Spec.Containers[i].Name != apiContainerName {
+				continue
+			}
+		}
+
+		assert.Equal(t, deployment.Spec.Template.Spec.Volumes[2].Name, googleCredsVolName)
+		assert.Equal(t, deployment.Spec.Template.Spec.Containers[i].VolumeMounts[2].Name, googleCredsVolName)
+		assert.Equal(t, deployment.Spec.Template.Spec.Containers[i].Env[5], newEnv)
+	}
 }
 
 func TestUpdateEnvWithSecretName(t *testing.T) {

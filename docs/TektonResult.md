@@ -148,3 +148,31 @@ stringData:
   S3_MULTI_PART_SIZE: "5242880"
 ```
 
+
+### GCS specific Property
+The follow keys are needed for enabling GCS storage of logs:
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonResult
+metadata:
+  name: result
+spec:
+  gcs_creds_secret_name: <value>
+  gcc_creds_secret_key: <value>
+  gcs_bucket_name: <value>
+```
+
+We need to create a secret with google application creds for a bucket `foo-bar` like below:
+
+```
+kubectl create secret generic gcs-credentials --from-file=creds.json
+```
+
+To know more about Application Default Credentials in `creds.json` that is use to create above secret for GCS, please visit: https://cloud.google.com/docs/authentication/application-default-credentials
+
+In the above example, our properties are:
+```
+gcs_creds_secret_name: gcs-credentials
+gcc_creds_secret_key: creds.json
+gcs_bucket_name: foo-bar
+```

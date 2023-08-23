@@ -36,13 +36,16 @@ import (
 
 const (
 	// Results ConfigMap
-	configAPI        = "tekton-results-api-config"
-	deploymentAPI    = "tekton-results-api"
-	configINFO       = "tekton-results-info"
-	configMetrics    = "tekton-results-config-observability"
-	configPostgresDB = "tekton-results-postgres"
-	pvcLoggingVolume = "tekton-logs"
-	apiContainerName = "api"
+	configAPI             = "tekton-results-api-config"
+	deploymentAPI         = "tekton-results-api"
+	configINFO            = "tekton-results-info"
+	configMetrics         = "tekton-results-config-observability"
+	configPostgresDB      = "tekton-results-postgres"
+	pvcLoggingVolume      = "tekton-logs"
+	apiContainerName      = "api"
+	googleAPPCredsEnvName = "GOOGLE_APPLICATION_CREDENTIALS"
+	googleCredsVolName    = "google-creds"
+	googleCredsPath       = "/creds/google"
 )
 
 var (
@@ -73,6 +76,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		updateApiConfig(instance.Spec.ResultsAPIProperties),
 		enablePVCLogging(instance.Spec.ResultsAPIProperties),
 		updateEnvWithSecretName(instance.Spec.ResultsAPIProperties),
+		populateGoogleCreds(instance.Spec.ResultsAPIProperties),
 		common.AddDeploymentRestrictedPSA(),
 		common.AddStatefulSetRestrictedPSA(),
 		common.DeploymentImages(resultImgs),
@@ -223,6 +227,95 @@ func updateApiConfig(p interface{}) mf.Transformer {
 			return err
 		}
 		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
+func populateGoogleCreds(props v1alpha1.ResultsAPIProperties) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if props.LogsType != "GCS" || props.GCSCredsSecretName == "" ||
+			props.GCSCredsSecretKey == "" || !props.LogsAPI ||
+			u.GetKind() != "Deployment" || u.GetName() != deploymentAPI {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		// find the matching container and add env and secret name object
+		for i, container := range d.Spec.Template.Spec.Containers {
+			if container.Name != apiContainerName {
+				continue
+			}
+			add := true
+			vol := corev1.Volume{
+				Name: googleCredsVolName,
+				VolumeSource: corev1.VolumeSource{
+					Secret: &corev1.SecretVolumeSource{
+						SecretName: props.GCSCredsSecretName,
+						Items: []corev1.KeyToPath{{
+							Key:  props.GCSCredsSecretKey,
+							Path: props.GCSCredsSecretKey,
+						}},
+					},
+				},
+			}
+			for k := 0; k < len(d.Spec.Template.Spec.Volumes); k++ {
+				if d.Spec.Template.Spec.Volumes[k].Name == googleCredsVolName {
+					d.Spec.Template.Spec.Volumes[k] = vol
+					add = false
+				}
+			}
+			if add {
+				d.Spec.Template.Spec.Volumes = append(d.Spec.Template.Spec.Volumes, vol)
+			}
+
+			volMount := corev1.VolumeMount{
+				Name:      googleCredsVolName,
+				MountPath: googleCredsPath,
+			}
+
+			add = true
+			for k := 0; k < len(d.Spec.Template.Spec.Containers[i].VolumeMounts); k++ {
+				if d.Spec.Template.Spec.Containers[i].VolumeMounts[k].Name == googleCredsVolName {
+					d.Spec.Template.Spec.Containers[i].VolumeMounts[k] = volMount
+					add = false
+				}
+			}
+			if add {
+				d.Spec.Template.Spec.Containers[i].VolumeMounts = append(
+					d.Spec.Template.Spec.Containers[i].VolumeMounts, volMount)
+			}
+
+			path := googleCredsPath + "/" + props.GCSCredsSecretKey
+			newEnv := corev1.EnvVar{
+				Name:  googleAPPCredsEnvName,
+				Value: path,
+			}
+			add = true
+			for k, env := range d.Spec.Template.Spec.Containers[i].Env {
+				if env.Name == googleAPPCredsEnvName {
+					d.Spec.Template.Spec.Containers[i].Env[k] = newEnv
+					add = false
+					break
+				}
+			}
+			if add {
+				d.Spec.Template.Spec.Containers[i].Env = append(
+					d.Spec.Template.Spec.Containers[i].Env, newEnv)
+			}
+
+			break
+		}
+
+		uObj, err := k8sruntime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(uObj)
 		return nil
 	}
 }
