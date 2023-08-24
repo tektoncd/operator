@@ -20,7 +20,7 @@ To install Tekton Result on your cluster follow steps as given below:
     - namespace: `tekton-pipelines`
     - name: `tekton-results-postgres`
     - contains the fields:
-        - `user=root`
+        - `user=<user name>`
         - `password=<your password>`
 
   If you are not using a particular password management strategy, the following
@@ -31,7 +31,7 @@ To install Tekton Result on your cluster follow steps as given below:
    export NAMESPACE="tekton-pipelines"
    kubectl create secret generic tekton-results-postgres --namespace=${NAMESPACE} --from-literal=POSTGRES_USER=result --from-literal=POSTGRES_PASSWORD=$(openssl rand -base64 20)
    ```
-- Generate cert/key pair. 
+- Generate cert/key pair.
   Note: Feel free to use any cert management software to do this!
 
   Tekton Results expects the cert/key pair to be stored in a [TLS Kubernetes Secret](https://kubernetes.io/docs/concepts/configuration/secret/#tls-secrets).
@@ -171,8 +171,37 @@ kubectl create secret generic gcs-credentials --from-file=creds.json
 To know more about Application Default Credentials in `creds.json` that is use to create above secret for GCS, please visit: https://cloud.google.com/docs/authentication/application-default-credentials
 
 In the above example, our properties are:
+
 ```
 gcs_creds_secret_name: gcs-credentials
 gcc_creds_secret_key: creds.json
 gcs_bucket_name: foo-bar
+```
+
+### External DB
+
+If external DB is required, then follow the instructions below:
+- Generate a secret with user name and password for Postgres (subsitute ${password} with your password):
+```sh
+   export NAMESPACE="tekton-pipelines" # Put the targetNamespace of TektonResult where it is going to be installed.
+   kubectl create secret generic tekton-results-postgres --namespace=${NAMESPACE} --from-literal=POSTGRES_USER=result --from-literal=POSTGRES_PASSWORD=${password}
+```
+
+- Create a TektonResult CR like below:
+* Add `db_host` with DB url without port.
+* Add `db_port` with your DB port.
+* Add `db_user` username of the DB.
+* Set `is_external_db` to true.
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonResult
+metadata:
+  name: result
+spec:
+  targetNamespace: tekton-pipelines
+  db_port: 5432
+  db_user: result
+  db_host: tekton-results-postgres-external-service.pg-redhat.svc.cluster.local
+  is_external_db: true
+...
 ```
