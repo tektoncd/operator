@@ -229,6 +229,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 				return err
 			}
 
+			r.manifest = r.manifest.Filter(filterExternalDB(tr.Spec.IsExternalDB))
+
 			// Update the spec hash
 			current := installedTIS.GetAnnotations()
 			current[v1alpha1.LastAppliedHashKey] = expectedSpecHash

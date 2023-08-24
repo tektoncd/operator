@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: tekton-results-postgres
+    app.kubernetes.io/part-of: tekton-results
+    app.kubernetes.io/version: v0.7.0
+  name: tekton-results-postgres
+  namespace: tekton-pipelines
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tekton-results-postgres
+      app.kubernetes.io/version: v0.7.0
+  serviceName: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tekton-results-postgres
+        app.kubernetes.io/version: v0.7.0
+    spec:
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: tekton-results-postgres
+            - secretRef:
+                name: tekton-results-postgres
+          image: bitnami/postgresql@sha256:23b9a21460fefdd83accd0f864e734c88bebc67c86ee752a97b77dd4843907f0
+          name: postgres
+          ports:
+            - containerPort: 5432
+              name: postgredb
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /bitnami/postgresql
+              name: postgredb
+  volumeClaimTemplates:
+    - metadata:
+        labels:
+          app.kubernetes.io/version: v0.7.0
+        name: postgredb
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: tekton-results-postgres
+    app.kubernetes.io/part-of: tekton-results
+    app.kubernetes.io/version: v0.7.0
+  name: tekton-results-postgres-external
+  namespace: tekton-pipelines
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tekton-results-postgres
+      app.kubernetes.io/version: v0.7.0
+  serviceName: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tekton-results-postgres
+        app.kubernetes.io/version: v0.7.0
+    spec:
+      containers:
+        - envFrom:
+            - configMapRef:
+                name: tekton-results-postgres
+            - secretRef:
+                name: tekton-results-postgres
+          image: bitnami/postgresql@sha256:23b9a21460fefdd83accd0f864e734c88bebc67c86ee752a97b77dd4843907f0
+          name: postgres
+          ports:
+            - containerPort: 5432
+              name: postgredb
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /bitnami/postgresql
+              name: postgredb
+  volumeClaimTemplates:
+    - metadata:
+        labels:
+          app.kubernetes.io/version: v0.7.0
+        name: postgredb
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
