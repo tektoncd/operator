@@ -90,6 +90,9 @@ type ResultsAPIProperties struct {
 	SecretName         string `json:"secret_name,omitempty"`
 	GCSCredsSecretName string `json:"gcs_creds_secret_name,omitempty"`
 	GCSCredsSecretKey  string `json:"gcs_creds_secret_key,omitempty"`
+
+	// options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:"options"`
 }
 
 // TektonResultStatus defines the observed state of TektonResult

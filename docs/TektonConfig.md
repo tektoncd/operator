@@ -58,9 +58,14 @@ The TektonConfig CR provides the following features
       performance:
         disable-ha: false
         buckets: 1
+        replicas: 1
         threads-per-controller: 2
         kube-api-qps: 5.0
         kube-api-burst: 10
+      options:
+        disabled: false
+        configMaps: {}
+        deployments: {}
     pruner:
       disabled: false
       schedule: "0 8 * * *"
@@ -75,8 +80,16 @@ The TektonConfig CR provides the following features
       params:
         - name: enable-devconsole-integration
           value: "true"
+      options:
+        disabled: false
+        configMaps: {}
+        deployments: {}
     dashboard:
       readonly: true
+      options:
+        disabled: false
+        configMaps: {}
+        deployments: {}
     platforms:
       openshift:
         pipelinesAsCode:
@@ -99,6 +112,10 @@ The TektonConfig CR provides the following features
             remote-tasks: "true"
             secret-auto-create: "true"
             secret-github-app-token-scoped: "true"
+        options:
+          disabled: false
+          configMaps: {}
+          deployments: {}
 ```
 Look for the particular section to understand a particular field in the spec.
 
@@ -175,6 +192,7 @@ pipeline:
   running-in-environment-with-injected-sidecars: true
   trusted-resources-verification-no-match-policy: ignore
   performance:
+    replicas: 1
     disable-ha: false
     buckets: 1
     threads-per-controller: 2
@@ -410,3 +428,152 @@ platforms:
 [priorityClassName]: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#pod-priority
 [priorityClass]: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
 
+### Additional fields as `options`
+There is a filed called `options` available in all the components.<br>
+
+>**NOTE:** There is a possibility to have two different values for a field.<br> 
+An example: with a pre-defined field you can set value and the same filed may be defined under `options` as well. In that case value from `options` will be final.
+
+`options` filed is defined as follows,
+```yaml
+options:
+  disabled: false
+  configMaps:
+    config-leader-election: # name of the configMap
+      data:
+        lease-duration: "90s"
+    pipeline-config-logging: # creates new configMap under targetNamespace
+      metadata:
+        labels:
+          my-custom-logger: "true"
+        annotations:
+          logger-type: "uber-zap"
+      data:
+        loglevel.controller: "info"
+        loglevel.webhook: "info"
+        zap-logger-config: |
+          {
+            "level": "debug",
+            "development": false,
+            "sampling": {
+              "initial": 100,
+              "thereafter": 50
+            },
+            "outputPaths": ["stdout"],
+            "errorOutputPaths": ["stderr"],
+            "encoding": "json",
+            "encoderConfig": {
+              "timeKey": "ts",
+              "levelKey": "severity",
+              "nameKey": "logger",
+              "callerKey": "caller",
+              "messageKey": "message",
+              "stacktraceKey": "stacktrace",
+              "lineEnding": "",
+              "levelEncoder": "",
+              "timeEncoder": "iso8601",
+              "durationEncoder": "",
+              "callerEncoder": ""
+            }
+          }
+
+  deployments:
+    tekton-pipelines-controller:
+      metadata:
+        labels:
+          custom-label: "foo"
+        annotations:
+          custom-annotation: "foo"
+      spec:
+        replicas: 2
+        template:
+          spec:
+            containers:
+              - name: tekton-pipelines-controller
+                env:
+                  - name: CONFIG_LOGGING_NAME
+                    value: pipeline-config-logging
+  statefulSets:
+    web:
+      metadata:
+        labels:
+          custom-label: foo
+        annotations:
+          custom-annotation: foo
+      spec:
+        replicas: 3
+        template:
+          spec:
+            containers:
+              - name: nginx
+                env:
+                  - name: NGINX_MODE
+                    value: production
+```
+* `disabled` - disables the additional `options` support, if `disabled` set as `true`. default: `false`
+
+#### ConfigMaps
+Supports to update existing configMap also supports to create new configMap.
+
+The following fields are supported in `configMap`
+* `metadata`
+  * `labels` - supports add and update
+  * `annotations` - supports add and update
+* `data` - supports add and update
+
+#### Deployments
+Supports to update the existing deployments. But not supported to create new deployment.
+
+The following fields are supported in `deployment`
+* `metadata`
+  * `labels` - supports add and update
+  * `annotations` - supports add and update
+* `spec`
+  * `replicas` - updates deployment replicas count
+  * `template`
+    * `spec`
+      * `affinity` - replaces the existing Affinity with this, if not empty
+      * `nodeSelector` - replaces the existing NodeSelector with this, if not empty
+      * `tolerations` - replaces the existing tolerations with this, if not empty
+      * `topologySpreadConstraints` - replaces the existing TopologySpreadConstraints with this, if not empty
+      * `volumes` - adds and updates volumes
+      * `initContainers` - updates init-containers
+        * `resources` - replaces the resources requirements with this, if not empty
+        * `envs` - adds and updates environments
+        * `volumeMounts` - adds and updates VolumeMounts
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+      * `containers` - updates containers
+        * `resources` - replaces the resources requirements with this, if not empty
+        * `envs` - adds and updates environments
+        * `volumeMounts` - adds and updates VolumeMounts
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+
+#### StatefulSets
+Supports to update the existing StatefulSet. But not supported to create new StatefulSet.
+
+The following fields are supported in `StatefulSet`
+* `metadata`
+  * `labels` - supports add and update
+  * `annotations` - supports add and update
+* `spec`
+  * `replicas` - updates statefulSets replicas count
+  * `serviceName` - updates service name
+  * `podManagementPolicy` - updates pod management policy
+  * `volumeClaimTemplates` - updates volume claim templates
+  * `template`
+    * `spec`
+      * `affinity` - replaces the existing Affinity with this, if not empty
+      * `nodeSelector` - replaces the existing NodeSelector with this, if not empty
+      * `tolerations` - replaces the existing tolerations with this, if not empty
+      * `topologySpreadConstraints` - replaces the existing TopologySpreadConstraints with this, if not empty
+      * `volumes` - adds and updates volumes
+      * `initContainers` - updates init-containers
+        * `resources` - replaces the resources requirements with this, if not empty
+        * `envs` - adds and updates environments
+        * `volumeMounts` - adds and updates VolumeMounts
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+      * `containers` - updates containers
+        * `resources` - replaces the resources requirements with this, if not empty
+        * `envs` - adds and updates environments
+        * `volumeMounts` - adds and updates VolumeMounts
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 

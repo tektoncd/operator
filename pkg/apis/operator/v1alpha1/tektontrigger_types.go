@@ -77,6 +77,8 @@ type TektonTriggerList struct {
 // Trigger defines the field to customize Trigger component
 type Trigger struct {
 	TriggersProperties `json:",inline"`
+	// options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:"options"`
 }
 
 // TriggersProperties defines the fields which are to be

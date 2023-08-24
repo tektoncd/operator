@@ -73,8 +73,8 @@ func createDashboard(ctx context.Context, clients op.TektonDashboardInterface, c
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Config:              config.Spec.Config,
-			DashboardProperties: config.Spec.Dashboard.DashboardProperties,
+			Config:    config.Spec.Config,
+			Dashboard: config.Spec.Dashboard,
 		},
 	}
 	return clients.Create(ctx, tdCR, metav1.CreateOptions{})
@@ -97,6 +97,11 @@ func updateDashboard(ctx context.Context, tdCR *v1alpha1.TektonDashboard, config
 
 	if !reflect.DeepEqual(tdCR.Spec.Config, config.Spec.Config) {
 		tdCR.Spec.Config = config.Spec.Config
+		updated = true
+	}
+
+	if !reflect.DeepEqual(tdCR.Spec.Dashboard.Options, config.Spec.Dashboard.Options) {
+		tdCR.Spec.Dashboard.Options = config.Spec.Dashboard.Options
 		updated = true
 	}
 

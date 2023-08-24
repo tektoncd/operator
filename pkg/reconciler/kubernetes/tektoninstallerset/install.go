@@ -34,11 +34,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 	"knative.dev/pkg/logging"
-	"knative.dev/pkg/ptr"
 )
 
 const (
-	replicasForHash = 999
+	annotationsPath = "metadata.annotations"
+	labelsPath      = "metadata.labels"
 )
 
 type installer struct {
@@ -183,167 +183,239 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 
 func (i *installer) EnsureDeploymentResources() error {
 	for _, d := range i.deployment {
-		if err := i.ensureDeployment(&d); err != nil {
+		if err := i.ensureResource(&d); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func computeDeploymentHash(d appsv1.Deployment) (string, error) {
-	// set replicas to a constant value and then calculate hash so
-	// that later if user updates replicas, we can exclude that change.
-	// setting the replicas to same const and checking the hash
-	// so that we can allow only replica change revert any other change
-	// done to the deployment spec
-	d.Spec.Replicas = ptr.Int32(replicasForHash)
+// list of fields should be reconciled
+func (i *installer) resourceReconcileFields(u *unstructured.Unstructured) []string {
+	switch u.GetKind() {
+	case "Deployment", "StatefulSet":
+		return []string{
+			annotationsPath,
+			labelsPath,
+			"spec",
+		}
 
-	return hash.Compute(d.Spec)
+	default:
+		return []string{}
+	}
 }
 
-func (i *installer) createDeployment(expected *unstructured.Unstructured) error {
-
-	dep := &appsv1.Deployment{}
-	err := runtime.DefaultUnstructuredConverter.FromUnstructured(expected.Object, dep)
-	if err != nil {
-		return err
-	}
-
-	hash, err := computeDeploymentHash(*dep)
-	if err != nil {
-		return fmt.Errorf("failed to compute hash of deployment: %v", err)
-	}
-
-	if len(dep.Annotations) == 0 {
-		dep.Annotations = map[string]string{}
-	}
-	dep.Annotations[v1alpha1.LastAppliedHashKey] = hash
-
-	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(dep)
-	if err != nil {
-		return err
-	}
-	expected.SetUnstructuredContent(unstrObj)
-
-	return i.mfClient.Create(expected)
-}
-
-func (i *installer) updateDeployment(existing *unstructured.Unstructured, existingDeployment, expectedDeployment *appsv1.Deployment) error {
-	i.logger.Infof("updating resource %s: %s/%s", existing.GetKind(), existing.GetNamespace(), existing.GetName())
-
-	// save on cluster replicas in a var and assign it back to deployment
-	onClusterReplicas := existingDeployment.Spec.Replicas
-
-	existingDeployment.Spec = expectedDeployment.Spec
-	existingDeployment.Spec.Replicas = onClusterReplicas
-
-	// compute new hash of spec and add as annotation
-	newHash, err := computeDeploymentHash(*existingDeployment)
-	if err != nil {
-		return fmt.Errorf("failed to compute new hash of existing deployment: %v", err)
-	}
-
-	if len(existingDeployment.Annotations) == 0 {
-		existingDeployment.Annotations = map[string]string{}
-	}
-
-	existingDeployment.Annotations[v1alpha1.LastAppliedHashKey] = newHash
-
-	unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(existingDeployment)
-	if err != nil {
-		return err
-	}
-	existing.SetUnstructuredContent(unstrObj)
-
-	err = i.mfClient.Update(existing)
-	if err != nil {
-		return v1alpha1.RECONCILE_AGAIN_ERR
-	}
-	return err
-}
-
-func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error {
-	i.logger.Debugw("verifying a deployment",
+// this method is written as generic to all the resources
+// currently tested only with deployments
+// TODO: (jkandasa) needs to be tested with other resources too
+func (i *installer) ensureResource(expected *unstructured.Unstructured) error {
+	i.logger.Debugw("verifying a resource",
 		"name", expected.GetName(),
 		"namespace", expected.GetNamespace(),
+		"kind", expected.GetKind(),
 	)
 
 	// update proxy settings
-	err := common.ApplyProxySettings(expected)
-	if err != nil {
-		return err
+	if expected.GetKind() == "Deployment" {
+		err := common.ApplyProxySettings(expected)
+		if err != nil {
+			return err
+		}
 	}
 
-	// check if deployment already exist
+	// check if the resource already exists
 	existing, err := i.mfClient.Get(expected)
 	if err != nil {
-		// If deployment doesn't exist, then create new
+		// If the resource doesn't exist, then create new
 		if apierrs.IsNotFound(err) {
-			i.logger.Debugw("deployment not found, creating",
+			i.logger.Debugw("resource not found, creating",
 				"name", expected.GetName(),
 				"namespace", expected.GetNamespace(),
+				"kind", expected.GetKind(),
 			)
-			return i.createDeployment(expected)
+			err = i.mfClient.Create(expected)
+			if err != nil {
+				i.logger.Debugw("error on creating a resource",
+					"name", expected.GetName(),
+					"namespace", expected.GetNamespace(),
+					"kind", expected.GetKind(),
+					err,
+				)
+				return err
+			}
 		}
 		return err
 	}
 
-	// if already exist then check if there is a change in spec
-	// compare expected deployment spec hash with the one saved in annotation
-	// if annotation doesn't exist then update the deployment
-
-	i.logger.Debugw("existing deployment found, checking for changes",
+	i.logger.Debugw("resource found in cluster, checking for changes",
 		"name", existing.GetName(),
 		"namespace", existing.GetNamespace(),
+		"kind", existing.GetKind(),
 	)
 
-	doUpdateDeployment := false
+	// get list of reconcile fields
+	reconcileFields := i.resourceReconcileFields(expected)
 
-	// get stored hash value from annotation
-	existingAnnotations, _, err := unstructured.NestedStringMap(existing.Object, "metadata", "annotations")
+	// compute hash value for the expected deployment
+	expectedHashValue, err := i.computeResourceHash(expected, reconcileFields...)
 	if err != nil {
-		return err
+		i.logger.Errorw("error on compute a hash value to a expected resource",
+			"name", expected.GetName(),
+			"namespace", expected.GetNamespace(),
+			"kind", expected.GetKind(),
+		)
+		return fmt.Errorf("failed to compute hash value to expected resource, name:%s, error: %v", expected.GetName(), err)
 	}
 
-	// if hash doesn't exist then update the deployment
-	if _, hashFound := existingAnnotations[v1alpha1.LastAppliedHashKey]; !hashFound {
-		doUpdateDeployment = true
+	// compute hash value for the existing resource
+	// remove extra annotations and labels to keep the consistence hash
+	existingCloned := existing.DeepCopy()
+	existingCloned.SetAnnotations(i.removeExtraKeyInMap(existingCloned.GetAnnotations(), expected.GetAnnotations()))
+	existingCloned.SetLabels(i.removeExtraKeyInMap(existingCloned.GetLabels(), expected.GetLabels()))
+	// compute hash
+	existingHashValue, err := i.computeResourceHash(existingCloned, reconcileFields...)
+	if err != nil {
+		i.logger.Errorw("error on computing hash value to an existing resource",
+			"name", existingCloned.GetName(),
+			"namespace", existingCloned.GetNamespace(),
+			"kind", existingCloned.GetKind(),
+		)
+		return fmt.Errorf("failed to compute hash value of a existing resource, name:%s, namespace:%s, kind:%s error: %v",
+			existingCloned.GetName(), existingCloned.GetNamespace(), existingCloned.GetKind(), err,
+		)
 	}
 
-	expectedDeployment := &appsv1.Deployment{}
-	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(expected.Object, expectedDeployment); err != nil {
-		return err
-	}
-
-	if !doUpdateDeployment {
-		// compute hash value for the expected deployment
-		expectedHashValue, err := computeDeploymentHash(*expectedDeployment)
+	// if change detected in hash value, update the resource with changes
+	if existingHashValue != expectedHashValue {
+		i.logger.Debugw("change detected in the resource, reconciling",
+			"name", existing.GetName(),
+			"namespace", existing.GetNamespace(),
+			"kind", existing.GetKind(),
+			"existingHashValue", existingHashValue,
+			"expectedHashValue", expectedHashValue,
+		)
+		err = i.copyResourceFields(expected, existing, reconcileFields...)
 		if err != nil {
-			return fmt.Errorf("failed to compute hash value of expected deployment, name:%s, error: %v", expected.GetName(), err)
-		}
-
-		// get existing hash value: always compute the hash value from the deployment spec, do not care about the hash value from annotation
-		// computing hash value from the spec can indicate, if there is change found in the deployed deployment.spec
-		existingDeployment := &appsv1.Deployment{}
-		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(existing.Object, existingDeployment); err != nil {
 			return err
 		}
-		existingHashValue, err := computeDeploymentHash(*existingDeployment)
+
+		err = i.mfClient.Update(existing)
 		if err != nil {
-			return fmt.Errorf("failed to compute hash value of existing deployment, name:%s, error: %v", existing.GetName(), err)
+			i.logger.Errorw("error on updating a resource",
+				"resourceName", existing.GetName(),
+				"namespace", existing.GetNamespace(),
+				"kind", existing.GetKind(),
+				err,
+			)
+			return v1alpha1.RECONCILE_AGAIN_ERR
 		}
 
-		// if both hashes are same, that means deployment on cluster is the same as when it was created
-		doUpdateDeployment = existingHashValue != expectedHashValue
+		i.logger.Debugw("reconciliation successful",
+			"name", existing.GetName(),
+			"namespace", existing.GetNamespace(),
+			"kind", existing.GetKind(),
+		)
+		return nil
 	}
 
-	if doUpdateDeployment {
-		// change detected in hash value, update the deployment with changes
-		existingDeployment := &appsv1.Deployment{}
-		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(existing.Object, existingDeployment); err != nil {
-			return err
+	return nil
+}
+
+func (i *installer) removeExtraKeyInMap(src, dst map[string]string) map[string]string {
+	newMap := map[string]string{}
+	if len(src) == 0 {
+		return newMap
+	}
+	for dstKey, dstValue := range dst {
+		for srcKey := range src {
+			if dstKey == srcKey {
+				newMap[dstKey] = dstValue
+				break
+			}
 		}
-		return i.updateDeployment(existing, existingDeployment, expectedDeployment)
+	}
+	return newMap
+}
+
+func (i *installer) computeResourceHash(u *unstructured.Unstructured, reconcileFieldKeys ...string) (string, error) {
+	// always keep the empty annotations and labels as empty, NOT nil
+	if u.GetAnnotations() == nil {
+		u.SetAnnotations(map[string]string{})
+	}
+	if u.GetLabels() == nil {
+		u.SetLabels(map[string]string{})
+	}
+
+	// if there is no reconcile key specified, compute the hash to the entire object
+	if len(reconcileFieldKeys) == 0 {
+		return hash.Compute(u.Object)
+	}
+
+	// holds the required fieldsMap
+	fieldsMap := map[string]interface{}{}
+
+	// collect all the required fields to compute hash value
+	for _, fieldKey := range reconcileFieldKeys {
+		// split the fields with comma
+		nestedKeys := strings.Split(fieldKey, ".")
+		fieldValue, _, err := unstructured.NestedFieldCopy(u.Object, nestedKeys...)
+		if err != nil {
+			return "", err
+		}
+		fieldsMap[fieldKey] = fieldValue
+	}
+
+	// compute hash to the collected fieldMaps
+	return hash.Compute(fieldsMap)
+}
+
+func (i *installer) mergeMaps(src, dst map[string]string) map[string]string {
+	if len(dst) == 0 {
+		return src
+	}
+	for key, value := range src {
+		dst[key] = value
+	}
+	return dst
+}
+
+func (i *installer) copyResourceFields(src, dst *unstructured.Unstructured, reconcileFieldKeys ...string) error {
+	// if there is no reconcile key specified, compute the hash to the entire object
+	if len(reconcileFieldKeys) == 0 {
+		srcCloned := src.DeepCopy()
+		// merge annotations
+		srcCloned.SetAnnotations(i.mergeMaps(srcCloned.GetAnnotations(), dst.GetAnnotations()))
+		// merge labels
+		srcCloned.SetLabels(i.mergeMaps(srcCloned.GetLabels(), dst.GetLabels()))
+
+		dst.Object = srcCloned.Object
+		return nil
+	}
+
+	for _, fieldKey := range reconcileFieldKeys {
+		switch fieldKey {
+		case annotationsPath: // merge annotations
+			dst.SetAnnotations(i.mergeMaps(src.GetAnnotations(), dst.GetAnnotations()))
+
+		case labelsPath: // merge labels
+			dst.SetLabels(i.mergeMaps(src.GetLabels(), dst.GetLabels()))
+
+		default:
+			// split the fields with comma
+			nestedKeys := strings.Split(fieldKey, ".")
+			fieldValue, found, err := unstructured.NestedFieldCopy(src.Object, nestedKeys...)
+			if err != nil {
+				return err
+			}
+			if found {
+				err = unstructured.SetNestedField(dst.Object, fieldValue, nestedKeys...)
+				if err != nil {
+					return err
+				}
+			} else {
+				unstructured.RemoveNestedField(dst.Object, nestedKeys...)
+			}
+		}
 	}
 
 	return nil

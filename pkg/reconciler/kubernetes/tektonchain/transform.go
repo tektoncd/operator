@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Tekton Authors
+Copyright 2023 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektontrigger
+package tektonchain
 
 import (
 	"context"
@@ -25,34 +25,27 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 )
 
-// Triggers ConfigMap
-const (
-	ConfigDefaults = "config-defaults-triggers"
-	FeatureFlag    = "feature-flags-triggers"
-)
-
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
-		trigger := comp.(*v1alpha1.TektonTrigger)
-		triggerImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.TriggersImagePrefix))
-
-		// adding extension's transformers first to run them before `extra` transformers
-		trns := extension.Transformers(trigger)
+		chainCR := comp.(*v1alpha1.TektonChain)
+		chainImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ChainsImagePrefix))
 		extra := []mf.Transformer{
-			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdTriggers),
-			common.AddConfigMapValues(ConfigDefaults, trigger.Spec.OptionalTriggersProperties),
-			common.AddConfigMapValues(FeatureFlag, trigger.Spec.TriggersProperties),
-			common.DeploymentImages(triggerImages),
-			common.AddConfiguration(trigger.Spec.Config),
+			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdChains),
+			common.DeploymentImages(chainImages),
+			common.AddConfiguration(chainCR.Spec.Config),
+			common.AddConfigMapValues(ChainsConfig, chainCR.Spec.Chain.ChainProperties),
+			common.AddDeploymentRestrictedPSA(),
+			AddControllerEnv(chainCR.Spec.Chain.ControllerEnvs),
 		}
-		trns = append(trns, extra...)
-		if err := common.Transform(ctx, manifest, trigger, trns...); err != nil {
+		extra = append(extra, extension.Transformers(chainCR)...)
+		err := common.Transform(ctx, manifest, chainCR, extra...)
+		if err != nil {
 			return &mf.Manifest{}, err
 		}
 
 		// additional options transformer
 		// always execute as last transformer, so that the values in options will be final update values on the manifests
-		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, trigger.Spec.GetTargetNamespace(), trigger.Spec.Options); err != nil {
+		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, chainCR.Spec.GetTargetNamespace(), chainCR.Spec.Options); err != nil {
 			return &mf.Manifest{}, err
 		}
 

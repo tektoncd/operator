@@ -68,6 +68,8 @@ type Chain struct {
 	Disabled        bool `json:"disabled"`
 	ChainProperties `json:",inline"`
 	ControllerEnvs  []corev1.EnvVar `json:"controllerEnvs,omitempty"`
+	// options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:"options"`
 }
 
 // ChainProperties defines the field to provide chain configuration

@@ -17,6 +17,7 @@ limitations under the License.
 package hash
 
 import (
+	"crypto/md5"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -24,16 +25,28 @@ import (
 	"golang.org/x/mod/sumdb/dirhash"
 )
 
-// Compute generates an unique hash/string for the
-// object pass to it.
+// Compute generates an unique hash/string for the object pass to it.
+// with sha256
 func Compute(obj interface{}) (string, error) {
-	h := sha256.New()
 	d, err := json.Marshal(obj)
 	if err != nil {
 		return "", err
 	}
-	h.Write(d)
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+	hashSha256 := sha256.New()
+	hashSha256.Write(d)
+	return fmt.Sprintf("%x", hashSha256.Sum(nil)), nil
+}
+
+// Compute generates an unique hash/string for the object pass to it.
+// with md5
+func ComputeMd5(obj interface{}) (string, error) {
+	d, err := json.Marshal(obj)
+	if err != nil {
+		return "", err
+	}
+	hashMd5 := md5.New()
+	hashMd5.Write(d)
+	return fmt.Sprintf("%x", hashMd5.Sum(nil)), nil
 }
 
 // computes has for the given directory, tasks the directory and files recursively

@@ -23,6 +23,14 @@ import (
 )
 
 func TestCompute(t *testing.T) {
+	testHashFunc(t, Compute)
+}
+
+func TestComputeMd5(t *testing.T) {
+	testHashFunc(t, ComputeMd5)
+}
+
+func testHashFunc(t *testing.T, computeFunc func(obj interface{}) (string, error)) {
 	tp := &v1alpha1.TektonPipeline{
 		Spec: v1alpha1.TektonPipelineSpec{
 			CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "tekton"},
@@ -34,14 +42,14 @@ func TestCompute(t *testing.T) {
 		},
 	}
 
-	hash, err := Compute(tp.Spec)
+	hash, err := computeFunc(tp.Spec)
 	if err != nil {
 		t.Fatal("unexpected error while computing hash of obj")
 	}
 
 	// Again, calculate the hash without changing object
 
-	hash2, err := Compute(tp.Spec)
+	hash2, err := computeFunc(tp.Spec)
 	if err != nil {
 		t.Fatal("unexpected error while computing hash of obj")
 	}
@@ -54,7 +62,7 @@ func TestCompute(t *testing.T) {
 
 	tp.Spec.TargetNamespace = "changed"
 
-	hash3, err := Compute(tp.Spec)
+	hash3, err := computeFunc(tp.Spec)
 	if err != nil {
 		t.Fatal("unexpected error while computing hash of obj")
 	}

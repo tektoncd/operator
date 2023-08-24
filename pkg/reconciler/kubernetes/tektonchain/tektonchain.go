@@ -387,7 +387,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 			manifest = manifest.Filter(mf.Not(mf.ByKind("Secret")),
 				mf.Not(mf.All(mf.ByName("chains-config"), mf.ByKind("ConfigMap"))))
 
-			if err := r.transform(ctx, &manifest, tc); err != nil {
+			transformer := filterAndTransform(r.extension)
+			if _, err := transformer(ctx, &manifest, tc); err != nil {
 				logger.Error("manifest transformation failed: ", err.Error())
 				return err
 			}
@@ -544,23 +545,6 @@ func (r *Reconciler) updateTektonChainStatus(tc *v1alpha1.TektonChain, createdIs
 	return v1alpha1.RECONCILE_AGAIN_ERR
 }
 
-// transform mutates the passed manifest to one with common, component
-// and platform transformations applied
-func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) error {
-	instance := comp.(*v1alpha1.TektonChain)
-	chainImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ChainsImagePrefix))
-	extra := []mf.Transformer{
-		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdChains),
-		common.DeploymentImages(chainImages),
-		common.AddConfiguration(instance.Spec.Config),
-		common.AddConfigMapValues(ChainsConfig, instance.Spec.Chain.ChainProperties),
-		common.AddDeploymentRestrictedPSA(),
-		AddControllerEnv(instance.Spec.Chain.ControllerEnvs),
-	}
-	extra = append(extra, r.extension.Transformers(instance)...)
-	return common.Transform(ctx, manifest, instance, extra...)
-}
-
 func (r *Reconciler) createInstallerSet(ctx context.Context, tc *v1alpha1.TektonChain) (*v1alpha1.TektonInstallerSet, error) {
 
 	manifest := r.manifest
@@ -579,7 +563,8 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tc *v1alpha1.Tekton
 	manifest = manifest.Filter(mf.Not(mf.ByKind("Secret")),
 		mf.Not(mf.All(mf.ByName("chains-config"), mf.ByKind("ConfigMap"))))
 
-	if err := r.transform(ctx, &manifest, tc); err != nil {
+	transformer := filterAndTransform(r.extension)
+	if _, err = transformer(ctx, &manifest, tc); err != nil {
 		tc.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err
 	}
@@ -611,7 +596,8 @@ func (r *Reconciler) createConfigInstallerSet(ctx context.Context, tc *v1alpha1.
 
 	// remove secret from this installerset as this installerset will be deleted on upgrade
 	manifest = manifest.Filter(mf.ByKind("ConfigMap"), mf.ByName("chains-config"))
-	if err := r.transform(ctx, &manifest, tc); err != nil {
+	transformer := filterAndTransform(r.extension)
+	if _, err := transformer(ctx, &manifest, tc); err != nil {
 		tc.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err
 	}
@@ -645,7 +631,8 @@ func (r *Reconciler) createSecretInstallerSet(ctx context.Context, tc *v1alpha1.
 	// filter only secret for this installerset as this needs
 	// to be restored over upgrade
 	manifest = manifest.Filter(mf.ByKind("Secret"))
-	if err := r.transform(ctx, &manifest, tc); err != nil {
+	transformer := filterAndTransform(r.extension)
+	if _, err := transformer(ctx, &manifest, tc); err != nil {
 		tc.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err
 	}

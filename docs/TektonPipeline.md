@@ -36,6 +36,7 @@ spec:
   performance:
     disable-ha: false
     buckets: 1
+    replicas: 1
     threads-per-controller: 2
     kube-api-qps: 5.0
     kube-api-burst: 10
@@ -184,6 +185,7 @@ spec:
   performance:
     disable-ha: false
     buckets: 1
+    replicas: 1
     threads-per-controller: 2
     kube-api-qps: 5.0
     kube-api-burst: 10
@@ -195,16 +197,11 @@ A high level descriptions are given here. To get the detailed information please
 
 * `disable-ha` - enable or disable ha feature, defaults in pipelines controller is `disable-ha=false`
 * `buckets` - buckets is the number of buckets used to partition key space of each reconciler. If this number is M and the replica number of the controller is N, the N replicas will compete for the M buckets. The owner of a bucket will take care of the reconciling for the keys partitioned into that bucket. The maximum value of `buckets` at this time is `10`. default value in pipeline controller is `1`
+* `replicas` - pipelines controller deployment replicas count
 * `threads-per-controller` - is the number of threads(aka worker) to use when processing the pipelines controller's workqueue, default value in pipelines controller is `2`
 * `kube-api-qps` - QPS indicates the maximum QPS to the cluster master from the REST client, default value in pipeline controller is `5.0`
 * `kube-api-burst` - maximum burst for throttle, default value in pipeline controller is `10`
 
 > #### Note:
->
-> * Pipelines controller deployments `replicas` will not be handled by operator. User has to change the replicas as follows,
->   ```
->   kubectl --namespace tekton-pipelines scale deployment tekton-pipelines-controller --replicas=3
->   ```
->
 > * `kube-api-qps` and `kube-api-burst` will be multiplied by 2 in pipelines controller. To get the detailed information visit [Performance Configuration](https://tekton.dev/docs/pipelines/tekton-controller-performance-configuration/) guide
 > * if you modify or remove any of the performance properties, `tekton-pipelines-controller` deployment and `config-leader-election` config-map (if `buckets` changed) will be updated, and `tekton-pipelines-controller` pods will be recreated

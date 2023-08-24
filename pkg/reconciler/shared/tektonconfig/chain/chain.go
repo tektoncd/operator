@@ -108,6 +108,11 @@ func UpdateChain(ctx context.Context, old *v1alpha1.TektonChain, new *v1alpha1.T
 		updated = true
 	}
 
+	if !reflect.DeepEqual(old.Spec.Chain.Options, new.Spec.Chain.Options) {
+		old.Spec.Chain.Options = new.Spec.Chain.Options
+		updated = true
+	}
+
 	if old.ObjectMeta.OwnerReferences == nil {
 		old.ObjectMeta.OwnerReferences = new.ObjectMeta.OwnerReferences
 		updated = true

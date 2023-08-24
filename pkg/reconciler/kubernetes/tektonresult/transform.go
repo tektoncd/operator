@@ -83,7 +83,17 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.StatefulSetImages(resultImgs),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
-	return common.Transform(ctx, manifest, instance, extra...)
+	err := common.Transform(ctx, manifest, instance, extra...)
+	if err != nil {
+		return err
+	}
+
+	// additional options transformer
+	// always execute as last transformer, so that the values in options will be final update values on the manifests
+	if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, instance.Spec.GetTargetNamespace(), instance.Spec.Options); err != nil {
+		return err
+	}
+	return nil
 }
 
 func enablePVCLogging(p v1alpha1.ResultsAPIProperties) mf.Transformer {

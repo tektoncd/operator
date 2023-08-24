@@ -567,46 +567,13 @@ func (r *Reconciler) getManifest(ctx context.Context, th *v1alpha1.TektonHub, ma
 		return nil, err
 	}
 
-	transformedManifest, err := r.transform(ctx, manifest, th)
+	transformer := filterAndTransform(r.extension)
+	transformedManifest, err := transformer(ctx, &manifest, th)
 	if err != nil {
 		return nil, err
 	}
 
 	return transformedManifest, nil
-}
-
-func (r *Reconciler) transform(ctx context.Context, manifest mf.Manifest, th *v1alpha1.TektonHub) (*mf.Manifest, error) {
-	logger := logging.FromContext(ctx)
-
-	images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.HubImagePrefix))
-	trans := r.extension.Transformers(th)
-	extra := []mf.Transformer{
-		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdHub),
-		mf.InjectOwner(th),
-		mf.InjectNamespace(th.Spec.GetTargetNamespace()),
-		common.DeploymentImages(images),
-		common.JobImages(images),
-		updateApiConfigMap(th, apiConfigMapName),
-		addConfigMapKeyValue(uiConfigMapName, "API_URL", th.Status.ApiRouteUrl),
-		addConfigMapKeyValue(uiConfigMapName, "AUTH_BASE_URL", th.Status.AuthRouteUrl),
-		addConfigMapKeyValue(uiConfigMapName, "API_VERSION", "v1"),
-		addConfigMapKeyValue(uiConfigMapName, "REDIRECT_URI", th.Status.UiRouteUrl),
-		addConfigMapKeyValue(uiConfigMapName, "CUSTOM_LOGO_BASE64_DATA", th.Spec.CustomLogo.Base64Data),
-		addConfigMapKeyValue(uiConfigMapName, "CUSTOM_LOGO_MEDIA_TYPE", th.Spec.CustomLogo.MediaType),
-		common.AddDeploymentRestrictedPSA(),
-		common.AddJobRestrictedPSA(),
-	}
-
-	trans = append(trans, extra...)
-
-	manifest, err := manifest.Transform(trans...)
-
-	if err != nil {
-		logger.Error("failed to transform manifest")
-		return nil, err
-	}
-
-	return &manifest, nil
 }
 
 func (r *Reconciler) getLabels(componentInstallerSetType string) metav1.LabelSelector {
