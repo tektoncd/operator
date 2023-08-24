@@ -51,8 +51,8 @@ func (tp *TektonDashboard) GetStatus() TektonComponentStatus {
 
 // TektonDashboardSpec defines the desired state of TektonDashboard
 type TektonDashboardSpec struct {
-	CommonSpec          `json:",inline"`
-	DashboardProperties `json:",inline"`
+	CommonSpec `json:",inline"`
+	Dashboard  `json:",inline"`
 	// Config holds the configuration for resources created by TektonDashboard
 	// +optional
 	Config Config `json:"config,omitempty"`
@@ -82,6 +82,8 @@ type TektonDashboardList struct {
 // Dashboard degines the fields to customize the Dashboard component
 type Dashboard struct {
 	DashboardProperties `json:",inline"`
+	// options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:"options"`
 }
 
 // Dashboard degines the fields to customize the Dashboard component

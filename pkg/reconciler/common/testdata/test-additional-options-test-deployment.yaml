@@ -1,0 +1,264 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tekton-pipelines
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-defaults
+  namespace: tekton-pipelines
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  test: "123"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-events
+  namespace: tekton-pipelines
+  creationTimestamp: null
+data:
+  event1: no-data
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-leader-election
+  namespace: tekton-pipelines-resolvers
+  labels:
+    app.kubernetes.io/component: resolvers
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-pipelines
+data:
+  buckets: "2"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-pipelines-controller
+  namespace: tekton-pipelines
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: controller
+    controlled-by-options: "true"
+  annotations:
+    hpa-enabled: "false"
+status: {}
+spec:
+  strategy: {}
+  replicas: 4
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: controller
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/name: controller
+        operator.tekton.dev/deployment-spec-applied-hash: dd069273de050a47c5552fd79a70d4c3
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: disktype
+                    operator: In
+                    values:
+                      - ssd
+                      - nvme
+                      - ramdisk
+      serviceAccountName: tekton-pipelines-controller
+      nodeSelector:
+        zone: east
+      tolerations:
+        - key: zone
+          operator: Equal
+          value: west
+          effect: NoSchedule
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: foo
+          matchLabelKeys:
+            - pod-template-hash
+      containers:
+        - name: container-xyz
+          resources: {}
+        - name: tekton-pipelines-controller
+          image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/controller:v0.50.1@sha256:9025991c337374dadce6d49e29fbcf86b233ab8f5f96748c67293b2285c3e0b6
+          args:
+            - "-entrypoint-image"
+            - "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/entrypoint:v0.50.1@sha256:0c66040a16142a598d5aa9f310b1cbf66e843aa7114188f5d0ab5d36b463a09b"
+            - "--disable-ha=false"
+          volumeMounts:
+            - name: config-logging
+              mountPath: /etc/config-logging-tmp
+            - name: config-registry-cert
+              mountPath: /etc/config-registry-cert
+            - name: custom-mount
+              mountPath: /etc/custom-mount
+          env:
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONFIG_DEFAULTS_NAME
+              value: config-defaults
+            - name: CONFIG_LOGGING_NAME
+              value: pipeline-config-logging
+            - name: ENV_FOO
+              value: bar
+            - name: ENV_FROM_CONFIG_MAP
+              valueFrom:
+                configMapKeyRef:
+                  name: config-map-foo
+                  key: foo
+                  optional: true
+          resources:
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+            runAsUser: 65532
+            runAsGroup: 65532
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - name: probes
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: probes
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: probes
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: config-logging
+          hostPath:
+            path: /etc/config-logging
+        - name: config-registry-cert
+          configMap:
+            name: config-registry-cert
+        - name: my-custom-logs
+          hostPath:
+            path: /var/custom/logs
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-pipelines-webhook
+  namespace: tekton-pipelines
+  creationTimestamp: null
+  labels:
+    app.kubernetes.io/name: webhook
+status: {}
+spec:
+  strategy: {}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: webhook
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: webhook
+        operator.tekton.dev/deployment-spec-applied-hash: 4fa76bc4a91fa44468ba7fa265efe435
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: NotIn
+                    values:
+                      - windows
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: webhook
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      serviceAccountName: tekton-pipelines-webhook
+      containers:
+        - name: webhook
+          image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/webhook:v0.50.1@sha256:c24c15e53902b90547d162876d9cffae6da83c07b9d2969e13a179d1cbfa48ad
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 500m
+              memory: 500Mi
+          env:
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: CONFIG_LOGGING_NAME
+              value: config-logging
+            - name: CONFIG_OBSERVABILITY_NAME
+              value: config-observability
+            - name: CONFIG_LEADERELECTION_NAME
+              value: config-leader-election
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - "ALL"
+            runAsUser: 65532
+            runAsGroup: 65532
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - name: https-webhook
+              containerPort: 8443
+            - name: probes
+              containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: probes
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: probes
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5

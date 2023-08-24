@@ -1,0 +1,110 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  creationTimestamp: null
+  labels:
+    controlled-by-options: "true"
+  name: web
+spec:
+  podManagementPolicy: Parallel
+  replicas: 4
+  selector:
+    matchLabels:
+      app: nginx
+  serviceName: www-n
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: nginx
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: disktype
+                    operator: In
+                    values:
+                      - ssd
+                      - nvme
+                      - ramdisk
+      containers:
+        - args:
+            - --mode=production
+          env:
+            - name: ENV_FOO
+              value: bar
+            - name: ENV_FROM_CONFIG_MAP
+              valueFrom:
+                configMapKeyRef:
+                  key: foo
+                  name: config-map-foo
+                  optional: true
+            - name: CONFIG_LOGGING_NAME
+              value: pipeline-config-logging
+          image: registry.k8s.io/nginx-slim:0.8
+          name: nginx
+          ports:
+            - containerPort: 80
+              name: web
+          resources:
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          volumeMounts:
+            - mountPath: /usr/share/nginx/html
+              name: www
+            - mountPath: /etc/custom-mount
+              name: custom-mount
+            - mountPath: /etc/config-logging-tmp
+              name: config-logging
+      nodeSelector:
+        zone: east
+      tolerations:
+        - effect: NoSchedule
+          key: zone
+          operator: Equal
+          value: west
+      topologySpreadConstraints:
+        - labelSelector:
+            matchLabels:
+              app: foo
+          matchLabelKeys:
+            - pod-template-hash
+          maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+      volumes:
+        - hostPath:
+            path: /var/custom/logs
+          name: my-custom-logs
+        - hostPath:
+            path: /etc/config-logging
+          name: config-logging
+  updateStrategy: {}
+  volumeClaimTemplates:
+    - metadata:
+        creationTimestamp: null
+        name: www
+      spec:
+        accessModes:
+          - ReadWriteMany
+        resources:
+          requests:
+            storage: 2Gi
+      status: {}
+    - metadata:
+        creationTimestamp: null
+        name: www-2
+      spec:
+        accessModes:
+          - ReadWriteMany
+        resources:
+          requests:
+            storage: 4Gi
+      status: {}
+status:
+  availableReplicas: 0
+  replicas: 0

@@ -81,6 +81,8 @@ type Pipeline struct {
 	// The params to customize different components of Pipelines
 	// +optional
 	Params []Param `json:"params,omitempty"`
+	// options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:"options"`
 }
 
 // PipelineProperties defines customizable flags for Pipeline Component.
@@ -161,6 +163,8 @@ type PipelinePerformanceProperties struct {
 	PipelinePerformanceLeaderElectionConfig `json:",inline"`
 	// +optional
 	PipelineDeploymentPerformanceArgs `json:",inline"`
+	// +optional
+	Replicas *int32 `json:"replicas,omitempty"`
 }
 
 // performance configurations to tune the performance of the pipeline controller

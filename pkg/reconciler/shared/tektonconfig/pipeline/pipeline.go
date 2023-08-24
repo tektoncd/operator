@@ -114,6 +114,11 @@ func UpdatePipeline(ctx context.Context, old *v1alpha1.TektonPipeline, new *v1al
 		updated = true
 	}
 
+	if !reflect.DeepEqual(old.Spec.Options, new.Spec.Options) {
+		old.Spec.Options = new.Spec.Options
+		updated = true
+	}
+
 	if updated {
 		_, err := clients.Update(ctx, old, metav1.UpdateOptions{})
 		if err != nil {

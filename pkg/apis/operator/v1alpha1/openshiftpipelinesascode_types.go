@@ -70,4 +70,6 @@ type OpenShiftPipelinesAsCodeList struct {
 
 type PACSettings struct {
 	Settings map[string]string `json:"settings,omitempty"`
+	// options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:"options"`
 }

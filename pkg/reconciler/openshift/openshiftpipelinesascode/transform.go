@@ -50,8 +50,15 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 
 		allTfs := append(tfs, extension.Transformers(pac)...)
 		if err := common.Transform(ctx, &pacManifest, pac, allTfs...); err != nil {
-			return nil, err
+			return &mf.Manifest{}, err
 		}
+
+		// additional options transformer
+		// always execute as last transformer, so that the values in options will be final update values on the manifests
+		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, pac.Spec.GetTargetNamespace(), pac.Spec.Options); err != nil {
+			return &mf.Manifest{}, err
+		}
+
 		return &pacManifest, nil
 	}
 }

@@ -105,6 +105,11 @@ func updateOPAC(ctx context.Context, opacCR *v1alpha1.OpenShiftPipelinesAsCode, 
 		updated = true
 	}
 
+	if !reflect.DeepEqual(opacCR.Spec.PACSettings.Options, config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Options) {
+		opacCR.Spec.PACSettings.Options = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Options
+		updated = true
+	}
+
 	if opacCR.ObjectMeta.OwnerReferences == nil {
 		ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 		opacCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}

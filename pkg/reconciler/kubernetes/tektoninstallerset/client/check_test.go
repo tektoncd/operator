@@ -231,7 +231,7 @@ func TestInstallerSetClient_Check(t *testing.T) {
 							},
 							Annotations: map[string]string{
 								v1alpha1.TargetNamespaceKey: comp.Spec.GetTargetNamespace(),
-								v1alpha1.LastAppliedHashKey: "1ca67ca6f4dfe602f76233470d031976757fc5249c2d67887adb04a7988cfebc",
+								v1alpha1.LastAppliedHashKey: "29c4f8fa8f036d59d531b57f6a7878c092d560f55fc4e075efae8534c12b505f",
 							},
 						},
 						Spec: v1alpha1.TektonInstallerSetSpec{},

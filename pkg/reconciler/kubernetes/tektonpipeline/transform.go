@@ -30,6 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	apimachineryRuntime "k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -81,6 +82,13 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		if err := common.Transform(ctx, manifest, instance, trns...); err != nil {
 			return &mf.Manifest{}, err
 		}
+
+		// additional options transformer
+		// always execute as last transformer, so that the values in options will be final update values on the manifests
+		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, pipeline.Spec.GetTargetNamespace(), pipeline.Spec.Options); err != nil {
+			return &mf.Manifest{}, err
+		}
+
 		return manifest, nil
 	}
 }
@@ -134,6 +142,16 @@ func updatePerformanceFlagsInDeployment(pipelineCR *v1alpha1.TektonPipeline) mf.
 			podLabels[labelKey] = fmt.Sprintf("%v", value)
 		}
 		dep.Spec.Template.Labels = podLabels
+
+		// update replicas, if available
+		if performanceSpec.Replicas != nil {
+			dep.Spec.Replicas = ptr.Int32(*performanceSpec.Replicas)
+		}
+
+		// include it in the pods label, that will recreate all the pods, if there is a change in replica count
+		if dep.Spec.Replicas != nil {
+			dep.Spec.Template.Labels["deployment.spec.replicas"] = fmt.Sprintf("%d", *dep.Spec.Replicas)
+		}
 
 		// sort flag keys in an order, to get the consistent hash value in installerset
 		flagKeys := getSortedKeys(flags)

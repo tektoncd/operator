@@ -44,8 +44,15 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			trns = append(trns, common.ReplaceDeploymentArg("tekton-dashboard", externalLogsArg, updatedExternalLogsArg))
 		}
 		if err := common.Transform(ctx, manifest, dashboard, trns...); err != nil {
-			return nil, err
+			return &mf.Manifest{}, err
 		}
+
+		// additional options transformer
+		// always execute as last transformer, so that the values in options will be final update values on the manifests
+		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, dashboard.Spec.GetTargetNamespace(), dashboard.Spec.Dashboard.Options); err != nil {
+			return &mf.Manifest{}, err
+		}
+
 		return manifest, nil
 	}
 }

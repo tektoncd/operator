@@ -61,6 +61,8 @@ type Hub struct {
 	// Params is the list of params passed for Hub customization
 	// +optional
 	Params []Param `json:"params,omitempty"`
+	// options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:"options"`
 }
 
 type DbSpec struct {
