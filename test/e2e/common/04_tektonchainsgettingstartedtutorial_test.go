@@ -34,7 +34,7 @@ import (
 	"github.com/tektoncd/operator/test/client"
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
-	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1"
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/test/parse"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -205,7 +205,7 @@ func (s *TektonChainTutorialTestSuite) Test01() {
 	}
 
 	taskRunName := "build-push-run-output-image-test"
-	taskOutputImageTaskRun := parse.MustParseV1beta1TaskRun(t, string(taskRunYAML))
+	taskOutputImageTaskRun := parse.MustParseV1TaskRun(t, string(taskRunYAML))
 	taskOutputImageTaskRun.Namespace = testNamespace
 
 	t.Run("create TaskRun", func(t *testing.T) {
@@ -216,7 +216,7 @@ func (s *TektonChainTutorialTestSuite) Test01() {
 	})
 
 	// wait for TR to finish
-	taskRunSucceededFunc := func(taskRun *v1beta1.TaskRun) (bool, error) {
+	taskRunSucceededFunc := func(taskRun *v1.TaskRun) (bool, error) {
 		allConditionsHappy := true
 		if len(taskRun.Status.Conditions) == 0 {
 			return false, nil
@@ -241,7 +241,7 @@ func (s *TektonChainTutorialTestSuite) Test01() {
 		}
 	})
 
-	taskRunSignedFunc := func(taskRun *v1beta1.TaskRun) (bool, error) {
+	taskRunSignedFunc := func(taskRun *v1.TaskRun) (bool, error) {
 		if taskRun.Annotations["chains.tekton.dev/signed"] == "true" {
 			return true, nil
 		}

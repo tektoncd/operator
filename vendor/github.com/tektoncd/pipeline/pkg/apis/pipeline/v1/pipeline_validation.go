@@ -101,8 +101,8 @@ func (ps *PipelineSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError
 	}
 	// Indexing into array parameters
 	arrayParamIndexingRefs := ps.GetIndexingReferencesToArrayParams()
-	if len(arrayParamIndexingRefs) != 0 && !config.CheckAlphaOrBetaAPIFields(ctx) {
-		errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("cannot index into array parameters when 'enable-api-fields' is 'stable', but found indexing references: %s", arrayParamIndexingRefs)))
+	if len(arrayParamIndexingRefs) != 0 {
+		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "indexing into array parameters", config.BetaAPIFields))
 	}
 	// array and object results
 	for i, result := range ps.Results {
@@ -227,7 +227,6 @@ func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldErr
 		// when the enable-api-fields feature gate is anything but "alpha".
 		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
-		errs = errs.Also(pt.Matrix.validateNoWholeArrayResults())
 		errs = errs.Also(pt.Matrix.validateUniqueParams())
 	}
 	errs = errs.Also(pt.Matrix.validateParameterInOneOfMatrixOrParams(pt.Params))
@@ -327,14 +326,7 @@ func (pt PipelineTask) validateTask(ctx context.Context) (errs *apis.FieldError)
 		errs = errs.Also(pt.TaskSpec.Validate(ctx).ViaField("taskSpec"))
 	}
 	if pt.TaskRef != nil {
-		if pt.TaskRef.Name != "" {
-			// TaskRef name must be a valid k8s name
-			if errSlice := validation.IsQualifiedName(pt.TaskRef.Name); len(errSlice) != 0 {
-				errs = errs.Also(apis.ErrInvalidValue(strings.Join(errSlice, ","), "name"))
-			}
-		} else if pt.TaskRef.Resolver == "" {
-			errs = errs.Also(apis.ErrInvalidValue("taskRef must specify name", "taskRef.name"))
-		}
+		errs = errs.Also(pt.TaskRef.Validate(ctx).ViaField("taskRef"))
 	}
 	return errs
 }
