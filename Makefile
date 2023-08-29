@@ -8,7 +8,7 @@ FORCE_FETCH_RELEASE = false
 CR            = config/basic
 PLATFORM := $(if $(PLATFORM),--platform $(PLATFORM))
 
-GOLANGCI_VERSION  = v1.47.2
+GOLANGCI_VERSION  = v1.54.2
 
 BIN      = $(CURDIR)/.bin
 
