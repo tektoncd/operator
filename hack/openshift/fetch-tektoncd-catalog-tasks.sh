@@ -47,7 +47,7 @@ declare -A TEKTON_CATALOG_TASKS=(
   ["git-clone"]="0.9"
   ["kn"]="0.2"
   ["kn-apply"]="0.2"
-  ["skopeo-copy"]="0.2"
+  ["skopeo-copy"]="0.3"
   ["tkn"]="0.4"
   # Those tasks are managed directly in the repository
   # ["buildah"]="0.1"
