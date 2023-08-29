@@ -876,8 +876,8 @@ github.com/hashicorp/go.net v0.0.1/go.mod h1:hjKkEWcCURg++eb33jQU7oqQcI9XDCnUzHA
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.4/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
-github.com/hashicorp/golang-lru v0.6.0 h1:uL2shRDx7RTrOrTCUZEGP/wJUFiUI8QT6E7z5o8jga4=
-github.com/hashicorp/golang-lru v0.6.0/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
+github.com/hashicorp/golang-lru v1.0.2 h1:dV3g9Z/unq5DpblPpw+Oqcv4dU/1omnb4Ok8iPY6p1c=
+github.com/hashicorp/golang-lru v1.0.2/go.mod h1:iADmTwqILo4mZ8BN3D2Q6+9jd8WM5uGBxy+E8yxSoD4=
 github.com/hashicorp/hcl v1.0.0 h1:0Anlzjpi4vEasTeNFn2mLJgTSwt0+6sfsiTG8qcWGx4=
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/hashicorp/logutils v1.0.0/go.mod h1:QIAnNjmIWmVIIkWDTG1z5v++HQmx9WQRO+LraFDTW64=
@@ -1370,8 +1370,8 @@ github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d/go.mod h1:RRCYJ
 github.com/tchap/go-patricia v2.2.6+incompatible/go.mod h1:bmLyhP68RS6kStMGxByiQ23RP/odRBOTVjwp2cDyi6I=
 github.com/tchap/go-patricia/v2 v2.3.1 h1:6rQp39lgIYZ+MHmdEq4xzuk1t7OdC35z/xm0BGhTkes=
 github.com/tchap/go-patricia/v2 v2.3.1/go.mod h1:VZRHKAb53DLaG+nA9EaYYiaEx6YztwDlLElMsnSHD4k=
-github.com/tektoncd/pipeline v0.50.1 h1:Asdfn1MxUSTlfzmr0PV4BPIEH7K4QLGym33nLgQlPCQ=
-github.com/tektoncd/pipeline v0.50.1/go.mod h1:OjhCfhPQbVvK6GUmIseL2ipjaQ8ILcUerMk4P4sCcHA=
+github.com/tektoncd/pipeline v0.51.0 h1:n2i/AJPXkTwcv9uc9xRJCtMeAHF1c1NkF7cNQ5zEf+0=
+github.com/tektoncd/pipeline v0.51.0/go.mod h1:P9xePA0fqYIhaw4fllmX2LtMneyWqj60EjsZp5qqq9U=
 github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7 h1:YsjQ83UBIIq4k/s2PzQ6pqe4tpPtm1hia3oyNBDDrDU=
 github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7/go.mod h1:uJBaI0AL/kjPThiMYZcWRujEz7D401v643d6s/21GAg=
 github.com/tektoncd/triggers v0.25.0 h1:HaHZ0w8RpeIvB/7DoIZz+KhIOAVzPiFIPZOrDtvEPbM=
