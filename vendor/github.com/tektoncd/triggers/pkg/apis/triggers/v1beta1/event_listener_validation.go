@@ -121,7 +121,7 @@ func validateCustomObject(customData *CustomResource) (errs *apis.FieldError) {
 	// bounded by condition because containers fields are optional so there is a chance that containers can be nil.
 	if len(orig.Spec.Template.Spec.Containers) == 1 {
 		errs = errs.Also(apis.CheckDisallowedFields(orig.Spec.Template.Spec.Containers[0],
-			*containerFieldMask(&orig.Spec.Template.Spec.Containers[0])).ViaField("spec.template.spec.containers[0]"))
+			*containerFieldMaskForCustomResource(&orig.Spec.Template.Spec.Containers[0])).ViaField("spec.template.spec.containers[0]"))
 		// validate env
 		errs = errs.Also(validateEnv(orig.Spec.Template.Spec.Containers[0].Env).ViaField("spec.template.spec.containers[0].env"))
 	}
@@ -144,7 +144,7 @@ func validateKubernetesObject(orig *KubernetesResource) (errs *apis.FieldError) 
 	// bounded by condition because containers fields are optional so there is a chance that containers can be nil.
 	if len(orig.Template.Spec.Containers) == 1 {
 		errs = errs.Also(apis.CheckDisallowedFields(orig.Template.Spec.Containers[0],
-			*containerFieldMask(&orig.Template.Spec.Containers[0])).ViaField("spec.template.spec.containers[0]"))
+			*containerFieldMaskForKubernetes(&orig.Template.Spec.Containers[0])).ViaField("spec.template.spec.containers[0]"))
 		// validate env
 		errs = errs.Also(validateEnv(orig.Template.Spec.Containers[0].Env).ViaField("spec.template.spec.containers[0].env"))
 	}
@@ -221,20 +221,30 @@ func envVarMask(in *corev1.EnvVar) *corev1.EnvVar {
 	return out
 }
 
-func containerFieldMask(in *corev1.Container) *corev1.Container {
+func containerFieldMaskForKubernetes(in *corev1.Container) *corev1.Container {
 	out := new(corev1.Container)
 	out.Resources = in.Resources
 	out.Env = in.Env
+	out.LivenessProbe = in.LivenessProbe
+	out.ReadinessProbe = in.ReadinessProbe
+	out.StartupProbe = in.StartupProbe
+	return containerFieldMask(out)
+}
 
+func containerFieldMaskForCustomResource(in *corev1.Container) *corev1.Container {
+	out := new(corev1.Container)
+	out.Resources = in.Resources
+	out.Env = in.Env
+	return containerFieldMask(out)
+}
+
+func containerFieldMask(out *corev1.Container) *corev1.Container {
 	// Disallowed fields
 	// This list clarifies which all container attributes are not allowed.
 	out.Name = ""
 	out.Image = ""
 	out.Args = nil
 	out.Ports = nil
-	out.LivenessProbe = nil
-	out.ReadinessProbe = nil
-	out.StartupProbe = nil
 	out.Command = nil
 	out.VolumeMounts = nil
 	out.ImagePullPolicy = ""
