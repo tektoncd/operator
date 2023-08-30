@@ -28,6 +28,7 @@ import (
 	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
 	tektonInstallerReconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektoninstallerset"
 	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
+	statefulsetinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/statefulset"
 	serviceAccountInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount"
 	clusterRoleInformer "knative.dev/pkg/client/injection/kube/informers/rbac/v1/clusterrole"
 	clusterRoleBindingInformer "knative.dev/pkg/client/injection/kube/informers/rbac/v1/clusterrolebinding"
@@ -64,6 +65,11 @@ func NewExtendedController() injection.ControllerConstructor {
 		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
 
 		deploymentinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TektonInstallerSet{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		})
+
+		statefulsetinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonInstallerSet{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		})
