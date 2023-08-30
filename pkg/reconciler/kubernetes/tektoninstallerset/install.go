@@ -304,10 +304,9 @@ func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error 
 	if err != nil {
 		return err
 	}
-	existingHashValue, hashFound := existingAnnotations[v1alpha1.LastAppliedHashKey]
 
 	// if hash doesn't exist then update the deployment
-	if !hashFound {
+	if _, hashFound := existingAnnotations[v1alpha1.LastAppliedHashKey]; !hashFound {
 		doUpdateDeployment = true
 	}
 
@@ -321,6 +320,17 @@ func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error 
 		expectedHashValue, err := computeDeploymentHash(*expectedDeployment)
 		if err != nil {
 			return fmt.Errorf("failed to compute hash value of expected deployment, name:%s, error: %v", expected.GetName(), err)
+		}
+
+		// get existing hash value: always compute the hash value from the deployment spec, do not care about the hash value from annotation
+		// computing hash value from the spec can indicate, if there is change found in the deployed deployment.spec
+		existingDeployment := &appsv1.Deployment{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(existing.Object, existingDeployment); err != nil {
+			return err
+		}
+		existingHashValue, err := hash.Compute(existingDeployment.Spec)
+		if err != nil {
+			return fmt.Errorf("failed to compute hash value of existing deployment, name:%s, error: %v", existing.GetName(), err)
 		}
 
 		// if both hashes are same, that means deployment on cluster is the same as when it was created
