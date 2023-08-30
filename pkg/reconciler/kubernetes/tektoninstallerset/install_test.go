@@ -18,6 +18,7 @@ package tektoninstallerset
 
 import (
 	"context"
+	"knative.dev/pkg/ptr"
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
@@ -37,7 +38,6 @@ import (
 
 var (
 	serviceAccount = namespacedResource("v1", "ServiceAccount", "test", "test-service-account")
-	namespace      = namespacedResource("v1", "Namespace", "", "test-service-account")
 )
 
 // namespacedResource is an unstructured resource with the given apiVersion, kind, ns and name.
@@ -107,6 +107,42 @@ func TestEnsureResources_UpdateResource(t *testing.T) {
 }
 
 var (
+	notReadyStatefulset = &appsv1.StatefulSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "StatefulSet",
+			APIVersion: "apps/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test",
+			Name:      "notready-statefulset",
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas:    ptr.Int32(1),
+			ServiceName: "test",
+		},
+		Status: appsv1.StatefulSetStatus{
+			Replicas:      1,
+			ReadyReplicas: 0,
+		},
+	}
+	existStatefulset = &appsv1.StatefulSet{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "StatefulSet",
+			APIVersion: "apps/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "test",
+			Name:      "exist-statefulset",
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas:    ptr.Int32(1),
+			ServiceName: "test",
+		},
+		Status: appsv1.StatefulSetStatus{
+			Replicas:      1,
+			ReadyReplicas: 1,
+		},
+	}
 	readyControllerDeployment = &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: "test",
@@ -361,25 +397,130 @@ func TestJobFailed(t *testing.T) {
 	}
 }
 
-func TestEnsureResources_DeleteResources(t *testing.T) {
-	fakeClient := fake.New(&serviceAccount, &namespace)
+func TestEnsureStatefulSetResources(t *testing.T) {
+	tests := []struct {
+		name      string
+		sfsObject *appsv1.StatefulSet
+		wantError bool
+	}{
+		{
+			name:      "valid status check",
+			sfsObject: existStatefulset,
+			wantError: false,
+		},
+		{
+			name:      "invalid status check",
+			sfsObject: notReadyStatefulset,
+			wantError: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var sfsObjectFromInstallerSet unstructured.Unstructured
+			data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(tt.sfsObject)
+			assert.NilError(t, err)
+			sfsObjectFromInstallerSet.Object = data
+			inExist := []unstructured.Unstructured{sfsObjectFromInstallerSet}
+			client := fake.New([]runtime.Object{tt.sfsObject}...)
+			manifest, err := mf.ManifestFrom(mf.Slice(inExist), mf.UseClient(client))
+			if err != nil {
+				t.Fatalf("Failed to generate manifest: %v", err)
+			}
+
+			observer, _ := zapobserver.New(zap.InfoLevel)
+			logger := zap.New(observer).Sugar()
+			i := NewInstaller(&manifest, client, logger)
+
+			err = i.EnsureStatefulSetResources()
+			if err != nil != tt.wantError {
+				t.Errorf("EnsureStatefulSetResources() error = %v, wantErr %v", err, tt.wantError)
+			}
+		})
+	}
+}
+
+// TestEnsureResource tests below scenarios
+// 1. ensureResource function create statefulset (assume the data is coming from installerset for the first time)
+// 2. User manually update statefulset directly using oc/kubectl client
+// 3. again call ensureResource function to make sure user changes are reverted back except changes to replicas other than that direct changes to statefulset is not allowed
+func TestEnsureResource(t *testing.T) {
+	var sfsObjectFromInstallerSet unstructured.Unstructured
+	data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(existStatefulset)
+	assert.NilError(t, err)
+	sfsObjectFromInstallerSet.Object = data
+	inExist := []unstructured.Unstructured{sfsObjectFromInstallerSet}
+
+	client := fake.New([]runtime.Object{existStatefulset}...)
+	manifest, err := mf.ManifestFrom(mf.Slice(inExist), mf.UseClient(client))
+	assert.NilError(t, err)
+
 	observer, _ := zapobserver.New(zap.InfoLevel)
 	logger := zap.New(observer).Sugar()
+	i := NewInstaller(&manifest, client, logger)
 
-	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{serviceAccount, namespace}))
-	if err != nil {
-		t.Fatalf("Failed to generate manifest: %v", err)
+	copyOfInstallerObject := sfsObjectFromInstallerSet.DeepCopy()
+
+	// ensureResource create/update statefulset
+	err = i.ensureResource(&sfsObjectFromInstallerSet)
+	assert.NilError(t, err)
+
+	// Ensure passed statefulset created/updated by using Get operation
+	createdObj, err := i.mfClient.Get(&sfsObjectFromInstallerSet)
+	assert.NilError(t, err)
+	assert.Assert(t, createdObj != nil)
+	formattedData := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(createdObj.Object, formattedData)
+	assert.NilError(t, err)
+
+	if formattedData.Spec.ServiceName != "test" {
+		t.Errorf("expected spec.serviceName as test, got %s", formattedData.Spec.ServiceName)
 	}
 
-	i := NewInstaller(&manifest, fakeClient, logger)
+	copyOfInstallerObject.Object = map[string]interface{}{
+		"apiVersion": "apps/v1",     // Specify the API version for StatefulSet
+		"kind":       "StatefulSet", // Specify the resource kind
 
-	err = i.DeleteResources()
+		"metadata": map[string]interface{}{
+			"name": "exist-statefulset",
+		},
+		"spec": map[string]interface{}{
+			"serviceName": "test-new", // The headless service to use
+			"replicas":    3,
+		},
+	}
+	// User manually edit statefulset object
+	err = client.Update(copyOfInstallerObject)
 	assert.NilError(t, err)
 
-	_, err = fakeClient.Get(&serviceAccount)
-	assert.Error(t, err, "ServiceAccount \"test-service-account\" not found")
-
-	// namespace must be not deleted
-	_, err = fakeClient.Get(&namespace)
+	// Ensure manually updated statefulset is success or not using Get operation
+	manuallyUpdatedData, err := client.Get(copyOfInstallerObject)
 	assert.NilError(t, err)
+	assert.Assert(t, manuallyUpdatedData != nil)
+	formattedData = &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manuallyUpdatedData.Object, formattedData)
+	assert.NilError(t, err)
+
+	if formattedData.Spec.ServiceName != "test-new" {
+		t.Errorf("expected spec.serviceName as test-new, got %s", formattedData.Spec.ServiceName)
+	}
+	if *formattedData.Spec.Replicas != 3 {
+		t.Errorf("expected spec.replicas as 3, got %d", *formattedData.Spec.Replicas)
+	}
+
+	// Now installer set will override the manually updated data of statefulset
+	err = i.ensureResource(&sfsObjectFromInstallerSet)
+	assert.NilError(t, err)
+	createdObj, err = i.mfClient.Get(&sfsObjectFromInstallerSet)
+	assert.NilError(t, err)
+	assert.Assert(t, createdObj != nil)
+	formattedData = &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(createdObj.Object, formattedData)
+	assert.NilError(t, err)
+
+	if formattedData.Spec.ServiceName != "test" {
+		t.Errorf("expected spec.serviceName as test, got %s", formattedData.Spec.ServiceName)
+	}
+	if *formattedData.Spec.Replicas != 1 {
+		t.Errorf("expected spec.replicas as 1, got %d", *formattedData.Spec.Replicas)
+	}
 }

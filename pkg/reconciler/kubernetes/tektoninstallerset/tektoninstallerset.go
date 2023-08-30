@@ -134,6 +134,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	// Update Status for Deployment Resources
 	installerSet.Status.MarkDeploymentsAvailable()
 
+	// Install StatefulSet Resources
+	err = installer.EnsureStatefulSetResources()
+	if err != nil {
+		installerSet.Status.MarkStatefulSetNotReady(err.Error())
+		return r.handleError(err, installerSet)
+	}
+
+	// Update Status for StatefulSet Resources
+	installerSet.Status.MarkStatefulSetReady()
+
 	// Check if webhook is ready
 	err = installer.IsWebhookReady()
 	if err != nil {

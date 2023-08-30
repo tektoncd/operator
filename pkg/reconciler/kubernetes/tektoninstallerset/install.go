@@ -49,6 +49,7 @@ type installer struct {
 	clusterScoped   []unstructured.Unstructured
 	namespaceScoped []unstructured.Unstructured
 	deployment      []unstructured.Unstructured
+	statefulset     []unstructured.Unstructured
 }
 
 func NewInstaller(manifest *mf.Manifest, mfClient mf.Client, logger *zap.SugaredLogger) *installer {
@@ -60,6 +61,7 @@ func NewInstaller(manifest *mf.Manifest, mfClient mf.Client, logger *zap.Sugared
 		clusterScoped:   []unstructured.Unstructured{},
 		namespaceScoped: []unstructured.Unstructured{},
 		deployment:      []unstructured.Unstructured{},
+		statefulset:     []unstructured.Unstructured{},
 	}
 
 	// we filter out resource as some resources are dependent on others
@@ -72,6 +74,9 @@ func NewInstaller(manifest *mf.Manifest, mfClient mf.Client, logger *zap.Sugared
 			continue
 		} else if res.GetKind() == "Deployment" {
 			installer.deployment = append(installer.deployment, res)
+			continue
+		} else if res.GetKind() == "StatefulSet" {
+			installer.statefulset = append(installer.statefulset, res)
 			continue
 		}
 		if isClusterScoped(res.GetKind()) && strings.ToLower(res.GetKind()) != "clusterrolebinding" {
@@ -181,6 +186,18 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 	return i.ensureResources(i.namespaceScoped)
 }
 
+func (i *installer) EnsureStatefulSetResources() error {
+	for _, s := range i.statefulset {
+		if err := i.ensureResource(&s); err != nil {
+			return err
+		}
+		if err := i.isStatefulSetAvailable(&s); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (i *installer) EnsureDeploymentResources() error {
 	for _, d := range i.deployment {
 		if err := i.ensureResource(&d); err != nil {
@@ -206,7 +223,7 @@ func (i *installer) resourceReconcileFields(u *unstructured.Unstructured) []stri
 }
 
 // this method is written as generic to all the resources
-// currently tested only with deployments
+// currently tested with deployments and StatefulSet
 // TODO: (jkandasa) needs to be tested with other resources too
 func (i *installer) ensureResource(expected *unstructured.Unstructured) error {
 	i.logger.Debugw("verifying a resource",
@@ -216,7 +233,7 @@ func (i *installer) ensureResource(expected *unstructured.Unstructured) error {
 	)
 
 	// update proxy settings
-	if expected.GetKind() == "Deployment" {
+	if expected.GetKind() == "Deployment" || expected.GetKind() == "StatefulSet" {
 		err := common.ApplyProxySettings(expected)
 		if err != nil {
 			return err
@@ -256,7 +273,7 @@ func (i *installer) ensureResource(expected *unstructured.Unstructured) error {
 	// get list of reconcile fields
 	reconcileFields := i.resourceReconcileFields(expected)
 
-	// compute hash value for the expected deployment
+	// compute hash value for the expected deployment or statefulset
 	expectedHashValue, err := i.computeResourceHash(expected, reconcileFields...)
 	if err != nil {
 		i.logger.Errorw("error on compute a hash value to a expected resource",
@@ -482,6 +499,25 @@ func (i *installer) IsJobCompleted(ctx context.Context, labels map[string]string
 	return nil
 }
 
+func (i *installer) isStatefulSetAvailable(sfs *unstructured.Unstructured) error {
+	resource, err := i.mfClient.Get(sfs)
+	if err != nil {
+		return err
+	}
+
+	statefulSet := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, statefulSet)
+	if err != nil {
+		return err
+	}
+
+	if !isStatefulSetReady(statefulSet) {
+		i.logger.Infof("statefulset %v not ready, returning will retry!", statefulSet.GetName())
+		return fmt.Errorf("%s statefulset is not ready", statefulSet.GetName())
+	}
+	return nil
+}
+
 func (i *installer) isDeploymentReady(d *unstructured.Unstructured) error {
 	resource, err := i.mfClient.Get(d)
 	if err != nil {
@@ -523,6 +559,15 @@ func isFailedToCreateState(d *appsv1.Deployment) string {
 func isDeploymentAvailable(d *appsv1.Deployment) bool {
 	for _, c := range d.Status.Conditions {
 		if c.Type == appsv1.DeploymentAvailable && c.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
+}
+
+func isStatefulSetReady(sfs *appsv1.StatefulSet) bool {
+	if sfs.Spec.Replicas != nil {
+		if sfs.Status.ReadyReplicas == *sfs.Spec.Replicas {
 			return true
 		}
 	}

@@ -26,6 +26,7 @@ const (
 	ClustersScoped       apis.ConditionType = "ClusterScopedResourcesInstalled"
 	NamespaceScoped      apis.ConditionType = "NamespaceScopedResourcesInstalled"
 	DeploymentsAvailable apis.ConditionType = "DeploymentsAvailable"
+	StatefulSetReady     apis.ConditionType = "StatefulSetReady"
 	WebhookReady         apis.ConditionType = "WebhooksReady"
 	ControllerReady      apis.ConditionType = "ControllersReady"
 	AllDeploymentsReady  apis.ConditionType = "AllDeploymentsReady"
@@ -37,6 +38,7 @@ var (
 		ClustersScoped,
 		NamespaceScoped,
 		DeploymentsAvailable,
+		StatefulSetReady,
 		WebhookReady,
 		ControllerReady,
 		AllDeploymentsReady,
@@ -77,6 +79,10 @@ func (tis *TektonInstallerSetStatus) MarkNamespaceScopedResourcesInstalled() {
 
 func (tis *TektonInstallerSetStatus) MarkDeploymentsAvailable() {
 	installerSetCondSet.Manage(tis).MarkTrue(DeploymentsAvailable)
+}
+
+func (tis *TektonInstallerSetStatus) MarkStatefulSetReady() {
+	installerSetCondSet.Manage(tis).MarkTrue(StatefulSetReady)
 }
 
 func (tis *TektonInstallerSetStatus) MarkWebhookReady() {
@@ -126,6 +132,14 @@ func (tis *TektonInstallerSetStatus) MarkDeploymentsAvailableFailed(msg string) 
 	tis.MarkNotReady("Deployment resources installation failed")
 	installerSetCondSet.Manage(tis).MarkFalse(
 		DeploymentsAvailable,
+		"Error",
+		"Install failed with message: %s", msg)
+}
+
+func (tis *TektonInstallerSetStatus) MarkStatefulSetNotReady(msg string) {
+	tis.MarkNotReady("StatefulSet resources is not available")
+	installerSetCondSet.Manage(tis).MarkFalse(
+		StatefulSetReady,
 		"Error",
 		"Install failed with message: %s", msg)
 }
