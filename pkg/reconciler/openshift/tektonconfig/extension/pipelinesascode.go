@@ -100,7 +100,7 @@ func updateOPAC(ctx context.Context, opacCR *v1alpha1.OpenShiftPipelinesAsCode, 
 		updated = true
 	}
 
-	if !reflect.DeepEqual(opacCR.Spec.Settings, config.Spec.Platforms.OpenShift.PipelinesAsCode.Settings) {
+	if !reflect.DeepEqual(opacCR.Spec.PACSettings.Settings, config.Spec.Platforms.OpenShift.PipelinesAsCode.Settings) {
 		opacCR.Spec.PACSettings.Settings = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings
 		updated = true
 	}
