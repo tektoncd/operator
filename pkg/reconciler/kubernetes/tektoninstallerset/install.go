@@ -328,7 +328,7 @@ func (i *installer) ensureDeployment(expected *unstructured.Unstructured) error 
 		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(existing.Object, existingDeployment); err != nil {
 			return err
 		}
-		existingHashValue, err := hash.Compute(existingDeployment.Spec)
+		existingHashValue, err := computeDeploymentHash(*existingDeployment)
 		if err != nil {
 			return fmt.Errorf("failed to compute hash value of existing deployment, name:%s, error: %v", existing.GetName(), err)
 		}
