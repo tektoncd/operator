@@ -50,8 +50,13 @@ var (
 )
 
 type prunerManifestSpec struct {
-	YamlLocation string
-	ComputedHash string
+	YamlLocation    string
+	ComputedHash    string // this hash value computed from the pruner resources directory
+	TargetNamespace string
+}
+
+func (pms *prunerManifestSpec) GetHash() string {
+	return fmt.Sprintf("%s-%s", pms.TargetNamespace, pms.ComputedHash)
 }
 
 // reconciles pruner InstallerSets
@@ -78,6 +83,9 @@ func (r *Reconciler) reconcilePrunerInstallerSet(ctx context.Context, tc *v1alph
 			ComputedHash: computedHash,
 		}
 	})
+
+	// update targetNamespace
+	prunerManifestHash.TargetNamespace = tc.Spec.TargetNamespace
 
 	// report error if the hash not calculated
 	// actual error will be printer on the log from above func on the first call of this method
@@ -109,7 +117,7 @@ func (r *Reconciler) reconcilePrunerInstallerSet(ctx context.Context, tc *v1alph
 			return err
 		}
 		appliedHash, found := actualInstallerSet.GetAnnotations()[v1alpha1.LastAppliedHashKey]
-		if !found || prunerManifestHash.ComputedHash != appliedHash {
+		if !found || prunerManifestHash.GetHash() != appliedHash {
 			// delete the existing installerSet
 			if err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().Delete(ctx, actualInstallerSetName, metav1.DeleteOptions{}); err != nil {
 				return err
@@ -154,7 +162,7 @@ func (r *Reconciler) createPrunerInstallerSet(ctx context.Context, tc *v1alpha1.
 			},
 			Annotations: map[string]string{
 				v1alpha1.TargetNamespaceKey: tc.Spec.TargetNamespace,
-				v1alpha1.LastAppliedHashKey: prunerManifestHash.ComputedHash,
+				v1alpha1.LastAppliedHashKey: prunerManifestHash.GetHash(),
 			},
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
