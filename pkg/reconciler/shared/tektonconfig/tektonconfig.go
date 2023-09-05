@@ -18,7 +18,6 @@ package tektonconfig
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
@@ -29,9 +28,8 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chain"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -47,6 +45,8 @@ type Reconciler struct {
 	extension       common.Extension
 	manifest        mf.Manifest
 	operatorVersion string
+	// performs pre and post upgrade operations
+	upgrade *upgrade.Upgrade
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -193,7 +193,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	tc.Status.MarkPostInstallComplete()
 
 	// Update the object for any spec changes
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, v1.UpdateOptions{}); err != nil {
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{}); err != nil {
+		return err
+	}
+
+	// run post upgrade
+	if err := r.upgrade.RunPostUpgrade(ctx); err != nil {
 		return err
 	}
 
@@ -212,37 +217,31 @@ func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonConfig)
 		tc.Status.MarkPostInstallFailed(v1alpha1.UpgradePending)
 		tc.Status.MarkNotReady("Upgrade Pending")
 	}
+	// update status
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().UpdateStatus(ctx, tc, metav1.UpdateOptions{}); err != nil {
+		return err
+	}
+
+	// run pre upgrade
+	if err := r.upgrade.RunPreUpgrade(ctx); err != nil {
+		return err
+	}
+
+	// update labels in tektonConfig CR
+	tcCR, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+
+	labels = tcCR.GetLabels()
 	if labels == nil {
 		labels = map[string]string{}
 	}
 	labels[v1alpha1.ReleaseVersionKey] = r.operatorVersion
-	tc.SetLabels(labels)
-
-	var chain v1alpha1.ChainProperties
-	cm, err := r.kubeClientSet.CoreV1().ConfigMaps(tc.Spec.GetTargetNamespace()).Get(ctx, "chains-config", metav1.GetOptions{})
-	if err != nil {
-		if apierrs.IsNotFound(err) {
-			chain = v1alpha1.ChainProperties{}
-		}
-	}
-	if len(cm.Data) > 0 {
-		jsonData, err := json.Marshal(cm.Data)
-		if err != nil {
-			return err
-		}
-		if err := json.Unmarshal(jsonData, &chain); err != nil {
-			return err
-		}
-	}
-
-	tc.Spec.Chain = v1alpha1.Chain{
-		ChainProperties: chain,
-	}
-
-	// Update the object for any spec changes
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx,
-		tc, v1.UpdateOptions{}); err != nil {
+	tcCR.SetLabels(labels)
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{}); err != nil {
 		return err
 	}
+
 	return v1alpha1.RECONCILE_AGAIN_ERR
 }
