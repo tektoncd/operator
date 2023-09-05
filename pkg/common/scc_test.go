@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonconfig
+package common
 
 import (
 	"testing"
@@ -23,7 +23,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_sccAEqualORPriorityOverB(t *testing.T) {
+func Test_SCCAEqualORPriorityOverB(t *testing.T) {
 	type args struct {
 		prioritizedSCCList []*securityv1.SecurityContextConstraints
 		sccA               string
@@ -161,7 +161,7 @@ func Test_sccAEqualORPriorityOverB(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := sccAEqualORPriorityOverB(test.args.prioritizedSCCList, test.args.sccA, test.args.sccB)
+			got, err := SCCAEqualORPriorityOverB(test.args.prioritizedSCCList, test.args.sccA, test.args.sccB)
 			if (err != nil) != test.wantErr {
 				t.Errorf("sccAEqualORPriorityOverB() error = %v, expected %v", err, test.wantErr)
 				return

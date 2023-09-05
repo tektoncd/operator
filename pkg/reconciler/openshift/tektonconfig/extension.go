@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"os"
 
+	pkgCommon "github.com/tektoncd/operator/pkg/common"
+
 	mf "github.com/manifestival/manifestival"
 	security "github.com/openshift/client-go/security/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -47,7 +49,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		kubeClientSet:     kubeclient.Get(ctx),
 		rbacInformer:      rbacInformer.Get(ctx),
 		nsInformer:        namespaceinformer.Get(ctx),
-		securityClientSet: getSecurityClient(ctx),
+		securityClientSet: pkgCommon.GetSecurityClient(ctx),
 	}
 }
 

@@ -21,10 +21,6 @@ import (
 	"os"
 	"path/filepath"
 
-	security "github.com/openshift/client-go/security/clientset/versioned"
-	"k8s.io/client-go/rest"
-	"knative.dev/pkg/logging"
-
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -140,18 +136,4 @@ func checkIfInstallerSetExist(ctx context.Context, oc versioned.Interface, relVe
 		return nil, err
 	}
 	return nil, v1alpha1.RECONCILE_AGAIN_ERR
-}
-
-// Note: this should become a generic func going forward when we start adding
-// more OpenShift types
-func getSecurityClient(ctx context.Context) *security.Clientset {
-	restConfig, err := rest.InClusterConfig()
-	if err != nil {
-		logging.FromContext(ctx).Panic(err)
-	}
-	securityClient, err := security.NewForConfig(restConfig)
-	if err != nil {
-		logging.FromContext(ctx).Panic(err)
-	}
-	return securityClient
 }
