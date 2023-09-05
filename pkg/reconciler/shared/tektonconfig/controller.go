@@ -33,6 +33,7 @@ import (
 	tektonTriggerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektontrigger"
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
@@ -73,6 +74,8 @@ func NewExtensibleController(generator common.ExtensionGenerator) injection.Cont
 			manifest:          manifest,
 			operatorVersion:   operatorVer,
 		}
+		c.upgrade = upgrade.New(operatorVer, c.kubeClientSet, c.operatorClientSet, injection.GetConfig(ctx))
+
 		impl := tektonConfigreconciler.NewImpl(ctx, c)
 
 		logger.Info("Setting up event handlers for TektonConfig")

@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"testing"
 
+	"gotest.tools/v3/assert"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	apistest "knative.dev/pkg/apis/testing"
 )
@@ -95,4 +96,21 @@ func TestTektonConfigErrorPath(t *testing.T) {
 		t.Errorf("tc.IsReady() = %v, want false", ready)
 	}
 
+}
+
+func TestAppliedUpgradeVersion(t *testing.T) {
+	tc := &TektonConfig{}
+
+	// should return empty
+	assert.Equal(t, tc.Status.GetAppliedUpgradeVersion(), "")
+
+	// update applied upgrade version
+	tc.Status.SetAppliedUpgradeVersion("foo")
+	assert.Equal(t, tc.Status.GetAppliedUpgradeVersion(), "foo")
+	assert.Equal(t, tc.Status.Annotations[AppliedUpgradeVersionKey], "foo")
+
+	// update applied upgrade version
+	tc.Status.SetAppliedUpgradeVersion("bar")
+	assert.Equal(t, tc.Status.GetAppliedUpgradeVersion(), "bar")
+	assert.Equal(t, tc.Status.Annotations[AppliedUpgradeVersionKey], "bar")
 }
