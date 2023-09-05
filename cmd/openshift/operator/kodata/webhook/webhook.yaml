@@ -14,7 +14,7 @@ metadata:
   name: tekton-operators-proxy-admin
 rules:
   - apiGroups: [""]
-    resources: ["pods", "configmaps", "services", "events"]
+    resources: ["pods", "configmaps", "services", "events", "namespaces"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["apps"]
     resources: ["deployments", "deployments/finalizers"]
@@ -26,6 +26,9 @@ rules:
   - apiGroups: ["coordination.k8s.io"]
     resources: ["leases"]
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
+  - apiGroups: ["security.openshift.io"]
+    resources: ["securitycontextconstraints"]
+    verbs: ["get", "list", "watch"]
 
 ---
 
@@ -180,3 +183,21 @@ webhooks:
     failurePolicy: Fail
     sideEffects: None
     name: annotation.operator.tekton.dev
+
+---
+
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: namespace.operator.tekton.dev
+webhooks:
+- admissionReviewVersions:
+  - v1
+  - v1beta1
+  clientConfig:
+    service:
+      name: tekton-operator-proxy-webhook
+      namespace: tekton-pipelines
+  failurePolicy: Fail
+  sideEffects: None
+  name: namespace.operator.tekton.dev

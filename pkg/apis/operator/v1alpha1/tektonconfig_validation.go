@@ -20,6 +20,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/operator/pkg/common"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
+
 	"knative.dev/pkg/apis"
 )
 
@@ -40,6 +45,32 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if tc.Spec.Profile != "" {
 		if isValid := isValueInArray(Profiles, tc.Spec.Profile); !isValid {
 			errs = errs.Also(apis.ErrInvalidValue(tc.Spec.Profile, "spec.profile"))
+		}
+	}
+
+	// validate SCC config
+	if IsOpenShiftPlatform() && tc.Spec.Platforms.OpenShift.SCC != nil {
+		defaultSCC := PipelinesSCC
+		if tc.Spec.Platforms.OpenShift.SCC.Default != "" {
+			defaultSCC = tc.Spec.Platforms.OpenShift.SCC.Default
+		}
+
+		maxAllowedSCC := tc.Spec.Platforms.OpenShift.SCC.MaxAllowed
+		if maxAllowedSCC != "" {
+			// Check that maxAllowed SCC and default SCC are compatible wrt priority
+			hasPriority, err := compareSCCAPriorityOverB(ctx, maxAllowedSCC, defaultSCC)
+			if err != nil {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error comparing priority between maxAllowed and default SCC in TektonConfig: %v", err), "spec.platforms.openshift.scc.maxAllowed"))
+			} else if !hasPriority {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("maxAllowed SCC (%s) must have a higher priority than the default SCC (%s)", maxAllowedSCC, defaultSCC), "spec.platforms.openshift.scc.maxAllowed"))
+			}
+
+			// Now validate maxAllowed SCC config with namespaces
+			sccErrors, err := compareSCCsWithAllNamespaces(ctx, maxAllowedSCC)
+			if err != nil {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error comparing priority between maxAllowed and SCCs requested in all namespaces: %v", err), "spec.platforms.openshift.scc.maxAllowed"))
+			}
+			errs = errs.Also(sccErrors)
 		}
 	}
 
@@ -105,4 +136,40 @@ func isValueInArray(arr []string, key string) bool {
 		}
 	}
 	return false
+}
+
+func compareSCCAPriorityOverB(ctx context.Context, sccA, sccB string) (bool, error) {
+	securityClient := common.GetSecurityClient(ctx)
+	prioritizedSCCList, err := common.GetPrioritizedSCCList(ctx, securityClient)
+	if err != nil {
+		return false, err
+	}
+	return common.SCCAEqualORPriorityOverB(prioritizedSCCList, sccA, sccB)
+}
+
+func compareSCCsWithAllNamespaces(ctx context.Context, maxAllowedSCC string) (*apis.FieldError, error) {
+	kc := kubeclient.Get(ctx)
+	allNamespaces, err := kc.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	var sccErrors *apis.FieldError
+	for _, ns := range allNamespaces.Items {
+		nsSCC := ns.Annotations[openshift.NamespaceSCCAnnotation]
+		if nsSCC == "" {
+			continue
+		}
+
+		// Compare namespace SCC with maxAllowed
+		hasPriority, err := compareSCCAPriorityOverB(ctx, maxAllowedSCC, nsSCC)
+		if err != nil {
+			return nil, err
+		}
+
+		if !hasPriority {
+			sccErrors = sccErrors.Also(apis.ErrGeneric(fmt.Sprintf("SCC requested in namespace %s: %s violates the maxAllowed SCC: %s set in TektonConfig", ns.Name, nsSCC, maxAllowedSCC)))
+		}
+	}
+	return sccErrors, nil
 }

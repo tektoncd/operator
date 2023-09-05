@@ -21,15 +21,15 @@ import (
 	"fmt"
 	"math"
 	"regexp"
-	"sort"
 	"time"
 
-	securityv1 "github.com/openshift/api/security/v1"
-	sccSort "github.com/openshift/apiserver-library-go/pkg/securitycontextconstraints/util/sort"
+	common "github.com/tektoncd/operator/pkg/common"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift"
+
 	security "github.com/openshift/client-go/security/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
+	reconcilerCommon "github.com/tektoncd/operator/pkg/reconciler/common"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -49,8 +49,6 @@ const (
 	pipelinesSCCRoleBinding = "pipelines-scc-rolebinding"
 	pipelineSA              = "pipeline"
 	PipelineRoleBinding     = "openshift-pipelines-edit"
-	// namespaceSCCAnnotation is used to set SCC for a given namespace
-	namespaceSCCAnnotation = "operator.tekton.dev/scc"
 
 	// TODO: Remove this after v0.55.0 release, by following a depreciation notice
 	// --------------------
@@ -79,7 +77,7 @@ var (
 )
 
 // Namespace Regex to ignore the namespace for creating rbac resources.
-var nsRegex = regexp.MustCompile(common.NamespaceIgnorePattern)
+var nsRegex = regexp.MustCompile(reconcilerCommon.NamespaceIgnorePattern)
 
 type rbac struct {
 	kubeClientSet     kubernetes.Interface
@@ -167,11 +165,6 @@ func (r *rbac) setDefault() {
 	}
 }
 
-func (r *rbac) verifySCCExists(ctx context.Context, sccName string) error {
-	_, err := r.securityClientSet.SecurityV1().SecurityContextConstraints().Get(ctx, sccName, metav1.GetOptions{})
-	return err
-}
-
 // ensurePreRequisites validates the resources before creation
 func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
@@ -189,11 +182,11 @@ func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 		return fmt.Errorf("tektonConfig.Spec.Platforms.OpenShift.SCC.Default cannot be empty")
 	}
 	logger.Infof("default SCC set to: %s", defaultSCC)
-	if err := r.verifySCCExists(ctx, defaultSCC); err != nil {
+	if err := common.VerifySCCExists(ctx, defaultSCC, r.securityClientSet); err != nil {
 		return err
 	}
 
-	prioritizedSCCList, err := r.getPrioritizedSCCList(ctx)
+	prioritizedSCCList, err := common.GetPrioritizedSCCList(ctx, r.securityClientSet)
 	if err != nil {
 		return err
 	}
@@ -201,11 +194,11 @@ func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 	// validate maxAllowed SCC
 	maxAllowedSCC := r.tektonConfig.Spec.Platforms.OpenShift.SCC.MaxAllowed
 	if maxAllowedSCC != "" {
-		if err := r.verifySCCExists(ctx, maxAllowedSCC); err != nil {
+		if err := common.VerifySCCExists(ctx, maxAllowedSCC, r.securityClientSet); err != nil {
 			return err
 		}
 
-		isPriority, err := sccAEqualORPriorityOverB(prioritizedSCCList, maxAllowedSCC, defaultSCC)
+		isPriority, err := common.SCCAEqualORPriorityOverB(prioritizedSCCList, maxAllowedSCC, defaultSCC)
 		if err != nil {
 			return err
 		}
@@ -253,7 +246,7 @@ func (r *rbac) getNamespacesToBeReconciled(ctx context.Context) ([]corev1.Namesp
 		}
 
 		// We want to monitor namespaces with the SCC annotation set
-		if ns.Annotations[namespaceSCCAnnotation] != "" {
+		if ns.Annotations[openshift.NamespaceSCCAnnotation] != "" {
 			namespaces = append(namespaces, ns)
 			continue
 		}
@@ -282,7 +275,7 @@ func (r *rbac) getNamespacesToBeReconciled(ctx context.Context) ([]corev1.Namesp
 
 func (r *rbac) getSCCRoleInNamespace(ns *corev1.Namespace) *rbacv1.RoleRef {
 	nsAnnotations := ns.GetAnnotations()
-	nsSCC := nsAnnotations[namespaceSCCAnnotation]
+	nsSCC := nsAnnotations[openshift.NamespaceSCCAnnotation]
 	// If SCC is requested by namespace annotation, then we need a Role
 	if nsSCC != "" {
 		return &rbacv1.RoleRef{
@@ -305,7 +298,7 @@ func (r *rbac) handleSCCInNamespace(ctx context.Context, ns *corev1.Namespace) e
 
 	nsName := ns.GetName()
 	nsAnnotations := ns.GetAnnotations()
-	nsSCC := nsAnnotations[namespaceSCCAnnotation]
+	nsSCC := nsAnnotations[openshift.NamespaceSCCAnnotation]
 
 	// No SCC is requested in the namespace
 	if nsSCC == "" {
@@ -334,7 +327,7 @@ func (r *rbac) handleSCCInNamespace(ctx context.Context, ns *corev1.Namespace) e
 	logger.Infof("Namespace: %s has requested SCC: %s", nsName, nsSCC)
 
 	// Make sure that SCC exists on cluster
-	if err := r.verifySCCExists(ctx, nsSCC); err != nil {
+	if err := common.VerifySCCExists(ctx, nsSCC, r.securityClientSet); err != nil {
 		logger.Error(err)
 
 		// Create an event in the namespace if the SCC does not exist
@@ -350,11 +343,11 @@ func (r *rbac) handleSCCInNamespace(ctx context.Context, ns *corev1.Namespace) e
 	// than the SCC mentioned in maxAllowed
 	maxAllowedSCC := r.tektonConfig.Spec.Platforms.OpenShift.SCC.MaxAllowed
 	if maxAllowedSCC != "" {
-		prioritizedSCCList, err := r.getPrioritizedSCCList(ctx)
+		prioritizedSCCList, err := common.GetPrioritizedSCCList(ctx, r.securityClientSet)
 		if err != nil {
 			return err
 		}
-		isPriority, err := sccAEqualORPriorityOverB(prioritizedSCCList, maxAllowedSCC, nsSCC)
+		isPriority, err := common.SCCAEqualORPriorityOverB(prioritizedSCCList, maxAllowedSCC, nsSCC)
 		if err != nil {
 			return err
 		}
@@ -456,7 +449,7 @@ func (r *rbac) createSCCFailureEventInNamespace(ctx context.Context, namespace s
 		Reason:              "RequestedSCCNotFound",
 		Type:                "Warning",
 		Action:              "SCCNotUpdated",
-		Message:             fmt.Sprintf("SCC '%s' requested in annotation '%s' not found, SCC not updated in the namespace", scc, namespaceSCCAnnotation),
+		Message:             fmt.Sprintf("SCC '%s' requested in annotation '%s' not found, SCC not updated in the namespace", scc, openshift.NamespaceSCCAnnotation),
 		ReportingController: "openshift-pipelines-operator",
 		ReportingInstance:   r.ownerRef.Name,
 		InvolvedObject: corev1.ObjectReference{
@@ -474,47 +467,6 @@ func (r *rbac) createSCCFailureEventInNamespace(ctx context.Context, namespace s
 	}
 
 	return nil
-}
-
-func sccAEqualORPriorityOverB(prioritizedSCCList []*securityv1.SecurityContextConstraints, sccA string, sccB string) (bool, error) {
-	var sccAIndex, sccBIndex int
-	var sccAFound, sccBFound bool
-	for i, scc := range prioritizedSCCList {
-		if scc.Name == sccA {
-			sccAFound = true
-			sccAIndex = i
-		}
-		if scc.Name == sccB {
-			sccBFound = true
-			sccBIndex = i
-		}
-		if sccAFound && sccBFound {
-			break
-		}
-	}
-
-	if !sccAFound || !sccBFound {
-		return false, fmt.Errorf("SCCs not found while looking up priorities, found SCC %s: %t, found SCC %s: %t", sccA, sccAFound, sccB, sccBFound)
-	}
-
-	return sccAIndex <= sccBIndex, nil
-}
-
-func (r *rbac) getPrioritizedSCCList(ctx context.Context) ([]*securityv1.SecurityContextConstraints, error) {
-	logger := logging.FromContext(ctx)
-	sccList, err := r.securityClientSet.SecurityV1().SecurityContextConstraints().List(ctx, metav1.ListOptions{})
-	if err != nil {
-		logger.Error("Error listing SCCs")
-		return nil, err
-	}
-	var sccPointerList []*securityv1.SecurityContextConstraints
-	for i := range sccList.Items {
-		sccPointerList = append(sccPointerList, &sccList.Items[i])
-	}
-
-	// This will sort the sccPointerList in order of priority
-	sort.Sort(sccSort.ByPriority(sccPointerList))
-	return sccPointerList, nil
 }
 
 func (r *rbac) ensureCABundles(ctx context.Context, ns *corev1.Namespace) error {
