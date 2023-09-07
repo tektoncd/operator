@@ -1,0 +1,23 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+  name: tekton-result-route-view
+rules:
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - get
+  resourceNames:
+  - tekton-results-api-service
+- apiGroups:
+  - ""
+  resources:
+  - services
+  verbs:
+  - get
+  resourceNames:
+  - tekton-results-api-service
