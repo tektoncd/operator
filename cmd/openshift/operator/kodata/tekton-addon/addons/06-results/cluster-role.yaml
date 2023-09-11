@@ -13,11 +13,3 @@ rules:
   - get
   resourceNames:
   - tekton-results-api-service
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - get
-  resourceNames:
-  - tekton-results-api-service
