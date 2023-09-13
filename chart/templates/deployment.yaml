@@ -46,7 +46,7 @@ spec:
             - name: IMAGE_PIPELINES_PROXY
               value: {{ include "tekton-operator.webhook-proxy-image" . }}
             - name: IMAGE_JOB_PRUNER_TKN
-              value: gcr.io/tekton-releases/dogfooding/tkn@sha256:8a17c7ad0fbb7278b2a4ed99b83078228060b60e474ab6321a7318a118c8b31e
+              value: gcr.io/tekton-releases/dogfooding/tkn@sha256:a572f1748eb5c0e8002dd0a83ee836ad9d755d035cbd5bfbdef5de810d2bea0b
             - name: METRICS_DOMAIN
               value: {{ .Values.service.metricsDomain }}
             - name: VERSION
