@@ -25,15 +25,19 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 )
 
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	logger := logging.FromContext(ctx)
 	ctrl := tektonconfig.NewExtensibleController(KubernetesExtension)(ctx, cmw)
-	tektonDashboardinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+	if _, err := tektonDashboardinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 		FilterFunc: controller.FilterControllerGVK(v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")),
 		Handler:    controller.HandleAll(ctrl.EnqueueControllerOf),
-	})
+	}); err != nil {
+		logger.Panicf("Couldn't register TektonDashboard informer event handler: %w", err)
+	}
 	return ctrl
 }

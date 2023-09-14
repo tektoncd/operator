@@ -37,13 +37,12 @@ require (
 )
 
 replace (
-	k8s.io/api => k8s.io/api v0.25.9
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.25.9
-	k8s.io/apimachinery => k8s.io/apimachinery v0.25.9
-	k8s.io/client-go => k8s.io/client-go v0.25.9
-	k8s.io/code-generator => k8s.io/code-generator v0.25.9
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230525220651-2546d827e515
-	knative.dev/pkg => knative.dev/pkg v0.0.0-20230418073056-dfad48eaa5d0
+	k8s.io/api => k8s.io/api v0.26.8
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.26.8
+	k8s.io/apimachinery => k8s.io/apimachinery v0.26.8
+	k8s.io/client-go => k8s.io/client-go v0.26.8
+	k8s.io/code-generator => k8s.io/code-generator v0.26.8
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230515203736-54b630e78af5
 )
 
 require (

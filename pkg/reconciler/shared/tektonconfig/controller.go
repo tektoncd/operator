@@ -80,29 +80,41 @@ func NewExtensibleController(generator common.ExtensionGenerator) injection.Cont
 
 		logger.Info("Setting up event handlers for TektonConfig")
 
-		tektonConfiginformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		if _, err := tektonConfiginformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+			logger.Panicf("Couldn't register TektonConfig informer event handler: %w", err)
+		}
 
-		tektonPipelineinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := tektonPipelineinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logger.Panicf("Couldn't register TektonPipeline informer event handler: %w", err)
+		}
 
-		tektonTriggerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := tektonTriggerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logger.Panicf("Couldn't register TektonTrigger informer event handler: %w", err)
+		}
 
-		tektonChaininformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := tektonChaininformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logger.Panicf("Couldn't register TektonChain informer event handler: %w", err)
+		}
 
-		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logger.Panicf("Couldn't register TektonInstallerSet informer event handler: %w", err)
+		}
 
-		namespaceinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(impl, v1alpha1.ConfigResourceName)))
+		if _, err := namespaceinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(impl, v1alpha1.ConfigResourceName))); err != nil {
+			logger.Panicf("Couldn't register Namespace informer event handler: %w", err)
+		}
 
 		if os.Getenv("AUTOINSTALL_COMPONENTS") == "true" {
 			// try to ensure that there is an instance of tektonConfig
