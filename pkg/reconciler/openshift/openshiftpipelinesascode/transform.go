@@ -55,7 +55,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 
 		// additional options transformer
 		// always execute as last transformer, so that the values in options will be final update values on the manifests
-		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, pac.Spec.GetTargetNamespace(), pac.Spec.Options); err != nil {
+		if err := common.ExecuteAdditionalOptionsTransformer(ctx, &pacManifest, pac.Spec.GetTargetNamespace(), pac.Spec.Options); err != nil {
 			return &mf.Manifest{}, err
 		}
 
