@@ -62,32 +62,44 @@ func NewExtendedController() injection.ControllerConstructor {
 
 		logger.Info("Setting up event handlers for TektonInstallerSet")
 
-		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		if _, err := tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+			logger.Panicf("Couldn't register TektonInstallerSet informer event handler: %w", err)
+		}
 
-		deploymentinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := deploymentinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonInstallerSet{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logger.Panicf("Couldn't register Deployment informer event handler: %w", err)
+		}
 
-		statefulsetinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := statefulsetinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonInstallerSet{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logger.Panicf("Couldn't register StatefulSet informer event handler: %w", err)
+		}
 
-		clusterRoleBindingInformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := clusterRoleBindingInformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonInstallerSet{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logger.Panicf("Couldn't register ClusterRoleBinding informer event handler: %w", err)
+		}
 
-		clusterRoleInformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := clusterRoleInformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonInstallerSet{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logger.Panicf("Couldn't register ClusterRole informer event handler: %w", err)
+		}
 
-		serviceAccountInformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := serviceAccountInformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonInstallerSet{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logger.Panicf("Couldn't register ServiceAccount informer event handler: %w", err)
+		}
 
 		return impl
 	}

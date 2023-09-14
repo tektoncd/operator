@@ -26,19 +26,25 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/logging"
 )
 
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
 func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
+	logger := logging.FromContext(ctx)
 	ctrl := tektonconfig.NewExtensibleController(OpenShiftExtension)(ctx, cmw)
-	tektonAddoninformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+	if _, err := tektonAddoninformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 		FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
 		Handler:    controller.HandleAll(ctrl.EnqueueControllerOf),
-	})
-	openshiftpipelinesascodeinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+	}); err != nil {
+		logger.Panicf("Couldn't register TektonAddon informer event handler: %w", err)
+	}
+	if _, err := openshiftpipelinesascodeinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 		FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
 		Handler:    controller.HandleAll(ctrl.EnqueueControllerOf),
-	})
+	}); err != nil {
+		logger.Panicf("Couldn't register OpenShiftPipelinesAsCode informer event handler: %w", err)
+	}
 	return ctrl
 }

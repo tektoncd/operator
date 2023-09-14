@@ -80,12 +80,16 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 
 		logger.Info("Setting up event handlers for TektonTrigger")
 
-		tektonTriggerinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue))
+		if _, err := tektonTriggerinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+			logger.Panicf("Couldn't register TektonTrigger informer event handler: %w", err)
+		}
 
-		tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		if _, err := tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
 			FilterFunc: controller.FilterController(&v1alpha1.TektonTrigger{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
-		})
+		}); err != nil {
+			logger.Panicf("Couldn't register TektonInstallerSet informer event handler: %w", err)
+		}
 
 		return impl
 	}
