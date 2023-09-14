@@ -19,6 +19,7 @@ package upgrade
 import (
 	"context"
 
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	upgrade "github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade/helper"
 	"go.uber.org/zap"
@@ -43,7 +44,6 @@ func upgradeStorageVersion(ctx context.Context, logger *zap.SugaredLogger, k8sCl
 		"interceptors.triggers.tekton.dev",
 		"pipelineruns.tekton.dev",
 		"pipelines.tekton.dev",
-		"repositories.pipelinesascode.tekton.dev",
 		"resolutionrequests.resolution.tekton.dev",
 		"taskruns.tekton.dev",
 		"tasks.tekton.dev",
@@ -51,6 +51,10 @@ func upgradeStorageVersion(ctx context.Context, logger *zap.SugaredLogger, k8sCl
 		"triggers.triggers.tekton.dev",
 		"triggertemplates.triggers.tekton.dev",
 		"verificationpolicies.tekton.dev",
+	}
+
+	if v1alpha1.IsOpenShiftPlatform() {
+		crdGroups = append(crdGroups, "repositories.pipelinesascode.tekton.dev")
 	}
 
 	migrator := storageversion.NewMigrator(
