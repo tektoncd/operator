@@ -218,6 +218,7 @@ rules:
   - tekton.dev
   - triggers.tekton.dev
   - operator.tekton.dev
+  - pipelinesascode.tekton.dev
   resources:
   - '*'
   verbs:
