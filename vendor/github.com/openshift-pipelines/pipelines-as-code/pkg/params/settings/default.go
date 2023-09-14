@@ -9,8 +9,10 @@ import (
 	"go.uber.org/zap"
 )
 
-func getHubCatalogs(logger *zap.SugaredLogger, config map[string]string) *sync.Map {
-	catalogs := sync.Map{}
+func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[string]string) *sync.Map {
+	if catalogs == nil {
+		catalogs = &sync.Map{}
+	}
 	if hubURL, ok := config[HubURLKey]; !ok || hubURL == "" {
 		config[HubURLKey] = HubURLDefaultValue
 		logger.Infof("CONFIG: using default hub url %s", HubURLDefaultValue)
@@ -56,16 +58,24 @@ func getHubCatalogs(logger *zap.SugaredLogger, config map[string]string) *sync.M
 					logger.Warnf("CONFIG: custom hub %s, catalog url %s is not valid, skipping catalog configuration", catalogID, catalogURL)
 					break
 				}
+				catalogName := config[fmt.Sprintf("%s-name", cPrefix)]
+				value, ok := catalogs.Load(catalogID)
+				if ok {
+					catalogValues, ok := value.(HubCatalog)
+					if ok && (catalogValues.Name == catalogName) && (catalogValues.URL == catalogURL) {
+						break
+					}
+				}
 				logger.Infof("CONFIG: setting custom hub %s, catalog %s", catalogID, catalogURL)
 				catalogs.Store(catalogID, HubCatalog{
 					ID:   catalogID,
-					Name: config[fmt.Sprintf("%s-name", cPrefix)],
+					Name: catalogName,
 					URL:  catalogURL,
 				})
 			}
 		}
 	}
-	return &catalogs
+	return catalogs
 }
 
 func SetDefaults(config map[string]string) {
@@ -120,5 +130,9 @@ func SetDefaults(config map[string]string) {
 	}
 	if v, ok := config[CustomConsolePRTaskLogKey]; !ok || v == "" {
 		config[CustomConsolePRTaskLogKey] = v
+	}
+
+	if rememberOKToTest, ok := config[RememberOKToTestKey]; !ok || rememberOKToTest == "" {
+		config[RememberOKToTestKey] = rememberOKToTestValue
 	}
 }

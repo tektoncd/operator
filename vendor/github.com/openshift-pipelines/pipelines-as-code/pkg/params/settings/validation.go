@@ -83,6 +83,13 @@ func Validate(config map[string]string) error {
 			return fmt.Errorf("invalid value for key %v, must start with http:// or https://", CustomConsolePRTaskLogKey)
 		}
 	}
+
+	if check, ok := config[RememberOKToTestKey]; ok && check != "" {
+		if !isValidBool(check) {
+			return fmt.Errorf("invalid value for key %v, acceptable values: true or false", RememberOKToTestKey)
+		}
+	}
+
 	return nil
 }
 
