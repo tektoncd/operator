@@ -54,6 +54,9 @@ const (
 
 	ErrorDetectionSimpleRegexpKey   = "error-detection-simple-regexp"
 	errorDetectionSimpleRegexpValue = `^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([ ]*)?(?P<error>.*)`
+
+	RememberOKToTestKey   = "remember-ok-to-test"
+	rememberOKToTestValue = "true"
 )
 
 var (
@@ -94,12 +97,14 @@ type Settings struct {
 	CustomConsoleURL       string
 	CustomConsolePRdetail  string
 	CustomConsolePRTaskLog string
+
+	RememberOKToTest bool
 }
 
 func ConfigToSettings(logger *zap.SugaredLogger, setting *Settings, config map[string]string) error {
 	// pass through defaulting
 	SetDefaults(config)
-	setting.HubCatalogs = getHubCatalogs(logger, config)
+	setting.HubCatalogs = getHubCatalogs(logger, setting.HubCatalogs, config)
 
 	// validate fields
 	if err := Validate(config); err != nil {
@@ -224,6 +229,12 @@ func ConfigToSettings(logger *zap.SugaredLogger, setting *Settings, config map[s
 	if setting.CustomConsolePRTaskLog != config[CustomConsolePRTaskLogKey] {
 		logger.Infof("CONFIG: setting custom console pr task log URL to %v", config[CustomConsolePRTaskLogKey])
 		setting.CustomConsolePRTaskLog = config[CustomConsolePRTaskLogKey]
+	}
+
+	rememberOKToTest := StringToBool(config[RememberOKToTestKey])
+	if setting.RememberOKToTest != rememberOKToTest {
+		logger.Infof("CONFIG: setting remember ok-to-test to %v", rememberOKToTest)
+		setting.RememberOKToTest = rememberOKToTest
 	}
 
 	return nil
