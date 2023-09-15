@@ -5,7 +5,7 @@ metadata:
 spec:
   params:
     - name: gitrepo-url
-      value: $(body.pullRequest.fromRef.repository.links.clone[0].href)
+      value: $(body.pullRequest.fromRef.repository.links.clone[?(@.name=="ssh")].href)
     - name: pullreq-sha
       value: $(body.pullRequest.fromRef.latestCommit)
     - name: pullreq-state
