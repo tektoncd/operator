@@ -224,12 +224,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 
 		if lastAppliedHash != expectedSpecHash {
 
+			r.filterExternalDB(tr)
+
 			if err := r.transform(ctx, &r.manifest, tr); err != nil {
 				logger.Error("manifest transformation failed:  ", err)
 				return err
 			}
-
-			r.manifest = r.manifest.Filter(filterExternalDB(tr.Spec.IsExternalDB))
 
 			// Update the spec hash
 			current := installedTIS.GetAnnotations()
