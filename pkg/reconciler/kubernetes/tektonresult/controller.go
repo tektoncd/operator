@@ -34,7 +34,7 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-const versionConfigMap = "results-info"
+const versionConfigMap = "tekton-results-info"
 
 // NewController initializes the controller and is called by the generated code
 // Registers event handlers to enqueue events
