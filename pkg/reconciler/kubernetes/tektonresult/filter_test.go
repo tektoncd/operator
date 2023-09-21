@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"gotest.tools/v3/assert"
 )
 
@@ -29,9 +30,19 @@ func Test_filterExternalDB(t *testing.T) {
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assert.NilError(t, err)
 	num := len(manifest.Resources())
-	assert.Equal(t, num, 2)
+	assert.Equal(t, num, 4)
 	assert.Equal(t, manifest.Resources()[0].GetName(), statefulSetDB)
-	manifest = manifest.Filter(filterExternalDB(true))
+	r := &Reconciler{
+		manifest: manifest,
+	}
+	r.filterExternalDB(&v1alpha1.TektonResult{
+		Spec: v1alpha1.TektonResultSpec{
+			ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+				IsExternalDB: true,
+			},
+		},
+	})
+	manifest = r.manifest
 	num = len(manifest.Resources())
 	assert.Equal(t, num, 1)
 	assert.Equal(t, manifest.Resources()[0].GetName(), statefulSetDB+"-external")

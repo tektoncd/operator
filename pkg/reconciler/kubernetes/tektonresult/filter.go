@@ -18,18 +18,18 @@ package tektonresult
 
 import (
 	mf "github.com/manifestival/manifestival"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 )
 
 const (
-	statefulSetDB = "tekton-results-postgres"
+	statefulSetDB     = "tekton-results-postgres"
+	servicePostgresDB = "tekton-results-postgres-service"
 )
 
-func filterExternalDB(isExternalDB bool) mf.Predicate {
-	return func(u *unstructured.Unstructured) bool {
-		if u.GetKind() != "StatefulSet" || u.GetName() != statefulSetDB || !isExternalDB {
-			return true
-		}
-		return false
+func (r *Reconciler) filterExternalDB(tr *v1alpha1.TektonResult) {
+	if tr.Spec.IsExternalDB {
+		r.manifest = r.manifest.Filter(mf.Not(mf.All(mf.ByKind("StatefulSet"), mf.ByName(statefulSetDB))))
+		r.manifest = r.manifest.Filter(mf.Not(mf.All(mf.ByKind("ConfigMap"), mf.ByName(configPostgresDB))))
+		r.manifest = r.manifest.Filter(mf.Not(mf.All(mf.ByKind("Service"), mf.ByName(servicePostgresDB))))
 	}
 }
