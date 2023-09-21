@@ -113,3 +113,33 @@ spec:
         resources:
           requests:
             storage: 1Gi
+---
+apiVersion: v1
+data:
+  POSTGRES_DB: tekton-results
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: tekton-results-postgres
+    app.kubernetes.io/part-of: tekton-results
+    app.kubernetes.io/version: v0.8.0
+  name: tekton-results-postgres
+  namespace: tekton-pipelines
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: tekton-results-postgres
+    app.kubernetes.io/part-of: tekton-results
+    app.kubernetes.io/version: v0.8.0
+  name: tekton-results-postgres-service
+  namespace: tekton-pipelines
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+  selector:
+    app.kubernetes.io/name: tekton-results-postgres
+    app.kubernetes.io/version: v0.8.0
+  type: NodePort
