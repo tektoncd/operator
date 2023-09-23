@@ -38,6 +38,7 @@ import (
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -298,7 +299,7 @@ func (s *TektonConfigTestSuite) Test02_ChangeProfile() {
 	s.verifyProfile(newProfile, true)
 }
 
-// delete pipeline and verify recreated automatically
+// delete tektonpipeline CR and verify recreated automatically
 func (s *TektonConfigTestSuite) Test03_DeletePipeline() {
 	t := s.T()
 	interval := s.interval
@@ -367,6 +368,245 @@ func (s *TektonConfigTestSuite) Test05_DisableAndEnableAddons() {
 	// workaround - ends
 
 	s.verifyProfile(defaultTektonConfigProfile, false)
+}
+
+// test SCC related behavior
+func (s *TektonConfigTestSuite) Test06_TestSCCConfig() {
+	t := s.T()
+	if !utils.IsOpenShift() {
+		t.Skip("skipped: This test is only supported in OpenShift")
+	}
+
+	timeout := s.timeout
+
+	// disable addons and update
+	tc := s.getCurrentConfig(timeout)
+
+	// make sure default SCC is being set correctly
+	s.logger.Debug("verifying default SCC is set to 'pipelines-scc'")
+	require.Equal(t, "pipelines-scc", tc.Spec.Platforms.OpenShift.SCC.Default)
+
+	// test: set default SCC and verify it's updated and not ignored by tektonconfig
+	tc = s.getCurrentConfig(timeout)
+
+	// set default SCC
+	tc.Spec.Platforms.OpenShift.SCC.Default = "restricted-v2"
+
+	tc, err := s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	// make sure default SCC is being set correctly
+	s.logger.Debug("verifying default SCC is set to 'restricted-v2'")
+	require.Equal(t, "restricted-v2", tc.Spec.Platforms.OpenShift.SCC.Default)
+
+	// ---
+
+	// test: set maxAllowed SCC and verify it's updated and not ignored by tektonconfig
+	tc = s.getCurrentConfig(timeout)
+
+	// set maxAllowed SCC
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = "anyuid"
+
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	// make sure default SCC is being set correctly
+	s.logger.Debug("verifying maxAllowed SCC is set to 'anyuid'")
+	require.Equal(t, "anyuid", tc.Spec.Platforms.OpenShift.SCC.MaxAllowed)
+
+	// ---
+
+	// test: default > maxAllowed should fail
+	tc = s.getCurrentConfig(timeout)
+
+	defaultSCC := "anyuid"
+	maxAllowedSCC := "nonroot"
+
+	tc.Spec.Platforms.OpenShift.SCC.Default = defaultSCC
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = maxAllowedSCC
+
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.ErrorContains(t, err, "admission webhook \"validation.webhook.operator.tekton.dev\" denied the request")
+	require.ErrorContains(t, err, "must have a higher priority than the default SCC")
+
+	// test: default = maxAllowed should pass
+	tc = s.getCurrentConfig(timeout)
+
+	defaultSCC = "nonroot"
+	maxAllowedSCC = "nonroot"
+
+	tc.Spec.Platforms.OpenShift.SCC.Default = defaultSCC
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = maxAllowedSCC
+
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	// ---
+
+	// test: default < maxAllowed should pass
+	tc = s.getCurrentConfig(timeout)
+
+	defaultSCC = "nonroot"
+	maxAllowedSCC = "anyuid"
+
+	tc.Spec.Platforms.OpenShift.SCC.Default = defaultSCC
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = maxAllowedSCC
+
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	// ---
+
+	// test: when default SCC is removed, it should be set back to "pipelines-scc"
+	tc = s.getCurrentConfig(timeout)
+
+	tc.Spec.Platforms.OpenShift.SCC.Default = ""
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = "anyuid"
+
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	require.Equal(t, "pipelines-scc", tc.Spec.Platforms.OpenShift.SCC.Default)
+
+	// ---
+
+	// test: when default SCC is removed, the validation should be run again
+	// and maxAllowed cannot be lower priority than default
+	tc = s.getCurrentConfig(timeout)
+
+	tc.Spec.Platforms.OpenShift.SCC.Default = ""
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = "restricted-v2"
+
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.ErrorContains(t, err, "admission webhook \"validation.webhook.operator.tekton.dev\" denied the request: validation failed")
+
+	// ---
+
+	// test: any SCC can be requested in a namespace if no maxAllowed is set
+	tc = s.getCurrentConfig(timeout)
+
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = ""
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	nsName := "scc-test-no-maxallowed"
+	_, err = s.clients.KubeClient.CoreV1().Namespaces().Create(context.TODO(), &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: nsName,
+			Annotations: map[string]string{
+				"operator.tekton.dev/scc": "anyuid",
+			},
+		},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	err = resources.DeleteNamespaceAndWait(s.clients.KubeClient, nsName, s.interval, 1*time.Minute)
+	require.NoError(t, err)
+
+	// ---
+
+	// test: invalid maxAllowed as per other SCCs in namespace
+	tc = s.getCurrentConfig(timeout)
+
+	tc.Spec.Platforms.OpenShift.SCC.Default = "restricted-v2"
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = ""
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	nsName = "scc-test-invalid-maxallowed"
+	_, err = s.clients.KubeClient.CoreV1().Namespaces().Create(context.TODO(), &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: nsName,
+			Annotations: map[string]string{
+				"operator.tekton.dev/scc": "anyuid",
+			},
+		},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = "nonroot"
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.ErrorContains(t, err, "admission webhook \"validation.webhook.operator.tekton.dev\" denied the request: validation failed")
+
+	err = resources.DeleteNamespaceAndWait(s.clients.KubeClient, nsName, s.interval, 1*time.Minute)
+	require.NoError(t, err)
+
+	// ---
+
+	// test: valid maxAllowed as per other SCCs in namespace
+	tc = s.getCurrentConfig(timeout)
+
+	tc.Spec.Platforms.OpenShift.SCC.Default = "restricted-v2"
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = ""
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	nsName = "scc-test-valid-maxallowed"
+	_, err = s.clients.KubeClient.CoreV1().Namespaces().Create(context.TODO(), &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: nsName,
+			Annotations: map[string]string{
+				"operator.tekton.dev/scc": "anyuid",
+			},
+		},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = "anyuid"
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	err = resources.DeleteNamespaceAndWait(s.clients.KubeClient, nsName, s.interval, 1*time.Minute)
+	require.NoError(t, err)
+
+	// ---
+
+	// test: maxAllowed already set, namespace annotation valid
+	tc = s.getCurrentConfig(timeout)
+
+	tc.Spec.Platforms.OpenShift.SCC.Default = "restricted-v2"
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = "anyuid"
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+
+	nsName = "scc-test-valid-namespace-annotation"
+	_, err = s.clients.KubeClient.CoreV1().Namespaces().Create(context.TODO(), &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: nsName,
+			Annotations: map[string]string{
+				"operator.tekton.dev/scc": "anyuid",
+			},
+		},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+
+	err = resources.DeleteNamespaceAndWait(s.clients.KubeClient, nsName, s.interval, 1*time.Minute)
+	require.NoError(t, err)
+
+	// ---
+
+	// test: maxAllowed already set, namespace annotation invalid
+	time.Sleep(15 * time.Second)
+	tc = s.getCurrentConfig(timeout)
+	tc.Spec.Platforms.OpenShift.SCC.Default = "nonroot-v2"
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = "restricted-v2"
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	// wait for tektonConfig ready status
+	err = resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, s.interval, 1*time.Minute)
+
+	nsName = "scc-test-invalid-namespace-annotation"
+	_, err = s.clients.KubeClient.CoreV1().Namespaces().Create(context.TODO(), &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: nsName,
+			Annotations: map[string]string{
+				"operator.tekton.dev/scc": "anyuid",
+			},
+		},
+	}, metav1.CreateOptions{})
+	require.ErrorContains(t, err, "admission webhook \"namespace.operator.tekton.dev\" denied the request")
+
+	err = resources.DeleteNamespaceAndWait(s.clients.KubeClient, nsName, s.interval, 1*time.Minute)
+	require.NoError(t, err)
 }
 
 // helper functions
@@ -671,6 +911,13 @@ func (s *TektonConfigTestSuite) verifyRbac(namespace string) {
 	s.logger.Debugw("running rbac verification",
 		"namespace", namespace,
 	)
+
+	// get tektonConfig cr
+	configCR := s.getCurrentConfig(timeout)
+
+	// make sure default SCC is being set correctly
+	s.logger.Debug("verifying default SCC is set to 'pipelines-scc'")
+	require.Equal(t, "pipelines-scc", configCR.Spec.Platforms.OpenShift.SCC.Default)
 
 	// resources
 	serviceAccountPipeline := "pipeline"
