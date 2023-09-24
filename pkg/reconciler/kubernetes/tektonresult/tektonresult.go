@@ -276,6 +276,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 func (r *Reconciler) updateTektonResultsStatus(ctx context.Context, tr *v1alpha1.TektonResult, createdIs *v1alpha1.TektonInstallerSet) error {
 	// update the tr with TektonInstallerSet
 	tr.Status.SetTektonInstallerSet(createdIs.Name)
+	tr.Status.SetVersion(r.resultsVersion)
 
 	return nil
 }
