@@ -28,6 +28,7 @@ import (
 
 func (r *Reconciler) createInstallerSet(ctx context.Context, tr *v1alpha1.TektonResult) (*v1alpha1.TektonInstallerSet, error) {
 
+	r.filterExternalDB(tr)
 	if err := r.transform(ctx, &r.manifest, tr); err != nil {
 		tr.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err

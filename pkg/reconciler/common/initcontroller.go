@@ -112,7 +112,7 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 	case "chains":
 		var chain v1alpha1.TektonChain
 		return AppendTarget(ctx, ctrl.Manifest, &chain)
-	case "results":
+	case "tekton-results":
 		var results v1alpha1.TektonResult
 		return AppendTarget(ctx, ctrl.Manifest, &results)
 	case "pipelines-as-code":
