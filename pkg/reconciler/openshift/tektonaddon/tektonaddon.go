@@ -54,6 +54,7 @@ type Reconciler struct {
 	communityClusterTaskManifest *mf.Manifest
 	openShiftConsoleManifest     *mf.Manifest
 	consoleCLIManifest           *mf.Manifest
+	resultExtManifest            *mf.Manifest
 }
 
 const (
@@ -178,6 +179,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	if err := r.EnsureTriggersResources(ctx, ta); err != nil {
 		ready = false
 		errorMsg = fmt.Sprintf("triggers resources not yet ready:  %v", err)
+		logger.Error(errorMsg)
+	}
+
+	if err := r.EnsureResultsResources(ctx, ta); err != nil {
+		ready = false
+		errorMsg = fmt.Sprintf("results resources not yet ready:  %v", err)
 		logger.Error(errorMsg)
 	}
 

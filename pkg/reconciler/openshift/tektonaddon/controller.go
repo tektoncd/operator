@@ -94,6 +94,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatalf("failed to read trigger Resources from kodata: %v", err)
 		}
 
+		resultExtManifest := &mf.Manifest{}
+		if err := applyAddons(resultExtManifest, "06-results"); err != nil {
+			logger.Fatalf("failed to read result Resources from kodata: %v", err)
+		}
+
 		pipelineTemplateManifest := &mf.Manifest{}
 		if err := applyAddons(pipelineTemplateManifest, "03-pipelines"); err != nil {
 			logger.Fatalf("failed to read pipeline template from kodata: %v", err)
@@ -130,6 +135,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			communityClusterTaskManifest: communityClusterTaskManifest,
 			openShiftConsoleManifest:     openShiftConsoleManifest,
 			consoleCLIManifest:           consoleCLIManifest,
+			resultExtManifest:            resultExtManifest,
 		}
 		impl := tektonAddonreconciler.NewImpl(ctx, c)
 

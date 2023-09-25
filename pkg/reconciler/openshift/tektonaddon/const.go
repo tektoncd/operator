@@ -24,6 +24,7 @@ const (
 	versionedClusterTaskPatchChar      = "0"
 	PipelinesTemplateInstallerSet      = "PipelinesTemplate"
 	TriggersResourcesInstallerSet      = "TriggersResources"
+	ResultExtInstallerSet              = "ResultsExtResources"
 	ConsoleCLIInstallerSet             = "ConsoleCLI"
 	ConsoleHubLinkInstallerSet         = "ConsoleHub"
 	MiscellaneousResourcesInstallerSet = "MiscellaneousResources"
