@@ -23,13 +23,13 @@ import (
 	"regexp"
 	"time"
 
-	common "github.com/tektoncd/operator/pkg/common"
-	"github.com/tektoncd/operator/pkg/reconciler/openshift"
-
 	security "github.com/openshift/client-go/security/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
+	"github.com/tektoncd/operator/pkg/common"
 	reconcilerCommon "github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift"
+
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
