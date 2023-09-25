@@ -108,18 +108,34 @@ func (tcs *TektonConfigStatus) SetVersion(version string) {
 	tcs.Version = version
 }
 
-// returns applied upgrade version
-func (tcs *TektonConfigStatus) GetAppliedUpgradeVersion() string {
+// returns pre upgrade version
+func (tcs *TektonConfigStatus) GetPreUpgradeVersion() string {
 	if tcs.Annotations == nil {
 		return ""
 	}
-	return tcs.Annotations[AppliedUpgradeVersionKey]
+	return tcs.Annotations[PreUpgradeVersionKey]
 }
 
-// updates applied upgrade version
-func (tcs *TektonConfigStatus) SetAppliedUpgradeVersion(appliedUpgradeVersion string) {
+// updates pre upgrade version
+func (tcs *TektonConfigStatus) SetPreUpgradeVersion(appliedUpgradeVersion string) {
 	if tcs.Annotations == nil {
 		tcs.Annotations = map[string]string{}
 	}
-	tcs.Annotations[AppliedUpgradeVersionKey] = appliedUpgradeVersion
+	tcs.Annotations[PreUpgradeVersionKey] = appliedUpgradeVersion
+}
+
+// returns post upgrade version
+func (tcs *TektonConfigStatus) GetPostUpgradeVersion() string {
+	if tcs.Annotations == nil {
+		return ""
+	}
+	return tcs.Annotations[PostUpgradeVersionKey]
+}
+
+// updates post upgrade version
+func (tcs *TektonConfigStatus) SetPostUpgradeVersion(appliedUpgradeVersion string) {
+	if tcs.Annotations == nil {
+		tcs.Annotations = map[string]string{}
+	}
+	tcs.Annotations[PostUpgradeVersionKey] = appliedUpgradeVersion
 }
