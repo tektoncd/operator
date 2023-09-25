@@ -198,18 +198,18 @@ func (ac *reconciler) admissionAllowed(ctx context.Context, req *admissionv1.Adm
 		return true, nil, nil
 	}
 
-	prioritizedSCCList, err := common.GetPrioritizedSCCList(ctx, securityClient)
+	prioritizedSCCList, err := common.GetSCCRestrictiveList(ctx, securityClient)
 	if err != nil {
 		return false, nil, err
 	}
 
-	isPriority, err := common.SCCAEqualORPriorityOverB(prioritizedSCCList, maxAllowedSCC, nsSCC)
+	isPriority, err := common.SCCAMoreRestrictiveThanB(prioritizedSCCList, nsSCC, maxAllowedSCC)
 	if err != nil {
 		return false, nil, err
 	}
-	logger.Infof("Does SCC: %s have >= priority than SCC: %s? %t", maxAllowedSCC, nsSCC, isPriority)
+	logger.Infof("Is maxAllowed SCC: %s less restrictive than namespace SCC: %s? %t", maxAllowedSCC, nsSCC, isPriority)
 	if !isPriority {
-		prioErr := fmt.Sprintf("namespace: %s has requested SCC: %s, but it has a higher priority than 'maxAllowed' SCC: %s", namespaceObject.Name, nsSCC, maxAllowedSCC)
+		prioErr := fmt.Sprintf("namespace: %s has requested SCC: %s, but it is less restrictive than 'maxAllowed' SCC: %s", namespaceObject.Name, nsSCC, maxAllowedSCC)
 		return false, &metav1.Status{
 			Status:  "Failure",
 			Message: prioErr,

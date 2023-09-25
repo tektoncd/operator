@@ -186,7 +186,7 @@ func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 		return err
 	}
 
-	prioritizedSCCList, err := common.GetPrioritizedSCCList(ctx, r.securityClientSet)
+	prioritizedSCCList, err := common.GetSCCRestrictiveList(ctx, r.securityClientSet)
 	if err != nil {
 		return err
 	}
@@ -198,13 +198,13 @@ func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 			return err
 		}
 
-		isPriority, err := common.SCCAEqualORPriorityOverB(prioritizedSCCList, maxAllowedSCC, defaultSCC)
+		isPriority, err := common.SCCAMoreRestrictiveThanB(prioritizedSCCList, defaultSCC, maxAllowedSCC)
 		if err != nil {
 			return err
 		}
-		logger.Infof("Does SCC: %s have >= priority than SCC: %s? %t", maxAllowedSCC, defaultSCC, isPriority)
+		logger.Infof("Is maxAllowed SCC: %s less restrictive than default SCC: %s? %t", maxAllowedSCC, defaultSCC, isPriority)
 		if !isPriority {
-			return fmt.Errorf("maxAllowed SCC: %s must have a higher priority over default SCC: %s", maxAllowedSCC, defaultSCC)
+			return fmt.Errorf("maxAllowed SCC: %s must be less restrictive than the default SCC: %s", maxAllowedSCC, defaultSCC)
 		}
 		logger.Infof("maxAllowed SCC set to: %s", maxAllowedSCC)
 	} else {
@@ -343,17 +343,17 @@ func (r *rbac) handleSCCInNamespace(ctx context.Context, ns *corev1.Namespace) e
 	// than the SCC mentioned in maxAllowed
 	maxAllowedSCC := r.tektonConfig.Spec.Platforms.OpenShift.SCC.MaxAllowed
 	if maxAllowedSCC != "" {
-		prioritizedSCCList, err := common.GetPrioritizedSCCList(ctx, r.securityClientSet)
+		prioritizedSCCList, err := common.GetSCCRestrictiveList(ctx, r.securityClientSet)
 		if err != nil {
 			return err
 		}
-		isPriority, err := common.SCCAEqualORPriorityOverB(prioritizedSCCList, maxAllowedSCC, nsSCC)
+		isPriority, err := common.SCCAMoreRestrictiveThanB(prioritizedSCCList, nsSCC, maxAllowedSCC)
 		if err != nil {
 			return err
 		}
-		logger.Infof("Does SCC: %s have >= priority than SCC: %s? %t", maxAllowedSCC, nsSCC, isPriority)
+		logger.Infof("Is maxAllowed SCC: %s less restrictive than namespace SCC: %s? %t", maxAllowedSCC, nsSCC, isPriority)
 		if !isPriority {
-			return fmt.Errorf("namespace: %s has requested SCC: %s, but it has a higher priority than 'maxAllowed' SCC: %s", nsName, nsSCC, maxAllowedSCC)
+			return fmt.Errorf("namespace: %s has requested SCC: %s, but it is less restrictive than the 'maxAllowed' SCC: %s", nsName, nsSCC, maxAllowedSCC)
 		}
 	}
 
