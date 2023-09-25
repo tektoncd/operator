@@ -427,7 +427,7 @@ func (s *TektonConfigTestSuite) Test06_TestSCCConfig() {
 
 	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
 	require.ErrorContains(t, err, "admission webhook \"validation.webhook.operator.tekton.dev\" denied the request")
-	require.ErrorContains(t, err, "must have a higher priority than the default SCC")
+	require.ErrorContains(t, err, "must be less restrictive than the default SCC")
 
 	// test: default = maxAllowed should pass
 	tc = s.getCurrentConfig(timeout)
@@ -461,7 +461,7 @@ func (s *TektonConfigTestSuite) Test06_TestSCCConfig() {
 	tc = s.getCurrentConfig(timeout)
 
 	tc.Spec.Platforms.OpenShift.SCC.Default = ""
-	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = "anyuid"
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = "privileged"
 
 	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
 	require.NoError(t, err)
@@ -585,10 +585,10 @@ func (s *TektonConfigTestSuite) Test06_TestSCCConfig() {
 	// ---
 
 	// test: maxAllowed already set, namespace annotation invalid
-	time.Sleep(15 * time.Second)
+
 	tc = s.getCurrentConfig(timeout)
-	tc.Spec.Platforms.OpenShift.SCC.Default = "nonroot-v2"
-	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = "restricted-v2"
+	tc.Spec.Platforms.OpenShift.SCC.Default = "restricted-v2"
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = "nonroot-v2"
 	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
 	require.NoError(t, err)
 	// wait for tektonConfig ready status
@@ -607,6 +607,66 @@ func (s *TektonConfigTestSuite) Test06_TestSCCConfig() {
 
 	err = resources.DeleteNamespaceAndWait(s.clients.KubeClient, nsName, s.interval, 1*time.Minute)
 	require.NoError(t, err)
+
+	// ---
+
+	// test: non-existent SCC should not be admitted
+
+	nonExistentSCC := "non-existent-scc"
+
+	// default
+	tc = s.getCurrentConfig(timeout)
+	tc.Spec.Platforms.OpenShift.SCC.Default = nonExistentSCC
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.ErrorContains(t, err, "\"non-existent-scc\" not found")
+
+	// maxAllowed
+	tc = s.getCurrentConfig(timeout)
+	tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = nonExistentSCC
+	tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.ErrorContains(t, err, "\"non-existent-scc\" not found")
+
+	// namespace SCC
+	tc = s.getCurrentConfig(timeout)
+	nsName = "non-existent-scc-namespace"
+	_, err = s.clients.KubeClient.CoreV1().Namespaces().Create(context.TODO(), &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: nsName,
+			Annotations: map[string]string{
+				"operator.tekton.dev/scc": "non-existent-scc",
+			},
+		},
+	}, metav1.CreateOptions{})
+	require.ErrorContains(t, err, "\"non-existent-scc\" not found")
+
+	err = resources.DeleteNamespaceAndWait(s.clients.KubeClient, nsName, s.interval, 1*time.Minute)
+	require.NoError(t, err)
+
+	// ---
+
+	// test: validate system and most used SCC priority order
+
+	moreRestrictiveSCCList := []string{"restricted-v2", "nonroot-v2", "anyuid"}
+	lessRestrictiveList := []string{"pipelines-scc", "hostnetwork-v2", "privileged"}
+
+	for _, moreRestrictiveSCC := range moreRestrictiveSCCList {
+		for _, lessRestrictiveSCC := range lessRestrictiveList {
+			// passing cases
+			tc = s.getCurrentConfig(timeout)
+
+			tc.Spec.Platforms.OpenShift.SCC.Default = moreRestrictiveSCC
+			tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = lessRestrictiveSCC
+			tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+			require.NoError(t, err)
+
+			// failing cases
+			tc = s.getCurrentConfig(timeout)
+			tc.Spec.Platforms.OpenShift.SCC.Default = lessRestrictiveSCC
+			tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = moreRestrictiveSCC
+			tc, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+			require.ErrorContains(t, err, "must be less restrictive than the default SCC")
+		}
+	}
 }
 
 // helper functions
