@@ -67,11 +67,11 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 			}
 
 			// Check that maxAllowed SCC and default SCC are compatible wrt priority
-			hasPriority, err := compareSCCAPriorityOverB(ctx, maxAllowedSCC, defaultSCC)
+			hasPriority, err := compareSCCAMoreRestrictiveThanB(ctx, defaultSCC, maxAllowedSCC)
 			if err != nil {
 				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error comparing priority between maxAllowed and default SCC in TektonConfig: %v", err), "spec.platforms.openshift.scc.maxAllowed"))
 			} else if !hasPriority {
-				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("maxAllowed SCC (%s) must have a higher priority than the default SCC (%s)", maxAllowedSCC, defaultSCC), "spec.platforms.openshift.scc.maxAllowed"))
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("maxAllowed SCC (%s) must be less restrictive than the default SCC (%s)", maxAllowedSCC, defaultSCC), "spec.platforms.openshift.scc.maxAllowed"))
 			}
 
 			// Now validate maxAllowed SCC config with namespaces
@@ -153,13 +153,13 @@ func verifySCCExists(ctx context.Context, sccName string) error {
 	return err
 }
 
-func compareSCCAPriorityOverB(ctx context.Context, sccA, sccB string) (bool, error) {
+func compareSCCAMoreRestrictiveThanB(ctx context.Context, sccA, sccB string) (bool, error) {
 	securityClient := common.GetSecurityClient(ctx)
-	prioritizedSCCList, err := common.GetPrioritizedSCCList(ctx, securityClient)
+	prioritizedSCCList, err := common.GetSCCRestrictiveList(ctx, securityClient)
 	if err != nil {
 		return false, err
 	}
-	return common.SCCAEqualORPriorityOverB(prioritizedSCCList, sccA, sccB)
+	return common.SCCAMoreRestrictiveThanB(prioritizedSCCList, sccA, sccB)
 }
 
 func compareSCCsWithAllNamespaces(ctx context.Context, maxAllowedSCC string) (*apis.FieldError, error) {
@@ -177,7 +177,7 @@ func compareSCCsWithAllNamespaces(ctx context.Context, maxAllowedSCC string) (*a
 		}
 
 		// Compare namespace SCC with maxAllowed
-		hasPriority, err := compareSCCAPriorityOverB(ctx, maxAllowedSCC, nsSCC)
+		hasPriority, err := compareSCCAMoreRestrictiveThanB(ctx, nsSCC, maxAllowedSCC)
 		if err != nil {
 			return nil, err
 		}

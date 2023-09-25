@@ -46,7 +46,7 @@ func VerifySCCExists(ctx context.Context, sccName string, securityClient *securi
 	return err
 }
 
-func GetPrioritizedSCCList(ctx context.Context, securityClient *security.Clientset) ([]*securityv1.SecurityContextConstraints, error) {
+func GetSCCRestrictiveList(ctx context.Context, securityClient *security.Clientset) ([]*securityv1.SecurityContextConstraints, error) {
 	logger := logging.FromContext(ctx)
 	sccList, err := securityClient.SecurityV1().SecurityContextConstraints().List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -58,11 +58,11 @@ func GetPrioritizedSCCList(ctx context.Context, securityClient *security.Clients
 		sccPointerList = append(sccPointerList, &sccList.Items[i])
 	}
 
-	// This will sort the sccPointerList in order of priority
-	// ByPriority implements the sort interface so sort.Sort() can be run on it.
-	sort.Sort(sccSort.ByPriority(sccPointerList))
+	// This will sort the sccPointerList from most restrictive to least restrictive.
+	// ByRestrictions implements the sort interface so sort.Sort() can be run on it.
+	sort.Sort(sccSort.ByRestrictions(sccPointerList))
 
-	sccLog := "SCCs sorted by priority:"
+	sccLog := "SCCs sorted from most restrictive to least restrictive:"
 	for _, sortedSCC := range sccPointerList {
 		sccLog = fmt.Sprintf("%s %s", sccLog, sortedSCC.Name)
 	}
@@ -70,7 +70,7 @@ func GetPrioritizedSCCList(ctx context.Context, securityClient *security.Clients
 	return sccPointerList, nil
 }
 
-func SCCAEqualORPriorityOverB(prioritizedSCCList []*securityv1.SecurityContextConstraints, sccA string, sccB string) (bool, error) {
+func SCCAMoreRestrictiveThanB(prioritizedSCCList []*securityv1.SecurityContextConstraints, sccA string, sccB string) (bool, error) {
 	var sccAIndex, sccBIndex int
 	var sccAFound, sccBFound bool
 	for i, scc := range prioritizedSCCList {
