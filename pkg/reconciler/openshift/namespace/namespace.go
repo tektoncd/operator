@@ -23,21 +23,22 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/markbates/inflect"
 	"github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	"github.com/markbates/inflect"
 	"go.uber.org/zap"
+
 	admissionv1 "k8s.io/api/admission/v1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	admissionlisters "k8s.io/client-go/listers/admissionregistration/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
+
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/kmp"
 	"knative.dev/pkg/logging"
@@ -175,6 +176,14 @@ func (ac *reconciler) admissionAllowed(ctx context.Context, req *admissionv1.Adm
 
 	logger.Infof("Trying to admit namespace: %s with SCC: %s", namespaceObject.Name, nsSCC)
 
+	securityClient := common.GetSecurityClient(ctx)
+
+	// verify SCC exists on the cluster
+	_, err := securityClient.SecurityV1().SecurityContextConstraints().Get(ctx, nsSCC, metav1.GetOptions{})
+	if err != nil {
+		return false, nil, err
+	}
+
 	tc, err := ac.tektonConfigLister.Get("config")
 	if err != nil {
 		return false, nil, err
@@ -188,8 +197,6 @@ func (ac *reconciler) admissionAllowed(ctx context.Context, req *admissionv1.Adm
 		logger.Infof("Namespace %s validation: no maxAllowed SCC set in TektonConfig", namespaceObject.Name)
 		return true, nil, nil
 	}
-
-	securityClient := common.GetSecurityClient(ctx)
 
 	prioritizedSCCList, err := common.GetPrioritizedSCCList(ctx, securityClient)
 	if err != nil {

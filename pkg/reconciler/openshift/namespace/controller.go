@@ -20,13 +20,11 @@ import (
 	"context"
 
 	"github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
-	"knative.dev/pkg/configmap"
-
-	// Injection stuff
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	vwhinformer "knative.dev/pkg/client/injection/kube/informers/admissionregistration/v1/validatingwebhookconfiguration"
+	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	secretinformer "knative.dev/pkg/injection/clients/namespacedkube/informers/core/v1/secret"
 	"knative.dev/pkg/logging"

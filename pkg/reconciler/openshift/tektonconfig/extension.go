@@ -21,19 +21,20 @@ import (
 	"fmt"
 	"os"
 
-	pkgCommon "github.com/tektoncd/operator/pkg/common"
-
 	mf "github.com/manifestival/manifestival"
 	security "github.com/openshift/client-go/security/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
+	pkgCommon "github.com/tektoncd/operator/pkg/common"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	nsV1 "k8s.io/client-go/informers/core/v1"
 	rbacV1 "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/kubernetes"
+
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	namespaceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
 	rbacInformer "knative.dev/pkg/client/injection/kube/informers/rbac/v1/clusterrolebinding"

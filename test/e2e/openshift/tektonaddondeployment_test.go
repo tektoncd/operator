@@ -23,11 +23,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/tektoncd/operator/test/utils"
-
 	"github.com/tektoncd/operator/test/client"
-
 	"github.com/tektoncd/operator/test/resources"
+	"github.com/tektoncd/operator/test/utils"
 )
 
 // TestTektonAddonsDeployment verifies the TektonAddons creation, deployment recreation, and TektonAddons deletion.
