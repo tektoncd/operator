@@ -61,53 +61,50 @@ func New(operatorVersion string, k8sClient kubernetes.Interface, operatorClient 
 	}
 }
 
-func (ug *Upgrade) RunPreUpgrade(ctx context.Context) error {
-	return ug.executeUpgrade(ctx, preUpgradeFunctions, false)
+func (ug *Upgrade) RunPreUpgrade(ctx context.Context) (bool, error) {
+	return ug.executeUpgrade(ctx, preUpgradeFunctions, true)
 }
 
-func (ug *Upgrade) RunPostUpgrade(ctx context.Context) error {
-	return ug.executeUpgrade(ctx, postUpgradeFunctions, true)
+func (ug *Upgrade) RunPostUpgrade(ctx context.Context) (bool, error) {
+	return ug.executeUpgrade(ctx, postUpgradeFunctions, false)
 }
 
-func (ug *Upgrade) executeUpgrade(ctx context.Context, upgradeFunctions []upgradeFunc, isPostUpgrade bool) error {
+func (ug *Upgrade) executeUpgrade(ctx context.Context, upgradeFunctions []upgradeFunc, isPreUpgrade bool) (bool, error) {
 	// update logger
 	ug.logger = logging.FromContext(ctx).Named("upgrade")
 
 	// if upgrade not required return from here
-	isUpgradeRequired, err := ug.isUpgradeRequired(ctx)
+	isUpgradeRequired, err := ug.isUpgradeRequired(ctx, isPreUpgrade)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if !isUpgradeRequired {
-		return nil
+		return false, nil
 	}
 
-	if isPostUpgrade {
-		ug.logger.Debugw("executing post upgrade functions", "numberOfFunctions", len(upgradeFunctions))
-	} else {
+	if isPreUpgrade {
 		ug.logger.Debugw("executing pre upgrade functions", "numberOfFunctions", len(upgradeFunctions))
+	} else {
+		ug.logger.Debugw("executing post upgrade functions", "numberOfFunctions", len(upgradeFunctions))
 	}
 
 	// execute upgrade functions
 	for _, _upgradeFunc := range upgradeFunctions {
 		if err := _upgradeFunc(ctx, ug.logger, ug.k8sClient, ug.operatorClient, ug.restConfig); err != nil {
 			ug.logger.Errorf("error on upgrade, error:%s", err.Error())
-			return err
+			return false, err
 		}
 	}
-	if isPostUpgrade {
-		ug.logger.Debug("completed post upgrade execution")
-	} else {
+	if isPreUpgrade {
 		ug.logger.Debug("completed pre upgrade execution")
+	} else {
+		ug.logger.Debug("completed post upgrade execution")
 	}
 	// update applied upgrade version
-	if isPostUpgrade {
-		return ug.updateAppliedUpgradeVersion(ctx)
-	}
-	return nil
+	return true, ug.updateUpgradeVersion(ctx, isPreUpgrade)
 }
 
-func (ug *Upgrade) isUpgradeRequired(ctx context.Context) (bool, error) {
+func (ug *Upgrade) isUpgradeRequired(ctx context.Context, isPreUpgrade bool) (bool, error) {
 	tcCR, err := ug.operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		if apierrs.IsNotFound(err) {
@@ -117,18 +114,29 @@ func (ug *Upgrade) isUpgradeRequired(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	_isUpgradeRequired := ug.operatorVersion != tcCR.Status.GetAppliedUpgradeVersion()
+	appliedUpgradeVersion := tcCR.Status.GetPostUpgradeVersion()
+	if isPreUpgrade {
+		appliedUpgradeVersion = tcCR.Status.GetPreUpgradeVersion()
+	}
+
+	_isUpgradeRequired := ug.operatorVersion != appliedUpgradeVersion
 	return _isUpgradeRequired, nil
 }
 
-func (ug *Upgrade) updateAppliedUpgradeVersion(ctx context.Context) error {
+func (ug *Upgrade) updateUpgradeVersion(ctx context.Context, isPreUpgrade bool) error {
 	// update applied version into TektonConfig CR, under status
 	_cr, err := ug.operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		ug.logger.Errorw("error on getting TektonConfig CR", err)
 		return err
 	}
-	_cr.Status.SetAppliedUpgradeVersion(ug.operatorVersion)
+
+	if isPreUpgrade {
+		_cr.Status.SetPreUpgradeVersion(ug.operatorVersion)
+	} else {
+		_cr.Status.SetPostUpgradeVersion(ug.operatorVersion)
+	}
+
 	_, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().UpdateStatus(ctx, _cr, metav1.UpdateOptions{})
 	if err != nil {
 		ug.logger.Errorw("error on updating TektonConfig CR status", "version", ug.operatorVersion, err)

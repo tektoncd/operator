@@ -111,6 +111,17 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		return nil
 	}
 
+	// run pre upgrade
+	isUpgradePerformed, err := r.upgrade.RunPreUpgrade(ctx)
+	if err != nil {
+		return err
+	}
+	// if upgrade executed, tektonConfig CR status will be updated
+	// hence calling the reconcile again
+	if isUpgradePerformed {
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
+
 	tc.SetDefaults(ctx)
 	// Mark TektonConfig Instance as Not Ready if an upgrade is needed
 	if err := r.markUpgrade(ctx, tc); err != nil {
@@ -198,8 +209,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	// run post upgrade
-	if err := r.upgrade.RunPostUpgrade(ctx); err != nil {
+	isUpgradePerformed, err = r.upgrade.RunPostUpgrade(ctx)
+	if err != nil {
 		return err
+	}
+	// if upgrade executed, tektonConfig CR status will be updated
+	// hence calling the reconcile again
+	if isUpgradePerformed {
+		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
 	return nil
@@ -217,31 +234,15 @@ func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonConfig)
 		tc.Status.MarkPostInstallFailed(v1alpha1.UpgradePending)
 		tc.Status.MarkNotReady("Upgrade Pending")
 	}
-	// update status
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().UpdateStatus(ctx, tc, metav1.UpdateOptions{}); err != nil {
-		return err
-	}
-
-	// run pre upgrade
-	if err := r.upgrade.RunPreUpgrade(ctx); err != nil {
-		return err
-	}
-
-	// update labels in tektonConfig CR
-	tcCR, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	labels = tcCR.GetLabels()
 	if labels == nil {
 		labels = map[string]string{}
 	}
 	labels[v1alpha1.ReleaseVersionKey] = r.operatorVersion
-	tcCR.SetLabels(labels)
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{}); err != nil {
+	tc.SetLabels(labels)
+
+	// Update the object for any spec changes
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{}); err != nil {
 		return err
 	}
-
 	return v1alpha1.RECONCILE_AGAIN_ERR
 }

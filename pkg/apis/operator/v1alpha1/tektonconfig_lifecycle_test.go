@@ -98,19 +98,36 @@ func TestTektonConfigErrorPath(t *testing.T) {
 
 }
 
-func TestAppliedUpgradeVersion(t *testing.T) {
+func TestAppliedPreUpgradeVersion(t *testing.T) {
 	tc := &TektonConfig{}
 
 	// should return empty
-	assert.Equal(t, tc.Status.GetAppliedUpgradeVersion(), "")
+	assert.Equal(t, tc.Status.GetPreUpgradeVersion(), "")
 
-	// update applied upgrade version
-	tc.Status.SetAppliedUpgradeVersion("foo")
-	assert.Equal(t, tc.Status.GetAppliedUpgradeVersion(), "foo")
-	assert.Equal(t, tc.Status.Annotations[AppliedUpgradeVersionKey], "foo")
+	// update applied pre upgrade version
+	tc.Status.SetPreUpgradeVersion("foo")
+	assert.Equal(t, tc.Status.GetPreUpgradeVersion(), "foo")
+	assert.Equal(t, tc.Status.Annotations[PreUpgradeVersionKey], "foo")
 
-	// update applied upgrade version
-	tc.Status.SetAppliedUpgradeVersion("bar")
-	assert.Equal(t, tc.Status.GetAppliedUpgradeVersion(), "bar")
-	assert.Equal(t, tc.Status.Annotations[AppliedUpgradeVersionKey], "bar")
+	// update applied pre upgrade version
+	tc.Status.SetPreUpgradeVersion("bar")
+	assert.Equal(t, tc.Status.GetPreUpgradeVersion(), "bar")
+	assert.Equal(t, tc.Status.Annotations[PreUpgradeVersionKey], "bar")
+}
+
+func TestAppliedPostUpgradeVersion(t *testing.T) {
+	tc := &TektonConfig{}
+
+	// should return empty
+	assert.Equal(t, tc.Status.GetPostUpgradeVersion(), "")
+
+	// update applied post upgrade version
+	tc.Status.SetPostUpgradeVersion("foo")
+	assert.Equal(t, tc.Status.GetPostUpgradeVersion(), "foo")
+	assert.Equal(t, tc.Status.Annotations[PostUpgradeVersionKey], "foo")
+
+	// update applied post upgrade version
+	tc.Status.SetPostUpgradeVersion("bar")
+	assert.Equal(t, tc.Status.GetPostUpgradeVersion(), "bar")
+	assert.Equal(t, tc.Status.Annotations[PostUpgradeVersionKey], "bar")
 }

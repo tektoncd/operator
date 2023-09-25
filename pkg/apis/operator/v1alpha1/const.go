@@ -50,7 +50,8 @@ const (
 	LabelOperandName                = "operator.tekton.dev/operand-name"
 	DbSecretHash                    = "operator.tekton.dev/db-secret-hash"
 	DeploymentSpecHashValueLabelKey = "operator.tekton.dev/deployment-spec-applied-hash" // used to recreate pods, if there is a change detected in deployments spec
-	AppliedUpgradeVersionKey        = "operator.tekton.dev/applied-upgrade-version"      // used to monitor applied upgrade version, via upgrade package
+	PreUpgradeVersionKey            = "operator.tekton.dev/pre-upgrade-version"          // used to monitor and execute pre upgrade functions
+	PostUpgradeVersionKey           = "operator.tekton.dev/post-upgrade-version"         // used to monitor and execute post upgrade functions
 
 	UpgradePending = "upgrade pending"
 	Reinstalling   = "reinstalling"
