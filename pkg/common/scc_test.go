@@ -161,7 +161,7 @@ func Test_SCCAEqualORPriorityOverB(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got, err := SCCAEqualORPriorityOverB(test.args.prioritizedSCCList, test.args.sccA, test.args.sccB)
+			got, err := SCCAMoreRestrictiveThanB(test.args.prioritizedSCCList, test.args.sccA, test.args.sccB)
 			if (err != nil) != test.wantErr {
 				t.Errorf("sccAEqualORPriorityOverB() error = %v, expected %v", err, test.wantErr)
 				return
