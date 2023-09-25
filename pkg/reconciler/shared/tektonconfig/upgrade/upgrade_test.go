@@ -21,10 +21,11 @@ func TestIsUpgradeRequired(t *testing.T) {
 	operatorVersion := "0.68.0"
 	ctx := context.TODO()
 	ug := getUpgradeStructWithFakeClients(ctx, operatorVersion)
+	isPreUpgrade := true
 
 	// there is no tektonConfig CR present
 	// should return no error and false
-	status, err := ug.isUpgradeRequired(ctx)
+	status, err := ug.isUpgradeRequired(ctx, isPreUpgrade)
 	assert.NoError(t, err)
 	assert.False(t, status)
 
@@ -37,27 +38,59 @@ func TestIsUpgradeRequired(t *testing.T) {
 	_, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
-	// tektonConfig CR present, but version field is empty
+	// pre upgrade tests
+	// ---
+
+	// tektonConfig CR present, but pre upgrade version field is empty
 	// should return no error and false
-	status, err = ug.isUpgradeRequired(ctx)
+	status, err = ug.isUpgradeRequired(ctx, isPreUpgrade)
 	assert.NoError(t, err)
 	assert.True(t, status)
 
-	// tektonConfig CR present, but version field with different value
+	// tektonConfig CR present, but pre upgrade version field with different value
 	// should return no error and false
-	tc.Status.SetAppliedUpgradeVersion("0.67.0")
+	tc.Status.SetPreUpgradeVersion("0.67.0")
 	_, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
 	assert.NoError(t, err)
-	status, err = ug.isUpgradeRequired(ctx)
+	status, err = ug.isUpgradeRequired(ctx, isPreUpgrade)
 	assert.NoError(t, err)
 	assert.True(t, status)
 
-	// tektonConfig CR present, but version field as operatorVersion
+	// tektonConfig CR present, but pre upgrade version field as operatorVersion
 	// should return no error and false
-	tc.Status.SetAppliedUpgradeVersion(operatorVersion)
+	tc.Status.SetPreUpgradeVersion(operatorVersion)
 	_, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
 	assert.NoError(t, err)
-	status, err = ug.isUpgradeRequired(ctx)
+	status, err = ug.isUpgradeRequired(ctx, isPreUpgrade)
+	assert.NoError(t, err)
+	assert.False(t, status)
+
+	// post upgrade tests
+	//---
+
+	isPreUpgrade = false // post upgrade
+
+	// tektonConfig CR present, but post upgrade version field is empty
+	// should return no error and false
+	status, err = ug.isUpgradeRequired(ctx, isPreUpgrade)
+	assert.NoError(t, err)
+	assert.True(t, status)
+
+	// tektonConfig CR present, but post upgrade version field with different value
+	// should return no error and false
+	tc.Status.SetPostUpgradeVersion("0.67.0")
+	_, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
+	assert.NoError(t, err)
+	status, err = ug.isUpgradeRequired(ctx, isPreUpgrade)
+	assert.NoError(t, err)
+	assert.True(t, status)
+
+	// tektonConfig CR present, but post upgrade version field as operatorVersion
+	// should return no error and false
+	tc.Status.SetPostUpgradeVersion(operatorVersion)
+	_, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
+	assert.NoError(t, err)
+	status, err = ug.isUpgradeRequired(ctx, isPreUpgrade)
 	assert.NoError(t, err)
 	assert.False(t, status)
 }
@@ -66,10 +99,11 @@ func TestUpdateAppliedUpgradeVersion(t *testing.T) {
 	operatorVersion := "0.68.0"
 	ctx := context.TODO()
 	ug := getUpgradeStructWithFakeClients(ctx, operatorVersion)
+	isPreUpgrade := true
 
 	// there is no tektonConfig CR present
 	// should return an error
-	err := ug.updateAppliedUpgradeVersion(ctx)
+	err := ug.updateUpgradeVersion(ctx, isPreUpgrade)
 	assert.Error(t, err)
 
 	// create tektonConfig CR
@@ -81,15 +115,30 @@ func TestUpdateAppliedUpgradeVersion(t *testing.T) {
 	_, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
-	// tektonConfig CR present
-	// should return no error
-	err = ug.updateAppliedUpgradeVersion(ctx)
+	// pre upgrade tests
+	// ---
+
+	// tektonConfig CR present, should return no error
+	err = ug.updateUpgradeVersion(ctx, isPreUpgrade)
 	assert.NoError(t, err)
 
-	// verify the version in tektonConfig CR
+	// verify the pre upgrade version in tektonConfig CR
 	tc, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 	assert.NoError(t, err)
-	assert.Equal(t, operatorVersion, tc.Status.GetAppliedUpgradeVersion())
+	assert.Equal(t, operatorVersion, tc.Status.GetPreUpgradeVersion())
+
+	// post upgrade tests
+	// ---
+	isPreUpgrade = false // post upgrade
+
+	// tektonConfig CR present, should return no error
+	err = ug.updateUpgradeVersion(ctx, isPreUpgrade)
+	assert.NoError(t, err)
+
+	// verify the post upgrade version
+	tc, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, operatorVersion, tc.Status.GetPostUpgradeVersion())
 }
 
 func TestRunPreUpgrade(t *testing.T) {
@@ -98,8 +147,9 @@ func TestRunPreUpgrade(t *testing.T) {
 	ug := getUpgradeStructWithFakeClients(ctx, operatorVersion)
 
 	// execute pre upgrade, should return no error
-	err := ug.RunPreUpgrade(ctx)
+	isUpgradePerformed, err := ug.RunPreUpgrade(ctx)
 	assert.NoError(t, err)
+	assert.False(t, isUpgradePerformed)
 
 	// create tektonConfig CR
 	tc := &v1alpha1.TektonConfig{
@@ -109,17 +159,6 @@ func TestRunPreUpgrade(t *testing.T) {
 		Status: v1alpha1.TektonConfigStatus{},
 	}
 	_, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
-	assert.NoError(t, err)
-
-	// update pre upgrade functions
-	preUpgradeFunctions = []upgradeFunc{
-		func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
-			return nil
-		},
-	}
-
-	// execute pre upgrade, should return no error
-	err = ug.RunPreUpgrade(ctx)
 	assert.NoError(t, err)
 
 	// update pre upgrade functions, which should return error
@@ -133,13 +172,26 @@ func TestRunPreUpgrade(t *testing.T) {
 	}
 
 	// execute pre upgrade, should return an error
-	err = ug.RunPreUpgrade(ctx)
+	isUpgradePerformed, err = ug.RunPreUpgrade(ctx)
 	assert.Error(t, err)
+	assert.False(t, isUpgradePerformed)
+
+	// update pre upgrade functions
+	preUpgradeFunctions = []upgradeFunc{
+		func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+			return nil
+		},
+	}
+
+	// execute pre upgrade, should return no error
+	isUpgradePerformed, err = ug.RunPreUpgrade(ctx)
+	assert.NoError(t, err)
+	assert.True(t, isUpgradePerformed)
 
 	// verify the version in tektonConfig CR
 	tc, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 	assert.NoError(t, err)
-	assert.Equal(t, "", tc.Status.GetAppliedUpgradeVersion())
+	assert.Equal(t, operatorVersion, tc.Status.GetPreUpgradeVersion())
 }
 
 func TestRunPostUpgrade(t *testing.T) {
@@ -148,8 +200,9 @@ func TestRunPostUpgrade(t *testing.T) {
 	ug := getUpgradeStructWithFakeClients(ctx, operatorVersion)
 
 	// execute post upgrade, should return no error
-	err := ug.RunPostUpgrade(ctx)
+	isUpgradePerformed, err := ug.RunPostUpgrade(ctx)
 	assert.NoError(t, err)
+	assert.False(t, isUpgradePerformed)
 
 	// create tektonConfig CR
 	tc := &v1alpha1.TektonConfig{
@@ -172,8 +225,9 @@ func TestRunPostUpgrade(t *testing.T) {
 	}
 
 	// execute post upgrade, should return an error
-	err = ug.RunPostUpgrade(ctx)
+	isUpgradePerformed, err = ug.RunPostUpgrade(ctx)
 	assert.Error(t, err)
+	assert.False(t, isUpgradePerformed)
 
 	// update post upgrade functions
 	postUpgradeFunctions = []upgradeFunc{
@@ -183,13 +237,14 @@ func TestRunPostUpgrade(t *testing.T) {
 	}
 
 	// execute post upgrade, should return no error
-	err = ug.RunPostUpgrade(ctx)
+	isUpgradePerformed, err = ug.RunPostUpgrade(ctx)
 	assert.NoError(t, err)
+	assert.True(t, isUpgradePerformed)
 
 	// verify the version in tektonConfig CR
 	tc, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 	assert.NoError(t, err)
-	assert.Equal(t, operatorVersion, tc.Status.GetAppliedUpgradeVersion())
+	assert.Equal(t, operatorVersion, tc.Status.GetPostUpgradeVersion())
 }
 
 func getUpgradeStructWithFakeClients(ctx context.Context, operatorVersion string) *Upgrade {
