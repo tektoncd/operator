@@ -23,9 +23,8 @@ import (
 	"github.com/tektoncd/operator/pkg/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	kubeclient "knative.dev/pkg/client/injection/kube/client"
-
 	"knative.dev/pkg/apis"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 )
 
 func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -55,8 +54,18 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 			defaultSCC = tc.Spec.Platforms.OpenShift.SCC.Default
 		}
 
+		// verify default SCC exists on the cluster
+		if err := verifySCCExists(ctx, tc.Spec.Platforms.OpenShift.SCC.Default); err != nil {
+			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error verifying SCC exists: %s - %v", tc.Spec.Platforms.OpenShift.SCC.Default, err), "spec.platforms.openshift.scc.default"))
+		}
+
 		maxAllowedSCC := tc.Spec.Platforms.OpenShift.SCC.MaxAllowed
 		if maxAllowedSCC != "" {
+			// verify maxAllowed SCC exists on the cluster
+			if err := verifySCCExists(ctx, maxAllowedSCC); err != nil {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error verifying SCC exists: %s - %v", maxAllowedSCC, err), "spec.platforms.openshift.scc.maxAllowed"))
+			}
+
 			// Check that maxAllowed SCC and default SCC are compatible wrt priority
 			hasPriority, err := compareSCCAPriorityOverB(ctx, maxAllowedSCC, defaultSCC)
 			if err != nil {
@@ -136,6 +145,12 @@ func isValueInArray(arr []string, key string) bool {
 		}
 	}
 	return false
+}
+
+func verifySCCExists(ctx context.Context, sccName string) error {
+	securityClient := common.GetSecurityClient(ctx)
+	_, err := securityClient.SecurityV1().SecurityContextConstraints().Get(ctx, sccName, metav1.GetOptions{})
+	return err
 }
 
 func compareSCCAPriorityOverB(ctx context.Context, sccA, sccB string) (bool, error) {

@@ -19,9 +19,8 @@ package main
 import (
 	"context"
 
-	"github.com/tektoncd/operator/pkg/reconciler/openshift/namespace"
-
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/annotation"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift/namespace"
 	"github.com/tektoncd/operator/pkg/reconciler/proxy"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
