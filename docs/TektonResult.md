@@ -89,8 +89,6 @@ metadata:
   name: result
 spec:
   targetNamespace: tekton-pipelines
-  db_user: test
-  db_password: pass
   db_host: localhost
   db_port: 5342
   db_sslmode: false
@@ -102,15 +100,12 @@ spec:
   logs_path: /logs
   tls_hostname_override: localhost
   auth_disable: true
-  s3_bucket_name: test
-  s3_endpoint: aws.com
-  s3_hostname_immutable: sdf
-  s3_region: west
-  s3_access_key_id: 123r
-  s3_secret_access_key: sdfjg
-  s3_multi_part_size: 888mb
   logging_pvc_name: tekton-logs
   secret_name: # optional
+  gcs_creds_secret_name: <value>
+  gcc_creds_secret_key: <value>
+  gcs_bucket_name: <value>
+  is_external_db: false
 ```
 
 These properties are analogous to the one in configmap of tekton results api `tekton-results-api-config` documented at [api.md]:https://github.com/tektoncd/results/blob/4472848a0fb7c1473cfca8b647553170efac78a1/cmd/api/README.md
@@ -190,7 +185,6 @@ If external DB is required, then follow the instructions below:
 - Create a TektonResult CR like below:
 * Add `db_host` with DB url without port.
 * Add `db_port` with your DB port.
-* Add `db_user` username of the DB.
 * Set `is_external_db` to true.
 ```yaml
 apiVersion: operator.tekton.dev/v1alpha1
