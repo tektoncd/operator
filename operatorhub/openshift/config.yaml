@@ -54,8 +54,7 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_ARG__ENTRYPOINT_IMAGE
-# add git-init image from 1.10.5 release
-- image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:1a50511583fc02a27012d17d942e247813404104ddd282d7e26f99765174392c
+- image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
