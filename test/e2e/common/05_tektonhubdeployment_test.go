@@ -110,6 +110,8 @@ func (s *TektonHubTestSuite) SetupTest() {
 	s.logger.Debug("removing the tekton hub cr if any")
 	s.undeploy("")
 	s.undeployExternalDatabase()
+	// wait for target namespace to be deleted
+	time.Sleep(120 * time.Second)
 	err := resources.CreateNamespace(s.clients.KubeClient, s.resourceNames.TargetNamespace)
 	require.NoError(t, err, "create namespace: %s", s.resourceNames.TargetNamespace)
 	s.logger.Debug("test environment ready. starting the actual test")
