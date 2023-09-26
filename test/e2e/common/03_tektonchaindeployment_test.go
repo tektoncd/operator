@@ -41,7 +41,7 @@ func TestTektonChainDeployment(t *testing.T) {
 		crNames.TargetNamespace = "openshift-pipelines"
 	}
 	platform := os.Getenv("PLATFORM")
-	if platform == "linux/ppc64le" || platform == "linux/s390x" {
+	if platform == "linux/ppc64le" {
 		t.Skipf("Tekton chain is not available for %q", platform)
 	}
 

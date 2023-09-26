@@ -57,7 +57,7 @@ type TektonChainTutorialTestSuite struct {
 
 func TestTektonChainTutorialTestSuite(t *testing.T) {
 	platform := utils.GetOSAndArchitecture()
-	if platform == utils.LinuxPPC64LE || platform == utils.LinuxS390X {
+	if platform == utils.LinuxPPC64LE {
 		t.Skipf("Tekton chain is not available for %q", platform)
 	}
 
