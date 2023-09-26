@@ -58,8 +58,6 @@ type TektonResultSpec struct {
 // ResultsAPIProperties defines the fields which are configurable for
 // Results API server config
 type ResultsAPIProperties struct {
-	DBUser                string `json:"db_user,omitempty"`
-	DBPassword            string `json:"db_password,omitempty"`
 	DBHost                string `json:"db_host,omitempty"`
 	DBPort                int64  `json:"db_port,omitempty"`
 	DBName                string `json:"db_name,omitempty"`
@@ -75,13 +73,6 @@ type ResultsAPIProperties struct {
 	TLSHostnameOverride   string `json:"tls_hostname_override,omitempty"`
 	AuthDisable           bool   `json:"auth_disable,omitempty"`
 	AuthImpersonate       bool   `json:"auth_impersonate,omitempty"`
-	S3BucketName          string `json:"s3_bucket_name,omitempty"`
-	S3Endpoint            string `json:"s3_endpoint,omitempty"`
-	S3HostnameImmutable   bool   `json:"s3_hostname_immutable,omitempty"`
-	S3Region              string `json:"s3_region,omitempty"`
-	S3AccessKeyID         string `json:"s3_access_key_id,omitempty"`
-	S3SecretAccessKey     string `json:"s3_secret_access_key,omitempty"`
-	S3MultiPartSize       int64  `json:"s3_multi_part_size,omitempty"`
 	LoggingPVCName        string `json:"logging_pvc_name,omitempty"`
 	GcsBucketName         string `json:"gcs_bucket_name,omitempty"`
 	StorageEmulatorHost   string `json:"storage_emulator_host,omitempty"`
