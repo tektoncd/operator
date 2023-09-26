@@ -55,8 +55,13 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 
 		// verify default SCC exists on the cluster
-		if err := verifySCCExists(ctx, tc.Spec.Platforms.OpenShift.SCC.Default); err != nil {
-			errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error verifying SCC exists: %s - %v", tc.Spec.Platforms.OpenShift.SCC.Default, err), "spec.platforms.openshift.scc.default"))
+
+		// we don't want to verify pipelines-scc here as it will be created
+		// later when the RBAC reconciler will be run
+		if defaultSCC != PipelinesSCC {
+			if err := verifySCCExists(ctx, tc.Spec.Platforms.OpenShift.SCC.Default); err != nil {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error verifying SCC exists: %s - %v", tc.Spec.Platforms.OpenShift.SCC.Default, err), "spec.platforms.openshift.scc.default"))
+			}
 		}
 
 		maxAllowedSCC := tc.Spec.Platforms.OpenShift.SCC.MaxAllowed
