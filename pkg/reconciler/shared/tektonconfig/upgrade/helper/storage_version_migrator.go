@@ -18,38 +18,41 @@ package upgrade
 
 import (
 	"context"
-	"fmt"
 
 	"go.uber.org/zap"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"knative.dev/pkg/apiextensions/storageversion"
 )
 
 // performs crd storage version upgrade
 // lists all the resources and,
 // keeps only one storage version on the crd
-func MigrateStorageVersion(ctx context.Context, logger *zap.SugaredLogger, migrator *storageversion.Migrator, crdGroups []string) error {
+// continues the execution, even though exception happens
+func MigrateStorageVersion(ctx context.Context, logger *zap.SugaredLogger, migrator *Migrator, crdGroups []string) {
 	logger.Infof("migrating %d group resources", len(crdGroups))
 
 	for _, crdGroupString := range crdGroups {
 		crdGroup := schema.ParseGroupResource(crdGroupString)
 		if crdGroup.Empty() {
-			logger.Errorf("unable to parse group version: %s", crdGroupString)
-			return fmt.Errorf("unable to parse group version: %s", crdGroupString)
+			logger.Errorf("unable to parse group version: '%s'", crdGroupString)
+			continue
 		}
-		logger.Info("migrating group resource ", crdGroup)
+		logger.Infow("migrating group resource", "crdGroup", crdGroup)
 		if err := migrator.Migrate(ctx, crdGroup); err != nil {
 			if apierrs.IsNotFound(err) {
-				logger.Infow("ignoring resource migration - unable to fetch a crd",
-					"crd", crdGroup, err,
+				logger.Infow("ignoring resource migration - unable to fetch a crdGroup",
+					"crdGroup", crdGroup,
+					err,
 				)
 				continue
 			}
-			logger.Errorw("failed to migrate: ", err)
-			return err
+			logger.Errorw("failed to migrate a crdGroup",
+				"crdGroup", crdGroup,
+				err,
+			)
+			// continue the execution, even though failures on the crd migration
+		} else {
+			logger.Infow("migration completed", "crdGroup", crdGroup)
 		}
 	}
-
-	return nil
 }
