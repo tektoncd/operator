@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Knative Authors
+Copyright 2023 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,12 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package storageversion
+// copied from: https://github.com/knative/pkg/blob/2783cd8cfad9ba907e6f31cafeef3eb2943424ee/apiextensions/storageversion/migrator.go
+// local changes: continue the execution even though error happens on patching a resource
+//---
+
+package upgrade
 
 import (
 	"context"
 	"fmt"
 
+	"go.uber.org/zap"
 	apix "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apixclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -36,13 +41,15 @@ import (
 type Migrator struct {
 	dynamicClient dynamic.Interface
 	apixClient    apixclient.Interface
+	logger        *zap.SugaredLogger
 }
 
 // NewMigrator will return a new Migrator
-func NewMigrator(d dynamic.Interface, a apixclient.Interface) *Migrator {
+func NewMigrator(d dynamic.Interface, a apixclient.Interface, logger *zap.SugaredLogger) *Migrator {
 	return &Migrator{
 		dynamicClient: d,
 		apixClient:    a,
+		logger:        logger,
 	}
 }
 
@@ -95,9 +102,12 @@ func (m *Migrator) migrateResources(ctx context.Context, gvr schema.GroupVersion
 			Patch(ctx, item.GetName(), types.MergePatchType, []byte("{}"), metav1.PatchOptions{})
 
 		if err != nil && !apierrs.IsNotFound(err) {
-			return fmt.Errorf("unable to patch resource %s/%s (gvr: %s) - %w",
-				item.GetNamespace(), item.GetName(),
-				gvr, err)
+			m.logger.Errorw("unable to patch a resource",
+				"resourceName", item.GetName(),
+				"namespace", item.GetNamespace(),
+				"groupVersionResource", gvr,
+				err,
+			)
 		}
 
 		return nil

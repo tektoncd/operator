@@ -28,7 +28,6 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	dynamicFake "k8s.io/client-go/dynamic/fake"
-	"knative.dev/pkg/apiextensions/storageversion"
 	"knative.dev/pkg/logging"
 )
 
@@ -74,13 +73,12 @@ func TestMigrateStorageVersion(t *testing.T) {
 
 	dclient := dynamicFake.NewSimpleDynamicClient(runtime.NewScheme(), resources...)
 	cclient := apixFake.NewSimpleClientset(fakeCRD)
-	migrator := storageversion.NewMigrator(dclient, cclient)
+	migrator := NewMigrator(dclient, cclient, logging.FromContext(ctx))
 	logger := logging.FromContext(ctx)
 
 	// TEST
 	// expects only "v1"
-	err := MigrateStorageVersion(ctx, logger, migrator, []string{"fakes.group.dev", "unknown.group.dev"})
-	assert.NoError(t, err)
+	MigrateStorageVersion(ctx, logger, migrator, []string{"fakes.group.dev", "unknown.group.dev"})
 	crd, err := cclient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, fakeCRD.GetName(), metav1.GetOptions{})
 	assert.NoError(t, err)
 	storageVersions := crd.Status.StoredVersions
