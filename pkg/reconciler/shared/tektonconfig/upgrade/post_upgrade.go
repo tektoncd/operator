@@ -26,7 +26,6 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"knative.dev/pkg/apiextensions/storageversion"
 )
 
 // performs storage versions upgrade
@@ -61,10 +60,13 @@ func upgradeStorageVersion(ctx context.Context, logger *zap.SugaredLogger, k8sCl
 		"triggertemplates.triggers.tekton.dev",
 	}
 
-	migrator := storageversion.NewMigrator(
+	migrator := upgrade.NewMigrator(
 		dynamic.NewForConfigOrDie(restConfig),
 		apixclient.NewForConfigOrDie(restConfig),
+		logger,
 	)
 
-	return upgrade.MigrateStorageVersion(ctx, logger, migrator, crdGroups)
+	upgrade.MigrateStorageVersion(ctx, logger, migrator, crdGroups)
+
+	return nil
 }
