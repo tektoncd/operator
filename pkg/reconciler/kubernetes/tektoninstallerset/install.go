@@ -27,13 +27,17 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -44,6 +48,7 @@ const (
 type installer struct {
 	manifest        *mf.Manifest
 	mfClient        mf.Client
+	kubeClientSet   kubernetes.Interface
 	logger          *zap.SugaredLogger
 	crds            []unstructured.Unstructured
 	clusterScoped   []unstructured.Unstructured
@@ -52,10 +57,11 @@ type installer struct {
 	statefulset     []unstructured.Unstructured
 }
 
-func NewInstaller(manifest *mf.Manifest, mfClient mf.Client, logger *zap.SugaredLogger) *installer {
+func NewInstaller(manifest *mf.Manifest, mfClient mf.Client, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger) *installer {
 	installer := &installer{
 		manifest:        manifest,
 		mfClient:        mfClient,
+		kubeClientSet:   kubeClientSet,
 		logger:          logger,
 		crds:            []unstructured.Unstructured{},
 		clusterScoped:   []unstructured.Unstructured{},
@@ -186,9 +192,9 @@ func (i *installer) EnsureNamespaceScopedResources() error {
 	return i.ensureResources(i.namespaceScoped)
 }
 
-func (i *installer) EnsureStatefulSetResources() error {
+func (i *installer) EnsureStatefulSetResources(ctx context.Context) error {
 	for _, s := range i.statefulset {
-		if err := i.ensureResource(&s); err != nil {
+		if err := i.ensureResource(ctx, &s); err != nil {
 			return err
 		}
 		if err := i.isStatefulSetAvailable(&s); err != nil {
@@ -198,9 +204,9 @@ func (i *installer) EnsureStatefulSetResources() error {
 	return nil
 }
 
-func (i *installer) EnsureDeploymentResources() error {
+func (i *installer) EnsureDeploymentResources(ctx context.Context) error {
 	for _, d := range i.deployment {
-		if err := i.ensureResource(&d); err != nil {
+		if err := i.ensureResource(ctx, &d); err != nil {
 			return err
 		}
 	}
@@ -225,18 +231,185 @@ func (i *installer) resourceReconcileFields(u *unstructured.Unstructured) []stri
 // this method is written as generic to all the resources
 // currently tested with deployments and StatefulSet
 // TODO: (jkandasa) needs to be tested with other resources too
-func (i *installer) ensureResource(expected *unstructured.Unstructured) error {
+func (i *installer) ensureResource(ctx context.Context, expected *unstructured.Unstructured) error {
 	i.logger.Debugw("verifying a resource",
 		"name", expected.GetName(),
 		"namespace", expected.GetNamespace(),
 		"kind", expected.GetKind(),
 	)
 
-	// update proxy settings
+	// update specific things to deployments and statefulSets
 	if expected.GetKind() == "Deployment" || expected.GetKind() == "StatefulSet" {
+
+		// update proxy settings
 		err := common.ApplyProxySettings(expected)
 		if err != nil {
+			i.logger.Errorw("error on applying proxy settings",
+				"name", expected.GetName(),
+				"namespace", expected.GetNamespace(),
+				"kind", expected.GetKind(),
+				err,
+			)
 			return err
+		}
+
+		// if a deployment or statefulSets managed by HPA, ignore replicas from user input(TektonConfig CR)
+		// and take replicas from HPA status(DesiredReplicas)
+
+		// lists the available HPAs
+		hpaList, err := i.kubeClientSet.AutoscalingV2().HorizontalPodAutoscalers(expected.GetNamespace()).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			i.logger.Error("error on listing HPA", err)
+			return err
+		}
+
+		// check the expected resource configured with HPA
+		var hpa *autoscalingv2.HorizontalPodAutoscaler
+		for _, _hpa := range hpaList.Items {
+			target := _hpa.Spec.ScaleTargetRef
+			if target.Kind == expected.GetKind() && target.Name == expected.GetName() {
+				hpa = _hpa.DeepCopy()
+				break
+			}
+		}
+
+		// if a hpa found to this resource, update replicas value from the hpa
+		if hpa != nil {
+			i.logger.Debugw("hpa found for this resource, verifying replicas value from hpa",
+				"resourceName", expected.GetName(),
+				"resourceKind", expected.GetKind(),
+				"namespace", hpa.GetNamespace(),
+				"hpaName", hpa.GetName(),
+			)
+
+			hpaScalingDisabled := true
+			// verify HPA status from ScalingActive condition
+			for _, condition := range hpa.Status.Conditions {
+				if condition.Type == autoscalingv2.ScalingActive && condition.Status != corev1.ConditionFalse {
+					hpaScalingDisabled = false
+					break
+				}
+			}
+
+			// working description:
+			//---------------------
+			// variables description:
+			// - desiredReplicas - taken from hpa status.desiredReplicas
+			// - minReplicas - taken from hpa spec.minReplicas. this can be nil or zero. we set it as 1, if the value is nil or zero.
+			// - maxReplicas - taken from hpa spec.maxReplicas
+			// - manifestReplicas - taken from expected resource(manifest), can be a deployment or statefulSet the value is from spec.replicas
+			// The desiredReplicas calculated as follows,
+			// - if scaling is enabled compares minReplicas and desiredReplicas from hpa, take the higher one
+			// - if scaling is disabled, take manifestReplicas and compare with scaling range from hpa
+			// -- if the manifestReplicas value is lesser than the minReplicas, takes minReplicas as desiredReplicas
+			// -- if the manifestReplicas value is higher than the maxReplicas, takes the maxReplicas as desiredReplicas
+			// -- if the manifestReplicas value is in range. that is "minReplicas >= manifestReplicas <= maxReplicas", takes manifestReplicas as desiredReplicas
+
+			desiredReplicas := hpa.Status.DesiredReplicas
+			maxReplicas := hpa.Spec.MaxReplicas
+			minReplicas := hpa.Spec.MinReplicas
+			// minReplicas can be nil or zero. in that case, we keep it as 1
+			if minReplicas == nil || *minReplicas == 0 {
+				minReplicas = ptr.Int32(1)
+			}
+
+			if hpaScalingDisabled {
+				i.logger.Infow("hpa scaling is in disabled state, verifying manifest replicas value and adjusting it to hpa scaling range",
+					"resourceName", expected.GetName(),
+					"resourceKind", expected.GetKind(),
+					"namespace", hpa.GetNamespace(),
+					"hpaName", hpa.GetName(),
+				)
+
+				manifestReplicas, manifestReplicasFound, err := unstructured.NestedInt64(expected.Object, "spec", "replicas")
+				if err != nil {
+					i.logger.Errorw("error on getting manifest replicas",
+						"resourceName", expected.GetName(),
+						"resourceKind", expected.GetKind(),
+						"namespace", hpa.GetNamespace(),
+						err,
+					)
+				} else if !manifestReplicasFound {
+					i.logger.Errorw("manifest replicas value is nil",
+						"resourceName", expected.GetName(),
+						"resourceKind", expected.GetKind(),
+						"namespace", hpa.GetNamespace(),
+					)
+					// set default value as 1
+					manifestReplicas = 1
+				}
+
+				// adjust the manifest replicas value to hpa's scaling range
+				if manifestReplicas < int64(*minReplicas) {
+					manifestReplicas = int64(*minReplicas)
+					i.logger.Infow("manifest replicas value is lower than the hpa minReplicas, updates with minReplicas",
+						"resourceName", expected.GetName(),
+						"resourceKind", expected.GetKind(),
+						"namespace", hpa.GetNamespace(),
+						"hpaName", hpa.GetName(),
+						"updatedManifestReplicas", manifestReplicas,
+					)
+				} else if manifestReplicas > int64(maxReplicas) {
+					manifestReplicas = int64(maxReplicas)
+					i.logger.Infow("manifest replicas value is higher than the hpa minReplicas, updates with maxReplicas",
+						"resourceName", expected.GetName(),
+						"resourceKind", expected.GetKind(),
+						"namespace", hpa.GetNamespace(),
+						"hpaName", hpa.GetName(),
+						"updatedManifestReplicas", manifestReplicas,
+					)
+				}
+
+				// updates the desiredReplicas
+				desiredReplicas = int32(manifestReplicas)
+
+			} else { // hpa scaling is enabled
+				i.logger.Debugw("hpa scaling is enabled, verifying replicas value from hpa",
+					"hpaName", hpa.GetName(),
+					"desiredReplicas", desiredReplicas,
+					"minReplicas", minReplicas,
+					"scaleTargetKind", hpa.Spec.ScaleTargetRef.Kind,
+					"scaleTargetName", hpa.Spec.ScaleTargetRef.Name,
+					"namespace", hpa.GetNamespace(),
+				)
+
+				// if there is no metrics data available in the cluster the HPA desiredReplicas will be zero
+				// compare minReplicas and desiredReplicas and take the higher one
+				if desiredReplicas < *minReplicas {
+					i.logger.Debugw("hpa desiredReplicas is lesser than minReplicas, taking minReplicas as desiredReplicas",
+						"hpaName", hpa.GetName(),
+						"minReplicas", *minReplicas,
+						"scaleTargetKind", hpa.Spec.ScaleTargetRef.Kind,
+						"scaleTargetName", hpa.Spec.ScaleTargetRef.Name,
+						"namespace", hpa.GetNamespace(),
+					)
+					desiredReplicas = *minReplicas
+				}
+			}
+
+			i.logger.Infow("calculated desiredReplicas from hpa and manifest",
+				"resourceName", expected.GetName(),
+				"resourceKind", expected.GetKind(),
+				"namespace", hpa.GetNamespace(),
+				"hpaName", hpa.GetName(),
+				"desiredReplicas", desiredReplicas,
+			)
+
+			// update the replicas value from HPA in expected object
+			// note: converting the replicas value to int64, "DeepCopyJSONValue" not accepts int32, it is available inside "SetNestedField"
+			err = unstructured.SetNestedField(expected.Object, int64(desiredReplicas), "spec", "replicas")
+			if err != nil {
+				i.logger.Errorw("error on setting replicas value",
+					"hpaName", hpa.GetName(),
+					"desiredReplicas", desiredReplicas,
+					"scaleTargetKind", hpa.Spec.ScaleTargetRef.Kind,
+					"scaleTargetName", hpa.Spec.ScaleTargetRef.Name,
+					"namespace", hpa.GetNamespace(),
+					err,
+				)
+				return err
+			}
+
 		}
 	}
 
