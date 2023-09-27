@@ -18,22 +18,27 @@ package tektoninstallerset
 
 import (
 	"context"
-	"knative.dev/pkg/ptr"
 	"testing"
 
+	"knative.dev/pkg/ptr"
+
+	"github.com/google/go-cmp/cmp"
 	mf "github.com/manifestival/manifestival"
 	"github.com/manifestival/manifestival/fake"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
+	"github.com/tektoncd/pipeline/test/diff"
 	"go.uber.org/zap"
 	zapobserver "go.uber.org/zap/zaptest/observer"
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
 )
 
 var (
@@ -51,6 +56,7 @@ func namespacedResource(apiVersion, kind, ns, name string) unstructured.Unstruct
 }
 
 func TestEnsureResources_CreateResource(t *testing.T) {
+	k8sClient := k8sfake.NewSimpleClientset()
 	fakeClient := fake.New()
 	observer, _ := zapobserver.New(zap.InfoLevel)
 	logger := zap.New(observer).Sugar()
@@ -60,7 +66,7 @@ func TestEnsureResources_CreateResource(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := NewInstaller(&manifest, fakeClient, logger)
+	i := NewInstaller(&manifest, fakeClient, k8sClient, logger)
 
 	err = i.EnsureNamespaceScopedResources()
 	assert.NilError(t, err)
@@ -73,6 +79,8 @@ func TestEnsureResources_CreateResource(t *testing.T) {
 }
 
 func TestEnsureResources_UpdateResource(t *testing.T) {
+	k8sClient := k8sfake.NewSimpleClientset()
+
 	// service account already exist on cluster
 	sa := serviceAccount
 	sa.SetAnnotations(map[string]string{
@@ -91,7 +99,7 @@ func TestEnsureResources_UpdateResource(t *testing.T) {
 		t.Fatalf("Failed to generate manifest: %v", err)
 	}
 
-	i := NewInstaller(&manifest, fakeClient, logger)
+	i := NewInstaller(&manifest, fakeClient, k8sClient, logger)
 
 	err = i.EnsureNamespaceScopedResources()
 	assert.NilError(t, err)
@@ -246,6 +254,8 @@ var (
 )
 
 func TestControllerReady(t *testing.T) {
+	k8sClient := k8sfake.NewSimpleClientset()
+
 	in := []unstructured.Unstructured{namespacedResource("apps/v1", "Deployment", "test", "ready-controller")}
 
 	client := fake.New([]runtime.Object{readyControllerDeployment}...)
@@ -256,7 +266,7 @@ func TestControllerReady(t *testing.T) {
 
 	observer, _ := zapobserver.New(zap.InfoLevel)
 	logger := zap.New(observer).Sugar()
-	i := NewInstaller(&manifest, client, logger)
+	i := NewInstaller(&manifest, client, k8sClient, logger)
 
 	err = i.IsControllerReady()
 	if err != nil {
@@ -265,6 +275,8 @@ func TestControllerReady(t *testing.T) {
 }
 
 func TestControllerNotReady(t *testing.T) {
+	k8sClient := k8sfake.NewSimpleClientset()
+
 	in := []unstructured.Unstructured{namespacedResource("apps/v1", "Deployment", "test", "not-ready-controller")}
 
 	client := fake.New([]runtime.Object{notReadyControllerDeployment}...)
@@ -275,7 +287,7 @@ func TestControllerNotReady(t *testing.T) {
 
 	observer, _ := zapobserver.New(zap.InfoLevel)
 	logger := zap.New(observer).Sugar()
-	i := NewInstaller(&manifest, client, logger)
+	i := NewInstaller(&manifest, client, k8sClient, logger)
 
 	err = i.IsControllerReady()
 	if err == nil {
@@ -284,6 +296,8 @@ func TestControllerNotReady(t *testing.T) {
 }
 
 func TestWebhookReady(t *testing.T) {
+	k8sClient := k8sfake.NewSimpleClientset()
+
 	in := []unstructured.Unstructured{namespacedResource("apps/v1", "Deployment", "test", "ready-webhook")}
 
 	client := fake.New([]runtime.Object{readyControllerDeployment, readyWebhookDeployment}...)
@@ -294,7 +308,7 @@ func TestWebhookReady(t *testing.T) {
 
 	observer, _ := zapobserver.New(zap.InfoLevel)
 	logger := zap.New(observer).Sugar()
-	i := NewInstaller(&manifest, client, logger)
+	i := NewInstaller(&manifest, client, k8sClient, logger)
 
 	err = i.IsWebhookReady()
 	if err != nil {
@@ -303,6 +317,8 @@ func TestWebhookReady(t *testing.T) {
 }
 
 func TestWebhookNotReady(t *testing.T) {
+	k8sClient := k8sfake.NewSimpleClientset()
+
 	in := []unstructured.Unstructured{namespacedResource("apps/v1", "Deployment", "test", "not-ready-webhook")}
 
 	client := fake.New([]runtime.Object{readyControllerDeployment, notReadyWebhookDeployment}...)
@@ -313,7 +329,7 @@ func TestWebhookNotReady(t *testing.T) {
 
 	observer, _ := zapobserver.New(zap.InfoLevel)
 	logger := zap.New(observer).Sugar()
-	i := NewInstaller(&manifest, client, logger)
+	i := NewInstaller(&manifest, client, k8sClient, logger)
 
 	err = i.IsWebhookReady()
 	if err == nil {
@@ -322,6 +338,8 @@ func TestWebhookNotReady(t *testing.T) {
 }
 
 func TestAllDeploymentsReady(t *testing.T) {
+	k8sClient := k8sfake.NewSimpleClientset()
+
 	in := []unstructured.Unstructured{namespacedResource("apps/v1", "Deployment", "test", "ready-abc")}
 
 	client := fake.New([]runtime.Object{readyControllerDeployment, readyWebhookDeployment, readyAbcDeployment}...)
@@ -332,7 +350,7 @@ func TestAllDeploymentsReady(t *testing.T) {
 
 	observer, _ := zapobserver.New(zap.InfoLevel)
 	logger := zap.New(observer).Sugar()
-	i := NewInstaller(&manifest, client, logger)
+	i := NewInstaller(&manifest, client, k8sClient, logger)
 
 	err = i.AllDeploymentsReady()
 	if err != nil {
@@ -341,6 +359,8 @@ func TestAllDeploymentsReady(t *testing.T) {
 }
 
 func TestAllDeploymentsNotReady(t *testing.T) {
+	k8sClient := k8sfake.NewSimpleClientset()
+
 	in := []unstructured.Unstructured{namespacedResource("apps/v1", "Deployment", "test", "not-ready-abc")}
 
 	client := fake.New([]runtime.Object{readyControllerDeployment, readyWebhookDeployment, notReadyAbcDeployment}...)
@@ -351,7 +371,7 @@ func TestAllDeploymentsNotReady(t *testing.T) {
 
 	observer, _ := zapobserver.New(zap.InfoLevel)
 	logger := zap.New(observer).Sugar()
-	i := NewInstaller(&manifest, client, logger)
+	i := NewInstaller(&manifest, client, k8sClient, logger)
 
 	err = i.AllDeploymentsReady()
 	if err == nil {
@@ -360,6 +380,8 @@ func TestAllDeploymentsNotReady(t *testing.T) {
 }
 
 func TestJobCompleted(t *testing.T) {
+	k8sClient := k8sfake.NewSimpleClientset()
+
 	in := []unstructured.Unstructured{namespacedResource("batch/v1", "Job", "test", "completed-abc")}
 
 	client := fake.New([]runtime.Object{completedAbcJob}...)
@@ -370,7 +392,7 @@ func TestJobCompleted(t *testing.T) {
 
 	observer, _ := zapobserver.New(zap.InfoLevel)
 	logger := zap.New(observer).Sugar()
-	i := NewInstaller(&manifest, client, logger)
+	i := NewInstaller(&manifest, client, k8sClient, logger)
 
 	err = i.IsJobCompleted(context.Background(), nil, "")
 	if err != nil {
@@ -379,6 +401,8 @@ func TestJobCompleted(t *testing.T) {
 }
 
 func TestJobFailed(t *testing.T) {
+	k8sClient := k8sfake.NewSimpleClientset()
+
 	in := []unstructured.Unstructured{namespacedResource("batch/v1", "Job", "test", "failed-abc")}
 
 	client := fake.New([]runtime.Object{failedAbcJob}...)
@@ -389,7 +413,7 @@ func TestJobFailed(t *testing.T) {
 
 	observer, _ := zapobserver.New(zap.InfoLevel)
 	logger := zap.New(observer).Sugar()
-	i := NewInstaller(&manifest, client, logger)
+	i := NewInstaller(&manifest, client, k8sClient, logger)
 
 	err = i.IsJobCompleted(context.Background(), nil, "")
 	if err == nil {
@@ -398,6 +422,9 @@ func TestJobFailed(t *testing.T) {
 }
 
 func TestEnsureStatefulSetResources(t *testing.T) {
+	ctx := context.TODO()
+	k8sClient := k8sfake.NewSimpleClientset()
+
 	tests := []struct {
 		name      string
 		sfsObject *appsv1.StatefulSet
@@ -429,9 +456,9 @@ func TestEnsureStatefulSetResources(t *testing.T) {
 
 			observer, _ := zapobserver.New(zap.InfoLevel)
 			logger := zap.New(observer).Sugar()
-			i := NewInstaller(&manifest, client, logger)
+			i := NewInstaller(&manifest, client, k8sClient, logger)
 
-			err = i.EnsureStatefulSetResources()
+			err = i.EnsureStatefulSetResources(ctx)
 			if err != nil != tt.wantError {
 				t.Errorf("EnsureStatefulSetResources() error = %v, wantErr %v", err, tt.wantError)
 			}
@@ -444,6 +471,9 @@ func TestEnsureStatefulSetResources(t *testing.T) {
 // 2. User manually update statefulset directly using oc/kubectl client
 // 3. again call ensureResource function to make sure user changes are reverted back except changes to replicas other than that direct changes to statefulset is not allowed
 func TestEnsureResource(t *testing.T) {
+	ctx := context.TODO()
+	k8sClient := k8sfake.NewSimpleClientset()
+
 	var sfsObjectFromInstallerSet unstructured.Unstructured
 	data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(existStatefulset)
 	assert.NilError(t, err)
@@ -456,12 +486,12 @@ func TestEnsureResource(t *testing.T) {
 
 	observer, _ := zapobserver.New(zap.InfoLevel)
 	logger := zap.New(observer).Sugar()
-	i := NewInstaller(&manifest, client, logger)
+	i := NewInstaller(&manifest, client, k8sClient, logger)
 
 	copyOfInstallerObject := sfsObjectFromInstallerSet.DeepCopy()
 
 	// ensureResource create/update statefulset
-	err = i.ensureResource(&sfsObjectFromInstallerSet)
+	err = i.ensureResource(ctx, &sfsObjectFromInstallerSet)
 	assert.NilError(t, err)
 
 	// Ensure passed statefulset created/updated by using Get operation
@@ -508,7 +538,7 @@ func TestEnsureResource(t *testing.T) {
 	}
 
 	// Now installer set will override the manually updated data of statefulset
-	err = i.ensureResource(&sfsObjectFromInstallerSet)
+	err = i.ensureResource(ctx, &sfsObjectFromInstallerSet)
 	assert.NilError(t, err)
 	createdObj, err = i.mfClient.Get(&sfsObjectFromInstallerSet)
 	assert.NilError(t, err)
@@ -522,5 +552,314 @@ func TestEnsureResource(t *testing.T) {
 	}
 	if *formattedData.Spec.Replicas != 1 {
 		t.Errorf("expected spec.replicas as 1, got %d", *formattedData.Spec.Replicas)
+	}
+}
+
+func TestEnsureResourceWithHPA(t *testing.T) {
+	ctx := context.TODO()
+	k8sClient := k8sfake.NewSimpleClientset()
+	logger, err := zap.NewDevelopment()
+	assert.NilError(t, err)
+
+	// get a deployment
+	dep1 := getDeployment("foo-1", "bar", 1)
+
+	mfClient := fake.New(dep1)
+	i := installer{
+		mfClient:      mfClient,
+		kubeClientSet: k8sClient,
+		logger:        logger.Sugar(),
+	}
+
+	_dep1Object, err := runtime.DefaultUnstructuredConverter.ToUnstructured(dep1)
+	assert.NilError(t, err)
+	unstructuredDep1 := &unstructured.Unstructured{Object: _dep1Object}
+
+	// ensureResource resource created
+	err = i.ensureResource(ctx, unstructuredDep1.DeepCopy())
+	assert.NilError(t, err)
+	existing, err := i.mfClient.Get(unstructuredDep1)
+	assert.NilError(t, err)
+	if d := cmp.Diff(unstructuredDep1.Object, existing.Object); d != "" {
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+
+	// change the replicas count and verify, with no HPA
+	expectedCloned := unstructuredDep1.DeepCopy()
+	err = unstructured.SetNestedField(expectedCloned.Object, int64(2), "spec", "replicas")
+	assert.NilError(t, err)
+	err = i.ensureResource(ctx, expectedCloned.DeepCopy())
+	assert.NilError(t, err)
+	existing, err = i.mfClient.Get(expectedCloned)
+	assert.NilError(t, err)
+	if d := cmp.Diff(expectedCloned.Object, existing.Object); d != "" {
+		t.Errorf("Diff %s", diff.PrintWantGot(d))
+	}
+
+	// add HPA and verify the replicas
+	hpa1 := getHPA("foo-hpa", dep1.GetNamespace(), 3, dep1.Kind, dep1.GetName())
+	_, err = k8sClient.AutoscalingV2().HorizontalPodAutoscalers(dep1.GetNamespace()).Create(ctx, hpa1, metav1.CreateOptions{})
+	assert.NilError(t, err)
+
+	hpaConditionsEnabled := []autoscalingv2.HorizontalPodAutoscalerCondition{
+		{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionTrue},
+	}
+
+	hpaConditionsDisabled := []autoscalingv2.HorizontalPodAutoscalerCondition{
+		{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionFalse},
+	}
+
+	hpaConditionsUnknown := []autoscalingv2.HorizontalPodAutoscalerCondition{
+		{Type: autoscalingv2.ScalingActive, Status: corev1.ConditionUnknown},
+	}
+
+	hpaConditionsEmpty := []autoscalingv2.HorizontalPodAutoscalerCondition{}
+
+	tests := []struct {
+		name             string
+		hpaConditions    []autoscalingv2.HorizontalPodAutoscalerCondition
+		desiredReplicas  int32
+		minReplicas      *int32
+		maxReplicas      int32
+		manifestReplicas *int64 // unstructured.SetNestedField not accepts int32
+		expectedReplicas int32
+	}{
+		{
+			name:             "test-hpa_enabled-desired_replicas_1",
+			hpaConditions:    hpaConditionsEnabled,
+			desiredReplicas:  1,
+			minReplicas:      ptr.Int32(1),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(3),
+			expectedReplicas: 1,
+		},
+		{
+			name:             "test-hpa_enabled-desired_replicas_3",
+			hpaConditions:    hpaConditionsEnabled,
+			desiredReplicas:  3,
+			minReplicas:      ptr.Int32(1),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(6),
+			expectedReplicas: 3,
+		},
+		{
+			name:             "test-hpa_enabled-desired_replicas_0-min_replicas_1",
+			hpaConditions:    hpaConditionsEnabled,
+			desiredReplicas:  0,
+			minReplicas:      ptr.Int32(1),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(3),
+			expectedReplicas: 1,
+		},
+		{
+			name:             "test-hpa_enabled-desired_replicas_0-min_replicas_2",
+			hpaConditions:    hpaConditionsEnabled,
+			desiredReplicas:  0,
+			minReplicas:      ptr.Int32(2),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(3),
+			expectedReplicas: 2,
+		},
+		{
+			name:             "test-hpa_enabled-desired_replicas_0-min_replicas_nil-manifest_replicas_3",
+			hpaConditions:    hpaConditionsEnabled,
+			desiredReplicas:  0,
+			minReplicas:      nil,
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(3),
+			expectedReplicas: 1,
+		},
+		{
+			name:             "test-hpa_unknown-desired_replicas_1",
+			hpaConditions:    hpaConditionsUnknown,
+			desiredReplicas:  1,
+			minReplicas:      ptr.Int32(1),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(3),
+			expectedReplicas: 1,
+		},
+		{
+			name:             "test-hpa_unknown-desired_replicas_0-min_replicas_2",
+			hpaConditions:    hpaConditionsUnknown,
+			desiredReplicas:  0,
+			minReplicas:      ptr.Int32(2),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(3),
+			expectedReplicas: 2,
+		},
+		{
+			name:             "test-hpa_unknown-desired_replicas_0-min_replicas_2",
+			hpaConditions:    hpaConditionsUnknown,
+			desiredReplicas:  0,
+			minReplicas:      ptr.Int32(2),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(3),
+			expectedReplicas: 2,
+		},
+		{
+			name:             "test-hpa_unknown-desired_replicas_0-min_replicas_nil-manifest_replicas_3",
+			hpaConditions:    hpaConditionsUnknown,
+			desiredReplicas:  0,
+			minReplicas:      nil,
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(3),
+			expectedReplicas: 1,
+		},
+		{
+			name:             "test-hpa_disabled-manifest_replicas_1",
+			hpaConditions:    hpaConditionsDisabled,
+			desiredReplicas:  2,
+			minReplicas:      ptr.Int32(2),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(1),
+			expectedReplicas: 2,
+		},
+		{
+			name:             "test_hpa-disabled-manifest_replicas_3",
+			hpaConditions:    hpaConditionsDisabled,
+			desiredReplicas:  2,
+			minReplicas:      ptr.Int32(2),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(3),
+			expectedReplicas: 3,
+		},
+		{
+			name:             "test_hpa-disabled-manifest_replicas_8",
+			hpaConditions:    hpaConditionsDisabled,
+			desiredReplicas:  2,
+			minReplicas:      ptr.Int32(2),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(8),
+			expectedReplicas: 5,
+		},
+		{
+			name:             "test_hpa-disabled-manifest_replicas_5",
+			hpaConditions:    hpaConditionsDisabled,
+			desiredReplicas:  2,
+			minReplicas:      nil,
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(5),
+			expectedReplicas: 5,
+		},
+		{
+			name:             "test_hpa-disabled-manifest_replicas_nil",
+			hpaConditions:    hpaConditionsDisabled,
+			desiredReplicas:  2,
+			minReplicas:      nil,
+			maxReplicas:      5,
+			manifestReplicas: nil,
+			expectedReplicas: 1,
+		},
+		{
+			name:             "test_hpa-disabled-manifest_replicas_nil-min_replicas_2",
+			hpaConditions:    hpaConditionsDisabled,
+			desiredReplicas:  2,
+			minReplicas:      ptr.Int32(2),
+			maxReplicas:      5,
+			manifestReplicas: nil,
+			expectedReplicas: 2,
+		},
+		{
+			name:             "test-hpa_empty-manifest_replicas_1",
+			hpaConditions:    hpaConditionsEmpty,
+			desiredReplicas:  2,
+			minReplicas:      ptr.Int32(2),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(1),
+			expectedReplicas: 2,
+		},
+		{
+			name:             "test-hpa_empty-manifest_replicas_3",
+			hpaConditions:    hpaConditionsEmpty,
+			desiredReplicas:  1,
+			minReplicas:      ptr.Int32(1),
+			maxReplicas:      5,
+			manifestReplicas: ptr.Int64(3),
+			expectedReplicas: 3,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// update hpa values
+			hpa1.Status.DesiredReplicas = test.desiredReplicas
+			hpa1.Spec.MinReplicas = test.minReplicas
+			hpa1.Spec.MaxReplicas = test.maxReplicas
+			hpa1.Status.Conditions = test.hpaConditions
+			_, err = k8sClient.AutoscalingV2().HorizontalPodAutoscalers(dep1.GetNamespace()).Update(ctx, hpa1, metav1.UpdateOptions{})
+			assert.NilError(t, err)
+
+			expectedCloned = unstructuredDep1.DeepCopy()
+			// update manifest replicas in expected object
+			if test.manifestReplicas == nil {
+				unstructured.RemoveNestedField(expectedCloned.Object, "spec", "replicas")
+			} else {
+				err = unstructured.SetNestedField(expectedCloned.Object, *test.manifestReplicas, "spec", "replicas")
+				assert.NilError(t, err)
+			}
+
+			err = i.ensureResource(ctx, expectedCloned.DeepCopy())
+			assert.NilError(t, err)
+
+			// update the count in expected to expectedReplicas count, to verify the updated deployment
+			_expected := expectedCloned.DeepCopy()
+			err = unstructured.SetNestedField(_expected.Object, int64(test.expectedReplicas), "spec", "replicas")
+			assert.NilError(t, err)
+			existing, err = i.mfClient.Get(expectedCloned)
+			assert.NilError(t, err)
+			if d := cmp.Diff(_expected.Object, existing.Object); d != "" {
+				t.Errorf("Diff %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+
+	// remove the desired replicas count from HPA
+
+}
+
+func getDeployment(name, namespace string, replicas int32) *appsv1.Deployment {
+	return &appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "Deployment",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        name,
+			Namespace:   namespace,
+			Annotations: map[string]string{"name": name},
+			Labels:      map[string]string{"name": name},
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: ptr.Int32(replicas),
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{},
+				},
+			},
+		},
+	}
+}
+
+func getHPA(name, namespace string, desiredReplicas int32, targetKind, targetName string) *autoscalingv2.HorizontalPodAutoscaler {
+	return &autoscalingv2.HorizontalPodAutoscaler{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "HorizontalPodAutoscaler",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+			ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
+				Kind: targetKind,
+				Name: targetName,
+			},
+			MinReplicas: ptr.Int32(1),
+			MaxReplicas: int32(4),
+		},
+		Status: autoscalingv2.HorizontalPodAutoscalerStatus{
+			CurrentReplicas: 3,
+			DesiredReplicas: 3,
+			Conditions:      []autoscalingv2.HorizontalPodAutoscalerCondition{},
+		},
 	}
 }
