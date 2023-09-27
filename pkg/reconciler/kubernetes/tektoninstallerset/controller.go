@@ -27,6 +27,7 @@ import (
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
 	tektonInstallerReconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektoninstallerset"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	deploymentinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/deployment"
 	statefulsetinformer "knative.dev/pkg/client/injection/kube/informers/apps/v1/statefulset"
 	serviceAccountInformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount"
@@ -57,6 +58,7 @@ func NewExtendedController() injection.ControllerConstructor {
 		c := &Reconciler{
 			operatorClientSet: operatorclient.Get(ctx),
 			mfClient:          mfclient,
+			kubeClientSet:     kubeclient.Get(ctx),
 		}
 		impl := tektonInstallerReconciler.NewImpl(ctx, c)
 

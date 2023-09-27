@@ -25,6 +25,7 @@ import (
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonInstallerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektoninstallerset"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -33,6 +34,7 @@ import (
 type Reconciler struct {
 	operatorClientSet clientset.Interface
 	mfClient          mf.Client
+	kubeClientSet     kubernetes.Interface
 }
 
 // Reconciler implements controller.Reconciler
@@ -50,7 +52,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, installerSet *v1alpha1.Te
 		return err
 	}
 
-	installer := NewInstaller(&deleteManifests, r.mfClient, logger)
+	installer := NewInstaller(&deleteManifests, r.mfClient, r.kubeClientSet, logger)
 	err = installer.DeleteResources()
 	if err != nil {
 		logger.Error("failed to delete resources: ", err)
@@ -92,7 +94,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 		return err
 	}
 
-	installer := NewInstaller(&installManifests, r.mfClient, logger)
+	installer := NewInstaller(&installManifests, r.mfClient, r.kubeClientSet, logger)
 
 	// Install CRDs
 	err = installer.EnsureCRDs()
@@ -125,7 +127,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	installerSet.Status.MarkNamespaceScopedResourcesInstalled()
 
 	// Install Deployment Resources
-	err = installer.EnsureDeploymentResources()
+	err = installer.EnsureDeploymentResources(ctx)
 	if err != nil {
 		installerSet.Status.MarkDeploymentsAvailableFailed(err.Error())
 		return r.handleError(err, installerSet)
@@ -135,7 +137,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	installerSet.Status.MarkDeploymentsAvailable()
 
 	// Install StatefulSet Resources
-	err = installer.EnsureStatefulSetResources()
+	err = installer.EnsureStatefulSetResources(ctx)
 	if err != nil {
 		installerSet.Status.MarkStatefulSetNotReady(err.Error())
 		return r.handleError(err, installerSet)

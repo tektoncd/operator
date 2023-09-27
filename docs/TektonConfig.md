@@ -577,3 +577,5 @@ The following fields are supported in `StatefulSet`
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
         * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+
+**NOTE**: If a Deployment or StatefulSet has a Horizontal Pod Autoscaling (HPA) and is in active state, Operator will not control the replicas to that resource. However if `status.desiredReplicas` and `spec.minReplicas` not present in HPA, operator takes the control. Also if HPA disabled, operator takes control. Even though the operator takes the control, the replicas value will be adjusted to the hpa's scaling range.
