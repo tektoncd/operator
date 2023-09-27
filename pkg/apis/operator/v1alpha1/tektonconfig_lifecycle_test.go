@@ -43,6 +43,8 @@ func TestTektonConfigHappyPath(t *testing.T) {
 	apistest.CheckConditionOngoing(tc, PreInstall, t)
 	apistest.CheckConditionOngoing(tc, ComponentsReady, t)
 	apistest.CheckConditionOngoing(tc, PostInstall, t)
+	apistest.CheckConditionOngoing(tc, PreUpgrade, t)
+	apistest.CheckConditionOngoing(tc, PostUpgrade, t)
 
 	// Pre install completes execution
 	tc.MarkPreInstallComplete()
@@ -54,6 +56,20 @@ func TestTektonConfigHappyPath(t *testing.T) {
 
 	tc.MarkPostInstallComplete()
 	apistest.CheckConditionSucceeded(tc, PostInstall, t)
+
+	status := tc.MarkPreUpgradeComplete()
+	assert.Equal(t, true, status)
+	// returns false, as upgrade status already up to date
+	status = tc.MarkPreUpgradeComplete()
+	assert.Equal(t, false, status)
+	apistest.CheckConditionSucceeded(tc, PreUpgrade, t)
+
+	status = tc.MarkPostUpgradeComplete()
+	assert.Equal(t, true, status)
+	// returns false, as upgrade status already up to date
+	status = tc.MarkPostUpgradeComplete()
+	assert.Equal(t, false, status)
+	apistest.CheckConditionSucceeded(tc, PostUpgrade, t)
 
 	if ready := tc.IsReady(); !ready {
 		t.Errorf("tc.IsReady() = %v, want true", ready)
@@ -68,6 +84,8 @@ func TestTektonConfigErrorPath(t *testing.T) {
 	apistest.CheckConditionOngoing(tc, PreInstall, t)
 	apistest.CheckConditionOngoing(tc, ComponentsReady, t)
 	apistest.CheckConditionOngoing(tc, PostInstall, t)
+	apistest.CheckConditionOngoing(tc, PreUpgrade, t)
+	apistest.CheckConditionOngoing(tc, PostUpgrade, t)
 
 	// Pre install completes execution
 	tc.MarkPreInstallComplete()
@@ -84,6 +102,14 @@ func TestTektonConfigErrorPath(t *testing.T) {
 	tc.MarkPostInstallComplete()
 	apistest.CheckConditionSucceeded(tc, PostInstall, t)
 
+	status := tc.MarkPreUpgradeComplete()
+	assert.Equal(t, true, status)
+	apistest.CheckConditionSucceeded(tc, PreUpgrade, t)
+
+	status = tc.MarkPostUpgradeComplete()
+	assert.Equal(t, true, status)
+	apistest.CheckConditionSucceeded(tc, PostUpgrade, t)
+
 	if ready := tc.IsReady(); !ready {
 		t.Errorf("tc.IsReady() = %v, want true", ready)
 	}
@@ -98,35 +124,35 @@ func TestTektonConfigErrorPath(t *testing.T) {
 
 }
 
-func TestAppliedPreUpgradeVersion(t *testing.T) {
+func TestPreUpgradeVersion(t *testing.T) {
 	tc := &TektonConfig{}
 
 	// should return empty
 	assert.Equal(t, tc.Status.GetPreUpgradeVersion(), "")
 
-	// update applied pre upgrade version
+	// update pre upgrade version
 	tc.Status.SetPreUpgradeVersion("foo")
 	assert.Equal(t, tc.Status.GetPreUpgradeVersion(), "foo")
 	assert.Equal(t, tc.Status.Annotations[PreUpgradeVersionKey], "foo")
 
-	// update applied pre upgrade version
+	// update pre upgrade version
 	tc.Status.SetPreUpgradeVersion("bar")
 	assert.Equal(t, tc.Status.GetPreUpgradeVersion(), "bar")
 	assert.Equal(t, tc.Status.Annotations[PreUpgradeVersionKey], "bar")
 }
 
-func TestAppliedPostUpgradeVersion(t *testing.T) {
+func TestPostUpgradeVersion(t *testing.T) {
 	tc := &TektonConfig{}
 
 	// should return empty
 	assert.Equal(t, tc.Status.GetPostUpgradeVersion(), "")
 
-	// update applied post upgrade version
+	// update post upgrade version
 	tc.Status.SetPostUpgradeVersion("foo")
 	assert.Equal(t, tc.Status.GetPostUpgradeVersion(), "foo")
 	assert.Equal(t, tc.Status.Annotations[PostUpgradeVersionKey], "foo")
 
-	// update applied post upgrade version
+	// update post upgrade version
 	tc.Status.SetPostUpgradeVersion("bar")
 	assert.Equal(t, tc.Status.GetPostUpgradeVersion(), "bar")
 	assert.Equal(t, tc.Status.Annotations[PostUpgradeVersionKey], "bar")
