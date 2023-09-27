@@ -19,7 +19,6 @@ package upgrade
 import (
 	"context"
 
-	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	upgrade "github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade/helper"
 	"go.uber.org/zap"
@@ -35,26 +34,31 @@ import (
 func upgradeStorageVersion(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 	// resources to be upgraded
 	crdGroups := []string{
-		"clusterinterceptors.triggers.tekton.dev",
-		"clustertasks.tekton.dev",
-		"clustertriggerbindings.triggers.tekton.dev",
-		"customruns.tekton.dev",
-		"eventlisteners.triggers.tekton.dev",
+
+		// dashboard
 		"extensions.dashboard.tekton.dev",
-		"interceptors.triggers.tekton.dev",
+
+		// pipelines
+		"clustertasks.tekton.dev",
+		"customruns.tekton.dev",
 		"pipelineruns.tekton.dev",
 		"pipelines.tekton.dev",
-		"resolutionrequests.resolution.tekton.dev",
 		"taskruns.tekton.dev",
 		"tasks.tekton.dev",
+		"verificationpolicies.tekton.dev",
+		"resolutionrequests.resolution.tekton.dev",
+
+		// Pipelines-as-code
+		"repositories.pipelinesascode.tekton.dev",
+
+		// triggers
+		"clusterinterceptors.triggers.tekton.dev",
+		"clustertriggerbindings.triggers.tekton.dev",
+		"eventlisteners.triggers.tekton.dev",
+		"interceptors.triggers.tekton.dev",
 		"triggerbindings.triggers.tekton.dev",
 		"triggers.triggers.tekton.dev",
 		"triggertemplates.triggers.tekton.dev",
-		"verificationpolicies.tekton.dev",
-	}
-
-	if v1alpha1.IsOpenShiftPlatform() {
-		crdGroups = append(crdGroups, "repositories.pipelinesascode.tekton.dev")
 	}
 
 	migrator := storageversion.NewMigrator(
