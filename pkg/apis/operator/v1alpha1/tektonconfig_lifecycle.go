@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"knative.dev/pkg/apis"
 )
@@ -25,6 +26,8 @@ const (
 	PreInstall      apis.ConditionType = "PreInstall"
 	ComponentsReady apis.ConditionType = "ComponentsReady"
 	PostInstall     apis.ConditionType = "PostInstall"
+	PreUpgrade      apis.ConditionType = "PreUpgrade"
+	PostUpgrade     apis.ConditionType = "PostUpgrade"
 )
 
 var (
@@ -32,6 +35,8 @@ var (
 		PreInstall,
 		ComponentsReady,
 		PostInstall,
+		PreUpgrade,
+		PostUpgrade,
 	)
 )
 
@@ -96,6 +101,42 @@ func (tcs *TektonConfigStatus) MarkPostInstallFailed(msg string) {
 		PostInstall,
 		"Error",
 		"PostReconciliation failed with message: %s", msg)
+}
+
+func (tcs *TektonConfigStatus) MarkPreUpgradeComplete() bool {
+	condition := configCondSet.Manage(tcs).GetCondition(PreUpgrade)
+	if condition != nil && condition.Status == corev1.ConditionTrue {
+		return false
+	}
+	configCondSet.Manage(tcs).MarkTrue(PreUpgrade)
+	return true
+}
+
+func (tcs *TektonConfigStatus) MarkPostUpgradeComplete() bool {
+	condition := configCondSet.Manage(tcs).GetCondition(PostUpgrade)
+	if condition != nil && condition.Status == corev1.ConditionTrue {
+		return false
+	}
+	configCondSet.Manage(tcs).MarkTrue(PostUpgrade)
+	return true
+}
+
+func (tcs *TektonConfigStatus) MarkPreUpgradeFalse(reason, msg string) bool {
+	condition := configCondSet.Manage(tcs).GetCondition(PreUpgrade)
+	if condition != nil && condition.Status == corev1.ConditionFalse && condition.Reason == reason && condition.Message == msg {
+		return false
+	}
+	configCondSet.Manage(tcs).MarkFalse(PreUpgrade, reason, "%s", msg)
+	return true
+}
+
+func (tcs *TektonConfigStatus) MarkPostUpgradeFalse(reason, msg string) bool {
+	condition := configCondSet.Manage(tcs).GetCondition(PostUpgrade)
+	if condition != nil && condition.Status == corev1.ConditionFalse && condition.Reason == reason && condition.Message == msg {
+		return false
+	}
+	configCondSet.Manage(tcs).MarkFalse(PostUpgrade, reason, "%s", msg)
+	return true
 }
 
 // GetVersion gets the currently installed version of the component.
