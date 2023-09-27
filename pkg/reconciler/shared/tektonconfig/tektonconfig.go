@@ -112,14 +112,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	// run pre upgrade
-	isUpgradePerformed, err := r.upgrade.RunPreUpgrade(ctx)
+	err := r.upgrade.RunPreUpgrade(ctx)
 	if err != nil {
 		return err
-	}
-	// if upgrade executed, tektonConfig CR status will be updated
-	// hence calling the reconcile again
-	if isUpgradePerformed {
-		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
 	tc.SetDefaults(ctx)
@@ -209,14 +204,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	// run post upgrade
-	isUpgradePerformed, err = r.upgrade.RunPostUpgrade(ctx)
+	err = r.upgrade.RunPostUpgrade(ctx)
 	if err != nil {
 		return err
-	}
-	// if upgrade executed, tektonConfig CR status will be updated
-	// hence calling the reconcile again
-	if isUpgradePerformed {
-		return v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
 	return nil

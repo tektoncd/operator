@@ -95,7 +95,7 @@ func TestIsUpgradeRequired(t *testing.T) {
 	assert.False(t, status)
 }
 
-func TestUpdateAppliedUpgradeVersion(t *testing.T) {
+func TestUpdateUpgradeVersion(t *testing.T) {
 	operatorVersion := "0.68.0"
 	ctx := context.TODO()
 	ug := getUpgradeStructWithFakeClients(ctx, operatorVersion)
@@ -120,7 +120,7 @@ func TestUpdateAppliedUpgradeVersion(t *testing.T) {
 
 	// tektonConfig CR present, should return no error
 	err = ug.updateUpgradeVersion(ctx, isPreUpgrade)
-	assert.NoError(t, err)
+	assert.Equal(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
 
 	// verify the pre upgrade version in tektonConfig CR
 	tc, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
@@ -133,7 +133,7 @@ func TestUpdateAppliedUpgradeVersion(t *testing.T) {
 
 	// tektonConfig CR present, should return no error
 	err = ug.updateUpgradeVersion(ctx, isPreUpgrade)
-	assert.NoError(t, err)
+	assert.Equal(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
 
 	// verify the post upgrade version
 	tc, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
@@ -146,10 +146,9 @@ func TestRunPreUpgrade(t *testing.T) {
 	ctx := context.TODO()
 	ug := getUpgradeStructWithFakeClients(ctx, operatorVersion)
 
-	// execute pre upgrade, should return no error
-	isUpgradePerformed, err := ug.RunPreUpgrade(ctx)
-	assert.NoError(t, err)
-	assert.False(t, isUpgradePerformed)
+	// execute pre upgrade, should return error, config not found
+	err := ug.RunPreUpgrade(ctx)
+	assert.Error(t, err)
 
 	// create tektonConfig CR
 	tc := &v1alpha1.TektonConfig{
@@ -171,10 +170,15 @@ func TestRunPreUpgrade(t *testing.T) {
 		},
 	}
 
-	// execute pre upgrade, should return an error
-	isUpgradePerformed, err = ug.RunPreUpgrade(ctx)
+	// execute pre upgrade, first time return reconcile error - upgrade in progress
+	err = ug.RunPreUpgrade(ctx)
 	assert.Error(t, err)
-	assert.False(t, isUpgradePerformed)
+	assert.Equal(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
+
+	// execute pre upgrade, should return an error
+	err = ug.RunPreUpgrade(ctx)
+	assert.Error(t, err)
+	assert.NotEqual(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
 
 	// update pre upgrade functions
 	preUpgradeFunctions = []upgradeFunc{
@@ -183,10 +187,19 @@ func TestRunPreUpgrade(t *testing.T) {
 		},
 	}
 
-	// execute pre upgrade, should return no error
-	isUpgradePerformed, err = ug.RunPreUpgrade(ctx)
+	// execute pre upgrade, should return reconcile error - upgrade in progress
+	err = ug.RunPreUpgrade(ctx)
+	assert.Error(t, err)
+	assert.Equal(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
+
+	// should return reconcile error - upgrade complete, but reconcile needed as status updated
+	err = ug.RunPreUpgrade(ctx)
+	assert.Error(t, err)
+	assert.Equal(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
+
+	// upgrade not required and no error
+	err = ug.RunPreUpgrade(ctx)
 	assert.NoError(t, err)
-	assert.True(t, isUpgradePerformed)
 
 	// verify the version in tektonConfig CR
 	tc, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
@@ -199,10 +212,9 @@ func TestRunPostUpgrade(t *testing.T) {
 	ctx := context.TODO()
 	ug := getUpgradeStructWithFakeClients(ctx, operatorVersion)
 
-	// execute post upgrade, should return no error
-	isUpgradePerformed, err := ug.RunPostUpgrade(ctx)
-	assert.NoError(t, err)
-	assert.False(t, isUpgradePerformed)
+	// execute post upgrade, should return error, config not found
+	err := ug.RunPostUpgrade(ctx)
+	assert.Error(t, err)
 
 	// create tektonConfig CR
 	tc := &v1alpha1.TektonConfig{
@@ -224,10 +236,15 @@ func TestRunPostUpgrade(t *testing.T) {
 		},
 	}
 
-	// execute post upgrade, should return an error
-	isUpgradePerformed, err = ug.RunPostUpgrade(ctx)
+	// first time return reconcile error - status update: upgrade in progress
+	err = ug.RunPostUpgrade(ctx)
 	assert.Error(t, err)
-	assert.False(t, isUpgradePerformed)
+	assert.Equal(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
+
+	// execute post upgrade, should return an error
+	err = ug.RunPostUpgrade(ctx)
+	assert.Error(t, err)
+	assert.NotEqual(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
 
 	// update post upgrade functions
 	postUpgradeFunctions = []upgradeFunc{
@@ -236,10 +253,19 @@ func TestRunPostUpgrade(t *testing.T) {
 		},
 	}
 
-	// execute post upgrade, should return no error
-	isUpgradePerformed, err = ug.RunPostUpgrade(ctx)
+	// should return reconcile error - status update: upgrade in progress
+	err = ug.RunPostUpgrade(ctx)
+	assert.Error(t, err)
+	assert.Equal(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
+
+	// should return reconcile error - upgrade complete, but reconcile needed as status updated
+	err = ug.RunPostUpgrade(ctx)
+	assert.Error(t, err)
+	assert.Equal(t, v1alpha1.RECONCILE_AGAIN_ERR, err)
+
+	// upgrade not required and no error
+	err = ug.RunPostUpgrade(ctx)
 	assert.NoError(t, err)
-	assert.True(t, isUpgradePerformed)
 
 	// verify the version in tektonConfig CR
 	tc, err = ug.operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
