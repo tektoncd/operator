@@ -111,7 +111,18 @@ func (s *TektonHubTestSuite) SetupTest() {
 	s.undeploy("")
 	s.undeployExternalDatabase()
 	// wait for target namespace to be deleted
-	time.Sleep(120 * time.Second)
+	interval := 3 * time.Second
+	timeout := 2 * time.Minute
+	er := resources.WaitForNamespaceDeletion(s.clients.KubeClient, s.resourceNames.TargetNamespace, interval, timeout)
+	if er != nil {
+		s.logger.Debugw("target namespace already cleanedup",
+			"namespace", s.resourceNames.TargetNamespace,
+		)
+	} else {
+		s.logger.Debugw("target namespace removed",
+			"namespace", s.resourceNames.TargetNamespace,
+		)
+	}
 	err := resources.CreateNamespace(s.clients.KubeClient, s.resourceNames.TargetNamespace)
 	require.NoError(t, err, "create namespace: %s", s.resourceNames.TargetNamespace)
 	s.logger.Debug("test environment ready. starting the actual test")
