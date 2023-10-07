@@ -41,6 +41,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- with .Values.operator.deployment.customLabels }}
+{{ toYaml . }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -53,6 +56,15 @@ app.kubernetes.io/component: operator
 {{- end }}
 
 {{/*
+Pod Template labels for operator component
+*/}}
+{{- define "tekton-operator.operator.podTemplateLabels" -}}
+{{- with .Values.operator.deployment.podTemplateCustomLabels }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
 Selector labels for webhook component
 */}}
 {{- define "tekton-operator.webhook.selectorLabels" -}}
@@ -60,7 +72,6 @@ app.kubernetes.io/name: {{ include "tekton-operator.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: webhook
 {{- end }}
-
 
 {{/*
 Create the name of the service account to use
@@ -97,6 +108,12 @@ tekton-operator
   {{- $image = "gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/kubernetes/operator" -}}
 {{- end -}}
 {{- end -}}
+{{- printf "%s:%s" $image $tag -}}
+{{- end -}}
+
+{{- define "tekton-operator.pruner-image" -}}
+{{- $tag := .Values.pruner.image.tag -}}
+{{- $image := .Values.pruner.image.repository -}}
 {{- printf "%s:%s" $image $tag -}}
 {{- end -}}
 
