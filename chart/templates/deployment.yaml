@@ -18,6 +18,7 @@ spec:
       {{- end }}
       labels:
         {{- include "tekton-operator.operator.selectorLabels" . | nindent 8 }}
+        {{- include "tekton-operator.operator.podTemplateLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -46,7 +47,7 @@ spec:
             - name: IMAGE_PIPELINES_PROXY
               value: {{ include "tekton-operator.webhook-proxy-image" . }}
             - name: IMAGE_JOB_PRUNER_TKN
-              value: gcr.io/tekton-releases/dogfooding/tkn@sha256:a572f1748eb5c0e8002dd0a83ee836ad9d755d035cbd5bfbdef5de810d2bea0b
+              value: {{ include "tekton-operator.pruner-image" . }}
             - name: METRICS_DOMAIN
               value: {{ .Values.service.metricsDomain }}
             - name: VERSION
@@ -157,6 +158,7 @@ spec:
       {{- end }}
       labels:
         {{- include "tekton-operator.webhook.selectorLabels" . | nindent 8 }}
+        {{- include "tekton-operator.operator.podTemplateLabels" . | nindent 8 }}
     spec:
       {{- if .Values.webhook.hostNetwork }}
       hostNetwork: true
