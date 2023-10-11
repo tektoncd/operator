@@ -99,7 +99,7 @@ components/bump: $(OPERATORTOOL)
 
 .PHONY: components/bump-bugfix
 components/bump-bugfix: $(OPERATORTOOL)
-	@go run ./cmd/tool --bugfix components.yaml
+	@go run ./cmd/tool bump --bugfix components.yaml
 
 .PHONY: get-releases
 get-releases: |
