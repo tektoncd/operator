@@ -53,7 +53,7 @@ pruner:
   image:
     # Container image for Tekton pruner. Defaults to gcr.
     repository: "gcr.io/tekton-releases/dogfooding/tkn"
-    tag: "v20230913-528623db20"
+    tag: "sha256:a572f1748eb5c0e8002dd0a83ee836ad9d755d035cbd5bfbdef5de810d2bea0b"
 
 ## Configuration for the tekton-operator-webhook pod
 webhook:
