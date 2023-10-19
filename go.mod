@@ -10,7 +10,7 @@ require (
 	github.com/manifestival/client-go-client v0.5.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
-	github.com/openshift-pipelines/pipelines-as-code v0.21.1
+	github.com/openshift-pipelines/pipelines-as-code v0.21.4
 	github.com/openshift/api v0.0.0-20230503133300-8bbcb7ca7183
 	github.com/openshift/apiserver-library-go v0.0.0-20230503174907-d9b2bf6185e9
 	github.com/openshift/client-go v0.0.0-20230503144108-75015d2347cb
@@ -18,9 +18,9 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
-	github.com/tektoncd/pipeline v0.50.1
+	github.com/tektoncd/pipeline v0.50.3
 	github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7
-	github.com/tektoncd/triggers v0.25.0
+	github.com/tektoncd/triggers v0.25.2
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.25.0
 	golang.org/x/mod v0.12.0
@@ -43,7 +43,7 @@ replace (
 	k8s.io/client-go => k8s.io/client-go v0.25.9
 	k8s.io/code-generator => k8s.io/code-generator v0.25.9
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230525220651-2546d827e515
-	knative.dev/pkg => knative.dev/pkg v0.0.0-20230418073056-dfad48eaa5d0
+	knative.dev/pkg => knative.dev/pkg v0.0.0-20231011201526-df28feae6d34
 )
 
 require (
@@ -279,7 +279,7 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230803162519-f966b187b2e5 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230803162519-f966b187b2e5 // indirect
-	google.golang.org/grpc v1.57.0 // indirect
+	google.golang.org/grpc v1.57.2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
