@@ -1,12 +1,12 @@
 chains:
   github: tektoncd/chains
-  version: v0.17.0
+  version: v0.17.1
 dashboard:
   github: tektoncd/dashboard
   version: v0.39.0
 hub:
   github: tektoncd/hub
-  version: v1.14.0
+  version: v1.14.1
 pipeline:
   github: tektoncd/pipeline
   version: v0.50.2
@@ -15,7 +15,7 @@ pipelines-as-code:
   version: v0.21.3
 results:
   github: tektoncd/results
-  version: v0.8.0
+  version: v0.8.1
 triggers:
   github: tektoncd/triggers
-  version: v0.25.0
+  version: v0.25.1
