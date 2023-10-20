@@ -63,6 +63,24 @@ func Validate(config map[string]string) error {
 			return fmt.Errorf("cannot use %v as regexp for error detection: %w", config[ErrorDetectionSimpleRegexpKey], err)
 		}
 	}
+
+	if v, ok := config[CustomConsoleURLKey]; ok && v != "" {
+		if _, err := url.ParseRequestURI(v); err != nil {
+			return fmt.Errorf("invalid value for key %v, invalid url: %w", CustomConsoleURLKey, err)
+		}
+	}
+
+	if v, ok := config[CustomConsolePRTaskLogKey]; ok && v != "" {
+		if _, err := url.ParseRequestURI(v); err != nil {
+			return fmt.Errorf("invalid value for key %v, invalid url: %w", CustomConsolePRTaskLogKey, err)
+		}
+	}
+
+	if v, ok := config[CustomConsolePRDetailKey]; ok && v != "" {
+		if _, err := url.ParseRequestURI(v); err != nil {
+			return fmt.Errorf("invalid value for key %v, invalid url: %w", CustomConsolePRDetailKey, err)
+		}
+	}
 	return nil
 }
 

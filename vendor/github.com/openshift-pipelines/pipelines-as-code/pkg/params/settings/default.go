@@ -50,4 +50,17 @@ func SetDefaults(config map[string]string) {
 	if errorDetectionSimpleRegexp, ok := config[ErrorDetectionSimpleRegexpKey]; !ok || errorDetectionSimpleRegexp == "" {
 		config[ErrorDetectionSimpleRegexpKey] = errorDetectionSimpleRegexpValue
 	}
+
+	if v, ok := config[CustomConsoleNameKey]; !ok || v == "" {
+		config[CustomConsoleNameKey] = v
+	}
+	if v, ok := config[CustomConsoleURLKey]; !ok || v == "" {
+		config[CustomConsoleURLKey] = v
+	}
+	if v, ok := config[CustomConsolePRDetailKey]; !ok || v == "" {
+		config[CustomConsolePRDetailKey] = v
+	}
+	if v, ok := config[CustomConsolePRTaskLogKey]; !ok || v == "" {
+		config[CustomConsolePRTaskLogKey] = v
+	}
 }
