@@ -12,7 +12,7 @@ pipeline:
   version: v0.44.5
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
-  version: v0.17.6
+  version: v0.17.7
 results:
   github: tektoncd/results
   version: v0.4.0

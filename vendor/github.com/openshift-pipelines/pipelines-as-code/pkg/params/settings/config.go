@@ -21,6 +21,11 @@ const (
 	AutoConfigureNewGitHubRepoKey         = "auto-configure-new-github-repo"
 	AutoConfigureRepoNamespaceTemplateKey = "auto-configure-repo-namespace-template"
 
+	CustomConsoleNameKey      = "custom-console-name"
+	CustomConsoleURLKey       = "custom-console-url"
+	CustomConsolePRDetailKey  = "custom-console-url-pr-details"
+	CustomConsolePRTaskLogKey = "custom-console-url-pr-tasklog"
+
 	SecretAutoCreateKey                          = "secret-auto-create"
 	secretAutoCreateDefaultValue                 = "true"
 	SecretGhAppTokenRepoScopedKey                = "secret-github-app-token-scoped" //nolint: gosec
@@ -71,6 +76,11 @@ type Settings struct {
 	ErrorDetection              bool
 	ErrorDetectionNumberOfLines int
 	ErrorDetectionSimpleRegexp  string
+
+	CustomConsoleName      string
+	CustomConsoleURL       string
+	CustomConsolePRdetail  string
+	CustomConsolePRTaskLog string
 }
 
 func ConfigToSettings(logger *zap.SugaredLogger, setting *Settings, config map[string]string) error {
@@ -169,10 +179,30 @@ func ConfigToSettings(logger *zap.SugaredLogger, setting *Settings, config map[s
 		setting.ErrorDetectionNumberOfLines = errorDetectNumberOfLines
 	}
 
-	if setting.ErrorDetection && setting.ErrorDetectionSimpleRegexp != config[ErrorDetectionSimpleRegexpKey] {
+	if setting.ErrorDetection && setting.ErrorDetectionSimpleRegexp != strings.TrimSpace(config[ErrorDetectionSimpleRegexpKey]) {
 		// replace double backslash with single backslash because kube configmap is giving us things double backslashes
-		logger.Infof("CONFIG: setting error detection regexp to %v", config[ErrorDetectionSimpleRegexpKey])
+		logger.Infof("CONFIG: setting error detection regexp to %v", strings.TrimSpace(config[ErrorDetectionSimpleRegexpKey]))
 		setting.ErrorDetectionSimpleRegexp = strings.TrimSpace(config[ErrorDetectionSimpleRegexpKey])
+	}
+
+	if setting.CustomConsoleName != config[CustomConsoleNameKey] {
+		logger.Infof("CONFIG: setting custom console name to %v", config[CustomConsoleNameKey])
+		setting.CustomConsoleName = config[CustomConsoleNameKey]
+	}
+
+	if setting.CustomConsoleURL != config[CustomConsoleURLKey] {
+		logger.Infof("CONFIG: setting custom console url to %v", config[CustomConsoleURLKey])
+		setting.CustomConsoleURL = config[CustomConsoleURLKey]
+	}
+
+	if setting.CustomConsolePRdetail != config[CustomConsolePRDetailKey] {
+		logger.Infof("CONFIG: setting custom console pr detail URL to %v", config[CustomConsolePRDetailKey])
+		setting.CustomConsolePRdetail = config[CustomConsolePRDetailKey]
+	}
+
+	if setting.CustomConsolePRTaskLog != config[CustomConsolePRTaskLogKey] {
+		logger.Infof("CONFIG: setting custom console pr task log URL to %v", config[CustomConsolePRTaskLogKey])
+		setting.CustomConsolePRTaskLog = config[CustomConsolePRTaskLogKey]
 	}
 
 	return nil
