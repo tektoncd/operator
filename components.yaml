@@ -1,21 +1,21 @@
 chains:
   github: tektoncd/chains
-  version: v0.16.0
+  version: v0.16.1
 dashboard:
   github: tektoncd/dashboard
   version: v0.35.1
 hub:
   github: tektoncd/hub
-  version: v1.13.0
+  version: v1.13.1
 pipeline:
   github: tektoncd/pipeline
-  version: v0.47.4
+  version: v0.47.5
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
-  version: v0.19.4
+  version: v0.19.5
 results:
   github: tektoncd/results
   version: v0.6.0
 triggers:
   github: tektoncd/triggers
-  version: v0.24.1
+  version: v0.24.2
