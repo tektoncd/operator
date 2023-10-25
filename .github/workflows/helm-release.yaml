@@ -2,8 +2,7 @@ name: Release Charts
 
 on:  # yamllint disable-line rule:truthy
   push:
-    branches:
-      - main
+    tags: ["v*"]
 
 jobs:
   release:
