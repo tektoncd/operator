@@ -281,7 +281,7 @@ spec:
     - Tekton Triggers: v0.24.2
     - Pipelines as Code: 0.19.6
     - Tekton Chains: v0.16.1
-    - Tekton Hub (tech-preview): v1.13.0
+    - Tekton Hub (tech-preview): v1.13.2
     - Tekton Results (tech-preview): v0.6.0
 
     ## Getting Started
