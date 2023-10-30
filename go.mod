@@ -33,7 +33,7 @@ require (
 	k8s.io/client-go v1.5.2
 	k8s.io/code-generator v0.27.1
 	knative.dev/pkg v0.0.0-20230718152110-aef227e72ead
-	sigs.k8s.io/yaml v1.3.0
+	sigs.k8s.io/yaml v1.4.0
 )
 
 replace (
