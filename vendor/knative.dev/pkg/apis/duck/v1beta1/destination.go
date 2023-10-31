@@ -18,8 +18,6 @@ package v1beta1
 
 import (
 	"context"
-	"crypto/x509"
-	"encoding/pem"
 
 	corev1 "k8s.io/api/core/v1"
 	"knative.dev/pkg/apis"
@@ -119,9 +117,6 @@ func ValidateDestination(dest Destination, allowDeprecatedFields bool) *apis.Fie
 		}
 		return validateDestinationRef(*ref)
 	}
-	if dest.CACerts != nil {
-		return validateCACerts(dest.CACerts)
-	}
 	return nil
 }
 
@@ -165,21 +160,5 @@ func validateDestinationRef(ref corev1.ObjectReference) *apis.FieldError {
 		errs = errs.Also(apis.ErrMissingField("kind"))
 	}
 
-	return errs
-}
-func validateCACerts(CACert *string) *apis.FieldError {
-	// Check the object.
-	var errs *apis.FieldError
-
-	block, err := pem.Decode([]byte(*CACert))
-	if err != nil && block == nil {
-		errs = errs.Also(apis.ErrInvalidValue("CA Cert provided is invalid", "caCert"))
-		return errs
-	}
-	if block.Type != "CERTIFICATE" {
-		errs = errs.Also(apis.ErrInvalidValue("CA Cert provided is not a certificate", "caCert"))
-	} else if _, err := x509.ParseCertificate(block.Bytes); err != nil {
-		errs = errs.Also(apis.ErrInvalidValue("CA Cert provided is invalid", "caCert"))
-	}
 	return errs
 }
