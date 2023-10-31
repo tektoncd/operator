@@ -47,7 +47,7 @@ spec:
       type: string
     - name: BUILDER_IMAGE
       description: The location of the buildah builder image.
-      default: registry.redhat.io/rhel8/buildah@sha256:99cae35f40c7ec050fed3765b2b27e0b8bbea2aa2da7c16408e2ca13c60ff8ee
+      default: registry.redhat.io/rhel8/buildah@sha256:55f5c7d88c77e1ab5a2ab8e877172b2b66cb196e21f10dc45148470d0ee8bbae
     - name: SKIP_PUSH
       description: Skip pushing the built image
       default: "false"
@@ -66,7 +66,7 @@ spec:
       optional: true
   steps:
     - name: generate
-      image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
+      image: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:6a6025914296a62fdf2092c3a40011bd9b966a6806b094d51eec5e1bd5026ef4
       workingDir: $(workspaces.source.path)
       args: ["$(params.ENV_VARS[*])"]
       script: |
