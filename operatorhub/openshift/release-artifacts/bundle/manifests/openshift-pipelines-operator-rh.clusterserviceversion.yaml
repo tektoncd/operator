@@ -860,7 +860,7 @@ spec:
                 - name: IMAGE_ADDONS_SKOPEO_COPY
                   value: registry.redhat.io/rhel8/skopeo@sha256:60ac283d14e1e2870e37a10954e7a14b41372bb929a5b134455c3e36516f030a
                 - name: IMAGE_ADDONS_GENERATE
-                  value: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
+                  value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:db21e998979939ef1cd1630ea4ef0a6cfcf8be9d5df94781d5df82066d946f35
                 - name: IMAGE_PIPELINES_TEKTON_PIPELINES_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-controller-rhel8@
                 - name: IMAGE_PIPELINES_WEBHOOK
@@ -978,7 +978,7 @@ spec:
     name: IMAGE_ADDONS_PARAM_KN_IMAGE
   - image: registry.redhat.io/rhel8/skopeo@sha256:60ac283d14e1e2870e37a10954e7a14b41372bb929a5b134455c3e36516f030a
     name: IMAGE_ADDONS_SKOPEO_COPY
-  - image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
+  - image: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:db21e998979939ef1cd1630ea4ef0a6cfcf8be9d5df94781d5df82066d946f35
     name: IMAGE_ADDONS_GENERATE
   - image: registry.redhat.io/ubi8/ubi-minimal@sha256:eb98682661cc5fe83bbe583af9d55a90d698cfc0d14af5b83e4568c3e26b4516
     name: IMAGE_ADDONS_MVN_SETTINGS
@@ -1016,7 +1016,7 @@ spec:
     name: IMAGE_ADDONS_SKOPEO_COPY
   - image: registry.redhat.io/rhel8/buildah@sha256:30fc759d3453a0f9aba2164a0ea7b1aacd65c801abb07f3478ebd4ed7a90aa8f
     name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-  - image: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
+  - image: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:db21e998979939ef1cd1630ea4ef0a6cfcf8be9d5df94781d5df82066d946f35
     name: IMAGE_ADDONS_GENERATE
   - image: registry.redhat.io/ubi8/ubi-minimal@sha256:eb98682661cc5fe83bbe583af9d55a90d698cfc0d14af5b83e4568c3e26b4516
     name: IMAGE_ADDONS_MVN_SETTINGS
