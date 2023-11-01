@@ -126,7 +126,7 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-- image: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:db21e998979939ef1cd1630ea4ef0a6cfcf8be9d5df94781d5df82066d946f35
+- image: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:ac8a73e466485cc8b36c7f889b6614901915cdeb63a5f955e2fbb227744962f8
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
