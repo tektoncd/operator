@@ -23,7 +23,6 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
-	"github.com/tektoncd/pipeline/pkg/apis/version"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
@@ -67,11 +66,6 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	// Validate PipelineSpec if it's present
 	if ps.PipelineSpec != nil {
 		errs = errs.Also(ps.PipelineSpec.Validate(ctx).ViaField("pipelineSpec"))
-		// Validate beta fields separately for inline Pipeline definitions.
-		// This prevents validation from failing in the reconciler when a Pipeline is converted to a different API version.
-		// See https://github.com/tektoncd/pipeline/issues/6616 for more information.
-		// TODO(#6592): Decouple API versioning from feature versioning
-		errs = errs.Also(ps.PipelineSpec.ValidateBetaFields(ctx).ViaField("pipelineSpec"))
 	}
 
 	// Validate PipelineRun parameters
@@ -283,15 +277,15 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 
 func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *apis.FieldError) {
 	if trs.StepSpecs != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "stepSpecs", config.AlphaAPIFields).ViaField("stepSpecs"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepSpecs", config.AlphaAPIFields).ViaField("stepSpecs"))
 		errs = errs.Also(validateStepSpecs(trs.StepSpecs).ViaField("stepSpecs"))
 	}
 	if trs.SidecarSpecs != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.AlphaAPIFields).ViaField("sidecarSpecs"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarSpecs", config.AlphaAPIFields).ViaField("sidecarSpecs"))
 		errs = errs.Also(validateSidecarSpecs(trs.SidecarSpecs).ViaField("sidecarSpecs"))
 	}
 	if trs.ComputeResources != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "computeResources", config.BetaAPIFields).ViaField("computeResources"))
 		errs = errs.Also(validateTaskRunComputeResources(trs.ComputeResources, trs.StepSpecs))
 	}
 	if trs.PodTemplate != nil {

@@ -44,6 +44,9 @@ func (tr *TaskRun) ConvertTo(ctx context.Context, to apis.Convertible) error {
 		if err := serializeTaskRunCloudEvents(&sink.ObjectMeta, &tr.Status); err != nil {
 			return err
 		}
+		if err := serializeTaskRunResourcesResult(&sink.ObjectMeta, &tr.Status); err != nil {
+			return err
+		}
 		if err := tr.Status.ConvertTo(ctx, &sink.Status, &sink.ObjectMeta); err != nil {
 			return err
 		}
@@ -115,6 +118,9 @@ func (tr *TaskRun) ConvertFrom(ctx context.Context, from apis.Convertible) error
 		if err := deserializeTaskRunCloudEvents(&tr.ObjectMeta, &tr.Status); err != nil {
 			return err
 		}
+		if err := deserializeTaskRunResourcesResult(&tr.ObjectMeta, &tr.Status); err != nil {
+			return err
+		}
 		if err := tr.Status.ConvertFrom(ctx, source.Status, &tr.ObjectMeta); err != nil {
 			return err
 		}
@@ -179,11 +185,26 @@ func (trs *TaskRunSpec) ConvertFrom(ctx context.Context, source *v1.TaskRunSpec,
 }
 
 func (trd TaskRunDebug) convertTo(ctx context.Context, sink *v1.TaskRunDebug) {
-	sink.Breakpoint = trd.Breakpoint
+	if trd.Breakpoints != nil {
+		sink.Breakpoints = &v1.TaskBreakpoints{}
+		trd.Breakpoints.convertTo(ctx, sink.Breakpoints)
+	}
 }
 
 func (trd *TaskRunDebug) convertFrom(ctx context.Context, source v1.TaskRunDebug) {
-	trd.Breakpoint = source.Breakpoint
+	if source.Breakpoints != nil {
+		newBreakpoints := TaskBreakpoints{}
+		newBreakpoints.convertFrom(ctx, *source.Breakpoints)
+		trd.Breakpoints = &newBreakpoints
+	}
+}
+
+func (tbp TaskBreakpoints) convertTo(ctx context.Context, sink *v1.TaskBreakpoints) {
+	sink.OnFailure = tbp.OnFailure
+}
+
+func (tbp *TaskBreakpoints) convertFrom(ctx context.Context, source v1.TaskBreakpoints) {
+	tbp.OnFailure = source.OnFailure
 }
 
 func (trso TaskRunStepOverride) convertTo(ctx context.Context, sink *v1.TaskRunStepSpec) {
@@ -363,6 +384,25 @@ func deserializeTaskRunCloudEvents(meta *metav1.ObjectMeta, status *TaskRunStatu
 	}
 	if len(cloudEvents) != 0 {
 		status.CloudEvents = cloudEvents
+	}
+	return nil
+}
+
+func serializeTaskRunResourcesResult(meta *metav1.ObjectMeta, status *TaskRunStatus) error {
+	if status.ResourcesResult == nil {
+		return nil
+	}
+	return version.SerializeToMetadata(meta, status.ResourcesResult, resourcesResultAnnotationKey)
+}
+
+func deserializeTaskRunResourcesResult(meta *metav1.ObjectMeta, status *TaskRunStatus) error {
+	resourcesResult := []RunResult{}
+	err := version.DeserializeFromMetadata(meta, &resourcesResult, resourcesResultAnnotationKey)
+	if err != nil {
+		return err
+	}
+	if len(resourcesResult) != 0 {
+		status.ResourcesResult = resourcesResult
 	}
 	return nil
 }

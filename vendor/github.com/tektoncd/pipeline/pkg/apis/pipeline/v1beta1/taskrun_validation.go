@@ -24,7 +24,6 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
-	"github.com/tektoncd/pipeline/pkg/apis/version"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -71,19 +70,19 @@ func (ts *TaskRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(ts.validateInlineParameters(ctx))
 	errs = errs.Also(ValidateWorkspaceBindings(ctx, ts.Workspaces).ViaField("workspaces"))
 	if ts.Debug != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "debug", config.AlphaAPIFields).ViaField("debug"))
 		errs = errs.Also(validateDebug(ts.Debug).ViaField("debug"))
 	}
 	if ts.StepOverrides != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
 		errs = errs.Also(validateStepOverrides(ts.StepOverrides).ViaField("stepOverrides"))
 	}
 	if ts.SidecarOverrides != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
 		errs = errs.Also(validateSidecarOverrides(ts.SidecarOverrides).ViaField("sidecarOverrides"))
 	}
 	if ts.ComputeResources != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "computeResources", config.AlphaAPIFields).ViaField("computeResources"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "computeResources", config.BetaAPIFields).ViaField("computeResources"))
 		errs = errs.Also(validateTaskRunComputeResources(ts.ComputeResources, ts.StepOverrides))
 	}
 
@@ -213,16 +212,14 @@ func combineParamSpec(p ParamSpec, paramSpecForValidation map[string]ParamSpec) 
 	return paramSpecForValidation, nil
 }
 
-// validateDebug
+// validateDebug validates the debug section of the TaskRun.
+// if set, onFailure breakpoint must be "enabled"
 func validateDebug(db *TaskRunDebug) (errs *apis.FieldError) {
-	breakpointOnFailure := "onFailure"
-	validBreakpoints := sets.NewString()
-	validBreakpoints.Insert(breakpointOnFailure)
-
-	for _, b := range db.Breakpoint {
-		if !validBreakpoints.Has(b) {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s is not a valid breakpoint. Available valid breakpoints include %s", b, validBreakpoints.List()), "breakpoint"))
-		}
+	if db == nil || db.Breakpoints == nil {
+		return errs
+	}
+	if db.Breakpoints.OnFailure != "" && db.Breakpoints.OnFailure != EnabledOnFailureBreakpoint {
+		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s is not a valid onFailure breakpoint value, onFailure breakpoint is only allowed to be set as enabled", db.Breakpoints.OnFailure), "breakpoints.onFailure"))
 	}
 	return errs
 }
@@ -242,6 +239,11 @@ func ValidateWorkspaceBindings(ctx context.Context, wb []WorkspaceBinding) (errs
 func ValidateParameters(ctx context.Context, params Params) (errs *apis.FieldError) {
 	var names []string
 	for _, p := range params {
+		if p.Value.Type == ParamTypeObject {
+			// Object type parameter is a beta feature and will fail validation if it's used in a taskrun spec
+			// when the enable-api-fields feature gate is not "alpha" or "beta".
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields))
+		}
 		names = append(names, p.Name)
 	}
 	return errs.Also(validateNoDuplicateNames(names, false))
