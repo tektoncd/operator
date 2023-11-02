@@ -24,7 +24,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
-	"github.com/tektoncd/pipeline/pkg/apis/version"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -65,6 +64,7 @@ func (p *Pipeline) Validate(ctx context.Context) *apis.FieldError {
 // Validate checks that taskNames in the Pipeline are valid and that the graph
 // of Tasks expressed in the Pipeline makes sense.
 func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
+	errs = errs.Also(ps.ValidateBetaFields(ctx))
 	if equality.Semantic.DeepEqual(ps, &PipelineSpec{}) {
 		errs = errs.Also(apis.ErrGeneric("expected at least one, got none", "description", "params", "resources", "tasks", "workspaces"))
 	}
@@ -87,10 +87,63 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validatePipelineResults(ps.Results, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateTasksAndFinallySection(ps))
 	errs = errs.Also(validateFinalTasks(ps.Tasks, ps.Finally))
-	errs = errs.Also(validateWhenExpressions(ps.Tasks, ps.Finally))
+	errs = errs.Also(validateWhenExpressions(ctx, ps.Tasks, ps.Finally))
 	errs = errs.Also(validateMatrix(ctx, ps.Tasks).ViaField("tasks"))
 	errs = errs.Also(validateMatrix(ctx, ps.Finally).ViaField("finally"))
-	errs = errs.Also(validateResultsFromMatrixedPipelineTasksNotConsumed(ps.Tasks, ps.Finally))
+	return errs
+}
+
+// ValidateBetaFields returns an error if the PipelineSpec uses beta specifications governed by
+// `enable-api-fields` but does not have "enable-api-fields" set to "alpha" or "beta".
+func (ps *PipelineSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError {
+	var errs *apis.FieldError
+	// Object parameters
+	for i, p := range ps.Params {
+		if p.Type == ParamTypeObject {
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields).ViaFieldIndex("params", i))
+		}
+	}
+	// Indexing into array parameters
+	arrayParamIndexingRefs := ps.GetIndexingReferencesToArrayParams()
+	if len(arrayParamIndexingRefs) != 0 {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "indexing into array parameters", config.BetaAPIFields))
+	}
+	// array and object results
+	for i, result := range ps.Results {
+		switch result.Type {
+		case ResultsTypeObject:
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object results", config.BetaAPIFields).ViaFieldIndex("results", i))
+		case ResultsTypeArray:
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "array results", config.BetaAPIFields).ViaFieldIndex("results", i))
+		case ResultsTypeString:
+		default:
+		}
+	}
+	for i, pt := range ps.Tasks {
+		errs = errs.Also(pt.validateBetaFields(ctx).ViaFieldIndex("tasks", i))
+	}
+	for i, pt := range ps.Finally {
+		errs = errs.Also(pt.validateBetaFields(ctx).ViaFieldIndex("finally", i))
+	}
+
+	return errs
+}
+
+// validateBetaFields returns an error if the PipelineTask uses beta features but does not
+// have "enable-api-fields" set to "alpha" or "beta".
+func (pt *PipelineTask) validateBetaFields(ctx context.Context) *apis.FieldError {
+	var errs *apis.FieldError
+	if pt.TaskRef != nil {
+		// Resolvers
+		if pt.TaskRef.Resolver != "" {
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "taskref.resolver", config.BetaAPIFields))
+		}
+		if len(pt.TaskRef.Params) > 0 {
+			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "taskref.params", config.BetaAPIFields))
+		}
+	} else if pt.TaskSpec != nil {
+		errs = errs.Also(pt.TaskSpec.ValidateBetaFields(ctx))
+	}
 	return errs
 }
 
@@ -160,6 +213,17 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 		NamespacedTaskKind: true,
 		ClusterTaskKind:    true,
 	}
+
+	if pt.OnError != "" {
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "OnError", config.AlphaAPIFields))
+		if pt.OnError != PipelineTaskContinue && pt.OnError != PipelineTaskStopAndFail {
+			errs = errs.Also(apis.ErrInvalidValue(pt.OnError, "OnError", "PipelineTask OnError must be either \"continue\" or \"stopAndFail\""))
+		}
+		if pt.OnError == PipelineTaskContinue && pt.Retries > 0 {
+			errs = errs.Also(apis.ErrGeneric("PipelineTask OnError cannot be set to \"continue\" when Retries is greater than 0"))
+		}
+	}
+
 	cfg := config.FromContextOrDefaults(ctx)
 	// Pipeline task having taskRef/taskSpec with APIVersion is classified as custom task
 	switch {
@@ -182,9 +246,9 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
 	if pt.IsMatrixed() {
-		// This is an alpha feature and will fail validation if it's used in a pipeline spec
-		// when the enable-api-fields feature gate is anything but "alpha".
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, "matrix", config.AlphaAPIFields))
+		// This is a beta feature and will fail validation if it's used in a pipeline spec
+		// when the enable-api-fields feature gate is set to "stable".
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "matrix", config.BetaAPIFields))
 		errs = errs.Also(pt.Matrix.validateCombinationsCount(ctx))
 		errs = errs.Also(pt.Matrix.validateUniqueParams())
 	}
@@ -210,15 +274,6 @@ func (pt PipelineTask) validateEmbeddedOrType() (errs *apis.FieldError) {
 		}
 	}
 	return
-}
-
-func (pt *PipelineTask) validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks sets.String) (errs *apis.FieldError) {
-	for _, ref := range PipelineTaskResultRefs(pt) {
-		if matrixedPipelineTasks.Has(ref.PipelineTask) {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("consuming results from matrixed task %s is not allowed", ref.PipelineTask), ""))
-		}
-	}
-	return errs
 }
 
 func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *apis.FieldError) {
@@ -259,11 +314,11 @@ func (pt PipelineTask) validateRefOrSpec(ctx context.Context) (errs *apis.FieldE
 		nonNilFields = append(nonNilFields, taskSpec)
 	}
 	if pt.PipelineRef != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, pipelineRef, config.AlphaAPIFields))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, pipelineRef, config.AlphaAPIFields))
 		nonNilFields = append(nonNilFields, pipelineRef)
 	}
 	if pt.PipelineSpec != nil {
-		errs = errs.Also(version.ValidateEnabledAPIFields(ctx, pipelineSpec, config.AlphaAPIFields))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, pipelineSpec, config.AlphaAPIFields))
 		nonNilFields = append(nonNilFields, pipelineSpec)
 	}
 
@@ -707,12 +762,12 @@ func validateResultsVariablesExpressionsInFinally(expressions []string, pipeline
 	return errs
 }
 
-func validateWhenExpressions(tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
+func validateWhenExpressions(ctx context.Context, tasks []PipelineTask, finalTasks []PipelineTask) (errs *apis.FieldError) {
 	for i, t := range tasks {
-		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("tasks", i))
+		errs = errs.Also(t.WhenExpressions.validate(ctx).ViaFieldIndex("tasks", i))
 	}
 	for i, t := range finalTasks {
-		errs = errs.Also(t.WhenExpressions.validate().ViaFieldIndex("finally", i))
+		errs = errs.Also(t.WhenExpressions.validate(ctx).ViaFieldIndex("finally", i))
 	}
 	return errs
 }
@@ -731,21 +786,103 @@ func validateMatrix(ctx context.Context, tasks []PipelineTask) (errs *apis.Field
 	for idx, task := range tasks {
 		errs = errs.Also(task.validateMatrix(ctx).ViaIndex(idx))
 	}
+	errs = errs.Also(validateTaskResultsFromMatrixedPipelineTasksConsumed(tasks))
 	return errs
 }
 
-func validateResultsFromMatrixedPipelineTasksNotConsumed(tasks []PipelineTask, finally []PipelineTask) (errs *apis.FieldError) {
-	matrixedPipelineTasks := sets.String{}
-	for _, pt := range tasks {
-		if pt.IsMatrixed() {
-			matrixedPipelineTasks.Insert(pt.Name)
+// findAndValidateResultRefsForMatrix checks that any result references to Matrixed PipelineTasks if consumed
+// by another PipelineTask that the entire array of results produced by a matrix is consumed in aggregate
+// since consuming a singular result produced by a matrix is currently not supported
+func findAndValidateResultRefsForMatrix(tasks []PipelineTask, taskMapping map[string]PipelineTask) (resultRefs []*ResultRef, errs *apis.FieldError) {
+	for _, t := range tasks {
+		for _, p := range t.Params {
+			if expressions, ok := GetVarSubstitutionExpressionsForParam(p); ok {
+				if LooksLikeContainsResultRefs(expressions) {
+					resultRefs, errs = validateMatrixedPipelineTaskConsumed(expressions, taskMapping)
+					if errs != nil {
+						return nil, errs
+					}
+				}
+			}
 		}
 	}
-	for idx, pt := range tasks {
-		errs = errs.Also(pt.validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks).ViaFieldIndex("tasks", idx))
+	return resultRefs, errs
+}
+
+// validateMatrixedPipelineTaskConsumed checks that any Matrixed Pipeline Task that the is being consumed is consumed in
+// aggregate [*] since consuming a singular result produced by a matrix is currently not supported
+func validateMatrixedPipelineTaskConsumed(expressions []string, taskMapping map[string]PipelineTask) (resultRefs []*ResultRef, errs *apis.FieldError) {
+	var filteredExpressions []string
+	for _, expression := range expressions {
+		// ie. "tasks.<pipelineTaskName>.results.<resultName>[*]"
+		subExpressions := strings.Split(expression, ".")
+		pipelineTask := subExpressions[1] // pipelineTaskName
+		taskConsumed := taskMapping[pipelineTask]
+		if taskConsumed.IsMatrixed() {
+			if !strings.HasSuffix(expression, "[*]") {
+				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("A matrixed pipelineTask can only be consumed in aggregate using [*] notation, but is currently set to %s", expression)))
+			}
+			filteredExpressions = append(filteredExpressions, expression)
+		}
 	}
-	for idx, pt := range finally {
-		errs = errs.Also(pt.validateResultsFromMatrixedPipelineTasksNotConsumed(matrixedPipelineTasks).ViaFieldIndex("finally", idx))
+	return NewResultRefs(filteredExpressions), errs
+}
+
+// validateTaskResultsFromMatrixedPipelineTasksConsumed checks that any Matrixed Pipeline Task that the is being consumed
+// is consumed in aggregate [*] since consuming a singular result produced by a matrix is currently not supported.
+// It also validates that a matrix emitting results can only emit results with the underlying type string
+// if those results are being consumed by another PipelineTask.
+func validateTaskResultsFromMatrixedPipelineTasksConsumed(tasks []PipelineTask) (errs *apis.FieldError) {
+	taskMapping := createTaskMapping(tasks)
+	resultRefs, errs := findAndValidateResultRefsForMatrix(tasks, taskMapping)
+	if errs != nil {
+		return errs
+	}
+
+	errs = errs.Also(validateMatrixEmittingStringResults(resultRefs, taskMapping))
+	return errs
+}
+
+// createTaskMapping maps the PipelineTaskName to the PipelineTask to easily access
+// the pipelineTask by Name
+func createTaskMapping(tasks []PipelineTask) (taskMap map[string]PipelineTask) {
+	taskMapping := make(map[string]PipelineTask)
+	for _, task := range tasks {
+		taskMapping[task.Name] = task
+	}
+	return taskMapping
+}
+
+// validateMatrixEmittingStringResults checks a matrix emitting results can only emit results with the underlying type string
+// if those results are being consumed by another PipelineTask.
+func validateMatrixEmittingStringResults(resultRefs []*ResultRef, taskMapping map[string]PipelineTask) (errs *apis.FieldError) {
+	for _, resultRef := range resultRefs {
+		task := taskMapping[resultRef.PipelineTask]
+		resultName := resultRef.Result
+		if task.TaskRef != nil {
+			referencedTaskName := task.TaskRef.Name
+			referencedTask := taskMapping[referencedTaskName]
+			if referencedTask.TaskSpec != nil {
+				errs = errs.Also(validateStringResults(referencedTask.TaskSpec.Results, resultName))
+			}
+		} else if task.TaskSpec != nil {
+			errs = errs.Also(validateStringResults(task.TaskSpec.Results, resultName))
+		}
+	}
+	return errs
+}
+
+// validateStringResults ensure that the result type is string
+func validateStringResults(results []TaskResult, resultName string) (errs *apis.FieldError) {
+	for _, result := range results {
+		if result.Name == resultName {
+			if result.Type != ResultsTypeString {
+				errs = errs.Also(apis.ErrInvalidValue(
+					fmt.Sprintf("Matrixed PipelineTasks emitting results must have an underlying type string, but result %s has type %s in pipelineTask", resultName, string(result.Type)),
+					"",
+				))
+			}
+		}
 	}
 	return errs
 }

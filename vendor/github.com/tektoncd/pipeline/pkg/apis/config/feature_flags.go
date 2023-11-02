@@ -27,12 +27,18 @@ import (
 )
 
 const (
-	// StableAPIFields is the value used for "enable-api-fields" when only stable APIs should be usable.
+	// StableAPIFields is the value used for API-driven features of stable stability level.
 	StableAPIFields = "stable"
-	// AlphaAPIFields is the value used for "enable-api-fields" when alpha APIs should be usable as well.
+	// AlphaAPIFields is the value used for API-driven features of alpha stability level.
 	AlphaAPIFields = "alpha"
-	// BetaAPIFields is the value used for "enable-api-fields" when beta APIs should be usable as well.
+	// BetaAPIFields is the value used for API-driven features of beta stability level.
 	BetaAPIFields = "beta"
+	// Features of "alpha" stability level are disabled by default
+	DefaultAlphaFeatureEnabled = false
+	// Features of "beta" stability level are disabled by default
+	DefaultBetaFeatureEnabled = false
+	// Features of "stable" stability level are enabled by default
+	DefaultStableFeatureEnabled = true
 	// FailNoMatchPolicy is the value used for "trusted-resources-verification-no-match-policy" to fail TaskRun or PipelineRun
 	// when no matching policies are found
 	FailNoMatchPolicy = "fail"
@@ -88,6 +94,18 @@ const (
 	DefaultSetSecurityContext = false
 	// DefaultCoschedule is the default value for coschedule
 	DefaultCoschedule = CoscheduleWorkspaces
+	// KeepPodOnCancel is the flag used to enable cancelling a pod using the entrypoint, and keep pod on cancel
+	KeepPodOnCancel = "keep-pod-on-cancel"
+	// DefaultEnableKeepPodOnCancel is the default value for "keep-pod-on-cancel"
+	DefaultEnableKeepPodOnCancel = false
+	// EnableCELInWhenExpression is the flag to enabled CEL in WhenExpression
+	EnableCELInWhenExpression = "enable-cel-in-whenexpression"
+	// DefaultEnableCELInWhenExpression is the default value for EnableCELInWhenExpression
+	DefaultEnableCELInWhenExpression = false
+	// EnableStepActions is the flag to enable the use of StepActions in Steps
+	EnableStepActions = "enable-step-actions"
+	// DefaultEnableStepActions is the default value for EnableStepActions
+	DefaultEnableStepActions = false
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -124,6 +142,7 @@ type FeatureFlags struct {
 	SendCloudEventsForRuns           bool
 	AwaitSidecarReadiness            bool
 	EnforceNonfalsifiability         string
+	EnableKeepPodOnCancel            bool
 	// VerificationNoMatchPolicy is the feature flag for "trusted-resources-verification-no-match-policy"
 	// VerificationNoMatchPolicy can be set to "ignore", "warn" and "fail" values.
 	// ignore: skip trusted resources verification when no matching verification policies found
@@ -135,6 +154,8 @@ type FeatureFlags struct {
 	MaxResultSize             int
 	SetSecurityContext        bool
 	Coschedule                string
+	EnableCELInWhenExpression bool
+	EnableStepActions         bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -195,14 +216,22 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setMaxResultSize(cfgMap, DefaultMaxResultSize, &tc.MaxResultSize); err != nil {
 		return nil, err
 	}
+	if err := setFeature(KeepPodOnCancel, DefaultEnableKeepPodOnCancel, &tc.EnableKeepPodOnCancel); err != nil {
+		return nil, err
+	}
 	if err := setEnforceNonFalsifiability(cfgMap, &tc.EnforceNonfalsifiability); err != nil {
 		return nil, err
 	}
 	if err := setFeature(setSecurityContextKey, DefaultSetSecurityContext, &tc.SetSecurityContext); err != nil {
 		return nil, err
 	}
-
 	if err := setCoschedule(cfgMap, DefaultCoschedule, tc.DisableAffinityAssistant, &tc.Coschedule); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableCELInWhenExpression, DefaultEnableCELInWhenExpression, &tc.EnableCELInWhenExpression); err != nil {
+		return nil, err
+	}
+	if err := setFeature(EnableStepActions, DefaultEnableStepActions, &tc.EnableStepActions); err != nil {
 		return nil, err
 	}
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
@@ -342,4 +371,19 @@ func GetVerificationNoMatchPolicy(ctx context.Context) string {
 // IsSpireEnabled checks if non-falsifiable provenance is enforced through SPIRE
 func IsSpireEnabled(ctx context.Context) bool {
 	return FromContextOrDefaults(ctx).FeatureFlags.EnforceNonfalsifiability == EnforceNonfalsifiabilityWithSpire
+}
+
+// TODO(#7285): Patch the default values of new features that were added after
+// `enable-api-fields` was no longer used.
+type PerFeatureFlag struct {
+	// Name of the feature flag
+	Name string
+	// Stability level of the feature, one of StableAPIFields, BetaAPIFields or AlphaAPIFields
+	Stability string
+	// Enabled is whether the feature is turned on
+	Enabled bool
+	// Deprecated indicates whether the feature is deprecated
+	// +optional
+	//nolint:gocritic
+	Deprecated bool
 }

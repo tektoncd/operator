@@ -72,6 +72,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepState":                    schema_pkg_apis_pipeline_v1_StepState(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.StepTemplate":                 schema_pkg_apis_pipeline_v1_StepTemplate(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Task":                         schema_pkg_apis_pipeline_v1_Task(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskBreakpoints":              schema_pkg_apis_pipeline_v1_TaskBreakpoints(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskList":                     schema_pkg_apis_pipeline_v1_TaskList(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRef":                      schema_pkg_apis_pipeline_v1_TaskRef(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskResult":                   schema_pkg_apis_pipeline_v1_TaskResult(ref),
@@ -1891,6 +1892,13 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.PipelineSpec"),
 						},
 					},
+					"onError": {
+						SchemaProps: spec.SchemaProps{
+							Description: "OnError defines the exiting behavior of a PipelineRun on error can be set to [ continue | stopAndFail ] Note: OnError is in preview mode and not yet supported",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
@@ -3209,6 +3217,26 @@ func schema_pkg_apis_pipeline_v1_Task(ref common.ReferenceCallback) common.OpenA
 	}
 }
 
+func schema_pkg_apis_pipeline_v1_TaskBreakpoints(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TaskBreakpoints defines the breakpoint config for a particular Task",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"onFailure": {
+						SchemaProps: spec.SchemaProps{
+							Description: "if enabled, pause TaskRun on failure of a step failed step will not exit",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pipeline_v1_TaskList(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -3399,28 +3427,16 @@ func schema_pkg_apis_pipeline_v1_TaskRunDebug(ref common.ReferenceCallback) comm
 				Description: "TaskRunDebug defines the breakpoint config for a particular TaskRun",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"breakpoint": {
-						VendorExtensible: spec.VendorExtensible{
-							Extensions: spec.Extensions{
-								"x-kubernetes-list-type": "atomic",
-							},
-						},
+					"breakpoints": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
-							Items: &spec.SchemaOrArray{
-								Schema: &spec.Schema{
-									SchemaProps: spec.SchemaProps{
-										Default: "",
-										Type:    []string{"string"},
-										Format:  "",
-									},
-								},
-							},
+							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskBreakpoints"),
 						},
 					},
 				},
 			},
 		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskBreakpoints"},
 	}
 }
 
@@ -4273,7 +4289,6 @@ func schema_pkg_apis_pipeline_v1_WhenExpression(ref common.ReferenceCallback) co
 					"input": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Input is the string for guard checking which can be a static input or an output from a parent Task",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -4281,7 +4296,6 @@ func schema_pkg_apis_pipeline_v1_WhenExpression(ref common.ReferenceCallback) co
 					"operator": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Operator that represents an Input's relationship to the values",
-							Default:     "",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -4306,8 +4320,14 @@ func schema_pkg_apis_pipeline_v1_WhenExpression(ref common.ReferenceCallback) co
 							},
 						},
 					},
+					"cel": {
+						SchemaProps: spec.SchemaProps{
+							Description: "CEL is a string of Common Language Expression, which can be used to conditionally execute the task based on the result of the expression evaluation More info about CEL syntax: https://github.com/google/cel-spec/blob/master/doc/langdef.md",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
-				Required: []string{"input", "operator", "values"},
 			},
 		},
 	}

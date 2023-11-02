@@ -885,6 +885,10 @@
           "description": "Name is the name of this task within the context of a Pipeline. Name is used as a coordinate with the `from` and `runAfter` fields to establish the execution order of tasks relative to one another.",
           "type": "string"
         },
+        "onError": {
+          "description": "OnError defines the exiting behavior of a PipelineRun on error can be set to [ continue | stopAndFail ] Note: OnError is in preview mode and not yet supported",
+          "type": "string"
+        },
         "params": {
           "description": "Parameters declares parameters passed to this task.",
           "type": "array",
@@ -1645,6 +1649,16 @@
         }
       }
     },
+    "v1.TaskBreakpoints": {
+      "description": "TaskBreakpoints defines the breakpoint config for a particular Task",
+      "type": "object",
+      "properties": {
+        "onFailure": {
+          "description": "if enabled, pause TaskRun on failure of a step failed step will not exit",
+          "type": "string"
+        }
+      }
+    },
     "v1.TaskList": {
       "description": "TaskList contains a list of Task",
       "type": "object",
@@ -1751,13 +1765,8 @@
       "description": "TaskRunDebug defines the breakpoint config for a particular TaskRun",
       "type": "object",
       "properties": {
-        "breakpoint": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "default": ""
-          },
-          "x-kubernetes-list-type": "atomic"
+        "breakpoints": {
+          "$ref": "#/definitions/v1.TaskBreakpoints"
         }
       }
     },
@@ -2211,21 +2220,18 @@
     "v1.WhenExpression": {
       "description": "WhenExpression allows a PipelineTask to declare expressions to be evaluated before the Task is run to determine whether the Task should be executed or skipped",
       "type": "object",
-      "required": [
-        "input",
-        "operator",
-        "values"
-      ],
       "properties": {
+        "cel": {
+          "description": "CEL is a string of Common Language Expression, which can be used to conditionally execute the task based on the result of the expression evaluation More info about CEL syntax: https://github.com/google/cel-spec/blob/master/doc/langdef.md",
+          "type": "string"
+        },
         "input": {
           "description": "Input is the string for guard checking which can be a static input or an output from a parent Task",
-          "type": "string",
-          "default": ""
+          "type": "string"
         },
         "operator": {
           "description": "Operator that represents an Input's relationship to the values",
-          "type": "string",
-          "default": ""
+          "type": "string"
         },
         "values": {
           "description": "Values is an array of strings, which is compared against the input, for guard checking It must be non-empty",
