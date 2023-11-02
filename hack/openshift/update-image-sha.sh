@@ -48,7 +48,7 @@ declare -A IMAGES=(
   ["kn"]="registry.redhat.io/openshift-serverless-1/client-kn-rhel8"
   ["postgresql"]="registry.redhat.io/rhel8/postgresql-13"
   ["skopeo-copy"]="registry.redhat.io/rhel8/skopeo"
-  ["s2i"]="registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8"
+  ["s2i"]="registry.redhat.io/source-to-image/source-to-image-rhel8"
   ["ubi-minimal"]="registry.redhat.io/ubi8/ubi-minimal"
   ["java"]="registry.redhat.io/ubi8/openjdk-17"
 )
@@ -68,7 +68,7 @@ find_latest_versions() {
 
 find_sha_from_tag() {
   local image_url=${1:-""}
-  podman run docker.io/mplatform/manifest-tool:v2.0.0 --username=${USERNAME} --password=${PASSWORD}  inspect $image_url --raw | jq '.digest' | tr -d '"'
+  podman run --rm docker.io/mplatform/manifest-tool:v2.0.0 --username=${USERNAME} --password=${PASSWORD}  inspect $image_url --raw | jq '.digest' | tr -d '"'
 }
 
 update_image_sha() {
@@ -79,6 +79,8 @@ update_image_sha() {
   echo replacemnet var = ${image_prefix}
   sed -i -E 's%('${image_prefix}').*%\1@'${image_sha}'%' config/openshift/base/operator.yaml
   sed -i -E 's%('${image_prefix}').*%\1@'${image_sha}'%' operatorhub/openshift/config.yaml
+  sed -i -E 's%('${image_prefix}').*%\1@'${image_sha}'%' operatorhub/openshift/release-artifacts/bundle/manifests/*.yaml
+  find cmd/openshift/operator/kodata/tekton-addon/addons/ -type f -name "*.yaml" -exec sed -i -E 's%('${image_prefix}').*%\1@'${image_sha}'%' {} +
 }
 
 
