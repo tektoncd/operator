@@ -81,21 +81,21 @@ spec:
         - name: CONFIG_OBSERVABILITY_NAME
           value: tekton-config-observability
         - name: IMAGE_HUB_TEKTON_HUB_DB
-          value: registry.redhat.io/rhel8/postgresql-13@sha256:eceab3d3b02f7d24054c410054b2f125eb4ec4ac9cca9d3f21702416d55a6c5c
+          value: registry.redhat.io/rhel8/postgresql-13@sha256:8f837badac11de8a7866e137b7763bbd10418b935e82868dddf09280683c2455
         - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-          value: registry.redhat.io/rhel8/buildah@sha256:bafb452c5346d8517d94639efa90e8d6d72cd11e45d49369c3d9305784d1c3f6
+          value: registry.redhat.io/rhel8/buildah@sha256:55f5c7d88c77e1ab5a2ab8e877172b2b66cb196e21f10dc45148470d0ee8bbae
         - name: IMAGE_ADDONS_PARAM_KN_IMAGE
           value: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:bf6cf2e87fb19f7aa9a490b83c16af69834c0721220a643710a1b077959e91ca
         - name: IMAGE_ADDONS_MVN_SETTINGS
-          value: registry.redhat.io/ubi8/ubi-minimal@sha256:8d43664c250c72d35af8498c7ff76a9f0d42f16b9b3b29f0caa747121778de0e
+          value: registry.redhat.io/ubi8/ubi-minimal@sha256:b93deceb59a58588d5b16429fc47f98920f84740a1f2ed6454e33275f0701b59
         - name: IMAGE_ADDONS_SKOPEO_COPY
-          value: registry.redhat.io/rhel8/skopeo@sha256:2ff1fa13afd652805490bc0138aefcc8611f865c17fa4103a55b8ed9a721828e
+          value: registry.redhat.io/rhel8/skopeo@sha256:91f6ffc3be778ebeb59a0da528f93da5a0332b61d1e689ffdbaf159d25cabaeb
         - name: IMAGE_ADDONS_GENERATE
-          value: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
+          value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:ac8a73e466485cc8b36c7f889b6614901915cdeb63a5f955e2fbb227744962f8
         - name: IMAGE_ADDONS_GEN_ENV_FILE
-          value: registry.redhat.io/ocp-tools-4-tech-preview/source-to-image-rhel8@sha256:98d8cb3a255641ca6a1bce854e5e2460c20de9fb9b28e3cc67eb459f122873dd
+          value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:ac8a73e466485cc8b36c7f889b6614901915cdeb63a5f955e2fbb227744962f8
         - name: IMAGE_ADDONS_PARAM_MAVEN_IMAGE
-          value: registry.redhat.io/ubi8/openjdk-17@sha256:7942acf43a41b8fd202de7c5f7745d9732fae00a401b3da06e1ac988ac26ba4d
+          value: registry.redhat.io/ubi8/openjdk-17@sha256:af305e087061cbaa4107ce0b304a1ef987f6b54bae3f75bfd529cfd084cba9b5
       - name: openshift-pipelines-operator-cluster-operations  # tektoninstallerset reconciler
         image: ko://github.com/tektoncd/operator/cmd/openshift/operator
         args:
