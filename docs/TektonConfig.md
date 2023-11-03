@@ -163,7 +163,7 @@ config:
 
 This is an `Optional` section.
 
-**NOTE**: If `spec.config.priorityClassName` is used, then the required [`priorityClass`][priorityClass] is 
+**NOTE**: If `spec.config.priorityClassName` is used, then the required [`priorityClass`][priorityClass] is
 expected to be created by the user to get the Tekton resources pods in running state
 ### Pipeline
 Pipeline section allows user to customize the Tekton pipeline features. This allow user to customize the values in configmaps.
@@ -287,8 +287,8 @@ By default pruner job will be created from the global pruner config (`spec.prune
 - `operator.tekton.dev/prune.resources` - can be `taskrun` and/or `pipelinerun`, both value can be specified with comma separated. example: `taskrun,pipelinerun`
 - `operator.tekton.dev/prune.strategy` - allowed values: either `keep` or `keep-since`
 
-> ### Note: 
-> if a global value is not present the following values will be consider as default value <br> 
+> ### Note:
+> if a global value is not present the following values will be consider as default value <br>
 > `resources: pipelinerun` <br>
 > `keep: 100` <br>
 ### Addon
@@ -313,7 +313,7 @@ of Operator.
 ### Hub
 
 This is to enable/disable showing hub resources in pipeline builder of devconsole(OpenShift UI). By default, the field is
-not there in the config object. If you want to disable the integration, you can add the param like below in config with value `false`. 
+not there in the config object. If you want to disable the integration, you can add the param like below in config with value `false`.
 The possible values are `true` and `false`.
 
 Example:
@@ -383,7 +383,7 @@ spec:
 ```
 Under the `hub-resolver-config`, the `tekton-hub-api` and `artifact-hub-api` will be passed as environment variable into `tekton-pipelines-remote-resolvers` controller.<br>
 In the deployment the environment name will be converted as follows,
-* `tekton-hub-api` => `TEKTON_HUB_API` 
+* `tekton-hub-api` => `TEKTON_HUB_API`
 * `artifact-hub-api` => `ARTIFACT_HUB_API`
 
 ### OpenShiftPipelinesAsCode
@@ -429,12 +429,12 @@ platforms:
 [priorityClass]: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
 
 ### Additional fields as `options`
-There is a filed called `options` available in all the components.<br>
+There is a field called `options` available in all the components.<br>
 
->**NOTE:** There is a possibility to have two different values for a field.<br> 
-An example: with a pre-defined field you can set value and the same filed may be defined under `options` as well. In that case value from `options` will be final.
+>**NOTE:** There is a possibility to have two different values for a field.<br>
+An example: with a pre-defined field you can set value and the same field may be defined under `options` as well. In that case value from `options` will be final.
 
-`options` filed is defined as follows,
+`options` field is defined as follows:
 ```yaml
 options:
   disabled: false
@@ -478,7 +478,7 @@ options:
           }
 
   deployments:
-    tekton-pipelines-controller:
+    tekton-pipelines-controller: # name of the deployment
       metadata:
         labels:
           custom-label: "foo"
@@ -487,13 +487,19 @@ options:
       spec:
         replicas: 2
         template:
+          metadata:
+            labels:
+              custom-label: "foo"
+            annotations:
+              custom-annotation: "foo"
           spec:
             containers:
               - name: tekton-pipelines-controller
                 env:
                   - name: CONFIG_LOGGING_NAME
                     value: pipeline-config-logging
-  statefulSets:
+
+  statefulSets:  # name of the statefulset
     web:
       metadata:
         labels:
@@ -541,12 +547,12 @@ The following fields are supported in `deployment`
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
-        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS**
       * `containers` - updates containers
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
-        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS**
 
 #### StatefulSets
 Supports to update the existing StatefulSet. But not supported to create new StatefulSet.
@@ -571,11 +577,11 @@ The following fields are supported in `StatefulSet`
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
-        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS**
       * `containers` - updates containers
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
-        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS**
 
 **NOTE**: If a Deployment or StatefulSet has a Horizontal Pod Autoscaling (HPA) and is in active state, Operator will not control the replicas to that resource. However if `status.desiredReplicas` and `spec.minReplicas` not present in HPA, operator takes the control. Also if HPA disabled, operator takes control. Even though the operator takes the control, the replicas value will be adjusted to the hpa's scaling range.

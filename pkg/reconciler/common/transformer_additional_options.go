@@ -135,6 +135,66 @@ func (ot *OptionsTransformer) updateAnnotations(u *unstructured.Unstructured, an
 	return nil
 }
 
+func (ot *OptionsTransformer) updatePodTemplateLabels(u *unstructured.Unstructured, labels map[string]string) error {
+	if len(labels) == 0 {
+		return nil
+	}
+
+	actualLabels, _, err := unstructured.NestedMap(u.Object, "spec", "template", "metadata", "labels")
+
+	if err != nil {
+		return err
+	}
+
+	if actualLabels == nil {
+		actualLabels = make(map[string]interface{})
+	}
+
+	for labelKey, labelValue := range labels {
+		actualLabels[labelKey] = labelValue
+	}
+
+	if actualLabels == nil {
+		unstructured.RemoveNestedField(u.Object, "spec", "template", "metadata", "labels")
+	}
+
+	if err := unstructured.SetNestedMap(u.Object, actualLabels, "spec", "template", "metadata", "labels"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ot *OptionsTransformer) updatePodTemplateAnnotations(u *unstructured.Unstructured, annotations map[string]string) error {
+	if len(annotations) == 0 {
+		return nil
+	}
+
+	actualAnnotations, _, err := unstructured.NestedMap(u.Object, "spec", "template", "metadata", "annotations")
+
+	if err != nil {
+		return err
+	}
+
+	if actualAnnotations == nil {
+		actualAnnotations = make(map[string]interface{})
+	}
+
+	for annotationKey, annotationValue := range annotations {
+		actualAnnotations[annotationKey] = annotationValue
+	}
+
+	if actualAnnotations == nil {
+		unstructured.RemoveNestedField(u.Object, "spec", "template", "metadata", "annotations")
+	}
+
+	if err := unstructured.SetNestedMap(u.Object, actualAnnotations, "spec", "template", "metadata", "annotations"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (ot *OptionsTransformer) updateConfigMaps(u *unstructured.Unstructured) error {
 
 	optionsConfigMap, found := ot.options.ConfigMaps[u.GetName()]
@@ -237,6 +297,22 @@ func (ot *OptionsTransformer) updateDeployments(u *unstructured.Unstructured) er
 	err = ot.updateAnnotations(u, deploymentOptions.Annotations)
 	if err != nil {
 		return err
+	}
+
+	// update pod template labels
+	if len(deploymentOptions.Spec.Template.ObjectMeta.Labels) > 0 {
+		err = ot.updatePodTemplateLabels(u, deploymentOptions.Spec.Template.Labels)
+		if err != nil {
+			return err
+		}
+	}
+
+	// update pod template annotations
+	if len(deploymentOptions.Spec.Template.ObjectMeta.Annotations) > 0 {
+		err = ot.updatePodTemplateAnnotations(u, deploymentOptions.Spec.Template.Annotations)
+		if err != nil {
+			return err
+		}
 	}
 
 	// convert unstructured object to deployment

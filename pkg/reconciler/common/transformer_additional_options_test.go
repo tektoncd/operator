@@ -113,6 +113,15 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 						Spec: appsv1.DeploymentSpec{
 							Replicas: ptr.Int32(4),
 							Template: corev1.PodTemplateSpec{
+								ObjectMeta: metav1.ObjectMeta{
+									Labels: map[string]string{
+										"owner": "some-team",
+									},
+									Annotations: map[string]string{
+										"prometheus.io/scrape": "true",
+										"prometheus.io/port":   "9090",
+									},
+								},
 								Spec: corev1.PodSpec{
 									NodeSelector: map[string]string{
 										"zone": "east",

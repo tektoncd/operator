@@ -64,7 +64,11 @@ spec:
       creationTimestamp: null
       labels:
         app.kubernetes.io/name: controller
-        operator.tekton.dev/deployment-spec-applied-hash: dd069273de050a47c5552fd79a70d4c3
+        operator.tekton.dev/deployment-spec-applied-hash: 92745dd0d03f316d534b70284c114dd5
+        owner: "some-team"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
     spec:
       affinity:
         nodeAffinity:
