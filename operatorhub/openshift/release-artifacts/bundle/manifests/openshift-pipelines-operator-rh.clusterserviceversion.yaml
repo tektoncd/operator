@@ -860,7 +860,7 @@ spec:
                 - name: IMAGE_ADDONS_SKOPEO_COPY
                   value: registry.redhat.io/rhel8/skopeo@sha256:91f6ffc3be778ebeb59a0da528f93da5a0332b61d1e689ffdbaf159d25cabaeb
                 - name: IMAGE_ADDONS_GENERATE
-                  value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:ac8a73e466485cc8b36c7f889b6614901915cdeb63a5f955e2fbb227744962f8
+                  value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:6a6025914296a62fdf2092c3a40011bd9b966a6806b094d51eec5e1bd5026ef4
                 - name: IMAGE_PIPELINES_TEKTON_PIPELINES_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-controller-rhel8@
                 - name: IMAGE_PIPELINES_WEBHOOK
@@ -978,7 +978,7 @@ spec:
     name: IMAGE_ADDONS_PARAM_KN_IMAGE
   - image: registry.redhat.io/rhel8/skopeo@sha256:91f6ffc3be778ebeb59a0da528f93da5a0332b61d1e689ffdbaf159d25cabaeb
     name: IMAGE_ADDONS_SKOPEO_COPY
-  - image: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:ac8a73e466485cc8b36c7f889b6614901915cdeb63a5f955e2fbb227744962f8
+  - image: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:6a6025914296a62fdf2092c3a40011bd9b966a6806b094d51eec5e1bd5026ef4
     name: IMAGE_ADDONS_GENERATE
   - image: registry.redhat.io/ubi8/ubi-minimal@sha256:b93deceb59a58588d5b16429fc47f98920f84740a1f2ed6454e33275f0701b59
     name: IMAGE_ADDONS_MVN_SETTINGS
@@ -1016,7 +1016,7 @@ spec:
     name: IMAGE_ADDONS_SKOPEO_COPY
   - image: registry.redhat.io/rhel8/buildah@sha256:55f5c7d88c77e1ab5a2ab8e877172b2b66cb196e21f10dc45148470d0ee8bbae
     name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-  - image: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:ac8a73e466485cc8b36c7f889b6614901915cdeb63a5f955e2fbb227744962f8
+  - image: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:6a6025914296a62fdf2092c3a40011bd9b966a6806b094d51eec5e1bd5026ef4
     name: IMAGE_ADDONS_GENERATE
   - image: registry.redhat.io/ubi8/ubi-minimal@sha256:b93deceb59a58588d5b16429fc47f98920f84740a1f2ed6454e33275f0701b59
     name: IMAGE_ADDONS_MVN_SETTINGS
