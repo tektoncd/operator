@@ -635,9 +635,62 @@ func TestCopyConfigMapValues(t *testing.T) {
 	assert.Equal(t, cm.Data["default-kind"], "task")
 	assert.Equal(t, cm.Data["default-type"], "artifact")
 
-	// extra fields in expected configmap will be ignore and will not be added
-	assert.Equal(t, cm.Data["ignore-me-field"], "")
+	// extra fields in expected configmap will be added
+	assert.Equal(t, cm.Data["ignore-me-field"], "ignore-me")
 
+}
+
+func TestCopyEmptyConfigMapValues(t *testing.T) {
+	testData := path.Join("testdata", "test-empty-config.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	expectedValues := map[string]string{
+		"default-tekton-hub-catalog":        "abc-catalog",
+		"default-artifact-hub-task-catalog": "some-random-catalog",
+		"ignore-me-field":                   "ignore-me",
+	}
+
+	manifest, err = manifest.Transform(CopyConfigMap("empty-config", expectedValues))
+	assertNoEror(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
+	assertNoEror(t, err)
+	// ConfigMap will have all expected values
+	assert.Equal(t, cm.Data["default-tekton-hub-catalog"], "abc-catalog")
+	assert.Equal(t, cm.Data["default-artifact-hub-task-catalog"], "some-random-catalog")
+	assert.Equal(t, cm.Data["ignore-me-field"], "ignore-me")
+}
+
+func TestCopyConfigMapWithEmptyExpectedValues(t *testing.T) {
+	testData := path.Join("testdata", "test-empty-config.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	expectedValues := map[string]string{}
+
+	manifest, err = manifest.Transform(CopyConfigMap("empty-config", expectedValues))
+	assertNoEror(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
+	assertNoEror(t, err)
+}
+
+func TestCopyConfigMapWithWrongKind(t *testing.T) {
+	testData := path.Join("testdata", "test-namespace-inject.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoEror(t, err)
+
+	expectedValues := map[string]string{}
+
+	manifest, err = manifest.Transform(CopyConfigMap("tekton-pipelines", expectedValues))
+	assertNoEror(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
+	assertNoEror(t, err)
 }
 
 func TestReplaceDeploymentArg(t *testing.T) {
@@ -707,23 +760,20 @@ func TestReplaceNamespaceInClusterRoleBinding(t *testing.T) {
 	}
 }
 
-func TestCopyConfigMapWithForceUpdate(t *testing.T) {
+func TestCopyConfigMap(t *testing.T) {
 	tests := []struct {
-		name        string
-		forceUpdate bool
-		data        map[string]string
+		name string
+		data map[string]string
 	}{
 		{
-			name:        "force-update-disabled",
-			forceUpdate: false,
+			name: "force-update-disabled",
 			data: map[string]string{
 				"default-tekton-hub-catalog": "foo",
 				"default-kind":               "pipeline",
 			},
 		},
 		{
-			name:        "force-update-enabled",
-			forceUpdate: true,
+			name: "force-update-enabled",
 			data: map[string]string{
 				"default-tekton-hub-catalog": "foo",
 				"default-kind":               "pipeline",
@@ -741,7 +791,7 @@ func TestCopyConfigMapWithForceUpdate(t *testing.T) {
 			manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 			assert.NilError(t, err)
 
-			manifest, err = manifest.Transform(CopyConfigMapWithForceUpdate(configMapName, test.data, test.forceUpdate))
+			manifest, err = manifest.Transform(CopyConfigMap(configMapName, test.data))
 			assert.NilError(t, err)
 
 			cm := &corev1.ConfigMap{}
