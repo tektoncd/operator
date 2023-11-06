@@ -44,7 +44,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.DeploymentImages(images),
 			common.AddConfiguration(pac.Spec.Config),
 			occommon.ApplyCABundles,
-			common.CopyConfigMapWithForceUpdate(pipelinesAsCodeCM, pac.Spec.Settings, true),
+			common.CopyConfigMap(pipelinesAsCodeCM, pac.Spec.Settings),
 			occommon.UpdateServiceMonitorTargetNamespace(pac.Spec.TargetNamespace),
 		}
 

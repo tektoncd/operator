@@ -767,16 +767,15 @@ func AddJobRestrictedPSA() mf.Transformer {
 	}
 }
 
-// CopyConfigMapWithForceUpdate will copy all the values from the passed configmap to the configmap
-// in the manifest, the fields which are in manifest configmap will only be copied
-// any extra fields will be copied only if the "forceUpdate" is true
-func CopyConfigMapWithForceUpdate(configMapName string, expectedValues map[string]string, forceUpdate bool) mf.Transformer {
+// CopyConfigMap will copy all the values from the passed configmap to the configmap
+// in the manifest and any extra fields will be added in the manifest
+func CopyConfigMap(configMapName string, expectedValues map[string]string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		kind := strings.ToLower(u.GetKind())
 		if kind != "configmap" {
 			return nil
 		}
-		if u.GetName() != configMapName {
+		if u.GetName() != configMapName || len(expectedValues) == 0 {
 			return nil
 		}
 
@@ -785,19 +784,15 @@ func CopyConfigMapWithForceUpdate(configMapName string, expectedValues map[strin
 		if err != nil {
 			return err
 		}
-		if cm.Data == nil && !forceUpdate {
-			// we don't add any field in the manifest configmap, if force update is disabled
-			// we will copy any value if defined by user
-			return nil
+
+		if cm.Data == nil {
+			cm.Data = map[string]string{}
 		}
 
 		for key, value := range expectedValues {
-			// check if the key is defined in the config map
-			_, ok := cm.Data[key]
-			// updates values, if the key found or forceUpdate is enabled
-			if ok || forceUpdate {
-				cm.Data[key] = value
-			}
+			// updates values , if the key is found,
+			// adds key and value, if the key is not found
+			cm.Data[key] = value
 		}
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
 		if err != nil {
@@ -807,13 +802,6 @@ func CopyConfigMapWithForceUpdate(configMapName string, expectedValues map[strin
 		u.SetUnstructuredContent(unstrObj)
 		return nil
 	}
-}
-
-// CopyConfigMap will copy all the values from the passed configmap to the configmap
-// in the manifest, the fields which are in manifest configmap will only be copied
-// any extra field will be ignored
-func CopyConfigMap(configMapName string, expectedValues map[string]string) mf.Transformer {
-	return CopyConfigMapWithForceUpdate(configMapName, expectedValues, false)
 }
 
 func ReplaceDeploymentArg(deploymentName, existingArg, newArg string) mf.Transformer {
