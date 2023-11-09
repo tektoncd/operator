@@ -91,9 +91,9 @@ spec:
         - name: IMAGE_ADDONS_SKOPEO_COPY
           value: registry.redhat.io/rhel8/skopeo@sha256:91f6ffc3be778ebeb59a0da528f93da5a0332b61d1e689ffdbaf159d25cabaeb
         - name: IMAGE_ADDONS_GENERATE
-          value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:ac8a73e466485cc8b36c7f889b6614901915cdeb63a5f955e2fbb227744962f8
+          value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:6a6025914296a62fdf2092c3a40011bd9b966a6806b094d51eec5e1bd5026ef4
         - name: IMAGE_ADDONS_GEN_ENV_FILE
-          value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:ac8a73e466485cc8b36c7f889b6614901915cdeb63a5f955e2fbb227744962f8
+          value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:6a6025914296a62fdf2092c3a40011bd9b966a6806b094d51eec5e1bd5026ef4
         - name: IMAGE_ADDONS_PARAM_MAVEN_IMAGE
           value: registry.redhat.io/ubi8/openjdk-17@sha256:af305e087061cbaa4107ce0b304a1ef987f6b54bae3f75bfd529cfd084cba9b5
       - name: openshift-pipelines-operator-cluster-operations  # tektoninstallerset reconciler
