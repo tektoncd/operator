@@ -12,3 +12,4 @@
 .venv
 
 **/.bin
+**/.DS_Store
