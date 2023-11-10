@@ -243,12 +243,12 @@ Where:
 
 - `version` is the release number i.e. `v0.13.2`
 
-- `bucket` is the URL of the bucket where the release fiel is stored, `gs://tekton-releases` by default
+- `bucket` is the URL of the bucket where the release file is stored, `gs://tekton-releases` by default
 
-- `extra-path` is the root path within the bucket where release are stored, empty by default
+- `extra-path` is the root path within the bucket where releases are stored, empty by default
 
 - `file` is the name of the release file, `release.yaml` by default
 
 - `post-file` is the name of the 2nd release file, none by default, `interceptors.yaml` by default for triggers
 
-To summarize, the deployment job will look for the release file into `<bucket>/<extra-path>/<project>/previous/<version>/<file>`
+To summarize, the deployment job will look for the release file in `<bucket>/<extra-path>/<project>/previous/<version>/<file>`

@@ -1269,8 +1269,8 @@ github.com/tektoncd/pipeline/pkg/spire/config
 github.com/tektoncd/pipeline/pkg/substitution
 github.com/tektoncd/pipeline/test/diff
 github.com/tektoncd/pipeline/test/parse
-# github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7
-## explicit; go 1.13
+# github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293
+## explicit; go 1.19
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
 # github.com/tektoncd/triggers v0.25.2

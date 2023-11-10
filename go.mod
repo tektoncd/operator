@@ -19,7 +19,7 @@ require (
 	github.com/spf13/viper v1.17.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tektoncd/pipeline v0.53.0
-	github.com/tektoncd/plumbing v0.0.0-20221102182345-5dbcfda657d7
+	github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293
 	github.com/tektoncd/triggers v0.25.2
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.26.0
