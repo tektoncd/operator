@@ -144,6 +144,7 @@ type Client struct {
 	GroupLabels                  *GroupLabelsService
 	GroupMembers                 *GroupMembersService
 	GroupMilestones              *GroupMilestonesService
+	GroupProtectedEnvironments   *GroupProtectedEnvironmentsService
 	GroupRepositoryStorageMove   *GroupRepositoryStorageMoveService
 	GroupVariables               *GroupVariablesService
 	GroupWikis                   *GroupWikisService
@@ -164,6 +165,7 @@ type Client struct {
 	Markdown                     *MarkdownService
 	MergeRequestApprovals        *MergeRequestApprovalsService
 	MergeRequests                *MergeRequestsService
+	MergeTrains                  *MergeTrainsService
 	Metadata                     *MetadataService
 	Milestones                   *MilestonesService
 	Namespaces                   *NamespacesService
@@ -365,6 +367,7 @@ func newClient(options ...ClientOptionFunc) (*Client, error) {
 	c.GroupLabels = &GroupLabelsService{client: c}
 	c.GroupMembers = &GroupMembersService{client: c}
 	c.GroupMilestones = &GroupMilestonesService{client: c}
+	c.GroupProtectedEnvironments = &GroupProtectedEnvironmentsService{client: c}
 	c.GroupRepositoryStorageMove = &GroupRepositoryStorageMoveService{client: c}
 	c.GroupVariables = &GroupVariablesService{client: c}
 	c.GroupWikis = &GroupWikisService{client: c}
@@ -385,6 +388,7 @@ func newClient(options ...ClientOptionFunc) (*Client, error) {
 	c.Markdown = &MarkdownService{client: c}
 	c.MergeRequestApprovals = &MergeRequestApprovalsService{client: c}
 	c.MergeRequests = &MergeRequestsService{client: c, timeStats: timeStats}
+	c.MergeTrains = &MergeTrainsService{client: c}
 	c.Metadata = &MetadataService{client: c}
 	c.Milestones = &MilestonesService{client: c}
 	c.Namespaces = &NamespacesService{client: c}
@@ -809,6 +813,7 @@ func (c *Client) Do(req *retryablehttp.Request, v interface{}) (*Response, error
 		return c.Do(req, v)
 	}
 	defer resp.Body.Close()
+	defer io.Copy(io.Discard, resp.Body)
 
 	// If not yet configured, try to configure the rate limiter
 	// using the response headers we just received. Fail silently
