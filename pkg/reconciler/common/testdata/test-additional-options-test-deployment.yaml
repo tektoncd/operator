@@ -64,7 +64,7 @@ spec:
       creationTimestamp: null
       labels:
         app.kubernetes.io/name: controller
-        operator.tekton.dev/deployment-spec-applied-hash: dd069273de050a47c5552fd79a70d4c3
+        operator.tekton.dev/deployment-spec-applied-hash: 1704bb3edd32937a1659b4d42c9f1669
     spec:
       affinity:
         nodeAffinity:
@@ -77,6 +77,7 @@ spec:
                       - ssd
                       - nvme
                       - ramdisk
+      priorityClassName: test
       serviceAccountName: tekton-pipelines-controller
       nodeSelector:
         zone: east

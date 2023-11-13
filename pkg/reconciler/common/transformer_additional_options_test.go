@@ -155,6 +155,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 											},
 										},
 									},
+									PriorityClassName: "test",
 									Volumes: []corev1.Volume{
 										{
 											Name: "my-custom-logs",
@@ -334,6 +335,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 											},
 										},
 									},
+									PriorityClassName: "test",
 									Volumes: []corev1.Volume{
 										{
 											Name: "my-custom-logs",
