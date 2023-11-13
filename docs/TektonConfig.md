@@ -533,6 +533,7 @@ The following fields are supported in `deployment`
   * `template`
     * `spec`
       * `affinity` - replaces the existing Affinity with this, if not empty
+      * `priorityClassName` - replaces the existing PriorityClassName with this, if not empty
       * `nodeSelector` - replaces the existing NodeSelector with this, if not empty
       * `tolerations` - replaces the existing tolerations with this, if not empty
       * `topologySpreadConstraints` - replaces the existing TopologySpreadConstraints with this, if not empty
@@ -563,6 +564,7 @@ The following fields are supported in `StatefulSet`
   * `template`
     * `spec`
       * `affinity` - replaces the existing Affinity with this, if not empty
+      * `priorityClassName` - replaces the existing PriorityClassName with this, if not empty
       * `nodeSelector` - replaces the existing NodeSelector with this, if not empty
       * `tolerations` - replaces the existing tolerations with this, if not empty
       * `topologySpreadConstraints` - replaces the existing TopologySpreadConstraints with this, if not empty

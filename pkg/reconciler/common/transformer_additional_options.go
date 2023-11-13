@@ -256,6 +256,11 @@ func (ot *OptionsTransformer) updateDeployments(u *unstructured.Unstructured) er
 		targetDeployment.Spec.Template.Spec.Affinity = deploymentOptions.Spec.Template.Spec.Affinity
 	}
 
+	// update PriorityClassName
+	if deploymentOptions.Spec.Template.Spec.PriorityClassName != "" {
+		targetDeployment.Spec.Template.Spec.PriorityClassName = deploymentOptions.Spec.Template.Spec.PriorityClassName
+	}
+
 	// update node selectors
 	if len(deploymentOptions.Spec.Template.Spec.NodeSelector) > 0 {
 		targetDeployment.Spec.Template.Spec.NodeSelector = deploymentOptions.Spec.Template.Spec.NodeSelector
@@ -439,6 +444,12 @@ func (ot *OptionsTransformer) updateStatefulSets(u *unstructured.Unstructured) e
 	// update affinity
 	if statefulSetOptions.Spec.Template.Spec.Affinity != nil {
 		targetStatefulSet.Spec.Template.Spec.Affinity = statefulSetOptions.Spec.Template.Spec.Affinity
+	}
+
+	// update priorityClassName
+	if statefulSetOptions.Spec.Template.Spec.PriorityClassName != "" {
+		targetStatefulSet.Spec.Template.Spec.PriorityClassName = statefulSetOptions.Spec.Template.Spec.PriorityClassName
+
 	}
 
 	// update node selectors
