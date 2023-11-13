@@ -20,11 +20,12 @@ weight: 100
    | Profile | Installed Component | Platform |
    |---------|---------------------|----------|
    | lite | Pipeline | Kubernetes, Openshift |
-   | basic | Pipeline, Trigger | Kubernetes, Openshift |
-   | all | Pipeline, Trigger, Dashboard | Kubernetes |
-   |  | Pipeline, Trigger, Addons, Pipelines as Code | Openshift |
+   | basic | Pipeline, Trigger, Chains | Kubernetes, Openshift |
+   | all | Pipeline, Trigger, Dashboard, Chains | Kubernetes |
+   |  | Pipeline, Trigger, Addons, Pipelines as Code, Chains | Openshift |
 
-    ```
-    # to install pipelines, triggers and dashboard (use profile 'all')
+    
+     To install pipelines, triggers, chains and dashboard (use profile 'all')
+    ``````
     $ kubectl apply -f https://raw.githubusercontent.com/tektoncd/operator/main/config/crs/kubernetes/config/all/operator_v1alpha1_config_cr.yaml
     ```
