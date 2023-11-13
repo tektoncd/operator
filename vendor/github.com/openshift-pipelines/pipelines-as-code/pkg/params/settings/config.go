@@ -24,11 +24,10 @@ const (
 	AutoConfigureNewGitHubRepoKey         = "auto-configure-new-github-repo"
 	AutoConfigureRepoNamespaceTemplateKey = "auto-configure-repo-namespace-template"
 
-	CustomConsoleNameKey         = "custom-console-name"
-	CustomConsoleURLKey          = "custom-console-url"
-	CustomConsolePRDetailKey     = "custom-console-url-pr-details"
-	CustomConsolePRTaskLogKey    = "custom-console-url-pr-tasklog"
-	CustomConsoleNamespaceURLKey = "custom-console-url-namespace"
+	CustomConsoleNameKey      = "custom-console-name"
+	CustomConsoleURLKey       = "custom-console-url"
+	CustomConsolePRDetailKey  = "custom-console-url-pr-details"
+	CustomConsolePRTaskLogKey = "custom-console-url-pr-tasklog"
 
 	SecretAutoCreateKey                          = "secret-auto-create"
 	secretAutoCreateDefaultValue                 = "true"
@@ -62,7 +61,6 @@ const (
 
 var (
 	TknBinaryName       = `tkn`
-	TknBinaryURL        = `https://tekton.dev/docs/cli/#installation`
 	hubCatalogNameRegex = regexp.MustCompile(`^catalog-(\d+)-`)
 )
 
@@ -95,11 +93,10 @@ type Settings struct {
 	ErrorDetectionNumberOfLines int
 	ErrorDetectionSimpleRegexp  string
 
-	CustomConsoleName         string
-	CustomConsoleURL          string
-	CustomConsolePRdetail     string
-	CustomConsolePRTaskLog    string
-	CustomConsoleNamespaceURL string
+	CustomConsoleName      string
+	CustomConsoleURL       string
+	CustomConsolePRdetail  string
+	CustomConsolePRTaskLog string
 
 	RememberOKToTest bool
 }
@@ -227,11 +224,6 @@ func ConfigToSettings(logger *zap.SugaredLogger, setting *Settings, config map[s
 	if setting.CustomConsolePRdetail != config[CustomConsolePRDetailKey] {
 		logger.Infof("CONFIG: setting custom console pr detail URL to %v", config[CustomConsolePRDetailKey])
 		setting.CustomConsolePRdetail = config[CustomConsolePRDetailKey]
-	}
-
-	if setting.CustomConsoleNamespaceURL != config[CustomConsoleNamespaceURLKey] {
-		logger.Infof("CONFIG: setting custom console namespace URL to %v", config[CustomConsoleNamespaceURLKey])
-		setting.CustomConsoleNamespaceURL = config[CustomConsoleNamespaceURLKey]
 	}
 
 	if setting.CustomConsolePRTaskLog != config[CustomConsolePRTaskLogKey] {

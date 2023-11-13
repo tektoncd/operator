@@ -1506,8 +1506,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.0-rc5 h1:Ygwkfw9bpDvs+c9E34SdgGOj41dX/cbdlwvlWt0pnFI=
 github.com/opencontainers/image-spec v1.1.0-rc5/go.mod h1:X4pATf0uXsnn3g5aiGIsVnJBR4mxhKzfwmvK/B2NTm8=
-github.com/openshift-pipelines/pipelines-as-code v0.22.0 h1:rScO+zPjSWwuvf7tGosxxCaHvf6I+soZWmi3u4S1qhs=
-github.com/openshift-pipelines/pipelines-as-code v0.22.0/go.mod h1:UqNaLeMtYipWdVSHD0iJ/mBK9br99q4jhbuvCNwP4A8=
+github.com/openshift-pipelines/pipelines-as-code v0.21.5 h1:jbKUUuidD6n78EI/Ibdb44BnlKImkcNttPGjcgyK0uQ=
+github.com/openshift-pipelines/pipelines-as-code v0.21.5/go.mod h1:Zg2pBr2y/XwLIpiFTlG71g3oORIMb8+7sCQaDJ7Jfss=
 github.com/openshift/api v0.0.0-20230503133300-8bbcb7ca7183 h1:t/CahSnpqY46sQR01SoS+Jt0jtjgmhgE6lFmRnO4q70=
 github.com/openshift/api v0.0.0-20230503133300-8bbcb7ca7183/go.mod h1:4VWG+W22wrB4HfBL88P40DxLEpSOaiBVxUnfalfJo9k=
 github.com/openshift/apiserver-library-go v0.0.0-20230503174907-d9b2bf6185e9 h1:7SNTyJ2LGSrPzybeL7z08e5bSY921Cm0R6/cjtZEYJw=
@@ -2683,7 +2683,7 @@ k8s.io/utils v0.0.0-20210802155522-efc7438f0176/go.mod h1:jPW/WVKK9YHAvNhRxK0md/
 k8s.io/utils v0.0.0-20221107191617-1a15be271d1d/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
 k8s.io/utils v0.0.0-20230726121419-3b25d923346b h1:sgn3ZU783SCgtaSJjpcVVlRqd6GSnlTLKgpAAttJvpI=
 k8s.io/utils v0.0.0-20230726121419-3b25d923346b/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
-knative.dev/eventing v0.38.4 h1:eH059bfeLilj2xAN6V7XXOh3wqzz5ssoMS/CIJpJfmk=
+knative.dev/eventing v0.38.0 h1:n6/k9IJ1kOvpZx4CMLqa1FG7g2iBiyKXwBu1Fy/81q4=
 knative.dev/networking v0.0.0-20220404212543-dde40b019aff h1:pqzWi29qb44TY+5xtc9vty4mSyUYvojXZGCp0y/91eo=
 knative.dev/pkg v0.0.0-20231023150739-56bfe0dd9626 h1:qFE+UDBRg6cpF5LbA0sv1XK4XZ36Z7aTRCa+HcuxnNQ=
 knative.dev/pkg v0.0.0-20231023150739-56bfe0dd9626/go.mod h1:g+UCgSKQ2f15kHYu/V3CPtoKo5F1x/2Y1ot0NSK7gA0=
