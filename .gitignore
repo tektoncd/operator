@@ -81,6 +81,7 @@ tags
 .idea/*
 
 .bin/
+.env
 
 # ignore chain certificate
 test/e2e/common/cosign.pub
