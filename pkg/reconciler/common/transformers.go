@@ -527,11 +527,7 @@ func replaceNamespaceInContainerArg(container *corev1.Container, targetNamespace
 // with key as json tag of the struct field
 func AddConfigMapValues(configMapName string, prop interface{}) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		kind := strings.ToLower(u.GetKind())
-		if kind != "configmap" {
-			return nil
-		}
-		if u.GetName() != configMapName {
+		if u.GetKind() != "ConfigMap" || u.GetName() != configMapName || prop == nil {
 			return nil
 		}
 
@@ -545,32 +541,54 @@ func AddConfigMapValues(configMapName string, prop interface{}) mf.Transformer {
 		}
 
 		values := reflect.ValueOf(prop)
-		types := values.Type()
+		// if the given properties is not struct type, do not proceed
+		if values.Kind() != reflect.Struct {
+			return nil
+		}
 
-		for i := 0; i < values.NumField(); i++ {
-			key := strings.Split(types.Field(i).Tag.Get("json"), ",")[0]
+		for index := 0; index < values.NumField(); index++ {
+			key := values.Type().Field(index).Tag.Get("json")
+			if strings.Contains(key, ",") {
+				key = strings.Split(key, ",")[0]
+			}
+
 			if key == "" {
 				continue
 			}
-			if values.Field(i).Kind() == reflect.Ptr {
-				innerElem := values.Field(i).Elem()
 
-				if !innerElem.IsValid() {
+			element := values.Field(index)
+			if element.Kind() == reflect.Ptr {
+				if element.IsNil() {
 					continue
 				}
+				// extract the actual element from the pointer
+				element = values.Field(index).Elem()
+			}
 
-				if innerElem.Kind() == reflect.Bool {
-					cm.Data[key] = strconv.FormatBool(innerElem.Bool())
-				} else if innerElem.Kind() == reflect.Uint {
-					cm.Data[key] = strconv.FormatUint(innerElem.Uint(), 10)
-				} else if innerElem.Kind() == reflect.String {
-					cm.Data[key] = innerElem.String()
-				}
+			if !element.IsValid() {
 				continue
 			}
 
-			if value := values.Field(i).String(); value != "" {
-				cm.Data[key] = value
+			_value := ""
+			switch element.Kind() {
+			case reflect.Bool:
+				_value = strconv.FormatBool(element.Bool())
+
+			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+				_value = strconv.FormatInt(element.Int(), 10)
+
+			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+				_value = strconv.FormatUint(element.Uint(), 10)
+
+			case reflect.Float32, reflect.Float64:
+				_value = strconv.FormatFloat(element.Float(), 'f', 6, 64)
+
+			case reflect.String:
+				_value = element.String()
+			}
+
+			if _value != "" {
+				cm.Data[key] = _value
 			}
 		}
 

@@ -498,6 +498,212 @@ func TestAddConfigMapValues_OptionalPipelineProperties(t *testing.T) {
 	assert.Equal(t, cm.Data["default-pod-template"], "")
 }
 
+func TestAddConfigMapValues(t *testing.T) {
+	configMapName := "test-add-config"
+	configMapNameWithData := "test-add-config-with-data"
+	testData := path.Join("testdata", "test-add-configmap-values.yaml")
+	uintPtr := uint(2048)
+
+	tests := []struct {
+		name                string
+		targetConfigMapName string
+		props               interface{}
+		expectedData        map[string]string
+		keysShouldNotBeIn   []string
+		doesConfigMapExists bool
+	}{
+		{
+			name:                "verify-values",
+			targetConfigMapName: configMapName,
+			props: struct {
+				StringValue  string   `json:"stringValue"`
+				StringPtr    *string  `json:"stringPtr"`
+				Int          int      `json:"int"`
+				Int8         int8     `json:"int8"`
+				Int16        int16    `json:"int16"`
+				Int32        int32    `json:"int32"`
+				Int64        int64    `json:"int64"`
+				Int64Ptr     *int64   `json:"int64Ptr"`
+				Uint         uint     `json:"uint"`
+				Uint8        uint8    `json:"uint8"`
+				Uint16       uint16   `json:"uint16"`
+				Uint32       uint32   `json:"uint32"`
+				Uint64       uint64   `json:"uint64"`
+				UintPtr      *uint    `json:"uintPtr"`
+				Float32      float32  `json:"float32"`
+				Float64      float64  `json:"float64"`
+				Float64Ptr   *float64 `json:"float64Ptr"`
+				Bool         bool     `json:"bool"`
+				BoolPtr      *bool    `json:"boolPtr"`
+				NestedStruct struct {
+					Foo string `json:"foo"`
+				}
+			}{
+				StringValue: "foo",
+				StringPtr:   ptr.String("fooPtr"),
+				Int:         -256,
+				Int8:        -128,
+				Int16:       512,
+				Int32:       2048,
+				Int64:       4096,
+				Uint:        256,
+				Uint8:       254,
+				Uint16:      512,
+				Uint32:      1024,
+				Uint64:      2048,
+				Int64Ptr:    ptr.Int64(-2049),
+				UintPtr:     &uintPtr,
+				Float32:     512.512,
+				Float64:     1024.1024567,
+				Float64Ptr:  ptr.Float64(-1024.1023),
+				Bool:        true,
+				BoolPtr:     ptr.Bool(true),
+				NestedStruct: struct {
+					Foo string `json:"foo"`
+				}{
+					Foo: "level-1",
+				},
+			},
+			doesConfigMapExists: true,
+		},
+		{
+			name:                "verify-with-nil-values",
+			targetConfigMapName: configMapName,
+			props: struct {
+				StringPtr    *string     `json:"stringPtr"`
+				StringPtr2   *string     `json:"stringPtr2"`
+				Int32Ptr     *int32      `json:"int32Ptr"`
+				Int32Ptr2    *int32      `json:"int32Ptr2"`
+				Int64Ptr     *int64      `json:"int64Ptr"`
+				Int64Ptr2    *int64      `json:"int64Ptr2"`
+				UintPtr      *uint       `json:"uint"`
+				Uint8Ptr     *uint8      `json:"uint8"`
+				Uint16Ptr    *uint16     `json:"uint16"`
+				Uint32Ptr    *uint32     `json:"uint32"`
+				Uint64Ptr    *uint64     `json:"uint64"`
+				Float32Ptr   *float32    `json:"float32"`
+				Float64Ptr   *float64    `json:"float64Ptr"`
+				BoolPtr      *bool       `json:"boolPtr"`
+				NestedStruct interface{} `json:"interfaceNil"`
+			}{
+				StringPtr2: ptr.String("hi"),
+				Int32Ptr2:  ptr.Int32(21),
+				Int64Ptr2:  ptr.Int64(22),
+			},
+			expectedData: map[string]string{
+				"stringPtr2": "hi",
+				"int32Ptr2":  "21",
+				"int64Ptr2":  "22",
+			},
+			keysShouldNotBeIn: []string{
+				"stringPtr",
+				"int32Ptr",
+				"int64Ptr",
+				"uint",
+				"uint8",
+				"uint16",
+				"uint32",
+				"uint64",
+				"float32",
+				"float64Ptr",
+				"boolPtr",
+				"interfaceNil",
+			},
+			doesConfigMapExists: true,
+		},
+		{
+			name:                "verify-values-with-existing-data",
+			targetConfigMapName: configMapNameWithData,
+			props: struct {
+				Hello string `json:"hello"`
+			}{
+				Hello: "hi",
+			},
+			expectedData: map[string]string{
+				"foo":   "bar", // existing data in the map
+				"hello": "hi",
+			},
+			keysShouldNotBeIn:   []string{},
+			doesConfigMapExists: true,
+		},
+		{
+			name:                "verify-configmap-not-found",
+			targetConfigMapName: "not-found-cm", // config map not exists
+			props: struct {
+				Name string `json:"name"`
+			}{
+				Name: "test",
+			},
+			doesConfigMapExists: false,
+		},
+		{
+			name:                "verify-props-as-map",
+			targetConfigMapName: configMapNameWithData,
+			props:               map[string]string{"name": "hi"},
+			expectedData:        map[string]string{"foo": "bar"},
+			keysShouldNotBeIn:   []string{"name"},
+			doesConfigMapExists: true,
+		},
+		{
+			name:                "verify-nil-props",
+			targetConfigMapName: configMapNameWithData,
+			props:               nil,
+			expectedData:        map[string]string{"foo": "bar"},
+			doesConfigMapExists: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// get a manifest
+			manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+			assert.NilError(t, err)
+
+			manifest, err = manifest.Transform(AddConfigMapValues(test.targetConfigMapName, test.props))
+			assert.NilError(t, err)
+
+			var cm *corev1.ConfigMap
+			for _, resource := range manifest.Resources() {
+				if resource.GetKind() == "ConfigMap" && resource.GetName() == test.targetConfigMapName {
+					cm = &corev1.ConfigMap{}
+					err = runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, cm)
+					assert.NilError(t, err)
+				}
+			}
+
+			if test.doesConfigMapExists {
+				assert.Equal(t, false, cm == nil, fmt.Sprintf("configMap[%s] not found and not loaded", test.targetConfigMapName))
+			} else {
+				assert.Equal(t, true, cm == nil, fmt.Sprintf("configMap[%s] found and loaded", test.targetConfigMapName))
+				// return from here. no assertion needed
+				return
+			}
+
+			for key, value := range test.expectedData {
+				keyFound := false
+				for targetMapKey, targetMapValue := range cm.Data {
+					if targetMapKey == key {
+						assert.Equal(t, value, targetMapValue, fmt.Sprintf("value not matching. key:[%s], value:[%s], expected:[%s], configMap:[%s]", targetMapKey, targetMapValue, value, test.targetConfigMapName))
+						keyFound = true
+						break
+					}
+				}
+				assert.Equal(t, true, keyFound, fmt.Sprintf("key[%s] not found in configMap[%s]", key, test.targetConfigMapName))
+			}
+
+			// keys should not be in
+			for targetMapKey, targetMapValue := range cm.Data {
+				for _, keyShouldNotBeIn := range test.keysShouldNotBeIn {
+					if keyShouldNotBeIn == targetMapKey {
+						assert.Equal(t, false, keyShouldNotBeIn == targetMapKey, fmt.Sprintf("key should not be in, but found. key:[%s], value:[%s], configMap:[%s]", targetMapKey, targetMapValue, test.targetConfigMapName))
+					}
+				}
+			}
+
+		})
+	}
+}
+
 func TestInjectLabelOnNamespace(t *testing.T) {
 	t.Run("TestInjectLabel", func(t *testing.T) {
 		testData := path.Join("testdata", "test-namespace-inject.yaml")
@@ -800,9 +1006,9 @@ func TestCopyConfigMap(t *testing.T) {
 
 			for key, value := range test.data {
 				keyFound := false
-				for mapKey, mapValue := range cm.Data {
-					if mapKey == key {
-						assert.Equal(t, value, mapValue)
+				for targetMapKey, targetMapValue := range cm.Data {
+					if targetMapKey == key {
+						assert.Equal(t, value, targetMapValue)
 						keyFound = true
 					}
 				}
