@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-add-config
+  namespace: tekton-pipelines
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-add-config-with-data
+  namespace: tekton-pipelines
+data:
+  foo: bar
+
+---
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: foo-deployment
+  namespace: foo
