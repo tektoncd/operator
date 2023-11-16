@@ -10,7 +10,7 @@ require (
 	github.com/manifestival/client-go-client v0.5.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
-	github.com/openshift-pipelines/pipelines-as-code v0.22.0
+	github.com/openshift-pipelines/pipelines-as-code v0.22.2
 	github.com/openshift/api v0.0.0-20230503133300-8bbcb7ca7183
 	github.com/openshift/apiserver-library-go v0.0.0-20230503174907-d9b2bf6185e9
 	github.com/openshift/client-go v0.0.0-20230503144108-75015d2347cb
@@ -18,9 +18,9 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.17.0
 	github.com/stretchr/testify v1.8.4
-	github.com/tektoncd/pipeline v0.53.0
+	github.com/tektoncd/pipeline v0.53.2
 	github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293
-	github.com/tektoncd/triggers v0.25.2
+	github.com/tektoncd/triggers v0.25.3
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/mod v0.14.0
@@ -31,8 +31,8 @@ require (
 	k8s.io/apiextensions-apiserver v0.28.2
 	k8s.io/apimachinery v0.28.2
 	k8s.io/client-go v1.5.2
-	k8s.io/code-generator v0.27.1
-	knative.dev/pkg v0.0.0-20231023150739-56bfe0dd9626
+	k8s.io/code-generator v0.27.6
+	knative.dev/pkg v0.0.0-20231023160942-0c39ce4b3a7f
 	sigs.k8s.io/yaml v1.4.0
 )
 
@@ -43,6 +43,9 @@ replace (
 	k8s.io/client-go => k8s.io/client-go v0.26.8
 	k8s.io/code-generator => k8s.io/code-generator v0.26.8
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230515203736-54b630e78af5
+
+	// knative.dev/pkg on branch "release-1.11"
+	knative.dev/pkg => knative.dev/pkg v0.0.0-20231103161548-f5b42e8dea44
 )
 
 require (
@@ -149,7 +152,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.14.0 // indirect
 	github.com/gobuffalo/envy v1.10.1 // indirect
-	github.com/gobuffalo/flect v0.2.5 // indirect
+	github.com/gobuffalo/flect v1.0.2 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
