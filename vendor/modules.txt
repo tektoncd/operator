@@ -547,8 +547,8 @@ github.com/go-playground/validator/v10
 # github.com/gobuffalo/envy v1.10.1
 ## explicit; go 1.13
 github.com/gobuffalo/envy
-# github.com/gobuffalo/flect v0.2.5
-## explicit; go 1.13
+# github.com/gobuffalo/flect v1.0.2
+## explicit; go 1.16
 github.com/gobuffalo/flect
 # github.com/gobwas/glob v0.2.3
 ## explicit
@@ -963,7 +963,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-pipelines/pipelines-as-code v0.22.0
+# github.com/openshift-pipelines/pipelines-as-code v0.22.2
 ## explicit; go 1.20
 github.com/openshift-pipelines/pipelines-as-code/pkg/cli
 github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings
@@ -1248,7 +1248,7 @@ github.com/syndtr/goleveldb/leveldb/util
 # github.com/tchap/go-patricia/v2 v2.3.1
 ## explicit; go 1.16
 github.com/tchap/go-patricia/v2/patricia
-# github.com/tektoncd/pipeline v0.53.0
+# github.com/tektoncd/pipeline v0.53.2
 ## explicit; go 1.19
 github.com/tektoncd/pipeline/pkg/apis/config
 github.com/tektoncd/pipeline/pkg/apis/pipeline
@@ -1278,7 +1278,7 @@ github.com/tektoncd/pipeline/test/parse
 ## explicit; go 1.19
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
-# github.com/tektoncd/triggers v0.25.2
+# github.com/tektoncd/triggers v0.25.3
 ## explicit; go 1.19
 github.com/tektoncd/triggers/pkg/apis/config
 github.com/tektoncd/triggers/pkg/apis/triggers
@@ -2134,7 +2134,7 @@ k8s.io/client-go/util/homedir
 k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/workqueue
-# k8s.io/code-generator v0.27.1 => k8s.io/code-generator v0.26.8
+# k8s.io/code-generator v0.27.6 => k8s.io/code-generator v0.26.8
 ## explicit; go 1.19
 k8s.io/code-generator/cmd/client-gen
 k8s.io/code-generator/cmd/client-gen/args
@@ -2200,7 +2200,7 @@ k8s.io/utils/pointer
 k8s.io/utils/ptr
 k8s.io/utils/strings/slices
 k8s.io/utils/trace
-# knative.dev/pkg v0.0.0-20231023150739-56bfe0dd9626
+# knative.dev/pkg v0.0.0-20231023160942-0c39ce4b3a7f => knative.dev/pkg v0.0.0-20231103161548-f5b42e8dea44
 ## explicit; go 1.18
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck
@@ -2297,3 +2297,4 @@ sigs.k8s.io/yaml/goyaml.v2
 # k8s.io/client-go => k8s.io/client-go v0.26.8
 # k8s.io/code-generator => k8s.io/code-generator v0.26.8
 # k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230515203736-54b630e78af5
+# knative.dev/pkg => knative.dev/pkg v0.0.0-20231103161548-f5b42e8dea44
