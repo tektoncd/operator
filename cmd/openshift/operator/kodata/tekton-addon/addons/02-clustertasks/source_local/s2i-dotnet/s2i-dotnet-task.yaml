@@ -20,7 +20,7 @@ spec:
   params:
     - name: BUILDER_IMAGE
       description: The location of the buildah builder image.
-      default: registry.redhat.io/rhel8/buildah@sha256:55f5c7d88c77e1ab5a2ab8e877172b2b66cb196e21f10dc45148470d0ee8bbae
+      default: registry.redhat.io/rhel8/buildah@sha256:3c2ea396a114221575a4031d90d28c43563f7b96288374e0ba8b22de3ed97b5a
     - name: VERSION
       description: The tag of .NET imagestream for .NET version
       default: 'latest'
