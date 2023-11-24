@@ -32,7 +32,7 @@ func TestCreateWebhookResources(t *testing.T) {
 		m, err := mf.ManifestFrom(mf.Path(testdataPath))
 		assert.NilError(t, err)
 		_, err = manifestTransform(&m)
-		assert.Error(t, err, ERR_NAMESPACE_ENV_NOT_SET.Error())
+		assert.Error(t, err, ErrNamespaceEnvNotSet.Error())
 	})
 }
 

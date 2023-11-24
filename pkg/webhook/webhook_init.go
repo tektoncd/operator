@@ -12,7 +12,6 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
-	apierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -25,7 +24,7 @@ const WEBHOOK_INSTALLERSET_LABEL = "validating-defaulting-webhooks.operator.tekt
 const POD_NAMESPACE_ENV_KEY = "SYSTEM_NAMESPACE"
 
 var (
-	ERR_NAMESPACE_ENV_NOT_SET = fmt.Errorf("Pod namespace env %q not set", POD_NAMESPACE_ENV_KEY)
+	ErrNamespaceEnvNotSet = fmt.Errorf("namespace environment key %q not set", POD_NAMESPACE_ENV_KEY)
 )
 
 func CreateWebhookResources(ctx context.Context) {
@@ -37,28 +36,13 @@ func CreateWebhookResources(ctx context.Context) {
 	}
 
 	client := operatorclient.Get(ctx)
-	err = checkAndDeleteInstallerSet(ctx, client)
+	err = deleteExistingInstallerSets(ctx, client)
 	if err != nil {
 		logger.Fatalw("error deleting webhook installerset", zap.Error(err))
 	}
 
 	if err := createInstallerSet(ctx, client, *manifest); err != nil {
 		logger.Fatalw("error creating webhook installerset", zap.Error(err))
-	}
-
-}
-
-func CleanupWebhookResources(ctx context.Context) {
-	logger := logging.FromContext(ctx)
-	client := operatorclient.Get(ctx)
-
-	// cannot use the ctx passed from main as it will be cancelled
-	// by the time we use in kube api calls
-	freshContext := context.Background()
-
-	err := checkAndDeleteInstallerSet(freshContext, client)
-	if err != nil {
-		logger.Fatalw("error deleting webhook installerset", zap.Error(err))
 	}
 }
 
@@ -86,7 +70,7 @@ func fetchManifests(ctx context.Context) (*mf.Manifest, error) {
 func manifestTransform(m *mf.Manifest) (*mf.Manifest, error) {
 	ns, ok := os.LookupEnv(POD_NAMESPACE_ENV_KEY)
 	if !ok || ns == "" {
-		return nil, ERR_NAMESPACE_ENV_NOT_SET
+		return nil, ErrNamespaceEnvNotSet
 	}
 	tfs := []mf.Transformer{
 		mf.InjectNamespace(ns),
@@ -95,36 +79,25 @@ func manifestTransform(m *mf.Manifest) (*mf.Manifest, error) {
 	return &result, err
 }
 
-func checkAndDeleteInstallerSet(ctx context.Context, oc clientset.Interface) error {
-	ctIs, err := oc.OperatorV1alpha1().TektonInstallerSets().
-		List(ctx, metav1.ListOptions{
-			LabelSelector: WEBHOOK_INSTALLERSET_LABEL,
-		})
-	if err != nil {
-		if apierror.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	if len(ctIs.Items) >= 0 {
-		for _, item := range ctIs.Items {
-			err = oc.OperatorV1alpha1().TektonInstallerSets().
-				Delete(ctx, item.Name, metav1.DeleteOptions{})
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+func deleteExistingInstallerSets(ctx context.Context, oc clientset.Interface) error {
+	// deleting the existing webhook installersets
+	return oc.OperatorV1alpha1().TektonInstallerSets().DeleteCollection(
+		ctx,
+		metav1.DeleteOptions{},
+		metav1.ListOptions{LabelSelector: WEBHOOK_INSTALLERSET_LABEL},
+	)
 }
 
 func createInstallerSet(ctx context.Context, oc clientset.Interface, manifest mf.Manifest) error {
 	is := makeInstallerSet(manifest)
-	_, err := oc.OperatorV1alpha1().TektonInstallerSets().
-		Create(ctx, is, metav1.CreateOptions{})
+	item, err := oc.OperatorV1alpha1().TektonInstallerSets().Create(ctx, is, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
+	logger := logging.FromContext(ctx)
+	logger.Debugw("webhook installerset created",
+		"name", item.Name,
+	)
 	return nil
 }
 
