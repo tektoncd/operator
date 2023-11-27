@@ -119,10 +119,9 @@ func AddCABundlesToContainerVolumes(c *corev1.Container) {
 		var certDirectories = []string{
 			// Ordering is important here - we will be using the "first"
 			// element in SSL_CERT_DIR to do the volume mounts.
-			sslCertDir,                     // /tekton-custom-certs
-			"/etc/ssl/certs",               // SLES10/SLES11, https://golang.org/issue/12139
-			"/etc/pki/tls/certs",           // Fedora/RHEL
-			"/system/etc/security/cacerts", // Android
+			sslCertDir,           // /tekton-custom-certs
+			"/etc/ssl/certs",     // SLES10/SLES11, https://golang.org/issue/12139
+			"/etc/pki/tls/certs", // Fedora/RHEL
 		}
 
 		// SSL_CERT_DIR accepts a colon separated list of directories
