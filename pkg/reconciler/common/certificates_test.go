@@ -194,7 +194,7 @@ func TestAddCABundlesToContainerVolumes(t *testing.T) {
 		expected *corev1.Container
 	}
 
-	defaultSSLCertDir := "/tekton-custom-certs:/etc/ssl/certs:/etc/pki/tls/certs:/system/etc/security/cacerts"
+	defaultSSLCertDir := "/tekton-custom-certs:/etc/ssl/certs:/etc/pki/tls/certs"
 
 	tests := []testStructure{
 		{

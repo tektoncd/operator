@@ -37,7 +37,7 @@ func TestApplyCABundles(t *testing.T) {
 		withEnvs(
 			corev1.EnvVar{
 				Name:  "SSL_CERT_DIR",
-				Value: "/tekton-custom-certs:/etc/ssl/certs:/etc/pki/tls/certs:/system/etc/security/cacerts",
+				Value: "/tekton-custom-certs:/etc/ssl/certs:/etc/pki/tls/certs",
 			},
 		),
 		withVolumes(corev1.Volume{
