@@ -87,9 +87,9 @@ func TestUpdatePerformanceFlagsInDeployment(t *testing.T) {
 	// update expected output
 	depExpected := depInput.DeepCopy()
 	depExpected.Spec.Template.Labels = map[string]string{
-		"app":                                 "hello",
-		"config-leader-election.data.buckets": "2",
-		"deployment.spec.replicas":            "1",
+		"app": "hello",
+		"config-leader-election-controller.data.buckets": "2",
+		"deployment.spec.replicas":                       "1",
 	}
 	// flags order is important
 	depExpected.Spec.Template.Spec.Containers[1].Args = []string{
