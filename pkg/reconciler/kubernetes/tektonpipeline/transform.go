@@ -43,7 +43,7 @@ const (
 	clusterResolverConfig                        = "cluster-resolver-config"
 	hubResolverConfig                            = "hubresolver-config"
 	gitResolverConfig                            = "git-resolver-config"
-	leaderElectionConfig                         = "config-leader-election"
+	leaderElectionConfig                         = "config-leader-election-controller"
 	pipelinesControllerDeployment                = "tekton-pipelines-controller"
 	pipelinesControllerContainer                 = "tekton-pipelines-controller"
 	pipelinesRemoteResolversControllerDeployment = "tekton-pipelines-remote-resolvers"
