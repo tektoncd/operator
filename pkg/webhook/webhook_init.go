@@ -20,12 +20,49 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-const WEBHOOK_INSTALLERSET_LABEL = "validating-defaulting-webhooks.operator.tekton.dev"
-const POD_NAMESPACE_ENV_KEY = "SYSTEM_NAMESPACE"
+const (
+	// deprecated label, used in old versions
+	// keeps this reference to remove the existing webhook installersets
+	DEPRECATED_WEBHOOK_INSTALLERSET_LABEL = "validating-defaulting-webhooks.operator.tekton.dev"
+
+	// this label is used to terminate the created webhook installerset on graceful termination
+	// use unique name, to identify the resource created by this pod
+	WEBHOOK_UNIQUE_LABEL = "operator.tekton.dev/webhook-unique-identifier"
+
+	// primary label values to track webhook installersets
+	labelCreatedByValue        = "operator-webhook-init"
+	labelInstallerSetTypeValue = "operatorValidatingDefaultingWebhook"
+
+	POD_NAMESPACE_ENV_KEY = "SYSTEM_NAMESPACE"
+	POD_NAME_ENV_KEY      = "WEBHOOK_POD_NAME"
+)
 
 var (
 	ErrNamespaceEnvNotSet = fmt.Errorf("namespace environment key %q not set", POD_NAMESPACE_ENV_KEY)
+
+	// primary labelSelector to list available webhooks installersets
+	primaryLabelSelector = metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			v1alpha1.CreatedByKey:     labelCreatedByValue,
+			v1alpha1.InstallerSetType: labelInstallerSetTypeValue,
+		},
+	}
 )
+
+func CleanupWebhookResources(ctx context.Context) {
+	logger := logging.FromContext(ctx)
+	client := operatorclient.Get(ctx)
+
+	// cannot use the ctx passed from main as it will be cancelled
+	// by the time we use in kube api calls
+	freshContext := context.Background()
+
+	// delete the webhook installersets created by this pod
+	err := deleteExistingInstallerSets(freshContext, client, true)
+	if err != nil {
+		logger.Error("error on deleting webhook installersets", err)
+	}
+}
 
 func CreateWebhookResources(ctx context.Context) {
 	logger := logging.FromContext(ctx)
@@ -36,7 +73,7 @@ func CreateWebhookResources(ctx context.Context) {
 	}
 
 	client := operatorclient.Get(ctx)
-	err = deleteExistingInstallerSets(ctx, client)
+	err = deleteExistingInstallerSets(ctx, client, false)
 	if err != nil {
 		logger.Fatalw("error deleting webhook installerset", zap.Error(err))
 	}
@@ -79,17 +116,61 @@ func manifestTransform(m *mf.Manifest) (*mf.Manifest, error) {
 	return &result, err
 }
 
-func deleteExistingInstallerSets(ctx context.Context, oc clientset.Interface) error {
-	// deleting the existing webhook installersets
-	return oc.OperatorV1alpha1().TektonInstallerSets().DeleteCollection(
+func deleteExistingInstallerSets(ctx context.Context, client clientset.Interface, includeUniqueIdentifier bool) error {
+	// deleting the existing deprecated webhook installersets
+	installerSetList, err := client.OperatorV1alpha1().TektonInstallerSets().List(
 		ctx,
-		metav1.DeleteOptions{},
-		metav1.ListOptions{LabelSelector: WEBHOOK_INSTALLERSET_LABEL},
+		metav1.ListOptions{LabelSelector: DEPRECATED_WEBHOOK_INSTALLERSET_LABEL},
 	)
+	if err != nil {
+		return err
+	}
+	for _, is := range installerSetList.Items {
+		err = client.OperatorV1alpha1().TektonInstallerSets().Delete(ctx, is.Name, metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
+	}
+
+	_primaryLabelSelector := primaryLabelSelector.DeepCopy()
+	// this pod name
+	if includeUniqueIdentifier {
+		podName, ok := os.LookupEnv(POD_NAME_ENV_KEY)
+		if !ok {
+			// if pod env not set return
+			return fmt.Errorf("pod name environment variable[%s] details are not set", POD_NAME_ENV_KEY)
+		}
+		// use pod name as unique reference
+		_primaryLabelSelector.MatchLabels[WEBHOOK_UNIQUE_LABEL] = podName
+	}
+
+	// delete all the existing webhook installersets
+	labelSelector, err := common.LabelSelector(*_primaryLabelSelector)
+	if err != nil {
+		return err
+	}
+
+	installerSetList, err = client.OperatorV1alpha1().TektonInstallerSets().List(
+		ctx,
+		metav1.ListOptions{LabelSelector: labelSelector},
+	)
+	if err != nil {
+		return err
+	}
+	for _, is := range installerSetList.Items {
+		err = client.OperatorV1alpha1().TektonInstallerSets().Delete(ctx, is.Name, metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func createInstallerSet(ctx context.Context, oc clientset.Interface, manifest mf.Manifest) error {
-	is := makeInstallerSet(manifest)
+	is, err := makeInstallerSet(manifest)
+	if err != nil {
+		return err
+	}
 	item, err := oc.OperatorV1alpha1().TektonInstallerSets().Create(ctx, is, metav1.CreateOptions{})
 	if err != nil {
 		return err
@@ -101,22 +182,26 @@ func createInstallerSet(ctx context.Context, oc clientset.Interface, manifest mf
 	return nil
 }
 
-func makeInstallerSet(manifest mf.Manifest) *v1alpha1.TektonInstallerSet {
-	//TODO: find ownerReference of the operator controller deployment and use that as the
-	// ownerReference for this TektonInstallerSet
-	return &v1alpha1.TektonInstallerSet{
+func makeInstallerSet(manifest mf.Manifest) (*v1alpha1.TektonInstallerSet, error) {
+	// this pod name
+	podName, ok := os.LookupEnv(POD_NAME_ENV_KEY)
+	if !ok {
+		// if pod env not set return
+		return nil, fmt.Errorf("pod name environment variable[%s] details are not set", POD_NAME_ENV_KEY)
+	}
+	// use pod name as unique reference
+	_primaryLabelSelector := primaryLabelSelector.DeepCopy()
+	_primaryLabelSelector.MatchLabels[WEBHOOK_UNIQUE_LABEL] = podName
+
+	installerSet := &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("%s-", "validating-mutating-webhoook"),
-			Labels: map[string]string{
-				WEBHOOK_INSTALLERSET_LABEL: "",
-			},
-			Annotations: map[string]string{
-				"releaseVersionKey": "v1.6.0",
-			},
-			//OwnerReferences: []metav1.OwnerReference{ownerRef},
+			GenerateName: fmt.Sprintf("%s-", "validating-mutating-webhook"),
+			Labels:       _primaryLabelSelector.MatchLabels,
 		},
 		Spec: v1alpha1.TektonInstallerSetSpec{
 			Manifests: manifest.Resources(),
 		},
 	}
+
+	return installerSet, nil
 }
