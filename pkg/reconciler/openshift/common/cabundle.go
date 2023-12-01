@@ -45,7 +45,8 @@ func ApplyCABundles(u *unstructured.Unstructured) error {
 
 	// Now that the injected certificates have been added as a volume, let's
 	// mount them via volumeMounts in the containers
-	for i, c := range deployment.Spec.Template.Spec.Containers {
+	for i := range deployment.Spec.Template.Spec.Containers {
+		c := deployment.Spec.Template.Spec.Containers[i] // Create a copy of the container
 		common.AddCABundlesToContainerVolumes(&c)
 		deployment.Spec.Template.Spec.Containers[i] = c
 	}
