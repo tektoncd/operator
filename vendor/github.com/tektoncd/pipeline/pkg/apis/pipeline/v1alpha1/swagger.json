@@ -421,9 +421,42 @@
           "description": "Image reference name to run for this StepAction. More info: https://kubernetes.io/docs/concepts/containers/images",
           "type": "string"
         },
+        "params": {
+          "description": "Params is a list of input parameters required to run the stepAction. Params must be supplied as inputs in Steps unless they declare a defaultvalue.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.ParamSpec"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "results": {
+          "description": "Results are values that this StepAction can output",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.StepResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "script": {
           "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",
           "type": "string"
+        },
+        "securityContext": {
+          "description": "SecurityContext defines the security options the Step should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/ The value set in StepAction will take precedence over the value from Task.",
+          "$ref": "#/definitions/v1.SecurityContext"
+        },
+        "volumeMounts": {
+          "description": "Volumes to mount into the Step's filesystem. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.VolumeMount"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "mountPath",
+          "x-kubernetes-patch-strategy": "merge"
         }
       }
     },

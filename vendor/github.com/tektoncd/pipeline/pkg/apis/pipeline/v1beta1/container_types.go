@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -228,6 +229,34 @@ type Step struct {
 	// Stores configuration for the stderr stream of the step.
 	// +optional
 	StderrConfig *StepOutputConfig `json:"stderrConfig,omitempty"`
+
+	// Contains the reference to an existing StepAction.
+	//+optional
+	Ref *Ref `json:"ref,omitempty"`
+	// Params declares parameters passed to this step action.
+	// +optional
+	// +listType=atomic
+	Params Params `json:"params,omitempty"`
+	// Results declares StepResults produced by the Step.
+	//
+	// This is field is at an ALPHA stability level and gated by "enable-step-actions" feature flag.
+	//
+	// It can be used in an inlined Step when used to store Results to $(step.results.resultName.path).
+	// It cannot be used when referencing StepActions using [v1beta1.Step.Ref].
+	// The Results declared by the StepActions will be stored here instead.
+	// +optional
+	// +listType=atomic
+	Results []v1.StepResult `json:"results,omitempty"`
+}
+
+// Ref can be used to refer to a specific instance of a StepAction.
+type Ref struct {
+	// Name of the referenced step
+	Name string `json:"name,omitempty"`
+	// ResolverRef allows referencing a StepAction in a remote location
+	// like a git repo.
+	// +optional
+	ResolverRef `json:",omitempty"`
 }
 
 // OnErrorType defines a list of supported exiting behavior of a container on error
