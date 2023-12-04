@@ -179,12 +179,17 @@ const (
 	// TaskRunReasonResolvingTaskRef indicates that the TaskRun is waiting for
 	// its taskRef to be asynchronously resolved.
 	TaskRunReasonResolvingTaskRef = "ResolvingTaskRef"
+	// TaskRunReasonResolvingStepActionRef indicates that the TaskRun is waiting for
+	// its StepAction's Ref to be asynchronously resolved.
+	TaskRunReasonResolvingStepActionRef = "ResolvingStepActionRef"
 	// TaskRunReasonImagePullFailed is the reason set when the step of a task fails due to image not being pulled
 	TaskRunReasonImagePullFailed TaskRunReason = "TaskRunImagePullFailed"
 	// TaskRunReasonResultLargerThanAllowedLimit is the reason set when one of the results exceeds its maximum allowed limit of 1 KB
 	TaskRunReasonResultLargerThanAllowedLimit TaskRunReason = "TaskRunResultLargerThanAllowedLimit"
 	// TaskRunReasonStopSidecarFailed indicates that the sidecar is not properly stopped.
 	TaskRunReasonStopSidecarFailed = "TaskRunStopSidecarFailed"
+	// TaskRunReasonInvalidParamValue indicates that the TaskRun Param input value is not allowed.
+	TaskRunReasonInvalidParamValue = "InvalidParamValue"
 )
 
 func (t TaskRunReason) String() string {
@@ -333,9 +338,10 @@ func (trs *TaskRunStatus) SetCondition(newCond *apis.Condition) {
 // StepState reports the results of running a step in a Task.
 type StepState struct {
 	corev1.ContainerState `json:",inline"`
-	Name                  string `json:"name,omitempty"`
-	Container             string `json:"container,omitempty"`
-	ImageID               string `json:"imageID,omitempty"`
+	Name                  string              `json:"name,omitempty"`
+	Container             string              `json:"container,omitempty"`
+	ImageID               string              `json:"imageID,omitempty"`
+	Results               []TaskRunStepResult `json:"results,omitempty"`
 }
 
 // SidecarState reports the results of running a sidecar in a Task.
