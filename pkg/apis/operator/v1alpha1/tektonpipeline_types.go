@@ -107,7 +107,18 @@ type PipelineProperties struct {
 
 	// ScopeWhenExpressionsToTask Deprecated: remove in next release
 	ScopeWhenExpressionsToTask *bool `json:"scope-when-expressions-to-task,omitempty"`
-	PipelineMetricsProperties  `json:",inline"`
+
+	EnforceNonfalsifiability  string `json:"enforce-nonfalsifiability,omitempty"`
+	EnableKeepPodOnCancel     *bool  `json:"keep-pod-on-cancel,omitempty"`
+	ResultExtractionMethod    string `json:"results-from,omitempty"`
+	MaxResultSize             *int32 `json:"max-result-size,omitempty"`
+	SetSecurityContext        *bool  `json:"set-security-context,omitempty"`
+	Coschedule                string `json:"coschedule,omitempty"`
+	EnableCELInWhenExpression *bool  `json:"enable-cel-in-whenexpression,omitempty"`
+	EnableStepActions         *bool  `json:"enable-step-actions,omitempty"`
+	EnableParamEnum           *bool  `json:"enable-param-enum,omitempty"`
+
+	PipelineMetricsProperties `json:",inline"`
 	// +optional
 	OptionalPipelineProperties `json:",inline"`
 	// +optional
@@ -128,6 +139,7 @@ type OptionalPipelineProperties struct {
 	DefaultTaskRunWorkspaceBinding      string `json:"default-task-run-workspace-binding,omitempty"`
 	DefaultMaxMatrixCombinationsCount   string `json:"default-max-matrix-combinations-count,omitempty"`
 	DefaultForbiddenEnv                 string `json:"default-forbidden-env,omitempty"`
+	DefaultResolverType                 string `json:"default-resolver-type,omitempty"`
 }
 
 // PipelineMetricsProperties defines the fields which are configurable for
@@ -137,6 +149,7 @@ type PipelineMetricsProperties struct {
 	MetricsTaskrunDurationType     string `json:"metrics.taskrun.duration-type,omitempty"`
 	MetricsPipelinerunLevel        string `json:"metrics.pipelinerun.level,omitempty"`
 	MetricsPipelinerunDurationType string `json:"metrics.pipelinerun.duration-type,omitempty"`
+	CountWithReason                *bool  `json:"metrics.count.enable-reason,omitempty"`
 }
 
 // Resolvers defines the fields to configure resolvers

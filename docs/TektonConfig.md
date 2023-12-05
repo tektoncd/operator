@@ -41,19 +41,37 @@ The TektonConfig CR provides the following features
     chain:
       disabled: false
     pipeline:
+      await-sidecar-readiness: true
+      coschedule: workspaces
       disable-affinity-assistant: false
       disable-creds-init: false
       disable-home-env-overwrite: true
       disable-working-directory-overwrite: true
-      enable-api-fields: stable
-      enable-custom-tasks: false
+      enable-api-fields: beta
+      enable-bundles-resolver: true
+      enable-cel-in-whenexpression: false
+      enable-cluster-resolver: true
+      enable-custom-tasks: true
+      enable-git-resolver: true
+      enable-hub-resolver: true
+      enable-param-enum: false
+      enable-provenance-in-status: true
+      enable-step-actions: false
       enable-tekton-oci-bundles: false
+      enforce-nonfalsifiability: none
+      keep-pod-on-cancel: false
+      max-result-size: 4096
+      metrics.count.enable-reason: false
       metrics.pipelinerun.duration-type: histogram
-      metrics.pipelinerun.level: pipelinerun
+      metrics.pipelinerun.level: pipeline
       metrics.taskrun.duration-type: histogram
-      metrics.taskrun.level: taskrun
+      metrics.taskrun.level: task
       require-git-ssh-secret-known-hosts: false
+      results-from: termination-message
       running-in-environment-with-injected-sidecars: true
+      scope-when-expressions-to-task: false
+      send-cloudevents-for-runs: false
+      set-security-context: false
       trusted-resources-verification-no-match-policy: ignore
       performance:
         disable-ha: false
@@ -75,7 +93,7 @@ The TektonConfig CR provides the following features
       keep: 3
       # keep-since: 1440
       # NOTE: you can use either "keep" or "keep-since", not both
-  prune-per-resource: true
+      prune-per-resource: true
     hub:
       params:
         - name: enable-devconsole-integration

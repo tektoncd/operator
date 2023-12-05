@@ -77,6 +77,42 @@ func (p *Pipeline) setDefaults() {
 	// Deprecated: set to nil, remove in further release
 	p.ScopeWhenExpressionsToTask = nil
 
+	if p.EnforceNonfalsifiability == "" {
+		p.EnforceNonfalsifiability = config.DefaultEnforceNonfalsifiability
+	}
+
+	if p.EnableKeepPodOnCancel == nil {
+		p.EnableKeepPodOnCancel = ptr.Bool(config.DefaultEnableKeepPodOnCancel)
+	}
+
+	if p.ResultExtractionMethod == "" {
+		p.ResultExtractionMethod = config.DefaultResultExtractionMethod
+	}
+
+	if p.MaxResultSize == nil {
+		p.MaxResultSize = ptr.Int32(config.DefaultMaxResultSize)
+	}
+
+	if p.SetSecurityContext == nil {
+		p.SetSecurityContext = ptr.Bool(config.DefaultSetSecurityContext)
+	}
+
+	if p.Coschedule == "" {
+		p.Coschedule = config.DefaultCoschedule
+	}
+
+	if p.EnableCELInWhenExpression == nil {
+		p.EnableCELInWhenExpression = ptr.Bool(config.DefaultEnableCELInWhenExpression)
+	}
+
+	if p.EnableStepActions == nil {
+		p.EnableStepActions = ptr.Bool(config.DefaultEnableStepActions)
+	}
+
+	if p.EnableParamEnum == nil {
+		p.EnableParamEnum = ptr.Bool(config.DefaultEnableParamEnum)
+	}
+
 	if p.MetricsPipelinerunDurationType == "" {
 		p.MetricsPipelinerunDurationType = config.DefaultDurationPipelinerunType
 	}
@@ -88,6 +124,9 @@ func (p *Pipeline) setDefaults() {
 	}
 	if p.MetricsTaskrunLevel == "" {
 		p.MetricsTaskrunLevel = config.DefaultTaskrunLevel
+	}
+	if p.CountWithReason == nil {
+		p.CountWithReason = ptr.Bool(false)
 	}
 
 	// Resolvers

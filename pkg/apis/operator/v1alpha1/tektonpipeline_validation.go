@@ -28,6 +28,9 @@ import (
 var (
 	validatePipelineAllowedApiFields          = sets.NewString("", config.AlphaAPIFields, config.BetaAPIFields, config.StableAPIFields)
 	validatePipelineVerificationNoMatchPolicy = sets.NewString("", config.FailNoMatchPolicy, config.WarnNoMatchPolicy, config.IgnoreNoMatchPolicy)
+	validatePipelineResultExtractionMethod    = sets.NewString("", config.ResultExtractionMethodTerminationMessage, config.ResultExtractionMethodSidecarLogs)
+	validatePipelineEnforceNonFalsifiability  = sets.NewString("", config.EnforceNonfalsifiabilityNone, config.EnforceNonfalsifiabilityWithSpire)
+	validatePipelineCoschedule                = sets.NewString("", config.CoscheduleDisabled, config.CoscheduleWorkspaces, config.CoschedulePipelineRuns, config.CoscheduleIsolatePipelineRun)
 )
 
 func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -59,9 +62,27 @@ func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 		}
 	}
 
+	if p.MaxResultSize != nil {
+		if *p.MaxResultSize >= 1572864 {
+			errs = errs.Also(apis.ErrInvalidValue(p.MaxResultSize, path+".max-result-size"))
+		}
+	}
+
 	// validate trusted-resources-verification-no-match-policy
 	if !validatePipelineVerificationNoMatchPolicy.Has(p.VerificationNoMatchPolicy) {
 		errs = errs.Also(apis.ErrInvalidValue(p.VerificationNoMatchPolicy, fmt.Sprintf("%s.trusted-resources-verification-no-match-policy", path)))
+	}
+
+	if !validatePipelineResultExtractionMethod.Has(p.ResultExtractionMethod) {
+		errs = errs.Also(apis.ErrInvalidValue(p.ResultExtractionMethod, fmt.Sprintf("%s.results-from", path)))
+	}
+
+	if !validatePipelineEnforceNonFalsifiability.Has(p.EnforceNonfalsifiability) {
+		errs = errs.Also(apis.ErrInvalidValue(p.EnforceNonfalsifiability, fmt.Sprintf("%s.enforce-nonfalsifiability", path)))
+	}
+
+	if !validatePipelineCoschedule.Has(p.Coschedule) {
+		errs = errs.Also(apis.ErrInvalidValue(p.Coschedule, fmt.Sprintf("%s.coschedule", path)))
 	}
 
 	// validate performance properties
