@@ -18,20 +18,37 @@ metadata:
   name: pipeline
 spec:
   targetNamespace: tekton-pipelines
+  await-sidecar-readiness: true
+  coschedule: workspaces
   disable-affinity-assistant: false
   disable-creds-init: false
   disable-home-env-overwrite: true
   disable-working-directory-overwrite: true
-  enable-api-fields: stable
-  enable-custom-tasks: false
+  enable-api-fields: beta
+  enable-bundles-resolver: true
+  enable-cel-in-whenexpression: false
+  enable-cluster-resolver: true
+  enable-custom-tasks: true
+  enable-git-resolver: true
+  enable-hub-resolver: true
+  enable-param-enum: false
+  enable-provenance-in-status: true
+  enable-step-actions: false
   enable-tekton-oci-bundles: false
+  enforce-nonfalsifiability: none
+  keep-pod-on-cancel: false
+  max-result-size: 4096
+  metrics.count.enable-reason: false
   metrics.pipelinerun.duration-type: histogram
   metrics.pipelinerun.level: pipeline
   metrics.taskrun.duration-type: histogram
   metrics.taskrun.level: task
   require-git-ssh-secret-known-hosts: false
+  results-from: termination-message
   running-in-environment-with-injected-sidecars: true
   scope-when-expressions-to-task: false
+  send-cloudevents-for-runs: false
+  set-security-context: false
   trusted-resources-verification-no-match-policy: ignore
   performance:
     disable-ha: false
@@ -64,6 +81,17 @@ finds into your Steps.
 
     Note: setting this to "true" will prevent PipelineResources from working. See more info [here](https://github.com/tektoncd/pipeline/issues/2791).
 
+- `await-sidecar-readiness` (Default: `true`)
+
+    Setting this flag to "false" to allow the Tekton controller to start a TasksRun's first step immediately without 
+    waiting for sidecar containers to be running first.
+
+    Note: setting this flag to "false" will mean the running-in-environment-with-injected-sidecars flag has no effect.
+
+- `coschedule` (Default: `workspaces`)
+
+    This flag determines how PipelineRun Pods are scheduled with Affinity Assistant. Acceptable values are 
+    "workspaces" (default), "pipelineruns", "isolate-pipelinerun", or "disabled"
 
 - `running-in-environment-with-injected-sidecars` (Default: `true`)
 
@@ -97,6 +125,47 @@ and thus should still be considered an alpha feature.
 
     Setting this flag will determine which gated features are enabled. Acceptable values are "stable" or "alpha".
 
+- `results-from` (Default: `termination-message`)
+
+    This feature is to use the container's termination message to fetch results from. Set it to "sidecar-logs" to 
+    enable use of a results sidecar logs to extract results instead of termination message.
+
+- `max-result-size` (Default: `4096`)
+
+    This feature is to configure the size of the task results if using `sidecar-logs`. The default value if `4096` and
+    maximum value can be `1572863`.
+
+- `enable-provenance-in-status` (Default: `true`)
+
+    This feature is to enable populating the provenance field in TaskRun and PipelineRun status. The provenance field 
+    contains metadata about resources used in the TaskRun/PipelineRun such as the source from where a remote 
+    Task/Pipeline definition was fetched. To disable populating this field, set this flag to "false".
+
+- `set-security-context` (Default: `false`)
+
+    Setting this flag to "true" to set a security context for containers injected by Tekton that will allow TaskRun pods 
+    to run in namespaces with restricted pod security admission
+
+- `keep-pod-on-cancel` (Default: `false`)
+
+    Setting this flag to "true" will not delete the pod associated with cancelled taskrun.
+
+- `enforce-nonfalsifiability` (Default: `none`)
+
+    Setting this flag to "spire" to enable integration with `SPIRE`.
+
+- `enable-param-enum` (Default: `false`)
+
+    Setting this flag to "true" will enable params of type `Enum`
+
+- `enable-step-actions` (Default: `false`)
+
+    Setting this flag to "true" will enable specifying `StepAction` in a `Step`. A `StepAction` is the reusable and 
+    scriptable unit of work that is performed by a `Step`
+
+- `enable-cel-in-whenexpression` (Default: `false`)
+
+    Setting this flag to "true" will enable using CEL in when expressions.
 
 - `scope-when-expressions-to-task` (Default: `false`)
 
@@ -125,6 +194,10 @@ configure in pipelines.
 - `metrics.taskrun.level` (Default: `task`)
 
     Setting this flag will determine the level of taskrun metrics.
+
+- `metrics.count.enable-reason` (Default: `false`)
+
+    Setting this flag to "true" will include reason label on count metrics.
 
 
 
@@ -175,6 +248,11 @@ default is the only option available. If no sink is specified, no CloudEvent is 
 
     default-task-run-workspace-binding contains the default workspace configuration provided for any Workspaces that a
 Task declares but that a TaskRun does not explicitly provide.
+
+
+- `default-resolver-type`
+
+  default-resolver-type contains the resolver type to be used as default resolver.
 
 [Pipeline]:https://github.com/tektoncd/pipeline
 

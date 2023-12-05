@@ -109,6 +109,107 @@ func TestValidateTektonPipelineVerificationNoMatchPolicy(t *testing.T) {
 	}
 }
 
+func TestValidateTektonPipelineResultExtractionMethod(t *testing.T) {
+	tp := &TektonPipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipeline",
+			Namespace: "tekton-pipelines-ns",
+		},
+		Spec: TektonPipelineSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "tekton-pipelines-ns",
+			},
+		},
+	}
+
+	tests := []struct {
+		name   string
+		method string
+		err    string
+	}{
+		{name: "method-empty-value", method: "", err: ""},
+		{name: "method-sidecar", method: config.ResultExtractionMethodSidecarLogs, err: ""},
+		{name: "method-termination", method: config.ResultExtractionMethodTerminationMessage, err: ""},
+		{name: "method-invalid", method: "hello", err: "invalid value: hello: spec.results-from"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tp.Spec.Pipeline.ResultExtractionMethod = test.method
+			errs := tp.Validate(context.TODO())
+			assert.Equal(t, test.err, errs.Error())
+		})
+	}
+}
+
+func TestValidateTektonPipelineEnforceNonFalsifiability(t *testing.T) {
+	tp := &TektonPipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipeline",
+			Namespace: "tekton-pipelines-ns",
+		},
+		Spec: TektonPipelineSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "tekton-pipelines-ns",
+			},
+		},
+	}
+
+	tests := []struct {
+		name           string
+		falsifiability string
+		err            string
+	}{
+		{name: "falsifiability-empty-value", falsifiability: "", err: ""},
+		{name: "falsifiability-none", falsifiability: config.EnforceNonfalsifiabilityNone, err: ""},
+		{name: "falsifiability-spire", falsifiability: config.EnforceNonfalsifiabilityWithSpire, err: ""},
+		{name: "falsifiability-invalid", falsifiability: "hello", err: "invalid value: hello: spec.enforce-nonfalsifiability"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tp.Spec.Pipeline.EnforceNonfalsifiability = test.falsifiability
+			errs := tp.Validate(context.TODO())
+			assert.Equal(t, test.err, errs.Error())
+		})
+	}
+}
+
+func TestValidateTektonPipelineCoschedule(t *testing.T) {
+	tp := &TektonPipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipeline",
+			Namespace: "tekton-pipelines-ns",
+		},
+		Spec: TektonPipelineSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "tekton-pipelines-ns",
+			},
+		},
+	}
+
+	tests := []struct {
+		name       string
+		coschedule string
+		err        string
+	}{
+		{name: "coschedule-empty-value", coschedule: "", err: ""},
+		{name: "coschedule-disabled", coschedule: config.CoscheduleDisabled, err: ""},
+		{name: "coschedule-workspaces", coschedule: config.CoscheduleWorkspaces, err: ""},
+		{name: "coschedule-pipelineruns", coschedule: config.CoschedulePipelineRuns, err: ""},
+		{name: "coschedule-isolate-pipelineruns", coschedule: config.CoscheduleIsolatePipelineRun, err: ""},
+		{name: "coschedule-invalid", coschedule: "hello", err: "invalid value: hello: spec.coschedule"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tp.Spec.Pipeline.Coschedule = test.coschedule
+			errs := tp.Validate(context.TODO())
+			assert.Equal(t, test.err, errs.Error())
+		})
+	}
+}
+
 func Test_ValidateTektonPipeline_OnDelete(t *testing.T) {
 
 	td := &TektonPipeline{
