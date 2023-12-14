@@ -376,3 +376,16 @@ rules:
   - delete
   - update
   - patch
+# to manage ConsolePlugin custom resource
+- apiGroups:
+  - console.openshift.io
+  resources:
+  - consoleplugins
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - delete
+  - update
+  - patch

@@ -874,3 +874,38 @@ func ReplaceNamespaceInClusterRoleBinding(targetNamespace string) mf.Transformer
 		return nil
 	}
 }
+
+// updates "metadata.namespace" and under "spec"
+// TODO: we have different transformer for each kind
+// TODO: replaces all the existing transformers(used to update namespace) with this.
+func ReplaceNamespace(newNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		// update metadata.namespace for all the resources
+		// this change will be updated in cluster wide resource too
+		// there is no effect on updating namespace on cluster wide resource
+		u.SetNamespace(newNamespace)
+
+		switch u.GetKind() {
+		case "ClusterRoleBinding":
+			crb := &rbacv1.ClusterRoleBinding{}
+			err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, crb)
+			if err != nil {
+				return err
+			}
+
+			// update namespace
+			for index := range crb.Subjects {
+				crb.Subjects[index].Namespace = newNamespace
+			}
+
+			obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(crb)
+			if err != nil {
+				return err
+			}
+			u.SetUnstructuredContent(obj)
+
+		}
+
+		return nil
+	}
+}

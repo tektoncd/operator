@@ -1,0 +1,58 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sample-sa
+  namespace: tekton-pipelines
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-service
+  namespace: tekton-pipelines
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sample-config-map
+  namespace: tekton-pipelines
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-config-map
+  namespace: tekton-pipelines
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sample-pod
+  namespace: tekton-pipelines
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: sample-secret
+  namespace: tekton-pipelines
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: sample-cluster-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: tekton-resource-pruner
+    namespace: hello
+  - kind: ServiceAccount
+    name: tekton-resource-pruner2
+    namespace: tekton-pipelines
+roleRef:
+  kind: ClusterRole
+  name: tekton-resource-pruner
+  apiGroup: rbac.authorization.k8s.io

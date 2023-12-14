@@ -811,3 +811,50 @@ func TestCopyConfigMap(t *testing.T) {
 		})
 	}
 }
+
+func TestReplaceNamespace(t *testing.T) {
+	tests := []struct {
+		name            string
+		targetNamespace string
+	}{
+		{
+			name:            "target-ns-foo",
+			targetNamespace: "foo",
+		},
+		{
+			name:            "target-ns-bar",
+			targetNamespace: "bar",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// get a manifest
+			testData := path.Join("testdata", "test-replace-namespace.yaml")
+			manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+			assert.NilError(t, err)
+
+			manifest, err = manifest.Transform(ReplaceNamespace(test.targetNamespace))
+			assert.NilError(t, err)
+
+			// verify the changes
+			for _, resource := range manifest.Resources() {
+				// assert namespace
+				assert.Equal(t, test.targetNamespace, resource.GetNamespace())
+
+				switch resource.GetKind() {
+				case "ClusterRoleBinding":
+					crb := &rbacv1.ClusterRoleBinding{}
+					err := runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, crb)
+					assert.NilError(t, err)
+					// verify namespace
+					for index := range crb.Subjects {
+						assert.Equal(t, test.targetNamespace, crb.Subjects[index].Namespace)
+
+					}
+				}
+
+			}
+		})
+	}
+}

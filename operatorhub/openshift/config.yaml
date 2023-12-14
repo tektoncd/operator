@@ -236,6 +236,15 @@ image-substitutions:
         envKeys:
           - IMAGE_ADDONS_PARAM_MAVEN_IMAGE
 
+# pipelines console plugin image
+- image: ghcr.io/openshift-pipelines/console-plugin:main
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
+        envKeys:
+          - IMAGE_PIPELINE_CONSOLE_PLUGIN
+
 # add third party images which are not replaced by operator
 # but pulled directly by tasks here
 defaultRelatedImages: []
