@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	mf "github.com/manifestival/manifestival"
 	security "github.com/openshift/client-go/security/clientset/versioned"
@@ -49,7 +50,8 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 	if err != nil {
 		logger.Fatal(err)
 	}
-	return openshiftExtension{
+
+	ext := openshiftExtension{
 		operatorClientSet: operatorclient.Get(ctx),
 		kubeClientSet:     kubeclient.Get(ctx),
 		rbacInformer:      rbacInformer.Get(ctx),
@@ -57,13 +59,23 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		securityClientSet: pkgCommon.GetSecurityClient(ctx),
 		operatorVersion:   operatorVer,
 	}
+
+	ext.consolePluginReconciler = &consolePluginReconciler{
+		resourcesYamlDirectory: filepath.Join(common.ComponentBaseDir(), consolePluginReconcileYamlDirectory),
+		logger:                 logger,
+		operatorClientSet:      ext.operatorClientSet,
+		operatorVersion:        operatorVer,
+	}
+
+	return ext
 }
 
 type openshiftExtension struct {
-	operatorClientSet versioned.Interface
-	kubeClientSet     kubernetes.Interface
-	rbacInformer      rbacV1.ClusterRoleBindingInformer
-	nsInformer        nsV1.NamespaceInformer
+	operatorClientSet       versioned.Interface
+	kubeClientSet           kubernetes.Interface
+	rbacInformer            rbacV1.ClusterRoleBindingInformer
+	nsInformer              nsV1.NamespaceInformer
+	consolePluginReconciler *consolePluginReconciler
 
 	// OpenShift clientsets are a bit... special, we need to get each
 	// clientset separately
@@ -163,7 +175,9 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 			return err
 		}
 	}
-	return nil
+
+	// execute console plugin reconciler
+	return oe.consolePluginReconciler.reconcile(ctx, configInstance)
 }
 
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
