@@ -7,7 +7,8 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 )
 
-// TODO: move to context, and use context to pass around
+// PacCliOpts is the struct that holds all the options for the CLI
+// TODO: Pass this to a context.
 type PacCliOpts struct {
 	NoColoring    bool
 	AllNameSpaces bool
