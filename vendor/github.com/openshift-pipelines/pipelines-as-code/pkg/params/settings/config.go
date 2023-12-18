@@ -73,9 +73,7 @@ type HubCatalog struct {
 }
 
 type Settings struct {
-	ApplicationName string
-	// HubURL                             string
-	// HubCatalogName                     string
+	ApplicationName                    string
 	HubCatalogs                        *sync.Map
 	RemoteTasks                        bool
 	MaxKeepRunsUpperLimit              int
