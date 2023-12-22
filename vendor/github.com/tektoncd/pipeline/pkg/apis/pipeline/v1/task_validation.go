@@ -89,7 +89,7 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	errs = errs.Also(validateSteps(ctx, mergedSteps).ViaField("steps"))
-	errs = errs.Also(validateSidecarNames(ts.Sidecars))
+	errs = errs.Also(validateSidecars(ts.Sidecars).ViaField("sidecars"))
 	errs = errs.Also(ValidateParameterTypes(ctx, ts.Params).ViaField("params"))
 	errs = errs.Also(ValidateParameterVariables(ctx, ts.Steps, ts.Params))
 	errs = errs.Also(validateTaskContextVariables(ctx, ts.Steps))
@@ -149,14 +149,32 @@ func ValidateObjectParamsHaveProperties(ctx context.Context, params ParamSpecs) 
 	return errs
 }
 
-func validateSidecarNames(sidecars []Sidecar) (errs *apis.FieldError) {
+func validateSidecars(sidecars []Sidecar) (errs *apis.FieldError) {
 	for _, sc := range sidecars {
-		if sc.Name == pipeline.ReservedResultsSidecarName {
-			errs = errs.Also(&apis.FieldError{
-				Message: fmt.Sprintf("Invalid: cannot use reserved sidecar name %v ", sc.Name),
-				Paths:   []string{"sidecars"},
-			})
+		errs = errs.Also(validateSidecarName(sc))
+
+		if sc.Image == "" {
+			errs = errs.Also(apis.ErrMissingField("image"))
 		}
+
+		if sc.Script != "" {
+			if len(sc.Command) > 0 {
+				errs = errs.Also(&apis.FieldError{
+					Message: "script cannot be used with command",
+					Paths:   []string{"script"},
+				})
+			}
+		}
+	}
+	return errs
+}
+
+func validateSidecarName(sc Sidecar) (errs *apis.FieldError) {
+	if sc.Name == pipeline.ReservedResultsSidecarName {
+		errs = errs.Also(&apis.FieldError{
+			Message: fmt.Sprintf("Invalid: cannot use reserved sidecar name %v ", sc.Name),
+			Paths:   []string{"name"},
+		})
 	}
 	return errs
 }
@@ -307,7 +325,7 @@ func isCreateOrUpdateAndDiverged(ctx context.Context, s Step) bool {
 func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
 	if s.Ref != nil {
 		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-			return apis.ErrGeneric("feature flag %s should be set to true to reference StepActions in Steps.", config.EnableStepActions)
+			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to reference StepActions in Steps.", config.EnableStepActions), "")
 		}
 		errs = errs.Also(s.Ref.Validate(ctx))
 		if s.Image != "" {
@@ -332,6 +350,12 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 			errs = errs.Also(&apis.FieldError{
 				Message: "script cannot be used with Ref",
 				Paths:   []string{"script"},
+			})
+		}
+		if s.WorkingDir != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "working dir cannot be used with Ref",
+				Paths:   []string{"workingDir"},
 			})
 		}
 		if s.Env != nil {
@@ -361,7 +385,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 		}
 		if len(s.Results) > 0 {
 			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-				return apis.ErrGeneric("feature flag %s should be set to true in order to use Results in Steps.", config.EnableStepActions)
+				return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true in order to use Results in Steps.", config.EnableStepActions), "")
 			}
 		}
 		if s.Image == "" {

@@ -1911,7 +1911,7 @@ func schema_pkg_apis_pipeline_v1_PipelineTask(ref common.ReferenceCallback) comm
 					},
 					"onError": {
 						SchemaProps: spec.SchemaProps{
-							Description: "OnError defines the exiting behavior of a PipelineRun on error can be set to [ continue | stopAndFail ] Note: OnError is in preview mode and not yet supported",
+							Description: "OnError defines the exiting behavior of a PipelineRun on error can be set to [ continue | stopAndFail ]",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -2328,9 +2328,8 @@ func schema_pkg_apis_pipeline_v1_ResultRef(ref common.ReferenceCallback) common.
 					},
 					"resultsIndex": {
 						SchemaProps: spec.SchemaProps{
-							Default: 0,
-							Type:    []string{"integer"},
-							Format:  "int32",
+							Type:   []string{"integer"},
+							Format: "int32",
 						},
 					},
 					"property": {
@@ -2364,7 +2363,7 @@ func schema_pkg_apis_pipeline_v1_Sidecar(ref common.ReferenceCallback) common.Op
 					},
 					"image": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Image reference name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+							Description: "Image reference name. More info: https://kubernetes.io/docs/concepts/containers/images",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3160,7 +3159,7 @@ func schema_pkg_apis_pipeline_v1_StepTemplate(ref common.ReferenceCallback) comm
 				Properties: map[string]spec.Schema{
 					"image": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Image reference name. More info: https://kubernetes.io/docs/concepts/containers/images This field is optional to allow higher level config management to default or override container images in workload controllers like Deployments and StatefulSets.",
+							Description: "Image reference name. More info: https://kubernetes.io/docs/concepts/containers/images",
 							Type:        []string{"string"},
 							Format:      "",
 						},
