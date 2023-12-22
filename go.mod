@@ -16,7 +16,7 @@ require (
 	github.com/openshift/client-go v0.0.0-20230503144108-75015d2347cb
 	github.com/sigstore/cosign/v2 v2.2.2
 	github.com/spf13/cobra v1.8.0
-	github.com/spf13/viper v1.18.1
+	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
 	github.com/tektoncd/pipeline v0.55.0
 	github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293
