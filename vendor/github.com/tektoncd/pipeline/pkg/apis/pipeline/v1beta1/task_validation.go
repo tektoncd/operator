@@ -314,7 +314,7 @@ func isCreateOrUpdateAndDiverged(ctx context.Context, s Step) bool {
 func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
 	if s.Ref != nil {
 		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-			return apis.ErrGeneric("feature flag %s should be set to true to reference StepActions in Steps.", config.EnableStepActions)
+			return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true to reference StepActions in Steps.", config.EnableStepActions), "")
 		}
 		errs = errs.Also(s.Ref.Validate(ctx))
 		if s.Image != "" {
@@ -339,6 +339,12 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 			errs = errs.Also(&apis.FieldError{
 				Message: "script cannot be used with Ref",
 				Paths:   []string{"script"},
+			})
+		}
+		if s.WorkingDir != "" {
+			errs = errs.Also(&apis.FieldError{
+				Message: "working dir cannot be used with Ref",
+				Paths:   []string{"workingDir"},
 			})
 		}
 		if s.Env != nil {
@@ -368,7 +374,7 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 		}
 		if len(s.Results) > 0 {
 			if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
-				return apis.ErrGeneric("feature flag %s should be set to true in order to use Results in Steps.", config.EnableStepActions)
+				return apis.ErrGeneric(fmt.Sprintf("feature flag %s should be set to true in order to use Results in Steps.", config.EnableStepActions), "")
 			}
 		}
 		if s.Image == "" {
