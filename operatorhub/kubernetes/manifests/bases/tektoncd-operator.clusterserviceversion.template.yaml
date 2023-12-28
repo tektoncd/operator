@@ -246,4 +246,5 @@ spec:
   maturity: alpha
   provider:
     name: The Tekton Authors
+  minKubeVersion: 1.25.0
   version: 0.0.0-0
