@@ -5,5 +5,5 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    operator.tekton.dev/release: devel
+    operator.tekton.dev/release: v0.69.1
   name: tekton-config-defaults
