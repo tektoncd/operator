@@ -1,7 +1,7 @@
 ignore: |
   /vendor
   test/**/**
-  /chart/templates/**
+  /charts/tekton-operator/templates/**
 
 rules:
   braces: enable
