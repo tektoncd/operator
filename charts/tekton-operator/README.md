@@ -1,23 +1,29 @@
 # Tekton Operator Helm Chart
 
 This Helm chart installs the [Tekton Operator](https://tekton.dev/docs/operator/) into your Kubernetes (v1.16+) or Openshift cluster (v4.3+).
+Once this chart is published it can be installed directly, until then [helm-git](https://github.com/aslafy-z/helm-git) can be used.
 
 ## TL;DR
 
+Install [helm-git](https://github.com/aslafy-z/helm-git) plugin.
+
 ```sh
-git clone https://github.com/tektoncd/operator.git
+# Add the repo to helm (typically use a tag rather than main):
+helm repo add tektoncd "git+https://github.com/tektoncd/operator@charts?ref=main"
+
+# Install the operator
 helm install tekton-operator \
   -n tekton-operator \
   --create-namespace \
   --set installCRDs=true \
-  ./operator/chart
+  tektoncd/tekton-operator
 
 # or install the Openshift flavor:
 helm install tekton-operator \
   -n openshift-operators \
   --set openshift.enabled=true \
   --set installCRDs=true \
-  ./operator/chart
+  tektoncd/tekton-operator
 ```
 
 ## Introduction
@@ -55,6 +61,9 @@ helm uninstall --namespace tekton-operator tekton-operator --wait
 kubectl delete namespace tekton-operator
 # for Openshift:
 helm uninstall --namespace openshift-operators --wait
+
+# optionally remove repository from helm:
+helm repo remove tektoncd
 ```
 
 **Important:** if you installed the CRDs with the Helm chart (by setting `installCRDs=true`), the CRDs will be removed as well: this means any remaining Tekton resources (e.g. Tekton Pipelines) in the cluster will be deleted!
