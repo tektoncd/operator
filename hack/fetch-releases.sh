@@ -187,7 +187,7 @@ release_yaml_hub() {
   mkdir -p ${dirPath} || true
 
   url=""
-  components="db db-migration api ui"
+  components="db db-migration api ui hub-info"
 
   for component in ${components}; do
     echo fetching Hub '|' component: ${component} '|' version: ${2}
