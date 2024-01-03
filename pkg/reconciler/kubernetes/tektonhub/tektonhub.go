@@ -84,6 +84,7 @@ const (
 	manifestDirDatabaseMigration = "db-migration"
 	manifestDirAPI               = "api"
 	manifestDirUI                = "ui"
+	manifestDirInfo              = "hub-info"
 
 	// resource names
 	databaseSecretName = "tekton-hub-db"
@@ -318,6 +319,15 @@ func (r *Reconciler) reconcileApiInstallerSet(ctx context.Context, th *v1alpha1.
 		if err != nil {
 			return err
 		}
+
+		infoLocation := filepath.Join(hubDir, manifestDirInfo)
+
+		infoManifest, err := r.getManifest(ctx, th, infoLocation)
+		if err != nil {
+			return err
+		}
+
+		*manifest = manifest.Append(*infoManifest)
 
 		err = applyPVC(ctx, manifest, th)
 		if err != nil {
