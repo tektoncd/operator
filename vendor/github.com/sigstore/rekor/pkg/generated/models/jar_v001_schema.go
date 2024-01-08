@@ -124,7 +124,6 @@ func (m *JarV001Schema) ContextValidate(ctx context.Context, formats strfmt.Regi
 func (m *JarV001Schema) contextValidateArchive(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Archive != nil {
-
 		if err := m.Archive.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("archive")
@@ -141,11 +140,6 @@ func (m *JarV001Schema) contextValidateArchive(ctx context.Context, formats strf
 func (m *JarV001Schema) contextValidateSignature(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Signature != nil {
-
-		if swag.IsZero(m.Signature) { // not required
-			return nil
-		}
-
 		if err := m.Signature.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("signature")
@@ -240,11 +234,6 @@ func (m *JarV001SchemaArchive) ContextValidate(ctx context.Context, formats strf
 func (m *JarV001SchemaArchive) contextValidateHash(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Hash != nil {
-
-		if swag.IsZero(m.Hash) { // not required
-			return nil
-		}
-
 		if err := m.Hash.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("archive" + "." + "hash")
@@ -474,7 +463,6 @@ func (m *JarV001SchemaSignature) contextValidateContent(ctx context.Context, for
 func (m *JarV001SchemaSignature) contextValidatePublicKey(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.PublicKey != nil {
-
 		if err := m.PublicKey.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("signature" + "." + "publicKey")

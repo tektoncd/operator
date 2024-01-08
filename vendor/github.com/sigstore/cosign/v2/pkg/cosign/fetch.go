@@ -18,23 +18,17 @@ package cosign
 import (
 	"context"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"runtime"
 	"sync"
 
 	"github.com/google/go-containerregistry/pkg/name"
-	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/sigstore/cosign/v2/pkg/cosign/bundle"
-	"github.com/sigstore/cosign/v2/pkg/oci"
 	ociremote "github.com/sigstore/cosign/v2/pkg/oci/remote"
 	"golang.org/x/sync/errgroup"
 )
-
-const maxAllowedSigsOrAtts = 100
 
 type SignedPayload struct {
 	Base64Signature  string
@@ -66,7 +60,6 @@ const (
 	Signature   = "signature"
 	SBOM        = "sbom"
 	Attestation = "attestation"
-	Digest      = "digest"
 )
 
 func FetchSignaturesForReference(_ context.Context, ref name.Reference, opts ...ociremote.Option) ([]SignedPayload, error) {
@@ -85,9 +78,6 @@ func FetchSignaturesForReference(_ context.Context, ref name.Reference, opts ...
 	}
 	if len(l) == 0 {
 		return nil, fmt.Errorf("no signatures associated with %s", ref)
-	}
-	if len(l) > maxAllowedSigsOrAtts {
-		return nil, fmt.Errorf("maximum number of signatures on an image is %d, found %d", maxAllowedSigsOrAtts, len(l))
 	}
 
 	signatures := make([]SignedPayload, len(l))
@@ -131,15 +121,12 @@ func FetchSignaturesForReference(_ context.Context, ref name.Reference, opts ...
 }
 
 func FetchAttestationsForReference(_ context.Context, ref name.Reference, predicateType string, opts ...ociremote.Option) ([]AttestationPayload, error) {
-	se, err := ociremote.SignedEntity(ref, opts...)
+	simg, err := ociremote.SignedEntity(ref, opts...)
 	if err != nil {
 		return nil, err
 	}
-	return FetchAttestations(se, predicateType)
-}
 
-func FetchAttestations(se oci.SignedEntity, predicateType string) ([]AttestationPayload, error) {
-	atts, err := se.Attestations()
+	atts, err := simg.Attestations()
 	if err != nil {
 		return nil, fmt.Errorf("remote image: %w", err)
 	}
@@ -148,11 +135,7 @@ func FetchAttestations(se oci.SignedEntity, predicateType string) ([]Attestation
 		return nil, fmt.Errorf("fetching attestations: %w", err)
 	}
 	if len(l) == 0 {
-		return nil, errors.New("found no attestations")
-	}
-	if len(l) > maxAllowedSigsOrAtts {
-		errMsg := fmt.Sprintf("maximum number of attestations on an image is %d, found %d", maxAllowedSigsOrAtts, len(l))
-		return nil, errors.New(errMsg)
+		return nil, fmt.Errorf("no attestations associated with %s", ref)
 	}
 
 	attestations := make([]AttestationPayload, 0, len(l))
@@ -162,35 +145,28 @@ func FetchAttestations(se oci.SignedEntity, predicateType string) ([]Attestation
 	g.SetLimit(runtime.NumCPU())
 
 	for _, att := range l {
-		att := att
-		g.Go(func() error {
-			rawPayload, err := att.Payload()
+		if predicateType != "" {
+			anns, err := att.Annotations()
 			if err != nil {
-				return fmt.Errorf("fetching payload: %w", err)
+				return nil, err
 			}
-			var payload AttestationPayload
-			if err := json.Unmarshal(rawPayload, &payload); err != nil {
-				return fmt.Errorf("unmarshaling payload: %w", err)
+			pt, ok := anns["predicateType"]
+			// Skip attestation if predicateType annotation is not present or predicateType annotation does not match supplied predicate type
+			if !ok || pt != predicateType {
+				continue
 			}
-
-			if predicateType != "" {
-				var decodedPayload []byte
-				decodedPayload, err = base64.StdEncoding.DecodeString(payload.PayLoad)
-				if err != nil {
-					return fmt.Errorf("decoding payload: %w", err)
-				}
-				var statement in_toto.Statement
-				if err := json.Unmarshal(decodedPayload, &statement); err != nil {
-					return fmt.Errorf("unmarshaling statement: %w", err)
-				}
-				if statement.PredicateType != predicateType {
-					return nil
-				}
+		}
+		att := att
+		var a AttestationPayload
+		g.Go(func() error {
+			attestPayload, _ := att.Payload()
+			err := json.Unmarshal(attestPayload, &a)
+			if err != nil {
+				return err
 			}
-
 			attMu.Lock()
 			defer attMu.Unlock()
-			attestations = append(attestations, payload)
+			attestations = append(attestations, a)
 			return nil
 		})
 	}

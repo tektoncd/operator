@@ -57,21 +57,21 @@ var _ Interface = (*OIDCOptions)(nil)
 // AddFlags implements Interface
 func (o *OIDCOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&o.Issuer, "oidc-issuer", DefaultOIDCIssuerURL,
-		"OIDC provider to be used to issue ID token")
+		"[EXPERIMENTAL] OIDC provider to be used to issue ID token")
 
 	cmd.Flags().StringVar(&o.ClientID, "oidc-client-id", "sigstore",
-		"OIDC client ID for application")
+		"[EXPERIMENTAL] OIDC client ID for application")
 
 	cmd.Flags().StringVar(&o.clientSecretFile, "oidc-client-secret-file", "",
-		"Path to file containing OIDC client secret for application")
+		"[EXPERIMENTAL] Path to file containing OIDC client secret for application")
 	_ = cmd.Flags().SetAnnotation("oidc-client-secret-file", cobra.BashCompFilenameExt, []string{})
 
 	cmd.Flags().StringVar(&o.RedirectURL, "oidc-redirect-url", "",
-		"OIDC redirect URL (Optional). The default oidc-redirect-url is 'http://localhost:0/auth/callback'.")
+		"[EXPERIMENTAL] OIDC redirect URL (Optional). The default oidc-redirect-url is 'http://localhost:0/auth/callback'.")
 
 	cmd.Flags().StringVar(&o.Provider, "oidc-provider", "",
-		"Specify the provider to get the OIDC token from (Optional). If unset, all options will be tried. Options include: [spiffe, google, github-actions, filesystem, buildkite-agent]")
+		"[EXPERIMENTAL] Specify the provider to get the OIDC token from (Optional). If unset, all options will be tried. Options include: [spiffe, google, github, filesystem]")
 
 	cmd.Flags().BoolVar(&o.DisableAmbientProviders, "oidc-disable-ambient-providers", false,
-		"Disable ambient OIDC providers. When true, ambient credentials will not be read")
+		"[EXPERIMENTAL] Disable ambient OIDC providers. When true, ambient credentials will not be read")
 }

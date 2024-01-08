@@ -38,22 +38,6 @@ var (
 	remoteWrite = remote.Write
 )
 
-// EntityNotFoundError is the error that SignedEntity returns when the
-// provided ref does not exist.
-type EntityNotFoundError struct {
-	baseErr error
-}
-
-func (e *EntityNotFoundError) Error() string {
-	return fmt.Sprintf("entity not found in registry, error: %v", e.baseErr)
-}
-
-func NewEntityNotFoundError(err error) error {
-	return &EntityNotFoundError{
-		baseErr: err,
-	}
-}
-
 // SignedEntity provides access to a remote reference, and its signatures.
 // The SignedEntity will be one of SignedImage or SignedImageIndex.
 func SignedEntity(ref name.Reference, options ...Option) (oci.SignedEntity, error) {
@@ -62,7 +46,7 @@ func SignedEntity(ref name.Reference, options ...Option) (oci.SignedEntity, erro
 	got, err := remoteGet(ref, o.ROpt...)
 	var te *transport.Error
 	if errors.As(err, &te) && te.StatusCode == http.StatusNotFound {
-		return nil, NewEntityNotFoundError(err)
+		return nil, errors.New("entity not found in registry")
 	} else if err != nil {
 		return nil, err
 	}
@@ -97,43 +81,31 @@ func SignedEntity(ref name.Reference, options ...Option) (oci.SignedEntity, erro
 // normalize turns image digests into tags with optional prefix & suffix:
 // sha256:d34db33f -> [prefix]sha256-d34db33f[.suffix]
 func normalize(h v1.Hash, prefix string, suffix string) string {
-	return normalizeWithSeparator(h, prefix, suffix, "-")
-}
-
-// normalizeWithSeparator turns image digests into tags with optional prefix & suffix:
-// sha256:d34db33f -> [prefix]sha256[algorithmSeparator]d34db33f[.suffix]
-func normalizeWithSeparator(h v1.Hash, prefix string, suffix string, algorithmSeparator string) string {
 	if suffix == "" {
-		return fmt.Sprint(prefix, h.Algorithm, algorithmSeparator, h.Hex)
+		return fmt.Sprint(prefix, h.Algorithm, "-", h.Hex)
 	}
-	return fmt.Sprint(prefix, h.Algorithm, algorithmSeparator, h.Hex, ".", suffix)
+	return fmt.Sprint(prefix, h.Algorithm, "-", h.Hex, ".", suffix)
 }
 
 // SignatureTag returns the name.Tag that associated signatures with a particular digest.
 func SignatureTag(ref name.Reference, opts ...Option) (name.Tag, error) {
 	o := makeOptions(ref.Context(), opts...)
-	return suffixTag(ref, o.SignatureSuffix, "-", o)
+	return suffixTag(ref, o.SignatureSuffix, o)
 }
 
 // AttestationTag returns the name.Tag that associated attestations with a particular digest.
 func AttestationTag(ref name.Reference, opts ...Option) (name.Tag, error) {
 	o := makeOptions(ref.Context(), opts...)
-	return suffixTag(ref, o.AttestationSuffix, "-", o)
+	return suffixTag(ref, o.AttestationSuffix, o)
 }
 
 // SBOMTag returns the name.Tag that associated SBOMs with a particular digest.
 func SBOMTag(ref name.Reference, opts ...Option) (name.Tag, error) {
 	o := makeOptions(ref.Context(), opts...)
-	return suffixTag(ref, o.SBOMSuffix, "-", o)
+	return suffixTag(ref, o.SBOMSuffix, o)
 }
 
-// DigestTag returns the name.Tag that associated SBOMs with a particular digest.
-func DigestTag(ref name.Reference, opts ...Option) (name.Tag, error) {
-	o := makeOptions(ref.Context(), opts...)
-	return suffixTag(ref, "", ":", o)
-}
-
-func suffixTag(ref name.Reference, suffix string, algorithmSeparator string, o *options) (name.Tag, error) {
+func suffixTag(ref name.Reference, suffix string, o *options) (name.Tag, error) {
 	var h v1.Hash
 	if digest, ok := ref.(name.Digest); ok {
 		var err error
@@ -148,11 +120,15 @@ func suffixTag(ref name.Reference, suffix string, algorithmSeparator string, o *
 		}
 		h = desc.Digest
 	}
-	return o.TargetRepository.Tag(normalizeWithSeparator(h, o.TagPrefix, suffix, algorithmSeparator)), nil
+	return o.TargetRepository.Tag(normalize(h, o.TagPrefix, suffix)), nil
+}
+
+type digestable interface {
+	Digest() (v1.Hash, error)
 }
 
 // signatures is a shared implementation of the oci.Signed* Signatures method.
-func signatures(digestable oci.SignedEntity, o *options) (oci.Signatures, error) {
+func signatures(digestable digestable, o *options) (oci.Signatures, error) {
 	h, err := digestable.Digest()
 	if err != nil {
 		return nil, err
@@ -161,7 +137,7 @@ func signatures(digestable oci.SignedEntity, o *options) (oci.Signatures, error)
 }
 
 // attestations is a shared implementation of the oci.Signed* Attestations method.
-func attestations(digestable oci.SignedEntity, o *options) (oci.Signatures, error) {
+func attestations(digestable digestable, o *options) (oci.Signatures, error) {
 	h, err := digestable.Digest()
 	if err != nil {
 		return nil, err
@@ -170,7 +146,7 @@ func attestations(digestable oci.SignedEntity, o *options) (oci.Signatures, erro
 }
 
 // attachment is a shared implementation of the oci.Signed* Attachment method.
-func attachment(digestable oci.SignedEntity, attName string, o *options) (oci.File, error) {
+func attachment(digestable digestable, attName string, o *options) (oci.File, error) {
 	// Try using OCI 1.1 behavior
 	if file, err := attachmentExperimentalOCI(digestable, attName, o); err == nil {
 		return file, nil
@@ -225,7 +201,7 @@ func (f *attached) Payload() ([]byte, error) {
 }
 
 // attachmentExperimentalOCI is a shared implementation of the oci.Signed* Attachment method (for OCI 1.1+ behavior).
-func attachmentExperimentalOCI(digestable oci.SignedEntity, attName string, o *options) (oci.File, error) {
+func attachmentExperimentalOCI(digestable digestable, attName string, o *options) (oci.File, error) {
 	h, err := digestable.Digest()
 	if err != nil {
 		return nil, err

@@ -24,14 +24,15 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
-	"github.com/sigstore/cosign/v2/cmd/cosign/cli/rekor"
-	internal "github.com/sigstore/cosign/v2/internal/pkg/cosign"
 	"github.com/sigstore/cosign/v2/internal/pkg/cosign/tsa"
 	"github.com/sigstore/cosign/v2/internal/pkg/cosign/tsa/client"
 	"github.com/sigstore/cosign/v2/internal/ui"
-	"github.com/sigstore/cosign/v2/pkg/cosign"
 	cbundle "github.com/sigstore/cosign/v2/pkg/cosign/bundle"
+
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/rekor"
+	internal "github.com/sigstore/cosign/v2/internal/pkg/cosign"
+	"github.com/sigstore/cosign/v2/pkg/cosign"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	signatureoptions "github.com/sigstore/sigstore/pkg/signature/options"
 )
@@ -76,23 +77,10 @@ func SignBlobCmd(ro *options.RootOptions, ko options.KeyOpts, payloadPath string
 		if ko.RFC3161TimestampPath == "" {
 			return nil, fmt.Errorf("timestamp output path must be set")
 		}
-		var respBytes []byte
-		var err error
-		if ko.TSAClientCACert == "" && ko.TSAClientCert == "" { // no mTLS params or custom CA
-			respBytes, err = tsa.GetTimestampedSignature(sig, client.NewTSAClient(ko.TSAServerURL))
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			respBytes, err = tsa.GetTimestampedSignature(sig, client.NewTSAClientMTLS(ko.TSAServerURL,
-				ko.TSAClientCACert,
-				ko.TSAClientCert,
-				ko.TSAClientKey,
-				ko.TSAServerName,
-			))
-			if err != nil {
-				return nil, err
-			}
+
+		respBytes, err := tsa.GetTimestampedSignature(sig, client.NewTSAClient(ko.TSAServerURL))
+		if err != nil {
+			return nil, err
 		}
 
 		rfc3161Timestamp = cbundle.TimestampToRFC3161Timestamp(respBytes)

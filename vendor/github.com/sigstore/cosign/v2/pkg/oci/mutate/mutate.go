@@ -96,16 +96,13 @@ func (i *indexWrapper) SignedImage(h v1.Hash) (oci.SignedImage, error) {
 			return si, nil
 		}
 	}
-
 	if sb, ok := i.ogbase.(oci.SignedImageIndex); ok {
 		return sb.SignedImage(h)
-	}
-
-	unsigned, err := i.Image(h)
-	if err != nil {
+	} else if unsigned, err := i.Image(h); err != nil {
 		return nil, err
+	} else {
+		return signed.Image(unsigned), nil
 	}
-	return signed.Image(unsigned), nil
 }
 
 // SignedImageIndex implements oci.SignedImageIndex
@@ -121,16 +118,13 @@ func (i *indexWrapper) SignedImageIndex(h v1.Hash) (oci.SignedImageIndex, error)
 			return sii, nil
 		}
 	}
-
 	if sb, ok := i.ogbase.(oci.SignedImageIndex); ok {
 		return sb.SignedImageIndex(h)
-	}
-
-	unsigned, err := i.ImageIndex(h)
-	if err != nil {
+	} else if unsigned, err := i.ImageIndex(h); err != nil {
 		return nil, err
+	} else {
+		return signed.ImageIndex(unsigned), nil
 	}
-	return signed.ImageIndex(unsigned), nil
 }
 
 // AttachSignatureToEntity attaches the provided signature to the provided entity.
@@ -141,7 +135,7 @@ func AttachSignatureToEntity(se oci.SignedEntity, sig oci.Signature, opts ...Sig
 	case oci.SignedImageIndex:
 		return AttachSignatureToImageIndex(obj, sig, opts...)
 	default:
-		return AttachSignatureToUnknown(obj, sig, opts...)
+		return nil, fmt.Errorf("unsupported type: %T", se)
 	}
 }
 
@@ -153,7 +147,7 @@ func AttachAttestationToEntity(se oci.SignedEntity, att oci.Signature, opts ...S
 	case oci.SignedImageIndex:
 		return AttachAttestationToImageIndex(obj, att, opts...)
 	default:
-		return AttachAttestationToUnknown(obj, att, opts...)
+		return nil, fmt.Errorf("unsupported type: %T", se)
 	}
 }
 
@@ -165,7 +159,7 @@ func AttachFileToEntity(se oci.SignedEntity, name string, f oci.File, opts ...Si
 	case oci.SignedImageIndex:
 		return AttachFileToImageIndex(obj, name, f, opts...)
 	default:
-		return AttachFileToUnknown(obj, name, f, opts...)
+		return nil, fmt.Errorf("unsupported type: %T", se)
 	}
 }
 
@@ -210,12 +204,47 @@ type signedImage struct {
 
 // Signatures implements oci.SignedImage
 func (si *signedImage) Signatures() (oci.Signatures, error) {
-	return si.so.dedupeAndReplace(si.sig, si.SignedImage.Signatures)
+	base, err := si.SignedImage.Signatures()
+	if err != nil {
+		return nil, err
+	} else if si.sig == nil {
+		return base, nil
+	}
+	if si.so.dd != nil {
+		if existing, err := si.so.dd.Find(base, si.sig); err != nil {
+			return nil, err
+		} else if existing != nil {
+			// Just return base if the signature is redundant
+			return base, nil
+		}
+	}
+	return AppendSignatures(base, si.sig)
 }
 
 // Attestations implements oci.SignedImage
 func (si *signedImage) Attestations() (oci.Signatures, error) {
-	return si.so.dedupeAndReplace(si.att, si.SignedImage.Attestations)
+	base, err := si.SignedImage.Attestations()
+	if err != nil {
+		return nil, err
+	} else if si.att == nil {
+		return base, nil
+	}
+	if si.so.dd != nil {
+		if existing, err := si.so.dd.Find(base, si.att); err != nil {
+			return nil, err
+		} else if existing != nil {
+			// Just return base if the signature is redundant
+			return base, nil
+		}
+	}
+	if si.so.ro != nil {
+		replace, err := si.so.ro.Replace(base, si.att)
+		if err != nil {
+			return nil, err
+		}
+		return ReplaceSignatures(replace)
+	}
+	return AppendSignatures(base, si.att)
 }
 
 // Attachment implements oci.SignedImage
@@ -269,12 +298,47 @@ type signedImageIndex struct {
 
 // Signatures implements oci.SignedImageIndex
 func (sii *signedImageIndex) Signatures() (oci.Signatures, error) {
-	return sii.so.dedupeAndReplace(sii.sig, sii.ociSignedImageIndex.Signatures)
+	base, err := sii.ociSignedImageIndex.Signatures()
+	if err != nil {
+		return nil, err
+	} else if sii.sig == nil {
+		return base, nil
+	}
+	if sii.so.dd != nil {
+		if existing, err := sii.so.dd.Find(base, sii.sig); err != nil {
+			return nil, err
+		} else if existing != nil {
+			// Just return base if the signature is redundant
+			return base, nil
+		}
+	}
+	return AppendSignatures(base, sii.sig)
 }
 
 // Attestations implements oci.SignedImageIndex
 func (sii *signedImageIndex) Attestations() (oci.Signatures, error) {
-	return sii.so.dedupeAndReplace(sii.att, sii.ociSignedImageIndex.Attestations)
+	base, err := sii.ociSignedImageIndex.Attestations()
+	if err != nil {
+		return nil, err
+	} else if sii.att == nil {
+		return base, nil
+	}
+	if sii.so.dd != nil {
+		if existing, err := sii.so.dd.Find(base, sii.att); err != nil {
+			return nil, err
+		} else if existing != nil {
+			// Just return base if the signature is redundant
+			return base, nil
+		}
+	}
+	if sii.so.ro != nil {
+		replace, err := sii.so.ro.Replace(base, sii.att)
+		if err != nil {
+			return nil, err
+		}
+		return ReplaceSignatures(replace)
+	}
+	return AppendSignatures(base, sii.att)
 }
 
 // Attachment implements oci.SignedImageIndex
@@ -283,99 +347,4 @@ func (sii *signedImageIndex) Attachment(attName string) (oci.File, error) {
 		return f, nil
 	}
 	return nil, fmt.Errorf("attachment %q not found", attName)
-}
-
-// AttachSignatureToUnknown attaches the provided signature to the provided image.
-func AttachSignatureToUnknown(se oci.SignedEntity, sig oci.Signature, opts ...SignOption) (oci.SignedEntity, error) {
-	return &signedUnknown{
-		SignedEntity: se,
-		sig:          sig,
-		attachments:  make(map[string]oci.File),
-		so:           makeSignOpts(opts...),
-	}, nil
-}
-
-// AttachAttestationToUnknown attaches the provided attestation to the provided image.
-func AttachAttestationToUnknown(se oci.SignedEntity, att oci.Signature, opts ...SignOption) (oci.SignedEntity, error) {
-	return &signedUnknown{
-		SignedEntity: se,
-		att:          att,
-		attachments:  make(map[string]oci.File),
-		so:           makeSignOpts(opts...),
-	}, nil
-}
-
-// AttachFileToUnknown attaches the provided file to the provided image.
-func AttachFileToUnknown(se oci.SignedEntity, name string, f oci.File, opts ...SignOption) (oci.SignedEntity, error) {
-	return &signedUnknown{
-		SignedEntity: se,
-		attachments: map[string]oci.File{
-			name: f,
-		},
-		so: makeSignOpts(opts...),
-	}, nil
-}
-
-type signedUnknown struct {
-	oci.SignedEntity
-	sig         oci.Signature
-	att         oci.Signature
-	so          *signOpts
-	attachments map[string]oci.File
-}
-
-type digestable interface {
-	Digest() (v1.Hash, error)
-}
-
-// Digest is generally implemented by oci.SignedEntity implementations.
-func (si *signedUnknown) Digest() (v1.Hash, error) {
-	d, ok := si.SignedEntity.(digestable)
-	if !ok {
-		return v1.Hash{}, fmt.Errorf("underlying signed entity not digestable: %T", si.SignedEntity)
-	}
-	return d.Digest()
-}
-
-// Signatures implements oci.SignedEntity
-func (si *signedUnknown) Signatures() (oci.Signatures, error) {
-	return si.so.dedupeAndReplace(si.sig, si.SignedEntity.Signatures)
-}
-
-// Attestations implements oci.SignedEntity
-func (si *signedUnknown) Attestations() (oci.Signatures, error) {
-	return si.so.dedupeAndReplace(si.att, si.SignedEntity.Attestations)
-}
-
-// Attachment implements oci.SignedEntity
-func (si *signedUnknown) Attachment(attName string) (oci.File, error) {
-	if f, ok := si.attachments[attName]; ok {
-		return f, nil
-	}
-	return nil, fmt.Errorf("attachment %q not found", attName)
-}
-
-func (so *signOpts) dedupeAndReplace(sig oci.Signature, basefn func() (oci.Signatures, error)) (oci.Signatures, error) {
-	base, err := basefn()
-	if err != nil {
-		return nil, err
-	} else if sig == nil {
-		return base, nil
-	}
-	if so.dd != nil {
-		if existing, err := so.dd.Find(base, sig); err != nil {
-			return nil, err
-		} else if existing != nil {
-			// Just return base if the signature is redundant
-			return base, nil
-		}
-	}
-	if so.ro != nil {
-		replace, err := so.ro.Replace(base, sig)
-		if err != nil {
-			return nil, err
-		}
-		return ReplaceSignatures(replace)
-	}
-	return AppendSignatures(base, sig)
 }

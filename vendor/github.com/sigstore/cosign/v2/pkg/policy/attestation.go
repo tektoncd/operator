@@ -106,13 +106,13 @@ func AttestationToPayloadJSON(_ context.Context, predicateType string, verifiedA
 			return nil, statement.PredicateType, fmt.Errorf("marshaling LinkStatement: %w", err)
 		}
 	case options.PredicateSLSA:
-		var slsaProvenanceStatement in_toto.ProvenanceStatementSLSA02
+		var slsaProvenanceStatement in_toto.ProvenanceStatement
 		if err := json.Unmarshal(decodedPayload, &slsaProvenanceStatement); err != nil {
-			return nil, statement.PredicateType, fmt.Errorf("unmarshaling ProvenanceStatementSLSA02): %w", err)
+			return nil, statement.PredicateType, fmt.Errorf("unmarshaling ProvenanceStatement): %w", err)
 		}
 		payload, err = json.Marshal(slsaProvenanceStatement)
 		if err != nil {
-			return nil, statement.PredicateType, fmt.Errorf("marshaling ProvenanceStatementSLSA02: %w", err)
+			return nil, statement.PredicateType, fmt.Errorf("marshaling ProvenanceStatement: %w", err)
 		}
 	case options.PredicateSPDX, options.PredicateSPDXJSON:
 		var spdxStatement in_toto.SPDXStatement

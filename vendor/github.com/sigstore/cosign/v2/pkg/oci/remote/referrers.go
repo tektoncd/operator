@@ -26,9 +26,5 @@ func Referrers(d name.Digest, artifactType string, opts ...Option) (*v1.IndexMan
 	o := makeOptions(name.Repository{}, opts...)
 	rOpt := o.ROpt
 	rOpt = append(rOpt, remote.WithFilter("artifactType", artifactType))
-	idx, err := remote.Referrers(d, rOpt...)
-	if err != nil {
-		return nil, err
-	}
-	return idx.IndexManifest()
+	return remote.Referrers(d, rOpt...)
 }

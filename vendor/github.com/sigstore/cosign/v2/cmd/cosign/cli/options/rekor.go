@@ -31,5 +31,5 @@ var _ Interface = (*RekorOptions)(nil)
 // AddFlags implements Interface
 func (o *RekorOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&o.URL, "rekor-url", DefaultRekorURL,
-		"address of rekor STL server")
+		"[EXPERIMENTAL] address of rekor STL server")
 }

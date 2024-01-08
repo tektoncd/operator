@@ -19,24 +19,18 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/ecdsa"
-	"crypto/ed25519"
-	"crypto/rsa"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/asaskevich/govalidator"
+	validator "github.com/go-playground/validator/v10"
 
 	//TODO: https://github.com/sigstore/rekor/issues/286
 	"golang.org/x/crypto/openpgp"        //nolint:staticcheck
 	"golang.org/x/crypto/openpgp/armor"  //nolint:staticcheck
 	"golang.org/x/crypto/openpgp/packet" //nolint:staticcheck
 
-	"github.com/sigstore/rekor/pkg/pki/identity"
-	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	sigsig "github.com/sigstore/sigstore/pkg/signature"
 )
 
@@ -140,7 +134,7 @@ func (s Signature) CanonicalValue() ([]byte, error) {
 }
 
 // Verify implements the pki.Signature interface
-func (s Signature) Verify(r io.Reader, k interface{}, _ ...sigsig.VerifyOption) error {
+func (s Signature) Verify(r io.Reader, k interface{}, opts ...sigsig.VerifyOption) error {
 	if len(s.signature) == 0 {
 		return fmt.Errorf("PGP signature has not been initialized")
 	}
@@ -295,7 +289,9 @@ func (k PublicKey) EmailAddresses() []string {
 	// Extract from cert
 	for _, entity := range k.key {
 		for _, identity := range entity.Identities {
-			if govalidator.IsEmail(identity.UserId.Email) {
+			validate := validator.New()
+			errs := validate.Var(identity.UserId.Email, "required,email")
+			if errs == nil {
 				names = append(names, identity.UserId.Email)
 			}
 		}
@@ -309,34 +305,14 @@ func (k PublicKey) Subjects() []string {
 }
 
 // Identities implements the pki.PublicKey interface
-func (k PublicKey) Identities() ([]identity.Identity, error) {
-	var ids []identity.Identity
-	for _, entity := range k.key {
-		var keys []*packet.PublicKey
-		keys = append(keys, entity.PrimaryKey)
-		for _, subKey := range entity.Subkeys {
-			keys = append(keys, subKey.PublicKey)
-		}
-		for _, pk := range keys {
-			pubKey := pk.PublicKey
-			// Only process supported types. Will ignore DSA
-			// and ElGamal keys.
-			// TODO: For a V2 PGP type, enforce on upload
-			switch pubKey.(type) {
-			case *rsa.PublicKey, *ecdsa.PublicKey, ed25519.PublicKey:
-			default:
-				continue
-			}
-			pkixKey, err := cryptoutils.MarshalPublicKeyToDER(pubKey)
-			if err != nil {
-				return nil, err
-			}
-			ids = append(ids, identity.Identity{
-				Crypto:      pubKey,
-				Raw:         pkixKey,
-				Fingerprint: hex.EncodeToString(pk.Fingerprint[:]),
-			})
-		}
+func (k PublicKey) Identities() ([]string, error) {
+	// returns the email addresses and armored public key
+	var identities []string
+	identities = append(identities, k.Subjects()...)
+	key, err := k.CanonicalValue()
+	if err != nil {
+		return nil, err
 	}
-	return ids, nil
+	identities = append(identities, string(key))
+	return identities, nil
 }

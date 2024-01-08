@@ -26,8 +26,6 @@ type ImportKeyPairOptions struct {
 
 	// Filename used for outputted keys
 	OutputKeyPrefix string
-
-	SkipConfirmation bool
 }
 
 var _ Interface = (*ImportKeyPairOptions)(nil)
@@ -41,7 +39,4 @@ func (o *ImportKeyPairOptions) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.OutputKeyPrefix, "output-key-prefix", "o", "import-cosign",
 		"name used for outputted key pairs")
 	_ = cmd.Flags().SetAnnotation("output-key-prefix", cobra.BashCompFilenameExt, []string{})
-
-	cmd.Flags().BoolVarP(&o.SkipConfirmation, "yes", "y", false,
-		"skip confirmation prompts for overwriting existing key")
 }
