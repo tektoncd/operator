@@ -33,7 +33,7 @@ import (
 func TestEnsureTektonPipelineExists(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	tp := GetTektonPipelineCR(GetTektonConfig())
+	tp := GetTektonPipelineCR(GetTektonConfig(), "v0.70.0")
 
 	// first invocation should create instance as it is non-existent and return RECONCILE_AGAIN_ERR
 	_, err := EnsureTektonPipelineExists(ctx, c.OperatorV1alpha1().TektonPipelines(), tp)
@@ -76,7 +76,7 @@ func TestEnsureTektonPipelineCRNotExists(t *testing.T) {
 	util.AssertEqual(t, err, nil)
 
 	// create an instance for testing other cases
-	tp := GetTektonPipelineCR(GetTektonConfig())
+	tp := GetTektonPipelineCR(GetTektonConfig(), "v0.70.0")
 	_, err = EnsureTektonPipelineExists(ctx, c.OperatorV1alpha1().TektonPipelines(), tp)
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 

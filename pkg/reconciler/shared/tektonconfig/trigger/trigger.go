@@ -31,7 +31,6 @@ import (
 
 func EnsureTektonTriggerExists(ctx context.Context, clients op.TektonTriggerInterface, tt *v1alpha1.TektonTrigger) (*v1alpha1.TektonTrigger, error) {
 	ttCR, err := GetTrigger(ctx, clients, v1alpha1.TriggerResourceName)
-
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
 			return nil, err
@@ -62,12 +61,15 @@ func GetTrigger(ctx context.Context, clients op.TektonTriggerInterface, name str
 	return clients.Get(ctx, name, metav1.GetOptions{})
 }
 
-func GetTektonTriggerCR(config *v1alpha1.TektonConfig) *v1alpha1.TektonTrigger {
+func GetTektonTriggerCR(config *v1alpha1.TektonConfig, operatorVersion string) *v1alpha1.TektonTrigger {
 	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 	return &v1alpha1.TektonTrigger{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            v1alpha1.TriggerResourceName,
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
+			Labels: map[string]string{
+				v1alpha1.ReleaseVersionKey: operatorVersion,
+			},
 		},
 		Spec: v1alpha1.TektonTriggerSpec{
 			CommonSpec: v1alpha1.CommonSpec{
@@ -88,6 +90,11 @@ func UpdateTrigger(ctx context.Context, old *v1alpha1.TektonTrigger, new *v1alph
 	// if the trigger spec is changed then update the instance
 	updated := false
 
+	if new.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey] != old.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey] {
+		old.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey] = new.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey]
+		updated = true
+	}
+
 	if new.Spec.TargetNamespace != old.Spec.TargetNamespace {
 		old.Spec.TargetNamespace = new.Spec.TargetNamespace
 		updated = true
@@ -105,6 +112,13 @@ func UpdateTrigger(ctx context.Context, old *v1alpha1.TektonTrigger, new *v1alph
 
 	if old.ObjectMeta.OwnerReferences == nil {
 		old.ObjectMeta.OwnerReferences = new.ObjectMeta.OwnerReferences
+		updated = true
+	}
+
+	oldLabels, oldHasLabels := old.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey]
+	newLabels, newHasLabels := new.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey]
+	if !oldHasLabels || (newHasLabels && oldLabels != newLabels) {
+		old.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey] = newLabels
 		updated = true
 	}
 

@@ -50,8 +50,10 @@ type Reconciler struct {
 }
 
 // Check that our Reconciler implements controller.Reconciler
-var _ tektonConfigreconciler.Interface = (*Reconciler)(nil)
-var _ tektonConfigreconciler.Finalizer = (*Reconciler)(nil)
+var (
+	_ tektonConfigreconciler.Interface = (*Reconciler)(nil)
+	_ tektonConfigreconciler.Finalizer = (*Reconciler)(nil)
+)
 
 // FinalizeKind removes all resources after deletion of a TektonConfig.
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonConfig) pkgreconciler.Event {
@@ -139,7 +141,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	tc.Status.MarkPreInstallComplete()
 
 	// Ensure if the pipeline CR already exists, if not create Pipeline CR
-	tektonpipeline := pipeline.GetTektonPipelineCR(tc)
+	tektonpipeline := pipeline.GetTektonPipelineCR(tc, r.operatorVersion)
 	// Ensure it exists
 	if _, err := pipeline.EnsureTektonPipelineExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), tektonpipeline); err != nil {
 		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPipeline: %s", err.Error()))
@@ -151,7 +153,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	// Create TektonTrigger CR if the profile is all or basic
 	if tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic {
-		tektontrigger := trigger.GetTektonTriggerCR(tc)
+		tektontrigger := trigger.GetTektonTriggerCR(tc, r.operatorVersion)
 		if _, err := trigger.EnsureTektonTriggerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), tektontrigger); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
@@ -165,7 +167,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	if !tc.Spec.Chain.Disabled {
-		tektonchain := chain.GetTektonChainCR(tc)
+		tektonchain := chain.GetTektonChainCR(tc, r.operatorVersion)
 		if _, err := chain.EnsureTektonChainExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains(), tektonchain); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChain: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER

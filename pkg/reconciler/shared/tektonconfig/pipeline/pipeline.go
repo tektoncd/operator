@@ -32,7 +32,6 @@ import (
 
 func EnsureTektonPipelineExists(ctx context.Context, clients op.TektonPipelineInterface, tp *v1alpha1.TektonPipeline) (*v1alpha1.TektonPipeline, error) {
 	tpCR, err := GetPipeline(ctx, clients, v1alpha1.PipelineResourceName)
-
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
 			return nil, err
@@ -63,12 +62,15 @@ func GetPipeline(ctx context.Context, clients op.TektonPipelineInterface, name s
 	return clients.Get(ctx, name, metav1.GetOptions{})
 }
 
-func GetTektonPipelineCR(config *v1alpha1.TektonConfig) *v1alpha1.TektonPipeline {
+func GetTektonPipelineCR(config *v1alpha1.TektonConfig, operatorVersion string) *v1alpha1.TektonPipeline {
 	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 	return &v1alpha1.TektonPipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            v1alpha1.PipelineResourceName,
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
+			Labels: map[string]string{
+				v1alpha1.ReleaseVersionKey: operatorVersion,
+			},
 		},
 		Spec: v1alpha1.TektonPipelineSpec{
 			CommonSpec: v1alpha1.CommonSpec{
@@ -111,6 +113,13 @@ func UpdatePipeline(ctx context.Context, old *v1alpha1.TektonPipeline, new *v1al
 
 	if old.ObjectMeta.OwnerReferences == nil {
 		old.ObjectMeta.OwnerReferences = new.ObjectMeta.OwnerReferences
+		updated = true
+	}
+
+	oldLabels, oldHasLabels := old.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey]
+	newLabels, newHasLabels := new.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey]
+	if !oldHasLabels || (newHasLabels && oldLabels != newLabels) {
+		old.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey] = newLabels
 		updated = true
 	}
 

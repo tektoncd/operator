@@ -29,15 +29,14 @@ import (
 	pkgCommon "github.com/tektoncd/operator/pkg/common"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	nsV1 "k8s.io/client-go/informers/core/v1"
 	rbacV1 "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/kubernetes"
-
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	namespaceinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
 	rbacInformer "knative.dev/pkg/client/injection/kube/informers/rbac/v1/clusterrolebinding"
+	"knative.dev/pkg/logging"
 )
 
 const (
@@ -45,12 +44,18 @@ const (
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
+	logger := logging.FromContext(ctx)
+	operatorVer, err := common.OperatorVersion(ctx)
+	if err != nil {
+		logger.Fatal(err)
+	}
 	return openshiftExtension{
 		operatorClientSet: operatorclient.Get(ctx),
 		kubeClientSet:     kubeclient.Get(ctx),
 		rbacInformer:      rbacInformer.Get(ctx),
 		nsInformer:        namespaceinformer.Get(ctx),
 		securityClientSet: pkgCommon.GetSecurityClient(ctx),
+		operatorVersion:   operatorVer,
 	}
 }
 
@@ -63,6 +68,8 @@ type openshiftExtension struct {
 	// OpenShift clientsets are a bit... special, we need to get each
 	// clientset separately
 	securityClientSet *security.Clientset
+
+	operatorVersion string
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -72,8 +79,8 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		common.ReplaceNamespaceInClusterRoleBinding(comp.GetSpec().GetTargetNamespace()),
 	}
 }
-func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 
+func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	config := tc.(*v1alpha1.TektonConfig)
 	r := rbac{
 		kubeClientSet:     oe.kubeClientSet,
@@ -134,7 +141,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	configInstance := comp.(*v1alpha1.TektonConfig)
 
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
-		if _, err := extension.EnsureTektonAddonExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), configInstance); err != nil {
+		if _, err := extension.EnsureTektonAddonExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), configInstance, oe.operatorVersion); err != nil {
 			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("TektonAddon: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
@@ -147,7 +154,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 
 	pac := configInstance.Spec.Platforms.OpenShift.PipelinesAsCode
 	if pac != nil && *pac.Enable {
-		if _, err := extension.EnsureOpenShiftPipelinesAsCodeExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), configInstance); err != nil {
+		if _, err := extension.EnsureOpenShiftPipelinesAsCodeExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), configInstance, oe.operatorVersion); err != nil {
 			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("OpenShiftPipelinesAsCode: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
@@ -158,6 +165,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	}
 	return nil
 }
+
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {

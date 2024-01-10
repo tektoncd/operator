@@ -29,19 +29,19 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func EnsureOpenShiftPipelinesAsCodeExists(ctx context.Context, clients op.OpenShiftPipelinesAsCodeInterface, config *v1alpha1.TektonConfig) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
+func EnsureOpenShiftPipelinesAsCodeExists(ctx context.Context, clients op.OpenShiftPipelinesAsCodeInterface, config *v1alpha1.TektonConfig, operatorVersion string) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
 	opacCR, err := GetPAC(ctx, clients, v1alpha1.OpenShiftPipelinesAsCodeName)
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
 			return nil, err
 		}
-		if _, err = createOPAC(ctx, clients, config); err != nil {
+		if _, err = createOPAC(ctx, clients, config, operatorVersion); err != nil {
 			return nil, err
 		}
 		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
-	opacCR, err = updateOPAC(ctx, opacCR, config, clients)
+	opacCR, err = updateOPAC(ctx, opacCR, config, clients, operatorVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -57,13 +57,16 @@ func EnsureOpenShiftPipelinesAsCodeExists(ctx context.Context, clients op.OpenSh
 	return opacCR, err
 }
 
-func createOPAC(ctx context.Context, clients op.OpenShiftPipelinesAsCodeInterface, config *v1alpha1.TektonConfig) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
+func createOPAC(ctx context.Context, clients op.OpenShiftPipelinesAsCodeInterface, config *v1alpha1.TektonConfig, operatorVersion string) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
 	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 
 	opacCR := &v1alpha1.OpenShiftPipelinesAsCode{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            v1alpha1.OpenShiftPipelinesAsCodeName,
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
+			Labels: map[string]string{
+				v1alpha1.ReleaseVersionKey: operatorVersion,
+			},
 		},
 		Spec: v1alpha1.OpenShiftPipelinesAsCodeSpec{
 			CommonSpec: v1alpha1.CommonSpec{
@@ -86,7 +89,8 @@ func GetPAC(ctx context.Context, clients op.OpenShiftPipelinesAsCodeInterface, n
 }
 
 func updateOPAC(ctx context.Context, opacCR *v1alpha1.OpenShiftPipelinesAsCode, config *v1alpha1.TektonConfig,
-	clients op.OpenShiftPipelinesAsCodeInterface) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
+	clients op.OpenShiftPipelinesAsCodeInterface, operatorVersion string,
+) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
 	// if the pac spec is changed then update the instance
 	updated := false
 
@@ -113,6 +117,12 @@ func updateOPAC(ctx context.Context, opacCR *v1alpha1.OpenShiftPipelinesAsCode, 
 	if opacCR.ObjectMeta.OwnerReferences == nil {
 		ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 		opacCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
+		updated = true
+	}
+
+	oldLabels, oldHasLabels := opacCR.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey]
+	if !oldHasLabels || (oldLabels != operatorVersion) {
+		opacCR.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey] = operatorVersion
 		updated = true
 	}
 

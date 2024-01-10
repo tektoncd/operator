@@ -39,27 +39,27 @@ func TestEnsureOpenShiftPipelinesAsCodeExists(t *testing.T) {
 
 	tConfig.SetDefaults(ctx)
 	// first invocation should create instance as it is non-existent and return RECONCILE_AGAIN_ERR
-	_, err := EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig)
+	_, err := EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// during second invocation instance exists but waiting on dependencies (pipeline, triggers)
 	// hence returns DEPENDENCY_UPGRADE_PENDING_ERR
-	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig)
+	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// mark the instance ready
 	markOPACReady(t, ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes())
 
 	// next invocation should return nil error as the instance is ready
-	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig)
+	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, nil)
 
 	// test update propagation from tektonConfig
 	tConfig.Spec.TargetNamespace = "foobar"
-	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig)
+	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
-	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig)
+	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, nil)
 }
 
@@ -76,7 +76,7 @@ func TestEnsureOpenShiftPipelinesAsCodeCRNotExists(t *testing.T) {
 	// create an instance for testing other cases
 	tConfig := pipeline.GetTektonConfig()
 	tConfig.SetDefaults(ctx)
-	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig)
+	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// when an instance exists the first invoacation should make the delete API call and

@@ -40,7 +40,7 @@ const (
 type Reconciler struct {
 	// installer Set client to do CRUD operations for components
 	installerSetClient *client.InstallerSetClient
-	//manifest has the source manifest of Tekton Pipeline for a
+	// manifest has the source manifest of Tekton Pipeline for a
 	// particular version
 	manifest mf.Manifest
 	// Platform-specific behavior to affect the transform

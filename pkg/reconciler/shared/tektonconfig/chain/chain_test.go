@@ -33,7 +33,7 @@ import (
 func TestEnsureTektonChainExists(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	tt := GetTektonChainCR(getTektonConfig())
+	tt := GetTektonChainCR(getTektonConfig(), "v0.70.0")
 
 	// first invocation should create instance as it is non-existent and return RECONCILE_AGAIN_ERR
 	_, err := EnsureTektonChainExists(ctx, c.OperatorV1alpha1().TektonChains(), tt)
@@ -76,7 +76,7 @@ func TestEnsureTektonChainCRNotExists(t *testing.T) {
 	util.AssertEqual(t, err, nil)
 
 	// create an instance for testing other cases
-	tt := GetTektonChainCR(getTektonConfig())
+	tt := GetTektonChainCR(getTektonConfig(), "v0.70.0")
 	_, err = EnsureTektonChainExists(ctx, c.OperatorV1alpha1().TektonChains(), tt)
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
