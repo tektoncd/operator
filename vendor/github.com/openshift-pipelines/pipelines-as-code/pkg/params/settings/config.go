@@ -102,6 +102,10 @@ type Settings struct {
 	RememberOKToTest bool
 }
 
+func (s *Settings) DeepCopy(out *Settings) {
+	*out = *s
+}
+
 func ConfigToSettings(logger *zap.SugaredLogger, setting *Settings, config map[string]string) error {
 	// pass through defaulting
 	SetDefaults(config)
