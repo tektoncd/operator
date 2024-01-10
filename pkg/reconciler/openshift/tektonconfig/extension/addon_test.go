@@ -37,34 +37,34 @@ func TestEnsureTektonAddonCRExists(t *testing.T) {
 	tConfig := pipeline.GetTektonConfig()
 
 	// first invocation should create instance as it is non-existent and return RECONCILE_AGAIN_ERR
-	_, err := EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig)
+	_, err := EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// during second invocation instance exists but waiting on dependencies (pipeline, triggers)
 	// hence returns DEPENDENCY_UPGRADE_PENDING_ERR
-	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig)
+	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// make upgrade checks pass
 	makeUpgradeCheckPass(t, ctx, c.OperatorV1alpha1().TektonAddons())
 
 	// next invocation should return RECONCILE_AGAIN_ERR as Dashboard is waiting for installation (prereconcile, postreconcile, installersets...)
-	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig)
+	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// mark the instance ready
 	markAddonsReady(t, ctx, c.OperatorV1alpha1().TektonAddons())
 
 	// next invocation should return nil error as the instance is ready
-	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig)
+	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, nil)
 
 	// test update propagation from tektonConfig
 	tConfig.Spec.TargetNamespace = "foobar"
-	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig)
+	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
-	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig)
+	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, nil)
 }
 
@@ -78,7 +78,7 @@ func TestEnsureTektonAddonCRNotExists(t *testing.T) {
 
 	// create an instance for testing other cases
 	tConfig := pipeline.GetTektonConfig()
-	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig)
+	_, err = EnsureTektonAddonExists(ctx, c.OperatorV1alpha1().TektonAddons(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	// when an instance exists the first invoacation should make the delete API call and

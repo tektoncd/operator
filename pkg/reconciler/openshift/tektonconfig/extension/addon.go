@@ -29,20 +29,19 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-func EnsureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
+func EnsureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterface, config *v1alpha1.TektonConfig, operatorVersion string) (*v1alpha1.TektonAddon, error) {
 	taCR, err := GetAddon(ctx, clients, v1alpha1.AddonResourceName)
-
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
 			return nil, err
 		}
-		if _, err = createAddon(ctx, clients, config); err != nil {
+		if _, err = createAddon(ctx, clients, config, operatorVersion); err != nil {
 			return nil, err
 		}
 		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
-	taCR, err = updateAddon(ctx, taCR, config, clients)
+	taCR, err = updateAddon(ctx, taCR, config, clients, operatorVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -58,13 +57,16 @@ func EnsureTektonAddonExists(ctx context.Context, clients op.TektonAddonInterfac
 	return taCR, err
 }
 
-func createAddon(ctx context.Context, clients op.TektonAddonInterface, config *v1alpha1.TektonConfig) (*v1alpha1.TektonAddon, error) {
+func createAddon(ctx context.Context, clients op.TektonAddonInterface, config *v1alpha1.TektonConfig, operatorVersion string) (*v1alpha1.TektonAddon, error) {
 	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 
 	taCR := &v1alpha1.TektonAddon{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            v1alpha1.AddonResourceName,
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
+			Labels: map[string]string{
+				v1alpha1.ReleaseVersionKey: operatorVersion,
+			},
 		},
 		Spec: v1alpha1.TektonAddonSpec{
 			CommonSpec: v1alpha1.CommonSpec{
@@ -87,7 +89,8 @@ func GetAddon(ctx context.Context, clients op.TektonAddonInterface, name string)
 }
 
 func updateAddon(ctx context.Context, taCR *v1alpha1.TektonAddon, config *v1alpha1.TektonConfig,
-	clients op.TektonAddonInterface) (*v1alpha1.TektonAddon, error) {
+	clients op.TektonAddonInterface, operatorVersion string,
+) (*v1alpha1.TektonAddon, error) {
 	// if the addon spec is changed then update the instance
 	updated := false
 
@@ -109,6 +112,12 @@ func updateAddon(ctx context.Context, taCR *v1alpha1.TektonAddon, config *v1alph
 	if taCR.ObjectMeta.OwnerReferences == nil {
 		ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 		taCR.ObjectMeta.OwnerReferences = []metav1.OwnerReference{ownerRef}
+		updated = true
+	}
+
+	oldLabels, oldHasLabels := taCR.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey]
+	if !oldHasLabels || (oldLabels != operatorVersion) {
+		taCR.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey] = operatorVersion
 		updated = true
 	}
 

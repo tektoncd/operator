@@ -31,7 +31,6 @@ import (
 
 func EnsureTektonChainExists(ctx context.Context, clients op.TektonChainInterface, tc *v1alpha1.TektonChain) (*v1alpha1.TektonChain, error) {
 	tcCR, err := GetChain(ctx, clients, v1alpha1.ChainResourceName)
-
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
 			return nil, err
@@ -118,6 +117,13 @@ func UpdateChain(ctx context.Context, old *v1alpha1.TektonChain, new *v1alpha1.T
 		updated = true
 	}
 
+	oldLabels, oldHasLabels := old.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey]
+	newLabels, newHasLabels := new.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey]
+	if !oldHasLabels || (newHasLabels && oldLabels != newLabels) {
+		old.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey] = newLabels
+		updated = true
+	}
+
 	if updated {
 		_, err := clients.Update(ctx, old, metav1.UpdateOptions{})
 		if err != nil {
@@ -138,12 +144,15 @@ func isTektonChainReady(s *v1alpha1.TektonChain) (bool, error) {
 	return s.Status.IsReady(), nil
 }
 
-func GetTektonChainCR(config *v1alpha1.TektonConfig) *v1alpha1.TektonChain {
+func GetTektonChainCR(config *v1alpha1.TektonConfig, operatorVersion string) *v1alpha1.TektonChain {
 	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 	return &v1alpha1.TektonChain{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            v1alpha1.ChainResourceName,
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
+			Labels: map[string]string{
+				v1alpha1.ReleaseVersionKey: operatorVersion,
+			},
 		},
 		Spec: v1alpha1.TektonChainSpec{
 			CommonSpec: v1alpha1.CommonSpec{

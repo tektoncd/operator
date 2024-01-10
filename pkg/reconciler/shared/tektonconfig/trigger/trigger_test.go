@@ -33,7 +33,7 @@ import (
 func TestEnsureTektonTriggerExists(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	tt := GetTektonTriggerCR(GetTektonConfig())
+	tt := GetTektonTriggerCR(GetTektonConfig(), "v0.70.0")
 
 	// first invocation should create instance as it is non-existent and return RECONCILE_AGAIN_ERR
 	_, err := EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tt)
@@ -76,7 +76,7 @@ func TestEnsureTektonTriggerCRNotExists(t *testing.T) {
 	util.AssertEqual(t, err, nil)
 
 	// create an instance for testing other cases
-	tt := GetTektonTriggerCR(GetTektonConfig())
+	tt := GetTektonTriggerCR(GetTektonConfig(), "v0.70.0")
 	_, err = EnsureTektonTriggerExists(ctx, c.OperatorV1alpha1().TektonTriggers(), tt)
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
