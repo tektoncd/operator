@@ -15,5 +15,6 @@ namespace: tekton-operator
 
 resources:
 - webhook.yaml
+- webhook-config-leader-election.yaml
 - webhook-service.yaml
 - webhook-secret.yaml

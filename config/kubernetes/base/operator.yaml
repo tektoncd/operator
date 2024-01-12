@@ -58,6 +58,8 @@ spec:
           value: "devel"
         - name: CONFIG_OBSERVABILITY_NAME
           value: tekton-config-observability
+        - name: CONFIG_LEADERELECTION_NAME
+          value: tekton-operator-controller-config-leader-election
         - name: AUTOINSTALL_COMPONENTS
           valueFrom:
             configMapKeyRef:
@@ -93,3 +95,5 @@ spec:
             value: "devel"
           - name: METRICS_DOMAIN
             value: tekton.dev/operator
+          - name: CONFIG_LEADERELECTION_NAME
+            value: tekton-operator-controller-config-leader-election
