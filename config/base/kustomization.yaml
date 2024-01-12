@@ -33,5 +33,6 @@ resources:
 - config-info.yaml
 - config-info_role.yaml
 - config-info_role_binding.yaml
+- config-leader-election.yaml
 - tekton_result_role.yaml
 - tekton_result_role_binding.yaml

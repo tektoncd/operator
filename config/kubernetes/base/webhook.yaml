@@ -45,6 +45,8 @@ spec:
               fieldPath: metadata.name
         - name: CONFIG_LOGGING_NAME
           value: config-logging
+        - name: CONFIG_LEADERELECTION_NAME
+          value: tekton-operator-webhook-config-leader-election
         - name: WEBHOOK_SERVICE_NAME
           value: tekton-operator-webhook
         - name: WEBHOOK_SECRET_NAME
