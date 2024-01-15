@@ -16,8 +16,11 @@ spec:
   template:
     metadata:
       creationTimestamp: null
+      annotations:
+        annotation-foo: annotation-bar
       labels:
         app: nginx
+        label-foo: label-bar
     spec:
       affinity:
         nodeAffinity:

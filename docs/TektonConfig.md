@@ -447,12 +447,12 @@ platforms:
 [priorityClass]: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
 
 ### Additional fields as `options`
-There is a filed called `options` available in all the components.<br>
+There is a field called `options` available in all the components.<br>
 
 >**NOTE:** There is a possibility to have two different values for a field.<br> 
-An example: with a pre-defined field you can set value and the same filed may be defined under `options` as well. In that case value from `options` will be final.
+An example: with a pre-defined field you can set value and the same field may be defined under `options` as well. In that case value from `options` will be final.
 
-`options` filed is defined as follows,
+A sample `options` field,
 ```yaml
 options:
   disabled: false
@@ -496,7 +496,7 @@ options:
           }
 
   deployments:
-    tekton-pipelines-controller:
+    tekton-pipelines-controller: # name of the deployment
       metadata:
         labels:
           custom-label: "foo"
@@ -512,7 +512,7 @@ options:
                   - name: CONFIG_LOGGING_NAME
                     value: pipeline-config-logging
   statefulSets:
-    web:
+    web: # name of the statefulSets
       metadata:
         labels:
           custom-label: foo
@@ -527,8 +527,23 @@ options:
                 env:
                   - name: NGINX_MODE
                     value: production
+  horizontalPodAutoscalers:
+    tekton-pipelines-webhook: # name of the hpa
+      metadata:
+        annotations:
+        labels:
+      spec:
+        minReplicas: 2
+        maxReplicas: 7
+        metrics:
+        - resource:
+            name: cpu
+            target:
+              averageUtilization: 85
+              type: Utilization
+          type: Resource
 ```
-* `disabled` - disables the additional `options` support, if `disabled` set as `true`. default: `false`
+* `disabled` - disables the additional `options` support, if `disabled` set to `true`. default: `false`
 
 #### ConfigMaps
 Supports to update existing configMap also supports to create new configMap.
@@ -549,6 +564,9 @@ The following fields are supported in `deployment`
 * `spec`
   * `replicas` - updates deployment replicas count
   * `template`
+    * `metadata`
+      * `labels` - supports add and update
+      * `annotations` - supports add and update
     * `spec`
       * `affinity` - replaces the existing Affinity with this, if not empty
       * `priorityClassName` - replaces the existing PriorityClassName with this, if not empty
@@ -580,6 +598,9 @@ The following fields are supported in `StatefulSet`
   * `podManagementPolicy` - updates pod management policy
   * `volumeClaimTemplates` - updates volume claim templates
   * `template`
+    * `metadata`
+      * `labels` - supports add and update
+      * `annotations` - supports add and update
     * `spec`
       * `affinity` - replaces the existing Affinity with this, if not empty
       * `priorityClassName` - replaces the existing PriorityClassName with this, if not empty
@@ -597,5 +618,21 @@ The following fields are supported in `StatefulSet`
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
         * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+
+#### HorizontalPodAutoscalers
+Supports to update the existing HorizontalPodAutoscaler(HPA) also supports to create new HPA.
+
+The following fields are supported in `HorizontalPodAutoscaler` (aka HPA)
+* `metadata`
+  * `labels` - supports add and update
+  * `annotations` - supports add and update
+* `spec`
+  * `scaleTargetRef` - replaces scaleTargetRef with this, if `kind` and `name` are not empty
+  * `minReplicas` - updates minimum replicas count
+  * `maxReplicas` - updates maximum replicas count
+  * `metrics` - replaces the metrics details with this array, if not empty
+  * `behavior` - updates behavior data with this, if not empty
+    * `scaleUp` - replaces scaleUp with this, if not empty
+    * `scaleDown` - replaces scaleDown with this, if not empty
 
 **NOTE**: If a Deployment or StatefulSet has a Horizontal Pod Autoscaling (HPA) and is in active state, Operator will not control the replicas to that resource. However if `status.desiredReplicas` and `spec.minReplicas` not present in HPA, operator takes the control. Also if HPA disabled, operator takes control. Even though the operator takes the control, the replicas value will be adjusted to the hpa's scaling range.

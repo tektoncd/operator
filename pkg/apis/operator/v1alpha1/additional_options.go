@@ -18,14 +18,16 @@ package v1alpha1
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 )
 
 // additional options will be updated on the manifests
 // these values will be final
 type AdditionalOptions struct {
-	Disabled     bool                          `json:"disabled"`
-	ConfigMaps   map[string]corev1.ConfigMap   `json:"configMaps,omitempty"`
-	Deployments  map[string]appsv1.Deployment  `json:"deployments,omitempty"`
-	StatefulSets map[string]appsv1.StatefulSet `json:"statefulSets,omitempty"`
+	Disabled                 bool                                             `json:"disabled"`
+	ConfigMaps               map[string]corev1.ConfigMap                      `json:"configMaps,omitempty"`
+	Deployments              map[string]appsv1.Deployment                     `json:"deployments,omitempty"`
+	HorizontalPodAutoscalers map[string]autoscalingv2.HorizontalPodAutoscaler `json:"horizontalPodAutoscalers,omitempty"`
+	StatefulSets             map[string]appsv1.StatefulSet                    `json:"statefulSets,omitempty"`
 }

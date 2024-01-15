@@ -21,10 +21,11 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -113,6 +114,14 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 						Spec: appsv1.DeploymentSpec{
 							Replicas: ptr.Int32(4),
 							Template: corev1.PodTemplateSpec{
+								ObjectMeta: metav1.ObjectMeta{
+									Labels: map[string]string{
+										"label-foo": "label-bar",
+									},
+									Annotations: map[string]string{
+										"annotation-foo": "annotation-bar",
+									},
+								},
 								Spec: corev1.PodSpec{
 									NodeSelector: map[string]string{
 										"zone": "east",
@@ -293,6 +302,14 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 								},
 							},
 							Template: corev1.PodTemplateSpec{
+								ObjectMeta: metav1.ObjectMeta{
+									Labels: map[string]string{
+										"label-foo": "label-bar",
+									},
+									Annotations: map[string]string{
+										"annotation-foo": "annotation-bar",
+									},
+								},
 								Spec: corev1.PodSpec{
 									NodeSelector: map[string]string{
 										"zone": "east",
@@ -409,21 +426,126 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			inputFilename:          "./testdata/test-additional-options-base-statefulsets.yaml",
 			expectedResultFilename: "./testdata/test-additional-options-test-statefulsets.yaml",
 		},
+		{
+			name: "test-hpa",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: false,
+				HorizontalPodAutoscalers: map[string]autoscalingv2.HorizontalPodAutoscaler{
+					"new-hpa": {
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"foo": "bar",
+							},
+							Annotations: map[string]string{
+								"foo": "bar",
+							},
+						},
+						Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+							ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
+								APIVersion: "apps/v1",
+								Kind:       "Deployment",
+								Name:       "foo",
+							},
+							MinReplicas: ptr.Int32(2),
+							MaxReplicas: 5,
+							Metrics: []autoscalingv2.MetricSpec{
+								{
+									Resource: &autoscalingv2.ResourceMetricSource{
+										Name: "cpu",
+										Target: autoscalingv2.MetricTarget{
+											Type:               autoscalingv2.UtilizationMetricType,
+											AverageUtilization: ptr.Int32(100),
+										},
+									},
+									Type: autoscalingv2.ResourceMetricSourceType,
+								},
+							},
+						},
+					},
+					"existing-hpa": {
+						ObjectMeta: metav1.ObjectMeta{
+							Labels: map[string]string{
+								"foo":    "bar",
+								"label1": "value1",
+							},
+							Annotations: map[string]string{
+								"foo":         "bar",
+								"annotation1": "value1",
+							},
+						},
+						Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+							ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
+								APIVersion: "apps/v1",
+								Kind:       "Deployment",
+								Name:       "bar",
+							},
+							MinReplicas: ptr.Int32(3),
+							MaxReplicas: 10,
+							Metrics: []autoscalingv2.MetricSpec{
+								{
+									Resource: &autoscalingv2.ResourceMetricSource{
+										Name: "cpu",
+										Target: autoscalingv2.MetricTarget{
+											Type:               autoscalingv2.UtilizationMetricType,
+											AverageUtilization: ptr.Int32(80),
+										},
+									},
+									Type: autoscalingv2.ResourceMetricSourceType,
+								},
+							},
+							Behavior: &autoscalingv2.HorizontalPodAutoscalerBehavior{
+								ScaleUp: &autoscalingv2.HPAScalingRules{
+									StabilizationWindowSeconds: ptr.Int32(10),
+								},
+								ScaleDown: &autoscalingv2.HPAScalingRules{
+									StabilizationWindowSeconds: ptr.Int32(20),
+								},
+							},
+						},
+					},
+					"test-max-replicas": {
+						Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+							ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
+								APIVersion: "apps/v1",
+								Kind:       "Deployment",
+								Name:       "bar",
+							},
+							MinReplicas: nil,
+							MaxReplicas: 0,
+							Metrics: []autoscalingv2.MetricSpec{
+								{
+									Resource: &autoscalingv2.ResourceMetricSource{
+										Name: "cpu",
+										Target: autoscalingv2.MetricTarget{
+											Type:               autoscalingv2.UtilizationMetricType,
+											AverageUtilization: ptr.Int32(80),
+										},
+									},
+									Type: autoscalingv2.ResourceMetricSourceType,
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-hpa.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-hpa.yaml",
+		},
 	}
 
 	for _, tc := range tcs {
 		t.Run(tc.name, func(t *testing.T) {
 			// fetch base manifests
 			targetManifest, err := Fetch(tc.inputFilename)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// fetch expected manifests
 			expectedManifest, err := Fetch(tc.expectedResultFilename)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// execute with additional options transformer
 			err = ExecuteAdditionalOptionsTransformer(ctx, &targetManifest, targetNamespace, tc.additionalOptions)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			if d := cmp.Diff(expectedManifest.Resources(), targetManifest.Resources()); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
