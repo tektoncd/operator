@@ -24,6 +24,7 @@ package v1alpha1
 import (
 	manifestival "github.com/manifestival/manifestival"
 	appsv1 "k8s.io/api/apps/v1"
+	v2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -41,6 +42,13 @@ func (in *AdditionalOptions) DeepCopyInto(out *AdditionalOptions) {
 	if in.Deployments != nil {
 		in, out := &in.Deployments, &out.Deployments
 		*out = make(map[string]appsv1.Deployment, len(*in))
+		for key, val := range *in {
+			(*out)[key] = *val.DeepCopy()
+		}
+	}
+	if in.HorizontalPodAutoscalers != nil {
+		in, out := &in.HorizontalPodAutoscalers, &out.HorizontalPodAutoscalers
+		*out = make(map[string]v2.HorizontalPodAutoscaler, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
 		}

@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	"go.uber.org/zap"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	apimachineryRuntime "k8s.io/apimachinery/pkg/runtime"
@@ -32,9 +33,10 @@ import (
 )
 
 const (
-	KindConfigMap   = "ConfigMap"
-	KindDeployment  = "Deployment"
-	KindStatefulSet = "StatefulSet"
+	KindConfigMap               = "ConfigMap"
+	KindDeployment              = "Deployment"
+	KindStatefulSet             = "StatefulSet"
+	KindHorizontalPodAutoscaler = "HorizontalPodAutoscaler"
 )
 
 type OptionsTransformer struct {
@@ -59,19 +61,37 @@ func ExecuteAdditionalOptionsTransformer(ctx context.Context, manifest *mf.Manif
 	}
 	*manifest = finalManifest
 
-	// create config map if not found in the manifest
+	// create config map, if not found in the existing manifest
 	extraConfigMaps, err := ot.createConfigMaps(manifest, targetNamespace, additionalOptions)
 	if err != nil {
 		return err
 	}
-
-	additionalManifest, err := mf.ManifestFrom(mf.Slice(extraConfigMaps))
-	if err != nil {
+	// update into the manifests
+	if err = ot.addInToManifest(manifest, extraConfigMaps); err != nil {
 		return err
 	}
 
-	*manifest = manifest.Append(additionalManifest)
+	// create HorizontalPodAutoscaler, if not found in the existing manifest
+	extraHPAs, err := ot.createHorizontalPodAutoscalers(manifest, targetNamespace, additionalOptions)
+	if err != nil {
+		return err
+	}
+	// update into the manifests
+	if err = ot.addInToManifest(manifest, extraHPAs); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+func (ot *OptionsTransformer) addInToManifest(manifest *mf.Manifest, additionalResources []unstructured.Unstructured) error {
+	if len(additionalResources) > 0 {
+		additionalManifest, err := mf.ManifestFrom(mf.Slice(additionalResources))
+		if err != nil {
+			return err
+		}
+		*manifest = manifest.Append(additionalManifest)
+	}
 	return nil
 }
 
@@ -92,47 +112,45 @@ func (ot *OptionsTransformer) transform(u *unstructured.Unstructured) error {
 	case KindStatefulSet:
 		return ot.updateStatefulSets(u)
 
+	case KindHorizontalPodAutoscaler:
+		return ot.updateHorizontalPodAutoscalers(u)
+
 	}
 
 	return nil
 }
 
 func (ot *OptionsTransformer) updateLabels(u *unstructured.Unstructured, labels map[string]string) error {
-	if len(labels) == 0 {
-		return nil
-	}
-
-	actualLabels := u.GetLabels()
-	if actualLabels == nil {
-		actualLabels = make(map[string]string)
-	}
-
-	for labelKey, labelValue := range labels {
-		actualLabels[labelKey] = labelValue
-	}
-
-	u.SetLabels(actualLabels)
-
-	return nil
+	return ot.updateMapField(u, labels, "metadata", "labels")
 }
 
 func (ot *OptionsTransformer) updateAnnotations(u *unstructured.Unstructured, annotations map[string]string) error {
-	if len(annotations) == 0 {
+	return ot.updateMapField(u, annotations, "metadata", "annotations")
+}
+
+func (ot *OptionsTransformer) updateMapField(u *unstructured.Unstructured, extraData map[string]string, locationKey ...string) error {
+	if len(extraData) == 0 || len(locationKey) == 0 {
 		return nil
 	}
 
-	actualAnnotations := u.GetAnnotations()
-	if actualAnnotations == nil {
-		actualAnnotations = make(map[string]string)
+	// get source map data
+	sourceData, _, err := unstructured.NestedMap(u.Object, locationKey...)
+	if err != nil {
+		return err
 	}
 
-	for annotationKey, annotationValue := range annotations {
-		actualAnnotations[annotationKey] = annotationValue
+	if sourceData == nil {
+		sourceData = make(map[string]interface{})
 	}
 
-	u.SetAnnotations(actualAnnotations)
+	// update source map data
+	for key, value := range extraData {
+		sourceData[key] = value
+	}
 
-	return nil
+	// update source map data into the target object
+	unstructured.RemoveNestedField(u.Object, locationKey...)
+	return unstructured.SetNestedMap(u.Object, sourceData, locationKey...)
 }
 
 func (ot *OptionsTransformer) updateConfigMaps(u *unstructured.Unstructured) error {
@@ -235,6 +253,18 @@ func (ot *OptionsTransformer) updateDeployments(u *unstructured.Unstructured) er
 
 	// update annotations
 	err = ot.updateAnnotations(u, deploymentOptions.Annotations)
+	if err != nil {
+		return err
+	}
+
+	// update pod template labels
+	err = ot.updateMapField(u, deploymentOptions.Spec.Template.Labels, "spec", "template", "metadata", "labels")
+	if err != nil {
+		return err
+	}
+
+	// update pod template annotations
+	err = ot.updateMapField(u, deploymentOptions.Spec.Template.Annotations, "spec", "template", "metadata", "annotations")
 	if err != nil {
 		return err
 	}
@@ -429,6 +459,18 @@ func (ot *OptionsTransformer) updateStatefulSets(u *unstructured.Unstructured) e
 		return err
 	}
 
+	// update pod template labels
+	err = ot.updateMapField(u, statefulSetOptions.Spec.Template.Labels, "spec", "template", "metadata", "labels")
+	if err != nil {
+		return err
+	}
+
+	// update pod template annotations
+	err = ot.updateMapField(u, statefulSetOptions.Spec.Template.Annotations, "spec", "template", "metadata", "annotations")
+	if err != nil {
+		return err
+	}
+
 	// convert unstructured object to statefulSet
 	targetStatefulSet := &appsv1.StatefulSet{}
 	err = apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, targetStatefulSet)
@@ -511,4 +553,129 @@ func (ot *OptionsTransformer) updateStatefulSets(u *unstructured.Unstructured) e
 	u.SetUnstructuredContent(obj)
 
 	return nil
+}
+
+func (ot *OptionsTransformer) updateHorizontalPodAutoscalers(u *unstructured.Unstructured) error {
+	hpaOptions, found := ot.options.HorizontalPodAutoscalers[u.GetName()]
+	if !found {
+		return nil
+	}
+
+	// update labels
+	err := ot.updateLabels(u, hpaOptions.Labels)
+	if err != nil {
+		return err
+	}
+
+	// update annotations
+	err = ot.updateAnnotations(u, hpaOptions.Annotations)
+	if err != nil {
+		return err
+	}
+
+	// convert unstructured object to statefulSet
+	targetHpa := autoscalingv2.HorizontalPodAutoscaler{}
+	err = apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &targetHpa)
+	if err != nil {
+		return err
+	}
+
+	// update scaling target reference
+	if hpaOptions.Spec.ScaleTargetRef.Kind != "" && hpaOptions.Spec.ScaleTargetRef.Name != "" {
+		targetHpa.Spec.ScaleTargetRef = hpaOptions.Spec.ScaleTargetRef
+	}
+
+	// update minimum replicas
+	// default minimum replicas count is 1
+	minReplicas := int32(1)
+	if hpaOptions.Spec.MinReplicas != nil {
+		minReplicas = *hpaOptions.Spec.MinReplicas
+	}
+	// update min replicas
+	targetHpa.Spec.MinReplicas = ptr.Int32(minReplicas)
+
+	// update maximum replicas
+	// maxReplicas should be greater than minReplicas
+	maxReplicas := hpaOptions.Spec.MaxReplicas
+	if maxReplicas <= minReplicas {
+		maxReplicas = minReplicas + 1
+	}
+	// update max replicas
+	targetHpa.Spec.MaxReplicas = maxReplicas
+
+	// update metrics
+	if len(hpaOptions.Spec.Metrics) > 0 {
+		targetHpa.Spec.Metrics = hpaOptions.Spec.Metrics
+	}
+
+	// update behavior
+	if hpaOptions.Spec.Behavior != nil {
+		// update behavior, if empty
+		if targetHpa.Spec.Behavior == nil {
+			targetHpa.Spec.Behavior = &autoscalingv2.HorizontalPodAutoscalerBehavior{}
+		}
+
+		// update scaling down
+		if hpaOptions.Spec.Behavior.ScaleDown != nil {
+			targetHpa.Spec.Behavior.ScaleDown = hpaOptions.Spec.Behavior.ScaleDown.DeepCopy()
+		}
+
+		// update scaling up
+		if hpaOptions.Spec.Behavior.ScaleUp != nil {
+			targetHpa.Spec.Behavior.ScaleUp = hpaOptions.Spec.Behavior.ScaleUp.DeepCopy()
+		}
+	}
+
+	// convert HorizontalPodAutoscaler to unstructured object
+	obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(&targetHpa)
+	if err != nil {
+		return err
+	}
+	u.SetUnstructuredContent(obj)
+
+	return nil
+}
+
+func (ot *OptionsTransformer) createHorizontalPodAutoscalers(manifest *mf.Manifest, targetNamespace string, additionalOptions v1alpha1.AdditionalOptions) ([]unstructured.Unstructured, error) {
+	newHPAs := []unstructured.Unstructured{}
+	existingHPAs := manifest.Filter(mf.Any(mf.ByKind(KindHorizontalPodAutoscaler)))
+	for hpaName, newHPA := range additionalOptions.HorizontalPodAutoscalers {
+		found := false
+		for _, resource := range existingHPAs.Resources() {
+			if resource.GetName() == hpaName {
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+
+		// update name
+		newHPA.SetName(hpaName)
+
+		// update the namespace to targetNamespace
+		newHPA.SetNamespace(targetNamespace)
+
+		// update kind
+		if newHPA.TypeMeta.Kind == "" {
+			newHPA.TypeMeta.Kind = KindHorizontalPodAutoscaler
+		}
+
+		// update api version
+		if newHPA.TypeMeta.APIVersion == "" {
+			newHPA.TypeMeta.APIVersion = autoscalingv2.SchemeGroupVersion.String()
+		}
+
+		// convert hpa to unstructured object
+		obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(&newHPA)
+		if err != nil {
+			return nil, err
+		}
+		u := unstructured.Unstructured{}
+		u.SetUnstructuredContent(obj)
+		newHPAs = append(newHPAs, u)
+	}
+
+	return newHPAs, nil
 }

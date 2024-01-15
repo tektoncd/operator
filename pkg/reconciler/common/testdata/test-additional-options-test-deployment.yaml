@@ -62,9 +62,12 @@ spec:
   template:
     metadata:
       creationTimestamp: null
+      annotations:
+        annotation-foo: annotation-bar
       labels:
         app.kubernetes.io/name: controller
-        operator.tekton.dev/deployment-spec-applied-hash: 1704bb3edd32937a1659b4d42c9f1669
+        label-foo: label-bar
+        operator.tekton.dev/deployment-spec-applied-hash: adf5ca03f3b1b83fa0ccd493ab932fa3
     spec:
       affinity:
         nodeAffinity:
