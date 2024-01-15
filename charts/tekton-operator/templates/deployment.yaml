@@ -181,7 +181,7 @@ spec:
                   fieldPath: metadata.namespace
             - name: CONFIG_LOGGING_NAME
               value: {{ include "tekton-operator.fullname" . }}-config-logging
-             - name: WEBHOOK_POD_NAME
+            - name: WEBHOOK_POD_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
