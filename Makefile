@@ -8,7 +8,7 @@ FORCE_FETCH_RELEASE = false
 CR            = config/basic
 PLATFORM := $(if $(PLATFORM),--platform $(PLATFORM))
 
-GOLANGCI_VERSION  = v1.54.2
+GOLANGCI_VERSION  = v1.55.2
 
 BIN      = $(CURDIR)/.bin
 
@@ -148,7 +148,7 @@ test-unit-race:    ARGS=-race
 $(TEST_UNIT_TARGETS): test-unit
 test-clean:  ## Clean testcache
 	@echo "Cleaning test cache"
-	@go clean -testcache ./...
+	@go clean -testcache
 .PHONY: $(TEST_UNIT_TARGETS) test test-unit
 test: test-clean test-unit ## Run test-unit
 test-unit: ## Run unit tests
