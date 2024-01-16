@@ -391,7 +391,7 @@ github.com/cli/safeexec
 github.com/cli/shurcooL-graphql
 github.com/cli/shurcooL-graphql/ident
 github.com/cli/shurcooL-graphql/internal/jsonutil
-# github.com/cloudflare/circl v1.3.5
+# github.com/cloudflare/circl v1.3.7
 ## explicit; go 1.19
 github.com/cloudflare/circl/dh/x25519
 github.com/cloudflare/circl/dh/x448
@@ -415,7 +415,7 @@ github.com/common-nighthawk/go-figure
 ## explicit; go 1.19
 github.com/containerd/stargz-snapshotter/estargz
 github.com/containerd/stargz-snapshotter/estargz/errorutil
-# github.com/coreos/go-oidc/v3 v3.7.0
+# github.com/coreos/go-oidc/v3 v3.9.0
 ## explicit; go 1.19
 github.com/coreos/go-oidc/v3/oidc
 # github.com/cyberphone/json-canonicalization v0.0.0-20231011164504-785e29786b46
@@ -1062,7 +1062,7 @@ github.com/sagikazarmark/slog-shim
 ## explicit
 github.com/sassoftware/relic/lib/pkcs7
 github.com/sassoftware/relic/lib/x509tools
-# github.com/secure-systems-lab/go-securesystemslib v0.7.0
+# github.com/secure-systems-lab/go-securesystemslib v0.8.0
 ## explicit; go 1.20
 github.com/secure-systems-lab/go-securesystemslib/cjson
 github.com/secure-systems-lab/go-securesystemslib/dsse
@@ -1160,7 +1160,7 @@ github.com/sigstore/rekor/pkg/types/intoto/v0.0.2
 github.com/sigstore/rekor/pkg/types/rekord
 github.com/sigstore/rekor/pkg/types/rekord/v0.0.1
 github.com/sigstore/rekor/pkg/util
-# github.com/sigstore/sigstore v1.7.6
+# github.com/sigstore/sigstore v1.8.0
 ## explicit; go 1.20
 github.com/sigstore/sigstore/pkg/cryptoutils
 github.com/sigstore/sigstore/pkg/fulcioroots
