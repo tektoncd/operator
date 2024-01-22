@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
+	pipelineErrors "github.com/tektoncd/pipeline/pkg/apis/pipeline/errors"
 	pod "github.com/tektoncd/pipeline/pkg/apis/pipeline/pod"
 	runv1beta1 "github.com/tektoncd/pipeline/pkg/apis/run/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -369,8 +370,7 @@ const (
 	// ReasonObjectParameterMissKeys indicates that the object param value provided from PipelineRun spec
 	// misses some keys required for the object param declared in Pipeline spec.
 	PipelineRunReasonObjectParameterMissKeys PipelineRunReason = "ObjectParameterMissKeys"
-	// ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is not under correct api fields feature gate
-	// or the array is out of bound.
+	// ReasonParamArrayIndexingInvalid indicates that the use of param array indexing is out of bound.
 	PipelineRunReasonParamArrayIndexingInvalid PipelineRunReason = "ParamArrayIndexingInvalid"
 	// ReasonCouldntGetTask indicates that the reason for the failure status is that the
 	// associated Pipeline's Tasks couldn't all be retrieved
@@ -399,6 +399,9 @@ const (
 	// ReasonInvalidTaskResultReference indicates a task result was declared
 	// but was not initialized by that task
 	PipelineRunReasonInvalidTaskResultReference PipelineRunReason = "InvalidTaskResultReference"
+	// PipelineRunReasonInvalidPipelineResultReference indicates a pipeline result was declared
+	// by the pipeline but not initialized in the pipelineTask
+	PipelineRunReasonInvalidPipelineResultReference PipelineRunReason = "InvalidPipelineResultReference"
 	// ReasonRequiredWorkspaceMarkedOptional indicates an optional workspace
 	// has been passed to a Task that is expecting a non-optional workspace
 	PipelineRunReasonRequiredWorkspaceMarkedOptional PipelineRunReason = "RequiredWorkspaceMarkedOptional"
@@ -465,6 +468,7 @@ func (pr *PipelineRunStatus) MarkSucceeded(reason, messageFormat string, message
 
 // MarkFailed changes the Succeeded condition to False with the provided reason and message.
 func (pr *PipelineRunStatus) MarkFailed(reason, messageFormat string, messageA ...interface{}) {
+	messageFormat = pipelineErrors.LabelUserError(messageFormat, messageA)
 	pipelineRunCondSet.Manage(pr).MarkFalse(apis.ConditionSucceeded, reason, messageFormat, messageA...)
 	succeeded := pr.GetCondition(apis.ConditionSucceeded)
 	pr.CompletionTime = &succeeded.LastTransitionTime.Inner

@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/pipeline"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -71,7 +72,6 @@ func (t *Task) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate implements apis.Validatable
 func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
-	errs = errs.Also(ts.ValidateBetaFields(ctx))
 	if len(ts.Steps) == 0 {
 		errs = errs.Also(apis.ErrMissingField("steps"))
 	}
@@ -97,35 +97,6 @@ func (ts *TaskSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(validateResults(ctx, ts.Results).ViaField("results"))
 	if ts.Resources != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("resources"))
-	}
-	return errs
-}
-
-// ValidateBetaFields returns an error if the TaskSpec uses beta specifications governed by
-// `enable-api-fields` but does not have "enable-api-fields" set to "alpha" or "beta".
-func (ts *TaskSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError {
-	var errs *apis.FieldError
-	// Object parameters
-	for i, p := range ts.Params {
-		if p.Type == ParamTypeObject {
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields).ViaFieldIndex("params", i))
-		}
-	}
-	// Indexing into array parameters
-	arrayIndexParamRefs := ts.GetIndexingReferencesToArrayParams()
-	if len(arrayIndexParamRefs) != 0 {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "indexing into array parameters", config.BetaAPIFields))
-	}
-	// Array and object results
-	for i, result := range ts.Results {
-		switch result.Type {
-		case ResultsTypeObject:
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object results", config.BetaAPIFields).ViaFieldIndex("results", i))
-		case ResultsTypeArray:
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "array results", config.BetaAPIFields).ViaFieldIndex("results", i))
-		case ResultsTypeString:
-		default:
-		}
 	}
 	return errs
 }
@@ -311,6 +282,44 @@ func isCreateOrUpdateAndDiverged(ctx context.Context, s Step) bool {
 	return false
 }
 
+func errorIfStepResultReferenceinField(value, fieldName string) (errs *apis.FieldError) {
+	matches := resultref.StepResultRegex.FindAllStringSubmatch(value, -1)
+	if len(matches) > 0 {
+		errs = errs.Also(&apis.FieldError{
+			Message: "stepResult substitutions are only allowed in env, command and args. Found usage in",
+			Paths:   []string{fieldName},
+		})
+	}
+	return errs
+}
+
+func validateStepResultReference(s Step) (errs *apis.FieldError) {
+	errs = errs.Also(errorIfStepResultReferenceinField(s.Name, "name"))
+	errs = errs.Also(errorIfStepResultReferenceinField(s.Image, "image"))
+	errs = errs.Also(errorIfStepResultReferenceinField(s.Script, "script"))
+	errs = errs.Also(errorIfStepResultReferenceinField(string(s.ImagePullPolicy), "imagePullPoliicy"))
+	errs = errs.Also(errorIfStepResultReferenceinField(s.WorkingDir, "workingDir"))
+	for _, e := range s.EnvFrom {
+		errs = errs.Also(errorIfStepResultReferenceinField(e.Prefix, "envFrom.prefix"))
+		if e.ConfigMapRef != nil {
+			errs = errs.Also(errorIfStepResultReferenceinField(e.ConfigMapRef.LocalObjectReference.Name, "envFrom.configMapRef"))
+		}
+		if e.SecretRef != nil {
+			errs = errs.Also(errorIfStepResultReferenceinField(e.SecretRef.LocalObjectReference.Name, "envFrom.secretRef"))
+		}
+	}
+	for _, v := range s.VolumeMounts {
+		errs = errs.Also(errorIfStepResultReferenceinField(v.Name, "volumeMounts.name"))
+		errs = errs.Also(errorIfStepResultReferenceinField(v.MountPath, "volumeMounts.mountPath"))
+		errs = errs.Also(errorIfStepResultReferenceinField(v.SubPath, "volumeMounts.subPath"))
+	}
+	for _, v := range s.VolumeDevices {
+		errs = errs.Also(errorIfStepResultReferenceinField(v.Name, "volumeDevices.name"))
+		errs = errs.Also(errorIfStepResultReferenceinField(v.DevicePath, "volumeDevices.devicePath"))
+	}
+	return errs
+}
+
 func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.FieldError) {
 	if s.Ref != nil {
 		if !config.FromContextOrDefaults(ctx).FeatureFlags.EnableStepActions && isCreateOrUpdateAndDiverged(ctx, s) {
@@ -448,6 +457,10 @@ func validateStep(ctx context.Context, s Step, names sets.String) (errs *apis.Fi
 	if s.StderrConfig != nil {
 		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "step stderr stream support", config.AlphaAPIFields).ViaField("stderrconfig"))
 	}
+
+	// Validate usage of step result reference.
+	// Referencing previous step's results are only allowed in `env`, `command` and `args`.
+	errs = errs.Also(validateStepResultReference(s))
 	return errs
 }
 
