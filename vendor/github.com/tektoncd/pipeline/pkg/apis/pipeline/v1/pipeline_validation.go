@@ -23,6 +23,7 @@ import (
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
+	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	"github.com/tektoncd/pipeline/pkg/reconciler/pipeline/dag"
 	"github.com/tektoncd/pipeline/pkg/substitution"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -94,28 +95,6 @@ func (ps *PipelineSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
 // have "enable-api-fields" set to "alpha" or "beta".
 func (ps *PipelineSpec) ValidateBetaFields(ctx context.Context) *apis.FieldError {
 	var errs *apis.FieldError
-	// Object parameters
-	for i, p := range ps.Params {
-		if p.Type == ParamTypeObject {
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object type parameter", config.BetaAPIFields).ViaFieldIndex("params", i))
-		}
-	}
-	// Indexing into array parameters
-	arrayParamIndexingRefs := ps.GetIndexingReferencesToArrayParams()
-	if len(arrayParamIndexingRefs) != 0 {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "indexing into array parameters", config.BetaAPIFields))
-	}
-	// array and object results
-	for i, result := range ps.Results {
-		switch result.Type {
-		case ResultsTypeObject:
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "object results", config.BetaAPIFields).ViaFieldIndex("results", i))
-		case ResultsTypeArray:
-			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "array results", config.BetaAPIFields).ViaFieldIndex("results", i))
-		case ResultsTypeString:
-		default:
-		}
-	}
 	for i, pt := range ps.Tasks {
 		errs = errs.Also(pt.validateBetaFields(ctx).ViaFieldIndex("tasks", i))
 	}
@@ -138,8 +117,6 @@ func (pt *PipelineTask) validateBetaFields(ctx context.Context) *apis.FieldError
 		if len(pt.TaskRef.Params) > 0 {
 			errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "taskref.params", config.BetaAPIFields))
 		}
-	} else if pt.TaskSpec != nil {
-		errs = errs.Also(pt.TaskSpec.ValidateBetaFields(ctx))
 	}
 	return errs
 }
@@ -649,7 +626,7 @@ func validatePipelineResults(results []PipelineResult, tasks []PipelineTask, fin
 				"value").ViaFieldIndex("results", idx))
 		}
 
-		expressions = filter(expressions, looksLikeResultRef)
+		expressions = filter(expressions, resultref.LooksLikeResultRef)
 		resultRefs := NewResultRefs(expressions)
 		if len(expressions) != len(resultRefs) {
 			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("expected all of the expressions %v to be result expressions but only %v were", expressions, resultRefs),
@@ -684,16 +661,16 @@ func taskContainsResult(resultExpression string, pipelineTaskNames sets.String, 
 	for _, expression := range split {
 		if expression != "" {
 			value := stripVarSubExpression("$" + expression)
-			pipelineTaskName, _, _, _, err := parseExpression(value)
+			pr, err := resultref.ParseTaskExpression(value)
 
 			if err != nil {
 				return false
 			}
 
-			if strings.HasPrefix(value, "tasks") && !pipelineTaskNames.Has(pipelineTaskName) {
+			if strings.HasPrefix(value, "tasks") && !pipelineTaskNames.Has(pr.ResourceName) {
 				return false
 			}
-			if strings.HasPrefix(value, "finally") && !pipelineFinallyTaskNames.Has(pipelineTaskName) {
+			if strings.HasPrefix(value, "finally") && !pipelineFinallyTaskNames.Has(pr.ResourceName) {
 				return false
 			}
 		}
