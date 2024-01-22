@@ -124,8 +124,6 @@ func updatePerformanceFlagsInDeployment(pipelineCR *v1alpha1.TektonPipeline) mf.
 
 		// include config-leader-election data into deployment pod label
 		// so that pods will be recreated, if there is a change in "buckets"
-		// NOTE: when writing this code replicas can not be handled from installersets,
-		// user needs to scale the deployment manually
 		leaderElectionConfigMapData := map[string]interface{}{}
 		if err = common.StructToMap(&performanceSpec.PipelinePerformanceLeaderElectionConfig, &leaderElectionConfigMapData); err != nil {
 			return err
