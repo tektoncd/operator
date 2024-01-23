@@ -52,5 +52,5 @@ spec:
       - {{ .Release.Namespace }}
   selector:
     matchLabels:
-    {{- include "tekton-operator.operator.selectorLabels" . | nindent 4 }}
+    {{- include "tekton-operator.operator.selectorLabels" . | nindent 6 }}
 {{- end }}
