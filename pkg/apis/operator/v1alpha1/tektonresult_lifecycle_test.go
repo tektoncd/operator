@@ -58,6 +58,9 @@ func TestTektonResultHappyPath(t *testing.T) {
 	tt.MarkInstallerSetReady()
 	apistest.CheckConditionSucceeded(tt, InstallerSetReady, t)
 
+	tt.MarkPostReconcilerComplete()
+	apistest.CheckConditionSucceeded(tt, PostReconciler, t)
+
 	if ready := tt.IsReady(); !ready {
 		t.Errorf("tt.IsReady() = %v, want true", ready)
 	}
@@ -90,6 +93,9 @@ func TestTektonResultErrorPath(t *testing.T) {
 	// InstallerSet and then PostReconciler become ready and we're good.
 	tt.MarkInstallerSetReady()
 	apistest.CheckConditionSucceeded(tt, InstallerSetReady, t)
+
+	tt.MarkPostReconcilerComplete()
+	apistest.CheckConditionSucceeded(tt, PostReconciler, t)
 
 	if ready := tt.IsReady(); !ready {
 		t.Errorf("tt.IsReady() = %v, want true", ready)
