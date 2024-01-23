@@ -59,6 +59,13 @@ spec:
       The file should be placed at the root of the Workspace with name config.json
       or .dockerconfigjson.
     optional: true
+  - description: >-
+      An optional workspace that allows providing the entitlement keys
+      for Buildah to access subscription. The mounted workspace contains
+      entitlement.pem and entitlement-key.pem.
+    name: rhel-entitlement
+    optional: true
+    mountPath: /tmp/entitlement
 
   results:
   - name: IMAGE_DIGEST
@@ -71,9 +78,15 @@ spec:
     image: $(params.BUILDER_IMAGE)
     workingDir: $(workspaces.source.path)
     script: |
-      buildah --storage-driver=$(params.STORAGE_DRIVER) bud \
-        $(params.BUILD_EXTRA_ARGS) --format=$(params.FORMAT) \
-        --tls-verify=$(params.TLSVERIFY) --no-cache \
+      ENTITLEMENT_VOLUME=""
+
+      if [[ "$(workspaces.rhel-entitlement.bound)" == "true" ]]; then
+        ENTITLEMENT_VOLUME="--volume /tmp/entitlement:/etc/pki/entitlement"
+      fi
+
+      buildah bud --storage-driver=$(params.STORAGE_DRIVER) \
+        $ENTITLEMENT_VOLUME $(params.BUILD_EXTRA_ARGS) \
+        --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) --no-cache \
         -f $(params.DOCKERFILE) -t $(params.IMAGE) $(params.CONTEXT)
 
       [[ "$(params.SKIP_PUSH)" == "true" ]] && echo "Push skipped" && exit 0
