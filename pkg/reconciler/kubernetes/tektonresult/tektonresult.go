@@ -262,7 +262,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 		}
 	}
 
-	// Mark InstallerSetAvailable
+	// Mark InstallerSet Available
 	tr.Status.MarkInstallerSetAvailable()
 
 	ready := installedTIS.Status.GetCondition(apis.ConditionReady)
@@ -279,8 +279,21 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
-	// Mark InstallerSet Ready
+	// MarkInstallerSetReady
 	tr.Status.MarkInstallerSetReady()
+
+	if err := r.extension.PostReconcile(ctx, tr); err != nil {
+		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
+		logger.Error(msg)
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		tr.Status.MarkPostReconcilerFailed(msg)
+		return nil
+	}
+
+	// Mark PostReconcile Complete
+	tr.Status.MarkPostReconcilerComplete()
 
 	return nil
 }

@@ -104,9 +104,12 @@ func (in *TektonResultStatus) MarkPreReconcilerFailed(s string) {
 	panic("implement me")
 }
 
-func (in *TektonResultStatus) MarkPostReconcilerFailed(s string) {
-	//TODO implement me
-	panic("implement me")
+func (trs *TektonResultStatus) MarkPostReconcilerFailed(msg string) {
+	trs.MarkNotReady("PostReconciliation failed")
+	resultsCondSet.Manage(trs).MarkFalse(
+		PostReconciler,
+		"Error",
+		msg)
 }
 
 // TektonResultsList contains a list of TektonResult
