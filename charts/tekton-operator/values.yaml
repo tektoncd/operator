@@ -13,6 +13,9 @@ openshift:
 ## Setting this to true will cause a cascade deletion of all Tekton resources when you uninstall the chart - danger!
 installCRDs: false
 
+## Controllers to install
+controllers: "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard"
+
 ## Control the creation of RBAC resources (Serviceaccount, Role, ClusterRole, ClusterRoleBinding)
 rbac:
   create: true
