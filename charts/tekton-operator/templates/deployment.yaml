@@ -76,6 +76,10 @@ spec:
           name: tekton-operator-lifecycle
           resources:
             {{- toYaml .Values.operator.resources | nindent 12 }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
         - env:
             - name: SYSTEM_NAMESPACE
               valueFrom:
@@ -125,6 +129,14 @@ spec:
           name: tekton-operator-cluster-operations
           resources:
             {{- toYaml .Values.operator.resources | nindent 12 }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       serviceAccountName: {{ include "tekton-operator.serviceAccountName" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -198,9 +210,17 @@ spec:
           name: {{ include "tekton-operator.operator-name" . -}}-webhook
           resources:
             {{- toYaml .Values.webhook.resources | nindent 12 }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           ports:
             - containerPort: {{ .Values.webhook.httpsWebhookPort }}
               name: https-webhook
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       serviceAccountName: {{ include "tekton-operator.serviceAccountName" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
