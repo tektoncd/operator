@@ -58,7 +58,7 @@ func (r *Reconciler) EnsureOpenShiftConsoleResources(ctx context.Context, ta *v1
 	if len(filteredManifest.Resources()) == 0 {
 		return nil, consoleCLIDownloadExist
 	}
-	if err := r.installerSetClient.CustomSet(ctx, ta, OpenShiftConsoleInstallerSet, &filteredManifest, filterAndTransformOCPResources()); err != nil {
+	if err := r.installerSetClient.CustomSet(ctx, ta, OpenShiftConsoleInstallerSet, &filteredManifest, filterAndTransformOCPResources(), nil); err != nil {
 		return err, consoleCLIDownloadExist
 	}
 	return nil, consoleCLIDownloadExist

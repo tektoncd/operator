@@ -41,7 +41,7 @@ func (r *Reconciler) EnsureConsoleCLI(ctx context.Context, ta *v1alpha1.TektonAd
 	if err := consoleCLITransform(ctx, &manifest, routeHost); err != nil {
 		return err
 	}
-	if err := r.installerSetClient.CustomSet(ctx, ta, ConsoleCLIInstallerSet, &manifest, filterAndTransformOCPResources()); err != nil {
+	if err := r.installerSetClient.CustomSet(ctx, ta, ConsoleCLIInstallerSet, &manifest, filterAndTransformOCPResources(), nil); err != nil {
 		return err
 	}
 	return nil

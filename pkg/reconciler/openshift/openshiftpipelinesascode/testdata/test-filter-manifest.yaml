@@ -1,0 +1,771 @@
+# Copyright 2024 Red Hat
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# See https://pipelinesascode.com/docs/install/settings/ for the complete
+# documentation of all settings.
+
+apiVersion: v1
+data:
+  # The application name, you can customize this label. If using the Github App you will need to customize the label on the github app setting as well.
+  application-name: "Pipelines as Code CI"
+
+  # Whether to automatically create a secret with the token to be use by git-clone
+  secret-auto-create: "true"
+
+  # By default we only generate token scoped to the repository from where the
+  # payload come from.
+  # We do this because if the github apps is installed on an github organisation
+  #
+  # and there is a mix of public and private repositories in there
+  # where some users on that org does not have access.
+  #
+  # If you trust every users on your organisations to access any repos there or
+  # not planning to install your github application globally on a Github Organisation
+  # then you can safely set this option to false.
+  secret-github-app-token-scoped: "true"
+
+  # If you don't want to completely disable the scoping of the token, but still
+  # wants some other repos (on the same installation id) available from the
+  # token, then you can add an extra owner/repo here.
+  #
+  # You can have multiple owner/repositories separated by commas:
+  # i.e: "owner/private-repo1, org/repo2"
+  secret-github-app-scope-extra-repos: ""
+
+  # Tekton HUB API urls
+  hub-url: "https://api.hub.tekton.dev/v1"
+
+  # Tekton HUB catalog name
+  hub-catalog-name: "tekton"
+
+  # Additional Hub Catalogs is supported, for example:
+  #
+  # catalog-1-id: anotherhub
+  # catalog-1-name: tekton
+  # catalog-1-url: https://api.other.com/v1
+  #
+  # this configuration will have a new catalog named anotherhub on  https://api.other.com/v1 endpoint and catalog name tekton
+  # to be used by a user in their templates like this:
+  # pipelinesascode.tekton.dev/task: "anotherhub://task"
+  #
+  # Increase the number of the catalog to add more of them
+
+  # Allow fetching remote tasks
+  remote-tasks: "true"
+
+  # Using the URL of the Tekton dashboard, Pipelines-as-Code generates a URL to the
+  # PipelineRun on the Tekton dashboard
+  tekton-dashboard-url: ""
+
+  # Enable or disable the feature to show a log snippet of the failed task when there is
+  # an error in a Pipeline
+  #
+  # It will show the last 3 lines of the first container of the first task
+  # that has error in the pipeline.
+  #
+  # you may want to disable this if you think your pipeline may leak some value
+  error-log-snippet: "true"
+
+  # Enable or disable the inspection of container logs to detect error message
+  # and expose them as annotations on Pull Request. Only Github apps is supported
+  error-detection-from-container-logs: "true"
+
+  # How many lines to grab from the container when inspecting the
+  # logs for error-detection. Increasing this value may increase the watcher
+  # memory usage.  Use -1 for unlimited lines.
+  error-detection-max-number-of-lines: "50"
+
+  # The default regexp used when we use the simple error detection
+  error-detection-simple-regexp: |
+    ^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+)?([ ]*)?(?P<error>.*)
+
+  # Since public bitbucket doesn't have the concept of Secret, we need to be
+  # able to secure the request by querying https://ip-ranges.atlassian.com/,
+  # this only happen for public bitbucket (ie: when provider.url is not set in
+  # repository spec). If you want to override this, you need to bear in mind
+  # this could be a security issue, a malicious user can send a PR to your repo
+  # with a modification to your PipelineRun that would grab secrets, tunnel or
+  # others and then send a malicious webhook payload to the controller which
+  # look like a authorized owner has send the PR to run it..
+  bitbucket-cloud-check-source-ip: "true"
+
+  # Add extra IPS (ie: 127.0.0.1) or networks (127.0.0.0/16) separated by commas.
+  bitbucket-cloud-additional-source-ip: ""
+
+  # max-keep-run-upper-limit defines the upper limit for max-keep-run annotation
+  # value which a user can set on pipelineRun. the value set on annotation
+  # should be less than or equal to the upper limit otherwise the upper limit
+  # will be used while cleaning up
+  max-keep-run-upper-limit: ""
+
+  # if defined then applies to all pipelineRun who doesn't have max-keep-runs annotation
+  default-max-keep-runs: ""
+
+  # Whether to auto configure newly created repositories, this will create a new
+  # namespace and repository CR, supported only with GitHub App
+  auto-configure-new-github-repo: "false"
+
+  # add a template to generate name for namespace for your auto configured
+  # github repo supported fields are repo_owner, repo_name eg. if defined as
+  # `{{repo_owner}}-{{repo_name}}-ci`, then namespace generated for repository
+  # https://github.com/owner/repo will be `owner-repo-ci`
+  auto-configure-repo-namespace-template: ""
+
+  # Enable or disable the feature to rerun the CI if push event happens on
+  # a pull request
+  #
+  # By default it is true and CI will be re-run in case of push/amend on the
+  # pull request if ok-to-test is done once
+  #
+  # you may want to disable this if ok-to-test should be done on each iteration
+  remember-ok-to-test: "true"
+
+  # Configure a custom console here, the driver support custom parameters from
+  # Repo CR along a few other template variable, see documentation for more
+  # details
+  #
+  # custom-console-name: Console Name
+  # custom-console-url: https://url
+  # custom-console-url-pr-details: https://url/ns/{{ namespace }}/{{ pr }}
+  # custom-console-url-pr-tasklog: https://url/ns/{{ namespace }}/{{ pr }}/logs/{{ task }}
+
+kind: ConfigMap
+metadata:
+  name: pipelines-as-code
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+---
+
+# Copyright 2024 Red Hat
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This configmap is filled by bootstrap command
+# GitHub App is added as provider and later this is checked
+# before configuring a new GitHub App so that we don't
+# configure more than one App
+
+apiVersion: v1
+data:
+  # pipelines as code controller version
+  version: "v0.23.0"
+
+  # controller url to be used for configuring webhook using cli
+  controller-url: ""
+
+  # display the configured provider on the platform
+  # only one provider type to be configured at a time
+  # eg. if GitHub App is configured, then webhooks should not be configured
+  provider: ""
+
+kind: ConfigMap
+metadata:
+  name: pipelines-as-code-info
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+---
+
+# Copyright 2024 Red Hat
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pipelines-as-code-webhook-certs
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+# The data is populated at install time
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: validation.pipelinesascode.tekton.dev
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+webhooks:
+  - admissionReviewVersions: ["v1"]
+    clientConfig:
+      service:
+        name: pipelines-as-code-webhook
+        namespace: pipelines-as-code
+    failurePolicy: Fail
+    sideEffects: None
+    name: validation.pipelinesascode.tekton.dev
+---
+
+# Copyright 2024 Red Hat
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pipelines-as-code-config-observability
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+data:
+  _example: |
+    ################################
+    #                              #
+    #    EXAMPLE CONFIGURATION     #
+    #                              #
+    ################################
+    # This block is not actually functional configuration,
+    # but serves to illustrate the available configuration
+    # options and document them in a way that is accessible
+    # to users that `kubectl edit` this config map.
+    #
+    # These sample configuration options may be copied out of
+    # this example block and unindented to be in the data block
+    # to actually change the configuration.
+    # metrics.backend-destination field specifies the system metrics destination.
+    # It supports either prometheus (the default) or stackdriver.
+    # Note: Using Stackdriver will incur additional charges.
+    metrics.backend-destination: prometheus
+    # metrics.stackdriver-project-id field specifies the Stackdriver project ID. This
+    # field is optional. When running on GCE, application default credentials will be
+    # used and metrics will be sent to the cluster's project if this field is
+    # not provided.
+    metrics.stackdriver-project-id: "<your stackdriver project id>"
+    # metrics.allow-stackdriver-custom-metrics indicates whether it is allowed
+    # to send metrics to Stackdriver using "global" resource type and custom
+    # metric type. Setting this flag to "true" could cause extra Stackdriver
+    # charge.  If metrics.backend-destination is not Stackdriver, this is
+    # ignored.
+    metrics.allow-stackdriver-custom-metrics: "false"
+# Copyright 2024 Red Hat
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pac-watcher-config-leader-election
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: pipelines-as-code
+data:
+  _example: |
+    ################################
+    #                              #
+    #    EXAMPLE CONFIGURATION     #
+    #                              #
+    ################################
+    # This block is not actually functional configuration,
+    # but serves to illustrate the available configuration
+    # options and document them in a way that is accessible
+    # to users that `kubectl edit` this config map.
+    #
+    # These sample configuration options may be copied out of
+    # this example block and unindented to be in the data block
+    # to actually change the configuration.
+    # lease-duration is how long non-leaders will wait to try to acquire the
+    # lock; 15 seconds is the value used by core kubernetes controllers.
+    lease-duration: "60s"
+    # renew-deadline is how long a leader will try to renew the lease before
+    # giving up; 10 seconds is the value used by core kubernetes controllers.
+    renew-deadline: "40s"
+    # retry-period is how long the leader election client waits between tries of
+    # actions; 2 seconds is the value used by core kubernetes controllers.
+    retry-period: "10s"
+    # buckets is the number of buckets used to partition key space of each
+    # Reconciler. If this number is M and the replica number of the controller
+    # is N, the N replicas will compete for the M buckets. The owner of a
+    # bucket will take care of the reconciling for the keys partitioned into
+    # that bucket.
+    buckets: "1"
+# Copyright 2024 Red Hat
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pac-webhook-config-leader-election
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: pipelines-as-code
+data:
+  _example: |
+    ################################
+    #                              #
+    #    EXAMPLE CONFIGURATION     #
+    #                              #
+    ################################
+    # This block is not actually functional configuration,
+    # but serves to illustrate the available configuration
+    # options and document them in a way that is accessible
+    # to users that `kubectl edit` this config map.
+    #
+    # These sample configuration options may be copied out of
+    # this example block and unindented to be in the data block
+    # to actually change the configuration.
+    # lease-duration is how long non-leaders will wait to try to acquire the
+    # lock; 15 seconds is the value used by core kubernetes controllers.
+    lease-duration: "60s"
+    # renew-deadline is how long a leader will try to renew the lease before
+    # giving up; 10 seconds is the value used by core kubernetes controllers.
+    renew-deadline: "40s"
+    # retry-period is how long the leader election client waits between tries of
+    # actions; 2 seconds is the value used by core kubernetes controllers.
+    retry-period: "10s"
+    # buckets is the number of buckets used to partition key space of each
+    # Reconciler. If this number is M and the replica number of the controller
+    # is N, the N replicas will compete for the M buckets. The owner of a
+    # bucket will take care of the reconciling for the keys partitioned into
+    # that bucket.
+    buckets: "1"
+# Copyright 2024 Red Hat
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pipelines-as-code-controller
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: controller
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: pipelines-as-code
+  template:
+    metadata:
+      labels:
+        app: pipelines-as-code-controller
+        app.kubernetes.io/name: controller
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/part-of: pipelines-as-code
+        app.kubernetes.io/version: "v0.23.0"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: pipelines-as-code-controller
+      containers:
+        - name: pac-controller
+          image: "ghcr.io/openshift-pipelines/pipelines-as-code-controller:v0.23.0"
+          imagePullPolicy: Always
+          ports:
+            - name: api
+              containerPort: 8080
+            - name: metrics
+              containerPort: 9090
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /live
+              port: api
+              scheme: HTTP
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 1
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /live
+              port: api
+              scheme: HTTP
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 1
+          env:
+            - name: CONFIG_LOGGING_NAME
+              value: pac-config-logging
+            - name: TLS_KEY
+              value: "key"
+            - name: TLS_CERT
+              value: "cert"
+            - name: TLS_SECRET_NAME
+              value: "pipelines-as-code-tls-secret"
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: K_METRICS_CONFIG
+              value: '{"Domain":"pipelinesascode.tekton.dev/controller","Component":"pac_controller","PrometheusPort":9090,"ConfigMap":{"name":"pipelines-as-code-config-observability"}}'
+            - name: K_TRACING_CONFIG
+              value: '{"backend":"prometheus","debug":"false","sample-rate":"0"}'
+            - name: K_SINK_TIMEOUT
+              value: "30"
+            - name: PAC_CONTROLLER_LABEL
+              value: "default"
+            - name: PAC_CONTROLLER_SECRET
+              value: "pipelines-as-code-secret"
+            - name: PAC_CONTROLLER_CONFIGMAP
+              value: "pipelines-as-code"
+          volumeMounts:
+            - mountPath: "/etc/pipelines-as-code/tls"
+              readOnly: true
+              name: tls
+      volumes:
+      - name: tls
+        secret:
+          secretName: pipelines-as-code-tls-secret
+          optional: true
+# Copyright 2024 Red Hat
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pipelines-as-code-controller
+  namespace: pipelines-as-code
+  labels:
+    app: pipelines-as-code-controller
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+spec:
+  ports:
+  - name: http-listener
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  - name: http-metrics
+    port: 9090
+    protocol: TCP
+    targetPort: 9090
+  selector:
+    app.kubernetes.io/name: controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: pipelines-as-code
+# Copyright 2024 Red Hat
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pipelines-as-code-watcher
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: watcher
+      app.kubernetes.io/component: watcher
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: pipelines-as-code
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: watcher
+        app.kubernetes.io/component: watcher
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/part-of: pipelines-as-code
+        app.kubernetes.io/version: "v0.23.0"
+        app: pipelines-as-code-watcher
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: pipelines-as-code-watcher
+      containers:
+        - name: pac-watcher
+          image: "ghcr.io/openshift-pipelines/pipelines-as-code-watcher:v0.23.0"
+          imagePullPolicy: Always
+          env:
+          - name: CONFIG_LOGGING_NAME
+            value: pac-config-logging
+          - name: SYSTEM_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: METRICS_DOMAIN
+            value: tekton.dev/pipelinesascode
+          - name: CONFIG_OBSERVABILITY_NAME
+            value: pipelines-as-code-config-observability
+          - name: CONFIG_LEADERELECTION_NAME
+            value: pac-watcher-config-leader-election
+          ports:
+          - name: probes
+            containerPort: 8080
+          - name: metrics
+            containerPort: 9090
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            httpGet:
+              path: /live
+              port: probes
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: probes
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+# Copyright 2024 Red Hat
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pipelines-as-code-watcher
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+    app: pipelines-as-code-watcher
+spec:
+  ports:
+  - name: http-metrics
+    port: 9090
+    protocol: TCP
+    targetPort: 9090
+  selector:
+    app.kubernetes.io/name: watcher
+    app.kubernetes.io/component: watcher
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: pipelines-as-code
+# Copyright 2024 Red Hat
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pipelines-as-code-webhook
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+spec:
+  ports:
+    - name: https-webhook
+      port: 443
+      targetPort: 8443
+  selector:
+    app.kubernetes.io/name: webhook
+    app.kubernetes.io/component: webhook
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: pipelines-as-code
+# Copyright 2024 Red Hat
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: pipelines-as-code
+    app.kubernetes.io/version: "v0.23.0"
+    pipelines-as-code/route: controller
+  name: pipelines-as-code-controller
+  namespace: pipelines-as-code
+spec:
+  port:
+    targetPort: http-listener
+  tls:
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+  to:
+    kind: Service
+    name: pipelines-as-code-controller
+    weight: 100
+  wildcardPolicy: None
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pipelines-as-code-monitor
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+  annotations:
+    networkoperator.openshift.io/ignore-errors: ""
+spec:
+  endpoints:
+    - interval: 10s
+      port: http-metrics
+  jobLabel: app
+  namespaceSelector:
+    matchNames:
+    - pipelines-as-code
+  selector:
+    matchLabels:
+      app: pipelines-as-code-watcher
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pipelines-as-code-controller-monitor
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+  annotations:
+    networkoperator.openshift.io/ignore-errors: ""
+spec:
+  endpoints:
+    - interval: 10s
+      port: http-metrics
+  jobLabel: app
+  namespaceSelector:
+    matchNames:
+    - pipelines-as-code
+  selector:
+    matchLabels:
+      app: pipelines-as-code-controller

@@ -1,0 +1,131 @@
+apiVersion: v1
+data:
+  # The application name, you can customize this label. If using the Github App you will need to customize the label on the github app setting as well.
+  application-name: "Test CI application"
+
+  # Whether to automatically create a secret with the token to be use by git-clone
+  secret-auto-create: "true"
+
+  # By default we only generate token scoped to the repository from where the
+  # payload come from.
+  # We do this because if the github apps is installed on an github organisation
+  #
+  # and there is a mix of public and private repositories in there
+  # where some users on that org does not have access.
+  #
+  # If you trust every users on your organisations to access any repos there or
+  # not planning to install your github application globally on a Github Organisation
+  # then you can safely set this option to false.
+  secret-github-app-token-scoped: "true"
+
+  # If you don't want to completely disable the scoping of the token, but still
+  # wants some other repos (on the same installation id) available from the
+  # token, then you can add an extra owner/repo here.
+  #
+  # You can have multiple owner/repositories separated by commas:
+  # i.e: "owner/private-repo1, org/repo2"
+  secret-github-app-scope-extra-repos: ""
+
+  # Tekton HUB API urls
+  hub-url: "https://custom-hub.com"
+
+  # Tekton HUB catalog name
+  hub-catalog-name: "tekton"
+
+  # Additional Hub Catalogs is supported, for example:
+  #
+  # catalog-1-id: anotherhub
+  # catalog-1-name: tekton
+  # catalog-1-url: https://api.other.com/v1
+  #
+  # this configuration will have a new catalog named anotherhub on  https://api.other.com/v1 endpoint and catalog name tekton
+  # to be used by a user in their templates like this:
+  # pipelinesascode.tekton.dev/task: "anotherhub://task"
+  #
+  # Increase the number of the catalog to add more of them
+
+  # Allow fetching remote tasks
+  remote-tasks: "true"
+
+  # Using the URL of the Tekton dashboard, Pipelines-as-Code generates a URL to the
+  # PipelineRun on the Tekton dashboard
+  tekton-dashboard-url: ""
+
+  # Enable or disable the feature to show a log snippet of the failed task when there is
+  # an error in a Pipeline
+  #
+  # It will show the last 3 lines of the first container of the first task
+  # that has error in the pipeline.
+  #
+  # you may want to disable this if you think your pipeline may leak some value
+  error-log-snippet: "true"
+
+  # Enable or disable the inspection of container logs to detect error message
+  # and expose them as annotations on Pull Request. Only Github apps is supported
+  error-detection-from-container-logs: "true"
+
+  # How many lines to grab from the container when inspecting the
+  # logs for error-detection. Increasing this value may increase the watcher
+  # memory usage.  Use -1 for unlimited lines.
+  error-detection-max-number-of-lines: "50"
+
+  # The default regexp used when we use the simple error detection
+  error-detection-simple-regexp: "^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([ ]*)?(?P<error>.*)"
+
+  # Since public bitbucket doesn't have the concept of Secret, we need to be
+  # able to secure the request by querying https://ip-ranges.atlassian.com/,
+  # this only happen for public bitbucket (ie: when provider.url is not set in
+  # repository spec). If you want to override this, you need to bear in mind
+  # this could be a security issue, a malicious user can send a PR to your repo
+  # with a modification to your PipelineRun that would grab secrets, tunnel or
+  # others and then send a malicious webhook payload to the controller which
+  # look like a authorized owner has send the PR to run it..
+  bitbucket-cloud-check-source-ip: "true"
+
+  # Add extra IPS (ie: 127.0.0.1) or networks (127.0.0.0/16) separated by commas.
+  bitbucket-cloud-additional-source-ip: ""
+
+  # max-keep-run-upper-limit defines the upper limit for max-keep-run annotation
+  # value which a user can set on pipelineRun. the value set on annotation
+  # should be less than or equal to the upper limit otherwise the upper limit
+  # will be used while cleaning up
+  max-keep-run-upper-limit: ""
+
+  # if defined then applies to all pipelineRun who doesn't have max-keep-runs annotation
+  default-max-keep-runs: ""
+
+  # Whether to auto configure newly created repositories, this will create a new
+  # namespace and repository CR, supported only with GitHub App
+  auto-configure-new-github-repo: "false"
+
+  # add a template to generate name for namespace for your auto configured
+  # github repo supported fields are repo_owner, repo_name eg. if defined as
+  # `{{repo_owner}}-{{repo_name}}-ci`, then namespace generated for repository
+  # https://github.com/owner/repo will be `owner-repo-ci`
+  auto-configure-repo-namespace-template: ""
+
+  # Enable or disable the feature to rerun the CI if push event happens on
+  # a pull request
+  #
+  # By default it is true and CI will be re-run in case of push/amend on the
+  # pull request if ok-to-test is done once
+  #
+  # you may want to disable this if ok-to-test should be done on each iteration
+  remember-ok-to-test: "true"
+
+  # Configure a custom console here, the driver support custom parameters from
+  # Repo CR along a few other template variable, see documentation for more
+  # details
+  #
+  custom-console-name: ""
+  custom-console-url: ""
+  custom-console-url-pr-details: ""
+  custom-console-url-pr-tasklog: ""
+
+kind: ConfigMap
+metadata:
+  name: test-config
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code

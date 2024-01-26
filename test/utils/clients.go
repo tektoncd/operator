@@ -178,3 +178,7 @@ func (c *Clients) TektonInstallerSet() operatorv1alpha1.TektonInstallerSetInterf
 func (c *Clients) TektonInstallerSetAll() operatorv1alpha1.TektonInstallerSetInterface {
 	return c.Operator.TektonInstallerSets()
 }
+
+func (c *Clients) OpenShiftPipelinesAsCode() operatorv1alpha1.OpenShiftPipelinesAsCodeInterface {
+	return c.Operator.OpenShiftPipelinesAsCodes()
+}

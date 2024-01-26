@@ -26,19 +26,19 @@ import (
 )
 
 func (i *InstallerSetClient) PostSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
-	return i.createSet(ctx, comp, InstallerTypePost, manifest, filterAndTransform)
+	return i.createSet(ctx, comp, InstallerTypePost, manifest, filterAndTransform, nil)
 }
 
 func (i *InstallerSetClient) PreSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
-	return i.createSet(ctx, comp, InstallerTypePre, manifest, filterAndTransform)
+	return i.createSet(ctx, comp, InstallerTypePre, manifest, filterAndTransform, nil)
 }
 
-func (i *InstallerSetClient) CustomSet(ctx context.Context, comp v1alpha1.TektonComponent, customName string, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
+func (i *InstallerSetClient) CustomSet(ctx context.Context, comp v1alpha1.TektonComponent, customName string, manifest *mf.Manifest, filterAndTransform FilterAndTransform, customLabels map[string]string) error {
 	setType := InstallerTypeCustom + "-" + strings.ToLower(customName)
-	return i.createSet(ctx, comp, setType, manifest, filterAndTransform)
+	return i.createSet(ctx, comp, setType, manifest, filterAndTransform, customLabels)
 }
 
-func (i *InstallerSetClient) createSet(ctx context.Context, comp v1alpha1.TektonComponent, setType string, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
+func (i *InstallerSetClient) createSet(ctx context.Context, comp v1alpha1.TektonComponent, setType string, manifest *mf.Manifest, filterAndTransform FilterAndTransform, customLabels map[string]string) error {
 	logger := logging.FromContext(ctx)
 
 	sets, err := i.checkSet(ctx, comp, setType)
@@ -49,7 +49,7 @@ func (i *InstallerSetClient) createSet(ctx context.Context, comp v1alpha1.Tekton
 	switch err {
 	case ErrNotFound:
 		logger.Infof("%v/%v: installer set not found, creating", i.resourceKind, setType)
-		sets, err = i.create(ctx, comp, manifest, filterAndTransform, setType)
+		sets, err = i.create(ctx, comp, manifest, filterAndTransform, setType, customLabels)
 		if err != nil {
 			logger.Errorf("%v/%v: failed to create installer set: %v", i.resourceKind, setType, err)
 			return err

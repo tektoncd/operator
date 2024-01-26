@@ -26,7 +26,7 @@ import (
 
 func (r *Reconciler) EnsureTriggersResources(ctx context.Context, ta *v1alpha1.TektonAddon) error {
 	manifest := *r.triggersResourcesManifest
-	if err := r.installerSetClient.CustomSet(ctx, ta, TriggersResourcesInstallerSet, &manifest, filterAndTransformCommon()); err != nil {
+	if err := r.installerSetClient.CustomSet(ctx, ta, TriggersResourcesInstallerSet, &manifest, filterAndTransformCommon(), nil); err != nil {
 		return err
 	}
 	return nil

@@ -66,11 +66,12 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		c := &Reconciler{
-			pipelineInformer:   tektonPipelineinformer.Get(ctx),
-			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, pacVersion, v1alpha1.KindOpenShiftPipelinesAsCode, metrics),
-			extension:          generator(ctx),
-			manifest:           manifest,
-			pacVersion:         pacVersion,
+			pipelineInformer:      tektonPipelineinformer.Get(ctx),
+			installerSetClient:    client.NewInstallerSetClient(tisClient, operatorVer, pacVersion, v1alpha1.KindOpenShiftPipelinesAsCode, metrics),
+			extension:             generator(ctx),
+			manifest:              manifest,
+			additionalPACManifest: filterAdditionalControllerManifest(manifest),
+			pacVersion:            pacVersion,
 		}
 		impl := pacreconciler.NewImpl(ctx, c)
 

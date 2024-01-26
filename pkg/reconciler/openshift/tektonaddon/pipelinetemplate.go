@@ -30,7 +30,7 @@ import (
 func (r *Reconciler) EnsurePipelineTemplates(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
 	manifest := *r.pipelineTemplateManifest
 	if enable == "true" {
-		if err := r.installerSetClient.CustomSet(ctx, ta, PipelinesTemplateInstallerSet, &manifest, filterAndTransformCommon()); err != nil {
+		if err := r.installerSetClient.CustomSet(ctx, ta, PipelinesTemplateInstallerSet, &manifest, filterAndTransformCommon(), nil); err != nil {
 			return err
 		}
 	} else {

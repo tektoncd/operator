@@ -44,7 +44,7 @@ func (i *InstallerSetClient) MainSet(ctx context.Context, comp v1alpha1.TektonCo
 	switch err {
 	case ErrNotFound:
 		logger.Infof("%v/%v: installer set not found, creating", i.resourceKind, setType)
-		sets, err = i.create(ctx, comp, manifest, filterAndTransform, setType)
+		sets, err = i.create(ctx, comp, manifest, filterAndTransform, setType, nil)
 		if err != nil {
 			logger.Errorf("%v/%v: failed to create main installer set: %v", i.resourceKind, setType, err)
 			return err

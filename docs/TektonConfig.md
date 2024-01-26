@@ -111,6 +111,12 @@ The TektonConfig CR provides the following features
     platforms:
       openshift:
         pipelinesAsCode:
+          additionalPACControllers:
+            <controllerName>:
+              enable: true
+              configMapName:
+              secretName:
+              settings:
           enable: true
           settings:
             application-name: Pipelines as Code CI
@@ -417,6 +423,12 @@ Example:
 platforms:
   openshift:
     pipelinesAsCode:
+      additionalPACControllers:
+        controllername:
+          enable: true
+          configMapName:
+          secretName:
+          settings:
       enable: true
       settings:
         application-name: Pipelines as Code CI
@@ -439,12 +451,6 @@ platforms:
 ```
 
 **NOTE**: OpenShiftPipelinesAsCode is currently available for the OpenShift Platform only.
-
-[node-selector]:https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
-[tolerations]:https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-[schedule]:https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#cron-schedule-syntax
-[priorityClassName]: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#pod-priority
-[priorityClass]: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
 
 ### Additional fields as `options`
 There is a field called `options` available in all the components.<br>
@@ -636,3 +642,9 @@ The following fields are supported in `HorizontalPodAutoscaler` (aka HPA)
     * `scaleDown` - replaces scaleDown with this, if not empty
 
 **NOTE**: If a Deployment or StatefulSet has a Horizontal Pod Autoscaling (HPA) and is in active state, Operator will not control the replicas to that resource. However if `status.desiredReplicas` and `spec.minReplicas` not present in HPA, operator takes the control. Also if HPA disabled, operator takes control. Even though the operator takes the control, the replicas value will be adjusted to the hpa's scaling range.
+
+[node-selector]:https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+[tolerations]:https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+[schedule]:https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#cron-schedule-syntax
+[priorityClassName]: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#pod-priority
+[priorityClass]: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass

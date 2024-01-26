@@ -43,6 +43,7 @@ func TestOpenShiftPipelinesAsCodeHappyPath(t *testing.T) {
 	apistest.CheckConditionOngoing(pac, PreReconciler, t)
 	apistest.CheckConditionOngoing(pac, InstallerSetAvailable, t)
 	apistest.CheckConditionOngoing(pac, InstallerSetReady, t)
+	apistest.CheckConditionOngoing(pac, AdditionalPACControllerInstalled, t)
 	apistest.CheckConditionOngoing(pac, PostReconciler, t)
 
 	// Dependencies installed
@@ -61,10 +62,15 @@ func TestOpenShiftPipelinesAsCodeHappyPath(t *testing.T) {
 	pac.MarkInstallerSetNotReady("waiting for deployments")
 	apistest.CheckConditionFailed(pac, InstallerSetReady, t)
 
-	// InstallerSet and then PostReconciler become ready and we're good.
+	// InstallerSet is ready
 	pac.MarkInstallerSetReady()
 	apistest.CheckConditionSucceeded(pac, InstallerSetReady, t)
 
+	// AdditionalInstallerSet is complete
+	pac.MarkAdditionalPACControllerComplete()
+	apistest.CheckConditionSucceeded(pac, AdditionalPACControllerInstalled, t)
+
+	// PostReconciler become ready and we're good.
 	pac.MarkPostReconcilerComplete()
 	apistest.CheckConditionSucceeded(pac, PostReconciler, t)
 
@@ -81,6 +87,7 @@ func TestOpenShiftPipelinesAsCodeErrorPath(t *testing.T) {
 	apistest.CheckConditionOngoing(pac, PreReconciler, t)
 	apistest.CheckConditionOngoing(pac, InstallerSetAvailable, t)
 	apistest.CheckConditionOngoing(pac, InstallerSetReady, t)
+	apistest.CheckConditionOngoing(pac, AdditionalPACControllerInstalled, t)
 	apistest.CheckConditionOngoing(pac, PostReconciler, t)
 
 	// Dependencies installed
@@ -99,10 +106,15 @@ func TestOpenShiftPipelinesAsCodeErrorPath(t *testing.T) {
 	pac.MarkInstallerSetNotReady("waiting for deployments")
 	apistest.CheckConditionFailed(pac, InstallerSetReady, t)
 
-	// InstallerSet and then PostReconciler become ready and we're good.
+	// InstallerSet is ready
 	pac.MarkInstallerSetReady()
 	apistest.CheckConditionSucceeded(pac, InstallerSetReady, t)
 
+	// AdditionalInstallerSet is complete
+	pac.MarkAdditionalPACControllerComplete()
+	apistest.CheckConditionSucceeded(pac, AdditionalPACControllerInstalled, t)
+
+	// PostReconciler become ready and we're good.
 	pac.MarkPostReconcilerComplete()
 	apistest.CheckConditionSucceeded(pac, PostReconciler, t)
 

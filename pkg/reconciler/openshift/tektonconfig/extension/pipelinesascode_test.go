@@ -97,6 +97,7 @@ func markOPACReady(t *testing.T, ctx context.Context, c op.OpenShiftPipelinesAsC
 	opac.Status.MarkPreReconcilerComplete()
 	opac.Status.MarkInstallerSetAvailable()
 	opac.Status.MarkInstallerSetReady()
+	opac.Status.MarkAdditionalPACControllerComplete()
 	opac.Status.MarkPostReconcilerComplete()
 	_, err = c.UpdateStatus(ctx, opac, metav1.UpdateOptions{})
 	util.AssertEqual(t, err, nil)

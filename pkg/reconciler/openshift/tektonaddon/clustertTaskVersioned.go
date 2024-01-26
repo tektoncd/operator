@@ -28,7 +28,7 @@ import (
 func (r *Reconciler) EnsureVersionedClusterTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
 	manifest := *r.clusterTaskManifest
 	if enable == "true" {
-		if err := r.installerSetClient.VersionedClusterTaskSet(ctx, ta, VersionedClusterTaskInstallerSet, &manifest, filterAndTransformVersionedClusterTask(r.operatorVersion)); err != nil {
+		if err := r.installerSetClient.VersionedClusterTaskSet(ctx, ta, &manifest, filterAndTransformVersionedClusterTask(r.operatorVersion)); err != nil {
 			return err
 		}
 	} else {
