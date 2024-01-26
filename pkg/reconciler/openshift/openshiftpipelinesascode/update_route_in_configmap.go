@@ -79,7 +79,7 @@ func updateInfoConfigMap(route string, pacManifest *mf.Manifest, targetNs string
 		if err != nil {
 			return err
 		}
-		routeURL := "https://" + route
+		routeURL := fmt.Sprintf("https://%s", route)
 
 		// set controller url if not the same
 		if cm.Data["controller-url"] == routeURL {

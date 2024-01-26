@@ -70,6 +70,25 @@ type OpenShiftPipelinesAsCodeList struct {
 
 type PACSettings struct {
 	Settings map[string]string `json:"settings,omitempty"`
+	// AdditionalPACControllers allows to deploy additional PAC controller
+	// +optional
+	AdditionalPACControllers map[string]AdditionalPACControllerConfig `json:"additionalPACControllers,omitempty"`
 	// options holds additions fields and these fields will be updated on the manifests
 	Options AdditionalOptions `json:"options"`
+}
+
+// AdditionalPACControllerConfig contains config for additionalPACControllers
+type AdditionalPACControllerConfig struct {
+	// Enable or disable this additional pipelines as code instance by changing this bool
+	// +optional
+	Enable *bool `json:"enable,omitempty"`
+	// Name of the additional controller configMap
+	// +optional
+	ConfigMapName string `json:"configMapName,omitempty"`
+	// Name of the additional controller Secret
+	// +optional
+	SecretName string `json:"secretName,omitempty"`
+	// Setting will contains the configMap data
+	// +optional
+	Settings map[string]string `json:"settings,omitempty"`
 }

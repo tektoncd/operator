@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-pac-controller
+  namespace: pipelines-as-code
+  labels:
+    app.kubernetes.io/version: "v0.23.0"
+    app.kubernetes.io/part-of: pipelines-as-code
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: test-pac-controller
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: pipelines-as-code
+  template:
+    metadata:
+      labels:
+        app: test-pac-controller
+        app.kubernetes.io/name: test-pac-controller
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/part-of: pipelines-as-code
+        app.kubernetes.io/version: "v0.23.0"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: pipelines-as-code-controller
+      containers:
+        - name: test-pac-controller
+          image: "ghcr.io/openshift-pipelines/pipelines-as-code-controller:v0.23.0"
+          imagePullPolicy: Always
+          ports:
+            - name: api
+              containerPort: 8080
+            - name: metrics
+              containerPort: 9090
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /live
+              port: api
+              scheme: HTTP
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 1
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /live
+              port: api
+              scheme: HTTP
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 1
+          env:
+            - name: CONFIG_LOGGING_NAME
+              value: pac-config-logging
+            - name: TLS_KEY
+              value: "key"
+            - name: TLS_CERT
+              value: "cert"
+            - name: TLS_SECRET_NAME
+              value: "pipelines-as-code-tls-secret"
+            - name: SYSTEM_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: K_METRICS_CONFIG
+              value: '{"Domain":"pipelinesascode.tekton.dev/controller","Component":"pac_controller","PrometheusPort":9090,"ConfigMap":{"name":"pipelines-as-code-config-observability"}}'
+            - name: K_TRACING_CONFIG
+              value: '{"backend":"prometheus","debug":"false","sample-rate":"0"}'
+            - name: K_SINK_TIMEOUT
+              value: "30"
+            - name: PAC_CONTROLLER_LABEL
+              value: "test-pac-controller"
+            - name: PAC_CONTROLLER_SECRET
+              value: "test-secret"
+            - name: PAC_CONTROLLER_CONFIGMAP
+              value: "test-configmap"
+          volumeMounts:
+            - mountPath: "/etc/pipelines-as-code/tls"
+              readOnly: true
+              name: tls
+      volumes:
+      - name: tls
+        secret:
+          secretName: pipelines-as-code-tls-secret
+          optional: true

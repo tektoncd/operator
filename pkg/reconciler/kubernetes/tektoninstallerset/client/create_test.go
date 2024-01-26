@@ -111,7 +111,7 @@ func TestInstallerSetClient_Create(t *testing.T) {
 				client = NewInstallerSetClient(fakeClient, releaseVersion, "test-version", v1alpha1.KindTektonTrigger, &testMetrics{})
 			}
 
-			iSs, gotErr := client.create(ctx, comp, &manifest, filterAndTransform(common.NoExtension(ctx)), tt.setType)
+			iSs, gotErr := client.create(ctx, comp, &manifest, filterAndTransform(common.NoExtension(ctx)), tt.setType, nil)
 
 			if tt.wantErr != nil {
 				assert.Equal(t, gotErr, tt.wantErr)

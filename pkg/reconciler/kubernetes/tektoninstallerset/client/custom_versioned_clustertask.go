@@ -35,7 +35,7 @@ var (
 // VersionedClusterTaskSet this is an exception case where we create one installer set for one minor version
 // not for patch version and we don't remove older installer sets on upgrade, hence keeping it different
 // from custom set otherwise code becomes unnecessarily complex to handle this case
-func (i *InstallerSetClient) VersionedClusterTaskSet(ctx context.Context, comp v1alpha1.TektonComponent, customName string, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
+func (i *InstallerSetClient) VersionedClusterTaskSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
 	logger := logging.FromContext(ctx)
 
 	setType := InstallerTypeCustom + "-" + strings.ToLower(versionedClusterTaskInstallerSet)
@@ -55,7 +55,7 @@ func (i *InstallerSetClient) VersionedClusterTaskSet(ctx context.Context, comp v
 	}
 
 	if len(is.Items) == 0 {
-		vctSet, err := i.makeInstallerSet(ctx, comp, manifest, filterAndTransform, "addon-versioned-clustertasks", setType)
+		vctSet, err := i.makeInstallerSet(ctx, comp, manifest, filterAndTransform, "addon-versioned-clustertasks", setType, nil)
 		if err != nil {
 			return err
 		}

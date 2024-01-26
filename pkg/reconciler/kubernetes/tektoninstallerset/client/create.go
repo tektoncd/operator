@@ -30,7 +30,7 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-func (i *InstallerSetClient) create(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform, isType string) ([]v1alpha1.TektonInstallerSet, error) {
+func (i *InstallerSetClient) create(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform, isType string, customLabels map[string]string) ([]v1alpha1.TektonInstallerSet, error) {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", isType)
 
 	if isType == InstallerTypeMain {
@@ -45,7 +45,7 @@ func (i *InstallerSetClient) create(ctx context.Context, comp v1alpha1.TektonCom
 	kind := strings.ToLower(strings.TrimPrefix(i.resourceKind, "Tekton"))
 	isName := fmt.Sprintf("%s-%s-", kind, isType)
 
-	iS, err := i.makeInstallerSet(ctx, comp, manifest, filterAndTransform, isName, isType)
+	iS, err := i.makeInstallerSet(ctx, comp, manifest, filterAndTransform, isName, isType, customLabels)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.Tek
 	kind := strings.ToLower(strings.TrimPrefix(i.resourceKind, "Tekton"))
 	staticName := fmt.Sprintf("%s-%s-%s-", kind, InstallerTypeMain, InstallerSubTypeStatic)
 
-	staticIS, err := i.makeInstallerSet(ctx, comp, &staticManifest, filterAndTransform, staticName, InstallerTypeMain)
+	staticIS, err := i.makeInstallerSet(ctx, comp, &staticManifest, filterAndTransform, staticName, InstallerTypeMain, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.Tek
 	}
 
 	deployName := fmt.Sprintf("%s-%s-%s-", kind, InstallerTypeMain, InstallerSubTypeDeployment)
-	deploymentIS, err := i.makeInstallerSet(ctx, comp, &deploymentManifest, filterAndTransform, deployName, InstallerTypeMain)
+	deploymentIS, err := i.makeInstallerSet(ctx, comp, &deploymentManifest, filterAndTransform, deployName, InstallerTypeMain, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (i *InstallerSetClient) waitForStatus(ctx context.Context, set *v1alpha1.Te
 	return nil
 }
 
-func (i *InstallerSetClient) makeInstallerSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform, isName, isType string) (*v1alpha1.TektonInstallerSet, error) {
+func (i *InstallerSetClient) makeInstallerSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform, isName, isType string, customLabels map[string]string) (*v1alpha1.TektonInstallerSet, error) {
 	specHash, err := hash.Compute(comp.GetSpec())
 	if err != nil {
 		return nil, err
@@ -120,15 +120,18 @@ func (i *InstallerSetClient) makeInstallerSet(ctx context.Context, comp v1alpha1
 		return nil, err
 	}
 
+	// get default labels of installerset
+	labels := i.getDefaultLabels(isType)
+	// append custom labels
+	for key, value := range customLabels {
+		labels[key] = value
+	}
+
 	ownerRef := *metav1.NewControllerRef(comp, v1alpha1.SchemeGroupVersion.WithKind(i.resourceKind))
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: isName,
-			Labels: map[string]string{
-				v1alpha1.CreatedByKey:      i.resourceKind,
-				v1alpha1.ReleaseVersionKey: i.releaseVersion,
-				v1alpha1.InstallerSetType:  isType,
-			},
+			Labels:       labels,
 			Annotations: map[string]string{
 				v1alpha1.TargetNamespaceKey: comp.GetSpec().GetTargetNamespace(),
 				v1alpha1.LastAppliedHashKey: specHash,
@@ -139,4 +142,12 @@ func (i *InstallerSetClient) makeInstallerSet(ctx context.Context, comp v1alpha1
 			Manifests: transformedMf.Resources(),
 		},
 	}, nil
+}
+
+func (i *InstallerSetClient) getDefaultLabels(isType string) map[string]string {
+	labels := map[string]string{}
+	labels[v1alpha1.CreatedByKey] = i.resourceKind
+	labels[v1alpha1.ReleaseVersionKey] = i.releaseVersion
+	labels[v1alpha1.InstallerSetType] = isType
+	return labels
 }

@@ -100,6 +100,18 @@ func WaitForDeploymentReady(kubeClient kubernetes.Interface, name, namespace str
 	return wait.PollImmediate(interval, timeout, verifyFunc)
 }
 
+func WaitForDeploymentAvailable(kubeClient kubernetes.Interface, name, namespace string, interval, timeout time.Duration) error {
+	verifyFunc := func() (bool, error) {
+		dep, err := kubeClient.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil && !apierrs.IsNotFound(err) {
+			return false, err
+		}
+		return IsDeploymentAvailable(dep)
+	}
+
+	return wait.PollImmediate(interval, timeout, verifyFunc)
+}
+
 func WaitForDeploymentDeletion(kubeClient kubernetes.Interface, name, namespace string, interval, timeout time.Duration) error {
 	verifyFunc := func() (bool, error) {
 		_, err := kubeClient.AppsV1().Deployments(namespace).Get(context.TODO(), name, metav1.GetOptions{})

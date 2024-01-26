@@ -17,6 +17,7 @@ limitations under the License.
 package openshiftpipelinesascode
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,7 +81,7 @@ func pipelineRunToConfigMapConverter(prManifests *mf.Manifest) (*mf.Manifest, er
 
 		// set metadata
 		prname := res.GetName()
-		cm.SetName("pipelines-as-code-" + prname)
+		cm.SetName(fmt.Sprintf("pipelines-as-code-%s", prname))
 		cm.Labels[pacRuntimeLabel] = strings.TrimPrefix(prname, "pipelinerun-")
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)

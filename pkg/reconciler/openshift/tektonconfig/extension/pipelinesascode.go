@@ -74,7 +74,8 @@ func createOPAC(ctx context.Context, clients op.OpenShiftPipelinesAsCodeInterfac
 			},
 			Config: config.Spec.Config,
 			PACSettings: v1alpha1.PACSettings{
-				Settings: config.Spec.Platforms.OpenShift.PipelinesAsCode.Settings,
+				Settings:                 config.Spec.Platforms.OpenShift.PipelinesAsCode.Settings,
+				AdditionalPACControllers: config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.AdditionalPACControllers,
 			},
 		},
 	}
@@ -106,6 +107,16 @@ func updateOPAC(ctx context.Context, opacCR *v1alpha1.OpenShiftPipelinesAsCode, 
 
 	if !reflect.DeepEqual(opacCR.Spec.Settings, config.Spec.Platforms.OpenShift.PipelinesAsCode.Settings) {
 		opacCR.Spec.PACSettings.Settings = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings
+		updated = true
+	}
+
+	if !reflect.DeepEqual(opacCR.Spec.PACSettings.Options, config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Options) {
+		opacCR.Spec.PACSettings.Options = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Options
+		updated = true
+	}
+
+	if !reflect.DeepEqual(opacCR.Spec.PACSettings.AdditionalPACControllers, config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.AdditionalPACControllers) {
+		opacCR.Spec.PACSettings.AdditionalPACControllers = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.AdditionalPACControllers
 		updated = true
 	}
 

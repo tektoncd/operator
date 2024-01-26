@@ -18,20 +18,42 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
+	"knative.dev/pkg/ptr"
 )
 
 func (pac *OpenShiftPipelinesAsCode) SetDefaults(ctx context.Context) {
 	if pac.Spec.PACSettings.Settings == nil {
 		pac.Spec.PACSettings.Settings = map[string]string{}
 	}
-	setPACDefaults(pac.Spec.PACSettings)
+	if pac.Spec.PACSettings.AdditionalPACControllers == nil {
+		pac.Spec.PACSettings.AdditionalPACControllers = map[string]AdditionalPACControllerConfig{}
+	}
+	pac.Spec.PACSettings.setPACDefaults()
 }
 
-func setPACDefaults(set PACSettings) {
+func (set *PACSettings) setPACDefaults() {
 	if set.Settings == nil {
 		set.Settings = map[string]string{}
 	}
 	settings.SetDefaults(set.Settings)
+	setAdditionalPACControllerDefault(set.AdditionalPACControllers)
+}
+
+// Set the default values for additional PAc controller resources
+func setAdditionalPACControllerDefault(additionalPACController map[string]AdditionalPACControllerConfig) {
+	for name, additionalPACInfo := range additionalPACController {
+		if additionalPACInfo.Enable == nil {
+			additionalPACInfo.Enable = ptr.Bool(true)
+		}
+		if additionalPACInfo.ConfigMapName == "" {
+			additionalPACInfo.ConfigMapName = fmt.Sprintf("%s-pipelines-as-code-configmap", name)
+		}
+		if additionalPACInfo.SecretName == "" {
+			additionalPACInfo.SecretName = fmt.Sprintf("%s-pipelines-as-code-secret", name)
+		}
+		additionalPACController[name] = additionalPACInfo
+	}
 }

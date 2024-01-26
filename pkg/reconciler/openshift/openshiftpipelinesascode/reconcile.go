@@ -19,6 +19,7 @@ package openshiftpipelinesascode
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -26,8 +27,15 @@ import (
 	pacreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/openshiftpipelinesascode"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
+)
+
+const (
+	// additionalPACController installerset label value
+	additionalPACControllerComponentLabelValue = "AdditionalPACController"
 )
 
 // Reconciler implements controller.Reconciler for OpenShiftPipelinesAsCode resources.
@@ -43,6 +51,8 @@ type Reconciler struct {
 	extension common.Extension
 	// version of PipelinesAsCode which we are installing
 	pacVersion string
+	// additionalPACManifest has the source manifest for the additional Openshift Pipelines As Code Controller
+	additionalPACManifest mf.Manifest
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -95,6 +105,60 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, pac *v1alpha1.OpenShiftP
 		return nil
 	}
 
+	// created additionalPACController for all entries provided
+	for name, pacInfo := range pac.Spec.PACSettings.AdditionalPACControllers {
+		// if it is not enabled then skip creating the additionalPACController
+		if !*pacInfo.Enable {
+			continue
+		}
+
+		additionalPACControllerManifest := r.additionalPACManifest
+		// if name of configMap is pipeline-as-code, then not create a new configmap
+		if pacInfo.ConfigMapName == pipelinesAsCodeCM {
+			additionalPACControllerManifest = additionalPACControllerManifest.Filter(mf.Not(mf.ByKind("ConfigMap")))
+		}
+
+		// create custome set installerset for the additionalPACController
+		if err := r.installerSetClient.CustomSet(ctx, pac, name, &additionalPACControllerManifest, additionalControllerTransform(r.extension, name), additionalPacControllerLabels()); err != nil {
+			msg := fmt.Sprintf("Additional PACController %s Reconciliation failed: %s", name, err.Error())
+			logger.Error(msg)
+			if err == v1alpha1.REQUEUE_EVENT_AFTER {
+				return err
+			}
+			pac.Status.MarkInstallerSetNotReady(msg)
+			return nil
+		}
+	}
+
+	// Handle the deletion of obsolute installersets of additionalController
+	labelSelector := additionalPacControllerLabelSelector()
+	logger.Debugf("checking custom installer sets with labels: %v", labelSelector)
+	is, err := r.installerSetClient.ListCustomSet(ctx, labelSelector)
+	if err != nil {
+		msg := fmt.Sprintf("Additional PACController Reconciliation failed: %s", err.Error())
+		logger.Error(msg)
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+	}
+	// for all the custom installerset available, iterate and delete which have been removed or disabled
+	for _, i := range is.Items {
+		// get the value of setType label which will be custom-<name>
+		setTypeValue := i.GetLabels()[v1alpha1.InstallerSetType]
+		// remove the prefix custom- to get the name
+		name := strings.TrimPrefix(setTypeValue, fmt.Sprintf("%s-", client.InstallerTypeCustom))
+		// check if the name exist in CR spec
+		additionalPACinfo, ok := pac.Spec.PACSettings.AdditionalPACControllers[name]
+		// if not exist with same name or marked disable, delete the installerset
+		if !ok || !*additionalPACinfo.Enable {
+			if err := r.installerSetClient.CleanupCustomSet(ctx, name); err != nil {
+				return err
+			}
+		}
+	}
+
+	pac.Status.MarkAdditionalPACControllerComplete()
+
 	if err := r.extension.PostReconcile(ctx, pac); err != nil {
 		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
 		logger.Error(msg)
@@ -108,4 +172,25 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, pac *v1alpha1.OpenShiftP
 	// Mark PostReconcile Complete
 	pac.Status.MarkPostReconcilerComplete()
 	return nil
+}
+
+// custom labels to added to the additionalPACController installerset
+func additionalPacControllerLabels() map[string]string {
+	labels := map[string]string{}
+	labels[v1alpha1.ComponentKey] = additionalPACControllerComponentLabelValue
+	return labels
+}
+
+// labelSelector to filter the customsets of additionalPACController
+func additionalPacControllerLabelSelector() string {
+	labelSelector := labels.NewSelector()
+	createdReq, _ := labels.NewRequirement(v1alpha1.CreatedByKey, selection.Equals, []string{v1alpha1.KindOpenShiftPipelinesAsCode})
+	if createdReq != nil {
+		labelSelector = labelSelector.Add(*createdReq)
+	}
+	componentReq, _ := labels.NewRequirement(v1alpha1.ComponentKey, selection.Equals, []string{additionalPACControllerComponentLabelValue})
+	if componentReq != nil {
+		labelSelector = labelSelector.Add(*componentReq)
+	}
+	return labelSelector.String()
 }
