@@ -237,7 +237,7 @@ image-substitutions:
           - IMAGE_ADDONS_PARAM_MAVEN_IMAGE
 
 # pipelines console plugin image
-- image: ghcr.io/openshift-pipelines/console-plugin:main
+- image: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-rhel8@
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
