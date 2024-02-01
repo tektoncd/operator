@@ -39,3 +39,4 @@ volumes:
 - persistentVolumeClaim
 - projected
 - secret
+- csi
