@@ -147,6 +147,18 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	}
 	tr.Status.MarkDependenciesInstalled()
 
+	if err := r.extension.PreReconcile(ctx, tr); err != nil {
+		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
+		logger.Error(msg)
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		tr.Status.MarkPreReconcilerFailed(msg)
+		return nil
+	}
+
+	tr.Status.MarkPreReconcilerComplete()
+
 	// Check if an tektoninstallerset already exists, if not then create
 	labelSelector, err := common.LabelSelector(ls)
 	if err != nil {

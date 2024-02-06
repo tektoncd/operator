@@ -24,6 +24,7 @@ import (
 var (
 	_              TektonComponentStatus = (*TektonResultStatus)(nil)
 	resultsCondSet                       = apis.NewLivingConditionSet(
+		PreReconciler,
 		DependenciesInstalled,
 		InstallerSetAvailable,
 		InstallerSetReady,
@@ -59,6 +60,10 @@ func (trs *TektonResultStatus) MarkNotReady(msg string) {
 		apis.ConditionReady,
 		"Error",
 		"Ready: %s", msg)
+}
+
+func (trs *TektonResultStatus) MarkPreReconcilerComplete() {
+	addonsCondSet.Manage(trs).MarkTrue(PreReconciler)
 }
 
 func (trs *TektonResultStatus) MarkInstallerSetAvailable() {
