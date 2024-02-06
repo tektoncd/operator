@@ -389,6 +389,13 @@ func TestReplaceNamespaceInDeploymentEnv(t *testing.T) {
 	env := d.Spec.Template.Spec.Containers[0].Env
 	assert.Equal(t, env[0].Value, "tcp")
 	assert.Equal(t, env[1].Value, "tekton-results-mysql.openshift-pipelines.svc.cluster.local")
+
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[1].Object, d)
+	assertNoEror(t, err)
+
+	env = d.Spec.Template.Spec.Containers[0].Env
+	assert.Equal(t, env[0].Value, "tcp")
+	assert.Equal(t, env[1].Value, "tekton-results-api-service.openshift-pipelines.svc.cluster.local")
 }
 
 func TestReplaceNamespaceInDeploymentArgs(t *testing.T) {

@@ -26,6 +26,7 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -457,7 +458,7 @@ func injectNamespaceClusterRole(targetNamespace string) mf.Transformer {
 // ReplaceNamespaceInDeploymentEnv replaces namespace in deployment's env var
 func ReplaceNamespaceInDeploymentEnv(targetNamespace string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if u.GetKind() != "Deployment" || u.GetName() != resultAPIDeployment {
+		if u.GetKind() != "Deployment" || !(u.GetName() == resultAPIDeployment || u.GetName() == resultWatcherDeployment) {
 			return nil
 		}
 
@@ -481,10 +482,13 @@ func ReplaceNamespaceInDeploymentEnv(targetNamespace string) mf.Transformer {
 }
 
 func replaceNamespaceInDBAddress(envs []corev1.EnvVar, targetNamespace string) []corev1.EnvVar {
+	req := []string{"DB_ADDR", "TEKTON_RESULTS_API_SERVICE"}
+
 	for i, e := range envs {
-		if e.Name == "DB_ADDR" {
+		if slices.Contains(req, e.Name) {
 			envs[i].Value = strings.ReplaceAll(e.Value, "tekton-pipelines", targetNamespace)
 		}
+
 	}
 	return envs
 }
