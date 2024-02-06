@@ -18,24 +18,48 @@ package tektonresult
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"knative.dev/pkg/logging"
+)
+
+const (
+	// manifests console plugin yaml directory location
+	internalDBYamlDirectory = "static/tekton-results/internal-db"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
+	logger := logging.FromContext(ctx)
+
+	version := os.Getenv(v1alpha1.VersionEnvKey)
+	if version == "" {
+		logger.Fatal("Failed to find version from env")
+	}
+
+	internalDBManifest, err := getDBManifest()
+	if err != nil {
+		logger.Fatal("Failed to fetch internal db static manifest")
+
+	}
+
 	ext := openshiftExtension{
-		operatorClientSet: operatorclient.Get(ctx),
+		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
+			version, "results-ext", v1alpha1.KindTektonResult, nil),
+		internalDBManifest: internalDBManifest,
 	}
 	return ext
 }
 
 type openshiftExtension struct {
-	operatorClientSet versioned.Interface
+	installerSetClient *client.InstallerSetClient
+	internalDBManifest *mf.Manifest
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -45,12 +69,50 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.ApplyCABundles,
 	}
 }
+
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
-	return nil
+	result := tc.(*v1alpha1.TektonResult)
+
+	mf := mf.Manifest{}
+	if !result.Spec.IsExternalDB {
+		mf = *oe.internalDBManifest
+	}
+
+	return oe.installerSetClient.PreSet(ctx, tc, &mf, filterAndTransform())
 }
+
 func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil
 }
+
 func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
 	return nil
+}
+
+func getDBManifest() (*mf.Manifest, error) {
+	manifest := &mf.Manifest{}
+	internalDB := filepath.Join(common.ComponentBaseDir(), internalDBYamlDirectory)
+	if err := common.AppendManifest(manifest, internalDB); err != nil {
+		return nil, err
+	}
+	return manifest, nil
+}
+
+func filterAndTransform() client.FilterAndTransform {
+	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
+		resultImgs := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ResultsImagePrefix))
+
+		extra := []mf.Transformer{
+			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdResults),
+			common.ApplyProxySettings,
+			common.AddStatefulSetRestrictedPSA(),
+			common.DeploymentImages(resultImgs),
+			common.StatefulSetImages(resultImgs),
+		}
+
+		if err := common.Transform(ctx, manifest, comp, extra...); err != nil {
+			return nil, err
+		}
+		return manifest, nil
+	}
 }

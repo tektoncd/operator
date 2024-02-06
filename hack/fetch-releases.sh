@@ -257,7 +257,12 @@ main() {
   release_yaml chains release 00-chains ${c_version}
 
   # get release YAML for Results
-  release_yaml results release 00-results ${r_version}
+  if [[ ${TARGET} == "openshift" ]]
+  then
+      release_yaml results release_base 00-results ${r_version}
+  else
+      release_yaml results release 00-results ${r_version}
+  fi
 
   if [[ ${TARGET} != "openshift" ]]; then
     d_version=$(go run ./cmd/tool component-version ${CONFIG} dashboard)

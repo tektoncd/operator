@@ -1,0 +1,92 @@
+apiVersion: v1
+data:
+  POSTGRES_DB: tekton-results
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: tekton-results-postgres
+    app.kubernetes.io/part-of: tekton-results
+  name: tekton-results-postgres
+  namespace: tekton-pipelines
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: tekton-results-postgres
+    app.kubernetes.io/part-of: tekton-results
+  name: tekton-results-postgres-service
+  namespace: tekton-pipelines
+spec:
+  ports:
+  - name: postgres
+    port: 5432
+  selector:
+    app.kubernetes.io/name: tekton-results-postgres
+  type: NodePort
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: tekton-results-postgres
+    app.kubernetes.io/part-of: tekton-results
+  name: tekton-results-postgres
+  namespace: tekton-pipelines
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tekton-results-postgres
+  serviceName: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tekton-results-postgres
+    spec:
+      containers:
+        - env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRESQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  key: POSTGRES_DB
+                  name: tekton-results-postgres
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_PASSWORD
+                  name: tekton-results-postgres
+            - name: POSTGRESQL_USER
+              valueFrom:
+                secretKeyRef:
+                  key: POSTGRES_USER
+                  name: tekton-results-postgres
+          image: registry.redhat.io/rhel8/postgresql-13@sha256:6ecee6d67013493b2735d7c300b0809e4c261a0f682d8f981d5cc4058e990c4c
+          name: postgres
+          ports:
+            - containerPort: 5432
+              name: postgredb
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - mountPath: /var/lib/postgresql
+              name: postgredb
+  volumeClaimTemplates:
+    - metadata:
+        name: postgredb
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi

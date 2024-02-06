@@ -40,12 +40,17 @@ func TestTektonResultHappyPath(t *testing.T) {
 	tt.InitializeConditions()
 
 	apistest.CheckConditionOngoing(tt, DependenciesInstalled, t)
+	apistest.CheckConditionOngoing(tt, PreReconciler, t)
 	apistest.CheckConditionOngoing(tt, InstallerSetAvailable, t)
 	apistest.CheckConditionOngoing(tt, InstallerSetReady, t)
 
 	// Dependencies installed
 	tt.MarkDependenciesInstalled()
 	apistest.CheckConditionSucceeded(tt, DependenciesInstalled, t)
+
+	// Dependencies installed
+	tt.MarkPreReconcilerComplete()
+	apistest.CheckConditionSucceeded(tt, PreReconciler, t)
 
 	tt.MarkInstallerSetAvailable()
 	apistest.CheckConditionSucceeded(tt, InstallerSetAvailable, t)
@@ -63,12 +68,17 @@ func TestTektonResultErrorPath(t *testing.T) {
 	tt.InitializeConditions()
 
 	apistest.CheckConditionOngoing(tt, DependenciesInstalled, t)
+	apistest.CheckConditionOngoing(tt, PreReconciler, t)
 	apistest.CheckConditionOngoing(tt, InstallerSetAvailable, t)
 	apistest.CheckConditionOngoing(tt, InstallerSetReady, t)
 
 	// Dependencies installed
 	tt.MarkDependenciesInstalled()
 	apistest.CheckConditionSucceeded(tt, DependenciesInstalled, t)
+
+	// Dependencies installed
+	tt.MarkPreReconcilerComplete()
+	apistest.CheckConditionSucceeded(tt, PreReconciler, t)
 
 	tt.MarkInstallerSetAvailable()
 	apistest.CheckConditionSucceeded(tt, InstallerSetAvailable, t)

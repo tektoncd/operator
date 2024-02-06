@@ -175,7 +175,11 @@ gcs_bucket_name: foo-bar
 
 ### External DB
 
-If external DB is required, then follow the instructions below:
+It is not recommended to use internal DB, operator hard code PVC configuration and DB settings.
+
+If you want to move from internal DB to external DB, please take backup of the DB. If you want to start fresh, then
+delete previous TektonResult CR. and recreate the fresh one with following instructions:
+
 - Generate a secret with user name and password for Postgres (subsitute ${password} with your password):
 ```sh
    export NAMESPACE="tekton-pipelines" # Put the targetNamespace of TektonResult where it is going to be installed.
