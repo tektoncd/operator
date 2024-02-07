@@ -68,6 +68,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	resultImgs := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ResultsImagePrefix))
 
 	targetNs := comp.GetSpec().GetTargetNamespace()
+	manifest = filterExternalDB(instance, *manifest)
 	extra := []mf.Transformer{
 		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdResults),
 		common.ApplyProxySettings,
@@ -98,7 +99,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 
 func enablePVCLogging(p v1alpha1.ResultsAPIProperties) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if p.LoggingPVCName == "" || p.LogsPath == "" || u.GetKind() != "Deployment" || u.GetName() != deploymentAPI {
+		if !p.LogsAPI || p.LoggingPVCName == "" || p.LogsPath == "" || u.GetKind() != "Deployment" || u.GetName() != deploymentAPI {
 			return nil
 		}
 

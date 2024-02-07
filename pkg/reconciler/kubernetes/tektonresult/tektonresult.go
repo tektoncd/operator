@@ -53,7 +53,7 @@ type Reconciler struct {
 	// manifests are immutable, and any created during reconcile are
 	// expected to be appended to this one, obviating the passing of
 	// client & logger
-	manifest mf.Manifest
+	manifest *mf.Manifest
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
 
@@ -111,6 +111,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	tr.Status.ObservedGeneration = tr.Generation
 
 	logger.Infow("Reconciling TektonResults", "status", tr.Status)
+
+	manifest := *r.manifest
 
 	if tr.GetName() != v1alpha1.ResultResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
@@ -172,8 +174,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	if err != nil {
 		return err
 	}
+
 	if existingInstallerSet == "" {
-		createdIs, err := r.createInstallerSet(ctx, tr)
+		createdIs, err := r.createInstallerSet(ctx, tr, manifest)
 		if err != nil {
 			return err
 		}
@@ -185,7 +188,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 		Get(ctx, existingInstallerSet, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			createdIs, err := r.createInstallerSet(ctx, tr)
+			createdIs, err := r.createInstallerSet(ctx, tr, manifest)
 			if err != nil {
 				return err
 			}
@@ -240,9 +243,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 
 		if lastAppliedHash != expectedSpecHash {
 
-			r.filterExternalDB(tr)
-
-			if err := r.transform(ctx, &r.manifest, tr); err != nil {
+			if err := r.transform(ctx, &manifest, tr); err != nil {
 				logger.Error("manifest transformation failed:  ", err)
 				return err
 			}
@@ -253,7 +254,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 			installedTIS.SetAnnotations(current)
 
 			// Update the manifests
-			installedTIS.Spec.Manifests = r.manifest.Resources()
+			installedTIS.Spec.Manifests = manifest.Resources()
 
 			if _, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 				Update(ctx, installedTIS, metav1.UpdateOptions{}); err != nil {
