@@ -26,10 +26,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (r *Reconciler) createInstallerSet(ctx context.Context, tr *v1alpha1.TektonResult) (*v1alpha1.TektonInstallerSet, error) {
+func (r *Reconciler) createInstallerSet(ctx context.Context, tr *v1alpha1.TektonResult, manifest mf.Manifest) (*v1alpha1.TektonInstallerSet, error) {
 
-	r.filterExternalDB(tr)
-	if err := r.transform(ctx, &r.manifest, tr); err != nil {
+	if err := r.transform(ctx, &manifest, tr); err != nil {
 		tr.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err
 	}
@@ -44,7 +43,7 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tr *v1alpha1.Tekton
 	}
 
 	// create installer set
-	tis := r.makeInstallerSet(tr, r.manifest, specHash)
+	tis := r.makeInstallerSet(tr, manifest, specHash)
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, tis, metav1.CreateOptions{})
 	if err != nil {

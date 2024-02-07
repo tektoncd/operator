@@ -488,7 +488,6 @@ func replaceNamespaceInDBAddress(envs []corev1.EnvVar, targetNamespace string) [
 		if slices.Contains(req, e.Name) {
 			envs[i].Value = strings.ReplaceAll(e.Value, "tekton-pipelines", targetNamespace)
 		}
-
 	}
 	return envs
 }
