@@ -36,7 +36,7 @@ cloud.google.com/go v0.104.0/go.mod h1:OO6xxXdJyvuJPcEPBLN9BJPD+jep5G1+2U5B5gkRY
 cloud.google.com/go v0.105.0/go.mod h1:PrLgOJNe5nfE9UMxKxgXj4mD3voiP+YQ6gdt6KMFOKM=
 cloud.google.com/go v0.107.0/go.mod h1:wpc2eNrD7hXUTy8EKS10jkxpZBjASrORK7goS+3YX2I=
 cloud.google.com/go v0.110.0/go.mod h1:SJnCLqQ0FCFGSZMUNUf84MV3Aia54kn7pi8st7tMzaY=
-cloud.google.com/go v0.110.10 h1:LXy9GEO+timppncPIAZoOj3l58LIU9k+kn48AN7IO3Y=
+cloud.google.com/go v0.111.0 h1:YHLKNupSD1KqjDbQ3+LVdQ81h/UJbJyZG203cEfnQgM=
 cloud.google.com/go/accessapproval v1.4.0/go.mod h1:zybIuC3KpDOvotz59lFe5qxRZx6C75OtwbisN56xYB4=
 cloud.google.com/go/accessapproval v1.5.0/go.mod h1:HFy3tuiGvMdcd/u+Cu5b9NkO1pEICJ46IR82PoUdplw=
 cloud.google.com/go/accessapproval v1.6.0/go.mod h1:R0EiYnwV5fsRFiKZkPHr6mwyk2wxUJ30nL4j2pcFY2E=
@@ -1108,8 +1108,8 @@ github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Z
 github.com/google/btree v1.0.0/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
 github.com/google/btree v1.0.1/go.mod h1:xXMiIv4Fb/0kKde4SpL7qlzvu5cMJDRkFDxJfI9uaxA=
 github.com/google/cel-go v0.12.6/go.mod h1:Jk7ljRzLBhkmiAwBoUxB1sZSCVBAzkqPF25olK/iRDw=
-github.com/google/cel-go v0.18.2 h1:L0B6sNBSVmt0OyECi8v6VOS74KOc9W/tLiWKfZABvf4=
-github.com/google/cel-go v0.18.2/go.mod h1:kWcIzTsPX0zmQ+H3TirHstLLf9ep5QTsZBN9u4dOYLg=
+github.com/google/cel-go v0.19.0 h1:vVgaZoHPBDd1lXCYGQOh5A06L4EtuIfmqQ/qnSXSKiU=
+github.com/google/cel-go v0.19.0/go.mod h1:kWcIzTsPX0zmQ+H3TirHstLLf9ep5QTsZBN9u4dOYLg=
 github.com/google/certificate-transparency-go v1.1.7 h1:IASD+NtgSTJLPdzkthwvAG1ZVbF2WtFg4IvoA68XGSw=
 github.com/google/certificate-transparency-go v1.1.7/go.mod h1:FSSBo8fyMVgqptbfF6j5p/XNdgQftAhSmXcIxV9iphE=
 github.com/google/flatbuffers v2.0.8+incompatible h1:ivUb1cGomAB101ZM1T0nOiWz9pSrTMoa9+EiY7igmkM=
@@ -1671,8 +1671,8 @@ github.com/tektoncd/pipeline v0.56.0 h1:Gyti3F5u1ADjI08hG3mGtWgpaaiOfeaxnznL/U/N
 github.com/tektoncd/pipeline v0.56.0/go.mod h1:npl5qTu+yU74zqKIkTVnFfu/1pMhJFZjvnCrH6DlfLM=
 github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293 h1:kNmGaAtPS9LnfNZG/JrF4Y0Qx5Ju+384aqKJNtk4PU0=
 github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293/go.mod h1:7eWs1XNkmReggow7ggRbRyRuHi7646B8b2XipCZ3VOw=
-github.com/tektoncd/triggers v0.25.3 h1:SEZhHAjSqAUKvDg8YNbamDv+3IcXce6XQDsBm7Mzs5U=
-github.com/tektoncd/triggers v0.25.3/go.mod h1:N6VmwgAn8i2l8w2kNZ+dKt6BGlPrqFE1kkYOkmNz8rA=
+github.com/tektoncd/triggers v0.26.0 h1:/EXdGbU2LdFoUTzJjZFXIoFuS1A1ZkW3+zWnmBdteQk=
+github.com/tektoncd/triggers v0.26.0/go.mod h1:X573RMcATfY++Cu0JWqHHV/lPJfT3tdSDaGSAR8krTU=
 github.com/thales-e-security/pool v0.0.2 h1:RAPs4q2EbWsTit6tpzuvTFlgFRJ3S8Evf5gtvVDbmPg=
 github.com/thales-e-security/pool v0.0.2/go.mod h1:qtpMm2+thHtqhLzTwgDBj/OuNnMpupY8mv0Phz0gjhU=
 github.com/theupdateframework/go-tuf v0.7.0 h1:CqbQFrWo1ae3/I0UCblSbczevCCbS31Qvs5LdxRWqRI=
@@ -2641,10 +2641,10 @@ k8s.io/utils v0.0.0-20221107191617-1a15be271d1d/go.mod h1:OLgZIPagt7ERELqWJFomSt
 k8s.io/utils v0.0.0-20230726121419-3b25d923346b h1:sgn3ZU783SCgtaSJjpcVVlRqd6GSnlTLKgpAAttJvpI=
 k8s.io/utils v0.0.0-20230726121419-3b25d923346b/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
 knative.dev/eventing v0.39.0 h1:UlP5sSfxUzsFvdDF+T22EYoaz9LdITcha1oF898kLFw=
-knative.dev/networking v0.0.0-20220404212543-dde40b019aff h1:pqzWi29qb44TY+5xtc9vty4mSyUYvojXZGCp0y/91eo=
+knative.dev/networking v0.0.0-20231017124814-2a7676e912b7 h1:6+1icZuxiZO1paFZ4d/ysKWVG2M4WB7OxNJNyLG0P/E=
 knative.dev/pkg v0.0.0-20231103161548-f5b42e8dea44 h1:2gjHbqg8K9k1KJtLgxsTvzxovXOhozcrk3AzzJmjsA0=
 knative.dev/pkg v0.0.0-20231103161548-f5b42e8dea44/go.mod h1:g+UCgSKQ2f15kHYu/V3CPtoKo5F1x/2Y1ot0NSK7gA0=
-knative.dev/serving v0.30.1-0.20220402124840-21c05dc9d9a4 h1:iRFWsFKsA5ddhi+eKZVJdf8gPBomTfjIyRAKk9Uh7Ko=
+knative.dev/serving v0.39.0 h1:NVt8WthHmFFMWZ3qpBblXt47del8qqrbCegqwGBVSwk=
 lukechampine.com/uint128 v1.1.1/go.mod h1:c4eWIwlEGaxC/+H1VguhU4PHXNWDCDMUlWdIWl2j1gk=
 lukechampine.com/uint128 v1.2.0/go.mod h1:c4eWIwlEGaxC/+H1VguhU4PHXNWDCDMUlWdIWl2j1gk=
 modernc.org/cc/v3 v3.36.0/go.mod h1:NFUHyPn4ekoC/JHeZFfZurN6ixxawE1BnVonP/oahEI=
