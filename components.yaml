@@ -3,7 +3,7 @@ chains:
   version: v0.20.0
 dashboard:
   github: tektoncd/dashboard
-  version: v0.43.0
+  version: v0.43.1
 hub:
   github: tektoncd/hub
   version: v1.16.0
@@ -15,7 +15,7 @@ pipelines-as-code:
   version: v0.24.0
 results:
   github: tektoncd/results
-  version: v0.9.0
+  version: v0.9.1
 triggers:
   github: tektoncd/triggers
   version: v0.25.3
