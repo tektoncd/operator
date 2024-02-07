@@ -71,7 +71,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			kubeClientSet:     kubeclient.Get(ctx),
 			operatorClientSet: operatorclient.Get(ctx),
 			extension:         generator(ctx),
-			manifest:          manifest,
+			manifest:          &manifest,
 			pipelineInformer:  tektonPipelineInformer.Get(ctx),
 			operatorVersion:   operatorVer,
 			resultsVersion:    resultsVer,
