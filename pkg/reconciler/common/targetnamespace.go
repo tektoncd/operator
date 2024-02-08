@@ -57,9 +57,10 @@ func ReconcileTargetNamespace(ctx context.Context, labels map[string]string, tek
 			_targetNamespace := namespace.DeepCopy()
 			targetNamespace = _targetNamespace
 		} else {
-			// delete irrelevant namespaces
+			// delete irrelevant namespaces if the owner is the same component
 			// if deletionTimestamp is not nil, that indicates, the namespace is in deletion state
-			if namespace.DeletionTimestamp == nil {
+			ownerReferenceName := namespace.GetOwnerReferences()[0].Name
+			if namespace.DeletionTimestamp == nil && ownerReferenceName == tektonComponent.GetName() {
 				if err := kubeClientSet.CoreV1().Namespaces().Delete(ctx, namespace.Name, metav1.DeleteOptions{}); err != nil {
 					logger.Errorw("error on deleting a namespace",
 						"namespace", namespace.Name,
@@ -67,8 +68,9 @@ func ReconcileTargetNamespace(ctx context.Context, labels map[string]string, tek
 					)
 					return err
 				}
-			} else {
-				logger.Infof("'%v' namespace is in deletion state", namespace.Name)
+			}
+			if namespace.DeletionTimestamp != nil {
+				logger.Debugf("'%v' namespace is in deletion state", namespace.Name)
 				namespaceDeletionInProgress = true
 			}
 		}
