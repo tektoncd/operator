@@ -59,6 +59,14 @@ func TestReconcileTargetNamespace(t *testing.T) {
 			err: nil,
 		},
 		{
+			name: "verify-custom-target-namespace-tekton-hub",
+			component: &v1alpha1.TektonHub{
+				ObjectMeta: metav1.ObjectMeta{Name: "hub"},
+				Spec:       v1alpha1.TektonHubSpec{CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "custom"}},
+			},
+			err: nil,
+		},
+		{
 			name: "verify-custom-target-namespace",
 			component: &v1alpha1.TektonConfig{
 				ObjectMeta: metav1.ObjectMeta{Name: "config"},
@@ -110,6 +118,32 @@ func TestReconcileTargetNamespace(t *testing.T) {
 					Labels: map[string]string{
 						labelKeyTargetNamespace: "true",
 					},
+					OwnerReferences: []metav1.OwnerReference{{Name: "config"}},
+				}}
+				_, err := fakeClientset.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
+				assert.NilError(t, err)
+			},
+			postFunc: func(t *testing.T, fakeClientset *fake.Clientset, namespace *corev1.Namespace) {
+				// verify "custom-ns" is removed
+				_, err := fakeClientset.CoreV1().Namespaces().Get(context.TODO(), "custom-ns", metav1.GetOptions{})
+				assert.Equal(t, true, errors.IsNotFound(err), "'custom-ns' namespace should be deleted, but still found")
+			},
+			err: nil,
+		},
+		{
+			name: "verify-existing-non-target-namespace-deleted",
+			component: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "hub"},
+				Spec:       v1alpha1.TektonConfigSpec{CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "hello123"}},
+			},
+			preFunc: func(t *testing.T, fakeClientset *fake.Clientset) {
+				// create a namespace with different name and with "operator.tekton.dev/targetNamespace" label
+				namespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{
+					Name: "custom-ns",
+					Labels: map[string]string{
+						labelKeyTargetNamespace: "true",
+					},
+					OwnerReferences: []metav1.OwnerReference{{Name: "hub"}},
 				}}
 				_, err := fakeClientset.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
 				assert.NilError(t, err)
@@ -152,6 +186,7 @@ func TestReconcileTargetNamespace(t *testing.T) {
 					Labels: map[string]string{
 						labelKeyTargetNamespace: "true",
 					},
+					OwnerReferences:   []metav1.OwnerReference{{Name: "config"}},
 					DeletionTimestamp: &metav1.Time{Time: time.Now()},
 				}}
 				_, err := fakeClientset.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
