@@ -18,4 +18,4 @@ results:
   version: v0.9.1
 triggers:
   github: tektoncd/triggers
-  version: v0.25.3
+  version: v0.26.1
