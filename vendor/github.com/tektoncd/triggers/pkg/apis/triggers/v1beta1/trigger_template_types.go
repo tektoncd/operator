@@ -31,7 +31,7 @@ type TriggerTemplateSpec struct {
 	// +listType=atomic
 	Params []ParamSpec `json:"params,omitempty"`
 	// +listType=atomic
-	ResourceTemplates []TriggerResourceTemplate `json:"resourceTemplates,omitempty"`
+	ResourceTemplates []TriggerResourceTemplate `json:"resourcetemplates,omitempty"`
 }
 
 // TriggerResourceTemplate describes a resource to create
