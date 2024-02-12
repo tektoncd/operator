@@ -1634,7 +1634,7 @@ func schema_pkg_apis_triggers_v1beta1_TriggerTemplateSpec(ref common.ReferenceCa
 							},
 						},
 					},
-					"resourceTemplates": {
+					"resourcetemplates": {
 						VendorExtensible: spec.VendorExtensible{
 							Extensions: spec.Extensions{
 								"x-kubernetes-list-type": "atomic",

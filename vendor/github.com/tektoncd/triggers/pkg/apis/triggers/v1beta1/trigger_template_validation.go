@@ -56,10 +56,10 @@ func (s *TriggerTemplateSpec) validate(ctx context.Context) (errs *apis.FieldErr
 		errs = errs.Also(apis.ErrMissingField(apis.CurrentField))
 	}
 	if len(s.ResourceTemplates) == 0 {
-		errs = errs.Also(apis.ErrMissingField("resourceTemplates"))
+		errs = errs.Also(apis.ErrMissingField("resourcetemplates"))
 	}
-	errs = errs.Also(validateResourceTemplates(s.ResourceTemplates).ViaField("resourceTemplates"))
-	errs = errs.Also(verifyParamDeclarations(s.Params, s.ResourceTemplates).ViaField("resourceTemplates"))
+	errs = errs.Also(validateResourceTemplates(s.ResourceTemplates).ViaField("resourcetemplates"))
+	errs = errs.Also(verifyParamDeclarations(s.Params, s.ResourceTemplates).ViaField("resourcetemplates"))
 	return errs
 }
 
