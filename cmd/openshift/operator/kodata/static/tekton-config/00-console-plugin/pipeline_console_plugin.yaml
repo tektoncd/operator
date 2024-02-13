@@ -16,17 +16,17 @@
 # https://github.com/openshift/enhancements/blob/master/enhancements/console/dynamic-plugins.md
 
 # service to access static contents: js, CSS, HTML. etc.,
-# this service creates and manages secret called "pipeline-console-plugin-cert"
+# this service creates and manages secret called "pipelines-console-plugin-cert"
 # generated secret will be used in the console plugin container (nginx + static content)
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: pipeline-console-plugin
+  name: pipelines-console-plugin
   namespace: openshift-pipelines
   annotations:
     # https://docs.openshift.com/container-platform/4.13/security/certificates/service-serving-certificate.html
-    service.beta.openshift.io/serving-cert-secret-name: pipeline-console-plugin-cert
+    service.beta.openshift.io/serving-cert-secret-name: pipelines-console-plugin-cert
   labels:
     app.kubernetes.io/part-of: tekton-config
 spec:
@@ -36,15 +36,15 @@ spec:
     port: 8443
     targetPort: 8443
   selector:
-    name: pipeline-console-plugin
-    app: pipeline-console-plugin
+    name: pipelines-console-plugin
+    app: pipelines-console-plugin
 
 # nginx configuration
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pipeline-console-plugin
+  name: pipelines-console-plugin
   namespace: openshift-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-config
@@ -71,7 +71,7 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pipeline-console-plugin
+  name: pipelines-console-plugin
   namespace: openshift-pipelines
   labels:
     app.kubernetes.io/part-of: tekton-config
@@ -79,13 +79,13 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      name: pipeline-console-plugin
-      app: pipeline-console-plugin
+      name: pipelines-console-plugin
+      app: pipelines-console-plugin
   template:
     metadata:
       labels:
-        name: pipeline-console-plugin
-        app: pipeline-console-plugin
+        name: pipelines-console-plugin
+        app: pipelines-console-plugin
         app.kubernetes.io/part-of: tekton-config
     spec:
       securityContext:
@@ -93,23 +93,23 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       volumes:
-        - name: pipeline-console-plugin-cert
+        - name: pipelines-console-plugin-cert
           secret:
-            secretName: pipeline-console-plugin-cert
+            secretName: pipelines-console-plugin-cert
             defaultMode: 420
         - name: nginx-conf
           configMap:
-            name: pipeline-console-plugin
+            name: pipelines-console-plugin
             defaultMode: 420
       containers:
-      - name: pipeline-console-plugin
+      - name: pipelines-console-plugin
         image: ghcr.io/openshift-pipelines/console-plugin:main
         imagePullPolicy: Always
         ports:
           - protocol: TCP
             containerPort: 8443
         volumeMounts:
-          - name: pipeline-console-plugin-cert
+          - name: pipelines-console-plugin-cert
             readOnly: true
             mountPath: /var/cert
           - name: nginx-conf
@@ -123,7 +123,7 @@ spec:
 apiVersion: console.openshift.io/v1
 kind: ConsolePlugin
 metadata:
-  name: pipeline-console-plugin
+  name: pipelines-console-plugin
   labels:
     app.kubernetes.io/part-of: tekton-config
 spec:
@@ -131,7 +131,7 @@ spec:
   backend:
     type: Service
     service:
-      name: pipeline-console-plugin
+      name: pipelines-console-plugin
       namespace: openshift-pipelines
       port: 8443
       basePath: "/"

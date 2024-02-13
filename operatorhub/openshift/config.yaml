@@ -243,7 +243,7 @@ image-substitutions:
       - deploymentName: openshift-pipelines-operator
         containerName: openshift-pipelines-operator-lifecycle
         envKeys:
-          - IMAGE_PIPELINE_CONSOLE_PLUGIN
+          - IMAGE_PIPELINES_CONSOLE_PLUGIN
 
 # add third party images which are not replaced by operator
 # but pulled directly by tasks here

@@ -40,10 +40,10 @@ const (
 	consolePluginReconcileYamlDirectory = "static/tekton-config/00-console-plugin"
 	// installerSet label value
 	consolePluginReconcileLabelCreatedByValue = "tekton-config-console-plugin-manifests"
-	// pipeline console plugin environment variable key
-	PipelineConsolePluginImageEnvironmentKey = "IMAGE_PIPELINE_CONSOLE_PLUGIN"
-	// pipeline console plugin container name, used to replace the image from the environment
-	PipelineConsolePluginContainerName = "pipeline-console-plugin"
+	// pipelines console plugin environment variable key
+	PipelinesConsolePluginImageEnvironmentKey = "IMAGE_PIPELINES_CONSOLE_PLUGIN"
+	// pipelines console plugin container name, used to replace the image from the environment
+	PipelinesConsolePluginContainerName = "pipelines-console-plugin"
 )
 
 var (
@@ -57,13 +57,13 @@ var (
 )
 
 type consolePluginReconciler struct {
-	logger                     *zap.SugaredLogger
-	operatorClientSet          versioned.Interface
-	syncOnce                   sync.Once
-	resourcesYamlDirectory     string
-	operatorVersion            string
-	pipelineConsolePluginImage string
-	manifest                   mf.Manifest
+	logger                      *zap.SugaredLogger
+	operatorClientSet           versioned.Interface
+	syncOnce                    sync.Once
+	resourcesYamlDirectory      string
+	operatorVersion             string
+	pipelinesConsolePluginImage string
+	manifest                    mf.Manifest
 }
 
 // reconcile steps
@@ -156,17 +156,17 @@ func (cpr *consolePluginReconciler) updateOnce(ctx context.Context) {
 		}
 		cpr.manifest = manifest
 
-		// update pipeline console image details
-		consoleImage, found := os.LookupEnv(PipelineConsolePluginImageEnvironmentKey)
+		// update pipelines console image details
+		consoleImage, found := os.LookupEnv(PipelinesConsolePluginImageEnvironmentKey)
 		if found {
-			cpr.pipelineConsolePluginImage = consoleImage
-			cpr.logger.Debugw("pipeline console plugin image found from environment",
+			cpr.pipelinesConsolePluginImage = consoleImage
+			cpr.logger.Debugw("pipelines console plugin image found from environment",
 				"image", consoleImage,
-				"environmentVariable", PipelineConsolePluginImageEnvironmentKey,
+				"environmentVariable", PipelinesConsolePluginImageEnvironmentKey,
 			)
 		} else {
-			cpr.logger.Warnw("pipeline console plugin image not found from environment, continuing with the default image from the manifest",
-				"environmentVariable", PipelineConsolePluginImageEnvironmentKey,
+			cpr.logger.Warnw("pipelines console plugin image not found from environment, continuing with the default image from the manifest",
+				"environmentVariable", PipelinesConsolePluginImageEnvironmentKey,
 			)
 		}
 	})
@@ -208,11 +208,11 @@ func (cpr *consolePluginReconciler) transform(ctx context.Context, manifest *mf.
 		cpr.transformerConsolePlugin(tektonConfigCR.Spec.TargetNamespace),
 	}
 
-	if cpr.pipelineConsolePluginImage != "" {
+	if cpr.pipelinesConsolePluginImage != "" {
 		// updates deployments container image
 		transformers = append(transformers, common.DeploymentImages(map[string]string{
 			// on the transformer, in the container name, the '-' replaced with '_'
-			strings.ReplaceAll(PipelineConsolePluginContainerName, "-", "_"): cpr.pipelineConsolePluginImage,
+			strings.ReplaceAll(PipelinesConsolePluginContainerName, "-", "_"): cpr.pipelinesConsolePluginImage,
 		}))
 	}
 
