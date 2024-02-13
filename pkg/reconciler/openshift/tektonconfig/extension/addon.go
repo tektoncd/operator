@@ -94,6 +94,11 @@ func updateAddon(ctx context.Context, taCR *v1alpha1.TektonAddon, config *v1alph
 	// if the addon spec is changed then update the instance
 	updated := false
 
+	// initialize labels(map) object
+	if taCR.ObjectMeta.Labels == nil {
+		taCR.ObjectMeta.Labels = map[string]string{}
+	}
+
 	if config.Spec.TargetNamespace != taCR.Spec.TargetNamespace {
 		taCR.Spec.TargetNamespace = config.Spec.TargetNamespace
 		updated = true
