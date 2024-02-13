@@ -6,7 +6,7 @@ metadata:
     capabilities: Full Lifecycle
     categories: Developer Tools, Integration & Delivery
     certified: "false"
-    console.openshift.io/plugins: '["pipeline-console-plugin"]'
+    console.openshift.io/plugins: '["pipelines-console-plugin"]'
     description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for building pipelines using Tekton concepts which run natively on OpenShift and Kubernetes.
     operators.operatorframework.io/builder: operator-sdk-v1.7.2
     operators.openshift.io/infrastructure-features: '["disconnected","proxy-aware"]'
