@@ -105,7 +105,7 @@ func TestPostReconcileManifest(t *testing.T) {
 						deployment := &appsv1.Deployment{}
 						err := apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, deployment)
 						require.NoError(t, err)
-						require.Equal(t, "pipeline-console-plugin", deployment.GetName())
+						require.Equal(t, "pipelines-console-plugin", deployment.GetName())
 						container := deployment.Spec.Template.Spec.Containers[0]
 						require.Equal(t, expectedImage, container.Image)
 
@@ -144,7 +144,7 @@ func TestPostReconcileManifest(t *testing.T) {
 			consolePluginImage := defaultConsolePluginImage
 			// update image env variable
 			if test.consolePluginImage != "" {
-				t.Setenv("IMAGE_PIPELINE_CONSOLE_PLUGIN", test.consolePluginImage)
+				t.Setenv("IMAGE_PIPELINES_CONSOLE_PLUGIN", test.consolePluginImage)
 				consolePluginImage = test.consolePluginImage
 			}
 			// TEST: image name
