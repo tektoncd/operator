@@ -92,6 +92,11 @@ func UpdateChain(ctx context.Context, old *v1alpha1.TektonChain, new *v1alpha1.T
 	// if the chain spec is changed then update the instance
 	updated := false
 
+	// initialize labels(map) object
+	if old.ObjectMeta.Labels == nil {
+		old.ObjectMeta.Labels = map[string]string{}
+	}
+
 	if new.Spec.TargetNamespace != old.Spec.TargetNamespace {
 		old.Spec.TargetNamespace = new.Spec.TargetNamespace
 		updated = true
