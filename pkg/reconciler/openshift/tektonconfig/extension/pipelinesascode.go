@@ -95,6 +95,11 @@ func updateOPAC(ctx context.Context, opacCR *v1alpha1.OpenShiftPipelinesAsCode, 
 	// if the pac spec is changed then update the instance
 	updated := false
 
+	// initialize labels(map) object
+	if opacCR.ObjectMeta.Labels == nil {
+		opacCR.ObjectMeta.Labels = map[string]string{}
+	}
+
 	if config.Spec.TargetNamespace != opacCR.Spec.TargetNamespace {
 		opacCR.Spec.TargetNamespace = config.Spec.TargetNamespace
 		updated = true

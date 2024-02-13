@@ -90,6 +90,11 @@ func UpdateTrigger(ctx context.Context, old *v1alpha1.TektonTrigger, new *v1alph
 	// if the trigger spec is changed then update the instance
 	updated := false
 
+	// initialize labels(map) object
+	if old.ObjectMeta.Labels == nil {
+		old.ObjectMeta.Labels = map[string]string{}
+	}
+
 	if new.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey] != old.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey] {
 		old.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey] = new.ObjectMeta.Labels[v1alpha1.ReleaseVersionKey]
 		updated = true
