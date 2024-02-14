@@ -114,7 +114,7 @@ metadata:
   labels:
     app.kubernetes.io/part-of: tekton-config
 spec:
-  displayName: Pipeline Console Plugin
+  displayName: Pipelines Console Plugin
   backend:
     type: Service
     service:
