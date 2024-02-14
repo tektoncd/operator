@@ -99,9 +99,12 @@ type TektonResultStatus struct {
 	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
 }
 
-func (in *TektonResultStatus) MarkPreReconcilerFailed(s string) {
-	//TODO implement me
-	panic("implement me")
+func (trs *TektonResultStatus) MarkPreReconcilerFailed(msg string) {
+	trs.MarkNotReady("PreReconciliation failed")
+	resultsCondSet.Manage(trs).MarkFalse(
+		PreReconciler,
+		"Error",
+		msg)
 }
 
 func (trs *TektonResultStatus) MarkPostReconcilerFailed(msg string) {
