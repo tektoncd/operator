@@ -86,7 +86,7 @@ spec:
 
       buildah bud --storage-driver=$(params.STORAGE_DRIVER) \
         $ENTITLEMENT_VOLUME $(params.BUILD_EXTRA_ARGS) \
-        --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) --no-cache \
+        --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) \
         -f $(params.DOCKERFILE) -t $(params.IMAGE) $(params.CONTEXT)
 
       [[ "$(params.SKIP_PUSH)" == "true" ]] && echo "Push skipped" && exit 0
