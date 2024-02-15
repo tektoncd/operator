@@ -84,6 +84,7 @@ spec:
   artifacts.pipelinerun.format: in-toto
   artifacts.pipelinerun.storage: tekton,oci (comma separated values)
   artifacts.pipelinerun.signer: x509
+  artifacts.pipelinerun.enable-deep-inspection: #value (boolean - true/false)
   storage.gcs.bucket: #value
   storage.oci.repository: #value
   storage.oci.repository.insecure: #value (boolean - true/false)
@@ -92,6 +93,7 @@ spec:
   storage.grafeas.noteid: #value
   storage.grafeas.notehint: #value
   builder.id: #value
+  builddefinition.buildtype: #value
   signers.x509.fulcio.enabled: #value (boolean - true/false)
   signers.x509.fulcio.address: #value
   signers.x509.fulcio.issuer: #value
