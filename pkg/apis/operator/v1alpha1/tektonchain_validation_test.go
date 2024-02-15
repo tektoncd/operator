@@ -290,6 +290,42 @@ func Test_ValidateTektonChain_ConfigTransparencyConfigEnabled(t *testing.T) {
 	}
 }
 
+func Test_ValidateTektonChain_InvalidConfigBuildDefinitionType(t *testing.T) {
+	tc := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+		},
+	}
+	tc.Spec.Chain.ChainProperties.BuildDefinitionBuildType = "foo"
+	err := tc.Validate(context.TODO())
+	assert.Equal(t, "invalid value: foo: spec.builddefinition.buildtype", err.Error())
+}
+
+func Test_ValidateTektonChain_ConfigBuildDefinitionType(t *testing.T) {
+	tc := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+		},
+	}
+	tc.Spec.Chain.ChainProperties.BuildDefinitionBuildType = "https://tekton.dev/chains/v2/slsa"
+	err := tc.Validate(context.TODO())
+	if err != nil {
+		t.Errorf("ValidateTektonChain.Validate() expected no error for the given config, but got one, ValidateTektonChain: %v", err)
+	}
+}
+
 func Test_ValidateTektonChain_InvalidControllerEnv(t *testing.T) {
 	tc := &TektonChain{
 		ObjectMeta: metav1.ObjectMeta{

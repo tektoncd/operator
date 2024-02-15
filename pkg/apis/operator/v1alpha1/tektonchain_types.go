@@ -80,9 +80,10 @@ type ChainProperties struct {
 	ArtifactsTaskRunSigner  string  `json:"artifacts.taskrun.signer,omitempty"`
 
 	// pipelinerun artifacts config
-	ArtifactsPipelineRunFormat  string  `json:"artifacts.pipelinerun.format,omitempty"`
-	ArtifactsPipelineRunStorage *string `json:"artifacts.pipelinerun.storage,omitempty"`
-	ArtifactsPipelineRunSigner  string  `json:"artifacts.pipelinerun.signer,omitempty"`
+	ArtifactsPipelineRunFormat               string  `json:"artifacts.pipelinerun.format,omitempty"`
+	ArtifactsPipelineRunStorage              *string `json:"artifacts.pipelinerun.storage,omitempty"`
+	ArtifactsPipelineRunSigner               string  `json:"artifacts.pipelinerun.signer,omitempty"`
+	ArtifactsPipelineRunEnableDeepInspection *bool   `json:"artifacts.pipelinerun.enable-deep-inspection,omitempty"`
 
 	// oci artifacts config
 	ArtifactsOCIFormat  string  `json:"artifacts.oci.format,omitempty"`
@@ -99,7 +100,8 @@ type ChainProperties struct {
 	StorageGrafeasNoteHint       string `json:"storage.grafeas.notehint,omitempty"`
 
 	// builder config
-	BuilderID string `json:"builder.id,omitempty"`
+	BuilderID                string `json:"builder.id,omitempty"`
+	BuildDefinitionBuildType string `json:"builddefinition.buildtype,omitempty"`
 
 	// x509 signer config
 	X509SignerFulcioEnabled     *bool  `json:"signers.x509.fulcio.enabled,omitempty"`
