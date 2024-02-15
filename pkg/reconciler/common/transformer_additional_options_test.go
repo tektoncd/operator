@@ -503,7 +503,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 							},
 						},
 					},
-					"test-max-replicas": {
+					"test-metrics": {
 						Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
 							ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
 								APIVersion: "apps/v1",
@@ -524,6 +524,18 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 									Type: autoscalingv2.ResourceMetricSourceType,
 								},
 							},
+						},
+					},
+					"test-max-replicas": {
+						Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+							MinReplicas: nil,
+							MaxReplicas: 9,
+						},
+					},
+					"test-min-replicas": {
+						Spec: autoscalingv2.HorizontalPodAutoscalerSpec{
+							MinReplicas: ptr.Int32(2),
+							MaxReplicas: 0,
 						},
 					},
 				},

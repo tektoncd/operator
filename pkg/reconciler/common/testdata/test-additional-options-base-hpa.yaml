@@ -30,7 +30,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   creationTimestamp: null
-  name: test-max-replicas
+  name: test-metrics
   namespace: tekton-pipelines
 spec:
   scaleTargetRef:
@@ -39,6 +39,56 @@ spec:
     name: bar
   minReplicas: 0
   maxReplicas: 1
+  metrics:
+    - resource:
+        name: cpu
+        target:
+          averageUtilization: 80
+          type: Utilization
+      type: Resource
+status:
+  currentMetrics: null
+  desiredReplicas: 0
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  creationTimestamp: null
+  name: test-max-replicas
+  namespace: tekton-pipelines
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: bar
+  minReplicas: 3
+  maxReplicas: 5
+  metrics:
+    - resource:
+        name: cpu
+        target:
+          averageUtilization: 80
+          type: Utilization
+      type: Resource
+status:
+  currentMetrics: null
+  desiredReplicas: 0
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  creationTimestamp: null
+  name: test-min-replicas
+  namespace: tekton-pipelines
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: bar
+  minReplicas: 1
+  maxReplicas: 5
   metrics:
     - resource:
         name: cpu
