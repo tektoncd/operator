@@ -147,6 +147,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	}
 	tr.Status.MarkDependenciesInstalled()
 
+	// This function needs to be removed in the next release of operator.
+	if err := r.conflictTIS(ctx); err != nil {
+		return err
+	}
 	if err := r.extension.PreReconcile(ctx, tr); err != nil {
 		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
 		logger.Error(msg)
@@ -295,6 +299,59 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	// Mark PostReconcile Complete
 	tr.Status.MarkPostReconcilerComplete()
 
+	return nil
+}
+
+// This function exists to resolve conflict between PreReconciler and Reconciler Installerset.
+// This won't be needed in the next release of operator.
+func (r *Reconciler) conflictTIS(ctx context.Context) error {
+	logger := logging.FromContext(ctx)
+	// Check if an tektoninstallerset already exists, if not then create
+	labelSelector, err := common.LabelSelector(ls)
+	if err != nil {
+		return err
+	}
+	existingInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
+	if err != nil {
+		return err
+	}
+
+	if existingInstallerSet == "" {
+		return nil
+	}
+
+	// If exists, then fetch the TektonInstallerSet
+	installedTIS, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+		Get(ctx, existingInstallerSet, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		logger.Error("failed to get InstallerSet: %s", err)
+		return err
+	}
+
+	installerSetReleaseVersion := installedTIS.Labels[v1alpha1.ReleaseVersionKey]
+	if installerSetReleaseVersion != r.operatorVersion {
+		// Delete the existing TektonInstallerSet
+		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Delete(ctx, existingInstallerSet, metav1.DeleteOptions{})
+		if err != nil {
+			logger.Error("failed to delete InstallerSet: %s", err)
+			return err
+		}
+
+		// Make sure the TektonInstallerSet is deleted
+		_, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Get(ctx, existingInstallerSet, metav1.GetOptions{})
+		if err == nil {
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		if !apierrors.IsNotFound(err) {
+			logger.Error("failed to get InstallerSet: %s", err)
+			return err
+		}
+	}
 	return nil
 }
 
