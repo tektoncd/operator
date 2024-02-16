@@ -177,7 +177,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 		if err != nil {
 			return err
 		}
-		return r.updateTektonResultsStatus(ctx, tr, createdIs)
+		r.updateTektonResultsStatus(ctx, tr, createdIs)
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// If exists, then fetch the TektonInstallerSet
@@ -189,7 +190,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 			if err != nil {
 				return err
 			}
-			return r.updateTektonResultsStatus(ctx, tr, createdIs)
+			r.updateTektonResultsStatus(ctx, tr, createdIs)
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		logger.Error("failed to get InstallerSet: %s", err)
 		return err
@@ -265,6 +267,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
+
+	r.updateTektonResultsStatus(ctx, tr, installedTIS)
 
 	// Mark InstallerSet Available
 	tr.Status.MarkInstallerSetAvailable()
@@ -355,12 +359,10 @@ func (r *Reconciler) conflictTIS(ctx context.Context) error {
 	return nil
 }
 
-func (r *Reconciler) updateTektonResultsStatus(ctx context.Context, tr *v1alpha1.TektonResult, createdIs *v1alpha1.TektonInstallerSet) error {
+func (r *Reconciler) updateTektonResultsStatus(ctx context.Context, tr *v1alpha1.TektonResult, createdIs *v1alpha1.TektonInstallerSet) {
 	// update the tr with TektonInstallerSet
 	tr.Status.SetTektonInstallerSet(createdIs.Name)
 	tr.Status.SetVersion(r.resultsVersion)
-
-	return nil
 }
 
 // TektonResults expects secrets to be created before installing
