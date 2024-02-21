@@ -134,6 +134,7 @@ type Data struct {
 func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonHub) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 
+	ns := original.Spec.GetTargetNamespace()
 	labelSelector, err := common.LabelSelector(ls)
 	if err != nil {
 		return err
@@ -150,6 +151,29 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	if err := r.extension.Finalize(ctx, original); err != nil {
 		logger.Error("Failed to finalize platform resources", err)
 	}
+
+	jobLabel := metav1.LabelSelector{
+		MatchLabels: map[string]string{"job-name": "tekton-hub-db-migration"},
+	}
+
+	jobLabelSelector, err := common.LabelSelector(jobLabel)
+	if err != nil {
+		return err
+	}
+
+	// List the pods and delete the all pods which are created by the tekton-hub-db-migration job
+	podLists, err := r.kubeClientSet.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{LabelSelector: jobLabelSelector})
+	if err != nil {
+		logger.Error("Failed to List the pods created by the tekton-hub-db-migration job", err)
+		return err
+	}
+	for _, pod := range podLists.Items {
+		if err := r.kubeClientSet.CoreV1().Pods(ns).Delete(ctx, pod.Name, metav1.DeleteOptions{}); err != nil {
+			logger.Error("Failed to delete the pod ", err)
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -231,7 +255,7 @@ func (r *Reconciler) handleError(err error, th *v1alpha1.TektonHub) error {
 }
 
 func (r *Reconciler) reconcileUiInstallerSet(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
-	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, installerSetTypeUI)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, installerSetTypeUI, th.Spec.TargetNamespace)
 	if err != nil {
 		return err
 	}
@@ -306,7 +330,7 @@ func (r *Reconciler) reconcileApiInstallerSet(ctx context.Context, th *v1alpha1.
 
 	th.Status.MarkApiDependenciesInstalled()
 
-	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, installerSetTypeAPI)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, installerSetTypeAPI, th.Spec.TargetNamespace)
 	if err != nil {
 		return err
 	}
@@ -398,7 +422,7 @@ func (r *Reconciler) reconcileApiInstallerSet(ctx context.Context, th *v1alpha1.
 
 func (r *Reconciler) setupDatabaseMigrationInstallerSet(ctx context.Context, th *v1alpha1.TektonHub, hubDir, version string) error {
 	// Check if the InstallerSet is available for DB-migration
-	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, installerSetTypeDatabaseMigration)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, installerSetTypeDatabaseMigration, th.Spec.TargetNamespace)
 	if err != nil {
 		return err
 	}
@@ -475,7 +499,7 @@ func (r *Reconciler) setupDatabase(ctx context.Context, th *v1alpha1.TektonHub, 
 	}
 	th.Status.MarkDbDependenciesInstalled()
 
-	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, installerSetTypeDatabase)
+	exist, err := r.checkIfInstallerSetExist(ctx, r.operatorClientSet, version, installerSetTypeDatabase, th.Spec.TargetNamespace)
 	if err != nil {
 		return err
 	}
