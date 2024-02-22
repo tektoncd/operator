@@ -32,13 +32,13 @@ func Test_filterExternalDB(t *testing.T) {
 	num := len(manifest.Resources())
 	assert.Equal(t, num, 4)
 	assert.Equal(t, manifest.Resources()[0].GetName(), statefulSetDB)
-	manifest = *filterExternalDB(&v1alpha1.TektonResult{
+	filterExternalDB(&v1alpha1.TektonResult{
 		Spec: v1alpha1.TektonResultSpec{
 			ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
 				IsExternalDB: true,
 			},
 		},
-	}, manifest)
+	}, &manifest)
 	num = len(manifest.Resources())
 	assert.Equal(t, num, 1)
 	assert.Equal(t, manifest.Resources()[0].GetName(), statefulSetDB+"-external")
