@@ -26,11 +26,10 @@ const (
 	servicePostgresDB = "tekton-results-postgres-service"
 )
 
-func filterExternalDB(tr *v1alpha1.TektonResult, manifest mf.Manifest) *mf.Manifest {
+func filterExternalDB(tr *v1alpha1.TektonResult, manifest *mf.Manifest) {
 	if tr.Spec.IsExternalDB {
-		manifest = manifest.Filter(mf.Not(mf.All(mf.ByKind("StatefulSet"), mf.ByName(statefulSetDB))))
-		manifest = manifest.Filter(mf.Not(mf.All(mf.ByKind("ConfigMap"), mf.ByName(configPostgresDB))))
-		manifest = manifest.Filter(mf.Not(mf.All(mf.ByKind("Service"), mf.ByName(servicePostgresDB))))
+		*manifest = manifest.Filter(mf.Not(mf.All(mf.ByKind("StatefulSet"), mf.ByName(statefulSetDB))))
+		*manifest = manifest.Filter(mf.Not(mf.All(mf.ByKind("ConfigMap"), mf.ByName(configPostgresDB))))
+		*manifest = manifest.Filter(mf.Not(mf.All(mf.ByKind("Service"), mf.ByName(servicePostgresDB))))
 	}
-	return &manifest
 }
