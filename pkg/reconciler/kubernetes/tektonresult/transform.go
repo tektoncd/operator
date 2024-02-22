@@ -68,7 +68,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	resultImgs := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ResultsImagePrefix))
 
 	targetNs := comp.GetSpec().GetTargetNamespace()
-	manifest = filterExternalDB(instance, *manifest)
+	filterExternalDB(instance, manifest)
 	extra := []mf.Transformer{
 		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdResults),
 		common.ApplyProxySettings,
