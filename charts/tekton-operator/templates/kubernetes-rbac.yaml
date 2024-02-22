@@ -272,6 +272,8 @@ rules:
       - customruns/finalizers
       - verificationpolicies
       - verificationpolicies/status
+      - stepactions
+      - stepactions/status
     verbs:
       - get
       - list
