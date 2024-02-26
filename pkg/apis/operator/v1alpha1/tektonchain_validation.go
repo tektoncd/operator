@@ -28,7 +28,7 @@ import (
 var (
 	allowedArtifactsTaskRunFormat     = sets.NewString("", "in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3")
 	allowedArtifactsPipelineRunFormat = sets.NewString("", "in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3")
-	allowedX509SignerFulcioProvider   = sets.NewString("", "google", "spiffe", "github", "filesystem", "filesystem-custom-path")
+	allowedX509SignerFulcioProvider   = sets.NewString("", "google", "spiffe", "github", "filesystem")
 	allowedTransparencyConfigEnabled  = sets.NewString("", "true", "false", "manual")
 	allowedArtifactsStorage           = sets.NewString("", "tekton", "oci", "gcs", "docdb", "grafeas", "kafka")
 	allowedControllerEnvs             = sets.NewString("MONGO_SERVER_URL")
