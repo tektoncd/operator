@@ -22,7 +22,7 @@ require (
 	github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293
 	github.com/tektoncd/triggers v0.26.1
 	go.opencensus.io v0.24.0
-	go.uber.org/zap v1.26.0
+	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
 	golang.org/x/mod v0.15.0
 	golang.org/x/sync v0.6.0
