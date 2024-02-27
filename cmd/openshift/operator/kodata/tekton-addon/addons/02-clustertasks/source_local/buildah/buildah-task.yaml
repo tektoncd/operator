@@ -79,7 +79,7 @@ spec:
     workingDir: $(workspaces.source.path)
     script: |
       ENTITLEMENT_VOLUME=""
-
+      IMAGE=$(params.IMAGE)
       if [[ "$(workspaces.rhel-entitlement.bound)" == "true" ]]; then
         ENTITLEMENT_VOLUME="--volume /tmp/entitlement:/etc/pki/entitlement"
       fi
@@ -87,7 +87,7 @@ spec:
       buildah bud --storage-driver=$(params.STORAGE_DRIVER) \
         $ENTITLEMENT_VOLUME $(params.BUILD_EXTRA_ARGS) \
         --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) \
-        -f $(params.DOCKERFILE) -t $(params.IMAGE) $(params.CONTEXT)
+        -f $(params.DOCKERFILE) -t $IMAGE $(params.CONTEXT)
 
       [[ "$(params.SKIP_PUSH)" == "true" ]] && echo "Push skipped" && exit 0
 
@@ -108,7 +108,7 @@ spec:
           exit 1
         fi
       fi
-      IMAGE=$(params.IMAGE)
+
       buildah --storage-driver=$(params.STORAGE_DRIVER) push \
         $(params.PUSH_EXTRA_ARGS) --tls-verify=$(params.TLSVERIFY) \
         --digestfile /tmp/image-digest $IMAGE docker://$IMAGE
