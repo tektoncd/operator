@@ -77,9 +77,11 @@ spec:
   - name: build-and-push
     image: $(params.BUILDER_IMAGE)
     workingDir: $(workspaces.source.path)
+    env:
+    - name: IMAGE
+      value: $(params.IMAGE)
     script: |
       ENTITLEMENT_VOLUME=""
-      IMAGE=$(params.IMAGE)
       if [[ "$(workspaces.rhel-entitlement.bound)" == "true" ]]; then
         ENTITLEMENT_VOLUME="--volume /tmp/entitlement:/etc/pki/entitlement"
       fi
