@@ -82,7 +82,7 @@ func (p *Pipeline) setDefaults() {
 	}
 
 	if p.EnableKeepPodOnCancel == nil {
-		p.EnableKeepPodOnCancel = ptr.Bool(config.DefaultEnableKeepPodOnCancel)
+		p.EnableKeepPodOnCancel = ptr.Bool(config.DefaultEnableKeepPodOnCancel.Enabled)
 	}
 
 	if p.ResultExtractionMethod == "" {
@@ -102,15 +102,15 @@ func (p *Pipeline) setDefaults() {
 	}
 
 	if p.EnableCELInWhenExpression == nil {
-		p.EnableCELInWhenExpression = ptr.Bool(config.DefaultEnableCELInWhenExpression)
+		p.EnableCELInWhenExpression = ptr.Bool(config.DefaultEnableCELInWhenExpression.Enabled)
 	}
 
 	if p.EnableStepActions == nil {
-		p.EnableStepActions = ptr.Bool(config.DefaultEnableStepActions)
+		p.EnableStepActions = ptr.Bool(config.DefaultEnableStepActions.Enabled)
 	}
 
 	if p.EnableParamEnum == nil {
-		p.EnableParamEnum = ptr.Bool(config.DefaultEnableParamEnum)
+		p.EnableParamEnum = ptr.Bool(config.DefaultEnableParamEnum.Enabled)
 	}
 
 	if p.MetricsPipelinerunDurationType == "" {
