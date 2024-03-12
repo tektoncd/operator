@@ -17,8 +17,8 @@ kind: CustomResourceDefinition
 metadata:
   name: tektonpipelines.operator.tekton.dev
   labels:
-    version: v0.70.0
-    operator.tekton.dev/release: v0.70.0
+    version: v0.70.1
+    operator.tekton.dev/release: v0.70.1
 spec:
   group: operator.tekton.dev
   names:
