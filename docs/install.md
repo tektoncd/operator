@@ -26,6 +26,6 @@ weight: 100
 
     
      To install pipelines, triggers, chains and dashboard (use profile 'all')
-    ``````
+    ```
     $ kubectl apply -f https://raw.githubusercontent.com/tektoncd/operator/main/config/crs/kubernetes/config/all/operator_v1alpha1_config_cr.yaml
     ```
