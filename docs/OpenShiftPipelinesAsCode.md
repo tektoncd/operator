@@ -81,14 +81,14 @@ Example:
 ```yaml
 pipelinesAsCode:
   additionalPACControllers: # can provide a list of controllers
-    controllername: 
+    <controllername>: 
       enable:
       configMapName:
       secretName:
       settings:
 ```
 
-- `controllerName` is the unique name of the new controller, should not be more than 25 characters and should follow k8s naming rules.
+- `controllername` is the unique name of the new controller, should not be more than 25 characters and should follow k8s naming rules.
 
 - `enable` is optional with default value to true. You can use this field to disable the additional PAC controller
    without removing the details from the CR.
