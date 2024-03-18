@@ -1461,8 +1461,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.0 h1:8SG7/vwALn54lVB/0yZ/MMwhFrPYtpEHQb2IpWsCzug=
 github.com/opencontainers/image-spec v1.1.0/go.mod h1:W4s4sFTMaBeK1BQLXbG4AdM2szdn85PY75RI83NrTrM=
-github.com/openshift-pipelines/pipelines-as-code v0.24.1 h1:a2lHC8s6xGKo2E6JblPbvdVDBF4acM/ZinTwpFqDNPo=
-github.com/openshift-pipelines/pipelines-as-code v0.24.1/go.mod h1:JYaKEl4Ht9nxWColiT4DmEQ0in+Cqy2BgTlaXBiCE6Q=
+github.com/openshift-pipelines/pipelines-as-code v0.24.2 h1:YOTAFes9ddduneju+U4O/hzAAaQz1X78urstn8e83g8=
+github.com/openshift-pipelines/pipelines-as-code v0.24.2/go.mod h1:JYaKEl4Ht9nxWColiT4DmEQ0in+Cqy2BgTlaXBiCE6Q=
 github.com/openshift/api v0.0.0-20230503133300-8bbcb7ca7183 h1:t/CahSnpqY46sQR01SoS+Jt0jtjgmhgE6lFmRnO4q70=
 github.com/openshift/api v0.0.0-20230503133300-8bbcb7ca7183/go.mod h1:4VWG+W22wrB4HfBL88P40DxLEpSOaiBVxUnfalfJo9k=
 github.com/openshift/apiserver-library-go v0.0.0-20230503174907-d9b2bf6185e9 h1:7SNTyJ2LGSrPzybeL7z08e5bSY921Cm0R6/cjtZEYJw=
