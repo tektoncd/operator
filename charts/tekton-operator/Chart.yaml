@@ -5,7 +5,7 @@ type: application
 version: 0.70.0
 # corresponds to the version of tekton-operator
 # https://github.com/tektoncd/operator/releases
-appVersion: "v0.70.1"
+appVersion: "v0.70.2"
 maintainers:
   - name: Jack Henschel
     email: jack.henschel@cern.ch

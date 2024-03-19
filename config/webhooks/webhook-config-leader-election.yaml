@@ -17,7 +17,7 @@ kind: ConfigMap
 metadata:
   name: tekton-operator-webhook-config-leader-election
   labels:
-    operator.tekton.dev/release: v0.70.1
+    operator.tekton.dev/release: v0.70.2
     app.kubernetes.io/instance: default
 data:
   _example: |
