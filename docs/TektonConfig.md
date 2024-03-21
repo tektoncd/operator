@@ -282,6 +282,7 @@ Example:
 pruner:
   disabled: false
   schedule: "0 8 * * *"
+  startingDeadlineSeconds: 100 # optional
   resources:
     - taskrun
     - pipelinerun
@@ -292,6 +293,7 @@ pruner:
 ```
 - `disabled` : if the value set as `true`, pruner feature will be disabled (default: `false`)
 - `schedule`: how often to run the pruner job. User can understand the schedule syntax [here][schedule].
+- `startingDeadlineSeconds`: Optional deadline in seconds for starting the job if it misses scheduled time for any reason. Missed jobs executions will be counted as failed ones
 - `resources`: supported resources for auto prune are `taskrun` and `pipelinerun`
 - `keep`: maximum number of resources to keep while deleting or removing resources
 - `keep-since`: retain the resources younger than the specified value in minutes

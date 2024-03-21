@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	k8sTesting "k8s.io/client-go/testing"
+	"knative.dev/pkg/ptr"
 )
 
 // reactor required for the GenerateName field to work when using the fake client
@@ -748,6 +749,42 @@ func TestPrunerReconcile(t *testing.T) {
 						"*/12 * * * *": "ns-seven;--keep=100,--keep-since=42;pipelinerun,taskrun;true",
 					},
 				},
+				{ // reconcile #13
+					// add startingDeadlineSeconds
+					name: "TestStartingDeadlineSecondsAdd",
+					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
+						tektonConfig.Spec.Pruner.StartingDeadlineSeconds = ptr.Int64(100)
+						return nil
+					},
+					scheduleAndArgs: map[string]string{
+						"*/5 * * * *":  "ns-one;--keep=100;pipelinerun,taskrun;false ns-two;--keep=100;pipelinerun,taskrun;false",
+						"*/12 * * * *": "ns-seven;--keep=100,--keep-since=42;pipelinerun,taskrun;true",
+					},
+				},
+				{ // reconcile #14
+					// update startingDeadlineSeconds
+					name: "TestStartingDeadlineSecondsUpdate",
+					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
+						tektonConfig.Spec.Pruner.StartingDeadlineSeconds = ptr.Int64(201)
+						return nil
+					},
+					scheduleAndArgs: map[string]string{
+						"*/5 * * * *":  "ns-one;--keep=100;pipelinerun,taskrun;false ns-two;--keep=100;pipelinerun,taskrun;false",
+						"*/12 * * * *": "ns-seven;--keep=100,--keep-since=42;pipelinerun,taskrun;true",
+					},
+				},
+				{ // reconcile #15
+					// remove startingDeadlineSeconds
+					name: "TestStartingDeadlineSecondsRemove",
+					applyChanges: func(tektonConfig *v1alpha1.TektonConfig, client *fake.Clientset, t *testing.T) func() {
+						tektonConfig.Spec.Pruner.StartingDeadlineSeconds = nil
+						return nil
+					},
+					scheduleAndArgs: map[string]string{
+						"*/5 * * * *":  "ns-one;--keep=100;pipelinerun,taskrun;false ns-two;--keep=100;pipelinerun,taskrun;false",
+						"*/12 * * * *": "ns-seven;--keep=100,--keep-since=42;pipelinerun,taskrun;true",
+					},
+				},
 			},
 		},
 	}
@@ -815,6 +852,9 @@ func TestPrunerReconcile(t *testing.T) {
 						assert.Equal(t, test.tektonConfig.Spec.Config.Tolerations, podSpec.Tolerations)
 						assert.Equal(t, test.tektonConfig.Spec.Config.NodeSelector, podSpec.NodeSelector)
 						assert.Equal(t, test.tektonConfig.Spec.Config.PriorityClassName, podSpec.PriorityClassName)
+
+						// verify startingDeadlineSeconds
+						assert.Equal(t, test.tektonConfig.Spec.Pruner.StartingDeadlineSeconds, cronJob.Spec.StartingDeadlineSeconds)
 					}
 
 					// confirm all the schedules verified

@@ -66,6 +66,9 @@ type Prune struct {
 	KeepSince *uint `json:"keep-since,omitempty"`
 	// How frequent pruning should happen
 	Schedule string `json:"schedule,omitempty"`
+	// Optional deadline in seconds for starting the job if it misses scheduled time for any reason.
+	// Missed jobs executions will be counted as failed ones.
+	StartingDeadlineSeconds *int64 `json:"startingDeadlineSeconds,omitempty"`
 }
 
 func (p Prune) IsEmpty() bool {
