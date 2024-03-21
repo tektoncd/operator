@@ -258,22 +258,27 @@ func (pr *Pruner) reconcileCronJobs() error {
 	return nil
 }
 
-// to compute hash include, pruneConfigs, nodeSelector, toleration, priorityClass
+// to compute hash include, pruneConfigs, startingDeadlineSeconds, nodeSelector, toleration, priorityClass
 func (pr *Pruner) computeHash(pruneConfigs []pruneConfig) (string, error) {
 	// to compute hash additionally include, nodeSelector, tolerations, priorityClassName
 	// to update cronjobs if there is a change on those fields
 	targetObject := struct {
-		PruneConfigs      []pruneConfig
-		NodeSelector      map[string]string
-		Tolerations       []corev1.Toleration
-		PriorityClassName string
-		Script            string
+		PruneConfigs            []pruneConfig
+		StartingDeadlineSeconds *int64
+		NodeSelector            map[string]string
+		Tolerations             []corev1.Toleration
+		PriorityClassName       string
+		Script                  string
 	}{
 		PruneConfigs:      pruneConfigs,
 		NodeSelector:      pr.tektonConfig.Spec.Config.NodeSelector,
 		Tolerations:       pr.tektonConfig.Spec.Config.Tolerations,
 		PriorityClassName: pr.tektonConfig.Spec.Config.PriorityClassName,
 		Script:            prunerCommand,
+	}
+	// update StartingDeadlineSeconds
+	if pr.tektonConfig.Spec.Pruner.StartingDeadlineSeconds != nil {
+		targetObject.StartingDeadlineSeconds = ptr.Int64(*pr.tektonConfig.Spec.Pruner.StartingDeadlineSeconds)
 	}
 	return hash.Compute(targetObject)
 }
@@ -514,6 +519,13 @@ func (pr *Pruner) createCronJobs(cronJobsToBeCreated map[string]string, pruneCon
 		allowPrivilegedEscalation := false
 		runAsUser := ptr.Int64(65532)
 		fsGroup := ptr.Int64(65532)
+		var startingDeadlineSeconds *int64
+
+		// update startingDeadlineSeconds
+		if pr.tektonConfig.Spec.Pruner.StartingDeadlineSeconds != nil {
+			startingDeadlineSeconds = ptr.Int64(*pr.tektonConfig.Spec.Pruner.StartingDeadlineSeconds)
+			pr.logger.Infow("StartingDeadlineSeconds added", "value", startingDeadlineSeconds)
+		}
 
 		// if it is a openshift platform remove the user and fsGroup ids
 		// those ids will be allocated dynamically
@@ -535,6 +547,7 @@ func (pr *Pruner) createCronJobs(cronJobsToBeCreated map[string]string, pruneCon
 				ConcurrencyPolicy:          batchv1.ForbidConcurrent,
 				FailedJobsHistoryLimit:     &failedJobsHistoryLimit,
 				SuccessfulJobsHistoryLimit: &successfulJobsHistoryLimit,
+				StartingDeadlineSeconds:    startingDeadlineSeconds,
 				JobTemplate: batchv1.JobTemplateSpec{
 					Spec: batchv1.JobSpec{
 						TTLSecondsAfterFinished: &ttlSecondsAfterFinished,

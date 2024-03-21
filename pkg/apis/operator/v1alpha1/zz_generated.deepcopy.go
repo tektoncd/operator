@@ -905,6 +905,11 @@ func (in *Prune) DeepCopyInto(out *Prune) {
 		*out = new(uint)
 		**out = **in
 	}
+	if in.StartingDeadlineSeconds != nil {
+		in, out := &in.StartingDeadlineSeconds, &out.StartingDeadlineSeconds
+		*out = new(int64)
+		**out = **in
+	}
 	return
 }
 
