@@ -524,7 +524,6 @@ func (pr *Pruner) createCronJobs(cronJobsToBeCreated map[string]string, pruneCon
 		// update startingDeadlineSeconds
 		if pr.tektonConfig.Spec.Pruner.StartingDeadlineSeconds != nil {
 			startingDeadlineSeconds = ptr.Int64(*pr.tektonConfig.Spec.Pruner.StartingDeadlineSeconds)
-			pr.logger.Infow("StartingDeadlineSeconds added", "value", startingDeadlineSeconds)
 		}
 
 		// if it is a openshift platform remove the user and fsGroup ids
