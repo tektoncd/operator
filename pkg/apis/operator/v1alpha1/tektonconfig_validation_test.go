@@ -231,3 +231,36 @@ func Test_ValidateTektonConfig_InvalidTriggerProperties(t *testing.T) {
 	err := tc.Validate(context.TODO())
 	assert.Equal(t, "invalid value: test: spec.trigger.enable-api-fields", err.Error())
 }
+
+func Test_ValidateTektonConfig_UpdateTargetNamespace(t *testing.T) {
+	ctx := context.Background()
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "config",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Profile: "all",
+			Pruner:  Prune{Disabled: true},
+		},
+	}
+	updatedTC := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "config",
+			Namespace: "test",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "test",
+			},
+			Profile: "all",
+			Pruner:  Prune{Disabled: true},
+		},
+	}
+	ctx = apis.WithinUpdate(ctx, tc)
+	err := updatedTC.Validate(ctx)
+	assert.Equal(t, `Doesn't allow to update targetNamespace, delete existing TektonConfig and create the updated TektonConfig: spec.targetNamespace`, err.Error())
+}
