@@ -818,7 +818,7 @@ github.com/magiconair/properties
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
-# github.com/manifestival/client-go-client v0.5.0
+# github.com/manifestival/client-go-client v0.6.0
 ## explicit; go 1.15
 github.com/manifestival/client-go-client
 github.com/manifestival/client-go-client/pkg/dynamic
@@ -2312,8 +2312,8 @@ knative.dev/pkg/webhook/json
 knative.dev/pkg/webhook/resourcesemantics
 knative.dev/pkg/webhook/resourcesemantics/defaulting
 knative.dev/pkg/webhook/resourcesemantics/validation
-# sigs.k8s.io/controller-runtime v0.14.6
-## explicit; go 1.19
+# sigs.k8s.io/controller-runtime v0.15.3
+## explicit; go 1.20
 sigs.k8s.io/controller-runtime/pkg/client/apiutil
 # sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd
 ## explicit; go 1.18

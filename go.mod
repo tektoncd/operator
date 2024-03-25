@@ -7,7 +7,7 @@ require (
 	github.com/cli/go-gh v1.2.1
 	github.com/go-logr/zapr v1.3.0
 	github.com/google/go-cmp v0.6.0
-	github.com/manifestival/client-go-client v0.5.0
+	github.com/manifestival/client-go-client v0.6.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
 	github.com/openshift-pipelines/pipelines-as-code v0.24.2
@@ -301,7 +301,7 @@ require (
 	k8s.io/klog/v2 v2.110.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20231113174909-778a5567bc1e // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
-	sigs.k8s.io/controller-runtime v0.14.6 // indirect
+	sigs.k8s.io/controller-runtime v0.15.3 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/release-utils v0.7.7 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1 // indirect
