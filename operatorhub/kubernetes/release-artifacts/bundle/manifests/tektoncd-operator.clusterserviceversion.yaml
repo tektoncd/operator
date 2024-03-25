@@ -46,7 +46,7 @@ metadata:
     operators.operatorframework.io/project_layout: unknown
     repository: https://github.com/tektoncd/operator
     support: The Tetkon Authors
-  name: tektoncd-operator.v0.69.1
+  name: tektoncd-operator.v0.69.2
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -813,8 +813,8 @@ spec:
         serviceAccountName: tekton-operator
       deployments:
       - label:
-          operator.tekton.dev/release: v0.69.1
-          version: v0.69.1
+          operator.tekton.dev/release: v0.69.2
+          version: v0.69.2
         name: tekton-operator
         spec:
           replicas: 1
@@ -852,7 +852,7 @@ spec:
                 - name: METRICS_DOMAIN
                   value: tekton.dev/operator
                 - name: VERSION
-                  value: v0.69.1
+                  value: v0.69.2
                 - name: CONFIG_OBSERVABILITY_NAME
                   value: tekton-config-observability
                 - name: AUTOINSTALL_COMPONENTS
@@ -888,7 +888,7 @@ spec:
                 - name: PROFILING_PORT
                   value: '9009'
                 - name: VERSION
-                  value: v0.69.1
+                  value: v0.69.2
                 - name: METRICS_DOMAIN
                   value: tekton.dev/operator
                 image: gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/kubernetes/operator@sha256:142c59f97aac2fba714e928012b5576476313c7cd4394b568df656b0693dbea0
@@ -897,8 +897,8 @@ spec:
                 resources: {}
               serviceAccountName: tekton-operator
       - label:
-          operator.tekton.dev/release: v0.69.1
-          version: v0.69.1
+          operator.tekton.dev/release: v0.69.2
+          version: v0.69.2
         name: tekton-operator-webhook
         spec:
           replicas: 1

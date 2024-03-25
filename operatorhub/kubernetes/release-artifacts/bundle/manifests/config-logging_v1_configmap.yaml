@@ -68,5 +68,5 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    operator.tekton.dev/release: v0.69.1
+    operator.tekton.dev/release: v0.69.2
   name: config-logging
