@@ -23,13 +23,12 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
 	"knative.dev/pkg/logging"
 )
 
-var deletePropagationPolicy = v1.DeletePropagationForeground
+var deletePropagationPolicy = metav1.DeletePropagationForeground
 
 func (i *InstallerSetClient) CleanupMainSet(ctx context.Context) error {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", InstallerTypeMain)
@@ -46,7 +45,7 @@ func (i *InstallerSetClient) CleanupMainSet(ctx context.Context) error {
 	// delete all static installerSet first and then deployment one
 	for _, is := range list.Items {
 		if strings.Contains(is.GetName(), InstallerSubTypeStatic) {
-			logger.Infof("deleting main-static installer set: %s", is.GetName())
+			logger.Debugf("deleting main-static installer set: %s", is.GetName())
 			err = i.clientSet.Delete(ctx, is.GetName(), metav1.DeleteOptions{
 				PropagationPolicy: &deletePropagationPolicy,
 			})
@@ -59,7 +58,7 @@ func (i *InstallerSetClient) CleanupMainSet(ctx context.Context) error {
 	// now delete all deployment installerSet
 	for _, is := range list.Items {
 		if strings.Contains(is.GetName(), InstallerSubTypeDeployment) {
-			logger.Infof("deleting main-deployment installer set: %s", is.GetName())
+			logger.Debugf("deleting main-deployment installer set: %s", is.GetName())
 			err = i.clientSet.Delete(ctx, is.GetName(), metav1.DeleteOptions{
 				PropagationPolicy: &deletePropagationPolicy,
 			})
@@ -116,7 +115,7 @@ func (i *InstallerSetClient) cleanup(ctx context.Context, isType string) error {
 	}
 
 	for _, is := range list.Items {
-		logger.Infof("deleting %s installer set: %s", isType, is.GetName())
+		logger.Debugf("deleting %s installer set: %s", isType, is.GetName())
 		err = i.clientSet.Delete(ctx, is.GetName(), metav1.DeleteOptions{
 			PropagationPolicy: &deletePropagationPolicy,
 		})

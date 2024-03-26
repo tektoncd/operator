@@ -29,11 +29,11 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-func (i *InstallerSetClient) update(ctx context.Context, comp v1alpha1.TektonComponent, toBeUpdatedIS []v1alpha1.TektonInstallerSet, manifest *mf.Manifest, filterAndTransform FilterAndTransform, isType string) ([]v1alpha1.TektonInstallerSet, error) {
+func (i *InstallerSetClient) update(ctx context.Context, comp v1alpha1.TektonComponent, toBeUpdatedIS []v1alpha1.TektonInstallerSet, manifest *mf.Manifest, isType string) ([]v1alpha1.TektonInstallerSet, error) {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", isType)
 
 	if isType == InstallerTypeMain {
-		sets, err := i.updateMainSets(ctx, comp, toBeUpdatedIS, manifest, filterAndTransform)
+		sets, err := i.updateMainSets(ctx, comp, toBeUpdatedIS, manifest)
 		if err != nil {
 			logger.Errorf("installer set update failed for main type: %v", err)
 			return sets, err
@@ -41,18 +41,18 @@ func (i *InstallerSetClient) update(ctx context.Context, comp v1alpha1.TektonCom
 		return sets, nil
 	}
 
-	logger.Infof("updating installer set: %v", toBeUpdatedIS[0].GetName())
-	updatedSet, err := i.updateSet(ctx, comp, toBeUpdatedIS[0], manifest, filterAndTransform)
+	logger.Debugf("updating installer set: %v", toBeUpdatedIS[0].GetName())
+	updatedSet, err := i.updateSet(ctx, comp, toBeUpdatedIS[0], manifest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update installerset : %v", err)
 	}
-	logger.Infof("updated installer set: %v", toBeUpdatedIS[0].GetName())
+	logger.Debugf("updated installer set: %v", toBeUpdatedIS[0].GetName())
 	return []v1alpha1.TektonInstallerSet{*updatedSet}, nil
 }
 
-func (i *InstallerSetClient) updateMainSets(ctx context.Context, comp v1alpha1.TektonComponent, toBeUpdatedIS []v1alpha1.TektonInstallerSet, manifest *mf.Manifest, filterAndTransform FilterAndTransform) ([]v1alpha1.TektonInstallerSet, error) {
+func (i *InstallerSetClient) updateMainSets(ctx context.Context, comp v1alpha1.TektonComponent, toBeUpdatedIS []v1alpha1.TektonInstallerSet, manifest *mf.Manifest) ([]v1alpha1.TektonInstallerSet, error) {
 	logger := logging.FromContext(ctx)
-	logger.Infof("updating main installersets for %v", i.resourceKind)
+	logger.Debugf("updating main installersets for %v", i.resourceKind)
 
 	staticManifest := manifest.Filter(mf.Not(mf.ByKind("Deployment")))
 	deploymentManifest := manifest.Filter(mf.ByKind("Deployment"))
@@ -60,7 +60,7 @@ func (i *InstallerSetClient) updateMainSets(ctx context.Context, comp v1alpha1.T
 	var updatedSets []v1alpha1.TektonInstallerSet
 
 	for _, is := range toBeUpdatedIS {
-		logger.Infof("updating installer set: %v", is.GetName())
+		logger.Debugf("updating installer set: %v", is.GetName())
 
 		var manifest *mf.Manifest
 		if strings.Contains(is.GetName(), InstallerSubTypeStatic) {
@@ -69,26 +69,21 @@ func (i *InstallerSetClient) updateMainSets(ctx context.Context, comp v1alpha1.T
 			manifest = &deploymentManifest
 		}
 
-		updatedSet, err := i.updateSet(ctx, comp, is, manifest, filterAndTransform)
+		updatedSet, err := i.updateSet(ctx, comp, is, manifest)
 		if err != nil {
 			return nil, fmt.Errorf("failed to update installerset : %v", err)
 		}
 
-		logger.Infof("updated installer set: %v", is.GetName())
+		logger.Debugf("updated installer set: %v", is.GetName())
 		updatedSets = append(updatedSets, *updatedSet)
 	}
 	return updatedSets, nil
 }
 
-func (i *InstallerSetClient) updateSet(ctx context.Context, comp v1alpha1.TektonComponent, set v1alpha1.TektonInstallerSet, manifest *mf.Manifest, filterAndTransform FilterAndTransform) (*v1alpha1.TektonInstallerSet, error) {
+func (i *InstallerSetClient) updateSet(ctx context.Context, comp v1alpha1.TektonComponent, set v1alpha1.TektonInstallerSet, manifest *mf.Manifest) (*v1alpha1.TektonInstallerSet, error) {
 	var updatedSet *v1alpha1.TektonInstallerSet
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		onCluster, err := i.clientSet.Get(ctx, set.GetName(), metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		manifest, err = filterAndTransform(ctx, manifest, comp)
 		if err != nil {
 			return err
 		}

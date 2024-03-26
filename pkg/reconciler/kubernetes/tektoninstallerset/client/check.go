@@ -32,19 +32,19 @@ func (i *InstallerSetClient) checkSet(ctx context.Context, comp v1alpha1.TektonC
 	logger := logging.FromContext(ctx)
 
 	labelSelector := i.getSetLabels(isType)
-	logger.Infof("%v/%v: checking installer sets with labels: %v", i.resourceKind, isType, labelSelector)
+	logger.Debugf("%v/%v: checking installer sets with labels: %v", i.resourceKind, isType, labelSelector)
 
 	is, err := i.clientSet.List(ctx, v1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Infof("%v/%v: found %v installer sets", i.resourceKind, isType, len(is.Items))
+	logger.Debugf("%v/%v: found %v installer sets", i.resourceKind, isType, len(is.Items))
 
 	iSets := is.Items
 
 	if len(iSets) == 0 {
-		logger.Infof("%v/%v: installer sets not found", i.resourceKind, isType)
+		logger.Debugf("%v/%v: installer sets not found", i.resourceKind, isType)
 		return nil, ErrNotFound
 	}
 
@@ -83,7 +83,7 @@ func (i *InstallerSetClient) checkSet(ctx context.Context, comp v1alpha1.TektonC
 		logger.Errorf("%v/%v: meta check failed for installer type: %v", i.resourceKind, isType, err)
 		return iSets, err
 	}
-	logger.Infof("%v/%v: meta check passed", i.resourceKind, isType)
+	logger.Debugf("%v/%v: meta check passed", i.resourceKind, isType)
 
 	return iSets, nil
 }
@@ -109,7 +109,7 @@ func verifyMainInstallerSets(iSets []v1alpha1.TektonInstallerSet) error {
 
 func verifyMeta(resourceKind, isType string, logger *zap.SugaredLogger, set v1alpha1.TektonInstallerSet, comp v1alpha1.TektonComponent, releaseVersion string) error {
 	// Release Version Check
-	logger.Infof("%v/%v: release version check", resourceKind, isType)
+	logger.Debugf("%v/%v: release version check", resourceKind, isType)
 
 	rVel, ok := set.GetLabels()[v1alpha1.ReleaseVersionKey]
 	if !ok {
@@ -120,7 +120,7 @@ func verifyMeta(resourceKind, isType string, logger *zap.SugaredLogger, set v1al
 	}
 
 	// Target namespace check
-	logger.Infof("%v/%v: target namespace check", resourceKind, isType)
+	logger.Debugf("%v/%v: target namespace check", resourceKind, isType)
 
 	targetNamespace, ok := set.GetAnnotations()[v1alpha1.TargetNamespaceKey]
 	if !ok {
@@ -131,7 +131,7 @@ func verifyMeta(resourceKind, isType string, logger *zap.SugaredLogger, set v1al
 	}
 
 	// Spec Hash Check
-	logger.Infof("%v/%v: spec hash check", resourceKind, isType)
+	logger.Debugf("%v/%v: spec hash check", resourceKind, isType)
 
 	expectedHash, err := hash.Compute(comp.GetSpec())
 	if err != nil {

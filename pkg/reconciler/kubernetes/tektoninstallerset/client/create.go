@@ -30,11 +30,11 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-func (i *InstallerSetClient) create(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform, isType string, customLabels map[string]string) ([]v1alpha1.TektonInstallerSet, error) {
+func (i *InstallerSetClient) create(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, isType string, customLabels map[string]string) ([]v1alpha1.TektonInstallerSet, error) {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", isType)
 
 	if isType == InstallerTypeMain {
-		sets, err := i.makeMainSets(ctx, comp, manifest, filterAndTransform)
+		sets, err := i.makeMainSets(ctx, comp, manifest)
 		if err != nil {
 			logger.Errorf("installer set creation failed for main type: %v", err)
 			return sets, err
@@ -45,7 +45,7 @@ func (i *InstallerSetClient) create(ctx context.Context, comp v1alpha1.TektonCom
 	kind := strings.ToLower(strings.TrimPrefix(i.resourceKind, "Tekton"))
 	isName := fmt.Sprintf("%s-%s-", kind, isType)
 
-	iS, err := i.makeInstallerSet(ctx, comp, manifest, filterAndTransform, isName, isType, customLabels)
+	iS, err := i.makeInstallerSet(ctx, comp, manifest, isName, isType, customLabels)
 	if err != nil {
 		return nil, err
 	}
@@ -57,14 +57,14 @@ func (i *InstallerSetClient) create(ctx context.Context, comp v1alpha1.TektonCom
 	return []v1alpha1.TektonInstallerSet{*iS}, nil
 }
 
-func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) ([]v1alpha1.TektonInstallerSet, error) {
+func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest) ([]v1alpha1.TektonInstallerSet, error) {
 	staticManifest := manifest.Filter(mf.Not(mf.ByKind("Deployment")), mf.Not(mf.ByKind("Service")))
 	deploymentManifest := manifest.Filter(mf.Any(mf.ByKind("Deployment"), mf.ByKind("Service")))
 
 	kind := strings.ToLower(strings.TrimPrefix(i.resourceKind, "Tekton"))
 	staticName := fmt.Sprintf("%s-%s-%s-", kind, InstallerTypeMain, InstallerSubTypeStatic)
 
-	staticIS, err := i.makeInstallerSet(ctx, comp, &staticManifest, filterAndTransform, staticName, InstallerTypeMain, nil)
+	staticIS, err := i.makeInstallerSet(ctx, comp, &staticManifest, staticName, InstallerTypeMain, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.Tek
 	}
 
 	deployName := fmt.Sprintf("%s-%s-%s-", kind, InstallerTypeMain, InstallerSubTypeDeployment)
-	deploymentIS, err := i.makeInstallerSet(ctx, comp, &deploymentManifest, filterAndTransform, deployName, InstallerTypeMain, nil)
+	deploymentIS, err := i.makeInstallerSet(ctx, comp, &deploymentManifest, deployName, InstallerTypeMain, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -109,13 +109,8 @@ func (i *InstallerSetClient) waitForStatus(ctx context.Context, set *v1alpha1.Te
 	return nil
 }
 
-func (i *InstallerSetClient) makeInstallerSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform, isName, isType string, customLabels map[string]string) (*v1alpha1.TektonInstallerSet, error) {
+func (i *InstallerSetClient) makeInstallerSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, isName, isType string, customLabels map[string]string) (*v1alpha1.TektonInstallerSet, error) {
 	specHash, err := hash.Compute(comp.GetSpec())
-	if err != nil {
-		return nil, err
-	}
-
-	transformedMf, err := filterAndTransform(ctx, manifest, comp)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +134,7 @@ func (i *InstallerSetClient) makeInstallerSet(ctx context.Context, comp v1alpha1
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 		},
 		Spec: v1alpha1.TektonInstallerSetSpec{
-			Manifests: transformedMf.Resources(),
+			Manifests: manifest.Resources(),
 		},
 	}, nil
 }

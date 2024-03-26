@@ -38,6 +38,16 @@ var (
 func (i *InstallerSetClient) VersionedClusterTaskSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
 	logger := logging.FromContext(ctx)
 
+	// perform transformation
+	manifestUpdated, err := filterAndTransform(ctx, manifest, comp)
+	if err != nil {
+		logger.Errorw("error on transforming a manifest",
+			"component", comp.GroupVersionKind().String(),
+			"componentName", comp.GetName(),
+		)
+		return err
+	}
+
 	setType := InstallerTypeCustom + "-" + strings.ToLower(versionedClusterTaskInstallerSet)
 	versionedClusterTaskLS := v1.LabelSelector{
 		MatchLabels: map[string]string{
@@ -55,7 +65,7 @@ func (i *InstallerSetClient) VersionedClusterTaskSet(ctx context.Context, comp v
 	}
 
 	if len(is.Items) == 0 {
-		vctSet, err := i.makeInstallerSet(ctx, comp, manifest, filterAndTransform, "addon-versioned-clustertasks", setType, nil)
+		vctSet, err := i.makeInstallerSet(ctx, comp, manifestUpdated, "addon-versioned-clustertasks", setType, nil)
 		if err != nil {
 			return err
 		}
