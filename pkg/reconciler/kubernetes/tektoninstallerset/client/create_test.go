@@ -23,7 +23,6 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	fake2 "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client/fake"
 	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -111,7 +110,7 @@ func TestInstallerSetClient_Create(t *testing.T) {
 				client = NewInstallerSetClient(fakeClient, releaseVersion, "test-version", v1alpha1.KindTektonTrigger, &testMetrics{})
 			}
 
-			iSs, gotErr := client.create(ctx, comp, &manifest, filterAndTransform(common.NoExtension(ctx)), tt.setType, nil)
+			iSs, gotErr := client.create(ctx, comp, &manifest, tt.setType, nil)
 
 			if tt.wantErr != nil {
 				assert.Equal(t, gotErr, tt.wantErr)

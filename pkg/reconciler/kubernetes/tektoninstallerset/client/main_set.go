@@ -36,15 +36,25 @@ func (i *InstallerSetClient) MainSet(ctx context.Context, comp v1alpha1.TektonCo
 	logger := logging.FromContext(ctx)
 	setType := InstallerTypeMain
 
+	// perform transformation
+	manifestUpdated, err := filterAndTransform(ctx, manifest, comp)
+	if err != nil {
+		logger.Errorw("error on transforming a manifest",
+			"component", comp.GroupVersionKind().String(),
+			"componentName", comp.GetName(),
+		)
+		return err
+	}
+
 	sets, err := i.checkSet(ctx, comp, setType)
 	if err == nil {
-		logger.Infof("%v/%v: found %v installer sets", i.resourceKind, setType, len(sets))
+		logger.Debugf("%v/%v: found %v installer sets", i.resourceKind, setType, len(sets))
 	}
 
 	switch err {
 	case ErrNotFound:
-		logger.Infof("%v/%v: installer set not found, creating", i.resourceKind, setType)
-		sets, err = i.create(ctx, comp, manifest, filterAndTransform, setType, nil)
+		logger.Debugf("%v/%v: installer set not found, creating", i.resourceKind, setType)
+		sets, err = i.create(ctx, comp, manifestUpdated, setType, nil)
 		if err != nil {
 			logger.Errorf("%v/%v: failed to create main installer set: %v", i.resourceKind, setType, err)
 			return err
@@ -54,7 +64,7 @@ func (i *InstallerSetClient) MainSet(ctx context.Context, comp v1alpha1.TektonCo
 		}
 
 	case ErrInvalidState, ErrNsDifferent, ErrVersionDifferent:
-		logger.Infof("%v/%v: installer set not in valid state : %v, cleaning up!", i.resourceKind, setType, err)
+		logger.Debugf("%v/%v: installer set not in valid state : %v, cleaning up!", i.resourceKind, setType, err)
 		if err := i.CleanupMainSet(ctx); err != nil {
 			logger.Errorf("%v/%v: failed to cleanup main installer set: %v", i.resourceKind, setType, err)
 			return err
@@ -65,18 +75,18 @@ func (i *InstallerSetClient) MainSet(ctx context.Context, comp v1alpha1.TektonCo
 		} else {
 			markComponentStatus(comp, v1alpha1.Reinstalling)
 		}
-		logger.Infof("%v/%v: returning, will create main installer sets in further reconcile", i.resourceKind, setType)
+		logger.Debugf("%v/%v: returning, will create main installer sets in further reconcile", i.resourceKind, setType)
 		return v1alpha1.REQUEUE_EVENT_AFTER
 
 	case ErrUpdateRequired:
-		logger.Infof("%v/%v: updating installer set", i.resourceKind, setType)
-		sets, err = i.update(ctx, comp, sets, manifest, filterAndTransform, setType)
+		logger.Debugf("%v/%v: updating installer set", i.resourceKind, setType)
+		sets, err = i.update(ctx, comp, sets, manifestUpdated, setType)
 		if err != nil {
 			logger.Errorf("%v/%v: update failed : %v", i.resourceKind, setType, err)
 			return err
 		}
 	case ErrSetsInDeletionState:
-		logger.Infof("%v/%v: %v", i.resourceKind, setType, err)
+		logger.Debugf("%v/%v: %v", i.resourceKind, setType, err)
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
@@ -97,12 +107,12 @@ func (i *InstallerSetClient) statusCheck(logger *zap.SugaredLogger, setType stri
 	for _, set := range sets {
 		ready := set.Status.GetCondition(apis.ConditionReady)
 		if ready.IsUnknown() {
-			logger.Infof("%v/%v: installer set %v status not set, wait !", i.resourceKind, setType, set.GetName())
+			logger.Debugf("%v/%v: installer set %v status not set, wait !", i.resourceKind, setType, set.GetName())
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		if !ready.IsTrue() {
 			msg := fmt.Sprintf("%v/%v: installer set not ready, will retry: %v", i.resourceKind, setType, ready.Message)
-			logger.Infof(msg)
+			logger.Debugf(msg)
 			return fmt.Errorf(msg)
 		}
 	}

@@ -17,13 +17,11 @@ limitations under the License.
 */
 
 import (
-	"context"
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,18 +30,7 @@ import (
 	testing2 "knative.dev/pkg/reconciler/testing"
 )
 
-func updateFilterAndTransform(extension common.Extension, updatedNs string) FilterAndTransform {
-	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
-		updatedManifet, err := manifest.Transform(mf.InjectNamespace(updatedNs))
-		if err != nil {
-			return nil, err
-		}
-		return &updatedManifet, nil
-	}
-}
-
 func TestInstallerSetClient_Update(t *testing.T) {
-	updatedNs := "updated-ns"
 	releaseVersion := "devel"
 	comp := &v1alpha1.TektonTrigger{
 		ObjectMeta: metav1.ObjectMeta{
@@ -183,21 +170,16 @@ func TestInstallerSetClient_Update(t *testing.T) {
 
 			client := NewInstallerSetClient(tisClient, releaseVersion, "test-version", v1alpha1.KindTektonTrigger, &testMetrics{})
 
-			updatedISs, gotErr := client.update(ctx, comp, tt.existingIS, &manifest, updateFilterAndTransform(common.NoExtension(ctx), updatedNs), tt.setType)
+			updatedISs, gotErr := client.update(ctx, comp, tt.existingIS, &manifest, tt.setType)
 			if tt.wantErr != nil {
 				assert.Equal(t, gotErr, tt.wantErr)
 				return
 			}
 			assert.NilError(t, gotErr)
 
-			// based on transformer all the resource namespace should be changed
 			if tt.setType != InstallerTypeMain {
-				assert.Equal(t, updatedISs[0].Spec.Manifests[0].GetNamespace(), updatedNs)
-				assert.Equal(t, updatedISs[0].Spec.Manifests[1].GetNamespace(), updatedNs)
 				assert.Equal(t, updatedISs[0].Annotations[v1alpha1.LastAppliedHashKey], expectedHash)
 			} else {
-				assert.Equal(t, updatedISs[0].Spec.Manifests[0].GetNamespace(), updatedNs)
-				assert.Equal(t, updatedISs[1].Spec.Manifests[0].GetNamespace(), updatedNs)
 				assert.Equal(t, updatedISs[0].Annotations[v1alpha1.LastAppliedHashKey], expectedHash)
 				assert.Equal(t, updatedISs[1].Annotations[v1alpha1.LastAppliedHashKey], expectedHash)
 			}
