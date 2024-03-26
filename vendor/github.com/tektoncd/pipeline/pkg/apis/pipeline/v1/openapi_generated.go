@@ -32,6 +32,8 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 	return map[string]common.OpenAPIDefinition{
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.AffinityAssistantTemplate":   schema_pkg_apis_pipeline_pod_AffinityAssistantTemplate(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/pod.Template":                    schema_pkg_apis_pipeline_pod_Template(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact":                     schema_pkg_apis_pipeline_v1_Artifact(ref),
+		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArtifactValue":                schema_pkg_apis_pipeline_v1_ArtifactValue(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ChildStatusReference":         schema_pkg_apis_pipeline_v1_ChildStatusReference(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.EmbeddedTask":                 schema_pkg_apis_pipeline_v1_EmbeddedTask(ref),
 		"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.IncludeParams":                schema_pkg_apis_pipeline_v1_IncludeParams(ref),
@@ -383,6 +385,76 @@ func schema_pkg_apis_pipeline_pod_Template(ref common.ReferenceCallback) common.
 	}
 }
 
+func schema_pkg_apis_pipeline_v1_Artifact(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "TaskRunStepArtifact represents an artifact produced or used by a step within a task run. It directly uses the Artifact type for its structure.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"values": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The artifact's identifying category name",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArtifactValue"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Dependencies: []string{
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.ArtifactValue"},
+	}
+}
+
+func schema_pkg_apis_pipeline_v1_ArtifactValue(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "ArtifactValue represents a specific value or data element within an Artifact.",
+				Type:        []string{"object"},
+				Properties: map[string]spec.Schema{
+					"digest": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"object"},
+							AdditionalProperties: &spec.SchemaOrBool{
+								Allows: true,
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: "",
+										Type:    []string{"string"},
+										Format:  "",
+									},
+								},
+							},
+						},
+					},
+					"uri": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Algorithm-specific digests for verifying the content (e.g., SHA256)",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func schema_pkg_apis_pipeline_v1_ChildStatusReference(ref common.ReferenceCallback) common.OpenAPIDefinition {
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
@@ -405,6 +477,13 @@ func schema_pkg_apis_pipeline_v1_ChildStatusReference(ref common.ReferenceCallba
 					"name": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Name is the name of the TaskRun or Run this is referencing.",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"displayName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "DisplayName is a user-facing name of the pipelineTask that may be used to populate a UI.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -3148,11 +3227,37 @@ func schema_pkg_apis_pipeline_v1_StepState(ref common.ReferenceCallback) common.
 							Format: "",
 						},
 					},
+					"inputs": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
+									},
+								},
+							},
+						},
+					},
+					"outputs": {
+						SchemaProps: spec.SchemaProps{
+							Type: []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact"),
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},
 		Dependencies: []string{
-			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult", "k8s.io/api/core/v1.ContainerStateRunning", "k8s.io/api/core/v1.ContainerStateTerminated", "k8s.io/api/core/v1.ContainerStateWaiting"},
+			"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.Artifact", "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1.TaskRunResult", "k8s.io/api/core/v1.ContainerStateRunning", "k8s.io/api/core/v1.ContainerStateTerminated", "k8s.io/api/core/v1.ContainerStateWaiting"},
 	}
 }
 
