@@ -100,7 +100,10 @@ const (
 	EnableCELInWhenExpression = "enable-cel-in-whenexpression"
 	// EnableStepActions is the flag to enable the use of StepActions in Steps
 	EnableStepActions = "enable-step-actions"
-	// DefaultEnableStepActions is the default value for EnableStepActions
+
+	// EnableArtifacts is the flag to enable the use of Artifacts in Steps
+	EnableArtifacts = "enable-artifacts"
+
 	// EnableParamEnum is the flag to enabled enum in params
 	EnableParamEnum = "enable-param-enum"
 
@@ -145,6 +148,12 @@ var (
 		Stability: AlphaAPIFields,
 		Enabled:   DefaultAlphaFeatureEnabled}
 
+	// DefaultEnableArtifacts is the default PerFeatureFlag value for EnableStepActions
+	DefaultEnableArtifacts = PerFeatureFlag{
+		Name:      EnableStepActions,
+		Stability: AlphaAPIFields,
+		Enabled:   DefaultAlphaFeatureEnabled}
+
 	// DefaultEnableParamEnum is the default PerFeatureFlag value for EnableParamEnum
 	DefaultEnableParamEnum = PerFeatureFlag{
 		Name:      EnableParamEnum,
@@ -183,6 +192,7 @@ type FeatureFlags struct {
 	EnableCELInWhenExpression bool
 	EnableStepActions         bool
 	EnableParamEnum           bool
+	EnableArtifacts           bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -275,6 +285,10 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 		return nil, err
 	}
 	if err := setPerFeatureFlag(EnableParamEnum, DefaultEnableParamEnum, &tc.EnableParamEnum); err != nil {
+		return nil, err
+	}
+
+	if err := setPerFeatureFlag(EnableArtifacts, DefaultEnableArtifacts, &tc.EnableArtifacts); err != nil {
 		return nil, err
 	}
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
