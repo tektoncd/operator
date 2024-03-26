@@ -26,53 +26,67 @@ import (
 )
 
 func (i *InstallerSetClient) PostSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
-	return i.createSet(ctx, comp, InstallerTypePost, manifest, filterAndTransform, nil)
+	return i.applyTransformationAndCreateSet(ctx, comp, InstallerTypePost, manifest, filterAndTransform, nil)
 }
 
 func (i *InstallerSetClient) PreSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
-	return i.createSet(ctx, comp, InstallerTypePre, manifest, filterAndTransform, nil)
+	return i.applyTransformationAndCreateSet(ctx, comp, InstallerTypePre, manifest, filterAndTransform, nil)
 }
 
 func (i *InstallerSetClient) CustomSet(ctx context.Context, comp v1alpha1.TektonComponent, customName string, manifest *mf.Manifest, filterAndTransform FilterAndTransform, customLabels map[string]string) error {
 	setType := InstallerTypeCustom + "-" + strings.ToLower(customName)
-	return i.createSet(ctx, comp, setType, manifest, filterAndTransform, customLabels)
+	return i.applyTransformationAndCreateSet(ctx, comp, setType, manifest, filterAndTransform, customLabels)
 }
 
-func (i *InstallerSetClient) createSet(ctx context.Context, comp v1alpha1.TektonComponent, setType string, manifest *mf.Manifest, filterAndTransform FilterAndTransform, customLabels map[string]string) error {
+func (i *InstallerSetClient) applyTransformationAndCreateSet(ctx context.Context, comp v1alpha1.TektonComponent, setType string, manifest *mf.Manifest, filterAndTransform FilterAndTransform, customLabels map[string]string) error {
+	// perform transformation
+	manifestUpdated, err := filterAndTransform(ctx, manifest, comp)
+	if err != nil {
+		logger := logging.FromContext(ctx)
+		logger.Errorw("error on transforming a manifest",
+			"component", comp.GroupVersionKind().String(),
+			"componentName", comp.GetName(),
+		)
+		return err
+	}
+	return i.createSet(ctx, comp, setType, manifestUpdated, customLabels)
+}
+
+func (i *InstallerSetClient) createSet(ctx context.Context, comp v1alpha1.TektonComponent, setType string, manifest *mf.Manifest, customLabels map[string]string) error {
 	logger := logging.FromContext(ctx)
 
 	sets, err := i.checkSet(ctx, comp, setType)
 	if err == nil {
-		logger.Infof("%v/%v: found %v installer sets", i.resourceKind, setType, len(sets))
+		logger.Debugf("%v/%v: found %v installer sets", i.resourceKind, setType, len(sets))
 	}
 
 	switch err {
 	case ErrNotFound:
-		logger.Infof("%v/%v: installer set not found, creating", i.resourceKind, setType)
-		sets, err = i.create(ctx, comp, manifest, filterAndTransform, setType, customLabels)
+		logger.Debugf("%v/%v: installer set not found, creating", i.resourceKind, setType)
+		sets, err = i.create(ctx, comp, manifest, setType, customLabels)
 		if err != nil {
 			logger.Errorf("%v/%v: failed to create installer set: %v", i.resourceKind, setType, err)
 			return err
 		}
 
 	case ErrInvalidState, ErrNsDifferent, ErrVersionDifferent:
-		logger.Infof("%v/%v: installer set not in valid state : %v, cleaning up!", i.resourceKind, setType, err)
+		logger.Debugf("%v/%v: installer set not in valid state : %v, cleaning up!", i.resourceKind, setType, err)
 		if err := i.CleanupSet(ctx, setType); err != nil {
 			logger.Errorf("%v/%v: failed to cleanup installer set: %v", i.resourceKind, setType, err)
 			return nil
 		}
-		logger.Infof("%v/%v: returning, will create installer sets in further reconcile", i.resourceKind, setType)
+		logger.Debugf("%v/%v: returning, will create installer sets in further reconcile", i.resourceKind, setType)
 		return v1alpha1.REQUEUE_EVENT_AFTER
 
 	case ErrUpdateRequired:
-		logger.Infof("%v/%v: updating installer set", i.resourceKind, setType)
-		sets, err = i.update(ctx, comp, sets, manifest, filterAndTransform, setType)
+		logger.Debugf("%v/%v: updating installer set", i.resourceKind, setType)
+		sets, err = i.update(ctx, comp, sets, manifest, setType)
 		if err != nil {
 			logger.Errorf("%v/%v: update failed : %v", i.resourceKind, setType, err)
 			return err
 		}
 	case ErrSetsInDeletionState:
-		logger.Infof("%v/%v: %v", i.resourceKind, setType, err)
+		logger.Debugf("%v/%v: %v", i.resourceKind, setType, err)
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
