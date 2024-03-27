@@ -48,7 +48,15 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 		{
 			name: "verify-disabled",
 			additionalOptions: v1alpha1.AdditionalOptions{
-				Disabled: true,
+				Disabled: ptr.Bool(false),
+			},
+			inputFilename:          "./testdata/test-additional-options-base.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-base.yaml",
+		},
+		{
+			name: "verify-disabled-with-nil",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: nil,
 			},
 			inputFilename:          "./testdata/test-additional-options-base.yaml",
 			expectedResultFilename: "./testdata/test-additional-options-base.yaml",
@@ -56,7 +64,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 		{
 			name: "test-configmap",
 			additionalOptions: v1alpha1.AdditionalOptions{
-				Disabled: false,
+				Disabled: ptr.Bool(false),
 				ConfigMaps: map[string]corev1.ConfigMap{
 					"config-defaults": {
 						ObjectMeta: metav1.ObjectMeta{
@@ -100,7 +108,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 		{
 			name: "test-deployment",
 			additionalOptions: v1alpha1.AdditionalOptions{
-				Disabled: false,
+				Disabled: ptr.Bool(false),
 				Deployments: map[string]appsv1.Deployment{
 					"tekton-pipelines-controller": {
 						ObjectMeta: metav1.ObjectMeta{
@@ -241,7 +249,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 		{
 			name: "empty-labels-and-annotations",
 			additionalOptions: v1alpha1.AdditionalOptions{
-				Disabled: false,
+				Disabled: ptr.Bool(false),
 				ConfigMaps: map[string]corev1.ConfigMap{
 					"config-defaults": {
 						ObjectMeta: metav1.ObjectMeta{
@@ -257,7 +265,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 		{
 			name: "test-statefulsets",
 			additionalOptions: v1alpha1.AdditionalOptions{
-				Disabled: false,
+				Disabled: ptr.Bool(false),
 				StatefulSets: map[string]appsv1.StatefulSet{
 					"web": {
 						ObjectMeta: metav1.ObjectMeta{
@@ -429,7 +437,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 		{
 			name: "test-hpa",
 			additionalOptions: v1alpha1.AdditionalOptions{
-				Disabled: false,
+				Disabled: ptr.Bool(false),
 				HorizontalPodAutoscalers: map[string]autoscalingv2.HorizontalPodAutoscaler{
 					"new-hpa": {
 						ObjectMeta: metav1.ObjectMeta{
