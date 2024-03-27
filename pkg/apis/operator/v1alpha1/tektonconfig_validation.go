@@ -33,6 +33,14 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return nil
 	}
 
+	// disallow to update the targetNamespace
+	if apis.IsInUpdate(ctx) {
+		existingTC := apis.GetBaseline(ctx).(*TektonConfig)
+		if existingTC.Spec.GetTargetNamespace() != tc.Spec.GetTargetNamespace() {
+			errs = errs.Also(apis.ErrGeneric("Doesn't allow to update targetNamespace, delete existing TektonConfig and create the updated TektonConfig", "spec.targetNamespace"))
+		}
+	}
+
 	if tc.GetName() != ConfigResourceName {
 		errMsg := fmt.Sprintf("metadata.name,  Only one instance of TektonConfig is allowed by name, %s", ConfigResourceName)
 		errs = errs.Also(apis.ErrInvalidValue(tc.GetName(), errMsg))
