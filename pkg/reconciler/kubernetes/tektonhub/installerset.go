@@ -17,7 +17,7 @@ import (
 // checkIfInstallerSetExist checks if installer set exists for a component and return true/false based on it
 // and if installer set which already exist is of older version then it deletes and return false to create a new
 // installer set
-func (r *Reconciler) checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVersion string, installerSetType string) (bool, error) {
+func (r *Reconciler) checkIfInstallerSetExist(ctx context.Context, oc clientset.Interface, relVersion string, installerSetType string, targetNamespace string) (bool, error) {
 
 	labels := r.getLabels(installerSetType)
 	labelSelector, err := common.LabelSelector(labels)
@@ -41,20 +41,31 @@ func (r *Reconciler) checkIfInstallerSetExist(ctx context.Context, oc clientset.
 			return false, err
 		}
 
+		var deleteInstallerSets bool
+
+		existingNamespace, ok := ctIs.Annotations[v1alpha1.TargetNamespaceKey]
+		if ok && existingNamespace != targetNamespace {
+			deleteInstallerSets = true
+		}
+
 		version, ok := ctIs.Annotations[v1alpha1.ReleaseVersionKey]
+		if ok && version != relVersion {
+			// release version doesn't exist or is different from expected
+			// mark the deleteInstallerSets true
+			deleteInstallerSets = true
+		}
+		if deleteInstallerSets {
+			// delete the installerSets
+			err = oc.OperatorV1alpha1().TektonInstallerSets().
+				Delete(ctx, compInstallerSet, metav1.DeleteOptions{})
+			if err != nil {
+				return false, err
+			}
+		}
 		if ok && version == relVersion {
 			// if installer set already exist and release version is same
 			// then ignore and move on
 			return true, nil
-		}
-
-		// release version doesn't exist or is different from expected
-		// deleted existing InstallerSet and create a new one
-
-		err = oc.OperatorV1alpha1().TektonInstallerSets().
-			Delete(ctx, compInstallerSet, metav1.DeleteOptions{})
-		if err != nil {
-			return false, err
 		}
 	}
 
