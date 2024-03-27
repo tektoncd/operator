@@ -25,7 +25,7 @@ import (
 // additional options will be updated on the manifests
 // these values will be final
 type AdditionalOptions struct {
-	Disabled                 bool                                             `json:"disabled"`
+	Disabled                 *bool                                            `json:"disabled,omitempty"`
 	ConfigMaps               map[string]corev1.ConfigMap                      `json:"configMaps,omitempty"`
 	Deployments              map[string]appsv1.Deployment                     `json:"deployments,omitempty"`
 	HorizontalPodAutoscalers map[string]autoscalingv2.HorizontalPodAutoscaler `json:"horizontalPodAutoscalers,omitempty"`

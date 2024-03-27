@@ -50,7 +50,7 @@ func ExecuteAdditionalOptionsTransformer(ctx context.Context, manifest *mf.Manif
 		logger:  logging.FromContext(ctx),
 	}
 
-	if additionalOptions.Disabled {
+	if additionalOptions.Disabled != nil && *additionalOptions.Disabled {
 		return nil
 	}
 
