@@ -18,15 +18,18 @@ package x509
 import (
 	"bytes"
 	"crypto"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/asn1"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
 
-	validator "github.com/go-playground/validator/v10"
+	"github.com/asaskevich/govalidator"
+	"github.com/sigstore/rekor/pkg/pki/identity"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	sigsig "github.com/sigstore/sigstore/pkg/signature"
 )
@@ -181,10 +184,8 @@ func (k PublicKey) EmailAddresses() []string {
 		cert = k.certs[0]
 	}
 	if cert != nil {
-		validate := validator.New()
 		for _, name := range cert.EmailAddresses {
-			errs := validate.Var(name, "required,email")
-			if errs == nil {
+			if govalidator.IsEmail(name) {
 				names = append(names, strings.ToLower(name))
 			}
 		}
@@ -194,7 +195,7 @@ func (k PublicKey) EmailAddresses() []string {
 
 // Subjects implements the pki.PublicKey interface
 func (k PublicKey) Subjects() []string {
-	var names []string
+	var subjects []string
 	var cert *x509.Certificate
 	if k.cert != nil {
 		cert = k.cert.c
@@ -202,34 +203,25 @@ func (k PublicKey) Subjects() []string {
 		cert = k.certs[0]
 	}
 	if cert != nil {
-		validate := validator.New()
-		for _, name := range cert.EmailAddresses {
-			if errs := validate.Var(name, "required,email"); errs == nil {
-				names = append(names, strings.ToLower(name))
-			}
-		}
-		for _, name := range cert.URIs {
-			if errs := validate.Var(name.String(), "required,uri"); errs == nil {
-				names = append(names, strings.ToLower(name.String()))
-			}
-		}
-		otherName, _ := cryptoutils.UnmarshalOtherNameSAN(cert.Extensions)
-		if len(otherName) > 0 {
-			names = append(names, otherName)
-		}
+		subjects = cryptoutils.GetSubjectAlternateNames(cert)
 	}
-	return names
+	return subjects
 }
 
 // Identities implements the pki.PublicKey interface
-func (k PublicKey) Identities() ([]string, error) {
+func (k PublicKey) Identities() ([]identity.Identity, error) {
 	// k contains either a key, a cert, or a list of certs
 	if k.key != nil {
-		pem, err := cryptoutils.MarshalPublicKeyToPEM(k.key)
+		pkixKey, err := cryptoutils.MarshalPublicKeyToDER(k.key)
 		if err != nil {
 			return nil, err
 		}
-		return []string{string(pem)}, nil
+		digest := sha256.Sum256(pkixKey)
+		return []identity.Identity{{
+			Crypto:      k.key,
+			Raw:         pkixKey,
+			Fingerprint: hex.EncodeToString(digest[:]),
+		}}, nil
 	}
 
 	var cert *x509.Certificate
@@ -242,19 +234,12 @@ func (k PublicKey) Identities() ([]string, error) {
 		return nil, errors.New("no key, certificate or certificate chain provided")
 	}
 
-	var identities []string
-	pemCert, err := cryptoutils.MarshalCertificateToPEM(cert)
-	if err != nil {
-		return nil, err
-	}
-	identities = append(identities, string(pemCert))
-	pemKey, err := cryptoutils.MarshalPublicKeyToPEM(cert.PublicKey)
-	if err != nil {
-		return nil, err
-	}
-	identities = append(identities, string(pemKey))
-	identities = append(identities, cryptoutils.GetSubjectAlternateNames(cert)...)
-	return identities, nil
+	digest := sha256.Sum256(cert.Raw)
+	return []identity.Identity{{
+		Crypto:      cert,
+		Raw:         cert.Raw,
+		Fingerprint: hex.EncodeToString(digest[:]),
+	}}, nil
 }
 
 func verifyCertChain(certChain []*x509.Certificate) error {
