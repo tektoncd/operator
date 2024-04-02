@@ -71,17 +71,15 @@ func ExecuteAdditionalOptionsTransformer(ctx context.Context, manifest *mf.Manif
 		return err
 	}
 
-	// disabled HPA creation until we resolve the bug
-	// BUG: https://github.com/tektoncd/operator/issues/2002
 	// create HorizontalPodAutoscaler, if not found in the existing manifest
-	// extraHPAs, err := ot.createHorizontalPodAutoscalers(manifest, targetNamespace, additionalOptions)
-	// if err != nil {
-	// 	return err
-	// }
-	// // update into the manifests
-	// if err = ot.addInToManifest(manifest, extraHPAs); err != nil {
-	// 	return err
-	// }
+	extraHPAs, err := ot.createHorizontalPodAutoscalers(manifest, targetNamespace, additionalOptions)
+	if err != nil {
+		return err
+	}
+	// update into the manifests
+	if err = ot.addInToManifest(manifest, extraHPAs); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -630,48 +628,46 @@ func (ot *OptionsTransformer) updateHorizontalPodAutoscalers(u *unstructured.Uns
 	return nil
 }
 
-// disabled HPA creation until we resolve the bug
-// BUG: https://github.com/tektoncd/operator/issues/2002
-// func (ot *OptionsTransformer) createHorizontalPodAutoscalers(manifest *mf.Manifest, targetNamespace string, additionalOptions v1alpha1.AdditionalOptions) ([]unstructured.Unstructured, error) {
-// 	newHPAs := []unstructured.Unstructured{}
-// 	existingHPAs := manifest.Filter(mf.Any(mf.ByKind(KindHorizontalPodAutoscaler)))
-// 	for hpaName, newHPA := range additionalOptions.HorizontalPodAutoscalers {
-// 		found := false
-// 		for _, resource := range existingHPAs.Resources() {
-// 			if resource.GetName() == hpaName {
-// 				found = true
-// 				break
-// 			}
-// 		}
-// 		if found {
-// 			continue
-// 		}
-//
-// 		// update name
-// 		newHPA.SetName(hpaName)
-//
-// 		// update the namespace to targetNamespace
-// 		newHPA.SetNamespace(targetNamespace)
-//
-// 		// update kind
-// 		if newHPA.TypeMeta.Kind == "" {
-// 			newHPA.TypeMeta.Kind = KindHorizontalPodAutoscaler
-// 		}
-//
-// 		// update api version
-// 		if newHPA.TypeMeta.APIVersion == "" {
-// 			newHPA.TypeMeta.APIVersion = autoscalingv2.SchemeGroupVersion.String()
-// 		}
-//
-// 		// convert hpa to unstructured object
-// 		obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(&newHPA)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		u := unstructured.Unstructured{}
-// 		u.SetUnstructuredContent(obj)
-// 		newHPAs = append(newHPAs, u)
-// 	}
-//
-// 	return newHPAs, nil
-// }
+func (ot *OptionsTransformer) createHorizontalPodAutoscalers(manifest *mf.Manifest, targetNamespace string, additionalOptions v1alpha1.AdditionalOptions) ([]unstructured.Unstructured, error) {
+	newHPAs := []unstructured.Unstructured{}
+	existingHPAs := manifest.Filter(mf.Any(mf.ByKind(KindHorizontalPodAutoscaler)))
+	for hpaName, newHPA := range additionalOptions.HorizontalPodAutoscalers {
+		found := false
+		for _, resource := range existingHPAs.Resources() {
+			if resource.GetName() == hpaName {
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+
+		// update name
+		newHPA.SetName(hpaName)
+
+		// update the namespace to targetNamespace
+		newHPA.SetNamespace(targetNamespace)
+
+		// update kind
+		if newHPA.TypeMeta.Kind == "" {
+			newHPA.TypeMeta.Kind = KindHorizontalPodAutoscaler
+		}
+
+		// update api version
+		if newHPA.TypeMeta.APIVersion == "" {
+			newHPA.TypeMeta.APIVersion = autoscalingv2.SchemeGroupVersion.String()
+		}
+
+		// convert hpa to unstructured object
+		obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(&newHPA)
+		if err != nil {
+			return nil, err
+		}
+		u := unstructured.Unstructured{}
+		u.SetUnstructuredContent(obj)
+		newHPAs = append(newHPAs, u)
+	}
+
+	return newHPAs, nil
+}
