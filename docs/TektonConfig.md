@@ -628,8 +628,7 @@ The following fields are supported in `StatefulSet`
         * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
 
 #### HorizontalPodAutoscalers
-Supports to update the existing HorizontalPodAutoscaler(HPA) ~~also supports to create new HPA.~~
-There is open [issue](https://github.com/tektoncd/operator/issues/2002) on `options` transformer. Until resolve the issue create HPA feature will not be available.
+Supports to update the existing HorizontalPodAutoscaler(HPA) also supports to create new HPA.
 
 The following fields are supported in `HorizontalPodAutoscaler` (aka HPA)
 * `metadata`
