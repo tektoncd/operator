@@ -49,6 +49,7 @@ type Pipeline struct {
 	Status         string          `json:"status"`
 	Source         string          `json:"source"`
 	Ref            string          `json:"ref"`
+	Name           string          `json:"name"`
 	SHA            string          `json:"sha"`
 	BeforeSHA      string          `json:"before_sha"`
 	Tag            bool            `json:"tag"`
@@ -115,16 +116,10 @@ type PipelineTestCases struct {
 	Classname      string          `json:"classname"`
 	File           string          `json:"file"`
 	ExecutionTime  float64         `json:"execution_time"`
-	SystemOutput   *SystemOutput   `json:"system_output"`
+	SystemOutput   interface{}     `json:"system_output"`
 	StackTrace     string          `json:"stack_trace"`
 	AttachmentURL  string          `json:"attachment_url"`
 	RecentFailures *RecentFailures `json:"recent_failures"`
-}
-
-// SystemOutput contains information about test cases when it fails.
-type SystemOutput struct {
-	Type    string `json:"type"`
-	Message string `json:"message"`
 }
 
 // RecentFailures contains failures count for the project's default branch.
@@ -141,6 +136,7 @@ func (p PipelineTestReport) String() string {
 // on other assets, like Commit.
 type PipelineInfo struct {
 	ID        int        `json:"id"`
+	IID       int        `json:"iid"`
 	ProjectID int        `json:"project_id"`
 	Status    string     `json:"status"`
 	Source    string     `json:"source"`
@@ -195,7 +191,7 @@ func (s *PipelinesService) ListProjectPipelines(pid interface{}, opt *ListProjec
 		return nil, resp, err
 	}
 
-	return p, resp, err
+	return p, resp, nil
 }
 
 // GetPipeline gets a single project pipeline.
@@ -219,7 +215,7 @@ func (s *PipelinesService) GetPipeline(pid interface{}, pipeline int, options ..
 		return nil, resp, err
 	}
 
-	return p, resp, err
+	return p, resp, nil
 }
 
 // GetPipelineVariables gets the variables of a single project pipeline.
@@ -243,7 +239,7 @@ func (s *PipelinesService) GetPipelineVariables(pid interface{}, pipeline int, o
 		return nil, resp, err
 	}
 
-	return p, resp, err
+	return p, resp, nil
 }
 
 // GetPipelineTestReport gets the test report of a single project pipeline.
@@ -267,7 +263,7 @@ func (s *PipelinesService) GetPipelineTestReport(pid interface{}, pipeline int, 
 		return nil, resp, err
 	}
 
-	return p, resp, err
+	return p, resp, nil
 }
 
 // GetLatestPipelineOptions represents the available GetLatestPipeline() options.
@@ -298,7 +294,7 @@ func (s *PipelinesService) GetLatestPipeline(pid interface{}, opt *GetLatestPipe
 		return nil, resp, err
 	}
 
-	return p, resp, err
+	return p, resp, nil
 }
 
 // CreatePipelineOptions represents the available CreatePipeline() options.
@@ -339,7 +335,7 @@ func (s *PipelinesService) CreatePipeline(pid interface{}, opt *CreatePipelineOp
 		return nil, resp, err
 	}
 
-	return p, resp, err
+	return p, resp, nil
 }
 
 // RetryPipelineBuild retries failed builds in a pipeline
@@ -364,7 +360,7 @@ func (s *PipelinesService) RetryPipelineBuild(pid interface{}, pipeline int, opt
 		return nil, resp, err
 	}
 
-	return p, resp, err
+	return p, resp, nil
 }
 
 // CancelPipelineBuild cancels a pipeline builds
@@ -389,7 +385,7 @@ func (s *PipelinesService) CancelPipelineBuild(pid interface{}, pipeline int, op
 		return nil, resp, err
 	}
 
-	return p, resp, err
+	return p, resp, nil
 }
 
 // DeletePipeline deletes an existing pipeline.
