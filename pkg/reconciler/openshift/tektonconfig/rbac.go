@@ -261,7 +261,13 @@ func (r *rbac) getNamespacesToBeReconciled(ctx context.Context) ([]corev1.Namesp
 		// We must make sure that the default SCC is in force via the ClusterRole.
 		sccRoleBinding, err := r.kubeClientSet.RbacV1().RoleBindings(ns.Name).Get(ctx, pipelinesSCCRoleBinding, metav1.GetOptions{})
 		if err != nil {
-			return nil, err
+			// Reconcile a namespace again with missing RoleBinding
+			if errors.IsNotFound(err) {
+				logger.Debugf("could not find roleBinding %s in namespace %s", pipelinesSCCRoleBinding, ns.Name)
+				namespaces = append(namespaces, ns)
+				continue
+			}
+			return nil, fmt.Errorf("error fetching rolebinding %s from namespace %s: %w", pipelinesSCCRoleBinding, ns.Name, err)
 		}
 		if sccRoleBinding.RoleRef.Kind != "ClusterRole" {
 			logger.Infof("RoleBinding %s in namespace: %s should have CluterRole with default SCC, will reconcile again...", pipelinesSCCRoleBinding, ns.Name)
