@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	apimachineryRuntime "k8s.io/apimachinery/pkg/runtime"
@@ -56,6 +57,7 @@ func TestPostReconcileManifest(t *testing.T) {
 		consolePluginImage string
 		operatorVersion    string
 		targetNamespace    string
+		tcConfig           *v1alpha1.Config
 	}{
 		{
 			name:            "test-without-console-plugin-image",
@@ -67,6 +69,25 @@ func TestPostReconcileManifest(t *testing.T) {
 			consolePluginImage: "custom-image:tag1",
 			operatorVersion:    "0.70.0",
 			targetNamespace:    "bar",
+		},
+		{
+			name:               "test-with-tc-config",
+			consolePluginImage: "custom-image:tag1",
+			operatorVersion:    "0.70.0",
+			targetNamespace:    "bar",
+			tcConfig: &v1alpha1.Config{
+				NodeSelector: map[string]string{
+					"node-role.kubernetes.io/infra": "",
+				},
+				Tolerations: []corev1.Toleration{
+					{
+						Key:      "node-role.kubernetes.io/infra",
+						Effect:   corev1.TaintEffectNoSchedule,
+						Operator: corev1.TolerationOpExists,
+					},
+				},
+				PriorityClassName: "high-priority",
+			},
 		},
 	}
 
@@ -108,6 +129,12 @@ func TestPostReconcileManifest(t *testing.T) {
 						require.Equal(t, "pipelines-console-plugin", deployment.GetName())
 						container := deployment.Spec.Template.Spec.Containers[0]
 						require.Equal(t, expectedImage, container.Image)
+						// verify the config present on the deployment (on pod template)
+						if test.tcConfig != nil {
+							require.Equal(t, test.tcConfig.NodeSelector, deployment.Spec.Template.Spec.NodeSelector, "nodeSelector mismatch on pod template")
+							require.Equal(t, test.tcConfig.Tolerations, deployment.Spec.Template.Spec.Tolerations, "tolerations mismatch on pod template")
+							require.Equal(t, test.tcConfig.PriorityClassName, deployment.Spec.Template.Spec.PriorityClassName, "priorityClass mismatch on pod template")
+						}
 
 					case "ConsolePlugin":
 						actualNamespace, found, err := unstructured.NestedString(u.Object, "spec", "backend", "service", "namespace")
@@ -138,6 +165,11 @@ func TestPostReconcileManifest(t *testing.T) {
 						TargetNamespace: test.targetNamespace,
 					},
 				},
+			}
+
+			// include tektonConfig.config
+			if test.tcConfig != nil {
+				tektonConfigCR.Spec.Config = *test.tcConfig.DeepCopy()
 			}
 
 			// console plugin image
