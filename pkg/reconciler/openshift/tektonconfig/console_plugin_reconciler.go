@@ -206,6 +206,7 @@ func (cpr *consolePluginReconciler) transform(ctx context.Context, manifest *mf.
 		// updates "metadata.namespace" to targetNamespace
 		common.ReplaceNamespace(tektonConfigCR.Spec.TargetNamespace),
 		cpr.transformerConsolePlugin(tektonConfigCR.Spec.TargetNamespace),
+		common.AddConfiguration(tektonConfigCR.Spec.Config),
 	}
 
 	if cpr.pipelinesConsolePluginImage != "" {
