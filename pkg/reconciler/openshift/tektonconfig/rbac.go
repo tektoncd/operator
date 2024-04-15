@@ -94,11 +94,12 @@ func (r *rbac) cleanUp(ctx context.Context) error {
 
 	// fetch the list of all namespaces which have label
 	// `openshift-pipelines.tekton.dev/namespace-reconcile-version: <release-version>`
+	labelSelector := fmt.Sprintf("%s = %s", namespaceVersionLabel, r.version)
 	namespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("%s = %s", namespaceVersionLabel, r.version),
+		LabelSelector: labelSelector,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to retreive namespaces with labelSeleclector %s: %v", labelSelector, err)
 	}
 	// loop on namespaces and remove label if exist
 	for _, n := range namespaces.Items {
@@ -106,7 +107,7 @@ func (r *rbac) cleanUp(ctx context.Context) error {
 		delete(labels, namespaceVersionLabel)
 		n.SetLabels(labels)
 		if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &n, metav1.UpdateOptions{}); err != nil {
-			return err
+			return fmt.Errorf("failed to update namespace %s: %v", n.Name, err)
 		}
 	}
 	return nil
@@ -183,7 +184,7 @@ func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 	}
 	logger.Infof("default SCC set to: %s", defaultSCC)
 	if err := common.VerifySCCExists(ctx, defaultSCC, r.securityClientSet); err != nil {
-		return err
+		return fmt.Errorf("failed to verify scc %s exists, %w", defaultSCC, err)
 	}
 
 	prioritizedSCCList, err := common.GetSCCRestrictiveList(ctx, r.securityClientSet)
@@ -195,7 +196,7 @@ func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 	maxAllowedSCC := r.tektonConfig.Spec.Platforms.OpenShift.SCC.MaxAllowed
 	if maxAllowedSCC != "" {
 		if err := common.VerifySCCExists(ctx, maxAllowedSCC, r.securityClientSet); err != nil {
-			return err
+			return fmt.Errorf("failed to verify scc %s exists, %w", maxAllowedSCC, err)
 		}
 
 		isPriority, err := common.SCCAMoreRestrictiveThanB(prioritizedSCCList, defaultSCC, maxAllowedSCC)
@@ -395,27 +396,27 @@ func (r *rbac) createResources(ctx context.Context) error {
 	for _, ns := range namespacesToBeReconciled {
 		logger.Infow("Inject CA bundle configmap in ", "Namespace", ns.GetName())
 		if err := r.ensureCABundles(ctx, &ns); err != nil {
-			return err
+			return fmt.Errorf("failed to ensure ca bundles presence in namespace %s, %w", ns.Name, err)
 		}
 
 		logger.Infow("Ensures Default SA in ", "Namespace", ns.GetName())
 		sa, err := r.ensureSA(ctx, &ns)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to ensure default SA in namespace %s, %w", ns.Name, err)
 		}
 
 		// If "operator.tekton.dev/scc" exists in the namespace, then bind
 		// that SCC to the SA
 		err = r.handleSCCInNamespace(ctx, &ns)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to bind scc to namespace %s; %w", ns.Name, err)
 		}
 
 		// We use a namespace scoped Role when SCC annotation is present, and
 		// a cluster scoped ClusterRole when the default SCC is used
 		roleRef := r.getSCCRoleInNamespace(&ns)
 		if err := r.ensurePipelinesSCCRoleBinding(ctx, sa, roleRef); err != nil {
-			return err
+			return fmt.Errorf("failed to create Pipeline Scc Role Binding in namespace %s, %w", ns.Name, err)
 		}
 
 		if err := r.ensureRoleBindings(ctx, sa); err != nil {
@@ -435,7 +436,7 @@ func (r *rbac) createResources(ctx context.Context) error {
 		nsLabels[namespaceVersionLabel] = r.version
 		ns.SetLabels(nsLabels)
 		if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &ns, metav1.UpdateOptions{}); err != nil {
-			return err
+			return fmt.Errorf("failed to update namespace %s with label %s, %w", ns.Name, namespaceVersionLabel, err)
 		}
 	}
 
@@ -469,7 +470,7 @@ func (r *rbac) createSCCFailureEventInNamespace(ctx context.Context, namespace s
 	logger.Infof("Creating SCC failure event in namespace: %s", namespace)
 	_, err := r.kubeClientSet.CoreV1().Events(namespace).Create(ctx, &failureEvent, metav1.CreateOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create failure event in namespace %s, %w", namespace, err)
 	}
 
 	return nil
