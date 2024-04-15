@@ -18,6 +18,7 @@ package tektonconfig
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -101,11 +102,11 @@ func checkIfInstallerSetExist(ctx context.Context, oc versioned.Interface, relVe
 
 	labelSelector, err := common.LabelSelector(rbacInstallerSetSelector)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to retreive labelSelector with selector %v: %w", rbacInstallerSetSelector, err)
 	}
 	existingInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, oc, labelSelector)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to retreive existing InstallerSet with selector %v: %w", labelSelector, err)
 	}
 	if existingInstallerSet == "" {
 		return nil, nil
