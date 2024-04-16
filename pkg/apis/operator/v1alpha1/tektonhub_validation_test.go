@@ -22,6 +22,7 @@ import (
 
 	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/apis"
 )
 
 func Test_ValidateTektonConfig_InvalidHubParam(t *testing.T) {
@@ -126,4 +127,47 @@ func Test_ValidateTektonHub_InvalidApiSecretName(t *testing.T) {
 
 	err := th.Validate(context.TODO())
 	assert.Equal(t, "invalid value: invalid-value: spec.api.secret", err.Error())
+}
+
+func Test_ValidateTektonHub_UpdateTargetNamespace(t *testing.T) {
+	ctx := context.Background()
+
+	th := &TektonHub{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonHubSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "tekton-pipelines",
+			},
+			Db: DbSpec{
+				DbSecretName: "tekton-hub-db",
+			},
+			Api: ApiSpec{
+				ApiSecretName: "tekton-hub-api",
+			},
+		},
+	}
+
+	updatedTH := &TektonHub{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonHubSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "test",
+			},
+			Db: DbSpec{
+				DbSecretName: "tekton-hub-db",
+			},
+			Api: ApiSpec{
+				ApiSecretName: "tekton-hub-api",
+			},
+		},
+	}
+	ctx = apis.WithinUpdate(ctx, th)
+	err := updatedTH.Validate(ctx)
+	assert.Equal(t, `doesn't allow to update targetNamespace, delete existing TektonHub object and create the updated TektonHub object: spec.targetNamespace`, err.Error())
 }
