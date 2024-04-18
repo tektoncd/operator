@@ -280,6 +280,18 @@ func (r *rbac) getNamespacesToBeReconciled(ctx context.Context) ([]corev1.Namesp
 	return namespaces, nil
 }
 
+// AddNsToBeReconciledOnError removes label openshift-pipelines.tekton.dev/namespace-reconcile-version: <release-version>
+// on a given namespace from namespace labels to force the namepace to be reconciled again
+func (r *rbac) AddNsToReconcileOnError(ctx context.Context, ns *corev1.Namespace) error {
+	labels := ns.GetLabels()
+	delete(labels, namespaceVersionLabel)
+	ns.SetLabels(labels)
+	if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, ns, metav1.UpdateOptions{}); err != nil {
+		return fmt.Errorf("failed to update namespace %s: %v", ns.Name, err)
+	}
+	return nil
+}
+
 func (r *rbac) getSCCRoleInNamespace(ns *corev1.Namespace) *rbacv1.RoleRef {
 	nsAnnotations := ns.GetAnnotations()
 	nsSCC := nsAnnotations[openshift.NamespaceSCCAnnotation]
@@ -396,35 +408,57 @@ func (r *rbac) createResources(ctx context.Context) error {
 	for _, ns := range namespacesToBeReconciled {
 		logger.Infow("Inject CA bundle configmap in ", "Namespace", ns.GetName())
 		if err := r.ensureCABundles(ctx, &ns); err != nil {
-			return fmt.Errorf("failed to ensure ca bundles presence in namespace %s, %w", ns.Name, err)
+			logger.Errorf("failed to ensure ca bundles presence in namespace %s: %v", ns.Name, err)
+			if err = r.AddNsToReconcileOnError(ctx, &ns); err != nil {
+				return err
+			}
+			continue
 		}
 
 		logger.Infow("Ensures Default SA in ", "Namespace", ns.GetName())
 		sa, err := r.ensureSA(ctx, &ns)
 		if err != nil {
-			return fmt.Errorf("failed to ensure default SA in namespace %s, %w", ns.Name, err)
+			logger.Errorf("failed to ensure default SA in namespace %s: %v", ns.Name, err)
+			if err = r.AddNsToReconcileOnError(ctx, &ns); err != nil {
+				return err
+			}
+			continue
 		}
 
 		// If "operator.tekton.dev/scc" exists in the namespace, then bind
 		// that SCC to the SA
 		err = r.handleSCCInNamespace(ctx, &ns)
 		if err != nil {
-			return fmt.Errorf("failed to bind scc to namespace %s; %w", ns.Name, err)
+			logger.Errorf("failed to bind scc to namespace %s: %v", ns.Name, err)
+			if err = r.AddNsToReconcileOnError(ctx, &ns); err != nil {
+				return err
+			}
+			continue
 		}
 
 		// We use a namespace scoped Role when SCC annotation is present, and
 		// a cluster scoped ClusterRole when the default SCC is used
 		roleRef := r.getSCCRoleInNamespace(&ns)
 		if err := r.ensurePipelinesSCCRoleBinding(ctx, sa, roleRef); err != nil {
-			return fmt.Errorf("failed to create Pipeline Scc Role Binding in namespace %s, %w", ns.Name, err)
+			logger.Errorf("failed to create Pipeline Scc Role Binding in namespace %s: %v", ns.Name, err)
+			if err = r.AddNsToReconcileOnError(ctx, &ns); err != nil {
+				return err
+			}
+			continue
 		}
 
 		if err := r.ensureRoleBindings(ctx, sa); err != nil {
-			return err
+			if err = r.AddNsToReconcileOnError(ctx, &ns); err != nil {
+				return err
+			}
+			continue
 		}
 
 		if err := r.ensureClusterRoleBindings(ctx, sa); err != nil {
-			return err
+			if err = r.AddNsToReconcileOnError(ctx, &ns); err != nil {
+				return err
+			}
+			continue
 		}
 
 		// Add `openshift-pipelines.tekton.dev/namespace-reconcile-version` label to namespace
@@ -922,7 +956,7 @@ func (r *rbac) removeAndUpdateNSFromCI(ctx context.Context) error {
 	rbacClient := r.kubeClientSet.RbacV1()
 	rb, err := r.rbacInformer.Lister().Get(clusterInterceptors)
 	if err != nil && !errors.IsNotFound(err) {
-		logger.Error(err, "failed to get"+clusterInterceptors)
+		logger.Errorf("failed to get clusterInterceptors %s: %v", clusterInterceptors, err)
 		return err
 	}
 	if rb == nil {
@@ -931,13 +965,13 @@ func (r *rbac) removeAndUpdateNSFromCI(ctx context.Context) error {
 
 	req, err := labels.NewRequirement(namespaceVersionLabel, selection.Equals, []string{r.version})
 	if err != nil {
-		logger.Error(err, "failed to create requirement: ")
+		logger.Errorf("failed to create label requirement %s=%s: %v", namespaceVersionLabel, r.version, err)
 		return err
 	}
 
 	namespaces, err := r.nsInformer.Lister().List(labels.NewSelector().Add(*req))
 	if err != nil && !errors.IsNotFound(err) {
-		logger.Error(err, "failed to list namespace: ")
+		logger.Errorf("failed to list namespace with label selector %s=%s: %v", namespaceVersionLabel, r.version, err)
 		return err
 	}
 
@@ -957,10 +991,10 @@ func (r *rbac) removeAndUpdateNSFromCI(ctx context.Context) error {
 	}
 	if update {
 		if _, err := rbacClient.ClusterRoleBindings().Update(ctx, rb, metav1.UpdateOptions{}); err != nil {
-			logger.Error(err, "failed to update "+clusterInterceptors+" crb")
+			logger.Errorf("failed to update %s clusterrolebinding: %v", clusterInterceptors, err)
 			return err
 		}
-		logger.Infof("successfully removed namespace and updated %s ", clusterInterceptors)
+		logger.Infof("successfully removed namespace and updated %s", clusterInterceptors)
 	}
 	return nil
 }
@@ -1016,7 +1050,7 @@ func (r *rbac) createClusterRoleBinding(ctx context.Context, sa *corev1.ServiceA
 
 	logger.Info("finding clusterrole ", clusterInterceptors)
 	if _, err := rbacClient.ClusterRoles().Get(ctx, clusterInterceptors, metav1.GetOptions{}); err != nil {
-		logger.Error(err, " getting clusterRole "+clusterInterceptors+" failed")
+		logger.Errorf("failed to get clusterRole %s: %v", clusterInterceptors, err)
 		return err
 	}
 
@@ -1030,7 +1064,7 @@ func (r *rbac) createClusterRoleBinding(ctx context.Context, sa *corev1.ServiceA
 	}
 
 	if _, err := rbacClient.ClusterRoleBindings().Create(ctx, crb, metav1.CreateOptions{}); err != nil {
-		logger.Error(err, " creation of "+clusterInterceptors+" failed")
+		logger.Errorf("failed to create %s: %v", clusterInterceptors, err)
 		return err
 	}
 	return nil
