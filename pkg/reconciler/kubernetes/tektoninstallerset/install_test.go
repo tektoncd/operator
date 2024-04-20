@@ -19,6 +19,7 @@ package tektoninstallerset
 import (
 	"context"
 	"testing"
+	"time"
 
 	"knative.dev/pkg/ptr"
 
@@ -112,6 +113,33 @@ func TestEnsureResources_UpdateResource(t *testing.T) {
 	expectedHash, err := hash.Compute(serviceAccount.Object)
 	assert.NilError(t, err)
 	assert.Equal(t, res.GetAnnotations()[v1alpha1.LastAppliedHashKey], expectedHash)
+}
+
+func TestEnsureResources_WaitingDeletion(t *testing.T) {
+	k8sClient := k8sfake.NewSimpleClientset()
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+
+	serviceAccount := serviceAccount.DeepCopy()
+	serviceAccount.SetDeletionTimestamp(&metav1.Time{Time: time.Now()})
+
+	var saObjectFromInstallerSet unstructured.Unstructured
+	data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(serviceAccount)
+	assert.NilError(t, err)
+	saObjectFromInstallerSet.Object = data
+	inExist := []unstructured.Unstructured{saObjectFromInstallerSet}
+
+	fakeClient := fake.New([]runtime.Object{serviceAccount}...)
+	manifest, err := mf.ManifestFrom(mf.Slice(inExist), mf.UseClient(fakeClient))
+	if err != nil {
+		t.Fatalf("Failed to generate manifest: %v", err)
+	}
+
+	i := NewInstaller(&manifest, fakeClient, k8sClient, logger)
+
+	// waiting for old resource to be deleted
+	err = i.EnsureNamespaceScopedResources()
+	assert.Error(t, err, v1alpha1.RECONCILE_AGAIN_ERR.Error())
 }
 
 var (
@@ -815,6 +843,32 @@ func TestEnsureResourceWithHPA(t *testing.T) {
 
 	// remove the desired replicas count from HPA
 
+}
+
+func TestEnsureResourceWaitingDeletion(t *testing.T) {
+	ctx := context.TODO()
+	k8sClient := k8sfake.NewSimpleClientset()
+
+	existStatefulset := existStatefulset.DeepCopy()
+	existStatefulset.SetDeletionTimestamp(&metav1.Time{Time: time.Now()})
+
+	var sfsObjectFromInstallerSet unstructured.Unstructured
+	data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(existStatefulset)
+	assert.NilError(t, err)
+	sfsObjectFromInstallerSet.Object = data
+	inExist := []unstructured.Unstructured{sfsObjectFromInstallerSet}
+
+	client := fake.New([]runtime.Object{existStatefulset}...)
+	manifest, err := mf.ManifestFrom(mf.Slice(inExist), mf.UseClient(client))
+	assert.NilError(t, err)
+
+	observer, _ := zapobserver.New(zap.InfoLevel)
+	logger := zap.New(observer).Sugar()
+	i := NewInstaller(&manifest, client, k8sClient, logger)
+
+	// waiting for old statefulset to be deleted
+	err = i.ensureResource(ctx, &sfsObjectFromInstallerSet)
+	assert.Error(t, err, v1alpha1.RECONCILE_AGAIN_ERR.Error())
 }
 
 func getDeployment(name, namespace string, replicas int32) *appsv1.Deployment {

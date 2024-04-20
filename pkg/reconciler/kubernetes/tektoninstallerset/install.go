@@ -150,6 +150,12 @@ func (i *installer) ensureResources(resources []unstructured.Unstructured) error
 			return err
 		}
 
+		if res.GetDeletionTimestamp() != nil {
+			i.logger.Debugf("waiting for resource %s: %s/%s to be deleted",
+				r.GetKind(), r.GetNamespace(), r.GetName())
+			return v1alpha1.RECONCILE_AGAIN_ERR
+		}
+
 		i.logger.Infof("found resource %s: %s/%s, checking for update!", r.GetKind(), r.GetNamespace(), r.GetName())
 
 		// if resource exist then check if expected hash is different from the one
@@ -442,6 +448,12 @@ func (i *installer) ensureResource(ctx context.Context, expected *unstructured.U
 		"namespace", existing.GetNamespace(),
 		"kind", existing.GetKind(),
 	)
+
+	if existing.GetDeletionTimestamp() != nil {
+		i.logger.Debugf("waiting for resource %s: %s/%s to be deleted",
+			existing.GetKind(), existing.GetNamespace(), existing.GetName())
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
 
 	// get list of reconcile fields
 	reconcileFields := i.resourceReconcileFields(expected)
