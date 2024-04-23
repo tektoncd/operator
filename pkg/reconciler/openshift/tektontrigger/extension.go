@@ -22,8 +22,24 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"knative.dev/pkg/ptr"
 )
+
+// triggersProperties holds fields for configuring runAsUser and runAsGroup.
+type triggersProperties struct {
+	DefaultRunAsUser  *string `json:"default-run-as-user,omitempty"`
+	DefaultRunAsGroup *string `json:"default-run-as-group,omitempty"`
+}
+
+// Updating the default values of runAsUser and runAsGroup to an empty string
+// to ensure compatibility with OpenShift's requirements for managing these settings
+// in Triggers Eventlistener containers SCC.
+var triggersData = triggersProperties{
+	DefaultRunAsUser:  ptr.String(""),
+	DefaultRunAsGroup: ptr.String(""),
+}
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	return openshiftExtension{}
@@ -36,7 +52,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
 		occommon.ApplyCABundles,
-		replaceDeploymentArgs("-el-security-context", "false"),
+		common.AddConfigMapValues(tektontrigger.ConfigDefaults, triggersData),
 		replaceDeploymentArgs("-el-events", "enable"),
 	}
 }
