@@ -56,13 +56,12 @@ func TestReplaceImages(t *testing.T) {
 		}
 
 		newManifest, err := manifest.Transform(
-			replaceDeploymentArgs("-el-security-context", "false"),
 			replaceDeploymentArgs("-el-events", "enable"),
 		)
 		if err != nil {
 			t.Errorf("assertion failed; expected no error %v", err)
 		}
-		assertDeployContainerArgsValue(t, newManifest.Resources(), "-el-security-context", "false")
+		assertDeployContainerArgsValue(t, newManifest.Resources(), "-el-security-context", "true")
 		assertDeployContainerArgsValue(t, newManifest.Resources(), "-el-events", "enable")
 	})
 }
