@@ -8,7 +8,7 @@ FORCE_FETCH_RELEASE = false
 CR            = config/basic
 PLATFORM := $(if $(PLATFORM),--platform $(PLATFORM))
 
-GOLANGCI_VERSION  = v1.55.2
+GOLANGCI_VERSION  = v1.57.2
 
 BIN      = $(CURDIR)/.bin
 
@@ -166,7 +166,7 @@ lint-go: | $(GOLANGCILINT) ## runs go linter on all go files
 	@$(GOLANGCILINT) run ./... --modules-download-mode=vendor \
 							--max-issues-per-linter=0 \
 							--max-same-issues=0 \
-							--deadline 5m
+							--timeout 5m
 
 YAML_FILES := $(shell find . -type f -regex ".*y[a]ml" -print)
 .PHONY: lint-yaml
