@@ -1,6 +1,6 @@
 module github.com/tektoncd/operator
 
-go 1.19
+go 1.21
 
 require (
 	github.com/Masterminds/semver v1.5.0
@@ -38,9 +38,6 @@ require (
 )
 
 replace (
-	// we are still using go < 1.21, remove this as we bump to go 1.21
-	github.com/buildkite/agent/v3 => github.com/buildkite/agent/v3 v3.59.0
-
 	k8s.io/api => k8s.io/api v0.26.8
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.26.8
 	k8s.io/apimachinery => k8s.io/apimachinery v0.26.8
