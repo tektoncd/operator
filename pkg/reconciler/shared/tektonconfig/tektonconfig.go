@@ -126,7 +126,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	// reconcile target namespace
-	if err := common.ReconcileTargetNamespace(ctx, nil, tc, r.kubeClientSet); err != nil {
+	nsMetaLabels := map[string]string{}
+	nsMetaAnnotations := map[string]string{}
+	if tc.Spec.TargetNamespaceMetadata != nil {
+		nsMetaLabels = tc.Spec.TargetNamespaceMetadata.Labels
+		nsMetaAnnotations = tc.Spec.TargetNamespaceMetadata.Annotations
+	}
+	if err := common.ReconcileTargetNamespace(ctx, nsMetaLabels, nsMetaAnnotations, tc, r.kubeClientSet); err != nil {
 		return err
 	}
 

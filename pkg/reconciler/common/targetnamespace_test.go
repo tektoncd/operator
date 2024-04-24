@@ -34,13 +34,14 @@ func TestReconcileTargetNamespace(t *testing.T) {
 	namespaceTektonPipelines := "tekton-pipelines"
 
 	tests := []struct {
-		name             string
-		component        v1alpha1.TektonComponent
-		additionalLabels map[string]string
-		ownerReferences  []metav1.OwnerReference
-		preFunc          func(t *testing.T, fakeClientset *fake.Clientset)                              // preFunc used to update namespace details before reconcile
-		err              error                                                                          // error if any from ReconcileTargetNamespace function
-		postFunc         func(t *testing.T, fakeClientset *fake.Clientset, namespace *corev1.Namespace) // postFunc used to verify additional fields
+		name                  string
+		component             v1alpha1.TektonComponent
+		additionalLabels      map[string]string
+		additionalAnnotations map[string]string
+		ownerReferences       []metav1.OwnerReference
+		preFunc               func(t *testing.T, fakeClientset *fake.Clientset)                              // preFunc used to update namespace details before reconcile
+		err                   error                                                                          // error if any from ReconcileTargetNamespace function
+		postFunc              func(t *testing.T, fakeClientset *fake.Clientset, namespace *corev1.Namespace) // postFunc used to verify additional fields
 	}{
 		{
 			name: "verify-tekton-config",
@@ -274,6 +275,96 @@ func TestReconcileTargetNamespace(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "verify-metadata-labels",
+			component: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "config"},
+				Spec: v1alpha1.TektonConfigSpec{
+					CommonSpec: v1alpha1.CommonSpec{
+						TargetNamespace: namespaceTektonPipelines,
+					},
+				},
+			},
+			additionalLabels: map[string]string{
+				"foo1": "bar1",
+			},
+			err: nil,
+		},
+		{
+			name: "verify-metadata-annotations",
+			component: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "config"},
+				Spec: v1alpha1.TektonConfigSpec{
+					CommonSpec: v1alpha1.CommonSpec{
+						TargetNamespace: namespaceTektonPipelines,
+					},
+				},
+			},
+			additionalAnnotations: map[string]string{
+				"foo":  "bar",
+				"foo2": "bar2",
+			},
+			err: nil,
+		},
+		{
+			name: "verify-metadata-labels-annotations",
+			component: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "config"},
+				Spec: v1alpha1.TektonConfigSpec{
+					CommonSpec: v1alpha1.CommonSpec{
+						TargetNamespace: namespaceTektonPipelines,
+					},
+				},
+			},
+			additionalLabels: map[string]string{
+				"foo":  "bar",
+				"foo2": "bar2",
+			},
+			additionalAnnotations: map[string]string{
+				"foo":  "bar",
+				"foo2": "bar2",
+			},
+			err: nil,
+		},
+		{
+			name: "verify-metadata-labels-annotations-override",
+			component: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "config",
+				},
+				Spec: v1alpha1.TektonConfigSpec{
+					CommonSpec: v1alpha1.CommonSpec{
+						TargetNamespace: namespaceTektonPipelines,
+					},
+				},
+			},
+			additionalLabels: map[string]string{
+				"label-foo": "bar",
+				"foo2":      "bar2",
+			},
+			additionalAnnotations: map[string]string{
+				"annotation-foo": "bar",
+				"foo2":           "bar2",
+				"foo3":           "bar3",
+			},
+			preFunc: func(t *testing.T, fakeClientset *fake.Clientset) {
+				namespace := &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: namespaceTektonPipelines,
+						Labels: map[string]string{
+							"label-foo": "label-bar44",
+						},
+						Annotations: map[string]string{
+							"annotation-foo": "bar44",
+							"foo3":           "bar3",
+						},
+					},
+				}
+				_, err := fakeClientset.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
+				assert.NilError(t, err)
+			},
+			err: nil,
+		},
 	}
 
 	for _, test := range tests {
@@ -286,6 +377,14 @@ func TestReconcileTargetNamespace(t *testing.T) {
 			if len(test.additionalLabels) > 0 {
 				for k, v := range test.additionalLabels {
 					expectedLabels[k] = v
+				}
+			}
+			// expected annotations
+			expectedAnnotations := map[string]string{}
+			// include additional annotations, if any
+			if len(test.additionalAnnotations) > 0 {
+				for k, v := range test.additionalAnnotations {
+					expectedAnnotations[k] = v
 				}
 			}
 			// create expected owner reference for that namespace and compute hash
@@ -302,7 +401,7 @@ func TestReconcileTargetNamespace(t *testing.T) {
 			}
 
 			// call reconciler
-			err = ReconcileTargetNamespace(context.Background(), test.additionalLabels, test.component, fakeClientset)
+			err = ReconcileTargetNamespace(context.Background(), test.additionalLabels, test.additionalAnnotations, test.component, fakeClientset)
 			assert.Equal(t, err, test.err)
 
 			if test.err == nil {
@@ -310,16 +409,28 @@ func TestReconcileTargetNamespace(t *testing.T) {
 				assert.NilError(t, err)
 				assert.Equal(t, namespace.ObjectMeta.Name, targetNamespace)
 
-				// verify labels
-				for expectedLabelKey, expectedLabelValue := range expectedLabels {
-					labelFound := false
-					for actualLabelKey, actualLabelValue := range namespace.GetLabels() {
-						if expectedLabelKey == actualLabelKey && expectedLabelValue == actualLabelValue {
-							labelFound = true
+				// verify expected labels
+				for expectedKey, expectedValue := range expectedLabels {
+					found := false
+					for actualKey, actualValue := range namespace.GetLabels() {
+						if expectedKey == actualKey && expectedValue == actualValue {
+							found = true
 							break
 						}
 					}
-					assert.Equal(t, true, labelFound, "expected labelKey or labelValue not found:[%s=%s]", expectedLabelKey, expectedLabelValue)
+					assert.Equal(t, true, found, "expected label Key or Value not found:[%s=%s]", expectedKey, expectedValue)
+				}
+
+				// verify expected annotations
+				for expectedKey, expectedValue := range expectedAnnotations {
+					found := false
+					for actualKey, actualValue := range namespace.GetAnnotations() {
+						if expectedKey == actualKey && expectedValue == actualValue {
+							found = true
+							break
+						}
+					}
+					assert.Equal(t, true, found, "expected annotation Key or Value not found:[%s=%s]", expectedKey, expectedValue)
 				}
 
 				// verify owner reference

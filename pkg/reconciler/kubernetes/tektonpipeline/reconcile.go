@@ -75,7 +75,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	tp.SetDefaults(ctx)
 
 	// reconcile target namespace
-	if err := common.ReconcileTargetNamespace(ctx, nil, tp, r.kubeClientSet); err != nil {
+	if err := common.ReconcileTargetNamespace(ctx, nil, nil, tp, r.kubeClientSet); err != nil {
 		return err
 	}
 

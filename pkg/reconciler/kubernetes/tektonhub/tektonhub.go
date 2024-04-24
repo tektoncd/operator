@@ -176,7 +176,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, th *v1alpha1.TektonHub) 
 	th.SetDefaults(ctx)
 
 	// reconcile target namespace
-	if err := common.ReconcileTargetNamespace(ctx, nil, th, r.kubeClientSet); err != nil {
+	if err := common.ReconcileTargetNamespace(ctx, nil, nil, th, r.kubeClientSet); err != nil {
 		logger.Errorw("error on reconciling targetNamespace",
 			"targetNamespace", th.Spec.GetTargetNamespace(),
 			err,
