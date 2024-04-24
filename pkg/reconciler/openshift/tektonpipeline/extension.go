@@ -92,7 +92,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Tek
 	}
 
 	// reconcile namespace with updated labels
-	return common.ReconcileTargetNamespace(ctx, labels, comp, oe.kubeClientSet)
+	return common.ReconcileTargetNamespace(ctx, labels, nil, comp, oe.kubeClientSet)
 }
 
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {

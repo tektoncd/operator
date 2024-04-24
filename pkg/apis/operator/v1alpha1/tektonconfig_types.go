@@ -75,6 +75,11 @@ func (p Prune) IsEmpty() bool {
 	return reflect.DeepEqual(p, Prune{})
 }
 
+type NamespaceMetadata struct {
+	Labels      map[string]string `json:"labels,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
+}
+
 // TektonConfigSpec defines the desired state of TektonConfig
 type TektonConfigSpec struct {
 	Profile string `json:"profile,omitempty"`
@@ -109,6 +114,9 @@ type TektonConfigSpec struct {
 	// Platforms allows configuring platform specific configurations
 	// +optional
 	Platforms Platforms `json:"platforms,omitempty"`
+	// holds target namespace metadata
+	// +optional
+	TargetNamespaceMetadata *NamespaceMetadata `json:"targetNamespaceMetadata,omitempty"`
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
