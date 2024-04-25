@@ -327,7 +327,7 @@ By default pruner job will be created from the global pruner config (`spec.prune
 > `keep: 100` <br>
 ### Addon
 
-TektonAddon install some resources along with Tekton Pipelines on the cluster. This provides few ClusterTasks, PipelineTemplates.
+TektonAddon install some resources along with Tekton Pipelines on the cluster. This provides few ClusterTasks, PipelineTemplates, Tasks.
 
 This section allows to customize installation of those resources through params. You can read more about the supported params [here](./TektonAddon.md).
 
@@ -338,6 +338,8 @@ addon:
     - name: "clusterTask"
       value: "true"
     - name: "pipelineTemplates"
+      value: "true"
+    - name: "resolverTasks"
       value: "true"
 ```
 

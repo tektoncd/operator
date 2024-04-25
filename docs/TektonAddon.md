@@ -6,7 +6,8 @@ weight: 6
 -->
 # Tekton Addon
 
-TektonAddon custom resource allows user to install resource like clusterTasks and pipelineTemplate along with Pipelines. 
+TektonAddon custom resource allows user to install resource like clusterTasks and pipelineTemplate along with Pipelines.
+It also allows user to install various Tasks in openshift-pipelines namespace.
 
 **NOTE:** TektonAddon is currently available only for OpenShift Platform. This is roadmap to enable it for Kubernetes platform.
 
@@ -25,6 +26,8 @@ spec:
     value: "true"
   - name: pipelineTemplates
     value: "true"
+  - name: resolverTasks
+    value: "true"
 ```
 You can install this component using [TektonConfig](./TektonConfig.md) by choosing appropriate `profile`.
 
@@ -35,6 +38,7 @@ Available params are
 
 - `clusterTasks` (Default: `true`)
 - `pipelineTemplates` (Default: `true`)
+- `resolverTasks` (Default: `true`)
 
 User can disable the installation of resources by changing the value to `false`.
 

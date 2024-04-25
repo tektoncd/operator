@@ -53,6 +53,28 @@ declare -A TEKTON_CATALOG_TASKS=(
   # ["buildah"]="0.1"
   # ["openshift-client"]="0.2"
 )
+declare -r TEKTON_ECOSYSTEM="https://raw.githubusercontent.com/openshift-pipelines/tektoncd-catalog"
+declare -A TEKTON_ECOSYSTEM_TASKS=(
+  ['task-buildah']="0.3.1"
+  ['task-git-cli']="0.3.0"
+  ['task-git-clone']='0.3.0'
+  ['task-kn-apply']='0.1.0'
+  ['task-kn']='0.1.0'
+  ['task-maven']="0.2.1"
+  ['task-opc']="0.1.0"
+  ['task-openshift-client']="0.1.0"
+  ['task-s2i-dotnet']='0.3.1'
+  ['task-s2i-go']='0.3.1'
+  ['task-s2i-java']='0.3.1'
+  ['task-s2i-nodejs']='0.3.1'
+  ['task-s2i-perl']='0.3.1'
+  ['task-s2i-php']='0.3.1'
+  ['task-s2i-python']='0.3.1'
+  ['task-s2i-ruby']='0.3.1'
+  ['task-skopeo-copy']='0.3.1'
+  ['task-tkn']='0.1.0'
+  ['task-buildpacks']='0.1.0'
+)
 
 download_task() {
   local task_path="$1"; shift
@@ -82,15 +104,18 @@ get_tasks() {
   local dest_dir="$1"; shift
   local catalog="$1"; shift
   local catalog_version="$1"; shift
-  local -n tasks=$1
-
+  local -n tasks=$1; shift
+  local type="$1"
   info "Downloading tasks from catalog $catalog to $dest_dir directory"
   for t in ${!tasks[@]} ; do
     # task filenames do not follow a naming convention,
     # some are taskname.yaml while others are taskname-task.yaml
     # so, try both before failing
-    local task_url="$catalog/$catalog_version/task/$t/${tasks[$t]}/${t}.yaml"
-    echo "$catalog/$catalog_version/task/$t/${tasks[$t]}/${t}.yaml"
+    if [[ "$type" == "ecosystem" ]]; then
+      local task_url="$catalog/$catalog_version/tasks/$t/${tasks[$t]}/${t}.yaml"
+    elif [[ "$type" == 'default' ]];then
+      local task_url="$catalog/$catalog_version/task/$t/${tasks[$t]}/${t}.yaml"
+    fi
 
     mkdir -p "$dest_dir/$t/"
     local task_path="$dest_dir/$t/$t-task.yaml"
@@ -107,14 +132,31 @@ create_dir_or_die() {
 }
 
 main() {
+  local type=${2:-"default"}
 
-  local dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/02-clustertasks/source_external'}
+  if [[ "$type" == "default" ]]; then
+    local dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/02-clustertasks/source_external'}
+    local tasks=TEKTON_CATALOG_TASKS
+    local branch="main"
+    local catalog="$TEKTON_CATALOG"
+
+  elif [[ "$type" == "ecosystem" ]]; then
+    local dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem'}
+    local tasks=TEKTON_ECOSYSTEM_TASKS
+    local branch="p"
+    local catalog="$TEKTON_ECOSYSTEM"
+
+  else
+    echo "Invalid type specified: $type"
+    return $?
+  fi
+  
   [[ -z "$dest_dir"  ]] && usage "missing destination directory"
   shift
 
   [[ ! -d "$dest_dir" ]] && create_dir_or_die "$dest_dir" || echo "$dest_dir" exists
 
-  get_tasks "$dest_dir" "$TEKTON_CATALOG" "main" TEKTON_CATALOG_TASKS
+  get_tasks "$dest_dir" $catalog $branch $tasks $type
 
   return $?
 }

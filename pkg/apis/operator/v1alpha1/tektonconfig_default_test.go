@@ -90,7 +90,7 @@ func Test_SetDefaults_Addon_Params(t *testing.T) {
 	t.Setenv("PLATFORM", "openshift")
 
 	tc.SetDefaults(context.TODO())
-	if len(tc.Spec.Addon.Params) != 3 {
+	if len(tc.Spec.Addon.Params) != 4 {
 		t.Error("Setting default failed for TektonConfig (spec.addon.params)")
 	}
 }
