@@ -48,6 +48,7 @@ type Reconciler struct {
 	pipelineInformer             informer.TektonPipelineInformer
 	triggerInformer              informer.TektonTriggerInformer
 	operatorVersion              string
+	resolverTaskManifest         *mf.Manifest
 	clusterTaskManifest          *mf.Manifest
 	triggersResourcesManifest    *mf.Manifest
 	pipelineTemplateManifest     *mf.Manifest
@@ -130,6 +131,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	ptVal, _ := findValue(ta.Spec.Params, v1alpha1.PipelineTemplatesParam)
 	ctVal, _ := findValue(ta.Spec.Params, v1alpha1.ClusterTasksParam)
 	cctVal, _ := findValue(ta.Spec.Params, v1alpha1.CommunityClusterTasks)
+	rtVal, _ := findValue(ta.Spec.Params, v1alpha1.ResolverTasks)
 
 	if ptVal == "true" && ctVal == "false" {
 		ta.Status.MarkNotReady("pipelineTemplates cannot be true if clusterTask is false")
@@ -150,6 +152,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	// this to check if all sets are in ready set
 	ready := true
 	var errorMsg string
+
+	if err := r.EnsureResolverTask(ctx, rtVal, ta); err != nil {
+		ready = false
+		errorMsg = fmt.Sprintf("namespaced tasks not yet ready: %v", err)
+		logger.Error(errorMsg)
+	}
 
 	if err := r.EnsureClusterTask(ctx, ctVal, ta); err != nil {
 		ready = false

@@ -17,6 +17,7 @@ limitations under the License.
 package tektonaddon
 
 const (
+	ResolverTaskInstallerSet           = "ResolverTask"
 	ClusterTaskInstallerSet            = "ClusterTask"
 	OpenShiftConsoleInstallerSet       = "OpenShiftConsole"
 	CommunityClusterTaskInstallerSet   = "CommunityClusterTask"

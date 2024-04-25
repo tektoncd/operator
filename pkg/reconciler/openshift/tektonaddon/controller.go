@@ -78,6 +78,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 		metrics, _ := NewRecorder()
 
+		resolverTaskManifest := &mf.Manifest{}
+		if err := applyAddons(resolverTaskManifest, "07-ecosystem"); err != nil {
+			logger.Fatalf("failed to read namespaced tasks from kodata: %v", err)
+		}
+
 		clusterTaskManifest := &mf.Manifest{}
 		if err := applyAddons(clusterTaskManifest, "02-clustertasks"); err != nil {
 			logger.Fatalf("failed to read clustertask from kodata: %v", err)
@@ -124,6 +129,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			triggerInformer:              tektonTriggerinformer.Get(ctx),
 			manifest:                     manifest,
 			operatorVersion:              version,
+			resolverTaskManifest:         resolverTaskManifest,
 			clusterTaskManifest:          clusterTaskManifest,
 			triggersResourcesManifest:    triggersResourcesManifest,
 			pipelineTemplateManifest:     pipelineTemplateManifest,

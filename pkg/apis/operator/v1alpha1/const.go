@@ -36,6 +36,7 @@ const (
 	ClusterTasksParam      = "clusterTasks"
 	PipelineTemplatesParam = "pipelineTemplates"
 	CommunityClusterTasks  = "communityClusterTasks"
+	ResolverTasks          = "resolverTasks"
 
 	// Hub Params
 	EnableDevconsoleIntegrationParam = "enable-devconsole-integration"
@@ -112,6 +113,7 @@ var (
 		ClusterTasksParam:      defaultParamValue,
 		PipelineTemplatesParam: defaultParamValue,
 		CommunityClusterTasks:  defaultParamValue,
+		ResolverTasks:          defaultParamValue,
 	}
 
 	HubParams = map[string]ParamValue{
