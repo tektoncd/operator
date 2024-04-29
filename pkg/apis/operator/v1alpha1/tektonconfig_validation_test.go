@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -205,6 +206,37 @@ func Test_ValidateTektonConfig_InvalidPipelineProperties(t *testing.T) {
 
 	err := tc.Validate(context.TODO())
 	assert.Equal(t, "invalid value: test: spec.pipeline.enable-api-fields", err.Error())
+}
+
+func Test_ValidateTektonConfig_InvalidPipelineOptions(t *testing.T) {
+	invalidPolicy := admissionregistrationv1.FailurePolicyType("InvalidPolicy")
+	sideEffectUnknown := admissionregistrationv1.SideEffectClassUnknown
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "config",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Profile: "all",
+			Pipeline: Pipeline{
+				Options: AdditionalOptions{
+					WebhookConfigurationOptions: map[string]WebhookConfigurationOptions{
+						"validation.webhook.tekton.dev": WebhookConfigurationOptions{
+							FailurePolicy: &invalidPolicy,
+							SideEffects:   &sideEffectUnknown,
+						},
+					},
+				},
+			},
+			Pruner: Prune{Disabled: true},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Equal(t, "invalid value: InvalidPolicy: spec.pipeline.options.webhookconfigurationoptions.failurePolicy", err.Error())
 }
 
 func Test_ValidateTektonConfig_InvalidTriggerProperties(t *testing.T) {
