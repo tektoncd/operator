@@ -19,6 +19,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
@@ -34,8 +35,10 @@ import (
 	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
-var _ apis.Validatable = (*Pipeline)(nil)
-var _ resourcesemantics.VerbLimited = (*Pipeline)(nil)
+var (
+	_ apis.Validatable              = (*Pipeline)(nil)
+	_ resourcesemantics.VerbLimited = (*Pipeline)(nil)
+)
 
 const (
 	taskRef      = "taskRef"
@@ -175,6 +178,8 @@ func (pt PipelineTask) ValidateName() *apis.FieldError {
 func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(pt.validateRefOrSpec(ctx))
 
+	errs = errs.Also(pt.validateEnabledInlineSpec(ctx))
+
 	errs = errs.Also(pt.validateEmbeddedOrType())
 	// taskKinds contains the kinds when the apiVersion is not set, they are not custom tasks,
 	// if apiVersion is set they are custom tasks.
@@ -265,6 +270,24 @@ func (pt *PipelineTask) validateWorkspaces(workspaceNames sets.String) (errs *ap
 		}
 
 		workspaceBindingNames.Insert(ws.Name)
+	}
+	return errs
+}
+
+// validateEnabledInlineSpec validates that pipelineSpec or taskSpec is allowed by checking
+// disable-inline-spec field
+func (pt PipelineTask) validateEnabledInlineSpec(ctx context.Context) (errs *apis.FieldError) {
+	if pt.TaskSpec != nil {
+		if slices.Contains(strings.Split(
+			config.FromContextOrDefaults(ctx).FeatureFlags.DisableInlineSpec, ","), "pipeline") {
+			errs = errs.Also(apis.ErrDisallowedFields("taskSpec"))
+		}
+	}
+	if pt.PipelineSpec != nil {
+		if slices.Contains(strings.Split(
+			config.FromContextOrDefaults(ctx).FeatureFlags.DisableInlineSpec, ","), "pipeline") {
+			errs = errs.Also(apis.ErrDisallowedFields("pipelineSpec"))
+		}
 	}
 	return errs
 }
@@ -421,6 +444,7 @@ func ValidatePipelineParameterVariables(ctx context.Context, tasks []PipelineTas
 	}
 	return errs
 }
+
 func validatePipelineParametersVariables(tasks []PipelineTask, prefix string, paramNames sets.String, arrayParamNames sets.String, objectParamNameKeys map[string][]string) (errs *apis.FieldError) {
 	for idx, task := range tasks {
 		errs = errs.Also(validatePipelineParametersVariablesInTaskParameters(task.Params, prefix, paramNames, arrayParamNames, objectParamNameKeys).ViaIndex(idx))
@@ -552,8 +576,8 @@ func (pt *PipelineTask) validateExecutionStatusVariablesAllowed(ptNames sets.Str
 
 func validateContainsExecutionStatusVariablesDisallowed(expressions []string, path string) (errs *apis.FieldError) {
 	if containsExecutionStatusReferences(expressions) {
-		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline tasks can not refer to execution status"+
-			" of any other pipeline task or aggregate status of tasks"), path))
+		errs = errs.Also(apis.ErrInvalidValue("pipeline tasks can not refer to execution status"+
+			" of any other pipeline task or aggregate status of tasks", path))
 	}
 	return errs
 }
@@ -593,6 +617,7 @@ func validateExecutionStatusVariablesExpressions(expressions []string, ptNames s
 	}
 	return errs
 }
+
 func validatePipelineContextVariablesInParamValues(paramValues []string, prefix string, contextNames sets.String) (errs *apis.FieldError) {
 	for _, paramValue := range paramValues {
 		errs = errs.Also(substitution.ValidateNoReferencesToUnknownVariables(paramValue, prefix, contextNames).ViaField("value"))
@@ -662,7 +687,6 @@ func taskContainsResult(resultExpression string, pipelineTaskNames sets.String, 
 		if expression != "" {
 			value := stripVarSubExpression("$" + expression)
 			pr, err := resultref.ParseTaskExpression(value)
-
 			if err != nil {
 				return false
 			}
@@ -792,7 +816,7 @@ func validateMatrixedPipelineTaskConsumed(expressions []string, taskMapping map[
 		taskConsumed := taskMapping[pipelineTask]
 		if taskConsumed.IsMatrixed() {
 			if !strings.HasSuffix(expression, "[*]") {
-				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("A matrixed pipelineTask can only be consumed in aggregate using [*] notation, but is currently set to %s", expression)))
+				errs = errs.Also(apis.ErrGeneric("A matrixed pipelineTask can only be consumed in aggregate using [*] notation, but is currently set to " + expression))
 			}
 			filteredExpressions = append(filteredExpressions, expression)
 		}

@@ -185,6 +185,26 @@
         }
       }
     },
+    "v1.Artifacts": {
+      "description": "Artifacts represents the collection of input and output artifacts associated with a task run or a similar process. Artifacts in this context are units of data or resources that the process either consumes as input or produces as output.",
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Artifact"
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.Artifact"
+          }
+        }
+      }
+    },
     "v1.ChildStatusReference": {
       "description": "ChildStatusReference is used to point to the statuses of individual TaskRuns and Runs within this PipelineRun.",
       "type": "object",
@@ -649,6 +669,7 @@
           "$ref": "#/definitions/v1.PipelineRef"
         },
         "pipelineSpec": {
+          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1.PipelineSpec"
         },
         "status": {
@@ -949,7 +970,7 @@
           "$ref": "#/definitions/v1.PipelineRef"
         },
         "pipelineSpec": {
-          "description": "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported",
+          "description": "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1.PipelineSpec"
         },
         "retries": {
@@ -971,7 +992,7 @@
           "$ref": "#/definitions/v1.TaskRef"
         },
         "taskSpec": {
-          "description": "TaskSpec is a specification of a task",
+          "description": "TaskSpec is a specification of a task Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1.EmbeddedTask"
         },
         "timeout": {
@@ -2054,6 +2075,7 @@
           "$ref": "#/definitions/v1.TaskRef"
         },
         "taskSpec": {
+          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1.TaskSpec"
         },
         "timeout": {

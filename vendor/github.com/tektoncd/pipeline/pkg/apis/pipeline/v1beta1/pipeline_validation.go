@@ -31,12 +31,15 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/utils/strings/slices"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/webhook/resourcesemantics"
 )
 
-var _ apis.Validatable = (*Pipeline)(nil)
-var _ resourcesemantics.VerbLimited = (*Pipeline)(nil)
+var (
+	_ apis.Validatable              = (*Pipeline)(nil)
+	_ resourcesemantics.VerbLimited = (*Pipeline)(nil)
+)
 
 const (
 	taskRef      = "taskRef"
@@ -177,6 +180,8 @@ func (pt PipelineTask) ValidateName() *apis.FieldError {
 func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(pt.validateRefOrSpec(ctx))
 
+	errs = errs.Also(pt.validateEnabledInlineSpec(ctx))
+
 	errs = errs.Also(pt.validateEmbeddedOrType())
 
 	if pt.Resources != nil {
@@ -218,6 +223,24 @@ func (pt PipelineTask) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(pt.validateTask(ctx))
 	}
 	return //nolint:nakedret
+}
+
+// validateEnabledInlineSpec validates that pipelineSpec or taskSpec is allowed by checking
+// disable-inline-spec field
+func (pt PipelineTask) validateEnabledInlineSpec(ctx context.Context) (errs *apis.FieldError) {
+	if pt.TaskSpec != nil {
+		if slices.Contains(strings.Split(
+			config.FromContextOrDefaults(ctx).FeatureFlags.DisableInlineSpec, ","), "pipeline") {
+			errs = errs.Also(apis.ErrDisallowedFields("taskSpec"))
+		}
+	}
+	if pt.PipelineSpec != nil {
+		if slices.Contains(strings.Split(
+			config.FromContextOrDefaults(ctx).FeatureFlags.DisableInlineSpec, ","), "pipeline") {
+			errs = errs.Also(apis.ErrDisallowedFields("pipelineSpec"))
+		}
+	}
+	return errs
 }
 
 func (pt *PipelineTask) validateMatrix(ctx context.Context) (errs *apis.FieldError) {
@@ -539,8 +562,8 @@ func (pt *PipelineTask) validateExecutionStatusVariablesDisallowed() (errs *apis
 
 func validateContainsExecutionStatusVariablesDisallowed(expressions []string, path string) (errs *apis.FieldError) {
 	if containsExecutionStatusReferences(expressions) {
-		errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("pipeline tasks can not refer to execution status"+
-			" of any other pipeline task or aggregate status of tasks"), path))
+		errs = errs.Also(apis.ErrInvalidValue("pipeline tasks can not refer to execution status"+
+			" of any other pipeline task or aggregate status of tasks", path))
 	}
 	return errs
 }
@@ -796,7 +819,7 @@ func validateMatrixedPipelineTaskConsumed(expressions []string, taskMapping map[
 		taskConsumed := taskMapping[pipelineTask]
 		if taskConsumed.IsMatrixed() {
 			if !strings.HasSuffix(expression, "[*]") {
-				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("A matrixed pipelineTask can only be consumed in aggregate using [*] notation, but is currently set to %s", expression)))
+				errs = errs.Also(apis.ErrGeneric("A matrixed pipelineTask can only be consumed in aggregate using [*] notation, but is currently set to " + expression))
 			}
 			filteredExpressions = append(filteredExpressions, expression)
 		}
