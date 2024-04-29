@@ -68,6 +68,8 @@ const (
 	DefaultRunningInEnvWithInjectedSidecars = true
 	// DefaultAwaitSidecarReadiness is the default value for "await-sidecar-readiness".
 	DefaultAwaitSidecarReadiness = true
+	// DefaultDisableInlineSpec is the default value of "disable-inline-spec"
+	DefaultDisableInlineSpec = ""
 	// DefaultRequireGitSSHSecretKnownHosts is the default value for "require-git-ssh-secret-known-hosts".
 	DefaultRequireGitSSHSecretKnownHosts = false
 	// DefaultEnableTektonOciBundles is the default value for "enable-tekton-oci-bundles".
@@ -106,6 +108,10 @@ const (
 
 	// EnableParamEnum is the flag to enabled enum in params
 	EnableParamEnum = "enable-param-enum"
+
+	// DisableInlineSpec is the flag to disable embedded spec
+	// in Taskrun or Pipelinerun
+	DisableInlineSpec = "disable-inline-spec"
 
 	disableAffinityAssistantKey         = "disable-affinity-assistant"
 	disableCredsInitKey                 = "disable-creds-init"
@@ -146,13 +152,15 @@ var (
 	DefaultEnableStepActions = PerFeatureFlag{
 		Name:      EnableStepActions,
 		Stability: AlphaAPIFields,
-		Enabled:   DefaultAlphaFeatureEnabled}
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
 
 	// DefaultEnableArtifacts is the default PerFeatureFlag value for EnableStepActions
 	DefaultEnableArtifacts = PerFeatureFlag{
 		Name:      EnableStepActions,
 		Stability: AlphaAPIFields,
-		Enabled:   DefaultAlphaFeatureEnabled}
+		Enabled:   DefaultAlphaFeatureEnabled,
+	}
 
 	// DefaultEnableParamEnum is the default PerFeatureFlag value for EnableParamEnum
 	DefaultEnableParamEnum = PerFeatureFlag{
@@ -164,8 +172,6 @@ var (
 
 // FeatureFlags holds the features configurations
 // +k8s:deepcopy-gen=true
-//
-//nolint:musttag
 type FeatureFlags struct {
 	DisableAffinityAssistant         bool
 	DisableCredsInit                 bool
@@ -193,6 +199,7 @@ type FeatureFlags struct {
 	EnableStepActions         bool
 	EnableParamEnum           bool
 	EnableArtifacts           bool
+	DisableInlineSpec         string
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -291,6 +298,10 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 	if err := setPerFeatureFlag(EnableArtifacts, DefaultEnableArtifacts, &tc.EnableArtifacts); err != nil {
 		return nil, err
 	}
+	if err := setFeatureInlineSpec(cfgMap, DisableInlineSpec, DefaultDisableInlineSpec, &tc.DisableInlineSpec); err != nil {
+		return nil, err
+	}
+
 	// Given that they are alpha features, Tekton Bundles and Custom Tasks should be switched on if
 	// enable-api-fields is "alpha". If enable-api-fields is not "alpha" then fall back to the value of
 	// each feature's individual flag.
@@ -349,7 +360,7 @@ func setCoschedule(cfgMap map[string]string, defaultValue string, disabledAffini
 // setEnforceNonFalsifiability sets the "enforce-nonfalsifiability" flag based on the content of a given map.
 // If the feature gate is invalid, then an error is returned.
 func setEnforceNonFalsifiability(cfgMap map[string]string, feature *string) error {
-	var value = DefaultEnforceNonfalsifiability
+	value := DefaultEnforceNonfalsifiability
 	if cfg, ok := cfgMap[enforceNonfalsifiability]; ok {
 		value = strings.ToLower(cfg)
 	}
@@ -362,6 +373,15 @@ func setEnforceNonFalsifiability(cfgMap map[string]string, feature *string) erro
 	default:
 		return fmt.Errorf("invalid value for feature flag %q: %q", enforceNonfalsifiability, value)
 	}
+}
+
+func setFeatureInlineSpec(cfgMap map[string]string, key string, defaultValue string, feature *string) error {
+	if cfg, ok := cfgMap[key]; ok {
+		*feature = cfg
+		return nil
+	}
+	*feature = strings.ReplaceAll(defaultValue, " ", "")
+	return nil
 }
 
 // setResultExtractionMethod sets the "results-from" flag based on the content of a given map.
@@ -393,7 +413,7 @@ func setMaxResultSize(cfgMap map[string]string, defaultValue int, feature *int) 
 	}
 	// if max limit is > 1.5 MB (CRD limit).
 	if value >= 1572864 {
-		return fmt.Errorf("invalid value for feature flag %q: %q. This is exceeding the CRD limit", resultExtractionMethod, fmt.Sprint(value))
+		return fmt.Errorf("invalid value for feature flag %q: %q. This is exceeding the CRD limit", resultExtractionMethod, strconv.Itoa(value))
 	}
 	*feature = value
 	return nil
