@@ -58,6 +58,10 @@ spec:
     threads-per-controller: 2
     kube-api-qps: 5.0
     kube-api-burst: 10
+  options:
+    disabled: false
+    configMaps: {}
+    deployments: {}
 ```
 You can install this component using [TektonConfig](./TektonConfig.md) by choosing appropriate `profile`.
 

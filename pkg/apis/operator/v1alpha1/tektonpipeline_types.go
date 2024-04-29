@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -141,6 +142,13 @@ type OptionalPipelineProperties struct {
 	DefaultMaxMatrixCombinationsCount   string `json:"default-max-matrix-combinations-count,omitempty"`
 	DefaultForbiddenEnv                 string `json:"default-forbidden-env,omitempty"`
 	DefaultResolverType                 string `json:"default-resolver-type,omitempty"`
+}
+
+// WebhookOptions defines options for webhooks
+type WebhookConfigurationOptions struct {
+	FailurePolicy  *admissionregistrationv1.FailurePolicyType `json:"failurePolicy,omitempty"`
+	TimeoutSeconds *int32                                     `json:"timeoutSeconds,omitempty"`
+	SideEffects    *admissionregistrationv1.SideEffectClass   `json:"sideEffects,omitempty"`
 }
 
 // PipelineMetricsProperties defines the fields which are configurable for

@@ -49,7 +49,11 @@ func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) 
 	// execute common spec validations
 	errs = errs.Also(tp.Spec.CommonSpec.validate("spec"))
 
-	return errs.Also(tp.Spec.PipelineProperties.validate("spec"))
+	errs = errs.Also(tp.Spec.PipelineProperties.validate("spec"))
+
+	errs = errs.Also(tp.Spec.Options.validate("spec"))
+
+	return errs
 }
 
 func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {

@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	"go.uber.org/zap"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
@@ -33,10 +34,12 @@ import (
 )
 
 const (
-	KindConfigMap               = "ConfigMap"
-	KindDeployment              = "Deployment"
-	KindStatefulSet             = "StatefulSet"
-	KindHorizontalPodAutoscaler = "HorizontalPodAutoscaler"
+	KindConfigMap                      = "ConfigMap"
+	KindDeployment                     = "Deployment"
+	KindStatefulSet                    = "StatefulSet"
+	KindHorizontalPodAutoscaler        = "HorizontalPodAutoscaler"
+	KindValidatingWebhookConfiguration = "ValidatingWebhookConfiguration"
+	KindMutatingWebhookConfiguration   = "MutatingWebhookConfiguration"
 )
 
 type OptionsTransformer struct {
@@ -115,6 +118,8 @@ func (ot *OptionsTransformer) transform(u *unstructured.Unstructured) error {
 	case KindHorizontalPodAutoscaler:
 		return ot.updateHorizontalPodAutoscalers(u)
 
+	case KindValidatingWebhookConfiguration, KindMutatingWebhookConfiguration:
+		return ot.updateWebhookConfiguration(u)
 	}
 
 	return nil
@@ -670,4 +675,67 @@ func (ot *OptionsTransformer) createHorizontalPodAutoscalers(manifest *mf.Manife
 	}
 
 	return newHPAs, nil
+}
+
+func (ot *OptionsTransformer) updateWebhookConfiguration(u *unstructured.Unstructured) error {
+	webhookOptions, found := ot.options.WebhookConfigurationOptions[u.GetName()]
+	if !found {
+		return nil
+	}
+
+	switch u.GetKind() {
+	case KindValidatingWebhookConfiguration:
+		targetWebhookConfiguration := &admissionregistrationv1.ValidatingWebhookConfiguration{}
+		err := apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, targetWebhookConfiguration)
+		if err != nil {
+			return err
+		}
+		for i, w := range targetWebhookConfiguration.Webhooks {
+			if u.GetName() == w.Name {
+				if webhookOptions.FailurePolicy != nil {
+					targetWebhookConfiguration.Webhooks[i].FailurePolicy = webhookOptions.FailurePolicy
+				}
+				if webhookOptions.TimeoutSeconds != nil {
+					targetWebhookConfiguration.Webhooks[i].TimeoutSeconds = webhookOptions.TimeoutSeconds
+				}
+				if webhookOptions.SideEffects != nil {
+					targetWebhookConfiguration.Webhooks[i].SideEffects = webhookOptions.SideEffects
+				}
+			}
+		}
+		// convert webhookconfigurtion to unstructured object
+		obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(targetWebhookConfiguration)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(obj)
+
+	case KindMutatingWebhookConfiguration:
+		targetWebhookConfiguration := &admissionregistrationv1.MutatingWebhookConfiguration{}
+		err := apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, targetWebhookConfiguration)
+		if err != nil {
+			return err
+		}
+		for i, w := range targetWebhookConfiguration.Webhooks {
+			if u.GetName() == w.Name {
+				if webhookOptions.FailurePolicy != nil {
+					targetWebhookConfiguration.Webhooks[i].FailurePolicy = webhookOptions.FailurePolicy
+				}
+				if webhookOptions.TimeoutSeconds != nil {
+					targetWebhookConfiguration.Webhooks[i].TimeoutSeconds = webhookOptions.TimeoutSeconds
+				}
+				if webhookOptions.SideEffects != nil {
+					targetWebhookConfiguration.Webhooks[i].SideEffects = webhookOptions.SideEffects
+				}
+			}
+		}
+		// convert webhookconfigurtion to unstructured object
+		obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(targetWebhookConfiguration)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(obj)
+	}
+
+	return nil
 }
