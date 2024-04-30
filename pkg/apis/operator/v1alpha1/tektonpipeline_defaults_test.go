@@ -59,6 +59,7 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 		MaxResultSize:                            ptr.Int32(config.DefaultMaxResultSize),
 		SetSecurityContext:                       ptr.Bool(config.DefaultSetSecurityContext),
 		Coschedule:                               config.DefaultCoschedule,
+		DisableInlineSpec:                        config.DefaultDisableInlineSpec,
 		EnableCELInWhenExpression:                ptr.Bool(config.DefaultEnableCELInWhenExpression.Enabled),
 		EnableStepActions:                        ptr.Bool(config.DefaultEnableStepActions.Enabled),
 		EnableParamEnum:                          ptr.Bool(config.DefaultEnableParamEnum.Enabled),

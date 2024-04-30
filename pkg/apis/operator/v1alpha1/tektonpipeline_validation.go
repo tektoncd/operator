@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/tektoncd/pipeline/pkg/apis/config"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -31,6 +32,7 @@ var (
 	validatePipelineResultExtractionMethod    = sets.NewString("", config.ResultExtractionMethodTerminationMessage, config.ResultExtractionMethodSidecarLogs)
 	validatePipelineEnforceNonFalsifiability  = sets.NewString("", config.EnforceNonfalsifiabilityNone, config.EnforceNonfalsifiabilityWithSpire)
 	validatePipelineCoschedule                = sets.NewString("", config.CoscheduleDisabled, config.CoscheduleWorkspaces, config.CoschedulePipelineRuns, config.CoscheduleIsolatePipelineRun)
+	validatePipelineInlineSpecDisable         = sets.NewString("", "pipeline", "pipelinerun", "taskrun")
 )
 
 func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -56,12 +58,20 @@ func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
 		errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, fmt.Sprintf("%s.enable-api-fields", path)))
 	}
 
+	if p.DisableInlineSpec != "" {
+		val := strings.Split(p.DisableInlineSpec, ",")
+		for _, v := range val {
+			if !validatePipelineInlineSpecDisable.Has(v) {
+				errs = errs.Also(apis.ErrInvalidValue(p.DisableInlineSpec, fmt.Sprintf("%s.disable-inline-spec", path)))
+			}
+		}
+	}
+
 	if p.DefaultTimeoutMinutes != nil {
 		if *p.DefaultTimeoutMinutes == 0 {
 			errs = errs.Also(apis.ErrInvalidValue(p.DefaultTimeoutMinutes, path+".default-timeout-minutes"))
 		}
 	}
-
 	if p.MaxResultSize != nil {
 		if *p.MaxResultSize >= 1572864 {
 			errs = errs.Also(apis.ErrInvalidValue(p.MaxResultSize, path+".max-result-size"))

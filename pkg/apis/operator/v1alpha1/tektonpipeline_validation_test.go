@@ -210,6 +210,41 @@ func TestValidateTektonPipelineCoschedule(t *testing.T) {
 	}
 }
 
+func TestValidateTektonPipeline_DisableInlineSpec(t *testing.T) {
+	tp := &TektonPipeline{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "pipeline",
+			Namespace: "tekton-pipelines-ns",
+		},
+		Spec: TektonPipelineSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "tekton-pipelines-ns",
+			},
+		},
+	}
+
+	tests := []struct {
+		name              string
+		disableInlineSpec string
+		err               string
+	}{
+		{name: "disable-inline-spec", disableInlineSpec: "", err: ""},
+		{name: "disable-inline-spec", disableInlineSpec: "pipeline", err: ""},
+		{name: "disable-inline-spec", disableInlineSpec: "pipelinerun", err: ""},
+		{name: "disable-inline-spec", disableInlineSpec: "taskrun", err: ""},
+		{name: "disable-inline-spec", disableInlineSpec: "pipelinerun,taskrun,pipeline", err: ""},
+		{name: "disable-inline-spec", disableInlineSpec: "hello", err: "invalid value: hello: spec.disable-inline-spec"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tp.Spec.Pipeline.DisableInlineSpec = test.disableInlineSpec
+			errs := tp.Validate(context.TODO())
+			assert.Equal(t, test.err, errs.Error())
+		})
+	}
+}
+
 func Test_ValidateTektonPipeline_OnDelete(t *testing.T) {
 
 	td := &TektonPipeline{

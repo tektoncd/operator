@@ -117,6 +117,7 @@ type PipelineProperties struct {
 	EnableCELInWhenExpression *bool  `json:"enable-cel-in-whenexpression,omitempty"`
 	EnableStepActions         *bool  `json:"enable-step-actions,omitempty"`
 	EnableParamEnum           *bool  `json:"enable-param-enum,omitempty"`
+	DisableInlineSpec         string `json:"disable-inline-spec,omitempty"`
 
 	PipelineMetricsProperties `json:",inline"`
 	// +optional
