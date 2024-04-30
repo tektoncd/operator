@@ -28,6 +28,10 @@ type FakeOperatorV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeOperatorV1alpha1) ManualApprovalGates() v1alpha1.ManualApprovalGateInterface {
+	return &FakeManualApprovalGates{c}
+}
+
 func (c *FakeOperatorV1alpha1) OpenShiftPipelinesAsCodes() v1alpha1.OpenShiftPipelinesAsCodeInterface {
 	return &FakeOpenShiftPipelinesAsCodes{c}
 }

@@ -53,6 +53,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=operator.tekton.dev, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("manualapprovalgates"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1alpha1().ManualApprovalGates().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("openshiftpipelinesascodes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1alpha1().OpenShiftPipelinesAsCodes().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tektonaddons"):

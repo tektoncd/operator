@@ -408,3 +408,18 @@ rules:
   - delete
   - update
   - patch
+- apiGroups:
+  - openshift-pipelines.org
+  resources:
+  - approvaltasks
+  - approvaltasks/status
+  verbs:
+  - add
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch

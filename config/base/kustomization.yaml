@@ -22,6 +22,7 @@ resources:
 - 300-operator_v1alpha1_result_crd.yaml
 - 300-operator_v1alpha1_installer_set_crd.yaml
 - 300-operator_v1alpha1_hub_crd.yaml
+- 300-operator_v1alpha1_manualapprovalgate_crd.yaml
 - config-logging.yaml
 - config-observability.yaml
 - tekton-config-defaults.yaml
