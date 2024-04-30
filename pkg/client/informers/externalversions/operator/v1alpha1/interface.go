@@ -24,6 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// ManualApprovalGates returns a ManualApprovalGateInformer.
+	ManualApprovalGates() ManualApprovalGateInformer
 	// OpenShiftPipelinesAsCodes returns a OpenShiftPipelinesAsCodeInformer.
 	OpenShiftPipelinesAsCodes() OpenShiftPipelinesAsCodeInformer
 	// TektonAddons returns a TektonAddonInformer.
@@ -55,6 +57,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// ManualApprovalGates returns a ManualApprovalGateInformer.
+func (v *version) ManualApprovalGates() ManualApprovalGateInformer {
+	return &manualApprovalGateInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // OpenShiftPipelinesAsCodes returns a OpenShiftPipelinesAsCodeInformer.

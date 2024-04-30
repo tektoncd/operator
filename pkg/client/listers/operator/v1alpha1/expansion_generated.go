@@ -18,6 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
+// ManualApprovalGateListerExpansion allows custom methods to be added to
+// ManualApprovalGateLister.
+type ManualApprovalGateListerExpansion interface{}
+
 // OpenShiftPipelinesAsCodeListerExpansion allows custom methods to be added to
 // OpenShiftPipelinesAsCodeLister.
 type OpenShiftPipelinesAsCodeListerExpansion interface{}

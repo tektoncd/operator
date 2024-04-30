@@ -135,5 +135,6 @@ var (
 	ChainResourceName            = "chain"
 	OperandTektoncdChains        = "tektoncd-chains"
 	OpenShiftPipelinesAsCodeName = "pipelines-as-code"
+	ManualApprovalGates          = "manual-approval-gate"
 	PrunerResourceName           = "tektoncd-pruner"
 )
