@@ -113,6 +113,10 @@ func (p *Pipeline) setDefaults() {
 		p.EnableParamEnum = ptr.Bool(config.DefaultEnableParamEnum.Enabled)
 	}
 
+	if p.DisableInlineSpec == "" {
+		p.DisableInlineSpec = config.DefaultDisableInlineSpec
+	}
+
 	if p.MetricsPipelinerunDurationType == "" {
 		p.MetricsPipelinerunDurationType = config.DefaultDurationPipelinerunType
 	}

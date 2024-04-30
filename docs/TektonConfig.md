@@ -47,6 +47,7 @@ The TektonConfig CR provides the following features
       disable-creds-init: false
       disable-home-env-overwrite: true
       disable-working-directory-overwrite: true
+      disable-inline-spec: "pipeline,pipelinerun,taskrun"
       enable-api-fields: beta
       enable-bundles-resolver: true
       enable-cel-in-whenexpression: false
