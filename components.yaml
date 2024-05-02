@@ -19,3 +19,6 @@ results:
 triggers:
   github: tektoncd/triggers
   version: v0.27.0
+manual-approval-gate:
+  github: openshift-pipelines/manual-approval-gate
+  version: v0.1.0

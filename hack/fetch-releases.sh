@@ -171,6 +171,46 @@ release_yaml_pac() {
     echo ""
 }
 
+release_yaml_manualapprovalgate() {
+  echo fetching '|' version: ${1}
+  local version=$1
+
+  ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
+  if [ ${version} == "latest" ]
+  then
+    version=$(curl -sL https://api.github.com/repos/openshift-pipelines/manual-approval-gate/releases | jq -r ".[].tag_name" | sort -Vr | head -n1)
+    dirPath=${ko_data}/manual-approval-gate/0.0.0-latest
+  else
+    dirVersion=${version//v}
+    dirPath=${ko_data}/manual-approval-gate/${dirVersion}
+  fi
+  mkdir -p ${dirPath} || true
+
+  dest=${dirPath}
+  fileName=release-${TARGET}.yaml
+  destinationFile=${dest}/${fileName}
+
+  if [ -f "$destinationFile" ] && [ $FORCE_FETCH_RELEASE = "false" ]; then
+        if grep -Eq "$version" $destinationFile;
+        then
+            echo "release file already exist with required version, skipping!"
+            echo ""
+        fi
+  fi
+
+  url="https://github.com/openshift-pipelines/manual-approval-gate/releases/download/${version}/${fileName}"
+  echo ${url}
+  http_response=$(curl -s -L -o ${destinationFile} -w "%{http_code}" ${url})
+  echo url: ${url}
+  if [[ $http_response != "200" ]]; then
+    echo "Error: failed to get manual-approval-gate yaml, status code: $http_response"
+    exit 1
+  fi
+  echo "Info: Added Manual-Approval-Gate/$fileName:$version release yaml !!"
+  echo ""
+
+}
+
 
 release_yaml_hub() {
   echo fetching '|' component: ${1} '|' version: ${2}
@@ -277,6 +317,9 @@ main() {
 
   hub_version=$(go run ./cmd/tool component-version ${CONFIG} hub)
   release_yaml_hub hub ${hub_version}
+
+  mag_version=$(go run ./cmd/tool component-version ${CONFIG} manual-approval-gate)
+  release_yaml_manualapprovalgate ${mag_version}
 
   # copy pruner rbac/sa yaml
   copy_pruner_yaml
