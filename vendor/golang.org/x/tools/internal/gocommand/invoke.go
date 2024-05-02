@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -20,8 +21,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	exec "golang.org/x/sys/execabs"
 
 	"golang.org/x/tools/internal/event"
 	"golang.org/x/tools/internal/event/keys"
@@ -159,12 +158,15 @@ type Invocation struct {
 	BuildFlags []string
 
 	// If ModFlag is set, the go command is invoked with -mod=ModFlag.
+	// TODO(rfindley): remove, in favor of Args.
 	ModFlag string
 
 	// If ModFile is set, the go command is invoked with -modfile=ModFile.
+	// TODO(rfindley): remove, in favor of Args.
 	ModFile string
 
 	// If Overlay is set, the go command is invoked with -overlay=Overlay.
+	// TODO(rfindley): remove, in favor of Args.
 	Overlay string
 
 	// If CleanEnv is set, the invocation will run only with the environment

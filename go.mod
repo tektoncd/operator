@@ -10,22 +10,22 @@ require (
 	github.com/manifestival/client-go-client v0.5.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
-	github.com/openshift-pipelines/pipelines-as-code v0.24.3
+	github.com/openshift-pipelines/pipelines-as-code v0.24.5
 	github.com/openshift/api v0.0.0-20230503133300-8bbcb7ca7183
 	github.com/openshift/apiserver-library-go v0.0.0-20230503174907-d9b2bf6185e9
 	github.com/openshift/client-go v0.0.0-20230503144108-75015d2347cb
 	github.com/sigstore/cosign/v2 v2.2.2
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
-	github.com/stretchr/testify v1.8.4
-	github.com/tektoncd/pipeline v0.56.1
+	github.com/stretchr/testify v1.9.0
+	github.com/tektoncd/pipeline v0.56.4
 	github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293
-	github.com/tektoncd/triggers v0.26.1
+	github.com/tektoncd/triggers v0.26.2
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa
-	golang.org/x/mod v0.15.0
-	golang.org/x/sync v0.6.0
+	golang.org/x/mod v0.17.0
+	golang.org/x/sync v0.7.0
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	gotest.tools/v3 v3.5.1
 	k8s.io/api v0.28.3
@@ -69,7 +69,7 @@ require (
 	github.com/Azure/go-autorest/tracing v0.6.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
-	github.com/ProtonMail/go-crypto v0.0.0-20230923063757-afb1ddc0824c // indirect
+	github.com/ProtonMail/go-crypto v1.0.0 // indirect
 	github.com/ThalesIgnite/crypto11 v1.2.5 // indirect
 	github.com/agnivade/levenshtein v1.1.1 // indirect
 	github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.4 // indirect
@@ -136,7 +136,7 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.1 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
@@ -274,20 +274,20 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/automaxprocs v1.5.3 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.18.0 // indirect
-	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/net v0.24.0 // indirect
 	golang.org/x/oauth2 v0.16.0 // indirect
-	golang.org/x/sys v0.16.0 // indirect
-	golang.org/x/term v0.16.0 // indirect
+	golang.org/x/sys v0.19.0 // indirect
+	golang.org/x/term v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.15.0 // indirect
+	golang.org/x/tools v0.20.0 // indirect
 	google.golang.org/api v0.156.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231212172506-995d672761c0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240102182953-50ed04b92917 // indirect
 	google.golang.org/grpc v1.60.1 // indirect
-	google.golang.org/protobuf v1.32.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
