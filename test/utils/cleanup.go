@@ -306,6 +306,37 @@ func TearDownChain(clients *Clients, name string) {
 	}
 }
 
+func TearDownManualApprovalGate(clients *Clients, name string) {
+	ctx := context.Background()
+	if clients == nil || clients.Operator == nil {
+		return
+	}
+
+	tc, err := clients.ManualApprovalGate().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			fmt.Printf("error trying to get ManualApprovalGate instance during teardown, name: %s, error: %v", name, err)
+		}
+		return
+	}
+	targetNamespace := tc.Spec.TargetNamespace
+
+	err = clients.ManualApprovalGate().Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		fmt.Printf("error trying to delete ManualApprovalGate during teardown, name: %s, error: %v", name, err)
+		return
+	}
+	crdf := newCRDeleteVerifier(ctx, func(ctx context.Context) error {
+		_, err := clients.ManualApprovalGate().Get(ctx, name, metav1.GetOptions{})
+		return err
+	})
+	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, ManualApprovalGateDeploymentLabel)
+	err = waitUntilFullDeletion(ctx, crdf, ddf)
+	if err != nil {
+		fmt.Printf("error waiting from tearDown of ManualApprovalGate resource, name: %s, error: %v", name, err)
+	}
+}
+
 func newCRDeleteVerifier(ctx context.Context, f crGetFunc) crDeleteVerifier {
 	return func() (bool, error) {
 		err := f(ctx)

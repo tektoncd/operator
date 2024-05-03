@@ -24,13 +24,14 @@ import (
 )
 
 var (
-	TektonPipelineDeploymentLabel  = labelString(v1alpha1.OperandTektoncdPipeline)
-	TektonTriggerDeploymentLabel   = labelString(v1alpha1.OperandTektoncdTriggers)
-	TektonDashboardDeploymentLabel = labelString(v1alpha1.OperandTektoncdDashboard)
-	TektonChainDeploymentLabel     = labelString(v1alpha1.OperandTektoncdChains)
-	TektonHubDeploymentLabel       = labelString(v1alpha1.OperandTektoncdHub)
-	TektonResultsDeploymentLabel   = labelString(v1alpha1.OperandTektoncdResults)
-	TektonAddonDeploymentLabel     = labelString(openshift.OperandOpenShiftPipelinesAddons)
+	TektonPipelineDeploymentLabel     = labelString(v1alpha1.OperandTektoncdPipeline)
+	TektonTriggerDeploymentLabel      = labelString(v1alpha1.OperandTektoncdTriggers)
+	TektonDashboardDeploymentLabel    = labelString(v1alpha1.OperandTektoncdDashboard)
+	TektonChainDeploymentLabel        = labelString(v1alpha1.OperandTektoncdChains)
+	TektonHubDeploymentLabel          = labelString(v1alpha1.OperandTektoncdHub)
+	TektonResultsDeploymentLabel      = labelString(v1alpha1.OperandTektoncdResults)
+	ManualApprovalGateDeploymentLabel = labelString(v1alpha1.ManualApprovalGates)
+	TektonAddonDeploymentLabel        = labelString(openshift.OperandOpenShiftPipelinesAddons)
 )
 
 func labelString(operandName string) string {
