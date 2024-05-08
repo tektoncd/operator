@@ -70,8 +70,8 @@ data:
   error-detection-max-number-of-lines: "50"
 
   # The default regexp used when we use the simple error detection
-  error-detection-simple-regexp: |
-    ^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+)?([ ]*)?(?P<error>.*)
+  error-detection-simple-regexp: |-
+    ^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([ ]*)?(?P<error>.*)
 
   # Since public bitbucket doesn't have the concept of Secret, we need to be
   # able to secure the request by querying https://ip-ranges.atlassian.com/,
@@ -122,6 +122,12 @@ data:
   # custom-console-url: https://url
   # custom-console-url-pr-details: https://url/ns/{{ namespace }}/{{ pr }}
   # custom-console-url-pr-tasklog: https://url/ns/{{ namespace }}/{{ pr }}/logs/{{ task }}
+
+  # pass empty values, on pac default generation these empty values are supplied
+  custom-console-name: ""
+  custom-console-url: ""
+  custom-console-url-pr-details: ""
+  custom-console-url-pr-tasklog: ""
 
 kind: ConfigMap
 metadata:
