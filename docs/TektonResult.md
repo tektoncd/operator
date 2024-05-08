@@ -98,7 +98,6 @@ spec:
   logs_type: File
   logs_buffer_size: 90kb
   logs_path: /logs
-  tls_hostname_override: localhost
   auth_disable: true
   logging_pvc_name: tekton-logs
   secret_name: # optional
