@@ -20,9 +20,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
+	pacConfigutil "github.com/openshift-pipelines/pipelines-as-code/pkg/configutil"
+	pacSettings "github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
+	"go.uber.org/zap"
 	kubernetesValidation "k8s.io/apimachinery/pkg/util/validation"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/logging"
 )
 
 // limit is 25 because this name goes in the installerset name which already have 38 characters, so additional length we
@@ -36,44 +39,46 @@ func (pac *OpenShiftPipelinesAsCode) Validate(ctx context.Context) *apis.FieldEr
 
 	var errs *apis.FieldError
 
+	logger := logging.FromContext(ctx)
+
 	// execute common spec validations
 	errs = errs.Also(pac.Spec.CommonSpec.validate("spec"))
 
-	errs = errs.Also(pac.Spec.PACSettings.validate("spec"))
+	errs = errs.Also(pac.Spec.PACSettings.validate(logger, "spec"))
 
 	return errs
 }
 
-func (pacSettings *PACSettings) validate(path string) *apis.FieldError {
+func (ps *PACSettings) validate(logger *zap.SugaredLogger, path string) *apis.FieldError {
 	var errs *apis.FieldError
 
-	if err := settings.Validate(pacSettings.Settings); err != nil {
+	if err := pacConfigutil.ValidateAndAssignValues(nil, ps.Settings, &pacSettings.Settings{}, nil, false); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.settings", path)))
 	}
 
-	for name, additionalPACControllerConfig := range pacSettings.AdditionalPACControllers {
+	for name, additionalPACControllerConfig := range ps.AdditionalPACControllers {
 		if err := validateAdditionalPACControllerName(name); err != nil {
 			errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.additionalPACControllers", path)))
 		}
 
-		errs = errs.Also(additionalPACControllerConfig.validate(fmt.Sprintf("%s.additionalPACControllers", path)))
+		errs = errs.Also(additionalPACControllerConfig.validate(logger, fmt.Sprintf("%s.additionalPACControllers", path)))
 	}
 
 	return errs
 }
 
-func (additionalPACControllerConfig AdditionalPACControllerConfig) validate(path string) *apis.FieldError {
+func (aps AdditionalPACControllerConfig) validate(logger *zap.SugaredLogger, path string) *apis.FieldError {
 	var errs *apis.FieldError
 
-	if err := validateKubernetesName(additionalPACControllerConfig.ConfigMapName); err != nil {
+	if err := validateKubernetesName(aps.ConfigMapName); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.configMapName", path)))
 	}
 
-	if err := validateKubernetesName(additionalPACControllerConfig.SecretName); err != nil {
+	if err := validateKubernetesName(aps.SecretName); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.secretName", path)))
 	}
 
-	if err := settings.Validate(additionalPACControllerConfig.Settings); err != nil {
+	if err := pacConfigutil.ValidateAndAssignValues(logger, aps.Settings, &pacSettings.Settings{}, nil, false); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.settings", path)))
 	}
 

@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
 )
@@ -40,7 +41,7 @@ func TestSetAdditionalPACControllerDefault(t *testing.T) {
 		},
 	}
 
-	opacCR.Spec.PACSettings.setPACDefaults()
+	opacCR.Spec.PACSettings.setPACDefaults(zap.NewNop().Sugar())
 
 	assert.Equal(t, true, *opacCR.Spec.PACSettings.AdditionalPACControllers["test"].Enable)
 	assert.Equal(t, "test-pipelines-as-code-configmap", opacCR.Spec.PACSettings.AdditionalPACControllers["test"].ConfigMapName)
@@ -72,7 +73,7 @@ func TestSetAdditionalPACControllerDefaultHavingAdditionalPACController(t *testi
 		},
 	}
 
-	opacCR.Spec.PACSettings.setPACDefaults()
+	opacCR.Spec.PACSettings.setPACDefaults(zap.NewNop().Sugar())
 
 	assert.Equal(t, false, *opacCR.Spec.PACSettings.AdditionalPACControllers["test"].Enable)
 	assert.Equal(t, "Additional PACController CI", opacCR.Spec.PACSettings.AdditionalPACControllers["test"].Settings["application-name"])

@@ -2,27 +2,22 @@ package settings
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/openshift-pipelines/pipelines-as-code/pkg/configutil"
 	"go.uber.org/zap"
 )
 
 const (
-	ApplicationNameKey = "application-name"
-	HubURLKey          = "hub-url"
-	HubCatalogNameKey  = "hub-catalog-name"
-	//nolint: gosec
-	MaxKeepRunUpperLimitKey               = "max-keep-run-upper-limit"
-	DefaultMaxKeepRunsKey                 = "default-max-keep-runs"
-	RemoteTasksKey                        = "remote-tasks"
-	BitbucketCloudCheckSourceIPKey        = "bitbucket-cloud-check-source-ip"
-	BitbucketCloudAdditionalSourceIPKey   = "bitbucket-cloud-additional-source-ip"
-	TektonDashboardURLKey                 = "tekton-dashboard-url"
-	AutoConfigureNewGitHubRepoKey         = "auto-configure-new-github-repo"
-	AutoConfigureRepoNamespaceTemplateKey = "auto-configure-repo-namespace-template"
+	PACApplicationNameDefaultValue = "Pipelines as Code CI"
+
+	HubURLKey                  = "hub-url"
+	HubCatalogNameKey          = "hub-catalog-name"
+	HubURLDefaultValue         = "https://api.hub.tekton.dev/v1"
+	HubCatalogNameDefaultValue = "tekton"
 
 	CustomConsoleNameKey         = "custom-console-name"
 	CustomConsoleURLKey          = "custom-console-url"
@@ -30,34 +25,7 @@ const (
 	CustomConsolePRTaskLogKey    = "custom-console-url-pr-tasklog"
 	CustomConsoleNamespaceURLKey = "custom-console-url-namespace"
 
-	SecretAutoCreateKey                          = "secret-auto-create"
-	secretAutoCreateDefaultValue                 = "true"
-	SecretGhAppTokenRepoScopedKey                = "secret-github-app-token-scoped" //nolint: gosec
-	secretGhAppTokenRepoScopedDefaultValue       = "true"
-	SecretGhAppTokenScopedExtraReposKey          = "secret-github-app-scope-extra-repos" //nolint: gosec
-	secretGhAppTokenScopedExtraReposDefaultValue = ""                                    //nolint: gosec
-
-	remoteTasksDefaultValue                 = "true"
-	bitbucketCloudCheckSourceIPDefaultValue = "true"
-	PACApplicationNameDefaultValue          = "Pipelines as Code CI"
-	HubURLDefaultValue                      = "https://api.hub.tekton.dev/v1"
-	HubCatalogNameDefaultValue              = "tekton"
-	AutoConfigureNewGitHubRepoDefaultValue  = "false"
-
-	ErrorLogSnippetKey   = "error-log-snippet"
-	errorLogSnippetValue = "true"
-
-	ErrorDetectionKey   = "error-detection-from-container-logs"
-	errorDetectionValue = "true"
-
-	ErrorDetectionNumberOfLinesKey   = "error-detection-max-number-of-lines"
-	errorDetectionNumberOfLinesValue = 50
-
-	ErrorDetectionSimpleRegexpKey   = "error-detection-simple-regexp"
-	errorDetectionSimpleRegexpValue = `^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([ ]*)?(?P<error>.*)`
-
-	RememberOKToTestKey   = "remember-ok-to-test"
-	rememberOKToTestValue = "true"
+	SecretGhAppTokenRepoScopedKey = "secret-github-app-token-scoped" //nolint: gosec
 )
 
 var (
@@ -73,70 +41,72 @@ type HubCatalog struct {
 }
 
 type Settings struct {
-	ApplicationName                    string
+	ApplicationName                    string `default:"Pipelines as Code CI" json:"application-name"`
 	HubCatalogs                        *sync.Map
-	RemoteTasks                        bool
-	MaxKeepRunsUpperLimit              int
-	DefaultMaxKeepRuns                 int
-	BitbucketCloudCheckSourceIP        bool
-	BitbucketCloudAdditionalSourceIP   string
-	TektonDashboardURL                 string
-	AutoConfigureNewGitHubRepo         bool
-	AutoConfigureRepoNamespaceTemplate string
+	RemoteTasks                        bool   `default:"true"                                json:"remote-tasks"`
+	MaxKeepRunsUpperLimit              int    `json:"max-keep-run-upper-limit"`
+	DefaultMaxKeepRuns                 int    `json:"default-max-keep-runs"`
+	BitbucketCloudCheckSourceIP        bool   `default:"true"                                json:"bitbucket-cloud-check-source-ip"`
+	BitbucketCloudAdditionalSourceIP   string `json:"bitbucket-cloud-additional-source-ip"`
+	TektonDashboardURL                 string `json:"tekton-dashboard-url"`
+	AutoConfigureNewGitHubRepo         bool   `default:"false"                               json:"auto-configure-new-github-repo"`
+	AutoConfigureRepoNamespaceTemplate string `json:"auto-configure-repo-namespace-template"`
 
-	SecretAutoCreation               bool
-	SecretGHAppRepoScoped            bool
-	SecretGhAppTokenScopedExtraRepos string
+	SecretAutoCreation               bool   `default:"true"                             json:"secret-auto-create"`
+	SecretGHAppRepoScoped            bool   `default:"true"                             json:"secret-github-app-token-scoped"`
+	SecretGhAppTokenScopedExtraRepos string `json:"secret-github-app-scope-extra-repos"`
 
-	ErrorLogSnippet             bool
-	ErrorDetection              bool
-	ErrorDetectionNumberOfLines int
-	ErrorDetectionSimpleRegexp  string
+	ErrorLogSnippet             bool   `default:"true"                                                                          json:"error-log-snippet"`
+	ErrorDetection              bool   `default:"true"                                                                          json:"error-detection-from-container-logs"`
+	ErrorDetectionNumberOfLines int    `default:"50"                                                                            json:"error-detection-max-number-of-lines"`
+	ErrorDetectionSimpleRegexp  string `default:"^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([ ]*)?(?P<error>.*)" json:"error-detection-simple-regexp"`
 
-	CustomConsoleName         string
-	CustomConsoleURL          string
-	CustomConsolePRdetail     string
-	CustomConsolePRTaskLog    string
-	CustomConsoleNamespaceURL string
+	CustomConsoleName         string `json:"custom-console-name"`
+	CustomConsoleURL          string `json:"custom-console-url"`
+	CustomConsolePRdetail     string `json:"custom-console-url-pr-details"`
+	CustomConsolePRTaskLog    string `json:"custom-console-url-pr-tasklog"`
+	CustomConsoleNamespaceURL string `json:"custom-console-url-namespace"`
 
-	RememberOKToTest bool
+	RememberOKToTest bool `default:"true" json:"remember-ok-to-test"`
 }
 
 func (s *Settings) DeepCopy(out *Settings) {
 	*out = *s
 }
 
-func ConfigToSettings(logger *zap.SugaredLogger, setting *Settings, config map[string]string) error {
-	// pass through defaulting
-	SetDefaults(config)
+func DefaultSettings() Settings {
+	newSettings := &Settings{}
+	hubCatalog := &sync.Map{}
+	hubCatalog.Store("default", HubCatalog{
+		ID:   "default",
+		Name: HubCatalogNameDefaultValue,
+		URL:  HubURLDefaultValue,
+	})
+	newSettings.HubCatalogs = hubCatalog
+
+	_ = configutil.ValidateAndAssignValues(nil, map[string]string{}, newSettings, map[string]func(string) error{
+		"ErrorDetectionSimpleRegexp": isValidRegex,
+		"TektonDashboardURL":         isValidURL,
+		"CustomConsoleURL":           isValidURL,
+		"CustomConsolePRTaskLog":     startWithHTTPorHTTPS,
+		"CustomConsolePRDetail":      startWithHTTPorHTTPS,
+	}, false)
+
+	return *newSettings
+}
+
+func SyncConfig(logger *zap.SugaredLogger, setting *Settings, config map[string]string) error {
 	setting.HubCatalogs = getHubCatalogs(logger, setting.HubCatalogs, config)
 
-	// validate fields
-	if err := Validate(config); err != nil {
-		return fmt.Errorf("config validation failed: %w", err)
-	}
-
-	if setting.ApplicationName != config[ApplicationNameKey] {
-		logger.Infof("CONFIG: application name set to %v", config[ApplicationNameKey])
-		setting.ApplicationName = config[ApplicationNameKey]
-	}
-
-	secretAutoCreate := StringToBool(config[SecretAutoCreateKey])
-	if setting.SecretAutoCreation != secretAutoCreate {
-		logger.Infof("CONFIG: secret auto create set to %v", secretAutoCreate)
-		setting.SecretAutoCreation = secretAutoCreate
-	}
-
-	secretGHAppRepoScoped := StringToBool(config[SecretGhAppTokenRepoScopedKey])
-	if setting.SecretGHAppRepoScoped != secretGHAppRepoScoped {
-		logger.Infof("CONFIG: not scoping the token generated from gh %v", secretGHAppRepoScoped)
-		setting.SecretGHAppRepoScoped = secretGHAppRepoScoped
-	}
-
-	secretGHAppScopedExtraRepos := config[SecretGhAppTokenScopedExtraReposKey]
-	if setting.SecretGhAppTokenScopedExtraRepos != secretGHAppScopedExtraRepos {
-		logger.Infof("CONFIG: adding extra repositories for github app token scope %v", secretGHAppRepoScoped)
-		setting.SecretGhAppTokenScopedExtraRepos = secretGHAppScopedExtraRepos
+	err := configutil.ValidateAndAssignValues(logger, config, setting, map[string]func(string) error{
+		"ErrorDetectionSimpleRegexp": isValidRegex,
+		"TektonDashboardURL":         isValidURL,
+		"CustomConsoleURL":           isValidURL,
+		"CustomConsolePRTaskLog":     startWithHTTPorHTTPS,
+		"CustomConsolePRDetail":      startWithHTTPorHTTPS,
+	}, true)
+	if err != nil {
+		return fmt.Errorf("failed to validate and assign values: %w", err)
 	}
 
 	value, _ := setting.HubCatalogs.Load("default")
@@ -154,106 +124,26 @@ func ConfigToSettings(logger *zap.SugaredLogger, setting *Settings, config map[s
 	setting.HubCatalogs.Store("default", catalogDefault)
 	// TODO: detect changes in extra hub catalogs
 
-	remoteTask := StringToBool(config[RemoteTasksKey])
-	if setting.RemoteTasks != remoteTask {
-		logger.Infof("CONFIG: remote tasks setting set to %v", remoteTask)
-		setting.RemoteTasks = remoteTask
-	}
-	maxKeepRunUpperLimit, _ := strconv.Atoi(config[MaxKeepRunUpperLimitKey])
-	if setting.MaxKeepRunsUpperLimit != maxKeepRunUpperLimit {
-		logger.Infof("CONFIG: max keep runs upper limit set to %v", maxKeepRunUpperLimit)
-		setting.MaxKeepRunsUpperLimit = maxKeepRunUpperLimit
-	}
-	defaultMaxKeepRun, _ := strconv.Atoi(config[DefaultMaxKeepRunsKey])
-	if setting.DefaultMaxKeepRuns != defaultMaxKeepRun {
-		logger.Infof("CONFIG: default keep runs set to %v", defaultMaxKeepRun)
-		setting.DefaultMaxKeepRuns = defaultMaxKeepRun
-	}
-	check := StringToBool(config[BitbucketCloudCheckSourceIPKey])
-	if setting.BitbucketCloudCheckSourceIP != check {
-		logger.Infof("CONFIG: bitbucket cloud check source ip setting set to %v", check)
-		setting.BitbucketCloudCheckSourceIP = check
-	}
-	if setting.BitbucketCloudAdditionalSourceIP != config[BitbucketCloudAdditionalSourceIPKey] {
-		logger.Infof("CONFIG: bitbucket cloud additional source ip set to %v", config[BitbucketCloudAdditionalSourceIPKey])
-		setting.BitbucketCloudAdditionalSourceIP = config[BitbucketCloudAdditionalSourceIPKey]
-	}
-	if setting.TektonDashboardURL != config[TektonDashboardURLKey] {
-		logger.Infof("CONFIG: tekton dashboard url set to %v", config[TektonDashboardURLKey])
-		setting.TektonDashboardURL = config[TektonDashboardURLKey]
-	}
-	autoConfigure := StringToBool(config[AutoConfigureNewGitHubRepoKey])
-	if setting.AutoConfigureNewGitHubRepo != autoConfigure {
-		logger.Infof("CONFIG: auto configure GitHub repo setting set to %v", autoConfigure)
-		setting.AutoConfigureNewGitHubRepo = autoConfigure
-	}
-	if setting.AutoConfigureRepoNamespaceTemplate != config[AutoConfigureRepoNamespaceTemplateKey] {
-		logger.Infof("CONFIG: auto configure repo namespace template set to %v", config[AutoConfigureRepoNamespaceTemplateKey])
-		setting.AutoConfigureRepoNamespaceTemplate = config[AutoConfigureRepoNamespaceTemplateKey]
-	}
-
-	errorLogSnippet := StringToBool(config[ErrorLogSnippetKey])
-	if setting.ErrorLogSnippet != errorLogSnippet {
-		logger.Infof("CONFIG: setting log snippet on error to %v", errorLogSnippet)
-		setting.ErrorLogSnippet = errorLogSnippet
-	}
-
-	errorDetection := StringToBool(config[ErrorDetectionKey])
-	if setting.ErrorDetection != errorDetection {
-		logger.Infof("CONFIG: setting error detection to %v", errorDetection)
-		setting.ErrorDetection = errorDetection
-	}
-
-	errorDetectNumberOfLines, _ := strconv.Atoi(config[ErrorDetectionNumberOfLinesKey])
-	if setting.ErrorDetection && setting.ErrorDetectionNumberOfLines != errorDetectNumberOfLines {
-		logger.Infof("CONFIG: setting error detection limit of container log to %v", errorDetectNumberOfLines)
-		setting.ErrorDetectionNumberOfLines = errorDetectNumberOfLines
-	}
-
-	if setting.ErrorDetection && setting.ErrorDetectionSimpleRegexp != strings.TrimSpace(config[ErrorDetectionSimpleRegexpKey]) {
-		// replace double backslash with single backslash because kube configmap is giving us things double backslashes
-		logger.Infof("CONFIG: setting error detection regexp to %v", strings.TrimSpace(config[ErrorDetectionSimpleRegexpKey]))
-		setting.ErrorDetectionSimpleRegexp = strings.TrimSpace(config[ErrorDetectionSimpleRegexpKey])
-	}
-
-	if setting.CustomConsoleName != config[CustomConsoleNameKey] {
-		logger.Infof("CONFIG: setting custom console name to %v", config[CustomConsoleNameKey])
-		setting.CustomConsoleName = config[CustomConsoleNameKey]
-	}
-
-	if setting.CustomConsoleURL != config[CustomConsoleURLKey] {
-		logger.Infof("CONFIG: setting custom console url to %v", config[CustomConsoleURLKey])
-		setting.CustomConsoleURL = config[CustomConsoleURLKey]
-	}
-
-	if setting.CustomConsolePRdetail != config[CustomConsolePRDetailKey] {
-		logger.Infof("CONFIG: setting custom console pr detail URL to %v", config[CustomConsolePRDetailKey])
-		setting.CustomConsolePRdetail = config[CustomConsolePRDetailKey]
-	}
-
-	if setting.CustomConsoleNamespaceURL != config[CustomConsoleNamespaceURLKey] {
-		logger.Infof("CONFIG: setting custom console namespace URL to %v", config[CustomConsoleNamespaceURLKey])
-		setting.CustomConsoleNamespaceURL = config[CustomConsoleNamespaceURLKey]
-	}
-
-	if setting.CustomConsolePRTaskLog != config[CustomConsolePRTaskLogKey] {
-		logger.Infof("CONFIG: setting custom console pr task log URL to %v", config[CustomConsolePRTaskLogKey])
-		setting.CustomConsolePRTaskLog = config[CustomConsolePRTaskLogKey]
-	}
-
-	rememberOKToTest := StringToBool(config[RememberOKToTestKey])
-	if setting.RememberOKToTest != rememberOKToTest {
-		logger.Infof("CONFIG: setting remember ok-to-test to %v", rememberOKToTest)
-		setting.RememberOKToTest = rememberOKToTest
-	}
-
 	return nil
 }
 
-func StringToBool(s string) bool {
-	if strings.ToLower(s) == "true" ||
-		strings.ToLower(s) == "yes" || s == "1" {
-		return true
+func isValidURL(rawURL string) error {
+	if _, err := url.ParseRequestURI(rawURL); err != nil {
+		return fmt.Errorf("invalid value for URL, error: %w", err)
 	}
-	return false
+	return nil
+}
+
+func isValidRegex(regex string) error {
+	if _, err := regexp.Compile(regex); err != nil {
+		return fmt.Errorf("invalid regex: %w", err)
+	}
+	return nil
+}
+
+func startWithHTTPorHTTPS(url string) error {
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		return fmt.Errorf("invalid value, must start with http:// or https://")
+	}
+	return nil
 }
