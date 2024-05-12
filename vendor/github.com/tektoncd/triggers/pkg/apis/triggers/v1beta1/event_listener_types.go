@@ -79,10 +79,11 @@ type CustomResource struct {
 }
 
 type KubernetesResource struct {
-	Replicas           *int32             `json:"replicas,omitempty"`
-	ServiceType        corev1.ServiceType `json:"serviceType,omitempty"`
-	ServicePort        *int32             `json:"servicePort,omitempty"`
-	duckv1.WithPodSpec `json:"spec,omitempty"`
+	Replicas                 *int32             `json:"replicas,omitempty"`
+	ServiceType              corev1.ServiceType `json:"serviceType,omitempty"`
+	ServicePort              *int32             `json:"servicePort,omitempty"`
+	ServiceLoadBalancerClass *string            `json:"serviceLoadBalancerClass,omitempty"`
+	duckv1.WithPodSpec       `json:"spec,omitempty"`
 }
 
 // EventListenerTrigger represents a connection between TriggerBinding, Params,

@@ -826,6 +826,12 @@ func schema_pkg_apis_triggers_v1beta1_KubernetesResource(ref common.ReferenceCal
 							Format: "int32",
 						},
 					},
+					"serviceLoadBalancerClass": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Default: map[string]interface{}{},

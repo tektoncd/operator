@@ -293,11 +293,69 @@
         }
       }
     },
+    "v1beta1.Artifact": {
+      "description": "TaskRunStepArtifact represents an artifact produced or used by a step within a task run. It directly uses the Artifact type for its structure.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "values": {
+          "description": "The artifact's identifying category name",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.ArtifactValue"
+          }
+        }
+      }
+    },
+    "v1beta1.ArtifactValue": {
+      "description": "ArtifactValue represents a specific value or data element within an Artifact.",
+      "type": "object",
+      "properties": {
+        "digest": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "default": ""
+          }
+        },
+        "uri": {
+          "description": "Algorithm-specific digests for verifying the content (e.g., SHA256)",
+          "type": "string"
+        }
+      }
+    },
+    "v1beta1.Artifacts": {
+      "description": "Artifacts represents the collection of input and output artifacts associated with a task run or a similar process. Artifacts in this context are units of data or resources that the process either consumes as input or produces as output.",
+      "type": "object",
+      "properties": {
+        "inputs": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.Artifact"
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.Artifact"
+          }
+        }
+      }
+    },
     "v1beta1.ChildStatusReference": {
       "description": "ChildStatusReference is used to point to the statuses of individual TaskRuns and Runs within this PipelineRun.",
       "type": "object",
       "properties": {
         "apiVersion": {
+          "type": "string"
+        },
+        "displayName": {
+          "description": "DisplayName is a user-facing name of the pipelineTask that may be used to populate a UI.",
           "type": "string"
         },
         "kind": {
@@ -1094,6 +1152,7 @@
           "$ref": "#/definitions/v1beta1.PipelineRef"
         },
         "pipelineSpec": {
+          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "podTemplate": {
@@ -1446,7 +1505,7 @@
           "$ref": "#/definitions/v1beta1.PipelineRef"
         },
         "pipelineSpec": {
-          "description": "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported",
+          "description": "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "resources": {
@@ -1472,7 +1531,7 @@
           "$ref": "#/definitions/v1beta1.TaskRef"
         },
         "taskSpec": {
-          "description": "TaskSpec is a specification of a task",
+          "description": "TaskSpec is a specification of a task Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1beta1.EmbeddedTask"
         },
         "timeout": {
@@ -2216,8 +2275,22 @@
         "imageID": {
           "type": "string"
         },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.Artifact"
+          }
+        },
         "name": {
           "type": "string"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.Artifact"
+          }
         },
         "results": {
           "type": "array",
@@ -2820,6 +2893,7 @@
           "$ref": "#/definitions/v1beta1.TaskRef"
         },
         "taskSpec": {
+          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
           "$ref": "#/definitions/v1beta1.TaskSpec"
         },
         "timeout": {

@@ -149,6 +149,10 @@ func validateKubernetesObject(orig *KubernetesResource) (errs *apis.FieldError) 
 		errs = errs.Also(validateEnv(orig.Template.Spec.Containers[0].Env).ViaField("spec.template.spec.containers[0].env"))
 	}
 
+	if orig.ServiceLoadBalancerClass != nil && orig.ServiceType != corev1.ServiceTypeLoadBalancer {
+		errs = errs.Also(apis.ErrInvalidValue(*orig.ServiceLoadBalancerClass, "serviceLoadBalancerClass", "ServiceLoadBalancerClass is only needed for LoadBalancer service type"))
+	}
+
 	return errs
 }
 

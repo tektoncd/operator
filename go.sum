@@ -1736,8 +1736,8 @@ github.com/tektoncd/pipeline v0.59.0 h1:bX+DX3J/SfIokDbXLtKD48ffcfZw0lZ3Ef8QxyOZ
 github.com/tektoncd/pipeline v0.59.0/go.mod h1:VjXZUGLrOy45B35ufbJZ2DLMt+TSJ3R4ZjKJvi7RWg4=
 github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293 h1:kNmGaAtPS9LnfNZG/JrF4Y0Qx5Ju+384aqKJNtk4PU0=
 github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293/go.mod h1:7eWs1XNkmReggow7ggRbRyRuHi7646B8b2XipCZ3VOw=
-github.com/tektoncd/triggers v0.26.2 h1:oPArs4S1wuHMh4QcvEuQk+at4BZUHI7cHe9k3NI+0ps=
-github.com/tektoncd/triggers v0.26.2/go.mod h1:eMNvsnzJlv/tQvrcVQnKT90IihWUnrvOyX66+TzOMZQ=
+github.com/tektoncd/triggers v0.27.0 h1:c55e/YJF6Vs5BEarqDYksFYuR4sFbmAVEqrLNPZvXUk=
+github.com/tektoncd/triggers v0.27.0/go.mod h1:DkkAkdSd9aAW9RklUVyFRKQ8kONmZQw4Ur2G1r3wFQo=
 github.com/thales-e-security/pool v0.0.2 h1:RAPs4q2EbWsTit6tpzuvTFlgFRJ3S8Evf5gtvVDbmPg=
 github.com/thales-e-security/pool v0.0.2/go.mod h1:qtpMm2+thHtqhLzTwgDBj/OuNnMpupY8mv0Phz0gjhU=
 github.com/theupdateframework/go-tuf v0.7.0 h1:CqbQFrWo1ae3/I0UCblSbczevCCbS31Qvs5LdxRWqRI=

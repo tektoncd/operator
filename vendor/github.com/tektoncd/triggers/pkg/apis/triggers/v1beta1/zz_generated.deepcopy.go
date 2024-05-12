@@ -379,6 +379,11 @@ func (in *KubernetesResource) DeepCopyInto(out *KubernetesResource) {
 		*out = new(int32)
 		**out = **in
 	}
+	if in.ServiceLoadBalancerClass != nil {
+		in, out := &in.ServiceLoadBalancerClass, &out.ServiceLoadBalancerClass
+		*out = new(string)
+		**out = **in
+	}
 	in.WithPodSpec.DeepCopyInto(&out.WithPodSpec)
 	return
 }
