@@ -42,10 +42,11 @@ type TriggerResourceTemplate struct {
 // TriggerTemplateStatus describes the desired state of TriggerTemplate
 type TriggerTemplateStatus struct{}
 
-// TriggerTemplate takes parameters and uses them to create CRDs
 //
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// TriggerTemplate takes parameters and uses them to create CRDs
 // +k8s:openapi-gen=true
 type TriggerTemplate struct {
 	metav1.TypeMeta `json:",inline"`
