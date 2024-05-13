@@ -45,7 +45,7 @@ func ReplaceConfigMap(kubeClient kubernetes.Interface, configMap *corev1.ConfigM
 // WaitForTaskRunHappy polls the status of the TaskRun called name from client
 // every `interval` seconds till it becomes happy with the condition function
 func WaitForTaskRunHappy(client pipelinev1.TektonV1Interface, namespace, name string, conditionFunc func(taskRun *v1.TaskRun) (bool, error)) error {
-	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
+	waitErr := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
 		taskRun, err := client.TaskRuns(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			return false, err

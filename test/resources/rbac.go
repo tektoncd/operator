@@ -27,7 +27,7 @@ import (
 )
 
 func WaitForServiceAccount(kubeClient kubernetes.Interface, name, namespace string, interval, timeout time.Duration) error {
-	verifyFunc := func() (bool, error) {
+	verifyFunc := func(ctx context.Context) (bool, error) {
 		_, err := kubeClient.CoreV1().ServiceAccounts(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if apierrs.IsNotFound(err) {
@@ -37,11 +37,11 @@ func WaitForServiceAccount(kubeClient kubernetes.Interface, name, namespace stri
 		}
 		return true, nil
 	}
-	return wait.PollImmediate(interval, timeout, verifyFunc)
+	return wait.PollUntilContextTimeout(context.TODO(), interval, timeout, true, verifyFunc)
 }
 
 func WaitForConfigMap(kubeClient kubernetes.Interface, name, namespace string, interval, timeout time.Duration) error {
-	verifyFunc := func() (bool, error) {
+	verifyFunc := func(ctx context.Context) (bool, error) {
 		_, err := kubeClient.CoreV1().ConfigMaps(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if apierrs.IsNotFound(err) {
@@ -51,11 +51,11 @@ func WaitForConfigMap(kubeClient kubernetes.Interface, name, namespace string, i
 		}
 		return true, nil
 	}
-	return wait.PollImmediate(interval, timeout, verifyFunc)
+	return wait.PollUntilContextTimeout(context.TODO(), interval, timeout, true, verifyFunc)
 }
 
 func WaitForRoleBinding(kubeClient kubernetes.Interface, name, namespace string, interval, timeout time.Duration) error {
-	verifyFunc := func() (bool, error) {
+	verifyFunc := func(ctx context.Context) (bool, error) {
 		_, err := kubeClient.RbacV1().RoleBindings(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if apierrs.IsNotFound(err) {
@@ -65,11 +65,11 @@ func WaitForRoleBinding(kubeClient kubernetes.Interface, name, namespace string,
 		}
 		return true, nil
 	}
-	return wait.PollImmediate(interval, timeout, verifyFunc)
+	return wait.PollUntilContextTimeout(context.TODO(), interval, timeout, true, verifyFunc)
 }
 
 func WaitForClusterRole(kubeClient kubernetes.Interface, name string, interval, timeout time.Duration) error {
-	verifyFunc := func() (bool, error) {
+	verifyFunc := func(ctx context.Context) (bool, error) {
 		_, err := kubeClient.RbacV1().ClusterRoles().Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if apierrs.IsNotFound(err) {
@@ -79,5 +79,5 @@ func WaitForClusterRole(kubeClient kubernetes.Interface, name string, interval, 
 		}
 		return true, nil
 	}
-	return wait.PollImmediate(interval, timeout, verifyFunc)
+	return wait.PollUntilContextTimeout(context.TODO(), interval, timeout, true, verifyFunc)
 }

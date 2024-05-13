@@ -27,7 +27,7 @@ import (
 )
 
 func WaitForJobCompletion(kubeClient kubernetes.Interface, name, namespace string, interval, timeout time.Duration) error {
-	verifyFunc := func() (bool, error) {
+	verifyFunc := func(ctx context.Context) (bool, error) {
 		job, err := kubeClient.BatchV1().Jobs(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil && !apierrs.IsNotFound(err) {
 			return false, err
@@ -36,11 +36,11 @@ func WaitForJobCompletion(kubeClient kubernetes.Interface, name, namespace strin
 		return isCompleted, nil
 	}
 
-	return wait.PollImmediate(interval, timeout, verifyFunc)
+	return wait.PollUntilContextTimeout(context.TODO(), interval, timeout, true, verifyFunc)
 }
 
 func WaitForJobDeletion(kubeClient kubernetes.Interface, name, namespace string, interval, timeout time.Duration) error {
-	verifyFunc := func() (bool, error) {
+	verifyFunc := func(ctx context.Context) (bool, error) {
 		_, err := kubeClient.BatchV1().Jobs(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if apierrs.IsNotFound(err) {
@@ -51,5 +51,5 @@ func WaitForJobDeletion(kubeClient kubernetes.Interface, name, namespace string,
 		return false, nil
 	}
 
-	return wait.PollImmediate(interval, timeout, verifyFunc)
+	return wait.PollUntilContextTimeout(context.TODO(), interval, timeout, true, verifyFunc)
 }

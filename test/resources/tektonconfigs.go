@@ -100,7 +100,7 @@ func WaitForTektonConfigState(clients operatorV1alpha1.TektonConfigInterface, na
 	defer span.End()
 
 	var lastState *v1alpha1.TektonConfig
-	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
+	waitErr := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
 		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
@@ -131,7 +131,7 @@ func EnsureNoTektonConfigInstance(t *testing.T, clients *utils.Clients, crNames 
 		}
 		t.Fatalf("TektonConfig %q failed to delete: %v", crNames.TektonConfig, err)
 	}
-	err := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
 		_, err := clients.TektonConfig().Get(context.TODO(), crNames.TektonConfig, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil
@@ -181,7 +181,7 @@ func verifyNoTektonConfigCR(clients *utils.Clients) error {
 }
 
 func WaitForTektonConfigReady(client operatorV1alpha1.TektonConfigInterface, name string, interval, timeout time.Duration) error {
-	isReady := func() (bool, error) {
+	isReady := func(ctx context.Context) (bool, error) {
 		configCR, err := client.Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			if apierrs.IsNotFound(err) {
@@ -192,5 +192,5 @@ func WaitForTektonConfigReady(client operatorV1alpha1.TektonConfigInterface, nam
 		return configCR.Status.IsReady(), nil
 	}
 
-	return wait.PollImmediate(interval, timeout, isReady)
+	return wait.PollUntilContextTimeout(context.TODO(), interval, timeout, true, isReady)
 }

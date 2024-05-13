@@ -69,7 +69,7 @@ func TearDownPipeline(clients *Clients, name string) {
 		return err
 	})
 	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, TektonPipelineDeploymentLabel)
-	err = waitUntilFullDeletion(ctx, crdf, ddf)
+	err = waitUntilFullDeletion(crdf, ddf)
 	if err != nil {
 		fmt.Printf("error waiting from tearDown of TektonPipeline resource, name: %s, error: %v", name, err)
 	}
@@ -101,7 +101,7 @@ func TearDownTrigger(clients *Clients, name string) {
 		return err
 	})
 	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, TektonTriggerDeploymentLabel)
-	err = waitUntilFullDeletion(ctx, crdf, ddf)
+	err = waitUntilFullDeletion(crdf, ddf)
 	if err != nil {
 		fmt.Printf("error waiting from tearDown of TektonTrigger resource, name: %s, error: %v", name, err)
 	}
@@ -133,7 +133,7 @@ func TearDownDashboard(clients *Clients, name string) {
 		return err
 	})
 	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, TektonDashboardDeploymentLabel)
-	err = waitUntilFullDeletion(ctx, crdf, ddf)
+	err = waitUntilFullDeletion(crdf, ddf)
 	if err != nil {
 		fmt.Printf("error waiting from tearDown of TektonDashboard resource, name: %s, error: %v", name, err)
 	}
@@ -165,7 +165,7 @@ func TearDownAddon(clients *Clients, name string) {
 		return err
 	})
 	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, TektonAddonDeploymentLabel)
-	err = waitUntilFullDeletion(ctx, crdf, ddf)
+	err = waitUntilFullDeletion(crdf, ddf)
 	if err != nil {
 		fmt.Printf("error waiting from tearDown of TektonAddon resource, name: %s, error: %v", name, err)
 	}
@@ -194,7 +194,7 @@ func TearDownNamespace(clients *Clients, name string) {
 		return
 	}
 
-	err = WaitForCondition(ctx, func() (bool, error) {
+	err = WaitForCondition(func() (bool, error) {
 		_, err := clients.KubeClient.CoreV1().Namespaces().Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -236,7 +236,7 @@ func TearDownConfig(clients *Clients, name string) {
 		return err
 	})
 	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, "")
-	err = waitUntilFullDeletion(ctx, crdf, ddf)
+	err = waitUntilFullDeletion(crdf, ddf)
 	if err != nil {
 		fmt.Printf("error waiting from tearDown of TektonConfig resource, name: %s, error: %v", name, err)
 	}
@@ -268,7 +268,7 @@ func TearDownResult(clients *Clients, name string) {
 		return err
 	})
 	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, TektonResultsDeploymentLabel)
-	err = waitUntilFullDeletion(ctx, crdf, ddf)
+	err = waitUntilFullDeletion(crdf, ddf)
 	if err != nil {
 		fmt.Printf("error waiting from tearDown of TektonResult resource, name: %s, error: %v", name, err)
 	}
@@ -300,7 +300,7 @@ func TearDownChain(clients *Clients, name string) {
 		return err
 	})
 	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, TektonChainDeploymentLabel)
-	err = waitUntilFullDeletion(ctx, crdf, ddf)
+	err = waitUntilFullDeletion(crdf, ddf)
 	if err != nil {
 		fmt.Printf("error waiting from tearDown of TektonChains resource, name: %s, error: %v", name, err)
 	}
@@ -331,7 +331,7 @@ func TearDownManualApprovalGate(clients *Clients, name string) {
 		return err
 	})
 	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, ManualApprovalGateDeploymentLabel)
-	err = waitUntilFullDeletion(ctx, crdf, ddf)
+	err = waitUntilFullDeletion(crdf, ddf)
 	if err != nil {
 		fmt.Printf("error waiting from tearDown of ManualApprovalGate resource, name: %s, error: %v", name, err)
 	}
@@ -366,26 +366,26 @@ func newDeploymentDeleteVerifier(ctx context.Context, c *Clients, namespace, lab
 	}
 }
 
-func waitUntilFullDeletion(ctx context.Context, cdcf crDeleteVerifier, ddcf deploymentDeleteVerifier) error {
-	if err := ensureDeploymentsRemoval(ctx, ddcf); err != nil {
+func waitUntilFullDeletion(cdcf crDeleteVerifier, ddcf deploymentDeleteVerifier) error {
+	if err := ensureDeploymentsRemoval(ddcf); err != nil {
 		return err
 	}
-	if err := ensureCustomResourceRemoval(ctx, cdcf); err != nil {
+	if err := ensureCustomResourceRemoval(cdcf); err != nil {
 		return err
 	}
 	return nil
 }
 
-func ensureCustomResourceRemoval(ctx context.Context, verifier crDeleteVerifier) error {
-	return WaitForCondition(ctx, wait.ConditionFunc(verifier))
+func ensureCustomResourceRemoval(verifier crDeleteVerifier) error {
+	return WaitForCondition(wait.ConditionFunc(verifier))
 }
 
-func ensureDeploymentsRemoval(ctx context.Context, verifier deploymentDeleteVerifier) error {
-	return WaitForCondition(ctx, wait.ConditionFunc(verifier))
+func ensureDeploymentsRemoval(verifier deploymentDeleteVerifier) error {
+	return WaitForCondition(wait.ConditionFunc(verifier))
 }
 
-func WaitForCondition(ctx context.Context, condition wait.ConditionFunc) error {
-	return wait.PollImmediate(Interval, Timeout, func() (done bool, err error) {
+func WaitForCondition(condition wait.ConditionFunc) error {
+	return wait.PollUntilContextTimeout(context.TODO(), Interval, Timeout, true, func(ctx context.Context) (done bool, err error) {
 		ok, err := condition()
 		if err != nil {
 			return false, err

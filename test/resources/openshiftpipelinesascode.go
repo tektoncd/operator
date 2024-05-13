@@ -62,7 +62,7 @@ func WaitForOpenshiftPipelinesAsCodeState(clients typedv1alpha1.OpenShiftPipelin
 	defer span.End()
 
 	var lastState *v1alpha1.OpenShiftPipelinesAsCode
-	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
+	waitErr := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
 		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
@@ -121,7 +121,7 @@ func OpenShiftPipelinesAsCodeCRDelete(t *testing.T, clients *utils.Clients, crNa
 	if err := clients.OpenShiftPipelinesAsCode().Delete(context.TODO(), crNames.OpenShiftPipelinesAsCode, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("OpenShiftPipelinesAsCode %q failed to delete: %v", crNames.OpenShiftPipelinesAsCode, err)
 	}
-	err := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
 		_, err := clients.OpenShiftPipelinesAsCode().Get(context.TODO(), crNames.OpenShiftPipelinesAsCode, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil
