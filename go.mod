@@ -32,21 +32,19 @@ require (
 	k8s.io/apiextensions-apiserver v0.29.3
 	k8s.io/apimachinery v0.29.3
 	k8s.io/client-go v1.5.2
-	k8s.io/code-generator v0.28.5
+	k8s.io/code-generator v0.29.2
 	knative.dev/pkg v0.0.0-20240404013351-5d4af76051e4
 	sigs.k8s.io/yaml v1.4.0
 )
 
 replace (
-	k8s.io/api => k8s.io/api v0.26.8
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.26.8
-	k8s.io/apimachinery => k8s.io/apimachinery v0.26.8
-	k8s.io/client-go => k8s.io/client-go v0.26.8
-	k8s.io/code-generator => k8s.io/code-generator v0.26.8
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230515203736-54b630e78af5
-
-	// knative.dev/pkg on branch "release-1.11"
-	knative.dev/pkg => knative.dev/pkg v0.0.0-20231103161548-f5b42e8dea44
+	k8s.io/api => k8s.io/api v0.28.9
+	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.28.9
+	k8s.io/apimachinery => k8s.io/apimachinery v0.28.9
+	k8s.io/client-go => k8s.io/client-go v0.28.9
+	k8s.io/code-generator => k8s.io/code-generator v0.28.9
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9
+	knative.dev/pkg => knative.dev/pkg v0.0.0-20240116073220-b488e7be5902
 )
 
 require (
@@ -165,7 +163,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/cel-go v0.20.1 // indirect
 	github.com/google/certificate-transparency-go v1.1.8 // indirect
-	github.com/google/gnostic v0.7.0 // indirect
 	github.com/google/gnostic-models v0.6.9-0.20230804172637-c7be7c783f49 // indirect
 	github.com/google/go-containerregistry v0.19.1 // indirect
 	github.com/google/go-github/v55 v55.0.0 // indirect
@@ -272,7 +269,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.26.0 // indirect
 	go.opentelemetry.io/otel/trace v1.26.0 // indirect
 	go.step.sm/crypto v0.44.2 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/automaxprocs v1.5.3 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.22.0 // indirect
@@ -293,7 +289,7 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/gengo v0.0.0-20221011193443-fad74ee6edd9 // indirect
+	k8s.io/gengo v0.0.0-20240129211411-f967bbeff4b4 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20240403164606-bc84c2ddaf99 // indirect
 	k8s.io/utils v0.0.0-20240310230437-4693a0247e57 // indirect
