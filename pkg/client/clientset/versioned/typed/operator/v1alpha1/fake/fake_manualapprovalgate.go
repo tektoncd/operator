@@ -24,7 +24,6 @@ import (
 	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +34,9 @@ type FakeManualApprovalGates struct {
 	Fake *FakeOperatorV1alpha1
 }
 
-var manualapprovalgatesResource = schema.GroupVersionResource{Group: "operator.tekton.dev", Version: "v1alpha1", Resource: "manualapprovalgates"}
+var manualapprovalgatesResource = v1alpha1.SchemeGroupVersion.WithResource("manualapprovalgates")
 
-var manualapprovalgatesKind = schema.GroupVersionKind{Group: "operator.tekton.dev", Version: "v1alpha1", Kind: "ManualApprovalGate"}
+var manualapprovalgatesKind = v1alpha1.SchemeGroupVersion.WithKind("ManualApprovalGate")
 
 // Get takes name of the manualApprovalGate, and returns the corresponding manualApprovalGate object, and an error if there is any.
 func (c *FakeManualApprovalGates) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ManualApprovalGate, err error) {
