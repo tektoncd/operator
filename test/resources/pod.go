@@ -42,7 +42,7 @@ func DeletePodByLabelSelector(kubeClient kubernetes.Interface, labelSelector, na
 }
 
 func WaitForPodByLabelSelector(kubeClient kubernetes.Interface, labelSelector, namespace string, interval, timeout time.Duration) error {
-	verifyFunc := func() (bool, error) {
+	verifyFunc := func(ctx context.Context) (bool, error) {
 		pods, err := kubeClient.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector})
 		if err != nil {
 			return false, err
@@ -56,5 +56,5 @@ func WaitForPodByLabelSelector(kubeClient kubernetes.Interface, labelSelector, n
 		return false, nil
 	}
 
-	return wait.PollImmediate(interval, timeout, verifyFunc)
+	return wait.PollUntilContextTimeout(context.TODO(), interval, timeout, true, verifyFunc)
 }

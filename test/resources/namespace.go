@@ -80,7 +80,7 @@ func DeleteNamespaceAndWait(kubeClient kubernetes.Interface, namespace string, i
 }
 
 func WaitForNamespaceDeletion(kubeClient kubernetes.Interface, namespace string, interval, timeout time.Duration) error {
-	verifyFunc := func() (bool, error) {
+	verifyFunc := func(ctx context.Context) (bool, error) {
 		_, err := kubeClient.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
 		if err != nil {
 			if apierrs.IsNotFound(err) {
@@ -91,5 +91,5 @@ func WaitForNamespaceDeletion(kubeClient kubernetes.Interface, namespace string,
 		return false, nil
 	}
 
-	return wait.PollImmediate(interval, timeout, verifyFunc)
+	return wait.PollUntilContextTimeout(context.TODO(), interval, timeout, true, verifyFunc)
 }

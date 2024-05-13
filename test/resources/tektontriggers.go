@@ -67,7 +67,7 @@ func WaitForTektonTriggerState(clients triggerv1alpha1.TektonTriggerInterface, n
 	defer span.End()
 
 	var lastState *v1alpha1.TektonTrigger
-	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
+	waitErr := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
 		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
@@ -96,7 +96,7 @@ func TektonTriggerCRDelete(t *testing.T, clients *utils.Clients, crNames utils.R
 	if err := clients.TektonTrigger().Delete(context.TODO(), crNames.TektonTrigger, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("TektonTrigger %q failed to delete: %v", crNames.TektonTrigger, err)
 	}
-	err := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
 		_, err := clients.TektonTrigger().Get(context.TODO(), crNames.TektonTrigger, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil

@@ -66,7 +66,7 @@ func WaitForTektonChainState(clients typedv1alpha1.TektonChainInterface, name st
 	defer span.End()
 
 	var lastState *v1alpha1.TektonChain
-	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
+	waitErr := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
 		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
@@ -94,7 +94,7 @@ func TektonChainCRDelete(t *testing.T, clients *utils.Clients, crNames utils.Res
 	if err := clients.TektonChains().Delete(context.TODO(), crNames.TektonChain, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("TektonChain %q failed to delete: %v", crNames.TektonChain, err)
 	}
-	err := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
 		_, err := clients.TektonChains().Get(context.TODO(), crNames.TektonChain, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil

@@ -70,7 +70,7 @@ func WaitForTektonAddonState(clients addonv1alpha1.TektonAddonInterface, name st
 	defer span.End()
 
 	var lastState *v1alpha1.TektonAddon
-	waitErr := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
+	waitErr := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
 		lastState, err := clients.Get(context.TODO(), name, metav1.GetOptions{})
 		return inState(lastState, err)
 	})
@@ -131,7 +131,7 @@ func TektonAddonCRDelete(t *testing.T, clients *utils.Clients, crNames utils.Res
 	if err := clients.TektonAddon().Delete(context.TODO(), crNames.TektonAddon, metav1.DeleteOptions{}); err != nil {
 		t.Fatalf("TektonAddon %q failed to delete: %v", crNames.TektonAddon, err)
 	}
-	err := wait.PollImmediate(utils.Interval, utils.Timeout, func() (bool, error) {
+	err := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
 		_, err := clients.TektonAddon().Get(context.TODO(), crNames.TektonAddon, metav1.GetOptions{})
 		if apierrs.IsNotFound(err) {
 			return true, nil
