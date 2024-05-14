@@ -67,7 +67,7 @@ spec:
         - name: METRICS_DOMAIN
           value: tekton.dev/operator
         - name: VERSION
-          value: "devel"
+          value: v0.71.0
         - name: AUTOINSTALL_COMPONENTS
           valueFrom:
             configMapKeyRef:
@@ -83,21 +83,21 @@ spec:
         - name: CONFIG_LEADERELECTION_NAME
           value: tekton-operator-controller-config-leader-election
         - name: IMAGE_HUB_TEKTON_HUB_DB
-          value: registry.redhat.io/rhel8/postgresql-13@sha256:f0083c3398501e3b7c82e7f865cd3377ff14cbfb14b1f8f91d7889232afa4796
+          value: registry.redhat.io/rhel8/postgresql-13@sha256:f490e1e409f89704d97c7a47b4f0d7610830f8581ae86871ce7aa99dd5cb52b0
         - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-          value: registry.redhat.io/rhel8/buildah@sha256:3c2ea396a114221575a4031d90d28c43563f7b96288374e0ba8b22de3ed97b5a
+          value: registry.redhat.io/rhel8/buildah@sha256:3d505d9c0f5d4cd5a4ec03b8d038656c6cdbdf5191e00ce6388f7e0e4d2f1b74
         - name: IMAGE_ADDONS_PARAM_KN_IMAGE
           value: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:bf6cf2e87fb19f7aa9a490b83c16af69834c0721220a643710a1b077959e91ca
         - name: IMAGE_ADDONS_MVN_SETTINGS
-          value: registry.redhat.io/ubi8/ubi-minimal@sha256:87bcbfedfd70e67aab3875fff103bade460aeff510033ebb36b7efa009ab6639
+          value: registry.redhat.io/ubi8/ubi-minimal@sha256:2fa47fa9df7b98e2776f447855699c01d06c3271b2d7259b8b314084580cf591
         - name: IMAGE_ADDONS_SKOPEO_COPY
-          value: registry.redhat.io/rhel8/skopeo@sha256:4b8d3eeb55e243f7a8ecd375292bdb8f65a6dfc5b02addfdfec5d0aec70877f6
+          value: registry.redhat.io/rhel8/skopeo@sha256:f45d9e1d9e6f273514be509ef89578ee88788061d1311134240cc0750ebc073e
         - name: IMAGE_ADDONS_GENERATE
           value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:6a6025914296a62fdf2092c3a40011bd9b966a6806b094d51eec5e1bd5026ef4
         - name: IMAGE_ADDONS_GEN_ENV_FILE
           value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:6a6025914296a62fdf2092c3a40011bd9b966a6806b094d51eec5e1bd5026ef4
         - name: IMAGE_ADDONS_PARAM_MAVEN_IMAGE
-          value: registry.redhat.io/ubi8/openjdk-17@sha256:0d12c4097e098b62f78a7a31c0d711d78e1e5a53f4c007b9a5fc6cc6ab4dc018
+          value: registry.redhat.io/ubi8/openjdk-17@sha256:e8cc2e476282b75d89c73057bfa713db22d72bdb2808d62d981a84c33beb2575
       - name: openshift-pipelines-operator-cluster-operations  # tektoninstallerset reconciler
         image: ko://github.com/tektoncd/operator/cmd/openshift/operator
         args:
@@ -125,7 +125,7 @@ spec:
           - name: PROFILING_PORT
             value: "9009"
           - name: VERSION
-            value: "devel"
+            value: v0.71.0
           - name: METRICS_DOMAIN
             value: tekton.dev/operator
           - name: CONFIG_LEADERELECTION_NAME

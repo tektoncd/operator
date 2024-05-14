@@ -86,8 +86,8 @@ metadata:
   name: tekton-operator-proxy-webhook
   namespace: tekton-pipelines
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: v0.71.0
+    operator.tekton.dev/release: v0.71.0
 spec:
   replicas: 1
   selector:
@@ -138,8 +138,8 @@ metadata:
   name: tekton-operator-proxy-webhook
   namespace: tekton-pipelines
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: v0.71.0
+    operator.tekton.dev/release: v0.71.0
 spec:
   ports:
     - name: https-webhook
@@ -215,7 +215,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: default
     pipeline.tekton.dev/release: "devel"
-    version: "devel"
+    version: v0.71.0
 spec:
   minReplicas: 1
   maxReplicas: 5

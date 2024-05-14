@@ -66,7 +66,7 @@ func getRouteHost(manifest *mf.Manifest) (string, error) {
 }
 
 func consoleCLITransform(ctx context.Context, manifest *mf.Manifest, baseURL string) error {
-	tknVersion := "0.33.0"
+	tknVersion := "0.37.0"
 
 	if baseURL == "" {
 		return fmt.Errorf("route url should not be empty")
