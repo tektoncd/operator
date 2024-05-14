@@ -172,7 +172,7 @@ release_yaml_pac() {
 }
 
 release_yaml_manualapprovalgate() {
-  echo fetching '|' version: ${1}
+  echo fetching '|' component: manual-approval-gate '|' version: ${1}
   local version=$1
 
   ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
