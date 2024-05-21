@@ -94,6 +94,11 @@ release_yaml() {
       cp ${ko_data}/openshift/pipelines-rbac/* ${dirPath}/
     fi
 
+    # Add OpenShift specific files for triggers
+    if [[ ${TARGET} == "openshift" ]] && [[ ${comp} == "triggers" ]]; then
+      cp ${ko_data}/openshift/triggers-rbac/* ${dirPath}/
+    fi
+
     if [[ ${comp} == "dashboard" ]]; then
       sed -i '/aggregationRule/,+3d' ${dest}
     fi
