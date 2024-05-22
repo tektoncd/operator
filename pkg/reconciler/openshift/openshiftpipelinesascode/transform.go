@@ -227,6 +227,7 @@ func updateAdditionControllerConfigMap(config v1alpha1.AdditionalPACControllerCo
 
 		defaultPacSettings := pacSettings.DefaultSettings()
 		err := pacConfigutil.ValidateAndAssignValues(zap.NewNop().Sugar(), config.Settings, &defaultPacSettings, nil, false)
+		config.Settings = v1alpha1.StructToMap(&defaultPacSettings)
 		if err != nil {
 			return err
 		}
