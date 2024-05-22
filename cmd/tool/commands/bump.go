@@ -41,7 +41,7 @@ func BumpCommand(ioStreams *cli.IOStreams) *cobra.Command {
 
 func bump(filename string, bugfix bool) error {
 	newComponents := map[string]component{}
-	components, err := ReadCompoments(filename)
+	components, err := ReadComponents(filename)
 	if err != nil {
 		return err
 	}

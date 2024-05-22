@@ -97,7 +97,7 @@ FORCE:
 bin/%: cmd/% FORCE
 	$Q $(GO) build -mod=vendor $(LDFLAGS) -v -o $@ ./$<
 
-.PHONY: compoments/bump
+.PHONY: components/bump
 components/bump: $(OPERATORTOOL)
 	@go run ./cmd/tool bump components.yaml
 
