@@ -33,7 +33,7 @@ func CheckCommand(ioStreams *cli.IOStreams) *cobra.Command {
 }
 
 func check(filename string, bugfix bool, out io.Writer) error {
-	components, err := ReadCompoments(filename)
+	components, err := ReadComponents(filename)
 	if err != nil {
 		return err
 	}

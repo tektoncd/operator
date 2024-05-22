@@ -15,7 +15,7 @@ type component struct {
 	Version string `json:"version"`
 }
 
-func ReadCompoments(filename string) (map[string]component, error) {
+func ReadComponents(filename string) (map[string]component, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func componentVersion(filename string, args []string, out io.Writer) error {
 		return fmt.Errorf("Need one and only one argument, the component name")
 	}
 	component := args[0]
-	components, err := ReadCompoments(filename)
+	components, err := ReadComponents(filename)
 	if err != nil {
 		return err
 	}
