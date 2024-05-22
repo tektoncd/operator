@@ -19,6 +19,9 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
 
 	pacConfigutil "github.com/openshift-pipelines/pipelines-as-code/pkg/configutil"
 	pacSettings "github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
@@ -47,6 +50,7 @@ func (set *PACSettings) setPACDefaults(logger *zap.SugaredLogger) {
 	if err != nil {
 		logger.Error("error on applying default PAC settings", err)
 	}
+	set.Settings = StructToMap(&defaultPacSettings)
 	setAdditionalPACControllerDefault(set.AdditionalPACControllers)
 }
 
@@ -64,4 +68,45 @@ func setAdditionalPACControllerDefault(additionalPACController map[string]Additi
 		}
 		additionalPACController[name] = additionalPACInfo
 	}
+}
+
+func StructToMap(settings *pacSettings.Settings) map[string]string {
+	structValue := reflect.ValueOf(settings).Elem()
+	structType := reflect.TypeOf(settings).Elem()
+	config := map[string]string{}
+
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		fieldName := field.Name
+
+		jsonTag := field.Tag.Get("json")
+		// Skip field which doesn't have json tag
+		if jsonTag == "" || jsonTag == "-" {
+			continue
+		}
+		key := strings.ToLower(jsonTag)
+		element := structValue.FieldByName(fieldName)
+		if !element.IsValid() {
+			continue
+		}
+
+		//nolint
+		switch field.Type.Kind() {
+		case reflect.String:
+			config[key] = element.String()
+		case reflect.Bool:
+			config[key] = strconv.FormatBool(element.Bool())
+		case reflect.Int:
+			if element.Int() == 0 {
+				config[key] = ""
+				continue
+			}
+			config[key] = strconv.FormatInt(element.Int(), 10)
+		default:
+			// Skip unsupported field types
+			continue
+		}
+	}
+
+	return config
 }
