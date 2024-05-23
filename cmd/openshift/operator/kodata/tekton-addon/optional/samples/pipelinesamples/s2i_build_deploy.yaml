@@ -5,13 +5,13 @@ metadata:
   name: s2i-build-and-deploy-pipeline
 spec:
   targetResource:
-    apiVersion: tekton.dev/v1beta1
+    apiVersion: tekton.dev/v1
     kind: Pipeline
   title: s2i-build-and-deploy-pipeline-using-workspace
   description: An example of s2i build and deploy pipeline using workspace
   snippet: false
   yaml: |
-    apiVersion: tekton.dev/v1beta1
+    apiVersion: tekton.dev/v1
     kind: Pipeline
     metadata:
       name: s2i-build-and-deploy
