@@ -61,7 +61,6 @@ declare -A TEKTON_ECOSYSTEM_TASKS=(
   ['task-kn-apply']='0.1.0'
   ['task-kn']='0.1.0'
   ['task-maven']="0.2.1"
-  ['task-opc']="0.1.0"
   ['task-openshift-client']="0.1.0"
   ['task-s2i-dotnet']='0.3.1'
   ['task-s2i-go']='0.3.1'
@@ -73,7 +72,6 @@ declare -A TEKTON_ECOSYSTEM_TASKS=(
   ['task-s2i-ruby']='0.3.1'
   ['task-skopeo-copy']='0.3.1'
   ['task-tkn']='0.1.0'
-  ['task-buildpacks']='0.1.0'
 )
 
 download_task() {

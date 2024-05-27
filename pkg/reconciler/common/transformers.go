@@ -310,7 +310,7 @@ func SplitsByEqual(arg string) ([]string, bool) {
 // TaskImages replaces step and params images.
 func TaskImages(images map[string]string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if u.GetKind() != "ClusterTask" {
+		if u.GetKind() != "ClusterTask" && u.GetKind() != "Task" {
 			return nil
 		}
 
