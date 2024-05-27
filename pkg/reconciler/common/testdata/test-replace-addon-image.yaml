@@ -3,7 +3,7 @@
 # source: https://raw.githubusercontent.com/openshift/tektoncd-catalog/release-v0.10/buildah/buildah.yaml
 #
 ---
-apiVersion: tekton.dev/v1beta1
+apiVersion: tekton.dev/v1
 kind: ClusterTask
 metadata:
   name: buildah

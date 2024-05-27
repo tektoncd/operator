@@ -772,7 +772,7 @@ spec:
     - name: ghe_host
       default: "api.github.com"
   resourcetemplates:
-    - apiVersion: tekton.dev/v1beta1
+    - apiVersion: tekton.dev/v1
       kind: TaskRun
       metadata:
         generateName: pipelines-as-code-run-
@@ -977,7 +977,7 @@ spec:
     - name: ghe_host
       default: "api.github.com"
   resourcetemplates:
-    - apiVersion: tekton.dev/v1beta1
+    - apiVersion: tekton.dev/v1
       kind: TaskRun
       metadata:
         generateName: pipelines-as-code-run-
@@ -1181,7 +1181,7 @@ spec:
       default: ""
     - name: trigger_target
   resourcetemplates:
-    - apiVersion: tekton.dev/v1beta1
+    - apiVersion: tekton.dev/v1
       kind: TaskRun
       metadata:
         generateName: pipelines-as-code-run-
@@ -1360,7 +1360,7 @@ spec:
     - name: ghe_host
       default: "api.github.com"
   resourcetemplates:
-    - apiVersion: tekton.dev/v1beta1
+    - apiVersion: tekton.dev/v1
       kind: TaskRun
       metadata:
         generateName: pipelines-as-code-run-
@@ -1592,7 +1592,7 @@ spec:
     - name: source_commit_hash
     - name: pullrequest_id
   resourcetemplates:
-    - apiVersion: tekton.dev/v1beta1
+    - apiVersion: tekton.dev/v1
       kind: TaskRun
       metadata:
         generateName: pipelines-as-code-run-
@@ -1793,7 +1793,7 @@ spec:
       default: ""
     - name: push_new_hash
   resourcetemplates:
-    - apiVersion: tekton.dev/v1beta1
+    - apiVersion: tekton.dev/v1
       kind: TaskRun
       metadata:
         generateName: pipelines-as-code-run-
@@ -2076,7 +2076,7 @@ spec:
     - name: sha
     - name: fromRefName
   resourcetemplates:
-    - apiVersion: tekton.dev/v1beta1
+    - apiVersion: tekton.dev/v1
       kind: TaskRun
       metadata:
         generateName: pipelines-as-code-run-
@@ -2301,7 +2301,7 @@ spec:
     - name: clone_url_ssh
       default: ""
   resourcetemplates:
-    - apiVersion: tekton.dev/v1beta1
+    - apiVersion: tekton.dev/v1
       kind: TaskRun
       metadata:
         generateName: pipelines-as-code-run-
