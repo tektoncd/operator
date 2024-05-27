@@ -41,12 +41,12 @@ func GetSecurityClient(ctx context.Context) *security.Clientset {
 	return securityClient
 }
 
-func VerifySCCExists(ctx context.Context, sccName string, securityClient *security.Clientset) error {
+func VerifySCCExists(ctx context.Context, sccName string, securityClient security.Interface) error {
 	_, err := securityClient.SecurityV1().SecurityContextConstraints().Get(ctx, sccName, metav1.GetOptions{})
 	return err
 }
 
-func GetSCCRestrictiveList(ctx context.Context, securityClient *security.Clientset) ([]*securityv1.SecurityContextConstraints, error) {
+func GetSCCRestrictiveList(ctx context.Context, securityClient security.Interface) ([]*securityv1.SecurityContextConstraints, error) {
 	logger := logging.FromContext(ctx)
 	sccList, err := securityClient.SecurityV1().SecurityContextConstraints().List(ctx, metav1.ListOptions{})
 	if err != nil {
