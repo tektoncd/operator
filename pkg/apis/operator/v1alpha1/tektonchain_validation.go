@@ -26,13 +26,14 @@ import (
 )
 
 var (
-	allowedArtifactsTaskRunFormat     = sets.NewString("", "in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3")
-	allowedArtifactsPipelineRunFormat = sets.NewString("", "in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3")
-	allowedX509SignerFulcioProvider   = sets.NewString("", "google", "spiffe", "github", "filesystem")
-	allowedTransparencyConfigEnabled  = sets.NewString("", "true", "false", "manual")
-	allowedArtifactsStorage           = sets.NewString("", "tekton", "oci", "gcs", "docdb", "grafeas", "kafka")
-	allowedControllerEnvs             = sets.NewString("MONGO_SERVER_URL")
-	allowedBuildDefinitionType        = sets.NewString("", "https://tekton.dev/chains/v2/slsa", "https://tekton.dev/chains/v2/slsa-tekton")
+	allowedArtifactsTaskRunFormat                   = sets.NewString("", "in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3")
+	allowedArtifactsPipelineRunFormat               = sets.NewString("", "in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3")
+	allowedX509SignerFulcioProvider                 = sets.NewString("", "google", "spiffe", "github", "filesystem")
+	allowedTransparencyConfigEnabled                = sets.NewString("", "true", "false", "manual")
+	allowedArtifactsPipelineRunEnableDeepInspection = sets.NewString("", "true", "false")
+	allowedArtifactsStorage                         = sets.NewString("", "tekton", "oci", "gcs", "docdb", "grafeas", "kafka")
+	allowedControllerEnvs                           = sets.NewString("MONGO_SERVER_URL")
+	allowedBuildDefinitionType                      = sets.NewString("", "https://tekton.dev/chains/v2/slsa", "https://tekton.dev/chains/v2/slsa-tekton")
 )
 
 func (tc *TektonChain) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -133,6 +134,10 @@ func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldEr
 
 	if !allowedTransparencyConfigEnabled.Has(string(tcs.TransparencyConfigEnabled)) {
 		errs = errs.Also(apis.ErrInvalidValue(tcs.TransparencyConfigEnabled, path+".transparency.enabled"))
+	}
+
+	if !allowedArtifactsPipelineRunEnableDeepInspection.Has(string(tcs.ArtifactsPipelineRunEnableDeepInspection)) {
+		errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsPipelineRunEnableDeepInspection, path+".artifacts.pipelinerun.enable-deep-inspection"))
 	}
 
 	if !allowedBuildDefinitionType.Has(tcs.BuildDefinitionBuildType) {

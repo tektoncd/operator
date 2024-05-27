@@ -226,11 +226,6 @@ func (in *ChainProperties) DeepCopyInto(out *ChainProperties) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.ArtifactsPipelineRunEnableDeepInspection != nil {
-		in, out := &in.ArtifactsPipelineRunEnableDeepInspection, &out.ArtifactsPipelineRunEnableDeepInspection
-		*out = new(bool)
-		**out = **in
-	}
 	if in.ArtifactsOCIStorage != nil {
 		in, out := &in.ArtifactsOCIStorage, &out.ArtifactsOCIStorage
 		*out = new(string)
