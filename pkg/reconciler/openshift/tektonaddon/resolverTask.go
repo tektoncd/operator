@@ -21,6 +21,7 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 )
 
@@ -41,8 +42,10 @@ func (r *Reconciler) EnsureResolverTask(ctx context.Context, enable string, ta *
 func filterAndTransformResolverTask() client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		addon := comp.(*v1alpha1.TektonAddon)
+		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
 		tfs := []mf.Transformer{
 			injectLabel(labelProviderType, providerTypeRedHat, overwrite, "Task"),
+			common.TaskImages(addonImages),
 		}
 		if err := transformers(ctx, manifest, addon, tfs...); err != nil {
 			return nil, err
