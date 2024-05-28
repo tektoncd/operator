@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
-	pacConfigutil "github.com/openshift-pipelines/pipelines-as-code/pkg/configutil"
 	pacSettings "github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -226,8 +225,8 @@ func updateAdditionControllerConfigMap(config v1alpha1.AdditionalPACControllerCo
 		}
 
 		defaultPacSettings := pacSettings.DefaultSettings()
-		err := pacConfigutil.ValidateAndAssignValues(zap.NewNop().Sugar(), config.Settings, &defaultPacSettings, nil, false)
-		config.Settings = v1alpha1.StructToMap(&defaultPacSettings)
+		err := pacSettings.SyncConfig(zap.NewNop().Sugar(), &defaultPacSettings, config.Settings, pacSettings.DefaultValidators())
+		config.Settings = pacSettings.ConvertPacStructToConfigMap(&defaultPacSettings)
 		if err != nil {
 			return err
 		}
