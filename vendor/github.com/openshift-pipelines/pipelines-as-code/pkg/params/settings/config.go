@@ -35,11 +35,13 @@ var (
 )
 
 type HubCatalog struct {
-	ID   string
-	Name string
-	URL  string
+	Index string
+	Name  string
+	URL   string
 }
 
+// if there is a change performed on the default value,
+// update the same on "config/302-pac-configmap.yaml".
 type Settings struct {
 	ApplicationName                    string `default:"Pipelines as Code CI" json:"application-name"`
 	HubCatalogs                        *sync.Map
@@ -59,7 +61,7 @@ type Settings struct {
 	ErrorLogSnippet             bool   `default:"true"                                                                          json:"error-log-snippet"`
 	ErrorDetection              bool   `default:"true"                                                                          json:"error-detection-from-container-logs"`
 	ErrorDetectionNumberOfLines int    `default:"50"                                                                            json:"error-detection-max-number-of-lines"`
-	ErrorDetectionSimpleRegexp  string `default:"^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([ ]*)?(?P<error>.*)" json:"error-detection-simple-regexp"`
+	ErrorDetectionSimpleRegexp  string `default:"^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+)?([ ]*)?(?P<error>.*)" json:"error-detection-simple-regexp"`
 
 	CustomConsoleName         string `json:"custom-console-name"`
 	CustomConsoleURL          string `json:"custom-console-url"`
@@ -78,33 +80,31 @@ func DefaultSettings() Settings {
 	newSettings := &Settings{}
 	hubCatalog := &sync.Map{}
 	hubCatalog.Store("default", HubCatalog{
-		ID:   "default",
-		Name: HubCatalogNameDefaultValue,
-		URL:  HubURLDefaultValue,
+		Index: "default",
+		Name:  HubCatalogNameDefaultValue,
+		URL:   HubURLDefaultValue,
 	})
 	newSettings.HubCatalogs = hubCatalog
 
-	_ = configutil.ValidateAndAssignValues(nil, map[string]string{}, newSettings, map[string]func(string) error{
-		"ErrorDetectionSimpleRegexp": isValidRegex,
-		"TektonDashboardURL":         isValidURL,
-		"CustomConsoleURL":           isValidURL,
-		"CustomConsolePRTaskLog":     startWithHTTPorHTTPS,
-		"CustomConsolePRDetail":      startWithHTTPorHTTPS,
-	}, false)
+	_ = configutil.ValidateAndAssignValues(nil, map[string]string{}, newSettings, map[string]func(string) error{}, false)
 
 	return *newSettings
 }
 
-func SyncConfig(logger *zap.SugaredLogger, setting *Settings, config map[string]string) error {
-	setting.HubCatalogs = getHubCatalogs(logger, setting.HubCatalogs, config)
-
-	err := configutil.ValidateAndAssignValues(logger, config, setting, map[string]func(string) error{
+func DefaultValidators() map[string]func(string) error {
+	return map[string]func(string) error{
 		"ErrorDetectionSimpleRegexp": isValidRegex,
 		"TektonDashboardURL":         isValidURL,
 		"CustomConsoleURL":           isValidURL,
 		"CustomConsolePRTaskLog":     startWithHTTPorHTTPS,
 		"CustomConsolePRDetail":      startWithHTTPorHTTPS,
-	}, true)
+	}
+}
+
+func SyncConfig(logger *zap.SugaredLogger, setting *Settings, config map[string]string, validators map[string]func(string) error) error {
+	setting.HubCatalogs = getHubCatalogs(logger, setting.HubCatalogs, config)
+
+	err := configutil.ValidateAndAssignValues(logger, config, setting, validators, true)
 	if err != nil {
 		return fmt.Errorf("failed to validate and assign values: %w", err)
 	}

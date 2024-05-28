@@ -21,26 +21,26 @@ func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[st
 		config[HubCatalogNameKey] = HubCatalogNameDefaultValue
 	}
 	catalogs.Store("default", HubCatalog{
-		ID:   "default",
-		Name: config[HubCatalogNameKey],
-		URL:  config[HubURLKey],
+		Index: "default",
+		Name:  config[HubCatalogNameKey],
+		URL:   config[HubURLKey],
 	})
 
 	for k := range config {
 		m := hubCatalogNameRegex.FindStringSubmatch(k)
 		if len(m) > 0 {
-			id := m[1]
-			cPrefix := fmt.Sprintf("catalog-%s", id)
+			index := m[1]
+			cPrefix := fmt.Sprintf("catalog-%s", index)
 			skip := false
 			for _, kk := range []string{"id", "name", "url"} {
 				cKey := fmt.Sprintf("%s-%s", cPrefix, kk)
 				// check if key exist in config
 				if _, ok := config[cKey]; !ok {
-					logger.Warnf("CONFIG: hub %v should have the key %s, skipping catalog configuration", id, cKey)
+					logger.Warnf("CONFIG: hub %v should have the key %s, skipping catalog configuration", index, cKey)
 					skip = true
 					break
 				} else if config[cKey] == "" {
-					logger.Warnf("CONFIG: hub %v catalog configuration is empty, skipping catalog configuration", id)
+					logger.Warnf("CONFIG: hub %v catalog configuration have empty value for key %s, skipping catalog configuration", index, cKey)
 					skip = true
 					break
 				}
@@ -61,15 +61,15 @@ func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[st
 				value, ok := catalogs.Load(catalogID)
 				if ok {
 					catalogValues, ok := value.(HubCatalog)
-					if ok && (catalogValues.Name == catalogName) && (catalogValues.URL == catalogURL) {
-						break
+					if ok && (catalogValues.Name == catalogName) && (catalogValues.URL == catalogURL) && (catalogValues.Index == index) {
+						continue
 					}
 				}
 				logger.Infof("CONFIG: setting custom hub %s, catalog %s", catalogID, catalogURL)
 				catalogs.Store(catalogID, HubCatalog{
-					ID:   catalogID,
-					Name: catalogName,
-					URL:  catalogURL,
+					Index: index,
+					Name:  catalogName,
+					URL:   catalogURL,
 				})
 			}
 		}

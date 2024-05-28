@@ -19,11 +19,167 @@ package v1alpha1
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
+	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
 )
+
+func TestSetPACControllerDefaultSettings(t *testing.T) {
+	opacCR := &OpenShiftPipelinesAsCode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: OpenShiftPipelinesAsCodeSpec{
+			PACSettings: PACSettings{
+				Settings: map[string]string{},
+			},
+		},
+	}
+
+	opacCR.Spec.PACSettings.setPACDefaults(zap.NewNop().Sugar())
+
+	expectedSettings := map[string]string{
+		"application-name":                       "Pipelines as Code CI",
+		"auto-configure-new-github-repo":         "false",
+		"auto-configure-repo-namespace-template": "",
+		"bitbucket-cloud-additional-source-ip":   "",
+		"bitbucket-cloud-check-source-ip":        "true",
+		"custom-console-name":                    "",
+		"custom-console-url":                     "",
+		"custom-console-url-namespace":           "",
+		"custom-console-url-pr-details":          "",
+		"custom-console-url-pr-tasklog":          "",
+		"default-max-keep-runs":                  "0",
+		"error-detection-from-container-logs":    "true",
+		"error-detection-max-number-of-lines":    "50",
+		"error-detection-simple-regexp":          "^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+)?([ ]*)?(?P<error>.*)",
+		"error-log-snippet":                      "true",
+		"hub-catalog-name":                       "tekton",
+		"hub-url":                                "https://api.hub.tekton.dev/v1",
+		"max-keep-run-upper-limit":               "0",
+		"remember-ok-to-test":                    "true",
+		"remote-tasks":                           "true",
+		"secret-auto-create":                     "true",
+		"secret-github-app-scope-extra-repos":    "",
+		"secret-github-app-token-scoped":         "true",
+		"tekton-dashboard-url":                   "",
+	}
+
+	assert.DeepEqual(t, opacCR.Spec.PACSettings.Settings, expectedSettings)
+}
+
+func TestSetPACControllerLimitedSettings(t *testing.T) {
+	opacCR := &OpenShiftPipelinesAsCode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: OpenShiftPipelinesAsCodeSpec{
+			PACSettings: PACSettings{
+				Settings: map[string]string{
+					"application-name":                       "Pipelines as Code CI test name",
+					"auto-configure-new-github-repo":         "false",
+					"auto-configure-repo-namespace-template": "",
+					"bitbucket-cloud-additional-source-ip":   "",
+					"error-detection-from-container-logs":    "true",
+					"error-detection-max-number-of-lines":    "100",
+					"remote-tasks":                           "",
+				},
+			},
+		},
+	}
+
+	opacCR.Spec.PACSettings.setPACDefaults(zap.NewNop().Sugar())
+
+	expectedSettings := map[string]string{
+		"application-name":                       "Pipelines as Code CI test name",
+		"auto-configure-new-github-repo":         "false",
+		"auto-configure-repo-namespace-template": "",
+		"bitbucket-cloud-additional-source-ip":   "",
+		"bitbucket-cloud-check-source-ip":        "true",
+		"custom-console-name":                    "",
+		"custom-console-url":                     "",
+		"custom-console-url-namespace":           "",
+		"custom-console-url-pr-details":          "",
+		"custom-console-url-pr-tasklog":          "",
+		"default-max-keep-runs":                  "0",
+		"error-detection-from-container-logs":    "true",
+		"error-detection-max-number-of-lines":    "100",
+		"error-detection-simple-regexp":          "^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+)?([ ]*)?(?P<error>.*)",
+		"error-log-snippet":                      "true",
+		"hub-catalog-name":                       "tekton",
+		"hub-url":                                "https://api.hub.tekton.dev/v1",
+		"max-keep-run-upper-limit":               "0",
+		"remember-ok-to-test":                    "true",
+		"remote-tasks":                           "true",
+		"secret-auto-create":                     "true",
+		"secret-github-app-scope-extra-repos":    "",
+		"secret-github-app-token-scoped":         "true",
+		"tekton-dashboard-url":                   "",
+	}
+
+	assert.DeepEqual(t, opacCR.Spec.PACSettings.Settings, expectedSettings)
+}
+
+func TestSetPACControllerDefaultSettingsWithMultipleCatalogs(t *testing.T) {
+	opacCR := &OpenShiftPipelinesAsCode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: OpenShiftPipelinesAsCodeSpec{
+			PACSettings: PACSettings{
+				Settings: map[string]string{
+					"catalog-1-id":   "anotherhub",
+					"catalog-1-name": "tekton",
+					"catalog-1-url":  "https://api.other.com/v1",
+					"catalog-5-id":   "anotherhub5",
+					"catalog-5-name": "tekton1",
+					"catalog-5-url":  "https://api.other.com/v2",
+				},
+			},
+		},
+	}
+
+	opacCR.Spec.PACSettings.setPACDefaults(zap.NewNop().Sugar())
+
+	expectedSettings := map[string]string{
+		"application-name":                       "Pipelines as Code CI",
+		"auto-configure-new-github-repo":         "false",
+		"auto-configure-repo-namespace-template": "",
+		"bitbucket-cloud-additional-source-ip":   "",
+		"bitbucket-cloud-check-source-ip":        "true",
+		"catalog-1-id":                           "anotherhub",
+		"catalog-1-name":                         "tekton",
+		"catalog-1-url":                          "https://api.other.com/v1",
+		"catalog-5-id":                           "anotherhub5",
+		"catalog-5-name":                         "tekton1",
+		"catalog-5-url":                          "https://api.other.com/v2",
+		"custom-console-name":                    "",
+		"custom-console-url":                     "",
+		"custom-console-url-namespace":           "",
+		"custom-console-url-pr-details":          "",
+		"custom-console-url-pr-tasklog":          "",
+		"default-max-keep-runs":                  "0",
+		"error-detection-from-container-logs":    "true",
+		"error-detection-max-number-of-lines":    "50",
+		"error-detection-simple-regexp":          "^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+)?([ ]*)?(?P<error>.*)",
+		"error-log-snippet":                      "true",
+		"hub-catalog-name":                       "tekton",
+		"hub-url":                                "https://api.hub.tekton.dev/v1",
+		"max-keep-run-upper-limit":               "0",
+		"remember-ok-to-test":                    "true",
+		"remote-tasks":                           "true",
+		"secret-auto-create":                     "true",
+		"secret-github-app-scope-extra-repos":    "",
+		"secret-github-app-token-scoped":         "true",
+		"tekton-dashboard-url":                   "",
+	}
+
+	assert.DeepEqual(t, opacCR.Spec.PACSettings.Settings, expectedSettings)
+}
 
 func TestSetAdditionalPACControllerDefault(t *testing.T) {
 	opacCR := &OpenShiftPipelinesAsCode{
