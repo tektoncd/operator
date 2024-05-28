@@ -19,11 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
-	"net/url"
-	"regexp"
-	"strings"
 
-	pacConfigutil "github.com/openshift-pipelines/pipelines-as-code/pkg/configutil"
 	pacSettings "github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
 	"go.uber.org/zap"
 	kubernetesValidation "k8s.io/apimachinery/pkg/util/validation"
@@ -56,13 +52,7 @@ func (ps *PACSettings) validate(logger *zap.SugaredLogger, path string) *apis.Fi
 	var errs *apis.FieldError
 
 	defaultPacSettings := pacSettings.DefaultSettings()
-	if err := pacConfigutil.ValidateAndAssignValues(nil, ps.Settings, &defaultPacSettings, map[string]func(string) error{
-		"ErrorDetectionSimpleRegexp": isValidRegex,
-		"TektonDashboardURL":         isValidURL,
-		"CustomConsoleURL":           isValidURL,
-		"CustomConsolePRTaskLog":     startWithHTTPorHTTPS,
-		"CustomConsolePRDetail":      startWithHTTPorHTTPS,
-	}, false); err != nil {
+	if err := pacSettings.SyncConfig(logger, &defaultPacSettings, ps.Settings, pacSettings.DefaultValidators()); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.settings", path)))
 	}
 
@@ -89,13 +79,7 @@ func (aps AdditionalPACControllerConfig) validate(logger *zap.SugaredLogger, pat
 	}
 
 	defaultPacSettings := pacSettings.DefaultSettings()
-	if err := pacConfigutil.ValidateAndAssignValues(logger, aps.Settings, &defaultPacSettings, map[string]func(string) error{
-		"ErrorDetectionSimpleRegexp": isValidRegex,
-		"TektonDashboardURL":         isValidURL,
-		"CustomConsoleURL":           isValidURL,
-		"CustomConsolePRTaskLog":     startWithHTTPorHTTPS,
-		"CustomConsolePRDetail":      startWithHTTPorHTTPS,
-	}, false); err != nil {
+	if err := pacSettings.SyncConfig(logger, &defaultPacSettings, aps.Settings, pacSettings.DefaultValidators()); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.settings", path)))
 	}
 
@@ -134,28 +118,6 @@ func validateKubernetesName(name string) *apis.FieldError {
 			Message: fmt.Sprintf("invalid resource name %q: length must be no more than %d characters", name, kubernetesValidation.DNS1123LabelMaxLength),
 			Paths:   []string{"name"},
 		}
-	}
-	return nil
-}
-
-// TODO: expose the default custom validators from PAC vendor and remove the below three functions
-func isValidURL(rawURL string) error {
-	if _, err := url.ParseRequestURI(rawURL); err != nil {
-		return fmt.Errorf("invalid value for URL, error: %w", err)
-	}
-	return nil
-}
-
-func isValidRegex(regex string) error {
-	if _, err := regexp.Compile(regex); err != nil {
-		return fmt.Errorf("invalid regex: %w", err)
-	}
-	return nil
-}
-
-func startWithHTTPorHTTPS(url string) error {
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
-		return fmt.Errorf("invalid value, must start with http:// or https://")
 	}
 	return nil
 }
