@@ -658,6 +658,33 @@ func TestAddConfigMapValues(t *testing.T) {
 			expectedData:        map[string]string{"foo": "bar"},
 			doesConfigMapExists: true,
 		},
+		{
+			name:                "verify-with-empty-string-pointer",
+			targetConfigMapName: configMapName,
+			props: struct {
+				StringPtr      *string `json:"stringPtr"`
+				NilStringPtr   *string `json:"nilStringPtr"`
+				EmptyStringPtr *string `json:"emptyStringPtr"`
+				String         string  `json:"string"`
+				EmptyString    string  `json:"emptyString"`
+			}{
+				StringPtr:      ptr.String("hi"),
+				NilStringPtr:   nil,
+				EmptyStringPtr: ptr.String(""),
+				String:         "hello",
+				EmptyString:    "",
+			},
+			expectedData: map[string]string{
+				"stringPtr":      "hi",
+				"emptyStringPtr": "",
+				"string":         "hello",
+			},
+			keysShouldNotBeIn: []string{
+				"nilStringPtr",
+				"emptyString",
+			},
+			doesConfigMapExists: true,
+		},
 	}
 
 	for _, test := range tests {
