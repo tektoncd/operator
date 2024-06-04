@@ -11,9 +11,9 @@ weight: 100
     ```
     $ kubectl apply -f https://storage.googleapis.com/tekton-releases/operator/latest/release.yaml
     ```
-2. Install Components (
-   uses [installation profiles](https://github.com/tektoncd/operator/tree/main/config/crs/kubernetes/config): `lite`
-   , `all`, `basic`)
+    **Note**: This will also install pipelines, triggers, chains, and dashboard
+2. In case you want to install other components, use available [installation profiles](https://github.com/tektoncd/operator/tree/main/config/crs/kubernetes/config): `lite`
+   , `all`, `basic`
 
    Where
 
