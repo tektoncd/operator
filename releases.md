@@ -18,12 +18,6 @@ Tekton Operator produces nightly builds, publicly available on
 
 More details are available in the [Tekton Operator release documentation][tekton-releases-docs].
 
-### Transition Process
-
-Before release v0.63 Tekton Operator has worked on the basis of an undocumented
-support period of four months, which will be maintained for the releases between
-v0.60 and v0.62.
-
 ## Release Process
 
 Tekton Operator releases are made of YAML manifests and container images.
@@ -39,38 +33,6 @@ Further documentation available:
 - The Tekton Operator [release process][tekton-releases-process]
 - [Installing Tekton][tekton-installation]
 - Standard for [release notes][release-notes-standards]
-
-## Releases
-
-### v0.63
-
-- **Latest Release**: [v0.63.0][v0-62-0] (2022-11-25) ([docs][v0-63-0-docs])
-- **Initial Release**: [v0.63.0][v0-63-0] (2022-11-25)
-- **End of Life**: 2023-11-25
-- **Patch Releases**: [v0.63.0][v0-63-0]
-
-### v0.62
-
-- **Latest Release**: [v0.62.0][v0-62-0] (2022-09-20) ([docs][v0-62-0-docs])
-- **Initial Release**: [v0.62.0][v0-62-0] (2022-09-20)
-- **End of Life**: 2023-01-19
-- **Patch Releases**: [v0.62.0][v0-62-0]
-
-### v0.61
-
-- **Latest Release**: [v0.61.0][v0-61-0] (2022-08-25) ([docs][v0-61-0-docs])
-- **Initial Release**: [v0.61.0][v0-61-0] (2022-08-25)
-- **End of Life**: 2022-12-24
-- **Patch Releases**: [v0.61.0][v0-61-0]
-
-### v0.60
-
-- **Latest Release**: [v0.60.1][v0-60-1] (2022-07-28) ([docs][v0-60-1-docs])
-- **Initial Release**: [v0.60.0][v0-60-0] (2022-06-28)
-- **End of Life**: 2022-10-27
-- **Patch Releases**: [v0.60.0][v0-60-0], [v0.60.1][v0-60-1]
-
-## End of Life Releases
 
 Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 
