@@ -10,7 +10,7 @@ require (
 	github.com/manifestival/client-go-client v0.6.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
-	github.com/openshift-pipelines/pipelines-as-code v0.27.0
+	github.com/openshift-pipelines/pipelines-as-code v0.27.1
 	github.com/openshift/api v0.0.0-20240304080513-3e8192a10b13
 	github.com/openshift/apiserver-library-go v0.0.0-20230816171015-6bfafa975bfb
 	github.com/openshift/client-go v0.0.0-20230503144108-75015d2347cb
