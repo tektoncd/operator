@@ -76,7 +76,7 @@ func itemInSlice(item string, items []string) bool {
 	return false
 }
 
-func getlinks(baseURL, tknVersion string) []console.CLIDownloadLink {
+func getlinks(baseURL string) []console.CLIDownloadLink {
 	platformURLs := []struct {
 		platform string
 		tknURL   string
@@ -107,7 +107,7 @@ func getURL(baseURL string, path string) string {
 	return fmt.Sprintf("https://%s/%s", baseURL, path)
 }
 
-func replaceURLCCD(baseURL, tknVersion string) mf.Transformer {
+func replaceURLCCD(baseURL string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() != "ConsoleCLIDownload" {
 			return nil
@@ -117,7 +117,7 @@ func replaceURLCCD(baseURL, tknVersion string) mf.Transformer {
 		if err != nil {
 			return err
 		}
-		ccd.Spec.Links = getlinks(baseURL, tknVersion)
+		ccd.Spec.Links = getlinks(baseURL)
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ccd)
 		if err != nil {
 			return err
