@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"reflect"
 
 	pacSettings "github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
 	"go.uber.org/zap"
@@ -61,13 +62,13 @@ func (ps *PACSettings) validate(logger *zap.SugaredLogger, path string) *apis.Fi
 			errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.additionalPACControllers", path)))
 		}
 
-		errs = errs.Also(additionalPACControllerConfig.validate(logger, fmt.Sprintf("%s.additionalPACControllers", path)))
+		errs = errs.Also(additionalPACControllerConfig.validate(fmt.Sprintf("%s.additionalPACControllers", path)))
 	}
 
 	return errs
 }
 
-func (aps AdditionalPACControllerConfig) validate(logger *zap.SugaredLogger, path string) *apis.FieldError {
+func (aps AdditionalPACControllerConfig) validate(path string) *apis.FieldError {
 	var errs *apis.FieldError
 
 	if err := validateKubernetesName(aps.ConfigMapName); err != nil {
@@ -78,8 +79,7 @@ func (aps AdditionalPACControllerConfig) validate(logger *zap.SugaredLogger, pat
 		errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.secretName", path)))
 	}
 
-	defaultPacSettings := pacSettings.DefaultSettings()
-	if err := pacSettings.SyncConfig(logger, &defaultPacSettings, aps.Settings, pacSettings.DefaultValidators()); err != nil {
+	if err := validateAdditionalPACControllerSettings(aps.Settings); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.settings", path)))
 	}
 
@@ -120,4 +120,42 @@ func validateKubernetesName(name string) *apis.FieldError {
 		}
 	}
 	return nil
+}
+
+// validates the settings of the additionalPACController
+func validateAdditionalPACControllerSettings(settings map[string]string) *apis.FieldError {
+	var errs *apis.FieldError
+	validators := pacSettings.DefaultValidators()
+	if len(settings) > 0 {
+		fieldTagMapDetails := getFieldTagMap()
+		for key, value := range settings {
+			fieldName, ok := fieldTagMapDetails[key]
+			if !ok {
+				continue
+			}
+			if validationFunc, ok := validators[fieldName]; ok && value != "" {
+				if err := validationFunc(value); err != nil {
+					errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("validation failed for field %s", key)))
+					continue
+				}
+			}
+		}
+		return errs
+	}
+	return nil
+}
+
+// this will return map with all the json tags with value equal to their field names
+func getFieldTagMap() map[string]string {
+	var fieldTagMapping = make(map[string]string)
+	rt := reflect.TypeOf(pacSettings.Settings{})
+	for i := 0; i < rt.NumField(); i++ {
+		f := rt.Field(i)
+		v := f.Tag.Get("json")
+		if v == "" || v == "-" {
+			continue
+		}
+		fieldTagMapping[v] = f.Name
+	}
+	return fieldTagMapping
 }
