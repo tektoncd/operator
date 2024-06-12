@@ -79,6 +79,9 @@ func (aps AdditionalPACControllerConfig) validate(logger *zap.SugaredLogger, pat
 	}
 
 	defaultPacSettings := pacSettings.DefaultSettings()
+	if aps.Settings == nil {
+		aps.Settings = map[string]string{}
+	}
 	if err := pacSettings.SyncConfig(logger, &defaultPacSettings, aps.Settings, pacSettings.DefaultValidators()); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.settings", path)))
 	}

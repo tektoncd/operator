@@ -108,3 +108,28 @@ func TestValidateAddtionalPACControllerInvalidNameLength(t *testing.T) {
 	err := opacCR.Validate(context.TODO())
 	assert.Equal(t, fmt.Sprintf("invalid value: invalid resource name %q: length must be no more than 25 characters: name: spec.additionalPACControllers", "testlengthwhichexceedsthemaximumlength"), err.Error())
 }
+
+func TestValidateAddtionalPACControllerWhenNoSettings(t *testing.T) {
+	opacCR := &OpenShiftPipelinesAsCode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: OpenShiftPipelinesAsCodeSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "Openshift-Pipelines",
+			},
+			PACSettings: PACSettings{
+				Settings: map[string]string{},
+				AdditionalPACControllers: map[string]AdditionalPACControllerConfig{
+					"test": {
+						ConfigMapName: "test-configmap",
+						SecretName:    "test-secret",
+					},
+				},
+			},
+		},
+	}
+	err := opacCR.Validate(context.TODO())
+	assert.Assert(t, nil, err)
+}
