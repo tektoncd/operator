@@ -9,3 +9,4 @@ resources:
 - installerset/operator_v1alpha1_installerset_cr.yaml
 - chain/operator_v1alpha1_chain_cr.yaml
 - hub/operator_v1alpha1_hub_cr.yaml
+- manualapprovalgate/operator_v1alpha1_manualapprovalgate_cr.yaml
