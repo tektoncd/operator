@@ -255,13 +255,6 @@ image-substitutions:
           - IMAGE_ADDONS_PARAM_MAVEN_IMAGE
           - IMAGE_ADDONS_MAVEN_GOALS
 
-- image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
-  replaceLocations:
-    envTargets:
-      - deploymentName: openshift-pipelines-operator
-        containerName: openshift-pipelines-operator-lifecycle
-        envKeys:
-          - IMAGE_ADDONS_OC
 # pipelines console plugin image
 - image: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-rhel8@
   replaceLocations:
