@@ -312,7 +312,7 @@ spec:
     - Tekton Chains: v0.20.1
     - Tekton Hub (tech-preview): v1.17.0
     - Tekton Results (tech-preview): v0.10.0
-    - Manual Approval Gate (tech-preview): v0.2.1
+    - Manual Approval Gate (tech-preview): v0.2.2
 
     ## Getting Started
 
