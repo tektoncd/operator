@@ -35,7 +35,7 @@ ManualApprovalGate custom resource allows user to install and manage [Manual App
 - Check the status of installation using following command:
 
     ```sh
-    kubectl get get manualapprovalgates.operator.tekton.dev
+    kubectl get manualapprovalgates.operator.tekton.dev
     NAME                   VERSION   READY   REASON
     manual-approval-gate   v0.2.0    True
     ```
