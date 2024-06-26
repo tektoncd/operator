@@ -47,7 +47,6 @@ spec:
   require-git-ssh-secret-known-hosts: false
   results-from: termination-message
   running-in-environment-with-injected-sidecars: true
-  scope-when-expressions-to-task: false
   send-cloudevents-for-runs: false
   set-security-context: false
   trusted-resources-verification-no-match-policy: ignore
@@ -171,10 +170,6 @@ and thus should still be considered an alpha feature.
 - `enable-cel-in-whenexpression` (Default: `false`)
 
     Setting this flag to "true" will enable using CEL in when expressions.
-
-- `scope-when-expressions-to-task` (Default: `false`)
-
-    Setting this flag to "true" scopes when expressions to guard a Task only instead of a Task and its dependent Tasks.
 
 - `trusted-resources-verification-no-match-policy` (Default: `ignore`)
 
