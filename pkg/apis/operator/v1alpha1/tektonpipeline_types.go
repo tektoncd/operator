@@ -106,7 +106,7 @@ type PipelineProperties struct {
 	VerificationNoMatchPolicy string `json:"trusted-resources-verification-no-match-policy,omitempty"`
 	EnableProvenanceInStatus  *bool  `json:"enable-provenance-in-status,omitempty"`
 
-	// ScopeWhenExpressionsToTask Deprecated: remove in next release
+	// ScopeWhenExpressionsToTask is deprecated and never used.
 	ScopeWhenExpressionsToTask *bool `json:"scope-when-expressions-to-task,omitempty"`
 
 	EnforceNonfalsifiability  string `json:"enforce-nonfalsifiability,omitempty"`
