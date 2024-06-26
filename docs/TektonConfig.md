@@ -73,7 +73,6 @@ The TektonConfig CR provides the following features
       require-git-ssh-secret-known-hosts: false
       results-from: termination-message
       running-in-environment-with-injected-sidecars: true
-      scope-when-expressions-to-task: false
       send-cloudevents-for-runs: false
       set-security-context: false
       trusted-resources-verification-no-match-policy: ignore
