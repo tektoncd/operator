@@ -32,6 +32,8 @@ seLinuxContext:
   type: MustRunAs
 supplementalGroups:
   type: RunAsAny
+seccompProfiles:
+- runtime/default
 volumes:
 - configMap
 - downwardAPI
