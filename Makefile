@@ -4,6 +4,7 @@ MODULE   = $(shell env GO111MODULE=on $(GO) list -m)
 DATE         ?= $(shell date +%FT%T%z)
 KO_DATA_PATH  = $(shell pwd)/cmd/$(TARGET)/operator/kodata
 TARGET        = kubernetes
+COMPONENT ?= components.yaml
 FORCE_FETCH_RELEASE = false
 CR            = config/basic
 PLATFORM := $(if $(PLATFORM),--platform $(PLATFORM))
@@ -99,15 +100,15 @@ bin/%: cmd/% FORCE
 
 .PHONY: components/bump
 components/bump: $(OPERATORTOOL)
-	@go run ./cmd/tool bump components.yaml
+	@go run ./cmd/tool bump ${COMPONENT}
 
 .PHONY: components/bump-bugfix
 components/bump-bugfix: $(OPERATORTOOL)
-	@go run ./cmd/tool bump --bugfix components.yaml
+	@go run ./cmd/tool bump --bugfix ${COMPONENT}
 
 .PHONY: get-releases
 get-releases: |
-	$Q ./hack/fetch-releases.sh $(TARGET) components.yaml $(FORCE_FETCH_RELEASE) || exit ;
+	$Q ./hack/fetch-releases.sh $(TARGET) ${COMPONENT} $(FORCE_FETCH_RELEASE) || exit ;
 
 .PHONY: apply
 apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
