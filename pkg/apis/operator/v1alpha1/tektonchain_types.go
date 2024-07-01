@@ -80,10 +80,10 @@ type ChainProperties struct {
 	ArtifactsTaskRunSigner  string  `json:"artifacts.taskrun.signer,omitempty"`
 
 	// pipelinerun artifacts config
-	ArtifactsPipelineRunFormat               string  `json:"artifacts.pipelinerun.format,omitempty"`
-	ArtifactsPipelineRunStorage              *string `json:"artifacts.pipelinerun.storage,omitempty"`
-	ArtifactsPipelineRunSigner               string  `json:"artifacts.pipelinerun.signer,omitempty"`
-	ArtifactsPipelineRunEnableDeepInspection *bool   `json:"artifacts.pipelinerun.enable-deep-inspection,omitempty"`
+	ArtifactsPipelineRunFormat               string    `json:"artifacts.pipelinerun.format,omitempty"`
+	ArtifactsPipelineRunStorage              *string   `json:"artifacts.pipelinerun.storage,omitempty"`
+	ArtifactsPipelineRunSigner               string    `json:"artifacts.pipelinerun.signer,omitempty"`
+	ArtifactsPipelineRunEnableDeepInspection BoolValue `json:"artifacts.pipelinerun.enable-deep-inspection,omitempty"`
 
 	// oci artifacts config
 	ArtifactsOCIFormat  string  `json:"artifacts.oci.format,omitempty"`
