@@ -1,6 +1,7 @@
 module github.com/tektoncd/operator
 
 go 1.22
+toolchain go1.22.4
 
 require (
 	github.com/Masterminds/semver v1.5.0
@@ -175,7 +176,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.5 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.1-vault-5 // indirect
 	github.com/henvic/httpretty v0.0.6 // indirect
