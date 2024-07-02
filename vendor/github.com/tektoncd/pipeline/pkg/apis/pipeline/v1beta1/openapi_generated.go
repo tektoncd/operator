@@ -1019,7 +1019,6 @@ func schema_pkg_apis_pipeline_v1beta1_EmbeddedCustomRunSpec(ref common.Reference
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Spec is a specification of a custom task",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
 						},
 					},
@@ -1053,7 +1052,6 @@ func schema_pkg_apis_pipeline_v1beta1_EmbeddedTask(ref common.ReferenceCallback)
 					"spec": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Spec is a specification of a custom task",
-							Default:     map[string]interface{}{},
 							Ref:         ref("k8s.io/apimachinery/pkg/runtime.RawExtension"),
 						},
 					},
@@ -1391,8 +1389,7 @@ func schema_pkg_apis_pipeline_v1beta1_Param(ref common.ReferenceCallback) common
 					},
 					"value": {
 						SchemaProps: spec.SchemaProps{
-							Default: map[string]interface{}{},
-							Ref:     ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue"),
+							Ref: ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue"),
 						},
 					},
 				},
@@ -1692,7 +1689,7 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRef(ref common.ReferenceCallback) 
 					},
 					"bundle": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
+							Description: "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead. The field is staying there for go client backward compatibility, but is not used/allowed anymore.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -1797,7 +1794,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineResult(ref common.ReferenceCallbac
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Value the expression used to retrieve the value",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue"),
 						},
 					},
@@ -1923,7 +1919,6 @@ func schema_pkg_apis_pipeline_v1beta1_PipelineRunResult(ref common.ReferenceCall
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Value is the result returned from the execution of this PipelineRun",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue"),
 						},
 					},
@@ -4866,7 +4861,7 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRef(ref common.ReferenceCallback) comm
 					},
 					"bundle": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
+							Description: "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead. The field is staying there for go client backward compatibility, but is not used/allowed anymore.",
 							Type:        []string{"string"},
 							Format:      "",
 						},
@@ -5372,7 +5367,6 @@ func schema_pkg_apis_pipeline_v1beta1_TaskRunResult(ref common.ReferenceCallback
 					"value": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Value the given value of the result",
-							Default:     map[string]interface{}{},
 							Ref:         ref("github.com/tektoncd/pipeline/pkg/apis/pipeline/v1beta1.ParamValue"),
 						},
 					},

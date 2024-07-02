@@ -475,7 +475,6 @@
         },
         "spec": {
           "description": "Spec is a specification of a custom task",
-          "default": {},
           "$ref": "#/definitions/k8s.io.apimachinery.pkg.runtime.RawExtension"
         }
       }
@@ -535,7 +534,6 @@
         },
         "spec": {
           "description": "Spec is a specification of a custom task",
-          "default": {},
           "$ref": "#/definitions/k8s.io.apimachinery.pkg.runtime.RawExtension"
         },
         "stepTemplate": {
@@ -662,7 +660,6 @@
           "default": ""
         },
         "value": {
-          "default": {},
           "$ref": "#/definitions/v1beta1.ParamValue"
         }
       }
@@ -829,7 +826,7 @@
           "type": "string"
         },
         "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
+          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead. The field is staying there for go client backward compatibility, but is not used/allowed anymore.",
           "type": "string"
         },
         "name": {
@@ -894,7 +891,6 @@
         },
         "value": {
           "description": "Value the expression used to retrieve the value",
-          "default": {},
           "$ref": "#/definitions/v1beta1.ParamValue"
         }
       }
@@ -965,7 +961,6 @@
         },
         "value": {
           "description": "Value is the result returned from the execution of this PipelineRun",
-          "default": {},
           "$ref": "#/definitions/v1beta1.ParamValue"
         }
       }
@@ -2668,7 +2663,7 @@
           "type": "string"
         },
         "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
+          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead. The field is staying there for go client backward compatibility, but is not used/allowed anymore.",
           "type": "string"
         },
         "kind": {
@@ -2940,7 +2935,6 @@
         },
         "value": {
           "description": "Value the given value of the result",
-          "default": {},
           "$ref": "#/definitions/v1beta1.ParamValue"
         }
       }
