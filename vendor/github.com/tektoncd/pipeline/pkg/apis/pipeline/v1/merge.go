@@ -46,6 +46,11 @@ func MergeStepsWithStepTemplate(template *StepTemplate, steps []Step) ([]Step, e
 	}
 
 	for i, s := range steps {
+		// If the stepaction has not been fetched yet then do not merge.
+		// Skip over to the next one
+		if s.Ref != nil {
+			continue
+		}
 		merged := corev1.Container{}
 		err := mergeObjWithTemplateBytes(md, s.ToK8sContainer(), &merged)
 		if err != nil {
@@ -76,7 +81,6 @@ func MergeStepsWithSpecs(steps []Step, overrides []TaskRunStepSpec) ([]Step, err
 		stepNameToOverride[o.Name] = o
 	}
 	for i, s := range steps {
-		s := s
 		o, found := stepNameToOverride[s.Name]
 		if !found {
 			continue
@@ -103,7 +107,6 @@ func MergeSidecarsWithSpecs(sidecars []Sidecar, overrides []TaskRunSidecarSpec) 
 		sidecarNameToOverride[o.Name] = o
 	}
 	for i, s := range sidecars {
-		s := s
 		o, found := sidecarNameToOverride[s.Name]
 		if !found {
 			continue
