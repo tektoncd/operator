@@ -30,7 +30,13 @@ import (
 func (r *Reconciler) EnsureClusterTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
 	manifest := *r.clusterTaskManifest
 	if enable == "true" {
-		if err := r.installerSetClient.CustomSet(ctx, ta, ClusterTaskInstallerSet, &manifest, filterAndTransformClusterTask(), nil); err != nil {
+		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+		tfs := []mf.Transformer{
+			replaceKind(KindTask, KindClusterTask),
+			injectLabel(labelProviderType, providerTypeRedHat, overwrite, KindClusterTask),
+			common.TaskImages(addonImages),
+		}
+		if err := r.installerSetClient.CustomSet(ctx, ta, ClusterTaskInstallerSet, &manifest, filterAndTransformClusterTask(tfs), nil); err != nil {
 			return err
 		}
 	} else {
@@ -41,15 +47,9 @@ func (r *Reconciler) EnsureClusterTask(ctx context.Context, enable string, ta *v
 	return nil
 }
 
-func filterAndTransformClusterTask() client.FilterAndTransform {
+func filterAndTransformClusterTask(tfs []mf.Transformer) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		addon := comp.(*v1alpha1.TektonAddon)
-		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
-		tfs := []mf.Transformer{
-			replaceKind(KindTask, KindClusterTask),
-			injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
-			common.TaskImages(addonImages),
-		}
 		if err := transformers(ctx, manifest, addon, tfs...); err != nil {
 			return nil, err
 		}

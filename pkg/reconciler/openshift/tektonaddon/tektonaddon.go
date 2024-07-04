@@ -61,9 +61,11 @@ const (
 	retain int = iota
 	overwrite
 
-	labelProviderType     = "operator.tekton.dev/provider-type"
-	providerTypeCommunity = "community"
-	providerTypeRedHat    = "redhat"
+	labelProviderType                = "operator.tekton.dev/provider-type"
+	providerTypeCommunity            = "community"
+	providerTypeRedHat               = "redhat"
+	installerSetNameForResolverTasks = "addon-versioned-resolvertasks"
+	installerSetNameForClusterTasks  = "addon-versioned-clustertasks"
 )
 
 // Check that our Reconciler implements controller.Reconciler
@@ -156,6 +158,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	if err := r.EnsureResolverTask(ctx, rtVal, ta); err != nil {
 		ready = false
 		errorMsg = fmt.Sprintf("namespaced tasks not yet ready: %v", err)
+		logger.Error(errorMsg)
+	}
+
+	if err := r.EnsureVersionedResolverTask(ctx, ctVal, ta); err != nil {
+		ready = false
+		errorMsg = fmt.Sprintf("versioned namespaced tasks not yet ready:  %v", err)
 		logger.Error(errorMsg)
 	}
 
