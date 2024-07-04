@@ -58,19 +58,40 @@ func TestUpdateConsoleCLIDownload(t *testing.T) {
 }
 
 func TestSetVersionedNames(t *testing.T) {
-	testData := path.Join("testdata", "test-versioned-clustertask-name.yaml")
-	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assert.NilError(t, err)
+	tests := []struct {
+		name         string
+		inputPath    string
+		expectedPath string
+		errorMessage string
+	}{{
+		name:         "test for versioned clustertask",
+		inputPath:    "test-versioned-clustertask-name.yaml",
+		expectedPath: "test-versioned-clustertask-name-expected.yaml",
+		errorMessage: "failed to update versioned clustertask name %s",
+	}, {
+		name:         "test for versioned resolver task",
+		inputPath:    "test-versioned-resolvertask-name.yaml",
+		expectedPath: "test-versioned-resolver-name-expected.yaml",
+		errorMessage: "failed to update versioned resolver task name %s",
+	}}
 
-	testData = path.Join("testdata", "test-versioned-clustertask-name-expected.yaml")
-	expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assert.NilError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testData := path.Join("testdata", tt.inputPath)
+			manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+			assert.NilError(t, err)
 
-	operatorVersion := "v1.7.0"
-	newManifest, err := manifest.Transform(setVersionedNames(operatorVersion))
-	assert.NilError(t, err)
+			testData = path.Join("testdata", tt.expectedPath)
+			expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
+			assert.NilError(t, err)
 
-	if d := cmp.Diff(expectedManifest.Resources(), newManifest.Resources()); d != "" {
-		t.Errorf("failed to update versioned clustertask name %s", diff.PrintWantGot(d))
+			operatorVersion := "v1.7.0"
+			newManifest, err := manifest.Transform(setVersionedNames(operatorVersion))
+			assert.NilError(t, err)
+
+			if d := cmp.Diff(expectedManifest.Resources(), newManifest.Resources()); d != "" {
+				t.Errorf(tt.errorMessage, diff.PrintWantGot(d))
+			}
+		})
 	}
 }

@@ -18,6 +18,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
@@ -28,14 +29,11 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-var (
-	versionedClusterTaskInstallerSet = "VersionedClusterTask"
-)
-
-// VersionedClusterTaskSet this is an exception case where we create one installer set for one minor version
-// not for patch version and we don't remove older installer sets on upgrade, hence keeping it different
+// VersionedTaskSet this is an exception case where we create one installer set for one minor version
+// not for patch version, and we don't remove older installer sets on upgrade, hence keeping it different
 // from custom set otherwise code becomes unnecessarily complex to handle this case
-func (i *InstallerSetClient) VersionedClusterTaskSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, filterAndTransform FilterAndTransform) error {
+func (i *InstallerSetClient) VersionedTaskSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest,
+	filterAndTransform FilterAndTransform, insType, insName string) error {
 	logger := logging.FromContext(ctx)
 
 	// perform transformation
@@ -48,29 +46,29 @@ func (i *InstallerSetClient) VersionedClusterTaskSet(ctx context.Context, comp v
 		return err
 	}
 
-	setType := InstallerTypeCustom + "-" + strings.ToLower(versionedClusterTaskInstallerSet)
-	versionedClusterTaskLS := v1.LabelSelector{
+	setType := fmt.Sprintf("%s-%s", InstallerTypeCustom, strings.ToLower(insType))
+	versionedTaskLS := v1.LabelSelector{
 		MatchLabels: map[string]string{
 			v1alpha1.InstallerSetType:       setType,
 			v1alpha1.ReleaseMinorVersionKey: getPatchVersionTrimmed(i.releaseVersion),
 		},
 	}
-	versionedClusterTaskLabelSelector, err := common.LabelSelector(versionedClusterTaskLS)
+	versionedTaskLabelSelector, err := common.LabelSelector(versionedTaskLS)
 	if err != nil {
 		return err
 	}
-	is, err := i.clientSet.List(ctx, v1.ListOptions{LabelSelector: versionedClusterTaskLabelSelector})
+	is, err := i.clientSet.List(ctx, v1.ListOptions{LabelSelector: versionedTaskLabelSelector})
 	if err != nil {
 		return err
 	}
 
 	if len(is.Items) == 0 {
-		vctSet, err := i.makeInstallerSet(ctx, comp, manifestUpdated, "addon-versioned-clustertasks", setType, nil)
+		vctSet, err := i.makeInstallerSet(ctx, comp, manifestUpdated, insName, setType, nil)
 		if err != nil {
 			return err
 		}
 		vctSet.Labels[v1alpha1.ReleaseMinorVersionKey] = getPatchVersionTrimmed(i.releaseVersion)
-		vctSet.GenerateName = "addon-versioned-clustertasks" + "-" + getPatchVersionTrimmed(i.releaseVersion) + "-"
+		vctSet.GenerateName = fmt.Sprintf("%s-%s-", insName, getPatchVersionTrimmed(i.releaseVersion))
 
 		_, err = i.clientSet.Create(ctx, vctSet, metav1.CreateOptions{})
 		if err != nil {

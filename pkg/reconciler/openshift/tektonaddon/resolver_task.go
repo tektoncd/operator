@@ -28,7 +28,12 @@ import (
 func (r *Reconciler) EnsureResolverTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
 	manifest := *r.resolverTaskManifest
 	if enable == "true" {
-		if err := r.installerSetClient.CustomSet(ctx, ta, ResolverTaskInstallerSet, &manifest, filterAndTransformResolverTask(), nil); err != nil {
+		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+		tfs := []mf.Transformer{
+			injectLabel(labelProviderType, providerTypeRedHat, overwrite, KindTask),
+			common.TaskImages(addonImages),
+		}
+		if err := r.installerSetClient.CustomSet(ctx, ta, ResolverTaskInstallerSet, &manifest, filterAndTransformResolverTask(tfs), nil); err != nil {
 			return err
 		}
 	} else {
@@ -39,14 +44,9 @@ func (r *Reconciler) EnsureResolverTask(ctx context.Context, enable string, ta *
 	return nil
 }
 
-func filterAndTransformResolverTask() client.FilterAndTransform {
+func filterAndTransformResolverTask(tfs []mf.Transformer) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		addon := comp.(*v1alpha1.TektonAddon)
-		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
-		tfs := []mf.Transformer{
-			injectLabel(labelProviderType, providerTypeRedHat, overwrite, "Task"),
-			common.TaskImages(addonImages),
-		}
 		if err := transformers(ctx, manifest, addon, tfs...); err != nil {
 			return nil, err
 		}

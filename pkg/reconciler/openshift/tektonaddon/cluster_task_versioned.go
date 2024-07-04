@@ -22,13 +22,20 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 )
 
 func (r *Reconciler) EnsureVersionedClusterTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
 	manifest := *r.clusterTaskManifest
 	if enable == "true" {
-		if err := r.installerSetClient.VersionedClusterTaskSet(ctx, ta, &manifest, filterAndTransformVersionedClusterTask(r.operatorVersion)); err != nil {
+		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+		tfs := []mf.Transformer{
+			replaceKind(KindTask, KindClusterTask),
+			injectLabel(labelProviderType, providerTypeRedHat, overwrite, KindClusterTask),
+			common.TaskImages(addonImages),
+			setVersionedNames(r.operatorVersion),
+		}
+		if err := r.installerSetClient.VersionedTaskSet(ctx, ta, &manifest, filterAndTransformClusterTask(tfs),
+			VersionedClusterTaskInstallerSet, installerSetNameForClusterTasks); err != nil {
 			return err
 		}
 	} else {
@@ -37,21 +44,4 @@ func (r *Reconciler) EnsureVersionedClusterTask(ctx context.Context, enable stri
 		}
 	}
 	return nil
-}
-
-func filterAndTransformVersionedClusterTask(version string) client.FilterAndTransform {
-	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
-		addon := comp.(*v1alpha1.TektonAddon)
-		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
-		tfs := []mf.Transformer{
-			replaceKind(KindTask, KindClusterTask),
-			injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
-			common.TaskImages(addonImages),
-			setVersionedNames(version),
-		}
-		if err := transformers(ctx, manifest, addon, tfs...); err != nil {
-			return nil, err
-		}
-		return manifest, nil
-	}
 }
