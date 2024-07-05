@@ -14,7 +14,7 @@ openshift:
 installCRDs: false
 
 ## Controllers to install
-controllers: "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard"
+controllers: "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard,manualapprovalgate"
 
 ## Control the creation of RBAC resources (Serviceaccount, Role, ClusterRole, ClusterRoleBinding)
 rbac:
@@ -56,7 +56,7 @@ pruner:
   image:
     # Container image for Tekton pruner. Defaults to gcr.
     repository: "gcr.io/tekton-releases/dogfooding/tkn"
-    tag: "a572f1748eb5c0e8002dd0a83ee836ad9d755d035cbd5bfbdef5de810d2bea0b"
+    tag: "95c3ec1f6f442b4d14070e0c421e16eca919754a78c2df11e30be975b971ebe5"
 
 ## Configuration for the tekton-operator-webhook pod
 webhook:

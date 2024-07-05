@@ -68,7 +68,7 @@ spec:
               value: {{ include "tekton-operator.fullname" . }}-observability
           args:
             - "-controllers"
-            - {{ .Values.controllers | default "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard" | quote }}
+            - {{ .Values.controllers | default "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard,manualapprovalgate" | quote }}
             - "-unique-process-name"
             - "tekton-operator-lifecycle"
           image: {{ include "tekton-operator.operator-image" . }}
