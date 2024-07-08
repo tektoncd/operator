@@ -1738,8 +1738,8 @@ github.com/tektoncd/pipeline v0.61.0 h1:w1XBPFc8Sh/DIcBPRL/ndWtbZZl12W3zpkm4JSDL
 github.com/tektoncd/pipeline v0.61.0/go.mod h1:m2zG2B124Gh7/VB4G3+NGSyyzy0q5ceNyLUqIz0cIyQ=
 github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293 h1:kNmGaAtPS9LnfNZG/JrF4Y0Qx5Ju+384aqKJNtk4PU0=
 github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293/go.mod h1:7eWs1XNkmReggow7ggRbRyRuHi7646B8b2XipCZ3VOw=
-github.com/tektoncd/triggers v0.27.0 h1:c55e/YJF6Vs5BEarqDYksFYuR4sFbmAVEqrLNPZvXUk=
-github.com/tektoncd/triggers v0.27.0/go.mod h1:DkkAkdSd9aAW9RklUVyFRKQ8kONmZQw4Ur2G1r3wFQo=
+github.com/tektoncd/triggers v0.28.0 h1:XrEBUZZk4U4W0JNDrBGljwOIbirOzaKlFifZTKVPdng=
+github.com/tektoncd/triggers v0.28.0/go.mod h1:5rTVI9GxKN6CFW9KCbnYQKjuIQ55EyseVOYvnb3mKC8=
 github.com/thales-e-security/pool v0.0.2 h1:RAPs4q2EbWsTit6tpzuvTFlgFRJ3S8Evf5gtvVDbmPg=
 github.com/thales-e-security/pool v0.0.2/go.mod h1:qtpMm2+thHtqhLzTwgDBj/OuNnMpupY8mv0Phz0gjhU=
 github.com/theupdateframework/go-tuf v0.7.0 h1:CqbQFrWo1ae3/I0UCblSbczevCCbS31Qvs5LdxRWqRI=
@@ -2742,12 +2742,12 @@ k8s.io/utils v0.0.0-20240310230437-4693a0247e57 h1:gbqbevonBh57eILzModw6mrkbwM0g
 k8s.io/utils v0.0.0-20240310230437-4693a0247e57/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
 knative.dev/eventing v0.40.3 h1:Fjc5QqHRSuW6sLQ848bZvVAuurQAUbgnLMnwcn44Cc0=
 knative.dev/eventing v0.40.3/go.mod h1:+yUUIyvX9fn9bCSH3012kc8rG7YBbjvvxwy1Kr53dRc=
-knative.dev/networking v0.0.0-20231012062757-a5958051caf8 h1:oZMbAAXyiDZUYoQ4qEjL6uxXrL1xBVfEyQJx8sP0XEg=
-knative.dev/networking v0.0.0-20231012062757-a5958051caf8/go.mod h1:XwZwqJoLZR92N6F/sj8lHxttnry/Kiz+OgG8+uVuYn0=
+knative.dev/networking v0.0.0-20231017124814-2a7676e912b7 h1:6+1icZuxiZO1paFZ4d/ysKWVG2M4WB7OxNJNyLG0P/E=
+knative.dev/networking v0.0.0-20231017124814-2a7676e912b7/go.mod h1:1gcHoIVG47ekQWjkddqRq+/7tWRh+CB9W4k/NAcdRbk=
 knative.dev/pkg v0.0.0-20240116073220-b488e7be5902 h1:H6+JJN23fhwYWCHY1339sY6uhIyoUwDy1a8dN233fdk=
 knative.dev/pkg v0.0.0-20240116073220-b488e7be5902/go.mod h1:NYk8mMYoLkO7CQWnNkti4YGGnvLxN6MIDbUvtgeo0C0=
-knative.dev/serving v0.38.6 h1:G4N2dYuMggJf4Cc4ycen/dYjEF1IlyX3zoRpkou/7zI=
-knative.dev/serving v0.38.6/go.mod h1:5JIK94q75k2Y09CKpFRMe6Rs12bgCGv25wInPor/XCk=
+knative.dev/serving v0.39.0 h1:NVt8WthHmFFMWZ3qpBblXt47del8qqrbCegqwGBVSwk=
+knative.dev/serving v0.39.0/go.mod h1:0QIp5mvgWa1oUC2MxMf+Q/JWgG8JhAsSdJKc6iTRlvE=
 lukechampine.com/uint128 v1.1.1/go.mod h1:c4eWIwlEGaxC/+H1VguhU4PHXNWDCDMUlWdIWl2j1gk=
 lukechampine.com/uint128 v1.2.0/go.mod h1:c4eWIwlEGaxC/+H1VguhU4PHXNWDCDMUlWdIWl2j1gk=
 modernc.org/cc/v3 v3.36.0/go.mod h1:NFUHyPn4ekoC/JHeZFfZurN6ixxawE1BnVonP/oahEI=
