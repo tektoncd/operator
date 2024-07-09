@@ -30,7 +30,7 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.4.0
 	gotest.tools/v3 v3.5.1
 	k8s.io/api v0.30.0
-	k8s.io/apiextensions-apiserver v0.29.3
+	k8s.io/apiextensions-apiserver v0.29.6
 	k8s.io/apimachinery v0.30.0
 	k8s.io/client-go v1.5.2
 	k8s.io/code-generator v0.30.0
@@ -39,13 +39,11 @@ require (
 )
 
 replace (
-	k8s.io/api => k8s.io/api v0.28.9
-	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.28.9
-	k8s.io/apimachinery => k8s.io/apimachinery v0.28.9
-	k8s.io/client-go => k8s.io/client-go v0.28.9
-	k8s.io/code-generator => k8s.io/code-generator v0.28.9
-	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20230717233707-2695361300d9
-	knative.dev/pkg => knative.dev/pkg v0.0.0-20240116073220-b488e7be5902
+	k8s.io/api => k8s.io/api v0.29.6
+	k8s.io/apimachinery => k8s.io/apimachinery v0.29.6
+	k8s.io/client-go => k8s.io/client-go v0.29.6
+	k8s.io/code-generator => k8s.io/code-generator v0.29.6
+	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00
 )
 
 require (
