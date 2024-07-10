@@ -21,6 +21,9 @@ function set_version_label() {
     sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: '${operator_version}'/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: '${operator_version}'/g' -e 's/\(version\): "devel"/\1: '${operator_version}'/g' -e 's/\("-version"\), "devel"/\1, '${operator_version}'/g' cmd/${platform}/operator/kodata/webhook/*.yaml
     sed -i 's/\(value\): "devel"/\1: '${operator_version}'/g' config/${platform}/base/operator.yaml
   done
+
+  # do changes in cabundles too which are available only for openshift
+  sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: '${operator_version}'/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: '${operator_version}'/g' -e 's/\(version\): "devel"/\1: '${operator_version}'/g' -e 's/\("-version"\), "devel"/\1, '${operator_version}'/g' cmd/openshift/operator/kodata/cabundles/*.yaml
 }
 
 function commit_changes() {

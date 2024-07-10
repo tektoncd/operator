@@ -218,7 +218,7 @@ kind: ConfigMap
 metadata:
   name: tekton-operator-proxy-webhook-config-leader-election
   labels:
-    operator.tekton.dev/release: devel
+    operator.tekton.dev/release: "devel"
     app.kubernetes.io/instance: default
 data:
   _example: |
@@ -259,7 +259,7 @@ metadata:
   name: tekton-operator-proxy-webhook
   labels:
     app.kubernetes.io/instance: default
-    pipeline.tekton.dev/release: "devel"
+    operator.tekton.dev/release: "devel"
     version: "devel"
 spec:
   minReplicas: 1
