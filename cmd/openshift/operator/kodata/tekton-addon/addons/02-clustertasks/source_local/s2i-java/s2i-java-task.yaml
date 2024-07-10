@@ -47,7 +47,7 @@ spec:
       type: string
     - name: BUILDER_IMAGE
       description: The location of the buildah builder image.
-      default: registry.redhat.io/rhel8/buildah@sha256:3c2ea396a114221575a4031d90d28c43563f7b96288374e0ba8b22de3ed97b5a
+      default: registry.redhat.io/rhel8/buildah@sha256:b6114095ae7f593d1241e7900c0830455127d476b2a6c9a5a00a5b50a857e3cf
     - name: SKIP_PUSH
       description: Skip pushing the built image
       default: "false"
