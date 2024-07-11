@@ -14,7 +14,7 @@ spec:
     description: Target platform for for which the payload is going to be used
     default: "kubernetes openshift"
   steps:
-  - image: docker.io/library/golang:1.18
+  - image: docker.io/library/golang:1.22
     name: fetch-components
     workingDir: /go/src/github.com/tektoncd/operator
     script: |

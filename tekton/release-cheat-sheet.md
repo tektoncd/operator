@@ -19,7 +19,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
    Set the version in a variable.
 
-    ```bash
+   ```bash
     TEKTON_RELEASE_VERSION=v0.62.0
    ```
 
@@ -29,7 +29,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
     1. If this is a **new minor version release** create a new branch from either the head of `#main` branch if the
        commit identified in step1.
 
-       ```bash
+   ```bash
    TEKTON_RELEASE_BRANCH=release-v0.62.x git checkout -b ${TEKTON_RELEASE_BRANCH}
    ```
     2. If this is a **patch release** make sure that the correct branch is checkout. eg: If we are making release
