@@ -1,6 +1,7 @@
 module github.com/tektoncd/operator
 
-go 1.22
+go 1.22.0
+
 toolchain go1.22.5
 
 require (
@@ -39,6 +40,7 @@ require (
 )
 
 replace (
+	github.com/alibabacloud-go/cr-20160607 => github.com/vdemeester/cr-20160607 v1.0.1
 	k8s.io/api => k8s.io/api v0.29.6
 	k8s.io/apimachinery => k8s.io/apimachinery v0.29.6
 	k8s.io/client-go => k8s.io/client-go v0.29.6
