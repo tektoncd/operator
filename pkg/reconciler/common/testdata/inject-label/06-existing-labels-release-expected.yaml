@@ -209,7 +209,7 @@ spec:
     app.kubernetes.io/part-of: tekton-pipelines
 
 ---
-apiVersion: autoscaling/v2beta1
+apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: tekton-pipelines-webhook
@@ -236,6 +236,8 @@ spec:
     - type: Resource
       resource:
         name: cpu
-        targetAverageUtilization: 100
+        target:
+          type: Utilization
+          averageUtilization: 100
 
 ---
