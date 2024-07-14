@@ -82,6 +82,15 @@ spec:
       kind: TektonChain
       name: tektonchains.operator.tekton.dev
       version: v1alpha1
+    - description: |
+        ManualApprovalGate installs Manual Approval Gate on a cluster. The operator installs Manual Approval Gate on a
+        cluster if an instance of this CRD is created on your cluster with name `manual-approval-gate`.
+        At present, the operator honors only one CustomResource instance with the name `manual-approval-gate` to ensure
+        only one set of Manual Approval Gate exists on a cluster.
+      displayName: ManualApprovalGate
+      kind: ManualApprovalGate
+      name: manualapprovalgates.operator.tekton.dev
+      version: v1alpha1
   description: |
     Tekton is a powerful and flexible open-source framework for creating CI/CD systems, allowing developers to build,
     test, and deploy across cloud providers and on-premise systems.
