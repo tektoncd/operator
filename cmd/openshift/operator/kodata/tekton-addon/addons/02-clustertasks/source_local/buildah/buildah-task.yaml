@@ -41,15 +41,20 @@ spec:
     description: The format of the built container, oci or docker
     default: "oci"
   - name: BUILD_EXTRA_ARGS
-    description: Extra parameters passed for the build command when building images.
+    description: Extra parameters passed for the build command when building images. WARNING - must be sanitized to avoid command injection
     default: ""
   - name: PUSH_EXTRA_ARGS
-    description: Extra parameters passed for the push command when pushing images.
+    description: Extra parameters passed for the push command when pushing images. WARNING - must be sanitized to avoid command injection
     type: string
     default: ""
   - name: SKIP_PUSH
     description: Skip pushing the built image
     default: "false"
+  - name: BUILD_ARGS
+    description: Dockerfile build arguments, array of key=value
+    type: array
+    default:
+    - ""
   workspaces:
   - name: source
   - name: dockerconfig
@@ -77,19 +82,46 @@ spec:
   - name: build-and-push
     image: $(params.BUILDER_IMAGE)
     workingDir: $(workspaces.source.path)
+    env:
+    - name: PARAM_IMAGE
+      value: $(params.IMAGE)
+    - name: PARAM_STORAGE_DRIVER
+      value: $(params.STORAGE_DRIVER)
+    - name: PARAM_DOCKERFILE
+      value: $(params.DOCKERFILE)
+    - name: PARAM_CONTEXT
+      value: $(params.CONTEXT)
+    - name: PARAM_TLSVERIFY
+      value: $(params.TLSVERIFY)
+    - name: PARAM_FORMAT
+      value: $(params.FORMAT)
+    - name: PARAM_BUILD_EXTRA_ARGS
+      value: $(params.BUILD_EXTRA_ARGS)
+    - name: PARAM_PUSH_EXTRA_ARGS
+      value: $(params.PUSH_EXTRA_ARGS)
+    - name: PARAM_SKIP_PUSH
+      value: $(params.SKIP_PUSH)
+    args:
+    - $(params.BUILD_ARGS[*])
     script: |
+      BUILD_ARGS=()
+      for buildarg in "$@"
+      do
+        BUILD_ARGS+=("--build-arg=$buildarg")
+      done
+
       ENTITLEMENT_VOLUME=""
 
       if [[ "$(workspaces.rhel-entitlement.bound)" == "true" ]]; then
         ENTITLEMENT_VOLUME="--volume /tmp/entitlement:/etc/pki/entitlement"
       fi
 
-      buildah bud --storage-driver=$(params.STORAGE_DRIVER) \
-        $ENTITLEMENT_VOLUME $(params.BUILD_EXTRA_ARGS) \
-        --format=$(params.FORMAT) --tls-verify=$(params.TLSVERIFY) \
-        -f $(params.DOCKERFILE) -t $(params.IMAGE) $(params.CONTEXT)
+      buildah bud "--storage-driver=${PARAM_STORAGE_DRIVER}" "${BUILD_ARGS[@]}" \
+        $ENTITLEMENT_VOLUME ${PARAM_BUILD_EXTRA_ARGS} \
+        "--format=${PARAM_FORMAT}" "--tls-verify=${PARAM_TLSVERIFY}" \
+        -f "${PARAM_DOCKERFILE}" -t "${PARAM_IMAGE}" "${PARAM_CONTEXT}"
 
-      [[ "$(params.SKIP_PUSH)" == "true" ]] && echo "Push skipped" && exit 0
+      [[ "${PARAM_SKIP_PUSH}" == "true" ]] && echo "Push skipped" && exit 0
 
       if [[ "$(workspaces.dockerconfig.bound)" == "true" ]]; then
 
@@ -109,12 +141,12 @@ spec:
         fi
       fi
 
-      buildah --storage-driver=$(params.STORAGE_DRIVER) push \
-        $(params.PUSH_EXTRA_ARGS) --tls-verify=$(params.TLSVERIFY) \
-        --digestfile /tmp/image-digest $(params.IMAGE) \
-        docker://$(params.IMAGE)
+      buildah "--storage-driver=${PARAM_STORAGE_DRIVER}" push \
+        ${PARAM_PUSH_EXTRA_ARGS} "--tls-verify=${PARAM_TLSVERIFY}" \
+        --digestfile /tmp/image-digest "${PARAM_IMAGE}" \
+        "docker://${PARAM_IMAGE}"
       cat /tmp/image-digest | tee $(results.IMAGE_DIGEST.path)
-      echo -n "$(params.IMAGE)" | tee $(results.IMAGE_URL.path)
+      echo -n "${PARAM_IMAGE}" | tee $(results.IMAGE_URL.path)
     volumeMounts:
     - name: varlibcontainers
       mountPath: /var/lib/containers
