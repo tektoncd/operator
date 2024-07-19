@@ -94,6 +94,12 @@ func NewTektonHubTestSuite(t *testing.T) *TektonHubTestSuite {
 // before suite
 func (s *TektonHubTestSuite) SetupSuite() {
 	resources.PrintClusterInformation(s.logger, s.resourceNames)
+
+	// reset the tekton config into default state
+	s.logger.Debug("resetting TektonConfig to it's default state")
+	tcSuite := NewTestTektonConfigTestSuite(s.T())
+	tcSuite.recreateOperatorPod()
+	tcSuite.resetToDefaults()
 }
 
 // after suite
