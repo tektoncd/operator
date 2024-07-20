@@ -7,7 +7,7 @@ We dogfood our projects by using Tekton Pipelines to build, test and release
 Tekton Projects! This directory contains the
 [`Tasks`](https://github.com/tektoncd/pipeline/blob/master/docs/tasks.md) and
 [`Pipelines`](https://github.com/tektoncd/pipeline/blob/master/docs/pipelines.md)
-that we use for Tekton Operator buind, test and release.
+that we use for Tekton Operator build, test and release.
 
 * [How to create a release](#create-an-official-release)
 * [How to create a patch release](#create-a-patch-release)
