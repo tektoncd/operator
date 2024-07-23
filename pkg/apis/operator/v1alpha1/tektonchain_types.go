@@ -91,13 +91,15 @@ type ChainProperties struct {
 	ArtifactsOCISigner  string  `json:"artifacts.oci.signer,omitempty"`
 
 	// storage configs
-	StorageGCSBucket             string `json:"storage.gcs.bucket,omitempty"`
-	StorageOCIRepository         string `json:"storage.oci.repository,omitempty"`
-	StorageOCIRepositoryInsecure *bool  `json:"storage.oci.repository.insecure,omitempty"`
-	StorageDocDBURL              string `json:"storage.docdb.url,omitempty"`
-	StorageGrafeasProjectID      string `json:"storage.grafeas.projectid,omitempty"`
-	StorageGrafeasNoteID         string `json:"storage.grafeas.noteid,omitempty"`
-	StorageGrafeasNoteHint       string `json:"storage.grafeas.notehint,omitempty"`
+	StorageGCSBucket              string `json:"storage.gcs.bucket,omitempty"`
+	StorageOCIRepository          string `json:"storage.oci.repository,omitempty"`
+	StorageOCIRepositoryInsecure  *bool  `json:"storage.oci.repository.insecure,omitempty"`
+	StorageDocDBURL               string `json:"storage.docdb.url,omitempty"`
+	StorageDocDBMongoServerURL    string `json:"storage.docdb.mongo-server-url,omitempty"`
+	StorageDocDBMongoServerURLDir string `json:"storage.docdb.mongo-server-url-dir,omitempty"`
+	StorageGrafeasProjectID       string `json:"storage.grafeas.projectid,omitempty"`
+	StorageGrafeasNoteID          string `json:"storage.grafeas.noteid,omitempty"`
+	StorageGrafeasNoteHint        string `json:"storage.grafeas.notehint,omitempty"`
 
 	// builder config
 	BuilderID                string `json:"builder.id,omitempty"`
@@ -115,6 +117,7 @@ type ChainProperties struct {
 	KMSRef               string `json:"signers.kms.kmsref,omitempty"`
 	KMSAuthAddress       string `json:"signers.kms.auth.address,omitempty"`
 	KMSAuthToken         string `json:"signers.kms.auth.token,omitempty"`
+	KMSAuthTokenPath     string `json:"signers.kms.auth.token-path,omitempty"`
 	KMSAuthOIDCPath      string `json:"signers.kms.auth.oidc.path,omitempty"`
 	KMSAuthOIDCRole      string `json:"signers.kms.auth.oidc.role,omitempty"`
 	KMSAuthSpireSock     string `json:"signers.kms.auth.spire.sock,omitempty"`

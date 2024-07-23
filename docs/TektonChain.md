@@ -89,6 +89,8 @@ spec:
   storage.oci.repository: #value
   storage.oci.repository.insecure: #value (boolean - true/false)
   storage.docdb.url: #value
+  storage.docdb.mongo-server-url: #value
+  storage.docdb.mongo-server-url-dir: #value
   storage.grafeas.projectid: #value
   storage.grafeas.noteid: #value
   storage.grafeas.notehint: #value
@@ -103,6 +105,7 @@ spec:
   signers.kms.kmsref: #value
   signers.kms.kmsref.auth.address: #value
   signers.kms.kmsref.auth.token: #value
+  signers.kms.kmsref.auth.token-path: #value
   signers.kms.kmsref.auth.oidc.path: #value
   signers.kms.kmsref.auth.oidc.role: #value
   signers.kms.kmsref.auth.spire.sock: #value
