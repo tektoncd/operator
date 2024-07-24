@@ -126,6 +126,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	// Update Status for NamespaceScope Condition
 	installerSet.Status.MarkNamespaceScopedResourcesInstalled()
 
+	// Install Job Resources
+	err = installer.EnsureJobResources()
+	if err != nil {
+		installerSet.Status.MarkJobsInstallationFailed(err.Error())
+		return r.handleError(err, installerSet)
+	}
+
+	// Update Status for Job Resources
+	installerSet.Status.MarkJobsInstalled()
+
 	// Install Deployment Resources
 	err = installer.EnsureDeploymentResources(ctx)
 	if err != nil {
