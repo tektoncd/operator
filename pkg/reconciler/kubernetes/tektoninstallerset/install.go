@@ -55,6 +55,7 @@ type installer struct {
 	namespaceScoped []unstructured.Unstructured
 	deployment      []unstructured.Unstructured
 	statefulset     []unstructured.Unstructured
+	job             []unstructured.Unstructured
 }
 
 func NewInstaller(manifest *mf.Manifest, mfClient mf.Client, kubeClientSet kubernetes.Interface, logger *zap.SugaredLogger) *installer {
@@ -68,6 +69,7 @@ func NewInstaller(manifest *mf.Manifest, mfClient mf.Client, kubeClientSet kuber
 		namespaceScoped: []unstructured.Unstructured{},
 		deployment:      []unstructured.Unstructured{},
 		statefulset:     []unstructured.Unstructured{},
+		job:             []unstructured.Unstructured{},
 	}
 
 	// we filter out resource as some resources are dependent on others
@@ -83,6 +85,9 @@ func NewInstaller(manifest *mf.Manifest, mfClient mf.Client, kubeClientSet kuber
 			continue
 		} else if res.GetKind() == "StatefulSet" {
 			installer.statefulset = append(installer.statefulset, res)
+			continue
+		} else if res.GetKind() == "Job" {
+			installer.job = append(installer.job, res)
 			continue
 		}
 		if isClusterScoped(res.GetKind()) && strings.ToLower(res.GetKind()) != "clusterrolebinding" {
@@ -217,6 +222,10 @@ func (i *installer) EnsureDeploymentResources(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (i *installer) EnsureJobResources() error {
+	return i.ensureResources(i.job)
 }
 
 // list of fields should be reconciled
@@ -779,6 +788,9 @@ func (i *installer) DeleteResources() error {
 	if err := i.delete(i.namespaceScoped); err != nil {
 		return err
 	}
+	if err := i.deleteWithPolicy(i.job, metav1.DeletePropagationForeground); err != nil {
+		return err
+	}
 	if err := i.delete(i.deployment); err != nil {
 		return err
 	}
@@ -803,6 +815,31 @@ func (i *installer) delete(resources []unstructured.Unstructured) error {
 		if err != nil {
 			return err
 		}
+
+	}
+	return nil
+}
+
+func (i *installer) deleteWithPolicy(resources []unstructured.Unstructured, policy metav1.DeletionPropagation) error {
+	for _, r := range resources {
+		if skipDeletion(r.GetKind()) {
+			continue
+		}
+		resource, err := i.mfClient.Get(&r)
+		if err != nil {
+			// if error occurs log and move on, as we have owner reference set for resources, those
+			// will be removed eventually and manifestival breaks the pod during uninstallation,
+			// when CRD is deleted, CRs are removed but when we delete installer set, manifestival
+			// breaks during deleting those CRs
+			i.logger.Errorf("failed to get resource, skipping deletion: %v/%v: %v ", r.GetKind(), r.GetName(), err)
+			continue
+		}
+
+		err = i.mfClient.Delete(resource, mf.DeleteOption(mf.PropagationPolicy(policy)))
+		if err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
