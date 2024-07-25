@@ -48,6 +48,7 @@ const (
 	ManualApprovalGatePrefix      = "IMAGE_MAG_"
 	ResultsImagePrefix            = "IMAGE_RESULTS_"
 	HubImagePrefix                = "IMAGE_HUB_"
+	DashboardImagePrefix          = "IMAGE_DASHBOARD_"
 
 	ArgPrefix   = "arg_"
 	ParamPrefix = "param_"

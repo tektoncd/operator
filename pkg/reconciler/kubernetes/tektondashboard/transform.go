@@ -26,22 +26,27 @@ import (
 )
 
 const (
-	externalLogsArg = "--external-logs="
+	externalLogsArg         = "--external-logs="
+	dashboardDeploymentName = "tekton-dashboard"
 )
 
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		dashboard := comp.(*v1alpha1.TektonDashboard)
+
+		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.DashboardImagePrefix))
+
 		trns := extension.Transformers(dashboard)
 		extra := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdDashboard),
 			common.AddConfiguration(dashboard.Spec.Config),
 			common.AddDeploymentRestrictedPSA(),
+			common.DeploymentImages(images),
 		}
 		trns = append(trns, extra...)
 		if dashboard.Spec.ExternalLogs != "" {
 			updatedExternalLogsArg := externalLogsArg + dashboard.Spec.ExternalLogs
-			trns = append(trns, common.ReplaceDeploymentArg("tekton-dashboard", externalLogsArg, updatedExternalLogsArg))
+			trns = append(trns, common.ReplaceDeploymentArg(dashboardDeploymentName, externalLogsArg, updatedExternalLogsArg))
 		}
 		if err := common.Transform(ctx, manifest, dashboard, trns...); err != nil {
 			return &mf.Manifest{}, err
