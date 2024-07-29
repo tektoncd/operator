@@ -279,6 +279,11 @@ type TaskRunStatusFields struct {
 	// +listType=atomic
 	Results []TaskRunResult `json:"results,omitempty"`
 
+	// Artifacts are the list of artifacts written out by the task's containers
+	// +optional
+	// +listType=atomic
+	Artifacts Artifacts `json:"artifacts,omitempty"`
+
 	// The list has one entry per sidecar in the manifest. Each entry is
 	// represents the imageid of the corresponding sidecar.
 	// +listType=atomic
@@ -359,6 +364,7 @@ type StepState struct {
 	Container             string                `json:"container,omitempty"`
 	ImageID               string                `json:"imageID,omitempty"`
 	Results               []TaskRunStepResult   `json:"results,omitempty"`
+	Provenance            *Provenance           `json:"provenance,omitempty"`
 	TerminationReason     string                `json:"terminationReason,omitempty"`
 	Inputs                []TaskRunStepArtifact `json:"inputs,omitempty"`
 	Outputs               []TaskRunStepArtifact `json:"outputs,omitempty"`
