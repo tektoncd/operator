@@ -161,7 +161,7 @@ const (
 func ParseFile(filename string, src interface{}, mode ...Option) (f *ast.File, err error) {
 
 	// get source
-	text, err := source.Read(filename, src)
+	text, err := source.ReadAll(filename, src)
 	if err != nil {
 		return nil, err
 	}
@@ -174,9 +174,8 @@ func ParseFile(filename string, src interface{}, mode ...Option) (f *ast.File, e
 
 		// set result values
 		if f == nil {
-			// source is not a valid Go source file - satisfy
-			// ParseFile API and return a valid (but) empty
-			// *File
+			// source is not a valid CUE source file - satisfy
+			// ParseFile API and return a valid (but) empty *File
 			f = &ast.File{
 				// Scope: NewScope(nil),
 			}
@@ -203,7 +202,7 @@ func ParseFile(filename string, src interface{}, mode ...Option) (f *ast.File, e
 // be nil.
 func ParseExpr(filename string, src interface{}, mode ...Option) (ast.Expr, error) {
 	// get source
-	text, err := source.Read(filename, src)
+	text, err := source.ReadAll(filename, src)
 	if err != nil {
 		return nil, err
 	}

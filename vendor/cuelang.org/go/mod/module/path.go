@@ -8,6 +8,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/internal/mod/semver"
 )
 
@@ -411,8 +412,9 @@ type ImportPath struct {
 	// This is not guaranteed to be a valid CUE identifier.
 	Qualifier string
 
-	// ExplicitQualifier holds whether the qualifier was explicitly
-	// present in the import path.
+	// ExplicitQualifier holds whether the qualifier will
+	// always be added regardless of whether it matches
+	// the final path element.
 	ExplicitQualifier bool
 }
 
@@ -435,7 +437,14 @@ func (parts ImportPath) Unqualified() ImportPath {
 }
 
 func (parts ImportPath) String() string {
-	if parts.Version == "" && !parts.ExplicitQualifier {
+	needQualifier := parts.ExplicitQualifier
+	if !needQualifier && parts.Qualifier != "" {
+		_, last, _ := cutLast(parts.Path, "/")
+		if last != "" && last != parts.Qualifier {
+			needQualifier = true
+		}
+	}
+	if parts.Version == "" && !needQualifier {
 		// Fast path.
 		return parts.Path
 	}
@@ -445,7 +454,7 @@ func (parts ImportPath) String() string {
 		buf.WriteByte('@')
 		buf.WriteString(parts.Version)
 	}
-	if parts.ExplicitQualifier {
+	if needQualifier {
 		buf.WriteByte(':')
 		buf.WriteString(parts.Qualifier)
 	}
@@ -453,6 +462,7 @@ func (parts ImportPath) String() string {
 }
 
 // ParseImportPath returns the various components of an import path.
+// It does not check the result for validity.
 func ParseImportPath(p string) ImportPath {
 	var parts ImportPath
 	pathWithoutQualifier := p
@@ -472,6 +482,9 @@ func ParseImportPath(p string) ImportPath {
 		} else {
 			parts.Qualifier = parts.Path
 		}
+		if !ast.IsValidIdent(parts.Qualifier) || strings.HasPrefix(parts.Qualifier, "#") {
+			parts.Qualifier = ""
+		}
 	}
 	return parts
 }
@@ -486,4 +499,11 @@ func CheckPathMajor(v, pathMajor string) error {
 		}
 	}
 	return nil
+}
+
+func cutLast(s, sep string) (before, after string, found bool) {
+	if i := strings.LastIndex(s, sep); i >= 0 {
+		return s[:i], s[i+len(sep):], true
+	}
+	return "", s, false
 }

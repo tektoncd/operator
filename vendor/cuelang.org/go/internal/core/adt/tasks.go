@@ -15,6 +15,8 @@
 package adt
 
 import (
+	"fmt"
+
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/token"
 )
@@ -27,7 +29,7 @@ var (
 	handleComprehension     *runner
 	handleListLit           *runner
 	handleListVertex        *runner
-	handleDisjunction       *runner
+	handleDisjunctions      *runner
 )
 
 // Use init to avoid a (spurious?) cyclic dependency in Go.
@@ -69,6 +71,12 @@ func init() {
 		completes: fieldConjunct,
 		needs:     listTypeKnown,
 	}
+	handleDisjunctions = &runner{
+		name:      "Disjunctions",
+		f:         processDisjunctions,
+		completes: genericDisjunction,
+		priority:  1,
+	}
 }
 
 // This file contains task runners (func(ctx *OpContext, t *task, mode runMode)).
@@ -84,15 +92,29 @@ func processExpr(ctx *OpContext, t *task, mode runMode) {
 func processResolver(ctx *OpContext, t *task, mode runMode) {
 	r := t.x.(Resolver)
 
+	// TODO(perf): if we are resolving a value where we know a scalar value can
+	// be conclusive, we could avoid triggering evaluating disjunctions. This
+	// would be a pretty significant rework, though.
+
 	arc := r.resolve(ctx, oldOnly(0))
 	if arc == nil {
 		// TODO: yield instead?
 		return
 	}
+	arc = arc.DerefNonDisjunct()
+
+	ctx.Logf(t.node.node, "RESOLVED %v to %v %v", r, arc.Label, fmt.Sprintf("%p", arc))
+	// TODO: consider moving after markCycle or removing.
+	d := arc.DerefDisjunct()
+
 	// A reference that points to itself indicates equality. In that case
 	// we are done computing and we can return the arc as is.
-	ci, skip := t.node.markCycle(arc, t.env, r, t.id)
+	ci, skip := t.node.markCycle(d, t.env, r, t.id)
 	if skip {
+		return
+	}
+
+	if t.defunct {
 		return
 	}
 
@@ -160,6 +182,17 @@ func processComprehension(ctx *OpContext, t *task, mode runMode) {
 	err := n.processComprehension(y, 0)
 	t.err = CombineErrors(nil, t.err, err)
 	t.comp.vertex.state.addBottom(err)
+}
+
+func processDisjunctions(c *OpContext, t *task, mode runMode) {
+	n := t.node
+	err := n.processDisjunctions()
+	t.err = CombineErrors(nil, t.err, err)
+}
+
+func processFinalizeDisjunctions(c *OpContext, t *task, mode runMode) {
+	n := t.node
+	n.finalizeDisjunctions()
 }
 
 func processListLit(c *OpContext, t *task, mode runMode) {
@@ -290,12 +323,16 @@ func processListVertex(c *OpContext, t *task, mode runMode) {
 }
 
 func (n *nodeContext) updateListType(list Expr, id CloseInfo, isClosed bool, ellipsis Node) {
+	if n.kind == 0 {
+		n.node.updateStatus(finalized) // TODO(neweval): remove once transitioned.
+		return
+	}
 	m, ok := n.node.BaseValue.(*ListMarker)
 	if !ok {
 		m = &ListMarker{
 			IsOpen: true,
 		}
-		n.node.setValue(n.ctx, partial, m)
+		n.node.setValue(n.ctx, conjuncts, m)
 	}
 	m.IsOpen = m.IsOpen && !isClosed
 

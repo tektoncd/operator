@@ -20,13 +20,31 @@ import (
 	"cuelang.org/go/cue/token"
 )
 
-func (v *Vertex) getState(c *OpContext) *nodeContext {
+func (v *Vertex) isInitialized() bool {
+	return v.status == finalized || (v.state != nil && v.state.isInitialized)
+}
+
+func (n *nodeContext) assertInitialized() {
+	if n != nil && n.ctx.isDevVersion() {
+		if v := n.node; !v.isInitialized() {
+			panic(fmt.Sprintf("vertex %p not initialized", v))
+		}
+	}
+}
+
+// isInProgress reports whether v is in the midst of being evaluated. This means
+// that conjuncts have been scheduled, but that it has not been finalized.
+func (v *Vertex) isInProgress() bool {
+	return v.status != finalized && v.state != nil && v.state.isInitialized
+}
+
+func (v *Vertex) getBareState(c *OpContext) *nodeContext {
 	if v.status == finalized { // TODO: use BaseValue != nil
 		return nil
 	}
 	if v.state == nil {
 		v.state = c.newNodeContext(v)
-		v.state.initNode()
+		v.state.initBare()
 		v.state.refCount = 1
 	}
 
@@ -39,8 +57,16 @@ func (v *Vertex) getState(c *OpContext) *nodeContext {
 	return v.state
 }
 
+func (v *Vertex) getState(c *OpContext) *nodeContext {
+	s := v.getBareState(c)
+	if s != nil && !s.isInitialized {
+		s.scheduleConjuncts()
+	}
+	return s
+}
+
 // initNode initializes a nodeContext for the evaluation of the given Vertex.
-func (n *nodeContext) initNode() {
+func (n *nodeContext) initBare() {
 	v := n.node
 	if v.Parent != nil && v.Parent.state != nil {
 		v.state.depth = v.Parent.state.depth + 1
@@ -58,7 +84,12 @@ func (n *nodeContext) initNode() {
 			v.Closed = true
 		}
 	}
+}
 
+func (n *nodeContext) scheduleConjuncts() {
+	n.isInitialized = true
+
+	v := n.node
 	ctx := n.ctx
 
 	ctx.stats.Unifications++
@@ -75,8 +106,8 @@ func (n *nodeContext) initNode() {
 
 	defer ctx.PopArc(ctx.PushArc(v))
 
-	root := n.node.rootCloseContext()
-	root.incDependent(INIT, nil) // decremented below
+	root := n.node.rootCloseContext(n.ctx)
+	root.incDependent(n.ctx, INIT, nil) // decremented below
 
 	for _, c := range v.Conjuncts {
 		ci := c.CloseInfo
@@ -88,7 +119,7 @@ func (n *nodeContext) initNode() {
 }
 
 func (v *Vertex) unify(c *OpContext, needs condition, mode runMode) bool {
-	if Debug {
+	if c.LogEval > 0 {
 		c.nest++
 		c.Logf(v, "Unify %v", fmt.Sprintf("%p", v))
 		defer func() {
@@ -107,54 +138,71 @@ func (v *Vertex) unify(c *OpContext, needs condition, mode runMode) bool {
 	}
 	defer n.free()
 
+	defer n.unmarkDepth(n.markDepth())
+
 	// Typically a node processes all conjuncts before processing its fields.
 	// So this condition is very likely to trigger. If for some reason the
 	// parent has not been processed yet, we could attempt to process more
 	// of its tasks to increase the chances of being able to find the
-	// information we are looking for here. For now we just continue as is,
-	// though.
+	// information we are looking for here. For now we just continue as is.
+	//
 	// For dynamic nodes, the parent only exists to provide a path context.
-	if v.Label.IsLet() || v.IsDynamic || v.Parent.allChildConjunctsKnown() {
+	//
+	// Note that if mode is final, we will guarantee that the conditions for
+	// this if clause are met down the line. So we assume this is already the
+	// case and set the signal accordingly if so.
+	if v.Label.IsLet() || v.IsDynamic || v.Parent.allChildConjunctsKnown() || mode == finalize {
 		n.signal(allAncestorsProcessed)
 	}
 
-	defer c.PopArc(c.PushArc(v))
-
 	nodeOnlyNeeds := needs &^ (subFieldsProcessed)
 	n.process(nodeOnlyNeeds, mode)
+
+	defer c.PopArc(c.PushArc(v))
+
+	w := v.DerefDisjunct()
+	if w != v {
+		// Should resolve with dereference.
+		v.Closed = w.Closed
+		v.status = w.status
+		v.ChildErrors = CombineErrors(nil, v.ChildErrors, w.ChildErrors)
+		v.Arcs = nil
+		return w.state.meets(needs)
+	}
 	n.updateScalar()
+
+	if n.aStruct != nil {
+		n.updateNodeType(StructKind, n.aStruct, n.aStructID)
+	}
 
 	// First process all but the subfields.
 	switch {
 	case n.meets(nodeOnlyNeeds):
 		// pass through next phase.
 	case mode != finalize:
+		// TODO: disjunctions may benefit from evaluation as much prematurely
+		// as possible, as this increases the chances of premature failure.
+		// We should consider doing a recursive "attemptOnly" evaluation here.
 		return false
 	}
 
-	if isCyclePlaceholder(n.node.BaseValue) {
+	if n.isShared {
+		if isCyclePlaceholder(n.origBaseValue) {
+			n.origBaseValue = nil
+		}
+	} else if isCyclePlaceholder(n.node.BaseValue) {
 		n.node.BaseValue = nil
 	}
-	if n.aStruct != nil {
-		n.updateNodeType(StructKind, n.aStruct, n.aStructID)
-	}
-
-	n.validateValue(finalized)
-
-	if err, ok := n.node.BaseValue.(*Bottom); ok {
-		for _, arc := range n.node.Arcs {
-			if arc.Label.IsLet() {
-				continue
-			}
-			c := MakeConjunct(nil, err, c.CloseInfo())
-			if arc.state != nil {
-				arc.state.scheduleConjunct(c, c.CloseInfo)
-			}
-		}
+	if !n.isShared {
+		// TODO(sharewithval): allow structure sharing if we only have validator
+		// and references.
+		// TODO: rewrite to use mode when we get rid of old evaluator.
+		state := finalized
+		n.validateValue(state)
 	}
 
 	if n.node.Label.IsLet() || n.meets(allAncestorsProcessed) {
-		if cc := v.rootCloseContext(); !cc.isDecremented { // TODO: use v.cc
+		if cc := v.rootCloseContext(n.ctx); !cc.isDecremented { // TODO: use v.cc
 			cc.decDependent(c, ROOT, nil) // REF(decrement:nodeDone)
 			cc.isDecremented = true
 		}
@@ -174,13 +222,18 @@ func (v *Vertex) unify(c *OpContext, needs condition, mode runMode) bool {
 
 		switch {
 		case assertStructuralCycle(n):
+		// TODO: consider bailing on error if n.errs != nil.
 		case n.completeAllArcs(needs, mode):
 		}
 
-		n.signal(subFieldsProcessed)
+		if mode == finalize {
+			n.signal(subFieldsProcessed)
+		}
 
 		if v.BaseValue == nil {
-			v.BaseValue = n.getValidators(finalized)
+			// TODO: this seems to not be possible. Possibly remove.
+			state := finalized
+			v.BaseValue = n.getValidators(state)
 		}
 		if v := n.node.Value(); v != nil && IsConcrete(v) {
 			// Ensure that checks are not run again when this value is used
@@ -203,10 +256,14 @@ func (v *Vertex) unify(c *OpContext, needs condition, mode runMode) bool {
 
 	if err := n.getErr(); err != nil {
 		n.errs = nil
-		if b, _ := n.node.BaseValue.(*Bottom); b != nil {
+		if b := n.node.Bottom(); b != nil {
 			err = CombineErrors(nil, b, err)
 		}
 		n.node.BaseValue = err
+	}
+
+	if mode == attemptOnly {
+		return n.meets(needs)
 	}
 
 	if mask := n.completed & needs; mask != 0 {
@@ -214,22 +271,59 @@ func (v *Vertex) unify(c *OpContext, needs condition, mode runMode) bool {
 		n.signal(mask)
 	}
 
+	n.finalizeDisjunctions()
+
+	w = v.DerefValue() // Dereference anything, including shared nodes.
+	if w != v {
+		// Clear value fields that are now referred to in the dereferenced
+		// value (w).
+		v.ChildErrors = nil
+		v.Arcs = nil
+
+		result := w.unify(c, needs, mode)
+
+		// Set control fields that are referenced without dereferencing.
+		if w.Closed {
+			v.Closed = true
+		}
+		if w.HasEllipsis {
+			v.HasEllipsis = true
+		}
+		v.status = w.status
+
+		return result
+	}
+
+	// TODO: adding this is wrong, but it should not cause the snippet below
+	// to hang. Investigate.
+	// v.Closed = v.cc.isClosed
+	//
+	// This hangs:
+	// issue1940: {
+	// 	#T: ["a", #T] | ["c", #T] | ["d", [...#T]]
+	// 	#A: t: #T
+	// 	#B: x: #A
+	// 	#C: #B
+	// 	#C: x: #A
+	// }
+
 	// validationCompleted
 	if n.completed&(subFieldsProcessed) != 0 {
+		n.node.HasEllipsis = n.node.cc.hasEllipsis
+
 		n.node.updateStatus(finalized)
 
-		for _, r := range n.node.cc.externalDeps {
-			src := r.src
-			a := &src.arcs[r.index]
-			if a.decremented {
-				continue
+		defer n.unmarkOptional(n.markOptional())
+
+		// The next piece of code addresses the following case.
+		// order matters
+		// c1: c: [string]: f2
+		// f2: c1
+		// Also: cycle/issue990
+		if pc := n.node.PatternConstraints; pc != nil {
+			for _, c := range pc.Pairs {
+				c.Constraint.Finalize(n.ctx)
 			}
-			a.decremented = true
-			if n := src.src.getState(n.ctx); n != nil {
-				n.completeNodeConjuncts()
-			}
-			src.src.unify(n.ctx, needTasksDone, attemptOnly)
-			a.cc.decDependent(c, a.kind, src) // REF(arcs)
 		}
 
 		if DebugDeps {
@@ -252,31 +346,27 @@ func (v *Vertex) unify(c *OpContext, needs condition, mode runMode) bool {
 //     initiated its own execution, which is either not cyclic, and thus
 //     completes, or is on a different cycle, in which case it completes as
 //     well.
-func (n *nodeContext) completeNodeConjuncts() {
-	const conjunctsKnown = fieldConjunctsKnown | valueKnown // | fieldSetKnown
-
-	if n.meets(conjunctsKnown) {
-		return
-	}
-
-	if p := n.node.Parent; p != nil && p.state != nil {
-		p.state.completeNodeConjuncts()
-	}
-
-	// This only attempts, but it ensures that all references are processed.
-	n.process(conjunctsKnown, attemptOnly)
-}
-
+//
 // Goal:
 // - complete notifications
 // - decrement reference counts for root and notify.
 // NOT:
 // - complete value. That is reserved for Unify.
-func (n *nodeContext) completeNodeTasks() (ok bool) {
+func (n *nodeContext) completeNodeTasks(mode runMode) {
+	n.assertInitialized()
+
+	if n.isCompleting > 0 {
+		return
+	}
+	n.isCompleting++
+	defer func() {
+		n.isCompleting--
+	}()
+
 	v := n.node
 	c := n.ctx
 
-	if Debug {
+	if n.ctx.LogEval > 0 {
 		c.nest++
 		defer func() {
 			c.nest--
@@ -285,7 +375,7 @@ func (n *nodeContext) completeNodeTasks() (ok bool) {
 
 	if p := v.Parent; p != nil && p.state != nil {
 		if !v.IsDynamic && n.completed&allAncestorsProcessed == 0 {
-			p.state.completeNodeTasks()
+			p.state.completeNodeTasks(mode)
 		}
 	}
 
@@ -297,8 +387,25 @@ func (n *nodeContext) completeNodeTasks() (ok bool) {
 		// TODO: do we need any more requirements here?
 		const needs = valueKnown | fieldConjunctsKnown
 
-		n.process(needs, attemptOnly)
+		n.process(needs, mode)
 		n.updateScalar()
+	}
+
+	// Check:
+	// - parents (done)
+	// - incoming notifications
+	// - pending arcs (or incoming COMPS)
+	// TODO: replace with something more principled that does not piggyback on
+	// debug information.
+	for _, r := range v.cc.externalDeps {
+		src := r.src
+		a := &src.arcs[r.index]
+		if a.decremented || a.kind != NOTIFY {
+			continue
+		}
+		if n := src.src.getState(n.ctx); n != nil {
+			n.completeNodeTasks(mode)
+		}
 	}
 
 	// As long as ancestors are not processed, it is still possible for
@@ -306,27 +413,26 @@ func (n *nodeContext) completeNodeTasks() (ok bool) {
 	// theroot. It is not necessary to wait on tasks to complete, though,
 	// as pending tasks will have their own dependencies on root, meaning it
 	// is safe to decrement here.
-	if !n.meets(allAncestorsProcessed) && !n.node.Label.IsLet() {
-		return false
+	if !n.meets(allAncestorsProcessed) && !n.node.Label.IsLet() && mode != finalize {
+		return
 	}
 
 	// At this point, no more conjuncts will be added, so we could decrement
 	// the notification counters.
 
-	if cc := v.rootCloseContext(); !cc.isDecremented { // TODO: use v.cc
+	if cc := v.rootCloseContext(n.ctx); !cc.isDecremented { // TODO: use v.cc
 		cc.isDecremented = true
 
 		cc.decDependent(n.ctx, ROOT, nil) // REF(decrement:nodeDone)
 	}
 
-	return true
+	return
 }
 
 func (n *nodeContext) updateScalar() {
 	// Set BaseValue to scalar, but only if it was not set before. Most notably,
 	// errors should not be discarded.
-	_, isErr := n.node.BaseValue.(*Bottom)
-	if n.scalar != nil && (!isErr || isCyclePlaceholder(n.node.BaseValue)) {
+	if n.scalar != nil && (!n.node.IsErr() || isCyclePlaceholder(n.node.BaseValue)) {
 		n.node.BaseValue = n.scalar
 		n.signal(scalarKnown)
 	}
@@ -341,9 +447,51 @@ func (n *nodeContext) completeAllArcs(needs condition, mode runMode) bool {
 		// TODO: make uniform error messages
 		// see compbottom2.cue:
 		n.ctx.addErrf(CycleError, pos(n.node), "mutual dependency")
+		n.node.IsCyclic = true
+		// Consider using this, although not all
+		// mutual dependencies are irrecoverable.
+		// n.reportCycleError()
 	}
 
+	// TODO: remove the use of updateStatus as a cycle detection mechanism.
 	n.node.updateStatus(evaluatingArcs)
+
+	if n.underlying != nil {
+		// References within the disjunct may end up referencing the layer that
+		// this node overlays. Also for these nodes we want to be able to detect
+		// structural cycles early. For this reason, we also set the
+		// evaluatingArcs status in the underlying layer.
+		//
+		// TODO: for now, this seems not necessary. Moreover, this will cause
+		// benchmarks/cycle to display a spurious structural cycle. But it
+		// shortens some of the structural cycle depths. So consider using this.
+		//
+		// status := n.underlying.status
+		// n.underlying.updateStatus(evaluatingArcs) defer func() {
+		// n.underlying.status = status }()
+	}
+
+	// TODO: this should only be done if n is not currently running tasks.
+	// Investigate how to work around this.
+	n.completeNodeTasks(finalize)
+
+	for _, r := range n.node.cc.externalDeps {
+		src := r.src
+		a := &src.arcs[r.index]
+		if a.decremented {
+			continue
+		}
+		a.decremented = true
+
+		// FIXME: we should be careful to not evaluate parent nodes if we
+		// are inside a disjunction, or at least ensure that there are no
+		// disjunction values leaked into non-disjunction nodes through
+		// evaluating externalDeps.
+		src.src.unify(n.ctx, needTasksDone, attemptOnly)
+		a.cc.decDependent(n.ctx, a.kind, src) // REF(arcs)
+	}
+
+	n.incDepth()
 
 	// XXX(0.7): only set success if needs complete arcs.
 	success := true
@@ -352,7 +500,7 @@ func (n *nodeContext) completeAllArcs(needs condition, mode runMode) bool {
 		a := n.node.Arcs[n.arcPos]
 		n.arcPos++
 
-		if !a.unify(n.ctx, needs, finalize) {
+		if !a.unify(n.ctx, needs, mode) {
 			success = false
 		}
 
@@ -361,6 +509,8 @@ func (n *nodeContext) completeAllArcs(needs condition, mode runMode) bool {
 
 		if a.ArcType == ArcPending {
 			// TODO: cancel tasks?
+			// TODO: is this ever run? Investigate once new evaluator work is
+			// complete.
 			a.ArcType = ArcNotPresent
 			continue
 		}
@@ -368,7 +518,8 @@ func (n *nodeContext) completeAllArcs(needs condition, mode runMode) bool {
 		// Errors are allowed in let fields. Handle errors and failure to
 		// complete accordingly.
 		if !a.Label.IsLet() && a.ArcType <= ArcRequired {
-			if err, _ := a.BaseValue.(*Bottom); err != nil {
+			a := a.DerefValue()
+			if err := a.Bottom(); err != nil {
 				n.node.AddChildError(err)
 			}
 			success = true // other arcs are irrelevant
@@ -400,6 +551,8 @@ func (n *nodeContext) completeAllArcs(needs condition, mode runMode) bool {
 		}
 	}
 
+	n.decDepth()
+
 	k := 0
 	for _, a := range n.node.Arcs {
 		if a.ArcType != ArcNotPresent {
@@ -408,6 +561,31 @@ func (n *nodeContext) completeAllArcs(needs condition, mode runMode) bool {
 		}
 	}
 	n.node.Arcs = n.node.Arcs[:k]
+
+	// Strip struct literals that were not initialized and are not part
+	// of the output.
+	//
+	// TODO(perf): we could keep track if any such structs exist and only
+	// do this removal if there is a change of shrinking the list.
+	k = 0
+	for _, s := range n.node.Structs {
+		if s.initialized {
+			n.node.Structs[k] = s
+			k++
+		}
+	}
+	n.node.Structs = n.node.Structs[:k]
+
+	// TODO: This seems to be necessary, but enables structural cycles.
+	// Evaluator whether we still need this.
+	//
+	// pc := n.node.PatternConstraints
+	// if pc == nil {
+	// 	return success
+	// }
+	// for _, c := range pc.Pairs {
+	// 	c.Constraint.Finalize(n.ctx)
+	// }
 
 	return success
 }
@@ -431,6 +609,8 @@ func (v *Vertex) lookup(c *OpContext, pos token.Pos, f Feature, flags combinedFl
 	needs := flags.conditions()
 	runMode := flags.runMode()
 
+	v = v.DerefValue()
+
 	c.Logf(c.vertex, "LOOKUP %v", f)
 
 	state := v.getState(c)
@@ -444,17 +624,29 @@ func (v *Vertex) lookup(c *OpContext, pos token.Pos, f Feature, flags combinedFl
 		if state.hasErr() {
 			c.AddBottom(state.getErr())
 		}
-		state.completeNodeTasks()
+		// TODO: ideally this should not be run at this point. Consider under
+		// which circumstances this is still necessary, and at least ensure
+		// this will not be run if node v currently has a running task.
+		state.completeNodeTasks(attemptOnly)
 	}
 
 	// TODO: remove because unnecessary?
-	if task.state != taskRUNNING {
+	if task != nil && task.state != taskRUNNING {
 		return nil // abort, task is blocked or terminated in a cycle.
 	}
 
 	// TODO: verify lookup types.
 
-	arc := v.Lookup(f)
+	arc := v.LookupRaw(f)
+	// We leave further dereferencing to the caller, but we do dereference for
+	// the remainder of this function to be able to check the status.
+	arcReturn := arc
+	if arc != nil {
+		arc = arc.DerefNonRooted()
+		// TODO(perf): NonRooted is the minimum, but consider doing more.
+		// arc = arc.DerefValue()
+	}
+
 	// TODO: clean up this logic:
 	// - signal arcTypeKnown when ArcMember or ArcNotPresent is set,
 	//   similarly to scalarKnown.
@@ -464,7 +656,7 @@ func (v *Vertex) lookup(c *OpContext, pos token.Pos, f Feature, flags combinedFl
 	switch {
 	case arc != nil:
 		if arc.ArcType == ArcMember {
-			return arc
+			return arcReturn
 		}
 		arcState = arc.getState(c)
 
@@ -476,7 +668,7 @@ func (v *Vertex) lookup(c *OpContext, pos token.Pos, f Feature, flags combinedFl
 	default:
 		arc = &Vertex{Parent: state.node, Label: f, ArcType: ArcPending}
 		v.Arcs = append(v.Arcs, arc)
-		arcState = arc.getState(c)
+		arcState = arc.getState(c) // TODO: consider using getBareState.
 	}
 
 	if arcState != nil && (!arcState.meets(needTasksDone) || !arcState.meets(arcTypeKnown)) {
@@ -489,7 +681,7 @@ func (v *Vertex) lookup(c *OpContext, pos token.Pos, f Feature, flags combinedFl
 				break
 			}
 		}
-		arcState.completeNodeTasks()
+		arcState.completeNodeTasks(attemptOnly)
 
 		// Child nodes, if pending and derived from a comprehension, may
 		// still cause this arc to become not pending.
@@ -504,8 +696,10 @@ func (v *Vertex) lookup(c *OpContext, pos token.Pos, f Feature, flags combinedFl
 		switch runMode {
 		case ignore, attemptOnly:
 			// TODO: should we avoid notifying ArcPending vertices here?
-			arcState.addNotify2(task.node.node, task.id)
-			return arc
+			if task != nil {
+				arcState.addNotify2(task.node.node, task.id)
+			}
+			return arcReturn
 
 		case yield:
 			arcState.process(needs, yield)
@@ -520,7 +714,7 @@ func (v *Vertex) lookup(c *OpContext, pos token.Pos, f Feature, flags combinedFl
 
 	switch arc.ArcType {
 	case ArcMember:
-		return arc
+		return arcReturn
 
 	case ArcOptional, ArcRequired:
 		label := f.SelectorString(c.Runtime)
@@ -534,7 +728,7 @@ func (v *Vertex) lookup(c *OpContext, pos token.Pos, f Feature, flags combinedFl
 		return nil
 
 	case ArcNotPresent:
-		v.reportFieldCycleError(c, pos, f)
+		v.reportFieldIndexError(c, pos, f)
 		return nil
 
 	case ArcPending:
@@ -544,4 +738,23 @@ func (v *Vertex) lookup(c *OpContext, pos token.Pos, f Feature, flags combinedFl
 
 	v.reportFieldIndexError(c, pos, f)
 	return nil
+}
+
+// accept reports whether the given feature is allowed by the pattern
+// constraints.
+func (v *Vertex) accept(ctx *OpContext, f Feature) bool {
+	// TODO: this is already handled by callers at the moment, but it may be
+	// better design to move this here.
+	// if v.LookupRaw(f) != nil {
+	// 	return true, true
+	// }
+
+	v = v.DerefValue()
+
+	pc := v.PatternConstraints
+	if pc == nil {
+		return false
+	}
+
+	return matchPattern(ctx, pc.Allowed, f)
 }

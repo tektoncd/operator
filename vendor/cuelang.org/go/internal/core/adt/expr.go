@@ -97,11 +97,16 @@ func (o *StructLit) MarkField(f Feature) {
 	o.Fields = append(o.Fields, FieldInfo{Label: f})
 }
 
-func (o *StructLit) Init() {
+func (o *StructLit) Init(ctx *OpContext) {
 	if o.initialized {
 		return
 	}
 	o.initialized = true
+
+	if ctx.isDevVersion() {
+		return
+	}
+
 	for _, d := range o.Decls {
 		switch x := d.(type) {
 		case *Field:
@@ -182,10 +187,6 @@ func (o *StructLit) OptionalTypes() OptionalType {
 //	foo: bar
 //	#foo: bar
 //	_foo: bar
-//
-// Legacy:
-//
-//	Foo :: bar
 type Field struct {
 	Src *ast.Field
 
@@ -909,8 +910,8 @@ func (x *LetReference) resolve(ctx *OpContext, state combinedFlags) *Vertex {
 	// We can reevaluate this once we have redone some of the planned order of
 	// evaluation work.
 	arc.Finalize(ctx)
-	b, ok := arc.BaseValue.(*Bottom)
-	if !arc.MultiLet && !ok {
+	b := arc.Bottom()
+	if !arc.MultiLet && b == nil {
 		return arc
 	}
 
@@ -919,6 +920,14 @@ func (x *LetReference) resolve(ctx *OpContext, state combinedFlags) *Vertex {
 	// any other context.
 	c := arc.Conjuncts[0]
 	expr := c.Expr()
+
+	// A let field always has a single expression and thus ConjunctGroups
+	// should always have been eliminated. This is critical, as we must
+	// ensure that Comprehensions, which may be wrapped in ConjunctGroups,
+	// are eliminated.
+	_, isGroup := expr.(*ConjunctGroup)
+	ctx.Assertf(pos(expr), !isGroup, "unexpected number of expressions")
+
 	key := cacheKey{expr, arc}
 	v, ok := e.cache[key]
 	if !ok {
@@ -940,8 +949,16 @@ func (x *LetReference) resolve(ctx *OpContext, state combinedFlags) *Vertex {
 		e.cache[key] = n
 		if ctx.isDevVersion() {
 			nc := n.getState(ctx)
-			nc.hasNonCycle = true // Allow a first cycle to be skipped.
+			// TODO: unlike with the old evaluator, we do not allow the first
+			// cycle to be skipped. Doing so can lead to hanging evaluation.
+			// As the cycle detection works slightly differently in the new
+			// evaluator (and is not entirely completed), this can happen. We
+			// should revisit this once we have completed the structural cycle
+			// detection.
+			// nc.hasNonCycle = true
+			// Allow a first cycle to be skipped.
 			nc.free()
+			n.unify(ctx, allKnown, finalize)
 		} else {
 			nc := n.getNodeContext(ctx, 0)
 			nc.hasNonCycle = true // Allow a first cycle to be skipped.
@@ -983,6 +1000,10 @@ func (x *SelectorExpr) resolve(c *OpContext, state combinedFlags) *Vertex {
 	// This may especially result in incorrect results when using embedded
 	// scalars.
 	// In the new evaluator, evaluation of the node is done in lookup.
+	// TODO:
+	// - attempt: if we ensure that errors are propagated in pending arcs.
+	// - require: if we want to ensure that all arcs
+	//  are known now.
 	n := c.node(x, x.X, x.Sel.IsRegular(), attempt(partial, needFieldSetKnown))
 	if n == emptyNode {
 		return n
@@ -1423,7 +1444,7 @@ func (c *OpContext) validate(env *Environment, src ast.Node, x Expr, op Op, flag
 }
 
 func isFinalError(n *Vertex) bool {
-	n = n.Indirect()
+	n = n.DerefValue()
 	if b, ok := Unwrap(n).(*Bottom); ok && b.Code < IncompleteError {
 		return true
 	}
@@ -1470,7 +1491,7 @@ func (x *CallExpr) evaluate(c *OpContext, state combinedFlags) Value {
 		b = f
 
 	case *BuiltinValidator:
-		// We allow a validator that takes no arguments accept the validated
+		// We allow a validator that takes no arguments except the validated
 		// value to be called with zero arguments.
 		switch {
 		case f.Src != nil:
@@ -1637,7 +1658,7 @@ func (x *Builtin) call(c *OpContext, p token.Pos, validate bool, args []Value) E
 			x := &BinaryExpr{Op: AndOp, X: v, Y: a}
 			n := c.newInlineVertex(nil, nil, Conjunct{env, x, c.ci})
 			n.Finalize(c)
-			if _, ok := n.BaseValue.(*Bottom); ok {
+			if n.IsErr() {
 				c.addErrf(0, pos(a),
 					"cannot use %s as %s in argument %d to %v",
 					a, v, i+1, fun)
@@ -1833,6 +1854,16 @@ type Comprehension struct {
 
 	// The type of field as which the comprehension is added.
 	arcType ArcType
+
+	// The closeContext into which the comprehension is added. Upon a successful
+	// completion of the comprehension, the arcType should be updated in this
+	// closeContext. After this is done, the corresponding parent closeContext
+	// must be closed.
+	arcCC *closeContext
+
+	// This is incremented by the Comprehension upon creation, and decremented
+	// once it is known whether the comprehension succeeded.
+	cc *closeContext
 
 	// Only used for partial comprehensions.
 	comp   *envComprehension

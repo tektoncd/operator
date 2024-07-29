@@ -133,7 +133,7 @@ func isIncomplete(v *Vertex) bool {
 	if v == nil {
 		return true
 	}
-	if b, ok := v.BaseValue.(*Bottom); ok {
+	if b := v.Bottom(); b != nil {
 		return b.IsIncomplete()
 	}
 	return false
@@ -378,6 +378,9 @@ func (c *OpContext) NewPosf(p token.Pos, format string, args ...interface{}) *Va
 			a = appendNodePositions(a, x)
 			args[i] = c.Str(x)
 		case ast.Node:
+			// TODO: ideally the core evaluator should not depend on higher
+			// level packages. This will allow the debug packages to be used
+			// more widely.
 			b, _ := cueformat.Node(x)
 			if p := x.Pos(); p != token.NoPos {
 				a = append(a, p)

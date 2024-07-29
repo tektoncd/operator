@@ -152,14 +152,17 @@ func (r *Resolver) ResolveToLocation(mpath string, version string) (HostLocation
 	return r.resolver.ResolveToLocation(mpath, version)
 }
 
-// Resolve implements modregistry.Resolver.Resolve.
+// ResolveToRegistry implements [modregistry.Resolver.ResolveToRegistry].
 func (r *Resolver) ResolveToRegistry(mpath string, version string) (modregistry.RegistryLocation, error) {
 	loc, ok := r.resolver.ResolveToLocation(mpath, version)
 	if !ok {
-		// This can only happen when mpath is invalid, which should not
+		// This can happen when mpath is invalid, which should not
 		// happen in practice, as the only caller is modregistry which
 		// vets module paths before calling Resolve.
-		return modregistry.RegistryLocation{}, fmt.Errorf("cannot resolve %s (version %s) to registry", mpath, version)
+		//
+		// It can also happen when the user has explicitly configured a "none"
+		// registry to avoid falling back to a default registry.
+		return modregistry.RegistryLocation{}, fmt.Errorf("cannot resolve %s (version %q) to registry: %w", mpath, version, modregistry.ErrRegistryNotFound)
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -189,6 +192,10 @@ type cueLoginsTransport struct {
 	// initOnce guards initErr, logins, and transport.
 	initOnce sync.Once
 	initErr  error
+	// loginsMu guards the logins pointer below.
+	// Note that an instance of cueconfig.Logins is read-only and
+	// does not have to be guarded.
+	loginsMu sync.Mutex
 	logins   *cueconfig.Logins
 	// transport holds the underlying transport. This wraps
 	// t.cfg.Transport.
@@ -211,14 +218,19 @@ func (t *cueLoginsTransport) RoundTrip(req *http.Request) (*http.Response, error
 	if err := t.init(); err != nil {
 		return nil, err
 	}
-	if t.logins == nil {
+
+	t.loginsMu.Lock()
+	logins := t.logins
+	t.loginsMu.Unlock()
+
+	if logins == nil {
 		return t.transport.RoundTrip(req)
 	}
 	// TODO: note that a CUE registry may include a path prefix,
 	// so using solely the host will not work with such a path.
 	// Can we do better here, perhaps keeping the path prefix up to "/v2/"?
 	host := req.URL.Host
-	login, ok := t.logins.Registries[host]
+	login, ok := logins.Registries[host]
 	if !ok {
 		return t.transport.RoundTrip(req)
 	}
@@ -231,15 +243,21 @@ func (t *cueLoginsTransport) RoundTrip(req *http.Request) (*http.Response, error
 			Name:     host,
 			Insecure: req.URL.Scheme == "http",
 		})
-		// TODO: When this client refreshes an access token,
-		// we should store the refreshed token on disk.
 
 		// Make the oauth client use the transport that was set up
 		// in init.
 		ctx := context.WithValue(req.Context(), oauth2.HTTPClient, &http.Client{
 			Transport: t.transport,
 		})
-		transport = oauthCfg.Client(ctx, tok).Transport
+		transport = oauth2.NewClient(ctx,
+			&cachingTokenSource{
+				updateFunc: func(tok *oauth2.Token) error {
+					return t.updateLogin(host, tok)
+				},
+				base: oauthCfg.TokenSource(ctx, tok),
+				t:    tok,
+			},
+		).Transport
 		t.cachedTransports[host] = transport
 	}
 	// Unlock immediately so we don't hold the lock for the entire
@@ -247,6 +265,28 @@ func (t *cueLoginsTransport) RoundTrip(req *http.Request) (*http.Response, error
 	// making HTTP requests.
 	t.mu.Unlock()
 	return transport.RoundTrip(req)
+}
+
+func (t *cueLoginsTransport) updateLogin(host string, new *oauth2.Token) error {
+	// Reload the logins file in case another process changed it in the meantime.
+	loginsPath, err := cueconfig.LoginConfigPath(t.getenv)
+	if err != nil {
+		// TODO: this should never fail. Log a warning.
+		return nil
+	}
+
+	// Lock the logins for the entire duration of the update to avoid races
+	t.loginsMu.Lock()
+	defer t.loginsMu.Unlock()
+
+	logins, err := cueconfig.UpdateRegistryLogin(loginsPath, host, new)
+	if err != nil {
+		return err
+	}
+
+	t.logins = logins
+
+	return nil
 }
 
 func (t *cueLoginsTransport) init() error {
@@ -270,10 +310,11 @@ func (t *cueLoginsTransport) _init() error {
 		Transport: t.cfg.Transport,
 	})
 
-	// If we can't locate a logins.json file at all, then we'll
+	// If we can't locate a logins.json file at all, then we'll continue.
 	// We only refuse to continue if we find an invalid logins.json file.
 	loginsPath, err := cueconfig.LoginConfigPath(t.getenv)
 	if err != nil {
+		// TODO: this should never fail. Log a warning.
 		return nil
 	}
 	logins, err := cueconfig.ReadLogins(loginsPath)
@@ -324,4 +365,41 @@ func newRef[T any](x *T) *T {
 		x1 = *x
 	}
 	return &x1
+}
+
+// cachingTokenSource works similar to oauth2.ReuseTokenSource, except that it
+// also exposes a hook to get a hold of the refreshed token, so that it can be
+// stored in persistent storage.
+type cachingTokenSource struct {
+	updateFunc func(tok *oauth2.Token) error
+	base       oauth2.TokenSource // called when t is expired
+
+	mu sync.Mutex // guards t
+	t  *oauth2.Token
+}
+
+func (s *cachingTokenSource) Token() (*oauth2.Token, error) {
+	s.mu.Lock()
+	t := s.t
+
+	if t.Valid() {
+		s.mu.Unlock()
+		return t, nil
+	}
+
+	t, err := s.base.Token()
+	if err != nil {
+		s.mu.Unlock()
+		return nil, err
+	}
+
+	s.t = t
+	s.mu.Unlock()
+
+	err = s.updateFunc(t)
+	if err != nil {
+		return nil, err
+	}
+
+	return t, nil
 }

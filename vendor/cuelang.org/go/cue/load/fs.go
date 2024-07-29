@@ -16,12 +16,13 @@ package load
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"io"
 	iofs "io/fs"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -133,24 +134,11 @@ func (fs *fileSystem) init(cwd string, overlay map[string]Source) error {
 	return nil
 }
 
-func (fs *fileSystem) joinPath(elem ...string) string {
-	return filepath.Join(elem...)
-}
-
 func (fs *fileSystem) makeAbs(path string) string {
 	if filepath.IsAbs(path) {
 		return path
 	}
 	return filepath.Join(fs.cwd, path)
-}
-
-func (fs *fileSystem) isDir(path string) bool {
-	path = fs.makeAbs(path)
-	if fs.getDir(path, false) != nil {
-		return true
-	}
-	fi, err := os.Stat(path)
-	return err == nil && fi.IsDir()
 }
 
 func (fs *fileSystem) readDir(path string) ([]iofs.DirEntry, errors.Error) {
@@ -177,8 +165,8 @@ func (fs *fileSystem) readDir(path string) ([]iofs.DirEntry, errors.Error) {
 			items = append(items, iofs.FileInfoToDirEntry(o))
 		}
 	}
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].Name() < items[j].Name()
+	slices.SortFunc(items, func(a, b iofs.DirEntry) int {
+		return cmp.Compare(a.Name(), b.Name())
 	})
 	return items, nil
 }
@@ -269,7 +257,7 @@ func (fs *fileSystem) walkRec(path string, entry iofs.DirEntry, f walkFunc) erro
 	}
 
 	for _, entry := range dir {
-		filename := fs.joinPath(path, entry.Name())
+		filename := filepath.Join(path, entry.Name())
 		err = fs.walkRec(filename, entry, f)
 		if err != nil {
 			if !entry.IsDir() || err != skipDir {
@@ -334,7 +322,7 @@ func (fs *ioFS) ReadDir(name string) ([]iofs.DirEntry, error) {
 	return fs.fs.readDir(fpath)
 }
 
-// ReadDir implements [io/fs.ReadFileFS].
+// ReadFile implements [io/fs.ReadFileFS].
 func (fs *ioFS) ReadFile(name string) ([]byte, error) {
 	fpath, err := fs.absPathFromFSPath(name)
 	if err != nil {
