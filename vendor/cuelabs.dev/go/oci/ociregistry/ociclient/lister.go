@@ -79,19 +79,19 @@ func (c *client) Referrers(ctx context.Context, repoName string, digest ociregis
 		ListN:  c.listPageSize,
 	})
 	if err != nil {
-		return ociregistry.ErrorIter[ociregistry.Descriptor](err)
+		return ociregistry.ErrorSeq[ociregistry.Descriptor](err)
 	}
 
 	data, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		return ociregistry.ErrorIter[ociregistry.Descriptor](err)
+		return ociregistry.ErrorSeq[ociregistry.Descriptor](err)
 	}
 	var referrersResponse ocispec.Index
 	if err := json.Unmarshal(data, &referrersResponse); err != nil {
-		return ociregistry.ErrorIter[ociregistry.Descriptor](fmt.Errorf("cannot unmarshal referrers response: %v", err))
+		return ociregistry.ErrorSeq[ociregistry.Descriptor](fmt.Errorf("cannot unmarshal referrers response: %v", err))
 	}
-	return ociregistry.SliceIter(referrersResponse.Manifests)
+	return ociregistry.SliceSeq(referrersResponse.Manifests)
 }
 
 // pager returns an iterator for a list entry point. It starts by sending the given

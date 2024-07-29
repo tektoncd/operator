@@ -1,6 +1,7 @@
 package ociauth
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,11 +9,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
 
-	"cuelabs.dev/go/oci/ociregistry/internal/exp/slices"
+	"cuelabs.dev/go/oci/ociregistry"
 )
 
 // TODO decide on a good value for this.
@@ -166,7 +168,7 @@ func (a *stdTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if challenge == nil {
 		return resp, nil
 	}
-	authAdded, err := r.setAuthorizationFromChallenge(ctx, req, challenge, requiredScope, wantScope)
+	authAdded, tokenAcquired, err := r.setAuthorizationFromChallenge(ctx, req, challenge, requiredScope, wantScope)
 	if err != nil {
 		resp.Body.Close()
 		return nil, err
@@ -183,7 +185,32 @@ func (a *stdTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			return nil, err
 		}
 	}
-	return r.transport.RoundTrip(req)
+	resp, err = r.transport.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusUnauthorized || !tokenAcquired {
+		return resp, nil
+	}
+	// The server has responded with Unauthorized (401) even though we've just
+	// provided a token that it gave us. Treat it as Forbidden (403) instead.
+	// TODO include the original body/error as part of the message or message detail?
+	resp.Body.Close()
+	data, err := json.Marshal(&ociregistry.WireErrors{
+		Errors: []ociregistry.WireError{{
+			Code_:   ociregistry.ErrDenied.Code(),
+			Message: "unauthorized response with freshly acquired auth token",
+		}},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("cannot marshal response body: %v", err)
+	}
+	resp.Header.Set("Content-Type", "application/json")
+	resp.ContentLength = int64(len(data))
+	resp.Body = io.NopCloser(bytes.NewReader(data))
+	resp.StatusCode = http.StatusForbidden
+	resp.Status = http.StatusText(resp.StatusCode)
+	return resp, nil
 }
 
 // setAuthorization sets up authorization on the given request using any
@@ -219,7 +246,10 @@ func (r *registry) setAuthorization(ctx context.Context, req *http.Request, requ
 
 		accessToken, err := r.acquireAccessToken(ctx, requiredScope, wantScope)
 		if err != nil {
-			return err
+			// Avoid using %w to wrap the error because we don't want the
+			// caller of RoundTrip (usually ociclient) to assume that the
+			// error applies to the target server rather than the token server.
+			return fmt.Errorf("cannot acquire access token: %v", err)
 		}
 		req.Header.Set("Authorization", "Bearer "+accessToken)
 		return nil
@@ -231,7 +261,7 @@ func (r *registry) setAuthorization(ctx context.Context, req *http.Request, requ
 	return nil
 }
 
-func (r *registry) setAuthorizationFromChallenge(ctx context.Context, req *http.Request, challenge *authHeader, requiredScope, wantScope Scope) (bool, error) {
+func (r *registry) setAuthorizationFromChallenge(ctx context.Context, req *http.Request, challenge *authHeader, requiredScope, wantScope Scope) (authAdded, tokenAcquired bool, _ error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.wwwAuthenticate = challenge
@@ -241,15 +271,15 @@ func (r *registry) setAuthorizationFromChallenge(ctx context.Context, req *http.
 		scope := ParseScope(r.wwwAuthenticate.params["scope"])
 		accessToken, err := r.acquireAccessToken(ctx, scope, wantScope.Union(requiredScope))
 		if err != nil {
-			return false, err
+			return false, false, err
 		}
 		req.Header.Set("Authorization", "Bearer "+accessToken)
-		return true, nil
+		return true, true, nil
 	case r.basic != nil:
 		req.SetBasicAuth(r.basic.username, r.basic.password)
-		return true, nil
+		return true, false, nil
 	}
-	return false, nil
+	return false, false, nil
 }
 
 // init initializes the registry instance by acquiring auth information from
@@ -299,8 +329,8 @@ func (r *registry) acquireAccessToken(ctx context.Context, requiredScope, wantSc
 	scope := requiredScope.Union(wantScope)
 	tok, err := r.acquireToken(ctx, scope)
 	if err != nil {
-		var rerr *responseError
-		if !errors.As(err, &rerr) || rerr.statusCode != http.StatusUnauthorized {
+		var herr ociregistry.HTTPError
+		if !errors.As(err, &herr) || herr.StatusCode() != http.StatusUnauthorized {
 			return "", err
 		}
 		// The documentation says this:
@@ -373,8 +403,8 @@ func (r *registry) acquireToken(ctx context.Context, scope Scope) (*wireToken, e
 		if err == nil {
 			return tok, nil
 		}
-		var rerr *responseError
-		if !errors.As(err, &rerr) || rerr.statusCode != http.StatusNotFound {
+		var herr ociregistry.HTTPError
+		if !errors.As(err, &herr) || herr.StatusCode() != http.StatusNotFound {
 			return tok, err
 		}
 		// The request to the endpoint returned 404 from the POST request,
@@ -398,7 +428,7 @@ func (r *registry) acquireToken(ctx context.Context, scope Scope) (*wireToken, e
 		v.Set("service", service)
 	}
 	u.RawQuery = v.Encode()
-	req, err := http.NewRequest("GET", u.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -449,34 +479,18 @@ func (r *registry) doTokenRequest(req *http.Request) (*wireToken, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	data, bodyErr := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return nil, errorFromResponse(resp)
+		return nil, ociregistry.NewHTTPError(nil, resp.StatusCode, resp, data)
 	}
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("cannot read response body: %v", err)
+	if bodyErr != nil {
+		return nil, fmt.Errorf("error reading response body: %v", err)
 	}
 	var tok wireToken
 	if err := json.Unmarshal(data, &tok); err != nil {
 		return nil, fmt.Errorf("malformed JSON token in response: %v", err)
 	}
 	return &tok, nil
-}
-
-type responseError struct {
-	statusCode int
-	msg        string
-}
-
-func errorFromResponse(resp *http.Response) error {
-	// TODO include body of response in error message.
-	return &responseError{
-		statusCode: resp.StatusCode,
-	}
-}
-
-func (e *responseError) Error() string {
-	return fmt.Sprintf("unexpected HTTP response %d", e.statusCode)
 }
 
 // deleteExpiredTokens removes all tokens from r that expire after the given

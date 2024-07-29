@@ -25,10 +25,7 @@ import (
 	"cuelang.org/go/cue/scanner"
 	"cuelang.org/go/cue/token"
 	"cuelang.org/go/internal"
-	"cuelang.org/go/internal/astinternal"
 )
-
-var debugStr = astinternal.DebugStr
 
 // The parser structure holds the parser's internal state.
 type parser struct {
@@ -52,11 +49,11 @@ type parser struct {
 	lit string      // token literal
 
 	// Error recovery
-	// (used to limit the number of calls to syncXXX functions
+	// (used to limit the number of calls to sync... functions
 	// w/o making scanning progress - avoids potential endless
 	// loops across multiple parser functions during error recovery)
 	syncPos token.Pos // last synchronization position
-	syncCnt int       // number of calls to syncXXX without progress
+	syncCnt int       // number of calls to sync... functions without progress
 
 	// Non-syntactic parser control
 	exprLev int // < 0: in control clause, >= 0: in expression
@@ -114,7 +111,7 @@ func (p *parser) openComments() *commentState {
 					groups = append(groups, cg)
 				}
 			}
-			groups = append(groups, c.lastChild.Comments()...)
+			groups = append(groups, ast.Comments(c.lastChild)...)
 			for _, cg := range c.groups {
 				if cg.Position != 0 {
 					cg.Position = c.lastPos
@@ -165,7 +162,7 @@ func (p *parser) closeList() {
 	if c.lastChild != nil {
 		for _, cg := range c.groups {
 			cg.Position = c.lastPos
-			c.lastChild.AddComment(cg)
+			ast.AddComment(c.lastChild, cg)
 		}
 		c.groups = nil
 	}
@@ -206,7 +203,7 @@ func (c *commentState) closeNode(p *parser, n ast.Node) ast.Node {
 	for _, cg := range c.groups {
 		if n != nil {
 			if cg != nil {
-				n.AddComment(cg)
+				ast.AddComment(n, cg)
 			}
 		}
 	}
@@ -1670,7 +1667,7 @@ func (p *parser) parseFile() *ast.File {
 	c := p.comments
 
 	// Don't bother parsing the rest if we had errors scanning the first
-	// Likely not a Go source file at all.
+	// Likely not a CUE source file at all.
 	if p.errors != nil {
 		return nil
 	}

@@ -27,7 +27,7 @@ import (
 //
 //	rootCmd.AddCommand(version.Version())
 //
-// ```
+// ```.
 func Version() *cobra.Command {
 	return version("")
 }
@@ -37,7 +37,7 @@ func Version() *cobra.Command {
 //
 //	rootCmd.AddCommand(version.WithFont("starwars"))
 //
-// ```
+// ```.
 func WithFont(fontName string) *cobra.Command {
 	return version(fontName)
 }
@@ -47,7 +47,7 @@ func version(fontName string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Prints the version",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			v := GetVersionInfo()
 			v.Name = cmd.Root().Name()
 			v.Description = cmd.Root().Short

@@ -123,16 +123,16 @@ const (
 	// not rendered at all.
 	Elided
 
-	// NoSpace indicates there is no whitespace after this token.
+	// NoSpace indicates there is no whitespace before this token.
 	NoSpace
 
-	// Blank means there is horizontal space after this token.
+	// Blank means there is horizontal space before this token.
 	Blank
 
-	// Newline means there is a single newline after this token.
+	// Newline means there is a single newline before this token.
 	Newline
 
-	// NewSection means there are two or more newlines after this token.
+	// NewSection means there are two or more newlines before this token.
 	NewSection
 
 	relMask  = 0xf
@@ -149,7 +149,7 @@ func (p RelPos) Pos() Pos {
 	return Pos{nil, int(p)}
 }
 
-// HasRelPos repors whether p has a relative position.
+// HasRelPos reports whether p has a relative position.
 func (p Pos) HasRelPos() bool {
 	return p.offset&relMask != 0
 
@@ -175,7 +175,7 @@ func (p Pos) IsValid() bool {
 }
 
 // IsNewline reports whether the relative information suggests this node should
-// be printed on a new lien.
+// be printed on a new line.
 func (p Pos) IsNewline() bool {
 	return p.RelPos() >= Newline
 }
@@ -287,6 +287,19 @@ func (f *File) MergeLine(line int) {
 	// are 0-based and line numbers are 1-based.
 	copy(f.lines[line:], f.lines[line+1:])
 	f.lines = f.lines[:len(f.lines)-1]
+}
+
+// Lines returns the effective line offset table of the form described by [File.SetLines].
+// Callers must not mutate the result.
+func (f *File) Lines() []int {
+	var lines []int
+	f.mutex.Lock()
+	// Unfortunate that we have to loop, but we use our own type.
+	for _, line := range f.lines {
+		lines = append(lines, int(line))
+	}
+	f.mutex.Unlock()
+	return lines
 }
 
 // SetLines sets the line offsets for a file and reports whether it succeeded.

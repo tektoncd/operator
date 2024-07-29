@@ -15,13 +15,13 @@
 package load
 
 import (
-	"io"
 	"path/filepath"
 	"strings"
 
 	"cuelang.org/go/cue/build"
 	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/token"
+	"cuelang.org/go/internal/cueimports"
 )
 
 // A match represents the result of matching a single package pattern.
@@ -49,31 +49,18 @@ func (e excludeError) Is(err error) bool { return err == errExclude }
 // considers text until the first non-comment.
 // If allTags is non-nil, matchFile records any encountered build tag
 // by setting allTags[tag] = true.
-func matchFile(cfg *Config, file *build.File, returnImports, allFiles bool, allTags map[string]bool) (match bool, data []byte, err errors.Error) {
-	if fi := cfg.fileSystem.getOverlay(file.Filename); fi != nil {
-		if fi.file != nil {
-			file.Source = fi.file
-		} else {
-			file.Source = fi.contents
-		}
-	}
-
+func matchFile(cfg *Config, file *build.File, returnImports bool, allTags map[string]bool, mode importMode) (match bool, data []byte, err errors.Error) {
+	// Note: file.Source should already have been set by setFileSource just
+	// after the build.File value was created.
 	if file.Encoding != build.CUE {
 		return false, nil, nil // not a CUE file, don't record.
 	}
-
 	if file.Filename == "-" {
-		b, err2 := io.ReadAll(cfg.stdin())
-		if err2 != nil {
-			err = errors.Newf(token.NoPos, "read stdin: %v", err)
-			return
-		}
-		file.Source = b
-		return true, b, nil // don't check shouldBuild for stdin
+		return true, file.Source.([]byte), nil // don't check shouldBuild for stdin
 	}
 
 	name := filepath.Base(file.Filename)
-	if !cfg.filesMode {
+	if (mode & allowExcludedFiles) == 0 {
 		for _, prefix := range []string{".", "_"} {
 			if strings.HasPrefix(name, prefix) {
 				return false, nil, &excludeError{
@@ -88,7 +75,7 @@ func matchFile(cfg *Config, file *build.File, returnImports, allFiles bool, allT
 		return false, nil, err
 	}
 
-	data, err = readImports(f, false, nil)
+	data, err = cueimports.Read(f)
 	f.Close()
 	if err != nil {
 		return false, nil,

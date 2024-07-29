@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/opencontainers/go-digest"
@@ -50,6 +51,9 @@ func (c *client) PushManifest(ctx context.Context, repo string, tag string, cont
 		Digest: string(desc.Digest),
 	}
 	req, err := newRequest(ctx, rreq, bytes.NewReader(contents))
+	if err != nil {
+		return ociregistry.Descriptor{}, err
+	}
 	req.Header.Set("Content-Type", mediaType)
 	req.ContentLength = desc.Size
 	resp, err := c.do(req, http.StatusCreated)
@@ -78,7 +82,8 @@ func (c *client) MountBlob(ctx context.Context, fromRepo, toRepo string, dig oci
 		// return Unsupported.
 		return ociregistry.Descriptor{}, fmt.Errorf("registry does not support mounts: %w", ociregistry.ErrUnsupported)
 	}
-	return descriptorFromResponse(resp, dig, false)
+	// TODO: is it OK to omit the size from the returned descriptor here?
+	return descriptorFromResponse(resp, dig, requireDigest)
 }
 
 func (c *client) PushBlob(ctx context.Context, repo string, desc ociregistry.Descriptor, r io.Reader) (_ ociregistry.Descriptor, _err error) {
@@ -220,6 +225,14 @@ func (c *client) PushBlobChunkedResume(ctx context.Context, repo string, id stri
 		if err != nil {
 			return nil, fmt.Errorf("provided ID is not a valid location URL")
 		}
+		if !strings.HasPrefix(location.Path, "/") {
+			// Our BlobWriter.ID method always returns a fully
+			// qualified absolute URL, so this must be a mistake
+			// on the part of the caller.
+			// We allow a relative URL even though we don't
+			// ever return one to make things a bit easier for tests.
+			return nil, fmt.Errorf("provided upload ID %q has unexpected relative URL path", id)
+		}
 	}
 	ctx = ociauth.ContextWithRequestInfo(ctx, ociauth.RequestInfo{
 		RequiredScope: ociauth.NewScope(ociauth.ResourceScope{
@@ -257,11 +270,6 @@ type blobWriter struct {
 	// Each successfully flushed chunk increases this.
 	flushed  int64
 	location *url.URL
-}
-
-type doResult struct {
-	resp *http.Response
-	err  error
 }
 
 func (w *blobWriter) Write(buf []byte) (int, error) {
@@ -380,7 +388,7 @@ func (w *blobWriter) Commit(digest ociregistry.Digest) (ociregistry.Descriptor, 
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if err := w.flush(nil, digest); err != nil {
-		return ociregistry.Descriptor{}, fmt.Errorf("cannot flush data before commit: %v", err)
+		return ociregistry.Descriptor{}, fmt.Errorf("cannot flush data before commit: %w", err)
 	}
 	return ociregistry.Descriptor{
 		MediaType: "application/octet-stream",
