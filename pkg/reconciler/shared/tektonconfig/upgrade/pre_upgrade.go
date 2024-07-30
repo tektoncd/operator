@@ -18,7 +18,6 @@ package upgrade
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -29,39 +28,6 @@ import (
 	"k8s.io/client-go/rest"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
-
-func upgradeChainProperties(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
-	// get tektonConfig CR
-	tc, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		logger.Errorw("error on getting TektonConfig CR", err)
-		return err
-	}
-
-	var chain v1alpha1.ChainProperties
-	cm, err := k8sClient.CoreV1().ConfigMaps(tc.Spec.GetTargetNamespace()).Get(ctx, "chains-config", metav1.GetOptions{})
-	if err != nil {
-		if apierrs.IsNotFound(err) {
-			chain = v1alpha1.ChainProperties{}
-		}
-	}
-	if cm != nil && len(cm.Data) > 0 {
-		jsonData, err := json.Marshal(cm.Data)
-		if err != nil {
-			return err
-		}
-		if err := json.Unmarshal(jsonData, &chain); err != nil {
-			return err
-		}
-	}
-
-	tc.Spec.Chain = v1alpha1.Chain{
-		ChainProperties: chain,
-	}
-
-	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
-	return err
-}
 
 // previous version of tekton operator uses a condition type called "InstallSucceeded" in status
 // but in the recent version we do not have that field, hence "InstallSucceeded" condition never updated.
