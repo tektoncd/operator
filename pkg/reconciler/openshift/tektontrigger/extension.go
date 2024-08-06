@@ -54,7 +54,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
 		occommon.ApplyCABundles,
-		common.AddConfigMapValues(tektontrigger.ConfigDefaults, triggersData),
+		common.AddConfigMapValues(tektontrigger.ConfigDefaults, triggersData, nil),
 		replaceDeploymentArgs("-el-events", "enable"),
 	}
 }
