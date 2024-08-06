@@ -706,6 +706,8 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
+  annotations:
+    haproxy.router.openshift.io/timeout: 600s
   labels:
     app.kubernetes.io/component: controller
     app.kubernetes.io/instance: default
