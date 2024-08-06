@@ -466,7 +466,7 @@ func TestAddConfigMapValues_PipelineProperties(t *testing.T) {
 		EnableApiFields:        "stable",
 	}
 
-	manifest, err = manifest.Transform(AddConfigMapValues("test1", prop))
+	manifest, err = manifest.Transform(AddConfigMapValues("test1", prop, nil))
 	assertNoEror(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -491,7 +491,7 @@ func TestAddConfigMapValues_OptionalPipelineProperties(t *testing.T) {
 		DefaultCloudEventsSink:     "abc",
 	}
 
-	manifest, err = manifest.Transform(AddConfigMapValues("test2", prop))
+	manifest, err = manifest.Transform(AddConfigMapValues("test2", prop, nil))
 	assertNoEror(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -515,6 +515,7 @@ func TestAddConfigMapValues(t *testing.T) {
 		name                string
 		targetConfigMapName string
 		props               interface{}
+		defaults            interface{}
 		expectedData        map[string]string
 		keysShouldNotBeIn   []string
 		doesConfigMapExists bool
@@ -685,6 +686,36 @@ func TestAddConfigMapValues(t *testing.T) {
 			},
 			doesConfigMapExists: true,
 		},
+		{
+			name:                "verify-with-defaults",
+			targetConfigMapName: configMapName,
+			props: struct {
+				Foo string `json:"foo"`
+				Bar int    `json:"bar"`
+			}{
+				Foo: "override",
+				Bar: 42,
+			},
+			defaults: struct {
+				Foo string  `json:"foo"`
+				Bar int     `json:"bar"`
+				Baz string  `json:"baz"`
+				Qux *string `json:"qux"`
+			}{
+				Foo: "default-foo",
+				Bar: 10,
+				Baz: "default-baz",
+				Qux: ptr.String("default-qux"),
+			},
+			expectedData: map[string]string{
+				"foo": "override",
+				"bar": "42",
+				"baz": "default-baz",
+				"qux": "default-qux",
+			},
+			keysShouldNotBeIn:   []string{""},
+			doesConfigMapExists: true,
+		},
 	}
 
 	for _, test := range tests {
@@ -693,7 +724,7 @@ func TestAddConfigMapValues(t *testing.T) {
 			manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 			assert.NilError(t, err)
 
-			manifest, err = manifest.Transform(AddConfigMapValues(test.targetConfigMapName, test.props))
+			manifest, err = manifest.Transform(AddConfigMapValues(test.targetConfigMapName, test.props, test.defaults))
 			assert.NilError(t, err)
 
 			var cm *corev1.ConfigMap

@@ -45,6 +45,14 @@ It is recommended to install the component through [TektonConfig](./TektonConfig
 ## Chain Config
 
 There are some fields which you can define on Tekton Chains CR to configure the behaviour of the chains
+If nothing is set, the operator sets these default properties:
+  artifacts.taskrun.format: in-toto
+  artifacts.taskrun.storage: oci
+  artifacts.oci.storage: oci
+  artifacts.oci.format: simplesigning
+  artifacts.pipelinerun.format: in-toto
+  artifacts.pipelinerun.storage: oci
+
 
 ### Properties (Mandatory)
 

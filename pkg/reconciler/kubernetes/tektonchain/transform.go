@@ -23,7 +23,17 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	"knative.dev/pkg/ptr"
 )
+
+var defaultChainProperties v1alpha1.ChainProperties = v1alpha1.ChainProperties{
+	ArtifactsTaskRunFormat:      "in-toto",
+	ArtifactsTaskRunStorage:     ptr.String("oci"),
+	ArtifactsPipelineRunFormat:  "in-toto",
+	ArtifactsPipelineRunStorage: ptr.String("oci"),
+	ArtifactsOCIFormat:          "simplesigning",
+	ArtifactsOCIStorage:         ptr.String("oci"),
+}
 
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
@@ -33,7 +43,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdChains),
 			common.DeploymentImages(chainImages),
 			common.AddConfiguration(chainCR.Spec.Config),
-			common.AddConfigMapValues(ChainsConfig, chainCR.Spec.Chain.ChainProperties),
+			common.AddConfigMapValues(ChainsConfig, chainCR.Spec.Chain.ChainProperties, defaultChainProperties),
 			common.AddDeploymentRestrictedPSA(),
 			AddControllerEnv(chainCR.Spec.Chain.ControllerEnvs),
 		}
