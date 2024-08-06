@@ -529,13 +529,13 @@ func replaceNamespaceInContainerArg(container *corev1.Container, targetNamespace
 }
 
 // AddConfigMapValues will loop on the interface (should be a struct) and add the fields in to configMap
-// the key will be the json tag of the struct field
-func AddConfigMapValues(configMapName string, prop interface{}) mf.Transformer {
+// the key will be the json tag of the struct field, if a default struct is passed, it adds defaults elements
+// if they dont exist in the configMap
+func AddConfigMapValues(configMapName string, prop interface{}, defaults interface{}) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if u.GetKind() != "ConfigMap" || u.GetName() != configMapName || prop == nil {
+		if u.GetKind() != "ConfigMap" || u.GetName() != configMapName {
 			return nil
 		}
-
 		cm := &corev1.ConfigMap{}
 		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
 		if err != nil {
@@ -545,73 +545,86 @@ func AddConfigMapValues(configMapName string, prop interface{}) mf.Transformer {
 			cm.Data = map[string]string{}
 		}
 
-		values := reflect.ValueOf(prop)
-		// if the given properties is not struct type, do not proceed
-		if values.Kind() != reflect.Struct {
-			return nil
-		}
-
-		for index := 0; index < values.NumField(); index++ {
-			key := values.Type().Field(index).Tag.Get("json")
-			if strings.Contains(key, ",") {
-				key = strings.Split(key, ",")[0]
+		// Helper function to process struct fields
+		processFields := func(v reflect.Value, isDefault bool) {
+			if v.Kind() != reflect.Struct {
+				return
 			}
-
-			if key == "" {
-				continue
-			}
-
-			element := values.Field(index)
-			if element.Kind() == reflect.Ptr {
-				if element.IsNil() {
+			for i := 0; i < v.NumField(); i++ {
+				field := v.Type().Field(i)
+				key := field.Tag.Get("json")
+				if strings.Contains(key, ",") {
+					key = strings.Split(key, ",")[0]
+				}
+				if key == "" {
 					continue
 				}
-				// empty string value will not be included in the following switch statement
-				// however, *string pointer can have empty("") string
-				// so copying the actual string value to the configMap, it can be a empty string too
-				if value, ok := element.Interface().(*string); ok {
-					if value != nil {
-						cm.Data[key] = *value
+				element := v.Field(i)
+				if element.Kind() == reflect.Ptr {
+					if element.IsNil() {
+						continue
+					}
+					if value, ok := element.Interface().(*string); ok {
+						if value != nil {
+							if isDefault {
+								if _, exists := cm.Data[key]; !exists {
+									cm.Data[key] = *value
+								}
+							} else {
+								cm.Data[key] = *value
+							}
+						}
+						continue
+					}
+					element = element.Elem()
+				}
+				if !element.IsValid() {
+					continue
+				}
+				var value string
+				switch element.Kind() {
+				case reflect.Bool:
+					value = strconv.FormatBool(element.Bool())
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					value = strconv.FormatInt(element.Int(), 10)
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+					value = strconv.FormatUint(element.Uint(), 10)
+				case reflect.Float32, reflect.Float64:
+					value = strconv.FormatFloat(element.Float(), 'f', 6, 64)
+				case reflect.String:
+					value = element.String()
+				default:
+					continue
+				}
+				if value != "" {
+					if isDefault {
+						if _, exists := cm.Data[key]; !exists {
+							cm.Data[key] = value
+						}
+					} else {
+						cm.Data[key] = value
 					}
 				}
-				// extract the actual element from the pointer
-				element = values.Field(index).Elem()
 			}
+		}
 
-			if !element.IsValid() {
-				continue
-			}
+		// Process default values
+		if defaults != nil {
+			defaultsValue := reflect.ValueOf(defaults)
+			processFields(defaultsValue, true)
+		}
 
-			_value := ""
-			switch element.Kind() {
-			case reflect.Bool:
-				_value = strconv.FormatBool(element.Bool())
-
-			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-				_value = strconv.FormatInt(element.Int(), 10)
-
-			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				_value = strconv.FormatUint(element.Uint(), 10)
-
-			case reflect.Float32, reflect.Float64:
-				_value = strconv.FormatFloat(element.Float(), 'f', 6, 64)
-
-			case reflect.String:
-				_value = element.String()
-			}
-
-			if _value != "" {
-				cm.Data[key] = _value
-			}
+		// Process prop values
+		if prop != nil {
+			propValue := reflect.ValueOf(prop)
+			processFields(propValue, false)
 		}
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
 		if err != nil {
 			return err
 		}
-
 		u.SetUnstructuredContent(unstrObj)
-
 		return nil
 	}
 }
