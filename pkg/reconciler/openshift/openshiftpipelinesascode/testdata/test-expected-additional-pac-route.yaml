@@ -1,6 +1,8 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
+  annotations:
+    haproxy.router.openshift.io/timeout: 600s
   labels:
     app: test-pac-controller
     app.kubernetes.io/component: controller
