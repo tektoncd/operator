@@ -1,0 +1,72 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: StepAction
+metadata:
+  name: git-clone
+spec:
+  params:
+    - name: url
+      description: Repository URL to clone from.
+      type: string
+    - name: revision
+      description: Revision to checkout. (branch, tag, sha, ref, etc...)
+      type: string
+      default: ""
+    - name: output-path
+      description: The git repo will be cloned onto this path
+    - name: gitInitImage
+      description: The image providing the git-init binary that this StepAction runs.
+      type: string
+      default: "gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.40.2"
+    - name: refspec
+      description: Refspec to fetch before checking out revision.
+      default: ""
+  image: "$(params.gitInitImage)"
+  env:
+  - name: PARAM_URL
+    value: $(params.url)
+  - name: PARAM_REVISION
+    value: $(params.revision)
+  - name: PARAM_OUTPUT_PATH
+    value: $(params.output-path)
+  - name: PARAM_REFSPEC
+    value: $(params.refspec)
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+  script: |
+    #!/usr/bin/env sh
+    set -eu
+    CHECKOUT_DIR="${PARAM_OUTPUT_PATH}"
+
+    cleandir() {
+      # Delete any existing contents of the repo directory if it exists.
+      #
+      # We don't just "rm -rf ${CHECKOUT_DIR}" because ${CHECKOUT_DIR} might be "/"
+      # or the root of a mounted volume.
+      if [ -d "${CHECKOUT_DIR}" ] ; then
+        # Delete non-hidden files and directories
+        rm -rf "${CHECKOUT_DIR:?}"/*
+        # Delete files and directories starting with . but excluding ..
+        rm -rf "${CHECKOUT_DIR}"/.[!.]*
+        # Delete files and directories starting with .. plus any other character
+        rm -rf "${CHECKOUT_DIR}"/..?*
+      fi
+    }
+
+    git config --global --add safe.directory "${PARAM_OUTPUT_PATH}"
+    /ko-app/git-init \
+      -url="${PARAM_URL}" \
+      -revision="${PARAM_REVISION}" \
+      -refspec="${PARAM_REFSPEC}" \
+      -path="${CHECKOUT_DIR}" \
+    cd "${CHECKOUT_DIR}"
+    RESULT_SHA="$(git rev-parse HEAD)"
+    EXIT_CODE="$?"
+    if [ "${EXIT_CODE}" != 0 ] ; then
+      exit "${EXIT_CODE}"
+    fi
+    RESULT_COMMITTER_DATE="$(git log -1 --pretty=%ct)"
+    printf "%s" "${RESULT_COMMITTER_DATE}" > "$(step.results.committer-date.path)"
+    printf "%s" "${RESULT_SHA}" > "$(step.results.commit.path)"
+    printf "%s" "${PARAM_URL}" > "$(step.results.url.path)"

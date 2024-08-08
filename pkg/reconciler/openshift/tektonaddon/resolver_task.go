@@ -18,7 +18,6 @@ package tektonaddon
 
 import (
 	"context"
-
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -26,18 +25,27 @@ import (
 )
 
 func (r *Reconciler) EnsureResolverTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
-	manifest := *r.resolverTaskManifest
+	manifest := r.resolverTaskManifest
+	return r.ensureCustomSet(ctx, enable, ResolverTaskInstallerSet, KindTask, ta, manifest)
+}
+
+func (r *Reconciler) EnsureResolverStepAction(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
+	manifest := r.resolverStepActionManifest
+	return r.ensureCustomSet(ctx, enable, ResolverStepActionInstallerSet, KindStepAction, ta, manifest)
+}
+
+func (r *Reconciler) ensureCustomSet(ctx context.Context, enable, installerSetName, kind string, ta *v1alpha1.TektonAddon, manifest *mf.Manifest) error {
 	if enable == "true" {
 		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
 		tfs := []mf.Transformer{
-			injectLabel(labelProviderType, providerTypeRedHat, overwrite, KindTask),
+			injectLabel(labelProviderType, providerTypeRedHat, overwrite, kind),
 			common.TaskImages(addonImages),
 		}
-		if err := r.installerSetClient.CustomSet(ctx, ta, ResolverTaskInstallerSet, &manifest, filterAndTransformResolverTask(tfs), nil); err != nil {
+		if err := r.installerSetClient.CustomSet(ctx, ta, installerSetName, manifest, filterAndTransformResolverTask(tfs), nil); err != nil {
 			return err
 		}
 	} else {
-		if err := r.installerSetClient.CleanupCustomSet(ctx, ResolverTaskInstallerSet); err != nil {
+		if err := r.installerSetClient.CleanupCustomSet(ctx, installerSetName); err != nil {
 			return err
 		}
 	}

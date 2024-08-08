@@ -311,8 +311,28 @@ func SplitsByEqual(arg string) ([]string, bool) {
 // TaskImages replaces step and params images.
 func TaskImages(images map[string]string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if u.GetKind() != "ClusterTask" && u.GetKind() != "Task" {
+		if u.GetKind() != "ClusterTask" && u.GetKind() != "Task" && u.GetKind() != "StepAction" {
 			return nil
+		}
+
+		stepActionData, found, err := unstructured.NestedFieldCopy(u.Object, "metadata", "name")
+		if err != nil {
+			return err
+		}
+		if !found {
+			return nil
+		}
+		name := getStepActionName(stepActionData)
+		stepActionSpec, found, err := unstructured.NestedMap(u.Object, "spec")
+		if err != nil {
+			return err
+		}
+		if !found {
+			return nil
+		}
+		replaceStepActionImages(stepActionSpec, images, name)
+		if err = unstructured.SetNestedMap(u.Object, stepActionSpec, "spec"); err != nil {
+			return err
 		}
 
 		steps, found, err := unstructured.NestedSlice(u.Object, "spec", "steps")
@@ -341,6 +361,28 @@ func TaskImages(images map[string]string) mf.Transformer {
 			return err
 		}
 		return nil
+	}
+}
+
+func getStepActionName(stepActionData interface{}) string {
+	name, ok := stepActionData.(string)
+	if ok && name != "" {
+		return name
+	}
+	log.Println("Unable to get the stepaction name", name)
+	return ""
+}
+
+func replaceStepActionImages(stepActionSpec map[string]interface{}, override map[string]string, name string) {
+	name = formKey("", name)
+	image, found := override[name]
+	if !found || image == "" {
+		log.Println("Image not found in stepaction ", name, "action", "skip")
+		return
+	}
+	// Replace the image in the stepActionSpec if the key exists.
+	if _, ok := stepActionSpec["image"]; ok {
+		stepActionSpec["image"] = image
 	}
 }
 
