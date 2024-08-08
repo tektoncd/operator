@@ -38,7 +38,7 @@ func transformers(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.Tekt
 		// about order of future addition of transformers in this reconciler or in sub functions which take care of various addons
 		common.InjectOperandNameLabelPreserveExisting(openshift.OperandOpenShiftPipelinesAddons),
 		injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
-		common.TaskImages(addonImages),
+		common.TaskImages(ctx, addonImages),
 	}
 	addonTfs = append(addonTfs, addnTfs...)
 	return common.Transform(ctx, manifest, instance, addonTfs...)

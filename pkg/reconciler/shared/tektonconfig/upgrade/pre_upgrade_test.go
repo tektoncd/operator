@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/ptr"
 )
 
 func TestResetTektonConfigConditions(t *testing.T) {
@@ -62,4 +63,39 @@ func TestResetTektonConfigConditions(t *testing.T) {
 	_tc, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.Empty(t, _tc.Status.Conditions)
+}
+
+func TestUpgradePipelineProperties(t *testing.T) {
+	ctx := context.TODO()
+	operatorClient := operatorFake.NewSimpleClientset()
+	logger := logging.FromContext(ctx).Named("unit-test")
+
+	// there is no tektonConfig CR, returns no error
+	err := upgradePipelineProperties(ctx, logger, nil, operatorClient, nil)
+	assert.NoError(t, err)
+
+	// create tekconConfig CR with initial conditions
+	tc := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1alpha1.ConfigResourceName,
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Pipeline: v1alpha1.Pipeline{
+				PipelineProperties: v1alpha1.PipelineProperties{
+					EnableStepActions: ptr.Bool(false),
+				},
+			},
+		},
+	}
+	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
+	// update enable-step-actions to true
+	err = upgradePipelineProperties(ctx, logger, nil, operatorClient, nil)
+	assert.NoError(t, err)
+
+	// verify the pipeline property enable-step-actions to true
+	tcData, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, tcData.Spec.Pipeline.EnableStepActions, ptr.Bool(true))
 }

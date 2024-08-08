@@ -26,18 +26,44 @@ import (
 )
 
 func (r *Reconciler) EnsureResolverTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
-	manifest := *r.resolverTaskManifest
+	manifest := r.resolverTaskManifest
+	return r.ensureCustomSet(ctx, enable, ResolverTaskInstallerSet, ta, manifest, r.getTransformer(ctx, KindTask, false))
+}
+
+func (r *Reconciler) EnsureResolverStepAction(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
+	manifest := r.resolverStepActionManifest
+	return r.ensureCustomSet(ctx, enable, ResolverStepActionInstallerSet, ta, manifest, r.getTransformer(ctx, KindStepAction, false))
+}
+
+func (r *Reconciler) getTransformer(ctx context.Context, kind string, isVersioned bool) []mf.Transformer {
+	addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+	var (
+		mfTransformer, mfVersioned mf.Transformer
+	)
+	switch kind {
+	case KindTask:
+		mfTransformer = common.TaskImages(ctx, addonImages)
+	case KindStepAction:
+		mfTransformer = common.StepActionImages(ctx, addonImages)
+	}
+	if isVersioned {
+		mfVersioned = setVersionedNames(r.operatorVersion)
+	}
+	return []mf.Transformer{
+		injectLabel(labelProviderType, providerTypeRedHat, overwrite, kind),
+		mfTransformer,
+		mfVersioned,
+	}
+}
+
+func (r *Reconciler) ensureCustomSet(ctx context.Context, enable, installerSetName string, ta *v1alpha1.TektonAddon,
+	manifest *mf.Manifest, tfs []mf.Transformer) error {
 	if enable == "true" {
-		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
-		tfs := []mf.Transformer{
-			injectLabel(labelProviderType, providerTypeRedHat, overwrite, KindTask),
-			common.TaskImages(addonImages),
-		}
-		if err := r.installerSetClient.CustomSet(ctx, ta, ResolverTaskInstallerSet, &manifest, filterAndTransformResolverTask(tfs), nil); err != nil {
+		if err := r.installerSetClient.CustomSet(ctx, ta, installerSetName, manifest, filterAndTransformResolverTask(tfs), nil); err != nil {
 			return err
 		}
 	} else {
-		if err := r.installerSetClient.CleanupCustomSet(ctx, ResolverTaskInstallerSet); err != nil {
+		if err := r.installerSetClient.CleanupCustomSet(ctx, installerSetName); err != nil {
 			return err
 		}
 	}

@@ -18,7 +18,6 @@ package common
 
 import (
 	"context"
-	"log"
 	"os"
 	"reflect"
 	"strconv"
@@ -26,6 +25,7 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -309,7 +309,8 @@ func SplitsByEqual(arg string) ([]string, bool) {
 }
 
 // TaskImages replaces step and params images.
-func TaskImages(images map[string]string) mf.Transformer {
+func TaskImages(ctx context.Context, images map[string]string) mf.Transformer {
+	logger := logging.FromContext(ctx)
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() != "ClusterTask" && u.GetKind() != "Task" {
 			return nil
@@ -322,7 +323,7 @@ func TaskImages(images map[string]string) mf.Transformer {
 		if !found {
 			return nil
 		}
-		replaceStepsImages(steps, images)
+		replaceStepsImages(steps, images, logger)
 		err = unstructured.SetNestedField(u.Object, steps, "spec", "steps")
 		if err != nil {
 			return err
@@ -335,47 +336,73 @@ func TaskImages(images map[string]string) mf.Transformer {
 		if !found {
 			return nil
 		}
-		replaceParamsImage(params, images)
-		err = unstructured.SetNestedField(u.Object, params, "spec", "params")
-		if err != nil {
-			return err
-		}
-		return nil
+		replaceParamsImage(params, images, logger)
+		return unstructured.SetNestedField(u.Object, params, "spec", "params")
 	}
 }
 
-func replaceStepsImages(steps []interface{}, override map[string]string) {
+// StepActionImages replaces spec images.
+func StepActionImages(ctx context.Context, images map[string]string) mf.Transformer {
+	logger := logging.FromContext(ctx)
+	return func(u *unstructured.Unstructured) error {
+		stepActionSpec, found, err := unstructured.NestedMap(u.Object, "spec")
+		if err != nil {
+			return err
+		}
+		if !found {
+			return nil
+		}
+		replaceStepActionImages(stepActionSpec, images, u.GetName(), logger)
+		return unstructured.SetNestedMap(u.Object, stepActionSpec, "spec")
+	}
+}
+
+func replaceStepActionImages(stepActionSpec map[string]interface{}, override map[string]string, name string, logger *zap.SugaredLogger) {
+	name = formKey("", name)
+	image, found := override[name]
+	if !found || image == "" {
+		logger.Debugf("Image not found in stepaction %s action skip", name)
+		return
+	}
+	// Replace the image in the stepActionSpec if the key exists.
+	if _, ok := stepActionSpec["image"]; ok {
+		logger.Debugf("replacing image with %s", image)
+		stepActionSpec["image"] = image
+	}
+}
+
+func replaceStepsImages(steps []interface{}, override map[string]string, logger *zap.SugaredLogger) {
 	for _, s := range steps {
 		step := s.(map[string]interface{})
 		name, ok := step["name"].(string)
 		if !ok {
-			log.Println("Unable to get the step", "step", s)
+			logger.Debugf("Unable to get the step %v step", s)
 			continue
 		}
 
 		name = formKey("", name)
 		image, found := override[name]
 		if !found || image == "" {
-			log.Println("Image not found", "step", name, "action", "skip")
+			logger.Debugf("Image not found step %s action skip", name)
 			continue
 		}
 		step["image"] = image
 	}
 }
 
-func replaceParamsImage(params []interface{}, override map[string]string) {
+func replaceParamsImage(params []interface{}, override map[string]string, logger *zap.SugaredLogger) {
 	for _, p := range params {
 		param := p.(map[string]interface{})
 		name, ok := param["name"].(string)
 		if !ok {
-			log.Println("Unable to get the pram", "param", p)
+			logger.Debugf("Unable to get the pram %v param", p)
 			continue
 		}
 
 		name = formKey(ParamPrefix, name)
 		image, found := override[name]
 		if !found || image == "" {
-			log.Println("Image not found", "step", name, "action", "skip")
+			logger.Debugf("Image not found step %s action skip", name)
 			continue
 		}
 		param["default"] = image
