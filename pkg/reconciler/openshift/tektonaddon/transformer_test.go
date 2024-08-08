@@ -73,6 +73,11 @@ func TestSetVersionedNames(t *testing.T) {
 		inputPath:    "test-versioned-resolvertask-name.yaml",
 		expectedPath: "test-versioned-resolver-name-expected.yaml",
 		errorMessage: "failed to update versioned resolver task name %s",
+	}, {
+		name:         "test for versioned resolver stepaction",
+		inputPath:    "test-versioned-resolverstepaction-name.yaml",
+		expectedPath: "test-versioned-resolver-stepaction-expected.yaml",
+		errorMessage: "failed to update versioned resolver stepaction name %s",
 	}}
 
 	for _, tt := range tests {

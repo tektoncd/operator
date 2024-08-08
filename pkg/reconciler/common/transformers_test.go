@@ -181,10 +181,25 @@ func TestReplaceImages(t *testing.T) {
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 		assertNoEror(t, err)
-		newManifest, err := manifest.Transform(TaskImages(images))
+		newManifest, err := manifest.Transform(TaskImages(context.TODO(), images))
 		assertNoEror(t, err)
 		assertTaskImage(t, newManifest.Resources(), "push", image)
 		assertTaskImage(t, newManifest.Resources(), "build", "$(inputs.params.BUILDER_IMAGE)")
+	})
+
+	t.Run("replace stepaction image", func(t *testing.T) {
+		stepActionName := "git_clone"
+		image := "foo.bar/image/git-clone"
+		images := map[string]string{
+			stepActionName: image,
+		}
+		testData := path.Join("testdata", "test-replace-stepaction-image.yaml")
+
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assertNoEror(t, err)
+		newManifest, err := manifest.Transform(StepActionImages(context.TODO(), images))
+		assertNoEror(t, err)
+		assertStepActionImage(t, newManifest.Resources(), "git-clone", image)
 	})
 
 	t.Run("replace containers by name", func(t *testing.T) {
@@ -212,7 +227,7 @@ func TestReplaceImages(t *testing.T) {
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 		assertNoEror(t, err)
-		newManifest, err := manifest.Transform(TaskImages(images))
+		newManifest, err := manifest.Transform(TaskImages(context.TODO(), images))
 		assertNoEror(t, err)
 		assertParamHasImage(t, newManifest.Resources(), "BUILDER_IMAGE", image)
 		assertTaskImage(t, newManifest.Resources(), "push", "buildah")
@@ -317,6 +332,43 @@ func assertParamHasImage(t *testing.T, resources []unstructured.Unstructured, na
 			if i != image {
 				t.Errorf("assertion failed; unexpected image: expected %s, got %s", image, i)
 			}
+		}
+	}
+}
+
+func assertStepActionImage(t *testing.T, resources []unstructured.Unstructured, name string, image string) {
+	t.Helper()
+
+	for _, r := range resources {
+		stepActionData, found, err := unstructured.NestedFieldCopy(r.Object, "metadata", "name")
+		if err != nil {
+			t.Error(err)
+		}
+		if !found {
+			continue
+		}
+		stepActionName, ok := stepActionData.(string)
+		if !ok {
+			t.Errorf("assertion failed; name not found")
+			continue
+		}
+		if stepActionName != name {
+			t.Errorf("assertion failed; unexpected name: expected %s, got %s", name, stepActionData.(string))
+		}
+		stepActionImage, found, err := unstructured.NestedMap(r.Object, "spec")
+		if err != nil {
+			t.Errorf("assertion failed; %v", err)
+		}
+		if !found {
+			continue
+		}
+		i, ok := stepActionImage["image"]
+		if !ok {
+			t.Errorf("assertion failed; image not found")
+			continue
+		}
+		if i != image {
+			t.Errorf("assertion failed; unexpected image: expected %s, got %s", image, i)
 		}
 	}
 }
