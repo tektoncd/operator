@@ -31,7 +31,7 @@ func (r *Reconciler) EnsureVersionedClusterTask(ctx context.Context, enable stri
 		tfs := []mf.Transformer{
 			replaceKind(KindTask, KindClusterTask),
 			injectLabel(labelProviderType, providerTypeRedHat, overwrite, KindClusterTask),
-			common.TaskImages(addonImages),
+			common.TaskImages(ctx, addonImages),
 			setVersionedNames(r.operatorVersion),
 		}
 		if err := r.installerSetClient.VersionedTaskSet(ctx, ta, &manifest, filterAndTransformClusterTask(tfs),

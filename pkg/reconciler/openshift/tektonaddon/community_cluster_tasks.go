@@ -62,7 +62,7 @@ func filterAndTransformCommunityClusterTask() client.FilterAndTransform {
 		extra := []mf.Transformer{
 			replaceKind("Task", "ClusterTask"),
 			injectLabel(labelProviderType, providerTypeCommunity, overwrite, "ClusterTask"),
-			common.TaskImages(addonImages),
+			common.TaskImages(ctx, addonImages),
 		}
 		if err := common.Transform(ctx, manifest, instance, extra...); err != nil {
 			return nil, err

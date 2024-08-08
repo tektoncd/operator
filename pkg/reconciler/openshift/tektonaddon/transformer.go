@@ -129,7 +129,7 @@ func replaceURLCCD(baseURL string) mf.Transformer {
 
 func setVersionedNames(operatorVersion string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if u.GetKind() != "ClusterTask" && u.GetKind() != "Task" {
+		if u.GetKind() != "ClusterTask" && u.GetKind() != "Task" && u.GetKind() != "StepAction" {
 			return nil
 		}
 		name := u.GetName()

@@ -272,8 +272,10 @@ fetch_openshift_addon_tasks() {
   fetch_addon_task_script="${SCRIPT_DIR}/hack/openshift"
   local dest_dir="cmd/openshift/operator/kodata/tekton-addon/addons/02-clustertasks/source_external"
   ${fetch_addon_task_script}/fetch-tektoncd-catalog-tasks.sh ${dest_dir}
-  dest_dir='cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem'
-  ${fetch_addon_task_script}/fetch-tektoncd-catalog-tasks.sh ${dest_dir} "ecosystem"
+  dest_dir='cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem/tasks'
+  ${fetch_addon_task_script}/fetch-tektoncd-catalog-tasks.sh ${dest_dir} "ecosystem_tasks"
+  dest_dir='cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem/stepactions'
+  ${fetch_addon_task_script}/fetch-tektoncd-catalog-tasks.sh ${dest_dir} "ecosystem_stepactions"
 }
 
 copy_pruner_yaml() {
