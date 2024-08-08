@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
+	"knative.dev/pkg/ptr"
 )
 
 // previous version of tekton operator uses a condition type called "InstallSucceeded" in status
@@ -51,4 +52,26 @@ func resetTektonConfigConditions(ctx context.Context, logger *zap.SugaredLogger,
 	// update the status
 	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().UpdateStatus(ctx, tcCR, metav1.UpdateOptions{})
 	return err
+}
+
+// previous version of the tekton operator uses default value which is false for enable-step-actions.
+// In the new version, we are shipping stepAction, allowing users to create tasks using stepAction.
+// Therefore, we are changing the enable-step-actions setting from false to true.
+func upgradePipelineProperties(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	// fetch the current tektonConfig CR
+	tcCR, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	if !*tcCR.Spec.Pipeline.EnableStepActions {
+		// update enable-step-actions to true from false which is default.
+		tcCR.Spec.Pipeline.EnableStepActions = ptr.Bool(true)
+		_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{})
+		return err
+	}
+	return nil
 }

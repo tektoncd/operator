@@ -34,7 +34,7 @@ func (r *Reconciler) EnsureClusterTask(ctx context.Context, enable string, ta *v
 		tfs := []mf.Transformer{
 			replaceKind(KindTask, KindClusterTask),
 			injectLabel(labelProviderType, providerTypeRedHat, overwrite, KindClusterTask),
-			common.TaskImages(addonImages),
+			common.TaskImages(ctx, addonImages),
 		}
 		if err := r.installerSetClient.CustomSet(ctx, ta, ClusterTaskInstallerSet, &manifest, filterAndTransformClusterTask(tfs), nil); err != nil {
 			return err

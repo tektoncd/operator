@@ -55,23 +55,26 @@ declare -A TEKTON_CATALOG_TASKS=(
 )
 declare -r TEKTON_ECOSYSTEM="https://raw.githubusercontent.com/openshift-pipelines/tektoncd-catalog"
 declare -A TEKTON_ECOSYSTEM_TASKS=(
-  ['task-buildah']="0.3.3"
-  ['task-git-cli']="0.3.1"
-  ['task-git-clone']='0.3.1'
-  ['task-kn-apply']='0.1.1'
-  ['task-kn']='0.1.1'
-  ['task-maven']="0.2.1"
-  ['task-openshift-client']="0.1.1"
-  ['task-s2i-dotnet']='0.3.3'
-  ['task-s2i-go']='0.3.3'
-  ['task-s2i-java']='0.3.3'
-  ['task-s2i-nodejs']='0.3.3'
-  ['task-s2i-perl']='0.3.3'
-  ['task-s2i-php']='0.3.3'
-  ['task-s2i-python']='0.3.3'
-  ['task-s2i-ruby']='0.3.3'
-  ['task-skopeo-copy']='0.3.3'
-  ['task-tkn']='0.1.1'
+  ['task-buildah']="0.4.0"
+  ['task-git-cli']="0.4.0"
+  ['task-git-clone']='0.4.0'
+  ['task-kn-apply']='0.2.0'
+  ['task-kn']='0.2.0'
+  ['task-maven']="0.3.0"
+  ['task-openshift-client']="0.2.0"
+  ['task-s2i-dotnet']='0.4.0'
+  ['task-s2i-go']='0.4.0'
+  ['task-s2i-java']='0.4.0'
+  ['task-s2i-nodejs']='0.4.0'
+  ['task-s2i-perl']='0.4.0'
+  ['task-s2i-php']='0.4.0'
+  ['task-s2i-python']='0.4.0'
+  ['task-s2i-ruby']='0.4.0'
+  ['task-skopeo-copy']='0.4.0'
+  ['task-tkn']='0.2.0'
+)
+declare -A TEKTON_ECOSYSTEM_STEPACTIONS=(
+  ['stepaction-git-clone']='0.4.0'
 )
 
 download_task() {
@@ -99,20 +102,25 @@ EOF
 
 
 get_tasks() {
-  local dest_dir="$1"; shift
-  local catalog="$1"; shift
-  local catalog_version="$1"; shift
-  local -n tasks=$1; shift
-  local type="$1"
-  info "Downloading tasks from catalog $catalog to $dest_dir directory"
-  for t in ${!tasks[@]} ; do
+  local dest_dir="$1"; shift || true
+  local catalog="$1"; shift || true
+  local catalog_version="$1"; shift || true
+  local type="$1"; shift || true
+  local -n resources="$1"
+
+  info "Downloading resources from catalog $catalog to $dest_dir directory"
+
+  for t in ${!resources[@]} ; do
     # task filenames do not follow a naming convention,
     # some are taskname.yaml while others are taskname-task.yaml
     # so, try both before failing
-    if [[ "$type" == "ecosystem" ]]; then
-      local task_url="$catalog/$catalog_version/tasks/$t/${tasks[$t]}/${t}.yaml"
+    local task_url=""
+    if [[ "$type" == "ecosystem_tasks" ]]; then
+      task_url="$catalog/$catalog_version/tasks/$t/${resources[$t]}/${t}.yaml"
     elif [[ "$type" == 'default' ]];then
-      local task_url="$catalog/$catalog_version/task/$t/${tasks[$t]}/${t}.yaml"
+      task_url="$catalog/$catalog_version/task/$t/${resources[$t]}/${t}.yaml"
+    elif [[ "$type" == 'ecosystem_stepactions' ]];then
+      task_url="$catalog/$catalog_version/stepactions/$t/${resources[$t]}/${t}.yaml"
     fi
 
     mkdir -p "$dest_dir/$t/"
@@ -132,30 +140,37 @@ create_dir_or_die() {
 main() {
   local type=${2:-"default"}
 
-  if [[ "$type" == "default" ]]; then
-    local dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/02-clustertasks/source_external'}
-    local tasks=TEKTON_CATALOG_TASKS
-    local branch="main"
-    local catalog="$TEKTON_CATALOG"
+  case "$type" in
+    "default")
+      dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/02-clustertasks/source_external'}
+      resources=TEKTON_CATALOG_TASKS
+      branch="main"
+      catalog="$TEKTON_CATALOG"
+      ;;
+    "ecosystem_tasks")
+      dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem/tasks'}
+      resources=TEKTON_ECOSYSTEM_TASKS
+      branch="p"
+      catalog="$TEKTON_ECOSYSTEM"
+      ;;
+    "ecosystem_stepactions")
+      dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem/stepactions'}
+      resources=TEKTON_ECOSYSTEM_STEPACTIONS
+      branch="p"
+      catalog="$TEKTON_ECOSYSTEM"
+      ;;
+    *)
+      echo "Invalid type specified: $type"
+      return 1
+      ;;
+  esac
 
-  elif [[ "$type" == "ecosystem" ]]; then
-    local dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem'}
-    local tasks=TEKTON_ECOSYSTEM_TASKS
-    local branch="p"
-    local catalog="$TEKTON_ECOSYSTEM"
-
-  else
-    echo "Invalid type specified: $type"
-    return $?
-  fi
-  
   [[ -z "$dest_dir"  ]] && usage "missing destination directory"
   shift
 
   [[ ! -d "$dest_dir" ]] && create_dir_or_die "$dest_dir" || echo "$dest_dir" exists
 
-  get_tasks "$dest_dir" $catalog $branch $tasks $type
-
+  get_tasks "$dest_dir" $catalog $branch $type $resources
   return $?
 }
 
