@@ -79,8 +79,13 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		metrics, _ := NewRecorder()
 
 		resolverTaskManifest := &mf.Manifest{}
-		if err := applyAddons(resolverTaskManifest, "07-ecosystem"); err != nil {
+		if err := applyAddons(resolverTaskManifest, "07-ecosystem/tasks"); err != nil {
 			logger.Fatalf("failed to read namespaced tasks from kodata: %v", err)
+		}
+
+		resolverStepActionManifest := &mf.Manifest{}
+		if err := applyAddons(resolverStepActionManifest, "07-ecosystem/stepactions"); err != nil {
+			logger.Fatalf("failed to read namespaced stepactions from kodata: %v", err)
 		}
 
 		clusterTaskManifest := &mf.Manifest{}
@@ -130,6 +135,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			manifest:                     manifest,
 			operatorVersion:              version,
 			resolverTaskManifest:         resolverTaskManifest,
+			resolverStepActionManifest:   resolverStepActionManifest,
 			clusterTaskManifest:          clusterTaskManifest,
 			triggersResourcesManifest:    triggersResourcesManifest,
 			pipelineTemplateManifest:     pipelineTemplateManifest,

@@ -64,6 +64,7 @@ image-substitutions:
       - IMAGE_ADDONS_PARAM_GITINITIMAGE
       - IMAGE_ADDONS_GIT_RUN
       - IMAGE_ADDONS_REPORT
+      - IMAGE_ADDONS_GIT_CLONE
 - image: registry.redhat.io/openshift-pipelines/pipelines-workingdirinit-rhel8@
   replaceLocations:
     envTargets:

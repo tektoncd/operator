@@ -68,7 +68,8 @@ ifeq ($(TARGET), openshift)
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-pruner
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/02-clustertasks/source_external/
-	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/07-ecosystem/task-*
+	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/07-ecosystem/tasks
+	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/07-ecosystem/stepactions
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/go.yaml
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/java.yaml
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/nodejs.yaml
