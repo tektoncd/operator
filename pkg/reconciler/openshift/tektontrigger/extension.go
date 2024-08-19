@@ -31,6 +31,7 @@ import (
 type triggersProperties struct {
 	DefaultRunAsUser  *string `json:"default-run-as-user,omitempty"`
 	DefaultRunAsGroup *string `json:"default-run-as-group,omitempty"`
+	DefaultFSGroup    *string `json:"default-fs-group,omitempty"`
 }
 
 // Updating the default values of runAsUser and runAsGroup to an empty string
@@ -39,6 +40,7 @@ type triggersProperties struct {
 var triggersData = triggersProperties{
 	DefaultRunAsUser:  ptr.String(""),
 	DefaultRunAsGroup: ptr.String(""),
+	DefaultFSGroup:    ptr.String(""),
 }
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
