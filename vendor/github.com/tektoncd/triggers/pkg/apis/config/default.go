@@ -26,12 +26,14 @@ import (
 
 const (
 	defaultServiceAccountKey   = "default-service-account"
-	defaultRunAsUserKey        = "default-run-as-user"
-	defaultRunAsGroupKey       = "default-run-as-group"
+	DefaultRunAsUserKey        = "default-run-as-user"
+	DefaultRunAsGroupKey       = "default-run-as-group"
+	DefaultFSGroupKey          = "default-fs-group"
 	defaultRunAsNonRootKey     = "default-run-as-non-root"
 	DefaultServiceAccountValue = "default"
 	defaultRunAsUserValue      = 65532
 	defaultRunAsGroupValue     = 65532
+	defaultFsGroupValue        = 65532
 	defaultRunAsNonRootValue   = true
 )
 
@@ -41,11 +43,13 @@ type Defaults struct {
 	DefaultServiceAccount string
 	DefaultRunAsUser      int64
 	DefaultRunAsGroup     int64
+	DefaultFSGroup        int64
 	DefaultRunAsNonRoot   bool
-	// These two fields are used to decide whether to configure
-	// runAsUser and runAsGroup within a Security Context Constraint (SCC).
+	// These three fields are used to decide whether to configure
+	// runAsUser, runAsGroup and fsGroup within a Security Context Constraint (SCC).
 	IsDefaultRunAsUserEmpty  bool
 	IsDefaultRunAsGroupEmpty bool
+	IsDefaultFsGroupEmpty    bool
 }
 
 // GetDefaultsConfigName returns the name of the configmap containing all
@@ -70,6 +74,7 @@ func (cfg *Defaults) Equals(other *Defaults) bool {
 	return other.DefaultServiceAccount == cfg.DefaultServiceAccount &&
 		other.DefaultRunAsUser == cfg.DefaultRunAsUser &&
 		other.DefaultRunAsGroup == cfg.DefaultRunAsGroup &&
+		other.DefaultFSGroup == cfg.DefaultFSGroup &&
 		other.DefaultRunAsNonRoot == cfg.DefaultRunAsNonRoot
 }
 
@@ -79,6 +84,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		DefaultServiceAccount: DefaultServiceAccountValue,
 		DefaultRunAsUser:      defaultRunAsUserValue,
 		DefaultRunAsGroup:     defaultRunAsGroupValue,
+		DefaultFSGroup:        defaultFsGroupValue,
 		DefaultRunAsNonRoot:   defaultRunAsNonRootValue,
 	}
 
@@ -86,7 +92,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		tc.DefaultServiceAccount = defaultServiceAccount
 	}
 
-	if defaultRunAsUser, ok := cfgMap[defaultRunAsUserKey]; ok {
+	if defaultRunAsUser, ok := cfgMap[DefaultRunAsUserKey]; ok {
 		if defaultRunAsUser != "" {
 			runAsUser, err := strconv.ParseInt(defaultRunAsUser, 10, 0)
 			if err != nil {
@@ -99,7 +105,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		}
 	}
 
-	if defaultRunAsGroup, ok := cfgMap[defaultRunAsGroupKey]; ok {
+	if defaultRunAsGroup, ok := cfgMap[DefaultRunAsGroupKey]; ok {
 		if defaultRunAsGroup != "" {
 			runAsGroup, err := strconv.ParseInt(defaultRunAsGroup, 10, 0)
 			if err != nil {
@@ -109,6 +115,19 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 		} else {
 			// if runAsGroup is "" don't set runAsGroup in SCC
 			tc.IsDefaultRunAsGroupEmpty = true
+		}
+	}
+
+	if defaultFsGroup, ok := cfgMap[DefaultFSGroupKey]; ok {
+		if defaultFsGroup != "" {
+			fsGroup, err := strconv.ParseInt(defaultFsGroup, 10, 0)
+			if err != nil {
+				return nil, fmt.Errorf("failed parsing fsGroup config %q", defaultFsGroup)
+			}
+			tc.DefaultFSGroup = fsGroup
+		} else {
+			// if fsGroup is "" don't set fsGroup in SCC
+			tc.IsDefaultFsGroupEmpty = true
 		}
 	}
 
