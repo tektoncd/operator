@@ -815,7 +815,7 @@ spec:
                 - name: IMAGE_PIPELINES_PROXY
                   value: gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/kubernetes/proxy-webhook@sha256:c2c3a38c2d26fc05d336e0e47c24a488a26cc6df8d72cd55e00ac05668d090d4
                 - name: IMAGE_JOB_PRUNER_TKN
-                  value: gcr.io/tekton-releases/dogfooding/tkn@sha256:025de221fb059ca24a3b2d988889ea34bce48dc76c0cf0d6b4499edb8c21325f
+                  value: gcr.io/tekton-releases/dogfooding/tkn@sha256:8d4383ff675cdf42b0006fca9b5b3b0c1d6180ff0013805242c877352e03a359
                 - name: METRICS_DOMAIN
                   value: tekton.dev/operator
                 - name: VERSION
