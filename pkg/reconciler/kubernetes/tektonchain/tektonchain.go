@@ -18,6 +18,11 @@ package tektonchain
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
@@ -746,5 +751,49 @@ func AddControllerEnv(controllerEnvs []corev1.EnvVar) mf.Transformer {
 
 		u.SetUnstructuredContent(unstrObj)
 		return nil
+	}
+}
+
+func GenerateSigningSecrets(ctx context.Context) map[string][]byte {
+	logger := logging.FromContext(ctx)
+	// Generate ECDSA key pair
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		logger.Error("Error generating private key:", err)
+		return nil
+	}
+
+	// Convert private key to PKCS8
+	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		logger.Error("Error marshaling private key:", err)
+		return nil
+	}
+
+	// Encode private key to PEM
+	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: privateKeyBytes,
+	})
+
+	// Get public key
+	publicKey := &privateKey.PublicKey
+
+	// Marshal public key
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
+	if err != nil {
+		logger.Error("Error marshaling public key:", err)
+		return nil
+	}
+
+	// Encode public key to PEM
+	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: publicKeyBytes,
+	})
+
+	return map[string][]byte{
+		"x509.pem":     privateKeyPEM,
+		"x509-pub.pem": publicKeyPEM,
 	}
 }
