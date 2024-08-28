@@ -62,10 +62,10 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		trns := extension.Transformers(instance)
 		extra := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdPipeline),
-			common.AddConfigMapValues(FeatureFlag, pipeline.Spec.PipelineProperties, nil),
-			common.AddConfigMapValues(ConfigDefaults, pipeline.Spec.OptionalPipelineProperties, nil),
-			common.AddConfigMapValues(ConfigMetrics, pipeline.Spec.PipelineMetricsProperties, nil),
-			common.AddConfigMapValues(ResolverFeatureFlag, pipeline.Spec.Resolvers, nil),
+			common.AddConfigMapValues(FeatureFlag, pipeline.Spec.PipelineProperties),
+			common.AddConfigMapValues(ConfigDefaults, pipeline.Spec.OptionalPipelineProperties),
+			common.AddConfigMapValues(ConfigMetrics, pipeline.Spec.PipelineMetricsProperties),
+			common.AddConfigMapValues(ResolverFeatureFlag, pipeline.Spec.Resolvers),
 			common.DeploymentImages(images),
 			common.InjectLabelOnNamespace(proxyLabel),
 			common.AddConfiguration(pipeline.Spec.Config),
@@ -73,7 +73,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.CopyConfigMap(hubResolverConfig, pipeline.Spec.HubResolverConfig),
 			common.CopyConfigMap(clusterResolverConfig, pipeline.Spec.ClusterResolverConfig),
 			common.CopyConfigMap(gitResolverConfig, pipeline.Spec.GitResolverConfig),
-			common.AddConfigMapValues(leaderElectionConfig, pipeline.Spec.Performance.PipelinePerformanceLeaderElectionConfig, nil),
+			common.AddConfigMapValues(leaderElectionConfig, pipeline.Spec.Performance.PipelinePerformanceLeaderElectionConfig),
 			updatePerformanceFlagsInDeployment(pipeline),
 			updateResolverConfigEnvironmentsInDeployment(pipeline),
 		}

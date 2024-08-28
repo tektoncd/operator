@@ -18,6 +18,7 @@ package common
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"path"
 	"testing"
@@ -518,7 +519,7 @@ func TestAddConfigMapValues_PipelineProperties(t *testing.T) {
 		EnableApiFields:        "stable",
 	}
 
-	manifest, err = manifest.Transform(AddConfigMapValues("test1", prop, nil))
+	manifest, err = manifest.Transform(AddConfigMapValues("test1", prop))
 	assertNoEror(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -543,7 +544,7 @@ func TestAddConfigMapValues_OptionalPipelineProperties(t *testing.T) {
 		DefaultCloudEventsSink:     "abc",
 	}
 
-	manifest, err = manifest.Transform(AddConfigMapValues("test2", prop, nil))
+	manifest, err = manifest.Transform(AddConfigMapValues("test2", prop))
 	assertNoEror(t, err)
 
 	cm := &corev1.ConfigMap{}
@@ -567,7 +568,6 @@ func TestAddConfigMapValues(t *testing.T) {
 		name                string
 		targetConfigMapName string
 		props               interface{}
-		defaults            interface{}
 		expectedData        map[string]string
 		keysShouldNotBeIn   []string
 		doesConfigMapExists bool
@@ -738,36 +738,6 @@ func TestAddConfigMapValues(t *testing.T) {
 			},
 			doesConfigMapExists: true,
 		},
-		{
-			name:                "verify-with-defaults",
-			targetConfigMapName: configMapName,
-			props: struct {
-				Foo string `json:"foo"`
-				Bar int    `json:"bar"`
-			}{
-				Foo: "override",
-				Bar: 42,
-			},
-			defaults: struct {
-				Foo string  `json:"foo"`
-				Bar int     `json:"bar"`
-				Baz string  `json:"baz"`
-				Qux *string `json:"qux"`
-			}{
-				Foo: "default-foo",
-				Bar: 10,
-				Baz: "default-baz",
-				Qux: ptr.String("default-qux"),
-			},
-			expectedData: map[string]string{
-				"foo": "override",
-				"bar": "42",
-				"baz": "default-baz",
-				"qux": "default-qux",
-			},
-			keysShouldNotBeIn:   []string{""},
-			doesConfigMapExists: true,
-		},
 	}
 
 	for _, test := range tests {
@@ -776,7 +746,7 @@ func TestAddConfigMapValues(t *testing.T) {
 			manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 			assert.NilError(t, err)
 
-			manifest, err = manifest.Transform(AddConfigMapValues(test.targetConfigMapName, test.props, test.defaults))
+			manifest, err = manifest.Transform(AddConfigMapValues(test.targetConfigMapName, test.props))
 			assert.NilError(t, err)
 
 			var cm *corev1.ConfigMap
@@ -1177,6 +1147,138 @@ func TestReplaceNamespace(t *testing.T) {
 					}
 				}
 
+			}
+		})
+	}
+}
+
+func TestAddSecretData(t *testing.T) {
+	tests := []struct {
+		name        string
+		inputObj    *unstructured.Unstructured
+		inputData   map[string][]byte
+		inputAnnot  map[string]string
+		expectedObj *unstructured.Unstructured
+		expectError bool
+	}{
+		{
+			name: "Add data to empty Secret",
+			inputObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "v1",
+					"kind":       "Secret",
+					"metadata":   map[string]interface{}{},
+				},
+			},
+			inputData:  map[string][]byte{"key": []byte("value")},
+			inputAnnot: map[string]string{"anno": "value"},
+			expectedObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "v1",
+					"kind":       "Secret",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"anno": "value",
+						},
+					},
+					"data": map[string]interface{}{
+						"key": base64.StdEncoding.EncodeToString([]byte("value")),
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Do not overwrite existing data",
+			inputObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "v1",
+					"kind":       "Secret",
+					"metadata":   map[string]interface{}{},
+					"data": map[string]interface{}{
+						"existingKey": []byte("existingValue"),
+					},
+				},
+			},
+			inputData:  map[string][]byte{"newKey": []byte("newValue")},
+			inputAnnot: map[string]string{"anno": "value"},
+			expectedObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "v1",
+					"kind":       "Secret",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"anno": "value",
+						},
+					},
+					"data": map[string]interface{}{
+						"existingKey": base64.StdEncoding.EncodeToString([]byte("existingValue")),
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Non-Secret resource",
+			inputObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "v1",
+					"kind":       "ConfigMap",
+					"metadata":   map[string]interface{}{},
+				},
+			},
+			inputData:  map[string][]byte{"key": []byte("value")},
+			inputAnnot: map[string]string{"anno": "value"},
+			expectedObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "v1",
+					"kind":       "ConfigMap",
+					"metadata":   map[string]interface{}{},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "Empty input data",
+			inputObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "v1",
+					"kind":       "Secret",
+					"metadata":   map[string]interface{}{},
+				},
+			},
+			inputData:  map[string][]byte{},
+			inputAnnot: map[string]string{"anno": "value"},
+			expectedObj: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "v1",
+					"kind":       "Secret",
+					"metadata":   map[string]interface{}{},
+				},
+			},
+			expectError: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := AddSecretData(test.inputData, test.inputAnnot)(test.inputObj)
+
+			if test.expectError {
+				t.Errorf("Error %v", err)
+			} else {
+				assertNoEror(t, err)
+				// Remove creationTimestamp from both expected and actual objects
+				if metadata, ok := test.expectedObj.Object["metadata"].(map[string]interface{}); ok {
+					delete(metadata, "creationTimestamp")
+				}
+				if metadata, ok := test.inputObj.Object["metadata"].(map[string]interface{}); ok {
+					delete(metadata, "creationTimestamp")
+				}
+
+				if diff := cmp.Diff(test.expectedObj.Object, test.inputObj.Object); diff != "" {
+					t.Errorf("Objects do not match (-expected +actual):\n%s", diff)
+				}
 			}
 		})
 	}

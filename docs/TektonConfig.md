@@ -248,6 +248,7 @@ Example:
 chain:
   disabled: false                  # - `disabled` : if the value set as `true`, chains feature will be disabled (default: `false`)
   targetNamespace: tekton-pipelines
+  generateSigningSecret: true # default value: false
   controllerEnvs:
     - name: MONGO_SERVER_URL      # This is the only field supported at the moment which is optional and when added by user, it is added as env to Chains controller
       value: #value               # This can be provided same as env field of container

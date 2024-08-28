@@ -71,7 +71,6 @@ values then those will be set for the particular field.
 Details of the field can be found in [Tekton Chains Config][chains-config]
 
 Chains CR will look like this after providing all the fields.
-
 ```yaml
 apiVersion: operator.tekton.dev/v1alpha1
 kind: TektonChain
@@ -80,17 +79,18 @@ metadata:
 spec:
   disabled: false
   targetNamespace: tekton-pipelines
+  generateSigningSecret: true # default value: false
   controllerEnvs:
     - name: MONGO_SERVER_URL      # This is the only field supported at the moment which is optional and when added by user, it is added as env to Chains controller
       value: #value               # This can be provided same as env field of container
-  artifacts.taskrun.format: in-toto
-  artifacts.taskrun.storage: tekton,oci (comma separated values)
+  artifacts.taskrun.format: in-toto # default value: in-toto
+  artifacts.taskrun.storage: tekton,oci (comma separated values) # default value: oci
   artifacts.taskrun.signer: x509
   artifacts.oci.storage: oci (comma separated values)
   artifacts.oci.format: simplesigning
   artifacts.oci.signer: x509
-  artifacts.pipelinerun.format: in-toto
-  artifacts.pipelinerun.storage: tekton,oci (comma separated values)
+  artifacts.pipelinerun.format: in-toto # default value: in-toto
+  artifacts.pipelinerun.storage: tekton,oci (comma separated values) # default value: oci
   artifacts.pipelinerun.signer: x509
   artifacts.pipelinerun.enable-deep-inspection: #value (boolean - true/false)
   storage.gcs.bucket: #value
@@ -121,6 +121,14 @@ spec:
   transparency.enabled: #value (boolean - true/false)
   transparency.url: #value
 ```
+- `disabled` : if the value set as `true`, chains feature will be disabled (default: `false`)
+- `generateSigningSecret`: If set to true, the operator will generate an ECDSA key pair (x509.pem private key and x509-pub.pem public key) and store it in the "signing-secrets" secret in the "tekton-pipelines" namespace. the secret is used by chains controller to sign tekton artifacts(taskruns, pipelineruns). it is important to mention that: 
+ * The user should retrieve and store in a safe place the x509-pub.pem public key to verify later artifact attestations.
+ * the operator doesnt provide any function about key rotation to limit potential security issues
+ * the operator doesnt provide any function for auditing key usage
+ * the operator doesnt provide any function for proper access control to the key
+
+
 
 [chains]:https://github.com/tektoncd/chains
 [chains-config]:https://github.com/tektoncd/chains/blob/main/docs/config.md
