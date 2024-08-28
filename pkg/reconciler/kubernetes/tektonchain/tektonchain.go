@@ -18,7 +18,13 @@ package tektonchain
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
+	"strconv"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -46,6 +52,9 @@ const (
 	chainsContainerName = "tekton-chains-controller"
 	// Deployment Name
 	chainsDeploymentName = "tekton-chains-controller"
+
+	// secret installer set additional Annotation
+	secretTISSigningAnnotation = "operator.tekton.dev/generated-signing-secret"
 )
 
 // Reconciler implements controller.Reconciler for TektonChain resources.
@@ -445,8 +454,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 		return err
 	}
 
+	// if the namespace or generatedSigningSecret has been changed for chainsCR, then delete the Tekton Chain Secret Installerset
 	secretInstallerSetTargetNamespace := installedSecretTIS.Annotations[v1alpha1.TargetNamespaceKey]
-	// if the namespace has been changed for chainsCR, then deleted the Tekton Chain Secret Installerset
 	if secretInstallerSetTargetNamespace != tc.Spec.TargetNamespace {
 		// Delete the existing Tekton Chain Secret InstallerSet
 		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
@@ -468,6 +477,31 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 			return err
 		}
 		return nil
+	}
+
+	// if generatedSigningSecret has been changed for chainsCR, then update the Tekton Chain Secret InstallerSet
+	secretInstallerSetSigningKey, err := strconv.ParseBool(installedSecretTIS.Annotations[secretTISSigningAnnotation])
+	if err != nil {
+		secretInstallerSetSigningKey = false
+	}
+	if secretInstallerSetSigningKey != tc.Spec.GenerateSigningSecret {
+		manifest := r.manifest
+		manifest = manifest.Filter(mf.ByKind("Secret"))
+		transformer := filterAndTransform(r.extension)
+		if _, err := transformer(ctx, &manifest, tc); err != nil {
+			tc.Status.MarkNotReady("transformation failed: " + err.Error())
+			return err
+		}
+		// update the installer set annotation
+		installedSecretTIS.Annotations[secretTISSigningAnnotation] = strconv.FormatBool(tc.Spec.GenerateSigningSecret)
+
+		// Update the manifests
+		installedSecretTIS.Spec.Manifests = manifest.Resources()
+
+		if _, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+			Update(ctx, installedSecretTIS, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
 	}
 
 	// Mark InstallerSetAvailable
@@ -640,6 +674,11 @@ func (r *Reconciler) createSecretInstallerSet(ctx context.Context, tc *v1alpha1.
 	// generate installer set
 	tis := makeInstallerSet(tc, manifest, secretChainInstallerset, r.operatorVersion)
 
+	// Add annoation to secret installer set in case the generate secret signing is set to true
+	if tc.Spec.GenerateSigningSecret {
+		tis.Annotations[secretTISSigningAnnotation] = "true"
+	}
+
 	// create installer set
 	createdIs, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Create(ctx, tis, metav1.CreateOptions{})
@@ -746,5 +785,49 @@ func AddControllerEnv(controllerEnvs []corev1.EnvVar) mf.Transformer {
 
 		u.SetUnstructuredContent(unstrObj)
 		return nil
+	}
+}
+
+func GenerateSigningSecrets(ctx context.Context) map[string][]byte {
+	logger := logging.FromContext(ctx)
+	// Generate ECDSA key pair
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		logger.Error("Error generating private key:", err)
+		return nil
+	}
+
+	// Convert private key to PKCS8
+	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	if err != nil {
+		logger.Error("Error marshaling private key:", err)
+		return nil
+	}
+
+	// Encode private key to PEM
+	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: privateKeyBytes,
+	})
+
+	// Get public key
+	publicKey := &privateKey.PublicKey
+
+	// Marshal public key
+	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
+	if err != nil {
+		logger.Error("Error marshaling public key:", err)
+		return nil
+	}
+
+	// Encode public key to PEM
+	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: publicKeyBytes,
+	})
+
+	return map[string][]byte{
+		"x509.pem":     privateKeyPEM,
+		"x509-pub.pem": publicKeyPEM,
 	}
 }

@@ -40,8 +40,8 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		trns := extension.Transformers(trigger)
 		extra := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdTriggers),
-			common.AddConfigMapValues(ConfigDefaults, trigger.Spec.OptionalTriggersProperties, nil),
-			common.AddConfigMapValues(FeatureFlag, trigger.Spec.TriggersProperties, nil),
+			common.AddConfigMapValues(ConfigDefaults, trigger.Spec.OptionalTriggersProperties),
+			common.AddConfigMapValues(FeatureFlag, trigger.Spec.TriggersProperties),
 			common.DeploymentImages(triggerImages),
 			common.AddConfiguration(trigger.Spec.Config),
 		}

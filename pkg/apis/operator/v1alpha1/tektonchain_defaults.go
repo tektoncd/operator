@@ -18,8 +18,32 @@ package v1alpha1
 
 import (
 	"context"
+
+	"knative.dev/pkg/ptr"
 )
 
 func (tc *TektonChain) SetDefaults(ctx context.Context) {
-	// nothing to default yet
+	tc.Spec.Chain.setDefaults()
+}
+
+func (c *Chain) setDefaults() {
+	// chains defaults
+	if c.ArtifactsTaskRunFormat == "" {
+		c.ArtifactsTaskRunFormat = "in-toto"
+	}
+	if c.ArtifactsTaskRunStorage == nil {
+		c.ArtifactsTaskRunStorage = ptr.String("oci")
+	}
+	if c.ArtifactsPipelineRunFormat == "" {
+		c.ArtifactsPipelineRunFormat = "in-toto"
+	}
+	if c.ArtifactsPipelineRunStorage == nil {
+		c.ArtifactsPipelineRunStorage = ptr.String("oci")
+	}
+	if c.ArtifactsOCIFormat == "" {
+		c.ArtifactsOCIFormat = "simplesigning"
+	}
+	if c.ArtifactsOCIStorage == nil {
+		c.ArtifactsOCIStorage = ptr.String("oci")
+	}
 }

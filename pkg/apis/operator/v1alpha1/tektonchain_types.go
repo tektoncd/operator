@@ -65,7 +65,11 @@ type TektonChainSpec struct {
 
 type Chain struct {
 	// enable or disable chains feature
-	Disabled        bool `json:"disabled"`
+	Disabled bool `json:"disabled"`
+
+	// generate signing key
+	GenerateSigningSecret bool `json:"generateSigningSecret,omitempty"`
+
 	ChainProperties `json:",inline"`
 	ControllerEnvs  []corev1.EnvVar `json:"controllerEnvs,omitempty"`
 	// options holds additions fields and these fields will be updated on the manifests
