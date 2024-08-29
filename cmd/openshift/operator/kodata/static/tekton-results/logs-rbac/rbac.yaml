@@ -1,0 +1,65 @@
+# Copyright 2024 The Tekton Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Fine grained RBAC control mandated by OpenShift logging operator
+# For further deatils refer https://access.redhat.com/solutions/7060300
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-results-viewlogs
+rules:
+- verbs:
+  - get
+  apiGroups:
+  - ''
+  resources:
+  - pods
+  - pods/log
+- apiGroups:
+  - ""
+  attributeRestrictions: null
+  resources:
+  - namespaces
+  verbs:
+  - get
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-results-api-logs-viewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-results-viewlogs
+subjects:
+- kind: ServiceAccount
+  name: tekton-results-api
+  namespace: tekton-pipelines
+
+---
+# RBAC permission that allows results query API
+# to query application logs from openshift logging stack
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-results-logs-viewer-app-api
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-logging-application-view
+subjects:
+- kind: ServiceAccount
+  name: tekton-results-api
+  namespace: tekton-pipelines
