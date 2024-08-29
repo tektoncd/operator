@@ -20,6 +20,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -38,6 +39,7 @@ const (
 	// manifests console plugin yaml directory location
 	routeRBACYamlDirectory  = "static/tekton-results/route-rbac"
 	internalDBYamlDirectory = "static/tekton-results/internal-db"
+	logsRBACYamlDirectory   = "static/tekton-results/logs-rbac"
 	deploymentAPI           = "tekton-results-api"
 	apiContainerName        = "api"
 	boundSAVolume           = "bound-sa-token"
@@ -54,14 +56,17 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 
 	routeManifest, err := getRouteManifest()
 	if err != nil {
-		logger.Fatal("Failed to fetch route rbac static manifest")
-
+		logger.Fatalf("Failed to fetch route rbac static manifest: %v", err)
 	}
 
 	internalDBManifest, err := getDBManifest()
 	if err != nil {
-		logger.Fatal("Failed to fetch internal db static manifest")
+		logger.Fatalf("Failed to fetch internal db static manifest: %v", err)
+	}
 
+	logsRBACManifest, err := getloggingRBACManifest()
+	if err != nil {
+		logger.Fatalf("Failed to fetch logs RBAC manifest: %v", err)
 	}
 
 	ext := openshiftExtension{
@@ -69,6 +74,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 			version, "results-ext", v1alpha1.KindTektonResult, nil),
 		internalDBManifest: internalDBManifest,
 		routeManifest:      routeManifest,
+		logsRBACManifest:   logsRBACManifest,
 	}
 	return ext
 }
@@ -77,6 +83,7 @@ type openshiftExtension struct {
 	installerSetClient *client.InstallerSetClient
 	routeManifest      *mf.Manifest
 	internalDBManifest *mf.Manifest
+	logsRBACManifest   *mf.Manifest
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -96,6 +103,10 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	mf := mf.Manifest{}
 	if !result.Spec.IsExternalDB {
 		mf = *oe.internalDBManifest
+	}
+
+	if strings.EqualFold(result.Spec.LogsType, "LOKI") {
+		mf = mf.Append(*oe.logsRBACManifest)
 	}
 
 	return oe.installerSetClient.PreSet(ctx, tc, &mf, filterAndTransform())
@@ -129,6 +140,17 @@ func getDBManifest() (*mf.Manifest, error) {
 	manifest := &mf.Manifest{}
 	internalDB := filepath.Join(common.ComponentBaseDir(), internalDBYamlDirectory)
 	if err := common.AppendManifest(manifest, internalDB); err != nil {
+		return nil, err
+	}
+	return manifest, nil
+}
+
+// function to add fine grained access control to results api if results config specifies that
+// pipeline logs are managed by OpenShift Logging with OpenShift logging and OpenShift loki operators
+func getloggingRBACManifest() (*mf.Manifest, error) {
+	manifest := &mf.Manifest{}
+	logsRbac := filepath.Join(common.ComponentBaseDir(), logsRBACYamlDirectory)
+	if err := common.AppendManifest(manifest, logsRbac); err != nil {
 		return nil, err
 	}
 	return manifest, nil
