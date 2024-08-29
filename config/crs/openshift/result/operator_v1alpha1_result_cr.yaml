@@ -21,7 +21,6 @@ spec:
   logs_api: true
   log_level: debug
   db_port: 5432
-  db_user: result
   db_host: tekton-results-postgres-service.openshift-pipelines.svc.cluster.local
   logging_pvc_name: tekton-logs
   logs_path: /logs
