@@ -28,6 +28,10 @@
             "default": ""
           }
         },
+        "securityContext": {
+          "description": "SecurityContext sets the security context for the pod",
+          "$ref": "#/definitions/v1.PodSecurityContext"
+        },
         "tolerations": {
           "description": "If specified, the pod's tolerations.",
           "type": "array",
@@ -2639,6 +2643,14 @@
       "description": "TaskBreakpoints defines the breakpoint config for a particular Task",
       "type": "object",
       "properties": {
+        "beforeSteps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "onFailure": {
           "description": "if enabled, pause TaskRun on failure of a step failed step will not exit",
           "type": "string"
