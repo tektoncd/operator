@@ -103,13 +103,13 @@ spec:
   signers.x509.identity.token.file: #value
   signers.x509.tuf.mirror.url: #value
   signers.kms.kmsref: #value
-  signers.kms.kmsref.auth.address: #value
-  signers.kms.kmsref.auth.token: #value
-  signers.kms.kmsref.auth.token-path: #value
-  signers.kms.kmsref.auth.oidc.path: #value
-  signers.kms.kmsref.auth.oidc.role: #value
-  signers.kms.kmsref.auth.spire.sock: #value
-  signers.kms.kmsref.auth.spire.audience: #value
+  signers.kms.auth.address: #value
+  signers.kms.auth.token: #value
+  signers.kms.auth.token-path: #value
+  signers.kms.auth.oidc.path: #value
+  signers.kms.auth.oidc.role: #value
+  signers.kms.auth.spire.sock: #value
+  signers.kms.auth.spire.audience: #value
   transparency.enabled: #value (boolean - true/false)
   transparency.url: #value
 ```
