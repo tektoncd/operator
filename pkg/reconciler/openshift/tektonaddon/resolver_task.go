@@ -26,12 +26,12 @@ import (
 )
 
 func (r *Reconciler) EnsureResolverTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
-	manifest := r.resolverTaskManifest
+	manifest := *r.resolverTaskManifest
 	return r.ensureCustomSet(ctx, enable, ResolverTaskInstallerSet, ta, manifest, r.getTransformer(ctx, KindTask, false))
 }
 
 func (r *Reconciler) EnsureResolverStepAction(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
-	manifest := r.resolverStepActionManifest
+	manifest := *r.resolverStepActionManifest
 	return r.ensureCustomSet(ctx, enable, ResolverStepActionInstallerSet, ta, manifest, r.getTransformer(ctx, KindStepAction, false))
 }
 
@@ -57,9 +57,9 @@ func (r *Reconciler) getTransformer(ctx context.Context, kind string, isVersione
 }
 
 func (r *Reconciler) ensureCustomSet(ctx context.Context, enable, installerSetName string, ta *v1alpha1.TektonAddon,
-	manifest *mf.Manifest, tfs []mf.Transformer) error {
+	manifest mf.Manifest, tfs []mf.Transformer) error {
 	if enable == "true" {
-		if err := r.installerSetClient.CustomSet(ctx, ta, installerSetName, manifest, filterAndTransformResolverTask(tfs), nil); err != nil {
+		if err := r.installerSetClient.CustomSet(ctx, ta, installerSetName, &manifest, filterAndTransformResolverTask(tfs), nil); err != nil {
 			return err
 		}
 	} else {
