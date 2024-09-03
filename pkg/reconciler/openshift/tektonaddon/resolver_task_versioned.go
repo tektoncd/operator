@@ -24,19 +24,19 @@ import (
 )
 
 func (r *Reconciler) EnsureVersionedResolverTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
-	manifest := r.resolverTaskManifest
+	manifest := *r.resolverTaskManifest
 	return r.ensureVersionedCustomSet(ctx, enable, VersionedResolverTaskInstallerSet, installerSetNameForResolverTasks, ta, manifest, r.getTransformer(ctx, KindTask, true))
 }
 
 func (r *Reconciler) EnsureVersionedResolverStepAction(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
-	manifest := r.resolverStepActionManifest
+	manifest := *r.resolverStepActionManifest
 	return r.ensureVersionedCustomSet(ctx, enable, VersionedResolverStepActionInstallerSet, installerSetNameForResolverStepAction, ta, manifest, r.getTransformer(ctx, KindStepAction, true))
 }
 
 func (r *Reconciler) ensureVersionedCustomSet(ctx context.Context, enable, installerSetType, installerSetName string, ta *v1alpha1.TektonAddon,
-	manifest *mf.Manifest, tfs []mf.Transformer) error {
+	manifest mf.Manifest, tfs []mf.Transformer) error {
 	if enable == "true" {
-		if err := r.installerSetClient.VersionedTaskSet(ctx, ta, manifest, filterAndTransformResolverTask(tfs),
+		if err := r.installerSetClient.VersionedTaskSet(ctx, ta, &manifest, filterAndTransformResolverTask(tfs),
 			installerSetType, installerSetName); err != nil {
 			return err
 		}
