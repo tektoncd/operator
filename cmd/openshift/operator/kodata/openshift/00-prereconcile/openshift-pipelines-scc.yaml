@@ -34,9 +34,10 @@ supplementalGroups:
   type: RunAsAny
 volumes:
 - configMap
+- csi
 - downwardAPI
 - emptyDir
+- ephemeral
 - persistentVolumeClaim
 - projected
 - secret
-- csi
