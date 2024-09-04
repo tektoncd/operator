@@ -124,6 +124,13 @@ func ParseEntry(protoEntry *v1.TransparencyLogEntry) (entry *Entry, err error) {
 
 		rootHash := hex.EncodeToString(protoEntry.InclusionProof.RootHash)
 
+		if protoEntry.InclusionProof.Checkpoint == nil {
+			return nil, fmt.Errorf("inclusion proof missing required checkpoint")
+		}
+		if protoEntry.InclusionProof.Checkpoint.Envelope == "" {
+			return nil, fmt.Errorf("inclusion proof checkpoint empty")
+		}
+
 		inclusionProof = &models.InclusionProof{
 			LogIndex:   swag.Int64(protoEntry.InclusionProof.LogIndex),
 			RootHash:   &rootHash,

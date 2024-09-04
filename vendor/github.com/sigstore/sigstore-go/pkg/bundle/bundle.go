@@ -38,7 +38,7 @@ var ErrUnsupportedMediaType = fmt.Errorf("%w: unsupported media type", ErrValida
 var ErrMissingVerificationMaterial = fmt.Errorf("%w: missing verification material", ErrValidation)
 var ErrUnimplemented = errors.New("unimplemented")
 var ErrInvalidAttestation = fmt.Errorf("%w: invalid attestation", ErrValidation)
-var ErrMissingEnvelope = fmt.Errorf("%w: missing envelope", ErrInvalidAttestation)
+var ErrMissingEnvelope = fmt.Errorf("%w: missing valid envelope", ErrInvalidAttestation)
 var ErrDecodingJSON = fmt.Errorf("%w: decoding json", ErrInvalidAttestation)
 var ErrDecodingB64 = fmt.Errorf("%w: decoding base64", ErrInvalidAttestation)
 
@@ -48,14 +48,14 @@ func ErrValidationError(err error) error {
 	return fmt.Errorf("%w: %w", ErrValidation, err)
 }
 
-type ProtobufBundle struct {
+type Bundle struct {
 	*protobundle.Bundle
 	hasInclusionPromise bool
 	hasInclusionProof   bool
 }
 
-func NewProtobufBundle(pbundle *protobundle.Bundle) (*ProtobufBundle, error) {
-	bundle := &ProtobufBundle{
+func NewBundle(pbundle *protobundle.Bundle) (*Bundle, error) {
+	bundle := &Bundle{
 		Bundle:              pbundle,
 		hasInclusionPromise: false,
 		hasInclusionProof:   false,
@@ -69,7 +69,15 @@ func NewProtobufBundle(pbundle *protobundle.Bundle) (*ProtobufBundle, error) {
 	return bundle, nil
 }
 
-func (b *ProtobufBundle) validate() error {
+// Deprecated: use Bundle instead
+type ProtobufBundle = Bundle
+
+// Deprecated: use NewBundle instead
+func NewProtobufBundle(b *protobundle.Bundle) (*ProtobufBundle, error) {
+	return NewBundle(b)
+}
+
+func (b *Bundle) validate() error {
 	bundleVersion, err := getBundleVersion(b.Bundle.MediaType)
 	if err != nil {
 		return fmt.Errorf("error getting bundle version: %w", err)
@@ -112,6 +120,10 @@ func (b *ProtobufBundle) validate() error {
 		return fmt.Errorf("%w: bundle version %s is not yet supported", ErrUnsupportedMediaType, bundleVersion)
 	}
 
+	err = validateBundle(b.Bundle)
+	if err != nil {
+		return fmt.Errorf("invalid bundle: %w", err)
+	}
 	return nil
 }
 
@@ -158,8 +170,40 @@ func getBundleVersion(mediaType string) (string, error) {
 	return "", fmt.Errorf("%w: %s", ErrUnsupportedMediaType, mediaType)
 }
 
-func LoadJSONFromPath(path string) (*ProtobufBundle, error) {
-	var bundle ProtobufBundle
+func validateBundle(b *protobundle.Bundle) error {
+	if b == nil {
+		return fmt.Errorf("empty protobuf bundle")
+	}
+
+	if b.Content == nil {
+		return fmt.Errorf("missing bundle content")
+	}
+
+	switch b.Content.(type) {
+	case *protobundle.Bundle_DsseEnvelope, *protobundle.Bundle_MessageSignature:
+	default:
+		return fmt.Errorf("invalid bundle content: bundle content must be either a message signature or dsse envelope")
+	}
+
+	if b.VerificationMaterial == nil {
+		return fmt.Errorf("missing verification material")
+	}
+
+	if b.VerificationMaterial.Content == nil {
+		return fmt.Errorf("missing verification material content")
+	}
+
+	switch b.VerificationMaterial.Content.(type) {
+	case *protobundle.VerificationMaterial_PublicKey, *protobundle.VerificationMaterial_Certificate, *protobundle.VerificationMaterial_X509CertificateChain:
+	default:
+		return fmt.Errorf("invalid verification material content: verification material must be one of public key, x509 certificate and x509 certificate chain")
+	}
+
+	return nil
+}
+
+func LoadJSONFromPath(path string) (*Bundle, error) {
+	var bundle Bundle
 	bundle.Bundle = new(protobundle.Bundle)
 
 	contents, err := os.ReadFile(path)
@@ -175,11 +219,11 @@ func LoadJSONFromPath(path string) (*ProtobufBundle, error) {
 	return &bundle, nil
 }
 
-func (b *ProtobufBundle) MarshalJSON() ([]byte, error) {
+func (b *Bundle) MarshalJSON() ([]byte, error) {
 	return protojson.Marshal(b.Bundle)
 }
 
-func (b *ProtobufBundle) UnmarshalJSON(data []byte) error {
+func (b *Bundle) UnmarshalJSON(data []byte) error {
 	b.Bundle = new(protobundle.Bundle)
 	err := protojson.Unmarshal(data, b.Bundle)
 	if err != nil {
@@ -194,15 +238,18 @@ func (b *ProtobufBundle) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (b *ProtobufBundle) VerificationContent() (verify.VerificationContent, error) {
+func (b *Bundle) VerificationContent() (verify.VerificationContent, error) {
 	if b.VerificationMaterial == nil {
 		return nil, ErrMissingVerificationMaterial
 	}
 
 	switch content := b.VerificationMaterial.GetContent().(type) {
 	case *protobundle.VerificationMaterial_X509CertificateChain:
+		if content.X509CertificateChain == nil {
+			return nil, ErrMissingVerificationMaterial
+		}
 		certs := content.X509CertificateChain.GetCertificates()
-		if len(certs) == 0 {
+		if len(certs) == 0 || certs[0].RawBytes == nil {
 			return nil, ErrMissingVerificationMaterial
 		}
 		parsedCert, err := x509.ParseCertificate(certs[0].RawBytes)
@@ -214,6 +261,9 @@ func (b *ProtobufBundle) VerificationContent() (verify.VerificationContent, erro
 		}
 		return cert, nil
 	case *protobundle.VerificationMaterial_Certificate:
+		if content.Certificate == nil || content.Certificate.RawBytes == nil {
+			return nil, ErrMissingVerificationMaterial
+		}
 		parsedCert, err := x509.ParseCertificate(content.Certificate.RawBytes)
 		if err != nil {
 			return nil, ErrValidationError(err)
@@ -223,6 +273,9 @@ func (b *ProtobufBundle) VerificationContent() (verify.VerificationContent, erro
 		}
 		return cert, nil
 	case *protobundle.VerificationMaterial_PublicKey:
+		if content.PublicKey == nil {
+			return nil, ErrMissingVerificationMaterial
+		}
 		pk := &PublicKey{
 			hint: content.PublicKey.Hint,
 		}
@@ -233,15 +286,15 @@ func (b *ProtobufBundle) VerificationContent() (verify.VerificationContent, erro
 	}
 }
 
-func (b *ProtobufBundle) HasInclusionPromise() bool {
+func (b *Bundle) HasInclusionPromise() bool {
 	return b.hasInclusionPromise
 }
 
-func (b *ProtobufBundle) HasInclusionProof() bool {
+func (b *Bundle) HasInclusionProof() bool {
 	return b.hasInclusionProof
 }
 
-func (b *ProtobufBundle) TlogEntries() ([]*tlog.Entry, error) {
+func (b *Bundle) TlogEntries() ([]*tlog.Entry, error) {
 	if b.VerificationMaterial == nil {
 		return nil, nil
 	}
@@ -265,7 +318,7 @@ func (b *ProtobufBundle) TlogEntries() ([]*tlog.Entry, error) {
 	return tlogEntries, nil
 }
 
-func (b *ProtobufBundle) SignatureContent() (verify.SignatureContent, error) {
+func (b *Bundle) SignatureContent() (verify.SignatureContent, error) {
 	switch content := b.Bundle.Content.(type) { //nolint:gocritic
 	case *protobundle.Bundle_DsseEnvelope:
 		envelope, err := parseEnvelope(content.DsseEnvelope)
@@ -274,6 +327,9 @@ func (b *ProtobufBundle) SignatureContent() (verify.SignatureContent, error) {
 		}
 		return envelope, nil
 	case *protobundle.Bundle_MessageSignature:
+		if content.MessageSignature == nil || content.MessageSignature.MessageDigest == nil {
+			return nil, ErrMissingVerificationMaterial
+		}
 		return NewMessageSignature(
 			content.MessageSignature.MessageDigest.Digest,
 			protocommon.HashAlgorithm_name[int32(content.MessageSignature.MessageDigest.Algorithm)],
@@ -283,7 +339,7 @@ func (b *ProtobufBundle) SignatureContent() (verify.SignatureContent, error) {
 	return nil, ErrMissingVerificationMaterial
 }
 
-func (b *ProtobufBundle) Envelope() (*Envelope, error) {
+func (b *Bundle) Envelope() (*Envelope, error) {
 	switch content := b.Bundle.Content.(type) { //nolint:gocritic
 	case *protobundle.Bundle_DsseEnvelope:
 		envelope, err := parseEnvelope(content.DsseEnvelope)
@@ -295,7 +351,7 @@ func (b *ProtobufBundle) Envelope() (*Envelope, error) {
 	return nil, ErrMissingVerificationMaterial
 }
 
-func (b *ProtobufBundle) Timestamps() ([][]byte, error) {
+func (b *Bundle) Timestamps() ([][]byte, error) {
 	if b.VerificationMaterial == nil {
 		return nil, ErrMissingVerificationMaterial
 	}
@@ -314,7 +370,7 @@ func (b *ProtobufBundle) Timestamps() ([][]byte, error) {
 }
 
 // MinVersion returns true if the bundle version is greater than or equal to the expected version.
-func (b *ProtobufBundle) MinVersion(expectVersion string) bool {
+func (b *Bundle) MinVersion(expectVersion string) bool {
 	version, err := getBundleVersion(b.Bundle.MediaType)
 	if err != nil {
 		return false
@@ -328,11 +384,21 @@ func (b *ProtobufBundle) MinVersion(expectVersion string) bool {
 }
 
 func parseEnvelope(input *protodsse.Envelope) (*Envelope, error) {
+	if input == nil {
+		return nil, ErrMissingEnvelope
+	}
 	output := &dsse.Envelope{}
-	output.Payload = base64.StdEncoding.EncodeToString([]byte(input.GetPayload()))
+	payload := input.GetPayload()
+	if payload == nil {
+		return nil, ErrMissingEnvelope
+	}
+	output.Payload = base64.StdEncoding.EncodeToString([]byte(payload))
 	output.PayloadType = string(input.GetPayloadType())
 	output.Signatures = make([]dsse.Signature, len(input.GetSignatures()))
 	for i, sig := range input.GetSignatures() {
+		if sig == nil {
+			return nil, ErrMissingEnvelope
+		}
 		output.Signatures[i].KeyID = sig.GetKeyid()
 		output.Signatures[i].Sig = base64.StdEncoding.EncodeToString(sig.GetSig())
 	}
