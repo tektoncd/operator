@@ -31,6 +31,9 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature/options"
 )
 
+const maxAllowedSubjects = 1024
+const maxAllowedSubjectDigests = 32
+
 var ErrDSSEInvalidSignatureCount = errors.New("exactly one signature is required")
 
 func VerifySignature(sigContent SignatureContent, verificationContent VerificationContent, trustedMaterial root.TrustedMaterial) error { // nolint: revive
@@ -179,8 +182,17 @@ func verifyEnvelopeWithArtifact(verifier signature.Verifier, envelope EnvelopeCo
 	}
 	artifactDigest = hasher.Sum(nil)
 
+	// limit the number of subjects to prevent DoS
+	if len(statement.Subject) > maxAllowedSubjects {
+		return fmt.Errorf("too many subjects: %d > %d", len(statement.Subject), maxAllowedSubjects)
+	}
+
 	// Look for artifact digest in statement
 	for _, subject := range statement.Subject {
+		// limit the number of digests to prevent DoS
+		if len(subject.Digest) > maxAllowedSubjectDigests {
+			return fmt.Errorf("too many digests: %d > %d", len(subject.Digest), maxAllowedSubjectDigests)
+		}
 		for alg, digest := range subject.Digest {
 			hexdigest, err := hex.DecodeString(digest)
 			if err != nil {
@@ -203,7 +215,17 @@ func verifyEnvelopeWithArtifactDigest(verifier signature.Verifier, envelope Enve
 	if err != nil {
 		return fmt.Errorf("could not verify artifact: unable to extract statement from envelope: %w", err)
 	}
+
+	// limit the number of subjects to prevent DoS
+	if len(statement.Subject) > maxAllowedSubjects {
+		return fmt.Errorf("too many subjects: %d > %d", len(statement.Subject), maxAllowedSubjects)
+	}
+
 	for _, subject := range statement.Subject {
+		// limit the number of digests to prevent DoS
+		if len(subject.Digest) > maxAllowedSubjectDigests {
+			return fmt.Errorf("too many digests: %d > %d", len(subject.Digest), maxAllowedSubjectDigests)
+		}
 		for alg, digest := range subject.Digest {
 			if alg == artifactDigestAlgorithm {
 				hexdigest, err := hex.DecodeString(digest)

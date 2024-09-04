@@ -16,11 +16,11 @@ package bundle
 
 import (
 	"encoding/base64"
-	"encoding/json"
 
-	"github.com/in-toto/in-toto-golang/in_toto"
+	in_toto "github.com/in-toto/attestation/go/v1"
 	"github.com/secure-systems-lab/go-securesystemslib/dsse"
 	"github.com/sigstore/sigstore-go/pkg/verify"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const IntotoMediaType = "application/vnd.in-toto+json"
@@ -56,16 +56,16 @@ func (e *Envelope) Statement() (*in_toto.Statement, error) {
 		return nil, ErrUnsupportedMediaType
 	}
 
-	var statement *in_toto.Statement
+	var statement in_toto.Statement
 	raw, err := e.DecodeB64Payload()
 	if err != nil {
 		return nil, ErrDecodingB64
 	}
-	err = json.Unmarshal(raw, &statement)
+	err = protojson.Unmarshal(raw, &statement)
 	if err != nil {
 		return nil, ErrDecodingJSON
 	}
-	return statement, nil
+	return &statement, nil
 }
 
 func (e *Envelope) EnvelopeContent() verify.EnvelopeContent {

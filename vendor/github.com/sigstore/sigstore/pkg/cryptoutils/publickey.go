@@ -103,15 +103,15 @@ func EqualKeys(first, second crypto.PublicKey) error {
 	switch pub := first.(type) {
 	case *rsa.PublicKey:
 		if !pub.Equal(second) {
-			return fmt.Errorf(genErrMsg(first, second, "rsa"))
+			return errors.New(genErrMsg(first, second, "rsa"))
 		}
 	case *ecdsa.PublicKey:
 		if !pub.Equal(second) {
-			return fmt.Errorf(genErrMsg(first, second, "ecdsa"))
+			return errors.New(genErrMsg(first, second, "ecdsa"))
 		}
 	case ed25519.PublicKey:
 		if !pub.Equal(second) {
-			return fmt.Errorf(genErrMsg(first, second, "ed25519"))
+			return errors.New(genErrMsg(first, second, "ed25519"))
 		}
 	default:
 		return errors.New("unsupported key type")

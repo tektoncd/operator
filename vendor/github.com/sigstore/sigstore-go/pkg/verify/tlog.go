@@ -26,7 +26,6 @@ import (
 	rekorClient "github.com/sigstore/rekor/pkg/client"
 	rekorGeneratedClient "github.com/sigstore/rekor/pkg/generated/client"
 	rekorEntries "github.com/sigstore/rekor/pkg/generated/client/entries"
-	rekorModels "github.com/sigstore/rekor/pkg/generated/models"
 	rekorVerify "github.com/sigstore/rekor/pkg/verify"
 	"github.com/sigstore/sigstore/pkg/signature"
 
@@ -34,6 +33,8 @@ import (
 	"github.com/sigstore/sigstore-go/pkg/tlog"
 	"github.com/sigstore/sigstore-go/pkg/util"
 )
+
+const maxAllowedTlogEntries = 32
 
 // VerifyArtifactTransparencyLog verifies that the given entity has been logged
 // in the transparency log and that the log entry is valid.
@@ -46,6 +47,11 @@ func VerifyArtifactTransparencyLog(entity SignedEntity, trustedMaterial root.Tru
 	entries, err := entity.TlogEntries()
 	if err != nil {
 		return nil, err
+	}
+
+	// limit the number of tlog entries to prevent DoS
+	if len(entries) > maxAllowedTlogEntries {
+		return nil, fmt.Errorf("too many tlog entries: %d > %d", len(entries), maxAllowedTlogEntries)
 	}
 
 	// disallow duplicate entries, as a malicious actor could use duplicates to bypass the threshold
@@ -132,24 +138,19 @@ func VerifyArtifactTransparencyLog(entity SignedEntity, trustedMaterial root.Tru
 
 			logIndex := entry.LogIndex()
 
-			// TODO(issue#52): Change to GetLogEntryByIndex
-			searchParams := rekorEntries.NewSearchLogQueryParams()
-			searchLogQuery := rekorModels.SearchLogQuery{}
-			searchLogQuery.LogIndexes = []*int64{&logIndex}
-			searchParams.SetEntry(&searchLogQuery)
+			searchParams := rekorEntries.NewGetLogEntryByIndexParams()
+			searchParams.LogIndex = logIndex
 
-			resp, err := client.Entries.SearchLogQuery(searchParams)
+			resp, err := client.Entries.GetLogEntryByIndex(searchParams)
 			if err != nil {
 				return nil, err
 			}
 
 			if len(resp.Payload) == 0 {
 				return nil, fmt.Errorf("unable to locate log entry %d", logIndex)
-			} else if len(resp.Payload) > 1 {
-				return nil, errors.New("too many log entries returned")
 			}
 
-			logEntry := resp.Payload[0]
+			logEntry := resp.Payload
 
 			for _, v := range logEntry {
 				v := v
