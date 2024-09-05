@@ -53,26 +53,32 @@ func (tp *TektonResult) GetStatus() TektonComponentStatus {
 type TektonResultSpec struct {
 	CommonSpec           `json:",inline"`
 	ResultsAPIProperties `json:",inline"`
+	LokiStackProperties  `json:",inline"`
+}
+
+type LokiStackProperties struct {
+	LokiStackName      string `json:"loki_stack_name,omitempty"`
+	LokiStackNamespace string `json:"loki_stack_namespace,omitempty"`
 }
 
 // ResultsAPIProperties defines the fields which are configurable for
 // Results API server config
 type ResultsAPIProperties struct {
 	DBHost                string `json:"db_host,omitempty"`
-	DBPort                int64  `json:"db_port,omitempty"`
+	DBPort                *int64 `json:"db_port,omitempty"`
 	DBName                string `json:"db_name,omitempty"`
 	DBSSLMode             string `json:"db_sslmode,omitempty"`
-	DBEnableAutoMigration bool   `json:"db_enable_auto_migration,omitempty"`
-	ServerPort            int64  `json:"server_port,omitempty"`
-	PrometheusPort        int64  `json:"prometheus_port,omitempty"`
+	DBEnableAutoMigration *bool  `json:"db_enable_auto_migration,omitempty"`
+	ServerPort            *int64 `json:"server_port,omitempty"`
+	PrometheusPort        *int64 `json:"prometheus_port,omitempty"`
 	LogLevel              string `json:"log_level,omitempty"`
-	LogsAPI               bool   `json:"logs_api,omitempty"`
+	LogsAPI               *bool  `json:"logs_api,omitempty"`
 	LogsType              string `json:"logs_type,omitempty"`
-	LogsBufferSize        int64  `json:"logs_buffer_size,omitempty"`
+	LogsBufferSize        *int64 `json:"logs_buffer_size,omitempty"`
 	LogsPath              string `json:"logs_path,omitempty"`
 	TLSHostnameOverride   string `json:"tls_hostname_override,omitempty"`
-	AuthDisable           bool   `json:"auth_disable,omitempty"`
-	AuthImpersonate       bool   `json:"auth_impersonate,omitempty"`
+	AuthDisable           *bool  `json:"auth_disable,omitempty"`
+	AuthImpersonate       *bool  `json:"auth_impersonate,omitempty"`
 	LoggingPVCName        string `json:"logging_pvc_name,omitempty"`
 	GcsBucketName         string `json:"gcs_bucket_name,omitempty"`
 	StorageEmulatorHost   string `json:"storage_emulator_host,omitempty"`
@@ -82,6 +88,15 @@ type ResultsAPIProperties struct {
 	GCSCredsSecretName string `json:"gcs_creds_secret_name,omitempty"`
 	GCSCredsSecretKey  string `json:"gcs_creds_secret_key,omitempty"`
 	IsExternalDB       bool   `json:"is_external_db"`
+
+	LoggingPluginTLSVerificationDisable bool   `json:"logging_plugin_tls_verification_disable,omitempty"`
+	LoggingPluginProxyPath              string `json:"logging_plugin_proxy_path,omitempty"`
+	LoggingPluginAPIURL                 string `json:"logging_plugin_api_url,omitempty"`
+	LoggingPluginTokenPath              string `json:"logging_plugin_token_path,omitempty"`
+	LoggingPluginNamespaceKey           string `json:"logging_plugin_namespace_key,omitempty"`
+	LoggingPluginStaticLabels           string `json:"logging_plugin_static_labels,omitempty"`
+	LoggingPluginCACert                 string `json:"logging_plugin_ca_cert,omitempty"`
+	LoggingPluginForwarderDelayDuration *uint  `json:"logging_plugin_forwarder_delay_duration,omitempty"`
 	// Options holds additions fields and these fields will be updated on the manifests
 	Options AdditionalOptions `json:"options"`
 }

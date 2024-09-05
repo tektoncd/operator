@@ -46,6 +46,15 @@ const (
 	googleAPPCredsEnvName = "GOOGLE_APPLICATION_CREDENTIALS"
 	googleCredsVolName    = "google-creds"
 	googleCredsPath       = "/creds/google"
+
+	loggingProxyPath              = "LOGGING_PLUGIN_PROXY_PATH"
+	loggingAPIURL                 = "LOGGING_PLUGIN_API_URL"
+	loggingTokenPath              = "LOGGING_PLUGIN_TOKEN_PATH"
+	loggingNamespaceKey           = "LOGGING_PLUGIN_NAMESPACE_KEY"
+	loggingStaticLabels           = "LOGGING_PLUGIN_STATIC_LABELS"
+	loggingForwarderDelayDuration = "LOGGING_PLUGIN_FORWARDER_DELAY_DURATION"
+	logsAPIKey                    = "LOGS_API"
+	logsTypeKey                   = "LOGS_TYPE"
 )
 
 var (
@@ -74,7 +83,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.ApplyProxySettings,
 		common.ReplaceNamespaceInDeploymentArgs(targetNs),
 		common.ReplaceNamespaceInDeploymentEnv(targetNs),
-		updateApiConfig(instance.Spec.ResultsAPIProperties),
+		updateApiConfig(instance.Spec),
 		enablePVCLogging(instance.Spec.ResultsAPIProperties),
 		updateEnvWithSecretName(instance.Spec.ResultsAPIProperties),
 		populateGoogleCreds(instance.Spec.ResultsAPIProperties),
@@ -99,7 +108,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 
 func enablePVCLogging(p v1alpha1.ResultsAPIProperties) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if !p.LogsAPI || p.LoggingPVCName == "" || p.LogsPath == "" || u.GetKind() != "Deployment" || u.GetName() != deploymentAPI {
+		if p.LogsAPI == nil || !*p.LogsAPI || p.LoggingPVCName == "" || p.LogsPath == "" || u.GetKind() != "Deployment" || u.GetName() != deploymentAPI {
 			return nil
 		}
 
@@ -156,7 +165,8 @@ func enablePVCLogging(p v1alpha1.ResultsAPIProperties) mf.Transformer {
 	}
 }
 
-func updateApiConfig(p interface{}) mf.Transformer {
+func updateApiConfig(s v1alpha1.TektonResultSpec) mf.Transformer {
+	p := s.ResultsAPIProperties
 	return func(u *unstructured.Unstructured) error {
 
 		kind := strings.ToLower(u.GetKind())
@@ -180,6 +190,13 @@ func updateApiConfig(p interface{}) mf.Transformer {
 		values := reflect.ValueOf(p)
 		types := values.Type()
 		prop := make(map[string]string)
+
+		applyLokiStackConfig(prop, s.LokiStackProperties)
+
+		if !s.IsExternalDB {
+			prop["DB_HOST"] = "tekton-results-postgres-service." + s.TargetNamespace + ".svc.cluster.local"
+		}
+
 		for i := 0; i < values.NumField(); i++ {
 			key := strings.Split(types.Field(i).Tag.Get("json"), ",")[0]
 			if key == "" {
@@ -208,12 +225,19 @@ func updateApiConfig(p interface{}) mf.Transformer {
 				if !innerElem.IsValid() {
 					continue
 				}
-				if innerElem.Kind() == reflect.Bool {
+				switch innerElem.Kind() {
+				case reflect.Bool:
 					prop[ukey] = strconv.FormatBool(innerElem.Bool())
-				} else if innerElem.Kind() == reflect.Uint {
+					continue
+
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					prop[ukey] = strconv.FormatInt(innerElem.Int(), 10)
+					continue
+
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 					prop[ukey] = strconv.FormatUint(innerElem.Uint(), 10)
+					continue
 				}
-				continue
 			}
 
 			if value := values.Field(i).String(); value != "" {
@@ -230,6 +254,7 @@ func updateApiConfig(p interface{}) mf.Transformer {
 				cl[i] = fmt.Sprintf("%s=%s", key[0], val)
 			}
 		}
+
 		config = strings.Join(cl, "\n")
 
 		cm.Data["config"] = config
@@ -242,11 +267,31 @@ func updateApiConfig(p interface{}) mf.Transformer {
 	}
 }
 
+func applyLokiStackConfig(prop map[string]string, lokiProp v1alpha1.LokiStackProperties) {
+	if lokiProp.LokiStackName == "" || lokiProp.LokiStackNamespace == "" {
+		return
+	}
+	lokiURL := "https://" + lokiProp.LokiStackName + "-gateway-http" + "." + lokiProp.LokiStackNamespace + ".svc.cluster.local:8080"
+	if prop == nil {
+		prop = map[string]string{}
+	}
+
+	prop[logsAPIKey] = "true"
+	prop[logsTypeKey] = "loki"
+	prop[loggingProxyPath] = "/api/logs/v1/application"
+	prop[loggingAPIURL] = lokiURL
+	prop[loggingTokenPath] = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+	prop[loggingNamespaceKey] = "kubernetes_namespace_name"
+	prop[loggingStaticLabels] = "log_type=application"
+	prop[loggingForwarderDelayDuration] = "10"
+}
+
 func populateGoogleCreds(props v1alpha1.ResultsAPIProperties) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if props.LogsType != "GCS" || props.GCSCredsSecretName == "" ||
-			props.GCSCredsSecretKey == "" || !props.LogsAPI ||
-			u.GetKind() != "Deployment" || u.GetName() != deploymentAPI {
+			props.GCSCredsSecretKey == "" || props.LogsAPI == nil ||
+			!*props.LogsAPI || u.GetKind() != "Deployment" ||
+			u.GetName() != deploymentAPI {
 			return nil
 		}
 

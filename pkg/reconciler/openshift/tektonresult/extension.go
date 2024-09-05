@@ -44,6 +44,7 @@ const (
 	apiContainerName        = "api"
 	boundSAVolume           = "bound-sa-token"
 	boundSAPath             = "/var/run/secrets/openshift/serviceaccount"
+	lokiStackTLSCAEnvVar    = "LOGGING_PLUGIN_CA_CERT"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -94,6 +95,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.RemoveRunAsGroup(),
 		occommon.ApplyCABundles,
 		injectBoundSAToken(instance.Spec.ResultsAPIProperties),
+		injectLokiStackTLSCACert(instance.Spec.LokiStackProperties),
 	}
 }
 
@@ -105,7 +107,8 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		mf = *oe.internalDBManifest
 	}
 
-	if strings.EqualFold(result.Spec.LogsType, "LOKI") {
+	if (result.Spec.LokiStackName != "" && result.Spec.LokiStackNamespace != "") ||
+		strings.EqualFold(result.Spec.LogsType, "LOKI") {
 		mf = mf.Append(*oe.logsRBACManifest)
 	}
 
@@ -178,7 +181,7 @@ func filterAndTransform() client.FilterAndTransform {
 // injectBoundSAToken adds a sa token projected volume to the Results Deployment
 func injectBoundSAToken(props v1alpha1.ResultsAPIProperties) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if !props.LogsAPI ||
+		if props.LogsAPI == nil || !*props.LogsAPI ||
 			u.GetKind() != "Deployment" || u.GetName() != deploymentAPI {
 			return nil
 		}
@@ -235,6 +238,66 @@ func injectBoundSAToken(props v1alpha1.ResultsAPIProperties) mf.Transformer {
 			if add {
 				d.Spec.Template.Spec.Containers[i].VolumeMounts = append(
 					d.Spec.Template.Spec.Containers[i].VolumeMounts, volMount)
+			}
+
+			break
+		}
+
+		uObj, err := k8sruntime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(uObj)
+		return nil
+	}
+}
+
+// injectLokiStackTLSCACert adds a tls ca cert environment variable to the Results Deployment
+// If the env variable already exists, it will be overwritten
+func injectLokiStackTLSCACert(prop v1alpha1.LokiStackProperties) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if prop.LokiStackNamespace == "" || prop.LokiStackName == "" ||
+			u.GetKind() != "Deployment" || u.GetName() != deploymentAPI {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		// find the matching container and add env and secret name object
+		for i, container := range d.Spec.Template.Spec.Containers {
+			if container.Name != apiContainerName {
+				continue
+			}
+			add := true
+			env := corev1.EnvVar{
+				Name: lokiStackTLSCAEnvVar,
+				ValueFrom: &corev1.EnvVarSource{
+					ConfigMapKeyRef: &corev1.ConfigMapKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "openshift-service-ca.crt",
+						},
+						Key: "service-ca.crt",
+					},
+				},
+			}
+
+			// Check if the env variable already exists in the container
+			// If it does, overwrite it
+			for k := 0; k < len(d.Spec.Template.Spec.Containers[i].Env); k++ {
+				if d.Spec.Template.Spec.Containers[i].Env[k].Name == lokiStackTLSCAEnvVar {
+					d.Spec.Template.Spec.Containers[i].Env[k] = env
+					add = false
+				}
+			}
+
+			// If it doesn't exist, add it
+			if add {
+				d.Spec.Template.Spec.Containers[i].Env = append(
+					d.Spec.Template.Spec.Containers[i].Env, env)
 			}
 
 			break

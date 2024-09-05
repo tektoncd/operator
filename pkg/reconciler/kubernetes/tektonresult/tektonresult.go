@@ -18,6 +18,7 @@ package tektonresult
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -98,6 +99,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 	if err := r.extension.Finalize(ctx, original); err != nil {
 		logger.Error("Failed to finalize platform resources", err)
 	}
+
 	return nil
 }
 
@@ -140,7 +142,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	if tp.GetSpec().GetTargetNamespace() != tr.GetSpec().GetTargetNamespace() {
 		errMsg := fmt.Sprintf("tekton-pipelines is missing in %s namespace", tr.GetSpec().GetTargetNamespace())
 		tr.Status.MarkDependencyMissing(errMsg)
-		return fmt.Errorf(errMsg)
+		return errors.New(errMsg)
 	}
 
 	// check if the secrets are created
@@ -299,7 +301,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 
 	// Mark PostReconcile Complete
 	tr.Status.MarkPostReconcilerComplete()
-
+	r.updateTektonResultsStatus(ctx, tr, installedTIS)
 	return nil
 }
 

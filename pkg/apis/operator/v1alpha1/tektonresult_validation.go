@@ -19,8 +19,13 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"knative.dev/pkg/apis"
+)
+
+const (
+	LogsTypeLoki = "loki"
 )
 
 func (tp *TektonResult) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -33,6 +38,20 @@ func (tp *TektonResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errMsg := fmt.Sprintf("metadata.name, Only one instance of TektonResult is allowed by name, %s", ResultResourceName)
 		return errs.Also(apis.ErrInvalidValue(tp.GetName(), errMsg))
 	}
+	errs = errs.Also(tp.Spec.validate("spec"))
+	return errs
+}
 
-	return nil
+func (trs *TektonResultSpec) validate(path string) (errs *apis.FieldError) {
+	if trs.LokiStackName != "" {
+		if strings.ToLower(trs.LogsType) != LogsTypeLoki && trs.LogsType != "" {
+			errMsg := fmt.Sprintf("Loki stack is only supported when logs_type is loki or empty, got logs_type: %s", trs.LogsType)
+			errs = errs.Also(apis.ErrInvalidValue(trs.LogsType, fmt.Sprintf("%s.logs_type", path), errMsg))
+		}
+		if trs.LokiStackNamespace == "" {
+			errMsg := "Loki stack namespace is required when loki_stack_name is provided"
+			errs = errs.Also(apis.ErrInvalidValue(trs.LokiStackNamespace, fmt.Sprintf("%s.loki_stack_namespace", path), errMsg))
+		}
+	}
+	return errs
 }
