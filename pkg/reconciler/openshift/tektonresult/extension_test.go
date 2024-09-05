@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -103,8 +104,9 @@ func Test_injecBoundSAToken(t *testing.T) {
 	deployment := &appsv1.Deployment{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, deployment)
 	assert.NilError(t, err)
+	logsAPI := true
 	props := v1alpha1.ResultsAPIProperties{
-		LogsAPI:        true,
+		LogsAPI:        &logsAPI,
 		LogsType:       "File",
 		LogsPath:       "logs",
 		LoggingPVCName: "tekton-logs",
@@ -118,4 +120,32 @@ func Test_injecBoundSAToken(t *testing.T) {
 
 	assert.Equal(t, deployment.Spec.Template.Spec.Volumes[2].Name, "bound-sa-token")
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].VolumeMounts[2].Name, "bound-sa-token")
+}
+
+func Test_injectLokiStackTLSCACert(t *testing.T) {
+	testData := path.Join("testdata", "api-deployment.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	deployment := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, deployment)
+	assert.NilError(t, err)
+	props := v1alpha1.LokiStackProperties{
+		LokiStackName:      "test",
+		LokiStackNamespace: "bar",
+	}
+
+	manifest, err = manifest.Transform(injectLokiStackTLSCACert(props))
+	assert.NilError(t, err)
+
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, deployment)
+	assert.NilError(t, err)
+
+	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Env[5].Name, "LOGGING_PLUGIN_CA_CERT")
+
+	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Env[5].ValueFrom.ConfigMapKeyRef.LocalObjectReference, corev1.LocalObjectReference{
+		Name: "openshift-service-ca.crt",
+	})
+
+	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Env[5].ValueFrom.ConfigMapKeyRef.Key, "service-ca.crt")
 }
