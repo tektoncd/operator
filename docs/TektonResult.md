@@ -80,7 +80,7 @@ kubectl apply -f pvc.yaml
   kubectl get tektonresults.operator.tekton.dev
   ```
 
-## Properties
+## Spec
 The TektonResult CR is like below:
 ```yaml
 apiVersion: operator.tekton.dev/v1alpha1
@@ -105,6 +105,9 @@ spec:
   gcc_creds_secret_key: <value>
   gcs_bucket_name: <value>
   is_external_db: false
+  loki_stack_name: #optional
+  loki_stack_namespace: #optional
+  
 ```
 
 These properties are analogous to the one in configmap of tekton results api `tekton-results-api-config` documented at [api.md]:https://github.com/tektoncd/results/blob/4472848a0fb7c1473cfca8b647553170efac78a1/cmd/api/README.md
@@ -201,4 +204,105 @@ spec:
   db_host: tekton-results-postgres-external-service.pg-redhat.svc.cluster.local
   is_external_db: true
 ...
+```
+
+## LokiStack + TektonResult
+
+Tekton Results leverages external Third Party APIs to query data. Storing of data via Tekton Results is inefficient
+and bad for performance. It's better to use forwarders like Vector, Promtail, Fluentd for forwarding TaskRun pod Logs from nodes.
+
+### Kubernetes (GCP) + LokiStack/Loki
+
+#### Loki
+
+You can either use Grafana's [Helm Repo](https://grafana.com/docs/loki/latest/setup/install/helm/) or operator from [OperatorHub](https://operatorhub.io/operator/loki-operator) to install Loki. 
+Installing via operator simplies certain operations for Tekton Operator. You just need to configure `lokistack_name` and `lokistack_namespace`.
+
+In case of helm installation, you will need to configure options field to configure Results API configMap `tekton-results-api-config`:
+```yaml
+LOGS_API
+LOGGING_PLUGIN_PROXY_PATH
+LOGGING_PLUGIN_API_URL
+LOGGING_PLUGIN_TOKEN_PATH
+LOGGING_PLUGIN_NAMESPACE_KEY
+LOGGING_PLUGIN_STATIC_LABELS
+LOGGING_PLUGIN_TLS_VERIFICATION_DISABLE
+LOGGING_PLUGIN_FORWARDER_DELAY_DURATION
+```
+
+- `LOGGING_PLUGIN_PROXY_PATH`: The path to the proxy used for logging. These reverse proxyies like NGinx is used for authentication.
+
+- `LOGGING_PLUGIN_API_URL`: The Base URL for quering Loki.
+
+- `LOGGING_PLUGIN_TOKEN_PATH`: The path to the token used for authentication with the logging service. `/var/run/secrets/kubernetes.io/serviceaccount/token` can be used if results api service account token can be used as Authorization jwt token for quering Loki.
+
+- `LOGGING_PLUGIN_NAMESPACE_KEY`: The key used to identify the namespace in log queries.
+
+- `LOGGING_PLUGIN_STATIC_LABELS`: Any static labels to be added to all log queries. It's necessary to have some fields to filter out tekton logs.
+
+- `LOGGING_PLUGIN_TLS_VERIFICATION_DISABLE`: A boolean flag to disable TLS verification. This should be set to "false" in production environments to ensure secure connections.
+
+These fields allow you to configure how Tekton Results interacts with your Loki backend.
+
+You might need to configure following environment variable to Tekton Results API deployment if you are using some custom CA to generate TLS certificate:
+```yaml
+LOGGING_PLUGIN_CA_CERT
+```
+
+- `LOGGING_PLUGIN_FORWARDER_DELAY_DURATION`: This is the max duration in minutes taken by third party logging system to forward and store the logs after completion of taskrun and pipelinerun. This is used to search between start time of runs and completion plus buffer duration.
+
+#### Forwarder
+
+You need to configure forwarder systems to add labels for namespace, pass TaskRun UID/PipelineRun UID in pods and a common label <key:value> alongwith logs from nodes.
+
+A sample configuration for vector: [values.yaml](https://github.com/tektoncd/results/blob/main/test/e2e/loki_vector/vector.yaml). 
+
+### OpenShift (LokiStack + OpenShift Logging)
+
+
+To configure LokiStack with TektonResult, you can use the `lokistack_name` and `lokistack_namespace` properties in the TektonResult custom resource. Here's how to do it:
+
+
+1. First, ensure that you have LokiStack installed in your cluster.
+
+2. Then, create or update your TektonResult CR with the following properties:
+
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonResult
+metadata:
+  name: result
+spec:
+  targetNamespace: tekton-pipelines
+  // ... other properties ...
+  lokistack_name: your-lokistack-name
+  lokistack_namespace: your-lokistack-namespace
+```
+Replace your-lokistack-name with the name of your LokiStack instance and your-lokistack-namespace with the namespace where LokiStack is installed.
+
+By setting these properties, Operator will configure Tekton Result to use the specified LokiStack instance for log retrieval.
+
+
+#### OpenShift Logging
+
+Install the openshift logging operator by following this: [Deploying Cluster Logging](https://docs.openshift.com/container-platform/4.16/observability/logging/cluster-logging-deploying.html#logging-loki-gui-install_cluster-logging-deploying)
+
+If you are installing OpenShift Logging Operator only for TaskRun Logs, then you also need to configure a ClusterLogForwarder:
+```yaml
+apiVersion: "logging.openshift.io/v1"
+kind: ClusterLogForwarder
+metadata:
+  name: instance
+  namespace: openshift-logging
+spec:
+  inputs:
+  - name: only-tekton
+    application:
+      selector:
+        matchLabels:
+          app.kubernetes.io/managed-by: tekton-pipelines
+  pipelines:
+    - name: enable-default-log-store
+      inputRefs: [ only-tekton ]
+      outputRefs: [ default ]
 ```
