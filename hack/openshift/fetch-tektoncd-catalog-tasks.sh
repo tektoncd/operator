@@ -55,26 +55,26 @@ declare -A TEKTON_CATALOG_TASKS=(
 )
 declare -r TEKTON_ECOSYSTEM="https://raw.githubusercontent.com/openshift-pipelines/tektoncd-catalog"
 declare -A TEKTON_ECOSYSTEM_TASKS=(
-  ['task-buildah']="0.4.0"
-  ['task-git-cli']="0.4.0"
-  ['task-git-clone']='0.4.0'
-  ['task-kn-apply']='0.2.0'
-  ['task-kn']='0.2.0'
-  ['task-maven']="0.3.0"
-  ['task-openshift-client']="0.2.0"
-  ['task-s2i-dotnet']='0.4.0'
-  ['task-s2i-go']='0.4.0'
-  ['task-s2i-java']='0.4.0'
-  ['task-s2i-nodejs']='0.4.0'
-  ['task-s2i-perl']='0.4.0'
-  ['task-s2i-php']='0.4.0'
-  ['task-s2i-python']='0.4.0'
-  ['task-s2i-ruby']='0.4.0'
-  ['task-skopeo-copy']='0.4.0'
-  ['task-tkn']='0.2.0'
+  ['task-buildah']="0.4.1"
+  ['task-git-cli']="0.4.1"
+  ['task-git-clone']='0.4.1'
+  ['task-kn-apply']='0.2.1'
+  ['task-kn']='0.2.1'
+  ['task-maven']="0.3.1"
+  ['task-openshift-client']="0.2.1"
+  ['task-s2i-dotnet']='0.4.1'
+  ['task-s2i-go']='0.4.1'
+  ['task-s2i-java']='0.4.1'
+  ['task-s2i-nodejs']='0.4.1'
+  ['task-s2i-perl']='0.4.1'
+  ['task-s2i-php']='0.4.1'
+  ['task-s2i-python']='0.4.1'
+  ['task-s2i-ruby']='0.4.1'
+  ['task-skopeo-copy']='0.4.1'
+  ['task-tkn']='0.2.1'
 )
 declare -A TEKTON_ECOSYSTEM_STEPACTIONS=(
-  ['stepaction-git-clone']='0.4.0'
+  ['stepaction-git-clone']='0.4.1'
 )
 
 download_task() {
