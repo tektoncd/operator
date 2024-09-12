@@ -48,9 +48,12 @@ func (p *Pipeline) setDefaults() {
 	if p.RequireGitSshSecretKnownHosts == nil {
 		p.RequireGitSshSecretKnownHosts = ptr.Bool(config.DefaultRequireGitSSHSecretKnownHosts)
 	}
-	if p.EnableTektonOciBundles == nil {
-		p.EnableTektonOciBundles = ptr.Bool(config.DefaultEnableTektonOciBundles)
-	}
+
+	// not in use, see: https://github.com/tektoncd/pipeline/pull/7789
+	// this field is removed from pipeline component
+	// keeping here to maintain the API compatibility
+	p.EnableTektonOciBundles = nil
+
 	if p.EnableCustomTasks == nil {
 		// EnableCustomTask is always enable
 		p.EnableCustomTasks = ptr.Bool(true)

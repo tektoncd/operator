@@ -35,7 +35,6 @@ spec:
   enable-param-enum: false
   enable-provenance-in-status: true
   enable-step-actions: false
-  enable-tekton-oci-bundles: false
   enforce-nonfalsifiability: none
   keep-pod-on-cancel: false
   max-result-size: 4096
@@ -111,12 +110,6 @@ injected sidecars, setting this option to false can lead to unexpected behavior.
     Setting this flag to "true" will require that any Git SSH Secret offered to Tekton must have known_hosts included.
 
     See more info [here](https://github.com/tektoncd/pipeline/issues/2981).
-
-
-- `enable-tekton-oci-bundles` (Default: `false`)
-
-    Setting this flag to "true" enables the use of Tekton OCI bundle. This is an experimental feature and thus should
-still be considered an alpha feature.
 
 
 - `enable-custom-tasks` (Default: `false`)
