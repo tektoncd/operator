@@ -56,6 +56,11 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		pipeline := comp.(*v1alpha1.TektonPipeline)
 
+		// not in use, see: https://github.com/tektoncd/pipeline/pull/7789
+		// this field is removed from pipeline component
+		// still keeping types to maintain the API compatibility
+		pipeline.Spec.Pipeline.EnableTektonOciBundles = nil
+
 		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
 		instance := comp.(*v1alpha1.TektonPipeline)
 		// adding extension's transformers first to run them before `extra` transformers
