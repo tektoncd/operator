@@ -73,6 +73,7 @@ Supports all the images listed above in kubernetes and following are specific to
 | Pipeline-as-code      | pac-webhook                       | `IMAGE_PAC_PAC_WEBHOOK`                             |
 | Pipeline-as-code      | pac-watcher                       | `IMAGE_PAC_PAC_WATCHER`                             |
 | Console Plugin        | console-plugin                    | `IMAGE_PIPELINES_CONSOLE_PLUGIN`                    |
+| Results               | retention-policy-agent            | `IMAGE_RESULTS_RETENTION_POLICY_AGENT`              |
 | Addons                |                                   | `IMAGE_ADDONS_BUILD`                                |
 | Addons                |                                   | `IMAGE_ADDONS_GENERATE`                             |
 | Addons                |                                   | `IMAGE_ADDONS_GEN_ENV_FILE`                         |
