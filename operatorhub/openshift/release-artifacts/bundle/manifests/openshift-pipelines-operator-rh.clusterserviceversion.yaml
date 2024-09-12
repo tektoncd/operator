@@ -895,6 +895,8 @@ spec:
                   value: registry.redhat.io/openshift-pipelines/tekton-results-api-rhel8@
                 - name: IMAGE_RESULTS_TEKTON_RESULTS_WATCHER
                   value: registry.redhat.io/openshift-pipelines/tekton-results-watcher-rhel8@
+                - name: IMAGE_RESULTS_RETENTION_POLICY_AGENT
+                  value: registry.redhat.io/openshift-pipelines/tekton-results-retention-policy-agent-rhel8@
                 - name: IMAGE_HUB_TEKTON_HUB_DB_MIGRATION
                   value: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel8@
                 - name: IMAGE_HUB_TEKTON_HUB_API
