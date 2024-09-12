@@ -943,11 +943,6 @@ func (in *PipelineProperties) DeepCopyInto(out *PipelineProperties) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.EnableTektonOciBundles != nil {
-		in, out := &in.EnableTektonOciBundles, &out.EnableTektonOciBundles
-		*out = new(bool)
-		**out = **in
-	}
 	if in.EnableCustomTasks != nil {
 		in, out := &in.EnableCustomTasks, &out.EnableCustomTasks
 		*out = new(bool)
@@ -955,6 +950,11 @@ func (in *PipelineProperties) DeepCopyInto(out *PipelineProperties) {
 	}
 	if in.SendCloudEventsForRuns != nil {
 		in, out := &in.SendCloudEventsForRuns, &out.SendCloudEventsForRuns
+		*out = new(bool)
+		**out = **in
+	}
+	if in.EnableTektonOciBundles != nil {
+		in, out := &in.EnableTektonOciBundles, &out.EnableTektonOciBundles
 		*out = new(bool)
 		**out = **in
 	}

@@ -61,7 +61,6 @@ The TektonConfig CR provides the following features
       enable-param-enum: false
       enable-provenance-in-status: true
       enable-step-actions: false
-      enable-tekton-oci-bundles: false
       enforce-nonfalsifiability: none
       keep-pod-on-cancel: false
       max-result-size: 4096
@@ -218,7 +217,6 @@ pipeline:
   disable-working-directory-overwrite: true
   enable-api-fields: stable
   enable-custom-tasks: false
-  enable-tekton-oci-bundles: false
   metrics.pipelinerun.duration-type: histogram
   metrics.pipelinerun.level: pipelinerun
   metrics.taskrun.duration-type: histogram

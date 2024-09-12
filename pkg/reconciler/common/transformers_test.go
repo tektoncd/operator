@@ -515,8 +515,7 @@ func TestAddConfigMapValues_PipelineProperties(t *testing.T) {
 	assertNoEror(t, err)
 
 	prop := v1alpha1.PipelineProperties{
-		EnableTektonOciBundles: ptr.Bool(true),
-		EnableApiFields:        "stable",
+		EnableApiFields: "stable",
 	}
 
 	manifest, err = manifest.Transform(AddConfigMapValues("test1", prop))
@@ -527,7 +526,6 @@ func TestAddConfigMapValues_PipelineProperties(t *testing.T) {
 	assertNoEror(t, err)
 
 	assert.Equal(t, cm.Data["foo"], "bar")
-	assert.Equal(t, cm.Data["enable-tekton-oci-bundles"], "true")
 	assert.Equal(t, cm.Data["enable-api-fields"], "stable")
 }
 
