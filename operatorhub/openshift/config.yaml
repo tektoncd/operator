@@ -246,7 +246,13 @@ image-substitutions:
         containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_RESULTS_API
-
+- image: registry.redhat.io/openshift-pipelines/pipelines-results-retention-policy-agent-rhel8@
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
+        envKeys:
+          - IMAGE_RESULTS_RETENTION_POLICY_AGENT
 - image: registry.redhat.io/ubi8/openjdk-17@sha256:e8cc2e476282b75d89c73057bfa713db22d72bdb2808d62d981a84c33beb2575
   replaceLocations:
     envTargets:
