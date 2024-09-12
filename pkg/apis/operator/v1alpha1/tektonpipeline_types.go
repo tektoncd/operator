@@ -93,7 +93,6 @@ type PipelineProperties struct {
 	AwaitSidecarReadiness                    *bool  `json:"await-sidecar-readiness,omitempty"`
 	RunningInEnvironmentWithInjectedSidecars *bool  `json:"running-in-environment-with-injected-sidecars,omitempty"`
 	RequireGitSshSecretKnownHosts            *bool  `json:"require-git-ssh-secret-known-hosts,omitempty"`
-	EnableTektonOciBundles                   *bool  `json:"enable-tekton-oci-bundles,omitempty"`
 	EnableCustomTasks                        *bool  `json:"enable-custom-tasks,omitempty"`
 	EnableApiFields                          string `json:"enable-api-fields,omitempty"`
 	EmbeddedStatus                           string `json:"embedded-status,omitempty"`
@@ -102,6 +101,12 @@ type PipelineProperties struct {
 	// This field will be removed, see https://github.com/tektoncd/operator/issues/1497
 	// originally this field was removed in https://github.com/tektoncd/operator/pull/1481
 	// there is no use with this field, just adding back to unblock the upgrade
+
+	// not in use, see: https://github.com/tektoncd/pipeline/pull/7789
+	// this field is removed from pipeline component
+	// keeping here to maintain the API compatibility
+	EnableTektonOciBundles *bool `json:"enable-tekton-oci-bundles,omitempty"`
+
 	VerificationMode          string `json:"verification-mode,omitempty"`
 	VerificationNoMatchPolicy string `json:"trusted-resources-verification-no-match-policy,omitempty"`
 	EnableProvenanceInStatus  *bool  `json:"enable-provenance-in-status,omitempty"`

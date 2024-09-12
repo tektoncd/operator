@@ -69,8 +69,7 @@ func Test_SetDefaults_Pipeline_Properties(t *testing.T) {
 	}
 
 	tc.SetDefaults(context.TODO())
-	if *tc.Spec.Pipeline.SendCloudEventsForRuns != true ||
-		*tc.Spec.Pipeline.EnableTektonOciBundles != false {
+	if *tc.Spec.Pipeline.SendCloudEventsForRuns != true {
 		t.Error("Setting default failed for TektonConfig (spec.pipeline.pipelineProperties)")
 	}
 }
