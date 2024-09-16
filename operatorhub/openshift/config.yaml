@@ -130,7 +130,7 @@ image-substitutions:
       envKeys:
       - IMAGE_ADDONS_SKOPEO_COPY
       - IMAGE_ADDONS_SKOPEO_RESULTS
-- image: registry.redhat.io/rhel8/buildah@sha256:aac6629389db17e99894c5bee0da01d4c8065d11d8c6f6e1602f9484290baa70
+- image: registry.redhat.io/rhel8/buildah@sha256:5c7cd7c9a3d49e8905fc98693f6da605aeafae36bde5622dc78e12f31db3cd59
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
