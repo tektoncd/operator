@@ -67,8 +67,6 @@ const (
 	rbacInstallerSetNamePrefix  = "rhosp-rbac-"
 	rbacParamName               = "createRbacResource"
 	serviceAccountCreationLabel = "openshift-pipelines.tekton.dev/sa-created"
-
-	rbacMaxConcurrentCalls = 20
 )
 
 var (
@@ -402,7 +400,7 @@ func (r *rbac) createResources(ctx context.Context) error {
 	var wg sync.WaitGroup
 
 	// Start worker pool
-	for i := 0; i < rbacMaxConcurrentCalls; i++ {
+	for i := 0; i < getRBACMaxCalls(); i++ {
 		wg.Add(1)
 		go r.nsWorker(ctx, &wg, jobs, errCh)
 	}
