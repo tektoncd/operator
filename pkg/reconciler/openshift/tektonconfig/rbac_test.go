@@ -160,7 +160,7 @@ func TestCreateResources(t *testing.T) {
 			},
 			iSet: &v1alpha1.TektonInstallerSet{ObjectMeta: metav1.ObjectMeta{Name: "rhosp-rbac-001", Labels: map[string]string{v1alpha1.CreatedByKey: createdByValue, v1alpha1.InstallerSetType: componentNameRBAC}, Annotations: map[string]string{
 				v1alpha1.ReleaseVersionKey: "devel", v1alpha1.TargetNamespaceKey: tc.Spec.TargetNamespace}}, Spec: v1alpha1.TektonInstallerSetSpec{}},
-			err: fmt.Errorf("errors occurred in createResource during processing namespaces"),
+			err: fmt.Errorf("errors occurred in createResource during namespaces rbac reconcile"),
 		},
 		{
 			desc: "existing installer set, all ok",
