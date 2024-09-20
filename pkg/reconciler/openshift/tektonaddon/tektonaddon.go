@@ -163,7 +163,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		logger.Error(errorMsg)
 	}
 
-	if err := r.EnsureVersionedResolverTask(ctx, ctVal, ta); err != nil {
+	if err := r.EnsureVersionedResolverTask(ctx, rtVal, ta); err != nil {
 		ready = false
 		errorMsg = fmt.Sprintf("versioned namespaced tasks not yet ready:  %v", err)
 		logger.Error(errorMsg)
@@ -175,7 +175,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		logger.Error(errorMsg)
 	}
 
-	if err := r.EnsureVersionedResolverStepAction(ctx, ctVal, ta); err != nil {
+	if err := r.EnsureVersionedResolverStepAction(ctx, rtVal, ta); err != nil {
 		ready = false
 		errorMsg = fmt.Sprintf("versioned namespaced stepactions not yet ready:  %v", err)
 		logger.Error(errorMsg)
