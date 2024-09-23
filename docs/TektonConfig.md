@@ -345,6 +345,8 @@ addon:
       value: "true"
     - name: "resolverTasks"
       value: "true"
+    - name: "resolverStepActions"
+      value: "true"
 ```
 
 **NOTE**: TektonAddon is currently available for OpenShift Platform only. Enabling this for Kubernetes platform is in roadmap

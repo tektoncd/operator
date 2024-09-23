@@ -28,6 +28,8 @@ spec:
     value: "true"
   - name: resolverTasks
     value: "true"
+  - name: resolverStepActions
+    value: "true"
 ```
 You can install this component using [TektonConfig](./TektonConfig.md) by choosing appropriate `profile`.
 
@@ -39,6 +41,7 @@ Available params are
 - `clusterTasks` (Default: `true`)
 - `pipelineTemplates` (Default: `true`)
 - `resolverTasks` (Default: `true`)
+- `resolverStepActions` (Default: `true`)
 
 User can disable the installation of resources by changing the value to `false`.
 
