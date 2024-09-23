@@ -136,6 +136,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	ctVal, _ := findValue(ta.Spec.Params, v1alpha1.ClusterTasksParam)
 	cctVal, _ := findValue(ta.Spec.Params, v1alpha1.CommunityClusterTasks)
 	rtVal, _ := findValue(ta.Spec.Params, v1alpha1.ResolverTasks)
+	rsaVal, _ := findValue(ta.Spec.Params, v1alpha1.ResolverStepActions)
 
 	if ptVal == "true" && ctVal == "false" {
 		ta.Status.MarkNotReady("pipelineTemplates cannot be true if clusterTask is false")
@@ -169,13 +170,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 		logger.Error(errorMsg)
 	}
 
-	if err := r.EnsureResolverStepAction(ctx, rtVal, ta); err != nil {
+	if err := r.EnsureResolverStepAction(ctx, rsaVal, ta); err != nil {
 		ready = false
 		errorMsg = fmt.Sprintf("namespaced stepactions not yet ready: %v", err)
 		logger.Error(errorMsg)
 	}
 
-	if err := r.EnsureVersionedResolverStepAction(ctx, rtVal, ta); err != nil {
+	if err := r.EnsureVersionedResolverStepAction(ctx, rsaVal, ta); err != nil {
 		ready = false
 		errorMsg = fmt.Sprintf("versioned namespaced stepactions not yet ready:  %v", err)
 		logger.Error(errorMsg)
