@@ -5,7 +5,7 @@ metadata:
   name: buildah-snippet
 spec:
   targetResource:
-    apiVersion: tekton.dev/v1beta1
+    apiVersion: tekton.dev/v1
     kind: Pipeline
   title: Buildah Task
   description: |
