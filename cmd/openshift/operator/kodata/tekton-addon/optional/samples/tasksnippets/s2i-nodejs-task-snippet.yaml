@@ -5,7 +5,7 @@ metadata:
   name: s2i-nodejs-snippet
 spec:
   targetResource:
-    apiVersion: tekton.dev/v1beta1
+    apiVersion: tekton.dev/v1
     kind: Pipeline
   title: S2I-Nodejs Workspace based Task
   description: |
