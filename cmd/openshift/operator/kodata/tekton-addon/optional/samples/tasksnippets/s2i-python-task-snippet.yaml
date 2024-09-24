@@ -5,7 +5,7 @@ metadata:
   name: s2i-python-snippet
 spec:
   targetResource:
-    apiVersion: tekton.dev/v1beta1
+    apiVersion: tekton.dev/v1
     kind: Pipeline
   title: S2I-Python Workspace based Task
   description: |
