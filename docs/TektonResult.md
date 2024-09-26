@@ -228,19 +228,11 @@ LOGGING_PLUGIN_NAMESPACE_KEY
 LOGGING_PLUGIN_STATIC_LABELS
 LOGGING_PLUGIN_TLS_VERIFICATION_DISABLE
 LOGGING_PLUGIN_FORWARDER_DELAY_DURATION
+LOGGING_PLUGIN_QUERY_PARAMS
+LOGGING_PLUGIN_QUERY_LIMIT
 ```
 
-- `LOGGING_PLUGIN_PROXY_PATH`: The path to the proxy used for logging. These reverse proxyies like NGinx is used for authentication.
-
-- `LOGGING_PLUGIN_API_URL`: The Base URL for quering Loki.
-
-- `LOGGING_PLUGIN_TOKEN_PATH`: The path to the token used for authentication with the logging service. `/var/run/secrets/kubernetes.io/serviceaccount/token` can be used if results api service account token can be used as Authorization jwt token for quering Loki.
-
-- `LOGGING_PLUGIN_NAMESPACE_KEY`: The key used to identify the namespace in log queries.
-
-- `LOGGING_PLUGIN_STATIC_LABELS`: Any static labels to be added to all log queries. It's necessary to have some fields to filter out tekton logs.
-
-- `LOGGING_PLUGIN_TLS_VERIFICATION_DISABLE`: A boolean flag to disable TLS verification. This should be set to "false" in production environments to ensure secure connections.
+Please consult the docs [here](https://github.com/tektoncd/results/blob/main/docs/logging-support.md) for information on these fields.
 
 These fields allow you to configure how Tekton Results interacts with your Loki backend.
 

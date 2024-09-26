@@ -24,6 +24,8 @@ data:
     LOGS_TYPE=File
     LOGS_BUFFER_SIZE=32768
     LOGS_PATH=/logs
+    LOGGING_PLUGIN_QUERY_LIMIT=7777
+    LOGGING_PLUGIN_QUERY_PARAMS=direction=desc&skip=100
     STORAGE_EMULATOR_HOST=
 kind: ConfigMap
 metadata:
