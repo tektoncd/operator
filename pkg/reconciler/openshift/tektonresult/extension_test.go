@@ -149,3 +149,22 @@ func Test_injectLokiStackTLSCACert(t *testing.T) {
 
 	assert.Equal(t, deployment.Spec.Template.Spec.Containers[0].Env[5].ValueFrom.ConfigMapKeyRef.Key, "service-ca.crt")
 }
+
+func Test_injectResultsAPIServiceCACert(t *testing.T) {
+	testData := path.Join("testdata", "api-service.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	service := &corev1.Service{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, service)
+	assert.NilError(t, err)
+
+	props := v1alpha1.ResultsAPIProperties{}
+	manifest, err = manifest.Transform(injectResultsAPIServiceCACert(props))
+	assert.NilError(t, err)
+
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, service)
+	assert.NilError(t, err)
+
+	assert.Equal(t, service.Annotations["service.beta.openshift.io/serving-cert-secret-name"], "tekton-results-tls")
+}
