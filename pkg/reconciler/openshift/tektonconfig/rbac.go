@@ -38,12 +38,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
-	"k8s.io/apimachinery/pkg/util/wait"
 	nsV1 "k8s.io/client-go/informers/core/v1"
 	rbacV1 "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/util/retry"
 	"knative.dev/pkg/logging"
 )
 
@@ -391,69 +389,52 @@ func (r *rbac) createResources(ctx context.Context) error {
 	}
 	logger.Debugf("RBAC: found %d namespaces to be reconciled", len(namespacesToBeReconciled))
 
-	// Check and create clusterrole clusterInterceptors if doesnt exist
-	if err := r.createClusterRole(ctx); err != nil {
-		logger.Error(err)
-		return err
-	}
-
 	// remove and update namespaces from Cluster Interceptors
 	if err := r.removeAndUpdateNSFromCI(ctx); err != nil {
 		logger.Error(err)
 		return err
 	}
-	if len(namespacesToBeReconciled) > 0 {
-		jobs := make(chan corev1.Namespace, len(namespacesToBeReconciled))
-		errCh := make(chan error, len(namespacesToBeReconciled))
-		var wg sync.WaitGroup
 
-		nWorkers := getRBACMaxCalls()
-		if len(namespacesToBeReconciled) < getRBACMaxCalls() {
-			nWorkers = len(namespacesToBeReconciled)
-		}
+	jobs := make(chan corev1.Namespace, len(namespacesToBeReconciled))
+	errCh := make(chan error, len(namespacesToBeReconciled))
+	var wg sync.WaitGroup
 
-		logger.Infof("Starting %d goroutines for namespace rbac reconcile", nWorkers)
-
-		// Start worker pool
-		for i := 0; i < nWorkers; i++ {
-			wg.Add(1)
-			go r.nsWorker(ctx, &wg, jobs, errCh)
-		}
-
-		// Send namespaces to be processed
-		for _, ns := range namespacesToBeReconciled {
-			jobs <- ns
-		}
-		close(jobs)
-
-		wg.Wait()
-		close(errCh)
-
-		// Collect errors from the channel
-		var errs []error
-		for err := range errCh {
-			if err != nil {
-				errs = append(errs, err)
-			}
-		}
-
-		if len(errs) > 0 {
-			return fmt.Errorf("errors occurred in createResource during namespaces rbac reconcile")
-		}
-	} else {
-		logger.Info("No namespaces to be reconciled, skipping worker creation")
+	// Start worker pool
+	for i := 0; i < getRBACMaxCalls(); i++ {
+		wg.Add(1)
+		go r.nsWorker(ctx, &wg, jobs, errCh)
 	}
+
+	// Send namespaces to be processed
+	for _, ns := range namespacesToBeReconciled {
+		jobs <- ns
+	}
+	close(jobs) // Close the jobs channel after sending all namespaces
+
+	wg.Wait()
+	close(errCh) // Close the errCh after all workers have finished
+
+	// Collect errors from the channel
+	var errs []error
+	for err := range errCh {
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("errors occurred in createResource during processing namespaces")
+	}
+
 	return nil
 }
 
 func (r *rbac) nsWorker(ctx context.Context, wg *sync.WaitGroup, jobs <-chan corev1.Namespace, errCh chan<- error) {
 	defer wg.Done()
 	for ns := range jobs {
-		logging.FromContext(ctx).Infof("Processing namespace %s", ns.Name)
 		if err := r.processResourcesForSingleNamespace(ctx, ns); err != nil {
 			errCh <- fmt.Errorf("error processing namespace %s: %w", ns.Name, err)
 		}
-		logging.FromContext(ctx).Infof("Finished processing namespace %s", ns.Name)
 	}
 }
 
@@ -462,56 +443,50 @@ func (r *rbac) processResourcesForSingleNamespace(ctx context.Context, ns corev1
 	baseLogger := logging.FromContext(ctx)
 	logger := baseLogger.Desugar().With(zap.String("namespace", ns.Name)).Sugar()
 
-	var withError bool
+	var hasError bool
 
-	logger.Infof("ensure ca bundle configmap in namespace %s", ns.Name)
+	logger.Infof("ensure ca bundle configmap in this namespace")
 	if err := r.ensureCABundles(ctx, &ns); err != nil {
-		withError = true
-		logger.Errorf("failed to ensure ca bundles presence namespace %s, %v", ns.Name, err)
+		hasError = true
+		logger.Errorf("failed to ensure ca bundles presence in this namespace, %v", err)
 	}
 
-	logger.Infof("ensures default pipelines service account namespace %s", ns.Name)
+	logger.Infof("ensures default pipelines service account in this namespace")
 	sa, err := r.ensureSA(ctx, &ns)
 	if err != nil {
-		withError = true
-		logger.Errorf("failed to ensure serviceaccount pipeline namespace %s, %v", ns.Name, err)
+		hasError = true
+		logger.Errorf("failed to ensure default SA in this namespace %v", err)
 	}
 
 	// If "operator.tekton.dev/scc" exists in the namespace, then bind
 	// that SCC to the SA
 	err = r.handleSCCInNamespace(ctx, &ns)
 	if err != nil {
-		withError = true
-		logger.Errorf("failed to bind scc to namespace %s, %v", ns.Name, err)
+		hasError = true
+		logger.Errorf("failed to bind scc to this namespace %v", err)
 	}
-	if sa != nil {
-		// We use a namespace scoped Role when SCC annotation is present, and
-		// a cluster scoped ClusterRole when the default SCC is used
-		roleRef := r.getSCCRoleInNamespace(&ns)
-		if roleRef != nil {
-			if err := r.ensurePipelinesSCCRoleBinding(ctx, sa, roleRef); err != nil {
-				withError = true
-				logger.Errorf("failed to create Pipeline Scc Role Binding in namespace %s, %v", ns.Name, err)
-			}
-		}
 
-		if err := r.ensureRoleBindings(ctx, sa); err != nil {
-			withError = true
-			logger.Errorf("failed to create rolebinding in namespace %s, %v", ns.Name, err)
-		}
+	// We use a namespace scoped Role when SCC annotation is present, and
+	// a cluster scoped ClusterRole when the default SCC is used
+	roleRef := r.getSCCRoleInNamespace(&ns)
+	if err := r.ensurePipelinesSCCRoleBinding(ctx, sa, roleRef); err != nil {
+		hasError = true
+		logger.Errorf("failed to create Pipeline Scc Role Binding in this namespace %v", err)
+	}
 
-		if err := r.ensureClusterRoleBindings(ctx, sa); err != nil {
-			withError = true
-			logger.Errorf("failed to create clusterrolebinding in namespace %s, %v", ns.Name, err)
-		}
-	} else {
-		withError = true
-		logger.Errorf("Could not create servicaccount %s for namespace %s", "pipeline", ns.Name)
+	if err := r.ensureRoleBindings(ctx, sa); err != nil {
+		hasError = true
+		logger.Errorf("failed to create rolebinding in this namespace %v", err)
+	}
+
+	if err := r.ensureClusterRoleBindings(ctx, sa); err != nil {
+		hasError = true
+		logger.Errorf("failed to create clusterrolebinding in this namespace %v", err)
 	}
 
 	// if No error add `openshift-pipelines.tekton.dev/namespace-reconcile-version` label to namespace
 	// so that rbac won't loop on it again
-	if !withError {
+	if !hasError {
 		logger.Infof("namespace %s sucessfully reconciled. Adding label namespace-reconcile-version to mark it as reconciled", ns.Name)
 		nsLabels := ns.GetLabels()
 		if len(nsLabels) == 0 {
@@ -676,7 +651,7 @@ func (r *rbac) ensureSA(ctx context.Context, ns *corev1.Namespace) (*corev1.Serv
 		return nil, err
 	}
 	if err != nil && errors.IsNotFound(err) {
-		logger.Info("creating sa ", pipelineSA, " for ns:", ns.Name)
+		logger.Info("creating sa ", pipelineSA, " ns", ns.Name)
 		return createSA(ctx, saInterface, ns.Name, *r.tektonConfig)
 	}
 
@@ -980,26 +955,20 @@ func (r *rbac) ensureClusterRoleBindings(ctx context.Context, sa *corev1.Service
 	logger := logging.FromContext(ctx)
 
 	rbacClient := r.kubeClientSet.RbacV1()
+	logger.Info("finding cluster-role ", clusterInterceptors)
+	if _, err := rbacClient.ClusterRoles().Get(ctx, clusterInterceptors, metav1.GetOptions{}); errors.IsNotFound(err) {
+		if e := r.createClusterRole(ctx); e != nil {
+			return e
+		}
+	}
+
 	logger.Info("finding cluster-role-binding ", clusterInterceptors)
 
-	// Fetch the ClusterRoleBinding
 	viewCRB, err := rbacClient.ClusterRoleBindings().Get(ctx, clusterInterceptors, metav1.GetOptions{})
+
 	if err == nil {
 		logger.Infof("found clusterrolebinding %s", viewCRB.Name)
-
-		// Retry the update operation on conflict
-		backoff := wait.Backoff{
-			Steps:    10,                     // Number of retry attempts
-			Duration: 300 * time.Millisecond, // Initial backoff duration
-			Factor:   1.5,                    // Factor to increase backoff
-			Jitter:   0.2,                    // Jitter to avoid thundering herd
-		}
-
-		err = retry.OnError(backoff, errors.IsConflict, func() error {
-			return r.updateClusterRoleBinding(ctx, viewCRB, sa)
-		})
-
-		return err
+		return r.updateClusterRoleBinding(ctx, viewCRB, sa)
 	}
 
 	if errors.IsNotFound(err) {
@@ -1131,28 +1100,25 @@ func (r *rbac) createClusterRoleBinding(ctx context.Context, sa *corev1.ServiceA
 
 func (r *rbac) createClusterRole(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
+
+	logger.Info("create new clusterrole ", clusterInterceptors)
 	rbacClient := r.kubeClientSet.RbacV1()
-	logger.Info("finding cluster-role ", clusterInterceptors)
-	if _, err := rbacClient.ClusterRoles().Get(ctx, clusterInterceptors, metav1.GetOptions{}); errors.IsNotFound(err) {
-		logger.Info("cluser-role %s is not found, creating new clusterrole %s", clusterInterceptors, clusterInterceptors)
 
-		cr := &rbacv1.ClusterRole{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            clusterInterceptors,
-				OwnerReferences: []metav1.OwnerReference{r.ownerRef},
-			},
-			Rules: []rbacv1.PolicyRule{{
-				APIGroups: []string{"triggers.tekton.dev"},
-				Resources: []string{"clusterinterceptors"},
-				Verbs:     []string{"get", "list", "watch"},
-			}},
-		}
+	cr := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            clusterInterceptors,
+			OwnerReferences: []metav1.OwnerReference{r.ownerRef},
+		},
+		Rules: []rbacv1.PolicyRule{{
+			APIGroups: []string{"triggers.tekton.dev"},
+			Resources: []string{"clusterinterceptors"},
+			Verbs:     []string{"get", "list", "watch"},
+		}},
+	}
 
-		if _, err := rbacClient.ClusterRoles().Create(ctx, cr, metav1.CreateOptions{}); err != nil {
-			logger.Error(err, "creation of "+clusterInterceptors+" clusterrole failed")
-			return err
-		}
-
+	if _, err := rbacClient.ClusterRoles().Create(ctx, cr, metav1.CreateOptions{}); err != nil {
+		logger.Error(err, "creation of "+clusterInterceptors+" clusterrole failed")
+		return err
 	}
 	return nil
 }
