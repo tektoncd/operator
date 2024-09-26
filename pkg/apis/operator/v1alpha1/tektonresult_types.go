@@ -97,6 +97,8 @@ type ResultsAPIProperties struct {
 	LoggingPluginStaticLabels           string `json:"logging_plugin_static_labels,omitempty"`
 	LoggingPluginCACert                 string `json:"logging_plugin_ca_cert,omitempty"`
 	LoggingPluginForwarderDelayDuration *uint  `json:"logging_plugin_forwarder_delay_duration,omitempty"`
+	LoggingPluginQueryLimit             *uint  `json:"logging_plugin_query_limit,omitempty"`
+	LoggingPluginQueryParams            string `json:"logging_plugin_query_params,omitempty"`
 	// Options holds additions fields and these fields will be updated on the manifests
 	Options AdditionalOptions `json:"options"`
 }
