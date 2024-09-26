@@ -65,6 +65,7 @@ func Test_updateApiConfig(t *testing.T) {
 
 	boolVal := true
 	intVal := int64(12345)
+	limit := uint(100)
 	cm := &corev1.ConfigMap{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
 	assert.NilError(t, err)
@@ -90,6 +91,8 @@ func Test_updateApiConfig(t *testing.T) {
 			LogsBufferSize:                      &intVal,
 			StorageEmulatorHost:                 "http://localhost:9004",
 			LoggingPluginForwarderDelayDuration: &bufferDuration,
+			LoggingPluginQueryLimit:             &limit,
+			LoggingPluginQueryParams:            "direction=asc&skip=0",
 		},
 	}
 
@@ -122,6 +125,8 @@ LOGS_API=true
 LOGS_TYPE=s3
 LOGS_BUFFER_SIZE=12345
 LOGS_PATH=/logs/test
+LOGGING_PLUGIN_QUERY_LIMIT=100
+LOGGING_PLUGIN_QUERY_PARAMS=direction=asc&skip=0
 STORAGE_EMULATOR_HOST=http://localhost:9004`)
 }
 
