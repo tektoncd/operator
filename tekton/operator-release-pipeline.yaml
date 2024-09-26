@@ -259,7 +259,7 @@ spec:
         description: The full URL of the release file (no tag, platform - OpenShift) in the bucket
       steps:
       - name: create-results
-        image: alpine
+        image: docker.io/library/alpine:3.20.3@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d
         script: |
           BASE_URL=$(echo "$(params.releaseBucket)/previous/$(params.versionTag)")
           # If the bucket is in the gs:// return the corresponding public https URL
