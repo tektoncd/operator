@@ -1219,6 +1219,11 @@ func (in *ResultsAPIProperties) DeepCopyInto(out *ResultsAPIProperties) {
 		*out = new(uint)
 		**out = **in
 	}
+	if in.LoggingPluginQueryLimit != nil {
+		in, out := &in.LoggingPluginQueryLimit, &out.LoggingPluginQueryLimit
+		*out = new(uint)
+		**out = **in
+	}
 	in.Options.DeepCopyInto(&out.Options)
 	return
 }
