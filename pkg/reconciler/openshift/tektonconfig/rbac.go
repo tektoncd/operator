@@ -68,7 +68,7 @@ const (
 	rbacParamName               = "createRbacResource"
 	serviceAccountCreationLabel = "openshift-pipelines.tekton.dev/sa-created"
 
-	rbacMaxConcurrentCalls = 20
+	rbacMaxConcurrentCalls = 5
 )
 
 var (
