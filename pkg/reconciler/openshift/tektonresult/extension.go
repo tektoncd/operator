@@ -41,6 +41,8 @@ const (
 	internalDBYamlDirectory = "static/tekton-results/internal-db"
 	logsRBACYamlDirectory   = "static/tekton-results/logs-rbac"
 	deploymentAPI           = "tekton-results-api"
+	serviceAPI              = "tekton-results-api-service"
+	secretAPITLS            = "tekton-results-tls"
 	apiContainerName        = "api"
 	boundSAVolume           = "bound-sa-token"
 	boundSAPath             = "/var/run/secrets/openshift/serviceaccount"
@@ -96,6 +98,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.ApplyCABundles,
 		injectBoundSAToken(instance.Spec.ResultsAPIProperties),
 		injectLokiStackTLSCACert(instance.Spec.LokiStackProperties),
+		injectResultsAPIServiceCACert(instance.Spec.ResultsAPIProperties),
 	}
 }
 
@@ -175,6 +178,34 @@ func filterAndTransform() client.FilterAndTransform {
 			return nil, err
 		}
 		return manifest, nil
+	}
+}
+
+func injectResultsAPIServiceCACert(props v1alpha1.ResultsAPIProperties) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Service" || u.GetName() != serviceAPI {
+			return nil
+		}
+
+		s := &corev1.Service{}
+		err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, s)
+		if err != nil {
+			return err
+		}
+
+		annotations := s.Annotations
+		if annotations == nil {
+			annotations = make(map[string]string)
+		}
+		annotations["service.beta.openshift.io/serving-cert-secret-name"] = secretAPITLS
+		s.SetAnnotations(annotations)
+
+		uObj, err := k8sruntime.DefaultUnstructuredConverter.ToUnstructured(s)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(uObj)
+		return nil
 	}
 }
 
