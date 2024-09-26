@@ -97,7 +97,8 @@ func deleteInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha
 // checkIfInstallerSetExist checks if installer set exists for a component and return true/false based on it
 // and if installer set which already exist is of older version then it deletes and return false to create a new
 // installer set
-func checkIfInstallerSetExist(ctx context.Context, oc versioned.Interface, relVersion string) (*v1alpha1.TektonInstallerSet, error) {
+func checkIfInstallerSetExist(ctx context.Context, oc versioned.Interface, relVersion string,
+	tc *v1alpha1.TektonConfig) (*v1alpha1.TektonInstallerSet, error) {
 
 	labelSelector, err := common.LabelSelector(rbacInstallerSetSelector)
 	if err != nil {
