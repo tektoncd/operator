@@ -150,6 +150,17 @@ func (p *Pipeline) setDefaults() {
 		p.EnableGitResolver = ptr.Bool(true)
 	}
 
+	// Statefulset Ordinals
+	// if StatefulSet Ordinals mode, buckets should be equal to replicas
+	if p.Performance.StatefulsetOrdinals == nil {
+		p.Performance.StatefulsetOrdinals = ptr.Bool(false)
+	} else if *p.Performance.StatefulsetOrdinals {
+		if p.Performance.Replicas != nil && *p.Performance.Replicas > 1 {
+			replicas := uint(*p.Performance.Replicas)
+			p.Performance.Buckets = &replicas
+		}
+	}
+
 	// run platform specific defaulting
 	if IsOpenShiftPlatform() {
 		p.openshiftDefaulting()

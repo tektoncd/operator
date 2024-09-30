@@ -142,3 +142,37 @@ func verifyNoTektonPipelineCR(clients *utils.Clients) error {
 	}
 	return nil
 }
+
+// EnsureTektonPipelineWithStatefulsetExists creates a TektonPipeline with the name names.TektonPipeline, if it does not exist.
+func EnsureTektonPipelineWithStatefulsetExists(clients pipelinev1alpha1.TektonPipelineInterface, names utils.ResourceNames) (*v1alpha1.TektonPipeline, error) {
+	// If this function is called by the upgrade tests, we only create the custom resource if it does not exist.
+	tpCR, err := clients.Get(context.TODO(), names.TektonPipeline, metav1.GetOptions{})
+	if err == nil {
+		return tpCR, err
+	}
+	if apierrs.IsNotFound(err) {
+		statefulsetOrdinals := true
+
+		tpCR = &v1alpha1.TektonPipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: names.TektonPipeline,
+			},
+			Spec: v1alpha1.TektonPipelineSpec{
+				CommonSpec: v1alpha1.CommonSpec{
+					TargetNamespace: names.TargetNamespace,
+				},
+				Pipeline: v1alpha1.Pipeline{
+					PipelineProperties: v1alpha1.PipelineProperties{
+						Performance: v1alpha1.PipelinePerformanceProperties{
+							PipelinePerformanceStatefulsetOrdinalsConfig: v1alpha1.PipelinePerformanceStatefulsetOrdinalsConfig{
+								StatefulsetOrdinals: &statefulsetOrdinals,
+							},
+						},
+					},
+				},
+			},
+		}
+		return clients.Create(context.TODO(), tpCR, metav1.CreateOptions{})
+	}
+	return tpCR, err
+}

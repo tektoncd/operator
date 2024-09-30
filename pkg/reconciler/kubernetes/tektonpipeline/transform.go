@@ -82,6 +82,10 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			updatePerformanceFlagsInDeployment(pipeline),
 			updateResolverConfigEnvironmentsInDeployment(pipeline),
 		}
+		if pipeline.Spec.Performance.StatefulsetOrdinals != nil && *pipeline.Spec.Performance.StatefulsetOrdinals {
+			extra = append(extra, common.ConvertDeploymentToStatefulSet(), common.AddStatefulEnvVars())
+		}
+
 		trns = append(trns, extra...)
 
 		if err := common.Transform(ctx, manifest, instance, trns...); err != nil {
