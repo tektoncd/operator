@@ -31,6 +31,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/logging"
@@ -1008,6 +1009,90 @@ func AddSecretData(data map[string][]byte, annotations map[string]string) mf.Tra
 		}
 
 		// Update the original unstructured object
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
+// ConvertDeploymentToStatefulSet converts a Deployment to a StatefulSet with given parameters
+func ConvertDeploymentToStatefulSet(controllerName, serviceName string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" || u.GetName() != controllerName {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		ss := &appsv1.StatefulSet{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "StatefulSet",
+				APIVersion: appsv1.SchemeGroupVersion.Group + "/" + appsv1.SchemeGroupVersion.Version,
+			},
+			ObjectMeta: d.ObjectMeta,
+			Spec: appsv1.StatefulSetSpec{
+				Selector:    d.Spec.Selector,
+				ServiceName: serviceName,
+				Template:    d.Spec.Template,
+				Replicas:    d.Spec.Replicas,
+				UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+					Type: appsv1.RollingUpdateStatefulSetStrategyType,
+				},
+			},
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ss)
+		if err != nil {
+			return err
+		}
+
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
+// AddStatefulEnvVars adds environment variables to the statefulset based on given parameters
+func AddStatefulEnvVars(controllerName, serviceName, statefulServiceEnvVar, controllerOrdinalEnvVar string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "StatefulSet" || u.GetName() != controllerName {
+			return nil
+		}
+
+		ss := &appsv1.StatefulSet{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, ss)
+		if err != nil {
+			return err
+		}
+
+		newEnvVars := []corev1.EnvVar{
+			{
+				Name:  statefulServiceEnvVar,
+				Value: serviceName,
+			},
+			{
+				Name: controllerOrdinalEnvVar,
+				ValueFrom: &corev1.EnvVarSource{
+					FieldRef: &corev1.ObjectFieldSelector{
+						FieldPath: "metadata.name",
+					},
+				},
+			},
+		}
+
+		if len(ss.Spec.Template.Spec.Containers) > 0 {
+			ss.Spec.Template.Spec.Containers[0].Env = append(ss.Spec.Template.Spec.Containers[0].Env, newEnvVars...)
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ss)
+		if err != nil {
+			return err
+		}
+
 		u.SetUnstructuredContent(unstrObj)
 
 		return nil

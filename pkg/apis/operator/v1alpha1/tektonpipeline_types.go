@@ -189,6 +189,8 @@ type PipelinePerformanceProperties struct {
 	// +optional
 	PipelinePerformanceLeaderElectionConfig `json:",inline"`
 	// +optional
+	PipelinePerformanceStatefulsetOrdinalsConfig `json:",inline"`
+	// +optional
 	PipelineDeploymentPerformanceArgs `json:",inline"`
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
@@ -199,6 +201,12 @@ type PipelinePerformanceProperties struct {
 // https://tekton.dev/docs/pipelines/enabling-ha/
 type PipelinePerformanceLeaderElectionConfig struct {
 	Buckets *uint `json:"buckets,omitempty"`
+}
+
+// allow to configure pipelines controller ha mode to statefulset ordinals
+type PipelinePerformanceStatefulsetOrdinalsConfig struct {
+	//if is true, enable StatefulsetOrdinals mode
+	StatefulsetOrdinals *bool `json:"statefulset-ordinals,omitempty"`
 }
 
 // performance configurations to tune the performance of the pipeline controller

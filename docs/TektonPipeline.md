@@ -56,6 +56,7 @@ spec:
     threads-per-controller: 2
     kube-api-qps: 5.0
     kube-api-burst: 10
+    statefulset-ordinals: false
   options:
     disabled: false
     configMaps: {}
@@ -263,6 +264,7 @@ spec:
     threads-per-controller: 2
     kube-api-qps: 5.0
     kube-api-burst: 10
+    statefulset-ordinals: false
 ```
 These fields are optional and there is no default values. If user passes them, operator will include most of fields into the deployment `tekton-pipelines-controller` under the container `tekton-pipelines-controller` as arguments(duplicate name? No, container and deployment has the same name), otherwise pipelines controller's default values will be considered. and `buckets` field is updated into `config-leader-election` config-map under the namespace `tekton-pipelines`.
 
@@ -275,6 +277,11 @@ A high level descriptions are given here. To get the detailed information please
 * `threads-per-controller` - is the number of threads(aka worker) to use when processing the pipelines controller's workqueue, default value in pipelines controller is `2`
 * `kube-api-qps` - QPS indicates the maximum QPS to the cluster master from the REST client, default value in pipeline controller is `5.0`
 * `kube-api-burst` - maximum burst for throttle, default value in pipeline controller is `10`
+* `statefulset-ordinals` - enables StatefulSet Ordinals mode for the Tekton Pipelines Controller. When set to true, the Pipelines Controller is deployed as a StatefulSet, allowing for multiple replicas to be configured with a load-balancing mode. This ensures that the load is evenly distributed across replicas, and the number of buckets is enforced to match the number of replicas.
+Moreover, There are two mechanisms available for scaling for scaling Pipelines Controller horizontally: 
+- Using leader election, which allows for failover, but can result in hot-spotting.
+- Using StatefulSet ordinals, which doesn't allow for failover, but guarantees load is evenly spread across replicas.
+
 
 > #### Note:
 > * `kube-api-qps` and `kube-api-burst` will be multiplied by 2 in pipelines controller. To get the detailed information visit [Performance Configuration](https://tekton.dev/docs/pipelines/tekton-controller-performance-configuration/) guide

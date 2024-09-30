@@ -26,8 +26,9 @@ import (
 )
 
 const (
-	InstallerSubTypeStatic     = "static"
-	InstallerSubTypeDeployment = "deployment"
+	InstallerSubTypeStatic      = "static"
+	InstallerSubTypeDeployment  = "deployment"
+	InstallerSubTypeStatefulset = "statefulset"
 
 	InstallerTypeMain   = "main"
 	InstallerTypePre    = "pre"
