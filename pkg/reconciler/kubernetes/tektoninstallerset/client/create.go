@@ -60,6 +60,7 @@ func (i *InstallerSetClient) create(ctx context.Context, comp v1alpha1.TektonCom
 func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest) ([]v1alpha1.TektonInstallerSet, error) {
 	staticManifest := manifest.Filter(mf.Not(mf.ByKind("Deployment")), mf.Not(mf.ByKind("Service")))
 	deploymentManifest := manifest.Filter(mf.Any(mf.ByKind("Deployment"), mf.ByKind("Service")))
+	statefulSetManifest := manifest.Filter(mf.Any(mf.ByKind("StatefulSet"), mf.ByKind("Service")))
 
 	kind := strings.ToLower(strings.TrimPrefix(i.resourceKind, "Tekton"))
 	staticName := fmt.Sprintf("%s-%s-%s-", kind, InstallerTypeMain, InstallerSubTypeStatic)
@@ -78,6 +79,7 @@ func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.Tek
 	}
 
 	deployName := fmt.Sprintf("%s-%s-%s-", kind, InstallerTypeMain, InstallerSubTypeDeployment)
+
 	deploymentIS, err := i.makeInstallerSet(ctx, comp, &deploymentManifest, deployName, InstallerTypeMain, nil)
 	if err != nil {
 		return nil, err
@@ -87,6 +89,25 @@ func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.Tek
 	if err != nil {
 		return nil, err
 	}
+
+	statefulSet := false
+	if pipeline, ok := comp.(*v1alpha1.TektonPipeline); ok {
+		statefulSet = pipeline.Spec.Performance.StatefulsetOrdinals != nil && *pipeline.Spec.Performance.StatefulsetOrdinals
+	}
+	if statefulSet {
+		stsName := fmt.Sprintf("%s-%s-%s-", kind, InstallerTypeMain, InstallerSubTypeStatefulset)
+		stsIS, err := i.makeInstallerSet(ctx, comp, &statefulSetManifest, stsName, InstallerTypeMain, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		stsIS, err = i.clientSet.Create(ctx, stsIS, metav1.CreateOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return []v1alpha1.TektonInstallerSet{*staticIS, *deploymentIS, *stsIS}, nil
+	}
+
 	return []v1alpha1.TektonInstallerSet{*staticIS, *deploymentIS}, nil
 }
 

@@ -50,6 +50,11 @@ const (
 	pipelinesRemoteResolverControllerContainer   = "controller"
 	resolverEnvKeyTektonHubApi                   = "tekton-hub-api"
 	resolverEnvKeyArtifactHubApi                 = "artifact-hub-api"
+
+	tektonPipelinesControllerName                      = "tekton-pipelines-controller"
+	tektonPipelinesServiceName                         = "tekton-pipelines-controller"
+	tektonPipelinesControllerStatefulServiceName       = "STATEFUL_SERVICE_NAME"
+	tektonPipelinesControllerStatefulControllerOrdinal = "STATEFUL_CONTROLLER_ORDINAL"
 )
 
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
@@ -82,6 +87,11 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			updatePerformanceFlagsInDeployment(pipeline),
 			updateResolverConfigEnvironmentsInDeployment(pipeline),
 		}
+		if pipeline.Spec.Performance.StatefulsetOrdinals != nil && *pipeline.Spec.Performance.StatefulsetOrdinals {
+			extra = append(extra, common.ConvertDeploymentToStatefulSet(tektonPipelinesControllerName, tektonPipelinesServiceName), common.AddStatefulEnvVars(
+				tektonPipelinesControllerName, tektonPipelinesServiceName, tektonPipelinesControllerStatefulServiceName, tektonPipelinesControllerStatefulControllerOrdinal))
+		}
+
 		trns = append(trns, extra...)
 
 		if err := common.Transform(ctx, manifest, instance, trns...); err != nil {

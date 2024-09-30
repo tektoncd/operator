@@ -116,5 +116,15 @@ func (prof *PipelinePerformanceProperties) validate(path string) *apis.FieldErro
 		}
 	}
 
+	// check for StatefulsetOrdinals and Replicas
+	if prof.StatefulsetOrdinals != nil && *prof.StatefulsetOrdinals {
+		if prof.Replicas != nil {
+			replicas := uint(*prof.Replicas)
+			if *prof.Buckets != replicas {
+				errs = errs.Also(apis.ErrInvalidValue(*prof.Replicas, fmt.Sprintf("%s.replicas", path), "spec.performance.replicas must equal spec.performance.buckets for statefulset ordinals"))
+			}
+		}
+	}
+
 	return errs
 }

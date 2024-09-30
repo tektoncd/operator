@@ -98,7 +98,9 @@ func verifyMainInstallerSets(iSets []v1alpha1.TektonInstallerSet) error {
 		static = true
 	}
 	if strings.Contains(iSets[0].GetName(), InstallerSubTypeDeployment) ||
-		strings.Contains(iSets[1].GetName(), InstallerSubTypeDeployment) {
+		strings.Contains(iSets[1].GetName(), InstallerSubTypeDeployment) ||
+		strings.Contains(iSets[0].GetName(), InstallerSubTypeStatefulset) ||
+		strings.Contains(iSets[1].GetName(), InstallerSubTypeStatefulset) {
 		deployment = true
 	}
 	if !(static && deployment) {
