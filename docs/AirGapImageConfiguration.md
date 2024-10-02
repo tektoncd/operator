@@ -49,7 +49,7 @@ spec:
 | Pipeline              | arg:shell-image                   | `IMAGE_PIPELINES_ARG__SHELL_IMAGE`                  |
 | Pipeline              | arg:shell-image-win               | `IMAGE_PIPELINES_ARG__SHELL_IMAGE_WIN`              |
 | Pipeline              | arg:workingdirinit-image          | `IMAGE_PIPELINES_ARG__WORKINGDIRINIT_IMAGE`         |
-| Pipeline              | controller                        | `IMAGE_PIPELINES_CONTROLLER`                        |
+| Pipeline              | controller (resolvers controller) | `IMAGE_PIPELINES_CONTROLLER`                        |
 | Pipeline              | tekton-events-controller          | `IMAGE_PIPELINES_TEKTON_EVENTS_CONTROLLER`          |
 | Pipeline              | tekton-pipelines-controller       | `IMAGE_PIPELINES_TEKTON_PIPELINES_CONTROLLER`       |
 | Pipeline              | webhook                           | `IMAGE_PIPELINES_WEBHOOK`                           |
