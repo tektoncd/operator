@@ -393,7 +393,7 @@ type CreateGroupOptions struct {
 type DefaultBranchProtectionDefaultsOptions struct {
 	AllowedToPush           *[]*GroupAccessLevel `url:"allowed_to_push,omitempty" json:"allowed_to_push,omitempty"`
 	AllowForcePush          *bool                `url:"allow_force_push,omitempty" json:"allow_force_push,omitempty"`
-	AllowedToMerge          *[]*GroupAccessLevel `url:"allowed_to_merge.omitempty" json:"allowed_to_merge.omitempty"`
+	AllowedToMerge          *[]*GroupAccessLevel `url:"allowed_to_merge,omitempty" json:"allowed_to_merge,omitempty"`
 	DeveloperCanInitialPush *bool                `url:"developer_can_initial_push,omitempty" json:"developer_can_initial_push,omitempty"`
 }
 
@@ -1037,6 +1037,7 @@ type GroupPushRules struct {
 	CommitCommitterCheck       bool       `json:"commit_committer_check"`
 	CommitCommitterNameCheck   bool       `json:"commit_committer_name_check"`
 	RejectUnsignedCommits      bool       `json:"reject_unsigned_commits"`
+	RejectNonDCOCommits        bool       `json:"reject_non_dco_commits"`
 }
 
 // GetGroupPushRules gets the push rules of a group.
@@ -1082,6 +1083,7 @@ type AddGroupPushRuleOptions struct {
 	MemberCheck                *bool   `url:"member_check,omitempty" json:"member_check,omitempty"`
 	PreventSecrets             *bool   `url:"prevent_secrets,omitempty" json:"prevent_secrets,omitempty"`
 	RejectUnsignedCommits      *bool   `url:"reject_unsigned_commits,omitempty" json:"reject_unsigned_commits,omitempty"`
+	RejectNonDCOCommits        *bool   `url:"reject_non_dco_commits,omitempty" json:"reject_non_dco_commits,omitempty"`
 }
 
 // AddGroupPushRule adds push rules to the specified group.
@@ -1127,6 +1129,7 @@ type EditGroupPushRuleOptions struct {
 	MemberCheck                *bool   `url:"member_check,omitempty" json:"member_check,omitempty"`
 	PreventSecrets             *bool   `url:"prevent_secrets,omitempty" json:"prevent_secrets,omitempty"`
 	RejectUnsignedCommits      *bool   `url:"reject_unsigned_commits,omitempty" json:"reject_unsigned_commits,omitempty"`
+	RejectNonDCOCommits        *bool   `url:"reject_non_dco_commits,omitempty" json:"reject_non_dco_commits,omitempty"`
 }
 
 // EditGroupPushRule edits a push rule for a specified group.
