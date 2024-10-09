@@ -283,6 +283,13 @@ func TestTektonPipelinePerformancePropertiesValidate(t *testing.T) {
 		return &value
 	}
 
+	// return pointer value for replicas
+	getReplicas := func(value int32) *int32 {
+		return &value
+	}
+
+	statefulsetOrdinals := true
+
 	// validate buckets minimum range
 	tp.Spec.PipelineProperties.Performance = PipelinePerformanceProperties{}
 	tp.Spec.PipelineProperties.Performance.DisableHA = false
@@ -310,4 +317,26 @@ func TestTektonPipelinePerformancePropertiesValidate(t *testing.T) {
 	tp.Spec.PipelineProperties.Performance.Buckets = getBuckets(10)
 	errs = tp.Validate(context.TODO())
 	assert.Equal(t, "", errs.Error())
+
+	// validate buckets is equal to replicas when StatefulsetOrdinals is true
+	tp.Spec.PipelineProperties.Performance = PipelinePerformanceProperties{}
+	tp.Spec.PipelineProperties.Performance.DisableHA = false
+	bucketValue := uint(5)
+	tp.Spec.PipelineProperties.Performance.Buckets = getBuckets(bucketValue)
+	replicaValue := int32(5)
+	tp.Spec.PipelineProperties.Performance.Replicas = getReplicas(replicaValue)
+	tp.Spec.PipelineProperties.Performance.StatefulsetOrdinals = &statefulsetOrdinals
+	errs = tp.Validate(context.TODO())
+	assert.Equal(t, "", errs.Error())
+
+	// validate error when buckets is not equal to replica
+	tp.Spec.PipelineProperties.Performance = PipelinePerformanceProperties{}
+	tp.Spec.PipelineProperties.Performance.DisableHA = false
+	tp.Spec.PipelineProperties.Performance.StatefulsetOrdinals = &statefulsetOrdinals
+	bucketValue = uint(5)
+	tp.Spec.PipelineProperties.Performance.Buckets = getBuckets(bucketValue)
+	tp.Spec.PipelineProperties.Performance.Replicas = getReplicas(3)
+	errs = tp.Validate(context.TODO())
+	expectedErrorMessage := "invalid value: 3: spec.performance.replicas\nspec.performance.replicas must equal spec.performance.buckets for statefulset ordinals"
+	assert.Equal(t, expectedErrorMessage, errs.Error())
 }

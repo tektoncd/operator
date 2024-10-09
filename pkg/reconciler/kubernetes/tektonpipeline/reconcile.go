@@ -84,6 +84,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		return err
 	}
 
+	// Pipeline controller is deployed as statefulset, ensure deployment installerset is deleted
+	if tp.Spec.Performance.StatefulsetOrdinals != nil && *tp.Spec.Performance.StatefulsetOrdinals {
+		if err := r.installerSetClient.CleanupSubTypeDeployment(ctx); err != nil {
+			logger.Error("failed to delete main deployment installer set: %v", err)
+			return err
+		}
+	} else {
+		// Pipeline controller is deployed as deployment, ensure statefulset installerset is deleted
+		if err := r.installerSetClient.CleanupSubTypeStatefulset(ctx); err != nil {
+			logger.Error("failed to delete main statefulset installer set: %v", err)
+			return err
+		}
+	}
+
 	if err := r.extension.PreReconcile(ctx, tp); err != nil {
 		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
 		logger.Error(msg)

@@ -76,6 +76,9 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 			EnableGitResolver:     ptr.Bool(true),
 			EnableClusterResolver: ptr.Bool(true),
 		},
+		Performance: PipelinePerformanceProperties{
+			PipelinePerformanceStatefulsetOrdinalsConfig: PipelinePerformanceStatefulsetOrdinalsConfig{StatefulsetOrdinals: ptr.Bool(false)},
+		},
 	}
 
 	tp.SetDefaults(context.TODO())
