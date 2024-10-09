@@ -2,7 +2,7 @@ apiVersion: v2
 name: tekton-operator
 description: A Helm chart to deploy the Tekton Operator and its CRDs
 type: application
-version: 0.73.0
+version: 0.73.1
 # corresponds to the version of tekton-operator
 # https://github.com/tektoncd/operator/releases
 appVersion: "v0.73.1"
