@@ -33,9 +33,7 @@ const (
 	ProfileLite  = "lite"
 
 	// Addon Params
-	ClusterTasksParam      = "clusterTasks"
 	PipelineTemplatesParam = "pipelineTemplates"
-	CommunityClusterTasks  = "communityClusterTasks"
 	ResolverTasks          = "resolverTasks"
 	ResolverStepActions    = "resolverStepActions"
 
@@ -111,9 +109,7 @@ var (
 	}
 
 	AddonParams = map[string]ParamValue{
-		ClusterTasksParam:      defaultParamValue,
 		PipelineTemplatesParam: defaultParamValue,
-		CommunityClusterTasks:  defaultParamValue,
 		ResolverTasks:          defaultParamValue,
 		ResolverStepActions:    defaultParamValue,
 	}

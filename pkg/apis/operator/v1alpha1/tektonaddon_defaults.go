@@ -25,22 +25,8 @@ func (ta *TektonAddon) SetDefaults(ctx context.Context) {
 }
 
 func setAddonDefaults(addon *Addon) {
-
 	paramsMap := ParseParams(addon.Params)
-	_, ptOk := paramsMap[PipelineTemplatesParam]
-	ct, ctOk := paramsMap[ClusterTasksParam]
 
-	// If clusterTasks is false and pipelineTemplate is not set, then set it as false
-	// as pipelines templates are created using clusterTasks
-	if ctOk && (ct == "false" && !ptOk) {
-		addon.Params = append(addon.Params, Param{
-			Name:  PipelineTemplatesParam,
-			Value: "false",
-		})
-		paramsMap = ParseParams(addon.Params)
-	}
-
-	// set the params with default values if not set in cr
 	for d := range AddonParams {
 		_, ok := paramsMap[d]
 		if !ok {

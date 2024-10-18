@@ -21,11 +21,7 @@ spec:
   targetNamespace: openshift-pipelines
   addon:
     params:
-    - name: clusterTasks
-      value: "true"
     - name: pipelineTemplates
-      value: "true"
-    - name: communityClusterTasks
       value: "true"
     - name: resolverTasks
       value: "true"

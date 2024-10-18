@@ -17,45 +17,9 @@ limitations under the License.
 package tektonaddon
 
 import (
-	"context"
 	"fmt"
 	"strings"
-
-	mf "github.com/manifestival/manifestival"
-	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 )
-
-func (r *Reconciler) EnsureClusterTask(ctx context.Context, enable string, ta *v1alpha1.TektonAddon) error {
-	manifest := *r.clusterTaskManifest
-	if enable == "true" {
-		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
-		tfs := []mf.Transformer{
-			replaceKind(KindTask, KindClusterTask),
-			injectLabel(labelProviderType, providerTypeRedHat, overwrite, KindClusterTask),
-			common.TaskImages(ctx, addonImages),
-		}
-		if err := r.installerSetClient.CustomSet(ctx, ta, ClusterTaskInstallerSet, &manifest, filterAndTransformClusterTask(tfs), nil); err != nil {
-			return err
-		}
-	} else {
-		if err := r.installerSetClient.CleanupCustomSet(ctx, ClusterTaskInstallerSet); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func filterAndTransformClusterTask(tfs []mf.Transformer) client.FilterAndTransform {
-	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
-		addon := comp.(*v1alpha1.TektonAddon)
-		if err := transformers(ctx, manifest, addon, tfs...); err != nil {
-			return nil, err
-		}
-		return manifest, nil
-	}
-}
 
 func formattedVersionMajorMinorX(version, x string) string {
 	ver := getPatchVersionTrimmed(version)

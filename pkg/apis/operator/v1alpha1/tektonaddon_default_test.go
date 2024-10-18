@@ -39,10 +39,10 @@ func Test_AddonSetDefaults_DefaultParamsWithValues(t *testing.T) {
 	}
 
 	ta.SetDefaults(context.TODO())
-	assert.Equal(t, 5, len(ta.Spec.Params))
+	assert.Equal(t, 3, len(ta.Spec.Params))
 
 	params := ParseParams(ta.Spec.Params)
-	value, ok := params[ClusterTasksParam]
+	value, ok := params[PipelineTemplatesParam]
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "true", value)
 }
@@ -61,7 +61,7 @@ func Test_AddonSetDefaults_ClusterTaskIsFalse(t *testing.T) {
 			Addon: Addon{
 				Params: []Param{
 					{
-						Name:  "clusterTasks",
+						Name:  "resolverTasks",
 						Value: "false",
 					},
 				},
@@ -70,10 +70,10 @@ func Test_AddonSetDefaults_ClusterTaskIsFalse(t *testing.T) {
 	}
 
 	ta.SetDefaults(context.TODO())
-	assert.Equal(t, 5, len(ta.Spec.Params))
+	assert.Equal(t, 3, len(ta.Spec.Params))
 
 	params := ParseParams(ta.Spec.Params)
-	value, ok := params[PipelineTemplatesParam]
+	value, ok := params[ResolverTasks]
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "false", value)
 }
