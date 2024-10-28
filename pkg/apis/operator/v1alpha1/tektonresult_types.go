@@ -68,6 +68,7 @@ type ResultsAPIProperties struct {
 	DBPort                *int64 `json:"db_port,omitempty"`
 	DBName                string `json:"db_name,omitempty"`
 	DBSSLMode             string `json:"db_sslmode,omitempty"`
+	DBSSLRootCert         string `json:"db_sslrootcert,omitempty"`
 	DBEnableAutoMigration *bool  `json:"db_enable_auto_migration,omitempty"`
 	ServerPort            *int64 `json:"server_port,omitempty"`
 	PrometheusPort        *int64 `json:"prometheus_port,omitempty"`

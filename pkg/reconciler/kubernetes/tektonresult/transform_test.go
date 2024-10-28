@@ -80,6 +80,7 @@ func Test_updateApiConfig(t *testing.T) {
 			DBName:                              "test",
 			ServerPort:                          &intVal,
 			DBSSLMode:                           "enable",
+			DBSSLRootCert:                       "/etc/tls/db/ca.crt",
 			DBEnableAutoMigration:               &boolVal,
 			TLSHostnameOverride:                 "localhostTest",
 			AuthDisable:                         &boolVal,
@@ -111,6 +112,7 @@ PROMETHEUS_PORT=12345
 PROMETHEUS_HISTOGRAM=true
 DB_NAME=test
 DB_SSLMODE=enable
+DB_SSLROOTCERT=/etc/tls/db/ca.crt
 DB_ENABLE_AUTO_MIGRATION=true
 TLS_HOSTNAME_OVERRIDE=localhostTest
 TLS_PATH=/etc/tls
