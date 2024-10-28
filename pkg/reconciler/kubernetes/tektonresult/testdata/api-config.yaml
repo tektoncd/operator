@@ -7,6 +7,7 @@ data:
     PROMETHEUS_PORT=9090
     DB_NAME=
     DB_SSLMODE=disable
+    DB_SSLROOTCERT=/etc/tls/db/ca.crt
     DB_ENABLE_AUTO_MIGRATION=true
     TLS_HOSTNAME_OVERRIDE=tekton-results-api-service.tekton-pipelines.svc.cluster.local
     TLS_PATH=/etc/tls
