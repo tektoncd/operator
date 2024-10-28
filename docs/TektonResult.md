@@ -91,7 +91,8 @@ spec:
   targetNamespace: tekton-pipelines
   db_host: localhost
   db_port: 5342
-  db_sslmode: false
+  db_sslmode: verify-full
+  db_sslrootcert: /etc/tls/db/ca.crt
   db_enable_auto_migration: true
   log_level: debug
   logs_api: true
@@ -205,6 +206,27 @@ spec:
   is_external_db: true
 ...
 ```
+
+### Securing the DB connection
+
+To secure the DB connection using self-segned certificate or using certificate signed by 3rd party CA (e.g AWS RDS), one can provide path to the DB SSL root certificate, mounted and available on the Results API pod. The configuration will look like:
+
+
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonResult
+metadata:
+  name: result
+spec:
+  targetNamespace: tekton-pipelines
+  db_host: tekton-results-postgres-service.openshift-pipelines.svc.cluster.local
+  db_port: 5342
+  db_sslmode: verify-full
+  db_sslrootcert: /etc/tls/db/ca.crt
+  ...
+```
+
+The valid options for `db_sslmode` are explained here https://www.postgresql.org/docs/current/libpq-ssl.html#LIBPQ-SSL-PROTECTION. To use any of the `require`, `verify-ca` and `verify-full` modes with self signed certificate, the path to the CA certificate which signed the DB certificate must be provided as `db_sslrootcert`.
 
 ## LokiStack + TektonResult
 
