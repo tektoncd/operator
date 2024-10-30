@@ -1216,6 +1216,11 @@ func (in *ResultsAPIProperties) DeepCopyInto(out *ResultsAPIProperties) {
 		*out = new(int64)
 		**out = **in
 	}
+	if in.PrometheusHistogram != nil {
+		in, out := &in.PrometheusHistogram, &out.PrometheusHistogram
+		*out = new(bool)
+		**out = **in
+	}
 	if in.LogsAPI != nil {
 		in, out := &in.LogsAPI, &out.LogsAPI
 		*out = new(bool)
