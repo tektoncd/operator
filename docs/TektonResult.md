@@ -107,7 +107,8 @@ spec:
   is_external_db: false
   loki_stack_name: #optional
   loki_stack_namespace: #optional
-  
+  prometheus_port: 9090
+  prometheus_histogram: false
 ```
 
 These properties are analogous to the one in configmap of tekton results api `tekton-results-api-config` documented at [api.md]:https://github.com/tektoncd/results/blob/4472848a0fb7c1473cfca8b647553170efac78a1/cmd/api/README.md
@@ -298,3 +299,9 @@ spec:
       inputRefs: [ only-tekton ]
       outputRefs: [ default ]
 ```
+
+### Debugging
+
+#### Debugging gRPC
+
+Set `prometheus_histogram: true` to turns on recording of handling time of RPCs. Histogram metrics can be very expensive for Prometheus to retain and query. Disabled by default.
