@@ -25,17 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func replaceKind(fromKind, toKind string) mf.Transformer {
-	return func(u *unstructured.Unstructured) error {
-		kind := u.GetKind()
-		if kind != fromKind {
-			return nil
-		}
-		u.SetKind(toKind)
-		return nil
-	}
-}
-
 // injectLabel adds label key:value to a resource
 // overwritePolicy (Retain/Overwrite) decides whehther to overwrite an already existing label
 // []kinds specify the Kinds on which the label should be applied

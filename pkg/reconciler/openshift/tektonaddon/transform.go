@@ -37,7 +37,6 @@ func transformers(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.Tekt
 		// However, it is recomended to use InjectOperandNameLabelPreserveExisting here (in Addons) as we cannot be sure
 		// about order of future addition of transformers in this reconciler or in sub functions which take care of various addons
 		common.InjectOperandNameLabelPreserveExisting(openshift.OperandOpenShiftPipelinesAddons),
-		injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
 		common.TaskImages(ctx, addonImages),
 	}
 	addonTfs = append(addonTfs, addnTfs...)
