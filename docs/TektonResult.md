@@ -91,7 +91,8 @@ spec:
   targetNamespace: tekton-pipelines
   db_host: localhost
   db_port: 5342
-  db_sslmode: false
+  db_sslmode: verify-full
+  db_sslrootcert: /etc/tls/db/ca.crt
   db_enable_auto_migration: true
   log_level: debug
   logs_api: true
