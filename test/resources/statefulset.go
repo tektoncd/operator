@@ -40,31 +40,29 @@ func DeleteAndVerifyStatefulSet(t *testing.T, clients *utils.Clients, namespace,
 		t.Fatalf("No StatefulSet under the namespace %q was found", namespace)
 	}
 
-	// Delete the first StatefulSet and verify the operator recreates it
-	statefulSet := stsList.Items[0]
-	err = clients.KubeClient.AppsV1().StatefulSets(statefulSet.Namespace).Delete(context.TODO(), statefulSet.Name, metav1.DeleteOptions{})
-	if err != nil {
-		t.Fatalf("Failed to delete StatefulSet %s/%s: %v", statefulSet.Namespace, statefulSet.Name, err)
-	}
-
-	// Poll and wait for the StatefulSet to be recreated and ready
-	waitErr := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
-		sts, err := clients.KubeClient.
-			AppsV1().StatefulSets(statefulSet.Namespace).Get(context.TODO(), statefulSet.Name, metav1.GetOptions{})
+	// Delete each StatefulSet and verify the operator recreates it
+	for _, statefulSet := range stsList.Items {
+		err = clients.KubeClient.AppsV1().StatefulSets(statefulSet.Namespace).Delete(context.TODO(), statefulSet.Name, metav1.DeleteOptions{})
 		if err != nil {
-			// If the StatefulSet is not found, we continue to wait for it to be recreated.
-			if apierrs.IsNotFound(err) {
-				return false, nil
-			}
-			return false, err
+			t.Fatalf("Failed to delete StatefulSet %s/%s: %v", statefulSet.Namespace, statefulSet.Name, err)
 		}
+	}
+	// Poll and wait for each StatefulSet to be recreated and ready
+	for _, statefulSet := range stsList.Items {
+		waitErr := wait.PollUntilContextTimeout(context.TODO(), utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
+			sts, err := clients.KubeClient.AppsV1().StatefulSets(statefulSet.Namespace).Get(context.TODO(), statefulSet.Name, metav1.GetOptions{})
+			if err != nil {
+				if apierrs.IsNotFound(err) {
+					return false, nil
+				}
+				return false, err
+			}
+			return IsStatefulSetAvailable(sts)
+		})
 
-		// Check if the StatefulSet is available
-		return IsStatefulSetAvailable(sts)
-	})
-
-	if waitErr != nil {
-		t.Fatalf("The StatefulSet %s/%s failed to reach the desired state: %v", statefulSet.Namespace, statefulSet.Name, waitErr)
+		if waitErr != nil {
+			t.Fatalf("The StatefulSet %s/%s failed to reach the desired state: %v", statefulSet.Namespace, statefulSet.Name, waitErr)
+		}
 	}
 }
 

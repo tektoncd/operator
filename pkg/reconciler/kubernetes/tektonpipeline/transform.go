@@ -43,7 +43,8 @@ const (
 	clusterResolverConfig                        = "cluster-resolver-config"
 	hubResolverConfig                            = "hubresolver-config"
 	gitResolverConfig                            = "git-resolver-config"
-	leaderElectionConfig                         = "config-leader-election-controller"
+	leaderElectionPipelineConfig                 = "config-leader-election-controller"
+	leaderElectionResolversConfig                = "config-leader-election-resolvers"
 	pipelinesControllerDeployment                = "tekton-pipelines-controller"
 	pipelinesControllerContainer                 = "tekton-pipelines-controller"
 	pipelinesRemoteResolversControllerDeployment = "tekton-pipelines-remote-resolvers"
@@ -53,6 +54,8 @@ const (
 
 	tektonPipelinesControllerName                      = "tekton-pipelines-controller"
 	tektonPipelinesServiceName                         = "tekton-pipelines-controller"
+	tektonRemoteResolversControllerName                = "tekton-pipelines-remote-resolvers"
+	tektonRemoteResolversServiceName                   = "tekton-pipelines-remote-resolvers"
 	tektonPipelinesControllerStatefulServiceName       = "STATEFUL_SERVICE_NAME"
 	tektonPipelinesControllerStatefulControllerOrdinal = "STATEFUL_CONTROLLER_ORDINAL"
 )
@@ -83,13 +86,17 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.CopyConfigMap(hubResolverConfig, pipeline.Spec.HubResolverConfig),
 			common.CopyConfigMap(clusterResolverConfig, pipeline.Spec.ClusterResolverConfig),
 			common.CopyConfigMap(gitResolverConfig, pipeline.Spec.GitResolverConfig),
-			common.AddConfigMapValues(leaderElectionConfig, pipeline.Spec.Performance.PipelinePerformanceLeaderElectionConfig),
-			updatePerformanceFlagsInDeployment(pipeline),
+			common.AddConfigMapValues(leaderElectionPipelineConfig, pipeline.Spec.Performance.PipelinePerformanceLeaderElectionConfig),
+			common.AddConfigMapValues(leaderElectionResolversConfig, pipeline.Spec.Performance.PipelinePerformanceLeaderElectionConfig),
+			updatePerformanceFlagsInDeploymentAndLeaderConfigMap(pipeline, leaderElectionPipelineConfig, pipelinesControllerDeployment, pipelinesControllerContainer),
+			updatePerformanceFlagsInDeploymentAndLeaderConfigMap(pipeline, leaderElectionResolversConfig, pipelinesRemoteResolversControllerDeployment, pipelinesRemoteResolverControllerContainer),
 			updateResolverConfigEnvironmentsInDeployment(pipeline),
 		}
 		if pipeline.Spec.Performance.StatefulsetOrdinals != nil && *pipeline.Spec.Performance.StatefulsetOrdinals {
 			extra = append(extra, common.ConvertDeploymentToStatefulSet(tektonPipelinesControllerName, tektonPipelinesServiceName), common.AddStatefulEnvVars(
 				tektonPipelinesControllerName, tektonPipelinesServiceName, tektonPipelinesControllerStatefulServiceName, tektonPipelinesControllerStatefulControllerOrdinal))
+			extra = append(extra, common.ConvertDeploymentToStatefulSet(tektonRemoteResolversControllerName, tektonRemoteResolversServiceName), common.AddStatefulEnvVars(
+				tektonRemoteResolversControllerName, tektonRemoteResolversServiceName, tektonPipelinesControllerStatefulServiceName, tektonPipelinesControllerStatefulControllerOrdinal))
 		}
 
 		trns = append(trns, extra...)
@@ -108,10 +115,10 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	}
 }
 
-// updates performance flags/args into pipelines controller container
-func updatePerformanceFlagsInDeployment(pipelineCR *v1alpha1.TektonPipeline) mf.Transformer {
+// updates performance flags/args into deployment and container given as args
+func updatePerformanceFlagsInDeploymentAndLeaderConfigMap(pipelineCR *v1alpha1.TektonPipeline, leaderConfig, deploymentName, containerName string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if u.GetKind() != "Deployment" || u.GetName() != pipelinesControllerDeployment {
+		if u.GetKind() != "Deployment" || u.GetName() != deploymentName {
 			return nil
 		}
 
@@ -151,7 +158,7 @@ func updatePerformanceFlagsInDeployment(pipelineCR *v1alpha1.TektonPipeline) mf.
 		labelKeys := getSortedKeys(leaderElectionConfigMapData)
 		for _, key := range labelKeys {
 			value := leaderElectionConfigMapData[key]
-			labelKey := fmt.Sprintf("%s.data.%s", leaderElectionConfig, key)
+			labelKey := fmt.Sprintf("%s.data.%s", leaderConfig, key)
 			podLabels[labelKey] = fmt.Sprintf("%v", value)
 		}
 		dep.Spec.Template.Labels = podLabels
@@ -170,13 +177,18 @@ func updatePerformanceFlagsInDeployment(pipelineCR *v1alpha1.TektonPipeline) mf.
 		flagKeys := getSortedKeys(flags)
 		// update performance arguments into target container
 		for containerIndex, container := range dep.Spec.Template.Spec.Containers {
-			if container.Name != pipelinesControllerContainer {
+			if container.Name != containerName {
 				continue
 			}
 			for _, flagKey := range flagKeys {
 				// update the arg name with "-" prefix
 				expectedArg := fmt.Sprintf("-%s", flagKey)
 				argStringValue := fmt.Sprintf("%v", flags[flagKey])
+				// skip deprecated disable-ha flag if not pipelinesControllerDeployment
+				// should be removed when the flag is removed from pipelines controller
+				if deploymentName != pipelinesControllerDeployment && flagKey == "disable-ha" {
+					continue
+				}
 				argUpdated := false
 				for argIndex, existingArg := range container.Args {
 					if strings.HasPrefix(existingArg, expectedArg) {
