@@ -36,7 +36,7 @@ import (
 	"knative.dev/pkg/ptr"
 )
 
-func TestUpdatePerformanceFlagsInDeployment(t *testing.T) {
+func TestUpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(t *testing.T) {
 	pipelineCR := &v1alpha1.TektonPipeline{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pipeline",
@@ -111,7 +111,7 @@ func TestUpdatePerformanceFlagsInDeployment(t *testing.T) {
 	assert.NilError(t, err)
 
 	// apply transformer
-	transformer := updatePerformanceFlagsInDeployment(pipelineCR)
+	transformer := updatePerformanceFlagsInDeploymentAndLeaderConfigMap(pipelineCR, leaderElectionPipelineConfig, pipelinesControllerDeployment, pipelinesControllerContainer)
 	err = transformer(ud)
 	assert.NilError(t, err)
 
