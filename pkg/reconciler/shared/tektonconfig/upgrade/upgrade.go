@@ -38,7 +38,8 @@ var (
 
 	// post upgrade functions
 	postUpgradeFunctions = []upgradeFunc{
-		upgradeStorageVersion, // upgrade #1: performs storage version migration
+		upgradeStorageVersion,          // upgrade #1: performs storage version migration
+		removeClusterTaskInstallerSets, // upgrade #2: removes the clusterTask installerset
 	}
 )
 

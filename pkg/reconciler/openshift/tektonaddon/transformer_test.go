@@ -63,22 +63,19 @@ func TestSetVersionedNames(t *testing.T) {
 		inputPath    string
 		expectedPath string
 		errorMessage string
-	}{{
-		name:         "test for versioned clustertask",
-		inputPath:    "test-versioned-clustertask-name.yaml",
-		expectedPath: "test-versioned-clustertask-name-expected.yaml",
-		errorMessage: "failed to update versioned clustertask name %s",
-	}, {
-		name:         "test for versioned resolver task",
-		inputPath:    "test-versioned-resolvertask-name.yaml",
-		expectedPath: "test-versioned-resolver-name-expected.yaml",
-		errorMessage: "failed to update versioned resolver task name %s",
-	}, {
-		name:         "test for versioned resolver stepaction",
-		inputPath:    "test-versioned-resolverstepaction-name.yaml",
-		expectedPath: "test-versioned-resolver-stepaction-expected.yaml",
-		errorMessage: "failed to update versioned resolver stepaction name %s",
-	}}
+	}{
+		{
+			name:         "test for versioned resolver task",
+			inputPath:    "test-versioned-resolvertask-name.yaml",
+			expectedPath: "test-versioned-resolver-name-expected.yaml",
+			errorMessage: "failed to update versioned resolver task name %s",
+		},
+		{
+			name:         "test for versioned resolver stepaction",
+			inputPath:    "test-versioned-resolverstepaction-name.yaml",
+			expectedPath: "test-versioned-resolver-stepaction-expected.yaml",
+			errorMessage: "failed to update versioned resolver stepaction name %s",
+		}}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

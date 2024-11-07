@@ -96,10 +96,9 @@ func AssertTektonAddonCRReadyStatus(t *testing.T, clients *utils.Clients, names 
 
 // AssertTektonInstallerSets verifies if the TektonInstallerSets are created.
 func AssertTektonInstallerSets(t *testing.T, clients *utils.Clients) {
-	assertInstallerSets(t, clients, tektonaddon.CommunityClusterTaskInstallerSet)
-	assertInstallerSets(t, clients, tektonaddon.ClusterTaskInstallerSet)
-	assertInstallerSets(t, clients, tektonaddon.VersionedClusterTaskInstallerSet)
 	assertInstallerSets(t, clients, tektonaddon.PipelinesTemplateInstallerSet)
+	assertInstallerSets(t, clients, tektonaddon.ResolverTaskInstallerSet)
+	assertInstallerSets(t, clients, tektonaddon.ResolverStepActionInstallerSet)
 	assertInstallerSets(t, clients, tektonaddon.TriggersResourcesInstallerSet)
 	assertInstallerSets(t, clients, tektonaddon.ConsoleCLIInstallerSet)
 	assertInstallerSets(t, clients, tektonaddon.MiscellaneousResourcesInstallerSet)

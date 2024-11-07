@@ -18,11 +18,17 @@ package upgrade
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
+
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	upgrade "github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade/helper"
 	"go.uber.org/zap"
 	apixclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -68,5 +74,37 @@ func upgradeStorageVersion(ctx context.Context, logger *zap.SugaredLogger, k8sCl
 
 	upgrade.MigrateStorageVersion(ctx, logger, migrator, crdGroups)
 
+	return nil
+}
+
+// removeClusterTaskInstallerSets removes clusterTask, community clusterTask and all versioned clusterTask from the cluster
+// as clusterTask has been removed
+func removeClusterTaskInstallerSets(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+
+	if !v1alpha1.IsOpenShiftPlatform() {
+		return nil
+	}
+
+	clusterInstallerSetsList := []string{"ClusterTask", "CommunityClusterTask", "VersionedClusterTask"}
+	tisClient := operatorClient.OperatorV1alpha1().TektonInstallerSets()
+
+	for _, clusterIS := range clusterInstallerSetsList {
+		installerSetsLabelSelector := metav1.LabelSelector{
+			MatchLabels: map[string]string{
+				v1alpha1.InstallerSetType: fmt.Sprintf("%s-%s", "custom", strings.ToLower(clusterIS)),
+			},
+		}
+		installerSetsLabel, err := common.LabelSelector(installerSetsLabelSelector)
+		if err != nil {
+			return err
+		}
+		// deletes clusterTask installersets
+		if err := tisClient.DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+			LabelSelector: installerSetsLabel,
+		}); err != nil {
+			logger.Errorw("failed to delete a installerset", "installerSetName", clusterIS, err)
+			return err
+		}
+	}
 	return nil
 }

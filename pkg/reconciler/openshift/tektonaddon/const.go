@@ -19,10 +19,7 @@ package tektonaddon
 const (
 	ResolverTaskInstallerSet                = "ResolverTask"
 	ResolverStepActionInstallerSet          = "ResolverStepAction"
-	ClusterTaskInstallerSet                 = "ClusterTask"
 	OpenShiftConsoleInstallerSet            = "OpenShiftConsole"
-	CommunityClusterTaskInstallerSet        = "CommunityClusterTask"
-	VersionedClusterTaskInstallerSet        = "VersionedClusterTask"
 	VersionedResolverTaskInstallerSet       = "VersionedResolverTask"
 	VersionedResolverStepActionInstallerSet = "VersionedResolverStepAction"
 	versionedClusterTaskPatchChar           = "0"
@@ -35,5 +32,4 @@ const (
 	CreatedByValue                          = "TektonAddon"
 	KindTask                                = "Task"
 	KindStepAction                          = "StepAction"
-	KindClusterTask                         = "ClusterTask"
 )

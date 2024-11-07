@@ -22,8 +22,14 @@ spec:
   tasks:
     - name: fetch-repository
       taskRef:
-        name: git-clone
-        kind: ClusterTask
+        resolver: cluster
+        params:
+        - name: kind
+          value: task
+        - name: git-clone-task
+          value: git-clone
+        - name: namespace
+          value: openshift-pipelines
       workspaces:
         - name: output
           workspace: workspace
@@ -39,7 +45,14 @@ spec:
 
     - name: build
       taskRef:
-        kind: ClusterTask
+        resolver: cluster
+        params:
+        - name: kind
+          value: task
+        - name: build-task
+          value: s2i
+        - name: namespace
+          value: openshift-pipelines
       runAfter:
         - fetch-repository
       workspaces:
