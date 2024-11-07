@@ -41,21 +41,19 @@ type Reconciler struct {
 	// installer Set client to do CRUD operations for components
 	installerSetClient *client.InstallerSetClient
 	// crdClientSet allows us to talk to the k8s for core APIs
-	crdClientSet                 *apiextensionsclient.Clientset
-	manifest                     mf.Manifest
-	operatorClientSet            clientset.Interface
-	extension                    common.Extension
-	pipelineInformer             informer.TektonPipelineInformer
-	triggerInformer              informer.TektonTriggerInformer
-	operatorVersion              string
-	resolverTaskManifest         *mf.Manifest
-	resolverStepActionManifest   *mf.Manifest
-	clusterTaskManifest          *mf.Manifest
-	triggersResourcesManifest    *mf.Manifest
-	pipelineTemplateManifest     *mf.Manifest
-	communityClusterTaskManifest *mf.Manifest
-	openShiftConsoleManifest     *mf.Manifest
-	consoleCLIManifest           *mf.Manifest
+	crdClientSet               *apiextensionsclient.Clientset
+	manifest                   mf.Manifest
+	operatorClientSet          clientset.Interface
+	extension                  common.Extension
+	pipelineInformer           informer.TektonPipelineInformer
+	triggerInformer            informer.TektonTriggerInformer
+	operatorVersion            string
+	resolverTaskManifest       *mf.Manifest
+	resolverStepActionManifest *mf.Manifest
+	triggersResourcesManifest  *mf.Manifest
+	pipelineTemplateManifest   *mf.Manifest
+	openShiftConsoleManifest   *mf.Manifest
+	consoleCLIManifest         *mf.Manifest
 }
 
 const (
@@ -63,11 +61,9 @@ const (
 	overwrite
 
 	labelProviderType                     = "operator.tekton.dev/provider-type"
-	providerTypeCommunity                 = "community"
 	providerTypeRedHat                    = "redhat"
 	installerSetNameForResolverTasks      = "addon-versioned-resolvertasks"
 	installerSetNameForResolverStepAction = "addon-versioned-resolverstepactions"
-	installerSetNameForClusterTasks       = "addon-versioned-clustertasks"
 )
 
 // Check that our Reconciler implements controller.Reconciler
@@ -133,13 +129,11 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 
 	// validate the params
 	ptVal, _ := findValue(ta.Spec.Params, v1alpha1.PipelineTemplatesParam)
-	ctVal, _ := findValue(ta.Spec.Params, v1alpha1.ClusterTasksParam)
-	cctVal, _ := findValue(ta.Spec.Params, v1alpha1.CommunityClusterTasks)
 	rtVal, _ := findValue(ta.Spec.Params, v1alpha1.ResolverTasks)
 	rsaVal, _ := findValue(ta.Spec.Params, v1alpha1.ResolverStepActions)
 
-	if ptVal == "true" && ctVal == "false" {
-		ta.Status.MarkNotReady("pipelineTemplates cannot be true if clusterTask is false")
+	if ptVal == "true" && rtVal == "false" {
+		ta.Status.MarkNotReady("pipelineTemplates cannot be true if ResolverTask is false")
 		return nil
 	}
 
@@ -179,24 +173,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	if err := r.EnsureVersionedResolverStepAction(ctx, rsaVal, ta); err != nil {
 		ready = false
 		errorMsg = fmt.Sprintf("versioned namespaced stepactions not yet ready:  %v", err)
-		logger.Error(errorMsg)
-	}
-
-	if err := r.EnsureClusterTask(ctx, ctVal, ta); err != nil {
-		ready = false
-		errorMsg = fmt.Sprintf("cluster tasks not yet ready: %v", err)
-		logger.Error(errorMsg)
-	}
-
-	if err := r.EnsureVersionedClusterTask(ctx, ctVal, ta); err != nil {
-		ready = false
-		errorMsg = fmt.Sprintf("versioned cluster tasks not yet ready:  %v", err)
-		logger.Error(errorMsg)
-	}
-
-	if err := r.EnsureCommunityClusterTask(ctx, cctVal, ta); err != nil {
-		ready = false
-		errorMsg = fmt.Sprintf("community cluster tasks not yet ready:  %v", err)
 		logger.Error(errorMsg)
 	}
 

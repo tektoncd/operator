@@ -18,23 +18,13 @@ package tektonaddon
 
 import (
 	"fmt"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	console "github.com/openshift/api/console/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
-
-func replaceKind(fromKind, toKind string) mf.Transformer {
-	return func(u *unstructured.Unstructured) error {
-		kind := u.GetKind()
-		if kind != fromKind {
-			return nil
-		}
-		u.SetKind(toKind)
-		return nil
-	}
-}
 
 // injectLabel adds label key:value to a resource
 // overwritePolicy (Retain/Overwrite) decides whehther to overwrite an already existing label
@@ -129,7 +119,7 @@ func replaceURLCCD(baseURL string) mf.Transformer {
 
 func setVersionedNames(operatorVersion string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if u.GetKind() != "ClusterTask" && u.GetKind() != "Task" && u.GetKind() != "StepAction" {
+		if u.GetKind() != "Task" && u.GetKind() != "StepAction" {
 			return nil
 		}
 		name := u.GetName()
@@ -138,4 +128,24 @@ func setVersionedNames(operatorVersion string) mf.Transformer {
 		u.SetName(name)
 		return nil
 	}
+}
+
+func formattedVersionMajorMinorX(version, x string) string {
+	ver := getPatchVersionTrimmed(version)
+	ver = fmt.Sprintf("%s.%s", ver, x)
+	return formattedVersionSnake(ver)
+}
+
+func formattedVersionSnake(version string) string {
+	ver := strings.TrimPrefix(version, "v")
+	return strings.Replace(ver, ".", "-", -1)
+}
+
+// To get the minor major version for label i.e. v1.6
+func getPatchVersionTrimmed(version string) string {
+	endIndex := strings.LastIndex(version, ".")
+	if endIndex != -1 {
+		version = version[:endIndex]
+	}
+	return version
 }

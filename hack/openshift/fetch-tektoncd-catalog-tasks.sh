@@ -34,7 +34,7 @@ USAGE:
     $SCRIPT_NAME DEST_DIR
 
 Example:
-  $SCRIPT_NAME cmd/openshift/operator/kodata/tekton-addon/addons/02-clustertasks/source_external
+  $SCRIPT_NAME cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem/stepactions
 EOF
   exit 1
 }
@@ -117,8 +117,6 @@ get_tasks() {
     local task_url=""
     if [[ "$type" == "ecosystem_tasks" ]]; then
       task_url="$catalog/$catalog_version/tasks/$t/${resources[$t]}/${t}.yaml"
-    elif [[ "$type" == 'default' ]];then
-      task_url="$catalog/$catalog_version/task/$t/${resources[$t]}/${t}.yaml"
     elif [[ "$type" == 'ecosystem_stepactions' ]];then
       task_url="$catalog/$catalog_version/stepactions/$t/${resources[$t]}/${t}.yaml"
     fi
@@ -141,12 +139,6 @@ main() {
   local type=${2:-"default"}
 
   case "$type" in
-    "default")
-      dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/02-clustertasks/source_external'}
-      resources=TEKTON_CATALOG_TASKS
-      branch="main"
-      catalog="$TEKTON_CATALOG"
-      ;;
     "ecosystem_tasks")
       dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem/tasks'}
       resources=TEKTON_ECOSYSTEM_TASKS

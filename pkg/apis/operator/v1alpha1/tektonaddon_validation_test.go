@@ -85,7 +85,7 @@ func Test_ValidateTektonAddon_InvalidParamValue(t *testing.T) {
 			Addon: Addon{
 				Params: []Param{
 					{
-						Name:  "clusterTasks",
+						Name:  "resolverTasks",
 						Value: "test",
 					},
 				},
@@ -94,10 +94,10 @@ func Test_ValidateTektonAddon_InvalidParamValue(t *testing.T) {
 	}
 
 	err := ta.Validate(context.TODO())
-	assert.Equal(t, "invalid value: test: spec.params.clusterTasks[0]", err.Error())
+	assert.Equal(t, "invalid value: test: spec.params.resolverTasks[0]", err.Error())
 }
 
-func Test_ValidateTektonAddon_ClusterTaskIsFalseAndPipelineTemplateIsTrue(t *testing.T) {
+func Test_ValidateTektonAddon_ResolverTaskIsFalseAndPipelineTemplateIsTrue(t *testing.T) {
 
 	ta := &TektonAddon{
 		ObjectMeta: metav1.ObjectMeta{
@@ -111,7 +111,7 @@ func Test_ValidateTektonAddon_ClusterTaskIsFalseAndPipelineTemplateIsTrue(t *tes
 			Addon: Addon{
 				Params: []Param{
 					{
-						Name:  "clusterTasks",
+						Name:  "resolverTasks",
 						Value: "false",
 					},
 					{
@@ -124,5 +124,5 @@ func Test_ValidateTektonAddon_ClusterTaskIsFalseAndPipelineTemplateIsTrue(t *tes
 	}
 
 	err := ta.Validate(context.TODO())
-	assert.Equal(t, "pipelineTemplates cannot be true if clusterTask is false: spec.params", err.Error())
+	assert.Equal(t, "pipelineTemplates cannot be true if resolverTask is false: spec.params", err.Error())
 }
