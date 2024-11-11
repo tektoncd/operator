@@ -55,6 +55,10 @@ spec:
       type: array
       description: Environment variables to set during _build-time_.
       default: []
+    - name: BASE_IMAGE
+      type: string
+      description: The location of the base java image.
+      default: image-registry.openshift-image-registry.svc:5000/openshift/java
   workspaces:
     - name: source
       mountPath: /workspace/source
@@ -84,7 +88,7 @@ spec:
             echo "$var" >> /env-vars/env-file
           done
 
-          s2i build $(params.PATH_CONTEXT) image-registry.openshift-image-registry.svc:5000/openshift/java:$(params.VERSION) \
+          s2i build $(params.PATH_CONTEXT) $(params.BASE_IMAGE):$(params.VERSION) \
           --image-scripts-url image:///usr/local/s2i \
           --as-dockerfile /gen-source/Dockerfile.gen --environment-file /env-vars/env-file
       volumeMounts:

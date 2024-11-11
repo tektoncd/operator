@@ -43,6 +43,10 @@ spec:
       type: array
       description: Environment variables to set during _build-time_.
       default: []
+    - name: BASE_IMAGE
+      type: string
+      description: The location of the base dotnet image.
+      default: image-registry.openshift-image-registry.svc:5000/openshift/dotnet
   workspaces:
     - name: source
       mountPath: /workspace/source
@@ -65,7 +69,7 @@ spec:
             echo "$var" >> /env-vars/env-file
         done
 
-        s2i build $(params.PATH_CONTEXT) image-registry.openshift-image-registry.svc:5000/openshift/dotnet:$(params.VERSION) \
+        s2i build $(params.PATH_CONTEXT) $(params.BASE_IMAGE):$(params.VERSION) \
         --as-dockerfile /gen-source/Dockerfile.gen --environment-file /env-vars/env-file
       volumeMounts:
         - name: gen-source
