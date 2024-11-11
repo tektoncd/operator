@@ -46,7 +46,7 @@ spec:
     - name: BASE_IMAGE
       type: string
       description: The location of the base python image.
-      default: []
+      default: image-registry.openshift-image-registry.svc:5000/openshift/python
   workspaces:
     - name: source
       mountPath: /workspace/source
