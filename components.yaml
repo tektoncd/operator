@@ -18,7 +18,7 @@ pipelines-as-code:
   version: v0.29.0
 results:
   github: tektoncd/results
-  version: v0.12.2
+  version: v0.13.0
 triggers:
   github: tektoncd/triggers
   version: v0.30.0
