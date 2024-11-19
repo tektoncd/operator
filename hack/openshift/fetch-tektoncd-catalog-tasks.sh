@@ -34,7 +34,7 @@ USAGE:
     $SCRIPT_NAME DEST_DIR
 
 Example:
-  $SCRIPT_NAME cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem/stepactions
+  $SCRIPT_NAME cmd/openshift/operator/kodata/tekton-addon/addons/06-ecosystem/stepactions
 EOF
   exit 1
 }
@@ -140,13 +140,13 @@ main() {
 
   case "$type" in
     "ecosystem_tasks")
-      dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem/tasks'}
+      dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/06-ecosystem/tasks'}
       resources=TEKTON_ECOSYSTEM_TASKS
       branch="p"
       catalog="$TEKTON_ECOSYSTEM"
       ;;
     "ecosystem_stepactions")
-      dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/07-ecosystem/stepactions'}
+      dest_dir=${1:-'cmd/openshift/operator/kodata/tekton-addon/addons/06-ecosystem/stepactions'}
       resources=TEKTON_ECOSYSTEM_STEPACTIONS
       branch="p"
       catalog="$TEKTON_ECOSYSTEM"

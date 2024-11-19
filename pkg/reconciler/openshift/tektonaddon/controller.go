@@ -79,12 +79,12 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		metrics, _ := NewRecorder()
 
 		resolverTaskManifest := &mf.Manifest{}
-		if err := applyAddons(resolverTaskManifest, "07-ecosystem/tasks"); err != nil {
+		if err := applyAddons(resolverTaskManifest, "06-ecosystem/tasks"); err != nil {
 			logger.Fatalf("failed to read namespaced tasks from kodata: %v", err)
 		}
 
 		resolverStepActionManifest := &mf.Manifest{}
-		if err := applyAddons(resolverStepActionManifest, "07-ecosystem/stepactions"); err != nil {
+		if err := applyAddons(resolverStepActionManifest, "06-ecosystem/stepactions"); err != nil {
 			logger.Fatalf("failed to read namespaced stepactions from kodata: %v", err)
 		}
 
@@ -94,7 +94,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		pipelineTemplateManifest := &mf.Manifest{}
-		if err := applyAddons(pipelineTemplateManifest, "03-pipelines"); err != nil {
+		if err := applyAddons(pipelineTemplateManifest, "02-pipelines"); err != nil {
 			logger.Fatalf("failed to read pipeline template from kodata: %v", err)
 		}
 		if err := addPipelineTemplates(pipelineTemplateManifest); err != nil {
@@ -102,7 +102,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		openShiftConsoleManifest := &mf.Manifest{Client: mfclient}
-		if err := applyAddons(openShiftConsoleManifest, "05-tkncliserve"); err != nil {
+		if err := applyAddons(openShiftConsoleManifest, "04-tkncliserve"); err != nil {
 			logger.Fatalf("failed to read openshift console resources from kodata: %v", err)
 		}
 		if err := getOptionalAddons(openShiftConsoleManifest); err != nil {
@@ -110,7 +110,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		consoleCLIManifest := &mf.Manifest{}
-		if err := applyAddons(consoleCLIManifest, "04-consolecli"); err != nil {
+		if err := applyAddons(consoleCLIManifest, "03-consolecli"); err != nil {
 			logger.Fatalf("failed to read console cli from kodata: %v", err)
 		}
 
