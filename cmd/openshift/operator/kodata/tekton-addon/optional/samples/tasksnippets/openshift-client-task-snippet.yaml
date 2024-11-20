@@ -14,8 +14,14 @@ spec:
   yaml: |
     - name: deploy
       taskRef:
-        name: openshift-client
-        kind: ClusterTask
+        resolver: cluster
+        params:
+        - name: kind
+          value: task
+        - name: name
+          value: openshift-client
+        - name: namespace
+          value: openshift-pipelines
       params:
         - name: ARGS
           value: "help"

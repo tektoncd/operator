@@ -16,17 +16,21 @@ spec:
   yaml: |
     - name: build
       taskRef:
-        name: buildah
-        kind: ClusterTask
+        resolver: cluster
+        params:
+        - name: kind
+          value: task
+        - name: name
+          value: buildah
+        - name: namespace
+          value: openshift-pipelines
       workspaces:
         - name: source
           workspace: workspace
       params:
         - name: IMAGE
           value: $(params.IMAGE_NAME)
-        - name: BUILDER_IMAGE
-          value: registry.redhat.io/rhel8/buildah
         - name: DOCKERFILE
           value: ./Dockerfile
-        - name: TLSVERIFY
+        - name: TLS_VERIFY
           value: "true"

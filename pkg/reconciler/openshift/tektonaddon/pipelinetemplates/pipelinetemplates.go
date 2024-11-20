@@ -124,7 +124,7 @@ func (p *pipeline) generate(pipeline unstructured.Unstructured, usingPipelineRes
 }
 
 func openshiftDeployTask(deployTask map[string]interface{}) map[string]interface{} {
-	deployTask["taskRef"] = map[string]interface{}{"name": "openshift-client", "kind": "ClusterTask"}
+	deployTask["taskRef"] = getTaskRef("openshift-client")
 	deployTask["runAfter"] = []interface{}{"build"}
 	deployTask["params"] = []interface{}{
 		map[string]interface{}{"name": "SCRIPT", "value": "oc rollout status dc/$(params.APP_NAME)"},
@@ -133,7 +133,7 @@ func openshiftDeployTask(deployTask map[string]interface{}) map[string]interface
 }
 
 func kubernetesDeployTask(deployTask map[string]interface{}) map[string]interface{} {
-	deployTask["taskRef"] = map[string]interface{}{"name": "openshift-client", "kind": "ClusterTask"}
+	deployTask["taskRef"] = getTaskRef("openshift-client")
 	deployTask["runAfter"] = []interface{}{"build"}
 	deployTask["params"] = []interface{}{
 		map[string]interface{}{"name": "SCRIPT", "value": "oc rollout status deploy/$(params.APP_NAME)"},
@@ -143,7 +143,7 @@ func kubernetesDeployTask(deployTask map[string]interface{}) map[string]interfac
 
 func knativeDeployTask(deployTask map[string]interface{}) map[string]interface{} {
 	deployTask["name"] = "kn-service-apply"
-	deployTask["taskRef"] = map[string]interface{}{"name": "kn", "kind": "ClusterTask"}
+	deployTask["taskRef"] = getTaskRef("kn")
 	deployTask["runAfter"] = []interface{}{"build"}
 	deployTask["params"] = []interface{}{
 		map[string]interface{}{"name": "ARGS", "value": []interface{}{"service", "apply", "$(params.APP_NAME)", "--image=$(params.IMAGE_NAME)"}},
@@ -155,14 +155,13 @@ func generateBasePipeline(template mf.Manifest, taskGenerators []taskGenerator, 
 	var pipelines []unstructured.Unstructured
 
 	for name, spec := range Runtimes {
-		contextParamName := "PATH_CONTEXT"
+		contextParamName := "CONTEXT"
 		newTempRes := unstructured.Unstructured{}
 		template.Resources()[0].DeepCopyInto(&newTempRes)
 		labels := map[string]string{}
 		annotations := map[string]string{}
 		if name == "buildah" {
 			labels[LabelPipelineStrategy] = "docker"
-			contextParamName = "CONTEXT"
 		} else {
 			labels[LabelPipelineRuntime] = spec.Runtime
 		}
@@ -185,7 +184,7 @@ func generateBasePipeline(template mf.Manifest, taskGenerators []taskGenerator, 
 		var index = 1
 
 		taskBuild := tasks.([]interface{})[index].(map[string]interface{})
-		taskBuild["taskRef"] = map[string]interface{}{"name": taskName, "kind": "ClusterTask"}
+		taskBuild["taskRef"] = getTaskRef(taskName)
 		taskParams, found, err := unstructured.NestedFieldNoCopy(taskBuild, "params")
 		if !found || err != nil {
 			return nil, err
@@ -216,4 +215,14 @@ func generateBasePipeline(template mf.Manifest, taskGenerators []taskGenerator, 
 		}
 	}
 	return pipelines, nil
+}
+
+func getTaskRef(taskName string) map[string]interface{} {
+	return map[string]interface{}{"params": []interface{}{
+		map[string]interface{}{"name": "kind", "value": "task"},
+		map[string]interface{}{"name": "name", "value": taskName},
+		map[string]interface{}{"name": "namespace", "value": "openshift-pipelines"},
+	},
+		"resolver": "cluster",
+	}
 }

@@ -28,25 +28,37 @@ spec:
       tasks:
         - name: fetch-repository
           taskRef:
-            name: git-clone
-            kind: ClusterTask
+            resolver: cluster
+            params:
+            - name: kind
+              value: task
+            - name: name
+              value: git-clone
+            - name: namespace
+              value: openshift-pipelines
           workspaces:
             - name: output
               workspace: workspace
           params:
-            - name: url
+            - name: URL
               value: $(params.GIT_REPO)
-            - name: revision
+            - name: REVISION
               value: $(params.GIT_REVISION)
-            - name: subdirectory
+            - name: SUBDIRECTORY
               value: ""
-            - name: deleteExisting
+            - name: DELETE_EXISTING
               value: "true"
 
         - name: build
           taskRef:
-            name: buildah
-            kind: ClusterTask
+            resolver: cluster
+            params:
+            - name: kind
+              value: task
+            - name: name
+              value: buildah
+            - name: namespace
+              value: openshift-pipelines
           runAfter:
             - fetch-repository
           workspaces:
@@ -55,13 +67,19 @@ spec:
           params:
             - name: IMAGE
               value: $(params.IMAGE_NAME)
-            - name: TLSVERIFY
+            - name: TLS_VERIFY
               value: "false"
 
         - name: deploy
           taskRef:
-            name: openshift-client
-            kind: ClusterTask
+            resolver: cluster
+            params:
+            - name: kind
+              value: task
+            - name: name
+              value: openshift-client
+            - name: namespace
+              value: openshift-pipelines
           runAfter:
             - build
           params:
