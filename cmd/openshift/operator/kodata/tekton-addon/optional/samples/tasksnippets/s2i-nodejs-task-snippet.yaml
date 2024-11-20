@@ -17,8 +17,14 @@ spec:
   yaml: |
     - name: build
       taskRef:
-        name: s2i-nodejs
-        kind: ClusterTask
+        resolver: cluster
+        params:
+        - name: kind
+          value: task
+        - name: name
+          value: s2i-nodejs
+        - name: namespace
+          value: openshift-pipelines
       workspaces:
         - name: source
           workspace: workspace
@@ -27,7 +33,7 @@ spec:
           value: $(params.IMAGE_NAME)
         - name: VERSION
           value: "14-ubi8"
-        - name: PATH_CONTEXT
+        - name: CONTEXT
           value: .
-        - name: TLSVERIFY
+        - name: TLS_VERIFY
           value: "true"
