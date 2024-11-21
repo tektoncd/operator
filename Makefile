@@ -90,7 +90,7 @@ clean: clean-cluster clean-bin clean-manifest; $(info $(M) clean all) @ ## Clean
 
 .PHONY: help
 help:
-	@grep -hE '^[ a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+	@grep -hE '^[ a-zA-Z0-9/_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-17s\033[0m %s\n", $$1, $$2}'
 
 FORCE:
@@ -99,7 +99,7 @@ bin/%: cmd/% FORCE
 	$Q $(GO) build -mod=vendor $(LDFLAGS) -v -o $@ ./$<
 
 .PHONY: components/bump
-components/bump: $(OPERATORTOOL)
+components/bump: $(OPERATORTOOL) ## Bump the version of a component and update ClusterServiceVersion (CSV) file
 	@go run ./cmd/tool bump ${COMPONENT}
 
 .PHONY: components/bump-bugfix
