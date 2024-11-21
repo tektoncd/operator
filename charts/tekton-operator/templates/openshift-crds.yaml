@@ -5,8 +5,8 @@ kind: CustomResourceDefinition
 metadata:
   name: manualapprovalgates.operator.tekton.dev
   labels:
-    version: v0.71.0
-    operator.tekton.dev/release: v0.71.0
+    version: "devel"
+    operator.tekton.dev/release: "devel"
 spec:
   group: operator.tekton.dev
   names:
@@ -44,8 +44,8 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    operator.tekton.dev/release: v0.71.0
-    version: v0.71.0
+    operator.tekton.dev/release: "devel"
+    version: "devel"
   name: openshiftpipelinesascodes.operator.tekton.dev
 spec:
   group: operator.tekton.dev
@@ -85,8 +85,8 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    operator.tekton.dev/release: v0.71.0
-    version: v0.71.0
+    operator.tekton.dev/release: "devel"
+    version: "devel"
   name: tektonaddons.operator.tekton.dev
 spec:
   group: operator.tekton.dev
@@ -123,8 +123,8 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    operator.tekton.dev/release: v0.71.0
-    version: v0.71.0
+    operator.tekton.dev/release: "devel"
+    version: "devel"
   name: tektonchains.operator.tekton.dev
 spec:
   group: operator.tekton.dev
@@ -161,8 +161,8 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    operator.tekton.dev/release: v0.71.0
-    version: v0.71.0
+    operator.tekton.dev/release: "devel"
+    version: "devel"
   name: tektonconfigs.operator.tekton.dev
 spec:
   group: operator.tekton.dev
@@ -199,8 +199,8 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    operator.tekton.dev/release: v0.71.0
-    version: v0.71.0
+    operator.tekton.dev/release: "devel"
+    version: "devel"
   name: tektonhubs.operator.tekton.dev
 spec:
   group: operator.tekton.dev
@@ -243,8 +243,8 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    operator.tekton.dev/release: v0.71.0
-    version: v0.71.0
+    operator.tekton.dev/release: "devel"
+    version: "devel"
   name: tektoninstallersets.operator.tekton.dev
 spec:
   group: operator.tekton.dev
@@ -278,8 +278,8 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    operator.tekton.dev/release: v0.71.0
-    version: v0.71.0
+    operator.tekton.dev/release: "devel"
+    version: "devel"
   name: tektonpipelines.operator.tekton.dev
 spec:
   group: operator.tekton.dev
@@ -316,8 +316,8 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    operator.tekton.dev/release: v0.71.0
-    version: v0.71.0
+    operator.tekton.dev/release: "devel"
+    version: "devel"
   name: tektonresults.operator.tekton.dev
 spec:
   group: operator.tekton.dev
@@ -354,8 +354,8 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   labels:
-    operator.tekton.dev/release: v0.71.0
-    version: v0.71.0
+    operator.tekton.dev/release: "devel"
+    version: "devel"
   name: tektontriggers.operator.tekton.dev
 spec:
   group: operator.tekton.dev
