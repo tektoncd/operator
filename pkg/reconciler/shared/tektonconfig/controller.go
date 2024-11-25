@@ -30,6 +30,7 @@ import (
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
 	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
+	tektonResultinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonresult"
 	tektonTriggerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektontrigger"
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -103,6 +104,13 @@ func NewExtensibleController(generator common.ExtensionGenerator) injection.Cont
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		}); err != nil {
 			logger.Panicf("Couldn't register TektonChain informer event handler: %w", err)
+		}
+
+		if _, err := tektonResultinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		}); err != nil {
+			logger.Panicf("Couldn't register TektonResult informer event handler: %w", err)
 		}
 
 		if _, err := tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
