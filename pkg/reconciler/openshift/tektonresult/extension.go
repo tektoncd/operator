@@ -72,7 +72,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		logger.Fatalf("Failed to fetch logs RBAC manifest: %v", err)
 	}
 
-	ext := openshiftExtension{
+	ext := &openshiftExtension{
 		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
 			version, "results-ext", v1alpha1.KindTektonResult, nil),
 		internalDBManifest: internalDBManifest,
@@ -87,6 +87,7 @@ type openshiftExtension struct {
 	routeManifest      *mf.Manifest
 	internalDBManifest *mf.Manifest
 	logsRBACManifest   *mf.Manifest
+	removePreset       bool
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -102,14 +103,20 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	}
 }
 
-func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	result := tc.(*v1alpha1.TektonResult)
-
 	mf := mf.Manifest{}
+
 	if !result.Spec.IsExternalDB {
 		mf = *oe.internalDBManifest
+		oe.removePreset = true
 	}
-
+	if result.Spec.IsExternalDB && oe.removePreset {
+		if err := oe.installerSetClient.CleanupPreSet(ctx); err != nil {
+			return err
+		}
+		oe.removePreset = false
+	}
 	if (result.Spec.LokiStackName != "" && result.Spec.LokiStackNamespace != "") ||
 		strings.EqualFold(result.Spec.LogsType, "LOKI") {
 		mf = mf.Append(*oe.logsRBACManifest)
