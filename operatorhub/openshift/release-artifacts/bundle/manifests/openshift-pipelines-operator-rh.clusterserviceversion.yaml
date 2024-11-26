@@ -856,7 +856,7 @@ spec:
                 - name: IMAGE_ADDONS_PARAM_KN_IMAGE
                   value: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:37109f6de75dda750496f6668164d0dceaf9db5278e8c034708436f39de3276e
                 - name: IMAGE_ADDONS_MVN_SETTINGS
-                  value: registry.redhat.io/ubi8/ubi-minimal@sha256:c12e67af6a7e15113d76bc72f10bef2045c026c71ec8b7124c8a075458188a83
+                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:d85040b6e3ed3628a89683f51a38c709185efc3fb552db2ad1b9180f2a6c38be
                 - name: IMAGE_ADDONS_SKOPEO_COPY
                   value: registry.redhat.io/rhel8/skopeo@sha256:7fd65200b4847fc84fba0466519b87f915e28c0e9bc90d3022beecfebffd4af8
                 - name: IMAGE_ADDONS_GENERATE
@@ -982,7 +982,7 @@ spec:
     name: IMAGE_ADDONS_SKOPEO_COPY
   - image: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:3696cf724ce7865626ae408d82fd87727c741e4d3eb3475c271ec6d56f0882a4
     name: IMAGE_ADDONS_GENERATE
-  - image: registry.redhat.io/ubi8/ubi-minimal@sha256:c12e67af6a7e15113d76bc72f10bef2045c026c71ec8b7124c8a075458188a83
+  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:d85040b6e3ed3628a89683f51a38c709185efc3fb552db2ad1b9180f2a6c38be
     name: IMAGE_ADDONS_MVN_SETTINGS
   - image: registry.redhat.io/openshift-pipelines/pipelines-rhel8-operator@
     name: OPENSHIFT_PIPELINES_OPERATOR
@@ -1014,13 +1014,13 @@ spec:
     name: IMAGE_TRIGGERS_ARG__EL_IMAGE
   - image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:37109f6de75dda750496f6668164d0dceaf9db5278e8c034708436f39de3276e
     name: IMAGE_ADDONS_PARAM_KN_IMAGE
-  - image: registry.redhat.io/rhel8/skopeo@sha256:7fd65200b4847fc84fba0466519b87f915e28c0e9bc90d3022beecfebffd4af8
+  - image: registry.redhat.io/rhel9/skopeo@sha256:05dee3a82d4d3309f8c32675727278b7442128d8778d6d2fecd8164b6797c446
     name: IMAGE_ADDONS_SKOPEO_COPY
-  - image: registry.redhat.io/rhel8/buildah@sha256:6d2dcb651ba680cf4ec74331f8349dec43d071d420625a1703370acc8d984e9e
+  - image: registry.redhat.io/rhel9/buildah@sha256:fe93c5fa5dbd44796437367945aa822df7df068e3867af089fc04d7eec932fa1
     name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
   - image: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:3696cf724ce7865626ae408d82fd87727c741e4d3eb3475c271ec6d56f0882a4
     name: IMAGE_ADDONS_GENERATE
-  - image: registry.redhat.io/ubi8/ubi-minimal@sha256:c12e67af6a7e15113d76bc72f10bef2045c026c71ec8b7124c8a075458188a83
+  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:d85040b6e3ed3628a89683f51a38c709185efc3fb552db2ad1b9180f2a6c38be
     name: IMAGE_ADDONS_MVN_SETTINGS
   - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel8@
     name: IMAGE_JOB_PRUNER_TKN
@@ -1032,7 +1032,7 @@ spec:
     name: TEKTON_OPERATOR_WEBHOOK
   - image: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel8@
     name: IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
-  - image: registry.redhat.io/rhel8/postgresql-13@sha256:757d8dd6f243717d820846da7144a49913f28f223b74ec305b2215f54720f8a0
+  - image: registry.redhat.io/rhel9/postgresql-13@sha256:de7e735a5717eb0d2fffa31c3c2ffe1b03143b3ce830d1397ea3373d5926953e
     name: IMAGE_HUB_TEKTON_HUB_DB
   - image: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel8@
     name: IMAGE_HUB_TEKTON_HUB_DB_MIGRATION

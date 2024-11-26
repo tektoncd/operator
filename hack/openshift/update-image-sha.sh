@@ -44,13 +44,13 @@ EOF
 #declare -r CATALOG_VERSION="release-v0.7"
 
 declare -A IMAGES=(
-  ["buildah"]="registry.redhat.io/rhel8/buildah"
+  ["buildah"]="registry.redhat.io/rhel9/buildah"
   ["kn"]="registry.redhat.io/openshift-serverless-1/client-kn-rhel8"
-  ["postgresql"]="registry.redhat.io/rhel8/postgresql-13"
-  ["skopeo-copy"]="registry.redhat.io/rhel8/skopeo"
+  ["postgresql"]="registry.redhat.io/rhel9/postgresql-13"
+  ["skopeo-copy"]="registry.redhat.io/rhel9/skopeo"
   ["s2i"]="registry.redhat.io/source-to-image/source-to-image-rhel8"
-  ["ubi-minimal"]="registry.redhat.io/ubi8/ubi-minimal"
-  ["java"]="registry.redhat.io/ubi8/openjdk-17"
+  ["ubi-minimal"]="registry.redhat.io/ubi9/ubi-minimal"
+  ["java"]="registry.redhat.io/ubi9/openjdk-17"
 )
 
 registry_login() {
