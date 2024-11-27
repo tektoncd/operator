@@ -102,6 +102,7 @@ func AssertTektonInstallerSets(t *testing.T, clients *utils.Clients) {
 	assertInstallerSets(t, clients, tektonaddon.TriggersResourcesInstallerSet)
 	assertInstallerSets(t, clients, tektonaddon.ConsoleCLIInstallerSet)
 	assertInstallerSets(t, clients, tektonaddon.MiscellaneousResourcesInstallerSet)
+	assertInstallerSets(t, clients, tektonaddon.CommunityResolverTaskInstallerSet)
 }
 
 func assertInstallerSets(t *testing.T, clients *utils.Clients, component string) {
