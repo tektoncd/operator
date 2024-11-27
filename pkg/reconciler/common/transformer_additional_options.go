@@ -311,6 +311,11 @@ func (ot *OptionsTransformer) updateDeployments(u *unstructured.Unstructured) er
 		targetDeployment.Spec.Template.Spec.TopologySpreadConstraints = deploymentOptions.Spec.Template.Spec.TopologySpreadConstraints
 	}
 
+	// update runTimeClassName
+	if deploymentOptions.Spec.Template.Spec.RuntimeClassName != nil {
+		targetDeployment.Spec.Template.Spec.RuntimeClassName = deploymentOptions.Spec.Template.Spec.RuntimeClassName
+	}
+
 	// update volumes
 	targetDeployment.Spec.Template.Spec.Volumes = ot.updateVolumes(targetDeployment.Spec.Template.Spec.Volumes, deploymentOptions.Spec.Template.Spec.Volumes)
 
@@ -539,6 +544,11 @@ func (ot *OptionsTransformer) updateStatefulSets(u *unstructured.Unstructured) e
 				targetStatefulSet.Spec.VolumeClaimTemplates = append(targetStatefulSet.Spec.VolumeClaimTemplates, newVolumeClaimTpl)
 			}
 		}
+	}
+
+	// update runTimeClassName
+	if statefulSetOptions.Spec.Template.Spec.RuntimeClassName != nil {
+		targetStatefulSet.Spec.Template.Spec.RuntimeClassName = statefulSetOptions.Spec.Template.Spec.RuntimeClassName
 	}
 
 	// update volumes
