@@ -14,7 +14,7 @@ metadata:
       \     {\n            \"name\": \"clusterTasks\",\n            \"value\": \"\
       true\"\n          },\n          {\n            \"name\": \"pipelineTemplates\"\
       ,\n            \"value\": \"true\"\n          },\n          {\n            \"\
-      name\": \"communityClusterTasks\",\n            \"value\": \"true\"\n      \
+      name\": \"communityResolverTasks\",\n            \"value\": \"true\"\n      \
       \    }\n        ]\n      },\n      \"params\": [\n        {\n          \"name\"\
       : \"createRbacResource\",\n          \"value\": \"true\"\n        }\n      ],\n\
       \      \"profile\": \"all\",\n      \"pruner\": {\n        \"keep\": 100,\n\
