@@ -574,6 +574,60 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			inputFilename:          "./testdata/test-additional-options-base-webhook.yaml",
 			expectedResultFilename: "./testdata/test-additional-options-test-webhook.yaml",
 		},
+		{
+			name: "test-runtimeclassname-for-deployments",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									RuntimeClassName: ptr.String("foo"),
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-runtimeclassname-deployment.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-runtimeclassname-deployment.yaml",
+		},
+		{
+			name: "test-runtimeclassname-for-statefulsets",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				StatefulSets: map[string]appsv1.StatefulSet{
+					"web": {
+						Spec: appsv1.StatefulSetSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									RuntimeClassName: ptr.String("foo"),
+									Containers: []corev1.Container{
+										{
+											Resources: corev1.ResourceRequirements{},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									RuntimeClassName: ptr.String("foo"),
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-runtimeclassname-statefulset.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-runtimeclassname-statefulset.yaml",
+		},
 	}
 
 	for _, tc := range tcs {
