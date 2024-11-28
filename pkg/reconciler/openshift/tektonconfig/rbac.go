@@ -441,13 +441,23 @@ func (r *rbac) createResources(ctx context.Context) error {
 			logger.Infof("namespace %s sucessfully reconciled. Adding label namespace-reconcile-version to mark it as reconciled", ns.Name)
 			// Add `openshift-pipelines.tekton.dev/namespace-reconcile-version` label to namespace
 			// so that rbac won't loop on it again
-			nsLabels := ns.GetLabels()
+
+			// Re-fetch the namespace to ensure we have the latest version
+			updatedNS, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, ns.Name, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to re-fetch namespace %s: %v", ns.Name, err)
+			}
+
+			// Get the current labels, or initialize if none exist
+			nsLabels := updatedNS.GetLabels()
 			if len(nsLabels) == 0 {
 				nsLabels = map[string]string{}
 			}
 			nsLabels[namespaceVersionLabel] = r.version
-			ns.SetLabels(nsLabels)
-			if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &ns, metav1.UpdateOptions{}); err != nil {
+			updatedNS.SetLabels(nsLabels)
+
+			// Update the namespace with the new label
+			if _, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, updatedNS, metav1.UpdateOptions{}); err != nil {
 				return fmt.Errorf("failed to update namespace %s with label %s, %v", ns.Name, namespaceVersionLabel, err)
 			}
 		}
