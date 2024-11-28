@@ -438,18 +438,30 @@ func (r *rbac) createResources(ctx context.Context) error {
 			}
 		}
 		if !withError {
-			logger.Infof("namespace %s sucessfully reconciled. Adding label namespace-reconcile-version to mark it as reconciled", ns.Name)
-			// Add `openshift-pipelines.tekton.dev/namespace-reconcile-version` label to namespace
-			// so that rbac won't loop on it again
-			nsLabels := ns.GetLabels()
-			if len(nsLabels) == 0 {
+			logger.Infof("add label namespace-reconcile-version to mark namespace '%s' as reconciled", ns.Name)
+
+			// Re-fetch the namespace to ensure we have the latest version
+			updatedNS, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, ns.Name, metav1.GetOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to re-fetch namespace %s: %v", ns.Name, err)
+			}
+
+			// Get the current labels, or initialize if none exist
+			nsLabels := updatedNS.GetLabels()
+			if nsLabels == nil {
 				nsLabels = map[string]string{}
 			}
+
+			// Add `openshift-pipelines.tekton.dev/namespace-reconcile-version` label to namespace
+			// so that rbac won't loop on it again
 			nsLabels[namespaceVersionLabel] = r.version
-			ns.SetLabels(nsLabels)
-			if _, err := r.kubeClientSet.CoreV1().Namespaces().Update(ctx, &ns, metav1.UpdateOptions{}); err != nil {
-				return fmt.Errorf("failed to update namespace %s with label %s, %v", ns.Name, namespaceVersionLabel, err)
+			updatedNS.SetLabels(nsLabels)
+
+			// Update the namespace with set labels
+			if _, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, updatedNS, metav1.UpdateOptions{}); err != nil {
+				return fmt.Errorf("failed to update namespace '%s' with label %s, %v", ns.Name, namespaceVersionLabel, err)
 			}
+			logger.Infof("namespace '%s' sucessfully reconciled", ns.Name)
 		}
 	}
 
