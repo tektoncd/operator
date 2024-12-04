@@ -75,3 +75,30 @@ func upgradePipelineProperties(ctx context.Context, logger *zap.SugaredLogger, k
 	}
 	return nil
 }
+
+// previous version of the TektonConfig CR's addon params has cluster task params to manage the cluster tasks
+// and cluster tasks have been deprecated and removed so need to remove the clusterTasks and communityClusterTasks
+// params from TektonConfig's addon params and this removes the cluster tasks params and updates TektonConfig's addon params
+// Todo: remove this in the next operator release
+func removeDeprecatedAddonParams(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	tcCR, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	updatedParams := []v1alpha1.Param{}
+	for _, p := range tcCR.Spec.Addon.Params {
+		if p.Name == "clusterTasks" || p.Name == "communityClusterTasks" {
+			continue
+		}
+		updatedParams = append(updatedParams, p)
+	}
+
+	// update the Tekton config's addon params
+	tcCR.Spec.Addon.Params = updatedParams
+	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{})
+	return err
+}

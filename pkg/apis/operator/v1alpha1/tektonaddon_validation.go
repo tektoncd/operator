@@ -48,6 +48,10 @@ func validateAddonParams(params []Param, pathToParams string) *apis.FieldError {
 	var errs *apis.FieldError
 
 	for i, p := range params {
+		// Todo: Remove this in next operator release
+		if p.Name == "clusterTasks" || p.Name == "communityClusterTasks" {
+			continue
+		}
 		paramValue, ok := AddonParams[p.Name]
 		if !ok {
 			errs = errs.Also(apis.ErrInvalidKeyName(p.Name, pathToParams))
