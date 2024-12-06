@@ -62,8 +62,7 @@ image-substitutions:
       envKeys:
       - IMAGE_PIPELINES_ARG__GIT_IMAGE
       - IMAGE_ADDONS_PARAM_GITINITIMAGE
-      - IMAGE_ADDONS_GIT_RUN
-      - IMAGE_ADDONS_REPORT
+      - IMAGE_ADDONS_PREPARE_AND_RUN
       - IMAGE_ADDONS_GIT_CLONE
 - image: registry.redhat.io/openshift-pipelines/pipelines-workingdirinit-rhel8@
   replaceLocations:
@@ -129,7 +128,6 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_ADDONS_SKOPEO_COPY
-      - IMAGE_ADDONS_SKOPEO_RESULTS
 - image: registry.redhat.io/rhel8/buildah@sha256:6d2dcb651ba680cf4ec74331f8349dec43d071d420625a1703370acc8d984e9e
   replaceLocations:
     envTargets:
