@@ -114,6 +114,12 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatalf("failed to read console cli from kodata: %v", err)
 		}
 
+		communityTaskManifest := &mf.Manifest{}
+		if err := fetchCommunityTasks(communityTaskManifest); err != nil {
+			// if unable to fetch community task, don't fail
+			logger.Errorf("failed to read community task: %v", err)
+		}
+
 		c := &Reconciler{
 			crdClientSet:               crdClient,
 			installerSetClient:         client.NewInstallerSetClient(tisClient, version, "addon", v1alpha1.KindTektonAddon, metrics),
@@ -129,6 +135,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			pipelineTemplateManifest:   pipelineTemplateManifest,
 			openShiftConsoleManifest:   openShiftConsoleManifest,
 			consoleCLIManifest:         consoleCLIManifest,
+			communityTaskManifest:      communityTaskManifest,
 		}
 		impl := tektonAddonreconciler.NewImpl(ctx, c)
 

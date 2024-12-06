@@ -22,6 +22,7 @@ const (
 	OpenShiftConsoleInstallerSet            = "OpenShiftConsole"
 	VersionedResolverTaskInstallerSet       = "VersionedResolverTask"
 	VersionedResolverStepActionInstallerSet = "VersionedResolverStepAction"
+	CommunityTaskInstallerSet               = "CommunityTask"
 	versionedClusterTaskPatchChar           = "0"
 	PipelinesTemplateInstallerSet           = "PipelinesTemplate"
 	TriggersResourcesInstallerSet           = "TriggersResources"
