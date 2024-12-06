@@ -28,8 +28,10 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/logging"
@@ -108,6 +110,36 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	mf := mf.Manifest{}
 	if !result.Spec.IsExternalDB {
 		mf = *oe.internalDBManifest
+	}
+
+	preSetLabel := metav1.LabelSelector{
+		MatchLabels: map[string]string{
+			v1alpha1.CreatedByKey:     "TektonResult",
+			v1alpha1.InstallerSetType: "pre",
+		},
+	}
+	preSetLabelSelector, err := common.LabelSelector(preSetLabel)
+	if err != nil {
+		return err
+	}
+	preSetList, err := oe.installerSetClient.ListPreSet(ctx, preSetLabelSelector)
+	if err != nil {
+		return err
+	}
+	for _, is := range preSetList.Items {
+		// compute TektonResult Spec
+		expectedSpecHash, err := hash.Compute(result.Spec)
+		if err != nil {
+			return err
+		}
+		// delete the preset installersets if spec hash been changed
+		if expectedSpecHash != is.Annotations[v1alpha1.LastAppliedHashKey] {
+			if err := oe.installerSetClient.CleanupPreSet(ctx); err != nil {
+				return err
+			}
+
+		}
+
 	}
 
 	if (result.Spec.LokiStackName != "" && result.Spec.LokiStackNamespace != "") ||

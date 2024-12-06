@@ -18,6 +18,8 @@ package tektonresult
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 
@@ -145,12 +147,24 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 		return errors.New(errMsg)
 	}
 
-	// check if the secrets are created
-	// TODO: Create secret automatically if they don't exist
-	// TODO: And remove this check in future release.
-	if err := r.validateSecretsAreCreated(ctx, tr); err != nil {
-		return err
+	// If external database is not set then create default DB otherwise validate it
+	if !tr.Spec.IsExternalDB {
+		if err := r.createDBSecret(ctx, tr); err != nil {
+			return err
+		}
+	} else {
+		if err := r.validateSecretsAreCreated(ctx, tr, DbSecretName); err != nil {
+			return err
+		}
 	}
+
+	// Validated TLS Secret for kubernetes platform
+	if !v1alpha1.IsOpenShiftPlatform() {
+		if err := r.validateSecretsAreCreated(ctx, tr, TlsSecretName); err != nil {
+			return err
+		}
+	}
+
 	tr.Status.MarkDependenciesInstalled()
 
 	if err := r.extension.PreReconcile(ctx, tr); err != nil {
@@ -314,17 +328,74 @@ func (r *Reconciler) updateTektonResultsStatus(ctx context.Context, tr *v1alpha1
 }
 
 // TektonResults expects secrets to be created before installing
-func (r *Reconciler) validateSecretsAreCreated(ctx context.Context, tr *v1alpha1.TektonResult) error {
+func (r *Reconciler) validateSecretsAreCreated(ctx context.Context, tr *v1alpha1.TektonResult, secretName string) error {
 	logger := logging.FromContext(ctx)
-	_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Get(ctx, DbSecretName, metav1.GetOptions{})
+	_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Error(err)
-			tr.Status.MarkDependencyMissing(fmt.Sprintf("%s secret is missing", DbSecretName))
+			tr.Status.MarkDependencyMissing(fmt.Sprintf("%s secret is missing", secretName))
 			return err
 		}
 		logger.Error(err)
 		return err
 	}
 	return nil
+}
+
+// Generate the DB secret
+func (r *Reconciler) getDBSecret(name string, namespace string, tr *v1alpha1.TektonResult) *corev1.Secret {
+	s := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            name,
+			Namespace:       namespace,
+			OwnerReferences: []metav1.OwnerReference{getOwnerRef(tr)},
+		},
+		Type:       corev1.SecretTypeOpaque,
+		StringData: map[string]string{},
+	}
+	password, _ := generateRandomBaseString(20)
+	s.StringData["POSTGRES_PASSWORD"] = password
+	s.StringData["POSTGRES_USER"] = "result"
+	return s
+}
+
+// Create Result default database
+func (r *Reconciler) createDBSecret(ctx context.Context, tr *v1alpha1.TektonResult) error {
+	logger := logging.FromContext(ctx)
+
+	// Get the DB secret, if not found then create the DB secret
+	_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Get(ctx, DbSecretName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// If not found then create DB secret with default data
+			newDBSecret := r.getDBSecret(DbSecretName, tr.Spec.TargetNamespace, tr)
+			_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Create(ctx, newDBSecret, metav1.CreateOptions{})
+			if err != nil {
+				logger.Error(err)
+				tr.Status.MarkDependencyMissing(fmt.Sprintf("Default db %s creation is failing", DbSecretName))
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// Get an owner reference of Tekton Result
+func getOwnerRef(tr *v1alpha1.TektonResult) metav1.OwnerReference {
+	return *metav1.NewControllerRef(tr, tr.GroupVersionKind())
+}
+
+func generateRandomBaseString(size int) (string, error) {
+	bytes := make([]byte, size)
+
+	// Generate random bytes
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", err
+	}
+	// Encode the random bytes into a Base64 string
+	base64String := base64.StdEncoding.EncodeToString(bytes)
+
+	return base64String, nil
 }
