@@ -39,7 +39,7 @@ func Test_AddonSetDefaults_DefaultParamsWithValues(t *testing.T) {
 	}
 
 	ta.SetDefaults(context.TODO())
-	assert.Equal(t, 5, len(ta.Spec.Params))
+	assert.Equal(t, 3, len(ta.Spec.Params))
 
 	params := ParseParams(ta.Spec.Params)
 	value, ok := params[PipelineTemplatesParam]
@@ -70,7 +70,7 @@ func Test_AddonSetDefaults_ResolverTaskIsFalse(t *testing.T) {
 	}
 
 	ta.SetDefaults(context.TODO())
-	assert.Equal(t, 5, len(ta.Spec.Params))
+	assert.Equal(t, 3, len(ta.Spec.Params))
 
 	params := ParseParams(ta.Spec.Params)
 	value, ok := params[ResolverTasks]
@@ -101,7 +101,7 @@ func Test_AddonSetDefaults_ResolverStepActions(t *testing.T) {
 	}
 
 	ta.SetDefaults(context.TODO())
-	assert.Equal(t, 5, len(ta.Spec.Params))
+	assert.Equal(t, 3, len(ta.Spec.Params))
 
 	params := ParseParams(ta.Spec.Params)
 	value, ok := params[ResolverStepActions]
