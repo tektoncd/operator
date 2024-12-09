@@ -8,29 +8,9 @@ weight: 5
 
 TektonResult custom resource allows user to install and manage [Tekton Result][result].
 
-TektonResult is an optional component and currently cannot be installed through TektonConfig. It has to be installed seperately.
+TektonResult is installed through [TektonConfig](./TektonConfig.md).
 
-To install Tekton Result on your cluster follow steps as given below:
-- Make sure Tekton Pipelines is installed on your cluster, using the Operator.
-- Generate a database root password.
-  A database root password must be generated and stored in a [Kubernetes Secret](https://kubernetes.io/docs/concepts/configuration/secret/)
-  before installing results. By default, Tekton Results expects this secret to have
-  the following properties:
-
-    - namespace: `tekton-pipelines`
-    - name: `tekton-results-postgres`
-    - contains the fields:
-        - `user=<user name>`
-        - `password=<your password>`
-
-  If you are not using a particular password management strategy, the following
-  command will generate a random password for you:
-  Update namespace value in the command if Tekton Pipelines is installed in a different namespace..
-
-   ```sh
-   export NAMESPACE="tekton-pipelines"
-   kubectl create secret generic tekton-results-postgres --namespace=${NAMESPACE} --from-literal=POSTGRES_USER=result --from-literal=POSTGRES_PASSWORD=$(openssl rand -base64 20)
-   ```
+TektonResult will be installed on OpnShift platform by default, to install on kubernetes platform follow steps as given below:
 - Generate cert/key pair.
   Note: Feel free to use any cert management software to do this!
 
