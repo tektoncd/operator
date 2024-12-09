@@ -350,7 +350,7 @@ func (s *TektonConfigTestSuite) Test05_DisableAndEnableAddons() {
 	tc := s.getCurrentConfig(timeout)
 	tc.Spec.Addon.Params = []v1alpha1.Param{
 		{Name: v1alpha1.ClusterTasksParam, Value: "false"},
-		{Name: v1alpha1.CommunityClusterTasks, Value: "false"},
+		{Name: v1alpha1.CommunityTasks, Value: "false"},
 		{Name: v1alpha1.PipelineTemplatesParam, Value: "false"},
 	}
 	_, err := s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})

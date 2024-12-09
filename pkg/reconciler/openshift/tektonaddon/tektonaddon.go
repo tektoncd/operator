@@ -54,6 +54,7 @@ type Reconciler struct {
 	pipelineTemplateManifest   *mf.Manifest
 	openShiftConsoleManifest   *mf.Manifest
 	consoleCLIManifest         *mf.Manifest
+	communityTaskManifest      *mf.Manifest
 }
 
 const (
@@ -64,6 +65,7 @@ const (
 	providerTypeRedHat                    = "redhat"
 	installerSetNameForResolverTasks      = "addon-versioned-resolvertasks"
 	installerSetNameForResolverStepAction = "addon-versioned-resolverstepactions"
+	providerTypeCommunity                 = "community"
 )
 
 // Check that our Reconciler implements controller.Reconciler
@@ -131,6 +133,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 	ptVal, _ := findValue(ta.Spec.Params, v1alpha1.PipelineTemplatesParam)
 	rtVal, _ := findValue(ta.Spec.Params, v1alpha1.ResolverTasks)
 	rsaVal, _ := findValue(ta.Spec.Params, v1alpha1.ResolverStepActions)
+	ctVal, _ := findValue(ta.Spec.Params, v1alpha1.CommunityTasks)
 
 	if ptVal == "true" && rtVal == "false" {
 		ta.Status.MarkNotReady("pipelineTemplates cannot be true if ResolverTask is false")
@@ -201,6 +204,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ta *v1alpha1.TektonAddon
 			errorMsg = fmt.Sprintf("console cli not yet ready:  %v", err)
 			logger.Error(errorMsg)
 		}
+	}
+
+	if err := r.EnsureCommunityTask(ctx, ctVal, ta); err != nil {
+		ready = false
+		errorMsg = fmt.Sprintf("community tasks not yet ready:  %v", err)
+		logger.Error(errorMsg)
 	}
 
 	if !ready {
