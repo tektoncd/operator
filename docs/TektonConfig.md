@@ -602,17 +602,18 @@ The following fields are supported in `deployment`
       * `nodeSelector` - replaces the existing NodeSelector with this, if not empty
       * `tolerations` - replaces the existing tolerations with this, if not empty
       * `topologySpreadConstraints` - replaces the existing TopologySpreadConstraints with this, if not empty
+      * `runtimeClassName` - adds and updates runtimeClassName
       * `volumes` - adds and updates volumes
       * `initContainers` - updates init-containers
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
-        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS**
       * `containers` - updates containers
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
-        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS**
 
 #### StatefulSets
 Supports to update the existing StatefulSet. But not supported to create new StatefulSet.
@@ -636,17 +637,18 @@ The following fields are supported in `StatefulSet`
       * `nodeSelector` - replaces the existing NodeSelector with this, if not empty
       * `tolerations` - replaces the existing tolerations with this, if not empty
       * `topologySpreadConstraints` - replaces the existing TopologySpreadConstraints with this, if not empty
+      * `runtimeClassName` - adds and updates runtimeClassName
       * `volumes` - adds and updates volumes
       * `initContainers` - updates init-containers
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
-        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS**
       * `containers` - updates containers
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
-        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS** 
+        * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS**
 
 #### HorizontalPodAutoscalers
 Supports to update the existing HorizontalPodAutoscaler(HPA) also supports to create new HPA.
