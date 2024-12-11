@@ -314,7 +314,7 @@ spec:
     - Pipelines as Code: v0.30.0
     - Tekton Chains: v0.23.0
     - Tekton Hub (tech-preview): v1.19.0
-    - Tekton Results (tech-preview): v0.13.1
+    - Tekton Results (tech-preview): v0.13.2
     - Manual Approval Gate (tech-preview): v0.4.0
 
     ## Getting Started
