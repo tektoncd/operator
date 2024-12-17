@@ -20,35 +20,14 @@ kubectl apply --filename  https://storage.googleapis.com/tekton-releases/pipelin
 
 ### Install tasks and pipelines
 
-Add all the `Tasks` and `Pipelines` needed for creating to the cluster:,
+All the `Tasks` required are fetched via remote resolution.
+The `Pipeline` can be installed on the cluster:
 
-#### Tasks from Tekton Catalog
+```shell script
+kubectl apply -f tekton/operator-release-pipeline.yaml
+```
 
-- [`golang-test`](https://hub-preview.tekton.dev/detail/45)
-  ```shell script
-    tkn hub install task golang-test
-  ```
-- [`golang-build`](https://hub-preview.tekton.dev/detail/44)
-  ```shell script
-    tkn hub install task golang-build
-  ```
-- [`gcs-upload`](https://hub-preview.tekton.dev/detail/30)
-  ```shell script
-    tkn hub install task gcs-upload
-  ```
-
-#### Tasks and Pipelines from this repository
-
-- [publish-operator-release](https://github.com/tektoncd/operator/blob/main/tekton/build-publish-images-manifests.yaml)
-
-  This task uses [ko](https://github.com/google/ko) to build all container images we release and generate the `release.yaml`
-    ```shell script
-    kubectl apply -f tekton/bases/build-publish-images-manifests.yaml
-    ```
-- [operator-release](https://github.com/tektoncd/operator/blob/main/tekton/operator-release-pipeline.yaml)
-  ```shell script
-  kubectl apply -f tekton/overlays/versioned-releases/operator-release-pipeline.yaml
-  ```
+or it can be executed from the local file using `tkn pipeline start --filename`.
 
 ### Service account and secrets
 
