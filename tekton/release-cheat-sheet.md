@@ -56,32 +56,13 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
 2`cd` to root of Operator git checkout.
 
-3. Make sure the release `Task` and `Pipeline` are up-to-date on the
-   cluster. To do that, you can use `kustomize`:
-   
-   ```bash
-   kustomize build tekton | kubectl replace -f -
-   ```
-
-    - [publish-operator-release](https://github.com/tektoncd/operator/blob/main/tekton/build-publish-images-manifests.yaml)
-
-      This task uses [ko](https://github.com/google/ko) to build all container images we release and generate
-      the `release.yaml`
-      ```shell script
-      kubectl apply -f tekton/bases/build-publish-images-manifests.yaml
-      ```
-    - [operator-release](https://github.com/tektoncd/operator/blob/main/tekton/operator-release-pipeline.yaml)
-      ```shell script
-      kubectl apply -f tekton/overlays/versioned-releases/operator-release-pipeline.yaml
-      ```
-
-4. Confirm commit SHA matches what you want to release.
+3. Confirm commit SHA matches what you want to release.
 
     ```bash
     git show $TEKTON_RELEASE_GIT_SHA
     ```
 
-6. Create a workspace template file:
+4. Create a workspace template file:
 
    ```bash
    cat <<EOF > workspace-template.yaml
@@ -94,23 +75,29 @@ need a checkout of the operator repo, a terminal window and a text editor.
    EOF
    ```
 
-7. Execute the release pipeline.
+5. Execute the release pipeline.
 
     ```bash
     tkn --context dogfooding pipeline start operator-release \
+        --filename=tekton/operator-release-pipeline.yaml \
         --serviceaccount=release-right-meow \
-        --param=components=components.yaml \
-        --param=gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
-        --param=versionTag="${TEKTON_RELEASE_VERSION}" \
-        --param=serviceAccountPath=release.json \
-        --param=releaseBucket=gs://tekton-releases/operator \
-        --param=imageRegistry=gcr.io \
-        --param=imageRegistryPath=tekton-releases  \
-        --param=releaseAsLatest=true \
-        --param=platforms=linux/amd64,linux/arm64,linux/s390x,linux/ppc64le \
-        --param=kubeDistros="kubernetes openshift" \
-        --param=package=github.com/tektoncd/operator \
+        --param package=github.com/tektoncd/operator \
+        --param components=components.yaml \
+        --param gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
+        --param imageRegistry=ghcr.io \
+        --param imageRegistryPath=tektoncd/operator  \
+        --param imageRegistryRegions="" \
+        --param imageRegistryUser=tekton-robot \
+        --param serviceAccountPath=release.json \
+        --param serviceAccountImagesPath=credentials \
+        --param versionTag="${TEKTON_RELEASE_VERSION}" \
+        --param releaseBucket=gs://tekton-releases/operator \
+        --param koExtraArgs="" \
+        --param releaseAsLatest=true \
+        --param platforms=linux/amd64,linux/arm64,linux/s390x,linux/ppc64le \
+        --param kubeDistros="kubernetes openshift" \
         --workspace name=release-secret,secret=release-secret \
+        --workspace name=release-images-secret,secret=ghcr-creds \
         --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
         --pipeline-timeout 2h0m0s
     ```
