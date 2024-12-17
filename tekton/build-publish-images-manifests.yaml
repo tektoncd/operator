@@ -10,6 +10,9 @@ spec:
   - name: images
     description: List of cmd/<kubeDistro>/* paths to be published as images
     default: "operator webhook proxy-webhook"
+  - name: koExtraArgs
+    description: Extra args to be passed to ko
+    default: "--preserve-import-paths"
   - name: versionTag
     description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
   - name: imageRegistry
@@ -20,6 +23,9 @@ spec:
   - name: imageRegistryRegions
     description: The target image registry regions
     default: "us eu asia"
+  - name: imageRegistryUser
+    description: Username to be used to login to the container registry
+    default: "_json_key"
   - name: releaseAsLatest
     description: Whether to tag and publish this release as Pipelines' latest
     default: "true"
@@ -54,6 +60,8 @@ spec:
       value: "$(workspaces.release-secret.path)/$(params.serviceAccountPath)"
     - name: CONTAINER_REGISTRY
       value: "$(params.imageRegistry)/$(params.imageRegistryPath)"
+    - name: CONTAINER_REGISTRY_USER
+      value: "$(params.imageRegistryUser)"
     - name: REGIONS
       value: "$(params.imageRegistryRegions)"
     - name: OUTPUT_RELEASE_DIR
@@ -62,17 +70,19 @@ spec:
       value: "$(params.kubeDistro)"
     - name: FILENAME_PREFIX
       value: "$(params.releaseFilePrefix)"
+    - name: KO_EXTRA_ARGS
+      value: "$(params.koExtraArgs)"
   steps:
 
   - name: container-registy-auth
-    image: gcr.io/go-containerregistry/crane:debug@sha256:ff0e08eeae8097d28b2381c7f7123bf542757abc68d11bff58fb882b72843785
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:6fc6fcdeb173c7951f038e6a7b230f586c1be05a011d9e6f9db6c614ec412c2f
     script: |
       #!/busybox/sh
       set -ex
 
       # Login to the container registry
-      DOCKER_CONFIG=$(cat ${CONTAINER_REGISTY_CREDENTIALS} | \
-        crane auth login -u _json_key --password-stdin $(params.imageRegistry) 2>&1 | \
+      DOCKER_CONFIG=$(cat ${CONTAINER_REGISTRY_CREDENTIALS} | \
+        crane auth login -u ${CONTAINER_REGISTRY_USER} --password-stdin $(params.imageRegistry) 2>&1 | \
         sed 's,^.*logged in via \(.*\)$,\1,g')
 
       # Auth with account credentials for all regions.
@@ -127,31 +137,62 @@ spec:
       # Publish images and create release.yaml
       mkdir -p $OUTPUT_RELEASE_DIR
 
-      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | ko resolve --platform=$(params.platforms) --preserve-import-paths -t $(params.versionTag) -f - > $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.yaml
+      # Make a local git tag to make git status happy :)
+      # The real "tagging" will happen with the "create-release" pipeline.
+      git tag $(params.versionTag)
+
+      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | \
+        ko resolve \
+          --image-label=org.opencontainers.image.source=https://$(params.package) \
+          --platform=$(params.platforms) ${KO_EXTRA_ARGS} \
+          -t $(params.versionTag) \
+          -f - > $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.yaml
+
       # Publish images and create release.notags.yaml
       # This is useful if your container runtime doesn't support the `image-reference:tag@digest` notation
       # This is currently the case for `cri-o` (and most likely others)
-      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | ko resolve --platform=$(params.platforms) --preserve-import-paths -f - > $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.notags.yaml
+      kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | \
+        ko resolve \
+          --image-label=org.opencontainers.image.source=https://$(params.package) \
+          --platform=$(params.platforms) ${KO_EXTRA_ARGS} \
+          -f - > $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.notags.yaml
 
   - name: koparse
-    image: gcr.io/tekton-releases/dogfooding/koparse:v20240910-ec3cf3c749@sha256:5e8a522fc1e587fc00b69a6d73e0bfdf7a29ca143537a5542eb224680d2dbf2f
+    image: gcr.io/tekton-releases/dogfooding/koparse@sha256:194c2ab9dce5f778ed757af13c626d6b85f15452e2c2902c79b0d0f5a0adf4d1
     script: |
       set -ex
 
-      IMAGES_PATH=${CONTAINER_REGISTRY}/$(params.package)
+      # Find "--preserve-import-paths" in a list of args
+      function find_preserve_import_path() {
+        for arg in $@; do
+          if [[ "$arg" == "--preserve-import-paths" ]]; then
+            return 0
+          fi
+        done
+        return 1
+      }
+
+      # If "--preserve-import-paths" is used, include "package" in the expected path
+      find_preserve_import_path \
+        $(echo $KO_EXTRA_ARGS) && \
+        PRESERVE_IMPORT_PATH="--preserve-path" || \
+        PRESERVE_IMPORT_PATH="--no-preserve-path"
 
       for cmd in $(params.images)
       do
-        IMAGES="${IMAGES} ${IMAGES_PATH}/cmd/${KUBE_DISTRO}/${cmd}:$(params.versionTag)"
+        IMAGES="${IMAGES} $(params.package)/cmd/${KUBE_DISTRO}/${cmd}:$(params.versionTag)"
       done
 
       # Parse the built images from the release.yaml generated by ko
       koparse \
         --path $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.yaml \
-        --base ${IMAGES_PATH} --images ${IMAGES} > /workspace/built_images
+        --base $(params.package) \
+        --container-registry ${CONTAINER_REGISTRY} \
+        --images ${IMAGES} \
+        ${PRESERVE_IMPORT_PATH} > /workspace/built_images
 
   - name: tag-images
-    image: gcr.io/go-containerregistry/crane:debug@sha256:ff0e08eeae8097d28b2381c7f7123bf542757abc68d11bff58fb882b72843785
+    image: cgr.dev/chainguard/crane:latest-dev@sha256:6fc6fcdeb173c7951f038e6a7b230f586c1be05a011d9e6f9db6c614ec412c2f
     script: |
       #!/busybox/sh
       set -ex
@@ -160,8 +201,6 @@ spec:
       DOCKER_CONFIG=~/.docker
       mkdir -p ${DOCKER_CONFIG}
       cp /workspace/docker-config.json ${DOCKER_CONFIG}/config.json
-
-      REGIONS="us eu asia"
 
       # Tag the images and put them in all the regions
       for IMAGE in $(cat /workspace/built_images)
