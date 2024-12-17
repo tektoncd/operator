@@ -16,6 +16,12 @@ spec:
   - name: imageRegistryPath
     description: The path (project) in the image registry
     default: tekton-releases
+  - name: imageRegistryRegions
+    description: The target image registry regions
+    default: "us eu asia"
+  - name: imageRegistryUser
+    description: The user for the image registry credentials
+    default: _json_key
   - name: versionTag
     description: The X.Y.Z version that the artifacts should be tagged with
   - name: releaseBucket
@@ -27,8 +33,16 @@ spec:
   - name: platforms
     description: Platforms to publish for the images (e.g. linux/amd64,linux/arm64)
     default: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
+  - name: koExtraArgs
+    description: Extra args to be passed to ko
+    default: "--preserve-import-paths"
   - name: serviceAccountPath
     description: The path to the service account file within the release-secret workspace
+  - name: serviceAccountImagesPath
+    description: The path to the service account file or credentials within the release-images-secret workspace
+  - name: runTests
+    description: If set to something other than "true", skip the build and test tasks
+    default: "true"
   - name: kubeDistros
     description: The kubernetes platform (e.g. kubernetes or openshift ... ) targeted by a pipeline run
     default: "kubernetes openshift"
@@ -40,6 +54,8 @@ spec:
     description: The workspace where the repo will be cloned.
   - name: release-secret
     description: The secret that contains a service account authorized to push to the imageRegistry and to the output bucket
+  - name: release-images-secret
+    description: The secret that contains a service account authorized to push to the imageRegistry
   results:
   - name: commit-sha
     description: the sha of the commit that was released
@@ -59,11 +75,16 @@ spec:
   tasks:
   - name: git-clone
     taskRef:
-      name: git-clone
+      resolver: hub
+      params:
+        - name: name
+          value: git-clone
+        - name: version
+          value: "0.7"
     workspaces:
-    - name: output
-      workspace: workarea
-      subpath: git
+      - name: output
+        workspace: workarea
+        subpath: git
     params:
     - name: url
       value: https://$(params.package)
@@ -73,7 +94,16 @@ spec:
     runAfter:
     - git-clone
     taskRef:
-      name: prerelease-checks
+      resolver: git
+      params:
+      - name: repo
+        value: plumbing
+      - name: org
+        value: tektoncd
+      - name: revision
+        value: aeed19e5a36f335ebfdc4b96fa78d1ce5bb4f7b8
+      - name: pathInRepo
+        value: tekton/resources/release/base/prerelease_checks.yaml
     params:
     - name: package
       value: $(params.package)
@@ -88,8 +118,17 @@ spec:
   - name: unit-tests
     runAfter:
     - precheck
+    when:
+    - cel: "'$(params.runTests)' == 'true'"
     taskRef:
-      name: golang-test
+      resolver: bundles
+      params:
+      - name: bundle
+        value: ghcr.io/tektoncd/catalog/upstream/tasks/golang-test:0.2
+      - name: name
+        value: golang-test
+      - name: kind
+        value: task
     params:
     - name: package
       value: $(params.package)
@@ -100,10 +139,19 @@ spec:
       workspace: workarea
       subpath: git
   - name: fetch-component-releases
-    taskRef:
-      name: operator-fetch-component-releases
     runAfter:
     - unit-tests
+    taskRef:
+      resolver: git
+      params:
+        - name: repo
+          value: operator
+        - name: org
+          value: tektoncd
+        - name: revision
+          value: $(params.gitRevision)
+        - name: pathInRepo
+          value: tekton/task-fetch-components.yaml
     workspaces:
     - name: source
       workspace: workarea
@@ -116,8 +164,17 @@ spec:
   - name: build-test
     runAfter:
     - fetch-component-releases
+    when:
+      - cel: "'$(params.runTests)' == 'true'"
     taskRef:
-      name: golang-build
+      resolver: bundles
+      params:
+        - name: bundle
+          value: ghcr.io/tektoncd/catalog/upstream/tasks/golang-build:0.3
+        - name: name
+          value: golang-build
+        - name: kind
+          value: task
     params:
     - name: package
       value: $(params.package)
@@ -131,7 +188,16 @@ spec:
     runAfter:
     - build-test
     taskRef:
-      name: publish-operator-release
+      resolver: git
+      params:
+        - name: repo
+          value: operator
+        - name: org
+          value: tektoncd
+        - name: revision
+          value: $(params.gitRevision)
+        - name: pathInRepo
+          value: tekton/build-publish-images-manifests.yaml
     params:
     - name: package
       value: $(params.package)
@@ -164,7 +230,16 @@ spec:
     runAfter:
     - build-test
     taskRef:
-      name: publish-operator-release
+      resolver: git
+      params:
+        - name: repo
+          value: operator
+        - name: org
+          value: tektoncd
+        - name: revision
+          value: $(params.gitRevision)
+        - name: pathInRepo
+          value: tekton/build-publish-images-manifests.yaml
     params:
     - name: package
       value: $(params.package)
@@ -198,7 +273,14 @@ spec:
     - publish-images-platform-kubernetes
     - publish-images-platform-openshift
     taskRef:
-      name: gcs-upload
+      resolver: bundles
+      params:
+        - name: bundle
+          value: ghcr.io/tektoncd/catalog/upstream/tasks/gcs-upload:0.3
+        - name: name
+          value: gcs-upload
+        - name: kind
+          value: task
     workspaces:
     - name: credentials
       workspace: release-secret
@@ -222,7 +304,14 @@ spec:
       values:
       - "true"
     taskRef:
-      name: gcs-upload
+      resolver: bundles
+      params:
+        - name: bundle
+          value: ghcr.io/tektoncd/catalog/upstream/tasks/gcs-upload:0.3
+        - name: name
+          value: gcs-upload
+        - name: kind
+          value: task
     workspaces:
     - name: credentials
       workspace: release-secret
