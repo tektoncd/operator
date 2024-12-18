@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	nsV1 "k8s.io/client-go/informers/core/v1"
 	rbacV1 "k8s.io/client-go/informers/rbac/v1"
 	"k8s.io/client-go/kubernetes"
@@ -109,15 +110,38 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 
 	// below code helps to retain state of pre-existing SA at the time of upgrade
 	if existingSAWithOwnerRef(r.tektonConfig) {
+		logger := logging.FromContext(ctx)
+		logger.Infof("Found pre-existing ServiceAccount. Changing owner reference during upgrade.")
+
 		if err := changeOwnerRefOfPreExistingSA(ctx, r.kubeClientSet, *config); err != nil {
+			logger.Errorf("Failed to change owner reference for pre-existing SA: %v", err)
 			return err
 		}
+
+		// Get current labels to retain any existing labels
 		tcLabels := config.GetLabels()
+		if tcLabels == nil {
+			tcLabels = map[string]string{}
+		}
+
+		// Add or update the serviceAccountCreationLabel without removing other labels
 		tcLabels[serviceAccountCreationLabel] = "true"
-		config.SetLabels(tcLabels)
-		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, config, metav1.UpdateOptions{}); err != nil {
+
+		// Prepare the patch to update only the labels, keeping the existing ones
+		jsonLabels, err := common.SerializeLabelsToJSON(tcLabels)
+		if err != nil {
+			logger.Error(err)
 			return err
 		}
+		patchData := []byte(fmt.Sprintf(`{"metadata":{"labels":%s}}`, jsonLabels))
+
+		// Apply the patch to the TektonConfig
+		if _, err := oe.operatorClientSet.OperatorV1alpha1().TektonConfigs().Patch(ctx, config.Name, types.MergePatchType, patchData, metav1.PatchOptions{}); err != nil {
+			logger.Errorf("Failed to patch TektonConfig with new label: %v", err)
+			return err
+		}
+
+		logger.Infof("Successfully patched TektonConfig with serviceAccountCreationLabel set to true")
 	}
 
 	createRBACResource := true
