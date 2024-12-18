@@ -113,3 +113,65 @@ func TestStructMapError(t *testing.T) {
 	err := StructToMap(&in, actualOut)
 	assert.Error(t, err, "json: Unmarshal(non-pointer map[string]interface {})")
 }
+
+func TestSerializeLabelsToJSON(t *testing.T) {
+	// Test cases with different inputs
+	tests := []struct {
+		name           string
+		labels         map[string]string
+		expectedOutput string
+		expectError    bool
+	}{
+		{
+			name: "Valid input with multiple labels",
+			labels: map[string]string{
+				"app":   "my-app",
+				"env":   "production",
+				"owner": "dev-team",
+			},
+			expectedOutput: `{"app":"my-app","env":"production","owner":"dev-team"}`,
+			expectError:    false,
+		},
+		{
+			name:           "Empty input",
+			labels:         map[string]string{},
+			expectedOutput: `{}`,
+			expectError:    false,
+		},
+		{
+			name: "Single label",
+			labels: map[string]string{
+				"key": "value",
+			},
+			expectedOutput: `{"key":"value"}`,
+			expectError:    false,
+		},
+		{
+			name: "Special characters in keys and values",
+			labels: map[string]string{
+				"foo@bar":   "bazqux",
+				"key#1":     "value$%",
+				"space key": "with space",
+			},
+			expectedOutput: `{"foo@bar":"bazqux","key#1":"value$%","space key":"with space"}`,
+			expectError:    false,
+		},
+	}
+
+	// Loop over each test case
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Call the function with the test labels
+			actual, err := SerializeLabelsToJSON(tt.labels)
+
+			// Check if we expect an error
+			if tt.expectError {
+				// Assert that an error was returned
+				assert.Error(t, err, "Expected error, but got none")
+			} else {
+				// Check if the output matches the expected result
+				assert.Equal(t, tt.expectedOutput, actual)
+			}
+		})
+	}
+}
