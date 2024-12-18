@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"sync"
 	"time"
 
 	security "github.com/openshift/client-go/security/clientset/versioned"
@@ -376,7 +377,7 @@ func (r *rbac) createResources(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
 
 	if err := r.ensurePreRequisites(ctx); err != nil {
-		logger.Errorf("Error validating resources: %v", err)
+		logger.Errorf("error validating resources: %v", err)
 		return err
 	}
 
@@ -393,77 +394,101 @@ func (r *rbac) createResources(ctx context.Context) error {
 		return err
 	}
 
+	// Semaphore to limit concurrency (max 100 goroutines at a time)
+	sem := make(chan struct{}, 100)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	// Concurrently process namespaces
 	for _, ns := range namespacesToBeReconciled {
-		var withError bool
+		wg.Add(1)
 
-		logger.Infow("Inject CA bundle configmap in ", "Namespace", ns.GetName())
-		if err := r.ensureCABundles(ctx, &ns); err != nil {
-			withError = true
-			logger.Errorf("failed to ensure ca bundles presence in namespace %s, %v", ns.Name, err)
-		}
+		// Reserve a slot in the semaphore
+		sem <- struct{}{}
 
-		logger.Infow("Ensures Default SA in ", "Namespace", ns.GetName())
-		sa, err := r.ensureSA(ctx, &ns)
-		if err != nil {
-			withError = true
-			logger.Errorf("failed to ensure default SA in namespace %s, %v", ns.Name, err)
-		}
+		go func(ns corev1.Namespace) {
+			defer wg.Done()
+			defer func() { <-sem }() // Release the semaphore slot after finishing
 
-		// If "operator.tekton.dev/scc" exists in the namespace, then bind
-		// that SCC to the SA
-		err = r.handleSCCInNamespace(ctx, &ns)
-		if err != nil {
-			withError = true
-			logger.Errorf("failed to bind scc to namespace %s, %v", ns.Name, err)
-		}
+			var withError bool
 
-		if sa != nil {
-			// We use a namespace scoped Role when SCC annotation is present, and
-			// a cluster scoped ClusterRole when the default SCC is used
-			roleRef := r.getSCCRoleInNamespace(&ns)
-			if roleRef != nil {
-				if err := r.ensurePipelinesSCCRoleBinding(ctx, sa, roleRef); err != nil {
-					withError = true
-					logger.Errorf("failed to create Pipeline Scc Role Binding in namespace %s, %v", ns.Name, err)
-				}
-			}
-			if err := r.ensureRoleBindings(ctx, sa); err != nil {
+			logger.Infow("Inject CA bundle configmap in ", "Namespace", ns.GetName())
+			if err := r.ensureCABundles(ctx, &ns); err != nil {
 				withError = true
-				logger.Errorf("failed to create rolebinding in namespace %s, %v", ns.Name, err)
+				logger.Errorf("failed to ensure ca bundles presence in namespace %s, %v", ns.Name, err)
 			}
 
-			if err := r.ensureClusterRoleBindings(ctx, sa); err != nil {
+			// If "operator.tekton.dev/scc" exists in the namespace, then bind
+			// that SCC to the SA
+			if err := r.handleSCCInNamespace(ctx, &ns); err != nil {
 				withError = true
-				logger.Errorf("failed to create clusterrolebinding in namespace %s, %v", ns.Name, err)
+				logger.Errorf("failed to bind scc to namespace %s, %v", ns.Name, err)
 			}
-		}
-		if !withError {
-			logger.Infof("add label namespace-reconcile-version to mark namespace '%s' as reconciled", ns.Name)
 
-			// Re-fetch the namespace to ensure we have the latest version
-			updatedNS, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, ns.Name, metav1.GetOptions{})
+			logger.Infow("Ensures Default SA in ", "Namespace", ns.GetName())
+			sa, err := r.ensureSA(ctx, &ns)
 			if err != nil {
-				return fmt.Errorf("failed to re-fetch namespace %s: %v", ns.Name, err)
+				withError = true
+				logger.Errorf("failed to ensure default SA in namespace %s, %v", ns.Name, err)
 			}
 
-			// Get the current labels, or initialize if none exist
-			nsLabels := updatedNS.GetLabels()
-			if nsLabels == nil {
-				nsLabels = map[string]string{}
+			if sa != nil {
+				// We use a namespace scoped Role when SCC annotation is present, and
+				// a cluster scoped ClusterRole when the default SCC is used
+				roleRef := r.getSCCRoleInNamespace(&ns)
+				if roleRef != nil {
+					if err := r.ensurePipelinesSCCRoleBinding(ctx, sa, roleRef); err != nil {
+						withError = true
+						logger.Errorf("failed to create Pipeline Scc Role Binding in namespace %s, %v", ns.Name, err)
+					}
+				}
+				if err := r.ensureRoleBindings(ctx, sa); err != nil {
+					withError = true
+					logger.Errorf("failed to create rolebinding in namespace %s, %v", ns.Name, err)
+				}
+
+				// Locking section to ensure clusterRoleBinding is updated by one goroutine at a time
+				mu.Lock()
+				if err := r.ensureClusterRoleBindings(ctx, sa); err != nil {
+					withError = true
+					logger.Errorf("failed to create clusterrolebinding in namespace %s, %v", ns.Name, err)
+				}
+				mu.Unlock()
 			}
 
-			// Add `openshift-pipelines.tekton.dev/namespace-reconcile-version` label to namespace
-			// so that rbac won't loop on it again
-			nsLabels[namespaceVersionLabel] = r.version
-			updatedNS.SetLabels(nsLabels)
+			if !withError {
+				logger.Infof("add label namespace-reconcile-version to mark namespace '%s' as reconciled", ns.Name)
 
-			// Update the namespace with set labels
-			if _, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, updatedNS, metav1.UpdateOptions{}); err != nil {
-				return fmt.Errorf("failed to update namespace '%s' with label %s, %v", ns.Name, namespaceVersionLabel, err)
+				// Re-fetch the namespace to ensure we have the latest version
+				updatedNS, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, ns.Name, metav1.GetOptions{})
+				if err != nil {
+					logger.Errorf("failed to re-fetch namespace %s: %v", ns.Name, err)
+					return
+				}
+
+				// Get the current labels, or initialize if none exist
+				nsLabels := updatedNS.GetLabels()
+				if nsLabels == nil {
+					nsLabels = map[string]string{}
+				}
+
+				// Add `openshift-pipelines.tekton.dev/namespace-reconcile-version` label to namespace
+				// so that rbac won't loop on it again
+				nsLabels[namespaceVersionLabel] = r.version
+				updatedNS.SetLabels(nsLabels)
+
+				// Update the namespace with set labels
+				if _, err = r.kubeClientSet.CoreV1().Namespaces().Update(ctx, updatedNS, metav1.UpdateOptions{}); err != nil {
+					logger.Errorf("failed to update the namespace %s: %v", ns.Name, err)
+					return
+				}
+				logger.Infof("namespace '%s' successfully reconciled", ns.Name)
 			}
-			logger.Infof("namespace '%s' sucessfully reconciled", ns.Name)
-		}
+		}(ns)
 	}
+
+	// Wait for all goroutines to finish
+	wg.Wait()
 
 	return nil
 }
