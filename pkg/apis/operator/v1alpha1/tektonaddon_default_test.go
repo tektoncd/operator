@@ -108,3 +108,34 @@ func Test_AddonSetDefaults_ResolverStepActions(t *testing.T) {
 	assert.Equal(t, true, ok)
 	assert.Equal(t, "false", value)
 }
+
+func Test_AddonSetDefaults_CommunityResolverTasks(t *testing.T) {
+
+	ta := &TektonAddon{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: TektonAddonSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Addon: Addon{
+				Params: []Param{
+					{
+						Name:  "communityResolverTasks",
+						Value: "false",
+					},
+				},
+			},
+		},
+	}
+
+	ta.SetDefaults(context.TODO())
+	assert.Equal(t, 5, len(ta.Spec.Params))
+
+	params := ParseParams(ta.Spec.Params)
+	value, ok := params[CommunityResolverTasks]
+	assert.Equal(t, true, ok)
+	assert.Equal(t, "false", value)
+}

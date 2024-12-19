@@ -79,7 +79,7 @@ func EnsureTektonConfigExists(kubeClientSet *kubernetes.Clientset, clients opera
 							Value: "true",
 						},
 						{
-							Name:  "communityClusterTasks",
+							Name:  "communityResolverTasks",
 							Value: "true",
 						},
 					},

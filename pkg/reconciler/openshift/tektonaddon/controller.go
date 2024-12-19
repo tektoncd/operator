@@ -114,21 +114,28 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatalf("failed to read console cli from kodata: %v", err)
 		}
 
+		communityResolverTaskManifest := &mf.Manifest{}
+		if err := fetchCommunityResolverTasks(communityResolverTaskManifest); err != nil {
+			// if unable to fetch community task, don't fail
+			logger.Errorf("failed to read community resolver task: %v", err)
+		}
+
 		c := &Reconciler{
-			crdClientSet:               crdClient,
-			installerSetClient:         client.NewInstallerSetClient(tisClient, version, "addon", v1alpha1.KindTektonAddon, metrics),
-			operatorClientSet:          operatorclient.Get(ctx),
-			extension:                  generator(ctx),
-			pipelineInformer:           tektonPipelineinformer.Get(ctx),
-			triggerInformer:            tektonTriggerinformer.Get(ctx),
-			manifest:                   manifest,
-			operatorVersion:            version,
-			resolverTaskManifest:       resolverTaskManifest,
-			resolverStepActionManifest: resolverStepActionManifest,
-			triggersResourcesManifest:  triggersResourcesManifest,
-			pipelineTemplateManifest:   pipelineTemplateManifest,
-			openShiftConsoleManifest:   openShiftConsoleManifest,
-			consoleCLIManifest:         consoleCLIManifest,
+			crdClientSet:                  crdClient,
+			installerSetClient:            client.NewInstallerSetClient(tisClient, version, "addon", v1alpha1.KindTektonAddon, metrics),
+			operatorClientSet:             operatorclient.Get(ctx),
+			extension:                     generator(ctx),
+			pipelineInformer:              tektonPipelineinformer.Get(ctx),
+			triggerInformer:               tektonTriggerinformer.Get(ctx),
+			manifest:                      manifest,
+			operatorVersion:               version,
+			resolverTaskManifest:          resolverTaskManifest,
+			resolverStepActionManifest:    resolverStepActionManifest,
+			triggersResourcesManifest:     triggersResourcesManifest,
+			pipelineTemplateManifest:      pipelineTemplateManifest,
+			openShiftConsoleManifest:      openShiftConsoleManifest,
+			consoleCLIManifest:            consoleCLIManifest,
+			communityResolverTaskManifest: communityResolverTaskManifest,
 		}
 		impl := tektonAddonreconciler.NewImpl(ctx, c)
 
