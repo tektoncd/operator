@@ -18,8 +18,19 @@ package tektonresult
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/base64"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"log"
+	"math/big"
+	"os"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -145,12 +156,24 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 		return errors.New(errMsg)
 	}
 
-	// check if the secrets are created
-	// TODO: Create secret automatically if they don't exist
-	// TODO: And remove this check in future release.
-	if err := r.validateSecretsAreCreated(ctx, tr); err != nil {
-		return err
+	// If external database is disable then create default database and tls secret
+	// otherwise checks database and secret are created or not
+	if !tr.Spec.IsExternalDB {
+		if err := r.createDBSecret(ctx, tr); err != nil {
+			return err
+		}
+		if err := r.createTLSSecret(ctx, tr); err != nil {
+			return err
+		}
+	} else {
+		if err := r.validateSecretsAreCreated(ctx, tr, DbSecretName); err != nil {
+			return err
+		}
+		if err := r.validateSecretsAreCreated(ctx, tr, TlsSecretName); err != nil {
+			return err
+		}
 	}
+
 	tr.Status.MarkDependenciesInstalled()
 
 	if err := r.extension.PreReconcile(ctx, tr); err != nil {
@@ -314,17 +337,185 @@ func (r *Reconciler) updateTektonResultsStatus(ctx context.Context, tr *v1alpha1
 }
 
 // TektonResults expects secrets to be created before installing
-func (r *Reconciler) validateSecretsAreCreated(ctx context.Context, tr *v1alpha1.TektonResult) error {
+func (r *Reconciler) validateSecretsAreCreated(ctx context.Context, tr *v1alpha1.TektonResult, secretName string) error {
 	logger := logging.FromContext(ctx)
-	_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Get(ctx, DbSecretName, metav1.GetOptions{})
+	_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Get(ctx, secretName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			logger.Error(err)
-			tr.Status.MarkDependencyMissing(fmt.Sprintf("%s secret is missing", DbSecretName))
+			tr.Status.MarkDependencyMissing(fmt.Sprintf("%s secret is missing", secretName))
 			return err
 		}
 		logger.Error(err)
 		return err
 	}
+	return nil
+}
+
+// Generate the DB secret
+func (r *Reconciler) getDBSecret(name string, namespace string, tr *v1alpha1.TektonResult) *corev1.Secret {
+	s := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:            name,
+			Namespace:       namespace,
+			OwnerReferences: []metav1.OwnerReference{getOwnerRef(tr)},
+		},
+		Type:       corev1.SecretTypeOpaque,
+		StringData: map[string]string{},
+	}
+	password, _ := generateRandomBaseString(20)
+	s.StringData["POSTGRES_PASSWORD"] = password
+	s.StringData["POSTGRES_USER"] = "result"
+	return s
+}
+
+// Create Result default database
+func (r *Reconciler) createDBSecret(ctx context.Context, tr *v1alpha1.TektonResult) error {
+	logger := logging.FromContext(ctx)
+
+	// Get the DB secret, if not found then create the DB secret
+	_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Get(ctx, DbSecretName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// If not found then create DB secret with default data
+			newDBSecret := r.getDBSecret(DbSecretName, tr.Spec.TargetNamespace, tr)
+			_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Create(ctx, newDBSecret, metav1.CreateOptions{})
+			if err != nil {
+				logger.Error(err)
+				tr.Status.MarkDependencyMissing(fmt.Sprintf("Default db %s creation is failing", DbSecretName))
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// Create TLS certificates for the database
+func (r *Reconciler) createTLSSecret(ctx context.Context, tr *v1alpha1.TektonResult) error {
+	logger := logging.FromContext(ctx)
+
+	_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Get(ctx, TlsSecretName, metav1.GetOptions{})
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+
+			certPEM, keyPEM, err := generateTLSCertificate()
+			if err != nil {
+				logger.Errorf("Error generating TLS certificate: %v", err)
+			}
+			err = os.WriteFile("cert.pem", certPEM, 0644)
+			if err != nil {
+				logger.Errorf("Error writing cert.pem: %v", err)
+			}
+			err = os.WriteFile("key.pem", keyPEM, 0600)
+			if err != nil {
+				logger.Errorf("Error writing key.pem: %v", err)
+			}
+
+			// Create Kubernetes secret
+			err = r.createKubernetesTLSSecret(ctx, tr.Spec.TargetNamespace, TlsSecretName, certPEM, keyPEM, tr)
+			if err != nil {
+				log.Fatalf("Error creating Kubernetes secret: %v", err)
+			}
+
+		}
+		logger.Error(err)
+		return err
+	}
+	return nil
+}
+
+// Get an owner reference of Tekton Result
+func getOwnerRef(tr *v1alpha1.TektonResult) metav1.OwnerReference {
+	return *metav1.NewControllerRef(tr, tr.GroupVersionKind())
+}
+
+func generateRandomBaseString(size int) (string, error) {
+	bytes := make([]byte, size)
+
+	// Generate random bytes
+	_, err := rand.Read(bytes)
+	if err != nil {
+		return "", err
+	}
+	// Encode the random bytes into a Base64 string
+	base64String := base64.StdEncoding.EncodeToString(bytes)
+
+	return base64String, nil
+}
+
+// generateTLSCertificate generates a self-signed TLS certificate and private key.
+func generateTLSCertificate() (certPEM, keyPEM []byte, err error) {
+
+	// Define subject and DNS names
+	dnsName := fmt.Sprintf("tekton-results-api-service.%s.svc.cluster.local", "tekton-pipelines")
+
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	notBefore := time.Now()
+	notAfter := notBefore.Add(365 * 24 * time.Hour)
+
+	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Issuer:       pkix.Name{},
+		Subject: pkix.Name{
+			CommonName: dnsName,
+		},
+		DNSNames:              []string{dnsName},
+		NotBefore:             notBefore,
+		NotAfter:              notAfter,
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	certPEM = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+
+	privBytes, err := x509.MarshalECPrivateKey(priv)
+	if err != nil {
+		return nil, nil, err
+	}
+	keyPEM = pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: privBytes})
+
+	return certPEM, keyPEM, nil
+}
+
+// createKubernetesSecret creates a Kubernetes TLS secret with the given cert and key.
+func (r *Reconciler) createKubernetesTLSSecret(ctx context.Context, namespace, secretName string, certPEM, keyPEM []byte, tr *v1alpha1.TektonResult) error {
+
+	// Define the secret
+	logger := logging.FromContext(ctx)
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: namespace,
+		},
+		Type: corev1.SecretTypeTLS,
+		Data: map[string][]byte{
+			corev1.TLSCertKey:       certPEM,
+			corev1.TLSPrivateKeyKey: keyPEM,
+		},
+	}
+
+	_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Create(ctx, secret, metav1.CreateOptions{})
+	if err != nil {
+		logger.Error(err)
+		tr.Status.MarkDependencyMissing(fmt.Sprintf("Default db %s creation is failing", DbSecretName))
+		return err
+	}
+
+	log.Printf("Secret '%s' created successfully in namespace '%s'\n", secretName, namespace)
 	return nil
 }
