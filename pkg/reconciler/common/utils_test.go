@@ -113,3 +113,70 @@ func TestStructMapError(t *testing.T) {
 	err := StructToMap(&in, actualOut)
 	assert.Error(t, err, "json: Unmarshal(non-pointer map[string]interface {})")
 }
+
+func TestSerializeLabelsToJSON(t *testing.T) {
+	// Test cases with different inputs
+	tests := []struct {
+		name           string
+		labels         map[string]string
+		expectedOutput string
+		expectPanic    bool
+	}{
+		{
+			name: "Valid input with multiple labels",
+			labels: map[string]string{
+				"app":   "my-app",
+				"env":   "production",
+				"owner": "dev-team",
+			},
+			expectedOutput: `{"app":"my-app","env":"production","owner":"dev-team"}`,
+			expectPanic:    false,
+		},
+		{
+			name:           "Empty input",
+			labels:         map[string]string{},
+			expectedOutput: `{}`,
+			expectPanic:    false,
+		},
+		{
+			name: "Single label",
+			labels: map[string]string{
+				"key": "value",
+			},
+			expectedOutput: `{"key":"value"}`,
+			expectPanic:    false,
+		},
+		{
+			name: "Special characters in keys and values",
+			labels: map[string]string{
+				"foo@bar":   "bazqux",
+				"key#1":     "value$%",
+				"space key": "with space",
+			},
+			expectedOutput: `{"foo@bar":"bazqux","key#1":"value$%","space key":"with space"}`,
+			expectPanic:    false,
+		},
+	}
+
+	// Loop over each test case
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.expectPanic {
+				// If we expect a panic, run in a recover block
+				defer func() {
+					if r := recover(); r == nil {
+						t.Errorf("Expected panic, but got none")
+					}
+				}()
+			}
+
+			// Call the function with the test labels
+			actual := SerializeLabelsToJSON(tt.labels)
+
+			// Check if the output matches the expected result
+			if actual != tt.expectedOutput {
+				t.Errorf("Expected %s, but got %s", tt.expectedOutput, actual)
+			}
+		})
+	}
+}

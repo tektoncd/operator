@@ -63,3 +63,13 @@ func StructToMap(in, out interface{}) error {
 	}
 	return json.Unmarshal(data, out)
 }
+
+// Helper function to serialize labels map to JSON string
+func SerializeLabelsToJSON(labels map[string]string) string {
+	bytes, err := json.Marshal(labels)
+	if err != nil {
+		// This should be unlikely, but handle serialization error
+		panic(fmt.Sprintf("Failed to serialize labels to JSON: %v", err))
+	}
+	return string(bytes)
+}
