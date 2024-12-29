@@ -231,7 +231,7 @@ spec:
       workspace: workarea
       subpath: bucket
     - name: release-secret
-      workspace: release-secret
+      workspace: release-images-secret
   - name: publish-images-platform-openshift
     runAfter:
     - build-test
@@ -279,7 +279,7 @@ spec:
       workspace: workarea
       subpath: bucket
     - name: release-secret
-      workspace: release-secret
+      workspace: release-images-secret
   - name: publish-to-bucket
     runAfter:
     - publish-images-platform-kubernetes
