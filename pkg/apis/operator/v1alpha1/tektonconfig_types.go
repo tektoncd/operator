@@ -105,6 +105,9 @@ type TektonConfigSpec struct {
 	// Chain holds the customizable option for chains component
 	// +optional
 	Chain Chain `json:"chain,omitempty"`
+	// Result holds the customize option for results component
+	// +optional
+	Result Result `json:"result,omitempty"`
 	// Dashboard holds the customizable options for dashboards component
 	// +optional
 	Dashboard Dashboard `json:"dashboard,omitempty"`
