@@ -21,4 +21,4 @@ results:
   version: v0.13.2
 triggers:
   github: tektoncd/triggers
-  version: v0.30.0
+  version: v0.30.1
