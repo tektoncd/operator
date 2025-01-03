@@ -67,7 +67,8 @@ func upgradePipelineProperties(ctx context.Context, logger *zap.SugaredLogger, k
 		return err
 	}
 
-	if !*tcCR.Spec.Pipeline.EnableStepActions {
+	// For historical reasons, if it is upgraded from a historical version, this field may be nil
+	if tcCR.Spec.Pipeline.EnableStepActions == nil || !*tcCR.Spec.Pipeline.EnableStepActions {
 		// update enable-step-actions to true from false which is default.
 		tcCR.Spec.Pipeline.EnableStepActions = ptr.Bool(true)
 		_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{})
