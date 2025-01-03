@@ -66,36 +66,63 @@ func TestResetTektonConfigConditions(t *testing.T) {
 }
 
 func TestUpgradePipelineProperties(t *testing.T) {
-	ctx := context.TODO()
-	operatorClient := operatorFake.NewSimpleClientset()
-	logger := logging.FromContext(ctx).Named("unit-test")
-
-	// there is no tektonConfig CR, returns no error
-	err := upgradePipelineProperties(ctx, logger, nil, operatorClient, nil)
-	assert.NoError(t, err)
-
-	// create tekconConfig CR with initial conditions
-	tc := &v1alpha1.TektonConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: v1alpha1.ConfigResourceName,
-		},
-		Spec: v1alpha1.TektonConfigSpec{
-			Pipeline: v1alpha1.Pipeline{
-				PipelineProperties: v1alpha1.PipelineProperties{
-					EnableStepActions: ptr.Bool(false),
+	tests := []struct {
+		name     string
+		tc       *v1alpha1.TektonConfig
+		expected bool
+	}{
+		{
+			name: "with explicit false enable step actions",
+			tc: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: v1alpha1.ConfigResourceName,
+				},
+				Spec: v1alpha1.TektonConfigSpec{
+					Pipeline: v1alpha1.Pipeline{
+						PipelineProperties: v1alpha1.PipelineProperties{
+							EnableStepActions: ptr.Bool(false),
+						},
+					},
 				},
 			},
+			expected: true,
+		},
+		{
+			name: "with default pipeline properties",
+			tc: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: v1alpha1.ConfigResourceName,
+				},
+			},
+			expected: true,
 		},
 	}
-	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
-	assert.NoError(t, err)
 
-	// update enable-step-actions to true
-	err = upgradePipelineProperties(ctx, logger, nil, operatorClient, nil)
-	assert.NoError(t, err)
+	ctx := context.TODO()
+	logger := logging.FromContext(ctx).Named("unit-test")
 
-	// verify the pipeline property enable-step-actions to true
-	tcData, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
-	assert.NoError(t, err)
-	assert.Equal(t, tcData.Spec.Pipeline.EnableStepActions, ptr.Bool(true))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			operatorClient := operatorFake.NewSimpleClientset()
+
+			// test when no tektonConfig CR exists
+			err := upgradePipelineProperties(ctx, logger, nil, operatorClient, nil)
+			assert.NoError(t, err)
+
+			// create tektonConfig CR
+			if tt.tc != nil {
+				_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tt.tc, metav1.CreateOptions{})
+				assert.NoError(t, err)
+			}
+
+			// update enable-step-actions to true
+			err = upgradePipelineProperties(ctx, logger, nil, operatorClient, nil)
+			assert.NoError(t, err)
+
+			// verify the pipeline property enable-step-actions is set to true
+			tcData, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+			assert.NoError(t, err)
+			assert.Equal(t, *tcData.Spec.Pipeline.EnableStepActions, tt.expected)
+		})
+	}
 }
