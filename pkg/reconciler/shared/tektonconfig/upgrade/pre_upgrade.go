@@ -67,6 +67,9 @@ func upgradePipelineProperties(ctx context.Context, logger *zap.SugaredLogger, k
 		return err
 	}
 
+	// set the default values avoid nil pointer exceptions
+	tcCR.SetDefaults(ctx)
+
 	if !*tcCR.Spec.Pipeline.EnableStepActions {
 		// update enable-step-actions to true from false which is default.
 		tcCR.Spec.Pipeline.EnableStepActions = ptr.Bool(true)

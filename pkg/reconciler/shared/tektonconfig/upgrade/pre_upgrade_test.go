@@ -82,7 +82,7 @@ func TestUpgradePipelineProperties(t *testing.T) {
 		Spec: v1alpha1.TektonConfigSpec{
 			Pipeline: v1alpha1.Pipeline{
 				PipelineProperties: v1alpha1.PipelineProperties{
-					EnableStepActions: ptr.Bool(false),
+					// EnableStepActions: ptr.Bool(false),
 				},
 			},
 		},
