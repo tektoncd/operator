@@ -1371,7 +1371,7 @@ github.com/tektoncd/pipeline/test/parse
 ## explicit; go 1.19
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
-# github.com/tektoncd/triggers v0.30.0
+# github.com/tektoncd/triggers v0.30.1
 ## explicit; go 1.22
 github.com/tektoncd/triggers/pkg/apis/config
 github.com/tektoncd/triggers/pkg/apis/triggers
