@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/tektoncd/pipeline v0.66.0
 	github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293
-	github.com/tektoncd/triggers v0.30.0
+	github.com/tektoncd/triggers v0.30.1
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8
