@@ -84,3 +84,6 @@ tags
 
 # ignore chain certificate
 test/e2e/common/cosign.pub
+
+# Release
+**/source.tar.gz

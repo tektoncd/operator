@@ -50,7 +50,7 @@ spec:
     env:
     - name: "PROJECT_ROOT"
       value: "$(workspaces.source.path)"
-    - name: CONTAINER_REGISTY_CREDENTIALS
+    - name: CONTAINER_REGISTRY_CREDENTIALS
       value: "$(workspaces.release-secret.path)/$(params.serviceAccountPath)"
     - name: CONTAINER_REGISTRY
       value: "$(params.imageRegistry)/$(params.imageRegistryPath)"
@@ -79,7 +79,7 @@ spec:
       for region in ${REGIONS}
       do
         HOSTNAME=${region}.$(params.imageRegistry)
-        cat ${CONTAINER_REGISTY_CREDENTIALS} | crane auth login -u _json_key --password-stdin ${HOSTNAME}
+        cat ${CONTAINER_REGISTRY_CREDENTIALS} | crane auth login -u ${CONTAINER_REGISTRY_USER} --password-stdin ${HOSTNAME}
       done
       cp ${DOCKER_CONFIG} /workspace/docker-config.json
 
@@ -119,11 +119,6 @@ spec:
         fi
       done
 
-      # Rewrite "devel" to params.versionTag
-      sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/base/*.yaml
-      sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/${KUBE_DISTRO}/base/*.yaml
-      sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default/*.yaml
-
       # Publish images and create release.yaml
       mkdir -p $OUTPUT_RELEASE_DIR
 
@@ -133,6 +128,9 @@ spec:
       # This is currently the case for `cri-o` (and most likely others)
       kustomize build ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default | ko resolve --platform=$(params.platforms) --preserve-import-paths -f - > $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.notags.yaml
 
+      # Rewrite "devel" to params.versionTag
+      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/${FILENAME_PREFIX}release.yaml
+      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/${FILENAME_PREFIX}release.notags.yaml
   - name: koparse
     image: gcr.io/tekton-releases/dogfooding/koparse:v20240910-ec3cf3c749@sha256:5e8a522fc1e587fc00b69a6d73e0bfdf7a29ca143537a5542eb224680d2dbf2f
     script: |
