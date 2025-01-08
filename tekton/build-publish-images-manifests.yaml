@@ -56,7 +56,7 @@ spec:
     env:
     - name: "PROJECT_ROOT"
       value: "$(workspaces.source.path)"
-    - name: CONTAINER_REGISTY_CREDENTIALS
+    - name: CONTAINER_REGISTRY_CREDENTIALS
       value: "$(workspaces.release-secret.path)/$(params.serviceAccountPath)"
     - name: CONTAINER_REGISTRY
       value: "$(params.imageRegistry)/$(params.imageRegistryPath)"
@@ -89,7 +89,7 @@ spec:
       for region in ${REGIONS}
       do
         HOSTNAME=${region}.$(params.imageRegistry)
-        cat ${CONTAINER_REGISTY_CREDENTIALS} | crane auth login -u _json_key --password-stdin ${HOSTNAME}
+        cat ${CONTAINER_REGISTRY_CREDENTIALS} | crane auth login -u ${CONTAINER_REGISTRY_USER} --password-stdin ${HOSTNAME}
       done
       cp ${DOCKER_CONFIG} /workspace/${KUBE_DISTRO}-docker-config.json
 
@@ -129,11 +129,6 @@ spec:
         fi
       done
 
-      # Rewrite "devel" to params.versionTag
-      sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/base/*.yaml
-      sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/${KUBE_DISTRO}/base/*.yaml
-      sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\("-version"\), "devel"/\1, "$(params.versionTag)"/g' ${PROJECT_ROOT}/config/${KUBE_DISTRO}/overlays/default/*.yaml
-
       # Publish images and create release.yaml
       mkdir -p $OUTPUT_RELEASE_DIR
 
@@ -157,6 +152,9 @@ spec:
           --platform=$(params.platforms) ${KO_EXTRA_ARGS} \
           -f - > $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.notags.yaml
 
+      # Rewrite "devel" to params.versionTag
+      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/${FILENAME_PREFIX}release.yaml
+      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/${FILENAME_PREFIX}release.notags.yaml
   - name: koparse
     image: ghcr.io/tektoncd/plumbing/koparse@sha256:194c2ab9dce5f778ed757af13c626d6b85f15452e2c2902c79b0d0f5a0adf4d1
     script: |
