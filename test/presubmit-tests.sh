@@ -23,8 +23,8 @@ source $(git rev-parse --show-toplevel)/vendor/github.com/tektoncd/plumbing/scri
 function check_go_lint() {
     header "Testing if golint has been done"
 
-    # deadline of 5m, and show all the issues
-    golangci-lint -j 1 --color=never --timeout=10m run
+    # deadline of 10m, and show all the issues
+    golangci-lint -j 1 --color=never --timeout=10m run --verbose ./...
 
     if [[ $? != 0 ]]; then
         results_banner "Go Lint" 1
