@@ -18,6 +18,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
@@ -113,7 +114,7 @@ func (i *InstallerSetClient) statusCheck(logger *zap.SugaredLogger, setType stri
 		if !ready.IsTrue() {
 			msg := fmt.Sprintf("%v/%v: installer set not ready, will retry: %v", i.resourceKind, setType, ready.Message)
 			logger.Debugf(msg)
-			return fmt.Errorf(msg)
+			return errors.New(msg)
 		}
 	}
 	return nil
