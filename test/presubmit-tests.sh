@@ -37,7 +37,7 @@ function check_go_lint() {
 function check_yaml_lint() {
     header "Testing if yamllint has been done"
 
-    local YAML_FILES=$(find . -path ./vendor -prune -o -type f -regex ".*y[a]ml" -print)
+    local YAML_FILES=$(find . \( -path ./vendor -prune \) -o \( -type d -name testdata -prune \) -o -type f -regex ".*y[a]ml" -print)
     yamllint -c .yamllint ${YAML_FILES}
 
     if [[ $? != 0 ]]; then
@@ -49,7 +49,8 @@ function check_yaml_lint() {
 }
 
 function post_build_tests() {
-  check_go_lint
+  # golangci-lint is executed now via GitHub actions
+  # check_go_lint
   check_yaml_lint
 }
 

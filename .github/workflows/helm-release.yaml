@@ -9,7 +9,7 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'tektoncd' # do not run this elsewhere
+    if: github.repository_owner == 'tektoncd'  # do not run this elsewhere
     steps:
       - name: Checkout
         uses: actions/checkout@v4
