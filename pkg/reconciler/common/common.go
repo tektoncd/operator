@@ -18,7 +18,7 @@ package common
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -39,7 +39,7 @@ func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPi
 	ppln, err := getPipelineRes(informer)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf(PipelineNotFound)
+			return nil, errors.New(PipelineNotFound)
 		}
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPi
 		return nil, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
 	}
 	if !ppln.Status.IsReady() {
-		return nil, fmt.Errorf(PipelineNotReady)
+		return nil, errors.New(PipelineNotReady)
 	}
 	return ppln, nil
 }
@@ -72,7 +72,7 @@ func TriggerReady(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrig
 	trigger, err := getTriggerRes(informer)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf(TriggerNotFound)
+			return nil, errors.New(TriggerNotFound)
 		}
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func TriggerReady(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrig
 		return nil, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
 	}
 	if !trigger.Status.IsReady() {
-		return nil, fmt.Errorf(TriggerNotReady)
+		return nil, errors.New(TriggerNotReady)
 	}
 	return trigger, nil
 }

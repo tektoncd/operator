@@ -69,7 +69,7 @@ func isWebhookEndpointsActive(m *manifestival.Manifest, kc kubernetes.Interface,
 		}
 		return false, err
 	}
-	if endPoint.Subsets == nil || len(endPoint.Subsets) == 0 {
+	if len(endPoint.Subsets) == 0 {
 		return false, nil
 	}
 	return true, nil

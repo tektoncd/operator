@@ -10,7 +10,7 @@ jobs:
   bump-payloads:
     name: "Bump payloads"
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'tektoncd' # do not run this elsewhere
+    if: github.repository_owner == 'tektoncd'  # do not run this elsewhere
     steps:
     - uses: actions/setup-go@v5
       with:
