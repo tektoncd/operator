@@ -9,7 +9,7 @@ on:  # yamllint disable-line rule:truthy
 jobs:
   build-release-matrix:
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'tektoncd' # do not run this elsewhere
+    if: github.repository_owner == 'tektoncd'  # do not run this elsewhere
     steps:
     - id: set-matrix
       run: |
