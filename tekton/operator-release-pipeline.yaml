@@ -146,7 +146,7 @@ spec:
     - name: platforms
       value: $(params.platforms)
     - name: serviceAccountPath
-      value: $(params.serviceAccountPath)
+      value: $(params.serviceAccountImagesPath)
     - name: kubeDistro
       value: kubernetes
     - name: releaseFilePrefix
@@ -179,7 +179,7 @@ spec:
     - name: platforms
       value: $(params.platforms)
     - name: serviceAccountPath
-      value: $(params.serviceAccountPath)
+      value: $(params.serviceAccountImagesPath)
     - name: kubeDistro
       value: openshift
     - name: releaseFilePrefix
