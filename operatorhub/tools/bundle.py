@@ -232,6 +232,8 @@ def newCSVmods(config):
                 if "addn-annotations" in config.keys():
                     csv['metadata']['annotations'].update(config["addn-annotations"])
                 if "addn-labels" in config.keys():
+                    if "labels" not in csv['metadata']:
+                        csv['metadata']['labels'] = {}
                     csv['metadata']['labels'].update(config["addn-labels"])
 
                 csv_stream.seek(0)
