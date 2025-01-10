@@ -17,6 +17,7 @@ limitations under the License.
 package platform
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -132,7 +133,7 @@ func validateConfig(pc *PlatformConfig) error {
 	if len(violations) == 0 {
 		return nil
 	}
-	return fmt.Errorf(strings.Join(violations, ","))
+	return errors.New(strings.Join(violations, ","))
 }
 
 // stringToControllerNamesSlice returns a []ControllerName
