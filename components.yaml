@@ -9,7 +9,7 @@ hub:
   version: v1.19.2
 manual-approval-gate:
   github: openshift-pipelines/manual-approval-gate
-  version: v0.4.0
+  version: v0.4.1
 pipeline:
   github: tektoncd/pipeline
   version: v0.66.0
