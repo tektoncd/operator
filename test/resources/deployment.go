@@ -126,3 +126,19 @@ func WaitForDeploymentDeletion(kubeClient kubernetes.Interface, name, namespace 
 
 	return wait.PollUntilContextTimeout(context.TODO(), interval, timeout, true, verifyFunc)
 }
+
+// WaitForPVCDeletion waits for the PVC to be deleted.
+func WaitForPVCDeletion(kubeClient kubernetes.Interface, name, namespace string, interval, timeout time.Duration) error {
+	verifyFunc := func(ctx context.Context) (bool, error) {
+		_, err := kubeClient.CoreV1().PersistentVolumeClaims(namespace).Get(context.TODO(), name, metav1.GetOptions{})
+		if err != nil {
+			if apierrs.IsNotFound(err) {
+				return true, nil
+			}
+			return false, err
+		}
+		return false, nil
+	}
+
+	return wait.PollUntilContextTimeout(context.TODO(), interval, timeout, true, verifyFunc)
+}
