@@ -85,7 +85,7 @@ function current_tektonconfig_version() {
 
 function tektonconfig_version_from_label() {
   label_key='operator.tekton.dev/release-version'
-  kubectl get tektonconfig config  -o yaml | grep ${label_key} | tr -d ' ' | cut -d ':' -f 2
+  kubectl get tektonconfig config  -o yaml | grep ${label_key} | head -n 1 | tr -d ' ' | cut -d ':' -f 2
 }
 
 tektonconfig_version_from_status() {
