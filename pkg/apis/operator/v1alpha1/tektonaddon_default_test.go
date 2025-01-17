@@ -24,87 +24,85 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_AddonSetDefaults_DefaultParamsWithValues(t *testing.T) {
-
-	ta := &TektonAddon{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
-			Namespace: "namespace",
+func Test_AddonSetDefaults(t *testing.T) {
+	tests := []struct {
+		name           string
+		initialParams  []Param
+		expectedParams map[string]string
+	}{
+		{
+			name: "Default Params with Values",
+			initialParams: []Param{
+				{Name: PipelineTemplatesParam, Value: "true"},
+			},
+			expectedParams: map[string]string{
+				PipelineTemplatesParam: "true",
+			},
 		},
-		Spec: TektonAddonSpec{
-			CommonSpec: CommonSpec{
-				TargetNamespace: "namespace",
+		{
+			name: "Resolver Task is False",
+			initialParams: []Param{
+				{Name: ResolverTasks, Value: "false"},
+			},
+			expectedParams: map[string]string{
+				ResolverTasks: "false",
+			},
+		},
+		{
+			name: "Resolver Step Actions",
+			initialParams: []Param{
+				{Name: ResolverStepActions, Value: "false"},
+			},
+			expectedParams: map[string]string{
+				ResolverStepActions: "false",
+			},
+		},
+		{
+			name: "Community Resolver Tasks",
+			initialParams: []Param{
+				{Name: CommunityResolverTasks, Value: "false"},
+			},
+			expectedParams: map[string]string{
+				CommunityResolverTasks: "false",
 			},
 		},
 	}
 
-	ta.SetDefaults(context.TODO())
-	assert.Equal(t, 3, len(ta.Spec.Params))
-
-	params := ParseParams(ta.Spec.Params)
-	value, ok := params[PipelineTemplatesParam]
-	assert.Equal(t, true, ok)
-	assert.Equal(t, "true", value)
-}
-
-func Test_AddonSetDefaults_ResolverTaskIsFalse(t *testing.T) {
-
-	ta := &TektonAddon{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
-			Namespace: "namespace",
-		},
-		Spec: TektonAddonSpec{
-			CommonSpec: CommonSpec{
-				TargetNamespace: "namespace",
-			},
-			Addon: Addon{
-				Params: []Param{
-					{
-						Name:  "resolverTasks",
-						Value: "false",
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ta := &TektonAddon{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: TektonAddonSpec{
+					CommonSpec: CommonSpec{
+						TargetNamespace: "namespace",
+					},
+					Addon: Addon{
+						Params: tt.initialParams,
 					},
 				},
-			},
-		},
+			}
+
+			ta.SetDefaults(context.TODO())
+			checkAddonParams(t, ta.Spec.Addon.Params, tt.expectedParams)
+		})
 	}
-
-	ta.SetDefaults(context.TODO())
-	assert.Equal(t, 3, len(ta.Spec.Params))
-
-	params := ParseParams(ta.Spec.Params)
-	value, ok := params[ResolverTasks]
-	assert.Equal(t, true, ok)
-	assert.Equal(t, "false", value)
 }
 
-func Test_AddonSetDefaults_ResolverStepActions(t *testing.T) {
+func checkAddonParams(t *testing.T, actualParams []Param, expectedParams map[string]string) {
+	t.Helper()
 
-	ta := &TektonAddon{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "name",
-			Namespace: "namespace",
-		},
-		Spec: TektonAddonSpec{
-			CommonSpec: CommonSpec{
-				TargetNamespace: "namespace",
-			},
-			Addon: Addon{
-				Params: []Param{
-					{
-						Name:  "resolverStepActions",
-						Value: "false",
-					},
-				},
-			},
-		},
+	if len(actualParams) != len(AddonParams) {
+		t.Fatalf("Expected %d addon params, got %d", len(AddonParams), len(actualParams))
 	}
 
-	ta.SetDefaults(context.TODO())
-	assert.Equal(t, 3, len(ta.Spec.Params))
+	paramsMap := ParseParams(actualParams)
 
-	params := ParseParams(ta.Spec.Params)
-	value, ok := params[ResolverStepActions]
-	assert.Equal(t, true, ok)
-	assert.Equal(t, "false", value)
+	for key, expectedValue := range expectedParams {
+		value, exists := paramsMap[key]
+		assert.Equal(t, true, exists, "Param %q is missing in Spec.Addon.Params", key)
+		assert.Equal(t, expectedValue, value, "Param %q has incorrect value", key)
+	}
 }

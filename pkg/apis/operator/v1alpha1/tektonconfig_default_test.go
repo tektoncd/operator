@@ -89,8 +89,16 @@ func Test_SetDefaults_Addon_Params(t *testing.T) {
 	t.Setenv("PLATFORM", "openshift")
 
 	tc.SetDefaults(context.TODO())
-	if len(tc.Spec.Addon.Params) != 3 {
-		t.Error("Setting default failed for TektonConfig (spec.addon.params)")
+
+	if len(tc.Spec.Addon.Params) != len(AddonParams) {
+		t.Fatalf("Expected %d addon params, got %d", len(AddonParams), len(tc.Spec.Addon.Params))
+	}
+	paramsMap := ParseParams(tc.Spec.Addon.Params)
+
+	for key, expectedValue := range AddonParams {
+		value, exists := paramsMap[key]
+		assert.Equal(t, true, exists, "Param %q is missing in Spec.Addon.Params", key)
+		assert.Equal(t, expectedValue.Default, value, "Param %q has incorrect value", key)
 	}
 }
 
