@@ -43,13 +43,25 @@ func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPi
 		}
 		return nil, err
 	}
-	if ppln.GetStatus() != nil && strings.Contains(ppln.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
+	if isUpgradePending(ppln.GetStatus()) {
 		return nil, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
 	}
 	if !ppln.Status.IsReady() {
 		return nil, errors.New(PipelineNotReady)
 	}
 	return ppln, nil
+}
+
+// isUpgradePending checks if the component status indicates an upgrade is pending
+func isUpgradePending(status v1alpha1.TektonComponentStatus) bool {
+	if status == nil {
+		return false
+	}
+	readyCondition := status.GetCondition(apis.ConditionReady)
+	if readyCondition == nil {
+		return false
+	}
+	return strings.Contains(readyCondition.Message, v1alpha1.UpgradePending)
 }
 
 func PipelineTargetNamspace(informer informer.TektonPipelineInformer) (string, error) {
