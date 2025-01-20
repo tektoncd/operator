@@ -61,6 +61,15 @@ type LokiStackProperties struct {
 	LokiStackNamespace string `json:"loki_stack_namespace,omitempty"`
 }
 
+// Result defines the field to customize Result component
+type Result struct {
+	// enable or disable Result Component
+	Disabled         bool `json:"disabled"`
+	TektonResultSpec `json:",inline"`
+	// Options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:"options"`
+}
+
 // ResultsAPIProperties defines the fields which are configurable for
 // Results API server config
 type ResultsAPIProperties struct {

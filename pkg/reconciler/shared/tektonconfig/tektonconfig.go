@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chain"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/result"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,6 +72,9 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 			return err
 		}
 		if err := chain.EnsureTektonChainCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains()); err != nil {
+			return err
+		}
+		if err := result.EnsureTektonResultCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonResults()); err != nil {
 			return err
 		}
 		if err := pipeline.EnsureTektonPipelineCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines()); err != nil {
@@ -181,6 +185,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	} else {
 		if err := chain.EnsureTektonChainCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains()); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChain: %s", err.Error()))
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	}
+
+	// Create Results CR if it's enable
+	if !tc.Spec.Result.Disabled {
+		tektonresult := result.GetTektonResultCR(tc, r.operatorVersion)
+		if _, err = result.EnsureTektonResultExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonResults(), tektonresult); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonResult %s", err.Error()))
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	} else {
+		if err := result.EnsureTektonResultCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonResults()); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonResult: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
