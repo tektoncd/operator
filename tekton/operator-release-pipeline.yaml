@@ -12,7 +12,7 @@ spec:
     description: the git revision to release
   - name: imageRegistry
     description: The target image registry
-    default: gcr.io
+    default: ghcr.io
   - name: imageRegistryPath
     description: The path (project) in the image registry
     default: tekton-releases

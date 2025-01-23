@@ -103,9 +103,9 @@ tekton-operator
   {{- $image = .Values.operator.image.repository }}
 {{- else -}}
 {{- if .Values.openshift.enabled -}}
-  {{- $image = "gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/openshift/operator" -}}
+  {{- $image = "ghcr.io/tektoncd/operator/github.com/tektoncd/operator/cmd/openshift/operator" -}}
 {{- else -}}
-  {{- $image = "gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/kubernetes/operator" -}}
+  {{- $image = "ghcr.io/tektoncd/operator/github.com/tektoncd/operator/cmd/kubernetes/operator" -}}
 {{- end -}}
 {{- end -}}
 {{- printf "%s:%s" $image $tag -}}
@@ -124,9 +124,9 @@ tekton-operator
   {{- $image = .Values.webhook.image.repository }}
 {{- else -}}
 {{- if .Values.openshift.enabled -}}
-  {{- $image = "gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/openshift/webhook" -}}
+  {{- $image = "ghcr.io/tektoncd/operator/github.com/tektoncd/operator/cmd/openshift/webhook" -}}
 {{- else -}}
-  {{- $image = "gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/kubernetes/webhook" -}}
+  {{- $image = "ghcr.io/tektoncd/operator/github.com/tektoncd/operator/cmd/kubernetes/webhook" -}}
 {{- end -}}
 {{- end -}}
 {{- printf "%s:%s" $image $tag -}}
@@ -140,9 +140,9 @@ tekton-operator
   {{- $image = .Values.webhookProxy.image.repository }}
 {{- else -}}
 {{- if .Values.openshift.enabled -}}
-  {{- $image = "gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/openshift/proxy-webhook" -}}
+  {{- $image = "ghcr.io/tektoncd/operator/github.com/tektoncd/operator/cmd/openshift/proxy-webhook" -}}
 {{- else -}}
-  {{- $image = "gcr.io/tekton-releases/github.com/tektoncd/operator/cmd/kubernetes/proxy-webhook" -}}
+  {{- $image = "ghcr.io/tektoncd/operator/github.com/tektoncd/operator/cmd/kubernetes/proxy-webhook" -}}
 {{- end -}}
 {{- end -}}
 {{- printf "%s:%s" $image $tag -}}
