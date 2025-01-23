@@ -56,7 +56,7 @@ pruner:
   image:
     # Container image for Tekton pruner. Defaults to gcr.
     repository: "ghcr.io/tektoncd/plumbing/tkn"
-    tag: "d1da68e766393c4b4eb162128f2c5fd2cee270828811a113fcda1e8a586e7471"
+    tag: "233de6c8b8583a34c2379fa98d42dba739146c9336e8d41b66030484357481ed"
 
 ## Configuration for the tekton-operator-webhook pod
 webhook:
