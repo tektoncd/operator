@@ -17,8 +17,8 @@ kind: CustomResourceDefinition
 metadata:
   name: tektontriggers.operator.tekton.dev
   labels:
-    version: v0.73.1
-    operator.tekton.dev/release: v0.73.1
+    version: v0.73.2
+    operator.tekton.dev/release: v0.73.2
 spec:
   group: operator.tekton.dev
   names:
