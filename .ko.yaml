@@ -1,4 +1,4 @@
-defaultBaseImage: gcr.io/distroless/static:nonroot
+defaultBaseImage: ghcr.io/distroless/static
 baseImageOverrides:
   github.com/tektoncd/operator/cmd/openshift/operator: registry.access.redhat.com/ubi8/ubi-minimal
   github.com/tektoncd/operator/cmd/openshift/webhook: registry.access.redhat.com/ubi8/ubi-minimal
