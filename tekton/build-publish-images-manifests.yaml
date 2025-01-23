@@ -17,7 +17,7 @@ spec:
     description: The vX.Y.Z version that the artifacts should be tagged with (including `v`)
   - name: imageRegistry
     description: The target image registry
-    default: gcr.io
+    default: ghcr.io
   - name: imageRegistryPath
     description: The path (project) in the image registry
   - name: imageRegistryRegions
