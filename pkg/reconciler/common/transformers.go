@@ -51,7 +51,7 @@ const (
 	HubImagePrefix                = "IMAGE_HUB_"
 	DashboardImagePrefix          = "IMAGE_DASHBOARD_"
 
-	DefaultPipelinesNamespace = "tekton-pipelines"
+	DefaultTargetNamespace = "tekton-pipelines"
 
 	ArgPrefix   = "arg_"
 	ParamPrefix = "param_"
@@ -471,7 +471,7 @@ func injectNamespaceClusterRole(targetNamespace string) mf.Transformer {
 			if containsNamespaceResource && ok {
 				nm := []interface{}{}
 				for _, rn := range resourceNames.([]interface{}) {
-					if rn.(string) == DefaultPipelinesNamespace {
+					if rn.(string) == DefaultTargetNamespace {
 						nm = append(nm, targetNamespace)
 					} else {
 						nm = append(nm, rn)
@@ -515,7 +515,7 @@ func replaceNamespaceInDBAddress(envs []corev1.EnvVar, targetNamespace string) [
 
 	for i, e := range envs {
 		if slices.Contains(req, e.Name) {
-			envs[i].Value = strings.ReplaceAll(e.Value, DefaultPipelinesNamespace, targetNamespace)
+			envs[i].Value = strings.ReplaceAll(e.Value, DefaultTargetNamespace, targetNamespace)
 		}
 	}
 	return envs
@@ -549,8 +549,8 @@ func ReplaceNamespaceInDeploymentArgs(deploymentNames []string, targetNamespace 
 
 func replaceNamespaceInContainerArg(container *corev1.Container, targetNamespace string) {
 	for i, a := range container.Args {
-		if strings.Contains(a, DefaultPipelinesNamespace) {
-			container.Args[i] = strings.ReplaceAll(a, DefaultPipelinesNamespace, targetNamespace)
+		if strings.Contains(a, DefaultTargetNamespace) {
+			container.Args[i] = strings.ReplaceAll(a, DefaultTargetNamespace, targetNamespace)
 		}
 	}
 }

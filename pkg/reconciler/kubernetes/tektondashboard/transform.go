@@ -33,6 +33,7 @@ const (
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		dashboard := comp.(*v1alpha1.TektonDashboard)
+		targetNamespace := dashboard.Spec.GetTargetNamespace()
 
 		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.DashboardImagePrefix))
 
@@ -42,6 +43,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfiguration(dashboard.Spec.Config),
 			common.AddDeploymentRestrictedPSA(),
 			common.DeploymentImages(images),
+			common.ReplaceNamespaceInDeploymentArgs([]string{dashboardDeploymentName}, targetNamespace),
 		}
 		trns = append(trns, extra...)
 		if dashboard.Spec.ExternalLogs != "" {
@@ -54,7 +56,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 
 		// additional options transformer
 		// always execute as last transformer, so that the values in options will be final update values on the manifests
-		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, dashboard.Spec.GetTargetNamespace(), dashboard.Spec.Dashboard.Options); err != nil {
+		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, targetNamespace, dashboard.Spec.Dashboard.Options); err != nil {
 			return &mf.Manifest{}, err
 		}
 
