@@ -55,9 +55,13 @@ const (
 	loggingForwarderDelayDuration = "LOGGING_PLUGIN_FORWARDER_DELAY_DURATION"
 	logsAPIKey                    = "LOGS_API"
 	logsTypeKey                   = "LOGS_TYPE"
+
+	resultAPIDeployment     = "tekton-results-api"
+	resultWatcherDeployment = "tekton-results-watcher"
 )
 
 var (
+	resultDeployementNames = []string{resultAPIDeployment, resultWatcherDeployment}
 	// allowed property secret keys
 	allowedPropertySecretKeys = []string{
 		"S3_BUCKET_NAME",
@@ -81,8 +85,8 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 	extra := []mf.Transformer{
 		common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdResults),
 		common.ApplyProxySettings,
-		common.ReplaceNamespaceInDeploymentArgs(targetNs),
-		common.ReplaceNamespaceInDeploymentEnv(targetNs),
+		common.ReplaceNamespaceInDeploymentArgs([]string{resultWatcherDeployment}, targetNs),
+		common.ReplaceNamespaceInDeploymentEnv(resultDeployementNames, targetNs),
 		updateApiConfig(instance.Spec),
 		enablePVCLogging(instance.Spec.ResultsAPIProperties),
 		updateEnvWithSecretName(instance.Spec.ResultsAPIProperties),
