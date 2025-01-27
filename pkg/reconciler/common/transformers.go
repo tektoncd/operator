@@ -51,11 +51,10 @@ const (
 	HubImagePrefix                = "IMAGE_HUB_"
 	DashboardImagePrefix          = "IMAGE_DASHBOARD_"
 
+	DefaultPipelinesNamespace = "tekton-pipelines"
+
 	ArgPrefix   = "arg_"
 	ParamPrefix = "param_"
-
-	resultAPIDeployment     = "tekton-results-api"
-	resultWatcherDeployment = "tekton-results-watcher"
 
 	runAsNonRootValue              = true
 	allowPrivilegedEscalationValue = false
@@ -472,7 +471,7 @@ func injectNamespaceClusterRole(targetNamespace string) mf.Transformer {
 			if containsNamespaceResource && ok {
 				nm := []interface{}{}
 				for _, rn := range resourceNames.([]interface{}) {
-					if rn.(string) == "tekton-pipelines" {
+					if rn.(string) == DefaultPipelinesNamespace {
 						nm = append(nm, targetNamespace)
 					} else {
 						nm = append(nm, rn)
@@ -485,10 +484,10 @@ func injectNamespaceClusterRole(targetNamespace string) mf.Transformer {
 	}
 }
 
-// ReplaceNamespaceInDeploymentEnv replaces namespace in deployment's env var
-func ReplaceNamespaceInDeploymentEnv(targetNamespace string) mf.Transformer {
+// ReplaceNamespaceInDeploymentEnv replaces any instance of the default namespace string in the given deployments' env var
+func ReplaceNamespaceInDeploymentEnv(deploymentNames []string, targetNamespace string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if u.GetKind() != "Deployment" || !(u.GetName() == resultAPIDeployment || u.GetName() == resultWatcherDeployment) {
+		if u.GetKind() != "Deployment" || !slices.Contains(deploymentNames, u.GetName()) {
 			return nil
 		}
 
@@ -516,16 +515,16 @@ func replaceNamespaceInDBAddress(envs []corev1.EnvVar, targetNamespace string) [
 
 	for i, e := range envs {
 		if slices.Contains(req, e.Name) {
-			envs[i].Value = strings.ReplaceAll(e.Value, "tekton-pipelines", targetNamespace)
+			envs[i].Value = strings.ReplaceAll(e.Value, DefaultPipelinesNamespace, targetNamespace)
 		}
 	}
 	return envs
 }
 
-// ReplaceNamespaceInDeploymentArgs replaces namespace in deployment's args
-func ReplaceNamespaceInDeploymentArgs(targetNamespace string) mf.Transformer {
+// ReplaceNamespaceInDeploymentArgs replaces any instance of the default namespace in the given deployments' args
+func ReplaceNamespaceInDeploymentArgs(deploymentNames []string, targetNamespace string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
-		if u.GetKind() != "Deployment" || u.GetName() != resultWatcherDeployment {
+		if u.GetKind() != "Deployment" || !slices.Contains(deploymentNames, u.GetName()) {
 			return nil
 		}
 
@@ -550,8 +549,8 @@ func ReplaceNamespaceInDeploymentArgs(targetNamespace string) mf.Transformer {
 
 func replaceNamespaceInContainerArg(container *corev1.Container, targetNamespace string) {
 	for i, a := range container.Args {
-		if strings.Contains(a, "tekton-pipelines") {
-			container.Args[i] = strings.ReplaceAll(a, "tekton-pipelines", targetNamespace)
+		if strings.Contains(a, DefaultPipelinesNamespace) {
+			container.Args[i] = strings.ReplaceAll(a, DefaultPipelinesNamespace, targetNamespace)
 		}
 	}
 }

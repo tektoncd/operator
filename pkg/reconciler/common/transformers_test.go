@@ -432,7 +432,7 @@ func TestReplaceNamespaceInDeploymentEnv(t *testing.T) {
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assertNoEror(t, err)
 
-	manifest, err = manifest.Transform(ReplaceNamespaceInDeploymentEnv("openshift-pipelines"))
+	manifest, err = manifest.Transform(ReplaceNamespaceInDeploymentEnv([]string{"tekton-results-watcher", "tekton-results-api"}, "openshift-pipelines"))
 	assertNoEror(t, err)
 
 	d := &appsv1.Deployment{}
@@ -456,7 +456,7 @@ func TestReplaceNamespaceInDeploymentArgs(t *testing.T) {
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assertNoEror(t, err)
 
-	manifest, err = manifest.Transform(ReplaceNamespaceInDeploymentArgs("openshift-pipelines"))
+	manifest, err = manifest.Transform(ReplaceNamespaceInDeploymentArgs([]string{"tekton-results-watcher"}, "openshift-pipelines"))
 	assertNoEror(t, err)
 
 	d := &appsv1.Deployment{}
