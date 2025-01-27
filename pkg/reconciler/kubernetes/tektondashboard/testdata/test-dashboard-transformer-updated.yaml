@@ -404,15 +404,15 @@ spec:
         app.kubernetes.io/name: dashboard
         app.kubernetes.io/part-of: tekton-dashboard
         app.kubernetes.io/version: v0.48.0
-        operator.tekton.dev/deployment-spec-applied-hash: 0d7e625dccc2efab4493c409bdc71e88
+        operator.tekton.dev/deployment-spec-applied-hash: e521024acd6c6a280dc53fb4de0a6725
       name: tekton-dashboard
     spec:
       containers:
         - args:
             - --port=9097
             - --logout-url=
-            - --pipelines-namespace=tekton-pipelines
-            - --triggers-namespace=tekton-pipelines
+            - --pipelines-namespace=foo-ns
+            - --triggers-namespace=foo-ns
             - --read-only=false
             - --log-level=info
             - --log-format=json
