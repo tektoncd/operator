@@ -135,5 +135,14 @@ spec:
       namespace: openshift-pipelines
       port: 8443
       basePath: "/"
+  proxy:
+    - type: Service
+      alias: tekton-results-api-service
+      endpoint:
+        type: Service
+        service:
+          name: tekton-results-api-service
+          namespace: openshift-pipeline
+          port: 8080
   i18n:
     loadType: Preload   # options: Preload, Lazy
