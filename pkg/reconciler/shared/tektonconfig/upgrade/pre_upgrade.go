@@ -55,9 +55,7 @@ func upgradeChainProperties(ctx context.Context, logger *zap.SugaredLogger, k8sC
 		}
 	}
 
-	tc.Spec.Chain = v1alpha1.Chain{
-		ChainProperties: chain,
-	}
+	tc.Spec.Chain.ChainProperties = chain
 
 	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
 	return err
