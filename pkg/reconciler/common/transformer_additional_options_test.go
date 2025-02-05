@@ -594,6 +594,81 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			expectedResultFilename: "./testdata/test-additional-options-test-runtimeclassname-deployment.yaml",
 		},
 		{
+			name: "test-runtimeclassname-for-deployments-add-container",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									RuntimeClassName: ptr.String("foo"),
+									Containers: []corev1.Container{
+										{
+											Name:  "kube-rbac-proxy",
+											Image: "registry.redhat.io/openshift4/ose-kube-rbac-proxy:v4.12",
+											Resources: corev1.ResourceRequirements{
+												Limits: corev1.ResourceList{
+													corev1.ResourceCPU:    resource.MustParse("500m"),
+													corev1.ResourceMemory: resource.MustParse("128Mi"),
+												},
+											},
+											Args: []string{
+												"--secure-listen-address=0.0.0.0:9443",
+												"--upstream=http://127.0.0.1:9090/",
+												"--logtostderr=true",
+												"--v=6",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-runtimeclassname-deployment.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-runtimeclassname-deployment-add-container.yaml",
+		},
+		{
+			name: "test-runtimeclassname-for-deployments-add-init-container",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									RuntimeClassName: ptr.String("foo"),
+									InitContainers: []corev1.Container{
+										{
+											Name:  "test-init-container",
+											Image: "busybox:latest",
+											Resources: corev1.ResourceRequirements{
+												Limits: corev1.ResourceList{
+													corev1.ResourceCPU:    resource.MustParse("100m"),
+													corev1.ResourceMemory: resource.MustParse("128Mi"),
+												},
+											},
+											Args: []string{
+												"-c",
+												"echo foo",
+											},
+											Command: []string{
+												"/bin/bash",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-runtimeclassname-deployment.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-runtimeclassname-deployment-add-initcontainer.yaml",
+		},
+		{
 			name: "test-runtimeclassname-for-statefulsets",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
@@ -603,11 +678,6 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 							Template: corev1.PodTemplateSpec{
 								Spec: corev1.PodSpec{
 									RuntimeClassName: ptr.String("foo"),
-									Containers: []corev1.Container{
-										{
-											Resources: corev1.ResourceRequirements{},
-										},
-									},
 								},
 							},
 						},
@@ -627,6 +697,81 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			},
 			inputFilename:          "./testdata/test-additional-options-base-runtimeclassname-statefulset.yaml",
 			expectedResultFilename: "./testdata/test-additional-options-test-runtimeclassname-statefulset.yaml",
+		},
+		{
+			name: "test-runtimeclassname-for-statefulsets-add-container",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				StatefulSets: map[string]appsv1.StatefulSet{
+					"web": {
+						Spec: appsv1.StatefulSetSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									RuntimeClassName: ptr.String("foo"),
+									Containers: []corev1.Container{
+										{
+											Name:  "kube-rbac-proxy",
+											Image: "registry.redhat.io/openshift4/ose-kube-rbac-proxy:v4.12",
+											Resources: corev1.ResourceRequirements{
+												Limits: corev1.ResourceList{
+													corev1.ResourceCPU:    resource.MustParse("500m"),
+													corev1.ResourceMemory: resource.MustParse("128Mi"),
+												},
+											},
+											Args: []string{
+												"--secure-listen-address=0.0.0.0:9443",
+												"--upstream=http://127.0.0.1:9090/",
+												"--logtostderr=true",
+												"--v=6",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-runtimeclassname-statefulset.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-runtimeclassname-statefulset-add-container.yaml",
+		},
+		{
+			name: "test-runtimeclassname-for-statefulsets-add-initContainers",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				StatefulSets: map[string]appsv1.StatefulSet{
+					"web": {
+						Spec: appsv1.StatefulSetSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									RuntimeClassName: ptr.String("foo"),
+									InitContainers: []corev1.Container{
+										{
+											Name:  "test-init-container",
+											Image: "busybox:latest",
+											Resources: corev1.ResourceRequirements{
+												Limits: corev1.ResourceList{
+													corev1.ResourceCPU:    resource.MustParse("100m"),
+													corev1.ResourceMemory: resource.MustParse("128Mi"),
+												},
+											},
+											Args: []string{
+												"-c",
+												"echo foo",
+											},
+											Command: []string{
+												"/bin/bash",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-runtimeclassname-statefulset.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-runtimeclassname-statefulset-add-initcontainer.yaml",
 		},
 	}
 
