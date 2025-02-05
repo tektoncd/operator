@@ -65,6 +65,14 @@ image-substitutions:
       - IMAGE_ADDONS_GIT_RUN
       - IMAGE_ADDONS_REPORT
       - IMAGE_ADDONS_GIT_CLONE
+- image: quay.io/openshift-pipeline/tekton-caches-next-cache@sha256:b0d95cccd145f7f00f82510c1b8f7bca6a923f6f4a53fb037d05b9c17a46f5f2
+  replaceLocations:
+    envTargets:
+    - deploymentName: openshift-pipelines-operator
+      containerName: openshift-pipelines-operator-lifecycle
+      envKeys:
+      - IMAGE_ADDONS_CACHE_UPLOAD
+      - IMAGE_ADDONS_CACHE_FETCH
 - image: registry.redhat.io/openshift-pipelines/pipelines-workingdirinit-rhel8@
   replaceLocations:
     envTargets:

@@ -75,6 +75,8 @@ declare -A TEKTON_ECOSYSTEM_TASKS=(
 )
 declare -A TEKTON_ECOSYSTEM_STEPACTIONS=(
   ['stepaction-git-clone']='0.4.1'
+  ['cache-upload']='1.18.0'
+  ['cache-fetch']='1.18.0'
 )
 
 download_task() {
