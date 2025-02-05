@@ -606,12 +606,12 @@ The following fields are supported in `deployment`
       * `topologySpreadConstraints` - replaces the existing TopologySpreadConstraints with this, if not empty
       * `runtimeClassName` - adds and updates runtimeClassName
       * `volumes` - adds and updates volumes
-      * `initContainers` - updates init-containers
+      * `initContainers` - adds and updates init-containers
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
         * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS**
-      * `containers` - updates containers
+      * `containers` - adds and updates containers
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
@@ -641,12 +641,12 @@ The following fields are supported in `StatefulSet`
       * `topologySpreadConstraints` - replaces the existing TopologySpreadConstraints with this, if not empty
       * `runtimeClassName` - adds and updates runtimeClassName
       * `volumes` - adds and updates volumes
-      * `initContainers` - updates init-containers
+      * `initContainers` - adds and updates init-containers
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts
         * `args` - appends given args with existing arguments. **NOTE: THIS OPERATION DO NOT REPLACE EXISTING ARGS**
-      * `containers` - updates containers
+      * `containers` - adds and updates containers
         * `resources` - replaces the resources requirements with this, if not empty
         * `envs` - adds and updates environments
         * `volumeMounts` - adds and updates VolumeMounts

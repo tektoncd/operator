@@ -353,12 +353,16 @@ func (ot *OptionsTransformer) updateVolumes(sourceVolumes, additionalVolumes []c
 }
 
 func (ot *OptionsTransformer) updateContainers(targetContainers, containersOptions []corev1.Container) []corev1.Container {
+	containersToAdd := []corev1.Container{}
 	for _, containerOptions := range containersOptions {
+		containerFound := false
 		for containerIndex := range targetContainers {
 			targetContainer := targetContainers[containerIndex]
 			if containerOptions.Name != targetContainer.Name {
 				continue
 			}
+
+			containerFound = true
 
 			// update resource requirements
 			if containerOptions.Resources.Size() != 0 {
@@ -409,7 +413,14 @@ func (ot *OptionsTransformer) updateContainers(targetContainers, containersOptio
 			targetContainers[containerIndex].Args = append(targetContainers[containerIndex].Args, containerOptions.Args...)
 
 		}
+
+		// add the new container from the options list
+		if !containerFound {
+			containersToAdd = append(containersToAdd, containerOptions)
+		}
 	}
+
+	targetContainers = append(targetContainers, containersToAdd...)
 
 	return targetContainers
 }
