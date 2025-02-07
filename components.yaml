@@ -3,13 +3,13 @@ chains:
   version: v0.23.1
 dashboard:
   github: tektoncd/dashboard
-  version: v0.53.0
+  version: v0.54.0
 hub:
   github: tektoncd/hub
-  version: v1.19.2
+  version: v1.20.0
 manual-approval-gate:
   github: openshift-pipelines/manual-approval-gate
-  version: v0.4.1
+  version: v0.5.0
 pipeline:
   github: tektoncd/pipeline
   version: v0.68.0
@@ -21,4 +21,4 @@ results:
   version: v0.13.3
 triggers:
   github: tektoncd/triggers
-  version: v0.30.1
+  version: v0.31.0
