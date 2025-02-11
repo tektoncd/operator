@@ -18,6 +18,7 @@ package tektonresult
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -140,7 +141,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	if tp.GetSpec().GetTargetNamespace() != tr.GetSpec().GetTargetNamespace() {
 		errMsg := fmt.Sprintf("tekton-pipelines is missing in %s namespace", tr.GetSpec().GetTargetNamespace())
 		tr.Status.MarkDependencyMissing(errMsg)
-		return fmt.Errorf(errMsg)
+		return errors.New(errMsg)
 	}
 
 	// check if the secrets are created
