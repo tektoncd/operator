@@ -647,7 +647,7 @@ github.com/golang/protobuf/ptypes/timestamp
 # github.com/golang/snappy v0.0.4
 ## explicit
 github.com/golang/snappy
-# github.com/google/cel-go v0.23.1
+# github.com/google/cel-go v0.23.2
 ## explicit; go 1.21.1
 github.com/google/cel-go/cel
 github.com/google/cel-go/checker
@@ -1381,11 +1381,11 @@ github.com/tektoncd/pipeline/pkg/spire/config
 github.com/tektoncd/pipeline/pkg/substitution
 github.com/tektoncd/pipeline/test/diff
 github.com/tektoncd/pipeline/test/parse
-# github.com/tektoncd/plumbing v0.0.0-20231109154454-9ef46b417293
-## explicit; go 1.19
+# github.com/tektoncd/plumbing v0.0.0-20250116154805-bf07e665a460
+## explicit; go 1.22
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
-# github.com/tektoncd/triggers v0.30.1
+# github.com/tektoncd/triggers v0.31.0
 ## explicit; go 1.22
 github.com/tektoncd/triggers/pkg/apis/config
 github.com/tektoncd/triggers/pkg/apis/triggers
