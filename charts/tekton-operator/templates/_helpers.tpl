@@ -112,9 +112,11 @@ tekton-operator
 {{- end -}}
 
 {{- define "tekton-operator.pruner-image" -}}
-{{- $tag := .Values.pruner.image.tag -}}
-{{- $image := .Values.pruner.image.repository -}}
-{{- printf "%s:%s" $image $tag -}}
+{{- if contains "sha256:" .Values.pruner.image.tag -}}
+{{- printf "%s@%s" .Values.pruner.image.repository .Values.pruner.image.tag -}}
+{{- else -}}
+{{- printf "%s:%s" .Values.pruner.image.repository .Values.pruner.image.tag -}}
+{{- end -}}
 {{- end -}}
 
 {{- define "tekton-operator.webhook-image" -}}
