@@ -277,12 +277,12 @@ func podSpecMask(in *corev1.PodSpec) *corev1.PodSpec {
 	out.NodeSelector = in.NodeSelector
 	out.Affinity = in.Affinity
 	out.TopologySpreadConstraints = in.TopologySpreadConstraints
+	out.ImagePullSecrets = in.ImagePullSecrets
 
 	// Disallowed fields
 	// This list clarifies which all podspec fields are not allowed.
 	out.Volumes = nil
 	out.EnableServiceLinks = nil
-	out.ImagePullSecrets = nil
 	out.InitContainers = nil
 	out.RestartPolicy = ""
 	out.TerminationGracePeriodSeconds = nil
