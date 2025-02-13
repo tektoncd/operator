@@ -2,8 +2,6 @@ module github.com/tektoncd/operator
 
 go 1.23.4
 
-toolchain go1.23.6
-
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/cli/go-gh v1.2.1
