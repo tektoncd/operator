@@ -38,7 +38,6 @@ import (
 	"github.com/tektoncd/pipeline/test/parse"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -288,19 +287,4 @@ func (s *TektonChainTutorialTestSuite) Test01() {
 		}
 	})
 
-}
-
-func (s *TektonChainTutorialTestSuite) deleteChainCR() {
-	t := s.T()
-	interval := s.interval
-	timeout := s.timeout
-
-	err := s.clients.TektonChains().Delete(context.TODO(), s.resourceNames.TektonChain, metav1.DeleteOptions{})
-	if err != nil && apierrs.IsNotFound(err) {
-		return
-	}
-	require.NoError(t, err, "delete tektonChain cr")
-
-	err = resources.WaitForDeploymentDeletion(s.clients.KubeClient, DeploymentNameTektonChain, s.resourceNames.TargetNamespace, interval, timeout)
-	require.NoError(t, err, "wait for tektonChain deployment deletion")
 }

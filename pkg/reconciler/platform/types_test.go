@@ -54,11 +54,11 @@ func TestControllerMap(t *testing.T) {
 			expectedControllerNames:        []string{"name1", "name2"},
 			expectedControllerConstructors: []injection.ControllerConstructor{ctrlCnstr1, ctrlCnstr2},
 			expectedNamedControllerConstructors: []injection.NamedControllerConstructor{
-				injection.NamedControllerConstructor{
+				{
 					Name:                  "name1",
 					ControllerConstructor: ctrlCnstr1,
 				},
-				injection.NamedControllerConstructor{
+				{
 					Name:                  "name2",
 					ControllerConstructor: ctrlCnstr2,
 				},
