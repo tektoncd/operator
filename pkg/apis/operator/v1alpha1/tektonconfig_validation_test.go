@@ -224,7 +224,7 @@ func Test_ValidateTektonConfig_InvalidPipelineOptions(t *testing.T) {
 			Pipeline: Pipeline{
 				Options: AdditionalOptions{
 					WebhookConfigurationOptions: map[string]WebhookConfigurationOptions{
-						"validation.webhook.tekton.dev": WebhookConfigurationOptions{
+						"validation.webhook.tekton.dev": {
 							FailurePolicy: &invalidPolicy,
 							SideEffects:   &sideEffectUnknown,
 						},
