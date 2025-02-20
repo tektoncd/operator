@@ -97,7 +97,7 @@ spec:
   log_level: debug
   logs_api: true
   logs_type: File
-  logs_buffer_size: 90kb
+  logs_buffer_size: 32768
   logs_path: /logs
   auth_disable: true
   logging_pvc_name: tekton-logs
