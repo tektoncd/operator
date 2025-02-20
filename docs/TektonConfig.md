@@ -18,6 +18,7 @@ Operator provides support for installing and managing following operator compone
 Other than the above components depending on the platform operator also provides support for
 - On both Kubernetes and OpenShift
     - [TektonChain](./TektonChain.md)
+    - [TektonResult](./TektonResult.md)
 - On Kubernetes
     - [TektonDashboard](./TektonDashboard.md)
 - On OpenShift
@@ -113,6 +114,10 @@ The TektonConfig CR provides the following features
         configMaps: {}
         deployments: {}
         webhookConfigurationOptions: {}
+    result:
+      disabled: false
+      is_external_db: false
+      options: {}
     platforms:
       openshift:
         pipelinesAsCode:
@@ -165,8 +170,8 @@ By default, namespace would be `tekton-pipelines` for Kubernetes and `openshift-
 
 This allows user to choose which all components to install on the cluster.
 There are 3 profiles available:
-- `all`: This profile will install all components (TektonPipeline, TektonTrigger and TektonChain)
-- `basic`:  This profile will install only TektonPipeline, TektonTrigger and TektonChain component
+- `all`: This profile will install all components (TektonPipeline, TektonTrigger, TektonResult and TektonChain)
+- `basic`:  This profile will install only TektonPipeline, TektonTrigger, TektonResult and TektonChain component
 - `lite`: This profile will install only TektonPipeline component
 
 On Kubernetes, `all` profile will install `TektonDashboard` and on OpenShift `TektonAddon` will be installed.
@@ -282,6 +287,52 @@ chain:
   signers.kms.kmsref.auth.spire.audience: #value
   transparency.enabled: #value (boolean - true/false)
   transparency.url: #value
+```
+
+### Result
+
+Result section allows user to customize the Tekton Result component, Refer to [Result Spec](https://github.com/tektoncd/operator/blob/main/docs/TektonResult.md#spec) section in TektonResult for available options.
+
+Default Result configuration in TektonConfig looks like following if user doesn't specified any configuration options
+
+Example:
+
+```yaml
+result:
+  disabled: false
+  is_external_db: false
+  options: {}
+```
+
+User can customize Result configuration with following options
+
+Example:
+
+```yaml
+result:
+  disabled: false                  # - `disabled` : if the value set as `true`, result component will be disabled (default: `false`)
+  targetNamespace: tekton-pipelines
+  is_external_db: false # By default, this is set to false, TektonOperator will create Tekton Results database. If set to true, an external database will be used, and Tekton Results will retrieve its database credentials from the Kubernetes secret named tekton-results-postgres
+  db_host: localhost
+  db_port: 5342
+  db_sslmode: verify-full
+  db_sslrootcert: /etc/tls/db/ca.crt
+  db_enable_auto_migration: true
+  log_level: debug
+  logs_api: true
+  logs_type: File
+  logs_buffer_size: 90kb
+  logs_path: /logs
+  auth_disable: true
+  logging_pvc_name: tekton-logs
+  secret_name: # optional
+  gcs_creds_secret_name: <value>
+  gcc_creds_secret_key: <value>
+  gcs_bucket_name: <value>
+  loki_stack_name: #optional
+  loki_stack_namespace: #optional
+  prometheus_port: 9090
+  prometheus_histogram: false
 ```
 
 ### Pruner
