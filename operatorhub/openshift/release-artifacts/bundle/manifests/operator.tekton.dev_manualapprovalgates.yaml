@@ -5,14 +5,16 @@ metadata:
   labels:
     operator.tekton.dev/release: v0.75.1
     version: v0.75.1
-  name: tektonhubs.operator.tekton.dev
+  name: manualapprovalgates.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: TektonHub
-    listKind: TektonHubList
-    plural: tektonhubs
-    singular: tektonhub
+    kind: ManualApprovalGate
+    listKind: ManualApprovalGateList
+    plural: manualapprovalgates
+    shortNames:
+    - mag
+    singular: manualapprovalgate
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -25,16 +27,10 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="Ready")].message
       name: Reason
       type: string
-    - jsonPath: .status.apiUrl
-      name: ApiUrl
-      type: string
-    - jsonPath: .status.uiUrl
-      name: UiUrl
-      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Schema for the tektonhubs API
+        description: Schema for the ManualApprovalGate API
         type: object
         x-kubernetes-preserve-unknown-fields: true
     served: true
