@@ -17,8 +17,8 @@ kind: Deployment
 metadata:
   name: tekton-operator-webhook
   labels:
-    version: v0.75.0
-    operator.tekton.dev/release: v0.75.0
+    version: v0.75.1
+    operator.tekton.dev/release: v0.75.1
 spec:
   replicas: 1
   selector:
