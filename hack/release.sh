@@ -3,28 +3,52 @@
 set -u
 
 function set_version_label() {
-  local operator_version="v${1}"
-
+  # Set old_version correctly, adding "v" prefix unless it's "devel"
+  local old_version
+  if [[ "${1}" == "devel" ]]; then
+    old_version="devel"
+  else
+    old_version="v${1}"
+  fi
   shift
+
+  local operator_version="v${1}"; shift
   local operator_platforms=${*:-"kubernetes openshift"}
 
   echo ${operator_platforms}
+  printf "%-20s: %s\n" "Old version" "${old_version}"
+  printf "%-20s: %s\n" "New version" "${operator_version}"
   printf "%-20s: %s\n" "Platforms" "${operator_platforms}"
-  printf "%-20s: %s\n" "Operator version" "${operator_version}"
   echo '---------------------'
+
   for platform in ${operator_platforms}; do
-    echo updating version labels for platform: ${platform}, version: ${operator_version}
-    sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: '${operator_version}'/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: '${operator_version}'/g' -e 's/\(version\): "devel"/\1: '${operator_version}'/g' -e 's/\("-version"\), "devel"/\1, '${operator_version}'/g' config/base/*.yaml
-    sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: '${operator_version}'/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: '${operator_version}'/g' -e 's/\(version\): "devel"/\1: '${operator_version}'/g' -e 's/\("-version"\), "devel"/\1, '${operator_version}'/g' config/webhooks/*.yaml
-    sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: '${operator_version}'/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: '${operator_version}'/g' -e 's/\(version\): "devel"/\1: '${operator_version}'/g' -e 's/\("-version"\), "devel"/\1, '${operator_version}'/g' config/${platform}/base/*.yaml
-    sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: '${operator_version}'/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: '${operator_version}'/g' -e 's/\(version\): "devel"/\1: '${operator_version}'/g' -e 's/\("-version"\), "devel"/\1, '${operator_version}'/g' config/${platform}/overlays/default/*.yaml
-    sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: '${operator_version}'/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: '${operator_version}'/g' -e 's/\(version\): "devel"/\1: '${operator_version}'/g' -e 's/\("-version"\), "devel"/\1, '${operator_version}'/g' cmd/${platform}/operator/kodata/webhook/*.yaml
-    sed -i 's/\(value\): "devel"/\1: '${operator_version}'/g' config/${platform}/base/operator.yaml
+    echo updating version labels for platform: ${platform}, from version: ${old_version} to version: ${operator_version}
+
+    # Ensure version replacement removes quotes if present
+    sed -i -E \
+      -e "s/(operator.tekton.dev\/release: )\"?${old_version}\"?/\1${operator_version}/g" \
+      -e "s/(app.kubernetes.io\/version: )\"?${old_version}\"?/\1${operator_version}/g" \
+      -e "s/(version: )\"?${old_version}\"?/\1${operator_version}/g" \
+      -e "s/(\"-version\"), \"?${old_version}\"?/\1, ${operator_version}/g" config/base/*.yaml
+
+    sed -i -E \
+      -e "s/(operator.tekton.dev\/release: )\"?${old_version}\"?/\1${operator_version}/g" \
+      -e "s/(app.kubernetes.io\/version: )\"?${old_version}\"?/\1${operator_version}/g" \
+      -e "s/(version: )\"?${old_version}\"?/\1${operator_version}/g" \
+      -e "s/(\"-version\"), \"?${old_version}\"?/\1, ${operator_version}/g" config/${platform}/base/*.yaml
+
+    sed -i -E "s/(value: )\"?${old_version}\"?/\1${operator_version}/g" config/${platform}/base/operator.yaml
   done
 
-  # do changes in cabundles too which are available only for openshift
-  sed -i -e 's/\(operator.tekton.dev\/release\): "devel"/\1: '${operator_version}'/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: '${operator_version}'/g' -e 's/\(version\): "devel"/\1: '${operator_version}'/g' -e 's/\("-version"\), "devel"/\1, '${operator_version}'/g' cmd/openshift/operator/kodata/cabundles/*.yaml
+  # Update cabundles only for openshift
+  sed -i -E \
+    -e "s/(operator.tekton.dev\/release: )\"?${old_version}\"?/\1${operator_version}/g" \
+    -e "s/(app.kubernetes.io\/version: )\"?${old_version}\"?/\1${operator_version}/g" \
+    -e "s/(version: )\"?${old_version}\"?/\1${operator_version}/g" \
+    -e "s/(\"-version\"), \"?${old_version}\"?/\1, ${operator_version}/g" cmd/openshift/operator/kodata/cabundles/*.yaml
 }
+
+
 
 function commit_changes() {
   release_version=${1}; shift
@@ -44,7 +68,7 @@ function checkout_release_branch() {
   base_branch=${remote_name}/main
 
   echo checking if branch \"${remote_name}/${branch_name}\"...
-  result=$(git ls-remote tektoncd ${branch_name} | wc -l | tr -d " ")
+  result=$(git ls-remote ${remote_name} ${branch_name} | wc -l | tr -d " ")
   if [[ ${result} == 1 ]]; then
     echo remote branch \"${remote_name}/${branch_name}\" exists
     base_branch=${remote_name}/${branch_name}
