@@ -313,7 +313,7 @@ spec:
     - Pipelines as Code: {{ with index .Versions "pipelines-as-code"}}{{ .Version }}{{end}}
     - Tekton Chains: {{ with index .Versions "chains"}}{{ .Version }}{{end}}
     - Tekton Hub (tech-preview): {{ with index .Versions "hub"}}{{ .Version }}{{end}}
-    - Tekton Results (tech-preview): {{ with index .Versions "results"}}{{ .Version }}{{end}}
+    - Tekton Results: {{ with index .Versions "results"}}{{ .Version }}{{end}}
     - Manual Approval Gate (tech-preview): {{ with index .Versions "manual-approval-gate"}}{{ .Version }}{{end}}
 
     ## Getting Started
