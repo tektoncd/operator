@@ -29,7 +29,6 @@ linters:
     - asciicheck
     - dogsled
     - errorlint
-    - exportloopref
     - goconst
     - gosimple
     - govet
