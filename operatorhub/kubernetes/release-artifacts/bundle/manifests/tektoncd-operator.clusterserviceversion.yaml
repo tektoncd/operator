@@ -903,6 +903,7 @@ spec:
   - email: tekton-dev@googlegroups.com
     name: The Tekton Authors
   maturity: alpha
+  minKubeVersion: 1.28.0
   provider:
     name: The Tekton Authors
   version: 0.59.0
