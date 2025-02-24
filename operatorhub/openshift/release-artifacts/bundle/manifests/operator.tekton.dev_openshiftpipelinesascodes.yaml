@@ -5,14 +5,17 @@ metadata:
   labels:
     operator.tekton.dev/release: v0.75.0
     version: v0.75.0
-  name: tektonpipelines.operator.tekton.dev
+  name: openshiftpipelinesascodes.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: TektonPipeline
-    listKind: TektonPipelineList
-    plural: tektonpipelines
-    singular: tektonpipeline
+    kind: OpenShiftPipelinesAsCode
+    listKind: OpenShiftPipelinesAsCodeList
+    plural: openshiftpipelinesascodes
+    shortNames:
+    - opac
+    - pac
+    singular: openshiftpipelinesascode
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -28,7 +31,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Schema for the tektonpipelines API
+        description: Schema for the OpenShiftPipelinesAsCode API
         type: object
         x-kubernetes-preserve-unknown-fields: true
     served: true
