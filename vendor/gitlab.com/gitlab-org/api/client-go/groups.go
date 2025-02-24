@@ -76,6 +76,7 @@ type Group struct {
 		GroupFullPath    string   `json:"group_full_path"`
 		GroupAccessLevel int      `json:"group_access_level"`
 		ExpiresAt        *ISOTime `json:"expires_at"`
+		MemberRoleID     int      `json:"member_role_id"`
 	} `json:"shared_with_groups"`
 	LDAPCN                         string             `json:"ldap_cn"`
 	LDAPAccess                     AccessLevelValue   `json:"ldap_access"`
@@ -979,9 +980,10 @@ func (s *GroupsService) DeleteGroupSAMLLink(gid interface{}, samlGroupName strin
 // GitLab API docs:
 // https://docs.gitlab.com/ee/api/groups.html#share-groups-with-groups
 type ShareGroupWithGroupOptions struct {
-	GroupID     *int              `url:"group_id,omitempty" json:"group_id,omitempty"`
-	GroupAccess *AccessLevelValue `url:"group_access,omitempty" json:"group_access,omitempty"`
-	ExpiresAt   *ISOTime          `url:"expires_at,omitempty" json:"expires_at,omitempty"`
+	GroupID      *int              `url:"group_id,omitempty" json:"group_id,omitempty"`
+	GroupAccess  *AccessLevelValue `url:"group_access,omitempty" json:"group_access,omitempty"`
+	ExpiresAt    *ISOTime          `url:"expires_at,omitempty" json:"expires_at,omitempty"`
+	MemberRoleID *int              `url:"member_role_id,omitempty" json:"member_role_id,omitempty"`
 }
 
 // ShareGroupWithGroup shares a group with another group.
