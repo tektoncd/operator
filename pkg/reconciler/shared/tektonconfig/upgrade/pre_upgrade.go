@@ -103,3 +103,36 @@ func removeDeprecatedAddonParams(ctx context.Context, logger *zap.SugaredLogger,
 	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{})
 	return err
 }
+
+// previous version of the Tekton Operator does not install the TektonResult via TektonConfig
+// in the new version, we are supporting to installing and manage TektonResult via TektonConfig
+// so if TektonResult CR exists on the cluster then needs to copy the TektonResult CR configuration to the TektonConfig CR
+func copyResultConfigToTektonConfig(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	// get the TekonResult CR
+	trCR, err := operatorClient.OperatorV1alpha1().TektonResults().Get(ctx, v1alpha1.ResultResourceName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	// get the TekonConfig CR
+	tcCR, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	// copy the existing TektonResult CR configuration  to the TektonConfig CR
+	tcCR.Spec.Result.ResultsAPIProperties = trCR.Spec.ResultsAPIProperties
+	tcCR.Spec.Result.LokiStackProperties = trCR.Spec.LokiStackProperties
+
+	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+	return nil
+}
