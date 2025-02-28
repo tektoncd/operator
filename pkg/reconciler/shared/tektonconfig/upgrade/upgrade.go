@@ -35,7 +35,8 @@ var (
 		resetTektonConfigConditions, // upgrade #1: removes conditions from TektonConfig CR, clears outdated conditions
 		upgradePipelineProperties,   // upgrade #2: update default value of enable-step-actions from false to true
 		// Todo: Remove the removeDeprecatedAddonParams upgrade function in next operator release
-		removeDeprecatedAddonParams, // upgrade #3: remove the deprecated cluster task params from TektonConfig CR's addon params
+		removeDeprecatedAddonParams,    // upgrade #3: remove the deprecated cluster task params from TektonConfig CR's addon params
+		copyResultConfigToTektonConfig, // upgrade #4: copy existing TektonResult configuration to the TektonConfig CR
 	}
 
 	// post upgrade functions
