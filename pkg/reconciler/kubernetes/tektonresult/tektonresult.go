@@ -30,6 +30,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -62,6 +64,8 @@ type Reconciler struct {
 	kubeClientSet kubernetes.Interface
 	// operatorClientSet allows us to configure operator objects
 	operatorClientSet clientset.Interface
+	// installer Set client to do CRUD operations for components
+	installerSetClient *client.InstallerSetClient
 	// manifest is empty, but with a valid client and logger. all
 	// manifests are immutable, and any created during reconcile are
 	// expected to be appended to this one, obviating the passing of
@@ -177,6 +181,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 
 	tr.Status.MarkDependenciesInstalled()
 
+	//Result watcher is deployed as statefulset, ensure deployment installerset is deleted
+	if tr.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Enabled != nil && *tr.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Enabled {
+		if err := r.installerSetClient.CleanupSubTypeDeploymentForResult(ctx); err != nil {
+			logger.Error("failed to delete main deployment installer set: %v", err)
+			return err
+		}
+	} else {
+		// Result watcher is deployed as deployment, ensure statefulset installerset is deleted
+		if err := r.installerSetClient.CleanupSubTypeStatefulsetForResult(ctx); err != nil {
+			logger.Error("failed to delete main statefulset installer set: %v", err)
+			return err
+		}
+	}
+
 	if err := r.extension.PreReconcile(ctx, tr); err != nil {
 		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
 		logger.Error(msg)
@@ -201,13 +219,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 
 	if existingInstallerSet == "" {
 		createdIs, err := r.createInstallerSet(ctx, tr, manifest)
+
 		if err != nil {
 			return err
 		}
 		r.updateTektonResultsStatus(ctx, tr, createdIs)
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
-
 	// If exists, then fetch the TektonInstallerSet
 	installedTIS, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Get(ctx, existingInstallerSet, metav1.GetOptions{})

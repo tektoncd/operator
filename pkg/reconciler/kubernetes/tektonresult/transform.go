@@ -56,8 +56,12 @@ const (
 	logsAPIKey                    = "LOGS_API"
 	logsTypeKey                   = "LOGS_TYPE"
 
-	resultAPIDeployment     = "tekton-results-api"
-	resultWatcherDeployment = "tekton-results-watcher"
+	resultAPIDeployment                          = "tekton-results-api"
+	resultWatcherDeployment                      = "tekton-results-watcher"
+	tektonResultWatcherName                      = "tekton-results-watcher"
+	tektonResultWatcherServiceName               = "tekton-results-watcher"
+	tektonResultWatcherStatefulServiceName       = "STATEFUL_SERVICE_NAME"
+	tektonResultWatcherStatefulControllerOrdinal = "STATEFUL_CONTROLLER_ORDINAL"
 )
 
 var (
@@ -96,6 +100,15 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.DeploymentImages(resultImgs),
 		common.StatefulSetImages(resultImgs),
 	}
+
+	if instance.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Enabled != nil && *instance.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Enabled {
+		extra = append(extra,
+			common.ConvertDeploymentToStatefulSet(tektonResultWatcherName, tektonResultWatcherServiceName),
+			common.AddStatefulEnvVars(tektonResultWatcherName, tektonResultWatcherServiceName, tektonResultWatcherStatefulServiceName, tektonResultWatcherStatefulControllerOrdinal),
+			UpdateStatefulSetReplicasForResultWatcher(instance),
+		)
+	}
+
 	extra = append(extra, r.extension.Transformers(instance)...)
 	err := common.Transform(ctx, manifest, instance, extra...)
 	if err != nil {
@@ -171,6 +184,7 @@ func enablePVCLogging(p v1alpha1.ResultsAPIProperties) mf.Transformer {
 
 func updateApiConfig(s v1alpha1.TektonResultSpec) mf.Transformer {
 	p := s.ResultsAPIProperties
+
 	return func(u *unstructured.Unstructured) error {
 
 		kind := strings.ToLower(u.GetKind())
@@ -443,6 +457,41 @@ func updateEnvWithSecretName(props v1alpha1.ResultsAPIProperties) mf.Transformer
 			return err
 		}
 		u.SetUnstructuredContent(uObj)
+		return nil
+	}
+
+}
+
+// If the TektonResult's Spec for statefulset Replicas is non-nil and greater than 0, it updates the StatefulSet's replicas.
+func UpdateStatefulSetReplicasForResultWatcher(tr *v1alpha1.TektonResult) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		// Only proceed if the object is a StatefulSet.
+		if u.GetKind() != "StatefulSet" {
+			return nil
+		}
+
+		// Apply only for the watcher statefulset.
+		if u.GetName() != tektonResultWatcherName {
+			return nil
+		}
+
+		// Convert the unstructured object to a StatefulSet.
+		ss := &appsv1.StatefulSet{}
+		if err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, ss); err != nil {
+			return fmt.Errorf("failed to convert unstructured to StatefulSet: %w", err)
+		}
+
+		// Check if the TektonResult Performance.Replicas field is set and greater than 1.
+		if tr.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Replicas != nil && *tr.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Replicas > 1 {
+			ss.Spec.Replicas = tr.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Replicas
+		}
+
+		// Convert the updated StatefulSet back to unstructured.
+		unstrObj, err := k8sruntime.DefaultUnstructuredConverter.ToUnstructured(ss)
+		if err != nil {
+			return fmt.Errorf("failed to convert StatefulSet back to unstructured: %w", err)
+		}
+		u.SetUnstructuredContent(unstrObj)
 		return nil
 	}
 }
