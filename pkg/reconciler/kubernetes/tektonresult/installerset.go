@@ -54,13 +54,20 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tr *v1alpha1.Tekton
 
 func (r *Reconciler) makeInstallerSet(tr *v1alpha1.TektonResult, manifest mf.Manifest, trSpecHash string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(tr, tr.GetGroupVersionKind())
+	// Determine the subtype based on statefulset mode.
+	mode := "deployment"
+	if tr.Spec.Performance.StatefulsetOrdinals != nil && *tr.Spec.Performance.StatefulsetOrdinals {
+		mode = "statefulset"
+	}
+
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", v1alpha1.ResultResourceName),
 			Labels: map[string]string{
-				v1alpha1.CreatedByKey:      createdByValue,
-				v1alpha1.InstallerSetType:  v1alpha1.ResultResourceName,
-				v1alpha1.ReleaseVersionKey: r.operatorVersion,
+				v1alpha1.CreatedByKey:            createdByValue,
+				v1alpha1.InstallerSetType:        v1alpha1.ResultResourceName,
+				v1alpha1.ReleaseVersionKey:       r.operatorVersion,
+				v1alpha1.InstallerSetInstallType: mode,
 			},
 			Annotations: map[string]string{
 				v1alpha1.TargetNamespaceKey: tr.Spec.TargetNamespace,
