@@ -54,6 +54,7 @@ type TektonResultSpec struct {
 	CommonSpec           `json:",inline"`
 	ResultsAPIProperties `json:",inline"`
 	LokiStackProperties  `json:",inline"`
+	Performance          ResultPerformanceProperties `json:"performance,omitempty"`
 }
 
 type LokiStackProperties struct {
@@ -149,4 +150,15 @@ type TektonResultList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []TektonResult `json:"items"`
+}
+
+type ResultPerformanceProperties struct {
+	ResultsWatcherStatefulsetOrdinals ResultsWatcherStatefulsetOrdinalsConfig `json:"resultsWatcherStatefulsetordinals,omitempty"`
+}
+
+type ResultsWatcherStatefulsetOrdinalsConfig struct {
+	// If true, enable statefulset ordinals mode for the results watcher.
+	Enabled *bool `json:"enabled,omitempty"`
+	// Desired replica count for the results watcher.
+	Replicas *int32 `json:"replicas,omitempty"`
 }

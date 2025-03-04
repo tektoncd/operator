@@ -97,6 +97,14 @@ The TektonConfig CR provides the following features
       # keep-since: 1440
       # NOTE: you can use either "keep" or "keep-since", not both
       prune-per-resource: true
+    result:
+      disabled: false
+      is_external_db: false
+      options: {}
+      performance:
+        resultsWatcherStatefulsetordinals:
+          enabled: true
+          replicas: 2
     hub:
       params:
         - name: enable-devconsole-integration
