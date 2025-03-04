@@ -61,6 +61,38 @@ func EnsureTektonResultExists(clients resultv1alpha1.TektonResultInterface, name
 	return trCR, err
 }
 
+// Creates a TektonResult with the name names.TektonResult and statefulset for result watcher, if it does not exist.
+func EnsureTektonResultWithStatefulsetExists(clients resultv1alpha1.TektonResultInterface, names utils.ResourceNames) (*v1alpha1.TektonResult, error) {
+	trCR, err := clients.Get(context.TODO(), names.TektonResult, metav1.GetOptions{})
+	if err == nil {
+		return trCR, err
+	}
+	if apierrs.IsNotFound(err) {
+		statefulsetOrdinals := true
+
+		// Create a new TektonResult with the updated Performance config.
+		trCR = &v1alpha1.TektonResult{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: names.TektonResult,
+			},
+			Spec: v1alpha1.TektonResultSpec{
+				CommonSpec: v1alpha1.CommonSpec{
+					TargetNamespace: names.TargetNamespace,
+				},
+				Result: v1alpha1.Result{
+					Performance: v1alpha1.PerformanceProperties{
+						PerformanceStatefulsetOrdinalsConfig: v1alpha1.PerformanceStatefulsetOrdinalsConfig{
+							StatefulsetOrdinals: &statefulsetOrdinals,
+						},
+					},
+				},
+			},
+		}
+		return clients.Create(context.TODO(), trCR, metav1.CreateOptions{})
+	}
+	return trCR, err
+}
+
 // WaitForTektonResultState polls the status of the TektonResult called name
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout.
