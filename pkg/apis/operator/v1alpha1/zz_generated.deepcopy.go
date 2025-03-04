@@ -1217,6 +1217,7 @@ func (in *Result) DeepCopyInto(out *Result) {
 	in.ResultsAPIProperties.DeepCopyInto(&out.ResultsAPIProperties)
 	out.LokiStackProperties = in.LokiStackProperties
 	in.Options.DeepCopyInto(&out.Options)
+	in.Performance.DeepCopyInto(&out.Performance)
 	return
 }
 

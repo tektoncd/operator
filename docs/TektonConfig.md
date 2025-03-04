@@ -121,7 +121,11 @@ spec:
     disabled: false
     is_external_db: false
     options: {}
-  platforms:
+    performance:
+      disable-ha: false
+      buckets: 1
+      replicas: 1
+platforms:
     openshift:
       pipelinesAsCode:
         additionalPACControllers:

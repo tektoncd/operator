@@ -132,6 +132,11 @@ func UpdateResult(ctx context.Context, old *v1alpha1.TektonResult, new *v1alpha1
 		updated = true
 	}
 
+	if !reflect.DeepEqual(old.Spec.Performance, new.Spec.Performance) {
+		old.Spec.Performance = new.Spec.Performance
+		updated = true
+	}
+
 	if old.ObjectMeta.OwnerReferences == nil {
 		old.ObjectMeta.OwnerReferences = new.ObjectMeta.OwnerReferences
 		updated = true

@@ -62,6 +62,7 @@ const (
 
 	runAsNonRootValue              = true
 	allowPrivilegedEscalationValue = false
+	pipelinesControllerDeployment  = "tekton-pipelines-controller"
 )
 
 // transformers that are common to all components.
@@ -1103,6 +1104,8 @@ func AddStatefulEnvVars(controllerName, serviceName, statefulServiceEnvVar, cont
 }
 
 // updates performance flags/args into deployment and container given as args
+// and leader election config as pod labels into a Deployment, ensuring that any changes trigger a rollout.
+// It also updates the replica count if specified in the performanceSpec.
 func UpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(performanceSpec *v1alpha1.PerformanceProperties, leaderConfig, deploymentName, containerName string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() != "Deployment" || u.GetName() != deploymentName {
@@ -1173,7 +1176,8 @@ func UpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(performanceSpec *v1alp
 
 				// skip deprecated disable-ha flag if not pipelinesControllerDeployment
 				// should be removed when the flag is removed from pipelines controller
-				if deploymentName != "tekton-pipelines-controller" && flagKey == "disable-ha" {
+				// we can use this logic incase we need to skip it for other controllers as well here
+				if deploymentName != pipelinesControllerDeployment && flagKey == "disable-ha" {
 					continue
 				}
 
