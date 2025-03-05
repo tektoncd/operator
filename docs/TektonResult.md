@@ -321,6 +321,39 @@ spec:
       inputRefs: [ only-tekton ]
       outputRefs: [ default ]
 ```
+### Tekton Result Watcher Performance Properties
+
+Tekton Results Watcher can now be deployed using StatefulSet ordinals to partition work among replicas. When enabled, this feature uses stable pod identities (ordinals) to determine which pod is responsible for reconciling a given set of resources, instead of relying solely on traditional leader election. This can improve work distribution under load and provides a deterministic mechanism for controller coordination.
+
+#### Results Watcher Performance Configuration
+```yaml
+spec:
+  # omitted other fields ...
+  performance:
+    resultsWatcherStatefulsetordinals:
+      enabled: true
+      replicas: 2
+```
+If specified, these properties instruct the operator to deploy the Results Watcher as a StatefulSet with a fixed number of replicas. The controller uses the pod’s name (which contains its ordinal, e.g. tekton-results-watcher-0 or tekton-results-watcher-1) to partition the reconciliation workload.
+
+`enabled` – When set to true, this activates StatefulSet ordinal mode for the Results Watcher. Default behavior (when omitted or set to false) the controller uses standard leader election.
+
+`replicas` – Specifies the number of Results Watcher replicas. For example, setting this to 2 creates two watcher pods with stable identities.
+These stable names allow each pod to know its ordinal and partition work accordingly. This has no meaning if enabled is false.
+How It Works
+Stable Pod Identity:
+With StatefulSet ordinal mode enabled, each Results Watcher pod receives a stable name that reflects its position in the StatefulSet. This is injected into the container via the environment variable STATEFUL_CONTROLLER_ORDINAL (sourced from metadata.name).
+
+Work Partitioning:
+Instead of a single leader handling all reconciliation tasks (as in standard leader election), work is partitioned across the replicas based on their ordinal. This reduces the likelihood of bottlenecks and improves load balancing.
+
+Deployment Changes:
+To enable this feature, the Results Watcher deployment is replaced with a StatefulSet. A headless service is used to provide stable DNS names for the pods. In the pod spec, the following environment variables must be set:
+
+##### Note
+If you do not specify the resultsWatcherStatefulsetordinals block, the operator will deploy the Results Watcher using the default configuration (standard leader election via a Deployment).
+Changes to these performance properties will update the StatefulSet, and the Results Watcher pods will be recreated as needed.
+This configuration is intended for production use; however, we recommend thoroughly testing the behavior in your staging environment before rolling it out widely.
 
 ### Debugging
 
