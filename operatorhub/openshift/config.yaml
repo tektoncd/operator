@@ -129,7 +129,7 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_TRIGGERS_ARG__EL_IMAGE
-- image: registry.redhat.io/openshift-serverless-1/client-kn-rhel8@sha256:37109f6de75dda750496f6668164d0dceaf9db5278e8c034708436f39de3276e
+- image: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel8@sha256:d21cc7e094aa46ba7f6ea717a3d7927da489024a46a6c1224c0b3c5834dcb7a6
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
