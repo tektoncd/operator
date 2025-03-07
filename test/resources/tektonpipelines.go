@@ -163,8 +163,8 @@ func EnsureTektonPipelineWithStatefulsetExists(clients pipelinev1alpha1.TektonPi
 				},
 				Pipeline: v1alpha1.Pipeline{
 					PipelineProperties: v1alpha1.PipelineProperties{
-						Performance: v1alpha1.PipelinePerformanceProperties{
-							PipelinePerformanceStatefulsetOrdinalsConfig: v1alpha1.PipelinePerformanceStatefulsetOrdinalsConfig{
+						Performance: v1alpha1.PerformanceProperties{
+							PerformanceStatefulsetOrdinalsConfig: v1alpha1.PerformanceStatefulsetOrdinalsConfig{
 								StatefulsetOrdinals: &statefulsetOrdinals,
 							},
 						},
