@@ -88,6 +88,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.ReplaceNamespaceInDeploymentArgs([]string{resultWatcherDeployment}, targetNs),
 		common.ReplaceNamespaceInDeploymentEnv(resultDeployementNames, targetNs),
 		updateApiConfig(instance.Spec),
+		updateApiEnv(instance.Spec),
 		enablePVCLogging(instance.Spec.ResultsAPIProperties),
 		updateEnvWithSecretName(instance.Spec.ResultsAPIProperties),
 		populateGoogleCreds(instance.Spec.ResultsAPIProperties),
@@ -271,6 +272,111 @@ func updateApiConfig(s v1alpha1.TektonResultSpec) mf.Transformer {
 	}
 }
 
+// update the api container envs with result api properties
+// as result api server configuration depends on the envs
+func updateApiEnv(s v1alpha1.TektonResultSpec) mf.Transformer {
+	p := s.ResultsAPIProperties
+	return func(u *unstructured.Unstructured) error {
+
+		if u.GetKind() != "Deployment" || u.GetName() != deploymentAPI {
+			return nil
+		}
+
+		values := reflect.ValueOf(p)
+		types := reflect.TypeOf(p)
+		prop := make(map[string]string)
+
+		applyLokiStackConfig(prop, s.LokiStackProperties)
+
+		if !s.IsExternalDB {
+			prop["DB_HOST"] = "tekton-results-postgres-service." + s.TargetNamespace + ".svc.cluster.local"
+		}
+
+		dep := &appsv1.Deployment{}
+		err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, dep)
+		if err != nil {
+			return err
+		}
+		for i := 0; i < values.NumField(); i++ {
+			key := strings.Split(types.Field(i).Tag.Get("json"), ",")[0]
+			if key == "" {
+				continue
+			}
+			ukey := strings.ToUpper(key)
+
+			if values.Field(i).Kind() == reflect.Bool {
+				prop[ukey] = strconv.FormatBool(values.Field(i).Bool())
+				continue
+			}
+
+			if values.Field(i).Kind() == reflect.Int64 {
+				prop[ukey] = strconv.FormatInt(values.Field(i).Int(), 10)
+				continue
+			}
+
+			if values.Field(i).Kind() == reflect.Uint64 {
+				prop[ukey] = strconv.FormatUint(values.Field(i).Uint(), 10)
+				continue
+			}
+
+			if values.Field(i).Kind() == reflect.Ptr {
+				innerElem := values.Field(i).Elem()
+
+				if !innerElem.IsValid() {
+					continue
+				}
+				switch innerElem.Kind() {
+				case reflect.Bool:
+					prop[ukey] = strconv.FormatBool(innerElem.Bool())
+					continue
+
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					prop[ukey] = strconv.FormatInt(innerElem.Int(), 10)
+					continue
+
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+					prop[ukey] = strconv.FormatUint(innerElem.Uint(), 10)
+					continue
+				}
+			}
+
+			if value := values.Field(i).String(); value != "" {
+				prop[ukey] = value
+			}
+		}
+
+		// finds api container and update the matched env and adds other result properties as env
+		for containerIndex, container := range dep.Spec.Template.Spec.Containers {
+			if container.Name != apiContainerName {
+				continue
+			}
+
+			existingContainerEnv := container.Env
+			if existingContainerEnv == nil {
+				existingContainerEnv = make([]corev1.EnvVar, 0)
+			}
+
+			replaceEnv(existingContainerEnv, prop)
+			for k, v := range prop {
+				newEnv := corev1.EnvVar{
+					Name:  k,
+					Value: v,
+				}
+				existingContainerEnv = append(existingContainerEnv, newEnv)
+			}
+			dep.Spec.Template.Spec.Containers[containerIndex].Env = existingContainerEnv
+			break
+		}
+
+		unstrObj, err := k8sruntime.DefaultUnstructuredConverter.ToUnstructured(dep)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
+}
+
 func applyLokiStackConfig(prop map[string]string, lokiProp v1alpha1.LokiStackProperties) {
 	if lokiProp.LokiStackName == "" || lokiProp.LokiStackNamespace == "" {
 		return
@@ -444,5 +550,15 @@ func updateEnvWithSecretName(props v1alpha1.ResultsAPIProperties) mf.Transformer
 		}
 		u.SetUnstructuredContent(uObj)
 		return nil
+	}
+}
+
+func replaceEnv(envs []corev1.EnvVar, prop map[string]string) {
+	for i, env := range envs {
+		_, ok := prop[env.Name]
+		if ok {
+			envs[i].Name = prop[env.Name]
+			delete(prop, env.Name)
+		}
 	}
 }
