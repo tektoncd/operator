@@ -144,5 +144,7 @@ func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldEr
 		errs = errs.Also(apis.ErrInvalidValue(tcs.BuildDefinitionBuildType, path+".builddefinition.buildtype"))
 	}
 
+	errs = errs.Also(tcs.Performance.Validate(fmt.Sprintf("%s.performance", path)))
+
 	return errs
 }
