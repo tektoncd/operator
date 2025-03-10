@@ -56,7 +56,7 @@ func (r *Reconciler) makeInstallerSet(tr *v1alpha1.TektonResult, manifest mf.Man
 	ownerRef := *metav1.NewControllerRef(tr, tr.GetGroupVersionKind())
 	// Determine the subtype based on statefulset mode.
 	mode := "deployment"
-	if tr.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Enabled != nil && *tr.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Enabled {
+	if tr.Spec.Performance.StatefulsetOrdinals != nil && *tr.Spec.Performance.StatefulsetOrdinals {
 		mode = "statefulset"
 	}
 

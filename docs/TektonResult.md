@@ -330,30 +330,25 @@ Tekton Results Watcher can now be deployed using StatefulSet ordinals to partiti
 spec:
   # omitted other fields ...
   performance:
-    resultsWatcherStatefulsetordinals:
-      enabled: true
-      replicas: 2
+    disable-ha: false
+    buckets: 1
+    replicas: 1
+    statefulset-ordinals: false
+
 ```
-If specified, these properties instruct the operator to deploy the Results Watcher as a StatefulSet with a fixed number of replicas. The controller uses the pod’s name (which contains its ordinal, e.g. tekton-results-watcher-0 or tekton-results-watcher-1) to partition the reconciliation workload.
+These fields are optional and there is no default values. If user passes them, operator will include most of fields into the deployment `tekton-results-watcher` under the container `watcher` as arguments(duplicate name? No, container and deployment has the same name), otherwise result watcher controller's default values will be considered. and `buckets` field is updated into `tekton-results-config-leader-election` config-map under the namespace `tekton-pipelines`.
 
-`enabled` – When set to true, this activates StatefulSet ordinal mode for the Results Watcher. Default behavior (when omitted or set to false) the controller uses standard leader election.
+* `disable-ha` - enable or disable ha feature, defaults in results watcher controller is `disable-ha=false`
+* `buckets` - buckets is the number of buckets used to partition key space of each reconciler. If this number is M and the replica number of the controller is N, the N replicas will compete for the M buckets. The owner of a bucket will take care of the reconciling for the keys partitioned into that bucket. The maximum value of `buckets` at this time is `10`. default value in pipeline controller is `1`
+* `replicas` - results watcher controller deployment replicas count
+* `statefulset-ordinals` - enables StatefulSet Ordinals mode for the Tekton Results Watcher Controller. When set to true, the Results Watcher Controller is deployed as a StatefulSet, allowing for multiple replicas to be configured with a load-balancing mode. This ensures that the load is evenly distributed across replicas, and the number of buckets is enforced to match the number of replicas.
+  Moreover, There are two mechanisms available for scaling Results Watcher Controller horizontally:
+- Using leader election, which allows for failover, but can result in hot-spotting.
+- Using StatefulSet ordinals, which doesn't allow for failover, but guarantees load is evenly spread across replicas.
 
-`replicas` – Specifies the number of Results Watcher replicas. For example, setting this to 2 creates two watcher pods with stable identities.
-These stable names allow each pod to know its ordinal and partition work accordingly. This has no meaning if enabled is false.
-How It Works
-Stable Pod Identity:
-With StatefulSet ordinal mode enabled, each Results Watcher pod receives a stable name that reflects its position in the StatefulSet. This is injected into the container via the environment variable STATEFUL_CONTROLLER_ORDINAL (sourced from metadata.name).
 
-Work Partitioning:
-Instead of a single leader handling all reconciliation tasks (as in standard leader election), work is partitioned across the replicas based on their ordinal. This reduces the likelihood of bottlenecks and improves load balancing.
-
-Deployment Changes:
-To enable this feature, the Results Watcher deployment is replaced with a StatefulSet. A headless service is used to provide stable DNS names for the pods. In the pod spec, the following environment variables must be set:
-
-##### Note
-If you do not specify the resultsWatcherStatefulsetordinals block, the operator will deploy the Results Watcher using the default configuration (standard leader election via a Deployment).
-Changes to these performance properties will update the StatefulSet, and the Results Watcher pods will be recreated as needed.
-This configuration is intended for production use; however, we recommend thoroughly testing the behavior in your staging environment before rolling it out widely.
+> #### Note:
+> * if you modify or remove any of the performance properties, `tekton-results-watcher` deployment and `tekton-results-config-leader-election` config-map (if `buckets` changed) will be updated, and `tekton-results-watcher` pods will be recreated
 
 ### Debugging
 

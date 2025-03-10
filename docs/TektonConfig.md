@@ -102,9 +102,9 @@ The TektonConfig CR provides the following features
       is_external_db: false
       options: {}
       performance:
-        resultsWatcherStatefulsetordinals:
-          enabled: true
-          replicas: 2
+        disable-ha: false
+        buckets: 1
+        replicas: 1
     hub:
       params:
         - name: enable-devconsole-integration

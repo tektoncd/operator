@@ -24,8 +24,6 @@ import (
 	"runtime"
 	"testing"
 
-	"knative.dev/pkg/ptr"
-
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
 
@@ -70,7 +68,7 @@ func EnsureTektonResultWithStatefulsetExists(clients resultv1alpha1.TektonResult
 		return trCR, err
 	}
 	if apierrs.IsNotFound(err) {
-		enabled := true
+		statefulsetOrdinals := true
 
 		// Create a new TektonResult with the updated Performance config.
 		trCR = &v1alpha1.TektonResult{
@@ -81,10 +79,9 @@ func EnsureTektonResultWithStatefulsetExists(clients resultv1alpha1.TektonResult
 				CommonSpec: v1alpha1.CommonSpec{
 					TargetNamespace: names.TargetNamespace,
 				},
-				Performance: v1alpha1.ResultPerformanceProperties{
-					ResultsWatcherStatefulsetOrdinals: v1alpha1.ResultsWatcherStatefulsetOrdinalsConfig{
-						Enabled:  &enabled,
-						Replicas: ptr.Int32(2),
+				Performance: v1alpha1.PipelinePerformanceProperties{
+					PipelinePerformanceStatefulsetOrdinalsConfig: v1alpha1.PipelinePerformanceStatefulsetOrdinalsConfig{
+						StatefulsetOrdinals: &statefulsetOrdinals,
 					},
 				},
 			},

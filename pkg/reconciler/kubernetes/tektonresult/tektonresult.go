@@ -51,11 +51,13 @@ import (
 )
 
 const (
-	DbSecretName          = "tekton-results-postgres"
-	TlsSecretName         = "tekton-results-tls"
-	CertificateBlockType  = "CERTIFICATE"
-	PostgresUser          = "result"
-	ECPrivateKeyBlockType = "EC PRIVATE KEY"
+	DbSecretName                 = "tekton-results-postgres"
+	TlsSecretName                = "tekton-results-tls"
+	CertificateBlockType         = "CERTIFICATE"
+	PostgresUser                 = "result"
+	ECPrivateKeyBlockType        = "EC PRIVATE KEY"
+	tektonResultStatefulSetLabel = "statefulset"
+	tektonResultDeploymentLabel  = "deployment"
 )
 
 // Reconciler implements controller.Reconciler for TektonResult resources.
@@ -182,14 +184,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	tr.Status.MarkDependenciesInstalled()
 
 	//Result watcher is deployed as statefulset, ensure deployment installerset is deleted
-	if tr.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Enabled != nil && *tr.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Enabled {
-		if err := r.installerSetClient.CleanupSubTypeDeploymentForResult(ctx); err != nil {
+	if tr.Spec.Performance.StatefulsetOrdinals != nil && *tr.Spec.Performance.StatefulsetOrdinals {
+		if err := r.installerSetClient.CleanupSubTypeDeploymentWithLabel(ctx, tektonResultDeploymentLabel); err != nil {
 			logger.Error("failed to delete main deployment installer set: %v", err)
 			return err
 		}
 	} else {
 		// Result watcher is deployed as deployment, ensure statefulset installerset is deleted
-		if err := r.installerSetClient.CleanupSubTypeStatefulsetForResult(ctx); err != nil {
+		if err := r.installerSetClient.CleanupSubTypeStatefulsetWithLabel(ctx, tektonResultStatefulSetLabel); err != nil {
 			logger.Error("failed to delete main statefulset installer set: %v", err)
 			return err
 		}

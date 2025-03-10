@@ -127,14 +127,14 @@ func (i *InstallerSetClient) cleanup(ctx context.Context, isType string) error {
 	return nil
 }
 
-func (i *InstallerSetClient) CleanupSubTypeDeploymentForResult(ctx context.Context) error {
+func (i *InstallerSetClient) CleanupSubTypeDeploymentWithLabel(ctx context.Context, label string) error {
 	// Here, "deployment" is the substring expected in the name (if used)
 	// and the expected label value for the mode.
 	return i.cleanupSubType(ctx, InstallerTypeResult, "deployment", "deployment")
 }
 
-func (i *InstallerSetClient) CleanupSubTypeStatefulsetForResult(ctx context.Context) error {
-	return i.cleanupSubType(ctx, InstallerTypeResult, "statefulset", "statefulset")
+func (i *InstallerSetClient) CleanupSubTypeStatefulsetWithLabel(ctx context.Context, label string) error {
+	return i.cleanupSubType(ctx, InstallerTypeResult, "statefulset", label)
 }
 
 func (i *InstallerSetClient) CleanupSubTypeDeployment(ctx context.Context) error {
@@ -157,7 +157,7 @@ func (i *InstallerSetClient) cleanupSubType(ctx context.Context, isType string, 
 	}
 
 	if len(list.Items) > 1 {
-		logger.Errorf("Found more than 1 installerSet for %s; cleaning up all", isType)
+		logger.Errorf("found more than 1 installerSet for %s something fishy, cleaning up all", isType)
 	}
 
 	for _, is := range list.Items {

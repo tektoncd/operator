@@ -17,23 +17,19 @@ limitations under the License.
 package tektonresult
 
 import (
-	"fmt"
 	"path"
-	"testing"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"knative.dev/pkg/ptr"
 
 	mf "github.com/manifestival/manifestival"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-
-	"gotest.tools/v3/assert"
-
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"fmt"
+	"testing"
+
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+
+	"gotest.tools/v3/assert"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func Test_enablePVCLogging(t *testing.T) {
@@ -223,77 +219,4 @@ func TestUpdateEnvWithSecretName(t *testing.T) {
 		}
 	}
 	assert.Equal(t, true, containerFound, "container not found")
-}
-
-// TestUpdateStatefulSetReplicasForResultWatcher verifies that the transformer updates
-// the replicas field of a StatefulSet based on the TektonResult's Performance Replicas.
-func TestUpdateStatefulSetReplicasForResultWatcher(t *testing.T) {
-	// Set up a dummy TektonResult with Performance.Replicas set to 3.
-	desiredReplicas := int32(3)
-	tr := &v1alpha1.TektonResult{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "result",
-			Namespace: "xyz",
-		},
-	}
-
-	tr.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Replicas = &desiredReplicas
-	tr.Spec.Performance.ResultsWatcherStatefulsetOrdinals.Enabled = ptr.Bool(true)
-
-	// Create a dummy StatefulSet object with an initial replica count of 1.
-	originalReplicas := int32(1)
-	ss := &appsv1.StatefulSet{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "StatefulSet",
-			APIVersion: "apps/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "tekton-results-watcher",
-			Namespace: "abc",
-		},
-		Spec: appsv1.StatefulSetSpec{
-			Replicas: ptr.Int32(originalReplicas),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "tekton-results-watcher",
-				},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "tekton-results-watcher",
-					},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "watcher",
-							Image: "dummy-image",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// Convert the StatefulSet to an unstructured object.
-	uObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ss)
-	assert.NilError(t, err)
-	u := &unstructured.Unstructured{Object: uObj}
-	u.SetKind("StatefulSet")
-	u.SetAPIVersion("apps/v1")
-
-	// Apply the transformer.
-	transformer := UpdateStatefulSetReplicasForResultWatcher(tr)
-	err = transformer(u)
-	assert.NilError(t, err)
-
-	// Convert back to a StatefulSet to check the updated replicas.
-	var ssOut appsv1.StatefulSet
-	err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &ssOut)
-	assert.NilError(t, err)
-
-	if ssOut.Spec.Replicas == nil || *ssOut.Spec.Replicas != desiredReplicas {
-		t.Errorf("expected replicas=%d, got %v", desiredReplicas, ssOut.Spec.Replicas)
-	}
 }
