@@ -52,7 +52,7 @@ func TestUpdateStatefulSetOrdinalsForChains(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	manifest, err := common.Fetch("./testdata/test-convert-chain-deployment-to-statefulset.yaml")
+	manifest, err := common.Fetch("../../common/testdata/test-convert-chain-deployment-to-statefulset.yaml")
 	if err != nil {
 		t.Fatalf("Failed to fetch test data: %v", err)
 	}

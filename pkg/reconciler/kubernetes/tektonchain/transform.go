@@ -26,6 +26,9 @@ import (
 )
 
 const (
+	leaderElectionChainConfig                       = "tekton-chains-config-leader-election"
+	chainControllerDeployment                       = "tekton-chains-controller"
+	chainControllerContainer                        = "tekton-chains-controller"
 	tektonChainsControllerName                      = "tekton-chains-controller"
 	tektonChainsServiceName                         = "tekton-chains-controller"
 	tektonChainsControllerStatefulServiceName       = "STATEFUL_SERVICE_NAME"
@@ -43,6 +46,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfigMapValues(ChainsConfig, chainCR.Spec.Chain.ChainProperties),
 			common.AddDeploymentRestrictedPSA(),
 			AddControllerEnv(chainCR.Spec.Chain.ControllerEnvs),
+			common.UpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(&chainCR.Spec.Performance, leaderElectionChainConfig, chainControllerDeployment, chainControllerContainer),
 		}
 		if chainCR.Spec.GenerateSigningSecret {
 			extra = append(extra, common.AddSecretData(GenerateSigningSecrets(ctx), map[string]string{

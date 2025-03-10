@@ -33,6 +33,7 @@ import (
 	tektonchainreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonchain"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -46,6 +47,8 @@ import (
 )
 
 const (
+	resourceKind = v1alpha1.KindTektonChain
+
 	// Chains ConfigMap
 	ChainsConfig = "chains-config"
 	// Chains Container Name
@@ -59,6 +62,9 @@ const (
 
 // Reconciler implements controller.Reconciler for TektonChain resources.
 type Reconciler struct {
+	// installer Set client to do CRUD operations for components
+	installerSetClient *client.InstallerSetClient
+
 	// operatorClientSet allows us to configure operator objects
 	operatorClientSet clientset.Interface
 	// manifest has the source manifest of Tekton Triggers for a
@@ -112,7 +118,7 @@ var (
 func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain) pkgreconciler.Event {
 
 	logger := logging.FromContext(ctx)
-	defer r.recorder.LogMetrics(r.chainVersion, tc.Spec, logger)
+	defer r.recorder.LogMetricsWithSpec(r.chainVersion, tc.Spec, logger)
 
 	tc.Status.InitializeConditions()
 	tc.Status.ObservedGeneration = tc.Generation
@@ -296,6 +302,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 			// after updating installer set enqueue after a duration
 			// to allow changes to get deployed
 			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	}
+
+	// Chain controller is deployed as statefulset, ensure deployment installerset is deleted
+	if tc.Spec.Performance.StatefulsetOrdinals != nil && *tc.Spec.Performance.StatefulsetOrdinals {
+		if err := r.installerSetClient.CleanupWithLabelInstallTypeDeployment(ctx, v1alpha1.ChainResourceName); err != nil {
+			logger.Error("failed to delete chain deployment installer set: %v", err)
+			return err
+		}
+	} else {
+		// Chain controller is deployed as deployment, ensure statefulset installerset is deleted
+		if err := r.installerSetClient.CleanupWithLabelInstallTypeStatefulset(ctx, v1alpha1.ChainResourceName); err != nil {
+			logger.Error("failed to delete chain statefulset installer set: %v", err)
+			return err
 		}
 	}
 

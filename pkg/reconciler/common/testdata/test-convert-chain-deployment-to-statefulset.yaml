@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-chains-controller
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-chains
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-chains
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tekton-chains
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: tekton-chains
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tekton-chains
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/part-of: tekton-chains
+    spec:
+      serviceAccountName: tekton-chains-controller
+      containers:
+      - name: tekton-chains-controller
+        image: gcr.io/tekton-releases/github.com/tektoncd/chains/cmd/controller:latest
+        env:
+        - name: CONFIG_LOGGING_NAME
+          value: config-logging
+        - name: CONFIG_OBSERVABILITY_NAME
+          value: config-observability
+        - name: METRICS_DOMAIN
+          value: tekton.dev/chains
+        ports:
+        - name: metrics
+          containerPort: 9090
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsUser: 65532
+          runAsGroup: 65532
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 1000m
+            memory: 1000Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-chains-service
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-chains
+    app.kubernetes.io/component: service
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-chains
+spec:
+  ports:
+  - name: http-metrics
+    port: 9090
+    targetPort: metrics
+  selector:
+    app.kubernetes.io/name: tekton-chains
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-chains

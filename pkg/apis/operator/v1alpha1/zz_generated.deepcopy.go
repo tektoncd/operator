@@ -241,6 +241,7 @@ func (in *ChainProperties) DeepCopyInto(out *ChainProperties) {
 		*out = new(bool)
 		**out = **in
 	}
+	in.Performance.DeepCopyInto(&out.Performance)
 	return
 }
 

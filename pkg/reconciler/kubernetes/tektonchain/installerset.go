@@ -7,6 +7,7 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -24,7 +25,7 @@ func (r *Reconciler) createSecretInstallerSet(ctx context.Context, tc *v1alpha1.
 	}
 
 	// generate installer set
-	tis := makeInstallerSet(tc, manifest, secretChainInstallerset, r.operatorVersion)
+	tis := makeInstallerSet(tc, manifest, secretChainInstallerset, "", r.operatorVersion)
 
 	// Add annoation to secret installer set in case the generate secret signing is set to true
 	if tc.Spec.GenerateSigningSecret {
@@ -52,7 +53,7 @@ func (r *Reconciler) createConfigInstallerSet(ctx context.Context, tc *v1alpha1.
 	}
 
 	// generate installer set
-	tis := makeInstallerSet(tc, manifest, configChainInstallerset, r.operatorVersion)
+	tis := makeInstallerSet(tc, manifest, configChainInstallerset, "", r.operatorVersion)
 
 	// compute the hash of tektonchain spec and store as an annotation
 	// in further reconciliation we compute hash of tc spec and check with
@@ -98,8 +99,13 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tc *v1alpha1.Tekton
 		return nil, err
 	}
 
+	// set installerSet installType: deployment or statefulset
+	installerSetInstallType := client.InstallerSubTypeDeployment
+	if tc.Spec.Performance.StatefulsetOrdinals != nil && *tc.Spec.Performance.StatefulsetOrdinals {
+		installerSetInstallType = client.InstallerSubTypeStatefulset
+	}
 	// generate installer set
-	tis := makeInstallerSet(tc, manifest, v1alpha1.ChainResourceName, r.operatorVersion)
+	tis := makeInstallerSet(tc, manifest, v1alpha1.ChainResourceName, installerSetInstallType, r.operatorVersion)
 
 	// compute the hash of tektonchain spec and store as an annotation
 	// in further reconciliation we compute hash of tc spec and check with
@@ -120,16 +126,21 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tc *v1alpha1.Tekton
 	return createdIs, nil
 }
 
-func makeInstallerSet(tc *v1alpha1.TektonChain, manifest mf.Manifest, installerSetType, releaseVersion string) *v1alpha1.TektonInstallerSet {
+func makeInstallerSet(tc *v1alpha1.TektonChain, manifest mf.Manifest, installerSetType, installerSetInstallType, releaseVersion string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(tc, tc.GetGroupVersionKind())
+	labels := map[string]string{
+		v1alpha1.CreatedByKey:      createdByValue,
+		v1alpha1.ReleaseVersionKey: releaseVersion,
+		v1alpha1.InstallerSetType:  installerSetType,
+	}
+
+	if installerSetInstallType != "" {
+		labels[v1alpha1.InstallerSetInstallType] = installerSetInstallType
+	}
 	return &v1alpha1.TektonInstallerSet{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("%s-", installerSetType),
-			Labels: map[string]string{
-				v1alpha1.CreatedByKey:      createdByValue,
-				v1alpha1.ReleaseVersionKey: releaseVersion,
-				v1alpha1.InstallerSetType:  installerSetType,
-			},
+			Labels:       labels,
 			Annotations: map[string]string{
 				v1alpha1.TargetNamespaceKey: tc.Spec.TargetNamespace,
 			},

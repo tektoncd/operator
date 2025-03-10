@@ -34,3 +34,20 @@ func (i *InstallerSetClient) getSetLabels(setType string) string {
 	}
 	return labelSelector.String()
 }
+
+func (i *InstallerSetClient) getSetLabelsWithTypeAndInstallType(setType, setInstallType string) string {
+	labelSelector := labels.NewSelector()
+	createdReq, _ := labels.NewRequirement(v1alpha1.CreatedByKey, selection.Equals, []string{i.resourceKind})
+	if createdReq != nil {
+		labelSelector = labelSelector.Add(*createdReq)
+	}
+	typeReq, _ := labels.NewRequirement(v1alpha1.InstallerSetType, selection.Equals, []string{setType})
+	if typeReq != nil {
+		labelSelector = labelSelector.Add(*typeReq)
+	}
+	installtypeReq, _ := labels.NewRequirement(v1alpha1.InstallerSetInstallType, selection.Equals, []string{setInstallType})
+	if installtypeReq != nil {
+		labelSelector = labelSelector.Add(*installtypeReq)
+	}
+	return labelSelector.String()
+}
