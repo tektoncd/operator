@@ -50,6 +50,7 @@ const (
 	PacImagePrefix                = "IMAGE_PAC_"
 	ChainsImagePrefix             = "IMAGE_CHAINS_"
 	ManualApprovalGatePrefix      = "IMAGE_MAG_"
+	PrunerImagePrefix             = "IMAGE_PRUNER_"
 	ResultsImagePrefix            = "IMAGE_RESULTS_"
 	HubImagePrefix                = "IMAGE_HUB_"
 	DashboardImagePrefix          = "IMAGE_DASHBOARD_"
@@ -193,7 +194,6 @@ func DeploymentImages(images map[string]string) mf.Transformer {
 		if u.GetKind() != "Deployment" {
 			return nil
 		}
-
 		d := &appsv1.Deployment{}
 		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
 		if err != nil {

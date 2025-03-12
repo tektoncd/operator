@@ -24,4 +24,4 @@ spec:
     - pipelinerun
     - taskrun
     keep: 100
-    schedule: "0 8 * * *"
+    schedule: "1 8 * * *"
