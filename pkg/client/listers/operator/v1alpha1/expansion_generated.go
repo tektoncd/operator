@@ -54,6 +54,10 @@ type TektonInstallerSetListerExpansion interface{}
 // TektonPipelineLister.
 type TektonPipelineListerExpansion interface{}
 
+// TektonPrunerListerExpansion allows custom methods to be added to
+// TektonPrunerLister.
+type TektonPrunerListerExpansion interface{}
+
 // TektonResultListerExpansion allows custom methods to be added to
 // TektonResultLister.
 type TektonResultListerExpansion interface{}

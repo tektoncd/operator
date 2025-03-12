@@ -1,6 +1,7 @@
 module github.com/tektoncd/operator
 
 go 1.23
+
 toolchain go1.23.6
 
 require (

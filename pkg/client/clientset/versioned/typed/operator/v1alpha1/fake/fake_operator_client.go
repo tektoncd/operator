@@ -64,6 +64,10 @@ func (c *FakeOperatorV1alpha1) TektonPipelines() v1alpha1.TektonPipelineInterfac
 	return &FakeTektonPipelines{c}
 }
 
+func (c *FakeOperatorV1alpha1) TektonPruners() v1alpha1.TektonPrunerInterface {
+	return &FakeTektonPruners{c}
+}
+
 func (c *FakeOperatorV1alpha1) TektonResults() v1alpha1.TektonResultInterface {
 	return &FakeTektonResults{c}
 }

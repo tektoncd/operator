@@ -82,5 +82,9 @@ var (
 			Name:                  string(platform.ControllerTektonInstallerSet),
 			ControllerConstructor: k8sInstallerSet.NewController,
 		},
+		platform.ControllerTektonPruner: injection.NamedControllerConstructor{
+			Name:                  string(platform.ControllerTektonPruner),
+			ControllerConstructor: k8sInstallerSet.NewController,
+		},
 	}
 )
