@@ -36,6 +36,8 @@ type TektonInstallerSetExpansion interface{}
 
 type TektonPipelineExpansion interface{}
 
+type TektonPrunerExpansion interface{}
+
 type TektonResultExpansion interface{}
 
 type TektonTriggerExpansion interface{}
