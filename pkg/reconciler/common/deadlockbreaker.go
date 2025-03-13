@@ -18,6 +18,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -40,17 +41,26 @@ var webhookServiceNames = map[string]string{
 func PreemptDeadlock(ctx context.Context, m *manifestival.Manifest, kc kubernetes.Interface, component string) error {
 
 	// check if there are pod endpoints populated for webhhook service
-	webhookServiceName := webhookServiceNames[component]
-	ok, err := isWebhookEndpointsActive(m, kc, webhookServiceName)
-	if err != nil {
-		return err
+	webhookServiceName, ok := webhookServiceNames[component]
+	if !ok {
+		return fmt.Errorf("no webhook service name found for component %s", component)
 	}
+	ok, err := isWebhookEndpointsActive(ctx, m, kc, webhookServiceName)
+	if err != nil {
+		return fmt.Errorf("failed to check webhook endpoints: %w", err)
+	}
+	// If endpoints are active, no deadlock prevention needed
 	if ok {
 		return nil
 	}
-	// if endpoints are empty, set webhook definition rules
+
+	// If endpoints are empty, set webhook definition rules
 	// to the initial state where the webhook pod can refill the rules when it comes up
-	webhookName := webhookNames[component]
+	webhookName, ok := webhookNames[component]
+	if !ok {
+		return fmt.Errorf("no webhook name found for component %s", component)
+	}
+
 	err = removeValidatingWebhookRules(m, kc, webhookName)
 	if err != nil {
 		return err
@@ -59,30 +69,34 @@ func PreemptDeadlock(ctx context.Context, m *manifestival.Manifest, kc kubernete
 }
 
 // isWebhookEndpointsActive checks if the there are valid Endpoint resources associated with a webhook service
-func isWebhookEndpointsActive(m *manifestival.Manifest, kc kubernetes.Interface, svcName string) (bool, error) {
+func isWebhookEndpointsActive(ctx context.Context, m *manifestival.Manifest, kc kubernetes.Interface, svcName string) (bool, error) {
 	svcResource := m.Filter(manifestival.ByKind("Service"), manifestival.ByName(svcName))
+	if len(svcResource.Resources()) == 0 {
+		return false, fmt.Errorf("service %s not found in manifest", svcName)
+	}
 	targetNamespace := svcResource.Resources()[0].GetNamespace()
-	endPoint, err := kc.CoreV1().Endpoints(targetNamespace).Get(context.TODO(), svcName, v1.GetOptions{})
+	endPoint, err := kc.CoreV1().Endpoints(targetNamespace).Get(ctx, svcName, v1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			return false, nil
 		}
-		return false, err
+		return false, fmt.Errorf("failed to get endpoint %s in namespace %s: %w", svcName, targetNamespace, err)
 	}
-	if len(endPoint.Subsets) == 0 {
-		return false, nil
-	}
-	return true, nil
+
+	return len(endPoint.Subsets) > 0, nil
 }
 
 // removeValidatingWebhookRules remove "rules" from config.webhook.** webhook definiton(s)
 func removeValidatingWebhookRules(m *manifestival.Manifest, kc kubernetes.Interface, webhookName string) error {
 	cmValidationWebHookManifest := m.Filter(manifestival.ByName(webhookName))
-	cmValidationWebHookManifest, err := cmValidationWebHookManifest.Transform(removeWebhooks)
+	transformed, err := cmValidationWebHookManifest.Transform(removeWebhooks)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to transform manifest for config webhook %s: %w", webhookName, err)
 	}
-	return cmValidationWebHookManifest.Apply()
+	if err := transformed.Apply(); err != nil {
+		return fmt.Errorf("failed to remove webhook rules on config webhook %s: %w", webhookName, err)
+	}
+	return nil
 }
 
 // removeWebhooks is a Transformer function which clears our webhooks[...].rules
