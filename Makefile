@@ -132,7 +132,7 @@ clean-cr: | ; $(info $(M) clean CRs on $(TARGET)) @ ## Clean the CRs to the curr
 resolve: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko resolve on $(TARGET)) @ ## Resolve config to the current cluster
 	@ ## --load-restrictor LoadRestrictionsNone is needed in kustomize build as files which not in child tree of kustomize base are pulled
 	@ ## https://github.com/kubernetes-sigs/kustomize/issues/766
-	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET)/overlays/default | $(KO) resolve --push=false --oci-layout-path=$(BIN)/oci -f -
+	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET)/overlays/default | $(KO) resolve --push=false --platform=all --oci-layout-path=$(BIN)/oci -f -
 
 .PHONY: generated
 generated: | vendor ; $(info $(M) update generated files) ## Update generated files
@@ -145,10 +145,11 @@ vendor: ; $(info $(M) update vendor folder)  ## Update vendor folder
 
 ## Tests
 GO           = go
-TEST_UNIT_TARGETS := test-unit-verbose test-unit-race test-unit-failfast
+TEST_UNIT_TARGETS := test-unit-verbose test-unit-race test-unit-failfast test-unit-verbose-and-race
 test-unit-verbose: ARGS=-v
 test-unit-failfast: ARGS=-failfast
 test-unit-race:    ARGS=-race
+test-unit-verbose-and-race: ARGS=-v -race
 $(TEST_UNIT_TARGETS): test-unit
 test-clean:  ## Clean testcache
 	@echo "Cleaning test cache"
@@ -157,8 +158,7 @@ test-clean:  ## Clean testcache
 test: test-clean test-unit ## Run test-unit
 test-unit: ## Run unit tests
 	@echo "Running unit tests..."
-	@set -o pipefail ; \
-		$(GO) test -timeout $(TIMEOUT_UNIT) $(ARGS) ./... | { grep -v 'no test files'; true; }
+	$Q $(GO) test -timeout $(TIMEOUT_UNIT) $(ARGS) ./...
 
 
 .PHONY: lint
