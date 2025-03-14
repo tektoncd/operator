@@ -80,6 +80,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfigMapValues(ConfigMetrics, pipeline.Spec.PipelineMetricsProperties),
 			common.AddConfigMapValues(ResolverFeatureFlag, pipeline.Spec.Resolvers),
 			common.DeploymentImages(images),
+			common.DeploymentEnvVarKubernetesMinVersion(),
 			common.InjectLabelOnNamespace(proxyLabel),
 			common.AddConfiguration(pipeline.Spec.Config),
 			common.CopyConfigMap(bundleResolverConfig, pipeline.Spec.BundlesResolverConfig),

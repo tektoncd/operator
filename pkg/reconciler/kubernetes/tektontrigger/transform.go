@@ -43,6 +43,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfigMapValues(ConfigDefaults, trigger.Spec.OptionalTriggersProperties),
 			common.AddConfigMapValues(FeatureFlag, trigger.Spec.TriggersProperties),
 			common.DeploymentImages(triggerImages),
+			common.DeploymentEnvVarKubernetesMinVersion(),
 			common.AddConfiguration(trigger.Spec.Config),
 		}
 		trns = append(trns, extra...)
