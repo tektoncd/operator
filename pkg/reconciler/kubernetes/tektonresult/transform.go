@@ -56,8 +56,14 @@ const (
 	logsAPIKey                    = "LOGS_API"
 	logsTypeKey                   = "LOGS_TYPE"
 
-	resultAPIDeployment     = "tekton-results-api"
-	resultWatcherDeployment = "tekton-results-watcher"
+	resultAPIDeployment                          = "tekton-results-api"
+	resultWatcherDeployment                      = "tekton-results-watcher"
+	resultWatcherContainer                       = "watcher"
+	tektonResultWatcherName                      = "tekton-results-watcher"
+	tektonResultWatcherServiceName               = "tekton-results-watcher"
+	tektonResultWatcherStatefulServiceName       = "STATEFUL_SERVICE_NAME"
+	tektonResultWatcherStatefulControllerOrdinal = "STATEFUL_CONTROLLER_ORDINAL"
+	tektonResultleaderElectionConfig             = "tekton-results-config-leader-election"
 )
 
 var (
@@ -96,7 +102,18 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.AddStatefulSetRestrictedPSA(),
 		common.DeploymentImages(resultImgs),
 		common.StatefulSetImages(resultImgs),
+		common.AddConfigMapValues(tektonResultleaderElectionConfig, instance.Spec.Performance.PipelinePerformanceLeaderElectionConfig),
+		common.UpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(&instance.Spec.Performance, tektonResultleaderElectionConfig, resultWatcherDeployment, resultWatcherContainer),
 	}
+
+	if instance.Spec.Performance.StatefulsetOrdinals != nil && *instance.Spec.Performance.StatefulsetOrdinals {
+		extra = append(extra,
+			common.ConvertDeploymentToStatefulSet(tektonResultWatcherName, tektonResultWatcherServiceName),
+			common.AddStatefulEnvVars(tektonResultWatcherName, tektonResultWatcherServiceName, tektonResultWatcherStatefulServiceName, tektonResultWatcherStatefulControllerOrdinal),
+			common.UpdateStatefulSetReplicas(instance, tektonResultWatcherName),
+		)
+	}
+
 	extra = append(extra, r.extension.Transformers(instance)...)
 	err := common.Transform(ctx, manifest, instance, extra...)
 	if err != nil {
@@ -172,6 +189,7 @@ func enablePVCLogging(p v1alpha1.ResultsAPIProperties) mf.Transformer {
 
 func updateApiConfig(s v1alpha1.TektonResultSpec) mf.Transformer {
 	p := s.ResultsAPIProperties
+
 	return func(u *unstructured.Unstructured) error {
 
 		kind := strings.ToLower(u.GetKind())
@@ -551,6 +569,7 @@ func updateEnvWithSecretName(props v1alpha1.ResultsAPIProperties) mf.Transformer
 		u.SetUnstructuredContent(uObj)
 		return nil
 	}
+
 }
 
 func replaceEnv(envs []corev1.EnvVar, prop map[string]string) {

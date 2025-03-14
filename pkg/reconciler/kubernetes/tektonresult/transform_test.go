@@ -17,19 +17,19 @@ limitations under the License.
 package tektonresult
 
 import (
-	"fmt"
 	"path"
-	"testing"
 
 	mf "github.com/manifestival/manifestival"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-
-	"gotest.tools/v3/assert"
-
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"fmt"
+	"testing"
+
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+
+	"gotest.tools/v3/assert"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func Test_enablePVCLogging(t *testing.T) {
