@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: test
+  template:
+    metadata:
+      labels:
+        run: test
+    spec:
+      containers:
+      - image: busybox
+        name: controller-deployment
+        args: [
+          "-bash-image", "busybox",
+          "-nop=nop"
+        ]
+        env:
+        - name: EXISTING_VAR
+          value: "original-value"
+        - name: OTHER_VAR
+          value: "some-value"
+      - image: busybox
+        name: sidecar
+        args: [
+          "-git", "git"
+        ]
+        env:
+        - name: SIDECAR_VAR
+          value: "sidecar-value"
