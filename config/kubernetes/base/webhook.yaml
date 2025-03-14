@@ -53,6 +53,14 @@ spec:
           value: tekton-operator-webhook-certs
         - name: METRICS_DOMAIN
           value: tekton.dev/operator
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - "ALL"
+          seccompProfile:
+            type: RuntimeDefault
         ports:
         - name: https-webhook
           containerPort: 8443
