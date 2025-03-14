@@ -48,6 +48,7 @@ const (
 	ReleaseMinorVersionKey          = "operator.tekton.dev/release-minor-version"
 	TargetNamespaceKey              = "operator.tekton.dev/target-namespace"
 	InstallerSetType                = "operator.tekton.dev/type"
+	InstallerSetInstallType         = "operator.tekton.dev/installType"
 	LabelOperandName                = "operator.tekton.dev/operand-name"
 	DbSecretHash                    = "operator.tekton.dev/db-secret-hash"
 	DeploymentSpecHashValueLabelKey = "operator.tekton.dev/deployment-spec-applied-hash" // used to recreate pods, if there is a change detected in deployments spec
