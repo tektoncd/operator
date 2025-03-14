@@ -111,6 +111,13 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	//Mark PreReconcile Complete
 	tt.Status.MarkPreReconcilerComplete()
 
+	// Ensure webhook deadlock prevention before applying the manifest
+	if err := common.PreemptDeadlock(ctx, &r.manifest, r.kubeClientSet, v1alpha1.TriggerResourceName); err != nil {
+		msg := fmt.Sprintf("Failed to preempt webhook deadlock: %s", err.Error())
+		logger.Error(msg)
+		return err
+	}
+
 	if err := r.installerSetClient.MainSet(ctx, tt, &r.manifest, filterAndTransform(r.extension)); err != nil {
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
 		logger.Error(msg)

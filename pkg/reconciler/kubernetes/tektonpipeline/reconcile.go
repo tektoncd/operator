@@ -117,6 +117,15 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	// Since namespace is created in TektonConfig reconciler hence deleting TektonPipeline
 	// component should not delete the targetNamespace hence filtering out the namespace here
 	manifest := r.manifest.Filter(mf.Not(mf.ByKind("Namespace")))
+
+	// Ensure webhook deadlock prevention before applying the manifest
+	if err := common.PreemptDeadlock(ctx, &manifest, r.kubeClientSet, v1alpha1.PipelineResourceName); err != nil {
+		msg := fmt.Sprintf("Failed to preempt webhook deadlock: %s", err.Error())
+		logger.Error(msg)
+		return err
+	}
+
+	//Apply manifest
 	if err := r.installerSetClient.MainSet(ctx, tp, &manifest, filterAndTransform(r.extension)); err != nil {
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
 		logger.Error(msg)
