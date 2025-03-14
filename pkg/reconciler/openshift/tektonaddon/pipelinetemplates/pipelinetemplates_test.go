@@ -16,15 +16,15 @@ func TestGeneratePipelineTemplates(t *testing.T) {
 	manifest := mf.Manifest{}
 
 	err := GeneratePipelineTemplates(addonLocation, &manifest)
-	assertNoEror(t, err)
+	assertNoError(t, err)
 	for _, m := range manifest.Resources() {
 		jsonPipeline, err := m.MarshalJSON()
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		golden.Assert(t, string(jsonPipeline), strings.ReplaceAll(fmt.Sprintf("%s.golden", m.GetName()), "/", "-"))
 	}
 }
 
-func assertNoEror(t *testing.T, err error) {
+func assertNoError(t *testing.T, err error) {
 	t.Helper()
 
 	if err != nil {
