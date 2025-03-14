@@ -32,6 +32,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		extra := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdChains),
 			common.DeploymentImages(chainImages),
+			common.DeploymentEnvVarKubernetesMinVersion(),
 			common.AddConfiguration(chainCR.Spec.Config),
 			common.AddConfigMapValues(ChainsConfig, chainCR.Spec.Chain.ChainProperties),
 			common.AddDeploymentRestrictedPSA(),
