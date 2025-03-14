@@ -48,6 +48,8 @@ spec:
             drop:
               - ALL
         env:
+        - name: KUBERNETES_MIN_VERSION
+          value: "v1.0"
         - name: SYSTEM_NAMESPACE
           valueFrom:
             fieldRef:
