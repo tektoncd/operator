@@ -30,7 +30,7 @@ func TestFetchVersionFromConfigMap(t *testing.T) {
 
 	testData := path.Join("testdata", "test-fetch-version-from-configmap.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	version, err := FetchVersionFromConfigMap(manifest, "pipelines-info")
 	if err != nil {
@@ -46,7 +46,7 @@ func TestFetchVersionFromConfigMap_ConfigMapNotFound(t *testing.T) {
 
 	testData := path.Join("testdata", "test-fetch-version-from-configmap.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	_, err = FetchVersionFromConfigMap(manifest, "triggers-info")
 	if err == nil {
@@ -60,7 +60,7 @@ func TestFetchVersionFromConfigMap_VersionKeyNotFound(t *testing.T) {
 
 	testData := path.Join("testdata", "test-fetch-version-from-configmap-invalid.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	_, err = FetchVersionFromConfigMap(manifest, "pipelines-info")
 	if err == nil {
