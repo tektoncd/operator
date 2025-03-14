@@ -70,6 +70,14 @@ spec:
             configMapKeyRef:
               name: tekton-config-defaults
               key: DEFAULT_TARGET_NAMESPACE
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - "ALL"
+          seccompProfile:
+            type: RuntimeDefault
       - name: tekton-operator-cluster-operations  # tektoninstallerset reconciler
         image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
         args:
@@ -97,3 +105,11 @@ spec:
             value: tekton.dev/operator
           - name: CONFIG_LEADERELECTION_NAME
             value: tekton-operator-controller-config-leader-election
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - "ALL"
+          seccompProfile:
+            type: RuntimeDefault
