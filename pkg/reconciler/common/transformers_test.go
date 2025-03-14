@@ -116,9 +116,9 @@ func TestReplaceImages(t *testing.T) {
 		expected, _ := mf.ManifestFrom(mf.Recursive(testData))
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		newManifest, err := manifest.Transform(DeploymentImages(map[string]string{}))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 
 		if d := cmp.Diff(expected.Resources(), newManifest.Resources()); d != "" {
 			t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
@@ -133,9 +133,9 @@ func TestReplaceImages(t *testing.T) {
 		testData := path.Join("testdata", "test-replace-image.yaml")
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		newManifest, err := manifest.Transform(DeploymentImages(images))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		assertDeployContainersHasImage(t, newManifest.Resources(), "controller-deployment", image)
 		assertDeployContainersHasImage(t, newManifest.Resources(), "sidecar", "busybox")
 	})
@@ -149,9 +149,9 @@ func TestReplaceImages(t *testing.T) {
 		testData := path.Join("testdata", "test-replace-image.yaml")
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		newManifest, err := manifest.Transform(DeploymentImages(images))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		assertDeployContainerArgsHasImage(t, newManifest.Resources(), "-bash", image)
 		assertDeployContainerArgsHasImage(t, newManifest.Resources(), "-git", "git")
 	})
@@ -165,9 +165,9 @@ func TestReplaceImages(t *testing.T) {
 		testData := path.Join("testdata", "test-replace-image.yaml")
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		newManifest, err := manifest.Transform(DeploymentImages(images))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		assertDeployContainerArgsHasImage(t, newManifest.Resources(), "-nop", image)
 		assertDeployContainerArgsHasImage(t, newManifest.Resources(), "-git", "git")
 	})
@@ -181,9 +181,9 @@ func TestReplaceImages(t *testing.T) {
 		testData := path.Join("testdata", "test-replace-addon-image.yaml")
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		newManifest, err := manifest.Transform(TaskImages(context.TODO(), images))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		assertTaskImage(t, newManifest.Resources(), "push", image)
 		assertTaskImage(t, newManifest.Resources(), "build", "$(inputs.params.BUILDER_IMAGE)")
 	})
@@ -197,9 +197,9 @@ func TestReplaceImages(t *testing.T) {
 		testData := path.Join("testdata", "test-replace-stepaction-image.yaml")
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		newManifest, err := manifest.Transform(StepActionImages(context.TODO(), images))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		assertStepActionImage(t, newManifest.Resources(), "git-clone", image)
 	})
 
@@ -211,9 +211,9 @@ func TestReplaceImages(t *testing.T) {
 		testData := path.Join("testdata", "test-replace-statefulset-image.yaml")
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		newManifest, err := manifest.Transform(StatefulSetImages(images))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		assertStatefulSetContainersHasImage(t, newManifest.Resources(), "controller-deployment", image)
 		assertStatefulSetContainersHasImage(t, newManifest.Resources(), "sidecar", "busybox")
 	})
@@ -227,15 +227,15 @@ func TestReplaceImages(t *testing.T) {
 		testData := path.Join("testdata", "test-replace-addon-image.yaml")
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		newManifest, err := manifest.Transform(TaskImages(context.TODO(), images))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		assertParamHasImage(t, newManifest.Resources(), "BUILDER_IMAGE", image)
 		assertTaskImage(t, newManifest.Resources(), "push", "buildah")
 	})
 }
 
-func assertNoEror(t *testing.T, err error) {
+func assertNoError(t *testing.T, err error) {
 	t.Helper()
 
 	if err != nil {
@@ -430,21 +430,21 @@ func statefulSetFor(t *testing.T, unstr unstructured.Unstructured) *appsv1.State
 func TestReplaceNamespaceInDeploymentEnv(t *testing.T) {
 	testData := path.Join("testdata", "test-replace-env-in-result-deployment.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	manifest, err = manifest.Transform(ReplaceNamespaceInDeploymentEnv("openshift-pipelines"))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	d := &appsv1.Deployment{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, d)
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	env := d.Spec.Template.Spec.Containers[0].Env
 	assert.Equal(t, env[0].Value, "tcp")
 	assert.Equal(t, env[1].Value, "tekton-results-mysql.openshift-pipelines.svc.cluster.local")
 
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[1].Object, d)
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	env = d.Spec.Template.Spec.Containers[0].Env
 	assert.Equal(t, env[0].Value, "tcp")
@@ -454,14 +454,14 @@ func TestReplaceNamespaceInDeploymentEnv(t *testing.T) {
 func TestReplaceNamespaceInDeploymentArgs(t *testing.T) {
 	testData := path.Join("testdata", "test-replace-arg-in-result-deployment.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	manifest, err = manifest.Transform(ReplaceNamespaceInDeploymentArgs("openshift-pipelines"))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	d := &appsv1.Deployment{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, d)
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	args := d.Spec.Template.Spec.Containers[0].Args
 	assert.Equal(t, args[0], "-api_addr")
@@ -471,29 +471,29 @@ func TestReplaceNamespaceInDeploymentArgs(t *testing.T) {
 func TestReplaceNamespaceInClusterInterceptor(t *testing.T) {
 	testData := path.Join("testdata", "test-replace-namespace-in-cluster-interceptor.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	manifest, err = manifest.Transform(injectNamespaceCRClusterInterceptorClientConfig("foobar"))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	clusterInterceptor := manifest.Resources()[0].Object
 	service, _, err := unstructured.NestedFieldNoCopy(clusterInterceptor, "spec", "clientConfig", "service")
 	m := service.(map[string]interface{})
-	assertNoEror(t, err)
+	assertNoError(t, err)
 	assert.Equal(t, "foobar", m["namespace"])
 }
 
 func TestReplaceNamespaceInClusterRole(t *testing.T) {
 	testData := path.Join("testdata", "test-replace-namespace-in-cluster-role.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	manifest, err = manifest.Transform(injectNamespaceClusterRole("foobar"))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	clusterRole := manifest.Resources()[0].Object
 	rules, _, err := unstructured.NestedSlice(clusterRole, "rules")
-	assertNoEror(t, err)
+	assertNoError(t, err)
 	namespaceRule := rules[0].(map[string]interface{})
 	for _, name := range namespaceRule["resourceNames"].([]interface{}) {
 		if name.(string) != "foobar" {
@@ -512,18 +512,18 @@ func TestAddConfigMapValues_PipelineProperties(t *testing.T) {
 
 	testData := path.Join("testdata", "test-replace-cm-values.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	prop := v1alpha1.PipelineProperties{
 		EnableApiFields: "stable",
 	}
 
 	manifest, err = manifest.Transform(AddConfigMapValues("test1", prop))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	assert.Equal(t, cm.Data["foo"], "bar")
 	assert.Equal(t, cm.Data["enable-api-fields"], "stable")
@@ -533,7 +533,7 @@ func TestAddConfigMapValues_OptionalPipelineProperties(t *testing.T) {
 
 	testData := path.Join("testdata", "test-replace-cm-values.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	min := uint(120)
 	prop := v1alpha1.OptionalPipelineProperties{
@@ -543,11 +543,11 @@ func TestAddConfigMapValues_OptionalPipelineProperties(t *testing.T) {
 	}
 
 	manifest, err = manifest.Transform(AddConfigMapValues("test2", prop))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[1].Object, cm)
-	assertNoEror(t, err)
+	assertNoError(t, err)
 	// ConfigMap will have only fields which are defined in `prop` OptionalPipelineProperties above
 	assert.Equal(t, cm.Data["default-cloud-events-sink"], "abc")
 	assert.Equal(t, cm.Data["default-timeout-minutes"], "120")
@@ -794,9 +794,9 @@ func TestInjectLabelOnNamespace(t *testing.T) {
 		testData := path.Join("testdata", "test-namespace-inject.yaml")
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		newManifest, err := manifest.Transform(InjectLabelOnNamespace("operator.tekton.dev/disable-proxy=true"))
-		assertNoEror(t, err)
+		assertNoError(t, err)
 		for _, resource := range newManifest.Resources() {
 			labels := resource.GetLabels()
 			value, ok := labels["operator.tekton.dev/disable-proxy"]
@@ -815,7 +815,7 @@ func TestAddConfiguration(t *testing.T) {
 
 	testData := path.Join("testdata", "test-add-configurations.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	config := v1alpha1.Config{
 		NodeSelector: map[string]string{
@@ -833,11 +833,11 @@ func TestAddConfiguration(t *testing.T) {
 	}
 
 	manifest, err = manifest.Transform(AddConfiguration(config))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	d := &v1beta1.Deployment{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, d)
-	assertNoEror(t, err)
+	assertNoError(t, err)
 	assert.Equal(t, d.Spec.Template.Spec.NodeSelector["foo"], config.NodeSelector["foo"])
 	assert.Equal(t, d.Spec.Template.Spec.Tolerations[0].Key, config.Tolerations[0].Key)
 	assert.Equal(t, d.Spec.Template.Spec.PriorityClassName, config.PriorityClassName)
@@ -904,7 +904,7 @@ func TestAddStatefulSetPSA(t *testing.T) {
 func TestCopyConfigMapValues(t *testing.T) {
 	testData := path.Join("testdata", "test-resolver-config.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	expectedValues := map[string]string{
 		"default-tekton-hub-catalog":        "abc-catalog",
@@ -913,11 +913,11 @@ func TestCopyConfigMapValues(t *testing.T) {
 	}
 
 	manifest, err = manifest.Transform(CopyConfigMap("hubresolver-config", expectedValues))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
-	assertNoEror(t, err)
+	assertNoError(t, err)
 	// ConfigMap will have values changed only for field which are defined
 	assert.Equal(t, cm.Data["default-tekton-hub-catalog"], "abc-catalog")
 	assert.Equal(t, cm.Data["default-artifact-hub-task-catalog"], "some-random-catalog")
@@ -934,7 +934,7 @@ func TestCopyConfigMapValues(t *testing.T) {
 func TestCopyEmptyConfigMapValues(t *testing.T) {
 	testData := path.Join("testdata", "test-empty-config.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	expectedValues := map[string]string{
 		"default-tekton-hub-catalog":        "abc-catalog",
@@ -943,11 +943,11 @@ func TestCopyEmptyConfigMapValues(t *testing.T) {
 	}
 
 	manifest, err = manifest.Transform(CopyConfigMap("empty-config", expectedValues))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
-	assertNoEror(t, err)
+	assertNoError(t, err)
 	// ConfigMap will have all expected values
 	assert.Equal(t, cm.Data["default-tekton-hub-catalog"], "abc-catalog")
 	assert.Equal(t, cm.Data["default-artifact-hub-task-catalog"], "some-random-catalog")
@@ -957,31 +957,31 @@ func TestCopyEmptyConfigMapValues(t *testing.T) {
 func TestCopyConfigMapWithEmptyExpectedValues(t *testing.T) {
 	testData := path.Join("testdata", "test-empty-config.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	expectedValues := map[string]string{}
 
 	manifest, err = manifest.Transform(CopyConfigMap("empty-config", expectedValues))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
-	assertNoEror(t, err)
+	assertNoError(t, err)
 }
 
 func TestCopyConfigMapWithWrongKind(t *testing.T) {
 	testData := path.Join("testdata", "test-namespace-inject.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	expectedValues := map[string]string{}
 
 	manifest, err = manifest.Transform(CopyConfigMap("tekton-pipelines", expectedValues))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	cm := &corev1.ConfigMap{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
-	assertNoEror(t, err)
+	assertNoError(t, err)
 }
 
 func TestReplaceDeploymentArg(t *testing.T) {
@@ -1016,11 +1016,11 @@ func TestReplaceDeploymentArg(t *testing.T) {
 func TestReplaceNamespaceInServiceAccount(t *testing.T) {
 	testData := path.Join("testdata", "test-replace-namespace-in-service-account.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	targetNamespace := "foobar"
 	manifest, err = manifest.Transform(ReplaceNamespaceInServiceAccount(targetNamespace))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	for _, resource := range manifest.Resources() {
 		if resource.GetNamespace() != targetNamespace {
@@ -1032,16 +1032,16 @@ func TestReplaceNamespaceInServiceAccount(t *testing.T) {
 func TestReplaceNamespaceInClusterRoleBinding(t *testing.T) {
 	testData := path.Join("testdata", "test-replace-namespace-in-cluster-role-binding.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	targetNamespace := "foobar"
 	manifest, err = manifest.Transform(ReplaceNamespaceInClusterRoleBinding(targetNamespace))
-	assertNoEror(t, err)
+	assertNoError(t, err)
 
 	for _, resource := range manifest.Resources() {
 		crb := &rbacv1.ClusterRoleBinding{}
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, crb)
-		assertNoEror(t, err)
+		assertNoError(t, err)
 
 		for _, subject := range crb.Subjects {
 			if subject.Namespace != targetNamespace {
@@ -1265,7 +1265,7 @@ func TestAddSecretData(t *testing.T) {
 			if test.expectError {
 				t.Errorf("Error %v", err)
 			} else {
-				assertNoEror(t, err)
+				assertNoError(t, err)
 				// Remove creationTimestamp from both expected and actual objects
 				if metadata, ok := test.expectedObj.Object["metadata"].(map[string]interface{}); ok {
 					delete(metadata, "creationTimestamp")
