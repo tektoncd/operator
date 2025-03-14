@@ -42,6 +42,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfiguration(dashboard.Spec.Config),
 			common.AddDeploymentRestrictedPSA(),
 			common.DeploymentImages(images),
+			common.DeploymentEnvVarKubernetesMinVersion(),
 		}
 		trns = append(trns, extra...)
 		if dashboard.Spec.ExternalLogs != "" {
