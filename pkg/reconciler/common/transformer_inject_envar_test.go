@@ -29,7 +29,7 @@ func TestDeploymentEnvVars(t *testing.T) {
 		envVars := []corev1.EnvVar{
 			{
 				Name:  "KUBERNETES_MIN_VERSION",
-				Value: "v1.0",
+				Value: "v1.0.0",
 			},
 			{
 				Name: "SECRET_VAR",
@@ -51,7 +51,7 @@ func TestDeploymentEnvVars(t *testing.T) {
 		newManifest, err := manifest.Transform(deploymentEnvVars(envVars))
 		assertNoError(t, err)
 
-		assertDeploymentHasEnvVar(t, newManifest.Resources(), "controller", "KUBERNETES_MIN_VERSION", "v1.0")
+		assertDeploymentHasEnvVar(t, newManifest.Resources(), "controller", "KUBERNETES_MIN_VERSION", "v1.0.0")
 		assertDeploymentHasSecretEnvVar(t, newManifest.Resources(), "controller", "SECRET_VAR", "test-secret", "secret-key")
 	})
 
