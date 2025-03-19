@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    app: tektoncd-operator
+  name: system
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: operator
+  namespace: system
+spec:
+  sourceType: grpc
+  image: quay.io/jkhelil/tektoncd/operator/operator-catalog:0.75.0
+  displayName: Tektoncd Operator Catalog
+  publisher: The Tektoncd Contributors
+  updateStrategy:
+    registryPoll:
+      interval: 10m
