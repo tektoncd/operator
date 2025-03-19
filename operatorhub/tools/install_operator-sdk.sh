@@ -1,18 +1,27 @@
 #!/usr/bin/env bash
+#
+# Download and copy opeartor-sdk to the desired location. The target location is specified by the
+# first argument. For instance:
+#
+# $ install-operator-sdk.sh "bin/operator-sdk"
+#
 
-function operator_sdk_latest_version() {
-  releases_url='https://api.github.com/repos/operator-framework/operator-sdk/releases'
-  curl -sL ${releases_url} | jq  -r '.[].tag_name' | sort -Vr | head -n 1
-}
+set -e
 
-dest_dir=${1:-.bin}
-[[ ! -d $dest_dir ]] && mkdir -p $dest_dir
-echo operator-sdk install - dest_dir: $PWD/$dest_dir
-ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac)
-OS=$(uname | awk '{print tolower($0)}')
-OPERATOR_SDK_VERSION=$(operator_sdk_latest_version)
-OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download
-OPERATOR_SDK_DL_URL=${OPERATOR_SDK_DL_URL}/${OPERATOR_SDK_VERSION}/operator-sdk_${OS}_${ARCH}
-echo operator-sdk download url: ${OPERATOR_SDK_DL_URL}
-curl -L -o ${dest_dir}/operator-sdk ${OPERATOR_SDK_DL_URL}
-chmod +x ${dest_dir}/operator-sdk
+DEST="${1:-./bin/operator-sdk}"
+SDK_VERSION="${SDK_VERSION:-1.37.0}"
+
+OS="${OS:-linux}"
+ARCH="${ARCH:-amd64}"
+
+SDK_URL_HOST="${SDK_HOST:-github.com}"
+SDK_URL_PATH="${SDK_URL_PATH:-operator-framework/operator-sdk/releases/download}"
+SDK_URL="https://${SDK_URL_HOST}/${SDK_URL_PATH}/v${SDK_VERSION}/operator-sdk_${OS}_${ARCH}"
+
+if [ -x ${DEST} ] ; then
+    echo "# operator-sdk is already installed at '${DEST}'"
+    exit 0
+fi
+
+curl --silent --location --output "${DEST}" "${SDK_URL}"
+chmod +x "${DEST}"

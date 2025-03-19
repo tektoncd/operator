@@ -1,0 +1,12 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: operator
+  namespace: system
+spec:
+  channel: candidate
+  name: tektoncd-operator
+  source: tektoncd-operator
+  sourceNamespace: tektoncd-operator
+  installPlanApproval: Automatic
+  startingCSV: tektoncd-operator.v0.75.0

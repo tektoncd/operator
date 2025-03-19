@@ -1,4 +1,4 @@
-# include operatorhub/Makefile
+include operatorhub/Makefile
 
 MODULE   = $(shell env GO111MODULE=on $(GO) list -m)
 DATE         ?= $(shell date +%FT%T%z)
@@ -106,7 +106,6 @@ FORCE:
 bin/%: cmd/% FORCE
 	$Q $(GO) build -mod=vendor $(LDFLAGS) -v -o $@ ./$<
 
-
 .PHONY: resolve
 resolve: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko resolve on $(TARGET)) @ ## Resolve config to the current cluster
 	@ ## --load-restrictor LoadRestrictionsNone is needed in kustomize build as files which not in child tree of kustomize base are pulled
@@ -145,10 +144,31 @@ apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ 
 apply-cr: | ; $(info $(M) apply CRs on $(TARGET)) @ ## Apply the CRs to the current cluster
 	$Q kubectl apply -f config/crs/$(TARGET)/$(CR)
 
-.PHONY: operator-bundle
-operator-bundle:
-	make -C operatorhub operator-bundle
+##@ Bundle
 
+.PHONY: operator-bundle
+operator-bundle: bundle-generate ## Generate the operator bundle manifests
+	@echo "Operator bundle created successfully."
+
+.PHONY: operator-bundle-build
+operator-bundle-build: bundle-build ## Build the operator bundle image
+	@echo "Building the bundle image: $(BUNDLE_IMG)"
+
+.PHONY: operator-bundle-push
+operator-bundle-push: bundle-push  ## Push the operator bundle to the registry
+	@echo "Operator bundle pushed successfully."
+
+.PHONY: operator-catalog-build
+operator-catalog-build: catalog-build ## Build a file-based OLM catalog image containing a released operator bundle.
+	@echo "Operator catalog built successfully."
+
+.PHONY: operator-catalog-push
+operator-catalog-push: catalog-push ## Build and push an OLM catalog image with a released operator bundle.
+	@echo "Operator catalog pushed successfully."
+
+.PHONY: operator-catalog-run
+operator-catalog-run: catalog-run ## Run the operator from a catalog image, using an OLM subscription
+	@echo "Operator catalog run successfully."
 
 ##@ Tests
 GO           = go
