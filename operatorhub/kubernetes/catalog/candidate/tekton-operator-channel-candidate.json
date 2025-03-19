@@ -1,0 +1,10 @@
+{
+    "schema": "olm.channel",
+    "name": "candidate",
+    "package": "tektoncd-operator",
+    "entries": [
+        {
+            "name": "tekton-operator-latest"
+        }
+    ]
+}
