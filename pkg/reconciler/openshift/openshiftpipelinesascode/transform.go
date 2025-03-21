@@ -52,6 +52,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		tfs := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(openshift.OperandOpenShiftPipelineAsCode),
 			common.DeploymentImages(images),
+			common.DeploymentEnvVarKubernetesMinVersion(),
 			common.AddConfiguration(pac.Spec.Config),
 			occommon.ApplyCABundles,
 			common.CopyConfigMap(pipelinesAsCodeCM, pac.Spec.Settings),

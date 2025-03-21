@@ -37,6 +37,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdDashboard),
 			common.AddConfiguration(dashboard.Spec.Config),
 			common.AddDeploymentRestrictedPSA(),
+			common.DeploymentEnvVarKubernetesMinVersion(),
 		}
 		trns = append(trns, extra...)
 		if dashboard.Spec.ExternalLogs != "" {
