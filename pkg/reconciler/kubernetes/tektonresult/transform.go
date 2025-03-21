@@ -90,6 +90,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.AddDeploymentRestrictedPSA(),
 		common.AddStatefulSetRestrictedPSA(),
 		common.DeploymentImages(resultImgs),
+		common.DeploymentEnvVarKubernetesMinVersion(),
 		common.StatefulSetImages(resultImgs),
 	}
 	extra = append(extra, r.extension.Transformers(instance)...)
