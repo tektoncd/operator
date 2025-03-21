@@ -129,6 +129,9 @@ type ChainProperties struct {
 
 	TransparencyConfigEnabled BoolValue `json:"transparency.enabled,omitempty"`
 	TransparencyConfigURL     string    `json:"transparency.url,omitempty"`
+
+	// +optional
+	Performance PerformanceProperties `json:"performance,omitempty"`
 }
 
 type BoolValue string

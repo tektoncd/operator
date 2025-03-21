@@ -183,9 +183,17 @@ func (r *Recorder) Count(version string, spec v1alpha1.TektonChainSpec) error {
 	return nil
 }
 
-func (m *Recorder) LogMetrics(version string, spec v1alpha1.TektonChainSpec, logger *zap.SugaredLogger) {
+func (m *Recorder) LogMetricsWithSpec(version string, spec v1alpha1.TektonChainSpec, logger *zap.SugaredLogger) {
 	err := m.Count(version, spec)
 	if err != nil {
 		logger.Warnf("%v: Failed to log the metrics : %v", v1alpha1.KindTektonResult, err)
+	}
+}
+
+func (m *Recorder) LogMetrics(status, version string, logger *zap.SugaredLogger) {
+	var newSpec v1alpha1.TektonChainSpec
+	err := m.Count(status, newSpec)
+	if err != nil {
+		logger.Warnf("%v: Failed to log the metrics : %v", resourceKind, err)
 	}
 }
