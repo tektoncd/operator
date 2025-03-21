@@ -1,4 +1,4 @@
-# include operatorhub/Makefile
+include operatorhub/Makefile
 
 MODULE   = $(shell env GO111MODULE=on $(GO) list -m)
 DATE         ?= $(shell date +%FT%T%z)
@@ -121,8 +121,28 @@ apply-cr: | ; $(info $(M) apply CRs on $(TARGET)) @ ## Apply the CRs to the curr
 	$Q kubectl apply -f config/crs/$(TARGET)/$(CR)
 
 .PHONY: operator-bundle
-operator-bundle:
-	make -C operatorhub operator-bundle
+operator-bundle: bundle-generate
+	@echo "Operator bundle created successfully."
+
+.PHONY: operator-bundle-build
+operator-bundle-build: bundle-build
+	@echo "Building the bundle image: $(BUNDLE_IMG)"
+
+.PHONY: operator-bundle-push
+operator-bundle-push: bundle-push  ## Push the operator bundle to the registry
+	@echo "Operator bundle pushed successfully."
+
+.PHONY: operator-catalog-build
+operator-catalog-build: catalog-build
+	@echo "Operator catalog built successfully."
+
+.PHONY: operator-catalog-push
+operator-catalog-push: catalog-push
+	@echo "Operator catalog pushed successfully."
+
+.PHONY: operator-catalog-run
+operator-catalog-run: catalog-run
+	@echo "Operator catalog run successfully."
 
 .PHONY: clean-cr
 clean-cr: | ; $(info $(M) clean CRs on $(TARGET)) @ ## Clean the CRs to the current cluster
