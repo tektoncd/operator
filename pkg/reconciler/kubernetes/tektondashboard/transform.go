@@ -43,6 +43,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfiguration(dashboard.Spec.Config),
 			common.AddDeploymentRestrictedPSA(),
 			common.DeploymentImages(images),
+			common.DeploymentEnvVarKubernetesMinVersion(),
 			common.ReplaceNamespaceInDeploymentArgs([]string{dashboardDeploymentName}, targetNamespace),
 		}
 		trns = append(trns, extra...)
