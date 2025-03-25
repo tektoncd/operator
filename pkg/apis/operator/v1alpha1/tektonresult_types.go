@@ -54,6 +54,7 @@ type TektonResultSpec struct {
 	CommonSpec           `json:",inline"`
 	ResultsAPIProperties `json:",inline"`
 	LokiStackProperties  `json:",inline"`
+	Performance          PipelinePerformanceProperties `json:"performance,omitempty"`
 }
 
 type LokiStackProperties struct {
