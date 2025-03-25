@@ -26,6 +26,7 @@ import (
 	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	tektonChainreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonchain"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -61,6 +62,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		if err != nil {
 			logger.Fatal(err)
 		}
+		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 
 		metrics, err := NewRecorder()
 		if err != nil {
@@ -68,13 +70,14 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		c := &Reconciler{
-			operatorClientSet: operatorclient.Get(ctx),
-			extension:         generator(ctx),
-			manifest:          manifest,
-			pipelineInformer:  tektonPipelineinformer.Get(ctx),
-			operatorVersion:   operatorVer,
-			chainVersion:      chainVer,
-			recorder:          metrics,
+			operatorClientSet:  operatorclient.Get(ctx),
+			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, chainVer, v1alpha1.KindTektonChain, metrics),
+			extension:          generator(ctx),
+			manifest:           manifest,
+			pipelineInformer:   tektonPipelineinformer.Get(ctx),
+			operatorVersion:    operatorVer,
+			chainVersion:       chainVer,
+			recorder:           metrics,
 		}
 		impl := tektonChainreconciler.NewImpl(ctx, c)
 
