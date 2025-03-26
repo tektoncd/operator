@@ -2,13 +2,13 @@ name: Update Tekton Task Versions
 
 on:
   schedule:
-    - cron: "0 0 * * 0"  # Runs weekly
+    - cron: "0 0 * * *"  # Runs daily at midnight
   workflow_dispatch:  # Allows manual trigger
 
 jobs:
   update-task-versions:
     runs-on: ubuntu-latest
-    #if: github.repository_owner == 'tektoncd' # do not run this elsewhere
+    if: github.repository_owner == 'tektoncd' # do not run this elsewhere
     permissions:
       contents: write
       pull-requests: write
