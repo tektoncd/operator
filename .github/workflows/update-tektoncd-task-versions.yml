@@ -31,11 +31,6 @@ jobs:
             --script-path hack/openshift/fetch-tektoncd-catalog-tasks.sh
           echo "has_changes=$(git diff --name-only | grep -q fetch-tektoncd-catalog-tasks.sh && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
 
-      # - name: Set up Git config
-      #   if: steps.update.outputs.has_changes == 'true'
-      #   run: |
-      #     git config --global user.name "GitHub Actions Bot"
-      #     git config --global user.email "actions@github.com"
       - name: Set up Git config
         if: steps.update.outputs.has_changes == 'true'
         run: |
