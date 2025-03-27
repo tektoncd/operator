@@ -35,6 +35,8 @@ update_versions() {
       echo "Skipping $resource_name (no versions found)"
       continue
     fi
+    # Extract the current version from the script
+    current_version=$(sed -nE "s/.*\['$resource_name'\]=['\"]([^'\"]+)['\"].*/\1/p" "$FETCH_SCRIPT")
 
      # Only update if the version has changed
     if [[ -n "$current_version" && "$current_version" != "$latest_version" ]]; then
