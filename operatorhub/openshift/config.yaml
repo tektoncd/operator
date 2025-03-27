@@ -83,6 +83,13 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_PIPELINES_ARG__SHELL_IMAGE
+- image: registry.redhat.io/openshift-pipelines/pipelines-sidecarlogresults-rhel8@
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
+        envKeys:
+          - IMAGE_PIPELINES_ARG__SIDECARLOGRESULTS_IMAGE      
 - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel8@
   replaceLocations:
     envTargets:
@@ -213,6 +220,7 @@ image-substitutions:
           - IMAGE_PAC_PAC_CONTROLLER
           - IMAGE_PAC_PAC_WEBHOOK
           - IMAGE_PAC_PAC_WATCHER
+          - IMAGE_PAC_PAC_CLI
 - image: registry.redhat.io/openshift-pipelines/pipelines-results-watcher-rhel8@
   replaceLocations:
     envTargets:
