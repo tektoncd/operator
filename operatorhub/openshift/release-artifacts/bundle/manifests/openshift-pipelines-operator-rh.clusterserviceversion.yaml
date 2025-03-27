@@ -877,6 +877,8 @@ spec:
                   value: registry.redhat.io/openshift-pipelines/pipelines-nop-rhel8@
                 - name: IMAGE_PIPELINES_ARG__SHELL_IMAGE
                   value: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel8@
+                - name: IMAGE_PIPELINES_ARG__SIDECARLOGRESULTS_IMAGE
+                  value: registry.redhat.io/openshift-pipelines/pipelines-sidecarlogresults-rhel8@                  
                 - name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel8@
                 - name: IMAGE_TRIGGERS_WEBHOOK
@@ -903,6 +905,14 @@ spec:
                   value: registry.redhat.io/openshift-pipelines/pipelines-hub-ui-rhel8@
                 - name: IMAGE_PAC_TRIGGERTEMPLATE_APPLY_AND_LAUNCH
                   value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@
+                - name: IMAGE_PAC_PAC_CONTROLLER
+                  value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@
+                - name: IMAGE_PAC_PAC_WEBHOOK
+                  value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@
+                - name: IMAGE_PAC_PAC_WATCHER
+                  value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@
+                - name: IMAGE_PAC_PAC_CLI
+                  value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@                  
                 image: registry.redhat.io/openshift-pipelines/pipelines-rhel8-operator@
                 imagePullPolicy: Always
                 name: openshift-pipelines-operator
@@ -1002,6 +1012,8 @@ spec:
     name: IMAGE_PIPELINES_ARG__NOP_IMAGE
   - image: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel8@
     name: IMAGE_PIPELINES_ARG__SHELL_IMAGE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-sidecarlogresults-rhel8@
+    name: IMAGE_PIPELINES_ARG__SIDECARLOGRESULTS_IMAGE    
   - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel8@
     name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CONTROLLER
   - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-webhook-rhel8@
@@ -1040,5 +1052,13 @@ spec:
     name: IMAGE_HUB_TEKTON_HUB_UI
   - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@
     name: IMAGE_PAC_TRIGGERTEMPLATE_APPLY_AND_LAUNCH
+  - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@
+    name: IMAGE_PAC_PAC_CONTROLLER
+  - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@
+    name: IMAGE_PAC_PAC_WEBHOOK
+  - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@
+    name: IMAGE_PAC_PAC_WATCHER
+  - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel8@
+    name: IMAGE_PAC_PAC_CLI    
   replaces: 1.7.0
   version: 1.8.0
