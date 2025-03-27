@@ -13,6 +13,9 @@ fi
 # Backup the original fetch script before modifying
 cp "$FETCH_SCRIPT" "$FETCH_SCRIPT.bak"
 
+# Track if any updates were made
+updated=false
+
 # Function to update versions
 update_versions() {
   local type=$1
@@ -33,22 +36,21 @@ update_versions() {
       continue
     fi
 
-    # Update the script with the latest version
-    # Using perl for cross-platform compatibility (works on both Linux and macOS)
-    perl -i -pe "s|(\\['$resource_name'\\]=)['\"][^'\"]*['\"]|\1'$latest_version'|" "$FETCH_SCRIPT"
-
-    echo "Updated $resource_name to version $latest_version"
+     # Only update if the version has changed
+    if [[ -n "$current_version" && "$current_version" != "$latest_version" ]]; then
+      perl -i -pe "s|(\\['$resource_name'\\]=)['\"][^'\"]*['\"]|\1'$latest_version'|" "$FETCH_SCRIPT"
+      echo "Updated $resource_name to version $latest_version"
+      updated=true
+    fi
   done
 }
 
 # Update task versions
-update_versions "tasks" "TEKTON_ECOSYSTEM_TASKS"
+update_versions "tasks"
 
-
-# Check if there are any changes
-if git diff --quiet "$FETCH_SCRIPT"; then
-  echo "No version updates found."
-  exit 0
-else
+# Check if updates were made
+if [[ "$updated" == true ]]; then
   echo "Ecosystem Task versions updated successfully!"
+else
+  echo "No version updates found."
 fi
