@@ -66,6 +66,7 @@ ifeq ($(TARGET), openshift)
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-results
 	rm -rf ./cmd/$(TARGET)/operator/kodata/manual-approval-gate
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-pruner
+	rm -rf ./cmd/$(TARGET)/operator/kodata/pruner
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/06-ecosystem/tasks
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/06-ecosystem/stepactions
@@ -76,6 +77,7 @@ ifeq ($(TARGET), openshift)
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/generic.yaml
 else
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton*
+	rm -rf ./cmd/$(TARGET)/operator/kodata/pruner
 	rm -rf ./cmd/$(TARGET)/operator/kodata/manual-approval-gate
 endif
 
@@ -114,7 +116,7 @@ get-releases: |
 apply: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko apply on $(TARGET)) @ ## Apply config to the current cluster
 	@ ## --load-restrictor LoadRestrictionsNone is needed in kustomize build as files which not in child tree of kustomize base are pulled
 	@ ## https://github.com/kubernetes-sigs/kustomize/issues/766
-	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET)/overlays/default | $(KO) apply $(KO_FLAGS) $(PLATFORM) -f -
+	$Q $(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET)/overlays/default | $(KO) apply $(KO_FLAGS) $(PLATFORM) -Bf -
 
 .PHONY: apply-cr
 apply-cr: | ; $(info $(M) apply CRs on $(TARGET)) @ ## Apply the CRs to the current cluster
