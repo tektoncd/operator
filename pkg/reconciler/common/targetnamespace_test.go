@@ -197,6 +197,32 @@ func TestReconcileTargetNamespace(t *testing.T) {
 			err: v1alpha1.REQUEUE_EVENT_AFTER,
 		},
 		{
+			name: "verify-namespace-in-deletion-state-without-owner-reference",
+			component: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "config"},
+				Spec:       v1alpha1.TektonConfigSpec{CommonSpec: v1alpha1.CommonSpec{TargetNamespace: namespaceTektonPipelines}},
+			},
+			additionalLabels: map[string]string{},
+			ownerReferences:  nil,
+			preFunc: func(t *testing.T, fakeClientset *fake.Clientset) {
+				// create a namespace with deletionTimestamp, it means the namespace is in deletion state
+				namespace := &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: namespaceTektonPipelines,
+						Labels: map[string]string{
+							labelKeyTargetNamespace: "true",
+						},
+						OwnerReferences:   nil,
+						DeletionTimestamp: &metav1.Time{Time: time.Now()},
+					},
+				}
+				_, err := fakeClientset.CoreV1().Namespaces().Create(context.TODO(), namespace, metav1.CreateOptions{})
+				assert.NilError(t, err)
+			},
+			// ReconcileTargetNamespace requeue event for the namespace is in deletion state
+			err: v1alpha1.REQUEUE_EVENT_AFTER,
+		},
+		{
 			name: "verify-existing-namespace",
 			component: &v1alpha1.TektonConfig{
 				ObjectMeta: metav1.ObjectMeta{Name: "config"},
