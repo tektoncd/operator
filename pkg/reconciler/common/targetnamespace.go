@@ -56,7 +56,7 @@ func ReconcileTargetNamespace(ctx context.Context, labels map[string]string, ann
 		if namespace.Name == tektonComponent.GetSpec().GetTargetNamespace() && namespace.DeletionTimestamp == nil {
 			_targetNamespace := namespace.DeepCopy()
 			targetNamespace = _targetNamespace
-		} else {
+		} else if len(namespace.GetOwnerReferences()) > 0 {
 			// delete irrelevant namespaces if the owner is the same component
 			// if deletionTimestamp is not nil, that indicates, the namespace is in deletion state
 			ownerReferenceName := namespace.GetOwnerReferences()[0].Name
@@ -73,6 +73,8 @@ func ReconcileTargetNamespace(ctx context.Context, labels map[string]string, ann
 				logger.Debugf("'%v' namespace is in deletion state", namespace.Name)
 				namespaceDeletionInProgress = true
 			}
+		} else {
+			logger.Infof("'%v' namespace is not owned by any component", namespace.Name)
 		}
 	}
 
