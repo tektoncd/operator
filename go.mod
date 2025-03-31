@@ -2,7 +2,7 @@ module github.com/tektoncd/operator
 
 go 1.23.4
 
-toolchain go1.23.6
+toolchain go1.24.1
 
 require (
 	github.com/Masterminds/semver v1.5.0
@@ -18,7 +18,7 @@ require (
 	github.com/openshift/client-go v0.0.0-20240523113335-452272e0496d
 	github.com/sigstore/cosign/v2 v2.4.3
 	github.com/spf13/cobra v1.9.1
-	github.com/spf13/viper v1.20.0
+	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.10.0
 	github.com/tektoncd/pipeline v0.68.0
 	github.com/tektoncd/plumbing v0.0.0-20250116154805-bf07e665a460
