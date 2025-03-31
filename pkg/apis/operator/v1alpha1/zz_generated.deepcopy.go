@@ -2141,6 +2141,7 @@ func (in *TektonResultSpec) DeepCopyInto(out *TektonResultSpec) {
 	out.CommonSpec = in.CommonSpec
 	in.ResultsAPIProperties.DeepCopyInto(&out.ResultsAPIProperties)
 	out.LokiStackProperties = in.LokiStackProperties
+	in.Performance.DeepCopyInto(&out.Performance)
 	return
 }
 

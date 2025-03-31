@@ -34,6 +34,7 @@ const (
 	InstallerTypePre    = "pre"
 	InstallerTypePost   = "post"
 	InstallerTypeCustom = "custom"
+	InstallerTypeResult = "result"
 )
 
 var (

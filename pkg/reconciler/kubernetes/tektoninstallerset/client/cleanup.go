@@ -127,29 +127,51 @@ func (i *InstallerSetClient) cleanup(ctx context.Context, isType string) error {
 	return nil
 }
 
+func (i *InstallerSetClient) CleanupSubTypeDeploymentWithLabel(ctx context.Context, label string) error {
+	// Here, "deployment" is the substring expected in the name (if used)
+	// and the expected label value for the mode.
+	return i.cleanupSubType(ctx, InstallerTypeResult, "deployment", "deployment")
+}
+
+func (i *InstallerSetClient) CleanupSubTypeStatefulsetWithLabel(ctx context.Context, label string) error {
+	return i.cleanupSubType(ctx, InstallerTypeResult, "statefulset", label)
+}
+
 func (i *InstallerSetClient) CleanupSubTypeDeployment(ctx context.Context) error {
-	return i.cleanupSubType(ctx, InstallerTypeMain, InstallerSubTypeDeployment)
+	return i.cleanupSubType(ctx, InstallerTypeMain, InstallerSubTypeDeployment, "")
 }
 
 func (i *InstallerSetClient) CleanupSubTypeStatefulset(ctx context.Context) error {
-	return i.cleanupSubType(ctx, InstallerTypeMain, InstallerSubTypeStatefulset)
+	return i.cleanupSubType(ctx, InstallerTypeMain, InstallerSubTypeStatefulset, "")
 }
 
-func (i *InstallerSetClient) cleanupSubType(ctx context.Context, isType string, isSubType string) error {
+func (i *InstallerSetClient) cleanupSubType(ctx context.Context, isType string, isSubType string, expectedLabelValue string) error {
 	logger := logging.FromContext(ctx).With("kind", i.resourceKind, "type", isType)
 
-	list, err := i.clientSet.List(ctx, metav1.ListOptions{LabelSelector: i.getSetLabels(isType)})
+	// Get the base label selector.
+	baseSelector := i.getSetLabels(isType)
+
+	list, err := i.clientSet.List(ctx, metav1.ListOptions{LabelSelector: baseSelector})
 	if err != nil {
 		return err
 	}
 
-	if len(list.Items) != 1 {
+	if len(list.Items) > 1 {
 		logger.Errorf("found more than 1 installerSet for %s something fishy, cleaning up all", isType)
 	}
 
 	for _, is := range list.Items {
-		if strings.Contains(is.GetName(), isSubType) {
-			logger.Debugf("deleting %s installer set: %s", isType, is.GetName())
+		// Determine if the installer set should be deleted.
+		nameMatch := strings.Contains(is.GetName(), isSubType)
+		labelMatch := false
+		if expectedLabelValue != "" {
+			if val, ok := is.Labels["operator.tekton.dev/tektonResultMode"]; ok && val == expectedLabelValue {
+				labelMatch = true
+			}
+		}
+
+		if nameMatch || labelMatch {
+			logger.Infof("Deleting %s installer set: %s (nameMatch: %t, labelMatch: %t)", isType, is.GetName(), nameMatch, labelMatch)
 			err = i.clientSet.Delete(ctx, is.GetName(), metav1.DeleteOptions{
 				PropagationPolicy: &deletePropagationPolicy,
 			})
