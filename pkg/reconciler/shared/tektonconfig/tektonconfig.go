@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chain"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pruner"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/result"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade"
@@ -53,8 +54,8 @@ type Reconciler struct {
 
 // Check that our Reconciler implements controller.Reconciler
 var (
-	_ tektonConfigreconciler.Interface = (*Reconciler)(nil)
-	_ tektonConfigreconciler.Finalizer = (*Reconciler)(nil)
+	_ tektonConfigreconciler.Interface
+	_ tektonConfigreconciler.Finalizer
 )
 
 // FinalizeKind removes all resources after deletion of a TektonConfig.
@@ -179,6 +180,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		return nil
 	}
 	logger.Info("TektonPipeline CR reconciled successfully")
+
+	// Start Event based Pruner only if old Job based Pruner is Disabled.
+	if !tc.Spec.TektonPruner.Disabled && tc.Spec.Pruner.Disabled {
+		tektonPruner := pruner.GetTektonPrunerCR(tc, r.operatorVersion)
+		if _, err := pruner.EnsureTektonPrunerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPruners(), tektonPruner); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPruner %s", err.Error()))
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	} else {
+		if err := pruner.EnsureTektonPrunerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPruners()); err != nil {
+			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPruner: %s", err.Error()))
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	}
 
 	// Ensure Pipeline Trigger
 	if tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic {
