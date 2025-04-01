@@ -1,3 +1,6 @@
+pruner:
+  github: openshift-pipelines/tektoncd-pruner
+  version: v0.1.0
 chains:
   github: tektoncd/chains
   version: v0.24.0
