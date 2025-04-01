@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Tekton Authors
+Copyright 2025 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,8 +26,6 @@ import (
 	tektonprunerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpruner"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
@@ -70,10 +68,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPrune
 		return nil
 	}
 
-	if err := r.targetNamespaceCheck(ctx, tp); err != nil {
+	// reconcile target namespace
+	if err := common.ReconcileTargetNamespace(ctx, nil, nil, tp, r.kubeClientSet); err != nil {
 		return err
 	}
-
 	//Make sure TektonPipeline is installed before proceeding with
 	//TektonPruner
 	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
@@ -109,13 +107,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPrune
 	//Mark PreReconcile Complete
 	tp.Status.MarkPreReconcilerComplete()
 
-	// Ensure webhook deadlock prevention before applying the manifest
-	//if err := common.PreemptDeadlock(ctx, &r.manifest, r.kubeClientSet, v1alpha1.TektonPrunerResourceName); err != nil {
-	//	msg := fmt.Sprintf("Failed to preempt webhook deadlock: %s", err.Error())
-	//	logger.Error(msg)
-	//	return err
-	//}
-
 	if err := r.installerSetClient.MainSet(ctx, tp, &r.manifest, filterAndTransform(r.extension)); err != nil {
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
 		logger.Error(msg)
@@ -139,25 +130,4 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPrune
 	// Mark PostReconcile Complete
 	tp.Status.MarkPostReconcilerComplete()
 	return nil
-}
-
-func (r *Reconciler) targetNamespaceCheck(ctx context.Context, comp v1alpha1.TektonComponent) error {
-	ns, err := r.kubeClientSet.CoreV1().Namespaces().Get(ctx, comp.GetSpec().GetTargetNamespace(), metav1.GetOptions{})
-	if err != nil {
-		// if namespace is not there then return wait for it
-		if apierrors.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-	// if the namespace is in deletion state then delete the installerset
-	// and create later otherwise it will keep doing api calls to create resources
-	// and keep failing
-	if ns.DeletionTimestamp != nil {
-		if err := r.installerSetClient.CleanupMainSet(ctx); err != nil {
-			return err
-		}
-		return v1alpha1.REQUEUE_EVENT_AFTER
-	}
-	return err
 }

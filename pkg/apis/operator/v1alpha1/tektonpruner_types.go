@@ -1,5 +1,5 @@
 /*
-Copyright 2024 The Tekton Authors
+Copyright 2025 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -33,6 +31,8 @@ var (
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
+// +kubebuilder:resource:scope=Cluster
+
 type TektonPruner struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -45,10 +45,6 @@ type Pruner struct {
 	Disabled bool `json:"disabled"`
 	// options holds additions fields and these fields will be updated on the manifests
 	Options AdditionalOptions `json:"options"`
-}
-
-func (p *Pruner) setDefaults() {
-	p.Disabled = false // Enable By Default
 }
 
 // TektonPrunerList contains a list of TektonPruner
@@ -88,8 +84,4 @@ func (tp *TektonPruner) GetSpec() TektonComponentSpec {
 
 func (tp *TektonPruner) GetStatus() TektonComponentStatus {
 	return &tp.Status
-}
-
-func (tp *TektonPruner) SetDefaults(ctx context.Context) {
-	tp.Spec.Pruner.setDefaults()
 }
