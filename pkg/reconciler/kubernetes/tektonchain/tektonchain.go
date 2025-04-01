@@ -18,13 +18,12 @@ package tektonchain
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
+	"encoding/base64"
 	"fmt"
 	"strconv"
+
+	"github.com/sigstore/cosign/v2/pkg/cosign"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -58,6 +57,9 @@ const (
 
 	// secret installer set additional Annotation
 	secretTISSigningAnnotation = "operator.tekton.dev/generated-signing-secret"
+
+	// The number of random bytes we'll generate (before encoding) for the Cosign passphrase.
+	defaultCosignPasswordLength = 16
 )
 
 // Reconciler implements controller.Reconciler for TektonChain resources.
@@ -505,8 +507,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 		secretInstallerSetSigningKey = false
 	}
 	if secretInstallerSetSigningKey != tc.Spec.GenerateSigningSecret {
-		manifest := r.manifest
-		manifest = manifest.Filter(mf.ByKind("Secret"))
+		manifest := r.manifest.Filter(mf.ByKind("Secret"))
 		transformer := filterAndTransform(r.extension)
 		if _, err := transformer(ctx, &manifest, tc); err != nil {
 			tc.Status.MarkNotReady("transformation failed: " + err.Error())
@@ -678,46 +679,46 @@ func AddControllerEnv(controllerEnvs []corev1.EnvVar) mf.Transformer {
 	}
 }
 
-func GenerateSigningSecrets(ctx context.Context) map[string][]byte {
+// Creates a cryptographically secure random password
+// of length defaultCosignPasswordLength, then encodes it using base64
+func generateRandomPassword(ctx context.Context) (string, error) {
 	logger := logging.FromContext(ctx)
-	// Generate ECDSA key pair
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+
+	raw := make([]byte, defaultCosignPasswordLength)
+	if _, err := rand.Read(raw); err != nil {
+		logger.Errorf("Failed to generate random bytes: %v", err)
+		return "", err
+	}
+
+	// Base64 encode it
+	pass := base64.StdEncoding.EncodeToString(raw)
+	return pass, nil
+}
+
+func generateSigningSecrets(ctx context.Context) map[string][]byte {
+	logger := logging.FromContext(ctx)
+
+	randomPassword, err := generateRandomPassword(ctx)
 	if err != nil {
-		logger.Error("Error generating private key:", err)
+		logger.Error("Error generating random password %w:", err)
 		return nil
 	}
 
-	// Convert private key to PKCS8
-	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+	// Define a PassFunc that supplies the generated password to cosign
+	passFunc := func(confirm bool) ([]byte, error) {
+		return []byte(randomPassword), nil
+	}
+
+	keys, err := cosign.GenerateKeyPair(passFunc)
 	if err != nil {
-		logger.Error("Error marshaling private key:", err)
+		logger.Error("Error generating cosign key pair:", err)
 		return nil
 	}
 
-	// Encode private key to PEM
-	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PRIVATE KEY",
-		Bytes: privateKeyBytes,
-	})
-
-	// Get public key
-	publicKey := &privateKey.PublicKey
-
-	// Marshal public key
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
-	if err != nil {
-		logger.Error("Error marshaling public key:", err)
-		return nil
-	}
-
-	// Encode public key to PEM
-	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: publicKeyBytes,
-	})
-
+	// Return the cosign keys and password
 	return map[string][]byte{
-		"x509.pem":     privateKeyPEM,
-		"x509-pub.pem": publicKeyPEM,
+		"cosign.key":      keys.PrivateBytes,
+		"cosign.pub":      keys.PublicBytes,
+		"cosign.password": []byte(randomPassword),
 	}
 }

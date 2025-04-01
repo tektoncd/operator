@@ -50,7 +50,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.UpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(&chainCR.Spec.Performance, leaderElectionChainConfig, chainControllerDeployment, chainControllerContainer),
 		}
 		if chainCR.Spec.GenerateSigningSecret {
-			extra = append(extra, common.AddSecretData(GenerateSigningSecrets(ctx), map[string]string{
+			extra = append(extra, common.AddSecretData(generateSigningSecrets(ctx), map[string]string{
 				secretTISSigningAnnotation: "true",
 			}))
 		}
