@@ -25,6 +25,7 @@ import (
 	openshiftConfig "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
 	openshiftHub "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonhub"
 	openshiftPipeline "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
+	openshiftPruner "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpruner"
 	openshiftResult "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonresult"
 	openshiftTrigger "github.com/tektoncd/operator/pkg/reconciler/openshift/tektontrigger"
 	"github.com/tektoncd/operator/pkg/reconciler/platform"
@@ -81,6 +82,10 @@ var (
 		platform.ControllerTektonInstallerSet: injection.NamedControllerConstructor{
 			Name:                  string(platform.ControllerTektonInstallerSet),
 			ControllerConstructor: k8sInstallerSet.NewController,
+		},
+		platform.ControllerTektonPruner: injection.NamedControllerConstructor{
+			Name:                  string(platform.ControllerTektonPruner),
+			ControllerConstructor: openshiftPruner.NewController,
 		},
 	}
 )
