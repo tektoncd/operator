@@ -121,6 +121,9 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 	case "manual-approval-gate":
 		var mag v1alpha1.ManualApprovalGate
 		return AppendTarget(ctx, ctrl.Manifest, &mag)
+	case v1alpha1.TektonPrunerResourceName:
+		var pruner v1alpha1.TektonPruner
+		return AppendTarget(ctx, ctrl.Manifest, &pruner)
 	}
 
 	return nil
