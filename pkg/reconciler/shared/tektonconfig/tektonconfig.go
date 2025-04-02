@@ -53,8 +53,8 @@ type Reconciler struct {
 
 // Check that our Reconciler implements controller.Reconciler
 var (
-	_ tektonConfigreconciler.Interface = (*Reconciler)(nil)
-	_ tektonConfigreconciler.Finalizer = (*Reconciler)(nil)
+	_ tektonConfigreconciler.Interface
+	_ tektonConfigreconciler.Finalizer
 )
 
 // FinalizeKind removes all resources after deletion of a TektonConfig.
@@ -161,7 +161,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		}
 		return nil
 	}
-	if !tc.Spec.TektonPruner.Disabled {
+	// Start Event based Pruner only if old Job based Pruner is Disabled.
+	if !tc.Spec.TektonPruner.Disabled && tc.Spec.Pruner.Disabled {
 		tektonPruner := pruner.GetTektonPrunerCR(tc, r.operatorVersion)
 		if _, err = pruner.EnsureTektonPrunerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPruners(), tektonPruner); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPruner %s", err.Error()))
