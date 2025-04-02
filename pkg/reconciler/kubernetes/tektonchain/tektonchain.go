@@ -18,13 +18,10 @@ package tektonchain
 
 import (
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"strconv"
+
+	"github.com/sigstore/cosign/v2/pkg/cosign"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -504,9 +501,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 	if err != nil {
 		secretInstallerSetSigningKey = false
 	}
-	if secretInstallerSetSigningKey != tc.Spec.GenerateSigningSecret {
-		manifest := r.manifest
-		manifest = manifest.Filter(mf.ByKind("Secret"))
+	// We are transitioning from generating X509 keys to cosign keys to simplify operations.
+	// Below, we check for X509 keys and migrate them to cosign keys.
+	if secretInstallerSetSigningKey != tc.Spec.GenerateSigningSecret || isX509SigningSecret(installedSecretTIS.Spec.Manifests) {
+		manifest := r.manifest.Filter(mf.ByKind("Secret"))
 		transformer := filterAndTransform(r.extension)
 		if _, err := transformer(ctx, &manifest, tc); err != nil {
 			tc.Status.MarkNotReady("transformation failed: " + err.Error())
@@ -678,46 +676,37 @@ func AddControllerEnv(controllerEnvs []corev1.EnvVar) mf.Transformer {
 	}
 }
 
-func GenerateSigningSecrets(ctx context.Context) map[string][]byte {
+func generateSigningSecrets(ctx context.Context) map[string][]byte {
 	logger := logging.FromContext(ctx)
-	// Generate ECDSA key pair
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+
+	// Here, nil indicates that no password is provided for the private key encryption, as it requires a user-provided secret.
+	keys, err := cosign.GenerateKeyPair(nil)
 	if err != nil {
-		logger.Error("Error generating private key:", err)
+		logger.Error("Error generating cosign key pair:", err)
 		return nil
 	}
 
-	// Convert private key to PKCS8
-	privateKeyBytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
-	if err != nil {
-		logger.Error("Error marshaling private key:", err)
-		return nil
-	}
-
-	// Encode private key to PEM
-	privateKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PRIVATE KEY",
-		Bytes: privateKeyBytes,
-	})
-
-	// Get public key
-	publicKey := &privateKey.PublicKey
-
-	// Marshal public key
-	publicKeyBytes, err := x509.MarshalPKIXPublicKey(publicKey)
-	if err != nil {
-		logger.Error("Error marshaling public key:", err)
-		return nil
-	}
-
-	// Encode public key to PEM
-	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
-		Type:  "PUBLIC KEY",
-		Bytes: publicKeyBytes,
-	})
-
+	// Return the keys using cosign naming conventions.
 	return map[string][]byte{
-		"x509.pem":     privateKeyPEM,
-		"x509-pub.pem": publicKeyPEM,
+		"cosign.key": keys.PrivateBytes,
+		"cosign.pub": keys.PublicBytes,
 	}
+}
+
+// isX509SigningSecret checks if any Secret resource in the installer set manifest
+// contains x509 keys
+// TODO: Remove this function when we no longer check if x509 keys are being used.
+func isX509SigningSecret(manifests []unstructured.Unstructured) bool {
+	for _, u := range manifests {
+		if u.GetKind() == "Secret" {
+			data, found, err := unstructured.NestedStringMap(u.Object, "data")
+			if err != nil || !found {
+				continue
+			}
+			if _, exists := data["x509.pem"]; exists {
+				return true
+			}
+		}
+	}
+	return false
 }
