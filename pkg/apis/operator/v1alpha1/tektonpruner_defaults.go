@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,17 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonpruner
+package v1alpha1
 
-import (
-	"context"
+import "context"
 
-	k8sctrl "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpruner"
-
-	"knative.dev/pkg/configmap"
-	"knative.dev/pkg/controller"
-)
-
-func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
-	return k8sctrl.NewExtendedController(OpenShiftExtension)(ctx, cmw)
+func (tp *TektonPruner) SetDefaults(ctx context.Context) {
+	tp.Spec.Pruner.setDefaults()
+}
+func (p *Pruner) setDefaults() {
+	p.Disabled = false // Enable By Default
 }
