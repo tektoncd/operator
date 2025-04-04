@@ -33,21 +33,29 @@ func TestTektonResult_SetDefaults(t *testing.T) {
 		{
 			name: "Add TLSHostnameOverride Override",
 			Spec: TektonResultSpec{
-				ResultsAPIProperties: ResultsAPIProperties{
-					TLSHostnameOverride: "foo.bar",
+				Result: Result{
+					ResultsAPIProperties: ResultsAPIProperties{
+						TLSHostnameOverride: "foo.bar",
+					},
 				},
 			},
 			want: TektonResultSpec{
-				ResultsAPIProperties: ResultsAPIProperties{},
+				Result: Result{
+					ResultsAPIProperties: ResultsAPIProperties{},
+				},
 			},
 		},
 		{
 			name: "Empty TLSHostnameOverride Override",
 			Spec: TektonResultSpec{
-				ResultsAPIProperties: ResultsAPIProperties{},
+				Result: Result{
+					ResultsAPIProperties: ResultsAPIProperties{},
+				},
 			},
 			want: TektonResultSpec{
-				ResultsAPIProperties: ResultsAPIProperties{},
+				Result: Result{
+					ResultsAPIProperties: ResultsAPIProperties{},
+				},
 			},
 		},
 	}
