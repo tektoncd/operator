@@ -129,6 +129,7 @@ func copyResultConfigToTektonConfig(ctx context.Context, logger *zap.SugaredLogg
 	// copy the existing TektonResult CR configuration  to the TektonConfig CR
 	tcCR.Spec.Result.ResultsAPIProperties = trCR.Spec.ResultsAPIProperties
 	tcCR.Spec.Result.LokiStackProperties = trCR.Spec.LokiStackProperties
+	tcCR.Spec.Result.Options = trCR.Spec.Options
 
 	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{})
 	if err != nil {
