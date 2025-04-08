@@ -118,22 +118,25 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two.
 func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResult) pkgreconciler.Event {
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).With("tektonresult", tr.Name)
 	defer r.recorder.LogMetrics(r.resultsVersion, tr.Spec, logger)
 
 	tr.Status.InitializeConditions()
 	tr.Status.ObservedGeneration = tr.Generation
 
-	logger.Infow("Reconciling TektonResults", "status", tr.Status)
+	logger.Infow("Starting TektonResults reconciliation",
+		"version", r.resultsVersion,
+		"generation", tr.Generation,
+		"status", tr.Status.GetCondition(apis.ConditionReady))
 
 	manifest := *r.manifest
 
 	if tr.GetName() != v1alpha1.ResultResourceName {
+		logger.Errorw("Invalid resource name",
+			"expectedName", v1alpha1.ResultResourceName,
+			"actualName", tr.GetName())
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
-			v1alpha1.ResultResourceName,
-			tr.GetName(),
-		)
-		logger.Error(msg)
+			v1alpha1.ResultResourceName, tr.GetName())
 		tr.Status.MarkNotReady(msg)
 		return nil
 	}
@@ -142,17 +145,22 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	tp, err := common.PipelineReady(r.pipelineInformer)
 	if err != nil {
 		if err.Error() == common.PipelineNotReady || err == v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR {
+			logger.Infow("Waiting for tekton-pipelines installation to complete")
 			tr.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
 			// wait for pipeline status to change
 			return fmt.Errorf(common.PipelineNotReady)
 		}
 		// tektonpipeline.operator.tekton.dev instance not available yet
+		logger.Errorw("Pipeline dependency not found", "error", err)
 		tr.Status.MarkDependencyMissing("tekton-pipelines does not exist")
 		return err
 	}
 
 	if tp.GetSpec().GetTargetNamespace() != tr.GetSpec().GetTargetNamespace() {
 		errMsg := fmt.Sprintf("tekton-pipelines is missing in %s namespace", tr.GetSpec().GetTargetNamespace())
+		logger.Errorw("Namespace mismatch for pipeline dependency",
+			"resultNamespace", tr.GetSpec().GetTargetNamespace(),
+			"pipelineNamespace", tp.GetSpec().GetTargetNamespace())
 		tr.Status.MarkDependencyMissing(errMsg)
 		return errors.New(errMsg)
 	}
@@ -160,67 +168,91 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	// If the external database is disabled, create a default database and a TLS secret.
 	// Otherwise, verify if the default database secret is already created, and ensure the TLS secret is also created.
 	if !tr.Spec.IsExternalDB {
+		logger.Debugw("Creating database secret for internal database")
 		if err := r.createDBSecret(ctx, tr); err != nil {
+			logger.Errorw("Failed to create database secret", "error", err)
 			return err
 		}
+		logger.Debugw("Creating TLS secret for internal database")
 		if err := r.createTLSSecret(ctx, tr); err != nil {
+			logger.Errorw("Failed to create TLS secret", "error", err)
 			return err
 		}
+		logger.Infow("Successfully created database and TLS secrets")
 	} else {
+		logger.Debugw("Validating external database secrets")
 		if err := r.validateSecretsAreCreated(ctx, tr, DbSecretName); err != nil {
+			logger.Errorw("Failed to validate database secrets", "error", err)
 			return err
 		}
+		logger.Debugw("Creating TLS secret for external database")
 		if err := r.createTLSSecret(ctx, tr); err != nil {
+			logger.Errorw("Failed to create TLS secret", "error", err)
 			return err
 		}
+		logger.Info("Successfully validated database secrets and created TLS secret")
 	}
 
 	tr.Status.MarkDependenciesInstalled()
+	logger.Info("All dependencies installed successfully")
 
 	if err := r.extension.PreReconcile(ctx, tr); err != nil {
-		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
-		logger.Error(msg)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			logger.Info("PreReconciliation requested requeue")
 			return err
 		}
+		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
+		logger.Errorw("PreReconciliation failed", "error", err)
 		tr.Status.MarkPreReconcilerFailed(msg)
 		return nil
 	}
 
 	tr.Status.MarkPreReconcilerComplete()
+	logger.Info("PreReconciliation completed successfully")
 
 	// Check if an tektoninstallerset already exists, if not then create
 	labelSelector, err := common.LabelSelector(ls)
 	if err != nil {
+		logger.Errorw("Failed to create label selector", "error", err)
 		return err
 	}
+
+	logger.Debugw("Checking for existing installer set")
 	existingInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, labelSelector)
 	if err != nil {
+		logger.Errorw("Failed to get current installer set name", "error", err)
 		return err
 	}
 
 	if existingInstallerSet == "" {
+		logger.Info("No existing installer set found, creating new one")
 		createdIs, err := r.createInstallerSet(ctx, tr, manifest)
 		if err != nil {
+			logger.Errorw("Failed to create installer set", "error", err)
 			return err
 		}
+		logger.Infow("Successfully created installer set", "name", createdIs.Name)
 		r.updateTektonResultsStatus(ctx, tr, createdIs)
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// If exists, then fetch the TektonInstallerSet
+	logger.Debugw("Fetching existing installer set", "name", existingInstallerSet)
 	installedTIS, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 		Get(ctx, existingInstallerSet, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
+			logger.Infow("Existing installer set not found, creating new one", "missingSet", existingInstallerSet)
 			createdIs, err := r.createInstallerSet(ctx, tr, manifest)
 			if err != nil {
+				logger.Errorw("Failed to create installer set", "error", err)
 				return err
 			}
+			logger.Infow("Successfully created installer set", "name", createdIs.Name)
 			r.updateTektonResultsStatus(ctx, tr, createdIs)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
-		logger.Error("failed to get InstallerSet: %s", err)
+		logger.Errorw("Failed to get existing installer set", "name", existingInstallerSet, "error", err)
 		return err
 	}
 
@@ -232,35 +264,44 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	// If any of the thing above is not same then delete the existing TektonInstallerSet
 	// and create a new with expected properties
 	if installerSetTargetNamespace != tr.Spec.TargetNamespace || installerSetReleaseVersion != r.operatorVersion {
+		logger.Infow("Configuration changed, deleting existing installer set",
+			"existingNamespace", installerSetTargetNamespace,
+			"newNamespace", tr.Spec.TargetNamespace,
+			"existingVersion", installerSetReleaseVersion,
+			"newVersion", r.operatorVersion)
 		// Delete the existing TektonInstallerSet
 		err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 			Delete(ctx, existingInstallerSet, metav1.DeleteOptions{})
 		if err != nil {
-			logger.Error("failed to delete InstallerSet: %s", err)
+			logger.Errorw("Failed to delete installer set", "name", existingInstallerSet, "error", err)
 			return err
 		}
+		logger.Infow("Successfully deleted installer set", "name", existingInstallerSet)
 
 		// Make sure the TektonInstallerSet is deleted
 		_, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 			Get(ctx, existingInstallerSet, metav1.GetOptions{})
 		if err == nil {
+			logger.Infow("Waiting for previous installer set to be deleted", "name", existingInstallerSet)
 			tr.Status.MarkNotReady("Waiting for previous installer set to get deleted")
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		if !apierrors.IsNotFound(err) {
-			logger.Error("failed to get InstallerSet: %s", err)
+			logger.Errorw("Failed to verify installer set deletion", "name", existingInstallerSet, "error", err)
 			return err
 		}
+		logger.Infow("Confirmed installer set deletion", "name", existingInstallerSet)
 		return nil
 
 	} else {
 		// If target namespace and version are not changed then check if spec
 		// of TektonResult is changed by checking hash stored as annotation on
 		// TektonInstallerSet with computing new hash of TektonResult Spec
-
+		logger.Debug("Checking for spec changes in TektonResult")
 		// Hash of TektonResult Spec
 		expectedSpecHash, err := hash.Compute(tr.Spec)
 		if err != nil {
+			logger.Errorw("Failed to compute spec hash", "error", err)
 			return err
 		}
 
@@ -268,9 +309,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 		lastAppliedHash := installedTIS.GetAnnotations()[v1alpha1.LastAppliedHashKey]
 
 		if lastAppliedHash != expectedSpecHash {
+			logger.Infow("TektonResult spec changed, updating installer set",
+				"previousHash", lastAppliedHash,
+				"newHash", expectedSpecHash)
 
 			if err := r.transform(ctx, &manifest, tr); err != nil {
-				logger.Error("manifest transformation failed:  ", err)
+				logger.Errorw("Manifest transformation failed", "error", err)
 				return err
 			}
 
@@ -281,15 +325,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 
 			// Update the manifests
 			installedTIS.Spec.Manifests = manifest.Resources()
-
-			if _, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
-				Update(ctx, installedTIS, metav1.UpdateOptions{}); err != nil {
+			updatedIS, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
+				Update(ctx, installedTIS, metav1.UpdateOptions{})
+			if err != nil {
+				logger.Errorw("Failed to update installer set", "name", installedTIS.Name, "error", err)
 				return err
 			}
-
+			logger.Infow("Successfully updated installer set with new spec",
+				"name", updatedIS.Name,
+				"newHash", expectedSpecHash)
 			// after updating installer set enqueue after a duration
 			// to allow changes to get deployed
 			return v1alpha1.REQUEUE_EVENT_AFTER
+		} else {
+			logger.Debugw("No changes detected in TektonResult spec", "hash", expectedSpecHash)
 		}
 	}
 
@@ -297,37 +346,49 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 
 	// Mark InstallerSet Available
 	tr.Status.MarkInstallerSetAvailable()
+	logger.Infow("Marked installer set as available", "name", installedTIS.Name)
 
 	ready := installedTIS.Status.GetCondition(apis.ConditionReady)
 	if ready == nil {
+		logger.Infow("Installer set not yet reporting status", "name", installedTIS.Name)
 		tr.Status.MarkInstallerSetNotReady("Waiting for installation")
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	if ready.Status == corev1.ConditionUnknown {
+		logger.Infow("Installer set status is unknown, waiting", "name", installedTIS.Name)
 		tr.Status.MarkInstallerSetNotReady("Waiting for installation")
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	} else if ready.Status == corev1.ConditionFalse {
+		logger.Warnw("Installer set not ready", "name", installedTIS.Name, "message", ready.Message)
 		tr.Status.MarkInstallerSetNotReady(ready.Message)
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// MarkInstallerSetReady
 	tr.Status.MarkInstallerSetReady()
+	logger.Infow("Installer set is ready", "name", installedTIS.Name)
 
 	if err := r.extension.PostReconcile(ctx, tr); err != nil {
-		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
-		logger.Error(msg)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			logger.Infow("PostReconciliation requested requeue")
 			return err
 		}
+		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
+		logger.Errorw("PostReconciliation failed", "error", err)
 		tr.Status.MarkPostReconcilerFailed(msg)
 		return nil
 	}
 
 	// Mark PostReconcile Complete
+	logger.Infow("PostReconciliation completed successfully")
 	tr.Status.MarkPostReconcilerComplete()
 	r.updateTektonResultsStatus(ctx, tr, installedTIS)
+
+	logger.Infow("TektonResults reconciliation completed successfully",
+		"ready", tr.Status.GetCondition(apis.ConditionReady).IsTrue(),
+		"generation", tr.Status.ObservedGeneration)
+
 	return nil
 }
 
