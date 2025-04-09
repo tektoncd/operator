@@ -98,6 +98,7 @@ func Test_updateApiConfig(t *testing.T) {
 				LoggingPluginForwarderDelayDuration: &bufferDuration,
 				LoggingPluginQueryLimit:             &limit,
 				LoggingPluginQueryParams:            "direction=asc&skip=0",
+				LoggingPluginMultipartRegex:         `-%s`,
 			},
 		},
 	}
@@ -135,6 +136,7 @@ LOGS_BUFFER_SIZE=12345
 LOGS_PATH=/logs/test
 LOGGING_PLUGIN_QUERY_LIMIT=100
 LOGGING_PLUGIN_QUERY_PARAMS=direction=asc&skip=0
+LOGGING_PLUGIN_MULTIPART_REGEX=-%s
 STORAGE_EMULATOR_HOST=http://localhost:9004`)
 }
 
