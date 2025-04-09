@@ -17,7 +17,6 @@ limitations under the License.
 package common
 
 import (
-	"context"
 	"errors"
 	"strings"
 
@@ -100,20 +99,4 @@ func TriggerReady(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrig
 func getTriggerRes(informer informer.TektonTriggerInformer) (*v1alpha1.TektonTrigger, error) {
 	res, err := informer.Lister().Get(v1alpha1.TriggerResourceName)
 	return res, err
-}
-
-func CheckUpgradePending(tc v1alpha1.TektonComponent) (bool, error) {
-	labels := tc.GetLabels()
-	ver, ok := labels[v1alpha1.ReleaseVersionKey]
-	if !ok {
-		return true, nil
-	}
-	operatorVersion, err := OperatorVersion(context.TODO())
-	if err != nil {
-		return false, err
-	}
-	if ver != operatorVersion {
-		return true, nil
-	}
-	return false, nil
 }
