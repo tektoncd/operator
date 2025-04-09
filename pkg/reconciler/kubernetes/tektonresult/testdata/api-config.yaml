@@ -28,6 +28,7 @@ data:
     LOGS_PATH=/logs
     LOGGING_PLUGIN_QUERY_LIMIT=7777
     LOGGING_PLUGIN_QUERY_PARAMS=direction=desc&skip=100
+    LOGGING_PLUGIN_MULTIPART_REGEX=""
     STORAGE_EMULATOR_HOST=
 kind: ConfigMap
 metadata:
