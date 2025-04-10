@@ -27,7 +27,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
 	golang.org/x/mod v0.24.0
-	golang.org/x/sync v0.12.0
+	golang.org/x/sync v0.13.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	gotest.tools/v3 v3.5.2
 	k8s.io/api v0.30.0
