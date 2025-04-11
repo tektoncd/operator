@@ -115,6 +115,7 @@ type ResultsAPIProperties struct {
 	LoggingPluginForwarderDelayDuration *uint  `json:"logging_plugin_forwarder_delay_duration,omitempty"`
 	LoggingPluginQueryLimit             *uint  `json:"logging_plugin_query_limit,omitempty"`
 	LoggingPluginQueryParams            string `json:"logging_plugin_query_params,omitempty"`
+	LoggingPluginMultipartRegex         string `json:"logging_plugin_multipart_regex,omitempty"`
 }
 
 // TektonResultStatus defines the observed state of TektonResult
