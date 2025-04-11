@@ -123,7 +123,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		return err
 	}
 
-	tc.SetDefaults(ctx)
 	// Mark TektonConfig Instance as Not Ready if an upgrade is needed
 	if err := r.markUpgrade(ctx, tc); err != nil {
 		return err
@@ -224,8 +223,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	tc.Status.MarkPostInstallComplete()
 
-	// Update the object for any spec changes
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{}); err != nil {
+	// Update the object status
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().UpdateStatus(ctx, tc, metav1.UpdateOptions{}); err != nil {
 		return err
 	}
 
