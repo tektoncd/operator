@@ -122,12 +122,12 @@ spec:
   transparency.url: #value
 ```
 - `disabled` : if the value set as `true`, chains feature will be disabled (default: `false`)
-- `generateSigningSecret`: If set to true, the operator will generate an ECDSA key pair (x509.pem private key and x509-pub.pem public key) and store it in the "signing-secrets" secret in the "tekton-pipelines" namespace. the secret is used by chains controller to sign tekton artifacts(taskruns, pipelineruns). it is important to mention that: 
- * The user should retrieve and store in a safe place the x509-pub.pem public key to verify later artifact attestations.
+- `generateSigningSecret`: When set to true, the operator will generate a cosign key pair (`cosign.key` as the  private key, `cosign.password` as the password for decrypting private key and `cosign.pub` as the public key) and store them in the signing-secrets secret within the tekton-pipelines namespace. This secret is used by the Chains controller to sign Tekton artifacts (taskruns, pipelineruns).
+   If the signing-secret is empty, enabling generateSigningSecret will create a new Cosign key pair and password. However, if the secret already contains data, enabling generateSigningSecret should not overwrite the existing secret. It is important to note that:
+ * The user should retrieve and store the `cosign.pub` public key in a secure location verify later artifact attestations.
  * the operator doesnt provide any function about key rotation to limit potential security issues
  * the operator doesnt provide any function for auditing key usage
  * the operator doesnt provide any function for proper access control to the key
-
 
 
 [chains]:https://github.com/tektoncd/chains
