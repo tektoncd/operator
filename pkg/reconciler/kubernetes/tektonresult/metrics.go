@@ -95,14 +95,36 @@ func (r *Recorder) Count(version, logType string) error {
 	if err != nil {
 		return err
 	}
-
 	metrics.Record(ctx, rReconcileCount.M(float64(1)))
 	return nil
 }
 
 func (m *Recorder) LogMetrics(version string, spec v1alpha1.TektonResultSpec, logger *zap.SugaredLogger) {
-	err := m.Count(version, spec.LogsType)
+	err := m.Count(version, spec.Result.ResultsAPIProperties.LogsType)
 	if err != nil {
 		logger.Warnf("%v: Failed to log the metrics : %v", v1alpha1.KindTektonResult, err)
 	}
+}
+
+// RecorderWrapper wraps the existing Recorder to implement this interface.
+type RecorderWrapper struct {
+	recorder *Recorder
+}
+
+// NewRecorderWrapper creates a new RecorderWrapper instance.
+func NewRecorderWrapper(recorder *Recorder) *RecorderWrapper {
+	return &RecorderWrapper{recorder: recorder}
+}
+
+// LogMetrics implements the Metrics interface by converting the provided logType string
+// into a TektonResultSpec before calling the underlying Recorder's LogMetrics method.
+func (rw *RecorderWrapper) LogMetrics(logType string, version string, logger *zap.SugaredLogger) {
+	spec := v1alpha1.TektonResultSpec{
+		Result: v1alpha1.Result{
+			ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+				LogsType: logType,
+			},
+		},
+	}
+	rw.recorder.LogMetrics(version, spec, logger)
 }
