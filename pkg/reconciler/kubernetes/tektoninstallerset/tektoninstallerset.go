@@ -26,6 +26,7 @@ import (
 	tektonInstallerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektoninstallerset"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -72,128 +73,167 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	installerSet.Status.InitializeConditions()
 	logger := logging.FromContext(ctx).With("installerSet", fmt.Sprintf("%s/%s", installerSet.Namespace, installerSet.Name))
 
+	logger.Infow("Starting TektonInstallerSet reconciliation",
+		"resourceVersion", installerSet.ResourceVersion,
+		"status", installerSet.Status.GetCondition(apis.ConditionReady))
+
 	installManifests, err := mf.ManifestFrom(installerSet.Spec.Manifests, mf.UseClient(r.mfClient))
 	if err != nil {
-		logger.Error("Error creating initial manifest: ", err)
-		installerSet.Status.MarkNotReady(fmt.Sprintf("Internal Error: failed to create manifest: %s", err.Error()))
+		msg := fmt.Sprintf("Internal Error: failed to create manifest: %s", err.Error())
+		logger.Errorw("Failed to create initial manifest", "error", err)
+		installerSet.Status.MarkNotReady(msg)
 		return err
 	}
+	logger.Debug("Successfully created initial manifest")
 
 	// Set owner of InstallerSet as owner of CRDs so that
 	// deleting the installer will not delete the CRDs and Namespace
 	// If installerSet has not set any owner then CRDs will
 	// not have any owner
 	installerSetOwner := installerSet.GetOwnerReferences()
-
+	logger.Debug("Transforming manifest with ownership information")
 	installManifests, err = installManifests.Transform(
 		injectOwner(getReference(installerSet)),
 		injectOwnerForCRDsAndNamespace(installerSetOwner),
 	)
 	if err != nil {
-		logger.Error("failed to transform manifest")
+		logger.Errorw("Failed to transform manifest with ownership information", "error", err)
 		return err
 	}
 
 	installer := NewInstaller(&installManifests, r.mfClient, r.kubeClientSet, logger)
 
 	// Install CRDs
+	logger.Info("Installing CRDs")
 	err = installer.EnsureCRDs()
 	if err != nil {
+		logger.Errorw("CRD installation failed", "error", err)
 		installerSet.Status.MarkCRDsInstallationFailed(err.Error())
 		return r.handleError(err, installerSet)
 	}
 
 	// Update Status for CRD condition
 	installerSet.Status.MarkCRDsInstalled()
+	logger.Info("CRDs installed successfully")
 
 	// Install ClusterScoped Resources
+	logger.Info("Installing cluster-scoped resources")
 	err = installer.EnsureClusterScopedResources()
 	if err != nil {
+		logger.Errorw("Cluster-scoped resources installation failed", "error", err)
 		installerSet.Status.MarkClustersScopedInstallationFailed(err.Error())
 		return r.handleError(err, installerSet)
 	}
 
 	// Update Status for ClustersScope Condition
 	installerSet.Status.MarkClustersScopedResourcesInstalled()
+	logger.Info("Cluster-scoped resources installed successfully")
 
 	// Install NamespaceScoped Resources
+	logger.Info("Installing namespace-scoped resources")
 	err = installer.EnsureNamespaceScopedResources()
 	if err != nil {
+		logger.Errorw("Namespace-scoped resources installation failed", "error", err)
 		installerSet.Status.MarkNamespaceScopedInstallationFailed(err.Error())
 		return r.handleError(err, installerSet)
 	}
 
 	// Update Status for NamespaceScope Condition
 	installerSet.Status.MarkNamespaceScopedResourcesInstalled()
+	logger.Info("Namespace-scoped resources installed successfully")
 
 	// Install Job Resources
+	logger.Info("Installing job resources")
 	err = installer.EnsureJobResources()
 	if err != nil {
+		logger.Errorw("Job resources installation failed", "error", err)
 		installerSet.Status.MarkJobsInstallationFailed(err.Error())
 		return r.handleError(err, installerSet)
 	}
 
 	// Update Status for Job Resources
 	installerSet.Status.MarkJobsInstalled()
+	logger.Info("Job resources installed successfully")
 
 	// Install Deployment Resources
+	logger.Info("Installing deployment resources")
 	err = installer.EnsureDeploymentResources(ctx)
 	if err != nil {
+		logger.Errorw("Deployment resources installation failed", "error", err)
 		installerSet.Status.MarkDeploymentsAvailableFailed(err.Error())
 		return r.handleError(err, installerSet)
 	}
 
 	// Update Status for Deployment Resources
 	installerSet.Status.MarkDeploymentsAvailable()
+	logger.Info("Deployment resources installed successfully")
 
 	// Install StatefulSet Resources
+	logger.Info("Installing statefulset resources")
 	err = installer.EnsureStatefulSetResources(ctx)
 	if err != nil {
+		logger.Errorw("StatefulSet resources installation failed", "error", err)
 		installerSet.Status.MarkStatefulSetNotReady(err.Error())
 		return r.handleError(err, installerSet)
 	}
 
 	// Update Status for StatefulSet Resources
 	installerSet.Status.MarkStatefulSetReady()
+	logger.Info("StatefulSet resources installed successfully")
 
 	// Check if webhook is ready
+	logger.Infow("Checking webhook readiness")
 	err = installer.IsWebhookReady()
 	if err != nil {
+		logger.Warnw("Webhook not ready", "error", err)
 		installerSet.Status.MarkWebhookNotReady(err.Error())
 		return nil
 	}
 
 	// Update Status for Webhook
 	installerSet.Status.MarkWebhookReady()
+	logger.Info("Webhook is ready")
 
 	// Check if controller is ready
+	logger.Info("Checking controller readiness")
 	err = installer.IsControllerReady()
 	if err != nil {
+		logger.Warnw("Controller not ready", "error", err)
 		installerSet.Status.MarkControllerNotReady(err.Error())
 		return nil
 	}
 
 	// Update Ready status of Controller
 	installerSet.Status.MarkControllerReady()
+	logger.Info("Controller is ready")
 
 	// job
 	labels := installerSet.GetLabels()
 	installSetname := installerSet.GetName()
+	logger.Debug("Checking job completion status")
 	err = installer.IsJobCompleted(ctx, labels, installSetname)
 	if err != nil {
+		logger.Warnw("Jobs not completed", "error", err)
 		return err
 	}
+	logger.Info("All jobs completed successfully")
 
 	// Check if any other deployment exists other than controller
 	// and webhook and is ready
+	logger.Debug("Checking all deployments readiness")
 	err = installer.AllDeploymentsReady()
 	if err != nil {
+		logger.Warnw("Not all deployments are ready", "error", err)
 		installerSet.Status.MarkAllDeploymentsNotReady(err.Error())
 		return nil
 	}
 
 	// Mark all deployments ready
 	installerSet.Status.MarkAllDeploymentsReady()
+	logger.Info("All deployments are ready")
+
+	logger.Infow("TektonInstallerSet reconciliation completed successfully",
+		"ready", installerSet.Status.GetCondition(apis.ConditionReady))
 
 	return nil
 }

@@ -63,7 +63,7 @@ func newTektonConfig(operatorClientSet versioned.Interface, kubeClientSet kubern
 // then need to be created by the user to get Tekton Pipelines components installed
 func (tc tektonConfig) ensureInstance(ctx context.Context) {
 	logger := logging.FromContext(ctx)
-	logger.Debug("ensuring tektonconfig instance")
+	logger.Debugw("Ensuring TektonConfig instance exists")
 
 	waitErr := wait.PollUntilContextTimeout(ctx, RetryInterval, RetryTimeout, true, func(ctx context.Context) (bool, error) {
 		//note: the code in this block will be retired until
@@ -74,27 +74,38 @@ func (tc tektonConfig) ensureInstance(ctx context.Context) {
 			OperatorV1alpha1().
 			TektonConfigs().Get(ctx, DefaultCRName, metav1.GetOptions{})
 		if err == nil {
+			logger.Infow("Found existing TektonConfig instance",
+				"name", instance.GetName(),
+				"generation", instance.GetGeneration(),
+				"resourceVersion", instance.GetResourceVersion())
 			return true, nil
 		}
 		if !apierrs.IsNotFound(err) {
-			//log error and retry
-			logger.Errorf("error getting Tektonconfig, Name: ", instance.GetName())
+			logger.Errorw("Error getting TektonConfig", "error", err)
 			return false, nil
 		}
+
+		logger.Debugw("TektonConfig instance not found, creating new instance")
 		err = tc.createInstance(ctx)
 		if err != nil {
-			//log error and retry
-			logger.Errorf("error creating Tektonconfig instance, Name: %s, Err: %v", instance.GetName(), err)
+			logger.Errorw("Failed to create TektonConfig instance", "error", err)
 			return false, nil
 		}
+
+		logger.Infow("TektonConfig instance created, verifying on next iteration")
 		// even if there is no error after create,
 		// loop again to ensure the create is successful with a 'get; api call
 		return false, nil
 	})
+
 	if waitErr != nil {
-		// log error and continue
-		logger.Error("error ensuring instance of tektonconfig, check retry logs above for more details, %w", waitErr)
-		logger.Infof("an instance of TektonConfig need to be created by the user to get Pipelines components installed")
+		logger.Errorw("Failed to ensure TektonConfig instance exists after timeout",
+			"retryInterval", RetryInterval.String(),
+			"timeout", RetryTimeout.String(),
+			"error", waitErr)
+		logger.Warnw("TektonConfig instance must be created manually to install Pipelines components")
+	} else {
+		logger.Infow("Successfully ensured TektonConfig instance exists")
 	}
 }
 
