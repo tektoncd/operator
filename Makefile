@@ -67,6 +67,7 @@ ifeq ($(TARGET), openshift)
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-results
 	rm -rf ./cmd/$(TARGET)/operator/kodata/manual-approval-gate
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-pruner
+	rm -rf ./cmd/$(TARGET)/operator/kodata/pruner
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/06-ecosystem/tasks
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/06-ecosystem/stepactions
@@ -77,6 +78,7 @@ ifeq ($(TARGET), openshift)
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/generic.yaml
 else
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton*
+	rm -rf ./cmd/$(TARGET)/operator/kodata/pruner
 	rm -rf ./cmd/$(TARGET)/operator/kodata/manual-approval-gate
 endif
 
