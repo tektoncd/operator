@@ -53,7 +53,7 @@ func TestFetchVersionFromConfigMap_ConfigMapNotFound(t *testing.T) {
 		t.Fatal("Expected error found nil")
 	}
 
-	assert.Error(t, err, configMapError.Error())
+	assert.Error(t, err, errConfigMap.Error())
 }
 
 func TestFetchVersionFromConfigMap_VersionKeyNotFound(t *testing.T) {
@@ -67,7 +67,7 @@ func TestFetchVersionFromConfigMap_VersionKeyNotFound(t *testing.T) {
 		t.Fatal("Expected error found nil")
 	}
 
-	assert.Error(t, err, configMapError.Error())
+	assert.Error(t, err, errConfigMap.Error())
 }
 
 func TestStructMap(t *testing.T) {

@@ -108,7 +108,10 @@ func ManualApprovalGateCRDelete(t *testing.T, clients *utils.Clients, crNames ut
 	if err != nil {
 		t.Fatal("Timed out waiting on ManualApprovalGate to delete", err)
 	}
-	_, b, _, _ := runtime.Caller(0)
+	_, b, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("Failed to get caller information")
+	}
 	m, err := mfc.NewManifest(filepath.Join((filepath.Dir(b)+"/.."), "manifests/"), clients.Config)
 	if err != nil {
 		t.Fatal("Failed to load manifest", err)
