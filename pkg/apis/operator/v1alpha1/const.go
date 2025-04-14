@@ -125,7 +125,7 @@ var (
 	}
 )
 
-var (
+const (
 	ConfigResourceName           = "config"
 	PipelineResourceName         = "pipeline"
 	OperandTektoncdPipeline      = "tektoncd-pipelines"
@@ -143,4 +143,5 @@ var (
 	OpenShiftPipelinesAsCodeName = "pipelines-as-code"
 	ManualApprovalGates          = "manual-approval-gate"
 	PrunerResourceName           = "tektoncd-pruner"
+	TektonPrunerResourceName     = "pruner"
 )
