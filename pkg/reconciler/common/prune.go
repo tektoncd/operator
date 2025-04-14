@@ -61,6 +61,7 @@ const (
 	pruneStrategyKeepSince = "keep-since"
 
 	// script to be executed inside container
+	//nolint:dupword
 	prunerCommand = `
 	function prune() {
 		namespace=$1
@@ -133,7 +134,6 @@ type Pruner struct {
 	targetNamespace string
 	ownerRef        metav1.OwnerReference
 	logger          *zap.SugaredLogger
-	ctx             context.Context
 }
 
 type pruneConfig struct {
@@ -152,7 +152,7 @@ func Prune(ctx context.Context, k kubernetes.Interface, tektonConfig *v1alpha1.T
 		return err
 	}
 
-	return pruner.reconcile()
+	return pruner.reconcile(ctx)
 }
 
 func getPruner(ctx context.Context, k kubernetes.Interface, tektonConfig *v1alpha1.TektonConfig) (*Pruner, error) {
@@ -161,13 +161,12 @@ func getPruner(ctx context.Context, k kubernetes.Interface, tektonConfig *v1alph
 		kubeClientset:   k,
 		targetNamespace: tektonConfig.Spec.TargetNamespace,
 		ownerRef:        *metav1.NewControllerRef(tektonConfig, tektonConfig.GetGroupVersionKind()),
-		ctx:             ctx,
 		logger:          logging.FromContext(ctx),
 	}
 	return pruner, nil
 }
 
-func (pr *Pruner) reconcile() error {
+func (pr *Pruner) reconcile(ctx context.Context) error {
 	// get tkn cli container image name from environment
 	tknImageFromEnv := os.Getenv(prunerContainerImageEnvKey)
 	if tknImageFromEnv == "" {
@@ -176,7 +175,7 @@ func (pr *Pruner) reconcile() error {
 	pr.tknImage = tknImageFromEnv
 
 	// reconcile cron jobs
-	err := pr.reconcileCronJobs()
+	err := pr.reconcileCronJobs(ctx)
 	return err
 }
 
@@ -184,7 +183,7 @@ func (pr *Pruner) getOwnerReferences() []metav1.OwnerReference {
 	return []metav1.OwnerReference{pr.ownerRef}
 }
 
-func (pr *Pruner) reconcileCronJobs() error {
+func (pr *Pruner) reconcileCronJobs(ctx context.Context) error {
 	// group prune config by schedule cron expression
 	// use schedule cron expression as map key
 	// grouping by this way we can limit number of cron jobs
@@ -194,7 +193,7 @@ func (pr *Pruner) reconcileCronJobs() error {
 	// verify prune job enabled in TektonConfig CR
 	if !pr.tektonConfig.Spec.Pruner.Disabled {
 		// collect namespace details
-		namespaceList, err := pr.kubeClientset.CoreV1().Namespaces().List(pr.ctx, metav1.ListOptions{})
+		namespaceList, err := pr.kubeClientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return err
 		}
@@ -246,14 +245,14 @@ func (pr *Pruner) reconcileCronJobs() error {
 	}
 
 	// remove the existing outdated cron jobs
-	cronJobsToBeCreated, err := pr.deleteOutdatedCronJobs(computedHashMap)
+	cronJobsToBeCreated, err := pr.deleteOutdatedCronJobs(ctx, computedHashMap)
 	if err != nil {
 		pr.logger.Errorw("error on deleting outdated cron jobs", err)
 		return err
 	}
 
 	// create cron jobs that is modified [or] not exists
-	pr.createCronJobs(cronJobsToBeCreated, pruneConfigsMap)
+	pr.createCronJobs(ctx, cronJobsToBeCreated, pruneConfigsMap)
 
 	return nil
 }
@@ -444,10 +443,10 @@ func (pr *Pruner) getMapUint(data map[string]string, key string, defaultValue *u
 }
 
 // deletes absolute cron jobs and returns cron schedule to be (re)created
-func (pr *Pruner) deleteOutdatedCronJobs(computedHashMap map[string]string) (map[string]string, error) {
+func (pr *Pruner) deleteOutdatedCronJobs(ctx context.Context, computedHashMap map[string]string) (map[string]string, error) {
 	// filter only the jobs owned by this operator
 	labelsFilter := fmt.Sprintf("%s=true", pruneCronLabel)
-	cronJobs, err := pr.kubeClientset.BatchV1().CronJobs(pr.targetNamespace).List(pr.ctx, metav1.ListOptions{LabelSelector: labelsFilter})
+	cronJobs, err := pr.kubeClientset.BatchV1().CronJobs(pr.targetNamespace).List(ctx, metav1.ListOptions{LabelSelector: labelsFilter})
 	if err != nil {
 		return nil, err
 	}
@@ -483,7 +482,7 @@ func (pr *Pruner) deleteOutdatedCronJobs(computedHashMap map[string]string) (map
 				"name", cronJob.GetName(),
 				"schedule", cronJob.Spec.Schedule,
 			)
-			err = pr.kubeClientset.BatchV1().CronJobs(pr.targetNamespace).Delete(pr.ctx, cronJob.GetName(), metav1.DeleteOptions{})
+			err = pr.kubeClientset.BatchV1().CronJobs(pr.targetNamespace).Delete(ctx, cronJob.GetName(), metav1.DeleteOptions{})
 			if err != nil {
 				pr.logger.Errorw("error on deleting an outdated cron job",
 					"name", cronJob.GetName(),
@@ -498,7 +497,7 @@ func (pr *Pruner) deleteOutdatedCronJobs(computedHashMap map[string]string) (map
 	return computedHashMap, nil
 }
 
-func (pr *Pruner) createCronJobs(cronJobsToBeCreated map[string]string, pruneConfigMap map[string][]pruneConfig) {
+func (pr *Pruner) createCronJobs(ctx context.Context, cronJobsToBeCreated map[string]string, pruneConfigMap map[string][]pruneConfig) {
 	for schedule, computedHash := range cronJobsToBeCreated {
 		pruneConfigs, found := pruneConfigMap[schedule]
 		if !found {
@@ -587,7 +586,7 @@ func (pr *Pruner) createCronJobs(cronJobsToBeCreated map[string]string, pruneCon
 		}
 
 		// create a cron job
-		_, err := pr.kubeClientset.BatchV1().CronJobs(pr.targetNamespace).Create(pr.ctx, cronJob, metav1.CreateOptions{})
+		_, err := pr.kubeClientset.BatchV1().CronJobs(pr.targetNamespace).Create(ctx, cronJob, metav1.CreateOptions{})
 		if err != nil {
 			pr.logger.Errorw("error on creating a cron job",
 				"name", cronJob.GetName(),
@@ -598,10 +597,10 @@ func (pr *Pruner) createCronJobs(cronJobsToBeCreated map[string]string, pruneCon
 	}
 }
 
-// generates command arguments to pass it to tkn container
-// refer "prunerCommand"(top of this file) constant string to know the actual execution command
-// command args format (multiple instance of space separated): namespace;tkn_flag_1,tkn_flag_n;resources;prunePerResource
-// NOTE: a space separates each namespace configuration, hence space not allowed in namespace configuration
+// Generates command arguments for passing to the tkn container.
+// Refer to the "prunerCommand" constant (at the top of this file) for the actual execution command.
+// The command args format (multiple space-separated instances): namespace;tkn_flag_1,tkn_flag_n;resources;prunePerResource.
+// NOTE: A space separates each namespace configuration, so spaces are not allowed in the namespace configuration.
 //
 // examples:
 // ns-one;--keep=5;pipelinerun;false

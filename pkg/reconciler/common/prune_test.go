@@ -102,7 +102,7 @@ func TestPrunerContainerImageEnvironment(t *testing.T) {
 			pruner, err := getPruner(context.Background(), getTestKubeClient(), getTestTektonConfig())
 			assert.NoError(t, err)
 
-			err = pruner.reconcile()
+			err = pruner.reconcile(context.TODO())
 			if test.expectError {
 				assert.NotNil(t, err)
 			} else {
@@ -808,7 +808,7 @@ func TestPrunerReconcile(t *testing.T) {
 						callbackFunc = reconcile.applyChanges(test.tektonConfig, test.client, t)
 					}
 
-					err = pruner.reconcile()
+					err = pruner.reconcile(context.TODO())
 					assert.NoError(t, err)
 
 					// custom call back function, to assert custom things
