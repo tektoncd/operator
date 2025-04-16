@@ -25,8 +25,7 @@ jobs:
       - name: Update Task Versions
         id: update
         run: |
-          chmod +x hack/openshift/update-tekton-task-versions.sh
-          ./hack/openshift/update-tekton-task-versions.sh \
+          ./hack/openshift/update-openshift-tekton-task-versions.sh \
             --catalog-path ../tektoncd-catalog \
             --script-path hack/openshift/fetch-tektoncd-catalog-tasks.sh
           echo "has_changes=$(git diff --name-only | grep -q fetch-tektoncd-catalog-tasks.sh && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
@@ -49,7 +48,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.update.outputs.has_changes == 'true'
-        uses: peter-evans/create-pull-request@v5
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "Update Tekton task versions"
