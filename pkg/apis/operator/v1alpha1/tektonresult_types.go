@@ -51,9 +51,11 @@ func (tp *TektonResult) GetStatus() TektonComponentStatus {
 
 // TektonResultSpec defines the desired state of TektonResult
 type TektonResultSpec struct {
-	CommonSpec           `json:",inline"`
-	ResultsAPIProperties `json:",inline"`
-	LokiStackProperties  `json:",inline"`
+	CommonSpec `json:",inline"`
+	Result     `json:",inline"`
+	// Config holds the configuration for resources created by TektonResult
+	// +optional
+	Config Config `json:"config,omitempty"`
 }
 
 type LokiStackProperties struct {
@@ -64,8 +66,11 @@ type LokiStackProperties struct {
 // Result defines the field to customize Result component
 type Result struct {
 	// enable or disable Result Component
-	Disabled         bool `json:"disabled"`
-	TektonResultSpec `json:",inline"`
+	Disabled bool `json:"disabled"`
+	// ResultsAPIProperties holds configuration properties for Result API
+	ResultsAPIProperties `json:",inline"`
+	// LokiStackProperties holds configuration for LokiStack
+	LokiStackProperties `json:",inline"`
 	// Options holds additions fields and these fields will be updated on the manifests
 	Options AdditionalOptions `json:"options"`
 }
@@ -110,8 +115,7 @@ type ResultsAPIProperties struct {
 	LoggingPluginForwarderDelayDuration *uint  `json:"logging_plugin_forwarder_delay_duration,omitempty"`
 	LoggingPluginQueryLimit             *uint  `json:"logging_plugin_query_limit,omitempty"`
 	LoggingPluginQueryParams            string `json:"logging_plugin_query_params,omitempty"`
-	// Options holds additions fields and these fields will be updated on the manifests
-	Options AdditionalOptions `json:"options"`
+	LoggingPluginMultipartRegex         string `json:"logging_plugin_multipart_regex,omitempty"`
 }
 
 // TektonResultStatus defines the observed state of TektonResult

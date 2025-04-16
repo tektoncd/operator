@@ -103,7 +103,7 @@ func CreateAdditionalPipelinesAsCodeController(clients typedv1alpha1.OpenShiftPi
 	return clients.Update(context.TODO(), opacCR, metav1.UpdateOptions{})
 }
 
-// Fetch the OpenShiftPipelinesAsCode CR and and delete the additional pipelines as code config
+// Fetch the OpenShiftPipelinesAsCode CR and delete the additional pipelines as code config
 func RemoveAdditionalPipelinesAsCodeController(clients typedv1alpha1.OpenShiftPipelinesAsCodeInterface, names utils.ResourceNames) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
 	// fetch the OpenShiftPipelinesAsCode CR
 	opacCR, err := clients.Get(context.TODO(), names.OpenShiftPipelinesAsCode, metav1.GetOptions{})

@@ -109,7 +109,10 @@ func TektonPipelineCRDelete(t *testing.T, clients *utils.Clients, crNames utils.
 	if err != nil {
 		t.Fatal("Timed out waiting on TektonPipeline to delete", err)
 	}
-	_, b, _, _ := runtime.Caller(0)
+	_, b, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("Failed to get caller information")
+	}
 	m, err := mfc.NewManifest(filepath.Join((filepath.Dir(b)+"/.."), "manifests/"), clients.Config)
 	if err != nil {
 		t.Fatal("Failed to load manifest", err)
@@ -163,8 +166,8 @@ func EnsureTektonPipelineWithStatefulsetExists(clients pipelinev1alpha1.TektonPi
 				},
 				Pipeline: v1alpha1.Pipeline{
 					PipelineProperties: v1alpha1.PipelineProperties{
-						Performance: v1alpha1.PipelinePerformanceProperties{
-							PipelinePerformanceStatefulsetOrdinalsConfig: v1alpha1.PipelinePerformanceStatefulsetOrdinalsConfig{
+						Performance: v1alpha1.PerformanceProperties{
+							PerformanceStatefulsetOrdinalsConfig: v1alpha1.PerformanceStatefulsetOrdinalsConfig{
 								StatefulsetOrdinals: &statefulsetOrdinals,
 							},
 						},

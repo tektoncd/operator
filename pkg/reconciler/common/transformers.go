@@ -18,8 +18,10 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -34,6 +36,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	apimachineryRuntime "k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
 )
@@ -1096,4 +1099,115 @@ func AddStatefulEnvVars(controllerName, serviceName, statefulServiceEnvVar, cont
 
 		return nil
 	}
+}
+
+// updates performance flags/args into deployment and container given as args
+func UpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(performanceSpec *v1alpha1.PerformanceProperties, leaderConfig, deploymentName, containerName string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" || u.GetName() != deploymentName {
+			return nil
+		}
+
+		// holds the flags needs to be added in the container args section
+		flags := map[string]interface{}{}
+
+		// convert struct to map with json tag
+		// so that, we can map the arguments as is
+		if err := StructToMap(&performanceSpec.DeploymentPerformanceArgs, &flags); err != nil {
+			return err
+		}
+
+		// if there is no flags to update, return from here
+		if len(flags) == 0 {
+			return nil
+		}
+
+		// convert unstructured object to deployment
+		dep := &appsv1.Deployment{}
+		err := apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, dep)
+		if err != nil {
+			return err
+		}
+
+		// include config-leader-election data into deployment pod label
+		// so that pods will be recreated, if there is a change in "buckets"
+		leaderElectionConfigMapData := map[string]interface{}{}
+		if err = StructToMap(&performanceSpec.PerformanceLeaderElectionConfig, &leaderElectionConfigMapData); err != nil {
+			return err
+		}
+		podLabels := dep.Spec.Template.Labels
+		if podLabels == nil {
+			podLabels = map[string]string{}
+		}
+		// sort data keys in an order, to get the consistent hash value in installerset
+		labelKeys := getSortedKeys(leaderElectionConfigMapData)
+		for _, key := range labelKeys {
+			value := leaderElectionConfigMapData[key]
+			labelKey := fmt.Sprintf("%s.data.%s", leaderConfig, key)
+			podLabels[labelKey] = fmt.Sprintf("%v", value)
+		}
+		dep.Spec.Template.Labels = podLabels
+
+		// update replicas, if available
+		if performanceSpec.Replicas != nil {
+			dep.Spec.Replicas = ptr.Int32(*performanceSpec.Replicas)
+		}
+
+		// include it in the pods label, that will recreate all the pods, if there is a change in replica count
+		if dep.Spec.Replicas != nil {
+			dep.Spec.Template.Labels["deployment.spec.replicas"] = fmt.Sprintf("%d", *dep.Spec.Replicas)
+		}
+
+		// sort flag keys in an order, to get the consistent hash value in installerset
+		flagKeys := getSortedKeys(flags)
+		// update performance arguments into target container
+		for containerIndex, container := range dep.Spec.Template.Spec.Containers {
+			if container.Name != containerName {
+				continue
+			}
+			for _, flagKey := range flagKeys {
+				// update the arg name with "-" prefix
+				expectedArg := fmt.Sprintf("-%s", flagKey)
+				argStringValue := fmt.Sprintf("%v", flags[flagKey])
+
+				// skip deprecated disable-ha flag if not pipelinesControllerDeployment
+				// should be removed when the flag is removed from pipelines controller
+				if deploymentName != "tekton-pipelines-controller" && flagKey == "disable-ha" {
+					continue
+				}
+
+				argUpdated := false
+				for argIndex, existingArg := range container.Args {
+					if strings.HasPrefix(existingArg, expectedArg) {
+						container.Args[argIndex] = fmt.Sprintf("%s=%s", expectedArg, argStringValue)
+						argUpdated = true
+						break
+					}
+				}
+				if !argUpdated {
+					container.Args = append(container.Args, fmt.Sprintf("%s=%s", expectedArg, argStringValue))
+				}
+			}
+			dep.Spec.Template.Spec.Containers[containerIndex] = container
+		}
+
+		// convert deployment to unstructured object
+		obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(dep)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(obj)
+
+		return nil
+	}
+}
+
+// sort keys in an order, to get the consistent hash value in installerset
+func getSortedKeys(input map[string]interface{}) []string {
+	keys := []string{}
+	for key := range input {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }

@@ -71,31 +71,35 @@ func Test_updateApiConfig(t *testing.T) {
 	assert.NilError(t, err)
 	bufferDuration := uint(20)
 	spec := v1alpha1.TektonResultSpec{
-		LokiStackProperties: v1alpha1.LokiStackProperties{
-			LokiStackName:      "foo",
-			LokiStackNamespace: "bar",
-		},
-		ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
-			DBHost:                              "localhost",
-			DBName:                              "test",
-			ServerPort:                          &intVal,
-			DBSSLMode:                           "enable",
-			DBSSLRootCert:                       "/etc/tls/db/ca.crt",
-			DBEnableAutoMigration:               &boolVal,
-			TLSHostnameOverride:                 "localhostTest",
-			AuthDisable:                         &boolVal,
-			AuthImpersonate:                     &boolVal,
-			PrometheusPort:                      &intVal,
-			PrometheusHistogram:                 &boolVal,
-			LogLevel:                            "warn",
-			LogsAPI:                             &boolVal,
-			LogsPath:                            "/logs/test",
-			LogsType:                            "s3",
-			LogsBufferSize:                      &intVal,
-			StorageEmulatorHost:                 "http://localhost:9004",
-			LoggingPluginForwarderDelayDuration: &bufferDuration,
-			LoggingPluginQueryLimit:             &limit,
-			LoggingPluginQueryParams:            "direction=asc&skip=0",
+		Result: v1alpha1.Result{
+
+			LokiStackProperties: v1alpha1.LokiStackProperties{
+				LokiStackName:      "foo",
+				LokiStackNamespace: "bar",
+			},
+			ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+				DBHost:                              "localhost",
+				DBName:                              "test",
+				ServerPort:                          &intVal,
+				DBSSLMode:                           "enable",
+				DBSSLRootCert:                       "/etc/tls/db/ca.crt",
+				DBEnableAutoMigration:               &boolVal,
+				TLSHostnameOverride:                 "localhostTest",
+				AuthDisable:                         &boolVal,
+				AuthImpersonate:                     &boolVal,
+				PrometheusPort:                      &intVal,
+				PrometheusHistogram:                 &boolVal,
+				LogLevel:                            "warn",
+				LogsAPI:                             &boolVal,
+				LogsPath:                            "/logs/test",
+				LogsType:                            "s3",
+				LogsBufferSize:                      &intVal,
+				StorageEmulatorHost:                 "http://localhost:9004",
+				LoggingPluginForwarderDelayDuration: &bufferDuration,
+				LoggingPluginQueryLimit:             &limit,
+				LoggingPluginQueryParams:            "direction=asc&skip=0",
+				LoggingPluginMultipartRegex:         `-%s`,
+			},
 		},
 	}
 
@@ -132,6 +136,7 @@ LOGS_BUFFER_SIZE=12345
 LOGS_PATH=/logs/test
 LOGGING_PLUGIN_QUERY_LIMIT=100
 LOGGING_PLUGIN_QUERY_PARAMS=direction=asc&skip=0
+LOGGING_PLUGIN_MULTIPART_REGEX=-%s
 STORAGE_EMULATOR_HOST=http://localhost:9004`)
 }
 
@@ -233,19 +238,21 @@ func TestUpdateAPIEnv(t *testing.T) {
 	boolVal := true
 	intVal := int64(12345)
 	spec := v1alpha1.TektonResultSpec{
+		Result: v1alpha1.Result{
 
-		ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
-			DBHost:                "localhost",
-			DBName:                "test",
-			ServerPort:            &intVal,
-			DBEnableAutoMigration: &boolVal,
-			TLSHostnameOverride:   "localhostTest",
-			AuthDisable:           &boolVal,
-			LogLevel:              "warn",
-			LogsAPI:               &boolVal,
-			LogsPath:              "/logs/test",
-			LogsType:              "S3",
-			LogsBufferSize:        &intVal,
+			ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+				DBHost:                "localhost",
+				DBName:                "test",
+				ServerPort:            &intVal,
+				DBEnableAutoMigration: &boolVal,
+				TLSHostnameOverride:   "localhostTest",
+				AuthDisable:           &boolVal,
+				LogLevel:              "warn",
+				LogsAPI:               &boolVal,
+				LogsPath:              "/logs/test",
+				LogsType:              "S3",
+				LogsBufferSize:        &intVal,
+			},
 		},
 	}
 

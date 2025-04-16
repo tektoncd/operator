@@ -47,7 +47,6 @@ func TestTektonHubHappyPath(t *testing.T) {
 	apistest.CheckConditionOngoing(th, ApiInstallerSetAvailable, t)
 	apistest.CheckConditionOngoing(th, PostReconciler, t)
 
-	// DB
 	// DB dependencies are created
 	th.MarkDbDependenciesInstalled()
 	apistest.CheckConditionSucceeded(th, DbDependenciesInstalled, t)

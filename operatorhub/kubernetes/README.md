@@ -5,6 +5,8 @@ bundle for using `release-manifest` strategy.
 
 ## Steps to generate bundles from an existing github release.yaml
 
+### Generate the operator bundle
+
 **Note:** The input release.yaml could be a github release or the result of `ko resolve config`
 
 1. Make sure that we have the release manifest file ready
@@ -33,3 +35,46 @@ bundle for using `release-manifest` strategy.
    | `--fetch-strategy-release-manifest`                       | gather input kubernetes resources from a list of yaml manifests instead of using local files |
    | `--release-manifest $(pwd)/${release_file_name}`          | specify abosolute ($(pwd)/${release_file_name}) path to release manifest file                |
    | `--upgrade-strategy-semver`                               | specify update strategy (options `replaces` or `semver`)                                     |
+
+Note: the generated files are the base bundle files that severs to createa PR in https://github.com/k8s-operatorhub/community-operators/
+
+
+### Test the operator bundle
+
+1. Build the operator bundle image using
+
+```bash
+   make operator-bundle-build 
+```
+
+2. Push the operator bundle image to a container registry
+
+```bash
+   make operator-bundle-build 
+```
+
+2. Push the operator bundle image to a container registry
+change IMAGE_HOST and IMAGE_NAMESPACE in operatorhub/Makefile, then
+```bash
+   make operator-bundle-build 
+```
+
+3. Build the operator catalog source image
+```bash
+   make operator-catalog-build 
+```
+
+4. Push the operator catalog source image
+```bash
+   make operator-catalog-push 
+```
+
+6. Install olm
+```bash
+   make install-olm
+```
+
+5. Run the operator catalog
+```bash
+   make operator-catalog-run
+```

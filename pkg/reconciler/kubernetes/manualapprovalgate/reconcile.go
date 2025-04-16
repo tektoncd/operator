@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -56,7 +57,11 @@ type Reconciler struct {
 var _ manualapprovalgatereconciler.Interface = (*Reconciler)(nil)
 
 func (r *Reconciler) ReconcileKind(ctx context.Context, mag *v1alpha1.ManualApprovalGate) pkgreconciler.Event {
-	logger := logging.FromContext(ctx).With("name", mag.GetName())
+	logger := logging.FromContext(ctx).With("manualapprovalgate", mag.GetName())
+
+	logger.Debugw("Starting ManualApprovalGate reconciliation",
+		"version", r.manualApprovalGateVersion,
+		"status", mag.Status.GetCondition(apis.ConditionReady))
 
 	mag.Status.InitializeConditions()
 	mag.Status.SetVersion(r.manualApprovalGateVersion)
@@ -66,61 +71,77 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, mag *v1alpha1.ManualAppr
 			v1alpha1.ManualApprovalGates,
 			mag.GetName(),
 		)
-		logger.Error(msg)
+		logger.Errorw("Invalid resource name", "expectedName", v1alpha1.ManualApprovalGates, "actualName", mag.GetName())
 		mag.Status.MarkNotReady(msg)
 		return nil
 	}
 
 	// reconcile target namespace
+	logger.Debug("Reconciling target namespace")
 	if err := common.ReconcileTargetNamespace(ctx, nil, nil, mag, r.kubeClientSet); err != nil {
+		logger.Errorw("Failed to reconcile target namespace", "error", err)
 		return err
 	}
+	logger.Info("Target namespace reconciled successfully")
 
 	//Make sure TektonPipeline is installed before proceeding with
 	//ManualApprovalGate
+	logger.Debug("Checking Tekton Pipeline dependency")
 	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
 		if err.Error() == common.PipelineNotReady || err == v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR {
+			logger.Infow("Tekton Pipeline dependency not ready yet", "error", err)
 			mag.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
 			// wait for pipeline status to change
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		// (tektonpipeline.operator.tekton.dev instance not available yet)
+		logger.Errorw("Tekton Pipeline dependency missing", "error", err)
 		mag.Status.MarkDependencyMissing("tekton-pipelines does not exist")
 		return err
 	}
+	logger.Info("All dependencies installed successfully")
 	mag.Status.MarkDependenciesInstalled()
 
+	logger.Debug("Removing obsolete installer sets")
 	if err := r.installerSetClient.RemoveObsoleteSets(ctx); err != nil {
-		logger.Error("failed to remove obsolete installer sets: %v", err)
+		logger.Errorw("Failed to remove obsolete installer sets", "error", err)
 		return err
 	}
+	logger.Debug("Obsolete installer sets removed")
 
+	logger.Debug("Executing pre-reconciliation")
 	if err := r.extension.PreReconcile(ctx, mag); err != nil {
 		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
-		logger.Error(msg)
+		logger.Errorw("Pre-reconciliation failed", "error", err)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			logger.Info("Pre-reconciliation requested requeue")
 			return err
 		}
 		mag.Status.MarkPreReconcilerFailed(msg)
 		return nil
 	}
 
+	logger.Info("Pre-reconciliation completed successfully")
 	mag.Status.MarkPreReconcilerComplete()
 
 	if err := r.installerSetClient.MainSet(ctx, mag, &r.manifest, filterAndTransform(r.extension)); err != nil {
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
-		logger.Error(msg)
+		logger.Errorw("Failed to apply main installer set", "error", err)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			logger.Info("Main reconciliation requested requeue")
 			return err
 		}
 		mag.Status.MarkInstallerSetNotReady(msg)
 		return nil
 	}
+	logger.Info("Main manifest applied successfully")
 
+	logger.Debug("Executing post-reconciliation")
 	if err := r.extension.PostReconcile(ctx, mag); err != nil {
 		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
-		logger.Error(msg)
+		logger.Errorw("Post-reconciliation failed", "error", err)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			logger.Info("Post-reconciliation requested requeue")
 			return err
 		}
 		mag.Status.MarkPostReconcilerFailed(msg)
@@ -128,7 +149,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, mag *v1alpha1.ManualAppr
 	}
 
 	// Mark PostReconcile Complete
+	logger.Info("Post-reconciliation completed successfully")
 	mag.Status.MarkPostReconcilerComplete()
 
+	logger.Info("ManualApprovalGate reconciliation completed successfully")
 	return nil
 }

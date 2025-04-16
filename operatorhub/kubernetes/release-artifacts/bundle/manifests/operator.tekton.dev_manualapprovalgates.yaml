@@ -1,0 +1,45 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  creationTimestamp: null
+  labels:
+    operator.tekton.dev/release: v0.75.0
+    version: v0.75.0
+  name: manualapprovalgates.operator.tekton.dev
+spec:
+  group: operator.tekton.dev
+  names:
+    kind: ManualApprovalGate
+    listKind: ManualApprovalGateList
+    plural: manualapprovalgates
+    shortNames:
+    - mag
+    singular: manualapprovalgate
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.version
+      name: Version
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=="Ready")].message
+      name: Reason
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Schema for the ManualApprovalGate API
+        type: object
+        x-kubernetes-preserve-unknown-fields: true
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: null
+  storedVersions: null

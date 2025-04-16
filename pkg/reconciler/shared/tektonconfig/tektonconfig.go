@@ -32,6 +32,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
@@ -102,30 +103,35 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two.
 func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfig) pkgreconciler.Event {
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx).With("tektonconfig", tc.Name)
 	tc.Status.InitializeConditions()
 	tc.Status.SetVersion(r.operatorVersion)
 
-	logger.Infow("Reconciling TektonConfig", "status", tc.Status)
+	logger.Infow("Starting TektonConfig reconciliation",
+		"version", r.operatorVersion,
+		"profile", tc.Spec.Profile,
+		"status", tc.Status.GetCondition(apis.ConditionReady))
+
 	if tc.GetName() != v1alpha1.ConfigResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
 			v1alpha1.ConfigResourceName,
 			tc.GetName(),
 		)
-		logger.Error(msg)
+		logger.Errorw("Invalid resource name", "expectedName", v1alpha1.ConfigResourceName, "actualName", tc.GetName())
 		tc.Status.MarkNotReady(msg)
 		return nil
 	}
 
 	// run pre upgrade
-	err := r.upgrade.RunPreUpgrade(ctx)
-	if err != nil {
+	if err := r.upgrade.RunPreUpgrade(ctx); err != nil {
+		logger.Errorw("Pre-upgrade failed", "error", err)
 		return err
 	}
+	logger.Debug("Pre-upgrade completed successfully")
 
-	tc.SetDefaults(ctx)
 	// Mark TektonConfig Instance as Not Ready if an upgrade is needed
 	if err := r.markUpgrade(ctx, tc); err != nil {
+		logger.Errorw("Failed to mark upgrade status", "error", err)
 		return err
 	}
 
@@ -136,105 +142,159 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		nsMetaLabels = tc.Spec.TargetNamespaceMetadata.Labels
 		nsMetaAnnotations = tc.Spec.TargetNamespaceMetadata.Annotations
 	}
+	logger.Debugw("Reconciling target namespace",
+		"labelCount", len(nsMetaLabels),
+		"annotationCount", len(nsMetaAnnotations))
+
 	if err := common.ReconcileTargetNamespace(ctx, nsMetaLabels, nsMetaAnnotations, tc, r.kubeClientSet); err != nil {
+		logger.Errorw("Failed to reconcile target namespace", "error", err)
 		return err
 	}
+	logger.Debug("Target namespace reconciled successfully")
 
+	// Pre-reconcile extension hooks
 	if err := r.extension.PreReconcile(ctx, tc); err != nil {
 		if err == v1alpha1.RECONCILE_AGAIN_ERR {
+			logger.Infow("Extensions requested requeue")
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
+		logger.Errorw("Pre-install hook failed", "error", err)
 		tc.Status.MarkPreInstallFailed(err.Error())
 		return err
 	}
 
 	tc.Status.MarkPreInstallComplete()
+	logger.Debug("Pre-install completed successfully")
 
-	// Ensure if the pipeline CR already exists, if not create Pipeline CR
+	// Ensure Pipeline CR
 	tektonpipeline := pipeline.GetTektonPipelineCR(tc, r.operatorVersion)
-	// Ensure it exists
+	logger.Debug("Ensuring TektonPipeline CR exists")
 	if _, err := pipeline.EnsureTektonPipelineExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines(), tektonpipeline); err != nil {
-		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPipeline: %s", err.Error()))
+		errMsg := fmt.Sprintf("TektonPipeline: %s", err.Error())
+		logger.Errorw("Failed to ensure TektonPipeline exists", "error", err)
+		tc.Status.MarkComponentNotReady(errMsg)
 		if err == v1alpha1.RECONCILE_AGAIN_ERR {
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		return nil
 	}
+	logger.Info("TektonPipeline CR reconciled successfully")
 
-	// Create TektonTrigger CR if the profile is all or basic
+	// Ensure Pipeline Trigger
 	if tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic {
 		tektontrigger := trigger.GetTektonTriggerCR(tc, r.operatorVersion)
+		logger.Debug("Ensuring TektonTrigger CR exists")
 		if _, err := trigger.EnsureTektonTriggerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), tektontrigger); err != nil {
-			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
+			errMsg := fmt.Sprintf("TektonTrigger: %s", err.Error())
+			logger.Errorw("Failed to ensure TektonTrigger exists", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
-
 		}
+		logger.Info("TektonTrigger CR reconciled successfully")
 	} else {
+		logger.Debugw("Ensuring TektonTrigger CR doesn't exist", "profile", tc.Spec.Profile)
 		if err := trigger.EnsureTektonTriggerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers()); err != nil {
-			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonTrigger: %s", err.Error()))
+			errMsg := fmt.Sprintf("TektonTrigger: %s", err.Error())
+			logger.Errorw("Failed to ensure TektonTrigger has been deleted", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
+		logger.Info("TektonTrigger CR removal reconciled successfully")
 	}
 
+	// Ensure Chain CR
 	if !tc.Spec.Chain.Disabled {
 		tektonchain := chain.GetTektonChainCR(tc, r.operatorVersion)
+		logger.Debug("Ensuring TektonChain CR exists")
 		if _, err := chain.EnsureTektonChainExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains(), tektonchain); err != nil {
-			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChain: %s", err.Error()))
+			errMsg := fmt.Sprintf("TektonChain: %s", err.Error())
+			logger.Errorw("Failed to ensure TektonChain exists", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
+		logger.Info("TektonChain CR reconciled successfully")
 	} else {
+		logger.Debugw("Ensuring TektonChain CR doesn't exist", "chainDisabled", tc.Spec.Chain.Disabled)
 		if err := chain.EnsureTektonChainCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains()); err != nil {
-			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonChain: %s", err.Error()))
+			errMsg := fmt.Sprintf("TektonChain: %s", err.Error())
+			logger.Errorw("Failed to ensure TektonChain has been deleted", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
+		logger.Info("TektonChain CR removal reconciled successfully")
 	}
 
-	// Create Results CR if it's enable
+	// Ensure Result CR
 	if !tc.Spec.Result.Disabled {
 		tektonresult := result.GetTektonResultCR(tc, r.operatorVersion)
-		if _, err = result.EnsureTektonResultExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonResults(), tektonresult); err != nil {
-			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonResult %s", err.Error()))
+		logger.Debug("Ensuring TektonResult CR exists")
+		if _, err := result.EnsureTektonResultExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonResults(), tektonresult); err != nil {
+			errMsg := fmt.Sprintf("TektonResult %s", err.Error())
+			logger.Errorw("Failed to ensure TektonResult exists", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
+		logger.Info("TektonResult CR reconciled successfully")
 	} else {
+		logger.Debugw("Ensuring TektonResult CR doesn't exist", "resultDisabled", tc.Spec.Result.Disabled)
 		if err := result.EnsureTektonResultCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonResults()); err != nil {
-			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonResult: %s", err.Error()))
+			errMsg := fmt.Sprintf("TektonResult: %s", err.Error())
+			logger.Errorw("Failed to ensure TektonResult has been deleted", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
+		logger.Info("TektonResult CR removal reconciled successfully")
 	}
 
-	// reconcile pruner installerSet
+	// Ensure Pruner
 	if !tc.Spec.Pruner.Disabled {
+		logger.Debugw("Reconciling pruner installer set", "prunerDisabled", tc.Spec.Pruner.Disabled)
 		err := r.reconcilePrunerInstallerSet(ctx, tc)
 		if err != nil {
+			logger.Errorw("Failed to reconcile pruner installer set", "error", err)
 			return err
 		}
+		logger.Info("Pruner installer set reconciled successfully")
 	}
 
+	// Run resource pruning
 	if err := common.Prune(ctx, r.kubeClientSet, tc); err != nil {
-		tc.Status.MarkComponentNotReady(fmt.Sprintf("tekton-resource-pruner: %s", err.Error()))
-		logger.Error(err)
+		errMsg := fmt.Sprintf("tekton-resource-pruner: %s", err.Error())
+		logger.Errorw("Resource pruning failed", "error", err)
+		tc.Status.MarkComponentNotReady(errMsg)
+	} else {
+		logger.Debug("Resource pruning completed successfully")
 	}
 
 	tc.Status.MarkComponentsReady()
+	logger.Info("All components marked ready")
 
+	// Post-reconcile extension hooks
 	if err := r.extension.PostReconcile(ctx, tc); err != nil {
+		logger.Errorw("Post-reconcile hook failed", "error", err)
 		return err
 	}
 
 	tc.Status.MarkPostInstallComplete()
+	logger.Debug("Post-install completed successfully")
 
 	// Update the object for any spec changes
-	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{}); err != nil {
+	logger.Debug("Updating TektonConfig status")
+	if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().UpdateStatus(ctx, tc, metav1.UpdateOptions{}); err != nil {
+		logger.Errorw("Failed to update TektonConfig status", "error", err)
 		return err
 	}
+	logger.Debug("TektonConfig status updated successfully")
 
 	// run post upgrade
-	err = r.upgrade.RunPostUpgrade(ctx)
-	if err != nil {
+	if err := r.upgrade.RunPostUpgrade(ctx); err != nil {
+		logger.Errorw("Post-upgrade failed", "error", err)
 		return err
 	}
+	logger.Debug("Post-upgrade completed successfully")
 
+	logger.Infow("TektonConfig reconciliation completed successfully",
+		"status", tc.Status.GetCondition(apis.ConditionReady))
 	return nil
 }
 

@@ -19,8 +19,6 @@ package tektonpipeline
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -35,108 +33,6 @@ import (
 	apimachineryRuntime "k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/ptr"
 )
-
-func TestUpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(t *testing.T) {
-	pipelineCR := &v1alpha1.TektonPipeline{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "pipeline",
-			Namespace: "xyz",
-		},
-	}
-	buckets := uint(2)
-	workers := int(3)
-	burst := int(33)
-	pipelineCR.Spec.Performance.Buckets = &buckets
-	pipelineCR.Spec.Performance.DisableHA = true
-	pipelineCR.Spec.Performance.KubeApiQPS = ptr.Float32(40.03)
-	pipelineCR.Spec.Performance.KubeApiBurst = &burst
-	pipelineCR.Spec.Performance.ThreadsPerController = &workers
-
-	depInput := &appsv1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			Kind: "Deployment",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      pipelinesControllerDeployment,
-			Namespace: "xyz",
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: ptr.Int32(1),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"app": "hello"},
-			},
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"app": "hello"},
-				},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "hello",
-							Image: "xyz",
-						},
-						{
-							Name:  pipelinesControllerContainer,
-							Image: "xyz",
-							Args:  []string{"-flag1", "v1", "-flag2", "v2", "-disable-ha"},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// update expected output
-	depExpected := depInput.DeepCopy()
-	depExpected.Spec.Template.Labels = map[string]string{
-		"app": "hello",
-		"config-leader-election-controller.data.buckets": "2",
-		"deployment.spec.replicas":                       "1",
-	}
-	// flags order is important
-	depExpected.Spec.Template.Spec.Containers[1].Args = []string{
-		"-flag1", "v1",
-		"-flag2", "v2",
-		"-disable-ha=true",
-		"-kube-api-burst=33",
-		"-kube-api-qps=40.03",
-		"-threads-per-controller=3",
-	}
-
-	// convert to unstructured object
-	jsonBytes, err := json.Marshal(&depInput)
-	assert.NilError(t, err)
-	ud := &unstructured.Unstructured{}
-	err = json.Unmarshal(jsonBytes, ud)
-	assert.NilError(t, err)
-
-	// apply transformer
-	transformer := updatePerformanceFlagsInDeploymentAndLeaderConfigMap(pipelineCR, leaderElectionPipelineConfig, pipelinesControllerDeployment, pipelinesControllerContainer)
-	err = transformer(ud)
-	assert.NilError(t, err)
-
-	// get transformed deployment
-	outDep := &appsv1.Deployment{}
-	err = apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(ud.Object, outDep)
-	assert.NilError(t, err)
-
-	assert.Equal(t, true, reflect.DeepEqual(outDep, depExpected), fmt.Sprintf("transformed output:[%+v], expected:[%+v]", outDep, depExpected))
-}
-
-func TestGetSortedKeys(t *testing.T) {
-	in := map[string]interface{}{
-		"a1":  1,
-		"z1":  false,
-		"a2":  2,
-		"a3":  3,
-		"a10": 10,
-		"a11": 11,
-	}
-	expectedOut := []string{"a1", "a10", "a11", "a2", "a3", "z1"}
-
-	out := getSortedKeys(in)
-	assert.Equal(t, true, reflect.DeepEqual(out, expectedOut))
-}
 
 func TestUpdateResolverConfigEnvironmentsInDeployment(t *testing.T) {
 	pipelineCR := &v1alpha1.TektonPipeline{

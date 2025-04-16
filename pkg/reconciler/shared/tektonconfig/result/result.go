@@ -127,8 +127,8 @@ func UpdateResult(ctx context.Context, old *v1alpha1.TektonResult, new *v1alpha1
 		updated = true
 	}
 
-	if !reflect.DeepEqual(old.Spec.ResultsAPIProperties.Options, new.Spec.ResultsAPIProperties.Options) {
-		old.Spec.ResultsAPIProperties.Options = new.Spec.ResultsAPIProperties.Options
+	if !reflect.DeepEqual(old.Spec.Options, new.Spec.Options) {
+		old.Spec.Options = new.Spec.Options
 		updated = true
 	}
 
@@ -169,8 +169,7 @@ func GetTektonResultCR(config *v1alpha1.TektonConfig, operatorVersion string) *v
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			ResultsAPIProperties: config.Spec.Result.ResultsAPIProperties,
-			LokiStackProperties:  config.Spec.Result.LokiStackProperties,
+			Result: config.Spec.Result,
 		},
 	}
 }

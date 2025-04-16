@@ -1,0 +1,7 @@
+namespace: tektoncd-operator
+namePrefix: tektoncd-
+
+resources:
+- catalog_source.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
