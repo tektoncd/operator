@@ -65,6 +65,7 @@ image-substitutions:
       - IMAGE_ADDONS_GIT_RUN
       - IMAGE_ADDONS_REPORT
       - IMAGE_ADDONS_GIT_CLONE
+      - IMAGE_ADDONS_PREPARE_AND_RUN
 - image: registry.redhat.io/openshift-pipelines/pipelines-cache-rhel9@
   replaceLocations:
     envTargets:
