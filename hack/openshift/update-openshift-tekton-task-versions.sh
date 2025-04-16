@@ -55,4 +55,4 @@ if [[ "$updated" == true ]]; then
   echo "Ecosystem Task versions updated successfully!"
 else
   echo "No version updates found."
-fi
+fi 
