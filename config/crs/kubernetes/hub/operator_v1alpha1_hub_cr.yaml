@@ -17,4 +17,6 @@ kind: TektonHub
 metadata:
   name: hub
 spec:
+  api:
+    catalogRefreshInterval: 30m
   targetNamespace: tekton-pipelines
