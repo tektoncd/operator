@@ -19,3 +19,4 @@ metadata:
 spec:
   api:
     catalogRefreshInterval: 30m
+  targetNamespace: openshift-pipelines
