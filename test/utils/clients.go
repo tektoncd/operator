@@ -171,6 +171,13 @@ func (c *Clients) TektonHubAll() operatorv1alpha1.TektonHubInterface {
 	return c.Operator.TektonHubs()
 }
 
+func (c *Clients) TektonPruner() operatorv1alpha1.TektonPrunerInterface {
+	return c.Operator.TektonPruners()
+}
+func (c *Clients) TektonPrunerAll() operatorv1alpha1.TektonPrunerInterface {
+	return c.Operator.TektonPruners()
+}
+
 func (c *Clients) ManualApprovalGate() operatorv1alpha1.ManualApprovalGateInterface {
 	return c.Operator.ManualApprovalGates()
 }

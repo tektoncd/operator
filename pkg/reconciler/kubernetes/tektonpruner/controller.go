@@ -63,11 +63,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
-
+		metrics, _ := NewRecorder()
 		c := &Reconciler{
 			kubeClientSet:      kubeclient.Get(ctx),
 			pipelineInformer:   tektonPipelineinformer.Get(ctx),
-			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, prunerVer, v1alpha1.KindTektonPruner, nil),
+			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, prunerVer, v1alpha1.KindTektonPruner, metrics),
 			extension:          generator(ctx),
 			manifest:           manifest,
 			prunerVersion:      prunerVer,
