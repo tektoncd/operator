@@ -71,7 +71,7 @@ them as per their need.
 
 Details of the field can be found in [OpenShift Pipelines As Code Settings][pac-config]
 
-#### Additional Pipelines As Controller (Optional)
+#### Additional Pipelines As Code Controller (Optional)
 
 If users want to deploy additional Pipelines As Code controller on their cluster along with default Pipelines As Code 
 controller then they need to provide the `additionalPACControllers` field in the `pipelinesAsCode` section.
