@@ -65,6 +65,8 @@ const (
 	rbacInstallerSetType        = "rhosp-rbac"
 	rbacInstallerSetNamePrefix  = "rhosp-rbac-"
 	rbacParamName               = "createRbacResource"
+	legacyPipelineRbacParamName = "legacyPipelineRbac"
+	legacyPipelineRbac          = "true"
 	serviceAccountCreationLabel = "openshift-pipelines.tekton.dev/sa-created"
 )
 
@@ -151,22 +153,30 @@ func (r *rbac) EnsureRBACInstallerSet(ctx context.Context) (*v1alpha1.TektonInst
 
 func (r *rbac) setDefault() {
 
-	//set default value for rbac param
-	var found = false
-
+	var rbacParamFound, legacyParamFound bool
 	for i, v := range r.tektonConfig.Spec.Params {
 		if v.Name == rbacParamName {
-			found = true
-			// If the value set is invalid then set key to default value as true.
+			rbacParamFound = true
 			if v.Value != "false" && v.Value != "true" {
 				r.tektonConfig.Spec.Params[i].Value = "true"
 			}
-			break
+		}
+		if v.Name == legacyPipelineRbacParamName {
+			legacyParamFound = true
+			if v.Value != "false" && v.Value != "true" {
+				r.tektonConfig.Spec.Params[i].Value = "true"
+			}
 		}
 	}
-	if !found {
+	if !rbacParamFound {
 		r.tektonConfig.Spec.Params = append(r.tektonConfig.Spec.Params, v1alpha1.Param{
 			Name:  rbacParamName,
+			Value: "true",
+		})
+	}
+	if !legacyParamFound {
+		r.tektonConfig.Spec.Params = append(r.tektonConfig.Spec.Params, v1alpha1.Param{
+			Name:  legacyPipelineRbacParamName,
 			Value: "true",
 		})
 	}
@@ -973,16 +983,38 @@ func hasOwnerRefernce(old []metav1.OwnerReference, new metav1.OwnerReference) bo
 	return false
 }
 
+func (r *rbac) isLegacyRBACEnabled() bool {
+	for _, v := range r.tektonConfig.Spec.Params {
+		if v.Name == legacyPipelineRbacParamName {
+			return v.Value != "false"
+		}
+	}
+	return true
+}
+
 func (r *rbac) ensureRoleBindings(ctx context.Context, sa *corev1.ServiceAccount) error {
 	logger := logging.FromContext(ctx)
-
-	logger.Infof("finding role-binding: %s/%s", sa.Namespace, PipelineRoleBinding)
 	rbacClient := r.kubeClientSet.RbacV1()
+
+	legacyEnabled := r.isLegacyRBACEnabled()
 
 	editRB, err := rbacClient.RoleBindings(sa.Namespace).Get(ctx, PipelineRoleBinding, metav1.GetOptions{})
 
+	if !legacyEnabled && err == nil {
+		logger.Infof("Legacy Pipeline RBAC is disabled, removing existing role binding %s/%s",
+			editRB.Namespace, editRB.Name)
+		return rbacClient.RoleBindings(sa.Namespace).Delete(ctx, PipelineRoleBinding, metav1.DeleteOptions{})
+	}
+
+	if !legacyEnabled {
+		logger.Infof("Legacy Pipeline RBAC is disabled, skipping role binding creation")
+		return nil
+	}
+
+	logger.Infof("Legacy Pipeline RBAC is enabled")
+
 	if err == nil {
-		logger.Infof("found rolebinding %s/%s", editRB.Namespace, editRB.Name)
+		logger.Infof("Found rolebinding %s/%s, updating if needed", editRB.Namespace, editRB.Name)
 		return r.updateRoleBinding(ctx, editRB, sa, &rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
 			Kind:     "ClusterRole",
@@ -991,6 +1023,7 @@ func (r *rbac) ensureRoleBindings(ctx context.Context, sa *corev1.ServiceAccount
 	}
 
 	if errors.IsNotFound(err) {
+		logger.Infof("Role binding not found, creating new one")
 		return r.createRoleBinding(ctx, sa)
 	}
 
