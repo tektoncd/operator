@@ -105,6 +105,8 @@ spec:
           value: registry.redhat.io/ubi9/openjdk-17@sha256:cdbd64ba1b7826d09bc180fa19aa6fbc09ddb5bff5e02b7e1351353bbabebb78
         - name: IMAGE_ADDONS_OC
           value: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
+        - name: IMAGE_ADDONS_OPC
+          value: registry.redhat.io/openshift-pipelines/pipelines-cli-opc-rhel8@sha256:ae968e107c963f48910f7991419c29d7253d237c0752bbaaf9eca92811007a7a
       - name: openshift-pipelines-operator-cluster-operations  # tektoninstallerset reconciler
         image: ko://github.com/tektoncd/operator/cmd/openshift/operator
         args:

@@ -72,6 +72,7 @@ declare -A TEKTON_ECOSYSTEM_TASKS=(
   ['task-s2i-ruby']='0.6.0'
   ['task-skopeo-copy']='0.6.0'
   ['task-tkn']='0.2.2'
+  ['task-opc']='0.2.2'
 )
 declare -A TEKTON_ECOSYSTEM_STEPACTIONS=(
   ['stepaction-git-clone']='0.4.1'
