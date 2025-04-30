@@ -138,7 +138,7 @@ image-substitutions:
       envKeys:
       - IMAGE_ADDONS_PARAM_KN_IMAGE
       - IMAGE_ADDONS_KN
-- image: registry.redhat.io/openshift-pipelines/pipelines-cli-opc-rhel8
+- image: registry.redhat.io/openshift-pipelines/pipelines-cli-opc-rhel9
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
