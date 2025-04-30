@@ -12,7 +12,7 @@ manual-approval-gate:
   version: v0.4.1
 pipeline:
   github: tektoncd/pipeline
-  version: v0.65.6
+  version: v0.65.7
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
   version: v0.29.1
