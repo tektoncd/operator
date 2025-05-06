@@ -127,6 +127,10 @@ func (tc tektonConfig) createInstance(ctx context.Context) error {
 				KeepSince: nil,
 				Schedule:  v1alpha1.PrunerDefaultSchedule,
 			},
+			// Disable the TektonPruner by default
+			TektonPruner: v1alpha1.Pruner{
+				Disabled: true,
+			},
 		},
 	}
 	tcCR.SetDefaults(ctx)

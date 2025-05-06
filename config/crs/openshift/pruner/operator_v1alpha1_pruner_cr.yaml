@@ -18,3 +18,4 @@ metadata:
   name: pruner
 spec:
   targetNamespace: openshift-pipelines
+  disabled: true

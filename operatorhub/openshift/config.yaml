@@ -246,7 +246,7 @@ image-substitutions:
         envKeys:
           - IMAGE_MAG_TEKTON_TASKGROUP_CONTROLLER
           - IMAGE_MAG_MANUAL_APPROVAL
-- image: registry.redhat.io/openshift-pipelines/pipelines-tektoncd-pruner-controller-rhel9@
+- image: registry.redhat.io/openshift-pipelines/pipelines-pruner-controller-rhel9@
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator

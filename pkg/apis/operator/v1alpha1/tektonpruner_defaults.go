@@ -16,11 +16,14 @@ limitations under the License.
 
 package v1alpha1
 
-import "context"
+import (
+	"context"
+)
 
 func (tp *TektonPruner) SetDefaults(ctx context.Context) {
 	tp.Spec.Pruner.setDefaults()
 }
 func (p *Pruner) setDefaults() {
-	p.Disabled = false // Enable By Default
+	p.Disabled = true // Disabled By Default
+
 }
