@@ -69,8 +69,6 @@ spec:
           value: ko://github.com/tektoncd/operator/cmd/openshift/proxy-webhook
         - name: IMAGE_JOB_PRUNER_TKN
           value: ghcr.io/tektoncd/plumbing/tkn@sha256:233de6c8b8583a34c2379fa98d42dba739146c9336e8d41b66030484357481ed
-        - name: IMAGE_PRUNER_CONTROLLER
-          value: quay.io/openshift-pipeline/pipelines-pruner-controller-rhel9:main
         - name: METRICS_DOMAIN
           value: tekton.dev/operator
         - name: VERSION

@@ -62,7 +62,7 @@ const (
 	// KindManualApprovalGate is the Kind of KindManualApprovalGate in a GVK context.
 	KindManualApprovalGate = "ManualApprovalGate"
 
-	// KindTektonPruner is the Kind of KindTektonPruner in a GVK context.
+	// KindTektonPruner is the Kind of TektonPruner in a GVK context.
 	KindTektonPruner = "TektonPruner"
 )
 

@@ -18,5 +18,4 @@ metadata:
   name: pruner
 spec:
   targetNamespace: tekton-pipelines
-  pruner:
-    disabled: true
+  disabled: true

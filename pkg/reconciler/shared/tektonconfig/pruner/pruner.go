@@ -146,20 +146,6 @@ func isTektonPrunerReady(s *v1alpha1.TektonPruner, err error) (bool, error) {
 	return s.Status.IsReady(), err
 }
 
-func GetTektonConfig() *v1alpha1.TektonConfig {
-	return &v1alpha1.TektonConfig{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: v1alpha1.ConfigResourceName,
-		},
-		Spec: v1alpha1.TektonConfigSpec{
-			Profile: "all",
-			CommonSpec: v1alpha1.CommonSpec{
-				TargetNamespace: "tekton-pipelines",
-			},
-		},
-	}
-}
-
 func EnsureTektonPrunerCRNotExists(ctx context.Context, clients op.TektonPrunerInterface) error {
 	if _, err := GetPruner(ctx, clients, v1alpha1.TektonPrunerResourceName); err != nil {
 		if apierrs.IsNotFound(err) {

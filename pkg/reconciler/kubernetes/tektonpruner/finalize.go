@@ -21,7 +21,7 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	tektonpruner "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpruner"
+	"github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpruner"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )

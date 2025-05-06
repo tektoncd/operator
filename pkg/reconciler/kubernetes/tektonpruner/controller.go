@@ -55,8 +55,6 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 
 		manifest, prunerVer := ctrl.InitController(ctx, common.PayloadOptions{})
-		logger.Infof(" BINDAL Pruner Version is : %s", prunerVer)
-
 		operatorVer, err := common.OperatorVersion(ctx)
 		if err != nil {
 			logger.Fatal(err)

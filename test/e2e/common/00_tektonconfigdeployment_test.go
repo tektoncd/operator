@@ -1060,6 +1060,10 @@ func (s *TektonConfigTestSuite) getDefaultConfig() *v1alpha1.TektonConfig {
 				KeepSince: nil,
 				Schedule:  "0 8 * * *",
 			},
+			// Disable the TektonPruner by default
+			TektonPruner: v1alpha1.Pruner{
+				Disabled: true,
+			},
 		},
 	}
 	configCR.SetDefaults(context.TODO())
