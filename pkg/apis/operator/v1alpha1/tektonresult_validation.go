@@ -53,5 +53,9 @@ func (trs *TektonResultSpec) validate(path string) (errs *apis.FieldError) {
 			errs = errs.Also(apis.ErrInvalidValue(trs.LokiStackNamespace, fmt.Sprintf("%s.loki_stack_namespace", path), errMsg))
 		}
 	}
+
+	// validate performance properties
+	errs = errs.Also(trs.Performance.Validate(fmt.Sprintf("%s.performance", path)))
+
 	return errs
 }
