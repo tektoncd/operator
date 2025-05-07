@@ -32,6 +32,8 @@ spec:
   params:
   - name: createRbacResource
     value: "true"
+  - name: legacyPipelineRbac
+    value: "true"
   pruner:
     resources:
     - pipelinerun
