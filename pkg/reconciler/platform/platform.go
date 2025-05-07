@@ -1,3 +1,19 @@
+/*
+Copyright 2022 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package platform
 
 import (
@@ -69,22 +85,6 @@ func activeControllers(p Platform) ControllerMap {
 // the result of disabledControllers is the set of controllers excluded by activeControllers function
 // in other words, disabledControllers returns a map which has controllers "not" specified in the controlelrNames input to a platform
 // the returned map is a subset of the platform specific map which stores all-supported-controllers
-/*
-Copyright 2022 The Tekton Authors
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 func disabledControllers(p Platform) ControllerMap {
 	pParams := p.PlatformParams()
 	result := p.AllSupportedControllers()
@@ -122,8 +122,8 @@ func StartMainWithAllControllers(p Platform) {
 	startMain(p, p.AllSupportedControllers())
 }
 
-// StartMainWithAllControllers calls startMain with a subset of controllers
-// specified in the platformConfig of a platform
+// StartMainWithSelectedControllers starts the main control loop with only the controllers
+// that are explicitly specified in the platform configuration.
 func StartMainWithSelectedControllers(p Platform) {
 	validateControllerNamesOrDie(p)
 	selectedCtrls := activeControllers(p)
