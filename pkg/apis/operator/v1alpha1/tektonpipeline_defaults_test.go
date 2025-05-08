@@ -61,7 +61,7 @@ func Test_SetDefaults_PipelineProperties(t *testing.T) {
 		Coschedule:                               config.DefaultCoschedule,
 		DisableInlineSpec:                        config.DefaultDisableInlineSpec,
 		EnableCELInWhenExpression:                ptr.Bool(config.DefaultEnableCELInWhenExpression.Enabled),
-		EnableStepActions:                        ptr.Bool(config.DefaultEnableStepActions.Enabled),
+		EnableStepActions:                        ptr.Bool(config.DefaultFeatureFlags.EnableStepActions),
 		EnableParamEnum:                          ptr.Bool(config.DefaultEnableParamEnum.Enabled),
 		PipelineMetricsProperties: PipelineMetricsProperties{
 			MetricsPipelinerunDurationType: "histogram",

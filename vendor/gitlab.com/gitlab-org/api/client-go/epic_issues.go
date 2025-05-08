@@ -23,15 +23,21 @@ import (
 
 type (
 	// EpicIssuesServiceInterface defines all the API methods for the EpicIssuesService
+	// Deprecated: will be removed in v5 of the API, use Work Items API instead
 	EpicIssuesServiceInterface interface {
+		// Deprecated: will be removed in v5 of the API, use Work Items API instead
 		ListEpicIssues(gid interface{}, epic int, opt *ListOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error)
+		// Deprecated: will be removed in v5 of the API, use Work Items API instead
 		AssignEpicIssue(gid interface{}, epic, issue int, options ...RequestOptionFunc) (*EpicIssueAssignment, *Response, error)
+		// Deprecated: will be removed in v5 of the API, use Work Items API instead
 		RemoveEpicIssue(gid interface{}, epic, epicIssue int, options ...RequestOptionFunc) (*EpicIssueAssignment, *Response, error)
+		// Deprecated: will be removed in v5 of the API, use Work Items API instead
 		UpdateEpicIssueAssignment(gid interface{}, epic, epicIssue int, opt *UpdateEpicIsssueAssignmentOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error)
 	}
 
 	// EpicIssuesService handles communication with the epic issue related methods
 	// of the GitLab API.
+	// Deprecated: will be removed in v5 of the API, use Work Items API instead
 	//
 	// GitLab API docs: https://docs.gitlab.com/api/epic_issues/
 	EpicIssuesService struct {
@@ -39,10 +45,12 @@ type (
 	}
 )
 
+// Deprecated: will be removed in v5 of the API, use Work Items API instead
 var _ EpicIssuesServiceInterface = (*EpicIssuesService)(nil)
 
 // EpicIssueAssignment contains both the epic and issue objects returned from
 // Gitlab with the assignment ID.
+// Deprecated: will be removed in v5 of the API, use Work Items API instead
 //
 // GitLab API docs: https://docs.gitlab.com/api/epic_issues/
 type EpicIssueAssignment struct {
@@ -52,6 +60,7 @@ type EpicIssueAssignment struct {
 }
 
 // ListEpicIssues get a list of epic issues.
+// Deprecated: will be removed in v5 of the API, use Work Items API instead
 //
 // Gitlab API docs:
 // https://docs.gitlab.com/api/epic_issues/#list-issues-for-an-epic
@@ -77,6 +86,7 @@ func (s *EpicIssuesService) ListEpicIssues(gid interface{}, epic int, opt *ListO
 }
 
 // AssignEpicIssue assigns an existing issue to an epic.
+// Deprecated: will be removed in v5 of the API, use Work Items API instead
 //
 // Gitlab API Docs:
 // https://docs.gitlab.com/api/epic_issues/#assign-an-issue-to-the-epic
@@ -102,6 +112,7 @@ func (s *EpicIssuesService) AssignEpicIssue(gid interface{}, epic, issue int, op
 }
 
 // RemoveEpicIssue removes an issue from an epic.
+// Deprecated: will be removed in v5 of the API, use Work Items API instead
 //
 // Gitlab API Docs:
 // https://docs.gitlab.com/api/epic_issues/#remove-an-issue-from-the-epic
@@ -128,6 +139,7 @@ func (s *EpicIssuesService) RemoveEpicIssue(gid interface{}, epic, epicIssue int
 
 // UpdateEpicIsssueAssignmentOptions describes the UpdateEpicIssueAssignment()
 // options.
+// Deprecated: will be removed in v5 of the API, use Work Items API instead
 //
 // Gitlab API Docs:
 // https://docs.gitlab.com/api/epic_issues/#update-epic---issue-association
@@ -139,6 +151,7 @@ type UpdateEpicIsssueAssignmentOptions struct {
 
 // UpdateEpicIssueAssignment moves an issue before or after another issue in an
 // epic issue list.
+// Deprecated: will be removed in v5 of the API, use Work Items API instead
 //
 // Gitlab API Docs:
 // https://docs.gitlab.com/api/epic_issues/#update-epic---issue-association

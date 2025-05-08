@@ -17,7 +17,7 @@ type (
 	// MergeTrainsService handles communication with the merge trains related
 	// methods of the GitLab API.
 	//
-	// GitLab API docs: https://docs.gitlab.com/ee/api/merge_trains.html
+	// GitLab API docs: https://docs.gitlab.com/api/merge_trains/
 	MergeTrainsService struct {
 		client *Client
 	}
@@ -27,7 +27,7 @@ var _ MergeTrainsServiceInterface = (*MergeTrainsService)(nil)
 
 // MergeTrain represents a Gitlab merge train.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/merge_trains.html
+// GitLab API docs: https://docs.gitlab.com/api/merge_trains/
 type MergeTrain struct {
 	ID           int                     `json:"id"`
 	MergeRequest *MergeTrainMergeRequest `json:"merge_request"`
@@ -43,7 +43,7 @@ type MergeTrain struct {
 
 // MergeTrainMergeRequest represents a Gitlab merge request inside merge train.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/merge_trains.html
+// GitLab API docs: https://docs.gitlab.com/api/merge_trains/
 type MergeTrainMergeRequest struct {
 	ID          int        `json:"id"`
 	IID         int        `json:"iid"`
@@ -59,7 +59,7 @@ type MergeTrainMergeRequest struct {
 // ListMergeTrainsOptions represents the available ListMergeTrain() options.
 //
 // Gitab API docs:
-// https://docs.gitlab.com/ee/api/merge_trains.html#list-merge-trains-for-a-project
+// https://docs.gitlab.com/api/merge_trains/#list-merge-trains-for-a-project
 type ListMergeTrainsOptions struct {
 	ListOptions
 	Scope *string `url:"scope,omitempty" json:"scope,omitempty"`
@@ -69,7 +69,7 @@ type ListMergeTrainsOptions struct {
 // ListProjectMergeTrains get a list of merge trains in a project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/merge_trains.html#list-merge-trains-for-a-project
+// https://docs.gitlab.com/api/merge_trains/#list-merge-trains-for-a-project
 func (s *MergeTrainsService) ListProjectMergeTrains(pid interface{}, opt *ListMergeTrainsOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -95,7 +95,7 @@ func (s *MergeTrainsService) ListProjectMergeTrains(pid interface{}, opt *ListMe
 // train for the requested target branch.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/merge_trains.html#list-merge-requests-in-a-merge-train
+// https://docs.gitlab.com/api/merge_trains/#list-merge-requests-in-a-merge-train
 func (s *MergeTrainsService) ListMergeRequestInMergeTrain(pid interface{}, targetBranch string, opts *ListMergeTrainsOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -121,7 +121,7 @@ func (s *MergeTrainsService) ListMergeRequestInMergeTrain(pid interface{}, targe
 // merge request.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/merge_trains.html#get-the-status-of-a-merge-request-on-a-merge-train
+// https://docs.gitlab.com/api/merge_trains/#get-the-status-of-a-merge-request-on-a-merge-train
 func (s *MergeTrainsService) GetMergeRequestOnAMergeTrain(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*MergeTrain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -147,18 +147,21 @@ func (s *MergeTrainsService) GetMergeRequestOnAMergeTrain(pid interface{}, merge
 // AddMergeRequestToMergeTrain() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/merge_trains.html#add-a-merge-request-to-a-merge-train
+// https://docs.gitlab.com/api/merge_trains/#add-a-merge-request-to-a-merge-train
 type AddMergeRequestToMergeTrainOptions struct {
-	WhenPipelineSucceeds *bool   `url:"when_pipeline_succeeds,omitempty" json:"when_pipeline_succeeds,omitempty"`
-	SHA                  *string `url:"sha,omitempty" json:"sha,omitempty"`
-	Squash               *bool   `url:"squash,omitempty" json:"squash,omitempty"`
+	AutoMerge *bool   `url:"auto_merge,omitempty" json:"auto_merge,omitempty"`
+	SHA       *string `url:"sha,omitempty" json:"sha,omitempty"`
+	Squash    *bool   `url:"squash,omitempty" json:"squash,omitempty"`
+
+	// Deprecated: in 17.11, use AutoMerge instead
+	WhenPipelineSucceeds *bool `url:"when_pipeline_succeeds,omitempty" json:"when_pipeline_succeeds,omitempty"`
 }
 
 // AddMergeRequestToMergeTrain Add a merge request to the merge train targeting
 // the merge request’s target branch.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/merge_trains.html#add-a-merge-request-to-a-merge-train
+// https://docs.gitlab.com/api/merge_trains/#add-a-merge-request-to-a-merge-train
 func (s *MergeTrainsService) AddMergeRequestToMergeTrain(pid interface{}, mergeRequest int, opts *AddMergeRequestToMergeTrainOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {

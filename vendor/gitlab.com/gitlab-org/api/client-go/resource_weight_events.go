@@ -30,7 +30,7 @@ type (
 	// ResourceWeightEventsService handles communication with the event related
 	// methods of the GitLab API.
 	//
-	// GitLab API docs: https://docs.gitlab.com/ee/api/resource_weight_events.html
+	// GitLab API docs: https://docs.gitlab.com/api/resource_weight_events/
 	ResourceWeightEventsService struct {
 		client *Client
 	}
@@ -40,7 +40,7 @@ var _ ResourceWeightEventsServiceInterface = (*ResourceWeightEventsService)(nil)
 
 // WeightEvent represents a resource weight event.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/resource_weight_events.html
+// GitLab API docs: https://docs.gitlab.com/api/resource_weight_events/
 type WeightEvent struct {
 	ID           int            `json:"id"`
 	User         *BasicUser     `json:"user"`
@@ -56,7 +56,7 @@ type WeightEvent struct {
 // list methods.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/resource_weight_events.html#list-project-issue-weight-events
+// https://docs.gitlab.com/api/resource_weight_events/#list-project-issue-weight-events
 type ListWeightEventsOptions struct {
 	ListOptions
 }
@@ -65,7 +65,7 @@ type ListWeightEventsOptions struct {
 // project and issue.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/resource_weight_events.html#list-project-issue-weight-events
+// https://docs.gitlab.com/api/resource_weight_events/#list-project-issue-weight-events
 func (s *ResourceWeightEventsService) ListIssueWeightEvents(pid interface{}, issue int, opt *ListWeightEventsOptions, options ...RequestOptionFunc) ([]*WeightEvent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
