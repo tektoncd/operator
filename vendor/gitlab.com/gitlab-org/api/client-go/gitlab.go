@@ -107,10 +107,15 @@ type Client struct {
 	// User agent used when communicating with the GitLab API.
 	UserAgent string
 
+	// GraphQL interface
+	GraphQL GraphQLInterface
+
 	// Services used for talking to different parts of the GitLab API.
 	AccessRequests                   AccessRequestsServiceInterface
+	AlertManagement                  AlertManagementServiceInterface
 	Appearance                       AppearanceServiceInterface
 	Applications                     ApplicationsServiceInterface
+	ApplicationStatistics            ApplicationStatisticsServiceInterface
 	AuditEvents                      AuditEventsServiceInterface
 	Avatar                           AvatarRequestsServiceInterface
 	AwardEmoji                       AwardEmojiServiceInterface
@@ -124,7 +129,10 @@ type Client struct {
 	ContainerRegistry                ContainerRegistryServiceInterface
 	ContainerRegistryProtectionRules ContainerRegistryProtectionRulesServiceInterface
 	CustomAttribute                  CustomAttributesServiceInterface
+	DatabaseMigrations               DatabaseMigrationsServiceInterface
+	Dependencies                     DependenciesServiceInterface
 	DependencyListExport             DependencyListExportServiceInterface
+	DependencyProxy                  DependencyProxyServiceInterface
 	DeployKeys                       DeployKeysServiceInterface
 	DeployTokens                     DeployTokensServiceInterface
 	DeploymentMergeRequests          DeploymentMergeRequestsServiceInterface
@@ -133,18 +141,22 @@ type Client struct {
 	DockerfileTemplate               DockerfileTemplatesServiceInterface
 	DORAMetrics                      DORAMetricsServiceInterface
 	DraftNotes                       DraftNotesServiceInterface
+	EnterpriseUsers                  EnterpriseUsersServiceInterface
 	Environments                     EnvironmentsServiceInterface
 	EpicIssues                       EpicIssuesServiceInterface
 	Epics                            EpicsServiceInterface
 	ErrorTracking                    ErrorTrackingServiceInterface
 	Events                           EventsServiceInterface
 	ExternalStatusChecks             ExternalStatusChecksServiceInterface
+	FeatureFlagUserLists             FeatureFlagUserListsServiceInterface
 	Features                         FeaturesServiceInterface
 	FreezePeriods                    FreezePeriodsServiceInterface
 	GenericPackages                  GenericPackagesServiceInterface
 	GeoNodes                         GeoNodesServiceInterface
+	GeoSites                         GeoSitesServiceInterface
 	GitIgnoreTemplates               GitIgnoreTemplatesServiceInterface
 	GroupAccessTokens                GroupAccessTokensServiceInterface
+	GroupActivityAnalytics           GroupActivityAnalyticsServiceInterface
 	GroupBadges                      GroupBadgesServiceInterface
 	GroupCluster                     GroupClustersServiceInterface
 	GroupEpicBoards                  GroupEpicBoardsServiceInterface
@@ -356,10 +368,15 @@ func newClient(options ...ClientOptionFunc) (*Client, error) {
 	// Create the internal timeStats service.
 	timeStats := &timeStatsService{client: c}
 
+	// GraphQL interface
+	c.GraphQL = &GraphQL{client: c}
+
 	// Create all the public services.
 	c.AccessRequests = &AccessRequestsService{client: c}
+	c.AlertManagement = &AlertManagementService{client: c}
 	c.Appearance = &AppearanceService{client: c}
 	c.Applications = &ApplicationsService{client: c}
+	c.ApplicationStatistics = &ApplicationStatisticsService{client: c}
 	c.AuditEvents = &AuditEventsService{client: c}
 	c.Avatar = &AvatarRequestsService{client: c}
 	c.AwardEmoji = &AwardEmojiService{client: c}
@@ -373,7 +390,10 @@ func newClient(options ...ClientOptionFunc) (*Client, error) {
 	c.ContainerRegistry = &ContainerRegistryService{client: c}
 	c.ContainerRegistryProtectionRules = &ContainerRegistryProtectionRulesService{client: c}
 	c.CustomAttribute = &CustomAttributesService{client: c}
+	c.DatabaseMigrations = &DatabaseMigrationsService{client: c}
+	c.Dependencies = &DependenciesService{client: c}
 	c.DependencyListExport = &DependencyListExportService{client: c}
+	c.DependencyProxy = &DependencyProxyService{client: c}
 	c.DeployKeys = &DeployKeysService{client: c}
 	c.DeployTokens = &DeployTokensService{client: c}
 	c.DeploymentMergeRequests = &DeploymentMergeRequestsService{client: c}
@@ -382,18 +402,22 @@ func newClient(options ...ClientOptionFunc) (*Client, error) {
 	c.DockerfileTemplate = &DockerfileTemplatesService{client: c}
 	c.DORAMetrics = &DORAMetricsService{client: c}
 	c.DraftNotes = &DraftNotesService{client: c}
+	c.EnterpriseUsers = &EnterpriseUsersService{client: c}
 	c.Environments = &EnvironmentsService{client: c}
 	c.EpicIssues = &EpicIssuesService{client: c}
 	c.Epics = &EpicsService{client: c}
 	c.ErrorTracking = &ErrorTrackingService{client: c}
 	c.Events = &EventsService{client: c}
 	c.ExternalStatusChecks = &ExternalStatusChecksService{client: c}
+	c.FeatureFlagUserLists = &FeatureFlagUserListsService{client: c}
 	c.Features = &FeaturesService{client: c}
 	c.FreezePeriods = &FreezePeriodsService{client: c}
 	c.GenericPackages = &GenericPackagesService{client: c}
 	c.GeoNodes = &GeoNodesService{client: c}
+	c.GeoSites = &GeoSitesService{client: c}
 	c.GitIgnoreTemplates = &GitIgnoreTemplatesService{client: c}
 	c.GroupAccessTokens = &GroupAccessTokensService{client: c}
+	c.GroupActivityAnalytics = &GroupActivityAnalyticsService{client: c}
 	c.GroupBadges = &GroupBadgesService{client: c}
 	c.GroupCluster = &GroupClustersService{client: c}
 	c.GroupEpicBoards = &GroupEpicBoardsService{client: c}
@@ -990,7 +1014,10 @@ type ErrorResponse struct {
 }
 
 func (e *ErrorResponse) Error() string {
-	path, _ := url.QueryUnescape(e.Response.Request.URL.Path)
+	path := e.Response.Request.URL.RawPath
+	if path == "" {
+		path = e.Response.Request.URL.Path
+	}
 	url := fmt.Sprintf("%s://%s%s", e.Response.Request.URL.Scheme, e.Response.Request.URL.Host, path)
 
 	if e.Message == "" {

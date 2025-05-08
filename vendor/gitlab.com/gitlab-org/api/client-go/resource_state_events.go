@@ -33,7 +33,7 @@ type (
 	// ResourceStateEventsService handles communication with the event related
 	// methods of the GitLab API.
 	//
-	// GitLab API docs: https://docs.gitlab.com/ee/api/resource_state_events.html
+	// GitLab API docs: https://docs.gitlab.com/api/resource_state_events/
 	ResourceStateEventsService struct {
 		client *Client
 	}
@@ -43,7 +43,7 @@ var _ ResourceStateEventsServiceInterface = (*ResourceStateEventsService)(nil)
 
 // StateEvent represents a resource state event.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/resource_state_events.html
+// GitLab API docs: https://docs.gitlab.com/api/resource_state_events/
 type StateEvent struct {
 	ID           int            `json:"id"`
 	User         *BasicUser     `json:"user"`
@@ -57,7 +57,7 @@ type StateEvent struct {
 // list methods.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/resource_state_events.html#list-project-issue-state-events
+// https://docs.gitlab.com/api/resource_state_events/#list-project-issue-state-events
 type ListStateEventsOptions struct {
 	ListOptions
 }
@@ -66,7 +66,7 @@ type ListStateEventsOptions struct {
 // project and issue.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/resource_state_events.html#list-project-issue-state-events
+// https://docs.gitlab.com/api/resource_state_events/#list-project-issue-state-events
 func (s *ResourceStateEventsService) ListIssueStateEvents(pid interface{}, issue int, opt *ListStateEventsOptions, options ...RequestOptionFunc) ([]*StateEvent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -91,7 +91,7 @@ func (s *ResourceStateEventsService) ListIssueStateEvents(pid interface{}, issue
 // GetIssueStateEvent gets a single issue-state-event.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/resource_state_events.html#get-single-issue-state-event
+// https://docs.gitlab.com/api/resource_state_events/#get-single-issue-state-event
 func (s *ResourceStateEventsService) GetIssueStateEvent(pid interface{}, issue int, event int, options ...RequestOptionFunc) (*StateEvent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -117,7 +117,7 @@ func (s *ResourceStateEventsService) GetIssueStateEvent(pid interface{}, issue i
 // project and merge request.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/resource_state_events.html#list-project-merge-request-state-events
+// https://docs.gitlab.com/api/resource_state_events/#list-project-merge-request-state-events
 func (s *ResourceStateEventsService) ListMergeStateEvents(pid interface{}, request int, opt *ListStateEventsOptions, options ...RequestOptionFunc) ([]*StateEvent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -142,7 +142,7 @@ func (s *ResourceStateEventsService) ListMergeStateEvents(pid interface{}, reque
 // GetMergeRequestStateEvent gets a single merge request state event.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/resource_state_events.html#get-single-merge-request-state-event
+// https://docs.gitlab.com/api/resource_state_events/#get-single-merge-request-state-event
 func (s *ResourceStateEventsService) GetMergeRequestStateEvent(pid interface{}, request int, event int, options ...RequestOptionFunc) (*StateEvent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {

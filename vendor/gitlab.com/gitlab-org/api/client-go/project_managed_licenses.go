@@ -22,28 +22,33 @@ import (
 )
 
 type (
+	// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 	ManagedLicensesServiceInterface interface {
+		// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 		ListManagedLicenses(pid interface{}, options ...RequestOptionFunc) ([]*ManagedLicense, *Response, error)
+		// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 		GetManagedLicense(pid, mlid interface{}, options ...RequestOptionFunc) (*ManagedLicense, *Response, error)
+		// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 		AddManagedLicense(pid interface{}, opt *AddManagedLicenseOptions, options ...RequestOptionFunc) (*ManagedLicense, *Response, error)
+		// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 		DeleteManagedLicense(pid, mlid interface{}, options ...RequestOptionFunc) (*Response, error)
+		// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 		EditManagedLicense(pid, mlid interface{}, opt *EditManagedLicenceOptions, options ...RequestOptionFunc) (*ManagedLicense, *Response, error)
 	}
 
 	// ManagedLicensesService handles communication with the managed licenses
 	// methods of the GitLab API.
-	//
-	// GitLab API docs: https://docs.gitlab.com/ee/api/managed_licenses.html
+	// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 	ManagedLicensesService struct {
 		client *Client
 	}
 )
 
+// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 var _ ManagedLicensesServiceInterface = (*ManagedLicensesService)(nil)
 
 // ManagedLicense represents a managed license.
-//
-// GitLab API docs: https://docs.gitlab.com/ee/api/managed_licenses.html
+// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 type ManagedLicense struct {
 	ID             int                        `json:"id"`
 	Name           string                     `json:"name"`
@@ -51,9 +56,7 @@ type ManagedLicense struct {
 }
 
 // ListManagedLicenses returns a list of managed licenses from a project.
-//
-// GitLab API docs:
-// https://docs.gitlab.com/ee/api/managed_licenses.html#list-managed-licenses
+// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 func (s *ManagedLicensesService) ListManagedLicenses(pid interface{}, options ...RequestOptionFunc) ([]*ManagedLicense, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -76,9 +79,7 @@ func (s *ManagedLicensesService) ListManagedLicenses(pid interface{}, options ..
 }
 
 // GetManagedLicense returns an existing managed license.
-//
-// GitLab API docs:
-// https://docs.gitlab.com/ee/api/managed_licenses.html#show-an-existing-managed-license
+// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 func (s *ManagedLicensesService) GetManagedLicense(pid, mlid interface{}, options ...RequestOptionFunc) (*ManagedLicense, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -105,18 +106,14 @@ func (s *ManagedLicensesService) GetManagedLicense(pid, mlid interface{}, option
 }
 
 // AddManagedLicenseOptions represents the available AddManagedLicense() options.
-//
-// GitLab API docs:
-// https://docs.gitlab.com/ee/api/managed_licenses.html#create-a-new-managed-license
+// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 type AddManagedLicenseOptions struct {
 	Name           *string                     `url:"name,omitempty" json:"name,omitempty"`
 	ApprovalStatus *LicenseApprovalStatusValue `url:"approval_status,omitempty" json:"approval_status,omitempty"`
 }
 
 // AddManagedLicense adds a managed license to a project.
-//
-// GitLab API docs:
-// https://docs.gitlab.com/ee/api/managed_licenses.html#create-a-new-managed-license
+// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 func (s *ManagedLicensesService) AddManagedLicense(pid interface{}, opt *AddManagedLicenseOptions, options ...RequestOptionFunc) (*ManagedLicense, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -139,9 +136,7 @@ func (s *ManagedLicensesService) AddManagedLicense(pid interface{}, opt *AddMana
 }
 
 // DeleteManagedLicense deletes a managed license with a given ID.
-//
-// GitLab API docs:
-// https://docs.gitlab.com/ee/api/managed_licenses.html#delete-a-managed-license
+// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 func (s *ManagedLicensesService) DeleteManagedLicense(pid, mlid interface{}, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -162,18 +157,14 @@ func (s *ManagedLicensesService) DeleteManagedLicense(pid, mlid interface{}, opt
 }
 
 // EditManagedLicenceOptions represents the available EditManagedLicense() options.
-//
-// GitLab API docs:
-// https://docs.gitlab.com/ee/api/managed_licenses.html#edit-an-existing-managed-license
+// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 type EditManagedLicenceOptions struct {
 	ApprovalStatus *LicenseApprovalStatusValue `url:"approval_status,omitempty" json:"approval_status,omitempty"`
 }
 
 // EditManagedLicense updates an existing managed license with a new approval
 // status.
-//
-// GitLab API docs:
-// https://docs.gitlab.com/ee/api/managed_licenses.html#edit-an-existing-managed-license
+// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 func (s *ManagedLicensesService) EditManagedLicense(pid, mlid interface{}, opt *EditManagedLicenceOptions, options ...RequestOptionFunc) (*ManagedLicense, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {

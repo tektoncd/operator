@@ -31,7 +31,7 @@ type (
 	// SettingsService handles communication with the application SettingsService
 	// related methods of the GitLab API.
 	//
-	// GitLab API docs: https://docs.gitlab.com/ee/api/settings.html
+	// GitLab API docs: https://docs.gitlab.com/api/settings/
 	SettingsService struct {
 		client *Client
 	}
@@ -41,7 +41,7 @@ var _ SettingsServiceInterface = (*SettingsService)(nil)
 
 // Settings represents the GitLab application settings.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/settings.html
+// GitLab API docs: https://docs.gitlab.com/api/settings/
 //
 // The available parameters have been modeled directly after the code, as the
 // documentation seems to be inaccurate.
@@ -108,7 +108,6 @@ type Settings struct {
 	DecompressArchiveFileTimeout                          int                       `json:"decompress_archive_file_timeout"`
 	DefaultArtifactsExpireIn                              string                    `json:"default_artifacts_expire_in"`
 	DefaultBranchName                                     string                    `json:"default_branch_name"`
-	DefaultBranchProtection                               int                       `json:"default_branch_protection"`
 	DefaultBranchProtectionDefaults                       *BranchProtectionDefaults `json:"default_branch_protection_defaults,omitempty"`
 	DefaultCiConfigPath                                   string                    `json:"default_ci_config_path"`
 	DefaultGroupVisibility                                VisibilityValue           `json:"default_group_visibility"`
@@ -230,11 +229,7 @@ type Settings struct {
 	HelpText                                              string                    `json:"help_text"`
 	HideThirdPartyOffers                                  bool                      `json:"hide_third_party_offers"`
 	HomePageURL                                           string                    `json:"home_page_url"`
-	HousekeepingBitmapsEnabled                            bool                      `json:"housekeeping_bitmaps_enabled"`
 	HousekeepingEnabled                                   bool                      `json:"housekeeping_enabled"`
-	HousekeepingFullRepackPeriod                          int                       `json:"housekeeping_full_repack_period"`
-	HousekeepingGcPeriod                                  int                       `json:"housekeeping_gc_period"`
-	HousekeepingIncrementalRepackPeriod                   int                       `json:"housekeeping_incremental_repack_period"`
 	HousekeepingOptimizeRepositoryPeriod                  int                       `json:"housekeeping_optimize_repository_period"`
 	ImportSources                                         []string                  `json:"import_sources"`
 	InactiveProjectsDeleteAfterMonths                     int                       `json:"inactive_projects_delete_after_months"`
@@ -297,9 +292,7 @@ type Settings struct {
 	PasswordSymbolRequired                                bool                      `json:"password_symbol_required"`
 	PasswordUppercaseRequired                             bool                      `json:"password_uppercase_required"`
 	PasswordLowercaseRequired                             bool                      `json:"password_lowercase_required"`
-	PerformanceBarAllowedGroupID                          int                       `json:"performance_bar_allowed_group_id"`
 	PerformanceBarAllowedGroupPath                        string                    `json:"performance_bar_allowed_group_path"`
-	PerformanceBarEnabled                                 bool                      `json:"performance_bar_enabled"`
 	PersonalAccessTokenPrefix                             string                    `json:"personal_access_token_prefix"`
 	PipelineLimitPerProjectUserSha                        int                       `json:"pipeline_limit_per_project_user_sha"`
 	PlantumlEnabled                                       bool                      `json:"plantuml_enabled"`
@@ -455,6 +448,20 @@ type Settings struct {
 	WhatsNewVariant                                       string                    `json:"whats_new_variant"`
 	WikiPageMaxContentBytes                               int                       `json:"wiki_page_max_content_bytes"`
 
+	// Deprecated: Use DefaultBranchProtectionDefaults instead.
+	DefaultBranchProtection int `json:"default_branch_protection"`
+	// Deprecated: Cannot be set through the API, always true
+	HousekeepingBitmapsEnabled bool `json:"housekeeping_bitmaps_enabled"`
+	// Deprecated: use HousekeepingOptimizeRepositoryPeriod instead
+	HousekeepingFullRepackPeriod int `json:"housekeeping_full_repack_period"`
+	// Deprecated: use HousekeepingOptimizeRepositoryPeriod instead
+	HousekeepingGcPeriod int `json:"housekeeping_gc_period"`
+	// Deprecated: use HousekeepingOptimizeRepositoryPeriod instead
+	HousekeepingIncrementalRepackPeriod int `json:"housekeeping_incremental_repack_period"`
+	// Deprecated: use PerformanceBarAllowedGroupPath instead
+	PerformanceBarAllowedGroupID int `json:"performance_bar_allowed_group_id"`
+	// Deprecated: use PerformanceBarAllowedGroupPath: nil instead
+	PerformanceBarEnabled bool `json:"performance_bar_enabled"`
 	// Deprecated: Use AbuseNotificationEmail instead.
 	AdminNotificationEmail string `json:"admin_notification_email"`
 	// Deprecated: Use AllowLocalRequestsFromWebHooksAndServices instead.
@@ -503,7 +510,7 @@ func (s Settings) String() string {
 // GetSettings gets the current application settings.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/settings.html#get-current-application-settings
+// https://docs.gitlab.com/api/settings/#get-details-on-current-application-settings
 func (s *SettingsService) GetSettings(options ...RequestOptionFunc) (*Settings, *Response, error) {
 	req, err := s.client.NewRequest(http.MethodGet, "application/settings", nil, options)
 	if err != nil {
@@ -522,18 +529,16 @@ func (s *SettingsService) GetSettings(options ...RequestOptionFunc) (*Settings, 
 // UpdateSettingsOptions represents the available UpdateSettings() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/settings.html#change-application-settings
+// https://docs.gitlab.com/api/settings/#update-application-settings
 type UpdateSettingsOptions struct {
 	AbuseNotificationEmail                                *string                                 `url:"abuse_notification_email,omitempty" json:"abuse_notification_email,omitempty"`
 	AdminMode                                             *bool                                   `url:"admin_mode,omitempty" json:"admin_mode,omitempty"`
-	AdminNotificationEmail                                *string                                 `url:"admin_notification_email,omitempty" json:"admin_notification_email,omitempty"`
 	AfterSignOutPath                                      *string                                 `url:"after_sign_out_path,omitempty" json:"after_sign_out_path,omitempty"`
 	AfterSignUpText                                       *string                                 `url:"after_sign_up_text,omitempty" json:"after_sign_up_text,omitempty"`
 	AkismetAPIKey                                         *string                                 `url:"akismet_api_key,omitempty" json:"akismet_api_key,omitempty"`
 	AkismetEnabled                                        *bool                                   `url:"akismet_enabled,omitempty" json:"akismet_enabled,omitempty"`
 	AllowAccountDeletion                                  *bool                                   `url:"allow_account_deletion,omitempty" json:"allow_account_deletion,omitempty"`
 	AllowGroupOwnersToManageLDAP                          *bool                                   `url:"allow_group_owners_to_manage_ldap,omitempty" json:"allow_group_owners_to_manage_ldap,omitempty"`
-	AllowLocalRequestsFromHooksAndServices                *bool                                   `url:"allow_local_requests_from_hooks_and_services,omitempty" json:"allow_local_requests_from_hooks_and_services,omitempty"`
 	AllowLocalRequestsFromSystemHooks                     *bool                                   `url:"allow_local_requests_from_system_hooks,omitempty" json:"allow_local_requests_from_system_hooks,omitempty"`
 	AllowLocalRequestsFromWebHooksAndServices             *bool                                   `url:"allow_local_requests_from_web_hooks_and_services,omitempty" json:"allow_local_requests_from_web_hooks_and_services,omitempty"`
 	AllowProjectCreationForGuestAndBelow                  *bool                                   `url:"allow_project_creation_for_guest_and_below,omitempty" json:"allow_project_creation_for_guest_and_below,omitempty"`
@@ -544,7 +549,6 @@ type UpdateSettingsOptions struct {
 	AssetProxyEnabled                                     *bool                                   `url:"asset_proxy_enabled,omitempty" json:"asset_proxy_enabled,omitempty"`
 	AssetProxySecretKey                                   *string                                 `url:"asset_proxy_secret_key,omitempty" json:"asset_proxy_secret_key,omitempty"`
 	AssetProxyURL                                         *string                                 `url:"asset_proxy_url,omitempty" json:"asset_proxy_url,omitempty"`
-	AssetProxyWhitelist                                   *[]string                               `url:"asset_proxy_whitelist,omitempty" json:"asset_proxy_whitelist,omitempty"`
 	AuthorizedKeysEnabled                                 *bool                                   `url:"authorized_keys_enabled,omitempty" json:"authorized_keys_enabled,omitempty"`
 	AutoBanUserOnExcessiveProjectsDownload                *bool                                   `url:"auto_ban_user_on_excessive_projects_download,omitempty" json:"auto_ban_user_on_excessive_projects_download,omitempty"`
 	AutoDevOpsDomain                                      *string                                 `url:"auto_devops_domain,omitempty" json:"auto_devops_domain,omitempty"`
@@ -581,7 +585,6 @@ type UpdateSettingsOptions struct {
 	DecompressArchiveFileTimeout                          *int                                    `url:"decompress_archive_file_timeout,omitempty" json:"decompress_archive_file_timeout,omitempty"`
 	DefaultArtifactsExpireIn                              *string                                 `url:"default_artifacts_expire_in,omitempty" json:"default_artifacts_expire_in,omitempty"`
 	DefaultBranchName                                     *string                                 `url:"default_branch_name,omitempty" json:"default_branch_name,omitempty"`
-	DefaultBranchProtection                               *int                                    `url:"default_branch_protection,omitempty" json:"default_branch_protection,omitempty"`
 	DefaultBranchProtectionDefaults                       *DefaultBranchProtectionDefaultsOptions `url:"default_branch_protection_defaults,omitempty" json:"default_branch_protection_defaults,omitempty"`
 	DefaultCiConfigPath                                   *string                                 `url:"default_ci_config_path,omitempty" json:"default_ci_config_path,omitempty"`
 	DefaultGroupVisibility                                *VisibilityValue                        `url:"default_group_visibility,omitempty" json:"default_group_visibility,omitempty"`
@@ -703,11 +706,7 @@ type UpdateSettingsOptions struct {
 	HelpText                                              *string                                 `url:"help_text,omitempty" json:"help_text,omitempty"`
 	HideThirdPartyOffers                                  *bool                                   `url:"hide_third_party_offers,omitempty" json:"hide_third_party_offers,omitempty"`
 	HomePageURL                                           *string                                 `url:"home_page_url,omitempty" json:"home_page_url,omitempty"`
-	HousekeepingBitmapsEnabled                            *bool                                   `url:"housekeeping_bitmaps_enabled,omitempty" json:"housekeeping_bitmaps_enabled,omitempty"`
 	HousekeepingEnabled                                   *bool                                   `url:"housekeeping_enabled,omitempty" json:"housekeeping_enabled,omitempty"`
-	HousekeepingFullRepackPeriod                          *int                                    `url:"housekeeping_full_repack_period,omitempty" json:"housekeeping_full_repack_period,omitempty"`
-	HousekeepingGcPeriod                                  *int                                    `url:"housekeeping_gc_period,omitempty" json:"housekeeping_gc_period,omitempty"`
-	HousekeepingIncrementalRepackPeriod                   *int                                    `url:"housekeeping_incremental_repack_period,omitempty" json:"housekeeping_incremental_repack_period,omitempty"`
 	HousekeepingOptimizeRepositoryPeriod                  *int                                    `url:"housekeeping_optimize_repository_period,omitempty" json:"housekeeping_optimize_repository_period,omitempty"`
 	ImportSources                                         *[]string                               `url:"import_sources,omitempty" json:"import_sources,omitempty"`
 	InactiveProjectsDeleteAfterMonths                     *int                                    `url:"inactive_projects_delete_after_months,omitempty" json:"inactive_projects_delete_after_months,omitempty"`
@@ -770,9 +769,7 @@ type UpdateSettingsOptions struct {
 	PasswordSymbolRequired                                *bool                                   `url:"password_symbol_required,omitempty" json:"password_symbol_required,omitempty"`
 	PasswordUppercaseRequired                             *bool                                   `url:"password_uppercase_required,omitempty" json:"password_uppercase_required,omitempty"`
 	PasswordLowercaseRequired                             *bool                                   `url:"password_lowercase_required,omitempty" json:"password_lowercase_required,omitempty"`
-	PerformanceBarAllowedGroupID                          *int                                    `url:"performance_bar_allowed_group_id,omitempty" json:"performance_bar_allowed_group_id,omitempty"`
 	PerformanceBarAllowedGroupPath                        *string                                 `url:"performance_bar_allowed_group_path,omitempty" json:"performance_bar_allowed_group_path,omitempty"`
-	PerformanceBarEnabled                                 *bool                                   `url:"performance_bar_enabled,omitempty" json:"performance_bar_enabled,omitempty"`
 	PersonalAccessTokenPrefix                             *string                                 `url:"personal_access_token_prefix,omitempty" json:"personal_access_token_prefix,omitempty"`
 	PlantumlEnabled                                       *bool                                   `url:"plantuml_enabled,omitempty" json:"plantuml_enabled,omitempty"`
 	PlantumlURL                                           *string                                 `url:"plantuml_url,omitempty" json:"plantuml_url,omitempty"`
@@ -890,7 +887,6 @@ type UpdateSettingsOptions struct {
 	ThrottleUnauthenticatedDeprecatedAPIEnabled           *bool                                   `url:"throttle_unauthenticated_deprecated_api_enabled,omitempty" json:"throttle_unauthenticated_deprecated_api_enabled,omitempty"`
 	ThrottleUnauthenticatedDeprecatedAPIPeriodInSeconds   *int                                    `url:"throttle_unauthenticated_deprecated_api_period_in_seconds,omitempty" json:"throttle_unauthenticated_deprecated_api_period_in_seconds,omitempty"`
 	ThrottleUnauthenticatedDeprecatedAPIRequestsPerPeriod *int                                    `url:"throttle_unauthenticated_deprecated_api_requests_per_period,omitempty" json:"throttle_unauthenticated_deprecated_api_requests_per_period,omitempty"`
-	ThrottleUnauthenticatedEnabled                        *bool                                   `url:"throttle_unauthenticated_enabled,omitempty" json:"throttle_unauthenticated_enabled,omitempty"`
 	ThrottleUnauthenticatedFilesAPIEnabled                *bool                                   `url:"throttle_unauthenticated_files_api_enabled,omitempty" json:"throttle_unauthenticated_files_api_enabled,omitempty"`
 	ThrottleUnauthenticatedFilesAPIPeriodInSeconds        *int                                    `url:"throttle_unauthenticated_files_api_period_in_seconds,omitempty" json:"throttle_unauthenticated_files_api_period_in_seconds,omitempty"`
 	ThrottleUnauthenticatedFilesAPIRequestsPerPeriod      *int                                    `url:"throttle_unauthenticated_files_api_requests_per_period,omitempty" json:"throttle_unauthenticated_files_api_requests_per_period,omitempty"`
@@ -900,8 +896,6 @@ type UpdateSettingsOptions struct {
 	ThrottleUnauthenticatedPackagesAPIEnabled             *bool                                   `url:"throttle_unauthenticated_packages_api_enabled,omitempty" json:"throttle_unauthenticated_packages_api_enabled,omitempty"`
 	ThrottleUnauthenticatedPackagesAPIPeriodInSeconds     *int                                    `url:"throttle_unauthenticated_packages_api_period_in_seconds,omitempty" json:"throttle_unauthenticated_packages_api_period_in_seconds,omitempty"`
 	ThrottleUnauthenticatedPackagesAPIRequestsPerPeriod   *int                                    `url:"throttle_unauthenticated_packages_api_requests_per_period,omitempty" json:"throttle_unauthenticated_packages_api_requests_per_period,omitempty"`
-	ThrottleUnauthenticatedPeriodInSeconds                *int                                    `url:"throttle_unauthenticated_period_in_seconds,omitempty" json:"throttle_unauthenticated_period_in_seconds,omitempty"`
-	ThrottleUnauthenticatedRequestsPerPeriod              *int                                    `url:"throttle_unauthenticated_requests_per_period,omitempty" json:"throttle_unauthenticated_requests_per_period,omitempty"`
 	ThrottleUnauthenticatedWebEnabled                     *bool                                   `url:"throttle_unauthenticated_web_enabled,omitempty" json:"throttle_unauthenticated_web_enabled,omitempty"`
 	ThrottleUnauthenticatedWebPeriodInSeconds             *int                                    `url:"throttle_unauthenticated_web_period_in_seconds,omitempty" json:"throttle_unauthenticated_web_period_in_seconds,omitempty"`
 	ThrottleUnauthenticatedWebRequestsPerPeriod           *int                                    `url:"throttle_unauthenticated_web_requests_per_period,omitempty" json:"throttle_unauthenticated_web_requests_per_period,omitempty"`
@@ -930,12 +924,39 @@ type UpdateSettingsOptions struct {
 	WebIDEClientsidePreviewEnabled                        *bool                                   `url:"web_ide_clientside_preview_enabled,omitempty" json:"web_ide_clientside_preview_enabled,omitempty"`
 	WhatsNewVariant                                       *string                                 `url:"whats_new_variant,omitempty" json:"whats_new_variant,omitempty"`
 	WikiPageMaxContentBytes                               *int                                    `url:"wiki_page_max_content_bytes,omitempty" json:"wiki_page_max_content_bytes,omitempty"`
+
+	// Deprecated: Use AbuseNotificationEmail instead.
+	AdminNotificationEmail *string `url:"admin_notification_email,omitempty" json:"admin_notification_email,omitempty"`
+	// Deprecated: Use AllowLocalRequestsFromWebHooksAndServices instead.
+	AllowLocalRequestsFromHooksAndServices *bool `url:"allow_local_requests_from_hooks_and_services,omitempty" json:"allow_local_requests_from_hooks_and_services,omitempty"`
+	// Deprecated: Use AssetProxyAllowlist instead.
+	AssetProxyWhitelist *[]string `url:"asset_proxy_whitelist,omitempty" json:"asset_proxy_whitelist,omitempty"`
+	// Deprecated: Use DefaultBranchProtectionDefaults instead.
+	DefaultBranchProtection *int `url:"default_branch_protection,omitempty" json:"default_branch_protection,omitempty"`
+	// Deprecated: Cannot be set through the API, always true
+	HousekeepingBitmapsEnabled *bool `url:"housekeeping_bitmaps_enabled,omitempty" json:"housekeeping_bitmaps_enabled,omitempty"`
+	// Deprecated: use HousekeepingOptimizeRepositoryPeriod instead
+	HousekeepingFullRepackPeriod *int `url:"housekeeping_full_repack_period,omitempty" json:"housekeeping_full_repack_period,omitempty"`
+	// Deprecated: use HousekeepingOptimizeRepositoryPeriod instead
+	HousekeepingGcPeriod *int `url:"housekeeping_gc_period,omitempty" json:"housekeeping_gc_period,omitempty"`
+	// Deprecated: use HousekeepingOptimizeRepositoryPeriod instead
+	HousekeepingIncrementalRepackPeriod *int `url:"housekeeping_incremental_repack_period,omitempty" json:"housekeeping_incremental_repack_period,omitempty"`
+	// Deprecated: use PerformanceBarAllowedGroupPath instead
+	PerformanceBarAllowedGroupID *int `url:"performance_bar_allowed_group_id,omitempty" json:"performance_bar_allowed_group_id,omitempty"`
+	// Deprecated: use PerformanceBarAllowedGroupPath: nil instead
+	PerformanceBarEnabled *bool `url:"performance_bar_enabled,omitempty" json:"performance_bar_enabled,omitempty"`
+	// Deprecated: Use ThrottleUnauthenticatedWebEnabled or ThrottleUnauthenticatedAPIEnabled instead. (Deprecated in GitLab 14.3)
+	ThrottleUnauthenticatedEnabled *bool `url:"throttle_unauthenticated_enabled,omitempty" json:"throttle_unauthenticated_enabled,omitempty"`
+	// Deprecated: Use ThrottleUnauthenticatedWebPeriodInSeconds or ThrottleUnauthenticatedAPIPeriodInSeconds instead. (Deprecated in GitLab 14.3)
+	ThrottleUnauthenticatedPeriodInSeconds *int `url:"throttle_unauthenticated_period_in_seconds,omitempty" json:"throttle_unauthenticated_period_in_seconds,omitempty"`
+	// Deprecated: Use ThrottleUnauthenticatedWebRequestsPerPeriod or ThrottleUnauthenticatedAPIRequestsPerPeriod instead. (Deprecated in GitLab 14.3)
+	ThrottleUnauthenticatedRequestsPerPeriod *int `url:"throttle_unauthenticated_requests_per_period,omitempty" json:"throttle_unauthenticated_requests_per_period,omitempty"`
 }
 
 // BranchProtectionDefaultsOptions represents default Git protected branch permissions options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/groups.html#options-for-default_branch_protection_defaults
+// https://docs.gitlab.com/api/groups/#options-for-default_branch_protection_defaults
 type BranchProtectionDefaultsOptions struct {
 	AllowedToPush           *[]int `url:"allowed_to_push,omitempty" json:"allowed_to_push,omitempty"`
 	AllowForcePush          *bool  `url:"allow_force_push,omitempty" json:"allow_force_push,omitempty"`
@@ -946,7 +967,7 @@ type BranchProtectionDefaultsOptions struct {
 // UpdateSettings updates the application settings.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/settings.html#change-application-settings
+// https://docs.gitlab.com/api/settings/#update-application-settings
 func (s *SettingsService) UpdateSettings(opt *UpdateSettingsOptions, options ...RequestOptionFunc) (*Settings, *Response, error) {
 	req, err := s.client.NewRequest(http.MethodPut, "application/settings", opt, options)
 	if err != nil {

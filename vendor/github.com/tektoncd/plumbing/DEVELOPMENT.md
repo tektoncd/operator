@@ -8,12 +8,12 @@ Tekton in a local cluster.
 
 There are several options available, `minikube`, `kind` and `k3c`
 are good options to run a kubernetes cluster on your laptop.
-If you have go 1.14+ and docker installed, you can use the
+If you have go 1.16+ and docker installed, you can use the
 automated script for `kind`:
 
 ```bash
 # Install Kind if not installed yet
-GO111MODULE="on" go get sigs.k8s.io/kind@v0.9.0
+go install sigs.k8s.io/kind@v0.27.0
 
 # Delete any pre-existing Tekton cluster
 kind delete cluster --name tekton
@@ -25,7 +25,7 @@ kind delete cluster --name tekton
 If the deployment was successful, you should see a message:
 
 ```bash
-Tekton Dashboard available at http://localhost:9097”
+Tekton Dashboard available at http://localhost:9097
 ```
 
 ## Tekton Based CI
@@ -35,13 +35,16 @@ a service like [smee](https://smee.io) to forward GitHub webhooks
 to the service in your local cluster.
 
 In the following steps we use `smee`. You will need `npm` to install
-the client. You will also need `tkn` installed to run the webhook
-creation task.
+the client. You will need `kustomize` to build the resources and `tkn` installed to run the webhook creation task.
 
 ```bash
 # Install the smee client
 npm install -g smee-client
 ```
+
+Follow the `kustomize` installation guide [here](https://kubectl.docs.kubernetes.io/installation/kustomize/).
+
+Follow the `tkn` installation guide [here](https://github.com/tektoncd/cli?tab=readme-ov-file#installing-tkn).
 
 You will use webhooks triggered by your personal fork of the
 `tektoncd/plumbing` repo and forward them the cluster running on
@@ -70,4 +73,4 @@ If you need those for development, you'll need to ensure that:
 - Create the [secret](https://github.com/tektoncd/plumbing/blob/534861ab15eb5787cac51512eaae6ca2101a7573/tekton/resources/ci/github-template.yaml#L121-L123)
   needed by the GitHub update jobs to update status checks.
 
-See also _[CONTRIBUTING.md](CONTRIBUTING.md).
+See also [CONTRIBUTING.md](CONTRIBUTING.md).
