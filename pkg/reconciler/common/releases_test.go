@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	VERSION = "0.15.2"
+	VERSION        = "0.15.2"
+	PRUNER_VERSION = "0.1.0"
 )
 
 func TestGetLatestRelease(t *testing.T) {
@@ -34,6 +35,9 @@ func TestGetLatestRelease(t *testing.T) {
 
 	version := latestRelease(&v1alpha1.TektonTrigger{})
 	util.AssertEqual(t, version, VERSION)
+
+	prunerVersion := latestRelease(&v1alpha1.TektonPruner{})
+	util.AssertEqual(t, prunerVersion, PRUNER_VERSION)
 }
 
 func TestListReleases(t *testing.T) {
@@ -44,6 +48,12 @@ func TestListReleases(t *testing.T) {
 	version, err := allReleases(&v1alpha1.TektonTrigger{})
 	util.AssertEqual(t, err, nil)
 	util.AssertDeepEqual(t, version, expectedVersionList)
+
+	// Pruner Versions
+	expectedPrunerVersions := []string{"0.1.0"}
+	version, err = allReleases(&v1alpha1.TektonPruner{})
+	util.AssertEqual(t, err, nil)
+	util.AssertDeepEqual(t, version, expectedPrunerVersions)
 }
 
 func TestAppendManifest(t *testing.T) {
