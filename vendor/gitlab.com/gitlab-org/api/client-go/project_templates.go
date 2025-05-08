@@ -30,7 +30,7 @@ type (
 	// ProjectTemplatesService handles communication with the project templates
 	// related methods of the GitLab API.
 	//
-	// GitLab API docs: https://docs.gitlab.com/ee/api/project_templates.html
+	// GitLab API docs: https://docs.gitlab.com/api/project_templates/
 	ProjectTemplatesService struct {
 		client *Client
 	}
@@ -40,7 +40,7 @@ var _ ProjectTemplatesServiceInterface = (*ProjectTemplatesService)(nil)
 
 // ProjectTemplate represents a GitLab ProjectTemplate.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/project_templates.html
+// GitLab API docs: https://docs.gitlab.com/api/project_templates/
 type ProjectTemplate struct {
 	Key         string   `json:"key"`
 	Name        string   `json:"name"`
@@ -62,7 +62,7 @@ func (s ProjectTemplate) String() string {
 // ListProjectTemplatesOptions represents the available ListSnippets() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_templates.html#get-all-templates-of-a-particular-type
+// https://docs.gitlab.com/api/project_templates/#get-all-templates-of-a-particular-type
 type ListProjectTemplatesOptions struct {
 	ListOptions
 	ID   *int    `url:"id,omitempty" json:"id,omitempty"`
@@ -71,7 +71,7 @@ type ListProjectTemplatesOptions struct {
 
 // ListTemplates gets a list of project templates.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/project_templates.html#get-all-templates-of-a-particular-type
+// GitLab API docs: https://docs.gitlab.com/api/project_templates/#get-all-templates-of-a-particular-type
 func (s *ProjectTemplatesService) ListTemplates(pid interface{}, templateType string, opt *ListProjectTemplatesOptions, options ...RequestOptionFunc) ([]*ProjectTemplate, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -96,7 +96,7 @@ func (s *ProjectTemplatesService) ListTemplates(pid interface{}, templateType st
 // GetProjectTemplate gets a single project template.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_templates.html#get-one-template-of-a-particular-type
+// https://docs.gitlab.com/api/project_templates/#get-one-template-of-a-particular-type
 func (s *ProjectTemplatesService) GetProjectTemplate(pid interface{}, templateType string, templateName string, options ...RequestOptionFunc) (*ProjectTemplate, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {

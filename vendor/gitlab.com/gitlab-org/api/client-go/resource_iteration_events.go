@@ -31,7 +31,7 @@ type (
 	// ResourceIterationEventsService handles communication with the event related
 	// methods of the GitLab API.
 	//
-	// GitLab API docs: https://docs.gitlab.com/ee/api/resource_iteration_events.html
+	// GitLab API docs: https://docs.gitlab.com/api/resource_iteration_events/
 	ResourceIterationEventsService struct {
 		client *Client
 	}
@@ -41,7 +41,7 @@ var _ ResourceIterationEventsServiceInterface = (*ResourceIterationEventsService
 
 // IterationEvent represents a resource iteration event.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/resource_iteration_events.html
+// GitLab API docs: https://docs.gitlab.com/api/resource_iteration_events/
 type IterationEvent struct {
 	ID           int        `json:"id"`
 	User         *BasicUser `json:"user"`
@@ -54,7 +54,7 @@ type IterationEvent struct {
 
 // Iteration represents a project issue iteration.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/resource_iteration_events.html
+// GitLab API docs: https://docs.gitlab.com/api/resource_iteration_events/
 type Iteration struct {
 	ID          int        `json:"id"`
 	IID         int        `json:"iid"`
@@ -74,7 +74,7 @@ type Iteration struct {
 // events list methods.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/resource_iteration_events.html#list-project-issue-iteration-events
+// https://docs.gitlab.com/api/resource_iteration_events/#list-project-issue-iteration-events
 type ListIterationEventsOptions struct {
 	ListOptions
 }
@@ -83,7 +83,7 @@ type ListIterationEventsOptions struct {
 // specified project and issue.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/resource_iteration_events.html#list-project-issue-iteration-events
+// https://docs.gitlab.com/api/resource_iteration_events/#list-project-issue-iteration-events
 func (s *ResourceIterationEventsService) ListIssueIterationEvents(pid interface{}, issue int, opt *ListIterationEventsOptions, options ...RequestOptionFunc) ([]*IterationEvent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -108,7 +108,7 @@ func (s *ResourceIterationEventsService) ListIssueIterationEvents(pid interface{
 // GetIssueIterationEvent gets a single issue iteration event.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/resource_iteration_events.html#get-single-issue-iteration-event
+// https://docs.gitlab.com/api/resource_iteration_events/#get-single-issue-iteration-event
 func (s *ResourceIterationEventsService) GetIssueIterationEvent(pid interface{}, issue int, event int, options ...RequestOptionFunc) (*IterationEvent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {

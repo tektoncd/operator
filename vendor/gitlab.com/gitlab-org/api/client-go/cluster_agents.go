@@ -37,7 +37,7 @@ type (
 	// ClusterAgentsService handles communication with the cluster agents related
 	// methods of the GitLab API.
 	//
-	// GitLab API docs: https://docs.gitlab.com/ee/api/cluster_agents.html
+	// GitLab API docs: https://docs.gitlab.com/api/cluster_agents/
 	ClusterAgentsService struct {
 		client *Client
 	}
@@ -47,7 +47,7 @@ var _ ClusterAgentsServiceInterface = (*ClusterAgentsService)(nil)
 
 // Agent represents a GitLab agent for Kubernetes.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/cluster_agents.html
+// GitLab API docs: https://docs.gitlab.com/api/cluster_agents/
 type Agent struct {
 	ID              int           `json:"id"`
 	Name            string        `json:"name"`
@@ -73,7 +73,7 @@ func (a Agent) String() string {
 // AgentToken represents a GitLab agent token.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#list-tokens-for-an-agent
+// https://docs.gitlab.com/api/cluster_agents/#list-tokens-for-an-agent
 type AgentToken struct {
 	ID              int        `json:"id"`
 	Name            string     `json:"name"`
@@ -93,13 +93,13 @@ func (a AgentToken) String() string {
 // ListAgentsOptions represents the available ListAgents() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#list-the-agents-for-a-project
+// https://docs.gitlab.com/api/cluster_agents/#list-the-agents-for-a-project
 type ListAgentsOptions ListOptions
 
 // ListAgents returns a list of agents registered for the project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#list-the-agents-for-a-project
+// https://docs.gitlab.com/api/cluster_agents/#list-the-agents-for-a-project
 func (s *ClusterAgentsService) ListAgents(pid interface{}, opt *ListAgentsOptions, options ...RequestOptionFunc) ([]*Agent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -124,7 +124,7 @@ func (s *ClusterAgentsService) ListAgents(pid interface{}, opt *ListAgentsOption
 // GetAgent gets a single agent details.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#get-details-about-an-agent
+// https://docs.gitlab.com/api/cluster_agents/#get-details-about-an-agent
 func (s *ClusterAgentsService) GetAgent(pid interface{}, id int, options ...RequestOptionFunc) (*Agent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -150,7 +150,7 @@ func (s *ClusterAgentsService) GetAgent(pid interface{}, id int, options ...Requ
 // options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#register-an-agent-with-a-project
+// https://docs.gitlab.com/api/cluster_agents/#register-an-agent-with-a-project
 type RegisterAgentOptions struct {
 	Name *string `url:"name,omitempty" json:"name,omitempty"`
 }
@@ -158,7 +158,7 @@ type RegisterAgentOptions struct {
 // RegisterAgent registers an agent to the project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#register-an-agent-with-a-project
+// https://docs.gitlab.com/api/cluster_agents/#register-an-agent-with-a-project
 func (s *ClusterAgentsService) RegisterAgent(pid interface{}, opt *RegisterAgentOptions, options ...RequestOptionFunc) (*Agent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -183,7 +183,7 @@ func (s *ClusterAgentsService) RegisterAgent(pid interface{}, opt *RegisterAgent
 // DeleteAgent deletes an existing agent registration.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#delete-a-registered-agent
+// https://docs.gitlab.com/api/cluster_agents/#delete-a-registered-agent
 func (s *ClusterAgentsService) DeleteAgent(pid interface{}, id int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -202,13 +202,13 @@ func (s *ClusterAgentsService) DeleteAgent(pid interface{}, id int, options ...R
 // ListAgentTokensOptions represents the available ListAgentTokens() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#list-tokens-for-an-agent
+// https://docs.gitlab.com/api/cluster_agents/#list-tokens-for-an-agent
 type ListAgentTokensOptions ListOptions
 
 // ListAgentTokens returns a list of tokens for an agent.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#list-tokens-for-an-agent
+// https://docs.gitlab.com/api/cluster_agents/#list-tokens-for-an-agent
 func (s *ClusterAgentsService) ListAgentTokens(pid interface{}, aid int, opt *ListAgentTokensOptions, options ...RequestOptionFunc) ([]*AgentToken, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -233,7 +233,7 @@ func (s *ClusterAgentsService) ListAgentTokens(pid interface{}, aid int, opt *Li
 // GetAgentToken gets a single agent token.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#get-a-single-agent-token
+// https://docs.gitlab.com/api/cluster_agents/#get-a-single-agent-token
 func (s *ClusterAgentsService) GetAgentToken(pid interface{}, aid int, id int, options ...RequestOptionFunc) (*AgentToken, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -258,7 +258,7 @@ func (s *ClusterAgentsService) GetAgentToken(pid interface{}, aid int, id int, o
 // CreateAgentTokenOptions represents the available CreateAgentToken() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#create-an-agent-token
+// https://docs.gitlab.com/api/cluster_agents/#create-an-agent-token
 type CreateAgentTokenOptions struct {
 	Name        *string `url:"name,omitempty" json:"name,omitempty"`
 	Description *string `url:"description,omitempty" json:"description,omitempty"`
@@ -267,7 +267,7 @@ type CreateAgentTokenOptions struct {
 // CreateAgentToken creates a new token for an agent.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#create-an-agent-token
+// https://docs.gitlab.com/api/cluster_agents/#create-an-agent-token
 func (s *ClusterAgentsService) CreateAgentToken(pid interface{}, aid int, opt *CreateAgentTokenOptions, options ...RequestOptionFunc) (*AgentToken, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -292,7 +292,7 @@ func (s *ClusterAgentsService) CreateAgentToken(pid interface{}, aid int, opt *C
 // RevokeAgentToken revokes an agent token.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/cluster_agents.html#revoke-an-agent-token
+// https://docs.gitlab.com/api/cluster_agents/#revoke-an-agent-token
 func (s *ClusterAgentsService) RevokeAgentToken(pid interface{}, aid int, id int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {

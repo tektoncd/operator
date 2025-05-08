@@ -33,7 +33,7 @@ type (
 	// of the GitLab API.
 	//
 	// GitLab API docs:
-	// https://docs.gitlab.com/ee/api/protected_tags.html
+	// https://docs.gitlab.com/api/protected_tags/
 	ProtectedTagsService struct {
 		client *Client
 	}
@@ -44,7 +44,7 @@ var _ ProtectedTagsServiceInterface = (*ProtectedTagsService)(nil)
 // ProtectedTag represents a protected tag.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_tags.html
+// https://docs.gitlab.com/api/protected_tags/
 type ProtectedTag struct {
 	Name               string                  `json:"name"`
 	CreateAccessLevels []*TagAccessDescription `json:"create_access_levels"`
@@ -53,7 +53,7 @@ type ProtectedTag struct {
 // TagAccessDescription reperesents the access decription for a protected tag.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_tags.html
+// https://docs.gitlab.com/api/protected_tags/
 type TagAccessDescription struct {
 	ID                     int              `json:"id"`
 	UserID                 int              `json:"user_id"`
@@ -66,13 +66,13 @@ type TagAccessDescription struct {
 // options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_tags.html#list-protected-tags
+// https://docs.gitlab.com/api/protected_tags/#list-protected-tags
 type ListProtectedTagsOptions ListOptions
 
 // ListProtectedTags returns a list of protected tags from a project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_tags.html#list-protected-tags
+// https://docs.gitlab.com/api/protected_tags/#list-protected-tags
 func (s *ProtectedTagsService) ListProtectedTags(pid interface{}, opt *ListProtectedTagsOptions, options ...RequestOptionFunc) ([]*ProtectedTag, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -97,7 +97,7 @@ func (s *ProtectedTagsService) ListProtectedTags(pid interface{}, opt *ListProte
 // GetProtectedTag returns a single protected tag or wildcard protected tag.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_tags.html#get-a-single-protected-tag-or-wildcard-protected-tag
+// https://docs.gitlab.com/api/protected_tags/#get-a-single-protected-tag-or-wildcard-protected-tag
 func (s *ProtectedTagsService) GetProtectedTag(pid interface{}, tag string, options ...RequestOptionFunc) (*ProtectedTag, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -123,7 +123,7 @@ func (s *ProtectedTagsService) GetProtectedTag(pid interface{}, tag string, opti
 // options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_tags.html#protect-repository-tags
+// https://docs.gitlab.com/api/protected_tags/#protect-repository-tags
 type ProtectRepositoryTagsOptions struct {
 	Name              *string                   `url:"name,omitempty" json:"name,omitempty"`
 	CreateAccessLevel *AccessLevelValue         `url:"create_access_level,omitempty" json:"create_access_level,omitempty"`
@@ -133,7 +133,7 @@ type ProtectRepositoryTagsOptions struct {
 // TagsPermissionOptions represents a protected tag permission option.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_tags.html#protect-repository-tags
+// https://docs.gitlab.com/api/protected_tags/#protect-repository-tags
 type TagsPermissionOptions struct {
 	UserID      *int              `url:"user_id,omitempty" json:"user_id,omitempty"`
 	GroupID     *int              `url:"group_id,omitempty" json:"group_id,omitempty"`
@@ -144,7 +144,7 @@ type TagsPermissionOptions struct {
 // repository tags using a wildcard protected tag.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_tags.html#protect-repository-tags
+// https://docs.gitlab.com/api/protected_tags/#protect-repository-tags
 func (s *ProtectedTagsService) ProtectRepositoryTags(pid interface{}, opt *ProtectRepositoryTagsOptions, options ...RequestOptionFunc) (*ProtectedTag, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -170,7 +170,7 @@ func (s *ProtectedTagsService) ProtectRepositoryTags(pid interface{}, opt *Prote
 // protected tag.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_tags.html#unprotect-repository-tags
+// https://docs.gitlab.com/api/protected_tags/#unprotect-repository-tags
 func (s *ProtectedTagsService) UnprotectRepositoryTags(pid interface{}, tag string, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {

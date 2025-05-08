@@ -36,7 +36,7 @@ type (
 	// methods of the GitLab API.
 	//
 	// GitLab docs:
-	// https://docs.gitlab.com/ee/user/packages/generic_packages/index.html
+	// https://docs.gitlab.com/user/packages/generic_packages/
 	GenericPackagesService struct {
 		client *Client
 	}
@@ -47,7 +47,7 @@ var _ GenericPackagesServiceInterface = (*GenericPackagesService)(nil)
 // GenericPackagesFile represents a GitLab generic package file.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/user/packages/generic_packages/index.html#publish-a-package-file
+// https://docs.gitlab.com/user/packages/generic_packages/#publish-a-single-file
 type GenericPackagesFile struct {
 	ID        int        `json:"id"`
 	PackageID int        `json:"package_id"`
@@ -93,7 +93,7 @@ func (s *GenericPackagesService) FormatPackageURL(pid interface{}, packageName, 
 // options.
 //
 // GitLab docs:
-// https://docs.gitlab.com/ee/user/packages/generic_packages/index.html#publish-a-package-file
+// https://docs.gitlab.com/user/packages/generic_packages/#publish-a-single-file
 type PublishPackageFileOptions struct {
 	Status *GenericPackageStatusValue `url:"status,omitempty" json:"status,omitempty"`
 	Select *GenericPackageSelectValue `url:"select,omitempty" json:"select,omitempty"`
@@ -102,7 +102,7 @@ type PublishPackageFileOptions struct {
 // PublishPackageFile uploads a file to a project's package registry.
 //
 // GitLab docs:
-// https://docs.gitlab.com/ee/user/packages/generic_packages/index.html#publish-a-package-file
+// https://docs.gitlab.com/user/packages/generic_packages/#publish-a-single-file
 func (s *GenericPackagesService) PublishPackageFile(pid interface{}, packageName, packageVersion, fileName string, content io.Reader, opt *PublishPackageFileOptions, options ...RequestOptionFunc) (*GenericPackagesFile, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -140,7 +140,7 @@ func (s *GenericPackagesService) PublishPackageFile(pid interface{}, packageName
 // DownloadPackageFile allows you to download the package file.
 //
 // GitLab docs:
-// https://docs.gitlab.com/ee/user/packages/generic_packages/index.html#download-package-file
+// https://docs.gitlab.com/user/packages/generic_packages/#download-a-single-file
 func (s *GenericPackagesService) DownloadPackageFile(pid interface{}, packageName, packageVersion, fileName string, options ...RequestOptionFunc) ([]byte, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
