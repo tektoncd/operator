@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func ValidateAndAssignValues(logger *zap.SugaredLogger, configData map[string]string, configStruct interface{}, customValidations map[string]func(string) error, logUpdates bool) error {
+func ValidateAndAssignValues(logger *zap.SugaredLogger, configData map[string]string, configStruct any, customValidations map[string]func(string) error, logUpdates bool) error {
 	structValue := reflect.ValueOf(configStruct).Elem()
 	structType := reflect.TypeOf(configStruct).Elem()
 

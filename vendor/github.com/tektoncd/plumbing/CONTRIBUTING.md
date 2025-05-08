@@ -5,7 +5,7 @@ Thank you for your interest in contributing!
 **All contributors must comply with
 [the code of conduct](./code-of-conduct.md).**
 
-* To become an [OWNER](OWNER), see the requirements at [tektoncd/community](https://github.com/tektoncd/community/blob/main/process.md#requirements)
+* To become an [OWNER](OWNERS), see the requirements at [tektoncd/community](https://github.com/tektoncd/community/blob/main/org/README.md#requirements)
 * This repo holds configuration for infrastructure that is used by projects in
   https://github.com/tektoncd.
 * [The README](README.md) describes components of this infrastructure and how to interact
@@ -20,5 +20,5 @@ find info on:
   [commit messages](https://github.com/tektoncd/community/blob/main/standards.md#commit-messages)
   and [code](https://github.com/tektoncd/community/blob/main/standards.md#coding-standards)
 * [Processes](https://github.com/tektoncd/community/blob/main/process.md) like
-  [reviews](https://github.com/tektoncd/community/blob/main/process.md#reviews)
-  and [becoming an OWNER](https://github.com/tektoncd/community/blob/main/process.md#owners)
+  [reviews](https://github.com/tektoncd/community/blob/main/process/README.md)
+  and [becoming an OWNER](https://github.com/tektoncd/community/blob/main/process/contributor-ladder.md)

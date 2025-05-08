@@ -358,6 +358,12 @@ function is_protected_gcr() {
   [[ -n $1 && "$1" =~ "^gcr.io/tekton-(releases|nightly)/?$" ]]
 }
 
+# Return whether the given parameter is the tekton release/nightly GCF.
+# Parameters: $1 - full GHCR name, e.g. ghcr.io/tektoncd/foo-bar
+function is_protected_ghcr() {
+  [[ -n $1 && "$1" =~ "^ghcr.io/tektoncd/?$" ]]
+}
+
 # Remove symlinks in a path that are broken or lead outside the repo.
 # Parameters: $1 - path name, e.g. vendor
 function remove_broken_symlinks() {

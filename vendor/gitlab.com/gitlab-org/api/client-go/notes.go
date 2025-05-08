@@ -92,8 +92,10 @@ type Note struct {
 		AvatarURL string `json:"avatar_url"`
 		WebURL    string `json:"web_url"`
 	} `json:"resolved_by"`
+	Internal bool `json:"internal"`
+
+	// Deprecated: use Internal instead
 	Confidential bool `json:"confidential"`
-	Internal     bool `json:"internal"`
 }
 
 // NoteAuthor represents the author of a note.

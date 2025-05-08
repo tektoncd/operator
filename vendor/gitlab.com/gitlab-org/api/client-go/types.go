@@ -36,12 +36,12 @@ func Ptr[T any](v T) *T {
 // AccessControlValue represents an access control value within GitLab,
 // used for managing access to certain project features.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html
+// GitLab API docs: https://docs.gitlab.com/api/projects/
 type AccessControlValue string
 
 // List of available access control values.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html
+// GitLab API docs: https://docs.gitlab.com/api/projects/
 const (
 	DisabledAccessControl AccessControlValue = "disabled"
 	EnabledAccessControl  AccessControlValue = "enabled"
@@ -260,7 +260,7 @@ func BuildState(v BuildStateValue) *BuildStateValue {
 // CommentEventAction identifies if a comment has been newly created or updated.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/user/project/integrations/webhook_events.html#comment-events
+// https://docs.gitlab.com/user/project/integrations/webhook_events/#comment-events
 type CommentEventAction string
 
 const (
@@ -271,7 +271,7 @@ const (
 // ContainerRegistryStatus represents the status of a Container Registry.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/container_registry.html#list-registry-repositories
+// https://docs.gitlab.com/api/container_registry/#list-registry-repositories
 type ContainerRegistryStatus string
 
 // ContainerRegistryStatus represents all valid statuses of a Container Registry.
@@ -332,12 +332,12 @@ func DeploymentStatus(v DeploymentStatusValue) *DeploymentStatusValue {
 
 // DORAMetricType represents all valid DORA metrics types.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/dora/metrics.html
+// GitLab API docs: https://docs.gitlab.com/api/dora/metrics/
 type DORAMetricType string
 
 // List of available DORA metric type names.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/dora/metrics.html
+// GitLab API docs: https://docs.gitlab.com/api/dora/metrics/
 const (
 	DORAMetricDeploymentFrequency  DORAMetricType = "deployment_frequency"
 	DORAMetricLeadTimeForChanges   DORAMetricType = "lead_time_for_changes"
@@ -348,12 +348,12 @@ const (
 // DORAMetricInterval represents the time period over which the
 // metrics are aggregated.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/dora/metrics.html
+// GitLab API docs: https://docs.gitlab.com/api/dora/metrics/
 type DORAMetricInterval string
 
 // List of available DORA metric interval types.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/dora/metrics.html
+// GitLab API docs: https://docs.gitlab.com/api/dora/metrics/
 const (
 	DORAMetricIntervalDaily   DORAMetricInterval = "daily"
 	DORAMetricIntervalMonthly DORAMetricInterval = "monthly"
@@ -366,7 +366,7 @@ type EventTypeValue string
 // List of available action type.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/user/profile/contributions_calendar.html#user-contribution-events
+// https://docs.gitlab.com/user/profile/contributions_calendar/#user-contribution-events
 const (
 	CreatedEventType   EventTypeValue = "created"
 	UpdatedEventType   EventTypeValue = "updated"
@@ -386,7 +386,7 @@ type EventTargetTypeValue string
 
 // List of available action type.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/events.html#target-types
+// GitLab API docs: https://docs.gitlab.com/api/events/#target-types
 const (
 	IssueEventTargetType        EventTargetTypeValue = "issue"
 	MilestoneEventTargetType    EventTargetTypeValue = "milestone"
@@ -400,7 +400,7 @@ const (
 // FileActionValue represents the available actions that can be performed on a file.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/commits.html#create-a-commit-with-multiple-files-and-actions
+// https://docs.gitlab.com/api/commits/#create-a-commit-with-multiple-files-and-actions
 type FileActionValue string
 
 // The available file actions.
@@ -566,7 +566,7 @@ type LinkTypeValue string
 // List of available release link types.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/releases/links.html#create-a-release-link
+// https://docs.gitlab.com/api/releases/links/#create-a-release-link
 const (
 	ImageLinkType   LinkTypeValue = "image"
 	OtherLinkType   LinkTypeValue = "other"
@@ -583,11 +583,11 @@ func LinkType(v LinkTypeValue) *LinkTypeValue {
 }
 
 // LicenseApprovalStatusValue describe the approval statuses of a license.
-//
-// GitLab API docs: https://docs.gitlab.com/ee/api/managed_licenses.html
+// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 type LicenseApprovalStatusValue string
 
 // List of available license approval statuses.
+// Deprecated: Removed in 17.0; use License Approval Policies instead - https://docs.gitlab.com/user/compliance/license_approval_policies/
 const (
 	LicenseApproved    LicenseApprovalStatusValue = "approved"
 	LicenseBlacklisted LicenseApprovalStatusValue = "blacklisted"
@@ -605,12 +605,12 @@ func LicenseApprovalStatus(v LicenseApprovalStatusValue) *LicenseApprovalStatusV
 
 // MergeMethodValue represents a project merge type within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html#project-merge-method
+// GitLab API docs: https://docs.gitlab.com/api/projects/#project-merge-method
 type MergeMethodValue string
 
 // List of available merge type
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html#project-merge-method
+// GitLab API docs: https://docs.gitlab.com/api/projects/#project-merge-method
 const (
 	NoFastForwardMerge MergeMethodValue = "merge"
 	FastForwardMerge   MergeMethodValue = "ff"
@@ -714,14 +714,39 @@ func NotificationLevel(v NotificationLevelValue) *NotificationLevelValue {
 	return Ptr(v)
 }
 
+// DependencyPackageManagerValue represents a dependency package manager.
+//
+// GitLab API docs: https://docs.gitlab.com/api/dependencies/
+type DependencyPackageManagerValue string
+
+// List of available package manager for dependencies
+//
+// GitLab API docs: https://docs.gitlab.com/api/dependencies/
+const (
+	Bundler    DependencyPackageManagerValue = "bundler"
+	Composer   DependencyPackageManagerValue = "composer"
+	Conan      DependencyPackageManagerValue = "conan"
+	Go         DependencyPackageManagerValue = "go"
+	Gradle     DependencyPackageManagerValue = "gradle"
+	Maven      DependencyPackageManagerValue = "maven"
+	NPM        DependencyPackageManagerValue = "npm"
+	NuGet      DependencyPackageManagerValue = "nuget"
+	Pip        DependencyPackageManagerValue = "pip"
+	Pipenv     DependencyPackageManagerValue = "pipenv"
+	PNPM       DependencyPackageManagerValue = "pnpm"
+	Yarn       DependencyPackageManagerValue = "yarn"
+	SBT        DependencyPackageManagerValue = "sbt"
+	Setuptools DependencyPackageManagerValue = "setuptools"
+)
+
 // ProjectCreationLevelValue represents a project creation level within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/
+// GitLab API docs: https://docs.gitlab.com/api/groups/
 type ProjectCreationLevelValue string
 
 // List of available project creation levels.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/
+// GitLab API docs: https://docs.gitlab.com/api/groups/
 const (
 	NoOneProjectCreation      ProjectCreationLevelValue = "noone"
 	MaintainerProjectCreation ProjectCreationLevelValue = "maintainer"
@@ -731,19 +756,19 @@ const (
 
 // ProjectCreationLevel is a helper routine that allocates a new ProjectCreationLevelValue
 // to store v and returns a pointer to it.
-// Please use Ptr instead.
+// Deprecated: Please use Ptr instead.
 func ProjectCreationLevel(v ProjectCreationLevelValue) *ProjectCreationLevelValue {
 	return Ptr(v)
 }
 
 // ProjectHookEvent represents a project hook event.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html#hook-events
+// GitLab API docs: https://docs.gitlab.com/api/projects/#hook-events
 type ProjectHookEvent string
 
 // List of available project hook events.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html#hook-events
+// GitLab API docs: https://docs.gitlab.com/api/projects/#hook-events
 const (
 	ProjectHookEventPush                ProjectHookEvent = "push_events"
 	ProjectHookEventTagPush             ProjectHookEvent = "tag_push_events"
@@ -763,13 +788,13 @@ const (
 // within a GitLab project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/ci/resource_groups/index.html#process-modes
+// https://docs.gitlab.com/ci/resource_groups/#process-modes
 type ResourceGroupProcessMode string
 
 // List of available resource group process modes.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/ci/resource_groups/index.html#process-modes
+// https://docs.gitlab.com/ci/resource_groups/#process-modes
 const (
 	Unordered   ResourceGroupProcessMode = "unordered"
 	OldestFirst ResourceGroupProcessMode = "oldest_first"
@@ -780,13 +805,13 @@ const (
 // group’s subgroups and projects.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/groups.html#options-for-shared_runners_setting
+// https://docs.gitlab.com/api/groups/#options-for-shared_runners_setting
 type SharedRunnersSettingValue string
 
 // List of available shared runner setting levels.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/groups.html#options-for-shared_runners_setting
+// https://docs.gitlab.com/api/groups/#options-for-shared_runners_setting
 const (
 	EnabledSharedRunnersSettingValue                  SharedRunnersSettingValue = "enabled"
 	DisabledAndOverridableSharedRunnersSettingValue   SharedRunnersSettingValue = "disabled_and_overridable"
@@ -807,12 +832,12 @@ func SharedRunnersSetting(v SharedRunnersSettingValue) *SharedRunnersSettingValu
 
 // SubGroupCreationLevelValue represents a sub group creation level within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/
+// GitLab API docs: https://docs.gitlab.com/api/groups/
 type SubGroupCreationLevelValue string
 
 // List of available sub group creation levels.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/
+// GitLab API docs: https://docs.gitlab.com/api/groups/
 const (
 	OwnerSubGroupCreationLevelValue      SubGroupCreationLevelValue = "owner"
 	MaintainerSubGroupCreationLevelValue SubGroupCreationLevelValue = "maintainer"
@@ -828,12 +853,12 @@ func SubGroupCreationLevel(v SubGroupCreationLevelValue) *SubGroupCreationLevelV
 
 // SquashOptionValue represents a squash optional level within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html#create-project
+// GitLab API docs: https://docs.gitlab.com/api/projects/#create-project
 type SquashOptionValue string
 
 // List of available squash options.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html#create-project
+// GitLab API docs: https://docs.gitlab.com/api/projects/#create-project
 const (
 	SquashOptionNever      SquashOptionValue = "never"
 	SquashOptionAlways     SquashOptionValue = "always"
@@ -857,7 +882,7 @@ type TasksCompletionStatus struct {
 
 // TodoAction represents the available actions that can be performed on a todo.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/todos.html
+// GitLab API docs: https://docs.gitlab.com/api/todos/
 type TodoAction string
 
 // The available todo actions.
@@ -872,7 +897,7 @@ const (
 
 // TodoTargetType represents the available target that can be linked to a todo.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/todos.html
+// GitLab API docs: https://docs.gitlab.com/api/todos/
 type TodoTargetType string
 
 const (
@@ -893,12 +918,12 @@ const (
 
 // VariableTypeValue represents a variable type within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/
+// GitLab API docs: https://docs.gitlab.com/api/group_level_variables/
 type VariableTypeValue string
 
 // List of available variable types.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/
+// GitLab API docs: https://docs.gitlab.com/api/group_level_variables/
 const (
 	EnvVariableType  VariableTypeValue = "env_var"
 	FileVariableType VariableTypeValue = "file"
@@ -914,12 +939,12 @@ func VariableType(v VariableTypeValue) *VariableTypeValue {
 
 // VisibilityValue represents a visibility level within GitLab.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/
+// GitLab API docs: https://docs.gitlab.com/api/groups/
 type VisibilityValue string
 
 // List of available visibility levels.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/
+// GitLab API docs: https://docs.gitlab.com/api/groups/
 const (
 	PrivateVisibility  VisibilityValue = "private"
 	InternalVisibility VisibilityValue = "internal"
@@ -936,7 +961,7 @@ func Visibility(v VisibilityValue) *VisibilityValue {
 
 // WikiFormatValue represents the available wiki formats.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/wikis.html
+// GitLab API docs: https://docs.gitlab.com/api/wikis/
 type WikiFormatValue string
 
 // The available wiki formats.
@@ -1020,12 +1045,12 @@ func (t *BoolValue) UnmarshalJSON(b []byte) error {
 // CIPipelineVariablesMinimumOverrideRoleValue represents an access control
 // value used for managing access to the CI Pipeline Variable Override feature.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html
+// GitLab API docs: https://docs.gitlab.com/api/projects/
 type CIPipelineVariablesMinimumOverrideRoleValue = string
 
 // List of available CIPipelineVariablesMinimumOverrideRoleValue values.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/projects.html
+// GitLab API docs: https://docs.gitlab.com/api/projects/
 const (
 	CIPipelineVariablesNoOneAllowedRole CIPipelineVariablesMinimumOverrideRoleValue = "no_one_allowed"
 	CiPipelineVariablesOwnerRole        CIPipelineVariablesMinimumOverrideRoleValue = "owner"

@@ -28,7 +28,7 @@ type (
 	// merge requests related methods of the GitLab API.
 	//
 	// GitLab API docs:
-	// https://docs.gitlab.com/ee/api/deployments.html#list-of-merge-requests-associated-with-a-deployment
+	// https://docs.gitlab.com/api/deployments/#list-of-merge-requests-associated-with-a-deployment
 	DeploymentMergeRequestsService struct {
 		client *Client
 	}
@@ -39,7 +39,7 @@ var _ DeploymentMergeRequestsServiceInterface = (*DeploymentMergeRequestsService
 // ListDeploymentMergeRequests get the merge requests associated with deployment.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/deployments.html#list-of-merge-requests-associated-with-a-deployment
+// https://docs.gitlab.com/api/deployments/#list-of-merge-requests-associated-with-a-deployment
 func (s *DeploymentMergeRequestsService) ListDeploymentMergeRequests(pid interface{}, deployment int, opts *ListMergeRequestsOptions, options ...RequestOptionFunc) ([]*MergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {

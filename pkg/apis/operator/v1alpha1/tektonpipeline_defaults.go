@@ -109,7 +109,7 @@ func (p *Pipeline) setDefaults() {
 	}
 
 	if p.EnableStepActions == nil {
-		p.EnableStepActions = ptr.Bool(config.DefaultEnableStepActions.Enabled)
+		p.EnableStepActions = ptr.Bool(config.DefaultFeatureFlags.EnableStepActions)
 	}
 
 	if p.EnableParamEnum == nil {

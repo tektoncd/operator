@@ -34,7 +34,7 @@ type (
 	// ProjectBadgesService handles communication with the project badges
 	// related methods of the GitLab API.
 	//
-	// GitLab API docs: https://docs.gitlab.com/ee/api/project_badges.html
+	// GitLab API docs: https://docs.gitlab.com/api/project_badges/
 	ProjectBadgesService struct {
 		client *Client
 	}
@@ -45,7 +45,7 @@ var _ ProjectBadgesServiceInterface = (*ProjectBadgesService)(nil)
 // ProjectBadge represents a project badge.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_badges.html#list-all-badges-of-a-project
+// https://docs.gitlab.com/api/project_badges/#list-all-badges-of-a-project
 type ProjectBadge struct {
 	ID               int    `json:"id"`
 	Name             string `json:"name"`
@@ -61,7 +61,7 @@ type ProjectBadge struct {
 // options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_badges.html#list-all-badges-of-a-project
+// https://docs.gitlab.com/api/project_badges/#list-all-badges-of-a-project
 type ListProjectBadgesOptions struct {
 	ListOptions
 	Name *string `url:"name,omitempty" json:"name,omitempty"`
@@ -70,7 +70,7 @@ type ListProjectBadgesOptions struct {
 // ListProjectBadges gets a list of a project's badges and its group badges.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_badges.html#list-all-badges-of-a-project
+// https://docs.gitlab.com/api/project_badges/#list-all-badges-of-a-project
 func (s *ProjectBadgesService) ListProjectBadges(pid interface{}, opt *ListProjectBadgesOptions, options ...RequestOptionFunc) ([]*ProjectBadge, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -95,7 +95,7 @@ func (s *ProjectBadgesService) ListProjectBadges(pid interface{}, opt *ListProje
 // GetProjectBadge gets a project badge.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_badges.html#get-a-badge-of-a-project
+// https://docs.gitlab.com/api/project_badges/#get-a-badge-of-a-project
 func (s *ProjectBadgesService) GetProjectBadge(pid interface{}, badge int, options ...RequestOptionFunc) (*ProjectBadge, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -120,7 +120,7 @@ func (s *ProjectBadgesService) GetProjectBadge(pid interface{}, badge int, optio
 // AddProjectBadgeOptions represents the available AddProjectBadge() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_badges.html#add-a-badge-to-a-project
+// https://docs.gitlab.com/api/project_badges/#add-a-badge-to-a-project
 type AddProjectBadgeOptions struct {
 	LinkURL  *string `url:"link_url,omitempty" json:"link_url,omitempty"`
 	ImageURL *string `url:"image_url,omitempty" json:"image_url,omitempty"`
@@ -130,7 +130,7 @@ type AddProjectBadgeOptions struct {
 // AddProjectBadge adds a badge to a project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_badges.html#add-a-badge-to-a-project
+// https://docs.gitlab.com/api/project_badges/#add-a-badge-to-a-project
 func (s *ProjectBadgesService) AddProjectBadge(pid interface{}, opt *AddProjectBadgeOptions, options ...RequestOptionFunc) (*ProjectBadge, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -155,7 +155,7 @@ func (s *ProjectBadgesService) AddProjectBadge(pid interface{}, opt *AddProjectB
 // EditProjectBadgeOptions represents the available EditProjectBadge() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_badges.html#edit-a-badge-of-a-project
+// https://docs.gitlab.com/api/project_badges/#edit-a-badge-of-a-project
 type EditProjectBadgeOptions struct {
 	LinkURL  *string `url:"link_url,omitempty" json:"link_url,omitempty"`
 	ImageURL *string `url:"image_url,omitempty" json:"image_url,omitempty"`
@@ -165,7 +165,7 @@ type EditProjectBadgeOptions struct {
 // EditProjectBadge updates a badge of a project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_badges.html#edit-a-badge-of-a-project
+// https://docs.gitlab.com/api/project_badges/#edit-a-badge-of-a-project
 func (s *ProjectBadgesService) EditProjectBadge(pid interface{}, badge int, opt *EditProjectBadgeOptions, options ...RequestOptionFunc) (*ProjectBadge, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -191,7 +191,7 @@ func (s *ProjectBadgesService) EditProjectBadge(pid interface{}, badge int, opt 
 // badges will be removed by using this endpoint.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_badges.html#remove-a-badge-from-a-project
+// https://docs.gitlab.com/api/project_badges/#remove-a-badge-from-a-project
 func (s *ProjectBadgesService) DeleteProjectBadge(pid interface{}, badge int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -210,7 +210,7 @@ func (s *ProjectBadgesService) DeleteProjectBadge(pid interface{}, badge int, op
 // ProjectBadgePreviewOptions represents the available PreviewProjectBadge() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_badges.html#preview-a-badge-from-a-project
+// https://docs.gitlab.com/api/project_badges/#preview-a-badge-from-a-project
 type ProjectBadgePreviewOptions struct {
 	LinkURL  *string `url:"link_url,omitempty" json:"link_url,omitempty"`
 	ImageURL *string `url:"image_url,omitempty" json:"image_url,omitempty"`
@@ -220,7 +220,7 @@ type ProjectBadgePreviewOptions struct {
 // resolving the placeholder interpolation.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/project_badges.html#preview-a-badge-from-a-project
+// https://docs.gitlab.com/api/project_badges/#preview-a-badge-from-a-project
 func (s *ProjectBadgesService) PreviewProjectBadge(pid interface{}, opt *ProjectBadgePreviewOptions, options ...RequestOptionFunc) (*ProjectBadge, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
