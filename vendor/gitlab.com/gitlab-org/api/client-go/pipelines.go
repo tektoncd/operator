@@ -22,6 +22,28 @@ import (
 	"time"
 )
 
+type PipelineSource string
+
+// PipelineSource is the source of a pipeline.
+// GitLab API docs: https://docs.gitlab.com/ci/jobs/job_rules/#ci_pipeline_source-predefined-variable
+const (
+	PipelineSourceAPI                         PipelineSource = "api"
+	PipelineSourceChat                        PipelineSource = "chat"
+	PipelineSourceExternal                    PipelineSource = "external"
+	PipelineSourceExternalPullRequestEvent    PipelineSource = "external_pull_request_event"
+	PipelineSourceMergeRequestEvent           PipelineSource = "merge_request_event"
+	PipelineSourceOndemandDastScan            PipelineSource = "ondemand_dast_scan"
+	PipelineSourceOndemandDastValidation      PipelineSource = "ondemand_dast_validation"
+	PipelineSourceParentPipeline              PipelineSource = "parent_pipeline"
+	PipelineSourcePipeline                    PipelineSource = "pipeline"
+	PipelineSourcePush                        PipelineSource = "push"
+	PipelineSourceSchedule                    PipelineSource = "schedule"
+	PipelineSourceSecurityOrchestrationPolicy PipelineSource = "security_orchestration_policy"
+	PipelineSourceTrigger                     PipelineSource = "trigger"
+	PipelineSourceWeb                         PipelineSource = "web"
+	PipelineSourceWebIDE                      PipelineSource = "webide"
+)
+
 type (
 	PipelinesServiceInterface interface {
 		ListProjectPipelines(pid interface{}, opt *ListProjectPipelinesOptions, options ...RequestOptionFunc) ([]*PipelineInfo, *Response, error)
@@ -39,7 +61,7 @@ type (
 	// PipelinesService handles communication with the repositories related
 	// methods of the GitLab API.
 	//
-	// GitLab API docs: https://docs.gitlab.com/ee/api/pipelines.html
+	// GitLab API docs: https://docs.gitlab.com/api/pipelines/
 	PipelinesService struct {
 		client *Client
 	}
@@ -49,7 +71,7 @@ var _ PipelinesServiceInterface = (*PipelinesService)(nil)
 
 // PipelineVariable represents a pipeline variable.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/pipelines.html
+// GitLab API docs: https://docs.gitlab.com/api/pipelines/
 type PipelineVariable struct {
 	Key          string            `json:"key"`
 	Value        string            `json:"value"`
@@ -58,13 +80,13 @@ type PipelineVariable struct {
 
 // Pipeline represents a GitLab pipeline.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/pipelines.html
+// GitLab API docs: https://docs.gitlab.com/api/pipelines/
 type Pipeline struct {
 	ID             int             `json:"id"`
 	IID            int             `json:"iid"`
 	ProjectID      int             `json:"project_id"`
 	Status         string          `json:"status"`
-	Source         string          `json:"source"`
+	Source         PipelineSource  `json:"source"`
 	Ref            string          `json:"ref"`
 	Name           string          `json:"name"`
 	SHA            string          `json:"sha"`
@@ -173,7 +195,7 @@ func (p PipelineInfo) String() string {
 // options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#list-project-pipelines
+// https://docs.gitlab.com/api/pipelines/#list-project-pipelines
 type ListProjectPipelinesOptions struct {
 	ListOptions
 	Scope         *string          `url:"scope,omitempty" json:"scope,omitempty"`
@@ -193,7 +215,7 @@ type ListProjectPipelinesOptions struct {
 // ListProjectPipelines gets a list of project piplines.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#list-project-pipelines
+// https://docs.gitlab.com/api/pipelines/#list-project-pipelines
 func (s *PipelinesService) ListProjectPipelines(pid interface{}, opt *ListProjectPipelinesOptions, options ...RequestOptionFunc) ([]*PipelineInfo, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -218,7 +240,7 @@ func (s *PipelinesService) ListProjectPipelines(pid interface{}, opt *ListProjec
 // GetPipeline gets a single project pipeline.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#get-a-single-pipeline
+// https://docs.gitlab.com/api/pipelines/#get-a-single-pipeline
 func (s *PipelinesService) GetPipeline(pid interface{}, pipeline int, options ...RequestOptionFunc) (*Pipeline, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -243,7 +265,7 @@ func (s *PipelinesService) GetPipeline(pid interface{}, pipeline int, options ..
 // GetPipelineVariables gets the variables of a single project pipeline.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#get-variables-of-a-pipeline
+// https://docs.gitlab.com/api/pipelines/#get-variables-of-a-pipeline
 func (s *PipelinesService) GetPipelineVariables(pid interface{}, pipeline int, options ...RequestOptionFunc) ([]*PipelineVariable, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -268,7 +290,7 @@ func (s *PipelinesService) GetPipelineVariables(pid interface{}, pipeline int, o
 // GetPipelineTestReport gets the test report of a single project pipeline.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#get-a-pipelines-test-report
+// https://docs.gitlab.com/api/pipelines/#get-a-pipelines-test-report
 func (s *PipelinesService) GetPipelineTestReport(pid interface{}, pipeline int, options ...RequestOptionFunc) (*PipelineTestReport, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -293,7 +315,7 @@ func (s *PipelinesService) GetPipelineTestReport(pid interface{}, pipeline int, 
 // GetLatestPipelineOptions represents the available GetLatestPipeline() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#get-the-latest-pipeline
+// https://docs.gitlab.com/api/pipelines/#get-the-latest-pipeline
 type GetLatestPipelineOptions struct {
 	Ref *string `url:"ref,omitempty" json:"ref,omitempty"`
 }
@@ -301,7 +323,7 @@ type GetLatestPipelineOptions struct {
 // GetLatestPipeline gets the latest pipeline for a specific ref in a project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#get-the-latest-pipeline
+// https://docs.gitlab.com/api/pipelines/#get-the-latest-pipeline
 func (s *PipelinesService) GetLatestPipeline(pid interface{}, opt *GetLatestPipelineOptions, options ...RequestOptionFunc) (*Pipeline, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -326,7 +348,7 @@ func (s *PipelinesService) GetLatestPipeline(pid interface{}, opt *GetLatestPipe
 // CreatePipelineOptions represents the available CreatePipeline() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#create-a-new-pipeline
+// https://docs.gitlab.com/api/pipelines/#create-a-new-pipeline
 type CreatePipelineOptions struct {
 	Ref       *string                     `url:"ref" json:"ref"`
 	Variables *[]*PipelineVariableOptions `url:"variables,omitempty" json:"variables,omitempty"`
@@ -334,7 +356,7 @@ type CreatePipelineOptions struct {
 
 // PipelineVariable represents a pipeline variable.
 //
-// GitLab API docs: https://docs.gitlab.com/ee/api/pipelines.html#create-a-new-pipeline
+// GitLab API docs: https://docs.gitlab.com/api/pipelines/#create-a-new-pipeline
 type PipelineVariableOptions struct {
 	Key          *string            `url:"key,omitempty" json:"key,omitempty"`
 	Value        *string            `url:"value,omitempty" json:"value,omitempty"`
@@ -344,7 +366,7 @@ type PipelineVariableOptions struct {
 // CreatePipeline creates a new project pipeline.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#create-a-new-pipeline
+// https://docs.gitlab.com/api/pipelines/#create-a-new-pipeline
 func (s *PipelinesService) CreatePipeline(pid interface{}, opt *CreatePipelineOptions, options ...RequestOptionFunc) (*Pipeline, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -369,7 +391,7 @@ func (s *PipelinesService) CreatePipeline(pid interface{}, opt *CreatePipelineOp
 // RetryPipelineBuild retries failed builds in a pipeline.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#retry-jobs-in-a-pipeline
+// https://docs.gitlab.com/api/pipelines/#retry-jobs-in-a-pipeline
 func (s *PipelinesService) RetryPipelineBuild(pid interface{}, pipeline int, options ...RequestOptionFunc) (*Pipeline, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -394,7 +416,7 @@ func (s *PipelinesService) RetryPipelineBuild(pid interface{}, pipeline int, opt
 // CancelPipelineBuild cancels a pipeline builds.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#cancel-a-pipelines-jobs
+// https://docs.gitlab.com/api/pipelines/#cancel-a-pipelines-jobs
 func (s *PipelinesService) CancelPipelineBuild(pid interface{}, pipeline int, options ...RequestOptionFunc) (*Pipeline, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -419,7 +441,7 @@ func (s *PipelinesService) CancelPipelineBuild(pid interface{}, pipeline int, op
 // DeletePipeline deletes an existing pipeline.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#delete-a-pipeline
+// https://docs.gitlab.com/api/pipelines/#delete-a-pipeline
 func (s *PipelinesService) DeletePipeline(pid interface{}, pipeline int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -439,7 +461,7 @@ func (s *PipelinesService) DeletePipeline(pid interface{}, pipeline int, options
 // options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#update-pipeline-metadata
+// https://docs.gitlab.com/api/pipelines/#update-pipeline-metadata
 type UpdatePipelineMetadataOptions struct {
 	Name *string `url:"name,omitempty" json:"name,omitempty"`
 }
@@ -448,7 +470,7 @@ type UpdatePipelineMetadataOptions struct {
 // contains the name of the pipeline.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/pipelines.html#update-pipeline-metadata
+// https://docs.gitlab.com/api/pipelines/#update-pipeline-metadata
 func (s *PipelinesService) UpdatePipelineMetadata(pid interface{}, pipeline int, opt *UpdatePipelineMetadataOptions, options ...RequestOptionFunc) (*Pipeline, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {

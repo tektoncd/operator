@@ -42,7 +42,7 @@ func ConvertPacStructToConfigMap(settings *Settings) map[string]string {
 			// for hub catalogs map
 			if key == "" {
 				data := element.Interface().(*sync.Map)
-				data.Range(func(key, value interface{}) bool {
+				data.Range(func(key, value any) bool {
 					catalogData := value.(HubCatalog)
 					if key == "default" {
 						config[HubURLKey] = catalogData.URL

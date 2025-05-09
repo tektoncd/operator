@@ -121,7 +121,6 @@ type Group struct {
 	FullPath                        string                     `json:"full_path"`
 	FileTemplateProjectID           int                        `json:"file_template_project_id"`
 	ParentID                        int                        `json:"parent_id"`
-	Projects                        []*Project                 `json:"projects"`
 	Statistics                      *Statistics                `json:"statistics"`
 	CustomAttributes                []*CustomAttribute         `json:"custom_attributes"`
 	ShareWithGroupLock              bool                       `json:"share_with_group_lock"`
@@ -133,7 +132,6 @@ type Group struct {
 	EmailsEnabled                   bool                       `json:"emails_enabled"`
 	MentionsDisabled                bool                       `json:"mentions_disabled"`
 	RunnersToken                    string                     `json:"runners_token"`
-	SharedProjects                  []*Project                 `json:"shared_projects"`
 	SharedRunnersSetting            SharedRunnersSettingValue  `json:"shared_runners_setting"`
 	SharedWithGroups                []SharedWithGroup          `json:"shared_with_groups"`
 	LDAPCN                          string                     `json:"ldap_cn"`
@@ -148,6 +146,12 @@ type Group struct {
 	IPRestrictionRanges             string                     `json:"ip_restriction_ranges"`
 	AllowedEmailDomainsList         string                     `json:"allowed_email_domains_list"`
 	WikiAccessLevel                 AccessControlValue         `json:"wiki_access_level"`
+
+	// Deprecated: will be removed in v5 of the API, use ListGroupProjects instead
+	Projects []*Project `json:"projects"`
+
+	// Deprecated: will be removed in v5 of the API, use ListGroupSharedProjects instead
+	SharedProjects []*Project `json:"shared_projects"`
 
 	// Deprecated: Use EmailsEnabled instead
 	EmailsDisabled bool `json:"emails_disabled"`
@@ -380,7 +384,9 @@ func (s *GroupsService) ListGroupProjects(gid interface{}, opt *ListGroupProject
 type GetGroupOptions struct {
 	ListOptions
 	WithCustomAttributes *bool `url:"with_custom_attributes,omitempty" json:"with_custom_attributes,omitempty"`
-	WithProjects         *bool `url:"with_projects,omitempty" json:"with_projects,omitempty"`
+
+	// Deprecated: will be removed in v5 of the API, use ListGroupProjects instead
+	WithProjects *bool `url:"with_projects,omitempty" json:"with_projects,omitempty"`
 }
 
 // GetGroup gets all details of a group.

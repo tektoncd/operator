@@ -409,6 +409,9 @@ function initialize() {
   is_protected_gcr ${KO_DOCKER_REPO} && \
     abort "\$KO_DOCKER_REPO set to ${KO_DOCKER_REPO}, which is forbidden"
 
+  is_protected_ghcr {KO_DOCKER_REPO} && \
+    abort "\$KO_DOCKER_REPO set to ${KO_DOCKER_REPO}, which is forbidden"
+
   readonly RUN_TESTS
   readonly EMIT_METRICS
   readonly GCP_PROJECT
