@@ -49,7 +49,7 @@ import (
 )
 
 const (
-	DbSecretName          = "tekton-results-postgres"
+	DefaultDbSecretName   = "tekton-results-postgres"
 	TlsSecretName         = "tekton-results-tls"
 	CertificateBlockType  = "CERTIFICATE"
 	PostgresUser          = "result"
@@ -167,7 +167,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 
 	// If the external database is disabled, create a default database and a TLS secret.
 	// Otherwise, verify if the default database secret is already created, and ensure the TLS secret is also created.
-	if !tr.Spec.IsExternalDB {
+	if !tr.Spec.IsExternalDB && tr.Spec.DBSecretName == "" {
 		logger.Debugw("Creating database secret for internal database")
 		if err := r.createDBSecret(ctx, tr); err != nil {
 			logger.Errorw("Failed to create database secret", "error", err)
@@ -180,8 +180,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 		}
 		logger.Infow("Successfully created database and TLS secrets")
 	} else {
+		customDbSecretName := DefaultDbSecretName
+		if tr.Spec.DBSecretName != "" {
+			customDbSecretName = tr.Spec.DBSecretName
+		}
 		logger.Debugw("Validating external database secrets")
-		if err := r.validateSecretsAreCreated(ctx, tr, DbSecretName); err != nil {
+		if err := r.validateSecretsAreCreated(ctx, tr, customDbSecretName); err != nil {
 			logger.Errorw("Failed to validate database secrets", "error", err)
 			return err
 		}
@@ -439,23 +443,23 @@ func (r *Reconciler) createDBSecret(ctx context.Context, tr *v1alpha1.TektonResu
 	logger := logging.FromContext(ctx)
 
 	// Get the DB secret, if not found then create the DB secret
-	_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Get(ctx, DbSecretName, metav1.GetOptions{})
+	_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Get(ctx, DefaultDbSecretName, metav1.GetOptions{})
 	if err == nil {
 		return nil
 	}
 	if !apierrors.IsNotFound(err) {
-		logger.Errorf("failed to find default TektonResult database secret %s in namespace %s: %v", DbSecretName, tr.Spec.TargetNamespace, err)
+		logger.Errorf("failed to find default TektonResult database secret %s in namespace %s: %v", DefaultDbSecretName, tr.Spec.TargetNamespace, err)
 		return err
 	}
-	newDBSecret, err := r.generateDBSecret(DbSecretName, tr.Spec.TargetNamespace, tr)
+	newDBSecret, err := r.generateDBSecret(DefaultDbSecretName, tr.Spec.TargetNamespace, tr)
 	if err != nil {
-		logger.Errorf("failed to generate default TektonResult database secret %s: %s", DbSecretName, err)
+		logger.Errorf("failed to generate default TektonResult database secret %s: %s", DefaultDbSecretName, err)
 		return err
 	}
 	_, err = r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Create(ctx, newDBSecret, metav1.CreateOptions{})
 	if err != nil {
-		logger.Errorf("failed to create default TektonResult database secret %s in namespace %s: %v", DbSecretName, tr.Spec.TargetNamespace, err)
-		tr.Status.MarkDependencyMissing(fmt.Sprintf("Default db %s creation is failing", DbSecretName))
+		logger.Errorf("failed to create default TektonResult database secret %s in namespace %s: %v", DefaultDbSecretName, tr.Spec.TargetNamespace, err)
+		tr.Status.MarkDependencyMissing(fmt.Sprintf("Default db %s creation is failing", DefaultDbSecretName))
 		return err
 	}
 	return nil

@@ -51,6 +51,9 @@ spec:
   db_sslmode: verify-full
   db_sslrootcert: /etc/tls/db/ca.crt
   db_enable_auto_migration: true
+  db_secret_name: # optional: custom database secret name
+  db_secret_user_key: # optional
+  db_secret_password_key: # optional
   log_level: debug
   logs_api: true
   logs_type: File
