@@ -129,7 +129,7 @@ func createSecret(t *testing.T, clients *utils.Clients, namespace string) {
 
 	dbSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: tektonresult.DbSecretName,
+			Name: tektonresult.DefaultDbSecretName,
 		},
 		Data: map[string][]byte{
 			"POSTGRES_USER":     []byte("postgres"),

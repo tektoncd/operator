@@ -84,6 +84,9 @@ type ResultsAPIProperties struct {
 	DBSSLMode             string `json:"db_sslmode,omitempty"`
 	DBSSLRootCert         string `json:"db_sslrootcert,omitempty"`
 	DBEnableAutoMigration *bool  `json:"db_enable_auto_migration,omitempty"`
+	DBSecretName          string `json:"db_secret_name,omitempty"`
+	DBSecretUserKey       string `json:"db_secret_user_key,omitempty"`
+	DBSecretPasswordKey   string `json:"db_secret_password_key,omitempty"`
 	ServerPort            *int64 `json:"server_port,omitempty"`
 	PrometheusPort        *int64 `json:"prometheus_port,omitempty"`
 	PrometheusHistogram   *bool  `json:"prometheus_histogram,omitempty"`

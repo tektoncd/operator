@@ -290,3 +290,54 @@ func TestUpdateAPIEnv(t *testing.T) {
 	}
 	assert.Equal(t, true, containerFound, "container not found")
 }
+
+func TestUpdateEnvWithDBSecretName(t *testing.T) {
+	testData := path.Join("testdata", "api-deployment.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	dbSecretName := "my_custom_secret"
+
+	deployment := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, deployment)
+	assert.NilError(t, err)
+	prop := v1alpha1.ResultsAPIProperties{
+		DBSecretName:        dbSecretName,
+		DBSecretUserKey:     "user1",
+		DBSecretPasswordKey: "random-password",
+	}
+
+	manifest, err = manifest.Transform(updateEnvWithDBSecretName(prop))
+	assert.NilError(t, err)
+
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, deployment)
+	assert.NilError(t, err)
+
+	containerFound := false
+	for _, container := range deployment.Spec.Template.Spec.Containers {
+		if container.Name != apiContainerName {
+			continue
+		}
+		containerFound = true
+		// verify api container env reference custom db secret key and name
+		for envKeyName := range ContainerEnvKeys {
+			envFound := false
+			for _, _env := range container.Env {
+				if _env.Name == envKeyName {
+					envFound = true
+					assert.Equal(t, dbSecretName, _env.ValueFrom.SecretKeyRef.LocalObjectReference.Name)
+				}
+				if _env.Name == DB_USER {
+					assert.Equal(t, "user1", _env.ValueFrom.SecretKeyRef.Key)
+				}
+				if _env.Name == DB_PASSWORD {
+					assert.Equal(t, "random-password", _env.ValueFrom.SecretKeyRef.Key)
+				}
+
+			}
+			assert.Equal(t, true, envFound, fmt.Sprintf("secret name %s not found in env:%s", dbSecretName, envKeyName))
+		}
+
+	}
+	assert.Equal(t, true, containerFound, "container not found")
+}
