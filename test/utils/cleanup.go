@@ -336,6 +336,36 @@ func TearDownManualApprovalGate(clients *Clients, name string) {
 		fmt.Printf("error waiting from tearDown of ManualApprovalGate resource, name: %s, error: %v", name, err)
 	}
 }
+func TearDownTektonPruner(clients *Clients, name string) {
+	ctx := context.Background()
+	if clients == nil || clients.Operator == nil {
+		return
+	}
+
+	tc, err := clients.TektonPruner().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			fmt.Printf("error trying to get TektonPruner instance during teardown, name: %s, error: %v", name, err)
+		}
+		return
+	}
+	targetNamespace := tc.Spec.TargetNamespace
+
+	err = clients.TektonPruner().Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		fmt.Printf("error trying to delete TektonPruner during teardown, name: %s, error: %v", name, err)
+		return
+	}
+	crdf := newCRDeleteVerifier(ctx, func(ctx context.Context) error {
+		_, err := clients.TektonPruner().Get(ctx, name, metav1.GetOptions{})
+		return err
+	})
+	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, TektonPrunerDeploymentLabel)
+	err = waitUntilFullDeletion(crdf, ddf)
+	if err != nil {
+		fmt.Printf("error waiting from tearDown of TektonPruner resource, name: %s, error: %v", name, err)
+	}
+}
 
 func newCRDeleteVerifier(ctx context.Context, f crGetFunc) crDeleteVerifier {
 	return func() (bool, error) {

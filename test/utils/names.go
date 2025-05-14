@@ -25,6 +25,7 @@ type ResourceNames struct {
 	TektonDashboard          string
 	TektonAddon              string
 	TektonConfig             string
+	TektonPruner             string
 	TektonResult             string
 	TektonChain              string
 	TektonHub                string
@@ -42,6 +43,7 @@ func GetResourceNames() ResourceNames {
 		TektonTrigger:            v1alpha1.TriggerResourceName,
 		TektonDashboard:          v1alpha1.DashboardResourceName,
 		TektonAddon:              v1alpha1.AddonResourceName,
+		TektonPruner:             v1alpha1.TektonPrunerResourceName,
 		TektonResult:             v1alpha1.ResultResourceName,
 		TektonChain:              v1alpha1.ChainResourceName,
 		TektonHub:                v1alpha1.HubResourceName,

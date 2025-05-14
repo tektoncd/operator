@@ -61,6 +61,9 @@ const (
 
 	// KindManualApprovalGate is the Kind of KindManualApprovalGate in a GVK context.
 	KindManualApprovalGate = "ManualApprovalGate"
+
+	// KindTektonPruner is the Kind of TektonPruner in a GVK context.
+	KindTektonPruner = "TektonPruner"
 )
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
@@ -94,6 +97,8 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&OpenShiftPipelinesAsCodeList{},
 		&ManualApprovalGate{},
 		&ManualApprovalGateList{},
+		&TektonPruner{},
+		&TektonPrunerList{},
 	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil
