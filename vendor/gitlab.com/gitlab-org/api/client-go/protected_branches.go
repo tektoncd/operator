@@ -36,7 +36,7 @@ type (
 	// related methods of the GitLab API.
 	//
 	// GitLab API docs:
-	// https://docs.gitlab.com/ee/api/protected_branches.html
+	// https://docs.gitlab.com/api/protected_branches/
 	ProtectedBranchesService struct {
 		client *Client
 	}
@@ -47,7 +47,7 @@ var _ ProtectedBranchesServiceInterface = (*ProtectedBranchesService)(nil)
 // ProtectedBranch represents a protected branch.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#list-protected-branches
+// https://docs.gitlab.com/api/protected_branches/#list-protected-branches
 type ProtectedBranch struct {
 	ID                        int                        `json:"id"`
 	Name                      string                     `json:"name"`
@@ -62,7 +62,7 @@ type ProtectedBranch struct {
 // branch.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#list-protected-branches
+// https://docs.gitlab.com/api/protected_branches/#list-protected-branches
 type BranchAccessDescription struct {
 	ID                     int              `json:"id"`
 	AccessLevel            AccessLevelValue `json:"access_level"`
@@ -76,7 +76,7 @@ type BranchAccessDescription struct {
 // options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#list-protected-branches
+// https://docs.gitlab.com/api/protected_branches/#list-protected-branches
 type ListProtectedBranchesOptions struct {
 	ListOptions
 	Search *string `url:"search,omitempty" json:"search,omitempty"`
@@ -85,7 +85,7 @@ type ListProtectedBranchesOptions struct {
 // ListProtectedBranches gets a list of protected branches from a project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#list-protected-branches
+// https://docs.gitlab.com/api/protected_branches/#list-protected-branches
 func (s *ProtectedBranchesService) ListProtectedBranches(pid interface{}, opt *ListProtectedBranchesOptions, options ...RequestOptionFunc) ([]*ProtectedBranch, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -110,7 +110,7 @@ func (s *ProtectedBranchesService) ListProtectedBranches(pid interface{}, opt *L
 // GetProtectedBranch gets a single protected branch or wildcard protected branch.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#get-a-single-protected-branch-or-wildcard-protected-branch
+// https://docs.gitlab.com/api/protected_branches/#get-a-single-protected-branch-or-wildcard-protected-branch
 func (s *ProtectedBranchesService) GetProtectedBranch(pid interface{}, branch string, options ...RequestOptionFunc) (*ProtectedBranch, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -136,7 +136,7 @@ func (s *ProtectedBranchesService) GetProtectedBranch(pid interface{}, branch st
 // ProtectRepositoryBranches() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#protect-repository-branches
+// https://docs.gitlab.com/api/protected_branches/#protect-repository-branches
 type ProtectRepositoryBranchesOptions struct {
 	Name                      *string                     `url:"name,omitempty" json:"name,omitempty"`
 	PushAccessLevel           *AccessLevelValue           `url:"push_access_level,omitempty" json:"push_access_level,omitempty"`
@@ -152,7 +152,7 @@ type ProtectRepositoryBranchesOptions struct {
 // BranchPermissionOptions represents a branch permission option.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#protect-repository-branches
+// https://docs.gitlab.com/api/protected_branches/#protect-repository-branches
 type BranchPermissionOptions struct {
 	ID          *int              `url:"id,omitempty" json:"id,omitempty"`
 	UserID      *int              `url:"user_id,omitempty" json:"user_id,omitempty"`
@@ -166,7 +166,7 @@ type BranchPermissionOptions struct {
 // project repository branches using a wildcard protected branch.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#protect-repository-branches
+// https://docs.gitlab.com/api/protected_branches/#protect-repository-branches
 func (s *ProtectedBranchesService) ProtectRepositoryBranches(pid interface{}, opt *ProtectRepositoryBranchesOptions, options ...RequestOptionFunc) (*ProtectedBranch, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -192,7 +192,7 @@ func (s *ProtectedBranchesService) ProtectRepositoryBranches(pid interface{}, op
 // protected branch.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#unprotect-repository-branches
+// https://docs.gitlab.com/api/protected_branches/#unprotect-repository-branches
 func (s *ProtectedBranchesService) UnprotectRepositoryBranches(pid interface{}, branch string, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -212,7 +212,7 @@ func (s *ProtectedBranchesService) UnprotectRepositoryBranches(pid interface{}, 
 // UpdateProtectedBranch() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#update-a-protected-branch
+// https://docs.gitlab.com/api/protected_branches/#update-a-protected-branch
 type UpdateProtectedBranchOptions struct {
 	Name                      *string                     `url:"name,omitempty" json:"name,omitempty"`
 	AllowForcePush            *bool                       `url:"allow_force_push,omitempty" json:"allow_force_push,omitempty"`
@@ -225,7 +225,7 @@ type UpdateProtectedBranchOptions struct {
 // UpdateProtectedBranch updates a protected branch.
 //
 // Gitlab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#update-a-protected-branch
+// https://docs.gitlab.com/api/protected_branches/#update-a-protected-branch
 func (s *ProtectedBranchesService) UpdateProtectedBranch(pid interface{}, branch string, opt *UpdateProtectedBranchOptions, options ...RequestOptionFunc) (*ProtectedBranch, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -251,7 +251,7 @@ func (s *ProtectedBranchesService) UpdateProtectedBranch(pid interface{}, branch
 // RequireCodeOwnerApprovals() options.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#update-a-protected-branch
+// https://docs.gitlab.com/api/protected_branches/#update-a-protected-branch
 type RequireCodeOwnerApprovalsOptions struct {
 	CodeOwnerApprovalRequired *bool `url:"code_owner_approval_required,omitempty" json:"code_owner_approval_required,omitempty"`
 }
@@ -261,7 +261,7 @@ type RequireCodeOwnerApprovalsOptions struct {
 // Deprecated: Use UpdateProtectedBranch() instead.
 //
 // Gitlab API docs:
-// https://docs.gitlab.com/ee/api/protected_branches.html#update-a-protected-branch
+// https://docs.gitlab.com/api/protected_branches/#update-a-protected-branch
 func (s *ProtectedBranchesService) RequireCodeOwnerApprovals(pid interface{}, branch string, opt *RequireCodeOwnerApprovalsOptions, options ...RequestOptionFunc) (*Response, error) {
 	updateOptions := &UpdateProtectedBranchOptions{
 		CodeOwnerApprovalRequired: opt.CodeOwnerApprovalRequired,

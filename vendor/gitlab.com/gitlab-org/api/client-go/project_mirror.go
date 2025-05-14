@@ -35,7 +35,7 @@ type (
 	// ProjectMirrorService handles communication with the project mirror
 	// related methods of the GitLab API.
 	//
-	// GitLAb API docs: https://docs.gitlab.com/ee/api/remote_mirrors.html
+	// GitLAb API docs: https://docs.gitlab.com/api/remote_mirrors/
 	ProjectMirrorService struct {
 		client *Client
 	}
@@ -45,7 +45,7 @@ var _ ProjectMirrorServiceInterface = (*ProjectMirrorService)(nil)
 
 // ProjectMirror represents a project mirror configuration.
 //
-// GitLAb API docs: https://docs.gitlab.com/ee/api/remote_mirrors.html
+// GitLAb API docs: https://docs.gitlab.com/api/remote_mirrors/
 type ProjectMirror struct {
 	Enabled                bool       `json:"enabled"`
 	ID                     int        `json:"id"`
@@ -71,7 +71,7 @@ type ListProjectMirrorOptions ListOptions
 // ListProjectMirror gets a list of mirrors configured on the project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/remote_mirrors.html#list-a-projects-remote-mirrors
+// https://docs.gitlab.com/api/remote_mirrors/#list-a-projects-remote-mirrors
 func (s *ProjectMirrorService) ListProjectMirror(pid interface{}, opt *ListProjectMirrorOptions, options ...RequestOptionFunc) ([]*ProjectMirror, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -96,7 +96,7 @@ func (s *ProjectMirrorService) ListProjectMirror(pid interface{}, opt *ListProje
 // GetProjectMirror gets a single mirror configured on the project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/remote_mirrors.html#get-a-single-projects-remote-mirror
+// https://docs.gitlab.com/api/remote_mirrors/#get-a-single-projects-remote-mirror
 func (s *ProjectMirrorService) GetProjectMirror(pid interface{}, mirror int, options ...RequestOptionFunc) (*ProjectMirror, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -147,7 +147,7 @@ func (s *ProjectMirrorService) GetProjectMirrorPublicKey(pid interface{}, mirror
 // a new project mirror.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/remote_mirrors.html#create-a-push-mirror
+// https://docs.gitlab.com/api/remote_mirrors/#create-a-push-mirror
 type AddProjectMirrorOptions struct {
 	URL                   *string `url:"url,omitempty" json:"url,omitempty"`
 	Enabled               *bool   `url:"enabled,omitempty" json:"enabled,omitempty"`
@@ -160,7 +160,7 @@ type AddProjectMirrorOptions struct {
 // AddProjectMirror creates a new mirror on the project.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/remote_mirrors.html#create-a-push-mirror
+// https://docs.gitlab.com/api/remote_mirrors/#create-a-push-mirror
 func (s *ProjectMirrorService) AddProjectMirror(pid interface{}, opt *AddProjectMirrorOptions, options ...RequestOptionFunc) (*ProjectMirror, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -186,7 +186,7 @@ func (s *ProjectMirrorService) AddProjectMirror(pid interface{}, opt *AddProject
 // an existing project mirror.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/remote_mirrors.html#update-a-remote-mirrors-attributes
+// https://docs.gitlab.com/api/remote_mirrors/#update-a-remote-mirrors-attributes
 type EditProjectMirrorOptions struct {
 	Enabled               *bool   `url:"enabled,omitempty" json:"enabled,omitempty"`
 	KeepDivergentRefs     *bool   `url:"keep_divergent_refs,omitempty" json:"keep_divergent_refs,omitempty"`
@@ -198,7 +198,7 @@ type EditProjectMirrorOptions struct {
 // EditProjectMirror updates a project team member to a specified access level..
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/remote_mirrors.html#update-a-remote-mirrors-attributes
+// https://docs.gitlab.com/api/remote_mirrors/#update-a-remote-mirrors-attributes
 func (s *ProjectMirrorService) EditProjectMirror(pid interface{}, mirror int, opt *EditProjectMirrorOptions, options ...RequestOptionFunc) (*ProjectMirror, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
@@ -223,7 +223,7 @@ func (s *ProjectMirrorService) EditProjectMirror(pid interface{}, mirror int, op
 // DeleteProjectMirror deletes a project mirror.
 //
 // GitLab API docs:
-// https://docs.gitlab.com/ee/api/remote_mirrors.html#delete-a-remote-mirror
+// https://docs.gitlab.com/api/remote_mirrors/#delete-a-remote-mirror
 func (s *ProjectMirrorService) DeleteProjectMirror(pid interface{}, mirror int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {

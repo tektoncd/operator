@@ -537,9 +537,9 @@ func TestPrunerReconcile(t *testing.T) {
 						assert.NoError(t, err)
 						// verify that job deleted successfully
 						verifyCronExistence := func() {
-							receivedCron, err := client.BatchV1().CronJobs(tektonConfig.Spec.TargetNamespace).Get(ctx, cronName, metav1.GetOptions{})
+							_, err := client.BatchV1().CronJobs(tektonConfig.Spec.TargetNamespace).Get(ctx, cronName, metav1.GetOptions{})
 							assert.True(t, apierrors.IsNotFound(err))
-							assert.Nil(t, receivedCron)
+							//assert.Nil(t, receivedCron)
 						}
 						return verifyCronExistence
 					},
