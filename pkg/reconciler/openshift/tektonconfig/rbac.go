@@ -18,6 +18,7 @@ package tektonconfig
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"regexp"
@@ -417,31 +418,28 @@ func (r *rbac) patchNamespaceLabel(ctx context.Context, ns corev1.Namespace) err
 
 	logger.Infof("add label namespace-reconcile-version to mark namespace '%s' as reconciled", ns.Name)
 
-	// Get the current labels, or initialize if none exist
-	nsLabels := ns.GetLabels()
-	if nsLabels == nil {
-		nsLabels = map[string]string{}
+	// Prepare a patch to add/update just one label without overwriting others
+	patch := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"labels": map[string]interface{}{
+				namespaceVersionLabel: r.version,
+			},
+		},
 	}
 
-	// Add `openshift-pipelines.tekton.dev/namespace-reconcile-version` label to namespace
-	nsLabels[namespaceVersionLabel] = r.version
-	ns.SetLabels(nsLabels)
-
-	// Prepare the patch to update only the labels, keeping the existing ones
-	jsonLabels, err := reconcilerCommon.SerializeLabelsToJSON(nsLabels)
+	patchPayload, err := json.Marshal(patch)
 	if err != nil {
-		logger.Error(err)
-		return err
+		logger.Errorf("failed to marshal patch payload: %v", err)
+		return fmt.Errorf("failed to marshal label patch for namespace %s: %w", ns.Name, err)
 	}
-	patchPayload := []byte(fmt.Sprintf(`{"metadata":{"labels":%s}}`, jsonLabels))
 
-	// Use PATCH instead of UPDATE to only modify the labels
+	// Use PATCH to update just the target label
 	if _, err := r.kubeClientSet.CoreV1().Namespaces().Patch(ctx, ns.Name, types.StrategicMergePatchType, patchPayload, metav1.PatchOptions{}); err != nil {
-		logger.Errorf("failed to patch the namespace %s: %v", ns.Name, err)
-		return err
+		logger.Errorf("failed to patch namespace %s: %v", ns.Name, err)
+		return fmt.Errorf("failed to patch namespace %s: %w", ns.Name, err)
 	}
 
-	logger.Infof("namespace '%s' successfully reconciled", ns.Name)
+	logger.Infof("namespace '%s' successfully reconciled with label %q=%q", ns.Name, namespaceVersionLabel, r.version)
 	return nil
 }
 
