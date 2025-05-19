@@ -19,15 +19,14 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
-	"time"
+	context "context"
 
-	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	scheme "github.com/tektoncd/operator/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // TektonDashboardsGetter has a method to return a TektonDashboardInterface.
@@ -38,147 +37,34 @@ type TektonDashboardsGetter interface {
 
 // TektonDashboardInterface has methods to work with TektonDashboard resources.
 type TektonDashboardInterface interface {
-	Create(ctx context.Context, tektonDashboard *v1alpha1.TektonDashboard, opts v1.CreateOptions) (*v1alpha1.TektonDashboard, error)
-	Update(ctx context.Context, tektonDashboard *v1alpha1.TektonDashboard, opts v1.UpdateOptions) (*v1alpha1.TektonDashboard, error)
-	UpdateStatus(ctx context.Context, tektonDashboard *v1alpha1.TektonDashboard, opts v1.UpdateOptions) (*v1alpha1.TektonDashboard, error)
+	Create(ctx context.Context, tektonDashboard *operatorv1alpha1.TektonDashboard, opts v1.CreateOptions) (*operatorv1alpha1.TektonDashboard, error)
+	Update(ctx context.Context, tektonDashboard *operatorv1alpha1.TektonDashboard, opts v1.UpdateOptions) (*operatorv1alpha1.TektonDashboard, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, tektonDashboard *operatorv1alpha1.TektonDashboard, opts v1.UpdateOptions) (*operatorv1alpha1.TektonDashboard, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.TektonDashboard, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.TektonDashboardList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*operatorv1alpha1.TektonDashboard, error)
+	List(ctx context.Context, opts v1.ListOptions) (*operatorv1alpha1.TektonDashboardList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TektonDashboard, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *operatorv1alpha1.TektonDashboard, err error)
 	TektonDashboardExpansion
 }
 
 // tektonDashboards implements TektonDashboardInterface
 type tektonDashboards struct {
-	client rest.Interface
+	*gentype.ClientWithList[*operatorv1alpha1.TektonDashboard, *operatorv1alpha1.TektonDashboardList]
 }
 
 // newTektonDashboards returns a TektonDashboards
 func newTektonDashboards(c *OperatorV1alpha1Client) *tektonDashboards {
 	return &tektonDashboards{
-		client: c.RESTClient(),
+		gentype.NewClientWithList[*operatorv1alpha1.TektonDashboard, *operatorv1alpha1.TektonDashboardList](
+			"tektondashboards",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			"",
+			func() *operatorv1alpha1.TektonDashboard { return &operatorv1alpha1.TektonDashboard{} },
+			func() *operatorv1alpha1.TektonDashboardList { return &operatorv1alpha1.TektonDashboardList{} },
+		),
 	}
-}
-
-// Get takes name of the tektonDashboard, and returns the corresponding tektonDashboard object, and an error if there is any.
-func (c *tektonDashboards) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TektonDashboard, err error) {
-	result = &v1alpha1.TektonDashboard{}
-	err = c.client.Get().
-		Resource("tektondashboards").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of TektonDashboards that match those selectors.
-func (c *tektonDashboards) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TektonDashboardList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1alpha1.TektonDashboardList{}
-	err = c.client.Get().
-		Resource("tektondashboards").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested tektonDashboards.
-func (c *tektonDashboards) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Resource("tektondashboards").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a tektonDashboard and creates it.  Returns the server's representation of the tektonDashboard, and an error, if there is any.
-func (c *tektonDashboards) Create(ctx context.Context, tektonDashboard *v1alpha1.TektonDashboard, opts v1.CreateOptions) (result *v1alpha1.TektonDashboard, err error) {
-	result = &v1alpha1.TektonDashboard{}
-	err = c.client.Post().
-		Resource("tektondashboards").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(tektonDashboard).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a tektonDashboard and updates it. Returns the server's representation of the tektonDashboard, and an error, if there is any.
-func (c *tektonDashboards) Update(ctx context.Context, tektonDashboard *v1alpha1.TektonDashboard, opts v1.UpdateOptions) (result *v1alpha1.TektonDashboard, err error) {
-	result = &v1alpha1.TektonDashboard{}
-	err = c.client.Put().
-		Resource("tektondashboards").
-		Name(tektonDashboard.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(tektonDashboard).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *tektonDashboards) UpdateStatus(ctx context.Context, tektonDashboard *v1alpha1.TektonDashboard, opts v1.UpdateOptions) (result *v1alpha1.TektonDashboard, err error) {
-	result = &v1alpha1.TektonDashboard{}
-	err = c.client.Put().
-		Resource("tektondashboards").
-		Name(tektonDashboard.Name).
-		SubResource("status").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(tektonDashboard).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the tektonDashboard and deletes it. Returns an error if one occurs.
-func (c *tektonDashboards) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Resource("tektondashboards").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *tektonDashboards) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Resource("tektondashboards").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched tektonDashboard.
-func (c *tektonDashboards) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TektonDashboard, err error) {
-	result = &v1alpha1.TektonDashboard{}
-	err = c.client.Patch(pt).
-		Resource("tektondashboards").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }

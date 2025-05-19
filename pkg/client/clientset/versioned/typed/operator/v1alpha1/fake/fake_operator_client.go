@@ -29,51 +29,51 @@ type FakeOperatorV1alpha1 struct {
 }
 
 func (c *FakeOperatorV1alpha1) ManualApprovalGates() v1alpha1.ManualApprovalGateInterface {
-	return &FakeManualApprovalGates{c}
+	return newFakeManualApprovalGates(c)
 }
 
 func (c *FakeOperatorV1alpha1) OpenShiftPipelinesAsCodes() v1alpha1.OpenShiftPipelinesAsCodeInterface {
-	return &FakeOpenShiftPipelinesAsCodes{c}
+	return newFakeOpenShiftPipelinesAsCodes(c)
 }
 
 func (c *FakeOperatorV1alpha1) TektonAddons() v1alpha1.TektonAddonInterface {
-	return &FakeTektonAddons{c}
+	return newFakeTektonAddons(c)
 }
 
 func (c *FakeOperatorV1alpha1) TektonChains() v1alpha1.TektonChainInterface {
-	return &FakeTektonChains{c}
+	return newFakeTektonChains(c)
 }
 
 func (c *FakeOperatorV1alpha1) TektonConfigs() v1alpha1.TektonConfigInterface {
-	return &FakeTektonConfigs{c}
+	return newFakeTektonConfigs(c)
 }
 
 func (c *FakeOperatorV1alpha1) TektonDashboards() v1alpha1.TektonDashboardInterface {
-	return &FakeTektonDashboards{c}
+	return newFakeTektonDashboards(c)
 }
 
 func (c *FakeOperatorV1alpha1) TektonHubs() v1alpha1.TektonHubInterface {
-	return &FakeTektonHubs{c}
+	return newFakeTektonHubs(c)
 }
 
 func (c *FakeOperatorV1alpha1) TektonInstallerSets() v1alpha1.TektonInstallerSetInterface {
-	return &FakeTektonInstallerSets{c}
+	return newFakeTektonInstallerSets(c)
 }
 
 func (c *FakeOperatorV1alpha1) TektonPipelines() v1alpha1.TektonPipelineInterface {
-	return &FakeTektonPipelines{c}
+	return newFakeTektonPipelines(c)
 }
 
 func (c *FakeOperatorV1alpha1) TektonPruners() v1alpha1.TektonPrunerInterface {
-	return &FakeTektonPruners{c}
+	return newFakeTektonPruners(c)
 }
 
 func (c *FakeOperatorV1alpha1) TektonResults() v1alpha1.TektonResultInterface {
-	return &FakeTektonResults{c}
+	return newFakeTektonResults(c)
 }
 
 func (c *FakeOperatorV1alpha1) TektonTriggers() v1alpha1.TektonTriggerInterface {
-	return &FakeTektonTriggers{c}
+	return newFakeTektonTriggers(c)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

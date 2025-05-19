@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // OpenShiftPipelinesAsCodeLister helps list OpenShiftPipelinesAsCodes.
@@ -30,39 +30,19 @@ import (
 type OpenShiftPipelinesAsCodeLister interface {
 	// List lists all OpenShiftPipelinesAsCodes in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.OpenShiftPipelinesAsCode, err error)
+	List(selector labels.Selector) (ret []*operatorv1alpha1.OpenShiftPipelinesAsCode, err error)
 	// Get retrieves the OpenShiftPipelinesAsCode from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.OpenShiftPipelinesAsCode, error)
+	Get(name string) (*operatorv1alpha1.OpenShiftPipelinesAsCode, error)
 	OpenShiftPipelinesAsCodeListerExpansion
 }
 
 // openShiftPipelinesAsCodeLister implements the OpenShiftPipelinesAsCodeLister interface.
 type openShiftPipelinesAsCodeLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*operatorv1alpha1.OpenShiftPipelinesAsCode]
 }
 
 // NewOpenShiftPipelinesAsCodeLister returns a new OpenShiftPipelinesAsCodeLister.
 func NewOpenShiftPipelinesAsCodeLister(indexer cache.Indexer) OpenShiftPipelinesAsCodeLister {
-	return &openShiftPipelinesAsCodeLister{indexer: indexer}
-}
-
-// List lists all OpenShiftPipelinesAsCodes in the indexer.
-func (s *openShiftPipelinesAsCodeLister) List(selector labels.Selector) (ret []*v1alpha1.OpenShiftPipelinesAsCode, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.OpenShiftPipelinesAsCode))
-	})
-	return ret, err
-}
-
-// Get retrieves the OpenShiftPipelinesAsCode from the index for a given name.
-func (s *openShiftPipelinesAsCodeLister) Get(name string) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("openshiftpipelinesascode"), name)
-	}
-	return obj.(*v1alpha1.OpenShiftPipelinesAsCode), nil
+	return &openShiftPipelinesAsCodeLister{listers.New[*operatorv1alpha1.OpenShiftPipelinesAsCode](indexer, operatorv1alpha1.Resource("openshiftpipelinesascode"))}
 }

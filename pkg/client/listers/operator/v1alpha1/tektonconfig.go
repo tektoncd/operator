@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonConfigLister helps list TektonConfigs.
@@ -30,39 +30,19 @@ import (
 type TektonConfigLister interface {
 	// List lists all TektonConfigs in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.TektonConfig, err error)
+	List(selector labels.Selector) (ret []*operatorv1alpha1.TektonConfig, err error)
 	// Get retrieves the TektonConfig from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.TektonConfig, error)
+	Get(name string) (*operatorv1alpha1.TektonConfig, error)
 	TektonConfigListerExpansion
 }
 
 // tektonConfigLister implements the TektonConfigLister interface.
 type tektonConfigLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*operatorv1alpha1.TektonConfig]
 }
 
 // NewTektonConfigLister returns a new TektonConfigLister.
 func NewTektonConfigLister(indexer cache.Indexer) TektonConfigLister {
-	return &tektonConfigLister{indexer: indexer}
-}
-
-// List lists all TektonConfigs in the indexer.
-func (s *tektonConfigLister) List(selector labels.Selector) (ret []*v1alpha1.TektonConfig, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TektonConfig))
-	})
-	return ret, err
-}
-
-// Get retrieves the TektonConfig from the index for a given name.
-func (s *tektonConfigLister) Get(name string) (*v1alpha1.TektonConfig, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("tektonconfig"), name)
-	}
-	return obj.(*v1alpha1.TektonConfig), nil
+	return &tektonConfigLister{listers.New[*operatorv1alpha1.TektonConfig](indexer, operatorv1alpha1.Resource("tektonconfig"))}
 }

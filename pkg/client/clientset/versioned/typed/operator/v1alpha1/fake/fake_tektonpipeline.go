@@ -19,114 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeTektonPipelines implements TektonPipelineInterface
-type FakeTektonPipelines struct {
+// fakeTektonPipelines implements TektonPipelineInterface
+type fakeTektonPipelines struct {
+	*gentype.FakeClientWithList[*v1alpha1.TektonPipeline, *v1alpha1.TektonPipelineList]
 	Fake *FakeOperatorV1alpha1
 }
 
-var tektonpipelinesResource = v1alpha1.SchemeGroupVersion.WithResource("tektonpipelines")
-
-var tektonpipelinesKind = v1alpha1.SchemeGroupVersion.WithKind("TektonPipeline")
-
-// Get takes name of the tektonPipeline, and returns the corresponding tektonPipeline object, and an error if there is any.
-func (c *FakeTektonPipelines) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TektonPipeline, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(tektonpipelinesResource, name), &v1alpha1.TektonPipeline{})
-	if obj == nil {
-		return nil, err
+func newFakeTektonPipelines(fake *FakeOperatorV1alpha1) operatorv1alpha1.TektonPipelineInterface {
+	return &fakeTektonPipelines{
+		gentype.NewFakeClientWithList[*v1alpha1.TektonPipeline, *v1alpha1.TektonPipelineList](
+			fake.Fake,
+			"",
+			v1alpha1.SchemeGroupVersion.WithResource("tektonpipelines"),
+			v1alpha1.SchemeGroupVersion.WithKind("TektonPipeline"),
+			func() *v1alpha1.TektonPipeline { return &v1alpha1.TektonPipeline{} },
+			func() *v1alpha1.TektonPipelineList { return &v1alpha1.TektonPipelineList{} },
+			func(dst, src *v1alpha1.TektonPipelineList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.TektonPipelineList) []*v1alpha1.TektonPipeline {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.TektonPipelineList, items []*v1alpha1.TektonPipeline) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.TektonPipeline), err
-}
-
-// List takes label and field selectors, and returns the list of TektonPipelines that match those selectors.
-func (c *FakeTektonPipelines) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TektonPipelineList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(tektonpipelinesResource, tektonpipelinesKind, opts), &v1alpha1.TektonPipelineList{})
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.TektonPipelineList{ListMeta: obj.(*v1alpha1.TektonPipelineList).ListMeta}
-	for _, item := range obj.(*v1alpha1.TektonPipelineList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested tektonPipelines.
-func (c *FakeTektonPipelines) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(tektonpipelinesResource, opts))
-}
-
-// Create takes the representation of a tektonPipeline and creates it.  Returns the server's representation of the tektonPipeline, and an error, if there is any.
-func (c *FakeTektonPipelines) Create(ctx context.Context, tektonPipeline *v1alpha1.TektonPipeline, opts v1.CreateOptions) (result *v1alpha1.TektonPipeline, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(tektonpipelinesResource, tektonPipeline), &v1alpha1.TektonPipeline{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonPipeline), err
-}
-
-// Update takes the representation of a tektonPipeline and updates it. Returns the server's representation of the tektonPipeline, and an error, if there is any.
-func (c *FakeTektonPipelines) Update(ctx context.Context, tektonPipeline *v1alpha1.TektonPipeline, opts v1.UpdateOptions) (result *v1alpha1.TektonPipeline, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(tektonpipelinesResource, tektonPipeline), &v1alpha1.TektonPipeline{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonPipeline), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTektonPipelines) UpdateStatus(ctx context.Context, tektonPipeline *v1alpha1.TektonPipeline, opts v1.UpdateOptions) (*v1alpha1.TektonPipeline, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(tektonpipelinesResource, "status", tektonPipeline), &v1alpha1.TektonPipeline{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonPipeline), err
-}
-
-// Delete takes name of the tektonPipeline and deletes it. Returns an error if one occurs.
-func (c *FakeTektonPipelines) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(tektonpipelinesResource, name, opts), &v1alpha1.TektonPipeline{})
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeTektonPipelines) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(tektonpipelinesResource, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.TektonPipelineList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched tektonPipeline.
-func (c *FakeTektonPipelines) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TektonPipeline, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(tektonpipelinesResource, name, pt, data, subresources...), &v1alpha1.TektonPipeline{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonPipeline), err
 }

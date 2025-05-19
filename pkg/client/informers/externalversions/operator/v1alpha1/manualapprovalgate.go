@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	apisoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	versioned "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/tektoncd/operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // ManualApprovalGates.
 type ManualApprovalGateInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ManualApprovalGateLister
+	Lister() operatorv1alpha1.ManualApprovalGateLister
 }
 
 type manualApprovalGateInformer struct {
@@ -70,7 +70,7 @@ func NewFilteredManualApprovalGateInformer(client versioned.Interface, resyncPer
 				return client.OperatorV1alpha1().ManualApprovalGates().Watch(context.TODO(), options)
 			},
 		},
-		&operatorv1alpha1.ManualApprovalGate{},
+		&apisoperatorv1alpha1.ManualApprovalGate{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,9 +81,9 @@ func (f *manualApprovalGateInformer) defaultInformer(client versioned.Interface,
 }
 
 func (f *manualApprovalGateInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&operatorv1alpha1.ManualApprovalGate{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisoperatorv1alpha1.ManualApprovalGate{}, f.defaultInformer)
 }
 
-func (f *manualApprovalGateInformer) Lister() v1alpha1.ManualApprovalGateLister {
-	return v1alpha1.NewManualApprovalGateLister(f.Informer().GetIndexer())
+func (f *manualApprovalGateInformer) Lister() operatorv1alpha1.ManualApprovalGateLister {
+	return operatorv1alpha1.NewManualApprovalGateLister(f.Informer().GetIndexer())
 }

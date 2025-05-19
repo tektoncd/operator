@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	apisoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	versioned "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/tektoncd/operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // OpenShiftPipelinesAsCodes.
 type OpenShiftPipelinesAsCodeInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.OpenShiftPipelinesAsCodeLister
+	Lister() operatorv1alpha1.OpenShiftPipelinesAsCodeLister
 }
 
 type openShiftPipelinesAsCodeInformer struct {
@@ -70,7 +70,7 @@ func NewFilteredOpenShiftPipelinesAsCodeInformer(client versioned.Interface, res
 				return client.OperatorV1alpha1().OpenShiftPipelinesAsCodes().Watch(context.TODO(), options)
 			},
 		},
-		&operatorv1alpha1.OpenShiftPipelinesAsCode{},
+		&apisoperatorv1alpha1.OpenShiftPipelinesAsCode{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,9 +81,9 @@ func (f *openShiftPipelinesAsCodeInformer) defaultInformer(client versioned.Inte
 }
 
 func (f *openShiftPipelinesAsCodeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&operatorv1alpha1.OpenShiftPipelinesAsCode{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisoperatorv1alpha1.OpenShiftPipelinesAsCode{}, f.defaultInformer)
 }
 
-func (f *openShiftPipelinesAsCodeInformer) Lister() v1alpha1.OpenShiftPipelinesAsCodeLister {
-	return v1alpha1.NewOpenShiftPipelinesAsCodeLister(f.Informer().GetIndexer())
+func (f *openShiftPipelinesAsCodeInformer) Lister() operatorv1alpha1.OpenShiftPipelinesAsCodeLister {
+	return operatorv1alpha1.NewOpenShiftPipelinesAsCodeLister(f.Informer().GetIndexer())
 }

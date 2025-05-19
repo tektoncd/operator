@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonHubLister helps list TektonHubs.
@@ -30,39 +30,19 @@ import (
 type TektonHubLister interface {
 	// List lists all TektonHubs in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.TektonHub, err error)
+	List(selector labels.Selector) (ret []*operatorv1alpha1.TektonHub, err error)
 	// Get retrieves the TektonHub from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.TektonHub, error)
+	Get(name string) (*operatorv1alpha1.TektonHub, error)
 	TektonHubListerExpansion
 }
 
 // tektonHubLister implements the TektonHubLister interface.
 type tektonHubLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*operatorv1alpha1.TektonHub]
 }
 
 // NewTektonHubLister returns a new TektonHubLister.
 func NewTektonHubLister(indexer cache.Indexer) TektonHubLister {
-	return &tektonHubLister{indexer: indexer}
-}
-
-// List lists all TektonHubs in the indexer.
-func (s *tektonHubLister) List(selector labels.Selector) (ret []*v1alpha1.TektonHub, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TektonHub))
-	})
-	return ret, err
-}
-
-// Get retrieves the TektonHub from the index for a given name.
-func (s *tektonHubLister) Get(name string) (*v1alpha1.TektonHub, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("tektonhub"), name)
-	}
-	return obj.(*v1alpha1.TektonHub), nil
+	return &tektonHubLister{listers.New[*operatorv1alpha1.TektonHub](indexer, operatorv1alpha1.Resource("tektonhub"))}
 }

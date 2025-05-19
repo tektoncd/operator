@@ -19,114 +19,32 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeTektonHubs implements TektonHubInterface
-type FakeTektonHubs struct {
+// fakeTektonHubs implements TektonHubInterface
+type fakeTektonHubs struct {
+	*gentype.FakeClientWithList[*v1alpha1.TektonHub, *v1alpha1.TektonHubList]
 	Fake *FakeOperatorV1alpha1
 }
 
-var tektonhubsResource = v1alpha1.SchemeGroupVersion.WithResource("tektonhubs")
-
-var tektonhubsKind = v1alpha1.SchemeGroupVersion.WithKind("TektonHub")
-
-// Get takes name of the tektonHub, and returns the corresponding tektonHub object, and an error if there is any.
-func (c *FakeTektonHubs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TektonHub, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(tektonhubsResource, name), &v1alpha1.TektonHub{})
-	if obj == nil {
-		return nil, err
+func newFakeTektonHubs(fake *FakeOperatorV1alpha1) operatorv1alpha1.TektonHubInterface {
+	return &fakeTektonHubs{
+		gentype.NewFakeClientWithList[*v1alpha1.TektonHub, *v1alpha1.TektonHubList](
+			fake.Fake,
+			"",
+			v1alpha1.SchemeGroupVersion.WithResource("tektonhubs"),
+			v1alpha1.SchemeGroupVersion.WithKind("TektonHub"),
+			func() *v1alpha1.TektonHub { return &v1alpha1.TektonHub{} },
+			func() *v1alpha1.TektonHubList { return &v1alpha1.TektonHubList{} },
+			func(dst, src *v1alpha1.TektonHubList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.TektonHubList) []*v1alpha1.TektonHub { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1alpha1.TektonHubList, items []*v1alpha1.TektonHub) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.TektonHub), err
-}
-
-// List takes label and field selectors, and returns the list of TektonHubs that match those selectors.
-func (c *FakeTektonHubs) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TektonHubList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(tektonhubsResource, tektonhubsKind, opts), &v1alpha1.TektonHubList{})
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.TektonHubList{ListMeta: obj.(*v1alpha1.TektonHubList).ListMeta}
-	for _, item := range obj.(*v1alpha1.TektonHubList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested tektonHubs.
-func (c *FakeTektonHubs) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(tektonhubsResource, opts))
-}
-
-// Create takes the representation of a tektonHub and creates it.  Returns the server's representation of the tektonHub, and an error, if there is any.
-func (c *FakeTektonHubs) Create(ctx context.Context, tektonHub *v1alpha1.TektonHub, opts v1.CreateOptions) (result *v1alpha1.TektonHub, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(tektonhubsResource, tektonHub), &v1alpha1.TektonHub{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonHub), err
-}
-
-// Update takes the representation of a tektonHub and updates it. Returns the server's representation of the tektonHub, and an error, if there is any.
-func (c *FakeTektonHubs) Update(ctx context.Context, tektonHub *v1alpha1.TektonHub, opts v1.UpdateOptions) (result *v1alpha1.TektonHub, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(tektonhubsResource, tektonHub), &v1alpha1.TektonHub{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonHub), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTektonHubs) UpdateStatus(ctx context.Context, tektonHub *v1alpha1.TektonHub, opts v1.UpdateOptions) (*v1alpha1.TektonHub, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(tektonhubsResource, "status", tektonHub), &v1alpha1.TektonHub{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonHub), err
-}
-
-// Delete takes name of the tektonHub and deletes it. Returns an error if one occurs.
-func (c *FakeTektonHubs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(tektonhubsResource, name, opts), &v1alpha1.TektonHub{})
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeTektonHubs) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(tektonhubsResource, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.TektonHubList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched tektonHub.
-func (c *FakeTektonHubs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TektonHub, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(tektonhubsResource, name, pt, data, subresources...), &v1alpha1.TektonHub{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonHub), err
 }

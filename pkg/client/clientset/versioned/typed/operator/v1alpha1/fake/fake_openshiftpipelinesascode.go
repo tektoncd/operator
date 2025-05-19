@@ -19,114 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeOpenShiftPipelinesAsCodes implements OpenShiftPipelinesAsCodeInterface
-type FakeOpenShiftPipelinesAsCodes struct {
+// fakeOpenShiftPipelinesAsCodes implements OpenShiftPipelinesAsCodeInterface
+type fakeOpenShiftPipelinesAsCodes struct {
+	*gentype.FakeClientWithList[*v1alpha1.OpenShiftPipelinesAsCode, *v1alpha1.OpenShiftPipelinesAsCodeList]
 	Fake *FakeOperatorV1alpha1
 }
 
-var openshiftpipelinesascodesResource = v1alpha1.SchemeGroupVersion.WithResource("openshiftpipelinesascodes")
-
-var openshiftpipelinesascodesKind = v1alpha1.SchemeGroupVersion.WithKind("OpenShiftPipelinesAsCode")
-
-// Get takes name of the openShiftPipelinesAsCode, and returns the corresponding openShiftPipelinesAsCode object, and an error if there is any.
-func (c *FakeOpenShiftPipelinesAsCodes) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.OpenShiftPipelinesAsCode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(openshiftpipelinesascodesResource, name), &v1alpha1.OpenShiftPipelinesAsCode{})
-	if obj == nil {
-		return nil, err
+func newFakeOpenShiftPipelinesAsCodes(fake *FakeOperatorV1alpha1) operatorv1alpha1.OpenShiftPipelinesAsCodeInterface {
+	return &fakeOpenShiftPipelinesAsCodes{
+		gentype.NewFakeClientWithList[*v1alpha1.OpenShiftPipelinesAsCode, *v1alpha1.OpenShiftPipelinesAsCodeList](
+			fake.Fake,
+			"",
+			v1alpha1.SchemeGroupVersion.WithResource("openshiftpipelinesascodes"),
+			v1alpha1.SchemeGroupVersion.WithKind("OpenShiftPipelinesAsCode"),
+			func() *v1alpha1.OpenShiftPipelinesAsCode { return &v1alpha1.OpenShiftPipelinesAsCode{} },
+			func() *v1alpha1.OpenShiftPipelinesAsCodeList { return &v1alpha1.OpenShiftPipelinesAsCodeList{} },
+			func(dst, src *v1alpha1.OpenShiftPipelinesAsCodeList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.OpenShiftPipelinesAsCodeList) []*v1alpha1.OpenShiftPipelinesAsCode {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.OpenShiftPipelinesAsCodeList, items []*v1alpha1.OpenShiftPipelinesAsCode) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.OpenShiftPipelinesAsCode), err
-}
-
-// List takes label and field selectors, and returns the list of OpenShiftPipelinesAsCodes that match those selectors.
-func (c *FakeOpenShiftPipelinesAsCodes) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.OpenShiftPipelinesAsCodeList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(openshiftpipelinesascodesResource, openshiftpipelinesascodesKind, opts), &v1alpha1.OpenShiftPipelinesAsCodeList{})
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.OpenShiftPipelinesAsCodeList{ListMeta: obj.(*v1alpha1.OpenShiftPipelinesAsCodeList).ListMeta}
-	for _, item := range obj.(*v1alpha1.OpenShiftPipelinesAsCodeList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested openShiftPipelinesAsCodes.
-func (c *FakeOpenShiftPipelinesAsCodes) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(openshiftpipelinesascodesResource, opts))
-}
-
-// Create takes the representation of a openShiftPipelinesAsCode and creates it.  Returns the server's representation of the openShiftPipelinesAsCode, and an error, if there is any.
-func (c *FakeOpenShiftPipelinesAsCodes) Create(ctx context.Context, openShiftPipelinesAsCode *v1alpha1.OpenShiftPipelinesAsCode, opts v1.CreateOptions) (result *v1alpha1.OpenShiftPipelinesAsCode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(openshiftpipelinesascodesResource, openShiftPipelinesAsCode), &v1alpha1.OpenShiftPipelinesAsCode{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.OpenShiftPipelinesAsCode), err
-}
-
-// Update takes the representation of a openShiftPipelinesAsCode and updates it. Returns the server's representation of the openShiftPipelinesAsCode, and an error, if there is any.
-func (c *FakeOpenShiftPipelinesAsCodes) Update(ctx context.Context, openShiftPipelinesAsCode *v1alpha1.OpenShiftPipelinesAsCode, opts v1.UpdateOptions) (result *v1alpha1.OpenShiftPipelinesAsCode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(openshiftpipelinesascodesResource, openShiftPipelinesAsCode), &v1alpha1.OpenShiftPipelinesAsCode{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.OpenShiftPipelinesAsCode), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeOpenShiftPipelinesAsCodes) UpdateStatus(ctx context.Context, openShiftPipelinesAsCode *v1alpha1.OpenShiftPipelinesAsCode, opts v1.UpdateOptions) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(openshiftpipelinesascodesResource, "status", openShiftPipelinesAsCode), &v1alpha1.OpenShiftPipelinesAsCode{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.OpenShiftPipelinesAsCode), err
-}
-
-// Delete takes name of the openShiftPipelinesAsCode and deletes it. Returns an error if one occurs.
-func (c *FakeOpenShiftPipelinesAsCodes) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(openshiftpipelinesascodesResource, name, opts), &v1alpha1.OpenShiftPipelinesAsCode{})
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeOpenShiftPipelinesAsCodes) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(openshiftpipelinesascodesResource, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.OpenShiftPipelinesAsCodeList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched openShiftPipelinesAsCode.
-func (c *FakeOpenShiftPipelinesAsCodes) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.OpenShiftPipelinesAsCode, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(openshiftpipelinesascodesResource, name, pt, data, subresources...), &v1alpha1.OpenShiftPipelinesAsCode{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.OpenShiftPipelinesAsCode), err
 }

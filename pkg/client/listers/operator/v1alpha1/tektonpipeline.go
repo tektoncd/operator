@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonPipelineLister helps list TektonPipelines.
@@ -30,39 +30,19 @@ import (
 type TektonPipelineLister interface {
 	// List lists all TektonPipelines in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.TektonPipeline, err error)
+	List(selector labels.Selector) (ret []*operatorv1alpha1.TektonPipeline, err error)
 	// Get retrieves the TektonPipeline from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.TektonPipeline, error)
+	Get(name string) (*operatorv1alpha1.TektonPipeline, error)
 	TektonPipelineListerExpansion
 }
 
 // tektonPipelineLister implements the TektonPipelineLister interface.
 type tektonPipelineLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*operatorv1alpha1.TektonPipeline]
 }
 
 // NewTektonPipelineLister returns a new TektonPipelineLister.
 func NewTektonPipelineLister(indexer cache.Indexer) TektonPipelineLister {
-	return &tektonPipelineLister{indexer: indexer}
-}
-
-// List lists all TektonPipelines in the indexer.
-func (s *tektonPipelineLister) List(selector labels.Selector) (ret []*v1alpha1.TektonPipeline, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TektonPipeline))
-	})
-	return ret, err
-}
-
-// Get retrieves the TektonPipeline from the index for a given name.
-func (s *tektonPipelineLister) Get(name string) (*v1alpha1.TektonPipeline, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("tektonpipeline"), name)
-	}
-	return obj.(*v1alpha1.TektonPipeline), nil
+	return &tektonPipelineLister{listers.New[*operatorv1alpha1.TektonPipeline](indexer, operatorv1alpha1.Resource("tektonpipeline"))}
 }

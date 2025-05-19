@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonChainLister helps list TektonChains.
@@ -30,39 +30,19 @@ import (
 type TektonChainLister interface {
 	// List lists all TektonChains in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.TektonChain, err error)
+	List(selector labels.Selector) (ret []*operatorv1alpha1.TektonChain, err error)
 	// Get retrieves the TektonChain from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.TektonChain, error)
+	Get(name string) (*operatorv1alpha1.TektonChain, error)
 	TektonChainListerExpansion
 }
 
 // tektonChainLister implements the TektonChainLister interface.
 type tektonChainLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*operatorv1alpha1.TektonChain]
 }
 
 // NewTektonChainLister returns a new TektonChainLister.
 func NewTektonChainLister(indexer cache.Indexer) TektonChainLister {
-	return &tektonChainLister{indexer: indexer}
-}
-
-// List lists all TektonChains in the indexer.
-func (s *tektonChainLister) List(selector labels.Selector) (ret []*v1alpha1.TektonChain, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TektonChain))
-	})
-	return ret, err
-}
-
-// Get retrieves the TektonChain from the index for a given name.
-func (s *tektonChainLister) Get(name string) (*v1alpha1.TektonChain, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("tektonchain"), name)
-	}
-	return obj.(*v1alpha1.TektonChain), nil
+	return &tektonChainLister{listers.New[*operatorv1alpha1.TektonChain](indexer, operatorv1alpha1.Resource("tektonchain"))}
 }

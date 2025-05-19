@@ -40,9 +40,9 @@ bash ${REPO_ROOT_DIR}/hack/generate-groups.sh "deepcopy,client,informer,lister" 
 
 # Depends on generate-groups.sh to install bin/deepcopy-gen
 ${PREFIX}/deepcopy-gen \
-  -O zz_generated.deepcopy \
+  --output-file zz_generated.deepcopy.go \
   --go-header-file ${REPO_ROOT_DIR}/hack/boilerplate/boilerplate.go.txt \
-  -i github.com/tektoncd/operator/pkg/apis/operator/v1alpha1
+  github.com/tektoncd/operator/pkg/apis/operator/v1alpha1
 
 # Knative Injection
 # This generates the knative inject packages for the operator package (v1alpha1).

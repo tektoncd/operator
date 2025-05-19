@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	apisoperatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	versioned "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/tektoncd/operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -36,7 +36,7 @@ import (
 // TektonAddons.
 type TektonAddonInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.TektonAddonLister
+	Lister() operatorv1alpha1.TektonAddonLister
 }
 
 type tektonAddonInformer struct {
@@ -70,7 +70,7 @@ func NewFilteredTektonAddonInformer(client versioned.Interface, resyncPeriod tim
 				return client.OperatorV1alpha1().TektonAddons().Watch(context.TODO(), options)
 			},
 		},
-		&operatorv1alpha1.TektonAddon{},
+		&apisoperatorv1alpha1.TektonAddon{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,9 +81,9 @@ func (f *tektonAddonInformer) defaultInformer(client versioned.Interface, resync
 }
 
 func (f *tektonAddonInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&operatorv1alpha1.TektonAddon{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisoperatorv1alpha1.TektonAddon{}, f.defaultInformer)
 }
 
-func (f *tektonAddonInformer) Lister() v1alpha1.TektonAddonLister {
-	return v1alpha1.NewTektonAddonLister(f.Informer().GetIndexer())
+func (f *tektonAddonInformer) Lister() operatorv1alpha1.TektonAddonLister {
+	return operatorv1alpha1.NewTektonAddonLister(f.Informer().GetIndexer())
 }

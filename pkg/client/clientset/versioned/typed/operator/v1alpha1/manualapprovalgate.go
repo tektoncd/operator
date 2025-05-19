@@ -19,15 +19,14 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
-	"time"
+	context "context"
 
-	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	scheme "github.com/tektoncd/operator/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // ManualApprovalGatesGetter has a method to return a ManualApprovalGateInterface.
@@ -38,147 +37,34 @@ type ManualApprovalGatesGetter interface {
 
 // ManualApprovalGateInterface has methods to work with ManualApprovalGate resources.
 type ManualApprovalGateInterface interface {
-	Create(ctx context.Context, manualApprovalGate *v1alpha1.ManualApprovalGate, opts v1.CreateOptions) (*v1alpha1.ManualApprovalGate, error)
-	Update(ctx context.Context, manualApprovalGate *v1alpha1.ManualApprovalGate, opts v1.UpdateOptions) (*v1alpha1.ManualApprovalGate, error)
-	UpdateStatus(ctx context.Context, manualApprovalGate *v1alpha1.ManualApprovalGate, opts v1.UpdateOptions) (*v1alpha1.ManualApprovalGate, error)
+	Create(ctx context.Context, manualApprovalGate *operatorv1alpha1.ManualApprovalGate, opts v1.CreateOptions) (*operatorv1alpha1.ManualApprovalGate, error)
+	Update(ctx context.Context, manualApprovalGate *operatorv1alpha1.ManualApprovalGate, opts v1.UpdateOptions) (*operatorv1alpha1.ManualApprovalGate, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, manualApprovalGate *operatorv1alpha1.ManualApprovalGate, opts v1.UpdateOptions) (*operatorv1alpha1.ManualApprovalGate, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ManualApprovalGate, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ManualApprovalGateList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*operatorv1alpha1.ManualApprovalGate, error)
+	List(ctx context.Context, opts v1.ListOptions) (*operatorv1alpha1.ManualApprovalGateList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ManualApprovalGate, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *operatorv1alpha1.ManualApprovalGate, err error)
 	ManualApprovalGateExpansion
 }
 
 // manualApprovalGates implements ManualApprovalGateInterface
 type manualApprovalGates struct {
-	client rest.Interface
+	*gentype.ClientWithList[*operatorv1alpha1.ManualApprovalGate, *operatorv1alpha1.ManualApprovalGateList]
 }
 
 // newManualApprovalGates returns a ManualApprovalGates
 func newManualApprovalGates(c *OperatorV1alpha1Client) *manualApprovalGates {
 	return &manualApprovalGates{
-		client: c.RESTClient(),
+		gentype.NewClientWithList[*operatorv1alpha1.ManualApprovalGate, *operatorv1alpha1.ManualApprovalGateList](
+			"manualapprovalgates",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			"",
+			func() *operatorv1alpha1.ManualApprovalGate { return &operatorv1alpha1.ManualApprovalGate{} },
+			func() *operatorv1alpha1.ManualApprovalGateList { return &operatorv1alpha1.ManualApprovalGateList{} },
+		),
 	}
-}
-
-// Get takes name of the manualApprovalGate, and returns the corresponding manualApprovalGate object, and an error if there is any.
-func (c *manualApprovalGates) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ManualApprovalGate, err error) {
-	result = &v1alpha1.ManualApprovalGate{}
-	err = c.client.Get().
-		Resource("manualapprovalgates").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of ManualApprovalGates that match those selectors.
-func (c *manualApprovalGates) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ManualApprovalGateList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1alpha1.ManualApprovalGateList{}
-	err = c.client.Get().
-		Resource("manualapprovalgates").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested manualApprovalGates.
-func (c *manualApprovalGates) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Resource("manualapprovalgates").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a manualApprovalGate and creates it.  Returns the server's representation of the manualApprovalGate, and an error, if there is any.
-func (c *manualApprovalGates) Create(ctx context.Context, manualApprovalGate *v1alpha1.ManualApprovalGate, opts v1.CreateOptions) (result *v1alpha1.ManualApprovalGate, err error) {
-	result = &v1alpha1.ManualApprovalGate{}
-	err = c.client.Post().
-		Resource("manualapprovalgates").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(manualApprovalGate).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a manualApprovalGate and updates it. Returns the server's representation of the manualApprovalGate, and an error, if there is any.
-func (c *manualApprovalGates) Update(ctx context.Context, manualApprovalGate *v1alpha1.ManualApprovalGate, opts v1.UpdateOptions) (result *v1alpha1.ManualApprovalGate, err error) {
-	result = &v1alpha1.ManualApprovalGate{}
-	err = c.client.Put().
-		Resource("manualapprovalgates").
-		Name(manualApprovalGate.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(manualApprovalGate).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *manualApprovalGates) UpdateStatus(ctx context.Context, manualApprovalGate *v1alpha1.ManualApprovalGate, opts v1.UpdateOptions) (result *v1alpha1.ManualApprovalGate, err error) {
-	result = &v1alpha1.ManualApprovalGate{}
-	err = c.client.Put().
-		Resource("manualapprovalgates").
-		Name(manualApprovalGate.Name).
-		SubResource("status").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(manualApprovalGate).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the manualApprovalGate and deletes it. Returns an error if one occurs.
-func (c *manualApprovalGates) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Resource("manualapprovalgates").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *manualApprovalGates) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Resource("manualapprovalgates").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched manualApprovalGate.
-func (c *manualApprovalGates) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ManualApprovalGate, err error) {
-	result = &v1alpha1.ManualApprovalGate{}
-	err = c.client.Patch(pt).
-		Resource("manualapprovalgates").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }
