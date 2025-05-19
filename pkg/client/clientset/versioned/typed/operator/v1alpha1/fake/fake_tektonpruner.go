@@ -19,114 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeTektonPruners implements TektonPrunerInterface
-type FakeTektonPruners struct {
+// fakeTektonPruners implements TektonPrunerInterface
+type fakeTektonPruners struct {
+	*gentype.FakeClientWithList[*v1alpha1.TektonPruner, *v1alpha1.TektonPrunerList]
 	Fake *FakeOperatorV1alpha1
 }
 
-var tektonprunersResource = v1alpha1.SchemeGroupVersion.WithResource("tektonpruners")
-
-var tektonprunersKind = v1alpha1.SchemeGroupVersion.WithKind("TektonPruner")
-
-// Get takes name of the tektonPruner, and returns the corresponding tektonPruner object, and an error if there is any.
-func (c *FakeTektonPruners) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TektonPruner, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(tektonprunersResource, name), &v1alpha1.TektonPruner{})
-	if obj == nil {
-		return nil, err
+func newFakeTektonPruners(fake *FakeOperatorV1alpha1) operatorv1alpha1.TektonPrunerInterface {
+	return &fakeTektonPruners{
+		gentype.NewFakeClientWithList[*v1alpha1.TektonPruner, *v1alpha1.TektonPrunerList](
+			fake.Fake,
+			"",
+			v1alpha1.SchemeGroupVersion.WithResource("tektonpruners"),
+			v1alpha1.SchemeGroupVersion.WithKind("TektonPruner"),
+			func() *v1alpha1.TektonPruner { return &v1alpha1.TektonPruner{} },
+			func() *v1alpha1.TektonPrunerList { return &v1alpha1.TektonPrunerList{} },
+			func(dst, src *v1alpha1.TektonPrunerList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.TektonPrunerList) []*v1alpha1.TektonPruner {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.TektonPrunerList, items []*v1alpha1.TektonPruner) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.TektonPruner), err
-}
-
-// List takes label and field selectors, and returns the list of TektonPruners that match those selectors.
-func (c *FakeTektonPruners) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TektonPrunerList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(tektonprunersResource, tektonprunersKind, opts), &v1alpha1.TektonPrunerList{})
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.TektonPrunerList{ListMeta: obj.(*v1alpha1.TektonPrunerList).ListMeta}
-	for _, item := range obj.(*v1alpha1.TektonPrunerList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested tektonPruners.
-func (c *FakeTektonPruners) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(tektonprunersResource, opts))
-}
-
-// Create takes the representation of a tektonPruner and creates it.  Returns the server's representation of the tektonPruner, and an error, if there is any.
-func (c *FakeTektonPruners) Create(ctx context.Context, tektonPruner *v1alpha1.TektonPruner, opts v1.CreateOptions) (result *v1alpha1.TektonPruner, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(tektonprunersResource, tektonPruner), &v1alpha1.TektonPruner{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonPruner), err
-}
-
-// Update takes the representation of a tektonPruner and updates it. Returns the server's representation of the tektonPruner, and an error, if there is any.
-func (c *FakeTektonPruners) Update(ctx context.Context, tektonPruner *v1alpha1.TektonPruner, opts v1.UpdateOptions) (result *v1alpha1.TektonPruner, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(tektonprunersResource, tektonPruner), &v1alpha1.TektonPruner{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonPruner), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTektonPruners) UpdateStatus(ctx context.Context, tektonPruner *v1alpha1.TektonPruner, opts v1.UpdateOptions) (*v1alpha1.TektonPruner, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(tektonprunersResource, "status", tektonPruner), &v1alpha1.TektonPruner{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonPruner), err
-}
-
-// Delete takes name of the tektonPruner and deletes it. Returns an error if one occurs.
-func (c *FakeTektonPruners) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(tektonprunersResource, name, opts), &v1alpha1.TektonPruner{})
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeTektonPruners) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(tektonprunersResource, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.TektonPrunerList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched tektonPruner.
-func (c *FakeTektonPruners) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TektonPruner, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(tektonprunersResource, name, pt, data, subresources...), &v1alpha1.TektonPruner{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonPruner), err
 }

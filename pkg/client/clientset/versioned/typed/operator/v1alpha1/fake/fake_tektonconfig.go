@@ -19,114 +19,34 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeTektonConfigs implements TektonConfigInterface
-type FakeTektonConfigs struct {
+// fakeTektonConfigs implements TektonConfigInterface
+type fakeTektonConfigs struct {
+	*gentype.FakeClientWithList[*v1alpha1.TektonConfig, *v1alpha1.TektonConfigList]
 	Fake *FakeOperatorV1alpha1
 }
 
-var tektonconfigsResource = v1alpha1.SchemeGroupVersion.WithResource("tektonconfigs")
-
-var tektonconfigsKind = v1alpha1.SchemeGroupVersion.WithKind("TektonConfig")
-
-// Get takes name of the tektonConfig, and returns the corresponding tektonConfig object, and an error if there is any.
-func (c *FakeTektonConfigs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.TektonConfig, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootGetAction(tektonconfigsResource, name), &v1alpha1.TektonConfig{})
-	if obj == nil {
-		return nil, err
+func newFakeTektonConfigs(fake *FakeOperatorV1alpha1) operatorv1alpha1.TektonConfigInterface {
+	return &fakeTektonConfigs{
+		gentype.NewFakeClientWithList[*v1alpha1.TektonConfig, *v1alpha1.TektonConfigList](
+			fake.Fake,
+			"",
+			v1alpha1.SchemeGroupVersion.WithResource("tektonconfigs"),
+			v1alpha1.SchemeGroupVersion.WithKind("TektonConfig"),
+			func() *v1alpha1.TektonConfig { return &v1alpha1.TektonConfig{} },
+			func() *v1alpha1.TektonConfigList { return &v1alpha1.TektonConfigList{} },
+			func(dst, src *v1alpha1.TektonConfigList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.TektonConfigList) []*v1alpha1.TektonConfig {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.TektonConfigList, items []*v1alpha1.TektonConfig) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.TektonConfig), err
-}
-
-// List takes label and field selectors, and returns the list of TektonConfigs that match those selectors.
-func (c *FakeTektonConfigs) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.TektonConfigList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootListAction(tektonconfigsResource, tektonconfigsKind, opts), &v1alpha1.TektonConfigList{})
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.TektonConfigList{ListMeta: obj.(*v1alpha1.TektonConfigList).ListMeta}
-	for _, item := range obj.(*v1alpha1.TektonConfigList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested tektonConfigs.
-func (c *FakeTektonConfigs) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewRootWatchAction(tektonconfigsResource, opts))
-}
-
-// Create takes the representation of a tektonConfig and creates it.  Returns the server's representation of the tektonConfig, and an error, if there is any.
-func (c *FakeTektonConfigs) Create(ctx context.Context, tektonConfig *v1alpha1.TektonConfig, opts v1.CreateOptions) (result *v1alpha1.TektonConfig, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootCreateAction(tektonconfigsResource, tektonConfig), &v1alpha1.TektonConfig{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonConfig), err
-}
-
-// Update takes the representation of a tektonConfig and updates it. Returns the server's representation of the tektonConfig, and an error, if there is any.
-func (c *FakeTektonConfigs) Update(ctx context.Context, tektonConfig *v1alpha1.TektonConfig, opts v1.UpdateOptions) (result *v1alpha1.TektonConfig, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateAction(tektonconfigsResource, tektonConfig), &v1alpha1.TektonConfig{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonConfig), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeTektonConfigs) UpdateStatus(ctx context.Context, tektonConfig *v1alpha1.TektonConfig, opts v1.UpdateOptions) (*v1alpha1.TektonConfig, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootUpdateSubresourceAction(tektonconfigsResource, "status", tektonConfig), &v1alpha1.TektonConfig{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonConfig), err
-}
-
-// Delete takes name of the tektonConfig and deletes it. Returns an error if one occurs.
-func (c *FakeTektonConfigs) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewRootDeleteActionWithOptions(tektonconfigsResource, name, opts), &v1alpha1.TektonConfig{})
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeTektonConfigs) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewRootDeleteCollectionAction(tektonconfigsResource, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.TektonConfigList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched tektonConfig.
-func (c *FakeTektonConfigs) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.TektonConfig, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewRootPatchSubresourceAction(tektonconfigsResource, name, pt, data, subresources...), &v1alpha1.TektonConfig{})
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.TektonConfig), err
 }

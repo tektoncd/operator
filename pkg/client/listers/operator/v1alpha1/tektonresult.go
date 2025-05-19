@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	operatorv1alpha1 "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // TektonResultLister helps list TektonResults.
@@ -30,39 +30,19 @@ import (
 type TektonResultLister interface {
 	// List lists all TektonResults in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.TektonResult, err error)
+	List(selector labels.Selector) (ret []*operatorv1alpha1.TektonResult, err error)
 	// Get retrieves the TektonResult from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.TektonResult, error)
+	Get(name string) (*operatorv1alpha1.TektonResult, error)
 	TektonResultListerExpansion
 }
 
 // tektonResultLister implements the TektonResultLister interface.
 type tektonResultLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*operatorv1alpha1.TektonResult]
 }
 
 // NewTektonResultLister returns a new TektonResultLister.
 func NewTektonResultLister(indexer cache.Indexer) TektonResultLister {
-	return &tektonResultLister{indexer: indexer}
-}
-
-// List lists all TektonResults in the indexer.
-func (s *tektonResultLister) List(selector labels.Selector) (ret []*v1alpha1.TektonResult, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.TektonResult))
-	})
-	return ret, err
-}
-
-// Get retrieves the TektonResult from the index for a given name.
-func (s *tektonResultLister) Get(name string) (*v1alpha1.TektonResult, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("tektonresult"), name)
-	}
-	return obj.(*v1alpha1.TektonResult), nil
+	return &tektonResultLister{listers.New[*operatorv1alpha1.TektonResult](indexer, operatorv1alpha1.Resource("tektonresult"))}
 }
