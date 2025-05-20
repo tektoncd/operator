@@ -1,7 +1,8 @@
 module github.com/tektoncd/operator
 
-go 1.23.4
-toolchain go1.24.1
+go 1.23.6
+
+toolchain go1.24.3
 
 require (
 	github.com/Masterminds/semver v1.5.0
@@ -211,7 +212,7 @@ require (
 	github.com/nozzle/throttler v0.0.0-20180817012639-2ea982251481 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oleiade/reflections v1.1.0 // indirect
-	github.com/open-policy-agent/opa v1.4.0 // indirect
+	github.com/open-policy-agent/opa v1.3.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect

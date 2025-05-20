@@ -29,7 +29,7 @@ type Definition struct {
 	Types       []string      // union
 	EnumValues  EnumValueList // enum
 
-	Position *Position `dump:"-" json:"-"`
+	Position *Position `dump:"-"`
 	BuiltIn  bool      `dump:"-"`
 }
 
@@ -65,7 +65,7 @@ type FieldDefinition struct {
 	DefaultValue *Value                 // only for input objects
 	Type         *Type
 	Directives   DirectiveList
-	Position     *Position `dump:"-" json:"-"`
+	Position     *Position `dump:"-"`
 }
 
 type ArgumentDefinition struct {
@@ -74,14 +74,14 @@ type ArgumentDefinition struct {
 	DefaultValue *Value
 	Type         *Type
 	Directives   DirectiveList
-	Position     *Position `dump:"-" json:"-"`
+	Position     *Position `dump:"-"`
 }
 
 type EnumValueDefinition struct {
 	Description string
 	Name        string
 	Directives  DirectiveList
-	Position    *Position `dump:"-" json:"-"`
+	Position    *Position `dump:"-"`
 }
 
 type DirectiveDefinition struct {
@@ -90,5 +90,5 @@ type DirectiveDefinition struct {
 	Arguments    ArgumentDefinitionList
 	Locations    []DirectiveLocation
 	IsRepeatable bool
-	Position     *Position `dump:"-" json:"-"`
+	Position     *Position `dump:"-"`
 }

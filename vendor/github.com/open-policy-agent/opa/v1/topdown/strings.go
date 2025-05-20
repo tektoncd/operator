@@ -443,14 +443,7 @@ func builtinUpper(_ BuiltinContext, operands []*ast.Term, iter func(*ast.Term) e
 		return err
 	}
 
-	arg := string(s)
-	upp := strings.ToUpper(arg)
-
-	if arg == upp {
-		return iter(operands[0])
-	}
-
-	return iter(ast.StringTerm(upp))
+	return iter(ast.StringTerm(strings.ToUpper(string(s))))
 }
 
 func builtinSplit(_ BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {

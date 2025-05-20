@@ -925,8 +925,8 @@ github.com/oklog/ulid
 # github.com/oleiade/reflections v1.1.0
 ## explicit; go 1.22.6
 github.com/oleiade/reflections
-# github.com/open-policy-agent/opa v1.4.0
-## explicit; go 1.23.8
+# github.com/open-policy-agent/opa v1.3.0
+## explicit; go 1.23.6
 github.com/open-policy-agent/opa/capabilities
 github.com/open-policy-agent/opa/internal/bundle
 github.com/open-policy-agent/opa/internal/cidr/merge
