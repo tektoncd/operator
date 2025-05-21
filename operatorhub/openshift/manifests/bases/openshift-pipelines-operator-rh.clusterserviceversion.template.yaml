@@ -237,6 +237,27 @@ spec:
           x-descriptors:
             - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
+    - description: Represents an installation of latest version of Tekton Pruner
+      displayName: Tekton Pruner
+      kind: TektonPruner
+      name: tektonpruners.operator.tekton.dev
+      resources:
+        - kind: tektoninstallersets
+          name: ''
+          version: v1alpha1
+      specDescriptors:
+        - description: Namespace where Tekton Pruner installed
+          displayName: Target Namespace
+          path: targetNamespace
+          x-descriptors:
+            - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+        - description: The version of Tekton Pruner installed
+          displayName: Version
+          path: version
+          x-descriptors:
+            - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
     - description: This CustomResourceDefinition (CRD) is used internally by the other OpenShift Pipelines CRDs to maintain the lifecycle of OpenShift Pipelines Components
       displayName: Tekton Installer Set
       kind: TektonInstallerSet
@@ -316,6 +337,7 @@ spec:
     - Tekton Hub (tech-preview): v1.21.0
     - Tekton Results (tech-preview): v0.14.0
     - Manual Approval Gate (tech-preview): v0.6.0
+    - Tekton Pruner (tech-preview): v0.1.0
 
     ## Getting Started
 
