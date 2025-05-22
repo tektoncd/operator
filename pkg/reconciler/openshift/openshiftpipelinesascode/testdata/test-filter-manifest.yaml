@@ -90,6 +90,18 @@ data:
   error-detection-simple-regexp: |
     ^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+)?([ ]*)?(?P<error>.*)
 
+  # Global setting to control whether Pipelines-as-Code should automatically cancel
+  # any in-progress PipelineRuns associated with a pull request when that pull request is updated.
+  # This helps prevent multiple redundant runs from executing simultaneously.
+  # Default value: false.
+  enable-cancel-in-progress-on-pull-requests: "false"
+
+  # Global setting to determine whether Pipelines-as-Code should automatically cancel
+  # in-progress PipelineRuns triggered by a push event, if a new push occurs on the same branch.
+  # This prevents overlapping or redundant runs for the same branch.
+  # Default value: false.
+  enable-cancel-in-progress-on-push: "false"
+
   # Since public bitbucket doesn't have the concept of Secret, we need to be
   # able to secure the request by querying https://ip-ranges.atlassian.com/,
   # this only happen for public bitbucket (ie: when provider.url is not set in
