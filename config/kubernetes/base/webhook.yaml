@@ -35,6 +35,8 @@ spec:
       - name: tekton-operator-webhook
         image: ko://github.com/tektoncd/operator/cmd/kubernetes/webhook
         env:
+        - name: KUBERNETES_MIN_VERSION
+          value: "v1.0.0"
         - name: SYSTEM_NAMESPACE
           valueFrom:
             fieldRef:
