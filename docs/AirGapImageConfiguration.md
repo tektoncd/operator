@@ -97,3 +97,4 @@ Supports all the images listed above in kubernetes and following are specific to
 | Addons                |                                   | `IMAGE_ADDONS_SKOPEO_RESULTS`                       |
 | Addons                |                                   | `IMAGE_ADDONS_TKN`                                  |
 | Addons                |                                   | `IMAGE_ADDONS_TKN_CLI_SERVE`                        |
+| Addons                |                                   | `IMAGE_ADDONS_PREPARE_AND_RUN`                      |
