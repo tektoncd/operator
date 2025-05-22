@@ -38,6 +38,8 @@ spec:
         - "tekton-operator-lifecycle"
         imagePullPolicy: Always
         env:
+        - name: KUBERNETES_MIN_VERSION
+          value: "v1.0.0"
         - name: SYSTEM_NAMESPACE
           valueFrom:
             fieldRef:
@@ -87,6 +89,8 @@ spec:
         - "tekton-operator-cluster-operations"
         imagePullPolicy: Always
         env:
+          - name: KUBERNETES_MIN_VERSION
+            value: "v1.0.0"
           - name: SYSTEM_NAMESPACE
             valueFrom:
               fieldRef:
