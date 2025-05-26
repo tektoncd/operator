@@ -125,6 +125,13 @@ data:
   # you may want to disable this if ok-to-test should be done on each iteration
   remember-ok-to-test: "false"
 
+  # When enabled, this option prevents duplicate pipeline runs when a commit appears in
+  # both a push event and a pull request. If a push event comes from a commit that is
+  # part of an open pull request, the push event will be skipped as it would create
+  # a duplicate pipeline run.
+  # Default: true
+  skip-push-event-for-pr-commits: "true"
+
   # Configure a custom console here, the driver support custom parameters from
   # Repo CR along a few other template variable, see documentation for more
   # details

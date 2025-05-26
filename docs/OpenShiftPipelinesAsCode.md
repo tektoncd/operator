@@ -44,6 +44,7 @@ It is recommended that you install OpenShiftPipelinesAsCode through [TektonConfi
         enable-cancel-in-progress-on-push: "false"
         hub-catalog-name: tekton
         hub-url: https://api.hub.tekton.dev/v1
+        skip-push-event-for-pr-commits: "true"
         remote-tasks: "true"
         secret-auto-create: "true"
         secret-github-app-token-scoped: "true"
