@@ -66,6 +66,8 @@ type Settings struct {
 	EnableCancelInProgressOnPullRequests bool `json:"enable-cancel-in-progress-on-pull-requests"`
 	EnableCancelInProgressOnPush         bool `json:"enable-cancel-in-progress-on-push"`
 
+	SkipPushEventForPRCommits bool `json:"skip-push-event-for-pr-commits" default:"true"` // nolint:tagalign
+
 	CustomConsoleName         string `json:"custom-console-name"`
 	CustomConsoleURL          string `json:"custom-console-url"`
 	CustomConsolePRdetail     string `json:"custom-console-url-pr-details"`
