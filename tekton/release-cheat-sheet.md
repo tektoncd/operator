@@ -59,7 +59,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
    find charts/tekton-operator/templates -type f -name '*.yaml' -exec sed -i "s/version: \"devel\"/version: ${TEKTON_RELEASE_VERSION}/g" {} +
 
    # Update Chart.yaml
-   sed -i "s/^version: \"devel\"/version: ${TEKTON_RELEASE_VERSION}/" charts/tekton-operator/Chart.yaml
+   sed -i "s/^version: \"devel\"/version: ${TEKTON_RELEASE_VERSION#v}/" charts/tekton-operator/Chart.yaml
    sed -i "s/^appVersion: \"devel\"/appVersion: ${TEKTON_RELEASE_VERSION}/" charts/tekton-operator/Chart.yaml
    ```
 
@@ -73,7 +73,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
 3. set commit SHA from TEKTON_RELEASE_BRANCH
    ```bash
-   TEKTON_RELEASE_GIT_SHA=$(git rev-parse origin/${TEKTON_RELEASE_BRANCH})
+   TEKTON_RELEASE_GIT_SHA=$(git rev-parse upstream/${TEKTON_RELEASE_BRANCH})
    ```
 
 4. Confirm commit SHA matches what you want to release.
@@ -165,7 +165,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
       -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
       -p release-tag="${TEKTON_RELEASE_VERSION}" \
       -p previous-release-tag="${TEKTON_OLD_VERSION}" \
-      -p release-name="" \
+      -p release-name="${TEKTON_RELEASE_NAME}" \
       -p bucket="gs://tekton-releases/operator" \
       -p rekor-uuid="" \
       release-draft
@@ -183,6 +183,11 @@ need a checkout of the operator repo, a terminal window and a text editor.
     1. Publish the GitHub release once all notes are correct and in order.
 
 2. Edit `README.md` on `master` branch, add entry to docs table with latest release links.
+   In README.md, update the supported versions and end-of-life sections:
+
+   Add ${TEKTON_RELEASE_VERSION} under the Supported Versions section (### In Support).
+   Move the previous version to the End of Life section (### End of Life).
+
 
 3. Push & make PR for updated `README.md`
 
@@ -196,6 +201,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
 5. Announce the release in Slack channels #general and #pipelines.
 
 Congratulations, you're done!
+   
 
 ## Setup dogfooding context
 
@@ -218,12 +224,6 @@ Congratulations, you're done!
     ```bash
     kubectl config use-context my-dev-cluster
     ```
-
-## Add version to supported version
-   In README.md, update the supported versions and end-of-life sections:
-
-   Add ${TEKTON_RELEASE_VERSION} under the Supported Versions section (### In Support).
-   Move the previous version to the End of Life section (### End of Life).
 
 ## Ensure documentation is updated
    In the https://github.com/tektoncd/website.git repository, under sync/config/operator.yaml,
