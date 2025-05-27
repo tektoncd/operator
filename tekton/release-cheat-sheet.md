@@ -73,7 +73,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
 3. set commit SHA from TEKTON_RELEASE_BRANCH
    ```bash
-   TEKTON_RELEASE_GIT_SHA=$(git rev-parse origin/${TEKTON_RELEASE_BRANCH})
+   TEKTON_RELEASE_GIT_SHA=$(git rev-parse upstream/${TEKTON_RELEASE_BRANCH})
    ```
 
 4. Confirm commit SHA matches what you want to release.
