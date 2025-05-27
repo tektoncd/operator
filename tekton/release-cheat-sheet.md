@@ -59,7 +59,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
    find charts/tekton-operator/templates -type f -name '*.yaml' -exec sed -i "s/version: \"devel\"/version: ${TEKTON_RELEASE_VERSION}/g" {} +
 
    # Update Chart.yaml
-   sed -i "s/^version: \"devel\"/version: ${TEKTON_RELEASE_VERSION}/" charts/tekton-operator/Chart.yaml
+   sed -i "s/^version: \"devel\"/version: ${TEKTON_RELEASE_VERSION#v}/" charts/tekton-operator/Chart.yaml
    sed -i "s/^appVersion: \"devel\"/appVersion: ${TEKTON_RELEASE_VERSION}/" charts/tekton-operator/Chart.yaml
    ```
 

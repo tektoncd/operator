@@ -112,12 +112,28 @@ release_yaml() {
     echo ""
 }
 
+
+# Function to install yq if not available
+install_yq() {
+  if ! command -v yq &> /dev/null; then
+    echo "yq not found, installing..."
+    curl -L https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq
+    chmod +x /usr/local/bin/yq
+    echo "yq installed successfully"
+  else
+    echo "yq is already available"
+  fi
+}
+
 # release_yaml_github <component>
 release_yaml_github() {
   local github_component version releaseFileName destFileName component url
 
   component=$1
   echo fetching $component release yaml from github
+
+  # Install yq if not available
+  install_yq
 
   github_component=$(yq .$component.github ${CONFIG})
   version=$(yq .$component.version ${CONFIG})

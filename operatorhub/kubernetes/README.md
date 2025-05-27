@@ -14,7 +14,7 @@ bundle for using `release-manifest` strategy.
    ```bash
    tektoncd_operator_version=$( curl -sL https://api.github.com/repos/tektoncd/operator/releases | jq  -r '.[].tag_name' | sort -Vr | head -n 1 | tr -d 'v')
    release_file_name=release-v${tektoncd_operator_version}.yaml
-   curl -sL -o ${release_file_name} https://github.com/tektoncd/operator/releases/download/v${tektoncd_operator_version}/release.notags.yaml
+   curl -sL -o ${release_file_name} "https://github.com/tektoncd/operator/releases/download/v${tektoncd_operator_version}/release.notags.yaml"
    ```
 
 2. From the project root (tektoncd/operator) run (note abosolute path for `--release-manifest` flag is necessary)
