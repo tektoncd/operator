@@ -3,8 +3,8 @@ kind: Service
 metadata:
   creationTimestamp: null
   labels:
-    name: openshift-pipelines-operator
-    version: devel
+    app: tekton-pipelines-controller
+    version: v0.76.0
   name: tekton-operator
 spec:
   ports:
@@ -13,7 +13,7 @@ spec:
     protocol: TCP
     targetPort: 9090
   selector:
-    app: openshift-pipelines-operator
-    name: openshift-pipelines-operator
+    app: tekton-operator
+    name: tekton-operator
 status:
   loadBalancer: {}
