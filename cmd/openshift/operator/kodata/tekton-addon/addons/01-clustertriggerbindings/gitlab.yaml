@@ -8,7 +8,7 @@ spec:
   - name: git-repo-url
     value: $(body.project.git_http_url)
   - name: git-repo-ssh-url
-    value: $(body.project.git_ssh_url)
+    value: $(body.repository.git_ssh_url )
   - name: mergereq-sha
     value: $(body.object_attributes.last_commit.id)
   - name: mergereq-action
@@ -37,7 +37,7 @@ spec:
   - name: git-repo-url
     value: $(body.repository.git_http_url)
   - name: git-repo-ssh-url
-    value: $(body.project.git_ssh_url)
+    value: $(body.repository.git_ssh_url )
   - name: git-repo-name
     value: $(body.repository.name)
   - name: pusher-name
