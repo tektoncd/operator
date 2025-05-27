@@ -33,5 +33,5 @@ kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/instance: default
-    operator.tekton.dev/release: v0.76.0
+    operator.tekton.dev/release: devel
   name: tekton-operator-webhook-config-leader-election

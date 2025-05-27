@@ -5,14 +5,14 @@ metadata:
   labels:
     operator.tekton.dev/release: v0.76.0
     version: v0.76.0
-  name: tektonpipelines.operator.tekton.dev
+  name: tektonpruners.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: TektonPipeline
-    listKind: TektonPipelineList
-    plural: tektonpipelines
-    singular: tektonpipeline
+    kind: TektonPruner
+    listKind: TektonPrunerList
+    plural: tektonpruners
+    singular: tektonpruner
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -28,7 +28,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Schema for the tektonpipelines API
+        description: Schema for the tektonpruners API
         type: object
         x-kubernetes-preserve-unknown-fields: true
     served: true
