@@ -233,6 +233,7 @@ image-substitutions:
           - IMAGE_PAC_PAC_CONTROLLER
           - IMAGE_PAC_PAC_WEBHOOK
           - IMAGE_PAC_PAC_WATCHER
+          - IMAGE_PAC_PAC_CLI
 - image: registry.redhat.io/openshift-pipelines/pipelines-results-watcher-rhel8@
   replaceLocations:
     envTargets:
