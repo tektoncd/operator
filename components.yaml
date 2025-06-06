@@ -3,7 +3,7 @@ chains:
   version: v0.25.1
 dashboard:
   github: tektoncd/dashboard
-  version: v0.57.0
+  version: v0.58.0
 hub:
   github: tektoncd/hub
   version: v1.21.0
@@ -12,10 +12,10 @@ manual-approval-gate:
   version: v0.6.0
 pipeline:
   github: tektoncd/pipeline
-  version: v1.0.0
+  version: v1.1.0
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
-  version: v0.35.0
+  version: v0.35.1
 pruner:
   github: openshift-pipelines/tektoncd-pruner
   version: v0.1.0
