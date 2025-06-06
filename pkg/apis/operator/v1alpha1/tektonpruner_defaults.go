@@ -20,10 +20,16 @@ import (
 	"context"
 )
 
-func (tp *TektonPruner) SetDefaults(ctx context.Context) {
-	tp.Spec.Pruner.setDefaults()
-}
-func (p *Pruner) setDefaults() {
-	p.Disabled = true // Disabled By Default
+var (
+	DefaultPrunerDisabled = true
+)
 
+func (tp *TektonPruner) SetDefaults(_ context.Context) {
+	tp.Spec.Pruner.SetDefaults()
+}
+
+func (p *Pruner) SetDefaults() {
+	if p.Disabled == nil {
+		p.Disabled = &DefaultPrunerDisabled
+	}
 }
