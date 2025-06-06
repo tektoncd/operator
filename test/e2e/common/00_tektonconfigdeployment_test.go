@@ -1062,7 +1062,7 @@ func (s *TektonConfigTestSuite) getDefaultConfig() *v1alpha1.TektonConfig {
 			},
 			// Disable the TektonPruner by default
 			TektonPruner: v1alpha1.Pruner{
-				Disabled: true,
+				Disabled: &v1alpha1.DefaultPrunerDisabled,
 			},
 		},
 	}
