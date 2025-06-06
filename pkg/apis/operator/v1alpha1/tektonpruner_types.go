@@ -42,7 +42,7 @@ type TektonPruner struct {
 
 type Pruner struct {
 	// enable or disable TektonPruner Component
-	Disabled bool `json:"disabled"`
+	Disabled *bool `json:"disabled"`
 	// options holds additions fields and these fields will be updated on the manifests
 	Options AdditionalOptions `json:"options"`
 }
@@ -84,4 +84,9 @@ func (tp *TektonPruner) GetSpec() TektonComponentSpec {
 
 func (tp *TektonPruner) GetStatus() TektonComponentStatus {
 	return &tp.Status
+}
+
+// IsDisabled returns true if the TektonPruner is disabled
+func (p *Pruner) IsDisabled() bool {
+	return *p.Disabled
 }
