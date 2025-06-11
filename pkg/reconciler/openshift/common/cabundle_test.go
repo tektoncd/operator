@@ -91,6 +91,66 @@ func TestApplyCABundles(t *testing.T) {
 	assert.DeepEqual(t, actual, expected)
 }
 
+func TestApplyCABundlesForStatefulSet(t *testing.T) {
+	actual := unstructuredStatefulSet(t)
+	expected := unstructuredStatefulSet(t,
+		withStatefulSetEnvs(
+			corev1.EnvVar{
+				Name:  "SSL_CERT_DIR",
+				Value: "/tekton-custom-certs:/etc/ssl/certs:/etc/pki/tls/certs",
+			},
+		),
+		withStatefulSetVolumes(corev1.Volume{
+			Name: common.TrustedCAConfigMapVolume,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{Name: common.TrustedCAConfigMapName},
+					Items: []corev1.KeyToPath{
+						{
+							Key:  common.TrustedCAKey,
+							Path: common.TrustedCAKey,
+						},
+					},
+				},
+			},
+		},
+			corev1.Volume{
+				Name: common.ServiceCAConfigMapVolume,
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.ServiceCAConfigMapName},
+						Items: []corev1.KeyToPath{
+							{
+								Key:  common.ServiceCAKey,
+								Path: common.ServiceCAKey,
+							},
+						},
+					},
+				},
+			}),
+		withStatefulSetVolumeMounts(
+			corev1.VolumeMount{
+				Name:      common.TrustedCAConfigMapVolume,
+				MountPath: filepath.Join("/tekton-custom-certs", common.TrustedCAKey),
+				SubPath:   common.TrustedCAKey,
+				ReadOnly:  true,
+			},
+			corev1.VolumeMount{
+				Name:      common.ServiceCAConfigMapVolume,
+				MountPath: filepath.Join("/tekton-custom-certs", common.ServiceCAKey),
+				SubPath:   common.ServiceCAKey,
+				ReadOnly:  true,
+			},
+		),
+	)
+
+	if err := ApplyCABundlesForStatefulSet("test-statefulset")(actual); err != nil {
+		t.Fatal(err)
+	}
+
+	assert.DeepEqual(t, actual, expected)
+}
+
 type deploymentModifier func(*appsv1.Deployment)
 
 func unstructuredDeployment(t *testing.T, modifiers ...deploymentModifier) *unstructured.Unstructured {
@@ -161,6 +221,81 @@ func withVolumeMounts(volumeMounts ...corev1.VolumeMount) func(*appsv1.Deploymen
 		for i, c := range d.Spec.Template.Spec.Containers {
 			c.VolumeMounts = append(c.VolumeMounts, volumeMounts...)
 			d.Spec.Template.Spec.Containers[i] = c
+		}
+	}
+}
+
+type statefulSetModifier func(*appsv1.StatefulSet)
+
+func unstructuredStatefulSet(t *testing.T, modifiers ...statefulSetModifier) *unstructured.Unstructured {
+	sts := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "test-statefulset",
+		},
+		Spec: appsv1.StatefulSetSpec{
+			ServiceName: "test-service",
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "test",
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "test",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name:  "test-container",
+						Image: "test-image",
+					}},
+				},
+			},
+		},
+	}
+
+	for _, modifier := range modifiers {
+		modifier(sts)
+	}
+
+	sts.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   appsv1.SchemeGroupVersion.Group,
+		Version: appsv1.SchemeGroupVersion.Version,
+		Kind:    "StatefulSet",
+	})
+	b, err := json.Marshal(sts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ud := &unstructured.Unstructured{}
+	if err := json.Unmarshal(b, ud); err != nil {
+		t.Fatal(err)
+	}
+	return ud
+}
+
+func withStatefulSetEnvs(envs ...corev1.EnvVar) func(*appsv1.StatefulSet) {
+	return func(s *appsv1.StatefulSet) {
+		for i, c := range s.Spec.Template.Spec.Containers {
+			c.Env = append(c.Env, envs...)
+			s.Spec.Template.Spec.Containers[i] = c
+		}
+	}
+}
+
+func withStatefulSetVolumes(volumes ...corev1.Volume) func(*appsv1.StatefulSet) {
+	return func(s *appsv1.StatefulSet) {
+		s.Spec.Template.Spec.Volumes = append(s.Spec.Template.Spec.Volumes, volumes...)
+	}
+}
+
+func withStatefulSetVolumeMounts(volumeMounts ...corev1.VolumeMount) func(*appsv1.StatefulSet) {
+	return func(s *appsv1.StatefulSet) {
+		for i, c := range s.Spec.Template.Spec.Containers {
+			c.VolumeMounts = append(c.VolumeMounts, volumeMounts...)
+			s.Spec.Template.Spec.Containers[i] = c
 		}
 	}
 }

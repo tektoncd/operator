@@ -27,6 +27,10 @@ import (
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 )
 
+const (
+	tektonChainsControllerName = "tekton-chains-controller"
+)
+
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	ext := openshiftExtension{
 		operatorClientSet: operatorclient.Get(ctx),
@@ -42,7 +46,10 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	return []mf.Transformer{
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
+		occommon.RemoveRunAsUserForStatefulSet(tektonChainsControllerName),
+		occommon.RemoveRunAsGroupForStatefulSet(tektonChainsControllerName),
 		occommon.ApplyCABundles,
+		occommon.ApplyCABundlesForStatefulSet(tektonChainsControllerName),
 	}
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {

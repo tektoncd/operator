@@ -47,6 +47,7 @@ const (
 	boundSAVolume           = "bound-sa-token"
 	boundSAPath             = "/var/run/secrets/openshift/serviceaccount"
 	lokiStackTLSCAEnvVar    = "LOGGING_PLUGIN_CA_CERT"
+	tektonResultWatcherName = "tekton-results-watcher"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -97,6 +98,9 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
 		occommon.ApplyCABundles,
+		occommon.RemoveRunAsUserForStatefulSet(tektonResultWatcherName),
+		occommon.RemoveRunAsGroupForStatefulSet(tektonResultWatcherName),
+		occommon.ApplyCABundlesForStatefulSet(tektonResultWatcherName),
 		injectBoundSAToken(instance.Spec.ResultsAPIProperties),
 		injectLokiStackTLSCACert(instance.Spec.LokiStackProperties),
 		injectResultsAPIServiceCACert(instance.Spec.ResultsAPIProperties),
