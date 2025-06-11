@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test-statefulset
+spec:
+  serviceName: test-service
+  selector:
+    matchLabels:
+      app: test
+  template:
+    metadata:
+      labels:
+        app: test
+    spec:
+      containers:
+      - name: test-container
+        image: test-image
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/config
+        - mountPath: /etc/pki/ca-trust/extracted/pem
+          name: trusted-ca-bundle
+          readOnly: true
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+          name: service-ca-bundle
+          readOnly: true
+      volumes:
+      - name: config-volume
+        configMap:
+          name: test-config
+      - configMap:
+          name: trusted-ca-bundle
+          optional: true
+        name: trusted-ca-bundle
+      - configMap:
+          name: service-ca-bundle
+          optional: true
+        name: service-ca-bundle
