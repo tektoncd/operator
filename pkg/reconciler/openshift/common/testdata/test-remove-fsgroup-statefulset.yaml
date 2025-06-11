@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: test-statefulset
+spec:
+  serviceName: test-service
+  selector:
+    matchLabels:
+      app: test
+  template:
+    metadata:
+      labels:
+        app: test
+    spec:
+      securityContext:
+        fsGroup: 2000
+      containers:
+      - name: test-container
+        image: test-image
+        securityContext:
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL

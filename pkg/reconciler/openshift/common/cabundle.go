@@ -75,3 +75,47 @@ func toUnstructured(v interface{}) (*unstructured.Unstructured, error) {
 	}
 	return ud, nil
 }
+
+// ApplyCABundlesForStatefulSet is a transformer that adds CA bundle configurations to a StatefulSet.
+// It configures both trusted CA bundle and service CA bundle by:
+// - Adding volumes for the CA bundle ConfigMaps
+// - Adding volume mounts to containers
+// - Setting up necessary annotations for OpenShift service CA injection
+// The function modifies the StatefulSet in place and returns any error encountered.
+func ApplyCABundlesForStatefulSet(name string) func(u *unstructured.Unstructured) error {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "StatefulSet" || u.GetName() != name {
+			// Don't do anything on something else than the specified StatefulSet
+			return nil
+		}
+
+		sts := &appsv1.StatefulSet{}
+		if err := scheme.Scheme.Convert(u, sts, nil); err != nil {
+			return err
+		}
+
+		// Let's add the trusted and service CA bundle ConfigMaps as a volume in
+		// the PodSpec which will later be mounted to add certs in the pod.
+		sts.Spec.Template.Spec.Volumes = common.AddCABundleConfigMapsToVolumes(sts.Spec.Template.Spec.Volumes)
+
+		// Now that the injected certificates have been added as a volume, let's
+		// mount them via volumeMounts in the containers
+		for i := range sts.Spec.Template.Spec.Containers {
+			c := sts.Spec.Template.Spec.Containers[i] // Create a copy of the container
+			common.AddCABundlesToContainerVolumes(&c)
+			sts.Spec.Template.Spec.Containers[i] = c
+		}
+
+		sts.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   appsv1.SchemeGroupVersion.Group,
+			Version: appsv1.SchemeGroupVersion.Version,
+			Kind:    "StatefulSet",
+		})
+		m, err := toUnstructured(sts)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(m.Object)
+		return nil
+	}
+}

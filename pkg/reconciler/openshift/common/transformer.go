@@ -184,3 +184,87 @@ func UpdateServiceMonitorTargetNamespace(targetNamespace string) mf.Transformer 
 		return nil
 	}
 }
+
+// RemoveRunAsUserForStatefulset will remove RunAsUser from all container in a statefulset
+func RemoveRunAsUserForStatefulSet(name string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "StatefulSet" || u.GetName() != name {
+			return nil
+		}
+
+		sts := &appsv1.StatefulSet{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, sts)
+		if err != nil {
+			return err
+		}
+
+		containers := sts.Spec.Template.Spec.Containers
+		removeRunAsUser(containers)
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sts)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
+// RemoveFsGroupForStatefulSet will remove FsGroup in a statefulset
+func RemoveFsGroupForStatefulSet(name string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "StatefulSet" || u.GetName() != name {
+			return nil
+		}
+
+		sts := &appsv1.StatefulSet{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, sts)
+		if err != nil {
+			return err
+		}
+
+		if sts.Spec.Template.Spec.SecurityContext != nil && sts.Spec.Template.Spec.SecurityContext.FSGroup != nil {
+			sts.Spec.Template.Spec.SecurityContext.FSGroup = nil
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sts)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
+// RemoveRunAsGroupForStatefulSet will remove runAsGroup from all container in a statefulset
+func RemoveRunAsGroupForStatefulSet(name string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "StatefulSet" || u.GetName() != name {
+			return nil
+		}
+
+		sts := &appsv1.StatefulSet{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, sts)
+		if err != nil {
+			return err
+		}
+
+		for i := range sts.Spec.Template.Spec.Containers {
+			c := &sts.Spec.Template.Spec.Containers[i]
+			if c.SecurityContext != nil {
+				// Remove runAsGroup
+				c.SecurityContext.RunAsGroup = nil
+			}
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(sts)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
