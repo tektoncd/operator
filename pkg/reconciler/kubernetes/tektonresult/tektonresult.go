@@ -404,6 +404,11 @@ func (r *Reconciler) createDBSecret(ctx context.Context, tr *v1alpha1.TektonResu
 func (r *Reconciler) createTLSSecret(ctx context.Context, tr *v1alpha1.TektonResult) error {
 	logger := logging.FromContext(ctx)
 
+	if v1alpha1.IsOpenShiftPlatform() {
+		logger.Info("Skipping default TLS secret creation: running on OpenShift platform")
+		return nil
+	}
+
 	_, err := r.kubeClientSet.CoreV1().Secrets(tr.Spec.TargetNamespace).Get(ctx, TlsSecretName, metav1.GetOptions{})
 	if err == nil {
 		return nil
