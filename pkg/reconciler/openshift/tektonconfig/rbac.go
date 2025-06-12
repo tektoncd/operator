@@ -61,11 +61,13 @@ const (
 	trustedCABundleConfigMap    = "config-trusted-cabundle"
 	clusterInterceptors         = "openshift-pipelines-clusterinterceptors"
 	namespaceVersionLabel       = "openshift-pipelines.tekton.dev/namespace-reconcile-version"
+	namespaceTrustedConfigLabel = "openshift-pipelines.tekton.dev/namespace-trusted-configmaps-version"
 	createdByValue              = "RBAC"
 	componentNameRBAC           = "rhosp-rbac"
 	rbacInstallerSetType        = "rhosp-rbac"
 	rbacInstallerSetNamePrefix  = "rhosp-rbac-"
 	rbacParamName               = "createRbacResource"
+	trustedCABundleParamName    = "createCABundleConfigMaps"
 	legacyPipelineRbacParamName = "legacyPipelineRbac"
 	legacyPipelineRbac          = "true"
 	serviceAccountCreationLabel = "openshift-pipelines.tekton.dev/sa-created"
@@ -86,7 +88,7 @@ var nsRegex = regexp.MustCompile(reconcilerCommon.NamespaceIgnorePattern)
 type rbac struct {
 	kubeClientSet     kubernetes.Interface
 	operatorClientSet clientset.Interface
-	securityClientSet *security.Clientset
+	securityClientSet security.Interface
 	rbacInformer      rbacV1.ClusterRoleBindingInformer
 	nsInformer        nsV1.NamespaceInformer
 	ownerRef          metav1.OwnerReference
@@ -97,6 +99,12 @@ type rbac struct {
 type NamespaceServiceAccount struct {
 	ServiceAccount *corev1.ServiceAccount
 	Namespace      corev1.Namespace
+}
+
+// NamespacesToReconcile holds the namespaces that need reconciliation for different features
+type NamespacesToReconcile struct {
+	RBACNamespaces []corev1.Namespace
+	CANamespaces   []corev1.Namespace
 }
 
 func (r *rbac) cleanUp(ctx context.Context) error {
@@ -153,17 +161,25 @@ func (r *rbac) EnsureRBACInstallerSet(ctx context.Context) (*v1alpha1.TektonInst
 }
 
 func (r *rbac) setDefault() {
+	var rbacParamFound, legacyParamFound, caBundleParamFound bool
+	var createRbacResourceValue string
 
-	var rbacParamFound, legacyParamFound bool
 	for i, v := range r.tektonConfig.Spec.Params {
 		if v.Name == rbacParamName {
 			rbacParamFound = true
+			createRbacResourceValue = v.Value
 			if v.Value != "false" && v.Value != "true" {
 				r.tektonConfig.Spec.Params[i].Value = "true"
 			}
 		}
 		if v.Name == legacyPipelineRbacParamName {
 			legacyParamFound = true
+			if v.Value != "false" && v.Value != "true" {
+				r.tektonConfig.Spec.Params[i].Value = "true"
+			}
+		}
+		if v.Name == trustedCABundleParamName {
+			caBundleParamFound = true
 			if v.Value != "false" && v.Value != "true" {
 				r.tektonConfig.Spec.Params[i].Value = "true"
 			}
@@ -180,6 +196,19 @@ func (r *rbac) setDefault() {
 			Name:  legacyPipelineRbacParamName,
 			Value: "true",
 		})
+	}
+
+	// TODO: Remove this upgrade workaround after version 1.22.
+	// This logic is only needed to preserve backward compatibility for users upgrading to 1.21
+	// who had createRbacResource=false and no createCABundleConfigMaps param set.
+	if !caBundleParamFound {
+		defaultVal := "true"
+		if rbacParamFound && createRbacResourceValue == "false" {
+			defaultVal = "false"
+		}
+		r.tektonConfig.Spec.Params = append(r.tektonConfig.Spec.Params,
+			v1alpha1.Param{Name: trustedCABundleParamName, Value: defaultVal},
+		)
 	}
 }
 
@@ -241,60 +270,73 @@ func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 	return nil
 }
 
-func (r *rbac) getNamespacesToBeReconciled(ctx context.Context) ([]corev1.Namespace, error) {
+func (r *rbac) getNamespacesToBeReconciled(ctx context.Context) (*NamespacesToReconcile, error) {
 	logger := logging.FromContext(ctx)
 
-	// fetch the list of all namespaces which doesn't have label
-	// `openshift-pipelines.tekton.dev/namespace-reconcile-version: <release-version>`
+	// fetch the list of all namespaces
 	allNamespaces, err := r.kubeClientSet.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	var namespaces []corev1.Namespace
+	result := &NamespacesToReconcile{
+		RBACNamespaces: []corev1.Namespace{},
+		CANamespaces:   []corev1.Namespace{},
+	}
+
 	for _, ns := range allNamespaces.Items {
 		// ignore namespaces with name passing regex `^(openshift|kube)-`
 		if ignore := nsRegex.MatchString(ns.GetName()); ignore {
+			logger.Debugf("Ignoring system namespace: %s", ns.GetName())
 			continue
 		}
 
 		// ignore namespaces with DeletionTimestamp set
 		if ns.GetObjectMeta().GetDeletionTimestamp() != nil {
+			logger.Debugf("Ignoring namespace being deleted: %s", ns.GetName())
 			continue
 		}
 
+		// Check if namespace needs RBAC reconciliation
+		needsRBAC := false
 		// We want to monitor namespaces with the SCC annotation set
 		if ns.Annotations[openshift.NamespaceSCCAnnotation] != "" {
-			namespaces = append(namespaces, ns)
-			continue
+			needsRBAC = true
 		}
-
 		// Then we want to accept namespaces that have not been reconciled yet
 		if ns.Labels[namespaceVersionLabel] != r.version {
-			namespaces = append(namespaces, ns)
-			continue
+			needsRBAC = true
+		} else {
+			// Now we're left with namespaces that have already been reconciled.
+			// We must make sure that the default SCC is in force via the ClusterRole.
+			sccRoleBinding, err := r.kubeClientSet.RbacV1().RoleBindings(ns.Name).Get(ctx, pipelinesSCCRoleBinding, metav1.GetOptions{})
+			if err != nil {
+				// Reconcile a namespace again with missing RoleBinding
+				if errors.IsNotFound(err) {
+					logger.Debugf("could not find roleBinding %s in namespace %s", pipelinesSCCRoleBinding, ns.Name)
+					needsRBAC = true
+				} else {
+					return nil, fmt.Errorf("error fetching rolebinding %s from namespace %s: %w", pipelinesSCCRoleBinding, ns.Name, err)
+				}
+			} else if sccRoleBinding.RoleRef.Kind != "ClusterRole" {
+				logger.Infof("RoleBinding %s in namespace: %s should have CluterRole with default SCC, will reconcile again...", pipelinesSCCRoleBinding, ns.Name)
+				needsRBAC = true
+			}
 		}
 
-		// Now we're left with namespaces that have already been reconciled.
-		// We must make sure that the default SCC is in force via the ClusterRole.
-		sccRoleBinding, err := r.kubeClientSet.RbacV1().RoleBindings(ns.Name).Get(ctx, pipelinesSCCRoleBinding, metav1.GetOptions{})
-		if err != nil {
-			// Reconcile a namespace again with missing RoleBinding
-			if errors.IsNotFound(err) {
-				logger.Debugf("could not find roleBinding %s in namespace %s", pipelinesSCCRoleBinding, ns.Name)
-				namespaces = append(namespaces, ns)
-				continue
-			}
-			return nil, fmt.Errorf("error fetching rolebinding %s from namespace %s: %w", pipelinesSCCRoleBinding, ns.Name, err)
+		if needsRBAC {
+			logger.Debugf("Adding namespace for RBAC reconciliation: %s", ns.GetName())
+			result.RBACNamespaces = append(result.RBACNamespaces, ns)
 		}
-		if sccRoleBinding.RoleRef.Kind != "ClusterRole" {
-			logger.Infof("RoleBinding %s in namespace: %s should have CluterRole with default SCC, will reconcile again...", pipelinesSCCRoleBinding, ns.Name)
-			namespaces = append(namespaces, ns)
-			continue
+
+		// Check if namespace needs CA bundle reconciliation
+		if ns.Labels[namespaceTrustedConfigLabel] != r.version {
+			logger.Debugf("Adding namespace for CA bundle reconciliation: %s", ns.GetName())
+			result.CANamespaces = append(result.CANamespaces, ns)
 		}
 	}
 
-	return namespaces, nil
+	return result, nil
 }
 
 func (r *rbac) getSCCRoleInNamespace(ns *corev1.Namespace) *rbacv1.RoleRef {
@@ -389,37 +431,43 @@ func (r *rbac) handleSCCInNamespace(ctx context.Context, ns *corev1.Namespace) e
 	return nil
 }
 
-// this function encapsulates the logic for processing a single namespace.
-func (r *rbac) processNamespace(ctx context.Context, sa *corev1.ServiceAccount, ns corev1.Namespace) error {
+// processRBAC encapsulates the logic for processing RBAC in a single namespace.
+func (r *rbac) processRBAC(ctx context.Context, ns corev1.Namespace) (*NamespaceServiceAccount, error) {
 	logger := logging.FromContext(ctx)
+	logger.Infof("Processing RBAC for namespace %s", ns.GetName())
 
-	// Inject CA bundle configmap
-	logger.Infow("Inject CA bundle configmap in ", "Namespace", ns.GetName())
-	if err := r.ensureCABundles(ctx, &ns); err != nil {
-		logger.Errorf("failed to ensure ca bundles presence in namespace %s, %v", ns.Name, err)
-		return err
+	// Create or update ServiceAccount
+	sa, err := r.ensureSA(ctx, &ns)
+	if err != nil {
+		return nil, fmt.Errorf("failed to ensure ServiceAccount in namespace %s: %v", ns.Name, err)
 	}
 
-	// If "operator.tekton.dev/scc" exists in the namespace, bind that SCC to the SA
+	if sa == nil {
+		return nil, fmt.Errorf("ServiceAccount is nil for namespace %s", ns.Name)
+	}
+
+	// Handle SCC in namespace
 	if err := r.handleSCCInNamespace(ctx, &ns); err != nil {
-		logger.Errorf("failed to bind scc to namespace %s, %v", ns.Name, err)
-		return err
+		return nil, fmt.Errorf("failed to handle SCC in namespace %s: %v", ns.Name, err)
 	}
 
+	// Get and apply role reference
 	roleRef := r.getSCCRoleInNamespace(&ns)
 	if roleRef != nil {
 		if err := r.ensurePipelinesSCCRoleBinding(ctx, sa, roleRef); err != nil {
-			logger.Errorf("failed to create Pipeline Scc Role Binding in namespace %s, %v", ns.Name, err)
-			return err
+			return nil, fmt.Errorf("failed to ensure pipelines SCC role binding in namespace %s: %v", ns.Name, err)
 		}
 	}
 
+	// Ensure role bindings
 	if err := r.ensureRoleBindings(ctx, sa); err != nil {
-		logger.Errorf("failed to create rolebinding in namespace %s, %v", ns.Name, err)
-		return err
+		return nil, fmt.Errorf("failed to ensure role bindings in namespace %s: %v", ns.Name, err)
 	}
 
-	return nil
+	return &NamespaceServiceAccount{
+		ServiceAccount: sa,
+		Namespace:      ns,
+	}, nil
 }
 
 // patch namespace with reconciled label
@@ -453,73 +501,117 @@ func (r *rbac) patchNamespaceLabel(ctx context.Context, ns corev1.Namespace) err
 	return nil
 }
 
-// createresources function refactored for moduularity
+// createResources handles the reconciliation of RBAC resources and CA bundle configmaps
+// across namespaces. It processes each feature independently based on their respective
+// configuration flags and only reconciles namespaces that need updates.
 func (r *rbac) createResources(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
 
-	// Step 1: Ensure prerequisites
-	if err := r.ensurePreRequisites(ctx); err != nil {
-		logger.Errorf("error validating resources: %v", err)
-		return err
+	// Step 1: Check feature flags
+	createCABundles := true
+	createRBACResource := true
+
+	// Check feature flags
+	for _, v := range r.tektonConfig.Spec.Params {
+		if v.Name == trustedCABundleParamName && v.Value == "false" {
+			createCABundles = false
+			logger.Info("CA bundle creation is disabled")
+		}
+		if v.Name == rbacParamName && v.Value == "false" {
+			createRBACResource = false
+			logger.Info("RBAC resource creation is disabled")
+		}
 	}
 
-	// Step 2: Get namespaces to be reconciled
-	namespacesToBeReconciled, err := r.getNamespacesToBeReconciled(ctx)
+	// If both features are disabled, nothing to do
+	if !createCABundles && !createRBACResource {
+		logger.Info("Both CA bundle and RBAC creation are disabled, nothing to do")
+		return nil
+	}
+
+	// Step 2: Ensure prerequisites (only if RBAC is enabled)
+	if createRBACResource {
+		if err := r.ensurePreRequisites(ctx); err != nil {
+			logger.Errorf("error validating resources: %v", err)
+			return err
+		}
+	}
+
+	// Step 3: Get namespaces to be reconciled for both RBAC and CA bundles
+	namespacesToReconcile, err := r.getNamespacesToBeReconciled(ctx)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
-	logger.Debugf("RBAC: found %d namespaces to be reconciled", len(namespacesToBeReconciled))
 
-	// Step 3: Remove and update namespaces from Cluster Interceptors
-	if err := r.removeAndUpdateNSFromCI(ctx); err != nil {
-		logger.Error(err)
-		return err
+	// Early return if no namespaces need reconciliation for either feature
+	if len(namespacesToReconcile.RBACNamespaces) == 0 && len(namespacesToReconcile.CANamespaces) == 0 {
+		logger.Info("No namespaces need reconciliation for either RBAC or CA bundles")
+		return nil
 	}
 
-	// Step 4: Ensure ServiceAccount across all namespaces
-	var namespacesToUpdate []NamespaceServiceAccount
+	// Step 4: Handle RBAC if enabled
+	if createRBACResource {
+		if len(namespacesToReconcile.RBACNamespaces) == 0 {
+			logger.Info("No namespaces need RBAC reconciliation")
+		} else {
+			logger.Debugf("Found %d namespaces to be reconciled for RBAC", len(namespacesToReconcile.RBACNamespaces))
 
-	// Ensure ServiceAccount for each namespace
-	for _, ns := range namespacesToBeReconciled {
-		// Ensure the ServiceAccount for the namespace
-		sa, err := r.ensureSA(ctx, &ns)
-		if err != nil {
-			logger.Errorf("Skipping namespace %s as it does not have a valid ServiceAccount: %v", ns.Name, err)
-			// Skip namespaces where SA is not ensured or invalid
-		}
-		if sa != nil {
-			err := r.processNamespace(ctx, sa, ns)
-			if err != nil {
-				logger.Errorf("failed processing namespace %s, %v", ns.Name, err)
-			} else {
-				namespacesToUpdate = append(namespacesToUpdate, NamespaceServiceAccount{
-					ServiceAccount: sa,
-					Namespace:      ns,
-				})
+			// Remove and update namespaces from Cluster Interceptors
+			if err := r.removeAndUpdateNSFromCI(ctx); err != nil {
+				logger.Error(err)
+				return err
+			}
+
+			var namespacesToUpdate []NamespaceServiceAccount
+			// Process each namespace for RBAC
+			for _, ns := range namespacesToReconcile.RBACNamespaces {
+				logger.Infof("Processing namespace %s for RBAC", ns.Name)
+				nsSA, err := r.processRBAC(ctx, ns)
+				if err != nil {
+					logger.Errorf("failed processing namespace %s: %v", ns.Name, err)
+					continue
+				}
+				namespacesToUpdate = append(namespacesToUpdate, *nsSA)
+			}
+
+			// Bulk update ClusterRoleBinding
+			if len(namespacesToUpdate) > 0 {
+				if err := r.handleClusterRoleBinding(ctx, namespacesToUpdate); err != nil {
+					logger.Errorf("failed to ensure clusterrolebinding update: %v", err)
+					return err
+				}
+				logger.Info("Successfully updated cluster role bindings")
+
+				// Patch namespace labels for RBAC
+				for _, nsSA := range namespacesToUpdate {
+					logger.Infof("Reconciling namespace %s for RBAC", nsSA.Namespace.Name)
+					if err := r.patchNamespaceLabel(ctx, nsSA.Namespace); err != nil {
+						logger.Errorf("failed reconciling namespace %s: %v", nsSA.Namespace.Name, err)
+					}
+				}
 			}
 		}
 	}
 
-	// Step 6: Bulk update ClusterRoleBinding and update labels
-	// Step 6: Bulk update ClusterRoleBinding and update labels
-	if len(namespacesToUpdate) > 0 {
-		if err := r.handleClusterRoleBinding(ctx, namespacesToUpdate); err != nil {
-			logger.Errorf("failed to ensure clusterrolebinding update: %v", err)
-			return err
+	// Step 5: Handle CA bundles if enabled
+	if createCABundles {
+		if len(namespacesToReconcile.CANamespaces) == 0 {
+			logger.Info("No namespaces need CA bundle reconciliation")
 		} else {
-			// No namespaces to update, log that no action was needed
-			logger.Infof("No namespaces were processed for ClusterRoleBinding update")
-		}
-	}
+			logger.Debugf("Found %d namespaces to be reconciled for CA bundles", len(namespacesToReconcile.CANamespaces))
 
-	// Step 7: Reconcile namespaces with labels
-
-	for _, eachNS := range namespacesToUpdate {
-		logger.Infof("Reconciling namespace %s", eachNS.Namespace.Name)
-		err := r.patchNamespaceLabel(ctx, eachNS.Namespace)
-		if err != nil {
-			logger.Errorf("failed reconciling namespace %s, %v", eachNS.Namespace.Name, err)
+			for _, ns := range namespacesToReconcile.CANamespaces {
+				logger.Infof("Processing namespace %s for CA bundles", ns.Name)
+				if err := r.ensureCABundlesInNamespace(ctx, &ns); err != nil {
+					logger.Errorf("failed to ensure CA bundles in namespace %s: %v", ns.Name, err)
+					continue
+				}
+				// Patch namespace with trusted configmaps label
+				if err := r.patchNamespaceTrustedConfigLabel(ctx, ns); err != nil {
+					logger.Errorf("failed to patch trusted config label for namespace %s: %v", ns.Name, err)
+				}
+			}
 		}
 	}
 
@@ -573,16 +665,14 @@ func (r *rbac) ensureCABundles(ctx context.Context, ns *corev1.Namespace) error 
 	if getErr != nil && errors.IsNotFound(getErr) {
 		logger.Infof("creating configmap %s in %s namespace", trustedCABundleConfigMap, ns.Name)
 		var err error
-		if caBundleCM, err = createTrustedCABundleConfigMap(ctx, cfgInterface, trustedCABundleConfigMap, ns.Name, r.ownerRef); err != nil {
+		if caBundleCM, err = createCABundleConfigMaps(ctx, cfgInterface, trustedCABundleConfigMap, ns.Name); err != nil {
 			return err
 		}
 	}
 
-	// If config map already exist then update the owner ref
+	// If config map already exist then remove owner ref
 	if getErr == nil {
-		// set owner reference if not set or update owner reference if different owners are set
-		caBundleCM.SetOwnerReferences(r.updateOwnerRefs(caBundleCM.GetOwnerReferences()))
-
+		caBundleCM.SetOwnerReferences(nil)
 		if _, err := cfgInterface.Update(ctx, caBundleCM, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
@@ -598,16 +688,14 @@ func (r *rbac) ensureCABundles(ctx context.Context, ns *corev1.Namespace) error 
 	if getErr != nil && errors.IsNotFound(getErr) {
 		logger.Infof("creating configmap %s in %s namespace", serviceCABundleConfigMap, ns.Name)
 		var err error
-		if serviceCABundleCM, err = createServiceCABundleConfigMap(ctx, cfgInterface, serviceCABundleConfigMap, ns.Name, r.ownerRef); err != nil {
+		if serviceCABundleCM, err = createServiceCABundleConfigMap(ctx, cfgInterface, serviceCABundleConfigMap, ns.Name); err != nil {
 			return err
 		}
 	}
 
-	// If config map already exist then update the owner ref
+	// If config map already exist then remove owner ref
 	if getErr == nil {
-		// set owner reference if not set or update owner reference if different owners are set
-		serviceCABundleCM.SetOwnerReferences(r.updateOwnerRefs(serviceCABundleCM.GetOwnerReferences()))
-
+		serviceCABundleCM.SetOwnerReferences(nil)
 		if _, err := cfgInterface.Update(ctx, serviceCABundleCM, metav1.UpdateOptions{}); err != nil {
 			return err
 		}
@@ -616,8 +704,8 @@ func (r *rbac) ensureCABundles(ctx context.Context, ns *corev1.Namespace) error 
 	return nil
 }
 
-func createTrustedCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigMapInterface,
-	name, ns string, ownerRef metav1.OwnerReference) (*corev1.ConfigMap, error) {
+func createCABundleConfigMaps(ctx context.Context, cfgInterface v1.ConfigMapInterface,
+	name, ns string) (*corev1.ConfigMap, error) {
 	c := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -627,7 +715,7 @@ func createTrustedCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigM
 				// user-provided and system CA certificates
 				"config.openshift.io/inject-trusted-cabundle": "true",
 			},
-			OwnerReferences: []metav1.OwnerReference{ownerRef},
+			// No OwnerReferences
 		},
 	}
 
@@ -639,7 +727,7 @@ func createTrustedCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigM
 }
 
 func createServiceCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigMapInterface,
-	name, ns string, ownerRef metav1.OwnerReference) (*corev1.ConfigMap, error) {
+	name, ns string) (*corev1.ConfigMap, error) {
 	c := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
@@ -651,7 +739,7 @@ func createServiceCABundleConfigMap(ctx context.Context, cfgInterface v1.ConfigM
 				// service serving certificates (required to talk to the internal registry)
 				"service.beta.openshift.io/inject-cabundle": "true",
 			},
-			OwnerReferences: []metav1.OwnerReference{ownerRef},
+			// No OwnerReferences
 		},
 	}
 
@@ -698,9 +786,11 @@ func createSA(ctx context.Context, saInterface v1.ServiceAccountInterface, ns st
 		return nil, err
 	}
 
-	tektonConfigLabels := tc.GetLabels()
-	tektonConfigLabels[serviceAccountCreationLabel] = "true"
-	tc.SetLabels(tektonConfigLabels)
+	// Initialize labels map if it doesn't exist
+	if tc.Labels == nil {
+		tc.Labels = make(map[string]string)
+	}
+	tc.Labels[serviceAccountCreationLabel] = "true"
 	return sa, nil
 }
 
@@ -1357,8 +1447,6 @@ func (r *rbac) cleanUpRBACNameChange(ctx context.Context) error {
 	return nil
 }
 
-// --------------------
-
 // TODO: Remove this after v0.55.0 release, by following a depreciation notice
 // --------------------
 func (r *rbac) removeObsoleteRBACInstallerSet(ctx context.Context) error {
@@ -1372,4 +1460,39 @@ func (r *rbac) removeObsoleteRBACInstallerSet(ctx context.Context) error {
 	return nil
 }
 
-// --------------------
+func (r *rbac) ensureCABundlesInNamespace(ctx context.Context, ns *corev1.Namespace) error {
+	logger := logging.FromContext(ctx)
+	logger.Infow("Ensuring CA bundle configmaps in namespace", "namespace", ns.GetName())
+	return r.ensureCABundles(ctx, ns)
+}
+
+// Add new method for patching namespace with trusted configmaps label
+func (r *rbac) patchNamespaceTrustedConfigLabel(ctx context.Context, ns corev1.Namespace) error {
+	logger := logging.FromContext(ctx)
+
+	logger.Infof("add label namespace-trusted-configmaps-version to mark namespace '%s' as reconciled", ns.Name)
+
+	// Prepare a patch to add/update just one label without overwriting others
+	patch := map[string]interface{}{
+		"metadata": map[string]interface{}{
+			"labels": map[string]interface{}{
+				namespaceTrustedConfigLabel: r.version,
+			},
+		},
+	}
+
+	patchPayload, err := json.Marshal(patch)
+	if err != nil {
+		logger.Errorf("failed to marshal patch payload: %v", err)
+		return fmt.Errorf("failed to marshal label patch for namespace %s: %w", ns.Name, err)
+	}
+
+	// Use PATCH to update just the target label
+	if _, err := r.kubeClientSet.CoreV1().Namespaces().Patch(ctx, ns.Name, types.StrategicMergePatchType, patchPayload, metav1.PatchOptions{}); err != nil {
+		logger.Errorf("failed to patch namespace %s: %v", ns.Name, err)
+		return fmt.Errorf("failed to patch namespace %s: %w", ns.Name, err)
+	}
+
+	logger.Infof("namespace '%s' successfully reconciled with label %q=%q", ns.Name, namespaceTrustedConfigLabel, r.version)
+	return nil
+}
