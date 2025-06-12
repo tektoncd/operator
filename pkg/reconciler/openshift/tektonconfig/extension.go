@@ -80,7 +80,7 @@ type openshiftExtension struct {
 
 	// OpenShift clientsets are a bit... special, we need to get each
 	// clientset separately
-	securityClientSet *security.Clientset
+	securityClientSet security.Interface
 
 	operatorVersion string
 }
@@ -144,12 +144,10 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		logger.Infof("Successfully patched TektonConfig with serviceAccountCreationLabel set to true")
 	}
 
-	createRBACResource := true
 	for _, v := range config.Spec.Params {
 		// check for param name and if its matches to createRbacResource
 		// then disable auto creation of RBAC resources by deleting installerSet
 		if v.Name == rbacParamName && v.Value == "false" {
-			createRBACResource = false
 			if err := deleteInstallerSet(ctx, r.operatorClientSet, r.tektonConfig, componentNameRBAC); err != nil {
 				return err
 			}
@@ -167,10 +165,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	}
 	// --------------------
 
-	if createRBACResource {
-		return r.createResources(ctx)
-	}
-	return nil
+	return r.createResources(ctx)
 }
 
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
@@ -257,7 +252,9 @@ func changeOwnerRefOfPreExistingSA(ctx context.Context, kc kubernetes.Interface,
 // if label not present it means SA was created earlier and we need to remove ownerRef before we do the update
 // this helps us to keep pre-existing SA as it is.
 func existingSAWithOwnerRef(tc *v1alpha1.TektonConfig) bool {
-	tcLabels := tc.GetLabels()
-	_, ok := tcLabels[serviceAccountCreationLabel]
-	return !ok
+	labels := tc.GetLabels()
+	if labels == nil {
+		return false
+	}
+	return labels[serviceAccountCreationLabel] != "true"
 }

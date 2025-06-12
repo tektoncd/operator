@@ -31,7 +31,7 @@ const (
 	PipelineNotFound       = "tekton-pipelines not installed"
 	TriggerNotReady        = "tekton-triggers not ready"
 	TriggerNotFound        = "tekton-triggers not installed"
-	NamespaceIgnorePattern = "^(openshift|kube)-"
+	NamespaceIgnorePattern = "^(openshift|kube)-|^open-cluster-management-agent-addon$|^open-cluster-management-agent$|^dedicated-admin$|^kube-node-lease$|^kube-public$|^kube-system$"
 )
 
 func PipelineReady(informer informer.TektonPipelineInformer) (*v1alpha1.TektonPipeline, error) {
