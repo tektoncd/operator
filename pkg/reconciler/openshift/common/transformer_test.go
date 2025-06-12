@@ -165,3 +165,90 @@ func TestUpdateServiceMonitorTargetNamespace(t *testing.T) {
 		t.Errorf("failed to update deployment %s", diff.PrintWantGot(d))
 	}
 }
+
+func TestRemoveRunAsUserForStatefulSet(t *testing.T) {
+	testData := path.Join("testdata", "test-remove-runasuser-statefulset.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	testData = path.Join("testdata", "test-remove-runasuser-statefulset-expected.yaml")
+	expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	newManifest, err := manifest.Transform(RemoveRunAsUserForStatefulSet("test-statefulset"))
+	assert.NilError(t, err)
+
+	got := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(newManifest.Resources()[0].Object, got)
+	if err != nil {
+		t.Errorf("failed to load statefulset yaml")
+	}
+
+	expected := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(expectedManifest.Resources()[0].Object, expected)
+	if err != nil {
+		t.Errorf("failed to load statefulset yaml")
+	}
+
+	if d := cmp.Diff(expected, got); d != "" {
+		t.Errorf("failed to update statefulset %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestRemoveFsGroupForStatefulSet(t *testing.T) {
+	testData := path.Join("testdata", "test-remove-fsgroup-statefulset.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	testData = path.Join("testdata", "test-remove-fsgroup-statefulset-expected.yaml")
+	expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	newManifest, err := manifest.Transform(RemoveFsGroupForStatefulSet("test-statefulset"))
+	assert.NilError(t, err)
+
+	got := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(newManifest.Resources()[0].Object, got)
+	if err != nil {
+		t.Errorf("failed to load statefulset yaml")
+	}
+
+	expected := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(expectedManifest.Resources()[0].Object, expected)
+	if err != nil {
+		t.Errorf("failed to load statefulset yaml")
+	}
+
+	if d := cmp.Diff(expected, got); d != "" {
+		t.Errorf("failed to update statefulset %s", diff.PrintWantGot(d))
+	}
+}
+
+func TestRemoveRunAsGroupForStatefulSet(t *testing.T) {
+	testData := path.Join("testdata", "test-remove-runasgroup-statefulset.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	testData = path.Join("testdata", "test-remove-runasgroup-statefulset-expected.yaml")
+	expectedManifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+
+	newManifest, err := manifest.Transform(RemoveRunAsGroupForStatefulSet("test-statefulset"))
+	assert.NilError(t, err)
+
+	got := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(newManifest.Resources()[0].Object, got)
+	if err != nil {
+		t.Errorf("failed to load statefulset yaml")
+	}
+
+	expected := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(expectedManifest.Resources()[0].Object, expected)
+	if err != nil {
+		t.Errorf("failed to load statefulset yaml")
+	}
+
+	if d := cmp.Diff(expected, got); d != "" {
+		t.Errorf("failed to update statefulset %s", diff.PrintWantGot(d))
+	}
+}

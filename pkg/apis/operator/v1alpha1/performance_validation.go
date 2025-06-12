@@ -37,7 +37,9 @@ func (ppp *PerformanceProperties) Validate(path string) *apis.FieldError {
 	if ppp.StatefulsetOrdinals != nil && *ppp.StatefulsetOrdinals {
 		if ppp.Replicas != nil {
 			replicas := uint(*ppp.Replicas)
-			if *ppp.Buckets != replicas {
+			if ppp.Buckets == nil {
+				errs = errs.Also(apis.ErrMissingField(bucketsPath, "spec.performance.buckets must be set when statefulset ordinals is enabled"))
+			} else if *ppp.Buckets != replicas {
 				errs = errs.Also(apis.ErrInvalidValue(*ppp.Replicas, fmt.Sprintf("%s.replicas", path), "spec.performance.replicas must equal spec.performance.buckets for statefulset ordinals"))
 			}
 		}
