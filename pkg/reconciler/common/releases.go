@@ -36,6 +36,7 @@ const (
 )
 
 var cache = map[string]mf.Manifest{}
+var cacheRecursive = map[string]mf.Manifest{}
 
 // TargetVersion returns the version of the manifest to be installed
 // per the spec in the component. If spec.version is empty, the latest
@@ -46,18 +47,33 @@ func TargetVersion(instance v1alpha1.TektonComponent) string {
 
 // TargetManifest returns the manifest for the TargetVersion
 func TargetManifest(instance v1alpha1.TektonComponent) (mf.Manifest, error) {
-	return Fetch(manifestPath(TargetVersion(instance), instance))
+	return FetchRecursive(manifestPath(TargetVersion(instance), instance))
 }
 
-func Fetch(path string) (mf.Manifest, error) {
+// fetchWithCache is a generic function to fetch manifest with caching
+func fetchWithCache(path string, cache map[string]mf.Manifest, fetchFn func(string) (mf.Manifest, error)) (mf.Manifest, error) {
 	if m, ok := cache[path]; ok {
 		return m, nil
 	}
-	result, err := mf.NewManifest(path)
+	result, err := fetchFn(path)
 	if err == nil {
 		cache[path] = result
 	}
 	return result, err
+}
+
+// Fetch returns a manifest from the given path only, not recursively
+func Fetch(path string) (mf.Manifest, error) {
+	return fetchWithCache(path, cache, func(p string) (mf.Manifest, error) {
+		return mf.NewManifest(p)
+	})
+}
+
+// FetchRecursive returns a manifest from the given path recursively
+func FetchRecursive(path string) (mf.Manifest, error) {
+	return fetchWithCache(path, cacheRecursive, func(p string) (mf.Manifest, error) {
+		return mf.ManifestFrom(mf.Recursive(p))
+	})
 }
 
 func ComponentDir(instance v1alpha1.TektonComponent) string {
