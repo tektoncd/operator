@@ -77,6 +77,34 @@ func TestAppendManifest(t *testing.T) {
 	}
 
 	if len(newManifest.Resources()) != 1 {
-		t.Fatalf("failed to find expected number of resource: %d found, expected 3", len(newManifest.Resources()))
+		t.Fatalf("failed to find expected number of resource: %d found, expected 1", len(newManifest.Resources()))
 	}
+}
+
+func TestFetchAndFetchRecursive(t *testing.T) {
+	// Set up test environment
+	koPath := "testdata/kodata"
+	t.Setenv(KoEnvKey, koPath)
+
+	// Test Fetch not recursive
+	t.Run("Fetch should return manifest from path", func(t *testing.T) {
+		manifest, err := Fetch("testdata/kodata/tekton-addon")
+		if err != nil {
+			t.Fatalf("Fetch failed: %v", err)
+		}
+		if len(manifest.Resources()) != 1 {
+			t.Fatalf("expected 1 resource, got %d", len(manifest.Resources()))
+		}
+	})
+
+	// Test FetchRecursive
+	t.Run("FetchRecursive should return manifest from path recursively", func(t *testing.T) {
+		manifest, err := FetchRecursive("testdata/kodata/tekton-addon")
+		if err != nil {
+			t.Fatalf("FetchRecursive failed: %v", err)
+		}
+		if len(manifest.Resources()) != 3 {
+			t.Fatalf("expected 3 resources, got %d", len(manifest.Resources()))
+		}
+	})
 }
