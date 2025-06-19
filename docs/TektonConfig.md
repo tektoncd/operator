@@ -1,12 +1,9 @@
-## <!--
-
+<!--
+---
 linkTitle: "TektonConfig"
 weight: 1
-
 ---
-
 -->
-
 # Tekton Config
 
 TektonConfig custom resource is the top most component of the operator which allows user to install and customize all other
