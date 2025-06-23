@@ -30,11 +30,11 @@ require (
 	golang.org/x/sync v0.15.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	gotest.tools/v3 v3.5.2
-	k8s.io/api v0.32.5
-	k8s.io/apiextensions-apiserver v0.32.5
+	k8s.io/api v0.32.6
+	k8s.io/apiextensions-apiserver v0.32.6
 	k8s.io/apimachinery v0.33.0
 	k8s.io/client-go v1.5.2
-	k8s.io/code-generator v0.32.5
+	k8s.io/code-generator v0.32.6
 	knative.dev/pkg v0.0.0-20250424013628-d5e74d29daa3
 	sigs.k8s.io/yaml v1.4.0
 )
