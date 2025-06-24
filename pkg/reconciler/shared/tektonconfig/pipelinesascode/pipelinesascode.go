@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package extension
+package pac
 
 import (
 	"context"
@@ -60,6 +60,22 @@ func EnsureOpenShiftPipelinesAsCodeExists(ctx context.Context, clients op.OpenSh
 func createOPAC(ctx context.Context, clients op.OpenShiftPipelinesAsCodeInterface, config *v1alpha1.TektonConfig, operatorVersion string) (*v1alpha1.OpenShiftPipelinesAsCode, error) {
 	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 
+	// Select PACSettings based on available platform
+	var pacSettings v1alpha1.PACSettings
+	if config.Spec.Platforms.OpenShift.PipelinesAsCode != nil {
+		// Use OpenShift-specific settings
+		pacSettings = v1alpha1.PACSettings{
+			Settings:                 config.Spec.Platforms.OpenShift.PipelinesAsCode.Settings,
+			AdditionalPACControllers: config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.AdditionalPACControllers,
+		}
+	} else if config.Spec.Platforms.Kubernetes.PipelinesAsCode != nil {
+		// Use Kubernetes-specific settings
+		pacSettings = v1alpha1.PACSettings{
+			Settings:                 config.Spec.Platforms.Kubernetes.PipelinesAsCode.Settings,
+			AdditionalPACControllers: config.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.AdditionalPACControllers,
+		}
+	}
+
 	opacCR := &v1alpha1.OpenShiftPipelinesAsCode{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            v1alpha1.OpenShiftPipelinesAsCodeName,
@@ -72,13 +88,11 @@ func createOPAC(ctx context.Context, clients op.OpenShiftPipelinesAsCodeInterfac
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Config: config.Spec.Config,
-			PACSettings: v1alpha1.PACSettings{
-				Settings:                 config.Spec.Platforms.OpenShift.PipelinesAsCode.Settings,
-				AdditionalPACControllers: config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.AdditionalPACControllers,
-			},
+			Config:      config.Spec.Config,
+			PACSettings: pacSettings,
 		},
 	}
+
 	if _, err := clients.Create(ctx, opacCR, metav1.CreateOptions{}); err != nil {
 		return nil, err
 	}
@@ -110,24 +124,39 @@ func updateOPAC(ctx context.Context, opacCR *v1alpha1.OpenShiftPipelinesAsCode, 
 		updated = true
 	}
 
-	if !reflect.DeepEqual(opacCR.Spec.Settings, config.Spec.Platforms.OpenShift.PipelinesAsCode.Settings) {
-		opacCR.Spec.PACSettings.Settings = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings
-		updated = true
-	}
+	// Select PACSettings based on available platform
+	if config.Spec.Platforms.OpenShift.PipelinesAsCode != nil {
+		// Use OpenShift-specific settings
+		if !reflect.DeepEqual(opacCR.Spec.PACSettings.Settings, config.Spec.Platforms.OpenShift.PipelinesAsCode.Settings) {
+			opacCR.Spec.PACSettings.Settings = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings
+			updated = true
+		}
 
-	if !reflect.DeepEqual(opacCR.Spec.PACSettings.Options, config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Options) {
-		opacCR.Spec.PACSettings.Options = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Options
-		updated = true
-	}
+		if !reflect.DeepEqual(opacCR.Spec.PACSettings.Options, config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Options) {
+			opacCR.Spec.PACSettings.Options = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Options
+			updated = true
+		}
 
-	if !reflect.DeepEqual(opacCR.Spec.PACSettings.AdditionalPACControllers, config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.AdditionalPACControllers) {
-		opacCR.Spec.PACSettings.AdditionalPACControllers = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.AdditionalPACControllers
-		updated = true
-	}
+		if !reflect.DeepEqual(opacCR.Spec.PACSettings.AdditionalPACControllers, config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.AdditionalPACControllers) {
+			opacCR.Spec.PACSettings.AdditionalPACControllers = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.AdditionalPACControllers
+			updated = true
+		}
+	} else if config.Spec.Platforms.Kubernetes.PipelinesAsCode != nil {
+		// Use Kubernetes-specific settings
+		if !reflect.DeepEqual(opacCR.Spec.PACSettings.Settings, config.Spec.Platforms.Kubernetes.PipelinesAsCode.Settings) {
+			opacCR.Spec.PACSettings.Settings = config.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.Settings
+			updated = true
+		}
 
-	if !reflect.DeepEqual(opacCR.Spec.PACSettings.Options, config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Options) {
-		opacCR.Spec.PACSettings.Options = config.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Options
-		updated = true
+		if !reflect.DeepEqual(opacCR.Spec.PACSettings.Options, config.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.Options) {
+			opacCR.Spec.PACSettings.Options = config.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.Options
+			updated = true
+		}
+
+		if !reflect.DeepEqual(opacCR.Spec.PACSettings.AdditionalPACControllers, config.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.AdditionalPACControllers) {
+			opacCR.Spec.PACSettings.AdditionalPACControllers = config.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.AdditionalPACControllers
+			updated = true
+		}
 	}
 
 	if opacCR.ObjectMeta.OwnerReferences == nil {

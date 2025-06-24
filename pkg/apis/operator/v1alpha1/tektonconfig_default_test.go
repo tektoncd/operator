@@ -129,56 +129,106 @@ func Test_SetDefaults_Triggers_Properties(t *testing.T) {
 }
 
 func Test_SetDefaults_PipelineAsCode(t *testing.T) {
-	t.Setenv("PLATFORM", "openshift")
-
-	// PAC disabled through addon
-	tc := &TektonConfig{
-		Spec: TektonConfigSpec{
-			Addon: Addon{
-				EnablePAC: ptr.Bool(false),
+	platforms := []struct {
+		name      string
+		getEnable func(cfg *TektonConfig) *bool
+	}{
+		{
+			name: "openshift",
+			getEnable: func(cfg *TektonConfig) *bool {
+				return cfg.Spec.Platforms.OpenShift.PipelinesAsCode.Enable
+			},
+		},
+		{
+			name: "kubernetes",
+			getEnable: func(cfg *TektonConfig) *bool {
+				return cfg.Spec.Platforms.Kubernetes.PipelinesAsCode.Enable
 			},
 		},
 	}
-	tc.SetDefaults(context.TODO())
-	assert.Equal(t, *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable, false)
-	assert.Assert(t, tc.Spec.Addon.EnablePAC == nil)
 
-	// PAC enabled through addon, moving to openshiftPipelinesAsCode
-	tc = &TektonConfig{
-		Spec: TektonConfigSpec{
-			Addon: Addon{
-				EnablePAC: ptr.Bool(true),
-			},
+	cases := []struct {
+		desc            string
+		initialConfig   *TektonConfig
+		wantEnable      bool // expected final value of Enable
+		wantPACFieldNil bool // true if we expect Addon.EnablePAC to be nil
+	}{
+		{
+			desc:            "new install: nil PipelinesAsCode, no addon override",
+			initialConfig:   &TektonConfig{},
+			wantEnable:      true,
+			wantPACFieldNil: true,
 		},
-	}
-	tc.SetDefaults(context.TODO())
-	assert.Equal(t, *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable, true)
-	assert.Assert(t, tc.Spec.Addon.EnablePAC == nil)
-
-	// New installation
-	tc = &TektonConfig{}
-	tc.SetDefaults(context.TODO())
-	assert.Equal(t, *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable, true)
-	assert.Assert(t, tc.Spec.Addon.EnablePAC == nil)
-
-	// if PAC is enabled already then ignore addon pac field
-	tc = &TektonConfig{
-		Spec: TektonConfigSpec{
-			Addon: Addon{
-				EnablePAC: ptr.Bool(false),
+		{
+			desc: "disabled via addon => pipelinesAsCode.Enable=false",
+			initialConfig: &TektonConfig{
+				Spec: TektonConfigSpec{
+					Addon: Addon{EnablePAC: ptr.Bool(false)},
+				},
 			},
-			Platforms: Platforms{
-				OpenShift: OpenShift{
-					PipelinesAsCode: &PipelinesAsCode{
-						Enable: ptr.Bool(true),
+			wantEnable:      false,
+			wantPACFieldNil: true,
+		},
+		{
+			desc: "enabled via addon => pipelinesAsCode.Enable=true",
+			initialConfig: &TektonConfig{
+				Spec: TektonConfigSpec{
+					Addon: Addon{EnablePAC: ptr.Bool(true)},
+				},
+			},
+			wantEnable:      true,
+			wantPACFieldNil: true,
+		},
+		{
+			desc: "existing Platforms.PipelinesAsCode overrides addon",
+			initialConfig: &TektonConfig{
+				Spec: TektonConfigSpec{
+					Addon: Addon{EnablePAC: ptr.Bool(false)},
+					Platforms: Platforms{
+						OpenShift: OpenShift{
+							PipelinesAsCode: &PipelinesAsCode{Enable: ptr.Bool(true)},
+						},
+						Kubernetes: Kubernetes{
+							PipelinesAsCode: &PipelinesAsCode{Enable: ptr.Bool(true)},
+						},
 					},
 				},
 			},
+			wantEnable:      true,
+			wantPACFieldNil: true,
 		},
 	}
-	tc.SetDefaults(context.TODO())
-	assert.Equal(t, *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable, true)
-	assert.Assert(t, tc.Spec.Addon.EnablePAC == nil)
+
+	for _, p := range platforms {
+		t.Run(p.name, func(t *testing.T) {
+			t.Setenv("PLATFORM", p.name)
+
+			for _, c := range cases {
+				t.Run(c.desc, func(t *testing.T) {
+					cfg := c.initialConfig.DeepCopy()
+					cfg.SetDefaults(context.TODO())
+
+					// 1) Check PipelinesAsCode.Enable
+					gotEnable := p.getEnable(cfg)
+					if gotEnable == nil {
+						t.Fatalf("PipelinesAsCode.Enable is nil for platform %q", p.name)
+					}
+					if *gotEnable != c.wantEnable {
+						t.Errorf("for %q @ %s, Enable = %v; want %v",
+							c.desc, p.name, *gotEnable, c.wantEnable)
+					}
+
+					// 2) Check Addon.EnablePAC nil‑ness
+					hasPAC := cfg.Spec.Addon.EnablePAC != nil
+					expectedHasPAC := !c.wantPACFieldNil
+					if hasPAC != expectedHasPAC {
+						t.Errorf("for %q @ %s, Addon.EnablePAC exists = %v; want exists? %v",
+							c.desc, p.name, hasPAC, expectedHasPAC)
+					}
+				})
+			}
+		})
+	}
 }
 
 func Test_SetDefaults_SCC(t *testing.T) {

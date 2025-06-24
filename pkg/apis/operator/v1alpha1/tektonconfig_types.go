@@ -186,4 +186,6 @@ type Platforms struct {
 	// OpenShift allows configuring openshift specific components and configurations
 	// +optional
 	OpenShift OpenShift `json:"openshift,omitempty"`
+	// +optional
+	Kubernetes Kubernetes `json:"kubernetes,omitempty"`
 }

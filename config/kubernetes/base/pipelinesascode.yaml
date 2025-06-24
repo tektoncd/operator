@@ -1,0 +1,32 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tekton-pac-controller-role
+rules:
+  - apiGroups:
+      - pipelinesascode.tekton.dev
+    resources:
+      - repositories
+      - webhooks
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+      - deletecollection
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-pac-controller-role-binding
+subjects:
+  - kind: ServiceAccount
+    name: tekton-operator
+    namespace: tekton-operator
+roleRef:
+  kind: ClusterRole
+  name: tekton-pac-controller-role
+  apiGroup: rbac.authorization.k8s.io

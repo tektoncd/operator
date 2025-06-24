@@ -30,6 +30,7 @@ import (
 	pkgCommon "github.com/tektoncd/operator/pkg/common"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
+	pac "github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipelinesascode"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	nsV1 "k8s.io/client-go/informers/core/v1"
@@ -183,14 +184,13 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		}
 	}
 
-	pac := configInstance.Spec.Platforms.OpenShift.PipelinesAsCode
-	if pac != nil && *pac.Enable {
-		if _, err := extension.EnsureOpenShiftPipelinesAsCodeExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), configInstance, oe.operatorVersion); err != nil {
+	if configInstance.Spec.Platforms.OpenShift.PipelinesAsCode != nil && *configInstance.Spec.Platforms.OpenShift.PipelinesAsCode.Enable {
+		if _, err := pac.EnsureOpenShiftPipelinesAsCodeExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), configInstance, oe.operatorVersion); err != nil {
 			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("OpenShiftPipelinesAsCode: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	} else {
-		if err := extension.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
+		if err := pac.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
 			return err
 		}
 	}
@@ -206,8 +206,10 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 			return err
 		}
 	}
+
+	//if configInstance.Spec.PipelinesAsCode != nil && !configInstance.Spec.PipelinesAsCode.Enable {
 	if configInstance.Spec.Platforms.OpenShift.PipelinesAsCode != nil && *configInstance.Spec.Platforms.OpenShift.PipelinesAsCode.Enable {
-		if err := extension.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
+		if err := pac.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
 			return err
 		}
 	}
