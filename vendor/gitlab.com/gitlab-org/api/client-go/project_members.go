@@ -24,13 +24,13 @@ import (
 
 type (
 	ProjectMembersServiceInterface interface {
-		ListProjectMembers(pid interface{}, opt *ListProjectMembersOptions, options ...RequestOptionFunc) ([]*ProjectMember, *Response, error)
-		ListAllProjectMembers(pid interface{}, opt *ListProjectMembersOptions, options ...RequestOptionFunc) ([]*ProjectMember, *Response, error)
-		GetProjectMember(pid interface{}, user int, options ...RequestOptionFunc) (*ProjectMember, *Response, error)
-		GetInheritedProjectMember(pid interface{}, user int, options ...RequestOptionFunc) (*ProjectMember, *Response, error)
-		AddProjectMember(pid interface{}, opt *AddProjectMemberOptions, options ...RequestOptionFunc) (*ProjectMember, *Response, error)
-		EditProjectMember(pid interface{}, user int, opt *EditProjectMemberOptions, options ...RequestOptionFunc) (*ProjectMember, *Response, error)
-		DeleteProjectMember(pid interface{}, user int, options ...RequestOptionFunc) (*Response, error)
+		ListProjectMembers(pid any, opt *ListProjectMembersOptions, options ...RequestOptionFunc) ([]*ProjectMember, *Response, error)
+		ListAllProjectMembers(pid any, opt *ListProjectMembersOptions, options ...RequestOptionFunc) ([]*ProjectMember, *Response, error)
+		GetProjectMember(pid any, user int, options ...RequestOptionFunc) (*ProjectMember, *Response, error)
+		GetInheritedProjectMember(pid any, user int, options ...RequestOptionFunc) (*ProjectMember, *Response, error)
+		AddProjectMember(pid any, opt *AddProjectMemberOptions, options ...RequestOptionFunc) (*ProjectMember, *Response, error)
+		EditProjectMember(pid any, user int, opt *EditProjectMemberOptions, options ...RequestOptionFunc) (*ProjectMember, *Response, error)
+		DeleteProjectMember(pid any, user int, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// ProjectMembersService handles communication with the project members
@@ -79,7 +79,7 @@ type ListProjectMembersOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/members/#list-all-members-of-a-group-or-project
-func (s *ProjectMembersService) ListProjectMembers(pid interface{}, opt *ListProjectMembersOptions, options ...RequestOptionFunc) ([]*ProjectMember, *Response, error) {
+func (s *ProjectMembersService) ListProjectMembers(pid any, opt *ListProjectMembersOptions, options ...RequestOptionFunc) ([]*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -106,7 +106,7 @@ func (s *ProjectMembersService) ListProjectMembers(pid interface{}, opt *ListPro
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/members/#list-all-members-of-a-group-or-project-including-inherited-and-invited-members
-func (s *ProjectMembersService) ListAllProjectMembers(pid interface{}, opt *ListProjectMembersOptions, options ...RequestOptionFunc) ([]*ProjectMember, *Response, error) {
+func (s *ProjectMembersService) ListAllProjectMembers(pid any, opt *ListProjectMembersOptions, options ...RequestOptionFunc) ([]*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -131,7 +131,7 @@ func (s *ProjectMembersService) ListAllProjectMembers(pid interface{}, opt *List
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/members/#get-a-member-of-a-group-or-project
-func (s *ProjectMembersService) GetProjectMember(pid interface{}, user int, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
+func (s *ProjectMembersService) GetProjectMember(pid any, user int, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -156,7 +156,7 @@ func (s *ProjectMembersService) GetProjectMember(pid interface{}, user int, opti
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/members/#get-a-member-of-a-group-or-project-including-inherited-and-invited-members
-func (s *ProjectMembersService) GetInheritedProjectMember(pid interface{}, user int, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
+func (s *ProjectMembersService) GetInheritedProjectMember(pid any, user int, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -182,7 +182,7 @@ func (s *ProjectMembersService) GetInheritedProjectMember(pid interface{}, user 
 // GitLab API docs:
 // https://docs.gitlab.com/api/members/#add-a-member-to-a-group-or-project
 type AddProjectMemberOptions struct {
-	UserID       interface{}       `url:"user_id,omitempty" json:"user_id,omitempty"`
+	UserID       any               `url:"user_id,omitempty" json:"user_id,omitempty"`
 	Username     *string           `url:"username,omitempty" json:"username,omitempty"`
 	AccessLevel  *AccessLevelValue `url:"access_level,omitempty" json:"access_level,omitempty"`
 	ExpiresAt    *string           `url:"expires_at,omitempty" json:"expires_at"`
@@ -196,7 +196,7 @@ type AddProjectMemberOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/members/#add-a-member-to-a-group-or-project
-func (s *ProjectMembersService) AddProjectMember(pid interface{}, opt *AddProjectMemberOptions, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
+func (s *ProjectMembersService) AddProjectMember(pid any, opt *AddProjectMemberOptions, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -231,7 +231,7 @@ type EditProjectMemberOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/members/#edit-a-member-of-a-group-or-project
-func (s *ProjectMembersService) EditProjectMember(pid interface{}, user int, opt *EditProjectMemberOptions, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
+func (s *ProjectMembersService) EditProjectMember(pid any, user int, opt *EditProjectMemberOptions, options ...RequestOptionFunc) (*ProjectMember, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -256,7 +256,7 @@ func (s *ProjectMembersService) EditProjectMember(pid interface{}, user int, opt
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/members/#remove-a-member-from-a-group-or-project
-func (s *ProjectMembersService) DeleteProjectMember(pid interface{}, user int, options ...RequestOptionFunc) (*Response, error) {
+func (s *ProjectMembersService) DeleteProjectMember(pid any, user int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err

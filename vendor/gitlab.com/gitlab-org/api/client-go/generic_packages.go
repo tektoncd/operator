@@ -27,9 +27,9 @@ import (
 type (
 	// GenericPackagesServiceInterface defines all the API methods for the GenericPackagesService
 	GenericPackagesServiceInterface interface {
-		FormatPackageURL(pid interface{}, packageName, packageVersion, fileName string) (string, error)
-		PublishPackageFile(pid interface{}, packageName, packageVersion, fileName string, content io.Reader, opt *PublishPackageFileOptions, options ...RequestOptionFunc) (*GenericPackagesFile, *Response, error)
-		DownloadPackageFile(pid interface{}, packageName, packageVersion, fileName string, options ...RequestOptionFunc) ([]byte, *Response, error)
+		FormatPackageURL(pid any, packageName, packageVersion, fileName string) (string, error)
+		PublishPackageFile(pid any, packageName, packageVersion, fileName string, content io.Reader, opt *PublishPackageFileOptions, options ...RequestOptionFunc) (*GenericPackagesFile, *Response, error)
+		DownloadPackageFile(pid any, packageName, packageVersion, fileName string, options ...RequestOptionFunc) ([]byte, *Response, error)
 	}
 
 	// GenericPackagesService handles communication with the packages related
@@ -74,7 +74,7 @@ type GenericPackagesFile struct {
 
 // FormatPackageURL returns the GitLab Package Registry URL for the given artifact metadata, without the BaseURL.
 // This does not make a GitLab API request, but rather computes it based on their documentation.
-func (s *GenericPackagesService) FormatPackageURL(pid interface{}, packageName, packageVersion, fileName string) (string, error) {
+func (s *GenericPackagesService) FormatPackageURL(pid any, packageName, packageVersion, fileName string) (string, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return "", err
@@ -103,7 +103,7 @@ type PublishPackageFileOptions struct {
 //
 // GitLab docs:
 // https://docs.gitlab.com/user/packages/generic_packages/#publish-a-single-file
-func (s *GenericPackagesService) PublishPackageFile(pid interface{}, packageName, packageVersion, fileName string, content io.Reader, opt *PublishPackageFileOptions, options ...RequestOptionFunc) (*GenericPackagesFile, *Response, error) {
+func (s *GenericPackagesService) PublishPackageFile(pid any, packageName, packageVersion, fileName string, content io.Reader, opt *PublishPackageFileOptions, options ...RequestOptionFunc) (*GenericPackagesFile, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -141,7 +141,7 @@ func (s *GenericPackagesService) PublishPackageFile(pid interface{}, packageName
 //
 // GitLab docs:
 // https://docs.gitlab.com/user/packages/generic_packages/#download-a-single-file
-func (s *GenericPackagesService) DownloadPackageFile(pid interface{}, packageName, packageVersion, fileName string, options ...RequestOptionFunc) ([]byte, *Response, error) {
+func (s *GenericPackagesService) DownloadPackageFile(pid any, packageName, packageVersion, fileName string, options ...RequestOptionFunc) ([]byte, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

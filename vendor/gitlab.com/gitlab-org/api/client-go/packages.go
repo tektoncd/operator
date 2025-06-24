@@ -24,11 +24,11 @@ import (
 
 type (
 	PackagesServiceInterface interface {
-		ListProjectPackages(pid interface{}, opt *ListProjectPackagesOptions, options ...RequestOptionFunc) ([]*Package, *Response, error)
-		ListGroupPackages(gid interface{}, opt *ListGroupPackagesOptions, options ...RequestOptionFunc) ([]*GroupPackage, *Response, error)
-		ListPackageFiles(pid interface{}, pkg int, opt *ListPackageFilesOptions, options ...RequestOptionFunc) ([]*PackageFile, *Response, error)
-		DeleteProjectPackage(pid interface{}, pkg int, options ...RequestOptionFunc) (*Response, error)
-		DeletePackageFile(pid interface{}, pkg, file int, options ...RequestOptionFunc) (*Response, error)
+		ListProjectPackages(pid any, opt *ListProjectPackagesOptions, options ...RequestOptionFunc) ([]*Package, *Response, error)
+		ListGroupPackages(gid any, opt *ListGroupPackagesOptions, options ...RequestOptionFunc) ([]*GroupPackage, *Response, error)
+		ListPackageFiles(pid any, pkg int, opt *ListPackageFilesOptions, options ...RequestOptionFunc) ([]*PackageFile, *Response, error)
+		DeleteProjectPackage(pid any, pkg int, options ...RequestOptionFunc) (*Response, error)
+		DeletePackageFile(pid any, pkg, file int, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// PackagesService handles communication with the packages related methods
@@ -136,7 +136,7 @@ type ListProjectPackagesOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/packages/#for-a-project
-func (s *PackagesService) ListProjectPackages(pid interface{}, opt *ListProjectPackagesOptions, options ...RequestOptionFunc) ([]*Package, *Response, error) {
+func (s *PackagesService) ListProjectPackages(pid any, opt *ListProjectPackagesOptions, options ...RequestOptionFunc) ([]*Package, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -177,7 +177,7 @@ type ListGroupPackagesOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/packages/#for-a-group
-func (s *PackagesService) ListGroupPackages(gid interface{}, opt *ListGroupPackagesOptions, options ...RequestOptionFunc) ([]*GroupPackage, *Response, error) {
+func (s *PackagesService) ListGroupPackages(gid any, opt *ListGroupPackagesOptions, options ...RequestOptionFunc) ([]*GroupPackage, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -209,7 +209,7 @@ type ListPackageFilesOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/packages/#list-package-files
-func (s *PackagesService) ListPackageFiles(pid interface{}, pkg int, opt *ListPackageFilesOptions, options ...RequestOptionFunc) ([]*PackageFile, *Response, error) {
+func (s *PackagesService) ListPackageFiles(pid any, pkg int, opt *ListPackageFilesOptions, options ...RequestOptionFunc) ([]*PackageFile, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -238,7 +238,7 @@ func (s *PackagesService) ListPackageFiles(pid interface{}, pkg int, opt *ListPa
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/packages/#delete-a-project-package
-func (s *PackagesService) DeleteProjectPackage(pid interface{}, pkg int, options ...RequestOptionFunc) (*Response, error) {
+func (s *PackagesService) DeleteProjectPackage(pid any, pkg int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -257,7 +257,7 @@ func (s *PackagesService) DeleteProjectPackage(pid interface{}, pkg int, options
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/packages/#delete-a-package-file
-func (s *PackagesService) DeletePackageFile(pid interface{}, pkg, file int, options ...RequestOptionFunc) (*Response, error) {
+func (s *PackagesService) DeletePackageFile(pid any, pkg, file int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err

@@ -27,39 +27,39 @@ import (
 type (
 	MergeRequestsServiceInterface interface {
 		ListMergeRequests(opt *ListMergeRequestsOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error)
-		ListProjectMergeRequests(pid interface{}, opt *ListProjectMergeRequestsOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error)
-		ListGroupMergeRequests(gid interface{}, opt *ListGroupMergeRequestsOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error)
-		GetMergeRequest(pid interface{}, mergeRequest int, opt *GetMergeRequestsOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
-		GetMergeRequestApprovals(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*MergeRequestApprovals, *Response, error)
-		GetMergeRequestCommits(pid interface{}, mergeRequest int, opt *GetMergeRequestCommitsOptions, options ...RequestOptionFunc) ([]*Commit, *Response, error)
-		GetMergeRequestChanges(pid interface{}, mergeRequest int, opt *GetMergeRequestChangesOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
-		ListMergeRequestDiffs(pid interface{}, mergeRequest int, opt *ListMergeRequestDiffsOptions, options ...RequestOptionFunc) ([]*MergeRequestDiff, *Response, error)
-		ShowMergeRequestRawDiffs(pid interface{}, mergeRequest int, opt *ShowMergeRequestRawDiffsOptions, options ...RequestOptionFunc) ([]byte, *Response, error)
-		GetMergeRequestParticipants(pid interface{}, mergeRequest int, options ...RequestOptionFunc) ([]*BasicUser, *Response, error)
-		GetMergeRequestReviewers(pid interface{}, mergeRequest int, options ...RequestOptionFunc) ([]*MergeRequestReviewer, *Response, error)
-		ListMergeRequestPipelines(pid interface{}, mergeRequest int, options ...RequestOptionFunc) ([]*PipelineInfo, *Response, error)
-		CreateMergeRequestPipeline(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*PipelineInfo, *Response, error)
-		GetIssuesClosedOnMerge(pid interface{}, mergeRequest int, opt *GetIssuesClosedOnMergeOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error)
-		ListRelatedIssues(pid interface{}, mergeRequest int, opt *ListRelatedIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error)
-		CreateMergeRequest(pid interface{}, opt *CreateMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
-		UpdateMergeRequest(pid interface{}, mergeRequest int, opt *UpdateMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
-		DeleteMergeRequest(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*Response, error)
-		AcceptMergeRequest(pid interface{}, mergeRequest int, opt *AcceptMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
-		CancelMergeWhenPipelineSucceeds(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
-		RebaseMergeRequest(pid interface{}, mergeRequest int, opt *RebaseMergeRequestOptions, options ...RequestOptionFunc) (*Response, error)
-		GetMergeRequestDiffVersions(pid interface{}, mergeRequest int, opt *GetMergeRequestDiffVersionsOptions, options ...RequestOptionFunc) ([]*MergeRequestDiffVersion, *Response, error)
-		GetSingleMergeRequestDiffVersion(pid interface{}, mergeRequest, version int, opt *GetSingleMergeRequestDiffVersionOptions, options ...RequestOptionFunc) (*MergeRequestDiffVersion, *Response, error)
-		SubscribeToMergeRequest(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
-		UnsubscribeFromMergeRequest(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
-		CreateTodo(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*Todo, *Response, error)
-		SetTimeEstimate(pid interface{}, mergeRequest int, opt *SetTimeEstimateOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error)
-		ResetTimeEstimate(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
-		AddSpentTime(pid interface{}, mergeRequest int, opt *AddSpentTimeOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error)
-		ResetSpentTime(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
-		GetTimeSpent(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
-		CreateMergeRequestDependency(pid interface{}, mergeRequest int, opts CreateMergeRequestDependencyOptions, options ...RequestOptionFunc) (*MergeRequestDependency, *Response, error)
-		DeleteMergeRequestDependency(pid interface{}, mergeRequest int, blockingMergeRequest int, options ...RequestOptionFunc) (*Response, error)
-		GetMergeRequestDependencies(pid interface{}, mergeRequest int, options ...RequestOptionFunc) ([]MergeRequestDependency, *Response, error)
+		ListProjectMergeRequests(pid any, opt *ListProjectMergeRequestsOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error)
+		ListGroupMergeRequests(gid any, opt *ListGroupMergeRequestsOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error)
+		GetMergeRequest(pid any, mergeRequest int, opt *GetMergeRequestsOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
+		GetMergeRequestApprovals(pid any, mergeRequest int, options ...RequestOptionFunc) (*MergeRequestApprovals, *Response, error)
+		GetMergeRequestCommits(pid any, mergeRequest int, opt *GetMergeRequestCommitsOptions, options ...RequestOptionFunc) ([]*Commit, *Response, error)
+		GetMergeRequestChanges(pid any, mergeRequest int, opt *GetMergeRequestChangesOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
+		ListMergeRequestDiffs(pid any, mergeRequest int, opt *ListMergeRequestDiffsOptions, options ...RequestOptionFunc) ([]*MergeRequestDiff, *Response, error)
+		ShowMergeRequestRawDiffs(pid any, mergeRequest int, opt *ShowMergeRequestRawDiffsOptions, options ...RequestOptionFunc) ([]byte, *Response, error)
+		GetMergeRequestParticipants(pid any, mergeRequest int, options ...RequestOptionFunc) ([]*BasicUser, *Response, error)
+		GetMergeRequestReviewers(pid any, mergeRequest int, options ...RequestOptionFunc) ([]*MergeRequestReviewer, *Response, error)
+		ListMergeRequestPipelines(pid any, mergeRequest int, options ...RequestOptionFunc) ([]*PipelineInfo, *Response, error)
+		CreateMergeRequestPipeline(pid any, mergeRequest int, options ...RequestOptionFunc) (*PipelineInfo, *Response, error)
+		GetIssuesClosedOnMerge(pid any, mergeRequest int, opt *GetIssuesClosedOnMergeOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error)
+		ListRelatedIssues(pid any, mergeRequest int, opt *ListRelatedIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error)
+		CreateMergeRequest(pid any, opt *CreateMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
+		UpdateMergeRequest(pid any, mergeRequest int, opt *UpdateMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
+		DeleteMergeRequest(pid any, mergeRequest int, options ...RequestOptionFunc) (*Response, error)
+		AcceptMergeRequest(pid any, mergeRequest int, opt *AcceptMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
+		CancelMergeWhenPipelineSucceeds(pid any, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
+		RebaseMergeRequest(pid any, mergeRequest int, opt *RebaseMergeRequestOptions, options ...RequestOptionFunc) (*Response, error)
+		GetMergeRequestDiffVersions(pid any, mergeRequest int, opt *GetMergeRequestDiffVersionsOptions, options ...RequestOptionFunc) ([]*MergeRequestDiffVersion, *Response, error)
+		GetSingleMergeRequestDiffVersion(pid any, mergeRequest, version int, opt *GetSingleMergeRequestDiffVersionOptions, options ...RequestOptionFunc) (*MergeRequestDiffVersion, *Response, error)
+		SubscribeToMergeRequest(pid any, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
+		UnsubscribeFromMergeRequest(pid any, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error)
+		CreateTodo(pid any, mergeRequest int, options ...RequestOptionFunc) (*Todo, *Response, error)
+		SetTimeEstimate(pid any, mergeRequest int, opt *SetTimeEstimateOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error)
+		ResetTimeEstimate(pid any, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
+		AddSpentTime(pid any, mergeRequest int, opt *AddSpentTimeOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error)
+		ResetSpentTime(pid any, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
+		GetTimeSpent(pid any, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
+		CreateMergeRequestDependency(pid any, mergeRequest int, opts CreateMergeRequestDependencyOptions, options ...RequestOptionFunc) (*MergeRequestDependency, *Response, error)
+		DeleteMergeRequestDependency(pid any, mergeRequest int, blockingMergeRequest int, options ...RequestOptionFunc) (*Response, error)
+		GetMergeRequestDependencies(pid any, mergeRequest int, options ...RequestOptionFunc) ([]MergeRequestDependency, *Response, error)
 	}
 
 	// MergeRequestsService handles communication with the merge requests related
@@ -173,22 +173,22 @@ func (m MergeRequest) String() string {
 func (m *MergeRequest) UnmarshalJSON(data []byte) error {
 	type alias MergeRequest
 
-	raw := make(map[string]interface{})
+	raw := make(map[string]any)
 	err := json.Unmarshal(data, &raw)
 	if err != nil {
 		return err
 	}
 
-	labelDetails, ok := raw["labels"].([]interface{})
+	labelDetails, ok := raw["labels"].([]any)
 	if ok && len(labelDetails) > 0 {
 		// We only want to change anything if we got label details.
-		if _, ok := labelDetails[0].(map[string]interface{}); !ok {
+		if _, ok := labelDetails[0].(map[string]any); !ok {
 			return json.Unmarshal(data, (*alias)(m))
 		}
 
-		labels := make([]interface{}, len(labelDetails))
+		labels := make([]any, len(labelDetails))
 		for i, details := range labelDetails {
-			labels[i] = details.(map[string]interface{})["name"]
+			labels[i] = details.(map[string]any)["name"]
 		}
 
 		// Set the correct values
@@ -209,14 +209,15 @@ func (m *MergeRequest) UnmarshalJSON(data []byte) error {
 // Gitlab API docs:
 // https://docs.gitlab.com/api/merge_requests/#list-merge-request-diffs
 type MergeRequestDiff struct {
-	OldPath     string `json:"old_path"`
-	NewPath     string `json:"new_path"`
-	AMode       string `json:"a_mode"`
-	BMode       string `json:"b_mode"`
-	Diff        string `json:"diff"`
-	NewFile     bool   `json:"new_file"`
-	RenamedFile bool   `json:"renamed_file"`
-	DeletedFile bool   `json:"deleted_file"`
+	OldPath       string `json:"old_path"`
+	NewPath       string `json:"new_path"`
+	AMode         string `json:"a_mode"`
+	BMode         string `json:"b_mode"`
+	Diff          string `json:"diff"`
+	NewFile       bool   `json:"new_file"`
+	RenamedFile   bool   `json:"renamed_file"`
+	DeletedFile   bool   `json:"deleted_file"`
+	GeneratedFile bool   `json:"generated_file"`
 }
 
 // MergeRequestDiffVersion represents Gitlab merge request version.
@@ -343,7 +344,7 @@ type ListProjectMergeRequestsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#list-project-merge-requests
-func (s *MergeRequestsService) ListProjectMergeRequests(pid interface{}, opt *ListProjectMergeRequestsOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error) {
+func (s *MergeRequestsService) ListProjectMergeRequests(pid any, opt *ListProjectMergeRequestsOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -406,7 +407,7 @@ type ListGroupMergeRequestsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#list-group-merge-requests
-func (s *MergeRequestsService) ListGroupMergeRequests(gid interface{}, opt *ListGroupMergeRequestsOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error) {
+func (s *MergeRequestsService) ListGroupMergeRequests(gid any, opt *ListGroupMergeRequestsOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -442,7 +443,7 @@ type GetMergeRequestsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#get-single-mr
-func (s *MergeRequestsService) GetMergeRequest(pid interface{}, mergeRequest int, opt *GetMergeRequestsOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
+func (s *MergeRequestsService) GetMergeRequest(pid any, mergeRequest int, opt *GetMergeRequestsOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -467,7 +468,7 @@ func (s *MergeRequestsService) GetMergeRequest(pid interface{}, mergeRequest int
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_request_approvals/#single-merge-request-approval
-func (s *MergeRequestsService) GetMergeRequestApprovals(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*MergeRequestApprovals, *Response, error) {
+func (s *MergeRequestsService) GetMergeRequestApprovals(pid any, mergeRequest int, options ...RequestOptionFunc) (*MergeRequestApprovals, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -499,7 +500,7 @@ type GetMergeRequestCommitsOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#get-single-merge-request-commits
-func (s *MergeRequestsService) GetMergeRequestCommits(pid interface{}, mergeRequest int, opt *GetMergeRequestCommitsOptions, options ...RequestOptionFunc) ([]*Commit, *Response, error) {
+func (s *MergeRequestsService) GetMergeRequestCommits(pid any, mergeRequest int, opt *GetMergeRequestCommitsOptions, options ...RequestOptionFunc) ([]*Commit, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -540,7 +541,7 @@ type GetMergeRequestChangesOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#get-single-merge-request-changes
-func (s *MergeRequestsService) GetMergeRequestChanges(pid interface{}, mergeRequest int, opt *GetMergeRequestChangesOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
+func (s *MergeRequestsService) GetMergeRequestChanges(pid any, mergeRequest int, opt *GetMergeRequestChangesOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -575,7 +576,7 @@ type ListMergeRequestDiffsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#list-merge-request-diffs
-func (s *MergeRequestsService) ListMergeRequestDiffs(pid interface{}, mergeRequest int, opt *ListMergeRequestDiffsOptions, options ...RequestOptionFunc) ([]*MergeRequestDiff, *Response, error) {
+func (s *MergeRequestsService) ListMergeRequestDiffs(pid any, mergeRequest int, opt *ListMergeRequestDiffsOptions, options ...RequestOptionFunc) ([]*MergeRequestDiff, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -607,7 +608,7 @@ type ShowMergeRequestRawDiffsOptions struct{}
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#show-merge-request-raw-diffs
-func (s *MergeRequestsService) ShowMergeRequestRawDiffs(pid interface{}, mergeRequest int, opt *ShowMergeRequestRawDiffsOptions, options ...RequestOptionFunc) ([]byte, *Response, error) {
+func (s *MergeRequestsService) ShowMergeRequestRawDiffs(pid any, mergeRequest int, opt *ShowMergeRequestRawDiffsOptions, options ...RequestOptionFunc) ([]byte, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return []byte{}, nil, err
@@ -636,7 +637,7 @@ func (s *MergeRequestsService) ShowMergeRequestRawDiffs(pid interface{}, mergeRe
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#get-single-merge-request-participants
-func (s *MergeRequestsService) GetMergeRequestParticipants(pid interface{}, mergeRequest int, options ...RequestOptionFunc) ([]*BasicUser, *Response, error) {
+func (s *MergeRequestsService) GetMergeRequestParticipants(pid any, mergeRequest int, options ...RequestOptionFunc) ([]*BasicUser, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -671,7 +672,7 @@ type MergeRequestReviewer struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#get-single-merge-request-reviewers
-func (s *MergeRequestsService) GetMergeRequestReviewers(pid interface{}, mergeRequest int, options ...RequestOptionFunc) ([]*MergeRequestReviewer, *Response, error) {
+func (s *MergeRequestsService) GetMergeRequestReviewers(pid any, mergeRequest int, options ...RequestOptionFunc) ([]*MergeRequestReviewer, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -696,7 +697,7 @@ func (s *MergeRequestsService) GetMergeRequestReviewers(pid interface{}, mergeRe
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#list-merge-request-pipelines
-func (s *MergeRequestsService) ListMergeRequestPipelines(pid interface{}, mergeRequest int, options ...RequestOptionFunc) ([]*PipelineInfo, *Response, error) {
+func (s *MergeRequestsService) ListMergeRequestPipelines(pid any, mergeRequest int, options ...RequestOptionFunc) ([]*PipelineInfo, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -721,7 +722,7 @@ func (s *MergeRequestsService) ListMergeRequestPipelines(pid interface{}, mergeR
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#create-merge-request-pipeline
-func (s *MergeRequestsService) CreateMergeRequestPipeline(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*PipelineInfo, *Response, error) {
+func (s *MergeRequestsService) CreateMergeRequestPipeline(pid any, mergeRequest int, options ...RequestOptionFunc) (*PipelineInfo, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -754,7 +755,7 @@ type GetIssuesClosedOnMergeOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#list-issues-that-close-on-merge
-func (s *MergeRequestsService) GetIssuesClosedOnMerge(pid interface{}, mergeRequest int, opt *GetIssuesClosedOnMergeOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error) {
+func (s *MergeRequestsService) GetIssuesClosedOnMerge(pid any, mergeRequest int, opt *GetIssuesClosedOnMergeOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -785,7 +786,7 @@ type ListRelatedIssuesOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#list-issues-related-to-the-merge-request
-func (s *MergeRequestsService) ListRelatedIssues(pid interface{}, mergeRequest int, opt *ListRelatedIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error) {
+func (s *MergeRequestsService) ListRelatedIssues(pid any, mergeRequest int, opt *ListRelatedIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -835,7 +836,7 @@ type CreateMergeRequestOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#create-mr
-func (s *MergeRequestsService) CreateMergeRequest(pid interface{}, opt *CreateMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
+func (s *MergeRequestsService) CreateMergeRequest(pid any, opt *CreateMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -883,7 +884,7 @@ type UpdateMergeRequestOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#update-mr
-func (s *MergeRequestsService) UpdateMergeRequest(pid interface{}, mergeRequest int, opt *UpdateMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
+func (s *MergeRequestsService) UpdateMergeRequest(pid any, mergeRequest int, opt *UpdateMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -908,7 +909,7 @@ func (s *MergeRequestsService) UpdateMergeRequest(pid interface{}, mergeRequest 
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#delete-a-merge-request
-func (s *MergeRequestsService) DeleteMergeRequest(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*Response, error) {
+func (s *MergeRequestsService) DeleteMergeRequest(pid any, mergeRequest int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -944,7 +945,7 @@ type AcceptMergeRequestOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#merge-a-merge-request
-func (s *MergeRequestsService) AcceptMergeRequest(pid interface{}, mergeRequest int, opt *AcceptMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
+func (s *MergeRequestsService) AcceptMergeRequest(pid any, mergeRequest int, opt *AcceptMergeRequestOptions, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -973,7 +974,7 @@ func (s *MergeRequestsService) AcceptMergeRequest(pid interface{}, mergeRequest 
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#cancel-merge-when-pipeline-succeeds
-func (s *MergeRequestsService) CancelMergeWhenPipelineSucceeds(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
+func (s *MergeRequestsService) CancelMergeWhenPipelineSucceeds(pid any, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -1009,7 +1010,7 @@ type RebaseMergeRequestOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#rebase-a-merge-request
-func (s *MergeRequestsService) RebaseMergeRequest(pid interface{}, mergeRequest int, opt *RebaseMergeRequestOptions, options ...RequestOptionFunc) (*Response, error) {
+func (s *MergeRequestsService) RebaseMergeRequest(pid any, mergeRequest int, opt *RebaseMergeRequestOptions, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -1035,7 +1036,7 @@ type GetMergeRequestDiffVersionsOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#get-merge-request-diff-versions
-func (s *MergeRequestsService) GetMergeRequestDiffVersions(pid interface{}, mergeRequest int, opt *GetMergeRequestDiffVersionsOptions, options ...RequestOptionFunc) ([]*MergeRequestDiffVersion, *Response, error) {
+func (s *MergeRequestsService) GetMergeRequestDiffVersions(pid any, mergeRequest int, opt *GetMergeRequestDiffVersionsOptions, options ...RequestOptionFunc) ([]*MergeRequestDiffVersion, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -1069,7 +1070,7 @@ type GetSingleMergeRequestDiffVersionOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#get-a-single-merge-request-diff-version
-func (s *MergeRequestsService) GetSingleMergeRequestDiffVersion(pid interface{}, mergeRequest, version int, opt *GetSingleMergeRequestDiffVersionOptions, options ...RequestOptionFunc) (*MergeRequestDiffVersion, *Response, error) {
+func (s *MergeRequestsService) GetSingleMergeRequestDiffVersion(pid any, mergeRequest, version int, opt *GetSingleMergeRequestDiffVersionOptions, options ...RequestOptionFunc) (*MergeRequestDiffVersion, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -1096,7 +1097,7 @@ func (s *MergeRequestsService) GetSingleMergeRequestDiffVersion(pid interface{},
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#subscribe-to-a-merge-request
-func (s *MergeRequestsService) SubscribeToMergeRequest(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
+func (s *MergeRequestsService) SubscribeToMergeRequest(pid any, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -1124,7 +1125,7 @@ func (s *MergeRequestsService) SubscribeToMergeRequest(pid interface{}, mergeReq
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#unsubscribe-from-a-merge-request
-func (s *MergeRequestsService) UnsubscribeFromMergeRequest(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
+func (s *MergeRequestsService) UnsubscribeFromMergeRequest(pid any, mergeRequest int, options ...RequestOptionFunc) (*MergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -1151,7 +1152,7 @@ func (s *MergeRequestsService) UnsubscribeFromMergeRequest(pid interface{}, merg
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#create-a-to-do-item
-func (s *MergeRequestsService) CreateTodo(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*Todo, *Response, error) {
+func (s *MergeRequestsService) CreateTodo(pid any, mergeRequest int, options ...RequestOptionFunc) (*Todo, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -1176,7 +1177,7 @@ func (s *MergeRequestsService) CreateTodo(pid interface{}, mergeRequest int, opt
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#set-a-time-estimate-for-a-merge-request
-func (s *MergeRequestsService) SetTimeEstimate(pid interface{}, mergeRequest int, opt *SetTimeEstimateOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
+func (s *MergeRequestsService) SetTimeEstimate(pid any, mergeRequest int, opt *SetTimeEstimateOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
 	return s.timeStats.setTimeEstimate(pid, "merge_requests", mergeRequest, opt, options...)
 }
 
@@ -1184,7 +1185,7 @@ func (s *MergeRequestsService) SetTimeEstimate(pid interface{}, mergeRequest int
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#reset-the-time-estimate-for-a-merge-request
-func (s *MergeRequestsService) ResetTimeEstimate(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
+func (s *MergeRequestsService) ResetTimeEstimate(pid any, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
 	return s.timeStats.resetTimeEstimate(pid, "merge_requests", mergeRequest, options...)
 }
 
@@ -1192,7 +1193,7 @@ func (s *MergeRequestsService) ResetTimeEstimate(pid interface{}, mergeRequest i
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#add-spent-time-for-a-merge-request
-func (s *MergeRequestsService) AddSpentTime(pid interface{}, mergeRequest int, opt *AddSpentTimeOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
+func (s *MergeRequestsService) AddSpentTime(pid any, mergeRequest int, opt *AddSpentTimeOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
 	return s.timeStats.addSpentTime(pid, "merge_requests", mergeRequest, opt, options...)
 }
 
@@ -1200,7 +1201,7 @@ func (s *MergeRequestsService) AddSpentTime(pid interface{}, mergeRequest int, o
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#reset-spent-time-for-a-merge-request
-func (s *MergeRequestsService) ResetSpentTime(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
+func (s *MergeRequestsService) ResetSpentTime(pid any, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
 	return s.timeStats.resetSpentTime(pid, "merge_requests", mergeRequest, options...)
 }
 
@@ -1208,7 +1209,7 @@ func (s *MergeRequestsService) ResetSpentTime(pid interface{}, mergeRequest int,
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#get-time-tracking-stats
-func (s *MergeRequestsService) GetTimeSpent(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
+func (s *MergeRequestsService) GetTimeSpent(pid any, mergeRequest int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
 	return s.timeStats.getTimeSpent(pid, "merge_requests", mergeRequest, options...)
 }
 
@@ -1306,7 +1307,7 @@ type CreateMergeRequestDependencyOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#create-a-merge-request-dependency
-func (s *MergeRequestsService) CreateMergeRequestDependency(pid interface{}, mergeRequest int, opts CreateMergeRequestDependencyOptions, options ...RequestOptionFunc) (*MergeRequestDependency, *Response, error) {
+func (s *MergeRequestsService) CreateMergeRequestDependency(pid any, mergeRequest int, opts CreateMergeRequestDependencyOptions, options ...RequestOptionFunc) (*MergeRequestDependency, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -1332,7 +1333,7 @@ func (s *MergeRequestsService) CreateMergeRequestDependency(pid interface{}, mer
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#delete-a-merge-request-dependency
-func (s *MergeRequestsService) DeleteMergeRequestDependency(pid interface{}, mergeRequest int, blockingMergeRequest int, options ...RequestOptionFunc) (*Response, error) {
+func (s *MergeRequestsService) DeleteMergeRequestDependency(pid any, mergeRequest int, blockingMergeRequest int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -1344,19 +1345,14 @@ func (s *MergeRequestsService) DeleteMergeRequestDependency(pid interface{}, mer
 		return nil, err
 	}
 
-	resp, err := s.client.Do(req, nil)
-	if err != nil {
-		return resp, err
-	}
-
-	return resp, err
+	return s.client.Do(req, nil)
 }
 
 // GetMergeRequestDependencies gets a list of merge request dependencies.
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#get-merge-request-dependencies
-func (s *MergeRequestsService) GetMergeRequestDependencies(pid interface{}, mergeRequest int, options ...RequestOptionFunc) ([]MergeRequestDependency, *Response, error) {
+func (s *MergeRequestsService) GetMergeRequestDependencies(pid any, mergeRequest int, options ...RequestOptionFunc) ([]MergeRequestDependency, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

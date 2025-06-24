@@ -26,11 +26,11 @@ import (
 
 type (
 	ProjectImportExportServiceInterface interface {
-		ScheduleExport(pid interface{}, opt *ScheduleExportOptions, options ...RequestOptionFunc) (*Response, error)
-		ExportStatus(pid interface{}, options ...RequestOptionFunc) (*ExportStatus, *Response, error)
-		ExportDownload(pid interface{}, options ...RequestOptionFunc) ([]byte, *Response, error)
+		ScheduleExport(pid any, opt *ScheduleExportOptions, options ...RequestOptionFunc) (*Response, error)
+		ExportStatus(pid any, options ...RequestOptionFunc) (*ExportStatus, *Response, error)
+		ExportDownload(pid any, options ...RequestOptionFunc) ([]byte, *Response, error)
 		ImportFromFile(archive io.Reader, opt *ImportFileOptions, options ...RequestOptionFunc) (*ImportStatus, *Response, error)
-		ImportStatus(pid interface{}, options ...RequestOptionFunc) (*ImportStatus, *Response, error)
+		ImportStatus(pid any, options ...RequestOptionFunc) (*ImportStatus, *Response, error)
 	}
 
 	// ProjectImportExportService handles communication with the project
@@ -107,7 +107,7 @@ type ScheduleExportOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_import_export/#schedule-an-export
-func (s *ProjectImportExportService) ScheduleExport(pid interface{}, opt *ScheduleExportOptions, options ...RequestOptionFunc) (*Response, error) {
+func (s *ProjectImportExportService) ScheduleExport(pid any, opt *ScheduleExportOptions, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (s *ProjectImportExportService) ScheduleExport(pid interface{}, opt *Schedu
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_import_export/#export-status
-func (s *ProjectImportExportService) ExportStatus(pid interface{}, options ...RequestOptionFunc) (*ExportStatus, *Response, error) {
+func (s *ProjectImportExportService) ExportStatus(pid any, options ...RequestOptionFunc) (*ExportStatus, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -151,7 +151,7 @@ func (s *ProjectImportExportService) ExportStatus(pid interface{}, options ...Re
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_import_export/#export-download
-func (s *ProjectImportExportService) ExportDownload(pid interface{}, options ...RequestOptionFunc) ([]byte, *Response, error) {
+func (s *ProjectImportExportService) ExportDownload(pid any, options ...RequestOptionFunc) ([]byte, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -215,7 +215,7 @@ func (s *ProjectImportExportService) ImportFromFile(archive io.Reader, opt *Impo
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_import_export/#import-status
-func (s *ProjectImportExportService) ImportStatus(pid interface{}, options ...RequestOptionFunc) (*ImportStatus, *Response, error) {
+func (s *ProjectImportExportService) ImportStatus(pid any, options ...RequestOptionFunc) (*ImportStatus, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

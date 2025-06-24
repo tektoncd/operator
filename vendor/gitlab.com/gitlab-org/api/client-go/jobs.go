@@ -25,23 +25,23 @@ import (
 
 type (
 	JobsServiceInterface interface {
-		ListProjectJobs(pid interface{}, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error)
-		ListPipelineJobs(pid interface{}, pipelineID int, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error)
-		ListPipelineBridges(pid interface{}, pipelineID int, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Bridge, *Response, error)
+		ListProjectJobs(pid any, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error)
+		ListPipelineJobs(pid any, pipelineID int, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error)
+		ListPipelineBridges(pid any, pipelineID int, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Bridge, *Response, error)
 		GetJobTokensJob(opts *GetJobTokensJobOptions, options ...RequestOptionFunc) (*Job, *Response, error)
-		GetJob(pid interface{}, jobID int, options ...RequestOptionFunc) (*Job, *Response, error)
-		GetJobArtifacts(pid interface{}, jobID int, options ...RequestOptionFunc) (*bytes.Reader, *Response, error)
-		DownloadArtifactsFile(pid interface{}, refName string, opt *DownloadArtifactsFileOptions, options ...RequestOptionFunc) (*bytes.Reader, *Response, error)
-		DownloadSingleArtifactsFile(pid interface{}, jobID int, artifactPath string, options ...RequestOptionFunc) (*bytes.Reader, *Response, error)
-		DownloadSingleArtifactsFileByTagOrBranch(pid interface{}, refName string, artifactPath string, opt *DownloadArtifactsFileOptions, options ...RequestOptionFunc) (*bytes.Reader, *Response, error)
-		GetTraceFile(pid interface{}, jobID int, options ...RequestOptionFunc) (*bytes.Reader, *Response, error)
-		CancelJob(pid interface{}, jobID int, options ...RequestOptionFunc) (*Job, *Response, error)
-		RetryJob(pid interface{}, jobID int, options ...RequestOptionFunc) (*Job, *Response, error)
-		EraseJob(pid interface{}, jobID int, options ...RequestOptionFunc) (*Job, *Response, error)
-		KeepArtifacts(pid interface{}, jobID int, options ...RequestOptionFunc) (*Job, *Response, error)
-		PlayJob(pid interface{}, jobID int, opt *PlayJobOptions, options ...RequestOptionFunc) (*Job, *Response, error)
-		DeleteArtifacts(pid interface{}, jobID int, options ...RequestOptionFunc) (*Response, error)
-		DeleteProjectArtifacts(pid interface{}, options ...RequestOptionFunc) (*Response, error)
+		GetJob(pid any, jobID int, options ...RequestOptionFunc) (*Job, *Response, error)
+		GetJobArtifacts(pid any, jobID int, options ...RequestOptionFunc) (*bytes.Reader, *Response, error)
+		DownloadArtifactsFile(pid any, refName string, opt *DownloadArtifactsFileOptions, options ...RequestOptionFunc) (*bytes.Reader, *Response, error)
+		DownloadSingleArtifactsFile(pid any, jobID int, artifactPath string, options ...RequestOptionFunc) (*bytes.Reader, *Response, error)
+		DownloadSingleArtifactsFileByTagOrBranch(pid any, refName string, artifactPath string, opt *DownloadArtifactsFileOptions, options ...RequestOptionFunc) (*bytes.Reader, *Response, error)
+		GetTraceFile(pid any, jobID int, options ...RequestOptionFunc) (*bytes.Reader, *Response, error)
+		CancelJob(pid any, jobID int, options ...RequestOptionFunc) (*Job, *Response, error)
+		RetryJob(pid any, jobID int, options ...RequestOptionFunc) (*Job, *Response, error)
+		EraseJob(pid any, jobID int, options ...RequestOptionFunc) (*Job, *Response, error)
+		KeepArtifacts(pid any, jobID int, options ...RequestOptionFunc) (*Job, *Response, error)
+		PlayJob(pid any, jobID int, opt *PlayJobOptions, options ...RequestOptionFunc) (*Job, *Response, error)
+		DeleteArtifacts(pid any, jobID int, options ...RequestOptionFunc) (*Response, error)
+		DeleteProjectArtifacts(pid any, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// JobsService handles communication with the ci builds related methods
@@ -149,7 +149,7 @@ type ListJobsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/jobs/#list-project-jobs
-func (s *JobsService) ListProjectJobs(pid interface{}, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error) {
+func (s *JobsService) ListProjectJobs(pid any, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -175,7 +175,7 @@ func (s *JobsService) ListProjectJobs(pid interface{}, opts *ListJobsOptions, op
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/jobs/#list-pipeline-jobs
-func (s *JobsService) ListPipelineJobs(pid interface{}, pipelineID int, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error) {
+func (s *JobsService) ListPipelineJobs(pid any, pipelineID int, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -201,7 +201,7 @@ func (s *JobsService) ListPipelineJobs(pid interface{}, pipelineID int, opts *Li
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/jobs/#list-pipeline-trigger-jobs
-func (s *JobsService) ListPipelineBridges(pid interface{}, pipelineID int, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Bridge, *Response, error) {
+func (s *JobsService) ListPipelineBridges(pid any, pipelineID int, opts *ListJobsOptions, options ...RequestOptionFunc) ([]*Bridge, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -251,7 +251,7 @@ func (s *JobsService) GetJobTokensJob(opts *GetJobTokensJobOptions, options ...R
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/jobs/#get-a-single-job
-func (s *JobsService) GetJob(pid interface{}, jobID int, options ...RequestOptionFunc) (*Job, *Response, error) {
+func (s *JobsService) GetJob(pid any, jobID int, options ...RequestOptionFunc) (*Job, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -276,7 +276,7 @@ func (s *JobsService) GetJob(pid interface{}, jobID int, options ...RequestOptio
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/job_artifacts/#get-job-artifacts
-func (s *JobsService) GetJobArtifacts(pid interface{}, jobID int, options ...RequestOptionFunc) (*bytes.Reader, *Response, error) {
+func (s *JobsService) GetJobArtifacts(pid any, jobID int, options ...RequestOptionFunc) (*bytes.Reader, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -311,7 +311,7 @@ type DownloadArtifactsFileOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/job_artifacts/#download-the-artifacts-archive
-func (s *JobsService) DownloadArtifactsFile(pid interface{}, refName string, opt *DownloadArtifactsFileOptions, options ...RequestOptionFunc) (*bytes.Reader, *Response, error) {
+func (s *JobsService) DownloadArtifactsFile(pid any, refName string, opt *DownloadArtifactsFileOptions, options ...RequestOptionFunc) (*bytes.Reader, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -339,7 +339,7 @@ func (s *JobsService) DownloadArtifactsFile(pid interface{}, refName string, opt
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/job_artifacts/#download-a-single-artifact-file-by-job-id
-func (s *JobsService) DownloadSingleArtifactsFile(pid interface{}, jobID int, artifactPath string, options ...RequestOptionFunc) (*bytes.Reader, *Response, error) {
+func (s *JobsService) DownloadSingleArtifactsFile(pid any, jobID int, artifactPath string, options ...RequestOptionFunc) (*bytes.Reader, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -373,7 +373,7 @@ func (s *JobsService) DownloadSingleArtifactsFile(pid interface{}, jobID int, ar
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/job_artifacts/#download-a-single-artifact-file-from-specific-tag-or-branch
-func (s *JobsService) DownloadSingleArtifactsFileByTagOrBranch(pid interface{}, refName string, artifactPath string, opt *DownloadArtifactsFileOptions, options ...RequestOptionFunc) (*bytes.Reader, *Response, error) {
+func (s *JobsService) DownloadSingleArtifactsFileByTagOrBranch(pid any, refName string, artifactPath string, opt *DownloadArtifactsFileOptions, options ...RequestOptionFunc) (*bytes.Reader, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -404,7 +404,7 @@ func (s *JobsService) DownloadSingleArtifactsFileByTagOrBranch(pid interface{}, 
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/jobs/#get-a-log-file
-func (s *JobsService) GetTraceFile(pid interface{}, jobID int, options ...RequestOptionFunc) (*bytes.Reader, *Response, error) {
+func (s *JobsService) GetTraceFile(pid any, jobID int, options ...RequestOptionFunc) (*bytes.Reader, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -429,7 +429,7 @@ func (s *JobsService) GetTraceFile(pid interface{}, jobID int, options ...Reques
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/jobs/#cancel-a-job
-func (s *JobsService) CancelJob(pid interface{}, jobID int, options ...RequestOptionFunc) (*Job, *Response, error) {
+func (s *JobsService) CancelJob(pid any, jobID int, options ...RequestOptionFunc) (*Job, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -454,7 +454,7 @@ func (s *JobsService) CancelJob(pid interface{}, jobID int, options ...RequestOp
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/jobs/#retry-a-job
-func (s *JobsService) RetryJob(pid interface{}, jobID int, options ...RequestOptionFunc) (*Job, *Response, error) {
+func (s *JobsService) RetryJob(pid any, jobID int, options ...RequestOptionFunc) (*Job, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -480,7 +480,7 @@ func (s *JobsService) RetryJob(pid interface{}, jobID int, options ...RequestOpt
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/jobs/#erase-a-job
-func (s *JobsService) EraseJob(pid interface{}, jobID int, options ...RequestOptionFunc) (*Job, *Response, error) {
+func (s *JobsService) EraseJob(pid any, jobID int, options ...RequestOptionFunc) (*Job, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -506,7 +506,7 @@ func (s *JobsService) EraseJob(pid interface{}, jobID int, options ...RequestOpt
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/job_artifacts/#keep-artifacts
-func (s *JobsService) KeepArtifacts(pid interface{}, jobID int, options ...RequestOptionFunc) (*Job, *Response, error) {
+func (s *JobsService) KeepArtifacts(pid any, jobID int, options ...RequestOptionFunc) (*Job, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -549,7 +549,7 @@ type JobVariableOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/jobs/#run-a-job
-func (s *JobsService) PlayJob(pid interface{}, jobID int, opt *PlayJobOptions, options ...RequestOptionFunc) (*Job, *Response, error) {
+func (s *JobsService) PlayJob(pid any, jobID int, opt *PlayJobOptions, options ...RequestOptionFunc) (*Job, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -574,7 +574,7 @@ func (s *JobsService) PlayJob(pid interface{}, jobID int, opt *PlayJobOptions, o
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/job_artifacts/#delete-job-artifacts
-func (s *JobsService) DeleteArtifacts(pid interface{}, jobID int, options ...RequestOptionFunc) (*Response, error) {
+func (s *JobsService) DeleteArtifacts(pid any, jobID int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -593,7 +593,7 @@ func (s *JobsService) DeleteArtifacts(pid interface{}, jobID int, options ...Req
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/job_artifacts/#delete-job-artifacts
-func (s *JobsService) DeleteProjectArtifacts(pid interface{}, options ...RequestOptionFunc) (*Response, error) {
+func (s *JobsService) DeleteProjectArtifacts(pid any, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err

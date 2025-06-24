@@ -24,14 +24,14 @@ import (
 
 type (
 	ClusterAgentsServiceInterface interface {
-		ListAgents(pid interface{}, opt *ListAgentsOptions, options ...RequestOptionFunc) ([]*Agent, *Response, error)
-		GetAgent(pid interface{}, id int, options ...RequestOptionFunc) (*Agent, *Response, error)
-		RegisterAgent(pid interface{}, opt *RegisterAgentOptions, options ...RequestOptionFunc) (*Agent, *Response, error)
-		DeleteAgent(pid interface{}, id int, options ...RequestOptionFunc) (*Response, error)
-		ListAgentTokens(pid interface{}, aid int, opt *ListAgentTokensOptions, options ...RequestOptionFunc) ([]*AgentToken, *Response, error)
-		GetAgentToken(pid interface{}, aid int, id int, options ...RequestOptionFunc) (*AgentToken, *Response, error)
-		CreateAgentToken(pid interface{}, aid int, opt *CreateAgentTokenOptions, options ...RequestOptionFunc) (*AgentToken, *Response, error)
-		RevokeAgentToken(pid interface{}, aid int, id int, options ...RequestOptionFunc) (*Response, error)
+		ListAgents(pid any, opt *ListAgentsOptions, options ...RequestOptionFunc) ([]*Agent, *Response, error)
+		GetAgent(pid any, id int, options ...RequestOptionFunc) (*Agent, *Response, error)
+		RegisterAgent(pid any, opt *RegisterAgentOptions, options ...RequestOptionFunc) (*Agent, *Response, error)
+		DeleteAgent(pid any, id int, options ...RequestOptionFunc) (*Response, error)
+		ListAgentTokens(pid any, aid int, opt *ListAgentTokensOptions, options ...RequestOptionFunc) ([]*AgentToken, *Response, error)
+		GetAgentToken(pid any, aid int, id int, options ...RequestOptionFunc) (*AgentToken, *Response, error)
+		CreateAgentToken(pid any, aid int, opt *CreateAgentTokenOptions, options ...RequestOptionFunc) (*AgentToken, *Response, error)
+		RevokeAgentToken(pid any, aid int, id int, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// ClusterAgentsService handles communication with the cluster agents related
@@ -100,7 +100,7 @@ type ListAgentsOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/cluster_agents/#list-the-agents-for-a-project
-func (s *ClusterAgentsService) ListAgents(pid interface{}, opt *ListAgentsOptions, options ...RequestOptionFunc) ([]*Agent, *Response, error) {
+func (s *ClusterAgentsService) ListAgents(pid any, opt *ListAgentsOptions, options ...RequestOptionFunc) ([]*Agent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -125,7 +125,7 @@ func (s *ClusterAgentsService) ListAgents(pid interface{}, opt *ListAgentsOption
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/cluster_agents/#get-details-about-an-agent
-func (s *ClusterAgentsService) GetAgent(pid interface{}, id int, options ...RequestOptionFunc) (*Agent, *Response, error) {
+func (s *ClusterAgentsService) GetAgent(pid any, id int, options ...RequestOptionFunc) (*Agent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -159,7 +159,7 @@ type RegisterAgentOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/cluster_agents/#register-an-agent-with-a-project
-func (s *ClusterAgentsService) RegisterAgent(pid interface{}, opt *RegisterAgentOptions, options ...RequestOptionFunc) (*Agent, *Response, error) {
+func (s *ClusterAgentsService) RegisterAgent(pid any, opt *RegisterAgentOptions, options ...RequestOptionFunc) (*Agent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -184,7 +184,7 @@ func (s *ClusterAgentsService) RegisterAgent(pid interface{}, opt *RegisterAgent
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/cluster_agents/#delete-a-registered-agent
-func (s *ClusterAgentsService) DeleteAgent(pid interface{}, id int, options ...RequestOptionFunc) (*Response, error) {
+func (s *ClusterAgentsService) DeleteAgent(pid any, id int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -209,7 +209,7 @@ type ListAgentTokensOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/cluster_agents/#list-tokens-for-an-agent
-func (s *ClusterAgentsService) ListAgentTokens(pid interface{}, aid int, opt *ListAgentTokensOptions, options ...RequestOptionFunc) ([]*AgentToken, *Response, error) {
+func (s *ClusterAgentsService) ListAgentTokens(pid any, aid int, opt *ListAgentTokensOptions, options ...RequestOptionFunc) ([]*AgentToken, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -234,7 +234,7 @@ func (s *ClusterAgentsService) ListAgentTokens(pid interface{}, aid int, opt *Li
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/cluster_agents/#get-a-single-agent-token
-func (s *ClusterAgentsService) GetAgentToken(pid interface{}, aid int, id int, options ...RequestOptionFunc) (*AgentToken, *Response, error) {
+func (s *ClusterAgentsService) GetAgentToken(pid any, aid int, id int, options ...RequestOptionFunc) (*AgentToken, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -268,7 +268,7 @@ type CreateAgentTokenOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/cluster_agents/#create-an-agent-token
-func (s *ClusterAgentsService) CreateAgentToken(pid interface{}, aid int, opt *CreateAgentTokenOptions, options ...RequestOptionFunc) (*AgentToken, *Response, error) {
+func (s *ClusterAgentsService) CreateAgentToken(pid any, aid int, opt *CreateAgentTokenOptions, options ...RequestOptionFunc) (*AgentToken, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -293,7 +293,7 @@ func (s *ClusterAgentsService) CreateAgentToken(pid interface{}, aid int, opt *C
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/cluster_agents/#revoke-an-agent-token
-func (s *ClusterAgentsService) RevokeAgentToken(pid interface{}, aid int, id int, options ...RequestOptionFunc) (*Response, error) {
+func (s *ClusterAgentsService) RevokeAgentToken(pid any, aid int, id int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err

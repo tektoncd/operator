@@ -21,7 +21,7 @@ import (
 
 type (
 	DependenciesServiceInterface interface {
-		ListProjectDependencies(pid interface{}, opt *ListProjectDependenciesOptions, options ...RequestOptionFunc) ([]*Dependency, *Response, error)
+		ListProjectDependencies(pid any, opt *ListProjectDependenciesOptions, options ...RequestOptionFunc) ([]*Dependency, *Response, error)
 	}
 
 	// DependenciesService handles communication with the dependencies related
@@ -81,7 +81,7 @@ type ListProjectDependenciesOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/dependencies/#list-project-dependencies
-func (s *DependenciesService) ListProjectDependencies(pid interface{}, opt *ListProjectDependenciesOptions, options ...RequestOptionFunc) ([]*Dependency, *Response, error) {
+func (s *DependenciesService) ListProjectDependencies(pid any, opt *ListProjectDependenciesOptions, options ...RequestOptionFunc) ([]*Dependency, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

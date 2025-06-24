@@ -605,6 +605,7 @@ type MergeCommentEvent struct {
 		HeadPipelineID      int        `json:"head_pipeline_id"`
 		Assignee            *EventUser `json:"assignee"`
 		DetailedMergeStatus string     `json:"detailed_merge_status"`
+		URL                 string     `json:"url"`
 	} `json:"merge_request"`
 }
 
@@ -799,7 +800,7 @@ func (p *MergeParams) UnmarshalJSON(b []byte) error {
 	type Alias MergeParams
 	raw := struct {
 		*Alias
-		ForceRemoveSourceBranch interface{} `json:"force_remove_source_branch"`
+		ForceRemoveSourceBranch any `json:"force_remove_source_branch"`
 	}{
 		Alias: (*Alias)(p),
 	}

@@ -24,8 +24,8 @@ import (
 
 type (
 	ResourceIterationEventsServiceInterface interface {
-		ListIssueIterationEvents(pid interface{}, issue int, opt *ListIterationEventsOptions, options ...RequestOptionFunc) ([]*IterationEvent, *Response, error)
-		GetIssueIterationEvent(pid interface{}, issue int, event int, options ...RequestOptionFunc) (*IterationEvent, *Response, error)
+		ListIssueIterationEvents(pid any, issue int, opt *ListIterationEventsOptions, options ...RequestOptionFunc) ([]*IterationEvent, *Response, error)
+		GetIssueIterationEvent(pid any, issue int, event int, options ...RequestOptionFunc) (*IterationEvent, *Response, error)
 	}
 
 	// ResourceIterationEventsService handles communication with the event related
@@ -84,7 +84,7 @@ type ListIterationEventsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/resource_iteration_events/#list-project-issue-iteration-events
-func (s *ResourceIterationEventsService) ListIssueIterationEvents(pid interface{}, issue int, opt *ListIterationEventsOptions, options ...RequestOptionFunc) ([]*IterationEvent, *Response, error) {
+func (s *ResourceIterationEventsService) ListIssueIterationEvents(pid any, issue int, opt *ListIterationEventsOptions, options ...RequestOptionFunc) ([]*IterationEvent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -109,7 +109,7 @@ func (s *ResourceIterationEventsService) ListIssueIterationEvents(pid interface{
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/resource_iteration_events/#get-single-issue-iteration-event
-func (s *ResourceIterationEventsService) GetIssueIterationEvent(pid interface{}, issue int, event int, options ...RequestOptionFunc) (*IterationEvent, *Response, error) {
+func (s *ResourceIterationEventsService) GetIssueIterationEvent(pid any, issue int, event int, options ...RequestOptionFunc) (*IterationEvent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
