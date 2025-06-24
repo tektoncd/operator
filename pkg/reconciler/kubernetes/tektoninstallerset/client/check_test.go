@@ -18,7 +18,10 @@ package client
 
 import (
 	"context"
+	"strconv"
 	"testing"
+
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -35,16 +38,26 @@ func filterAndTransform(extension common.Extension) FilterAndTransform {
 	}
 }
 
-func TestInstallerSetClient_Check(t *testing.T) {
-	releaseVersion := "devel"
-	comp := &v1alpha1.TektonTrigger{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "trigger",
-		},
+func buildTriggerComponent(disabled bool) *v1alpha1.TektonTrigger {
+	return &v1alpha1.TektonTrigger{
+		ObjectMeta: metav1.ObjectMeta{Name: "trigger"},
 		Spec: v1alpha1.TektonTriggerSpec{
 			CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "test"},
+			Trigger:    v1alpha1.Trigger{Disabled: disabled},
 		},
 	}
+}
+
+func computeHash(comp *v1alpha1.TektonTrigger) string {
+	h, err := hash.Compute(comp.GetSpec())
+	if err != nil {
+		panic("failed to compute hash: " + err.Error())
+	}
+	return h
+}
+
+func TestInstallerSetClient_Check(t *testing.T) {
+	releaseVersion := "devel"
 
 	tests := []struct {
 		name      string
@@ -231,7 +244,7 @@ func TestInstallerSetClient_Check(t *testing.T) {
 							},
 							Annotations: map[string]string{
 								v1alpha1.TargetNamespaceKey: comp.Spec.GetTargetNamespace(),
-								v1alpha1.LastAppliedHashKey: "10109000a91584dbd21a55dcdef54ed20b0d634bbf9b0bb596683432c70cbdac",
+								v1alpha1.LastAppliedHashKey: computeHash(comp),
 							},
 						},
 						Spec: v1alpha1.TektonInstallerSetSpec{},
@@ -241,24 +254,39 @@ func TestInstallerSetClient_Check(t *testing.T) {
 			wantErr: nil,
 		},
 	}
+	for _, disabled := range []bool{false, true} {
+		t.Run("disabled="+strconv.FormatBool(disabled), func(t *testing.T) {
+			comp := buildTriggerComponent(disabled)
+			expectedHash := computeHash(comp)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ctx, _ := testing2.SetupFakeContext(t)
+			for _, tt := range tests {
+				tt := tt
+				tt.resources = tt.resources.DeepCopy()
 
-			fakeclient := fake.NewSimpleClientset(tt.resources)
-			tisClient := fakeclient.OperatorV1alpha1().TektonInstallerSets()
+				if tt.name == "no error" {
+					tt.resources.Items[0].Annotations[v1alpha1.LastAppliedHashKey] = expectedHash
+					tt.resources.Items[0].Annotations[v1alpha1.TargetNamespaceKey] = comp.Spec.GetTargetNamespace()
+					tt.resources.Items[0].Labels[v1alpha1.ReleaseVersionKey] = releaseVersion
+				}
 
-			client := NewInstallerSetClient(tisClient, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
-				&testMetrics{})
+				t.Run(tt.name, func(t *testing.T) {
+					ctx, _ := testing2.SetupFakeContext(t)
 
-			_, gotErr := client.checkSet(ctx, comp, tt.setType)
+					fakeclient := fake.NewSimpleClientset(tt.resources)
+					tisClient := fakeclient.OperatorV1alpha1().TektonInstallerSets()
 
-			if tt.wantErr != nil {
-				assert.Equal(t, gotErr, tt.wantErr)
-				return
+					client := NewInstallerSetClient(tisClient, releaseVersion, "test-version", v1alpha1.KindTektonTrigger,
+						&testMetrics{})
+
+					_, gotErr := client.checkSet(ctx, comp, tt.setType)
+
+					if tt.wantErr != nil {
+						assert.Equal(t, gotErr, tt.wantErr)
+						return
+					}
+					assert.NilError(t, gotErr)
+				})
 			}
-			assert.NilError(t, gotErr)
 		})
 	}
 }
