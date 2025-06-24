@@ -203,7 +203,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	// Ensure Pipeline Trigger
-	if tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic {
+	if !tc.Spec.Trigger.Disabled && (tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic) {
 		tektontrigger := trigger.GetTektonTriggerCR(tc, r.operatorVersion)
 		logger.Debug("Ensuring TektonTrigger CR exists")
 		if _, err := trigger.EnsureTektonTriggerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), tektontrigger); err != nil {
@@ -214,7 +214,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		}
 		logger.Info("TektonTrigger CR reconciled successfully")
 	} else {
-		logger.Debugw("Ensuring TektonTrigger CR doesn't exist", "profile", tc.Spec.Profile)
+		logger.Debugw("Ensuring TektonTrigger CR doesn't exist", "profile", tc.Spec.Profile, "triggerDisabled", tc.Spec.Trigger.Disabled)
 		if err := trigger.EnsureTektonTriggerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers()); err != nil {
 			errMsg := fmt.Sprintf("TektonTrigger: %s", err.Error())
 			logger.Errorw("Failed to ensure TektonTrigger has been deleted", "error", err)
