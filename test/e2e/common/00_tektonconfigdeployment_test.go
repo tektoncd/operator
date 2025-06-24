@@ -1104,3 +1104,51 @@ func (s *TektonConfigTestSuite) recreateOperatorPod() {
 	err = resources.WaitForPodByLabelSelector(s.clients.KubeClient, s.resourceNames.OperatorPodSelectorLabel, s.resourceNames.Namespace, interval, timeout)
 	require.NoError(t, err)
 }
+
+// Test07_DisableTriggerInstallation verifies that when you set
+// spec.trigger.disabled=true on a TektonTrigger CR, no InstallerSets
+// are created for it, and that re-enabling it causes them to appear.
+func (s *TektonConfigTestSuite) Test07_DisableTriggerInstallation() {
+	t := s.T()
+	interval := s.interval
+	timeout := 2 * time.Minute
+
+	cfg, err := s.clients.Operator.TektonConfigs().
+		Get(context.TODO(), v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	require.NoError(t, err, "fetch TektonConfig")
+
+	// Disable trigger via TektonConfig.spec.trigger.disabled
+	cfg.Spec.Trigger.Disabled = true
+	_, err = s.clients.Operator.TektonConfigs().
+		Update(context.TODO(), cfg, metav1.UpdateOptions{})
+	require.NoError(t, err, "disable trigger in TektonConfig")
+
+	// Wait until no TektonInstallerSets for Trigger exist
+	require.NoError(t, wait.PollImmediate(interval, 30*time.Second, func() (bool, error) {
+		list, err := s.clients.Operator.TektonInstallerSets().
+			List(context.TODO(), metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=TektonTrigger", v1alpha1.CreatedByKey)})
+		if err != nil {
+			return false, err
+		}
+		return len(list.Items) == 0, nil
+	}), "all Trigger installersets should be gone")
+
+	//Re-enable it
+	cfg, err = s.clients.Operator.TektonConfigs().
+		Get(context.TODO(), v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	require.NoError(t, err)
+	cfg.Spec.Trigger.Disabled = false
+	_, err = s.clients.Operator.TektonConfigs().
+		Update(context.TODO(), cfg, metav1.UpdateOptions{})
+	require.NoError(t, err, "re-enable trigger in TektonConfig")
+
+	// Now wait for them to reappear
+	require.NoError(t, wait.PollImmediate(interval, timeout, func() (bool, error) {
+		list, err := s.clients.Operator.TektonInstallerSets().
+			List(context.TODO(), metav1.ListOptions{LabelSelector: fmt.Sprintf("%s=TektonTrigger", v1alpha1.CreatedByKey)})
+		if err != nil {
+			return false, err
+		}
+		return len(list.Items) > 0, nil
+	}), "Trigger installersets should come back when enabled")
+}
