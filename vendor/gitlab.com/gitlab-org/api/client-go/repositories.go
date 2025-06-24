@@ -26,16 +26,16 @@ import (
 
 type (
 	RepositoriesServiceInterface interface {
-		ListTree(pid interface{}, opt *ListTreeOptions, options ...RequestOptionFunc) ([]*TreeNode, *Response, error)
-		Blob(pid interface{}, sha string, options ...RequestOptionFunc) ([]byte, *Response, error)
-		RawBlobContent(pid interface{}, sha string, options ...RequestOptionFunc) ([]byte, *Response, error)
-		Archive(pid interface{}, opt *ArchiveOptions, options ...RequestOptionFunc) ([]byte, *Response, error)
-		StreamArchive(pid interface{}, w io.Writer, opt *ArchiveOptions, options ...RequestOptionFunc) (*Response, error)
-		Compare(pid interface{}, opt *CompareOptions, options ...RequestOptionFunc) (*Compare, *Response, error)
-		Contributors(pid interface{}, opt *ListContributorsOptions, options ...RequestOptionFunc) ([]*Contributor, *Response, error)
-		MergeBase(pid interface{}, opt *MergeBaseOptions, options ...RequestOptionFunc) (*Commit, *Response, error)
-		AddChangelog(pid interface{}, opt *AddChangelogOptions, options ...RequestOptionFunc) (*Response, error)
-		GenerateChangelogData(pid interface{}, opt GenerateChangelogDataOptions, options ...RequestOptionFunc) (*ChangelogData, *Response, error)
+		ListTree(pid any, opt *ListTreeOptions, options ...RequestOptionFunc) ([]*TreeNode, *Response, error)
+		Blob(pid any, sha string, options ...RequestOptionFunc) ([]byte, *Response, error)
+		RawBlobContent(pid any, sha string, options ...RequestOptionFunc) ([]byte, *Response, error)
+		Archive(pid any, opt *ArchiveOptions, options ...RequestOptionFunc) ([]byte, *Response, error)
+		StreamArchive(pid any, w io.Writer, opt *ArchiveOptions, options ...RequestOptionFunc) (*Response, error)
+		Compare(pid any, opt *CompareOptions, options ...RequestOptionFunc) (*Compare, *Response, error)
+		Contributors(pid any, opt *ListContributorsOptions, options ...RequestOptionFunc) ([]*Contributor, *Response, error)
+		MergeBase(pid any, opt *MergeBaseOptions, options ...RequestOptionFunc) (*Commit, *Response, error)
+		AddChangelog(pid any, opt *AddChangelogOptions, options ...RequestOptionFunc) (*Response, error)
+		GenerateChangelogData(pid any, opt GenerateChangelogDataOptions, options ...RequestOptionFunc) (*ChangelogData, *Response, error)
 	}
 
 	// RepositoriesService handles communication with the repositories related
@@ -79,7 +79,7 @@ type ListTreeOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/repositories/#list-repository-tree
-func (s *RepositoriesService) ListTree(pid interface{}, opt *ListTreeOptions, options ...RequestOptionFunc) ([]*TreeNode, *Response, error) {
+func (s *RepositoriesService) ListTree(pid any, opt *ListTreeOptions, options ...RequestOptionFunc) ([]*TreeNode, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -105,7 +105,7 @@ func (s *RepositoriesService) ListTree(pid interface{}, opt *ListTreeOptions, op
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/repositories/#get-a-blob-from-repository
-func (s *RepositoriesService) Blob(pid interface{}, sha string, options ...RequestOptionFunc) ([]byte, *Response, error) {
+func (s *RepositoriesService) Blob(pid any, sha string, options ...RequestOptionFunc) ([]byte, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -130,7 +130,7 @@ func (s *RepositoriesService) Blob(pid interface{}, sha string, options ...Reque
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/repositories/#raw-blob-content
-func (s *RepositoriesService) RawBlobContent(pid interface{}, sha string, options ...RequestOptionFunc) ([]byte, *Response, error) {
+func (s *RepositoriesService) RawBlobContent(pid any, sha string, options ...RequestOptionFunc) ([]byte, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -165,7 +165,7 @@ type ArchiveOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/repositories/#get-file-archive
-func (s *RepositoriesService) Archive(pid interface{}, opt *ArchiveOptions, options ...RequestOptionFunc) ([]byte, *Response, error) {
+func (s *RepositoriesService) Archive(pid any, opt *ArchiveOptions, options ...RequestOptionFunc) ([]byte, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -196,7 +196,7 @@ func (s *RepositoriesService) Archive(pid interface{}, opt *ArchiveOptions, opti
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/repositories/#get-file-archive
-func (s *RepositoriesService) StreamArchive(pid interface{}, w io.Writer, opt *ArchiveOptions, options ...RequestOptionFunc) (*Response, error) {
+func (s *RepositoriesService) StreamArchive(pid any, w io.Writer, opt *ArchiveOptions, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -248,7 +248,7 @@ type CompareOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/repositories/#compare-branches-tags-or-commits
-func (s *RepositoriesService) Compare(pid interface{}, opt *CompareOptions, options ...RequestOptionFunc) (*Compare, *Response, error) {
+func (s *RepositoriesService) Compare(pid any, opt *CompareOptions, options ...RequestOptionFunc) (*Compare, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -296,7 +296,7 @@ type ListContributorsOptions struct {
 // Contributors gets the repository contributors list.
 //
 // GitLab API docs: https://docs.gitlab.com/api/repositories/#contributors
-func (s *RepositoriesService) Contributors(pid interface{}, opt *ListContributorsOptions, options ...RequestOptionFunc) ([]*Contributor, *Response, error) {
+func (s *RepositoriesService) Contributors(pid any, opt *ListContributorsOptions, options ...RequestOptionFunc) ([]*Contributor, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -330,7 +330,7 @@ type MergeBaseOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/repositories/#merge-base
-func (s *RepositoriesService) MergeBase(pid interface{}, opt *MergeBaseOptions, options ...RequestOptionFunc) (*Commit, *Response, error) {
+func (s *RepositoriesService) MergeBase(pid any, opt *MergeBaseOptions, options ...RequestOptionFunc) (*Commit, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -371,7 +371,7 @@ type AddChangelogOptions struct {
 //
 // Gitlab API docs:
 // https://docs.gitlab.com/api/repositories/#add-changelog-data-to-a-changelog-file
-func (s *RepositoriesService) AddChangelog(pid interface{}, opt *AddChangelogOptions, options ...RequestOptionFunc) (*Response, error) {
+func (s *RepositoriesService) AddChangelog(pid any, opt *AddChangelogOptions, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -417,7 +417,7 @@ type GenerateChangelogDataOptions struct {
 //
 // Gitlab API docs:
 // https://docs.gitlab.com/api/repositories/#generate-changelog-data
-func (s *RepositoriesService) GenerateChangelogData(pid interface{}, opt GenerateChangelogDataOptions, options ...RequestOptionFunc) (*ChangelogData, *Response, error) {
+func (s *RepositoriesService) GenerateChangelogData(pid any, opt GenerateChangelogDataOptions, options ...RequestOptionFunc) (*ChangelogData, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

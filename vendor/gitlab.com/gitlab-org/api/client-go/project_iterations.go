@@ -24,7 +24,7 @@ import (
 
 type (
 	ProjectIterationsServiceInterface interface {
-		ListProjectIterations(pid interface{}, opt *ListProjectIterationsOptions, options ...RequestOptionFunc) ([]*ProjectIteration, *Response, error)
+		ListProjectIterations(pid any, opt *ListProjectIterationsOptions, options ...RequestOptionFunc) ([]*ProjectIteration, *Response, error)
 	}
 
 	// ProjectIterationsService handles communication with the project iterations related
@@ -76,7 +76,7 @@ type ListProjectIterationsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/iterations/#list-project-iterations
-func (i *ProjectIterationsService) ListProjectIterations(pid interface{}, opt *ListProjectIterationsOptions, options ...RequestOptionFunc) ([]*ProjectIteration, *Response, error) {
+func (i *ProjectIterationsService) ListProjectIterations(pid any, opt *ListProjectIterationsOptions, options ...RequestOptionFunc) ([]*ProjectIteration, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

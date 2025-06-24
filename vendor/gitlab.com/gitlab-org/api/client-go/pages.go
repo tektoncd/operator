@@ -24,9 +24,9 @@ import (
 
 type (
 	PagesServiceInterface interface {
-		UnpublishPages(gid interface{}, options ...RequestOptionFunc) (*Response, error)
-		GetPages(gid interface{}, options ...RequestOptionFunc) (*Pages, *Response, error)
-		UpdatePages(pid interface{}, opt UpdatePagesOptions, options ...RequestOptionFunc) (*Pages, *Response, error)
+		UnpublishPages(gid any, options ...RequestOptionFunc) (*Response, error)
+		GetPages(gid any, options ...RequestOptionFunc) (*Pages, *Response, error)
+		UpdatePages(pid any, opt UpdatePagesOptions, options ...RequestOptionFunc) (*Pages, *Response, error)
 	}
 
 	// PagesService handles communication with the pages related methods
@@ -64,7 +64,7 @@ type PagesDeployment struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/pages/#unpublish-pages
-func (s *PagesService) UnpublishPages(gid interface{}, options ...RequestOptionFunc) (*Response, error) {
+func (s *PagesService) UnpublishPages(gid any, options ...RequestOptionFunc) (*Response, error) {
 	page, err := parseID(gid)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (s *PagesService) UnpublishPages(gid interface{}, options ...RequestOptionF
 //
 // GitLab API Docs:
 // https://docs.gitlab.com/api/pages/#get-pages-settings-for-a-project
-func (s *PagesService) GetPages(gid interface{}, options ...RequestOptionFunc) (*Pages, *Response, error) {
+func (s *PagesService) GetPages(gid any, options ...RequestOptionFunc) (*Pages, *Response, error) {
 	project, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -119,7 +119,7 @@ type UpdatePagesOptions struct {
 //
 // GitLab API Docs:
 // https://docs.gitlab.com/api/pages/#update-pages-settings-for-a-project
-func (s *PagesService) UpdatePages(pid interface{}, opt UpdatePagesOptions, options ...RequestOptionFunc) (*Pages, *Response, error) {
+func (s *PagesService) UpdatePages(pid any, opt UpdatePagesOptions, options ...RequestOptionFunc) (*Pages, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

@@ -23,10 +23,10 @@ import (
 
 type (
 	AlertManagementServiceInterface interface {
-		UploadMetricImage(pid interface{}, alertIID int, content io.Reader, filename string, opt *UploadMetricImageOptions, options ...RequestOptionFunc) (*MetricImage, *Response, error)
-		ListMetricImages(pid interface{}, alertIID int, opt *ListMetricImagesOptions, options ...RequestOptionFunc) ([]*MetricImage, *Response, error)
-		UpdateMetricImage(pid interface{}, alertIID int, id int, opt *UpdateMetricImageOptions, options ...RequestOptionFunc) (*MetricImage, *Response, error)
-		DeleteMetricImage(pid interface{}, alertIID int, id int, options ...RequestOptionFunc) (*Response, error)
+		UploadMetricImage(pid any, alertIID int, content io.Reader, filename string, opt *UploadMetricImageOptions, options ...RequestOptionFunc) (*MetricImage, *Response, error)
+		ListMetricImages(pid any, alertIID int, opt *ListMetricImagesOptions, options ...RequestOptionFunc) ([]*MetricImage, *Response, error)
+		UpdateMetricImage(pid any, alertIID int, id int, opt *UpdateMetricImageOptions, options ...RequestOptionFunc) (*MetricImage, *Response, error)
+		DeleteMetricImage(pid any, alertIID int, id int, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// AlertManagementService handles communication with the alert management
@@ -67,7 +67,7 @@ type UploadMetricImageOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/alert_management_alerts/#upload-metric-image
-func (s *AlertManagementService) UploadMetricImage(pid interface{}, alertIID int, content io.Reader, filename string, opt *UploadMetricImageOptions, options ...RequestOptionFunc) (*MetricImage, *Response, error) {
+func (s *AlertManagementService) UploadMetricImage(pid any, alertIID int, content io.Reader, filename string, opt *UploadMetricImageOptions, options ...RequestOptionFunc) (*MetricImage, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -100,7 +100,7 @@ type ListMetricImagesOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/alert_management_alerts/#list-metric-images
-func (s *AlertManagementService) ListMetricImages(pid interface{}, alertIID int, opt *ListMetricImagesOptions, options ...RequestOptionFunc) ([]*MetricImage, *Response, error) {
+func (s *AlertManagementService) ListMetricImages(pid any, alertIID int, opt *ListMetricImagesOptions, options ...RequestOptionFunc) ([]*MetricImage, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -134,7 +134,7 @@ type UpdateMetricImageOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/alert_management_alerts/#update-metric-image
-func (s *AlertManagementService) UpdateMetricImage(pid interface{}, alertIID int, id int, opt *UpdateMetricImageOptions, options ...RequestOptionFunc) (*MetricImage, *Response, error) {
+func (s *AlertManagementService) UpdateMetricImage(pid any, alertIID int, id int, opt *UpdateMetricImageOptions, options ...RequestOptionFunc) (*MetricImage, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -159,7 +159,7 @@ func (s *AlertManagementService) UpdateMetricImage(pid interface{}, alertIID int
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/alert_management_alerts/#delete-metric-image
-func (s *AlertManagementService) DeleteMetricImage(pid interface{}, alertIID int, id int, options ...RequestOptionFunc) (*Response, error) {
+func (s *AlertManagementService) DeleteMetricImage(pid any, alertIID int, id int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err

@@ -8,10 +8,10 @@ import (
 
 type (
 	MergeTrainsServiceInterface interface {
-		ListProjectMergeTrains(pid interface{}, opt *ListMergeTrainsOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error)
-		ListMergeRequestInMergeTrain(pid interface{}, targetBranch string, opts *ListMergeTrainsOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error)
-		GetMergeRequestOnAMergeTrain(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*MergeTrain, *Response, error)
-		AddMergeRequestToMergeTrain(pid interface{}, mergeRequest int, opts *AddMergeRequestToMergeTrainOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error)
+		ListProjectMergeTrains(pid any, opt *ListMergeTrainsOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error)
+		ListMergeRequestInMergeTrain(pid any, targetBranch string, opts *ListMergeTrainsOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error)
+		GetMergeRequestOnAMergeTrain(pid any, mergeRequest int, options ...RequestOptionFunc) (*MergeTrain, *Response, error)
+		AddMergeRequestToMergeTrain(pid any, mergeRequest int, opts *AddMergeRequestToMergeTrainOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error)
 	}
 
 	// MergeTrainsService handles communication with the merge trains related
@@ -70,7 +70,7 @@ type ListMergeTrainsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_trains/#list-merge-trains-for-a-project
-func (s *MergeTrainsService) ListProjectMergeTrains(pid interface{}, opt *ListMergeTrainsOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error) {
+func (s *MergeTrainsService) ListProjectMergeTrains(pid any, opt *ListMergeTrainsOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -96,7 +96,7 @@ func (s *MergeTrainsService) ListProjectMergeTrains(pid interface{}, opt *ListMe
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_trains/#list-merge-requests-in-a-merge-train
-func (s *MergeTrainsService) ListMergeRequestInMergeTrain(pid interface{}, targetBranch string, opts *ListMergeTrainsOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error) {
+func (s *MergeTrainsService) ListMergeRequestInMergeTrain(pid any, targetBranch string, opts *ListMergeTrainsOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -122,7 +122,7 @@ func (s *MergeTrainsService) ListMergeRequestInMergeTrain(pid interface{}, targe
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_trains/#get-the-status-of-a-merge-request-on-a-merge-train
-func (s *MergeTrainsService) GetMergeRequestOnAMergeTrain(pid interface{}, mergeRequest int, options ...RequestOptionFunc) (*MergeTrain, *Response, error) {
+func (s *MergeTrainsService) GetMergeRequestOnAMergeTrain(pid any, mergeRequest int, options ...RequestOptionFunc) (*MergeTrain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -162,7 +162,7 @@ type AddMergeRequestToMergeTrainOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/merge_trains/#add-a-merge-request-to-a-merge-train
-func (s *MergeTrainsService) AddMergeRequestToMergeTrain(pid interface{}, mergeRequest int, opts *AddMergeRequestToMergeTrainOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error) {
+func (s *MergeTrainsService) AddMergeRequestToMergeTrain(pid any, mergeRequest int, opts *AddMergeRequestToMergeTrainOptions, options ...RequestOptionFunc) ([]*MergeTrain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

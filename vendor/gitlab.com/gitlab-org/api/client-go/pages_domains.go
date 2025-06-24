@@ -24,12 +24,12 @@ import (
 
 type (
 	PagesDomainsServiceInterface interface {
-		ListPagesDomains(pid interface{}, opt *ListPagesDomainsOptions, options ...RequestOptionFunc) ([]*PagesDomain, *Response, error)
+		ListPagesDomains(pid any, opt *ListPagesDomainsOptions, options ...RequestOptionFunc) ([]*PagesDomain, *Response, error)
 		ListAllPagesDomains(options ...RequestOptionFunc) ([]*PagesDomain, *Response, error)
-		GetPagesDomain(pid interface{}, domain string, options ...RequestOptionFunc) (*PagesDomain, *Response, error)
-		CreatePagesDomain(pid interface{}, opt *CreatePagesDomainOptions, options ...RequestOptionFunc) (*PagesDomain, *Response, error)
-		UpdatePagesDomain(pid interface{}, domain string, opt *UpdatePagesDomainOptions, options ...RequestOptionFunc) (*PagesDomain, *Response, error)
-		DeletePagesDomain(pid interface{}, domain string, options ...RequestOptionFunc) (*Response, error)
+		GetPagesDomain(pid any, domain string, options ...RequestOptionFunc) (*PagesDomain, *Response, error)
+		CreatePagesDomain(pid any, opt *CreatePagesDomainOptions, options ...RequestOptionFunc) (*PagesDomain, *Response, error)
+		UpdatePagesDomain(pid any, domain string, opt *UpdatePagesDomainOptions, options ...RequestOptionFunc) (*PagesDomain, *Response, error)
+		DeletePagesDomain(pid any, domain string, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// PagesDomainsService handles communication with the pages domains
@@ -73,7 +73,7 @@ type ListPagesDomainsOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/pages_domains/#list-pages-domains
-func (s *PagesDomainsService) ListPagesDomains(pid interface{}, opt *ListPagesDomainsOptions, options ...RequestOptionFunc) ([]*PagesDomain, *Response, error) {
+func (s *PagesDomainsService) ListPagesDomains(pid any, opt *ListPagesDomainsOptions, options ...RequestOptionFunc) ([]*PagesDomain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -117,7 +117,7 @@ func (s *PagesDomainsService) ListAllPagesDomains(options ...RequestOptionFunc) 
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/pages_domains/#single-pages-domain
-func (s *PagesDomainsService) GetPagesDomain(pid interface{}, domain string, options ...RequestOptionFunc) (*PagesDomain, *Response, error) {
+func (s *PagesDomainsService) GetPagesDomain(pid any, domain string, options ...RequestOptionFunc) (*PagesDomain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -153,7 +153,7 @@ type CreatePagesDomainOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/pages_domains/#create-new-pages-domain
-func (s *PagesDomainsService) CreatePagesDomain(pid interface{}, opt *CreatePagesDomainOptions, options ...RequestOptionFunc) (*PagesDomain, *Response, error) {
+func (s *PagesDomainsService) CreatePagesDomain(pid any, opt *CreatePagesDomainOptions, options ...RequestOptionFunc) (*PagesDomain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -188,7 +188,7 @@ type UpdatePagesDomainOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/pages_domains/#update-pages-domain
-func (s *PagesDomainsService) UpdatePagesDomain(pid interface{}, domain string, opt *UpdatePagesDomainOptions, options ...RequestOptionFunc) (*PagesDomain, *Response, error) {
+func (s *PagesDomainsService) UpdatePagesDomain(pid any, domain string, opt *UpdatePagesDomainOptions, options ...RequestOptionFunc) (*PagesDomain, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -213,7 +213,7 @@ func (s *PagesDomainsService) UpdatePagesDomain(pid interface{}, domain string, 
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/pages_domains/#delete-pages-domain
-func (s *PagesDomainsService) DeletePagesDomain(pid interface{}, domain string, options ...RequestOptionFunc) (*Response, error) {
+func (s *PagesDomainsService) DeletePagesDomain(pid any, domain string, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err

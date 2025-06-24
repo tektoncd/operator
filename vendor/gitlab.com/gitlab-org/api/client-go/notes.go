@@ -24,26 +24,26 @@ import (
 
 type (
 	NotesServiceInterface interface {
-		ListIssueNotes(pid interface{}, issue int, opt *ListIssueNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error)
-		GetIssueNote(pid interface{}, issue, note int, options ...RequestOptionFunc) (*Note, *Response, error)
-		CreateIssueNote(pid interface{}, issue int, opt *CreateIssueNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
-		UpdateIssueNote(pid interface{}, issue, note int, opt *UpdateIssueNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
-		DeleteIssueNote(pid interface{}, issue, note int, options ...RequestOptionFunc) (*Response, error)
-		ListSnippetNotes(pid interface{}, snippet int, opt *ListSnippetNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error)
-		GetSnippetNote(pid interface{}, snippet, note int, options ...RequestOptionFunc) (*Note, *Response, error)
-		CreateSnippetNote(pid interface{}, snippet int, opt *CreateSnippetNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
-		UpdateSnippetNote(pid interface{}, snippet, note int, opt *UpdateSnippetNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
-		DeleteSnippetNote(pid interface{}, snippet, note int, options ...RequestOptionFunc) (*Response, error)
-		ListMergeRequestNotes(pid interface{}, mergeRequest int, opt *ListMergeRequestNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error)
-		GetMergeRequestNote(pid interface{}, mergeRequest, note int, options ...RequestOptionFunc) (*Note, *Response, error)
-		CreateMergeRequestNote(pid interface{}, mergeRequest int, opt *CreateMergeRequestNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
-		UpdateMergeRequestNote(pid interface{}, mergeRequest, note int, opt *UpdateMergeRequestNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
-		DeleteMergeRequestNote(pid interface{}, mergeRequest, note int, options ...RequestOptionFunc) (*Response, error)
-		ListEpicNotes(gid interface{}, epic int, opt *ListEpicNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error)
-		GetEpicNote(gid interface{}, epic, note int, options ...RequestOptionFunc) (*Note, *Response, error)
-		CreateEpicNote(gid interface{}, epic int, opt *CreateEpicNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
-		UpdateEpicNote(gid interface{}, epic, note int, opt *UpdateEpicNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
-		DeleteEpicNote(gid interface{}, epic, note int, options ...RequestOptionFunc) (*Response, error)
+		ListIssueNotes(pid any, issue int, opt *ListIssueNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error)
+		GetIssueNote(pid any, issue, note int, options ...RequestOptionFunc) (*Note, *Response, error)
+		CreateIssueNote(pid any, issue int, opt *CreateIssueNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
+		UpdateIssueNote(pid any, issue, note int, opt *UpdateIssueNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
+		DeleteIssueNote(pid any, issue, note int, options ...RequestOptionFunc) (*Response, error)
+		ListSnippetNotes(pid any, snippet int, opt *ListSnippetNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error)
+		GetSnippetNote(pid any, snippet, note int, options ...RequestOptionFunc) (*Note, *Response, error)
+		CreateSnippetNote(pid any, snippet int, opt *CreateSnippetNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
+		UpdateSnippetNote(pid any, snippet, note int, opt *UpdateSnippetNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
+		DeleteSnippetNote(pid any, snippet, note int, options ...RequestOptionFunc) (*Response, error)
+		ListMergeRequestNotes(pid any, mergeRequest int, opt *ListMergeRequestNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error)
+		GetMergeRequestNote(pid any, mergeRequest, note int, options ...RequestOptionFunc) (*Note, *Response, error)
+		CreateMergeRequestNote(pid any, mergeRequest int, opt *CreateMergeRequestNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
+		UpdateMergeRequestNote(pid any, mergeRequest, note int, opt *UpdateMergeRequestNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
+		DeleteMergeRequestNote(pid any, mergeRequest, note int, options ...RequestOptionFunc) (*Response, error)
+		ListEpicNotes(gid any, epic int, opt *ListEpicNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error)
+		GetEpicNote(gid any, epic, note int, options ...RequestOptionFunc) (*Note, *Response, error)
+		CreateEpicNote(gid any, epic int, opt *CreateEpicNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
+		UpdateEpicNote(gid any, epic, note int, opt *UpdateEpicNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error)
+		DeleteEpicNote(gid any, epic, note int, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// NotesService handles communication with the notes related methods
@@ -154,7 +154,7 @@ type ListIssueNotesOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#list-project-issue-notes
-func (s *NotesService) ListIssueNotes(pid interface{}, issue int, opt *ListIssueNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error) {
+func (s *NotesService) ListIssueNotes(pid any, issue int, opt *ListIssueNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -179,7 +179,7 @@ func (s *NotesService) ListIssueNotes(pid interface{}, issue int, opt *ListIssue
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#get-single-issue-note
-func (s *NotesService) GetIssueNote(pid interface{}, issue, note int, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) GetIssueNote(pid any, issue, note int, options ...RequestOptionFunc) (*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -215,7 +215,7 @@ type CreateIssueNoteOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#create-new-issue-note
-func (s *NotesService) CreateIssueNote(pid interface{}, issue int, opt *CreateIssueNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) CreateIssueNote(pid any, issue int, opt *CreateIssueNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -249,7 +249,7 @@ type UpdateIssueNoteOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#modify-existing-issue-note
-func (s *NotesService) UpdateIssueNote(pid interface{}, issue, note int, opt *UpdateIssueNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) UpdateIssueNote(pid any, issue, note int, opt *UpdateIssueNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -274,7 +274,7 @@ func (s *NotesService) UpdateIssueNote(pid interface{}, issue, note int, opt *Up
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#delete-an-issue-note
-func (s *NotesService) DeleteIssueNote(pid interface{}, issue, note int, options ...RequestOptionFunc) (*Response, error) {
+func (s *NotesService) DeleteIssueNote(pid any, issue, note int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -304,7 +304,7 @@ type ListSnippetNotesOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#list-all-snippet-notes
-func (s *NotesService) ListSnippetNotes(pid interface{}, snippet int, opt *ListSnippetNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error) {
+func (s *NotesService) ListSnippetNotes(pid any, snippet int, opt *ListSnippetNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -329,7 +329,7 @@ func (s *NotesService) ListSnippetNotes(pid interface{}, snippet int, opt *ListS
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#get-single-snippet-note
-func (s *NotesService) GetSnippetNote(pid interface{}, snippet, note int, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) GetSnippetNote(pid any, snippet, note int, options ...RequestOptionFunc) (*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -365,7 +365,7 @@ type CreateSnippetNoteOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#create-new-snippet-note
-func (s *NotesService) CreateSnippetNote(pid interface{}, snippet int, opt *CreateSnippetNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) CreateSnippetNote(pid any, snippet int, opt *CreateSnippetNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -399,7 +399,7 @@ type UpdateSnippetNoteOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#modify-existing-snippet-note
-func (s *NotesService) UpdateSnippetNote(pid interface{}, snippet, note int, opt *UpdateSnippetNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) UpdateSnippetNote(pid any, snippet, note int, opt *UpdateSnippetNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -424,7 +424,7 @@ func (s *NotesService) UpdateSnippetNote(pid interface{}, snippet, note int, opt
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#delete-a-snippet-note
-func (s *NotesService) DeleteSnippetNote(pid interface{}, snippet, note int, options ...RequestOptionFunc) (*Response, error) {
+func (s *NotesService) DeleteSnippetNote(pid any, snippet, note int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -454,7 +454,7 @@ type ListMergeRequestNotesOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#list-all-merge-request-notes
-func (s *NotesService) ListMergeRequestNotes(pid interface{}, mergeRequest int, opt *ListMergeRequestNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error) {
+func (s *NotesService) ListMergeRequestNotes(pid any, mergeRequest int, opt *ListMergeRequestNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -479,7 +479,7 @@ func (s *NotesService) ListMergeRequestNotes(pid interface{}, mergeRequest int, 
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#get-single-merge-request-note
-func (s *NotesService) GetMergeRequestNote(pid interface{}, mergeRequest, note int, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) GetMergeRequestNote(pid any, mergeRequest, note int, options ...RequestOptionFunc) (*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -516,7 +516,7 @@ type CreateMergeRequestNoteOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#create-new-merge-request-note
-func (s *NotesService) CreateMergeRequestNote(pid interface{}, mergeRequest int, opt *CreateMergeRequestNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) CreateMergeRequestNote(pid any, mergeRequest int, opt *CreateMergeRequestNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -550,7 +550,7 @@ type UpdateMergeRequestNoteOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#modify-existing-merge-request-note
-func (s *NotesService) UpdateMergeRequestNote(pid interface{}, mergeRequest, note int, opt *UpdateMergeRequestNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) UpdateMergeRequestNote(pid any, mergeRequest, note int, opt *UpdateMergeRequestNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -575,7 +575,7 @@ func (s *NotesService) UpdateMergeRequestNote(pid interface{}, mergeRequest, not
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#delete-a-merge-request-note
-func (s *NotesService) DeleteMergeRequestNote(pid interface{}, mergeRequest, note int, options ...RequestOptionFunc) (*Response, error) {
+func (s *NotesService) DeleteMergeRequestNote(pid any, mergeRequest, note int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -592,7 +592,7 @@ func (s *NotesService) DeleteMergeRequestNote(pid interface{}, mergeRequest, not
 }
 
 // ListEpicNotesOptions represents the available ListEpicNotes() options.
-// Deprecated: use Work Items API instead.
+// Will be removed in v5 of the API, use Work Items API instead
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#list-all-epic-notes
@@ -603,11 +603,11 @@ type ListEpicNotesOptions struct {
 }
 
 // ListEpicNotes gets a list of all notes for a single epic.
-// Deprecated: use Work Items API instead.
+// Will be removed in v5 of the API, use Work Items API instead
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#list-all-epic-notes
-func (s *NotesService) ListEpicNotes(gid interface{}, epic int, opt *ListEpicNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error) {
+func (s *NotesService) ListEpicNotes(gid any, epic int, opt *ListEpicNotesOptions, options ...RequestOptionFunc) ([]*Note, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -629,11 +629,11 @@ func (s *NotesService) ListEpicNotes(gid interface{}, epic int, opt *ListEpicNot
 }
 
 // GetEpicNote returns a single note for an epic.
-// Deprecated: use Work Items API instead.
+// Will be removed in v5 of the API, use Work Items API instead
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#get-single-epic-note
-func (s *NotesService) GetEpicNote(gid interface{}, epic, note int, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) GetEpicNote(gid any, epic, note int, options ...RequestOptionFunc) (*Note, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -655,7 +655,7 @@ func (s *NotesService) GetEpicNote(gid interface{}, epic, note int, options ...R
 }
 
 // CreateEpicNoteOptions represents the available CreateEpicNote() options.
-// Deprecated: use Work Items API instead.
+// Will be removed in v5 of the API, use Work Items API instead
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#create-new-epic-note
@@ -664,11 +664,11 @@ type CreateEpicNoteOptions struct {
 }
 
 // CreateEpicNote creates a new note for a single merge request.
-// Deprecated: use Work Items API instead.
+// Will be removed in v5 of the API, use Work Items API instead
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#create-new-epic-note
-func (s *NotesService) CreateEpicNote(gid interface{}, epic int, opt *CreateEpicNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) CreateEpicNote(gid any, epic int, opt *CreateEpicNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -690,7 +690,7 @@ func (s *NotesService) CreateEpicNote(gid interface{}, epic int, opt *CreateEpic
 }
 
 // UpdateEpicNoteOptions represents the available UpdateEpicNote() options.
-// Deprecated: use Work Items API instead.
+// Will be removed in v5 of the API, use Work Items API instead
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/notes/#modify-existing-epic-note
@@ -699,10 +699,10 @@ type UpdateEpicNoteOptions struct {
 }
 
 // UpdateEpicNote modifies existing note of an epic.
-// Deprecated: use Work Items API instead.
+// Will be removed in v5 of the API, use Work Items API instead
 //
 // https://docs.gitlab.com/api/notes/#modify-existing-epic-note
-func (s *NotesService) UpdateEpicNote(gid interface{}, epic, note int, opt *UpdateEpicNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
+func (s *NotesService) UpdateEpicNote(gid any, epic, note int, opt *UpdateEpicNoteOptions, options ...RequestOptionFunc) (*Note, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -724,10 +724,10 @@ func (s *NotesService) UpdateEpicNote(gid interface{}, epic, note int, opt *Upda
 }
 
 // DeleteEpicNote deletes an existing note of a merge request.
-// Deprecated: use Work Items API instead.
+// Will be removed in v5 of the API, use Work Items API instead
 //
 // https://docs.gitlab.com/api/notes/#delete-an-epic-note
-func (s *NotesService) DeleteEpicNote(gid interface{}, epic, note int, options ...RequestOptionFunc) (*Response, error) {
+func (s *NotesService) DeleteEpicNote(gid any, epic, note int, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, err

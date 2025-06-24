@@ -25,8 +25,8 @@ type (
 	NamespacesServiceInterface interface {
 		ListNamespaces(opt *ListNamespacesOptions, options ...RequestOptionFunc) ([]*Namespace, *Response, error)
 		SearchNamespace(query string, options ...RequestOptionFunc) ([]*Namespace, *Response, error)
-		GetNamespace(id interface{}, options ...RequestOptionFunc) (*Namespace, *Response, error)
-		NamespaceExists(id interface{}, opt *NamespaceExistsOptions, options ...RequestOptionFunc) (*NamespaceExistance, *Response, error)
+		GetNamespace(id any, options ...RequestOptionFunc) (*Namespace, *Response, error)
+		NamespaceExists(id any, opt *NamespaceExistsOptions, options ...RequestOptionFunc) (*NamespaceExistance, *Response, error)
 	}
 
 	// NamespacesService handles communication with the namespace related methods
@@ -122,7 +122,7 @@ func (s *NamespacesService) SearchNamespace(query string, options ...RequestOpti
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/namespaces/#get-details-on-a-namespace
-func (s *NamespacesService) GetNamespace(id interface{}, options ...RequestOptionFunc) (*Namespace, *Response, error) {
+func (s *NamespacesService) GetNamespace(id any, options ...RequestOptionFunc) (*Namespace, *Response, error) {
 	namespace, err := parseID(id)
 	if err != nil {
 		return nil, nil, err
@@ -164,7 +164,7 @@ type NamespaceExistsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/namespaces/#verify-namespace-availability
-func (s *NamespacesService) NamespaceExists(id interface{}, opt *NamespaceExistsOptions, options ...RequestOptionFunc) (*NamespaceExistance, *Response, error) {
+func (s *NamespacesService) NamespaceExists(id any, opt *NamespaceExistsOptions, options ...RequestOptionFunc) (*NamespaceExistance, *Response, error) {
 	namespace, err := parseID(id)
 	if err != nil {
 		return nil, nil, err

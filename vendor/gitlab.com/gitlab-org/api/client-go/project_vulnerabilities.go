@@ -26,9 +26,9 @@ type (
 	// Deprecated: use GraphQL Query.vulnerabilities instead
 	ProjectVulnerabilitiesServiceInterface interface {
 		// Deprecated: use GraphQL Query.vulnerabilities instead
-		ListProjectVulnerabilities(pid interface{}, opt *ListProjectVulnerabilitiesOptions, options ...RequestOptionFunc) ([]*ProjectVulnerability, *Response, error)
+		ListProjectVulnerabilities(pid any, opt *ListProjectVulnerabilitiesOptions, options ...RequestOptionFunc) ([]*ProjectVulnerability, *Response, error)
 		// Deprecated: use GraphQL Query.vulnerabilities instead
-		CreateVulnerability(pid interface{}, opt *CreateVulnerabilityOptions, options ...RequestOptionFunc) (*ProjectVulnerability, *Response, error)
+		CreateVulnerability(pid any, opt *CreateVulnerabilityOptions, options ...RequestOptionFunc) (*ProjectVulnerability, *Response, error)
 	}
 
 	// ProjectVulnerabilitiesService handles communication with the projects
@@ -112,7 +112,7 @@ type ListProjectVulnerabilitiesOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_vulnerabilities/#list-project-vulnerabilities
-func (s *ProjectVulnerabilitiesService) ListProjectVulnerabilities(pid interface{}, opt *ListProjectVulnerabilitiesOptions, options ...RequestOptionFunc) ([]*ProjectVulnerability, *Response, error) {
+func (s *ProjectVulnerabilitiesService) ListProjectVulnerabilities(pid any, opt *ListProjectVulnerabilitiesOptions, options ...RequestOptionFunc) ([]*ProjectVulnerability, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -148,7 +148,7 @@ type CreateVulnerabilityOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_vulnerabilities/#new-vulnerability
-func (s *ProjectVulnerabilitiesService) CreateVulnerability(pid interface{}, opt *CreateVulnerabilityOptions, options ...RequestOptionFunc) (*ProjectVulnerability, *Response, error) {
+func (s *ProjectVulnerabilitiesService) CreateVulnerability(pid any, opt *CreateVulnerabilityOptions, options ...RequestOptionFunc) (*ProjectVulnerability, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

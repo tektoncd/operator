@@ -21,32 +21,33 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strings"
 	"time"
 )
 
 type (
 	IssuesServiceInterface interface {
 		ListIssues(opt *ListIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error)
-		ListGroupIssues(pid interface{}, opt *ListGroupIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error)
-		ListProjectIssues(pid interface{}, opt *ListProjectIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error)
+		ListGroupIssues(pid any, opt *ListGroupIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error)
+		ListProjectIssues(pid any, opt *ListProjectIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error)
 		GetIssueByID(issue int, options ...RequestOptionFunc) (*Issue, *Response, error)
-		GetIssue(pid interface{}, issue int, options ...RequestOptionFunc) (*Issue, *Response, error)
-		CreateIssue(pid interface{}, opt *CreateIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error)
-		UpdateIssue(pid interface{}, issue int, opt *UpdateIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error)
-		DeleteIssue(pid interface{}, issue int, options ...RequestOptionFunc) (*Response, error)
-		ReorderIssue(pid interface{}, issue int, opt *ReorderIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error)
-		MoveIssue(pid interface{}, issue int, opt *MoveIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error)
-		SubscribeToIssue(pid interface{}, issue int, options ...RequestOptionFunc) (*Issue, *Response, error)
-		UnsubscribeFromIssue(pid interface{}, issue int, options ...RequestOptionFunc) (*Issue, *Response, error)
-		CreateTodo(pid interface{}, issue int, options ...RequestOptionFunc) (*Todo, *Response, error)
-		ListMergeRequestsClosingIssue(pid interface{}, issue int, opt *ListMergeRequestsClosingIssueOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error)
-		ListMergeRequestsRelatedToIssue(pid interface{}, issue int, opt *ListMergeRequestsRelatedToIssueOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error)
-		SetTimeEstimate(pid interface{}, issue int, opt *SetTimeEstimateOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error)
-		ResetTimeEstimate(pid interface{}, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
-		AddSpentTime(pid interface{}, issue int, opt *AddSpentTimeOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error)
-		ResetSpentTime(pid interface{}, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
-		GetTimeSpent(pid interface{}, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
-		GetParticipants(pid interface{}, issue int, options ...RequestOptionFunc) ([]*BasicUser, *Response, error)
+		GetIssue(pid any, issue int, options ...RequestOptionFunc) (*Issue, *Response, error)
+		CreateIssue(pid any, opt *CreateIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error)
+		UpdateIssue(pid any, issue int, opt *UpdateIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error)
+		DeleteIssue(pid any, issue int, options ...RequestOptionFunc) (*Response, error)
+		ReorderIssue(pid any, issue int, opt *ReorderIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error)
+		MoveIssue(pid any, issue int, opt *MoveIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error)
+		SubscribeToIssue(pid any, issue int, options ...RequestOptionFunc) (*Issue, *Response, error)
+		UnsubscribeFromIssue(pid any, issue int, options ...RequestOptionFunc) (*Issue, *Response, error)
+		CreateTodo(pid any, issue int, options ...RequestOptionFunc) (*Todo, *Response, error)
+		ListMergeRequestsClosingIssue(pid any, issue int, opt *ListMergeRequestsClosingIssueOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error)
+		ListMergeRequestsRelatedToIssue(pid any, issue int, opt *ListMergeRequestsRelatedToIssueOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error)
+		SetTimeEstimate(pid any, issue int, opt *SetTimeEstimateOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error)
+		ResetTimeEstimate(pid any, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
+		AddSpentTime(pid any, issue int, opt *AddSpentTimeOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error)
+		ResetSpentTime(pid any, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
+		GetTimeSpent(pid any, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error)
+		GetParticipants(pid any, issue int, options ...RequestOptionFunc) ([]*BasicUser, *Response, error)
 	}
 
 	// IssuesService handles communication with the issue related methods
@@ -161,7 +162,7 @@ func (i Issue) String() string {
 func (i *Issue) UnmarshalJSON(data []byte) error {
 	type alias Issue
 
-	raw := make(map[string]interface{})
+	raw := make(map[string]any)
 	err := json.Unmarshal(data, &raw)
 	if err != nil {
 		return err
@@ -172,13 +173,13 @@ func (i *Issue) UnmarshalJSON(data []byte) error {
 		delete(raw, "id")
 	}
 
-	labelDetails, ok := raw["labels"].([]interface{})
+	labelDetails, ok := raw["labels"].([]any)
 	if ok && len(labelDetails) > 0 {
 		// We only want to change anything if we got label details.
-		if _, ok := labelDetails[0].(map[string]interface{}); ok {
-			labels := make([]interface{}, len(labelDetails))
+		if _, ok := labelDetails[0].(map[string]any); ok {
+			labels := make([]any, len(labelDetails))
 			for i, details := range labelDetails {
-				labels[i] = details.(map[string]interface{})["name"]
+				labels[i] = details.(map[string]any)["name"]
 			}
 
 			// Set the correct values
@@ -301,6 +302,7 @@ type ListGroupIssuesOptions struct {
 	DueDate             *string          `url:"due_date,omitempty" json:"due_date,omitempty"`
 	UpdatedAfter        *time.Time       `url:"updated_after,omitempty" json:"updated_after,omitempty"`
 	UpdatedBefore       *time.Time       `url:"updated_before,omitempty" json:"updated_before,omitempty"`
+	Confidential        *bool            `url:"confidential,omitempty" json:"confidential,omitempty"`
 	IssueType           *string          `url:"issue_type,omitempty" json:"issue_type,omitempty"`
 	IterationID         *int             `url:"iteration_id,omitempty" json:"iteration_id,omitempty"`
 }
@@ -309,7 +311,7 @@ type ListGroupIssuesOptions struct {
 // pagination parameters page and per_page to return the list of group issues.
 //
 // GitLab API docs: https://docs.gitlab.com/api/issues/#list-group-issues
-func (s *IssuesService) ListGroupIssues(pid interface{}, opt *ListGroupIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error) {
+func (s *IssuesService) ListGroupIssues(pid any, opt *ListGroupIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error) {
 	group, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -372,7 +374,7 @@ type ListProjectIssuesOptions struct {
 // pagination parameters page and per_page to return the list of project issues.
 //
 // GitLab API docs: https://docs.gitlab.com/api/issues/#list-project-issues
-func (s *IssuesService) ListProjectIssues(pid interface{}, opt *ListProjectIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error) {
+func (s *IssuesService) ListProjectIssues(pid any, opt *ListProjectIssuesOptions, options ...RequestOptionFunc) ([]*Issue, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -416,7 +418,7 @@ func (s *IssuesService) GetIssueByID(issue int, options ...RequestOptionFunc) (*
 // GetIssue gets a single project issue.
 //
 // GitLab API docs: https://docs.gitlab.com/api/issues/#single-project-issue
-func (s *IssuesService) GetIssue(pid interface{}, issue int, options ...RequestOptionFunc) (*Issue, *Response, error) {
+func (s *IssuesService) GetIssue(pid any, issue int, options ...RequestOptionFunc) (*Issue, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -460,7 +462,7 @@ type CreateIssueOptions struct {
 // CreateIssue creates a new project issue.
 //
 // GitLab API docs: https://docs.gitlab.com/api/issues/#new-issue
-func (s *IssuesService) CreateIssue(pid interface{}, opt *CreateIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error) {
+func (s *IssuesService) CreateIssue(pid any, opt *CreateIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -483,6 +485,9 @@ func (s *IssuesService) CreateIssue(pid interface{}, opt *CreateIssueOptions, op
 
 // UpdateIssueOptions represents the available UpdateIssue() options.
 //
+// To reset the due date, epic, milestone, or weight of the issue, set the
+// ResetDueDate, ResetEpic, ResetMilestone, or ResetWeight field to true.
+//
 // GitLab API docs: https://docs.gitlab.com/api/issues/#edit-an-issue
 type UpdateIssueOptions struct {
 	Title            *string       `url:"title,omitempty" json:"title,omitempty"`
@@ -500,13 +505,70 @@ type UpdateIssueOptions struct {
 	Weight           *int          `url:"weight,omitempty" json:"weight,omitempty"`
 	DiscussionLocked *bool         `url:"discussion_locked,omitempty" json:"discussion_locked,omitempty"`
 	IssueType        *string       `url:"issue_type,omitempty" json:"issue_type,omitempty"`
+
+	ResetDueDate     bool `url:"-" json:"-"`
+	ResetEpicID      bool `url:"-" json:"-"`
+	ResetMilestoneID bool `url:"-" json:"-"`
+	ResetWeight      bool `url:"-" json:"-"`
+}
+
+// MarshalJSON implements custom JSON marshaling for UpdateIssueOptions.
+// This is needed to support emitting a literal `null` when the field needs to be removed.
+func (o UpdateIssueOptions) MarshalJSON() ([]byte, error) {
+	data := map[string]any{}
+
+	// Use reflection to copy all fields from o to data
+	val := reflect.ValueOf(o)
+	typ := val.Type()
+
+	for i := range val.NumField() {
+		field := val.Field(i)
+		fieldName := typ.Field(i).Name
+
+		if field.IsZero() {
+			continue
+		}
+
+		name := fieldName
+
+		if tag := typ.Field(i).Tag.Get("json"); tag != "" {
+			tagFields := strings.Split(tag, ",")
+			name = tagFields[0]
+		}
+
+		// Skip unexported fields.
+		if name == "-" {
+			continue
+		}
+
+		data[name] = field.Interface()
+	}
+
+	// Emit a literal `null` when the field needs to be removed
+	if o.ResetDueDate {
+		data["due_date"] = nil
+	}
+
+	if o.ResetEpicID {
+		data["epic_id"] = nil
+	}
+
+	if o.ResetMilestoneID {
+		data["milestone_id"] = nil
+	}
+
+	if o.ResetWeight {
+		data["weight"] = nil
+	}
+
+	return json.Marshal(data)
 }
 
 // UpdateIssue updates an existing project issue. This function is also used
 // to mark an issue as closed.
 //
 // GitLab API docs: https://docs.gitlab.com/api/issues/#edit-an-issue
-func (s *IssuesService) UpdateIssue(pid interface{}, issue int, opt *UpdateIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error) {
+func (s *IssuesService) UpdateIssue(pid any, issue int, opt *UpdateIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -530,7 +592,7 @@ func (s *IssuesService) UpdateIssue(pid interface{}, issue int, opt *UpdateIssue
 // DeleteIssue deletes a single project issue.
 //
 // GitLab API docs: https://docs.gitlab.com/api/issues/#delete-an-issue
-func (s *IssuesService) DeleteIssue(pid interface{}, issue int, options ...RequestOptionFunc) (*Response, error) {
+func (s *IssuesService) DeleteIssue(pid any, issue int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -556,7 +618,7 @@ type ReorderIssueOptions struct {
 // ReorderIssue reorders an issue.
 //
 // GitLab API docs: https://docs.gitlab.com/api/issues/#reorder-an-issue
-func (s *IssuesService) ReorderIssue(pid interface{}, issue int, opt *ReorderIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error) {
+func (s *IssuesService) ReorderIssue(pid any, issue int, opt *ReorderIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -588,7 +650,7 @@ type MoveIssueOptions struct {
 // to mark an issue as closed.
 //
 // GitLab API docs: https://docs.gitlab.com/api/issues/#move-an-issue
-func (s *IssuesService) MoveIssue(pid interface{}, issue int, opt *MoveIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error) {
+func (s *IssuesService) MoveIssue(pid any, issue int, opt *MoveIssueOptions, options ...RequestOptionFunc) (*Issue, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -615,7 +677,7 @@ func (s *IssuesService) MoveIssue(pid interface{}, issue int, opt *MoveIssueOpti
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/issues/#subscribe-to-an-issue
-func (s *IssuesService) SubscribeToIssue(pid interface{}, issue int, options ...RequestOptionFunc) (*Issue, *Response, error) {
+func (s *IssuesService) SubscribeToIssue(pid any, issue int, options ...RequestOptionFunc) (*Issue, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -642,7 +704,7 @@ func (s *IssuesService) SubscribeToIssue(pid interface{}, issue int, options ...
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/issues/#unsubscribe-from-an-issue
-func (s *IssuesService) UnsubscribeFromIssue(pid interface{}, issue int, options ...RequestOptionFunc) (*Issue, *Response, error) {
+func (s *IssuesService) UnsubscribeFromIssue(pid any, issue int, options ...RequestOptionFunc) (*Issue, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -669,7 +731,7 @@ func (s *IssuesService) UnsubscribeFromIssue(pid interface{}, issue int, options
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/issues/#create-a-to-do-item
-func (s *IssuesService) CreateTodo(pid interface{}, issue int, options ...RequestOptionFunc) (*Todo, *Response, error) {
+func (s *IssuesService) CreateTodo(pid any, issue int, options ...RequestOptionFunc) (*Todo, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -702,7 +764,7 @@ type ListMergeRequestsClosingIssueOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/issues/#list-merge-requests-that-close-a-particular-issue-on-merge
-func (s *IssuesService) ListMergeRequestsClosingIssue(pid interface{}, issue int, opt *ListMergeRequestsClosingIssueOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error) {
+func (s *IssuesService) ListMergeRequestsClosingIssue(pid any, issue int, opt *ListMergeRequestsClosingIssueOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -735,7 +797,7 @@ type ListMergeRequestsRelatedToIssueOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/issues/#list-merge-requests-related-to-issue
-func (s *IssuesService) ListMergeRequestsRelatedToIssue(pid interface{}, issue int, opt *ListMergeRequestsRelatedToIssueOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error) {
+func (s *IssuesService) ListMergeRequestsRelatedToIssue(pid any, issue int, opt *ListMergeRequestsRelatedToIssueOptions, options ...RequestOptionFunc) ([]*BasicMergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -763,7 +825,7 @@ func (s *IssuesService) ListMergeRequestsRelatedToIssue(pid interface{}, issue i
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/issues/#set-a-time-estimate-for-an-issue
-func (s *IssuesService) SetTimeEstimate(pid interface{}, issue int, opt *SetTimeEstimateOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
+func (s *IssuesService) SetTimeEstimate(pid any, issue int, opt *SetTimeEstimateOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
 	return s.timeStats.setTimeEstimate(pid, "issues", issue, opt, options...)
 }
 
@@ -771,7 +833,7 @@ func (s *IssuesService) SetTimeEstimate(pid interface{}, issue int, opt *SetTime
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/issues/#reset-the-time-estimate-for-an-issue
-func (s *IssuesService) ResetTimeEstimate(pid interface{}, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
+func (s *IssuesService) ResetTimeEstimate(pid any, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
 	return s.timeStats.resetTimeEstimate(pid, "issues", issue, options...)
 }
 
@@ -779,7 +841,7 @@ func (s *IssuesService) ResetTimeEstimate(pid interface{}, issue int, options ..
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/issues/#add-spent-time-for-an-issue
-func (s *IssuesService) AddSpentTime(pid interface{}, issue int, opt *AddSpentTimeOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
+func (s *IssuesService) AddSpentTime(pid any, issue int, opt *AddSpentTimeOptions, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
 	return s.timeStats.addSpentTime(pid, "issues", issue, opt, options...)
 }
 
@@ -787,7 +849,7 @@ func (s *IssuesService) AddSpentTime(pid interface{}, issue int, opt *AddSpentTi
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/issues/#reset-spent-time-for-an-issue
-func (s *IssuesService) ResetSpentTime(pid interface{}, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
+func (s *IssuesService) ResetSpentTime(pid any, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
 	return s.timeStats.resetSpentTime(pid, "issues", issue, options...)
 }
 
@@ -795,7 +857,7 @@ func (s *IssuesService) ResetSpentTime(pid interface{}, issue int, options ...Re
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/issues/#get-time-tracking-stats
-func (s *IssuesService) GetTimeSpent(pid interface{}, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
+func (s *IssuesService) GetTimeSpent(pid any, issue int, options ...RequestOptionFunc) (*TimeStats, *Response, error) {
 	return s.timeStats.getTimeSpent(pid, "issues", issue, options...)
 }
 
@@ -803,7 +865,7 @@ func (s *IssuesService) GetTimeSpent(pid interface{}, issue int, options ...Requ
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/issues/#list-participants-in-an-issue
-func (s *IssuesService) GetParticipants(pid interface{}, issue int, options ...RequestOptionFunc) ([]*BasicUser, *Response, error) {
+func (s *IssuesService) GetParticipants(pid any, issue int, options ...RequestOptionFunc) ([]*BasicUser, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
