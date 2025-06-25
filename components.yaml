@@ -3,7 +3,7 @@ chains:
   version: v0.25.1
 dashboard:
   github: tektoncd/dashboard
-  version: v0.58.0
+  version: v0.59.0
 hub:
   github: tektoncd/hub
   version: v1.21.0
@@ -21,7 +21,7 @@ pruner:
   version: v0.1.0
 results:
   github: tektoncd/results
-  version: v0.15.0
+  version: v0.15.1
 triggers:
   github: tektoncd/triggers
   version: v0.32.0
