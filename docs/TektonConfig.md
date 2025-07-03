@@ -122,6 +122,8 @@ spec:
       disable-ha: false
       buckets: 1
       replicas: 1
+  trigger:
+    disabled: false
 platforms:
     openshift:
       pipelinesAsCode:
