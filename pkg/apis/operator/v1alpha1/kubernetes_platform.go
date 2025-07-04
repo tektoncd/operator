@@ -1,5 +1,5 @@
 /*
-Copyright 2022 The Tekton Authors
+Copyright 2025 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,23 +16,8 @@ limitations under the License.
 
 package v1alpha1
 
-type OpenShift struct {
+type Kubernetes struct {
 	// PipelinesAsCode allows configuring PipelinesAsCode configurations
 	// +optional
 	PipelinesAsCode *PipelinesAsCode `json:"pipelinesAsCode,omitempty"`
-	// SCC allows configuring security context constraints used by workloads
-	// +optional
-	SCC *SCC `json:"scc,omitempty"`
-}
-
-type SCC struct {
-	// Default contains the default SCC that will be attached to the service
-	// account used for workloads (`pipeline` SA by default) and defined in
-	// PipelineProperties.OptionalPipelineProperties.DefaultServiceAccount
-	// +optional
-	Default string `json:"default,omitempty"`
-	// MaxAllowed specifies the highest SCC that can be requested for in a
-	// namespace or in the Default field.
-	// +optional
-	MaxAllowed string `json:"maxAllowed,omitempty"`
 }

@@ -123,7 +123,7 @@ spec:
       buckets: 1
       replicas: 1
 platforms:
-    openshift:
+    openshift:   # or `kubernetes:`
       pipelinesAsCode:
         additionalPACControllers:
           <controllerName>:
@@ -513,7 +513,7 @@ In the deployment the environment name will be converted as follows,
 
 ### OpenShiftPipelinesAsCode
 
-The PipelinesAsCode section allows you to customize the Pipelines as Code features. When you change the TektonConfig CR, the Operator automatically applies the settings to custom resources and configmaps in your installation.
+The PipelinesAsCode section allows you to customize the Pipelines as Code features, which is supported on both Kubernetes and OpenShift platforms. When you change the TektonConfig CR, the Operator automatically applies the settings to custom resources and configmaps in your installation.
 
 Some of the fields have default values, so operator will add them if the user hasn't passed in CR. Other fields which
 don't have default values unless the user specifies them. User can find those [here](https://pipelinesascode.com/docs/install/settings/#pipelines-as-code-configuration-settings).
@@ -522,7 +522,7 @@ Example:
 
 ```yaml
 platforms:
-  openshift:
+  openshift:   # or `kubernetes:`
     pipelinesAsCode:
       additionalPACControllers:
         controllername:

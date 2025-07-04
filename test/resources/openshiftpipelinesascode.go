@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"testing"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
+
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	typedv1alpha1 "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	"github.com/tektoncd/operator/test/utils"
@@ -93,11 +96,13 @@ func CreateAdditionalPipelinesAsCodeController(clients typedv1alpha1.OpenShiftPi
 		return nil, err
 	}
 
+	enable := true
 	// update the OpenshiftPipelines CR to add the additional Pipelines As Code Controller
 	opacCR.Spec.PACSettings.AdditionalPACControllers = map[string]v1alpha1.AdditionalPACControllerConfig{
 		"additional-test": {
 			ConfigMapName: "additional-test-configmap",
 			SecretName:    "additional-test-secret",
+			Enable:        &enable,
 		},
 	}
 	return clients.Update(context.TODO(), opacCR, metav1.UpdateOptions{})
@@ -131,4 +136,23 @@ func OpenShiftPipelinesAsCodeCRDelete(t *testing.T, clients *utils.Clients, crNa
 	if err != nil {
 		t.Fatal("Timed out waiting on OpenShiftPipelinesAsCode to delete", err)
 	}
+}
+
+func CreatePACResources(client kubernetes.Interface, namespace, cmName, secretName string) error {
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: cmName, Namespace: namespace},
+		Data:       map[string]string{"config.yaml": "repositories: []"},
+	}
+	if _, err := client.CoreV1().ConfigMaps(namespace).Create(context.TODO(), cm, metav1.CreateOptions{}); err != nil && !apierrs.IsAlreadyExists(err) {
+		return err
+	}
+
+	sec := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: namespace},
+		StringData: map[string]string{"github-token": "dummy"},
+	}
+	if _, err := client.CoreV1().Secrets(namespace).Create(context.TODO(), sec, metav1.CreateOptions{}); err != nil && !apierrs.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
 }

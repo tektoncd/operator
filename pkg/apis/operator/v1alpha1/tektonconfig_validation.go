@@ -56,9 +56,13 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
+	logger := logging.FromContext(ctx)
 	if IsOpenShiftPlatform() && tc.Spec.Platforms.OpenShift.PipelinesAsCode != nil {
-		logger := logging.FromContext(ctx)
 		errs = errs.Also(tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.validate(logger, "spec.platforms.openshift.pipelinesAsCode"))
+	}
+
+	if !IsOpenShiftPlatform() && tc.Spec.Platforms.Kubernetes.PipelinesAsCode != nil {
+		errs = errs.Also(tc.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.validate(logger, "spec.platforms.kubernetes.pipelinesAsCode"))
 	}
 
 	// validate SCC config
