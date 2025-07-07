@@ -15,7 +15,7 @@ pipeline:
   version: v1.0.0
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
-  version: v0.35.1
+  version: v0.35.2
 pruner:
   github: openshift-pipelines/tektoncd-pruner
   version: v0.1.0
