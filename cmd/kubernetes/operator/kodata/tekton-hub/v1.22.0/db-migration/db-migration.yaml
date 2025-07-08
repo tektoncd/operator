@@ -1,0 +1,67 @@
+# Copyright © 2020 The Tekton Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tekton-hub-db-migration
+  labels:
+    app: tekton-hub-db
+spec:
+  template:
+    spec:
+      securityContext:
+        fsGroup: 65532
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: tekton-hub-db-migration
+          image: quay.io/tekton-hub/db-migration:v1.22.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 65532
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: POSTGRES_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-db
+                  key: POSTGRES_HOST
+            - name: POSTGRES_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-db
+                  key: POSTGRES_PORT
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-db
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-db
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-db
+                  key: POSTGRES_PASSWORD
+      restartPolicy: Never
+  backoffLimit: 3
+
+---
