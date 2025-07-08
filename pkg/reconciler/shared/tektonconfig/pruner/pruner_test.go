@@ -33,7 +33,7 @@ import (
 func TestEnsureTektonPrunerCRExists(t *testing.T) {
 	ctx, _, _ := ts.SetupFakeContextWithCancel(t)
 	c := fake.Get(ctx)
-	tt := GetTektonPrunerCR(GetTektonConfig(), "v0.70.0")
+	tt := GetTektonPrunerCR(GetTektonConfig(), "v0.76.0")
 
 	// first invocation should create instance as it is non-existent and return RECONCILE_AGAIN_ERR
 	_, err := EnsureTektonPrunerExists(ctx, c.OperatorV1alpha1().TektonPruners(), tt)

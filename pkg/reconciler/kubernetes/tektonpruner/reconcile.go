@@ -22,6 +22,7 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	operatorclient "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektonprunerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpruner"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -33,6 +34,8 @@ import (
 
 // Reconciler implements controller.Reconciler for TektonPruner resources.
 type Reconciler struct {
+	// operator client to interact with operator resources
+	operatorClientSet operatorclient.Interface
 	// kube client to interact with core k8s resources
 	kubeClientSet kubernetes.Interface
 	// installer Set client to do CRUD operations for components
@@ -45,7 +48,8 @@ type Reconciler struct {
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
 	// version of pruner which we are installing
-	prunerVersion string
+	prunerVersion   string
+	operatorVersion string
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -72,8 +76,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPrune
 	if err := common.ReconcileTargetNamespace(ctx, nil, nil, tp, r.kubeClientSet); err != nil {
 		return err
 	}
-	//Make sure TektonPipeline is installed before proceeding with
-	//TektonPruner
+	// Make sure TektonPipeline is installed before proceeding with
+	// TektonPruner
 	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
 		if err.Error() == common.PipelineNotReady || err == v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR {
 			tp.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
@@ -85,9 +89,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPrune
 		return err
 	}
 	tp.Status.MarkDependenciesInstalled()
-
-	// Pass the object through defaulting
-	tp.SetDefaults(ctx)
 
 	if err := r.installerSetClient.RemoveObsoleteSets(ctx); err != nil {
 		logger.Error("failed to remove obsolete installer sets: %v", err)
@@ -104,17 +105,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPrune
 		return nil
 	}
 
-	//Mark PreReconcile Complete
+	// Mark PreReconcile Complete
 	tp.Status.MarkPreReconcilerComplete()
 
-	if err := r.installerSetClient.MainSet(ctx, tp, &r.manifest, filterAndTransform(r.extension)); err != nil {
-		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
-		logger.Error(msg)
-		if err == v1alpha1.REQUEUE_EVENT_AFTER {
-			return err
-		}
-		tp.Status.MarkInstallerSetNotReady(msg)
-		return nil
+	//  Create/Update Required TektonInstallerSets
+	if err := r.ensureInstallerSets(ctx, tp); err != nil {
+		return err
 	}
 
 	if err := r.extension.PostReconcile(ctx, tp); err != nil {
