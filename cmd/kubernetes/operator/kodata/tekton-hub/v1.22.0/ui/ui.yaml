@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tekton-hub-ui
+data:
+  API_URL: 'https://api.hub.tekton.dev'
+  API_VERSION: ''
+  AUTH_BASE_URL: ''
+  REDIRECT_URI: ''
+  CUSTOM_LOGO_MEDIA_TYPE: 'image/png'
+  CUSTOM_LOGO_BASE64_DATA: ''
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-hub-ui
+  labels:
+    app: tekton-hub-ui
+spec:
+  selector:
+    matchLabels:
+      app: tekton-hub-ui
+  template:
+    metadata:
+      name: tekton-hub-ui
+      labels:
+        app: tekton-hub-ui
+    spec:
+      securityContext:
+        fsGroup: 65532
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: tekton-hub-ui
+          image: quay.io/tekton-hub/ui:v1.22.0
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 500m
+              memory: 500Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 65532
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: API_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tekton-hub-ui
+                  key: API_URL
+            - name: API_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  name: tekton-hub-ui
+                  key: API_VERSION
+            - name: AUTH_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: tekton-hub-ui
+                  key: AUTH_BASE_URL
+            - name: REDIRECT_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: tekton-hub-ui
+                  key: REDIRECT_URI
+            - name: CUSTOM_LOGO_MEDIA_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: tekton-hub-ui
+                  key: CUSTOM_LOGO_MEDIA_TYPE
+            - name: CUSTOM_LOGO_BASE64_DATA
+              valueFrom:
+                configMapKeyRef:
+                  name: tekton-hub-ui
+                  key: CUSTOM_LOGO_BASE64_DATA
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-hub-ui
+  labels:
+    app: tekton-hub-ui
+spec:
+  type: NodePort
+  selector:
+    app: tekton-hub-ui
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+
+---
