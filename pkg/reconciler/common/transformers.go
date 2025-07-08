@@ -25,6 +25,8 @@ import (
 	"strconv"
 	"strings"
 
+	"gopkg.in/yaml.v3"
+
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"go.uber.org/zap"
@@ -293,7 +295,6 @@ func replaceContainersArgsImage(container *corev1.Container, images map[string]s
 			container.Args[a+1] = url
 		}
 	}
-
 }
 
 func formKey(prefix, arg string) string {
@@ -630,6 +631,13 @@ func AddConfigMapValues(configMapName string, prop interface{}) mf.Transformer {
 
 			case reflect.String:
 				_value = element.String()
+
+			case reflect.Struct:
+				out, err := yaml.Marshal(element.Interface())
+				if err != nil {
+					return fmt.Errorf("failed to marshal struct field %s: %v", key, err)
+				}
+				_value = string(out)
 			}
 
 			if _value != "" {
@@ -966,7 +974,6 @@ func ReplaceNamespace(newNamespace string) mf.Transformer {
 				return err
 			}
 			u.SetUnstructuredContent(obj)
-
 		}
 
 		return nil

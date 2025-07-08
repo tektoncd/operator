@@ -1,0 +1,339 @@
+# Copyright © 2022 The Tekton Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tekton-hub-api
+  labels:
+    app: tekton-hub-api
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tekton-hub-api
+type: Opaque
+stringData:
+  GH_CLIENT_ID: ''
+  GH_CLIENT_SECRET: ''
+  GHE_URL: ''
+  GL_CLIENT_ID: ''
+  GL_CLIENT_SECRET: ''
+  GLE_URL: ''
+  BB_CLIENT_ID: ''
+  BB_CLIENT_SECRET: ''
+  JWT_SIGNING_KEY: ''
+  ACCESS_JWT_EXPIRES_IN: ''
+  REFRESH_JWT_EXPIRES_IN: ''
+  AUTH_BASE_URL: ''
+
+---
+# Copyright © 2020 The Tekton Authors.
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http:www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tekton-hub-api
+  labels:
+    app: tekton-hub-api
+data:
+  CATEGORIES: |
+    - Automation
+    - Build Tools
+    - CLI
+    - Cloud
+    - Code Quality
+    - Continuous Integration
+    - Deployment
+    - Developer Tools
+    - Image Build
+    - Integration & Delivery
+    - Git
+    - Kubernetes
+    - Messaging
+    - Monitoring
+    - Networking
+    - Openshift
+    - Publishing
+    - Security
+    - Storage
+    - Testing
+  CATALOGS: |
+    - name: tekton
+      org: tektoncd
+      type: community
+      provider: github
+      url: https://github.com/tektoncd/catalog
+      revision: main
+  SCOPES: |
+    - name: agent:create
+      users: [vinamra28, piyush-garg, pratap0007, puneetpunamiya, sm43, sthaha, vdemeester]
+    - name: catalog:refresh
+      users: [vinamra28, piyush-garg, pratap0007, puneetpunamiya, sm43, sthaha, vdemeester]
+    - name: config:refresh
+      users: [vinamra28, piyush-garg, pratap0007, puneetpunamiya, sm43, sthaha, vdemeester]
+  DEFAULT: |
+    scopes:
+      - rating:read
+      - rating:write
+  CATALOG_REFRESH_INTERVAL: 30m
+
+---
+# Copyright © 2020 The Tekton Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-hub-api
+  labels:
+    app: tekton-hub-api
+spec:
+  selector:
+    matchLabels:
+      app: tekton-hub-api
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: tekton-hub-api
+    spec:
+      volumes:
+        - name: catalog-source
+          persistentVolumeClaim:
+            claimName: tekton-hub-api
+        - name: tekton-hub-config
+          configMap:
+            name: tekton-hub-api
+            items:
+              - key: CATEGORIES
+                path: 'categories'
+              - key: CATALOGS
+                path: 'catalogs'
+              - key: SCOPES
+                path: 'scopes'
+              - key: CATALOG_REFRESH_INTERVAL
+                path: 'catalog_refresh_interval'
+              - key: DEFAULT
+                path: 'default'
+        - name: ssh-creds
+          secret:
+            secretName: tekton-hub-api-ssh-crds
+            optional: true
+      securityContext:
+        fsGroup: 65532
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: tekton-hub-api
+          image: quay.io/tekton-hub/api:v1.22.0
+          resources:
+            requests:
+              cpu: 100m
+              memory: 100Mi
+            limits:
+              cpu: 500m
+              memory: 500Mi
+          volumeMounts:
+            - name: catalog-source
+              mountPath: '/tmp/catalog'
+            - name: ssh-creds
+              mountPath: '/home/hub/.ssh'
+            - name: tekton-hub-config
+              mountPath: '/tmp/config'
+          ports:
+            - containerPort: 8000
+            - containerPort: 4200
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 8000
+              scheme: HTTP
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 1
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /
+              port: 8000
+              scheme: HTTP
+            periodSeconds: 15
+            successThreshold: 1
+            timeoutSeconds: 1
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsUser: 65532
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: HOME
+              value: /home/hub
+            - name: POSTGRES_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-db
+                  key: POSTGRES_HOST
+            - name: POSTGRES_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-db
+                  key: POSTGRES_PORT
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-db
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-db
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-db
+                  key: POSTGRES_PASSWORD
+            - name: CATALOG_REFRESH_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  name: tekton-hub-api
+                  key: CATALOG_REFRESH_INTERVAL
+            - name: GH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: GH_CLIENT_ID
+            - name: GH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: GH_CLIENT_SECRET
+            - name: GHE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: GHE_URL
+            - name: GL_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: GL_CLIENT_ID
+            - name: GL_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: GL_CLIENT_SECRET
+            - name: GLE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: GLE_URL
+            - name: BB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: BB_CLIENT_ID
+            - name: BB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: BB_CLIENT_SECRET
+            - name: JWT_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: JWT_SIGNING_KEY
+            - name: ACCESS_JWT_EXPIRES_IN
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: ACCESS_JWT_EXPIRES_IN
+            - name: REFRESH_JWT_EXPIRES_IN
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: REFRESH_JWT_EXPIRES_IN
+            - name: AUTH_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tekton-hub-api
+                  key: AUTH_BASE_URL
+
+---
+# Copyright © 2020 The Tekton Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: v1
+kind: Service
+metadata:
+  name: tekton-hub-api
+  labels:
+    app: tekton-hub-api
+spec:
+  selector:
+    app: tekton-hub-api
+  ports:
+    - name: tekton-hub-api
+      port: 8000
+      targetPort: 8000
+    - name: tekton-hub-auth
+      port: 4200
+      targetPort: 4200
+  type: NodePort
+
+---

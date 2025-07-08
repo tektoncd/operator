@@ -24,7 +24,7 @@ cloud.google.com/go/auth/oauth2adapt
 # cloud.google.com/go/compute/metadata v0.7.0
 ## explicit; go 1.23.0
 cloud.google.com/go/compute/metadata
-# contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20200907061046-05415f1de66d
+# contrib.go.opencensus.io/exporter/ocagent v0.7.1-0.20230502190836-7399e0f8ee5e
 ## explicit; go 1.13
 contrib.go.opencensus.io/exporter/ocagent
 # contrib.go.opencensus.io/exporter/prometheus v0.4.2
@@ -972,6 +972,9 @@ github.com/opencontainers/image-spec/specs-go/v1
 github.com/openshift-pipelines/pipelines-as-code/pkg/cli
 github.com/openshift-pipelines/pipelines-as-code/pkg/configutil
 github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings
+# github.com/openshift-pipelines/tektoncd-pruner v0.0.0-20250711075231-9c8624123820
+## explicit; go 1.24.0
+github.com/openshift-pipelines/tektoncd-pruner/pkg/config
 # github.com/openshift/api v0.0.0-20240521185306-0314f31e7774
 ## explicit; go 1.22.0
 github.com/openshift/api/console/v1
@@ -1309,8 +1312,8 @@ github.com/tektoncd/pipeline/pkg/spire/config
 github.com/tektoncd/pipeline/pkg/substitution
 github.com/tektoncd/pipeline/test/diff
 github.com/tektoncd/pipeline/test/parse
-# github.com/tektoncd/plumbing v0.0.0-20250430145243-3b7cd59879c1
-## explicit; go 1.23
+# github.com/tektoncd/plumbing v0.0.0-20250630062957-f863d38f433a
+## explicit; go 1.24.0
 github.com/tektoncd/plumbing
 github.com/tektoncd/plumbing/scripts
 # github.com/tektoncd/triggers v0.32.0
