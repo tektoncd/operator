@@ -31,7 +31,10 @@ helm install tekton-operator \
 The Tekton operator is installed into the `tekton-operator` namespace for Kubernetes clusters and into `openshift-operators` for Openshift clusters (`openshift.enabled=true`).
 
 The Tekton Custom Resource Definitions (CRDs) can either be installed manually (the recommended approach, see the [Tekton Operator Releases page](https://github.com/tektoncd/operator/releases)) or as part of the Helm chart (`installCRDs=true`).
-Installing the CRDs as part of the Helm chart is not recommended for production setups, since uninstalling the Helm chart will also uninstall the CRDs and subsequently delete any remaining CRs.
+
+**Important:** The Tekton operator components (especially the webhook) require the CRDs to be present during startup. If you set `installCRDs=false`, you **MUST** install the CRDs manually **BEFORE** installing the operator, otherwise the operator pods will fail to start with errors like "the server could not find the requested resource".
+
+Installing the CRDs as part of the Helm chart(`installCRDs=true`) is not recommended for production setups, since uninstalling the Helm chart will also uninstall the CRDs and subsequently delete any remaining CRs.
 The CRDs allow you to configure individual parts of your Tekton setup:
 
 * [`TektonConfig`](https://tekton.dev/docs/operator/tektonconfig/)
@@ -40,6 +43,8 @@ The CRDs allow you to configure individual parts of your Tekton setup:
 * [`TektonDashboard`](https://tekton.dev/docs/operator/tektondashboard/)
 * [`TektonResult`](https://tekton.dev/docs/operator/tektonresult/)
 * [`TektonAddon`](https://tekton.dev/docs/operator/tektonaddon/)
+* [`TektonChain`](https://tekton.dev/docs/operator/tektonchain/)
+
 
 After the installation of the Tekton-operater chart, you can start inject the Custom Resources (CRs) into your cluster.
 The Tekton operator will then automatically start installing the components.
@@ -50,7 +55,7 @@ Please see the documentation of each CR for details.
 Before removing the Tekton operator from your cluster, you should first make sure that there are no instances of resources managed by the operator left:
 
 ```sh
-kubectl get TektonConfig,TektonPipeline,TektonDashboard,TektonInstallerSet,TektonResults,TektonTrigger,TektonAddon --all-namespaces
+kubectl get TektonConfig,TektonPipeline,TektonDashboard,TektonInstallerSet,TektonResults,TektonTrigger,TektonAddon,TektonPruner,TektonChain --all-namespaces
 ```
 
 Now you can use Helm to uninstall the Tekton operator:
