@@ -47,7 +47,7 @@ spec:
       containers:
         - env:
             - name: PGDATA
-              value: /var/lib/postgresql/data/pgdata
+              value: /var/lib/pgsql/data
             - name: POSTGRESQL_DATABASE
               valueFrom:
                 configMapKeyRef:
@@ -79,7 +79,7 @@ spec:
             seccompProfile:
               type: RuntimeDefault
           volumeMounts:
-            - mountPath: /var/lib/postgresql
+            - mountPath: /var/lib/pgsql/data
               name: postgredb
   volumeClaimTemplates:
     - metadata:
