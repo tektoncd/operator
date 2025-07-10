@@ -556,6 +556,22 @@ platforms:
 
 **NOTE**: OpenShiftPipelinesAsCode is currently available for the OpenShift Platform only.
 
+### **Tech Preview** Event based pruner 
+
+The `tektonpruner` section in the TektonConfig spec allows  to manage the event-driven Tekton Pruner, which enables configuration-based cleanup of Tekton resources.
+
+> Important: This component is **disabled by default**. To enable the event-based pruner, the existing job-based pruner `pruner` **MUST** be disabled.
+
+```yaml
+  tektonpruner:
+    disabled: true
+    options: {}
+```
+**Configuration Notes :**
+- In this Tech Preview, only enabled/disabled status is configurable via `tektonconfig` spec.
+
+- For all other  [configurations](https://github.com/openshift-pipelines/tektoncd-pruner/blob/main/docs/tutorials/getting-started.md#basic-pruner-configuration)(e.g., TTLs, history limits), use the ConfigMap: `tekton-pruner-default-spec`
+
 ### Additional fields as `options`
 
 There is a field called `options` available in all the components.<br>
