@@ -18,6 +18,7 @@ package kubernetesplatform
 
 import (
 	k8sManualApprovalGate "github.com/tektoncd/operator/pkg/reconciler/kubernetes/manualapprovalgate"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/pipelinesascode"
 	k8sChain "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonchain"
 	k8sConfig "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig"
 	k8sDashboard "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektondashboard"
@@ -34,6 +35,7 @@ import (
 const (
 	ControllerTektonDashboard platform.ControllerName = "tektondashboard"
 	ControllerTektonResults   platform.ControllerName = "tektonresult"
+	ControllerPipelinesAsCode platform.ControllerName = "pipelinesascode"
 	PlatformNameKubernetes    string                  = "kubernetes"
 )
 
@@ -74,5 +76,9 @@ var (
 		ControllerTektonResults: injection.NamedControllerConstructor{
 			Name:                  string(ControllerTektonResults),
 			ControllerConstructor: k8sResult.NewController},
+		ControllerPipelinesAsCode: injection.NamedControllerConstructor{
+			Name:                  string(ControllerPipelinesAsCode),
+			ControllerConstructor: pipelinesascode.NewController,
+		},
 	}
 )

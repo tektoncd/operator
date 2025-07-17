@@ -40,6 +40,8 @@ const (
 	additionalPACControllerNameSuffix = "-pac-controller"
 )
 
+var isOpenShiftPlatform = v1alpha1.IsOpenShiftPlatform
+
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		pac := comp.(*v1alpha1.OpenShiftPipelinesAsCode)
@@ -55,9 +57,12 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.DeploymentImages(images),
 			common.DeploymentEnvVarKubernetesMinVersion(),
 			common.AddConfiguration(pac.Spec.Config),
-			occommon.ApplyCABundles,
 			common.CopyConfigMap(pipelinesAsCodeCM, pac.Spec.Settings),
-			occommon.UpdateServiceMonitorTargetNamespace(pac.Spec.TargetNamespace),
+		}
+
+		if isOpenShiftPlatform() {
+			tfs = append(tfs, occommon.ApplyCABundles)
+			tfs = append(tfs, occommon.UpdateServiceMonitorTargetNamespace(pac.Spec.TargetNamespace))
 		}
 
 		allTfs := append(tfs, extension.Transformers(pac)...)
@@ -86,13 +91,16 @@ func additionalControllerTransform(extension common.Extension, name string) clie
 			common.InjectOperandNameLabelOverwriteExisting(openshift.OperandOpenShiftPipelineAsCode),
 			common.DeploymentImages(images),
 			common.AddConfiguration(pac.Spec.Config),
-			occommon.ApplyCABundles,
-			occommon.UpdateServiceMonitorTargetNamespace(pac.Spec.TargetNamespace),
 			updateAdditionControllerDeployment(additionalPACControllerConfig, name),
 			updateAdditionControllerService(name),
 			updateAdditionControllerConfigMap(additionalPACControllerConfig),
-			updateAdditionControllerRoute(name),
 			updateAdditionControllerServiceMonitor(name),
+		}
+
+		if isOpenShiftPlatform() {
+			tfs = append(tfs, occommon.ApplyCABundles)
+			tfs = append(tfs, occommon.UpdateServiceMonitorTargetNamespace(pac.Spec.TargetNamespace))
+			tfs = append(tfs, updateAdditionControllerRoute(name))
 		}
 
 		allTfs := append(tfs, extension.Transformers(pac)...)
@@ -128,7 +136,12 @@ func filterAdditionalControllerManifest(manifest mf.Manifest) mf.Manifest {
 	serviceMonitorManifest := manifest.Filter(mf.All(mf.ByName("pipelines-as-code-controller-monitor"), mf.ByKind("ServiceMonitor")))
 
 	filteredManifest := mf.Manifest{}
-	filteredManifest = filteredManifest.Append(cmManifest, deploymentManifest, serviceManifest, serviceMonitorManifest, routeManifest)
+	filteredManifest = filteredManifest.Append(cmManifest, deploymentManifest, serviceManifest, serviceMonitorManifest)
+
+	if isOpenShiftPlatform() {
+		filteredManifest = filteredManifest.Append(routeManifest)
+	}
+
 	return filteredManifest
 }
 
