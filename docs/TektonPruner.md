@@ -4,39 +4,38 @@ linkTitle: "TektonPruner"
 weight: 30
 ---
 -->
+
 # Tekton Pruner
 
-TektonPruner custom resource allows user to install and manage [Event Based Tekton Pruner][pruner].
+**TektonPruner** is a custom resource that enables users to install and manage the [Tekton Pruner][TektonPruner] component.
 
-It is recommended to install the component through [TektonConfig](./TektonConfig.md).
+> ℹ️ It is recommended to install Tekton Pruner via the [TektonConfig](./TektonConfig.md) resource for consistency and ease of configuration.
 
-**NOTE**: Job based pruner **MUST** be disabled for the new event based pruner to be enabled.
+> ℹ️ Job based pruner **MUST** be disabled for the new event based pruner to be enabled.
 
-- TektonPruner CR is as below
+---
 
-    - On Kubernetes, TektonPruner CR is as below:
+## TektonPruner Custom Resource
 
-    ```yaml
-    apiVersion: operator.tekton.dev/v1alpha1
-    kind: TektonPruner
-    metadata:
-      name: pruner
-    spec:
-      disabled: false
-      targetNamespace: tekton-pipelines
-    ```
+Here is an example of a `TektonPruner` Custom Resource (CR):
 
-    - On OpenShift, TektonPruner CR is as below:
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonPruner
+metadata:
+  name: pruner
+spec:
+  targetNamespace: tekton-pipelines
+  disabled: false
+  global-config:
+    enforcedConfigLevel: global
+    ttlSecondsAfterFinished: null
+    successfulHistoryLimit: null
+    failedHistoryLimit: null
+    historyLimit: 100
+```
 
-    ```yaml
-    apiVersion: operator.tekton.dev/v1alpha1
-    kind: TektonPruner
-    metadata:
-      name: pruner
-    spec:
-      disabled: false
-      targetNamespace: openshift-pipelines
-    ```
+On OpenShift, the `targetNamespace` should be set to `openshift-pipelines`.
 
 - Check the status of installation using following command:
 
@@ -44,22 +43,69 @@ It is recommended to install the component through [TektonConfig](./TektonConfig
     kubectl get tektonpruners.operator.tekton.dev
     ```
 
-## Pruner Config
 
-Right now, event based pruner config just allows to either enable or disable the new pruner.
+You can configure and install the pruner using `TektonConfig` .
 
+---
 
-### Properties (Mandatory)
+## TektonConfig Pruner Configuration
+Here is the default configuration:
 
- - `targetNamespace`
+```yaml
+tektonpruner:
+  disabled: true
+  global-config:
+    enforcedConfigLevel: global
+    failedHistoryLimit: null
+    historyLimit: 100
+    successfulHistoryLimit: null
+    ttlSecondsAfterFinished: null
+  options: {}
+```
+### Enabling Tekton Pruner
 
-    Setting this field to provide the namespace in which you want to install the pruner component.
+Tekton Pruner is now available as part of `TektonConfig`. You can manage its settings under the `tektonpruner` section.
 
-- `disabled` : if the value set as `true`, pruner feature will be disabled (default: `true`)
+TektonPruner is disabled by default and to enable Tekton Pruner, set `disabled` to `false` in the `tektonpruner` section of your `TektonConfig`:
+At the same time you also need to disable the older pruner. Both pruners cannot be enabled at the same time.
 
-Rest of the configurations as defined [here][pruner-config] are currently managed with the configmap [`tekton-pruner-default-spec`](https://github.com/openshift-pipelines/tektoncd-pruner/blob/main/config/600-tekton-pruner-default-spec.yaml).
+```yaml
+pruner:
+  disabled: true
+  
+tektonpruner:
+  disabled: false
+```
+If you try to enable both pruners, you will encounter an error during installation.
 
+### 🔧 Customizing History Retention
+You can fine-tune pruning behavior by modifying the following fields under `global-config`:
 
+- `historyLimit`: Maximum number of total completed runs to retain.
+- `failedHistoryLimit`: Number of failed runs to retain.
+- `successfulHistoryLimit`: Number of successful runs to retain.
+- `ttlSecondsAfterFinished`**: Time (in seconds) to retain completed runs before pruning.
 
-[pruner]:https://github.com/openshift-pipelines/tektoncd-pruner
-[pruner-config]:https://github.com/openshift-pipelines/tektoncd-pruner/blob/main/docs/tutorials/README.md
+> You can specify any combination of these fields. The pruner deletes runs when **any one** of the specified conditions is met.
+
+#### Example:
+
+```yaml
+global-config:
+  ttlSecondsAfterFinished: 3600
+  historyLimit: 100
+```
+
+This configuration deletes the runs if:
+- They are older than **1 hour**, or
+- There are more than **100** runs in total.
+
+---
+
+## Learn More
+
+For more details and source code, visit the [Tekton Pruner GitHub repository][TektonPruner].
+
+---
+
+[TektonPruner]: https://github.com/openshift-pipelines/tektoncd-pruner
