@@ -25,6 +25,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/openshift-pipelines/tektoncd-pruner/pkg/config"
+	"gopkg.in/yaml.v3"
+
 	"github.com/google/go-cmp/cmp"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -512,7 +515,6 @@ func TestReplaceNamespaceInClusterRole(t *testing.T) {
 }
 
 func TestAddConfigMapValues_PipelineProperties(t *testing.T) {
-
 	testData := path.Join("testdata", "test-replace-cm-values.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assertNoError(t, err)
@@ -533,7 +535,6 @@ func TestAddConfigMapValues_PipelineProperties(t *testing.T) {
 }
 
 func TestAddConfigMapValues_OptionalPipelineProperties(t *testing.T) {
-
 	testData := path.Join("testdata", "test-replace-cm-values.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assertNoError(t, err)
@@ -557,6 +558,30 @@ func TestAddConfigMapValues_OptionalPipelineProperties(t *testing.T) {
 	assert.Equal(t, cm.Data["default-managed-by-label-value"], "abc-pipeline")
 	// this was not defined in struct so will be missing from configmap
 	assert.Equal(t, cm.Data["default-pod-template"], "")
+}
+
+// TestAddConfigMapValues_StructValues tests that the ConfigMap is created with the struct values marshalled into YAML format.
+func TestAddConfigMapValues_StructValues(t *testing.T) {
+	testData := path.Join("testdata", "test-struct-cm-values.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoError(t, err)
+	prop := v1alpha1.TektonPrunerConfig{
+		GlobalConfig: config.GlobalConfig{
+			PrunerConfig: config.PrunerConfig{
+				SuccessfulHistoryLimit: ptr.Int32(123),
+				HistoryLimit:           ptr.Int32(456),
+			},
+		},
+	}
+	manifest, err = manifest.Transform(AddConfigMapValues("tekton-pruner-default-spec", prop))
+	assertNoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
+	assertNoError(t, err)
+	// ConfigMap will have only fields which are defined in `prop` OptionalPipelineProperties above
+	expectedValue, _ := yaml.Marshal(prop.GlobalConfig)
+	assert.Equal(t, cm.Data["global-config"], string(expectedValue))
 }
 
 func TestAddConfigMapValues(t *testing.T) {
@@ -787,7 +812,6 @@ func TestAddConfigMapValues(t *testing.T) {
 					}
 				}
 			}
-
 		})
 	}
 }
@@ -808,14 +832,12 @@ func TestInjectLabelOnNamespace(t *testing.T) {
 			}
 			if !ok {
 				t.Errorf("namespace did not have label")
-
 			}
 		}
 	})
 }
 
 func TestAddConfiguration(t *testing.T) {
-
 	testData := path.Join("testdata", "test-add-configurations.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assertNoError(t, err)
@@ -931,7 +953,6 @@ func TestCopyConfigMapValues(t *testing.T) {
 
 	// extra fields in expected configmap will be added
 	assert.Equal(t, cm.Data["ignore-me-field"], "ignore-me")
-
 }
 
 func TestCopyEmptyConfigMapValues(t *testing.T) {
@@ -1144,7 +1165,6 @@ func TestReplaceNamespace(t *testing.T) {
 					// verify namespace
 					for index := range crb.Subjects {
 						assert.Equal(t, test.targetNamespace, crb.Subjects[index].Namespace)
-
 					}
 				}
 
