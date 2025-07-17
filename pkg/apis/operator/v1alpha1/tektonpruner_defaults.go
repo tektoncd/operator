@@ -30,7 +30,5 @@ func (p *Pruner) SetDefaults() {
 	if p.Disabled == nil {
 		p.Disabled = &DefaultPrunerDisabled
 	}
-	if &p.GlobalConfig != nil {
-		p.GlobalConfig.SetDefaults()
-	}
+	p.GlobalConfig.SetDefaults()
 }
