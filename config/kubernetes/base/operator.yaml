@@ -36,7 +36,7 @@ spec:
         - "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner"
         - "-unique-process-name"
         - "tekton-operator-lifecycle"
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
         - name: KUBERNETES_MIN_VERSION
           value: "v1.0.0"
@@ -87,7 +87,7 @@ spec:
         - "tektoninstallerset"
         - "-unique-process-name"
         - "tekton-operator-cluster-operations"
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         env:
           - name: KUBERNETES_MIN_VERSION
             value: "v1.0.0"

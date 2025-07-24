@@ -2,7 +2,7 @@
 // +build e2e
 
 /*
-Copyright 2024 The Tekton Authors
+Copyright 2025 The Tekton Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,10 +49,18 @@ func TestTektonPruner(t *testing.T) {
 	})
 
 	t.Run("create-tekton-pruner-CR", func(t *testing.T) {
-		if _, err := resources.EnsureTektonPrunerExists(clients.TektonPruner(), crNames); err != nil {
+		prunerCR, err := resources.EnsureTektonPrunerExists(clients.TektonPruner(), crNames)
+		if err != nil {
 			t.Fatalf("TektonPruner %q failed to create: %v", crNames.TektonPruner, err)
 		}
+		// Assert TektonPruner CR is ready
 		resources.AssertTektonPrunerCRReadyStatus(t, clients, crNames)
+
+		// Assert TektPrunerConfig InstallerSet is created
+		resources.AssertTektonPrunerInstallerSets(t, clients)
+
+		//Assert TektonPruner ConfigMap is created and has expected data
+		resources.AssertConfigMapData(t, clients, prunerCR)
 	})
 
 	//Delete the deployments one by one to see if they will be recreated.
