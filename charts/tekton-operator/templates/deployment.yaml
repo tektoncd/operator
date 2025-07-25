@@ -66,6 +66,10 @@ spec:
               {{- end }}
             - name: CONFIG_OBSERVABILITY_NAME
               value: {{ include "tekton-operator.fullname" . }}-observability
+            {{- range .Values.additionalEnvs }}
+            - name: {{ .name }}
+              value: {{ .value }}
+            {{- end }}
           args:
             - "-controllers"
             - {{ .Values.controllers | default "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner" | quote }}
