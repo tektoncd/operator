@@ -24,6 +24,10 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.operator.deployment.initContainers.enabled }}
+      initContainers:
+        {{- toYaml .Values.operator.deployment.initContainers.containers | nindent 8 }}
+      {{- end }}
       containers:
         - env:
             - name: SYSTEM_NAMESPACE
