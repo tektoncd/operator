@@ -88,5 +88,9 @@ func (tp *TektonPruner) GetStatus() TektonComponentStatus {
 
 // IsDisabled returns true if the TektonPruner is disabled
 func (p *Pruner) IsDisabled() bool {
+	if p == nil || p.Disabled == nil {
+		// When the Pruner is nil or Disabled is nil, we assume it is the default state.
+		return DefaultPrunerDisabled
+	}
 	return *p.Disabled
 }
