@@ -48,6 +48,12 @@ operator:
   deployment:
     # Custom labels for the Deployment resource.
     customLabels: ""
+    # Custom init containers for the Deployment resource.
+    # Can be used for pre-deployment setup and validation (e.g. waiting for specific resources to be available prior to starting the operator)
+    # see https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+    initContainers:
+      enabled: false
+      containers: []
     # Custom labels for the Deployment Pod Template.
     podTemplateCustomLabels: ""
 
