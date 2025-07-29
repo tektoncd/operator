@@ -66,9 +66,9 @@ spec:
               {{- end }}
             - name: CONFIG_OBSERVABILITY_NAME
               value: {{ include "tekton-operator.fullname" . }}-observability
-            {{- range .Values.additionalEnvs }}
+            {{- range .Values.operator.additionalEnvs }}
             - name: {{ .name }}
-              value: {{ .value }}
+              value: {{ .value | quote }}
             {{- end }}
           args:
             - "-controllers"
