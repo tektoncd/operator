@@ -55,7 +55,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.DeploymentImages(images),
 			common.DeploymentEnvVarKubernetesMinVersion(),
 			common.AddConfiguration(pac.Spec.Config),
-			occommon.ApplyCABundles,
+			occommon.ApplyCABundlesToDeployment,
 			common.CopyConfigMap(pipelinesAsCodeCM, pac.Spec.Settings),
 			occommon.UpdateServiceMonitorTargetNamespace(pac.Spec.TargetNamespace),
 		}
@@ -86,7 +86,7 @@ func additionalControllerTransform(extension common.Extension, name string) clie
 			common.InjectOperandNameLabelOverwriteExisting(openshift.OperandOpenShiftPipelineAsCode),
 			common.DeploymentImages(images),
 			common.AddConfiguration(pac.Spec.Config),
-			occommon.ApplyCABundles,
+			occommon.ApplyCABundlesToDeployment,
 			occommon.UpdateServiceMonitorTargetNamespace(pac.Spec.TargetNamespace),
 			updateAdditionControllerDeployment(additionalPACControllerConfig, name),
 			updateAdditionControllerService(name),
