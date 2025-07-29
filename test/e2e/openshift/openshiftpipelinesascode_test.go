@@ -52,13 +52,14 @@ func TestOpenshiftPipelinesAsCode(t *testing.T) {
 		crNames.TargetNamespace = "openshift-pipelines"
 	}
 
-	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.OpenShiftPipelinesAsCode) })
-	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
-	utils.CleanupOnInterrupt(func() { utils.TearDownNamespace(clients, crNames.TargetNamespace) })
-
-	defer utils.TearDownNamespace(clients, crNames.OpenShiftPipelinesAsCode)
-	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
-	defer utils.TearDownNamespace(clients, crNames.TargetNamespace)
+	for _, cleanupFunc := range []func(){
+		func() { utils.TearDownPipeline(clients, crNames.OpenShiftPipelinesAsCode) },
+		func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) },
+		func() { utils.TearDownNamespace(clients, crNames.TargetNamespace) },
+	} {
+		utils.CleanupOnInterrupt(cleanupFunc)
+		defer cleanupFunc()
+	}
 
 	resources.EnsureNoTektonConfigInstance(t, clients, crNames)
 
