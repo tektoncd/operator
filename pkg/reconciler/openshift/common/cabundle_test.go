@@ -31,7 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func TestApplyCABundles(t *testing.T) {
+func TestApplyCABundlesForDeployments(t *testing.T) {
 	actual := unstructuredDeployment(t)
 	expected := unstructuredDeployment(t,
 		withEnvs(
@@ -67,6 +67,20 @@ func TestApplyCABundles(t *testing.T) {
 						},
 					},
 				},
+			},
+			corev1.Volume{
+				Name: systemCAVolume,
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.TrustedCAConfigMapName},
+						Items: []corev1.KeyToPath{
+							{
+								Key:  common.TrustedCAKey,
+								Path: systemCAKey,
+							},
+						},
+					},
+				},
 			}),
 		withVolumeMounts(
 			corev1.VolumeMount{
@@ -81,10 +95,15 @@ func TestApplyCABundles(t *testing.T) {
 				SubPath:   common.ServiceCAKey,
 				ReadOnly:  true,
 			},
+			corev1.VolumeMount{
+				Name:      systemCAVolume,
+				MountPath: "/etc/pki/ca-trust/extracted/pem",
+				ReadOnly:  true,
+			},
 		),
 	)
 
-	if err := ApplyCABundles(actual); err != nil {
+	if err := ApplyCABundlesToDeployment(actual); err != nil {
 		t.Fatal(err)
 	}
 
@@ -127,6 +146,20 @@ func TestApplyCABundlesForStatefulSet(t *testing.T) {
 						},
 					},
 				},
+			},
+			corev1.Volume{
+				Name: systemCAVolume,
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{Name: common.TrustedCAConfigMapName},
+						Items: []corev1.KeyToPath{
+							{
+								Key:  common.TrustedCAKey,
+								Path: systemCAKey,
+							},
+						},
+					},
+				},
 			}),
 		withStatefulSetVolumeMounts(
 			corev1.VolumeMount{
@@ -139,6 +172,11 @@ func TestApplyCABundlesForStatefulSet(t *testing.T) {
 				Name:      common.ServiceCAConfigMapVolume,
 				MountPath: filepath.Join("/tekton-custom-certs", common.ServiceCAKey),
 				SubPath:   common.ServiceCAKey,
+				ReadOnly:  true,
+			},
+			corev1.VolumeMount{
+				Name:      systemCAVolume,
+				MountPath: "/etc/pki/ca-trust/extracted/pem",
 				ReadOnly:  true,
 			},
 		),

@@ -35,8 +35,8 @@ const (
 	ServiceCAKey             = "service-ca.crt"
 )
 
-// newVolumeWithConfigMap creates a new volume with the given ConfigMap
-func newVolumeWithConfigMap(volumeName, configMapName, configMapKey, configMapPath string) corev1.Volume {
+// NewVolumeWithConfigMap creates a new volume with the given ConfigMap
+func NewVolumeWithConfigMap(volumeName, configMapName, configMapKey, configMapPath string) corev1.Volume {
 	return corev1.Volume{
 		Name: volumeName,
 		VolumeSource: corev1.VolumeSource{
@@ -68,8 +68,8 @@ func AddCABundleConfigMapsToVolumes(volumes []corev1.Volume) []corev1.Volume {
 
 	return append(
 		volumes,
-		newVolumeWithConfigMap(TrustedCAConfigMapVolume, TrustedCAConfigMapName, TrustedCAKey, TrustedCAKey),
-		newVolumeWithConfigMap(ServiceCAConfigMapVolume, ServiceCAConfigMapName, ServiceCAKey, ServiceCAKey),
+		NewVolumeWithConfigMap(TrustedCAConfigMapVolume, TrustedCAConfigMapName, TrustedCAKey, TrustedCAKey),
+		NewVolumeWithConfigMap(ServiceCAConfigMapVolume, ServiceCAConfigMapName, ServiceCAKey, ServiceCAKey),
 	)
 }
 

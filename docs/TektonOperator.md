@@ -92,3 +92,18 @@ After installing the resources, `TektonInstallerSet` waits for deployment pods t
 
   As we have extension mechanism where we handle platform specific resources, in case of OpenShift we create additional resources in Pre and Post Reconciler in TektonPipeline. In both the cases we have an `TektonInstallerSet` created, on upgrade or target namespace change we delete the old and create a new `TektonInstallerSet`. 
 
+## Tekton Operator on Openshift
+When the Tekton Operator is [installed](./install.md) for Openshift, the
+Operator configure Tekton in order to cater Tekton the deployment for an
+Openshift cluster.
+
+### Custom CA Certificates
+When installed for Openshift, the Operator will inject the Openshift
+Proxy's custom certificates into the Tekton components' pods system trust
+store. This allows components such as the remote resolvers to connect
+to domains which use self-signed or private certificates for TLS.
+
+Documentation on configuring custom certificates for Openshift Proxy can
+be found in the [Openshift Network Configuration documentation][openshift-proxy-configuration].
+
+[openshift-proxy-configuration]: https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/configuring_network_settings/configuring-a-custom-pki
