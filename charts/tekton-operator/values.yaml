@@ -36,6 +36,8 @@ operator:
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
     tag: ""
+  # Additional environment variables for the tekton-operator-lifecycle container
+  additionalEnvs: []
   autoInstallComponents: true
   # The namespace in which Tekton components should be deployed
   # Defaults to "tekton-pipelines" for Kubernetes and to "openshift-pipelines" for Openshift flavor.
