@@ -66,7 +66,7 @@ type openshiftExtension struct {
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	trns := []mf.Transformer{
-		occommon.ApplyCABundles,
+		occommon.ApplyCABundlesToDeployment,
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsUserForStatefulSet(tektonPipelinesControllerName),
 		occommon.RemoveRunAsUserForStatefulSet(tektonRemoteResolversControllerName),
