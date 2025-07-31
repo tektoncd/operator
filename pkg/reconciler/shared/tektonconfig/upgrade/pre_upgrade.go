@@ -80,67 +80,6 @@ func upgradePipelineProperties(ctx context.Context, logger *zap.SugaredLogger, k
 	return nil
 }
 
-// previous version of the TektonConfig CR's addon params has cluster task params to manage the cluster tasks
-// and cluster tasks have been deprecated and removed so need to remove the clusterTasks and communityClusterTasks
-// params from TektonConfig's addon params and this removes the cluster tasks params and updates TektonConfig's addon params
-// Todo: remove this in the next operator release
-func removeDeprecatedAddonParams(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
-	tcCR, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		if apierrs.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-
-	updatedParams := []v1alpha1.Param{}
-	for _, p := range tcCR.Spec.Addon.Params {
-		if p.Name == "clusterTasks" || p.Name == "communityClusterTasks" {
-			continue
-		}
-		updatedParams = append(updatedParams, p)
-	}
-
-	// update the Tekton config's addon params
-	tcCR.Spec.Addon.Params = updatedParams
-	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{})
-	return err
-}
-
-// previous version of the Tekton Operator does not install the TektonResult via TektonConfig
-// in the new version, we are supporting to installing and manage TektonResult via TektonConfig
-// so if TektonResult CR exists on the cluster then needs to copy the TektonResult CR configuration to the TektonConfig CR
-func copyResultConfigToTektonConfig(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
-	// get the TekonResult CR
-	trCR, err := operatorClient.OperatorV1alpha1().TektonResults().Get(ctx, v1alpha1.ResultResourceName, metav1.GetOptions{})
-	if err != nil {
-		if apierrs.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-
-	// get the TekonConfig CR
-	tcCR, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
-	if err != nil {
-		if apierrs.IsNotFound(err) {
-			return nil
-		}
-		return err
-	}
-
-	// copy the existing TektonResult CR configuration  to the TektonConfig CR
-	tcCR.Spec.Result.ResultsAPIProperties = trCR.Spec.ResultsAPIProperties
-	tcCR.Spec.Result.LokiStackProperties = trCR.Spec.LokiStackProperties
-	tcCR.Spec.Result.Options = trCR.Spec.Options
-
-	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // previous version of the Tekton Operator created default tekton-results-tls on Openshift Platform
 // causing it Tekton Results api failure
 func deleteTektonResultsTLSSecret(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
