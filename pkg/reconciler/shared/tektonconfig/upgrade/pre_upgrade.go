@@ -21,6 +21,7 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
+	tektonresult "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonresult"
 	"go.uber.org/zap"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -135,5 +136,41 @@ func copyResultConfigToTektonConfig(ctx context.Context, logger *zap.SugaredLogg
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+// previous version of the Tekton Operator created default tekton-results-tls on Openshift Platform
+// causing it Tekton Results api failure
+func deleteTektonResultsTLSSecret(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	if !v1alpha1.IsOpenShiftPlatform() {
+		return nil
+	}
+
+	// get the TekonResult CR
+	trCR, err := operatorClient.OperatorV1alpha1().TektonResults().Get(ctx, v1alpha1.ResultResourceName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	// get the tekton-results-tls secret
+	tlsSecret, err := k8sClient.CoreV1().Secrets(trCR.Spec.TargetNamespace).Get(ctx, tektonresult.TlsSecretName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	// delete default tekton-results-tls secret which has no OwnerReferences
+	if len(tlsSecret.OwnerReferences) == 0 {
+		err = k8sClient.CoreV1().Secrets(trCR.Spec.TargetNamespace).Delete(ctx, tektonresult.TlsSecretName, metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
