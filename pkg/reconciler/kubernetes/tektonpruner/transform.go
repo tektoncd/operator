@@ -33,6 +33,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.TektonPrunerResourceName),
 			common.DeploymentImages(prunerImages),
 			common.AddDeploymentRestrictedPSA(),
+			common.AddConfigMapValues(PrunerConfigMapName, prunerCR.Spec.TektonPrunerConfig),
 		}
 		extra = append(extra, extension.Transformers(prunerCR)...)
 		err := common.Transform(ctx, manifest, prunerCR, extra...)

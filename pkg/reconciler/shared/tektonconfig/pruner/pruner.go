@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -50,6 +51,7 @@ func EnsureTektonPrunerExists(ctx context.Context, clients op.TektonPrunerInterf
 	if err != nil {
 		return nil, err
 	}
+
 	if !ok {
 		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
