@@ -37,6 +37,8 @@ var (
 		// Todo: Remove the removeDeprecatedAddonParams upgrade function in next operator release
 		removeDeprecatedAddonParams,    // upgrade #3: remove the deprecated cluster task params from TektonConfig CR's addon params
 		copyResultConfigToTektonConfig, // upgrade #4: copy existing TektonResult configuration to the TektonConfig CR
+		// Todo: Remove the deleteTektonResultsTLSSecret upgrade function in next operator release
+		deleteTektonResultsTLSSecret, // upgrade #5: deletes default tekton results tls certificate
 	}
 
 	// post upgrade functions
