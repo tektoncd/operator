@@ -97,8 +97,9 @@ global-config:
 ```
 
 This configuration deletes the runs if:
-- They are older than **1 hour**, or
-- There are more than **100** runs in total.
+- They are older than **1 hour**, OR
+- There are more than **100** successful runs, OR
+- There are more than **100** failed runs
 
 ---
 

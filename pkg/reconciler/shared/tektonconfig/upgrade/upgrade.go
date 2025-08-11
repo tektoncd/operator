@@ -39,6 +39,8 @@ var (
 		copyResultConfigToTektonConfig, // upgrade #4: copy existing TektonResult configuration to the TektonConfig CR
 		// Todo: Remove the deleteTektonResultsTLSSecret upgrade function in next operator release
 		deleteTektonResultsTLSSecret, // upgrade #5: deletes default tekton results tls certificate
+		// TODO: Remove the preUpgradeTektonPruner upgrade function in next operator release
+		preUpgradeTektonPruner, // upgrade #5: pre upgrade tekton pruner
 	}
 
 	// post upgrade functions
