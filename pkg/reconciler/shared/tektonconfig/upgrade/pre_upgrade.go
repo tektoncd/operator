@@ -19,6 +19,9 @@ package upgrade
 import (
 	"context"
 
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpruner"
+	"gopkg.in/yaml.v3"
+
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	tektonresult "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonresult"
@@ -38,7 +41,6 @@ import (
 // to avoid this, remove all the existing conditions from the status of the CR.
 // conditions will be repopulated
 func resetTektonConfigConditions(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
-
 	// fetch the current tektonConfig CR
 	tcCR, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
@@ -173,4 +175,40 @@ func deleteTektonResultsTLSSecret(ctx context.Context, logger *zap.SugaredLogger
 	}
 
 	return nil
+}
+
+// TODO: Remove the preUpgradeTektonPruner upgrade function in next operator release
+func preUpgradeTektonPruner(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	// get tektonConfig CR
+	logger.Infof("Performing Preupgrade for TektonPruner")
+	tc, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		logger.Errorw("error on getting TektonConfig CR", err)
+		return err
+	}
+
+	if tc.Spec.TektonPruner.IsDisabled() {
+		logger.Infof("TektonPruner is disabled, skipping pre-upgrade for TektonPruner")
+		return nil
+	}
+
+	var prunerConfig v1alpha1.TektonPrunerConfig
+	cm, err := k8sClient.CoreV1().ConfigMaps(tc.Spec.TargetNamespace).Get(ctx, tektonpruner.PrunerConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			prunerConfig = v1alpha1.TektonPrunerConfig{}
+		}
+	}
+	key := "global-config"
+	if cm != nil && cm.Data[key] != "" {
+		if err := yaml.Unmarshal([]byte(cm.Data[key]), &prunerConfig.GlobalConfig); err != nil {
+			logger.Errorf("error on Unmarshal TektonPruner ConfigMap data", err)
+			return err
+		}
+	}
+
+	tc.Spec.TektonPruner.GlobalConfig = prunerConfig.GlobalConfig
+
+	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
+	return err
 }
