@@ -15,7 +15,7 @@ jobs:
     - uses: actions/setup-go@v5
       with:
         go-version: 1.21.x
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: run operator-tool bump
       run: |
         export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
