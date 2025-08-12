@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -53,6 +54,26 @@ func NewVolumeWithConfigMap(volumeName, configMapName, configMapKey, configMapPa
 	}
 }
 
+// NewVolumeWithConfigMapOptional creates a new volume with the given ConfigMap marked as optional
+// This allows the pod to start even if the ConfigMap doesn't exist
+func NewVolumeWithConfigMapOptional(volumeName, configMapName, configMapKey, configMapPath string) corev1.Volume {
+	return corev1.Volume{
+		Name: volumeName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: configMapName},
+				Items: []corev1.KeyToPath{
+					{
+						Key:  configMapKey,
+						Path: configMapPath,
+					},
+				},
+				Optional: ptr.Bool(true),
+			},
+		},
+	}
+}
+
 // AddCABundleConfigMapsToVolumes adds the config-trusted-cabundle and config-service-cabundle
 // ConfigMaps to the given list of volumes and removes duplicates, if any
 func AddCABundleConfigMapsToVolumes(volumes []corev1.Volume) []corev1.Volume {
@@ -70,6 +91,28 @@ func AddCABundleConfigMapsToVolumes(volumes []corev1.Volume) []corev1.Volume {
 		volumes,
 		NewVolumeWithConfigMap(TrustedCAConfigMapVolume, TrustedCAConfigMapName, TrustedCAKey, TrustedCAKey),
 		NewVolumeWithConfigMap(ServiceCAConfigMapVolume, ServiceCAConfigMapName, ServiceCAKey, ServiceCAKey),
+	)
+}
+
+// AddCABundleConfigMapsToVolumesOptional adds the config-trusted-cabundle and config-service-cabundle
+// ConfigMaps to the given list of volumes as optional volumes and removes duplicates, if any.
+// Using optional volumes allows pods to start even when ConfigMaps don't exist, eliminating the need
+// for API calls to check ConfigMap existence.
+func AddCABundleConfigMapsToVolumesOptional(volumes []corev1.Volume) []corev1.Volume {
+	// If CA bundle volumes already exists in the pod's volumes, then remove it
+	for _, volumeName := range []string{TrustedCAConfigMapVolume, ServiceCAConfigMapVolume} {
+		for i, v := range volumes {
+			if v.Name == volumeName {
+				volumes = append(volumes[:i], volumes[i+1:]...)
+				break
+			}
+		}
+	}
+
+	return append(
+		volumes,
+		NewVolumeWithConfigMapOptional(TrustedCAConfigMapVolume, TrustedCAConfigMapName, TrustedCAKey, TrustedCAKey),
+		NewVolumeWithConfigMapOptional(ServiceCAConfigMapVolume, ServiceCAConfigMapName, ServiceCAKey, ServiceCAKey),
 	)
 }
 
