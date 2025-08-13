@@ -156,7 +156,7 @@ type EventListenerStatus struct {
 	duckv1.Status `json:",inline"`
 
 	// EventListener is Addressable. It currently exposes the service DNS
-	// address of the the EventListener sink
+	// address of the EventListener sink
 	v1beta1.AddressStatus `json:",inline"`
 
 	// Configuration stores configuration for the EventListener service

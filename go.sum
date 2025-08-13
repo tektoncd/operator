@@ -1151,8 +1151,8 @@ github.com/tektoncd/pipeline v1.3.1 h1:GOp49pAMPCXYX1E/cSc2JAm7j4vEB68DOOhGkSoaA
 github.com/tektoncd/pipeline v1.3.1/go.mod h1:924mFZJC0FXYruna4kDisnfFnRowJQgRgLpJuGbjNPQ=
 github.com/tektoncd/plumbing v0.0.0-20250630062957-f863d38f433a h1:a9/eNSSAsC+7N33gPdqubmdvCYZpfVXAzyyo+RPl7ms=
 github.com/tektoncd/plumbing v0.0.0-20250630062957-f863d38f433a/go.mod h1:BC6F3DlZc+wpUT9YcwG9MoSfb4tUiH2olB9xYoIsB4I=
-github.com/tektoncd/triggers v0.32.0 h1:aUo2ePkbvwJaUC8+S66gLuryF17O+I2K/gzQaXjlsm8=
-github.com/tektoncd/triggers v0.32.0/go.mod h1:dfJ0Dnp4vl/PflXO3cSgs4aYLxdU5DMAY/BCKI2oUmM=
+github.com/tektoncd/triggers v0.33.0 h1:pG2Kz/2FHjysGG4GGhiGp9hHdwA8BLZI3H7m9U9sj4M=
+github.com/tektoncd/triggers v0.33.0/go.mod h1:V2CTUxZB6zwymfeUnsZqFEwtkN6ClT+chtxr03N3L7c=
 github.com/thales-e-security/pool v0.0.2 h1:RAPs4q2EbWsTit6tpzuvTFlgFRJ3S8Evf5gtvVDbmPg=
 github.com/thales-e-security/pool v0.0.2/go.mod h1:qtpMm2+thHtqhLzTwgDBj/OuNnMpupY8mv0Phz0gjhU=
 github.com/theupdateframework/go-tuf v0.7.0 h1:CqbQFrWo1ae3/I0UCblSbczevCCbS31Qvs5LdxRWqRI=
@@ -1944,8 +1944,8 @@ google.golang.org/protobuf v1.30.0/go.mod h1:HV8QOd/L58Z+nl8r43ehVNZIU/HEI6OcFqw
 google.golang.org/protobuf v1.33.0/go.mod h1:c6P6GXX6sHbq/GpV6MGZEdwhWPcYBgnhAHhKbcUYpos=
 google.golang.org/protobuf v1.34.1/go.mod h1:c6P6GXX6sHbq/GpV6MGZEdwhWPcYBgnhAHhKbcUYpos=
 google.golang.org/protobuf v1.35.1/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
-google.golang.org/protobuf v1.36.6 h1:z1NpPI8ku2WgiWnf+t9wTPsn6eP1L7ksHUlkfLvd9xY=
-google.golang.org/protobuf v1.36.6/go.mod h1:jduwjTPXsFjZGTmRluh+L6NjiWu7pchiJ2/5YcXBHnY=
+google.golang.org/protobuf v1.36.7 h1:IgrO7UwFQGJdRNXH/sQux4R1Dj1WAKcLElzeeRaXV2A=
+google.golang.org/protobuf v1.36.7/go.mod h1:jduwjTPXsFjZGTmRluh+L6NjiWu7pchiJ2/5YcXBHnY=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
@@ -1997,8 +1997,8 @@ honnef.co/go/tools v0.0.1-2020.1.4/go.mod h1:X/FiERA/W4tHapMX5mGpAtMSVEeEUOyHaw9
 k8s.io/api v0.32.4 h1:kw8Y/G8E7EpNy7gjB8gJZl3KJkNz8HM2YHrZPtAZsF4=
 k8s.io/api v0.32.4/go.mod h1:5MYFvLvweRhyKylM3Es/6uh/5hGp0dg82vP34KifX4g=
 k8s.io/apiextensions-apiserver v0.27.7/go.mod h1:x0p+b5a955lfPz9gaDeBy43obM12s+N9dNHK6+dUL+g=
-k8s.io/apiextensions-apiserver v0.32.6 h1:B9zv1tpW+090Prav3GP53A4W2Bv908AAouZYJWp0fy8=
-k8s.io/apiextensions-apiserver v0.32.6/go.mod h1:3lAgylV3582qpXg8NWW4NOLdzxLC8mTcfPqqjAzOSTs=
+k8s.io/apiextensions-apiserver v0.32.7 h1:w7IzqA3SZG9KNm5YMtrrqY3ipPgt13rZevDaZSubARA=
+k8s.io/apiextensions-apiserver v0.32.7/go.mod h1:CelzsiBUTLZeJ+MxBEcuDEgu9Qr3LQkZqmydvA/W9UA=
 k8s.io/apimachinery v0.32.4 h1:8EEksaxA7nd7xWJkkwLDN4SvWS5ot9g6Z/VZb3ju25I=
 k8s.io/apimachinery v0.32.4/go.mod h1:GpHVgxoKlTxClKcteaeuF1Ul/lDVb74KpZcxcmLDElE=
 k8s.io/apiserver v0.27.7/go.mod h1:OrLG9RwCOerutAlo8QJW5EHzUG9Dad7k6rgcDUNSO/w=
