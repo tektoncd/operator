@@ -73,7 +73,6 @@ func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
 // If the feature gate is not defined then we ignore it, if the pattern is not
 // valid regex then we return error
 func getLabelsExclusionPattern(cfgMap map[string]string) (string, error) {
-
 	if pattern, ok := cfgMap[labelsExclusionPattern]; ok {
 		if _, err := regexp.Compile(pattern); err != nil {
 			return "", fmt.Errorf("invalid value for feature flag %q: %q", labelsExclusionPattern, pattern)

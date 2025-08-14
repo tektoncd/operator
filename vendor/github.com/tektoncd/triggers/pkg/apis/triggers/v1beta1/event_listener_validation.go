@@ -171,7 +171,7 @@ func validateEnv(envVars []corev1.EnvVar) (errs *apis.FieldError) {
 	// This is to make sure both TLS_CERT and TLS_KEY is set for tls connection
 	if count == 1 {
 		errs = errs.Also(&apis.FieldError{
-			Message: fmt.Sprintf("Expected env's are TLS_CERT and TLS_KEY, but got only one env %s", envValue),
+			Message: "Expected env's are TLS_CERT and TLS_KEY, but got only one env " + envValue,
 		})
 	}
 	return errs
