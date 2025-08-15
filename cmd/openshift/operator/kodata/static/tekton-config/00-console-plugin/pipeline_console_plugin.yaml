@@ -142,7 +142,7 @@ spec:
         type: Service
         service:
           name: tekton-results-api-service
-          namespace: openshift-pipeline
+          namespace: openshift-pipelines
           port: 8080
   i18n:
     loadType: Preload   # options: Preload, Lazy
