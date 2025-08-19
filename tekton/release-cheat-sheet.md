@@ -36,7 +36,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
       ```bash
          TEKTON_RELEASE_BRANCH=release-v0.62.x
          # ./hack/release-setup-branch.sh <old release version> <new release version>
-         ./hack/release-setup-branch.sh devel ${TEKTON_RELEASE_VERSION}
+         ./hack/release-setup-branch.sh devel ${TEKTON_RELEASE_VERSION#v}
       ```
       The script will automatically create a new branch for the minor version (e.g., release-v0.62.x) and switch to it.
       It updates the yaml files with the TEKTON_RELEASE_VERSION
