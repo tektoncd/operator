@@ -57,7 +57,7 @@ spec:
         - name: METRICS_DOMAIN
           value: tekton.dev/operator
         - name: VERSION
-          value: "devel"
+          value: v0.77.0
         - name: CONFIG_OBSERVABILITY_NAME
           value: tekton-config-observability
         - name: CONFIG_LEADERELECTION_NAME
@@ -104,7 +104,7 @@ spec:
           - name: PROFILING_PORT
             value: "9009"
           - name: VERSION
-            value: "devel"
+            value: v0.77.0
           - name: METRICS_DOMAIN
             value: tekton.dev/operator
           - name: CONFIG_LEADERELECTION_NAME

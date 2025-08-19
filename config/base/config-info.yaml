@@ -21,4 +21,4 @@ metadata:
 data:
   # Contains operator version which can be queried by external
   # tools such as CLI.
-  version: "devel"
+  version: v0.77.0

@@ -17,7 +17,7 @@ kind: ConfigMap
 metadata:
   name: tekton-operator-controller-config-leader-election
   labels:
-    operator.tekton.dev/release: devel
+    operator.tekton.dev/release: v0.77.0
     app.kubernetes.io/instance: default
 data:
   _example: |

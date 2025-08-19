@@ -17,7 +17,7 @@ kind: ConfigMap
 metadata:
   name: tekton-config-defaults
   labels:
-    operator.tekton.dev/release: devel
+    operator.tekton.dev/release: v0.77.0
 
 data:
   AUTOINSTALL_COMPONENTS: "true"

@@ -21,7 +21,7 @@ metadata:
   name: config-service-cabundle
   namespace: openshift-pipelines
   labels:
-    operator.tekton.dev/release: "devel"
+    operator.tekton.dev/release: v0.77.0
     app.kubernetes.io/part-of: tekton-pipelines
   annotations:
     service.beta.openshift.io/inject-cabundle: "true"
