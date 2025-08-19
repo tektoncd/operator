@@ -25,6 +25,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/openshift-pipelines/tektoncd-pruner/pkg/metrics"
 	// tektonprunerv1alpha1 "github.com/openshift-pipelines/tektoncd-pruner/pkg/apis/tektonpruner/v1alpha1"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -337,6 +338,12 @@ func (hl *HistoryLimiter) doResourceCleanup(ctx context.Context, resource metav1
 	}
 
 	// Delete selected resources
+	metricsRecorder := metrics.GetRecorder()
+	resourceType := metrics.ResourceTypePipelineRun
+	if hl.resourceFn.Type() == KindTaskRun {
+		resourceType = metrics.ResourceTypeTaskRun
+	}
+
 	for _, res := range selectionForDeletion {
 		logger.Debugw("deleting resource",
 			"resource", hl.resourceFn.Type(),
@@ -344,10 +351,21 @@ func (hl *HistoryLimiter) doResourceCleanup(ctx context.Context, resource metav1
 			"name", res.GetName(),
 			"creationTimestamp", res.GetCreationTimestamp(),
 		)
+
+		// Calculate resource age for metrics
+		var resourceAge time.Duration
+		creationTime := res.GetCreationTimestamp()
+		if !creationTime.IsZero() {
+			resourceAge = time.Since(creationTime.Time)
+		}
+
 		if err := hl.resourceFn.Delete(ctx, res.GetNamespace(), res.GetName()); err != nil {
 			if errors.IsNotFound(err) {
 				continue
 			}
+			// Record deletion error
+			errorType := metrics.ClassifyError(err)
+			metricsRecorder.RecordResourceError(ctx, resourceType, res.GetNamespace(), errorType, "history_deletion_failed")
 			logger.Errorw("error deleting resource",
 				"resource", hl.resourceFn.Type(),
 				"namespace", res.GetNamespace(),
@@ -356,6 +374,9 @@ func (hl *HistoryLimiter) doResourceCleanup(ctx context.Context, resource metav1
 			)
 			return err
 		}
+
+		// Record successful deletion
+		metricsRecorder.RecordResourceDeleted(ctx, resourceType, res.GetNamespace(), metrics.OperationHistory, resourceAge)
 	}
 
 	return nil
