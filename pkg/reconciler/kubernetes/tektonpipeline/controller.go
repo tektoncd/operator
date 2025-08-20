@@ -74,7 +74,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 		impl := tektonPipelineReconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers for TektonPipeline")
+		logger.Debug("Setting up event handlers for TektonPipeline")
 
 		if _, err := tektonPipelineInformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
 			logger.Panicf("Couldn't register TektonPipeline informer event handler: %w", err)

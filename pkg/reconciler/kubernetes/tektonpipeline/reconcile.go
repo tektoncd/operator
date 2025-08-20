@@ -124,7 +124,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	}
 
 	// Mark PreReconcile Complete
-	logger.Info("Pre-reconciliation completed successfully")
+	logger.Debug("Pre-reconciliation completed successfully")
 	tp.Status.MarkPreReconcilerComplete()
 
 	// When TektonPipeline component is deleted targetNamespace was getting deleted,
@@ -148,20 +148,20 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
 		logger.Errorw("Failed to apply main installer set", "error", err)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
-			logger.Infow("Main reconciliation requested requeue")
+			logger.Debugw("Main reconciliation requested requeue")
 			return err
 		}
 		tp.Status.MarkInstallerSetNotReady(msg)
 		return nil
 	}
-	logger.Info("Main manifest applied successfully")
+	logger.Debug("Main manifest applied successfully")
 
 	logger.Debug("Executing post-reconciliation")
 	if err := r.extension.PostReconcile(ctx, tp); err != nil {
 		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
 		logger.Errorw("Post-reconciliation failed", "error", err)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
-			logger.Info("Post-reconciliation requested requeue")
+			logger.Debug("Post-reconciliation requested requeue")
 			return err
 		}
 		tp.Status.MarkPostReconcilerFailed(msg)
@@ -169,9 +169,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 	}
 
 	// Mark PostReconcile Complete
-	logger.Info("Post-reconciliation completed successfully")
+	logger.Debug("Post-reconciliation completed successfully")
 	tp.Status.MarkPostReconcilerComplete()
 
-	logger.Info("TektonPipeline reconciliation completed successfully")
+	logger.Debug("TektonPipeline reconciliation completed successfully")
 	return nil
 }
