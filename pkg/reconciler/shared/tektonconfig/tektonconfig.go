@@ -108,7 +108,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	tc.Status.InitializeConditions()
 	tc.Status.SetVersion(r.operatorVersion)
 
-	logger.Infow("Starting TektonConfig reconciliation",
+	logger.Debugw("Starting TektonConfig reconciliation",
 		"version", r.operatorVersion,
 		"profile", tc.Spec.Profile,
 		"status", tc.Status.GetCondition(apis.ConditionReady))
@@ -179,7 +179,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		}
 		return nil
 	}
-	logger.Info("TektonPipeline CR reconciled successfully")
+	logger.Debug("TektonPipeline CR reconciled successfully")
 
 	// Start Event based Pruner only if old Job based Pruner is Disabled.
 	if tc.Spec.TektonPruner.IsDisabled() {
@@ -212,7 +212,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
-		logger.Info("TektonTrigger CR reconciled successfully")
+		logger.Debug("TektonTrigger CR reconciled successfully")
 	} else {
 		logger.Debugw("Ensuring TektonTrigger CR doesn't exist", "profile", tc.Spec.Profile, "triggerDisabled", tc.Spec.Trigger.Disabled)
 		if err := trigger.EnsureTektonTriggerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers()); err != nil {
@@ -221,7 +221,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
-		logger.Info("TektonTrigger CR removal reconciled successfully")
+		logger.Debug("TektonTrigger CR removal reconciled successfully")
 	}
 
 	// Ensure Chain CR
@@ -234,7 +234,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
-		logger.Info("TektonChain CR reconciled successfully")
+		logger.Debug("TektonChain CR reconciled successfully")
 	} else {
 		logger.Debugw("Ensuring TektonChain CR doesn't exist", "chainDisabled", tc.Spec.Chain.Disabled)
 		if err := chain.EnsureTektonChainCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains()); err != nil {
@@ -243,7 +243,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
-		logger.Info("TektonChain CR removal reconciled successfully")
+		logger.Debug("TektonChain CR removal reconciled successfully")
 	}
 
 	// Ensure Result CR
@@ -256,7 +256,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
-		logger.Info("TektonResult CR reconciled successfully")
+		logger.Debug("TektonResult CR reconciled successfully")
 	} else {
 		logger.Debugw("Ensuring TektonResult CR doesn't exist", "resultDisabled", tc.Spec.Result.Disabled)
 		if err := result.EnsureTektonResultCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonResults()); err != nil {
@@ -265,7 +265,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			tc.Status.MarkComponentNotReady(errMsg)
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
-		logger.Info("TektonResult CR removal reconciled successfully")
+		logger.Debug("TektonResult CR removal reconciled successfully")
 	}
 
 	// Ensure Pruner
@@ -276,7 +276,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			logger.Errorw("Failed to reconcile pruner installer set", "error", err)
 			return err
 		}
-		logger.Info("Pruner installer set reconciled successfully")
+		logger.Debug("Pruner installer set reconciled successfully")
 	}
 
 	// Run resource pruning
@@ -289,7 +289,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	tc.Status.MarkComponentsReady()
-	logger.Info("All components marked ready")
+	logger.Debug("All components marked ready")
 
 	// Post-reconcile extension hooks
 	if err := r.extension.PostReconcile(ctx, tc); err != nil {
@@ -315,7 +315,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 	logger.Debug("Post-upgrade completed successfully")
 
-	logger.Infow("TektonConfig reconciliation completed successfully",
+	logger.Debugw("TektonConfig reconciliation completed successfully",
 		"status", tc.Status.GetCondition(apis.ConditionReady))
 	return nil
 }
