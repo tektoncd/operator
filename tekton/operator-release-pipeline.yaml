@@ -96,10 +96,8 @@ spec:
     taskRef:
       resolver: git
       params:
-      - name: repo
-        value: plumbing
-      - name: org
-        value: tektoncd
+      - name: url
+        value: https://github.com/tektoncd/plumbing
       - name: revision
         value: aeed19e5a36f335ebfdc4b96fa78d1ce5bb4f7b8
       - name: pathInRepo
@@ -144,10 +142,8 @@ spec:
     taskRef:
       resolver: git
       params:
-        - name: repo
-          value: operator
-        - name: org
-          value: tektoncd
+        - name: url
+          value: https://github.com/tektoncd/operator
         - name: revision
           value: $(params.gitRevision)
         - name: pathInRepo
@@ -190,10 +186,8 @@ spec:
     taskRef:
       resolver: git
       params:
-        - name: repo
-          value: operator
-        - name: org
-          value: tektoncd
+        - name: url
+          value: https://github.com/tektoncd/operator
         - name: revision
           value: $(params.gitRevision)
         - name: pathInRepo
@@ -238,10 +232,8 @@ spec:
     taskRef:
       resolver: git
       params:
-        - name: repo
-          value: operator
-        - name: org
-          value: tektoncd
+        - name: url
+          value: https://github.com/tektoncd/operator
         - name: revision
           value: $(params.gitRevision)
         - name: pathInRepo
