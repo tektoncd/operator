@@ -81,7 +81,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 		impl := tektonChainreconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers for Tekton Chain")
+		logger.Debug("Setting up event handlers for Tekton Chain")
 
 		if _, err := tektonChaininformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
 			logger.Panicf("Couldn't register TektonChain informer event handler: %w", err)

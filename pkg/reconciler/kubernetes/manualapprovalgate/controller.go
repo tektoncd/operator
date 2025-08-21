@@ -76,7 +76,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 		impl := manualapprovalgatereconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers for ManualApprovalGate")
+		logger.Debug("Setting up event handlers for ManualApprovalGate")
 
 		if _, err := manualapprovalgateinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
 			logger.Panicf("Couldn't register ManualApprovalGate informer event handler: %w", err)

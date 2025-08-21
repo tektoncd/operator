@@ -83,7 +83,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 		impl := tektonDashboardreconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers for tekton-dashboard")
+		logger.Debug("Setting up event handlers for tekton-dashboard")
 
 		if _, err := tektonDashboardInformer.Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
 			logger.Panicf("Couldn't register TektonDashboard informer event handler: %w", err)

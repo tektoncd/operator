@@ -62,7 +62,7 @@ func NewExtendedController() injection.ControllerConstructor {
 		}
 		impl := tektonInstallerReconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers for TektonInstallerSet")
+		logger.Debug("Setting up event handlers for TektonInstallerSet")
 
 		if _, err := tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
 			logger.Panicf("Couldn't register TektonInstallerSet informer event handler: %w", err)

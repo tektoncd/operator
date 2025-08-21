@@ -78,7 +78,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 		impl := tektonTriggerreconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers for TektonTrigger")
+		logger.Debug("Setting up event handlers for TektonTrigger")
 
 		if _, err := tektonTriggerinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
 			logger.Panicf("Couldn't register TektonTrigger informer event handler: %w", err)
