@@ -29,6 +29,14 @@ spec:
               value: custom-example.com/tektoncd/tkn:v0.31.0
 ```
 
+### Tekton instance update
+
+If you update an existing instance of tekton, you will need also to refresh the `TektonInstallerSets` so the new value can be taken into account.
+
+```bash
+kubectl delete tektoninstallerset <installer-set-name>
+```
+
 ### List of image environment variables
 
 #### Images supported in kubernetes
