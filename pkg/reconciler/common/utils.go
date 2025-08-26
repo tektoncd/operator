@@ -19,6 +19,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	mf "github.com/manifestival/manifestival"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -71,4 +72,19 @@ func SerializeLabelsToJSON(labels map[string]string) (string, error) {
 		return "", fmt.Errorf("failed to serialize labels to JSON: %v", err)
 	}
 	return string(bytes), nil
+}
+
+// AddOrReplaceInList appends newItem to the provided list. If the new item exists in the list then the original
+// copy of the item is removed from the list before the new copy is appended. The identityFunc parameter is used
+// to uniquely identify an item during comparison.
+func AddOrReplaceInList[T any, V comparable](items []T, newItem T, identityFunc func(T) V) []T {
+	newItemIdentity := identityFunc(newItem)
+	for i, item := range items {
+		itemIdentity := identityFunc(item)
+		if itemIdentity == newItemIdentity {
+			items = slices.Delete(items, i, i+1)
+			break
+		}
+	}
+	return append(items, newItem)
 }
