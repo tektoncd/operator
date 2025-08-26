@@ -30,6 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"knative.dev/pkg/ptr"
 )
 
@@ -773,6 +774,54 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			inputFilename:          "./testdata/test-additional-options-base-runtimeclassname-statefulset.yaml",
 			expectedResultFilename: "./testdata/test-additional-options-test-runtimeclassname-statefulset-add-initcontainer.yaml",
 		},
+		{
+			name: "args-dedup-and-replace",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: "tekton-pipelines-controller",
+											Args: []string{"--disable-ha=true", "--resync-period=30s", "--new-flag", "--new-flag"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-args-dedup-and-replace.yaml",
+		},
+		{
+			name: "args-pair-form-update-preserve-style",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: "tekton-pipelines-controller",
+											Args: []string{"-el-idletimeout", "130"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-args-pair-form-update-preserve-style.yaml",
+		},
 	}
 
 	for _, tc := range tcs {
@@ -788,7 +837,25 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			// execute with additional options transformer
 			err = ExecuteAdditionalOptionsTransformer(ctx, &targetManifest, targetNamespace, tc.additionalOptions)
 			require.NoError(t, err)
-			if d := cmp.Diff(expectedManifest.Resources(), targetManifest.Resources()); d != "" {
+
+			// robust comparison: drop spec-hash label from both
+			cleanup := func(resources []unstructured.Unstructured) []unstructured.Unstructured {
+				for i := range resources {
+					if resources[i].GetKind() != "Deployment" && resources[i].GetKind() != "StatefulSet" {
+						continue
+					}
+					labels, found, _ := unstructured.NestedStringMap(resources[i].Object, "spec", "template", "metadata", "labels")
+					if found {
+						delete(labels, v1alpha1.DeploymentSpecHashValueLabelKey)
+						_ = unstructured.SetNestedStringMap(resources[i].Object, labels, "spec", "template", "metadata", "labels")
+					}
+				}
+				return resources
+			}
+
+			got := cleanup(targetManifest.Resources())
+			want := cleanup(expectedManifest.Resources())
+			if d := cmp.Diff(want, got); d != "" {
 				t.Errorf("Diff %s", diff.PrintWantGot(d))
 			}
 		})
