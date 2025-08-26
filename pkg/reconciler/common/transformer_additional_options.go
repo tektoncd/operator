@@ -18,6 +18,7 @@ package common
 
 import (
 	"context"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -361,7 +362,6 @@ func (ot *OptionsTransformer) updateContainers(targetContainers, containersOptio
 			if containerOptions.Name != targetContainer.Name {
 				continue
 			}
-
 			containerFound = true
 
 			// update resource requirements
@@ -407,21 +407,97 @@ func (ot *OptionsTransformer) updateContainers(targetContainers, containersOptio
 				targetContainers[containerIndex].VolumeMounts = volumeMounts
 			}
 
-			// update arguments
-			// currently arguments are only appending with existing args
-			// NOTE: This action may cause duplication of arguments
-			targetContainers[containerIndex].Args = append(targetContainers[containerIndex].Args, containerOptions.Args...)
-
+			// update arguments: replace by key, support pair-form, preserve existing style, avoid duplicates
+			if len(containerOptions.Args) > 0 {
+				existing := targetContainers[containerIndex].Args
+				keyIndex := make(map[string]int)
+				seenExact := make(map[string]bool)
+				// index existing args by key; track pair-style positions
+				for i := 0; i < len(existing); i++ {
+					a := existing[i]
+					seenExact[a] = true
+					if !strings.HasPrefix(a, "-") {
+						continue
+					}
+					if eq := strings.Index(a, "="); eq > 0 {
+						keyIndex[a[:eq]] = i
+						continue
+					}
+					// pair-style key then value
+					if i+1 < len(existing) && !strings.HasPrefix(existing[i+1], "-") {
+						keyIndex[a] = i
+					}
+				}
+				// merge options
+				for i := 0; i < len(containerOptions.Args); {
+					a := containerOptions.Args[i]
+					if strings.HasPrefix(a, "-") {
+						// key=value from options
+						if strings.Contains(a, "=") {
+							k := a[:strings.Index(a, "=")]
+							if pos, ok := keyIndex[k]; ok {
+								// preserve existing style
+								if existing[pos] == k {
+									val := a[strings.Index(a, "=")+1:]
+									if pos+1 < len(existing) && !strings.HasPrefix(existing[pos+1], "-") {
+										existing[pos+1] = val
+									} else {
+										existing = append(existing[:pos+1], append([]string{val}, existing[pos+1:]...)...)
+									}
+								} else {
+									existing[pos] = a
+								}
+							} else {
+								keyIndex[k] = len(existing)
+								existing = append(existing, a)
+							}
+							i++
+							continue
+						}
+						// pair-style from options: key then value
+						if i+1 < len(containerOptions.Args) && !strings.HasPrefix(containerOptions.Args[i+1], "-") {
+							k, val := a, containerOptions.Args[i+1]
+							if pos, ok := keyIndex[k]; ok {
+								if existing[pos] == k {
+									if pos+1 < len(existing) && !strings.HasPrefix(existing[pos+1], "-") {
+										existing[pos+1] = val
+									} else {
+										existing = append(existing[:pos+1], append([]string{val}, existing[pos+1:]...)...)
+									}
+								} else {
+									existing[pos] = k + "=" + val
+								}
+							} else {
+								keyIndex[k] = len(existing)
+								existing = append(existing, k, val)
+							}
+							i += 2
+							continue
+						}
+						// standalone flag: exact dedupe
+						if !seenExact[a] {
+							seenExact[a] = true
+							existing = append(existing, a)
+						}
+						i++
+						continue
+					}
+					// non-flag token: exact-string dedupe
+					if !seenExact[a] {
+						seenExact[a] = true
+						existing = append(existing, a)
+					}
+					i++
+				}
+				targetContainers[containerIndex].Args = existing
+			}
 		}
-
 		// add the new container from the options list
 		if !containerFound {
 			containersToAdd = append(containersToAdd, containerOptions)
 		}
 	}
-
 	targetContainers = append(targetContainers, containersToAdd...)
-
 	return targetContainers
 }
 
