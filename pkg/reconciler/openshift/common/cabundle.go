@@ -49,9 +49,10 @@ func ApplyCABundlesToDeployment(u *unstructured.Unstructured) error {
 	// Let's add the trusted and service CA bundle ConfigMaps as a volume in
 	// the PodSpec which will later be mounted to add certs in the pod.
 	deployment.Spec.Template.Spec.Volumes = common.AddCABundleConfigMapsToVolumes(deployment.Spec.Template.Spec.Volumes)
-	deployment.Spec.Template.Spec.Volumes = append(
+	deployment.Spec.Template.Spec.Volumes = common.AddOrReplaceInList(
 		deployment.Spec.Template.Spec.Volumes,
 		common.NewVolumeWithConfigMap(systemCAVolume, common.TrustedCAConfigMapName, common.TrustedCAKey, systemCAKey),
+		func(v corev1.Volume) string { return v.Name },
 	)
 
 	// Now that the injected certificates have been added as a volume, let's
@@ -109,9 +110,10 @@ func ApplyCABundlesForStatefulSet(name string) func(u *unstructured.Unstructured
 		// Let's add the trusted and service CA bundle ConfigMaps as a volume in
 		// the PodSpec which will later be mounted to add certs in the pod.
 		sts.Spec.Template.Spec.Volumes = common.AddCABundleConfigMapsToVolumes(sts.Spec.Template.Spec.Volumes)
-		sts.Spec.Template.Spec.Volumes = append(
+		sts.Spec.Template.Spec.Volumes = common.AddOrReplaceInList(
 			sts.Spec.Template.Spec.Volumes,
 			common.NewVolumeWithConfigMap(systemCAVolume, common.TrustedCAConfigMapName, common.TrustedCAKey, systemCAKey),
+			func(v corev1.Volume) string { return v.Name },
 		)
 
 		// Now that the injected certificates have been added as a volume, let's
@@ -154,11 +156,15 @@ func ApplyCABundlesForStatefulSet(name string) func(u *unstructured.Unstructured
 //
 //	https://github.com/openshift/openshift-docs/blob/a8269cf65696fbd08647c8f3b5d065d53a8a1f52/modules/certificate-injection-using-operators.adoc
 func addCABundlesToContainerSystemCAStore(container *corev1.Container) {
-	container.VolumeMounts = append(container.VolumeMounts,
-		corev1.VolumeMount{
-			Name:      systemCAVolume,
-			MountPath: systemCADir,
-			ReadOnly:  true,
-		})
+	newMount := corev1.VolumeMount{
+		Name:      systemCAVolume,
+		MountPath: systemCADir,
+		ReadOnly:  true,
+	}
 
+	container.VolumeMounts = common.AddOrReplaceInList(
+		container.VolumeMounts,
+		newMount,
+		func(v corev1.VolumeMount) string { return v.Name },
+	)
 }
