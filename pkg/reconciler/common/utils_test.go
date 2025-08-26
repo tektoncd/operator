@@ -175,3 +175,67 @@ func TestSerializeLabelsToJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestAddOrReplaceInList(t *testing.T) {
+	type complexStruct struct {
+		Key   string
+		Value int
+	}
+	tests := []struct {
+		name           string
+		inputList      []any
+		newItem        any
+		identityFunc   func(any) any
+		expectedOutput []any
+	}{
+		{
+			name:           "add to empty list",
+			inputList:      []any{},
+			newItem:        "new item",
+			identityFunc:   func(i any) any { return i },
+			expectedOutput: []any{"new item"},
+		},
+		{
+			name:           "append to list",
+			inputList:      []any{"old item"},
+			newItem:        "new item",
+			identityFunc:   func(i any) any { return i },
+			expectedOutput: []any{"old item", "new item"},
+		},
+		{
+			name:           "replace only item in list",
+			inputList:      []any{"new item"},
+			newItem:        "new item",
+			identityFunc:   func(i any) any { return i },
+			expectedOutput: []any{"new item"},
+		},
+		{
+			name:           "replace previous item in list",
+			inputList:      []any{"other1", "target", "other2"},
+			newItem:        "target",
+			identityFunc:   func(i any) any { return i },
+			expectedOutput: []any{"other1", "other2", "target"},
+		},
+		{
+			name:           "complex identity func",
+			inputList:      []any{complexStruct{Key: "foo", Value: 123}, complexStruct{Key: "bar", Value: 456}},
+			newItem:        complexStruct{Key: "foo", Value: 789},
+			identityFunc:   func(i any) any { return i.(complexStruct).Key },
+			expectedOutput: []any{complexStruct{Key: "bar", Value: 456}, complexStruct{Key: "foo", Value: 789}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualOutput := AddOrReplaceInList(tt.inputList, tt.newItem, tt.identityFunc)
+
+			assert.Equal(t, len(actualOutput), len(tt.expectedOutput))
+
+			for i := range len(actualOutput) {
+				actual := tt.identityFunc(actualOutput[i])
+				expected := tt.identityFunc(tt.expectedOutput[i])
+				assert.Equal(t, actual, expected, "expected item %d in output to be %q but got %q", i, expected, actual)
+			}
+
+		})
+	}
+}
