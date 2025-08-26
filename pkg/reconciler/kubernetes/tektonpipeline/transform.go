@@ -67,7 +67,8 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		// still keeping types to maintain the API compatibility
 		pipeline.Spec.Pipeline.EnableTektonOciBundles = nil
 
-		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
+		images := common.ImageRegistryDomainOverride(imagesRaw)
 		instance := comp.(*v1alpha1.TektonPipeline)
 		// adding extension's transformers first to run them before `extra` transformers
 		trns := extension.Transformers(instance)

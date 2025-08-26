@@ -28,7 +28,9 @@ import (
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		prunerCR := comp.(*v1alpha1.TektonPruner)
-		prunerImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PrunerImagePrefix))
+
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PrunerImagePrefix))
+		prunerImages := common.ImageRegistryDomainOverride(imagesRaw)
 		extra := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.TektonPrunerResourceName),
 			common.DeploymentImages(prunerImages),
