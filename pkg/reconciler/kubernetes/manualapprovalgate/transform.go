@@ -28,7 +28,8 @@ import (
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		magCR := comp.(*v1alpha1.ManualApprovalGate)
-		magImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ManualApprovalGatePrefix))
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ManualApprovalGatePrefix))
+		magImages := common.ImageRegistryDomainOverride(imagesRaw)
 		extra := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.ManualApprovalGates),
 			common.DeploymentImages(magImages),

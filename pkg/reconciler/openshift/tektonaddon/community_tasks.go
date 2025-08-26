@@ -56,7 +56,8 @@ func (r *Reconciler) EnsureCommunityResolverTask(ctx context.Context, enable str
 func filterAndTransformCommunityResolverTask() client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		instance := comp.(*v1alpha1.TektonAddon)
-		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+		addonImages := common.ImageRegistryDomainOverride(imagesRaw)
 
 		extra := []mf.Transformer{
 			injectLabel(labelProviderType, providerTypeCommunity, overwrite, "Task"),

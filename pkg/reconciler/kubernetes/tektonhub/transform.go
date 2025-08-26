@@ -31,7 +31,9 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		logger := logging.FromContext(ctx)
 		hubCR := comp.(*v1alpha1.TektonHub)
 
-		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.HubImagePrefix))
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.HubImagePrefix))
+		images := common.ImageRegistryDomainOverride(imagesRaw)
+
 		trans := extension.Transformers(hubCR)
 		extra := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdHub),

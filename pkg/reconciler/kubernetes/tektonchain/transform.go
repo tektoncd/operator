@@ -38,7 +38,8 @@ const (
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		chainCR := comp.(*v1alpha1.TektonChain)
-		chainImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ChainsImagePrefix))
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ChainsImagePrefix))
+		chainImages := common.ImageRegistryDomainOverride(imagesRaw)
 		extra := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdChains),
 			common.DeploymentImages(chainImages),
