@@ -18,6 +18,7 @@ package common
 
 import (
 	"context"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -361,7 +362,6 @@ func (ot *OptionsTransformer) updateContainers(targetContainers, containersOptio
 			if containerOptions.Name != targetContainer.Name {
 				continue
 			}
-
 			containerFound = true
 
 			// update resource requirements
@@ -407,21 +407,44 @@ func (ot *OptionsTransformer) updateContainers(targetContainers, containersOptio
 				targetContainers[containerIndex].VolumeMounts = volumeMounts
 			}
 
-			// update arguments
-			// currently arguments are only appending with existing args
-			// NOTE: This action may cause duplication of arguments
-			targetContainers[containerIndex].Args = append(targetContainers[containerIndex].Args, containerOptions.Args...)
-
+			// update arguments: replace key=value flags by key; dedupe exact for others
+			if len(containerOptions.Args) > 0 {
+				existing := targetContainers[containerIndex].Args
+				keyIndex := make(map[string]int)
+				seenExact := make(map[string]bool)
+				for i, a := range existing {
+					seenExact[a] = true
+					if strings.HasPrefix(a, "-") {
+						if eq := strings.Index(a, "="); eq > 0 {
+							keyIndex[a[:eq]] = i
+						}
+					}
+				}
+				for _, a := range containerOptions.Args {
+					if strings.HasPrefix(a, "-") && strings.Contains(a, "=") {
+						k := a[:strings.Index(a, "=")]
+						if pos, ok := keyIndex[k]; ok {
+							existing[pos] = a
+						} else {
+							keyIndex[k] = len(existing)
+							existing = append(existing, a)
+						}
+						continue
+					}
+					if !seenExact[a] {
+						seenExact[a] = true
+						existing = append(existing, a)
+					}
+				}
+				targetContainers[containerIndex].Args = existing
+			}
 		}
-
 		// add the new container from the options list
 		if !containerFound {
 			containersToAdd = append(containersToAdd, containerOptions)
 		}
 	}
-
 	targetContainers = append(targetContainers, containersToAdd...)
-
 	return targetContainers
 }
 

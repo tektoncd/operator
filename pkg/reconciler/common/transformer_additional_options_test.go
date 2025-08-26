@@ -773,6 +773,35 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			inputFilename:          "./testdata/test-additional-options-base-runtimeclassname-statefulset.yaml",
 			expectedResultFilename: "./testdata/test-additional-options-test-runtimeclassname-statefulset-add-initcontainer.yaml",
 		},
+		{
+			name: "args-dedup-and-replace",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Template: corev1.PodTemplateSpec{
+								Spec: corev1.PodSpec{
+									Containers: []corev1.Container{
+										{
+											Name: "tekton-pipelines-controller",
+											Args: []string{
+												"--disable-ha=true",
+												"-el-security-context=true",
+												"--new-flag",
+												"--new-flag",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-args-dedup-and-replace.yaml",
+		},
 	}
 
 	for _, tc := range tcs {
