@@ -10,7 +10,9 @@ When we have our cluster on a air gap or proxy environment,
 we need to copy the actual images into our custom registry and update image details via environment variables on the operator deployment under the container `tekton-operator-lifecycle` as follows,
 This will allow us to use images from our custom registry.
 
-##### Sample: images as environment variable in operator deployment
+## Rewrite image registry 
+
+We can rewrite the actual registry `ghcr.io` of all images by simply set the environment variable `TEKTON_REGISTRY_OVERRIDE` ad follow:
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -23,8 +25,17 @@ spec:
       containers:
         - name: tekton-operator-lifecycle
           env:
-            - name: IMAGE_DASHBOARD_TEKTON_DASHBOARD
-              value: custom-example.com/tektoncd/dashboard:v0.48.0
+            - name: TEKTON_REGISTRY_OVERRIDE
+              value: my-internal-registry.io/my-tekton-folder
+```
+
+## Rewrite image one by one
+
+We can also rewrite images one by one using the following:
+
+##### Sample: images as environment variable in operator deployment
+```yaml
+example.com/tektoncd/dashboard:v0.48.0
             - name: IMAGE_JOB_PRUNER_TKN
               value: custom-example.com/tektoncd/tkn:v0.31.0
 ```
