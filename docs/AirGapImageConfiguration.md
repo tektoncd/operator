@@ -12,6 +12,11 @@ This will allow us to use images from our custom registry.
 
 ## Rewrite image registry 
 
+You can rewrite the registry host of all images managed by the operator by setting the `TEKTON_REGISTRY_OVERRIDE` environment variable on the tekton-operator-lifecycle container. This keeps the original repository path and tag/digest, and only changes the registry host.
+
+If not set, no change is applied (default behavior).
+
+
 We can rewrite the actual registry `ghcr.io` of all images by simply set the environment variable `TEKTON_REGISTRY_OVERRIDE` ad follow:
 ```yaml
 apiVersion: apps/v1
@@ -25,9 +30,18 @@ spec:
       containers:
         - name: tekton-operator-lifecycle
           env:
+            # Optional: globally rewrite registry host for all images
             - name: TEKTON_REGISTRY_OVERRIDE
               value: my-internal-registry.io/my-tekton-folder
+            # You can still specify per-image values; their registry host will be rewritten to the override above
+            - name: IMAGE_DASHBOARD_TEKTON_DASHBOARD
+              value: ghcr.io/tektoncd/dashboard:v0.48.0
 ```
+Behavior and precedence:
+
+- If `TEKTON_REGISTRY_OVERRIDE` is unset, images are taken from per-image env vars (if set) or from the shipped defaults.
+- If `TEKTON_REGISTRY_OVERRIDE` is set, the operator rewrites the registry host for all resolved images (from per-image env vars and defaults). The repository path and tag/digest are preserved.
+- There is currently no per-image opt-out when the global override is set. To exempt specific images, do not set `TEKTON_REGISTRY_OVERRIDE` and rely solely on per-image env vars.
 
 ## Rewrite image one by one
 
