@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    networkoperator.openshift.io/ignore-errors: ""
+  labels:
+    name: openshift-pipelines-operator
+  name: openshift-pipelines-operator-monitor
+spec:
+  endpoints:
+  - interval: 10s
+    port: http-metrics
+  jobLabel: name
+  namespaceSelector:
+    matchNames:
+    - openshift-operators
+  selector:
+    matchLabels:
+      name: openshift-pipelines-operator
