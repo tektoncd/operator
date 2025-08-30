@@ -5,14 +5,14 @@ metadata:
   labels:
     operator.tekton.dev/release: v0.77.0
     version: v0.77.0
-  name: tektontriggers.operator.tekton.dev
+  name: tektonpruners.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: TektonTrigger
-    listKind: TektonTriggerList
-    plural: tektontriggers
-    singular: tektontrigger
+    kind: TektonPruner
+    listKind: TektonPrunerList
+    plural: tektonpruners
+    singular: tektonpruner
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -28,7 +28,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Schema for the tektontriggers API
+        description: Schema for the tektonpruners API
         type: object
         x-kubernetes-preserve-unknown-fields: true
     served: true
