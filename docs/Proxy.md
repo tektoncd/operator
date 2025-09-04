@@ -56,3 +56,7 @@ operator.tekton.dev/disable-proxy: true
 #### Support for certificates for HTTPS proxy
 
 TBD
+
+### Global opt-out option
+If your cluster does not require proxy settings or CA bundle injection for Tekton TaskRun pods, you can disable the proxy webhook cluster-wide by setting the `DISABLE_PROXY_WEBHOOK` environment variable on the operator controller deployment to `true`.
+When enabled, the operator will not deploy the proxy webhook manifests and no proxy injection will occur.
