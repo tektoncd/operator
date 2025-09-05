@@ -41,3 +41,22 @@ subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: Group
   name: system:authenticated
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: tekton-results-api
+  namespace: openshift-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-results-api
+    app.kubernetes.io/part-of: tekton-results
+    app.kubernetes.io/component: api
+spec:
+  to:
+    kind: Service
+    name: tekton-results-api-service
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

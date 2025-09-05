@@ -277,6 +277,13 @@ rules:
   - update
   - watch
 - apiGroups:
+  - route.openshift.io
+  resources:
+  - routes/custom-host
+  verbs:
+  - create
+  - update
+- apiGroups:
   - coordination.k8s.io
   resources:
   - leases
