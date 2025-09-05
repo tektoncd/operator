@@ -42,6 +42,7 @@ const (
 	logsRBACYamlDirectory   = "static/tekton-results/logs-rbac"
 	deploymentAPI           = "tekton-results-api"
 	serviceAPI              = "tekton-results-api-service"
+	routeAPI                = "tekton-results-api"
 	secretAPITLS            = "tekton-results-tls"
 	apiContainerName        = "api"
 	boundSAVolume           = "bound-sa-token"
@@ -130,8 +131,14 @@ func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekt
 }
 
 func (oe openshiftExtension) PostReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
-	mf := *oe.routeManifest
-	return oe.installerSetClient.PostSet(ctx, tc, &mf, filterAndTransform())
+	manifest := *oe.routeManifest
+
+	result := tc.(*v1alpha1.TektonResult)
+	if !isEnableRoute(result) {
+		manifest = manifest.Filter(mf.Not(mf.ByKind("Route")))
+	}
+
+	return oe.installerSetClient.PostSet(ctx, tc, &manifest, filterAndTransform())
 }
 
 func (oe openshiftExtension) Finalize(ctx context.Context, tc v1alpha1.TektonComponent) error {
@@ -176,6 +183,7 @@ func getloggingRBACManifest() (*mf.Manifest, error) {
 func filterAndTransform() client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		resultImgs := common.ToLowerCaseKeys(common.ImagesFromEnv(common.ResultsImagePrefix))
+		instance := comp.(*v1alpha1.TektonResult)
 
 		extra := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.OperandTektoncdResults),
@@ -183,6 +191,7 @@ func filterAndTransform() client.FilterAndTransform {
 			common.AddStatefulSetRestrictedPSA(),
 			common.DeploymentImages(resultImgs),
 			common.StatefulSetImages(resultImgs),
+			injectResultsAPIRoute(instance.Spec.ResultsAPIProperties),
 		}
 
 		if err := common.Transform(ctx, manifest, comp, extra...); err != nil {
@@ -350,6 +359,47 @@ func injectLokiStackTLSCACert(prop v1alpha1.LokiStackProperties) mf.Transformer 
 			return err
 		}
 		u.SetUnstructuredContent(uObj)
+		return nil
+	}
+}
+
+// isEnableRoute determines if route should be enabled for results API
+func isEnableRoute(result *v1alpha1.TektonResult) bool {
+	// Default to false if not explicitly set
+	if result.Spec.RouteEnabled == nil {
+		return false
+	}
+	return *result.Spec.RouteEnabled
+}
+
+// injectResultsAPIRoute adds ResultSpec route properties to Results route
+func injectResultsAPIRoute(props v1alpha1.ResultsAPIProperties) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Route" || u.GetName() != routeAPI {
+			return nil
+		}
+
+		// Apply custom host if specified
+		if props.RouteHost != "" {
+			if err := unstructured.SetNestedField(u.Object, props.RouteHost, "spec", "host"); err != nil {
+				return err
+			}
+		}
+
+		// Apply custom path if specified
+		if props.RoutePath != "" {
+			if err := unstructured.SetNestedField(u.Object, props.RoutePath, "spec", "path"); err != nil {
+				return err
+			}
+		}
+
+		// Apply custom TLS termination if specified
+		if props.RouteTLSTermination != "" {
+			if err := unstructured.SetNestedField(u.Object, props.RouteTLSTermination, "spec", "tls", "termination"); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	}
 }

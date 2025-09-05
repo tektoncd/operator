@@ -21,7 +21,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/tektoncd/pipeline/test/diff"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 )
 
 func TestTektonResult_SetDefaults(t *testing.T) {
@@ -75,5 +77,26 @@ func TestTektonResult_SetDefaults(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func TestResult_SetDefaultsRoutes(t *testing.T) {
+	r := &Result{
+		ResultsAPIProperties: ResultsAPIProperties{
+			RouteEnabled: ptr.Bool(true),
+		},
+	}
+
+	want := &Result{
+		ResultsAPIProperties: ResultsAPIProperties{
+			RouteEnabled:        ptr.Bool(true),
+			RouteTLSTermination: "edge",
+		},
+	}
+
+	r.setDefaults()
+
+	if d := cmp.Diff(want, r); d != "" {
+		t.Errorf("failed to set defaults %s", diff.PrintWantGot(d))
 	}
 }

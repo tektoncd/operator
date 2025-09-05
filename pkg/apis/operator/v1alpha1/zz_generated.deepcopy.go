@@ -1295,6 +1295,11 @@ func (in *ResultsAPIProperties) DeepCopyInto(out *ResultsAPIProperties) {
 		*out = new(uint)
 		**out = **in
 	}
+	if in.RouteEnabled != nil {
+		in, out := &in.RouteEnabled, &out.RouteEnabled
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
