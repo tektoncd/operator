@@ -88,7 +88,7 @@ spec:
         - name: CONFIG_LEADERELECTION_NAME
           value: tekton-operator-controller-config-leader-election
         - name: IMAGE_HUB_TEKTON_HUB_DB
-          value: registry.redhat.io/rhel9/postgresql-13@sha256:36647bd6d50d2e0e9c99ecf190bd515577c7ce9476e49d927c4d4065011e3441
+          value: registry.redhat.io/rhel9/postgresql-16@sha256:6a6bde62273e318b6bc2ee75fa368abf71f71dc1c37f85f1230649f595fde951
         - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
           value: registry.redhat.io/rhel9/buildah@sha256:a6e04c061b8d261dba85d01dcb64d3f7dba8c0b9765e03f05ec79850a248d75a
         - name: IMAGE_ADDONS_PARAM_KN_IMAGE
