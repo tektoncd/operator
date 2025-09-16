@@ -227,10 +227,10 @@ func updateAdditionControllerConfigMap(config v1alpha1.AdditionalPACControllerCo
 
 		defaultPacSettings := pacSettings.DefaultSettings()
 		err := pacSettings.SyncConfig(zap.NewNop().Sugar(), &defaultPacSettings, config.Settings, pacSettings.DefaultValidators())
-		config.Settings = pacSettings.ConvertPacStructToConfigMap(&defaultPacSettings)
 		if err != nil {
 			return err
 		}
+		config.Settings = v1alpha1.ConvertPacStructToConfigMap(&defaultPacSettings)
 
 		cm := &corev1.ConfigMap{}
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)

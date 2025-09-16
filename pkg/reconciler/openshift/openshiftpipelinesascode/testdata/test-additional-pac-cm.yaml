@@ -29,9 +29,6 @@ data:
   # Tekton HUB API urls
   hub-url: "https://api.hub.tekton.dev/v1"
 
-  # Tekton HUB catalog name
-  hub-catalog-name: "tekton"
-
   # Additional Hub Catalogs is supported, for example:
   #
   # catalog-1-id: anotherhub
