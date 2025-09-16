@@ -178,6 +178,7 @@ func TestUpdateAdditionControllerConfigMap(t *testing.T) {
 	if err != nil {
 		assert.NilError(t, err)
 	}
+
 	assert.NilError(t, err)
 
 	if d := cmp.Diff(cm, expectedCM); d != "" {

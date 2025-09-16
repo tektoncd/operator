@@ -8,16 +8,20 @@ import (
 	"sync"
 
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/configutil"
+	hubType "github.com/openshift-pipelines/pipelines-as-code/pkg/hub/vars"
 	"go.uber.org/zap"
 )
 
 const (
 	PACApplicationNameDefaultValue = "Pipelines as Code CI"
 
-	HubURLKey                  = "hub-url"
-	HubCatalogNameKey          = "hub-catalog-name"
-	HubURLDefaultValue         = "https://api.hub.tekton.dev/v1"
-	HubCatalogNameDefaultValue = "tekton"
+	HubURLKey                          = "hub-url"
+	HubCatalogNameKey                  = "hub-catalog-name"
+	HubCatalogTypeKey                  = "hub-catalog-type"
+	TektonHubURLDefaultValue           = "https://api.hub.tekton.dev/v1"
+	TektonHubCatalogNameDefaultValue   = "tekton"
+	ArtifactHubCatalogNameDefaultValue = "artifacthub"
+	ArtifactHubURLDefaultValue         = "https://artifacthub.io/api/v1"
 
 	CustomConsoleNameKey         = "custom-console-name"
 	CustomConsoleURLKey          = "custom-console-url"
@@ -38,21 +42,23 @@ type HubCatalog struct {
 	Index string
 	Name  string
 	URL   string
+	Type  string
 }
 
 // if there is a change performed on the default value,
 // update the same on "config/302-pac-configmap.yaml".
 type Settings struct {
-	ApplicationName                    string `default:"Pipelines as Code CI" json:"application-name"`
-	HubCatalogs                        *sync.Map
-	RemoteTasks                        bool   `default:"true"                                json:"remote-tasks"`
-	MaxKeepRunsUpperLimit              int    `json:"max-keep-run-upper-limit"`
-	DefaultMaxKeepRuns                 int    `json:"default-max-keep-runs"`
-	BitbucketCloudCheckSourceIP        bool   `default:"true"                                json:"bitbucket-cloud-check-source-ip"`
-	BitbucketCloudAdditionalSourceIP   string `json:"bitbucket-cloud-additional-source-ip"`
-	TektonDashboardURL                 string `json:"tekton-dashboard-url"`
-	AutoConfigureNewGitHubRepo         bool   `default:"false"                               json:"auto-configure-new-github-repo"`
-	AutoConfigureRepoNamespaceTemplate string `json:"auto-configure-repo-namespace-template"`
+	ApplicationName                     string `default:"Pipelines as Code CI" json:"application-name"`
+	HubCatalogs                         *sync.Map
+	RemoteTasks                         bool   `default:"true"                                 json:"remote-tasks"`
+	MaxKeepRunsUpperLimit               int    `json:"max-keep-run-upper-limit"`
+	DefaultMaxKeepRuns                  int    `json:"default-max-keep-runs"`
+	BitbucketCloudCheckSourceIP         bool   `default:"true"                                 json:"bitbucket-cloud-check-source-ip"`
+	BitbucketCloudAdditionalSourceIP    string `json:"bitbucket-cloud-additional-source-ip"`
+	TektonDashboardURL                  string `json:"tekton-dashboard-url"`
+	AutoConfigureNewGitHubRepo          bool   `default:"false"                                json:"auto-configure-new-github-repo"`
+	AutoConfigureRepoNamespaceTemplate  string `json:"auto-configure-repo-namespace-template"`
+	AutoConfigureRepoRepositoryTemplate string `json:"auto-configure-repo-repository-template"`
 
 	SecretAutoCreation               bool   `default:"true"                             json:"secret-auto-create"`
 	SecretGHAppRepoScoped            bool   `default:"true"                             json:"secret-github-app-token-scoped"`
@@ -86,8 +92,8 @@ func DefaultSettings() Settings {
 	hubCatalog := &sync.Map{}
 	hubCatalog.Store("default", HubCatalog{
 		Index: "default",
-		Name:  HubCatalogNameDefaultValue,
-		URL:   HubURLDefaultValue,
+		URL:   ArtifactHubURLDefaultValue,
+		Type:  hubType.ArtifactHubType,
 	})
 	newSettings.HubCatalogs = hubCatalog
 

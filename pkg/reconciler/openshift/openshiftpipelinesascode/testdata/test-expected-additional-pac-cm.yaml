@@ -29,8 +29,8 @@ data:
   # Tekton HUB API urls
   hub-url: "https://custom-hub.com"
 
-  # Tekton HUB catalog name
-  hub-catalog-name: "tekton"
+  # Tekton HUB catalog type
+  hub-catalog-type: "artifacthub"
 
   # Additional Hub Catalogs is supported, for example:
   #
@@ -43,6 +43,9 @@ data:
   # pipelinesascode.tekton.dev/task: "anotherhub://task"
   #
   # Increase the number of the catalog to add more of them
+  catalog-tektonhub-id: "tektonhub"
+  catalog-tektonhub-name: "tekton"
+  catalog-tektonhub-url: "https://api.hub.tekton.dev/v1"
 
   # Allow fetching remote tasks
   remote-tasks: "true"
@@ -115,6 +118,9 @@ data:
   # `{{repo_owner}}-{{repo_name}}-ci`, then namespace generated for repository
   # https://github.com/owner/repo will be `owner-repo-ci`
   auto-configure-repo-namespace-template: ""
+
+  # add a template to generate repository name for your auto configured repo
+  auto-configure-repo-repository-template: ""
 
   # Enable or disable the feature to rerun the CI if push event happens on
   # a pull request

@@ -12,7 +12,7 @@ require (
 	github.com/manifestival/client-go-client v0.6.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
-	github.com/openshift-pipelines/pipelines-as-code v0.36.0
+	github.com/openshift-pipelines/pipelines-as-code v0.37.0
 	github.com/openshift-pipelines/tektoncd-pruner v0.0.0-20250711075231-9c8624123820
 	github.com/openshift/api v0.0.0-20240521185306-0314f31e7774
 	github.com/openshift/apiserver-library-go v0.0.0-20230816171015-6bfafa975bfb
@@ -33,10 +33,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
 	k8s.io/api v0.33.1
-	k8s.io/apiextensions-apiserver v0.32.8
-	k8s.io/apimachinery v0.33.1
+	k8s.io/apiextensions-apiserver v0.32.9
+	k8s.io/apimachinery v0.33.3
 	k8s.io/client-go v1.5.2
-	k8s.io/code-generator v0.32.8
+	k8s.io/code-generator v0.32.9
 	knative.dev/pkg v0.0.0-20250424013628-d5e74d29daa3
 	sigs.k8s.io/yaml v1.6.0
 )
