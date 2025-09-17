@@ -50,6 +50,17 @@ func (set *PACSettings) setPACDefaults(logger *zap.SugaredLogger) {
 	if err != nil {
 		logger.Error("error on applying default PAC settings", err)
 	}
+	
+	// Remove tektonhub catalog to only keep artifacthub
+	defaultPacSettings.HubCatalogs.Delete("tektonhub")
+	
+	// Override the default ArtifactHub URL to use https://artifacthub.io instead of https://artifacthub.io/api/v1
+	if defaultCatalog, ok := defaultPacSettings.HubCatalogs.Load("default"); ok {
+		catalog := defaultCatalog.(pacSettings.HubCatalog)
+		catalog.URL = "https://artifacthub.io"
+		defaultPacSettings.HubCatalogs.Store("default", catalog)
+	}
+	
 	set.Settings = ConvertPacStructToConfigMap(&defaultPacSettings)
 	setAdditionalPACControllerDefault(set.AdditionalPACControllers)
 }
@@ -109,6 +120,7 @@ func ConvertPacStructToConfigMap(settings *pacSettings.Settings) map[string]stri
 					if key == "default" {
 						config[pacSettings.HubURLKey] = catalogData.URL
 						config[pacSettings.HubCatalogNameKey] = catalogData.Name
+						config[pacSettings.HubCatalogTypeKey] = catalogData.Type
 						return true
 					}
 					config[fmt.Sprintf("%s-%s-%s", "catalog", catalogData.Index, "id")] = key.(string)
