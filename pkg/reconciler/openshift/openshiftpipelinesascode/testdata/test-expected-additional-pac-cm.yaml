@@ -29,9 +29,6 @@ data:
   # Tekton HUB API urls
   hub-url: "https://custom-hub.com"
 
-  # Tekton HUB catalog name
-  hub-catalog-name: ""
-
   # Tekton HUB catalog type
   hub-catalog-type: "artifacthub"
 
