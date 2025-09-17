@@ -32,6 +32,9 @@ data:
   # Tekton HUB catalog name
   hub-catalog-name: ""
 
+  # Tekton HUB catalog type
+  hub-catalog-type: "artifacthub"
+
   # Additional Hub Catalogs is supported, for example:
   #
   # catalog-1-id: anotherhub
