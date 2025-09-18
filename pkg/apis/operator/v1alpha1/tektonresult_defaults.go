@@ -29,5 +29,14 @@ func (tp *TektonResult) SetDefaults(ctx context.Context) {
 
 // Sets default values of Result
 func (c *Result) setDefaults() {
-	// TODO: Set the other default values for Result
+	// Set default values for route configuration
+	if c.RouteEnabled == nil {
+		// Default to true for OpenShift platforms to automatically create routes
+		enabled := IsOpenShiftPlatform()
+		c.RouteEnabled = &enabled
+	}
+
+	if c.RouteTLSTermination == "" {
+		c.RouteTLSTermination = "edge"
+	}
 }
