@@ -151,3 +151,69 @@ func preUpgradeTektonPruner(ctx context.Context, logger *zap.SugaredLogger, k8sC
 	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
 	return err
 }
+
+// preUpgradePipelinesAsCodeArtifacts checks if Pipelines as Code is installed and updates
+// the hub catalog settings to use the artifact hub URL
+func preUpgradePipelinesAsCodeArtifacts(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	// Only run on OpenShift platform
+	if !v1alpha1.IsOpenShiftPlatform() {
+		logger.Infof("Not on OpenShift platform, skipping Pipelines as Code artifact upgrade")
+		return nil
+	}
+
+	// Get TektonConfig CR
+	logger.Infof("Performing preupgrade for Pipelines as Code artifact settings")
+	tc, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			logger.Infof("TektonConfig CR not found, skipping Pipelines as Code artifact upgrade")
+			return nil
+		}
+		logger.Errorw("error on getting TektonConfig CR", err)
+		return err
+	}
+
+	// Check if Pipelines as Code is enabled
+	if tc.Spec.Platforms.OpenShift.PipelinesAsCode == nil ||
+		tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable == nil ||
+		!*tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable {
+		logger.Infof("Pipelines as Code is not enabled, skipping artifact upgrade")
+		return nil
+	}
+
+	// Initialize settings if nil
+	if tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings == nil {
+		tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings = make(map[string]string)
+	}
+
+	// Fetch PAC settings
+	settings := tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings
+
+	// Set hub-catalog-type to artifacthub if not already set or if it's set to tektonhub
+	if catalogType, exists := settings["hub-catalog-type"]; !exists || catalogType == "tektonhub" {
+		settings["hub-catalog-type"] = "artifacthub"
+		logger.Infof("Updated hub-catalog-type to artifacthub")
+	}
+
+	// Set hub-url to https://artifacthub.io if not already set or if it's set to the old API URL
+	if hubURL, exists := settings["hub-url"]; !exists || hubURL == "https://artifacthub.io/api/v1" || hubURL == "https://api.hub.tekton.dev/v1" {
+		settings["hub-url"] = "https://artifacthub.io"
+		logger.Infof("Updated hub-url to https://artifacthub.io")
+	}
+
+	// remove hub-catalog-name key from setting if found
+	if _, exists := settings["hub-catalog-name"]; exists {
+		delete(settings, "hub-catalog-name")
+		logger.Infof("Removed hub-catalog-name field")
+	}
+
+	// Update the TektonConfig CR
+	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Errorw("error updating TektonConfig CR with artifact settings", err)
+		return err
+	}
+
+	logger.Infof("Successfully updated Pipelines as Code artifact settings")
+	return nil
+}

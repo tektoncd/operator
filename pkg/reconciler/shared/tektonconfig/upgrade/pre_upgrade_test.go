@@ -193,3 +193,206 @@ func TestPreUpgradeTektonPruner(t *testing.T) {
 	assert.Equal(t, false, *tc.Spec.TektonPruner.Disabled)
 	assert.Equal(t, int32(88), *tc.Spec.TektonPruner.GlobalConfig.TTLSecondsAfterFinished)
 }
+
+func TestPreUpgradePipelinesAsCodeArtifacts(t *testing.T) {
+	t.Setenv("PLATFORM", "openshift")
+
+	tests := []struct {
+		name                   string
+		tc                     *v1alpha1.TektonConfig
+		expectedHubCatalogType string
+		expectedHubURL         string
+		shouldUpdate           bool
+	}{
+		{
+			name: "PAC enabled with no settings - should update",
+			tc: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: v1alpha1.ConfigResourceName,
+				},
+				Spec: v1alpha1.TektonConfigSpec{
+					Platforms: v1alpha1.Platforms{
+						OpenShift: v1alpha1.OpenShift{
+							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
+								Enable: ptr.Bool(true),
+							},
+						},
+					},
+				},
+			},
+			expectedHubCatalogType: "artifacthub",
+			expectedHubURL:         "https://artifacthub.io",
+			shouldUpdate:           true,
+		},
+		{
+			name: "PAC enabled with tektonhub settings - should update",
+			tc: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: v1alpha1.ConfigResourceName,
+				},
+				Spec: v1alpha1.TektonConfigSpec{
+					Platforms: v1alpha1.Platforms{
+						OpenShift: v1alpha1.OpenShift{
+							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
+								Enable: ptr.Bool(true),
+								PACSettings: v1alpha1.PACSettings{
+									Settings: map[string]string{
+										"hub-catalog-type": "tektonhub",
+										"hub-url":          "https://api.hub.tekton.dev/v1",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedHubCatalogType: "artifacthub",
+			expectedHubURL:         "https://artifacthub.io",
+			shouldUpdate:           true,
+		},
+		{
+			name: "PAC enabled with old artifacthub API URL - should update",
+			tc: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: v1alpha1.ConfigResourceName,
+				},
+				Spec: v1alpha1.TektonConfigSpec{
+					Platforms: v1alpha1.Platforms{
+						OpenShift: v1alpha1.OpenShift{
+							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
+								Enable: ptr.Bool(true),
+								PACSettings: v1alpha1.PACSettings{
+									Settings: map[string]string{
+										"hub-catalog-type": "artifacthub",
+										"hub-url":          "https://artifacthub.io/api/v1",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedHubCatalogType: "artifacthub",
+			expectedHubURL:         "https://artifacthub.io",
+			shouldUpdate:           true,
+		},
+		{
+			name: "PAC enabled with correct settings - should not update",
+			tc: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: v1alpha1.ConfigResourceName,
+				},
+				Spec: v1alpha1.TektonConfigSpec{
+					Platforms: v1alpha1.Platforms{
+						OpenShift: v1alpha1.OpenShift{
+							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
+								Enable: ptr.Bool(true),
+								PACSettings: v1alpha1.PACSettings{
+									Settings: map[string]string{
+										"hub-catalog-type": "artifacthub",
+										"hub-url":          "https://artifacthub.io",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedHubCatalogType: "artifacthub",
+			expectedHubURL:         "https://artifacthub.io",
+			shouldUpdate:           false,
+		},
+		{
+			name: "PAC enabled with hub-catalog-name - should update and remove hub-catalog-name",
+			tc: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: v1alpha1.ConfigResourceName,
+				},
+				Spec: v1alpha1.TektonConfigSpec{
+					Platforms: v1alpha1.Platforms{
+						OpenShift: v1alpha1.OpenShift{
+							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
+								Enable: ptr.Bool(true),
+								PACSettings: v1alpha1.PACSettings{
+									Settings: map[string]string{
+										"hub-catalog-type": "artifacthub",
+										"hub-url":          "https://artifacthub.io",
+										"hub-catalog-name": "tekton",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedHubCatalogType: "artifacthub",
+			expectedHubURL:         "https://artifacthub.io",
+			shouldUpdate:           true,
+		},
+		{
+			name: "PAC enabled with tektonhub and hub-catalog-name - should update all",
+			tc: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: v1alpha1.ConfigResourceName,
+				},
+				Spec: v1alpha1.TektonConfigSpec{
+					Platforms: v1alpha1.Platforms{
+						OpenShift: v1alpha1.OpenShift{
+							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
+								Enable: ptr.Bool(true),
+								PACSettings: v1alpha1.PACSettings{
+									Settings: map[string]string{
+										"hub-catalog-type": "tektonhub",
+										"hub-url":          "https://api.hub.tekton.dev/v1",
+										"hub-catalog-name": "tekton",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedHubCatalogType: "artifacthub",
+			expectedHubURL:         "https://artifacthub.io",
+			shouldUpdate:           true,
+		},
+	}
+
+	ctx := context.TODO()
+	logger := logging.FromContext(ctx).Named("unit-test")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			operatorClient := operatorFake.NewSimpleClientset()
+			k8sClient := k8sFake.NewSimpleClientset()
+
+			err := preUpgradePipelinesAsCodeArtifacts(ctx, logger, k8sClient, operatorClient, nil)
+			assert.NoError(t, err)
+
+			// create tektonConfig CR
+			if tt.tc != nil {
+				_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tt.tc, metav1.CreateOptions{})
+				assert.NoError(t, err)
+			}
+
+			// run the upgrade function
+			err = preUpgradePipelinesAsCodeArtifacts(ctx, logger, k8sClient, operatorClient, nil)
+			assert.NoError(t, err)
+
+			if tt.shouldUpdate {
+				tcData, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+				assert.NoError(t, err)
+				assert.NotNil(t, tcData.Spec.Platforms.OpenShift.PipelinesAsCode)
+				assert.NotNil(t, tcData.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings)
+
+				settings := tcData.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings
+				assert.Equal(t, tt.expectedHubCatalogType, settings["hub-catalog-type"])
+				assert.Equal(t, tt.expectedHubURL, settings["hub-url"])
+
+				// Verify that hub-catalog-name is removed if it existed in the original settings
+				_, hubCatalogNameExists := settings["hub-catalog-name"]
+				assert.False(t, hubCatalogNameExists, "hub-catalog-name should be removed from settings")
+			}
+		})
+	}
+}
