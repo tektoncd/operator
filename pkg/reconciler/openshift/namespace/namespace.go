@@ -263,6 +263,13 @@ func (ac *reconciler) reconcileValidatingWebhook(ctx context.Context, caCert []b
 				},
 			},
 		}
+		// Exclude system namespaces
+		webhook.Webhooks[i].MatchConditions = []admissionregistrationv1.MatchCondition{
+			{
+				Name:       "exclude-system-namespaces",
+				Expression: "!(object.metadata.name.startsWith('kube-') || object.metadata.name.startsWith('openshift-'))",
+			},
+		}
 
 		webhook.Webhooks[i].ClientConfig.CABundle = caCert
 		if webhook.Webhooks[i].ClientConfig.Service == nil {
