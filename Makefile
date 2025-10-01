@@ -58,7 +58,7 @@ clean-cluster: | $(KO) $(KUSTOMIZE) clean-cr; $(info $(M) clean $(TARGET)…) @ 
 		--recursive
 
 .PHONY: clean-manifest
-clean-manifest:
+clean-manifest: ## Cleanup manifest
 ifeq ($(TARGET), openshift)
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-pipeline
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-trigger
@@ -69,8 +69,8 @@ ifeq ($(TARGET), openshift)
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-pruner
 	rm -rf ./cmd/$(TARGET)/operator/kodata/pruner
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code
-	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/06-ecosystem/tasks
-	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/06-ecosystem/stepactions
+	find ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/06-ecosystem/tasks -type f ! -name "role.yaml" ! -name "rolebinding.yaml" -delete 
+	find ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/06-ecosystem/stepactions -type f ! -name "role.yaml" ! -name "rolebinding.yaml" -delete
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/go.yaml
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/java.yaml
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/nodejs.yaml
@@ -91,8 +91,6 @@ clean-bin:
 .PHONY: clean
 clean: clean-cluster clean-bin clean-manifest; $(info $(M) clean all) @ ## Cleanup everything
 
-.PHONY: clean-manifest
-clean-manifest: clean-manifest ## Cleanup manifest
 
 .PHONY: clean-cr
 clean-cr: | ; $(info $(M) clean CRs on $(TARGET)) @ ## Clean the CRs to the current cluster
