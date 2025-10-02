@@ -6,7 +6,7 @@ dashboard:
   version: v0.60.0
 hub:
   github: tektoncd/hub
-  version: v1.22.3
+  version: v1.22.4
 manual-approval-gate:
   github: openshift-pipelines/manual-approval-gate
   version: v0.7.0
@@ -15,7 +15,7 @@ pipeline:
   version: v1.3.2
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
-  version: v0.37.0
+  version: v0.37.1
 pruner:
   github: openshift-pipelines/tektoncd-pruner
   version: v0.2.0
