@@ -140,3 +140,19 @@ func WithRequestOptions(options ...RequestOptionFunc) ClientOptionFunc {
 		return nil
 	}
 }
+
+// WithUserAgent can be used to configure a custom user agent.
+func WithUserAgent(userAgent string) ClientOptionFunc {
+	return func(c *Client) error {
+		c.UserAgent = userAgent
+		return nil
+	}
+}
+
+// WithCookieJar can be used to configure a cookie jar.
+func WithCookieJar(jar http.CookieJar) ClientOptionFunc {
+	return func(c *Client) error {
+		c.jar = jar
+		return nil
+	}
+}
