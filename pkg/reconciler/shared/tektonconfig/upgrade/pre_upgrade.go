@@ -18,6 +18,7 @@ package upgrade
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpruner"
 	"gopkg.in/yaml.v3"
@@ -28,6 +29,7 @@ import (
 	"go.uber.org/zap"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -153,7 +155,10 @@ func preUpgradeTektonPruner(ctx context.Context, logger *zap.SugaredLogger, k8sC
 }
 
 // preUpgradePipelinesAsCodeArtifacts checks if Pipelines as Code is installed and updates
-// the hub catalog settings to use the artifact hub URL
+// the hub catalog settings to use the artifact hub URL. It cleans up hub-catalog-name from:
+// 1. TektonConfig CR settings
+// 2. OpenShiftPipelinesAsCode CR settings
+// 3. pipelines-as-code config map
 func preUpgradePipelinesAsCodeArtifacts(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 	// Only run on OpenShift platform
 	if !v1alpha1.IsOpenShiftPlatform() {
@@ -189,31 +194,178 @@ func preUpgradePipelinesAsCodeArtifacts(ctx context.Context, logger *zap.Sugared
 	// Fetch PAC settings
 	settings := tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings
 
-	// Set hub-catalog-type to artifacthub if not already set or if it's set to tektonhub
-	if catalogType, exists := settings["hub-catalog-type"]; !exists || catalogType == "tektonhub" {
-		settings["hub-catalog-type"] = "artifacthub"
-		logger.Infof("Updated hub-catalog-type to artifacthub")
+	// Check if hub-catalog-name key exists and is "tekton"
+	if catalogName, exists := settings["hub-catalog-name"]; exists && catalogName == "tekton" {
+		// Create a patch to remove the hub-catalog-name and hub-url fields
+		// Setting the field to null in the patch will remove it
+		patchPACSettings := map[string]interface{}{
+			"hub-catalog-name": nil,
+		}
+
+		// Check if hub-url needs to be updated
+		hubURL, hubURLExists := settings["hub-url"]
+		if hubURLExists && hubURL == "https://api.hub.tekton.dev/v1" {
+			patchPACSettings["hub-url"] = nil
+		}
+
+		// Create the full patch structure
+		patch := map[string]interface{}{
+			"spec": map[string]interface{}{
+				"platforms": map[string]interface{}{
+					"openshift": map[string]interface{}{
+						"pipelinesAsCode": map[string]interface{}{
+							"settings": patchPACSettings,
+						},
+					},
+				},
+			},
+		}
+
+		patchBytes, err := json.Marshal(patch)
+		if err != nil {
+			logger.Errorf("failed to marshal patch payload: %v", err)
+			return err
+		}
+
+		// Apply the patch using merge strategy
+		_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Patch(ctx, v1alpha1.ConfigResourceName, types.MergePatchType, patchBytes, metav1.PatchOptions{})
+		if err != nil {
+			logger.Errorf("failed to patch TektonConfig CR: %v", err)
+			return err
+		}
+		logger.Infof("Successfully updated TektonConfig CR with artifact settings")
+	} else {
+		logger.Infof("No PAC settings update needed")
 	}
 
-	// Set hub-url to https://artifacthub.io if not already set or if it's set to the old API URL
-	if hubURL, exists := settings["hub-url"]; !exists || hubURL == "https://artifacthub.io/api/v1" || hubURL == "https://api.hub.tekton.dev/v1" {
-		settings["hub-url"] = "https://artifacthub.io"
-		logger.Infof("Updated hub-url to https://artifacthub.io")
-	}
-
-	// remove hub-catalog-name key from setting if found
-	if _, exists := settings["hub-catalog-name"]; exists {
-		delete(settings, "hub-catalog-name")
-		logger.Infof("Removed hub-catalog-name field")
-	}
-
-	// Update the TektonConfig CR
-	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
+	// Also check and update the OpenShiftPipelinesAsCode CR if it exists
+	err = updateOpenShiftPipelinesAsCodeCR(ctx, logger, operatorClient)
 	if err != nil {
-		logger.Errorw("error updating TektonConfig CR with artifact settings", err)
+		logger.Errorw("error updating OpenShiftPipelinesAsCode CR", err)
 		return err
 	}
 
-	logger.Infof("Successfully updated Pipelines as Code artifact settings")
+	// Also check and update the deployed pipelines-as-code config map if it exists
+	err = updatePipelinesAsCodeConfigMap(ctx, logger, k8sClient, tc.Spec.TargetNamespace)
+	if err != nil {
+		logger.Errorw("error updating pipelines-as-code config map", err)
+		return err
+	}
+
+	logger.Infof("Successfully updated Pipelines as Code artifact settings in TektonConfig CR, OpenShiftPipelinesAsCode CR, and config map")
+	return nil
+}
+
+// updatePipelinesAsCodeConfigMap checks and updates the deployed pipelines-as-code config map
+// to remove hub-catalog-name if it exists
+func updatePipelinesAsCodeConfigMap(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, targetNamespace string) error {
+	configMapName := "pipelines-as-code"
+
+	// First check if the config map exists and has the hub-catalog-name field
+	cm, err := k8sClient.CoreV1().ConfigMaps(targetNamespace).Get(ctx, configMapName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			logger.Infof("pipelines-as-code config map not found, skipping config map update")
+			return nil
+		}
+		return err
+	}
+
+	// Check if hub-catalog-name exists in the config map data
+	if cm.Data == nil {
+		logger.Infof("pipelines-as-code config map has no data, skipping config map update")
+		return nil
+	}
+
+	// Check if hub-catalog-name key exists and is "tekton", and hub-url is "https://api.hub.tekton.dev/v1"
+	if catalogName, exists := cm.Data["hub-catalog-name"]; exists && catalogName == "tekton" {
+		// Create a patch to remove the hub-catalog-name and hub-url fields
+		// Setting the field to null in the patch will remove it
+		patchData := map[string]interface{}{
+			"hub-catalog-name": nil,
+		}
+		hubURL, hubURLExists := cm.Data["hub-url"]
+		if hubURLExists && hubURL == "https://api.hub.tekton.dev/v1" {
+			patchData["hub-url"] = nil
+		}
+		patch := map[string]interface{}{
+			"data": patchData,
+		}
+
+		patchBytes, err := json.Marshal(patch)
+		if err != nil {
+			logger.Errorf("failed to marshal patch payload: %v", err)
+			return err
+		}
+
+		// Apply the patch to remove the hub-catalog-name and hub-url fields
+		_, err = k8sClient.CoreV1().ConfigMaps(targetNamespace).Patch(ctx, configMapName, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{})
+		if err != nil {
+			logger.Errorf("failed to patch pipelines-as-code config map: %v", err)
+			return err
+		}
+		logger.Infof("Removed hub-catalog-name field (value: %s) from pipelines-as-code config map", catalogName)
+		logger.Infof("Successfully updated pipelines-as-code config map")
+	} else {
+		logger.Infof("No catalog name entries found in pipelines-as-code config map, no update needed")
+	}
+
+	return nil
+}
+
+// updateOpenShiftPipelinesAsCodeCR checks and updates the OpenShiftPipelinesAsCode CR
+// to remove hub-catalog-name if it exists
+func updateOpenShiftPipelinesAsCodeCR(ctx context.Context, logger *zap.SugaredLogger, operatorClient versioned.Interface) error {
+	// First check if the OpenShiftPipelinesAsCode CR exists and has the hub-catalog-name field
+	pacCR, err := operatorClient.OperatorV1alpha1().OpenShiftPipelinesAsCodes().Get(ctx, v1alpha1.OpenShiftPipelinesAsCodeName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			logger.Infof("OpenShiftPipelinesAsCode CR not found, skipping PAC CR update")
+			return nil
+		}
+		return err
+	}
+
+	// Check if PAC settings exist
+	if pacCR.Spec.PACSettings.Settings == nil {
+		logger.Infof("OpenShiftPipelinesAsCode CR has no settings, skipping PAC CR update")
+		return nil
+	}
+
+	// Check if hub-catalog-name key exists and is "tekton", and hub-url is "https://api.hub.tekton.dev/v1"
+	if catalogName, exists := pacCR.Spec.PACSettings.Settings["hub-catalog-name"]; exists && catalogName == "tekton" {
+		// Create a patch to remove the hub-catalog-name and hub-url fields
+		// Setting the field to null in the patch will remove it
+		patchSettings := map[string]interface{}{
+			"hub-catalog-name": nil,
+		}
+		hubURL, hubURLExists := pacCR.Spec.PACSettings.Settings["hub-url"]
+		if hubURLExists && hubURL == "https://api.hub.tekton.dev/v1" {
+			patchSettings["hub-url"] = nil
+		}
+		patch := map[string]interface{}{
+			"spec": map[string]interface{}{
+				"settings": patchSettings,
+			},
+		}
+
+		patchBytes, err := json.Marshal(patch)
+		if err != nil {
+			logger.Errorf("failed to marshal patch payload: %v", err)
+			return err
+		}
+
+		// Apply the patch to remove the hub-catalog-name and hub-url fields
+		_, err = operatorClient.OperatorV1alpha1().OpenShiftPipelinesAsCodes().Patch(ctx, v1alpha1.OpenShiftPipelinesAsCodeName, types.MergePatchType, patchBytes, metav1.PatchOptions{})
+		if err != nil {
+			logger.Errorf("failed to patch OpenShiftPipelinesAsCode CR: %v", err)
+			return err
+		}
+		logger.Infof("Removed hub-catalog-name field (value: %s) from OpenShiftPipelinesAsCode CR", catalogName)
+		logger.Infof("Successfully updated OpenShiftPipelinesAsCode CR")
+	} else {
+		logger.Infof("No catalog name entries found in OpenShiftPipelinesAsCode CR, no update needed")
+	}
+
 	return nil
 }

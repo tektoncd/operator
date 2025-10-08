@@ -38,6 +38,10 @@ import (
 const (
 	pipelinesAsCodeCM                 = "pipelines-as-code"
 	additionalPACControllerNameSuffix = "-pac-controller"
+	deprecatedHubCatalogName          = "hub-catalog-name"
+	deprecatedHubURL                  = "hub-url"
+	tektonHubURL                      = "https://api.hub.tekton.dev/v1"
+	tektonHubCatalogName              = "tekton"
 )
 
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
@@ -57,6 +61,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfiguration(pac.Spec.Config),
 			occommon.ApplyCABundlesToDeployment,
 			common.CopyConfigMap(pipelinesAsCodeCM, pac.Spec.Settings),
+			removeDeprecatedPACSettings(), // Remove deprecated hub settings to prevent reconciliation loops
 			occommon.UpdateServiceMonitorTargetNamespace(pac.Spec.TargetNamespace),
 		}
 
@@ -91,6 +96,7 @@ func additionalControllerTransform(extension common.Extension, name string) clie
 			updateAdditionControllerDeployment(additionalPACControllerConfig, name),
 			updateAdditionControllerService(name),
 			updateAdditionControllerConfigMap(additionalPACControllerConfig),
+			removeDeprecatedPACSettings(), // Remove deprecated hub settings to prevent reconciliation loops
 			updateAdditionControllerRoute(name),
 			updateAdditionControllerServiceMonitor(name),
 		}
@@ -304,6 +310,53 @@ func updateAdditionControllerServiceMonitor(name string) mf.Transformer {
 		if err != nil {
 			return err
 		}
+		return nil
+	}
+}
+
+// removeDeprecatedPACSettings removes deprecated hub-catalog-name and hub-url settings
+// from the pipelines-as-code ConfigMap to prevent reconciliation loops.
+func removeDeprecatedPACSettings() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "ConfigMap" {
+			return nil
+		}
+		if u.GetName() != pipelinesAsCodeCM {
+			return nil
+		}
+
+		cm := &corev1.ConfigMap{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return err
+		}
+
+		if cm.Data == nil {
+			return nil
+		}
+
+		modified := false
+		// Remove hub-catalog-name if it's set to the deprecated "tekton" value
+		if catalogName, exists := cm.Data[deprecatedHubCatalogName]; exists && catalogName == tektonHubCatalogName {
+			delete(cm.Data, deprecatedHubCatalogName)
+			modified = true
+		}
+
+		// Remove hub-url if it's set to the deprecated Tekton Hub API URL
+		if hubURL, exists := cm.Data[deprecatedHubURL]; exists && hubURL == tektonHubURL {
+			delete(cm.Data, deprecatedHubURL)
+			modified = true
+		}
+
+		// Only update the unstructured object if we made changes
+		if modified {
+			unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+			if err != nil {
+				return err
+			}
+			u.SetUnstructuredContent(unstrObj)
+		}
+
 		return nil
 	}
 }
