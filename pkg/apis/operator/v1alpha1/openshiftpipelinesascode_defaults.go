@@ -120,6 +120,9 @@ func ConvertPacStructToConfigMap(settings *pacSettings.Settings) map[string]stri
 					if key == "default" {
 						config[pacSettings.HubURLKey] = catalogData.URL
 						config[pacSettings.HubCatalogTypeKey] = catalogData.Type
+						if catalogData.Name != "" {
+							config[pacSettings.HubCatalogNameKey] = catalogData.Name
+						}
 						return true
 					}
 					config[fmt.Sprintf("%s-%s-%s", "catalog", catalogData.Index, "id")] = key.(string)
