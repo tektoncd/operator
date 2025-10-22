@@ -197,6 +197,13 @@ func filterAndTransform() client.FilterAndTransform {
 		if err := common.Transform(ctx, manifest, comp, extra...); err != nil {
 			return nil, err
 		}
+
+		// Apply options transformer to pre-reconcile manifests (e.g., postgres StatefulSet)
+		// This enables configuration of postgres replicas and other deployment customizations
+		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, instance.Spec.GetTargetNamespace(), instance.Spec.Options); err != nil {
+			return nil, err
+		}
+
 		return manifest, nil
 	}
 }
