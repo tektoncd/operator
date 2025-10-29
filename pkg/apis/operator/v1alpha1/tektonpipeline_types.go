@@ -127,6 +127,8 @@ type PipelineProperties struct {
 
 	PipelineMetricsProperties `json:",inline"`
 	// +optional
+	TracingProperties `json:",inline"`
+	// +optional
 	OptionalPipelineProperties `json:",inline"`
 	// +optional
 	Resolvers `json:",inline"`
@@ -164,6 +166,19 @@ type PipelineMetricsProperties struct {
 	MetricsPipelinerunLevel        string `json:"metrics.pipelinerun.level,omitempty"`
 	MetricsPipelinerunDurationType string `json:"metrics.pipelinerun.duration-type,omitempty"`
 	CountWithReason                *bool  `json:"metrics.count.enable-reason,omitempty"`
+}
+
+// TracingProperties defines the fields which are configurable for tracing
+type TracingProperties struct {
+	// Enabled controls whether tracing is enabled or not
+	// +optional
+	Enabled *bool `json:"traces.enabled,omitempty"`
+	// Endpoint is the URL for the OpenTelemetry trace collector
+	// +optional
+	Endpoint string `json:"traces.endpoint,omitempty"`
+	// CredentialsSecret is the name of the secret containing credentials for the tracing endpoint
+	// +optional
+	CredentialsSecret string `json:"traces.credentialsSecret,omitempty"`
 }
 
 // Resolvers defines the fields to configure resolvers

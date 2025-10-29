@@ -70,6 +70,10 @@ spec:
     metrics.pipelinerun.level: pipeline
     metrics.taskrun.duration-type: histogram
     metrics.taskrun.level: task
+    # Tracing configuration (optional)
+    # traces.enabled: true
+    # traces.endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces"
+    # traces.credentialsSecret: ""
     require-git-ssh-secret-known-hosts: false
     results-from: termination-message
     running-in-environment-with-injected-sidecars: true
@@ -242,6 +246,9 @@ pipeline:
   metrics.pipelinerun.level: pipelinerun
   metrics.taskrun.duration-type: histogram
   metrics.taskrun.level: taskrun
+  traces.enabled: true
+  traces.endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces"
+  traces.credentialsSecret: "" # optional
   require-git-ssh-secret-known-hosts: false
   running-in-environment-with-injected-sidecars: true
   trusted-resources-verification-no-match-policy: ignore

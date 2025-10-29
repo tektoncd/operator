@@ -43,6 +43,10 @@ spec:
   metrics.pipelinerun.level: pipeline
   metrics.taskrun.duration-type: histogram
   metrics.taskrun.level: task
+  # Tracing configuration (optional)
+  # traces.enabled: true
+  # traces.endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces"
+  # traces.credentialsSecret: ""
   require-git-ssh-secret-known-hosts: false
   results-from: termination-message
   running-in-environment-with-injected-sidecars: true
@@ -193,7 +197,78 @@ configure in pipelines.
 
     Setting this flag to "true" will include reason label on count metrics.
 
+### Tracing Properties
 
+Tekton Pipelines supports distributed tracing using OpenTelemetry. These fields allow you to configure tracing to send trace data to observability backends like Jaeger, Zipkin, or other OTLP-compatible collectors.
+
+- `traces.enabled` (Optional)
+
+    Setting this flag to "true" enables distributed tracing for Tekton Pipelines. When enabled, the pipeline controller will export trace spans for pipeline and task reconciliation operations.
+
+    ```yaml
+    spec:
+      traces.enabled: true
+    ```
+
+- `traces.endpoint` (Optional)
+
+    The URL of the OpenTelemetry trace collector endpoint. Tekton Pipeline exports traces using the OTLP (OpenTelemetry Protocol) format over HTTP.
+
+    Supported endpoints:
+    - **Jaeger with OTLP**: Use port 4318 for OTLP HTTP (e.g., `http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces`)
+    - **OpenTelemetry Collector**: OTLP HTTP endpoint (e.g., `http://otel-collector.observability.svc.cluster.local:4318/v1/traces`)
+    - **Other OTLP-compatible backends**: Any trace backend that supports OTLP HTTP protocol
+
+    ```yaml
+    spec:
+      traces.enabled: true
+      traces.endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces"
+    ```
+
+- `traces.credentialsSecret` (Optional)
+
+    The name of a Kubernetes secret containing credentials for authenticating with the tracing endpoint. This is useful when your tracing backend requires authentication.
+
+    ```yaml
+    spec:
+      traces.enabled: true
+      traces.endpoint: "https://secure-jaeger-collector.example.com/api/traces"
+      traces.credentialsSecret: "jaeger-auth-secret"
+    ```
+
+**Example: Complete Tracing Configuration**
+
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonPipeline
+metadata:
+  name: pipeline
+spec:
+  targetNamespace: tekton-pipelines
+  # ... other configuration ...
+
+  # Enable tracing with OpenTelemetry Collector
+  traces.enabled: true
+  traces.endpoint: "http://otel-collector.observability.svc.cluster.local:4318/v1/traces"
+```
+
+**Example: Tracing with Jaeger**
+
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonPipeline
+metadata:
+  name: pipeline
+spec:
+  targetNamespace: tekton-pipelines
+  # ... other configuration ...
+
+  # Enable tracing with Jaeger (using OTLP endpoint)
+  traces.enabled: true
+  traces.endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:4318/v1/traces"
+```
+
+For more information about distributed tracing in Tekton Pipelines, see the [TEP-0124: Distributed Tracing for Tasks and Pipelines](https://github.com/tektoncd/community/blob/main/teps/0124-distributed-tracing-for-tasks-and-pipelines.md).
 
 ### Optional Properties
 This fields doesn't have default values so will be considered only if user passes them. By default Operator won't add
