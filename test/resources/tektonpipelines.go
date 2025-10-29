@@ -179,3 +179,84 @@ func EnsureTektonPipelineWithStatefulsetExists(clients pipelinev1alpha1.TektonPi
 	}
 	return tpCR, err
 }
+
+// EnsureTektonPipelineWithTracingExists creates a TektonPipeline with tracing configuration
+func EnsureTektonPipelineWithTracingExists(
+	clients pipelinev1alpha1.TektonPipelineInterface,
+	names utils.ResourceNames,
+	enabled *bool,
+	endpoint string,
+	credentialsSecret string,
+) (*v1alpha1.TektonPipeline, error) {
+	tpCR, err := clients.Get(context.TODO(), names.TektonPipeline, metav1.GetOptions{})
+	if err == nil {
+		return tpCR, err
+	}
+	if apierrs.IsNotFound(err) {
+		tpCR = &v1alpha1.TektonPipeline{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: names.TektonPipeline,
+			},
+			Spec: v1alpha1.TektonPipelineSpec{
+				CommonSpec: v1alpha1.CommonSpec{
+					TargetNamespace: names.TargetNamespace,
+				},
+				Pipeline: v1alpha1.Pipeline{
+					PipelineProperties: v1alpha1.PipelineProperties{
+						TracingProperties: v1alpha1.TracingProperties{
+							Enabled:           enabled,
+							Endpoint:          endpoint,
+							CredentialsSecret: credentialsSecret,
+						},
+					},
+				},
+			},
+		}
+		return clients.Create(context.TODO(), tpCR, metav1.CreateOptions{})
+	}
+	return tpCR, err
+}
+
+// GetTracingConfigMap fetches the config-tracing ConfigMap from the specified namespace
+func GetTracingConfigMap(clients *utils.Clients, namespace string) (map[string]string, error) {
+	cm, err := clients.KubeClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), "config-tracing", metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return cm.Data, nil
+}
+
+// AssertTracingConfigMapData verifies config-tracing ConfigMap has expected values
+func AssertTracingConfigMapData(
+	t *testing.T,
+	clients *utils.Clients,
+	targetNamespace string,
+	expectedData map[string]string,
+) {
+	cm, err := clients.KubeClient.CoreV1().ConfigMaps(targetNamespace).Get(context.Background(), "config-tracing", metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get ConfigMap config-tracing in namespace %s: %v", targetNamespace, err)
+	}
+
+	// Verify expected data (excluding _example field)
+	for key, expectedValue := range expectedData {
+		actualValue, found := cm.Data[key]
+		if !found {
+			t.Fatalf("Key '%s' not found in config-tracing ConfigMap", key)
+		}
+		if actualValue != expectedValue {
+			t.Fatalf("ConfigMap config-tracing key '%s' has value '%s', expected '%s'", key, actualValue, expectedValue)
+		}
+	}
+
+	// Verify no unexpected fields (excluding _example)
+	for key := range cm.Data {
+		if key == "_example" {
+			continue
+		}
+		_, expected := expectedData[key]
+		if !expected {
+			t.Fatalf("Unexpected field '%s' in config-tracing ConfigMap", key)
+		}
+	}
+}
