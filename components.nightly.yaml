@@ -24,6 +24,9 @@ manual-approval-gate:
 hub:
   github: tektoncd/hub
   version: v1.18.0
+kueue:
+  github: tektoncd-pb/tekton-kueue
+  version: v0.1.0
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
   version: nightly
