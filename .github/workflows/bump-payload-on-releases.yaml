@@ -39,10 +39,10 @@ jobs:
     - name: create pull request
       uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.TEKTON_BOT_TOKEN }}
         commit-message: Bump payloads versions
-        committer: Vincent Demeester <vdemeest@redhat.com>
-        author: Vincent Demeester <vdemeest@redhat.com>
+        committer:  tekton-bot <tekton-bot@users.noreply.github.com>
+        author:  tekton-bot <tekton-bot@users.noreply.github.com>
         signoff: true
         # author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
         branch: bot-bump-payload-${{ matrix.branch }}
