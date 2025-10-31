@@ -100,7 +100,7 @@ release_yaml() {
     fi
 
     if [[ ${comp} == "dashboard" ]]; then
-      sed -i '/aggregationRule/,+3d' ${dest}
+      sed -i '' '/aggregationRule/,+3d' ${dest}
     fi
 
     echo "Info: Added $comp/$releaseFileName:$version release yaml !!"
@@ -130,6 +130,8 @@ release_yaml_github() {
   local github_component version releaseFileName destFileName component url
 
   component=$1
+  comp_dir=${2:-$component}
+
   echo fetching $component release yaml from github
 
   # Install yq if not available
@@ -153,8 +155,8 @@ release_yaml_github() {
   echo "URL to download Release YAML is : $url"
 
     ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
-    comp_dir=${ko_data}/${component}
-    dirPath=${comp_dir}/${dirVersion}
+    dirPath=${ko_data}/${comp_dir}/${dirVersion}
+    echo  $dirPath
 
     # destination file
     dest=${dirPath}/${destFileName}
@@ -403,6 +405,7 @@ main() {
   # copy pruner rbac/sa yaml
   copy_pruner_yaml
   release_yaml_github pruner
+  release_yaml_github kueue tekton-kueue
 
   echo updated payload tree
   find cmd/${TARGET}/operator/kodata
