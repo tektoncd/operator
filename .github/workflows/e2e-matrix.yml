@@ -19,13 +19,13 @@ jobs:
       matrix:
         k8s-name:
         - k8s-oldest
-        - k8s-plus-one
+        - k8s-latest
 
         include:
         - k8s-name: k8s-oldest
           k8s-version: v1.28.x
-        - k8s-name: k8s-plus-one
-          k8s-version: v1.29.x
+        - k8s-name: k8s-latest
+          k8s-version: v1.34.x
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
