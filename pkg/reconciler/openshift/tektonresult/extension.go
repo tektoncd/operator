@@ -38,7 +38,6 @@ import (
 const (
 	// manifests console plugin yaml directory location
 	routeRBACYamlDirectory  = "static/tekton-results/route-rbac"
-	internalDBYamlDirectory = "static/tekton-results/internal-db"
 	logsRBACYamlDirectory   = "static/tekton-results/logs-rbac"
 	deploymentAPI           = "tekton-results-api"
 	serviceAPI              = "tekton-results-api-service"
@@ -64,11 +63,6 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		logger.Fatalf("Failed to fetch route rbac static manifest: %v", err)
 	}
 
-	internalDBManifest, err := getDBManifest()
-	if err != nil {
-		logger.Fatalf("Failed to fetch internal db static manifest: %v", err)
-	}
-
 	logsRBACManifest, err := getloggingRBACManifest()
 	if err != nil {
 		logger.Fatalf("Failed to fetch logs RBAC manifest: %v", err)
@@ -77,9 +71,8 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 	ext := &openshiftExtension{
 		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
 			version, "results-ext", v1alpha1.KindTektonResult, nil),
-		internalDBManifest: internalDBManifest,
-		routeManifest:      routeManifest,
-		logsRBACManifest:   logsRBACManifest,
+		routeManifest:    routeManifest,
+		logsRBACManifest: logsRBACManifest,
 	}
 	return ext
 }
@@ -87,7 +80,6 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 type openshiftExtension struct {
 	installerSetClient *client.InstallerSetClient
 	routeManifest      *mf.Manifest
-	internalDBManifest *mf.Manifest
 	logsRBACManifest   *mf.Manifest
 	removePreset       bool
 }
@@ -112,10 +104,6 @@ func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekt
 	result := tc.(*v1alpha1.TektonResult)
 	mf := mf.Manifest{}
 
-	if !result.Spec.IsExternalDB {
-		mf = *oe.internalDBManifest
-		oe.removePreset = true
-	}
 	if result.Spec.IsExternalDB && oe.removePreset {
 		if err := oe.installerSetClient.CleanupPreSet(ctx); err != nil {
 			return err
@@ -155,15 +143,6 @@ func getRouteManifest() (*mf.Manifest, error) {
 	manifest := &mf.Manifest{}
 	resultsRbac := filepath.Join(common.ComponentBaseDir(), routeRBACYamlDirectory)
 	if err := common.AppendManifest(manifest, resultsRbac); err != nil {
-		return nil, err
-	}
-	return manifest, nil
-}
-
-func getDBManifest() (*mf.Manifest, error) {
-	manifest := &mf.Manifest{}
-	internalDB := filepath.Join(common.ComponentBaseDir(), internalDBYamlDirectory)
-	if err := common.AppendManifest(manifest, internalDB); err != nil {
 		return nil, err
 	}
 	return manifest, nil
