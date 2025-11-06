@@ -90,6 +90,12 @@ spec:
           configMap:
             name: pipelines-console-plugin
             defaultMode: 420
+        - name: nginx-tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-run
+          emptyDir: {}
       containers:
       - name: pipelines-console-plugin
         image: ghcr.io/openshift-pipelines/console-plugin:main
@@ -97,6 +103,8 @@ spec:
         ports:
           - protocol: TCP
             containerPort: 8443
+        securityContext:
+          readOnlyRootFilesystem: true
         volumeMounts:
           - name: pipelines-console-plugin-cert
             readOnly: true
@@ -105,6 +113,12 @@ spec:
             readOnly: true
             mountPath: /etc/nginx/nginx.conf
             subPath: nginx.conf
+          - name: nginx-tmp
+            mountPath: /var/lib/nginx/tmp
+          - name: nginx-cache
+            mountPath: /var/cache/nginx
+          - name: nginx-run
+            mountPath: /var/run
 
 ---
 apiVersion: console.openshift.io/v1
