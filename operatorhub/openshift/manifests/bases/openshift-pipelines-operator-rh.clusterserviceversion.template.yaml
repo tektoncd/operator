@@ -331,7 +331,7 @@ spec:
     ### Components
 
     - Tekton Pipelines: v1.6.0
-    - Tekton Triggers: v0.33.0
+    - Tekton Triggers: v0.34.0
     - Pipelines as Code: v0.39.0
     - Tekton Chains: v0.26.0
     - Tekton Hub (tech-preview): v1.23.0
