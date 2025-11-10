@@ -60,6 +60,10 @@ func (c *FakeOperatorV1alpha1) TektonInstallerSets() v1alpha1.TektonInstallerSet
 	return newFakeTektonInstallerSets(c)
 }
 
+func (c *FakeOperatorV1alpha1) TektonKueues() v1alpha1.TektonKueueInterface {
+	return newFakeTektonKueues(c)
+}
+
 func (c *FakeOperatorV1alpha1) TektonPipelines() v1alpha1.TektonPipelineInterface {
 	return newFakeTektonPipelines(c)
 }
