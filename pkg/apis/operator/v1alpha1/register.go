@@ -64,6 +64,9 @@ const (
 
 	// KindTektonPruner is the Kind of TektonPruner in a GVK context.
 	KindTektonPruner = "TektonPruner"
+
+	// KindTektonKueue is the Kind of TektonPruner in a GVK context.
+	KindTektonKueue = "TektonKueue"
 )
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
