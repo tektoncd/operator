@@ -102,6 +102,8 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&ManualApprovalGateList{},
 		&TektonPruner{},
 		&TektonPrunerList{},
+		&TektonScheduler{},
+		&TektonSchedulerList{},
 	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil

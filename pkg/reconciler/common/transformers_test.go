@@ -25,13 +25,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/tektoncd/pruner/pkg/config"
-	"gopkg.in/yaml.v3"
-
 	"github.com/google/go-cmp/cmp"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/pipeline/test/diff"
+	"github.com/tektoncd/pruner/pkg/config"
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/apps/v1beta1"
@@ -42,6 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	apimachineryRuntime "k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/ptr"
+	"sigs.k8s.io/yaml"
 )
 
 func TestCommonTransformers(t *testing.T) {
@@ -617,6 +616,8 @@ func TestAddConfigMapValues_StructValues(t *testing.T) {
 	assertNoError(t, err)
 	// ConfigMap will have only fields which are defined in `prop` OptionalPipelineProperties above
 	expectedValue, _ := yaml.Marshal(prop.GlobalConfig)
+	fmt.Print("cm.Data[\"global-config\"]", cm.Data["global-config"])
+	fmt.Print("string(expectedValue)", string(expectedValue))
 	assert.Equal(t, cm.Data["global-config"], string(expectedValue))
 }
 
