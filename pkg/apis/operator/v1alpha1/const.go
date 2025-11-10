@@ -144,4 +144,5 @@ const (
 	ManualApprovalGates          = "manual-approval-gate"
 	PrunerResourceName           = "tektoncd-pruner"
 	TektonPrunerResourceName     = "pruner"
+	TektonSchedulerResourceName  = "scheduler"
 )

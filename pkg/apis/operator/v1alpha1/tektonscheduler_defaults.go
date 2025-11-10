@@ -19,12 +19,17 @@ package v1alpha1
 import (
 	"context"
 
+	"github.com/konflux-ci/tekton-kueue/pkg/common"
 	"k8s.io/utils/ptr"
 )
 
 const (
+	SchedulerConfigMapName                       = common.ConfigMapName
+	SchedulerConfigInstallerSet                  = "scheduler-config"
+	DefaultQueueName                             = "pipelines-queue"
 	DefaultMultiClusterDisabled                  = true
 	DefaultSchedulerDisabled                     = true
+	SchedulerCreatedByValue                      = "TektonScheduler"
 	MultiClusterRoleSpoke       MultiClusterRole = "Spoke"
 	MultiClusterRoleHub         MultiClusterRole = "Hub"
 )
@@ -37,5 +42,6 @@ func (s *Scheduler) SetDefaults() {
 	if s.Disabled == nil {
 		s.Disabled = ptr.To(DefaultSchedulerDisabled)
 		s.MultiClusterDisabled = DefaultMultiClusterDisabled
+		s.QueueName = DefaultQueueName
 	}
 }

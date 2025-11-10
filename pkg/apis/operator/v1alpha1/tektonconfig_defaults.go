@@ -31,6 +31,7 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	tc.Spec.Pipeline.setDefaults()
 	tc.Spec.Trigger.setDefaults()
 	tc.Spec.Chain.setDefaults()
+	tc.Spec.Scheduler.SetDefaults()
 	tc.Spec.Result.setDefaults()
 	tc.Spec.TektonPruner.SetDefaults()
 	tc.Spec.Scheduler.SetDefaults()
