@@ -379,13 +379,13 @@ main() {
   if [[ ${TARGET} == "openshift" ]]
   then
       release_yaml results release_base 00-results ${r_version}
-      # Add PostgreSQL manifest to main directory for OpenShift
+      # Append PostgreSQL manifest to main results manifest for OpenShift
       # PostgreSQL is now part of main reconciliation flow, not PreReconcile
       results_version_dir=${ko_data}/tekton-results/${r_version//v}
       if [[ -f "${ko_data}/static/tekton-results/internal-db/db.yaml" ]]; then
-        echo "Copying PostgreSQL manifest to main results directory..."
-        cp ${ko_data}/static/tekton-results/internal-db/db.yaml ${results_version_dir}/01-db.yaml
-        echo "PostgreSQL manifest added: ${results_version_dir}/01-db.yaml"
+        echo "Appending PostgreSQL manifest to main results manifest..."
+        cat ${ko_data}/static/tekton-results/internal-db/db.yaml >> ${results_version_dir}/00-results.yaml
+        echo "PostgreSQL manifest appended to: ${results_version_dir}/00-results.yaml"
       fi
   else
       release_yaml results release 00-results ${r_version}
