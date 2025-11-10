@@ -17,6 +17,7 @@ limitations under the License.
 package tektonresult
 
 import (
+	"context"
 	"os"
 	"path"
 	"testing"
@@ -24,11 +25,14 @@ import (
 	mf "github.com/manifestival/manifestival"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	fake2 "github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/ptr"
 )
@@ -192,4 +196,104 @@ func Test_ResultsAPIInjectRout(t *testing.T) {
 	assert.Equal(t, route.Spec.TLS.Termination, routev1.TLSTerminationType("passthrough"))
 	assert.Equal(t, route.Spec.Host, "example.com")
 	assert.Equal(t, route.Spec.Path, "/api")
+}
+
+func Test_isEnableRoute(t *testing.T) {
+	tests := []struct {
+		name         string
+		routeEnabled *bool
+		want         bool
+	}{
+		{name: "route enabled", routeEnabled: ptr.Bool(true), want: true},
+		{name: "route disabled", routeEnabled: ptr.Bool(false), want: false},
+		{name: "route nil defaults to false", routeEnabled: nil, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := &v1alpha1.TektonResult{
+				Spec: v1alpha1.TektonResultSpec{
+					Result: v1alpha1.Result{
+						ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+							RouteEnabled: tt.routeEnabled,
+						},
+					},
+				},
+			}
+			assert.Equal(t, isEnableRoute(result), tt.want)
+		})
+	}
+}
+
+func Test_PostReconcile_RouteToggle(t *testing.T) {
+	os.Setenv(common.KoEnvKey, "testdata")
+
+	tests := []struct {
+		name                 string
+		routeEnabled         *bool
+		expectError          error
+		expectInstallerCount int
+	}{
+		{
+			name:                 "route disabled - cleanup postset",
+			routeEnabled:         ptr.Bool(false),
+			expectError:          nil,
+			expectInstallerCount: 0,
+		},
+		{
+			name:                 "route enabled - create postset",
+			routeEnabled:         ptr.Bool(true),
+			expectError:          v1alpha1.REQUEUE_EVENT_AFTER,
+			expectInstallerCount: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+
+			routeManifest, err := getRouteManifest()
+			assertNoError(t, err)
+
+			result := &v1alpha1.TektonResult{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-result",
+					Namespace: "test-ns",
+				},
+				Spec: v1alpha1.TektonResultSpec{
+					CommonSpec: v1alpha1.CommonSpec{
+						TargetNamespace: "tekton-pipelines",
+					},
+					Result: v1alpha1.Result{
+						ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+							RouteEnabled: tt.routeEnabled,
+						},
+					},
+				},
+			}
+
+			fakeClient := fake2.NewSimpleClientset()
+			installerSetClient := client.NewInstallerSetClient(
+				fakeClient.OperatorV1alpha1().TektonInstallerSets(),
+				"v0.0.1",
+				"results-ext",
+				v1alpha1.KindTektonResult,
+				nil,
+			)
+
+			ext := &openshiftExtension{
+				installerSetClient: installerSetClient,
+				routeManifest:      routeManifest,
+				internalDBManifest: &mf.Manifest{},
+				logsRBACManifest:   &mf.Manifest{},
+			}
+
+			err = ext.PostReconcile(ctx, result)
+			assert.Equal(t, err, tt.expectError)
+
+			list, err := fakeClient.OperatorV1alpha1().TektonInstallerSets().List(ctx, metav1.ListOptions{})
+			assertNoError(t, err)
+			assert.Equal(t, len(list.Items), tt.expectInstallerCount)
+		})
+	}
 }
