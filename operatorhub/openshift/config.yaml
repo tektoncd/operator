@@ -254,6 +254,15 @@ image-substitutions:
         containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_PRUNER_CONTROLLER
+- image: registry.redhat.io/openshift-pipelines/pipelines-scheduler-controller-rhel9@
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
+        envKeys:
+          - IMAGE_SCHEDULER_CONTROLLER
+          - IMAGE_SCHEDULER_WEBHOOK
+
 - image: registry.redhat.io/openshift-pipelines/pipelines-pruner-webhook-rhel9@
   replaceLocations:
     envTargets:

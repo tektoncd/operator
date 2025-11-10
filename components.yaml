@@ -7,6 +7,9 @@ dashboard:
 hub:
   github: tektoncd/hub
   version: v1.23.5
+scheduler:
+  github: tektoncd-pb/tekton-kueue
+  version: v0.3.0
 manual-approval-gate:
   github: openshift-pipelines/manual-approval-gate
   version: v0.7.0
