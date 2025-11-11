@@ -227,6 +227,8 @@ func DeploymentImages(images map[string]string) mf.Transformer {
 
 		containers := d.Spec.Template.Spec.Containers
 		replaceContainerImages(containers, images)
+		initContainers := d.Spec.Template.Spec.InitContainers
+		replaceContainerImages(initContainers, images)
 
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
 		if err != nil {
