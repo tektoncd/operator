@@ -929,6 +929,8 @@ spec:
                   value: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel9@
                 - name: IMAGE_ADDONS_TKN_CLI_SERVE
                   value: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel9@
+                - name: IMAGE_ADDONS_TKN_CLI_SERVE_INIT_CONFIG
+                  value: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel9@
                 - name: IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel9@
                 - name: IMAGE_RESULTS_TEKTON_RESULTS_API
@@ -1132,6 +1134,8 @@ spec:
     name: IMAGE_ADDONS_PARAM_TKN_IMAGE
   - image: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel9@
     name: IMAGE_ADDONS_TKN_CLI_SERVE
+  - image: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel9@
+    name: IMAGE_ADDONS_TKN_CLI_SERVE_INIT_CONFIG
   - image: registry.redhat.io/openshift-pipelines/pipelines-operator-webhook-rhel9@
     name: TEKTON_OPERATOR_WEBHOOK
   - image: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel9@
