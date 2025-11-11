@@ -24,8 +24,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/openshift-pipelines/tektoncd-pruner/pkg/config"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpruner"
+	"github.com/tektoncd/pruner/pkg/config"
 	"knative.dev/pkg/ptr"
 
 	yaml "sigs.k8s.io/yaml/goyaml.v2"
