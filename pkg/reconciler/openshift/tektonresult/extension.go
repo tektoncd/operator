@@ -81,7 +81,6 @@ type openshiftExtension struct {
 	installerSetClient *client.InstallerSetClient
 	routeManifest      *mf.Manifest
 	logsRBACManifest   *mf.Manifest
-	removePreset       bool
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -104,12 +103,6 @@ func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekt
 	result := tc.(*v1alpha1.TektonResult)
 	mf := mf.Manifest{}
 
-	if result.Spec.IsExternalDB && oe.removePreset {
-		if err := oe.installerSetClient.CleanupPreSet(ctx); err != nil {
-			return err
-		}
-		oe.removePreset = false
-	}
 	if (result.Spec.LokiStackName != "" && result.Spec.LokiStackNamespace != "") ||
 		strings.EqualFold(result.Spec.LogsType, "LOKI") {
 		mf = mf.Append(*oe.logsRBACManifest)
