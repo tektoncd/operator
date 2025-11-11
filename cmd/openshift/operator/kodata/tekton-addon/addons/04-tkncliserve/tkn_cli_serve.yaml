@@ -28,7 +28,7 @@ spec:
         - name: app-root
           emptyDir: {}
       initContainers:
-        - name: copy-httpd-config
+        - name: tkn-cli-serve-init-config
           image: docker.io/rupali/serve-tkn:v2
           command:
             - sh
