@@ -44,8 +44,8 @@ jobs:
         # If no files are changed at all, then `grep -v` will match even though no change outputs
         # should be true. Skipping output on an empty set of changes eliminates the false positive
         if [[ -n "${CHANGED_FILES}" ]]; then
-          NON_DOCS=$(echo "${CHANGED_FILES}" | grep -Eqv '\.md$' && echo 'true')
-          YAML=$(echo "${CHANGED_FILES}" | grep -Eq '\.ya?ml$' && echo 'true')
+          NON_DOCS=$(echo "${CHANGED_FILES}" | grep -Eqv '\.md$' && echo 'true' || echo 'false')
+          YAML=$(echo "${CHANGED_FILES}" | grep -Eq '\.ya?ml$' && echo 'true' || echo 'false')
           echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
           echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
         fi
