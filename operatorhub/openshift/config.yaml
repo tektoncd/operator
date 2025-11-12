@@ -197,6 +197,7 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_ADDONS_TKN_CLI_SERVE
+      - IMAGE_ADDONS_TKN_CLI_SERVE_INIT_CONFIG
 - image: registry.redhat.io/openshift-pipelines/pipelines-operator-webhook-rhel9@
   replaceLocations:
     containerTargets:
