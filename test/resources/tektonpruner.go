@@ -24,8 +24,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/openshift-pipelines/tektoncd-pruner/pkg/config"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpruner"
+	"github.com/tektoncd/pruner/pkg/config"
 	"knative.dev/pkg/ptr"
 
 	yaml "sigs.k8s.io/yaml/goyaml.v2"
@@ -57,8 +57,8 @@ func EnsureTektonPrunerExists(clients TektonPrunerv1alpha1.TektonPrunerInterface
 					TektonPrunerConfig: v1alpha1.TektonPrunerConfig{
 						GlobalConfig: config.GlobalConfig{
 							PrunerConfig: config.PrunerConfig{
-								SuccessfulHistoryLimit: ptr.Int32(123),
-								HistoryLimit:           ptr.Int32(456),
+								SuccessfulHistoryLimit: ptr.Int32(12),
+								HistoryLimit:           ptr.Int32(45),
 							},
 						},
 					},

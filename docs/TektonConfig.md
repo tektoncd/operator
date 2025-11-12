@@ -579,7 +579,7 @@ The `tektonpruner` section in the TektonConfig spec allows  to manage the event-
 **Configuration Notes :**
 - In this Tech Preview, only enabled/disabled status is configurable via `tektonconfig` spec.
 
-- For all other  [configurations](https://github.com/openshift-pipelines/tektoncd-pruner/blob/main/docs/tutorials/getting-started.md#basic-pruner-configuration)(e.g., TTLs, history limits), use the ConfigMap: `tekton-pruner-default-spec`
+- For all other  [configurations](https://github.com/tektoncd/pruner/blob/main/docs/tutorials/getting-started.md#basic-pruner-configuration)(e.g., TTLs, history limits), use the ConfigMap: `tekton-pruner-default-spec`
 
 ### Additional fields as `options`
 
