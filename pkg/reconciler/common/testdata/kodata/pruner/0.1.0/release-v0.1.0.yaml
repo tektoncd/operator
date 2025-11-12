@@ -348,7 +348,7 @@ spec:
           value: pruner.tekton.dev
         - name: CONFIG_LEADERELECTION_NAME
           value: config-leader-election-tekton-pruner-controller
-        image: ko://github.com/openshift-pipelines/tektoncd-pruner/cmd/controller
+        image: ko://github.com/tektoncd/pruner/cmd/controller
         name: controller
         ports:
         - containerPort: 9090

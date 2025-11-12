@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/tektoncd/pruner/pkg/metrics"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -71,7 +72,7 @@ func NewTTLHandler(clock clockUtil.Clock, resourceFn TTLResourceFuncs) (*TTLHand
 		resourceFn: resourceFn,
 	}
 	if tq.resourceFn == nil {
-		return nil, fmt.Errorf("resourceFunc interface can not be nil")
+		return nil, fmt.Errorf("resourceFunc interface cannot be nil")
 	}
 
 	if tq.clock == nil {
@@ -259,12 +260,34 @@ func (th *TTLHandler) removeResource(ctx context.Context, resource metav1.Object
 		"expiredAt", expiredAt,
 	)
 
+	// Calculate resource age for metrics
+	var resourceAge time.Duration
+	creationTime := resource.GetCreationTimestamp()
+	if !creationTime.IsZero() {
+		resourceAge = time.Since(creationTime.Time)
+	}
+
+	// Get resource type for metrics
+	resourceType := metrics.ResourceTypePipelineRun
+	if th.resourceFn.Type() == KindTaskRun {
+		resourceType = metrics.ResourceTypeTaskRun
+	}
+
 	if err := th.resourceFn.Delete(ctx, resource.GetNamespace(), resource.GetName()); err != nil {
 		if errors.IsNotFound(err) {
 			return nil
 		}
+		// Record deletion error
+		metricsRecorder := metrics.GetRecorder()
+		errorType := metrics.ClassifyError(err)
+		metricsRecorder.RecordResourceError(ctx, resourceType, resource.GetNamespace(), errorType, "ttl_deletion_failed")
 		return fmt.Errorf("failed to delete resource: %w", err)
 	}
+
+	// Record successful deletion
+	metricsRecorder := metrics.GetRecorder()
+	metricsRecorder.RecordResourceDeleted(ctx, resourceType, resource.GetNamespace(), metrics.OperationTTL, resourceAge)
+
 	return nil
 }
 

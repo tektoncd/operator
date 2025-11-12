@@ -81,9 +81,17 @@ const (
 	// that holds the cluster-wide pruner configuration data
 	PrunerConfigMapName = "tekton-pruner-default-spec"
 
+	// PrunerNamespaceConfigMapName represents the name of the config map
+	// that holds the namespace-level pruner configuration data
+	PrunerNamespaceConfigMapName = "tekton-pruner-namespace-spec"
+
 	// PrunerGlobalConfigKey represents the key name
 	// used to fetch the cluster-wide pruner configuration data
 	PrunerGlobalConfigKey = "global-config"
+
+	// PrunerNamespaceConfigKey represents the key name
+	// used to fetch the namespace-level pruner configuration data
+	PrunerNamespaceConfigKey = "ns-config"
 
 	// DefaultTTLConcurrentWorkersPipelineRun represents
 	// number of workers in the PipelineRun controller
@@ -103,6 +111,14 @@ const (
 
 	// DefaultHistoryLimit represents the default history limit for successful and failed resources
 	DefaultHistoryLimit = 100
+
+	// MaxTTLSecondsAfterFinished represents the maximum TTL in seconds that can be set
+	// when no explicit global limit is defined. This is 30 days (2,592,000 seconds)
+	MaxTTLSecondsAfterFinished = 2592000
+
+	// MaxHistoryLimit represents the maximum history limit that can be set
+	// when no explicit global limit is defined for history-based retention
+	MaxHistoryLimit = 100
 )
 
 // GetEnvValueAsInt fetches the value of an environment variable and converts it to an integer

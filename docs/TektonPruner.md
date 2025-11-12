@@ -109,4 +109,4 @@ For more details and source code, visit the [Tekton Pruner GitHub repository][Te
 
 ---
 
-[TektonPruner]: https://github.com/openshift-pipelines/tektoncd-pruner
+[TektonPruner]: https://github.com/tektoncd/pruner

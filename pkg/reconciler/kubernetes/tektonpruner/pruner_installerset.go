@@ -26,9 +26,9 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	mf "github.com/manifestival/manifestival"
-	"github.com/openshift-pipelines/tektoncd-pruner/pkg/config"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
+	"github.com/tektoncd/pruner/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/logging"
 )
@@ -41,7 +41,8 @@ const (
 
 func (r *Reconciler) ensureInstallerSets(ctx context.Context, tp *v1alpha1.TektonPruner) error {
 	logger := logging.FromContext(ctx)
-	if err := r.installerSetClient.MainSet(ctx, tp, &r.manifest, filterAndTransform(r.extension)); err != nil {
+	filteredManifest := r.manifest.Filter(mf.Not(mf.All(mf.ByKind("ConfigMap"), mf.ByName(config.PrunerConfigMapName))))
+	if err := r.installerSetClient.MainSet(ctx, tp, &filteredManifest, filterAndTransform(r.extension)); err != nil {
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
 		logger.Error(msg)
 		if errors.Is(err, v1alpha1.REQUEUE_EVENT_AFTER) {

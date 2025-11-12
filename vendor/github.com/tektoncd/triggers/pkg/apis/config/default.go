@@ -142,6 +142,7 @@ func NewDefaultsFromMap(cfgMap map[string]string) (*Defaults, error) {
 			// if "" value is provided via configmap set back to default value which is true
 			tc.DefaultRunAsNonRoot = defaultRunAsNonRootValue
 		}
+
 	}
 
 	return &tc, nil

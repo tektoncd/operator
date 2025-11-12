@@ -25,7 +25,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openshift-pipelines/tektoncd-pruner/pkg/config"
+	"github.com/tektoncd/pruner/pkg/config"
 	"gopkg.in/yaml.v3"
 
 	"github.com/google/go-cmp/cmp"
