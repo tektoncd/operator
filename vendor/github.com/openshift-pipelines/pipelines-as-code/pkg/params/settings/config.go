@@ -64,10 +64,11 @@ type Settings struct {
 	SecretGHAppRepoScoped            bool   `default:"true"                             json:"secret-github-app-token-scoped"`
 	SecretGhAppTokenScopedExtraRepos string `json:"secret-github-app-scope-extra-repos"`
 
-	ErrorLogSnippet             bool   `default:"true"                                                                          json:"error-log-snippet"`
-	ErrorDetection              bool   `default:"true"                                                                          json:"error-detection-from-container-logs"`
-	ErrorDetectionNumberOfLines int    `default:"50"                                                                            json:"error-detection-max-number-of-lines"`
-	ErrorDetectionSimpleRegexp  string `default:"^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+)?([ ]*)?(?P<error>.*)" json:"error-detection-simple-regexp"`
+	ErrorLogSnippet              bool   `default:"true"                                                                          json:"error-log-snippet"`
+	ErrorLogSnippetNumberOfLines int    `default:"3"                                                                             json:"error-log-snippet-number-of-lines"`
+	ErrorDetection               bool   `default:"true"                                                                          json:"error-detection-from-container-logs"`
+	ErrorDetectionNumberOfLines  int    `default:"50"                                                                            json:"error-detection-max-number-of-lines"`
+	ErrorDetectionSimpleRegexp   string `default:"^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+)?([ ]*)?(?P<error>.*)" json:"error-detection-simple-regexp"`
 
 	EnableCancelInProgressOnPullRequests bool `json:"enable-cancel-in-progress-on-pull-requests"`
 	EnableCancelInProgressOnPush         bool `json:"enable-cancel-in-progress-on-push"`
