@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/tektoncd/pipeline v1.6.0
 	github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2
-	github.com/tektoncd/pruner v0.3.0
+	github.com/tektoncd/pruner v0.3.1
 	github.com/tektoncd/triggers v0.32.0
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.27.0
@@ -37,6 +37,7 @@ require (
 	k8s.io/apimachinery v0.33.3
 	k8s.io/client-go v1.5.2
 	k8s.io/code-generator v0.33.1
+	k8s.io/utils v0.0.0-20250502105355-0f33e8f1c979
 	knative.dev/pkg v0.0.0-20250811181739-e06d4c9af190
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -296,7 +297,6 @@ require (
 	k8s.io/gengo/v2 v2.0.0-20250207200755-1244d31929d7 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
-	k8s.io/utils v0.0.0-20250502105355-0f33e8f1c979 // indirect
 	knative.dev/hack v0.0.0-20250331013814-c577ed9f7775 // indirect
 	sigs.k8s.io/controller-runtime v0.15.3 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
