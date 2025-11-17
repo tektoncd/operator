@@ -63,6 +63,12 @@ data:
   # you may want to disable this if you think your pipeline may leak some value
   error-log-snippet: "true"
 
+  # The number of lines to display in error log snippets, when `error-log-snippet` is
+  # set to "true".
+  # The GitHub Check interface (via the GitHub App) has a 65,535 character limit,
+  # so consider using a conservative value for this setting.
+  error-log-snippet-number-of-lines: "3"
+
   # Enable or disable the inspection of container logs to detect error message
   # and expose them as annotations on Pull Request. Only Github apps is supported
   error-detection-from-container-logs: "true"
