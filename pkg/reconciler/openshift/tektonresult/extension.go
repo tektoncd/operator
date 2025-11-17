@@ -116,11 +116,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, tc v1alpha1.Tekt
 
 	result := tc.(*v1alpha1.TektonResult)
 	if !isEnableRoute(result) {
-		// If route is disable then delete the postset
-		if err := oe.installerSetClient.CleanupPostSet(ctx); err != nil {
-			return err
-		}
-		return nil
+		manifest = manifest.Filter(mf.Not(mf.ByKind("Route")))
 	}
 
 	return oe.installerSetClient.PostSet(ctx, tc, &manifest, filterAndTransform())
