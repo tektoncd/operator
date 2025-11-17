@@ -102,21 +102,21 @@ need a checkout of the operator repo, a terminal window and a text editor.
         --filename=tekton/operator-release-pipeline.yaml \
         --serviceaccount=release-right-meow \
         --param package=github.com/tektoncd/operator \
+        --param repoName=pruner \
         --param components=components.yaml \
         --param gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
         --param imageRegistry=ghcr.io \
         --param imageRegistryPath=tektoncd/operator  \
         --param imageRegistryRegions="" \
         --param imageRegistryUser=tekton-robot \
-        --param serviceAccountPath=release.json \
         --param serviceAccountImagesPath=credentials \
         --param versionTag="${TEKTON_RELEASE_VERSION}" \
-        --param releaseBucket=gs://tekton-releases/operator \
+        --param releaseBucket=tekton-releases \
         --param koExtraArgs="" \
         --param releaseAsLatest=true \
         --param platforms=linux/amd64,linux/arm64,linux/s390x,linux/ppc64le \
         --param kubeDistros="kubernetes openshift" \
-        --workspace name=release-secret,secret=release-secret \
+        --workspace name=release-secret,secret=oci-release-secret \
         --workspace name=release-images-secret,secret=ghcr-creds \
         --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
         --pipeline-timeout 2h0m0s
@@ -134,8 +134,8 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
    NAME                    VALUE
    ∙ commit-sha            ff6d7abebde12460aecd061ab0f6fd21053ba8a7
-   ∙ release-file           https://storage.googleapis.com/tekton-releases/operator/previous/v20210223-xyzxyz/release.yaml
-   ∙ release-file-no-tag    https://storage.googleapis.com/tekton-releases/operator/previous/v20210223-xyzxyz/release.notag.yaml
+   ∙ release-file           https://infra.tekton.dev/tekton-releases/operator/previous/v20210223-xyzxyz/release.yaml
+   ∙ release-file-no-tag    https://infra.tekton.dev/tekton-releases/operator/previous/v20210223-xyzxyz/release.notag.yaml
 
    (...)
    ```
@@ -160,15 +160,15 @@ need a checkout of the operator repo, a terminal window and a text editor.
     ```bash
     tkn --context dogfooding pipeline start \
       --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
-      --workspace name=credentials,secret=release-secret \
+      --workspace name=credentials,secret=oci-release-secret \
       -p package="tektoncd/operator" \
       -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
       -p release-tag="${TEKTON_RELEASE_VERSION}" \
       -p previous-release-tag="${TEKTON_OLD_VERSION}" \
       -p release-name="${TEKTON_RELEASE_NAME}" \
-      -p bucket="gs://tekton-releases/operator" \
+      -p bucket="tekton-releases/operator/" \
       -p rekor-uuid="" \
-      release-draft
+      release-draft-oci
     ```
 
     1. Watch logs of create-draft-release
@@ -195,7 +195,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
     ```bash
     # Test latest
-    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+    kubectl --context my-dev-cluster apply --filename https://infra.tekton.dev/tekton-releases/pipeline/latest/release.yaml
     ```
 
 5. Announce the release in Slack channels #general and #pipelines.
@@ -206,17 +206,17 @@ Congratulations, you're done!
 ## Setup dogfooding context
 
 1. Configure `kubectl` to connect to
-   [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/master/docs/dogfooding.md):
+   [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/main/docs/dogfooding.md):
 
     ```bash
-    gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases
+    oci ce cluster create-kubeconfig --cluster-id <CLUSTER-OCID> --file $HOME/.kube/config --region <CLUSTER-REGION> --token-version 2.0.0  --kube-endpoint PUBLIC_ENDPOINT
     ```
 
 1. Give [the context](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
    a short memorable name such as `dogfooding`:
 
    ```bash
-   kubectl config rename-context gke_tekton-releases_us-central1-a_dogfooding dogfooding
+   kubectl config rename-context <REPLACE-WITH-NAME-FROM-CONFIG-CONTEXT> dogfooding
    ```
 
 1. **Important: Switch `kubectl` back to your own cluster by default.**
