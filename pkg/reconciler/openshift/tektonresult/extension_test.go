@@ -284,7 +284,6 @@ func Test_PostReconcile_RouteToggle(t *testing.T) {
 			ext := &openshiftExtension{
 				installerSetClient: installerSetClient,
 				routeManifest:      routeManifest,
-				internalDBManifest: &mf.Manifest{},
 				logsRBACManifest:   &mf.Manifest{},
 			}
 
