@@ -19,6 +19,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	corev1 "k8s.io/api/core/v1"
@@ -241,30 +242,30 @@ func getFromPrunerConfigResourceLevelwithSelector(namespacesSpec map[string]Name
 				}
 			}
 		}
-		// Name was specified but no match found - no fallback to selectors (field isolation)
-		return nil, ""
+		// Name was specified but no match found - continue to selector matching
 	}
 
-	// If name is not provided, proceed with selector matching
+	// If name-based matching didn't succeed, proceed with selector matching
 	if len(selector.MatchAnnotations) > 0 || len(selector.MatchLabels) > 0 {
 
 		for _, resourceSpec := range resourceSpecs {
 			// Check if the resourceSpec matches the provided selector by annotations AND labels
 			for _, selectorSpec := range resourceSpec.Selector {
 				// Both annotations and labels must match when both are specified (AND logic)
-				// If ResourceSpec has both, selector must also provide both
+				// The ConfigMap's selectorSpec defines the required labels/annotations to match
+				// The selector (from the PipelineRun/TaskRun) contains the actual labels/annotations
 				annotationsMatch := true
 				labelsMatch := true
 
-				// If ResourceSpec has annotations, check if selector provides matching annotations
+				// If ConfigMap's selectorSpec has matchAnnotations, check if resource has all of them
 				if len(selectorSpec.MatchAnnotations) > 0 {
 					if len(selector.MatchAnnotations) == 0 {
-						// ResourceSpec has annotations but selector doesn't - no match
+						// ConfigMap requires annotations but resource has none - no match
 						annotationsMatch = false
 					} else {
-						// Check if all selector annotations match
-						for key, value := range selector.MatchAnnotations {
-							if resourceAnnotationValue, exists := selectorSpec.MatchAnnotations[key]; !exists || resourceAnnotationValue != value {
+						// Check if all ConfigMap's required annotations exist in resource
+						for key, value := range selectorSpec.MatchAnnotations {
+							if resourceAnnotationValue, exists := selector.MatchAnnotations[key]; !exists || resourceAnnotationValue != value {
 								annotationsMatch = false
 								break
 							}
@@ -272,15 +273,15 @@ func getFromPrunerConfigResourceLevelwithSelector(namespacesSpec map[string]Name
 					}
 				}
 
-				// If ResourceSpec has labels, check if selector provides matching labels
+				// If ConfigMap's selectorSpec has matchLabels, check if resource has all of them
 				if len(selectorSpec.MatchLabels) > 0 {
 					if len(selector.MatchLabels) == 0 {
-						// ResourceSpec has labels but selector doesn't - no match
+						// ConfigMap requires labels but resource has none - no match
 						labelsMatch = false
 					} else {
-						// Check if all selector labels match
-						for key, value := range selector.MatchLabels {
-							if resourceLabelValue, exists := selectorSpec.MatchLabels[key]; !exists || resourceLabelValue != value {
+						// Check if all ConfigMap's required labels exist in resource
+						for key, value := range selectorSpec.MatchLabels {
+							if resourceLabelValue, exists := selector.MatchLabels[key]; !exists || resourceLabelValue != value {
 								labelsMatch = false
 								break
 							}
@@ -529,40 +530,48 @@ func (ps *prunerConfigStore) GetEnforcedConfigLevelFromNamespaceSpec(namespacesS
 		// Search by selectors
 		for _, resourceSpec := range resourceSpecs {
 			for _, selectorSpec := range resourceSpec.Selector {
-				// Try annotation matching first
-				if len(selector.MatchAnnotations) > 0 {
-					match := true
-					for key, value := range selector.MatchAnnotations {
-						if resourceAnnotationValue, exists := selectorSpec.MatchAnnotations[key]; !exists || resourceAnnotationValue != value {
-							match = false
-							break
+				annotationsMatch := true
+				labelsMatch := true
+
+				// Check if ConfigMap's required annotations exist in the resource
+				if len(selectorSpec.MatchAnnotations) > 0 {
+					if len(selector.MatchAnnotations) == 0 {
+						// ConfigMap requires annotations but resource has none - no match
+						annotationsMatch = false
+					} else {
+						// Check if all ConfigMap's required annotations exist in resource
+						for key, value := range selectorSpec.MatchAnnotations {
+							if resourceAnnotationValue, exists := selector.MatchAnnotations[key]; !exists || resourceAnnotationValue != value {
+								annotationsMatch = false
+								break
+							}
 						}
-					}
-					if match {
-						enforcedConfigLevel = resourceSpec.EnforcedConfigLevel
-						if enforcedConfigLevel != nil {
-							return enforcedConfigLevel
-						}
-						break
 					}
 				}
 
-				// Try label matching if no annotation match
-				if len(selector.MatchLabels) > 0 {
-					match := true
-					for key, value := range selector.MatchLabels {
-						if resourceLabelValue, exists := selectorSpec.MatchLabels[key]; !exists || resourceLabelValue != value {
-							match = false
-							break
+				// Check if ConfigMap's required labels exist in the resource
+				if len(selectorSpec.MatchLabels) > 0 {
+					if len(selector.MatchLabels) == 0 {
+						// ConfigMap requires labels but resource has none - no match
+						labelsMatch = false
+					} else {
+						// Check if all ConfigMap's required labels exist in resource
+						for key, value := range selectorSpec.MatchLabels {
+							if resourceLabelValue, exists := selector.MatchLabels[key]; !exists || resourceLabelValue != value {
+								labelsMatch = false
+								break
+							}
 						}
 					}
-					if match {
-						enforcedConfigLevel = resourceSpec.EnforcedConfigLevel
-						if enforcedConfigLevel != nil {
-							return enforcedConfigLevel
-						}
-						break
+				}
+
+				// Both annotations and labels must match (AND logic)
+				if annotationsMatch && labelsMatch {
+					enforcedConfigLevel = resourceSpec.EnforcedConfigLevel
+					if enforcedConfigLevel != nil {
+						return enforcedConfigLevel
 					}
+					break
 				}
 			}
 		}
@@ -690,7 +699,7 @@ func ValidateConfigMapWithGlobal(cm *corev1.ConfigMap, globalConfigMap *corev1.C
 	if cm.Data[PrunerNamespaceConfigKey] != "" {
 		namespaceConfig := &NamespaceSpec{}
 		if err := yaml.Unmarshal([]byte(cm.Data[PrunerNamespaceConfigKey]), namespaceConfig); err != nil {
-			return fmt.Errorf("failed to parse namespace-config: %w", err)
+			return fmt.Errorf("failed to parse ns-config: %w", err)
 		}
 
 		// Extract global limits if global config is provided
@@ -698,14 +707,36 @@ func ValidateConfigMapWithGlobal(cm *corev1.ConfigMap, globalConfigMap *corev1.C
 			globalConfig := &GlobalConfig{}
 			if err := yaml.Unmarshal([]byte(globalConfigMap.Data[PrunerGlobalConfigKey]), globalConfig); err != nil {
 				// If we can't parse global config, just do basic validation
-				return validatePrunerConfig(&namespaceConfig.PrunerConfig, "namespace-config", nil)
+				return validatePrunerConfig(&namespaceConfig.PrunerConfig, "ns-config", nil)
 			}
 			globalLimits = &globalConfig.PrunerConfig
 		}
 
 		// Validate namespace config, enforcing global limits if available
-		if err := validatePrunerConfig(&namespaceConfig.PrunerConfig, "namespace-config", globalLimits); err != nil {
+		if err := validatePrunerConfig(&namespaceConfig.PrunerConfig, "ns-config", globalLimits); err != nil {
 			return err
+		}
+
+		// Validate selector-based limits (sum of selectors must not exceed namespace/global limits)
+		// Extract namespace name from ConfigMap metadata
+		namespace := cm.Namespace
+		var globalNamespaceSpec *NamespaceSpec
+		if globalConfigMap != nil && globalConfigMap.Data != nil && globalConfigMap.Data[PrunerGlobalConfigKey] != "" {
+			globalConfig := &GlobalConfig{}
+			if err := yaml.Unmarshal([]byte(globalConfigMap.Data[PrunerGlobalConfigKey]), globalConfig); err == nil {
+				if nsSpec, exists := globalConfig.Namespaces[namespace]; exists {
+					globalNamespaceSpec = &nsSpec
+				}
+				// Pass both globalConfig and globalNamespaceSpec for 4-tier hierarchy
+				if err := validateSelectorLimits(namespaceConfig, &globalConfig.PrunerConfig, globalNamespaceSpec, namespace); err != nil {
+					return err
+				}
+			}
+		} else {
+			// No global config, validate with system maximum only
+			if err := validateSelectorLimits(namespaceConfig, nil, nil, namespace); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -714,10 +745,17 @@ func ValidateConfigMapWithGlobal(cm *corev1.ConfigMap, globalConfigMap *corev1.C
 
 // validatePrunerConfig validates the fields of a PrunerConfig
 // If globalConfig is provided, namespace-level settings are validated to not exceed global limits
+// If globalConfig is nil and path indicates a namespace config, system maximums are enforced
 func validatePrunerConfig(config *PrunerConfig, path string, globalConfig *PrunerConfig) error {
 	if config == nil {
 		return nil
 	}
+
+	// Determine if this is a namespace-level config validation (not a top-level global config)
+	// Namespace configs can be:
+	// - Standalone: path starts with "ns-config"
+	// - Nested in global: path contains ".namespaces."
+	isNamespaceConfig := strings.HasPrefix(path, "ns-config") || strings.Contains(path, ".namespaces.")
 
 	// Validate EnforcedConfigLevel
 	if config.EnforcedConfigLevel != nil {
@@ -740,8 +778,8 @@ func validatePrunerConfig(config *PrunerConfig, path string, globalConfig *Prune
 				return fmt.Errorf("%s: ttlSecondsAfterFinished (%d) cannot exceed global limit (%d)",
 					path, *config.TTLSecondsAfterFinished, *globalConfig.TTLSecondsAfterFinished)
 			}
-		} else if globalConfig == nil || globalConfig.TTLSecondsAfterFinished == nil {
-			// If no global limit is set, enforce system maximum
+		} else if isNamespaceConfig && (globalConfig == nil || globalConfig.TTLSecondsAfterFinished == nil) {
+			// If this is a namespace config and no global limit is set, enforce system maximum
 			if *config.TTLSecondsAfterFinished > MaxTTLSecondsAfterFinished {
 				return fmt.Errorf("%s: ttlSecondsAfterFinished (%d) cannot exceed system maximum (%d seconds / 30 days)",
 					path, *config.TTLSecondsAfterFinished, MaxTTLSecondsAfterFinished)
@@ -754,14 +792,29 @@ func validatePrunerConfig(config *PrunerConfig, path string, globalConfig *Prune
 		if *config.SuccessfulHistoryLimit < 0 {
 			return fmt.Errorf("%s: successfulHistoryLimit cannot be negative, got %d", path, *config.SuccessfulHistoryLimit)
 		}
-		// Namespace config cannot retain more successful runs than global config
-		if globalConfig != nil && globalConfig.SuccessfulHistoryLimit != nil {
-			if *config.SuccessfulHistoryLimit > *globalConfig.SuccessfulHistoryLimit {
-				return fmt.Errorf("%s: successfulHistoryLimit (%d) cannot exceed global limit (%d)",
-					path, *config.SuccessfulHistoryLimit, *globalConfig.SuccessfulHistoryLimit)
+		// For namespace configs, determine the upper limit based on global config
+		if isNamespaceConfig && globalConfig != nil {
+			// Priority 1: Use global successfulHistoryLimit if set
+			if globalConfig.SuccessfulHistoryLimit != nil {
+				if *config.SuccessfulHistoryLimit > *globalConfig.SuccessfulHistoryLimit {
+					return fmt.Errorf("%s: successfulHistoryLimit (%d) cannot exceed global limit (%d)",
+						path, *config.SuccessfulHistoryLimit, *globalConfig.SuccessfulHistoryLimit)
+				}
+			} else if globalConfig.HistoryLimit != nil {
+				// Priority 2: Use global historyLimit as fallback if no granular limit
+				if *config.SuccessfulHistoryLimit > *globalConfig.HistoryLimit {
+					return fmt.Errorf("%s: successfulHistoryLimit (%d) cannot exceed global historyLimit (%d)",
+						path, *config.SuccessfulHistoryLimit, *globalConfig.HistoryLimit)
+				}
+			} else {
+				// Priority 3: Use system maximum if global config exists but has no relevant limits
+				if *config.SuccessfulHistoryLimit > MaxHistoryLimit {
+					return fmt.Errorf("%s: successfulHistoryLimit (%d) cannot exceed system maximum (%d)",
+						path, *config.SuccessfulHistoryLimit, MaxHistoryLimit)
+				}
 			}
-		} else if globalConfig == nil || globalConfig.SuccessfulHistoryLimit == nil {
-			// If no global limit is set, enforce system maximum
+		} else if isNamespaceConfig && globalConfig == nil {
+			// Priority 3: Use system maximum if no global config at all
 			if *config.SuccessfulHistoryLimit > MaxHistoryLimit {
 				return fmt.Errorf("%s: successfulHistoryLimit (%d) cannot exceed system maximum (%d)",
 					path, *config.SuccessfulHistoryLimit, MaxHistoryLimit)
@@ -774,14 +827,29 @@ func validatePrunerConfig(config *PrunerConfig, path string, globalConfig *Prune
 		if *config.FailedHistoryLimit < 0 {
 			return fmt.Errorf("%s: failedHistoryLimit cannot be negative, got %d", path, *config.FailedHistoryLimit)
 		}
-		// Namespace config cannot retain more failed runs than global config
-		if globalConfig != nil && globalConfig.FailedHistoryLimit != nil {
-			if *config.FailedHistoryLimit > *globalConfig.FailedHistoryLimit {
-				return fmt.Errorf("%s: failedHistoryLimit (%d) cannot exceed global limit (%d)",
-					path, *config.FailedHistoryLimit, *globalConfig.FailedHistoryLimit)
+		// For namespace configs, determine the upper limit based on global config
+		if isNamespaceConfig && globalConfig != nil {
+			// Priority 1: Use global failedHistoryLimit if set
+			if globalConfig.FailedHistoryLimit != nil {
+				if *config.FailedHistoryLimit > *globalConfig.FailedHistoryLimit {
+					return fmt.Errorf("%s: failedHistoryLimit (%d) cannot exceed global limit (%d)",
+						path, *config.FailedHistoryLimit, *globalConfig.FailedHistoryLimit)
+				}
+			} else if globalConfig.HistoryLimit != nil {
+				// Priority 2: Use global historyLimit as fallback if no granular limit
+				if *config.FailedHistoryLimit > *globalConfig.HistoryLimit {
+					return fmt.Errorf("%s: failedHistoryLimit (%d) cannot exceed global historyLimit (%d)",
+						path, *config.FailedHistoryLimit, *globalConfig.HistoryLimit)
+				}
+			} else {
+				// Priority 3: Use system maximum if global config exists but has no relevant limits
+				if *config.FailedHistoryLimit > MaxHistoryLimit {
+					return fmt.Errorf("%s: failedHistoryLimit (%d) cannot exceed system maximum (%d)",
+						path, *config.FailedHistoryLimit, MaxHistoryLimit)
+				}
 			}
-		} else if globalConfig == nil || globalConfig.FailedHistoryLimit == nil {
-			// If no global limit is set, enforce system maximum
+		} else if isNamespaceConfig && globalConfig == nil {
+			// Priority 3: Use system maximum if no global config at all
 			if *config.FailedHistoryLimit > MaxHistoryLimit {
 				return fmt.Errorf("%s: failedHistoryLimit (%d) cannot exceed system maximum (%d)",
 					path, *config.FailedHistoryLimit, MaxHistoryLimit)
@@ -794,14 +862,14 @@ func validatePrunerConfig(config *PrunerConfig, path string, globalConfig *Prune
 		if *config.HistoryLimit < 0 {
 			return fmt.Errorf("%s: historyLimit cannot be negative, got %d", path, *config.HistoryLimit)
 		}
-		// Namespace config cannot retain more runs than global config
-		if globalConfig != nil && globalConfig.HistoryLimit != nil {
+		// For namespace configs, validate against global historyLimit
+		if isNamespaceConfig && globalConfig != nil && globalConfig.HistoryLimit != nil {
 			if *config.HistoryLimit > *globalConfig.HistoryLimit {
 				return fmt.Errorf("%s: historyLimit (%d) cannot exceed global limit (%d)",
 					path, *config.HistoryLimit, *globalConfig.HistoryLimit)
 			}
-		} else if globalConfig == nil || globalConfig.HistoryLimit == nil {
-			// If no global limit is set, enforce system maximum
+		} else if isNamespaceConfig && (globalConfig == nil || globalConfig.HistoryLimit == nil) {
+			// Use system maximum if no global historyLimit is set
 			if *config.HistoryLimit > MaxHistoryLimit {
 				return fmt.Errorf("%s: historyLimit (%d) cannot exceed system maximum (%d)",
 					path, *config.HistoryLimit, MaxHistoryLimit)
@@ -810,4 +878,167 @@ func validatePrunerConfig(config *PrunerConfig, path string, globalConfig *Prune
 	}
 
 	return nil
+}
+
+// validateSelectorLimits validates that the sum of selector-based limits does not exceed the allowed upper bound
+// Uses a 4-tier hierarchy to determine the upper bound:
+// 1. Namespace-level spec (in the same namespace config)
+// 2. Global namespace override (from global.namespaces[namespace])
+// 3. Global default spec
+// 4. System maximum
+func validateSelectorLimits(nsConfig *NamespaceSpec, globalConfig *PrunerConfig, globalNsSpec *NamespaceSpec, namespace string) error {
+	if nsConfig == nil {
+		return nil
+	}
+
+	// Validate PipelineRuns selectors
+	if err := validateResourceSelectorLimits(nsConfig.PipelineRuns, &nsConfig.PrunerConfig, globalConfig, globalNsSpec, namespace, "pipelineRuns"); err != nil {
+		return err
+	}
+
+	// Validate TaskRuns selectors
+	if err := validateResourceSelectorLimits(nsConfig.TaskRuns, &nsConfig.PrunerConfig, globalConfig, globalNsSpec, namespace, "taskRuns"); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateResourceSelectorLimits validates selector limits for a specific resource type (PipelineRuns or TaskRuns)
+func validateResourceSelectorLimits(resources []ResourceSpec, nsConfig *PrunerConfig, globalConfig *PrunerConfig, globalNsSpec *NamespaceSpec, namespace, resourceType string) error {
+	if len(resources) == 0 {
+		return nil
+	}
+
+	// Calculate sum of selector-based limits for each limit type
+	var sumSuccessful, sumFailed, sumHistory int32
+
+	for i, resource := range resources {
+		// Only count resources that have selectors (not name-based)
+		if len(resource.Selector) > 0 {
+			if resource.SuccessfulHistoryLimit != nil {
+				sumSuccessful += *resource.SuccessfulHistoryLimit
+			}
+			if resource.FailedHistoryLimit != nil {
+				sumFailed += *resource.FailedHistoryLimit
+			}
+			if resource.HistoryLimit != nil {
+				sumHistory += *resource.HistoryLimit
+			}
+		}
+
+		// Validate individual selector limits are non-negative
+		if resource.SuccessfulHistoryLimit != nil && *resource.SuccessfulHistoryLimit < 0 {
+			return fmt.Errorf("ns-config.%s[%d]: successfulHistoryLimit cannot be negative, got %d", resourceType, i, *resource.SuccessfulHistoryLimit)
+		}
+		if resource.FailedHistoryLimit != nil && *resource.FailedHistoryLimit < 0 {
+			return fmt.Errorf("ns-config.%s[%d]: failedHistoryLimit cannot be negative, got %d", resourceType, i, *resource.FailedHistoryLimit)
+		}
+		if resource.HistoryLimit != nil && *resource.HistoryLimit < 0 {
+			return fmt.Errorf("ns-config.%s[%d]: historyLimit cannot be negative, got %d", resourceType, i, *resource.HistoryLimit)
+		}
+	}
+
+	// Validate successfulHistoryLimit sum
+	if sumSuccessful > 0 {
+		upperBound := determineUpperBound(nsConfig.SuccessfulHistoryLimit, nsConfig.HistoryLimit,
+			globalNsSpec, globalConfig, "successfulHistoryLimit")
+		if sumSuccessful > upperBound {
+			return fmt.Errorf("namespace '%s' ns-config.%s: sum of selector successfulHistoryLimit (%d) cannot exceed upper bound (%d)",
+				namespace, resourceType, sumSuccessful, upperBound)
+		}
+	}
+
+	// Validate failedHistoryLimit sum
+	if sumFailed > 0 {
+		upperBound := determineUpperBound(nsConfig.FailedHistoryLimit, nsConfig.HistoryLimit,
+			globalNsSpec, globalConfig, "failedHistoryLimit")
+		if sumFailed > upperBound {
+			return fmt.Errorf("namespace '%s' ns-config.%s: sum of selector failedHistoryLimit (%d) cannot exceed upper bound (%d)",
+				namespace, resourceType, sumFailed, upperBound)
+		}
+	}
+
+	// Validate historyLimit sum
+	if sumHistory > 0 {
+		upperBound := determineUpperBound(nsConfig.HistoryLimit, nil,
+			globalNsSpec, globalConfig, "historyLimit")
+		if sumHistory > upperBound {
+			return fmt.Errorf("namespace '%s' ns-config.%s: sum of selector historyLimit (%d) cannot exceed upper bound (%d)",
+				namespace, resourceType, sumHistory, upperBound)
+		}
+	}
+
+	return nil
+}
+
+// determineUpperBound implements the 4-tier hierarchy to find the upper bound for selector validation
+// limitType should be "successfulHistoryLimit", "failedHistoryLimit", or "historyLimit"
+func determineUpperBound(nsGranularLimit, nsHistoryLimit *int32, globalNsSpec *NamespaceSpec, globalConfig *PrunerConfig, limitType string) int32 {
+	// Level 1: Namespace-level spec (most specific)
+	if nsGranularLimit != nil && limitType != "historyLimit" {
+		return *nsGranularLimit
+	}
+	if limitType != "historyLimit" && nsHistoryLimit != nil {
+		// For granular limits, fallback to namespace historyLimit if granular not set
+		return *nsHistoryLimit
+	}
+	if limitType == "historyLimit" && nsHistoryLimit != nil {
+		return *nsHistoryLimit
+	}
+
+	// Level 2: Global namespace override (from global.namespaces[namespace])
+	if globalNsSpec != nil {
+		switch limitType {
+		case "successfulHistoryLimit":
+			if globalNsSpec.SuccessfulHistoryLimit != nil {
+				return *globalNsSpec.SuccessfulHistoryLimit
+			}
+			// Fallback to globalNsSpec.HistoryLimit
+			if globalNsSpec.HistoryLimit != nil {
+				return *globalNsSpec.HistoryLimit
+			}
+		case "failedHistoryLimit":
+			if globalNsSpec.FailedHistoryLimit != nil {
+				return *globalNsSpec.FailedHistoryLimit
+			}
+			// Fallback to globalNsSpec.HistoryLimit
+			if globalNsSpec.HistoryLimit != nil {
+				return *globalNsSpec.HistoryLimit
+			}
+		case "historyLimit":
+			if globalNsSpec.HistoryLimit != nil {
+				return *globalNsSpec.HistoryLimit
+			}
+		}
+	}
+
+	// Level 3: Global default spec
+	if globalConfig != nil {
+		switch limitType {
+		case "successfulHistoryLimit":
+			if globalConfig.SuccessfulHistoryLimit != nil {
+				return *globalConfig.SuccessfulHistoryLimit
+			}
+			// Fallback to globalConfig.HistoryLimit
+			if globalConfig.HistoryLimit != nil {
+				return *globalConfig.HistoryLimit
+			}
+		case "failedHistoryLimit":
+			if globalConfig.FailedHistoryLimit != nil {
+				return *globalConfig.FailedHistoryLimit
+			}
+			// Fallback to globalConfig.HistoryLimit
+			if globalConfig.HistoryLimit != nil {
+				return *globalConfig.HistoryLimit
+			}
+		case "historyLimit":
+			if globalConfig.HistoryLimit != nil {
+				return *globalConfig.HistoryLimit
+			}
+		}
+	}
+
+	// Level 4: System maximum
+	return int32(MaxHistoryLimit)
 }
