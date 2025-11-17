@@ -9,7 +9,7 @@ FORCE_FETCH_RELEASE = false
 CR            = config/basic
 PLATFORM := $(if $(PLATFORM),--platform $(PLATFORM))
 
-GOLANGCI_VERSION  = v2.1.6
+GOLANGCI_VERSION  = $(shell yq '.jobs.linting.steps[] | select(.name == "golangci-lint") | .with.version' .github/workflows/ci.yaml)
 
 BIN      = $(CURDIR)/.bin
 
