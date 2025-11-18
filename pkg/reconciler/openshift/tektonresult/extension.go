@@ -37,17 +37,20 @@ import (
 
 const (
 	// manifests console plugin yaml directory location
-	routeRBACYamlDirectory  = "static/tekton-results/route-rbac"
-	logsRBACYamlDirectory   = "static/tekton-results/logs-rbac"
-	deploymentAPI           = "tekton-results-api"
-	serviceAPI              = "tekton-results-api-service"
-	routeAPI                = "tekton-results-api"
-	secretAPITLS            = "tekton-results-tls"
-	apiContainerName        = "api"
-	boundSAVolume           = "bound-sa-token"
-	boundSAPath             = "/var/run/secrets/openshift/serviceaccount"
-	lokiStackTLSCAEnvVar    = "LOGGING_PLUGIN_CA_CERT"
-	tektonResultWatcherName = "tekton-results-watcher"
+	routeRBACYamlDirectory     = "static/tekton-results/route-rbac"
+	logsRBACYamlDirectory      = "static/tekton-results/logs-rbac"
+	deploymentAPI              = "tekton-results-api"
+	serviceAPI                 = "tekton-results-api-service"
+	routeAPI                   = "tekton-results-api"
+	secretAPITLS               = "tekton-results-tls"
+	apiContainerName           = "api"
+	boundSAVolume              = "bound-sa-token"
+	boundSAPath                = "/var/run/secrets/openshift/serviceaccount"
+	lokiStackTLSCAEnvVar       = "LOGGING_PLUGIN_CA_CERT"
+	tektonResultWatcherName    = "tekton-results-watcher"
+	postgresStatefulSetName    = "tekton-results-postgres"
+	postgresContainerName      = "postgres"
+	postgresUpgradeScriptsName = "postgres-upgrade-scripts"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -96,6 +99,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		injectBoundSAToken(instance.Spec.ResultsAPIProperties),
 		injectLokiStackTLSCACert(instance.Spec.LokiStackProperties),
 		injectResultsAPIServiceCACert(instance.Spec.ResultsAPIProperties),
+		injectPostgresUpgradeSupport(),
 	}
 }
 
@@ -376,6 +380,93 @@ func injectResultsAPIRoute(props v1alpha1.ResultsAPIProperties) mf.Transformer {
 			}
 		}
 
+		return nil
+	}
+}
+
+// injectPostgresUpgradeSupport modifies the postgres container to support automatic
+// upgrade from PostgreSQL 13 to PostgreSQL 15. The wrapper script checks the PG_VERSION
+// file in the data directory and sets POSTGRESQL_UPGRADE=copy if an upgrade is needed,
+// triggering the sclorg container's built-in upgrade mechanism.
+func injectPostgresUpgradeSupport() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		// Only apply to the postgres StatefulSet
+		if u.GetKind() != "StatefulSet" || u.GetName() != postgresStatefulSetName {
+			return nil
+		}
+
+		sts := &appsv1.StatefulSet{}
+		err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, sts)
+		if err != nil {
+			return err
+		}
+
+		// Modify the main postgres container
+		for i, container := range sts.Spec.Template.Spec.Containers {
+			if container.Name == postgresContainerName {
+				// Add volume mount for upgrade scripts
+				vmFound := false
+				for _, vm := range container.VolumeMounts {
+					if vm.Name == "upgrade-scripts" {
+						vmFound = true
+						break
+					}
+				}
+				if !vmFound {
+					sts.Spec.Template.Spec.Containers[i].VolumeMounts = append(
+						container.VolumeMounts,
+						corev1.VolumeMount{
+							Name:      "upgrade-scripts",
+							MountPath: "/upgrade-scripts",
+						},
+					)
+				}
+
+				// Change the command to use the wrapper script
+				sts.Spec.Template.Spec.Containers[i].Command = []string{
+					"/bin/bash",
+					"/upgrade-scripts/postgres-wrapper.sh",
+				}
+			}
+		}
+
+		// Add volume for upgrade scripts ConfigMap
+		scriptsVolume := corev1.Volume{
+			Name: "upgrade-scripts",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: postgresUpgradeScriptsName,
+					},
+					DefaultMode: func() *int32 {
+						mode := int32(0755)
+						return &mode
+					}(),
+				},
+			},
+		}
+
+		volumeFound := false
+		for i, vol := range sts.Spec.Template.Spec.Volumes {
+			if vol.Name == "upgrade-scripts" {
+				sts.Spec.Template.Spec.Volumes[i] = scriptsVolume
+				volumeFound = true
+				break
+			}
+		}
+		if !volumeFound {
+			sts.Spec.Template.Spec.Volumes = append(
+				sts.Spec.Template.Spec.Volumes,
+				scriptsVolume,
+			)
+		}
+
+		// Convert back to unstructured
+		uObj, err := k8sruntime.DefaultUnstructuredConverter.ToUnstructured(sts)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(uObj)
 		return nil
 	}
 }
