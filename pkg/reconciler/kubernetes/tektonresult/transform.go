@@ -116,6 +116,7 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		common.StatefulSetImages(resultImgs),
 		common.AddConfigMapValues(tektonResultleaderElectionConfig, instance.Spec.Performance.PerformanceLeaderElectionConfig),
 		common.UpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(&instance.Spec.Performance, tektonResultleaderElectionConfig, resultWatcherDeployment, resultWatcherContainer),
+		// Note: PostgreSQL upgrade transformer is NOT needed for Kubernetes
 	}
 
 	if instance.Spec.Performance.StatefulsetOrdinals != nil && *instance.Spec.Performance.StatefulsetOrdinals {
