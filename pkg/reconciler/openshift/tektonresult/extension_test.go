@@ -33,6 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/ptr"
 )
@@ -295,4 +296,274 @@ func Test_PostReconcile_RouteToggle(t *testing.T) {
 			assert.Equal(t, len(list.Items), tt.expectInstallerCount)
 		})
 	}
+}
+
+func Test_injectPostgresUpgradeSupport(t *testing.T) {
+	// Create a minimal postgres StatefulSet for testing
+	postgresStatefulSet := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tekton-results-postgres",
+			Namespace: "tekton-pipelines",
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "postgres",
+							Image: "registry.redhat.io/rhel9/postgresql-15@sha256:test",
+							SecurityContext: &corev1.SecurityContext{
+								AllowPrivilegeEscalation: ptr.Bool(false),
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "postgredb",
+									MountPath: "/var/lib/pgsql/data",
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "postgredb",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "postgredb",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Convert to unstructured
+	unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(postgresStatefulSet)
+	assertNoError(t, err)
+
+	// Create unstructured object
+	u := &unstructured.Unstructured{Object: unstructuredMap}
+	u.SetAPIVersion("apps/v1")
+	u.SetKind("StatefulSet")
+
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{*u}))
+	assertNoError(t, err)
+
+	// Apply the transformer
+	manifest, err = manifest.Transform(injectPostgresUpgradeSupport())
+	assertNoError(t, err)
+
+	// Convert back to StatefulSet
+	statefulset := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, statefulset)
+	assertNoError(t, err)
+
+	// Verify main container modifications
+	mainContainer := statefulset.Spec.Template.Spec.Containers[0]
+	assert.Equal(t, mainContainer.Name, "postgres", "Main container name should not change")
+
+	// Verify main container command was modified
+	assert.Equal(t, len(mainContainer.Command), 2)
+	assert.Equal(t, mainContainer.Command[0], "/bin/bash")
+	assert.Equal(t, mainContainer.Command[1], "/upgrade-scripts/postgres-wrapper.sh")
+
+	// Verify main container has upgrade-scripts volume mount
+	mainVolumeNames := make(map[string]bool)
+	for _, vm := range mainContainer.VolumeMounts {
+		mainVolumeNames[vm.Name] = true
+	}
+	assert.Equal(t, mainVolumeNames["upgrade-scripts"], true, "Main container should mount upgrade-scripts volume")
+
+	// Verify upgrade-scripts volume was added
+	volumeFound := false
+	for _, vol := range statefulset.Spec.Template.Spec.Volumes {
+		if vol.Name == "upgrade-scripts" {
+			volumeFound = true
+			assert.Equal(t, vol.VolumeSource.ConfigMap != nil, true, "upgrade-scripts should be a ConfigMap volume")
+			assert.Equal(t, vol.VolumeSource.ConfigMap.Name, "postgres-upgrade-scripts")
+			assert.Equal(t, *vol.VolumeSource.ConfigMap.DefaultMode, int32(0755))
+		}
+	}
+	assert.Equal(t, volumeFound, true, "upgrade-scripts volume should be added")
+}
+
+func Test_injectPostgresUpgradeSupport_SkipsNonPostgresStatefulSet(t *testing.T) {
+	// Create a non-postgres StatefulSet
+	otherStatefulSet := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "other-statefulset",
+			Namespace: "tekton-pipelines",
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "app",
+							Image: "some-image:latest",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Convert to unstructured
+	unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(otherStatefulSet)
+	assertNoError(t, err)
+
+	// Create unstructured object
+	u := &unstructured.Unstructured{Object: unstructuredMap}
+	u.SetAPIVersion("apps/v1")
+	u.SetKind("StatefulSet")
+
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{*u}))
+	assertNoError(t, err)
+
+	originalInitContainerCount := len(otherStatefulSet.Spec.Template.Spec.InitContainers)
+	originalVolumeCount := len(otherStatefulSet.Spec.Template.Spec.Volumes)
+
+	// Apply the transformer
+	manifest, err = manifest.Transform(injectPostgresUpgradeSupport())
+	assertNoError(t, err)
+
+	// Convert back to StatefulSet
+	statefulset := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, statefulset)
+	assertNoError(t, err)
+
+	// Verify nothing was modified (since name doesn't match "tekton-results-postgres")
+	assert.Equal(t, len(statefulset.Spec.Template.Spec.InitContainers), originalInitContainerCount,
+		"Init containers should not be modified for non-postgres statefulset")
+	assert.Equal(t, len(statefulset.Spec.Template.Spec.Volumes), originalVolumeCount,
+		"Volumes should not be modified for non-postgres statefulset")
+}
+
+func Test_injectPostgresUpgradeSupport_SkipsNonStatefulSet(t *testing.T) {
+	// Create a Deployment (not a StatefulSet)
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tekton-results-api",
+			Namespace: "tekton-pipelines",
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "api",
+							Image: "results-api:latest",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Convert to unstructured
+	unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(deployment)
+	assertNoError(t, err)
+
+	// Create unstructured object
+	u := &unstructured.Unstructured{Object: unstructuredMap}
+	u.SetAPIVersion("apps/v1")
+	u.SetKind("Deployment")
+
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{*u}))
+	assertNoError(t, err)
+
+	originalInitContainerCount := len(deployment.Spec.Template.Spec.InitContainers)
+	originalVolumeCount := len(deployment.Spec.Template.Spec.Volumes)
+
+	// Apply the transformer - should skip Deployment resources
+	manifest, err = manifest.Transform(injectPostgresUpgradeSupport())
+	assertNoError(t, err)
+
+	// Convert back to Deployment
+	deploymentResult := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, deploymentResult)
+	assertNoError(t, err)
+
+	// Verify nothing was modified (not a StatefulSet)
+	assert.Equal(t, len(deploymentResult.Spec.Template.Spec.InitContainers), originalInitContainerCount,
+		"Init containers should not be modified for Deployment resources")
+	assert.Equal(t, len(deploymentResult.Spec.Template.Spec.Volumes), originalVolumeCount,
+		"Volumes should not be modified for Deployment resources")
+}
+
+func Test_injectPostgresUpgradeSupport_Idempotent(t *testing.T) {
+	postgresStatefulSet := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "tekton-results-postgres",
+			Namespace: "tekton-pipelines",
+		},
+		Spec: appsv1.StatefulSetSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "postgres",
+							Image: "registry.redhat.io/rhel9/postgresql-15@sha256:test",
+							SecurityContext: &corev1.SecurityContext{
+								AllowPrivilegeEscalation: ptr.Bool(false),
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "postgredb",
+									MountPath: "/var/lib/pgsql/data",
+								},
+							},
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "postgredb",
+							VolumeSource: corev1.VolumeSource{
+								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "postgredb",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Convert to unstructured
+	unstructuredMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(postgresStatefulSet)
+	assertNoError(t, err)
+
+	// Create unstructured object
+	u := &unstructured.Unstructured{Object: unstructuredMap}
+	u.SetAPIVersion("apps/v1")
+	u.SetKind("StatefulSet")
+
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{*u}))
+	assertNoError(t, err)
+
+	// Apply the transformer twice
+	manifest, err = manifest.Transform(injectPostgresUpgradeSupport())
+	assertNoError(t, err)
+
+	statefulset := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, statefulset)
+	assertNoError(t, err)
+
+	firstInitContainerCount := len(statefulset.Spec.Template.Spec.InitContainers)
+	firstVolumeCount := len(statefulset.Spec.Template.Spec.Volumes)
+
+	// Apply again
+	manifest, err = manifest.Transform(injectPostgresUpgradeSupport())
+	assertNoError(t, err)
+
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, statefulset)
+	assertNoError(t, err)
+
+	// Verify counts remain the same (idempotent operation)
+	assert.Equal(t, len(statefulset.Spec.Template.Spec.InitContainers), firstInitContainerCount,
+		"Transformer should be idempotent - init container count should not change on second application")
+	assert.Equal(t, len(statefulset.Spec.Template.Spec.Volumes), firstVolumeCount,
+		"Transformer should be idempotent - volume count should not change on second application")
 }
