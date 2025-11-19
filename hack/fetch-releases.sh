@@ -419,6 +419,9 @@ main() {
   pruner_version=$(go run ./cmd/tool component-version ${CONFIG} pruner)
   release_yaml pruner release 00-pruner ${pruner_version}
 
+  # Kueue Scheduler
+  release_yaml_github kueue
+
   echo updated payload tree
   find cmd/${TARGET}/operator/kodata
 }

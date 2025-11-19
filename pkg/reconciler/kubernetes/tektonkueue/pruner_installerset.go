@@ -14,20 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package tektonkueue
 
 import (
 	"context"
+	"errors"
+	"fmt"
+
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"knative.dev/pkg/logging"
 )
 
-var DefaultKueueDisabled = false
-
-func (tp *TektonKueue) SetDefaults(_ context.Context) {
-	tp.Spec.Kueue.SetDefaults()
-}
-
-func (p *Kueue) SetDefaults() {
-	if p.Disabled == nil {
-		p.Disabled = &DefaultKueueDisabled
+func (r *Reconciler) ensureInstallerSets(ctx context.Context, tp *v1alpha1.TektonKueue) error {
+	logger := logging.FromContext(ctx)
+	if err := r.installerSetClient.MainSet(ctx, tp, &r.manifest, filterAndTransform(r.extension)); err != nil {
+		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
+		logger.Error(msg)
+		if errors.Is(err, v1alpha1.REQUEUE_EVENT_AFTER) {
+			return err
+		}
+		tp.Status.MarkInstallerSetNotReady(msg)
 	}
+
+	return nil
 }

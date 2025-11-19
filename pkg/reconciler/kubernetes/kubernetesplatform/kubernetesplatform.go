@@ -17,6 +17,8 @@ limitations under the License.
 package kubernetesplatform
 
 import (
+	"fmt"
+
 	"github.com/tektoncd/operator/pkg/reconciler/platform"
 )
 
@@ -31,6 +33,7 @@ func NewKubernetesPlatform(pc platform.PlatformConfig) *KubernetesPlatform {
 	plt := KubernetesPlatform{
 		supportedControllers: kubernetesControllers,
 	}
+	fmt.Printf("BINDAL Setting up Kubernetes Platform Controller: %v\n", plt)
 	plt.PlatformConfig = pc
 	plt.PlatformConfig.Name = PlatformNameKubernetes
 	return &plt

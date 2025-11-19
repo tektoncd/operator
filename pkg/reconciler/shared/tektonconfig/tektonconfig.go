@@ -26,6 +26,7 @@ import (
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chain"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/kueue"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pruner"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/result"
@@ -202,6 +203,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		}
 	}
 
+	if err := r.EnsureKueueComponent(ctx, tc); err != nil {
+		return err
+	}
+
 	// Ensure Pipeline Trigger
 	if !tc.Spec.Trigger.Disabled && (tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic) {
 		tektontrigger := trigger.GetTektonTriggerCR(tc, r.operatorVersion)
@@ -343,4 +348,8 @@ func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonConfig)
 		return err
 	}
 	return v1alpha1.RECONCILE_AGAIN_ERR
+}
+
+func (r *Reconciler) EnsureKueueComponent(ctx context.Context, tc *v1alpha1.TektonConfig) error {
+	return kueue.EnsureComponent(ctx, tc, r.operatorClientSet, r.operatorVersion)
 }

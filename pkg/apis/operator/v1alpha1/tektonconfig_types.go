@@ -91,6 +91,7 @@ type TektonConfigSpec struct {
 	Pruner Prune `json:"pruner,omitempty"`
 	// New EventBasedPruner which provides more granular control over TaskRun and PipelineRuns
 	TektonPruner Pruner `json:"tektonpruner,omitempty"`
+	Kueue        Kueue  `json:"kueue,omitempty"`
 	CommonSpec   `json:",inline"`
 	// Addon holds the addons config
 	// +optional
