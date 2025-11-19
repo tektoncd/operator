@@ -33,7 +33,7 @@ spec:
         image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
         args:
         - "-controllers"
-        - "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner"
+        - "tektonconfig,tektonpipeline,tektonkueue"
         - "-unique-process-name"
         - "tekton-operator-lifecycle"
         imagePullPolicy: IfNotPresent
@@ -57,7 +57,7 @@ spec:
         - name: METRICS_DOMAIN
           value: tekton.dev/operator
         - name: VERSION
-          value: "devel"
+          value: "devel-8"
         - name: CONFIG_OBSERVABILITY_NAME
           value: tekton-config-observability
         - name: CONFIG_LEADERELECTION_NAME
