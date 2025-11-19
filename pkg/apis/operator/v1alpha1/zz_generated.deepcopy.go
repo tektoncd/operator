@@ -1641,6 +1641,7 @@ func (in *TektonConfigSpec) DeepCopyInto(out *TektonConfigSpec) {
 	in.Config.DeepCopyInto(&out.Config)
 	in.Pruner.DeepCopyInto(&out.Pruner)
 	in.TektonPruner.DeepCopyInto(&out.TektonPruner)
+	in.Kueue.DeepCopyInto(&out.Kueue)
 	out.CommonSpec = in.CommonSpec
 	in.Addon.DeepCopyInto(&out.Addon)
 	in.Hub.DeepCopyInto(&out.Hub)
