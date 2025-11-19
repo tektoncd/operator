@@ -95,7 +95,8 @@ kubectl delete tektoninstallerset <installer-set-name>
 | Triggers             | webhook                           | `IMAGE_TRIGGERS_WEBHOOK`                           |
 | Pipelines Proxy      | webhook Proxy image               | `IMAGE_PIPELINES_PROXY`                            |
 | Pruner CronJob       | image used in pruner cronJob      | `IMAGE_JOB_PRUNER_TKN`                             |
-| Tekton Pruner        | image used by tekton pruner       | `IMAGE_PRUNER_CONTROLLER`                          |
+| Tekton Pruner        | image used by pruner controller   | `IMAGE_PRUNER_CONTROLLER`                          |
+| Tekton Pruner        | image used by pruner webhook      | `IMAGE_PRUNER_WEBHOOK`                             |
 
 
 #### Images supported in OpenShift
