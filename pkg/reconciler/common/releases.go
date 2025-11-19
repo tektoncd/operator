@@ -102,6 +102,8 @@ func ComponentDir(instance v1alpha1.TektonComponent) string {
 		return filepath.Join(koDataDir, "manual-approval-gate")
 	case *v1alpha1.TektonPruner:
 		return filepath.Join(koDataDir, v1alpha1.TektonPrunerResourceName)
+	case *v1alpha1.TektonKueue:
+		return filepath.Join(koDataDir, v1alpha1.TektonKueueResourceName)
 	}
 	return ""
 }
