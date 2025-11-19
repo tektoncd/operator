@@ -462,6 +462,7 @@ main() {
   # copy pruner rbac/sa yaml
   copy_pruner_yaml
   release_yaml_oracle pruner
+  release_yaml_github kueue
 
   echo updated payload tree
   find cmd/${TARGET}/operator/kodata
