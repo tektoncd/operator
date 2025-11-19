@@ -254,6 +254,13 @@ image-substitutions:
         containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_PRUNER_CONTROLLER
+- image: registry.redhat.io/openshift-pipelines/pipelines-pruner-webhook-rhel9@
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
+        envKeys:
+          - IMAGE_PRUNER_WEBHOOK
 - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
   replaceLocations:
     envTargets:
