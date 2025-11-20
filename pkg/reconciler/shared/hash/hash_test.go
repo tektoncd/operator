@@ -26,10 +26,6 @@ func TestCompute(t *testing.T) {
 	testHashFunc(t, Compute)
 }
 
-func TestComputeMd5(t *testing.T) {
-	testHashFunc(t, ComputeMd5)
-}
-
 func testHashFunc(t *testing.T, computeFunc func(obj interface{}) (string, error)) {
 	tp := &v1alpha1.TektonPipeline{
 		Spec: v1alpha1.TektonPipelineSpec{
