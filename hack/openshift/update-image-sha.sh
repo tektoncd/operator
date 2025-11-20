@@ -46,7 +46,7 @@ EOF
 declare -A IMAGES=(
   ["buildah"]="registry.redhat.io/rhel9/buildah"
   ["kn"]="registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel8"
-  ["postgresql"]="registry.redhat.io/rhel9/postgresql-16"
+  ["postgresql"]="registry.redhat.io/rhel9/postgresql-13"
   ["skopeo-copy"]="registry.redhat.io/rhel9/skopeo"
   ["s2i"]="registry.redhat.io/source-to-image/source-to-image-rhel9"
   ["ubi-minimal"]="registry.redhat.io/ubi9/ubi-minimal"
