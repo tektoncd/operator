@@ -210,7 +210,7 @@ image-substitutions:
         containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
-- image: registry.redhat.io/rhel9/postgresql-16@sha256:6a6bde62273e318b6bc2ee75fa368abf71f71dc1c37f85f1230649f595fde951
+- image: registry.redhat.io/rhel9/postgresql-13@sha256:5105fc7494c8e9886204951ea6eed0a04dcc638ea65a2e1c15df5ebf99aae356
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
