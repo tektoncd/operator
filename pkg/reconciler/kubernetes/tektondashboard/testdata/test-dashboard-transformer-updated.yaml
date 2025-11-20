@@ -404,7 +404,7 @@ spec:
         app.kubernetes.io/name: dashboard
         app.kubernetes.io/part-of: tekton-dashboard
         app.kubernetes.io/version: v0.48.0
-        operator.tekton.dev/deployment-spec-applied-hash: e521024acd6c6a280dc53fb4de0a6725
+        operator.tekton.dev/deployment-spec-applied-hash: bcc353ffd9dbb45db12ebd80c6abbd27
       name: tekton-dashboard
     spec:
       containers:
