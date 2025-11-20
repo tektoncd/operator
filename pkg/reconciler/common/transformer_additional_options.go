@@ -520,11 +520,20 @@ func (ot *OptionsTransformer) updateDeploymentHashValue(u *unstructured.Unstruct
 	}
 	deployment.Spec.Template.Labels[v1alpha1.DeploymentSpecHashValueLabelKey] = ""
 
-	// label value max limit is 63 chars, sha256 hash produces 64 chars
-	// use md5 hash which is 16 chars
-	hashValue, err := hash.ComputeMd5(deployment.Spec)
+	// Compute a stable hash of the deployment spec and set it in a pod-template label
+	// to force a rollout on spec changes.
+	//
+	// Label values are limited to 63 characters; SHA-256 hex output is 64 chars.
+	// Use SHA-256 for FIPS compliance and truncate the hex string to fit as a label.
+	fullHash, err := hash.Compute(deployment.Spec)
 	if err != nil {
 		return err
+	}
+	// Use a safe truncated prefix for the label value
+	const hashLabelLen = 32
+	hashValue := fullHash
+	if len(hashValue) > hashLabelLen {
+		hashValue = hashValue[:hashLabelLen]
 	}
 
 	// update hash value
