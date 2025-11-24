@@ -351,5 +351,5 @@ func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonConfig)
 }
 
 func (r *Reconciler) EnsureKueueComponent(ctx context.Context, tc *v1alpha1.TektonConfig) error {
-	return kueue.EnsureComponent(ctx, tc, r.operatorClientSet, r.operatorVersion)
+	return kueue.EnsureTektonComponent(ctx, tc, r.operatorClientSet, r.operatorVersion)
 }
