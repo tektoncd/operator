@@ -1564,7 +1564,7 @@ golang.org/x/crypto/ssh/terminal
 # golang.org/x/exp v0.0.0-20250911091902-df9299821621
 ## explicit; go 1.24.0
 golang.org/x/exp/slices
-# golang.org/x/mod v0.29.0
+# golang.org/x/mod v0.30.0
 ## explicit; go 1.24.0
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
