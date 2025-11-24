@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -30,8 +29,13 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+const (
+	KUEUE_GVK = "kueue.x-k8s.io/v1beta1"
+	CERT_GVK  = "cert-manager.io/v1"
+)
+
 func EnsureTektonKueueExists(ctx context.Context, clients op.TektonKueueInterface, tk *v1alpha1.TektonKueue) (*v1alpha1.TektonKueue, error) {
-	tpCR, err := GetKueue(ctx, clients, v1alpha1.TektonKueueResourceName)
+	tektonKueue, err := GetTektonKueue(ctx, clients, v1alpha1.TektonKueueResourceName)
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
 			return nil, err
@@ -42,12 +46,12 @@ func EnsureTektonKueueExists(ctx context.Context, clients op.TektonKueueInterfac
 		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
-	tpCR, err = UpdateKueue(ctx, tpCR, tk, clients)
+	tektonKueue, err = UpdateKueue(ctx, tektonKueue, tk, clients)
 	if err != nil {
 		return nil, err
 	}
 
-	ok, err := isTektonKueueReady(tpCR, err)
+	ok, err := isTektonKueueReady(tektonKueue, err)
 	if err != nil {
 		return nil, err
 	}
@@ -56,10 +60,10 @@ func EnsureTektonKueueExists(ctx context.Context, clients op.TektonKueueInterfac
 		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
-	return tpCR, err
+	return tektonKueue, err
 }
 
-func GetKueue(ctx context.Context, clients op.TektonKueueInterface, name string) (*v1alpha1.TektonKueue, error) {
+func GetTektonKueue(ctx context.Context, clients op.TektonKueueInterface, name string) (*v1alpha1.TektonKueue, error) {
 	return clients.Get(ctx, name, metav1.GetOptions{})
 }
 
@@ -140,16 +144,14 @@ func UpdateKueue(ctx context.Context, old *v1alpha1.TektonKueue, new *v1alpha1.T
 
 // isTektonKueueReady will check the status conditions of the TektonKueue and return true if the TektonKueue is ready.
 func isTektonKueueReady(s *v1alpha1.TektonKueue, err error) (bool, error) {
-	if s.GetStatus() != nil && s.GetStatus().GetCondition(apis.ConditionReady) != nil {
-		if strings.Contains(s.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
-			return false, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
-		}
+	if s.GetStatus() != nil && s.GetStatus().GetCondition(apis.ConditionReady) != nil && s.GetStatus().GetCondition(apis.ConditionReady).IsFalse() {
+		return false, fmt.Errorf(s.GetStatus().GetCondition(apis.ConditionReady).Message)
 	}
 	return s.Status.IsReady(), err
 }
 
 func EnsureTektonKueueCRNotExists(ctx context.Context, clients op.TektonKueueInterface) error {
-	if _, err := GetKueue(ctx, clients, v1alpha1.TektonKueueResourceName); err != nil {
+	if _, err := GetTektonKueue(ctx, clients, v1alpha1.TektonKueueResourceName); err != nil {
 		if apierrs.IsNotFound(err) {
 			// TektonKueue CR is gone, hence return nil
 			return nil
@@ -170,10 +172,29 @@ func EnsureTektonKueueCRNotExists(ctx context.Context, clients op.TektonKueueInt
 	return v1alpha1.RECONCILE_AGAIN_ERR
 }
 
-func EnsureComponent(ctx context.Context, tc *v1alpha1.TektonConfig, operatorClientSet clientset.Interface, operatorVersion string) error {
+// EnsureTektonComponent validates that specific component is  deployed on cluster
+func EnsureTektonComponent(ctx context.Context, tc *v1alpha1.TektonConfig, operatorClientSet clientset.Interface, operatorVersion string) error {
+	if tc.Spec.Kueue.IsDisabled() {
+		// If TektonKueue is disabled then uninstall the components
+		return EnsureTektonKueueCRNotExists(ctx, operatorClientSet.OperatorV1alpha1().TektonKueues())
+	}
+	// Before Installing Kueue, Make sure that  Upstream Kueue is installed
+	_, err := operatorClientSet.Discovery().ServerResourcesForGroupVersion(KUEUE_GVK)
+	if err != nil {
+		tc.Status.MarkComponentNotReady(fmt.Sprintf("Please install kueue (%s) First, %s ", KUEUE_GVK, err.Error()))
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	}
+	// Cert-Manager should also be pre-installed
+	_, err = operatorClientSet.Discovery().ServerResourcesForGroupVersion(CERT_GVK)
+	if err != nil {
+		tc.Status.MarkComponentNotReady(fmt.Sprintf("Please install cert-manager (%s) First, %s ", CERT_GVK, err.Error()))
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	}
+
+	// If Kueue is installed then create TektonKueue CR
 	tektonKueue := GetTektonKueueCR(tc, operatorVersion)
 	if _, err := EnsureTektonKueueExists(ctx, operatorClientSet.OperatorV1alpha1().TektonKueues(), tektonKueue); err != nil {
-		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonKueue %s", err.Error()))
+		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonKueue : %s", err.Error()))
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 	return nil

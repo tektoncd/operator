@@ -67,7 +67,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, kueueVer, v1alpha1.KindTektonKueue, metrics),
 			extension:          generator(ctx),
 			manifest:           manifest,
-			kueueVersion:       kueueVer,
+			tektonKueueVersion: kueueVer,
 			operatorVersion:    operatorVer,
 		}
 		impl := tektonKueuereconciler.NewImpl(ctx, c)
