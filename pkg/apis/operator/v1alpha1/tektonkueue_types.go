@@ -42,10 +42,19 @@ type TektonKueue struct {
 
 type Kueue struct {
 	// enable or disable TektonKueue Component
-	Disabled *bool `json:"disabled"`
+	Disabled     *bool        `json:"disabled,omitempty"`
+	MultiCluster MultiCluster `json:"multi-cluster"`
 
 	// options holds additions fields and these fields will be updated on the manifests
-	Options AdditionalOptions `json:"options"`
+	Options AdditionalOptions `json:"options,omitempty"`
+}
+
+type MultiCluster struct {
+	// enable or disable TektonKueue Component
+	Disabled *bool `json:"disabled"`
+
+	// Define the role of a cluster HUB or SPOKE
+	Role string `json:"role"`
 }
 
 // TektonKueueList contains a list of TektonKueue

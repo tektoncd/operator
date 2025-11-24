@@ -20,7 +20,10 @@ import (
 	"context"
 )
 
-var DefaultKueueDisabled = false
+var (
+	DefaultKueueDisabled        = false
+	DefaultMultiClusterDisabled = true
+)
 
 func (tp *TektonKueue) SetDefaults(_ context.Context) {
 	tp.Spec.Kueue.SetDefaults()
@@ -29,5 +32,13 @@ func (tp *TektonKueue) SetDefaults(_ context.Context) {
 func (p *Kueue) SetDefaults() {
 	if p.Disabled == nil {
 		p.Disabled = &DefaultKueueDisabled
+	}
+	p.MultiCluster.SetDefaults()
+
+}
+
+func (m *MultiCluster) SetDefaults() {
+	if m.Disabled == nil {
+		m.Disabled = &DefaultMultiClusterDisabled
 	}
 }

@@ -19,3 +19,4 @@ metadata:
 spec:
   targetNamespace: tekton-pipelines
   disabled: false
+  multi-cluster: {}
