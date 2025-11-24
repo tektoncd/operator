@@ -157,6 +157,7 @@ platforms:
           enable-cancel-in-progress-on-push: "false"
           hub-catalog-name: tekton
           hub-url: https://api.hub.tekton.dev/v1
+          require-ok-to-test-sha: "false"
           skip-push-event-for-pr-commits: "true"
           remote-tasks: "true"
           secret-auto-create: "true"
@@ -559,6 +560,7 @@ platforms:
         enable-cancel-in-progress-on-push: "false"
         hub-catalog-name: tekton
         hub-url: https://api.hub.tekton.dev/v1
+        require-ok-to-test-sha: "false"
         remote-tasks: "true"
         secret-auto-create: "true"
         secret-github-app-token-scoped: "true"
