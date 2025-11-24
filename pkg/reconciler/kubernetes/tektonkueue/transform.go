@@ -18,11 +18,20 @@ package tektonkueue
 
 import (
 	"context"
+	"strings"
 
+	certv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/pkg/logging"
+)
+
+const (
+	certManagerAnnotation = "cert-manager.io/inject-ca-from"
 )
 
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
@@ -35,6 +44,8 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.TektonKueueResourceName),
 			common.DeploymentImages(kueueImages),
 			common.AddDeploymentRestrictedPSA(),
+			CertificateTransformer(kueueCR.GetSpec().GetTargetNamespace()),
+			MutatingWebhookConfigurationTransformer(ctx, kueueCR.GetSpec().GetTargetNamespace()),
 		}
 		extra = append(extra, extension.Transformers(kueueCR)...)
 		err := common.Transform(ctx, manifest, kueueCR, extra...)
@@ -49,5 +60,61 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		}
 
 		return manifest, nil
+	}
+}
+
+func CertificateTransformer(targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Certificate" {
+			return nil
+		}
+
+		cm := &certv1.Certificate{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return err
+		}
+
+		// Update DNS entries
+		dnsNames := cm.Spec.DNSNames
+		for i, v := range dnsNames {
+			dnsTokens := strings.Split(v, ".")
+			if len(dnsTokens) < 2 {
+				continue
+			}
+			dnsTokens[1] = targetNamespace // ReplaceNameSpace
+			dnsNames[i] = strings.Join(dnsTokens, ".")
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
+func MutatingWebhookConfigurationTransformer(ctx context.Context, targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() == "MutatingWebhookConfiguration" {
+			logger := logging.FromContext(ctx)
+			annotations := u.GetAnnotations()
+			ann := annotations[certManagerAnnotation]
+			if ann != "" {
+				tokens := strings.Split(ann, "/")
+				if len(tokens) >= 2 {
+					tokens[0] = targetNamespace
+					annotations[certManagerAnnotation] = strings.Join(tokens, "/")
+
+				}
+			}
+			logger.Warn("BINDAL Annotation : ", u.GetName(), annotations)
+			u.SetAnnotations(annotations)
+			logger.Warn("BINDAL Annotation Updated: ", u.GetName(), u.GetAnnotations())
+
+		}
+		return nil
 	}
 }
