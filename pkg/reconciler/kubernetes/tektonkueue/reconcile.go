@@ -18,6 +18,7 @@ package tektonkueue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	mf "github.com/manifestival/manifestival"
@@ -48,8 +49,11 @@ type Reconciler struct {
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
 	// version of kueue which we are installing
-	kueueVersion    string
-	operatorVersion string
+	tektonKueueVersion string
+	operatorVersion    string
+
+	// Namespace for upstream Kueue installation. Default it kueue-system
+	kueueNameSpace string
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -57,73 +61,90 @@ var _ tektonkueuereconciler.Interface = (*Reconciler)(nil)
 
 // ReconcileKind compares the actual state with the desired, and attempts to
 // converge the two.
-func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonKueue) pkgreconciler.Event {
-	logger := logging.FromContext(ctx).With("name", tp.GetName())
-	tp.Status.InitializeConditions()
-	tp.Status.SetVersion(r.kueueVersion)
+func (r *Reconciler) ReconcileKind(ctx context.Context, tektonKueue *v1alpha1.TektonKueue) pkgreconciler.Event {
+	logger := logging.FromContext(ctx).With("name", tektonKueue.GetName())
+	tektonKueue.Status.InitializeConditions()
+	tektonKueue.Status.SetVersion(r.tektonKueueVersion)
 
-	if tp.GetName() != v1alpha1.TektonKueueResourceName {
+	if tektonKueue.GetName() != v1alpha1.TektonKueueResourceName {
 		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
 			v1alpha1.TektonKueueResourceName,
-			tp.GetName(),
+			tektonKueue.GetName(),
 		)
 		logger.Error(msg)
-		tp.Status.MarkNotReady(msg)
+		tektonKueue.Status.MarkNotReady(msg)
 		return nil
 	}
 
 	// reconcile target namespace
-	if err := common.ReconcileTargetNamespace(ctx, nil, nil, tp, r.kubeClientSet); err != nil {
+	if err := common.ReconcileTargetNamespace(ctx, nil, nil, tektonKueue, r.kubeClientSet); err != nil {
 		return err
 	}
 	// Make sure TektonPipeline is installed before proceeding with
-	// TektonKueue
-	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
-		if err.Error() == common.PipelineNotReady || err == v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR {
-			tp.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
-			// wait for pipeline status to change
-			return v1alpha1.REQUEUE_EVENT_AFTER
-		}
-		// (tektonpipeline.operator.tekton.dev instance not available yet)
-		tp.Status.MarkDependencyMissing("tekton-pipelines does not exist")
-		return err
+	err := r.ensureDependenciesInstalled(tektonKueue)
+	if err != nil {
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
-	tp.Status.MarkDependenciesInstalled()
+
+	tektonKueue.Status.MarkDependenciesInstalled()
 
 	if err := r.installerSetClient.RemoveObsoleteSets(ctx); err != nil {
 		logger.Error("failed to remove obsolete installer sets: %v", err)
 		return err
 	}
 
-	if err := r.extension.PreReconcile(ctx, tp); err != nil {
+	if err := r.extension.PreReconcile(ctx, tektonKueue); err != nil {
 		msg := fmt.Sprintf("PreReconciliation failed: %s", err.Error())
 		logger.Error(msg)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
 			return err
 		}
-		tp.Status.MarkPreReconcilerFailed(msg)
+		tektonKueue.Status.MarkPreReconcilerFailed(msg)
 		return nil
 	}
 
 	// Mark PreReconcile Complete
-	tp.Status.MarkPreReconcilerComplete()
+	tektonKueue.Status.MarkPreReconcilerComplete()
 
 	//  Create/Update Required TektonInstallerSets
-	if err := r.ensureInstallerSets(ctx, tp); err != nil {
+	if err := r.ensureInstallerSets(ctx, tektonKueue); err != nil {
 		return err
 	}
 
-	if err := r.extension.PostReconcile(ctx, tp); err != nil {
+	if err := r.extension.PostReconcile(ctx, tektonKueue); err != nil {
 		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
 		logger.Error(msg)
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
 			return err
 		}
-		tp.Status.MarkPostReconcilerFailed(msg)
+		tektonKueue.Status.MarkPostReconcilerFailed(msg)
 		return nil
 	}
 
 	// Mark PostReconcile Complete
-	tp.Status.MarkPostReconcilerComplete()
+	tektonKueue.Status.MarkPostReconcilerComplete()
 	return nil
+}
+
+func (r *Reconciler) ensureDependenciesInstalled(tektonKueue *v1alpha1.TektonKueue) error {
+	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
+		if err.Error() == common.PipelineNotReady || errors.Is(err, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR) {
+			tektonKueue.Status.MarkDependencyInstalling("tekton-pipelines is still installing")
+			// wait for pipeline status to change
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		// (tektonpipeline.operator.tekton.dev instance not available yet)
+		tektonKueue.Status.MarkDependencyMissing("tekton-pipelines does not exist")
+		return err
+	}
+
+	discoveryClient := r.kubeClientSet.Discovery()
+	_, err := discoveryClient.ServerResourcesForGroupVersion("kueue.x-k8s.io/v1beta1")
+	if err != nil {
+		tektonKueue.Status.MarkDependencyMissing("API kueue.x-k8s.io/v1beta1 does not exist. Please install kueue.x-k8s.io/v1beta1")
+		return err
+	}
+
+	return nil
+
 }
