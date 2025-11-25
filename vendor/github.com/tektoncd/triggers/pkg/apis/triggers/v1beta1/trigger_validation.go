@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -59,7 +60,7 @@ func (t TriggerSpecTemplate) validate(ctx context.Context) (errs *apis.FieldErro
 	// Optional explicit match
 	if t.APIVersion != "" {
 		if t.APIVersion != "v1alpha1" && t.APIVersion != "v1beta1" {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "template.apiVersion"))
+			errs = errs.Also(apis.ErrInvalidValue(errors.New("invalid apiVersion"), "template.apiVersion"))
 		}
 	}
 
@@ -86,7 +87,7 @@ func (t triggerSpecBindingArray) validate(ctx context.Context) (errs *apis.Field
 			case b.Name != "": // Cannot specify both Ref and Name
 				errs = errs.Also(apis.ErrMultipleOneOf(fmt.Sprintf("bindings[%d].ref", i), fmt.Sprintf("bindings[%d].name", i)))
 			case b.Kind != NamespacedTriggerBindingKind && b.Kind != ClusterTriggerBindingKind: // Kind must be valid
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid kind"), fmt.Sprintf("bindings[%d].kind", i)))
+				errs = errs.Also(apis.ErrInvalidValue(errors.New("invalid kind"), fmt.Sprintf("bindings[%d].kind", i)))
 			}
 		case b.Name != "":
 			if b.Value == nil { // Value is mandatory if Name is specified
@@ -114,29 +115,29 @@ func (i *TriggerInterceptor) validate(ctx context.Context) (errs *apis.FieldErro
 			if w.ObjectRef.Kind == "" {
 				errs = errs.Also(apis.ErrMissingField("interceptor.webhook.objectRef.kind"))
 			} else if w.ObjectRef.Kind != "Service" {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid kind"), "interceptor.webhook.objectRef.kind"))
+				errs = errs.Also(apis.ErrInvalidValue(errors.New("invalid kind"), "interceptor.webhook.objectRef.kind"))
 			}
 
 			// Optional explicit match
 			if w.ObjectRef.APIVersion == "" {
 				errs = errs.Also(apis.ErrMissingField("interceptor.webhook.objectRef.apiVersion"))
 			} else if w.ObjectRef.APIVersion != "v1" {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion"))
+				errs = errs.Also(apis.ErrInvalidValue(errors.New("invalid apiVersion"), "interceptor.webhook.objectRef.apiVersion"))
 			}
 		}
 
 		for i, header := range w.Header {
 			// Enforce non-empty canonical header keys
 			if len(header.Name) == 0 || http.CanonicalHeaderKey(header.Name) != header.Name {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid header name"), fmt.Sprintf("interceptor.webhook.header[%d].name", i)))
+				errs = errs.Also(apis.ErrInvalidValue(errors.New("invalid header name"), fmt.Sprintf("interceptor.webhook.header[%d].name", i)))
 			}
 			// Enforce non-empty header values
 			if header.Value.Type == pipelinev1.ParamTypeString {
 				if len(header.Value.StringVal) == 0 {
-					errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i)))
+					errs = errs.Also(apis.ErrInvalidValue(errors.New("invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i)))
 				}
 			} else if len(header.Value.ArrayVal) == 0 {
-				errs = errs.Also(apis.ErrInvalidValue(fmt.Errorf("invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i)))
+				errs = errs.Also(apis.ErrInvalidValue(errors.New("invalid header value"), fmt.Sprintf("interceptor.webhook.header[%d].value", i)))
 			}
 		}
 	}
