@@ -852,6 +852,94 @@ func TestAddConfigMapValues(t *testing.T) {
 	}
 }
 
+func TestReplaceNamespaceInWebhookNamespaceSelector(t *testing.T) {
+	target := "openshift-pipelines"
+
+	// Build a minimal ValidatingWebhookConfiguration with two webhooks:
+	// 1) In selector referencing tekton-pipelines (should be replaced)
+	// 2) NotIn selector excluding kube-* namespaces (should remain unchanged)
+	vwc := unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "admissionregistration.k8s.io/v1",
+		"kind":       "ValidatingWebhookConfiguration",
+		"metadata": map[string]interface{}{
+			"name": "validation.webhook.pruner.tekton.dev",
+		},
+		"webhooks": []interface{}{
+			map[string]interface{}{
+				"name": "validation.webhook.pruner.tekton.dev.global",
+				"clientConfig": map[string]interface{}{
+					"service": map[string]interface{}{ // this is NOT modified by the transformer
+						"name":      "tekton-pruner-webhook",
+						"namespace": "tekton-pipelines",
+						"path":      "/validate-configmap",
+					},
+				},
+				"namespaceSelector": map[string]interface{}{
+					"matchExpressions": []interface{}{
+						map[string]interface{}{
+							"key":      "kubernetes.io/metadata.name",
+							"operator": "In",
+							"values":   []interface{}{"tekton-pipelines"},
+						},
+					},
+				},
+			},
+			map[string]interface{}{
+				"name": "validation.webhook.pruner.tekton.dev.namespace",
+				"namespaceSelector": map[string]interface{}{
+					"matchExpressions": []interface{}{
+						map[string]interface{}{
+							"key":      "kubernetes.io/metadata.name",
+							"operator": "NotIn",
+							"values":   []interface{}{"kube-system", "kube-public", "kube-node-lease"},
+						},
+					},
+				},
+			},
+		},
+	}}
+
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{vwc}))
+	assertNoError(t, err)
+
+	manifest, err = manifest.Transform(ReplaceNamespaceInWebhookNamespaceSelector(target))
+	assertNoError(t, err)
+
+	got := manifest.Resources()[0].Object
+
+	// Assert first webhook In selector value replaced to target
+	webhooks, found, err := unstructured.NestedSlice(got, "webhooks")
+	assertNoError(t, err)
+	if !found || len(webhooks) != 2 {
+		t.Fatalf("expected 2 webhooks, got %v", len(webhooks))
+	}
+
+	wh0 := webhooks[0].(map[string]interface{})
+	nsSel0, _, _ := unstructured.NestedMap(wh0, "namespaceSelector")
+	mexprs0, _ := nsSel0["matchExpressions"].([]interface{})
+	expr0 := mexprs0[0].(map[string]interface{})
+	vals0, _ := expr0["values"].([]interface{})
+	assert.Equal(t, target, vals0[0].(string))
+
+	// Assert second webhook NotIn selector unchanged
+	wh1 := webhooks[1].(map[string]interface{})
+	nsSel1, _, _ := unstructured.NestedMap(wh1, "namespaceSelector")
+	mexprs1, _ := nsSel1["matchExpressions"].([]interface{})
+	expr1 := mexprs1[0].(map[string]interface{})
+	vals1, _ := expr1["values"].([]interface{})
+	assert.Equal(t, "kube-system", vals1[0].(string))
+	assert.Equal(t, "kube-public", vals1[1].(string))
+	assert.Equal(t, "kube-node-lease", vals1[2].(string))
+
+	// Assert clientConfig.service.namespace was not modified by transformer
+	svcMap, found, err := unstructured.NestedMap(wh0, "clientConfig", "service")
+	assertNoError(t, err)
+	if !found {
+		t.Fatalf("expected clientConfig.service present")
+	}
+	assert.Equal(t, "tekton-pipelines", svcMap["namespace"].(string))
+}
+
 func TestInjectLabelOnNamespace(t *testing.T) {
 	t.Run("TestInjectLabel", func(t *testing.T) {
 		testData := path.Join("testdata", "test-namespace-inject.yaml")
