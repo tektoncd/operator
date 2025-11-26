@@ -76,6 +76,7 @@ func transformers(ctx context.Context, obj v1alpha1.TektonComponent) []mf.Transf
 		injectNamespaceCRDWebhookClientConfig(obj.GetSpec().GetTargetNamespace()),
 		injectNamespaceCRClusterInterceptorClientConfig(obj.GetSpec().GetTargetNamespace()),
 		injectNamespaceClusterRole(obj.GetSpec().GetTargetNamespace()),
+		ReplaceNamespaceInWebhookNamespaceSelector(obj.GetSpec().GetTargetNamespace()),
 		AddDeploymentRestrictedPSA(),
 	}
 }
@@ -1245,4 +1246,78 @@ func getSortedKeys(input map[string]interface{}) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// replaces the namespace in ValidatingWebhookConfiguration namespaceSelector
+func ReplaceNamespaceInWebhookNamespaceSelector(targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if !strings.EqualFold(u.GetKind(), "ValidatingWebhookConfiguration") {
+			return nil
+		}
+		// Accept either spec.webhooks (some older patterns) or top-level webhooks (current API structure).
+		webhooks, foundSpec, errSpec := unstructured.NestedSlice(u.Object, "spec", "webhooks")
+		pathIsSpec := true
+		if errSpec != nil || !foundSpec {
+			// Fallback to top-level
+			webhooksTop, foundTop, errTop := unstructured.NestedSlice(u.Object, "webhooks")
+			if errTop != nil || !foundTop {
+				// Nothing to transform
+				return nil
+			}
+			webhooks = webhooksTop
+			pathIsSpec = false
+		}
+		changed := false
+		for i := range webhooks {
+			wh, ok := webhooks[i].(map[string]interface{})
+			if !ok {
+				continue
+			}
+			nsSel, okNs := wh["namespaceSelector"].(map[string]interface{})
+			if !okNs {
+				continue
+			}
+			matchExprs, okExpr := nsSel["matchExpressions"].([]interface{})
+			if !okExpr {
+				continue
+			}
+			for j := range matchExprs {
+				expr, ok := matchExprs[j].(map[string]interface{})
+				if !ok {
+					continue
+				}
+				values, okVals := expr["values"].([]interface{})
+				if !okVals || len(values) == 0 {
+					continue
+				}
+				for k := range values {
+					valStr, ok := values[k].(string)
+					if !ok || targetNamespace == "" {
+						continue
+					}
+					if strings.Contains(valStr, DefaultTargetNamespace) {
+						newVal := strings.ReplaceAll(valStr, DefaultTargetNamespace, targetNamespace)
+						if newVal != valStr {
+							values[k] = newVal
+							changed = true
+						}
+					}
+				}
+				expr["values"] = values
+				matchExprs[j] = expr
+			}
+			nsSel["matchExpressions"] = matchExprs
+			wh["namespaceSelector"] = nsSel
+			webhooks[i] = wh
+		}
+		if changed {
+			if pathIsSpec {
+				_ = unstructured.SetNestedSlice(u.Object, webhooks, "spec", "webhooks")
+			} else {
+				// Top-level assignment
+				u.Object["webhooks"] = webhooks
+			}
+		}
+		return nil
+	}
 }
