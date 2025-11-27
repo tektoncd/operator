@@ -30,7 +30,6 @@ import (
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/openshift/client-go/route/clientset/versioned/scheme"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -49,11 +48,12 @@ import (
 )
 
 const (
-	hubprefix                  string = "tekton-hub"
-	tektonHubAPIResourceKey    string = "api"
-	tektonHubUiResourceKey     string = "ui"
-	CreatedByValue             string = "TektonHub"
-	ConsoleHubLinkInstallerSet        = "ConsoleHubLink"
+	hubprefix                    string = "tekton-hub"
+	tektonHubAPIResourceKey      string = "api"
+	tektonHubUiResourceKey       string = "ui"
+	CreatedByValue               string = "TektonHub"
+	ConsoleHubLinkInstallerSet          = "ConsoleHubLink"
+	postgreSQLConfigMapDirectory        = "static/tekton-hub/postgresql-cm"
 )
 
 var replaceVal = map[string]string{
@@ -89,7 +89,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 }
 
 type openshiftExtension struct {
-	operatorClientSet versioned.Interface
+	operatorClientSet clientset.Interface
 	kubeClientSet     kubernetes.Interface
 	manifest          mf.Manifest
 }
@@ -97,6 +97,7 @@ type openshiftExtension struct {
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
 		UpdateDbDeployment(),
+		injectPostgresUpgradeSupport(),
 		openshiftCommon.RemoveRunAsUser(),
 		openshiftCommon.RemoveRunAsUserForJob(),
 		openshiftCommon.RemoveFsGroupForDeployment(),
@@ -115,8 +116,29 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		return err
 	}
 
+	// Fetch and append the postgresql config map which has postgresupgrade wrapper script
+	postgresqlCMDir := filepath.Join(common.ComponentBaseDir(), postgreSQLConfigMapDirectory)
+	postgresqlManifest := oe.manifest.Append()
+	if err := common.AppendManifest(&postgresqlManifest, postgresqlCMDir); err != nil {
+		return err
+	}
+
+	// Transform and apply the postgresql ConfigMap
+	postgresqlManifest, err := postgresqlManifest.Transform(
+		mf.InjectOwner(th),
+		mf.InjectNamespace(targetNs),
+	)
+	if err != nil {
+		logger.Error("failed to transform postgresql configmap manifest")
+		return err
+	}
+	if err := postgresqlManifest.Apply(); err != nil {
+		logger.Error("failed to apply postgresql configmap manifest")
+		return err
+	}
+
 	apiRouteManifest := manifest.Filter(mf.ByKind("Route"))
-	apiRouteManifest, err := apiRouteManifest.Transform(
+	apiRouteManifest, err = apiRouteManifest.Transform(
 		mf.InjectOwner(th),
 		mf.InjectNamespace(targetNs),
 	)
@@ -446,5 +468,96 @@ func replaceEnv(envs []corev1.EnvVar) {
 		if ok {
 			envs[i].Name = replaceVal[e.Name]
 		}
+		// Update PGDATA value to match the new mount path
+		if e.Name == "PGDATA" {
+			envs[i].Value = "/var/lib/pgsql/data"
+		}
+	}
+}
+
+// injectPostgresUpgradeSupport modifies the postgres container to support automatic
+// upgrade from PostgreSQL 13 to PostgreSQL 15. The wrapper script checks the PG_VERSION
+// file in the data directory and sets POSTGRESQL_UPGRADE=copy if an upgrade is needed,
+// triggering the sclorg container's built-in upgrade mechanism.
+func injectPostgresUpgradeSupport() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		// Only apply this transformer to the tekton-hub-db Deployment
+		if u.GetKind() != "Deployment" || u.GetName() != "tekton-hub-db" {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
+		if err != nil {
+			return err
+		}
+
+		// Modify the main postgres container
+		for i, container := range d.Spec.Template.Spec.Containers {
+			if container.Name == "tekton-hub-db" {
+				// Add volume mount for upgrade scripts
+				vmFound := false
+				for _, vm := range container.VolumeMounts {
+					if vm.Name == "upgrade-scripts" {
+						vmFound = true
+						break
+					}
+				}
+				if !vmFound {
+					d.Spec.Template.Spec.Containers[i].VolumeMounts = append(
+						container.VolumeMounts,
+						corev1.VolumeMount{
+							Name:      "upgrade-scripts",
+							MountPath: "/upgrade-scripts",
+						},
+					)
+				}
+
+				// Change the command to use the wrapper script
+				d.Spec.Template.Spec.Containers[i].Command = []string{
+					"/bin/bash",
+					"/upgrade-scripts/postgres-wrapper.sh",
+				}
+			}
+		}
+
+		// Add volume for upgrade scripts ConfigMap
+		scriptsVolume := corev1.Volume{
+			Name: "upgrade-scripts",
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: "tekton-hub-postgres-upgrade-scripts",
+					},
+					DefaultMode: func() *int32 {
+						mode := int32(0755)
+						return &mode
+					}(),
+				},
+			},
+		}
+
+		volumeFound := false
+		for i, vol := range d.Spec.Template.Spec.Volumes {
+			if vol.Name == "upgrade-scripts" {
+				d.Spec.Template.Spec.Volumes[i] = scriptsVolume
+				volumeFound = true
+				break
+			}
+		}
+		if !volumeFound {
+			d.Spec.Template.Spec.Volumes = append(
+				d.Spec.Template.Spec.Volumes,
+				scriptsVolume,
+			)
+		}
+
+		// Convert back to unstructured
+		uObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(uObj)
+		return nil
 	}
 }
