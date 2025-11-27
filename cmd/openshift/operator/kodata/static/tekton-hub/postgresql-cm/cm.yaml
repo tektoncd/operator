@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/name: tekton-hub-postgres
+    app.kubernetes.io/part-of: tekton-hub
+  name: tekton-hub-postgres-upgrade-scripts
+data:
+  postgres-wrapper.sh: |
+    #!/bin/bash
+    set -eu
+    PGDATA="${PGDATA:-/var/lib/pgsql/data}"
+    CURRENT_VERSION="15"
+    UPGRADE_FROM_VERSION="13"
+    echo "=== PostgreSQL Container Starting ==="
+
+    # The sclorg PostgreSQL containers use a subdirectory for data
+    # Check both $PGDATA and $PGDATA/userdata for existing data
+    PG_VERSION_FILE=""
+    if [ -f "$PGDATA/PG_VERSION" ]; then
+        PG_VERSION_FILE="$PGDATA/PG_VERSION"
+    elif [ -f "$PGDATA/userdata/PG_VERSION" ]; then
+        PG_VERSION_FILE="$PGDATA/userdata/PG_VERSION"
+        echo "Found existing data in userdata subdirectory"
+    fi
+
+    # Check if data directory exists and has version file
+    if [ -n "$PG_VERSION_FILE" ]; then
+        DATA_VERSION=$(cat "$PG_VERSION_FILE")
+        echo "Data directory PostgreSQL version: $DATA_VERSION"
+        # Check if upgrade is needed from version 13 to 15
+        if [ "$DATA_VERSION" = "$UPGRADE_FROM_VERSION" ]; then
+            echo "========================================="
+            echo "PostgreSQL Upgrade Mode Activated"
+            echo "Upgrading from PostgreSQL $UPGRADE_FROM_VERSION to PostgreSQL $CURRENT_VERSION"
+            echo "This is a ONE-TIME operation"
+            echo "========================================="
+            # Set the POSTGRESQL_UPGRADE environment variable
+            # The sclorg PostgreSQL container will detect this and run pg_upgrade
+            export POSTGRESQL_UPGRADE="copy"
+            echo "Starting PostgreSQL with POSTGRESQL_UPGRADE=copy"
+            echo "Please monitor logs for upgrade progress..."
+        elif [ "$DATA_VERSION" = "$CURRENT_VERSION" ]; then
+            echo "PostgreSQL data is already version $CURRENT_VERSION"
+            echo "Starting normally"
+        else
+            echo "WARNING: Unexpected PostgreSQL data version: $DATA_VERSION"
+            echo "Expected either $CURRENT_VERSION or $UPGRADE_FROM_VERSION"
+            echo "Starting PostgreSQL and letting it handle the situation"
+        fi
+    else
+        echo "No PG_VERSION file found - fresh installation"
+        echo "PostgreSQL will initialize a new database"
+    fi
+    # Execute the standard PostgreSQL container entrypoint
+    # This is the default command from the sclorg postgresql container
+    exec run-postgresql
+immutable: true
