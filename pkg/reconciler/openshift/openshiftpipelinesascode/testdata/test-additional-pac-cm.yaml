@@ -129,6 +129,13 @@ data:
   # you may want to disable this if ok-to-test should be done on each iteration
   remember-ok-to-test: "false"
 
+  # require-ok-to-test-sha enforces that a pull request's commit SHA must be specified
+  # in an `/ok-to-test` comment. This prevents a race condition where a malicious
+  # user could push a bad commit after the `/ok-to-test` comment is posted but
+  # before the CI runs.
+  # Default: false
+  require-ok-to-test-sha: "false"
+
   # When enabled, this option prevents duplicate pipeline runs when a commit appears in
   # both a push event and a pull request. If a push event comes from a commit that is
   # part of an open pull request, the push event will be skipped as it would create
