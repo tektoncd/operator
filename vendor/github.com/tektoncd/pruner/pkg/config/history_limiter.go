@@ -269,34 +269,44 @@ func (hl *HistoryLimiter) doResourceCleanup(ctx context.Context, resource metav1
 	var resources []metav1.Object
 	var err error
 
-	if enforcedConfigLevel == EnforcedConfigLevelResource {
-		switch identifiedBy {
-		case "identifiedBy_resource_name":
-			label := fmt.Sprintf("%s=%s", labelKey, resourceName)
-			resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), label)
-		case "identifiedBy_resource_ann":
-			labelSelector := ""
-			for k, v := range resourceAnnotations {
-				if labelSelector != "" {
-					labelSelector += ","
-				}
-				labelSelector += fmt.Sprintf("%s=%s", k, v)
+	// Handle selector-based identification for both resource and namespace enforcement levels
+	switch identifiedBy {
+	case "identifiedBy_resource_name":
+		// Filter by name label (resource-level enforcement)
+		label := fmt.Sprintf("%s=%s", labelKey, resourceName)
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), label)
+	case "identifiedBy_resource_selector":
+		// Filter by selector labels (namespace-level enforcement with selectors)
+		labelSelector := ""
+		for k, v := range resourceLabels {
+			if labelSelector != "" {
+				labelSelector += ","
 			}
-			resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), labelSelector)
-		case "identifiedBy_resource_label":
-			labelSelector := ""
-			for k, v := range resourceLabels {
-				if labelSelector != "" {
-					labelSelector += ","
-				}
-				labelSelector += fmt.Sprintf("%s=%s", k, v)
-			}
-			resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), labelSelector)
-		default:
-			resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), "")
+			labelSelector += fmt.Sprintf("%s=%s", k, v)
 		}
-	} else {
-		// For namespace or global level, list all resources in namespace
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), labelSelector)
+	case "identifiedBy_resource_ann":
+		// Filter by annotations (converted to labels for listing)
+		labelSelector := ""
+		for k, v := range resourceAnnotations {
+			if labelSelector != "" {
+				labelSelector += ","
+			}
+			labelSelector += fmt.Sprintf("%s=%s", k, v)
+		}
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), labelSelector)
+	case "identifiedBy_resource_label":
+		// Filter by all resource labels
+		labelSelector := ""
+		for k, v := range resourceLabels {
+			if labelSelector != "" {
+				labelSelector += ","
+			}
+			labelSelector += fmt.Sprintf("%s=%s", k, v)
+		}
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), labelSelector)
+	default:
+		// For namespace/global level without selectors, list all resources in namespace
 		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), "")
 	}
 
