@@ -41,6 +41,21 @@ const (
 
 func (r *Reconciler) ensureInstallerSets(ctx context.Context, tp *v1alpha1.TektonPruner) error {
 	logger := logging.FromContext(ctx)
+
+	// Create Config InstallerSet FIRST (containing the ConfigMap that the controller needs)
+	// This ensures the ConfigMap exists before the controller pod starts
+	if err := r.ensureConfigInstallerSet(ctx, tp); err != nil {
+		msg := fmt.Sprintf("Config InstallerSet Reconcilation failed: %s", err.Error())
+		logger.Error(msg)
+		if errors.Is(err, v1alpha1.REQUEUE_EVENT_AFTER) {
+			return err
+		}
+		tp.Status.MarkInstallerSetNotReady(msg)
+		return err
+	}
+
+	// Create Main InstallerSet SECOND (containing controller and webhook deployments)
+	// By this point, the ConfigMap should exist, preventing controller startup failures
 	filteredManifest := r.manifest.Filter(mf.Not(mf.All(mf.ByKind("ConfigMap"), mf.ByName(config.PrunerConfigMapName))))
 	if err := r.installerSetClient.MainSet(ctx, tp, &filteredManifest, filterAndTransform(r.extension)); err != nil {
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
@@ -49,17 +64,9 @@ func (r *Reconciler) ensureInstallerSets(ctx context.Context, tp *v1alpha1.Tekto
 			return err
 		}
 		tp.Status.MarkInstallerSetNotReady(msg)
+		return err
 	}
 
-	if err := r.ensureConfigInstallerSet(ctx, tp); err != nil {
-		msg := fmt.Sprintf("Config InstallerSet Reconcilation failed: %s", err.Error())
-		logger.Error(msg)
-		if errors.Is(err, v1alpha1.REQUEUE_EVENT_AFTER) {
-			return err
-		}
-		tp.Status.MarkInstallerSetNotReady(msg)
-
-	}
 	return nil
 }
 

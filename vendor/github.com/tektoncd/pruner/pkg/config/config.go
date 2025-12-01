@@ -650,6 +650,49 @@ func (ps *prunerConfigStore) GetTaskFailedHistoryLimitCount(namespace, name stri
 	return getResourceFieldData(ps.globalConfig, ps.namespaceConfig, namespace, name, selector, PrunerResourceTypeTaskRun, PrunerFieldTypeFailedHistoryLimit, enforcedConfigLevel)
 }
 
+// ValidateGlobalConfig validates a GlobalConfig struct directly without ConfigMap conversion
+// This is a convenience function for validating global config and all nested namespace configs
+// without the overhead of serialization/deserialization through ConfigMaps.
+//
+// Use this function when you have a GlobalConfig struct and want to validate it directly,
+// for example when validating configuration from operator CRDs or other non-ConfigMap sources.
+//
+// For ConfigMap-based validation, use ValidateConfigMap or ValidateConfigMapWithGlobal instead.
+func ValidateGlobalConfig(globalConfig *GlobalConfig) error {
+	if globalConfig == nil {
+		return nil
+	}
+
+	// Validate root-level global config
+	if err := validatePrunerConfig(&globalConfig.PrunerConfig, "global-config", nil); err != nil {
+		return err
+	}
+
+	// Validate nested namespace configs
+	// These are validated against the global limits
+	for ns, nsSpec := range globalConfig.Namespaces {
+		path := fmt.Sprintf("global-config.namespaces.%s", ns)
+		if err := validatePrunerConfig(&nsSpec.PrunerConfig, path, &globalConfig.PrunerConfig); err != nil {
+			return err
+		}
+
+		// CRITICAL: Validate that global ConfigMap namespace sections do NOT contain selectors
+		// Selectors are ONLY supported in namespace-level ConfigMaps (tekton-pruner-namespace-spec)
+		for i, pr := range nsSpec.PipelineRuns {
+			if len(pr.Selector) > 0 {
+				return fmt.Errorf("%s.pipelineRuns[%d]: selectors are NOT supported in global ConfigMap. Use namespace-level ConfigMap (tekton-pruner-namespace-spec) instead", path, i)
+			}
+		}
+		for i, tr := range nsSpec.TaskRuns {
+			if len(tr.Selector) > 0 {
+				return fmt.Errorf("%s.taskRuns[%d]: selectors are NOT supported in global ConfigMap. Use namespace-level ConfigMap (tekton-pruner-namespace-spec) instead", path, i)
+			}
+		}
+	}
+
+	return nil
+}
+
 func ValidateConfigMap(cm *corev1.ConfigMap) error {
 	return ValidateConfigMapWithGlobal(cm, nil)
 }
@@ -738,6 +781,48 @@ func ValidateConfigMapWithGlobal(cm *corev1.ConfigMap, globalConfigMap *corev1.C
 				return err
 			}
 		}
+	}
+
+	return nil
+}
+
+// ValidateNamespaceSpec validates a NamespaceSpec struct directly without ConfigMap conversion
+// This function validates namespace-level configuration against optional global limits.
+//
+// Parameters:
+//   - namespaceSpec: The namespace configuration to validate
+//   - namespace: The namespace name (used for error messages)
+//   - globalConfig: Optional global config for limit enforcement (can be nil)
+//
+// Use this function when you have a NamespaceSpec struct and want to validate it directly,
+// for example when validating configuration from operator CRDs or other non-ConfigMap sources.
+//
+// For ConfigMap-based validation, use ValidateConfigMapWithGlobal instead.
+func ValidateNamespaceSpec(namespaceSpec *NamespaceSpec, namespace string, globalConfig *GlobalConfig) error {
+	if namespaceSpec == nil {
+		return nil
+	}
+
+	var globalLimits *PrunerConfig
+	var globalNamespaceSpec *NamespaceSpec
+
+	// Extract global limits if provided
+	if globalConfig != nil {
+		globalLimits = &globalConfig.PrunerConfig
+		// Check if there's a namespace-specific override in global config
+		if nsSpec, exists := globalConfig.Namespaces[namespace]; exists {
+			globalNamespaceSpec = &nsSpec
+		}
+	}
+
+	// Validate namespace config, enforcing global limits if available
+	if err := validatePrunerConfig(&namespaceSpec.PrunerConfig, "ns-config", globalLimits); err != nil {
+		return err
+	}
+
+	// Validate selector-based limits (sum of selectors must not exceed namespace/global limits)
+	if err := validateSelectorLimits(namespaceSpec, globalLimits, globalNamespaceSpec, namespace); err != nil {
+		return err
 	}
 
 	return nil

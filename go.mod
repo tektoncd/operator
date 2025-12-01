@@ -22,12 +22,12 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/tektoncd/pipeline v1.6.0
 	github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2
-	github.com/tektoncd/pruner v0.3.1
-	github.com/tektoncd/triggers v0.32.0
+	github.com/tektoncd/pruner v0.3.3
+	github.com/tektoncd/triggers v0.34.0
 	go.opencensus.io v0.24.0
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 	golang.org/x/exp v0.0.0-20250911091902-df9299821621
-	golang.org/x/mod v0.29.0
+	golang.org/x/mod v0.30.0
 	golang.org/x/sync v0.18.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	gopkg.in/yaml.v3 v3.0.1
