@@ -20,10 +20,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/tektoncd/pruner/pkg/config"
 	"gotest.tools/v3/assert"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
+	"knative.dev/pkg/ptr"
 )
 
 func Test_ValidateTektonConfig_OnDelete(t *testing.T) {
@@ -295,4 +297,73 @@ func Test_ValidateTektonConfig_UpdateTargetNamespace(t *testing.T) {
 	ctx = apis.WithinUpdate(ctx, tc)
 	err := updatedTC.Validate(ctx)
 	assert.Equal(t, `Doesn't allow to update targetNamespace, delete existing TektonConfig and create the updated TektonConfig: spec.targetNamespace`, err.Error())
+}
+
+func Test_ValidateTektonConfig_PrunerConfig_Valid(t *testing.T) {
+	disabled := false
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "config",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "tekton-pipelines",
+			},
+			Profile: "all",
+			// Disable legacy job-based pruner to avoid validation conflicts
+			Pruner: Prune{
+				Disabled: true,
+			},
+			// Configure event-based pruner (TektonPruner)
+			TektonPruner: Pruner{
+				Disabled: &disabled,
+				TektonPrunerConfig: TektonPrunerConfig{
+					GlobalConfig: config.GlobalConfig{
+						PrunerConfig: config.PrunerConfig{
+							SuccessfulHistoryLimit: ptr.Int32(5),
+							HistoryLimit:           ptr.Int32(10),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	if err != nil {
+		t.Errorf("Expected no error for valid pruner config, got: %v", err)
+	}
+}
+
+func Test_ValidateTektonConfig_PrunerConfig_Invalid(t *testing.T) {
+	disabled := false
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "config",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "tekton-pipelines",
+			},
+			Profile: "all",
+			// Disable legacy job-based pruner to avoid validation conflicts
+			Pruner: Prune{
+				Disabled: true,
+			},
+			// Configure event-based pruner (TektonPruner) with invalid config
+			TektonPruner: Pruner{
+				Disabled: &disabled,
+				TektonPrunerConfig: TektonPrunerConfig{
+					GlobalConfig: config.GlobalConfig{
+						PrunerConfig: config.PrunerConfig{
+							SuccessfulHistoryLimit: ptr.Int32(-1), // Invalid: negative value
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.ErrorContains(t, err, "pruner config validation failed")
 }
