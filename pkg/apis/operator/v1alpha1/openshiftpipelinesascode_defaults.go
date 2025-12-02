@@ -128,6 +128,7 @@ func ConvertPacStructToConfigMap(settings *pacSettings.Settings) map[string]stri
 					config[fmt.Sprintf("%s-%s-%s", "catalog", catalogData.Index, "id")] = key.(string)
 					config[fmt.Sprintf("%s-%s-%s", "catalog", catalogData.Index, "name")] = catalogData.Name
 					config[fmt.Sprintf("%s-%s-%s", "catalog", catalogData.Index, "url")] = catalogData.URL
+					config[fmt.Sprintf("%s-%s-%s", "catalog", catalogData.Index, "type")] = catalogData.Type
 					return true
 				})
 			}
