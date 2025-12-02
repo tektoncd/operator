@@ -45,6 +45,7 @@ data:
   # Increase the number of the catalog to add more of them
   catalog-tektonhub-id: "tektonhub"
   catalog-tektonhub-name: "tekton"
+  catalog-tektonhub-type: "tektonhub"
   catalog-tektonhub-url: "https://api.hub.tekton.dev/v1"
 
   # Allow fetching remote tasks
