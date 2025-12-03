@@ -20,14 +20,15 @@
 name: Slash Command Routing
 on:
   issue_comment:
-    types: [created]
+    types:
+      - created
 
 jobs:
   check_comments:
     runs-on: ubuntu-latest
     steps:
     - name: route-land
-      uses: peter-evans/slash-command-dispatch@e1b4e266bc781656359bb7e462e228daf68c04f6 # v5.0.0
+      uses: peter-evans/slash-command-dispatch@e1b4e266bc781656359bb7e462e228daf68c04f6  # v5.0.0
       with:
         token: ${{ secrets.CHATOPS_TOKEN }}
         config: >
@@ -36,6 +37,6 @@ jobs:
               "command": "retest",
               "permission": "write",
               "issue_type": "pull-request",
-              "repository": "tektoncd/pipeline"
+              "repository": "tektoncd/operator"
             }
           ]
