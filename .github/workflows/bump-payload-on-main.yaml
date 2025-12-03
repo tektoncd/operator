@@ -23,7 +23,7 @@ jobs:
     - name: create pull request
       uses: peter-evans/create-pull-request@84ae59a2cdc2258d6fa0732dd66352dddae2a412 # v7.0.9
       with:
-        token: ${{ secrets.TEKTON_BOT_TOKEN }}
+        token: ${{ secrets.CHATOPS_TOKEN }}
         commit-message: Bump payloads versions
         committer: tekton-bot <tekton-bot@users.noreply.github.com>
         author: Vincent Demeester <vdemeest@redhat.com>
