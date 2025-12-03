@@ -18,7 +18,7 @@
 # When a command is recognised, the rocket and eyes emojis are added
 
 name: Slash Command Routing
-on:
+on:  # yamllint disable-line rule:truthy
   issue_comment:
     types: [created]
 
@@ -27,15 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: route-land
-      uses: peter-evans/slash-command-dispatch@v4
+      uses: peter-evans/slash-command-dispatch@e1b4e266bc781656359bb7e462e228daf68c04f6  # v5.0.0
       with:
         token: ${{ secrets.CHATOPS_TOKEN }}
-        config: >
-          [
-            {
-              "command": "retest",
-              "permission": "write",
-              "issue_type": "pull-request",
-              "repository": "tektoncd/pipeline"
-            }
-          ]
+        commands: |
+          retest
+        permission: write
+        issue-type: pull-request
+        repository: tektoncd/operator
