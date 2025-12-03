@@ -26,18 +26,18 @@ jobs:
         branch: ${{ fromJSON(needs.build-release-matrix.outputs.branches) }}
         # branch: [release-v0.62.x, release-v0.63.x]
     steps:
-    - uses: actions/setup-go@v5
-      with:
-        go-version: 1.21.x
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
       with:
         ref: ${{ matrix.branch }}
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
+      with:
+        go-version-file: "go.mod"
     - name: run operator-tool bump-bugfix
       run: |
         export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
         make components/bump-bugfix
     - name: create pull request
-      uses: peter-evans/create-pull-request@v7
+      uses: peter-evans/create-pull-request@84ae59a2cdc2258d6fa0732dd66352dddae2a412  # v7.0.9
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: Bump payloads versions
