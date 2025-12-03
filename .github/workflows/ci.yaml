@@ -16,7 +16,7 @@ defaults:
 
 permissions:
   contents: read
-  checks: write # Used to annotate code in the PR
+  checks: write  # Used to annotate code in the PR
 
 jobs:
   changes:
@@ -130,7 +130,7 @@ jobs:
     - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
-    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d  # v0.9
     - name: ko-resolve
       run: |
           cat <<EOF > .ko.yaml
