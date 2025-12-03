@@ -12,16 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'tektoncd'  # do not run this elsewhere
     steps:
-    - uses: actions/setup-go@v5
+    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
-        go-version: 1.21.x
-    - uses: actions/checkout@v4
+        go-version-file: "go.mod"
     - name: run operator-tool bump
       run: |
         export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
         make components/bump
     - name: create pull request
-      uses: peter-evans/create-pull-request@v7
+      uses: peter-evans/create-pull-request@84ae59a2cdc2258d6fa0732dd66352dddae2a412  # v7.0.9
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         commit-message: Bump payloads versions
