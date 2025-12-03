@@ -566,6 +566,68 @@ platforms:
         secret-github-app-token-scoped: "true"
 ```
 
+#### Remote Hub Catalogs
+
+Pipelines as Code supports configuring remote hub catalogs to fetch tasks and pipelines. You can configure custom catalogs using the `catalog-{INDEX}-*` settings pattern.
+
+Each custom catalog requires the following four fields:
+
+| Field | Description | Required |
+|-------|-------------|----------|
+| `catalog-{INDEX}-id` | Unique identifier for the catalog. Users reference tasks from this catalog using this ID as prefix (e.g., `custom://task-name`) | Yes |
+| `catalog-{INDEX}-name` | Name of the catalog within the hub | Yes |
+| `catalog-{INDEX}-url` | URL endpoint of the hub API | Yes |
+| `catalog-{INDEX}-type` | Type of hub: `artifacthub` (for Artifact Hub) or `tektonhub` (for Tekton Hub) | Yes |
+
+Where `{INDEX}` is a number that can be incremented to add multiple catalogs (e.g., `1`, `2`, `3`).
+
+##### Example: Configuring a Custom Hub Catalog
+
+```yaml
+platforms:
+  openshift:
+    pipelinesAsCode:
+      enable: true
+      settings:
+        catalog-1-id: "custom"
+        catalog-1-name: "tekton"
+        catalog-1-url: "https://api.custom.hub/v1"
+        catalog-1-type: "tektonhub"
+```
+
+##### Example: Configuring Multiple Hub Catalogs
+
+You can configure multiple hub catalogs by incrementing the `catalog-{INDEX}` number:
+
+```yaml
+platforms:
+  openshift:
+    pipelinesAsCode:
+      enable: true
+      settings:
+        catalog-1-id: "custom"
+        catalog-1-name: "tekton"
+        catalog-1-url: "https://api.custom.hub/v1"
+        catalog-1-type: "tektonhub"
+        catalog-2-id: "artifact"
+        catalog-2-name: "tekton-catalog-tasks"
+        catalog-2-url: "https://artifacthub.io"
+        catalog-2-type: "artifacthub"
+```
+
+##### Referencing Tasks from Custom Catalogs
+
+Once configured, users can reference tasks from custom catalogs by adding a prefix matching the catalog ID:
+
+```yaml
+pipelinesascode.tekton.dev/task: "custom://git-clone"
+pipelinesascode.tekton.dev/task: "artifact://buildah"
+```
+
+> **Note:** Pipelines-as-Code will not try to fallback to the default or another custom hub if the task referenced is not found (the Pull Request will be set as failed).
+
+For more details, see the [Pipelines-as-Code Remote Hub Catalogs documentation](https://pipelinesascode.com/docs/install/settings/#remote-hub-catalogs).
+
 **NOTE**: OpenShiftPipelinesAsCode is currently available for the OpenShift Platform only.
 
 ### Event based pruner 
