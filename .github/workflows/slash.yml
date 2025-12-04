@@ -36,6 +36,6 @@ jobs:
               "command": "retest",
               "permission": "write",
               "issue_type": "pull-request",
-              "repository": "tektoncd/pipeline"
+              "repository": "tektoncd/operator"
             }
           ]

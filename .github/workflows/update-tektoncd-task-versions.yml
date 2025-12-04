@@ -3,7 +3,7 @@ name: Update Tekton Task Versions
 on:
   schedule:
     - cron: "0 0 * * *"  # Runs daily at midnight
-  workflow_dispatch:  # Allows manual trigger
+  workflow_dispatch: {}  # Allows manual trigger
 
 jobs:
   update-task-versions:
