@@ -10,7 +10,7 @@ To configure images from a custom registry, follow the [Air Gap Configuration](.
 
 1. Install operator
     ```
-    $ kubectl apply -f https://storage.googleapis.com/tekton-releases/operator/latest/release.yaml
+    $ kubectl apply -f https://infra.tekton.dev/tekton-releases/operator/latest/release.yaml
     ```
     **Note**: This will also install pipelines, triggers, chains, and dashboard
 2. In case you want to install other components, use available [installation profiles](https://github.com/tektoncd/operator/tree/main/config/crs/kubernetes/config): `lite`
