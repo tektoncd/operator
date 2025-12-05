@@ -23,6 +23,7 @@ import (
 	k8sDashboard "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektondashboard"
 	k8sHub "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonhub"
 	k8sInstallerSet "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
+	k8sTektonKueue "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonkueue"
 	k8sPipeline "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline"
 	k8sTektonPruner "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpruner"
 	k8sResult "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonresult"
@@ -62,6 +63,9 @@ var (
 		platform.ControllerManualApprovalGate: injection.NamedControllerConstructor{
 			Name:                  string(platform.ControllerManualApprovalGate),
 			ControllerConstructor: k8sManualApprovalGate.NewController},
+		platform.ControllerTektonKueue: injection.NamedControllerConstructor{
+			Name:                  string(platform.ControllerTektonKueue),
+			ControllerConstructor: k8sTektonKueue.NewController},
 		platform.ControllerTektonPruner: injection.NamedControllerConstructor{
 			Name:                  string(platform.ControllerTektonPruner),
 			ControllerConstructor: k8sTektonPruner.NewController},

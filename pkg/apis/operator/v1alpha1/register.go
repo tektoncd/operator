@@ -64,6 +64,9 @@ const (
 
 	// KindTektonPruner is the Kind of TektonPruner in a GVK context.
 	KindTektonPruner = "TektonPruner"
+
+	// KindTektonKueue is the Kind of TektonPruner in a GVK context.
+	KindTektonKueue = "TektonKueue"
 )
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
@@ -99,6 +102,8 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&ManualApprovalGateList{},
 		&TektonPruner{},
 		&TektonPrunerList{},
+		&TektonKueue{},
+		&TektonKueueList{},
 	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil
