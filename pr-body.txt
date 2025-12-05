@@ -1,0 +1,14 @@
+## Component Version Updates
+
+This PR updates the following component versions:
+
+### pipeline
+
+- **Previous version:** `v1.6.0`
+- **New version:** `v1.7.0`
+- **Repository:** [tektoncd/pipeline](https://github.com/tektoncd/pipeline)
+- **Release notes:** [v1.6.0...v1.7.0](https://github.com/tektoncd/pipeline/compare/v1.6.0...v1.7.0)
+
+---
+
+_This PR was automatically created by the bump-payload workflow._

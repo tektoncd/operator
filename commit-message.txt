@@ -1,0 +1,5 @@
+chore: bump pipeline from v1.6.0 to v1.7.0
+
+- pipeline: v1.6.0 → v1.7.0
+
+Signed-off-by: tekton-bot <tekton-bot@users.noreply.github.com>
