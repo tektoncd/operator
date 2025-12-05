@@ -19,18 +19,47 @@ jobs:
     - name: run operator-tool bump
       run: |
         export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-        make components/bump
+        make components/bump 2> bump-output.txt || true
+        cat bump-output.txt >&2
+    - name: generate commit message and PR body
+      id: generate-message
+      run: |
+        if [[ -f bump-output.txt ]]; then
+          ./.github/scripts/generate-bump-message.sh bump-output.txt commit-message.txt pr-body.txt
+          if [[ -f commit-message.txt ]]; then
+            COMMIT_MSG=$(cat commit-message.txt)
+            PR_TITLE=$(head -n1 commit-message.txt)
+            echo "commit_message<<EOF" >> $GITHUB_OUTPUT
+            echo "${COMMIT_MSG}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "pr_title=${PR_TITLE}" >> $GITHUB_OUTPUT
+            if [[ -f pr-body.txt ]]; then
+              echo "pr_body<<EOF" >> $GITHUB_OUTPUT
+              cat pr-body.txt >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "commit_message=chore: bump payload versions" >> $GITHUB_OUTPUT
+            echo "pr_title=chore: bump payload versions" >> $GITHUB_OUTPUT
+            echo "pr_body=Automated component version bump" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "commit_message=chore: bump payload versions" >> $GITHUB_OUTPUT
+          echo "pr_title=chore: bump payload versions" >> $GITHUB_OUTPUT
+          echo "pr_body=Automated component version bump" >> $GITHUB_OUTPUT
+        fi
     - name: create pull request
       uses: peter-evans/create-pull-request@84ae59a2cdc2258d6fa0732dd66352dddae2a412  # v7.0.9
       with:
         token: ${{ secrets.CHATOPS_TOKEN }}
-        commit-message: Bump payloads versions
+        commit-message: ${{ steps.generate-message.outputs.commit_message }}
         committer: tekton-bot <tekton-bot@users.noreply.github.com>
         author: Vincent Demeester <vdemeest@redhat.com>
         signoff: true
         # author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
         branch: bot-bump-payload
         delete-branch: true
-        title: "[bot] bump payload versions"
+        title: ${{ steps.generate-message.outputs.pr_title }}
+        body: ${{ steps.generate-message.outputs.pr_body }}
         labels: |
           release-note-none
