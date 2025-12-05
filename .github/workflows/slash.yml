@@ -38,5 +38,11 @@ jobs:
               "permission": "write",
               "issue_type": "pull-request",
               "repository": "tektoncd/operator"
+            },
+            {
+              "command": "cherry-pick",
+              "permission": "write",
+              "issue_type": "pull-request",
+              "repository": "tektoncd/operator"
             }
           ]
