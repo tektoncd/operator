@@ -1,0 +1,3 @@
+BUMP_UPDATES_START
+pipeline|v1.6.0|v1.7.0|tektoncd/pipeline
+BUMP_UPDATES_END
