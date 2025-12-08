@@ -71,6 +71,20 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
 2. `cd` to root of Operator git checkout.
 
+1. Create a `release.env` file with environment variables for bash scripts in later steps, and source it:
+
+    ```bash
+    cat <<EOF > release.env
+    TEKTON_RELEASE_VERSION= # Example: v0.69.0
+    TEKTON_OLD_VERSION= # Example: v0.68.0
+    TEKTON_RELEASE_NAME="Oriental Longhair Omnibot" # Name of the release
+    TEKTON_PACKAGE=tektoncd/operator
+    TEKTON_REPO_NAME=operator
+    EOF
+    . ./release.env
+    ```
+
+
 3. set commit SHA from TEKTON_RELEASE_BRANCH
    ```bash
    TEKTON_RELEASE_GIT_SHA=$(git rev-parse upstream/${TEKTON_RELEASE_BRANCH})
@@ -82,27 +96,30 @@ need a checkout of the operator repo, a terminal window and a text editor.
     git show $TEKTON_RELEASE_GIT_SHA
     ```
 
-5. Create a workspace template file:
+1. Create a workspace template file:
 
    ```bash
-   cat <<EOF > workspace-template.yaml
-   spec:
-     accessModes:
-     - ReadWriteOnce
-     resources:
-       requests:
-         storage: 1Gi
-   EOF
+   WORKSPACE_TEMPLATE=$(mktemp /tmp/workspace-template.XXXXXX.yaml)
+   cat <<'EOF' > $WORKSPACE_TEMPLATE
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
    ```
 
-6. Execute the release pipeline.
+1. Execute the release pipeline (takes ~45 mins).
+    
+    **The minimum required tkn version is v0.30.0 or later**
 
+    **If you are back-porting include this flag: `--param=releaseAsLatest="false"`**
     ```bash
     tkn --context dogfooding pipeline start operator-release \
         --filename=tekton/operator-release-pipeline.yaml \
-        --serviceaccount=release-right-meow \
         --param package=github.com/tektoncd/operator \
-        --param repoName=pruner \
+        --param repoName="${TEKTON_REPO_NAME}" \
         --param components=components.yaml \
         --param gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
         --param imageRegistry=ghcr.io \
@@ -118,7 +135,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
         --param kubeDistros="kubernetes openshift" \
         --workspace name=release-secret,secret=oci-release-secret \
         --workspace name=release-images-secret,secret=ghcr-creds \
-        --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
+        --workspace name=workarea,volumeClaimTemplateFile="${WORKSPACE_TEMPLATE}" \
         --pipeline-timeout 2h0m0s
     ```
 
@@ -145,29 +162,43 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
 ## Creating Github Release
 
-1. The YAMLs are now uploaded to publically accesible gcs bucket! Anyone installing Tekton Pipelines will now get the
-   new version. Time to create a new GitHub release announcement:
+1. The YAMLs are now released. Anyone installing Tekton Operator will now get the new version. Time to create a new GitHub release announcement:
 
-    1. Create additional environment variables
+    1. Find the Rekor UUID for the release
 
     ```bash
-    TEKTON_OLD_VERSION=# Example: v0.11.1
-    TEKTON_RELEASE_NAME=# The release name you just chose, e.g.: "Ragdoll Norby"
+    RELEASE_FILE=https://infra.tekton.dev/tekton-releases/pipeline/previous/${TEKTON_VERSION}/release.yaml
+    CONTROLLER_IMAGE_SHA=$(curl -L $RELEASE_FILE | sed -n 's/"//g;s/.*ghcr\.io.*controller.*@//p;')
+    REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
+    echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
     ```
 
     1. Execute the Draft Release Pipeline.
 
+        Create a pod template file:
+
+        ```shell
+        POD_TEMPLATE=$(mktemp /tmp/pod-template.XXXXXX.yaml)
+        cat <<'EOF' > $POD_TEMPLATE
+securityContext:
+  fsGroup: 65532
+  runAsUser: 65532
+  runAsNonRoot: true
+EOF
+        ```
     ```bash
     tkn --context dogfooding pipeline start \
-      --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
+      --workspace name=shared,volumeClaimTemplateFile="${WORKSPACE_TEMPLATE} \
       --workspace name=credentials,secret=oci-release-secret \
-      -p package="tektoncd/operator" \
-      -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
+      --pod-template "{POD_TEMPLATE}" \
+      -p package="{TEKTON_PACKAGE}" \
+      -p git-revision="${TEKTON_RELEASE_GIT_SHA}" \
       -p release-tag="${TEKTON_RELEASE_VERSION}" \
       -p previous-release-tag="${TEKTON_OLD_VERSION}" \
       -p release-name="${TEKTON_RELEASE_NAME}" \
+      -p repo-name="${TEKTON_REPO_NAME}" \
       -p bucket="tekton-releases/operator/" \
-      -p rekor-uuid="" \
+      -p rekor-uuid="REKOR_UUID" \
       release-draft-oci
     ```
 
