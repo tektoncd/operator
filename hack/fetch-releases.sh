@@ -53,7 +53,12 @@ release_yaml() {
     esac
 
     ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
-    comp_dir=${ko_data}/tekton-${dir}
+    # pruner uses "pruner" directory (not "tekton-pruner") to avoid conflicts
+    if [[ $comp == "pruner" ]]; then
+      comp_dir=${ko_data}/${dir}
+    else
+      comp_dir=${ko_data}/tekton-${dir}
+    fi
     dirPath=${comp_dir}/${dirVersion}
 
     # destination file
