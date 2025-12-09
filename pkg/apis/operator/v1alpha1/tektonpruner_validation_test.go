@@ -39,7 +39,7 @@ func Test_ValidateTektonPruner_ValidConfig(t *testing.T) {
 			Pruner: Pruner{
 				Disabled: &disabled,
 				TektonPrunerConfig: TektonPrunerConfig{
-					GlobalConfig: config.GlobalConfig{
+					GlobalConfig: &config.GlobalConfig{
 						PrunerConfig: config.PrunerConfig{
 							SuccessfulHistoryLimit: ptr.Int32(5),
 							HistoryLimit:           ptr.Int32(10),
@@ -70,7 +70,7 @@ func Test_ValidateTektonPruner_DisabledPruner(t *testing.T) {
 				Disabled: &disabled,
 				// Even with invalid config, validation should pass when disabled
 				TektonPrunerConfig: TektonPrunerConfig{
-					GlobalConfig: config.GlobalConfig{
+					GlobalConfig: &config.GlobalConfig{
 						PrunerConfig: config.PrunerConfig{
 							SuccessfulHistoryLimit: ptr.Int32(-1), // This would be invalid if enabled
 						},
@@ -99,7 +99,7 @@ func Test_ValidateTektonPruner_InvalidHistoryLimit(t *testing.T) {
 			Pruner: Pruner{
 				Disabled: &disabled,
 				TektonPrunerConfig: TektonPrunerConfig{
-					GlobalConfig: config.GlobalConfig{
+					GlobalConfig: &config.GlobalConfig{
 						PrunerConfig: config.PrunerConfig{
 							SuccessfulHistoryLimit: ptr.Int32(-1), // Invalid: must be >= 0
 						},
@@ -187,7 +187,7 @@ func Test_ValidateTektonPruner_ComplexValidConfig(t *testing.T) {
 			Pruner: Pruner{
 				Disabled: &disabled,
 				TektonPrunerConfig: TektonPrunerConfig{
-					GlobalConfig: config.GlobalConfig{
+					GlobalConfig: &config.GlobalConfig{
 						PrunerConfig: config.PrunerConfig{
 							SuccessfulHistoryLimit: ptr.Int32(5),
 							FailedHistoryLimit:     ptr.Int32(3),
