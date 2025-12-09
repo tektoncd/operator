@@ -602,7 +602,7 @@ func TestAddConfigMapValues_StructValues(t *testing.T) {
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assertNoError(t, err)
 	prop := v1alpha1.TektonPrunerConfig{
-		GlobalConfig: config.GlobalConfig{
+		GlobalConfig: &config.GlobalConfig{
 			PrunerConfig: config.PrunerConfig{
 				SuccessfulHistoryLimit: ptr.Int32(123),
 				HistoryLimit:           ptr.Int32(456),

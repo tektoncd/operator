@@ -55,7 +55,7 @@ func EnsureTektonPrunerExists(clients TektonPrunerv1alpha1.TektonPrunerInterface
 				},
 				Pruner: v1alpha1.Pruner{
 					TektonPrunerConfig: v1alpha1.TektonPrunerConfig{
-						GlobalConfig: config.GlobalConfig{
+						GlobalConfig: &config.GlobalConfig{
 							PrunerConfig: config.PrunerConfig{
 								SuccessfulHistoryLimit: ptr.Int32(12),
 								HistoryLimit:           ptr.Int32(45),

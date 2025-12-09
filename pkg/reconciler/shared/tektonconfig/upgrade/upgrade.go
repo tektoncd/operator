@@ -36,8 +36,6 @@ var (
 		upgradePipelineProperties,   // upgrade #2: update default value of enable-step-actions from false to true
 		// Todo: Remove the deleteTektonResultsTLSSecret upgrade function in next operator release
 		deleteTektonResultsTLSSecret, // upgrade #5: deletes default tekton results tls certificate
-		// TODO: Remove the preUpgradeTektonPruner upgrade function in next operator release
-		preUpgradeTektonPruner, // upgrade #5: pre upgrade tekton pruner
 	}
 
 	// post upgrade functions
