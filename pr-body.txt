@@ -2,12 +2,12 @@
 
 This PR updates the following component versions:
 
-### pipeline
+### dashboard
 
-- **Previous version:** `v1.6.0`
-- **New version:** `v1.7.0`
-- **Repository:** [tektoncd/pipeline](https://github.com/tektoncd/pipeline)
-- **Release notes:** [v1.6.0...v1.7.0](https://github.com/tektoncd/pipeline/compare/v1.6.0...v1.7.0)
+- **Previous version:** `v0.63.1`
+- **New version:** `v0.64.0`
+- **Repository:** [tektoncd/dashboard](https://github.com/tektoncd/dashboard)
+- **Release notes:** [v0.63.1...v0.64.0](https://github.com/tektoncd/dashboard/compare/v0.63.1...v0.64.0)
 
 ---
 
