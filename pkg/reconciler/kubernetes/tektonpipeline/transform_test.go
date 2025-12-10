@@ -315,3 +315,119 @@ func TestEnableTektonOciBundlesFeatureFlag(t *testing.T) {
 		})
 	}
 }
+
+// TestTracingConfiguration verifies that tracing properties are correctly
+// populated in the config-tracing ConfigMap
+func TestTracingConfiguration(t *testing.T) {
+	ctx := context.TODO()
+
+	tests := []struct {
+		name              string
+		tracingProperties v1alpha1.TracingProperties
+		expectedData      map[string]string
+	}{
+		{
+			name: "tracing-disabled",
+			tracingProperties: v1alpha1.TracingProperties{
+				Enabled: ptr.Bool(false),
+			},
+			expectedData: map[string]string{
+				"enabled": "false",
+			},
+		},
+		{
+			name: "tracing-enabled-with-endpoint",
+			tracingProperties: v1alpha1.TracingProperties{
+				Enabled:  ptr.Bool(true),
+				Endpoint: "http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces",
+			},
+			expectedData: map[string]string{
+				"enabled":  "true",
+				"endpoint": "http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces",
+			},
+		},
+		{
+			name: "tracing-enabled-with-otel-endpoint",
+			tracingProperties: v1alpha1.TracingProperties{
+				Enabled:  ptr.Bool(true),
+				Endpoint: "http://otel-collector.observability.svc.cluster.local:4318/v1/traces",
+			},
+			expectedData: map[string]string{
+				"enabled":  "true",
+				"endpoint": "http://otel-collector.observability.svc.cluster.local:4318/v1/traces",
+			},
+		},
+		{
+			name: "tracing-with-credentials-secret",
+			tracingProperties: v1alpha1.TracingProperties{
+				Enabled:           ptr.Bool(true),
+				Endpoint:          "http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces",
+				CredentialsSecret: "jaeger-auth-secret",
+			},
+			expectedData: map[string]string{
+				"enabled":           "true",
+				"endpoint":          "http://jaeger-collector.jaeger.svc.cluster.local:14268/api/traces",
+				"credentialsSecret": "jaeger-auth-secret",
+			},
+		},
+		{
+			name: "tracing-endpoint-only",
+			tracingProperties: v1alpha1.TracingProperties{
+				Endpoint: "http://custom-endpoint:8080/traces",
+			},
+			expectedData: map[string]string{
+				"endpoint": "http://custom-endpoint:8080/traces",
+			},
+		},
+		{
+			name:              "tracing-empty",
+			tracingProperties: v1alpha1.TracingProperties{},
+			expectedData:      map[string]string{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tp := &v1alpha1.TektonPipeline{
+				Spec: v1alpha1.TektonPipelineSpec{
+					Pipeline: v1alpha1.Pipeline{
+						PipelineProperties: v1alpha1.PipelineProperties{
+							TracingProperties: test.tracingProperties,
+						},
+					},
+				},
+			}
+
+			// get manifests
+			manifest, err := common.Fetch("./testdata/tektonpipeline-config-tracing-base.yaml")
+			assert.NilError(t, err, "error on fetching testdata")
+
+			transformers := filterAndTransform(common.NoExtension(ctx))
+			_, err = transformers(ctx, &manifest, tp)
+			assert.NilError(t, err)
+
+			resources := manifest.Resources()
+			assert.Assert(t, len(resources) > 0)
+
+			configTracingMap := corev1.ConfigMap{}
+			err = apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(resources[0].Object, &configTracingMap)
+			assert.NilError(t, err)
+
+			// Verify expected data (excluding _example field)
+			for key, expectedValue := range test.expectedData {
+				actualValue, found := configTracingMap.Data[key]
+				assert.Assert(t, found == true, "'%s' not found in config-tracing", key)
+				assert.Assert(t, actualValue == expectedValue, "'%s' value is '%s', expected '%s'", key, actualValue, expectedValue)
+			}
+
+			// Verify no unexpected fields (excluding _example)
+			for key := range configTracingMap.Data {
+				if key == "_example" {
+					continue
+				}
+				_, expected := test.expectedData[key]
+				assert.Assert(t, expected == true, "unexpected field '%s' in config-tracing", key)
+			}
+		})
+	}
+}

@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"github.com/tektoncd/pruner/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -40,9 +41,15 @@ type TektonPruner struct {
 	Status            TektonPrunerStatus `json:"status,omitempty"`
 }
 
+type TektonPrunerConfig struct {
+	GlobalConfig config.GlobalConfig `json:"global-config"`
+}
+
 type Pruner struct {
 	// enable or disable TektonPruner Component
-	Disabled *bool `json:"disabled"`
+	Disabled           *bool `json:"disabled"`
+	TektonPrunerConfig `json:",inline"`
+
 	// options holds additions fields and these fields will be updated on the manifests
 	Options AdditionalOptions `json:"options"`
 }
@@ -58,7 +65,6 @@ type TektonPrunerList struct {
 type TektonPrunerSpec struct {
 	CommonSpec `json:",inline"`
 	Pruner     `json:",inline"`
-
 	// Config holds the configuration for resources created by TektonPruner
 	// +optional
 	Config Config `json:"config,omitempty"`
@@ -88,5 +94,14 @@ func (tp *TektonPruner) GetStatus() TektonComponentStatus {
 
 // IsDisabled returns true if the TektonPruner is disabled
 func (p *Pruner) IsDisabled() bool {
+	if p == nil || p.Disabled == nil {
+		// When the Pruner is nil or Disabled is nil, we assume it is the default state.
+		return DefaultPrunerDisabled
+	}
 	return *p.Disabled
+}
+
+func (in *TektonPrunerConfig) DeepCopyInto(out *TektonPrunerConfig) {
+	*out = *in
+	return
 }

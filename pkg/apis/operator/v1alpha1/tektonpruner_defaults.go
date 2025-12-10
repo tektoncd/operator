@@ -20,9 +20,7 @@ import (
 	"context"
 )
 
-var (
-	DefaultPrunerDisabled = true
-)
+var DefaultPrunerDisabled = true
 
 func (tp *TektonPruner) SetDefaults(_ context.Context) {
 	tp.Spec.Pruner.SetDefaults()
@@ -32,4 +30,5 @@ func (p *Pruner) SetDefaults() {
 	if p.Disabled == nil {
 		p.Disabled = &DefaultPrunerDisabled
 	}
+	p.GlobalConfig.SetDefaults()
 }

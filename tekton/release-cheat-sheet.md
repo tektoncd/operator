@@ -36,7 +36,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
       ```bash
          TEKTON_RELEASE_BRANCH=release-v0.62.x
          # ./hack/release-setup-branch.sh <old release version> <new release version>
-         ./hack/release-setup-branch.sh devel ${TEKTON_RELEASE_VERSION}
+         ./hack/release-setup-branch.sh devel ${TEKTON_RELEASE_VERSION#v}
       ```
       The script will automatically create a new branch for the minor version (e.g., release-v0.62.x) and switch to it.
       It updates the yaml files with the TEKTON_RELEASE_VERSION
@@ -71,6 +71,20 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
 2. `cd` to root of Operator git checkout.
 
+1. Create a `release.env` file with environment variables for bash scripts in later steps, and source it:
+
+    ```bash
+    cat <<EOF > release.env
+    TEKTON_RELEASE_VERSION= # Example: v0.69.0
+    TEKTON_OLD_VERSION= # Example: v0.68.0
+    TEKTON_RELEASE_NAME="Oriental Longhair Omnibot" # Name of the release
+    TEKTON_PACKAGE=tektoncd/operator
+    TEKTON_REPO_NAME=operator
+    EOF
+    . ./release.env
+    ```
+
+
 3. set commit SHA from TEKTON_RELEASE_BRANCH
    ```bash
    TEKTON_RELEASE_GIT_SHA=$(git rev-parse upstream/${TEKTON_RELEASE_BRANCH})
@@ -82,43 +96,46 @@ need a checkout of the operator repo, a terminal window and a text editor.
     git show $TEKTON_RELEASE_GIT_SHA
     ```
 
-5. Create a workspace template file:
+1. Create a workspace template file:
 
    ```bash
-   cat <<EOF > workspace-template.yaml
-   spec:
-     accessModes:
-     - ReadWriteOnce
-     resources:
-       requests:
-         storage: 1Gi
-   EOF
+   WORKSPACE_TEMPLATE=$(mktemp /tmp/workspace-template.XXXXXX.yaml)
+   cat <<'EOF' > $WORKSPACE_TEMPLATE
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
    ```
 
-6. Execute the release pipeline.
+1. Execute the release pipeline (takes ~45 mins).
+    
+    **The minimum required tkn version is v0.30.0 or later**
 
+    **If you are back-porting include this flag: `--param=releaseAsLatest="false"`**
     ```bash
     tkn --context dogfooding pipeline start operator-release \
         --filename=tekton/operator-release-pipeline.yaml \
-        --serviceaccount=release-right-meow \
         --param package=github.com/tektoncd/operator \
+        --param repoName="${TEKTON_REPO_NAME}" \
         --param components=components.yaml \
         --param gitRevision="${TEKTON_RELEASE_GIT_SHA}" \
         --param imageRegistry=ghcr.io \
         --param imageRegistryPath=tektoncd/operator  \
         --param imageRegistryRegions="" \
         --param imageRegistryUser=tekton-robot \
-        --param serviceAccountPath=release.json \
         --param serviceAccountImagesPath=credentials \
         --param versionTag="${TEKTON_RELEASE_VERSION}" \
-        --param releaseBucket=gs://tekton-releases/operator \
+        --param releaseBucket=tekton-releases \
         --param koExtraArgs="" \
         --param releaseAsLatest=true \
         --param platforms=linux/amd64,linux/arm64,linux/s390x,linux/ppc64le \
         --param kubeDistros="kubernetes openshift" \
-        --workspace name=release-secret,secret=release-secret \
+        --workspace name=release-secret,secret=oci-release-secret \
         --workspace name=release-images-secret,secret=ghcr-creds \
-        --workspace name=workarea,volumeClaimTemplateFile=workspace-template.yaml \
+        --workspace name=workarea,volumeClaimTemplateFile="${WORKSPACE_TEMPLATE}" \
         --pipeline-timeout 2h0m0s
     ```
 
@@ -134,8 +151,8 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
    NAME                    VALUE
    ∙ commit-sha            ff6d7abebde12460aecd061ab0f6fd21053ba8a7
-   ∙ release-file           https://storage.googleapis.com/tekton-releases/operator/previous/v20210223-xyzxyz/release.yaml
-   ∙ release-file-no-tag    https://storage.googleapis.com/tekton-releases/operator/previous/v20210223-xyzxyz/release.notag.yaml
+   ∙ release-file           https://infra.tekton.dev/tekton-releases/operator/previous/v20210223-xyzxyz/release.yaml
+   ∙ release-file-no-tag    https://infra.tekton.dev/tekton-releases/operator/previous/v20210223-xyzxyz/release.notag.yaml
 
    (...)
    ```
@@ -145,30 +162,44 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
 ## Creating Github Release
 
-1. The YAMLs are now uploaded to publically accesible gcs bucket! Anyone installing Tekton Pipelines will now get the
-   new version. Time to create a new GitHub release announcement:
+1. The YAMLs are now released. Anyone installing Tekton Operator will now get the new version. Time to create a new GitHub release announcement:
 
-    1. Create additional environment variables
+    1. Find the Rekor UUID for the release
 
     ```bash
-    TEKTON_OLD_VERSION=# Example: v0.11.1
-    TEKTON_RELEASE_NAME=# The release name you just chose, e.g.: "Ragdoll Norby"
+    RELEASE_FILE=https://infra.tekton.dev/tekton-releases/pipeline/previous/${TEKTON_VERSION}/release.yaml
+    CONTROLLER_IMAGE_SHA=$(curl -L $RELEASE_FILE | sed -n 's/"//g;s/.*ghcr\.io.*controller.*@//p;')
+    REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
+    echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
     ```
 
     1. Execute the Draft Release Pipeline.
 
+        Create a pod template file:
+
+        ```shell
+        POD_TEMPLATE=$(mktemp /tmp/pod-template.XXXXXX.yaml)
+        cat <<'EOF' > $POD_TEMPLATE
+securityContext:
+  fsGroup: 65532
+  runAsUser: 65532
+  runAsNonRoot: true
+EOF
+        ```
     ```bash
     tkn --context dogfooding pipeline start \
-      --workspace name=shared,volumeClaimTemplateFile=workspace-template.yaml \
-      --workspace name=credentials,secret=release-secret \
-      -p package="tektoncd/operator" \
-      -p git-revision="$TEKTON_RELEASE_GIT_SHA" \
+      --workspace name=shared,volumeClaimTemplateFile="${WORKSPACE_TEMPLATE} \
+      --workspace name=credentials,secret=oci-release-secret \
+      --pod-template "{POD_TEMPLATE}" \
+      -p package="{TEKTON_PACKAGE}" \
+      -p git-revision="${TEKTON_RELEASE_GIT_SHA}" \
       -p release-tag="${TEKTON_RELEASE_VERSION}" \
       -p previous-release-tag="${TEKTON_OLD_VERSION}" \
       -p release-name="${TEKTON_RELEASE_NAME}" \
-      -p bucket="gs://tekton-releases/operator" \
-      -p rekor-uuid="" \
-      release-draft
+      -p repo-name="${TEKTON_REPO_NAME}" \
+      -p bucket="tekton-releases/operator/" \
+      -p rekor-uuid="REKOR_UUID" \
+      release-draft-oci
     ```
 
     1. Watch logs of create-draft-release
@@ -195,7 +226,7 @@ need a checkout of the operator repo, a terminal window and a text editor.
 
     ```bash
     # Test latest
-    kubectl --context my-dev-cluster apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
+    kubectl --context my-dev-cluster apply --filename https://infra.tekton.dev/tekton-releases/pipeline/latest/release.yaml
     ```
 
 5. Announce the release in Slack channels #general and #pipelines.
@@ -206,17 +237,17 @@ Congratulations, you're done!
 ## Setup dogfooding context
 
 1. Configure `kubectl` to connect to
-   [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/master/docs/dogfooding.md):
+   [the dogfooding cluster](https://github.com/tektoncd/plumbing/blob/main/docs/dogfooding.md):
 
     ```bash
-    gcloud container clusters get-credentials dogfooding --zone us-central1-a --project tekton-releases
+    oci ce cluster create-kubeconfig --cluster-id <CLUSTER-OCID> --file $HOME/.kube/config --region <CLUSTER-REGION> --token-version 2.0.0  --kube-endpoint PUBLIC_ENDPOINT
     ```
 
 1. Give [the context](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
    a short memorable name such as `dogfooding`:
 
    ```bash
-   kubectl config rename-context gke_tekton-releases_us-central1-a_dogfooding dogfooding
+   kubectl config rename-context <REPLACE-WITH-NAME-FROM-CONFIG-CONTEXT> dogfooding
    ```
 
 1. **Important: Switch `kubectl` back to your own cluster by default.**

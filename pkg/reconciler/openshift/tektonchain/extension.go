@@ -48,7 +48,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.RemoveRunAsGroup(),
 		occommon.RemoveRunAsUserForStatefulSet(tektonChainsControllerName),
 		occommon.RemoveRunAsGroupForStatefulSet(tektonChainsControllerName),
-		occommon.ApplyCABundles,
+		occommon.ApplyCABundlesToDeployment,
 		occommon.ApplyCABundlesForStatefulSet(tektonChainsControllerName),
 	}
 }

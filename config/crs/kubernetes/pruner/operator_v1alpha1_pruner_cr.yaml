@@ -18,4 +18,10 @@ metadata:
   name: pruner
 spec:
   targetNamespace: tekton-pipelines
-  disabled: true
+  disabled: false
+  global-config:
+    enforcedConfigLevel: global
+    ttlSecondsAfterFinished: null
+    successfulHistoryLimit: null
+    failedHistoryLimit: null
+    historyLimit: 100

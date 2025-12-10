@@ -109,12 +109,14 @@ func (r *Reconciler) transform(ctx context.Context, manifest *mf.Manifest, comp 
 		updateEnvWithDBSecretName(instance.Spec.ResultsAPIProperties),
 		populateGoogleCreds(instance.Spec.ResultsAPIProperties),
 		common.AddDeploymentRestrictedPSA(),
+		common.AddConfiguration(instance.Spec.Config),
 		common.AddStatefulSetRestrictedPSA(),
 		common.DeploymentImages(resultImgs),
 		common.DeploymentEnvVarKubernetesMinVersion(),
 		common.StatefulSetImages(resultImgs),
 		common.AddConfigMapValues(tektonResultleaderElectionConfig, instance.Spec.Performance.PerformanceLeaderElectionConfig),
 		common.UpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(&instance.Spec.Performance, tektonResultleaderElectionConfig, resultWatcherDeployment, resultWatcherContainer),
+		// Note: PostgreSQL upgrade transformer is NOT needed for Kubernetes
 	}
 
 	if instance.Spec.Performance.StatefulsetOrdinals != nil && *instance.Spec.Performance.StatefulsetOrdinals {

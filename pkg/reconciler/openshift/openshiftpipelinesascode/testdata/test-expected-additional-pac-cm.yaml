@@ -29,8 +29,8 @@ data:
   # Tekton HUB API urls
   hub-url: "https://custom-hub.com"
 
-  # Tekton HUB catalog name
-  hub-catalog-name: "tekton"
+  # Tekton HUB catalog type
+  hub-catalog-type: "artifacthub"
 
   # Additional Hub Catalogs is supported, for example:
   #
@@ -43,6 +43,10 @@ data:
   # pipelinesascode.tekton.dev/task: "anotherhub://task"
   #
   # Increase the number of the catalog to add more of them
+  catalog-tektonhub-id: "tektonhub"
+  catalog-tektonhub-name: "tekton"
+  catalog-tektonhub-type: "tektonhub"
+  catalog-tektonhub-url: "https://api.hub.tekton.dev/v1"
 
   # Allow fetching remote tasks
   remote-tasks: "true"
@@ -59,6 +63,12 @@ data:
   #
   # you may want to disable this if you think your pipeline may leak some value
   error-log-snippet: "true"
+
+  # The number of lines to display in error log snippets, when `error-log-snippet` is
+  # set to "true".
+  # The GitHub Check interface (via the GitHub App) has a 65,535 character limit,
+  # so consider using a conservative value for this setting.
+  error-log-snippet-number-of-lines: "3"
 
   # Enable or disable the inspection of container logs to detect error message
   # and expose them as annotations on Pull Request. Only Github apps is supported
@@ -116,6 +126,9 @@ data:
   # https://github.com/owner/repo will be `owner-repo-ci`
   auto-configure-repo-namespace-template: ""
 
+  # add a template to generate repository name for your auto configured repo
+  auto-configure-repo-repository-template: ""
+
   # Enable or disable the feature to rerun the CI if push event happens on
   # a pull request
   #
@@ -124,6 +137,13 @@ data:
   #
   # you may want to disable this if ok-to-test should be done on each iteration
   remember-ok-to-test: "false"
+
+  # require-ok-to-test-sha enforces that a pull request's commit SHA must be specified
+  # in an `/ok-to-test` comment. This prevents a race condition where a malicious
+  # user could push a bad commit after the `/ok-to-test` comment is posted but
+  # before the CI runs.
+  # Default: false
+  require-ok-to-test-sha: "false"
 
   # When enabled, this option prevents duplicate pipeline runs when a commit appears in
   # both a push event and a pull request. If a push event comes from a commit that is

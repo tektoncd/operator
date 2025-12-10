@@ -1,0 +1,14 @@
+## Component Version Updates
+
+This PR updates the following component versions:
+
+### dashboard
+
+- **Previous version:** `v0.63.1`
+- **New version:** `v0.64.0`
+- **Repository:** [tektoncd/dashboard](https://github.com/tektoncd/dashboard)
+- **Release notes:** [v0.63.1...v0.64.0](https://github.com/tektoncd/dashboard/compare/v0.63.1...v0.64.0)
+
+---
+
+_This PR was automatically created by the bump-payload workflow._

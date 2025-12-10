@@ -40,20 +40,25 @@ release_yaml() {
     case $version in
       nightly)
         dirVersion="0.0.0-nightly"
-        url="https://storage.googleapis.com/tekton-releases-nightly/${comp}/latest/${releaseFileName}.yaml"
+        url="https://infra.tekton.dev/tekton-releases-nightly/${comp}/latest/${releaseFileName}.yaml"
         ;;
       latest)
         dirVersion="0.0.0-latest"
-        url="https://storage.googleapis.com/tekton-releases/${comp}/latest/${releaseFileName}.yaml"
+        url="https://infra.tekton.dev/tekton-releases/${comp}/latest/${releaseFileName}.yaml"
         ;;
       *)
         dirVersion=${version//v}
-        url="https://storage.googleapis.com/tekton-releases/${comp}/previous/${version}/${releaseFileName}.yaml"
+        url="https://infra.tekton.dev/tekton-releases/${comp}/previous/${version}/${releaseFileName}.yaml"
         ;;
     esac
 
     ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
-    comp_dir=${ko_data}/tekton-${dir}
+    # pruner uses "pruner" directory (not "tekton-pruner") to avoid conflicts
+    if [[ $comp == "pruner" ]]; then
+      comp_dir=${ko_data}/${dir}
+    else
+      comp_dir=${ko_data}/tekton-${dir}
+    fi
     dirPath=${comp_dir}/${dirVersion}
 
     # destination file
@@ -80,7 +85,7 @@ release_yaml() {
     # create a directory
     mkdir -p ${dirPath} || true
 
-    http_response=$(curl -s -o ${dest} -w "%{http_code}" ${url})
+    http_response=$(curl -s -L -o ${dest} -w "%{http_code}" ${url})
     echo url: ${url}
 
     if [[ $http_response != "200" ]]; then
@@ -100,7 +105,8 @@ release_yaml() {
     fi
 
     if [[ ${comp} == "dashboard" ]]; then
-      sed -i '/aggregationRule/,+3d' ${dest}
+      # For Mac Systems sed -i need to be followed by an .''
+      sed -i.'' '/aggregationRule/,+3d' ${dest}
     fi
 
     echo "Info: Added $comp/$releaseFileName:$version release yaml !!"
@@ -379,6 +385,14 @@ main() {
   if [[ ${TARGET} == "openshift" ]]
   then
       release_yaml results release_base 00-results ${r_version}
+      # Append PostgreSQL manifest to main results manifest for OpenShift
+      # PostgreSQL is now part of main reconciliation flow, not PreReconcile
+      results_version_dir=${ko_data}/tekton-results/${r_version//v}
+      if [[ -f "${ko_data}/static/tekton-results/internal-db/db.yaml" ]]; then
+        echo "Appending PostgreSQL manifest to main results manifest..."
+        cat ${ko_data}/static/tekton-results/internal-db/db.yaml >> ${results_version_dir}/00-results.yaml
+        echo "PostgreSQL manifest appended to: ${results_version_dir}/00-results.yaml"
+      fi
   else
       release_yaml results release 00-results ${r_version}
   fi
@@ -402,7 +416,8 @@ main() {
 
   # copy pruner rbac/sa yaml
   copy_pruner_yaml
-  release_yaml_github pruner
+  pruner_version=$(go run ./cmd/tool component-version ${CONFIG} pruner)
+  release_yaml pruner release 00-pruner ${pruner_version}
 
   echo updated payload tree
   find cmd/${TARGET}/operator/kodata

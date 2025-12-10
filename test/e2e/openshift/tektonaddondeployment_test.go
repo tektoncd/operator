@@ -108,5 +108,4 @@ func TestTektonAddonsDeployment(t *testing.T) {
 		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
 		resources.TektonPipelineCRDelete(t, clients, crNames)
 	})
-
 }

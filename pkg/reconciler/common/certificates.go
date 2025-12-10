@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
+	"knative.dev/pkg/ptr"
 )
 
 const (
@@ -35,8 +36,8 @@ const (
 	ServiceCAKey             = "service-ca.crt"
 )
 
-// newVolumeWithConfigMap creates a new volume with the given ConfigMap
-func newVolumeWithConfigMap(volumeName, configMapName, configMapKey, configMapPath string) corev1.Volume {
+// NewVolumeWithConfigMap creates a new volume with the given ConfigMap
+func NewVolumeWithConfigMap(volumeName, configMapName, configMapKey, configMapPath string) corev1.Volume {
 	return corev1.Volume{
 		Name: volumeName,
 		VolumeSource: corev1.VolumeSource{
@@ -53,9 +54,49 @@ func newVolumeWithConfigMap(volumeName, configMapName, configMapKey, configMapPa
 	}
 }
 
+// NewVolumeWithConfigMapOptional creates a new volume with the given ConfigMap marked as optional
+// This allows the pod to start even if the ConfigMap doesn't exist
+func NewVolumeWithConfigMapOptional(volumeName, configMapName, configMapKey, configMapPath string) corev1.Volume {
+	return corev1.Volume{
+		Name: volumeName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{Name: configMapName},
+				Items: []corev1.KeyToPath{
+					{
+						Key:  configMapKey,
+						Path: configMapPath,
+					},
+				},
+				Optional: ptr.Bool(true),
+			},
+		},
+	}
+}
+
 // AddCABundleConfigMapsToVolumes adds the config-trusted-cabundle and config-service-cabundle
 // ConfigMaps to the given list of volumes and removes duplicates, if any
 func AddCABundleConfigMapsToVolumes(volumes []corev1.Volume) []corev1.Volume {
+	// If CA bundle volumes already exists in the pod's volumes, then remove it
+	for _, newVolume := range []corev1.Volume{
+		NewVolumeWithConfigMap(TrustedCAConfigMapVolume, TrustedCAConfigMapName, TrustedCAKey, TrustedCAKey),
+		NewVolumeWithConfigMap(ServiceCAConfigMapVolume, ServiceCAConfigMapName, ServiceCAKey, ServiceCAKey),
+	} {
+		volumes = AddOrReplaceInList(
+			volumes,
+			newVolume,
+			func(v corev1.Volume) string { return v.Name },
+		)
+	}
+
+	return volumes
+}
+
+// AddCABundleConfigMapsToVolumesOptional adds the config-trusted-cabundle and config-service-cabundle
+// ConfigMaps to the given list of volumes as optional volumes and removes duplicates, if any.
+// Using optional volumes allows pods to start even when ConfigMaps don't exist, eliminating the need
+// for API calls to check ConfigMap existence.
+func AddCABundleConfigMapsToVolumesOptional(volumes []corev1.Volume) []corev1.Volume {
 	// If CA bundle volumes already exists in the pod's volumes, then remove it
 	for _, volumeName := range []string{TrustedCAConfigMapVolume, ServiceCAConfigMapVolume} {
 		for i, v := range volumes {
@@ -68,26 +109,14 @@ func AddCABundleConfigMapsToVolumes(volumes []corev1.Volume) []corev1.Volume {
 
 	return append(
 		volumes,
-		newVolumeWithConfigMap(TrustedCAConfigMapVolume, TrustedCAConfigMapName, TrustedCAKey, TrustedCAKey),
-		newVolumeWithConfigMap(ServiceCAConfigMapVolume, ServiceCAConfigMapName, ServiceCAKey, ServiceCAKey),
+		NewVolumeWithConfigMapOptional(TrustedCAConfigMapVolume, TrustedCAConfigMapName, TrustedCAKey, TrustedCAKey),
+		NewVolumeWithConfigMapOptional(ServiceCAConfigMapVolume, ServiceCAConfigMapName, ServiceCAKey, ServiceCAKey),
 	)
 }
 
 // AddCABundlesToContainerVolumes adds the CA bundles to the container via VolumeMounts.
 // SSL_CERT_DIR environment variable is also set if it does not exist already.
 func AddCABundlesToContainerVolumes(c *corev1.Container) {
-	volumeMounts := c.VolumeMounts
-
-	// If volume mounts for CA bundles already exist then remove them
-	for _, volumeName := range []string{TrustedCAConfigMapVolume, ServiceCAConfigMapVolume} {
-		for i, vm := range volumeMounts {
-			if vm.Name == volumeName {
-				volumeMounts = append(volumeMounts[:i], volumeMounts[i+1:]...)
-				break
-			}
-		}
-	}
-
 	// We will mount the certs at /tekton-custom-certs so we don't override the existing certs
 	sslCertDir := "/tekton-custom-certs"
 	certEnvAvailable := false
@@ -132,22 +161,26 @@ func AddCABundlesToContainerVolumes(c *corev1.Container) {
 		})
 	}
 
-	// Let's mount the certificates now.
-	volumeMounts = append(volumeMounts,
-		corev1.VolumeMount{
-			Name: TrustedCAConfigMapVolume,
-			// We only want the first entry in SSL_CERT_DIR for the mount
-			MountPath: filepath.Join(strings.Split(sslCertDir, ":")[0], TrustedCAKey),
+	// We only want the first entry in SSL_CERT_DIR for the mount
+	mountDir := strings.Split(sslCertDir, ":")[0]
+	for _, newVolumeMount := range []corev1.VolumeMount{
+		{
+			Name:      TrustedCAConfigMapVolume,
+			MountPath: filepath.Join(mountDir, TrustedCAKey),
 			SubPath:   TrustedCAKey,
 			ReadOnly:  true,
 		},
-		corev1.VolumeMount{
-			Name: ServiceCAConfigMapVolume,
-			// We only want the first entry in SSL_CERT_DIR for the mount
-			MountPath: filepath.Join(strings.Split(sslCertDir, ":")[0], ServiceCAKey),
+		{
+			Name:      ServiceCAConfigMapVolume,
+			MountPath: filepath.Join(mountDir, ServiceCAKey),
 			SubPath:   ServiceCAKey,
 			ReadOnly:  true,
 		},
-	)
-	c.VolumeMounts = volumeMounts
+	} {
+		c.VolumeMounts = AddOrReplaceInList(
+			c.VolumeMounts,
+			newVolumeMount,
+			func(v corev1.VolumeMount) string { return v.Name },
+		)
+	}
 }

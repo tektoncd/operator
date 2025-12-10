@@ -25,6 +25,9 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/tektoncd/pruner/pkg/config"
+	"gopkg.in/yaml.v3"
+
 	"github.com/google/go-cmp/cmp"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -236,6 +239,42 @@ func TestReplaceImages(t *testing.T) {
 		assertParamHasImage(t, newManifest.Resources(), "BUILDER_IMAGE", image)
 		assertTaskImage(t, newManifest.Resources(), "push", "buildah")
 	})
+}
+
+func TestImageRegistryDomainOverride(t *testing.T) {
+	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "custom-registry.io/custom-path")
+	// Array of images to be replaced
+	imageNameList := map[string]string{
+		"IMAGE_A": "docker.io/tekton/controller:latest",
+		"IMAGE_B": "gcr.io/tekton-releases/dogfooding/tekton-controller:latest",
+		"IMAGE_C": "quay.io/tekton/controller:latest",
+	}
+
+	expectedResult := map[string]string{
+		"IMAGE_A": "custom-registry.io/custom-path/tekton/controller:latest",
+		"IMAGE_B": "custom-registry.io/custom-path/tekton-releases/dogfooding/tekton-controller:latest",
+		"IMAGE_C": "custom-registry.io/custom-path/tekton/controller:latest",
+	}
+
+	data := ImageRegistryDomainOverride(imageNameList)
+	if !cmp.Equal(data, expectedResult) {
+		t.Fatalf("Unexpected ImageRegistryDomainOverride: %s", cmp.Diff(data, expectedResult))
+	}
+}
+
+func TestImageRegistryDomainWithoutOverride(t *testing.T) {
+	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "")
+	// Array of images to be replaced
+	imageNameList := map[string]string{
+		"IMAGE_A": "docker.io/tekton/controller:latest",
+		"IMAGE_B": "gcr.io/tekton-releases/dogfooding/tekton-controller:latest",
+		"IMAGE_C": "quay.io/tekton/controller:latest",
+	}
+
+	data := ImageRegistryDomainOverride(imageNameList)
+	if !cmp.Equal(data, imageNameList) {
+		t.Fatalf("Unexpected ImageRegistryDomainOverride: %s", cmp.Diff(data, imageNameList))
+	}
 }
 
 func assertNoError(t *testing.T, err error) {
@@ -512,7 +551,6 @@ func TestReplaceNamespaceInClusterRole(t *testing.T) {
 }
 
 func TestAddConfigMapValues_PipelineProperties(t *testing.T) {
-
 	testData := path.Join("testdata", "test-replace-cm-values.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assertNoError(t, err)
@@ -533,7 +571,6 @@ func TestAddConfigMapValues_PipelineProperties(t *testing.T) {
 }
 
 func TestAddConfigMapValues_OptionalPipelineProperties(t *testing.T) {
-
 	testData := path.Join("testdata", "test-replace-cm-values.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assertNoError(t, err)
@@ -557,6 +594,30 @@ func TestAddConfigMapValues_OptionalPipelineProperties(t *testing.T) {
 	assert.Equal(t, cm.Data["default-managed-by-label-value"], "abc-pipeline")
 	// this was not defined in struct so will be missing from configmap
 	assert.Equal(t, cm.Data["default-pod-template"], "")
+}
+
+// TestAddConfigMapValues_StructValues tests that the ConfigMap is created with the struct values marshalled into YAML format.
+func TestAddConfigMapValues_StructValues(t *testing.T) {
+	testData := path.Join("testdata", "test-struct-cm-values.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoError(t, err)
+	prop := v1alpha1.TektonPrunerConfig{
+		GlobalConfig: config.GlobalConfig{
+			PrunerConfig: config.PrunerConfig{
+				SuccessfulHistoryLimit: ptr.Int32(123),
+				HistoryLimit:           ptr.Int32(456),
+			},
+		},
+	}
+	manifest, err = manifest.Transform(AddConfigMapValues("tekton-pruner-default-spec", prop))
+	assertNoError(t, err)
+
+	cm := &corev1.ConfigMap{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
+	assertNoError(t, err)
+	// ConfigMap will have only fields which are defined in `prop` OptionalPipelineProperties above
+	expectedValue, _ := yaml.Marshal(prop.GlobalConfig)
+	assert.Equal(t, cm.Data["global-config"], string(expectedValue))
 }
 
 func TestAddConfigMapValues(t *testing.T) {
@@ -787,9 +848,96 @@ func TestAddConfigMapValues(t *testing.T) {
 					}
 				}
 			}
-
 		})
 	}
+}
+
+func TestReplaceNamespaceInWebhookNamespaceSelector(t *testing.T) {
+	target := "openshift-pipelines"
+
+	// Build a minimal ValidatingWebhookConfiguration with two webhooks:
+	// 1) In selector referencing tekton-pipelines (should be replaced)
+	// 2) NotIn selector excluding kube-* namespaces (should remain unchanged)
+	vwc := unstructured.Unstructured{Object: map[string]interface{}{
+		"apiVersion": "admissionregistration.k8s.io/v1",
+		"kind":       "ValidatingWebhookConfiguration",
+		"metadata": map[string]interface{}{
+			"name": "validation.webhook.pruner.tekton.dev",
+		},
+		"webhooks": []interface{}{
+			map[string]interface{}{
+				"name": "validation.webhook.pruner.tekton.dev.global",
+				"clientConfig": map[string]interface{}{
+					"service": map[string]interface{}{ // this is NOT modified by the transformer
+						"name":      "tekton-pruner-webhook",
+						"namespace": "tekton-pipelines",
+						"path":      "/validate-configmap",
+					},
+				},
+				"namespaceSelector": map[string]interface{}{
+					"matchExpressions": []interface{}{
+						map[string]interface{}{
+							"key":      "kubernetes.io/metadata.name",
+							"operator": "In",
+							"values":   []interface{}{"tekton-pipelines"},
+						},
+					},
+				},
+			},
+			map[string]interface{}{
+				"name": "validation.webhook.pruner.tekton.dev.namespace",
+				"namespaceSelector": map[string]interface{}{
+					"matchExpressions": []interface{}{
+						map[string]interface{}{
+							"key":      "kubernetes.io/metadata.name",
+							"operator": "NotIn",
+							"values":   []interface{}{"kube-system", "kube-public", "kube-node-lease"},
+						},
+					},
+				},
+			},
+		},
+	}}
+
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{vwc}))
+	assertNoError(t, err)
+
+	manifest, err = manifest.Transform(ReplaceNamespaceInWebhookNamespaceSelector(target))
+	assertNoError(t, err)
+
+	got := manifest.Resources()[0].Object
+
+	// Assert first webhook In selector value replaced to target
+	webhooks, found, err := unstructured.NestedSlice(got, "webhooks")
+	assertNoError(t, err)
+	if !found || len(webhooks) != 2 {
+		t.Fatalf("expected 2 webhooks, got %v", len(webhooks))
+	}
+
+	wh0 := webhooks[0].(map[string]interface{})
+	nsSel0, _, _ := unstructured.NestedMap(wh0, "namespaceSelector")
+	mexprs0, _ := nsSel0["matchExpressions"].([]interface{})
+	expr0 := mexprs0[0].(map[string]interface{})
+	vals0, _ := expr0["values"].([]interface{})
+	assert.Equal(t, target, vals0[0].(string))
+
+	// Assert second webhook NotIn selector unchanged
+	wh1 := webhooks[1].(map[string]interface{})
+	nsSel1, _, _ := unstructured.NestedMap(wh1, "namespaceSelector")
+	mexprs1, _ := nsSel1["matchExpressions"].([]interface{})
+	expr1 := mexprs1[0].(map[string]interface{})
+	vals1, _ := expr1["values"].([]interface{})
+	assert.Equal(t, "kube-system", vals1[0].(string))
+	assert.Equal(t, "kube-public", vals1[1].(string))
+	assert.Equal(t, "kube-node-lease", vals1[2].(string))
+
+	// Assert clientConfig.service.namespace was not modified by transformer
+	svcMap, found, err := unstructured.NestedMap(wh0, "clientConfig", "service")
+	assertNoError(t, err)
+	if !found {
+		t.Fatalf("expected clientConfig.service present")
+	}
+	assert.Equal(t, "tekton-pipelines", svcMap["namespace"].(string))
 }
 
 func TestInjectLabelOnNamespace(t *testing.T) {
@@ -808,14 +956,12 @@ func TestInjectLabelOnNamespace(t *testing.T) {
 			}
 			if !ok {
 				t.Errorf("namespace did not have label")
-
 			}
 		}
 	})
 }
 
 func TestAddConfiguration(t *testing.T) {
-
 	testData := path.Join("testdata", "test-add-configurations.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assertNoError(t, err)
@@ -931,7 +1077,6 @@ func TestCopyConfigMapValues(t *testing.T) {
 
 	// extra fields in expected configmap will be added
 	assert.Equal(t, cm.Data["ignore-me-field"], "ignore-me")
-
 }
 
 func TestCopyEmptyConfigMapValues(t *testing.T) {
@@ -1144,7 +1289,6 @@ func TestReplaceNamespace(t *testing.T) {
 					// verify namespace
 					for index := range crb.Subjects {
 						assert.Equal(t, test.targetNamespace, crb.Subjects[index].Namespace)
-
 					}
 				}
 

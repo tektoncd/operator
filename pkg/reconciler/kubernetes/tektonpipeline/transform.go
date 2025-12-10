@@ -36,6 +36,7 @@ const (
 	FeatureFlag                                  = "feature-flags"
 	ConfigDefaults                               = "config-defaults"
 	ConfigMetrics                                = "config-observability"
+	ConfigTracing                                = "config-tracing"
 	ResolverFeatureFlag                          = "resolvers-feature-flags"
 	bundleResolverConfig                         = "bundleresolver-config"
 	clusterResolverConfig                        = "cluster-resolver-config"
@@ -67,7 +68,8 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		// still keeping types to maintain the API compatibility
 		pipeline.Spec.Pipeline.EnableTektonOciBundles = nil
 
-		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PipelinesImagePrefix))
+		images := common.ImageRegistryDomainOverride(imagesRaw)
 		instance := comp.(*v1alpha1.TektonPipeline)
 		// adding extension's transformers first to run them before `extra` transformers
 		trns := extension.Transformers(instance)
@@ -76,6 +78,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfigMapValues(FeatureFlag, pipeline.Spec.PipelineProperties),
 			common.AddConfigMapValues(ConfigDefaults, pipeline.Spec.OptionalPipelineProperties),
 			common.AddConfigMapValues(ConfigMetrics, pipeline.Spec.PipelineMetricsProperties),
+			addTracingConfigValues(pipeline),
 			common.AddConfigMapValues(ResolverFeatureFlag, pipeline.Spec.Resolvers),
 			common.DeploymentImages(images),
 			common.StatefulSetImages(images),
@@ -185,6 +188,50 @@ func updateResolverConfigEnvironmentsInDeployment(pipelineCR *v1alpha1.TektonPip
 
 		// convert deployment to unstructured object
 		obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(dep)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(obj)
+
+		return nil
+	}
+}
+
+// addTracingConfigValues adds tracing configuration to config-tracing ConfigMap
+// It strips the "traces." prefix from the JSON tags to match upstream expectations
+func addTracingConfigValues(pipelineCR *v1alpha1.TektonPipeline) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "ConfigMap" || u.GetName() != ConfigTracing {
+			return nil
+		}
+
+		cm := &corev1.ConfigMap{}
+		err := apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
+		if err != nil {
+			return err
+		}
+		if cm.Data == nil {
+			cm.Data = map[string]string{}
+		}
+
+		// Map traces.enabled -> enabled
+		if pipelineCR.Spec.TracingProperties.Enabled != nil {
+			if *pipelineCR.Spec.TracingProperties.Enabled {
+				cm.Data["enabled"] = "true"
+			} else {
+				cm.Data["enabled"] = "false"
+			}
+		}
+
+		if pipelineCR.Spec.TracingProperties.Endpoint != "" {
+			cm.Data["endpoint"] = pipelineCR.Spec.TracingProperties.Endpoint
+		}
+
+		if pipelineCR.Spec.TracingProperties.CredentialsSecret != "" {
+			cm.Data["credentialsSecret"] = pipelineCR.Spec.TracingProperties.CredentialsSecret
+		}
+
+		obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(cm)
 		if err != nil {
 			return err
 		}

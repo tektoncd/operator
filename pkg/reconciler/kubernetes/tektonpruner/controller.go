@@ -63,16 +63,18 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 		metrics, _ := NewRecorder()
 		c := &Reconciler{
+			operatorClientSet:  operatorclient.Get(ctx),
 			kubeClientSet:      kubeclient.Get(ctx),
 			pipelineInformer:   tektonPipelineinformer.Get(ctx),
 			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, prunerVer, v1alpha1.KindTektonPruner, metrics),
 			extension:          generator(ctx),
 			manifest:           manifest,
 			prunerVersion:      prunerVer,
+			operatorVersion:    operatorVer,
 		}
 		impl := tektonPrunerreconciler.NewImpl(ctx, c)
 
-		logger.Info("Setting up event handlers for TektonPruner")
+		logger.Debug("Setting up event handlers for TektonPruner")
 
 		if _, err := tektonPrunerinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
 			logger.Panicf("Couldn't register TektonPruner informer event handler: %w", err)

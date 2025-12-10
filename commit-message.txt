@@ -1,0 +1,5 @@
+chore: bump dashboard from v0.63.1 to v0.64.0
+
+- dashboard: v0.63.1 → v0.64.0
+
+Signed-off-by: tekton-bot <tekton-bot@users.noreply.github.com>

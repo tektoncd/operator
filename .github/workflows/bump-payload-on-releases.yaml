@@ -26,27 +26,56 @@ jobs:
         branch: ${{ fromJSON(needs.build-release-matrix.outputs.branches) }}
         # branch: [release-v0.62.x, release-v0.63.x]
     steps:
-    - uses: actions/setup-go@v5
-      with:
-        go-version: 1.21.x
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
       with:
         ref: ${{ matrix.branch }}
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
+      with:
+        go-version-file: "go.mod"
     - name: run operator-tool bump-bugfix
       run: |
         export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-        make components/bump-bugfix
+        make components/bump-bugfix 2> bump-output.txt || true
+        cat bump-output.txt >&2
+    - name: generate commit message and PR body
+      id: generate-message
+      run: |
+        if [[ -f bump-output.txt ]]; then
+          ./.github/scripts/generate-bump-message.sh bump-output.txt commit-message.txt pr-body.txt
+          if [[ -f commit-message.txt ]]; then
+            COMMIT_MSG=$(cat commit-message.txt)
+            PR_TITLE=$(head -n1 commit-message.txt)
+            echo "commit_message<<EOF" >> $GITHUB_OUTPUT
+            echo "${COMMIT_MSG}" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "pr_title=${PR_TITLE}" >> $GITHUB_OUTPUT
+            if [[ -f pr-body.txt ]]; then
+              echo "pr_body<<EOF" >> $GITHUB_OUTPUT
+              cat pr-body.txt >> $GITHUB_OUTPUT
+              echo "EOF" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "commit_message=chore: bump payload versions" >> $GITHUB_OUTPUT
+            echo "pr_title=chore: bump payload versions" >> $GITHUB_OUTPUT
+            echo "pr_body=Automated component version bump for ${{ matrix.branch }}" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "commit_message=chore: bump payload versions" >> $GITHUB_OUTPUT
+          echo "pr_title=chore: bump payload versions" >> $GITHUB_OUTPUT
+          echo "pr_body=Automated component version bump for ${{ matrix.branch }}" >> $GITHUB_OUTPUT
+        fi
     - name: create pull request
-      uses: peter-evans/create-pull-request@v7
+      uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676  # v7.0.11
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        commit-message: Bump payloads versions
-        committer: Vincent Demeester <vdemeest@redhat.com>
+        token: ${{ secrets.CHATOPS_TOKEN }}
+        commit-message: ${{ steps.generate-message.outputs.commit_message }}
+        committer: tekton-bot <tekton-bot@users.noreply.github.com>
         author: Vincent Demeester <vdemeest@redhat.com>
         signoff: true
         # author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
         branch: bot-bump-payload-${{ matrix.branch }}
         delete-branch: true
-        title: "[bot] bump payload versions"
+        title: ${{ steps.generate-message.outputs.pr_title }}
+        body: ${{ steps.generate-message.outputs.pr_body }}
         labels: |
           release-note-none

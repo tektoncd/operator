@@ -78,7 +78,8 @@ func (r *Reconciler) checkCRDExist(ctx context.Context, crdName string) (bool, e
 func filterAndTransformOCPResources() client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		addon := comp.(*v1alpha1.TektonAddon)
-		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
+		images := common.ImageRegistryDomainOverride(imagesRaw)
 		tfs := []mf.Transformer{
 			common.DeploymentImages(images),
 			common.AddConfiguration(addon.Spec.Config),

@@ -101,7 +101,9 @@ func ComponentDir(instance v1alpha1.TektonComponent) string {
 	case *v1alpha1.ManualApprovalGate:
 		return filepath.Join(koDataDir, "manual-approval-gate")
 	case *v1alpha1.TektonPruner:
-		return filepath.Join(koDataDir, v1alpha1.TektonPrunerResourceName)
+		// Event-based pruner uses "pruner" directory (not "tekton-pruner")
+		// to avoid conflicts with job-based pruner in "tekton-pruner" directory
+		return filepath.Join(koDataDir, "pruner")
 	}
 	return ""
 }

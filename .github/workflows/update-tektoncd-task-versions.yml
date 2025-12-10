@@ -3,18 +3,18 @@ name: Update Tekton Task Versions
 on:
   schedule:
     - cron: "0 0 * * *"  # Runs daily at midnight
-  workflow_dispatch:  # Allows manual trigger
+  workflow_dispatch: {}  # Allows manual trigger
 
 jobs:
   update-task-versions:
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'tektoncd' # do not run this elsewhere
+    if: github.repository_owner == 'tektoncd'  # do not run this elsewhere
     permissions:
       contents: write
       pull-requests: write
     steps:
       - name: Checkout Operator Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
         with:
           fetch-depth: 0
 
@@ -48,7 +48,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.update.outputs.has_changes == 'true'
-        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e  # v7
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676  # v7.0.11
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "Update Tekton task versions"

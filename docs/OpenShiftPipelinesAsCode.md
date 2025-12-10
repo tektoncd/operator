@@ -40,10 +40,12 @@ It is recommended that you install OpenShiftPipelinesAsCode through [TektonConfi
         error-detection-simple-regexp: ^(?P<filename>[^:]*):(?P<line>[0-9]+):(?P<column>[0-9]+):([
           ]*)?(?P<error>.*)
         error-log-snippet: "true"
+        error-log-snippet-number-of-lines: "3"
         enable-cancel-in-progress-on-pull-requests: "false"
         enable-cancel-in-progress-on-push: "false"
         hub-catalog-name: tekton
         hub-url: https://api.hub.tekton.dev/v1
+        require-ok-to-test-sha: "false"
         skip-push-event-for-pr-commits: "true"
         remote-tasks: "true"
         secret-auto-create: "true"

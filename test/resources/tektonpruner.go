@@ -24,6 +24,12 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpruner"
+	"github.com/tektoncd/pruner/pkg/config"
+	"knative.dev/pkg/ptr"
+
+	yaml "sigs.k8s.io/yaml/goyaml.v2"
+
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -47,6 +53,16 @@ func EnsureTektonPrunerExists(clients TektonPrunerv1alpha1.TektonPrunerInterface
 				CommonSpec: v1alpha1.CommonSpec{
 					TargetNamespace: names.TargetNamespace,
 				},
+				Pruner: v1alpha1.Pruner{
+					TektonPrunerConfig: v1alpha1.TektonPrunerConfig{
+						GlobalConfig: config.GlobalConfig{
+							PrunerConfig: config.PrunerConfig{
+								SuccessfulHistoryLimit: ptr.Int32(12),
+								HistoryLimit:           ptr.Int32(45),
+							},
+						},
+					},
+				},
 			},
 		}
 		return clients.Create(context.TODO(), ks, metav1.CreateOptions{})
@@ -58,7 +74,8 @@ func EnsureTektonPrunerExists(clients TektonPrunerv1alpha1.TektonPrunerInterface
 // from client every `interval` until `inState` returns `true` indicating it
 // is done, returns an error or timeout.
 func WaitForTektonPrunerState(clients TektonPrunerv1alpha1.TektonPrunerInterface, name string,
-	inState func(s *v1alpha1.TektonPruner, err error) (bool, error)) (*v1alpha1.TektonPruner, error) {
+	inState func(s *v1alpha1.TektonPruner, err error) (bool, error),
+) (*v1alpha1.TektonPruner, error) {
 	span := logging.GetEmitableSpan(context.Background(), fmt.Sprintf("WaitForTektonPrunerState/%s/%s", name, "TektonPrunerIsReady"))
 	defer span.End()
 
@@ -87,23 +104,25 @@ func AssertTektonPrunerCRReadyStatus(t *testing.T, clients *utils.Clients, names
 	}
 }
 
-// AssertTektonPrunerCRReadyStatus verifies if the TektonPruner reaches the READY status.
-func EnableTektonPruner(t *testing.T, clients *utils.Clients, names utils.ResourceNames) {
-
-	ctx := context.TODO()
-	options := metav1.ListOptions{}
-	tektonConfigList, err := clients.TektonConfig().List(ctx, options)
-	if err != nil {
-		t.Fatalf("Could not get tektonConfigList, %v, %v", names.TektonConfig, err)
-	}
-
-	fmt.Sprintf("tektonConfigList: %v", tektonConfigList.Items)
-
-}
-
 // AssertTektonInstallerSets verifies if the TektonInstallerSets are created.
 func AssertTektonPrunerInstallerSets(t *testing.T, clients *utils.Clients) {
-	assertInstallerSets(t, clients, v1alpha1.TektonPrunerResourceName)
+	assertInstallerSets(t, clients, tektonpruner.PrunerConfigInstallerSet)
+}
+
+func AssertConfigMapData(t *testing.T, clients *utils.Clients, pruner *v1alpha1.TektonPruner) {
+	targetNamespace := pruner.Spec.TargetNamespace
+	cm, err := clients.KubeClient.CoreV1().ConfigMaps(targetNamespace).Get(context.Background(), tektonpruner.PrunerConfigMapName, metav1.GetOptions{})
+	if err != nil {
+		t.Fatalf("Failed to get ConfigMap %s in namespace %s: %v", tektonpruner.PrunerConfigMapName, targetNamespace, err)
+	}
+
+	expectedConfig, _ := yaml.Marshal(pruner.Spec.TektonPrunerConfig.GlobalConfig)
+	actualConfig := cm.Data["global-config"]
+
+	if actualConfig != string(expectedConfig) {
+		t.Fatalf("ConfigMap %s in namespace %s does not contain expected global-config data.\nExpected: %s\nGot: %s",
+			tektonpruner.PrunerConfigMapName, targetNamespace, expectedConfig, actualConfig)
+	}
 }
 
 // TektonPrunerCRDelete deletes tha TektonPruner to see if all resources will be deleted

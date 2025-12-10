@@ -20,16 +20,57 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      volumes:
+        - name: httpd-config
+          emptyDir: {}
+        - name: httpd-logs
+          emptyDir: {}
+        - name: app-root
+          emptyDir: {}
+      initContainers:
+        - name: tkn-cli-serve-init-config
+          image: docker.io/rupali/serve-tkn:v2
+          command:
+            - sh
+            - -c
+            - |
+              cp -rL /etc/httpd/* /httpd-config/ 2>/dev/null || true
+              find /httpd-config -type f -exec chmod u+w {} \;
+              cp -rL /opt/app-root/* /app-root/ 2>/dev/null || true
+              find /app-root -type f -exec chmod u+w {} \;
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: httpd-config
+              mountPath: /httpd-config
+            - name: app-root
+              mountPath: /app-root
       containers:
         - name: tkn-cli-serve
           image: docker.io/rupali/serve-tkn:v2
           ports:
             - containerPort: 8080
           securityContext:
+            readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: httpd-config
+              mountPath: /etc/httpd
+            - name: httpd-logs
+              mountPath: /var/log/httpd
+            - name: app-root
+              mountPath: /opt/app-root
 ---
 apiVersion: v1
 kind: Service

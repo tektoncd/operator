@@ -16,30 +16,64 @@ defaults:
 
 permissions:
   contents: read
-  checks: write # Used to annotate code in the PR
+  checks: write  # Used to annotate code in the PR
 
 jobs:
+  changes:
+    name: categorize changes
+    runs-on: ubuntu-latest
+    outputs:
+      non-docs: ${{ steps.detect.outputs.non-docs }}
+      yaml: ${{ steps.detect.outputs.yaml }}
+    steps:
+    - name: Get base depth
+      id: base-depth
+      run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
+    - name: detect
+      id: detect
+      run: |
+        git fetch origin ${{ github.base_ref }}
+        CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} | tr ' ' '\n')
+
+        echo -e "Changed files:\n${CHANGED_FILES}"
+
+        # If no files are changed at all, then `grep -v` will match even though no change outputs
+        # should be true. Skipping output on an empty set of changes eliminates the false positive
+        if [[ -n "${CHANGED_FILES}" ]]; then
+          NON_DOCS=$(echo "${CHANGED_FILES}" | grep -Eqv '\.md$' && echo 'true' || echo 'false')
+          YAML=$(echo "${CHANGED_FILES}" | grep -Eq '\.ya?ml$' && echo 'true' || echo 'false')
+          echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
+          echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
+        fi
+
   build:
     name: build
+    needs: [changes]
     runs-on: ubuntu-latest
+    if: ${{ needs.changes.outputs.non-docs == 'true' }}
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
     - name: build
       run: |
         go build -v ./...
   linting:
-    needs: [build]
+    needs: [changes]
     name: lint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
     - name: gofmt
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
       run: |
         gofmt_out=$(gofmt -d $(find * -name '*.go' ! -path 'vendor/*' ! -path 'third_party/*'))
         if [[ -n "$gofmt_out" ]]; then
@@ -47,16 +81,19 @@ jobs:
         fi
         echo "$gofmt_out"
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@1481404843c368bc19ca9406f87d6e0fc97bdcfd  # v7.0.0
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v9.2.0
       with:
-        version: v2.0.1
+        version: v2.1.0
         only-new-issues: true
         args: --timeout=10m
     - name: yamllint
+      if: ${{ needs.changes.outputs.yaml == 'true' }}
       run: |
         apt update && apt install -y yamllint
         yamllint -c .yamllint $(find . -path ./vendor -prune -o -type f -regex ".*y[a]ml" -print | tr '\n' ' ')
     - name: check-license
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
       run: |
         go install github.com/google/go-licenses@v1.0.0
         go-licenses check ./...
@@ -65,8 +102,8 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
     - name: build
@@ -77,8 +114,8 @@ jobs:
     name: Check generated code
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
     - name: generated
@@ -89,11 +126,11 @@ jobs:
     name: Multi-arch build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
-    - uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34  # v5.3.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
-    - uses: ko-build/setup-ko@v0.9
+    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d  # v0.9
     - name: ko-resolve
       run: |
           cat <<EOF > .ko.yaml

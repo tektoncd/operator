@@ -22,7 +22,7 @@ spec:
     description: The path (project) in the image registry
   - name: imageRegistryRegions
     description: The target image registry regions
-    default: "us eu asia"
+    default: ""
   - name: imageRegistryUser
     description: Username to be used to login to the container registry
     default: "_json_key"

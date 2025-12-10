@@ -39,23 +39,50 @@ func BumpCommand(ioStreams *cli.IOStreams) *cobra.Command {
 	return cmd
 }
 
+type componentUpdate struct {
+	Name       string
+	OldVersion string
+	NewVersion string
+	Github     string
+}
+
 func bump(filename string, bugfix bool) error {
 	newComponents := map[string]component{}
 	components, err := ReadComponents(filename)
 	if err != nil {
 		return err
 	}
+	var updates []componentUpdate
 	for name, component := range components {
 		newComponent, err := bumpComponent(name, component, bugfix)
 		if err != nil {
 			return err
+		}
+		if newComponent.Version != component.Version {
+			updates = append(updates, componentUpdate{
+				Name:       name,
+				OldVersion: component.Version,
+				NewVersion: newComponent.Version,
+				Github:     component.Github,
+			})
 		}
 		newComponents[name] = newComponent
 	}
 	if err := writeComponents(filename, newComponents); err != nil {
 		return err
 	}
-	return updateClusterserviceversionTemplates(newComponents, clusterserviceversionTemplates)
+	if err := updateClusterserviceversionTemplates(newComponents, clusterserviceversionTemplates); err != nil {
+		return err
+	}
+	// Output updates in a machine-readable format for the workflow to consume
+	if len(updates) > 0 {
+		fmt.Fprintf(os.Stderr, "BUMP_UPDATES_START\n")
+		for _, u := range updates {
+			fmt.Fprintf(os.Stderr, "%s|%s|%s|%s\n", u.Name, u.OldVersion, u.NewVersion, u.Github)
+		}
+		fmt.Fprintf(os.Stderr, "BUMP_UPDATES_END\n")
+	}
+	return nil
 }
 
 func bumpComponent(name string, c component, bugfix bool) (component, error) {

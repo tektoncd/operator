@@ -94,7 +94,9 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 		if err := AppendTarget(ctx, ctrl.Manifest, pipeline); err != nil {
 			return err
 		}
-		// add proxy configs to pipeline if any
+		if strings.EqualFold(os.Getenv("DISABLE_PROXY_WEBHOOK"), "true") {
+			return nil
+		}
 		return addProxy(ctrl.Manifest)
 	case "triggers":
 		var trigger *v1alpha1.TektonTrigger

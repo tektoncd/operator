@@ -27,7 +27,7 @@ import (
 	versioned "github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/listers/operator/v1alpha1"
 	zap "go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	zapcore "go.uber.org/zap/zapcore"
 	v1 "k8s.io/api/core/v1"
 	equality "k8s.io/apimachinery/pkg/api/equality"
 	errors "k8s.io/apimachinery/pkg/api/errors"

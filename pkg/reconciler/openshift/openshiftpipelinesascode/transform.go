@@ -48,14 +48,15 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		// to skip it we filter out namespace
 		pacManifest := manifest.Filter(mf.Not(mf.ByKind("Namespace")))
 
-		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PacImagePrefix))
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PacImagePrefix))
+		images := common.ImageRegistryDomainOverride(imagesRaw)
 		// Run transformers
 		tfs := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(openshift.OperandOpenShiftPipelineAsCode),
 			common.DeploymentImages(images),
 			common.DeploymentEnvVarKubernetesMinVersion(),
 			common.AddConfiguration(pac.Spec.Config),
-			occommon.ApplyCABundles,
+			occommon.ApplyCABundlesToDeployment,
 			common.CopyConfigMap(pipelinesAsCodeCM, pac.Spec.Settings),
 			occommon.UpdateServiceMonitorTargetNamespace(pac.Spec.TargetNamespace),
 		}
@@ -80,13 +81,14 @@ func additionalControllerTransform(extension common.Extension, name string) clie
 		pac := comp.(*v1alpha1.OpenShiftPipelinesAsCode)
 		additionalPACControllerConfig := pac.Spec.PACSettings.AdditionalPACControllers[name]
 
-		images := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PacImagePrefix))
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.PacImagePrefix))
+		images := common.ImageRegistryDomainOverride(imagesRaw)
 		// Run transformers
 		tfs := []mf.Transformer{
 			common.InjectOperandNameLabelOverwriteExisting(openshift.OperandOpenShiftPipelineAsCode),
 			common.DeploymentImages(images),
 			common.AddConfiguration(pac.Spec.Config),
-			occommon.ApplyCABundles,
+			occommon.ApplyCABundlesToDeployment,
 			occommon.UpdateServiceMonitorTargetNamespace(pac.Spec.TargetNamespace),
 			updateAdditionControllerDeployment(additionalPACControllerConfig, name),
 			updateAdditionControllerService(name),
@@ -227,10 +229,10 @@ func updateAdditionControllerConfigMap(config v1alpha1.AdditionalPACControllerCo
 
 		defaultPacSettings := pacSettings.DefaultSettings()
 		err := pacSettings.SyncConfig(zap.NewNop().Sugar(), &defaultPacSettings, config.Settings, pacSettings.DefaultValidators())
-		config.Settings = pacSettings.ConvertPacStructToConfigMap(&defaultPacSettings)
 		if err != nil {
 			return err
 		}
+		config.Settings = v1alpha1.ConvertPacStructToConfigMap(&defaultPacSettings)
 
 		cm := &corev1.ConfigMap{}
 		err = runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm)
