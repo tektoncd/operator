@@ -16,7 +16,7 @@ spec:
     singular: manualapprovalgate
     shortNames:
       - mag
-  preserveUnknownFields: false
+  x-kubernetes-preserve-unknown-fields: false
   scope: Cluster
   versions:
     - name: v1alpha1
@@ -54,7 +54,7 @@ spec:
     listKind: TektonChainList
     plural: tektonchains
     singular: tektonchain
-  preserveUnknownFields: false
+  x-kubernetes-preserve-unknown-fields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -92,7 +92,7 @@ spec:
     listKind: TektonConfigList
     plural: tektonconfigs
     singular: tektonconfig
-  preserveUnknownFields: false
+  x-kubernetes-preserve-unknown-fields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -130,7 +130,7 @@ spec:
     listKind: TektonDashboardList
     plural: tektondashboards
     singular: tektondashboard
-  preserveUnknownFields: false
+  x-kubernetes-preserve-unknown-fields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -168,7 +168,7 @@ spec:
     listKind: TektonHubList
     plural: tektonhubs
     singular: tektonhub
-  preserveUnknownFields: false
+  x-kubernetes-preserve-unknown-fields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -212,7 +212,7 @@ spec:
     listKind: TektonInstallerSetList
     plural: tektoninstallersets
     singular: tektoninstallerset
-  preserveUnknownFields: false
+  x-kubernetes-preserve-unknown-fields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -247,7 +247,7 @@ spec:
     listKind: TektonPipelineList
     plural: tektonpipelines
     singular: tektonpipeline
-  preserveUnknownFields: false
+  x-kubernetes-preserve-unknown-fields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -285,7 +285,7 @@ spec:
     listKind: TektonResultList
     plural: tektonresults
     singular: tektonresult
-  preserveUnknownFields: false
+  x-kubernetes-preserve-unknown-fields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -323,7 +323,7 @@ spec:
     listKind: TektonTriggerList
     plural: tektontriggers
     singular: tektontrigger
-  preserveUnknownFields: false
+  x-kubernetes-preserve-unknown-fields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -361,7 +361,7 @@ spec:
     listKind: TektonPrunerList
     plural: tektonpruners
     singular: tektonpruner
-  preserveUnknownFields: false
+  x-kubernetes-preserve-unknown-fields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
