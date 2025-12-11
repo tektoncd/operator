@@ -42,7 +42,7 @@ type TektonPruner struct {
 }
 
 type TektonPrunerConfig struct {
-	GlobalConfig config.GlobalConfig `json:"global-config"`
+	GlobalConfig *config.GlobalConfig `json:"global-config"`
 }
 
 type Pruner struct {

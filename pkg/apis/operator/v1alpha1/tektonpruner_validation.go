@@ -59,7 +59,7 @@ func (p *Pruner) validate(path string) *apis.FieldError {
 	// Use the new ValidateGlobalConfig function from pruner package
 	// This validates the GlobalConfig struct directly without ConfigMap conversion
 	// This is the recommended approach for operator CRDs as documented in pruner PR #57
-	if err := config.ValidateGlobalConfig(&p.TektonPrunerConfig.GlobalConfig); err != nil {
+	if err := config.ValidateGlobalConfig(p.TektonPrunerConfig.GlobalConfig); err != nil {
 		return apis.ErrGeneric(
 			fmt.Sprintf("pruner config validation failed: %v", err),
 			path+".global-config",
