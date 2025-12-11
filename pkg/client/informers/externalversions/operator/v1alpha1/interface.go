@@ -40,6 +40,8 @@ type Interface interface {
 	TektonHubs() TektonHubInformer
 	// TektonInstallerSets returns a TektonInstallerSetInformer.
 	TektonInstallerSets() TektonInstallerSetInformer
+	// TektonKueues returns a TektonKueueInformer.
+	TektonKueues() TektonKueueInformer
 	// TektonPipelines returns a TektonPipelineInformer.
 	TektonPipelines() TektonPipelineInformer
 	// TektonPruners returns a TektonPrunerInformer.
@@ -99,6 +101,11 @@ func (v *version) TektonHubs() TektonHubInformer {
 // TektonInstallerSets returns a TektonInstallerSetInformer.
 func (v *version) TektonInstallerSets() TektonInstallerSetInformer {
 	return &tektonInstallerSetInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// TektonKueues returns a TektonKueueInformer.
+func (v *version) TektonKueues() TektonKueueInformer {
+	return &tektonKueueInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // TektonPipelines returns a TektonPipelineInformer.
