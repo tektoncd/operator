@@ -1,3 +1,0 @@
-BUMP_UPDATES_START
-dashboard|v0.63.1|v0.64.0|tektoncd/dashboard
-BUMP_UPDATES_END
