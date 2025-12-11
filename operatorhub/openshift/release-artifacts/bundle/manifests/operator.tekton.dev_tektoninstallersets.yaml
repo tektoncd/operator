@@ -3,8 +3,8 @@ kind: CustomResourceDefinition
 metadata:
   creationTimestamp: null
   labels:
-    operator.tekton.dev/release: devel
-    version: devel
+    operator.tekton.dev/release: v0.78.0
+    version: v0.78.0
   name: tektoninstallersets.operator.tekton.dev
 spec:
   group: operator.tekton.dev
@@ -19,7 +19,7 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
-    - jsonPath: .status.conditions[?(@.type=="Ready")].reason
+    - jsonPath: .status.conditions[?(@.type=="Ready")].message
       name: Reason
       type: string
     name: v1alpha1

@@ -19,15 +19,22 @@ metadata:
       : {\n      \"targetNamespace\": \"tekton-pipelines\"\n    }\n  },\n  {\n   \
       \ \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n    \"kind\": \"TektonHub\"\
       ,\n    \"metadata\": {\n      \"name\": \"hub\"\n    },\n    \"spec\": {\n \
-      \     \"targetNamespace\": \"tekton-pipelines\"\n    }\n  },\n  {\n    \"apiVersion\"\
+      \     \"api\": {\n        \"catalogRefreshInterval\": \"30m\"\n      },\n  \
+      \    \"targetNamespace\": \"tekton-pipelines\"\n    }\n  },\n  {\n    \"apiVersion\"\
       : \"operator.tekton.dev/v1alpha1\",\n    \"kind\": \"TektonInstallerSet\",\n\
       \    \"metadata\": {\n      \"name\": \"foo\"\n    },\n    \"spec\": {\n   \
       \   \"manifests\": []\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
       ,\n    \"kind\": \"TektonPipeline\",\n    \"metadata\": {\n      \"name\": \"\
       pipeline\"\n    },\n    \"spec\": {\n      \"targetNamespace\": \"tekton-pipelines\"\
       \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
-      \    \"kind\": \"TektonResult\",\n    \"metadata\": {\n      \"name\": \"result\"\
-      \n    },\n    \"spec\": {\n      \"auth_disable\": true,\n      \"db_enable_auto_migration\"\
+      \    \"kind\": \"TektonPruner\",\n    \"metadata\": {\n      \"name\": \"pruner\"\
+      \n    },\n    \"spec\": {\n      \"disabled\": false,\n      \"global-config\"\
+      : {\n        \"enforcedConfigLevel\": \"global\",\n        \"failedHistoryLimit\"\
+      : null,\n        \"historyLimit\": 100,\n        \"successfulHistoryLimit\"\
+      : null,\n        \"ttlSecondsAfterFinished\": null\n      },\n      \"targetNamespace\"\
+      : \"tekton-pipelines\"\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
+      ,\n    \"kind\": \"TektonResult\",\n    \"metadata\": {\n      \"name\": \"\
+      result\"\n    },\n    \"spec\": {\n      \"auth_disable\": true,\n      \"db_enable_auto_migration\"\
       : true,\n      \"db_host\": \"tekton-results-postgres-service.tekton-pipelines.svc.cluster.local\"\
       ,\n      \"db_port\": 5432,\n      \"log_level\": \"debug\",\n      \"logging_pvc_name\"\
       : \"tekton-logs\",\n      \"logs_api\": true,\n      \"logs_buffer_size\": 32768,\n\
@@ -41,14 +48,15 @@ metadata:
     capabilities: Basic Install
     categories: Developer Tools, Integration & Delivery
     certified: 'false'
-    createdAt: '2025-03-19T13:33:40Z'
+    containerImage: ghcr.io/tektoncd/operator/operator-303303c315a48490ba6517859ef65b77@sha256:ba2abd750770dbdf60b98b0beb6bb7b9638b74304b5ddbe7ef4e51dba47b8a1c
+    createdAt: '2025-12-11T10:50:08Z'
     description: Tekton Pipelines is a Kubernetes-Native CI/CD solution for building
       CI/CD pipelines.
     operators.operatorframework.io/builder: operator-sdk-v1.37.0
     operators.operatorframework.io/project_layout: unknown
     repository: https://github.com/tektoncd/operator
     support: The Tetkon Authors
-  name: tektoncd-operator.v0.75.0
+  name: tektoncd-operator.v0.78.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -153,6 +161,17 @@ spec:
       displayName: TektonPipeline
       kind: TektonPipeline
       name: tektonpipelines.operator.tekton.dev
+      version: v1alpha1
+    - description: 'TektonPruner configures automatic pruning of Tekton resources on a cluster.
+        The operator uses TektonPruner to automatically clean up old PipelineRuns and
+        TaskRuns based on configurable retention policies. At present, the operator
+        honors only one CustomResource instance with the name `pruner` to ensure only
+        one pruning configuration exists on a cluster.
+
+        '
+      displayName: TektonPruner
+      kind: TektonPruner
+      name: tektonpruners.operator.tekton.dev
       version: v1alpha1
     - description: 'TektonResult installs Tekton Results on a cluster. The operator
         installs Tekton Results on a cluster
@@ -845,8 +864,8 @@ spec:
         serviceAccountName: tekton-operator
       deployments:
       - label:
-          operator.tekton.dev/release: v0.75.0
-          version: v0.75.0
+          operator.tekton.dev/release: v0.78.0
+          version: v0.78.0
         name: tekton-operator
         spec:
           replicas: 1
@@ -863,10 +882,12 @@ spec:
               containers:
               - args:
                 - -controllers
-                - tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard,manualapprovalgate
+                - tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner
                 - -unique-process-name
                 - tekton-operator-lifecycle
                 env:
+                - name: KUBERNETES_MIN_VERSION
+                  value: v1.0.0
                 - name: SYSTEM_NAMESPACE
                   valueFrom:
                     fieldRef:
@@ -878,13 +899,13 @@ spec:
                 - name: OPERATOR_NAME
                   value: tekton-operator
                 - name: IMAGE_PIPELINES_PROXY
-                  value: ghcr.io/tektoncd/operator/proxy-webhook-f6167da7bc41b96a27c5529f850e63d1@sha256:3e6f13bdfd0ddc0fcf497c53711d74c7817e21b2b14add47310ab15081f9ba36
+                  value: ghcr.io/tektoncd/operator/proxy-webhook-f6167da7bc41b96a27c5529f850e63d1@sha256:b3ae60f6f26b0b40938aefbdd66af3f514516964610df6459b4411739fb298c5
                 - name: IMAGE_JOB_PRUNER_TKN
                   value: ghcr.io/tektoncd/plumbing/tkn@sha256:233de6c8b8583a34c2379fa98d42dba739146c9336e8d41b66030484357481ed
                 - name: METRICS_DOMAIN
                   value: tekton.dev/operator
                 - name: VERSION
-                  value: v0.75.0
+                  value: v0.78.0
                 - name: CONFIG_OBSERVABILITY_NAME
                   value: tekton-config-observability
                 - name: CONFIG_LEADERELECTION_NAME
@@ -899,16 +920,29 @@ spec:
                     configMapKeyRef:
                       key: DEFAULT_TARGET_NAMESPACE
                       name: tekton-config-defaults
-                image: ghcr.io/tektoncd/operator/operator-303303c315a48490ba6517859ef65b77@sha256:44246e0d3118bc22b974c278ea8dc7467116234de52b294efd51acfb7530c0fd
-                imagePullPolicy: Always
+                image: ghcr.io/tektoncd/operator/operator-303303c315a48490ba6517859ef65b77@sha256:ba2abd750770dbdf60b98b0beb6bb7b9638b74304b5ddbe7ef4e51dba47b8a1c
+                imagePullPolicy: IfNotPresent
                 name: tekton-operator-lifecycle
-                resources: {}
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 64Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+                  readOnlyRootFilesystem: true
+                  seccompProfile:
+                    type: RuntimeDefault
               - args:
                 - -controllers
                 - tektoninstallerset
                 - -unique-process-name
                 - tekton-operator-cluster-operations
                 env:
+                - name: KUBERNETES_MIN_VERSION
+                  value: v1.0.0
                 - name: SYSTEM_NAMESPACE
                   valueFrom:
                     fieldRef:
@@ -922,19 +956,30 @@ spec:
                 - name: PROFILING_PORT
                   value: '9009'
                 - name: VERSION
-                  value: v0.75.0
+                  value: v0.78.0
                 - name: METRICS_DOMAIN
                   value: tekton.dev/operator
                 - name: CONFIG_LEADERELECTION_NAME
                   value: tekton-operator-controller-config-leader-election
-                image: ghcr.io/tektoncd/operator/operator-303303c315a48490ba6517859ef65b77@sha256:44246e0d3118bc22b974c278ea8dc7467116234de52b294efd51acfb7530c0fd
-                imagePullPolicy: Always
+                image: ghcr.io/tektoncd/operator/operator-303303c315a48490ba6517859ef65b77@sha256:ba2abd750770dbdf60b98b0beb6bb7b9638b74304b5ddbe7ef4e51dba47b8a1c
+                imagePullPolicy: IfNotPresent
                 name: tekton-operator-cluster-operations
-                resources: {}
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 64Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+                  readOnlyRootFilesystem: true
+                  seccompProfile:
+                    type: RuntimeDefault
               serviceAccountName: tekton-operator
       - label:
-          operator.tekton.dev/release: v0.75.0
-          version: v0.75.0
+          operator.tekton.dev/release: v0.78.0
+          version: v0.78.0
         name: tekton-operator-webhook
         spec:
           replicas: 1
@@ -950,6 +995,8 @@ spec:
             spec:
               containers:
               - env:
+                - name: KUBERNETES_MIN_VERSION
+                  value: v1.0.0
                 - name: SYSTEM_NAMESPACE
                   valueFrom:
                     fieldRef:
@@ -968,12 +1015,23 @@ spec:
                   value: tekton-operator-webhook-certs
                 - name: METRICS_DOMAIN
                   value: tekton.dev/operator
-                image: ghcr.io/tektoncd/operator/webhook-f2bb711aa8f0c0892856a4cbf6d9ddd8@sha256:97df65bb417ae0ebad2b219d12381fdc8595e44c5a537bc0e3c2567d0a0e570e
+                image: ghcr.io/tektoncd/operator/webhook-f2bb711aa8f0c0892856a4cbf6d9ddd8@sha256:a50a42a7c5b85fa74772620d63550fa94851cf451c2e2b788d6f2ac4466587ae
                 name: tekton-operator-webhook
                 ports:
                 - containerPort: 8443
                   name: https-webhook
-                resources: {}
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 64Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+                  readOnlyRootFilesystem: true
+                  seccompProfile:
+                    type: RuntimeDefault
               serviceAccountName: tekton-operator
     strategy: deployment
   installModes:
@@ -1004,6 +1062,7 @@ spec:
   - email: tekton-dev@googlegroups.com
     name: The Tekton Authors
   maturity: alpha
+  minKubeVersion: 1.28.0
   provider:
     name: The Tekton Authors
-  version: 0.75.0
+  version: 0.78.0
