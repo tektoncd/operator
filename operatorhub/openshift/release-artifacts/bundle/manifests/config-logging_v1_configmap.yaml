@@ -38,12 +38,13 @@ data:
           "callerEncoder": ""
         }
       }
-  loglevel.controller: info
-  loglevel.webhook: info
+  loglevel.tekton-operator-cluster-operations: info
+  loglevel.tekton-operator-lifecycle: info
+  loglevel.tekton-operator-webhook: info
   zap-logger-config: |
     {
-      "level": "debug",
-      "development": true,
+      "level": "info",
+      "development": false,
       "sampling": {
         "initial": 100,
         "thereafter": 100
@@ -52,7 +53,7 @@ data:
       "errorOutputPaths": ["stderr"],
       "encoding": "json",
       "encoderConfig": {
-        "timeKey": "",
+        "timeKey": "timestamp",
         "levelKey": "level",
         "nameKey": "logger",
         "callerKey": "caller",
@@ -60,7 +61,7 @@ data:
         "stacktraceKey": "stacktrace",
         "lineEnding": "",
         "levelEncoder": "",
-        "timeEncoder": "",
+        "timeEncoder": "iso8601",
         "durationEncoder": "",
         "callerEncoder": ""
       }
@@ -68,5 +69,5 @@ data:
 kind: ConfigMap
 metadata:
   labels:
-    operator.tekton.dev/release: devel
+    operator.tekton.dev/release: v0.78.0
   name: config-logging

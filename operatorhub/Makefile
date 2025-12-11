@@ -59,7 +59,7 @@ install-olm: operator-sdk
 	$(OPERATOR_SDK) olm install
 
 .PHONY: bundle-generate
-bundle-generate: | $(OPERATOR_SDK) openshift/release-artifacts/bundle/manifests
+bundle-generate: | operator-sdk openshift/release-artifacts/bundle/manifests
 	@$(info BUNDLE_ARGS: $(BUNDLE_ARGS))
 	@OPERATOR_SDK=$(OPERATOR_SDK) ./operatorhub/tools/bundle.py ${BUNDLE_ARGS}
 

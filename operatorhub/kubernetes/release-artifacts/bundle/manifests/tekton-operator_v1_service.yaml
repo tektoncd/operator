@@ -4,7 +4,7 @@ metadata:
   creationTimestamp: null
   labels:
     app: tekton-pipelines-controller
-    version: v0.75.0
+    version: v0.78.0
   name: tekton-operator
 spec:
   ports:

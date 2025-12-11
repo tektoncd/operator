@@ -3,7 +3,13 @@ kind: ClusterServiceVersion
 metadata:
   annotations:
     alm-examples: "[\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
-      \    \"kind\": \"TektonAddon\",\n    \"metadata\": {\n      \"name\": \"addon\"\
+      \    \"kind\": \"ManualApprovalGate\",\n    \"metadata\": {\n      \"name\"\
+      : \"manual-approval-gate\"\n    },\n    \"spec\": {\n      \"targetNamespace\"\
+      : \"openshift-pipelines\"\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
+      ,\n    \"kind\": \"OpenShiftPipelinesAsCode\",\n    \"metadata\": {\n      \"\
+      name\": \"pipelines-as-code\"\n    },\n    \"spec\": {\n      \"targetNamespace\"\
+      : \"openshift-pipelines\"\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
+      ,\n    \"kind\": \"TektonAddon\",\n    \"metadata\": {\n      \"name\": \"addon\"\
       \n    },\n    \"spec\": {\n      \"targetNamespace\": \"openshift-pipelines\"\
       \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
       \    \"kind\": \"TektonChain\",\n    \"metadata\": {\n      \"name\": \"chain\"\
@@ -11,56 +17,128 @@ metadata:
       \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
       \    \"kind\": \"TektonConfig\",\n    \"metadata\": {\n      \"name\": \"config\"\
       \n    },\n    \"spec\": {\n      \"addon\": {\n        \"params\": [\n     \
-      \     {\n            \"name\": \"clusterTasks\",\n            \"value\": \"\
-      true\"\n          },\n          {\n            \"name\": \"pipelineTemplates\"\
+      \     {\n            \"name\": \"pipelineTemplates\",\n            \"value\"\
+      : \"true\"\n          },\n          {\n            \"name\": \"resolverTasks\"\
       ,\n            \"value\": \"true\"\n          },\n          {\n            \"\
-      name\": \"communityResolverTasks\",\n            \"value\": \"true\"\n      \
-      \    }\n        ]\n      },\n      \"params\": [\n        {\n          \"name\"\
-      : \"createRbacResource\",\n          \"value\": \"true\"\n        }\n      ],\n\
-      \      \"profile\": \"all\",\n      \"pruner\": {\n        \"keep\": 100,\n\
-      \        \"resources\": [\n          \"pipelinerun\",\n          \"taskrun\"\
+      name\": \"resolverStepActions\",\n            \"value\": \"true\"\n        \
+      \  },\n          {\n            \"name\": \"communityResolverTasks\",\n    \
+      \        \"value\": \"true\"\n          }\n        ]\n      },\n      \"params\"\
+      : [\n        {\n          \"name\": \"createRbacResource\",\n          \"value\"\
+      : \"true\"\n        },\n        {\n          \"name\": \"legacyPipelineRbac\"\
+      ,\n          \"value\": \"true\"\n        },\n        {\n          \"name\"\
+      : \"createCABundleConfigMaps\",\n          \"value\": \"true\"\n        }\n\
+      \      ],\n      \"profile\": \"all\",\n      \"pruner\": {\n        \"keep\"\
+      : 100,\n        \"resources\": [\n          \"pipelinerun\",\n          \"taskrun\"\
       \n        ],\n        \"schedule\": \"0 8 * * *\"\n      },\n      \"targetNamespace\"\
       : \"openshift-pipelines\"\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
       ,\n    \"kind\": \"TektonHub\",\n    \"metadata\": {\n      \"name\": \"hub\"\
-      \n    },\n    \"spec\": {\n      \"api\": {\n        \"hubConfigUrl\": \"https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml\"\
-      \n      }\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
-      ,\n    \"kind\": \"TektonInstallerSet\",\n    \"metadata\": {\n      \"name\"\
-      : \"foo\"\n    },\n    \"spec\": {\n      \"manifests\": []\n    }\n  },\n \
-      \ {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n    \"kind\": \"\
-      TektonPipeline\",\n    \"metadata\": {\n      \"name\": \"pipeline\"\n    },\n\
-      \    \"spec\": {\n      \"targetNamespace\": \"openshift-pipelines\"\n    }\n\
-      \  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n    \"kind\"\
-      : \"TektonTrigger\",\n    \"metadata\": {\n      \"name\": \"trigger\"\n   \
-      \ },\n    \"spec\": {\n      \"targetNamespace\": \"openshift-pipelines\"\n\
-      \    }\n  }\n]"
+      \n    },\n    \"spec\": {\n      \"api\": {\n        \"catalogRefreshInterval\"\
+      : \"30m\"\n      },\n      \"targetNamespace\": \"openshift-pipelines\"\n  \
+      \  }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n   \
+      \ \"kind\": \"TektonInstallerSet\",\n    \"metadata\": {\n      \"name\": \"\
+      foo\"\n    },\n    \"spec\": {\n      \"manifests\": []\n    }\n  },\n  {\n\
+      \    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n    \"kind\": \"TektonPipeline\"\
+      ,\n    \"metadata\": {\n      \"name\": \"pipeline\"\n    },\n    \"spec\":\
+      \ {\n      \"targetNamespace\": \"openshift-pipelines\"\n    }\n  },\n  {\n\
+      \    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n    \"kind\": \"TektonPruner\"\
+      ,\n    \"metadata\": {\n      \"name\": \"pruner\"\n    },\n    \"spec\": {\n\
+      \      \"disabled\": true,\n      \"targetNamespace\": \"openshift-pipelines\"\
+      \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
+      \    \"kind\": \"TektonResult\",\n    \"metadata\": {\n      \"name\": \"result\"\
+      \n    },\n    \"spec\": {\n      \"auth_disable\": true,\n      \"db_enable_auto_migration\"\
+      : true,\n      \"db_host\": \"tekton-results-postgres-service.openshift-pipelines.svc.cluster.local\"\
+      ,\n      \"db_port\": 5432,\n      \"log_level\": \"debug\",\n      \"logging_pvc_name\"\
+      : \"tekton-logs\",\n      \"logs_api\": true,\n      \"logs_buffer_size\": 32768,\n\
+      \      \"logs_path\": \"/logs\",\n      \"logs_type\": \"File\",\n      \"prometheus_port\"\
+      : 9090,\n      \"server_port\": 8080,\n      \"targetNamespace\": \"openshift-pipelines\"\
+      ,\n      \"tls_hostname_override\": \"tekton-results-api-service.openshift-pipelines.svc.cluster.local\"\
+      \n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n\
+      \    \"kind\": \"TektonTrigger\",\n    \"metadata\": {\n      \"name\": \"trigger\"\
+      \n    },\n    \"spec\": {\n      \"targetNamespace\": \"openshift-pipelines\"\
+      \n    }\n  }\n]"
     capabilities: Full Lifecycle
     categories: Developer Tools, Integration & Delivery
     certified: 'false'
+    console.openshift.io/plugins: '["pipelines-console-plugin"]'
+    createdAt: '2025-12-11T10:45:20Z'
     description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for
       building pipelines using Tekton concepts which run natively on OpenShift and
       Kubernetes.
-    olm.skipRange: '>=1.6.0 <1.7.0'
-    operators.openshift.io/infrastructure-features: '["disconnected","proxy-aware"]'
-    operators.operatorframework.io/builder: operator-sdk-v1.21.0
+    features.operators.openshift.io/cnf: 'false'
+    features.operators.openshift.io/cni: 'false'
+    features.operators.openshift.io/csi: 'false'
+    features.operators.openshift.io/disconnected: 'true'
+    features.operators.openshift.io/fips-compliant: 'true'
+    features.operators.openshift.io/proxy-aware: 'true'
+    features.operators.openshift.io/tls-profiles: 'false'
+    features.operators.openshift.io/token-auth-aws: 'false'
+    features.operators.openshift.io/token-auth-azure: 'false'
+    features.operators.openshift.io/token-auth-gcp: 'false'
+    operators.operatorframework.io/builder: operator-sdk-v1.37.0
     operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev",
       "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev",
-      "tektonhubs.operator.tekton.dev", "tektonchains.operator.tekton.dev"]'
+      "tektonhubs.operator.tekton.dev", "tektonresults.operator.tekton.dev", "tektonchains.operator.tekton.dev",
+      "openshiftpipelinesascodes.operator.tekton.dev", "manualapprovalgates.operator.tekton.dev","tektonpruners.operator.tekton.dev"]'
     operators.operatorframework.io/project_layout: unknown
-    repository: https://github.com/openshift/tektoncd-operator
+    repository: https://github.com/tektoncd/operator
     support: Red Hat
   labels:
     operatorframework.io/arch.amd64: supported
     operatorframework.io/arch.arm64: supported
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
-  name: openshift-pipelines-operator-rh.v1.8.0
+  name: openshift-pipelines-operator-rh.v0.78.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: Represents an installation of latest version of Manual Approval
+        Gate
+      displayName: Manual Approval Gate
+      kind: ManualApprovalGate
+      name: manualapprovalgates.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
+      specDescriptors:
+      - description: Namespace where Manual Approval Gate installed
+        displayName: Target Namespace
+        path: targetNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Manual Approval Gate installed
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
+    - description: Represents an installation of latest version of OpenShift Pipelines
+        As Code
+      displayName: OpenShift Pipelines As Code
+      kind: OpenShiftPipelinesAsCode
+      name: openshiftpipelinesascodes.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
+      specDescriptors:
+      - description: Namespace where Pipelines As Code installed
+        displayName: Target Namespace
+        path: targetNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Pipelines As Code installed
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
     - description: Represents an installation of latest version of Addons (exclusively
-        ClusterTasks, consoleyamlsamples, consoleclidownloads and consolequickstarts)
+        Tasks, StepActions, consoleyamlsamples, consoleclidownloads and consolequickstarts)
       displayName: Tekton Addons
       kind: TektonAddon
       name: tektonaddons.operator.tekton.dev
@@ -81,8 +159,26 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
-    - kind: TektonChain
+    - description: Represents an installation of latest version of Chains
+      displayName: Tekton Chains
+      kind: TektonChain
       name: tektonchains.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
+      specDescriptors:
+      - description: Namespace where Addons installed
+        displayName: Target Namespace
+        path: targetNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Addons installed
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
     - description: Represents an installation of latest version of Tekton components,
         TektonPipeline, TektonTrigger and TektonAddon
@@ -98,6 +194,9 @@ spec:
         version: v1alpha1
       - kind: tektonaddons
         name: addon
+        version: v1alpha1
+      - kind: openshiftpipelinesascodes
+        name: pipelinesascode
         version: v1alpha1
       specDescriptors:
       - description: Namespace where Tekton components are installed
@@ -210,6 +309,48 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
+    - description: Represents an installation of latest version of Tekton Pruner
+      displayName: Tekton Pruner
+      kind: TektonPruner
+      name: tektonpruners.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
+      specDescriptors:
+      - description: Namespace where Tekton Pruner installed
+        displayName: Target Namespace
+        path: targetNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Tekton Pruner installed
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
+    - description: Represents an installation of latest version of Tekton Results
+      displayName: Tekton Results
+      kind: TektonResult
+      name: tektonresults.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
+      specDescriptors:
+      - description: Namespace where Addons installed
+        displayName: Target Namespace
+        path: targetNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Addons installed
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
     - description: Represents an installation of latest version of Tekton Triggers
       displayName: Tekton Triggers
       kind: TektonTrigger
@@ -277,20 +418,32 @@ spec:
     ### Components
 
 
-    - Tekton Pipelines: v0.28.1
+    - Tekton Pipelines: v1.6.0
 
-    - Tekton Triggers: v0.16.0
+    - Tekton Triggers: v0.34.0
 
-    - ClusterTasks based on Tekton Catalog 0.28
+    - Pipelines as Code: v0.39.2
+
+    - Tekton Chains: v0.26.0
+
+    - Tekton Hub (tech-preview): v1.23.4
+
+    - Tekton Results (tech-preview): v0.17.1
+
+    - Manual Approval Gate (tech-preview): v0.7.0
+
+    - Tekton Pruner: v0.3.3
 
 
     ## Getting Started
 
+
     In order to get familiar with _OpenShift Pipelines_ concepts and create your first
-    pipeline, follow the [OpenShift Pipelines Docs](https://docs.openshift.com/container-platform/OPENSHIFT_DOCS_VERSION/cicd/pipelines/creating-applications-with-cicd-pipelines.html).
+    pipeline, follow the [OpenShift Pipelines Docs](https://docs.openshift.com/pipelines/OPENSHIFT_PIPELINES_MINOR_VERSION/create/creating-applications-with-cicd-pipelines.html).
 
 
     ## CLI (tkn)
+
 
     Tekton Pipelines cli project provides a CLI (tkn) for interacting with OpenShift
     Pipelines.
@@ -302,157 +455,407 @@ spec:
     '
   displayName: Red Hat OpenShift Pipelines
   icon:
-  - base64data: 'iVBORw0KGgoAAAANSUhEUgAAAGUAAABlCAYAAABUfC3PAAAQrElEQVR4Xu2dd3wU1RbHfymkQBom
+  - base64data: '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
 
-      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
+      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
 
-      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
+      4rc4UtzPuVpd8ggD03VXVU919/93zhznOJ6Znp7hmpq77qqu6rp2AIDxu8d7DADTQOADwEQQ+AAw
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      zm2KNZrf29trQp5yDTAcKvso/A8ODnKP+l+3JZ5BLdgaVODnLuFo8nV/f5/RPDACCn79PWec7B1c
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      q59lGtXTfQPASmUejfYTrdYtZiJ34YGfMuxVwtEbRQcOgFjq5NHAMVGJp4jQL6Gkk6QbZ3t7u/k5
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      QeztJV9TAADFi8i+6MCPquFbF1pRuwcwZRG1/KiFWLEjfNM3TsRyYwAYvIgMjBrlx47wL0Lr9+q7
 
-      ARFZY3tycUtxCPzpfpfxEq1AyDhtZn6EkKcmcxsiS5EvIhSes3iKPHFv7o/rj93OBbotmdoDxNi3
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      E4hcR8+qW81Pu5D5xmhbVDFLazcUmsVTuCk9rELrcYiHNxDSh2bxndY0DPdZdaOJ3/XRPVGj8Zwl
+      fEY6sFJoplhUpf1wdKGJeT+XNTI/ODiILh/pmP1WD0AoZaZhvkpB2ynwQ2r41O/Rm9jrHmvlotZ/
 
-      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
+      +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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      DF2/z24InKBH7316U0DBs1eL5xRZvcUVgbTo2Q+dUw7gXEJ/GI43Poup1iyxvJeORBih8IxoIYFY
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      +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
 
-      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
+      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
 
-      z9JTpGHGmwmqSvBKYLp/YloGNWVnRsZwqyyW14HIHl7neVaFlJUL3suYMx4F22w7IUydcvCIBHEz
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      dE0jeq2gtSyquknX0b2n86Lae+ovWNEiuHenp+6bo6PmywUg8NF0i/y0tZUldOTrgwN3z7CXvCZN
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      OIGiU+hxNBAqkyIVI1fshhAYbNVWdacO49pLfH43hRWS2r32cvlogiKBKU1dz+0iZRalQybPhd+g
+      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
 
-      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
+      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
 
-      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
+      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
 
-      w44rd6n+1harTXSFQoUajh8QLk18GDWVFawyNOl0tvxUIKuiukORCv6zN2fUXEU8N4PpJwJZYUjp
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
 
-      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
+      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
+
+      AElFTkSuQmCC
 
       '
     mediatype: image/png
@@ -460,6 +863,12 @@ spec:
     spec:
       clusterPermissions:
       - rules:
+        - apiGroups:
+          - ''
+          resources:
+          - nodes
+          verbs:
+          - list
         - apiGroups:
           - ''
           resources:
@@ -571,6 +980,8 @@ spec:
           - create
           - update
           - delete
+          - list
+          - watch
         - apiGroups:
           - apiextensions.k8s.io
           resources:
@@ -653,6 +1064,7 @@ spec:
           - tekton.dev
           - triggers.tekton.dev
           - operator.tekton.dev
+          - pipelinesascode.tekton.dev
           resources:
           - '*'
           verbs:
@@ -686,9 +1098,16 @@ spec:
           verbs:
           - use
           - get
+          - list
           - create
           - update
           - delete
+        - apiGroups:
+          - events.k8s.io
+          resources:
+          - events
+          verbs:
+          - create
         - apiGroups:
           - route.openshift.io
           resources:
@@ -702,6 +1121,13 @@ spec:
           - list
           - update
           - watch
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes/custom-host
+          verbs:
+          - create
+          - update
         - apiGroups:
           - coordination.k8s.io
           resources:
@@ -792,17 +1218,32 @@ spec:
           - resolution.tekton.dev
           resources:
           - resolutionrequests
+          - resolutionrequests/status
           verbs:
           - get
           - list
           - watch
           - create
           - delete
+          - update
+          - patch
+        - apiGroups:
+          - console.openshift.io
+          resources:
+          - consoleplugins
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - delete
+          - update
+          - patch
         serviceAccountName: openshift-pipelines-operator
       deployments:
       - label:
-          operator.tekton.dev/release: devel
-          version: devel
+          operator.tekton.dev/release: v0.78.0
+          version: v0.78.0
         name: openshift-pipelines-operator
         spec:
           replicas: 1
@@ -818,11 +1259,20 @@ spec:
                 name: openshift-pipelines-operator
             spec:
               containers:
-              - env:
+              - args:
+                - -controllers
+                - tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonaddon,tektonresult,openshiftpipelinesascode,manualapprovalgate,tektonpruner
+                - -unique-process-name
+                - tekton-operator-lifecycle
+                env:
+                - name: KUBERNETES_MIN_VERSION
+                  value: v1.0.0
                 - name: SYSTEM_NAMESPACE
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
+                - name: PLATFORM
+                  value: openshift
                 - name: POD_NAME
                   valueFrom:
                     fieldRef:
@@ -830,13 +1280,13 @@ spec:
                 - name: OPERATOR_NAME
                   value: redhat-openshift-pipelines-operator
                 - name: IMAGE_PIPELINES_PROXY
-                  value: registry.redhat.io/openshift-pipelines/pipelines-operator-proxy-rhel9@
+                  value: ghcr.io/tektoncd/operator/proxy-webhook-f8f95c9cea9508fe8915ae3d012d15fb@sha256:a0dd87e38c136877ce1d1efd9f6ec23026f49a14baf364172fff6c858fbfe66e
                 - name: IMAGE_JOB_PRUNER_TKN
-                  value: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel9@
+                  value: ghcr.io/tektoncd/plumbing/tkn@sha256:233de6c8b8583a34c2379fa98d42dba739146c9336e8d41b66030484357481ed
                 - name: METRICS_DOMAIN
                   value: tekton.dev/operator
                 - name: VERSION
-                  value: devel
+                  value: v0.78.0
                 - name: AUTOINSTALL_COMPONENTS
                   valueFrom:
                     configMapKeyRef:
@@ -849,28 +1299,14 @@ spec:
                       name: tekton-config-defaults
                 - name: CONFIG_OBSERVABILITY_NAME
                   value: tekton-config-observability
+                - name: CONFIG_LEADERELECTION_NAME
+                  value: tekton-operator-controller-config-leader-election
                 - name: IMAGE_HUB_TEKTON_HUB_DB
-                  value: registry.redhat.io/rhel9/postgresql-13@sha256:36647bd6d50d2e0e9c99ecf190bd515577c7ce9476e49d927c4d4065011e3441
+                  value: registry.redhat.io/rhel9/postgresql-15@sha256:90ec347a35ab8a5d530c8d09f5347b13cc71df04f3b994bfa8b1a409b1171d59
                 - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
                   value: registry.redhat.io/rhel9/buildah@sha256:4e604d18fc609d25b2fc99814281944acaac78e8cd5e47b8359709b8b505db86
                 - name: IMAGE_ADDONS_PARAM_KN_IMAGE
                   value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:e213fd263772c5286aa560132cd8c043cf2946f04f96eedf18cd240859bd8a48
-                - name: IMAGE_ADDONS_KN
-                  value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:e213fd263772c5286aa560132cd8c043cf2946f04f96eedf18cd240859bd8a48
-                - name: IMAGE_ADDONS_SKOPEO_RESULTS
-                  value: registry.redhat.io/rhel9/skopeo@sha256:3c1d54513adc2998955731da23ec354a15942fa7dd2e37dc818f85a947f400d4
-                - name: IMAGE_ADDONS_BUILD
-                  value: registry.redhat.io/rhel9/buildah@sha256:4e604d18fc609d25b2fc99814281944acaac78e8cd5e47b8359709b8b505db86
-                - name: IMAGE_ADDONS_S2I_BUILD
-                  value: registry.redhat.io/rhel9/buildah@sha256:4e604d18fc609d25b2fc99814281944acaac78e8cd5e47b8359709b8b505db86
-                - name: IMAGE_ADDONS_S2I_GENERATE
-                  value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:bc10e7d6122ede5cf4f2882c200447683255465a1080e826761e90bfb983506e
-                - name: IMAGE_ADDONS_LOAD_SCRIPTS
-                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:61d5ad475048c2e655cd46d0a55dfeaec182cc3faa6348cb85989a7c9e196483
-                - name: IMAGE_ADDONS_MAVEN_GENERATE
-                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:61d5ad475048c2e655cd46d0a55dfeaec182cc3faa6348cb85989a7c9e196483
-                - name: IMAGE_ADDONS_PREPARE
-                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:61d5ad475048c2e655cd46d0a55dfeaec182cc3faa6348cb85989a7c9e196483
                 - name: IMAGE_ADDONS_MVN_SETTINGS
                   value: registry.redhat.io/ubi9/ubi-minimal@sha256:61d5ad475048c2e655cd46d0a55dfeaec182cc3faa6348cb85989a7c9e196483
                 - name: IMAGE_ADDONS_SKOPEO_COPY
@@ -883,99 +1319,7 @@ spec:
                   value: registry.redhat.io/ubi9/openjdk-17@sha256:d334d3c36867a1eef7daa598af10b5f620394ca0234b12e71b8b7e99bda9224e
                 - name: IMAGE_ADDONS_OC
                   value: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
-                - name: IMAGE_PIPELINES_TEKTON_PIPELINES_CONTROLLER
-                  value: registry.redhat.io/openshift-pipelines/pipelines-controller-rhel9@
-                - name: IMAGE_PIPELINES_WEBHOOK
-                  value: registry.redhat.io/openshift-pipelines/pipelines-webhook-rhel9@
-                - name: IMAGE_PIPELINES_CONTROLLER
-                  value: registry.redhat.io/openshift-pipelines/pipelines-resolvers-rhel9@
-                - name: IMAGE_PIPELINES_TEKTON_EVENTS_CONTROLLER
-                  value: registry.redhat.io/openshift-pipelines/pipelines-events-rhel9@
-                - name: IMAGE_PIPELINES_ARG__ENTRYPOINT_IMAGE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel9@
-                - name: IMAGE_PIPELINES_ARG__GIT_IMAGE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-                - name: IMAGE_ADDONS_PARAM_GITINITIMAGE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-                - name: IMAGE_ADDONS_GIT_RUN
-                  value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-                - name: IMAGE_ADDONS_REPORT
-                  value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-                - name: IMAGE_ADDONS_GIT_CLONE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-                - name: IMAGE_ADDONS_CACHE_UPLOAD
-                  value: registry.redhat.io/openshift-pipelines/pipelines-cache-rhel9@
-                - name: IMAGE_ADDONS_CACHE_FETCH
-                  value: registry.redhat.io/openshift-pipelines/pipelines-cache-rhel9@
-                - name: IMAGE_PIPELINES_ARG__WORKINGDIRINIT_IMAGE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-workingdirinit-rhel9@
-                - name: IMAGE_PIPELINES_ARG__SIDECARLOGRESULTS_IMAGE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-sidecarlogresults-rhel9@
-                - name: IMAGE_PIPELINES_ARG__NOP_IMAGE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-nop-rhel9@
-                - name: IMAGE_PIPELINES_ARG__SHELL_IMAGE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel9@
-                - name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CONTROLLER
-                  value: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel9@
-                - name: IMAGE_TRIGGERS_WEBHOOK
-                  value: registry.redhat.io/openshift-pipelines/pipelines-triggers-webhook-rhel9@
-                - name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CORE_INTERCEPTORS
-                  value: registry.redhat.io/openshift-pipelines/pipelines-triggers-core-interceptors-rhel9@
-                - name: IMAGE_TRIGGERS_ARG__EL_IMAGE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-triggers-eventlistenersink-rhel9@
-                - name: IMAGE_ADDONS_PARAM_TKN_IMAGE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel9@
-                - name: IMAGE_ADDONS_TKN
-                  value: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel9@
-                - name: IMAGE_ADDONS_TKN_CLI_SERVE
-                  value: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel9@
-                - name: IMAGE_ADDONS_TKN_CLI_SERVE_INIT_CONFIG
-                  value: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel9@
-                - name: IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
-                  value: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel9@
-                - name: IMAGE_RESULTS_TEKTON_RESULTS_API
-                  value: registry.redhat.io/openshift-pipelines/tekton-results-api-rhel9@
-                - name: IMAGE_RESULTS_TEKTON_RESULTS_WATCHER
-                  value: registry.redhat.io/openshift-pipelines/tekton-results-watcher-rhel9@
-                - name: IMAGE_RESULTS_POSTGRES
-                  value: registry.redhat.io/rhel9/postgresql-13@sha256:36647bd6d50d2e0e9c99ecf190bd515577c7ce9476e49d927c4d4065011e3441
-                - name: IMAGE_RESULTS_WATCHER
-                  value: registry.redhat.io/openshift-pipelines/pipelines-results-watcher-rhel9@
-                - name: IMAGE_RESULTS_API
-                  value: registry.redhat.io/openshift-pipelines/pipelines-results-api-rhel9@
-                - name: IMAGE_RESULTS_RETENTION_POLICY_AGENT
-                  value: registry.redhat.io/openshift-pipelines/pipelines-results-retention-policy-agent-rhel9@
-                - name: IMAGE_HUB_TEKTON_HUB_DB_MIGRATION
-                  value: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel9@
-                - name: IMAGE_HUB_TEKTON_HUB_API
-                  value: registry.redhat.io/openshift-pipelines/pipelines-hub-api-rhel9@
-                - name: IMAGE_HUB_TEKTON_HUB_UI
-                  value: registry.redhat.io/openshift-pipelines/pipelines-hub-ui-rhel9@
-                - name: IMAGE_PAC_TRIGGERTEMPLATE_APPLY_AND_LAUNCH
-                  value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
-                - name: IMAGE_MAG_TEKTON_TASKGROUP_CONTROLLER
-                  value: registry.redhat.io/openshift-pipelines/pipelines-manual-approval-gate-rhel9@
-                - name: IMAGE_MAG_MANUAL_APPROVAL
-                  value: registry.redhat.io/openshift-pipelines/pipelines-manual-approval-gate-rhel9@
-                - name: IMAGE_PRUNER_CONTROLLER
-                  value: registry.redhat.io/openshift-pipelines/pipelines-tektoncd-pruner-controller-rhel9@
-                - name: IMAGE_PRUNER_WEBHOOK
-                  value: registry.redhat.io/openshift-pipelines/pipelines-tektoncd-pruner-webhook-rhel9@
-                - name: IMAGE_PAC_PAC_CONTROLLER
-                  value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
-                - name: IMAGE_PAC_PAC_WEBHOOK
-                  value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
-                - name: IMAGE_PAC_PAC_WATCHER
-                  value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
-                - name: IMAGE_PAC_PAC_CLI
-                  value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
-                - name: IMAGE_ADDONS_MAVEN_GOALS
-                  value: registry.redhat.io/ubi9/openjdk-17@sha256:d334d3c36867a1eef7daa598af10b5f620394ca0234b12e71b8b7e99bda9224e
-                - name: IMAGE_PIPELINES_CONSOLE_PLUGIN
-                  value: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-rhel9@
-                - name: IMAGE_ADDONS_PREPARE_AND_RUN
-                  value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-                image: registry.redhat.io/openshift-pipelines/pipelines-rhel9-operator@
+                image: ghcr.io/tektoncd/operator/operator-1d69a75f22dd094880847eac907fb2c1@sha256:3f236436818cf093ceee2bdd43a134a5607080b504486c62dc509ecda0acebde
                 imagePullPolicy: Always
                 name: openshift-pipelines-operator-lifecycle
                 resources: {}
@@ -983,32 +1327,37 @@ spec:
                   allowPrivilegeEscalation: false
                   capabilities:
                     drop:
-                      - ALL
+                    - ALL
+                  readOnlyRootFilesystem: true
+                  seccompProfile:
+                    type: RuntimeDefault
               - args:
-                  - -controllers
-                  - tektoninstallerset
-                  - -unique-process-name
-                  - tekton-operator-cluster-operations
+                - -controllers
+                - tektoninstallerset
+                - -unique-process-name
+                - tekton-operator-cluster-operations
                 env:
-                  - name: SYSTEM_NAMESPACE
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: metadata.namespace
-                  - name: POD_NAME
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: metadata.name
-                  - name: OPERATOR_NAME
-                    value: redhat-openshift-pipelines-operator
-                  - name: PROFILING_PORT
-                    value: '9009'
-                  - name: VERSION
-                    value: v0.75.0
-                  - name: METRICS_DOMAIN
-                    value: tekton.dev/operator
-                  - name: CONFIG_LEADERELECTION_NAME
-                    value: tekton-operator-controller-config-leader-election
-                image: registry.redhat.io/openshift-pipelines/pipelines-rhel9-operator@
+                - name: KUBERNETES_MIN_VERSION
+                  value: v1.0.0
+                - name: SYSTEM_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
+                - name: OPERATOR_NAME
+                  value: redhat-openshift-pipelines-operator
+                - name: PROFILING_PORT
+                  value: '9009'
+                - name: VERSION
+                  value: v0.78.0
+                - name: METRICS_DOMAIN
+                  value: tekton.dev/operator
+                - name: CONFIG_LEADERELECTION_NAME
+                  value: tekton-operator-controller-config-leader-election
+                image: ghcr.io/tektoncd/operator/operator-1d69a75f22dd094880847eac907fb2c1@sha256:3f236436818cf093ceee2bdd43a134a5607080b504486c62dc509ecda0acebde
                 imagePullPolicy: Always
                 name: openshift-pipelines-operator-cluster-operations
                 resources: {}
@@ -1016,15 +1365,18 @@ spec:
                   allowPrivilegeEscalation: false
                   capabilities:
                     drop:
-                      - ALL
+                    - ALL
+                  readOnlyRootFilesystem: true
+                  seccompProfile:
+                    type: RuntimeDefault
               securityContext:
                 runAsNonRoot: true
                 seccompProfile:
                   type: RuntimeDefault
               serviceAccountName: openshift-pipelines-operator
       - label:
-          operator.tekton.dev/release: devel
-          version: devel
+          operator.tekton.dev/release: v0.78.0
+          version: v0.78.0
         name: tekton-operator-webhook
         spec:
           replicas: 1
@@ -1040,24 +1392,46 @@ spec:
             spec:
               containers:
               - env:
+                - name: KUBERNETES_MIN_VERSION
+                  value: v1.0.0
                 - name: SYSTEM_NAMESPACE
                   valueFrom:
                     fieldRef:
                       fieldPath: metadata.namespace
+                - name: WEBHOOK_POD_NAME
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.name
                 - name: CONFIG_LOGGING_NAME
                   value: config-logging
+                - name: CONFIG_LEADERELECTION_NAME
+                  value: tekton-operator-webhook-config-leader-election
                 - name: WEBHOOK_SERVICE_NAME
                   value: tekton-operator-webhook
                 - name: WEBHOOK_SECRET_NAME
                   value: tekton-operator-webhook-certs
                 - name: METRICS_DOMAIN
                   value: tekton.dev/operator
-                image: registry.redhat.io/openshift-pipelines/pipelines-operator-webhook-rhel9@
+                - name: PLATFORM
+                  value: openshift
+                image: ghcr.io/tektoncd/operator/webhook-340ad78e88ca5477447aa144fedfe1a1@sha256:50871188485aa4c520145660b988e2aca828e1fec308286ac63829d1ba8be2cf
                 name: tekton-operator-webhook
                 ports:
                 - containerPort: 8443
                   name: https-webhook
                 resources: {}
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+                  readOnlyRootFilesystem: true
+                  seccompProfile:
+                    type: RuntimeDefault
+              securityContext:
+                runAsNonRoot: true
+                seccompProfile:
+                  type: RuntimeDefault
               serviceAccountName: openshift-pipelines-operator
     strategy: deployment
   installModes:
@@ -1085,140 +1459,4 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat
-  relatedImages:
-  - image: registry.redhat.io/rhel9/buildah@sha256:4e604d18fc609d25b2fc99814281944acaac78e8cd5e47b8359709b8b505db86
-    name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-  - image: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:e213fd263772c5286aa560132cd8c043cf2946f04f96eedf18cd240859bd8a48
-    name: IMAGE_ADDONS_PARAM_KN_IMAGE
-  - image: registry.redhat.io/rhel9/skopeo@sha256:3c1d54513adc2998955731da23ec354a15942fa7dd2e37dc818f85a947f400d4
-    name: IMAGE_ADDONS_SKOPEO_COPY
-  - image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:bc10e7d6122ede5cf4f2882c200447683255465a1080e826761e90bfb983506e
-    name: IMAGE_ADDONS_GENERATE
-  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:61d5ad475048c2e655cd46d0a55dfeaec182cc3faa6348cb85989a7c9e196483
-    name: IMAGE_ADDONS_MVN_SETTINGS
-  - image: registry.redhat.io/openshift-pipelines/pipelines-rhel9-operator@
-    name: OPENSHIFT_PIPELINES_OPERATOR
-  - image: registry.redhat.io/openshift-pipelines/pipelines-rhel9-operator@
-    name: OPENSHIFT_PIPELINES_OPERATOR_LIFECYCLE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-rhel9-operator@
-    name: OPENSHIFT_PIPELINES_OPERATOR_CLUSTER_OPERATIONS
-  - image: registry.redhat.io/openshift-pipelines/pipelines-operator-proxy-rhel9@
-    name: IMAGE_PIPELINES_PROXY
-  - image: registry.redhat.io/openshift-pipelines/pipelines-controller-rhel9@
-    name: IMAGE_PIPELINES_TEKTON_PIPELINES_CONTROLLER
-  - image: registry.redhat.io/openshift-pipelines/pipelines-webhook-rhel9@
-    name: IMAGE_PIPELINES_WEBHOOK
-  - image: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel9@
-    name: IMAGE_PIPELINES_ARG__ENTRYPOINT_IMAGE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-    name: IMAGE_PIPELINES_ARG__GIT_IMAGE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-    name: IMAGE_ADDONS_PARAM_GITINITIMAGE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-workingdirinit-rhel9@
-    name: IMAGE_PIPELINES_ARG__WORKINGDIRINIT_IMAGE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-nop-rhel9@
-    name: IMAGE_PIPELINES_ARG__NOP_IMAGE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-entrypoint-rhel9@
-    name: IMAGE_PIPELINES_ARG__SHELL_IMAGE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-controller-rhel9@
-    name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CONTROLLER
-  - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-webhook-rhel9@
-    name: IMAGE_TRIGGERS_WEBHOOK
-  - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-core-interceptors-rhel9@
-    name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CORE_INTERCEPTORS
-  - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-eventlistenersink-rhel9@
-    name: IMAGE_TRIGGERS_ARG__EL_IMAGE
-  - image: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:e213fd263772c5286aa560132cd8c043cf2946f04f96eedf18cd240859bd8a48
-    name: IMAGE_ADDONS_KN
-  - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel9@
-    name: IMAGE_JOB_PRUNER_TKN
-  - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel9@
-    name: IMAGE_ADDONS_PARAM_TKN_IMAGE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel9@
-    name: IMAGE_ADDONS_TKN_CLI_SERVE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-serve-tkn-cli-rhel9@
-    name: IMAGE_ADDONS_TKN_CLI_SERVE_INIT_CONFIG
-  - image: registry.redhat.io/openshift-pipelines/pipelines-operator-webhook-rhel9@
-    name: TEKTON_OPERATOR_WEBHOOK
-  - image: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel9@
-    name: IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
-  - image: registry.redhat.io/rhel9/postgresql-13@sha256:36647bd6d50d2e0e9c99ecf190bd515577c7ce9476e49d927c4d4065011e3441
-    name: IMAGE_HUB_TEKTON_HUB_DB
-  - image: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel9@
-    name: IMAGE_HUB_TEKTON_HUB_DB_MIGRATION
-  - image: registry.redhat.io/openshift-pipelines/pipelines-hub-api-rhel9@
-    name: IMAGE_HUB_TEKTON_HUB_API
-  - image: registry.redhat.io/openshift-pipelines/pipelines-hub-ui-rhel9@
-    name: IMAGE_HUB_TEKTON_HUB_UI
-  - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
-    name: IMAGE_PAC_TRIGGERTEMPLATE_APPLY_AND_LAUNCH
-  - image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:bc10e7d6122ede5cf4f2882c200447683255465a1080e826761e90bfb983506e
-    name: IMAGE_ADDONS_GEN_ENV_FILE
-  - image: registry.redhat.io/ubi9/openjdk-17@sha256:d334d3c36867a1eef7daa598af10b5f620394ca0234b12e71b8b7e99bda9224e
-    name: IMAGE_ADDONS_PARAM_MAVEN_IMAGE
-  - image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
-    name: IMAGE_ADDONS_OC
-  - image: registry.redhat.io/openshift-pipelines/pipelines-resolvers-rhel9@
-    name: IMAGE_PIPELINES_CONTROLLER
-  - image: registry.redhat.io/openshift-pipelines/pipelines-events-rhel9@
-    name: IMAGE_PIPELINES_TEKTON_EVENTS_CONTROLLER
-  - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-    name: IMAGE_ADDONS_GIT_RUN
-  - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-    name: IMAGE_ADDONS_REPORT
-  - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-    name: IMAGE_ADDONS_GIT_CLONE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-cache-rhel9@
-    name: IMAGE_ADDONS_CACHE_UPLOAD
-  - image: registry.redhat.io/openshift-pipelines/pipelines-cache-rhel9@
-    name: IMAGE_ADDONS_CACHE_FETCH
-  - image: registry.redhat.io/openshift-pipelines/pipelines-sidecarlogresults-rhel9@
-    name: IMAGE_PIPELINES_ARG__SIDECARLOGRESULTS_IMAGE
-  - image: registry.redhat.io/rhel9/skopeo@sha256:3c1d54513adc2998955731da23ec354a15942fa7dd2e37dc818f85a947f400d4
-    name: IMAGE_ADDONS_SKOPEO_RESULTS
-  - image: registry.redhat.io/rhel9/buildah@sha256:4e604d18fc609d25b2fc99814281944acaac78e8cd5e47b8359709b8b505db86
-    name: IMAGE_ADDONS_BUILD
-  - image: registry.redhat.io/rhel9/buildah@sha256:4e604d18fc609d25b2fc99814281944acaac78e8cd5e47b8359709b8b505db86
-    name: IMAGE_ADDONS_S2I_BUILD
-  - image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:bc10e7d6122ede5cf4f2882c200447683255465a1080e826761e90bfb983506e
-    name: IMAGE_ADDONS_S2I_GENERATE
-  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:61d5ad475048c2e655cd46d0a55dfeaec182cc3faa6348cb85989a7c9e196483
-    name: IMAGE_ADDONS_LOAD_SCRIPTS
-  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:61d5ad475048c2e655cd46d0a55dfeaec182cc3faa6348cb85989a7c9e196483
-    name: IMAGE_ADDONS_MAVEN_GENERATE
-  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:61d5ad475048c2e655cd46d0a55dfeaec182cc3faa6348cb85989a7c9e196483
-    name: IMAGE_ADDONS_PREPARE
-  - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel9@
-    name: IMAGE_ADDONS_TKN
-  - image: registry.redhat.io/rhel9/postgresql-13@sha256:36647bd6d50d2e0e9c99ecf190bd515577c7ce9476e49d927c4d4065011e3441
-    name: IMAGE_RESULTS_POSTGRES
-  - image: registry.redhat.io/openshift-pipelines/pipelines-manual-approval-gate-rhel9@
-    name: IMAGE_MAG_TEKTON_TASKGROUP_CONTROLLER
-  - image: registry.redhat.io/openshift-pipelines/pipelines-manual-approval-gate-rhel9@
-    name: IMAGE_MAG_MANUAL_APPROVAL
-  - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
-    name: IMAGE_PRUNER_CONTROLLER
-  - image: registry.redhat.io/openshift-pipelines/pipelines-tektoncd-pruner-controller-rhel9@
-    name: IMAGE_PRUNER_WEBHOOK
-  - image: registry.redhat.io/openshift-pipelines/pipelines-tektoncd-pruner-webhook-rhel9@
-    name: IMAGE_PAC_PAC_CONTROLLER
-  - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
-    name: IMAGE_PAC_PAC_WEBHOOK
-  - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
-    name: IMAGE_PAC_PAC_WATCHER
-  - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
-    name: IMAGE_PAC_PAC_CLI
-  - image: registry.redhat.io/openshift-pipelines/pipelines-results-watcher-rhel9@
-    name: IMAGE_RESULTS_WATCHER
-  - image: registry.redhat.io/openshift-pipelines/pipelines-results-api-rhel9@
-    name: IMAGE_RESULTS_API
-  - image: registry.redhat.io/openshift-pipelines/pipelines-results-retention-policy-agent-rhel9@
-    name: IMAGE_RESULTS_RETENTION_POLICY_AGENT
-  - image: registry.redhat.io/ubi9/openjdk-17@sha256:d334d3c36867a1eef7daa598af10b5f620394ca0234b12e71b8b7e99bda9224e
-    name: IMAGE_ADDONS_MAVEN_GOALS
-  - image: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-rhel9@
-    name: IMAGE_PIPELINES_CONSOLE_PLUGIN
-  - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
-    name: IMAGE_ADDONS_PREPARE_AND_RUN
-  replaces: 1.7.0
-  version: 1.8.0
+  version: 0.78.0
