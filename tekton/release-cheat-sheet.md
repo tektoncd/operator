@@ -167,10 +167,10 @@ need a checkout of the operator repo, a terminal window and a text editor.
     1. Find the Rekor UUID for the release:
 
         ```bash
-        RELEASE_FILE=https://infra.tekton.dev/tekton-releases/operator/previous/${TEKTON_VERSION}/release.yaml
-        CONTROLLER_IMAGE_SHA=$(curl -L $RELEASE_FILE | sed -n 's/"//g;s/.*ghcr\.io.*controller.*@//p;')
-        REKOR_UUID=$(rekor-cli search --sha $CONTROLLER_IMAGE_SHA | grep -v Found | head -1)
-        echo -e "CONTROLLER_IMAGE_SHA: ${CONTROLLER_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
+        RELEASE_FILE=https://infra.tekton.dev/tekton-releases/operator/previous/${TEKTON_RELEASE_VERSION}/release.yaml
+        OPERATOR_IMAGE_SHA=$(curl -L $RELEASE_FILE | sed -n 's/"//g;s/.*ghcr\.io\/tektoncd\/operator\/operator-[^@]*@//p;' | head -1)
+        REKOR_UUID=$(rekor-cli search --sha $OPERATOR_IMAGE_SHA | grep -v Found | head -1)
+        echo -e "OPERATOR_IMAGE_SHA: ${OPERATOR_IMAGE_SHA}\nREKOR_UUID: ${REKOR_UUID}"
         ```
 
     2. Execute the Draft Release Pipeline.
