@@ -5,14 +5,17 @@ metadata:
   labels:
     operator.tekton.dev/release: v0.78.0
     version: v0.78.0
-  name: tektonhubs.operator.tekton.dev
+  name: openshiftpipelinesascodes.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: TektonHub
-    listKind: TektonHubList
-    plural: tektonhubs
-    singular: tektonhub
+    kind: OpenShiftPipelinesAsCode
+    listKind: OpenShiftPipelinesAsCodeList
+    plural: openshiftpipelinesascodes
+    shortNames:
+    - opac
+    - pac
+    singular: openshiftpipelinesascode
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -25,16 +28,10 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="Ready")].message
       name: Reason
       type: string
-    - jsonPath: .status.apiUrl
-      name: ApiUrl
-      type: string
-    - jsonPath: .status.uiUrl
-      name: UiUrl
-      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Schema for the tektonhubs API
+        description: Schema for the OpenShiftPipelinesAsCode API
         type: object
         x-kubernetes-preserve-unknown-fields: true
     served: true

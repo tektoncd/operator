@@ -4,7 +4,7 @@ metadata:
   creationTimestamp: null
   labels:
     name: openshift-pipelines-operator
-    version: devel
+    version: v0.78.0
   name: tekton-operator
 spec:
   ports:
