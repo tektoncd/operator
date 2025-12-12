@@ -27,10 +27,10 @@ data:
   secret-github-app-scope-extra-repos: ""
 
   # Tekton HUB API urls
-  hub-url: "https://custom-hub.com"
+  hub-url: "https://custom-hub-catalog.com"
 
   # Tekton HUB catalog type
-  hub-catalog-type: "artifacthub"
+  hub-catalog-type: "tektonhub"
 
   # Additional Hub Catalogs is supported, for example:
   #
@@ -41,12 +41,6 @@ data:
   # this configuration will have a new catalog named anotherhub on  https://api.other.com/v1 endpoint and catalog name tekton
   # to be used by a user in their templates like this:
   # pipelinesascode.tekton.dev/task: "anotherhub://task"
-  #
-  # Increase the number of the catalog to add more of them
-  catalog-tektonhub-id: "tektonhub"
-  catalog-tektonhub-name: "tekton"
-  catalog-tektonhub-type: "tektonhub"
-  catalog-tektonhub-url: "https://api.hub.tekton.dev/v1"
 
   # Allow fetching remote tasks
   remote-tasks: "true"
