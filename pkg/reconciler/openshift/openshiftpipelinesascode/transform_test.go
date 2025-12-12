@@ -156,7 +156,7 @@ func TestUpdateAdditionControllerConfigMap(t *testing.T) {
 	additionalPACConfig := v1alpha1.AdditionalPACControllerConfig{
 		ConfigMapName: "test-config",
 		SecretName:    "test-secret",
-		Settings:      map[string]string{"application-name": "Test CI application", "hub-url": "https://custom-hub.com"},
+		Settings:      map[string]string{"application-name": "Test CI application", "hub-url": "https://custom-hub-catalog.com"},
 	}
 
 	updatedManifest, err := manifest.Transform(updateAdditionControllerConfigMap(additionalPACConfig))
