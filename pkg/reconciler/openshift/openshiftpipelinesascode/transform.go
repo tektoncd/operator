@@ -227,7 +227,7 @@ func updateAdditionControllerConfigMap(config v1alpha1.AdditionalPACControllerCo
 			config.Settings = map[string]string{}
 		}
 
-		defaultPacSettings := pacSettings.DefaultSettings()
+		defaultPacSettings := pacSettings.Settings{}
 		err := pacSettings.SyncConfig(zap.NewNop().Sugar(), &defaultPacSettings, config.Settings, pacSettings.DefaultValidators())
 		if err != nil {
 			return err
