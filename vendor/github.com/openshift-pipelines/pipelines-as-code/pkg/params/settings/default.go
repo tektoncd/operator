@@ -1,9 +1,13 @@
 package settings
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"net/url"
+	"strings"
 	"sync"
+	"time"
 
 	hubtypes "github.com/openshift-pipelines/pipelines-as-code/pkg/hub/vars"
 	"go.uber.org/zap"
@@ -20,6 +24,9 @@ func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[st
 
 	if hubType, ok := config[HubCatalogTypeKey]; !ok || hubType == "" {
 		config[HubCatalogTypeKey] = hubtypes.ArtifactHubType
+		if config[HubURLKey] != "" {
+			config[HubCatalogTypeKey] = getHubCatalogTypeViaAPI(config[HubURLKey])
+		}
 	} else if hubType != hubtypes.ArtifactHubType && hubType != hubtypes.TektonHubType {
 		logger.Warnf("CONFIG: invalid hub type %s, defaulting to %s", hubType, hubtypes.ArtifactHubType)
 		config[HubCatalogTypeKey] = hubtypes.ArtifactHubType
@@ -104,4 +111,29 @@ func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[st
 		}
 	}
 	return catalogs
+}
+
+func getHubCatalogTypeViaAPI(hubURL string) string {
+	statsURL := fmt.Sprintf("%s/api/v1/stats", strings.TrimSuffix(hubURL, "/"))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, statsURL, nil)
+	if err != nil {
+		return hubtypes.TektonHubType
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return hubtypes.TektonHubType
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		return hubtypes.ArtifactHubType
+	}
+
+	// if the API call fails, return Tekton Hub type
+	return hubtypes.TektonHubType
 }
