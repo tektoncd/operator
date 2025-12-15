@@ -40,6 +40,8 @@ spec:
   - name: releaseFilePrefix
     description: Prefix to be added to release files
     default: ""
+  results:
+  - name: IMAGES
   workspaces:
   - name: source
     description: >-
