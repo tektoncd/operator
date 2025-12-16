@@ -1,5 +1,6 @@
-chore: bump dashboard from v0.63.1 to v0.64.0
+chore: bump component versions
 
-- dashboard: v0.63.1 → v0.64.0
+- hub: v1.23.4 → v1.23.5
+- pipelines-as-code: v0.39.2 → v0.39.3
 
 Signed-off-by: tekton-bot <tekton-bot@users.noreply.github.com>
