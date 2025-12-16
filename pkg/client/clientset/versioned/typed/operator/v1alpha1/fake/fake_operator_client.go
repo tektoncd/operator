@@ -60,10 +60,6 @@ func (c *FakeOperatorV1alpha1) TektonInstallerSets() v1alpha1.TektonInstallerSet
 	return newFakeTektonInstallerSets(c)
 }
 
-func (c *FakeOperatorV1alpha1) TektonKueues() v1alpha1.TektonKueueInterface {
-	return newFakeTektonKueues(c)
-}
-
 func (c *FakeOperatorV1alpha1) TektonPipelines() v1alpha1.TektonPipelineInterface {
 	return newFakeTektonPipelines(c)
 }
@@ -74,6 +70,10 @@ func (c *FakeOperatorV1alpha1) TektonPruners() v1alpha1.TektonPrunerInterface {
 
 func (c *FakeOperatorV1alpha1) TektonResults() v1alpha1.TektonResultInterface {
 	return newFakeTektonResults(c)
+}
+
+func (c *FakeOperatorV1alpha1) TektonSchedulers() v1alpha1.TektonSchedulerInterface {
+	return newFakeTektonSchedulers(c)
 }
 
 func (c *FakeOperatorV1alpha1) TektonTriggers() v1alpha1.TektonTriggerInterface {

@@ -25,24 +25,24 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// TektonKueueLister helps list TektonKueues.
+// TektonSchedulerLister helps list TektonSchedulers.
 // All objects returned here must be treated as read-only.
-type TektonKueueLister interface {
-	// List lists all TektonKueues in the indexer.
+type TektonSchedulerLister interface {
+	// List lists all TektonSchedulers in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*operatorv1alpha1.TektonKueue, err error)
-	// Get retrieves the TektonKueue from the index for a given name.
+	List(selector labels.Selector) (ret []*operatorv1alpha1.TektonScheduler, err error)
+	// Get retrieves the TektonScheduler from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*operatorv1alpha1.TektonKueue, error)
-	TektonKueueListerExpansion
+	Get(name string) (*operatorv1alpha1.TektonScheduler, error)
+	TektonSchedulerListerExpansion
 }
 
-// tektonKueueLister implements the TektonKueueLister interface.
-type tektonKueueLister struct {
-	listers.ResourceIndexer[*operatorv1alpha1.TektonKueue]
+// tektonSchedulerLister implements the TektonSchedulerLister interface.
+type tektonSchedulerLister struct {
+	listers.ResourceIndexer[*operatorv1alpha1.TektonScheduler]
 }
 
-// NewTektonKueueLister returns a new TektonKueueLister.
-func NewTektonKueueLister(indexer cache.Indexer) TektonKueueLister {
-	return &tektonKueueLister{listers.New[*operatorv1alpha1.TektonKueue](indexer, operatorv1alpha1.Resource("tektonkueue"))}
+// NewTektonSchedulerLister returns a new TektonSchedulerLister.
+func NewTektonSchedulerLister(indexer cache.Indexer) TektonSchedulerLister {
+	return &tektonSchedulerLister{listers.New[*operatorv1alpha1.TektonScheduler](indexer, operatorv1alpha1.Resource("tektonscheduler"))}
 }

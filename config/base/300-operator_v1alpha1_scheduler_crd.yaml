@@ -15,17 +15,17 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: tektonkueues.operator.tekton.dev
+  name: tektonschedulers.operator.tekton.dev
   labels:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
   group: operator.tekton.dev
   names:
-    kind: TektonKueue
-    listKind: TektonKueueList
-    plural: tektonkueues
-    singular: tektonkueue
+    kind: TektonScheduler
+    listKind: TektonSchedulerList
+    plural: tektonschedulers
+    singular: tektonscheduler
   preserveUnknownFields: false
   scope: Cluster
   versions:
@@ -47,5 +47,5 @@ spec:
     schema:
       openAPIV3Schema:
         type: object
-        description: Schema for the tektonkueues API
+        description: Schema for the tektonschedulers API
         x-kubernetes-preserve-unknown-fields: true

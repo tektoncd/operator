@@ -93,7 +93,7 @@ type TektonConfigSpec struct {
 	TektonPruner Pruner `json:"tektonpruner,omitempty"`
 	// To enable Pipeline Scheduling on Single Cluster or Multiple Clusters
 	// +optional
-	Kueue      Kueue `json:"scheduler,omitempty"`
+	Scheduler  Scheduler `json:"scheduler,omitempty"`
 	CommonSpec `json:",inline"`
 	// Addon holds the addons config
 	// +optional
