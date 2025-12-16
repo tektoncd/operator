@@ -14,27 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonkueue
+package v1alpha1
 
 import (
 	"context"
-	"errors"
-	"fmt"
-
-	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"knative.dev/pkg/logging"
 )
 
-func (r *Reconciler) ensureInstallerSets(ctx context.Context, tp *v1alpha1.TektonKueue) error {
-	logger := logging.FromContext(ctx)
-	if err := r.installerSetClient.MainSet(ctx, tp, &r.manifest, filterAndTransform(r.extension)); err != nil {
-		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
-		logger.Error(msg)
-		if errors.Is(err, v1alpha1.REQUEUE_EVENT_AFTER) {
-			return err
-		}
-		tp.Status.MarkInstallerSetNotReady(msg)
-	}
+var (
+	DefaultSchedulerDisabled    = false
+	DefaultMultiClusterDisabled = true
+)
 
-	return nil
+func (tp *TektonScheduler) SetDefaults(_ context.Context) {
+	tp.Spec.Scheduler.SetDefaults()
+}
+
+func (p *Scheduler) SetDefaults() {
+	if p.Disabled == nil {
+		p.Disabled = &DefaultSchedulerDisabled
+	}
+	p.MultiCluster.SetDefaults()
+
+}
+
+func (m *MultiCluster) SetDefaults() {
+	if m.Disabled == nil {
+		m.Disabled = &DefaultMultiClusterDisabled
+	}
 }

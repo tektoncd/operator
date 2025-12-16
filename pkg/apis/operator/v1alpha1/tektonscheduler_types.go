@@ -22,26 +22,26 @@ import (
 )
 
 var (
-	_ TektonComponent     = (*TektonKueue)(nil)
-	_ TektonComponentSpec = (*TektonKueueSpec)(nil)
+	_ TektonComponent     = (*TektonScheduler)(nil)
+	_ TektonComponentSpec = (*TektonSchedulerSpec)(nil)
 )
 
-// TektonKueue is the Schema for the TektonKueue API
+// TektonScheduler is the Schema for the TektonScheduler API
 // +genclient
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
 // +kubebuilder:resource:scope=Cluster
 
-type TektonKueue struct {
+type TektonScheduler struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              TektonKueueSpec   `json:"spec,omitempty"`
-	Status            TektonKueueStatus `json:"status,omitempty"`
+	Spec              TektonSchedulerSpec   `json:"spec,omitempty"`
+	Status            TektonSchedulerStatus `json:"status,omitempty"`
 }
 
-type Kueue struct {
-	// enable or disable TektonKueue Component
+type Scheduler struct {
+	// enable or disable TektonScheduler Component
 	Disabled     *bool        `json:"disabled,omitempty"`
 	MultiCluster MultiCluster `json:"multi-cluster"`
 
@@ -50,56 +50,56 @@ type Kueue struct {
 }
 
 type MultiCluster struct {
-	// enable or disable TektonKueue Component
+	// enable or disable TektonScheduler Component
 	Disabled *bool `json:"disabled"`
 
 	// Define the role of a cluster HUB or SPOKE
 	Role string `json:"role"`
 }
 
-// TektonKueueList contains a list of TektonKueue
+// TektonSchedulerList contains a list of TektonScheduler
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type TektonKueueList struct {
+type TektonSchedulerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []TektonKueue `json:"items"`
+	Items           []TektonScheduler `json:"items"`
 }
 
-type TektonKueueSpec struct {
+type TektonSchedulerSpec struct {
 	CommonSpec `json:",inline"`
-	Kueue      `json:",inline"`
-	// Config holds the configuration for resources created by TektonKueue
+	Scheduler  `json:",inline"`
+	// Config holds the configuration for resources created by TektonScheduler
 	// +optional
 	Config Config `json:"config,omitempty"`
 }
 
-// TektonKueueStatus defines the observed state of TektonKueue
-type TektonKueueStatus struct {
+// TektonSchedulerStatus defines the observed state of TektonScheduler
+type TektonSchedulerStatus struct {
 	duckv1.Status `json:",inline"`
 
 	// The version of the installed release
 	// +optional
 	Version string `json:"version,omitempty"`
 
-	// The current installer set name for TektonKueue
+	// The current installer set name for TektonScheduler
 	// +optional
-	TektonInstallerSet string `json:"tektonInstallerSet,omitempty"`
+	TektonScheduler string `json:"TektonScheduler,omitempty"`
 }
 
 // GetSpec implements TektonComponent
-func (tp *TektonKueue) GetSpec() TektonComponentSpec {
+func (tp *TektonScheduler) GetSpec() TektonComponentSpec {
 	return &tp.Spec
 }
 
-func (tp *TektonKueue) GetStatus() TektonComponentStatus {
+func (tp *TektonScheduler) GetStatus() TektonComponentStatus {
 	return &tp.Status
 }
 
-// IsDisabled returns true if the TektonKueue is disabled
-func (p *Kueue) IsDisabled() bool {
+// IsDisabled returns true if the TektonScheduler is disabled
+func (p *Scheduler) IsDisabled() bool {
 	if p == nil || p.Disabled == nil {
-		// When the Kueue is nil or Disabled is nil, we assume it is the default state.
-		return DefaultKueueDisabled
+		// When the Scheduler is nil or Disabled is nil, we assume it is the default state.
+		return DefaultSchedulerDisabled
 	}
 	return *p.Disabled
 }

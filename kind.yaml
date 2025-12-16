@@ -1,0 +1,43 @@
+apiVersion: kind.x-k8s.io/v1alpha4
+kind: Cluster
+nodes:
+- role: control-plane
+  image: "kindest/node:1.30.13@sha256:397209b3d947d154f6641f2d0ce8d473732bd91c87d9575ade99049aa33cd648"
+  labels:
+    node-type: "control-plane"
+- role: worker
+  image: "kindest/node:1.30.13@sha256:397209b3d947d154f6641f2d0ce8d473732bd91c87d9575ade99049aa33cd648"
+  labels:
+    node-type: "worker-1"
+kubeadmConfigPatches:
+  # This is needed in order to support projected volumes with service account tokens.
+  # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1600268272383600
+  - |
+    apiVersion: kubeadm.k8s.io/v1beta2
+    kind: ClusterConfiguration
+    metadata:
+      name: config
+    apiServer:
+      extraArgs:
+        "service-account-issuer": "kubernetes.default.svc"
+        "service-account-signing-key-file": "/etc/kubernetes/pki/sa.key"
+    networking:
+      dnsDomain: "cluster.local"
+
+  # This is needed to avoid filling our disk.
+  # See: https://kubernetes.slack.com/archives/CEKK1KTN2/p1603391142276400
+  - |
+    kind: KubeletConfiguration
+    metadata:
+      name: config
+    imageGCHighThresholdPercent: 90
+
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".containerd]
+    # Support many layered images: https://kubernetes.slack.com/archives/CEKK1KTN2/p1602770111199000
+    disable_snapshot_annotations = true
+
+  # Support a local registry
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.local:5000"]
+    endpoint = ["http://registry.local:5000"]

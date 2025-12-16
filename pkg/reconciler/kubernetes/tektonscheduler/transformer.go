@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonkueue
+package tektonscheduler
 
 import (
 	"context"
@@ -27,7 +27,6 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"knative.dev/pkg/logging"
 )
 
 const (
@@ -36,31 +35,31 @@ const (
 
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
-		kueueCR := comp.(*v1alpha1.TektonKueue)
+		schedulerCR := comp.(*v1alpha1.TektonScheduler)
 
-		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.KueueImagePrefix))
-		kueueImages := common.ImageRegistryDomainOverride(imagesRaw)
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.SchedulerImagePrefix))
+		schedulerImages := common.ImageRegistryDomainOverride(imagesRaw)
 		extra := []mf.Transformer{
-			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.TektonKueueResourceName),
-			common.DeploymentImages(kueueImages),
+			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.TektonSchedulerResourceName),
+			common.DeploymentImages(schedulerImages),
 			common.AddDeploymentRestrictedPSA(),
-			CertificateTransformer(kueueCR.GetSpec().GetTargetNamespace()),
-			MutatingWebhookConfigurationTransformer(ctx, kueueCR.GetSpec().GetTargetNamespace()),
+			CertificateTransformer(schedulerCR.GetSpec().GetTargetNamespace()),
+			MutatingWebhookConfigurationTransformer(ctx, schedulerCR.GetSpec().GetTargetNamespace()),
 		}
-		extra = append(extra, extension.Transformers(kueueCR)...)
-		err := common.Transform(ctx, manifest, kueueCR, extra...)
+		extra = append(extra, extension.Transformers(schedulerCR)...)
+		err := common.Transform(ctx, manifest, schedulerCR, extra...)
 		if err != nil {
 			return &mf.Manifest{}, err
 		}
 
 		// additional options transformer
 		// always execute as last transformer, so that the values in options will be final update values on the manifests
-		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, kueueCR.Spec.GetTargetNamespace(), kueueCR.Spec.Options); err != nil {
+		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, schedulerCR.Spec.GetTargetNamespace(), schedulerCR.Spec.Options); err != nil {
 			return &mf.Manifest{}, err
 		}
 
-		// Now Remove the TargetNamespace from manifest as same is not owned by Kueue.
-		filteredManifest := manifest.Filter(mf.Not(mf.ByKind("Namespace")), mf.Not(mf.ByName(kueueCR.GetSpec().GetTargetNamespace())))
+		// Now Remove the TargetNamespace from manifest as same is not owned by Scheduler.
+		filteredManifest := manifest.Filter(mf.Not(mf.ByKind("Namespace")), mf.Not(mf.ByName(schedulerCR.GetSpec().GetTargetNamespace())))
 
 		return &filteredManifest, nil
 	}
@@ -102,7 +101,6 @@ func CertificateTransformer(targetNamespace string) mf.Transformer {
 func MutatingWebhookConfigurationTransformer(ctx context.Context, targetNamespace string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() == "MutatingWebhookConfiguration" {
-			logger := logging.FromContext(ctx)
 			annotations := u.GetAnnotations()
 			ann := annotations[certManagerAnnotation]
 			if ann != "" {
@@ -113,10 +111,7 @@ func MutatingWebhookConfigurationTransformer(ctx context.Context, targetNamespac
 
 				}
 			}
-			logger.Warn("BINDAL Annotation : ", u.GetName(), annotations)
 			u.SetAnnotations(annotations)
-			logger.Warn("BINDAL Annotation Updated: ", u.GetName(), u.GetAnnotations())
-
 		}
 		return nil
 	}

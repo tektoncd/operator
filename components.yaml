@@ -7,7 +7,7 @@ dashboard:
 hub:
   github: tektoncd/hub
   version: v1.23.5
-kueue:
+scheduler:
   github: konflux-ci/tekton-kueue
   version: v0.1.0
 manual-approval-gate:

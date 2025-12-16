@@ -32,58 +32,58 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// TektonKueueInformer provides access to a shared informer and lister for
-// TektonKueues.
-type TektonKueueInformer interface {
+// TektonSchedulerInformer provides access to a shared informer and lister for
+// TektonSchedulers.
+type TektonSchedulerInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() operatorv1alpha1.TektonKueueLister
+	Lister() operatorv1alpha1.TektonSchedulerLister
 }
 
-type tektonKueueInformer struct {
+type tektonSchedulerInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 }
 
-// NewTektonKueueInformer constructs a new informer for TektonKueue type.
+// NewTektonSchedulerInformer constructs a new informer for TektonScheduler type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewTektonKueueInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredTektonKueueInformer(client, resyncPeriod, indexers, nil)
+func NewTektonSchedulerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredTektonSchedulerInformer(client, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredTektonKueueInformer constructs a new informer for TektonKueue type.
+// NewFilteredTektonSchedulerInformer constructs a new informer for TektonScheduler type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredTektonKueueInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredTektonSchedulerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().TektonKueues().List(context.TODO(), options)
+				return client.OperatorV1alpha1().TektonSchedulers().List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().TektonKueues().Watch(context.TODO(), options)
+				return client.OperatorV1alpha1().TektonSchedulers().Watch(context.TODO(), options)
 			},
 		},
-		&apisoperatorv1alpha1.TektonKueue{},
+		&apisoperatorv1alpha1.TektonScheduler{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *tektonKueueInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredTektonKueueInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *tektonSchedulerInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredTektonSchedulerInformer(client, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *tektonKueueInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisoperatorv1alpha1.TektonKueue{}, f.defaultInformer)
+func (f *tektonSchedulerInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&apisoperatorv1alpha1.TektonScheduler{}, f.defaultInformer)
 }
 
-func (f *tektonKueueInformer) Lister() operatorv1alpha1.TektonKueueLister {
-	return operatorv1alpha1.NewTektonKueueLister(f.Informer().GetIndexer())
+func (f *tektonSchedulerInformer) Lister() operatorv1alpha1.TektonSchedulerLister {
+	return operatorv1alpha1.NewTektonSchedulerLister(f.Informer().GetIndexer())
 }

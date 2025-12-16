@@ -24,26 +24,26 @@ import (
 	gentype "k8s.io/client-go/gentype"
 )
 
-// fakeTektonKueues implements TektonKueueInterface
-type fakeTektonKueues struct {
-	*gentype.FakeClientWithList[*v1alpha1.TektonKueue, *v1alpha1.TektonKueueList]
+// fakeTektonSchedulers implements TektonSchedulerInterface
+type fakeTektonSchedulers struct {
+	*gentype.FakeClientWithList[*v1alpha1.TektonScheduler, *v1alpha1.TektonSchedulerList]
 	Fake *FakeOperatorV1alpha1
 }
 
-func newFakeTektonKueues(fake *FakeOperatorV1alpha1) operatorv1alpha1.TektonKueueInterface {
-	return &fakeTektonKueues{
-		gentype.NewFakeClientWithList[*v1alpha1.TektonKueue, *v1alpha1.TektonKueueList](
+func newFakeTektonSchedulers(fake *FakeOperatorV1alpha1) operatorv1alpha1.TektonSchedulerInterface {
+	return &fakeTektonSchedulers{
+		gentype.NewFakeClientWithList[*v1alpha1.TektonScheduler, *v1alpha1.TektonSchedulerList](
 			fake.Fake,
 			"",
-			v1alpha1.SchemeGroupVersion.WithResource("tektonkueues"),
-			v1alpha1.SchemeGroupVersion.WithKind("TektonKueue"),
-			func() *v1alpha1.TektonKueue { return &v1alpha1.TektonKueue{} },
-			func() *v1alpha1.TektonKueueList { return &v1alpha1.TektonKueueList{} },
-			func(dst, src *v1alpha1.TektonKueueList) { dst.ListMeta = src.ListMeta },
-			func(list *v1alpha1.TektonKueueList) []*v1alpha1.TektonKueue {
+			v1alpha1.SchemeGroupVersion.WithResource("tektonschedulers"),
+			v1alpha1.SchemeGroupVersion.WithKind("TektonScheduler"),
+			func() *v1alpha1.TektonScheduler { return &v1alpha1.TektonScheduler{} },
+			func() *v1alpha1.TektonSchedulerList { return &v1alpha1.TektonSchedulerList{} },
+			func(dst, src *v1alpha1.TektonSchedulerList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.TektonSchedulerList) []*v1alpha1.TektonScheduler {
 				return gentype.ToPointerSlice(list.Items)
 			},
-			func(list *v1alpha1.TektonKueueList, items []*v1alpha1.TektonKueue) {
+			func(list *v1alpha1.TektonSchedulerList, items []*v1alpha1.TektonScheduler) {
 				list.Items = gentype.FromPointerSlice(items)
 			},
 		),

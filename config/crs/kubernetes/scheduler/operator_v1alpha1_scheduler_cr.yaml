@@ -13,9 +13,9 @@
 # limitations under the License.
 
 apiVersion: operator.tekton.dev/v1alpha1
-kind: TektonKueue
+kind: TektonScheduler
 metadata:
-  name: kueue
+  name: tektonscheduler
 spec:
   targetNamespace: tekton-pipelines
   disabled: false

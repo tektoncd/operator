@@ -22,12 +22,12 @@ import (
 	context "context"
 
 	fake "github.com/tektoncd/operator/pkg/client/injection/informers/factory/fake"
-	TektonScheduler "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonscheduler"
+	tektonscheduler "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonscheduler"
 	controller "knative.dev/pkg/controller"
 	injection "knative.dev/pkg/injection"
 )
 
-var Get = TektonScheduler.Get
+var Get = tektonscheduler.Get
 
 func init() {
 	injection.Fake.RegisterInformer(withInformer)
@@ -36,5 +36,5 @@ func init() {
 func withInformer(ctx context.Context) (context.Context, controller.Informer) {
 	f := fake.Get(ctx)
 	inf := f.Operator().V1alpha1().TektonSchedulers()
-	return context.WithValue(ctx, TektonScheduler.Key{}, inf), inf.Informer()
+	return context.WithValue(ctx, tektonscheduler.Key{}, inf), inf.Informer()
 }
