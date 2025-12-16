@@ -88,7 +88,6 @@ type Pipeline struct {
 
 // PipelineProperties defines customizable flags for Pipeline Component.
 type PipelineProperties struct {
-	DisableAffinityAssistant                 *bool  `json:"disable-affinity-assistant,omitempty"`
 	DisableCredsInit                         *bool  `json:"disable-creds-init,omitempty"`
 	AwaitSidecarReadiness                    *bool  `json:"await-sidecar-readiness,omitempty"`
 	RunningInEnvironmentWithInjectedSidecars *bool  `json:"running-in-environment-with-injected-sidecars,omitempty"`
@@ -113,6 +112,12 @@ type PipelineProperties struct {
 
 	// ScopeWhenExpressionsToTask is deprecated and never used.
 	ScopeWhenExpressionsToTask *bool `json:"scope-when-expressions-to-task,omitempty"`
+
+	// Deprecated: DisableAffinityAssistant is deprecated and no longer used.
+	// This field is removed from pipeline component.
+	// Keeping here to maintain API compatibility during upgrades.
+	// TODO: Remove this field in release-v0.80.x
+	DisableAffinityAssistant *bool `json:"disable-affinity-assistant,omitempty"`
 
 	EnforceNonfalsifiability  string `json:"enforce-nonfalsifiability,omitempty"`
 	EnableKeepPodOnCancel     *bool  `json:"keep-pod-on-cancel,omitempty"`

@@ -350,3 +350,34 @@ func updateOpenShiftPipelinesAsCodeCR(ctx context.Context, logger *zap.SugaredLo
 
 	return nil
 }
+
+// removeDeprecatedDisableAffinityAssistant removes the deprecated DisableAffinityAssistant field from tektonConfig CR spec during pre upgrade
+// TODO: Remove this upgrade function in the release-v0.80.x
+func removeDeprecatedDisableAffinityAssistant(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	// use merge patch to remove the deprecated field from the stored CR
+	patch := map[string]interface{}{
+		"spec": map[string]interface{}{
+			"pipeline": map[string]interface{}{
+				"disable-affinity-assistant": nil,
+			},
+		},
+	}
+
+	patchBytes, err := json.Marshal(patch)
+	if err != nil {
+		logger.Errorf("failed to marshal patch payload: %v", err)
+		return err
+	}
+
+	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Patch(ctx, v1alpha1.ConfigResourceName, types.MergePatchType, patchBytes, metav1.PatchOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		logger.Debugw("patch to remove disable-affinity-assistant field returned error (field may not exist)", "error", err)
+		return nil
+	}
+
+	logger.Info("Successfully removed deprecated disable-affinity-assistant field from TektonConfig CR")
+	return nil
+}

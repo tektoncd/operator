@@ -20,7 +20,6 @@ spec:
   targetNamespace: tekton-pipelines
   await-sidecar-readiness: true
   coschedule: workspaces
-  disable-affinity-assistant: false
   disable-creds-init: false
   disable-home-env-overwrite: true
   disable-working-directory-overwrite: true
@@ -71,13 +70,6 @@ You can install this component using [TektonConfig](./TektonConfig.md) by choosi
 ### Properties
 This fields have default values so even if user have not passed them in CR, operator will add them. User can later change
 them as per their need.
-
-- `disable-affinity-assistant` (Default: `false`)
-
-    Setting this flag to "true" will prevent Tekton to create an Affinity Assistant for every TaskRun sharing a PVC workspace. The default behaviour is for Tekton to create Affinity Assistants.
-
-    See more in the workspace documentation about [Affinity Assistant](https://github.com/tektoncd/pipeline/blob/main/docs/workspaces.md#affinity-assistant-and-specifying-workspace-order-in-a-pipeline)
-    or more info [here](https://github.com/tektoncd/pipeline/pull/2630).
 
 - `disable-creds-init` (Default: `false`)
 

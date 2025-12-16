@@ -7,7 +7,6 @@ metadata:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
 data:
-  disable-affinity-assistant: "false"
   coschedule: "workspaces"
   disable-creds-init: "false"
   await-sidecar-readiness: "true"
