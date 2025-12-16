@@ -33,9 +33,16 @@ func (tp *TektonScheduler) SetDefaults(_ context.Context) {
 	tp.Spec.Scheduler.SetDefaults()
 }
 
-func (s *Scheduler) SetDefaults() {
-	if s.Disabled == nil {
-		s.Disabled = ptr.To(DefaultSchedulerDisabled)
-		s.MultiClusterDisabled = DefaultMultiClusterDisabled
+func (p *Scheduler) SetDefaults() {
+	if p.Disabled == nil {
+		p.Disabled = &DefaultSchedulerDisabled
+	}
+	p.MultiCluster.SetDefaults()
+
+}
+
+func (m *MultiCluster) SetDefaults() {
+	if m.Disabled == nil {
+		m.Disabled = &DefaultMultiClusterDisabled
 	}
 }

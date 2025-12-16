@@ -47,7 +47,7 @@ func withInformer(ctx context.Context) (context.Context, []controller.Informer) 
 	infs := []controller.Informer{}
 	for _, selector := range labelSelectors {
 		f := filtered.Get(ctx, selector)
-		inf := f.Operator().V1alpha1().TektonKueues()
+		inf := f.Operator().V1alpha1().TektonSchedulers()
 		ctx = context.WithValue(ctx, Key{Selector: selector}, inf)
 		infs = append(infs, inf.Informer())
 	}
@@ -55,11 +55,11 @@ func withInformer(ctx context.Context) (context.Context, []controller.Informer) 
 }
 
 // Get extracts the typed informer from the context.
-func Get(ctx context.Context, selector string) v1alpha1.TektonKueueInformer {
+func Get(ctx context.Context, selector string) v1alpha1.TektonSchedulerInformer {
 	untyped := ctx.Value(Key{Selector: selector})
 	if untyped == nil {
 		logging.FromContext(ctx).Panicf(
-			"Unable to fetch github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1.TektonKueueInformer with selector %s from context.", selector)
+			"Unable to fetch github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1.TektonSchedulerInformer with selector %s from context.", selector)
 	}
-	return untyped.(v1alpha1.TektonKueueInformer)
+	return untyped.(v1alpha1.TektonSchedulerInformer)
 }

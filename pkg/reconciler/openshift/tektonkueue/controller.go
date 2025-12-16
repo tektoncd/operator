@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonkueue
+package tektonscheduler
 
 import (
 	"context"
 
-	k8sctrl "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonkueue"
+	k8sctrl "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonscheduler"
 
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"

@@ -26,10 +26,10 @@ import (
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chain"
-	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/kueue"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pruner"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/result"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/scheduler"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -203,7 +203,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		}
 	}
 
-	if err := r.EnsureKueueComponent(ctx, tc); err != nil {
+	if err := r.EnsureSchedulerComponent(ctx, tc); err != nil {
 		return err
 	}
 
@@ -350,6 +350,6 @@ func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonConfig)
 	return v1alpha1.RECONCILE_AGAIN_ERR
 }
 
-func (r *Reconciler) EnsureKueueComponent(ctx context.Context, tc *v1alpha1.TektonConfig) error {
-	return kueue.EnsureTektonComponent(ctx, tc, r.operatorClientSet, r.operatorVersion)
+func (r *Reconciler) EnsureSchedulerComponent(ctx context.Context, tc *v1alpha1.TektonConfig) error {
+	return scheduler.EnsureTektonComponent(ctx, tc, r.operatorClientSet, r.operatorVersion)
 }

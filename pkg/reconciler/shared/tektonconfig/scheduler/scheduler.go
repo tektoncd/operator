@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kueue
+package scheduler
 
 import (
 	"context"
@@ -34,24 +34,24 @@ const (
 	CERT_GVK  = "cert-manager.io/v1"
 )
 
-func EnsureTektonKueueExists(ctx context.Context, clients op.TektonKueueInterface, tk *v1alpha1.TektonKueue) (*v1alpha1.TektonKueue, error) {
-	tektonKueue, err := GetTektonKueue(ctx, clients, v1alpha1.TektonKueueResourceName)
+func EnsureTektonSchedulerExists(ctx context.Context, clients op.TektonSchedulerInterface, tk *v1alpha1.TektonScheduler) (*v1alpha1.TektonScheduler, error) {
+	TektonScheduler, err := GetTektonScheduler(ctx, clients, v1alpha1.TektonSchedulerResourceName)
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
 			return nil, err
 		}
-		if err := CreateKueue(ctx, clients, tk); err != nil {
+		if err := CreateScheduler(ctx, clients, tk); err != nil {
 			return nil, err
 		}
 		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
-	tektonKueue, err = UpdateKueue(ctx, tektonKueue, tk, clients)
+	TektonScheduler, err = UpdateScheduler(ctx, TektonScheduler, tk, clients)
 	if err != nil {
 		return nil, err
 	}
 
-	ok, err := isTektonKueueReady(tektonKueue, err)
+	ok, err := isTektonSchedulerReady(TektonScheduler, err)
 	if err != nil {
 		return nil, err
 	}
@@ -60,40 +60,40 @@ func EnsureTektonKueueExists(ctx context.Context, clients op.TektonKueueInterfac
 		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
-	return tektonKueue, err
+	return TektonScheduler, err
 }
 
-func GetTektonKueue(ctx context.Context, clients op.TektonKueueInterface, name string) (*v1alpha1.TektonKueue, error) {
+func GetTektonScheduler(ctx context.Context, clients op.TektonSchedulerInterface, name string) (*v1alpha1.TektonScheduler, error) {
 	return clients.Get(ctx, name, metav1.GetOptions{})
 }
 
-func GetTektonKueueCR(config *v1alpha1.TektonConfig, operatorVersion string) *v1alpha1.TektonKueue {
+func GetTektonSchedulerCR(config *v1alpha1.TektonConfig, operatorVersion string) *v1alpha1.TektonScheduler {
 	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
-	return &v1alpha1.TektonKueue{
+	return &v1alpha1.TektonScheduler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            v1alpha1.TektonKueueResourceName,
+			Name:            v1alpha1.TektonSchedulerResourceName,
 			OwnerReferences: []metav1.OwnerReference{ownerRef},
 			Labels: map[string]string{
 				v1alpha1.ReleaseVersionKey: operatorVersion,
 			},
 		},
-		Spec: v1alpha1.TektonKueueSpec{
+		Spec: v1alpha1.TektonSchedulerSpec{
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Config: config.Spec.Config,
-			Kueue:  config.Spec.Kueue,
+			Config:    config.Spec.Config,
+			Scheduler: config.Spec.Scheduler,
 		},
 	}
 }
 
-func CreateKueue(ctx context.Context, clients op.TektonKueueInterface, kueue *v1alpha1.TektonKueue) error {
-	_, err := clients.Create(ctx, kueue, metav1.CreateOptions{})
+func CreateScheduler(ctx context.Context, clients op.TektonSchedulerInterface, scheduler *v1alpha1.TektonScheduler) error {
+	_, err := clients.Create(ctx, scheduler, metav1.CreateOptions{})
 	return err
 }
 
-func UpdateKueue(ctx context.Context, old *v1alpha1.TektonKueue, new *v1alpha1.TektonKueue, clients op.TektonKueueInterface) (*v1alpha1.TektonKueue, error) {
-	// if the kueue spec is changed then update the instance
+func UpdateScheduler(ctx context.Context, old *v1alpha1.TektonScheduler, new *v1alpha1.TektonScheduler, clients op.TektonSchedulerInterface) (*v1alpha1.TektonScheduler, error) {
+	// if the scheduler spec is changed then update the instance
 	updated := false
 	// initialize labels(map) object
 	if old.ObjectMeta.Labels == nil {
@@ -110,8 +110,8 @@ func UpdateKueue(ctx context.Context, old *v1alpha1.TektonKueue, new *v1alpha1.T
 		updated = true
 	}
 
-	if !reflect.DeepEqual(old.Spec.Kueue, new.Spec.Kueue) {
-		old.Spec.Kueue = new.Spec.Kueue
+	if !reflect.DeepEqual(old.Spec.Scheduler, new.Spec.Scheduler) {
+		old.Spec.Scheduler = new.Spec.Scheduler
 		updated = true
 	}
 
@@ -142,29 +142,29 @@ func UpdateKueue(ctx context.Context, old *v1alpha1.TektonKueue, new *v1alpha1.T
 	return old, nil
 }
 
-// isTektonKueueReady will check the status conditions of the TektonKueue and return true if the TektonKueue is ready.
-func isTektonKueueReady(s *v1alpha1.TektonKueue, err error) (bool, error) {
+// isTektonSchedulerReady will check the status conditions of the TektonScheduler and return true if the TektonScheduler is ready.
+func isTektonSchedulerReady(s *v1alpha1.TektonScheduler, err error) (bool, error) {
 	if s.GetStatus() != nil && s.GetStatus().GetCondition(apis.ConditionReady) != nil && s.GetStatus().GetCondition(apis.ConditionReady).IsFalse() {
 		return false, fmt.Errorf(s.GetStatus().GetCondition(apis.ConditionReady).Message)
 	}
 	return s.Status.IsReady(), err
 }
 
-func EnsureTektonKueueCRNotExists(ctx context.Context, clients op.TektonKueueInterface) error {
-	if _, err := GetTektonKueue(ctx, clients, v1alpha1.TektonKueueResourceName); err != nil {
+func EnsureTektonSchedulerCRNotExists(ctx context.Context, clients op.TektonSchedulerInterface) error {
+	if _, err := GetTektonScheduler(ctx, clients, v1alpha1.TektonSchedulerResourceName); err != nil {
 		if apierrs.IsNotFound(err) {
-			// TektonKueue CR is gone, hence return nil
+			// TektonScheduler CR is gone, hence return nil
 			return nil
 		}
 		return err
 	}
 	// if the Get was successful, try deleting the CR
-	if err := clients.Delete(ctx, v1alpha1.TektonKueueResourceName, metav1.DeleteOptions{}); err != nil {
+	if err := clients.Delete(ctx, v1alpha1.TektonSchedulerResourceName, metav1.DeleteOptions{}); err != nil {
 		if apierrs.IsNotFound(err) {
-			// TektonKueue CR is gone, hence return nil
+			// TektonScheduler CR is gone, hence return nil
 			return nil
 		}
-		return fmt.Errorf("TektonKueue %q failed to delete: %v", v1alpha1.TektonKueueResourceName, err)
+		return fmt.Errorf("TektonScheduler %q failed to delete: %v", v1alpha1.TektonSchedulerResourceName, err)
 	}
 	// if the Delete API call was success,
 	// then return requeue_event
@@ -174,11 +174,11 @@ func EnsureTektonKueueCRNotExists(ctx context.Context, clients op.TektonKueueInt
 
 // EnsureTektonComponent validates that specific component is  deployed on cluster
 func EnsureTektonComponent(ctx context.Context, tc *v1alpha1.TektonConfig, operatorClientSet clientset.Interface, operatorVersion string) error {
-	if tc.Spec.Kueue.IsDisabled() {
-		// If TektonKueue is disabled then uninstall the components
-		return EnsureTektonKueueCRNotExists(ctx, operatorClientSet.OperatorV1alpha1().TektonKueues())
+	if tc.Spec.Scheduler.IsDisabled() {
+		// If TektonScheduler is disabled then uninstall the components
+		return EnsureTektonSchedulerCRNotExists(ctx, operatorClientSet.OperatorV1alpha1().TektonSchedulers())
 	}
-	// Before Installing Kueue, Make sure that  Upstream Kueue is installed
+	// Before Installing Scheduler, Make sure that  Upstream Scheduler is installed
 	_, err := operatorClientSet.Discovery().ServerResourcesForGroupVersion(KUEUE_GVK)
 	if err != nil {
 		tc.Status.MarkComponentNotReady(fmt.Sprintf("Please install kueue (%s) First, %s ", KUEUE_GVK, err.Error()))
@@ -191,10 +191,10 @@ func EnsureTektonComponent(ctx context.Context, tc *v1alpha1.TektonConfig, opera
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
-	// If Kueue is installed then create TektonKueue CR
-	tektonKueue := GetTektonKueueCR(tc, operatorVersion)
-	if _, err := EnsureTektonKueueExists(ctx, operatorClientSet.OperatorV1alpha1().TektonKueues(), tektonKueue); err != nil {
-		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonKueue : %s", err.Error()))
+	// If Scheduler is installed then create TektonScheduler CR
+	TektonScheduler := GetTektonSchedulerCR(tc, operatorVersion)
+	if _, err := EnsureTektonSchedulerExists(ctx, operatorClientSet.OperatorV1alpha1().TektonSchedulers(), TektonScheduler); err != nil {
+		tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonScheduler : %s", err.Error()))
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 	return nil
