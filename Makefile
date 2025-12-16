@@ -34,7 +34,8 @@ $(BIN)/%: | $(BIN) ; $(info $(M) building $(PACKAGE)…)
 	  	rm -rf $$tmp ; exit $$ret
 
 KO = $(or ${KO_BIN},${KO_BIN},$(BIN)/ko)
-$(BIN)/ko: PACKAGE=github.com/google/ko@latest
+KO_VERSION ?= v0.17.0
+$(BIN)/ko: PACKAGE=github.com/google/ko@$(KO_VERSION)
 
 KUSTOMIZE = $(or ${KUSTOMIZE_BIN},${KUSTOMIZE_BIN},$(BIN)/kustomize)
 $(BIN)/kustomize: | $(BIN) ; $(info $(M) getting kustomize)
