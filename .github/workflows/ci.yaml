@@ -141,8 +141,9 @@ jobs:
             github.com/tektoncd/operator/cmd/openshift/proxy-webhook: registry.access.redhat.com/ubi9/ubi-minimal
           EOF
 
-          KO_DOCKER_REPO=example.com make TARGET=kubernetes resolve
-          KO_DOCKER_REPO=example.com make TARGET=openshift resolve
+          # Use ko from setup-ko action to avoid Go version mismatch
+          KO_BIN=$(which ko) KO_DOCKER_REPO=example.com make TARGET=kubernetes resolve
+          KO_BIN=$(which ko) KO_DOCKER_REPO=example.com make TARGET=openshift resolve
   e2e-tests:
     needs: [build]
     uses: ./.github/workflows/e2e-matrix.yml
