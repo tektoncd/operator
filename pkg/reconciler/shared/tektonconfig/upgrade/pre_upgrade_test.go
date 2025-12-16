@@ -18,6 +18,7 @@ package upgrade
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpruner"
@@ -757,4 +758,43 @@ func TestUpdateOpenShiftPipelinesAsCodeCR_NotFound(t *testing.T) {
 	// Should return without error when PAC CR doesn't exist
 	err := updateOpenShiftPipelinesAsCodeCR(ctx, logger, operatorClient)
 	assert.NoError(t, err)
+}
+
+func TestRemoveDeprecatedDisableAffinityAssistant(t *testing.T) {
+	ctx := context.TODO()
+	logger := logging.FromContext(ctx).Named("unit-test")
+	operatorClient := operatorFake.NewSimpleClientset()
+
+	// create TektonConfig CR
+	tc := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1alpha1.ConfigResourceName,
+		},
+	}
+	_, err := operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
+	// run the upgrade function
+	err = removeDeprecatedDisableAffinityAssistant(ctx, logger, nil, operatorClient, nil)
+	assert.NoError(t, err)
+
+	// verify the field is removed by checking raw JSON
+	tcData, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	assert.NoError(t, err)
+
+	// convert to unstructured to check raw field
+	tcBytes, err := json.Marshal(tcData)
+	assert.NoError(t, err)
+
+	var rawTC map[string]interface{}
+	err = json.Unmarshal(tcBytes, &rawTC)
+	assert.NoError(t, err)
+
+	// check if disable-affinity-assistant field exists in spec.pipeline
+	if spec, ok := rawTC["spec"].(map[string]interface{}); ok {
+		if pipeline, ok := spec["pipeline"].(map[string]interface{}); ok {
+			_, exists := pipeline["disable-affinity-assistant"]
+			assert.False(t, exists, "disable-affinity-assistant field should not exist")
+		}
+	}
 }
