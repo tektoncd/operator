@@ -17,7 +17,7 @@ kind: ConfigMap
 metadata:
   name: config-logging
   labels:
-    operator.tekton.dev/release: v0.78.0
+    operator.tekton.dev/release: v0.78.1
 
 data:
   zap-logger-config: |
