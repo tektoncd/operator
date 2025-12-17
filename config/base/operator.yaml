@@ -17,6 +17,6 @@ kind: Deployment
 metadata:
   name: tekton-operator
   labels:
-    version: v0.78.0
-    operator.tekton.dev/release: v0.78.0
+    version: v0.78.1
+    operator.tekton.dev/release: v0.78.1
 spec: {}
