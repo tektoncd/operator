@@ -21,7 +21,7 @@ pruner:
   version: v0.3.3
 results:
   github: tektoncd/results
-  version: v0.17.1
+  version: v0.17.2
 triggers:
   github: tektoncd/triggers
   version: v0.34.0
