@@ -184,7 +184,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	// Start Event based Pruner only if old Job based Pruner is Disabled.
 	if tc.Spec.TektonPruner.IsDisabled() {
-		logger.Infof("TektonPruner is disabled. Shutting down event based pruner")
+		logger.Debugw("TektonPruner is disabled. Shutting down event based pruner")
 		if err := pruner.EnsureTektonPrunerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPruners()); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPruner: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER

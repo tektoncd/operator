@@ -57,7 +57,7 @@ spec:
         - name: METRICS_DOMAIN
           value: tekton.dev/operator
         - name: VERSION
-          value: "devel-2"
+          value: "devel"
         - name: CONFIG_OBSERVABILITY_NAME
           value: tekton-config-observability
         - name: CONFIG_LEADERELECTION_NAME

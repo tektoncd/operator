@@ -39,3 +39,5 @@ resources:
 - config-leader-election.yaml
 - tekton_result_role.yaml
 - tekton_result_role_binding.yaml
+- tekton_scheduler_role.yaml
+- tekton_scheduler_role_binding.yaml
