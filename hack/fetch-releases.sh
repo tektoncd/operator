@@ -40,7 +40,7 @@ release_yaml() {
     case $version in
       nightly)
         dirVersion="0.0.0-nightly"
-        url="https://infra.tekton.dev/tekton-releases-nightly/${comp}/latest/${releaseFileName}.yaml"
+        url="https://infra.tekton.dev/tekton-nightly/${comp}/latest/${releaseFileName}.yaml"
         ;;
       latest)
         dirVersion="0.0.0-latest"
