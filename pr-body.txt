@@ -2,19 +2,12 @@
 
 This PR updates the following component versions:
 
-### hub
+### results
 
-- **Previous version:** `v1.23.4`
-- **New version:** `v1.23.5`
-- **Repository:** [tektoncd/hub](https://github.com/tektoncd/hub)
-- **Release notes:** [v1.23.4...v1.23.5](https://github.com/tektoncd/hub/compare/v1.23.4...v1.23.5)
-
-### pipelines-as-code
-
-- **Previous version:** `v0.39.2`
-- **New version:** `v0.39.3`
-- **Repository:** [openshift-pipelines/pipelines-as-code](https://github.com/openshift-pipelines/pipelines-as-code)
-- **Release notes:** [v0.39.2...v0.39.3](https://github.com/openshift-pipelines/pipelines-as-code/compare/v0.39.2...v0.39.3)
+- **Previous version:** `v0.17.1`
+- **New version:** `v0.17.2`
+- **Repository:** [tektoncd/results](https://github.com/tektoncd/results)
+- **Release notes:** [v0.17.1...v0.17.2](https://github.com/tektoncd/results/compare/v0.17.1...v0.17.2)
 
 ---
 
