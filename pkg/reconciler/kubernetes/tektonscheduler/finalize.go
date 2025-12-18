@@ -21,15 +21,15 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpruner"
+	"github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonscheduler"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
-var _ tektonpruner.Finalizer = (*Reconciler)(nil)
+var _ tektonscheduler.Finalizer = (*Reconciler)(nil)
 
 // FinalizeKind removes all resources after deletion of a TektonPruner CR.
-func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonPruner) pkgreconciler.Event {
+func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonScheduler) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 
 	//Delete CRDs before deleting rest of resources so that any instance

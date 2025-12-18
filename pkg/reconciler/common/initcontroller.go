@@ -53,6 +53,7 @@ func OperatorVersion(ctx context.Context) (string, error) {
 }
 
 func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) (mf.Manifest, string) {
+
 	mfclient, err := mfc.NewClient(injection.GetConfig(ctx))
 	if err != nil {
 		ctrl.Logger.Fatalw("Error creating client from injected config", zap.Error(err))
@@ -79,6 +80,7 @@ func (ctrl Controller) InitController(ctx context.Context, opts PayloadOptions) 
 			ctrl.Logger.Fatalw("Error while reading ConfigMap", zap.Error(err))
 		}
 	}
+
 	return manifest, releaseVersion
 }
 
