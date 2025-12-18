@@ -178,6 +178,9 @@ release_yaml_github() {
       fi
     fi
 
+    #Cleanup the Directory
+    rm -rf $comp_dir || true
+    
     # create a directory
     mkdir -p ${dirPath} || true
 

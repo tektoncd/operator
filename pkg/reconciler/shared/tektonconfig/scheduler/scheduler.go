@@ -178,16 +178,17 @@ func EnsureTektonComponent(ctx context.Context, tc *v1alpha1.TektonConfig, opera
 		// If TektonScheduler is disabled then uninstall the components
 		return EnsureTektonSchedulerCRNotExists(ctx, operatorClientSet.OperatorV1alpha1().TektonSchedulers())
 	}
-	// Before Installing Scheduler, Make sure that  Upstream Scheduler is installed
-	_, err := operatorClientSet.Discovery().ServerResourcesForGroupVersion(KUEUE_GVK)
-	if err != nil {
-		tc.Status.MarkComponentNotReady(fmt.Sprintf("Please install kueue (%s) First, %s ", KUEUE_GVK, err.Error()))
-		return v1alpha1.REQUEUE_EVENT_AFTER
-	}
 	// Cert-Manager should also be pre-installed
-	_, err = operatorClientSet.Discovery().ServerResourcesForGroupVersion(CERT_GVK)
+	_, err := operatorClientSet.Discovery().ServerResourcesForGroupVersion(CERT_GVK)
 	if err != nil {
 		tc.Status.MarkComponentNotReady(fmt.Sprintf("Please install cert-manager (%s) First, %s ", CERT_GVK, err.Error()))
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	}
+
+	// Before Installing Scheduler, Make sure that  Upstream Scheduler is installed
+	_, err = operatorClientSet.Discovery().ServerResourcesForGroupVersion(KUEUE_GVK)
+	if err != nil {
+		tc.Status.MarkComponentNotReady(fmt.Sprintf("Please install kueue (%s) First, %s ", KUEUE_GVK, err.Error()))
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
