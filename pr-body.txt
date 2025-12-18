@@ -16,6 +16,13 @@ This PR updates the following component versions:
 - **Repository:** [openshift-pipelines/pipelines-as-code](https://github.com/openshift-pipelines/pipelines-as-code)
 - **Release notes:** [v0.39.2...v0.39.3](https://github.com/openshift-pipelines/pipelines-as-code/compare/v0.39.2...v0.39.3)
 
+### results
+
+- **Previous version:** `v0.17.1`
+- **New version:** `v0.17.2`
+- **Repository:** [tektoncd/results](https://github.com/tektoncd/results)
+- **Release notes:** [v0.17.1...v0.17.2](https://github.com/tektoncd/results/compare/v0.17.1...v0.17.2)
+
 ---
 
 _This PR was automatically created by the bump-payload workflow._
