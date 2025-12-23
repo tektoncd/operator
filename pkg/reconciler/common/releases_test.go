@@ -26,7 +26,7 @@ import (
 
 const (
 	VERSION        = "0.15.2"
-	PRUNER_VERSION = "0.3.3"
+	PRUNER_VERSION = "0.3.4"
 )
 
 func TestGetLatestRelease(t *testing.T) {
@@ -50,7 +50,7 @@ func TestListReleases(t *testing.T) {
 	util.AssertDeepEqual(t, version, expectedVersionList)
 
 	// Pruner Versions
-	expectedPrunerVersions := []string{"0.3.3", "0.1.0"}
+	expectedPrunerVersions := []string{"0.3.4", "0.3.3", "0.1.0"}
 	version, err = allReleases(&v1alpha1.TektonPruner{})
 	util.AssertEqual(t, err, nil)
 	util.AssertDeepEqual(t, version, expectedPrunerVersions)
