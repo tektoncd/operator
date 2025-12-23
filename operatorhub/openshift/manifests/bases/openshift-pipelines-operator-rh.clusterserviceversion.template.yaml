@@ -337,7 +337,7 @@ spec:
     - Tekton Hub (tech-preview): v1.23.5
     - Tekton Results (tech-preview): v0.17.2
     - Manual Approval Gate (tech-preview): v0.7.0
-    - Tekton Pruner: v0.3.3
+    - Tekton Pruner: v0.3.4
 
     ## Getting Started
 
