@@ -67,7 +67,7 @@ const (
 // ResourceSpec is used to hold the config of a specific resource
 // Only used in namespace-level ConfigMaps (tekton-pruner-namespace-spec), NOT in global ConfigMaps
 type ResourceSpec struct {
-	Name         string         `yaml:"name"`               // Exact name of the parent Pipeline or Task
+	Name         string         `yaml:"name,omitempty"`     // Exact name of the parent Pipeline or Task
 	Selector     []SelectorSpec `yaml:"selector,omitempty"` // Supports selection based on labels and annotations. If Name is given, Name takes precedence
 	PrunerConfig `yaml:",inline"`
 }
@@ -85,8 +85,8 @@ type SelectorSpec struct {
 // Selector support (PipelineRuns/TaskRuns arrays) ONLY works in namespace ConfigMaps
 type NamespaceSpec struct {
 	PrunerConfig `yaml:",inline"` // Root-level defaults
-	PipelineRuns []ResourceSpec   `yaml:"pipelineRuns"` // Selector-based configs (namespace ConfigMap only)
-	TaskRuns     []ResourceSpec   `yaml:"taskRuns"`     // Selector-based configs (namespace ConfigMap only)
+	PipelineRuns []ResourceSpec   `yaml:"pipelineRuns,omitempty"` // Selector-based configs (namespace ConfigMap only)
+	TaskRuns     []ResourceSpec   `yaml:"taskRuns,omitempty"`     // Selector-based configs (namespace ConfigMap only)
 }
 
 // GlobalConfig represents the global ConfigMap (tekton-pruner-default-spec)
@@ -94,17 +94,17 @@ type NamespaceSpec struct {
 // NOTE: Selector support (PipelineRuns/TaskRuns arrays) is IGNORED in global ConfigMap
 type GlobalConfig struct {
 	PrunerConfig `yaml:",inline"`         // Global root-level defaults
-	Namespaces   map[string]NamespaceSpec `yaml:"namespaces"  json:"namespaces"` // Per-namespace defaults (selectors ignored)
+	Namespaces   map[string]NamespaceSpec `yaml:"namespaces,omitempty" json:"namespaces,omitempty"` // Per-namespace defaults (selectors ignored)
 }
 
 // PrunerConfig used to hold the cluster-wide pruning config as well as namespace specific pruning config
 type PrunerConfig struct {
-	// EnforcedConfigLevel allowed values: global, namespace, resource (default: resource)
-	EnforcedConfigLevel     *EnforcedConfigLevel `yaml:"enforcedConfigLevel" json:"enforcedConfigLevel"`
-	TTLSecondsAfterFinished *int32               `yaml:"ttlSecondsAfterFinished" json:"ttlSecondsAfterFinished"`
-	SuccessfulHistoryLimit  *int32               `yaml:"successfulHistoryLimit" json:"successfulHistoryLimit"`
-	FailedHistoryLimit      *int32               `yaml:"failedHistoryLimit" json:"failedHistoryLimit"`
-	HistoryLimit            *int32               `yaml:"historyLimit" json:"historyLimit"`
+	// EnforcedConfigLevel allowed values: global, namespace (default: namespace)
+	EnforcedConfigLevel     *EnforcedConfigLevel `yaml:"enforcedConfigLevel,omitempty" json:"enforcedConfigLevel,omitempty"`
+	TTLSecondsAfterFinished *int32               `yaml:"ttlSecondsAfterFinished,omitempty" json:"ttlSecondsAfterFinished,omitempty"`
+	SuccessfulHistoryLimit  *int32               `yaml:"successfulHistoryLimit,omitempty" json:"successfulHistoryLimit,omitempty"`
+	FailedHistoryLimit      *int32               `yaml:"failedHistoryLimit,omitempty" json:"failedHistoryLimit,omitempty"`
+	HistoryLimit            *int32               `yaml:"historyLimit,omitempty" json:"historyLimit,omitempty"`
 }
 
 // prunerConfigStore defines the store structure to hold config from ConfigMap
