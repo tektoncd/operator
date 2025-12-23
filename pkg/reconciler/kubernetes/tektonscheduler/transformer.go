@@ -43,6 +43,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.TektonSchedulerResourceName),
 			common.DeploymentImages(schedulerImages),
 			common.AddDeploymentRestrictedPSA(),
+			common.AddConfigMapValues(v1alpha1.SchedulerConfigMapName, schedulerCR.Spec.SchedulerConfig),
 			CertificateTransformer(schedulerCR.GetSpec().GetTargetNamespace()),
 			MutatingWebhookConfigurationTransformer(ctx, schedulerCR.GetSpec().GetTargetNamespace()),
 		}
