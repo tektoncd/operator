@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	clientset "github.com/tektoncd/operator/pkg/client/clientset/versioned"
@@ -141,10 +142,11 @@ func UpdateScheduler(ctx context.Context, old *v1alpha1.TektonScheduler, new *v1
 	return old, nil
 }
 
-// isTektonSchedulerReady will check the status conditions of the TektonScheduler and return true if the TektonScheduler is ready.
 func isTektonSchedulerReady(s *v1alpha1.TektonScheduler, err error) (bool, error) {
-	if s.GetStatus() != nil && s.GetStatus().GetCondition(apis.ConditionReady) != nil && s.GetStatus().GetCondition(apis.ConditionReady).IsFalse() {
-		return false, fmt.Errorf(s.GetStatus().GetCondition(apis.ConditionReady).Message)
+	if s.GetStatus() != nil && s.GetStatus().GetCondition(apis.ConditionReady) != nil {
+		if strings.Contains(s.GetStatus().GetCondition(apis.ConditionReady).Message, v1alpha1.UpgradePending) {
+			return false, v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR
+		}
 	}
 	return s.Status.IsReady(), err
 }
