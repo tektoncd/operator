@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	kueueConfig "github.com/konflux-ci/tekton-kueue/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 )
@@ -42,6 +43,15 @@ type TektonScheduler struct {
 
 // Scheduler Configuration  to manage Scheduler Configuration.
 type Scheduler struct {
+	// enable or disable TektonScheduler Component
+	Disabled        *bool `json:"disabled,omitempty"`
+	SchedulerConfig `json:",inline"`
+	// options holds additions fields and these fields will be updated on the manifests
+	Options AdditionalOptions `json:",inline"`
+}
+
+type SchedulerConfig struct {
+	SchedulerConfig *kueueConfig.SchedulerConfig `json:"scheduler-config"`
 	// enable or disable TektonScheduler Component
 	Disabled           *bool `json:"disabled"`
 	MultiClusterConfig `json:",inline"`

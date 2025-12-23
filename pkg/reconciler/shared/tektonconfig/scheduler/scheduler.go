@@ -81,7 +81,6 @@ func GetTektonSchedulerCR(config *v1alpha1.TektonConfig, operatorVersion string)
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Config:    config.Spec.Config,
 			Scheduler: config.Spec.Scheduler,
 		},
 	}
@@ -115,8 +114,8 @@ func UpdateScheduler(ctx context.Context, old *v1alpha1.TektonScheduler, new *v1
 		updated = true
 	}
 
-	if !reflect.DeepEqual(old.Spec.Config, new.Spec.Config) {
-		old.Spec.Config = new.Spec.Config
+	if !reflect.DeepEqual(old.Spec.SchedulerConfig, new.Spec.SchedulerConfig) {
+		old.Spec.SchedulerConfig = new.Spec.SchedulerConfig
 		updated = true
 	}
 
