@@ -54,6 +54,7 @@ const (
 	ChainsImagePrefix             = "IMAGE_CHAINS_"
 	ManualApprovalGatePrefix      = "IMAGE_MAG_"
 	PrunerImagePrefix             = "IMAGE_PRUNER_"
+	SchedulerImagePrefix          = "IMAGE_SCHEDULER_"
 	ResultsImagePrefix            = "IMAGE_RESULTS_"
 	HubImagePrefix                = "IMAGE_HUB_"
 	DashboardImagePrefix          = "IMAGE_DASHBOARD_"

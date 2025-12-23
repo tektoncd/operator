@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pruner"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/result"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/scheduler"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -183,7 +184,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	// Start Event based Pruner only if old Job based Pruner is Disabled.
 	if tc.Spec.TektonPruner.IsDisabled() {
-		logger.Infof("TektonPruner is disabled. Shutting down event based pruner")
+		logger.Debugw("TektonPruner is disabled. Shutting down event based pruner")
 		if err := pruner.EnsureTektonPrunerCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPruners()); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPruner: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
@@ -200,6 +201,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPruner %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
+	}
+
+	if err := r.EnsureSchedulerComponent(ctx, tc); err != nil {
+		return err
 	}
 
 	// Ensure Pipeline Trigger
@@ -343,4 +348,8 @@ func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonConfig)
 		return err
 	}
 	return v1alpha1.RECONCILE_AGAIN_ERR
+}
+
+func (r *Reconciler) EnsureSchedulerComponent(ctx context.Context, tc *v1alpha1.TektonConfig) error {
+	return scheduler.EnsureTektonComponent(ctx, tc, r.operatorClientSet, r.operatorVersion)
 }
