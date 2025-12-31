@@ -19,8 +19,6 @@ package common
 const (
 	ManagedByMultiKueueLabel = "kueue.x-k8s.io/multikueue"
 	QueueLabel               = "kueue.x-k8s.io/queue-name"
-	ConfigKey                = "scheduler-config"
-	ConfigMapName            = "tekton-kueue-scheduler-config"
-	MultiClusterRoleHub      = "HUB"
-	MultiClusterRoleSpoke    = "SPOKE"
+	ConfigKey                = "config.yaml"
+	ConfigMapName            = "tekton-kueue-config"
 )
