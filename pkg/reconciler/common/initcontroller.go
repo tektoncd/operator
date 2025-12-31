@@ -126,6 +126,9 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 	case v1alpha1.TektonPrunerResourceName:
 		var pruner v1alpha1.TektonPruner
 		return AppendTarget(ctx, ctrl.Manifest, &pruner)
+	case v1alpha1.TektonSchedulerResourceName:
+		var scheduler v1alpha1.TektonScheduler
+		return AppendTarget(ctx, ctrl.Manifest, &scheduler)
 	}
 
 	return nil
