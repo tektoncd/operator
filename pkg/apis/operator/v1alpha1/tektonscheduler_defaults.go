@@ -19,38 +19,30 @@ package v1alpha1
 import (
 	"context"
 
-	kueueCommon "github.com/konflux-ci/tekton-kueue/pkg/common"
-	kueueConfig "github.com/konflux-ci/tekton-kueue/pkg/config"
+	"github.com/konflux-ci/tekton-kueue/pkg/common"
 	"k8s.io/utils/ptr"
 )
 
 const (
-	SchedulerConfigMapName      = kueueCommon.ConfigMapName
-	MultiClusterRoleHub         = kueueCommon.MultiClusterRoleHub
-	MultiClusterRoleSpoke       = kueueCommon.MultiClusterRoleSpoke
-	SchedulerConfigInstallerSet = "scheduler-config"
-	DefaultQueueName            = "pipelines-queue"
-	DefaultMultiClusterEnabled  = false
-	DefaultSchedulerDisabled    = false
-	SchedulerCreatedByValue     = "TektonScheduler"
+	SchedulerConfigMapName                       = common.ConfigMapName
+	SchedulerConfigInstallerSet                  = "scheduler-config"
+	DefaultQueueName                             = "pipelines-queue"
+	DefaultMultiClusterEnabled                   = true
+	DefaultSchedulerDisabled                     = false
+	SchedulerCreatedByValue                      = "TektonScheduler"
+	MultiClusterRoleSpoke       MultiClusterRole = "Spoke"
+	MultiClusterRoleHub         MultiClusterRole = "Hub"
 )
 
 func (tp *TektonScheduler) SetDefaults(_ context.Context) {
 	tp.Spec.Scheduler.SetDefaults()
 }
 
-func (p *Scheduler) SetDefaults() {
-	if p.Disabled == nil {
-		p.Disabled = ptr.To(DefaultSchedulerDisabled)
-	}
-	p.SchedulerConfig.SetDefaults()
-
-}
-func (s *SchedulerConfig) SetDefaults() {
-	if s.SchedulerConfig == nil {
-		s.SchedulerConfig = &kueueConfig.SchedulerConfig{
-			QueueName:           DefaultQueueName,
-			MultiClusterEnabled: DefaultMultiClusterEnabled,
-		}
+func (s *Scheduler) SetDefaults() {
+	if s.Disabled == nil {
+		s.Disabled = ptr.To(DefaultSchedulerDisabled)
+		s.MultiClusterEnabled = DefaultMultiClusterEnabled
+		s.QueueName = DefaultQueueName
+		s.MultiClusterRole = MultiClusterRoleHub
 	}
 }

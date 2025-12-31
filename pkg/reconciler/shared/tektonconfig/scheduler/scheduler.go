@@ -35,19 +35,23 @@ const (
 	CERT_GVK  = "cert-manager.io/v1"
 )
 
-func EnsureTektonSchedulerExists(ctx context.Context, clients op.TektonSchedulerInterface, tk *v1alpha1.TektonScheduler) (*v1alpha1.TektonScheduler, error) {
+func EnsureTektonSchedulerExists(ctx context.Context, clients op.TektonSchedulerInterface, newScheduler *v1alpha1.TektonScheduler) (*v1alpha1.TektonScheduler, error) {
+
+	// Update MultiKueueOverride
+	// If MultiCluster is enabled and MultiClusterRole=Hub then MultiKueueOverride should be true
+	newScheduler.Spec.Config.MultiKueueOverride = newScheduler.Spec.MultiClusterEnabled && newScheduler.Spec.MultiClusterRole == v1alpha1.MultiClusterRoleHub
 	TektonScheduler, err := GetTektonScheduler(ctx, clients, v1alpha1.TektonSchedulerResourceName)
 	if err != nil {
 		if !apierrs.IsNotFound(err) {
 			return nil, err
 		}
-		if err := CreateScheduler(ctx, clients, tk); err != nil {
+		if err := CreateScheduler(ctx, clients, newScheduler); err != nil {
 			return nil, err
 		}
 		return nil, v1alpha1.RECONCILE_AGAIN_ERR
 	}
 
-	TektonScheduler, err = UpdateScheduler(ctx, TektonScheduler, tk, clients)
+	TektonScheduler, err = UpdateScheduler(ctx, TektonScheduler, newScheduler, clients)
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +121,11 @@ func UpdateScheduler(ctx context.Context, old *v1alpha1.TektonScheduler, new *v1
 
 	if !reflect.DeepEqual(old.Spec.SchedulerConfig, new.Spec.SchedulerConfig) {
 		old.Spec.SchedulerConfig = new.Spec.SchedulerConfig
+		updated = true
+	}
+
+	if !reflect.DeepEqual(old.Spec.MultiClusterConfig, new.Spec.MultiClusterConfig) {
+		old.Spec.MultiClusterConfig = new.Spec.MultiClusterConfig
 		updated = true
 	}
 

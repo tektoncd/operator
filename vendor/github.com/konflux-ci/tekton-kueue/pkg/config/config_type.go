@@ -1,3 +1,5 @@
+// +k8s:deepcopy-gen=package
+
 package config
 
 /*
@@ -17,16 +19,18 @@ limitations under the License.
 */
 
 type Config struct {
-	CEL             CEL             `yaml:"cel,omitempty"`
-	SchedulerConfig SchedulerConfig `yaml:",inline"`
+	MultiKueueConfig  `json:",inline"`
+	TektonKueueConfig `json:",inline"`
+}
+
+type MultiKueueConfig struct {
+	MultiKueueOverride bool `json:"multiKueueOverride,omitempty"`
+}
+type TektonKueueConfig struct {
+	QueueName string `json:"queueName,omitempty"`
+	CEL       CEL    `json:"cel,omitempty"`
 }
 
 type CEL struct {
-	Expressions []string `yaml:"expressions,omitempty"`
-}
-
-type SchedulerConfig struct {
-	QueueName           string `json:"queueName,omitempty" yaml:"queueName,omitempty"`
-	MultiClusterEnabled bool   `json:"multi-cluster-enabled,omitempty" yaml:"multi-cluster-enabled,omitempty"`
-	MultiClusterRole    string `json:"multi-cluster-role,omitempty" yaml:"multi-cluster-role,omitempty"`
+	Expressions []string `json:"expressions,omitempty"`
 }

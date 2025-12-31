@@ -25,8 +25,6 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v3"
-
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"go.uber.org/zap"
@@ -41,6 +39,7 @@ import (
 	apimachineryRuntime "k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
+	"sigs.k8s.io/yaml"
 )
 
 const (
