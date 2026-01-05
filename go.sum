@@ -2623,8 +2623,8 @@ github.com/tektoncd/pipeline v1.7.0 h1:+Rd/YGpxV8sgEmW9unSiS8RgBE4DqbPdz6zPh2pYD
 github.com/tektoncd/pipeline v1.7.0/go.mod h1:+HsDce5knjq77Xv9FWg1W2wTuJRznR9lLEbkVjo62lU=
 github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2 h1:v4UPEbe6MEto5i4ELtiXWBxUAUIAWL5U1DznfPhi4WE=
 github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2/go.mod h1:BC6F3DlZc+wpUT9YcwG9MoSfb4tUiH2olB9xYoIsB4I=
-github.com/tektoncd/pruner v0.3.4 h1:C2M8VtqAwjxFCAhoD97mYypzF/J5ck03/+mme0bHmWQ=
-github.com/tektoncd/pruner v0.3.4/go.mod h1:JbH3IueCWn1rdawvEkM4oyO05lW/ae7GXV4vrUvu4ls=
+github.com/tektoncd/pruner v0.3.5 h1:eQTgnQ56Par9d/6BICsXfTkR0Ybx8c/0QLZeNoJnaYQ=
+github.com/tektoncd/pruner v0.3.5/go.mod h1:JbH3IueCWn1rdawvEkM4oyO05lW/ae7GXV4vrUvu4ls=
 github.com/tektoncd/triggers v0.34.0 h1:CuhG1moThPGEMlxPUcoBDDplJ3FAczzF8MMAjGScRY0=
 github.com/tektoncd/triggers v0.34.0/go.mod h1:iHqwCaS2ElaWt2RuxCbrHNd5lMfRzPxihqEEygkVn1w=
 github.com/thales-e-security/pool v0.0.2 h1:RAPs4q2EbWsTit6tpzuvTFlgFRJ3S8Evf5gtvVDbmPg=
