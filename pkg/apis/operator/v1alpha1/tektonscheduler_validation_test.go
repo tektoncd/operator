@@ -1,0 +1,92 @@
+/*
+Copyright 2023 The Tekton Authors
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package v1alpha1
+
+import (
+	"testing"
+
+	"gotest.tools/v3/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
+)
+
+func TestTektonScheduler_Validate(t *testing.T) {
+	ts := &TektonScheduler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "wrong-name",
+			Namespace: "namespace",
+		},
+	}
+	ts.SetDefaults(t.Context())
+
+	err := ts.Validate(t.Context())
+	assert.Equal(t, "invalid value: wrong-name: metadata.name,  Only one instance of TektonScheduler is allowed by name, scheduler", err.Error())
+}
+
+func TestTektonScheduler_ValidateMultiClusterDisabled(t *testing.T) {
+	ts := &TektonScheduler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "scheduler",
+		},
+		Spec: TektonSchedulerSpec{
+			Scheduler: Scheduler{
+				Disabled: ptr.Bool(false),
+				MultiClusterConfig: MultiClusterConfig{
+					MultiClusterDisabled: true,
+					MultiClusterRole:     "Hub",
+				},
+			},
+		},
+	}
+
+	err := ts.Validate(t.Context())
+	assert.ErrorContains(t, err, "invalid value: MultiClusterConfig: multicluster-role")
+	assert.ErrorContains(t, err, "multicluster-role should be blank when MultiClusterConfig.MultiClusterDisabled is true")
+
+	ts.Spec.MultiClusterRole = ""
+	err = ts.Validate(t.Context())
+
+	assert.Equal(t, err.Error(), "")
+
+}
+
+func TestTektonScheduler_ValidateMultiClusterEnabled(t *testing.T) {
+	ts := &TektonScheduler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "scheduler",
+		},
+		Spec: TektonSchedulerSpec{
+			Scheduler: Scheduler{
+				Disabled: ptr.Bool(false),
+				MultiClusterConfig: MultiClusterConfig{
+					MultiClusterDisabled: false,
+					MultiClusterRole:     "",
+				},
+			},
+		},
+	}
+
+	err := ts.Validate(t.Context())
+	assert.ErrorContains(t, err, "invalid value: MultiClusterConfig: multicluster-role")
+	assert.ErrorContains(t, err, "multicluster-role should be 'Hub' or 'Spoke' when MultiClusterConfig.MultiClusterDisabled is false")
+
+	ts.Spec.MultiClusterRole = MultiClusterRoleSpoke
+	err = ts.Validate(t.Context())
+
+	assert.Equal(t, err.Error(), "")
+
+}

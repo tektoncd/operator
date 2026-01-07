@@ -28,7 +28,7 @@ import (
 	"github.com/tektoncd/pruner/pkg/config"
 	"knative.dev/pkg/ptr"
 
-	yaml "sigs.k8s.io/yaml/goyaml.v2"
+	yaml "sigs.k8s.io/yaml"
 
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"

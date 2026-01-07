@@ -104,6 +104,8 @@ func ComponentDir(instance v1alpha1.TektonComponent) string {
 		// Event-based pruner uses "pruner" directory (not "tekton-pruner")
 		// to avoid conflicts with job-based pruner in "tekton-pruner" directory
 		return filepath.Join(koDataDir, "pruner")
+	case *v1alpha1.TektonScheduler:
+		return filepath.Join(koDataDir, "tekton-scheduler")
 	}
 	return ""
 }
