@@ -40,4 +40,6 @@ type TektonPrunerExpansion interface{}
 
 type TektonResultExpansion interface{}
 
+type TektonSchedulerExpansion interface{}
+
 type TektonTriggerExpansion interface{}
