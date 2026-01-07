@@ -64,6 +64,9 @@ const (
 
 	// KindTektonPruner is the Kind of TektonPruner in a GVK context.
 	KindTektonPruner = "TektonPruner"
+
+	// KindTektonScheduler is the Kind of TektonScheduler in a GVK context.
+	KindTektonScheduler = "TektonScheduler"
 )
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
