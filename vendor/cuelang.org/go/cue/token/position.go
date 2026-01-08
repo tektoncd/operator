@@ -19,13 +19,18 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+
+	"cuelang.org/go/internal/core/layer"
+	"cuelang.org/go/internal/cueexperiment"
 )
 
 // -----------------------------------------------------------------------------
 // Positions
 
-// Position describes an arbitrary source position
-// including the file, line, and column location.
+// Position describes an arbitrary and printable source position within a file,
+// including offset, line, and column location,
+// which can be rendered in a human-friendly text form.
+//
 // A Position is valid if the line number is > 0.
 type Position struct {
 	Filename string // filename, if any
@@ -38,7 +43,7 @@ type Position struct {
 // IsValid reports whether the position is valid.
 func (pos *Position) IsValid() bool { return pos.Line > 0 }
 
-// String returns a string in one of several forms:
+// String returns a human-readable form of a position in one of several forms:
 //
 //	file:line:column    valid position with file name
 //	line:column         valid position without file name
@@ -58,16 +63,18 @@ func (pos Position) String() string {
 	return s
 }
 
-// Pos is a compact encoding of a source position within a file, as well as
-// relative positioning information. It can be converted into a Position for a
-// more convenient, but much larger, representation.
+// Pos is a compact encoding of a source position.
+// When valid, as reported by [Pos.IsValid], this can be either
+// a printable file position to obtain via [Pos.Position],
+// which can be rendered in a human-friendly text form,
+// and/or a relative position to obtain via [Pos.RelPos].
 type Pos struct {
 	file   *File
 	offset int
 }
 
-// File returns the file that contains the position p or nil if there is no
-// such file (for instance for p == NoPos).
+// File returns the file that contains the printable position p
+// or nil if there is no such file (for instance for p == [NoPos]).
 func (p Pos) File() *File {
 	if p.index() == 0 {
 		return nil
@@ -75,31 +82,48 @@ func (p Pos) File() *File {
 	return p.file
 }
 
-// TODO(mvdan): The methods below don't need to build an entire Position
-// just to access some of the information. This could matter particularly for
-// Compare, as it is called many times when sorting by position.
+// hiddenPos allows defining methods in Pos that are hidden from public
+// documentation.
+type hiddenPos = Pos
 
-func (p Pos) Line() int {
-	if p.file == nil {
-		return 0
+func (p hiddenPos) Experiment() (x cueexperiment.File) {
+	if p.file == nil || p.file.experiments == nil {
+		return x
 	}
+
+	x = *p.file.experiments
+	return x
+}
+
+// NOTE: this is an internal API and may change at any time without notice.
+func (p hiddenPos) Priority() (pr layer.Priority, ok bool) {
+	if f := p.file; f != nil {
+		return f.priority, f.isData
+	}
+	return 0, false
+}
+
+// Line returns the position's line number, starting at 1.
+func (p Pos) Line() int {
 	return p.Position().Line
 }
 
+// Column returns the position's column number counting in bytes,
+// starting at 1.
 func (p Pos) Column() int {
-	if p.file == nil {
-		return 0
-	}
 	return p.Position().Column
 }
 
+// Filename returns the name of the file that this position belongs to.
 func (p Pos) Filename() string {
+	// Avoid calling [Pos.Position] as it also unpacks line and column info.
 	if p.file == nil {
 		return ""
 	}
-	return p.Position().Filename
+	return p.file.name
 }
 
+// Position unpacks the position information into a flat struct.
 func (p Pos) Position() Position {
 	if p.file == nil {
 		return Position{}
@@ -107,6 +131,7 @@ func (p Pos) Position() Position {
 	return p.file.Position(p)
 }
 
+// String returns a human-readable form of a printable position.
 func (p Pos) String() string {
 	return p.Position().String()
 }
@@ -121,14 +146,14 @@ func (p Pos) Compare(p2 Pos) int {
 	} else if p2 == NoPos {
 		return -1
 	}
-	pos, pos2 := p.Position(), p2.Position()
-	if c := cmp.Compare(pos.Filename, pos2.Filename); c != 0 {
+	// Avoid calling [Pos.Position] as it also unpacks line and column info;
+	// comparing positions only needs filenames and offsets.
+	if c := cmp.Compare(p.Filename(), p2.Filename()); c != 0 {
 		return c
 	}
 	// Note that CUE doesn't currently use any directives which alter
 	// position information, like Go's //line, so comparing by offset is enough.
-	return cmp.Compare(pos.Offset, pos2.Offset)
-
+	return cmp.Compare(p.Offset(), p2.Offset())
 }
 
 // NoPos is the zero value for [Pos]; there is no file and line information
@@ -142,7 +167,7 @@ var NoPos = Pos{}
 // RelPos indicates the relative position of token to the previous token.
 type RelPos int
 
-//go:generate go run golang.org/x/tools/cmd/stringer -type=RelPos -linecomment
+//go:generate go tool stringer -type=RelPos -linecomment
 
 const (
 	// NoRelPos indicates no relative position is specified.
@@ -175,16 +200,24 @@ func (p RelPos) Pos() Pos {
 // HasRelPos reports whether p has a relative position.
 func (p Pos) HasRelPos() bool {
 	return p.offset&relMask != 0
-
 }
 
+// Before reports whether p < q, as documented in [Pos.Compare].
+//
+// Deprecated: use [Pos.Compare] instead.
+//
+//go:fix inline
 func (p Pos) Before(q Pos) bool {
-	return p.file == q.file && p.Offset() < q.Offset()
+	return p.Compare(q) < 0
 }
 
 // Offset reports the byte offset relative to the file.
 func (p Pos) Offset() int {
-	return p.Position().Offset
+	// Avoid calling [Pos.Position] as it also unpacks line and column info.
+	if p.file == nil {
+		return 0
+	}
+	return p.file.Offset(p)
 }
 
 // Add creates a new position relative to the p offset by n.
@@ -192,7 +225,9 @@ func (p Pos) Add(n int) Pos {
 	return Pos{p.file, p.offset + toPos(index(n))}
 }
 
-// IsValid reports whether the position is valid.
+// IsValid reports whether the position contains any useful information,
+// meaning either a printable file position to obtain via [Pos.Position],
+// and/or a relative position to obtain via [Pos.RelPos].
 func (p Pos) IsValid() bool {
 	return p != NoPos
 }
@@ -237,9 +272,15 @@ type File struct {
 	base index
 	size index // file size as provided to AddFile
 
-	// lines and infos are protected by set.mutex
-	lines []index // lines contains the offset of the first character for each line (the first entry is always 0)
-	infos []lineInfo
+	// lines, infos, content, and revision are protected by [File.mutex]
+	lines    []index // lines contains the offset of the first character for each line (the first entry is always 0)
+	infos    []lineInfo
+	content  []byte
+	revision int32
+
+	experiments *cueexperiment.File
+	priority    layer.Priority
+	isData      bool
 }
 
 // NewFile returns a new file with the given OS file name. The size provides the
@@ -250,7 +291,44 @@ func NewFile(filename string, deprecatedBase, size int) *File {
 	if deprecatedBase < 0 {
 		deprecatedBase = 1
 	}
-	return &File{sync.RWMutex{}, filename, index(deprecatedBase), index(size), []index{0}, nil}
+	return &File{
+		name:  filename,
+		base:  index(deprecatedBase),
+		size:  index(size),
+		lines: []index{0},
+	}
+}
+
+// fixOffset fixes an out-of-bounds offset such that 0 <= offset <= f.size.
+func (f *File) fixOffset(offset index) index {
+	switch {
+	case offset < 0:
+		return 0
+	case offset > f.size:
+		return f.size
+	default:
+		return offset
+	}
+}
+
+// hiddenFile allows defining methods in File that are hidden from public
+// documentation.
+type hiddenFile = File
+
+func (f *hiddenFile) SetExperiments(experiments *cueexperiment.File) {
+	f.experiments = experiments
+}
+
+// NOTE: this is an internal API and may change at any time without notice.
+//
+// SetLayer sets the layer priority for this file. The priority parameter
+// determines the precedence of defaults defined in this file, with higher
+// values taking precedence over lower values. The isData parameter indicates
+// whether this file should be treated as containing data defaults, which
+// have different merging semantics from regular defaults.
+func (f *hiddenFile) SetLayer(priority int8, isData bool) {
+	f.priority = layer.Priority(priority)
+	f.isData = isData
 }
 
 // Name returns the file name of file f as registered with AddFile.
@@ -373,6 +451,40 @@ func (f *File) SetLinesForContent(content []byte) {
 	f.mutex.Unlock()
 }
 
+// SetContent sets the file's content. The content must not be altered
+// after this call.
+func (f *hiddenFile) SetContent(content []byte) {
+	f.mutex.Lock()
+	f.content = content
+	f.mutex.Unlock()
+}
+
+// Content retrievs the file's content, which may be nil. The returned
+// content must not be altered.
+func (f *hiddenFile) Content() []byte {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+	return f.content
+}
+
+// NOTE: this is an internal API and may change at any time without notice.
+//
+// SetRevision sets the file's version.
+func (f *hiddenFile) SetRevision(version int32) {
+	f.mutex.Lock()
+	f.revision = version
+	f.mutex.Unlock()
+}
+
+// NOTE: this is an internal API and may change at any time without notice.
+//
+// Revision retrieves the file's version.
+func (f *hiddenFile) Revision() int32 {
+	f.mutex.RLock()
+	defer f.mutex.RUnlock()
+	return f.revision
+}
+
 // A lineInfo object describes alternative file and line number
 // information (such as provided via a //line comment in a .go
 // file) for a given file offset.
@@ -399,25 +511,31 @@ func (f *File) AddLineInfo(offset int, filename string, line int) {
 	f.mutex.Unlock()
 }
 
-// Pos returns the Pos value for the given file offset;
-// the offset must be <= f.Size().
+// Pos returns the Pos value for the given file offset.
+//
+// If offset is negative, the result is the file's start
+// position; if the offset is too large, the result is
+// the file's end position (see also go.dev/issue/57490).
+//
+// The following invariant, though not true for Pos values
+// in general, holds for the result p:
 // f.Pos(f.Offset(p)) == p.
 func (f *File) Pos(offset int, rel RelPos) Pos {
-	if index(offset) > f.size {
-		panic("illegal file offset")
-	}
-	return Pos{f, toPos(1+index(offset)) + int(rel)}
+	return Pos{f, toPos(1+f.fixOffset(index(offset))) + int(rel)}
 }
 
-// Offset returns the offset for the given file position p;
-// p must be a valid Pos value in that file.
-// f.Offset(f.Pos(offset)) == offset.
+// Offset returns the offset for the given file position p.
+//
+// If p is before the file's start position (or if p is NoPos),
+// the result is 0; if p is past the file's end position, the
+// the result is the file size (see also go.dev/issue/57490).
+//
+// The following invariant, though not true for offset values
+// in general, holds for the result offset:
+// f.Offset(f.Pos(offset)) == offset
 func (f *File) Offset(p Pos) int {
 	x := p.index()
-	if x < 1 || x > 1+index(f.size) {
-		panic("illegal Pos value")
-	}
-	return int(x - 1)
+	return int(f.fixOffset(x - 1))
 }
 
 // Line returns the line number for the given file position p;
@@ -436,7 +554,7 @@ func searchLineInfos(a []lineInfo, x int) int {
 func (f *File) unpack(offset index, adjusted bool) (filename string, line, column int) {
 	filename = f.name
 	if i := searchInts(f.lines, offset); i >= 0 {
-		line, column = int(i+1), int(offset-f.lines[i]+1)
+		line, column = i+1, int(offset-f.lines[i]+1)
 	}
 	if adjusted && len(f.infos) > 0 {
 		// almost no files have extra line infos
@@ -452,28 +570,26 @@ func (f *File) unpack(offset index, adjusted bool) (filename string, line, colum
 }
 
 func (f *File) position(p Pos, adjusted bool) (pos Position) {
-	offset := p.index() - 1
-	pos.Offset = int(offset)
-	pos.Filename, pos.Line, pos.Column = f.unpack(offset, adjusted)
+	offset := f.Offset(p)
+	pos.Offset = offset
+	pos.Filename, pos.Line, pos.Column = f.unpack(index(offset), adjusted)
 	return
 }
 
 // PositionFor returns the Position value for the given file position p.
+// If p is out of bounds, it is adjusted to match the File.Offset behavior.
 // If adjusted is set, the position may be adjusted by position-altering
 // //line comments; otherwise those comments are ignored.
 // p must be a Pos value in f or NoPos.
 func (f *File) PositionFor(p Pos, adjusted bool) (pos Position) {
-	x := p.index()
 	if p != NoPos {
-		if x < 1 || x > 1+f.size {
-			panic("illegal Pos value")
-		}
 		pos = f.position(p, adjusted)
 	}
 	return
 }
 
 // Position returns the Position value for the given file position p.
+// If p is out of bounds, it is adjusted to match the File.Offset behavior.
 // Calling f.Position(p) is equivalent to calling f.PositionFor(p, true).
 func (f *File) Position(p Pos) (pos Position) {
 	return f.PositionFor(p, true)

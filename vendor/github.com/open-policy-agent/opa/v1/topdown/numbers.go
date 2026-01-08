@@ -15,12 +15,14 @@ import (
 
 type randIntCachingKey string
 
-var zero = big.NewInt(0)
-var one = big.NewInt(1)
+var (
+	zero = big.NewInt(0)
+	one  = big.NewInt(1)
+)
 
 func builtinNumbersRange(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
 	if canGenerateCheapRange(operands) {
-		return generateCheapRange(operands, iter)
+		return generateCheapRange(operands, 1, iter)
 	}
 
 	x, err := builtins.BigIntOperand(operands[0].Value, 1)
@@ -42,6 +44,14 @@ func builtinNumbersRange(bctx BuiltinContext, operands []*ast.Term, iter func(*a
 }
 
 func builtinNumbersRangeStep(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
+	if canGenerateCheapRangeStep(operands) {
+		step, _ := builtins.IntOperand(operands[2].Value, 3)
+		if step <= 0 {
+			return errors.New("numbers.range_step: step must be a positive integer")
+		}
+
+		return generateCheapRange(operands, step, iter)
+	}
 
 	x, err := builtins.BigIntOperand(operands[0].Value, 1)
 	if err != nil {
@@ -59,7 +69,7 @@ func builtinNumbersRangeStep(bctx BuiltinContext, operands []*ast.Term, iter fun
 	}
 
 	if step.Cmp(zero) <= 0 {
-		return errors.New("numbers.range_step: step must be a positive number above zero")
+		return errors.New("numbers.range_step: step must be a positive integer")
 	}
 
 	ast, err := generateRange(bctx, x, y, step, "numbers.range_step")
@@ -84,7 +94,18 @@ func canGenerateCheapRange(operands []*ast.Term) bool {
 	return true
 }
 
-func generateCheapRange(operands []*ast.Term, iter func(*ast.Term) error) error {
+func canGenerateCheapRangeStep(operands []*ast.Term) bool {
+	if canGenerateCheapRange(operands) {
+		step, err := builtins.IntOperand(operands[1].Value, 3)
+		if err == nil && ast.HasInternedIntNumberTerm(step) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func generateCheapRange(operands []*ast.Term, step int, iter func(*ast.Term) error) error {
 	x, err := builtins.IntOperand(operands[0].Value, 1)
 	if err != nil {
 		return err
@@ -95,28 +116,15 @@ func generateCheapRange(operands []*ast.Term, iter func(*ast.Term) error) error 
 		return err
 	}
 
-	step := 1
-
-	if len(operands) > 2 {
-		stepOp, err := builtins.IntOperand(operands[2].Value, 3)
-		if err == nil {
-			step = stepOp
-		}
-	}
-
-	if step <= 0 {
-		return errors.New("numbers.range_step: step must be a positive number above zero")
-	}
-
 	terms := make([]*ast.Term, 0, y+1)
 
 	if x <= y {
 		for i := x; i <= y; i += step {
-			terms = append(terms, ast.InternedIntNumberTerm(i))
+			terms = append(terms, ast.InternedTerm(i))
 		}
 	} else {
 		for i := x; i >= y; i -= step {
-			terms = append(terms, ast.InternedIntNumberTerm(i))
+			terms = append(terms, ast.InternedTerm(i))
 		}
 	}
 
@@ -124,7 +132,6 @@ func generateCheapRange(operands []*ast.Term, iter func(*ast.Term) error) error 
 }
 
 func generateRange(bctx BuiltinContext, x *big.Int, y *big.Int, step *big.Int, funcName string) (*ast.Term, error) {
-
 	cmp := x.Cmp(y)
 
 	comp := func(i *big.Int, y *big.Int) bool { return i.Cmp(y) <= 0 }
@@ -154,11 +161,9 @@ func generateRange(bctx BuiltinContext, x *big.Int, y *big.Int, step *big.Int, f
 }
 
 func builtinRandIntn(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
-
 	strOp, err := builtins.StringOperand(operands[0].Value, 1)
 	if err != nil {
 		return err
-
 	}
 
 	n, err := builtins.IntOperand(operands[1].Value, 2)
@@ -167,14 +172,14 @@ func builtinRandIntn(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.T
 	}
 
 	if n == 0 {
-		return iter(ast.InternedIntNumberTerm(0))
+		return iter(ast.InternedTerm(0))
 	}
 
 	if n < 0 {
 		n = -n
 	}
 
-	var key = randIntCachingKey(fmt.Sprintf("%s-%d", strOp, n))
+	key := randIntCachingKey(fmt.Sprintf("%s-%d", strOp, n))
 
 	if val, ok := bctx.Cache.Get(key); ok {
 		return iter(val.(*ast.Term))
@@ -184,7 +189,7 @@ func builtinRandIntn(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.T
 	if err != nil {
 		return err
 	}
-	result := ast.InternedIntNumberTerm(r.Intn(n))
+	result := ast.InternedTerm(r.Intn(n))
 	bctx.Cache.Put(key, result)
 
 	return iter(result)

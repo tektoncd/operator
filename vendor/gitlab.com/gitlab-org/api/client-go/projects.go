@@ -86,6 +86,7 @@ type (
 		TransferProject(pid any, opt *TransferProjectOptions, options ...RequestOptionFunc) (*Project, *Response, error)
 		StartHousekeepingProject(pid any, options ...RequestOptionFunc) (*Response, error)
 		GetRepositoryStorage(pid any, options ...RequestOptionFunc) (*ProjectReposityStorage, *Response, error)
+		ListProjectStarrers(pid any, opts *ListProjectStarrersOptions, options ...RequestOptionFunc) ([]*ProjectStarrer, *Response, error)
 	}
 
 	// ProjectsService handles communication with the repositories related methods
@@ -136,6 +137,7 @@ type Project struct {
 	License                                   *ProjectLicense            `json:"license"`
 	SharedRunnersEnabled                      bool                       `json:"shared_runners_enabled"`
 	GroupRunnersEnabled                       bool                       `json:"group_runners_enabled"`
+	ResourceGroupDefaultProcessMode           ResourceGroupProcessMode   `json:"resource_group_default_process_mode"`
 	RunnerTokenExpirationInterval             int                        `json:"runner_token_expiration_interval"`
 	ForksCount                                int                        `json:"forks_count"`
 	StarCount                                 int                        `json:"star_count"`
@@ -630,7 +632,7 @@ func (s *ProjectsService) ListProjectsGroups(pid any, opt *ListProjectGroupOptio
 
 // ProjectLanguages is a map of strings because the response is arbitrary
 //
-// Gitlab API docs:
+// GitLab API docs:
 // https://docs.gitlab.com/api/projects/#list-programming-languages-used
 type ProjectLanguages map[string]float32
 
@@ -758,6 +760,7 @@ type CreateProjectOptions struct {
 	SecurityAndComplianceAccessLevel          *AccessControlValue                  `url:"security_and_compliance_access_level,omitempty" json:"security_and_compliance_access_level,omitempty"`
 	SharedRunnersEnabled                      *bool                                `url:"shared_runners_enabled,omitempty" json:"shared_runners_enabled,omitempty"`
 	GroupRunnersEnabled                       *bool                                `url:"group_runners_enabled,omitempty" json:"group_runners_enabled,omitempty"`
+	ResourceGroupDefaultProcessMode           *ResourceGroupProcessMode            `url:"resource_group_default_process_mode,omitempty" json:"resource_group_default_process_mode,omitempty"`
 	ShowDefaultAwardEmojis                    *bool                                `url:"show_default_award_emojis,omitempty" json:"show_default_award_emojis,omitempty"`
 	SnippetsAccessLevel                       *AccessControlValue                  `url:"snippets_access_level,omitempty" json:"snippets_access_level,omitempty"`
 	SquashCommitTemplate                      *string                              `url:"squash_commit_template,omitempty" json:"squash_commit_template,omitempty"`
@@ -1004,6 +1007,7 @@ type EditProjectOptions struct {
 	ServiceDeskEnabled                        *bool                                        `url:"service_desk_enabled,omitempty" json:"service_desk_enabled,omitempty"`
 	SharedRunnersEnabled                      *bool                                        `url:"shared_runners_enabled,omitempty" json:"shared_runners_enabled,omitempty"`
 	GroupRunnersEnabled                       *bool                                        `url:"group_runners_enabled,omitempty" json:"group_runners_enabled,omitempty"`
+	ResourceGroupDefaultProcessMode           *ResourceGroupProcessMode                    `url:"resource_group_default_process_mode,omitempty" json:"resource_group_default_process_mode,omitempty"`
 	ShowDefaultAwardEmojis                    *bool                                        `url:"show_default_award_emojis,omitempty" json:"show_default_award_emojis,omitempty"`
 	SnippetsAccessLevel                       *AccessControlValue                          `url:"snippets_access_level,omitempty" json:"snippets_access_level,omitempty"`
 	SquashCommitTemplate                      *string                                      `url:"squash_commit_template,omitempty" json:"squash_commit_template,omitempty"`
@@ -2457,4 +2461,48 @@ func (s *ProjectsService) GetRepositoryStorage(pid any, options ...RequestOption
 	}
 
 	return prs, resp, nil
+}
+
+// ProjectStarrer represents a user who starred a project.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/api/project_starring/#list-users-who-starred-a-project
+type ProjectStarrer struct {
+	StarredSince time.Time   `json:"starred_since"`
+	User         ProjectUser `json:"user"`
+}
+
+// ListProjectStarrersOptions represents the available ListProjectStarrers() options.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/api/project_starring/#list-users-who-starred-a-project
+type ListProjectStarrersOptions struct {
+	ListOptions
+	Search *string `url:"search,omitempty" json:"search,omitempty"`
+}
+
+// ListProjectStarrers gets users who starred a project.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/api/project_starring/#list-users-who-starred-a-project
+func (s *ProjectsService) ListProjectStarrers(pid any, opts *ListProjectStarrersOptions, options ...RequestOptionFunc) ([]*ProjectStarrer, *Response, error) {
+	project, err := parseID(pid)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	u := fmt.Sprintf("projects/%s/starrers", PathEscape(project))
+
+	req, err := s.client.NewRequest(http.MethodGet, u, opts, options)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var starrers []*ProjectStarrer
+	resp, err := s.client.Do(req, &starrers)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return starrers, resp, nil
 }

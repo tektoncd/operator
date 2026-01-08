@@ -16,7 +16,7 @@ package astutil
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"strings"
 
 	"cuelang.org/go/cue/ast"
@@ -41,7 +41,7 @@ import (
 func Sanitize(f *ast.File) error {
 	z := &sanitizer{
 		file: f,
-		rand: rand.New(rand.NewSource(808)),
+		rand: rand.New(rand.NewPCG(123, 456)), // ensure determinism between runs
 
 		names:      map[string]bool{},
 		importMap:  map[string]*ast.ImportSpec{},
@@ -50,24 +50,29 @@ func Sanitize(f *ast.File) error {
 	}
 
 	// Gather all names.
-	walkVisitor(f, &scope{
-		errFn:   z.errf,
-		nameFn:  z.addName,
-		identFn: z.markUsed,
-	})
+	stack := make([]*scope, 0, 8)
+	s := &scope{
+		errFn:      z.errf,
+		nameFn:     z.addName,
+		identFn:    z.markUsed,
+		scopeStack: &stack,
+	}
+	ast.Walk(f, s.Before, nil)
 	if z.errs != nil {
 		return z.errs
 	}
 
 	// Add imports and unshadow.
-	s := &scope{
-		file:    f,
-		errFn:   z.errf,
-		identFn: z.handleIdent,
-		index:   make(map[string]entry),
+	stack = stack[:0]
+	s = &scope{
+		file:       f,
+		errFn:      z.errf,
+		identFn:    z.handleIdent,
+		index:      make(map[string]entry),
+		scopeStack: &stack,
 	}
 	z.fileScope = s
-	walkVisitor(f, s)
+	ast.Walk(f, s.Before, nil)
 	if z.errs != nil {
 		return z.errs
 	}
@@ -169,7 +174,7 @@ func (z *sanitizer) markUsed(s *scope, n *ast.Ident) bool {
 
 func (z *sanitizer) cleanImports() {
 	var fileImports []*ast.ImportSpec
-	z.file.VisitImports(func(decl *ast.ImportDecl) {
+	for decl := range z.file.ImportDecls() {
 		newLen := 0
 		for _, spec := range decl.Specs {
 			if _, ok := z.referenced[spec]; ok {
@@ -179,18 +184,15 @@ func (z *sanitizer) cleanImports() {
 			}
 		}
 		decl.Specs = decl.Specs[:newLen]
-	})
+	}
 	z.file.Imports = fileImports
 	// Ensure that the first import always starts a new section
 	// so that if the file has a comment, it won't be associated with
 	// the import comment rather than the file.
-	first := true
-	z.file.VisitImports(func(decl *ast.ImportDecl) {
-		if first {
-			ast.SetRelPos(decl, token.NewSection)
-			first = false
-		}
-	})
+	for decl := range z.file.ImportDecls() {
+		ast.SetRelPos(decl, token.NewSection)
+		break
+	}
 }
 
 func (z *sanitizer) handleIdent(s *scope, n *ast.Ident) bool {
@@ -211,7 +213,7 @@ func (z *sanitizer) handleIdent(s *scope, n *ast.Ident) bool {
 
 		_ = z.addImport(spec)
 		info, _ := ParseImportSpec(spec)
-		z.fileScope.insert(info.Ident, spec, spec)
+		z.fileScope.insert(info.Ident, spec, spec, nil)
 		return true
 	}
 
@@ -241,7 +243,7 @@ func (z *sanitizer) handleIdent(s *scope, n *ast.Ident) bool {
 				Path: x.Path,
 			})
 			z.importMap[xi.ID] = spec
-			z.fileScope.insert(name, spec, spec)
+			z.fileScope.insert(name, spec, spec, nil)
 		}
 
 		info, _ := ParseImportSpec(spec)
@@ -347,8 +349,8 @@ func (z *sanitizer) uniqueName(base string, hidden bool) string {
 
 	const mask = 0xff_ffff_ffff_ffff // max bits; stay clear of int64 overflow
 	const shift = 4                  // rate of growth
-	for n := int64(0x10); ; n = int64(mask&((n<<shift)-1)) + 1 {
-		num := z.rand.Intn(int(n))
+	for n := int64(0x10); ; n = mask&((n<<shift)-1) + 1 {
+		num := z.rand.IntN(int(n))
 		name := fmt.Sprintf("%s_%01X", base, num)
 		if !z.names[name] {
 			z.names[name] = true

@@ -15,14 +15,13 @@
 package runtime
 
 import (
+	"strconv"
 	"strings"
 
 	"cuelang.org/go/cue/ast"
-	"cuelang.org/go/cue/ast/astutil"
 	"cuelang.org/go/cue/build"
 	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/stats"
-	"cuelang.org/go/cue/token"
 	"cuelang.org/go/internal/core/adt"
 	"cuelang.org/go/internal/core/compile"
 )
@@ -58,11 +57,9 @@ func (x *Runtime) Build(cfg *Config, b *build.Instance) (v *adt.Vertex, errs err
 
 	// Build transitive dependencies.
 	for _, file := range b.Files {
-		file.VisitImports(func(d *ast.ImportDecl) {
-			for _, s := range d.Specs {
-				errs = errors.Append(errs, x.buildSpec(cfg, b, s))
-			}
-		})
+		for s := range file.ImportSpecs() {
+			errs = errors.Append(errs, x.buildSpec(cfg, b, s))
+		}
 	}
 
 	err := x.ResolveFiles(b)
@@ -74,7 +71,7 @@ func (x *Runtime) Build(cfg *Config, b *build.Instance) (v *adt.Vertex, errs err
 	}
 	if cfg != nil && cfg.ImportPath != "" {
 		b.ImportPath = cfg.ImportPath
-		b.PkgName = astutil.ImportPathName(b.ImportPath)
+		b.PkgName = ast.ParseImportPath(b.ImportPath).Qualifier
 	}
 	v, err = compile.Files(cc, x, b.ID(), b.Files...)
 	errs = errors.Append(errs, err)
@@ -91,15 +88,13 @@ func (x *Runtime) Build(cfg *Config, b *build.Instance) (v *adt.Vertex, errs err
 	return v, errs
 }
 
-func dummyLoad(token.Pos, string) *build.Instance { return nil }
-
 func (r *Runtime) Compile(cfg *Config, source interface{}) (*adt.Vertex, *build.Instance) {
 	ctx := build.NewContext()
 	var filename string
 	if cfg != nil && cfg.Filename != "" {
 		filename = cfg.Filename
 	}
-	p := ctx.NewInstance(filename, dummyLoad)
+	p := ctx.NewInstance(filename, nil)
 	if err := p.AddFile(filename, source); err != nil {
 		return nil, p
 	}
@@ -113,7 +108,7 @@ func (r *Runtime) CompileFile(cfg *Config, file *ast.File) (*adt.Vertex, *build.
 	if cfg != nil && cfg.Filename != "" {
 		filename = cfg.Filename
 	}
-	p := ctx.NewInstance(filename, dummyLoad)
+	p := ctx.NewInstance(filename, nil)
 	err := p.AddSyntax(file)
 	if err != nil {
 		return nil, p
@@ -124,20 +119,20 @@ func (r *Runtime) CompileFile(cfg *Config, file *ast.File) (*adt.Vertex, *build.
 }
 
 func (x *Runtime) buildSpec(cfg *Config, b *build.Instance, spec *ast.ImportSpec) (errs errors.Error) {
-	info, err := astutil.ParseImportSpec(spec)
+	path, err := strconv.Unquote(spec.Path.Value)
 	if err != nil {
 		return errors.Promote(err, "invalid import path")
 	}
 
-	pkg := b.LookupImport(info.ID)
+	pkg := b.LookupImport(path)
 	if pkg == nil {
-		if strings.Contains(info.ID, ".") {
+		if strings.Contains(path, ".") {
 			return errors.Newf(spec.Pos(),
 				"package %q imported but not defined in %s",
-				info.ID, b.ImportPath)
-		} else if x.index.builtinPaths[info.ID] == nil {
+				path, b.ImportPath)
+		} else if x.index.builtinPaths[path] == nil {
 			return errors.Newf(spec.Pos(),
-				"builtin package %q undefined", info.ID)
+				"builtin package %q undefined", path)
 		}
 		return nil
 	}

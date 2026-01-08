@@ -15,6 +15,7 @@
 package build
 
 import (
+	"maps"
 	"slices"
 	"strconv"
 
@@ -53,7 +54,7 @@ func (inst *Instance) complete() errors.Error {
 	)
 
 	for _, f := range inst.Files {
-		for _, spec := range f.Imports {
+		for spec := range f.ImportSpecs() {
 			quoted := spec.Path.Value
 			path, err := strconv.Unquote(quoted)
 			if err != nil {
@@ -143,11 +144,7 @@ func (inst *Instance) complete() errors.Error {
 			deps[path] = p1
 		}
 	}
-	inst.Deps = make([]string, 0, len(deps))
-	for dep := range deps {
-		inst.Deps = append(inst.Deps, dep)
-	}
-	slices.Sort(inst.Deps)
+	inst.Deps = slices.Sorted(maps.Keys(deps))
 
 	for _, dep := range inst.Deps {
 		p1 := deps[dep]

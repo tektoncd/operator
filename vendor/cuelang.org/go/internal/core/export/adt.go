@@ -55,7 +55,6 @@ func (e *exporter) adt(env *adt.Environment, expr adt.Elem) ast.Expr {
 		// _, saved := e.pushFrame([]adt.Conjunct{adt.MakeConjunct(nil, x)})
 		// defer e.popFrame(saved)
 		// s := e.frame(0).scope
-
 		s := &ast.StructLit{}
 		// TODO: ensure e.node() is set in more cases. Right now it is not
 		// always set in mergeValues, even in cases where it could be. Better
@@ -229,6 +228,12 @@ func (e *exporter) adt(env *adt.Environment, expr adt.Elem) ast.Expr {
 		return &ast.UnaryExpr{
 			Op: x.Op.Token(),
 			X:  e.innerExpr(env, x.X),
+		}
+
+	case *adt.OpenExpr:
+		return &ast.PostfixExpr{
+			X:  e.innerExpr(env, x.X),
+			Op: token.ELLIPSIS,
 		}
 
 	case *adt.BinaryExpr:
@@ -484,13 +489,13 @@ func (e *exporter) resolve(env *adt.Environment, r adt.Resolver) ast.Expr {
 
 	case *adt.ImportReference:
 		importPath := x.ImportPath.StringValue(e.index)
+		info := ast.ParseImportPath(importPath)
 		spec := ast.NewImport(nil, importPath)
 
-		info, _ := astutil.ParseImportSpec(spec)
-		name := info.PkgName
+		name := info.Qualifier
 		if x.Label != 0 {
-			name = x.Label.StringValue(e.index)
-			if name != info.PkgName {
+			name = x.Label.IdentString(e.index)
+			if name != info.Qualifier {
 				spec.Name = ast.NewIdent(name)
 			}
 		}

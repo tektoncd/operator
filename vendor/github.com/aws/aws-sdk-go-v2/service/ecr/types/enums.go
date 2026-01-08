@@ -106,8 +106,10 @@ type ImageTagMutability string
 
 // Enum values for ImageTagMutability
 const (
-	ImageTagMutabilityMutable   ImageTagMutability = "MUTABLE"
-	ImageTagMutabilityImmutable ImageTagMutability = "IMMUTABLE"
+	ImageTagMutabilityMutable                ImageTagMutability = "MUTABLE"
+	ImageTagMutabilityImmutable              ImageTagMutability = "IMMUTABLE"
+	ImageTagMutabilityImmutableWithExclusion ImageTagMutability = "IMMUTABLE_WITH_EXCLUSION"
+	ImageTagMutabilityMutableWithExclusion   ImageTagMutability = "MUTABLE_WITH_EXCLUSION"
 )
 
 // Values returns all known values for ImageTagMutability. Note that this can be
@@ -118,6 +120,26 @@ func (ImageTagMutability) Values() []ImageTagMutability {
 	return []ImageTagMutability{
 		"MUTABLE",
 		"IMMUTABLE",
+		"IMMUTABLE_WITH_EXCLUSION",
+		"MUTABLE_WITH_EXCLUSION",
+	}
+}
+
+type ImageTagMutabilityExclusionFilterType string
+
+// Enum values for ImageTagMutabilityExclusionFilterType
+const (
+	ImageTagMutabilityExclusionFilterTypeWildcard ImageTagMutabilityExclusionFilterType = "WILDCARD"
+)
+
+// Values returns all known values for ImageTagMutabilityExclusionFilterType. Note
+// that this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (ImageTagMutabilityExclusionFilterType) Values() []ImageTagMutabilityExclusionFilterType {
+	return []ImageTagMutabilityExclusionFilterType{
+		"WILDCARD",
 	}
 }
 
@@ -309,6 +331,7 @@ const (
 	ScanStatusPending                ScanStatus = "PENDING"
 	ScanStatusScanEligibilityExpired ScanStatus = "SCAN_ELIGIBILITY_EXPIRED"
 	ScanStatusFindingsUnavailable    ScanStatus = "FINDINGS_UNAVAILABLE"
+	ScanStatusLimitExceeded          ScanStatus = "LIMIT_EXCEEDED"
 )
 
 // Values returns all known values for ScanStatus. Note that this can be expanded
@@ -325,6 +348,7 @@ func (ScanStatus) Values() []ScanStatus {
 		"PENDING",
 		"SCAN_ELIGIBILITY_EXPIRED",
 		"FINDINGS_UNAVAILABLE",
+		"LIMIT_EXCEEDED",
 	}
 }
 
@@ -372,6 +396,7 @@ type UpstreamRegistry string
 
 // Enum values for UpstreamRegistry
 const (
+	UpstreamRegistryEcr                     UpstreamRegistry = "ecr"
 	UpstreamRegistryEcrPublic               UpstreamRegistry = "ecr-public"
 	UpstreamRegistryQuay                    UpstreamRegistry = "quay"
 	UpstreamRegistryK8s                     UpstreamRegistry = "k8s"
@@ -387,6 +412,7 @@ const (
 // The ordering of this slice is not guaranteed to be stable across updates.
 func (UpstreamRegistry) Values() []UpstreamRegistry {
 	return []UpstreamRegistry{
+		"ecr",
 		"ecr-public",
 		"quay",
 		"k8s",

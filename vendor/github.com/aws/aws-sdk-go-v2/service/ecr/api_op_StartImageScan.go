@@ -11,12 +11,15 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-// Starts an image vulnerability scan. An image scan can only be started once per
-// 24 hours on an individual image. This limit includes if an image was scanned on
-// initial push. For more information, see [Image scanning]in the Amazon Elastic Container
-// Registry User Guide.
+// Starts a basic image vulnerability scan.
 //
-// [Image scanning]: https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html
+// A basic image scan can only be started once per 24 hours on an individual
+// image. This limit includes if an image was scanned on initial push. You can
+// start up to 100,000 basic scans per 24 hours. This limit includes both scans on
+// initial push and scans initiated by the StartImageScan API. For more
+// information, see [Basic scanning]in the Amazon Elastic Container Registry User Guide.
+//
+// [Basic scanning]: https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning-basic.html
 func (c *Client) StartImageScan(ctx context.Context, params *StartImageScanInput, optFns ...func(*Options)) (*StartImageScanOutput, error) {
 	if params == nil {
 		params = &StartImageScanInput{}
@@ -136,6 +139,9 @@ func (c *Client) addOperationStartImageScanMiddlewares(stack *middleware.Stack, 
 	if err = addUserAgentRetryMode(stack, options); err != nil {
 		return err
 	}
+	if err = addCredentialSource(stack, options); err != nil {
+		return err
+	}
 	if err = addOpStartImageScanValidationMiddleware(stack); err != nil {
 		return err
 	}
@@ -155,6 +161,36 @@ func (c *Client) addOperationStartImageScanMiddlewares(stack *middleware.Stack, 
 		return err
 	}
 	if err = addDisableHTTPSMiddleware(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeRetryLoop(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAttempt(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptExecution(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSerialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterSigning(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptTransmit(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
+		return err
+	}
+	if err = addInterceptAfterDeserialization(stack, options); err != nil {
 		return err
 	}
 	if err = addSpanInitializeStart(stack); err != nil {

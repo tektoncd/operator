@@ -32,6 +32,10 @@ const (
 )
 
 func Equal(ctx *OpContext, v, w Value, flags Flag) bool {
+	if flags&CheckStructural == 0 {
+		v = Default(v)
+		w = Default(w)
+	}
 	if x, ok := v.(*Vertex); ok {
 		return equalVertex(ctx, x, w, flags)
 	}
@@ -71,7 +75,7 @@ func equalVertex(ctx *OpContext, x *Vertex, v Value, flags Flag) bool {
 		return false
 	}
 
-	maxArcType := ArcMember
+	maxArcType := ArcRequired
 	if flags&CheckStructural != 0 {
 		// Do not ignore optional fields
 		// TODO(required): consider making this unconditional
@@ -79,14 +83,11 @@ func equalVertex(ctx *OpContext, x *Vertex, v Value, flags Flag) bool {
 	}
 
 	// TODO: this really should be subsumption.
-	if flags != 0 {
+	if flags&CheckStructural != 0 {
 		if x.IsClosedStruct() != y.IsClosedStruct() {
 			return false
 		}
 		if x.IsClosedList() != y.IsClosedList() {
-			return false
-		}
-		if !equalClosed(ctx, x, y, flags) {
 			return false
 		}
 	}
@@ -137,40 +138,6 @@ loop2:
 	return equalTerminal(ctx, v, w, flags)
 }
 
-// equalClosed tests if x and y have the same set of close information.
-// TODO: the following refinements are possible:
-//   - unify optional fields and equate the optional fields
-//   - do the same for pattern constraints, where the pattern constraints
-//     are collated by pattern equality.
-//   - a further refinement would collate patterns by ranges.
-//
-// For all these refinements it would be necessary to have well-working
-// structure sharing so as to not repeatedly recompute optional arcs.
-func equalClosed(ctx *OpContext, x, y *Vertex, flags Flag) bool {
-	return verifyStructs(x, y, flags) && verifyStructs(y, x, flags)
-}
-
-func verifyStructs(x, y *Vertex, flags Flag) bool {
-outer:
-	for _, s := range x.Structs {
-		if (flags&IgnoreOptional != 0) && !s.StructLit.HasOptional() {
-			continue
-		}
-		if s.span()&DefinitionSpan == 0 {
-			if !s.StructLit.HasOptional() {
-				continue
-			}
-		}
-		for _, t := range y.Structs {
-			if s.StructLit == t.StructLit {
-				continue outer
-			}
-		}
-		return false
-	}
-	return true
-}
-
 func equalTerminal(ctx *OpContext, v, w Value, flags Flag) bool {
 	if v == w {
 		return true
@@ -187,7 +154,7 @@ func equalTerminal(ctx *OpContext, v, w Value, flags Flag) bool {
 		return ok
 
 	case *Num, *String, *Bool, *Bytes, *Null:
-		if b, ok := BinOp(ctx, EqualOp, v, w).(*Bool); ok {
+		if b, ok := BinOp(ctx, errOnDiffType, EqualOp, v, w).(*Bool); ok {
 			return b.B
 		}
 		return false

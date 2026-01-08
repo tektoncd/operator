@@ -38,6 +38,7 @@ func (n *nodeContext) unshare() {
 	}
 	n.isShared = false
 	n.node.IsShared = false
+	n.node.OpenedShared = false
 
 	v := n.node.BaseValue.(*Vertex)
 
@@ -63,11 +64,12 @@ func (n *nodeContext) finalizeSharing() {
 	case *Vertex:
 		if n.shareCycleType == NoCycle {
 			v.Finalize(n.ctx)
-		} else if !v.isFinal() {
-			// TODO: ideally we just handle cycles in optional chains directly,
-			// rather than relying on this mechanism. This requires us to add
-			// a mechanism to detect that.
-			n.ctx.toFinalize = append(n.ctx.toFinalize, v)
+			// See the TODO in unify.go for toFinalize.
+			// } else if !v.isFinal() {
+			// 	// TODO: ideally we just handle cycles in optional chains directly,
+			// 	// rather than relying on this mechanism. This requires us to add
+			// 	// a mechanism to detect that.
+			// 	n.ctx.toFinalize = append(n.ctx.toFinalize, v)
 		}
 		// If state.parent is non-nil, we determined earlier that this Vertex
 		// is not rooted and that it can safely be shared. Because it is
@@ -100,9 +102,6 @@ func (n *nodeContext) addShared(id CloseInfo) {
 	// such a count should not hurt performance, as a shared node is completed
 	// anyway.
 	n.sharedIDs = append(n.sharedIDs, id)
-	if id.cc != nil {
-		id.cc.incDependent(n.ctx, SHARED, n.node.cc())
-	}
 }
 
 func (n *nodeContext) decSharedIDs() {
@@ -111,9 +110,7 @@ func (n *nodeContext) decSharedIDs() {
 	}
 	n.shareDecremented = true
 	for _, id := range n.sharedIDs {
-		if cc := id.cc; cc != nil {
-			cc.decDependent(n.ctx, SHARED, n.node.cc())
-		}
+		n.updateConjunctInfo(n.node.Kind(), id, 0)
 	}
 }
 
@@ -127,6 +124,7 @@ func (n *nodeContext) share(c Conjunct, arc *Vertex, id CloseInfo) {
 	n.isShared = true
 	n.shared = c
 	n.addShared(id)
+	n.node.OpenedShared = id.Opened
 
 	if arc.IsDetached() && arc.MayAttach() { // TODO: Second check necessary?
 		// This node can safely be shared. Since it is not rooted, though, it
@@ -144,6 +142,29 @@ func (n *nodeContext) share(c Conjunct, arc *Vertex, id CloseInfo) {
 
 func (n *nodeContext) shareIfPossible(c Conjunct, arc *Vertex, id CloseInfo) bool {
 	if !n.ctx.Sharing {
+		return false
+	}
+
+	// We disallow sharing for any Arcs, even pending ones, to be defensive.
+	// CUE currently does not always unwind sharing properly in the precense of
+	// pending arcs. See, for instance:
+	//
+	// 		a: X
+	// 		if true {
+	// 			a: b: c: e: 1 // ensure 'e' is added
+	// 		}
+	// 		X: b: Y
+	// 		Y: c: d: int
+	//
+	// TODO: allow sharing in the precense of pending or not present arcs.
+	if len(n.node.Arcs) > 0 {
+		return false
+	}
+
+	// See Issue #3801: structure sharing seems to be broken for non-rooted
+	// values. We disable sharing for now.
+	// TODO: make sharing work again for non-rooted structs.
+	if arc.nonRooted || arc.IsDynamic {
 		return false
 	}
 

@@ -77,6 +77,8 @@ type Node struct {
 	// Used when we want to break between the field name and values when a
 	// single-line node exceeds the requested wrap column.
 	PutSingleValueOnNextLine bool
+	// Field number from proto definition (0 if unknown/not applicable).
+	FieldNumber int32
 }
 
 // NodeLess is a sorting function that compares two *Nodes, possibly using the parent Node
@@ -103,14 +105,44 @@ func ChainNodeLess(first, second NodeLess) NodeLess {
 	}
 }
 
+type sortOptions struct {
+	reverse bool
+}
+
+// A SortOption configures SortNodes.
+type SortOption func(*sortOptions)
+
+// ReverseOrdering controls whether to sort the Nodes in ascending or descending order. By default
+// the Nodes are sorted in ascending order. By setting this option to true, the Nodes will be sorted
+// in descending order.
+//
+// Default: false.
+func ReverseOrdering(enabled bool) SortOption {
+	return func(opts *sortOptions) {
+		opts.reverse = enabled
+	}
+}
+
 // SortNodes sorts nodes by the given less function.
-func SortNodes(parent *Node, ns []*Node, less NodeLess) {
-	sort.Stable(sortableNodes(parent, ns, less, true /* isWholeSlice */))
+func SortNodes(parent *Node, ns []*Node, less NodeLess, opts ...SortOption) {
+	var options sortOptions
+	for _, opt := range opts {
+		opt(&options)
+	}
+	if options.reverse {
+		sort.Stable(sort.Reverse(sortableNodes(parent, ns, less, true /* isWholeSlice */)))
+	} else {
+		sort.Stable(sortableNodes(parent, ns, less, true /* isWholeSlice */))
+	}
 	end := 0
 	for begin := 0; begin < len(ns); begin = end {
 		for end = begin + 1; end < len(ns) && ns[begin].Name == ns[end].Name; end++ {
 		}
-		sort.Stable(sortableNodes(parent, ns[begin:end], less, false /* isWholeSlice */))
+		if options.reverse {
+			sort.Stable(sort.Reverse(sortableNodes(parent, ns[begin:end], less, false /* isWholeSlice */)))
+		} else {
+			sort.Stable(sortableNodes(parent, ns[begin:end], less, false /* isWholeSlice */))
+		}
 	}
 }
 
@@ -153,21 +185,24 @@ func getFieldValueForByFieldValue(n *Node) *Value {
 	return n.Values[0]
 }
 
-// ByFieldValue is a NodeLess function that orders adjacent scalar nodes with the same name by
-// their scalar value.
-func ByFieldValue(_, ni, nj *Node, isWholeSlice bool) bool {
-	if isWholeSlice {
-		return false
+// ByFieldValue returns a NodeLess function that orders adjacent scalar nodes
+// with the same name by their scalar value. The values are passed through
+// `projection` before sorting.
+func ByFieldValue(projection func(string) string) NodeLess {
+	return func(_, ni, nj *Node, isWholeSlice bool) bool {
+		if isWholeSlice {
+			return false
+		}
+		vi := getFieldValueForByFieldValue(ni)
+		vj := getFieldValueForByFieldValue(nj)
+		if vi == nil {
+			return vj != nil
+		}
+		if vj == nil {
+			return false
+		}
+		return projection(vi.Value) < projection(vj.Value)
 	}
-	vi := getFieldValueForByFieldValue(ni)
-	vj := getFieldValueForByFieldValue(nj)
-	if vi == nil {
-		return vj != nil
-	}
-	if vj == nil {
-		return false
-	}
-	return vi.Value < vj.Value
 }
 
 func getChildValueByFieldSubfield(field, subfield string, n *Node) *Value {
@@ -177,6 +212,20 @@ func getChildValueByFieldSubfield(field, subfield string, n *Node) *Value {
 		}
 	}
 	return n.getChildValue(subfield)
+}
+
+func getChildValueByFieldSubfieldPath(field string, subfieldPath []string, n *Node) *Value {
+	if field != "" && n.Name != field {
+		return nil
+	}
+	nodes := GetFromPath(n.Children, subfieldPath)
+	if len(nodes) != 1 {
+		return nil
+	}
+	if len(nodes[0].Values) != 1 {
+		return nil
+	}
+	return nodes[0].Values[0]
 }
 
 // ByFieldSubfield returns a NodeLess function that orders adjacent message nodes with the given
@@ -197,6 +246,53 @@ func ByFieldSubfield(field, subfield string) NodeLess {
 		}
 		return vi.Value < vj.Value
 	}
+}
+
+// ByFieldSubfieldPath returns a NodeLess function that orders adjacent message nodes with the given
+// field name by the given subfield path value. If no field name is provided, it compares the
+// subfields of any adjacent nodes with matching names. Values are passed
+// through `projection` before sorting.
+func ByFieldSubfieldPath(field string, subfieldPath []string, projection func(string) string) NodeLess {
+	return func(_, ni, nj *Node, isWholeSlice bool) bool {
+		if isWholeSlice {
+			return false
+		}
+		vi := getChildValueByFieldSubfieldPath(field, subfieldPath, ni)
+		vj := getChildValueByFieldSubfieldPath(field, subfieldPath, nj)
+		if vi == nil {
+			return vj != nil
+		}
+		if vj == nil {
+			return false
+		}
+		return projection(vi.Value) < projection(vj.Value)
+	}
+}
+
+// ByFieldNumber is a NodeLess function that orders fields by their field numbers.
+// Field numbers are populated during parsing from descriptor information.
+func ByFieldNumber(_, ni, nj *Node, isWholeSlice bool) bool {
+	if !isWholeSlice {
+		return false
+	}
+
+	numI, numJ := ni.FieldNumber, nj.FieldNumber
+
+	// If both have field numbers, sort by field number
+	if numI > 0 && numJ > 0 {
+		return numI < numJ
+	}
+
+	// If only one has field number, prioritize it
+	if numI > 0 && numJ == 0 {
+		return true // ni has priority
+	}
+	if numI == 0 && numJ > 0 {
+		return false // nj has priority
+	}
+
+	// If neither has field number, fall back to alphabetical order
+	return ni.Name < nj.Name
 }
 
 // getChildValue returns the Value of the child with the given field name,
@@ -311,12 +407,19 @@ func SortValues(values []*Value) {
 	})
 }
 
+// SortValuesReverse reverse sorts values by their value.
+func SortValuesReverse(values []*Value) {
+	sort.SliceStable(values, func(i, j int) bool {
+		return values[i].Value > values[j].Value
+	})
+}
+
 // GetFromPath returns all nodes with a given string path in the parse tree. See ast_test.go for examples.
 func GetFromPath(nodes []*Node, path []string) []*Node {
 	if len(path) == 0 {
 		return nil
 	}
-	res := []*Node{}
+	var res []*Node
 	for _, node := range nodes {
 		if node.Name == path[0] {
 			if len(path) == 1 {

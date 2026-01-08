@@ -16,15 +16,18 @@ func _() {
 	_ = x[VersionDraft2020_12-5]
 	_ = x[numJSONSchemaVersions-6]
 	_ = x[VersionOpenAPI-7]
+	_ = x[VersionKubernetesAPI-8]
+	_ = x[VersionKubernetesCRD-9]
 }
 
-const _Version_name = "unknownhttp://json-schema.org/draft-04/schema#http://json-schema.org/draft-06/schema#http://json-schema.org/draft-07/schema#https://json-schema.org/draft/2019-09/schemahttps://json-schema.org/draft/2020-12/schemaunknownOpenAPI 3.0"
+const _Version_name = "unknownhttp://json-schema.org/draft-04/schema#http://json-schema.org/draft-06/schema#http://json-schema.org/draft-07/schema#https://json-schema.org/draft/2019-09/schemahttps://json-schema.org/draft/2020-12/schemaunknownOpenAPI 3.0Kubernetes APIKubernetes CRD"
 
-var _Version_index = [...]uint8{0, 7, 46, 85, 124, 168, 212, 219, 230}
+var _Version_index = [...]uint16{0, 7, 46, 85, 124, 168, 212, 219, 230, 244, 258}
 
 func (i Version) String() string {
-	if i < 0 || i >= Version(len(_Version_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_Version_index)-1 {
 		return "Version(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _Version_name[_Version_index[i]:_Version_index[i+1]]
+	return _Version_name[_Version_index[idx]:_Version_index[idx+1]]
 }
