@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package json converts JSON to and from CUE.
+// Package json converts JSON to CUE.
+// To convert CUE to JSON, use [encoding/json.Marshal] on a [cue.Value].
 package json
 
 import (
@@ -20,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/ast"
@@ -237,7 +237,7 @@ func patchExpr(n ast.Node, patchPos func(n ast.Node)) {
 
 				// TODO(legacy): remove checking for '_' prefix once hidden
 				// fields are removed.
-				if !ast.IsValidIdent(u) || strings.HasPrefix(u, "_") {
+				if ast.StringLabelNeedsQuoting(u) {
 					break // keep string
 				}
 

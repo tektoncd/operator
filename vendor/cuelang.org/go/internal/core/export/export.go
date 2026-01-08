@@ -16,7 +16,8 @@ package export
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
+	"slices"
 
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/ast/astutil"
@@ -71,6 +72,10 @@ type Profile struct {
 
 	// InlineImports expands references to non-builtin packages.
 	InlineImports bool
+
+	// ExpandReferences causes all references to be expanded inline. This
+	// disables the ability to prevent billion laughs attacks, so use with care.
+	ExpandReferences bool
 }
 
 var Simplified = &Profile{
@@ -192,10 +197,10 @@ func (e *exporter) toFile(v *adt.Vertex, x ast.Expr) *ast.File {
 			// prevent the file comment from attaching to pkg when there is no pkg comment
 			PackagePos: token.NoPos.WithRel(token.NewSection),
 		}
-		v.VisitLeafConjuncts(func(c adt.Conjunct) bool {
+		for c := range v.LeafConjuncts() {
 			f, _ := c.Source().(*ast.File)
 			if f == nil {
-				return true
+				continue
 			}
 
 			if name := f.PackageName(); name != "" {
@@ -214,18 +219,17 @@ func (e *exporter) toFile(v *adt.Vertex, x ast.Expr) *ast.File {
 					ast.AddComment(fout, c)
 				}
 			}
-			return true
-		})
+		}
 
 		if pkgName != "" {
 			pkg.Name = ast.NewIdent(pkgName)
 			fout.Decls = append(fout.Decls, pkg)
-			ast.SetComments(pkg, internal.MergeDocs(pkg.Comments()))
+			ast.SetComments(pkg, mergeDocs(pkg.Comments()))
 		} else {
 			for _, c := range fout.Comments() {
 				ast.AddComment(pkg, c)
 			}
-			ast.SetComments(fout, internal.MergeDocs(pkg.Comments()))
+			ast.SetComments(fout, mergeDocs(pkg.Comments()))
 		}
 	}
 
@@ -241,6 +245,39 @@ func (e *exporter) toFile(v *adt.Vertex, x ast.Expr) *ast.File {
 	}
 
 	return fout
+}
+
+// mergeDocs merges multiple doc comments into one single doc comment.
+func mergeDocs(comments []*ast.CommentGroup) []*ast.CommentGroup {
+	if len(comments) <= 1 || !hasDocComment(comments) {
+		return comments
+	}
+
+	comments1 := make([]*ast.CommentGroup, 0, len(comments))
+	comments1 = append(comments1, nil)
+	var docComment *ast.CommentGroup
+	for _, c := range comments {
+		switch {
+		case !c.Doc:
+			comments1 = append(comments1, c)
+		case docComment == nil:
+			docComment = c
+		default:
+			docComment.List = append(slices.Clip(docComment.List), &ast.Comment{Text: "//"})
+			docComment.List = append(docComment.List, c.List...)
+		}
+	}
+	comments1[0] = docComment
+	return comments1
+}
+
+func hasDocComment(comments []*ast.CommentGroup) bool {
+	for _, c := range comments {
+		if c.Doc {
+			return true
+		}
+	}
+	return false
 }
 
 // Vertex exports evaluated values (data mode).
@@ -383,7 +420,7 @@ func (e *exporter) initPivot(n *adt.Vertex) {
 	switch {
 	case e.cfg.SelfContained, e.cfg.InlineImports:
 		// Explicitly enabled.
-	case n.Parent == nil, e.cfg.Fragment:
+	case n.Parent == nil, e.cfg.Fragment, e.cfg.ExpandReferences:
 		return
 	}
 	e.initPivotter(n)
@@ -412,10 +449,9 @@ func (e *exporter) markUsedFeatures(x adt.Expr) {
 		switch x := n.(type) {
 		case *adt.Vertex:
 			if !x.IsData() {
-				x.VisitLeafConjuncts(func(c adt.Conjunct) bool {
+				for c := range x.LeafConjuncts() {
 					w.Elem(c.Elem())
-					return true
-				})
+				}
 			}
 
 		case *adt.DynamicReference:
@@ -644,7 +680,7 @@ type featureSet interface {
 }
 
 func (e *exporter) intn(n int) int {
-	return e.rand.Intn(n)
+	return e.rand.IntN(n)
 }
 
 func (e *exporter) makeFeature(s string) (f adt.Feature, ok bool) {
@@ -665,7 +701,7 @@ func (e *exporter) makeFeature(s string) (f adt.Feature, ok bool) {
 // clearer this concerns a generated number.
 func (e *exporter) uniqueFeature(base string) (f adt.Feature, name string) {
 	if e.rand == nil {
-		e.rand = rand.New(rand.NewSource(808))
+		e.rand = rand.New(rand.NewPCG(123, 456)) // ensure determinism between runs
 	}
 	return findUnique(e, base)
 }
@@ -686,7 +722,7 @@ func findUnique(set featureSet, base string) (f adt.Feature, name string) {
 	const mask = 0xff_ffff_ffff_ffff // max bits; stay clear of int64 overflow
 	const shift = 4                  // rate of growth
 	digits := 1
-	for n := int64(0x10); ; n = int64(mask&((n<<shift)-1)) + 1 {
+	for n := int64(0x10); ; n = mask&((n<<shift)-1) + 1 {
 		num := set.intn(int(n)-1) + 1
 		name := fmt.Sprintf("%[1]s_%0[2]*[3]X", base, digits, num)
 		if f, ok := set.makeFeature(name); ok {

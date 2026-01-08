@@ -73,10 +73,9 @@ func (u *updateAST) Apply(v any) any {
 }
 
 func newUpdateAST(data any, op storage.PatchOp, path storage.Path, idx int, value ast.Value) (*updateAST, error) {
-
 	switch data.(type) {
 	case ast.Null, ast.Boolean, ast.Number, ast.String:
-		return nil, errors.NewNotFoundError(path)
+		return nil, errors.NotFoundErr
 	}
 
 	switch data := data.(type) {
@@ -94,11 +93,10 @@ func newUpdateAST(data any, op storage.PatchOp, path storage.Path, idx int, valu
 }
 
 func newUpdateArrayAST(data *ast.Array, op storage.PatchOp, path storage.Path, idx int, value ast.Value) (*updateAST, error) {
-
 	if idx == len(path)-1 {
 		if path[idx] == "-" || path[idx] == strconv.Itoa(data.Len()) {
 			if op != storage.AddOp {
-				return nil, invalidPatchError("%v: invalid patch path", path)
+				return nil, errors.NewInvalidPatchError("%v: invalid patch path", path)
 			}
 
 			cpy := data.Append(ast.NewTerm(value))
@@ -154,14 +152,14 @@ func newUpdateArrayAST(data *ast.Array, op storage.PatchOp, path storage.Path, i
 }
 
 func newUpdateObjectAST(data ast.Object, op storage.PatchOp, path storage.Path, idx int, value ast.Value) (*updateAST, error) {
-	key := ast.InternedStringTerm(path[idx])
+	key := ast.InternedTerm(path[idx])
 	val := data.Get(key)
 
 	if idx == len(path)-1 {
 		switch op {
 		case storage.ReplaceOp, storage.RemoveOp:
 			if val == nil {
-				return nil, errors.NewNotFoundError(path)
+				return nil, errors.NotFoundErr
 			}
 		}
 		return &updateAST{path, op == storage.RemoveOp, value}, nil
@@ -171,14 +169,7 @@ func newUpdateObjectAST(data ast.Object, op storage.PatchOp, path storage.Path, 
 		return newUpdateAST(val.Value, op, path, idx+1, value)
 	}
 
-	return nil, errors.NewNotFoundError(path)
-}
-
-func interfaceToValue(v any) (ast.Value, error) {
-	if v, ok := v.(ast.Value); ok {
-		return v, nil
-	}
-	return ast.InterfaceToValue(v)
+	return nil, errors.NotFoundErr
 }
 
 // setInAst updates the value in the AST at the given path with the given value.
@@ -200,7 +191,7 @@ func setInAst(data ast.Value, path storage.Path, value ast.Value) (ast.Value, er
 }
 
 func setInAstObject(obj ast.Object, path storage.Path, value ast.Value) (ast.Value, error) {
-	key := ast.InternedStringTerm(path[0])
+	key := ast.InternedTerm(path[0])
 
 	if len(path) == 1 {
 		obj.Insert(key, ast.NewTerm(value))
@@ -256,7 +247,7 @@ func removeInAst(value ast.Value, path storage.Path) (ast.Value, error) {
 }
 
 func removeInAstObject(obj ast.Object, path storage.Path) (ast.Value, error) {
-	key := ast.InternedStringTerm(path[0])
+	key := ast.InternedTerm(path[0])
 
 	if len(path) == 1 {
 		var items [][2]*ast.Term

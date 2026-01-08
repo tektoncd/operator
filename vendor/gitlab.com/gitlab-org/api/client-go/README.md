@@ -20,7 +20,7 @@ users:
 ```go
 git, err := gitlab.NewClient("yourtokengoeshere")
 if err != nil {
-  log.Fatalf("Failed to create client: %v", err)
+    log.Fatalf("Failed to create client: %v", err)
 }
 users, _, err := git.Users.ListUsers(&gitlab.ListUsersOptions{})
 ```
@@ -80,10 +80,10 @@ func main() {
 
 	// Add a new snippet
 	s := &gitlab.CreateProjectSnippetOptions{
-		Title:           gitlab.Ptr("Dummy Snippet"),
-		FileName:        gitlab.Ptr("snippet.go"),
-		Content:         gitlab.Ptr("package main...."),
-		Visibility:      gitlab.Ptr(gitlab.PublicVisibility),
+		Title:      gitlab.Ptr("Dummy Snippet"),
+		FileName:   gitlab.Ptr("snippet.go"),
+		Content:    gitlab.Ptr("package main...."),
+		Visibility: gitlab.Ptr(gitlab.PublicVisibility),
 	}
 	_, _, err = git.ProjectSnippets.CreateSnippet(project.ID, s)
 	if err != nil {
@@ -225,7 +225,7 @@ func main() {
 }
 ```
 
-For complete usage of go-gitlab, see the full [package docs](https://godoc.org/gitlab.com/gitlab-org/api/client-go).
+For complete usage of go-gitlab, see the full [package docs](https://pkg.go.dev/gitlab.com/gitlab-org/api/client-go).
 
 ## Installation
 
@@ -244,22 +244,22 @@ You can use them like this:
 
 ```go
 func TestMockExample(t *testing.T) {
-    client := gitlabtesting.NewTestClient(t)
-    opts := &gitlab.ListAgentsOptions{}
-    expectedResp := &gitlab.Response{}
-    pid := 1
-    // Setup expectations
-    client.MockClusterAgents.EXPECT().
-        ListAgents(pid, opts).
-        Return([]*gitlab.Agent{{ID: 1}}, expectedResp, nil)
+	client := gitlabtesting.NewTestClient(t)
+	opts := &gitlab.ListAgentsOptions{}
+	expectedResp := &gitlab.Response{}
+	pid := 1
+	// Setup expectations
+	client.MockClusterAgents.EXPECT().
+		ListAgents(pid, opts).
+		Return([]*gitlab.Agent{{ID: 1}}, expectedResp, nil)
 
-    // Use the client in your test
-    // You'd probably call your own code here that gets the client injected.
-    // You can also retrieve a `gitlab.Client` object from `client.Client`.
-    agents, resp, err := client.ClusterAgents.ListAgents(pid, opts)
-    assert.NoError(t, err)
-    assert.Equal(t, expectedResp, resp)
-    assert.Len(t, agents, 1)
+	// Use the client in your test
+	// You'd probably call your own code here that gets the client injected.
+	// You can also retrieve a `gitlab.Client` object from `client.Client`.
+	agents, resp, err := client.ClusterAgents.ListAgents(pid, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedResp, resp)
+	assert.Len(t, agents, 1)
 }
 ```
 

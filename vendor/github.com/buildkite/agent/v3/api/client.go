@@ -1,7 +1,5 @@
 package api
 
-//go:generate go run github.com/rjeczalik/interfaces/cmd/interfacer@v0.3.0 -for github.com/buildkite/agent/v3/api.Client -as agent.APIClient -o ../agent/api.go
-
 import (
 	"bytes"
 	"context"
@@ -309,7 +307,6 @@ func newResponse(r *http.Response) *Response {
 // interface, the raw response body will be written to v, without attempting to
 // first decode it.
 func (c *Client) doRequest(req *http.Request, v any) (*Response, error) {
-
 	resp, err := agenthttp.Do(c.logger, c.client, req,
 		agenthttp.WithDebugHTTP(c.conf.DebugHTTP),
 		agenthttp.WithTraceHTTP(c.conf.TraceHTTP),
@@ -317,8 +314,8 @@ func (c *Client) doRequest(req *http.Request, v any) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	defer io.Copy(io.Discard, resp.Body)
+	defer resp.Body.Close()              //nolint:errcheck // This is idiomatic for response bodies.
+	defer io.Copy(io.Discard, resp.Body) //nolint:errcheck // Body is a reader, io.Discard never errors.
 
 	response := newResponse(resp)
 
@@ -330,7 +327,9 @@ func (c *Client) doRequest(req *http.Request, v any) (*Response, error) {
 
 	if v != nil {
 		if w, ok := v.(io.Writer); ok {
-			io.Copy(w, resp.Body)
+			if _, err := io.Copy(w, resp.Body); err != nil {
+				return response, fmt.Errorf("failed to copy response into destination %T: %v", w, err)
+			}
 		} else {
 			if strings.Contains(req.Header.Get("Content-Type"), "application/msgpack") {
 				return response, errors.New("Msgpack not supported")
@@ -375,8 +374,13 @@ func checkResponse(r *http.Response) error {
 
 	errorResponse := &ErrorResponse{Response: r}
 	data, err := io.ReadAll(r.Body)
-	if err == nil && data != nil {
-		json.Unmarshal(data, errorResponse)
+	if err != nil {
+		return errorResponse
+	}
+	if data != nil {
+		// Unmarshaling the error JSON is best-effort, but we could consider
+		// reporting unmarshaling problems.
+		json.Unmarshal(data, errorResponse) //nolint:errcheck // ^^
 	}
 
 	return errorResponse
@@ -386,7 +390,7 @@ func checkResponse(r *http.Response) error {
 // be a struct whose fields may contain "url" tags.
 func addOptions(s string, opt any) (string, error) {
 	v := reflect.ValueOf(opt)
-	if v.Kind() == reflect.Ptr && v.IsNil() {
+	if v.Kind() == reflect.Pointer && v.IsNil() {
 		return s, nil
 	}
 
@@ -404,7 +408,7 @@ func addOptions(s string, opt any) (string, error) {
 	return u.String(), nil
 }
 
-func joinURLPath(endpoint string, path string) string {
+func joinURLPath(endpoint, path string) string {
 	return strings.TrimRight(endpoint, "/") + "/" + strings.TrimLeft(path, "/")
 }
 

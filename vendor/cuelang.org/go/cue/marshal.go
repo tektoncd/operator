@@ -19,10 +19,10 @@ import (
 	"compress/gzip"
 	"encoding/gob"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"cuelang.org/go/cue/ast"
-	"cuelang.org/go/cue/ast/astutil"
 	"cuelang.org/go/cue/build"
 	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/format"
@@ -59,7 +59,7 @@ func (b *unmarshaller) load(pos token.Pos, path string) *build.Instance {
 }
 
 func (b *unmarshaller) build(bi *instanceData) *build.Instance {
-	p := b.ctxt.NewInstance(bi.Path, b.load)
+	p := b.ctxt.NewInstance(bi.Path, nil)
 	p.ImportPath = bi.Path
 	for _, f := range bi.Files {
 		_ = p.AddFile(f.Name, f.Data)
@@ -70,9 +70,9 @@ func (b *unmarshaller) build(bi *instanceData) *build.Instance {
 
 func compileInstances(r *Runtime, data []*instanceData) (instances []*Instance, err error) {
 	b := unmarshaller{
-		ctxt:    build.NewContext(),
 		imports: map[string]*instanceData{},
 	}
+	b.ctxt = build.NewContext(build.Loader(b.load))
 	for _, i := range data {
 		if i.Path == "" {
 			if !i.Root {
@@ -143,15 +143,13 @@ func (r *Runtime) Marshal(values ...InstanceOrValue) (b []byte, err error) {
 		// TODO: support exporting instance
 		file, _ := export.Def(r.runtime(), inst.ID(), i.instance().root)
 		imports := []string{}
-		file.VisitImports(func(i *ast.ImportDecl) {
-			for _, spec := range i.Specs {
-				info, _ := astutil.ParseImportSpec(spec)
-				imports = append(imports, info.ID)
-			}
-		})
+		for spec := range file.ImportSpecs() {
+			path, _ := strconv.Unquote(spec.Path.Value)
+			imports = append(imports, path)
+		}
 
 		if inst.PkgName != "" {
-			if pkg := internal.Package(file); pkg == nil {
+			if pkg, _ := internal.Package(file); pkg == nil {
 				pkg := &ast.Package{Name: ast.NewIdent(inst.PkgName)}
 				file.Decls = append([]ast.Decl{pkg}, file.Decls...)
 			} else if pkg.Name.Name != inst.PkgName {

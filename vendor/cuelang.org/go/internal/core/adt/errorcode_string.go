@@ -10,18 +10,20 @@ func _() {
 	var x [1]struct{}
 	_ = x[EvalError-0]
 	_ = x[UserError-1]
-	_ = x[StructuralCycleError-2]
-	_ = x[IncompleteError-3]
-	_ = x[CycleError-4]
+	_ = x[LegacyUserError-2]
+	_ = x[StructuralCycleError-3]
+	_ = x[IncompleteError-4]
+	_ = x[CycleError-5]
 }
 
-const _ErrorCode_name = "evaluserstructural cycleincompletecycle"
+const _ErrorCode_name = "evaluseruserstructural cycleincompletecycle"
 
-var _ErrorCode_index = [...]uint8{0, 4, 8, 24, 34, 39}
+var _ErrorCode_index = [...]uint8{0, 4, 8, 12, 28, 38, 43}
 
 func (i ErrorCode) String() string {
-	if i < 0 || i >= ErrorCode(len(_ErrorCode_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_ErrorCode_index)-1 {
 		return "ErrorCode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _ErrorCode_name[_ErrorCode_index[i]:_ErrorCode_index[i+1]]
+	return _ErrorCode_name[_ErrorCode_index[idx]:_ErrorCode_index[idx+1]]
 }

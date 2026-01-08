@@ -34,6 +34,7 @@ type (
 		RelatedResources []*RelatedResourceAnnotation `json:"related_resources,omitempty"`
 		Authors          []*AuthorAnnotation          `json:"authors,omitempty"`
 		Schemas          []*SchemaAnnotation          `json:"schemas,omitempty"`
+		Compile          *CompileAnnotation           `json:"compile,omitempty"`
 		Custom           map[string]any               `json:"custom,omitempty"`
 		Location         *Location                    `json:"location,omitempty"`
 
@@ -46,6 +47,11 @@ type (
 		Path       Ref  `json:"path"`
 		Schema     Ref  `json:"schema,omitempty"`
 		Definition *any `json:"definition,omitempty"`
+	}
+
+	CompileAnnotation struct {
+		Unknowns []Ref `json:"unknowns,omitempty"`
+		MaskRule Ref   `json:"mask_rule,omitempty"` // NOTE: This doesn't need to start with "data.package", it can be relative
 	}
 
 	AuthorAnnotation struct {
@@ -148,6 +154,10 @@ func (a *Annotations) Compare(other *Annotations) int {
 	}
 
 	if cmp := compareSchemas(a.Schemas, other.Schemas); cmp != 0 {
+		return cmp
+	}
+
+	if cmp := a.Compile.Compare(other.Compile); cmp != 0 {
 		return cmp
 	}
 
@@ -403,6 +413,8 @@ func (a *Annotations) Copy(node Node) *Annotations {
 		cpy.Schemas[i] = a.Schemas[i].Copy()
 	}
 
+	cpy.Compile = a.Compile.Copy()
+
 	if a.Custom != nil {
 		cpy.Custom = deepcopy.Map(a.Custom)
 	}
@@ -423,28 +435,28 @@ func (a *Annotations) toObject() (*Object, *Error) {
 	if len(a.Scope) > 0 {
 		switch a.Scope {
 		case annotationScopeDocument:
-			obj.Insert(InternedStringTerm("scope"), InternedStringTerm("document"))
+			obj.Insert(InternedTerm("scope"), InternedTerm("document"))
 		case annotationScopePackage:
-			obj.Insert(InternedStringTerm("scope"), InternedStringTerm("package"))
+			obj.Insert(InternedTerm("scope"), InternedTerm("package"))
 		case annotationScopeRule:
-			obj.Insert(InternedStringTerm("scope"), InternedStringTerm("rule"))
+			obj.Insert(InternedTerm("scope"), InternedTerm("rule"))
 		case annotationScopeSubpackages:
-			obj.Insert(InternedStringTerm("scope"), InternedStringTerm("subpackages"))
+			obj.Insert(InternedTerm("scope"), InternedTerm("subpackages"))
 		default:
-			obj.Insert(InternedStringTerm("scope"), StringTerm(a.Scope))
+			obj.Insert(InternedTerm("scope"), StringTerm(a.Scope))
 		}
 	}
 
 	if len(a.Title) > 0 {
-		obj.Insert(InternedStringTerm("title"), StringTerm(a.Title))
+		obj.Insert(InternedTerm("title"), StringTerm(a.Title))
 	}
 
 	if a.Entrypoint {
-		obj.Insert(InternedStringTerm("entrypoint"), InternedBooleanTerm(true))
+		obj.Insert(InternedTerm("entrypoint"), InternedTerm(true))
 	}
 
 	if len(a.Description) > 0 {
-		obj.Insert(InternedStringTerm("description"), StringTerm(a.Description))
+		obj.Insert(InternedTerm("description"), StringTerm(a.Description))
 	}
 
 	if len(a.Organizations) > 0 {
@@ -452,19 +464,19 @@ func (a *Annotations) toObject() (*Object, *Error) {
 		for _, org := range a.Organizations {
 			orgs = append(orgs, StringTerm(org))
 		}
-		obj.Insert(InternedStringTerm("organizations"), ArrayTerm(orgs...))
+		obj.Insert(InternedTerm("organizations"), ArrayTerm(orgs...))
 	}
 
 	if len(a.RelatedResources) > 0 {
 		rrs := make([]*Term, 0, len(a.RelatedResources))
 		for _, rr := range a.RelatedResources {
-			rrObj := NewObject(Item(InternedStringTerm("ref"), StringTerm(rr.Ref.String())))
+			rrObj := NewObject(Item(InternedTerm("ref"), StringTerm(rr.Ref.String())))
 			if len(rr.Description) > 0 {
-				rrObj.Insert(InternedStringTerm("description"), StringTerm(rr.Description))
+				rrObj.Insert(InternedTerm("description"), StringTerm(rr.Description))
 			}
 			rrs = append(rrs, NewTerm(rrObj))
 		}
-		obj.Insert(InternedStringTerm("related_resources"), ArrayTerm(rrs...))
+		obj.Insert(InternedTerm("related_resources"), ArrayTerm(rrs...))
 	}
 
 	if len(a.Authors) > 0 {
@@ -472,14 +484,14 @@ func (a *Annotations) toObject() (*Object, *Error) {
 		for _, author := range a.Authors {
 			aObj := NewObject()
 			if len(author.Name) > 0 {
-				aObj.Insert(InternedStringTerm("name"), StringTerm(author.Name))
+				aObj.Insert(InternedTerm("name"), StringTerm(author.Name))
 			}
 			if len(author.Email) > 0 {
-				aObj.Insert(InternedStringTerm("email"), StringTerm(author.Email))
+				aObj.Insert(InternedTerm("email"), StringTerm(author.Email))
 			}
 			as = append(as, NewTerm(aObj))
 		}
-		obj.Insert(InternedStringTerm("authors"), ArrayTerm(as...))
+		obj.Insert(InternedTerm("authors"), ArrayTerm(as...))
 	}
 
 	if len(a.Schemas) > 0 {
@@ -487,21 +499,21 @@ func (a *Annotations) toObject() (*Object, *Error) {
 		for _, s := range a.Schemas {
 			sObj := NewObject()
 			if len(s.Path) > 0 {
-				sObj.Insert(InternedStringTerm("path"), NewTerm(s.Path.toArray()))
+				sObj.Insert(InternedTerm("path"), NewTerm(s.Path.toArray()))
 			}
 			if len(s.Schema) > 0 {
-				sObj.Insert(InternedStringTerm("schema"), NewTerm(s.Schema.toArray()))
+				sObj.Insert(InternedTerm("schema"), NewTerm(s.Schema.toArray()))
 			}
 			if s.Definition != nil {
 				def, err := InterfaceToValue(s.Definition)
 				if err != nil {
 					return nil, NewError(CompileErr, a.Location, "invalid definition in schema annotation: %s", err.Error())
 				}
-				sObj.Insert(InternedStringTerm("definition"), NewTerm(def))
+				sObj.Insert(InternedTerm("definition"), NewTerm(def))
 			}
 			ss = append(ss, NewTerm(sObj))
 		}
-		obj.Insert(InternedStringTerm("schemas"), ArrayTerm(ss...))
+		obj.Insert(InternedTerm("schemas"), ArrayTerm(ss...))
 	}
 
 	if len(a.Custom) > 0 {
@@ -509,7 +521,7 @@ func (a *Annotations) toObject() (*Object, *Error) {
 		if err != nil {
 			return nil, NewError(CompileErr, a.Location, "invalid custom annotation %s", err.Error())
 		}
-		obj.Insert(InternedStringTerm("custom"), NewTerm(c))
+		obj.Insert(InternedTerm("custom"), NewTerm(c))
 	}
 
 	return &obj, nil
@@ -713,6 +725,44 @@ func (s *SchemaAnnotation) Compare(other *SchemaAnnotation) int {
 
 func (s *SchemaAnnotation) String() string {
 	bs, _ := json.Marshal(s)
+	return string(bs)
+}
+
+// Copy returns a deep copy of s.
+func (c *CompileAnnotation) Copy() *CompileAnnotation {
+	if c == nil {
+		return nil
+	}
+	cpy := *c
+	for i := range c.Unknowns {
+		cpy.Unknowns[i] = c.Unknowns[i].Copy()
+	}
+	return &cpy
+}
+
+// Compare returns an integer indicating if s is less than, equal to, or greater
+// than other.
+func (c *CompileAnnotation) Compare(other *CompileAnnotation) int {
+	switch {
+	case c == nil && other == nil:
+		return 0
+	case c != nil && other == nil:
+		return 1
+	case c == nil && other != nil:
+		return -1
+	}
+
+	if cmp := slices.CompareFunc(c.Unknowns, other.Unknowns,
+		func(x, y Ref) int {
+			return x.Compare(y)
+		}); cmp != 0 {
+		return cmp
+	}
+	return c.MaskRule.Compare(other.MaskRule)
+}
+
+func (c *CompileAnnotation) String() string {
+	bs, _ := json.Marshal(c)
 	return string(bs)
 }
 

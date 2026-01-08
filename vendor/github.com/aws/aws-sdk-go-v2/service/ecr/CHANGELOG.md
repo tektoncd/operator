@@ -1,3 +1,145 @@
+# v1.51.2 (2025-11-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.23.2 which should convey some passive reduction of overall allocations, especially when not using the metrics system.
+
+# v1.51.1 (2025-10-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.51.0 (2025-10-23)
+
+* **Feature**: Update endpoint ruleset parameters casing
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.7 (2025-10-22)
+
+* No change notes available for this release.
+
+# v1.50.6 (2025-10-16)
+
+* **Dependency Update**: Bump minimum Go version to 1.23.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.5 (2025-09-26)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.4 (2025-09-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.3 (2025-09-10)
+
+* No change notes available for this release.
+
+# v1.50.2 (2025-09-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.1 (2025-08-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.50.0 (2025-08-28)
+
+* **Feature**: Remove incorrect endpoint tests
+
+# v1.49.3 (2025-08-27)
+
+* **Dependency Update**: Update to smithy-go v1.23.0.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.49.2 (2025-08-21)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.49.1 (2025-08-20)
+
+* **Bug Fix**: Remove unused deserialization code.
+
+# v1.49.0 (2025-08-11)
+
+* **Feature**: Add support for configuring per-service Options via callback on global config.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.48.0 (2025-08-04)
+
+* **Feature**: Support configurable auth scheme preferences in service clients via AWS_AUTH_SCHEME_PREFERENCE in the environment, auth_scheme_preference in the config file, and through in-code settings on LoadDefaultConfig and client constructor methods.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.47.1 (2025-07-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.47.0 (2025-07-28)
+
+* **Feature**: Add support for HTTP interceptors.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.46.0 (2025-07-22)
+
+* **Feature**: Add support for Image Tag Mutability Exception feature, allowing repositories to define wildcard-based patterns that override the default image tag mutability settings.
+
+# v1.45.2 (2025-07-19)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.45.1 (2025-06-17)
+
+* **Dependency Update**: Update to smithy-go v1.22.4.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.45.0 (2025-06-16)
+
+* **Feature**: The `DescribeImageScanning` API now includes `lastInUseAt` and `InUseCount` fields that can be used to prioritize vulnerability remediation for images that are actively being used.
+
+# v1.44.2 (2025-06-10)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.44.1 (2025-06-06)
+
+* No change notes available for this release.
+
+# v1.44.0 (2025-04-30)
+
+* **Feature**: Adds dualstack support for Amazon Elastic Container Registry (Amazon ECR).
+
+# v1.43.3 (2025-04-10)
+
+* No change notes available for this release.
+
+# v1.43.2 (2025-04-03)
+
+* No change notes available for this release.
+
+# v1.43.1 (2025-04-02)
+
+* **Documentation**: Fix for customer issues related to AWS account ID and size limitation for token.
+
+# v1.43.0 (2025-03-11)
+
+* **Feature**: This release adds Amazon ECR to Amazon ECR pull through cache rules support.
+
+# v1.42.1 (2025-03-04.2)
+
+* **Bug Fix**: Add assurance test for operation order.
+
+# v1.42.0 (2025-02-27)
+
+* **Feature**: Track credential providers via User-Agent Feature ids
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.41.1 (2025-02-18)
+
+* **Bug Fix**: Bump go version to 1.22
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.41.0 (2025-02-07)
+
+* **Feature**: Adds support to handle the new basic scanning daily quota.
+
 # v1.40.3 (2025-02-05)
 
 * **Dependency Update**: Updated to the latest SDK module versions

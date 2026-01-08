@@ -7,16 +7,16 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/literal"
 	"cuelang.org/go/cue/token"
-	"cuelang.org/go/internal"
 )
 
 // TODO(mvdan): we should sanity check that the decoder always produces valid CUE,
@@ -102,13 +102,28 @@ func (d *decoder) Decode() (ast.Expr, error) {
 			// Any further Decode calls must return EOF to avoid an endless loop.
 			d.decodeErr = io.EOF
 
-			// If the input is empty, we produce a single null literal with EOF.
+			// If the input is empty, we produce `*null | _` followed by EOF.
 			// Note that when the input contains "---", we get an empty document
 			// with a null scalar value inside instead.
 			if !d.yamlNonEmpty {
-				return &ast.BasicLit{
-					Kind:  token.NULL,
-					Value: "null",
+				// Attach positions which at least point to the filename.
+				pos := d.tokFile.Pos(0, token.NoRelPos)
+				return &ast.BinaryExpr{
+					Op:    token.OR,
+					OpPos: pos,
+					X: &ast.UnaryExpr{
+						Op:    token.MUL,
+						OpPos: pos,
+						X: &ast.BasicLit{
+							Kind:     token.NULL,
+							ValuePos: pos,
+							Value:    "null",
+						},
+					},
+					Y: &ast.Ident{
+						Name:    "_",
+						NamePos: pos,
+					},
 				}, nil
 			}
 			// If the input wasn't empty, we already decoded some CUE syntax nodes,
@@ -192,7 +207,7 @@ func (d *decoder) comments(src string) []*ast.Comment {
 		return nil
 	}
 	var comments []*ast.Comment
-	for _, line := range strings.Split(src, "\n") {
+	for line := range strings.SplitSeq(src, "\n") {
 		if line == "" {
 			continue // yaml.v3 comments have a trailing newline at times
 		}
@@ -374,9 +389,6 @@ outer:
 			}
 			continue
 		}
-		if yk.Kind != yaml.ScalarNode {
-			return d.posErrorf(yn, "invalid map key: %v", yk.ShortTag())
-		}
 
 		field := &ast.Field{}
 		label, err := d.label(yk)
@@ -420,8 +432,8 @@ func (d *decoder) merge(yn *yaml.Node, m *ast.StructLit, multiline bool) error {
 		return d.insertMap(yn.Alias, m, multiline, true)
 	case yaml.SequenceNode:
 		// Step backwards as earlier nodes take precedence.
-		for i := len(yn.Content) - 1; i >= 0; i-- {
-			if err := d.merge(yn.Content[i], m, multiline); err != nil {
+		for _, c := range slices.Backward(yn.Content) {
+			if err := d.merge(c, m, multiline); err != nil {
 				return err
 			}
 		}
@@ -434,31 +446,37 @@ func (d *decoder) merge(yn *yaml.Node, m *ast.StructLit, multiline bool) error {
 func (d *decoder) label(yn *yaml.Node) (ast.Label, error) {
 	pos := d.pos(yn)
 
-	expr, err := d.scalar(yn)
+	var expr ast.Expr
+	var err error
+	var value string
+	switch yn.Kind {
+	case yaml.ScalarNode:
+		expr, err = d.scalar(yn)
+		value = yn.Value
+	case yaml.AliasNode:
+		if yn.Alias.Kind != yaml.ScalarNode {
+			return nil, d.posErrorf(yn, "invalid map key: %v", yn.Alias.ShortTag())
+		}
+		expr, err = d.alias(yn)
+		value = yn.Alias.Value
+	default:
+		return nil, d.posErrorf(yn, "invalid map key: %v", yn.ShortTag())
+	}
 	if err != nil {
 		return nil, err
 	}
+
 	switch expr := expr.(type) {
 	case *ast.BasicLit:
-		if expr.Kind == token.STRING {
-			if ast.IsValidIdent(yn.Value) && !internal.IsDefOrHidden(yn.Value) {
-				return &ast.Ident{
-					NamePos: pos,
-					Name:    yn.Value,
-				}, nil
-			}
-			ast.SetPos(expr, pos)
-			return expr, nil
+		if expr.Kind != token.STRING {
+			// With incoming YAML like `Null: 1`, the key scalar is normalized to "null".
+			value = expr.Value
 		}
-
-		return &ast.BasicLit{
-			ValuePos: pos,
-			Kind:     token.STRING,
-			Value:    literal.Label.Quote(expr.Value),
-		}, nil
-
+		label := ast.NewStringLabel(value)
+		ast.SetPos(label, pos)
+		return label, nil
 	default:
-		return nil, d.posErrorf(yn, "invalid label "+yn.Value)
+		return nil, d.posErrorf(yn, "invalid label "+value)
 	}
 }
 

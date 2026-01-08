@@ -27,6 +27,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"net/http"
 	"strings"
 
@@ -36,7 +37,9 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/sync/errgroup"
 
+	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/mod/modfile"
 	"cuelang.org/go/mod/module"
 	"cuelang.org/go/mod/modzip"
@@ -106,6 +109,130 @@ func NewClientWithResolver(resolver Resolver) *Client {
 	}
 }
 
+// Mirror ensures that the given module and its component parts
+// are present and identical in both src and dst.
+func (src *Client) Mirror(ctx context.Context, dst *Client, mv module.Version) error {
+	m, err := src.GetModule(ctx, mv)
+	if err != nil {
+		return err
+	}
+	dstLoc, err := dst.resolve(mv)
+	if err != nil {
+		return fmt.Errorf("cannot resolve module in destination: %w", err)
+	}
+
+	// TODO ideally this parallelism would respect parallelism limits
+	// on whatever is calling the function too rather than just doing
+	// all uploads in parallel.
+	var g errgroup.Group
+	for desc := range manifestRefs(m.manifest) {
+		g.Go(func() error {
+			return mirrorBlob(ctx, m.loc, dstLoc, desc)
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
+	// We've uploaded all the blobs referenced by the manifest; now
+	// we can upload the manifest itself.
+	if _, err := dstLoc.Registry.ResolveManifest(ctx, dstLoc.Repository, m.manifestDigest); err == nil {
+		// Manifest already exists, but we still need to check for referrers
+		return src.mirrorReferrers(ctx, dst, m.loc, dstLoc, m.manifestDigest)
+	}
+	if _, err := dstLoc.Registry.PushManifest(ctx, dstLoc.Repository, dstLoc.Tag, m.manifestContents, ocispec.MediaTypeImageManifest); err != nil {
+		return nil
+	}
+
+	// Mirror any referrers that point to this manifest
+	return src.mirrorReferrers(ctx, dst, m.loc, dstLoc, m.manifestDigest)
+}
+
+func mirrorBlob(ctx context.Context, srcLoc, dstLoc RegistryLocation, desc ocispec.Descriptor) error {
+	desc1, err := dstLoc.Registry.ResolveBlob(ctx, dstLoc.Repository, desc.Digest)
+	if err == nil {
+		// Blob already exists in destination. Check that its size agrees.
+		if desc1.Size != desc.Size {
+			return fmt.Errorf("destination size (%d) does not agree with source size (%d) in blob %v", desc1.Size, desc.Size, desc.Digest)
+		}
+		return nil
+	}
+	r, err := srcLoc.Registry.GetBlob(ctx, srcLoc.Repository, desc.Digest)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+	if _, err := dstLoc.Registry.PushBlob(ctx, dstLoc.Repository, desc, r); err != nil {
+		return err
+	}
+	return nil
+}
+
+// mirrorReferrers mirrors all referrers that point to the given manifest digest.
+func (src *Client) mirrorReferrers(ctx context.Context, dst *Client, srcLoc, dstLoc RegistryLocation, manifestDigest ociregistry.Digest) error {
+	var g errgroup.Group
+
+	// Iterate through all referrers that point to this manifest
+	for referrerDesc, err := range srcLoc.Registry.Referrers(ctx, srcLoc.Repository, manifestDigest, "") {
+		if err != nil {
+			return fmt.Errorf("failed to get referrers: %w", err)
+		}
+
+		g.Go(func() error {
+			return src.mirrorReferrer(ctx, dst, srcLoc, dstLoc, referrerDesc)
+		})
+	}
+
+	return g.Wait()
+}
+
+// mirrorReferrer mirrors a single referrer manifest and its associated blobs.
+func (src *Client) mirrorReferrer(ctx context.Context, dst *Client, srcLoc, dstLoc RegistryLocation, referrerDesc ocispec.Descriptor) error {
+	// Check if the referrer manifest already exists in the destination
+	if _, err := dstLoc.Registry.ResolveManifest(ctx, dstLoc.Repository, referrerDesc.Digest); err == nil {
+		// Manifest already exists, nothing to do
+		return nil
+	}
+
+	// Get the referrer manifest from source
+	r, err := srcLoc.Registry.GetManifest(ctx, srcLoc.Repository, referrerDesc.Digest)
+	if err != nil {
+		return fmt.Errorf("failed to get referrer manifest %s: %w", referrerDesc.Digest, err)
+	}
+	defer r.Close()
+
+	manifestData, err := io.ReadAll(r)
+	if err != nil {
+		return fmt.Errorf("failed to read referrer manifest %s: %w", referrerDesc.Digest, err)
+	}
+
+	// Parse the manifest to get the blobs it references
+	manifest, err := unmarshalManifest(manifestData, r.Descriptor().MediaType)
+	if err != nil {
+		return fmt.Errorf("failed to parse referrer manifest %s: %w", referrerDesc.Digest, err)
+	}
+
+	// Mirror all blobs referenced by this referrer manifest (excluding Subject)
+	var g errgroup.Group
+	g.Go(func() error {
+		return mirrorBlob(ctx, srcLoc, dstLoc, manifest.Config)
+	})
+	for _, desc := range manifest.Layers {
+		g.Go(func() error {
+			return mirrorBlob(ctx, srcLoc, dstLoc, desc)
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("failed to mirror blobs for referrer %s: %w", referrerDesc.Digest, err)
+	}
+
+	// Push the referrer manifest itself (without a tag, just by content)
+	if _, err := dstLoc.Registry.PushManifest(ctx, dstLoc.Repository, "", manifestData, r.Descriptor().MediaType); err != nil {
+		return fmt.Errorf("failed to push referrer manifest %s: %w", referrerDesc.Digest, err)
+	}
+
+	return nil
+}
+
 // GetModule returns the module instance for the given version.
 // It returns an error that satisfies [errors.Is]([ErrNotFound]) if the
 // module is not present in the store at this version.
@@ -162,11 +289,12 @@ func (c *Client) GetModuleWithManifest(m module.Version, contents []byte, mediaT
 	}
 	// TODO check that the other blobs are of the expected type (application/zip).
 	return &Module{
-		client:         c,
-		loc:            loc,
-		version:        m,
-		manifest:       *manifest,
-		manifestDigest: digest.FromBytes(contents),
+		client:           c,
+		loc:              loc,
+		version:          m,
+		manifest:         *manifest,
+		manifestContents: contents,
+		manifestDigest:   digest.FromBytes(contents),
 	}, nil
 }
 
@@ -175,10 +303,7 @@ func (c *Client) GetModuleWithManifest(m module.Version, contents []byte, mediaT
 // If m has a major version suffix, only versions with that major version will
 // be returned.
 func (c *Client) ModuleVersions(ctx context.Context, m string) (_req []string, _err0 error) {
-	mpath, major, hasMajor := module.SplitPathVersion(m)
-	if !hasMajor {
-		mpath = m
-	}
+	mpath, major, hasMajor := ast.SplitPackageVersion(m)
 	loc, err := c.resolver.ResolveToRegistry(mpath, "")
 	if err != nil {
 		if errors.Is(err, ErrRegistryNotFound) {
@@ -195,25 +320,22 @@ func (c *Client) ModuleVersions(ctx context.Context, m string) (_req []string, _
 	}
 	// Note: do not use c.repoName because that always expects
 	// a module path with a major version.
-	iter := loc.Registry.Tags(ctx, loc.Repository, "")
-	var _err error
-	iter(func(tag string, err error) bool {
+	for tag, err := range loc.Registry.Tags(ctx, loc.Repository, "") {
 		if err != nil {
-			_err = err
-			return false
+			if !isNotExist(err) {
+				return nil, fmt.Errorf("module %v: %w", m, err)
+			}
+			continue
 		}
 		vers, ok := strings.CutPrefix(tag, loc.Tag)
 		if !ok || !semver.IsValid(vers) {
-			return true
+			continue
 		}
 		if !hasMajor || semver.Major(vers) == major {
 			versions = append(versions, vers)
 		}
-		return true
-	})
-	if _err != nil && !isNotExist(_err) {
-		return nil, fmt.Errorf("module %v: %w", m, _err)
 	}
+
 	semver.Sort(versions)
 	return versions, nil
 }
@@ -371,11 +493,12 @@ func checkModFile(m module.Version, f *zip.File) ([]byte, *modfile.File, error) 
 
 // Module represents a CUE module instance.
 type Module struct {
-	client         *Client
-	loc            RegistryLocation
-	version        module.Version
-	manifest       ocispec.Manifest
-	manifestDigest ociregistry.Digest
+	client           *Client
+	loc              RegistryLocation
+	version          module.Version
+	manifest         ocispec.Manifest
+	manifestContents []byte
+	manifestDigest   ociregistry.Digest
 }
 
 func (m *Module) Version() module.Version {
@@ -508,4 +631,24 @@ func (r singleResolver) ResolveToRegistry(mpath, vers string) (RegistryLocation,
 		Repository: mpath,
 		Tag:        vers,
 	}, nil
+}
+
+// manifestRefs returns an iterator that produces all the references
+// contained in m.
+func manifestRefs(m ocispec.Manifest) iter.Seq[ociregistry.Descriptor] {
+	return func(yield func(ociregistry.Descriptor) bool) {
+		if !yield(m.Config) {
+			return
+		}
+		for _, desc := range m.Layers {
+			if !yield(desc) {
+				return
+			}
+		}
+		// For completeness, although we shouldn't actually use this
+		// logic.
+		if m.Subject != nil {
+			yield(*m.Subject)
+		}
+	}
 }

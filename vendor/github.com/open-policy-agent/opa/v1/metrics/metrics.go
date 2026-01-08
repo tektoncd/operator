@@ -19,21 +19,27 @@ import (
 
 // Well-known metric names.
 const (
-	BundleRequest       = "bundle_request"
-	ServerHandler       = "server_handler"
-	ServerQueryCacheHit = "server_query_cache_hit"
-	SDKDecisionEval     = "sdk_decision_eval"
-	RegoQueryCompile    = "rego_query_compile"
-	RegoQueryEval       = "rego_query_eval"
-	RegoQueryParse      = "rego_query_parse"
-	RegoModuleParse     = "rego_module_parse"
-	RegoDataParse       = "rego_data_parse"
-	RegoModuleCompile   = "rego_module_compile"
-	RegoPartialEval     = "rego_partial_eval"
-	RegoInputParse      = "rego_input_parse"
-	RegoLoadFiles       = "rego_load_files"
-	RegoLoadBundles     = "rego_load_bundles"
-	RegoExternalResolve = "rego_external_resolve"
+	BundleRequest                     = "bundle_request"
+	ServerHandler                     = "server_handler"
+	ServerQueryCacheHit               = "server_query_cache_hit"
+	SDKDecisionEval                   = "sdk_decision_eval"
+	RegoQueryCompile                  = "rego_query_compile"
+	RegoQueryEval                     = "rego_query_eval"
+	RegoQueryParse                    = "rego_query_parse"
+	RegoModuleParse                   = "rego_module_parse"
+	RegoDataParse                     = "rego_data_parse"
+	RegoModuleCompile                 = "rego_module_compile"
+	RegoPartialEval                   = "rego_partial_eval"
+	RegoInputParse                    = "rego_input_parse"
+	RegoLoadFiles                     = "rego_load_files"
+	RegoLoadBundles                   = "rego_load_bundles"
+	RegoExternalResolve               = "rego_external_resolve"
+	CompilePrepPartial                = "compile_prep_partial"
+	CompileEvalConstraints            = "compile_eval_constraints"
+	CompileTranslateQueries           = "compile_translate_queries"
+	CompileExtractAnnotationsUnknowns = "compile_extract_annotations_unknowns"
+	CompileExtractAnnotationsMask     = "compile_extract_annotations_mask"
+	CompileEvalMaskRule               = "compile_eval_mask_rule"
 )
 
 // Info contains attributes describing the underlying metrics provider.
@@ -66,9 +72,17 @@ type metrics struct {
 
 // New returns a new Metrics object.
 func New() Metrics {
-	m := &metrics{}
-	m.Clear()
-	return m
+	return &metrics{
+		timers:     map[string]Timer{},
+		histograms: map[string]Histogram{},
+		counters:   map[string]Counter{},
+	}
+}
+
+// NoOp returns a Metrics implementation that does nothing and costs nothing.
+// Used when metrics are expected, but not of interest.
+func NoOp() Metrics {
+	return noOpMetricsInstance
 }
 
 type metric struct {
@@ -83,7 +97,6 @@ func (*metrics) Info() Info {
 }
 
 func (m *metrics) String() string {
-
 	all := m.All()
 	sorted := make([]metric, 0, len(all))
 
@@ -147,7 +160,7 @@ func (m *metrics) Counter(name string) Counter {
 func (m *metrics) All() map[string]any {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
-	result := map[string]any{}
+	result := make(map[string]any, len(m.timers)+len(m.histograms)+len(m.counters))
 	for name, timer := range m.timers {
 		result[m.formatKey(name, timer)] = timer.Value()
 	}
@@ -163,7 +176,7 @@ func (m *metrics) All() map[string]any {
 func (m *metrics) Timers() map[string]any {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
-	ts := map[string]any{}
+	ts := make(map[string]any, len(m.timers))
 	for n, t := range m.timers {
 		ts[m.formatKey(n, t)] = t.Value()
 	}
@@ -196,7 +209,10 @@ func (*metrics) formatKey(name string, metrics any) string {
 type Timer interface {
 	Value() any
 	Int64() int64
+	// Start or resume a timer's time tracking.
 	Start()
+	// Stop a timer, and accumulate the delta (in nanoseconds) since it was last
+	// started.
 	Stop() int64
 }
 
@@ -208,15 +224,22 @@ type timer struct {
 
 func (t *timer) Start() {
 	t.mtx.Lock()
-	defer t.mtx.Unlock()
 	t.start = time.Now()
+	t.mtx.Unlock()
 }
 
 func (t *timer) Stop() int64 {
 	t.mtx.Lock()
 	defer t.mtx.Unlock()
-	delta := time.Since(t.start).Nanoseconds()
-	t.value += delta
+
+	var delta int64
+	if !t.start.IsZero() {
+		// Add the delta to the accumulated time value so far.
+		delta = time.Since(t.start).Nanoseconds()
+		t.value += delta
+		t.start = time.Time{} // Reset the start time to zero.
+	}
+
 	return delta
 }
 
@@ -254,7 +277,7 @@ func (h *histogram) Update(v int64) {
 }
 
 func (h *histogram) Value() any {
-	values := map[string]any{}
+	values := make(map[string]any, 12)
 	snap := h.hist.Snapshot()
 	percentiles := snap.Percentiles([]float64{
 		0.5,
@@ -310,3 +333,38 @@ func Statistics(num ...int64) any {
 	}
 	return t.Value()
 }
+
+type noOpMetrics struct{}
+type noOpTimer struct{}
+type noOpHistogram struct{}
+type noOpCounter struct{}
+
+var (
+	noOpMetricsInstance   = &noOpMetrics{}
+	noOpTimerInstance     = &noOpTimer{}
+	noOpHistogramInstance = &noOpHistogram{}
+	noOpCounterInstance   = &noOpCounter{}
+)
+
+func (*noOpMetrics) Info() Info                      { return Info{Name: "<built-in no-op>"} }
+func (*noOpMetrics) Timer(name string) Timer         { return noOpTimerInstance }
+func (*noOpMetrics) Histogram(name string) Histogram { return noOpHistogramInstance }
+func (*noOpMetrics) Counter(name string) Counter     { return noOpCounterInstance }
+func (*noOpMetrics) All() map[string]any             { return nil }
+func (*noOpMetrics) Clear()                          {}
+func (*noOpMetrics) MarshalJSON() ([]byte, error) {
+	return []byte(`{"name": "<built-in no-op>"}`), nil
+}
+
+func (*noOpTimer) Start()       {}
+func (*noOpTimer) Stop() int64  { return 0 }
+func (*noOpTimer) Value() any   { return 0 }
+func (*noOpTimer) Int64() int64 { return 0 }
+
+func (*noOpHistogram) Update(v int64) {}
+func (*noOpHistogram) Value() any     { return nil }
+
+func (*noOpCounter) Incr()        {}
+func (*noOpCounter) Add(_ uint64) {}
+func (*noOpCounter) Value() any   { return 0 }
+func (*noOpCounter) Int64() int64 { return 0 }

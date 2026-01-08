@@ -204,9 +204,9 @@ func (m *MergeRequest) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, (*alias)(m))
 }
 
-// MergeRequestDiff represents Gitlab merge request diff.
+// MergeRequestDiff represents GitLab merge request diff.
 //
-// Gitlab API docs:
+// GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#list-merge-request-diffs
 type MergeRequestDiff struct {
 	OldPath       string `json:"old_path"`
@@ -220,9 +220,9 @@ type MergeRequestDiff struct {
 	GeneratedFile bool   `json:"generated_file"`
 }
 
-// MergeRequestDiffVersion represents Gitlab merge request version.
+// MergeRequestDiffVersion represents GitLab merge request version.
 //
-// Gitlab API docs:
+// GitLab API docs:
 // https://docs.gitlab.com/api/merge_requests/#get-merge-request-diff-versions
 type MergeRequestDiffVersion struct {
 	ID             int        `json:"id"`
@@ -293,13 +293,13 @@ func (s *MergeRequestsService) ListMergeRequests(opt *ListMergeRequestsOptions, 
 		return nil, nil, err
 	}
 
-	var m []*BasicMergeRequest
-	resp, err := s.client.Do(req, &m)
+	var mrs []*MergeRequest
+	resp, err := s.client.Do(req, &mrs)
 	if err != nil {
 		return nil, resp, err
 	}
 
-	return m, resp, nil
+	return toBasic(mrs), resp, nil
 }
 
 // ListProjectMergeRequestsOptions represents the available ListMergeRequests()
@@ -356,13 +356,13 @@ func (s *MergeRequestsService) ListProjectMergeRequests(pid any, opt *ListProjec
 		return nil, nil, err
 	}
 
-	var m []*BasicMergeRequest
-	resp, err := s.client.Do(req, &m)
+	var mrs []*MergeRequest
+	resp, err := s.client.Do(req, &mrs)
 	if err != nil {
 		return nil, resp, err
 	}
 
-	return m, resp, nil
+	return toBasic(mrs), resp, nil
 }
 
 // ListGroupMergeRequestsOptions represents the available ListGroupMergeRequests()
@@ -419,13 +419,13 @@ func (s *MergeRequestsService) ListGroupMergeRequests(gid any, opt *ListGroupMer
 		return nil, nil, err
 	}
 
-	var m []*BasicMergeRequest
-	resp, err := s.client.Do(req, &m)
+	var mrs []*MergeRequest
+	resp, err := s.client.Do(req, &mrs)
 	if err != nil {
 		return nil, resp, err
 	}
 
-	return m, resp, nil
+	return toBasic(mrs), resp, nil
 }
 
 // GetMergeRequestsOptions represents the available GetMergeRequests()
@@ -1374,4 +1374,14 @@ func (s *MergeRequestsService) GetMergeRequestDependencies(pid any, mergeRequest
 	}
 
 	return mrd, resp, err
+}
+
+func toBasic(mrs []*MergeRequest) []*BasicMergeRequest {
+	ret := make([]*BasicMergeRequest, len(mrs))
+
+	for i, mr := range mrs {
+		ret[i] = &mr.BasicMergeRequest
+	}
+
+	return ret
 }

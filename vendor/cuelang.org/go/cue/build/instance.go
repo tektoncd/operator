@@ -26,6 +26,7 @@ import (
 	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/parser"
 	"cuelang.org/go/cue/token"
+	"cuelang.org/go/internal/mod/modfiledata"
 )
 
 // An Instance describes the collection of files, and its imports, necessary
@@ -80,6 +81,9 @@ type Instance struct {
 	// imported by other packages, including those within the module.
 	Module string
 
+	// ModuleFile holds the actual module file data, if available.
+	ModuleFile *modfiledata.File
+
 	// Root is the root of the directory hierarchy, it may be "" if this an
 	// instance has no imports.
 	// If Module != "", this corresponds to the module root.
@@ -103,7 +107,10 @@ type Instance struct {
 
 	Deps       []string `api:"alpha"`
 	DepsErrors []error  `api:"alpha"`
-	Match      []string `api:"alpha"`
+	// TODO: Match was declared for years but never set by any of the cue/build logic.
+	// If any user was trying to use it, we should implement it,
+	// but that seems unlikely given that it was always empty.
+	// Match []string `api:"alpha"`
 }
 
 // RelPath reports the path of f relative to the root of the instance's module
@@ -178,10 +185,14 @@ func (inst *Instance) Context() *Context {
 }
 
 func (inst *Instance) parse(name string, src interface{}) (*ast.File, error) {
-	if inst.ctxt != nil && inst.ctxt.parseFunc != nil {
-		return inst.ctxt.parseFunc(name, src)
+	cfg := parser.NewConfig(parser.ParseComments)
+	if inst.ModuleFile != nil && inst.ModuleFile.Language != nil {
+		cfg = cfg.Apply(parser.Version(inst.ModuleFile.Language.Version))
 	}
-	return parser.ParseFile(name, src, parser.ParseComments)
+	if inst.ctxt != nil && inst.ctxt.parseFunc != nil {
+		return inst.ctxt.parseFunc(name, src, cfg)
+	}
+	return parser.ParseFile(name, src, cfg)
 }
 
 // LookupImport defines a mapping from an ImportSpec's ImportPath to Instance.

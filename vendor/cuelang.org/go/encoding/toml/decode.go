@@ -202,11 +202,28 @@ func (d *Decoder) nextRootNode(tnode *toml.Node) error {
 	case toml.Table:
 		// Tables always begin a new line.
 		key, keyElems := d.decodeKey("", tnode.Key())
+
+		// Check if this table is a subtable of an existing array element
+		array := d.findArrayPrefix(key)
+		var actualKey string
+		if array != nil { // [last_array.new_table]
+			if array.rkey == key {
+				return d.nodeErrf(tnode.Child(), "cannot redeclare table array %q as a table", key)
+			}
+			// For subtables within array elements, we need to use the current array element's key
+			// to avoid false duplicate key errors between different array elements
+			subKey := key[len(array.rkey)+1:] // Remove the array prefix and dot
+			actualKey = fmt.Sprintf("%s.%d.%s", array.rkey, len(array.list.Elts)-1, subKey)
+
+		} else {
+			actualKey = key
+		}
+
 		// All table keys must be unique, including for the top-level table.
-		if d.seenTableKeys[key] {
+		if d.seenTableKeys[actualKey] {
 			return d.nodeErrf(tnode.Child(), "duplicate key: %s", key)
 		}
-		d.seenTableKeys[key] = true
+		d.seenTableKeys[actualKey] = true
 
 		// We want a multi-line struct with curly braces,
 		// just like TOML's tables are on multiple lines.
@@ -215,11 +232,7 @@ func (d *Decoder) nextRootNode(tnode *toml.Node) error {
 			Lbrace: token.NoPos.WithRel(token.Blank),
 			Rbrace: token.NoPos.WithRel(token.Newline),
 		}
-		array := d.findArrayPrefix(key)
 		if array != nil { // [last_array.new_table]
-			if array.rkey == key {
-				return d.nodeErrf(tnode.Child(), "cannot redeclare table array %q as a table", key)
-			}
 			subKeyElems := keyElems[array.level:]
 			topField, leafField := d.inlineFields(subKeyElems, token.Newline)
 			array.lastTable.Elts = append(array.lastTable.Elts, topField)
@@ -229,7 +242,7 @@ func (d *Decoder) nextRootNode(tnode *toml.Node) error {
 			d.topFile.Elts = append(d.topFile.Elts, topField)
 			leafField.Value = d.currentTable
 		}
-		d.currentTableKey = key
+		d.currentTableKey = actualKey
 
 	case toml.ArrayTable:
 		// Table array elements always begin a new line.
@@ -392,13 +405,11 @@ func (d *Decoder) inlineFields(tkeys []tomlKey, relPos token.RelPos) (top, leaf 
 }
 
 // quoteLabelIfNeeded quotes a label name only if it needs quoting.
-//
-// TODO(mvdan): this exists in multiple packages; move to cue/literal or cue/ast?
 func quoteLabelIfNeeded(name string) string {
-	if ast.IsValidIdent(name) {
-		return name
+	if ast.StringLabelNeedsQuoting(name) {
+		return literal.Label.Quote(name)
 	}
-	return literal.Label.Quote(name)
+	return name
 }
 
 // label creates an ast.Label that represents a key with exactly the literal string name.
@@ -407,17 +418,9 @@ func quoteLabelIfNeeded(name string) string {
 // cue/format knows how to quote any other identifiers correctly.
 func (d *Decoder) label(tkey tomlKey, relPos token.RelPos) ast.Label {
 	pos := d.tokenFile.Pos(tkey.shape.Start.Offset, relPos)
-	if strings.HasPrefix(tkey.name, "_") {
-		return &ast.BasicLit{
-			ValuePos: pos,
-			Kind:     token.STRING,
-			Value:    literal.String.Quote(tkey.name),
-		}
-	}
-	return &ast.Ident{
-		NamePos: pos,
-		Name:    tkey.name,
-	}
+	label := ast.NewStringLabel(tkey.name)
+	ast.SetPos(label, pos)
+	return label
 }
 
 // decodeExpr decodes a single TOML value expression, found on the right side

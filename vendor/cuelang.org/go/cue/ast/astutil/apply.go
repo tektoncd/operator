@@ -71,6 +71,14 @@ type Cursor interface {
 	// Unless n is wrapped by ApplyRecursively, Apply does not walk n.
 	InsertBefore(n ast.Node)
 
+	// Modified reports whether the cursor has been modified.
+	// Use ClearEnclosingModified to reset the flag.
+	Modified() bool
+
+	// ClearEnclosingModified resets the Modified flag of the cursor so that
+	// the processing of enclosing nodes do not observe the modification.
+	ClearEnclosingModified()
+
 	self() *cursor
 }
 
@@ -98,6 +106,7 @@ type cursor struct {
 	typ      interface{} // the type of the node
 	index    int         // position of any of the sub types.
 	replaced bool
+	modified bool
 }
 
 func newCursor(parent Cursor, n ast.Node, typ interface{}) *cursor {
@@ -118,10 +127,12 @@ func fileInfo(c Cursor) (info *info) {
 	return nil
 }
 
-func (c *cursor) self() *cursor  { return c }
-func (c *cursor) Parent() Cursor { return c.parent }
-func (c *cursor) Index() int     { return c.index }
-func (c *cursor) Node() ast.Node { return c.node }
+func (c *cursor) self() *cursor           { return c }
+func (c *cursor) Parent() Cursor          { return c.parent }
+func (c *cursor) Index() int              { return c.index }
+func (c *cursor) Node() ast.Node          { return c.node }
+func (c *cursor) Modified() bool          { return c.modified }
+func (c *cursor) ClearEnclosingModified() { c.modified = false }
 
 // Deprecated: use [ast.NewImport] as an [ast.Ident.Node], and then
 // [Sanitize].
@@ -131,7 +142,7 @@ func (c *cursor) Import(importPath string) *ast.Ident {
 		return nil
 	}
 
-	name := ImportPathName(importPath)
+	name := ast.ParseImportPath(importPath).Qualifier
 
 	// TODO: come up with something much better.
 	// For instance, hoist the uniquer form cue/export.go to
@@ -158,6 +169,7 @@ func (c *cursor) Replace(n ast.Node) {
 	if ast.Comments(n) != nil {
 		CopyComments(n, c.node)
 	}
+	c.modified = true
 	if r, ok := n.(recursive); ok {
 		n = r.Node
 	} else {
@@ -190,16 +202,34 @@ func (c *cursor) Delete()                 { panic("unsupported") }
 // Children are traversed in the order in which they appear in the
 // respective node's struct definition.
 func Apply(node ast.Node, before, after func(Cursor) bool) ast.Node {
-	apply(&applier{before: before, after: after}, nil, &node)
+	a := &applier{before: before, after: after}
+	apply(a, nil, &node)
+
+	// Fix certain references.
+	if a.fieldValueMap != nil {
+		ast.Walk(node, func(n ast.Node) bool {
+			if x, ok := n.(*ast.Ident); ok {
+				if v, ok := a.fieldValueMap[x.Node]; ok {
+					x.Node = v
+				}
+			}
+			return true
+		}, nil)
+	}
 	return node
 }
 
-// A applyVisitor's before method is invoked for each node encountered by Walk.
+// A applyVisitor's Before method is invoked for each node encountered by Walk.
 // If the result applyVisitor w is true, Walk visits each of the children
 // of node with the applyVisitor w, followed by a call of w.After.
+// The Mapping method is used to record changes to values that affect
+// Ident.Node and Ident.Scope fields.
+// TODO: currently, Mapping is only used to record Field.Value changes. Track
+// more changes in the future.
 type applyVisitor interface {
 	Before(Cursor) applyVisitor
 	After(Cursor) bool
+	Mapping(before, after ast.Node)
 }
 
 // Helper functions for common node lists. They may be empty.
@@ -211,6 +241,7 @@ type declsCursor struct {
 }
 
 func (c *declsCursor) InsertAfter(n ast.Node) {
+	c.modified = true
 	if r, ok := n.(recursive); ok {
 		n = r.Node
 		c.process = append(c.process, n.(ast.Decl))
@@ -219,6 +250,7 @@ func (c *declsCursor) InsertAfter(n ast.Node) {
 }
 
 func (c *declsCursor) InsertBefore(n ast.Node) {
+	c.modified = true
 	if r, ok := n.(recursive); ok {
 		n = r.Node
 		c.process = append(c.process, n.(ast.Decl))
@@ -226,7 +258,10 @@ func (c *declsCursor) InsertBefore(n ast.Node) {
 	c.decls = append(c.decls, n.(ast.Decl))
 }
 
-func (c *declsCursor) Delete() { c.delete = true }
+func (c *declsCursor) Delete() {
+	c.modified = true
+	c.delete = true
+}
 
 func applyDeclList(v applyVisitor, parent Cursor, list []ast.Decl) []ast.Decl {
 	c := &declsCursor{
@@ -244,6 +279,10 @@ func applyDeclList(v applyVisitor, parent Cursor, list []ast.Decl) []ast.Decl {
 			c.decls = append(c.decls, c.node.(ast.Decl))
 		}
 		c.delete = false
+		if c.modified {
+			parent.self().modified = true
+			c.modified = false
+		}
 		for i := 0; i < len(c.process); i++ {
 			x := c.process[i]
 			c.node = x
@@ -282,6 +321,9 @@ func apply[N ast.Node](v applyVisitor, parent Cursor, nodePtr *N) {
 	node := *nodePtr
 	c := newCursor(parent, node, nodePtr)
 	applyCursor(v, c)
+	if c.modified && parent != nil {
+		parent.self().modified = true
+	}
 	if ast.Node(node) != c.node {
 		*nodePtr = c.node.(N)
 	}
@@ -292,6 +334,10 @@ func applyList[N ast.Node](v applyVisitor, parent Cursor, list []N) {
 	for i, node := range list {
 		c.index = i
 		c.node = node
+		if c.modified {
+			parent.self().modified = true
+			c.modified = false
+		}
 		c.typ = &list[i]
 		applyCursor(v, c)
 		if ast.Node(node) != c.node {
@@ -316,6 +362,8 @@ func applyCursor(v applyVisitor, c Cursor) {
 	// parsing and printing?
 	applyList(v, c, ast.Comments(node))
 
+	var beforeValue ast.Node // Used for Field
+
 	// apply children
 	// (the order of the cases matches the order
 	// of the corresponding node types in go)
@@ -331,7 +379,11 @@ func applyCursor(v applyVisitor, c Cursor) {
 		// nothing to do
 
 	case *ast.Field:
+		beforeValue = n.Value
 		apply(v, c, &n.Label)
+		if n.Alias != nil {
+			apply(v, c, &n.Alias)
+		}
 		if n.Value != nil {
 			apply(v, c, &n.Value)
 		}
@@ -386,6 +438,9 @@ func applyCursor(v applyVisitor, c Cursor) {
 		apply(v, c, &n.X)
 		apply(v, c, &n.Y)
 
+	case *ast.PostfixExpr:
+		apply(v, c, &n.X)
+
 	// Declarations
 	case *ast.ImportSpec:
 		if n.Name != nil {
@@ -409,6 +464,14 @@ func applyCursor(v applyVisitor, c Cursor) {
 	case *ast.Alias:
 		apply(v, c, &n.Ident)
 		apply(v, c, &n.Expr)
+
+	case *ast.PostfixAlias:
+		if n.Label != nil {
+			apply(v, c, &n.Label)
+		}
+		if n.Field != nil {
+			apply(v, c, &n.Field)
+		}
 
 	case *ast.Comprehension:
 		applyList(v, c, n.Clauses)
@@ -436,6 +499,9 @@ func applyCursor(v applyVisitor, c Cursor) {
 	}
 
 	v.After(c)
+	if f, ok := node.(*ast.Field); ok && beforeValue != f.Value {
+		v.Mapping(beforeValue, f.Value)
+	}
 }
 
 type applier struct {
@@ -444,6 +510,15 @@ type applier struct {
 
 	commentStack []commentFrame
 	current      commentFrame
+
+	fieldValueMap map[ast.Node]ast.Node
+}
+
+func (f *applier) Mapping(before, after ast.Node) {
+	if f.fieldValueMap == nil {
+		f.fieldValueMap = make(map[ast.Node]ast.Node)
+	}
+	f.fieldValueMap[before] = after
 }
 
 type commentFrame struct {
