@@ -1009,6 +1009,8 @@ github.com/openshift-pipelines/pipelines-as-code/pkg/hub/vars
 github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings
 # github.com/openshift/api v0.0.0-20240521185306-0314f31e7774
 ## explicit; go 1.22.0
+github.com/openshift/api/config/v1
+github.com/openshift/api/config/v1alpha1
 github.com/openshift/api/console/v1
 github.com/openshift/api/route/v1
 github.com/openshift/api/security/v1
@@ -1017,6 +1019,20 @@ github.com/openshift/api/security/v1
 github.com/openshift/apiserver-library-go/pkg/securitycontextconstraints/util/sort
 # github.com/openshift/client-go v0.0.0-20240523113335-452272e0496d
 ## explicit; go 1.22.0
+github.com/openshift/client-go/config/applyconfigurations/config/v1
+github.com/openshift/client-go/config/applyconfigurations/config/v1alpha1
+github.com/openshift/client-go/config/applyconfigurations/internal
+github.com/openshift/client-go/config/clientset/versioned
+github.com/openshift/client-go/config/clientset/versioned/scheme
+github.com/openshift/client-go/config/clientset/versioned/typed/config/v1
+github.com/openshift/client-go/config/clientset/versioned/typed/config/v1alpha1
+github.com/openshift/client-go/config/informers/externalversions
+github.com/openshift/client-go/config/informers/externalversions/config
+github.com/openshift/client-go/config/informers/externalversions/config/v1
+github.com/openshift/client-go/config/informers/externalversions/config/v1alpha1
+github.com/openshift/client-go/config/informers/externalversions/internalinterfaces
+github.com/openshift/client-go/config/listers/config/v1
+github.com/openshift/client-go/config/listers/config/v1alpha1
 github.com/openshift/client-go/route/clientset/versioned/scheme
 github.com/openshift/client-go/security/applyconfigurations/internal
 github.com/openshift/client-go/security/applyconfigurations/security/v1
