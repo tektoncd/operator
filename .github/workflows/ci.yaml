@@ -50,8 +50,8 @@ jobs:
         # If no files are changed at all, skip detection
         # Use git diff output directly to avoid bash variable size limits with large PRs
         if [[ $FILE_COUNT -gt 0 ]]; then
-          NON_DOCS=$($GIT_DIFF_CMD | grep -Eqv '\.md$' && echo 'true' || echo 'false')
-          YAML=$($GIT_DIFF_CMD | grep -Eq '\.ya?ml$' && echo 'true' || echo 'false')
+          NON_DOCS=$($GIT_DIFF_CMD | grep -Ev '\.md$' > /dev/null && echo 'true' || echo 'false')
+          YAML=$($GIT_DIFF_CMD | grep -E '\.ya?ml$' > /dev/null && echo 'true' || echo 'false')
           echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
           echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
         fi
