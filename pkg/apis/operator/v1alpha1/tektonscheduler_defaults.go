@@ -27,8 +27,8 @@ const (
 	SchedulerConfigMapName                       = common.ConfigMapName
 	SchedulerConfigInstallerSet                  = "scheduler-config"
 	DefaultQueueName                             = "pipelines-queue"
-	DefaultMultiClusterEnabled                   = true
-	DefaultSchedulerDisabled                     = false
+	DefaultMultiClusterDisabled                  = true
+	DefaultSchedulerDisabled                     = true
 	SchedulerCreatedByValue                      = "TektonScheduler"
 	MultiClusterRoleSpoke       MultiClusterRole = "Spoke"
 	MultiClusterRoleHub         MultiClusterRole = "Hub"
@@ -41,8 +41,7 @@ func (tp *TektonScheduler) SetDefaults(_ context.Context) {
 func (s *Scheduler) SetDefaults() {
 	if s.Disabled == nil {
 		s.Disabled = ptr.To(DefaultSchedulerDisabled)
-		s.MultiClusterEnabled = DefaultMultiClusterEnabled
+		s.MultiClusterDisabled = DefaultMultiClusterDisabled
 		s.QueueName = DefaultQueueName
-		s.MultiClusterRole = MultiClusterRoleHub
 	}
 }

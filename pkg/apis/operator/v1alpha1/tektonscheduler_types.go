@@ -52,21 +52,12 @@ type Scheduler struct {
 }
 
 type SchedulerConfig struct {
-	SchedulerConfig *kueueConfig.SchedulerConfig `json:"scheduler-config"`
 	// enable or disable TektonScheduler Component
-	Disabled           *bool `json:"disabled"`
-	MultiClusterConfig `json:",inline"`
+	Disabled      *bool `json:"disabled"`
+	config.Config `json:"config.yaml"`
 	// options holds additions fields and these fields will be updated on the manifests
 	Options AdditionalOptions `json:"options"`
-	config.Config `json:"config.yaml"`
 }
-
-type MultiClusterConfig struct {
-	MultiClusterEnabled bool             `json:"multi-cluster-enabled"`
-	MultiClusterRole    MultiClusterRole `json:"multi-cluster-role"`
-}
-
-type MultiClusterRole string
 
 // MultiClusterConfig Configuration to enable/disable MultiCluster Configuration
 type MultiClusterConfig struct {
