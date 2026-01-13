@@ -41,6 +41,10 @@ jobs:
         # Store git diff command for reuse
         GIT_DIFF_CMD="git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
 
+        # Disable pipefail to avoid SIGPIPE (exit 141) when commands like head/grep exit early
+        # SIGPIPE occurs when git diff tries to write but the reading end of the pipe has closed
+        set +o pipefail
+
         # Show changed files for debugging (limit to first 50 for readability)
         echo "Changed files (first 50):"
         $GIT_DIFF_CMD | head -50
@@ -50,11 +54,15 @@ jobs:
         # If no files are changed at all, skip detection
         # Use git diff output directly to avoid bash variable size limits with large PRs
         if [[ $FILE_COUNT -gt 0 ]]; then
+          # We only care about grep's exit status (did it find matches?), not the pipe status
           NON_DOCS=$($GIT_DIFF_CMD | grep -Ev '\.md$' > /dev/null && echo 'true' || echo 'false')
           YAML=$($GIT_DIFF_CMD | grep -E '\.ya?ml$' > /dev/null && echo 'true' || echo 'false')
           echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
           echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
         fi
+
+        # Re-enable pipefail for subsequent commands
+        set -o pipefail
 
   build:
     name: build
