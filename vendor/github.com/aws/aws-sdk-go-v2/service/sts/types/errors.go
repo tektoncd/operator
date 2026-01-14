@@ -34,6 +34,31 @@ func (e *ExpiredTokenException) ErrorCode() string {
 }
 func (e *ExpiredTokenException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
+type ExpiredTradeInTokenException struct {
+	Message *string
+
+	ErrorCodeOverride *string
+
+	noSmithyDocumentSerde
+}
+
+func (e *ExpiredTradeInTokenException) Error() string {
+	return fmt.Sprintf("%s: %s", e.ErrorCode(), e.ErrorMessage())
+}
+func (e *ExpiredTradeInTokenException) ErrorMessage() string {
+	if e.Message == nil {
+		return ""
+	}
+	return *e.Message
+}
+func (e *ExpiredTradeInTokenException) ErrorCode() string {
+	if e == nil || e.ErrorCodeOverride == nil {
+		return "ExpiredTradeInTokenException"
+	}
+	return *e.ErrorCodeOverride
+}
+func (e *ExpiredTradeInTokenException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
+
 // The request could not be fulfilled because the identity provider (IDP) that was
 // asked to verify the incoming identity token could not be reached. This is often
 // a transient error caused by network conditions. Retry the request a limited
@@ -65,9 +90,10 @@ func (e *IDPCommunicationErrorException) ErrorCode() string {
 func (e *IDPCommunicationErrorException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The identity provider (IdP) reported that authentication failed. This might be
-// because the claim is invalid. If this error is returned for the
-// AssumeRoleWithWebIdentity operation, it can also mean that the claim has expired
-// or has been explicitly revoked.
+// because the claim is invalid.
+//
+// If this error is returned for the AssumeRoleWithWebIdentity operation, it can
+// also mean that the claim has expired or has been explicitly revoked.
 type IDPRejectedClaimException struct {
 	Message *string
 
@@ -94,8 +120,8 @@ func (e *IDPRejectedClaimException) ErrorCode() string {
 func (e *IDPRejectedClaimException) ErrorFault() smithy.ErrorFault { return smithy.FaultClient }
 
 // The error returned if the message passed to DecodeAuthorizationMessage was
-// invalid. This can happen if the token contains invalid characters, such as
-// linebreaks.
+// invalid. This can happen if the token contains invalid characters, such as line
+// breaks, or if the message has expired.
 type InvalidAuthorizationMessageException struct {
 	Message *string
 
@@ -183,11 +209,13 @@ func (e *MalformedPolicyDocumentException) ErrorFault() smithy.ErrorFault { retu
 // compresses the session policy document, session policy ARNs, and session tags
 // into a packed binary format that has a separate limit. The error message
 // indicates by percentage how close the policies and tags are to the upper size
-// limit. For more information, see Passing Session Tags in STS (https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html)
-// in the IAM User Guide. You could receive this error even though you meet other
-// defined session policy and session tag limits. For more information, see IAM
-// and STS Entity Character Limits (https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html#reference_iam-limits-entity-length)
-// in the IAM User Guide.
+// limit. For more information, see [Passing Session Tags in STS]in the IAM User Guide.
+//
+// You could receive this error even though you meet other defined session policy
+// and session tag limits. For more information, see [IAM and STS Entity Character Limits]in the IAM User Guide.
+//
+// [Passing Session Tags in STS]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html
+// [IAM and STS Entity Character Limits]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_iam-quotas.html#reference_iam-limits-entity-length
 type PackedPolicyTooLargeException struct {
 	Message *string
 
@@ -215,9 +243,10 @@ func (e *PackedPolicyTooLargeException) ErrorFault() smithy.ErrorFault { return 
 
 // STS is not activated in the requested region for the account that is being
 // asked to generate credentials. The account administrator must use the IAM
-// console to activate STS in that region. For more information, see Activating
-// and Deactivating Amazon Web Services STS in an Amazon Web Services Region (https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html)
-// in the IAM User Guide.
+// console to activate STS in that region. For more information, see [Activating and Deactivating STS in an Amazon Web Services Region]in the IAM
+// User Guide.
+//
+// [Activating and Deactivating STS in an Amazon Web Services Region]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_temp_enable-regions.html#sts-regions-activate-deactivate
 type RegionDisabledException struct {
 	Message *string
 

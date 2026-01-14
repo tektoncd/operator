@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package bcrypt_pbkdf implements password-based key derivation function based
+// Package bcryptpbkdf implements password-based key derivation function based
 // on bcrypt compatible with bcrypt_pbkdf(3) from OpenBSD.
-//
-//nolint:revive,stylecheck // ignore underscore in package
-package bcrypt_pbkdf
+package bcryptpbkdf
 
 import (
 	"crypto/sha512"

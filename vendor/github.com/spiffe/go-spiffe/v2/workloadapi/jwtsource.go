@@ -2,20 +2,20 @@ package workloadapi
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/spiffe/go-spiffe/v2/bundle/jwtbundle"
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 	"github.com/spiffe/go-spiffe/v2/svid/jwtsvid"
-	"github.com/zeebo/errs"
 )
-
-var jwtsourceErr = errs.Class("jwtsource")
 
 // JWTSource is a source of JWT-SVID and JWT bundles maintained via the
 // Workload API.
 type JWTSource struct {
 	watcher *watcher
+	picker  func([]*jwtsvid.SVID) *jwtsvid.SVID
 
 	mtx     sync.RWMutex
 	bundles *jwtbundle.Set
@@ -33,7 +33,9 @@ func NewJWTSource(ctx context.Context, options ...JWTSourceOption) (_ *JWTSource
 		option.configureJWTSource(config)
 	}
 
-	s := &JWTSource{}
+	s := &JWTSource{
+		picker: config.picker,
+	}
 
 	s.watcher, err = newWatcher(ctx, config.watcher, nil, s.setJWTBundles)
 	if err != nil {
@@ -61,7 +63,22 @@ func (s *JWTSource) FetchJWTSVID(ctx context.Context, params jwtsvid.Params) (*j
 	if err := s.checkClosed(); err != nil {
 		return nil, err
 	}
-	return s.watcher.client.FetchJWTSVID(ctx, params)
+
+	var (
+		svid *jwtsvid.SVID
+		err  error
+	)
+	if s.picker == nil {
+		svid, err = s.watcher.client.FetchJWTSVID(ctx, params)
+	} else {
+		svids, err := s.watcher.client.FetchJWTSVIDs(ctx, params)
+		if err != nil {
+			return svid, err
+		}
+		svid = s.picker(svids)
+	}
+
+	return svid, err
 }
 
 // FetchJWTSVIDs fetches all JWT-SVIDs from the source with the given parameters.
@@ -103,7 +120,11 @@ func (s *JWTSource) checkClosed() error {
 	s.closeMtx.RLock()
 	defer s.closeMtx.RUnlock()
 	if s.closed {
-		return jwtsourceErr.New("source is closed")
+		return wrapJwtsourceErr(errors.New("source is closed"))
 	}
 	return nil
+}
+
+func wrapJwtsourceErr(err error) error {
+	return fmt.Errorf("jwtsource: %w", err)
 }

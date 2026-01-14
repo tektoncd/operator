@@ -22,6 +22,8 @@ package entries
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -37,7 +39,7 @@ type SearchLogQueryReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *SearchLogQueryReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *SearchLogQueryReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewSearchLogQueryOK()
@@ -114,11 +116,13 @@ func (o *SearchLogQueryOK) Code() int {
 }
 
 func (o *SearchLogQueryOK) Error() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryOK %s", 200, payload)
 }
 
 func (o *SearchLogQueryOK) String() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryOK %s", 200, payload)
 }
 
 func (o *SearchLogQueryOK) GetPayload() []models.LogEntry {
@@ -128,7 +132,7 @@ func (o *SearchLogQueryOK) GetPayload() []models.LogEntry {
 func (o *SearchLogQueryOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	// response payload
-	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -180,11 +184,13 @@ func (o *SearchLogQueryBadRequest) Code() int {
 }
 
 func (o *SearchLogQueryBadRequest) Error() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryBadRequest  %+v", 400, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryBadRequest %s", 400, payload)
 }
 
 func (o *SearchLogQueryBadRequest) String() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryBadRequest  %+v", 400, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryBadRequest %s", 400, payload)
 }
 
 func (o *SearchLogQueryBadRequest) GetPayload() *models.Error {
@@ -196,7 +202,7 @@ func (o *SearchLogQueryBadRequest) readResponse(response runtime.ClientResponse,
 	o.Payload = new(models.Error)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -248,11 +254,13 @@ func (o *SearchLogQueryUnprocessableEntity) Code() int {
 }
 
 func (o *SearchLogQueryUnprocessableEntity) Error() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryUnprocessableEntity  %+v", 422, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryUnprocessableEntity %s", 422, payload)
 }
 
 func (o *SearchLogQueryUnprocessableEntity) String() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryUnprocessableEntity  %+v", 422, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQueryUnprocessableEntity %s", 422, payload)
 }
 
 func (o *SearchLogQueryUnprocessableEntity) GetPayload() *models.Error {
@@ -264,7 +272,7 @@ func (o *SearchLogQueryUnprocessableEntity) readResponse(response runtime.Client
 	o.Payload = new(models.Error)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -320,11 +328,13 @@ func (o *SearchLogQueryDefault) Code() int {
 }
 
 func (o *SearchLogQueryDefault) Error() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQuery default  %+v", o._statusCode, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQuery default %s", o._statusCode, payload)
 }
 
 func (o *SearchLogQueryDefault) String() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQuery default  %+v", o._statusCode, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries/retrieve][%d] searchLogQuery default %s", o._statusCode, payload)
 }
 
 func (o *SearchLogQueryDefault) GetPayload() *models.Error {
@@ -336,7 +346,7 @@ func (o *SearchLogQueryDefault) readResponse(response runtime.ClientResponse, co
 	o.Payload = new(models.Error)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

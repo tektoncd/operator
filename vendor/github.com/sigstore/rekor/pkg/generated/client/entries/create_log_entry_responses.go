@@ -22,6 +22,8 @@ package entries
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -38,7 +40,7 @@ type CreateLogEntryReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *CreateLogEntryReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *CreateLogEntryReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 201:
 		result := NewCreateLogEntryCreated()
@@ -126,11 +128,13 @@ func (o *CreateLogEntryCreated) Code() int {
 }
 
 func (o *CreateLogEntryCreated) Error() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryCreated  %+v", 201, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryCreated %s", 201, payload)
 }
 
 func (o *CreateLogEntryCreated) String() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryCreated  %+v", 201, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryCreated %s", 201, payload)
 }
 
 func (o *CreateLogEntryCreated) GetPayload() models.LogEntry {
@@ -158,7 +162,7 @@ func (o *CreateLogEntryCreated) readResponse(response runtime.ClientResponse, co
 	}
 
 	// response payload
-	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -210,11 +214,13 @@ func (o *CreateLogEntryBadRequest) Code() int {
 }
 
 func (o *CreateLogEntryBadRequest) Error() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryBadRequest  %+v", 400, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryBadRequest %s", 400, payload)
 }
 
 func (o *CreateLogEntryBadRequest) String() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryBadRequest  %+v", 400, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryBadRequest %s", 400, payload)
 }
 
 func (o *CreateLogEntryBadRequest) GetPayload() *models.Error {
@@ -226,7 +232,7 @@ func (o *CreateLogEntryBadRequest) readResponse(response runtime.ClientResponse,
 	o.Payload = new(models.Error)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -280,11 +286,13 @@ func (o *CreateLogEntryConflict) Code() int {
 }
 
 func (o *CreateLogEntryConflict) Error() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryConflict  %+v", 409, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryConflict %s", 409, payload)
 }
 
 func (o *CreateLogEntryConflict) String() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryConflict  %+v", 409, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntryConflict %s", 409, payload)
 }
 
 func (o *CreateLogEntryConflict) GetPayload() *models.Error {
@@ -307,7 +315,7 @@ func (o *CreateLogEntryConflict) readResponse(response runtime.ClientResponse, c
 	o.Payload = new(models.Error)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -363,11 +371,13 @@ func (o *CreateLogEntryDefault) Code() int {
 }
 
 func (o *CreateLogEntryDefault) Error() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntry default  %+v", o._statusCode, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntry default %s", o._statusCode, payload)
 }
 
 func (o *CreateLogEntryDefault) String() string {
-	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntry default  %+v", o._statusCode, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[POST /api/v1/log/entries][%d] createLogEntry default %s", o._statusCode, payload)
 }
 
 func (o *CreateLogEntryDefault) GetPayload() *models.Error {
@@ -379,7 +389,7 @@ func (o *CreateLogEntryDefault) readResponse(response runtime.ClientResponse, co
 	o.Payload = new(models.Error)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

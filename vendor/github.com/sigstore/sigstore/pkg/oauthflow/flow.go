@@ -22,7 +22,7 @@ import (
 	"log"
 
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/go-jose/go-jose/v3"
+	"github.com/go-jose/go-jose/v4"
 	soauth "github.com/sigstore/sigstore/pkg/oauth"
 	"golang.org/x/oauth2"
 )
@@ -114,16 +114,40 @@ func OIDConnect(issuer, id, secret, redirectURL string, tg TokenGetter) (*OIDCID
 	return tg.GetIDToken(provider, config)
 }
 
+type stringAsBool bool
+
+func (sb *stringAsBool) UnmarshalJSON(b []byte) error {
+	switch string(b) {
+	case "true", `"true"`, "True", `"True"`:
+		*sb = true
+	case "false", `"false"`, "False", `"False"`:
+		*sb = false
+	default:
+		return errors.New("invalid value for boolean")
+	}
+	return nil
+}
+
 type claims struct {
-	Email    string `json:"email"`
-	Verified bool   `json:"email_verified"`
-	Subject  string `json:"sub"`
+	Email    string       `json:"email"`
+	Verified stringAsBool `json:"email_verified"`
+	Subject  string       `json:"sub"`
 }
 
 // SubjectFromToken extracts the subject claim from an OIDC Identity Token
 func SubjectFromToken(tok *oidc.IDToken) (string, error) {
 	claims := claims{}
 	if err := tok.Claims(&claims); err != nil {
+		return "", err
+	}
+	return subjectFromClaims(claims)
+}
+
+// SubjectFromUnverifiedToken extracts the subject claim from the raw bytes of
+// an OIDC identity token.
+func SubjectFromUnverifiedToken(tok []byte) (string, error) {
+	claims := claims{}
+	if err := json.Unmarshal(tok, &claims); err != nil {
 		return "", err
 	}
 	return subjectFromClaims(claims)
@@ -148,9 +172,26 @@ type StaticTokenGetter struct {
 	RawToken string
 }
 
+// https://datatracker.ietf.org/doc/html/rfc7518#section-3.1
+var allowedSignatureAlgorithms = []jose.SignatureAlgorithm{
+	jose.ES256,
+	jose.ES384,
+	jose.ES512,
+	jose.RS256,
+	jose.RS384,
+	jose.RS512,
+	jose.PS256,
+	jose.PS384,
+	jose.PS512,
+	jose.EdDSA,
+	jose.HS256,
+	jose.HS384,
+	jose.HS512,
+}
+
 // GetIDToken extracts an OIDCIDToken from the raw token *without verification*
 func (stg *StaticTokenGetter) GetIDToken(_ *oidc.Provider, _ oauth2.Config) (*OIDCIDToken, error) {
-	unsafeTok, err := jose.ParseSigned(stg.RawToken)
+	unsafeTok, err := jose.ParseSigned(stg.RawToken, allowedSignatureAlgorithms)
 	if err != nil {
 		return nil, err
 	}
