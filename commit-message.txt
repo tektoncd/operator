@@ -1,6 +1,0 @@
-chore: bump component versions
-
-- hub: v1.23.5 → v1.23.6
-- pipelines-as-code: v0.39.3 → v0.40.0
-
-Signed-off-by: tekton-bot <tekton-bot@users.noreply.github.com>

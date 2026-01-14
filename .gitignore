@@ -90,3 +90,8 @@ test/e2e/common/cosign.pub
 
 # downloaded release files during build
 /cmd/*/operator/kodata/
+
+# Workflow temporary files
+commit-message.txt
+pr-body.txt
+bump-output.txt
