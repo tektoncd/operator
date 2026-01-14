@@ -2,6 +2,9 @@
 
 set -u -e
 
+# Ensure GOTOOLCHAIN is set to auto to allow Go 1.25+ to be downloaded
+export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
+
 declare -r SCRIPT_DIR=$(cd $(dirname "$0")/.. && pwd)
 TARGET=""
 FORCE_FETCH_RELEASE=""
