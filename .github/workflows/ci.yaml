@@ -19,27 +19,83 @@ permissions:
   checks: write # Used to annotate code in the PR
 
 jobs:
+  changes:
+    name: categorize changes
+    runs-on: ubuntu-latest
+    outputs:
+      non-docs: ${{ steps.detect.outputs.non-docs }}
+      yaml: ${{ steps.detect.outputs.yaml }}
+    steps:
+    - name: Get base depth
+      id: base-depth
+      run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
+    - name: detect
+      id: detect
+      run: |
+        git fetch origin ${{ github.base_ref }}
+
+        # Store git diff command for reuse
+        GIT_DIFF_CMD="git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
+
+        # Disable pipefail to avoid SIGPIPE (exit 141) when commands like head/grep exit early
+        # SIGPIPE occurs when git diff tries to write but the reading end of the pipe has closed
+        set +o pipefail
+
+        # Show changed files for debugging (limit to first 50 for readability)
+        echo "Changed files (first 50):"
+        $GIT_DIFF_CMD | head -50
+        FILE_COUNT=$($GIT_DIFF_CMD | wc -l)
+        echo "Total files changed: $FILE_COUNT"
+
+        # If no files are changed at all, skip detection
+        # Use git diff output directly to avoid bash variable size limits with large PRs
+        if [[ $FILE_COUNT -gt 0 ]]; then
+          # We only care about grep's exit status (did it find matches?), not the pipe status
+          NON_DOCS=$($GIT_DIFF_CMD | grep -Ev '\.md$' > /dev/null && echo 'true' || echo 'false')
+          YAML=$($GIT_DIFF_CMD | grep -E '\.ya?ml$' > /dev/null && echo 'true' || echo 'false')
+          echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
+          echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
+        fi
+
+        # Re-enable pipefail for subsequent commands
+        set -o pipefail
+
   build:
     name: build
+    needs: [changes]
     runs-on: ubuntu-latest
+    if: ${{ needs.changes.outputs.non-docs == 'true' }}
     steps:
-    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
     - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
+        check-latest: true
+      env:
+        GOTOOLCHAIN: auto
     - name: build
       run: |
         go build -v ./...
   linting:
-    needs: [build]
+    needs: [changes]
     name: lint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      with:
+        fetch-depth: 0
     - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
+        check-latest: true
+      env:
+        GOTOOLCHAIN: auto
     - name: gofmt
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
       run: |
         gofmt_out=$(gofmt -d $(find * -name '*.go' ! -path 'vendor/*' ! -path 'third_party/*'))
         if [[ -n "$gofmt_out" ]]; then
@@ -47,16 +103,18 @@ jobs:
         fi
         echo "$gofmt_out"
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@e7fa5ac41e1cf5b7d48e45e42232ce7ada589601  # v9.1.0
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v9.2.0
       with:
-        version: v2.1.0
-        only-new-issues: true
-        args: --timeout=10m
+        version: v2.7.2
+        args: --new-from-merge-base=origin/${{ github.base_ref }} --timeout=10m
     - name: yamllint
+      if: ${{ needs.changes.outputs.yaml == 'true' }}
       run: |
         apt update && apt install -y yamllint
         yamllint -c .yamllint $(find . -path ./vendor -prune -o -type f -regex ".*y[a]ml" -print | tr '\n' ' ')
     - name: check-license
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
       run: |
         go install github.com/google/go-licenses@v1.0.0
         go-licenses check ./...
@@ -65,10 +123,13 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
     - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
+        check-latest: true
+      env:
+        GOTOOLCHAIN: auto
     - name: build
       run: |
         make test-unit-verbose-and-race
@@ -77,10 +138,13 @@ jobs:
     name: Check generated code
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
     - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
+        check-latest: true
+      env:
+        GOTOOLCHAIN: auto
     - name: generated
       run: |
         ./hack/verify-codegen.sh
@@ -89,10 +153,13 @@ jobs:
     name: Multi-arch build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
     - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
+        check-latest: true
+      env:
+        GOTOOLCHAIN: auto
     - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d  # v0.9
     - name: ko-resolve
       run: |
@@ -104,8 +171,9 @@ jobs:
             github.com/tektoncd/operator/cmd/openshift/proxy-webhook: registry.access.redhat.com/ubi9/ubi-minimal
           EOF
 
-          KO_DOCKER_REPO=example.com make TARGET=kubernetes resolve
-          KO_DOCKER_REPO=example.com make TARGET=openshift resolve
+          # Use ko from setup-ko action to avoid Go version mismatch
+          KO_BIN=$(which ko) KO_DOCKER_REPO=example.com make TARGET=kubernetes resolve
+          KO_BIN=$(which ko) KO_DOCKER_REPO=example.com make TARGET=openshift resolve
   e2e-tests:
     needs: [build]
     uses: ./.github/workflows/e2e-matrix.yml
