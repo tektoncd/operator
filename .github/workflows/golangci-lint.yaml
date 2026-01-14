@@ -1,0 +1,31 @@
+name: golangci-lint
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+  pull_request:  # yamllint disable-line rule:empty-values
+
+permissions:
+  contents: read
+  checks: write  # Used to annotate code in the PR
+
+env:
+  GOTOOLCHAIN: auto
+
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # v6.0.0
+      - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
+        with:
+          go-version-file: "go.mod"
+          check-latest: true
+        env:
+          GOTOOLCHAIN: auto
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v6.2.0
+        with:
+          version: v2.7.2
+          args: --timeout=10m --new-from-merge-base=origin/${{ github.base_ref }}

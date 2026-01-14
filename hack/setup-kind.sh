@@ -22,6 +22,9 @@ set -o nounset
 set -o pipefail
 set -x
 
+# Ensure GOTOOLCHAIN is set to auto to allow Go 1.25+ to be downloaded
+export GOTOOLCHAIN=auto
+
 # Print error message and exit 1
 # Parameters: $1..$n - error message to be displayed
 function abort() {
