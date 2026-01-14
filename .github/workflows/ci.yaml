@@ -16,7 +16,7 @@ defaults:
 
 permissions:
   contents: read
-  checks: write # Used to annotate code in the PR
+  checks: write  # Used to annotate code in the PR
 
 jobs:
   changes:
@@ -29,7 +29,7 @@ jobs:
     - name: Get base depth
       id: base-depth
       run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
       with:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
@@ -37,18 +37,32 @@ jobs:
       id: detect
       run: |
         git fetch origin ${{ github.base_ref }}
-        CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} | tr ' ' '\n')
 
-        echo -e "Changed files:\n${CHANGED_FILES}"
+        # Store git diff command for reuse
+        GIT_DIFF_CMD="git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
 
-        # If no files are changed at all, then `grep -v` will match even though no change outputs
-        # should be true. Skipping output on an empty set of changes eliminates the false positive
-        if [[ -n "${CHANGED_FILES}" ]]; then
-          NON_DOCS=$(echo "${CHANGED_FILES}" | grep -Eqv '\.md$' && echo 'true' || echo 'false')
-          YAML=$(echo "${CHANGED_FILES}" | grep -Eq '\.ya?ml$' && echo 'true' || echo 'false')
+        # Disable pipefail to avoid SIGPIPE (exit 141) when commands like head/grep exit early
+        # SIGPIPE occurs when git diff tries to write but the reading end of the pipe has closed
+        set +o pipefail
+
+        # Show changed files for debugging (limit to first 50 for readability)
+        echo "Changed files (first 50):"
+        $GIT_DIFF_CMD | head -50
+        FILE_COUNT=$($GIT_DIFF_CMD | wc -l)
+        echo "Total files changed: $FILE_COUNT"
+
+        # If no files are changed at all, skip detection
+        # Use git diff output directly to avoid bash variable size limits with large PRs
+        if [[ $FILE_COUNT -gt 0 ]]; then
+          # We only care about grep's exit status (did it find matches?), not the pipe status
+          NON_DOCS=$($GIT_DIFF_CMD | grep -Ev '\.md$' > /dev/null && echo 'true' || echo 'false')
+          YAML=$($GIT_DIFF_CMD | grep -E '\.ya?ml$' > /dev/null && echo 'true' || echo 'false')
           echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
           echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
         fi
+
+        # Re-enable pipefail for subsequent commands
+        set -o pipefail
 
   build:
     name: build
@@ -56,8 +70,8 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.changes.outputs.non-docs == 'true' }}
     steps:
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
-    - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
     - name: build
@@ -68,8 +82,10 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
-    - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
     - name: gofmt
@@ -82,11 +98,10 @@ jobs:
         echo "$gofmt_out"
     - name: golangci-lint
       if: ${{ needs.changes.outputs.non-docs == 'true' }}
-      uses: golangci/golangci-lint-action@0a35821d5c230e903fcfe077583637dea1b27b47  # v9.0.0
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v9.2.0
       with:
-        version: v2.1.0
-        only-new-issues: true
-        args: --timeout=10m
+        version: v2.7.2
+        args: --new-from-merge-base=origin/${{ github.base_ref }} --timeout=10m
     - name: yamllint
       if: ${{ needs.changes.outputs.yaml == 'true' }}
       run: |
@@ -102,8 +117,8 @@ jobs:
     name: test
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
-    - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
     - name: build
@@ -114,8 +129,8 @@ jobs:
     name: Check generated code
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
-    - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
     - name: generated
@@ -126,11 +141,11 @@ jobs:
     name: Multi-arch build
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # v5.0.0
-    - uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00  # v6.0.0
+    - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # v6.0.1
+    - uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c  # v6.1.0
       with:
         go-version-file: "go.mod"
-    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9
+    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d  # v0.9
     - name: ko-resolve
       run: |
           cat <<EOF > .ko.yaml

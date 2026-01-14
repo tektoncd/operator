@@ -21,6 +21,8 @@ Q = $(if $(filter 1,$V),,@)
 M = $(shell printf "\033[34;1m🐱\033[0m")
 
 export GO111MODULE=on
+# Force GOTOOLCHAIN to auto to allow downloading Go 1.25+
+export GOTOOLCHAIN = auto
 
 $(BIN):
 	@mkdir -p $@

@@ -18,6 +18,9 @@
 # and deploy Tekton Pipelines to it for running integration tests.
 set -e
 
+# Ensure GOTOOLCHAIN is set to auto to allow Go 1.25+ to be downloaded
+export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
+
 source $(dirname $0)/e2e-common.sh
 
 # Script entry point.
