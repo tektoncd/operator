@@ -22,6 +22,8 @@ package tlog
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -37,7 +39,7 @@ type GetLogInfoReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *GetLogInfoReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *GetLogInfoReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewGetLogInfoOK()
@@ -102,11 +104,13 @@ func (o *GetLogInfoOK) Code() int {
 }
 
 func (o *GetLogInfoOK) Error() string {
-	return fmt.Sprintf("[GET /api/v1/log][%d] getLogInfoOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /api/v1/log][%d] getLogInfoOK %s", 200, payload)
 }
 
 func (o *GetLogInfoOK) String() string {
-	return fmt.Sprintf("[GET /api/v1/log][%d] getLogInfoOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /api/v1/log][%d] getLogInfoOK %s", 200, payload)
 }
 
 func (o *GetLogInfoOK) GetPayload() *models.LogInfo {
@@ -118,7 +122,7 @@ func (o *GetLogInfoOK) readResponse(response runtime.ClientResponse, consumer ru
 	o.Payload = new(models.LogInfo)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -174,11 +178,13 @@ func (o *GetLogInfoDefault) Code() int {
 }
 
 func (o *GetLogInfoDefault) Error() string {
-	return fmt.Sprintf("[GET /api/v1/log][%d] getLogInfo default  %+v", o._statusCode, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /api/v1/log][%d] getLogInfo default %s", o._statusCode, payload)
 }
 
 func (o *GetLogInfoDefault) String() string {
-	return fmt.Sprintf("[GET /api/v1/log][%d] getLogInfo default  %+v", o._statusCode, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /api/v1/log][%d] getLogInfo default %s", o._statusCode, payload)
 }
 
 func (o *GetLogInfoDefault) GetPayload() *models.Error {
@@ -190,7 +196,7 @@ func (o *GetLogInfoDefault) readResponse(response runtime.ClientResponse, consum
 	o.Payload = new(models.Error)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

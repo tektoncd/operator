@@ -51,7 +51,7 @@ type Tracer struct{ embedded.Tracer }
 // If ctx contains a span context, the returned span will also contain that
 // span context. If the span context in ctx is for a non-recording span, that
 // span instance will be returned directly.
-func (t Tracer) Start(ctx context.Context, _ string, _ ...trace.SpanStartOption) (context.Context, trace.Span) {
+func (Tracer) Start(ctx context.Context, _ string, _ ...trace.SpanStartOption) (context.Context, trace.Span) {
 	span := trace.SpanFromContext(ctx)
 
 	// If the parent context contains a non-zero span context, that span
@@ -67,10 +67,12 @@ func (t Tracer) Start(ctx context.Context, _ string, _ ...trace.SpanStartOption)
 		span = Span{sc: sc}
 	} else {
 		// No parent, return a No-Op span with an empty span context.
-		span = Span{}
+		span = noopSpanInstance
 	}
 	return trace.ContextWithSpan(ctx, span), span
 }
+
+var noopSpanInstance trace.Span = Span{}
 
 // Span is an OpenTelemetry No-Op Span.
 type Span struct {

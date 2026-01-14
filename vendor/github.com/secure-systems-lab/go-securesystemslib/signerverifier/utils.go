@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	"errors"
 	"hash"
-	"testing"
 
 	"github.com/secure-systems-lab/go-securesystemslib/cjson"
 )
@@ -27,6 +26,9 @@ var (
 // LoadKeyFromSSLibBytes returns a pointer to a Key instance created from the
 // contents of the bytes. The key contents are expected to be in the custom
 // securesystemslib format.
+//
+// Deprecated: use LoadKey() for all key types, RSA is no longer the only key
+// that uses PEM serialization.
 func LoadKeyFromSSLibBytes(contents []byte) (*SSLibKey, error) {
 	var key *SSLibKey
 	if err := json.Unmarshal(contents, &key); err != nil {
@@ -137,13 +139,4 @@ func parsePEMKey(data []byte) (any, error) {
 func hashBeforeSigning(data []byte, h hash.Hash) []byte {
 	h.Write(data)
 	return h.Sum(nil)
-}
-
-func hexDecode(t *testing.T, data string) []byte {
-	t.Helper()
-	b, err := hex.DecodeString(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return b
 }

@@ -71,6 +71,15 @@ var (
 	// ErrUnprotectedNonce indicates that while parsing a JWS or JWE object, a
 	// nonce header parameter was included in an unprotected header object.
 	ErrUnprotectedNonce = errors.New("go-jose/go-jose: Nonce parameter included in unprotected header")
+
+	// ErrMissingX5cHeader indicates that the JWT header is missing x5c headers.
+	ErrMissingX5cHeader = errors.New("go-jose/go-jose: no x5c header present in message")
+
+	// ErrUnsupportedEllipticCurve indicates unsupported or unknown elliptic curve has been found.
+	ErrUnsupportedEllipticCurve = errors.New("go-jose/go-jose: unsupported/unknown elliptic curve")
+
+	// ErrUnsupportedCriticalHeader is returned when a header is marked critical but not supported by go-jose.
+	ErrUnsupportedCriticalHeader = errors.New("go-jose/go-jose: unsupported critical header")
 )
 
 // Key management algorithms
@@ -161,8 +170,8 @@ const (
 )
 
 // supportedCritical is the set of supported extensions that are understood and processed.
-var supportedCritical = map[string]bool{
-	headerB64: true,
+var supportedCritical = map[string]struct{}{
+	headerB64: {},
 }
 
 // rawHeader represents the JOSE header for JWE/JWS objects (used for parsing).
@@ -199,7 +208,7 @@ type Header struct {
 // not be validated with the given verify options.
 func (h Header) Certificates(opts x509.VerifyOptions) ([][]*x509.Certificate, error) {
 	if len(h.certificates) == 0 {
-		return nil, errors.New("go-jose/go-jose: no x5c header present in message")
+		return nil, ErrMissingX5cHeader
 	}
 
 	leaf := h.certificates[0]
@@ -338,6 +347,32 @@ func (parsed rawHeader) getCritical() ([]string, error) {
 		return nil, err
 	}
 	return q, nil
+}
+
+// checkNoCritical verifies there are no critical headers present.
+func (parsed rawHeader) checkNoCritical() error {
+	if _, ok := parsed[headerCritical]; ok {
+		return ErrUnsupportedCriticalHeader
+	}
+
+	return nil
+}
+
+// checkSupportedCritical verifies there are no unsupported critical headers.
+// Supported headers are passed in as a set: map of names to empty structs
+func (parsed rawHeader) checkSupportedCritical(supported map[string]struct{}) error {
+	crit, err := parsed.getCritical()
+	if err != nil {
+		return err
+	}
+
+	for _, name := range crit {
+		if _, ok := supported[name]; !ok {
+			return ErrUnsupportedCriticalHeader
+		}
+	}
+
+	return nil
 }
 
 // getS2C extracts parsed "p2c" from the raw JSON.
@@ -501,7 +536,7 @@ func curveName(crv elliptic.Curve) (string, error) {
 	case elliptic.P521():
 		return "P-521", nil
 	default:
-		return "", fmt.Errorf("go-jose/go-jose: unsupported/unknown elliptic curve")
+		return "", ErrUnsupportedEllipticCurve
 	}
 }
 

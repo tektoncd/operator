@@ -22,6 +22,8 @@ package entries
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io"
 
@@ -37,7 +39,7 @@ type GetLogEntryByIndexReader struct {
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *GetLogEntryByIndexReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *GetLogEntryByIndexReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (any, error) {
 	switch response.Code() {
 	case 200:
 		result := NewGetLogEntryByIndexOK()
@@ -108,11 +110,13 @@ func (o *GetLogEntryByIndexOK) Code() int {
 }
 
 func (o *GetLogEntryByIndexOK) Error() string {
-	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndexOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndexOK %s", 200, payload)
 }
 
 func (o *GetLogEntryByIndexOK) String() string {
-	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndexOK  %+v", 200, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndexOK %s", 200, payload)
 }
 
 func (o *GetLogEntryByIndexOK) GetPayload() models.LogEntry {
@@ -122,7 +126,7 @@ func (o *GetLogEntryByIndexOK) GetPayload() models.LogEntry {
 func (o *GetLogEntryByIndexOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	// response payload
-	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 
@@ -173,11 +177,11 @@ func (o *GetLogEntryByIndexNotFound) Code() int {
 }
 
 func (o *GetLogEntryByIndexNotFound) Error() string {
-	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndexNotFound ", 404)
+	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndexNotFound", 404)
 }
 
 func (o *GetLogEntryByIndexNotFound) String() string {
-	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndexNotFound ", 404)
+	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndexNotFound", 404)
 }
 
 func (o *GetLogEntryByIndexNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
@@ -234,11 +238,13 @@ func (o *GetLogEntryByIndexDefault) Code() int {
 }
 
 func (o *GetLogEntryByIndexDefault) Error() string {
-	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndex default  %+v", o._statusCode, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndex default %s", o._statusCode, payload)
 }
 
 func (o *GetLogEntryByIndexDefault) String() string {
-	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndex default  %+v", o._statusCode, o.Payload)
+	payload, _ := json.Marshal(o.Payload)
+	return fmt.Sprintf("[GET /api/v1/log/entries][%d] getLogEntryByIndex default %s", o._statusCode, payload)
 }
 
 func (o *GetLogEntryByIndexDefault) GetPayload() *models.Error {
@@ -250,7 +256,7 @@ func (o *GetLogEntryByIndexDefault) readResponse(response runtime.ClientResponse
 	o.Payload = new(models.Error)
 
 	// response payload
-	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && !stderrors.Is(err, io.EOF) {
 		return err
 	}
 

@@ -5,6 +5,7 @@ package pemutil
 
 import (
 	"bytes"
+	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
@@ -16,12 +17,14 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strings"
 
 	"github.com/pkg/errors"
-	"go.step.sm/crypto/internal/utils"
+	"golang.org/x/crypto/ssh"
+
+	fileutils "go.step.sm/crypto/internal/utils/file"
 	"go.step.sm/crypto/keyutil"
 	"go.step.sm/crypto/x25519"
-	"golang.org/x/crypto/ssh"
 )
 
 // DefaultEncCipher is the default algorithm used when encrypting sensitive
@@ -43,7 +46,7 @@ var PromptPassword PasswordPrompter
 // WriteFile is a method used to write a file, by default it uses a wrapper over
 // ioutil.WriteFile, but it can be set to a custom method, that for example can
 // check if a file exists and prompts the user if it should be overwritten.
-var WriteFile FileWriter = utils.WriteFile
+var WriteFile FileWriter = fileutils.WriteFile
 
 // PEMBlockHeader is the expected header for any PEM formatted block.
 var PEMBlockHeader = []byte("-----BEGIN ")
@@ -65,7 +68,7 @@ type context struct {
 func newContext(name string) *context {
 	return &context{
 		filename: name,
-		perm:     0600,
+		perm:     0o600,
 	}
 }
 
@@ -125,7 +128,7 @@ func WithFilename(name string) Options {
 		ctx.filename = name
 		// Default perm mode if not set
 		if ctx.perm == 0 {
-			ctx.perm = 0600
+			ctx.perm = 0o600
 		}
 		return nil
 	}
@@ -152,11 +155,28 @@ func WithPassword(pass []byte) Options {
 // WithPasswordFile is a method that adds the password in a file to the context.
 func WithPasswordFile(filename string) Options {
 	return func(ctx *context) error {
-		b, err := utils.ReadPasswordFromFile(filename)
+		b, err := fileutils.ReadPasswordFromFile(filename)
 		if err != nil {
 			return err
 		}
 		ctx.password = b
+		return nil
+	}
+}
+
+// WithMinLengthPasswordFile is a method that adds the password in a file to the
+// context. If the password does not meet the minimum length requirement an
+// error is returned. If minimum length input is <=0 then the requirement is
+// ignored.
+func WithMinLengthPasswordFile(filename string, minLength int) Options {
+	return func(ctx *context) error {
+		if err := WithPasswordFile(filename)(ctx); err != nil {
+			return err
+		}
+
+		if minLength > 0 && len(ctx.password) < minLength {
+			return fmt.Errorf("password does not meet minimum length requirement; must be at least %v characters", minLength)
+		}
 		return nil
 	}
 }
@@ -229,149 +249,201 @@ func ParseCertificate(pemData []byte) (*x509.Certificate, error) {
 	return nil, errors.New("error parsing certificate: no certificate found")
 }
 
-// ParseCertificateBundle extracts all the certificates in the given data.
-func ParseCertificateBundle(pemData []byte) ([]*x509.Certificate, error) {
-	var block *pem.Block
-	var certs []*x509.Certificate
-	for len(pemData) > 0 {
-		block, pemData = pem.Decode(pemData)
-		if block == nil {
-			return nil, errors.New("error decoding pem block")
-		}
-		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
-			continue
-		}
-
-		cert, err := x509.ParseCertificate(block.Bytes)
-		if err != nil {
-			return nil, errors.Wrap(err, "error parsing certificate")
-		}
-		certs = append(certs, cert)
-	}
-	if len(certs) == 0 {
-		return nil, errors.New("error parsing certificate: no certificate found")
-	}
-	return certs, nil
-}
-
-// ParseCertificateRequest extracts the first certificate from the given pem.
-func ParseCertificateRequest(pemData []byte) (*x509.CertificateRequest, error) {
-	var block *pem.Block
-	for len(pemData) > 0 {
-		block, pemData = pem.Decode(pemData)
-		if block == nil {
-			return nil, errors.New("error decoding pem block")
-		}
-		if (block.Type != "CERTIFICATE REQUEST" && block.Type != "NEW CERTIFICATE REQUEST") ||
-			len(block.Headers) != 0 {
-			continue
-		}
-
-		csr, err := x509.ParseCertificateRequest(block.Bytes)
-		if err != nil {
-			return nil, errors.Wrap(err, "error parsing certificate request")
-		}
-		return csr, nil
-	}
-
-	return nil, errors.New("error parsing certificate request: no certificate found")
-}
-
-// ReadCertificate returns a *x509.Certificate from the given filename. It
-// supports certificates formats PEM and DER.
-func ReadCertificate(filename string, opts ...Options) (*x509.Certificate, error) {
-	b, err := utils.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
+// ParseCertificateBundle returns a list of *x509.Certificate parsed from
+// the given bytes.
+//
+// - supports PEM and DER certificate formats
+//   - If a DER-formatted file is given only one certificate will be returned.
+func ParseCertificateBundle(data []byte) ([]*x509.Certificate, error) {
+	var err error
 
 	// PEM format
-	if bytes.Contains(b, PEMBlockHeader) {
-		var crt interface{}
-		crt, err = Read(filename, opts...)
-		if err != nil {
-			return nil, err
-		}
-		switch crt := crt.(type) {
-		case *x509.Certificate:
-			return crt, nil
-		default:
-			return nil, errors.Errorf("error decoding PEM: file '%s' does not contain a certificate", filename)
-		}
-	}
-
-	// DER format (binary)
-	crt, err := x509.ParseCertificate(b)
-	return crt, errors.Wrapf(err, "error parsing %s", filename)
-}
-
-// ReadCertificateBundle returns a list of *x509.Certificate from the given
-// filename. It supports certificates formats PEM and DER. If a DER-formatted
-// file is given only one certificate will be returned.
-func ReadCertificateBundle(filename string) ([]*x509.Certificate, error) {
-	b, err := utils.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	// PEM format
-	if bytes.Contains(b, PEMBlockHeader) {
+	if bytes.Contains(data, PEMBlockHeader) {
 		var block *pem.Block
 		var bundle []*x509.Certificate
-		for len(b) > 0 {
-			block, b = pem.Decode(b)
+		for len(data) > 0 {
+			block, data = pem.Decode(data)
 			if block == nil {
 				break
 			}
-			if block.Type != "CERTIFICATE" {
-				return nil, errors.Errorf("error decoding PEM: file '%s' is not a certificate bundle", filename)
+			if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+				continue
 			}
 			var crt *x509.Certificate
 			crt, err = x509.ParseCertificate(block.Bytes)
 			if err != nil {
-				return nil, errors.Wrapf(err, "error parsing %s", filename)
+				return nil, &InvalidPEMError{
+					Err:  err,
+					Type: PEMTypeCertificate,
+				}
 			}
 			bundle = append(bundle, crt)
 		}
-		if len(b) > 0 {
-			return nil, errors.Errorf("error decoding PEM: file '%s' contains unexpected data", filename)
+		if len(bundle) == 0 {
+			return nil, &InvalidPEMError{
+				Type: PEMTypeCertificate,
+			}
 		}
 		return bundle, nil
 	}
 
 	// DER format (binary)
-	crt, err := x509.ParseCertificate(b)
+	crt, err := x509.ParseCertificate(data)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error parsing %s", filename)
+		return nil, &InvalidPEMError{
+			Message: fmt.Sprintf("error parsing certificate as DER format: %v", err),
+			Type:    PEMTypeCertificate,
+		}
 	}
 	return []*x509.Certificate{crt}, nil
 }
 
-// ReadCertificateRequest returns a *x509.CertificateRequest from the given
-// filename. It supports certificates formats PEM and DER.
-func ReadCertificateRequest(filename string) (*x509.CertificateRequest, error) {
-	b, err := utils.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
+// ParseCertificateRequest extracts the first *x509.CertificateRequest
+// from the given data.
+//
+// - supports PEM and DER certificate formats
+//   - If a DER-formatted file is given only one certificate will be returned.
+func ParseCertificateRequest(data []byte) (*x509.CertificateRequest, error) {
 	// PEM format
-	if bytes.Contains(b, PEMBlockHeader) {
-		csr, err := Parse(b, WithFilename(filename))
-		if err != nil {
-			return nil, err
-		}
-		switch csr := csr.(type) {
-		case *x509.CertificateRequest:
+	if bytes.Contains(data, PEMBlockHeader) {
+		var block *pem.Block
+		for len(data) > 0 {
+			block, data = pem.Decode(data)
+			if block == nil {
+				break
+			}
+			if !strings.HasSuffix(block.Type, "CERTIFICATE REQUEST") {
+				continue
+			}
+			csr, err := x509.ParseCertificateRequest(block.Bytes)
+			if err != nil {
+				return nil, &InvalidPEMError{
+					Type: PEMTypeCertificateRequest,
+					Err:  err,
+				}
+			}
+
 			return csr, nil
-		default:
-			return nil, errors.Errorf("error decoding PEM: file '%s' does not contain a certificate request", filename)
 		}
 	}
 
 	// DER format (binary)
-	csr, err := x509.ParseCertificateRequest(b)
-	return csr, errors.Wrapf(err, "error parsing %s", filename)
+	csr, err := x509.ParseCertificateRequest(data)
+	if err != nil {
+		return nil, &InvalidPEMError{
+			Message: fmt.Sprintf("error parsing certificate request as DER format: %v", err),
+			Type:    PEMTypeCertificateRequest,
+		}
+	}
+	return csr, nil
+}
+
+// PEMType represents a PEM block type. (e.g., CERTIFICATE, CERTIFICATE REQUEST, etc.)
+type PEMType int
+
+func (pt PEMType) String() string {
+	switch pt {
+	case PEMTypeCertificate:
+		return "certificate"
+	case PEMTypeCertificateRequest:
+		return "certificate request"
+	default:
+		return "undefined"
+	}
+}
+
+const (
+	// PEMTypeUndefined undefined
+	PEMTypeUndefined = iota
+	// PEMTypeCertificate CERTIFICATE
+	PEMTypeCertificate
+	// PEMTypeCertificateRequest CERTIFICATE REQUEST
+	PEMTypeCertificateRequest
+)
+
+// InvalidPEMError represents an error that occurs when parsing a file with
+// PEM encoded data.
+type InvalidPEMError struct {
+	Type    PEMType
+	File    string
+	Message string
+	Err     error
+}
+
+func (e *InvalidPEMError) Error() string {
+	switch {
+	case e.Message != "":
+		return e.Message
+	case e.Err != nil:
+		return fmt.Sprintf("error decoding PEM data: %v", e.Err)
+	default:
+		if e.Type == PEMTypeUndefined {
+			return "does not contain valid PEM encoded data"
+		}
+		return fmt.Sprintf("does not contain a valid PEM encoded %s", e.Type)
+	}
+}
+
+func (e *InvalidPEMError) Unwrap() error {
+	return e.Err
+}
+
+// ReadCertificate returns a *x509.Certificate from the given filename. It
+// supports certificates formats PEM and DER.
+func ReadCertificate(filename string, opts ...Options) (*x509.Certificate, error) {
+	// Populate options
+	ctx := newContext(filename)
+	if err := ctx.apply(opts); err != nil {
+		return nil, err
+	}
+
+	bundle, err := ReadCertificateBundle(filename)
+	switch {
+	case err != nil:
+		return nil, err
+	case len(bundle) == 0:
+		return nil, errors.Errorf("file %s does not contain a valid PEM or DER formatted certificate", filename)
+	case len(bundle) > 1 && !ctx.firstBlock:
+		return nil, errors.Errorf("error decoding %s: contains more than one PEM encoded block", filename)
+	default:
+		return bundle[0], nil
+	}
+}
+
+// ReadCertificateBundle reads the given filename and returns a list of
+// *x509.Certificate.
+//
+// - supports PEM and DER certificate formats
+//   - If a DER-formatted file is given only one certificate will be returned.
+func ReadCertificateBundle(filename string) ([]*x509.Certificate, error) {
+	b, err := fileutils.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	bundle, err := ParseCertificateBundle(b)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing %s: %w", filename, err)
+	}
+	return bundle, nil
+}
+
+// ReadCertificateRequest reads the given filename and returns a
+// *x509.CertificateRequest.
+//
+// - supports PEM and DER Certificate formats.
+// - supports reading from STDIN with filename `-`.
+func ReadCertificateRequest(filename string) (*x509.CertificateRequest, error) {
+	b, err := fileutils.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	cr, err := ParseCertificateRequest(b)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing %s: %w", filename, err)
+	}
+	return cr, nil
 }
 
 // Parse returns the key or certificate PEM-encoded in the given bytes.
@@ -465,7 +537,7 @@ func ParseKey(b []byte, opts ...Options) (interface{}, error) {
 // keys are PKCS#1, PKCS#8, RFC5915 for EC, and base64-encoded DER for
 // certificates and public keys.
 func Read(filename string, opts ...Options) (interface{}, error) {
-	b, err := utils.ReadFile(filename)
+	b, err := fileutils.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
@@ -586,8 +658,7 @@ func Serialize(in interface{}, opts ...Options) (*pem.Block, error) {
 				}
 			} else {
 				var err error
-				//nolint:staticcheck // required for legacy compatibility
-				p, err = x509.EncryptPEMBlock(rand.Reader, p.Type, p.Bytes, password, DefaultEncCipher)
+				p, err = x509.EncryptPEMBlock(rand.Reader, p.Type, p.Bytes, password, DefaultEncCipher) //nolint:staticcheck // support legacy use cases
 				if err != nil {
 					return nil, errors.Wrap(err, "failed to serialize to PEM")
 				}
@@ -673,24 +744,48 @@ func ParseSSH(b []byte) (interface{}, error) {
 			return nil, errors.Wrap(err, "error unmarshaling key")
 		}
 
-		key := new(ecdsa.PublicKey)
+		var c ecdh.Curve
 		switch w.Name {
 		case ssh.KeyAlgoECDSA256:
-			key.Curve = elliptic.P256()
+			c = ecdh.P256()
 		case ssh.KeyAlgoECDSA384:
-			key.Curve = elliptic.P384()
+			c = ecdh.P384()
 		case ssh.KeyAlgoECDSA521:
-			key.Curve = elliptic.P521()
+			c = ecdh.P521()
 		default:
 			return nil, errors.Errorf("unsupported ecdsa curve %s", w.Name)
 		}
 
-		key.X, key.Y = elliptic.Unmarshal(key.Curve, w.KeyBytes)
-		if key.X == nil || key.Y == nil {
-			return nil, errors.New("invalid ecdsa curve point")
+		var p *ecdh.PublicKey
+		if p, err = c.NewPublicKey(w.KeyBytes); err != nil {
+			return nil, errors.Wrapf(err, "failed decoding %s key", w.Name)
 		}
-		return key, nil
 
+		// convert ECDH public key to ECDSA public key to keep
+		// the returned type backwards compatible.
+		rawKey := p.Bytes()
+		switch p.Curve() {
+		case ecdh.P256():
+			return &ecdsa.PublicKey{
+				Curve: elliptic.P256(),
+				X:     big.NewInt(0).SetBytes(rawKey[1:33]),
+				Y:     big.NewInt(0).SetBytes(rawKey[33:]),
+			}, nil
+		case ecdh.P384():
+			return &ecdsa.PublicKey{
+				Curve: elliptic.P384(),
+				X:     big.NewInt(0).SetBytes(rawKey[1:49]),
+				Y:     big.NewInt(0).SetBytes(rawKey[49:]),
+			}, nil
+		case ecdh.P521():
+			return &ecdsa.PublicKey{
+				Curve: elliptic.P521(),
+				X:     big.NewInt(0).SetBytes(rawKey[1:67]),
+				Y:     big.NewInt(0).SetBytes(rawKey[67:]),
+			}, nil
+		default:
+			return nil, errors.New("cannot convert non-NIST *ecdh.PublicKey to *ecdsa.PublicKey")
+		}
 	case ssh.KeyAlgoED25519:
 		var w struct {
 			Name     string
@@ -700,10 +795,8 @@ func ParseSSH(b []byte) (interface{}, error) {
 			return nil, errors.Wrap(err, "error unmarshaling key")
 		}
 		return ed25519.PublicKey(w.KeyBytes), nil
-
-	case ssh.KeyAlgoDSA:
-		return nil, errors.Errorf("step does not support DSA keys")
-
+	case ssh.InsecureKeyAlgoDSA: //nolint:staticcheck // just using the constant; no dependent logic
+		return nil, errors.Errorf("DSA keys not supported")
 	default:
 		return nil, errors.Errorf("unsupported key type %T", key)
 	}
