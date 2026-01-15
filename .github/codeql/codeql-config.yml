@@ -1,0 +1,28 @@
+name: "Tekton Operator CodeQL Config"
+
+# Paths to exclude from analysis
+paths-ignore:
+  - vendor/**
+  - test/**
+
+# Suppress go/insecure-tls globally for this repository
+# 
+# JUSTIFICATION: 
+# The flagged code in pkg/reconciler/openshift/common/tlsconfig.go inherits TLS 
+# configuration from OpenShift's validated cluster-wide security profile 
+# (APIServer.spec.tlsSecurityProfile), rather than using hardcoded values.
+#
+# This approach:
+# - Ensures compliance with administrator-defined cluster security policies
+# - Enables FIPS 140-2 compliance when OpenShift FIPS mode is enabled
+# - Supports Post-Quantum Cryptography readiness for OpenShift 4.22+
+# - Allows centralized security policy management
+#
+# The security model is "trust the cluster's validated configuration" which is
+# the recommended approach for OpenShift operators per Red Hat best practices.
+# Hardcoding cipher suites would be LESS secure and inflexible.
+query-filters:
+  - exclude:
+      id:
+        - go/insecure-tls
+

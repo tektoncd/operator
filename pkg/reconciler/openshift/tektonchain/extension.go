@@ -34,12 +34,14 @@ const (
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	ext := openshiftExtension{
 		operatorClientSet: operatorclient.Get(ctx),
+		ctx:               ctx,
 	}
 	return ext
 }
 
 type openshiftExtension struct {
 	operatorClientSet versioned.Interface
+	ctx               context.Context //nolint:containedctx // Context stored to pass TLS config to transformers
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -50,6 +52,8 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.RemoveRunAsGroupForStatefulSet(tektonChainsControllerName),
 		occommon.ApplyCABundlesToDeployment,
 		occommon.ApplyCABundlesForStatefulSet(tektonChainsControllerName),
+		// Inject TLS configuration into all containers
+		occommon.InjectTLSEnvVarsTransformer(oe.ctx),
 	}
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {

@@ -27,6 +27,7 @@ import (
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"go.uber.org/zap"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
@@ -70,6 +71,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		installerSetClient:   client.NewInstallerSetClient(tisClient, operatorVer, "pipelines-as-code-ext", v1alpha1.KindOpenShiftPipelinesAsCode, nil),
 		pacManifest:          &pacManifest,
 		pipelineRunTemplates: prTemplates,
+		ctx:                  ctx,
 	}
 }
 
@@ -77,10 +79,14 @@ type openshiftExtension struct {
 	installerSetClient   *client.InstallerSetClient
 	pacManifest          *mf.Manifest
 	pipelineRunTemplates *mf.Manifest
+	ctx                  context.Context //nolint:containedctx // Context stored to pass TLS config to transformers
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return nil
+	return []mf.Transformer{
+		// Inject TLS configuration into all Pipelines as Code containers
+		occommon.InjectTLSEnvVarsTransformer(oe.ctx),
+	}
 }
 func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil

@@ -76,6 +76,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 			version, "results-ext", v1alpha1.KindTektonResult, nil),
 		routeManifest:    routeManifest,
 		logsRBACManifest: logsRBACManifest,
+		ctx:              ctx,
 	}
 	return ext
 }
@@ -84,6 +85,7 @@ type openshiftExtension struct {
 	installerSetClient *client.InstallerSetClient
 	routeManifest      *mf.Manifest
 	logsRBACManifest   *mf.Manifest
+	ctx                context.Context //nolint:containedctx // Context stored to pass TLS config to transformers
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -100,6 +102,8 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		injectLokiStackTLSCACert(instance.Spec.LokiStackProperties),
 		injectResultsAPIServiceCACert(instance.Spec.ResultsAPIProperties),
 		injectPostgresUpgradeSupport(),
+		// Inject TLS configuration into all containers
+		occommon.InjectTLSEnvVarsTransformer(oe.ctx),
 	}
 }
 

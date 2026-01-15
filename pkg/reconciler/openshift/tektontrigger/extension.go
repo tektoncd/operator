@@ -44,10 +44,14 @@ var triggersData = triggersProperties{
 }
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
-	return openshiftExtension{}
+	return openshiftExtension{
+		ctx: ctx,
+	}
 }
 
-type openshiftExtension struct{}
+type openshiftExtension struct {
+	ctx context.Context //nolint:containedctx // Context stored to pass TLS config to transformers
+}
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
@@ -56,6 +60,8 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.ApplyCABundlesToDeployment,
 		common.AddConfigMapValues(tektontrigger.ConfigDefaults, triggersData),
 		replaceDeploymentArgs("-el-events", "enable"),
+		// Inject TLS configuration into all containers
+		occommon.InjectTLSEnvVarsTransformer(oe.ctx),
 	}
 }
 func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {

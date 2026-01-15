@@ -22,9 +22,11 @@ import (
 	"log"
 	"strings"
 
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	installer "github.com/tektoncd/operator/pkg/reconciler/shared/tektoninstallerset"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
 )
 
@@ -108,7 +110,21 @@ func startMain(p Platform, ctrls ControllerMap) {
 	cfg.QPS = 50
 	ctx, _ := injection.EnableInjectionOrDie(signals.NewContext(), cfg)
 	ctx = contextWithPlatformName(ctx, pParams.Name)
+
+	// For OpenShift platform, observe TLS configuration from APIServer
+	// and store it in context for use by reconcilers
+	if pParams.Name == "openshift" {
+		logger := logging.FromContext(ctx)
+		if occommon.IsCentralTLSConfigEnabled() {
+			logger.Info("Observing TLS configuration from OpenShift APIServer")
+			ctx = occommon.ObserveAndStoreTLSConfig(ctx, cfg)
+		} else {
+			logger.Info("Central TLS config observation is disabled via ENABLE_CENTRAL_TLS_CONFIG=false")
+		}
+	}
+
 	installer.InitTektonInstallerSetClient(ctx)
+
 	sharedmain.MainWithConfig(ctx,
 		pParams.SharedMainName,
 		cfg,

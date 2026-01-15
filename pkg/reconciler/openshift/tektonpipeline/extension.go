@@ -55,6 +55,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
 			version, "pipelines-ext", v1alpha1.KindTektonPipeline, nil),
 		kubeClientSet: kubeclient.Get(ctx),
+		ctx:           ctx,
 	}
 	return ext
 }
@@ -62,6 +63,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 type openshiftExtension struct {
 	installerSetClient *client.InstallerSetClient
 	kubeClientSet      kubernetes.Interface
+	ctx                context.Context //nolint:containedctx // Context stored to pass TLS config to transformers
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -72,6 +74,8 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.RemoveRunAsUserForStatefulSet(tektonRemoteResolversControllerName),
 		occommon.ApplyCABundlesForStatefulSet(tektonPipelinesControllerName),
 		occommon.ApplyCABundlesForStatefulSet(tektonRemoteResolversControllerName),
+		// Inject TLS configuration into all containers
+		occommon.InjectTLSEnvVarsTransformer(oe.ctx),
 	}
 	return trns
 }
