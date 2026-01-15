@@ -320,10 +320,26 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	} else {
 		// If target namespace and version are not changed then check if spec
 		// of TektonResult is changed by checking hash stored as annotation on
-		// TektonInstallerSet with computing new hash of TektonResult Spec
+		// TektonInstallerSet with computing new hash of TektonResult Spec.
+		// Also include external TLS profile state to trigger updates when
+		// platform TLS configuration changes.
 		logger.Debug("Checking for spec changes in TektonResult")
-		// Hash of TektonResult Spec
-		expectedSpecHash, err := hash.Compute(tr.Spec)
+
+		// Get platform TLS profile fingerprint if extension supports it (empty on vanilla k8s)
+		var tlsFingerprint string
+		if fp, ok := r.extension.(common.TLSProfileFingerprinter); ok {
+			tlsFingerprint = fp.GetTLSProfileFingerprint(ctx)
+		}
+
+		// Hash of TektonResult Spec combined with TLS fingerprint
+		type hashInput struct {
+			Spec           v1alpha1.TektonResultSpec
+			TLSFingerprint string
+		}
+		expectedSpecHash, err := hash.Compute(hashInput{
+			Spec:           tr.Spec,
+			TLSFingerprint: tlsFingerprint,
+		})
 		if err != nil {
 			logger.Errorw("Failed to compute spec hash", "error", err)
 			return err
