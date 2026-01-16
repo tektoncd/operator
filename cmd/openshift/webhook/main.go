@@ -20,9 +20,11 @@ import (
 	"context"
 	"os"
 
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"github.com/tektoncd/operator/pkg/webhook"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/signals"
 	kwebhook "knative.dev/pkg/webhook"
 	"knative.dev/pkg/webhook/certificates"
@@ -39,14 +41,40 @@ func main() {
 		secretName = "tekton-operator-webhook-certs"
 	}
 
-	//Set up a signal context with our webhook options
-	ctx := kwebhook.WithOptions(signals.NewContext(), kwebhook.Options{
+	cfg := injection.ParseAndGetRESTConfigOrDie()
+	ctx := signals.NewContext()
+	ctx, _ = injection.EnableInjectionOrDie(ctx, cfg)
+
+	logger := logging.FromContext(ctx)
+
+	// Observe TLS configuration from OpenShift APIServer if feature is enabled
+	webhookOpts := kwebhook.Options{
 		ServiceName: serviceName,
 		Port:        8443,
 		SecretName:  secretName,
-	})
-	cfg := injection.ParseAndGetRESTConfigOrDie()
-	ctx, _ = injection.EnableInjectionOrDie(ctx, cfg)
+	}
+
+	if occommon.IsCentralTLSConfigEnabled() {
+		logger.Info("Central TLS config is enabled for webhook, observing APIServer TLS profile")
+
+		// Observe TLS config (stores in context)
+		ctx = occommon.ObserveAndStoreTLSConfig(ctx, cfg)
+
+		// Get TLS config from context
+		if tlsConfig := occommon.GetTLSConfigFromContext(ctx); tlsConfig != nil {
+			// Only set MinVersion (not cipher suites or curves) to avoid knative version bump
+			webhookOpts.TLSMinVersion = tlsConfig.MinVersion
+			logger.Infof("Webhook TLS min version set to: %s", occommon.TLSVersionToString(tlsConfig.MinVersion))
+		} else {
+			logger.Warn("Central TLS config enabled but TLS config not available from context")
+		}
+	} else {
+		logger.Info("Central TLS config is disabled for webhook")
+	}
+
+	// Set up context with webhook options
+	ctx = kwebhook.WithOptions(ctx, webhookOpts)
+
 	webhook.CreateWebhookResources(ctx)
 	webhook.SetTypes("openshift")
 

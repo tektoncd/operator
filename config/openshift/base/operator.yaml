@@ -73,6 +73,8 @@ spec:
           value: tekton.dev/operator
         - name: VERSION
           value: "devel"
+        - name: ENABLE_CENTRAL_TLS_CONFIG
+          value: "false"
         - name: AUTOINSTALL_COMPONENTS
           valueFrom:
             configMapKeyRef:
@@ -138,6 +140,8 @@ spec:
             value: "9009"
           - name: VERSION
             value: "devel"
+          - name: ENABLE_CENTRAL_TLS_CONFIG
+            value: "false"
           - name: METRICS_DOMAIN
             value: tekton.dev/operator
           - name: CONFIG_LEADERELECTION_NAME

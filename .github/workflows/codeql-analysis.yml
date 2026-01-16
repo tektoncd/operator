@@ -47,10 +47,7 @@ jobs:
       uses: github/codeql-action/init@cdefb33c0f6224e58673d9004f47f7cb3e328b89  # v4.31.10
       with:
         languages: ${{ matrix.language }}
-        # If you wish to specify custom queries, you can do so here or in a config file.
-        # By default, queries listed here will override any specified in a config file.
-        # Prefix the list here with "+" to use these queries and those in the config file.
-        # queries: ./path/to/local/query, your-org/your-repo/queries@main
+        config-file: ./.github/codeql/codeql-config.yml
 
     - uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb  # v5.0.1
       with:
