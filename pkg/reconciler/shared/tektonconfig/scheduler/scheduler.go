@@ -195,7 +195,7 @@ func EnsureTektonComponent(ctx context.Context, tc *v1alpha1.TektonConfig, opera
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
-	// Before Installing Scheduler, Make sure that  Upstream Scheduler is installed
+	// Before Installing Scheduler, Make sure that Upstream Kueue is installed
 	_, err = operatorClientSet.Discovery().ServerResourcesForGroupVersion(KUEUE_GVK)
 	if err != nil {
 		tc.Status.MarkComponentNotReady(fmt.Sprintf("Please install kueue (%s) First, %s ", KUEUE_GVK, err.Error()))

@@ -23,7 +23,7 @@ results:
   github: tektoncd/results
   version: v0.17.2
 scheduler:
-  github: tektoncd-pb/tekton-kueue
+  github: konflux-ci/tekton-kueue
   version: v0.3.0
 triggers:
   github: tektoncd/triggers

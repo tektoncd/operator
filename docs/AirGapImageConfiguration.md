@@ -98,7 +98,7 @@ kubectl delete tektoninstallerset <installer-set-name>
 | Tekton Pruner        | image used by pruner controller    | `IMAGE_PRUNER_CONTROLLER`                          |
 | Tekton Pruner        | image used by pruner webhook       | `IMAGE_PRUNER_WEBHOOK`                             |
 | Tekton Scheduler     | image used by scheduler controller | `IMAGE_SCHEDULER_WEBHOOK`                          |
-| Tekton Scheduler     | image used by pruner webhook       | `IMAGE_SCHEDULER_WEBHOOK`                             |
+| Tekton Scheduler     | image used by scheduler webhook       | `IMAGE_SCHEDULER_WEBHOOK`                             |
 
 
 #### Images supported in OpenShift
