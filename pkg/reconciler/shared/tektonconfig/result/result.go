@@ -24,8 +24,10 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
 )
 
@@ -162,6 +164,16 @@ func UpdateResult(ctx context.Context, old *v1alpha1.TektonResult, new *v1alpha1
 // GetTektonResultCR create a TektonResult CR
 func GetTektonResultCR(config *v1alpha1.TektonConfig, operatorVersion string) *v1alpha1.TektonResult {
 	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
+
+	result := config.Spec.Result
+
+	// For Hub clusters (multicluster enabled AND role is Hub), set replicas to 0
+	// for watcher and retention-policy-agent deployments
+	if !config.Spec.Scheduler.MultiClusterDisabled &&
+		config.Spec.Scheduler.MultiClusterRole == v1alpha1.MultiClusterRoleHub {
+		result = injectHubClusterOptions(result)
+	}
+
 	return &v1alpha1.TektonResult{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            v1alpha1.ResultResourceName,
@@ -174,7 +186,30 @@ func GetTektonResultCR(config *v1alpha1.TektonConfig, operatorVersion string) *v
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Result: config.Spec.Result,
+			Result: result,
 		},
 	}
+}
+
+// injectHubClusterOptions modifies the Result options to set replicas to 0
+// for watcher and retention-policy-agent deployments on Hub clusters
+func injectHubClusterOptions(result v1alpha1.Result) v1alpha1.Result {
+	// Initialize the Deployments map if nil
+	if result.Options.Deployments == nil {
+		result.Options.Deployments = make(map[string]appsv1.Deployment)
+	}
+
+	zeroReplicas := ptr.To(int32(0))
+
+	// Set watcher replicas to 0
+	watcherDeployment := result.Options.Deployments["tekton-results-watcher"]
+	watcherDeployment.Spec.Replicas = zeroReplicas
+	result.Options.Deployments["tekton-results-watcher"] = watcherDeployment
+
+	// Set retention-policy-agent replicas to 0
+	retentionDeployment := result.Options.Deployments["tekton-results-retention-policy-agent"]
+	retentionDeployment.Spec.Replicas = zeroReplicas
+	result.Options.Deployments["tekton-results-retention-policy-agent"] = retentionDeployment
+
+	return result
 }
