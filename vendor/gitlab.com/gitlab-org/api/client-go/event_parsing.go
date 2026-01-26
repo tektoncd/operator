@@ -18,6 +18,7 @@ package gitlab
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -62,10 +63,12 @@ const (
 )
 
 type noteEvent struct {
-	ObjectKind       string `json:"object_kind"`
-	ObjectAttributes struct {
-		NoteableType string `json:"noteable_type"`
-	} `json:"object_attributes"`
+	ObjectKind       string                    `json:"object_kind"`
+	ObjectAttributes noteEventObjectAttributes `json:"object_attributes"`
+}
+
+type noteEventObjectAttributes struct {
+	NoteableType string `json:"noteable_type"`
 }
 
 type serviceEvent struct {
@@ -276,7 +279,7 @@ func ParseWebhook(eventType EventType, payload []byte) (event any, err error) {
 		case projectEvent:
 			event = &ProjectResourceAccessTokenEvent{}
 		default:
-			return nil, fmt.Errorf("unexpected resource access token payload")
+			return nil, errors.New("unexpected resource access token payload")
 		}
 	case EventTypeServiceHook:
 		service := &serviceEvent{}

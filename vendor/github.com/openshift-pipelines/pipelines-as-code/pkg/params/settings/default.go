@@ -39,23 +39,6 @@ func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[st
 	}
 	catalogs.Store("default", hc)
 
-	exists := false
-	catalogs.Range(func(_, value interface{}) bool {
-		if catalog, ok := value.(HubCatalog); ok && catalog.Type == hubtypes.TektonHubType {
-			exists = true
-			return false // Stop iteration
-		}
-		return true // Continue iteration
-	})
-	if !exists {
-		catalogs.Store(hubtypes.TektonHubType, HubCatalog{
-			Index: hubtypes.TektonHubType,
-			Name:  TektonHubCatalogNameDefaultValue,
-			URL:   TektonHubURLDefaultValue,
-			Type:  hubtypes.TektonHubType,
-		})
-	}
-
 	for k := range config {
 		m := hubCatalogNameRegex.FindStringSubmatch(k)
 		if len(m) > 0 {

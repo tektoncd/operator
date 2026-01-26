@@ -60,8 +60,8 @@ func (s GroupSecuritySettings) String() string {
 // GitLab API docs:
 // https://docs.gitlab.com/api/group_security_settings/#update-secret_push_protection_enabled-setting
 type UpdateGroupSecuritySettingsOptions struct {
-	SecretPushProtectionEnabled *bool  `url:"secret_push_protection_enabled,omitempty" json:"secret_push_protection_enabled,omitempty"`
-	ProjectsToExclude           *[]int `url:"projects_to_exclude,omitempty" json:"projects_to_exclude,omitempty"`
+	SecretPushProtectionEnabled *bool    `url:"secret_push_protection_enabled,omitempty" json:"secret_push_protection_enabled,omitempty"`
+	ProjectsToExclude           *[]int64 `url:"projects_to_exclude,omitempty" json:"projects_to_exclude,omitempty"`
 }
 
 // UpdateSecretPushProtectionEnabledSetting updates the secret_push_protection_enabled

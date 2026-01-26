@@ -102,7 +102,7 @@ var _ IntegrationsServiceInterface = (*IntegrationsService)(nil)
 // https://docs.gitlab.com/api/group_integrations/
 // https://docs.gitlab.com/api/project_integrations/
 type Integration struct {
-	ID                             int        `json:"id"`
+	ID                             int64      `json:"id"`
 	Title                          string     `json:"title"`
 	Slug                           string     `json:"slug"`
 	CreatedAt                      *time.Time `json:"created_at"`
@@ -139,11 +139,13 @@ type ListActiveIntegrationsOptions struct {
 }
 
 func (s *IntegrationsService) ListActiveGroupIntegrations(gid any, opt *ListActiveIntegrationsOptions, options ...RequestOptionFunc) ([]*Integration, *Response, error) {
-	group, err := parseID(gid)
-	if err != nil {
-		return nil, nil, err
-	}
-	return do[[]*Integration](s.client, withPath("groups/%s/integrations", group), withMethod(http.MethodGet), withAPIOpts(opt), withRequestOpts(options...))
+	return do[[]*Integration](
+		s.client,
+		withPath("groups/%s/integrations", GroupID{gid}),
+		withMethod(http.MethodGet),
+		withAPIOpts(opt),
+		withRequestOpts(options...),
+	)
 }
 
 // SetUpHarborOptions represents the available SetUpGroupHarbor()
@@ -160,28 +162,32 @@ type SetUpHarborOptions struct {
 }
 
 func (s *IntegrationsService) SetUpGroupHarbor(gid any, opt *SetUpHarborOptions, options ...RequestOptionFunc) (*Integration, *Response, error) {
-	group, err := parseID(gid)
-	if err != nil {
-		return nil, nil, err
-	}
-	return do[*Integration](s.client, withPath("groups/%s/integrations/harbor", group), withMethod(http.MethodPut), withAPIOpts(opt), withRequestOpts(options...))
+	return do[*Integration](
+		s.client,
+		withPath("groups/%s/integrations/harbor", GroupID{gid}),
+		withMethod(http.MethodPut),
+		withAPIOpts(opt),
+		withRequestOpts(options...),
+	)
 }
 
 func (s *IntegrationsService) DisableGroupHarbor(gid any, options ...RequestOptionFunc) (*Response, error) {
-	group, err := parseID(gid)
-	if err != nil {
-		return nil, err
-	}
-	_, resp, err := do[none](s.client, withPath("groups/%s/integrations/harbor", group), withMethod(http.MethodDelete), withRequestOpts(options...))
+	_, resp, err := do[none](
+		s.client,
+		withPath("groups/%s/integrations/harbor", GroupID{gid}),
+		withMethod(http.MethodDelete),
+		withRequestOpts(options...),
+	)
 	return resp, err
 }
 
 func (s *IntegrationsService) GetGroupHarborSettings(gid any, options ...RequestOptionFunc) (*Integration, *Response, error) {
-	group, err := parseID(gid)
-	if err != nil {
-		return nil, nil, err
-	}
-	return do[*Integration](s.client, withPath("groups/%s/integrations/harbor", group), withMethod(http.MethodGet), withRequestOpts(options...))
+	return do[*Integration](
+		s.client,
+		withPath("groups/%s/integrations/harbor", GroupID{gid}),
+		withMethod(http.MethodGet),
+		withRequestOpts(options...),
+	)
 }
 
 // SetMicrosoftTeamsNotificationsOptions represents the available
@@ -208,28 +214,32 @@ type SetMicrosoftTeamsNotificationsOptions struct {
 }
 
 func (s *IntegrationsService) SetGroupMicrosoftTeamsNotifications(gid any, opt *SetMicrosoftTeamsNotificationsOptions, options ...RequestOptionFunc) (*Integration, *Response, error) {
-	group, err := parseID(gid)
-	if err != nil {
-		return nil, nil, err
-	}
-	return do[*Integration](s.client, withPath("groups/%s/integrations/microsoft_teams", group), withMethod(http.MethodPut), withAPIOpts(opt), withRequestOpts(options...))
+	return do[*Integration](
+		s.client,
+		withPath("groups/%s/integrations/microsoft-teams", GroupID{gid}),
+		withMethod(http.MethodPut),
+		withAPIOpts(opt),
+		withRequestOpts(options...),
+	)
 }
 
 func (s *IntegrationsService) DisableGroupMicrosoftTeamsNotifications(gid any, options ...RequestOptionFunc) (*Response, error) {
-	group, err := parseID(gid)
-	if err != nil {
-		return nil, err
-	}
-	_, resp, err := do[none](s.client, withPath("groups/%s/integrations/microsoft_teams", group), withMethod(http.MethodDelete), withRequestOpts(options...))
+	_, resp, err := do[none](
+		s.client,
+		withPath("groups/%s/integrations/microsoft-teams", GroupID{gid}),
+		withMethod(http.MethodDelete),
+		withRequestOpts(options...),
+	)
 	return resp, err
 }
 
 func (s *IntegrationsService) GetGroupMicrosoftTeamsNotifications(gid any, options ...RequestOptionFunc) (*Integration, *Response, error) {
-	group, err := parseID(gid)
-	if err != nil {
-		return nil, nil, err
-	}
-	return do[*Integration](s.client, withPath("groups/%s/integrations/microsoft_teams", group), withMethod(http.MethodGet), withRequestOpts(options...))
+	return do[*Integration](
+		s.client,
+		withPath("groups/%s/integrations/microsoft-teams", GroupID{gid}),
+		withMethod(http.MethodGet),
+		withRequestOpts(options...),
+	)
 }
 
 // SetUpJiraOptions represents the available SetUpJira() options.
@@ -256,26 +266,30 @@ type SetUpJiraOptions struct {
 }
 
 func (s *IntegrationsService) SetUpGroupJira(gid any, opt *SetUpJiraOptions, options ...RequestOptionFunc) (*Integration, *Response, error) {
-	group, err := parseID(gid)
-	if err != nil {
-		return nil, nil, err
-	}
-	return do[*Integration](s.client, withPath("groups/%s/integrations/jira", group), withMethod(http.MethodPut), withAPIOpts(opt), withRequestOpts(options...))
+	return do[*Integration](
+		s.client,
+		withPath("groups/%s/integrations/jira", GroupID{gid}),
+		withMethod(http.MethodPut),
+		withAPIOpts(opt),
+		withRequestOpts(options...),
+	)
 }
 
 func (s *IntegrationsService) DisableGroupJira(gid any, options ...RequestOptionFunc) (*Response, error) {
-	group, err := parseID(gid)
-	if err != nil {
-		return nil, err
-	}
-	_, resp, err := do[none](s.client, withPath("groups/%s/integrations/jira", group), withMethod(http.MethodDelete), withRequestOpts(options...))
+	_, resp, err := do[none](
+		s.client,
+		withPath("groups/%s/integrations/jira", GroupID{gid}),
+		withMethod(http.MethodDelete),
+		withRequestOpts(options...),
+	)
 	return resp, err
 }
 
 func (s *IntegrationsService) GetGroupJiraSettings(gid any, options ...RequestOptionFunc) (*Integration, *Response, error) {
-	group, err := parseID(gid)
-	if err != nil {
-		return nil, nil, err
-	}
-	return do[*Integration](s.client, withPath("groups/%s/integrations/jira", group), withMethod(http.MethodGet), withRequestOpts(options...))
+	return do[*Integration](
+		s.client,
+		withPath("groups/%s/integrations/jira", GroupID{gid}),
+		withMethod(http.MethodGet),
+		withRequestOpts(options...),
+	)
 }

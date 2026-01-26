@@ -27,25 +27,9 @@ type (
 		// GitLab API docs:
 		// https://docs.gitlab.com/api/group_enterprise_users/#list-all-enterprise-users
 		ListEnterpriseUsers(gid any, opt *ListEnterpriseUsersOptions, options ...RequestOptionFunc) ([]*User, *Response, error)
-
-		// GetEnterpriseUser gets details on a specified enterprise user.
-		//
-		// GitLab API docs:
-		// https://docs.gitlab.com/api/group_enterprise_users/#get-details-on-an-enterprise-user
-		GetEnterpriseUser(gid any, uid int, options ...RequestOptionFunc) (*User, *Response, error)
-
-		// Disable2FAForEnterpriseUser disables two-factor authentication (2FA) for a
-		// specified enterprise user.
-		//
-		// GitLab API docs:
-		// https://docs.gitlab.com/api/group_enterprise_users/#disable-two-factor-authentication-for-an-enterprise-user
-		Disable2FAForEnterpriseUser(gid any, uid int, options ...RequestOptionFunc) (*Response, error)
-
-		// DeleteEnterpriseUser deletes an specified enterprise user.
-		//
-		// GitLab API docs:
-		// https://docs.gitlab.com/api/group_enterprise_users/#delete-an-enterprise-user
-		DeleteEnterpriseUser(gid any, uid int, deleteOptions *DeleteEnterpriseUserOptions, options ...RequestOptionFunc) (*Response, error)
+		GetEnterpriseUser(gid any, uid int64, options ...RequestOptionFunc) (*User, *Response, error)
+		Disable2FAForEnterpriseUser(gid any, uid int64, options ...RequestOptionFunc) (*Response, error)
+		DeleteEnterpriseUser(gid any, uid int64, deleteOptions *DeleteEnterpriseUserOptions, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// EnterpriseUsersService handles communication with the enterprise users
@@ -96,7 +80,11 @@ func (s *EnterpriseUsersService) ListEnterpriseUsers(gid any, opt *ListEnterpris
 	return users, resp, nil
 }
 
-func (s *EnterpriseUsersService) GetEnterpriseUser(gid any, uid int, options ...RequestOptionFunc) (*User, *Response, error) {
+// GetEnterpriseUser gets details on a specified enterprise user.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/api/group_enterprise_users/#get-details-on-an-enterprise-user
+func (s *EnterpriseUsersService) GetEnterpriseUser(gid any, uid int64, options ...RequestOptionFunc) (*User, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -117,7 +105,12 @@ func (s *EnterpriseUsersService) GetEnterpriseUser(gid any, uid int, options ...
 	return user, resp, nil
 }
 
-func (s *EnterpriseUsersService) Disable2FAForEnterpriseUser(gid any, uid int, options ...RequestOptionFunc) (*Response, error) {
+// Disable2FAForEnterpriseUser disables two-factor authentication (2FA) for a
+// specified enterprise user.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/api/group_enterprise_users/#disable-two-factor-authentication-for-an-enterprise-user
+func (s *EnterpriseUsersService) Disable2FAForEnterpriseUser(gid any, uid int64, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, err
@@ -140,7 +133,11 @@ type DeleteEnterpriseUserOptions struct {
 	HardDelete *bool `url:"hard_delete,omitempty" json:"hard_delete,omitempty"`
 }
 
-func (s *EnterpriseUsersService) DeleteEnterpriseUser(gid any, uid int, opt *DeleteEnterpriseUserOptions, options ...RequestOptionFunc) (*Response, error) {
+// DeleteEnterpriseUser deletes an specified enterprise user.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/api/group_enterprise_users/#delete-an-enterprise-user
+func (s *EnterpriseUsersService) DeleteEnterpriseUser(gid any, uid int64, opt *DeleteEnterpriseUserOptions, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, err
