@@ -44,7 +44,7 @@ type ProjectFeatureFlag struct {
 //
 // GitLab API docs: https://docs.gitlab.com/api/feature_flags/
 type ProjectFeatureFlagScope struct {
-	ID               int    `json:"id"`
+	ID               int64  `json:"id"`
 	EnvironmentScope string `json:"environment_scope"`
 }
 
@@ -52,7 +52,7 @@ type ProjectFeatureFlagScope struct {
 //
 // GitLab API docs: https://docs.gitlab.com/api/feature_flags/
 type ProjectFeatureFlagStrategy struct {
-	ID         int                                  `json:"id"`
+	ID         int64                                `json:"id"`
 	Name       string                               `json:"name"`
 	Parameters *ProjectFeatureFlagStrategyParameter `json:"parameters"`
 	Scopes     []*ProjectFeatureFlagScope           `json:"scopes"`
@@ -155,7 +155,7 @@ type CreateProjectFeatureFlagOptions struct {
 // GitLab API docs:
 // https://docs.gitlab.com/api/feature_flags/#create-a-feature-flag
 type FeatureFlagStrategyOptions struct {
-	ID         *int                                 `url:"id,omitempty" json:"id,omitempty"`
+	ID         *int64                               `url:"id,omitempty" json:"id,omitempty"`
 	Name       *string                              `url:"name,omitempty" json:"name,omitempty"`
 	Parameters *ProjectFeatureFlagStrategyParameter `url:"parameters,omitempty" json:"parameters,omitempty"`
 	Scopes     *[]*ProjectFeatureFlagScope          `url:"scopes,omitempty" json:"scopes,omitempty"`
@@ -167,7 +167,7 @@ type FeatureFlagStrategyOptions struct {
 // GitLab API docs:
 // https://docs.gitlab.com/api/feature_flags/#create-a-feature-flag
 type ProjectFeatureFlagScopeOptions struct {
-	ID               *int    `url:"id,omitempty" json:"id,omitempty"`
+	ID               *int64  `url:"id,omitempty" json:"id,omitempty"`
 	EnvironmentScope *string `url:"id,omitempty" json:"environment_scope,omitempty"`
 }
 

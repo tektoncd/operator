@@ -17,7 +17,7 @@
 package gitlab
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"time"
 
@@ -163,7 +163,7 @@ func WithCookieJar(jar http.CookieJar) ClientOptionFunc {
 func WithInterceptor(i Interceptor) ClientOptionFunc {
 	return func(c *Client) error {
 		if i == nil {
-			return fmt.Errorf("interceptor cannot be nil")
+			return errors.New("interceptor cannot be nil")
 		}
 		c.interceptors = append(c.interceptors, i)
 		return nil

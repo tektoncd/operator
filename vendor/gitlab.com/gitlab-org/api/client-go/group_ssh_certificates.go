@@ -11,7 +11,7 @@ type (
 	GroupSSHCertificatesServiceInterface interface {
 		ListGroupSSHCertificates(gid any, options ...RequestOptionFunc) ([]*GroupSSHCertificate, *Response, error)
 		CreateGroupSSHCertificate(gid any, opt *CreateGroupSSHCertificateOptions, options ...RequestOptionFunc) (*GroupSSHCertificate, *Response, error)
-		DeleteGroupSSHCertificate(gid any, cert int, options ...RequestOptionFunc) (*Response, error)
+		DeleteGroupSSHCertificate(gid any, cert int64, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// GroupSSHCertificatesService handles communication with the group
@@ -29,7 +29,7 @@ var _ GroupSSHCertificatesServiceInterface = (*GroupSSHCertificatesService)(nil)
 //
 // GitLab API docs: https://docs.gitlab.com/api/group_ssh_certificates/
 type GroupSSHCertificate struct {
-	ID        int        `json:"id"`
+	ID        int64      `json:"id"`
 	Title     string     `json:"title"`
 	Key       string     `json:"key"`
 	CreatedAt *time.Time `json:"created_at"`
@@ -100,7 +100,7 @@ func (s *GroupSSHCertificatesService) CreateGroupSSHCertificate(gid any, opt *Cr
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/group_ssh_certificates/#delete-group-ssh-certificate
-func (s *GroupSSHCertificatesService) DeleteGroupSSHCertificate(gid any, cert int, options ...RequestOptionFunc) (*Response, error) {
+func (s *GroupSSHCertificatesService) DeleteGroupSSHCertificate(gid any, cert int64, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, err

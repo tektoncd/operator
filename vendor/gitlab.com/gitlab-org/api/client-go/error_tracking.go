@@ -53,7 +53,7 @@ type (
 		//
 		// GitLab API docs:
 		// https://docs.gitlab.com/api/error_tracking/#delete-a-client-key
-		DeleteClientKey(pid any, keyID int, options ...RequestOptionFunc) (*Response, error)
+		DeleteClientKey(pid any, keyID int64, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// ErrorTrackingService handles communication with the error tracking
@@ -72,7 +72,7 @@ var _ ErrorTrackingServiceInterface = (*ErrorTrackingService)(nil)
 // GitLab docs:
 // https://docs.gitlab.com/api/error_tracking/#error-tracking-client-keys
 type ErrorTrackingClientKey struct {
-	ID        int    `json:"id"`
+	ID        int64  `json:"id"`
 	Active    bool   `json:"active"`
 	PublicKey string `json:"public_key"`
 	SentryDsn string `json:"sentry_dsn"`
@@ -153,7 +153,9 @@ func (s *ErrorTrackingService) EnableDisableErrorTracking(pid any, opt *EnableDi
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/error_tracking/#list-project-client-keys
-type ListClientKeysOptions ListOptions
+type ListClientKeysOptions struct {
+	ListOptions
+}
 
 func (s *ErrorTrackingService) ListClientKeys(pid any, opt *ListClientKeysOptions, options ...RequestOptionFunc) ([]*ErrorTrackingClientKey, *Response, error) {
 	project, err := parseID(pid)
@@ -197,7 +199,11 @@ func (s *ErrorTrackingService) CreateClientKey(pid any, options ...RequestOption
 	return ck, resp, nil
 }
 
-func (s *ErrorTrackingService) DeleteClientKey(pid any, keyID int, options ...RequestOptionFunc) (*Response, error) {
+// DeleteClientKey removes a client key from the project.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/api/error_tracking/#delete-a-client-key
+func (s *ErrorTrackingService) DeleteClientKey(pid any, keyID int64, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err

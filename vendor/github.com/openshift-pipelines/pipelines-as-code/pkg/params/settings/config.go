@@ -18,8 +18,6 @@ const (
 	HubURLKey                          = "hub-url"
 	HubCatalogNameKey                  = "hub-catalog-name"
 	HubCatalogTypeKey                  = "hub-catalog-type"
-	TektonHubURLDefaultValue           = "https://api.hub.tekton.dev/v1"
-	TektonHubCatalogNameDefaultValue   = "tekton"
 	ArtifactHubCatalogNameDefaultValue = "artifacthub"
 	ArtifactHubURLDefaultValue         = "https://artifacthub.io/api/v1"
 

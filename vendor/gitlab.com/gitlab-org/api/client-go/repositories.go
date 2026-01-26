@@ -275,9 +275,9 @@ func (s *RepositoriesService) Compare(pid any, opt *CompareOptions, options ...R
 type Contributor struct {
 	Name      string `json:"name"`
 	Email     string `json:"email"`
-	Commits   int    `json:"commits"`
-	Additions int    `json:"additions"`
-	Deletions int    `json:"deletions"`
+	Commits   int64  `json:"commits"`
+	Additions int64  `json:"additions"`
+	Deletions int64  `json:"deletions"`
 }
 
 func (c Contributor) String() string {
