@@ -18,15 +18,17 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/cockroachdb/apd/v3"
+
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/token"
 	"cuelang.org/go/internal/core/adt"
 	"cuelang.org/go/internal/value"
-	"github.com/cockroachdb/apd/v3"
 )
 
 // CallCtxt is passed to builtin implementations that need to use a cue.Value. This is an internal type. Its interface may change.
 type CallCtxt struct {
+	*adt.CallContext
 	ctx     *adt.OpContext
 	builtin *Builtin
 	Err     interface{}
@@ -48,10 +50,27 @@ func (c *CallCtxt) Do() bool {
 	return c.Err == nil
 }
 
+// Schema returns the ith argument as is, without converting it to a cue.Value.
+//
+// TODO: Schema should use CallContext.Expr to capture cycle information.
+// However, this only makes sense if functions also use the same OpContext for
+// further evaluation. We should enforce as we port the old calls.
+func (c *CallCtxt) Schema(i int) Schema {
+	v := c.Arg(i)
+	return value.Make(c.ctx, v)
+}
+
+// Value returns a finalized cue.Value for the ith argument.
 func (c *CallCtxt) Value(i int) cue.Value {
 	v := value.Make(c.ctx, c.args[i])
-	// TODO: remove default
-	// v, _ = v.Default()
+	if c.builtin.NonConcrete {
+		// In case NonConcrete is false, the concreteness is already checked
+		// at call time. We may want to use finalize semantics in both cases,
+		// though.
+		_, f := value.ToInternal(v)
+		f = f.ToDataAll(c.ctx)
+		v = value.Make(c.ctx, f)
+	}
 	if !v.IsConcrete() {
 		c.errcf(adt.IncompleteError, "non-concrete argument %d", i)
 	}
@@ -60,6 +79,9 @@ func (c *CallCtxt) Value(i int) cue.Value {
 
 func (c *CallCtxt) Struct(i int) Struct {
 	x := c.args[i]
+	if c.builtin.NonConcrete {
+		x = adt.Default(x)
+	}
 	switch v, ok := x.(*adt.Vertex); {
 	case ok && !v.IsList():
 		v.CompleteArcs(c.ctx)
@@ -87,7 +109,7 @@ func (c *CallCtxt) Int8(i int) int8   { return int8(c.intValue(i, 8, "int8")) }
 func (c *CallCtxt) Int16(i int) int16 { return int16(c.intValue(i, 16, "int16")) }
 func (c *CallCtxt) Int32(i int) int32 { return int32(c.intValue(i, 32, "int32")) }
 func (c *CallCtxt) Rune(i int) rune   { return rune(c.intValue(i, 32, "rune")) }
-func (c *CallCtxt) Int64(i int) int64 { return int64(c.intValue(i, 64, "int64")) }
+func (c *CallCtxt) Int64(i int) int64 { return c.intValue(i, 64, "int64") }
 
 func (c *CallCtxt) intValue(i, bits int, typ string) int64 {
 	arg := c.args[i]
@@ -110,7 +132,7 @@ func (c *CallCtxt) Uint8(i int) uint8   { return uint8(c.uintValue(i, 8, "uint8"
 func (c *CallCtxt) Byte(i int) uint8    { return byte(c.uintValue(i, 8, "byte")) }
 func (c *CallCtxt) Uint16(i int) uint16 { return uint16(c.uintValue(i, 16, "uint16")) }
 func (c *CallCtxt) Uint32(i int) uint32 { return uint32(c.uintValue(i, 32, "uint32")) }
-func (c *CallCtxt) Uint64(i int) uint64 { return uint64(c.uintValue(i, 64, "uint64")) }
+func (c *CallCtxt) Uint64(i int) uint64 { return c.uintValue(i, 64, "uint64") }
 
 func (c *CallCtxt) uintValue(i, bits int, typ string) uint64 {
 	x := value.Make(c.ctx, c.args[i])
@@ -129,11 +151,12 @@ func (c *CallCtxt) uintValue(i, bits int, typ string) uint64 {
 
 func (c *CallCtxt) Decimal(i int) *apd.Decimal {
 	x := value.Make(c.ctx, c.args[i])
-	if _, err := x.MantExp(nil); err != nil {
+	res, err := x.Decimal()
+	if err != nil {
 		c.invalidArgType(c.args[i], i, "Decimal", err)
 		return nil
 	}
-	return &c.args[i].(*adt.Num).X
+	return res
 }
 
 func (c *CallCtxt) Float64(i int) float64 {
@@ -252,14 +275,22 @@ func (c *CallCtxt) Iter(i int) (a cue.Iterator) {
 
 func (c *CallCtxt) getList(i int) *adt.Vertex {
 	x := c.args[i]
+	if c.builtin.NonConcrete {
+		x = adt.Default(x)
+	}
 	switch v, ok := x.(*adt.Vertex); {
 	case ok && v.IsList():
 		v.Finalize(c.ctx)
+		if err := v.Bottom(); err != nil {
+			c.Err = &callError{err}
+			return nil
+		}
 		return v
 
 	case v != nil:
 		x = v.Value()
 	}
+
 	if x.Kind()&adt.ListKind == 0 {
 		var err error
 		if b, ok := x.(*adt.Bottom); ok {
@@ -293,7 +324,7 @@ func (c *CallCtxt) DecimalList(i int) (a []*apd.Decimal) {
 			}
 
 		default:
-			if k := w.Kind(); k&adt.NumKind == 0 {
+			if k := w.Kind(); k&adt.NumberKind == 0 {
 				err := c.ctx.NewErrf(
 					"invalid list element %d in argument %d to call: cannot use value %v (%s) as number",
 					j, i, w, k)

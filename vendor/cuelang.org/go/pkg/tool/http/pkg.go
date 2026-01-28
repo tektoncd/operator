@@ -4,16 +4,21 @@
 //
 // These are the supported tasks:
 //
-//	Get:    Do & {method: "GET"}
-//	Post:   Do & {method: "POST"}
-//	Put:    Do & {method: "PUT"}
+//	Get: Do & {method: "GET"}
+//	Post: Do & {method: "POST"}
+//	Put: Do & {method: "PUT"}
 //	Delete: Do & {method: "DELETE"}
 //
 //	Do: {
-//		$id: *"tool/http.Do" | "http" // http for backwards compatibility
+//		$id: _id
+//		_id: *"tool/http.Do" | "http" // http for backwards compatibility
 //
 //		method: string
 //		url:    string // TODO: make url.URL type
+//
+//		// followRedirects controls whether the http client follows redirects
+//		// or not. Defaults to true, like the default net/http client in Go.
+//		followRedirects: *true | bool
 //
 //		tls: {
 //			// Whether the server certificate must be validated.
@@ -25,7 +30,7 @@
 //
 //		request: {
 //			body?: bytes | string
-//			header: [string]:  string | [...string]
+//			header: [string]: string | [...string]
 //			trailer: [string]: string | [...string]
 //		}
 //		response: {
@@ -33,7 +38,7 @@
 //			statusCode: int
 //
 //			body: *bytes | string
-//			header: [string]:  string | [...string]
+//			header: [string]: string | [...string]
 //			trailer: [string]: string | [...string]
 //		}
 //	}
@@ -65,45 +70,31 @@ var _ = adt.TopKind // in case the adt package isn't used
 var p = &pkg.Package{
 	Native: []*pkg.Builtin{},
 	CUE: `{
-	Get: Do & {
-		method: "GET"
-	}
-	Post: Do & {
-		method: "POST"
-	}
-	Put: Do & {
-		method: "PUT"
-	}
-	Delete: Do & {
-		method: "DELETE"
-	}
+	Get: Do & {method: "GET"}
+	Post: Do & {method: "POST"}
+	Put: Do & {method: "PUT"}
+	Delete: Do & {method: "DELETE"}
 	Do: {
-		$id:    *"tool/http.Do" | "http"
-		method: string
-		url:    string
+		$id:             _id
+		_id:             *"tool/http.Do" | "http"
+		method:          string
+		url:             string
+		followRedirects: *true | bool
 		tls: {
 			verify:  *true | bool
 			caCert?: bytes | string
 		}
 		request: {
 			body?: bytes | string
-			header: {
-				[string]: string | [...string]
-			}
-			trailer: {
-				[string]: string | [...string]
-			}
+			header: [string]: string | [...string]
+			trailer: [string]: string | [...string]
 		}
 		response: {
 			status:     string
 			statusCode: int
 			body:       *bytes | string
-			header: {
-				[string]: string | [...string]
-			}
-			trailer: {
-				[string]: string | [...string]
-			}
+			header: [string]: string | [...string]
+			trailer: [string]: string | [...string]
 		}
 	}
 }`,

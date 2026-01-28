@@ -29,12 +29,15 @@ import (
 // and comprehension sources.
 func (v *visitor) dynamic(n *adt.Vertex, top bool) {
 	found := false
-	for _, c := range n.Conjuncts {
+	// TODO: Consider if we should only visit the conjuncts of the disjunction
+	// for dynamic mode.
+	n.VisitLeafConjuncts(func(c adt.Conjunct) bool {
 		if v.marked[c.Expr()] {
 			found = true
-			break
+			return false
 		}
-	}
+		return true
+	})
 
 	if !found {
 		return
@@ -44,6 +47,7 @@ func (v *visitor) dynamic(n *adt.Vertex, top bool) {
 		return
 	}
 
+	n = n.DerefValue()
 	for _, a := range n.Arcs {
 		if !a.IsDefined(v.ctxt) || a.Label.IsLet() {
 			continue
@@ -66,9 +70,10 @@ func (m marked) markExpr(x adt.Expr) {
 
 	case nil:
 	case *adt.Vertex:
-		for _, c := range x.Conjuncts {
+		x.VisitLeafConjuncts(func(c adt.Conjunct) bool {
 			m.markExpr(c.Expr())
-		}
+			return true
+		})
 
 	case *adt.BinaryExpr:
 		if x.Op == adt.AndOp {

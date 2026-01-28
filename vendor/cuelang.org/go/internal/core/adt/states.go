@@ -126,7 +126,7 @@ const (
 	// This is a signal condition that is reached when:
 	//    - a node is set to a concrete scalar value
 	//    - a node is set to an error
-	//    - or if XXXstate is reached.
+	//    - or if ...state is reached.
 	//
 	// TODO: rename to something better?
 	scalarKnown
@@ -138,7 +138,11 @@ const (
 	// This is a signal condition that is reached when:
 	//    - allFieldsKnown is reached (all expressions have )
 	//    - it is unified with an associative list type
-	listTypeKnown
+	//
+	// TODO(assoclist): this is set to 0 below: This mode is only needed for
+	// associative lists and is not yet used. We should use this again and fix
+	// any performance issues when we implement associative lists.
+	// listTypeKnown
 
 	// fieldConjunctsKnown means that all the conjuncts of all fields are
 	// known.
@@ -166,6 +170,14 @@ const (
 	//
 	subFieldsProcessed
 
+	// pendingKnown means that this task is relevant for resolving whether an
+	// arc is present or not. This implies actTypeKnown.
+	pendingKnown
+
+	// disjunctionTask indicates that this task is a disjunction. This is
+	// used to trigger finalization of disjunctions.
+	disjunctionTask
+
 	leftOfMaxCoreCondition
 
 	finalStateKnown condition = leftOfMaxCoreCondition - 1
@@ -175,7 +187,12 @@ const (
 	conditionsUsingCounters = arcTypeKnown |
 		valueKnown |
 		fieldConjunctsKnown |
-		allTasksCompleted
+		allTasksCompleted |
+		// TODO: not adding this improves error message for issue3691 in
+		// eval/comprehensions.txtar. But without this, TestVisit of dep
+		// panics. Investigate.
+		pendingKnown |
+		disjunctionTask
 
 	// The xConjunct condition sets indicate a conjunct MAY contribute the to
 	// final result. For some conjuncts it may not be known what the
@@ -193,6 +210,9 @@ const (
 		valueKnown |
 		fieldConjunctsKnown
 
+	// genericDisjunction is used to record processDisjunction tasks.
+	genericDisjunction = genericConjunct | disjunctionTask
+
 	// a fieldConjunct is on that only adds a new field to the struct.
 	fieldConjunct = allTasksCompleted |
 		fieldConjunctsKnown
@@ -201,7 +221,12 @@ const (
 	// list value.
 	scalarConjunct = allTasksCompleted |
 		scalarKnown |
-		valueKnown
+		valueKnown |
+		disjunctionTask
+
+	// a scalarValue is one that is guaranteed to result in a scalar.
+	// TODO: use more widely instead of scalarKnown.
+	scalarValue = scalarKnown | disjunctionTask
 
 	// needsX condition sets are used to indicate which conditions need to be
 	// met.
@@ -217,6 +242,9 @@ const (
 	// concreteKnown means that we know whether a value is concrete or not.
 	// At the moment this is equal to 'scalarKnown'.
 	concreteKnown = scalarKnown
+
+	// TODO(assoclist): see comment above.
+	listTypeKnown condition = 0
 )
 
 // schedConfig configures a taskContext with the states needed for the
@@ -233,11 +261,14 @@ var schedConfig = taskContext{
 func stateCompletions(s *scheduler) condition {
 	x := s.completed
 	v := s.node.node
-	s.node.Logf("=== stateCompletions: %v  %v", v.Label, s.completed)
+	if s.node.ctx.LogEval > 0 {
+		s.node.Logf("=== stateCompletions: %v  %v", v.Label, s.completed)
+	}
 	if x.meets(allAncestorsProcessed) {
 		x |= conditionsUsingCounters &^ s.provided
-		// If we have a pending arc, a sub arc may still cause the arc to
-		// become not pending. For instance, if 'a' is pending in the following
+		// If we have a pending or constraint arc, a sub arc may still cause the
+		// arc to become a member. For instance, if 'a' is pending in the
+		// following
 		//   if x != _!_ {
 		//       a: b: 1
 		//   }
@@ -287,6 +318,16 @@ func (v *Vertex) allChildConjunctsKnown() bool {
 		return true
 	}
 
+	// TODO(refcount): allow partial processed?
+	if v.Status() == finalized || (v.state == nil && v.status != unprocessed) {
+		// This can happen, for instance, if this is called on a parent of a
+		// rooted node that is marked as a parent for a dynamic node.
+		// In practice this should be handled by the caller, but we add this
+		// as an extra safeguard.
+		// TODO: remove this check at some point.
+		return true
+	}
+
 	return v.state.meets(fieldConjunctsKnown | allAncestorsProcessed)
 }
 
@@ -301,21 +342,4 @@ func (n *nodeContext) scheduleTask(r *runner, env *Environment, x Node, ci Close
 	}
 	n.insertTask(t)
 	return t
-}
-
-// require ensures that a given condition is met for the given Vertex by
-// evaluating it. It yields execution back to the scheduler if it cannot
-// be completed at this point.
-func (c *OpContext) require(v *Vertex, needs condition) {
-	state := v.getState(c)
-	if state == nil {
-		return
-	}
-	state.process(needs, yield)
-}
-
-// scalarValue evaluates the given expression and either returns a
-// concrete value or schedules the task for later evaluation.
-func (ctx *OpContext) scalarValue(t *task, x Expr) Value {
-	return ctx.value(x, require(0, scalarKnown))
 }

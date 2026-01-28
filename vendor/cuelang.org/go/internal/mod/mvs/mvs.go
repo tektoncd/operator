@@ -7,9 +7,9 @@
 package mvs
 
 import (
+	"cmp"
 	"fmt"
-	"reflect"
-	"sort"
+	"slices"
 	"sync"
 
 	"cuelang.org/go/internal/par"
@@ -72,7 +72,7 @@ type DowngradeReqs[V comparable] interface {
 
 // BuildList returns the build list for the target module.
 //
-// target is the root vertex of a module requirement graph. For cmd/go, this is
+// target is the root vertex of a module requirement graph. For cmd/cue, this is
 // typically the main module, but note that this algorithm is not intended to
 // be Go-specific: module paths and versions are treated as opaque values.
 //
@@ -170,7 +170,7 @@ func buildList[V comparable](targets []V, reqs Reqs[V], upgrade func(V) (V, erro
 
 	// The final list is the minimum version of each module found in the graph.
 	list := g.BuildList()
-	if vs := list[:len(targets)]; !reflect.DeepEqual(vs, targets) {
+	if vs := list[:len(targets)]; !slices.Equal(vs, targets) {
 		// target.Version will be "" for modload, the main client of MVS.
 		// "" denotes the main module, which has no version. However, MVS treats
 		// version strings as opaque, so "" is not a special value here.
@@ -257,8 +257,7 @@ func Req[V comparable](mainModule V, base []string, reqs Reqs[V]) ([]V, error) {
 		haveBase[path] = true
 	}
 	// Now the reverse postorder to bring in anything else.
-	for i := len(postorder) - 1; i >= 0; i-- {
-		m := postorder[i]
+	for _, m := range slices.Backward(postorder) {
 		if max[reqs.Path(m)] != reqs.Version(m) {
 			// Older version.
 			continue
@@ -268,8 +267,8 @@ func Req[V comparable](mainModule V, base []string, reqs Reqs[V]) ([]V, error) {
 			walk(m)
 		}
 	}
-	sort.Slice(min, func(i, j int) bool {
-		return reqs.Path(min[i]) < reqs.Path(min[j])
+	slices.SortFunc(min, func(a, b V) int {
+		return cmp.Compare(reqs.Path(a), reqs.Path(b))
 	})
 	return min, nil
 }
@@ -298,7 +297,7 @@ func Upgrade[V comparable](target V, reqs UpgradeReqs[V], upgrade ...V) ([]V, er
 	for _, m := range list {
 		pathInList[reqs.Path(m)] = true
 	}
-	list = append([]V(nil), list...)
+	list = slices.Clone(list)
 
 	upgradeTo := make(map[string]string, len(upgrade))
 	for _, u := range upgrade {
@@ -317,7 +316,7 @@ func Upgrade[V comparable](target V, reqs UpgradeReqs[V], upgrade ...V) ([]V, er
 		}
 	}
 
-	return buildList[V]([]V{target}, &override[V]{target, list, reqs}, func(m V) (V, error) {
+	return buildList([]V{target}, &override[V]{target, list, reqs}, func(m V) (V, error) {
 		if v, ok := upgradeTo[reqs.Path(m)]; ok {
 			return reqs.New(reqs.Path(m), v)
 		}
@@ -340,7 +339,7 @@ func Downgrade[V comparable](target V, reqs DowngradeReqs[V], downgrade ...V) ([
 	//
 	// In order to generate those new requirements, we need to identify versions
 	// for every module in the build list — not just reqs.Required(target).
-	list, err := BuildList[V]([]V{target}, reqs)
+	list, err := BuildList([]V{target}, reqs)
 	if err != nil {
 		return nil, err
 	}
@@ -460,7 +459,7 @@ List:
 	// list with the actual versions of the downgraded modules as selected by MVS,
 	// instead of our initial downgrades.
 	// (See the downhiddenartifact and downhiddencross test cases).
-	actual, err := BuildList[V]([]V{target}, &override[V]{
+	actual, err := BuildList([]V{target}, &override[V]{
 		target: target,
 		list:   downgraded,
 		Reqs:   reqs,
@@ -485,7 +484,7 @@ List:
 		}
 	}
 
-	return BuildList[V]([]V{target}, &override[V]{
+	return BuildList([]V{target}, &override[V]{
 		target: target,
 		list:   downgraded,
 		Reqs:   reqs,

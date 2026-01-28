@@ -84,16 +84,13 @@ func (v *Vertex) IsInOneOf(mask SpanType) bool {
 // IsRecursivelyClosed returns true if this value is either a definition or unified
 // with a definition.
 func (v *Vertex) IsRecursivelyClosed() bool {
-	return v.Closed || v.IsInOneOf(DefinitionSpan)
+	return v.ClosedRecursive || v.IsInOneOf(DefinitionSpan)
 }
 
 type closeNodeType uint8
 
 const (
 	// a closeRef node is created when there is a non-definition reference.
-	// These nodes are not necessary for computing results, but may be
-	// relevant down the line to group closures through embedded values and
-	// to track position information for failures.
 	closeRef closeNodeType = iota
 
 	// closeDef indicates this node was introduced as a result of referencing
@@ -102,14 +99,17 @@ const (
 
 	// closeEmbed indicates this node was added as a result of an embedding.
 	closeEmbed
-
-	_ = closeRef // silence the linter
 )
 
 // TODO: merge with closeInfo: this is a leftover of the refactoring.
 type CloseInfo struct {
-	*closeInfo               // old implementation (TODO: remove)
-	cc         *closeContext // new implementation (TODO: rename field to closeCtx)
+	*closeInfo // old implementation (TODO: remove)
+	// defID is a unique ID to track anything that gets inserted from this
+	// Conjunct.
+	opID           uint64 // generation of this conjunct, used for sanity check.
+	defID          defID
+	enclosingEmbed defID // Tracks an embedding within a struct.
+	outerID        defID // Tracks the {} that should be closed after unifying.
 
 	// IsClosed is true if this conjunct represents a single level of closing
 	// as indicated by the closed builtin.
@@ -126,6 +126,9 @@ type CloseInfo struct {
 	// from fields defined by this conjunct.
 	// NOTE: only used when using closeContext.
 	FromDef bool
+
+	// Like FromDef, but used by APIs to force FromDef to be true.
+	TopDef bool
 
 	// FieldTypes indicates which kinds of fields (optional, dynamic, patterns,
 	// etc.) are contained in this conjunct.
@@ -243,21 +246,23 @@ func (c CloseInfo) SpawnRef(arc *Vertex, isDef bool, x Expr) CloseInfo {
 //
 // TODO(performance): this should be merged with resolve(). But for now keeping
 // this code isolated makes it easier to see what it is for.
-func IsDef(x Expr) bool {
+func IsDef(x Expr) (isDef bool, depth int) {
 	switch r := x.(type) {
 	case *FieldReference:
-		return r.Label.IsDef()
+		isDef = r.Label.IsDef()
 
 	case *SelectorExpr:
+		isDef, depth = IsDef(r.X)
+		depth++
 		if r.Sel.IsDef() {
-			return true
+			isDef = true
 		}
-		return IsDef(r.X)
 
 	case *IndexExpr:
-		return IsDef(r.X)
+		isDef, depth = IsDef(r.X)
+		depth++
 	}
-	return false
+	return isDef, depth
 }
 
 // A SpanType is used to indicate whether a CUE value is within the scope of
@@ -305,7 +310,7 @@ type closeStats struct {
 	// the other fields of this closeStats value are only valid if generation
 	// is equal to the generation in OpContext. This allows for lazy
 	// initialization of closeStats.
-	generation int
+	generation uint64
 
 	// These counts keep track of how many required child nodes need to be
 	// completed before this node is accepted.
@@ -330,9 +335,10 @@ func isClosed(v *Vertex) bool {
 	// We could have used IsRecursivelyClosed here, but (effectively)
 	// implementing it again here allows us to only have to iterate over
 	// Structs once.
-	if v.Closed {
+	if v.ClosedRecursive || v.ClosedNonRecursive {
 		return true
 	}
+	// TODO(evalv3): this can be removed once we delete the evalv2 code.
 	for _, s := range v.Structs {
 		if s.IsClosed || s.IsInOneOf(DefinitionSpan) {
 			return true
@@ -344,7 +350,10 @@ func isClosed(v *Vertex) bool {
 // Accept determines whether f is allowed in n. It uses the OpContext for
 // caching administrative fields.
 func Accept(ctx *OpContext, n *Vertex, f Feature) (found, required bool) {
-	ctx.generation++
+	if ctx.isDevVersion() {
+		return n.accept(ctx, f), true
+	}
+	ctx.opID++
 	ctx.todo = nil
 
 	var optionalTypes OptionalType
@@ -480,8 +489,8 @@ func getScratch(ctx *OpContext, s *closeInfo) *closeStats {
 		m[s] = x
 	}
 
-	if x.generation != ctx.generation {
-		*x = closeStats{generation: ctx.generation}
+	if x.generation != ctx.opID {
+		*x = closeStats{generation: ctx.opID}
 	}
 
 	return x

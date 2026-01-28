@@ -18,13 +18,12 @@ import (
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/build"
 	"cuelang.org/go/cue/errors"
-	"cuelang.org/go/internal"
 	"cuelang.org/go/internal/core/adt"
 	"cuelang.org/go/internal/core/compile"
 	"cuelang.org/go/internal/core/runtime"
 )
 
-// An InstanceOrValue is implemented by [Value] and *[Instance].
+// An InstanceOrValue is implemented by [Value] and [*Instance].
 //
 // This is a placeholder type that is used to allow Instance-based APIs to
 // transition to Value-based APIs. The goals is to get rid of the Instance
@@ -138,21 +137,6 @@ func getImportFromPath(x *runtime.Runtime, id string) *Instance {
 	return inst
 }
 
-func init() {
-	internal.MakeInstance = func(value interface{}) interface{} {
-		v := value.(Value)
-		x := v.eval(v.ctx())
-		st, ok := x.(*adt.Vertex)
-		if !ok {
-			st = &adt.Vertex{}
-			st.AddConjunct(adt.MakeRootConjunct(nil, x))
-		}
-		return addInst(v.idx, &Instance{
-			root: st,
-		})
-	}
-}
-
 // newInstance creates a new instance. Use Insert to populate the instance.
 func newInstance(x *runtime.Runtime, p *build.Instance, v *adt.Vertex) *Instance {
 	// TODO: associate root source with structLit.
@@ -181,17 +165,6 @@ func (inst *Instance) setListOrError(err errors.Error) {
 	inst.Err = errors.Append(inst.Err, err)
 }
 
-func (inst *Instance) setError(err errors.Error) {
-	inst.Incomplete = true
-	inst.Err = errors.Append(inst.Err, err)
-}
-
-func (inst *Instance) eval(ctx *adt.OpContext) adt.Value {
-	// TODO: remove manifest here?
-	v := manifest(ctx, inst.root)
-	return v
-}
-
 // ID returns the package identifier that uniquely qualifies module and
 // package name.
 func (inst *Instance) ID() string {
@@ -199,13 +172,6 @@ func (inst *Instance) ID() string {
 		return ""
 	}
 	return inst.inst.ID()
-}
-
-// Doc returns the package comments for this instance.
-//
-// Deprecated: use inst.Value().Doc()
-func (inst *hiddenInstance) Doc() []*ast.CommentGroup {
-	return inst.Value().Doc()
 }
 
 // Value returns the root value of the configuration. If the configuration
@@ -260,7 +226,7 @@ func Merge(inst ...*Instance) *Instance {
 // identifier to bind to the top-level field in inst. The top-level fields in
 // inst take precedence over predeclared identifier and builtin functions.
 //
-// Deprecated: use Context.Build
+// Deprecated: use [Context.BuildInstance]
 func (inst *hiddenInstance) Build(p *build.Instance) *Instance {
 	p.Complete()
 
@@ -271,6 +237,9 @@ func (inst *hiddenInstance) Build(p *build.Instance) *Instance {
 
 	cfg := &compile.Config{Scope: valueScope(Value{idx: r, v: inst.root})}
 	v, err := compile.Files(cfg, r, p.ID(), p.Files...)
+
+	// Just like [runtime.Runtime.Build], ensure that the @embed compiler is run as needed.
+	err = errors.Append(err, r.InjectImplementations(p, v))
 
 	v.AddConjunct(adt.MakeRootConjunct(nil, inst.root))
 
@@ -295,7 +264,7 @@ func (inst *hiddenInstance) Build(p *build.Instance) *Instance {
 // empty path returns the top-level configuration struct. Use LookupDef for definitions or LookupField for
 // any kind of field.
 //
-// Deprecated: use Value.LookupPath
+// Deprecated: use [Value.LookupPath]
 func (inst *hiddenInstance) Lookup(path ...string) Value {
 	return inst.Value().Lookup(path...)
 }
@@ -304,7 +273,7 @@ func (inst *hiddenInstance) Lookup(path ...string) Value {
 // Exists method of the returned value will report false if the definition did
 // not exist. The Err method reports if any error occurred during evaluation.
 //
-// Deprecated: use Value.LookupPath
+// Deprecated: use [Value.LookupPath]
 func (inst *hiddenInstance) LookupDef(path string) Value {
 	return inst.Value().LookupDef(path)
 }
@@ -314,10 +283,7 @@ func (inst *hiddenInstance) LookupDef(path string) Value {
 //
 // It cannot look up hidden or unexported fields.
 //
-// Deprecated: this API does not work with new-style definitions. Use
-// FieldByName defined on inst.Value().
-//
-// Deprecated: use Value.LookupPath
+// Deprecated: use [Value.LookupPath]
 func (inst *hiddenInstance) LookupField(path ...string) (f FieldInfo, err error) {
 	v := inst.Value()
 	for _, k := range path {
@@ -345,7 +311,7 @@ func (inst *hiddenInstance) LookupField(path ...string) (f FieldInfo, err error)
 // a Value. In the latter case, it will panic if the Value is not from the same
 // Runtime.
 //
-// Deprecated: use Value.FillPath()
+// Deprecated: use [Value.FillPath]
 func (inst *hiddenInstance) Fill(x interface{}, path ...string) (*Instance, error) {
 	v := inst.Value().Fill(x, path...)
 

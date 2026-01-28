@@ -22,8 +22,6 @@ import (
 	"cuelang.org/go/cue/build"
 	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/stats"
-	"cuelang.org/go/cue/token"
-	"cuelang.org/go/internal"
 	"cuelang.org/go/internal/core/adt"
 	"cuelang.org/go/internal/core/compile"
 )
@@ -80,7 +78,7 @@ func (x *Runtime) Build(cfg *Config, b *build.Instance) (v *adt.Vertex, errs err
 	v, err = compile.Files(cc, x, b.ID(), b.Files...)
 	errs = errors.Append(errs, err)
 
-	errs = errors.Append(errs, x.injectImplementations(b, v))
+	errs = errors.Append(errs, x.InjectImplementations(b, v))
 
 	if errs != nil {
 		v = adt.ToVertex(&adt.Bottom{Err: errs})
@@ -92,15 +90,13 @@ func (x *Runtime) Build(cfg *Config, b *build.Instance) (v *adt.Vertex, errs err
 	return v, errs
 }
 
-func dummyLoad(token.Pos, string) *build.Instance { return nil }
-
 func (r *Runtime) Compile(cfg *Config, source interface{}) (*adt.Vertex, *build.Instance) {
 	ctx := build.NewContext()
 	var filename string
 	if cfg != nil && cfg.Filename != "" {
 		filename = cfg.Filename
 	}
-	p := ctx.NewInstance(filename, dummyLoad)
+	p := ctx.NewInstance(filename, nil)
 	if err := p.AddFile(filename, source); err != nil {
 		return nil, p
 	}
@@ -114,12 +110,12 @@ func (r *Runtime) CompileFile(cfg *Config, file *ast.File) (*adt.Vertex, *build.
 	if cfg != nil && cfg.Filename != "" {
 		filename = cfg.Filename
 	}
-	p := ctx.NewInstance(filename, dummyLoad)
+	p := ctx.NewInstance(filename, nil)
 	err := p.AddSyntax(file)
 	if err != nil {
 		return nil, p
 	}
-	_, p.PkgName, _ = internal.PackageInfo(file)
+	p.PkgName = file.PackageName()
 	v, _ := r.Build(cfg, p)
 	return v, p
 }

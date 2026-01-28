@@ -15,11 +15,13 @@
 package openapi
 
 import (
+	"cmp"
 	"fmt"
+	"maps"
 	"math"
 	"path"
 	"regexp"
-	"sort"
+	"slices"
 	"strings"
 
 	"cuelang.org/go/cue"
@@ -28,7 +30,6 @@ import (
 	"cuelang.org/go/cue/token"
 	"cuelang.org/go/internal"
 	"cuelang.org/go/internal/core/adt"
-	internalvalue "cuelang.org/go/internal/value"
 )
 
 type buildContext struct {
@@ -45,7 +46,7 @@ type buildContext struct {
 	descFunc      func(v cue.Value) string
 	fieldFilter   *regexp.Regexp
 
-	schemas *OrderedMap
+	schemas *orderedMap
 
 	// Track external schemas.
 	externalRefs map[string]*externalType
@@ -57,11 +58,6 @@ type buildContext struct {
 	// TODO: consider an option in the CUE API where optional fields are
 	// recursively evaluated.
 	cycleNodes []*adt.Vertex
-
-	// imports caches values as returned by cue.Value.ReferencePath
-	// for use by ReferenceFunc. It's only initialised when ReferenceFunc
-	// is non-nil.
-	imports map[cue.Value]*cue.Instance
 }
 
 type externalType struct {
@@ -71,13 +67,10 @@ type externalType struct {
 	value cue.Value
 }
 
-type oaSchema = OrderedMap
-
 type typeFunc func(b *builder, a cue.Value)
 
 func schemas(g *Generator, inst cue.InstanceOrValue) (schemas *ast.StructLit, err error) {
 	val := inst.Value()
-	_, isInstance := inst.(*cue.Instance)
 	var fieldFilter *regexp.Regexp
 	if g.FieldFilter != "" {
 		fieldFilter, err = regexp.Compile(g.FieldFilter)
@@ -107,40 +100,9 @@ func schemas(g *Generator, inst cue.InstanceOrValue) (schemas *ast.StructLit, er
 		structural:   g.ExpandReferences,
 		nameFunc:     g.NameFunc,
 		descFunc:     g.DescriptionFunc,
-		schemas:      &OrderedMap{},
+		schemas:      &orderedMap{},
 		externalRefs: map[string]*externalType{},
 		fieldFilter:  fieldFilter,
-	}
-	if g.ReferenceFunc != nil {
-		if !isInstance {
-			panic("cannot use ReferenceFunc along with cue.Value")
-		}
-		if g.NameFunc != nil {
-			panic("cannot specify both ReferenceFunc and NameFunc")
-		}
-
-		c.nameFunc = func(val cue.Value, path cue.Path) string {
-			sels := path.Selectors()
-			labels := make([]string, len(sels))
-			for i, sel := range sels {
-				labels[i] = selectorLabel(sel) // TODO this is arguably incorrect.
-			}
-			inst, ok := c.imports[val]
-			if !ok {
-				r, n := internalvalue.ToInternal(val)
-				buildInst := r.GetInstanceFromNode(n)
-				var err error
-				inst, err = (*cue.Runtime)(r).Build(buildInst)
-				if err != nil {
-					panic("cannot build instance from value")
-				}
-				if c.imports == nil {
-					c.imports = make(map[cue.Value]*cue.Instance)
-				}
-				c.imports[val] = inst
-			}
-			return g.ReferenceFunc(inst, labels)
-		}
 	}
 
 	switch g.Version {
@@ -180,7 +142,7 @@ func schemas(g *Generator, inst cue.InstanceOrValue) (schemas *ast.StructLit, er
 		if ref == "" {
 			continue
 		}
-		c.schemas.Set(ref, c.build(sel, i.Value()))
+		c.schemas.setExpr(ref, c.build(sel, i.Value()))
 	}
 
 	// keep looping until a fixed point is reached.
@@ -188,28 +150,19 @@ func schemas(g *Generator, inst cue.InstanceOrValue) (schemas *ast.StructLit, er
 		done = len(c.externalRefs)
 
 		// From now on, all references need to be expanded
-		external := []string{}
-		for k := range c.externalRefs {
-			external = append(external, k)
-		}
-		sort.Strings(external)
-
-		for _, k := range external {
+		for _, k := range slices.Sorted(maps.Keys(c.externalRefs)) {
 			ext := c.externalRefs[k]
 			c.instExt = ext.inst
 			sels := ext.path.Selectors()
 			last := len(sels) - 1
 			c.path = sels[:last]
 			name := sels[last]
-			c.schemas.Set(ext.ref, c.build(name, cue.Dereference(ext.value)))
+			c.schemas.setExpr(ext.ref, c.build(name, cue.Dereference(ext.value)))
 		}
 	}
 
-	a := c.schemas.Elts
-	sort.Slice(a, func(i, j int) bool {
-		x, _, _ := ast.LabelName(a[i].(*ast.Field).Label)
-		y, _, _ := ast.LabelName(a[j].(*ast.Field).Label)
-		return x < y
+	slices.SortFunc(c.schemas.Elts, func(a, b ast.Decl) int {
+		return cmp.Compare(label(a), label(b))
 	})
 
 	return (*ast.StructLit)(c.schemas), c.errs
@@ -304,7 +257,7 @@ func (b *builder) fillSchema(v cue.Value) *ast.StructLit {
 	}
 
 	schema := b.finish()
-	s := (*ast.StructLit)(schema)
+	s := schema
 
 	simplify(b, s)
 
@@ -325,15 +278,12 @@ func value(d ast.Decl) ast.Expr {
 }
 
 func sortSchema(s *ast.StructLit) {
-	sort.Slice(s.Elts, func(i, j int) bool {
-		iName := label(s.Elts[i])
-		jName := label(s.Elts[j])
-		pi := fieldOrder[iName]
-		pj := fieldOrder[jName]
-		if pi != pj {
-			return pi > pj
-		}
-		return iName < jName
+	slices.SortFunc(s.Elts, func(a, b ast.Decl) int {
+		aName := label(a)
+		bName := label(b)
+		aOrder := fieldOrder[aName]
+		bOrder := fieldOrder[bName]
+		return cmp.Or(-cmp.Compare(aOrder, bOrder), cmp.Compare(aName, bName))
 	})
 }
 
@@ -418,7 +368,7 @@ func (b *builder) value(v cue.Value, f typeFunc) (isRef bool) {
 			default:
 				a := appendSplit(nil, cue.OrOp, v)
 				for i, v := range a {
-					if _, r := v.Reference(); len(r) == 0 {
+					if _, r := v.ReferencePath(); len(r.Selectors()) == 0 {
 						a[i] = v.Eval()
 					}
 				}
@@ -526,13 +476,8 @@ func isConcrete(v cue.Value) bool {
 	if !v.IsConcrete() {
 		return false
 	}
-	if v.Kind() == cue.StructKind {
-		return false // TODO: handle struct kinds
-	}
-	for list, _ := v.List(); list.Next(); {
-		if !isConcrete(list.Value()) {
-			return false
-		}
+	if v.Kind() == cue.StructKind || v.Kind() == cue.ListKind {
+		return false // TODO: handle struct and list kinds
 	}
 	return true
 }
@@ -584,7 +529,7 @@ func (b *builder) disjunction(a []cue.Value, f typeFunc) {
 		c := newOASBuilder(b)
 		c.value(v, f)
 		t := c.finish()
-		schemas[i] = (*ast.StructLit)(t)
+		schemas[i] = t
 		if len(t.Elts) == 0 {
 			if c.typ == "" {
 				return
@@ -753,19 +698,19 @@ func (b *builder) object(v cue.Value) {
 
 	required := []ast.Expr{}
 	for i, _ := v.Fields(); i.Next(); {
-		required = append(required, ast.NewString(i.Label()))
+		required = append(required, ast.NewString(i.Selector().Unquoted()))
 	}
 	if len(required) > 0 {
 		b.setFilter("Schema", "required", ast.NewList(required...))
 	}
 
-	var properties *OrderedMap
+	var properties *orderedMap
 	if b.singleFields != nil {
 		properties = b.singleFields.getMap("properties")
 	}
 	hasProps := properties != nil
 	if !hasProps {
-		properties = &OrderedMap{}
+		properties = &orderedMap{}
 	}
 
 	for i, _ := v.Fields(cue.Optional(true), cue.Definitions(true)); i.Next(); {
@@ -785,9 +730,9 @@ func (b *builder) object(v cue.Value) {
 			if ref == "" {
 				continue
 			}
-			b.ctx.schemas.Set(ref, schema)
+			b.ctx.schemas.setExpr(ref, schema)
 		case !b.isNonCore() || len(schema.Elts) > 0:
-			properties.Set(label, schema)
+			properties.setExpr(label, schema)
 		}
 	}
 
@@ -795,7 +740,7 @@ func (b *builder) object(v cue.Value) {
 		b.setSingle("properties", (*ast.StructLit)(properties), false)
 	}
 
-	if t, ok := v.Elem(); ok &&
+	if t := v.LookupPath(cue.MakePath(cue.AnyString)); t.Exists() &&
 		(b.core == nil || b.core.items == nil) && b.checkCycle(t) {
 		schema := b.schema(nil, cue.AnyString, t)
 		if len(schema.Elts) > 0 {
@@ -897,7 +842,7 @@ func (b *builder) array(v cue.Value) {
 	}
 
 	if !hasMax || int64(len(items)) < maxLength {
-		if typ, ok := v.Elem(); ok && b.checkCycle(typ) {
+		if typ := v.LookupPath(cue.MakePath(cue.AnyIndex)); typ.Exists() && b.checkCycle(typ) {
 			var core *builder
 			if b.core != nil {
 				core = b.core.items
@@ -1110,8 +1055,8 @@ type builder struct {
 	ctx          *buildContext
 	typ          string
 	format       string
-	singleFields *oaSchema
-	current      *oaSchema
+	singleFields *orderedMap
+	current      *orderedMap
 	allOf        []*ast.StructLit
 	deprecated   bool
 
@@ -1156,17 +1101,17 @@ func (b *builder) setType(t, format string) {
 	}
 }
 
-func setType(t *oaSchema, b *builder) {
+func setType(t *orderedMap, b *builder) {
 	if b.typ != "" {
 		if b.core == nil || (b.core.typ != b.typ && !b.ctx.structural) {
 			if !t.exists("type") {
-				t.Set("type", ast.NewString(b.typ))
+				t.setExpr("type", ast.NewString(b.typ))
 			}
 		}
 	}
 	if b.format != "" {
 		if b.core == nil || b.core.format != b.format {
-			t.Set("format", ast.NewString(b.format))
+			t.setExpr("format", ast.NewString(b.format))
 		}
 	}
 }
@@ -1182,25 +1127,25 @@ func (b *builder) setFilter(schema, key string, v ast.Expr) {
 // setSingle sets a value of which there should only be one.
 func (b *builder) setSingle(key string, v ast.Expr, drop bool) {
 	if b.singleFields == nil {
-		b.singleFields = &OrderedMap{}
+		b.singleFields = &orderedMap{}
 	}
 	if b.singleFields.exists(key) {
 		if !drop {
 			b.failf(cue.Value{}, "more than one value added for key %q", key)
 		}
 	}
-	b.singleFields.Set(key, v)
+	b.singleFields.setExpr(key, v)
 }
 
 func (b *builder) set(key string, v ast.Expr) {
 	if b.current == nil {
-		b.current = &OrderedMap{}
+		b.current = &orderedMap{}
 		b.allOf = append(b.allOf, (*ast.StructLit)(b.current))
 	} else if b.current.exists(key) {
-		b.current = &OrderedMap{}
+		b.current = &orderedMap{}
 		b.allOf = append(b.allOf, (*ast.StructLit)(b.current))
 	}
-	b.current.Set(key, v)
+	b.current.setExpr(key, v)
 }
 
 func (b *builder) kv(key string, value ast.Expr) *ast.StructLit {
@@ -1212,14 +1157,14 @@ func (b *builder) setNot(key string, value ast.Expr) {
 }
 
 func (b *builder) finish() *ast.StructLit {
-	var t *OrderedMap
+	var t *orderedMap
 
 	if b.filled != nil {
 		return b.filled
 	}
 	switch len(b.allOf) {
 	case 0:
-		t = &OrderedMap{}
+		t = &orderedMap{}
 
 	case 1:
 		hasRef := false
@@ -1230,7 +1175,7 @@ func (b *builder) finish() *ast.StructLit {
 			}
 		}
 		if !hasRef || b.singleFields == nil {
-			t = (*OrderedMap)(b.allOf[0])
+			t = (*orderedMap)(b.allOf[0])
 			break
 		}
 		fallthrough
@@ -1240,15 +1185,15 @@ func (b *builder) finish() *ast.StructLit {
 		for _, s := range b.allOf {
 			exprs = append(exprs, s)
 		}
-		t = &OrderedMap{}
-		t.Set("allOf", ast.NewList(exprs...))
+		t = &orderedMap{}
+		t.setExpr("allOf", ast.NewList(exprs...))
 	}
 	if b.singleFields != nil {
 		b.singleFields.Elts = append(b.singleFields.Elts, t.Elts...)
 		t = b.singleFields
 	}
 	if b.deprecated {
-		t.Set("deprecated", ast.NewBool(true))
+		t.setExpr("deprecated", ast.NewBool(true))
 	}
 	setType(t, b)
 	sortSchema((*ast.StructLit)(t))
@@ -1262,7 +1207,7 @@ func (b *builder) add(t *ast.StructLit) {
 func (b *builder) addConjunct(f func(*builder)) {
 	c := newOASBuilder(b)
 	f(c)
-	b.add((*ast.StructLit)(c.finish()))
+	b.add(c.finish())
 }
 
 func (b *builder) addRef(v cue.Value, inst cue.Value, ref cue.Path) {

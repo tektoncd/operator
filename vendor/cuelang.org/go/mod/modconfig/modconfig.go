@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 
@@ -20,6 +21,7 @@ import (
 	"cuelang.org/go/internal/cueconfig"
 	"cuelang.org/go/internal/cueversion"
 	"cuelang.org/go/internal/mod/modload"
+	"cuelang.org/go/internal/mod/modpkgload"
 	"cuelang.org/go/internal/mod/modresolve"
 	"cuelang.org/go/mod/modcache"
 	"cuelang.org/go/mod/modregistry"
@@ -41,12 +43,24 @@ type Registry interface {
 	ModuleVersions(ctx context.Context, mpath string) ([]string, error)
 }
 
+// CachedRegistry is optionally implemented by a registry that
+// contains a cache.
+type CachedRegistry interface {
+	// FetchFromCache looks up the given module in the cache.
+	// It returns an error that satisfies [errors.Is]([modregistry.ErrNotFound]) if the
+	// module is not present in the cache at this version or if there
+	// is no cache.
+	FetchFromCache(mv module.Version) (module.SourceLoc, error)
+}
+
 // We don't want to make modload part of the cue/load API,
 // so we define the above type independently, but we want
 // it to be interchangeable, so check that statically here.
 var (
-	_ Registry         = modload.Registry(nil)
-	_ modload.Registry = Registry(nil)
+	_ Registry                  = modload.Registry(nil)
+	_ modload.Registry          = Registry(nil)
+	_ CachedRegistry            = modpkgload.CachedRegistry(nil)
+	_ modpkgload.CachedRegistry = CachedRegistry(nil)
 )
 
 // DefaultRegistry is the default registry host.
@@ -74,6 +88,12 @@ type Config struct {
 	// the current process's environment will be used.
 	Env []string
 
+	// CUERegistry specifies the registry or registries to use
+	// to resolve modules. If it is empty, $CUE_REGISTRY
+	// is used.
+	// Experimental: this field might go away in a future version.
+	CUERegistry string
+
 	// ClientType is used as part of the User-Agent header
 	// that's added in each outgoing HTTP request.
 	// If it's empty, it defaults to "cuelang.org/go".
@@ -94,7 +114,10 @@ func NewResolver(cfg *Config) (*Resolver, error) {
 	getenv := getenvFunc(cfg.Env)
 	var configData []byte
 	var configPath string
-	cueRegistry := getenv("CUE_REGISTRY")
+	cueRegistry := cfg.CUERegistry
+	if cueRegistry == "" {
+		cueRegistry = getenv("CUE_REGISTRY")
+	}
 	kind, rest, _ := strings.Cut(cueRegistry, ":")
 	switch kind {
 	case "file":
@@ -104,7 +127,7 @@ func NewResolver(cfg *Config) (*Resolver, error) {
 		}
 		configData, configPath = data, rest
 	case "inline":
-		configData, configPath = []byte(rest), "$CUE_REGISTRY"
+		configData, configPath = []byte(rest), "inline"
 	case "simple":
 		cueRegistry = rest
 	}
@@ -116,7 +139,7 @@ func NewResolver(cfg *Config) (*Resolver, error) {
 		resolver, err = modresolve.ParseCUERegistry(cueRegistry, DefaultRegistry)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("bad value for $CUE_REGISTRY: %v", err)
+		return nil, fmt.Errorf("bad value for registry: %v", err)
 	}
 	return &Resolver{
 		resolver: resolver,
@@ -152,14 +175,17 @@ func (r *Resolver) ResolveToLocation(mpath string, version string) (HostLocation
 	return r.resolver.ResolveToLocation(mpath, version)
 }
 
-// Resolve implements modregistry.Resolver.Resolve.
+// ResolveToRegistry implements [modregistry.Resolver.ResolveToRegistry].
 func (r *Resolver) ResolveToRegistry(mpath string, version string) (modregistry.RegistryLocation, error) {
 	loc, ok := r.resolver.ResolveToLocation(mpath, version)
 	if !ok {
-		// This can only happen when mpath is invalid, which should not
+		// This can happen when mpath is invalid, which should not
 		// happen in practice, as the only caller is modregistry which
 		// vets module paths before calling Resolve.
-		return modregistry.RegistryLocation{}, fmt.Errorf("cannot resolve %s (version %s) to registry", mpath, version)
+		//
+		// It can also happen when the user has explicitly configured a "none"
+		// registry to avoid falling back to a default registry.
+		return modregistry.RegistryLocation{}, fmt.Errorf("cannot resolve %s (version %q) to registry: %w", mpath, version, modregistry.ErrRegistryNotFound)
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -189,6 +215,10 @@ type cueLoginsTransport struct {
 	// initOnce guards initErr, logins, and transport.
 	initOnce sync.Once
 	initErr  error
+	// loginsMu guards the logins pointer below.
+	// Note that an instance of cueconfig.Logins is read-only and
+	// does not have to be guarded.
+	loginsMu sync.Mutex
 	logins   *cueconfig.Logins
 	// transport holds the underlying transport. This wraps
 	// t.cfg.Transport.
@@ -211,14 +241,19 @@ func (t *cueLoginsTransport) RoundTrip(req *http.Request) (*http.Response, error
 	if err := t.init(); err != nil {
 		return nil, err
 	}
-	if t.logins == nil {
+
+	t.loginsMu.Lock()
+	logins := t.logins
+	t.loginsMu.Unlock()
+
+	if logins == nil {
 		return t.transport.RoundTrip(req)
 	}
 	// TODO: note that a CUE registry may include a path prefix,
 	// so using solely the host will not work with such a path.
 	// Can we do better here, perhaps keeping the path prefix up to "/v2/"?
 	host := req.URL.Host
-	login, ok := t.logins.Registries[host]
+	login, ok := logins.Registries[host]
 	if !ok {
 		return t.transport.RoundTrip(req)
 	}
@@ -231,15 +266,21 @@ func (t *cueLoginsTransport) RoundTrip(req *http.Request) (*http.Response, error
 			Name:     host,
 			Insecure: req.URL.Scheme == "http",
 		})
-		// TODO: When this client refreshes an access token,
-		// we should store the refreshed token on disk.
 
 		// Make the oauth client use the transport that was set up
 		// in init.
 		ctx := context.WithValue(req.Context(), oauth2.HTTPClient, &http.Client{
 			Transport: t.transport,
 		})
-		transport = oauthCfg.Client(ctx, tok).Transport
+		transport = oauth2.NewClient(ctx,
+			&cachingTokenSource{
+				updateFunc: func(tok *oauth2.Token) error {
+					return t.updateLogin(host, tok)
+				},
+				base: oauthCfg.TokenSource(ctx, tok),
+				t:    tok,
+			},
+		).Transport
 		t.cachedTransports[host] = transport
 	}
 	// Unlock immediately so we don't hold the lock for the entire
@@ -247,6 +288,28 @@ func (t *cueLoginsTransport) RoundTrip(req *http.Request) (*http.Response, error
 	// making HTTP requests.
 	t.mu.Unlock()
 	return transport.RoundTrip(req)
+}
+
+func (t *cueLoginsTransport) updateLogin(host string, new *oauth2.Token) error {
+	// Reload the logins file in case another process changed it in the meantime.
+	loginsPath, err := cueconfig.LoginConfigPath(t.getenv)
+	if err != nil {
+		// TODO: this should never fail. Log a warning.
+		return nil
+	}
+
+	// Lock the logins for the entire duration of the update to avoid races
+	t.loginsMu.Lock()
+	defer t.loginsMu.Unlock()
+
+	logins, err := cueconfig.UpdateRegistryLogin(loginsPath, host, new)
+	if err != nil {
+		return err
+	}
+
+	t.logins = logins
+
+	return nil
 }
 
 func (t *cueLoginsTransport) init() error {
@@ -270,10 +333,11 @@ func (t *cueLoginsTransport) _init() error {
 		Transport: t.cfg.Transport,
 	})
 
-	// If we can't locate a logins.json file at all, then we'll
+	// If we can't locate a logins.json file at all, then we'll continue.
 	// We only refuse to continue if we find an invalid logins.json file.
 	loginsPath, err := cueconfig.LoginConfigPath(t.getenv)
 	if err != nil {
+		// TODO: this should never fail. Log a warning.
 		return nil
 	}
 	logins, err := cueconfig.ReadLogins(loginsPath)
@@ -309,8 +373,8 @@ func getenvFunc(env []string) func(string) string {
 		return os.Getenv
 	}
 	return func(key string) string {
-		for i := len(env) - 1; i >= 0; i-- {
-			if e := env[i]; len(e) >= len(key)+1 && e[len(key)] == '=' && e[:len(key)] == key {
+		for _, e := range slices.Backward(env) {
+			if len(e) >= len(key)+1 && e[len(key)] == '=' && e[:len(key)] == key {
 				return e[len(key)+1:]
 			}
 		}
@@ -324,4 +388,41 @@ func newRef[T any](x *T) *T {
 		x1 = *x
 	}
 	return &x1
+}
+
+// cachingTokenSource works similar to oauth2.ReuseTokenSource, except that it
+// also exposes a hook to get a hold of the refreshed token, so that it can be
+// stored in persistent storage.
+type cachingTokenSource struct {
+	updateFunc func(tok *oauth2.Token) error
+	base       oauth2.TokenSource // called when t is expired
+
+	mu sync.Mutex // guards t
+	t  *oauth2.Token
+}
+
+func (s *cachingTokenSource) Token() (*oauth2.Token, error) {
+	s.mu.Lock()
+	t := s.t
+
+	if t.Valid() {
+		s.mu.Unlock()
+		return t, nil
+	}
+
+	t, err := s.base.Token()
+	if err != nil {
+		s.mu.Unlock()
+		return nil, err
+	}
+
+	s.t = t
+	s.mu.Unlock()
+
+	err = s.updateFunc(t)
+	if err != nil {
+		return nil, err
+	}
+
+	return t, nil
 }

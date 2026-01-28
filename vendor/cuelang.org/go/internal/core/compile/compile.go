@@ -24,6 +24,8 @@ import (
 	"cuelang.org/go/internal"
 	"cuelang.org/go/internal/astinternal"
 	"cuelang.org/go/internal/core/adt"
+	"cuelang.org/go/internal/cueexperiment"
+	"cuelang.org/go/internal/mod/semver"
 )
 
 // A Scope represents a nested scope of Vertices.
@@ -101,6 +103,8 @@ type compiler struct {
 	upCountOffset int32 // 1 for files; 0 for expressions
 
 	index adt.StringIndexer
+
+	experiments cueexperiment.File
 
 	stack      []frame
 	inSelector int
@@ -275,9 +279,10 @@ func (c *compiler) compileFiles(a []*ast.File) *adt.Vertex { // Or value?
 	// - anything in an anonymous file
 	//
 	for _, f := range a {
-		if p := internal.GetPackageInfo(f); p.IsAnonymous() {
+		if f.PackageName() == "" {
 			continue
 		}
+
 		for _, d := range f.Decls {
 			if f, ok := d.(*ast.Field); ok {
 				if id, ok := f.Label.(*ast.Ident); ok {
@@ -302,10 +307,12 @@ func (c *compiler) compileFiles(a []*ast.File) *adt.Vertex { // Or value?
 	}
 
 	for _, file := range a {
+		c.experiments = file.Pos().Experiment()
+
 		c.pushScope(nil, 0, file) // File scope
 		v := &adt.StructLit{Src: file}
 		c.addDecls(v, file.Decls)
-		res.Conjuncts = append(res.Conjuncts, adt.MakeRootConjunct(env, v))
+		res.InsertConjunct(adt.MakeRootConjunct(env, v))
 		c.popScope()
 	}
 
@@ -325,6 +332,34 @@ func (c *compiler) compileExpr(x ast.Expr) adt.Conjunct {
 	}
 
 	return adt.MakeRootConjunct(env, expr)
+}
+
+// verifyVersion checks whether n is a Builtin and then checks whether the
+// Added version is compatible with the file version registered in c.
+func (c *compiler) verifyVersion(src ast.Node, n adt.Expr) adt.Expr {
+	b, ok := n.(*adt.Builtin)
+	if !ok {
+		return n
+	}
+	if b.Added == "" {
+		// No version check needed.
+		return n
+	}
+	v := c.experiments.LanguageVersion()
+	if v == "" {
+		// We assume "latest" if the file is not associated with a version.
+		return n
+	}
+
+	if semver.Compare(b.Added, v) <= 0 {
+		// The feature is available in the file version.
+		return n
+	}
+
+	// The feature is not available in the file version.
+	// NonConcrete builtins are not allowed in older versions.
+	return c.errf(src, "builtin %q is not available in version %v; "+
+		"it was added in version %q", b.Name, v, b.Added)
 }
 
 // resolve assumes that all existing resolutions are legal. Validation should
@@ -390,7 +425,7 @@ func (c *compiler) resolve(n *ast.Ident) adt.Expr {
 		}
 
 		if p := predeclared(n); p != nil {
-			return p
+			return c.verifyVersion(n, p)
 		}
 
 		return c.errf(n, "reference %q not found", n.Name)
@@ -697,6 +732,10 @@ func (c *compiler) decl(d ast.Decl) adt.Decl {
 		return c.comprehension(x, false)
 
 	case *ast.EmbedDecl: // Deprecated
+		for _, c := range ast.Comments(x.Expr) {
+			ast.AddComment(x, c)
+		}
+		ast.SetComments(x.Expr, x.Comments())
 		return c.expr(x.Expr)
 
 	case ast.Expr:
@@ -892,9 +931,14 @@ func (c *compiler) expr(expr ast.Expr) adt.Expr {
 
 	case *ast.SelectorExpr:
 		c.inSelector++
+		x := c.expr(n.X)
+		// TODO: check if x is an ImportReference, and if so, check if it a
+		// standard library, look up the builtin, and check its version. The
+		// index of standard libraries is available in c.index, which is really
+		// an adt.Runtime under the hood.
 		ret := &adt.SelectorExpr{
 			Src: n,
-			X:   c.expr(n.X),
+			X:   x,
 			Sel: c.label(n.Sel)}
 		c.inSelector--
 		return ret
@@ -919,7 +963,7 @@ func (c *compiler) expr(expr ast.Expr) adt.Expr {
 	case *ast.BottomLit:
 		return &adt.Bottom{
 			Src:  n,
-			Code: adt.UserError,
+			Code: adt.LegacyUserError,
 			Err:  errors.Newf(n.Pos(), "explicit error (_|_ literal) in source"),
 		}
 
@@ -990,6 +1034,11 @@ func (c *compiler) expr(expr ast.Expr) adt.Expr {
 				Op:  adt.OpFromToken(n.Op),
 				X:   c.expr(n.X),
 			}
+		case token.EQL:
+			if !c.experiments.StructCmp {
+				return c.errf(n, "unsupported unary operator %q", n.Op)
+			}
+			fallthrough
 		case token.GEQ, token.GTR, token.LSS, token.LEQ,
 			token.NEQ, token.MAT, token.NMAT:
 			return &adt.BoundExpr{
@@ -1066,7 +1115,7 @@ func (c *compiler) parse(l *ast.BasicLit) (n adt.Expr) {
 	case token.STRING:
 		info, nStart, _, err := literal.ParseQuotes(s, s)
 		if err != nil {
-			return c.errf(l, err.Error())
+			return c.errf(l, "%s", err.Error())
 		}
 		s := s[nStart:]
 		return parseString(c, l, info, s)

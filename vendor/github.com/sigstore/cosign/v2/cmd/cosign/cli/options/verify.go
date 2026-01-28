@@ -30,6 +30,9 @@ type CommonVerifyOptions struct {
 	// it for other verify options.
 	ExperimentalOCI11     bool
 	PrivateInfrastructure bool
+	UseSignedTimestamps   bool
+	NewBundleFormat       bool
+	TrustedRootPath       string
 }
 
 func (o *CommonVerifyOptions) AddFlags(cmd *cobra.Command) {
@@ -40,6 +43,9 @@ func (o *CommonVerifyOptions) AddFlags(cmd *cobra.Command) {
 		"path to PEM-encoded certificate chain file for the RFC3161 timestamp authority. Must contain the root CA certificate. "+
 			"Optionally may contain intermediate CA certificates, and may contain the leaf TSA certificate if not present in the timestamp")
 
+	cmd.Flags().BoolVar(&o.UseSignedTimestamps, "use-signed-timestamps", false,
+		"verify rfc3161 timestamps")
+
 	cmd.Flags().BoolVar(&o.IgnoreTlog, "insecure-ignore-tlog", false,
 		"ignore transparency log verification, to be used when an artifact signature has not been uploaded to the transparency log. Artifacts "+
 			"cannot be publicly verified when not included in a log")
@@ -48,10 +54,17 @@ func (o *CommonVerifyOptions) AddFlags(cmd *cobra.Command) {
 		"skip transparency log verification when verifying artifacts in a privately deployed infrastructure")
 
 	cmd.Flags().BoolVar(&o.ExperimentalOCI11, "experimental-oci11", false,
-		"set to true to enable experimental OCI 1.1 behaviour")
+		"set to true to enable experimental OCI 1.1 behaviour (unrelated to bundle format)")
 
 	cmd.Flags().IntVar(&o.MaxWorkers, "max-workers", cosign.DefaultMaxWorkers,
 		"the amount of maximum workers for parallel executions")
+
+	cmd.Flags().StringVar(&o.TrustedRootPath, "trusted-root", "",
+		"Path to a Sigstore TrustedRoot JSON file. Requires --new-bundle-format to be set.")
+
+	// TODO: have this default to true as a breaking change
+	cmd.Flags().BoolVar(&o.NewBundleFormat, "new-bundle-format", false,
+		"expect the signature/attestation to be packaged in a Sigstore bundle")
 }
 
 // VerifyOptions is the top level wrapper for the `verify` command.
@@ -88,22 +101,25 @@ func (o *VerifyOptions) AddFlags(cmd *cobra.Command) {
 
 	cmd.Flags().StringVar(&o.Key, "key", "",
 		"path to the public key file, KMS URI or Kubernetes Secret")
-	_ = cmd.Flags().SetAnnotation("key", cobra.BashCompFilenameExt, []string{})
+	_ = cmd.MarkFlagFilename("key", publicKeyExts...)
 
 	cmd.Flags().BoolVar(&o.CheckClaims, "check-claims", true,
 		"whether to check the claims found")
 
 	cmd.Flags().StringVar(&o.Attachment, "attachment", "",
 		"DEPRECATED, related image attachment to verify (sbom), default none")
+	_ = cmd.MarkFlagFilename("attachment", sbomExts...)
 
 	cmd.Flags().StringVarP(&o.Output, "output", "o", "json",
 		"output format for the signing image information (json|text)")
 
 	cmd.Flags().StringVar(&o.SignatureRef, "signature", "",
 		"signature content or path or remote URL")
+	_ = cmd.MarkFlagFilename("signature", signatureExts...)
 
 	cmd.Flags().StringVar(&o.PayloadRef, "payload", "",
 		"payload path or remote URL")
+	// _ = cmd.MarkFlagFilename("payload") // no typical extensions
 
 	cmd.Flags().BoolVar(&o.LocalImage, "local-image", false,
 		"whether the specified image is a path to an image saved locally via 'cosign save'")
@@ -121,6 +137,7 @@ type VerifyAttestationOptions struct {
 	CertVerify          CertVerifyOptions
 	Registry            RegistryOptions
 	Predicate           PredicateRemoteOptions
+	SignatureDigest     SignatureDigestOptions
 	Policies            []string
 	LocalImage          bool
 }
@@ -135,6 +152,7 @@ func (o *VerifyAttestationOptions) AddFlags(cmd *cobra.Command) {
 	o.Registry.AddFlags(cmd)
 	o.Predicate.AddFlags(cmd)
 	o.CommonVerifyOptions.AddFlags(cmd)
+	o.SignatureDigest.AddFlags(cmd)
 
 	cmd.Flags().StringVar(&o.Key, "key", "",
 		"path to the public key file, KMS URI or Kubernetes Secret")
@@ -162,6 +180,7 @@ type VerifyBlobOptions struct {
 	CertVerify          CertVerifyOptions
 	Rekor               RekorOptions
 	CommonVerifyOptions CommonVerifyOptions
+	SignatureDigest     SignatureDigestOptions
 
 	RFC3161TimestampPath string
 }
@@ -174,6 +193,7 @@ func (o *VerifyBlobOptions) AddFlags(cmd *cobra.Command) {
 	o.Rekor.AddFlags(cmd)
 	o.CertVerify.AddFlags(cmd)
 	o.CommonVerifyOptions.AddFlags(cmd)
+	o.SignatureDigest.AddFlags(cmd)
 
 	cmd.Flags().StringVar(&o.Key, "key", "",
 		"path to the public key file, KMS URI or Kubernetes Secret")
@@ -217,8 +237,12 @@ type VerifyBlobAttestationOptions struct {
 	CertVerify          CertVerifyOptions
 	Rekor               RekorOptions
 	CommonVerifyOptions CommonVerifyOptions
+	SignatureDigest     SignatureDigestOptions
 
 	RFC3161TimestampPath string
+
+	Digest    string
+	DigestAlg string
 }
 
 var _ Interface = (*VerifyBlobOptions)(nil)
@@ -230,6 +254,7 @@ func (o *VerifyBlobAttestationOptions) AddFlags(cmd *cobra.Command) {
 	o.Rekor.AddFlags(cmd)
 	o.CertVerify.AddFlags(cmd)
 	o.CommonVerifyOptions.AddFlags(cmd)
+	o.SignatureDigest.AddFlags(cmd)
 
 	cmd.Flags().StringVar(&o.Key, "key", "",
 		"path to the public key file, KMS URI or Kubernetes Secret")
@@ -241,8 +266,14 @@ func (o *VerifyBlobAttestationOptions) AddFlags(cmd *cobra.Command) {
 		"path to bundle FILE")
 
 	cmd.Flags().BoolVar(&o.CheckClaims, "check-claims", true,
-		"if true, verifies the provided blob's sha256 digest exists as an in-toto subject within the attestation. If false, only the DSSE envelope is verified.")
+		"if true, verifies the digest exists in the in-toto subject (using either the provided digest and digest algorithm or the provided blob's sha256 digest). If false, only the DSSE envelope is verified.")
 
 	cmd.Flags().StringVar(&o.RFC3161TimestampPath, "rfc3161-timestamp", "",
 		"path to RFC3161 timestamp FILE")
+
+	cmd.Flags().StringVar(&o.Digest, "digest", "",
+		"Digest to use for verifying in-toto subject (instead of providing a blob)")
+
+	cmd.Flags().StringVar(&o.DigestAlg, "digestAlg", "",
+		"Digest algorithm to use for verifying in-toto subject (instead of providing a blob)")
 }

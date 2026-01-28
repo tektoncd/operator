@@ -43,12 +43,15 @@ package modzip
 import (
 	"archive/zip"
 	"bytes"
+	"cmp"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -58,7 +61,7 @@ import (
 
 const (
 	// MaxZipFile is the maximum size in bytes of a module zip file. The
-	// go command will report an error if either the zip file or its extracted
+	// cue command will report an error if either the zip file or its extracted
 	// content is larger than this.
 	MaxZipFile = 500 << 20
 
@@ -373,7 +376,7 @@ func CheckDir(dir string) (CheckedFiles, error) {
 	if err != nil {
 		return CheckedFiles{}, err
 	}
-	cf, cfErr := CheckFiles[dirFile](files, dirFileIO{})
+	cf, cfErr := CheckFiles(files, dirFileIO{})
 	_ = cfErr // ignore this error; we'll generate our own after rewriting paths.
 
 	// Replace all paths with file system paths.
@@ -507,7 +510,8 @@ func CheckZip(m module.Version, r io.ReaderAt, zipSize int64) (*zip.Reader, *zip
 }
 
 // Create builds a zip archive for module m from an abstract list of files
-// and writes it to w.
+// and writes it to w, after first sorting the slice of files in a path-aware
+// lexical fashion (files first, then directories, both sorted lexically).
 //
 // Note that m.Version is checked for validity but only the major version
 // is used for checking correctness of the cue.mod/module.cue file.
@@ -527,6 +531,18 @@ func Create[F any](w io.Writer, m module.Version, files []F, fio FileIO[F]) (err
 			err = &zipError{verb: "create zip", err: err}
 		}
 	}()
+
+	files = slices.Clone(files)
+	slices.SortFunc(files, func(a, b F) int {
+		ap := fio.Path(a)
+		bp := fio.Path(b)
+		ca := strings.Count(ap, string(filepath.Separator))
+		cb := strings.Count(ap, string(filepath.Separator))
+		if c := cmp.Compare(ca, cb); c != 0 {
+			return c
+		}
+		return cmp.Compare(ap, bp)
+	})
 
 	// Check whether files are valid, not valid, or should be omitted.
 	// Also check that the valid files don't exceed the maximum size.
@@ -594,18 +610,18 @@ func CreateFromDir(w io.Writer, m module.Version, dir string) (err error) {
 		return err
 	}
 
-	return Create[dirFile](w, m, files, dirFileIO{})
+	return Create(w, m, files, dirFileIO{})
 }
 
 type dirFile struct {
 	filePath, slashPath string
-	info                os.FileInfo
+	entry               fs.DirEntry
 }
 
 type dirFileIO struct{}
 
 func (dirFileIO) Path(f dirFile) string                 { return f.slashPath }
-func (dirFileIO) Lstat(f dirFile) (os.FileInfo, error)  { return f.info, nil }
+func (dirFileIO) Lstat(f dirFile) (os.FileInfo, error)  { return f.entry.Info() }
 func (dirFileIO) Open(f dirFile) (io.ReadCloser, error) { return os.Open(f.filePath) }
 
 // isVendoredPackage reports whether the given filename is inside
@@ -737,7 +753,7 @@ func (cc collisionChecker) check(p string, isDir bool) error {
 // files, as well as a list of directories and files that were skipped (for
 // example, nested modules and symbolic links).
 func listFilesInDir(dir string) (files []dirFile, omitted []FileError, err error) {
-	err = filepath.Walk(dir, func(filePath string, info os.FileInfo, err error) error {
+	err = filepath.WalkDir(dir, func(filePath string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -754,7 +770,7 @@ func listFilesInDir(dir string) (files []dirFile, omitted []FileError, err error
 			return nil
 		}
 
-		if info.IsDir() {
+		if entry.IsDir() {
 			if filePath == dir {
 				// Don't skip the top-level directory.
 				return nil
@@ -779,7 +795,7 @@ func listFilesInDir(dir string) (files []dirFile, omitted []FileError, err error
 
 		// Skip irregular files and files in vendor directories.
 		// Irregular files are ignored. They're typically symbolic links.
-		if !info.Mode().IsRegular() {
+		if !entry.Type().IsRegular() {
 			omitted = append(omitted, FileError{Path: slashPath, Err: errNotRegular})
 			return nil
 		}
@@ -787,7 +803,7 @@ func listFilesInDir(dir string) (files []dirFile, omitted []FileError, err error
 		files = append(files, dirFile{
 			filePath:  filePath,
 			slashPath: slashPath,
-			info:      info,
+			entry:     entry,
 		})
 		return nil
 	})
@@ -825,7 +841,7 @@ func (e *zipError) Unwrap() error {
 func strToFold(s string) string {
 	// Fast path: all ASCII, no upper case.
 	// Most paths look like this already.
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		if c >= utf8.RuneSelf || 'A' <= c && c <= 'Z' {
 			goto Slow

@@ -15,7 +15,7 @@
 // Package internal exposes some cue internals to other packages.
 //
 // A better name for this package would be technicaldebt.
-package internal // import "cuelang.org/go/internal"
+package internal
 
 // TODO: refactor packages as to make this package unnecessary.
 
@@ -23,6 +23,7 @@ import (
 	"bufio"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/cockroachdb/apd/v3"
@@ -90,9 +91,6 @@ func (c Context) Sqrt(d, x *apd.Decimal) (apd.Condition, error) {
 // incomplete.
 var ErrIncomplete = errors.New("incomplete value")
 
-// MakeInstance makes a new instance from a value.
-var MakeInstance func(value interface{}) (instance interface{})
-
 // BaseContext is used as CUE's default context for arbitrary-precision decimals.
 var BaseContext = Context{*apd.BaseContext.WithPrecision(34)}
 
@@ -110,14 +108,33 @@ func Version(minor, patch int) int {
 	return -1000 + 100*minor + patch
 }
 
+// EvaluatorVersion is declared here so it can be used everywhere without import cycles,
+// but the canonical documentation lives at [cuelang.org/go/cue/cuecontext.EvalVersion].
+//
+// TODO(mvdan): rename to EvalVersion for consistency with cuecontext.
 type EvaluatorVersion int
 
 const (
-	DefaultVersion EvaluatorVersion = iota
+	// EvalVersionUnset is the zero value, which signals that no evaluator version is provided.
+	EvalVersionUnset EvaluatorVersion = 0
 
-	// The DevVersion is used for new implementations of the evaluator that
-	// do not cover all features of the CUE language yet.
-	DevVersion
+	// DefaultVersion is a special value as it selects a version depending on the current
+	// value of CUE_EXPERIMENT. It exists separately to [EvalVersionUnset], even though both
+	// implement the same version selection logic, so that we can distinguish between
+	// a user explicitly asking for the default version versus an entirely unset version.
+	DefaultVersion EvaluatorVersion = -1 // TODO(mvdan): rename to EvalDefault for consistency with cuecontext
+
+	// The values below are documented under [cuelang.org/go/cue/cuecontext.EvalVersion].
+	// We should never change or delete the values below, as they describe all known past versions
+	// which is useful for understanding old debug output.
+
+	EvalV2 EvaluatorVersion = 2
+	EvalV3 EvaluatorVersion = 3
+
+	// The current default, stable, and experimental versions.
+
+	StableVersion = EvalV3 // TODO(mvdan): rename to EvalStable for consistency with cuecontext
+	DevVersion    = EvalV3 // TODO(mvdan): rename to EvalExperiment for consistency with cuecontext
 )
 
 // ListEllipsis reports the list type and remaining elements of a list. If we
@@ -135,49 +152,31 @@ func ListEllipsis(n *ast.ListLit) (elts []ast.Expr, e *ast.Ellipsis) {
 	return elts, e
 }
 
-type PkgInfo struct {
-	Package *ast.Package
-	Index   int // position in File.Decls
-	Name    string
-}
-
-// IsAnonymous reports whether the package is anonymous.
-func (p *PkgInfo) IsAnonymous() bool {
-	return p.Name == "" || p.Name == "_"
-}
-
-func GetPackageInfo(f *ast.File) PkgInfo {
-	for i, d := range f.Decls {
-		switch x := d.(type) {
+// Package finds the package declaration from the preamble of a file.
+func Package(f *ast.File) *ast.Package {
+	for _, d := range f.Decls {
+		switch d := d.(type) {
 		case *ast.CommentGroup:
 		case *ast.Attribute:
 		case *ast.Package:
-			if x.Name == nil {
-				break
+			if d.Name == nil { // malformed package declaration
+				return nil
 			}
-			return PkgInfo{x, i, x.Name.Name}
+			return d
+		default:
+			return nil
 		}
 	}
-	return PkgInfo{}
-}
-
-// Deprecated: use GetPackageInfo
-func PackageInfo(f *ast.File) (p *ast.Package, name string, tok token.Pos) {
-	x := GetPackageInfo(f)
-	if p := x.Package; p != nil {
-		return p, x.Name, p.Name.Pos()
-	}
-	return nil, "", f.Pos()
+	return nil
 }
 
 func SetPackage(f *ast.File, name string, overwrite bool) {
-	p, str, _ := PackageInfo(f)
-	if p != nil {
-		if !overwrite || str == name {
+	if pkg := Package(f); pkg != nil {
+		if !overwrite || pkg.Name.Name == name {
 			return
 		}
 		ident := ast.NewIdent(name)
-		astutil.CopyMeta(ident, p.Name)
+		astutil.CopyMeta(ident, pkg.Name)
 		return
 	}
 
@@ -237,35 +236,61 @@ func NewComment(isDoc bool, s string) *ast.CommentGroup {
 	return cg
 }
 
-func FileComment(f *ast.File) *ast.CommentGroup {
-	pkg, _, _ := PackageInfo(f)
-	var cgs []*ast.CommentGroup
-	if pkg != nil {
-		cgs = pkg.Comments()
-	} else if cgs = f.Comments(); len(cgs) > 0 {
-		// Use file comment.
-	} else {
-		// Use first comment before any declaration.
-		for _, d := range f.Decls {
-			if cg, ok := d.(*ast.CommentGroup); ok {
-				return cg
-			}
-			if cgs = ast.Comments(d); cgs != nil {
-				break
-			}
-			// TODO: what to do here?
-			if _, ok := d.(*ast.Attribute); !ok {
-				break
-			}
+func FileComments(f *ast.File) (docs, rest []*ast.CommentGroup) {
+	hasPkg := false
+	if pkg := Package(f); pkg != nil {
+		hasPkg = true
+		docs = pkg.Comments()
+	}
+
+	for _, c := range f.Comments() {
+		if c.Doc {
+			docs = append(docs, c)
+		} else {
+			rest = append(rest, c)
 		}
 	}
-	var cg *ast.CommentGroup
-	for _, c := range cgs {
-		if c.Position == 0 {
-			cg = c
+
+	if !hasPkg && len(docs) == 0 && len(rest) > 0 {
+		// use the first file comment group as as doc comment.
+		docs, rest = rest[:1], rest[1:]
+		docs[0].Doc = true
+	}
+
+	return
+}
+
+// MergeDocs merges multiple doc comments into one single doc comment.
+func MergeDocs(comments []*ast.CommentGroup) []*ast.CommentGroup {
+	if len(comments) <= 1 || !hasDocComment(comments) {
+		return comments
+	}
+
+	comments1 := make([]*ast.CommentGroup, 0, len(comments))
+	comments1 = append(comments1, nil)
+	var docComment *ast.CommentGroup
+	for _, c := range comments {
+		switch {
+		case !c.Doc:
+			comments1 = append(comments1, c)
+		case docComment == nil:
+			docComment = c
+		default:
+			docComment.List = append(slices.Clip(docComment.List), &ast.Comment{Text: "//"})
+			docComment.List = append(docComment.List, c.List...)
 		}
 	}
-	return cg
+	comments1[0] = docComment
+	return comments1
+}
+
+func hasDocComment(comments []*ast.CommentGroup) bool {
+	for _, c := range comments {
+		if c.Doc {
+			return true
+		}
+	}
+	return false
 }
 
 func NewAttr(name, str string) *ast.Attribute {
@@ -318,18 +343,22 @@ func ToExpr(n ast.Node) ast.Expr {
 //
 // Adjusts the spacing of x when needed.
 func ToFile(n ast.Node) *ast.File {
-	switch x := n.(type) {
-	case nil:
+	if n == nil {
 		return nil
+	}
+	switch n := n.(type) {
 	case *ast.StructLit:
-		return &ast.File{Decls: x.Elts}
+		f := &ast.File{Decls: n.Elts}
+		// Ensure that the comments attached to the struct literal are not lost.
+		ast.SetComments(f, ast.Comments(n))
+		return f
 	case ast.Expr:
-		ast.SetRelPos(x, token.NoSpace)
-		return &ast.File{Decls: []ast.Decl{&ast.EmbedDecl{Expr: x}}}
+		ast.SetRelPos(n, token.NoSpace)
+		return &ast.File{Decls: []ast.Decl{&ast.EmbedDecl{Expr: n}}}
 	case *ast.File:
-		return x
+		return n
 	default:
-		panic(fmt.Sprintf("Unsupported node type %T", x))
+		panic(fmt.Sprintf("Unsupported node type %T", n))
 	}
 }
 
@@ -448,28 +477,3 @@ func GenPath(root string) string {
 }
 
 var ErrInexact = errors.New("inexact subsumption")
-
-func DecorateError(info error, err errors.Error) errors.Error {
-	return &decorated{cueError: err, info: info}
-}
-
-type cueError = errors.Error
-
-type decorated struct {
-	cueError
-
-	info error
-}
-
-func (e *decorated) Is(err error) bool {
-	return errors.Is(e.info, err) || errors.Is(e.cueError, err)
-}
-
-// MaxDepth indicates the maximum evaluation depth. This is there to break
-// cycles in the absence of cycle detection.
-//
-// It is registered in a central place to make it easy to find all spots where
-// cycles are broken in this brute-force manner.
-//
-// TODO(eval): have cycle detection.
-const MaxDepth = 20

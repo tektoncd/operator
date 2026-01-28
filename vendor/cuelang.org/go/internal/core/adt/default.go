@@ -14,6 +14,10 @@
 
 package adt
 
+import (
+	"slices"
+)
+
 // Default returns the default value or itself if there is no default.
 func Default(v Value) Value {
 	switch x := v.(type) {
@@ -45,6 +49,7 @@ func (d *Disjunction) Default() Value {
 //
 // It also closes a list, representing its default value.
 func (v *Vertex) Default() *Vertex {
+	v = v.DerefValue()
 	switch d := v.BaseValue.(type) {
 	default:
 		return v
@@ -123,6 +128,22 @@ func stripNonDefaults(elem Elem) (r Elem, stripped bool) {
 			bin.X = a.(Expr)
 			bin.Y = b.(Expr)
 			return &bin, true
+		}
+		return x, false
+
+	case *ConjunctGroup:
+		// NOTE: this code requires allocations unconditional. This should be
+		// mitigated once we optimize conjunct groupings.
+		isNew := false
+		a := slices.Clone(*x)
+		for i, c := range a {
+			a[i].x, ok = stripNonDefaults(c.Elem())
+			if ok {
+				isNew = true
+			}
+		}
+		if isNew {
+			return &a, true
 		}
 		return x, false
 

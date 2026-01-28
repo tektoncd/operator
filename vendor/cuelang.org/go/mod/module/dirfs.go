@@ -3,6 +3,9 @@ package module
 import (
 	"io/fs"
 	"os"
+
+	"cuelang.org/go/cue/ast"
+	"cuelang.org/go/cue/parser"
 )
 
 // SourceLoc represents the location of some CUE source code.
@@ -11,6 +14,21 @@ type SourceLoc struct {
 	FS fs.FS
 	// Dir is the directory within the above filesystem.
 	Dir string
+}
+
+// ReadCUE can be implemented by an [fs.FS]
+// to provide an optimized (cached) way of
+// reading and parsing CUE syntax.
+type ReadCUEFS interface {
+	fs.FS
+
+	// ReadCUEFile reads CUE syntax from the given path,
+	// parsing it with the given configuration.
+	//
+	// If this method is implemented, but the implementation
+	// does not support reading CUE files,
+	// it should return [errors.ErrUnsupported].
+	ReadCUEFile(path string, cfg parser.Config) (*ast.File, error)
 }
 
 // OSRootFS can be implemented by an [fs.FS]

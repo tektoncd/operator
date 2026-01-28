@@ -16,18 +16,25 @@ package load
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"io"
 	iofs "io/fs"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
+	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/ast"
+	"cuelang.org/go/cue/build"
+	"cuelang.org/go/cue/cuecontext"
 	"cuelang.org/go/cue/errors"
+	"cuelang.org/go/cue/parser"
 	"cuelang.org/go/cue/token"
+	"cuelang.org/go/internal/encoding"
 	"cuelang.org/go/mod/module"
 )
 
@@ -55,6 +62,7 @@ func (f *overlayFile) Sys() interface{}   { return nil }
 type fileSystem struct {
 	overlayDirs map[string]map[string]*overlayFile
 	cwd         string
+	fileCache   *fileCache
 }
 
 func (fs *fileSystem) getDir(dir string, create bool) map[string]*overlayFile {
@@ -79,25 +87,24 @@ func (fs *fileSystem) getDir(dir string, create bool) map[string]*overlayFile {
 // the resulting source locations back to the filesystem
 // paths required by most of the `cue/load` package
 // implementation.
-func (fs *fileSystem) ioFS(root string) iofs.FS {
-	dir := fs.getDir(root, false)
-	if dir == nil {
-		return module.OSDirFS(root)
-	}
+func (fs *fileSystem) ioFS(root string, languageVersion string) iofs.FS {
 	return &ioFS{
-		fs:   fs,
-		root: root,
+		fs:              fs,
+		root:            root,
+		languageVersion: languageVersion,
 	}
 }
 
-func (fs *fileSystem) init(cwd string, overlay map[string]Source) error {
-	fs.cwd = cwd
-	fs.overlayDirs = map[string]map[string]*overlayFile{}
+func newFileSystem(cfg *Config) (*fileSystem, error) {
+	fs := &fileSystem{
+		cwd:         cfg.Dir,
+		overlayDirs: map[string]map[string]*overlayFile{},
+	}
 
 	// Organize overlay
-	for filename, src := range overlay {
+	for filename, src := range cfg.Overlay {
 		if !filepath.IsAbs(filename) {
-			return fmt.Errorf("non-absolute file path %q in overlay", filename)
+			return nil, fmt.Errorf("non-absolute file path %q in overlay", filename)
 		}
 		// TODO: do we need to further clean the path or check that the
 		// specified files are within the root/ absolute files?
@@ -105,7 +112,7 @@ func (fs *fileSystem) init(cwd string, overlay map[string]Source) error {
 		m := fs.getDir(dir, true)
 		b, file, err := src.contents()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		m[base] = &overlayFile{
 			basename: base,
@@ -130,11 +137,8 @@ func (fs *fileSystem) init(cwd string, overlay map[string]Source) error {
 			}
 		}
 	}
-	return nil
-}
-
-func (fs *fileSystem) joinPath(elem ...string) string {
-	return filepath.Join(elem...)
+	fs.fileCache = newFileCache(cfg)
+	return fs, nil
 }
 
 func (fs *fileSystem) makeAbs(path string) string {
@@ -142,15 +146,6 @@ func (fs *fileSystem) makeAbs(path string) string {
 		return path
 	}
 	return filepath.Join(fs.cwd, path)
-}
-
-func (fs *fileSystem) isDir(path string) bool {
-	path = fs.makeAbs(path)
-	if fs.getDir(path, false) != nil {
-		return true
-	}
-	fi, err := os.Stat(path)
-	return err == nil && fi.IsDir()
 }
 
 func (fs *fileSystem) readDir(path string) ([]iofs.DirEntry, errors.Error) {
@@ -177,8 +172,8 @@ func (fs *fileSystem) readDir(path string) ([]iofs.DirEntry, errors.Error) {
 			items = append(items, iofs.FileInfoToDirEntry(o))
 		}
 	}
-	sort.Slice(items, func(i, j int) bool {
-		return items[i].Name() < items[j].Name()
+	slices.SortFunc(items, func(a, b iofs.DirEntry) int {
+		return cmp.Compare(a.Name(), b.Name())
 	})
 	return items, nil
 }
@@ -269,7 +264,7 @@ func (fs *fileSystem) walkRec(path string, entry iofs.DirEntry, f walkFunc) erro
 	}
 
 	for _, entry := range dir {
-		filename := fs.joinPath(path, entry.Name())
+		filename := filepath.Join(path, entry.Name())
 		err = fs.walkRec(filename, entry, f)
 		if err != nil {
 			if !entry.IsDir() || err != skipDir {
@@ -288,8 +283,9 @@ var _ interface {
 } = (*ioFS)(nil)
 
 type ioFS struct {
-	fs   *fileSystem
-	root string
+	fs              *fileSystem
+	root            string
+	languageVersion string
 }
 
 func (fs *ioFS) OSRoot() string {
@@ -334,7 +330,7 @@ func (fs *ioFS) ReadDir(name string) ([]iofs.DirEntry, error) {
 	return fs.fs.readDir(fpath)
 }
 
-// ReadDir implements [io/fs.ReadFileFS].
+// ReadFile implements [io/fs.ReadFileFS].
 func (fs *ioFS) ReadFile(name string) ([]byte, error) {
 	fpath, err := fs.absPathFromFSPath(name)
 	if err != nil {
@@ -344,6 +340,53 @@ func (fs *ioFS) ReadFile(name string) ([]byte, error) {
 		return bytes.Clone(fi.contents), nil
 	}
 	return os.ReadFile(fpath)
+}
+
+var _ module.ReadCUEFS = (*ioFS)(nil)
+
+// ReadCUEFile implements [module.ReadCUEFS] by
+// reading and updating the syntax file cache, which
+// is shared with the cache used by the [fileSystem.getCUESyntax]
+// method.
+func (fs *ioFS) ReadCUEFile(path string, cfg parser.Config) (*ast.File, error) {
+	fpath, err := fs.absPathFromFSPath(path)
+	if err != nil {
+		return nil, err
+	}
+	key := fileCacheKey{cfg, fpath}
+	cache := fs.fs.fileCache
+	cache.mu.Lock()
+	entry, ok := cache.entries[key]
+	cache.mu.Unlock()
+	if ok {
+		return entry.file, entry.err
+	}
+	var data []byte
+	if fi := fs.fs.getOverlay(fpath); fi != nil {
+		if fi.file != nil {
+			// No need for a cache if we've got the contents in *ast.File
+			// form already.
+			return fi.file, nil
+		}
+		data = fi.contents
+	} else {
+		data, err = os.ReadFile(fpath)
+		if err != nil {
+			cache.mu.Lock()
+			defer cache.mu.Unlock()
+			cache.entries[key] = fileCacheEntry{nil, err}
+			return nil, err
+		}
+	}
+	if fs.languageVersion != "" {
+		cfg = cfg.Apply(parser.Version(fs.languageVersion))
+	}
+	return fs.fs.getCUESyntax(&build.File{
+		Filename: fpath,
+		Encoding: build.CUE,
+		//		Form:     build.Schema,
+		Source: data,
+	}, cfg)
 }
 
 // ioFSFile implements [io/fs.File] for the overlay filesystem.
@@ -395,4 +438,66 @@ func (f *ioFSFile) ReadDir(n int) ([]iofs.DirEntry, error) {
 	entries := f.entries[:n]
 	f.entries = f.entries[n:]
 	return entries, err
+}
+
+func (fs *fileSystem) getCUESyntax(bf *build.File, cfg parser.Config) (*ast.File, error) {
+	fs.fileCache.mu.Lock()
+	defer fs.fileCache.mu.Unlock()
+	if bf.Encoding != build.CUE {
+		panic("getCUESyntax called with non-CUE file encoding")
+	}
+	key := fileCacheKey{cfg, bf.Filename}
+	// When it's a regular CUE file with no funny stuff going on, we
+	// check and update the syntax cache.
+	useCache := bf.Form == "" && bf.Interpretation == ""
+	if useCache {
+		if syntax, ok := fs.fileCache.entries[key]; ok {
+			return syntax.file, syntax.err
+		}
+	}
+	encodingCfg := fs.fileCache.config
+	encodingCfg.ParserConfig = cfg
+	d := encoding.NewDecoder(fs.fileCache.ctx, bf, &encodingCfg)
+	defer d.Close()
+	// Note: CUE files can never have multiple file parts.
+	f, err := d.File(), d.Err()
+	if useCache {
+		fs.fileCache.entries[key] = fileCacheEntry{f, err}
+	}
+	return f, err
+}
+
+func newFileCache(c *Config) *fileCache {
+	return &fileCache{
+		config: encoding.Config{
+			// Note: no need to pass Stdin, as we take care
+			// always to pass a non-nil source when the file is "-".
+			ParseFile: c.ParseFile,
+		},
+		ctx:     cuecontext.New(),
+		entries: make(map[fileCacheKey]fileCacheEntry),
+	}
+}
+
+// fileCache caches data derived from the file system.
+type fileCache struct {
+	config  encoding.Config
+	ctx     *cue.Context
+	mu      sync.Mutex
+	entries map[fileCacheKey]fileCacheEntry
+}
+
+type fileCacheKey struct {
+	cfg  parser.Config
+	path string
+}
+
+type fileCacheEntry struct {
+	// TODO cache directory information too.
+
+	// file caches the work involved when decoding a file into an *ast.File.
+	// This can happen multiple times for the same file, for example when it is present in
+	// multiple different build instances in the same directory hierarchy.
+	file *ast.File
+	err  error
 }

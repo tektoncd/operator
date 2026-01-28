@@ -17,7 +17,6 @@ package adt
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"regexp"
 
 	"github.com/cockroachdb/apd/v3"
@@ -55,10 +54,11 @@ type StructLit struct {
 	// excluded are all literal fields that already exist.
 	Bulk []*BulkOptionalField
 
-	Additional  []*Ellipsis
-	HasEmbed    bool
-	IsOpen      bool // has a ...
-	initialized bool
+	Additional      []*Ellipsis
+	HasEmbed        bool
+	IsOpen          bool // has a ...
+	initialized     bool
+	isComprehension bool
 
 	types OptionalType
 
@@ -88,7 +88,29 @@ func (x *StructLit) evaluate(c *OpContext, state combinedFlags) Value {
 	// used in a context where more conjuncts are added. It may also lead
 	// to disjuncts being in a partially expanded state, leading to
 	// misaligned nodeContexts.
-	v.CompleteArcs(c)
+
+	// TODO(evalv3): to be fully compatible correct, we should not always
+	// finalize the arcs here. This is a temporary fix. For now, we have to do
+	// this as we need a mechanism to set the arcTypeKnown bit without
+	// finalizing the arcs, as they may depend on the completion of sub fields.
+	// See, for instance:
+	//
+	// 		chainSuccess: a: {
+	// 			raises?: {}
+	// 			if raises == _|_ {
+	// 				ret: a: 1
+	// 			}
+	// 			ret?: {}
+	// 			if ret != _|_ {
+	// 				foo: a: 1
+	// 			}
+	// 		}
+	//
+	// This would also require changing the arcType process in ForClause.yield.
+	//
+	// v.completeArcs(c, state)
+
+	v.CompleteArcsOnly(c)
 	return v
 }
 
@@ -97,11 +119,16 @@ func (o *StructLit) MarkField(f Feature) {
 	o.Fields = append(o.Fields, FieldInfo{Label: f})
 }
 
-func (o *StructLit) Init() {
+func (o *StructLit) Init(ctx *OpContext) {
 	if o.initialized {
 		return
 	}
 	o.initialized = true
+
+	if ctx.isDevVersion() {
+		return
+	}
+
 	for _, d := range o.Decls {
 		switch x := d.(type) {
 		case *Field:
@@ -182,10 +209,6 @@ func (o *StructLit) OptionalTypes() OptionalType {
 //	foo: bar
 //	#foo: bar
 //	_foo: bar
-//
-// Legacy:
-//
-//	Foo :: bar
 type Field struct {
 	Src *ast.Field
 
@@ -293,8 +316,18 @@ func (x *ListLit) Source() ast.Node {
 
 func (x *ListLit) evaluate(c *OpContext, state combinedFlags) Value {
 	e := c.Env(0)
+	// Pass conditions but at least set fieldSetKnown.
 	v := c.newInlineVertex(e.Vertex, nil, Conjunct{e, x, c.ci})
-	v.CompleteArcs(c)
+	v.CompleteArcsOnly(c)
+
+	// TODO(evalv3): evaluating more aggressively yields some improvements, but
+	// breaks other tests. Consider using this approach, though.
+	// mode := state.runMode()
+	// if mode == finalize {
+	// 	v.completeArcs(c, allKnown)
+	// } else {
+	// 	v.completeArcs(c, fieldSetKnown)
+	// }
 	return v
 }
 
@@ -388,6 +421,9 @@ func (x *ListMarker) node()            {}
 type StructMarker struct {
 	// NeedClose is used to signal that the evaluator should close this struct.
 	// It is only set by the close builtin.
+	// TODO(evalv3: remove this field. Once we removed this, and also introduced
+	// open by default lists, we can get rid of StructMarker and ListMarker
+	// in its entirety in favor of using type bit masks.
 	NeedClose bool
 }
 
@@ -459,23 +495,30 @@ func (x *BoundExpr) Source() ast.Node {
 func (x *BoundExpr) evaluate(ctx *OpContext, state combinedFlags) Value {
 	// scalarKnown is used here to ensure we know the value. The result does
 	// not have to be concrete, though.
-	v := ctx.value(x.Expr, require(partial, scalarKnown))
+	v := ctx.value(x.Expr, combinedFlags{
+		status:    partial,
+		condition: scalarKnown,
+		mode:      yield,
+	})
 	if isError(v) {
 		return v
 	}
 
 	switch k := v.Kind(); k {
-	case IntKind, FloatKind, NumKind, StringKind, BytesKind:
-	case NullKind:
-		if x.Op != NotEqualOp {
+	case IntKind, FloatKind, NumberKind, StringKind, BytesKind:
+	case NullKind, StructKind, ListKind:
+		if x.Op != NotEqualOp && x.Op != EqualOp {
 			err := ctx.NewPosf(pos(x.Expr),
-				"cannot use null for bound %s", x.Op)
-			return &Bottom{Err: err}
+				"cannot use %s for bound %s", k, x.Op)
+			return &Bottom{
+				Err:  err,
+				Node: ctx.vertex,
+			}
 		}
 	default:
-		mask := IntKind | FloatKind | NumKind | StringKind | BytesKind
-		if x.Op == NotEqualOp {
-			mask |= NullKind
+		mask := IntKind | FloatKind | NumberKind | StringKind | BytesKind
+		if x.Op == NotEqualOp || x.Op == EqualOp {
+			mask |= NullKind | StructKind | ListKind
 		}
 		if k&mask != 0 {
 			ctx.addErrf(IncompleteError, token.NoPos, // TODO(errors): use ctx.pos()?
@@ -484,7 +527,10 @@ func (x *BoundExpr) evaluate(ctx *OpContext, state combinedFlags) Value {
 		}
 		err := ctx.NewPosf(pos(x.Expr),
 			"invalid value %s (type %s) for bound %s", v, k, x.Op)
-		return &Bottom{Err: err}
+		return &Bottom{
+			Err:  err,
+			Node: ctx.vertex,
+		}
 	}
 
 	if v, ok := x.Expr.(Value); ok {
@@ -492,6 +538,10 @@ func (x *BoundExpr) evaluate(ctx *OpContext, state combinedFlags) Value {
 			return ctx.NewErrf("bound has fixed non-concrete value")
 		}
 		return &BoundValue{x.Src, x.Op, v}
+	}
+
+	if !ctx.SimplifyValidators {
+		goto finalCheck
 	}
 
 	// This simplifies boundary expressions. It is an alternative to an
@@ -567,6 +617,8 @@ func (x *BoundExpr) evaluate(ctx *OpContext, state combinedFlags) Value {
 			return nil
 		}
 	}
+
+finalCheck:
 	if v.Concreteness() > Concrete {
 		// TODO(errors): analyze dependencies of x.Expr to get positions.
 		ctx.addErrf(IncompleteError, token.NoPos, // TODO(errors): use ctx.pos()?
@@ -591,8 +643,8 @@ func (x *BoundValue) Source() ast.Node { return x.Src }
 func (x *BoundValue) Kind() Kind {
 	k := x.Value.Kind()
 	switch k {
-	case IntKind, FloatKind, NumKind:
-		return NumKind
+	case IntKind, FloatKind, NumberKind:
+		return NumberKind
 
 	case NullKind:
 		if x.Op == NotEqualOp {
@@ -604,12 +656,12 @@ func (x *BoundValue) Kind() Kind {
 
 func (x *BoundValue) validate(c *OpContext, y Value) *Bottom {
 	a := y // Can be list or struct.
-	b := c.scalar(x.Value)
+	b := x.Value
 	if c.HasErr() {
 		return c.Err()
 	}
 
-	switch v := BinOp(c, x.Op, a, b).(type) {
+	switch v := BinOp(c, x, x.Op, a, b).(type) {
 	case *Bottom:
 		return v
 
@@ -621,7 +673,12 @@ func (x *BoundValue) validate(c *OpContext, y Value) *Bottom {
 		// predeclared identifier such as `int`.
 		err := c.Newf("invalid value %v (out of bound %s)", y, x)
 		err.AddPosition(y)
-		return &Bottom{Src: c.src, Err: err, Code: EvalError}
+		return &Bottom{
+			Src:  c.src,
+			Err:  err,
+			Code: EvalError,
+			Node: c.vertex,
+		}
 
 	default:
 		panic(fmt.Sprintf("unsupported type %T", v))
@@ -806,7 +863,11 @@ func (x *DynamicReference) Source() ast.Node {
 func (x *DynamicReference) EvaluateLabel(ctx *OpContext, env *Environment) Feature {
 	env = env.up(ctx, x.UpCount)
 	frame := ctx.PushState(env, x.Src)
-	v := ctx.value(x.Label, require(partial, scalarKnown))
+	v := ctx.value(x.Label, combinedFlags{
+		status:    partial,
+		condition: scalarKnown,
+		mode:      yield,
+	})
 	ctx.PopState(frame)
 	return ctx.Label(x, v)
 }
@@ -814,7 +875,11 @@ func (x *DynamicReference) EvaluateLabel(ctx *OpContext, env *Environment) Featu
 func (x *DynamicReference) resolve(ctx *OpContext, state combinedFlags) *Vertex {
 	e := ctx.Env(x.UpCount)
 	frame := ctx.PushState(e, x.Src)
-	v := ctx.value(x.Label, require(partial, scalarKnown))
+	v := ctx.value(x.Label, combinedFlags{
+		status:    partial,
+		condition: scalarKnown,
+		mode:      yield,
+	})
 	ctx.PopState(frame)
 	f := ctx.Label(x.Label, v)
 	return ctx.lookup(e.Vertex, pos(x), f, state)
@@ -900,25 +965,30 @@ func (x *LetReference) resolve(ctx *OpContext, state combinedFlags) *Vertex {
 	//     In other words, a Vertex is not necessarily erroneous when a let
 	//     field contained in that Vertex is erroneous.
 
-	// TODO(order): Do not finalize? Although it is safe to finalize a let
-	// by itself, it is not necessarily safe, at this point, to finalize any
-	// references it makes. Originally, let finalization was requested to
-	// detect cases where multi-mode should be enabled. With the recent compiler
-	// changes, though, this should be detected statically. Leave this on for
-	// now, though, as it is not entirely clear it is fine to remove this.
-	// We can reevaluate this once we have redone some of the planned order of
-	// evaluation work.
-	arc.Finalize(ctx)
-	b, ok := arc.BaseValue.(*Bottom)
-	if !arc.MultiLet && !ok {
+	// We should only partly finalize the result here as it is not safe to
+	// finalize any references made by the let.
+	if !ctx.isDevVersion() {
+		arc.Finalize(ctx)
+	}
+	b := arc.Bottom()
+	if !arc.MultiLet && (b == nil || isCyclePlaceholder(b)) {
 		return arc
 	}
 
 	// Not caching let expressions may lead to exponential behavior.
 	// The expr uses the expression of a Let field, which can never be used in
 	// any other context.
-	c := arc.Conjuncts[0]
+	c := arc.ConjunctAt(0)
 	expr := c.Expr()
+
+	// A let field always has a single expression and thus ConjunctGroups
+	// should always have been eliminated. This is critical, as we must
+	// ensure that Comprehensions, which may be wrapped in ConjunctGroups,
+	// are eliminated.
+	_, isGroup := expr.(*ConjunctGroup)
+	ctx.Assertf(pos(expr), !isGroup, "unexpected number of expressions")
+
+	// TODO(mem): add counter for let cache usage.
 	key := cacheKey{expr, arc}
 	v, ok := e.cache[key]
 	if !ok {
@@ -939,9 +1009,17 @@ func (x *LetReference) resolve(ctx *OpContext, state combinedFlags) *Vertex {
 		v = n
 		e.cache[key] = n
 		if ctx.isDevVersion() {
-			nc := n.getState(ctx)
-			nc.hasNonCycle = true // Allow a first cycle to be skipped.
-			nc.free()
+			// TODO(mem): enable again once we implement memory management.
+			// nc := n.getState(ctx)
+			// TODO: unlike with the old evaluator, we do not allow the first
+			// cycle to be skipped. Doing so can lead to hanging evaluation.
+			// As the cycle detection works slightly differently in the new
+			// evaluator (and is not entirely completed), this can happen. We
+			// should revisit this once we have completed the structural cycle
+			// detection.
+			// nc.hasNonCycle = true
+			// Allow a first cycle to be skipped.
+			// nc.free()
 		} else {
 			nc := n.getNodeContext(ctx, 0)
 			nc.hasNonCycle = true // Allow a first cycle to be skipped.
@@ -978,12 +1056,11 @@ func (x *SelectorExpr) Source() ast.Node {
 }
 
 func (x *SelectorExpr) resolve(c *OpContext, state combinedFlags) *Vertex {
-	// TODO: the node should really be evaluated as AllConjunctsDone, but the
-	// order of evaluation is slightly off, causing too much to be evaluated.
-	// This may especially result in incorrect results when using embedded
-	// scalars.
-	// In the new evaluator, evaluation of the node is done in lookup.
-	n := c.node(x, x.X, x.Sel.IsRegular(), attempt(partial, needFieldSetKnown))
+	n := c.node(x, x.X, x.Sel.IsRegular(), combinedFlags{
+		status:    partial,
+		condition: needFieldSetKnown,
+		mode:      yield,
+	})
 	if n == emptyNode {
 		return n
 	}
@@ -1019,12 +1096,16 @@ func (x *IndexExpr) Source() ast.Node {
 
 func (x *IndexExpr) resolve(ctx *OpContext, state combinedFlags) *Vertex {
 	// TODO: support byte index.
-	// TODO: the node should really be evaluated as AllConjunctsDone, but the
-	// order of evaluation is slightly off, causing too much to be evaluated.
-	// This may especially result in incorrect results when using embedded
-	// scalars.
-	n := ctx.node(x, x.X, true, attempt(partial, needFieldSetKnown))
-	i := ctx.value(x.Index, require(partial, scalarKnown))
+	n := ctx.node(x, x.X, true, combinedFlags{
+		status:    partial,
+		condition: needFieldSetKnown,
+		mode:      yield,
+	})
+	i := ctx.value(x.Index, combinedFlags{
+		status:    partial,
+		condition: scalarKnown,
+		mode:      yield,
+	})
 	if n == emptyNode {
 		return n
 	}
@@ -1073,7 +1154,11 @@ func (x *SliceExpr) Source() ast.Node {
 func (x *SliceExpr) evaluate(c *OpContext, state combinedFlags) Value {
 	// TODO: strides
 
-	v := c.value(x.X, require(partial, fieldSetKnown))
+	v := c.value(x.X, combinedFlags{
+		status:    partial,
+		condition: fieldSetKnown,
+		mode:      yield,
+	})
 	const as = "slice index"
 
 	switch v := v.(type) {
@@ -1090,10 +1175,18 @@ func (x *SliceExpr) evaluate(c *OpContext, state combinedFlags) Value {
 			hi = uint64(len(v.Arcs))
 		)
 		if x.Lo != nil {
-			lo = c.uint64(c.value(x.Lo, require(partial, scalarKnown)), as)
+			lo = c.uint64(c.value(x.Lo, combinedFlags{
+				status:    partial,
+				condition: scalarKnown,
+				mode:      yield,
+			}), as)
 		}
 		if x.Hi != nil {
-			hi = c.uint64(c.value(x.Hi, require(partial, scalarKnown)), as)
+			hi = c.uint64(c.value(x.Hi, combinedFlags{
+				status:    partial,
+				condition: scalarKnown,
+				mode:      yield,
+			}), as)
 			if hi > uint64(len(v.Arcs)) {
 				return c.NewErrf("index %d out of range", hi)
 			}
@@ -1106,8 +1199,19 @@ func (x *SliceExpr) evaluate(c *OpContext, state combinedFlags) Value {
 		for i, a := range v.Arcs[lo:hi] {
 			label, err := MakeLabel(a.Source(), int64(i), IntLabel)
 			if err != nil {
-				c.AddBottom(&Bottom{Src: a.Source(), Err: err})
+				c.AddBottom(&Bottom{
+					Src:  a.Source(),
+					Err:  err,
+					Node: v,
+				})
 				return nil
+			}
+			if v.IsDynamic {
+				// If the list is dynamic, there is no need to recompute the
+				// arcs.
+				a.Label = label
+				n.Arcs = append(n.Arcs, a)
+				continue
 			}
 			arc := *a
 			arc.Parent = n
@@ -1123,10 +1227,18 @@ func (x *SliceExpr) evaluate(c *OpContext, state combinedFlags) Value {
 			hi = uint64(len(v.B))
 		)
 		if x.Lo != nil {
-			lo = c.uint64(c.value(x.Lo, require(partial, scalarKnown)), as)
+			lo = c.uint64(c.value(x.Lo, combinedFlags{
+				status:    partial,
+				condition: scalarKnown,
+				mode:      yield,
+			}), as)
 		}
 		if x.Hi != nil {
-			hi = c.uint64(c.value(x.Hi, require(partial, scalarKnown)), as)
+			hi = c.uint64(c.value(x.Hi, combinedFlags{
+				status:    partial,
+				condition: scalarKnown,
+				mode:      yield,
+			}), as)
 			if hi > uint64(len(v.B)) {
 				return c.NewErrf("index %d out of range", hi)
 			}
@@ -1162,7 +1274,11 @@ func (x *Interpolation) Source() ast.Node {
 func (x *Interpolation) evaluate(c *OpContext, state combinedFlags) Value {
 	buf := bytes.Buffer{}
 	for _, e := range x.Parts {
-		v := c.value(e, require(partial, scalarKnown))
+		v := c.value(e, combinedFlags{
+			status:    partial,
+			condition: scalarKnown,
+			mode:      yield,
+		})
 		if x.K == BytesKind {
 			buf.Write(c.ToBytes(v))
 		} else {
@@ -1172,6 +1288,7 @@ func (x *Interpolation) evaluate(c *OpContext, state combinedFlags) Value {
 	if err := c.Err(); err != nil {
 		err = &Bottom{
 			Code: err.Code,
+			Node: c.vertex,
 			Err:  errors.Wrapf(err.Err, pos(x), "invalid interpolation"),
 		}
 		// c.AddBottom(err)
@@ -1205,7 +1322,11 @@ func (x *UnaryExpr) evaluate(c *OpContext, state combinedFlags) Value {
 	if !c.concreteIsPossible(x.Op, x.X) {
 		return nil
 	}
-	v := c.value(x.X, require(partial, scalarKnown))
+	v := c.value(x.X, combinedFlags{
+		status:    partial,
+		condition: scalarKnown,
+		mode:      yield,
+	})
 	if isError(v) {
 		return v
 	}
@@ -1221,14 +1342,14 @@ func (x *UnaryExpr) evaluate(c *OpContext, state combinedFlags) Value {
 			f.Src = x.Src
 			return &f
 		}
-		expectedKind = NumKind
+		expectedKind = NumberKind
 
 	case AddOp:
 		if v, ok := v.(*Num); ok {
 			// TODO: wrap in thunk to save position of '+'?
 			return v
 		}
-		expectedKind = NumKind
+		expectedKind = NumberKind
 
 	case NotOp:
 		if v, ok := v.(*Bool); ok {
@@ -1274,10 +1395,10 @@ func (x *BinaryExpr) evaluate(c *OpContext, state combinedFlags) Value {
 		// to the required state. If the struct is already dynamic, we will
 		// evaluate the struct regardless to ensure that cycle reporting
 		// keeps working.
-		if env.Vertex.IsDynamic || c.inValidator > 0 {
+		if (c.inDetached == 0 && env.Vertex.IsDynamic) || c.inValidator > 0 {
 			v.Finalize(c)
 		} else {
-			v.CompleteArcs(c)
+			v.CompleteArcsOnly(c)
 		}
 
 		return v
@@ -1311,22 +1432,34 @@ func (x *BinaryExpr) evaluate(c *OpContext, state combinedFlags) Value {
 		return err
 	}
 
-	return BinOp(c, x.Op, left, right)
+	return BinOp(c, x, x.Op, left, right)
 }
 
 func (c *OpContext) validate(env *Environment, src ast.Node, x Expr, op Op, flags combinedFlags) (r Value) {
-	state := flags.vertexStatus()
+	state := flags.status
 
 	s := c.PushState(env, src)
 
 	match := op != EqualOp // non-error case
 
-	// Like value(), but retain the original, unwrapped result.
 	c.inValidator++
-	req := flags
-	req = final(state, needTasksDone)
+	// NOTE: https://cuelang.org/cl/1208898 broke an evalv2 user on Unity.
+	// For the time being, reverting the change just for evalv2 allows them
+	// to continue using the old evaluator on the latest CUE version.
+	if c.isDevVersion() {
+		// Note that evalState may call yield, so we need to balance the counter
+		// with a defer.
+		defer func() { c.inValidator-- }()
+	}
+	req := combinedFlags{
+		status:    state,
+		condition: needTasksDone,
+		mode:      finalize,
+	}
 	v := c.evalState(x, req)
-	c.inValidator--
+	if !c.isDevVersion() {
+		c.inValidator--
+	}
 	u, _ := c.getDefault(v)
 	u = Unwrap(u)
 
@@ -1350,7 +1483,11 @@ func (c *OpContext) validate(env *Environment, src ast.Node, x Expr, op Op, flag
 			return nil
 
 		case IncompleteError:
-			c.evalState(x, oldOnly(finalized))
+			c.evalState(x, combinedFlags{
+				status:    finalized,
+				condition: allKnown,
+				mode:      ignore,
+			})
 
 			// We have a nonmonotonic use of a failure. Referenced fields should
 			// not be added anymore.
@@ -1367,9 +1504,16 @@ func (c *OpContext) validate(env *Environment, src ast.Node, x Expr, op Op, flag
 		// - walk over all fields and verify that fields are not contradicting
 		//   previously marked fields.
 		//
-		v.Finalize(c)
 
+		if c.hasDepthCycle(v) {
+			// Eval V3 logic
+			c.verifyNonMonotonicResult(env, x, true)
+			match = op == EqualOp
+			break
+		}
 		if v.status == evaluatingArcs {
+			unreachableForDev(c) // Eval V2 logic
+
 			// We have a cycle, which may be an error. Cycle errors may occur
 			// in chains that are themselves not a cycle. It suffices to check
 			// for non-monotonic results at the end for this particular path.
@@ -1381,6 +1525,7 @@ func (c *OpContext) validate(env *Environment, src ast.Node, x Expr, op Op, flag
 			match = op == EqualOp
 			break
 		}
+		v.Finalize(c)
 
 		switch {
 		case !v.IsDefined(c):
@@ -1399,7 +1544,7 @@ func (c *OpContext) validate(env *Environment, src ast.Node, x Expr, op Op, flag
 		}
 
 	default:
-		if v.Kind().IsAnyOf(CompositKind) && v.Concreteness() > Concrete && state < conjuncts {
+		if v.Kind().IsAnyOf(CompositeKind) && v.Concreteness() > Concrete && state < conjuncts {
 			c.PopState(s)
 			c.AddBottom(cycle)
 			return nil
@@ -1415,7 +1560,11 @@ func (c *OpContext) validate(env *Environment, src ast.Node, x Expr, op Op, flag
 			match = op == EqualOp
 		}
 
-		c.evalState(x, require(state, needTasksDone))
+		c.evalState(x, combinedFlags{
+			status:    state,
+			condition: needTasksDone,
+			mode:      yield,
+		})
 	}
 
 	c.PopState(s)
@@ -1423,7 +1572,7 @@ func (c *OpContext) validate(env *Environment, src ast.Node, x Expr, op Op, flag
 }
 
 func isFinalError(n *Vertex) bool {
-	n = n.Indirect()
+	n = n.DerefValue()
 	if b, ok := Unwrap(n).(*Bottom); ok && b.Code < IncompleteError {
 		return true
 	}
@@ -1463,14 +1612,28 @@ func (x *CallExpr) Source() ast.Node {
 }
 
 func (x *CallExpr) evaluate(c *OpContext, state combinedFlags) Value {
-	fun := c.value(x.Fun, require(partial, concreteKnown))
-	var b *Builtin
+	call := &CallContext{
+		ctx:  c,
+		call: x,
+	}
+
+	fun := c.value(x.Fun, combinedFlags{
+		status:    partial,
+		condition: concreteKnown,
+		mode:      yield,
+	})
 	switch f := fun.(type) {
 	case *Builtin:
-		b = f
+		call.builtin = f
+		if f.RawFunc != nil {
+			if !call.builtin.checkArgs(c, pos(x), len(x.Args)) {
+				return nil
+			}
+			return f.RawFunc(call)
+		}
 
 	case *BuiltinValidator:
-		// We allow a validator that takes no arguments accept the validated
+		// We allow a validator that takes no arguments except the validated
 		// value to be called with zero arguments.
 		switch {
 		case f.Src != nil:
@@ -1482,24 +1645,57 @@ func (x *CallExpr) evaluate(c *OpContext, state combinedFlags) Value {
 			return &v
 
 		default:
-			b = f.Builtin
+			call.builtin = f.Builtin
 		}
 
 	default:
 		c.AddErrf("cannot call non-function %s (type %s)", x.Fun, kind(fun))
 		return nil
 	}
+
+	// Arguments to functions are open. This mostly matters for NonConcrete
+	// builtins.
+	saved := c.ci
+	c.ci.FromDef = false
+	c.ci.FromEmbed = false
+	defer func() {
+		c.ci.FromDef = saved.FromDef
+		c.ci.FromEmbed = saved.FromEmbed
+	}()
+
 	args := []Value{}
 	for i, a := range x.Args {
 		saved := c.errs
 		c.errs = nil
 		// XXX: XXX: clear id.closeContext per argument and remove from runTask?
 
-		runMode := state.runMode()
-		cond := state.conditions() | allAncestorsProcessed | concreteKnown
-		state = combineMode(cond, runMode).withVertexStatus(state.vertexStatus())
-
-		expr := c.value(a, state)
+		runMode := state.mode
+		cond := state.condition
+		var expr Value
+		if call.builtin.NonConcrete {
+			state = combinedFlags{
+				status:    state.status,
+				condition: cond,
+				mode:      runMode,
+			}
+			expr = c.evalState(a, state)
+		} else {
+			cond |= fieldSetKnown | concreteKnown
+			// Be sure to process disjunctions at the very least when
+			// finalizing. Requiring disjunctions earlier may lead to too eager
+			// evaluation.
+			//
+			// TODO: Ideally we would always add this flag regardless of mode.
+			if runMode == finalize {
+				cond |= disjunctionTask
+			}
+			state = combinedFlags{
+				status:    state.status,
+				condition: cond,
+				mode:      runMode,
+			}
+			expr = c.value(a, state)
+		}
 
 		switch v := expr.(type) {
 		case nil:
@@ -1522,14 +1718,17 @@ func (x *CallExpr) evaluate(c *OpContext, state combinedFlags) Value {
 	if c.HasErr() {
 		return nil
 	}
-	if b.IsValidator(len(args)) {
-		return &BuiltinValidator{x, b, args}
+	if call.builtin.IsValidator(len(args)) {
+		return &BuiltinValidator{x, call.builtin, args}
 	}
-	result := b.call(c, pos(x), false, args)
+	call.args = args
+	result := call.builtin.call(call)
 	if result == nil {
 		return nil
 	}
-	return c.evalState(result, state.withVertexStatus(partial))
+	v, ci := c.evalStateCI(result, combinedFlags{status: partial, condition: state.condition, mode: state.mode})
+	c.ci = ci
+	return v
 }
 
 // A Builtin is a value representing a native function call.
@@ -1537,7 +1736,25 @@ type Builtin struct {
 	// TODO:  make these values for better type checking.
 	Params []Param
 	Result Kind
-	Func   func(c *OpContext, args []Value) Expr
+
+	// NonConcrete should be set to true if a builtin supports non-concrete
+	// arguments. By default, all arguments are checked to be concrete.
+	NonConcrete bool
+
+	Func func(call *CallContext) Expr
+
+	// RawFunc gives low-level control to CUE's internals for builtins.
+	// It should be used when fine control over the evaluation process is
+	// needed. Note that RawFuncs are responsible for returning a Value. This
+	// gives them fine control over how exactly such value gets evaluated.
+	// A RawFunc may pass CycleInfo, errors and other information through
+	// the Context.
+	//
+	// TODO: consider merging Func and RawFunc into a single field again.
+	RawFunc func(call *CallContext) Value
+
+	// Added indicates as of which language version this builtin can be used.
+	Added string
 
 	Package Feature
 	Name    string
@@ -1562,8 +1779,11 @@ func (p Param) Default() Value {
 	return d.Values[0]
 }
 
-func (x *Builtin) WriteName(w io.Writer, c *OpContext) {
-	_, _ = fmt.Fprintf(w, "%s.%s", x.Package.StringValue(c), x.Name)
+func (x *Builtin) qualifiedName(c *OpContext) string {
+	if x.Package != InvalidLabel {
+		return x.Package.StringValue(c) + "." + x.Name
+	}
+	return x.Name
 }
 
 // Kind here represents the case where Builtin is used as a Validator.
@@ -1595,25 +1815,38 @@ func bottom(v Value) *Bottom {
 	return b
 }
 
-func (x *Builtin) call(c *OpContext, p token.Pos, validate bool, args []Value) Expr {
-	fun := x // right now always x.
-	if len(args) > len(x.Params) {
+func (x *Builtin) checkArgs(c *OpContext, p token.Pos, numArgs int) bool {
+	if numArgs > len(x.Params) {
 		c.addErrf(0, p,
 			"too many arguments in call to %v (have %d, want %d)",
-			fun, len(args), len(x.Params))
-		return nil
+			x, numArgs, len(x.Params))
+		return false
 	}
-	for i := len(args); i < len(x.Params); i++ {
-		v := x.Params[i].Default()
+	if numArgs < len(x.Params) {
+		// Assume that all subsequent params have a default as well.
+		v := x.Params[numArgs].Default()
 		if v == nil {
 			c.addErrf(0, p,
 				"not enough arguments in call to %v (have %d, want %d)",
-				fun, len(args), len(x.Params))
-			return nil
+				x, numArgs, len(x.Params))
+			return false
 		}
-		args = append(args, v)
 	}
-	for i, a := range args {
+	return true
+}
+
+func (x *Builtin) call(call *CallContext) Expr {
+	c := call.ctx
+	p := call.Pos()
+
+	fun := x // right now always x.
+	if !x.checkArgs(c, p, len(call.args)) {
+		return nil
+	}
+	for i := len(call.args); i < len(x.Params); i++ {
+		call.args = append(call.args, x.Params[i].Default())
+	}
+	for i, a := range call.args {
 		if x.Params[i].Kind() == BottomKind {
 			continue
 		}
@@ -1622,7 +1855,7 @@ func (x *Builtin) call(c *OpContext, p token.Pos, validate bool, args []Value) E
 		}
 		if k := kind(a); x.Params[i].Kind()&k == BottomKind {
 			code := EvalError
-			b, _ := args[i].(*Bottom)
+			b, _ := call.args[i].(*Bottom)
 			if b != nil {
 				code = b.Code
 			}
@@ -1637,21 +1870,33 @@ func (x *Builtin) call(c *OpContext, p token.Pos, validate bool, args []Value) E
 			x := &BinaryExpr{Op: AndOp, X: v, Y: a}
 			n := c.newInlineVertex(nil, nil, Conjunct{env, x, c.ci})
 			n.Finalize(c)
-			if _, ok := n.BaseValue.(*Bottom); ok {
+			if n.IsErr() {
 				c.addErrf(0, pos(a),
 					"cannot use %s as %s in argument %d to %v",
 					a, v, i+1, fun)
 				return nil
 			}
-			args[i] = n
+			call.args[i] = n
 		}
 	}
-	saved := c.IsValidator
-	c.IsValidator = validate
-	ret := x.Func(c, args)
-	c.IsValidator = saved
 
-	return ret
+	// Arguments to functions are open. This mostly matters for NonConcrete
+	// builtins.
+	saved := c.IsValidator
+	c.IsValidator = call.isValidator
+	ci := c.ci
+	c.ci.FromEmbed = false
+	c.ci.FromDef = false
+	defer func() {
+		c.ci.FromDef = ci.FromDef
+		c.ci.FromEmbed = ci.FromEmbed
+		c.IsValidator = saved
+	}()
+
+	if x.RawFunc != nil {
+		return x.RawFunc(call)
+	}
+	return x.Func(call)
 }
 
 func (x *Builtin) Source() ast.Node { return nil }
@@ -1689,14 +1934,27 @@ func (x *BuiltinValidator) validate(c *OpContext, v Value) *Bottom {
 	args[0] = v
 	copy(args[1:], x.Args)
 
-	return validateWithBuiltin(c, x.Pos(), x.Builtin, args)
+	call := &CallContext{
+		ctx:         c,
+		call:        x.Src,
+		builtin:     x.Builtin,
+		args:        args,
+		isValidator: true,
+	}
+
+	return validateWithBuiltin(call)
 }
 
-func validateWithBuiltin(c *OpContext, src token.Pos, b *Builtin, args []Value) *Bottom {
+func validateWithBuiltin(call *CallContext) *Bottom {
 	var severeness ErrorCode
 	var err errors.Error
 
-	res := b.call(c, src, true, args)
+	c := call.ctx
+	b := call.builtin
+	src := call.Pos()
+	arg0 := call.Value(0)
+
+	res := call.builtin.call(call)
 	switch v := res.(type) {
 	case nil:
 		return nil
@@ -1714,36 +1972,43 @@ func validateWithBuiltin(c *OpContext, src token.Pos, b *Builtin, args []Value) 
 		}
 
 	default:
-		return c.NewErrf("invalid validator %s.%s", b.Package.StringValue(c), b.Name)
-	}
-
-	// failed:
-	var buf bytes.Buffer
-	b.WriteName(&buf, c)
-	if len(args) > 1 {
-		buf.WriteString("(")
-		for i, a := range args[1:] {
-			if i > 0 {
-				_, _ = buf.WriteString(", ")
-			}
-			buf.WriteString(c.Str(a))
-		}
-		buf.WriteString(")")
+		return c.NewErrf("invalid validator %s", b.qualifiedName(c))
 	}
 
 	// If the validator returns an error and we already had an error, just
 	// return the original error.
-	if b, ok := Unwrap(args[0]).(*Bottom); ok {
+	if b, ok := Unwrap(call.Value(0)).(*Bottom); ok {
 		return b
 	}
+	// failed:
+	// TODO(mvdan): building this buffer should be part of the error format and arguments,
+	// e.g. any logic needed here can be wrapped in an [fmt.Stringer].
+	var buf bytes.Buffer
+	buf.WriteString(b.qualifiedName(c))
 
-	vErr := c.NewPosf(src, "invalid value %s (does not satisfy %s)", args[0], buf.String())
-
-	for _, v := range args {
-		vErr.AddPosition(v)
+	// Note: when the builtin accepts non-concrete arguments, omit them because
+	// they can easily be very large.
+	if !b.NonConcrete && call.NumParams() > 1 { // use NumArgs instead
+		buf.WriteString("(")
+		// TODO: use accessor instead of call.arg
+		for i, a := range call.args[1:] {
+			if i > 0 {
+				_, _ = buf.WriteString(", ")
+			}
+			buf.WriteString(c.String(a))
+		}
+		buf.WriteString(")")
 	}
 
-	return &Bottom{Code: severeness, Err: errors.Wrap(vErr, err)}
+	vErr := c.NewPosf(src, "invalid value %s (does not satisfy %s)", arg0, buf.String())
+
+	call.AddPositions(vErr)
+
+	return &Bottom{
+		Code: severeness,
+		Err:  errors.Wrap(vErr, err),
+		Node: c.vertex,
+	}
 }
 
 // A Disjunction represents a disjunction, where each disjunct may or may not
@@ -1834,6 +2099,9 @@ type Comprehension struct {
 	// The type of field as which the comprehension is added.
 	arcType ArcType
 
+	// Kind indicates the possible kind of Value.
+	kind Kind
+
 	// Only used for partial comprehensions.
 	comp   *envComprehension
 	parent *Comprehension // comprehension from which this one was derived, if any
@@ -1891,15 +2159,27 @@ func (x *ForClause) Source() ast.Node {
 }
 
 func (c *OpContext) forSource(x Expr) *Vertex {
-	state := require(conjuncts, needFieldSetKnown)
+	state := combinedFlags{
+		status:    conjuncts,
+		condition: needFieldSetKnown,
+		mode:      attemptOnly,
+	}
 
 	// TODO: always get the vertex. This allows a whole bunch of trickery
 	// down the line.
+	c.inDetached++
 	v := c.unifyNode(x, state)
+	c.inDetached--
 
 	node, ok := v.(*Vertex)
 	if ok && c.isDevVersion() {
-		node.unify(c, state.conditions(), yield)
+		// We do not request to "yield" here, but rather rely on the
+		// call-by-need behavior in combination with the freezing mechanism.
+		// TODO: this seems a bit fragile. At some point we need to make this
+		// more robust by moving to a pure call-by-need mechanism, for instance.
+		// TODO: using attemptOnly here will remove the cyclic reference error
+		// of comprehension.t1.ok (which also errors in V2),
+		node.unify(c, state.condition, finalize, true)
 	}
 
 	v, ok = c.getDefault(v)
@@ -1937,7 +2217,7 @@ func (c *OpContext) forSource(x Expr) *Vertex {
 		}
 
 	default:
-		if kind := v.Kind(); kind&StructKind != 0 {
+		if kind := v.Kind(); kind&(StructKind|ListKind) != 0 {
 			c.addErrf(IncompleteError, pos(x),
 				"cannot range over %s (incomplete type %s)", x, kind)
 			return emptyNode
@@ -1946,6 +2226,17 @@ func (c *OpContext) forSource(x Expr) *Vertex {
 			c.addErrf(0, pos(x), // TODO(error): better message.
 				"cannot range over %s (found %s, want list or struct)",
 				x.Source(), v.Kind())
+			return emptyNode
+		}
+	}
+	if c.isDevVersion() {
+		kind := v.Kind()
+		// At this point it is possible that the Vertex represents an incomplete
+		// struct or list, which is the case if it may be struct or list, but
+		// is also at least some other type, such as is the case with top.
+		if kind&(StructKind|ListKind) != 0 && kind != StructKind && kind != ListKind {
+			c.addErrf(IncompleteError, pos(x),
+				"cannot range over %s (incomplete type %s)", x, kind)
 			return emptyNode
 		}
 	}
@@ -1967,6 +2258,7 @@ func (x *ForClause) yield(s *compState) {
 				Code:     CycleError,
 				ForCycle: true,
 				Value:    n,
+				Node:     n,
 				Err:      errors.Newf(pos(x.Src), "comprehension source references itself"),
 			})
 			return
@@ -1983,7 +2275,10 @@ func (x *ForClause) yield(s *compState) {
 		}
 
 		if c.isDevVersion() {
-			c.require(a, arcTypeKnown)
+			// TODO(evalv3): See comment in StructLit.evaluate.
+			if state := a.getState(c); state != nil {
+				state.process(arcTypeKnown, attemptOnly)
+			}
 		} else {
 			if !a.isDefined() {
 				a.Finalize(c)
@@ -2010,6 +2305,7 @@ func (x *ForClause) yield(s *compState) {
 			// processing, eluding the deallocation step.
 			status:    finalized,
 			IsDynamic: true,
+			anonymous: true,
 			ArcType:   ArcMember,
 		}
 
@@ -2018,6 +2314,7 @@ func (x *ForClause) yield(s *compState) {
 				Label:     x.Value,
 				BaseValue: a,
 				IsDynamic: true,
+				anonymous: true,
 				ArcType:   ArcPending,
 			}
 			n.Arcs = append(n.Arcs, b)
@@ -2027,6 +2324,7 @@ func (x *ForClause) yield(s *compState) {
 			v := &Vertex{
 				Label:     x.Key,
 				IsDynamic: true,
+				anonymous: true,
 			}
 			key := a.Label.ToValue(c)
 			v.AddConjunct(MakeRootConjunct(c.Env(0), key))
@@ -2059,7 +2357,11 @@ func (x *IfClause) Source() ast.Node {
 
 func (x *IfClause) yield(s *compState) {
 	ctx := s.ctx
-	if ctx.BoolValue(ctx.value(x.Condition, require(s.state, scalarKnown))) {
+	if ctx.BoolValue(ctx.value(x.Condition, combinedFlags{
+		status:    s.state,
+		condition: scalarKnown,
+		mode:      yield,
+	})) {
 		s.yield(ctx.e)
 	}
 }
@@ -2086,6 +2388,7 @@ func (x *LetClause) yield(s *compState) {
 		{
 			Label:     x.Label,
 			IsDynamic: true,
+			anonymous: true,
 			Conjuncts: []Conjunct{{c.Env(0), x.Expr, c.ci}},
 		},
 	}}

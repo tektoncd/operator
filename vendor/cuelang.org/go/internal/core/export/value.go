@@ -16,6 +16,7 @@ package export
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"cuelang.org/go/cue/ast"
@@ -55,9 +56,10 @@ func (e *exporter) vertex(n *adt.Vertex) (result ast.Expr) {
 		e.popFrame(saved)
 	}()
 
-	for _, c := range n.Conjuncts {
+	n.VisitLeafConjuncts(func(c adt.Conjunct) bool {
 		e.markLets(c.Expr().Source(), s)
-	}
+		return true
+	})
 
 	switch x := n.BaseValue.(type) {
 	case nil:
@@ -85,7 +87,7 @@ func (e *exporter) vertex(n *adt.Vertex) (result ast.Expr) {
 				result = e.structComposite(n, attrs)
 			}
 
-		case !x.IsIncomplete() || len(n.Conjuncts) == 0 || e.cfg.Final:
+		case !x.IsIncomplete() || !n.HasConjuncts() || e.cfg.Final:
 			result = e.bottom(x)
 		}
 
@@ -101,13 +103,23 @@ func (e *exporter) vertex(n *adt.Vertex) (result ast.Expr) {
 	}
 	if result == nil {
 		// fall back to expression mode
-		a := []ast.Expr{}
-		for _, c := range n.Conjuncts {
+		a := []adt.Conjunct{}
+		n.VisitLeafConjuncts(func(c adt.Conjunct) bool {
+			a = append(a, c)
+			return true
+		})
+		// Use stable sort to ensure that tie breaks (for instance if elements
+		// are not associated with a position) are deterministic.
+		slices.SortStableFunc(a, cmpConjuncts)
+
+		exprs := make([]ast.Expr, 0, len(a))
+		for _, c := range a {
 			if x := e.expr(c.Env, c.Elem()); x != dummyTop {
-				a = append(a, x)
+				exprs = append(exprs, x)
 			}
 		}
-		result = ast.NewBinExpr(token.AND, a...)
+
+		result = ast.NewBinExpr(token.AND, exprs...)
 	}
 
 	if len(s.Elts) > 0 {
@@ -193,12 +205,15 @@ func (e *exporter) value(n adt.Value, a ...adt.Conjunct) (result ast.Expr) {
 			a = x.Values
 		}
 
+		slices.SortStableFunc(a, cmpLeafNodes)
+
 		for _, x := range a {
 			result = wrapBin(result, e.bareValue(x), adt.AndOp)
 		}
 
 	case *adt.Disjunction:
 		a := []ast.Expr{}
+
 		for i, v := range x.Values {
 			var expr ast.Expr
 			if e.cfg.Simplify {
@@ -244,13 +259,15 @@ func (e *exporter) bool(n *adt.Bool) (b *ast.BasicLit) {
 	return ast.NewBool(n.B)
 }
 
-func extractBasic(a []adt.Conjunct) *ast.BasicLit {
-	for _, v := range a {
-		if b, ok := v.Source().(*ast.BasicLit); ok {
-			return &ast.BasicLit{Kind: b.Kind, Value: b.Value}
+func extractBasic(a []adt.Conjunct) (lit *ast.BasicLit) {
+	adt.VisitConjuncts(a, func(c adt.Conjunct) bool {
+		if b, ok := c.Source().(*ast.BasicLit); ok {
+			lit = &ast.BasicLit{Kind: b.Kind, Value: b.Value}
+			return false
 		}
-	}
-	return nil
+		return true
+	})
+	return lit
 }
 
 func (e *exporter) num(n *adt.Num, orig []adt.Conjunct) *ast.BasicLit {
@@ -431,7 +448,7 @@ func (e *exporter) structComposite(v *adt.Vertex, attrs []*ast.Attribute) ast.Ex
 			e.inDefinition++
 		}
 
-		arc := v.Lookup(label)
+		arc := v.LookupRaw(label)
 		if arc == nil {
 			continue
 		}
@@ -445,7 +462,7 @@ func (e *exporter) structComposite(v *adt.Vertex, attrs []*ast.Attribute) ast.Ex
 
 		internal.SetConstraint(f, arc.ArcType.Token())
 
-		f.Value = e.vertex(arc)
+		f.Value = e.vertex(arc.DerefValue())
 
 		if label.IsDef() {
 			e.inDefinition--

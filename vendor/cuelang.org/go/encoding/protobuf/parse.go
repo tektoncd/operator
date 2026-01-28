@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"text/scanner"
@@ -47,7 +48,7 @@ func (s *Extractor) parse(filename string, src interface{}) (p *protoConverter, 
 		s.fileCache[filename] = result{p, err}
 	}()
 
-	b, err := source.Read(filename, src)
+	b, err := source.ReadAll(filename, src)
 	if err != nil {
 		return nil, err
 	}
@@ -260,8 +261,8 @@ func (p *protoConverter) resolve(pos scanner.Position, name string, options []*p
 	if strings.HasPrefix(name, ".") {
 		return p.resolveTopScope(pos, name[1:], options)
 	}
-	for i := len(p.scope) - 1; i > 0; i-- {
-		if m, ok := p.scope[i][name]; ok {
+	for _, scope := range slices.Backward(p.scope) {
+		if m, ok := scope[name]; ok {
 			return m.cue()
 		}
 	}

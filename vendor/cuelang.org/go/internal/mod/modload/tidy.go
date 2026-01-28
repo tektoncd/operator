@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"iter"
 	"log"
 	"maps"
 	"path"
 	"runtime"
 	"slices"
+	"strings"
 
+	"cuelang.org/go/internal/buildattr"
 	"cuelang.org/go/internal/mod/modimports"
 	"cuelang.org/go/internal/mod/modpkgload"
 	"cuelang.org/go/internal/mod/modrequirements"
@@ -47,32 +50,27 @@ type loader struct {
 // - it includes valid modules for all of its dependencies
 // - it does not include any unnecessary dependencies.
 func CheckTidy(ctx context.Context, fsys fs.FS, modRoot string, reg Registry) error {
-	_, err := tidy(ctx, fsys, modRoot, reg, "", true)
+	_, err := tidy(ctx, fsys, modRoot, reg, true)
 	return err
 }
 
 // Tidy evaluates all the requirements of the given main module, using the given
 // registry to download requirements and returns a resolved and tidied module file.
-// If there's no language version in the module file and cueVers is non-empty
-// it will be used to populate the language version field.
-func Tidy(ctx context.Context, fsys fs.FS, modRoot string, reg Registry, cueVers string) (*modfile.File, error) {
-	return tidy(ctx, fsys, modRoot, reg, cueVers, false)
+func Tidy(ctx context.Context, fsys fs.FS, modRoot string, reg Registry) (*modfile.File, error) {
+	return tidy(ctx, fsys, modRoot, reg, false)
 }
 
-func tidy(ctx context.Context, fsys fs.FS, modRoot string, reg Registry, cueVers string, checkTidy bool) (*modfile.File, error) {
-	mainModuleVersion, mf, err := readModuleFile(ctx, fsys, modRoot)
+func tidy(ctx context.Context, fsys fs.FS, modRoot string, reg Registry, checkTidy bool) (*modfile.File, error) {
+	mainModuleVersion, mf, err := readModuleFile(fsys, modRoot)
 	if err != nil {
 		return nil, err
 	}
-	if checkTidy {
-		// This is the cheapest check, so do it first.
-		if mf.Language == nil || mf.Language.Version == "" {
-			return nil, fmt.Errorf("no language version found in cue.mod/module.cue")
-		}
-	}
 	// TODO check that module path is well formed etc
-	origRs := modrequirements.NewRequirements(mf.Module, reg, mf.DepVersions(), mf.DefaultMajorVersions())
-	rootPkgPaths, err := modimports.AllImports(modimports.AllModuleFiles(fsys, modRoot))
+	origRs := modrequirements.NewRequirements(mf.QualifiedModule(), reg, mf.DepVersions(), mf.DefaultMajorVersions())
+	// Note: we can ignore build tags and the fact that we might
+	// have _tool.cue and _test.cue files, because we want to include
+	// all of those, but we do need to consider @ignore() attributes.
+	rootPkgPaths, err := modimports.AllImports(withoutIgnoredFiles(modimports.AllModuleFiles(fsys, modRoot)))
 	if err != nil {
 		return nil, err
 	}
@@ -101,18 +99,38 @@ func tidy(ctx context.Context, fsys fs.FS, modRoot string, reg Registry, cueVers
 		return nil, fmt.Errorf("cannot tidy requirements: %v", err)
 	}
 	if ld.checkTidy && !equalRequirements(origRs, rs) {
-		// TODO be more specific in this error?
-		return nil, fmt.Errorf("module is not tidy")
+		// TODO: provide a reason, perhaps in structured form rather than a string
+		return nil, &ErrModuleNotTidy{}
 	}
-	return modfileFromRequirements(mf, rs, cueVers), nil
+	return modfileFromRequirements(mf, rs), nil
+}
+
+// ErrModuleNotTidy is returned by CheckTidy when a module is not tidy,
+// such as when there are missing or unnecessary dependencies listed.
+type ErrModuleNotTidy struct {
+	// Reason summarizes why the module is not tidy.
+	Reason string
+}
+
+func (e ErrModuleNotTidy) Error() string {
+	if e.Reason == "" {
+		return "module is not tidy"
+	}
+	return "module is not tidy: " + e.Reason
 }
 
 func equalRequirements(rs0, rs1 *modrequirements.Requirements) bool {
-	return slices.Equal(rs0.RootModules(), rs1.RootModules()) &&
+	// Note that rs1.RootModules may include the unversioned local module
+	// if the current module imports any packages under cue.mod/*/.
+	// In such a case we want to skip over the local module when comparing,
+	// just like modfileFromRequirements does when filling [modfile.File.Deps].
+	// Note that we clone the slice to not modify rs1's internal slice in-place.
+	rs1RootMods := slices.DeleteFunc(slices.Clone(rs1.RootModules()), module.Version.IsLocal)
+	return slices.Equal(rs0.RootModules(), rs1RootMods) &&
 		maps.Equal(rs0.DefaultMajorVersions(), rs1.DefaultMajorVersions())
 }
 
-func readModuleFile(ctx context.Context, fsys fs.FS, modRoot string) (module.Version, *modfile.File, error) {
+func readModuleFile(fsys fs.FS, modRoot string) (module.Version, *modfile.File, error) {
 	modFilePath := path.Join(modRoot, "cue.mod/module.cue")
 	data, err := fs.ReadFile(fsys, modFilePath)
 	if err != nil {
@@ -122,23 +140,24 @@ func readModuleFile(ctx context.Context, fsys fs.FS, modRoot string) (module.Ver
 	if err != nil {
 		return module.Version{}, nil, err
 	}
-	mainModuleVersion, err := module.NewVersion(mf.Module, "")
+	mainModuleVersion, err := module.NewVersion(mf.QualifiedModule(), "")
 	if err != nil {
-		return module.Version{}, nil, fmt.Errorf("invalid module path %q: %v", mf.Module, err)
+		return module.Version{}, nil, fmt.Errorf("%s: invalid module path: %v", modFilePath, err)
 	}
 	return mainModuleVersion, mf, nil
 }
 
-func modfileFromRequirements(old *modfile.File, rs *modrequirements.Requirements, cueVers string) *modfile.File {
+func modfileFromRequirements(old *modfile.File, rs *modrequirements.Requirements) *modfile.File {
+	// TODO it would be nice to have some way of automatically including new
+	// fields by default when they're added to modfile.File, but we don't
+	// want to just copy the entirety of old because that includes
+	// private fields too.
 	mf := &modfile.File{
 		Module:   old.Module,
 		Language: old.Language,
 		Deps:     make(map[string]*modfile.Dep),
-	}
-	if cueVers != "" && (mf.Language == nil || mf.Language.Version == "") {
-		mf.Language = &modfile.Language{
-			Version: cueVers,
-		}
+		Source:   old.Source,
+		Custom:   old.Custom,
 	}
 	defaults := rs.DefaultMajorVersions()
 	for _, v := range rs.RootModules() {
@@ -153,15 +172,53 @@ func modfileFromRequirements(old *modfile.File, rs *modrequirements.Requirements
 	return mf
 }
 
+// shouldIncludePkgFile reports whether a file from a package should be included
+// for dependency-analysis purposes.
+//
+// In general a file should always be considered unless it's a _tool.cue file
+// that's not in the main module.
+func (ld *loader) shouldIncludePkgFile(pkgPath string, mod module.Version, fsys fs.FS, mf modimports.ModuleFile) (_ok bool) {
+	if buildattr.ShouldIgnoreFile(mf.Syntax) {
+		// The file is marked to be explicitly ignored.
+		return false
+	}
+	if mod.Path() == ld.mainModule.Path() {
+		// All files in the main module are considered.
+		return true
+	}
+	if strings.HasSuffix(mf.FilePath, "_tool.cue") || strings.HasSuffix(mf.FilePath, "_test.cue") {
+		// tool and test files are only considered when they are part of the main module.
+		return false
+	}
+	ok, _, err := buildattr.ShouldBuildFile(mf.Syntax, func(key string) bool {
+		// Keys of build attributes are considered always false when
+		// outside the main module.
+		return false
+	})
+	if err != nil {
+		return false
+	}
+	return ok
+}
+
 func (ld *loader) resolveDependencies(ctx context.Context, rootPkgPaths []string, rs *modrequirements.Requirements) (*modrequirements.Requirements, *modpkgload.Packages, error) {
 	for {
 		logf("---- LOADING from requirements %q", rs.RootModules())
-		pkgs := modpkgload.LoadPackages(ctx, ld.mainModule.Path(), ld.mainModuleLoc, rs, ld.registry, rootPkgPaths)
+		pkgs := modpkgload.LoadPackages(ctx, ld.mainModule.Path(), ld.mainModuleLoc, rs, ld.registry, rootPkgPaths, ld.shouldIncludePkgFile)
 		if ld.checkTidy {
 			for _, pkg := range pkgs.All() {
-				if err := pkg.Error(); err != nil {
-					return nil, nil, fmt.Errorf("module is not tidy: %v", err)
+				err := pkg.Error()
+				if err == nil {
+					continue
 				}
+				missingErr := new(modpkgload.ImportMissingError)
+				// "cannot find module providing package P" is confusing here,
+				// as checkTidy simply points out missing dependencies without fetching them.
+				if errors.As(err, &missingErr) {
+					err = &ErrModuleNotTidy{Reason: fmt.Sprintf(
+						"missing dependency providing package %s", missingErr.Path)}
+				}
+				return nil, nil, err
 			}
 			// All packages could be loaded OK so there are no new
 			// dependencies to be resolved and nothing to do.
@@ -185,13 +242,10 @@ func (ld *loader) resolveDependencies(ctx context.Context, rootPkgPaths []string
 			logf("dependencies are stable at %q", rs.RootModules())
 			return rs, pkgs, nil
 		}
-		toAdd := make([]module.Version, 0, len(modAddedBy))
-		// TODO use maps.Keys when we can.
 		for m, p := range modAddedBy {
-			logf("added: %v (by %v)", modAddedBy, p.ImportPath())
-			toAdd = append(toAdd, m)
+			logf("added: %v (by %v)", m, p.ImportPath())
 		}
-		module.Sort(toAdd) // to make errors deterministic
+		toAdd := slices.SortedFunc(maps.Keys(modAddedBy), module.Version.Compare) // to make errors deterministic
 		oldRs := rs
 		var err error
 		rs, err = ld.updateRoots(ctx, rs, pkgs, toAdd)
@@ -353,7 +407,7 @@ func (ld *loader) updateRoots(ctx context.Context, rs *modrequirements.Requireme
 		}
 	}
 	if needSort {
-		module.Sort(roots)
+		slices.SortFunc(roots, module.Version.Compare)
 	}
 
 	// "Each root appears only once, at the selected version of its path ….”
@@ -471,7 +525,6 @@ func (ld *loader) resolveMissingImports(ctx context.Context, pkgs *modpkgload.Pa
 	var pkgMods []pkgMod
 	work := par.NewQueue(runtime.GOMAXPROCS(0))
 	for _, pkg := range pkgs.All() {
-		pkg := pkg
 		if pkg.Error() == nil {
 			continue
 		}
@@ -511,10 +564,7 @@ func (ld *loader) resolveMissingImports(ctx context.Context, pkgs *modpkgload.Pa
 	<-work.Idle()
 
 	modAddedBy = map[module.Version]*modpkgload.Package{}
-	defaultMajorVersions = make(map[string]string)
-	for m, v := range rs.DefaultMajorVersions() {
-		defaultMajorVersions[m] = v
-	}
+	defaultMajorVersions = maps.Clone(rs.DefaultMajorVersions())
 	for _, pm := range pkgMods {
 		pkg, mods, needsDefault := pm.pkg, *pm.mods, *pm.needsDefault
 		for _, mod := range mods {
@@ -578,7 +628,7 @@ func (ld *loader) tidyRoots(ctx context.Context, old *modrequirements.Requiremen
 		queue = append(queue, pkg)
 		queued[pkg] = true
 	}
-	module.Sort(roots)
+	slices.SortFunc(roots, module.Version.Compare)
 	tidy := modrequirements.NewRequirements(ld.mainModule.Path(), ld.registry, roots, old.DefaultMajorVersions())
 
 	for len(queue) > 0 {
@@ -610,7 +660,7 @@ func (ld *loader) tidyRoots(ctx context.Context, old *modrequirements.Requiremen
 		}
 
 		if tidyRoots := tidy.RootModules(); len(roots) > len(tidyRoots) {
-			module.Sort(roots)
+			slices.SortFunc(roots, module.Version.Compare)
 			tidy = modrequirements.NewRequirements(ld.mainModule.Path(), ld.registry, roots, tidy.DefaultMajorVersions())
 		}
 	}
@@ -634,7 +684,6 @@ func (ld *loader) spotCheckRoots(ctx context.Context, rs *modrequirements.Requir
 
 	work := par.NewQueue(runtime.GOMAXPROCS(0))
 	for m := range mods {
-		m := m
 		work.Add(func() {
 			if ctx.Err() != nil {
 				return
@@ -663,6 +712,19 @@ func (ld *loader) spotCheckRoots(ctx context.Context, rs *modrequirements.Requir
 	}
 
 	return true
+}
+
+func withoutIgnoredFiles(modFiles iter.Seq2[modimports.ModuleFile, error]) iter.Seq2[modimports.ModuleFile, error] {
+	return func(yield func(modimports.ModuleFile, error) bool) {
+		for mf, err := range modFiles {
+			if err == nil && buildattr.ShouldIgnoreFile(mf.Syntax) {
+				continue
+			}
+			if !yield(mf, err) {
+				break
+			}
+		}
+	}
 }
 
 func logf(f string, a ...any) {

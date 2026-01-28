@@ -25,6 +25,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -35,6 +36,7 @@ import (
 	"cuelabs.dev/go/oci/ociregistry"
 	"cuelabs.dev/go/oci/ociregistry/internal/ocirequest"
 	"cuelabs.dev/go/oci/ociregistry/ociauth"
+	"cuelabs.dev/go/oci/ociregistry/ociref"
 )
 
 // debug enables logging.
@@ -124,18 +126,25 @@ type client struct {
 	listPageSize int
 }
 
+type descriptorRequired byte
+
+const (
+	requireSize descriptorRequired = 1 << iota
+	requireDigest
+)
+
 // descriptorFromResponse tries to form a descriptor from an HTTP response,
 // filling in the Digest field using knownDigest if it's not present.
 //
 // Note: this implies that the Digest field will be empty if there is no
 // digest in the response and knownDigest is empty.
-func descriptorFromResponse(resp *http.Response, knownDigest digest.Digest, requireSize bool) (ociregistry.Descriptor, error) {
+func descriptorFromResponse(resp *http.Response, knownDigest digest.Digest, require descriptorRequired) (ociregistry.Descriptor, error) {
 	contentType := resp.Header.Get("Content-Type")
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
 	size := int64(0)
-	if requireSize {
+	if (require & requireSize) != 0 {
 		if resp.StatusCode == http.StatusPartialContent {
 			contentRange := resp.Header.Get("Content-Range")
 			if contentRange == "" {
@@ -159,11 +168,14 @@ func descriptorFromResponse(resp *http.Response, knownDigest digest.Digest, requ
 	}
 	digest := digest.Digest(resp.Header.Get("Docker-Content-Digest"))
 	if digest != "" {
-		if !ociregistry.IsValidDigest(string(digest)) {
+		if !ociref.IsValidDigest(string(digest)) {
 			return ociregistry.Descriptor{}, fmt.Errorf("bad digest %q found in response", digest)
 		}
 	} else {
 		digest = knownDigest
+	}
+	if (require&requireDigest) != 0 && digest == "" {
+		return ociregistry.Descriptor{}, fmt.Errorf("no digest found in response")
 	}
 	return ociregistry.Descriptor{
 		Digest:    digest,
@@ -313,10 +325,8 @@ func (c *client) do(req *http.Request, okStatuses ...int) (*http.Response, error
 	if len(okStatuses) == 0 && resp.StatusCode == http.StatusOK {
 		return resp, nil
 	}
-	for _, status := range okStatuses {
-		if resp.StatusCode == status {
-			return resp, nil
-		}
+	if slices.Contains(okStatuses, resp.StatusCode) {
+		return resp, nil
 	}
 	defer resp.Body.Close()
 	if !isOKStatus(resp.StatusCode) {

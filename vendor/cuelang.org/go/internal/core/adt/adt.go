@@ -39,7 +39,11 @@ func Resolve(ctx *OpContext, c Conjunct) *Vertex {
 		v = x
 
 	case Resolver:
-		r, err := ctx.resolveState(c, x, attempt(finalized, allKnown))
+		r, err := ctx.resolveState(c, x, combinedFlags{
+			status:    finalized,
+			condition: allKnown,
+			mode:      attemptOnly,
+		})
 		if err != nil {
 			v = err
 			break
@@ -60,7 +64,7 @@ func Resolve(ctx *OpContext, c Conjunct) *Vertex {
 	return ToVertex(v)
 }
 
-// A Node is any abstract data type representing an value or expression.
+// A Node is any abstract data type representing a value or expression.
 type Node interface {
 	Source() ast.Node
 	node() // enforce internal.

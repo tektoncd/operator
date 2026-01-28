@@ -2,9 +2,8 @@ package ociauth
 
 import (
 	"math/bits"
+	"slices"
 	"strings"
-
-	"cuelabs.dev/go/oci/ociregistry/internal/exp/slices"
 )
 
 // knownAction represents an action that we know about

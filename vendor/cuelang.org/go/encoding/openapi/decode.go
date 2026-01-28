@@ -15,6 +15,7 @@
 package openapi
 
 import (
+	"fmt"
 	"strings"
 
 	"cuelang.org/go/cue"
@@ -41,18 +42,31 @@ func Extract(data cue.InstanceOrValue, c *Config) (*ast.File, error) {
 		}
 	}
 
-	js, err := jsonschema.Extract(data, &jsonschema.Config{
-		Root: oapiSchemas,
-		Map:  openAPIMapping,
-	})
+	v := data.Value()
+	versionValue := v.LookupPath(cue.MakePath(cue.Str("openapi")))
+	if versionValue.Err() != nil {
+		return nil, fmt.Errorf("openapi field is required but not found")
+	}
+	version, err := versionValue.String()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid openapi field (must be string): %v", err)
+	}
+	// A simple prefix match is probably OK for now, following
+	// the same logic used by internal/encoding.isOpenAPI.
+	// The specification says that the patch version should be disregarded:
+	// https://swagger.io/specification/v3/
+	var schemaVersion jsonschema.Version
+	switch {
+	case strings.HasPrefix(version, "3.0."):
+		schemaVersion = jsonschema.VersionOpenAPI
+	case strings.HasPrefix(version, "3.1."):
+		schemaVersion = jsonschema.VersionDraft2020_12
+	default:
+		return nil, fmt.Errorf("unknown OpenAPI version %q", version)
 	}
 
-	v := data.Value()
-
-	doc, _ := v.Lookup("info", "title").String() // Required
-	if s, _ := v.Lookup("info", "description").String(); s != "" {
+	doc, _ := v.LookupPath(cue.MakePath(cue.Str("info"), cue.Str("title"))).String() // Required
+	if s, _ := v.LookupPath(cue.MakePath(cue.Str("info"), cue.Str("description"))).String(); s != "" {
 		doc += "\n\n" + s
 	}
 	cg := internal.NewComment(true, doc)
@@ -61,10 +75,21 @@ func Extract(data cue.InstanceOrValue, c *Config) (*ast.File, error) {
 		p := &ast.Package{Name: ast.NewIdent(c.PkgName)}
 		p.AddComment(cg)
 		add(p)
-	} else {
+	} else if cg != nil {
 		add(cg)
 	}
 
+	js, err := jsonschema.Extract(data, &jsonschema.Config{
+		Root:           oapiSchemas,
+		Map:            openAPIMapping,
+		DefaultVersion: schemaVersion,
+		StrictFeatures: c.StrictFeatures,
+		// OpenAPI 3.0 is stricter than JSON Schema about allowed keywords.
+		StrictKeywords: schemaVersion == jsonschema.VersionOpenAPI || c.StrictKeywords,
+	})
+	if err != nil {
+		return nil, err
+	}
 	preamble := js.Preamble()
 	body := js.Decls[len(preamble):]
 	for _, d := range preamble {
@@ -84,7 +109,7 @@ func Extract(data cue.InstanceOrValue, c *Config) (*ast.File, error) {
 	// 	add(internal.NewAttr("openapi", "version="+ version))
 	// }
 
-	if info := v.Lookup("info"); info.Exists() {
+	if info := v.LookupPath(cue.MakePath(cue.Str("info"))); info.Exists() {
 		decls := []interface{}{}
 		if st, ok := info.Syntax().(*ast.StructLit); ok {
 			// Remove title.

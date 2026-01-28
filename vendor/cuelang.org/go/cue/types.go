@@ -21,6 +21,7 @@ import (
 	"io"
 	"math"
 	"math/big"
+	"slices"
 	"strings"
 
 	"github.com/cockroachdb/apd/v3"
@@ -33,11 +34,9 @@ import (
 	"cuelang.org/go/internal/core/adt"
 	"cuelang.org/go/internal/core/compile"
 	"cuelang.org/go/internal/core/convert"
-	"cuelang.org/go/internal/core/eval"
 	"cuelang.org/go/internal/core/export"
 	"cuelang.org/go/internal/core/runtime"
 	"cuelang.org/go/internal/core/subsume"
-	"cuelang.org/go/internal/core/validate"
 	internaljson "cuelang.org/go/internal/encoding/json"
 	"cuelang.org/go/internal/types"
 )
@@ -79,7 +78,7 @@ const (
 	// Kind.String to indicate NumberKind.
 
 	// NumberKind represents any kind of number.
-	NumberKind Kind = IntKind | FloatKind
+	NumberKind Kind = adt.NumberKind
 
 	// TopKind represents the top value.
 	TopKind Kind = adt.TopKind
@@ -115,7 +114,7 @@ func (o *hiddenStructValue) at(i int) *adt.Vertex {
 	return o.arcs[i]
 }
 
-// Lookup reports the field for the given key. The returned Value is invalid
+// Lookup reports the field for the given key. The returned [Value] is invalid
 // if it does not exist.
 func (o *hiddenStructValue) Lookup(key string) Value {
 	f := o.v.idx.StrLabel(key)
@@ -127,7 +126,7 @@ func (o *hiddenStructValue) Lookup(key string) Value {
 		}
 	}
 	if i == len {
-		x := mkErr(o.v.idx, o.obj, 0, "field not found: %v", key)
+		x := mkErr(o.obj, 0, "field not found: %v", key)
 		x.NotExists = true
 		// TODO: more specifically we should test whether the values that
 		// are addressable from the root of the configuration can support the
@@ -141,24 +140,24 @@ func (o *hiddenStructValue) Lookup(key string) Value {
 	return newChildValue(o, i)
 }
 
-// MarshalJSON returns a valid JSON encoding or reports an error if any of the
+// appendJSON appends a valid JSON encoding or reports an error if any of the
 // fields is invalid.
-func (o *structValue) marshalJSON() (b []byte, err errors.Error) {
+func (o *structValue) appendJSON(b []byte) ([]byte, error) {
 	b = append(b, '{')
 	n := o.Len()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		k, v := o.At(i)
+		// Do not use json.Marshal as it escapes HTML.
 		s, err := internaljson.Marshal(k)
 		if err != nil {
-			return nil, unwrapJSONError(err)
+			return nil, err
 		}
 		b = append(b, s...)
 		b = append(b, ':')
-		bb, err := internaljson.Marshal(v)
+		b, err = v.appendJSON(o.ctx, b)
 		if err != nil {
-			return nil, unwrapJSONError(err)
+			return nil, err
 		}
-		b = append(b, bb...)
 		if i < n-1 {
 			b = append(b, ',')
 		}
@@ -180,7 +179,7 @@ func toMarshalErr(v Value, b *adt.Bottom) error {
 
 func marshalErrf(v Value, src adt.Node, code adt.ErrorCode, msg string, args ...interface{}) error {
 	arguments := append([]interface{}{code, msg}, args...)
-	b := mkErr(v.idx, src, arguments...)
+	b := mkErr(src, arguments...)
 	return toMarshalErr(v, b)
 }
 
@@ -223,8 +222,8 @@ type Iterator struct {
 
 type hiddenIterator = Iterator
 
-// Next advances the iterator to the next value and reports whether there was
-// any. It must be called before the first call to Value or Key.
+// Next advances the iterator to the next value and reports whether there was any.
+// It must be called before the first call to [Iterator.Value] or [Iterator.Selector].
 func (i *Iterator) Next() bool {
 	if i.p >= len(i.arcs) {
 		i.cur = Value{}
@@ -233,15 +232,15 @@ func (i *Iterator) Next() bool {
 	arc := i.arcs[i.p]
 	arc.Finalize(i.ctx)
 	p := linkParent(i.val.parent_, i.val.v, arc)
-	i.cur = makeValue(i.val.idx, arc, p)
 	i.f = arc.Label
 	i.arcType = arc.ArcType
+	i.cur = makeValue(i.val.idx, arc, p)
 	i.p++
 	return true
 }
 
-// Value returns the current value in the list. It will panic if Next advanced
-// past the last entry.
+// Value returns the current value in the list.
+// It will panic if [Iterator.Next] advanced past the last entry.
 func (i *Iterator) Value() Value {
 	return i.cur
 }
@@ -259,20 +258,15 @@ func (i *Iterator) Selector() Selector {
 // Label reports the label of the value if i iterates over struct fields and ""
 // otherwise.
 //
-// Slated to be deprecated: use i.Selector().String(). Note that this will give
-// more accurate string representations.
+// Deprecated: use [Iterator.Selector] with methods like
+// [Selector.Unquoted] or [Selector.String] depending on whether or not
+// you are only dealing with regular fields, whose labels are always [StringLabel].
+// Note that this will give more accurate string representations.
 func (i *hiddenIterator) Label() string {
 	if i.f == 0 {
 		return ""
 	}
 	return i.idx.LabelStr(i.f)
-}
-
-// IsHidden reports if a field is hidden from the data model.
-//
-// Deprecated: use i.Selector().PkgPath() != ""
-func (i *hiddenIterator) IsHidden() bool {
-	return i.f.IsHidden()
 }
 
 // IsOptional reports if a field is optional.
@@ -285,24 +279,17 @@ func (i *Iterator) FieldType() SelectorType {
 	return featureToSelType(i.f, i.arcType)
 }
 
-// IsDefinition reports if a field is a definition.
-//
-// Deprecated: use i.Selector().IsDefinition()
-func (i *hiddenIterator) IsDefinition() bool {
-	return i.f.IsDef()
-}
-
-// marshalJSON iterates over the list and generates JSON output. HasNext
+// listAppendJSON iterates over the list and generates JSON output. HasNext
 // will return false after this operation.
-func marshalList(l *Iterator) (b []byte, err errors.Error) {
+func listAppendJSON(b []byte, l *Iterator) ([]byte, error) {
 	b = append(b, '[')
 	if l.Next() {
 		for i := 0; ; i++ {
-			x, err := internaljson.Marshal(l.Value())
+			var err error
+			b, err = l.Value().appendJSON(l.ctx, b)
 			if err != nil {
-				return nil, unwrapJSONError(err)
+				return nil, err
 			}
-			b = append(b, x...)
 			if !l.Next() {
 				break
 			}
@@ -332,7 +319,7 @@ func (v Value) getNum(k adt.Kind) (*adt.Num, errors.Error) {
 // 200 and exp == -2. Calling MantExp with a nil argument is an efficient way to
 // get the exponent of the receiver.
 func (v Value) MantExp(mant *big.Int) (exp int, err error) {
-	n, err := v.getNum(adt.NumKind)
+	n, err := v.getNum(adt.NumberKind)
 	if err != nil {
 		return 0, err
 	}
@@ -351,7 +338,7 @@ func (v Value) MantExp(mant *big.Int) (exp int, err error) {
 // Decimal is for internal use only. The Decimal type that is returned is
 // subject to change.
 func (v hiddenValue) Decimal() (d *internal.Decimal, err error) {
-	n, err := v.getNum(adt.NumKind)
+	n, err := v.getNum(adt.NumberKind)
 	if err != nil {
 		return nil, err
 	}
@@ -372,7 +359,7 @@ func (v Value) AppendInt(buf []byte, base int) ([]byte, error) {
 // AppendFloat appends to buf the string form of the floating-point number x.
 // It returns an error if v is not a number.
 func (v Value) AppendFloat(buf []byte, fmt byte, prec int) ([]byte, error) {
-	n, err := v.getNum(adt.NumKind)
+	n, err := v.getNum(adt.NumberKind)
 	if err != nil {
 		return nil, err
 	}
@@ -468,23 +455,6 @@ func (v Value) Uint64() (uint64, error) {
 	return i, nil
 }
 
-// trimZeros trims 0's for better JSON representations.
-func trimZeros(s string) string {
-	n1 := len(s)
-	s2 := strings.TrimRight(s, "0")
-	n2 := len(s2)
-	if p := strings.IndexByte(s2, '.'); p != -1 {
-		if p == n2-1 {
-			return s[:len(s2)+1]
-		}
-		return s2
-	}
-	if n1-n2 <= 4 {
-		return s
-	}
-	return fmt.Sprint(s2, "e+", n1-n2)
-}
-
 var (
 	smallestPosFloat64 *apd.Decimal
 	smallestNegFloat64 *apd.Decimal
@@ -520,6 +490,24 @@ func init() {
 	}
 }
 
+// Float returns a big.Float nearest to x. It reports an error if v is
+// not a number. If a non-nil *Float argument f is provided, Float stores the result in f
+// instead of allocating a new Float.
+func (v Value) Float(f *big.Float) (*big.Float, error) {
+	var err error
+
+	n, err := v.getNum(adt.NumberKind)
+	if err != nil {
+		return nil, err
+	}
+	if f == nil {
+		f = &big.Float{}
+	}
+
+	f, _, err = f.Parse(n.X.String(), 0)
+	return f, err
+}
+
 // Float64 returns the float64 value nearest to x. It reports an error if v is
 // not a number. If x is too small to be represented by a float64 (|x| <
 // math.SmallestNonzeroFloat64), the result is (0, ErrBelow) or (-0, ErrAbove),
@@ -527,7 +515,7 @@ func init() {
 // by a float64 (|x| > math.MaxFloat64), the result is (+Inf, ErrAbove) or
 // (-Inf, ErrBelow), depending on the sign of x.
 func (v Value) Float64() (float64, error) {
-	n, err := v.getNum(adt.NumKind)
+	n, err := v.getNum(adt.NumberKind)
 	if err != nil {
 		return 0, err
 	}
@@ -641,11 +629,16 @@ func newChildValue(o *structValue, i int) Value {
 // otherwise.
 func Dereference(v Value) Value {
 	n := v.v
-	if n == nil || len(n.Conjuncts) != 1 {
+	if n == nil {
 		return v
 	}
 
-	env, expr := n.Conjuncts[0].EnvExpr()
+	c, count := n.SingleConjunct()
+	if count != 1 {
+		return v
+	}
+
+	env, expr := c.EnvExpr()
 
 	// TODO: consider supporting unwrapping of structs or comprehensions around
 	// a single embedded reference.
@@ -654,7 +647,7 @@ func Dereference(v Value) Value {
 		return v
 	}
 
-	c := adt.MakeRootConjunct(env, expr)
+	c = adt.MakeRootConjunct(env, expr)
 
 	ctx := v.ctx()
 	n, b := ctx.Resolve(c, r)
@@ -708,7 +701,7 @@ func remakeValue(base Value, env *adt.Environment, v adt.Expr) Value {
 	return makeChildValue(base.parent(), n)
 }
 
-func remakeFinal(base Value, env *adt.Environment, v adt.Value) Value {
+func remakeFinal(base Value, v adt.Value) Value {
 	n := &adt.Vertex{Parent: base.v.Parent, Label: base.v.Label, BaseValue: v}
 	n.ForceDone()
 	return makeChildValue(base.parent(), n)
@@ -739,138 +732,13 @@ func (v Value) Default() (Value, bool) {
 		return v, false
 	}
 
-	d := v.v.Default()
+	x := v.v.DerefValue()
+	d := x.Default()
+	isDefault := d != x
 	if d == v.v {
 		return v, false
 	}
-	return makeValue(v.idx, d, v.parent_), true
-
-	// d, ok := v.v.Value.(*adt.Disjunction)
-	// if !ok {
-	// 	return v, false
-	// }
-
-	// var w *adt.Vertex
-
-	// switch d.NumDefaults {
-	// case 0:
-	// 	return v, false
-
-	// case 1:
-	// 	w = d.Values[0]
-
-	// default:
-	// 	x := *v.v
-	// 	x.Value = &adt.Disjunction{
-	// 		Src:         d.Src,
-	// 		Values:      d.Values[:d.NumDefaults],
-	// 		NumDefaults: 0,
-	// 	}
-	// 	w = &x
-	// }
-
-	// w.Conjuncts = nil
-	// for _, c := range v.v.Conjuncts {
-	// 	// TODO: preserve field information.
-	// 	expr, _ := stripNonDefaults(c.Expr())
-	// 	w.AddConjunct(adt.MakeConjunct(c.Env, expr))
-	// }
-
-	// return makeValue(v.idx, w), true
-
-	// if !stripped {
-	// 	return v, false
-	// }
-
-	// n := *v.v
-	// n.Conjuncts = conjuncts
-	// return Value{v.idx, &n}, true
-
-	// isDefault := false
-	// for _, c := range v.v.Conjuncts {
-	// 	if hasDisjunction(c.Expr()) {
-	// 		isDefault = true
-	// 		break
-	// 	}
-	// }
-
-	// if !isDefault {
-	// 	return v, false
-	// }
-
-	// TODO: record expanded disjunctions in output.
-	// - Rename Disjunction to DisjunctionExpr
-	// - Introduce Disjuncts with Values.
-	// - In Expr introduce Star
-	// - Don't pick default by default?
-
-	// Evaluate the value.
-	// 	x := eval.FinalizeValue(v.idx.Runtime, v.v)
-	// 	if b, _ := x.Value.(*adt.Bottom); b != nil { // && b.IsIncomplete() {
-	// 		return v, false
-	// 	}
-	// 	// Finalize and return here.
-	// 	return Value{v.idx, x}, isDefault
-}
-
-// TODO: this should go: record preexpanded disjunctions in Vertex.
-func hasDisjunction(expr adt.Expr) bool {
-	switch x := expr.(type) {
-	case *adt.DisjunctionExpr:
-		return true
-	case *adt.Conjunction:
-		for _, v := range x.Values {
-			if hasDisjunction(v) {
-				return true
-			}
-		}
-	case *adt.BinaryExpr:
-		switch x.Op {
-		case adt.OrOp:
-			return true
-		case adt.AndOp:
-			return hasDisjunction(x.X) || hasDisjunction(x.Y)
-		}
-	}
-	return false
-}
-
-// TODO: this should go: record preexpanded disjunctions in Vertex.
-func stripNonDefaults(expr adt.Expr) (r adt.Expr, stripped bool) {
-	switch x := expr.(type) {
-	case *adt.DisjunctionExpr:
-		if !x.HasDefaults {
-			return x, false
-		}
-		d := *x
-		d.Values = []adt.Disjunct{}
-		for _, v := range x.Values {
-			if v.Default {
-				d.Values = append(d.Values, v)
-			}
-		}
-		if len(d.Values) == 1 {
-			return d.Values[0].Val, true
-		}
-		return &d, true
-
-	case *adt.BinaryExpr:
-		if x.Op != adt.AndOp {
-			return x, false
-		}
-		a, sa := stripNonDefaults(x.X)
-		b, sb := stripNonDefaults(x.Y)
-		if sa || sb {
-			bin := *x
-			bin.X = a
-			bin.Y = b
-			return &bin, true
-		}
-		return x, false
-
-	default:
-		return x, false
-	}
+	return makeValue(v.idx, d, v.parent_), isDefault
 }
 
 // Label reports he label used to obtain this value from the enclosing struct.
@@ -891,12 +759,9 @@ func (v Value) Kind() Kind {
 	if v.v == nil {
 		return BottomKind
 	}
-	c := v.v.BaseValue
-	if !v.v.IsConcrete() {
-		return BottomKind
-	}
-	// TODO: perhaps we should not consider open lists as "incomplete".
-	if v.IncompleteKind() == adt.ListKind && !v.v.IsClosedList() {
+	w := v.v.DerefValue()
+	c := w.BaseValue
+	if !w.IsConcrete() {
 		return BottomKind
 	}
 	return c.Kind()
@@ -912,19 +777,18 @@ func (v Value) IncompleteKind() Kind {
 
 // MarshalJSON marshalls this value into valid JSON.
 func (v Value) MarshalJSON() (b []byte, err error) {
-	b, err = v.marshalJSON()
+	b, err = v.appendJSON(v.ctx(), nil)
 	if err != nil {
 		return nil, unwrapJSONError(err)
 	}
 	return b, nil
 }
 
-func (v Value) marshalJSON() (b []byte, err error) {
+func (v Value) appendJSON(ctx *adt.OpContext, b []byte) ([]byte, error) {
 	v, _ = v.Default()
 	if v.v == nil {
-		return internaljson.Marshal(nil)
+		return append(b, "null"...), nil
 	}
-	ctx := newContext(v.idx)
 	x := v.eval(ctx)
 
 	if _, ok := x.(adt.Resolver); ok {
@@ -937,26 +801,35 @@ func (v Value) marshalJSON() (b []byte, err error) {
 	// TODO: implement marshalles in value.
 	switch k := x.Kind(); k {
 	case adt.NullKind:
-		return internaljson.Marshal(nil)
+		return append(b, "null"...), nil
 	case adt.BoolKind:
-		return internaljson.Marshal(x.(*adt.Bool).B)
-	case adt.IntKind, adt.FloatKind, adt.NumKind:
-		b, err := x.(*adt.Num).X.MarshalText()
-		b = bytes.TrimLeft(b, "+")
-		return b, err
+		b2, err := json.Marshal(x.(*adt.Bool).B)
+		return append(b, b2...), err
+	case adt.IntKind, adt.FloatKind, adt.NumberKind:
+		// [apd.Decimal] offers no [json.Marshaler] method,
+		// however the "G" formatting appears to result in valid JSON
+		// for any valid CUE number that we've come across so far.
+		// Upstream also rejected adding JSON methods in favor of [encoding.TextMarshaler].
+		//
+		// As an optimization, use the append-like API directly which is equivalent to
+		// [apd.Decimal.MarshalText], allowing us to avoid extra copies.
+		return x.(*adt.Num).X.Append(b, 'G'), nil
 	case adt.StringKind:
-		return internaljson.Marshal(x.(*adt.String).Str)
+		// Do not use json.Marshal as it escapes HTML.
+		b2, err := internaljson.Marshal(x.(*adt.String).Str)
+		return append(b, b2...), err
 	case adt.BytesKind:
-		return internaljson.Marshal(x.(*adt.Bytes).B)
+		b2, err := json.Marshal(x.(*adt.Bytes).B)
+		return append(b, b2...), err
 	case adt.ListKind:
-		i, _ := v.List()
-		return marshalList(&i)
+		i := v.mustList(ctx)
+		return listAppendJSON(b, &i)
 	case adt.StructKind:
 		obj, err := v.structValData(ctx)
 		if err != nil {
 			return nil, toMarshalErr(v, err)
 		}
-		return obj.marshalJSON()
+		return obj.appendJSON(b)
 	case adt.BottomKind:
 		return nil, toMarshalErr(v, x.(*adt.Bottom))
 	default:
@@ -973,8 +846,7 @@ func (v Value) Syntax(opts ...Option) ast.Node {
 	if v.v == nil {
 		return nil
 	}
-	var o options = getOptions(opts)
-	// var inst *Instance
+	o := getOptions(opts)
 
 	p := export.Profile{
 		Simplify:        !o.raw,
@@ -986,6 +858,7 @@ func (v Value) Syntax(opts ...Option) ast.Node {
 		ShowDocs:        o.docs,
 		ShowErrors:      o.showErrors,
 		InlineImports:   o.inlineImports,
+		Fragment:        o.raw,
 	}
 
 	pkgID := v.instance().ID()
@@ -1042,12 +915,21 @@ outer:
 
 	if len(f.Decls) == 1 {
 		if e, ok := f.Decls[0].(*ast.EmbedDecl); ok {
+			for _, c := range ast.Comments(e) {
+				ast.AddComment(f, c)
+			}
+			for _, c := range ast.Comments(e.Expr) {
+				ast.AddComment(f, c)
+			}
+			ast.SetComments(e.Expr, f.Comments())
 			return e.Expr
 		}
 	}
-	return &ast.StructLit{
+	st := &ast.StructLit{
 		Elts: f.Decls,
 	}
+	ast.SetComments(st, f.Comments())
+	return st
 }
 
 // Doc returns all documentation comments associated with the field from which
@@ -1059,25 +941,6 @@ func (v Value) Doc() []*ast.CommentGroup {
 	return export.ExtractDoc(v.v)
 }
 
-// Split returns a list of values from which v originated such that
-// the unification of all these values equals v and for all returned values.
-// It will also split unchecked unifications (embeddings), so unifying the
-// split values may fail if actually unified.
-// Source returns a non-nil value.
-//
-// Deprecated: use [Value.Expr].
-func (v hiddenValue) Split() []Value {
-	if v.v == nil {
-		return nil
-	}
-	a := []Value{}
-	for _, x := range v.v.Conjuncts {
-		env, expr := x.EnvExpr()
-		a = append(a, remakeValue(v, env, expr))
-	}
-	return a
-}
-
 // Source returns the original node for this value. The return value may not
 // be an [ast.Expr]. For instance, a struct kind may be represented by a
 // struct literal, a field comprehension, or a file. It returns nil for
@@ -1086,17 +949,23 @@ func (v Value) Source() ast.Node {
 	if v.v == nil {
 		return nil
 	}
-	if len(v.v.Conjuncts) == 1 {
-		return v.v.Conjuncts[0].Source()
+	count := 0
+	var src ast.Node
+	v.v.VisitLeafConjuncts(func(c adt.Conjunct) bool {
+		src = c.Source()
+		count++
+		return true
+	})
+	if count > 1 || src == nil {
+		src = v.v.Value().Source()
 	}
-	return v.v.Value().Source()
+	return src
 }
 
 // If v exactly represents a package, BuildInstance returns
 // the build instance corresponding to the value; otherwise it returns nil.
 //
-// The value returned by Value.ReferencePath will commonly represent
-// a package.
+// The value returned by [Value.ReferencePath] will commonly represent a package.
 func (v Value) BuildInstance() *build.Instance {
 	if v.idx == nil {
 		return nil
@@ -1114,7 +983,7 @@ func (v Value) Err() error {
 
 // Pos returns position information.
 //
-// Use v.Expr to get positions for all conjuncts and disjuncts.
+// Use [Value.Expr] to get positions for all conjuncts and disjuncts.
 func (v Value) Pos() token.Pos {
 	if v.v == nil {
 		return token.NoPos
@@ -1127,45 +996,32 @@ func (v Value) Pos() token.Pos {
 	}
 	// Pick the most-concrete field.
 	var p token.Pos
-	for _, c := range v.v.Conjuncts {
+	v.v.VisitLeafConjuncts(func(c adt.Conjunct) bool {
 		x := c.Elem()
 		pp := pos(x)
 		if pp == token.NoPos {
-			continue
+			return true
 		}
 		p = pp
 		// Prefer struct conjuncts with actual fields.
 		if s, ok := x.(*adt.StructLit); ok && len(s.Fields) > 0 {
-			break
+			return false
 		}
-	}
+		return true
+	})
 	return p
 }
 
 // TODO: IsFinal: this value can never be changed.
-
-// IsClosed reports whether a list of struct is closed. It reports false when
-// the value is not a list or struct.
-//
-// Deprecated: use Allows(AnyString) and Allows(AnyIndex) or Kind/IncompleteKind.
-func (v hiddenValue) IsClosed() bool {
-	if v.v == nil {
-		return false
-	}
-	switch v.Kind() {
-	case ListKind:
-		return v.v.IsClosedList()
-	case StructKind:
-		return !v.Allows(AnyString)
-	}
-	return false
-}
 
 // Allows reports whether a field with the given selector could be added to v.
 //
 // Allows does not take into account validators like list.MaxItems(4). This may
 // change in the future.
 func (v Value) Allows(sel Selector) bool {
+	if v.v.HasEllipsis {
+		return true
+	}
 	c := v.ctx()
 	f := sel.sel.feature(c)
 	return v.v.Accept(c, f)
@@ -1179,13 +1035,11 @@ func (v Value) IsConcrete() bool {
 	if v.v == nil {
 		return false // any is neither concrete, not a list or struct.
 	}
-	if b, ok := v.v.BaseValue.(*adt.Bottom); ok {
+	w := v.v.DerefValue()
+	if b := w.Bottom(); b != nil {
 		return !b.IsIncomplete()
 	}
-	if !adt.IsConcrete(v.v) {
-		return false
-	}
-	if v.IncompleteKind() == adt.ListKind && !v.v.IsClosedList() {
+	if !adt.IsConcrete(w) {
 		return false
 	}
 	return true
@@ -1204,12 +1058,37 @@ func (v Value) Exists() bool {
 	if v.v == nil {
 		return false
 	}
-	if err, ok := v.v.BaseValue.(*adt.Bottom); ok {
+	if err := v.v.Bottom(); err != nil {
 		return !err.NotExists
 	}
 	return true
 }
 
+// isKind reports whether a value matches a particular kind.
+// It is like checkKind, except that it doesn't construct an error value.
+// Note that when v is bottom, the method always returns false.
+func (v Value) isKind(ctx *adt.OpContext, want adt.Kind) bool {
+	if v.v == nil {
+		return false
+	}
+	x := v.eval(ctx)
+	if _, ok := x.(*adt.Bottom); ok {
+		return false
+	}
+	k := x.Kind()
+	if want != adt.BottomKind {
+		if k&want == adt.BottomKind {
+			return false
+		}
+		if !adt.IsConcrete(x) {
+			return false
+		}
+	}
+	return true
+}
+
+// checkKind returns a bottom error if a value does not match a particular kind,
+// describing the reason why. Note that when v is bottom, it is always returned as-is.
 func (v Value) checkKind(ctx *adt.OpContext, want adt.Kind) *adt.Bottom {
 	if v.v == nil {
 		return errNotExists
@@ -1222,11 +1101,11 @@ func (v Value) checkKind(ctx *adt.OpContext, want adt.Kind) *adt.Bottom {
 	k := x.Kind()
 	if want != adt.BottomKind {
 		if k&want == adt.BottomKind {
-			return mkErr(v.idx, x, "cannot use value %v (type %s) as %s",
+			return mkErr(x, "cannot use value %v (type %s) as %s",
 				ctx.Str(x), k, want)
 		}
 		if !adt.IsConcrete(x) {
-			return mkErr(v.idx, x, adt.IncompleteError, "non-concrete value %v", k)
+			return mkErr(x, adt.IncompleteError, "non-concrete value %v", k)
 		}
 	}
 	return nil
@@ -1234,8 +1113,8 @@ func (v Value) checkKind(ctx *adt.OpContext, want adt.Kind) *adt.Bottom {
 
 func makeInt(v Value, x int64) Value {
 	n := &adt.Num{K: adt.IntKind}
-	n.X.SetInt64(int64(x))
-	return remakeFinal(v, nil, n)
+	n.X.SetInt64(x)
+	return remakeFinal(v, n)
 }
 
 // Len returns the number of items of the underlying value.
@@ -1249,7 +1128,7 @@ func (v Value) Len() Value {
 				n := &adt.Num{K: adt.IntKind}
 				n.X.SetInt64(int64(len(x.Elems())))
 				if x.IsClosedList() {
-					return remakeFinal(v, nil, n)
+					return remakeFinal(v, n)
 				}
 				// Note: this HAS to be a Conjunction value and cannot be
 				// an adt.BinaryExpr, as the expressions would be considered
@@ -1259,7 +1138,7 @@ func (v Value) Len() Value {
 					&adt.BasicType{K: adt.IntKind},
 					&adt.BoundValue{Op: adt.GreaterEqualOp, Value: n},
 				}}
-				return remakeFinal(v, nil, c)
+				return remakeFinal(v, c)
 
 			}
 		case *adt.Bytes:
@@ -1269,13 +1148,13 @@ func (v Value) Len() Value {
 		}
 	}
 	const msg = "len not supported for type %v"
-	return remakeValue(v, nil, mkErr(v.idx, v.v, msg, v.Kind()))
+	return remakeValue(v, nil, mkErr(v.v, msg, v.Kind()))
 
 }
 
 // Elem returns the value of undefined element types of lists and structs.
 //
-// Deprecated: use LookupPath in combination with "AnyString" or "AnyIndex".
+// Deprecated: use [Value.LookupPath] in combination with [AnyString] or [AnyIndex].
 func (v hiddenValue) Elem() (Value, bool) {
 	sel := AnyString
 	if v.v.IsList() {
@@ -1293,13 +1172,19 @@ func (v Value) List() (Iterator, error) {
 	if err := v.checkKind(ctx, adt.ListKind); err != nil {
 		return Iterator{idx: v.idx, ctx: ctx}, v.toErr(err)
 	}
+	return v.mustList(ctx), nil
+}
+
+// mustList is like [Value.List], but reusing ctx and leaving it to the caller
+// to apply defaults and check the kind.
+func (v Value) mustList(ctx *adt.OpContext) Iterator {
 	arcs := []*adt.Vertex{}
 	for _, a := range v.v.Elems() {
 		if a.Label.IsInt() {
 			arcs = append(arcs, a)
 		}
 	}
-	return Iterator{idx: v.idx, ctx: ctx, val: v, arcs: arcs}, nil
+	return Iterator{idx: v.idx, ctx: ctx, val: v, arcs: arcs}
 }
 
 // Null reports an error if v is not null.
@@ -1311,10 +1196,11 @@ func (v Value) Null() error {
 	return nil
 }
 
-// // IsNull reports whether v is null.
-// func (v Value) IsNull() bool {
-// 	return v.Null() == nil
-// }
+// IsNull reports whether v is null.
+func (v Value) IsNull() bool {
+	v, _ = v.Default()
+	return v.isKind(v.ctx(), adt.NullKind)
+}
 
 // Bool returns the bool value of v or false and an error if v is not a boolean.
 func (v Value) Bool() (bool, error) {
@@ -1379,18 +1265,18 @@ func (v Value) structValData(ctx *adt.OpContext) (structValue, *adt.Bottom) {
 
 // structVal returns an structVal or an error if v is not a struct.
 func (v Value) structValOpts(ctx *adt.OpContext, o options) (s structValue, err *adt.Bottom) {
+	orig := v
 	v, _ = v.Default()
 
 	obj := v.v
 
-	switch b, ok := v.v.BaseValue.(*adt.Bottom); {
-	case ok && b.IsIncomplete() && !o.concrete && !o.final:
+	switch b := v.v.Bottom(); {
+	case b != nil && b.IsIncomplete() && !o.concrete && !o.final:
 
 	// Allow scalar values if hidden or definition fields are requested.
 	case !o.omitHidden, !o.omitDefinitions:
 	default:
-		obj, err = v.getStruct()
-		if err != nil {
+		if err := v.checkKind(ctx, adt.StructKind); err != nil && !err.ChildError {
 			return structValue{}, err
 		}
 	}
@@ -1411,7 +1297,7 @@ func (v Value) structValOpts(ctx *adt.OpContext, o options) (s structValue, err 
 		if f.IsHidden() && o.omitHidden {
 			continue
 		}
-		arc := obj.Lookup(f)
+		arc := obj.LookupRaw(f)
 		if arc == nil {
 			continue
 		}
@@ -1426,7 +1312,7 @@ func (v Value) structValOpts(ctx *adt.OpContext, o options) (s structValue, err 
 			// it avoids hiding errors in required fields.
 			if o.omitOptional || o.concrete || o.final {
 				arc = &adt.Vertex{
-					Label:     arc.Label,
+					Label:     f,
 					Parent:    arc.Parent,
 					Conjuncts: arc.Conjuncts,
 					BaseValue: adt.NewRequiredNotPresentError(ctx, arc),
@@ -1436,13 +1322,13 @@ func (v Value) structValOpts(ctx *adt.OpContext, o options) (s structValue, err 
 		}
 		arcs = append(arcs, arc)
 	}
-	return structValue{ctx, v, obj, arcs}, nil
+	return structValue{ctx, orig, obj, arcs}, nil
 }
 
 // Struct returns the underlying struct of a value or an error if the value
 // is not a struct.
 //
-// Deprecated: use Fields.
+// Deprecated: use [Value.Fields].
 func (v hiddenValue) Struct() (*Struct, error) {
 	ctx := v.ctx()
 	obj, err := v.structValOpts(ctx, options{})
@@ -1452,17 +1338,9 @@ func (v hiddenValue) Struct() (*Struct, error) {
 	return &Struct{obj}, nil
 }
 
-func (v Value) getStruct() (*adt.Vertex, *adt.Bottom) {
-	ctx := v.ctx()
-	if err := v.checkKind(ctx, adt.StructKind); err != nil {
-		if !err.ChildError {
-			return nil, err
-		}
-	}
-	return v.v, nil
-}
-
 // Struct represents a CUE struct value.
+//
+// Deprecated: only used by deprecated functions.
 type Struct struct {
 	structValue
 }
@@ -1474,7 +1352,7 @@ type hiddenStruct = Struct
 // Deprecated: only used by deprecated functions.
 type FieldInfo struct {
 	Selector string
-	Name     string // Deprecated: use Selector
+	Name     string // Deprecated: use [FieldInfo.Selector]
 	Pos      int
 	Value    Value
 
@@ -1515,7 +1393,7 @@ func (s *hiddenStruct) FieldByName(name string, isIdent bool) (FieldInfo, error)
 	return FieldInfo{}, errNotFound
 }
 
-// Fields creates an iterator over the Struct's fields.
+// Fields creates an iterator over the struct's fields.
 func (s *hiddenStruct) Fields(opts ...Option) *Iterator {
 	iter, _ := s.v.Fields(opts...)
 	return iter
@@ -1611,7 +1489,7 @@ func appendPath(a []Selector, v Value) []Selector {
 
 // LookupDef is equal to LookupPath(MakePath(Def(name))).
 //
-// Deprecated: use LookupPath.
+// Deprecated: use [Value.LookupPath].
 func (v hiddenValue) LookupDef(name string) Value {
 	return v.LookupPath(MakePath(Def(name)))
 }
@@ -1622,7 +1500,7 @@ var errNotFound = errors.Newf(token.NoPos, "field not found")
 // look up a definition or hidden field (starting with `_` or `_#`). Otherwise
 // it interprets name as an arbitrary string for a regular field.
 //
-// Deprecated: use LookupPath.
+// Deprecated: use [Value.LookupPath].
 func (v hiddenValue) FieldByName(name string, isIdent bool) (f FieldInfo, err error) {
 	s, err := v.Struct()
 	if err != nil {
@@ -1633,7 +1511,7 @@ func (v hiddenValue) FieldByName(name string, isIdent bool) (f FieldInfo, err er
 
 // LookupField reports information about a field of v.
 //
-// Deprecated: use LookupPath
+// Deprecated: use [Value.LookupPath].
 func (v hiddenValue) LookupField(name string) (FieldInfo, error) {
 	s, err := v.Struct()
 	if err != nil {
@@ -1671,7 +1549,7 @@ func (v hiddenValue) LookupField(name string) (FieldInfo, error) {
 // Any reference in v referring to the value at the given path will resolve
 // to x in the newly created value. The resulting value is not validated.
 //
-// Deprecated: use FillPath.
+// Deprecated: use [Value.FillPath].
 func (v hiddenValue) Fill(x interface{}, path ...string) Value {
 	if v.v == nil {
 		return v
@@ -1686,15 +1564,15 @@ func (v hiddenValue) Fill(x interface{}, path ...string) Value {
 // FillPath creates a new value by unifying v with the value of x at the given
 // path.
 //
-// If x is an cue/ast.Expr, it will be evaluated within the context of the
+// If x is an [ast.Expr], it will be evaluated within the context of the
 // given path: identifiers that are not resolved within the expression are
 // resolved as if they were defined at the path position.
 //
 // If x is a Value, it will be used as is. It panics if x is not created
-// from the same Runtime as v.
+// from the same [Context] as v.
 //
 // Otherwise, the given Go value will be converted to CUE using the same rules
-// as Context.Encode.
+// as [Context.Encode].
 //
 // Any reference in v referring to the value at the given path will resolve to x
 // in the newly created value. The resulting value is not validated.
@@ -1705,7 +1583,7 @@ func (v Value) FillPath(p Path, x interface{}) Value {
 	}
 	ctx := v.ctx()
 	if err := p.Err(); err != nil {
-		return newErrValue(v, mkErr(v.idx, nil, 0, "invalid path: %v", err))
+		return newErrValue(v, mkErr(nil, 0, "invalid path: %v", err))
 	}
 	var expr adt.Expr
 	switch x := x.(type) {
@@ -1721,8 +1599,8 @@ func (v Value) FillPath(p Path, x interface{}) Value {
 	default:
 		expr = convert.GoValueToValue(ctx, x, true)
 	}
-	for i := len(p.path) - 1; i >= 0; i-- {
-		switch sel := p.path[i]; sel.Type() {
+	for _, sel := range slices.Backward(p.path) {
+		switch sel.Type() {
 		case StringLabel | PatternConstraint:
 			expr = &adt.StructLit{Decls: []adt.Decl{
 				&adt.BulkOptionalField{
@@ -1741,7 +1619,7 @@ func (v Value) FillPath(p Path, x interface{}) Value {
 			list := &adt.ListLit{}
 			any := &adt.Top{}
 			// TODO(perf): make this a constant thing. This will be possible with the query extension.
-			for k := 0; k < i; k++ {
+			for range i {
 				list.Elems = append(list.Elems, any)
 			}
 			list.Elems = append(list.Elems, expr, &adt.Ellipsis{})
@@ -1777,14 +1655,18 @@ func (v Value) FillPath(p Path, x interface{}) Value {
 // The returned function returns the value that would be unified with field
 // given its name.
 //
-// Deprecated: use LookupPath in combination with using optional selectors.
+// Deprecated: use [Value.LookupPath] in combination with using optional selectors.
 func (v hiddenValue) Template() func(label string) Value {
 	if v.v == nil {
 		return nil
 	}
 
+	// Implementation for the old evaluator.
 	types := v.v.OptionalTypes()
-	if types&(adt.HasAdditional|adt.HasPattern) == 0 {
+	switch {
+	case types&(adt.HasAdditional|adt.HasPattern) != 0:
+	case v.v.PatternConstraints != nil:
+	default:
 		return nil
 	}
 
@@ -1824,22 +1706,8 @@ func (v Value) Subsume(w Value, opts ...Option) error {
 	return p.Value(ctx, v.v, w.v)
 }
 
-// Deprecated: use [Value.Subsume].
-//
-// Subsumes reports whether w is an instance of v.
-//
-// Without options, Subsumes checks whether v is a backwards compatible schema
-// of w.
-//
-// By default, Subsumes tests whether two values are compatible
-// Value v and w must be obtained from the same build.
-// TODO: remove this requirement.
-func (v hiddenValue) Subsumes(w Value) bool {
-	ctx := v.ctx()
-	p := subsume.Profile{Defaults: true}
-	return p.Check(ctx, v.v, w.v)
-}
-
+// TODO: this is likely not correct for V3. There are some cases where this is
+// still used for V3. Transition away from those.
 func allowed(ctx *adt.OpContext, parent, n *adt.Vertex) *adt.Bottom {
 	if !parent.IsClosedList() && !parent.IsClosedStruct() {
 		return nil
@@ -1856,15 +1724,6 @@ func allowed(ctx *adt.OpContext, parent, n *adt.Vertex) *adt.Bottom {
 	return nil
 }
 
-func addConjuncts(dst, src *adt.Vertex) {
-	c := adt.MakeRootConjunct(nil, src)
-	if src.Closed {
-		var root adt.CloseInfo
-		c.CloseInfo = root.SpawnRef(src, src.Closed, nil)
-	}
-	dst.AddConjunct(c)
-}
-
 // Unify reports the greatest lower bound of v and w.
 //
 // Value v and w must be obtained from the same build.
@@ -1877,31 +1736,27 @@ func (v Value) Unify(w Value) Value {
 		return v
 	}
 
-	n := &adt.Vertex{}
-	addConjuncts(n, v.v)
-	addConjuncts(n, w.v)
+	ctx := v.ctx()
+	defer ctx.PopArc(ctx.PushArc(v.v))
 
-	ctx := newContext(v.idx)
-	n.Finalize(ctx)
+	n := adt.Unify(ctx, v.v, w.v)
 
-	n.Parent = v.v.Parent
-	n.Label = v.v.Label
-	n.Closed = v.v.Closed || w.v.Closed
-
-	if err := n.Err(ctx); err != nil {
-		return makeValue(v.idx, n, v.parent_)
-	}
-	if err := allowed(ctx, v.v, n); err != nil {
-		return newErrValue(w, err)
-	}
-	if err := allowed(ctx, w.v, n); err != nil {
-		return newErrValue(v, err)
+	if ctx.Version == internal.EvalV2 {
+		if err := n.Err(ctx); err != nil {
+			return makeValue(v.idx, n, v.parent_)
+		}
+		if err := allowed(ctx, v.v, n); err != nil {
+			return newErrValue(w, err)
+		}
+		if err := allowed(ctx, w.v, n); err != nil {
+			return newErrValue(v, err)
+		}
 	}
 
 	return makeValue(v.idx, n, v.parent_)
 }
 
-// UnifyAccept is as v.Unify(w), but will disregard the closedness rules for
+// UnifyAccept is like [Value.Unify](w), but will disregard the closedness rules for
 // v and w, and will, instead, only allow fields that are present in accept.
 //
 // UnifyAccept is used to piecemeal unify individual conjuncts obtained from
@@ -1918,10 +1773,20 @@ func (v Value) UnifyAccept(w Value, accept Value) Value {
 	}
 
 	n := &adt.Vertex{}
-	n.AddConjunct(adt.MakeRootConjunct(nil, v.v))
-	n.AddConjunct(adt.MakeRootConjunct(nil, w.v))
+	ctx := v.ctx()
 
-	ctx := newContext(v.idx)
+	switch ctx.Version {
+	case internal.EvalV2:
+		cv := adt.MakeRootConjunct(nil, v.v)
+		cw := adt.MakeRootConjunct(nil, w.v)
+
+		n.AddConjunct(cv)
+		n.AddConjunct(cw)
+
+	case internal.EvalV3:
+		n.AddOpenConjunct(ctx, v.v)
+		n.AddOpenConjunct(ctx, w.v)
+	}
 	n.Finalize(ctx)
 
 	n.Parent = v.v.Parent
@@ -1979,15 +1844,15 @@ func (v hiddenValue) Reference() (inst *Instance, path []string) {
 }
 
 // ReferencePath returns the value and path referred to by this value such that
-// value.LookupPath(path) resolves to the same value, or no path if this value
+// [Value.LookupPath](path) resolves to the same value, or no path if this value
 // is not a reference.
 func (v Value) ReferencePath() (root Value, p Path) {
 	// TODO: don't include references to hidden fields.
-	if v.v == nil || len(v.v.Conjuncts) != 1 {
+	c, count := v.v.SingleConjunct()
+	if count != 1 {
 		return Value{}, Path{}
 	}
 	ctx := v.ctx()
-	c := v.v.Conjuncts[0]
 
 	env, expr := c.EnvExpr()
 
@@ -2045,6 +1910,7 @@ func reference(rt *runtime.Runtime, c *adt.OpContext, env *adt.Environment, r ad
 	if inst == nil {
 		return nil, nil
 	}
+	inst.Finalize(c)
 	return inst, path
 }
 
@@ -2099,7 +1965,7 @@ func Schema() Option {
 
 // Concrete ensures that all values are concrete.
 //
-// For Validate this means it returns an error if this is not the case.
+// For [Value.Validate] this means it returns an error if this is not the case.
 // In other cases a non-concrete value will be replaced with an error.
 func Concrete(concrete bool) Option {
 	return func(p *options) {
@@ -2128,7 +1994,7 @@ func DisallowCycles(disallow bool) Option {
 
 // ResolveReferences forces the evaluation of references when outputting.
 //
-// Deprecated: Syntax will now always attempt to resolve dangling references and
+// Deprecated: [Value.Syntax] will now always attempt to resolve dangling references and
 // make the output self-contained. When [Final] or [Concrete] are used,
 // it will already attempt to resolve all references.
 // See also [InlineImports].
@@ -2157,7 +2023,13 @@ func ErrorsAsValues(show bool) Option {
 	return func(p *options) { p.showErrors = show }
 }
 
-// Raw tells Syntax to generate the value as is without any simplifications.
+// Raw tells Syntax to generate the value as is without any simplifications and
+// without ensuring a value is self contained. Any references are left dangling.
+// The generated syntax tree can be compiled by passing the Value from which it
+// was generated to scope.
+//
+// The option InlineImports overrides this option with respect to ensuring the
+// output is self contained.
 func Raw() Option {
 	return func(p *options) { p.raw = true }
 }
@@ -2220,7 +2092,7 @@ func (o *options) updateOptions(opts []Option) {
 }
 
 // Validate reports any errors, recursively. The returned error may represent
-// more than one error, retrievable with errors.Errors, if more than one
+// more than one error, retrievable with [errors.Errors], if more than one
 // exists.
 //
 // Note that by default not all errors are reported, unless options like
@@ -2230,14 +2102,14 @@ func (v Value) Validate(opts ...Option) error {
 	o := options{}
 	o.updateOptions(opts)
 
-	cfg := &validate.Config{
+	cfg := &adt.ValidateConfig{
 		Concrete:       o.concrete,
 		Final:          o.final,
 		DisallowCycles: o.disallowCycles,
 		AllErrors:      true,
 	}
 
-	b := validate.Validate(v.ctx(), v.v, cfg)
+	b := adt.Validate(v.ctx(), v.v, cfg)
 	if b != nil {
 		return v.toErr(b)
 	}
@@ -2259,7 +2131,7 @@ func (v Value) Walk(before func(Value) bool, after func(Value)) {
 			omitHidden:      true,
 			omitDefinitions: true,
 		})
-		for i := 0; i < obj.Len(); i++ {
+		for i := range obj.Len() {
 			_, v := obj.At(i)
 			// TODO: should we error on required fields, or visit them anyway?
 			// Walk is not designed to error at this moment, though.
@@ -2315,40 +2187,44 @@ func (v Value) Expr() (Op, []Value) {
 
 	if v.v.IsData() {
 		expr = v.v.Value()
+		goto process
 
-	} else {
-		switch len(v.v.Conjuncts) {
-		case 0:
-			if v.v.BaseValue == nil {
-				return NoOp, []Value{makeValue(v.idx, v.v, v.parent_)} // TODO: v?
-			}
-			expr = v.v.Value()
-
-		case 1:
-			// the default case, processed below.
-			c := v.v.Conjuncts[0]
-			env, expr = c.EnvExpr()
-			if w, ok := expr.(*adt.Vertex); ok {
-				return Value{v.idx, w, v.parent_}.Expr()
-			}
-
-		default:
-			a := []Value{}
-			ctx := v.ctx()
-			for _, c := range v.v.Conjuncts {
-				// Keep parent here. TODO: do we need remove the requirement
-				// from other conjuncts?
-				n := &adt.Vertex{
-					Parent: v.v.Parent,
-					Label:  v.v.Label,
-				}
-				n.AddConjunct(c)
-				n.Finalize(ctx)
-				a = append(a, makeValue(v.idx, n, v.parent_))
-			}
-			return adt.AndOp, a
-		}
 	}
+
+	switch c, count := v.v.SingleConjunct(); count {
+	case 0:
+		if v.v.BaseValue == nil {
+			return NoOp, []Value{makeValue(v.idx, v.v, v.parent_)} // TODO: v?
+		}
+		expr = v.v.Value()
+
+	case 1:
+		// the default case, processed below.
+		env, expr = c.EnvExpr()
+		if w, ok := expr.(*adt.Vertex); ok {
+			return Value{v.idx, w, v.parent_}.Expr()
+		}
+
+	default:
+		a := []Value{}
+		ctx := v.ctx()
+		v.v.VisitLeafConjuncts(func(c adt.Conjunct) bool {
+			// Keep parent here. TODO: do we need remove the requirement
+			// from other conjuncts?
+			n := &adt.Vertex{
+				Parent: v.v.Parent,
+				Label:  v.v.Label,
+			}
+			n.AddConjunct(c)
+			n.Finalize(ctx)
+			a = append(a, makeValue(v.idx, n, v.parent_))
+			return true
+		})
+
+		return adt.AndOp, a
+	}
+
+process:
 
 	// TODO: replace appends with []Value{}. For not leave.
 	a := []Value{}
@@ -2405,7 +2281,7 @@ func (v Value) Expr() (Op, []Value) {
 					a.AddConjunct(adt.MakeRootConjunct(env, n.Val))
 					b.AddConjunct(adt.MakeRootConjunct(env, disjunct.Val))
 
-					ctx := eval.NewContext(v.idx, nil)
+					ctx := v.ctx()
 					a.Finalize(ctx)
 					b.Finalize(ctx)
 					if allowed(ctx, v.v, &b) != nil {

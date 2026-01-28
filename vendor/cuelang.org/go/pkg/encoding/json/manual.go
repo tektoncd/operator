@@ -27,7 +27,10 @@ import (
 	"cuelang.org/go/cue/parser"
 	"cuelang.org/go/cue/token"
 	cuejson "cuelang.org/go/encoding/json"
+	"cuelang.org/go/internal/core/adt"
 	internaljson "cuelang.org/go/internal/encoding/json"
+	"cuelang.org/go/internal/pkg"
+	"cuelang.org/go/internal/value"
 )
 
 // Compact generates the JSON-encoded src with insignificant space characters
@@ -97,8 +100,7 @@ func MarshalStream(v cue.Value) (string, error) {
 
 // UnmarshalStream parses the JSON to a CUE instance.
 func UnmarshalStream(data []byte) (ast.Expr, error) {
-	var r cue.Runtime
-	d := cuejson.NewDecoder(&r, "", bytes.NewReader(data))
+	d := cuejson.NewDecoder(nil, "", bytes.NewReader(data))
 
 	a := []ast.Expr{}
 	for {
@@ -130,10 +132,30 @@ func Unmarshal(b []byte) (ast.Expr, error) {
 
 // Validate validates JSON and confirms it matches the constraints
 // specified by v.
-func Validate(b []byte, v cue.Value) (bool, error) {
-	err := cuejson.Validate(b, v)
-	if err != nil {
+func Validate(b []byte, v pkg.Schema) (bool, error) {
+	c := value.OpContext(v)
+	return validate(c, b, v)
+}
+
+// validate is the actual implementation of Validate.
+func validate(c *adt.OpContext, b []byte, v pkg.Schema) (bool, error) {
+	if !json.Valid(b) {
+		return false, fmt.Errorf("json: invalid JSON")
+	}
+	v2 := v.Context().CompileBytes(b, cue.Filename("json.Validate"))
+	if err := v2.Err(); err != nil {
 		return false, err
 	}
+
+	vx := adt.Unify(c, value.Vertex(v2), value.Vertex(v))
+	v = value.Make(c, vx)
+	if err := v.Err(); err != nil {
+		return false, err
+	}
+
+	if err := v.Validate(cue.Final()); err != nil {
+		return false, err
+	}
+
 	return true, nil
 }
