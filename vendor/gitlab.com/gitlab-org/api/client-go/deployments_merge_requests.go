@@ -21,7 +21,7 @@ import (
 type (
 	// DeploymentMergeRequestsServiceInterface defines all the API methods for the DeploymentMergeRequestsService
 	DeploymentMergeRequestsServiceInterface interface {
-		ListDeploymentMergeRequests(pid interface{}, deployment int, opts *ListMergeRequestsOptions, options ...RequestOptionFunc) ([]*MergeRequest, *Response, error)
+		ListDeploymentMergeRequests(pid any, deployment int, opts *ListMergeRequestsOptions, options ...RequestOptionFunc) ([]*MergeRequest, *Response, error)
 	}
 
 	// DeploymentMergeRequestsService handles communication with the deployment's
@@ -40,7 +40,7 @@ var _ DeploymentMergeRequestsServiceInterface = (*DeploymentMergeRequestsService
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/deployments/#list-of-merge-requests-associated-with-a-deployment
-func (s *DeploymentMergeRequestsService) ListDeploymentMergeRequests(pid interface{}, deployment int, opts *ListMergeRequestsOptions, options ...RequestOptionFunc) ([]*MergeRequest, *Response, error) {
+func (s *DeploymentMergeRequestsService) ListDeploymentMergeRequests(pid any, deployment int, opts *ListMergeRequestsOptions, options ...RequestOptionFunc) ([]*MergeRequest, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

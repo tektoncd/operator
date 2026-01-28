@@ -24,11 +24,11 @@ import (
 
 type (
 	ProjectVariablesServiceInterface interface {
-		ListVariables(pid interface{}, opt *ListProjectVariablesOptions, options ...RequestOptionFunc) ([]*ProjectVariable, *Response, error)
-		GetVariable(pid interface{}, key string, opt *GetProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error)
-		CreateVariable(pid interface{}, opt *CreateProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error)
-		UpdateVariable(pid interface{}, key string, opt *UpdateProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error)
-		RemoveVariable(pid interface{}, key string, opt *RemoveProjectVariableOptions, options ...RequestOptionFunc) (*Response, error)
+		ListVariables(pid any, opt *ListProjectVariablesOptions, options ...RequestOptionFunc) ([]*ProjectVariable, *Response, error)
+		GetVariable(pid any, key string, opt *GetProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error)
+		CreateVariable(pid any, opt *CreateProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error)
+		UpdateVariable(pid any, key string, opt *UpdateProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error)
+		RemoveVariable(pid any, key string, opt *RemoveProjectVariableOptions, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// ProjectVariablesService handles communication with the
@@ -79,7 +79,7 @@ type ListProjectVariablesOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_level_variables/#list-project-variables
-func (s *ProjectVariablesService) ListVariables(pid interface{}, opt *ListProjectVariablesOptions, options ...RequestOptionFunc) ([]*ProjectVariable, *Response, error) {
+func (s *ProjectVariablesService) ListVariables(pid any, opt *ListProjectVariablesOptions, options ...RequestOptionFunc) ([]*ProjectVariable, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -113,7 +113,7 @@ type GetProjectVariableOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_level_variables/#get-a-single-variable
-func (s *ProjectVariablesService) GetVariable(pid interface{}, key string, opt *GetProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error) {
+func (s *ProjectVariablesService) GetVariable(pid any, key string, opt *GetProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -155,7 +155,7 @@ type CreateProjectVariableOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_level_variables/#create-a-variable
-func (s *ProjectVariablesService) CreateVariable(pid interface{}, opt *CreateProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error) {
+func (s *ProjectVariablesService) CreateVariable(pid any, opt *CreateProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -196,7 +196,7 @@ type UpdateProjectVariableOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_level_variables/#update-a-variable
-func (s *ProjectVariablesService) UpdateVariable(pid interface{}, key string, opt *UpdateProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error) {
+func (s *ProjectVariablesService) UpdateVariable(pid any, key string, opt *UpdateProjectVariableOptions, options ...RequestOptionFunc) (*ProjectVariable, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -230,7 +230,7 @@ type RemoveProjectVariableOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_level_variables/#delete-a-variable
-func (s *ProjectVariablesService) RemoveVariable(pid interface{}, key string, opt *RemoveProjectVariableOptions, options ...RequestOptionFunc) (*Response, error) {
+func (s *ProjectVariablesService) RemoveVariable(pid any, key string, opt *RemoveProjectVariableOptions, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err

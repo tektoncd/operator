@@ -8,11 +8,11 @@ import (
 
 type (
 	ProjectFeatureFlagServiceInterface interface {
-		ListProjectFeatureFlags(pid interface{}, opt *ListProjectFeatureFlagOptions, options ...RequestOptionFunc) ([]*ProjectFeatureFlag, *Response, error)
-		GetProjectFeatureFlag(pid interface{}, name string, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error)
-		CreateProjectFeatureFlag(pid interface{}, opt *CreateProjectFeatureFlagOptions, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error)
-		UpdateProjectFeatureFlag(pid interface{}, name string, opt *UpdateProjectFeatureFlagOptions, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error)
-		DeleteProjectFeatureFlag(pid interface{}, name string, options ...RequestOptionFunc) (*Response, error)
+		ListProjectFeatureFlags(pid any, opt *ListProjectFeatureFlagOptions, options ...RequestOptionFunc) ([]*ProjectFeatureFlag, *Response, error)
+		GetProjectFeatureFlag(pid any, name string, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error)
+		CreateProjectFeatureFlag(pid any, opt *CreateProjectFeatureFlagOptions, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error)
+		UpdateProjectFeatureFlag(pid any, name string, opt *UpdateProjectFeatureFlagOptions, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error)
+		DeleteProjectFeatureFlag(pid any, name string, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// ProjectFeatureFlagService handles operations on gitlab project feature
@@ -90,7 +90,7 @@ type ListProjectFeatureFlagOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/feature_flags/#list-feature-flags-for-a-project
-func (s *ProjectFeatureFlagService) ListProjectFeatureFlags(pid interface{}, opt *ListProjectFeatureFlagOptions, options ...RequestOptionFunc) ([]*ProjectFeatureFlag, *Response, error) {
+func (s *ProjectFeatureFlagService) ListProjectFeatureFlags(pid any, opt *ListProjectFeatureFlagOptions, options ...RequestOptionFunc) ([]*ProjectFeatureFlag, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -115,7 +115,7 @@ func (s *ProjectFeatureFlagService) ListProjectFeatureFlags(pid interface{}, opt
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/feature_flags/#get-a-single-feature-flag
-func (s *ProjectFeatureFlagService) GetProjectFeatureFlag(pid interface{}, name string, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error) {
+func (s *ProjectFeatureFlagService) GetProjectFeatureFlag(pid any, name string, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -175,7 +175,7 @@ type ProjectFeatureFlagScopeOptions struct {
 //
 // Gitlab API docs:
 // https://docs.gitlab.com/api/feature_flags/#create-a-feature-flag
-func (s *ProjectFeatureFlagService) CreateProjectFeatureFlag(pid interface{}, opt *CreateProjectFeatureFlagOptions, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error) {
+func (s *ProjectFeatureFlagService) CreateProjectFeatureFlag(pid any, opt *CreateProjectFeatureFlagOptions, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -214,7 +214,7 @@ type UpdateProjectFeatureFlagOptions struct {
 //
 // Gitlab API docs:
 // https://docs.gitlab.com/api/feature_flags/#update-a-feature-flag
-func (s *ProjectFeatureFlagService) UpdateProjectFeatureFlag(pid interface{}, name string, opt *UpdateProjectFeatureFlagOptions, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error) {
+func (s *ProjectFeatureFlagService) UpdateProjectFeatureFlag(pid any, name string, opt *UpdateProjectFeatureFlagOptions, options ...RequestOptionFunc) (*ProjectFeatureFlag, *Response, error) {
 	group, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -242,7 +242,7 @@ func (s *ProjectFeatureFlagService) UpdateProjectFeatureFlag(pid interface{}, na
 //
 // Gitlab API docs:
 // https://docs.gitlab.com/api/feature_flags/#delete-a-feature-flag
-func (s *ProjectFeatureFlagService) DeleteProjectFeatureFlag(pid interface{}, name string, options ...RequestOptionFunc) (*Response, error) {
+func (s *ProjectFeatureFlagService) DeleteProjectFeatureFlag(pid any, name string, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err

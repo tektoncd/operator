@@ -24,7 +24,7 @@ import (
 
 type (
 	ResourceWeightEventsServiceInterface interface {
-		ListIssueWeightEvents(pid interface{}, issue int, opt *ListWeightEventsOptions, options ...RequestOptionFunc) ([]*WeightEvent, *Response, error)
+		ListIssueWeightEvents(pid any, issue int, opt *ListWeightEventsOptions, options ...RequestOptionFunc) ([]*WeightEvent, *Response, error)
 	}
 
 	// ResourceWeightEventsService handles communication with the event related
@@ -66,7 +66,7 @@ type ListWeightEventsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/resource_weight_events/#list-project-issue-weight-events
-func (s *ResourceWeightEventsService) ListIssueWeightEvents(pid interface{}, issue int, opt *ListWeightEventsOptions, options ...RequestOptionFunc) ([]*WeightEvent, *Response, error) {
+func (s *ResourceWeightEventsService) ListIssueWeightEvents(pid any, issue int, opt *ListWeightEventsOptions, options ...RequestOptionFunc) ([]*WeightEvent, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

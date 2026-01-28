@@ -10,8 +10,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
+	"sync"
 
 	iCompiler "github.com/open-policy-agent/opa/internal/compiler"
 	"github.com/open-policy-agent/opa/internal/json/patch"
@@ -19,6 +23,15 @@ import (
 	"github.com/open-policy-agent/opa/v1/metrics"
 	"github.com/open-policy-agent/opa/v1/storage"
 	"github.com/open-policy-agent/opa/v1/util"
+)
+
+const defaultActivatorID = "_default"
+
+var (
+	activators = map[string]Activator{
+		defaultActivatorID: &DefaultActivator{},
+	}
+	activatorMtx sync.Mutex
 )
 
 // BundlesBasePath is the storage path used for storing bundle metadata
@@ -70,7 +83,7 @@ func moduleInfoPath(id string) storage.Path {
 	return append(ModulesInfoBasePath, strings.Trim(id, "/"))
 }
 
-func read(ctx context.Context, store storage.Store, txn storage.Transaction, path storage.Path) (interface{}, error) {
+func read(ctx context.Context, store storage.Store, txn storage.Transaction, path storage.Path) (any, error) {
 	value, err := store.Read(ctx, txn, path)
 	if err != nil {
 		return nil, err
@@ -93,7 +106,7 @@ func ReadBundleNamesFromStore(ctx context.Context, store storage.Store, txn stor
 		return nil, err
 	}
 
-	bundleMap, ok := value.(map[string]interface{})
+	bundleMap, ok := value.(map[string]any)
 	if !ok {
 		return nil, errors.New("corrupt manifest roots")
 	}
@@ -118,7 +131,7 @@ func WriteEtagToStore(ctx context.Context, store storage.Store, txn storage.Tran
 	return write(ctx, store, txn, EtagStoragePath(name), etag)
 }
 
-func write(ctx context.Context, store storage.Store, txn storage.Transaction, path storage.Path, value interface{}) error {
+func write(ctx context.Context, store storage.Store, txn storage.Transaction, path storage.Path, value any) error {
 	if err := util.RoundTrip(&value); err != nil {
 		return err
 	}
@@ -218,7 +231,7 @@ func ReadWasmModulesFromStore(ctx context.Context, store storage.Store, txn stor
 		return nil, err
 	}
 
-	encodedModules, ok := value.(map[string]interface{})
+	encodedModules, ok := value.(map[string]any)
 	if !ok {
 		return nil, errors.New("corrupt wasm modules")
 	}
@@ -247,7 +260,7 @@ func ReadBundleRootsFromStore(ctx context.Context, store storage.Store, txn stor
 		return nil, err
 	}
 
-	sl, ok := value.([]interface{})
+	sl, ok := value.([]any)
 	if !ok {
 		return nil, errors.New("corrupt manifest roots")
 	}
@@ -288,17 +301,17 @@ func readRevisionFromStore(ctx context.Context, store storage.Store, txn storage
 // ReadBundleMetadataFromStore returns the metadata in the specified bundle.
 // If the bundle is not activated, this function will return
 // storage NotFound error.
-func ReadBundleMetadataFromStore(ctx context.Context, store storage.Store, txn storage.Transaction, name string) (map[string]interface{}, error) {
+func ReadBundleMetadataFromStore(ctx context.Context, store storage.Store, txn storage.Transaction, name string) (map[string]any, error) {
 	return readMetadataFromStore(ctx, store, txn, metadataPath(name))
 }
 
-func readMetadataFromStore(ctx context.Context, store storage.Store, txn storage.Transaction, path storage.Path) (map[string]interface{}, error) {
+func readMetadataFromStore(ctx context.Context, store storage.Store, txn storage.Transaction, path storage.Path) (map[string]any, error) {
 	value, err := read(ctx, store, txn, path)
 	if err != nil {
 		return nil, suppressNotFound(err)
 	}
 
-	data, ok := value.(map[string]interface{})
+	data, ok := value.(map[string]any)
 	if !ok {
 		return nil, errors.New("corrupt manifest metadata")
 	}
@@ -327,6 +340,11 @@ func readEtagFromStore(ctx context.Context, store storage.Store, txn storage.Tra
 	return str, nil
 }
 
+// Activator is the interface expected for implementations that activate bundles.
+type Activator interface {
+	Activate(*ActivateOpts) error
+}
+
 // ActivateOpts defines options for the Activate API call.
 type ActivateOpts struct {
 	Ctx                      context.Context
@@ -339,15 +357,39 @@ type ActivateOpts struct {
 	ExtraModules             map[string]*ast.Module // Optional
 	AuthorizationDecisionRef ast.Ref
 	ParserOptions            ast.ParserOptions
+	Plugin                   string
 
 	legacy bool
+}
+
+type DefaultActivator struct{}
+
+func (*DefaultActivator) Activate(opts *ActivateOpts) error {
+	opts.legacy = false
+	return activateBundles(opts)
 }
 
 // Activate the bundle(s) by loading into the given Store. This will load policies, data, and record
 // the manifest in storage. The compiler provided will have had the polices compiled on it.
 func Activate(opts *ActivateOpts) error {
-	opts.legacy = false
-	return activateBundles(opts)
+	plugin := opts.Plugin
+
+	// For backwards compatibility, check if there is no plugin specified, and use default.
+	if plugin == "" {
+		// Invoke extension activator if supplied. Otherwise, use default.
+		if HasExtension() {
+			plugin = bundleExtActivator
+		} else {
+			plugin = defaultActivatorID
+		}
+	}
+
+	activator, err := GetActivator(plugin)
+	if err != nil {
+		return err
+	}
+
+	return activator.Activate(opts)
 }
 
 // DeactivateOpts defines options for the Deactivate API call
@@ -451,7 +493,7 @@ func activateBundles(opts *ActivateOpts) error {
 						}
 
 						// verify valid YAML or JSON value
-						var x interface{}
+						var x any
 						err := util.Unmarshal(item.Value, &x)
 						if err != nil {
 							return err
@@ -484,12 +526,8 @@ func activateBundles(opts *ActivateOpts) error {
 
 	// Compile the modules all at once to avoid having to re-do work.
 	remainingAndExtra := make(map[string]*ast.Module)
-	for name, mod := range remaining {
-		remainingAndExtra[name] = mod
-	}
-	for name, mod := range opts.ExtraModules {
-		remainingAndExtra[name] = mod
-	}
+	maps.Copy(remainingAndExtra, remaining)
+	maps.Copy(remainingAndExtra, opts.ExtraModules)
 
 	err = compileModules(opts.Compiler, opts.Metrics, snapshotBundles, remainingAndExtra, opts.legacy, opts.AuthorizationDecisionRef)
 	if err != nil {
@@ -615,7 +653,7 @@ func activateDeltaBundles(opts *ActivateOpts, bundles map[string]*Bundle) error 
 	return nil
 }
 
-func valueToManifest(v interface{}) (Manifest, error) {
+func valueToManifest(v any) (Manifest, error) {
 	if astV, ok := v.(ast.Value); ok {
 		var err error
 		v, err = ast.JSON(astV)
@@ -902,7 +940,7 @@ func writeDataAndModules(ctx context.Context, store storage.Store, txn storage.T
 	return nil
 }
 
-func writeData(ctx context.Context, store storage.Store, txn storage.Transaction, roots []string, data map[string]interface{}) error {
+func writeData(ctx context.Context, store storage.Store, txn storage.Transaction, roots []string, data map[string]any) error {
 	for _, root := range roots {
 		path, ok := storage.ParsePathEscaped("/" + root)
 		if !ok {
@@ -930,14 +968,10 @@ func compileModules(compiler *ast.Compiler, m metrics.Metrics, bundles map[strin
 	modules := map[string]*ast.Module{}
 
 	// preserve any modules already on the compiler
-	for name, module := range compiler.Modules {
-		modules[name] = module
-	}
+	maps.Copy(modules, compiler.Modules)
 
 	// preserve any modules passed in from the store
-	for name, module := range extraModules {
-		modules[name] = module
-	}
+	maps.Copy(modules, extraModules)
 
 	// include all the new bundle modules
 	for bundleName, b := range bundles {
@@ -946,9 +980,7 @@ func compileModules(compiler *ast.Compiler, m metrics.Metrics, bundles map[strin
 				modules[mf.Path] = mf.Parsed
 			}
 		} else {
-			for name, module := range b.ParsedModules(bundleName) {
-				modules[name] = module
-			}
+			maps.Copy(modules, b.ParsedModules(bundleName))
 		}
 	}
 
@@ -971,14 +1003,10 @@ func writeModules(ctx context.Context, store storage.Store, txn storage.Transact
 	modules := map[string]*ast.Module{}
 
 	// preserve any modules already on the compiler
-	for name, module := range compiler.Modules {
-		modules[name] = module
-	}
+	maps.Copy(modules, compiler.Modules)
 
 	// preserve any modules passed in from the store
-	for name, module := range extraModules {
-		modules[name] = module
-	}
+	maps.Copy(modules, extraModules)
 
 	// include all the new bundle modules
 	for bundleName, b := range bundles {
@@ -987,9 +1015,7 @@ func writeModules(ctx context.Context, store storage.Store, txn storage.Transact
 				modules[mf.Path] = mf.Parsed
 			}
 		} else {
-			for name, module := range b.ParsedModules(bundleName) {
-				modules[name] = module
-			}
+			maps.Copy(modules, b.ParsedModules(bundleName))
 		}
 	}
 
@@ -1016,7 +1042,7 @@ func writeModules(ctx context.Context, store storage.Store, txn storage.Transact
 	return nil
 }
 
-func lookup(path storage.Path, data map[string]interface{}) (interface{}, bool) {
+func lookup(path storage.Path, data map[string]any) (any, bool) {
 	if len(path) == 0 {
 		return data, true
 	}
@@ -1025,7 +1051,7 @@ func lookup(path storage.Path, data map[string]interface{}) (interface{}, bool) 
 		if !ok {
 			return nil, false
 		}
-		obj, ok := value.(map[string]interface{})
+		obj, ok := value.(map[string]any)
 		if !ok {
 			return nil, false
 		}
@@ -1035,32 +1061,40 @@ func lookup(path storage.Path, data map[string]interface{}) (interface{}, bool) 
 	return value, ok
 }
 
-func hasRootsOverlap(ctx context.Context, store storage.Store, txn storage.Transaction, bundles map[string]*Bundle) error {
-	collisions := map[string][]string{}
-	allBundles, err := ReadBundleNamesFromStore(ctx, store, txn)
+func hasRootsOverlap(ctx context.Context, store storage.Store, txn storage.Transaction, newBundles map[string]*Bundle) error {
+	storeBundles, err := ReadBundleNamesFromStore(ctx, store, txn)
 	if suppressNotFound(err) != nil {
 		return err
 	}
 
 	allRoots := map[string][]string{}
+	bundlesWithEmptyRoots := map[string]bool{}
 
 	// Build a map of roots for existing bundles already in the system
-	for _, name := range allBundles {
+	for _, name := range storeBundles {
 		roots, err := ReadBundleRootsFromStore(ctx, store, txn, name)
 		if suppressNotFound(err) != nil {
 			return err
 		}
 		allRoots[name] = roots
+		if slices.Contains(roots, "") {
+			bundlesWithEmptyRoots[name] = true
+		}
 	}
 
 	// Add in any bundles that are being activated, overwrite existing roots
 	// with new ones where bundles are in both groups.
-	for name, bundle := range bundles {
+	for name, bundle := range newBundles {
 		allRoots[name] = *bundle.Manifest.Roots
+		if slices.Contains(*bundle.Manifest.Roots, "") {
+			bundlesWithEmptyRoots[name] = true
+		}
 	}
 
 	// Now check for each new bundle if it conflicts with any of the others
-	for name, bundle := range bundles {
+	collidingBundles := map[string]bool{}
+	conflictSet := map[string]bool{}
+	for name, bundle := range newBundles {
 		for otherBundle, otherRoots := range allRoots {
 			if name == otherBundle {
 				// Skip the current bundle being checked
@@ -1070,22 +1104,41 @@ func hasRootsOverlap(ctx context.Context, store storage.Store, txn storage.Trans
 			// Compare the "new" roots with other existing (or a different bundles new roots)
 			for _, newRoot := range *bundle.Manifest.Roots {
 				for _, otherRoot := range otherRoots {
-					if RootPathsOverlap(newRoot, otherRoot) {
-						collisions[otherBundle] = append(collisions[otherBundle], newRoot)
+					if !RootPathsOverlap(newRoot, otherRoot) {
+						continue
+					}
+
+					collidingBundles[name] = true
+					collidingBundles[otherBundle] = true
+
+					// Different message required if the roots are same
+					if newRoot == otherRoot {
+						conflictSet[fmt.Sprintf("root %s is in multiple bundles", newRoot)] = true
+					} else {
+						paths := []string{newRoot, otherRoot}
+						sort.Strings(paths)
+						conflictSet[fmt.Sprintf("%s overlaps %s", paths[0], paths[1])] = true
 					}
 				}
 			}
 		}
 	}
 
-	if len(collisions) > 0 {
-		var bundleNames []string
-		for name := range collisions {
-			bundleNames = append(bundleNames, name)
-		}
-		return fmt.Errorf("detected overlapping roots in bundle manifest with: %s", bundleNames)
+	if len(collidingBundles) == 0 {
+		return nil
 	}
-	return nil
+
+	bundleNames := strings.Join(util.KeysSorted(collidingBundles), ", ")
+
+	if len(bundlesWithEmptyRoots) > 0 {
+		return fmt.Errorf(
+			"bundles [%s] have overlapping roots and cannot be activated simultaneously because bundle(s) [%s] specify empty root paths ('') which overlap with any other bundle root",
+			bundleNames,
+			strings.Join(util.KeysSorted(bundlesWithEmptyRoots), ", "),
+		)
+	}
+
+	return fmt.Errorf("detected overlapping roots in manifests for these bundles: [%s] (%s)", bundleNames, strings.Join(util.KeysSorted(conflictSet), ", "))
 }
 
 func applyPatches(ctx context.Context, store storage.Store, txn storage.Transaction, patches []PatchOperation) error {
@@ -1163,4 +1216,30 @@ func LegacyReadRevisionFromStore(ctx context.Context, store storage.Store, txn s
 func ActivateLegacy(opts *ActivateOpts) error {
 	opts.legacy = true
 	return activateBundles(opts)
+}
+
+// GetActivator returns the Activator registered under the given id
+func GetActivator(id string) (Activator, error) {
+	activator, ok := activators[id]
+
+	if !ok {
+		return nil, fmt.Errorf("no activator exists under id %s", id)
+	}
+
+	return activator, nil
+}
+
+// RegisterActivator registers a bundle Activator under the given id.
+// The id value can later be referenced in ActivateOpts.Plugin to specify
+// which activator should be used for that bundle activation operation.
+// Note: This must be called *before* RegisterDefaultBundleActivator.
+func RegisterActivator(id string, a Activator) {
+	activatorMtx.Lock()
+	defer activatorMtx.Unlock()
+
+	if id == defaultActivatorID {
+		panic("cannot use reserved activator id, use a different id")
+	}
+
+	activators[id] = a
 }

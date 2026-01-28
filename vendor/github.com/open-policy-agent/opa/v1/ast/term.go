@@ -19,9 +19,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/cespare/xxhash/v2"
-
 	astJSON "github.com/open-policy-agent/opa/v1/ast/json"
 	"github.com/open-policy-agent/opa/v1/ast/location"
 	"github.com/open-policy-agent/opa/v1/util"
@@ -54,14 +54,14 @@ type Value interface {
 }
 
 // InterfaceToValue converts a native Go value x to a Value.
-func InterfaceToValue(x interface{}) (Value, error) {
+func InterfaceToValue(x any) (Value, error) {
 	switch x := x.(type) {
 	case Value:
 		return x, nil
 	case nil:
 		return NullValue, nil
 	case bool:
-		return InternedBooleanTerm(x).Value, nil
+		return InternedTerm(x).Value, nil
 	case json.Number:
 		if interned := InternedIntNumberTermFromString(string(x)); interned != nil {
 			return interned.Value, nil
@@ -127,7 +127,7 @@ func InterfaceToValue(x interface{}) (Value, error) {
 
 // ValueFromReader returns an AST value from a JSON serialized value in the reader.
 func ValueFromReader(r io.Reader) (Value, error) {
-	var x interface{}
+	var x any
 	if err := util.NewJSONDecoder(r).Decode(&x); err != nil {
 		return nil, err
 	}
@@ -135,13 +135,13 @@ func ValueFromReader(r io.Reader) (Value, error) {
 }
 
 // As converts v into a Go native type referred to by x.
-func As(v Value, x interface{}) error {
+func As(v Value, x any) error {
 	return util.NewJSONDecoder(strings.NewReader(v.String())).Decode(x)
 }
 
 // Resolver defines the interface for resolving references to native Go values.
 type Resolver interface {
-	Resolve(Ref) (interface{}, error)
+	Resolve(Ref) (any, error)
 }
 
 // ValueResolver defines the interface for resolving references to AST values.
@@ -165,18 +165,18 @@ func IsUnknownValueErr(err error) bool {
 
 type illegalResolver struct{}
 
-func (illegalResolver) Resolve(ref Ref) (interface{}, error) {
+func (illegalResolver) Resolve(ref Ref) (any, error) {
 	return nil, fmt.Errorf("illegal value: %v", ref)
 }
 
 // ValueToInterface returns the Go representation of an AST value.  The AST
 // value should not contain any values that require evaluation (e.g., vars,
 // comprehensions, etc.)
-func ValueToInterface(v Value, resolver Resolver) (interface{}, error) {
+func ValueToInterface(v Value, resolver Resolver) (any, error) {
 	return valueToInterface(v, resolver, JSONOpt{})
 }
 
-func valueToInterface(v Value, resolver Resolver, opt JSONOpt) (interface{}, error) {
+func valueToInterface(v Value, resolver Resolver, opt JSONOpt) (any, error) {
 	switch v := v.(type) {
 	case Null:
 		return nil, nil
@@ -187,7 +187,7 @@ func valueToInterface(v Value, resolver Resolver, opt JSONOpt) (interface{}, err
 	case String:
 		return string(v), nil
 	case *Array:
-		buf := []interface{}{}
+		buf := []any{}
 		for i := range v.Len() {
 			x1, err := valueToInterface(v.Elem(i).Value, resolver, opt)
 			if err != nil {
@@ -197,7 +197,7 @@ func valueToInterface(v Value, resolver Resolver, opt JSONOpt) (interface{}, err
 		}
 		return buf, nil
 	case *object:
-		buf := make(map[string]interface{}, v.Len())
+		buf := make(map[string]any, v.Len())
 		err := v.Iter(func(k, v *Term) error {
 			ki, err := valueToInterface(k.Value, resolver, opt)
 			if err != nil {
@@ -229,7 +229,7 @@ func valueToInterface(v Value, resolver Resolver, opt JSONOpt) (interface{}, err
 		}
 		return v.native, nil
 	case Set:
-		buf := []interface{}{}
+		buf := []any{}
 		iter := func(x *Term) error {
 			x1, err := valueToInterface(x.Value, resolver, opt)
 			if err != nil {
@@ -257,19 +257,19 @@ func valueToInterface(v Value, resolver Resolver, opt JSONOpt) (interface{}, err
 
 // JSON returns the JSON representation of v. The value must not contain any
 // refs or terms that require evaluation (e.g., vars, comprehensions, etc.)
-func JSON(v Value) (interface{}, error) {
+func JSON(v Value) (any, error) {
 	return JSONWithOpt(v, JSONOpt{})
 }
 
 // JSONOpt defines parameters for AST to JSON conversion.
 type JSONOpt struct {
 	SortSets bool // sort sets before serializing (this makes conversion more expensive)
-	CopyMaps bool // enforces copying of map[string]interface{} read from the store
+	CopyMaps bool // enforces copying of map[string]any read from the store
 }
 
 // JSONWithOpt returns the JSON representation of v. The value must not contain any
 // refs or terms that require evaluation (e.g., vars, comprehensions, etc.)
-func JSONWithOpt(v Value, opt JSONOpt) (interface{}, error) {
+func JSONWithOpt(v Value, opt JSONOpt) (any, error) {
 	return valueToInterface(v, illegalResolver{}, opt)
 }
 
@@ -277,7 +277,7 @@ func JSONWithOpt(v Value, opt JSONOpt) (interface{}, error) {
 // refs or terms that require evaluation (e.g., vars, comprehensions, etc.) If
 // the conversion fails, this function will panic. This function is mostly for
 // test purposes.
-func MustJSON(v Value) interface{} {
+func MustJSON(v Value) any {
 	r, err := JSON(v)
 	if err != nil {
 		panic(err)
@@ -288,7 +288,7 @@ func MustJSON(v Value) interface{} {
 // MustInterfaceToValue converts a native Go value x to a Value. If the
 // conversion fails, this function will panic. This function is mostly for test
 // purposes.
-func MustInterfaceToValue(x interface{}) Value {
+func MustInterfaceToValue(x any) Value {
 	v, err := InterfaceToValue(x)
 	if err != nil {
 		panic(err)
@@ -410,7 +410,7 @@ func (term *Term) IsGround() bool {
 //
 // Specialized marshalling logic is required to include a type hint for Value.
 func (term *Term) MarshalJSON() ([]byte, error) {
-	d := map[string]interface{}{
+	d := map[string]any{
 		"type":  ValueName(term.Value),
 		"value": term.Value,
 	}
@@ -430,7 +430,7 @@ func (term *Term) String() string {
 // UnmarshalJSON parses the byte array and stores the result in term.
 // Specialized unmarshalling is required to handle Value and Location.
 func (term *Term) UnmarshalJSON(bs []byte) error {
-	v := map[string]interface{}{}
+	v := map[string]any{}
 	if err := util.UnmarshalJSON(bs, &v); err != nil {
 		return err
 	}
@@ -440,7 +440,7 @@ func (term *Term) UnmarshalJSON(bs []byte) error {
 	}
 	term.Value = val
 
-	if loc, ok := v["location"].(map[string]interface{}); ok {
+	if loc, ok := v["location"].(map[string]any); ok {
 		term.Location = &Location{}
 		err := unmarshalLocation(term.Location, loc)
 		if err != nil {
@@ -452,7 +452,7 @@ func (term *Term) UnmarshalJSON(bs []byte) error {
 
 // Vars returns a VarSet with variables contained in this term.
 func (term *Term) Vars() VarSet {
-	vis := &VarVisitor{vars: VarSet{}}
+	vis := NewVarVisitor()
 	vis.Walk(term)
 	return vis.vars
 }
@@ -461,7 +461,7 @@ func (term *Term) Vars() VarSet {
 func IsConstant(v Value) bool {
 	found := false
 	vis := GenericVisitor{
-		func(x interface{}) bool {
+		func(x any) bool {
 			switch x.(type) {
 			case Var, Ref, *ArrayComprehension, *ObjectComprehension, *SetComprehension, Call:
 				found = true
@@ -484,7 +484,7 @@ func IsComprehension(x Value) bool {
 }
 
 // ContainsRefs returns true if the Value v contains refs.
-func ContainsRefs(v interface{}) bool {
+func ContainsRefs(v any) bool {
 	found := false
 	WalkRefs(v, func(Ref) bool {
 		found = true
@@ -494,9 +494,9 @@ func ContainsRefs(v interface{}) bool {
 }
 
 // ContainsComprehensions returns true if the Value v contains comprehensions.
-func ContainsComprehensions(v interface{}) bool {
+func ContainsComprehensions(v any) bool {
 	found := false
-	WalkClosures(v, func(x interface{}) bool {
+	WalkClosures(v, func(x any) bool {
 		switch x.(type) {
 		case *ArrayComprehension, *ObjectComprehension, *SetComprehension:
 			found = true
@@ -508,9 +508,9 @@ func ContainsComprehensions(v interface{}) bool {
 }
 
 // ContainsClosures returns true if the Value v contains closures.
-func ContainsClosures(v interface{}) bool {
+func ContainsClosures(v any) bool {
 	found := false
-	WalkClosures(v, func(x interface{}) bool {
+	WalkClosures(v, func(x any) bool {
 		switch x.(type) {
 		case *ArrayComprehension, *ObjectComprehension, *SetComprehension, *Every:
 			found = true
@@ -587,9 +587,9 @@ type Boolean bool
 // BooleanTerm creates a new Term with a Boolean value.
 func BooleanTerm(b bool) *Term {
 	if b {
-		return &Term{Value: InternedBooleanTerm(true).Value}
+		return &Term{Value: InternedTerm(true).Value}
 	}
-	return &Term{Value: InternedBooleanTerm(false).Value}
+	return &Term{Value: InternedTerm(false).Value}
 }
 
 // Equal returns true if the other Value is a Boolean and is equal.
@@ -624,7 +624,7 @@ func (bol Boolean) Compare(other Value) int {
 // Find returns the current value or a not found error.
 func (bol Boolean) Find(path Ref) (Value, error) {
 	if len(path) == 0 {
-		return InternedBooleanTerm(bool(bol)).Value, nil
+		return InternedTerm(bool(bol)).Value, nil
 	}
 	return nil, errFindNotFound
 }
@@ -674,10 +674,13 @@ func FloatNumberTerm(f float64) *Term {
 func (num Number) Equal(other Value) bool {
 	switch other := other.(type) {
 	case Number:
+		if num == other {
+			return true
+		}
 		if n1, ok1 := num.Int64(); ok1 {
 			n2, ok2 := other.Int64()
-			if ok1 && ok2 && n1 == n2 {
-				return true
+			if ok1 && ok2 {
+				return n1 == n2
 			}
 		}
 
@@ -718,6 +721,11 @@ func (num Number) Find(path Ref) (Value, error) {
 
 // Hash returns the hash code for the Value.
 func (num Number) Hash() int {
+	if len(num) < 4 {
+		if i, err := strconv.Atoi(string(num)); err == nil {
+			return i
+		}
+	}
 	f, err := json.Number(num).Float64()
 	if err != nil {
 		bs := []byte(num)
@@ -804,7 +812,7 @@ func (str String) Equal(other Value) bool {
 func (str String) Compare(other Value) int {
 	// Optimize for the common case of one string being compared to another by
 	// using a direct comparison of values. This avoids the allocation performed
-	// when calling Compare and its interface{} argument conversion.
+	// when calling Compare and its any argument conversion.
 	if otherStr, ok := other.(String); ok {
 		if str == otherStr {
 			return 0
@@ -928,7 +936,7 @@ func PtrRef(head *Term, s string) (Ref, error) {
 	}
 	ref := make(Ref, uint(len(parts))+1)
 	ref[0] = head
-	for i := 0; i < len(parts); i++ {
+	for i := range parts {
 		var err error
 		parts[i], err = url.PathUnescape(parts[i])
 		if err != nil {
@@ -1180,11 +1188,17 @@ func (ref Ref) String() string {
 		return ""
 	}
 
+	if len(ref) == 1 {
+		switch p := ref[0].Value.(type) {
+		case Var:
+			return p.String()
+		}
+	}
+
 	sb := sbPool.Get()
 	defer sbPool.Put(sb)
 
 	sb.Grow(10 * len(ref))
-
 	sb.WriteString(ref[0].Value.String())
 
 	for _, p := range ref[1:] {
@@ -1195,9 +1209,17 @@ func (ref Ref) String() string {
 				sb.WriteByte('.')
 				sb.WriteString(str)
 			} else {
-				sb.WriteString(`["`)
-				sb.WriteString(str)
-				sb.WriteString(`"]`)
+				sb.WriteByte('[')
+				// Determine whether we need the full JSON-escaped form
+				if strings.ContainsFunc(str, isControlOrBackslash) {
+					// only now pay the cost of expensive JSON-escaped form
+					sb.WriteString(p.String())
+				} else {
+					sb.WriteByte('"')
+					sb.WriteString(str)
+					sb.WriteByte('"')
+				}
+				sb.WriteByte(']')
 			}
 		default:
 			sb.WriteByte('[')
@@ -1213,20 +1235,20 @@ func (ref Ref) String() string {
 // this expression in isolation.
 func (ref Ref) OutputVars() VarSet {
 	vis := NewVarVisitor().WithParams(VarVisitorParams{SkipRefHead: true})
-	vis.Walk(ref)
+	vis.WalkRef(ref)
 	return vis.Vars()
 }
 
 func (ref Ref) toArray() *Array {
-	a := NewArray()
+	terms := make([]*Term, 0, len(ref))
 	for _, term := range ref {
 		if _, ok := term.Value.(String); ok {
-			a = a.Append(term)
+			terms = append(terms, term)
 		} else {
-			a = a.Append(StringTerm(term.Value.String()))
+			terms = append(terms, InternedTerm(term.Value.String()))
 		}
 	}
-	return a
+	return NewArray(terms...)
 }
 
 // QueryIterator defines the interface for querying AST documents with references.
@@ -1317,10 +1339,7 @@ func (arr *Array) Find(path Ref) (Value, error) {
 		return nil, errFindNotFound
 	}
 	i, ok := num.Int()
-	if !ok {
-		return nil, errFindNotFound
-	}
-	if i < 0 || i >= arr.Len() {
+	if !ok || i < 0 || i >= arr.Len() {
 		return nil, errFindNotFound
 	}
 
@@ -1341,12 +1360,7 @@ func (arr *Array) Get(pos *Term) *Term {
 		return nil
 	}
 
-	i, ok := num.Int()
-	if !ok {
-		return nil
-	}
-
-	if i >= 0 && i < len(arr.elems) {
+	if i, ok := num.Int(); ok && i >= 0 && i < len(arr.elems) {
 		return arr.elems[i]
 	}
 
@@ -1470,12 +1484,7 @@ func (arr *Array) Iter(f func(*Term) error) error {
 
 // Until calls f on each element in arr. If f returns true, iteration stops.
 func (arr *Array) Until(f func(*Term) bool) bool {
-	for _, term := range arr.elems {
-		if f(term) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(arr.elems, f)
 }
 
 // Foreach calls f on each element in arr.
@@ -1635,6 +1644,10 @@ func (s *set) Find(path Ref) (Value, error) {
 
 // Diff returns elements in s that are not in other.
 func (s *set) Diff(other Set) Set {
+	if s.Compare(other) == 0 {
+		return NewSet()
+	}
+
 	terms := make([]*Term, 0, len(s.keys))
 	for _, term := range s.sortedKeys() {
 		if !other.Contains(term) {
@@ -1693,12 +1706,7 @@ func (s *set) Iter(f func(*Term) error) error {
 
 // Until calls f on each element in s. If f returns true, iteration stops.
 func (s *set) Until(f func(*Term) bool) bool {
-	for _, term := range s.sortedKeys() {
-		if f(term) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(s.sortedKeys(), f)
 }
 
 // Foreach calls f on each element in s.
@@ -2000,14 +2008,14 @@ func ObjectTerm(o ...[2]*Term) *Term {
 	return &Term{Value: NewObject(o...)}
 }
 
-func LazyObject(blob map[string]interface{}) Object {
+func LazyObject(blob map[string]any) Object {
 	return &lazyObj{native: blob, cache: map[string]Value{}}
 }
 
 type lazyObj struct {
 	strict Object
 	cache  map[string]Value
-	native map[string]interface{}
+	native map[string]any
 }
 
 func (l *lazyObj) force() Object {
@@ -2104,7 +2112,7 @@ func (l *lazyObj) Get(k *Term) *Term {
 		if val, ok := l.native[string(s)]; ok {
 			var converted Value
 			switch val := val.(type) {
-			case map[string]interface{}:
+			case map[string]any:
 				converted = LazyObject(val)
 			default:
 				converted = MustInterfaceToValue(val)
@@ -2173,7 +2181,7 @@ func (l *lazyObj) Find(path Ref) (Value, error) {
 		if v, ok := l.native[string(p0)]; ok {
 			var converted Value
 			switch v := v.(type) {
-			case map[string]interface{}:
+			case map[string]any:
 				converted = LazyObject(v)
 			default:
 				converted = MustInterfaceToValue(v)
@@ -2186,24 +2194,21 @@ func (l *lazyObj) Find(path Ref) (Value, error) {
 }
 
 type object struct {
-	elems  map[int]*objectElem
-	keys   objectElemSlice
-	ground int // number of key and value grounds. Counting is
-	// required to support insert's key-value replace.
+	elems     map[int]*objectElem
+	keys      []*objectElem
+	ground    int // number of key and value grounds. Counting is required to support insert's key-value replace.
 	hash      int
 	sortGuard sync.Once // Prevents race condition around sorting.
 }
 
 func newobject(n int) *object {
-	var keys objectElemSlice
+	var keys []*objectElem
 	if n > 0 {
-		keys = make(objectElemSlice, 0, n)
+		keys = make([]*objectElem, 0, n)
 	}
 	return &object{
 		elems:     make(map[int]*objectElem, n),
 		keys:      keys,
-		ground:    0,
-		hash:      0,
 		sortGuard: sync.Once{},
 	}
 }
@@ -2214,19 +2219,13 @@ type objectElem struct {
 	next  *objectElem
 }
 
-type objectElemSlice []*objectElem
-
-func (s objectElemSlice) Less(i, j int) bool { return Compare(s[i].key.Value, s[j].key.Value) < 0 }
-func (s objectElemSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s objectElemSlice) Len() int           { return len(s) }
-
 // Item is a helper for constructing an tuple containing two Terms
 // representing a key/value pair in an Object.
 func Item(key, value *Term) [2]*Term {
 	return [2]*Term{key, value}
 }
 
-func (obj *object) sortedKeys() objectElemSlice {
+func (obj *object) sortedKeys() []*objectElem {
 	obj.sortGuard.Do(func() {
 		slices.SortFunc(obj.keys, func(a, b *objectElem) int {
 			return a.key.Value.Compare(b.key.Value)
@@ -2532,6 +2531,9 @@ func (obj *object) get(k *Term) *objectElem {
 	case Number:
 		if xi, ok := x.Int64(); ok {
 			equal = func(y Value) bool {
+				if x == y {
+					return true
+				}
 				if y, ok := y.(Number); ok {
 					if yi, ok := y.Int64(); ok {
 						return xi == yi
@@ -2622,6 +2624,9 @@ func (obj *object) insert(k, v *Term, resetSortGuard bool) {
 	case Number:
 		if xi, err := json.Number(x).Int64(); err == nil {
 			equal = func(y Value) bool {
+				if x == y {
+					return true
+				}
 				if y, ok := y.(Number); ok {
 					if yi, err := json.Number(y).Int64(); err == nil {
 						return xi == yi
@@ -2689,10 +2694,6 @@ func (obj *object) insert(k, v *Term, resetSortGuard bool) {
 
 	for curr := head; curr != nil; curr = curr.next {
 		if equal(curr.key.Value) {
-			// The ground bit of the value may change in
-			// replace, hence adjust the counter per old
-			// and new value.
-
 			if curr.value.IsGround() {
 				obj.ground--
 			}
@@ -2700,20 +2701,21 @@ func (obj *object) insert(k, v *Term, resetSortGuard bool) {
 				obj.ground++
 			}
 
+			// Update hash based on the new value
 			curr.value = v
+			obj.elems[hash] = curr
+			obj.hash = 0
+			for ehash := range obj.elems {
+				obj.hash += ehash + obj.elems[ehash].value.Hash()
+			}
 
-			obj.rehash()
 			return
 		}
 	}
-	elem := &objectElem{
-		key:   k,
-		value: v,
-		next:  head,
-	}
-	obj.elems[hash] = elem
+
+	obj.elems[hash] = &objectElem{key: k, value: v, next: head}
 	// O(1) insertion, but we'll have to re-sort the keys later.
-	obj.keys = append(obj.keys, elem)
+	obj.keys = append(obj.keys, obj.elems[hash])
 
 	if resetSortGuard {
 		// Reset the sync.Once instance.
@@ -2734,19 +2736,6 @@ func (obj *object) insert(k, v *Term, resetSortGuard bool) {
 	}
 }
 
-func (obj *object) rehash() {
-	// obj.keys is considered truth, from which obj.hash and obj.elems are recalculated.
-
-	obj.hash = 0
-	obj.elems = make(map[int]*objectElem, len(obj.keys))
-
-	for _, elem := range obj.keys {
-		hash := elem.key.Hash()
-		obj.hash += hash + elem.value.Hash()
-		obj.elems[hash] = elem
-	}
-}
-
 func filterObject(o Value, filter Value) (Value, error) {
 	if (Null{}).Equal(filter) {
 		return o, nil
@@ -2763,7 +2752,7 @@ func filterObject(o Value, filter Value) (Value, error) {
 	case *Array:
 		values := NewArray()
 		for i := range v.Len() {
-			subFilter := filteredObj.Get(StringTerm(strconv.Itoa(i)))
+			subFilter := filteredObj.Get(InternedIntegerString(i))
 			if subFilter != nil {
 				filteredValue, err := filterObject(v.Elem(i).Value, subFilter.Value)
 				if err != nil {
@@ -3101,6 +3090,11 @@ func termSliceIsGround(a []*Term) bool {
 	return true
 }
 
+// Detect when String() need to use expensive JSON‐escaped form
+func isControlOrBackslash(r rune) bool {
+	return r == '\\' || unicode.IsControl(r)
+}
+
 // NOTE(tsandall): The unmarshalling errors in these functions are not
 // helpful for callers because they do not identify the source of the
 // unmarshalling error. Because OPA doesn't accept JSON describing ASTs
@@ -3109,10 +3103,10 @@ func termSliceIsGround(a []*Term) bool {
 // on the happy path and treats all errors the same. If better error
 // reporting is needed, the error paths will need to be fleshed out.
 
-func unmarshalBody(b []interface{}) (Body, error) {
+func unmarshalBody(b []any) (Body, error) {
 	buf := Body{}
 	for _, e := range b {
-		if m, ok := e.(map[string]interface{}); ok {
+		if m, ok := e.(map[string]any); ok {
 			expr := &Expr{}
 			if err := unmarshalExpr(expr, m); err == nil {
 				buf = append(buf, expr)
@@ -3126,7 +3120,7 @@ unmarshal_error:
 	return nil, errors.New("ast: unable to unmarshal body")
 }
 
-func unmarshalExpr(expr *Expr, v map[string]interface{}) error {
+func unmarshalExpr(expr *Expr, v map[string]any) error {
 	if x, ok := v["negated"]; ok {
 		if b, ok := x.(bool); ok {
 			expr.Negated = b
@@ -3146,13 +3140,13 @@ func unmarshalExpr(expr *Expr, v map[string]interface{}) error {
 		return err
 	}
 	switch ts := v["terms"].(type) {
-	case map[string]interface{}:
+	case map[string]any:
 		t, err := unmarshalTerm(ts)
 		if err != nil {
 			return err
 		}
 		expr.Terms = t
-	case []interface{}:
+	case []any:
 		terms, err := unmarshalTermSlice(ts)
 		if err != nil {
 			return err
@@ -3162,7 +3156,7 @@ func unmarshalExpr(expr *Expr, v map[string]interface{}) error {
 		return fmt.Errorf(`ast: unable to unmarshal terms field with type: %T (expected {"value": ..., "type": ...} or [{"value": ..., "type": ...}, ...])`, v["terms"])
 	}
 	if x, ok := v["with"]; ok {
-		if sl, ok := x.([]interface{}); ok {
+		if sl, ok := x.([]any); ok {
 			ws := make([]*With, len(sl))
 			for i := range sl {
 				var err error
@@ -3174,7 +3168,7 @@ func unmarshalExpr(expr *Expr, v map[string]interface{}) error {
 			expr.With = ws
 		}
 	}
-	if loc, ok := v["location"].(map[string]interface{}); ok {
+	if loc, ok := v["location"].(map[string]any); ok {
 		expr.Location = &Location{}
 		if err := unmarshalLocation(expr.Location, loc); err != nil {
 			return err
@@ -3183,7 +3177,7 @@ func unmarshalExpr(expr *Expr, v map[string]interface{}) error {
 	return nil
 }
 
-func unmarshalLocation(loc *Location, v map[string]interface{}) error {
+func unmarshalLocation(loc *Location, v map[string]any) error {
 	if x, ok := v["file"]; ok {
 		if s, ok := x.(string); ok {
 			loc.File = s
@@ -3217,7 +3211,7 @@ func unmarshalLocation(loc *Location, v map[string]interface{}) error {
 	return nil
 }
 
-func unmarshalExprIndex(expr *Expr, v map[string]interface{}) error {
+func unmarshalExprIndex(expr *Expr, v map[string]any) error {
 	if x, ok := v["index"]; ok {
 		if n, ok := x.(json.Number); ok {
 			i, err := n.Int64()
@@ -3230,7 +3224,7 @@ func unmarshalExprIndex(expr *Expr, v map[string]interface{}) error {
 	return fmt.Errorf("ast: unable to unmarshal index field with type: %T (expected integer)", v["index"])
 }
 
-func unmarshalTerm(m map[string]interface{}) (*Term, error) {
+func unmarshalTerm(m map[string]any) (*Term, error) {
 	var term Term
 
 	v, err := unmarshalValue(m)
@@ -3239,7 +3233,7 @@ func unmarshalTerm(m map[string]interface{}) (*Term, error) {
 	}
 	term.Value = v
 
-	if loc, ok := m["location"].(map[string]interface{}); ok {
+	if loc, ok := m["location"].(map[string]any); ok {
 		term.Location = &Location{}
 		if err := unmarshalLocation(term.Location, loc); err != nil {
 			return nil, err
@@ -3249,10 +3243,10 @@ func unmarshalTerm(m map[string]interface{}) (*Term, error) {
 	return &term, nil
 }
 
-func unmarshalTermSlice(s []interface{}) ([]*Term, error) {
+func unmarshalTermSlice(s []any) ([]*Term, error) {
 	buf := []*Term{}
 	for _, x := range s {
-		if m, ok := x.(map[string]interface{}); ok {
+		if m, ok := x.(map[string]any); ok {
 			t, err := unmarshalTerm(m)
 			if err == nil {
 				buf = append(buf, t)
@@ -3265,19 +3259,19 @@ func unmarshalTermSlice(s []interface{}) ([]*Term, error) {
 	return buf, nil
 }
 
-func unmarshalTermSliceValue(d map[string]interface{}) ([]*Term, error) {
-	if s, ok := d["value"].([]interface{}); ok {
+func unmarshalTermSliceValue(d map[string]any) ([]*Term, error) {
+	if s, ok := d["value"].([]any); ok {
 		return unmarshalTermSlice(s)
 	}
 	return nil, errors.New(`ast: unable to unmarshal term (expected {"value": [...], "type": ...} where type is one of: ref, array, or set)`)
 }
 
-func unmarshalWith(i interface{}) (*With, error) {
-	if m, ok := i.(map[string]interface{}); ok {
-		tgt, _ := m["target"].(map[string]interface{})
+func unmarshalWith(i any) (*With, error) {
+	if m, ok := i.(map[string]any); ok {
+		tgt, _ := m["target"].(map[string]any)
 		target, err := unmarshalTerm(tgt)
 		if err == nil {
-			val, _ := m["value"].(map[string]interface{})
+			val, _ := m["value"].(map[string]any)
 			value, err := unmarshalTerm(val)
 			if err == nil {
 				return &With{
@@ -3292,7 +3286,7 @@ func unmarshalWith(i interface{}) (*With, error) {
 	return nil, errors.New(`ast: unable to unmarshal with modifier (expected {"target": {...}, "value": {...}})`)
 }
 
-func unmarshalValue(d map[string]interface{}) (Value, error) {
+func unmarshalValue(d map[string]any) (Value, error) {
 	v := d["value"]
 	switch d["type"] {
 	case "null":
@@ -3326,10 +3320,10 @@ func unmarshalValue(d map[string]interface{}) (Value, error) {
 			return NewSet(s...), nil
 		}
 	case "object":
-		if s, ok := v.([]interface{}); ok {
+		if s, ok := v.([]any); ok {
 			buf := NewObject()
 			for _, x := range s {
-				if i, ok := x.([]interface{}); ok && len(i) == 2 {
+				if i, ok := x.([]any); ok && len(i) == 2 {
 					p, err := unmarshalTermSlice(i)
 					if err == nil {
 						buf.Insert(p[0], p[1])
@@ -3341,8 +3335,8 @@ func unmarshalValue(d map[string]interface{}) (Value, error) {
 			return buf, nil
 		}
 	case "arraycomprehension", "setcomprehension":
-		if m, ok := v.(map[string]interface{}); ok {
-			t, ok := m["term"].(map[string]interface{})
+		if m, ok := v.(map[string]any); ok {
+			t, ok := m["term"].(map[string]any)
 			if !ok {
 				goto unmarshal_error
 			}
@@ -3352,7 +3346,7 @@ func unmarshalValue(d map[string]interface{}) (Value, error) {
 				goto unmarshal_error
 			}
 
-			b, ok := m["body"].([]interface{})
+			b, ok := m["body"].([]any)
 			if !ok {
 				goto unmarshal_error
 			}
@@ -3368,8 +3362,8 @@ func unmarshalValue(d map[string]interface{}) (Value, error) {
 			return &SetComprehension{Term: term, Body: body}, nil
 		}
 	case "objectcomprehension":
-		if m, ok := v.(map[string]interface{}); ok {
-			k, ok := m["key"].(map[string]interface{})
+		if m, ok := v.(map[string]any); ok {
+			k, ok := m["key"].(map[string]any)
 			if !ok {
 				goto unmarshal_error
 			}
@@ -3379,7 +3373,7 @@ func unmarshalValue(d map[string]interface{}) (Value, error) {
 				goto unmarshal_error
 			}
 
-			v, ok := m["value"].(map[string]interface{})
+			v, ok := m["value"].(map[string]any)
 			if !ok {
 				goto unmarshal_error
 			}
@@ -3389,7 +3383,7 @@ func unmarshalValue(d map[string]interface{}) (Value, error) {
 				goto unmarshal_error
 			}
 
-			b, ok := m["body"].([]interface{})
+			b, ok := m["body"].([]any)
 			if !ok {
 				goto unmarshal_error
 			}

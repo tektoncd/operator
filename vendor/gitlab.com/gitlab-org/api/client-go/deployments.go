@@ -24,12 +24,12 @@ import (
 type (
 	// DeploymentsServiceInterface defines all the API methods for the DeploymentsService
 	DeploymentsServiceInterface interface {
-		ListProjectDeployments(pid interface{}, opts *ListProjectDeploymentsOptions, options ...RequestOptionFunc) ([]*Deployment, *Response, error)
-		GetProjectDeployment(pid interface{}, deployment int, options ...RequestOptionFunc) (*Deployment, *Response, error)
-		CreateProjectDeployment(pid interface{}, opt *CreateProjectDeploymentOptions, options ...RequestOptionFunc) (*Deployment, *Response, error)
-		UpdateProjectDeployment(pid interface{}, deployment int, opt *UpdateProjectDeploymentOptions, options ...RequestOptionFunc) (*Deployment, *Response, error)
-		ApproveOrRejectProjectDeployment(pid interface{}, deployment int, opt *ApproveOrRejectProjectDeploymentOptions, options ...RequestOptionFunc) (*Response, error)
-		DeleteProjectDeployment(pid interface{}, deployment int, options ...RequestOptionFunc) (*Response, error)
+		ListProjectDeployments(pid any, opts *ListProjectDeploymentsOptions, options ...RequestOptionFunc) ([]*Deployment, *Response, error)
+		GetProjectDeployment(pid any, deployment int, options ...RequestOptionFunc) (*Deployment, *Response, error)
+		CreateProjectDeployment(pid any, opt *CreateProjectDeploymentOptions, options ...RequestOptionFunc) (*Deployment, *Response, error)
+		UpdateProjectDeployment(pid any, deployment int, opt *UpdateProjectDeploymentOptions, options ...RequestOptionFunc) (*Deployment, *Response, error)
+		ApproveOrRejectProjectDeployment(pid any, deployment int, opt *ApproveOrRejectProjectDeploymentOptions, options ...RequestOptionFunc) (*Response, error)
+		DeleteProjectDeployment(pid any, deployment int, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// DeploymentsService handles communication with the deployment related methods
@@ -104,7 +104,7 @@ type ListProjectDeploymentsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/deployments/#list-project-deployments
-func (s *DeploymentsService) ListProjectDeployments(pid interface{}, opts *ListProjectDeploymentsOptions, options ...RequestOptionFunc) ([]*Deployment, *Response, error) {
+func (s *DeploymentsService) ListProjectDeployments(pid any, opts *ListProjectDeploymentsOptions, options ...RequestOptionFunc) ([]*Deployment, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -129,7 +129,7 @@ func (s *DeploymentsService) ListProjectDeployments(pid interface{}, opts *ListP
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/deployments/#get-a-specific-deployment
-func (s *DeploymentsService) GetProjectDeployment(pid interface{}, deployment int, options ...RequestOptionFunc) (*Deployment, *Response, error) {
+func (s *DeploymentsService) GetProjectDeployment(pid any, deployment int, options ...RequestOptionFunc) (*Deployment, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -167,7 +167,7 @@ type CreateProjectDeploymentOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/deployments/#create-a-deployment
-func (s *DeploymentsService) CreateProjectDeployment(pid interface{}, opt *CreateProjectDeploymentOptions, options ...RequestOptionFunc) (*Deployment, *Response, error) {
+func (s *DeploymentsService) CreateProjectDeployment(pid any, opt *CreateProjectDeploymentOptions, options ...RequestOptionFunc) (*Deployment, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -201,7 +201,7 @@ type UpdateProjectDeploymentOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/deployments/#update-a-deployment
-func (s *DeploymentsService) UpdateProjectDeployment(pid interface{}, deployment int, opt *UpdateProjectDeploymentOptions, options ...RequestOptionFunc) (*Deployment, *Response, error) {
+func (s *DeploymentsService) UpdateProjectDeployment(pid any, deployment int, opt *UpdateProjectDeploymentOptions, options ...RequestOptionFunc) (*Deployment, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -237,7 +237,7 @@ type ApproveOrRejectProjectDeploymentOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/deployments/#approve-or-reject-a-blocked-deployment
-func (s *DeploymentsService) ApproveOrRejectProjectDeployment(pid interface{}, deployment int,
+func (s *DeploymentsService) ApproveOrRejectProjectDeployment(pid any, deployment int,
 	opt *ApproveOrRejectProjectDeploymentOptions, options ...RequestOptionFunc,
 ) (*Response, error) {
 	project, err := parseID(pid)
@@ -258,7 +258,7 @@ func (s *DeploymentsService) ApproveOrRejectProjectDeployment(pid interface{}, d
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/deployments/#delete-a-specific-deployment
-func (s *DeploymentsService) DeleteProjectDeployment(pid interface{}, deployment int, options ...RequestOptionFunc) (*Response, error) {
+func (s *DeploymentsService) DeleteProjectDeployment(pid any, deployment int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err

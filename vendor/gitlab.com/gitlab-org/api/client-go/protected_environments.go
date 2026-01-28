@@ -23,11 +23,11 @@ import (
 
 type (
 	ProtectedEnvironmentsServiceInterface interface {
-		ListProtectedEnvironments(pid interface{}, opt *ListProtectedEnvironmentsOptions, options ...RequestOptionFunc) ([]*ProtectedEnvironment, *Response, error)
-		GetProtectedEnvironment(pid interface{}, environment string, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error)
-		ProtectRepositoryEnvironments(pid interface{}, opt *ProtectRepositoryEnvironmentsOptions, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error)
-		UpdateProtectedEnvironments(pid interface{}, environment string, opt *UpdateProtectedEnvironmentsOptions, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error)
-		UnprotectEnvironment(pid interface{}, environment string, options ...RequestOptionFunc) (*Response, error)
+		ListProtectedEnvironments(pid any, opt *ListProtectedEnvironmentsOptions, options ...RequestOptionFunc) ([]*ProtectedEnvironment, *Response, error)
+		GetProtectedEnvironment(pid any, environment string, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error)
+		ProtectRepositoryEnvironments(pid any, opt *ProtectRepositoryEnvironmentsOptions, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error)
+		UpdateProtectedEnvironments(pid any, environment string, opt *UpdateProtectedEnvironmentsOptions, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error)
+		UnprotectEnvironment(pid any, environment string, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// ProtectedEnvironmentsService handles communication with the protected
@@ -53,7 +53,7 @@ type ProtectedEnvironment struct {
 	ApprovalRules         []*EnvironmentApprovalRule      `json:"approval_rules"`
 }
 
-// EnvironmentAccessDescription represents the access decription for a protected
+// EnvironmentAccessDescription represents the access description for a protected
 // environment.
 //
 // GitLab API docs:
@@ -94,7 +94,7 @@ type ListProtectedEnvironmentsOptions ListOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/protected_environments/#list-protected-environments
-func (s *ProtectedEnvironmentsService) ListProtectedEnvironments(pid interface{}, opt *ListProtectedEnvironmentsOptions, options ...RequestOptionFunc) ([]*ProtectedEnvironment, *Response, error) {
+func (s *ProtectedEnvironmentsService) ListProtectedEnvironments(pid any, opt *ListProtectedEnvironmentsOptions, options ...RequestOptionFunc) ([]*ProtectedEnvironment, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -120,7 +120,7 @@ func (s *ProtectedEnvironmentsService) ListProtectedEnvironments(pid interface{}
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/protected_environments/#get-a-single-protected-environment
-func (s *ProtectedEnvironmentsService) GetProtectedEnvironment(pid interface{}, environment string, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error) {
+func (s *ProtectedEnvironmentsService) GetProtectedEnvironment(pid any, environment string, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -153,7 +153,7 @@ type ProtectRepositoryEnvironmentsOptions struct {
 	ApprovalRules         *[]*EnvironmentApprovalRuleOptions `url:"approval_rules,omitempty" json:"approval_rules,omitempty"`
 }
 
-// EnvironmentAccessOptions represents the options for an access decription for
+// EnvironmentAccessOptions represents the options for an access description for
 // a protected environment.
 //
 // GitLab API docs:
@@ -184,7 +184,7 @@ type EnvironmentApprovalRuleOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/protected_environments/#protect-a-single-environment
-func (s *ProtectedEnvironmentsService) ProtectRepositoryEnvironments(pid interface{}, opt *ProtectRepositoryEnvironmentsOptions, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error) {
+func (s *ProtectedEnvironmentsService) ProtectRepositoryEnvironments(pid any, opt *ProtectRepositoryEnvironmentsOptions, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -218,7 +218,7 @@ type UpdateProtectedEnvironmentsOptions struct {
 }
 
 // UpdateEnvironmentAccessOptions represents the options for updates to an
-// access decription for a protected environment.
+// access description for a protected environment.
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/protected_environments/#update-a-protected-environment
@@ -252,7 +252,7 @@ type UpdateEnvironmentApprovalRuleOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/protected_environments/#update-a-protected-environment
-func (s *ProtectedEnvironmentsService) UpdateProtectedEnvironments(pid interface{}, environment string, opt *UpdateProtectedEnvironmentsOptions, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error) {
+func (s *ProtectedEnvironmentsService) UpdateProtectedEnvironments(pid any, environment string, opt *UpdateProtectedEnvironmentsOptions, options ...RequestOptionFunc) (*ProtectedEnvironment, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -278,7 +278,7 @@ func (s *ProtectedEnvironmentsService) UpdateProtectedEnvironments(pid interface
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/protected_environments/#unprotect-a-single-environment
-func (s *ProtectedEnvironmentsService) UnprotectEnvironment(pid interface{}, environment string, options ...RequestOptionFunc) (*Response, error) {
+func (s *ProtectedEnvironmentsService) UnprotectEnvironment(pid any, environment string, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
