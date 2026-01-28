@@ -280,8 +280,8 @@ copy_pruner_yaml() {
   srcPath=${SCRIPT_DIR}/config/pruner
   ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
   dstPath=${ko_data}/tekton-pruner
-  rm $dstPath -rf
-  cp $srcPath $dstPath -r
+  rm -rf $dstPath
+  cp -r $srcPath $dstPath
 }
 
 main() {
