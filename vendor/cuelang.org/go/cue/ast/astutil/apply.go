@@ -46,6 +46,9 @@ type Cursor interface {
 	// Import reports an opaque identifier that refers to the given package. It
 	// may only be called if the input to apply was an ast.File. If the import
 	// does not exist, it will be added.
+	//
+	// Deprecated: use [ast.NewImport] as an [ast.Ident.Node], and then
+	// [Sanitize].
 	Import(path string) *ast.Ident
 
 	// Replace replaces the current Node with n.
@@ -120,6 +123,8 @@ func (c *cursor) Parent() Cursor { return c.parent }
 func (c *cursor) Index() int     { return c.index }
 func (c *cursor) Node() ast.Node { return c.node }
 
+// Deprecated: use [ast.NewImport] as an [ast.Ident.Node], and then
+// [Sanitize].
 func (c *cursor) Import(importPath string) *ast.Ident {
 	info := fileInfo(c)
 	if info == nil {
@@ -198,19 +203,6 @@ type applyVisitor interface {
 }
 
 // Helper functions for common node lists. They may be empty.
-
-func applyExprList(v applyVisitor, parent Cursor, list []ast.Expr) {
-	c := newCursor(parent, nil, nil)
-	for i, x := range list {
-		c.index = i
-		c.node = x
-		c.typ = &list[i]
-		applyCursor(v, c)
-		if x != c.node {
-			list[i] = c.node.(ast.Expr)
-		}
-	}
-}
 
 type declsCursor struct {
 	*cursor
@@ -295,6 +287,19 @@ func apply[N ast.Node](v applyVisitor, parent Cursor, nodePtr *N) {
 	}
 }
 
+func applyList[N ast.Node](v applyVisitor, parent Cursor, list []N) {
+	c := newCursor(parent, nil, nil)
+	for i, node := range list {
+		c.index = i
+		c.node = node
+		c.typ = &list[i]
+		applyCursor(v, c)
+		if ast.Node(node) != c.node {
+			list[i] = c.node.(N)
+		}
+	}
+}
+
 // applyCursor traverses an AST in depth-first order: It starts by calling
 // v.Visit(node); node must not be nil. If the visitor w returned by
 // v.Visit(node) is not nil, apply is invoked recursively with visitor
@@ -309,10 +314,7 @@ func applyCursor(v applyVisitor, c Cursor) {
 
 	// TODO: record the comment groups and interleave with the values like for
 	// parsing and printing?
-	comments := node.Comments()
-	for _, cm := range comments {
-		apply(v, c, &cm)
-	}
+	applyList(v, c, ast.Comments(node))
 
 	// apply children
 	// (the order of the cases matches the order
@@ -323,9 +325,7 @@ func applyCursor(v applyVisitor, c Cursor) {
 		// nothing to do
 
 	case *ast.CommentGroup:
-		for _, cg := range n.List {
-			apply(v, c, &cg)
-		}
+		applyList(v, c, n.List)
 
 	case *ast.Attribute:
 		// nothing to do
@@ -335,9 +335,7 @@ func applyCursor(v applyVisitor, c Cursor) {
 		if n.Value != nil {
 			apply(v, c, &n.Value)
 		}
-		for _, a := range n.Attrs {
-			apply(v, c, &a)
-		}
+		applyList(v, c, n.Attrs)
 
 	case *ast.StructLit:
 		n.Elts = applyDeclList(v, c, n.Elts)
@@ -347,10 +345,10 @@ func applyCursor(v applyVisitor, c Cursor) {
 		// nothing to do
 
 	case *ast.Interpolation:
-		applyExprList(v, c, n.Elts)
+		applyList(v, c, n.Elts)
 
 	case *ast.ListLit:
-		applyExprList(v, c, n.Elts)
+		applyList(v, c, n.Elts)
 
 	case *ast.Ellipsis:
 		if n.Type != nil {
@@ -379,7 +377,7 @@ func applyCursor(v applyVisitor, c Cursor) {
 
 	case *ast.CallExpr:
 		apply(v, c, &n.Fun)
-		applyExprList(v, c, n.Args)
+		applyList(v, c, n.Args)
 
 	case *ast.UnaryExpr:
 		apply(v, c, &n.X)
@@ -399,9 +397,7 @@ func applyCursor(v applyVisitor, c Cursor) {
 		// nothing to do
 
 	case *ast.ImportDecl:
-		for _, s := range n.Specs {
-			apply(v, c, &s)
-		}
+		applyList(v, c, n.Specs)
 
 	case *ast.EmbedDecl:
 		apply(v, c, &n.Expr)
@@ -415,10 +411,7 @@ func applyCursor(v applyVisitor, c Cursor) {
 		apply(v, c, &n.Expr)
 
 	case *ast.Comprehension:
-		clauses := n.Clauses
-		for i := range n.Clauses {
-			apply(v, c, &clauses[i])
-		}
+		applyList(v, c, n.Clauses)
 		apply(v, c, &n.Value)
 
 	// Files and packages
@@ -462,7 +455,7 @@ func (f *applier) Before(c Cursor) applyVisitor {
 	node := c.Node()
 	if f.before == nil || (f.before(c) && node == c.Node()) {
 		f.commentStack = append(f.commentStack, f.current)
-		f.current = commentFrame{cg: node.Comments()}
+		f.current = commentFrame{cg: ast.Comments(node)}
 		f.visitComments(c, f.current.pos)
 		return f
 	}
@@ -483,8 +476,7 @@ func (f *applier) After(c Cursor) bool {
 
 func (f *applier) visitComments(p Cursor, pos int8) {
 	c := &f.current
-	for i := 0; i < len(c.cg); i++ {
-		cg := c.cg[i]
+	for i, cg := range c.cg {
 		if cg.Position == pos {
 			continue
 		}

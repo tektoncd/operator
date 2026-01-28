@@ -44,12 +44,13 @@ import (
 //	[]T
 //	map[string]T
 type Builtin struct {
-	Name   string
-	Pkg    adt.Feature
-	Params []Param
-	Result adt.Kind
-	Func   func(c *CallCtxt)
-	Const  string
+	Name        string
+	Pkg         adt.Feature
+	Params      []Param
+	Result      adt.Kind
+	NonConcrete bool
+	Func        func(c *CallCtxt)
+	Const       string
 }
 
 type Param struct {
@@ -69,7 +70,12 @@ func (p *Package) MustCompile(ctx *adt.OpContext, importPath string) *adt.Vertex
 	if len(p.Native) > 0 {
 		obj.AddConjunct(adt.MakeRootConjunct(nil, st))
 	}
-	for _, b := range p.Native {
+	for _, bref := range p.Native {
+		// Make a copy of each Builtin object; otherwise concurrent use by separate
+		// contexts will lead to data races when setting [Builtin.Pkg] below.
+		// TODO(perf): avoid copying the builtins, e.g. by using a sync.Once.
+		b := *bref
+
 		b.Pkg = pkgLabel
 
 		f := ctx.StringLabel(b.Name) // never starts with _
@@ -78,7 +84,7 @@ func (p *Package) MustCompile(ctx *adt.OpContext, importPath string) *adt.Vertex
 		if b.Const != "" {
 			v = mustParseConstBuiltin(ctx, b.Name, b.Const)
 		} else {
-			v = ToBuiltin(b)
+			v = ToBuiltin(&b)
 		}
 		st.Decls = append(st.Decls, &adt.Field{
 			Label: f,
@@ -119,17 +125,22 @@ func ToBuiltin(b *Builtin) *adt.Builtin {
 	}
 
 	x := &adt.Builtin{
-		Params:  params,
-		Result:  b.Result,
-		Package: b.Pkg,
-		Name:    b.Name,
+		Params:      params,
+		Result:      b.Result,
+		NonConcrete: b.NonConcrete,
+		Package:     b.Pkg,
+		Name:        b.Name,
 	}
-	x.Func = func(ctx *adt.OpContext, args []adt.Value) (ret adt.Expr) {
+	x.Func = func(call *adt.CallContext) (ret adt.Expr) {
+		ctx := call.OpContext()
+		args := call.Args()
+
 		// call, _ := ctx.Source().(*ast.CallExpr)
 		c := &CallCtxt{
-			ctx:     ctx,
-			args:    args,
-			builtin: b,
+			CallContext: call,
+			ctx:         ctx,
+			args:        args,
+			builtin:     b,
 		}
 		defer func() {
 			var errVal interface{} = c.Err
@@ -235,10 +246,15 @@ func processErr(call *CallCtxt, errVal interface{}, ret adt.Expr) adt.Expr {
 			// TODO: store the underlying error explicitly
 			ret = wrapCallErr(call, &adt.Bottom{Err: errors.Promote(err, "")})
 		}
-	default:
-		// Likely a string passed to panic.
+	case string, fmt.Stringer:
+		// A string or a stringer likely used as a panic value.
 		ret = wrapCallErr(call, &adt.Bottom{
 			Err: errors.Newf(call.Pos(), "%s", err),
+		})
+	default:
+		// Some other value used when panicking; likely a bug.
+		ret = wrapCallErr(call, &adt.Bottom{
+			Err: errors.Newf(call.Pos(), "BUG: non-stringifiable %T", err),
 		})
 	}
 	return ret

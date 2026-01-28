@@ -17,7 +17,7 @@
 // The pivotal error type in CUE packages is the interface type Error.
 // The information available in such errors can be most easily retrieved using
 // the Path, Positions, and Print functions.
-package errors // import "cuelang.org/go/cue/errors"
+package errors
 
 import (
 	"cmp"
@@ -26,13 +26,12 @@ import (
 	"io"
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 
 	"cuelang.org/go/cue/token"
 )
 
-// New is a convenience wrapper for errors.New in the core library.
+// New is a convenience wrapper for [errors.New] in the core library.
 // It does not return a CUE error.
 func New(msg string) error {
 	return errors.New(msg)
@@ -85,7 +84,8 @@ func NewMessagef(format string, args ...interface{}) Message {
 }
 
 // NewMessage creates an error message for human consumption.
-// Deprecated: Use NewMessagef instead.
+//
+// Deprecated: Use [NewMessagef] instead.
 func NewMessage(format string, args []interface{}) Message {
 	return NewMessagef(format, args...)
 }
@@ -145,8 +145,22 @@ func Positions(err error) []token.Pos {
 		}
 	}
 
-	slices.SortFunc(a[sortOffset:], comparePos)
+	slices.SortFunc(a[sortOffset:], comparePosWithNoPosFirst)
 	return slices.Compact(a)
+}
+
+// comparePosWithNoPosFirst wraps [token.Pos.Compare] to place [token.NoPos] first,
+// which is currently required for errors to be sorted correctly.
+// TODO: give all errors valid positions so that we can use the standard sorting directly.
+func comparePosWithNoPosFirst(a, b token.Pos) int {
+	if a == b {
+		return 0
+	} else if a == token.NoPos {
+		return -1
+	} else if b == token.NoPos {
+		return +1
+	}
+	return token.Pos.Compare(a, b)
 }
 
 // Path returns the path of an Error if err is of that type.
@@ -223,7 +237,7 @@ func (e *wrapped) Msg() (format string, args []interface{}) {
 }
 
 func (e *wrapped) Path() []string {
-	if p := Path(e.main); p != nil {
+	if p := e.main.Path(); p != nil {
 		return p
 	}
 	return Path(e.wrap)
@@ -281,9 +295,7 @@ func Append(a, b Error) Error {
 		return appendToList(x, b)
 	}
 	// Preserve order of errors.
-	list := appendToList(nil, a)
-	list = appendToList(list, b)
-	return list
+	return appendToList(list{a}, b)
 }
 
 // Errors reports the individual errors associated with an error, which is
@@ -311,11 +323,19 @@ func appendToList(a list, err Error) list {
 	case nil:
 		return a
 	case list:
-		if a == nil {
+		if len(a) == 0 {
 			return x
 		}
-		return append(a, x...)
+		for _, e := range x {
+			a = appendToList(a, e)
+		}
+		return a
 	default:
+		for _, e := range a {
+			if e == err {
+				return a
+			}
+		}
 		return append(a, err)
 	}
 }
@@ -356,61 +376,6 @@ func (p *list) Add(err Error) {
 // Reset resets an List to no errors.
 func (p *list) Reset() { *p = (*p)[:0] }
 
-// List implements the sort Interface.
-func (p list) Len() int      { return len(p) }
-func (p list) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
-
-func (p list) Less(i, j int) bool {
-	if c := comparePos(p[i].Position(), p[j].Position()); c != 0 {
-		return c == -1
-	}
-	// Note that it is not sufficient to simply compare file offsets because
-	// the offsets do not reflect modified line information (through //line
-	// comments).
-
-	if !equalPath(p[i].Path(), p[j].Path()) {
-		return lessPath(p[i].Path(), p[j].Path())
-	}
-	return p[i].Error() < p[j].Error()
-}
-
-func comparePos(a, b token.Pos) int {
-	if a.Filename() != b.Filename() {
-		return cmp.Compare(a.Filename(), b.Filename())
-	}
-	if a.Line() != b.Line() {
-		return cmp.Compare(a.Line(), b.Line())
-	}
-	if a.Column() != b.Column() {
-		return cmp.Compare(a.Column(), b.Column())
-	}
-	return 0
-}
-
-func lessPath(a, b []string) bool {
-	for i, x := range a {
-		if i >= len(b) {
-			return false
-		}
-		if x != b[i] {
-			return x < b[i]
-		}
-	}
-	return len(a) < len(b)
-}
-
-func equalPath(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i, x := range a {
-		if x != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
 // Sanitize sorts multiple errors and removes duplicates on a best effort basis.
 // If err represents a single or no error, it returns the error as is.
 func Sanitize(err Error) Error {
@@ -431,8 +396,7 @@ func (p list) sanitize() list {
 	if p == nil {
 		return p
 	}
-	a := make(list, len(p))
-	copy(a, p)
+	a := slices.Clone(p)
 	a.RemoveMultiples()
 	return a
 }
@@ -441,22 +405,22 @@ func (p list) sanitize() list {
 // other errors are sorted by error message, and before any *posError
 // entry.
 func (p list) Sort() {
-	sort.Sort(p)
+	slices.SortFunc(p, func(a, b Error) int {
+		if c := comparePosWithNoPosFirst(a.Position(), b.Position()); c != 0 {
+			return c
+		}
+		if c := slices.Compare(a.Path(), b.Path()); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.Error(), b.Error())
+
+	})
 }
 
 // RemoveMultiples sorts an List and removes all but the first error per line.
 func (p *list) RemoveMultiples() {
 	p.Sort()
-	var last Error
-	i := 0
-	for _, e := range *p {
-		if last == nil || !approximateEqual(last, e) {
-			last = e
-			(*p)[i] = e
-			i++
-		}
-	}
-	(*p) = (*p)[0:i]
+	*p = slices.CompactFunc(*p, approximateEqual)
 }
 
 func approximateEqual(a, b Error) bool {
@@ -465,10 +429,7 @@ func approximateEqual(a, b Error) bool {
 	if aPos == token.NoPos || bPos == token.NoPos {
 		return a.Error() == b.Error()
 	}
-	return aPos.Filename() == bPos.Filename() &&
-		aPos.Line() == bPos.Line() &&
-		aPos.Column() == bPos.Column() &&
-		equalPath(a.Path(), b.Path())
+	return comparePosWithNoPosFirst(aPos, bPos) == 0 && slices.Compare(a.Path(), b.Path()) == 0
 }
 
 // An List implements the error interface.
@@ -535,12 +496,14 @@ type Config struct {
 	ToSlash bool
 }
 
+var zeroConfig = &Config{}
+
 // Print is a utility function that prints a list of errors to w,
 // one error per line, if the err parameter is an List. Otherwise
 // it prints the err string.
 func Print(w io.Writer, err error, cfg *Config) {
 	if cfg == nil {
-		cfg = &Config{}
+		cfg = zeroConfig
 	}
 	for _, e := range list(Errors(err)).sanitize() {
 		printError(w, e, cfg)
@@ -558,11 +521,11 @@ func Details(err error, cfg *Config) string {
 // String generates a short message from a given Error.
 func String(err Error) string {
 	var b strings.Builder
-	writeErr(&b, err)
+	writeErr(&b, err, zeroConfig)
 	return b.String()
 }
 
-func writeErr(w io.Writer, err Error) {
+func writeErr(w io.Writer, err Error, cfg *Config) {
 	if path := strings.Join(err.Path(), "."); path != "" {
 		_, _ = io.WriteString(w, path)
 		_, _ = io.WriteString(w, ": ")
@@ -571,19 +534,39 @@ func writeErr(w io.Writer, err Error) {
 	for {
 		u := errors.Unwrap(err)
 
-		printed := false
 		msg, args := err.Msg()
-		s := fmt.Sprintf(msg, args...)
-		if s != "" || u == nil { // print at least something
-			_, _ = io.WriteString(w, s)
-			printed = true
+
+		// Just like [printError] does when printing one position per line,
+		// make sure that any position formatting arguments print as relative paths.
+		//
+		// Note that [Error.Msg] isn't clear about whether we should treat args as read-only,
+		// so we make a copy if we need to replace any arguments.
+		didCopy := false
+		for i, arg := range args {
+			var pos token.Position
+			switch arg := arg.(type) {
+			case token.Pos:
+				pos = arg.Position()
+			case token.Position:
+				pos = arg
+			default:
+				continue
+			}
+			if !didCopy {
+				args = slices.Clone(args)
+				didCopy = true
+			}
+			pos.Filename = relPath(pos.Filename, cfg)
+			args[i] = pos
 		}
+
+		n, _ := fmt.Fprintf(w, msg, args...)
 
 		if u == nil {
 			break
 		}
 
-		if printed {
+		if n > 0 {
 			_, _ = io.WriteString(w, ": ")
 		}
 		err, _ = u.(Error)
@@ -607,49 +590,46 @@ func printError(w io.Writer, err error, cfg *Config) {
 		fprintf = defaultFprintf
 	}
 
-	positions := []string{}
-	for _, p := range Positions(err) {
-		pos := p.Position()
-		s := pos.Filename
-		if cfg.Cwd != "" {
-			if p, err := filepath.Rel(cfg.Cwd, s); err == nil {
-				s = p
-				// Some IDEs (e.g. VSCode) only recognize a path if it start
-				// with a dot. This also helps to distinguish between local
-				// files and builtin packages.
-				if !strings.HasPrefix(s, ".") {
-					s = fmt.Sprintf(".%s%s", string(filepath.Separator), s)
-				}
-			}
-		}
-		if cfg.ToSlash {
-			s = filepath.ToSlash(s)
-		}
-		if pos.IsValid() {
-			if s != "" {
-				s += ":"
-			}
-			s += fmt.Sprintf("%d:%d", pos.Line, pos.Column)
-		}
-		if s == "" {
-			s = "-"
-		}
-		positions = append(positions, s)
-	}
-
 	if e, ok := err.(Error); ok {
-		writeErr(w, e)
+		writeErr(w, e, cfg)
 	} else {
 		fprintf(w, "%v", err)
 	}
 
+	positions := Positions(err)
 	if len(positions) == 0 {
 		fprintf(w, "\n")
 		return
 	}
-
 	fprintf(w, ":\n")
-	for _, pos := range positions {
-		fprintf(w, "    %s\n", pos)
+	for _, p := range positions {
+		pos := p.Position()
+		path := relPath(pos.Filename, cfg)
+		fprintf(w, "    %s", path)
+		if pos.IsValid() {
+			if path != "" {
+				fprintf(w, ":")
+			}
+			fprintf(w, "%d:%d", pos.Line, pos.Column)
+		}
+		fprintf(w, "\n")
 	}
+}
+
+func relPath(path string, cfg *Config) string {
+	if cfg.Cwd != "" {
+		if p, err := filepath.Rel(cfg.Cwd, path); err == nil {
+			path = p
+			// Some IDEs (e.g. VSCode) only recognize a path if it starts
+			// with a dot. This also helps to distinguish between local
+			// files and builtin packages.
+			if !strings.HasPrefix(path, ".") {
+				path = fmt.Sprintf(".%c%s", filepath.Separator, path)
+			}
+		}
+	}
+	if cfg.ToSlash {
+		path = filepath.ToSlash(path)
+	}
+	return path
 }

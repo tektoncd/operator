@@ -71,10 +71,6 @@ func (n *nodeContext) insertListEllipsis(offset int, ellipsis Conjunct) {
 // closeContext will be collated properly in fields to which these constraints
 // are applied.
 func (n *nodeContext) insertConstraint(pattern Value, c Conjunct) bool {
-	if c.CloseInfo.cc == nil {
-		panic("constraint conjunct must have closeContext associated with it")
-	}
-
 	ctx := n.ctx
 	v := n.node
 
@@ -93,14 +89,35 @@ func (n *nodeContext) insertConstraint(pattern Value, c Conjunct) bool {
 	}
 
 	if constraint == nil {
-		constraint = &Vertex{}
+		constraint = &Vertex{
+			// See "Self-referencing patterns" in cycle.go
+			IsPatternConstraint: true,
+		}
 		pcs.Pairs = append(pcs.Pairs, PatternConstraint{
 			Pattern:    pattern,
 			Constraint: constraint,
 		})
-	} else if constraint.hasConjunct(c) {
+	} else {
+		found := false
+		constraint.VisitLeafConjuncts(func(x Conjunct) bool {
+			if x.x == c.x && x.Env.Up == c.Env.Up && x.Env.Vertex == c.Env.Vertex {
+				found = true
+				if c.CloseInfo.opID == n.ctx.opID {
+					// TODO: do we need this replacement?
+					src := x.CloseInfo.defID
+					dst := c.CloseInfo.defID
+					n.addReplacement(replaceID{from: dst, to: src})
+				} else {
+					n.ctx.stats.MisalignedConstraint++
+				}
+				return false
+			}
+			return true
+		})
 		// The constraint already existed and the conjunct was already added.
-		return false
+		if found {
+			return false
+		}
 	}
 
 	constraint.addConjunctUnchecked(c)
@@ -109,6 +126,8 @@ func (n *nodeContext) insertConstraint(pattern Value, c Conjunct) bool {
 
 // matchPattern reports whether f matches pattern. The result reflects
 // whether unification of pattern with f converted to a CUE value succeeds.
+// The caller should check separately whether f matches any other arcs
+// that are not covered by pattern.
 func matchPattern(ctx *OpContext, pattern Value, f Feature) bool {
 	if pattern == nil || !f.IsRegular() {
 		return false
@@ -121,9 +140,7 @@ func matchPattern(ctx *OpContext, pattern Value, f Feature) bool {
 	// avoid many bound checks), which we probably should. Especially when we
 	// allow list constraints, like [<10]: T.
 	var label Value
-	if int64(f.Index()) == MaxIndex {
-		f = 0
-	} else if f.IsString() {
+	if f.IsString() && int64(f.Index()) != MaxIndex {
 		label = f.ToValue(ctx)
 	}
 
@@ -136,11 +153,22 @@ func matchPattern(ctx *OpContext, pattern Value, f Feature) bool {
 // This is an optimization an intended to be faster than regular CUE evaluation
 // for the majority of cases where pattern constraints are used.
 func matchPatternValue(ctx *OpContext, pattern Value, f Feature, label Value) (result bool) {
+	if v, ok := pattern.(*Vertex); ok {
+		v.unify(ctx, scalarKnown, finalize, false)
+	}
 	pattern = Unwrap(pattern)
 	label = Unwrap(label)
 
 	if pattern == label {
 		return true
+	}
+
+	k := IntKind
+	if f.IsString() {
+		k = StringKind
+	}
+	if !k.IsAnyOf(pattern.Kind()) {
+		return false
 	}
 
 	// Fast track for the majority of cases.
@@ -149,11 +177,13 @@ func matchPatternValue(ctx *OpContext, pattern Value, f Feature, label Value) (r
 		// TODO: hoist and reuse with the identical code in optional.go.
 		if x == cycle {
 			err := ctx.NewPosf(pos(pattern), "cyclic pattern constraint")
-			for _, c := range ctx.vertex.Conjuncts {
+			ctx.vertex.VisitLeafConjuncts(func(c Conjunct) bool {
 				addPositions(err, c)
-			}
+				return true
+			})
 			ctx.AddBottom(&Bottom{
-				Err: err,
+				Err:  err,
+				Node: ctx.vertex,
 			})
 		}
 		if ctx.errs == nil {
@@ -165,7 +195,6 @@ func matchPatternValue(ctx *OpContext, pattern Value, f Feature, label Value) (r
 		return true
 
 	case *BasicType:
-		k := label.Kind()
 		return x.K&k == k
 
 	case *BoundValue:
@@ -177,7 +206,7 @@ func matchPatternValue(ctx *OpContext, pattern Value, f Feature, label Value) (r
 			str := label.(*String).Str
 			return x.validateStr(ctx, str)
 
-		case NumKind:
+		case NumberKind:
 			return x.validateInt(ctx, int64(f.Index()))
 		}
 
@@ -190,6 +219,9 @@ func matchPatternValue(ctx *OpContext, pattern Value, f Feature, label Value) (r
 		return err == nil && xi == yi
 
 	case *String:
+		if label == nil {
+			return false
+		}
 		y, ok := label.(*String)
 		return ok && x.Str == y.Str
 

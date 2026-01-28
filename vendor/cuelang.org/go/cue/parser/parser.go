@@ -25,10 +25,8 @@ import (
 	"cuelang.org/go/cue/scanner"
 	"cuelang.org/go/cue/token"
 	"cuelang.org/go/internal"
-	"cuelang.org/go/internal/astinternal"
+	"cuelang.org/go/internal/cueexperiment"
 )
-
-var debugStr = astinternal.DebugStr
 
 // The parser structure holds the parser's internal state.
 type parser struct {
@@ -36,9 +34,12 @@ type parser struct {
 	errors  errors.Error
 	scanner scanner.Scanner
 
+	expList     []string // list of experiments to enable
+	experiments *cueexperiment.File
+
 	// Tracing/debugging
-	mode      mode // parsing mode
-	trace     bool // == (mode & Trace != 0)
+	cfg       Config
+	trace     bool // == (cfg.Mode & Trace != 0)
 	panicking bool // set if we are bailing out due to too many errors.
 	indent    int  // indentation used for tracing output
 
@@ -46,17 +47,26 @@ type parser struct {
 	leadComment *ast.CommentGroup
 	comments    *commentState
 
-	// Next token
+	// Next token, filled by [parser.next0].
 	pos token.Pos   // token position
 	tok token.Token // one token look-ahead
 	lit string      // token literal
 
+	// Token after next, filled by [parser.peek].
+	peekToken struct {
+		scanned bool
+
+		pos token.Pos
+		tok token.Token
+		lit string
+	}
+
 	// Error recovery
-	// (used to limit the number of calls to syncXXX functions
+	// (used to limit the number of calls to sync... functions
 	// w/o making scanning progress - avoids potential endless
 	// loops across multiple parser functions during error recovery)
 	syncPos token.Pos // last synchronization position
-	syncCnt int       // number of calls to syncXXX without progress
+	syncCnt int       // number of calls to sync... functions without progress
 
 	// Non-syntactic parser control
 	exprLev int // < 0: in control clause, >= 0: in expression
@@ -66,14 +76,12 @@ type parser struct {
 	version int
 }
 
-func (p *parser) init(filename string, src []byte, mode []Option) {
-	for _, f := range mode {
-		f(p)
-	}
+func (p *parser) init(filename string, src []byte, opts []Option) {
+	p.cfg = NewConfig().Apply(opts...)
 	p.file = token.NewFile(filename, -1, len(src))
 
 	var m scanner.Mode
-	if p.mode&parseCommentsMode != 0 {
+	if p.cfg.Mode&ParseComments != 0 {
 		m = scanner.ScanComments
 	}
 	eh := func(pos token.Pos, msg string, args []interface{}) {
@@ -81,7 +89,7 @@ func (p *parser) init(filename string, src []byte, mode []Option) {
 	}
 	p.scanner.Init(p.file, src, eh, m)
 
-	p.trace = p.mode&traceMode != 0 // for convenience (p.trace is used frequently)
+	p.trace = p.cfg.Mode&Trace != 0 // for convenience (p.trace is used frequently)
 
 	p.comments = &commentState{pos: -1}
 
@@ -114,7 +122,7 @@ func (p *parser) openComments() *commentState {
 					groups = append(groups, cg)
 				}
 			}
-			groups = append(groups, c.lastChild.Comments()...)
+			groups = append(groups, ast.Comments(c.lastChild)...)
 			for _, cg := range c.groups {
 				if cg.Position != 0 {
 					cg.Position = c.lastPos
@@ -165,7 +173,7 @@ func (p *parser) closeList() {
 	if c.lastChild != nil {
 		for _, cg := range c.groups {
 			cg.Position = c.lastPos
-			c.lastChild.AddComment(cg)
+			ast.AddComment(c.lastChild, cg)
 		}
 		c.groups = nil
 	}
@@ -206,7 +214,7 @@ func (c *commentState) closeNode(p *parser, n ast.Node) ast.Node {
 	for _, cg := range c.groups {
 		if n != nil {
 			if cg != nil {
-				n.AddComment(cg)
+				ast.AddComment(n, cg)
 			}
 		}
 	}
@@ -272,24 +280,29 @@ func (p *parser) next0() {
 		}
 	}
 
+	// We had peeked one token, effectively scanning it early; use it now.
+	if p.peekToken.scanned {
+		p.pos, p.tok, p.lit = p.peekToken.pos, p.peekToken.tok, p.peekToken.lit
+		p.peekToken.scanned = false
+		return
+	}
+
 	p.pos, p.tok, p.lit = p.scanner.Scan()
+}
+
+// peek scans one more token as a look-ahead and stores it in [parser.peekToken].
+// Peeking multiple tokens ahead is not supported.
+func (p *parser) peek() {
+	if p.peekToken.scanned {
+		panic("can only peek one token at a time")
+	}
+	p.peekToken.pos, p.peekToken.tok, p.peekToken.lit = p.scanner.Scan()
+	p.peekToken.scanned = true
 }
 
 // Consume a comment and return it and the line on which it ends.
 func (p *parser) consumeComment() (comment *ast.Comment, endline int) {
-	// /*-style comments may end on a different line than where they start.
-	// Scan the comment for '\n' chars and adjust endline accordingly.
 	endline = p.file.Line(p.pos)
-	if p.lit[1] == '*' {
-		p.assertV0(p.pos, 0, 10, "block quotes")
-
-		// don't use range here - no need to decode Unicode code points
-		for i := 0; i < len(p.lit); i++ {
-			if p.lit[i] == '\n' {
-				endline++
-			}
-		}
-	}
 
 	comment = &ast.Comment{Slash: p.pos, Text: p.lit}
 	p.next0()
@@ -411,7 +424,7 @@ func (p *parser) errf(pos token.Pos, msg string, args ...interface{}) {
 	// If AllErrors is not set, discard errors reported on the same line
 	// as the last recorded error and stop parsing if there are more than
 	// 10 errors.
-	if p.mode&allErrorsMode == 0 {
+	if p.cfg.Mode&AllErrors == 0 {
 		errors := errors.Errors(p.errors)
 		n := len(errors)
 		if n > 0 && errors[n-1].Position().Line() == ePos.Line() {
@@ -597,7 +610,7 @@ func (p *parser) parseOperand() (expr ast.Expr) {
 		return p.parseList()
 
 	case token.FUNC:
-		if p.mode&parseFuncsMode != 0 {
+		if p.cfg.Mode&ParseFuncs != 0 {
 			return p.parseFunc()
 		} else {
 			return p.parseKeyIdent()
@@ -743,7 +756,7 @@ func (p *parser) parseFieldList() (list []ast.Decl) {
 	for p.tok != token.RBRACE && p.tok != token.EOF {
 		switch p.tok {
 		case token.ATTRIBUTE:
-			list = append(list, p.parseAttribute())
+			list = append(list, p.parseAttribute(false))
 			p.consumeDeclComma()
 
 		case token.ELLIPSIS:
@@ -959,15 +972,22 @@ func (p *parser) parseField() (decl ast.Decl) {
 func (p *parser) parseAttributes() (attrs []*ast.Attribute) {
 	p.openList()
 	for p.tok == token.ATTRIBUTE {
-		attrs = append(attrs, p.parseAttribute())
+		attrs = append(attrs, p.parseAttribute(false))
 	}
 	p.closeList()
 	return attrs
 }
 
-func (p *parser) parseAttribute() *ast.Attribute {
+func (p *parser) parseAttribute(inPreamble bool) *ast.Attribute {
 	c := p.openComments()
 	a := &ast.Attribute{At: p.pos, Text: p.lit}
+
+	if inPreamble {
+		key, body := a.Split()
+		if key == "experiment" {
+			p.expList = append(p.expList, body)
+		}
+	}
 	p.next()
 	c.closeNode(p, a)
 	return a
@@ -1022,7 +1042,7 @@ func (p *parser) parseLabel(rhs bool) (label ast.Label, expr ast.Expr, decl ast.
 		}
 
 	case *ast.Ident:
-		if strings.HasPrefix(x.Name, "__") {
+		if strings.HasPrefix(x.Name, "__") && !rhs {
 			p.errf(x.NamePos, "identifiers starting with '__' are reserved")
 		}
 
@@ -1098,7 +1118,7 @@ func (p *parser) parseComprehensionClauses(first bool) (clauses []ast.Clause, c 
 			forPos := p.expect(token.FOR)
 			if first {
 				switch p.tok {
-				case token.COLON, token.BIND, token.OPTION,
+				case token.COLON, token.BIND, token.OPTION, token.NOT,
 					token.COMMA, token.EOF:
 					return nil, c
 				}
@@ -1131,6 +1151,11 @@ func (p *parser) parseComprehensionClauses(first bool) (clauses []ast.Clause, c 
 				case token.COLON, token.BIND, token.OPTION,
 					token.COMMA, token.EOF:
 					return nil, c
+				case token.NOT:
+					p.peek()
+					if p.peekToken.tok == token.COLON {
+						return nil, c
+					}
 				}
 			}
 
@@ -1425,6 +1450,14 @@ L:
 				}
 				fallthrough
 			default:
+				if p.tok.IsKeyword() {
+					x = &ast.SelectorExpr{
+						X:   p.checkExpr(x),
+						Sel: p.parseKeyIdent(),
+					}
+					break
+				}
+
 				pos := p.pos
 				p.errorExpected(pos, "selector")
 				p.next() // make progress
@@ -1450,6 +1483,11 @@ func (p *parser) parseUnaryExpr() ast.Expr {
 	}
 
 	switch p.tok {
+	case token.EQL:
+		if !p.experiments.StructCmp {
+			break
+		}
+		fallthrough
 	case token.ADD, token.SUB, token.NOT, token.MUL,
 		token.LSS, token.LEQ, token.GEQ, token.GTR,
 		token.NEQ, token.MAT, token.NMAT:
@@ -1598,6 +1636,9 @@ func (p *parser) parseImportSpec(_ int) *ast.ImportSpec {
 	var ident *ast.Ident
 	if p.tok == token.IDENT {
 		ident = p.parseIdent()
+		if isDefinition(ident) {
+			p.errf(p.pos, "cannot import package as definition identifier")
+		}
 	}
 
 	pos := p.pos
@@ -1670,7 +1711,7 @@ func (p *parser) parseFile() *ast.File {
 	c := p.comments
 
 	// Don't bother parsing the rest if we had errors scanning the first
-	// Likely not a Go source file at all.
+	// Likely not a CUE source file at all.
 	if p.errors != nil {
 		return nil
 	}
@@ -1679,8 +1720,18 @@ func (p *parser) parseFile() *ast.File {
 	var decls []ast.Decl
 
 	for p.tok == token.ATTRIBUTE {
-		decls = append(decls, p.parseAttribute())
+		decls = append(decls, p.parseAttribute(true))
 		p.consumeDeclComma()
+	}
+
+	v := p.cfg.Version
+	exp, err := cueexperiment.NewFile(v, p.expList...)
+	if err != nil {
+		e := errors.Wrapf(err, p.pos, "parsing experiments for version %q", v)
+		p.errors = errors.Append(p.errors, e)
+	} else {
+		p.experiments = exp
+		p.file.SetExperiments(exp)
 	}
 
 	// The package clause is not a declaration: it does not appear in any
@@ -1692,10 +1743,12 @@ func (p *parser) parseFile() *ast.File {
 		var name *ast.Ident
 		p.expect(token.IDENT)
 		name = p.parseIdent()
-		if name.Name == "_" && p.mode&declarationErrorsMode != 0 {
+		if name.Name == "_" && p.cfg.Mode&DeclarationErrors != 0 {
 			p.errf(p.pos, "invalid package name _")
 		}
-
+		if isDefinition(name) {
+			p.errf(p.pos, "invalid package name %s", name.Name)
+		}
 		pkg := &ast.Package{
 			PackagePos: pos,
 			Name:       name,
@@ -1706,17 +1759,17 @@ func (p *parser) parseFile() *ast.File {
 	}
 
 	for p.tok == token.ATTRIBUTE {
-		decls = append(decls, p.parseAttribute())
+		decls = append(decls, p.parseAttribute(false))
 		p.consumeDeclComma()
 	}
 
-	if p.mode&packageClauseOnlyMode == 0 {
+	if p.cfg.Mode&PackageClauseOnly == 0 {
 		// import decls
 		for p.tok == token.IDENT && p.lit == "import" {
 			decls = append(decls, p.parseImports())
 		}
 
-		if p.mode&importsOnlyMode == 0 {
+		if p.cfg.Mode&ImportsOnly == 0 {
 			// rest of package decls
 			// TODO: loop and allow multiple expressions.
 			decls = append(decls, p.parseFieldList()...)
@@ -1726,9 +1779,15 @@ func (p *parser) parseFile() *ast.File {
 	p.closeList()
 
 	f := &ast.File{
-		Imports: p.imports,
-		Decls:   decls,
+		Imports:         p.imports,
+		Decls:           decls,
+		LanguageVersion: p.cfg.Version,
 	}
 	c.closeNode(p, f)
 	return f
+}
+
+func isDefinition(ident *ast.Ident) bool {
+	return strings.HasPrefix(ident.Name, "#") ||
+		strings.HasPrefix(ident.Name, "_#")
 }

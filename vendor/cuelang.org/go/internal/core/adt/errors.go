@@ -42,44 +42,35 @@ import (
 // control flow. No other aspects of an error may influence control flow.
 type ErrorCode int8
 
+//go:generate go run golang.org/x/tools/cmd/stringer -type=ErrorCode -linecomment
+
 const (
 	// An EvalError is a fatal evaluation error.
-	EvalError ErrorCode = iota
+	EvalError ErrorCode = iota // eval
 
-	// A UserError is a fatal error originating from the user.
-	UserError
+	// A UserError is a fatal error originating from the user using the error
+	// builtin.
+	UserError // user
+
+	// A LegacyUserError is a fatal error originating from the user using the
+	// _|_ token, which we intend to phase out.
+	LegacyUserError // user
 
 	// StructuralCycleError means a structural cycle was found. Structural
 	// cycles are permanent errors, but they are not passed up recursively,
 	// as a unification of a value with a structural cycle with one that
 	// doesn't may still give a useful result.
-	StructuralCycleError
+	StructuralCycleError // structural cycle
 
 	// IncompleteError means an evaluation could not complete because of
 	// insufficient information that may still be added later.
-	IncompleteError
+	IncompleteError // incomplete
 
 	// A CycleError indicates a reference error. It is considered to be
 	// an incomplete error, as reference errors may be broken by providing
 	// a concrete value.
-	CycleError
+	CycleError // cycle
 )
-
-func (c ErrorCode) String() string {
-	switch c {
-	case EvalError:
-		return "eval"
-	case UserError:
-		return "user"
-	case StructuralCycleError:
-		return "structural cycle"
-	case IncompleteError:
-		return "incomplete"
-	case CycleError:
-		return "cycle"
-	}
-	return "unknown"
-}
 
 // Bottom represents an error or bottom symbol.
 //
@@ -97,9 +88,15 @@ type Bottom struct {
 	HasRecursive bool
 	ChildError   bool // Err is the error of the child
 	NotExists    bool // This error originated from a failed lookup.
+	CloseCheck   bool // This error resulted from a close check.
 	ForCycle     bool // this is a for cycle
 	// Value holds the computed value so far in case
 	Value Value
+
+	// Node marks the node at which an error occurred. This is used to
+	// determine the package to which an error belongs.
+	// TODO: use a more precise mechanism for tracking the package.
+	Node *Vertex
 }
 
 func (x *Bottom) Source() ast.Node        { return x.Src }
@@ -116,7 +113,7 @@ func (b *Bottom) IsIncomplete() bool {
 // isLiteralBottom reports whether x is an error originating from a user.
 func isLiteralBottom(x Expr) bool {
 	b, ok := x.(*Bottom)
-	return ok && b.Code == UserError
+	return ok && b.Code == LegacyUserError
 }
 
 // isError reports whether v is an error or nil.
@@ -133,7 +130,7 @@ func isIncomplete(v *Vertex) bool {
 	if v == nil {
 		return true
 	}
-	if b, ok := v.BaseValue.(*Bottom); ok {
+	if b := v.Bottom(); b != nil {
 		return b.IsIncomplete()
 	}
 	return false
@@ -145,21 +142,24 @@ func isIncomplete(v *Vertex) bool {
 //
 // If x is not already an error, the value is recorded in the error for
 // reference.
-func (v *Vertex) AddChildError(recursive *Bottom) {
+func (n *nodeContext) AddChildError(recursive *Bottom) {
+	v := n.node
 	v.ChildErrors = CombineErrors(nil, v.ChildErrors, recursive)
 	if recursive.IsIncomplete() {
 		return
 	}
 	x := v.BaseValue
 	err, _ := x.(*Bottom)
-	if err == nil {
-		v.BaseValue = &Bottom{
+	if err == nil || err.CloseCheck {
+		n.setBaseValue(&Bottom{
 			Code:         recursive.Code,
 			Value:        v,
 			HasRecursive: true,
 			ChildError:   true,
+			CloseCheck:   recursive.CloseCheck,
 			Err:          recursive.Err,
-		}
+			Node:         n.node,
+		})
 		return
 	}
 
@@ -168,7 +168,7 @@ func (v *Vertex) AddChildError(recursive *Bottom) {
 		err.Code = recursive.Code
 	}
 
-	v.BaseValue = err
+	n.setBaseValue(err)
 }
 
 // CombineErrors combines two errors that originate at the same Vertex.
@@ -176,17 +176,22 @@ func CombineErrors(src ast.Node, x, y Value) *Bottom {
 	a, _ := Unwrap(x).(*Bottom)
 	b, _ := Unwrap(y).(*Bottom)
 
-	if a == b && isCyclePlaceholder(a) {
-		return a
-	}
 	switch {
-	case a != nil && b != nil:
-	case a != nil:
-		return a
-	case b != nil:
-		return b
-	default:
+	case a == nil && b == nil:
 		return nil
+	case a == nil:
+		return b
+	case b == nil:
+		return a
+	case a == b && isCyclePlaceholder(a):
+		return a
+	case a == b:
+		// Don't return a (or b) because they may have other non-nil fields.
+		return &Bottom{
+			Src:  src,
+			Err:  a.Err,
+			Code: a.Code,
+		}
 	}
 
 	if a.Code != b.Code {
@@ -200,9 +205,10 @@ func CombineErrors(src ast.Node, x, y Value) *Bottom {
 	}
 
 	return &Bottom{
-		Src:  src,
-		Err:  errors.Append(a.Err, b.Err),
-		Code: a.Code,
+		Src:        src,
+		Err:        errors.Append(a.Err, b.Err),
+		Code:       a.Code,
+		CloseCheck: a.CloseCheck || b.CloseCheck,
 	}
 }
 
@@ -225,18 +231,20 @@ func addPositions(err *ValueError, c Conjunct) {
 func NewRequiredNotPresentError(ctx *OpContext, v *Vertex) *Bottom {
 	saved := ctx.PushArc(v)
 	err := ctx.Newf("field is required but not present")
-	for _, c := range v.Conjuncts {
+	v.VisitLeafConjuncts(func(c Conjunct) bool {
 		if f, ok := c.x.(*Field); ok && f.ArcType == ArcRequired {
 			err.AddPosition(c.x)
 		}
 		if c.CloseInfo.closeInfo != nil {
 			err.AddPosition(c.CloseInfo.location)
 		}
-	}
+		return true
+	})
 
 	b := &Bottom{
 		Code: IncompleteError,
 		Err:  err,
+		Node: v,
 	}
 	ctx.PopArc(saved)
 	return b
@@ -245,9 +253,10 @@ func NewRequiredNotPresentError(ctx *OpContext, v *Vertex) *Bottom {
 func newRequiredFieldInComprehensionError(ctx *OpContext, x *ForClause, v *Vertex) *Bottom {
 	err := ctx.Newf("missing required field in for comprehension: %v", v.Label)
 	err.AddPosition(x.Src)
-	for _, c := range v.Conjuncts {
+	v.VisitLeafConjuncts(func(c Conjunct) bool {
 		addPositions(err, c)
-	}
+		return true
+	})
 	return &Bottom{
 		Code: IncompleteError,
 		Err:  err,
@@ -283,6 +292,7 @@ func (v *Vertex) reportFieldError(c *OpContext, pos token.Pos, f Feature, intMsg
 	b := &Bottom{
 		Code: code,
 		Err:  err,
+		Node: v,
 	}
 	// TODO: yield failure
 	c.AddBottom(b) // TODO: unify error mechanism.
@@ -291,10 +301,11 @@ func (v *Vertex) reportFieldError(c *OpContext, pos token.Pos, f Feature, intMsg
 
 // A ValueError is returned as a result of evaluating a value.
 type ValueError struct {
-	r      Runtime
-	v      *Vertex
-	pos    token.Pos
-	auxpos []token.Pos
+	r       Runtime
+	v       *Vertex
+	pos     token.Pos
+	auxpos  []token.Pos
+	altPath []string
 	errors.Message
 }
 
@@ -349,17 +360,10 @@ func appendNodePositions(a []token.Pos, n Node) []token.Pos {
 		a = append(a, p)
 	}
 	if v, ok := n.(*Vertex); ok {
-		for _, c := range v.Conjuncts {
-			switch x := c.x.(type) {
-			case *ConjunctGroup:
-				for _, c := range *x {
-					a = appendNodePositions(a, c.Elem())
-				}
-
-			default:
-				a = appendNodePositions(a, c.Elem())
-			}
-		}
+		v.VisitLeafConjuncts(func(c Conjunct) bool {
+			a = appendNodePositions(a, c.Elem())
+			return true
+		})
 	}
 	return a
 }
@@ -376,8 +380,26 @@ func (c *OpContext) NewPosf(p token.Pos, format string, args ...interface{}) *Va
 		switch x := arg.(type) {
 		case Node:
 			a = appendNodePositions(a, x)
+			// Wrap nodes in a [fmt.Stringer] which delays the call to
+			// [OpContext.Str] until the error needs to be rendered.
+			// This helps avoid work, as in many cases,
+			// errors are created but never shown to the user.
+			//
+			// A Vertex will set an error as its BaseValue via a Bottom node,
+			// which might be this error we are creating.
+			// Using the Vertex directly could then lead to endless recursion.
+			// Make a shallow copy to avoid that.
+			if v, ok := x.(*Vertex); ok {
+				// TODO(perf): we could join this allocation with the creation
+				// of the stringer below.
+				vcopy := *v
+				x = &vcopy
+			}
 			args[i] = c.Str(x)
 		case ast.Node:
+			// TODO: ideally the core evaluator should not depend on higher
+			// level packages. This will allow the debug packages to be used
+			// more widely.
 			b, _ := cueformat.Node(x)
 			if p := x.Pos(); p != token.NoPos {
 				a = append(a, p)
@@ -387,13 +409,31 @@ func (c *OpContext) NewPosf(p token.Pos, format string, args ...interface{}) *Va
 			args[i] = x.SelectorString(c.Runtime)
 		}
 	}
+
 	return &ValueError{
 		r:       c.Runtime,
 		v:       c.errNode(),
 		pos:     p,
 		auxpos:  a,
+		altPath: c.makeAltPath(),
 		Message: errors.NewMessagef(format, args...),
 	}
+}
+
+func (c *OpContext) makeAltPath() (a []string) {
+	if len(c.altPath) == 0 {
+		return nil
+	}
+
+	for _, f := range appendPath(nil, c.altPath[0]) {
+		a = append(a, f.SelectorString(c))
+	}
+	for _, v := range c.altPath[1:] {
+		if f := v.Label; f != 0 {
+			a = append(a, f.SelectorString(c))
+		}
+	}
+	return a
 }
 
 func (e *ValueError) Error() string {
@@ -409,6 +449,9 @@ func (e *ValueError) InputPositions() (a []token.Pos) {
 }
 
 func (e *ValueError) Path() (a []string) {
+	if len(e.altPath) > 0 {
+		return e.altPath
+	}
 	if e.v == nil {
 		return nil
 	}

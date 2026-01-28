@@ -16,10 +16,12 @@ package cue
 
 import (
 	"bytes"
+	"cmp"
 	"encoding"
 	"encoding/json"
+	"math/big"
 	"reflect"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -75,7 +77,7 @@ func (d *decoder) clear(x reflect.Value) {
 	}
 }
 
-var valueType = reflect.TypeOf(Value{})
+var valueType = reflect.TypeFor[Value]()
 
 func (d *decoder) decode(x reflect.Value, v Value, isPtr bool) {
 	if !x.IsValid() {
@@ -99,9 +101,9 @@ func (d *decoder) decode(x reflect.Value, v Value, isPtr bool) {
 	}
 
 	switch x.Kind() {
-	case reflect.Ptr, reflect.Map, reflect.Slice, reflect.Interface:
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Interface:
 		// nullable types
-		if v.Null() == nil || !v.IsConcrete() {
+		if v.IsNull() || !v.IsConcrete() {
 			d.clear(x)
 			return
 		}
@@ -114,16 +116,27 @@ func (d *decoder) decode(x reflect.Value, v Value, isPtr bool) {
 		}
 	}
 
-	ij, it, x := indirect(x, v.Null() == nil)
+	ij, it, x := indirect(x, v.IsNull())
 
 	if ij != nil {
-		b, err := v.marshalJSON()
+		b, err := v.MarshalJSON()
 		d.addErr(err)
 		d.addErr(ij.UnmarshalJSON(b))
 		return
 	}
 
 	if it != nil {
+		if _, ok := it.(*big.Float); ok {
+			f, err := v.Float(nil)
+			if err != nil {
+				err = errors.Wrapf(err, v.Pos(), "Decode")
+				d.addErr(err)
+				return
+			}
+			x.Elem().Set(reflect.ValueOf(*f))
+			return
+		}
+
 		b, err := v.Bytes()
 		if err != nil {
 			err = errors.Wrapf(err, v.Pos(), "Decode")
@@ -143,7 +156,7 @@ func (d *decoder) decode(x reflect.Value, v Value, isPtr bool) {
 	}
 
 	switch kind {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		d.decode(x.Elem(), v, true)
 
 	case reflect.Bool:
@@ -267,12 +280,15 @@ func (d *decoder) interfaceValue(v Value) (x interface{}) {
 
 	case IntKind:
 		if i, err := v.Int64(); err == nil {
-			return int(i)
+			return i
 		}
 		x, err = v.Int(nil)
 
 	case FloatKind:
-		x, err = v.Float64() // or big int or
+		if f, err := v.Float64(); err == nil {
+			return f
+		} // or big int or
+		x, err = v.Float(nil)
 
 	case StringKind:
 		x, err = v.String()
@@ -297,7 +313,7 @@ func (d *decoder) interfaceValue(v Value) (x interface{}) {
 		iter, err := v.Fields()
 		d.addErr(err)
 		for iter.Next() {
-			m[iter.Label()] = d.interfaceValue(iter.Value())
+			m[iter.Selector().Unquoted()] = d.interfaceValue(iter.Value())
 		}
 		x = m
 
@@ -309,7 +325,7 @@ func (d *decoder) interfaceValue(v Value) (x interface{}) {
 	return x
 }
 
-var textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+var textUnmarshalerType = reflect.TypeFor[encoding.TextUnmarshaler]()
 
 // convertMap keeps an existing map and overwrites any entry found in v,
 // keeping other preexisting entries.
@@ -339,7 +355,7 @@ func (d *decoder) convertMap(x reflect.Value, v Value) {
 	iter, err := v.Fields()
 	d.addErr(err)
 	for iter.Next() {
-		key := iter.Label()
+		key := iter.Selector().Unquoted()
 
 		var kv reflect.Value
 		kt := t.Key()
@@ -355,7 +371,7 @@ func (d *decoder) convertMap(x reflect.Value, v Value) {
 			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 				n, err := strconv.ParseInt(key, 10, 64)
 				d.addErr(err)
-				if reflect.Zero(kt).OverflowInt(n) {
+				if kt.OverflowInt(n) {
 					d.addErr(errors.Newf(v.Pos(), "key integer %d overflows %s", n, kt))
 					break
 				}
@@ -364,7 +380,7 @@ func (d *decoder) convertMap(x reflect.Value, v Value) {
 			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 				n, err := strconv.ParseUint(key, 10, 64)
 				d.addErr(err)
-				if reflect.Zero(kt).OverflowUint(n) {
+				if kt.OverflowUint(n) {
 					d.addErr(errors.Newf(v.Pos(), "key integer %d overflows %s", n, kt))
 					break
 				}
@@ -395,9 +411,8 @@ func (d *decoder) convertStruct(x reflect.Value, v Value) {
 	iter, err := v.Fields()
 	d.addErr(err)
 	for iter.Next() {
-
 		var f *goField
-		key := iter.Label()
+		key := iter.Selector().Unquoted()
 		if i, ok := fields.nameIndex[key]; ok {
 			// Found an exact name match.
 			f = &fields.list[i]
@@ -421,7 +436,7 @@ func (d *decoder) convertStruct(x reflect.Value, v Value) {
 		// Figure out field corresponding to key.
 		subv := x
 		for _, i := range f.index {
-			if subv.Kind() == reflect.Ptr {
+			if subv.Kind() == reflect.Pointer {
 				if subv.IsNil() {
 					// If a struct embeds a pointer to an unexported type,
 					// it is not possible to set a newly allocated value
@@ -479,28 +494,22 @@ type goField struct {
 	nameBytes []byte                 // []byte(name)
 	equalFold func(s, t []byte) bool // bytes.EqualFold or equivalent
 
-	nameNonEsc  string // `"` + name + `":`
-	nameEscHTML string // `"` + HTMLEscape(name) + `":`
-
 	tag       bool
 	index     []int
 	typ       reflect.Type
 	omitEmpty bool
 }
 
-// byIndex sorts goField by index sequence.
-type byIndex []goField
-
-func (x byIndex) Less(i, j int) bool {
-	for k, xik := range x[i].index {
-		if k >= len(x[j].index) {
-			return false
+func compareFieldByIndex(a, b goField) int {
+	for i, x := range a.index {
+		if i >= len(b.index) {
+			break
 		}
-		if xik != x[j].index[k] {
-			return xik < x[j].index[k]
+		if c := cmp.Compare(x, b.index[i]); c != 0 {
+			return c
 		}
 	}
-	return len(x[i].index) < len(x[j].index)
+	return cmp.Compare(len(a.index), len(b.index))
 }
 
 // typeFields returns a list of fields that JSON should recognize for the given type.
@@ -520,9 +529,6 @@ func typeFields(t reflect.Type) structFields {
 	// Fields found.
 	var fields []goField
 
-	// Buffer to run HTMLEscape on field names.
-	var nameEscBuf bytes.Buffer
-
 	for len(next) > 0 {
 		current, next = next, current[:0]
 		count, nextCount = nextCount, map[reflect.Type]int{}
@@ -534,12 +540,12 @@ func typeFields(t reflect.Type) structFields {
 			visited[f.typ] = true
 
 			// Scan f.typ for fields to include.
-			for i := 0; i < f.typ.NumField(); i++ {
+			for i := range f.typ.NumField() {
 				sf := f.typ.Field(i)
 				isUnexported := sf.PkgPath != ""
 				if sf.Anonymous {
 					t := sf.Type
-					if t.Kind() == reflect.Ptr {
+					if t.Kind() == reflect.Pointer {
 						t = t.Elem()
 					}
 					if isUnexported && t.Kind() != reflect.Struct {
@@ -556,7 +562,7 @@ func typeFields(t reflect.Type) structFields {
 				if tag == "-" {
 					continue
 				}
-				name, opts := parseTag(tag)
+				name, opts, _ := strings.Cut(tag, ",")
 				if !isValidTag(name) {
 					name = ""
 				}
@@ -565,7 +571,7 @@ func typeFields(t reflect.Type) structFields {
 				index[len(f.index)] = i
 
 				ft := sf.Type
-				if ft.Name() == "" && ft.Kind() == reflect.Ptr {
+				if ft.Name() == "" && ft.Kind() == reflect.Pointer {
 					// Follow pointer.
 					ft = ft.Elem()
 				}
@@ -581,18 +587,10 @@ func typeFields(t reflect.Type) structFields {
 						tag:       tagged,
 						index:     index,
 						typ:       ft,
-						omitEmpty: opts.Contains("omitempty"),
+						omitEmpty: tagOptions(opts).Contains("omitempty"),
 					}
 					field.nameBytes = []byte(field.name)
 					field.equalFold = foldFunc(field.nameBytes)
-
-					// Build nameEscHTML and nameNonEsc ahead of time.
-					nameEscBuf.Reset()
-					nameEscBuf.WriteString(`"`)
-					json.HTMLEscape(&nameEscBuf, field.nameBytes)
-					nameEscBuf.WriteString(`":`)
-					field.nameEscHTML = nameEscBuf.String()
-					field.nameNonEsc = `"` + field.name + `":`
 
 					fields = append(fields, field)
 					if count[f.typ] > 1 {
@@ -614,21 +612,24 @@ func typeFields(t reflect.Type) structFields {
 		}
 	}
 
-	sort.Slice(fields, func(i, j int) bool {
-		x := fields
+	slices.SortFunc(fields, func(a, b goField) int {
 		// sort field by name, breaking ties with depth, then
 		// breaking ties with "name came from json tag", then
 		// breaking ties with index sequence.
-		if x[i].name != x[j].name {
-			return x[i].name < x[j].name
+		if c := cmp.Compare(a.name, b.name); c != 0 {
+			return c
 		}
-		if len(x[i].index) != len(x[j].index) {
-			return len(x[i].index) < len(x[j].index)
+		if c := cmp.Compare(len(a.index), len(b.index)); c != 0 {
+			return c
 		}
-		if x[i].tag != x[j].tag {
-			return x[i].tag
+		if a.tag != b.tag {
+			if a.tag {
+				return 1
+			} else {
+				return -1
+			}
 		}
-		return byIndex(x).Less(i, j)
+		return compareFieldByIndex(a, b)
 	})
 
 	// Delete all fields that are hidden by the Go rules for embedded fields,
@@ -660,7 +661,7 @@ func typeFields(t reflect.Type) structFields {
 	}
 
 	fields = out
-	sort.Slice(fields, byIndex(fields).Less)
+	slices.SortFunc(fields, compareFieldByIndex)
 
 	nameIndex := make(map[string]int, len(fields))
 	for i, field := range fields {
@@ -700,15 +701,6 @@ func cachedTypeFields(t reflect.Type) structFields {
 // tag, or the empty string. It does not include the leading comma.
 type tagOptions string
 
-// parseTag splits a struct field's json tag into its name and
-// comma-separated options.
-func parseTag(tag string) (string, tagOptions) {
-	if idx := strings.Index(tag, ","); idx != -1 {
-		return tag[:idx], tagOptions(tag[idx+1:])
-	}
-	return tag, tagOptions("")
-}
-
 // Contains reports whether a comma-separated list of options
 // contains a particular substr flag. substr must be surrounded by a
 // string boundary or commas.
@@ -719,10 +711,7 @@ func (o tagOptions) Contains(optionName string) bool {
 	s := string(o)
 	for s != "" {
 		var next string
-		i := strings.Index(s, ",")
-		if i >= 0 {
-			s, next = s[:i], s[i+1:]
-		}
+		s, next, _ = strings.Cut(s, ",")
 		if s == optionName {
 			return true
 		}
@@ -885,7 +874,7 @@ func indirect(v reflect.Value, decodingNull bool) (json.Unmarshaler, encoding.Te
 	// If v is a named type and is addressable,
 	// start with its address, so that if the type has pointer methods,
 	// we find them.
-	if v.Kind() != reflect.Ptr && v.Type().Name() != "" && v.CanAddr() {
+	if v.Kind() != reflect.Pointer && v.Type().Name() != "" && v.CanAddr() {
 		haveAddr = true
 		v = v.Addr()
 	}
@@ -894,14 +883,14 @@ func indirect(v reflect.Value, decodingNull bool) (json.Unmarshaler, encoding.Te
 		// usefully addressable.
 		if v.Kind() == reflect.Interface && !v.IsNil() {
 			e := v.Elem()
-			if e.Kind() == reflect.Ptr && !e.IsNil() && (!decodingNull || e.Elem().Kind() == reflect.Ptr) {
+			if e.Kind() == reflect.Pointer && !e.IsNil() && (!decodingNull || e.Elem().Kind() == reflect.Pointer) {
 				haveAddr = false
 				v = e
 				continue
 			}
 		}
 
-		if v.Kind() != reflect.Ptr {
+		if v.Kind() != reflect.Pointer {
 			break
 		}
 
@@ -921,11 +910,11 @@ func indirect(v reflect.Value, decodingNull bool) (json.Unmarshaler, encoding.Te
 		}
 		if v.Type().NumMethod() > 0 && v.CanInterface() {
 			if u, ok := v.Interface().(json.Unmarshaler); ok {
-				return u, nil, reflect.Value{}
+				return u, nil, v
 			}
 			if !decodingNull {
 				if u, ok := v.Interface().(encoding.TextUnmarshaler); ok {
-					return nil, u, reflect.Value{}
+					return nil, u, v
 				}
 			}
 		}

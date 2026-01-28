@@ -27,19 +27,21 @@ package build
 
 import (
 	"cuelang.org/go/cue/ast"
+	"cuelang.org/go/cue/parser"
 )
 
 // A Context keeps track of state of building instances and caches work.
 type Context struct {
 	loader    LoadFunc
-	parseFunc func(str string, src interface{}) (*ast.File, error)
+	parseFunc func(str string, src interface{}, cfg parser.Config) (*ast.File, error)
 
 	initialized bool
 
 	imports map[string]*Instance
 }
 
-// NewInstance creates an instance for this Context.
+// NewInstance creates an instance for this Context. If the [LoadFunc]
+// is nil, then the LoadFunc in the [Context] is used.
 func (c *Context) NewInstance(dir string, f LoadFunc) *Instance {
 	if c == nil {
 		c = &Context{}
@@ -109,7 +111,7 @@ func Loader(f LoadFunc) Option {
 // ParseFile is called to read and parse each file
 // when building syntax tree.
 // It must be safe to call ParseFile simultaneously from multiple goroutines.
-// If ParseFile is nil, the loader will uses parser.ParseFile.
+// If f is nil, the loader will use [cuelang.org/go/cue/parser.ParseFile].
 //
 // ParseFile should parse the source from src and use filename only for
 // recording position information.
@@ -118,6 +120,9 @@ func Loader(f LoadFunc) Option {
 // to change the effective file contents or the behavior of the parser,
 // or to modify the syntax tree. For example, changing the backwards
 // compatibility.
-func ParseFile(f func(filename string, src interface{}) (*ast.File, error)) Option {
+//
+// In general, the function should respect the parser configuration passed
+// in, and modify it incrementally rather than overwriting it entirely.
+func ParseFile(f func(filename string, src interface{}, cfg parser.Config) (*ast.File, error)) Option {
 	return func(c *Context) { c.parseFunc = f }
 }

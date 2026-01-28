@@ -29,19 +29,23 @@ import (
 	"path/filepath"
 
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/in-toto/in-toto-golang/in_toto"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/fulcio"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/options"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/rekor"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/sign"
 	cosignError "github.com/sigstore/cosign/v2/cmd/cosign/errors"
-	"github.com/sigstore/cosign/v2/internal/pkg/cosign/tsa"
 	"github.com/sigstore/cosign/v2/internal/ui"
 	"github.com/sigstore/cosign/v2/pkg/blob"
 	"github.com/sigstore/cosign/v2/pkg/cosign"
+	"github.com/sigstore/cosign/v2/pkg/cosign/env"
 	"github.com/sigstore/cosign/v2/pkg/cosign/pivkey"
 	"github.com/sigstore/cosign/v2/pkg/cosign/pkcs11key"
 	"github.com/sigstore/cosign/v2/pkg/oci"
+	"github.com/sigstore/cosign/v2/pkg/oci/static"
 	sigs "github.com/sigstore/cosign/v2/pkg/signature"
+	"github.com/sigstore/protobuf-specs/gen/pb-go/dsse"
+	"github.com/sigstore/sigstore-go/pkg/root"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/signature"
 	"github.com/sigstore/sigstore/pkg/signature/payload"
@@ -52,6 +56,7 @@ import (
 type VerifyCommand struct {
 	options.RegistryOptions
 	options.CertVerifyOptions
+	options.CommonVerifyOptions
 	CheckClaims                  bool
 	KeyRef                       string
 	CertRef                      string
@@ -60,6 +65,8 @@ type VerifyCommand struct {
 	CertGithubWorkflowName       string
 	CertGithubWorkflowRepository string
 	CertGithubWorkflowRef        string
+	CAIntermediates              string
+	CARoots                      string
 	CertChain                    string
 	CertOidcProvider             string
 	IgnoreSCT                    bool
@@ -77,9 +84,11 @@ type VerifyCommand struct {
 	NameOptions                  []name.Option
 	Offline                      bool
 	TSACertChainPath             string
+	UseSignedTimestamps          bool
 	IgnoreTlog                   bool
 	MaxWorkers                   int
 	ExperimentalOCI11            bool
+	NewBundleFormat              bool
 }
 
 // Exec runs the verification command
@@ -131,37 +140,61 @@ func (c *VerifyCommand) Exec(ctx context.Context, images []string) (err error) {
 		IgnoreTlog:                   c.IgnoreTlog,
 		MaxWorkers:                   c.MaxWorkers,
 		ExperimentalOCI11:            c.ExperimentalOCI11,
+		UseSignedTimestamps:          c.TSACertChainPath != "" || c.UseSignedTimestamps,
+		NewBundleFormat:              c.NewBundleFormat,
 	}
+
+	if c.TrustedRootPath != "" {
+		co.TrustedMaterial, err = root.NewTrustedRootFromPath(c.TrustedRootPath)
+		if err != nil {
+			return fmt.Errorf("loading trusted root: %w", err)
+		}
+	} else if options.NOf(c.CertChain, c.CARoots, c.CAIntermediates, c.TSACertChainPath) == 0 &&
+		env.Getenv(env.VariableSigstoreCTLogPublicKeyFile) == "" &&
+		env.Getenv(env.VariableSigstoreRootFile) == "" &&
+		env.Getenv(env.VariableSigstoreRekorPublicKey) == "" &&
+		env.Getenv(env.VariableSigstoreTSACertificateFile) == "" {
+		// don't overrule the user's intentions if they provided their own keys
+		co.TrustedMaterial, err = cosign.TrustedRoot()
+		if err != nil {
+			ui.Warnf(ctx, "Could not fetch trusted_root.json from the TUF repository. Continuing with individual targets. Error from TUF: %v", err)
+		}
+	}
+
+	if c.NewBundleFormat {
+		if c.CertRef != "" {
+			return fmt.Errorf("unsupported: certificate may not be provided using --certificate when using --new-bundle-format (cert must be in bundle)")
+		}
+		if c.CertChain != "" {
+			return fmt.Errorf("unsupported: certificate chain may not be provided using --certificate-chain when using --new-bundle-format (cert must be in bundle)")
+		}
+		if c.CARoots != "" || c.CAIntermediates != "" {
+			return fmt.Errorf("unsupported: CA roots/intermediates must be provided using --trusted-root when using --new-bundle-format")
+		}
+		if c.TSACertChainPath != "" {
+			return fmt.Errorf("unsupported: TSA certificate chain path may only be provided using --trusted-root when using --new-bundle-format")
+		}
+		if co.TrustedMaterial == nil {
+			return fmt.Errorf("trusted root is required when using new bundle format")
+		}
+	}
+
 	if c.CheckClaims {
 		co.ClaimVerifier = cosign.SimpleClaimVerifier
 	}
 
-	if c.TSACertChainPath != "" {
-		_, err := os.Stat(c.TSACertChainPath)
+	// If we are using signed timestamps and there is no trusted root, we need to load the TSA certificates
+	if co.UseSignedTimestamps && co.TrustedMaterial == nil && !c.NewBundleFormat {
+		tsaCertificates, err := cosign.GetTSACerts(ctx, c.TSACertChainPath, cosign.GetTufTargets)
 		if err != nil {
-			return fmt.Errorf("unable to open timestamp certificate chain file: %w", err)
+			return fmt.Errorf("unable to load TSA certificates: %w", err)
 		}
-		// TODO: Add support for TUF certificates.
-		pemBytes, err := os.ReadFile(filepath.Clean(c.TSACertChainPath))
-		if err != nil {
-			return fmt.Errorf("error reading certification chain path file: %w", err)
-		}
-
-		leaves, intermediates, roots, err := tsa.SplitPEMCertificateChain(pemBytes)
-		if err != nil {
-			return fmt.Errorf("error splitting certificates: %w", err)
-		}
-		if len(leaves) > 1 {
-			return fmt.Errorf("certificate chain must contain at most one TSA certificate")
-		}
-		if len(leaves) == 1 {
-			co.TSACertificate = leaves[0]
-		}
-		co.TSAIntermediateCertificates = intermediates
-		co.TSARootCertificates = roots
+		co.TSACertificate = tsaCertificates.LeafCert
+		co.TSARootCertificates = tsaCertificates.RootCert
+		co.TSAIntermediateCertificates = tsaCertificates.IntermediateCerts
 	}
 
-	if !c.IgnoreTlog {
+	if !c.IgnoreTlog && !c.NewBundleFormat {
 		if c.RekorURL != "" {
 			rekorClient, err := rekor.NewClient(c.RekorURL)
 			if err != nil {
@@ -169,45 +202,26 @@ func (c *VerifyCommand) Exec(ctx context.Context, images []string) (err error) {
 			}
 			co.RekorClient = rekorClient
 		}
-		// This performs an online fetch of the Rekor public keys, but this is needed
-		// for verifying tlog entries (both online and offline).
-		co.RekorPubKeys, err = cosign.GetRekorPubs(ctx)
-		if err != nil {
-			return fmt.Errorf("getting Rekor public keys: %w", err)
-		}
-	}
-	if keylessVerification(c.KeyRef, c.Sk) {
-		if c.CertChain != "" {
-			chain, err := loadCertChainFromFileOrURL(c.CertChain)
+		if co.TrustedMaterial == nil {
+			// This performs an online fetch of the Rekor public keys, but this is needed
+			// for verifying tlog entries (both online and offline).
+			co.RekorPubKeys, err = cosign.GetRekorPubs(ctx)
 			if err != nil {
-				return err
-			}
-			co.RootCerts = x509.NewCertPool()
-			co.RootCerts.AddCert(chain[len(chain)-1])
-			if len(chain) > 1 {
-				co.IntermediateCerts = x509.NewCertPool()
-				for _, cert := range chain[:len(chain)-1] {
-					co.IntermediateCerts.AddCert(cert)
-				}
-			}
-		} else {
-			// This performs an online fetch of the Fulcio roots. This is needed
-			// for verifying keyless certificates (both online and offline).
-			co.RootCerts, err = fulcio.GetRoots()
-			if err != nil {
-				return fmt.Errorf("getting Fulcio roots: %w", err)
-			}
-			co.IntermediateCerts, err = fulcio.GetIntermediates()
-			if err != nil {
-				return fmt.Errorf("getting Fulcio intermediates: %w", err)
+				return fmt.Errorf("getting Rekor public keys: %w", err)
 			}
 		}
 	}
+	if co.TrustedMaterial == nil && keylessVerification(c.KeyRef, c.Sk) {
+		if err := loadCertsKeylessVerification(c.CertChain, c.CARoots, c.CAIntermediates, co); err != nil {
+			return err
+		}
+	}
+
 	keyRef := c.KeyRef
 	certRef := c.CertRef
 
 	// Ignore Signed Certificate Timestamp if the flag is set or a key is provided
-	if shouldVerifySCT(c.IgnoreSCT, c.KeyRef, c.Sk) {
+	if co.TrustedMaterial == nil && shouldVerifySCT(c.IgnoreSCT, c.KeyRef, c.Sk) {
 		co.CTLogPubKeys, err = cosign.GetCTLogPubs(ctx)
 		if err != nil {
 			return fmt.Errorf("getting ctlog public keys: %w", err)
@@ -237,25 +251,32 @@ func (c *VerifyCommand) Exec(ctx context.Context, images []string) (err error) {
 			return fmt.Errorf("initializing piv token verifier: %w", err)
 		}
 	case certRef != "":
+		if c.NewBundleFormat {
+			// This shouldn't happen because we already checked for this above in checkSigstoreBundleUnsupportedOptions
+			return fmt.Errorf("unsupported: certificate reference currently not supported with --new-bundle-format")
+		}
 		cert, err := loadCertFromFileOrURL(c.CertRef)
 		if err != nil {
 			return err
 		}
-		if c.CertChain == "" {
-			// If no certChain is passed, the Fulcio root certificate will be used
-			co.RootCerts, err = fulcio.GetRoots()
-			if err != nil {
-				return fmt.Errorf("getting Fulcio roots: %w", err)
-			}
-			co.IntermediateCerts, err = fulcio.GetIntermediates()
-			if err != nil {
-				return fmt.Errorf("getting Fulcio intermediates: %w", err)
+		switch {
+		case c.CertChain == "" && co.RootCerts == nil:
+			// If no certChain and no CARoots are passed, the Fulcio root certificate will be used
+			if co.TrustedMaterial == nil {
+				co.RootCerts, err = fulcio.GetRoots()
+				if err != nil {
+					return fmt.Errorf("getting Fulcio roots: %w", err)
+				}
+				co.IntermediateCerts, err = fulcio.GetIntermediates()
+				if err != nil {
+					return fmt.Errorf("getting Fulcio intermediates: %w", err)
+				}
 			}
 			pubKey, err = cosign.ValidateAndUnpackCert(cert, co)
 			if err != nil {
 				return err
 			}
-		} else {
+		case c.CertChain != "":
 			// Verify certificate with chain
 			chain, err := loadCertChainFromFileOrURL(c.CertChain)
 			if err != nil {
@@ -265,7 +286,16 @@ func (c *VerifyCommand) Exec(ctx context.Context, images []string) (err error) {
 			if err != nil {
 				return err
 			}
+		case co.RootCerts != nil:
+			// Verify certificate with root (and if given, intermediate) certificate
+			pubKey, err = cosign.ValidateAndUnpackCert(cert, co)
+			if err != nil {
+				return err
+			}
+		default:
+			return errors.New("no certificate chain provided to verify certificate")
 		}
+
 		if c.SCTRef != "" {
 			sct, err := os.ReadFile(filepath.Clean(c.SCTRef))
 			if err != nil {
@@ -273,6 +303,9 @@ func (c *VerifyCommand) Exec(ctx context.Context, images []string) (err error) {
 			}
 			co.SCT = sct
 		}
+	default:
+		// Do nothing. Neither keyRef, c.Sk, nor certRef were set - can happen for example when using Fulcio and TSA.
+		// For an example see the TestAttachWithRFC3161Timestamp test in test/e2e_test.go.
 	}
 	co.SigVerifier = pubKey
 
@@ -285,10 +318,20 @@ func (c *VerifyCommand) Exec(ctx context.Context, images []string) (err error) {
 	fulcioVerified := (co.SigVerifier == nil)
 
 	for _, img := range images {
+		var verified []oci.Signature
+		var bundleVerified bool
+
 		if c.LocalImage {
-			verified, bundleVerified, err := cosign.VerifyLocalImageSignatures(ctx, img, co)
-			if err != nil {
-				return err
+			if c.NewBundleFormat {
+				verified, bundleVerified, err = cosign.VerifyLocalImageAttestations(ctx, img, co)
+				if err != nil {
+					return err
+				}
+			} else {
+				verified, bundleVerified, err = cosign.VerifyLocalImageSignatures(ctx, img, co)
+				if err != nil {
+					return err
+				}
 			}
 			PrintVerificationHeader(ctx, img, co, bundleVerified, fulcioVerified)
 			PrintVerification(ctx, verified, c.Output)
@@ -297,14 +340,28 @@ func (c *VerifyCommand) Exec(ctx context.Context, images []string) (err error) {
 			if err != nil {
 				return fmt.Errorf("parsing reference: %w", err)
 			}
-			ref, err = sign.GetAttachedImageRef(ref, c.Attachment, ociremoteOpts...)
-			if err != nil {
-				return fmt.Errorf("resolving attachment type %s for image %s: %w", c.Attachment, img, err)
-			}
 
-			verified, bundleVerified, err := cosign.VerifyImageSignatures(ctx, ref, co)
-			if err != nil {
-				return cosignError.WrapError(err)
+			if c.NewBundleFormat {
+				// OCI bundle always contains attestation
+				verified, bundleVerified, err = cosign.VerifyImageAttestations(ctx, ref, co)
+				if err != nil {
+					return err
+				}
+
+				verifiedOutput, err := transformOutput(verified, ref.Name())
+				if err == nil {
+					verified = verifiedOutput
+				}
+			} else {
+				ref, err = sign.GetAttachedImageRef(ref, c.Attachment, ociremoteOpts...)
+				if err != nil {
+					return fmt.Errorf("resolving attachment type %s for image %s: %w", c.Attachment, img, err)
+				}
+
+				verified, bundleVerified, err = cosign.VerifyImageSignatures(ctx, ref, co)
+				if err != nil {
+					return cosignError.WrapError(err)
+				}
 			}
 
 			PrintVerificationHeader(ctx, ref.Name(), co, bundleVerified, fulcioVerified)
@@ -520,4 +577,120 @@ func shouldVerifySCT(ignoreSCT bool, keyRef string, sk bool) bool {
 		return false
 	}
 	return true
+}
+
+// loadCertsKeylessVerification loads certificates provided as a certificate chain or CA roots + CA intermediate
+// certificate files. If both certChain and caRootsFile are empty strings, the Fulcio roots are loaded.
+//
+// The co *cosign.CheckOpts is both input and output parameter - it gets updated
+// with the root and intermediate certificates needed for verification.
+func loadCertsKeylessVerification(certChainFile string,
+	caRootsFile string,
+	caIntermediatesFile string,
+	co *cosign.CheckOpts) error {
+	var err error
+	switch {
+	case certChainFile != "":
+		chain, err := loadCertChainFromFileOrURL(certChainFile)
+		if err != nil {
+			return err
+		}
+		co.RootCerts = x509.NewCertPool()
+		co.RootCerts.AddCert(chain[len(chain)-1])
+		if len(chain) > 1 {
+			co.IntermediateCerts = x509.NewCertPool()
+			for _, cert := range chain[:len(chain)-1] {
+				co.IntermediateCerts.AddCert(cert)
+			}
+		}
+	case caRootsFile != "":
+		caRoots, err := loadCertChainFromFileOrURL(caRootsFile)
+		if err != nil {
+			return err
+		}
+		co.RootCerts = x509.NewCertPool()
+		if len(caRoots) > 0 {
+			for _, cert := range caRoots {
+				co.RootCerts.AddCert(cert)
+			}
+		}
+		if caIntermediatesFile != "" {
+			caIntermediates, err := loadCertChainFromFileOrURL(caIntermediatesFile)
+			if err != nil {
+				return err
+			}
+			if len(caIntermediates) > 0 {
+				co.IntermediateCerts = x509.NewCertPool()
+				for _, cert := range caIntermediates {
+					co.IntermediateCerts.AddCert(cert)
+				}
+			}
+		}
+	default:
+		// This performs an online fetch of the Fulcio roots from a TUF repository.
+		// This is needed for verifying keyless certificates (both online and offline).
+		co.RootCerts, err = fulcio.GetRoots()
+		if err != nil {
+			return fmt.Errorf("getting Fulcio roots: %w", err)
+		}
+		co.IntermediateCerts, err = fulcio.GetIntermediates()
+		if err != nil {
+			return fmt.Errorf("getting Fulcio intermediates: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func transformOutput(verified []oci.Signature, name string) (verifiedOutput []oci.Signature, err error) {
+	for _, v := range verified {
+		dssePayload, err := v.Payload()
+		if err != nil {
+			return nil, err
+		}
+		var dsseEnvelope dsse.Envelope
+		err = json.Unmarshal(dssePayload, &dsseEnvelope)
+		if err != nil {
+			return nil, err
+		}
+		if dsseEnvelope.PayloadType != in_toto.PayloadType {
+			return nil, fmt.Errorf("unable to understand payload type %s", dsseEnvelope.PayloadType)
+		}
+		var intotoStatement in_toto.StatementHeader
+		err = json.Unmarshal(dsseEnvelope.Payload, &intotoStatement)
+		if err != nil {
+			return nil, err
+		}
+		if len(intotoStatement.Subject) < 1 || len(intotoStatement.Subject[0].Digest) < 1 {
+			return nil, fmt.Errorf("no intoto subject or digest found")
+		}
+
+		var digest string
+		for k, v := range intotoStatement.Subject[0].Digest {
+			digest = k + ":" + v
+		}
+
+		sci := payload.SimpleContainerImage{
+			Critical: payload.Critical{
+				Identity: payload.Identity{
+					DockerReference: name,
+				},
+				Image: payload.Image{
+					DockerManifestDigest: digest,
+				},
+				Type: intotoStatement.PredicateType,
+			},
+		}
+		p, err := json.Marshal(sci)
+		if err != nil {
+			return nil, err
+		}
+		att, err := static.NewAttestation(p)
+		if err != nil {
+			return nil, err
+		}
+		verifiedOutput = append(verifiedOutput, att)
+	}
+
+	return verifiedOutput, nil
 }

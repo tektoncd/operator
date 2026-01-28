@@ -15,7 +15,11 @@
 
 package options
 
-import "github.com/sigstore/cosign/v2/pkg/cosign"
+import (
+	"github.com/sigstore/cosign/v2/pkg/cosign"
+	"github.com/sigstore/sigstore-go/pkg/root"
+	"github.com/sigstore/sigstore/pkg/signature"
+)
 
 type KeyOpts struct {
 	Sk                   bool
@@ -32,6 +36,7 @@ type KeyOpts struct {
 	OIDCDisableProviders bool   // Disable OIDC credential providers in keyless signer
 	OIDCProvider         string // Specify which OIDC credential provider to use for keyless signer
 	BundlePath           string
+	NewBundleFormat      bool
 	SkipConfirmation     bool
 	TSAClientCACert      string
 	TSAClientCert        string
@@ -52,4 +57,19 @@ type KeyOpts struct {
 	// Modeled after InsecureSkipVerify in tls.Config, this disables
 	// verifying the SCT.
 	InsecureSkipFulcioVerify bool
+
+	// TrustedMaterial contains trusted metadata for all Sigstore services. It is exclusive with RekorPubKeys, RootCerts, IntermediateCerts, CTLogPubKeys, and the TSA* cert fields.
+	TrustedMaterial root.TrustedMaterial
+
+	// SigningConfig contains the list of service URLs for Sigstore services.
+	SigningConfig *root.SigningConfig
+
+	// DefaultLoadOptions may be set to control the behaviour of
+	// `LoadDefaultSigner/Verifier` family of functions. Some public/private key
+	// types have ambiguities with regards to the signing algorithm to use (e.g.
+	// RSA can be RSASSA-PSS or RSASSA-PKCS1v15). This is a way to control that.
+	//
+	// By default, Ed25519ph is used for ed25519 keys and RSA-PKCS1v15 is used
+	// for RSA keys.
+	DefaultLoadOptions *[]signature.LoadOption
 }

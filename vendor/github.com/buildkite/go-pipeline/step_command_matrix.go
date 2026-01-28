@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/buildkite/go-pipeline/ordered"
 	"gopkg.in/yaml.v3"
@@ -48,6 +49,12 @@ type Matrix struct {
 	Adjustments MatrixAdjustments `yaml:"adjustments,omitempty"`
 
 	RemainingFields map[string]any `yaml:",inline"`
+}
+
+// IsEmpty reports whether the matrix is empty (is nil, or has no setup,
+// no adjustments, and no other data within it).
+func (m *Matrix) IsEmpty() bool {
+	return m == nil || (len(m.Setup) == 0 && len(m.Adjustments) == 0 && len(m.RemainingFields) == 0)
 }
 
 // UnmarshalOrdererd unmarshals from either []any or *ordered.MapSA.
@@ -141,7 +148,9 @@ func (m *Matrix) validatePermutation(p MatrixPermutation) error {
 	// Check that the dimensions in the permutation are unique and defined in
 	// the matrix setup.
 	for dim := range p {
-		if len(m.Setup[dim]) == 0 {
+		// An empty but non-nil setup dimension is valid (all values may be
+		// given by adjustment tuples).
+		if m.Setup[dim] == nil {
 			return fmt.Errorf("%w: %q", errPermutationUnknownDimension, dim)
 		}
 	}
@@ -150,14 +159,7 @@ func (m *Matrix) validatePermutation(p MatrixPermutation) error {
 	// permutation). Whether they are or are not, we still check adjustments.
 	valid := true
 	for dim, val := range p {
-		match := false
-		for _, v := range m.Setup[dim] {
-			if val == v {
-				match = true
-				break
-			}
-		}
-		if !match {
+		if !slices.Contains(m.Setup[dim], val) {
 			// Not a basic permutation. It could still be an adjustment though.
 			valid = false
 			break
@@ -174,7 +176,9 @@ func (m *Matrix) validatePermutation(p MatrixPermutation) error {
 			return fmt.Errorf("%w: %d != %d", errAdjustmentLengthMismatch, len(adj.With), len(m.Setup))
 		}
 		for dim := range adj.With {
-			if len(m.Setup[dim]) == 0 {
+			// An empty but non-nil setup dimension is valid (all values may be
+			// given by adjustment tuples).
+			if m.Setup[dim] == nil {
 				return fmt.Errorf("%w: %q", errAdjustmentUnknownDimension, dim)
 			}
 		}

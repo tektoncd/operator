@@ -14,7 +14,7 @@
 
 // Package ast declares the types used to represent syntax trees for CUE
 // packages.
-package ast // import "cuelang.org/go/cue/ast"
+package ast
 
 import (
 	"fmt"
@@ -112,7 +112,7 @@ type decl struct{}
 
 func (decl) declNode() {}
 
-// A Label is any production that can be used as a LHS label.
+// A Label is any production that can be used as an LHS label.
 type Label interface {
 	Node
 	labelNode()
@@ -176,10 +176,10 @@ func (c *comments) SetComments(cgs []*CommentGroup) {
 	*c.groups = cgs
 }
 
-// A Comment node represents a single //-style or /*-style comment.
+// A Comment node represents a single //-style comment.
 type Comment struct {
 	Slash token.Pos // position of "/" starting the comment
-	Text  string    // comment text (excluding '\n' for //-style comments)
+	Text  string    // comment text excluding '\n'
 }
 
 func (c *Comment) Comments() []*CommentGroup { return nil }
@@ -226,7 +226,7 @@ func stripTrailingWhitespace(s string) string {
 }
 
 // Text returns the text of the comment.
-// Comment markers (//, /*, and */), the first space of a line comment, and
+// Comment markers ("//"), the first space of a line comment, and
 // leading and trailing empty lines are removed. Multiple empty lines are
 // reduced to one, and trailing space on lines is trimmed. Unless the result
 // is empty, it is newline-terminated.
@@ -243,17 +243,10 @@ func (g *CommentGroup) Text() string {
 	for _, c := range comments {
 		// Remove comment markers.
 		// The parser has given us exactly the comment text.
-		switch c[1] {
-		case '/':
-			//-style comment (no newline at the end)
-			c = c[2:]
-			// strip first space - required for Example tests
-			if len(c) > 0 && c[0] == ' ' {
-				c = c[1:]
-			}
-		case '*':
-			/*-style comment */
-			c = c[2 : len(c)-2]
+		c = c[2:]
+		// strip first space - required for Example tests
+		if len(c) > 0 && c[0] == ' ' {
+			c = c[1:]
 		}
 
 		// Split on newlines.
@@ -308,13 +301,15 @@ func (a *Attribute) Split() (key, body string) {
 
 // A Field represents a field declaration in a struct.
 type Field struct {
-	Label      Label       // must have at least one element.
-	Optional   token.Pos   // Deprecated
+	Label Label // must have at least one element.
+	// Deprecated: use [Field.Constraint]
+	Optional   token.Pos
 	Constraint token.Token // token.ILLEGAL, token.OPTION, or token.NOT
 
 	// No TokenPos: Value must be an StructLit with one field.
 	TokenPos token.Pos
-	Token    token.Token // Deprecated: always token.COLON
+	// Deprecated: the value is always [token.COLON]
+	Token token.Token
 
 	Value Expr // the value associated with this field.
 
@@ -394,7 +389,7 @@ type BottomLit struct {
 	expr
 }
 
-// An Ident node represents an left-hand side identifier,
+// An Ident node represents a left-hand side identifier,
 // including the underscore "_" identifier to represent top.
 type Ident struct {
 	NamePos token.Pos // identifier position
@@ -951,17 +946,20 @@ func (d *EmbedDecl) End() token.Pos { return d.Expr.End() }
 // ----------------------------------------------------------------------------
 // Files and packages
 
-// A File node represents a Go source file.
-//
-// The Comments list contains all comments in the source file in order of
-// appearance, including the comments that are pointed to from other nodes
-// via Doc and Comment fields.
+// A File node represents a CUE source file.
 type File struct {
 	Filename string
 	Decls    []Decl // top-level declarations; or nil
 
 	Imports    []*ImportSpec // imports in this file
 	Unresolved []*Ident      // unresolved identifiers in this file
+
+	// TODO remove this field: it's here as a temporary
+	// entity so that tests can determine which version
+	// the file was parsed with. A better approach is probably to
+	// include the language version in the `token.File` so
+	// it's available in every Position.
+	LanguageVersion string // The language version as configured by [parser.ParseFile].
 
 	comments
 }
@@ -1006,6 +1004,9 @@ func (f *File) PackageName() string {
 	for _, d := range f.Decls {
 		switch x := d.(type) {
 		case *Package:
+			if x.Name.Name == "_" {
+				return ""
+			}
 			return x.Name.Name
 		case *CommentGroup, *Attribute:
 		default:

@@ -15,8 +15,9 @@
 package export
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 
 	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/cue/token"
@@ -73,18 +74,19 @@ func (e *exporter) expr(env *adt.Environment, v adt.Elem) (result ast.Expr) {
 		return nil
 
 	case *adt.Vertex:
-		if len(x.Conjuncts) == 0 || x.IsData() {
+		if x.IsData() {
 			// Treat as literal value.
 			return e.value(x)
 		} // Should this be the arcs label?
 
 		a := []conjunct{}
-		for _, c := range x.Conjuncts {
+		x.VisitLeafConjuncts(func(c adt.Conjunct) bool {
 			if c, ok := c.Elem().(*adt.Comprehension); ok && !c.DidResolve() {
-				continue
+				return true
 			}
 			a = append(a, conjunct{c, 0})
-		}
+			return true
+		})
 
 		return e.mergeValues(adt.InvalidLabel, x, a, x.Conjuncts...)
 
@@ -168,9 +170,9 @@ func (x *exporter) mergeValues(label adt.Feature, src *adt.Vertex, a []conjunct,
 	}
 
 	// Unify values only for one level.
-	if a := e.values.Conjuncts; len(a) > 0 {
+	if e.values.HasConjuncts() {
 		e.values.Finalize(e.ctx)
-		e.embed = append(e.embed, e.value(e.values, a...))
+		e.embed = append(e.embed, e.value(e.values, e.values.Conjuncts...))
 	}
 
 	// Collect and order set of fields.
@@ -183,21 +185,21 @@ func (x *exporter) mergeValues(label adt.Feature, src *adt.Vertex, a []conjunct,
 	// Sort fields in case features lists are missing to ensure
 	// predictability. Also sort in reverse order, so that bugs
 	// are more likely exposed.
-	sort.Slice(fields, func(i, j int) bool {
-		return fields[i] > fields[j]
+	slices.SortFunc(fields, func(f1, f2 adt.Feature) int {
+		return -cmp.Compare(f1, f2)
 	})
 
-	if adt.DebugSort == 0 {
-		m := sortArcs(extractFeatures(e.structs))
-		sort.SliceStable(fields, func(i, j int) bool {
-			if m[fields[j]] == 0 {
-				return m[fields[i]] != 0
+	// TODO: should this not use the new toposort? it still uses the pre-toposort field sorting.
+	m := sortArcs(extractFeatures(e.structs))
+	slices.SortStableFunc(fields, func(f1, f2 adt.Feature) int {
+		if m[f2] == 0 {
+			if m[f1] == 0 {
+				return +1
 			}
-			return m[fields[i]] > m[fields[j]]
-		})
-	} else {
-		adt.DebugSortFields(e.ctx, fields)
-	}
+			return -1
+		}
+		return -cmp.Compare(m[f1], m[f2])
+	})
 
 	if len(e.fields) == 0 && !e.hasEllipsis {
 		switch len(e.embed) + len(e.conjuncts) {
@@ -267,7 +269,8 @@ func (x *exporter) mergeValues(label adt.Feature, src *adt.Vertex, a []conjunct,
 
 		internal.SetConstraint(d, field.arcType.Token())
 		if x.cfg.ShowDocs {
-			docs := extractDocs(src, a)
+			v := &adt.Vertex{Conjuncts: a}
+			docs := extractDocs(v)
 			ast.SetComments(d, docs)
 		}
 		if x.cfg.ShowAttributes {
@@ -295,7 +298,12 @@ func (x *exporter) mergeValues(label adt.Feature, src *adt.Vertex, a []conjunct,
 
 func (e *conjuncts) wrapCloseIfNecessary(s *ast.StructLit, v *adt.Vertex) ast.Expr {
 	if !e.hasEllipsis && v != nil {
+		if v.ClosedNonRecursive {
+			// Eval V3 logic
+			return ast.NewCall(ast.NewIdent("close"), s)
+		}
 		if st, ok := v.BaseValue.(*adt.StructMarker); ok && st.NeedClose {
+			// Eval V2 logic
 			return ast.NewCall(ast.NewIdent("close"), s)
 		}
 	}
@@ -416,7 +424,7 @@ func (e *conjuncts) addExpr(env *adt.Environment, src *adt.Vertex, x adt.Elem, i
 			e.addValueConjunct(src, env, x)
 
 		case *adt.Vertex:
-			if b, ok := v.BaseValue.(*adt.Bottom); ok {
+			if b := v.Bottom(); b != nil {
 				if !b.IsIncomplete() || e.cfg.Final {
 					e.addExpr(env, v, b, false)
 					return
@@ -425,9 +433,10 @@ func (e *conjuncts) addExpr(env *adt.Environment, src *adt.Vertex, x adt.Elem, i
 
 			switch {
 			default:
-				for _, c := range v.Conjuncts {
+				v.VisitLeafConjuncts(func(c adt.Conjunct) bool {
 					e.addExpr(c.Env, v, c.Elem(), false)
-				}
+					return true
+				})
 
 			case v.IsData():
 				e.structs = append(e.structs, v.Structs...)

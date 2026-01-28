@@ -5,17 +5,23 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 
+	"cuelang.org/go/cue/ast"
 	"cuelang.org/go/internal/mod/semver"
 )
 
 // The following regular expressions come from https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests
 // and ensure that we can store modules inside OCI registries.
 var (
-	basePathPat = regexp.MustCompile(`^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*$`)
-	tagPat      = regexp.MustCompile(`^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$`)
+	basePathPat = sync.OnceValue(func() *regexp.Regexp {
+		return regexp.MustCompile(`^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*$`)
+	})
+	tagPat = sync.OnceValue(func() *regexp.Regexp {
+		return regexp.MustCompile(`^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$`)
+	})
 )
 
 // Check checks that a given module path, version pair is valid.
@@ -52,18 +58,10 @@ func firstPathOK(r rune) bool {
 
 // modPathOK reports whether r can appear in a module path element.
 // Paths can be ASCII letters, ASCII digits, and limited ASCII punctuation: - . _ and ~.
-//
-// This matches what "go get" has historically recognized in import paths,
-// and avoids confusing sequences like '%20' or '+' that would change meaning
-// if used in a URL.
-//
-// TODO(rsc): We would like to allow Unicode letters, but that requires additional
-// care in the safe encoding (see "escaped paths" above).
 func modPathOK(r rune) bool {
 	if r < utf8.RuneSelf {
-		return r == '-' || r == '.' || r == '_' || r == '~' ||
+		return r == '-' || r == '.' || r == '_' ||
 			'0' <= r && r <= '9' ||
-			'A' <= r && r <= 'Z' ||
 			'a' <= r && r <= 'z'
 	}
 	return false
@@ -77,7 +75,10 @@ func modPathOK(r rune) bool {
 // otherwise-unambiguous on the command line and historically used for some
 // binary names (such as '++' as a suffix for compiler binaries and wrappers).
 func importPathOK(r rune) bool {
-	return modPathOK(r) || r == '+'
+	return modPathOK(r) ||
+		r == '+' ||
+		r == '~' ||
+		'A' <= r && r <= 'Z'
 }
 
 // fileNameOK reports whether r can appear in a file name.
@@ -108,32 +109,29 @@ func fileNameOK(r rune) bool {
 // it expects a module path without a major version.
 func CheckPathWithoutVersion(basePath string) (err error) {
 	if _, _, ok := SplitPathVersion(basePath); ok {
-		return fmt.Errorf("module path inappropriately contains major version")
+		return fmt.Errorf("module path inappropriately contains version")
 	}
 	if err := checkPath(basePath, modulePath); err != nil {
 		return err
 	}
-	i := strings.Index(basePath, "/")
-	if i < 0 {
-		i = len(basePath)
-	}
-	if i == 0 {
+	firstPath, _, _ := strings.Cut(basePath, "/")
+	if firstPath == "" {
 		return fmt.Errorf("leading slash")
 	}
-	if !strings.Contains(basePath[:i], ".") {
+	if !strings.Contains(firstPath, ".") {
 		return fmt.Errorf("missing dot in first path element")
 	}
 	if basePath[0] == '-' {
 		return fmt.Errorf("leading dash in first path element")
 	}
-	for _, r := range basePath[:i] {
+	for _, r := range firstPath {
 		if !firstPathOK(r) {
 			return fmt.Errorf("invalid char %q in first path element", r)
 		}
 	}
 	// Sanity check agreement with OCI specs.
-	if !basePathPat.MatchString(basePath) {
-		return fmt.Errorf("non-conforming path %q", basePath)
+	if !basePathPat().MatchString(basePath) {
+		return fmt.Errorf("path does not conform to OCI repository name restrictions; see https://github.com/opencontainers/distribution-spec/blob/HEAD/spec.md#pulling-manifests")
 	}
 	return nil
 }
@@ -147,9 +145,11 @@ func CheckPathWithoutVersion(basePath string) (err error) {
 // ASCII digits, dots (U+002E), and dashes (U+002D);
 // it must contain at least one dot and cannot start with a dash.
 //
-// Second, there must be a final major version of the form
+// Second, there may be a final major version of the form
 // @vN where N looks numeric
 // (ASCII digits) and must not begin with a leading zero.
+// Without such a major version, the major version is assumed
+// to be v0.
 //
 // Third, no path element may begin with a dot.
 func CheckPath(mpath string) (err error) {
@@ -163,17 +163,18 @@ func CheckPath(mpath string) (err error) {
 	}()
 
 	basePath, vers, ok := SplitPathVersion(mpath)
-	if !ok {
-		return fmt.Errorf("no major version found in module path")
-	}
-	if semver.Major(vers) != vers {
-		return fmt.Errorf("path can contain major version only")
+	if ok {
+		if semver.Major(vers) != vers {
+			return fmt.Errorf("path can contain major version only")
+		}
+		if !tagPat().MatchString(vers) {
+			return fmt.Errorf("non-conforming version %q", vers)
+		}
+	} else {
+		basePath = mpath
 	}
 	if err := CheckPathWithoutVersion(basePath); err != nil {
 		return err
-	}
-	if !tagPat.MatchString(vers) {
-		return fmt.Errorf("non-conforming version %q", vers)
 	}
 	return nil
 }
@@ -263,10 +264,16 @@ func checkElem(elem string, kind pathKind) error {
 	if strings.Count(elem, ".") == len(elem) {
 		return fmt.Errorf("invalid path element %q", elem)
 	}
-	if elem[0] == '.' && kind == modulePath {
-		return fmt.Errorf("leading dot in path element")
-	}
-	if elem[len(elem)-1] == '.' {
+
+	if kind == modulePath {
+
+		if r := rune(elem[0]); r == '.' || r == '_' || r == '-' {
+			return fmt.Errorf("leading %q in path element", r)
+		}
+		if r := rune(elem[len(elem)-1]); r == '.' || r == '_' || r == '-' {
+			return fmt.Errorf("trailing %q in path element", r)
+		}
+	} else if elem[len(elem)-1] == '.' {
 		return fmt.Errorf("trailing dot in path element")
 	}
 	for _, r := range elem {
@@ -287,10 +294,7 @@ func checkElem(elem string, kind pathKind) error {
 	}
 	// Windows disallows a bunch of path elements, sadly.
 	// See https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file
-	short := elem
-	if i := strings.Index(short, "."); i >= 0 {
-		short = short[:i]
-	}
+	short, _, _ := strings.Cut(elem, ".")
 	for _, bad := range badWindowsNames {
 		if strings.EqualFold(bad, short) {
 			return fmt.Errorf("%q disallowed as path element component on Windows", short)
@@ -368,112 +372,38 @@ var badWindowsNames = []string{
 	"LPT9",
 }
 
-// SplitPathVersion returns a prefix and version suffix such
-// that prefix+"@"+version == path.
-// SplitPathVersion returns with ok=false when presented
-// with a path with an invalid version suffix.
+// SplitPathVersion returns a prefix and version suffix such that
+// prefix+"@"+version == path.
 //
-// For example, SplitPathVersion("foo.com/bar@v0.1") returns
-// ("foo.com/bar", "v0.1", true).
+// SplitPathVersion returns (path, "", false) when there is no `@`
+// character splitting the path or if the version is empty.
+//
+// It does not check that the version is valid in any way other than
+// checking that it is not empty.
+//
+// For example:
+//
+// SplitPathVersion("foo.com/bar@v0.1") returns ("foo.com/bar", "v0.1", true).
+// SplitPathVersion("foo.com/bar@badvers") returns ("foo.com/bar", "badvers", true).
+// SplitPathVersion("foo.com/bar") returns ("foo.com/bar", "", false).
+// SplitPathVersion("foo.com/bar@") returns ("foo.com/bar@", "", false).
+//
+// Deprecated: use [ast.SplitPackageVersion] instead.
 func SplitPathVersion(path string) (prefix, version string, ok bool) {
-	i := strings.LastIndex(path, "@")
-	split := i
-	if i <= 0 || i+2 >= len(path) {
-		return "", "", false
-	}
-	if strings.Contains(path[:i], "@") {
-		return "", "", false
-	}
-	if path[i+1] != 'v' {
-		return "", "", false
-	}
-	if !semver.IsValid(path[i+1:]) {
-		return "", "", false
-	}
-	return path[:split], path[split+1:], true
+	return ast.SplitPackageVersion(path)
 }
 
 // ImportPath holds the various components of an import path.
-type ImportPath struct {
-	// Path holds the base package/directory path, similar
-	// to that returned by [Version.BasePath].
-	Path string
-
-	// Version holds the version of the import
-	// or empty if not present. Note: in general this
-	// will contain a major version only, but there's no
-	// guarantee of that.
-	Version string
-
-	// Qualifier holds the package qualifier within the path.
-	// This will be derived from the last component of Path
-	// if it wasn't explicitly present in the import path.
-	// This is not guaranteed to be a valid CUE identifier.
-	Qualifier string
-
-	// ExplicitQualifier holds whether the qualifier was explicitly
-	// present in the import path.
-	ExplicitQualifier bool
-}
-
-// Canonical returns the canonical form of the import path.
-// Specifically, it will only include the package qualifier
-// if it's different from the last component of parts.Path.
-func (parts ImportPath) Canonical() ImportPath {
-	if i := strings.LastIndex(parts.Path, "/"); i >= 0 && parts.Path[i+1:] == parts.Qualifier {
-		parts.Qualifier = ""
-		parts.ExplicitQualifier = false
-	}
-	return parts
-}
-
-// Unqualified returns the import path without any package qualifier.
-func (parts ImportPath) Unqualified() ImportPath {
-	parts.Qualifier = ""
-	parts.ExplicitQualifier = false
-	return parts
-}
-
-func (parts ImportPath) String() string {
-	if parts.Version == "" && !parts.ExplicitQualifier {
-		// Fast path.
-		return parts.Path
-	}
-	var buf strings.Builder
-	buf.WriteString(parts.Path)
-	if parts.Version != "" {
-		buf.WriteByte('@')
-		buf.WriteString(parts.Version)
-	}
-	if parts.ExplicitQualifier {
-		buf.WriteByte(':')
-		buf.WriteString(parts.Qualifier)
-	}
-	return buf.String()
-}
+//
+// Deprecated: use [ast.ImportPath] instead.
+type ImportPath = ast.ImportPath
 
 // ParseImportPath returns the various components of an import path.
+// It does not check the result for validity.
+//
+// Deprecated: use [ast.ParseImportPath] instead.
 func ParseImportPath(p string) ImportPath {
-	var parts ImportPath
-	pathWithoutQualifier := p
-	if i := strings.LastIndexAny(p, "/:"); i >= 0 && p[i] == ':' {
-		pathWithoutQualifier = p[:i]
-		parts.Qualifier = p[i+1:]
-		parts.ExplicitQualifier = true
-	}
-	parts.Path = pathWithoutQualifier
-	if path, version, ok := SplitPathVersion(pathWithoutQualifier); ok {
-		parts.Version = version
-		parts.Path = path
-	}
-	if !parts.ExplicitQualifier {
-		if i := strings.LastIndex(parts.Path, "/"); i >= 0 {
-			parts.Qualifier = parts.Path[i+1:]
-		} else {
-			parts.Qualifier = parts.Path
-		}
-	}
-	return parts
+	return ast.ParseImportPath(p)
 }
 
 // CheckPathMajor returns a non-nil error if the semantic version v

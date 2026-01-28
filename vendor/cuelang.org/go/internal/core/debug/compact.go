@@ -21,6 +21,7 @@ package debug
 
 import (
 	"fmt"
+	"strconv"
 
 	"cuelang.org/go/cue/literal"
 	"cuelang.org/go/internal/core/adt"
@@ -30,16 +31,23 @@ type compactPrinter struct {
 	printer
 }
 
+func (w *compactPrinter) string(s string) {
+	w.dst = append(w.dst, s...)
+}
+
 func (w *compactPrinter) node(n adt.Node) {
 	switch x := n.(type) {
 	case *adt.Vertex:
 		if x.BaseValue == nil || (w.cfg.Raw && !x.IsData()) {
-			for i, c := range x.Conjuncts {
+			i := 0
+			x.VisitLeafConjuncts(func(c adt.Conjunct) bool {
 				if i > 0 {
 					w.string(" & ")
 				}
+				i++
 				w.node(c.Elem())
-			}
+				return true
+			})
 			return
 		}
 
@@ -57,7 +65,7 @@ func (w *compactPrinter) node(n adt.Node) {
 						w.string("m")
 					}
 					w.string("=")
-					if c := a.Conjuncts[0]; a.MultiLet {
+					if c := a.ConjunctAt(0); a.MultiLet {
 						w.node(c.Expr())
 						continue
 					}
@@ -80,6 +88,12 @@ func (w *compactPrinter) node(n adt.Node) {
 				w.node(a)
 			}
 			w.string("]")
+
+		case *adt.Vertex:
+			if v, ok := w.printShared(x); !ok {
+				w.node(v)
+				w.popVertex()
+			}
 
 		case adt.Value:
 			w.node(v)
@@ -112,16 +126,14 @@ func (w *compactPrinter) node(n adt.Node) {
 		w.string("]")
 
 	case *adt.Field:
-		s := w.labelString(x.Label)
-		w.string(s)
+		w.label(x.Label)
 		w.string(x.ArcType.Suffix())
 		w.string(":")
 		w.node(x.Value)
 
 	case *adt.LetField:
 		w.string("let ")
-		s := w.labelString(x.Label)
-		w.string(s)
+		w.label(x.Label)
 		if x.IsMulti {
 			w.string("m")
 		}
@@ -158,29 +170,29 @@ func (w *compactPrinter) node(n adt.Node) {
 		w.string("null")
 
 	case *adt.Bool:
-		fmt.Fprint(w, x.B)
+		w.dst = strconv.AppendBool(w.dst, x.B)
 
 	case *adt.Num:
-		fmt.Fprint(w, &x.X)
+		w.string(x.X.String())
 
 	case *adt.String:
-		w.string(literal.String.Quote(x.Str))
+		w.dst = literal.String.Append(w.dst, x.Str)
 
 	case *adt.Bytes:
-		w.string(literal.Bytes.Quote(string(x.B)))
+		w.dst = literal.Bytes.Append(w.dst, string(x.B))
 
 	case *adt.Top:
 		w.string("_")
 
 	case *adt.BasicType:
-		fmt.Fprint(w, x.K)
+		w.string(x.K.String())
 
 	case *adt.BoundExpr:
-		fmt.Fprint(w, x.Op)
+		w.string(x.Op.String())
 		w.node(x.Expr)
 
 	case *adt.BoundValue:
-		fmt.Fprint(w, x.Op)
+		w.string(x.Op.String())
 		w.node(x.Value)
 
 	case *adt.NodeLink:
@@ -246,13 +258,15 @@ func (w *compactPrinter) node(n adt.Node) {
 		w.interpolation(x)
 
 	case *adt.UnaryExpr:
-		fmt.Fprint(w, x.Op)
+		w.string(x.Op.String())
 		w.node(x.X)
 
 	case *adt.BinaryExpr:
 		w.string("(")
 		w.node(x.X)
-		fmt.Fprint(w, " ", x.Op, " ")
+		w.string(" ")
+		w.string(x.Op.String())
+		w.string(" ")
 		w.node(x.Y)
 		w.string(")")
 
@@ -263,7 +277,7 @@ func (w *compactPrinter) node(n adt.Node) {
 			if i > 0 {
 				w.string(", ")
 			}
-			w.node(a)
+			w.arg(a)
 		}
 		w.string(")")
 
@@ -281,7 +295,7 @@ func (w *compactPrinter) node(n adt.Node) {
 			if i > 0 {
 				w.string(", ")
 			}
-			w.node(a)
+			w.arg(a)
 		}
 		w.string(")")
 
@@ -308,14 +322,12 @@ func (w *compactPrinter) node(n adt.Node) {
 		}
 
 	case *adt.ConjunctGroup:
-		w.string("&[")
 		for i, c := range *x {
 			if i > 0 {
 				w.string(" & ")
 			}
 			w.node(c.Expr())
 		}
-		w.string("]")
 
 	case *adt.Disjunction:
 		for i, c := range x.Values {

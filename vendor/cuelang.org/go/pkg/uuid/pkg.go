@@ -39,18 +39,6 @@ var p = &pkg.Package{
 			}
 		},
 	}, {
-		Name: "ToString",
-		Params: []pkg.Param{
-			{Kind: adt.StringKind},
-		},
-		Result: adt.StringKind,
-		Func: func(c *pkg.CallCtxt) {
-			x := c.String(0)
-			if c.Do() {
-				c.Ret = ToString(x)
-			}
-		},
-	}, {
 		Name: "URN",
 		Params: []pkg.Param{
 			{Kind: adt.StringKind},
@@ -145,12 +133,10 @@ var p = &pkg.Package{
 		X500: "6ba7b814-9dad-11d1-80b4-00c04fd430c8"
 		Nil:  "00000000-0000-0000-0000-000000000000"
 	}
-	variants: {
-		Invalid:   0
-		RFC4122:   1
-		Reserved:  2
-		Microsoft: 3
-		Future:    4
-	}
+	variants: Invalid:   0
+	variants: RFC4122:   1
+	variants: Reserved:  2
+	variants: Microsoft: 3
+	variants: Future:    4
 }`,
 }

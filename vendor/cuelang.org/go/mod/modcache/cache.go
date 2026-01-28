@@ -13,8 +13,8 @@ import (
 	"path/filepath"
 
 	"github.com/rogpeppe/go-internal/lockedfile"
-	"github.com/rogpeppe/go-internal/robustio"
 
+	"cuelang.org/go/internal/robustio"
 	"cuelang.org/go/mod/module"
 )
 
@@ -24,13 +24,13 @@ var errNotCached = fmt.Errorf("not in cache")
 // returning the name of the cache file and the result.
 // If the read fails, the caller can use
 // writeDiskModFile(file, data) to write a new cache entry.
-func (c *cache) readDiskModFile(ctx context.Context, mv module.Version) (file string, data []byte, err error) {
-	return c.readDiskCache(ctx, mv, "mod")
+func (c *Cache) readDiskModFile(mv module.Version) (file string, data []byte, err error) {
+	return c.readDiskCache(mv, "mod")
 }
 
 // writeDiskModFile writes a cue.mod/module.cue cache entry.
 // The file name must have been returned by a previous call to readDiskModFile.
-func (c *cache) writeDiskModFile(ctx context.Context, file string, text []byte) error {
+func (c *Cache) writeDiskModFile(ctx context.Context, file string, text []byte) error {
 	return c.writeDiskCache(ctx, file, text)
 }
 
@@ -39,8 +39,8 @@ func (c *cache) writeDiskModFile(ctx context.Context, file string, text []byte) 
 // It returns the name of the cache file and the content of the file.
 // If the read fails, the caller can use
 // writeDiskCache(file, data) to write a new cache entry.
-func (c *cache) readDiskCache(ctx context.Context, mv module.Version, suffix string) (file string, data []byte, err error) {
-	file, err = c.cachePath(ctx, mv, suffix)
+func (c *Cache) readDiskCache(mv module.Version, suffix string) (file string, data []byte, err error) {
+	file, err = c.cachePath(mv, suffix)
 	if err != nil {
 		return "", nil, errNotCached
 	}
@@ -53,7 +53,7 @@ func (c *cache) readDiskCache(ctx context.Context, mv module.Version, suffix str
 
 // writeDiskCache is the generic "write to a cache file" implementation.
 // The file must have been returned by a previous call to readDiskCache.
-func (c *cache) writeDiskCache(ctx context.Context, file string, data []byte) error {
+func (c *Cache) writeDiskCache(ctx context.Context, file string, data []byte) error {
 	if file == "" {
 		return nil
 	}
@@ -92,10 +92,10 @@ func (c *cache) writeDiskCache(ctx context.Context, file string, data []byte) er
 
 // downloadDir returns the directory for storing.
 // An error will be returned if the module path or version cannot be escaped.
-// An error satisfying errors.Is(err, fs.ErrNotExist) will be returned
+// An error satisfying [errors.Is](err, [fs.ErrNotExist]) will be returned
 // along with the directory if the directory does not exist or if the directory
 // is not completely populated.
-func (c *cache) downloadDir(ctx context.Context, m module.Version) (string, error) {
+func (c *Cache) downloadDir(m module.Version) (string, error) {
 	if !m.IsCanonical() {
 		return "", fmt.Errorf("non-semver module version %q", m.Version())
 	}
@@ -109,7 +109,7 @@ func (c *cache) downloadDir(ctx context.Context, m module.Version) (string, erro
 	}
 
 	// Check whether the directory itself exists.
-	dir := filepath.Join(c.dir, enc+"@"+encVer)
+	dir := filepath.Join(c.dir, "extract", enc+"@"+encVer)
 	if fi, err := os.Stat(dir); os.IsNotExist(err) {
 		return dir, err
 	} else if err != nil {
@@ -120,7 +120,7 @@ func (c *cache) downloadDir(ctx context.Context, m module.Version) (string, erro
 
 	// Check if a .partial file exists. This is created at the beginning of
 	// a download and removed after the zip is extracted.
-	partialPath, err := c.cachePath(ctx, m, "partial")
+	partialPath, err := c.cachePath(m, "partial")
 	if err != nil {
 		return dir, err
 	}
@@ -132,7 +132,7 @@ func (c *cache) downloadDir(ctx context.Context, m module.Version) (string, erro
 	return dir, nil
 }
 
-func (c *cache) cachePath(ctx context.Context, m module.Version, suffix string) (string, error) {
+func (c *Cache) cachePath(m module.Version, suffix string) (string, error) {
 	if !m.IsValid() || m.Version() == "" {
 		return "", fmt.Errorf("non-semver module version %q", m)
 	}
@@ -144,7 +144,7 @@ func (c *cache) cachePath(ctx context.Context, m module.Version, suffix string) 
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(c.dir, "cache/download", esc, "/@v", encVer+"."+suffix), nil
+	return filepath.Join(c.dir, "download", esc, "/@v", encVer+"."+suffix), nil
 }
 
 // downloadDirPartialError is returned by DownloadDir if a module directory
@@ -161,8 +161,8 @@ func (e *downloadDirPartialError) Is(err error) bool { return err == fs.ErrNotEx
 
 // lockVersion locks a file within the module cache that guards the downloading
 // and extraction of module data for the given module version.
-func (c *cache) lockVersion(ctx context.Context, mod module.Version) (unlock func(), err error) {
-	path, err := c.cachePath(ctx, mod, "lock")
+func (c *Cache) lockVersion(mod module.Version) (unlock func(), err error) {
+	path, err := c.cachePath(mod, "lock")
 	if err != nil {
 		return nil, err
 	}

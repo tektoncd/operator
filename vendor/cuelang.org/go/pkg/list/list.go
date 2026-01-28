@@ -17,13 +17,16 @@ package list
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/errors"
 	"cuelang.org/go/cue/token"
 	"cuelang.org/go/internal/core/adt"
+	"cuelang.org/go/internal/core/eval"
 	"cuelang.org/go/internal/pkg"
+	"cuelang.org/go/internal/types"
+	"cuelang.org/go/internal/value"
 )
 
 // Drop reports the suffix of list x after the first n elements,
@@ -138,11 +141,7 @@ func Repeat(x []cue.Value, count int) ([]cue.Value, error) {
 	if count < 0 {
 		return nil, fmt.Errorf("negative count")
 	}
-	var a []cue.Value
-	for i := 0; i < count; i++ {
-		a = append(a, x...)
-	}
-	return a, nil
+	return slices.Repeat(x, count), nil
 }
 
 // Concat takes a list of lists and concatenates them.
@@ -215,6 +214,20 @@ func Slice(x []cue.Value, i, j int) ([]cue.Value, error) {
 	return x[i:j], nil
 }
 
+// Reverse reverses a list.
+//
+// For instance:
+//
+//	Reverse([1, 2, 3, 4])
+//
+// results in
+//
+//	[4, 3, 2, 1]
+func Reverse(x []cue.Value) []cue.Value {
+	slices.Reverse(x)
+	return x
+}
+
 // MinItems reports whether a has at least n items.
 func MinItems(list pkg.List, n int) (bool, error) {
 	count := len(list.Elems())
@@ -245,27 +258,99 @@ func MaxItems(list pkg.List, n int) (bool, error) {
 }
 
 // UniqueItems reports whether all elements in the list are unique.
-func UniqueItems(a []cue.Value) bool {
-	b := []string{}
-	for _, v := range a {
-		b = append(b, fmt.Sprintf("%+v", v))
+func UniqueItems(a []cue.Value) (bool, error) {
+	if len(a) <= 1 {
+		return true, nil
 	}
-	sort.Strings(b)
-	for i := 1; i < len(b); i++ {
-		if b[i-1] == b[i] {
-			return false
+
+	// TODO(perf): this is an O(n^2) algorithm. We should make it O(n log n).
+	// This could be done as follows:
+	// - Create a list with some hash value for each element x in a as well
+	//   alongside the value of x itself.
+	// - Sort the elements based on the hash value.
+	// - Compare subsequent elements to see if they are equal.
+
+	var tv types.Value
+	a[0].Core(&tv)
+	ctx := eval.NewContext(tv.R, tv.V)
+
+	posX, posY := 0, 0
+	code := adt.IncompleteError
+
+outer:
+	for i, x := range a {
+		_, vx := value.ToInternal(x)
+
+		for j := i + 1; j < len(a); j++ {
+			_, vy := value.ToInternal(a[j])
+
+			if adt.Equal(ctx, vx, vy, adt.RegularOnly) {
+				posX, posY = i, j
+				if adt.IsFinal(vy) {
+					code = adt.EvalError
+					break outer
+				}
+			}
 		}
 	}
-	return true
+
+	if posX == posY {
+		return true, nil
+	}
+
+	var err errors.Error
+	switch x := a[posX].Value(); x.Kind() {
+	case cue.BoolKind, cue.NullKind, cue.IntKind, cue.FloatKind, cue.StringKind, cue.BytesKind:
+		err = errors.Newf(token.NoPos, "equal value (%v) at position %d and %d", x, posX, posY)
+	default:
+		err = errors.Newf(token.NoPos, "equal values at position %d and %d", posX, posY)
+	}
+
+	return false, pkg.ValidationError{B: &adt.Bottom{
+		Code: code,
+		Err:  err,
+	}}
 }
 
 // Contains reports whether v is contained in a. The value must be a
 // comparable value.
 func Contains(a []cue.Value, v cue.Value) bool {
-	for _, w := range a {
-		if v.Equals(w) {
-			return true
+	return slices.ContainsFunc(a, v.Equals)
+}
+
+// MatchN is a validator that checks that the number of elements in the given
+// list that unifies with the schema "matchValue" matches "n".
+// "n" may be a number constraint and does not have to be a concrete number.
+// Likewise, "matchValue" will usually be a non-concrete value.
+func MatchN(list []cue.Value, n pkg.Schema, matchValue pkg.Schema) (bool, error) {
+	c := value.OpContext(n)
+	return matchN(c, list, n, matchValue)
+}
+
+// matchN is the actual implementation of MatchN.
+func matchN(c *adt.OpContext, list []cue.Value, n pkg.Schema, matchValue pkg.Schema) (bool, error) {
+	var nmatch int64
+	for _, w := range list {
+		vx := adt.Unify(c, value.Vertex(matchValue), value.Vertex(w))
+		x := value.Make(c, vx)
+		if x.Validate(cue.Final()) == nil {
+			nmatch++
 		}
 	}
-	return false
+
+	ctx := value.Context(c)
+
+	if err := n.Unify(ctx.Encode(nmatch)).Err(); err != nil {
+		return false, pkg.ValidationError{B: &adt.Bottom{
+			Code: adt.EvalError,
+			Err: errors.Newf(
+				token.NoPos,
+				"number of matched elements is %d: does not satisfy %v",
+				nmatch,
+				n,
+			),
+		}}
+	}
+
+	return true, nil
 }

@@ -22,14 +22,14 @@
 // # Package Paths
 //
 // If a .proto file contains a go_package directive, it will be used as the
-// destination package fo the generated .cue files. A common use case is to
+// destination package for the generated .cue files. A common use case is to
 // generate the CUE in the same directory as the .proto definition. If a
 // destination package is not within the current CUE module, it will be written
 // relative to the pkg directory.
 //
 // If a .proto file does not specify go_package, it will convert a proto package
 // "google.parent.sub" to the import path "googleapis.com/google/parent/sub".
-// It is safe to mix package with and without a go_package within the same
+// It is safe to mix packages with and without a go_package within the same
 // project.
 //
 // # Type Mappings
@@ -63,6 +63,8 @@
 //	Empty          close({})
 //	Timestamp      time.Time        See struct.proto.
 //	Duration       time.Duration    See struct.proto.
+//
+// # Annotations
 //
 // Protobuf definitions can be annotated with CUE constraints that are included
 // in the generated CUE:
@@ -179,13 +181,22 @@ type result struct {
 // it will be observable by the Err method fo the Extractor. It is safe,
 // however, to only check errors after building the output.
 func NewExtractor(c *Config) *Extractor {
+	var modulePath string
+	// We don't want to consider the module's major version as
+	// part of the path when checking to see a protobuf package
+	// declares itself as part of that module.
+	// TODO(rogpeppe) the Go package path might itself include a major
+	// version, so we should probably consider that too.
+	if c.Module != "" {
+		modulePath, _, _ = ast.SplitPackageVersion(c.Module)
+	}
 	cwd, _ := os.Getwd()
 	b := &Extractor{
 		root:      c.Root,
 		cwd:       cwd,
 		paths:     c.Paths,
 		pkgName:   c.PkgName,
-		module:    c.Module,
+		module:    modulePath,
 		enumMode:  c.EnumMode,
 		fileCache: map[string]result{},
 		imports:   map[string]*build.Instance{},
@@ -199,7 +210,7 @@ func NewExtractor(c *Config) *Extractor {
 }
 
 // Err returns the errors accumulated during testing. The returned error may be
-// of type cuelang.org/go/cue/errors.List.
+// of type [errors.List].
 func (b *Extractor) Err() error {
 	return b.errs
 }
@@ -385,7 +396,7 @@ func (b *Extractor) getInst(p *protoConverter) *build.Instance {
 
 // Extract parses a single proto file and returns its contents translated to a CUE
 // file. If src is not nil, it will use this as the contents of the file. It may
-// be a string, []byte or io.Reader. Otherwise Extract will open the given file
+// be a string, []byte or [io.Reader]. Otherwise Extract will open the given file
 // name at the fully qualified path.
 //
 // Extract assumes the proto file compiles with protoc and may not report an error

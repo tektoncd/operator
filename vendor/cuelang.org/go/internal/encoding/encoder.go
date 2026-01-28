@@ -32,14 +32,16 @@ import (
 	"cuelang.org/go/encoding/openapi"
 	"cuelang.org/go/encoding/protobuf/jsonpb"
 	"cuelang.org/go/encoding/protobuf/textproto"
+	"cuelang.org/go/encoding/toml"
+	"cuelang.org/go/encoding/yaml"
 	"cuelang.org/go/internal"
 	"cuelang.org/go/internal/filetypes"
-	"cuelang.org/go/pkg/encoding/yaml"
 )
 
 // An Encoder converts CUE to various file formats, including CUE itself.
 // An Encoder allows
 type Encoder struct {
+	ctx          *cue.Context
 	cfg          *Config
 	close        func() error
 	interpret    func(cue.Value) (*ast.File, error)
@@ -47,7 +49,6 @@ type Encoder struct {
 	encValue     func(cue.Value) error
 	autoSimplify bool
 	concrete     bool
-	instance     *cue.Instance
 }
 
 // IsConcrete reports whether the output is required to be concrete.
@@ -67,12 +68,10 @@ func (e Encoder) Close() error {
 }
 
 // NewEncoder writes content to the file with the given specification.
-func NewEncoder(f *build.File, cfg *Config) (*Encoder, error) {
-	w, close, err := writer(f, cfg)
-	if err != nil {
-		return nil, err
-	}
+func NewEncoder(ctx *cue.Context, f *build.File, cfg *Config) (*Encoder, error) {
+	w, close := writer(f, cfg)
 	e := &Encoder{
+		ctx:   ctx,
 		cfg:   cfg,
 		close: close,
 	}
@@ -83,15 +82,11 @@ func NewEncoder(f *build.File, cfg *Config) (*Encoder, error) {
 		// TODO: get encoding options
 		cfg := &openapi.Config{}
 		e.interpret = func(v cue.Value) (*ast.File, error) {
-			i := e.instance
-			if i == nil {
-				i = internal.MakeInstance(v).(*cue.Instance)
-			}
-			return openapi.Generate(i, cfg)
+			return openapi.Generate(v, cfg)
 		}
 	case build.ProtobufJSON:
 		e.interpret = func(v cue.Value) (*ast.File, error) {
-			f := valueToFile(v)
+			f := internal.ToFile(v.Syntax())
 			return f, jsonpb.NewEncoder(v).RewriteFile(f)
 		}
 
@@ -124,7 +119,6 @@ func NewEncoder(f *build.File, cfg *Config) (*Encoder, error) {
 			cue.Optional(fi.Optional),
 			cue.Concrete(!fi.Incomplete),
 			cue.Definitions(fi.Definitions),
-			cue.ResolveReferences(!fi.References),
 			cue.DisallowCycles(!fi.Cycles),
 			cue.InlineImports(cfg.InlineImports),
 		)
@@ -151,11 +145,14 @@ func NewEncoder(f *build.File, cfg *Config) (*Encoder, error) {
 			// with a newline.
 			f := internal.ToFile(n)
 			if e.cfg.PkgName != "" && f.PackageName() == "" {
-				f.Decls = append([]ast.Decl{
-					&ast.Package{
-						Name: ast.NewIdent(e.cfg.PkgName),
-					},
-				}, f.Decls...)
+				pkg := &ast.Package{
+					PackagePos: token.NoPos.WithRel(token.NewSection),
+					Name:       ast.NewIdent(e.cfg.PkgName),
+				}
+				doc, rest := internal.FileComments(f)
+				ast.SetComments(pkg, doc)
+				ast.SetComments(f, rest)
+				f.Decls = append([]ast.Decl{pkg}, f.Decls...)
 			}
 			b, err := format.Node(f, opts...)
 			if err != nil {
@@ -185,19 +182,25 @@ func NewEncoder(f *build.File, cfg *Config) (*Encoder, error) {
 	case build.YAML:
 		e.concrete = true
 		streamed := false
+		// TODO(mvdan): use a NewEncoder API like in TOML below.
 		e.encValue = func(v cue.Value) error {
 			if streamed {
 				fmt.Fprintln(w, "---")
 			}
 			streamed = true
 
-			str, err := yaml.Marshal(v)
+			b, err := yaml.Encode(v)
 			if err != nil {
 				return err
 			}
-			_, err = fmt.Fprint(w, str)
+			_, err = w.Write(b)
 			return err
 		}
+
+	case build.TOML:
+		e.concrete = true
+		enc := toml.NewEncoder(w)
+		e.encValue = enc.Encode
 
 	case build.TextProto:
 		// TODO: verify that the schema is given. Otherwise err out.
@@ -251,15 +254,6 @@ func (e *Encoder) EncodeFile(f *ast.File) error {
 	return e.encodeFile(f, e.interpret)
 }
 
-// EncodeInstance is as Encode, but stores instance information. This should
-// all be retrievable from the value itself.
-func (e *Encoder) EncodeInstance(v *cue.Instance) error {
-	e.instance = v
-	err := e.Encode(v.Value())
-	e.instance = nil
-	return err
-}
-
 func (e *Encoder) Encode(v cue.Value) error {
 	e.autoSimplify = true
 	if err := v.Validate(cue.Concrete(e.concrete)); err != nil {
@@ -275,7 +269,7 @@ func (e *Encoder) Encode(v cue.Value) error {
 	if e.encValue != nil {
 		return e.encValue(v)
 	}
-	return e.encFile(valueToFile(v))
+	return e.encFile(internal.ToFile(v.Syntax()))
 }
 
 func (e *Encoder) encodeFile(f *ast.File, interpret func(cue.Value) (*ast.File, error)) error {
@@ -283,31 +277,29 @@ func (e *Encoder) encodeFile(f *ast.File, interpret func(cue.Value) (*ast.File, 
 		return e.encFile(f)
 	}
 	e.autoSimplify = true
-	var r cue.Runtime
-	inst, err := r.CompileFile(f)
-	if err != nil {
+	v := e.ctx.BuildFile(f)
+	if err := v.Err(); err != nil {
 		return err
 	}
 	if interpret != nil {
-		return e.Encode(inst.Value())
+		return e.Encode(v)
 	}
-	v := inst.Value()
 	if err := v.Validate(cue.Concrete(e.concrete)); err != nil {
 		return err
 	}
 	return e.encValue(v)
 }
 
-func writer(f *build.File, cfg *Config) (_ io.Writer, close func() error, err error) {
+func writer(f *build.File, cfg *Config) (_ io.Writer, close func() error) {
 	if cfg.Out != nil {
-		return cfg.Out, nil, nil
+		return cfg.Out, nil
 	}
 	path := f.Filename
 	if path == "-" {
 		if cfg.Stdout == nil {
-			return os.Stdout, nil, nil
+			return os.Stdout, nil
 		}
-		return cfg.Stdout, nil, nil
+		return cfg.Stdout, nil
 	}
 	// Delay opening the file until we can write it to completion.
 	// This prevents clobbering the file in case of a crash.
@@ -318,7 +310,7 @@ func writer(f *build.File, cfg *Config) (_ io.Writer, close func() error, err er
 			// Swap O_EXCL for O_TRUNC to allow replacing an entire existing file.
 			mode = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
 		}
-		f, err := os.OpenFile(path, mode, 0o644)
+		f, err := os.OpenFile(path, mode, 0o666)
 		if err != nil {
 			if errors.Is(err, fs.ErrExist) {
 				return errors.Wrapf(fs.ErrExist, token.NoPos, "error writing %q", path)
@@ -331,5 +323,5 @@ func writer(f *build.File, cfg *Config) (_ io.Writer, close func() error, err er
 		}
 		return err
 	}
-	return b, fn, nil
+	return b, fn
 }

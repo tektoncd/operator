@@ -1,11 +1,11 @@
 // Copyright 2018 The CUE Authors
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,16 +14,21 @@
 
 package http
 
-Get:    Do & {method: "GET"}
-Post:   Do & {method: "POST"}
-Put:    Do & {method: "PUT"}
+Get: Do & {method: "GET"}
+Post: Do & {method: "POST"}
+Put: Do & {method: "PUT"}
 Delete: Do & {method: "DELETE"}
 
 Do: {
-	$id: *"tool/http.Do" | "http" // http for backwards compatibility
+	$id: _id
+	_id: *"tool/http.Do" | "http" // http for backwards compatibility
 
 	method: string
 	url:    string // TODO: make url.URL type
+
+	// followRedirects controls whether the http client follows redirects
+	// or not. Defaults to true, like the default net/http client in Go.
+	followRedirects: *true | bool
 
 	tls: {
 		// Whether the server certificate must be validated.
@@ -35,7 +40,7 @@ Do: {
 
 	request: {
 		body?: bytes | string
-		header: [string]:  string | [...string]
+		header: [string]: string | [...string]
 		trailer: [string]: string | [...string]
 	}
 	response: {
@@ -43,7 +48,7 @@ Do: {
 		statusCode: int
 
 		body: *bytes | string
-		header: [string]:  string | [...string]
+		header: [string]: string | [...string]
 		trailer: [string]: string | [...string]
 	}
 }

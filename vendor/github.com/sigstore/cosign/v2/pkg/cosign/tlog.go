@@ -32,9 +32,6 @@ import (
 
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
-	"github.com/transparency-dev/merkle/proof"
-	"github.com/transparency-dev/merkle/rfc6962"
-
 	"github.com/sigstore/cosign/v2/internal/ui"
 	"github.com/sigstore/cosign/v2/pkg/cosign/bundle"
 	"github.com/sigstore/cosign/v2/pkg/cosign/env"
@@ -47,12 +44,46 @@ import (
 	hashedrekord_v001 "github.com/sigstore/rekor/pkg/types/hashedrekord/v0.0.1"
 	"github.com/sigstore/rekor/pkg/types/intoto"
 	intoto_v001 "github.com/sigstore/rekor/pkg/types/intoto/v0.0.1"
+	"github.com/sigstore/sigstore-go/pkg/root"
+	"github.com/sigstore/sigstore-go/pkg/tlog"
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
 	"github.com/sigstore/sigstore/pkg/tuf"
+	"github.com/transparency-dev/merkle/proof"
+	"github.com/transparency-dev/merkle/rfc6962"
 )
 
 // This is the rekor transparency log public key target name
 var rekorTargetStr = `rekor.pub`
+
+type NamedHash interface {
+	hash.Hash
+	crypto.SignerOpts
+}
+
+type CryptoNamedHash struct {
+	hash.Hash
+	hashType crypto.Hash
+}
+
+func (h CryptoNamedHash) HashFunc() crypto.Hash {
+	return h.hashType
+}
+
+func NewCryptoNamedHash(hashType crypto.Hash) NamedHash {
+	return CryptoNamedHash{Hash: hashType.New(), hashType: hashType}
+}
+
+type SHA256NamedHash struct {
+	hash.Hash
+}
+
+func (h SHA256NamedHash) HashFunc() crypto.Hash {
+	return crypto.SHA256
+}
+
+func WrapSHA256Hash(hash hash.Hash) NamedHash {
+	return SHA256NamedHash{Hash: hash}
+}
 
 // TransparencyLogPubKey contains the ECDSA verification key and the current status
 // of the key according to TUF metadata, whether it's active or expired.
@@ -171,7 +202,14 @@ func rekorPubsFromClient(rekorClient *client.Rekor) (*TrustedTransparencyLogPubK
 
 // TLogUpload will upload the signature, public key and payload to the transparency log.
 func TLogUpload(ctx context.Context, rekorClient *client.Rekor, signature []byte, sha256CheckSum hash.Hash, pemBytes []byte) (*models.LogEntryAnon, error) {
-	re := rekorEntry(sha256CheckSum, signature, pemBytes)
+	cryptoChecksum := WrapSHA256Hash(sha256CheckSum)
+	return TLogUploadWithCustomHash(ctx, rekorClient, signature, cryptoChecksum, pemBytes)
+}
+
+// TLogUploadWithCustomHash will upload the signature, public key and payload to
+// the transparency log. Clients can use this to specify a custom hash function.
+func TLogUploadWithCustomHash(ctx context.Context, rekorClient *client.Rekor, signature []byte, checksum NamedHash, pemBytes []byte) (*models.LogEntryAnon, error) {
+	re := rekorEntry(checksum, signature, pemBytes)
 	returnVal := models.Hashedrekord{
 		APIVersion: swag.String(re.APIVersion()),
 		Spec:       re.HashedRekordObj,
@@ -219,7 +257,7 @@ func doUpload(ctx context.Context, rekorClient *client.Rekor, pe models.Proposed
 			if err != nil {
 				return nil, err
 			}
-			return e, VerifyTLogEntryOffline(ctx, e, rekorPubsFromAPI)
+			return e, VerifyTLogEntryOffline(ctx, e, rekorPubsFromAPI, nil)
 		}
 		return nil, err
 	}
@@ -230,16 +268,26 @@ func doUpload(ctx context.Context, rekorClient *client.Rekor, pe models.Proposed
 	return nil, errors.New("bad response from server")
 }
 
-func rekorEntry(sha256CheckSum hash.Hash, signature, pubKey []byte) hashedrekord_v001.V001Entry {
-	// TODO: Signatures created on a digest using a hash algorithm other than SHA256 will fail
-	// upload right now. Plumb information on the hash algorithm used when signing from the
-	// SignerVerifier to use for the HashedRekordObj.Data.Hash.Algorithm.
+func rekorEntryHashAlgorithm(checksum crypto.SignerOpts) string {
+	switch checksum.HashFunc() {
+	case crypto.SHA256:
+		return models.HashedrekordV001SchemaDataHashAlgorithmSha256
+	case crypto.SHA384:
+		return models.HashedrekordV001SchemaDataHashAlgorithmSha384
+	case crypto.SHA512:
+		return models.HashedrekordV001SchemaDataHashAlgorithmSha512
+	default:
+		return models.HashedrekordV001SchemaDataHashAlgorithmSha256
+	}
+}
+
+func rekorEntry(checksum NamedHash, signature, pubKey []byte) hashedrekord_v001.V001Entry {
 	return hashedrekord_v001.V001Entry{
 		HashedRekordObj: models.HashedrekordV001Schema{
 			Data: &models.HashedrekordV001SchemaData{
 				Hash: &models.HashedrekordV001SchemaDataHash{
-					Algorithm: swag.String(models.HashedrekordV001SchemaDataHashAlgorithmSha256),
-					Value:     swag.String(hex.EncodeToString(sha256CheckSum.Sum(nil))),
+					Algorithm: swag.String(rekorEntryHashAlgorithm(checksum)),
+					Value:     swag.String(hex.EncodeToString(checksum.Sum(nil))),
 				},
 			},
 			Signature: &models.HashedrekordV001SchemaSignature{
@@ -392,7 +440,7 @@ func proposedEntries(b64Sig string, payload, pubKey []byte) ([]models.ProposedEn
 		}
 		proposedEntry = []models.ProposedEntry{dsseEntry, intotoEntry}
 	} else {
-		sha256CheckSum := sha256.New()
+		sha256CheckSum := NewCryptoNamedHash(crypto.SHA256)
 		if _, err := sha256CheckSum.Write(payload); err != nil {
 			return nil, err
 		}
@@ -443,19 +491,13 @@ func FindTlogEntry(ctx context.Context, rekorClient *client.Rekor,
 
 // VerifyTLogEntryOffline verifies a TLog entry against a map of trusted rekorPubKeys indexed
 // by log id.
-func VerifyTLogEntryOffline(ctx context.Context, e *models.LogEntryAnon, rekorPubKeys *TrustedTransparencyLogPubKeys) error {
+func VerifyTLogEntryOffline(ctx context.Context, e *models.LogEntryAnon, rekorPubKeys *TrustedTransparencyLogPubKeys, trustedMaterial root.TrustedMaterial) error {
 	if e.Verification == nil || e.Verification.InclusionProof == nil {
 		return errors.New("inclusion proof not provided")
 	}
 
-	if rekorPubKeys == nil || rekorPubKeys.Keys == nil {
+	if trustedMaterial == nil && (rekorPubKeys == nil || rekorPubKeys.Keys == nil) {
 		return errors.New("no trusted rekor public keys provided")
-	}
-	// Make sure all the rekorPubKeys are ecsda.PublicKeys
-	for k, v := range rekorPubKeys.Keys {
-		if _, ok := v.PubKey.(*ecdsa.PublicKey); !ok {
-			return fmt.Errorf("rekor Public key for LogID %s is not type ecdsa.PublicKey", k)
-		}
 	}
 
 	hashes := [][]byte{}
@@ -478,11 +520,35 @@ func VerifyTLogEntryOffline(ctx context.Context, e *models.LogEntryAnon, rekorPu
 	}
 
 	// Verify rekor's signature over the SET.
+	if trustedMaterial != nil {
+		logID, err := hex.DecodeString(*e.LogID)
+		if err != nil {
+			return fmt.Errorf("decoding log ID: %w", err)
+		}
+		entry, err := tlog.NewEntry(entryBytes, *e.IntegratedTime, *e.LogIndex, logID, e.Verification.SignedEntryTimestamp, e.Verification.InclusionProof)
+		if err != nil {
+			return fmt.Errorf("converting tlog entry: %w", err)
+		}
+		if err := tlog.VerifySET(entry, trustedMaterial.RekorLogs()); err != nil {
+			return fmt.Errorf("verifying SET offline: %w", err)
+		}
+		return nil
+	}
+
+	// No trusted root available, so verify the SET with legacy TUF metadata:
+
 	payload := bundle.RekorPayload{
 		Body:           e.Body,
 		IntegratedTime: *e.IntegratedTime,
 		LogIndex:       *e.LogIndex,
 		LogID:          *e.LogID,
+	}
+
+	// Make sure all the rekorPubKeys are ecsda.PublicKeys
+	for k, v := range rekorPubKeys.Keys {
+		if _, ok := v.PubKey.(*ecdsa.PublicKey); !ok {
+			return fmt.Errorf("rekor Public key for LogID %s is not type ecdsa.PublicKey", k)
+		}
 	}
 
 	pubKey, ok := rekorPubKeys.Keys[payload.LogID]

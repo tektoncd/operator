@@ -80,8 +80,9 @@ package module
 // security, network, and file system representations.
 
 import (
+	"cmp"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"cuelang.org/go/internal/mod/semver"
@@ -110,6 +111,21 @@ func (m Version) Path() string {
 // Equal reports whether m is equal to m1.
 func (m Version) Equal(m1 Version) bool {
 	return m.path == m1.path && m.version == m1.version
+}
+
+func (m Version) Compare(m1 Version) int {
+	if c := cmp.Compare(m.path, m1.path); c != 0 {
+		return c
+	}
+	// To help go.sum formatting, allow version/file.
+	// Compare semver prefix by semver rules,
+	// file by string order.
+	va, fa, _ := strings.Cut(m.version, "/")
+	vb, fb, _ := strings.Cut(m1.version, "/")
+	if c := semver.Compare(va, vb); c != 0 {
+		return c
+	}
+	return cmp.Compare(fa, fb)
 }
 
 // BasePath returns the path part of m without its major version suffix.
@@ -245,28 +261,10 @@ func NewVersion(path string, version string) (Version, error) {
 // The Version fields are interpreted as semantic versions (using semver.Compare)
 // optionally followed by a tie-breaking suffix introduced by a slash character,
 // like in "v0.0.1/module.cue".
+//
+// Deprecated: use [slices.SortFunc] with [Version.Compare].
+//
+//go:fix inline
 func Sort(list []Version) {
-	sort.Slice(list, func(i, j int) bool {
-		mi := list[i]
-		mj := list[j]
-		if mi.path != mj.path {
-			return mi.path < mj.path
-		}
-		// To help go.sum formatting, allow version/file.
-		// Compare semver prefix by semver rules,
-		// file by string order.
-		vi := mi.version
-		vj := mj.version
-		var fi, fj string
-		if k := strings.Index(vi, "/"); k >= 0 {
-			vi, fi = vi[:k], vi[k:]
-		}
-		if k := strings.Index(vj, "/"); k >= 0 {
-			vj, fj = vj[:k], vj[k:]
-		}
-		if vi != vj {
-			return semver.Compare(vi, vj) < 0
-		}
-		return fi < fj
-	})
+	slices.SortFunc(list, Version.Compare)
 }

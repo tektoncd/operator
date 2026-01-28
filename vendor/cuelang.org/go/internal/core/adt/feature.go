@@ -83,7 +83,7 @@ func (f Feature) SelectorString(index StringIndexer) string {
 		if f == AnyString {
 			return "_"
 		}
-		return literal.String.Quote(s)
+		return literal.Label.Quote(s)
 	default:
 		return f.IdentString(index)
 	}
@@ -237,7 +237,7 @@ func LabelFromValue(c *OpContext, src Expr, v Value) Feature {
 		return InvalidLabel
 	}
 	switch v.Kind() {
-	case IntKind, NumKind:
+	case IntKind, NumberKind:
 		x, _ := Unwrap(v).(*Num)
 		if x == nil {
 			c.addErrf(IncompleteError, pos(v), msgGround, v, "int")
