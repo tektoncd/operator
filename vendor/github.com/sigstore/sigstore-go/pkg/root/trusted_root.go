@@ -157,7 +157,10 @@ func ParseTransparencyLogs(tlogs []*prototrustroot.TransparencyLogInstance) (tra
 			protocommon.PublicKeyDetails_PKIX_ECDSA_P521_SHA_512:
 			key, err := x509.ParsePKIXPublicKey(tlog.GetPublicKey().GetRawBytes())
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse public key for tlog: %s %w",
+					tlog.GetBaseUrl(),
+					err,
+				)
 			}
 			var ecKey *ecdsa.PublicKey
 			var ok bool
@@ -171,7 +174,10 @@ func ParseTransparencyLogs(tlogs []*prototrustroot.TransparencyLogInstance) (tra
 			protocommon.PublicKeyDetails_PKIX_RSA_PKCS1V15_4096_SHA256:
 			key, err := x509.ParsePKIXPublicKey(tlog.GetPublicKey().GetRawBytes())
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse public key for tlog: %s %w",
+					tlog.GetBaseUrl(),
+					err,
+				)
 			}
 			var rsaKey *rsa.PublicKey
 			var ok bool
@@ -179,10 +185,13 @@ func ParseTransparencyLogs(tlogs []*prototrustroot.TransparencyLogInstance) (tra
 				return nil, fmt.Errorf("tlog public key is not RSA: %s", tlog.GetPublicKey().GetKeyDetails())
 			}
 			tlogEntry.PublicKey = rsaKey
-		case protocommon.PublicKeyDetails_PKIX_ED25519: //nolint:staticcheck
+		case protocommon.PublicKeyDetails_PKIX_ED25519:
 			key, err := x509.ParsePKIXPublicKey(tlog.GetPublicKey().GetRawBytes())
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse public key for tlog: %s %w",
+					tlog.GetBaseUrl(),
+					err,
+				)
 			}
 			var edKey ed25519.PublicKey
 			var ok bool
@@ -194,7 +203,10 @@ func ParseTransparencyLogs(tlogs []*prototrustroot.TransparencyLogInstance) (tra
 		case protocommon.PublicKeyDetails_PKCS1_RSA_PKCS1V5: //nolint:staticcheck
 			key, err := x509.ParsePKCS1PublicKey(tlog.GetPublicKey().GetRawBytes())
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to parse public key for tlog: %s %w",
+					tlog.GetBaseUrl(),
+					err,
+				)
 			}
 			tlogEntry.PublicKey = key
 		default:
@@ -251,7 +263,10 @@ func ParseCertificateAuthority(certAuthority *prototrustroot.CertificateAuthorit
 	for i, cert := range certChain.GetCertificates() {
 		parsedCert, err := x509.ParseCertificate(cert.RawBytes)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse certificate for %s %w",
+				certAuthority.Uri,
+				err,
+			)
 		}
 		if i < chainLen-1 {
 			certificateAuthority.Intermediates = append(certificateAuthority.Intermediates, parsedCert)
@@ -307,7 +322,10 @@ func ParseTimestampingAuthority(certAuthority *prototrustroot.CertificateAuthori
 	for i, cert := range certChain.GetCertificates() {
 		parsedCert, err := x509.ParseCertificate(cert.RawBytes)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse certificate for %s %w",
+				certAuthority.Uri,
+				err,
+			)
 		}
 		switch {
 		case i == 0 && !parsedCert.IsCA:
@@ -338,7 +356,9 @@ func ParseTimestampingAuthority(certAuthority *prototrustroot.CertificateAuthori
 func NewTrustedRootFromPath(path string) (*TrustedRoot, error) {
 	trustedrootJSON, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read trusted root %w",
+			err,
+		)
 	}
 
 	return NewTrustedRootFromJSON(trustedrootJSON)
@@ -359,7 +379,7 @@ func NewTrustedRootProtobuf(rootJSON []byte) (*prototrustroot.TrustedRoot, error
 	pbTrustedRoot := &prototrustroot.TrustedRoot{}
 	err := protojson.Unmarshal(rootJSON, pbTrustedRoot)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to proto-json unmarshal trusted root: %w", err)
 	}
 	return pbTrustedRoot, nil
 }
@@ -395,7 +415,7 @@ func FetchTrustedRoot() (*TrustedRoot, error) {
 func FetchTrustedRootWithOptions(opts *tuf.Options) (*TrustedRoot, error) {
 	client, err := tuf.New(opts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create TUF client %w", err)
 	}
 	return GetTrustedRoot(client)
 }
@@ -404,7 +424,9 @@ func FetchTrustedRootWithOptions(opts *tuf.Options) (*TrustedRoot, error) {
 func GetTrustedRoot(c *tuf.Client) (*TrustedRoot, error) {
 	jsonBytes, err := c.GetTarget(defaultTrustedRoot)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get trusted root from TUF client %w",
+			err,
+		)
 	}
 	return NewTrustedRootFromJSON(jsonBytes)
 }
@@ -450,14 +472,21 @@ func NewLiveTrustedRoot(opts *tuf.Options) (*LiveTrustedRoot, error) {
 // NewLiveTrustedRootFromTarget returns a LiveTrustedRoot that will
 // periodically refresh the trusted root from TUF using the provided target.
 func NewLiveTrustedRootFromTarget(opts *tuf.Options, target string) (*LiveTrustedRoot, error) {
+	return NewLiveTrustedRootFromTargetWithPeriod(opts, target, 24*time.Hour)
+}
+
+// NewLiveTrustedRootFromTargetWithPeriod returns a LiveTrustedRoot that
+// performs a TUF refresh with the provided period, accesssing the provided
+// target.
+func NewLiveTrustedRootFromTargetWithPeriod(opts *tuf.Options, target string, rfPeriod time.Duration) (*LiveTrustedRoot, error) {
 	client, err := tuf.New(opts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create TUF client %w", err)
 	}
 
 	b, err := client.GetTarget(target)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get target from TUF client %w", err)
 	}
 
 	tr, err := NewTrustedRootFromJSON(b)
@@ -468,7 +497,8 @@ func NewLiveTrustedRootFromTarget(opts *tuf.Options, target string) (*LiveTruste
 		TrustedRoot: tr,
 		mu:          sync.RWMutex{},
 	}
-	ticker := time.NewTicker(time.Hour * 24)
+
+	ticker := time.NewTicker(rfPeriod)
 	go func() {
 		for range ticker.C {
 			client, err = tuf.New(opts)
@@ -489,6 +519,7 @@ func NewLiveTrustedRootFromTarget(opts *tuf.Options, target string) (*LiveTruste
 			ltr.mu.Lock()
 			ltr.TrustedRoot = newTr
 			ltr.mu.Unlock()
+			log.Printf("successfully refreshed the TUF root")
 		}
 	}()
 	return ltr, nil
