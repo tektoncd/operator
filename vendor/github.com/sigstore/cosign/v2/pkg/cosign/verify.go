@@ -73,7 +73,7 @@ import (
 	"github.com/sigstore/sigstore/pkg/signature/dsse"
 	"github.com/sigstore/sigstore/pkg/signature/options"
 	"github.com/sigstore/sigstore/pkg/tuf"
-	tsaverification "github.com/sigstore/timestamp-authority/pkg/verification"
+	tsaverification "github.com/sigstore/timestamp-authority/v2/pkg/verification"
 )
 
 // Identity specifies an issuer/subject to verify a signature against.
@@ -247,13 +247,29 @@ func (co *CheckOpts) verificationOptions() (trustedMaterial root.TrustedMaterial
 	}
 
 	if !co.IgnoreTlog {
-		verifierOptions = append(verifierOptions, verify.WithTransparencyLog(1), verify.WithIntegratedTimestamps(1))
+		verifierOptions = append(verifierOptions, verify.WithTransparencyLog(1))
+		// If you aren't using a signed timestamp, use the time from the transparency log
+		// to verify Fulcio certificates, or require no timestamp to verify a key.
+		// For Rekor v2, a signed timestamp must be provided.
+		if !co.UseSignedTimestamps {
+			if co.SigVerifier == nil {
+				verifierOptions = append(verifierOptions, verify.WithIntegratedTimestamps(1))
+			} else {
+				verifierOptions = append(verifierOptions, verify.WithNoObserverTimestamps())
+			}
+		}
 	}
 	if co.UseSignedTimestamps {
 		verifierOptions = append(verifierOptions, verify.WithSignedTimestamps(1))
 	}
+	// A time verification policy must be provided. Without a signed timestamp or integrated timestamp,
+	// verify a certificate with the current time, or require no timestamp to verify a key.
 	if co.IgnoreTlog && !co.UseSignedTimestamps {
-		verifierOptions = append(verifierOptions, verify.WithCurrentTime())
+		if co.SigVerifier == nil {
+			verifierOptions = append(verifierOptions, verify.WithCurrentTime())
+		} else {
+			verifierOptions = append(verifierOptions, verify.WithNoObserverTimestamps())
+		}
 	}
 
 	return vTrustedMaterial, verifierOptions, policyOptions, nil
@@ -343,21 +359,14 @@ func ValidateAndUnpackCertWithIntermediates(cert *x509.Certificate, co *CheckOpt
 
 	// Now verify the cert, then the signature.
 
-	shouldVerifyEmbeddedSCT := !co.IgnoreSCT
-	contains, err := ContainsSCT(cert.Raw)
-	if err != nil {
-		return nil, err
-	}
-	shouldVerifyEmbeddedSCT = shouldVerifyEmbeddedSCT && contains
-	// If trusted root is available and the SCT is embedded, use the verifiers from sigstore-go (preferred).
+	// If trusted root is available, use the verifiers from sigstore-go (preferred).
 	var chains [][]*x509.Certificate
-	if co.TrustedMaterial != nil && shouldVerifyEmbeddedSCT {
+	if co.TrustedMaterial != nil {
 		if chains, err = verify.VerifyLeafCertificate(cert.NotBefore, cert, co.TrustedMaterial); err != nil {
 			return nil, err
 		}
 	} else {
-		// If the trusted root is not available, OR if the SCT is detached, use the verifiers from cosign (legacy).
-		// The certificate chains will be needed for the legacy SCT verifiers, which is why we can't use sigstore-go.
+		// If the trusted root is not available, use the verifiers from cosign (legacy).
 		chains, err = TrustedCert(cert, co.RootCerts, intermediateCerts)
 		if err != nil {
 			return nil, err
@@ -372,6 +381,10 @@ func ValidateAndUnpackCertWithIntermediates(cert *x509.Certificate, co *CheckOpt
 	// If IgnoreSCT is set, skip the SCT check
 	if co.IgnoreSCT {
 		return verifier, nil
+	}
+	contains, err := ContainsSCT(cert.Raw)
+	if err != nil {
+		return nil, err
 	}
 	if !contains && len(co.SCT) == 0 {
 		return nil, &VerificationFailure{
@@ -1189,49 +1202,12 @@ func VerifyBundle(sig oci.Signature, co *CheckOpts) (bool, error) {
 		return false, errors.New("no trusted rekor public keys provided")
 	}
 
-	if co.TrustedMaterial != nil {
-		payload := bundle.Payload
-		logID, err := hex.DecodeString(payload.LogID)
-		if err != nil {
-			return false, fmt.Errorf("decoding log ID: %w", err)
-		}
-		body, _ := base64.StdEncoding.DecodeString(payload.Body.(string))
-		entry, err := tlog.NewEntry(body, payload.IntegratedTime, payload.LogIndex, logID, bundle.SignedEntryTimestamp, nil)
-		if err != nil {
-			return false, fmt.Errorf("converting tlog entry: %w", err)
-		}
-		if err := tlog.VerifySET(entry, co.TrustedMaterial.RekorLogs()); err != nil {
-			return false, fmt.Errorf("verifying bundle with trusted root: %w", err)
-		}
-		return true, nil
-	}
-	// Make sure all the rekorPubKeys are ecsda.PublicKeys
-	for k, v := range co.RekorPubKeys.Keys {
-		if _, ok := v.PubKey.(*ecdsa.PublicKey); !ok {
-			return false, fmt.Errorf("rekor Public key for LogID %s is not type ecdsa.PublicKey", k)
-		}
-	}
-
 	if err := compareSigs(bundle.Payload.Body.(string), sig); err != nil {
 		return false, err
 	}
 
 	if err := comparePublicKey(bundle.Payload.Body.(string), sig, co); err != nil {
 		return false, err
-	}
-
-	pubKey, ok := co.RekorPubKeys.Keys[bundle.Payload.LogID]
-	if !ok {
-		return false, &VerificationFailure{
-			fmt.Errorf("verifying bundle: rekor log public key not found for payload"),
-		}
-	}
-	err = VerifySET(bundle.Payload, bundle.SignedEntryTimestamp, pubKey.PubKey.(*ecdsa.PublicKey))
-	if err != nil {
-		return false, err
-	}
-	if pubKey.Status != tuf.Active {
-		fmt.Fprintf(os.Stderr, "**Info** Successfully verified Rekor entry using an expired verification key\n")
 	}
 
 	payload, err := sig.Payload()
@@ -1255,6 +1231,45 @@ func VerifyBundle(sig oci.Signature, co *CheckOpts) (bool, error) {
 	} else if bundlehash != payloadHash {
 		return false, fmt.Errorf("matching bundle to payload: bundle=%q, payload=%q", bundlehash, payloadHash)
 	}
+
+	if co.TrustedMaterial != nil {
+		payload := bundle.Payload
+		logID, err := hex.DecodeString(payload.LogID)
+		if err != nil {
+			return false, fmt.Errorf("decoding log ID: %w", err)
+		}
+		body, _ := base64.StdEncoding.DecodeString(payload.Body.(string))
+		entry, err := tlog.NewEntry(body, payload.IntegratedTime, payload.LogIndex, logID, bundle.SignedEntryTimestamp, nil)
+		if err != nil {
+			return false, fmt.Errorf("converting tlog entry: %w", err)
+		}
+		if err := tlog.VerifySET(entry, co.TrustedMaterial.RekorLogs()); err != nil {
+			return false, fmt.Errorf("verifying bundle with trusted root: %w", err)
+		}
+
+		return true, nil
+	}
+	// Make sure all the rekorPubKeys are ecsda.PublicKeys
+	for k, v := range co.RekorPubKeys.Keys {
+		if _, ok := v.PubKey.(*ecdsa.PublicKey); !ok {
+			return false, fmt.Errorf("rekor Public key for LogID %s is not type ecdsa.PublicKey", k)
+		}
+	}
+
+	pubKey, ok := co.RekorPubKeys.Keys[bundle.Payload.LogID]
+	if !ok {
+		return false, &VerificationFailure{
+			fmt.Errorf("verifying bundle: rekor log public key not found for payload"),
+		}
+	}
+	err = VerifySET(bundle.Payload, bundle.SignedEntryTimestamp, pubKey.PubKey.(*ecdsa.PublicKey))
+	if err != nil {
+		return false, err
+	}
+	if pubKey.Status != tuf.Active {
+		fmt.Fprintf(os.Stderr, "**Info** Successfully verified Rekor entry using an expired verification key\n")
+	}
+
 	return true, nil
 }
 
