@@ -23,8 +23,8 @@ import (
 
 type (
 	ProjectSecuritySettingsServiceInterface interface {
-		ListProjectSecuritySettings(pid interface{}, options ...RequestOptionFunc) (*ProjectSecuritySettings, *Response, error)
-		UpdateSecretPushProtectionEnabledSetting(pid interface{}, opt UpdateProjectSecuritySettingsOptions, options ...RequestOptionFunc) (*ProjectSecuritySettings, *Response, error)
+		ListProjectSecuritySettings(pid any, options ...RequestOptionFunc) (*ProjectSecuritySettings, *Response, error)
+		UpdateSecretPushProtectionEnabledSetting(pid any, opt UpdateProjectSecuritySettingsOptions, options ...RequestOptionFunc) (*ProjectSecuritySettings, *Response, error)
 	}
 
 	// ProjectSecuritySettingsService handles communication with the Project Security Settings
@@ -56,7 +56,7 @@ type ProjectSecuritySettings struct {
 	SecretPushProtectionEnabled         bool       `json:"secret_push_protection_enabled"`
 }
 
-// Gets a string representation of the ProjectSecuritySettings data.
+// String gets a string representation of the ProjectSecuritySettings data.
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/project_security_settings/
@@ -68,7 +68,7 @@ func (s ProjectSecuritySettings) String() string {
 //
 // GitLab API Docs:
 // https://docs.gitlab.com/api/project_security_settings/#list-project-security-settings
-func (s *ProjectSecuritySettingsService) ListProjectSecuritySettings(pid interface{}, options ...RequestOptionFunc) (*ProjectSecuritySettings, *Response, error) {
+func (s *ProjectSecuritySettingsService) ListProjectSecuritySettings(pid any, options ...RequestOptionFunc) (*ProjectSecuritySettings, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -102,7 +102,7 @@ type UpdateProjectSecuritySettingsOptions struct {
 //
 // GitLab API Docs:
 // https://docs.gitlab.com/api/project_security_settings/#update-secret_push_protection_enabled-setting
-func (s *ProjectSecuritySettingsService) UpdateSecretPushProtectionEnabledSetting(pid interface{}, opt UpdateProjectSecuritySettingsOptions, options ...RequestOptionFunc) (*ProjectSecuritySettings, *Response, error) {
+func (s *ProjectSecuritySettingsService) UpdateSecretPushProtectionEnabledSetting(pid any, opt UpdateProjectSecuritySettingsOptions, options ...RequestOptionFunc) (*ProjectSecuritySettings, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

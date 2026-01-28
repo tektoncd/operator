@@ -7,11 +7,13 @@ package topdown
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/sha512"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -21,26 +23,15 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/open-policy-agent/opa/internal/jwx/jwa"
-	"github.com/open-policy-agent/opa/internal/jwx/jwk"
-	"github.com/open-policy-agent/opa/internal/jwx/jws"
+	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jws/jwsbb"
+
 	"github.com/open-policy-agent/opa/v1/ast"
 	"github.com/open-policy-agent/opa/v1/topdown/builtins"
 	"github.com/open-policy-agent/opa/v1/topdown/cache"
 )
 
-var (
-	jwtEncKey = ast.StringTerm("enc")
-	jwtCtyKey = ast.StringTerm("cty")
-	jwtIssKey = ast.StringTerm("iss")
-	jwtExpKey = ast.StringTerm("exp")
-	jwtNbfKey = ast.StringTerm("nbf")
-	jwtAudKey = ast.StringTerm("aud")
-)
-
-const (
-	headerJwt = "JWT"
-)
+const headerJwt = "JWT"
 
 // JSONWebToken represent the 3 parts (header, payload & signature) of
 //
@@ -86,7 +77,7 @@ func builtinJWTDecode(_ BuiltinContext, operands []*ast.Term, iter func(*ast.Ter
 		return fmt.Errorf("JWT payload had invalid encoding: %v", err)
 	}
 
-	if cty := token.decodedHeader.Get(jwtCtyKey); cty != nil {
+	if cty := token.decodedHeader.Get(ast.InternedTerm("cty")); cty != nil {
 		ctyVal := string(cty.Value.(ast.String))
 		// It is possible for the contents of a token to be another
 		// token as a result of nested signing or encryption. To handle
@@ -139,7 +130,7 @@ func builtinJWTVerifyRS256(bctx BuiltinContext, operands []*ast.Term, iter func(
 			signature)
 	})
 	if err == nil {
-		return iter(ast.NewTerm(result))
+		return iter(ast.InternedTerm(result))
 	}
 	return err
 }
@@ -154,7 +145,7 @@ func builtinJWTVerifyRS384(bctx BuiltinContext, operands []*ast.Term, iter func(
 			signature)
 	})
 	if err == nil {
-		return iter(ast.NewTerm(result))
+		return iter(ast.InternedTerm(result))
 	}
 	return err
 }
@@ -169,7 +160,7 @@ func builtinJWTVerifyRS512(bctx BuiltinContext, operands []*ast.Term, iter func(
 			signature)
 	})
 	if err == nil {
-		return iter(ast.NewTerm(result))
+		return iter(ast.InternedTerm(result))
 	}
 	return err
 }
@@ -185,7 +176,7 @@ func builtinJWTVerifyPS256(bctx BuiltinContext, operands []*ast.Term, iter func(
 			nil)
 	})
 	if err == nil {
-		return iter(ast.NewTerm(result))
+		return iter(ast.InternedTerm(result))
 	}
 	return err
 }
@@ -201,7 +192,7 @@ func builtinJWTVerifyPS384(bctx BuiltinContext, operands []*ast.Term, iter func(
 			nil)
 	})
 	if err == nil {
-		return iter(ast.NewTerm(result))
+		return iter(ast.InternedTerm(result))
 	}
 	return err
 }
@@ -217,14 +208,14 @@ func builtinJWTVerifyPS512(bctx BuiltinContext, operands []*ast.Term, iter func(
 			nil)
 	})
 	if err == nil {
-		return iter(ast.NewTerm(result))
+		return iter(ast.InternedTerm(result))
 	}
 	return err
 }
 
 // Implements RSA JWT signature verification.
-func builtinJWTVerifyRSA(bctx BuiltinContext, jwt ast.Value, keyStr ast.Value, hasher func() hash.Hash, verify func(publicKey *rsa.PublicKey, digest []byte, signature []byte) error) (ast.Value, error) {
-	return builtinJWTVerify(bctx, jwt, keyStr, hasher, func(publicKey interface{}, digest []byte, signature []byte) error {
+func builtinJWTVerifyRSA(bctx BuiltinContext, jwt ast.Value, keyStr ast.Value, hasher func() hash.Hash, verify func(publicKey *rsa.PublicKey, digest []byte, signature []byte) error) (bool, error) {
+	return builtinJWTVerify(bctx, jwt, keyStr, hasher, func(publicKey any, digest []byte, signature []byte) error {
 		publicKeyRsa, ok := publicKey.(*rsa.PublicKey)
 		if !ok {
 			return errors.New("incorrect public key type")
@@ -237,7 +228,7 @@ func builtinJWTVerifyRSA(bctx BuiltinContext, jwt ast.Value, keyStr ast.Value, h
 func builtinJWTVerifyES256(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
 	result, err := builtinJWTVerify(bctx, operands[0].Value, operands[1].Value, sha256.New, verifyES)
 	if err == nil {
-		return iter(ast.NewTerm(result))
+		return iter(ast.InternedTerm(result))
 	}
 	return err
 }
@@ -246,7 +237,7 @@ func builtinJWTVerifyES256(bctx BuiltinContext, operands []*ast.Term, iter func(
 func builtinJWTVerifyES384(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
 	result, err := builtinJWTVerify(bctx, operands[0].Value, operands[1].Value, sha512.New384, verifyES)
 	if err == nil {
-		return iter(ast.NewTerm(result))
+		return iter(ast.InternedTerm(result))
 	}
 	return err
 }
@@ -255,12 +246,12 @@ func builtinJWTVerifyES384(bctx BuiltinContext, operands []*ast.Term, iter func(
 func builtinJWTVerifyES512(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
 	result, err := builtinJWTVerify(bctx, operands[0].Value, operands[1].Value, sha512.New, verifyES)
 	if err == nil {
-		return iter(ast.NewTerm(result))
+		return iter(ast.InternedTerm(result))
 	}
 	return err
 }
 
-func verifyES(publicKey interface{}, digest []byte, signature []byte) (err error) {
+func verifyES(publicKey any, digest []byte, signature []byte) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("ECDSA signature verification error: %v", r)
@@ -280,10 +271,35 @@ func verifyES(publicKey interface{}, digest []byte, signature []byte) (err error
 	return errors.New("ECDSA signature verification error")
 }
 
+// Implements EdDSA JWT signature verification
+func builtinJWTVerifyEdDSA(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
+	result, err := builtinJWTVerify(bctx, operands[0].Value, operands[1].Value, nil, verifyEd25519)
+	if err == nil {
+		return iter(ast.InternedTerm(result))
+	}
+	return err
+}
+
+func verifyEd25519(publicKey any, digest []byte, signature []byte) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("EdDSA signature verification error: %v", r)
+		}
+	}()
+	publicKeyEcdsa, ok := publicKey.(ed25519.PublicKey)
+	if !ok {
+		return errors.New("incorrect public key type")
+	}
+	if ed25519.Verify(publicKeyEcdsa, digest, signature) {
+		return nil
+	}
+	return errors.New("ECDSA signature verification error")
+}
+
 type verificationKey struct {
 	alg string
 	kid string
-	key interface{}
+	key any
 }
 
 // getKeysFromCertOrJWK returns the public key found in a X.509 certificate or JWK key(s).
@@ -320,15 +336,36 @@ func getKeysFromCertOrJWK(certificate string) ([]verificationKey, error) {
 		return nil, fmt.Errorf("failed to parse a JWK key (set): %w", err)
 	}
 
-	keys := make([]verificationKey, 0, len(jwks.Keys))
-	for _, k := range jwks.Keys {
-		key, err := k.Materialize()
-		if err != nil {
+	keys := make([]verificationKey, 0, jwks.Len())
+	for i := range jwks.Len() {
+		k, ok := jwks.Key(i)
+		if !ok {
+			continue
+		}
+		var key interface{}
+		if err := jwk.Export(k, &key); err != nil {
 			return nil, err
 		}
+		var alg string
+		if algInterface, ok := k.Algorithm(); ok {
+			alg = algInterface.String()
+		}
+
+		// Skip keys with unknown/unsupported algorithms
+		if alg != "" {
+			if _, ok := tokenAlgorithms[alg]; !ok {
+				continue
+			}
+		}
+
+		var kid string
+		if kidValue, ok := k.KeyID(); ok {
+			kid = kidValue
+		}
+
 		keys = append(keys, verificationKey{
-			alg: k.GetAlgorithm().String(),
-			kid: k.GetKeyID(),
+			alg: alg,
+			kid: kid,
 			key: key,
 		})
 	}
@@ -346,43 +383,43 @@ func getKeyByKid(kid string, keys []verificationKey) *verificationKey {
 }
 
 // Implements JWT signature verification.
-func builtinJWTVerify(bctx BuiltinContext, jwt ast.Value, keyStr ast.Value, hasher func() hash.Hash, verify func(publicKey interface{}, digest []byte, signature []byte) error) (ast.Value, error) {
+func builtinJWTVerify(bctx BuiltinContext, jwt ast.Value, keyStr ast.Value, hasher func() hash.Hash, verify func(publicKey any, digest []byte, signature []byte) error) (bool, error) {
 	if found, _, _, valid := getTokenFromCache(bctx, jwt, keyStr); found {
-		return ast.Boolean(valid), nil
+		return valid, nil
 	}
 
 	token, err := decodeJWT(jwt)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
 	s, err := builtins.StringOperand(keyStr, 2)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
 	keys, err := getKeysFromCertOrJWK(string(s))
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
 	signature, err := token.decodeSignature()
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
 	err = token.decodeHeader()
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 	header, err := parseTokenHeader(token)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	done := func(valid bool) (ast.Boolean, error) {
+	done := func(valid bool) (bool, error) {
 		putTokenInCache(bctx, jwt, keyStr, nil, nil, valid)
-		return ast.Boolean(valid), nil
+		return valid, nil
 	}
 
 	// Validate the JWT signature
@@ -450,7 +487,7 @@ func builtinJWTVerifyHS(bctx BuiltinContext, operands []*ast.Term, hashF func() 
 	}
 
 	if found, _, _, valid := getTokenFromCache(bctx, jwt, astSecret); found {
-		return iter(ast.NewTerm(ast.Boolean(valid)))
+		return iter(ast.InternedTerm(valid))
 	}
 
 	// Decode the JSON Web Token
@@ -476,7 +513,7 @@ func builtinJWTVerifyHS(bctx BuiltinContext, operands []*ast.Term, hashF func() 
 
 	putTokenInCache(bctx, jwt, astSecret, nil, nil, valid)
 
-	return iter(ast.NewTerm(ast.Boolean(valid)))
+	return iter(ast.InternedTerm(valid))
 }
 
 // -- Full JWT verification and decoding --
@@ -627,19 +664,13 @@ func (constraints *tokenConstraints) validate() error {
 // verify verifies a JWT using the constraints and the algorithm from the header
 func (constraints *tokenConstraints) verify(kid, alg, header, payload, signature string) error {
 	// Construct the payload
-	plaintext := []byte(header)
-	plaintext = append(plaintext, []byte(".")...)
-	plaintext = append(plaintext, payload...)
-	// Look up the algorithm
-	a, ok := tokenAlgorithms[alg]
-	if !ok {
-		return fmt.Errorf("unknown JWS algorithm: %s", alg)
-	}
+	plaintext := append(append([]byte(header), '.'), []byte(payload)...)
+
 	// If we're configured with asymmetric key(s) then only trust that
 	if constraints.keys != nil {
 		if kid != "" {
 			if key := getKeyByKid(kid, constraints.keys); key != nil {
-				err := a.verify(key.key, a.hash, plaintext, []byte(signature))
+				err := jwsbb.Verify(key.key, alg, plaintext, []byte(signature))
 				if err != nil {
 					return errSignatureNotVerified
 				}
@@ -650,7 +681,7 @@ func (constraints *tokenConstraints) verify(kid, alg, header, payload, signature
 		verified := false
 		for _, key := range constraints.keys {
 			if key.alg == "" {
-				err := a.verify(key.key, a.hash, plaintext, []byte(signature))
+				err := jwsbb.Verify(key.key, alg, plaintext, []byte(signature))
 				if err == nil {
 					verified = true
 					break
@@ -659,7 +690,7 @@ func (constraints *tokenConstraints) verify(kid, alg, header, payload, signature
 				if alg != key.alg {
 					continue
 				}
-				err := a.verify(key.key, a.hash, plaintext, []byte(signature))
+				err := jwsbb.Verify(key.key, alg, plaintext, []byte(signature))
 				if err == nil {
 					verified = true
 					break
@@ -673,7 +704,11 @@ func (constraints *tokenConstraints) verify(kid, alg, header, payload, signature
 		return nil
 	}
 	if constraints.secret != "" {
-		return a.verify([]byte(constraints.secret), a.hash, plaintext, []byte(signature))
+		err := jwsbb.Verify([]byte(constraints.secret), alg, plaintext, []byte(signature))
+		if err != nil {
+			return errSignatureNotVerified
+		}
+		return nil
 	}
 	// (*tokenConstraints)validate() should prevent this happening
 	return errors.New("unexpectedly found no keys to trust")
@@ -700,100 +735,25 @@ func (constraints *tokenConstraints) validAudience(aud ast.Value) bool {
 
 // JWT algorithms
 
-type (
-	tokenVerifyFunction           func(key interface{}, hash crypto.Hash, payload []byte, signature []byte) error
-	tokenVerifyAsymmetricFunction func(key interface{}, hash crypto.Hash, digest []byte, signature []byte) error
-)
-
-// jwtAlgorithm describes a JWS 'alg' value
-type tokenAlgorithm struct {
-	hash   crypto.Hash
-	verify tokenVerifyFunction
-}
-
 // tokenAlgorithms is the known JWT algorithms
-var tokenAlgorithms = map[string]tokenAlgorithm{
-	"RS256": {crypto.SHA256, verifyAsymmetric(verifyRSAPKCS)},
-	"RS384": {crypto.SHA384, verifyAsymmetric(verifyRSAPKCS)},
-	"RS512": {crypto.SHA512, verifyAsymmetric(verifyRSAPKCS)},
-	"PS256": {crypto.SHA256, verifyAsymmetric(verifyRSAPSS)},
-	"PS384": {crypto.SHA384, verifyAsymmetric(verifyRSAPSS)},
-	"PS512": {crypto.SHA512, verifyAsymmetric(verifyRSAPSS)},
-	"ES256": {crypto.SHA256, verifyAsymmetric(verifyECDSA)},
-	"ES384": {crypto.SHA384, verifyAsymmetric(verifyECDSA)},
-	"ES512": {crypto.SHA512, verifyAsymmetric(verifyECDSA)},
-	"HS256": {crypto.SHA256, verifyHMAC},
-	"HS384": {crypto.SHA384, verifyHMAC},
-	"HS512": {crypto.SHA512, verifyHMAC},
+var tokenAlgorithms = map[string]struct{}{
+	"RS256": {},
+	"RS384": {},
+	"RS512": {},
+	"PS256": {},
+	"PS384": {},
+	"PS512": {},
+	"ES256": {},
+	"ES384": {},
+	"ES512": {},
+	"HS256": {},
+	"HS384": {},
+	"HS512": {},
+	"EdDSA": {},
 }
 
 // errSignatureNotVerified is returned when a signature cannot be verified.
 var errSignatureNotVerified = errors.New("signature not verified")
-
-func verifyHMAC(key interface{}, hash crypto.Hash, payload []byte, signature []byte) error {
-	macKey, ok := key.([]byte)
-	if !ok {
-		return errors.New("incorrect symmetric key type")
-	}
-	mac := hmac.New(hash.New, macKey)
-	if _, err := mac.Write(payload); err != nil {
-		return err
-	}
-	if !hmac.Equal(signature, mac.Sum([]byte{})) {
-		return errSignatureNotVerified
-	}
-	return nil
-}
-
-func verifyAsymmetric(verify tokenVerifyAsymmetricFunction) tokenVerifyFunction {
-	return func(key interface{}, hash crypto.Hash, payload []byte, signature []byte) error {
-		h := hash.New()
-		h.Write(payload)
-		return verify(key, hash, h.Sum([]byte{}), signature)
-	}
-}
-
-func verifyRSAPKCS(key interface{}, hash crypto.Hash, digest []byte, signature []byte) error {
-	publicKeyRsa, ok := key.(*rsa.PublicKey)
-	if !ok {
-		return errors.New("incorrect public key type")
-	}
-	if err := rsa.VerifyPKCS1v15(publicKeyRsa, hash, digest, signature); err != nil {
-		return errSignatureNotVerified
-	}
-	return nil
-}
-
-func verifyRSAPSS(key interface{}, hash crypto.Hash, digest []byte, signature []byte) error {
-	publicKeyRsa, ok := key.(*rsa.PublicKey)
-	if !ok {
-		return errors.New("incorrect public key type")
-	}
-	if err := rsa.VerifyPSS(publicKeyRsa, hash, digest, signature, nil); err != nil {
-		return errSignatureNotVerified
-	}
-	return nil
-}
-
-func verifyECDSA(key interface{}, _ crypto.Hash, digest []byte, signature []byte) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("ECDSA signature verification error: %v", r)
-		}
-	}()
-	publicKeyEcdsa, ok := key.(*ecdsa.PublicKey)
-	if !ok {
-		return errors.New("incorrect public key type")
-	}
-	r, s := &big.Int{}, &big.Int{}
-	n := len(signature) / 2
-	r.SetBytes(signature[:n])
-	s.SetBytes(signature[n:])
-	if ecdsa.Verify(publicKeyEcdsa, digest, r, s) {
-		return nil
-	}
-	return errSignatureNotVerified
-}
 
 // JWT header parsing and parameters. See tokens_test.go for unit tests.
 
@@ -893,42 +853,48 @@ func (header *tokenHeader) valid() bool {
 	return true
 }
 
-func commonBuiltinJWTEncodeSign(bctx BuiltinContext, inputHeaders, jwsPayload, jwkSrc string, iter func(*ast.Term) error) error {
-	keys, err := jwk.ParseString(jwkSrc)
+func commonBuiltinJWTEncodeSign(bctx BuiltinContext, inputHeaders, jwsPayload, jwkSrc []byte, iter func(*ast.Term) error) error {
+	keys, err := jwk.Parse(jwkSrc)
 	if err != nil {
 		return err
-	}
-	key, err := keys.Keys[0].Materialize()
-	if err != nil {
-		return err
-	}
-	if jwk.GetKeyTypeFromKey(key) != keys.Keys[0].GetKeyType() {
-		return errors.New("JWK derived key type and keyType parameter do not match")
 	}
 
-	standardHeaders := &jws.StandardHeaders{}
-	jwsHeaders := []byte(inputHeaders)
-	err = json.Unmarshal(jwsHeaders, standardHeaders)
-	if err != nil {
-		return err
-	}
-	alg := standardHeaders.GetAlgorithm()
-	if alg == jwa.Unsupported {
-		return errors.New("unknown signature algorithm")
+	if keys.Len() == 0 {
+		return errors.New("no keys found in JWK set")
 	}
 
-	if (standardHeaders.Type == "" || standardHeaders.Type == headerJwt) && !json.Valid([]byte(jwsPayload)) {
+	key, ok := keys.Key(0)
+	if !ok {
+		return errors.New("failed to get first key from JWK set")
+	}
+
+	// Parse headers to get algorithm.
+	headers := jwsbb.HeaderParse(inputHeaders)
+	algStr, err := jwsbb.HeaderGetString(headers, "alg")
+	if err != nil {
+		return fmt.Errorf("missing or invalid 'alg' header: %w", err)
+	}
+	// Make sure the algorithm is supported.
+	_, ok = tokenAlgorithms[algStr]
+	if !ok {
+		return fmt.Errorf("unknown JWS algorithm: %s", algStr)
+	}
+
+	typ, err := jwsbb.HeaderGetString(headers, "typ")
+	if (err != nil || typ == headerJwt) && !json.Valid(jwsPayload) {
 		return errors.New("type is JWT but payload is not JSON")
 	}
 
-	// process payload and sign
-	var jwsCompact []byte
-	jwsCompact, err = jws.SignLiteral([]byte(jwsPayload), alg, key, jwsHeaders, bctx.Seed)
+	payload := jwsbb.SignBuffer(nil, inputHeaders, jwsPayload, base64.RawURLEncoding, true)
+
+	signature, err := jwsbb.Sign(key, algStr, payload, bctx.Seed)
 	if err != nil {
 		return err
 	}
 
-	return iter(ast.StringTerm(string(jwsCompact)))
+	jwsCompact := string(payload) + "." + base64.RawURLEncoding.EncodeToString(signature)
+
+	return iter(ast.StringTerm(jwsCompact))
 }
 
 func builtinJWTEncodeSign(bctx BuiltinContext, operands []*ast.Term, iter func(*ast.Term) error) error {
@@ -964,9 +930,9 @@ func builtinJWTEncodeSign(bctx BuiltinContext, operands []*ast.Term, iter func(*
 
 	return commonBuiltinJWTEncodeSign(
 		bctx,
-		string(inputHeadersBs),
-		string(payloadBs),
-		string(signatureBs),
+		inputHeadersBs,
+		payloadBs,
+		signatureBs,
 		iter,
 	)
 }
@@ -984,7 +950,7 @@ func builtinJWTEncodeSignRaw(bctx BuiltinContext, operands []*ast.Term, iter fun
 	if err != nil {
 		return err
 	}
-	return commonBuiltinJWTEncodeSign(bctx, string(inputHeaders), string(jwsPayload), string(jwkSrc), iter)
+	return commonBuiltinJWTEncodeSign(bctx, []byte(inputHeaders), []byte(jwsPayload), []byte(jwkSrc), iter)
 }
 
 // Implements full JWT decoding, validation and verification.
@@ -1004,9 +970,9 @@ func builtinJWTDecodeVerify(bctx BuiltinContext, operands []*ast.Term, iter func
 	}
 
 	unverified := ast.ArrayTerm(
-		ast.InternedBooleanTerm(false),
-		ast.NewTerm(ast.NewObject()),
-		ast.NewTerm(ast.NewObject()),
+		ast.InternedTerm(false),
+		ast.InternedEmptyObject,
+		ast.InternedEmptyObject,
 	)
 	constraints, err := parseTokenConstraints(b, bctx.Time)
 	if err != nil {
@@ -1021,8 +987,8 @@ func builtinJWTDecodeVerify(bctx BuiltinContext, operands []*ast.Term, iter func
 
 	// FIXME: optimize
 	k, _ := b.Filter(ast.NewObject(
-		ast.Item(ast.StringTerm("secret"), ast.ObjectTerm()),
-		ast.Item(ast.StringTerm("cert"), ast.ObjectTerm()),
+		ast.Item(ast.InternedTerm("secret"), ast.InternedEmptyObject),
+		ast.Item(ast.InternedTerm("cert"), ast.InternedEmptyObject),
 	))
 
 	if found, th, tp, validSignature := getTokenFromCache(bctx, a, k); found {
@@ -1128,7 +1094,7 @@ func builtinJWTDecodeVerify(bctx BuiltinContext, operands []*ast.Term, iter func
 	// Check registered claim names against constraints or environment
 	// RFC7159 4.1.1 iss
 	if constraints.iss != "" {
-		if iss := payload.Get(jwtIssKey); iss != nil {
+		if iss := payload.Get(ast.InternedTerm("iss")); iss != nil {
 			issVal := string(iss.Value.(ast.String))
 			if constraints.iss != issVal {
 				return iter(unverified)
@@ -1138,7 +1104,7 @@ func builtinJWTDecodeVerify(bctx BuiltinContext, operands []*ast.Term, iter func
 		}
 	}
 	// RFC7159 4.1.3 aud
-	if aud := payload.Get(jwtAudKey); aud != nil {
+	if aud := payload.Get(ast.InternedTerm("aud")); aud != nil {
 		if !constraints.validAudience(aud.Value) {
 			return iter(unverified)
 		}
@@ -1148,7 +1114,7 @@ func builtinJWTDecodeVerify(bctx BuiltinContext, operands []*ast.Term, iter func
 		}
 	}
 	// RFC7159 4.1.4 exp
-	if exp := payload.Get(jwtExpKey); exp != nil {
+	if exp := payload.Get(ast.InternedTerm("exp")); exp != nil {
 		switch v := exp.Value.(type) {
 		case ast.Number:
 			// constraints.time is in nanoseconds but exp Value is in seconds
@@ -1161,7 +1127,7 @@ func builtinJWTDecodeVerify(bctx BuiltinContext, operands []*ast.Term, iter func
 		}
 	}
 	// RFC7159 4.1.5 nbf
-	if nbf := payload.Get(jwtNbfKey); nbf != nil {
+	if nbf := payload.Get(ast.InternedTerm("nbf")); nbf != nil {
 		switch v := nbf.Value.(type) {
 		case ast.Number:
 			// constraints.time is in nanoseconds but nbf Value is in seconds
@@ -1175,7 +1141,7 @@ func builtinJWTDecodeVerify(bctx BuiltinContext, operands []*ast.Term, iter func
 	}
 
 	verified := ast.ArrayTerm(
-		ast.InternedBooleanTerm(true),
+		ast.InternedTerm(true),
 		ast.NewTerm(header),
 		ast.NewTerm(payload),
 	)
@@ -1229,7 +1195,7 @@ func validateJWTHeader(h string) (ast.Object, error) {
 	// won't support it for now.
 	// This code checks which kind of JWT we are dealing with according to
 	// RFC 7516 Section 9: https://tools.ietf.org/html/rfc7516#section-9
-	if header.Get(jwtEncKey) != nil {
+	if header.Get(ast.InternedTerm("enc")) != nil {
 		return nil, errors.New("JWT is a JWE object, which is not supported")
 	}
 
@@ -1259,6 +1225,10 @@ func extractJSONObject(s string) (ast.Object, error) {
 
 // getInputSha returns the SHA checksum of the input
 func getInputSHA(input []byte, h func() hash.Hash) []byte {
+	if h == nil {
+		return input
+	}
+
 	hasher := h()
 	hasher.Write(input)
 	return hasher.Sum(nil)
@@ -1331,6 +1301,7 @@ func init() {
 	RegisterBuiltinFunc(ast.JWTVerifyES256.Name, builtinJWTVerifyES256)
 	RegisterBuiltinFunc(ast.JWTVerifyES384.Name, builtinJWTVerifyES384)
 	RegisterBuiltinFunc(ast.JWTVerifyES512.Name, builtinJWTVerifyES512)
+	RegisterBuiltinFunc(ast.JWTVerifyEdDSA.Name, builtinJWTVerifyEdDSA)
 	RegisterBuiltinFunc(ast.JWTVerifyHS256.Name, builtinJWTVerifyHS256)
 	RegisterBuiltinFunc(ast.JWTVerifyHS384.Name, builtinJWTVerifyHS384)
 	RegisterBuiltinFunc(ast.JWTVerifyHS512.Name, builtinJWTVerifyHS512)

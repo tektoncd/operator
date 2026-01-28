@@ -99,7 +99,7 @@ type EvalContext struct {
 	hasInput                    bool
 	time                        time.Time
 	seed                        io.Reader
-	rawInput                    *interface{}
+	rawInput                    *any
 	parsedInput                 ast.Value
 	metrics                     metrics.Metrics
 	txn                         storage.Transaction
@@ -126,9 +126,11 @@ type EvalContext struct {
 	strictBuiltinErrors         bool
 	virtualCache                topdown.VirtualCache
 	baseCache                   topdown.BaseCache
+	tracing                     tracing.Options
+	externalCancel              topdown.Cancel // Note(philip): If non-nil, the cancellation is handled outside of this package.
 }
 
-func (e *EvalContext) RawInput() *interface{} {
+func (e *EvalContext) RawInput() *any {
 	return e.rawInput
 }
 
@@ -180,11 +182,23 @@ func (e *EvalContext) Transaction() storage.Transaction {
 	return e.txn
 }
 
+func (e *EvalContext) TracingOpts() tracing.Options {
+	return e.tracing
+}
+
+func (e *EvalContext) ExternalCancel() topdown.Cancel {
+	return e.externalCancel
+}
+
+func (e *EvalContext) QueryTracers() []topdown.QueryTracer {
+	return e.queryTracers
+}
+
 // EvalOption defines a function to set an option on an EvalConfig
 type EvalOption func(*EvalContext)
 
 // EvalInput configures the input for a Prepared Query's evaluation
-func EvalInput(input interface{}) EvalOption {
+func EvalInput(input any) EvalOption {
 	return func(e *EvalContext) {
 		e.rawInput = &input
 		e.hasInput = true
@@ -349,7 +363,7 @@ func EvalSortSets(yes bool) EvalOption {
 	}
 }
 
-// EvalCopyMaps causes the evaluator to copy `map[string]interface{}`s before returning them.
+// EvalCopyMaps causes the evaluator to copy `map[string]any`s before returning them.
 func EvalCopyMaps(yes bool) EvalOption {
 	return func(e *EvalContext) {
 		e.copyMaps = yes
@@ -388,12 +402,18 @@ func EvalNondeterministicBuiltins(yes bool) EvalOption {
 	}
 }
 
+// EvalExternalCancel sets an external topdown.Cancel for the interpreter to use
+// for cancellation. This is useful for batch-evaluation of many rego queries.
+func EvalExternalCancel(ec topdown.Cancel) EvalOption {
+	return func(e *EvalContext) {
+		e.externalCancel = ec
+	}
+}
+
 func (pq preparedQuery) Modules() map[string]*ast.Module {
 	mods := make(map[string]*ast.Module)
 
-	for name, mod := range pq.r.parsedModules {
-		mods[name] = mod
-	}
+	maps.Copy(mods, pq.r.parsedModules)
 
 	for _, b := range pq.r.bundles {
 		for _, mod := range b.Modules {
@@ -429,6 +449,7 @@ func (pq preparedQuery) newEvalContext(ctx context.Context, options []EvalOption
 		printHook:                pq.r.printHook,
 		capabilities:             pq.r.capabilities,
 		strictBuiltinErrors:      pq.r.strictBuiltinErrors,
+		tracing:                  pq.r.distributedTracingOpts,
 	}
 
 	for _, o := range options {
@@ -591,7 +612,7 @@ type Rego struct {
 	parsedPackage               *ast.Package
 	imports                     []string
 	parsedImports               []*ast.Import
-	rawInput                    *interface{}
+	rawInput                    *any
 	parsedInput                 ast.Value
 	unknowns                    []string
 	parsedUnknowns              []*ast.Term
@@ -627,6 +648,8 @@ type Rego struct {
 	bundlePaths                 []string
 	bundles                     map[string]*bundle.Bundle
 	skipBundleVerification      bool
+	bundleActivationPlugin      string
+	enableBundleLazyLoadingMode bool
 	interQueryBuiltinCache      cache.InterQueryCache
 	interQueryBuiltinValueCache cache.InterQueryValueCache
 	ndBuiltinCache              builtins.NDBCache
@@ -636,15 +659,17 @@ type Rego struct {
 	schemaSet                   *ast.SchemaSet
 	target                      string // target type (wasm, rego, etc.)
 	opa                         opa.EvalEngine
-	generateJSON                func(*ast.Term, *EvalContext) (interface{}, error)
+	generateJSON                func(*ast.Term, *EvalContext) (any, error)
 	printHook                   print.Hook
 	enablePrintStatements       bool
-	distributedTacingOpts       tracing.Options
+	distributedTracingOpts      tracing.Options
 	strict                      bool
 	pluginMgr                   *plugins.Manager
 	plugins                     []TargetPlugin
 	targetPrepState             TargetPluginEval
 	regoVersion                 ast.RegoVersion
+	compilerHook                func(*ast.Compiler)
+	evalMode                    *ast.CompilerEvalMode
 }
 
 func (r *Rego) RegoVersion() ast.RegoVersion {
@@ -815,7 +840,6 @@ type memo struct {
 type memokey string
 
 func memoize(decl *Function, bctx BuiltinContext, terms []*ast.Term, ifEmpty func() (*ast.Term, error)) (*ast.Term, error) {
-
 	if !decl.Memoize {
 		return ifEmpty()
 	}
@@ -904,7 +928,7 @@ func ParsedImports(imp []*ast.Import) func(r *Rego) {
 
 // Input returns an argument that sets the Rego input document. Input should be
 // a native Go value representing the input document.
-func Input(x interface{}) func(r *Rego) {
+func Input(x any) func(r *Rego) {
 	return func(r *Rego) {
 		r.rawInput = &x
 	}
@@ -1169,6 +1193,23 @@ func SkipBundleVerification(yes bool) func(r *Rego) {
 	}
 }
 
+// BundleActivatorPlugin sets the name of the activator plugin used to load bundles into the store.
+func BundleActivatorPlugin(name string) func(r *Rego) {
+	return func(r *Rego) {
+		r.bundleActivationPlugin = name
+	}
+}
+
+// BundleLazyLoadingMode sets the bundle loading mode. If true, bundles will be
+// read in lazy mode. In this mode, data files in the bundle will not be
+// deserialized and the check to validate that the bundle data does not contain
+// paths outside the bundle's roots will not be performed while reading the bundle.
+func BundleLazyLoadingMode(yes bool) func(r *Rego) {
+	return func(r *Rego) {
+		r.enableBundleLazyLoadingMode = yes
+	}
+}
+
 // InterQueryBuiltinCache sets the inter-query cache that built-in functions can utilize
 // during evaluation.
 func InterQueryBuiltinCache(c cache.InterQueryCache) func(r *Rego) {
@@ -1237,7 +1278,7 @@ func Target(t string) func(r *Rego) {
 }
 
 // GenerateJSON sets the AST to JSON converter for the results.
-func GenerateJSON(f func(*ast.Term, *EvalContext) (interface{}, error)) func(r *Rego) {
+func GenerateJSON(f func(*ast.Term, *EvalContext) (any, error)) func(r *Rego) {
 	return func(r *Rego) {
 		r.generateJSON = f
 	}
@@ -1253,7 +1294,7 @@ func PrintHook(h print.Hook) func(r *Rego) {
 // DistributedTracingOpts sets the options to be used by distributed tracing.
 func DistributedTracingOpts(tr tracing.Options) func(r *Rego) {
 	return func(r *Rego) {
-		r.distributedTacingOpts = tr
+		r.distributedTracingOpts = tr
 	}
 }
 
@@ -1280,9 +1321,23 @@ func SetRegoVersion(version ast.RegoVersion) func(r *Rego) {
 	}
 }
 
+// CompilerHook sets a hook function that will be called after the compiler is initialized.
+// This is only called if the compiler has not been provided already.
+func CompilerHook(hook func(*ast.Compiler)) func(r *Rego) {
+	return func(r *Rego) {
+		r.compilerHook = hook
+	}
+}
+
+// EvalMode lets you override the evaluation mode.
+func EvalMode(mode ast.CompilerEvalMode) func(r *Rego) {
+	return func(r *Rego) {
+		r.evalMode = &mode
+	}
+}
+
 // New returns a new Rego object.
 func New(options ...func(r *Rego)) *Rego {
-
 	r := &Rego{
 		parsedModules:   map[string]*ast.Module{},
 		capture:         map[*ast.Expr]ast.Var{},
@@ -1295,6 +1350,8 @@ func New(options ...func(r *Rego)) *Rego {
 	for _, option := range options {
 		option(r)
 	}
+
+	callHook := r.compiler == nil // call hook only if we created the compiler here
 
 	if r.compiler == nil {
 		r.compiler = ast.NewCompiler().
@@ -1319,7 +1376,11 @@ func New(options ...func(r *Rego)) *Rego {
 	}
 
 	if r.store == nil {
-		r.store = inmem.NewWithOpts(inmem.OptReturnASTValuesOnRead(r.ownStoreReadAst))
+		if bundle.HasExtension() {
+			r.store = bundle.BundleExtStore()
+		} else {
+			r.store = inmem.NewWithOpts(inmem.OptReturnASTValuesOnRead(r.ownStoreReadAst))
+		}
 		r.ownStore = true
 	} else {
 		r.ownStore = false
@@ -1348,8 +1409,8 @@ func New(options ...func(r *Rego)) *Rego {
 	}
 
 	if r.pluginMgr != nil {
-		for _, name := range r.pluginMgr.Plugins() {
-			p := r.pluginMgr.Plugin(name)
+		for _, pluginName := range r.pluginMgr.Plugins() {
+			p := r.pluginMgr.Plugin(pluginName)
 			if p0, ok := p.(TargetPlugin); ok {
 				r.plugins = append(r.plugins, p0)
 			}
@@ -1358,6 +1419,14 @@ func New(options ...func(r *Rego)) *Rego {
 
 	if t := r.targetPlugin(r.target); t != nil {
 		r.compiler = r.compiler.WithEvalMode(ast.EvalModeIR)
+	}
+
+	if r.evalMode != nil {
+		r.compiler = r.compiler.WithEvalMode(*r.evalMode)
+	}
+
+	if r.compilerHook != nil && callHook {
+		r.compilerHook(r.compiler)
 	}
 
 	return r
@@ -1503,7 +1572,6 @@ func CompilePartial(yes bool) CompileOption {
 
 // Compile returns a compiled policy query.
 func (r *Rego) Compile(ctx context.Context, opts ...CompileOption) (*CompileResult, error) {
-
 	var cfg CompileContext
 
 	for _, opt := range opts {
@@ -1878,6 +1946,11 @@ func (r *Rego) parseModules(ctx context.Context, txn storage.Transaction, m metr
 	defer m.Timer(metrics.RegoModuleParse).Stop()
 	var errs Errors
 
+	popts := ast.ParserOptions{
+		RegoVersion:  r.regoVersion,
+		Capabilities: r.capabilities,
+	}
+
 	// Parse any modules that are saved to the store, but only if
 	// another compile step is going to occur (ie. we have parsed modules
 	// that need to be compiled).
@@ -1893,7 +1966,7 @@ func (r *Rego) parseModules(ctx context.Context, txn storage.Transaction, m metr
 			return err
 		}
 
-		parsed, err := ast.ParseModuleWithOpts(id, string(bs), ast.ParserOptions{RegoVersion: r.regoVersion})
+		parsed, err := ast.ParseModuleWithOpts(id, string(bs), popts)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -1903,7 +1976,7 @@ func (r *Rego) parseModules(ctx context.Context, txn storage.Transaction, m metr
 
 	// Parse any passed in as arguments to the Rego object
 	for _, module := range r.modules {
-		p, err := module.ParseWithOpts(ast.ParserOptions{RegoVersion: r.regoVersion})
+		p, err := module.ParseWithOpts(popts)
 		if err != nil {
 			switch errorWithType := err.(type) {
 			case ast.Errors:
@@ -1935,6 +2008,7 @@ func (r *Rego) loadFiles(ctx context.Context, txn storage.Transaction, m metrics
 	result, err := loader.NewFileLoader().
 		WithMetrics(m).
 		WithProcessAnnotation(true).
+		WithBundleLazyLoadingMode(bundle.HasExtension()).
 		WithRegoVersion(r.regoVersion).
 		WithCapabilities(r.capabilities).
 		Filtered(r.loadPaths.paths, r.loadPaths.filter)
@@ -1966,6 +2040,7 @@ func (r *Rego) loadBundles(_ context.Context, _ storage.Transaction, m metrics.M
 		bndl, err := loader.NewFileLoader().
 			WithMetrics(m).
 			WithProcessAnnotation(true).
+			WithBundleLazyLoadingMode(bundle.HasExtension()).
 			WithSkipBundleVerification(r.skipBundleVerification).
 			WithRegoVersion(r.regoVersion).
 			WithCapabilities(r.capabilities).
@@ -1985,7 +2060,7 @@ func (r *Rego) parseInput() (ast.Value, error) {
 	return r.parseRawInput(r.rawInput, r.metrics)
 }
 
-func (*Rego) parseRawInput(rawInput *interface{}, m metrics.Metrics) (ast.Value, error) {
+func (*Rego) parseRawInput(rawInput *any, m metrics.Metrics) (ast.Value, error) {
 	var input ast.Value
 
 	if rawInput == nil {
@@ -1998,7 +2073,7 @@ func (*Rego) parseRawInput(rawInput *interface{}, m metrics.Metrics) (ast.Value,
 	rawPtr := util.Reference(rawInput)
 
 	// roundtrip through json: this turns slices (e.g. []string, []bool) into
-	// []interface{}, the only array type ast.InterfaceToValue can work with
+	// []any, the only array type ast.InterfaceToValue can work with
 	if err := util.RoundTrip(rawPtr); err != nil {
 		return nil, err
 	}
@@ -2024,6 +2099,8 @@ func (r *Rego) parseQuery(queryImports []*ast.Import, m metrics.Metrics) (ast.Bo
 		return nil, err
 	}
 	popts.SkipRules = true
+	popts.Capabilities = r.capabilities
+
 	return ast.ParseBodyWithOpts(r.query, popts)
 }
 
@@ -2039,7 +2116,6 @@ func parserOptionsFromRegoVersionImport(imports []*ast.Import, popts ast.ParserO
 }
 
 func (r *Rego) compileModules(ctx context.Context, txn storage.Transaction, m metrics.Metrics) error {
-
 	// Only compile again if there are new modules.
 	if len(r.bundles) > 0 || len(r.parsedModules) > 0 {
 
@@ -2150,7 +2226,6 @@ func (r *Rego) compileQuery(query ast.Body, imports []*ast.Import, _ metrics.Met
 	compiled, err := qc.Compile(query)
 
 	return qc, compiled, err
-
 }
 
 func (r *Rego) eval(ctx context.Context, ectx *EvalContext) (ResultSet, error) {
@@ -2187,7 +2262,7 @@ func (r *Rego) eval(ctx context.Context, ectx *EvalContext) (ResultSet, error) {
 		WithBuiltinErrorList(r.builtinErrorList).
 		WithSeed(ectx.seed).
 		WithPrintHook(ectx.printHook).
-		WithDistributedTracingOpts(r.distributedTacingOpts).
+		WithDistributedTracingOpts(r.distributedTracingOpts).
 		WithVirtualCache(ectx.virtualCache).
 		WithBaseCache(ectx.baseCache)
 
@@ -2216,13 +2291,19 @@ func (r *Rego) eval(ctx context.Context, ectx *EvalContext) (ResultSet, error) {
 	}
 
 	// Cancel query if context is cancelled or deadline is reached.
-	c := topdown.NewCancel()
-	q = q.WithCancel(c)
-	exit := make(chan struct{})
-	defer close(exit)
-	go waitForDone(ctx, exit, func() {
-		c.Cancel()
-	})
+	if ectx.externalCancel == nil {
+		// Create a one-off goroutine to handle cancellation for this query.
+		c := topdown.NewCancel()
+		q = q.WithCancel(c)
+		exit := make(chan struct{})
+		defer close(exit)
+		go waitForDone(ctx, exit, func() {
+			c.Cancel()
+		})
+	} else {
+		// Query cancellation is being handled elsewhere.
+		q = q.WithCancel(ectx.externalCancel)
+	}
 
 	var rs ResultSet
 	err := q.Iter(ctx, func(qr topdown.QueryResult) error {
@@ -2233,7 +2314,6 @@ func (r *Rego) eval(ctx context.Context, ectx *EvalContext) (ResultSet, error) {
 		rs = append(rs, result)
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -2248,7 +2328,7 @@ func (r *Rego) eval(ctx context.Context, ectx *EvalContext) (ResultSet, error) {
 func (r *Rego) evalWasm(ctx context.Context, ectx *EvalContext) (ResultSet, error) {
 	input := ectx.rawInput
 	if ectx.parsedInput != nil {
-		i := interface{}(ectx.parsedInput)
+		i := any(ectx.parsedInput)
 		input = &i
 	}
 	result, err := r.opa.Eval(ctx, opa.EvalOpts{
@@ -2306,22 +2386,22 @@ func (r *Rego) valueToQueryResult(res ast.Value, ectx *EvalContext) (ResultSet, 
 }
 
 func (r *Rego) generateResult(qr topdown.QueryResult, ectx *EvalContext) (Result, error) {
-
 	rewritten := ectx.compiledQuery.compiler.RewrittenVars()
 
 	result := newResult()
 	for k, term := range qr {
-		v, err := r.generateJSON(term, ectx)
-		if err != nil {
-			return result, err
-		}
-
 		if rw, ok := rewritten[k]; ok {
 			k = rw
 		}
 		if isTermVar(k) || isTermWasmVar(k) || k.IsGenerated() || k.IsWildcard() {
 			continue
 		}
+
+		v, err := r.generateJSON(term, ectx)
+		if err != nil {
+			return result, err
+		}
+
 		result.Bindings[string(k)] = v
 	}
 
@@ -2345,7 +2425,6 @@ func (r *Rego) generateResult(qr topdown.QueryResult, ectx *EvalContext) (Result
 }
 
 func (r *Rego) partialResult(ctx context.Context, pCfg *PrepareConfig) (PartialResult, error) {
-
 	err := r.prepare(ctx, partialResultQueryType, []extraStage{
 		{
 			after: "ResolveRefs",
@@ -2439,7 +2518,6 @@ func (r *Rego) partialResult(ctx context.Context, pCfg *PrepareConfig) (PartialR
 }
 
 func (r *Rego) partial(ctx context.Context, ectx *EvalContext) (*PartialQueries, error) {
-
 	var unknowns []*ast.Term
 
 	switch {
@@ -2503,13 +2581,19 @@ func (r *Rego) partial(ctx context.Context, ectx *EvalContext) (*PartialQueries,
 	}
 
 	// Cancel query if context is cancelled or deadline is reached.
-	c := topdown.NewCancel()
-	q = q.WithCancel(c)
-	exit := make(chan struct{})
-	defer close(exit)
-	go waitForDone(ctx, exit, func() {
-		c.Cancel()
-	})
+	if ectx.externalCancel == nil {
+		// Create a one-off goroutine to handle cancellation for this query.
+		c := topdown.NewCancel()
+		q = q.WithCancel(c)
+		exit := make(chan struct{})
+		defer close(exit)
+		go waitForDone(ctx, exit, func() {
+			c.Cancel()
+		})
+	} else {
+		// Query cancellation is being handled elsewhere.
+		q = q.WithCancel(ectx.externalCancel)
+	}
 
 	queries, support, err := q.PartialRun(ctx)
 	if err != nil {
@@ -2571,7 +2655,6 @@ func (r *Rego) partial(ctx context.Context, ectx *EvalContext) (*PartialQueries,
 }
 
 func (r *Rego) rewriteQueryToCaptureValue(_ ast.QueryCompiler, query ast.Body) (ast.Body, error) {
-
 	checkCapture := iteration(query) || len(query) > 1
 
 	for _, expr := range query {
@@ -2686,7 +2769,6 @@ type transactionCloser func(ctx context.Context, err error) error
 // the configured Rego object. The returned function should be used to close the txn
 // regardless of status.
 func (r *Rego) getTxn(ctx context.Context) (storage.Transaction, transactionCloser, error) {
-
 	noopCloser := func(_ context.Context, _ error) error {
 		return nil // no-op default
 	}
@@ -2795,11 +2877,10 @@ type refResolver struct {
 	r   resolver.Resolver
 }
 
-func iteration(x interface{}) bool {
-
+func iteration(x any) bool {
 	var stopped bool
 
-	vis := ast.NewGenericVisitor(func(x interface{}) bool {
+	vis := ast.NewGenericVisitor(func(x any) bool {
 		switch x := x.(type) {
 		case *ast.Term:
 			if ast.IsComprehension(x.Value) {
@@ -2831,6 +2912,9 @@ func iteration(x interface{}) bool {
 }
 
 func parseStringsToRefs(s []string) ([]ast.Ref, error) {
+	if len(s) == 0 {
+		return nil, nil
+	}
 
 	refs := make([]ast.Ref, len(s))
 	for i := range refs {
@@ -2895,7 +2979,7 @@ func newFunction(decl *Function, f topdown.BuiltinFunc) func(*Rego) {
 	}
 }
 
-func generateJSON(term *ast.Term, ectx *EvalContext) (interface{}, error) {
+func generateJSON(term *ast.Term, ectx *EvalContext) (any, error) {
 	return ast.JSONWithOpt(term.Value,
 		ast.JSONOpt{
 			SortSets: ectx.sortSets,

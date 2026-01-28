@@ -26,14 +26,14 @@ type (
 	RunnersServiceInterface interface {
 		ListRunners(opt *ListRunnersOptions, options ...RequestOptionFunc) ([]*Runner, *Response, error)
 		ListAllRunners(opt *ListRunnersOptions, options ...RequestOptionFunc) ([]*Runner, *Response, error)
-		GetRunnerDetails(rid interface{}, options ...RequestOptionFunc) (*RunnerDetails, *Response, error)
-		UpdateRunnerDetails(rid interface{}, opt *UpdateRunnerDetailsOptions, options ...RequestOptionFunc) (*RunnerDetails, *Response, error)
-		RemoveRunner(rid interface{}, options ...RequestOptionFunc) (*Response, error)
-		ListRunnerJobs(rid interface{}, opt *ListRunnerJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error)
-		ListProjectRunners(pid interface{}, opt *ListProjectRunnersOptions, options ...RequestOptionFunc) ([]*Runner, *Response, error)
-		EnableProjectRunner(pid interface{}, opt *EnableProjectRunnerOptions, options ...RequestOptionFunc) (*Runner, *Response, error)
-		DisableProjectRunner(pid interface{}, runner int, options ...RequestOptionFunc) (*Response, error)
-		ListGroupsRunners(gid interface{}, opt *ListGroupsRunnersOptions, options ...RequestOptionFunc) ([]*Runner, *Response, error)
+		GetRunnerDetails(rid any, options ...RequestOptionFunc) (*RunnerDetails, *Response, error)
+		UpdateRunnerDetails(rid any, opt *UpdateRunnerDetailsOptions, options ...RequestOptionFunc) (*RunnerDetails, *Response, error)
+		RemoveRunner(rid any, options ...RequestOptionFunc) (*Response, error)
+		ListRunnerJobs(rid any, opt *ListRunnerJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error)
+		ListProjectRunners(pid any, opt *ListProjectRunnersOptions, options ...RequestOptionFunc) ([]*Runner, *Response, error)
+		EnableProjectRunner(pid any, opt *EnableProjectRunnerOptions, options ...RequestOptionFunc) (*Runner, *Response, error)
+		DisableProjectRunner(pid any, runner int, options ...RequestOptionFunc) (*Response, error)
+		ListGroupsRunners(gid any, opt *ListGroupsRunnersOptions, options ...RequestOptionFunc) ([]*Runner, *Response, error)
 		RegisterNewRunner(opt *RegisterNewRunnerOptions, options ...RequestOptionFunc) (*Runner, *Response, error)
 		DeleteRegisteredRunner(opt *DeleteRegisteredRunnerOptions, options ...RequestOptionFunc) (*Response, error)
 		DeleteRegisteredRunnerByID(rid int, options ...RequestOptionFunc) (*Response, error)
@@ -44,10 +44,10 @@ type (
 		ResetInstanceRunnerRegistrationToken(options ...RequestOptionFunc) (*RunnerRegistrationToken, *Response, error)
 
 		// Deprecated: for removal in GitLab 20.0, see https://docs.gitlab.com/ci/runners/new_creation_workflow/ instead
-		ResetGroupRunnerRegistrationToken(gid interface{}, options ...RequestOptionFunc) (*RunnerRegistrationToken, *Response, error)
+		ResetGroupRunnerRegistrationToken(gid any, options ...RequestOptionFunc) (*RunnerRegistrationToken, *Response, error)
 
 		// Deprecated: for removal in GitLab 20.0, see https://docs.gitlab.com/ci/runners/new_creation_workflow/ instead
-		ResetProjectRunnerRegistrationToken(pid interface{}, options ...RequestOptionFunc) (*RunnerRegistrationToken, *Response, error)
+		ResetProjectRunnerRegistrationToken(pid any, options ...RequestOptionFunc) (*RunnerRegistrationToken, *Response, error)
 	}
 
 	// RunnersService handles communication with the runner related methods of the
@@ -79,7 +79,7 @@ type Runner struct {
 	// Deprecated: for removal in v5 of the API, use Paused instead
 	Active bool `json:"active"`
 
-	// Deprecated: returns an empty string from 17.0 onwards, see GraphQL resource CiRunnerManager instead
+	// Deprecated: for removal in v5 of the API, returns an empty string from 17.0 onwards, see GraphQL resource CiRunnerManager instead
 	IPAddress string `json:"ip_address"`
 }
 
@@ -119,7 +119,7 @@ type RunnerDetails struct {
 	// Deprecated: for removal in v5 of the API, see GraphQL resource CiRunnerManager instead
 	Architecture string `json:"architecture"`
 
-	// Deprecated: returns an empty string from 17.0 onwards, see GraphQL resource CiRunnerManager instead
+	// Deprecated: for removal in v5 of the API, returns an empty string from 17.0 onwards, see GraphQL resource CiRunnerManager instead
 	IPAddress string `json:"ip_address"`
 
 	// Deprecated: for removal in v5 of the API, see GraphQL resource CiRunnerManager instead
@@ -131,7 +131,7 @@ type RunnerDetails struct {
 	// Deprecated: for removal in v5 of the API, see GraphQL resource CiRunnerManager instead
 	Version string `json:"version"`
 
-	// Deprecated: Use Paused instead. (Deprecated in GitLab 14.8)
+	// Deprecated: for removal in v5 of the API, use Paused instead
 	Active bool `json:"active"`
 }
 
@@ -193,7 +193,7 @@ func (s *RunnersService) ListAllRunners(opt *ListRunnersOptions, options ...Requ
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/runners/#get-runners-details
-func (s *RunnersService) GetRunnerDetails(rid interface{}, options ...RequestOptionFunc) (*RunnerDetails, *Response, error) {
+func (s *RunnersService) GetRunnerDetails(rid any, options ...RequestOptionFunc) (*RunnerDetails, *Response, error) {
 	runner, err := parseID(rid)
 	if err != nil {
 		return nil, nil, err
@@ -228,7 +228,7 @@ type UpdateRunnerDetailsOptions struct {
 	MaximumTimeout  *int      `url:"maximum_timeout,omitempty" json:"maximum_timeout,omitempty"`
 	MaintenanceNote *string   `url:"maintenance_note,omitempty" json:"maintenance_note,omitempty"`
 
-	// Deprecated: Use Paused instead. (Deprecated in GitLab 14.8)
+	// Deprecated: for removal in v5 of the API, use Paused instead
 	Active *bool `url:"active,omitempty" json:"active,omitempty"`
 }
 
@@ -236,7 +236,7 @@ type UpdateRunnerDetailsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/runners/#update-runners-details
-func (s *RunnersService) UpdateRunnerDetails(rid interface{}, opt *UpdateRunnerDetailsOptions, options ...RequestOptionFunc) (*RunnerDetails, *Response, error) {
+func (s *RunnersService) UpdateRunnerDetails(rid any, opt *UpdateRunnerDetailsOptions, options ...RequestOptionFunc) (*RunnerDetails, *Response, error) {
 	runner, err := parseID(rid)
 	if err != nil {
 		return nil, nil, err
@@ -261,7 +261,7 @@ func (s *RunnersService) UpdateRunnerDetails(rid interface{}, opt *UpdateRunnerD
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/runners/#delete-a-runner
-func (s *RunnersService) RemoveRunner(rid interface{}, options ...RequestOptionFunc) (*Response, error) {
+func (s *RunnersService) RemoveRunner(rid any, options ...RequestOptionFunc) (*Response, error) {
 	runner, err := parseID(rid)
 	if err != nil {
 		return nil, err
@@ -292,7 +292,7 @@ type ListRunnerJobsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/runners/#list-jobs-processed-by-a-runner
-func (s *RunnersService) ListRunnerJobs(rid interface{}, opt *ListRunnerJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error) {
+func (s *RunnersService) ListRunnerJobs(rid any, opt *ListRunnerJobsOptions, options ...RequestOptionFunc) ([]*Job, *Response, error) {
 	runner, err := parseID(rid)
 	if err != nil {
 		return nil, nil, err
@@ -324,7 +324,7 @@ type ListProjectRunnersOptions ListRunnersOptions
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/runners/#list-projects-runners
-func (s *RunnersService) ListProjectRunners(pid interface{}, opt *ListProjectRunnersOptions, options ...RequestOptionFunc) ([]*Runner, *Response, error) {
+func (s *RunnersService) ListProjectRunners(pid any, opt *ListProjectRunnersOptions, options ...RequestOptionFunc) ([]*Runner, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -358,7 +358,7 @@ type EnableProjectRunnerOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/runners/#assign-a-runner-to-project
-func (s *RunnersService) EnableProjectRunner(pid interface{}, opt *EnableProjectRunnerOptions, options ...RequestOptionFunc) (*Runner, *Response, error) {
+func (s *RunnersService) EnableProjectRunner(pid any, opt *EnableProjectRunnerOptions, options ...RequestOptionFunc) (*Runner, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err
@@ -383,7 +383,7 @@ func (s *RunnersService) EnableProjectRunner(pid interface{}, opt *EnableProject
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/runners/#unassign-a-runner-from-project
-func (s *RunnersService) DisableProjectRunner(pid interface{}, runner int, options ...RequestOptionFunc) (*Response, error) {
+func (s *RunnersService) DisableProjectRunner(pid any, runner int, options ...RequestOptionFunc) (*Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, err
@@ -415,7 +415,7 @@ type ListGroupsRunnersOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/runners/#list-groups-runners
-func (s *RunnersService) ListGroupsRunners(gid interface{}, opt *ListGroupsRunnersOptions, options ...RequestOptionFunc) ([]*Runner, *Response, error) {
+func (s *RunnersService) ListGroupsRunners(gid any, opt *ListGroupsRunnersOptions, options ...RequestOptionFunc) ([]*Runner, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -577,7 +577,7 @@ func (s *RunnersService) ResetInstanceRunnerRegistrationToken(options ...Request
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/runners/#reset-groups-runner-registration-token
-func (s *RunnersService) ResetGroupRunnerRegistrationToken(gid interface{}, options ...RequestOptionFunc) (*RunnerRegistrationToken, *Response, error) {
+func (s *RunnersService) ResetGroupRunnerRegistrationToken(gid any, options ...RequestOptionFunc) (*RunnerRegistrationToken, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -603,7 +603,7 @@ func (s *RunnersService) ResetGroupRunnerRegistrationToken(gid interface{}, opti
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/runners/#reset-projects-runner-registration-token
-func (s *RunnersService) ResetProjectRunnerRegistrationToken(pid interface{}, options ...RequestOptionFunc) (*RunnerRegistrationToken, *Response, error) {
+func (s *RunnersService) ResetProjectRunnerRegistrationToken(pid any, options ...RequestOptionFunc) (*RunnerRegistrationToken, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

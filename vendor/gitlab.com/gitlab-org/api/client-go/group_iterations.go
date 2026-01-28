@@ -24,10 +24,10 @@ import (
 
 type (
 	GroupIterationsServiceInterface interface {
-		ListGroupIterations(gid interface{}, opt *ListGroupIterationsOptions, options ...RequestOptionFunc) ([]*GroupIteration, *Response, error)
+		ListGroupIterations(gid any, opt *ListGroupIterationsOptions, options ...RequestOptionFunc) ([]*GroupIteration, *Response, error)
 	}
 
-	// IterationsAPI handles communication with the iterations related methods
+	// GroupIterationsService handles communication with the iterations related methods
 	// of the GitLab API
 	//
 	// GitLab API docs: https://docs.gitlab.com/api/group_iterations/
@@ -38,7 +38,7 @@ type (
 
 var _ GroupIterationsServiceInterface = (*GroupIterationsService)(nil)
 
-// GroupInteration represents a GitLab iteration.
+// GroupIteration represents a GitLab iteration.
 //
 // GitLab API docs: https://docs.gitlab.com/api/group_iterations/
 type GroupIteration struct {
@@ -76,7 +76,7 @@ type ListGroupIterationsOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/group_iterations/#list-group-iterations
-func (s *GroupIterationsService) ListGroupIterations(gid interface{}, opt *ListGroupIterationsOptions, options ...RequestOptionFunc) ([]*GroupIteration, *Response, error) {
+func (s *GroupIterationsService) ListGroupIterations(gid any, opt *ListGroupIterationsOptions, options ...RequestOptionFunc) ([]*GroupIteration, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err

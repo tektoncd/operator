@@ -24,7 +24,7 @@ import (
 
 type (
 	RepositorySubmodulesServiceInterface interface {
-		UpdateSubmodule(pid interface{}, submodule string, opt *UpdateSubmoduleOptions, options ...RequestOptionFunc) (*SubmoduleCommit, *Response, error)
+		UpdateSubmodule(pid any, submodule string, opt *UpdateSubmoduleOptions, options ...RequestOptionFunc) (*SubmoduleCommit, *Response, error)
 	}
 
 	// RepositorySubmodulesService handles communication with the repository
@@ -75,7 +75,7 @@ type UpdateSubmoduleOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/repository_submodules/#update-existing-submodule-reference-in-repository
-func (s *RepositorySubmodulesService) UpdateSubmodule(pid interface{}, submodule string, opt *UpdateSubmoduleOptions, options ...RequestOptionFunc) (*SubmoduleCommit, *Response, error) {
+func (s *RepositorySubmodulesService) UpdateSubmodule(pid any, submodule string, opt *UpdateSubmoduleOptions, options ...RequestOptionFunc) (*SubmoduleCommit, *Response, error) {
 	project, err := parseID(pid)
 	if err != nil {
 		return nil, nil, err

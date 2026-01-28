@@ -22,9 +22,9 @@ import (
 
 type (
 	EnterpriseUsersServiceInterface interface {
-		ListEnterpriseUsers(gid interface{}, opt *ListEnterpriseUsersOptions, options ...RequestOptionFunc) ([]*User, *Response, error)
-		GetEnterpriseUser(gid interface{}, uid int, options ...RequestOptionFunc) (*User, *Response, error)
-		Disable2FAForEnterpriseUser(gid interface{}, uid int, options ...RequestOptionFunc) (*Response, error)
+		ListEnterpriseUsers(gid any, opt *ListEnterpriseUsersOptions, options ...RequestOptionFunc) ([]*User, *Response, error)
+		GetEnterpriseUser(gid any, uid int, options ...RequestOptionFunc) (*User, *Response, error)
+		Disable2FAForEnterpriseUser(gid any, uid int, options ...RequestOptionFunc) (*Response, error)
 	}
 
 	// EnterpriseUsersService handles communication with the enterprise users
@@ -58,7 +58,7 @@ type ListEnterpriseUsersOptions struct {
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/group_enterprise_users/#list-all-enterprise-users
-func (s *EnterpriseUsersService) ListEnterpriseUsers(gid interface{}, opt *ListEnterpriseUsersOptions, options ...RequestOptionFunc) ([]*User, *Response, error) {
+func (s *EnterpriseUsersService) ListEnterpriseUsers(gid any, opt *ListEnterpriseUsersOptions, options ...RequestOptionFunc) ([]*User, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -83,7 +83,7 @@ func (s *EnterpriseUsersService) ListEnterpriseUsers(gid interface{}, opt *ListE
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/group_enterprise_users/#get-details-on-an-enterprise-user
-func (s *EnterpriseUsersService) GetEnterpriseUser(gid interface{}, uid int, options ...RequestOptionFunc) (*User, *Response, error) {
+func (s *EnterpriseUsersService) GetEnterpriseUser(gid any, uid int, options ...RequestOptionFunc) (*User, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
@@ -109,7 +109,7 @@ func (s *EnterpriseUsersService) GetEnterpriseUser(gid interface{}, uid int, opt
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/group_enterprise_users/#disable-two-factor-authentication-for-an-enterprise-user
-func (s *EnterpriseUsersService) Disable2FAForEnterpriseUser(gid interface{}, uid int, options ...RequestOptionFunc) (*Response, error) {
+func (s *EnterpriseUsersService) Disable2FAForEnterpriseUser(gid any, uid int, options ...RequestOptionFunc) (*Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, err

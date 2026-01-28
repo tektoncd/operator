@@ -95,7 +95,7 @@ func (s *CustomAttributesService) listCustomAttributes(resource string, id int, 
 	return cas, resp, nil
 }
 
-// GetCustomUserAttribute returns the user attribute with a speciifc key.
+// GetCustomUserAttribute returns the user attribute with a specific key.
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/custom_attributes/#single-custom-attribute
@@ -103,7 +103,7 @@ func (s *CustomAttributesService) GetCustomUserAttribute(user int, key string, o
 	return s.getCustomAttribute("users", user, key, options...)
 }
 
-// GetCustomGroupAttribute returns the group attribute with a speciifc key.
+// GetCustomGroupAttribute returns the group attribute with a specific key.
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/custom_attributes/#single-custom-attribute
@@ -111,7 +111,7 @@ func (s *CustomAttributesService) GetCustomGroupAttribute(group int, key string,
 	return s.getCustomAttribute("groups", group, key, options...)
 }
 
-// GetCustomProjectAttribute returns the project attribute with a speciifc key.
+// GetCustomProjectAttribute returns the project attribute with a specific key.
 //
 // GitLab API docs:
 // https://docs.gitlab.com/api/custom_attributes/#single-custom-attribute

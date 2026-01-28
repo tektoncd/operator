@@ -14,12 +14,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/gobwas/glob"
 	"github.com/open-policy-agent/opa/internal/file/archive"
@@ -28,6 +30,7 @@ import (
 	astJSON "github.com/open-policy-agent/opa/v1/ast/json"
 	"github.com/open-policy-agent/opa/v1/format"
 	"github.com/open-policy-agent/opa/v1/metrics"
+	"github.com/open-policy-agent/opa/v1/storage"
 	"github.com/open-policy-agent/opa/v1/util"
 )
 
@@ -52,7 +55,7 @@ const (
 type Bundle struct {
 	Signatures  SignaturesConfig
 	Manifest    Manifest
-	Data        map[string]interface{}
+	Data        map[string]any
 	Modules     []ModuleFile
 	Wasm        []byte // Deprecated. Use WasmModules instead
 	WasmModules []WasmModuleFile
@@ -80,9 +83,9 @@ type Patch struct {
 
 // PatchOperation models a single patch operation against a document.
 type PatchOperation struct {
-	Op    string      `json:"op"`
-	Path  string      `json:"path"`
-	Value interface{} `json:"value"`
+	Op    string `json:"op"`
+	Path  string `json:"path"`
+	Value any    `json:"value"`
 }
 
 // SignaturesConfig represents an array of JWTs that encapsulate the signatures for the bundle.
@@ -137,8 +140,8 @@ type Manifest struct {
 	RegoVersion *int `json:"rego_version,omitempty"`
 	// FileRegoVersions is a map from file paths to Rego versions.
 	// This allows individual files to override the global Rego version specified by RegoVersion.
-	FileRegoVersions map[string]int         `json:"file_rego_versions,omitempty"`
-	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	FileRegoVersions map[string]int `json:"file_rego_versions,omitempty"`
+	Metadata         map[string]any `json:"metadata,omitempty"`
 
 	compiledFileRegoVersions []fileRegoVersion
 }
@@ -233,10 +236,8 @@ func (m Manifest) Copy() Manifest {
 	metadata := m.Metadata
 
 	if metadata != nil {
-		m.Metadata = make(map[string]interface{})
-		for k, v := range metadata {
-			m.Metadata[k] = v
-		}
+		m.Metadata = make(map[string]any)
+		maps.Copy(m.Metadata, metadata)
 	}
 
 	return m
@@ -391,13 +392,13 @@ func (m *Manifest) validateAndInjectDefaults(b Bundle) error {
 	}
 
 	// Validate data in bundle.
-	return dfs(b.Data, "", func(path string, node interface{}) (bool, error) {
+	return dfs(b.Data, "", func(path string, node any) (bool, error) {
 		path = strings.Trim(path, "/")
 		if RootPathsContain(roots, path) {
 			return true, nil
 		}
 
-		if _, ok := node.(map[string]interface{}); ok {
+		if _, ok := node.(map[string]any); ok {
 			for i := range roots {
 				if RootPathsContain(strings.Split(path, "/"), roots[i]) {
 					return false, nil
@@ -436,6 +437,45 @@ type PlanModuleFile struct {
 	Raw  []byte
 }
 
+var (
+	pluginMtx sync.Mutex
+
+	// The bundle activator to use by default.
+	bundleExtActivator string
+
+	// The function to use for creating a storage.Store for bundles.
+	BundleExtStore func() storage.Store
+)
+
+// RegisterDefaultBundleActivator sets the default bundle activator for OPA to use for bundle activation.
+// The id must already have been registered with RegisterActivator.
+func RegisterDefaultBundleActivator(id string) {
+	pluginMtx.Lock()
+	defer pluginMtx.Unlock()
+
+	bundleExtActivator = id
+}
+
+// RegisterStoreFunc sets the function to use for creating storage for bundles
+// in OPA. If no function is registered, OPA will use situational defaults to
+// decide on what sort of storage.Store to create when bundle storage is
+// needed. Typically the default is inmem.Store.
+func RegisterStoreFunc(s func() storage.Store) {
+	pluginMtx.Lock()
+	defer pluginMtx.Unlock()
+
+	BundleExtStore = s
+}
+
+// HasExtension returns true if a default bundle activator has been set
+// with RegisterDefaultBundleActivator.
+func HasExtension() bool {
+	pluginMtx.Lock()
+	defer pluginMtx.Unlock()
+
+	return bundleExtActivator != ""
+}
+
 // Reader contains the reader to load the bundle from.
 type Reader struct {
 	loader                DirectoryLoader
@@ -465,10 +505,11 @@ func NewReader(r io.Reader) *Reader {
 // specified DirectoryLoader.
 func NewCustomReader(loader DirectoryLoader) *Reader {
 	nr := Reader{
-		loader:         loader,
-		metrics:        metrics.New(),
-		files:          make(map[string]FileInfo),
-		sizeLimitBytes: DefaultSizeLimitBytes + 1,
+		loader:          loader,
+		metrics:         metrics.New(),
+		files:           make(map[string]FileInfo),
+		sizeLimitBytes:  DefaultSizeLimitBytes + 1,
+		lazyLoadingMode: HasExtension(),
 	}
 	return &nr
 }
@@ -599,7 +640,7 @@ func (r *Reader) Read() (Bundle, error) {
 			return bundle, err
 		}
 
-		bundle.Data = map[string]interface{}{}
+		bundle.Data = map[string]any{}
 	}
 
 	var modules []ModuleFile
@@ -669,7 +710,7 @@ func (r *Reader) Read() (Bundle, error) {
 				continue
 			}
 
-			var value interface{}
+			var value any
 
 			r.metrics.Timer(metrics.RegoDataParse).Start()
 			err := util.UnmarshalJSON(buf.Bytes(), &value)
@@ -689,7 +730,7 @@ func (r *Reader) Read() (Bundle, error) {
 				continue
 			}
 
-			var value interface{}
+			var value any
 
 			r.metrics.Timer(metrics.RegoDataParse).Start()
 			err := util.Unmarshal(buf.Bytes(), &value)
@@ -722,7 +763,7 @@ func (r *Reader) Read() (Bundle, error) {
 			modulePopts.RegoVersion = regoVersion
 		}
 		r.metrics.Timer(metrics.RegoModuleParse).Start()
-		mf.Parsed, err = ast.ParseModuleWithOpts(mf.Path, string(mf.Raw), modulePopts)
+		mf.Parsed, err = ast.ParseModuleWithOpts(mf.Path, util.ByteSliceToString(mf.Raw), modulePopts)
 		r.metrics.Timer(metrics.RegoModuleParse).Stop()
 		if err != nil {
 			return bundle, err
@@ -778,7 +819,7 @@ func (r *Reader) Read() (Bundle, error) {
 	}
 
 	if r.includeManifestInData {
-		var metadata map[string]interface{}
+		var metadata map[string]any
 
 		b, err := json.Marshal(&bundle.Manifest)
 		if err != nil {
@@ -1069,7 +1110,7 @@ func hashBundleFiles(hash SignatureHasher, b *Bundle) ([]FileInfo, error) {
 			return files, err
 		}
 
-		var result map[string]interface{}
+		var result map[string]any
 		if err := util.Unmarshal(mbs, &result); err != nil {
 			return files, err
 		}
@@ -1093,31 +1134,55 @@ func (b *Bundle) FormatModules(useModulePath bool) error {
 
 // FormatModulesForRegoVersion formats Rego modules to comply with a given Rego version
 func (b *Bundle) FormatModulesForRegoVersion(version ast.RegoVersion, preserveModuleRegoVersion bool, useModulePath bool) error {
+	return b.FormatModulesWithOptions(BundleFormatOptions{
+		RegoVersion:               version,
+		PreserveModuleRegoVersion: preserveModuleRegoVersion,
+		UseModulePath:             useModulePath,
+	})
+}
+
+type BundleFormatOptions struct {
+	RegoVersion               ast.RegoVersion
+	Capabilities              *ast.Capabilities
+	PreserveModuleRegoVersion bool
+	UseModulePath             bool
+}
+
+// FormatModulesWithOptions formats Rego modules with the given options.
+func (b *Bundle) FormatModulesWithOptions(opts BundleFormatOptions) error {
 	var err error
 
 	for i, module := range b.Modules {
-		opts := format.Opts{}
-		if preserveModuleRegoVersion {
-			opts.RegoVersion = module.Parsed.RegoVersion()
-			opts.ParserOptions = &ast.ParserOptions{
-				RegoVersion: opts.RegoVersion,
+		fmtOpts := format.Opts{
+			RegoVersion:  opts.RegoVersion,
+			Capabilities: opts.Capabilities,
+		}
+
+		if module.Parsed != nil {
+			fmtOpts.ParserOptions = &ast.ParserOptions{
+				RegoVersion: module.Parsed.RegoVersion(),
 			}
-		} else {
-			opts.RegoVersion = version
+			if opts.PreserveModuleRegoVersion {
+				fmtOpts.RegoVersion = module.Parsed.RegoVersion()
+			}
+		}
+
+		if fmtOpts.Capabilities == nil {
+			fmtOpts.Capabilities = ast.CapabilitiesForThisVersion(ast.CapabilitiesRegoVersion(fmtOpts.RegoVersion))
 		}
 
 		if module.Raw == nil {
-			module.Raw, err = format.AstWithOpts(module.Parsed, opts)
+			module.Raw, err = format.AstWithOpts(module.Parsed, fmtOpts)
 			if err != nil {
 				return err
 			}
 		} else {
-			path := module.URL
-			if useModulePath {
-				path = module.Path
+			p := module.URL
+			if opts.UseModulePath {
+				p = module.Path
 			}
 
-			module.Raw, err = format.SourceWithOpts(path, module.Raw, opts)
+			module.Raw, err = format.SourceWithOpts(p, module.Raw, fmtOpts)
 			if err != nil {
 				return err
 			}
@@ -1299,14 +1364,14 @@ func (b Bundle) Equal(other Bundle) bool {
 func (b Bundle) Copy() Bundle {
 
 	// Copy data.
-	var x interface{} = b.Data
+	var x any = b.Data
 
 	if err := util.RoundTrip(&x); err != nil {
 		panic(err)
 	}
 
 	if x != nil {
-		b.Data = x.(map[string]interface{})
+		b.Data = x.(map[string]any)
 	}
 
 	// Copy modules.
@@ -1323,7 +1388,7 @@ func (b Bundle) Copy() Bundle {
 	return b
 }
 
-func (b *Bundle) insertData(key []string, value interface{}) error {
+func (b *Bundle) insertData(key []string, value any) error {
 	// Build an object with the full structure for the value
 	obj, err := mktree(key, value)
 	if err != nil {
@@ -1341,13 +1406,13 @@ func (b *Bundle) insertData(key []string, value interface{}) error {
 	return nil
 }
 
-func (b *Bundle) readData(key []string) *interface{} {
+func (b *Bundle) readData(key []string) *any {
 
 	if len(key) == 0 {
 		if len(b.Data) == 0 {
 			return nil
 		}
-		var result interface{} = b.Data
+		var result any = b.Data
 		return &result
 	}
 
@@ -1360,7 +1425,7 @@ func (b *Bundle) readData(key []string) *interface{} {
 			return nil
 		}
 
-		childObj, ok := child.(map[string]interface{})
+		childObj, ok := child.(map[string]any)
 		if !ok {
 			return nil
 		}
@@ -1384,21 +1449,21 @@ func (b *Bundle) Type() string {
 	return SnapshotBundleType
 }
 
-func mktree(path []string, value interface{}) (map[string]interface{}, error) {
+func mktree(path []string, value any) (map[string]any, error) {
 	if len(path) == 0 {
 		// For 0 length path the value is the full tree.
-		obj, ok := value.(map[string]interface{})
+		obj, ok := value.(map[string]any)
 		if !ok {
 			return nil, errors.New("root value must be object")
 		}
 		return obj, nil
 	}
 
-	dir := map[string]interface{}{}
+	dir := map[string]any{}
 	for i := len(path) - 1; i > 0; i-- {
 		dir[path[i]] = value
 		value = dir
-		dir = map[string]interface{}{}
+		dir = map[string]any{}
 	}
 	dir[path[0]] = value
 
@@ -1478,9 +1543,7 @@ func MergeWithRegoVersion(bundles []*Bundle, regoVersion ast.RegoVersion, usePat
 			if err != nil {
 				return nil, err
 			}
-			for k, v := range fileRegoVersions {
-				result.Manifest.FileRegoVersions[k] = v
-			}
+			maps.Copy(result.Manifest.FileRegoVersions, fileRegoVersions)
 		}
 	}
 
@@ -1488,7 +1551,7 @@ func MergeWithRegoVersion(bundles []*Bundle, regoVersion ast.RegoVersion, usePat
 	result.SetRegoVersion(result.RegoVersion(regoVersion))
 
 	if result.Data == nil {
-		result.Data = map[string]interface{}{}
+		result.Data = map[string]any{}
 	}
 
 	result.Manifest.Roots = &roots
@@ -1598,7 +1661,7 @@ func rootContains(root []string, other []string) bool {
 	return true
 }
 
-func insertValue(b *Bundle, path string, value interface{}) error {
+func insertValue(b *Bundle, path string, value any) error {
 	if err := b.insertData(getNormalizedPath(path), value); err != nil {
 		return fmt.Errorf("bundle load failed on %v: %w", path, err)
 	}
@@ -1619,13 +1682,13 @@ func getNormalizedPath(path string) []string {
 	return key
 }
 
-func dfs(value interface{}, path string, fn func(string, interface{}) (bool, error)) error {
+func dfs(value any, path string, fn func(string, any) (bool, error)) error {
 	if stop, err := fn(path, value); err != nil {
 		return err
 	} else if stop {
 		return nil
 	}
-	obj, ok := value.(map[string]interface{})
+	obj, ok := value.(map[string]any)
 	if !ok {
 		return nil
 	}
