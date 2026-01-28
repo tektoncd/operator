@@ -62,6 +62,10 @@ type TektonPrunerListerExpansion interface{}
 // TektonResultLister.
 type TektonResultListerExpansion interface{}
 
+// TektonSchedulerListerExpansion allows custom methods to be added to
+// TektonSchedulerLister.
+type TektonSchedulerListerExpansion interface{}
+
 // TektonTriggerListerExpansion allows custom methods to be added to
 // TektonTriggerLister.
 type TektonTriggerListerExpansion interface{}
