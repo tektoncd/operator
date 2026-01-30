@@ -46,7 +46,7 @@ func filterAndTransformVersionedClusterTask(version string) client.FilterAndTran
 		tfs := []mf.Transformer{
 			replaceKind(KindTask, KindClusterTask),
 			injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
-			common.TaskImages(addonImages),
+			common.TaskImages(ctx, addonImages),
 			setVersionedNames(version),
 		}
 		if err := transformers(ctx, manifest, addon, tfs...); err != nil {

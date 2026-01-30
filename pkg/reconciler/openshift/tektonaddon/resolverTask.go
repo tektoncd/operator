@@ -45,7 +45,7 @@ func filterAndTransformResolverTask() client.FilterAndTransform {
 		addonImages := common.ToLowerCaseKeys(common.ImagesFromEnv(common.AddonsImagePrefix))
 		tfs := []mf.Transformer{
 			injectLabel(labelProviderType, providerTypeRedHat, overwrite, "Task"),
-			common.TaskImages(addonImages),
+			common.TaskImages(ctx, addonImages),
 		}
 		if err := transformers(ctx, manifest, addon, tfs...); err != nil {
 			return nil, err
