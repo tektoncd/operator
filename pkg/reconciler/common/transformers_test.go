@@ -181,7 +181,7 @@ func TestReplaceImages(t *testing.T) {
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 		assertNoError(t, err)
-		newManifest, err := manifest.Transform(TaskImages(images))
+		newManifest, err := manifest.Transform(TaskImages(context.Background(), images))
 		assertNoError(t, err)
 		assertTaskImage(t, newManifest.Resources(), "push", image)
 		assertTaskImage(t, newManifest.Resources(), "build", "$(inputs.params.BUILDER_IMAGE)")
@@ -212,7 +212,7 @@ func TestReplaceImages(t *testing.T) {
 
 		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 		assertNoError(t, err)
-		newManifest, err := manifest.Transform(TaskImages(images))
+		newManifest, err := manifest.Transform(TaskImages(context.Background(), images))
 		assertNoError(t, err)
 		assertParamHasImage(t, newManifest.Resources(), "BUILDER_IMAGE", image)
 		assertTaskImage(t, newManifest.Resources(), "push", "buildah")

@@ -48,7 +48,7 @@ func filterAndTransformClusterTask() client.FilterAndTransform {
 		tfs := []mf.Transformer{
 			replaceKind(KindTask, KindClusterTask),
 			injectLabel(labelProviderType, providerTypeRedHat, overwrite, "ClusterTask"),
-			common.TaskImages(addonImages),
+			common.TaskImages(ctx, addonImages),
 		}
 		if err := transformers(ctx, manifest, addon, tfs...); err != nil {
 			return nil, err
