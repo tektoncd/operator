@@ -20,6 +20,7 @@ import (
 	k8sInstallerSet "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	openshiftManualApprovalGate "github.com/tektoncd/operator/pkg/reconciler/openshift/manualapprovalgate"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/openshiftpipelinesascode"
+	openshiftSyncerService "github.com/tektoncd/operator/pkg/reconciler/openshift/syncerservice"
 	openshiftAddon "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon"
 	openshiftChain "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonchain"
 	openshiftConfig "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
@@ -96,6 +97,10 @@ var (
 		platform.ControllerMulticlusterProxyAAE: injection.NamedControllerConstructor{
 			Name:                  string(platform.ControllerMulticlusterProxyAAE),
 			ControllerConstructor: openshiftMulticlusterProxyAAE.NewController,
+		},
+		platform.ControllerSyncerService: injection.NamedControllerConstructor{
+			Name:                  string(platform.ControllerSyncerService),
+			ControllerConstructor: openshiftSyncerService.NewController,
 		},
 	}
 )

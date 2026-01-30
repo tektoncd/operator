@@ -36,6 +36,10 @@ func (c *FakeOperatorV1alpha1) OpenShiftPipelinesAsCodes() v1alpha1.OpenShiftPip
 	return newFakeOpenShiftPipelinesAsCodes(c)
 }
 
+func (c *FakeOperatorV1alpha1) SyncerServices() v1alpha1.SyncerServiceInterface {
+	return newFakeSyncerServices(c)
+}
+
 func (c *FakeOperatorV1alpha1) TektonAddons() v1alpha1.TektonAddonInterface {
 	return newFakeTektonAddons(c)
 }

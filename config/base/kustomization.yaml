@@ -26,6 +26,7 @@ resources:
 - 300-operator_v1alpha1_pruner_crd.yaml
 - 300-operator_v1alpha1_scheduler_crd.yaml
 - 300-operator_v1alpha1_multiclusterproxyaae_crd.yaml
+- 300-operator_v1alpha1_syncerservice_crd.yaml
 - config-logging.yaml
 - config-observability.yaml
 - tekton-config-defaults.yaml

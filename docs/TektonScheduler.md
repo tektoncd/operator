@@ -52,6 +52,8 @@ spec:
   multi-cluster-role: Hub
 ```
 
+> **Note:** When `multi-cluster-role: Hub` is configured, the operator automatically deploys the [syncer-service](https://github.com/openshift-pipelines/syncer-service) component for multi-cluster synchronization.
+
 ### Spoke Cluster
 
 ```yaml

@@ -979,6 +979,8 @@ spec:
                   name: IMAGE_SCHEDULER_MANAGER
                 - image: registry.redhat.io/openshift-pipelines/pipelines-scheduler-rhel9@"
                   name: IMAGE_SCHEDULER_WEBHOOK
+                - image: registry.redhat.io/openshift-pipelines/pipelines-syncer-service-rhel9@"
+                  name: IMAGE_SYNCER_SERVICE_WORKLOAD_CONTROLLER
                 image: registry.redhat.io/openshift-pipelines/pipelines-rhel9-operator@
                 imagePullPolicy: Always
                 name: openshift-pipelines-operator-lifecycle
@@ -1222,6 +1224,8 @@ spec:
     name: IMAGE_SCHEDULER_MANAGER
   - image: registry.redhat.io/openshift-pipelines/pipelines-scheduler-rhel9@"
     name: IMAGE_SCHEDULER_WEBHOOK
+  - image: registry.redhat.io/openshift-pipelines/pipelines-syncer-service-rhel9@"
+    name: IMAGE_SYNCER_SERVICE_WORKLOAD_CONTROLLER
   - image: registry.redhat.io/ubi9/openjdk-17@sha256:d334d3c36867a1eef7daa598af10b5f620394ca0234b12e71b8b7e99bda9224e
     name: IMAGE_ADDONS_MAVEN_GOALS
   - image: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-rhel9@
