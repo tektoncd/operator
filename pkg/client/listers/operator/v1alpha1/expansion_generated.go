@@ -26,6 +26,10 @@ type ManualApprovalGateListerExpansion interface{}
 // OpenShiftPipelinesAsCodeLister.
 type OpenShiftPipelinesAsCodeListerExpansion interface{}
 
+// SyncerServiceListerExpansion allows custom methods to be added to
+// SyncerServiceLister.
+type SyncerServiceListerExpansion interface{}
+
 // TektonAddonListerExpansion allows custom methods to be added to
 // TektonAddonLister.
 type TektonAddonListerExpansion interface{}

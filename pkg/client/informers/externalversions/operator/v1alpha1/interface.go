@@ -28,6 +28,8 @@ type Interface interface {
 	ManualApprovalGates() ManualApprovalGateInformer
 	// OpenShiftPipelinesAsCodes returns a OpenShiftPipelinesAsCodeInformer.
 	OpenShiftPipelinesAsCodes() OpenShiftPipelinesAsCodeInformer
+	// SyncerServices returns a SyncerServiceInformer.
+	SyncerServices() SyncerServiceInformer
 	// TektonAddons returns a TektonAddonInformer.
 	TektonAddons() TektonAddonInformer
 	// TektonChains returns a TektonChainInformer.
@@ -73,6 +75,11 @@ func (v *version) ManualApprovalGates() ManualApprovalGateInformer {
 // OpenShiftPipelinesAsCodes returns a OpenShiftPipelinesAsCodeInformer.
 func (v *version) OpenShiftPipelinesAsCodes() OpenShiftPipelinesAsCodeInformer {
 	return &openShiftPipelinesAsCodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// SyncerServices returns a SyncerServiceInformer.
+func (v *version) SyncerServices() SyncerServiceInformer {
+	return &syncerServiceInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // TektonAddons returns a TektonAddonInformer.

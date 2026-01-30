@@ -22,6 +22,8 @@ type ManualApprovalGateExpansion interface{}
 
 type OpenShiftPipelinesAsCodeExpansion interface{}
 
+type SyncerServiceExpansion interface{}
+
 type TektonAddonExpansion interface{}
 
 type TektonChainExpansion interface{}

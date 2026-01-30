@@ -132,6 +132,9 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 	case v1alpha1.MultiClusterProxyAAEResourceName:
 		var proxyAAE v1alpha1.TektonMulticlusterProxyAAE
 		return AppendTarget(ctx, ctrl.Manifest, &proxyAAE)
+	case v1alpha1.SyncerServiceResourceName:
+		var syncerService v1alpha1.SyncerService
+		return AppendTarget(ctx, ctrl.Manifest, &syncerService)
 	}
 
 	return nil

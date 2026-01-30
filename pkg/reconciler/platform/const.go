@@ -29,6 +29,7 @@ const (
 	ControllerTektonPruner         ControllerName = "tektonpruner"
 	ControllerTektonScheduler      ControllerName = "tektonscheduler"
 	ControllerMulticlusterProxyAAE ControllerName = "tektonmulticlusterproxyaae"
+	ControllerSyncerService        ControllerName = "syncerservice"
 	EnvControllerNames             string         = "CONTROLLER_NAMES"
 	EnvSharedMainName              string         = "UNIQUE_PROCESS_NAME"
 )
