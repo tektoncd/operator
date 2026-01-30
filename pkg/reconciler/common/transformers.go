@@ -55,6 +55,7 @@ const (
 	PrunerImagePrefix               = "IMAGE_PRUNER_"
 	SchedulerImagePrefix            = "IMAGE_SCHEDULER_"
 	MulticlusterProxyAAEImagePrefix = "IMAGE_MULTICLUSTERPROXYAAE_"
+	SyncerServiceImagePrefix        = "IMAGE_SYNCER_SERVICE_"
 	ResultsImagePrefix              = "IMAGE_RESULTS_"
 	HubImagePrefix                  = "IMAGE_HUB_"
 	DashboardImagePrefix            = "IMAGE_DASHBOARD_"

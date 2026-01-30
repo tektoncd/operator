@@ -30,6 +30,7 @@ type OperatorV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ManualApprovalGatesGetter
 	OpenShiftPipelinesAsCodesGetter
+	SyncerServicesGetter
 	TektonAddonsGetter
 	TektonChainsGetter
 	TektonConfigsGetter
@@ -55,6 +56,10 @@ func (c *OperatorV1alpha1Client) ManualApprovalGates() ManualApprovalGateInterfa
 
 func (c *OperatorV1alpha1Client) OpenShiftPipelinesAsCodes() OpenShiftPipelinesAsCodeInterface {
 	return newOpenShiftPipelinesAsCodes(c)
+}
+
+func (c *OperatorV1alpha1Client) SyncerServices() SyncerServiceInterface {
+	return newSyncerServices(c)
 }
 
 func (c *OperatorV1alpha1Client) TektonAddons() TektonAddonInterface {
