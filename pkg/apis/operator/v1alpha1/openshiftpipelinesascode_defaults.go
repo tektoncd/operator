@@ -41,6 +41,19 @@ func (pac *OpenShiftPipelinesAsCode) SetDefaults(ctx context.Context) {
 	pac.Spec.PACSettings.setPACDefaults(logger)
 }
 
+// settingsEqual compares two Settings maps for equality
+func settingsEqual(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if bv, ok := b[k]; !ok || v != bv {
+			return false
+		}
+	}
+	return true
+}
+
 func (set *PACSettings) setPACDefaults(logger *zap.SugaredLogger) {
 	if set.Settings == nil {
 		set.Settings = map[string]string{}
@@ -55,7 +68,11 @@ func (set *PACSettings) setPACDefaults(logger *zap.SugaredLogger) {
 	// Remove tektonhub catalog to only keep artifacthub
 	defaultPacSettings.HubCatalogs.Delete("tektonhub")
 
-	set.Settings = ConvertPacStructToConfigMap(&defaultPacSettings)
+	// Only reassign Settings map if values actually changed
+	newSettings := ConvertPacStructToConfigMap(&defaultPacSettings)
+	if !settingsEqual(set.Settings, newSettings) {
+		set.Settings = newSettings
+	}
 	setAdditionalPACControllerDefault(set.AdditionalPACControllers)
 }
 
