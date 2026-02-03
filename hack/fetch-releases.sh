@@ -201,7 +201,8 @@ release_yaml_pac() {
     local version=$3
 
     ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
-    dirPath=${ko_data}/tekton-addon/pipelines-as-code/${version}
+    comp_dir=${ko_data}/tekton-addon/pipelines-as-code
+    dirPath=${comp_dir}/${version}
 
     if [[ ${version} == "stable" ||  ${version} == "nightly" ]]; then
       url="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/${version}/release.yaml"
@@ -219,21 +220,22 @@ release_yaml_pac() {
             echo ""
             return
         fi
-     else
-         rm -rf ${dirPath} || true
-         mkdir -p ${dirPath} || true
-
-         http_response=$(curl -s -o ${dest} -w "%{http_code}" ${url})
-         echo url: ${url}
-
-         if [[ $http_response != "200" ]]; then
-             echo "Error: failed to get $comp yaml, status code: $http_response"
-             exit 1
-         fi
-
-         echo "Info: Added $comp/$fileName:$version release yaml !!"
-         echo ""
      fi
+
+     # Before adding releases, remove existing version directories (same pattern as release_yaml)
+     rm -rf ${comp_dir}/*
+     mkdir -p ${dirPath} || true
+
+     http_response=$(curl -s -o ${dest} -w "%{http_code}" ${url})
+     echo url: ${url}
+
+     if [[ $http_response != "200" ]]; then
+         echo "Error: failed to get $comp yaml, status code: $http_response"
+         exit 1
+     fi
+
+     echo "Info: Added $comp/$fileName:$version release yaml !!"
+     echo ""
 
     runtime=( go java nodejs python generic )
     for run in "${runtime[@]}"
