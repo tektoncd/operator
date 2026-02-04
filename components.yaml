@@ -3,7 +3,7 @@ chains:
   version: v0.26.0
 dashboard:
   github: tektoncd/dashboard
-  version: v0.64.0
+  version: v0.65.0
 hub:
   github: tektoncd/hub
   version: v1.23.6
