@@ -77,8 +77,8 @@ func getlinks(baseURL string) []console.CLIDownloadLink {
 		{"IBM Z", "tkn/tkn-linux-s390x.tar.gz"},
 		{"Mac x86_64", "tkn/tkn-macos-amd64.tar.gz"},
 		{"Mac ARM 64", "tkn/tkn-macos-arm64.tar.gz"},
-		{"Windows x86_64", "tkn/tkn-windows-amd64.zip"},
-		{"Windows ARM 64", "tkn/tkn-windows-arm64.zip"},
+		{"Windows x86_64", "tkn/tkn-windows-amd64.tar.gz"},
+		{"Windows ARM 64", "tkn/tkn-windows-arm64.tar.gz"},
 	}
 	links := []console.CLIDownloadLink{}
 	for _, platformURL := range platformURLs {
