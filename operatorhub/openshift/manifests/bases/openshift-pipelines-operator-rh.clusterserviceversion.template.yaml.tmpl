@@ -19,7 +19,7 @@ metadata:
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "false"
     features.operators.openshift.io/csi: "false"
-    operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev", "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev", "tektonhubs.operator.tekton.dev", "tektonresults.operator.tekton.dev", "tektonchains.operator.tekton.dev", "openshiftpipelinesascodes.operator.tekton.dev", "manualapprovalgates.operator.tekton.dev","tektonpruners.operator.tekton.dev","tektonschedulers.operator.tekton.dev"]'
+    operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev", "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev", "tektonhubs.operator.tekton.dev", "tektonresults.operator.tekton.dev", "tektonchains.operator.tekton.dev", "openshiftpipelinesascodes.operator.tekton.dev", "manualapprovalgates.operator.tekton.dev","tektonpruners.operator.tekton.dev","tektonschedulers.operator.tekton.dev","tektonmulticlusterproxyaaes.operator.tekton.dev"]'
     repository: https://github.com/tektoncd/operator
     support: Red Hat
   labels:
@@ -49,6 +49,9 @@ spec:
         version: v1alpha1
       - kind: openshiftpipelinesascodes
         name: 'pipelinesascode'
+        version: v1alpha1
+      - kind: tektonmulticlusterproxyaaes
+        name: 'multicluster-proxy-aae'
         version: v1alpha1
       specDescriptors:
       - description: Namespace where Tekton components are installed
@@ -278,6 +281,27 @@ spec:
           x-descriptors:
             - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
+    - description: Represents an installation of the multicluster-proxy-aae component for multi-cluster
+      displayName: Tekton Multicluster Proxy AAE
+      kind: TektonMulticlusterProxyAAE
+      name: tektonmulticlusterproxyaaes.operator.tekton.dev
+      resources:
+        - kind: tektoninstallersets
+          name: ''
+          version: v1alpha1
+      specDescriptors:
+        - description: Namespace where Tekton Multicluster Proxy AAE is installed
+          displayName: Target Namespace
+          path: targetNamespace
+          x-descriptors:
+            - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+        - description: The version of Tekton Multicluster Proxy AAE installed
+          displayName: Version
+          path: version
+          x-descriptors:
+            - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
     - description: This CustomResourceDefinition (CRD) is used internally by the other OpenShift Pipelines CRDs to maintain the lifecycle of OpenShift Pipelines Components
       displayName: Tekton Installer Set
       kind: TektonInstallerSet
@@ -359,6 +383,7 @@ spec:
     - Manual Approval Gate (tech-preview): {{ with index .Versions "manual-approval-gate"}}{{ .Version }}{{end}}
     - Tekton Pruner: {{ with index .Versions "pruner"}}{{ .Version }}{{end}}
     - Tekton Scheduler (tech-preview): {{ with index .Versions "scheduler"}}{{ .Version }}{{end}}
+    - Multicluster Proxy AAE (tech-preview): {{ with index .Versions "multicluster-proxy-aae"}}{{ .Version }}{{end}}
 
     ## Getting Started
 

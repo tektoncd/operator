@@ -38,7 +38,7 @@ spec:
         image: ko://github.com/tektoncd/operator/cmd/openshift/operator
         args:
         - "-controllers"
-        - "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonaddon,tektonresult,openshiftpipelinesascode,manualapprovalgate,tektonpruner,tektonscheduler"
+        - "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonaddon,tektonresult,openshiftpipelinesascode,manualapprovalgate,tektonpruner,tektonscheduler,tektonmulticlusterproxyaae"
         - "-unique-process-name"
         - "tekton-operator-lifecycle"
         imagePullPolicy: Always

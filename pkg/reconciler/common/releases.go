@@ -106,6 +106,8 @@ func ComponentDir(instance v1alpha1.TektonComponent) string {
 		return filepath.Join(koDataDir, "pruner")
 	case *v1alpha1.TektonScheduler:
 		return filepath.Join(koDataDir, "tekton-scheduler")
+	case *v1alpha1.TektonMulticlusterProxyAAE:
+		return filepath.Join(koDataDir, "tekton-multicluster-proxy-aae")
 	}
 	return ""
 }

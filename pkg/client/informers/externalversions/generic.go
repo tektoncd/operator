@@ -69,6 +69,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1alpha1().TektonHubs().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tektoninstallersets"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1alpha1().TektonInstallerSets().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("tektonmulticlusterproxyaaes"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1alpha1().TektonMulticlusterProxyAAEs().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tektonpipelines"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1alpha1().TektonPipelines().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tektonpruners"):

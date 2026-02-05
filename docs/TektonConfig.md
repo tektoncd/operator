@@ -24,6 +24,8 @@ Other than the above components depending on the platform operator also provides
 - On OpenShift
   - [TektonAddon](./TektonAddon.md)
   - [OpenShiftPipelinesAsCode](./OpenShiftPipelinesAsCode.md)
+- When scheduler multi-cluster is enabled with Hub role (both Kubernetes and OpenShift)
+  - [TektonMulticlusterProxyAAE](./TektonMulticlusterProxyAAE.md)
 
 The TektonConfig CR provides the following features
 
@@ -416,6 +418,38 @@ By default pruner job will be created from the global pruner config (`spec.prune
 > ### Note:
 >
 > if a global value is not present the following values will be consider as default value <br> > `resources: pipelinerun` <br> > `keep: 100` <br>
+
+### Scheduler
+
+Scheduler section allows you to install and manage the [Tekton Scheduler](./TektonScheduler.md) through TektonConfig. The Scheduler component uses [Kueue](https://kueue.sigs.k8s.io) and [cert-manager](https://github.com/cert-manager/cert-manager); you must install Kueue and cert-manager CRDs before enabling the scheduler. For full pre-requisites and multi-cluster configuration details, see [Tekton Scheduler](./TektonScheduler.md).
+
+Scheduler can be enabled by setting `disabled` to `false` in the scheduler section. If you are working with multi-cluster pipelines, you can enable multi-cluster from the scheduler config. In a multi-cluster environment a cluster can play the role of **Hub** or **Spoke**. The TektonConfig settings for Scheduler for Hub and Spoke are defined below.
+
+#### Hub cluster
+
+```yaml
+scheduler:
+  disabled: false
+  multi-cluster-disabled: false
+  multi-cluster-role: Hub
+  options: {}
+```
+
+#### Spoke cluster
+
+```yaml
+scheduler:
+  disabled: false
+  multi-cluster-disabled: false
+  multi-cluster-role: Spoke
+  options: {}
+```
+
+- `disabled`: set to `false` to enable the Scheduler component (default is `true`).
+- `multi-cluster-disabled`: when `false`, multi-cluster features are enabled (default is `true`).
+- `multi-cluster-role`: `Hub` or `Spoke`. When set to **Hub**, TektonConfig also creates and manages the [TektonMulticlusterProxyAAE](./TektonMulticlusterProxyAAE.md) component automatically (the proxy is used to communicate with spoke clusters, e.g. for [Kueue MultiKueue](https://kueue.sigs.k8s.io/docs/concepts/multikueue/)). On spoke clusters use `Spoke`; the proxy is not installed there.
+
+See [TektonMulticlusterProxyAAE](./TektonMulticlusterProxyAAE.md) for details on the proxy component and its requirements.
 
 ### Addon
 

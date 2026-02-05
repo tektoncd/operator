@@ -24,6 +24,7 @@ import (
 	openshiftChain "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonchain"
 	openshiftConfig "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
 	openshiftHub "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonhub"
+	openshiftMulticlusterProxyAAE "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonmulticlusterproxyaae"
 	openshiftPipeline "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
 	openshiftPruner "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpruner"
 	openshiftResult "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonresult"
@@ -91,6 +92,10 @@ var (
 		platform.ControllerTektonScheduler: injection.NamedControllerConstructor{
 			Name:                  string(platform.ControllerTektonScheduler),
 			ControllerConstructor: openshiftScheduler.NewController,
+		},
+		platform.ControllerMulticlusterProxyAAE: injection.NamedControllerConstructor{
+			Name:                  string(platform.ControllerMulticlusterProxyAAE),
+			ControllerConstructor: openshiftMulticlusterProxyAAE.NewController,
 		},
 	}
 )

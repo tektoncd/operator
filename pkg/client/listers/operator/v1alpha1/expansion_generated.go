@@ -50,6 +50,10 @@ type TektonHubListerExpansion interface{}
 // TektonInstallerSetLister.
 type TektonInstallerSetListerExpansion interface{}
 
+// TektonMulticlusterProxyAAEListerExpansion allows custom methods to be added to
+// TektonMulticlusterProxyAAELister.
+type TektonMulticlusterProxyAAEListerExpansion interface{}
+
 // TektonPipelineListerExpansion allows custom methods to be added to
 // TektonPipelineLister.
 type TektonPipelineListerExpansion interface{}

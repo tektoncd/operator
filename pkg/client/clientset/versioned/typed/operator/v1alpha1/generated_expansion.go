@@ -34,6 +34,8 @@ type TektonHubExpansion interface{}
 
 type TektonInstallerSetExpansion interface{}
 
+type TektonMulticlusterProxyAAEExpansion interface{}
+
 type TektonPipelineExpansion interface{}
 
 type TektonPrunerExpansion interface{}

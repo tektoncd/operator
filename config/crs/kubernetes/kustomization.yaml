@@ -12,3 +12,4 @@ resources:
 - manualapprovalgate/operator_v1alpha1_manualapprovalgate_cr.yaml
 - pruner/operator_v1alpha1_pruner_cr.yaml
 - scheduler/operator_v1alpha1_scheduler_cr.yaml
+- multicluster-proxy-aae/operator_v1alpha1_multiclusterproxyaae_cr.yaml

@@ -26,6 +26,7 @@ import (
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chain"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/multiclusterproxyaae"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pruner"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/result"
@@ -81,6 +82,9 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 			return err
 		}
 		if err := pipeline.EnsureTektonPipelineCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines()); err != nil {
+			return err
+		}
+		if err := multiclusterproxyaae.EnsureTektonMulticlusterProxyAAECRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonMulticlusterProxyAAEs()); err != nil {
 			return err
 		}
 	}
@@ -201,6 +205,48 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPruner %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
+	}
+
+	// Ensure TektonMulticlusterProxyAAE CR (conditional based on scheduler multi-cluster config).
+	// Run before EnsureSchedulerComponent so the CR is created even when scheduler component
+	// is blocked (e.g. cert-manager or Kueue not installed). Multicluster-proxy-aae is deployed only when:
+	// - Scheduler is enabled (not disabled)
+	// - multi-cluster-disabled: false
+	// - multi-cluster-role: Hub
+	proxyAAEEnabled := multiclusterproxyaae.IsMulticlusterProxyAAEEnabled(tc)
+	logger.Infow("TektonMulticlusterProxyAAE enablement",
+		"enabled", proxyAAEEnabled,
+		"schedulerDisabled", tc.Spec.Scheduler.IsDisabled(),
+		"multiClusterDisabled", tc.Spec.Scheduler.MultiClusterDisabled,
+		"multiClusterRole", tc.Spec.Scheduler.MultiClusterRole)
+	if proxyAAEEnabled {
+		proxyCR := multiclusterproxyaae.GetTektonMulticlusterProxyAAECR(tc, r.operatorVersion)
+		logger.Debug("Ensuring TektonMulticlusterProxyAAE CR exists (multi-cluster enabled with Hub role)")
+		if _, err := multiclusterproxyaae.EnsureTektonMulticlusterProxyAAEExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonMulticlusterProxyAAEs(), proxyCR); err != nil {
+			if err == v1alpha1.RECONCILE_AGAIN_ERR {
+				return v1alpha1.REQUEUE_EVENT_AFTER
+			}
+			errMsg := fmt.Sprintf("TektonMulticlusterProxyAAE: %s", err.Error())
+			logger.Errorw("Failed to ensure TektonMulticlusterProxyAAE exists", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		logger.Debug("TektonMulticlusterProxyAAE CR reconciled successfully")
+	} else {
+		logger.Debugw("Ensuring TektonMulticlusterProxyAAE CR doesn't exist",
+			"schedulerDisabled", tc.Spec.Scheduler.IsDisabled(),
+			"multiClusterDisabled", tc.Spec.Scheduler.MultiClusterDisabled,
+			"multiClusterRole", tc.Spec.Scheduler.MultiClusterRole)
+		if err := multiclusterproxyaae.EnsureTektonMulticlusterProxyAAECRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonMulticlusterProxyAAEs()); err != nil {
+			if err == v1alpha1.RECONCILE_AGAIN_ERR {
+				return v1alpha1.REQUEUE_EVENT_AFTER
+			}
+			errMsg := fmt.Sprintf("TektonMulticlusterProxyAAE: %s", err.Error())
+			logger.Errorw("Failed to ensure TektonMulticlusterProxyAAE has been deleted", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		logger.Debug("TektonMulticlusterProxyAAE CR removal reconciled successfully")
 	}
 
 	if err := r.EnsureSchedulerComponent(ctx, tc); err != nil {

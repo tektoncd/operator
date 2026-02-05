@@ -158,5 +158,13 @@ spec:
           name: tekton-results-api-service
           namespace: openshift-pipelines
           port: 8080
+    - type: Service
+      alias: multicluster-proxy
+      endpoint:
+        type: Service
+        service:
+          name: proxy-aae
+          namespace: openshift-pipelines
+          port: 80
   i18n:
     loadType: Preload   # options: Preload, Lazy
