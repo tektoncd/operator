@@ -976,7 +976,7 @@ spec:
                 - name: IMAGE_ADDONS_PREPARE_AND_RUN
                   value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
                 - image: registry.redhat.io/openshift-pipelines/pipelines-scheduler-rhel9@"
-                  name: IMAGE_SCHEDULER_CONTROLLER
+                  name: IMAGE_SCHEDULER_MANAGER
                 - image: registry.redhat.io/openshift-pipelines/pipelines-scheduler-rhel9@"
                   name: IMAGE_SCHEDULER_WEBHOOK
                 image: registry.redhat.io/openshift-pipelines/pipelines-rhel9-operator@
@@ -1219,7 +1219,7 @@ spec:
   - image: registry.redhat.io/openshift-pipelines/pipelines-results-retention-policy-agent-rhel9@
     name: IMAGE_RESULTS_RETENTION_POLICY_AGENT
   - image: registry.redhat.io/openshift-pipelines/pipelines-scheduler-rhel9@"
-    name: IMAGE_SCHEDULER_CONTROLLER
+    name: IMAGE_SCHEDULER_MANAGER
   - image: registry.redhat.io/openshift-pipelines/pipelines-scheduler-rhel9@"
     name: IMAGE_SCHEDULER_WEBHOOK
   - image: registry.redhat.io/ubi9/openjdk-17@sha256:d334d3c36867a1eef7daa598af10b5f620394ca0234b12e71b8b7e99bda9224e
