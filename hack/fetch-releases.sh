@@ -427,6 +427,8 @@ main() {
   # Tekton Scheduler
   release_yaml_github scheduler
 
+  # Tekton Multicluster Proxy AAE
+  release_yaml_github multicluster-proxy-aae
   echo updated payload tree
   find cmd/${TARGET}/operator/kodata
 }

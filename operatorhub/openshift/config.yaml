@@ -262,6 +262,13 @@ image-substitutions:
         envKeys:
           - IMAGE_SCHEDULER_MANAGER
           - IMAGE_SCHEDULER_WEBHOOK
+- image: registry.redhat.io/openshift-pipelines/pipelines-multicluster-proxy-aae-rhel9@
+  replaceLocations:
+    envTargets:
+      - deploymentName: openshift-pipelines-operator
+        containerName: openshift-pipelines-operator-lifecycle
+        envKeys:
+          - IMAGE_MULTICLUSTERPROXYAAE_PROXY_SERVER
 
 - image: registry.redhat.io/openshift-pipelines/pipelines-pruner-webhook-rhel9@
   replaceLocations:

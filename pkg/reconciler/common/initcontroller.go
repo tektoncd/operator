@@ -129,6 +129,9 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 	case v1alpha1.TektonSchedulerResourceName:
 		var scheduler v1alpha1.TektonScheduler
 		return AppendTarget(ctx, ctrl.Manifest, &scheduler)
+	case v1alpha1.MultiClusterProxyAAEResourceName:
+		var proxyAAE v1alpha1.TektonMulticlusterProxyAAE
+		return AppendTarget(ctx, ctrl.Manifest, &proxyAAE)
 	}
 
 	return nil
