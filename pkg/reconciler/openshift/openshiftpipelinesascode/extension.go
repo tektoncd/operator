@@ -28,6 +28,10 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
@@ -70,6 +74,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		installerSetClient:   client.NewInstallerSetClient(tisClient, operatorVer, "pipelines-as-code-ext", v1alpha1.KindOpenShiftPipelinesAsCode, nil),
 		pacManifest:          &pacManifest,
 		pipelineRunTemplates: prTemplates,
+		kubeClientSet:        kubeclient.Get(ctx),
 	}
 }
 
@@ -77,10 +82,13 @@ type openshiftExtension struct {
 	installerSetClient   *client.InstallerSetClient
 	pacManifest          *mf.Manifest
 	pipelineRunTemplates *mf.Manifest
+	kubeClientSet        kubernetes.Interface
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return nil
+	return []mf.Transformer{
+		injectNamespaceOwnerForPACWebhook(oe.kubeClientSet, comp.GetSpec().GetTargetNamespace()),
+	}
 }
 func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil
@@ -110,5 +118,40 @@ func extFilterAndTransform() client.FilterAndTransform {
 			return nil, err
 		}
 		return &prTemplates, nil
+	}
+}
+
+// injectNamespaceOwnerForPACWebhook adds namespace ownerReference to PAC webhook
+// to ensure proper cleanup when namespace is deleted (SRVKP-8901)
+func injectNamespaceOwnerForPACWebhook(kubeClient kubernetes.Interface, targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := u.GetKind()
+		name := u.GetName()
+
+		// Only apply to PAC ValidatingWebhookConfiguration
+		if kind != "ValidatingWebhookConfiguration" || name != "validation.pipelinesascode.tekton.dev" {
+			return nil
+		}
+
+		// Get target namespace (where PAC webhook is deployed)
+		ns, err := kubeClient.CoreV1().Namespaces().Get(context.TODO(), targetNamespace, metav1.GetOptions{})
+		if err != nil {
+			// Log but don't fail - webhook will work without ownerRef
+			return nil
+		}
+
+		// Set namespace as owner
+		// Note: BlockOwnerDeletion and Controller flags are omitted as they require additional RBAC
+		// permissions to set finalizers on namespaces, which is a security concern.
+		u.SetOwnerReferences([]metav1.OwnerReference{
+			{
+				APIVersion: "v1",
+				Kind:       "Namespace",
+				Name:       ns.Name,
+				UID:        ns.UID,
+			},
+		})
+
+		return nil
 	}
 }
