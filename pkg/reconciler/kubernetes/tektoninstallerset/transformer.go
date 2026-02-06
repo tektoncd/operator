@@ -17,9 +17,12 @@ limitations under the License.
 package tektoninstallerset
 
 import (
+	"context"
+
 	mf "github.com/manifestival/manifestival"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/client-go/kubernetes"
 )
 
 func injectOwner(owner []v1.OwnerReference) mf.Transformer {
@@ -47,6 +50,39 @@ func injectOwnerForCRDsAndNamespace(owner []v1.OwnerReference) mf.Transformer {
 			return nil
 		}
 		u.SetOwnerReferences(owner)
+		return nil
+	}
+}
+
+// injectNamespaceOwnerForOperatorWebhooks sets namespace as owner for operator webhooks
+// to ensure they are garbage collected when the namespace is deleted (SRVKP-8901).
+// Only targets proxy.operator.tekton.dev and namespace.operator.tekton.dev webhooks.
+func injectNamespaceOwnerForOperatorWebhooks(kubeClient kubernetes.Interface, targetNamespace string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := u.GetKind()
+		name := u.GetName()
+
+		// Only apply to operator webhooks, not pipeline/triggers/PAC webhooks
+		if (kind == "MutatingWebhookConfiguration" && name == "proxy.operator.tekton.dev") ||
+			(kind == "ValidatingWebhookConfiguration" && name == "namespace.operator.tekton.dev") {
+
+			// Get target namespace (where webhooks are deployed, not where operator runs)
+			ns, err := kubeClient.CoreV1().Namespaces().Get(context.TODO(), targetNamespace, v1.GetOptions{})
+			if err != nil {
+				// Log but don't fail - webhook will work without ownerRef
+				return nil
+			}
+
+			// Set namespace as owner (without BlockOwnerDeletion/Controller to avoid RBAC issues)
+			u.SetOwnerReferences([]v1.OwnerReference{
+				{
+					APIVersion: "v1",
+					Kind:       "Namespace",
+					Name:       ns.Name,
+					UID:        ns.UID,
+				},
+			})
+		}
 		return nil
 	}
 }

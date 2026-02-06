@@ -91,10 +91,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	// If installerSet has not set any owner then CRDs will
 	// not have any owner
 	installerSetOwner := installerSet.GetOwnerReferences()
+	targetNamespace := installerSet.GetAnnotations()[v1alpha1.TargetNamespaceKey]
 	logger.Debug("Transforming manifest with ownership information")
 	installManifests, err = installManifests.Transform(
 		injectOwner(getReference(installerSet)),
 		injectOwnerForCRDsAndNamespace(installerSetOwner),
+		injectNamespaceOwnerForOperatorWebhooks(r.kubeClientSet, targetNamespace),
 	)
 	if err != nil {
 		logger.Errorw("Failed to transform manifest with ownership information", "error", err)
