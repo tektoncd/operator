@@ -17,7 +17,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: openshift-pipelines-operator-read
-  namespace: openshift-operators
 rules:
   - apiGroups:
       - ""
@@ -34,7 +33,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: openshift-pipelines-operator-prometheus-k8s-read-binding
-  namespace: openshift-operators
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -52,15 +50,11 @@ metadata:
   annotations:
     networkoperator.openshift.io/ignore-errors: ""
   name: openshift-pipelines-operator-monitor
-  namespace: openshift-operators
 spec:
   endpoints:
     - interval: 10s
       port: http-metrics
   jobLabel: name
-  namespaceSelector:
-    matchNames:
-      - openshift-operators
   selector:
     matchLabels:
       name: openshift-pipelines-operator
