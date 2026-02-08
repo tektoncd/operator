@@ -113,7 +113,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		if err != nil {
 			return err
 		}
-		if err := oe.installerSetClient.PostSet(ctx, comp, manifest, filterAndTransform()); err != nil {
+		if err := oe.installerSetClient.PostSet(ctx, comp, manifest, filterAndTransformMonitoring(comp)); err != nil {
 			return err
 		}
 	} else {
@@ -167,6 +167,24 @@ func postManifest() (*mf.Manifest, error) {
 func filterAndTransform() client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		if err := common.Transform(ctx, manifest, comp); err != nil {
+			return nil, err
+		}
+		return manifest, nil
+	}
+}
+
+// filterAndTransformMonitoring applies ServiceMonitor namespace updates to monitoring manifests
+func filterAndTransformMonitoring(comp v1alpha1.TektonComponent) client.FilterAndTransform {
+	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
+		if err := common.Transform(ctx, manifest, comp); err != nil {
+			return nil, err
+		}
+		// Apply ServiceMonitor namespace transformer specifically for monitoring manifests
+		// This fixes hardcoded namespace in openshift-monitoring ServiceMonitors
+		tfs := []mf.Transformer{
+			occommon.UpdateServiceMonitorTargetNamespace(comp.GetSpec().GetTargetNamespace()),
+		}
+		if err := common.Transform(ctx, manifest, comp, tfs...); err != nil {
 			return nil, err
 		}
 		return manifest, nil
