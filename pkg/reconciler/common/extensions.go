@@ -31,6 +31,17 @@ type Extension interface {
 	Finalize(context.Context, v1alpha1.TektonComponent) error
 }
 
+// TLSProfileFingerprinter is an optional interface for extensions that support
+// TLS profile detection from external sources (e.g., OpenShift APIServer).
+// Extensions implementing this interface enable their reconcilers to detect
+// external TLS configuration changes and trigger re-reconciliation.
+type TLSProfileFingerprinter interface {
+	// GetTLSProfileFingerprint returns a deterministic string representing the current
+	// platform's TLS security profile state. Returns empty string if TLS profile
+	// is not configured.
+	GetTLSProfileFingerprint(context.Context) string
+}
+
 // ExtensionGenerator creates an Extension from a Context
 type ExtensionGenerator func(context.Context) Extension
 
