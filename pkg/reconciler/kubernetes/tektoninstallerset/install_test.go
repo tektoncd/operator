@@ -69,7 +69,7 @@ func TestEnsureResources_CreateResource(t *testing.T) {
 
 	i := NewInstaller(&manifest, fakeClient, k8sClient, logger)
 
-	err = i.EnsureNamespaceScopedResources()
+	err = i.EnsureNamespaceScopedResources("test-installerset")
 	assert.NilError(t, err)
 
 	res, err := fakeClient.Get(&serviceAccount)
@@ -102,7 +102,7 @@ func TestEnsureResources_UpdateResource(t *testing.T) {
 
 	i := NewInstaller(&manifest, fakeClient, k8sClient, logger)
 
-	err = i.EnsureNamespaceScopedResources()
+	err = i.EnsureNamespaceScopedResources("test-installerset")
 	assert.NilError(t, err)
 
 	res, err := fakeClient.Get(&serviceAccount)
@@ -138,7 +138,7 @@ func TestEnsureResources_WaitingDeletion(t *testing.T) {
 	i := NewInstaller(&manifest, fakeClient, k8sClient, logger)
 
 	// waiting for old resource to be deleted
-	err = i.EnsureNamespaceScopedResources()
+	err = i.EnsureNamespaceScopedResources("test-installerset")
 	assert.Error(t, err, v1alpha1.RECONCILE_AGAIN_ERR.Error())
 }
 
