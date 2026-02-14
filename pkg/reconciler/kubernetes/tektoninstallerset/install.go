@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -126,7 +127,7 @@ func isClusterScoped(kind string) bool {
 	return false
 }
 
-func (i *installer) ensureResources(resources []unstructured.Unstructured) error {
+func (i *installer) ensureResources(resources []unstructured.Unstructured, installerSetName string) error {
 	for _, r := range resources {
 		ressourceLogger := i.logger.With(
 			"kind", r.GetKind(),
@@ -164,7 +165,67 @@ func (i *installer) ensureResources(resources []unstructured.Unstructured) error
 		}
 
 		if res.GetDeletionTimestamp() != nil {
-			ressourceLogger.Debug("resource is being deleted, will reconcile again")
+			// Check if this InstallerSet owns the resource being deleted
+			isOwnedByThisInstallerSet := false
+			for _, owner := range res.GetOwnerReferences() {
+				if owner.Kind == "TektonInstallerSet" && owner.Name == installerSetName {
+					isOwnedByThisInstallerSet = true
+					break
+				}
+			}
+
+			if isOwnedByThisInstallerSet {
+				// This InstallerSet owns it, wait for deletion to complete
+				ressourceLogger.Debug("our resource is being deleted, waiting for completion")
+				return v1alpha1.RECONCILE_AGAIN_ERR
+			}
+
+			// Resource is being deleted by another controller/InstallerSet
+			// Only force-remove finalizers for CRDs to break deadlock
+			// For other resources, skip and let them delete naturally
+			if res.GetKind() != "CustomResourceDefinition" {
+				ressourceLogger.Debug("resource is being deleted by another owner, skipping",
+					"kind", res.GetKind(),
+					"deletionTimestamp", res.GetDeletionTimestamp())
+				continue
+			}
+
+			// CRD is in terminating state - check if it's stuck
+			// Normal CRD deletion takes 1-5 seconds. If it's been longer, it's stuck.
+			age := time.Since(res.GetDeletionTimestamp().Time)
+			if age < 30*time.Second {
+				// CRD recently deleted, give normal deletion process a chance
+				ressourceLogger.Debug("CRD recently entered terminating state, waiting for normal deletion",
+					"crd", res.GetName(),
+					"age", age.String())
+				continue
+			}
+
+			// CRD is stuck in terminating state for >30 seconds - this causes deadlock:
+			// 1. Old InstallerSet tries to delete CRDs (during upgrade or TektonConfig deletion)
+			// 2. Kubernetes adds finalizer to protect instances (TaskRuns/PipelineRuns)
+			// 3. CRD stuck in terminating state (instances can't finish - no controller)
+			// 4. New InstallerSet can't create fresh CRD (old one exists but terminating)
+			// Solution: Force remove finalizers to break deadlock and allow new CRD creation
+			// Note: This will delete all instances (TaskRuns/PipelineRuns) but they are
+			// already orphaned since the controller was deleted with TektonConfig
+			ressourceLogger.Warn("CRD stuck in terminating state, removing finalizers to break deadlock",
+				"crd", res.GetName(),
+				"age", age.String(),
+				"deletionTimestamp", res.GetDeletionTimestamp(),
+				"finalizers", res.GetFinalizers())
+
+			// Remove finalizers to complete deletion
+			res.SetFinalizers([]string{})
+			if err := i.mfClient.Update(res); err != nil {
+				ressourceLogger.Error("failed to remove finalizers from stuck CRD", "error", err)
+				return err
+			}
+
+			ressourceLogger.Info("removed finalizers from stuck CRD, reconciling again to create new CRD",
+				"crd", res.GetName(),
+				"age", age.String())
+			// Reconcile again to create new resource
 			return v1alpha1.RECONCILE_AGAIN_ERR
 		}
 
@@ -204,16 +265,16 @@ func (i *installer) ensureResources(resources []unstructured.Unstructured) error
 	return nil
 }
 
-func (i *installer) EnsureCRDs() error {
-	return i.ensureResources(i.crds)
+func (i *installer) EnsureCRDs(installerSetName string) error {
+	return i.ensureResources(i.crds, installerSetName)
 }
 
-func (i *installer) EnsureClusterScopedResources() error {
-	return i.ensureResources(i.clusterScoped)
+func (i *installer) EnsureClusterScopedResources(installerSetName string) error {
+	return i.ensureResources(i.clusterScoped, installerSetName)
 }
 
-func (i *installer) EnsureNamespaceScopedResources() error {
-	return i.ensureResources(i.namespaceScoped)
+func (i *installer) EnsureNamespaceScopedResources(installerSetName string) error {
+	return i.ensureResources(i.namespaceScoped, installerSetName)
 }
 
 func (i *installer) EnsureStatefulSetResources(ctx context.Context) error {
@@ -237,8 +298,8 @@ func (i *installer) EnsureDeploymentResources(ctx context.Context) error {
 	return nil
 }
 
-func (i *installer) EnsureJobResources() error {
-	return i.ensureResources(i.job)
+func (i *installer) EnsureJobResources(installerSetName string) error {
+	return i.ensureResources(i.job, installerSetName)
 }
 
 // list of fields should be reconciled

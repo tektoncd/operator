@@ -107,7 +107,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 
 	// Install CRDs
 	logger.Debug("Installing CRDs")
-	err = installer.EnsureCRDs()
+	err = installer.EnsureCRDs(installerSet.GetName())
 	if err != nil {
 		logger.Errorw("CRD installation failed", "error", err)
 		installerSet.Status.MarkCRDsInstallationFailed(err.Error())
@@ -120,7 +120,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 
 	// Install ClusterScoped Resources
 	logger.Debug("Installing cluster-scoped resources")
-	err = installer.EnsureClusterScopedResources()
+	err = installer.EnsureClusterScopedResources(installerSet.GetName())
 	if err != nil {
 		logger.Errorw("Cluster-scoped resources installation failed", "error", err)
 		installerSet.Status.MarkClustersScopedInstallationFailed(err.Error())
@@ -133,7 +133,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 
 	// Install NamespaceScoped Resources
 	logger.Debug("Installing namespace-scoped resources")
-	err = installer.EnsureNamespaceScopedResources()
+	err = installer.EnsureNamespaceScopedResources(installerSet.GetName())
 	if err != nil {
 		logger.Errorw("Namespace-scoped resources installation failed", "error", err)
 		installerSet.Status.MarkNamespaceScopedInstallationFailed(err.Error())
@@ -146,7 +146,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 
 	// Install Job Resources
 	logger.Debug("Installing job resources")
-	err = installer.EnsureJobResources()
+	err = installer.EnsureJobResources(installerSet.GetName())
 	if err != nil {
 		logger.Errorw("Job resources installation failed", "error", err)
 		installerSet.Status.MarkJobsInstallationFailed(err.Error())
