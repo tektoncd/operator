@@ -70,6 +70,9 @@ const (
 
 	// KindTektonMulticlusterProxyAAE is the Kind of TektonMulticlusterProxyAAE in a GVK context.
 	KindTektonMulticlusterProxyAAE = "TektonMulticlusterProxyAAE"
+
+	// KindSyncerService is the Kind of SyncerService in a GVK context.
+	KindSyncerService = "SyncerService"
 )
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
@@ -109,6 +112,8 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&TektonSchedulerList{},
 		&TektonMulticlusterProxyAAE{},
 		&TektonMulticlusterProxyAAEList{},
+		&SyncerService{},
+		&SyncerServiceList{},
 	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil

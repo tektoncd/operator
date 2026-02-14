@@ -57,6 +57,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1alpha1().ManualApprovalGates().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("openshiftpipelinesascodes"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1alpha1().OpenShiftPipelinesAsCodes().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("syncerservices"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1alpha1().SyncerServices().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tektonaddons"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Operator().V1alpha1().TektonAddons().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("tektonchains"):

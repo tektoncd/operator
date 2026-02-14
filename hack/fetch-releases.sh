@@ -159,7 +159,12 @@ release_yaml_github() {
   echo "URL to download Release YAML is : $url"
 
     ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
-    comp_dir=${ko_data}/tekton-${component}
+    # syncer-service uses non-prefixed directory (similar to pruner/manual-approval-gate)
+    if [[ $component == "syncer-service" ]]; then
+      comp_dir=${ko_data}/${component}
+    else
+      comp_dir=${ko_data}/tekton-${component}
+    fi
     dirPath=${comp_dir}/${dirVersion}
 
     # destination file
@@ -299,7 +304,6 @@ release_yaml_manualapprovalgate() {
 
 }
 
-
 release_yaml_hub() {
   echo fetching '|' component: ${1} '|' version: ${2}
   local version=$2
@@ -429,6 +433,10 @@ main() {
 
   # Tekton Multicluster Proxy AAE
   release_yaml_github multicluster-proxy-aae
+
+  # Syncer Service
+  release_yaml_github syncer-service
+
   echo updated payload tree
   find cmd/${TARGET}/operator/kodata
 }

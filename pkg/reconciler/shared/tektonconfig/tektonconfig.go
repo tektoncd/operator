@@ -31,6 +31,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pruner"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/result"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/scheduler"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/syncerservice"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,6 +80,9 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 			return err
 		}
 		if err := result.EnsureTektonResultCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonResults()); err != nil {
+			return err
+		}
+		if err := syncerservice.EnsureSyncerServiceCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().SyncerServices()); err != nil {
 			return err
 		}
 		if err := pipeline.EnsureTektonPipelineCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPipelines()); err != nil {
@@ -317,6 +321,35 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		logger.Debug("TektonResult CR removal reconciled successfully")
+	}
+
+	// Ensure SyncerService CR (conditional based on scheduler multi-cluster config)
+	// Syncer-service is deployed only when:
+	// - Scheduler is enabled (not disabled)
+	// - multi-cluster-disabled: false
+	// - multi-cluster-role: Hub
+	if syncerservice.IsSyncerServiceEnabled(&tc.Spec.Scheduler) {
+		syncerServiceCR := syncerservice.GetSyncerServiceCR(tc, r.operatorVersion)
+		logger.Debug("Ensuring SyncerService CR exists (multi-cluster enabled with Hub role)")
+		if _, err := syncerservice.EnsureSyncerServiceExists(ctx, r.operatorClientSet.OperatorV1alpha1().SyncerServices(), syncerServiceCR); err != nil {
+			errMsg := fmt.Sprintf("SyncerService: %s", err.Error())
+			logger.Errorw("Failed to ensure SyncerService exists", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		logger.Debug("SyncerService CR reconciled successfully")
+	} else {
+		logger.Debugw("Ensuring SyncerService CR doesn't exist",
+			"schedulerDisabled", tc.Spec.Scheduler.IsDisabled(),
+			"multiClusterDisabled", tc.Spec.Scheduler.MultiClusterDisabled,
+			"multiClusterRole", tc.Spec.Scheduler.MultiClusterRole)
+		if err := syncerservice.EnsureSyncerServiceCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().SyncerServices()); err != nil {
+			errMsg := fmt.Sprintf("SyncerService: %s", err.Error())
+			logger.Errorw("Failed to ensure SyncerService has been deleted", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		logger.Debug("SyncerService CR removal reconciled successfully")
 	}
 
 	// Ensure Pruner
