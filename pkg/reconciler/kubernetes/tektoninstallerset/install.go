@@ -126,7 +126,7 @@ func isClusterScoped(kind string) bool {
 	return false
 }
 
-func (i *installer) ensureResources(resources []unstructured.Unstructured) error {
+func (i *installer) ensureResources(resources []unstructured.Unstructured, installerSetName string) error {
 	for _, r := range resources {
 		ressourceLogger := i.logger.With(
 			"kind", r.GetKind(),
@@ -164,8 +164,24 @@ func (i *installer) ensureResources(resources []unstructured.Unstructured) error
 		}
 
 		if res.GetDeletionTimestamp() != nil {
-			ressourceLogger.Debug("resource is being deleted, will reconcile again")
-			return v1alpha1.RECONCILE_AGAIN_ERR
+			// Check if this InstallerSet owns the resource being deleted
+			isOwnedByThisInstallerSet := false
+			for _, owner := range res.GetOwnerReferences() {
+				if owner.Kind == "TektonInstallerSet" && owner.Name == installerSetName {
+					isOwnedByThisInstallerSet = true
+					break
+				}
+			}
+
+			if isOwnedByThisInstallerSet {
+				// This InstallerSet owns it, wait for deletion to complete
+				ressourceLogger.Debug("our resource is being deleted, waiting for completion")
+				return v1alpha1.RECONCILE_AGAIN_ERR
+			}
+
+			// Resource is being deleted by another controller/InstallerSet, skip it
+			ressourceLogger.Debug("resource is being deleted by another owner, skipping")
+			continue
 		}
 
 		ressourceLogger.Debug("resource exists, checking for updates")
@@ -204,16 +220,16 @@ func (i *installer) ensureResources(resources []unstructured.Unstructured) error
 	return nil
 }
 
-func (i *installer) EnsureCRDs() error {
-	return i.ensureResources(i.crds)
+func (i *installer) EnsureCRDs(installerSetName string) error {
+	return i.ensureResources(i.crds, installerSetName)
 }
 
-func (i *installer) EnsureClusterScopedResources() error {
-	return i.ensureResources(i.clusterScoped)
+func (i *installer) EnsureClusterScopedResources(installerSetName string) error {
+	return i.ensureResources(i.clusterScoped, installerSetName)
 }
 
-func (i *installer) EnsureNamespaceScopedResources() error {
-	return i.ensureResources(i.namespaceScoped)
+func (i *installer) EnsureNamespaceScopedResources(installerSetName string) error {
+	return i.ensureResources(i.namespaceScoped, installerSetName)
 }
 
 func (i *installer) EnsureStatefulSetResources(ctx context.Context) error {
@@ -237,8 +253,8 @@ func (i *installer) EnsureDeploymentResources(ctx context.Context) error {
 	return nil
 }
 
-func (i *installer) EnsureJobResources() error {
-	return i.ensureResources(i.job)
+func (i *installer) EnsureJobResources(installerSetName string) error {
+	return i.ensureResources(i.job, installerSetName)
 }
 
 // list of fields should be reconciled
