@@ -44,6 +44,10 @@ const (
 	PipelinesConsolePluginImageEnvironmentKey = "IMAGE_PIPELINES_CONSOLE_PLUGIN"
 	// pipelines console plugin container name, used to replace the image from the environment
 	PipelinesConsolePluginContainerName = "pipelines-console-plugin"
+	// TLS configuration environment variables
+	TLSMinVersionEnvKey       = "TLS_MIN_VERSION"
+	TLSCipherSuitesEnvKey     = "TLS_CIPHER_SUITES"
+	TLSCurvePreferencesEnvKey = "TLS_CURVE_PREFERENCES"
 )
 
 var (
@@ -64,6 +68,10 @@ type consolePluginReconciler struct {
 	operatorVersion             string
 	pipelinesConsolePluginImage string
 	manifest                    mf.Manifest
+	// TLS configuration
+	tlsMinVersion       string
+	tlsCipherSuites     string
+	tlsCurvePreferences string
 }
 
 // reconcile steps
@@ -169,6 +177,26 @@ func (cpr *consolePluginReconciler) updateOnce(ctx context.Context) {
 				"environmentVariable", PipelinesConsolePluginImageEnvironmentKey,
 			)
 		}
+
+		// Read TLS configuration from environment
+		cpr.tlsMinVersion = os.Getenv(TLSMinVersionEnvKey)
+		cpr.tlsCipherSuites = os.Getenv(TLSCipherSuitesEnvKey)
+		cpr.tlsCurvePreferences = os.Getenv(TLSCurvePreferencesEnvKey)
+
+		// Apply fail-safe defaults if not provided
+		if cpr.tlsMinVersion == "" {
+			cpr.tlsMinVersion = "VersionTLS12" // Safe default
+			cpr.logger.Warnw("TLS min version not configured, using safe default",
+				"default", "TLSv1.2",
+				"environmentVariable", TLSMinVersionEnvKey,
+			)
+		}
+
+		cpr.logger.Debugw("TLS configuration loaded",
+			"minVersion", cpr.tlsMinVersion,
+			"hasCipherSuites", cpr.tlsCipherSuites != "",
+			"hasCurvePreferences", cpr.tlsCurvePreferences != "",
+		)
 	})
 }
 
@@ -206,6 +234,8 @@ func (cpr *consolePluginReconciler) transform(ctx context.Context, manifest *mf.
 		// updates "metadata.namespace" to targetNamespace
 		common.ReplaceNamespace(tektonConfigCR.Spec.TargetNamespace),
 		cpr.transformerConsolePlugin(tektonConfigCR.Spec.TargetNamespace),
+		// Add nginx TLS configuration transformer
+		cpr.transformerNginxTLS(),
 		common.AddConfiguration(tektonConfigCR.Spec.Config),
 	}
 
@@ -232,5 +262,107 @@ func (cpr *consolePluginReconciler) transformerConsolePlugin(targetNamespace str
 		}
 
 		return unstructured.SetNestedField(u.Object, targetNamespace, "spec", "backend", "service", "namespace")
+	}
+}
+
+// transformerNginxTLS updates the nginx.conf ConfigMap with TLS directives
+func (cpr *consolePluginReconciler) transformerNginxTLS() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "ConfigMap" || u.GetName() != "pipelines-console-plugin" {
+			return nil
+		}
+
+		// Get the current nginx.conf
+		data, found, err := unstructured.NestedString(u.Object, "data", "nginx.conf")
+		if err != nil || !found {
+			return err
+		}
+
+		// Generate the updated nginx.conf with TLS directives
+		updatedConf := cpr.generateNginxConfWithTLS(data)
+
+		// Set the updated nginx.conf back
+		return unstructured.SetNestedField(u.Object, updatedConf, "data", "nginx.conf")
+	}
+}
+
+// generateNginxConfWithTLS injects TLS directives into nginx configuration
+func (cpr *consolePluginReconciler) generateNginxConfWithTLS(baseConf string) string {
+	// Build TLS directives
+	tlsDirectives := cpr.buildNginxTLSDirectives()
+
+	// If no TLS directives to add, return original
+	if tlsDirectives == "" {
+		return baseConf
+	}
+
+	// Inject TLS directives into the server block
+	// Find "server {" and inject after it
+	lines := strings.Split(baseConf, "\n")
+	var result strings.Builder
+
+	for _, line := range lines {
+		result.WriteString(line)
+		result.WriteString("\n")
+
+		// After "server {", inject TLS directives
+		if strings.Contains(line, "server {") {
+			// Add TLS directives with proper indentation
+			result.WriteString(tlsDirectives)
+		}
+	}
+
+	return result.String()
+}
+
+// buildNginxTLSDirectives generates nginx TLS directives from environment variables
+func (cpr *consolePluginReconciler) buildNginxTLSDirectives() string {
+	var directives strings.Builder
+
+	// Convert Go TLS version to nginx ssl_protocols
+	if cpr.tlsMinVersion != "" {
+		protocols := cpr.convertTLSVersionToNginx(cpr.tlsMinVersion)
+		directives.WriteString(fmt.Sprintf("        ssl_protocols %s;\n", protocols))
+	}
+
+	// NOTE: Cipher suites are intentionally NOT configured here.
+	// TLS 1.3 has secure cipher suites by default, and configuring them
+	// requires different nginx directives (ssl_conf_command vs ssl_ciphers).
+	// Relying on nginx's secure defaults is simpler and less error-prone.
+	if cpr.tlsCipherSuites != "" {
+		cpr.logger.Debugw("TLS cipher suites provided but not applied (using nginx defaults)",
+			"reason", "TLS 1.3 uses secure defaults, avoids ssl_ciphers/ssl_conf_command complexity",
+		)
+	}
+
+	// Add ECDH curves if provided
+	if cpr.tlsCurvePreferences != "" {
+		// Convert comma-separated to colon-separated
+		curves := strings.ReplaceAll(cpr.tlsCurvePreferences, ",", ":")
+		directives.WriteString(fmt.Sprintf("        ssl_ecdh_curve %s;\n", curves))
+	}
+
+	return directives.String()
+}
+
+// convertTLSVersionToNginx converts Go TLS version names to nginx protocol names
+func (cpr *consolePluginReconciler) convertTLSVersionToNginx(minVersion string) string {
+	// Map Go TLS constants to nginx protocols
+	switch minVersion {
+	case "VersionTLS13":
+		return "TLSv1.3"
+	case "VersionTLS12":
+		return "TLSv1.2 TLSv1.3"
+	case "VersionTLS11":
+		return "TLSv1.1 TLSv1.2 TLSv1.3"
+	case "VersionTLS10":
+		return "TLSv1 TLSv1.1 TLSv1.2 TLSv1.3"
+	default:
+		// Fail-safe: use modern defaults
+		cpr.logger.Warnw("Unknown TLS version, using safe default",
+			"providedVersion", minVersion,
+			"defaultTo", "TLSv1.2 TLSv1.3",
+		)
+		return "TLSv1.2 TLSv1.3"
 	}
 }
