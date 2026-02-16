@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -231,6 +232,450 @@ func TestPostReconcileManifest(t *testing.T) {
 				}
 			}
 			require.True(t, expectedInstallerSetFound)
+		})
+	}
+}
+
+func TestConvertTLSVersionToNginx(t *testing.T) {
+	tests := []struct {
+		name           string
+		tlsVersion     string
+		expectedOutput string
+	}{
+		{
+			name:           "1.3",
+			tlsVersion:     "1.3",
+			expectedOutput: "TLSv1.3",
+		},
+		{
+			name:           "1.2",
+			tlsVersion:     "1.2",
+			expectedOutput: "TLSv1.2 TLSv1.3",
+		},
+		{
+			name:           "1.1",
+			tlsVersion:     "1.1",
+			expectedOutput: "TLSv1.1 TLSv1.2 TLSv1.3",
+		},
+		{
+			name:           "1.0",
+			tlsVersion:     "1.0",
+			expectedOutput: "TLSv1 TLSv1.1 TLSv1.2 TLSv1.3",
+		},
+		{
+			name:           "unknown version defaults to safe",
+			tlsVersion:     "UnknownVersion",
+			expectedOutput: "TLSv1.2 TLSv1.3",
+		},
+		{
+			name:           "empty version defaults to safe",
+			tlsVersion:     "",
+			expectedOutput: "TLSv1.2 TLSv1.3",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := convertTLSVersionToNginx(test.tlsVersion)
+			require.Equal(t, test.expectedOutput, result)
+		})
+	}
+}
+
+func TestBuildNginxTLSDirectives(t *testing.T) {
+	ctx := context.TODO()
+
+	tests := []struct {
+		name                string
+		tlsConfig           *occommon.TLSEnvVars
+		expectedContains    []string
+		expectedNotContains []string
+	}{
+		{
+			name: "all TLS settings provided (cipher suites skipped)",
+			tlsConfig: &occommon.TLSEnvVars{
+				MinVersion:       "1.3",
+				CipherSuites:     "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384",
+				CurvePreferences: "X25519,prime256v1",
+			},
+			expectedContains: []string{
+				"ssl_protocols TLSv1.3;",
+				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+				"ssl_ecdh_curve X25519:prime256v1;",
+			},
+			expectedNotContains: []string{
+				"ssl_ciphers",
+				"ssl_prefer_server_ciphers",
+			},
+		},
+		{
+			name: "only min version provided - ML-KEM enabled",
+			tlsConfig: &occommon.TLSEnvVars{
+				MinVersion: "1.2",
+			},
+			expectedContains: []string{
+				"ssl_protocols TLSv1.2 TLSv1.3;",
+				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+			},
+			expectedNotContains: []string{
+				"ssl_ciphers",
+				"ssl_ecdh_curve",
+			},
+		},
+		{
+			name: "TLS 1.3 only - ML-KEM enabled",
+			tlsConfig: &occommon.TLSEnvVars{
+				MinVersion: "1.3",
+			},
+			expectedContains: []string{
+				"ssl_protocols TLSv1.3;",
+				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+			},
+			expectedNotContains: []string{
+				"ssl_ciphers",
+				"ssl_ecdh_curve",
+			},
+		},
+		{
+			name: "only cipher suites provided (skipped, no ssl_protocols output)",
+			tlsConfig: &occommon.TLSEnvVars{
+				CipherSuites: "TLS_AES_128_GCM_SHA256",
+			},
+			expectedContains: []string{},
+			expectedNotContains: []string{
+				"ssl_ciphers",
+				"ssl_prefer_server_ciphers",
+				"ssl_protocols",
+			},
+		},
+		{
+			name: "only curve preferences provided",
+			tlsConfig: &occommon.TLSEnvVars{
+				CurvePreferences: "X25519",
+			},
+			expectedContains: []string{
+				"ssl_ecdh_curve X25519;",
+			},
+		},
+		{
+			name:             "nil TLS config returns empty string",
+			tlsConfig:        nil,
+			expectedContains: []string{},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			reconciler := &consolePluginReconciler{
+				logger: logging.FromContext(ctx).Named("test-build-directives"),
+			}
+			reconciler.SetTLSConfig(test.tlsConfig)
+
+			result := reconciler.buildNginxTLSDirectives()
+
+			for _, expected := range test.expectedContains {
+				require.Contains(t, result, expected, "Expected directive not found")
+			}
+			for _, notExpected := range test.expectedNotContains {
+				require.NotContains(t, result, notExpected, "Unexpected directive found")
+			}
+		})
+	}
+}
+
+func TestGenerateNginxConfWithTLS(t *testing.T) {
+	ctx := context.TODO()
+
+	baseNginxConf := `error_log /dev/stdout warn;
+events {}
+http {
+  access_log         /dev/stdout;
+  include            /etc/nginx/mime.types;
+  default_type       application/octet-stream;
+  keepalive_timeout  65;
+  server {
+    listen              8443 ssl;
+    listen              [::]:8443 ssl;
+    ssl_certificate     /var/cert/tls.crt;
+    ssl_certificate_key /var/cert/tls.key;
+    root                /usr/share/nginx/html;
+  }
+}`
+
+	tests := []struct {
+		name                string
+		tlsConfig           *occommon.TLSEnvVars
+		expectedContains    []string
+		expectedNotContains []string
+	}{
+		{
+			name: "with TLS configuration (cipher suites skipped, ML-KEM enabled)",
+			tlsConfig: &occommon.TLSEnvVars{
+				MinVersion:       "1.2",
+				CipherSuites:     "TLS_AES_128_GCM_SHA256",
+				CurvePreferences: "X25519",
+			},
+			expectedContains: []string{
+				"server {",
+				"ssl_protocols TLSv1.2 TLSv1.3;",
+				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+				"ssl_ecdh_curve X25519;",
+				"listen              8443 ssl;",
+				"ssl_certificate     /var/cert/tls.crt;",
+			},
+			expectedNotContains: []string{
+				"ssl_ciphers",
+				"ssl_prefer_server_ciphers",
+			},
+		},
+		{
+			name:      "nil TLS config returns original nginx.conf unchanged",
+			tlsConfig: nil,
+			expectedContains: []string{
+				"server {",
+				"listen              8443 ssl;",
+				"ssl_certificate     /var/cert/tls.crt;",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			reconciler := &consolePluginReconciler{
+				logger: logging.FromContext(ctx).Named("test-generate-conf"),
+			}
+			reconciler.SetTLSConfig(test.tlsConfig)
+
+			result := reconciler.generateNginxConfWithTLS(baseNginxConf)
+
+			// Verify TLS directives are injected after "server {"
+			for _, expected := range test.expectedContains {
+				require.Contains(t, result, expected, "Expected content not found in generated nginx.conf")
+			}
+
+			// Check unexpected content
+			for _, notExpected := range test.expectedNotContains {
+				require.NotContains(t, result, notExpected, "Unexpected directive found in generated nginx.conf")
+			}
+
+			// Verify TLS directives come after "server {" line
+			if test.tlsConfig != nil && test.tlsConfig.MinVersion != "" {
+				serverBlockStart := "server {"
+				sslProtocolsLine := "ssl_protocols"
+				serverIndex := len(result)
+				protocolsIndex := len(result)
+
+				for i := 0; i < len(result)-len(serverBlockStart); i++ {
+					if result[i:i+len(serverBlockStart)] == serverBlockStart && serverIndex == len(result) {
+						serverIndex = i
+					}
+				}
+
+				for i := 0; i < len(result)-len(sslProtocolsLine); i++ {
+					if result[i:i+len(sslProtocolsLine)] == sslProtocolsLine && protocolsIndex == len(result) {
+						protocolsIndex = i
+					}
+				}
+
+				if serverIndex < len(result) && protocolsIndex < len(result) {
+					require.Greater(t, protocolsIndex, serverIndex, "ssl_protocols should appear after 'server {' block")
+				}
+			}
+		})
+	}
+}
+
+func TestTransformerNginxTLS(t *testing.T) {
+	ctx := context.TODO()
+
+	tests := []struct {
+		name             string
+		tlsConfig        *occommon.TLSEnvVars
+		inputConfigMap   *unstructured.Unstructured
+		expectedError    bool
+		expectedContains []string
+	}{
+		{
+			name: "transform nginx ConfigMap with TLS (cipher suites skipped)",
+			tlsConfig: &occommon.TLSEnvVars{
+				MinVersion:   "1.3",
+				CipherSuites: "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384",
+			},
+			inputConfigMap: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "v1",
+					"kind":       "ConfigMap",
+					"metadata": map[string]interface{}{
+						"name":      "pipelines-console-plugin",
+						"namespace": "openshift-pipelines",
+					},
+					"data": map[string]interface{}{
+						"nginx.conf": `server {
+  listen 8443 ssl;
+}`,
+					},
+				},
+			},
+			expectedContains: []string{
+				"ssl_protocols TLSv1.3;",
+			},
+		},
+		{
+			name: "skip non-ConfigMap resources",
+			tlsConfig: &occommon.TLSEnvVars{
+				MinVersion: "1.2",
+			},
+			inputConfigMap: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "apps/v1",
+					"kind":       "Deployment",
+					"metadata": map[string]interface{}{
+						"name": "test-deployment",
+					},
+				},
+			},
+			expectedError: false,
+		},
+		{
+			name: "skip other ConfigMaps",
+			tlsConfig: &occommon.TLSEnvVars{
+				MinVersion: "1.2",
+			},
+			inputConfigMap: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"apiVersion": "v1",
+					"kind":       "ConfigMap",
+					"metadata": map[string]interface{}{
+						"name": "other-configmap",
+					},
+					"data": map[string]interface{}{
+						"some-key": "some-value",
+					},
+				},
+			},
+			expectedError: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			reconciler := &consolePluginReconciler{
+				logger: logging.FromContext(ctx).Named("test-transformer"),
+			}
+			reconciler.SetTLSConfig(test.tlsConfig)
+
+			transformer := reconciler.transformerNginxTLS()
+			err := transformer(test.inputConfigMap)
+
+			if test.expectedError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			// Verify transformed nginx.conf if it's the pipelines-console-plugin ConfigMap
+			if test.inputConfigMap.GetKind() == "ConfigMap" && test.inputConfigMap.GetName() == "pipelines-console-plugin" {
+				nginxConf, found, err := unstructured.NestedString(test.inputConfigMap.Object, "data", "nginx.conf")
+				require.NoError(t, err)
+				require.True(t, found)
+
+				for _, expected := range test.expectedContains {
+					require.Contains(t, nginxConf, expected, "Expected TLS directive not found in transformed nginx.conf")
+				}
+			}
+		})
+	}
+}
+
+func TestNginxTLSIntegration(t *testing.T) {
+	ctx := context.TODO()
+	operatorFakeClientSet := fake.NewSimpleClientset()
+	operatorFakeClientSet.PrependReactor("create", "*", generateNameReactor)
+
+	tests := []struct {
+		name               string
+		tlsConfig          *occommon.TLSEnvVars
+		expectedTLSInNginx []string
+		notExpected        []string
+	}{
+		{
+			name: "integration test with full TLS config (cipher suites skipped)",
+			tlsConfig: &occommon.TLSEnvVars{
+				MinVersion:       "1.2",
+				CipherSuites:     "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384",
+				CurvePreferences: "X25519,prime256v1",
+			},
+			expectedTLSInNginx: []string{
+				"ssl_protocols TLSv1.2 TLSv1.3;",
+				"ssl_ecdh_curve X25519:prime256v1;",
+			},
+		},
+		{
+			name:      "integration test with nil TLS config leaves nginx.conf unchanged",
+			tlsConfig: nil,
+			notExpected: []string{
+				"ssl_protocols",
+				"ssl_ecdh_curve",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			reconciler := &consolePluginReconciler{
+				logger:                 logging.FromContext(ctx).Named("integration-test"),
+				operatorClientSet:      operatorFakeClientSet,
+				syncOnce:               sync.Once{},
+				resourcesYamlDirectory: "./testdata/postreconcile_manifest",
+				operatorVersion:        "test-version",
+			}
+			reconciler.SetTLSConfig(test.tlsConfig)
+
+			tektonConfigCR := &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: v1alpha1.ConfigResourceName,
+				},
+				Spec: v1alpha1.TektonConfigSpec{
+					CommonSpec: v1alpha1.CommonSpec{
+						TargetNamespace: "openshift-pipelines",
+					},
+				},
+			}
+
+			err := reconciler.reconcile(ctx, tektonConfigCR)
+			require.NoError(t, err)
+
+			// Verify the InstallerSet was created
+			installerSetList, err := operatorFakeClientSet.OperatorV1alpha1().TektonInstallerSets().List(
+				ctx,
+				metav1.ListOptions{LabelSelector: fmt.Sprintf("operator.tekton.dev/created-by=%s", consolePluginReconcileLabelCreatedByValue)},
+			)
+			require.NoError(t, err)
+			require.Equal(t, 1, len(installerSetList.Items))
+
+			// Find the nginx ConfigMap in the manifests
+			installerSet := installerSetList.Items[0]
+			var nginxConfigMap *unstructured.Unstructured
+			for _, manifest := range installerSet.Spec.Manifests {
+				if manifest.GetKind() == "ConfigMap" && manifest.GetName() == "pipelines-console-plugin" {
+					nginxConfigMap = &manifest
+					break
+				}
+			}
+
+			require.NotNil(t, nginxConfigMap, "nginx ConfigMap not found in InstallerSet manifests")
+
+			// Extract nginx.conf and verify TLS directives
+			nginxConf, found, err := unstructured.NestedString(nginxConfigMap.Object, "data", "nginx.conf")
+			require.NoError(t, err)
+			require.True(t, found, "nginx.conf not found in ConfigMap")
+
+			for _, expected := range test.expectedTLSInNginx {
+				require.Contains(t, nginxConf, expected, "Expected TLS directive not found in nginx.conf")
+			}
+			for _, notExpected := range test.notExpected {
+				require.NotContains(t, nginxConf, notExpected, "Unexpected TLS directive found in nginx.conf")
+			}
 		})
 	}
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,6 +65,15 @@ type consolePluginReconciler struct {
 	operatorVersion             string
 	pipelinesConsolePluginImage string
 	manifest                    mf.Manifest
+	// tlsConfig holds the centrally resolved TLS profile (set on every reconcile).
+	// nil means central TLS is disabled; the nginx.conf is left unmodified.
+	tlsConfig *occommon.TLSEnvVars
+}
+
+// SetTLSConfig stores the resolved central TLS configuration for use during the
+// next reconcile cycle. Call this before reconcile() on every reconcile loop.
+func (cpr *consolePluginReconciler) SetTLSConfig(tlsEnvVars *occommon.TLSEnvVars) {
+	cpr.tlsConfig = tlsEnvVars
 }
 
 // reconcile steps
@@ -169,6 +179,7 @@ func (cpr *consolePluginReconciler) updateOnce(ctx context.Context) {
 				"environmentVariable", PipelinesConsolePluginImageEnvironmentKey,
 			)
 		}
+
 	})
 }
 
@@ -206,6 +217,8 @@ func (cpr *consolePluginReconciler) transform(ctx context.Context, manifest *mf.
 		// updates "metadata.namespace" to targetNamespace
 		common.ReplaceNamespace(tektonConfigCR.Spec.TargetNamespace),
 		cpr.transformerConsolePlugin(tektonConfigCR.Spec.TargetNamespace),
+		// Add nginx TLS configuration transformer
+		cpr.transformerNginxTLS(),
 		common.AddConfiguration(tektonConfigCR.Spec.Config),
 	}
 
@@ -232,5 +245,118 @@ func (cpr *consolePluginReconciler) transformerConsolePlugin(targetNamespace str
 		}
 
 		return unstructured.SetNestedField(u.Object, targetNamespace, "spec", "backend", "service", "namespace")
+	}
+}
+
+// transformerNginxTLS updates the nginx.conf ConfigMap with TLS directives
+func (cpr *consolePluginReconciler) transformerNginxTLS() mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "ConfigMap" || u.GetName() != "pipelines-console-plugin" {
+			return nil
+		}
+
+		// Get the current nginx.conf
+		data, found, err := unstructured.NestedString(u.Object, "data", "nginx.conf")
+		if err != nil || !found {
+			return err
+		}
+
+		// Generate the updated nginx.conf with TLS directives
+		updatedConf := cpr.generateNginxConfWithTLS(data)
+
+		// Set the updated nginx.conf back
+		return unstructured.SetNestedField(u.Object, updatedConf, "data", "nginx.conf")
+	}
+}
+
+// generateNginxConfWithTLS injects TLS directives into nginx configuration
+func (cpr *consolePluginReconciler) generateNginxConfWithTLS(baseConf string) string {
+	// Build TLS directives
+	tlsDirectives := cpr.buildNginxTLSDirectives()
+
+	// If no TLS directives to add, return original
+	if tlsDirectives == "" {
+		return baseConf
+	}
+
+	// Inject TLS directives into the server block
+	// Find "server {" and inject after it
+	lines := strings.Split(baseConf, "\n")
+	var result strings.Builder
+
+	for _, line := range lines {
+		result.WriteString(line)
+		result.WriteString("\n")
+
+		// After "server {", inject TLS directives
+		if strings.Contains(line, "server {") {
+			// Add TLS directives with proper indentation
+			result.WriteString(tlsDirectives)
+		}
+	}
+
+	return result.String()
+}
+
+// buildNginxTLSDirectives generates nginx TLS directives from the centrally resolved
+// TLS profile. Returns an empty string when no TLS config is available.
+func (cpr *consolePluginReconciler) buildNginxTLSDirectives() string {
+	if cpr.tlsConfig == nil {
+		return ""
+	}
+
+	var directives strings.Builder
+
+	// ssl_protocols – derived from the minimum TLS version in the APIServer profile.
+	// TLSEnvVars.MinVersion is in Go crypto/tls format: "1.2" or "1.3".
+	// We always include TLSv1.3 so ML-KEM hybrid groups are available.
+	if cpr.tlsConfig.MinVersion != "" {
+		protocols := convertTLSVersionToNginx(cpr.tlsConfig.MinVersion)
+		directives.WriteString(fmt.Sprintf("    ssl_protocols %s;\n", protocols))
+
+		// Enable ML-KEM (X25519MLKEM768) hybrid key exchange for PQC readiness.
+		// ssl_conf_command passes OpenSSL configuration directly and is the only
+		// nginx mechanism that supports the post-quantum hybrid groups introduced
+		// in OpenSSL 3.x; ssl_ecdh_curve does not cover these groups.
+		// X25519MLKEM768 is tried first (PQC); X25519 is the classical fallback.
+		directives.WriteString("    ssl_conf_command Groups X25519MLKEM768:X25519;\n")
+	}
+
+	// NOTE: IANA cipher suite names (TLS_ECDHE_RSA_…) cannot be used directly in
+	// nginx's ssl_ciphers directive (which uses OpenSSL names) or ssl_conf_command
+	// (which uses a different format). Relying on nginx's own TLS 1.3 defaults is
+	// simpler and equally secure; we intentionally skip cipher configuration here.
+	if cpr.tlsConfig.CipherSuites != "" {
+		cpr.logger.Debugw("TLS cipher suites provided but not applied to nginx (using nginx defaults)",
+			"reason", "IANA names are not directly usable in nginx ssl_ciphers",
+		)
+	}
+
+	// ssl_ecdh_curve – comma-separated curve names become colon-separated for nginx.
+	// This covers TLS 1.2 classical curves; ML-KEM hybrid groups are handled above
+	// via ssl_conf_command.
+	if cpr.tlsConfig.CurvePreferences != "" {
+		curves := strings.ReplaceAll(cpr.tlsConfig.CurvePreferences, ",", ":")
+		directives.WriteString(fmt.Sprintf("    ssl_ecdh_curve %s;\n", curves))
+	}
+
+	return directives.String()
+}
+
+// convertTLSVersionToNginx converts the Go crypto/tls minimum version string
+// ("1.2" or "1.3", as stored in TLSEnvVars.MinVersion) to the corresponding
+// nginx ssl_protocols value.
+func convertTLSVersionToNginx(minVersion string) string {
+	switch minVersion {
+	case "1.3":
+		return "TLSv1.3"
+	case "1.2":
+		return "TLSv1.2 TLSv1.3"
+	case "1.1":
+		return "TLSv1.1 TLSv1.2 TLSv1.3"
+	case "1.0":
+		return "TLSv1 TLSv1.1 TLSv1.2 TLSv1.3"
+	default:
+		return "TLSv1.2 TLSv1.3"
 	}
 }
