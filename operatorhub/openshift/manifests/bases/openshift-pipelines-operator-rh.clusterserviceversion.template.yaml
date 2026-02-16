@@ -334,7 +334,7 @@ spec:
     - Tekton Triggers: v0.33.0
     - Pipelines as Code: v0.37.4
     - Tekton Chains: v0.25.1
-    - Tekton Hub (tech-preview): v1.22.7
+    - Tekton Hub (tech-preview): v1.22.9
     - Tekton Results (tech-preview): v0.16.0
     - Manual Approval Gate (tech-preview): v0.6.0
     - Tekton Pruner (tech-preview): v0.2.0
