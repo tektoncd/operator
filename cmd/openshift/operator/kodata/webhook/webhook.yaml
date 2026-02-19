@@ -95,11 +95,11 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      name: tekton-operator
+      name: tekton-operator-proxy-webhook
   template:
     metadata:
       labels:
-        name: tekton-operator
+        name: tekton-operator-proxy-webhook
         app: tekton-operator
     spec:
       securityContext:
@@ -156,7 +156,7 @@ spec:
       port: 443
       targetPort: 8443
   selector:
-    name: tekton-operator
+    name: tekton-operator-proxy-webhook
 
 ---
 
