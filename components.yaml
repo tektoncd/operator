@@ -12,10 +12,10 @@ manual-approval-gate:
   version: v0.8.0
 multicluster-proxy-aae:
   github: openshift-pipelines/multicluster-proxy-aae
-  version: v0.1.0
+  version: v0.1.1
 pipeline:
   github: tektoncd/pipeline
-  version: v1.9.0
+  version: v1.9.1
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
   version: v0.41.1
