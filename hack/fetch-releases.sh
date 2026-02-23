@@ -311,7 +311,7 @@ release_yaml_hub() {
   ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
   if [ ${version} == "latest" ]
   then
-    version=$(curl -sL https://api.github.com/repos/tektoncd/hub/releases | jq -r ".[].tag_name" | sort -Vr | head -n1)
+    version=$(curl -sL https://api.github.com/repos/openshift-pipelines/hub/releases | jq -r ".[].tag_name" | sort -Vr | head -n1)
     dirPath=${ko_data}/tekton-hub/0.0.0-latest
   else
     dirPath=${ko_data}/tekton-hub/${version}
@@ -342,7 +342,7 @@ release_yaml_hub() {
 
     [[ ${component} == "api" ]] || [[ ${component} == "ui" ]] && fileName=${component}-${TARGET}.yaml
 
-    url="https://github.com/tektoncd/hub/releases/download/${version}/${fileName}"
+    url="https://github.com/openshift-pipelines/hub/releases/download/${version}/${fileName}"
     echo $url
     http_response=$(curl -s -L -o ${destinationFile} -w "%{http_code}" ${url})
     echo url: ${url}

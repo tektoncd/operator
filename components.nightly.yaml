@@ -22,7 +22,7 @@ manual-approval-gate:
   github: openshift-pipelines/manual-approval-gate
   version: v0.3.0
 hub:
-  github: tektoncd/hub
+  github: openshift-pipelines/hub
   version: v1.18.0
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
