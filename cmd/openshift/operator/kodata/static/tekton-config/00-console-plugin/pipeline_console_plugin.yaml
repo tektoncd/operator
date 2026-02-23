@@ -165,6 +165,6 @@ spec:
         service:
           name: proxy-aae
           namespace: openshift-pipelines
-          port: 80
+          port: 443
   i18n:
     loadType: Preload   # options: Preload, Lazy
