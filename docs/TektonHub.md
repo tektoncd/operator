@@ -118,7 +118,7 @@ To install Tekton Hub on your cluster follow steps as given below:
         - `GHE_URL=<github enterprise url(leave it blank if not using github enterprise>`
         - `GLE_URL=<gitlab enterprise url(leave it blank if not using gitlab enterprise>`
 
-   > _Note 1_: For more details please refer to [here](https://github.com/tektoncd/hub/blob/main/docs/DEPLOYMENT.md#create-git-oauth-applications)
+   > _Note 1_: For more details please refer to [here](https://github.com/openshift-pipelines/hub/blob/main/docs/DEPLOYMENT.md#create-git-oauth-applications)
 
 3. Once the secrets are created now we need to understand how TektonHub CR looks.
 
@@ -181,4 +181,4 @@ To install Tekton Hub on your cluster follow steps as given below:
     hub    v1.6.0    True             https://api.route.url   https://ui.route.url
     ```
 
-[hub]: https://github.com/tektoncd/hub
+[hub]: https://github.com/openshift-pipelines/hub
