@@ -82,11 +82,49 @@ func TestTektonScheduler_ValidateMultiClusterEnabled(t *testing.T) {
 
 	err := ts.Validate(t.Context())
 	assert.ErrorContains(t, err, "invalid value: MultiClusterConfig: multicluster-role")
-	assert.ErrorContains(t, err, "multicluster-role should be 'Hub' or 'Spoke' when MultiClusterConfig.MultiClusterDisabled is false")
+	assert.ErrorContains(t, err, "multicluster-role should be 'Hub' or 'Spoke' (case-insensitive) when MultiClusterConfig.MultiClusterDisabled is false")
 
 	ts.Spec.MultiClusterRole = MultiClusterRoleSpoke
 	err = ts.Validate(t.Context())
 
 	assert.Equal(t, err.Error(), "")
 
+}
+
+func TestTektonScheduler_ValidateMultiClusterRoleCaseInsensitive(t *testing.T) {
+	testCases := []struct {
+		name string
+		role MultiClusterRole
+	}{
+		{"lowercase hub", "hub"},
+		{"uppercase HUB", "HUB"},
+		{"mixed case Hub", "Hub"},
+		{"lowercase spoke", "spoke"},
+		{"uppercase SPOKE", "SPOKE"},
+		{"mixed case Spoke", "Spoke"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ts := &TektonScheduler{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "scheduler",
+				},
+				Spec: TektonSchedulerSpec{
+					Scheduler: Scheduler{
+						Disabled: ptr.Bool(false),
+						MultiClusterConfig: MultiClusterConfig{
+							MultiClusterDisabled: false,
+							MultiClusterRole:     tc.role,
+						},
+					},
+				},
+			}
+
+			err := ts.Validate(t.Context())
+			if err != nil {
+				t.Fatalf("role %q should be accepted (case-insensitive) but got error: %v", tc.role, err)
+			}
+		})
+	}
 }

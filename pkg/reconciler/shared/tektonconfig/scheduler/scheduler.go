@@ -39,7 +39,7 @@ func EnsureTektonSchedulerExists(ctx context.Context, clients op.TektonScheduler
 
 	// Update MultiKueueOverride
 	// If MultiCluster is enabled and MultiClusterRole=Hub then MultiKueueOverride should be true
-	newScheduler.Spec.Config.MultiKueueOverride = !newScheduler.Spec.MultiClusterDisabled && newScheduler.Spec.MultiClusterRole == v1alpha1.MultiClusterRoleHub
+	newScheduler.Spec.Config.MultiKueueOverride = !newScheduler.Spec.MultiClusterDisabled && strings.EqualFold(string(newScheduler.Spec.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub))
 	TektonScheduler, err := GetTektonScheduler(ctx, clients, v1alpha1.TektonSchedulerResourceName)
 	if err != nil {
 		if !apierrs.IsNotFound(err) {

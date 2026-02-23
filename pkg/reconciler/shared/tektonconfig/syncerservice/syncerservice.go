@@ -38,7 +38,7 @@ func IsSyncerServiceEnabled(scheduler *v1alpha1.Scheduler) bool {
 		return false
 	}
 	return !scheduler.MultiClusterDisabled &&
-		scheduler.MultiClusterRole == v1alpha1.MultiClusterRoleHub
+		strings.EqualFold(string(scheduler.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub))
 }
 
 // EnsureSyncerServiceExists ensures the SyncerService CR exists if conditions are met
