@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"knative.dev/pkg/apis"
 )
@@ -43,9 +44,9 @@ func (mcc *MultiClusterConfig) validate() (errs *apis.FieldError) {
 	if mcc.MultiClusterDisabled && mcc.MultiClusterRole != "" {
 		errs = errs.Also(apis.ErrInvalidValue("MultiClusterConfig", "multicluster-role",
 			"multicluster-role should be blank when MultiClusterConfig.MultiClusterDisabled is true"))
-	} else if !mcc.MultiClusterDisabled && !(mcc.MultiClusterRole == MultiClusterRoleHub || mcc.MultiClusterRole == MultiClusterRoleSpoke) {
+	} else if !mcc.MultiClusterDisabled && !(strings.EqualFold(string(mcc.MultiClusterRole), string(MultiClusterRoleHub)) || strings.EqualFold(string(mcc.MultiClusterRole), string(MultiClusterRoleSpoke))) {
 		errs = errs.Also(apis.ErrInvalidValue("MultiClusterConfig", "multicluster-role",
-			"multicluster-role should be 'Hub' or 'Spoke' when MultiClusterConfig.MultiClusterDisabled is false"))
+			"multicluster-role should be 'Hub' or 'Spoke' (case-insensitive) when MultiClusterConfig.MultiClusterDisabled is false"))
 	}
 	return errs
 }
