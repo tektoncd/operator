@@ -268,7 +268,7 @@ image-substitutions:
       - deploymentName: openshift-pipelines-operator
         containerName: openshift-pipelines-operator-lifecycle
         envKeys:
-          - IMAGE_MULTICLUSTERPROXYAAE_PROXY_SERVER
+          - IMAGE_MULTICLUSTERPROXYAAE_PROXY_AAE
 - image: registry.redhat.io/openshift-pipelines/pipelines-syncer-service-rhel9@
   replaceLocations:
     envTargets:
