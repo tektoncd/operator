@@ -66,7 +66,7 @@ func GetSCCRestrictiveList(ctx context.Context, securityClient security.Interfac
 	for _, sortedSCC := range sccPointerList {
 		sccLog = fmt.Sprintf("%s %s", sccLog, sortedSCC.Name)
 	}
-	logger.Info(sccLog)
+	logger.Debug(sccLog)
 	return sccPointerList, nil
 }
 

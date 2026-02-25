@@ -228,7 +228,7 @@ func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 		// Should not really happen due to defaulting, but okay...
 		return fmt.Errorf("tektonConfig.Spec.Platforms.OpenShift.SCC.Default cannot be empty")
 	}
-	logger.Infof("default SCC set to: %s", defaultSCC)
+	logger.Debugf("default SCC set to: %s", defaultSCC)
 	if err := common.VerifySCCExists(ctx, defaultSCC, r.securityClientSet); err != nil {
 		return fmt.Errorf("failed to verify scc %s exists, %w", defaultSCC, err)
 	}
@@ -253,9 +253,9 @@ func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 		if !isPriority {
 			return fmt.Errorf("maxAllowed SCC: %s must be less restrictive than the default SCC: %s", maxAllowedSCC, defaultSCC)
 		}
-		logger.Infof("maxAllowed SCC set to: %s", maxAllowedSCC)
+		logger.Debugf("maxAllowed SCC set to: %s", maxAllowedSCC)
 	} else {
-		logger.Info("No maxAllowed SCC set in TektonConfig")
+		logger.Debug("No maxAllowed SCC set in TektonConfig")
 	}
 
 	// Maintaining a separate cluster role for the scc declaration.
@@ -546,14 +546,14 @@ func (r *rbac) createResources(ctx context.Context) error {
 
 	// Early return if no namespaces need reconciliation for either feature
 	if len(namespacesToReconcile.RBACNamespaces) == 0 && len(namespacesToReconcile.CANamespaces) == 0 {
-		logger.Info("No namespaces need reconciliation for either RBAC or CA bundles")
+		logger.Debug("No namespaces need reconciliation for either RBAC or CA bundles")
 		return nil
 	}
 
 	// Step 4: Handle RBAC if enabled
 	if createRBACResource {
 		if len(namespacesToReconcile.RBACNamespaces) == 0 {
-			logger.Info("No namespaces need RBAC reconciliation")
+			logger.Debug("No namespaces need RBAC reconciliation")
 		} else {
 			logger.Debugf("Found %d namespaces to be reconciled for RBAC", len(namespacesToReconcile.RBACNamespaces))
 
@@ -597,7 +597,7 @@ func (r *rbac) createResources(ctx context.Context) error {
 	// Step 5: Handle CA bundles if enabled
 	if createCABundles {
 		if len(namespacesToReconcile.CANamespaces) == 0 {
-			logger.Info("No namespaces need CA bundle reconciliation")
+			logger.Debug("No namespaces need CA bundle reconciliation")
 		} else {
 			logger.Debugf("Found %d namespaces to be reconciled for CA bundles", len(namespacesToReconcile.CANamespaces))
 
@@ -843,7 +843,7 @@ func (r *rbac) ensureSCCRoleInNamespace(ctx context.Context, namespace string, s
 func (r *rbac) ensurePipelinesSCClusterRole(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
 
-	logger.Info("finding cluster role:", pipelinesSCCClusterRole)
+	logger.Debug("finding cluster role:", pipelinesSCCClusterRole)
 
 	clusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
