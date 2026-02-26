@@ -270,6 +270,75 @@ func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 	return nil
 }
 
+// shouldIgnoreNamespace returns true if the namespace should be skipped during reconciliation.
+// System namespaces (matching ^(openshift|kube)-) and namespaces being deleted are ignored.
+func shouldIgnoreNamespace(ns corev1.Namespace) bool {
+	if nsRegex.MatchString(ns.GetName()) {
+		return true
+	}
+	if ns.GetObjectMeta().GetDeletionTimestamp() != nil {
+		return true
+	}
+	return false
+}
+
+// needsRBAC checks whether the given namespace requires RBAC reconciliation.
+func (r *rbac) needsRBAC(ctx context.Context, ns corev1.Namespace) (bool, error) {
+	logger := logging.FromContext(ctx)
+
+	// We want to monitor namespaces with the SCC annotation set
+	if ns.Annotations[openshift.NamespaceSCCAnnotation] != "" {
+		return true, nil
+	}
+	// Accept namespaces that have not been reconciled yet
+	if ns.Labels[namespaceVersionLabel] != r.version {
+		return true, nil
+	}
+
+	// Now we're left with namespaces that have already been reconciled.
+	// We must make sure that the default SCC is in force via the ClusterRole.
+	sccRoleBinding, err := r.kubeClientSet.RbacV1().RoleBindings(ns.Name).Get(ctx, pipelinesSCCRoleBinding, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			logger.Debugf("could not find roleBinding %s in namespace %s", pipelinesSCCRoleBinding, ns.Name)
+			return true, nil
+		}
+		return false, fmt.Errorf("error fetching rolebinding %s from namespace %s: %w", pipelinesSCCRoleBinding, ns.Name, err)
+	}
+	if sccRoleBinding.RoleRef.Kind != "ClusterRole" {
+		logger.Infof("RoleBinding %s in namespace: %s should have ClusterRole with default SCC, will reconcile again...", pipelinesSCCRoleBinding, ns.Name)
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// needsCABundle checks whether the given namespace requires CA bundle configmap reconciliation.
+func (r *rbac) needsCABundle(ctx context.Context, ns corev1.Namespace) (bool, error) {
+	logger := logging.FromContext(ctx)
+
+	if ns.Labels[namespaceTrustedConfigLabel] != r.version {
+		return true, nil
+	}
+
+	// Self-healing: verify configmaps exist even when label matches
+	cmClient := r.kubeClientSet.CoreV1().ConfigMaps(ns.Name)
+	_, err1 := cmClient.Get(ctx, trustedCABundleConfigMap, metav1.GetOptions{})
+	_, err2 := cmClient.Get(ctx, serviceCABundleConfigMap, metav1.GetOptions{})
+	if errors.IsNotFound(err1) || errors.IsNotFound(err2) {
+		logger.Warnf("CA bundle configmaps missing in namespace %s despite label indicating reconciliation complete, will re-reconcile", ns.Name)
+		return true, nil
+	}
+	if err1 != nil {
+		return false, fmt.Errorf("error checking configmap %s in namespace %s: %w", trustedCABundleConfigMap, ns.Name, err1)
+	}
+	if err2 != nil {
+		return false, fmt.Errorf("error checking configmap %s in namespace %s: %w", serviceCABundleConfigMap, ns.Name, err2)
+	}
+
+	return false, nil
+}
+
 func (r *rbac) getNamespacesToBeReconciled(ctx context.Context) (*NamespacesToReconcile, error) {
 	logger := logging.FromContext(ctx)
 
@@ -285,52 +354,25 @@ func (r *rbac) getNamespacesToBeReconciled(ctx context.Context) (*NamespacesToRe
 	}
 
 	for _, ns := range allNamespaces.Items {
-		// ignore namespaces with name passing regex `^(openshift|kube)-`
-		if ignore := nsRegex.MatchString(ns.GetName()); ignore {
-			logger.Debugf("Ignoring system namespace: %s", ns.GetName())
+		if shouldIgnoreNamespace(ns) {
+			logger.Debugf("Ignoring namespace: %s", ns.GetName())
 			continue
 		}
 
-		// ignore namespaces with DeletionTimestamp set
-		if ns.GetObjectMeta().GetDeletionTimestamp() != nil {
-			logger.Debugf("Ignoring namespace being deleted: %s", ns.GetName())
-			continue
+		reconcileRBAC, err := r.needsRBAC(ctx, ns)
+		if err != nil {
+			return nil, err
 		}
-
-		// Check if namespace needs RBAC reconciliation
-		needsRBAC := false
-		// We want to monitor namespaces with the SCC annotation set
-		if ns.Annotations[openshift.NamespaceSCCAnnotation] != "" {
-			needsRBAC = true
-		}
-		// Then we want to accept namespaces that have not been reconciled yet
-		if ns.Labels[namespaceVersionLabel] != r.version {
-			needsRBAC = true
-		} else {
-			// Now we're left with namespaces that have already been reconciled.
-			// We must make sure that the default SCC is in force via the ClusterRole.
-			sccRoleBinding, err := r.kubeClientSet.RbacV1().RoleBindings(ns.Name).Get(ctx, pipelinesSCCRoleBinding, metav1.GetOptions{})
-			if err != nil {
-				// Reconcile a namespace again with missing RoleBinding
-				if errors.IsNotFound(err) {
-					logger.Debugf("could not find roleBinding %s in namespace %s", pipelinesSCCRoleBinding, ns.Name)
-					needsRBAC = true
-				} else {
-					return nil, fmt.Errorf("error fetching rolebinding %s from namespace %s: %w", pipelinesSCCRoleBinding, ns.Name, err)
-				}
-			} else if sccRoleBinding.RoleRef.Kind != "ClusterRole" {
-				logger.Infof("RoleBinding %s in namespace: %s should have CluterRole with default SCC, will reconcile again...", pipelinesSCCRoleBinding, ns.Name)
-				needsRBAC = true
-			}
-		}
-
-		if needsRBAC {
+		if reconcileRBAC {
 			logger.Debugf("Adding namespace for RBAC reconciliation: %s", ns.GetName())
 			result.RBACNamespaces = append(result.RBACNamespaces, ns)
 		}
 
-		// Check if namespace needs CA bundle reconciliation
-		if ns.Labels[namespaceTrustedConfigLabel] != r.version {
+		caBundle, err := r.needsCABundle(ctx, ns)
+		if err != nil {
+			return nil, err
+		}
+		if caBundle {
 			logger.Debugf("Adding namespace for CA bundle reconciliation: %s", ns.GetName())
 			result.CANamespaces = append(result.CANamespaces, ns)
 		}

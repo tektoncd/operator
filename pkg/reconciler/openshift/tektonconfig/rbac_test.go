@@ -33,6 +33,7 @@ func TestCreateResources(t *testing.T) {
 		existingRoles      []rbacv1.Role
 		existingRBs        []rbacv1.RoleBinding
 		existingCRBs       []rbacv1.ClusterRoleBinding
+		existingConfigMaps []corev1.ConfigMap
 		installerSet       *v1alpha1.TektonInstallerSet
 		wantErr            bool
 		wantReconcileAgain bool
@@ -256,6 +257,136 @@ func TestCreateResources(t *testing.T) {
 			wantReconcileAgain: true,
 			wantNamespaces:     1,
 		},
+		{
+			name: "CA bundle self-healing - trusted configmap missing despite label",
+			tektonConfig: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "config"},
+				Spec: v1alpha1.TektonConfigSpec{
+					Params: []v1alpha1.Param{
+						{Name: "createRbacResource", Value: "false"},
+						{Name: "createCABundleConfigMaps", Value: "true"},
+					},
+				},
+			},
+			existingNamespaces: []corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-ns1",
+						Labels: map[string]string{
+							namespaceTrustedConfigLabel: "test-version",
+						},
+					},
+				},
+			},
+			existingConfigMaps: []corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      serviceCABundleConfigMap,
+						Namespace: "test-ns1",
+					},
+				},
+			},
+			wantErr:            false,
+			wantReconcileAgain: false,
+			wantNamespaces:     1,
+		},
+		{
+			name: "CA bundle self-healing - service configmap missing despite label",
+			tektonConfig: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "config"},
+				Spec: v1alpha1.TektonConfigSpec{
+					Params: []v1alpha1.Param{
+						{Name: "createRbacResource", Value: "false"},
+						{Name: "createCABundleConfigMaps", Value: "true"},
+					},
+				},
+			},
+			existingNamespaces: []corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-ns1",
+						Labels: map[string]string{
+							namespaceTrustedConfigLabel: "test-version",
+						},
+					},
+				},
+			},
+			existingConfigMaps: []corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      trustedCABundleConfigMap,
+						Namespace: "test-ns1",
+					},
+				},
+			},
+			wantErr:            false,
+			wantReconcileAgain: false,
+			wantNamespaces:     1,
+		},
+		{
+			name: "CA bundle self-healing - both configmaps present, no re-reconciliation",
+			tektonConfig: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "config"},
+				Spec: v1alpha1.TektonConfigSpec{
+					Params: []v1alpha1.Param{
+						{Name: "createRbacResource", Value: "false"},
+						{Name: "createCABundleConfigMaps", Value: "true"},
+					},
+				},
+			},
+			existingNamespaces: []corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-ns1",
+						Labels: map[string]string{
+							namespaceTrustedConfigLabel: "test-version",
+						},
+					},
+				},
+			},
+			existingConfigMaps: []corev1.ConfigMap{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      trustedCABundleConfigMap,
+						Namespace: "test-ns1",
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      serviceCABundleConfigMap,
+						Namespace: "test-ns1",
+					},
+				},
+			},
+			wantErr:            false,
+			wantReconcileAgain: false,
+			wantNamespaces:     0,
+		},
+		{
+			name: "CA bundle self-healing - both configmaps missing despite label",
+			tektonConfig: &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "config"},
+				Spec: v1alpha1.TektonConfigSpec{
+					Params: []v1alpha1.Param{
+						{Name: "createRbacResource", Value: "false"},
+						{Name: "createCABundleConfigMaps", Value: "true"},
+					},
+				},
+			},
+			existingNamespaces: []corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "test-ns1",
+						Labels: map[string]string{
+							namespaceTrustedConfigLabel: "test-version",
+						},
+					},
+				},
+			},
+			wantErr:            false,
+			wantReconcileAgain: false,
+			wantNamespaces:     1,
+		},
 	}
 
 	for _, tt := range tests {
@@ -328,6 +459,11 @@ func TestCreateResources(t *testing.T) {
 
 			for _, crb := range tt.existingCRBs {
 				_, err := kubeClient.RbacV1().ClusterRoleBindings().Create(ctx, &crb, metav1.CreateOptions{})
+				assert.NilError(t, err)
+			}
+
+			for _, cm := range tt.existingConfigMaps {
+				_, err := kubeClient.CoreV1().ConfigMaps(cm.Namespace).Create(ctx, &cm, metav1.CreateOptions{})
 				assert.NilError(t, err)
 			}
 
