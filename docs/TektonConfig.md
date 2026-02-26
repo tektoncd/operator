@@ -451,6 +451,26 @@ scheduler:
 
 See [TektonMulticlusterProxyAAE](./TektonMulticlusterProxyAAE.md) for details on the proxy component and its requirements.
 
+#### OpenShift: proxy-aae Kueue namespace
+
+The proxy-aae deployment reads `WORKERS_SECRET_NAMESPACE` to locate the Kueue operator namespace. The Kubernetes default is `kueue-system`; on OpenShift the operator automatically sets this to `openshift-kueue-operator`. If Kueue is installed in a non-default namespace, override `WORKERS_SECRET_NAMESPACE` via `spec.multiclusterProxyAAE.options` in TektonConfig:
+
+```yaml
+spec:
+  multiclusterProxyAAE:
+    options:
+      deployments:
+        proxy-aae:
+          spec:
+            template:
+              spec:
+                containers:
+                - name: proxy-aae
+                  env:
+                  - name: WORKERS_SECRET_NAMESPACE
+                    value: my-kueue-namespace
+```
+
 ### Addon
 
 TektonAddon install some resources along with Tekton Pipelines on the cluster. This provides few PipelineTemplates, ResolverTasks, ResolverStepActions and CommunityResolverTasks.

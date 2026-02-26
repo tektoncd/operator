@@ -118,6 +118,7 @@ func GetTektonMulticlusterProxyAAECR(config *v1alpha1.TektonConfig, operatorVers
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
+			MulticlusterProxyAAEOptions: config.Spec.MulticlusterProxyAAE,
 		},
 	}
 }

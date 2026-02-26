@@ -1816,6 +1816,7 @@ func (in *TektonConfigSpec) DeepCopyInto(out *TektonConfigSpec) {
 	in.Chain.DeepCopyInto(&out.Chain)
 	in.Result.DeepCopyInto(&out.Result)
 	in.Dashboard.DeepCopyInto(&out.Dashboard)
+	in.MulticlusterProxyAAE.DeepCopyInto(&out.MulticlusterProxyAAE)
 	if in.Params != nil {
 		in, out := &in.Params, &out.Params
 		*out = make([]Param, len(*in))
