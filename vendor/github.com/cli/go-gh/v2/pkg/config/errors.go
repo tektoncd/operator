@@ -10,13 +10,13 @@ type InvalidConfigFileError struct {
 	Err  error
 }
 
-// Allow InvalidConfigFileError to satisfy error interface.
-func (e InvalidConfigFileError) Error() string {
+// Error allows InvalidConfigFileError to satisfy error interface.
+func (e *InvalidConfigFileError) Error() string {
 	return fmt.Sprintf("invalid config file %s: %s", e.Path, e.Err)
 }
 
-// Allow InvalidConfigFileError to be unwrapped.
-func (e InvalidConfigFileError) Unwrap() error {
+// Unwrap allows InvalidConfigFileError to be unwrapped.
+func (e *InvalidConfigFileError) Unwrap() error {
 	return e.Err
 }
 
@@ -26,7 +26,7 @@ type KeyNotFoundError struct {
 	Key string
 }
 
-// Allow KeyNotFoundError to satisfy error interface.
-func (e KeyNotFoundError) Error() string {
+// Error allows KeyNotFoundError to satisfy error interface.
+func (e *KeyNotFoundError) Error() string {
 	return fmt.Sprintf("could not find key %q", e.Key)
 }

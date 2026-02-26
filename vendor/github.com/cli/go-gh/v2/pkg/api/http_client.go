@@ -2,19 +2,21 @@ package api
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"regexp"
 	"runtime/debug"
 	"strings"
 	"time"
 
-	"github.com/cli/go-gh/pkg/api"
-	"github.com/cli/go-gh/pkg/term"
+	"github.com/cli/go-gh/v2/pkg/asciisanitizer"
+	"github.com/cli/go-gh/v2/pkg/config"
+	"github.com/cli/go-gh/v2/pkg/term"
 	"github.com/henvic/httpretty"
 	"github.com/thlib/go-timezone-local/tzlocal"
+	"golang.org/x/text/transform"
 )
 
 const (
@@ -31,9 +33,27 @@ const (
 
 var jsonTypeRE = regexp.MustCompile(`[/+]json($|;)`)
 
-func NewHTTPClient(opts *api.ClientOptions) http.Client {
-	if opts == nil {
-		opts = &api.ClientOptions{}
+func DefaultHTTPClient() (*http.Client, error) {
+	return NewHTTPClient(ClientOptions{})
+}
+
+// NewHTTPClient builds a client that can be passed to another library.
+//
+// As part of the configuration a hostname, auth token, default set of headers,
+// and unix domain socket are resolved from the gh environment configuration.
+// These behaviors can be overridden using the opts argument. In this instance
+// providing opts.Host will not change the destination of your request as it is
+// the responsibility of the consumer to configure this. However, if opts.Host
+// does not match the request host, the auth token will not be added to the headers.
+// This is to protect against the case where tokens could be sent to an arbitrary
+// host.
+func NewHTTPClient(opts ClientOptions) (*http.Client, error) {
+	if optionsNeedResolution(opts) {
+		var err error
+		opts, err = resolveOptions(opts)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	transport := http.DefaultTransport
@@ -46,8 +66,10 @@ func NewHTTPClient(opts *api.ClientOptions) http.Client {
 		transport = opts.Transport
 	}
 
+	transport = newSanitizerRoundTripper(transport)
+
 	if opts.CacheDir == "" {
-		opts.CacheDir = filepath.Join(os.TempDir(), "gh-cli-cache")
+		opts.CacheDir = config.CacheDir()
 	}
 	if opts.EnableCache && opts.CacheTTL == 0 {
 		opts.CacheTTL = time.Hour * 24
@@ -94,7 +116,7 @@ func NewHTTPClient(opts *api.ClientOptions) http.Client {
 	}
 	transport = newHeaderRoundTripper(opts.Host, opts.AuthToken, opts.Headers, transport)
 
-	return http.Client{Transport: transport, Timeout: opts.Timeout}
+	return &http.Client{Transport: transport, Timeout: opts.Timeout}, nil
 }
 
 func inspectableMIMEType(t string) bool {
@@ -111,21 +133,6 @@ func isSameDomain(requestHost, domain string) bool {
 
 func isGarage(host string) bool {
 	return strings.EqualFold(host, "garage.github.com")
-}
-
-func isEnterprise(host string) bool {
-	return host != github && host != localhost
-}
-
-func normalizeHostname(hostname string) string {
-	hostname = strings.ToLower(hostname)
-	if strings.HasSuffix(hostname, "."+github) {
-		return github
-	}
-	if strings.HasSuffix(hostname, "."+localhost) {
-		return localhost
-	}
-	return hostname
 }
 
 type headerRoundTripper struct {
@@ -203,6 +210,30 @@ func newUnixDomainSocketRoundTripper(socketPath string) http.RoundTripper {
 		DialTLS:           dial,
 		DisableKeepAlives: true,
 	}
+}
+
+type sanitizerRoundTripper struct {
+	rt http.RoundTripper
+}
+
+func newSanitizerRoundTripper(rt http.RoundTripper) http.RoundTripper {
+	return sanitizerRoundTripper{rt: rt}
+}
+
+func (srt sanitizerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := srt.rt.RoundTrip(req)
+	if err != nil || !jsonTypeRE.MatchString(resp.Header.Get(contentType)) {
+		return resp, err
+	}
+	sanitizedReadCloser := struct {
+		io.Reader
+		io.Closer
+	}{
+		Reader: transform.NewReader(resp.Body, &asciisanitizer.Sanitizer{JSON: true}),
+		Closer: resp.Body,
+	}
+	resp.Body = sanitizedReadCloser
+	return resp, err
 }
 
 func currentTimeZone() string {

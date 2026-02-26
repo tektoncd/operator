@@ -8,7 +8,7 @@ import (
 	"sort"
 
 	"github.com/Masterminds/semver"
-	"github.com/cli/go-gh"
+	"github.com/cli/go-gh/v2/pkg/api"
 	"github.com/openshift-pipelines/pipelines-as-code/pkg/cli"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -80,7 +80,7 @@ func checkComponentNewerVersions(component component, bugfix bool) (semver.Colle
 }
 
 func fetchVersions(github string) (semver.Collection, error) {
-	client, err := gh.RESTClient(nil)
+	client, err := api.DefaultRESTClient()
 	if err != nil {
 		return nil, err
 	}

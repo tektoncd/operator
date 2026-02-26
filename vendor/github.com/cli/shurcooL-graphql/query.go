@@ -10,7 +10,7 @@ import (
 	"github.com/cli/shurcooL-graphql/ident"
 )
 
-func constructQuery(v interface{}, variables map[string]interface{}, queryName string) string {
+func constructQuery(v any, variables map[string]any, queryName string) string {
 	query := query(v)
 	if len(variables) > 0 {
 		return "query" + queryNameFormat(queryName) + "(" + queryArguments(variables) + ")" + query
@@ -20,7 +20,7 @@ func constructQuery(v interface{}, variables map[string]interface{}, queryName s
 	return query
 }
 
-func constructMutation(v interface{}, variables map[string]interface{}, queryName string) string {
+func constructMutation(v any, variables map[string]any, queryName string) string {
 	query := query(v)
 	if len(variables) > 0 {
 		return "mutation" + queryNameFormat(queryName) + "(" + queryArguments(variables) + ")" + query
@@ -37,8 +37,8 @@ func queryNameFormat(n string) string {
 
 // queryArguments constructs a minified arguments string for variables.
 //
-// E.g., map[string]interface{}{"a": Int(123), "b": NewBoolean(true)} -> "$a:Int!$b:Boolean".
-func queryArguments(variables map[string]interface{}) string {
+// E.g., map[string]any{"a": Int(123), "b": NewBoolean(true)} -> "$a:Int!$b:Boolean".
+func queryArguments(variables map[string]any) string {
 	// Sort keys in order to produce deterministic output for testing purposes.
 	// TODO: If tests can be made to work with non-deterministic output, then no need to sort.
 	keys := make([]string, 0, len(variables))
@@ -55,7 +55,7 @@ func queryArguments(variables map[string]interface{}) string {
 		writeArgumentType(&buf, reflect.TypeOf(variables[k]), true)
 		// Don't insert a comma here.
 		// Commas in GraphQL are insignificant, and we want minified output.
-		// See https://facebook.github.io/graphql/October2016/#sec-Insignificant-Commas.
+		// See https://spec.graphql.org/October2021/#sec-Insignificant-Commas.
 	}
 	return buf.String()
 }
@@ -95,7 +95,7 @@ func writeArgumentType(w io.Writer, t reflect.Type, value bool) {
 // a minified query string from the provided struct v.
 //
 // E.g., struct{Foo Int, BarBaz *Boolean} -> "{foo,barBaz}".
-func query(v interface{}) string {
+func query(v any) string {
 	var buf bytes.Buffer
 	writeQuery(&buf, reflect.TypeOf(v), false)
 	return buf.String()

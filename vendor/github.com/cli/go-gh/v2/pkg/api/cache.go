@@ -170,33 +170,39 @@ func (fs *fileStorage) read(key string) (*http.Response, error) {
 	return res, err
 }
 
-func (fs *fileStorage) store(key string, res *http.Response) error {
+func (fs *fileStorage) store(key string, res *http.Response) (storeErr error) {
 	cacheFile := fs.filePath(key)
 
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
-	err := os.MkdirAll(filepath.Dir(cacheFile), 0755)
-	if err != nil {
-		return err
+	if storeErr = os.MkdirAll(filepath.Dir(cacheFile), 0755); storeErr != nil {
+		return
 	}
 
-	f, err := os.OpenFile(cacheFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
+	var f *os.File
+	if f, storeErr = os.OpenFile(cacheFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600); storeErr != nil {
+		return
 	}
-	defer f.Close()
+
+	defer func() {
+		if err := f.Close(); storeErr == nil && err != nil {
+			storeErr = err
+		}
+	}()
 
 	var origBody io.ReadCloser
 	if res.Body != nil {
 		origBody, res.Body = copyStream(res.Body)
 		defer res.Body.Close()
 	}
-	err = res.Write(f)
+
+	storeErr = res.Write(f)
 	if origBody != nil {
 		res.Body = origBody
 	}
-	return err
+
+	return
 }
 
 func copyStream(r io.ReadCloser) (io.ReadCloser, io.ReadCloser) {
