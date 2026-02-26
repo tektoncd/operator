@@ -304,6 +304,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	// Ensure Result CR
 	if !tc.Spec.Result.Disabled {
 		tektonresult := result.GetTektonResultCR(tc, r.operatorVersion)
+		if platformData := r.extension.GetPlatformData(); platformData != "" {
+			if tektonresult.Annotations == nil {
+				tektonresult.Annotations = map[string]string{}
+			}
+			tektonresult.Annotations[v1alpha1.PlatformDataHashKey] = platformData
+		}
 		logger.Debug("Ensuring TektonResult CR exists")
 		if _, err := result.EnsureTektonResultExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonResults(), tektonresult); err != nil {
 			errMsg := fmt.Sprintf("TektonResult %s", err.Error())
