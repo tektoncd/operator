@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy-aae
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proxy-aae
+  template:
+    metadata:
+      labels:
+        app: proxy-aae
+    spec:
+      containers:
+      - name: proxy-aae
+        image: proxy-aae:latest
+        env:
+        - name: WORKERS_SECRET_NAMESPACE
+          value: "kueue-system"

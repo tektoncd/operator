@@ -116,6 +116,9 @@ type TektonConfigSpec struct {
 	// Dashboard holds the customizable options for dashboards component
 	// +optional
 	Dashboard Dashboard `json:"dashboard,omitempty"`
+	// MulticlusterProxyAAE holds the customizable options for the multicluster-proxy-aae component
+	// +optional
+	MulticlusterProxyAAE MulticlusterProxyAAEOptions `json:"multiclusterProxyAAE,omitempty"`
 	// Params is the list of params passed for all platforms
 	// +optional
 	Params []Param `json:"params,omitempty"`

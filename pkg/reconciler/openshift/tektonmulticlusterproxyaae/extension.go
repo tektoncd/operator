@@ -20,6 +20,8 @@ import (
 	"context"
 
 	mf "github.com/manifestival/manifestival"
+	corev1 "k8s.io/api/core/v1"
+
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
@@ -35,6 +37,12 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 	return []mf.Transformer{
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
+		common.DeploymentEnvVars([]corev1.EnvVar{
+			{
+				Name:  "WORKERS_SECRET_NAMESPACE",
+				Value: "openshift-kueue-operator",
+			},
+		}),
 	}
 }
 

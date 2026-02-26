@@ -17,12 +17,73 @@ limitations under the License.
 package multiclusterproxyaae
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
 )
+
+func TestGetTektonMulticlusterProxyAAECR(t *testing.T) {
+	t.Run("propagates options from TektonConfig to the CR spec", func(t *testing.T) {
+		wantOptions := v1alpha1.AdditionalOptions{
+			Deployments: map[string]appsv1.Deployment{
+				"proxy-aae": {
+					Spec: appsv1.DeploymentSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "proxy-aae",
+										Env: []corev1.EnvVar{
+											{Name: "WORKERS_SECRET_NAMESPACE", Value: "my-kueue-namespace"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		tc := &v1alpha1.TektonConfig{
+			ObjectMeta: metav1.ObjectMeta{Name: "config"},
+			Spec: v1alpha1.TektonConfigSpec{
+				CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "tekton-pipelines"},
+				MulticlusterProxyAAE: v1alpha1.MulticlusterProxyAAEOptions{
+					Options: wantOptions,
+				},
+			},
+		}
+
+		cr := GetTektonMulticlusterProxyAAECR(tc, "v0.0.1")
+
+		if cr.Spec.TargetNamespace != "tekton-pipelines" {
+			t.Errorf("TargetNamespace = %q, want %q", cr.Spec.TargetNamespace, "tekton-pipelines")
+		}
+		if !reflect.DeepEqual(cr.Spec.Options, wantOptions) {
+			t.Errorf("Options not propagated: got %+v, want %+v", cr.Spec.Options, wantOptions)
+		}
+	})
+
+	t.Run("empty options when TektonConfig has no multiclusterProxyAAE field", func(t *testing.T) {
+		tc := &v1alpha1.TektonConfig{
+			ObjectMeta: metav1.ObjectMeta{Name: "config"},
+			Spec: v1alpha1.TektonConfigSpec{
+				CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "tekton-pipelines"},
+			},
+		}
+
+		cr := GetTektonMulticlusterProxyAAECR(tc, "v0.0.1")
+
+		if !reflect.DeepEqual(cr.Spec.Options, v1alpha1.AdditionalOptions{}) {
+			t.Errorf("expected empty options, got %+v", cr.Spec.Options)
+		}
+	})
+}
 
 func TestIsMulticlusterProxyAAEEnabled(t *testing.T) {
 	tests := []struct {

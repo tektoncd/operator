@@ -27,6 +27,14 @@ import (
 	"knative.dev/pkg/version"
 )
 
+// DeploymentEnvVars returns a transformer that injects or replaces the given
+// environment variables in every container of every Deployment in the manifest.
+// If an env var with the same name already exists it is overwritten; otherwise
+// it is appended.
+func DeploymentEnvVars(envVars []corev1.EnvVar) mf.Transformer {
+	return deploymentEnvVars(envVars)
+}
+
 func DeploymentEnvVarKubernetesMinVersion() mf.Transformer {
 	var envVars []corev1.EnvVar
 	if minVersion, exists := os.LookupEnv(version.KubernetesMinVersionKey); exists {
