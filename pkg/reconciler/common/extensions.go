@@ -29,6 +29,10 @@ type Extension interface {
 	PreReconcile(context.Context, v1alpha1.TektonComponent) error
 	PostReconcile(context.Context, v1alpha1.TektonComponent) error
 	Finalize(context.Context, v1alpha1.TektonComponent) error
+	// GetPlatformData returns platform-specific data to include in installer set hash.
+	// This enables triggering installer set updates when platform-specific config changes
+	// (e.g., TLS configuration from APIServer on OpenShift).
+	GetPlatformData() string
 }
 
 // ExtensionGenerator creates an Extension from a Context
@@ -52,4 +56,7 @@ func (nilExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) err
 }
 func (nilExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
 	return nil
+}
+func (nilExtension) GetPlatformData() string {
+	return ""
 }

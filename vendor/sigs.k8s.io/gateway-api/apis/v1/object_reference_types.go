@@ -54,13 +54,13 @@ type SecretObjectReference struct {
 	//
 	// +optional
 	// +kubebuilder:default=""
-	Group *Group `json:"group,omitempty"`
+	Group *Group `json:"group"`
 
 	// Kind is kind of the referent. For example "Secret".
 	//
 	// +optional
 	// +kubebuilder:default=Secret
-	Kind *Kind `json:"kind,omitempty"`
+	Kind *Kind `json:"kind"`
 
 	// Name is the name of the referent.
 	// +required
