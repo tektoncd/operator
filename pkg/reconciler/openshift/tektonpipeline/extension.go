@@ -134,6 +134,10 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 	return nil
 }
 
+func (oe openshiftExtension) GetPlatformData() string {
+	return ""
+}
+
 func preManifest() (*mf.Manifest, error) {
 	koDataDir := os.Getenv(common.KoEnvKey)
 	manifest := &mf.Manifest{}

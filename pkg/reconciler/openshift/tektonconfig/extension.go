@@ -199,6 +199,10 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	return oe.consolePluginReconciler.reconcile(ctx, configInstance)
 }
 
+func (oe openshiftExtension) GetPlatformData() string {
+	return ""
+}
+
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
