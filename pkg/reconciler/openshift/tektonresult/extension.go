@@ -18,21 +18,24 @@ package tektonresult
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
-	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
-	"github.com/tektoncd/operator/pkg/reconciler/common"
-	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
-	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/logging"
+
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
+	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 )
 
 const (
@@ -71,11 +74,15 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		logger.Fatalf("Failed to fetch logs RBAC manifest: %v", err)
 	}
 
+	// Get TektonConfig lister to check EnableCentralTLSConfig flag
+	tektonConfigLister := tektonConfiginformer.Get(ctx).Lister()
+
 	ext := &openshiftExtension{
 		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
 			version, "results-ext", v1alpha1.KindTektonResult, nil),
-		routeManifest:    routeManifest,
-		logsRBACManifest: logsRBACManifest,
+		routeManifest:      routeManifest,
+		logsRBACManifest:   logsRBACManifest,
+		tektonConfigLister: tektonConfigLister,
 	}
 	return ext
 }
@@ -84,12 +91,14 @@ type openshiftExtension struct {
 	installerSetClient *client.InstallerSetClient
 	routeManifest      *mf.Manifest
 	logsRBACManifest   *mf.Manifest
+	tektonConfigLister occommon.TektonConfigLister
+	resolvedTLSConfig  *occommon.TLSEnvVars
 }
 
-func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
+func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	instance := comp.(*v1alpha1.TektonResult)
 
-	return []mf.Transformer{
+	transformers := []mf.Transformer{
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
 		occommon.ApplyCABundlesToDeployment,
@@ -101,18 +110,44 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		injectResultsAPIServiceCACert(instance.Spec.ResultsAPIProperties),
 		injectPostgresUpgradeSupport(),
 	}
+
+	// Use TLS config resolved in PreReconcile
+	if oe.resolvedTLSConfig != nil {
+		transformers = append(transformers, occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", deploymentAPI, []string{apiContainerName}))
+	}
+
+	return transformers
+}
+
+// GetPlatformData returns TLS config fingerprint for hash computation.
+// This ensures installer set is updated when TLS config changes.
+func (oe *openshiftExtension) GetPlatformData() string {
+	if oe.resolvedTLSConfig == nil {
+		return ""
+	}
+	return fmt.Sprintf("%s:%s:%s", oe.resolvedTLSConfig.MinVersion, oe.resolvedTLSConfig.CipherSuites, oe.resolvedTLSConfig.CurvePreferences)
 }
 
 func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+	logger := logging.FromContext(ctx)
 	result := tc.(*v1alpha1.TektonResult)
-	mf := mf.Manifest{}
+	manifest := mf.Manifest{}
 
 	if (result.Spec.LokiStackName != "" && result.Spec.LokiStackNamespace != "") ||
 		strings.EqualFold(result.Spec.LogsType, "LOKI") {
-		mf = mf.Append(*oe.logsRBACManifest)
+		manifest = manifest.Append(*oe.logsRBACManifest)
 	}
 
-	return oe.installerSetClient.PreSet(ctx, tc, &mf, filterAndTransform())
+	resolvedTLS, err := occommon.ResolveCentralTLSToEnvVars(ctx, oe.tektonConfigLister)
+	if err != nil {
+		return err
+	}
+	oe.resolvedTLSConfig = resolvedTLS
+	if oe.resolvedTLSConfig != nil {
+		logger.Infof("Injecting central TLS config: MinVersion=%s", oe.resolvedTLSConfig.MinVersion)
+	}
+
+	return oe.installerSetClient.PreSet(ctx, tc, &manifest, filterAndTransform())
 }
 
 func (oe openshiftExtension) PostReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
@@ -128,10 +163,6 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, tc v1alpha1.Tekt
 	}
 
 	return oe.installerSetClient.PostSet(ctx, tc, &manifest, filterAndTransform())
-}
-
-func (oe openshiftExtension) GetPlatformData() string {
-	return ""
 }
 
 func (oe openshiftExtension) Finalize(ctx context.Context, tc v1alpha1.TektonComponent) error {

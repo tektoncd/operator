@@ -322,8 +322,15 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 		// of TektonResult is changed by checking hash stored as annotation on
 		// TektonInstallerSet with computing new hash of TektonResult Spec
 		logger.Debug("Checking for spec changes in TektonResult")
-		// Hash of TektonResult Spec
-		expectedSpecHash, err := hash.Compute(tr.Spec)
+		// Hash of TektonResult Spec including platform-specific data (e.g., TLS config)
+		hashInput := struct {
+			Spec      v1alpha1.TektonResultSpec
+			ExtraData string
+		}{
+			Spec:      tr.Spec,
+			ExtraData: r.extension.GetPlatformData(),
+		}
+		expectedSpecHash, err := hash.Compute(hashInput)
 		if err != nil {
 			logger.Errorw("Failed to compute spec hash", "error", err)
 			return err

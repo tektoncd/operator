@@ -19,9 +19,10 @@ package tektonresult
 import (
 	"context"
 
-	k8s_ctrl "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonresult"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+
+	k8s_ctrl "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonresult"
 )
 
 // NewController initializes the controller and is called by the generated code
