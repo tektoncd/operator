@@ -130,6 +130,10 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, tc v1alpha1.Tekt
 	return oe.installerSetClient.PostSet(ctx, tc, &manifest, filterAndTransform())
 }
 
+func (oe openshiftExtension) GetPlatformData() string {
+	return ""
+}
+
 func (oe openshiftExtension) Finalize(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	if err := oe.installerSetClient.CleanupPostSet(ctx); err != nil {
 		return err
