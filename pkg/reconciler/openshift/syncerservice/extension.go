@@ -50,3 +50,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, tc v1alpha1.Tekt
 func (oe openshiftExtension) Finalize(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	return nil
 }
+
+func (oe openshiftExtension) GetPlatformData() string {
+	return ""
+}

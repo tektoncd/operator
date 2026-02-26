@@ -27,9 +27,12 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
+	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	pkgCommon "github.com/tektoncd/operator/pkg/common"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	nsV1 "k8s.io/client-go/informers/core/v1"
@@ -53,12 +56,13 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 	}
 
 	ext := openshiftExtension{
-		operatorClientSet: operatorclient.Get(ctx),
-		kubeClientSet:     kubeclient.Get(ctx),
-		rbacInformer:      rbacInformer.Get(ctx),
-		nsInformer:        namespaceinformer.Get(ctx),
-		securityClientSet: pkgCommon.GetSecurityClient(ctx),
-		operatorVersion:   operatorVer,
+		operatorClientSet:  operatorclient.Get(ctx),
+		kubeClientSet:      kubeclient.Get(ctx),
+		rbacInformer:       rbacInformer.Get(ctx),
+		nsInformer:         namespaceinformer.Get(ctx),
+		securityClientSet:  pkgCommon.GetSecurityClient(ctx),
+		tektonConfigLister: tektonConfiginformer.Get(ctx).Lister(),
+		operatorVersion:    operatorVer,
 	}
 
 	ext.consolePluginReconciler = &consolePluginReconciler{
@@ -80,7 +84,8 @@ type openshiftExtension struct {
 
 	// OpenShift clientsets are a bit... special, we need to get each
 	// clientset separately
-	securityClientSet security.Interface
+	securityClientSet  security.Interface
+	tektonConfigLister occommon.TektonConfigLister
 
 	operatorVersion string
 }
@@ -197,6 +202,25 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 
 	// execute console plugin reconciler
 	return oe.consolePluginReconciler.reconcile(ctx, configInstance)
+}
+
+func (oe openshiftExtension) GetPlatformData() string {
+	tc, err := oe.tektonConfigLister.Get("config")
+	if err != nil {
+		return ""
+	}
+	if !tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig {
+		return ""
+	}
+	profile, err := occommon.GetTLSProfileFromAPIServer(context.Background())
+	if err != nil || profile == nil {
+		return ""
+	}
+	h, err := hash.Compute(profile)
+	if err != nil {
+		return ""
+	}
+	return h
 }
 
 func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
