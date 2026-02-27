@@ -6,8 +6,6 @@ Package `graphql` provides a GraphQL client implementation, and is forked from `
 Installation
 ------------
 
-`graphql` requires Go version 1.16 or later.
-
 ```bash
 go get -u github.com/cli/shurcooL-graphql
 ```
@@ -130,7 +128,7 @@ var q struct {
 Then, define a `variables` map with their values:
 
 ```Go
-variables := map[string]interface{}{
+variables := map[string]any{
 	"id":   graphql.ID(id),
 	"unit": starwars.LengthUnit("METER"),
 }
@@ -250,7 +248,7 @@ var m struct {
 		Commentary graphql.String
 	} `graphql:"createReview(episode: $ep, review: $review)"`
 }
-variables := map[string]interface{}{
+variables := map[string]any{
 	"ep": starwars.Episode("JEDI"),
 	"review": starwars.ReviewInput{
 		Stars:      graphql.Int(5),

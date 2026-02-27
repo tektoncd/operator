@@ -52,7 +52,7 @@ func FromEnv() Term {
 		}
 	} else {
 		stdoutIsTTY = IsTerminal(os.Stdout)
-		isColorEnabled = envColorForced() || (!IsColorDisabled() && stdoutIsTTY)
+		isColorEnabled = IsColorForced() || (!IsColorDisabled() && stdoutIsTTY)
 	}
 
 	isVirtualTerminal := false
@@ -162,7 +162,8 @@ func IsColorDisabled() bool {
 	return os.Getenv("NO_COLOR") != "" || os.Getenv("CLICOLOR") == "0"
 }
 
-func envColorForced() bool {
+// IsColorForced returns true if environment variable CLICOLOR_FORCE is set to force colored terminal output.
+func IsColorForced() bool {
 	return os.Getenv("CLICOLOR_FORCE") != "" && os.Getenv("CLICOLOR_FORCE") != "0"
 }
 

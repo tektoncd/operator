@@ -35,6 +35,13 @@ func MapValue() *Map {
 	}}
 }
 
+func NullValue() *Map {
+	return &Map{&yaml.Node{
+		Kind: yaml.ScalarNode,
+		Tag:  "!!null",
+	}}
+}
+
 func Unmarshal(data []byte) (*Map, error) {
 	var root yaml.Node
 	err := yaml.Unmarshal(data, &root)
@@ -65,7 +72,7 @@ func (m *Map) AddEntry(key string, value *Map) {
 }
 
 func (m *Map) Empty() bool {
-	return m.Content == nil || len(m.Content) == 0
+	return len(m.Content) == 0
 }
 
 func (m *Map) FindEntry(key string) (*Map, error) {
@@ -142,6 +149,8 @@ func (m *Map) SetEntry(key string, value *Map) {
 	m.AddEntry(key, value)
 }
 
+// SetModified marks the map as modified.
+//
 // Note: This is a hack to introduce the concept of modified/unmodified
 // on top of gopkg.in/yaml.v3. This works by setting the Value property
 // of a MappingNode to a specific value and then later checking if the
@@ -159,14 +168,11 @@ func (m *Map) SetModified() {
 	}
 }
 
-// Traverse map using BFS to set all nodes as unmodified.
+// SetUnmodified traverses the map using BFS to set all nodes as unmodified.
 func (m *Map) SetUnmodified() {
 	i := 0
 	queue := []*yaml.Node{m.Node}
-	for {
-		if i > (len(queue) - 1) {
-			break
-		}
+	for i < len(queue) {
 		q := queue[i]
 		i = i + 1
 		if q.Kind != yaml.MappingNode {
@@ -177,14 +183,11 @@ func (m *Map) SetUnmodified() {
 	}
 }
 
-// Traverse map using BFS to searach for any nodes that have been modified.
+// IsModified traverses the map using BFS to search for any nodes that have been modified.
 func (m *Map) IsModified() bool {
 	i := 0
 	queue := []*yaml.Node{m.Node}
-	for {
-		if i > (len(queue) - 1) {
-			break
-		}
+	for i < len(queue) {
 		q := queue[i]
 		i = i + 1
 		if q.Kind != yaml.MappingNode {

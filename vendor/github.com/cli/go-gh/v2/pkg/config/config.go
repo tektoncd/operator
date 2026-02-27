@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/cli/go-gh/internal/yamlmap"
+	"github.com/cli/go-gh/v2/internal/yamlmap"
 )
 
 const (
@@ -21,6 +21,7 @@ const (
 	xdgConfigHome = "XDG_CONFIG_HOME"
 	xdgDataHome   = "XDG_DATA_HOME"
 	xdgStateHome  = "XDG_STATE_HOME"
+	xdgCacheHome  = "XDG_CACHE_HOME"
 )
 
 var (
@@ -51,7 +52,7 @@ func (c *Config) Get(keys []string) (string, error) {
 		var err error
 		m, err = m.FindEntry(key)
 		if err != nil {
-			return "", KeyNotFoundError{key}
+			return "", &KeyNotFoundError{key}
 		}
 	}
 	return m.Value, nil
@@ -69,7 +70,7 @@ func (c *Config) Keys(keys []string) ([]string, error) {
 		var err error
 		m, err = m.FindEntry(key)
 		if err != nil {
-			return nil, KeyNotFoundError{key}
+			return nil, &KeyNotFoundError{key}
 		}
 	}
 	return m.Keys(), nil
@@ -89,12 +90,12 @@ func (c *Config) Remove(keys []string) error {
 		key := keys[i]
 		m, err = m.FindEntry(key)
 		if err != nil {
-			return KeyNotFoundError{key}
+			return &KeyNotFoundError{key}
 		}
 	}
 	err := m.RemoveEntry(keys[len(keys)-1])
 	if err != nil {
-		return KeyNotFoundError{keys[len(keys)-1]}
+		return &KeyNotFoundError{keys[len(keys)-1]}
 	}
 	return nil
 }
@@ -102,7 +103,12 @@ func (c *Config) Remove(keys []string) error {
 // Set a string value in a Config.
 // The keys argument is a sequence of key values so that nested
 // entries can be set. If any of the keys do not exist they will
-// be created.
+// be created. If the string value to be set is empty it will be
+// represented as null not an empty string when written.
+//
+//	var c *Config
+//	c.Set([]string{"key"}, "")
+//	Write(c) // writes `key: ` not `key: ""`
 func (c *Config) Set(keys []string, value string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -116,21 +122,30 @@ func (c *Config) Set(keys []string, value string) {
 		}
 		m = entry
 	}
-	m.SetEntry(keys[len(keys)-1], yamlmap.StringValue(value))
+	val := yamlmap.StringValue(value)
+	if value == "" {
+		val = yamlmap.NullValue()
+	}
+	m.SetEntry(keys[len(keys)-1], val)
+}
+
+func (c *Config) deepCopy() *Config {
+	return ReadFromString(c.entries.String())
 }
 
 // Read gh configuration files from the local file system and
-// return a Config.
-var Read = func() (*Config, error) {
+// returns a Config. A copy of the fallback configuration will
+// be returned when there are no configuration files to load.
+// If there are no configuration files and no fallback configuration
+// an empty configuration will be returned.
+var Read = func(fallback *Config) (*Config, error) {
 	once.Do(func() {
-		cfg, loadErr = load(generalConfigFile(), hostsConfigFile())
+		cfg, loadErr = load(generalConfigFile(), hostsConfigFile(), fallback)
 	})
 	return cfg, loadErr
 }
 
 // ReadFromString takes a yaml string and returns a Config.
-// Note: This is only used for testing, and should not be
-// relied upon in production.
 func ReadFromString(str string) *Config {
 	m, _ := mapFromString(str)
 	if m == nil {
@@ -174,31 +189,36 @@ func Write(c *Config) error {
 	return nil
 }
 
-func load(generalFilePath, hostsFilePath string) (*Config, error) {
+func load(generalFilePath, hostsFilePath string, fallback *Config) (*Config, error) {
 	generalMap, err := mapFromFile(generalFilePath)
 	if err != nil && !os.IsNotExist(err) {
 		if errors.Is(err, yamlmap.ErrInvalidYaml) ||
 			errors.Is(err, yamlmap.ErrInvalidFormat) {
-			return nil, InvalidConfigFileError{Path: generalFilePath, Err: err}
+			return nil, &InvalidConfigFileError{Path: generalFilePath, Err: err}
 		}
 		return nil, err
 	}
 
-	if generalMap == nil || generalMap.Empty() {
-		generalMap, _ = mapFromString(defaultGeneralEntries)
+	if generalMap == nil {
+		generalMap = yamlmap.MapValue()
 	}
 
 	hostsMap, err := mapFromFile(hostsFilePath)
 	if err != nil && !os.IsNotExist(err) {
 		if errors.Is(err, yamlmap.ErrInvalidYaml) ||
 			errors.Is(err, yamlmap.ErrInvalidFormat) {
-			return nil, InvalidConfigFileError{Path: hostsFilePath, Err: err}
+			return nil, &InvalidConfigFileError{Path: hostsFilePath, Err: err}
 		}
 		return nil, err
 	}
 
 	if hostsMap != nil && !hostsMap.Empty() {
 		generalMap.AddEntry("hosts", hostsMap)
+		generalMap.SetUnmodified()
+	}
+
+	if generalMap.Empty() && fallback != nil {
+		return fallback.deepCopy(), nil
 	}
 
 	return &Config{entries: generalMap}, nil
@@ -224,6 +244,8 @@ func mapFromString(str string) (*yamlmap.Map, error) {
 	return yamlmap.Unmarshal([]byte(str))
 }
 
+// ConfigDir returns the path to the configuration directory.
+//
 // Config path precedence: GH_CONFIG_DIR, XDG_CONFIG_HOME, AppData (windows only), HOME.
 func ConfigDir() string {
 	var path string
@@ -240,6 +262,8 @@ func ConfigDir() string {
 	return path
 }
 
+// StateDir returns the path to the state directory.
+//
 // State path precedence: XDG_STATE_HOME, LocalAppData (windows only), HOME.
 func StateDir() string {
 	var path string
@@ -254,6 +278,8 @@ func StateDir() string {
 	return path
 }
 
+// DataDir returns the path to the data directory.
+//
 // Data path precedence: XDG_DATA_HOME, LocalAppData (windows only), HOME.
 func DataDir() string {
 	var path string
@@ -266,6 +292,25 @@ func DataDir() string {
 		path = filepath.Join(c, ".local", "share", "gh")
 	}
 	return path
+}
+
+// CacheDir returns the path to the cache directory.
+//
+// Cache path precedence: XDG_CACHE_HOME, LocalAppData (windows only), HOME, legacy gh-cli-cache.
+func CacheDir() string {
+	if a := os.Getenv(xdgCacheHome); a != "" {
+		return filepath.Join(a, "gh")
+	} else if b := os.Getenv(localAppData); runtime.GOOS == "windows" && b != "" {
+		return filepath.Join(b, "GitHub CLI")
+	} else if c, err := os.UserHomeDir(); err == nil {
+		return filepath.Join(c, ".cache", "gh")
+	} else {
+		// Note that this has a minor security issue because /tmp is world-writeable.
+		// As such, it is possible for other users on a shared system to overwrite cached data.
+		// The practical risk of this is low, but it's worth calling out as a risk.
+		// I've included this here for backwards compatibility but we should consider removing it.
+		return filepath.Join(os.TempDir(), "gh-cli-cache")
+	}
 }
 
 func readFile(filename string) ([]byte, error) {
@@ -281,34 +326,19 @@ func readFile(filename string) ([]byte, error) {
 	return data, nil
 }
 
-func writeFile(filename string, data []byte) error {
-	err := os.MkdirAll(filepath.Dir(filename), 0771)
-	if err != nil {
-		return err
+func writeFile(filename string, data []byte) (writeErr error) {
+	if writeErr = os.MkdirAll(filepath.Dir(filename), 0771); writeErr != nil {
+		return
 	}
-	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
+	var file *os.File
+	if file, writeErr = os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600); writeErr != nil {
+		return
 	}
-	defer file.Close()
-	_, err = file.Write(data)
-	return err
+	defer func() {
+		if err := file.Close(); writeErr == nil && err != nil {
+			writeErr = err
+		}
+	}()
+	_, writeErr = file.Write(data)
+	return
 }
-
-var defaultGeneralEntries = `
-# What protocol to use when performing git operations. Supported values: ssh, https
-git_protocol: https
-# What editor gh should run when creating issues, pull requests, etc. If blank, will refer to environment.
-editor:
-# When to interactively prompt. This is a global config that cannot be overridden by hostname. Supported values: enabled, disabled
-prompt: enabled
-# A pager program to send command output to, e.g. "less". Set the value to "cat" to disable the pager.
-pager:
-# Aliases allow you to create nicknames for gh commands
-aliases:
-  co: pr checkout
-# The path to a unix socket through which send HTTP connections. If blank, HTTP traffic will be handled by net/http.DefaultTransport.
-http_unix_socket:
-# What web browser gh should use when opening URLs. If blank, will refer to environment.
-browser:
-`
