@@ -145,7 +145,7 @@ func TestSetPACControllerDefaultSettingsWithMultipleCatalogs(t *testing.T) {
 					"catalog-1-url":  "https://api.other.com/v1",
 					"catalog-5-id":   "anotherhub5",
 					"catalog-5-name": "tekton1",
-					"catalog-5-url":  "https://api.other.com/v2",
+					"catalog-5-url":  "https://artifacthub.io/api/v1",
 				},
 			},
 		},
@@ -162,12 +162,12 @@ func TestSetPACControllerDefaultSettingsWithMultipleCatalogs(t *testing.T) {
 		"bitbucket-cloud-check-source-ip":            "true",
 		"catalog-1-id":                               "anotherhub",
 		"catalog-1-name":                             "tekton",
-		"catalog-1-type":                             "artifacthub",
+		"catalog-1-type":                             "tektonhub",
 		"catalog-1-url":                              "https://api.other.com/v1",
 		"catalog-5-id":                               "anotherhub5",
 		"catalog-5-name":                             "tekton1",
 		"catalog-5-type":                             "artifacthub",
-		"catalog-5-url":                              "https://api.other.com/v2",
+		"catalog-5-url":                              "https://artifacthub.io/api/v1",
 		"custom-console-name":                        "",
 		"custom-console-url":                         "",
 		"custom-console-url-namespace":               "",
@@ -249,4 +249,28 @@ func TestSetAdditionalPACControllerDefaultHavingAdditionalPACController(t *testi
 	assert.Equal(t, "Additional PACController CI", opacCR.Spec.PACSettings.AdditionalPACControllers["test"].Settings["application-name"])
 	assert.Equal(t, "custom", opacCR.Spec.PACSettings.AdditionalPACControllers["test"].Settings["custom-console-name"])
 	assert.Equal(t, "https://custom.com", opacCR.Spec.PACSettings.AdditionalPACControllers["test"].Settings["custom-console-url"])
+}
+
+func TestSetPACControllerDefaultWhenNotArtifactHubSetsTektonHub(t *testing.T) {
+	// When default catalog is not artifacthub, operator sets it to tektonhub
+	opacCR := &OpenShiftPipelinesAsCode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: OpenShiftPipelinesAsCodeSpec{
+			PACSettings: PACSettings{
+				Settings: map[string]string{
+					"hub-catalog-type": "tektonhub",
+					"hub-url":          "https://api.hub.tekton.dev/v1",
+				},
+			},
+		},
+	}
+
+	opacCR.Spec.PACSettings.setPACDefaults(zap.NewNop().Sugar())
+
+	// Default catalog should be tektonhub when not artifacthub
+	assert.Equal(t, "tektonhub", opacCR.Spec.PACSettings.Settings["hub-catalog-type"])
+	assert.Equal(t, "https://api.hub.tekton.dev/v1", opacCR.Spec.PACSettings.Settings["hub-url"])
 }
