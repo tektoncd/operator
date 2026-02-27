@@ -396,3 +396,12 @@ rules:
   - delete
   - update
   - patch
+# to read cluster TLS security profile for centralized TLS configuration
+- apiGroups:
+  - config.openshift.io
+  resources:
+  - apiservers
+  verbs:
+  - get
+  - list
+  - watch
