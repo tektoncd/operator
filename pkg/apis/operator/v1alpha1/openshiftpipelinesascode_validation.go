@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"reflect"
 
 	pacSettings "github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
@@ -53,7 +54,7 @@ func (ps *PACSettings) validate(logger *zap.SugaredLogger, path string) *apis.Fi
 	var errs *apis.FieldError
 
 	defaultPacSettings := pacSettings.Settings{}
-	if err := pacSettings.SyncConfig(logger, &defaultPacSettings, ps.Settings, pacSettings.DefaultValidators()); err != nil {
+	if err := pacSettings.SyncConfig(logger, &defaultPacSettings, ps.Settings, pacSettings.DefaultValidators(), http.DefaultClient); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.settings", path)))
 	}
 
