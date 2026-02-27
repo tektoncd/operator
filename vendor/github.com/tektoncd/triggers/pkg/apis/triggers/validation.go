@@ -17,8 +17,6 @@ limitations under the License.
 package triggers
 
 import (
-	"fmt"
-
 	"knative.dev/pkg/apis"
 )
 
@@ -31,7 +29,7 @@ func ValidateAnnotations(annotations map[string]string) *apis.FieldError {
 
 	if value, ok := annotations[PayloadValidationAnnotation]; ok {
 		if value != "true" && value != "false" {
-			errs = errs.Also(apis.ErrInvalidValue(fmt.Sprintf("%s annotation must have value 'true' or 'false'", PayloadValidationAnnotation), "metadata.annotations"))
+			errs = errs.Also(apis.ErrInvalidValue(PayloadValidationAnnotation+" annotation must have value 'true' or 'false'", "metadata.annotations"))
 		}
 	}
 
