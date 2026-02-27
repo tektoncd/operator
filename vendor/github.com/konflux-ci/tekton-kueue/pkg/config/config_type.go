@@ -1,5 +1,4 @@
 // +k8s:deepcopy-gen=package
-
 package config
 
 /*
@@ -19,16 +18,9 @@ limitations under the License.
 */
 
 type Config struct {
-	MultiKueueConfig  `json:",inline"`
-	TektonKueueConfig `json:",inline"`
-}
-
-type MultiKueueConfig struct {
-	MultiKueueOverride bool `json:"multiKueueOverride,omitempty"`
-}
-type TektonKueueConfig struct {
-	QueueName string `json:"queueName,omitempty"`
-	CEL       CEL    `json:"cel,omitempty"`
+	QueueName          string `json:"queueName,omitempty"`
+	MultiKueueOverride bool   `json:"multiKueueOverride,omitempty"`
+	CEL                CEL    `json:"cel,omitempty"`
 }
 
 type CEL struct {
