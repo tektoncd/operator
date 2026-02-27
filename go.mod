@@ -10,7 +10,7 @@ require (
 	github.com/manifestival/client-go-client v0.6.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
-	github.com/openshift-pipelines/pipelines-as-code v0.37.4
+	github.com/openshift-pipelines/pipelines-as-code v0.37.7
 	github.com/openshift-pipelines/tektoncd-pruner v0.0.0-20250711075231-9c8624123820
 	github.com/openshift/api v0.0.0-20240521185306-0314f31e7774
 	github.com/openshift/apiserver-library-go v0.0.0-20230816171015-6bfafa975bfb
@@ -19,9 +19,9 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tektoncd/pipeline v1.3.1
+	github.com/tektoncd/pipeline v1.3.2
 	github.com/tektoncd/plumbing v0.0.0-20250630062957-f863d38f433a
-	github.com/tektoncd/triggers v0.32.0
+	github.com/tektoncd/triggers v0.33.0
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
