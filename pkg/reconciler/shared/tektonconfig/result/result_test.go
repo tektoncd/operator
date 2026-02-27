@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/operator/pkg/client/injection/client/fake"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ts "knative.dev/pkg/reconciler/testing"
 )
@@ -234,6 +235,47 @@ func TestGetTektonResultCR_HubClusterConfig(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestGetTektonResultCR_ConfigPropagation(t *testing.T) {
+	// Verify nodeSelector, tolerations and priorityClassName from TektonConfig
+	// are propagated to TektonResult CR
+	config := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1alpha1.ConfigResourceName,
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Profile: v1alpha1.ProfileAll,
+			CommonSpec: v1alpha1.CommonSpec{
+				TargetNamespace: "tekton-pipelines",
+			},
+			Config: v1alpha1.Config{
+				NodeSelector: map[string]string{
+					"node-role.kubernetes.io/master": "",
+				},
+				Tolerations: []corev1.Toleration{
+					{
+						Key:      "node.kubernetes.io/not-ready",
+						Operator: corev1.TolerationOpExists,
+						Effect:   corev1.TaintEffectNoExecute,
+					},
+				},
+				PriorityClassName: "system-cluster-critical",
+			},
+		},
+	}
+
+	result := GetTektonResultCR(config, "v0.70.0")
+
+	if result.Spec.Config.NodeSelector == nil || result.Spec.Config.NodeSelector["node-role.kubernetes.io/master"] != "" {
+		t.Errorf("expected nodeSelector to be propagated from TektonConfig, got %v", result.Spec.Config.NodeSelector)
+	}
+	if len(result.Spec.Config.Tolerations) != 1 || result.Spec.Config.Tolerations[0].Key != "node.kubernetes.io/not-ready" {
+		t.Errorf("expected tolerations to be propagated from TektonConfig, got %v", result.Spec.Config.Tolerations)
+	}
+	if result.Spec.Config.PriorityClassName != "system-cluster-critical" {
+		t.Errorf("expected priorityClassName to be propagated from TektonConfig, got %q", result.Spec.Config.PriorityClassName)
 	}
 }
 
