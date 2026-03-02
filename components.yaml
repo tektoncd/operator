@@ -3,7 +3,7 @@ chains:
   version: v0.26.2
 dashboard:
   github: tektoncd/dashboard
-  version: v0.65.0
+  version: v0.66.0
 hub:
   github: openshift-pipelines/hub
   version: v1.23.7
@@ -15,7 +15,7 @@ multicluster-proxy-aae:
   version: v0.1.1
 pipeline:
   github: tektoncd/pipeline
-  version: v1.9.1
+  version: v1.10.0
 pipelines-as-code:
   github: openshift-pipelines/pipelines-as-code
   version: v0.42.0
