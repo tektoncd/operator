@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/Masterminds/semver v1.5.0
-	github.com/cert-manager/cert-manager v1.19.3
+	github.com/cert-manager/cert-manager v1.19.4
 	github.com/cli/go-gh/v2 v2.13.0
 	github.com/go-logr/zapr v1.3.0
 	github.com/google/go-cmp v0.7.0
