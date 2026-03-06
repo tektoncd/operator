@@ -2,11 +2,8 @@
 
 approvers:
 - anithapriyanatarajan
-- concaf
-- jkandasa
 - jkhelil
 - mbpavan
-- piyush-garg
 - PuneetPunamiya
 - savitaashture
 - vdemeester
@@ -18,7 +15,6 @@ reviewers:
 - khrm
 - l-qing
 - mbpavan
-- piyush-garg
 - pramodbindal
 - pratap0007
 - PuneetPunamiya
@@ -29,3 +25,6 @@ reviewers:
 # - pradeepitm12
 # - sm43
 # - vincent-pli
+# - concaf
+# - jkandasa
+# - piyush-garg
