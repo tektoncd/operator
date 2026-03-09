@@ -33,11 +33,18 @@ func (r *Reconciler) createInstallerSet(ctx context.Context, tr *v1alpha1.Tekton
 		return nil, err
 	}
 
-	// compute the hash of tektonresult spec and store as an annotation
-	// in further reconciliation we compute hash of td spec and check with
-	// annotation, if they are same then we skip updating the object
+	// compute the hash of tektonresult spec (including platform-specific data)
+	// and store as an annotation. In further reconciliation we compute hash
+	// and check with annotation, if they are same then we skip updating the object
 	// otherwise we update the manifest
-	specHash, err := hash.Compute(tr.Spec)
+	hashInput := struct {
+		Spec      v1alpha1.TektonResultSpec
+		ExtraData string
+	}{
+		Spec:      tr.Spec,
+		ExtraData: r.extension.GetPlatformData(),
+	}
+	specHash, err := hash.Compute(hashInput)
 	if err != nil {
 		return nil, err
 	}

@@ -357,6 +357,10 @@ func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent)
 	return nil
 }
 
+func (oe openshiftExtension) GetPlatformData() string {
+	return ""
+}
+
 // Get the Host value of the Route created
 func getRouteHost(manifest *mf.Manifest, routeName string) (string, error) {
 	var hostUrl string

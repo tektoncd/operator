@@ -67,3 +67,7 @@ func (oe kubernetesExtension) Finalize(ctx context.Context, comp v1alpha1.Tekton
 	}
 	return nil
 }
+
+func (oe kubernetesExtension) GetPlatformData() string {
+	return ""
+}
