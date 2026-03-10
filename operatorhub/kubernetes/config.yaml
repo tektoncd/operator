@@ -1,5 +1,7 @@
 platform: "kubernetes"
 operator-packagename: "tektoncd-operator"
+# Minimum Kubernetes version for OLM (set in CSV spec.minKubeVersion). Used when generating bundle.
+min-kube-version: "1.28.0"
 image-substitutions:
 - image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator:devel
   replaceLocations:
