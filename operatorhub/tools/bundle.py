@@ -211,6 +211,72 @@ def genBundleCmd(config):
         version=config["release-version"]
     )
 
+_DEPRECATED_API_GROUP_REPLACEMENTS = {}
+
+# Default resource requests for operator containers (OperatorHub validator recommendation)
+_OPERATOR_CONTAINER_NAMES = (
+    "tekton-operator-lifecycle",
+    "tekton-operator-cluster-operations",
+    "tekton-operator-webhook",
+)
+_DEFAULT_RESOURCE_REQUESTS = {"cpu": "10m", "memory": "64Mi"}
+
+def _apply_min_kube_version(csv, config):
+    min_ver = config.get("min-kube-version")
+    if min_ver:
+        csv["spec"]["minKubeVersion"] = min_ver
+
+
+def _fix_deprecated_api_groups(csv):
+    install_spec = csv.get("spec", {}).get("install", {}).get("spec", {})
+    for cluster_perm in install_spec.get("clusterPermissions", []):
+        for rule in cluster_perm.get("rules", []):
+            groups = rule.get("apiGroups", [])
+            if not groups:
+                continue
+            new_groups = [
+                _DEPRECATED_API_GROUP_REPLACEMENTS.get(g, g) for g in groups
+            ]
+            if new_groups != groups:
+                rule["apiGroups"] = new_groups
+
+
+def _ensure_container_resource_requests(csv):
+    install_spec = csv.get("spec", {}).get("install", {}).get("spec", {})
+    for deployment in install_spec.get("deployments", []):
+        containers = deployment.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [])
+        for container in containers:
+            if container.get("name") not in _OPERATOR_CONTAINER_NAMES:
+                continue
+            res = container.get("resources") or {}
+            if not res.get("requests"):
+                container["resources"] = res or {}
+                container["resources"]["requests"] = dict(_DEFAULT_RESOURCE_REQUESTS)
+
+
+def _ensure_container_image_annotation(csv):
+    """Set metadata.annotations.containerImage from operator deployment (required by OperatorHub CI)."""
+    install_spec = csv.get("spec", {}).get("install", {}).get("spec", {})
+    deployments = install_spec.get("deployments", [])
+    for deployment in deployments:
+        containers = deployment.get("spec", {}).get("template", {}).get("spec", {}).get("containers", [])
+        for container in containers:
+            name = container.get("name", "")
+            image = container.get("image")
+            if image and name in ("tekton-operator-lifecycle", "tekton-operator"):
+                if "annotations" not in csv["metadata"]:
+                    csv["metadata"]["annotations"] = {}
+                csv["metadata"]["annotations"]["containerImage"] = image
+                return
+    # Fallback: first container image of first deployment
+    if deployments:
+        containers = deployments[0].get("spec", {}).get("template", {}).get("spec", {}).get("containers", [])
+        if containers and containers[0].get("image"):
+            if "annotations" not in csv["metadata"]:
+                csv["metadata"]["annotations"] = {}
+            csv["metadata"]["annotations"]["containerImage"] = containers[0]["image"]
+
+
 def newCSVmods(config):
     divider("update csv")
     artifact_dir = os.path.join(config["workspace"], "release-artifacts")
@@ -239,6 +305,13 @@ def newCSVmods(config):
                     if "labels" not in csv['metadata']:
                         csv['metadata']['labels'] = {}
                     csv['metadata']['labels'].update(config["addn-labels"])
+
+                # OperatorHub validator: minKubeVersion, deprecated APIs, resource requests
+                _apply_min_kube_version(csv, config)
+                _fix_deprecated_api_groups(csv)
+                _ensure_container_resource_requests(csv)
+                # OperatorHub CI: metadata.annotations.containerImage must match operator deployment image
+                _ensure_container_image_annotation(csv)
 
                 csv_stream.seek(0)
                 csv_stream.truncate()
