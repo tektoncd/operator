@@ -1,0 +1,44 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: tekton-scheduler-role
+rules:
+- apiGroups:
+  - kueue.x-k8s.io
+  resources:
+  - resourceflavors
+  - workloads
+  - workloads/finalizers
+  - workloads/status
+  - workloadpriorityclasses
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - scheduling.k8s.io
+  resources:
+  - priorityclasses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cert-manager.io
+  resources:
+  - certificates
+  - issuers
+  verbs:
+  - get
+  - create
+  - update
+  - list
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get

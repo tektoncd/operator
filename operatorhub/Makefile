@@ -10,7 +10,7 @@ IMAGE_HOST ?= quay.io
 IMAGE_NAMESPACE ?= jkhelil/tektoncd/operator
 IMAGE_REPO ?= $(IMAGE_HOST)/$(IMAGE_NAMESPACE)
 IMAGE_TAG_BASE ?= $(IMAGE_REPO)/operator
-VERSION ?= 0.75.0
+VERSION ?= 0.79.0
 
 # Define the bundle image with versioning
 BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)

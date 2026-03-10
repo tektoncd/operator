@@ -5,14 +5,14 @@ metadata:
   labels:
     operator.tekton.dev/release: v0.79.0
     version: v0.79.0
-  name: tektontriggers.operator.tekton.dev
+  name: tektonmulticlusterproxyaaes.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: TektonTrigger
-    listKind: TektonTriggerList
-    plural: tektontriggers
-    singular: tektontrigger
+    kind: TektonMulticlusterProxyAAE
+    listKind: TektonMulticlusterProxyAAEList
+    plural: tektonmulticlusterproxyaaes
+    singular: tektonmulticlusterproxyaae
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -28,7 +28,11 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Schema for the tektontriggers API
+        description: |
+          TektonMulticlusterProxyAAE configures the Proxy AAE (Aggregated API Extension) from
+          https://github.com/openshift-pipelines/multicluster-proxy-aae. It provides a unified
+          Kubernetes API for accessing Tekton resources (TaskRuns, Pods, logs) across multiple
+          worker clusters managed by MultiKueue.
         type: object
         x-kubernetes-preserve-unknown-fields: true
     served: true
