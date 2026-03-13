@@ -45,7 +45,7 @@ bundle for using `local` strategy.
 2. From the project root (tektoncd/operator) run (note abosolute path for `--release-manifest` flag is necessary)
 
     ```bash
-    export BUNDLE_ARGS="--workspace openshift --operator-release-version ${tektoncd_operator_version} --channels alpha --default-channel alpha --fetch-strategy-release-manifest --release-manifest $(pwd)/${release_file_name} --upgrade-strategy-semver"
+    export BUNDLE_ARGS="--workspace openshift --operator-release-version ${tektoncd_operator_version} --channels stable,preview --default-channel stable --fetch-strategy-release-manifest --release-manifest $(pwd)/${release_file_name} --upgrade-strategy-semver"
     make operator-bundle
     ```
 
@@ -55,8 +55,8 @@ bundle for using `local` strategy.
    | --------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
    | `--workspace openshift`                                   | the working directory (inside operatorhub/) where the operator bundle should be assembled    |
    | `--operator-release-version ${tektoncd_operator_version}` | version of the release (version of bundle)                                                   |
-   | `--channels alpha`                                        | target release channel(s) (eg: stable,preview)                                               |
-   | `--default-channel alpha`                                 | set default channel of the operator                                                          |
+   | `--channels stable,preview`                               | target release channel(s) (use stable to match OpenShift operator channel)                   |
+   | `--default-channel stable`                                | set default channel of the operator                                                          |
    | `--fetch-strategy-release-manifest`                       | gather input kubernetes resources from a list of yaml manifests instead of using local files |
    | `--release-manifest $(pwd)/${release_file_name}`          | specify abosolute ($(pwd)/${release_file_name}) path to release manifest file                |
    | `--upgrade-strategy-semver`                               | specify update strategy (options `replaces` or `semver`)                                     |
