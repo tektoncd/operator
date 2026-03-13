@@ -40,6 +40,15 @@ function set_version_label() {
     sed -i -E "s/(value: )\"?${old_version}\"?/\1${operator_version}/g" config/${platform}/base/operator.yaml
   done
 
+  # Update webhook manifests
+  if ls config/webhooks/*.yaml 1>/dev/null 2>&1; then
+    echo updating version labels for config/webhooks/
+    sed -i -E \
+      -e "s/(operator.tekton.dev\/release: )\"?${old_version}\"?/\1${operator_version}/g" \
+      -e "s/(app.kubernetes.io\/version: )\"?${old_version}\"?/\1${operator_version}/g" \
+      -e "s/(version: )\"?${old_version}\"?/\1${operator_version}/g" config/webhooks/*.yaml
+  fi
+
   # Update cabundles only for openshift
   sed -i -E \
     -e "s/(operator.tekton.dev\/release: )\"?${old_version}\"?/\1${operator_version}/g" \
