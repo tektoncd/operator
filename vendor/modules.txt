@@ -1083,7 +1083,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-pipelines/pipelines-as-code v0.42.0
+# github.com/openshift-pipelines/pipelines-as-code v0.43.0
 ## explicit; go 1.25.0
 github.com/openshift-pipelines/pipelines-as-code/pkg/cli
 github.com/openshift-pipelines/pipelines-as-code/pkg/configutil
@@ -1534,7 +1534,7 @@ github.com/yashtewari/glob-intersection
 # gitlab.com/gitlab-org/api/client-go v1.14.0
 ## explicit; go 1.24.0
 gitlab.com/gitlab-org/api/client-go
-# go.mongodb.org/mongo-driver v1.17.6
+# go.mongodb.org/mongo-driver v1.17.7
 ## explicit; go 1.18
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec
