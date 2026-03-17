@@ -2409,8 +2409,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
-github.com/openshift-pipelines/pipelines-as-code v0.42.0 h1:2VmvFso+tA+301Uxv0guoYTDv4KJ/FedY2dwSvdJFBU=
-github.com/openshift-pipelines/pipelines-as-code v0.42.0/go.mod h1:brABe5XhsEEkVhMoM0tFhDZmqum4nD6N91+brKPSQbQ=
+github.com/openshift-pipelines/pipelines-as-code v0.43.0 h1:xbwfViXC5H5Gjp/MCNDq4ugfQCE+eLiLpwq63zfRAm0=
+github.com/openshift-pipelines/pipelines-as-code v0.43.0/go.mod h1:mUmrLuQtdzWXcj+EeVJZv+RjkOkWwNDEEldc03spTn8=
 github.com/openshift/api v0.0.0-20240521185306-0314f31e7774 h1:SsoLnIil/D0FcjUbQ9Z8h95B7rxFvrso2X6OQjR8jPw=
 github.com/openshift/api v0.0.0-20240521185306-0314f31e7774/go.mod h1:7Hm1kLJGxWT6eysOpD2zUztdn+w91eiERn6KtI5o9aw=
 github.com/openshift/apiserver-library-go v0.0.0-20230816171015-6bfafa975bfb h1:UMgJny13BBcHpY+JQ9Eg1Dm9+J7nWO3eqPvV1Zpd49A=
@@ -2746,8 +2746,8 @@ go.etcd.io/etcd/pkg/v3 v3.5.16/go.mod h1:+lutCZHG5MBBFI/U4eYT5yL7sJfnexsoM20Y0t2
 go.etcd.io/etcd/raft/v3 v3.5.16/go.mod h1:P4UP14AxofMJ/54boWilabqqWoW9eLodl6I5GdGzazI=
 go.etcd.io/etcd/server/v3 v3.5.16/go.mod h1:ynhyZZpdDp1Gq49jkUg5mfkDWZwXnn3eIqCqtJnrD/s=
 go.etcd.io/gofail v0.1.0/go.mod h1:VZBCXYGZhHAinaBiiqYvuDynvahNsAyLFwB3kEHKz1M=
-go.mongodb.org/mongo-driver v1.17.6 h1:87JUG1wZfWsr6rIz3ZmpH90rL5tea7O3IHuSwHUpsss=
-go.mongodb.org/mongo-driver v1.17.6/go.mod h1:Hy04i7O2kC4RS06ZrhPRqj/u4DTYkFDAAccj+rVKqgQ=
+go.mongodb.org/mongo-driver v1.17.7 h1:a9w+U3Vt67eYzcfq3k/OAv284/uUUkL0uP75VE5rCOU=
+go.mongodb.org/mongo-driver v1.17.7/go.mod h1:Hy04i7O2kC4RS06ZrhPRqj/u4DTYkFDAAccj+rVKqgQ=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
 go.opencensus.io v0.22.2/go.mod h1:yxeiOL68Rb0Xd1ddK5vPZ/oVn4vY4Ynel7k9FzqtOIw=
