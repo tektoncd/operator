@@ -152,7 +152,7 @@ spec:
   proxy:
     - type: Service
       alias: tekton-results-api-service
-      authorize: true
+      authorization: UserToken
       endpoint:
         type: Service
         service:
@@ -161,7 +161,7 @@ spec:
           port: 8080
     - type: Service
       alias: multicluster-proxy
-      authorize: true
+      authorization: UserToken
       endpoint:
         type: Service
         service:
