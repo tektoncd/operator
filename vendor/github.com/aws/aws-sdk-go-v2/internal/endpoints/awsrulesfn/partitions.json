@@ -152,7 +152,7 @@
     "regionRegex" : "^eusc\\-(de)\\-\\w+\\-\\d+$",
     "regions" : {
       "eusc-de-east-1" : {
-        "description" : "AWS European Sovereign Cloud (Germany)"
+        "description" : "EU (Germany)"
       }
     }
   }, {

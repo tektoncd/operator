@@ -111,6 +111,10 @@ func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent)
 	return nil
 }
 
+func (oe openshiftExtension) GetPlatformData() string {
+	return ""
+}
+
 func extFilterAndTransform() client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		prTemplates, err := manifest.Transform(mf.InjectNamespace(openshiftNS))

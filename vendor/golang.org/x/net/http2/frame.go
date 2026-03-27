@@ -145,9 +145,7 @@ var frameParsers = [...]frameParser{
 
 func typeFrameParser(t FrameType) frameParser {
 	if int(t) < len(frameParsers) {
-		if f := frameParsers[t]; f != nil {
-			return f
-		}
+		return frameParsers[t]
 	}
 	return parseUnknownFrame
 }
