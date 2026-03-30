@@ -1,8 +1,3 @@
-# Release (2026-02-20)
-
-## General Highlights
-* **Dependency Update**: Updated to the latest SDK module versions
-
 # Release (2025-12-01)
 
 ## General Highlights

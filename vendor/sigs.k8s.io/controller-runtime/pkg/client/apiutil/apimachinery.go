@@ -231,7 +231,7 @@ func (t targetZeroingDecoder) Decode(data []byte, defaults *schema.GroupVersionK
 }
 
 // zero zeros the value of a pointer.
-func zero(x any) {
+func zero(x interface{}) {
 	if x == nil {
 		return
 	}

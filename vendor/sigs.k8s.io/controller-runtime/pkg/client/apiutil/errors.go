@@ -18,7 +18,7 @@ package apiutil
 
 import (
 	"fmt"
-	"slices"
+	"sort"
 	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,7 +38,7 @@ func (e *ErrResourceDiscoveryFailed) Error() string {
 	for k, v := range *e {
 		subErrors = append(subErrors, fmt.Sprintf("%s: %v", k, v))
 	}
-	slices.Sort(subErrors)
+	sort.Strings(subErrors)
 	return fmt.Sprintf("unable to retrieve the complete list of server APIs: %s", strings.Join(subErrors, ", "))
 }
 

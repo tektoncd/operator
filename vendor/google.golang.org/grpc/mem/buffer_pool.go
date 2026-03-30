@@ -53,7 +53,7 @@ var defaultBufferPool BufferPool
 func init() {
 	defaultBufferPool = NewTieredBufferPool(defaultBufferPoolSizes...)
 
-	internal.SetDefaultBufferPool = func(pool BufferPool) {
+	internal.SetDefaultBufferPoolForTesting = func(pool BufferPool) {
 		defaultBufferPool = pool
 	}
 
