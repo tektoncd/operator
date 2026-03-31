@@ -22,7 +22,7 @@ metadata:
       \n        ],\n        \"schedule\": \"0 8 * * *\"\n      },\n      \"targetNamespace\"\
       : \"openshift-pipelines\"\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
       ,\n    \"kind\": \"TektonHub\",\n    \"metadata\": {\n      \"name\": \"hub\"\
-      \n    },\n    \"spec\": {\n      \"api\": {\n        \"hubConfigUrl\": \"https://raw.githubusercontent.com/tektoncd/hub/main/config.yaml\"\
+      \n    },\n    \"spec\": {\n      \"api\": {\n        \"hubConfigUrl\": \"https://raw.githubusercontent.com/openshift-pipelines/hub/main/config.yaml\"\
       \n      }\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
       ,\n    \"kind\": \"TektonInstallerSet\",\n    \"metadata\": {\n      \"name\"\
       : \"foo\"\n    },\n    \"spec\": {\n      \"manifests\": []\n    }\n  },\n \
