@@ -16,7 +16,6 @@ defaults:
 
 permissions:
   contents: read
-  checks: write  # Used to annotate code in the PR
 
 jobs:
   changes:
@@ -84,6 +83,9 @@ jobs:
     needs: [changes]
     name: lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write  # Used to annotate code in the PR
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
       with:

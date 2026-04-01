@@ -6,10 +6,15 @@ on:  # yamllint disable-line rule:truthy
   # Run this every week day at 1AM
   - cron: '0 1 * * 1-5'
 
+permissions: {}
+
 jobs:
   bump-payloads:
     name: "Bump payloads"
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     if: github.repository_owner == 'tektoncd'  # do not run this elsewhere
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2

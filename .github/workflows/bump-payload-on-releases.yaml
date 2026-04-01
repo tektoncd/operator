@@ -6,9 +6,12 @@ on:  # yamllint disable-line rule:truthy
   # Run this every week day at 2AM
   - cron: '0 2 * * 1-5'
 
+permissions: {}
+
 jobs:
   build-release-matrix:
     runs-on: ubuntu-latest
+    permissions: {}
     if: github.repository_owner == 'tektoncd'  # do not run this elsewhere
     steps:
     - id: set-matrix
@@ -21,6 +24,9 @@ jobs:
   bump-payloads:
     needs: build-release-matrix
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     strategy:
       matrix:
         branch: ${{ fromJSON(needs.build-release-matrix.outputs.branches) }}
