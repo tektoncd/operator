@@ -25,6 +25,9 @@ kind: PipelineRun
 metadata:
   name: release-pipeline
   annotations:
+    # Trigger on push events to release branches, but ONLY when the branch
+    # is first created (body.created == true). This means it fires exactly
+    # once per release branch, not on every commit pushed to it.
     pipelinesascode.tekton.dev/on-event: "[push]"
     pipelinesascode.tekton.dev/on-target-branch: "[refs/heads/release-v*]"
     pipelinesascode.tekton.dev/on-cel-expression: "body.created == true"
