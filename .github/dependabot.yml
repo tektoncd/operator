@@ -10,6 +10,8 @@ updates:
     - "github_action"
     - "kind/misc"
     - "release-note-none"
+    cooldown:
+      default-days: 7
   - package-ecosystem: "gomod" # See documentation for possible values
     directory: "/" # Location of package manifests
     schedule:
@@ -23,3 +25,5 @@ updates:
     - dependency-name: "k8s.io/*"
       update-types: ["version-update:semver-major", "version-update:semver-minor"]
     - dependency-name: "github.com/openshift/client-go"
+    cooldown:
+      default-days: 7
