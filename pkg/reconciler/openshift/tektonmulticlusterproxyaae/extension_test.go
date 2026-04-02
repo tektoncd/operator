@@ -24,6 +24,7 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,7 +41,7 @@ func TestOpenShiftExtensionTransformers(t *testing.T) {
 			t.Fatalf("unexpected error applying transformers: %v", err)
 		}
 
-		assertDeploymentEnvVar(t, newManifest, "WORKERS_SECRET_NAMESPACE", "openshift-kueue-operator")
+		assertDeploymentEnvVar(t, newManifest, "WORKERS_SECRET_NAMESPACE", openshift.KueueNameSpace)
 	})
 
 	// spec.options.deployments allows users to override env vars set by the extension.
