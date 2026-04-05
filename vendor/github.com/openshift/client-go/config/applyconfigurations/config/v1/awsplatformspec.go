@@ -2,13 +2,19 @@
 
 package v1
 
-// AWSPlatformSpecApplyConfiguration represents an declarative configuration of the AWSPlatformSpec type for use
+// AWSPlatformSpecApplyConfiguration represents a declarative configuration of the AWSPlatformSpec type for use
 // with apply.
+//
+// AWSPlatformSpec holds the desired state of the Amazon Web Services infrastructure provider.
+// This only includes fields that can be modified in the cluster.
 type AWSPlatformSpecApplyConfiguration struct {
+	// serviceEndpoints list contains custom endpoints which will override default
+	// service endpoint of AWS Services.
+	// There must be only one ServiceEndpoint for a service.
 	ServiceEndpoints []AWSServiceEndpointApplyConfiguration `json:"serviceEndpoints,omitempty"`
 }
 
-// AWSPlatformSpecApplyConfiguration constructs an declarative configuration of the AWSPlatformSpec type for use with
+// AWSPlatformSpecApplyConfiguration constructs a declarative configuration of the AWSPlatformSpec type for use with
 // apply.
 func AWSPlatformSpec() *AWSPlatformSpecApplyConfiguration {
 	return &AWSPlatformSpecApplyConfiguration{}

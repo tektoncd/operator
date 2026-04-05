@@ -3,30 +3,26 @@
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/openshift/api/security/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	testing "k8s.io/client-go/testing"
+	securityv1 "github.com/openshift/client-go/security/clientset/versioned/typed/security/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakePodSecurityPolicySubjectReviews implements PodSecurityPolicySubjectReviewInterface
-type FakePodSecurityPolicySubjectReviews struct {
+// fakePodSecurityPolicySubjectReviews implements PodSecurityPolicySubjectReviewInterface
+type fakePodSecurityPolicySubjectReviews struct {
+	*gentype.FakeClient[*v1.PodSecurityPolicySubjectReview]
 	Fake *FakeSecurityV1
-	ns   string
 }
 
-var podsecuritypolicysubjectreviewsResource = v1.SchemeGroupVersion.WithResource("podsecuritypolicysubjectreviews")
-
-var podsecuritypolicysubjectreviewsKind = v1.SchemeGroupVersion.WithKind("PodSecurityPolicySubjectReview")
-
-// Create takes the representation of a podSecurityPolicySubjectReview and creates it.  Returns the server's representation of the podSecurityPolicySubjectReview, and an error, if there is any.
-func (c *FakePodSecurityPolicySubjectReviews) Create(ctx context.Context, podSecurityPolicySubjectReview *v1.PodSecurityPolicySubjectReview, opts metav1.CreateOptions) (result *v1.PodSecurityPolicySubjectReview, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(podsecuritypolicysubjectreviewsResource, c.ns, podSecurityPolicySubjectReview), &v1.PodSecurityPolicySubjectReview{})
-
-	if obj == nil {
-		return nil, err
+func newFakePodSecurityPolicySubjectReviews(fake *FakeSecurityV1, namespace string) securityv1.PodSecurityPolicySubjectReviewInterface {
+	return &fakePodSecurityPolicySubjectReviews{
+		gentype.NewFakeClient[*v1.PodSecurityPolicySubjectReview](
+			fake.Fake,
+			namespace,
+			v1.SchemeGroupVersion.WithResource("podsecuritypolicysubjectreviews"),
+			v1.SchemeGroupVersion.WithKind("PodSecurityPolicySubjectReview"),
+			func() *v1.PodSecurityPolicySubjectReview { return &v1.PodSecurityPolicySubjectReview{} },
+		),
+		fake,
 	}
-	return obj.(*v1.PodSecurityPolicySubjectReview), err
 }

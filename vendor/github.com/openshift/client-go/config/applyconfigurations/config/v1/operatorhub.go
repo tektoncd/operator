@@ -3,24 +3,32 @@
 package v1
 
 import (
-	apiconfigv1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 	internal "github.com/openshift/client-go/config/applyconfigurations/internal"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apismetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
-	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	metav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// OperatorHubApplyConfiguration represents an declarative configuration of the OperatorHub type for use
+// OperatorHubApplyConfiguration represents a declarative configuration of the OperatorHub type for use
 // with apply.
+//
+// OperatorHub is the Schema for the operatorhubs API. It can be used to change
+// the state of the default hub sources for OperatorHub on the cluster from
+// enabled to disabled and vice versa.
+//
+// Compatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).
 type OperatorHubApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
-	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *OperatorHubSpecApplyConfiguration   `json:"spec,omitempty"`
-	Status                           *OperatorHubStatusApplyConfiguration `json:"status,omitempty"`
+	metav1.TypeMetaApplyConfiguration `json:",inline"`
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	*metav1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
+	Spec                                 *OperatorHubSpecApplyConfiguration   `json:"spec,omitempty"`
+	Status                               *OperatorHubStatusApplyConfiguration `json:"status,omitempty"`
 }
 
-// OperatorHub constructs an declarative configuration of the OperatorHub type for use with
+// OperatorHub constructs a declarative configuration of the OperatorHub type for use with
 // apply.
 func OperatorHub(name string) *OperatorHubApplyConfiguration {
 	b := &OperatorHubApplyConfiguration{}
@@ -30,29 +38,14 @@ func OperatorHub(name string) *OperatorHubApplyConfiguration {
 	return b
 }
 
-// ExtractOperatorHub extracts the applied configuration owned by fieldManager from
-// operatorHub. If no managedFields are found in operatorHub for fieldManager, a
-// OperatorHubApplyConfiguration is returned with only the Name, Namespace (if applicable),
-// APIVersion and Kind populated. It is possible that no managed fields were found for because other
-// field managers have taken ownership of all the fields previously owned by fieldManager, or because
-// the fieldManager never owned fields any fields.
+// ExtractOperatorHubFrom extracts the applied configuration owned by fieldManager from
+// operatorHub for the specified subresource. Pass an empty string for subresource to extract
+// the main resource. Common subresources include "status", "scale", etc.
 // operatorHub must be a unmodified OperatorHub API object that was retrieved from the Kubernetes API.
-// ExtractOperatorHub provides a way to perform a extract/modify-in-place/apply workflow.
+// ExtractOperatorHubFrom provides a way to perform a extract/modify-in-place/apply workflow.
 // Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
 // applied if another fieldManager has updated or force applied any of the previously applied fields.
-// Experimental!
-func ExtractOperatorHub(operatorHub *apiconfigv1.OperatorHub, fieldManager string) (*OperatorHubApplyConfiguration, error) {
-	return extractOperatorHub(operatorHub, fieldManager, "")
-}
-
-// ExtractOperatorHubStatus is the same as ExtractOperatorHub except
-// that it extracts the status subresource applied configuration.
-// Experimental!
-func ExtractOperatorHubStatus(operatorHub *apiconfigv1.OperatorHub, fieldManager string) (*OperatorHubApplyConfiguration, error) {
-	return extractOperatorHub(operatorHub, fieldManager, "status")
-}
-
-func extractOperatorHub(operatorHub *apiconfigv1.OperatorHub, fieldManager string, subresource string) (*OperatorHubApplyConfiguration, error) {
+func ExtractOperatorHubFrom(operatorHub *configv1.OperatorHub, fieldManager string, subresource string) (*OperatorHubApplyConfiguration, error) {
 	b := &OperatorHubApplyConfiguration{}
 	err := managedfields.ExtractInto(operatorHub, internal.Parser().Type("com.github.openshift.api.config.v1.OperatorHub"), fieldManager, b, subresource)
 	if err != nil {
@@ -65,11 +58,33 @@ func extractOperatorHub(operatorHub *apiconfigv1.OperatorHub, fieldManager strin
 	return b, nil
 }
 
+// ExtractOperatorHub extracts the applied configuration owned by fieldManager from
+// operatorHub. If no managedFields are found in operatorHub for fieldManager, a
+// OperatorHubApplyConfiguration is returned with only the Name, Namespace (if applicable),
+// APIVersion and Kind populated. It is possible that no managed fields were found for because other
+// field managers have taken ownership of all the fields previously owned by fieldManager, or because
+// the fieldManager never owned fields any fields.
+// operatorHub must be a unmodified OperatorHub API object that was retrieved from the Kubernetes API.
+// ExtractOperatorHub provides a way to perform a extract/modify-in-place/apply workflow.
+// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
+// applied if another fieldManager has updated or force applied any of the previously applied fields.
+func ExtractOperatorHub(operatorHub *configv1.OperatorHub, fieldManager string) (*OperatorHubApplyConfiguration, error) {
+	return ExtractOperatorHubFrom(operatorHub, fieldManager, "")
+}
+
+// ExtractOperatorHubStatus extracts the applied configuration owned by fieldManager from
+// operatorHub for the status subresource.
+func ExtractOperatorHubStatus(operatorHub *configv1.OperatorHub, fieldManager string) (*OperatorHubApplyConfiguration, error) {
+	return ExtractOperatorHubFrom(operatorHub, fieldManager, "status")
+}
+
+func (b OperatorHubApplyConfiguration) IsApplyConfiguration() {}
+
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kind field is set to the value of the last call.
 func (b *OperatorHubApplyConfiguration) WithKind(value string) *OperatorHubApplyConfiguration {
-	b.Kind = &value
+	b.TypeMetaApplyConfiguration.Kind = &value
 	return b
 }
 
@@ -77,7 +92,7 @@ func (b *OperatorHubApplyConfiguration) WithKind(value string) *OperatorHubApply
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the APIVersion field is set to the value of the last call.
 func (b *OperatorHubApplyConfiguration) WithAPIVersion(value string) *OperatorHubApplyConfiguration {
-	b.APIVersion = &value
+	b.TypeMetaApplyConfiguration.APIVersion = &value
 	return b
 }
 
@@ -86,7 +101,7 @@ func (b *OperatorHubApplyConfiguration) WithAPIVersion(value string) *OperatorHu
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *OperatorHubApplyConfiguration) WithName(value string) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Name = &value
+	b.ObjectMetaApplyConfiguration.Name = &value
 	return b
 }
 
@@ -95,7 +110,7 @@ func (b *OperatorHubApplyConfiguration) WithName(value string) *OperatorHubApply
 // If called multiple times, the GenerateName field is set to the value of the last call.
 func (b *OperatorHubApplyConfiguration) WithGenerateName(value string) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.GenerateName = &value
+	b.ObjectMetaApplyConfiguration.GenerateName = &value
 	return b
 }
 
@@ -104,7 +119,7 @@ func (b *OperatorHubApplyConfiguration) WithGenerateName(value string) *Operator
 // If called multiple times, the Namespace field is set to the value of the last call.
 func (b *OperatorHubApplyConfiguration) WithNamespace(value string) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Namespace = &value
+	b.ObjectMetaApplyConfiguration.Namespace = &value
 	return b
 }
 
@@ -113,7 +128,7 @@ func (b *OperatorHubApplyConfiguration) WithNamespace(value string) *OperatorHub
 // If called multiple times, the UID field is set to the value of the last call.
 func (b *OperatorHubApplyConfiguration) WithUID(value types.UID) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.UID = &value
+	b.ObjectMetaApplyConfiguration.UID = &value
 	return b
 }
 
@@ -122,7 +137,7 @@ func (b *OperatorHubApplyConfiguration) WithUID(value types.UID) *OperatorHubApp
 // If called multiple times, the ResourceVersion field is set to the value of the last call.
 func (b *OperatorHubApplyConfiguration) WithResourceVersion(value string) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ResourceVersion = &value
+	b.ObjectMetaApplyConfiguration.ResourceVersion = &value
 	return b
 }
 
@@ -131,25 +146,25 @@ func (b *OperatorHubApplyConfiguration) WithResourceVersion(value string) *Opera
 // If called multiple times, the Generation field is set to the value of the last call.
 func (b *OperatorHubApplyConfiguration) WithGeneration(value int64) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Generation = &value
+	b.ObjectMetaApplyConfiguration.Generation = &value
 	return b
 }
 
 // WithCreationTimestamp sets the CreationTimestamp field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the CreationTimestamp field is set to the value of the last call.
-func (b *OperatorHubApplyConfiguration) WithCreationTimestamp(value metav1.Time) *OperatorHubApplyConfiguration {
+func (b *OperatorHubApplyConfiguration) WithCreationTimestamp(value apismetav1.Time) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.CreationTimestamp = &value
+	b.ObjectMetaApplyConfiguration.CreationTimestamp = &value
 	return b
 }
 
 // WithDeletionTimestamp sets the DeletionTimestamp field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the DeletionTimestamp field is set to the value of the last call.
-func (b *OperatorHubApplyConfiguration) WithDeletionTimestamp(value metav1.Time) *OperatorHubApplyConfiguration {
+func (b *OperatorHubApplyConfiguration) WithDeletionTimestamp(value apismetav1.Time) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionTimestamp = &value
+	b.ObjectMetaApplyConfiguration.DeletionTimestamp = &value
 	return b
 }
 
@@ -158,7 +173,7 @@ func (b *OperatorHubApplyConfiguration) WithDeletionTimestamp(value metav1.Time)
 // If called multiple times, the DeletionGracePeriodSeconds field is set to the value of the last call.
 func (b *OperatorHubApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionGracePeriodSeconds = &value
+	b.ObjectMetaApplyConfiguration.DeletionGracePeriodSeconds = &value
 	return b
 }
 
@@ -168,11 +183,11 @@ func (b *OperatorHubApplyConfiguration) WithDeletionGracePeriodSeconds(value int
 // overwriting an existing map entries in Labels field with the same key.
 func (b *OperatorHubApplyConfiguration) WithLabels(entries map[string]string) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Labels == nil && len(entries) > 0 {
-		b.Labels = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Labels == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Labels = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Labels[k] = v
+		b.ObjectMetaApplyConfiguration.Labels[k] = v
 	}
 	return b
 }
@@ -183,11 +198,11 @@ func (b *OperatorHubApplyConfiguration) WithLabels(entries map[string]string) *O
 // overwriting an existing map entries in Annotations field with the same key.
 func (b *OperatorHubApplyConfiguration) WithAnnotations(entries map[string]string) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Annotations == nil && len(entries) > 0 {
-		b.Annotations = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Annotations == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Annotations = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Annotations[k] = v
+		b.ObjectMetaApplyConfiguration.Annotations[k] = v
 	}
 	return b
 }
@@ -195,13 +210,13 @@ func (b *OperatorHubApplyConfiguration) WithAnnotations(entries map[string]strin
 // WithOwnerReferences adds the given value to the OwnerReferences field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the OwnerReferences field.
-func (b *OperatorHubApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerReferenceApplyConfiguration) *OperatorHubApplyConfiguration {
+func (b *OperatorHubApplyConfiguration) WithOwnerReferences(values ...*metav1.OwnerReferenceApplyConfiguration) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithOwnerReferences")
 		}
-		b.OwnerReferences = append(b.OwnerReferences, *values[i])
+		b.ObjectMetaApplyConfiguration.OwnerReferences = append(b.ObjectMetaApplyConfiguration.OwnerReferences, *values[i])
 	}
 	return b
 }
@@ -212,14 +227,14 @@ func (b *OperatorHubApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerR
 func (b *OperatorHubApplyConfiguration) WithFinalizers(values ...string) *OperatorHubApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
-		b.Finalizers = append(b.Finalizers, values[i])
+		b.ObjectMetaApplyConfiguration.Finalizers = append(b.ObjectMetaApplyConfiguration.Finalizers, values[i])
 	}
 	return b
 }
 
 func (b *OperatorHubApplyConfiguration) ensureObjectMetaApplyConfigurationExists() {
 	if b.ObjectMetaApplyConfiguration == nil {
-		b.ObjectMetaApplyConfiguration = &v1.ObjectMetaApplyConfiguration{}
+		b.ObjectMetaApplyConfiguration = &metav1.ObjectMetaApplyConfiguration{}
 	}
 }
 
@@ -237,4 +252,26 @@ func (b *OperatorHubApplyConfiguration) WithSpec(value *OperatorHubSpecApplyConf
 func (b *OperatorHubApplyConfiguration) WithStatus(value *OperatorHubStatusApplyConfiguration) *OperatorHubApplyConfiguration {
 	b.Status = value
 	return b
+}
+
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *OperatorHubApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *OperatorHubApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
+// GetName retrieves the value of the Name field in the declarative configuration.
+func (b *OperatorHubApplyConfiguration) GetName() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *OperatorHubApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }

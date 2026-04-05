@@ -3,17 +3,33 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// TLSProfileSpecApplyConfiguration represents an declarative configuration of the TLSProfileSpec type for use
+// TLSProfileSpecApplyConfiguration represents a declarative configuration of the TLSProfileSpec type for use
 // with apply.
+//
+// TLSProfileSpec is the desired behavior of a TLSSecurityProfile.
 type TLSProfileSpecApplyConfiguration struct {
-	Ciphers       []string               `json:"ciphers,omitempty"`
-	MinTLSVersion *v1.TLSProtocolVersion `json:"minTLSVersion,omitempty"`
+	// ciphers is used to specify the cipher algorithms that are negotiated
+	// during the TLS handshake. Operators may remove entries that their operands
+	// do not support. For example, to use only ECDHE-RSA-AES128-GCM-SHA256 (yaml):
+	//
+	// ciphers:
+	// - ECDHE-RSA-AES128-GCM-SHA256
+	//
+	// TLS 1.3 cipher suites (e.g. TLS_AES_128_GCM_SHA256) are not configurable
+	// and are always enabled when TLS 1.3 is negotiated.
+	Ciphers []string `json:"ciphers,omitempty"`
+	// minTLSVersion is used to specify the minimal version of the TLS protocol
+	// that is negotiated during the TLS handshake. For example, to use TLS
+	// versions 1.1, 1.2 and 1.3 (yaml):
+	//
+	// minTLSVersion: VersionTLS11
+	MinTLSVersion *configv1.TLSProtocolVersion `json:"minTLSVersion,omitempty"`
 }
 
-// TLSProfileSpecApplyConfiguration constructs an declarative configuration of the TLSProfileSpec type for use with
+// TLSProfileSpecApplyConfiguration constructs a declarative configuration of the TLSProfileSpec type for use with
 // apply.
 func TLSProfileSpec() *TLSProfileSpecApplyConfiguration {
 	return &TLSProfileSpecApplyConfiguration{}
@@ -32,7 +48,7 @@ func (b *TLSProfileSpecApplyConfiguration) WithCiphers(values ...string) *TLSPro
 // WithMinTLSVersion sets the MinTLSVersion field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the MinTLSVersion field is set to the value of the last call.
-func (b *TLSProfileSpecApplyConfiguration) WithMinTLSVersion(value v1.TLSProtocolVersion) *TLSProfileSpecApplyConfiguration {
+func (b *TLSProfileSpecApplyConfiguration) WithMinTLSVersion(value configv1.TLSProtocolVersion) *TLSProfileSpecApplyConfiguration {
 	b.MinTLSVersion = &value
 	return b
 }

@@ -3,30 +3,26 @@
 package fake
 
 import (
-	"context"
-
 	v1 "github.com/openshift/api/security/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	testing "k8s.io/client-go/testing"
+	securityv1 "github.com/openshift/client-go/security/clientset/versioned/typed/security/v1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakePodSecurityPolicyReviews implements PodSecurityPolicyReviewInterface
-type FakePodSecurityPolicyReviews struct {
+// fakePodSecurityPolicyReviews implements PodSecurityPolicyReviewInterface
+type fakePodSecurityPolicyReviews struct {
+	*gentype.FakeClient[*v1.PodSecurityPolicyReview]
 	Fake *FakeSecurityV1
-	ns   string
 }
 
-var podsecuritypolicyreviewsResource = v1.SchemeGroupVersion.WithResource("podsecuritypolicyreviews")
-
-var podsecuritypolicyreviewsKind = v1.SchemeGroupVersion.WithKind("PodSecurityPolicyReview")
-
-// Create takes the representation of a podSecurityPolicyReview and creates it.  Returns the server's representation of the podSecurityPolicyReview, and an error, if there is any.
-func (c *FakePodSecurityPolicyReviews) Create(ctx context.Context, podSecurityPolicyReview *v1.PodSecurityPolicyReview, opts metav1.CreateOptions) (result *v1.PodSecurityPolicyReview, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(podsecuritypolicyreviewsResource, c.ns, podSecurityPolicyReview), &v1.PodSecurityPolicyReview{})
-
-	if obj == nil {
-		return nil, err
+func newFakePodSecurityPolicyReviews(fake *FakeSecurityV1, namespace string) securityv1.PodSecurityPolicyReviewInterface {
+	return &fakePodSecurityPolicyReviews{
+		gentype.NewFakeClient[*v1.PodSecurityPolicyReview](
+			fake.Fake,
+			namespace,
+			v1.SchemeGroupVersion.WithResource("podsecuritypolicyreviews"),
+			v1.SchemeGroupVersion.WithKind("PodSecurityPolicyReview"),
+			func() *v1.PodSecurityPolicyReview { return &v1.PodSecurityPolicyReview{} },
+		),
+		fake,
 	}
-	return obj.(*v1.PodSecurityPolicyReview), err
 }

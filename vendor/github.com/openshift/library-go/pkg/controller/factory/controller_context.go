@@ -96,7 +96,8 @@ func (c syncContext) enqueueKeys(keys ...string) {
 // (or its tombstone) is a namespace  and it matches a name of any namespaces
 // that we are interested in
 func namespaceChecker(interestingNamespaces []string) func(obj interface{}) bool {
-	interestingNamespacesSet := sets.NewString(interestingNamespaces...)
+	// This is used for quick lookups in informers
+	interestingNamespacesSet := sets.New(interestingNamespaces...)
 
 	return func(obj interface{}) bool {
 		ns, ok := obj.(*corev1.Namespace)

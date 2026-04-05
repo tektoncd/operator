@@ -8,1167 +8,84 @@ import (
 
 	io "io"
 
-	proto "github.com/gogo/protobuf/proto"
 	v12 "k8s.io/api/core/v1"
 	v11 "k8s.io/api/rbac/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	math "math"
 	math_bits "math/bits"
 	reflect "reflect"
 	strings "strings"
 )
 
-// Reference imports to suppress errors if they are not otherwise used.
-var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-// A compilation error at this line likely means your copy of the
-// proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
-
-func (m *Action) Reset()      { *m = Action{} }
-func (*Action) ProtoMessage() {}
-func (*Action) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{0}
-}
-func (m *Action) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Action) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *Action) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Action.Merge(m, src)
-}
-func (m *Action) XXX_Size() int {
-	return m.Size()
-}
-func (m *Action) XXX_DiscardUnknown() {
-	xxx_messageInfo_Action.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Action proto.InternalMessageInfo
-
-func (m *ClusterRole) Reset()      { *m = ClusterRole{} }
-func (*ClusterRole) ProtoMessage() {}
-func (*ClusterRole) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{1}
-}
-func (m *ClusterRole) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *ClusterRole) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *ClusterRole) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ClusterRole.Merge(m, src)
-}
-func (m *ClusterRole) XXX_Size() int {
-	return m.Size()
-}
-func (m *ClusterRole) XXX_DiscardUnknown() {
-	xxx_messageInfo_ClusterRole.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ClusterRole proto.InternalMessageInfo
-
-func (m *ClusterRoleBinding) Reset()      { *m = ClusterRoleBinding{} }
-func (*ClusterRoleBinding) ProtoMessage() {}
-func (*ClusterRoleBinding) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{2}
-}
-func (m *ClusterRoleBinding) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *ClusterRoleBinding) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *ClusterRoleBinding) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ClusterRoleBinding.Merge(m, src)
-}
-func (m *ClusterRoleBinding) XXX_Size() int {
-	return m.Size()
-}
-func (m *ClusterRoleBinding) XXX_DiscardUnknown() {
-	xxx_messageInfo_ClusterRoleBinding.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ClusterRoleBinding proto.InternalMessageInfo
-
-func (m *ClusterRoleBindingList) Reset()      { *m = ClusterRoleBindingList{} }
-func (*ClusterRoleBindingList) ProtoMessage() {}
-func (*ClusterRoleBindingList) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{3}
-}
-func (m *ClusterRoleBindingList) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *ClusterRoleBindingList) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *ClusterRoleBindingList) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ClusterRoleBindingList.Merge(m, src)
-}
-func (m *ClusterRoleBindingList) XXX_Size() int {
-	return m.Size()
-}
-func (m *ClusterRoleBindingList) XXX_DiscardUnknown() {
-	xxx_messageInfo_ClusterRoleBindingList.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ClusterRoleBindingList proto.InternalMessageInfo
-
-func (m *ClusterRoleList) Reset()      { *m = ClusterRoleList{} }
-func (*ClusterRoleList) ProtoMessage() {}
-func (*ClusterRoleList) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{4}
-}
-func (m *ClusterRoleList) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *ClusterRoleList) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *ClusterRoleList) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ClusterRoleList.Merge(m, src)
-}
-func (m *ClusterRoleList) XXX_Size() int {
-	return m.Size()
-}
-func (m *ClusterRoleList) XXX_DiscardUnknown() {
-	xxx_messageInfo_ClusterRoleList.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ClusterRoleList proto.InternalMessageInfo
-
-func (m *GroupRestriction) Reset()      { *m = GroupRestriction{} }
-func (*GroupRestriction) ProtoMessage() {}
-func (*GroupRestriction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{5}
-}
-func (m *GroupRestriction) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *GroupRestriction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *GroupRestriction) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GroupRestriction.Merge(m, src)
-}
-func (m *GroupRestriction) XXX_Size() int {
-	return m.Size()
-}
-func (m *GroupRestriction) XXX_DiscardUnknown() {
-	xxx_messageInfo_GroupRestriction.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_GroupRestriction proto.InternalMessageInfo
-
-func (m *IsPersonalSubjectAccessReview) Reset()      { *m = IsPersonalSubjectAccessReview{} }
-func (*IsPersonalSubjectAccessReview) ProtoMessage() {}
-func (*IsPersonalSubjectAccessReview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{6}
-}
-func (m *IsPersonalSubjectAccessReview) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *IsPersonalSubjectAccessReview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *IsPersonalSubjectAccessReview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IsPersonalSubjectAccessReview.Merge(m, src)
-}
-func (m *IsPersonalSubjectAccessReview) XXX_Size() int {
-	return m.Size()
-}
-func (m *IsPersonalSubjectAccessReview) XXX_DiscardUnknown() {
-	xxx_messageInfo_IsPersonalSubjectAccessReview.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_IsPersonalSubjectAccessReview proto.InternalMessageInfo
-
-func (m *LocalResourceAccessReview) Reset()      { *m = LocalResourceAccessReview{} }
-func (*LocalResourceAccessReview) ProtoMessage() {}
-func (*LocalResourceAccessReview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{7}
-}
-func (m *LocalResourceAccessReview) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *LocalResourceAccessReview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *LocalResourceAccessReview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LocalResourceAccessReview.Merge(m, src)
-}
-func (m *LocalResourceAccessReview) XXX_Size() int {
-	return m.Size()
-}
-func (m *LocalResourceAccessReview) XXX_DiscardUnknown() {
-	xxx_messageInfo_LocalResourceAccessReview.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LocalResourceAccessReview proto.InternalMessageInfo
-
-func (m *LocalSubjectAccessReview) Reset()      { *m = LocalSubjectAccessReview{} }
-func (*LocalSubjectAccessReview) ProtoMessage() {}
-func (*LocalSubjectAccessReview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{8}
-}
-func (m *LocalSubjectAccessReview) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *LocalSubjectAccessReview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *LocalSubjectAccessReview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_LocalSubjectAccessReview.Merge(m, src)
-}
-func (m *LocalSubjectAccessReview) XXX_Size() int {
-	return m.Size()
-}
-func (m *LocalSubjectAccessReview) XXX_DiscardUnknown() {
-	xxx_messageInfo_LocalSubjectAccessReview.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_LocalSubjectAccessReview proto.InternalMessageInfo
-
-func (m *NamedClusterRole) Reset()      { *m = NamedClusterRole{} }
-func (*NamedClusterRole) ProtoMessage() {}
-func (*NamedClusterRole) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{9}
-}
-func (m *NamedClusterRole) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *NamedClusterRole) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *NamedClusterRole) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_NamedClusterRole.Merge(m, src)
-}
-func (m *NamedClusterRole) XXX_Size() int {
-	return m.Size()
-}
-func (m *NamedClusterRole) XXX_DiscardUnknown() {
-	xxx_messageInfo_NamedClusterRole.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_NamedClusterRole proto.InternalMessageInfo
-
-func (m *NamedClusterRoleBinding) Reset()      { *m = NamedClusterRoleBinding{} }
-func (*NamedClusterRoleBinding) ProtoMessage() {}
-func (*NamedClusterRoleBinding) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{10}
-}
-func (m *NamedClusterRoleBinding) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *NamedClusterRoleBinding) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *NamedClusterRoleBinding) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_NamedClusterRoleBinding.Merge(m, src)
-}
-func (m *NamedClusterRoleBinding) XXX_Size() int {
-	return m.Size()
-}
-func (m *NamedClusterRoleBinding) XXX_DiscardUnknown() {
-	xxx_messageInfo_NamedClusterRoleBinding.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_NamedClusterRoleBinding proto.InternalMessageInfo
-
-func (m *NamedRole) Reset()      { *m = NamedRole{} }
-func (*NamedRole) ProtoMessage() {}
-func (*NamedRole) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{11}
-}
-func (m *NamedRole) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *NamedRole) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *NamedRole) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_NamedRole.Merge(m, src)
-}
-func (m *NamedRole) XXX_Size() int {
-	return m.Size()
-}
-func (m *NamedRole) XXX_DiscardUnknown() {
-	xxx_messageInfo_NamedRole.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_NamedRole proto.InternalMessageInfo
-
-func (m *NamedRoleBinding) Reset()      { *m = NamedRoleBinding{} }
-func (*NamedRoleBinding) ProtoMessage() {}
-func (*NamedRoleBinding) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{12}
-}
-func (m *NamedRoleBinding) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *NamedRoleBinding) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *NamedRoleBinding) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_NamedRoleBinding.Merge(m, src)
-}
-func (m *NamedRoleBinding) XXX_Size() int {
-	return m.Size()
-}
-func (m *NamedRoleBinding) XXX_DiscardUnknown() {
-	xxx_messageInfo_NamedRoleBinding.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_NamedRoleBinding proto.InternalMessageInfo
-
-func (m *OptionalNames) Reset()      { *m = OptionalNames{} }
-func (*OptionalNames) ProtoMessage() {}
-func (*OptionalNames) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{13}
-}
-func (m *OptionalNames) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *OptionalNames) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *OptionalNames) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_OptionalNames.Merge(m, src)
-}
-func (m *OptionalNames) XXX_Size() int {
-	return m.Size()
-}
-func (m *OptionalNames) XXX_DiscardUnknown() {
-	xxx_messageInfo_OptionalNames.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_OptionalNames proto.InternalMessageInfo
-
-func (m *OptionalScopes) Reset()      { *m = OptionalScopes{} }
-func (*OptionalScopes) ProtoMessage() {}
-func (*OptionalScopes) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{14}
-}
-func (m *OptionalScopes) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *OptionalScopes) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *OptionalScopes) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_OptionalScopes.Merge(m, src)
-}
-func (m *OptionalScopes) XXX_Size() int {
-	return m.Size()
-}
-func (m *OptionalScopes) XXX_DiscardUnknown() {
-	xxx_messageInfo_OptionalScopes.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_OptionalScopes proto.InternalMessageInfo
-
-func (m *PolicyRule) Reset()      { *m = PolicyRule{} }
-func (*PolicyRule) ProtoMessage() {}
-func (*PolicyRule) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{15}
-}
-func (m *PolicyRule) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *PolicyRule) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *PolicyRule) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PolicyRule.Merge(m, src)
-}
-func (m *PolicyRule) XXX_Size() int {
-	return m.Size()
-}
-func (m *PolicyRule) XXX_DiscardUnknown() {
-	xxx_messageInfo_PolicyRule.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_PolicyRule proto.InternalMessageInfo
-
-func (m *ResourceAccessReview) Reset()      { *m = ResourceAccessReview{} }
-func (*ResourceAccessReview) ProtoMessage() {}
-func (*ResourceAccessReview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{16}
-}
-func (m *ResourceAccessReview) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *ResourceAccessReview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *ResourceAccessReview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ResourceAccessReview.Merge(m, src)
-}
-func (m *ResourceAccessReview) XXX_Size() int {
-	return m.Size()
-}
-func (m *ResourceAccessReview) XXX_DiscardUnknown() {
-	xxx_messageInfo_ResourceAccessReview.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ResourceAccessReview proto.InternalMessageInfo
-
-func (m *ResourceAccessReviewResponse) Reset()      { *m = ResourceAccessReviewResponse{} }
-func (*ResourceAccessReviewResponse) ProtoMessage() {}
-func (*ResourceAccessReviewResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{17}
-}
-func (m *ResourceAccessReviewResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *ResourceAccessReviewResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *ResourceAccessReviewResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ResourceAccessReviewResponse.Merge(m, src)
-}
-func (m *ResourceAccessReviewResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *ResourceAccessReviewResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_ResourceAccessReviewResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ResourceAccessReviewResponse proto.InternalMessageInfo
-
-func (m *Role) Reset()      { *m = Role{} }
-func (*Role) ProtoMessage() {}
-func (*Role) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{18}
-}
-func (m *Role) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *Role) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *Role) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Role.Merge(m, src)
-}
-func (m *Role) XXX_Size() int {
-	return m.Size()
-}
-func (m *Role) XXX_DiscardUnknown() {
-	xxx_messageInfo_Role.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Role proto.InternalMessageInfo
-
-func (m *RoleBinding) Reset()      { *m = RoleBinding{} }
-func (*RoleBinding) ProtoMessage() {}
-func (*RoleBinding) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{19}
-}
-func (m *RoleBinding) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RoleBinding) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *RoleBinding) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RoleBinding.Merge(m, src)
-}
-func (m *RoleBinding) XXX_Size() int {
-	return m.Size()
-}
-func (m *RoleBinding) XXX_DiscardUnknown() {
-	xxx_messageInfo_RoleBinding.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RoleBinding proto.InternalMessageInfo
-
-func (m *RoleBindingList) Reset()      { *m = RoleBindingList{} }
-func (*RoleBindingList) ProtoMessage() {}
-func (*RoleBindingList) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{20}
-}
-func (m *RoleBindingList) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RoleBindingList) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *RoleBindingList) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RoleBindingList.Merge(m, src)
-}
-func (m *RoleBindingList) XXX_Size() int {
-	return m.Size()
-}
-func (m *RoleBindingList) XXX_DiscardUnknown() {
-	xxx_messageInfo_RoleBindingList.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RoleBindingList proto.InternalMessageInfo
-
-func (m *RoleBindingRestriction) Reset()      { *m = RoleBindingRestriction{} }
-func (*RoleBindingRestriction) ProtoMessage() {}
-func (*RoleBindingRestriction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{21}
-}
-func (m *RoleBindingRestriction) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RoleBindingRestriction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *RoleBindingRestriction) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RoleBindingRestriction.Merge(m, src)
-}
-func (m *RoleBindingRestriction) XXX_Size() int {
-	return m.Size()
-}
-func (m *RoleBindingRestriction) XXX_DiscardUnknown() {
-	xxx_messageInfo_RoleBindingRestriction.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RoleBindingRestriction proto.InternalMessageInfo
-
-func (m *RoleBindingRestrictionList) Reset()      { *m = RoleBindingRestrictionList{} }
-func (*RoleBindingRestrictionList) ProtoMessage() {}
-func (*RoleBindingRestrictionList) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{22}
-}
-func (m *RoleBindingRestrictionList) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RoleBindingRestrictionList) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *RoleBindingRestrictionList) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RoleBindingRestrictionList.Merge(m, src)
-}
-func (m *RoleBindingRestrictionList) XXX_Size() int {
-	return m.Size()
-}
-func (m *RoleBindingRestrictionList) XXX_DiscardUnknown() {
-	xxx_messageInfo_RoleBindingRestrictionList.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RoleBindingRestrictionList proto.InternalMessageInfo
-
-func (m *RoleBindingRestrictionSpec) Reset()      { *m = RoleBindingRestrictionSpec{} }
-func (*RoleBindingRestrictionSpec) ProtoMessage() {}
-func (*RoleBindingRestrictionSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{23}
-}
-func (m *RoleBindingRestrictionSpec) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RoleBindingRestrictionSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *RoleBindingRestrictionSpec) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RoleBindingRestrictionSpec.Merge(m, src)
-}
-func (m *RoleBindingRestrictionSpec) XXX_Size() int {
-	return m.Size()
-}
-func (m *RoleBindingRestrictionSpec) XXX_DiscardUnknown() {
-	xxx_messageInfo_RoleBindingRestrictionSpec.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RoleBindingRestrictionSpec proto.InternalMessageInfo
-
-func (m *RoleList) Reset()      { *m = RoleList{} }
-func (*RoleList) ProtoMessage() {}
-func (*RoleList) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{24}
-}
-func (m *RoleList) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *RoleList) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *RoleList) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RoleList.Merge(m, src)
-}
-func (m *RoleList) XXX_Size() int {
-	return m.Size()
-}
-func (m *RoleList) XXX_DiscardUnknown() {
-	xxx_messageInfo_RoleList.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RoleList proto.InternalMessageInfo
-
-func (m *SelfSubjectRulesReview) Reset()      { *m = SelfSubjectRulesReview{} }
-func (*SelfSubjectRulesReview) ProtoMessage() {}
-func (*SelfSubjectRulesReview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{25}
-}
-func (m *SelfSubjectRulesReview) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *SelfSubjectRulesReview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *SelfSubjectRulesReview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SelfSubjectRulesReview.Merge(m, src)
-}
-func (m *SelfSubjectRulesReview) XXX_Size() int {
-	return m.Size()
-}
-func (m *SelfSubjectRulesReview) XXX_DiscardUnknown() {
-	xxx_messageInfo_SelfSubjectRulesReview.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SelfSubjectRulesReview proto.InternalMessageInfo
-
-func (m *SelfSubjectRulesReviewSpec) Reset()      { *m = SelfSubjectRulesReviewSpec{} }
-func (*SelfSubjectRulesReviewSpec) ProtoMessage() {}
-func (*SelfSubjectRulesReviewSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{26}
-}
-func (m *SelfSubjectRulesReviewSpec) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *SelfSubjectRulesReviewSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *SelfSubjectRulesReviewSpec) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SelfSubjectRulesReviewSpec.Merge(m, src)
-}
-func (m *SelfSubjectRulesReviewSpec) XXX_Size() int {
-	return m.Size()
-}
-func (m *SelfSubjectRulesReviewSpec) XXX_DiscardUnknown() {
-	xxx_messageInfo_SelfSubjectRulesReviewSpec.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SelfSubjectRulesReviewSpec proto.InternalMessageInfo
-
-func (m *ServiceAccountReference) Reset()      { *m = ServiceAccountReference{} }
-func (*ServiceAccountReference) ProtoMessage() {}
-func (*ServiceAccountReference) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{27}
-}
-func (m *ServiceAccountReference) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *ServiceAccountReference) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *ServiceAccountReference) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ServiceAccountReference.Merge(m, src)
-}
-func (m *ServiceAccountReference) XXX_Size() int {
-	return m.Size()
-}
-func (m *ServiceAccountReference) XXX_DiscardUnknown() {
-	xxx_messageInfo_ServiceAccountReference.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ServiceAccountReference proto.InternalMessageInfo
-
-func (m *ServiceAccountRestriction) Reset()      { *m = ServiceAccountRestriction{} }
-func (*ServiceAccountRestriction) ProtoMessage() {}
-func (*ServiceAccountRestriction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{28}
-}
-func (m *ServiceAccountRestriction) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *ServiceAccountRestriction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *ServiceAccountRestriction) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ServiceAccountRestriction.Merge(m, src)
-}
-func (m *ServiceAccountRestriction) XXX_Size() int {
-	return m.Size()
-}
-func (m *ServiceAccountRestriction) XXX_DiscardUnknown() {
-	xxx_messageInfo_ServiceAccountRestriction.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ServiceAccountRestriction proto.InternalMessageInfo
-
-func (m *SubjectAccessReview) Reset()      { *m = SubjectAccessReview{} }
-func (*SubjectAccessReview) ProtoMessage() {}
-func (*SubjectAccessReview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{29}
-}
-func (m *SubjectAccessReview) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *SubjectAccessReview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *SubjectAccessReview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SubjectAccessReview.Merge(m, src)
-}
-func (m *SubjectAccessReview) XXX_Size() int {
-	return m.Size()
-}
-func (m *SubjectAccessReview) XXX_DiscardUnknown() {
-	xxx_messageInfo_SubjectAccessReview.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SubjectAccessReview proto.InternalMessageInfo
-
-func (m *SubjectAccessReviewResponse) Reset()      { *m = SubjectAccessReviewResponse{} }
-func (*SubjectAccessReviewResponse) ProtoMessage() {}
-func (*SubjectAccessReviewResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{30}
-}
-func (m *SubjectAccessReviewResponse) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *SubjectAccessReviewResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *SubjectAccessReviewResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SubjectAccessReviewResponse.Merge(m, src)
-}
-func (m *SubjectAccessReviewResponse) XXX_Size() int {
-	return m.Size()
-}
-func (m *SubjectAccessReviewResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_SubjectAccessReviewResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SubjectAccessReviewResponse proto.InternalMessageInfo
-
-func (m *SubjectRulesReview) Reset()      { *m = SubjectRulesReview{} }
-func (*SubjectRulesReview) ProtoMessage() {}
-func (*SubjectRulesReview) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{31}
-}
-func (m *SubjectRulesReview) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *SubjectRulesReview) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *SubjectRulesReview) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SubjectRulesReview.Merge(m, src)
-}
-func (m *SubjectRulesReview) XXX_Size() int {
-	return m.Size()
-}
-func (m *SubjectRulesReview) XXX_DiscardUnknown() {
-	xxx_messageInfo_SubjectRulesReview.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SubjectRulesReview proto.InternalMessageInfo
-
-func (m *SubjectRulesReviewSpec) Reset()      { *m = SubjectRulesReviewSpec{} }
-func (*SubjectRulesReviewSpec) ProtoMessage() {}
-func (*SubjectRulesReviewSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{32}
-}
-func (m *SubjectRulesReviewSpec) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *SubjectRulesReviewSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *SubjectRulesReviewSpec) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SubjectRulesReviewSpec.Merge(m, src)
-}
-func (m *SubjectRulesReviewSpec) XXX_Size() int {
-	return m.Size()
-}
-func (m *SubjectRulesReviewSpec) XXX_DiscardUnknown() {
-	xxx_messageInfo_SubjectRulesReviewSpec.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SubjectRulesReviewSpec proto.InternalMessageInfo
-
-func (m *SubjectRulesReviewStatus) Reset()      { *m = SubjectRulesReviewStatus{} }
-func (*SubjectRulesReviewStatus) ProtoMessage() {}
-func (*SubjectRulesReviewStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{33}
-}
-func (m *SubjectRulesReviewStatus) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *SubjectRulesReviewStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *SubjectRulesReviewStatus) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SubjectRulesReviewStatus.Merge(m, src)
-}
-func (m *SubjectRulesReviewStatus) XXX_Size() int {
-	return m.Size()
-}
-func (m *SubjectRulesReviewStatus) XXX_DiscardUnknown() {
-	xxx_messageInfo_SubjectRulesReviewStatus.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_SubjectRulesReviewStatus proto.InternalMessageInfo
-
-func (m *UserRestriction) Reset()      { *m = UserRestriction{} }
-func (*UserRestriction) ProtoMessage() {}
-func (*UserRestriction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_39b89822f939ca46, []int{34}
-}
-func (m *UserRestriction) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *UserRestriction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	b = b[:cap(b)]
-	n, err := m.MarshalToSizedBuffer(b)
-	if err != nil {
-		return nil, err
-	}
-	return b[:n], nil
-}
-func (m *UserRestriction) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_UserRestriction.Merge(m, src)
-}
-func (m *UserRestriction) XXX_Size() int {
-	return m.Size()
-}
-func (m *UserRestriction) XXX_DiscardUnknown() {
-	xxx_messageInfo_UserRestriction.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_UserRestriction proto.InternalMessageInfo
-
-func init() {
-	proto.RegisterType((*Action)(nil), "github.com.openshift.api.authorization.v1.Action")
-	proto.RegisterType((*ClusterRole)(nil), "github.com.openshift.api.authorization.v1.ClusterRole")
-	proto.RegisterType((*ClusterRoleBinding)(nil), "github.com.openshift.api.authorization.v1.ClusterRoleBinding")
-	proto.RegisterType((*ClusterRoleBindingList)(nil), "github.com.openshift.api.authorization.v1.ClusterRoleBindingList")
-	proto.RegisterType((*ClusterRoleList)(nil), "github.com.openshift.api.authorization.v1.ClusterRoleList")
-	proto.RegisterType((*GroupRestriction)(nil), "github.com.openshift.api.authorization.v1.GroupRestriction")
-	proto.RegisterType((*IsPersonalSubjectAccessReview)(nil), "github.com.openshift.api.authorization.v1.IsPersonalSubjectAccessReview")
-	proto.RegisterType((*LocalResourceAccessReview)(nil), "github.com.openshift.api.authorization.v1.LocalResourceAccessReview")
-	proto.RegisterType((*LocalSubjectAccessReview)(nil), "github.com.openshift.api.authorization.v1.LocalSubjectAccessReview")
-	proto.RegisterType((*NamedClusterRole)(nil), "github.com.openshift.api.authorization.v1.NamedClusterRole")
-	proto.RegisterType((*NamedClusterRoleBinding)(nil), "github.com.openshift.api.authorization.v1.NamedClusterRoleBinding")
-	proto.RegisterType((*NamedRole)(nil), "github.com.openshift.api.authorization.v1.NamedRole")
-	proto.RegisterType((*NamedRoleBinding)(nil), "github.com.openshift.api.authorization.v1.NamedRoleBinding")
-	proto.RegisterType((*OptionalNames)(nil), "github.com.openshift.api.authorization.v1.OptionalNames")
-	proto.RegisterType((*OptionalScopes)(nil), "github.com.openshift.api.authorization.v1.OptionalScopes")
-	proto.RegisterType((*PolicyRule)(nil), "github.com.openshift.api.authorization.v1.PolicyRule")
-	proto.RegisterType((*ResourceAccessReview)(nil), "github.com.openshift.api.authorization.v1.ResourceAccessReview")
-	proto.RegisterType((*ResourceAccessReviewResponse)(nil), "github.com.openshift.api.authorization.v1.ResourceAccessReviewResponse")
-	proto.RegisterType((*Role)(nil), "github.com.openshift.api.authorization.v1.Role")
-	proto.RegisterType((*RoleBinding)(nil), "github.com.openshift.api.authorization.v1.RoleBinding")
-	proto.RegisterType((*RoleBindingList)(nil), "github.com.openshift.api.authorization.v1.RoleBindingList")
-	proto.RegisterType((*RoleBindingRestriction)(nil), "github.com.openshift.api.authorization.v1.RoleBindingRestriction")
-	proto.RegisterType((*RoleBindingRestrictionList)(nil), "github.com.openshift.api.authorization.v1.RoleBindingRestrictionList")
-	proto.RegisterType((*RoleBindingRestrictionSpec)(nil), "github.com.openshift.api.authorization.v1.RoleBindingRestrictionSpec")
-	proto.RegisterType((*RoleList)(nil), "github.com.openshift.api.authorization.v1.RoleList")
-	proto.RegisterType((*SelfSubjectRulesReview)(nil), "github.com.openshift.api.authorization.v1.SelfSubjectRulesReview")
-	proto.RegisterType((*SelfSubjectRulesReviewSpec)(nil), "github.com.openshift.api.authorization.v1.SelfSubjectRulesReviewSpec")
-	proto.RegisterType((*ServiceAccountReference)(nil), "github.com.openshift.api.authorization.v1.ServiceAccountReference")
-	proto.RegisterType((*ServiceAccountRestriction)(nil), "github.com.openshift.api.authorization.v1.ServiceAccountRestriction")
-	proto.RegisterType((*SubjectAccessReview)(nil), "github.com.openshift.api.authorization.v1.SubjectAccessReview")
-	proto.RegisterType((*SubjectAccessReviewResponse)(nil), "github.com.openshift.api.authorization.v1.SubjectAccessReviewResponse")
-	proto.RegisterType((*SubjectRulesReview)(nil), "github.com.openshift.api.authorization.v1.SubjectRulesReview")
-	proto.RegisterType((*SubjectRulesReviewSpec)(nil), "github.com.openshift.api.authorization.v1.SubjectRulesReviewSpec")
-	proto.RegisterType((*SubjectRulesReviewStatus)(nil), "github.com.openshift.api.authorization.v1.SubjectRulesReviewStatus")
-	proto.RegisterType((*UserRestriction)(nil), "github.com.openshift.api.authorization.v1.UserRestriction")
-}
-
-func init() {
-	proto.RegisterFile("github.com/openshift/api/authorization/v1/generated.proto", fileDescriptor_39b89822f939ca46)
-}
-
-var fileDescriptor_39b89822f939ca46 = []byte{
-	// 1821 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xec, 0x19, 0xcd, 0x6f, 0x1b, 0x59,
-	0x3d, 0xcf, 0x76, 0x1c, 0xfb, 0xe7, 0x26, 0xce, 0xbe, 0x66, 0xdb, 0x69, 0xa0, 0xb6, 0x35, 0x20,
-	0x48, 0x05, 0x3b, 0x26, 0x01, 0x4a, 0xdb, 0x15, 0x5a, 0xd9, 0xdd, 0xa8, 0x8a, 0x54, 0x9a, 0xec,
-	0x0b, 0xbb, 0x5a, 0x2d, 0x1f, 0x62, 0x3c, 0x79, 0xb1, 0x87, 0x8c, 0x67, 0xac, 0x79, 0xe3, 0x94,
-	0x82, 0x90, 0x0a, 0x12, 0x07, 0x2e, 0x68, 0x2f, 0x20, 0x8e, 0x20, 0xfe, 0x00, 0xc4, 0x05, 0x09,
-	0x24, 0x38, 0x71, 0xe8, 0x81, 0x43, 0x25, 0x2e, 0x15, 0x42, 0x86, 0xba, 0x88, 0x03, 0x07, 0xfe,
-	0x06, 0xf4, 0xde, 0xbc, 0xf1, 0x7c, 0x78, 0xac, 0x78, 0x92, 0x26, 0x82, 0x55, 0x6f, 0x9e, 0xf7,
-	0xfb, 0xfe, 0x7c, 0xbf, 0xdf, 0x33, 0xdc, 0xee, 0x9a, 0x5e, 0x6f, 0xd8, 0xd1, 0x0c, 0xa7, 0xdf,
-	0x74, 0x06, 0xd4, 0x66, 0x3d, 0xf3, 0xd0, 0x6b, 0xea, 0x03, 0xb3, 0xa9, 0x0f, 0xbd, 0x9e, 0xe3,
-	0x9a, 0xdf, 0xd5, 0x3d, 0xd3, 0xb1, 0x9b, 0xc7, 0x9b, 0xcd, 0x2e, 0xb5, 0xa9, 0xab, 0x7b, 0xf4,
-	0x40, 0x1b, 0xb8, 0x8e, 0xe7, 0xe0, 0x1b, 0x21, 0xa9, 0x36, 0x21, 0xd5, 0xf4, 0x81, 0xa9, 0xc5,
-	0x48, 0xb5, 0xe3, 0xcd, 0xf5, 0x37, 0x22, 0x52, 0xba, 0x4e, 0xd7, 0x69, 0x0a, 0x0e, 0x9d, 0xe1,
-	0xa1, 0xf8, 0x12, 0x1f, 0xe2, 0x97, 0xcf, 0x79, 0x5d, 0x3d, 0xba, 0xc5, 0x34, 0xd3, 0x11, 0x6a,
-	0x18, 0x8e, 0x4b, 0x53, 0xa4, 0xc7, 0x70, 0xdc, 0x8e, 0x6e, 0xa4, 0xe1, 0x7c, 0x21, 0xc4, 0xe9,
-	0xeb, 0x46, 0xcf, 0xb4, 0xa9, 0xfb, 0xa8, 0x39, 0x38, 0xea, 0xf2, 0x03, 0xd6, 0xec, 0x53, 0x4f,
-	0x4f, 0xa3, 0x6a, 0xce, 0xa2, 0x72, 0x87, 0xb6, 0x67, 0xf6, 0xe9, 0x14, 0xc1, 0xcd, 0x93, 0x08,
-	0x98, 0xd1, 0xa3, 0x7d, 0x3d, 0x49, 0xa7, 0xfe, 0xa0, 0x00, 0xc5, 0x96, 0xc1, 0x7d, 0x84, 0x9b,
-	0x50, 0xb6, 0xf5, 0x3e, 0x65, 0x03, 0xdd, 0xa0, 0x0a, 0x6a, 0xa0, 0x8d, 0x72, 0xfb, 0xb5, 0x27,
-	0xa3, 0xfa, 0xc2, 0x78, 0x54, 0x2f, 0x3f, 0x08, 0x00, 0x24, 0xc4, 0xc1, 0x0d, 0x28, 0x1c, 0x53,
-	0xb7, 0xa3, 0xe4, 0x04, 0xee, 0x25, 0x89, 0x5b, 0x78, 0x8f, 0xba, 0x1d, 0x22, 0x20, 0xf8, 0x36,
-	0xac, 0xba, 0x94, 0x39, 0x43, 0xd7, 0xa0, 0xad, 0xbd, 0x9d, 0x7b, 0xae, 0x33, 0x1c, 0x28, 0x79,
-	0x81, 0xbd, 0x2c, 0xb1, 0x17, 0xc5, 0x21, 0x99, 0x42, 0xc3, 0x6f, 0x01, 0x8e, 0x9c, 0xbd, 0x47,
-	0x5d, 0x66, 0x3a, 0xb6, 0x52, 0x10, 0xc4, 0x55, 0x49, 0xbc, 0x24, 0x8f, 0x49, 0x0a, 0x2a, 0xfe,
-	0x2c, 0x94, 0x82, 0x53, 0x65, 0x51, 0x90, 0xad, 0x4a, 0xb2, 0x12, 0x91, 0xe7, 0x64, 0x82, 0x81,
-	0x6f, 0xc1, 0xa5, 0xe0, 0x37, 0xb7, 0x55, 0x29, 0x0a, 0x8a, 0x35, 0x49, 0x71, 0x89, 0x44, 0x60,
-	0x24, 0x86, 0xc9, 0xbd, 0x30, 0xd0, 0xbd, 0x9e, 0x52, 0x8a, 0x7b, 0x61, 0x4f, 0xf7, 0x7a, 0x44,
-	0x40, 0xf0, 0xdb, 0xb0, 0x6a, 0xb2, 0x07, 0x8e, 0x1d, 0x30, 0x79, 0x97, 0xdc, 0x57, 0xca, 0x0d,
-	0xb4, 0x51, 0x6a, 0x2b, 0x12, 0x7b, 0x75, 0x27, 0x01, 0x27, 0x53, 0x14, 0xf8, 0x7d, 0x58, 0x32,
-	0x1c, 0xdb, 0xa3, 0xb6, 0xa7, 0x2c, 0x35, 0xd0, 0x46, 0x65, 0xeb, 0x0d, 0xcd, 0x8f, 0xb9, 0x16,
-	0x8d, 0xb9, 0x36, 0x38, 0xea, 0x6a, 0x32, 0xe6, 0x1a, 0xd1, 0x1f, 0x6e, 0x7f, 0xc7, 0xa3, 0x36,
-	0xf7, 0x47, 0xe8, 0xb4, 0xbb, 0x3e, 0x17, 0x12, 0xb0, 0x53, 0x7f, 0x9d, 0x83, 0xca, 0x5d, 0x6b,
-	0xc8, 0x3c, 0xea, 0x12, 0xc7, 0xa2, 0xf8, 0x5b, 0x50, 0xe2, 0x79, 0x79, 0xa0, 0x7b, 0xba, 0xc8,
-	0x83, 0xca, 0xd6, 0xe7, 0x66, 0x8a, 0xe2, 0x59, 0xac, 0x71, 0x6c, 0xed, 0x78, 0x53, 0xdb, 0xed,
-	0x7c, 0x9b, 0x1a, 0xde, 0x57, 0xa8, 0xa7, 0xb7, 0xb1, 0x94, 0x06, 0xe1, 0x19, 0x99, 0x70, 0xc5,
-	0x1f, 0xc0, 0xa2, 0x3b, 0xb4, 0x28, 0x53, 0x72, 0x8d, 0xfc, 0x46, 0x65, 0xeb, 0x8b, 0xda, 0xdc,
-	0x65, 0xac, 0xed, 0x39, 0x96, 0x69, 0x3c, 0x22, 0x43, 0x8b, 0x86, 0x39, 0xc4, 0xbf, 0x18, 0xf1,
-	0x59, 0xe2, 0x0e, 0x54, 0xf5, 0x6e, 0xd7, 0xa5, 0x5d, 0x41, 0xc2, 0x41, 0x22, 0xe5, 0x2a, 0x5b,
-	0x9f, 0x88, 0x18, 0xa1, 0xf1, 0x72, 0xe5, 0xec, 0x5a, 0x71, 0xd4, 0xf6, 0xe5, 0xf1, 0xa8, 0x5e,
-	0x4d, 0x1c, 0x92, 0x24, 0x43, 0xf5, 0xdf, 0x79, 0xc0, 0x11, 0x8f, 0xb5, 0x4d, 0xfb, 0xc0, 0xb4,
-	0xbb, 0x17, 0xe0, 0x38, 0x0a, 0xe5, 0x21, 0xa3, 0xae, 0x28, 0x47, 0x51, 0x77, 0x95, 0xad, 0x5b,
-	0x19, 0x9c, 0xb7, 0x3b, 0xe0, 0xbf, 0x74, 0x4b, 0xd0, 0xb7, 0x97, 0x79, 0x65, 0xbf, 0x1b, 0xb0,
-	0x23, 0x21, 0x67, 0xdc, 0x03, 0xe8, 0xf2, 0x2a, 0xf4, 0xe5, 0xe4, 0xcf, 0x28, 0x67, 0x85, 0x9b,
-	0x73, 0x6f, 0xc2, 0x8f, 0x44, 0x78, 0xe3, 0x77, 0xa0, 0xc4, 0x86, 0xc2, 0x52, 0xa6, 0x14, 0x44,
-	0x32, 0xc4, 0xc2, 0xc4, 0x3b, 0x6f, 0xe8, 0x20, 0x42, 0x0f, 0xa9, 0x4b, 0x6d, 0x83, 0x86, 0xa5,
-	0xbc, 0x2f, 0x89, 0xc9, 0x84, 0x0d, 0x7e, 0x00, 0x4b, 0xae, 0x63, 0x51, 0x42, 0x0f, 0x45, 0xdd,
-	0xcf, 0xc9, 0x71, 0x52, 0x1e, 0xc4, 0xa7, 0x25, 0x01, 0x13, 0xf5, 0xaf, 0x08, 0xae, 0x4c, 0x07,
-	0xfb, 0xbe, 0xc9, 0x3c, 0xfc, 0xf5, 0xa9, 0x80, 0x6b, 0xf3, 0x05, 0x9c, 0x53, 0x8b, 0x70, 0x4f,
-	0x0c, 0x09, 0x4e, 0x22, 0xc1, 0xee, 0xc0, 0xa2, 0xe9, 0xd1, 0x7e, 0x50, 0x25, 0x5f, 0xce, 0x10,
-	0x80, 0x69, 0x7d, 0xc3, 0x6a, 0xd9, 0xe1, 0x3c, 0x89, 0xcf, 0x5a, 0xfd, 0x33, 0x82, 0x6a, 0x04,
-	0xf9, 0x02, 0xac, 0xfa, 0x5a, 0xdc, 0xaa, 0x9b, 0xa7, 0xb4, 0x2a, 0xdd, 0x9c, 0x9f, 0x21, 0x58,
-	0xf5, 0x6f, 0x14, 0xca, 0x3c, 0xd7, 0xf4, 0x2f, 0x36, 0x15, 0x8a, 0x22, 0xe3, 0x98, 0x82, 0x1a,
-	0xf9, 0x8d, 0x72, 0x1b, 0xc6, 0xa3, 0x7a, 0x51, 0x60, 0x31, 0x22, 0x21, 0xf8, 0x9b, 0x50, 0xb4,
-	0xf4, 0x0e, 0xb5, 0x02, 0xb5, 0x3e, 0x3f, 0xa7, 0xc5, 0x9c, 0x66, 0x9f, 0x5a, 0xd4, 0xf0, 0x1c,
-	0x37, 0xbc, 0x2e, 0x83, 0x13, 0x46, 0x24, 0x57, 0xb5, 0x0e, 0xd7, 0x77, 0xd8, 0x1e, 0x75, 0x19,
-	0x2f, 0x0b, 0x99, 0xb4, 0x2d, 0xc3, 0xa0, 0x8c, 0x11, 0x7a, 0x6c, 0xd2, 0x87, 0xaa, 0x05, 0xd7,
-	0xee, 0x3b, 0x86, 0x6e, 0x05, 0x2d, 0x3f, 0x0a, 0xc4, 0xbb, 0xc1, 0x25, 0x2d, 0xe3, 0xb1, 0x99,
-	0xc1, 0x69, 0x3e, 0x61, 0xbb, 0xc0, 0x75, 0x23, 0x92, 0x8d, 0xfa, 0xd3, 0x1c, 0x28, 0x42, 0x5c,
-	0x8a, 0x2a, 0x2f, 0x5d, 0x1a, 0xbf, 0x22, 0x79, 0x6f, 0x49, 0x0e, 0x0a, 0xbc, 0xf5, 0x10, 0x01,
-	0xc1, 0x9f, 0x9e, 0x84, 0x28, 0x2f, 0x42, 0x54, 0x1d, 0x8f, 0xea, 0x15, 0x3f, 0x44, 0xfb, 0x96,
-	0x69, 0xd0, 0x49, 0x9c, 0xbe, 0x01, 0x45, 0x66, 0x38, 0x03, 0xca, 0xc4, 0x28, 0x50, 0xd9, 0xba,
-	0x7d, 0x8a, 0xae, 0xb4, 0x2f, 0x18, 0xf8, 0x69, 0xe0, 0xff, 0x26, 0x92, 0xa9, 0xfa, 0x13, 0x04,
-	0xab, 0xbc, 0x31, 0x1d, 0x44, 0xef, 0xc3, 0x06, 0x14, 0xf8, 0xd0, 0x23, 0x67, 0xa2, 0x89, 0xfa,
-	0x62, 0x16, 0x10, 0x10, 0xfc, 0x3e, 0x14, 0x78, 0xb7, 0x90, 0x1d, 0xf9, 0xb4, 0x29, 0x3d, 0xe1,
-	0x2c, 0x5a, 0x90, 0xe0, 0xa8, 0xfe, 0x06, 0xc1, 0xd5, 0xa4, 0x42, 0xc1, 0x75, 0x73, 0xb2, 0x5e,
-	0x1e, 0x54, 0xdc, 0x90, 0x40, 0xaa, 0x77, 0xc6, 0x3e, 0x72, 0x59, 0xca, 0xa9, 0x44, 0x0e, 0x49,
-	0x54, 0x8c, 0xfa, 0x18, 0x81, 0x18, 0x18, 0x0f, 0xe6, 0xf4, 0xde, 0x3b, 0x31, 0xef, 0x35, 0x33,
-	0xa8, 0x37, 0xd3, 0x6d, 0xbf, 0x0a, 0xe2, 0x98, 0xcd, 0x5f, 0xfd, 0x34, 0x7f, 0xdd, 0xcc, 0xaa,
-	0xd0, 0xdc, 0x8e, 0xba, 0x03, 0xcb, 0xb1, 0x9b, 0x12, 0xd7, 0x83, 0xde, 0xe8, 0x37, 0xaa, 0x72,
-	0xb2, 0xbf, 0xdd, 0x29, 0xfd, 0xfc, 0x17, 0xf5, 0x85, 0xc7, 0x7f, 0x6b, 0x2c, 0xa8, 0x6f, 0xc2,
-	0x4a, 0x3c, 0x9f, 0xb3, 0x10, 0xff, 0x38, 0x0f, 0x10, 0x0e, 0x52, 0x9c, 0x92, 0x8f, 0xeb, 0x31,
-	0x4a, 0x3e, 0xc5, 0x33, 0xe2, 0x9f, 0xe3, 0x1f, 0x22, 0x78, 0x5d, 0xf7, 0x3c, 0xd7, 0xec, 0x0c,
-	0x3d, 0x1a, 0x69, 0xad, 0xc1, 0x0c, 0x92, 0x71, 0x14, 0xbd, 0x2e, 0x3d, 0xf3, 0x7a, 0x2b, 0x8d,
-	0x27, 0x49, 0x17, 0x85, 0x3f, 0x03, 0x65, 0x7d, 0x60, 0xde, 0x8b, 0xb6, 0x09, 0x31, 0xc1, 0x04,
-	0x2b, 0x03, 0x23, 0x21, 0x9c, 0x23, 0x07, 0x53, 0xba, 0x3f, 0x58, 0x48, 0xe4, 0xa0, 0xbd, 0x32,
-	0x12, 0xc2, 0xf1, 0x97, 0x60, 0x39, 0x3a, 0xd2, 0x33, 0x65, 0x51, 0x10, 0xbc, 0x36, 0x1e, 0xd5,
-	0x97, 0xa3, 0x93, 0x3f, 0x23, 0x71, 0x3c, 0xdc, 0x86, 0xaa, 0x1d, 0x9b, 0xd2, 0x99, 0x52, 0x14,
-	0xa4, 0xca, 0x78, 0x54, 0x5f, 0x8b, 0x0f, 0xf0, 0xb2, 0x91, 0x25, 0x09, 0xd4, 0x2e, 0xac, 0x5d,
-	0x4c, 0xcf, 0xff, 0x3b, 0x82, 0x8f, 0xa7, 0x49, 0x22, 0x94, 0x0d, 0x1c, 0x9b, 0xd1, 0xec, 0x0b,
-	0xe0, 0x27, 0x61, 0x91, 0x77, 0x6f, 0xff, 0xce, 0x2c, 0xfb, 0x73, 0x1e, 0x6f, 0xea, 0xd2, 0x54,
-	0x1f, 0x38, 0x7f, 0x6f, 0x7f, 0x0b, 0x56, 0xe8, 0xb1, 0x6e, 0x0d, 0xb9, 0xb6, 0xdb, 0xae, 0xeb,
-	0xb8, 0x72, 0xdd, 0xbb, 0x2a, 0x95, 0xa8, 0x6e, 0x73, 0xa8, 0x3e, 0x01, 0x93, 0x04, 0xba, 0xfa,
-	0x27, 0x04, 0x85, 0xff, 0xff, 0x0d, 0x46, 0x7d, 0x91, 0x87, 0xca, 0xab, 0xb5, 0xe2, 0xa3, 0xbe,
-	0x56, 0xf0, 0xc9, 0xfb, 0x62, 0xf7, 0x89, 0x33, 0x4c, 0xde, 0x27, 0x2f, 0x12, 0x2f, 0x10, 0x5c,
-	0x89, 0x5e, 0x74, 0x91, 0xf9, 0xfb, 0xfc, 0xf3, 0xb7, 0x0b, 0x05, 0x36, 0xa0, 0x86, 0x4c, 0xdd,
-	0xed, 0xd3, 0x19, 0x16, 0x51, 0x79, 0x7f, 0x40, 0x8d, 0x70, 0x40, 0xe0, 0x5f, 0x44, 0x08, 0x50,
-	0xc7, 0x08, 0xd6, 0xd3, 0x49, 0x2e, 0x20, 0x7e, 0x87, 0xf1, 0xf8, 0xb5, 0xce, 0x6c, 0xe6, 0x8c,
-	0x50, 0xfe, 0x3e, 0x3f, 0xcb, 0x48, 0xee, 0x09, 0xfc, 0x08, 0xaa, 0xbc, 0xa4, 0xdd, 0xf0, 0x58,
-	0xda, 0x7a, 0x27, 0x83, 0x42, 0x62, 0xf6, 0x8f, 0x68, 0x22, 0xde, 0x5d, 0x12, 0x87, 0x24, 0x29,
-	0x07, 0x7f, 0x1f, 0x56, 0x45, 0x91, 0x47, 0x65, 0xfb, 0x31, 0x7f, 0x33, 0x83, 0xec, 0xe4, 0x82,
-	0xd8, 0x5e, 0x1b, 0x8f, 0xea, 0x53, 0x6b, 0x23, 0x99, 0x12, 0x85, 0x7f, 0x89, 0xe0, 0x1a, 0xa3,
-	0xee, 0xb1, 0x69, 0x50, 0xdd, 0x30, 0x9c, 0xa1, 0xed, 0x45, 0x15, 0xf1, 0xfb, 0xd9, 0xdb, 0x19,
-	0x14, 0xd9, 0xf7, 0x79, 0xb5, 0x7c, 0x5e, 0x51, 0x8d, 0xae, 0x8f, 0x47, 0xf5, 0x6b, 0x33, 0xc1,
-	0x64, 0xb6, 0x16, 0xea, 0x1f, 0x11, 0x94, 0x2e, 0x68, 0x93, 0xff, 0x6a, 0x3c, 0x1f, 0x33, 0x0f,
-	0xee, 0xe9, 0xd9, 0xf7, 0x1f, 0x04, 0x57, 0xf6, 0xa9, 0x75, 0x28, 0x5b, 0xb0, 0x7f, 0x33, 0xfa,
-	0x23, 0x51, 0x50, 0xe6, 0x28, 0x73, 0x99, 0xa7, 0x33, 0x9c, 0x55, 0xe6, 0xf8, 0x08, 0x8a, 0xcc,
-	0xd3, 0xbd, 0x61, 0x70, 0x19, 0xde, 0xcd, 0x22, 0x6a, 0x5a, 0x8c, 0x60, 0xd5, 0x5e, 0x91, 0x82,
-	0x8a, 0xfe, 0x37, 0x91, 0x22, 0xd4, 0xef, 0xc1, 0xfa, 0x6c, 0xf5, 0x22, 0x0b, 0x2f, 0x3a, 0x8f,
-	0x85, 0xd7, 0x82, 0xab, 0xc9, 0x34, 0x93, 0x57, 0xd7, 0x1c, 0xeb, 0x52, 0x6c, 0x60, 0xcc, 0x9d,
-	0x3c, 0x30, 0xaa, 0x7f, 0x41, 0x30, 0x3b, 0xab, 0xf1, 0x8f, 0x10, 0x54, 0xe3, 0x89, 0xed, 0x6f,
-	0x24, 0x95, 0xad, 0xf6, 0x19, 0x8a, 0x2a, 0xb8, 0x89, 0x27, 0x53, 0x64, 0x1c, 0x81, 0x91, 0xa4,
-	0x4c, 0xac, 0x01, 0x4c, 0x54, 0x8e, 0xcd, 0xb6, 0x13, 0x9b, 0x18, 0x89, 0x60, 0xa8, 0x1f, 0xe6,
-	0xe0, 0xf2, 0xab, 0x77, 0x94, 0x58, 0x5a, 0xfd, 0x13, 0xc1, 0xc7, 0x52, 0x5c, 0x72, 0xfa, 0x55,
-	0xe3, 0x06, 0x2c, 0xe9, 0x96, 0xe5, 0x3c, 0xa4, 0x07, 0xc2, 0xfa, 0x52, 0x38, 0x58, 0xb5, 0xfc,
-	0x63, 0x12, 0xc0, 0xf1, 0xa7, 0xa0, 0xe8, 0x52, 0x9d, 0xc9, 0x8e, 0x5c, 0x0e, 0xeb, 0x8e, 0x88,
-	0x53, 0x22, 0xa1, 0xb8, 0x05, 0x55, 0x1a, 0x5f, 0x28, 0x4e, 0xda, 0x37, 0x92, 0xf8, 0xea, 0xbf,
-	0x10, 0xe0, 0x94, 0x3e, 0x65, 0xc4, 0xfa, 0x54, 0xeb, 0x6c, 0xcd, 0xe3, 0x7f, 0xa2, 0x47, 0xfd,
-	0x81, 0x37, 0xe5, 0xf4, 0x06, 0x15, 0x24, 0x25, 0x9a, 0x99, 0x94, 0xe1, 0xfb, 0x6b, 0x6e, 0xe6,
-	0xfb, 0x6b, 0x98, 0x8f, 0xf9, 0xf3, 0xc8, 0xc7, 0xdf, 0x21, 0x50, 0x66, 0x19, 0x1d, 0xee, 0x72,
-	0xe8, 0xe5, 0xff, 0x1b, 0x95, 0x92, 0x64, 0xb9, 0x8c, 0x49, 0xf6, 0x5b, 0x04, 0xc9, 0xc9, 0x08,
-	0xd7, 0x83, 0xcd, 0x3b, 0xf2, 0x62, 0x23, 0x36, 0xef, 0x60, 0xe9, 0x9e, 0xc7, 0xe7, 0xe1, 0x9b,
-	0x77, 0xfe, 0x3c, 0xde, 0xbc, 0xdb, 0xbb, 0x4f, 0x9e, 0xd7, 0x16, 0x9e, 0x3e, 0xaf, 0x2d, 0x3c,
-	0x7b, 0x5e, 0x5b, 0x78, 0x3c, 0xae, 0xa1, 0x27, 0xe3, 0x1a, 0x7a, 0x3a, 0xae, 0xa1, 0x67, 0xe3,
-	0x1a, 0xfa, 0xc7, 0xb8, 0x86, 0x3e, 0x7c, 0x51, 0x5b, 0xf8, 0xe0, 0xc6, 0xdc, 0xff, 0xfe, 0xff,
-	0x37, 0x00, 0x00, 0xff, 0xff, 0xac, 0xa0, 0x30, 0xab, 0x29, 0x20, 0x00, 0x00,
-}
+func (m *Action) Reset() { *m = Action{} }
+
+func (m *ClusterRole) Reset() { *m = ClusterRole{} }
+
+func (m *ClusterRoleBinding) Reset() { *m = ClusterRoleBinding{} }
+
+func (m *ClusterRoleBindingList) Reset() { *m = ClusterRoleBindingList{} }
+
+func (m *ClusterRoleList) Reset() { *m = ClusterRoleList{} }
+
+func (m *GroupRestriction) Reset() { *m = GroupRestriction{} }
+
+func (m *IsPersonalSubjectAccessReview) Reset() { *m = IsPersonalSubjectAccessReview{} }
+
+func (m *LocalResourceAccessReview) Reset() { *m = LocalResourceAccessReview{} }
+
+func (m *LocalSubjectAccessReview) Reset() { *m = LocalSubjectAccessReview{} }
+
+func (m *NamedClusterRole) Reset() { *m = NamedClusterRole{} }
+
+func (m *NamedClusterRoleBinding) Reset() { *m = NamedClusterRoleBinding{} }
+
+func (m *NamedRole) Reset() { *m = NamedRole{} }
+
+func (m *NamedRoleBinding) Reset() { *m = NamedRoleBinding{} }
+
+func (m *OptionalNames) Reset() { *m = OptionalNames{} }
+
+func (m *OptionalScopes) Reset() { *m = OptionalScopes{} }
+
+func (m *PolicyRule) Reset() { *m = PolicyRule{} }
+
+func (m *ResourceAccessReview) Reset() { *m = ResourceAccessReview{} }
+
+func (m *ResourceAccessReviewResponse) Reset() { *m = ResourceAccessReviewResponse{} }
+
+func (m *Role) Reset() { *m = Role{} }
+
+func (m *RoleBinding) Reset() { *m = RoleBinding{} }
+
+func (m *RoleBindingList) Reset() { *m = RoleBindingList{} }
+
+func (m *RoleBindingRestriction) Reset() { *m = RoleBindingRestriction{} }
+
+func (m *RoleBindingRestrictionList) Reset() { *m = RoleBindingRestrictionList{} }
+
+func (m *RoleBindingRestrictionSpec) Reset() { *m = RoleBindingRestrictionSpec{} }
+
+func (m *RoleList) Reset() { *m = RoleList{} }
+
+func (m *SelfSubjectRulesReview) Reset() { *m = SelfSubjectRulesReview{} }
+
+func (m *SelfSubjectRulesReviewSpec) Reset() { *m = SelfSubjectRulesReviewSpec{} }
+
+func (m *ServiceAccountReference) Reset() { *m = ServiceAccountReference{} }
+
+func (m *ServiceAccountRestriction) Reset() { *m = ServiceAccountRestriction{} }
+
+func (m *SubjectAccessReview) Reset() { *m = SubjectAccessReview{} }
+
+func (m *SubjectAccessReviewResponse) Reset() { *m = SubjectAccessReviewResponse{} }
+
+func (m *SubjectRulesReview) Reset() { *m = SubjectRulesReview{} }
+
+func (m *SubjectRulesReviewSpec) Reset() { *m = SubjectRulesReviewSpec{} }
+
+func (m *SubjectRulesReviewStatus) Reset() { *m = SubjectRulesReviewStatus{} }
+
+func (m *UserRestriction) Reset() { *m = UserRestriction{} }
 
 func (m *Action) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
@@ -1570,6 +487,16 @@ func (m *LocalResourceAccessReview) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	var l int
 	_ = l
 	{
+		size, err := m.ObjectMeta.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintGenerated(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
+	{
 		size, err := m.Action.MarshalToSizedBuffer(dAtA[:i])
 		if err != nil {
 			return 0, err
@@ -1602,6 +529,16 @@ func (m *LocalSubjectAccessReview) MarshalToSizedBuffer(dAtA []byte) (int, error
 	_ = i
 	var l int
 	_ = l
+	{
+		size, err := m.ObjectMeta.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintGenerated(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x2a
 	if m.Scopes != nil {
 		{
 			size, err := m.Scopes.MarshalToSizedBuffer(dAtA[:i])
@@ -1955,6 +892,16 @@ func (m *ResourceAccessReview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	{
+		size, err := m.ObjectMeta.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintGenerated(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x12
 	{
 		size, err := m.Action.MarshalToSizedBuffer(dAtA[:i])
 		if err != nil {
@@ -2411,6 +1358,16 @@ func (m *SelfSubjectRulesReview) MarshalToSizedBuffer(dAtA []byte) (int, error) 
 	var l int
 	_ = l
 	{
+		size, err := m.ObjectMeta.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintGenerated(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x1a
+	{
 		size, err := m.Status.MarshalToSizedBuffer(dAtA[:i])
 		if err != nil {
 			return 0, err
@@ -2567,6 +1524,16 @@ func (m *SubjectAccessReview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	{
+		size, err := m.ObjectMeta.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintGenerated(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x2a
 	if m.Scopes != nil {
 		{
 			size, err := m.Scopes.MarshalToSizedBuffer(dAtA[:i])
@@ -2672,6 +1639,16 @@ func (m *SubjectRulesReview) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	{
+		size, err := m.ObjectMeta.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintGenerated(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x1a
 	{
 		size, err := m.Status.MarshalToSizedBuffer(dAtA[:i])
 		if err != nil {
@@ -2998,6 +1975,8 @@ func (m *LocalResourceAccessReview) Size() (n int) {
 	_ = l
 	l = m.Action.Size()
 	n += 1 + l + sovGenerated(uint64(l))
+	l = m.ObjectMeta.Size()
+	n += 1 + l + sovGenerated(uint64(l))
 	return n
 }
 
@@ -3021,6 +2000,8 @@ func (m *LocalSubjectAccessReview) Size() (n int) {
 		l = m.Scopes.Size()
 		n += 1 + l + sovGenerated(uint64(l))
 	}
+	l = m.ObjectMeta.Size()
+	n += 1 + l + sovGenerated(uint64(l))
 	return n
 }
 
@@ -3154,6 +2135,8 @@ func (m *ResourceAccessReview) Size() (n int) {
 	var l int
 	_ = l
 	l = m.Action.Size()
+	n += 1 + l + sovGenerated(uint64(l))
+	l = m.ObjectMeta.Size()
 	n += 1 + l + sovGenerated(uint64(l))
 	return n
 }
@@ -3322,6 +2305,8 @@ func (m *SelfSubjectRulesReview) Size() (n int) {
 	n += 1 + l + sovGenerated(uint64(l))
 	l = m.Status.Size()
 	n += 1 + l + sovGenerated(uint64(l))
+	l = m.ObjectMeta.Size()
+	n += 1 + l + sovGenerated(uint64(l))
 	return n
 }
 
@@ -3392,6 +2377,8 @@ func (m *SubjectAccessReview) Size() (n int) {
 		l = m.Scopes.Size()
 		n += 1 + l + sovGenerated(uint64(l))
 	}
+	l = m.ObjectMeta.Size()
+	n += 1 + l + sovGenerated(uint64(l))
 	return n
 }
 
@@ -3420,6 +2407,8 @@ func (m *SubjectRulesReview) Size() (n int) {
 	l = m.Spec.Size()
 	n += 1 + l + sovGenerated(uint64(l))
 	l = m.Status.Size()
+	n += 1 + l + sovGenerated(uint64(l))
+	l = m.ObjectMeta.Size()
 	n += 1 + l + sovGenerated(uint64(l))
 	return n
 }
@@ -3612,6 +2601,7 @@ func (this *LocalResourceAccessReview) String() string {
 	}
 	s := strings.Join([]string{`&LocalResourceAccessReview{`,
 		`Action:` + strings.Replace(strings.Replace(this.Action.String(), "Action", "Action", 1), `&`, ``, 1) + `,`,
+		`ObjectMeta:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.ObjectMeta), "ObjectMeta", "v1.ObjectMeta", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3625,6 +2615,7 @@ func (this *LocalSubjectAccessReview) String() string {
 		`User:` + fmt.Sprintf("%v", this.User) + `,`,
 		`GroupsSlice:` + fmt.Sprintf("%v", this.GroupsSlice) + `,`,
 		`Scopes:` + strings.Replace(fmt.Sprintf("%v", this.Scopes), "OptionalScopes", "OptionalScopes", 1) + `,`,
+		`ObjectMeta:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.ObjectMeta), "ObjectMeta", "v1.ObjectMeta", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3694,6 +2685,7 @@ func (this *ResourceAccessReview) String() string {
 	}
 	s := strings.Join([]string{`&ResourceAccessReview{`,
 		`Action:` + strings.Replace(strings.Replace(this.Action.String(), "Action", "Action", 1), `&`, ``, 1) + `,`,
+		`ObjectMeta:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.ObjectMeta), "ObjectMeta", "v1.ObjectMeta", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3824,6 +2816,7 @@ func (this *SelfSubjectRulesReview) String() string {
 	s := strings.Join([]string{`&SelfSubjectRulesReview{`,
 		`Spec:` + strings.Replace(strings.Replace(this.Spec.String(), "SelfSubjectRulesReviewSpec", "SelfSubjectRulesReviewSpec", 1), `&`, ``, 1) + `,`,
 		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "SubjectRulesReviewStatus", "SubjectRulesReviewStatus", 1), `&`, ``, 1) + `,`,
+		`ObjectMeta:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.ObjectMeta), "ObjectMeta", "v1.ObjectMeta", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3874,6 +2867,7 @@ func (this *SubjectAccessReview) String() string {
 		`User:` + fmt.Sprintf("%v", this.User) + `,`,
 		`GroupsSlice:` + fmt.Sprintf("%v", this.GroupsSlice) + `,`,
 		`Scopes:` + strings.Replace(fmt.Sprintf("%v", this.Scopes), "OptionalScopes", "OptionalScopes", 1) + `,`,
+		`ObjectMeta:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.ObjectMeta), "ObjectMeta", "v1.ObjectMeta", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -3898,6 +2892,7 @@ func (this *SubjectRulesReview) String() string {
 	s := strings.Join([]string{`&SubjectRulesReview{`,
 		`Spec:` + strings.Replace(strings.Replace(this.Spec.String(), "SubjectRulesReviewSpec", "SubjectRulesReviewSpec", 1), `&`, ``, 1) + `,`,
 		`Status:` + strings.Replace(strings.Replace(this.Status.String(), "SubjectRulesReviewStatus", "SubjectRulesReviewStatus", 1), `&`, ``, 1) + `,`,
+		`ObjectMeta:` + strings.Replace(strings.Replace(fmt.Sprintf("%v", this.ObjectMeta), "ObjectMeta", "v1.ObjectMeta", 1), `&`, ``, 1) + `,`,
 		`}`,
 	}, "")
 	return s
@@ -5119,6 +4114,39 @@ func (m *LocalResourceAccessReview) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectMeta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ObjectMeta.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGenerated(dAtA[iNdEx:])
@@ -5299,6 +4327,39 @@ func (m *LocalSubjectAccessReview) Unmarshal(dAtA []byte) error {
 				m.Scopes = OptionalScopes{}
 			}
 			if err := m.Scopes.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectMeta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ObjectMeta.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -6249,6 +5310,39 @@ func (m *ResourceAccessReview) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if err := m.Action.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectMeta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ObjectMeta.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -7510,6 +6604,39 @@ func (m *SelfSubjectRulesReview) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectMeta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ObjectMeta.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGenerated(dAtA[iNdEx:])
@@ -8009,6 +7136,39 @@ func (m *SubjectAccessReview) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectMeta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ObjectMeta.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipGenerated(dAtA[iNdEx:])
@@ -8288,6 +7448,39 @@ func (m *SubjectRulesReview) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if err := m.Status.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectMeta", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowGenerated
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthGenerated
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ObjectMeta.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

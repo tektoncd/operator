@@ -3,18 +3,26 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// IdentityProviderApplyConfiguration represents an declarative configuration of the IdentityProvider type for use
+// IdentityProviderApplyConfiguration represents a declarative configuration of the IdentityProvider type for use
 // with apply.
+//
+// IdentityProvider provides identities for users authenticating using credentials
 type IdentityProviderApplyConfiguration struct {
-	Name                                     *string               `json:"name,omitempty"`
-	MappingMethod                            *v1.MappingMethodType `json:"mappingMethod,omitempty"`
+	// name is used to qualify the identities returned by this provider.
+	// - It MUST be unique and not shared by any other identity provider used
+	// - It MUST be a valid path segment: name cannot equal "." or ".." or contain "/" or "%" or ":"
+	// Ref: https://godoc.org/github.com/openshift/origin/pkg/user/apis/user/validation#ValidateIdentityProviderName
+	Name *string `json:"name,omitempty"`
+	// mappingMethod determines how identities from this provider are mapped to users
+	// Defaults to "claim"
+	MappingMethod                            *configv1.MappingMethodType `json:"mappingMethod,omitempty"`
 	IdentityProviderConfigApplyConfiguration `json:",inline"`
 }
 
-// IdentityProviderApplyConfiguration constructs an declarative configuration of the IdentityProvider type for use with
+// IdentityProviderApplyConfiguration constructs a declarative configuration of the IdentityProvider type for use with
 // apply.
 func IdentityProvider() *IdentityProviderApplyConfiguration {
 	return &IdentityProviderApplyConfiguration{}
@@ -31,7 +39,7 @@ func (b *IdentityProviderApplyConfiguration) WithName(value string) *IdentityPro
 // WithMappingMethod sets the MappingMethod field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the MappingMethod field is set to the value of the last call.
-func (b *IdentityProviderApplyConfiguration) WithMappingMethod(value v1.MappingMethodType) *IdentityProviderApplyConfiguration {
+func (b *IdentityProviderApplyConfiguration) WithMappingMethod(value configv1.MappingMethodType) *IdentityProviderApplyConfiguration {
 	b.MappingMethod = &value
 	return b
 }
@@ -39,8 +47,8 @@ func (b *IdentityProviderApplyConfiguration) WithMappingMethod(value v1.MappingM
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *IdentityProviderApplyConfiguration) WithType(value v1.IdentityProviderType) *IdentityProviderApplyConfiguration {
-	b.Type = &value
+func (b *IdentityProviderApplyConfiguration) WithType(value configv1.IdentityProviderType) *IdentityProviderApplyConfiguration {
+	b.IdentityProviderConfigApplyConfiguration.Type = &value
 	return b
 }
 
@@ -48,7 +56,7 @@ func (b *IdentityProviderApplyConfiguration) WithType(value v1.IdentityProviderT
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the BasicAuth field is set to the value of the last call.
 func (b *IdentityProviderApplyConfiguration) WithBasicAuth(value *BasicAuthIdentityProviderApplyConfiguration) *IdentityProviderApplyConfiguration {
-	b.BasicAuth = value
+	b.IdentityProviderConfigApplyConfiguration.BasicAuth = value
 	return b
 }
 
@@ -56,7 +64,7 @@ func (b *IdentityProviderApplyConfiguration) WithBasicAuth(value *BasicAuthIdent
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the GitHub field is set to the value of the last call.
 func (b *IdentityProviderApplyConfiguration) WithGitHub(value *GitHubIdentityProviderApplyConfiguration) *IdentityProviderApplyConfiguration {
-	b.GitHub = value
+	b.IdentityProviderConfigApplyConfiguration.GitHub = value
 	return b
 }
 
@@ -64,7 +72,7 @@ func (b *IdentityProviderApplyConfiguration) WithGitHub(value *GitHubIdentityPro
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the GitLab field is set to the value of the last call.
 func (b *IdentityProviderApplyConfiguration) WithGitLab(value *GitLabIdentityProviderApplyConfiguration) *IdentityProviderApplyConfiguration {
-	b.GitLab = value
+	b.IdentityProviderConfigApplyConfiguration.GitLab = value
 	return b
 }
 
@@ -72,7 +80,7 @@ func (b *IdentityProviderApplyConfiguration) WithGitLab(value *GitLabIdentityPro
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Google field is set to the value of the last call.
 func (b *IdentityProviderApplyConfiguration) WithGoogle(value *GoogleIdentityProviderApplyConfiguration) *IdentityProviderApplyConfiguration {
-	b.Google = value
+	b.IdentityProviderConfigApplyConfiguration.Google = value
 	return b
 }
 
@@ -80,7 +88,7 @@ func (b *IdentityProviderApplyConfiguration) WithGoogle(value *GoogleIdentityPro
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the HTPasswd field is set to the value of the last call.
 func (b *IdentityProviderApplyConfiguration) WithHTPasswd(value *HTPasswdIdentityProviderApplyConfiguration) *IdentityProviderApplyConfiguration {
-	b.HTPasswd = value
+	b.IdentityProviderConfigApplyConfiguration.HTPasswd = value
 	return b
 }
 
@@ -88,7 +96,7 @@ func (b *IdentityProviderApplyConfiguration) WithHTPasswd(value *HTPasswdIdentit
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Keystone field is set to the value of the last call.
 func (b *IdentityProviderApplyConfiguration) WithKeystone(value *KeystoneIdentityProviderApplyConfiguration) *IdentityProviderApplyConfiguration {
-	b.Keystone = value
+	b.IdentityProviderConfigApplyConfiguration.Keystone = value
 	return b
 }
 
@@ -96,7 +104,7 @@ func (b *IdentityProviderApplyConfiguration) WithKeystone(value *KeystoneIdentit
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the LDAP field is set to the value of the last call.
 func (b *IdentityProviderApplyConfiguration) WithLDAP(value *LDAPIdentityProviderApplyConfiguration) *IdentityProviderApplyConfiguration {
-	b.LDAP = value
+	b.IdentityProviderConfigApplyConfiguration.LDAP = value
 	return b
 }
 
@@ -104,7 +112,7 @@ func (b *IdentityProviderApplyConfiguration) WithLDAP(value *LDAPIdentityProvide
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the OpenID field is set to the value of the last call.
 func (b *IdentityProviderApplyConfiguration) WithOpenID(value *OpenIDIdentityProviderApplyConfiguration) *IdentityProviderApplyConfiguration {
-	b.OpenID = value
+	b.IdentityProviderConfigApplyConfiguration.OpenID = value
 	return b
 }
 
@@ -112,6 +120,6 @@ func (b *IdentityProviderApplyConfiguration) WithOpenID(value *OpenIDIdentityPro
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the RequestHeader field is set to the value of the last call.
 func (b *IdentityProviderApplyConfiguration) WithRequestHeader(value *RequestHeaderIdentityProviderApplyConfiguration) *IdentityProviderApplyConfiguration {
-	b.RequestHeader = value
+	b.IdentityProviderConfigApplyConfiguration.RequestHeader = value
 	return b
 }

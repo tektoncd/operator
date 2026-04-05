@@ -2,14 +2,22 @@
 
 package v1
 
-// NutanixPrismElementEndpointApplyConfiguration represents an declarative configuration of the NutanixPrismElementEndpoint type for use
+// NutanixPrismElementEndpointApplyConfiguration represents a declarative configuration of the NutanixPrismElementEndpoint type for use
 // with apply.
+//
+// NutanixPrismElementEndpoint holds the name and endpoint data for a Prism Element (cluster)
 type NutanixPrismElementEndpointApplyConfiguration struct {
-	Name     *string                                 `json:"name,omitempty"`
+	// name is the name of the Prism Element (cluster). This value will correspond with
+	// the cluster field configured on other resources (eg Machines, PVCs, etc).
+	Name *string `json:"name,omitempty"`
+	// endpoint holds the endpoint address and port data of the Prism Element (cluster).
+	// When a cluster-wide proxy is installed, by default, this endpoint will be accessed via the proxy.
+	// Should you wish for communication with this endpoint not to be proxied, please add the endpoint to the
+	// proxy spec.noProxy list.
 	Endpoint *NutanixPrismEndpointApplyConfiguration `json:"endpoint,omitempty"`
 }
 
-// NutanixPrismElementEndpointApplyConfiguration constructs an declarative configuration of the NutanixPrismElementEndpoint type for use with
+// NutanixPrismElementEndpointApplyConfiguration constructs a declarative configuration of the NutanixPrismElementEndpoint type for use with
 // apply.
 func NutanixPrismElementEndpoint() *NutanixPrismElementEndpointApplyConfiguration {
 	return &NutanixPrismElementEndpointApplyConfiguration{}

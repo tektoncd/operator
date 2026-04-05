@@ -3,17 +3,27 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// IngressPlatformSpecApplyConfiguration represents an declarative configuration of the IngressPlatformSpec type for use
+// IngressPlatformSpecApplyConfiguration represents a declarative configuration of the IngressPlatformSpec type for use
 // with apply.
+//
+// IngressPlatformSpec holds the desired state of Ingress specific to the underlying infrastructure provider
+// of the current cluster. Since these are used at spec-level for the underlying cluster, it
+// is supposed that only one of the spec structs is set.
 type IngressPlatformSpecApplyConfiguration struct {
-	Type *v1.PlatformType                  `json:"type,omitempty"`
-	AWS  *AWSIngressSpecApplyConfiguration `json:"aws,omitempty"`
+	// type is the underlying infrastructure provider for the cluster.
+	// Allowed values are "AWS", "Azure", "BareMetal", "GCP", "Libvirt",
+	// "OpenStack", "VSphere", "oVirt", "KubeVirt", "EquinixMetal", "PowerVS",
+	// "AlibabaCloud", "Nutanix" and "None". Individual components may not support all platforms,
+	// and must handle unrecognized platforms as None if they do not support that platform.
+	Type *configv1.PlatformType `json:"type,omitempty"`
+	// aws contains settings specific to the Amazon Web Services infrastructure provider.
+	AWS *AWSIngressSpecApplyConfiguration `json:"aws,omitempty"`
 }
 
-// IngressPlatformSpecApplyConfiguration constructs an declarative configuration of the IngressPlatformSpec type for use with
+// IngressPlatformSpecApplyConfiguration constructs a declarative configuration of the IngressPlatformSpec type for use with
 // apply.
 func IngressPlatformSpec() *IngressPlatformSpecApplyConfiguration {
 	return &IngressPlatformSpecApplyConfiguration{}
@@ -22,7 +32,7 @@ func IngressPlatformSpec() *IngressPlatformSpecApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *IngressPlatformSpecApplyConfiguration) WithType(value v1.PlatformType) *IngressPlatformSpecApplyConfiguration {
+func (b *IngressPlatformSpecApplyConfiguration) WithType(value configv1.PlatformType) *IngressPlatformSpecApplyConfiguration {
 	b.Type = &value
 	return b
 }

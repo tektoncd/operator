@@ -2,15 +2,23 @@
 
 package v1
 
-// BuildSpecApplyConfiguration represents an declarative configuration of the BuildSpec type for use
+// BuildSpecApplyConfiguration represents a declarative configuration of the BuildSpec type for use
 // with apply.
 type BuildSpecApplyConfiguration struct {
+	// additionalTrustedCA is a reference to a ConfigMap containing additional CAs that
+	// should be trusted for image pushes and pulls during builds.
+	// The namespace for this config map is openshift-config.
+	//
+	// DEPRECATED: Additional CAs for image pull and push should be set on
+	// image.config.openshift.io/cluster instead.
 	AdditionalTrustedCA *ConfigMapNameReferenceApplyConfiguration `json:"additionalTrustedCA,omitempty"`
-	BuildDefaults       *BuildDefaultsApplyConfiguration          `json:"buildDefaults,omitempty"`
-	BuildOverrides      *BuildOverridesApplyConfiguration         `json:"buildOverrides,omitempty"`
+	// buildDefaults controls the default information for Builds
+	BuildDefaults *BuildDefaultsApplyConfiguration `json:"buildDefaults,omitempty"`
+	// buildOverrides controls override settings for builds
+	BuildOverrides *BuildOverridesApplyConfiguration `json:"buildOverrides,omitempty"`
 }
 
-// BuildSpecApplyConfiguration constructs an declarative configuration of the BuildSpec type for use with
+// BuildSpecApplyConfiguration constructs a declarative configuration of the BuildSpec type for use with
 // apply.
 func BuildSpec() *BuildSpecApplyConfiguration {
 	return &BuildSpecApplyConfiguration{}

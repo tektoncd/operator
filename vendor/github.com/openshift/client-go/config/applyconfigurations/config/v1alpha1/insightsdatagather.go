@@ -11,16 +11,24 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// InsightsDataGatherApplyConfiguration represents an declarative configuration of the InsightsDataGather type for use
+// InsightsDataGatherApplyConfiguration represents a declarative configuration of the InsightsDataGather type for use
 // with apply.
+//
+// InsightsDataGather provides data gather configuration options for the the Insights Operator.
+//
+// Compatibility level 4: No compatibility is provided, the API can change at any point for any reason. These capabilities should not be used by applications needing long term support.
 type InsightsDataGatherApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration `json:",inline"`
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *InsightsDataGatherSpecApplyConfiguration `json:"spec,omitempty"`
-	Status                           *configv1alpha1.InsightsDataGatherStatus  `json:"status,omitempty"`
+	// spec holds user settable values for configuration
+	Spec *InsightsDataGatherSpecApplyConfiguration `json:"spec,omitempty"`
+	// status holds observed values from the cluster. They may not be overridden.
+	Status *configv1alpha1.InsightsDataGatherStatus `json:"status,omitempty"`
 }
 
-// InsightsDataGather constructs an declarative configuration of the InsightsDataGather type for use with
+// InsightsDataGather constructs a declarative configuration of the InsightsDataGather type for use with
 // apply.
 func InsightsDataGather(name string) *InsightsDataGatherApplyConfiguration {
 	b := &InsightsDataGatherApplyConfiguration{}
@@ -30,29 +38,14 @@ func InsightsDataGather(name string) *InsightsDataGatherApplyConfiguration {
 	return b
 }
 
-// ExtractInsightsDataGather extracts the applied configuration owned by fieldManager from
-// insightsDataGather. If no managedFields are found in insightsDataGather for fieldManager, a
-// InsightsDataGatherApplyConfiguration is returned with only the Name, Namespace (if applicable),
-// APIVersion and Kind populated. It is possible that no managed fields were found for because other
-// field managers have taken ownership of all the fields previously owned by fieldManager, or because
-// the fieldManager never owned fields any fields.
+// ExtractInsightsDataGatherFrom extracts the applied configuration owned by fieldManager from
+// insightsDataGather for the specified subresource. Pass an empty string for subresource to extract
+// the main resource. Common subresources include "status", "scale", etc.
 // insightsDataGather must be a unmodified InsightsDataGather API object that was retrieved from the Kubernetes API.
-// ExtractInsightsDataGather provides a way to perform a extract/modify-in-place/apply workflow.
+// ExtractInsightsDataGatherFrom provides a way to perform a extract/modify-in-place/apply workflow.
 // Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
 // applied if another fieldManager has updated or force applied any of the previously applied fields.
-// Experimental!
-func ExtractInsightsDataGather(insightsDataGather *configv1alpha1.InsightsDataGather, fieldManager string) (*InsightsDataGatherApplyConfiguration, error) {
-	return extractInsightsDataGather(insightsDataGather, fieldManager, "")
-}
-
-// ExtractInsightsDataGatherStatus is the same as ExtractInsightsDataGather except
-// that it extracts the status subresource applied configuration.
-// Experimental!
-func ExtractInsightsDataGatherStatus(insightsDataGather *configv1alpha1.InsightsDataGather, fieldManager string) (*InsightsDataGatherApplyConfiguration, error) {
-	return extractInsightsDataGather(insightsDataGather, fieldManager, "status")
-}
-
-func extractInsightsDataGather(insightsDataGather *configv1alpha1.InsightsDataGather, fieldManager string, subresource string) (*InsightsDataGatherApplyConfiguration, error) {
+func ExtractInsightsDataGatherFrom(insightsDataGather *configv1alpha1.InsightsDataGather, fieldManager string, subresource string) (*InsightsDataGatherApplyConfiguration, error) {
 	b := &InsightsDataGatherApplyConfiguration{}
 	err := managedfields.ExtractInto(insightsDataGather, internal.Parser().Type("com.github.openshift.api.config.v1alpha1.InsightsDataGather"), fieldManager, b, subresource)
 	if err != nil {
@@ -65,11 +58,33 @@ func extractInsightsDataGather(insightsDataGather *configv1alpha1.InsightsDataGa
 	return b, nil
 }
 
+// ExtractInsightsDataGather extracts the applied configuration owned by fieldManager from
+// insightsDataGather. If no managedFields are found in insightsDataGather for fieldManager, a
+// InsightsDataGatherApplyConfiguration is returned with only the Name, Namespace (if applicable),
+// APIVersion and Kind populated. It is possible that no managed fields were found for because other
+// field managers have taken ownership of all the fields previously owned by fieldManager, or because
+// the fieldManager never owned fields any fields.
+// insightsDataGather must be a unmodified InsightsDataGather API object that was retrieved from the Kubernetes API.
+// ExtractInsightsDataGather provides a way to perform a extract/modify-in-place/apply workflow.
+// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
+// applied if another fieldManager has updated or force applied any of the previously applied fields.
+func ExtractInsightsDataGather(insightsDataGather *configv1alpha1.InsightsDataGather, fieldManager string) (*InsightsDataGatherApplyConfiguration, error) {
+	return ExtractInsightsDataGatherFrom(insightsDataGather, fieldManager, "")
+}
+
+// ExtractInsightsDataGatherStatus extracts the applied configuration owned by fieldManager from
+// insightsDataGather for the status subresource.
+func ExtractInsightsDataGatherStatus(insightsDataGather *configv1alpha1.InsightsDataGather, fieldManager string) (*InsightsDataGatherApplyConfiguration, error) {
+	return ExtractInsightsDataGatherFrom(insightsDataGather, fieldManager, "status")
+}
+
+func (b InsightsDataGatherApplyConfiguration) IsApplyConfiguration() {}
+
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kind field is set to the value of the last call.
 func (b *InsightsDataGatherApplyConfiguration) WithKind(value string) *InsightsDataGatherApplyConfiguration {
-	b.Kind = &value
+	b.TypeMetaApplyConfiguration.Kind = &value
 	return b
 }
 
@@ -77,7 +92,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithKind(value string) *InsightsD
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the APIVersion field is set to the value of the last call.
 func (b *InsightsDataGatherApplyConfiguration) WithAPIVersion(value string) *InsightsDataGatherApplyConfiguration {
-	b.APIVersion = &value
+	b.TypeMetaApplyConfiguration.APIVersion = &value
 	return b
 }
 
@@ -86,7 +101,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithAPIVersion(value string) *Ins
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *InsightsDataGatherApplyConfiguration) WithName(value string) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Name = &value
+	b.ObjectMetaApplyConfiguration.Name = &value
 	return b
 }
 
@@ -95,7 +110,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithName(value string) *InsightsD
 // If called multiple times, the GenerateName field is set to the value of the last call.
 func (b *InsightsDataGatherApplyConfiguration) WithGenerateName(value string) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.GenerateName = &value
+	b.ObjectMetaApplyConfiguration.GenerateName = &value
 	return b
 }
 
@@ -104,7 +119,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithGenerateName(value string) *I
 // If called multiple times, the Namespace field is set to the value of the last call.
 func (b *InsightsDataGatherApplyConfiguration) WithNamespace(value string) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Namespace = &value
+	b.ObjectMetaApplyConfiguration.Namespace = &value
 	return b
 }
 
@@ -113,7 +128,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithNamespace(value string) *Insi
 // If called multiple times, the UID field is set to the value of the last call.
 func (b *InsightsDataGatherApplyConfiguration) WithUID(value types.UID) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.UID = &value
+	b.ObjectMetaApplyConfiguration.UID = &value
 	return b
 }
 
@@ -122,7 +137,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithUID(value types.UID) *Insight
 // If called multiple times, the ResourceVersion field is set to the value of the last call.
 func (b *InsightsDataGatherApplyConfiguration) WithResourceVersion(value string) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ResourceVersion = &value
+	b.ObjectMetaApplyConfiguration.ResourceVersion = &value
 	return b
 }
 
@@ -131,7 +146,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithResourceVersion(value string)
 // If called multiple times, the Generation field is set to the value of the last call.
 func (b *InsightsDataGatherApplyConfiguration) WithGeneration(value int64) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Generation = &value
+	b.ObjectMetaApplyConfiguration.Generation = &value
 	return b
 }
 
@@ -140,7 +155,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithGeneration(value int64) *Insi
 // If called multiple times, the CreationTimestamp field is set to the value of the last call.
 func (b *InsightsDataGatherApplyConfiguration) WithCreationTimestamp(value metav1.Time) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.CreationTimestamp = &value
+	b.ObjectMetaApplyConfiguration.CreationTimestamp = &value
 	return b
 }
 
@@ -149,7 +164,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithCreationTimestamp(value metav
 // If called multiple times, the DeletionTimestamp field is set to the value of the last call.
 func (b *InsightsDataGatherApplyConfiguration) WithDeletionTimestamp(value metav1.Time) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionTimestamp = &value
+	b.ObjectMetaApplyConfiguration.DeletionTimestamp = &value
 	return b
 }
 
@@ -158,7 +173,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithDeletionTimestamp(value metav
 // If called multiple times, the DeletionGracePeriodSeconds field is set to the value of the last call.
 func (b *InsightsDataGatherApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionGracePeriodSeconds = &value
+	b.ObjectMetaApplyConfiguration.DeletionGracePeriodSeconds = &value
 	return b
 }
 
@@ -168,11 +183,11 @@ func (b *InsightsDataGatherApplyConfiguration) WithDeletionGracePeriodSeconds(va
 // overwriting an existing map entries in Labels field with the same key.
 func (b *InsightsDataGatherApplyConfiguration) WithLabels(entries map[string]string) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Labels == nil && len(entries) > 0 {
-		b.Labels = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Labels == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Labels = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Labels[k] = v
+		b.ObjectMetaApplyConfiguration.Labels[k] = v
 	}
 	return b
 }
@@ -183,11 +198,11 @@ func (b *InsightsDataGatherApplyConfiguration) WithLabels(entries map[string]str
 // overwriting an existing map entries in Annotations field with the same key.
 func (b *InsightsDataGatherApplyConfiguration) WithAnnotations(entries map[string]string) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Annotations == nil && len(entries) > 0 {
-		b.Annotations = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Annotations == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Annotations = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Annotations[k] = v
+		b.ObjectMetaApplyConfiguration.Annotations[k] = v
 	}
 	return b
 }
@@ -201,7 +216,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithOwnerReferences(values ...*v1
 		if values[i] == nil {
 			panic("nil value passed to WithOwnerReferences")
 		}
-		b.OwnerReferences = append(b.OwnerReferences, *values[i])
+		b.ObjectMetaApplyConfiguration.OwnerReferences = append(b.ObjectMetaApplyConfiguration.OwnerReferences, *values[i])
 	}
 	return b
 }
@@ -212,7 +227,7 @@ func (b *InsightsDataGatherApplyConfiguration) WithOwnerReferences(values ...*v1
 func (b *InsightsDataGatherApplyConfiguration) WithFinalizers(values ...string) *InsightsDataGatherApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
-		b.Finalizers = append(b.Finalizers, values[i])
+		b.ObjectMetaApplyConfiguration.Finalizers = append(b.ObjectMetaApplyConfiguration.Finalizers, values[i])
 	}
 	return b
 }
@@ -237,4 +252,26 @@ func (b *InsightsDataGatherApplyConfiguration) WithSpec(value *InsightsDataGathe
 func (b *InsightsDataGatherApplyConfiguration) WithStatus(value configv1alpha1.InsightsDataGatherStatus) *InsightsDataGatherApplyConfiguration {
 	b.Status = &value
 	return b
+}
+
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *InsightsDataGatherApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *InsightsDataGatherApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
+// GetName retrieves the value of the Name field in the declarative configuration.
+func (b *InsightsDataGatherApplyConfiguration) GetName() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *InsightsDataGatherApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }

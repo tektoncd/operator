@@ -3,16 +3,18 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/openshift/api/config/v1alpha1"
+	configv1alpha1 "github.com/openshift/api/config/v1alpha1"
 )
 
-// PolicyMatchExactRepositoryApplyConfiguration represents an declarative configuration of the PolicyMatchExactRepository type for use
+// PolicyMatchExactRepositoryApplyConfiguration represents a declarative configuration of the PolicyMatchExactRepository type for use
 // with apply.
 type PolicyMatchExactRepositoryApplyConfiguration struct {
-	Repository *v1alpha1.IdentityRepositoryPrefix `json:"repository,omitempty"`
+	// repository is the reference of the image identity to be matched.
+	// The value should be a repository name (by omitting the tag or digest) in a registry implementing the "Docker Registry HTTP API V2". For example, docker.io/library/busybox
+	Repository *configv1alpha1.IdentityRepositoryPrefix `json:"repository,omitempty"`
 }
 
-// PolicyMatchExactRepositoryApplyConfiguration constructs an declarative configuration of the PolicyMatchExactRepository type for use with
+// PolicyMatchExactRepositoryApplyConfiguration constructs a declarative configuration of the PolicyMatchExactRepository type for use with
 // apply.
 func PolicyMatchExactRepository() *PolicyMatchExactRepositoryApplyConfiguration {
 	return &PolicyMatchExactRepositoryApplyConfiguration{}
@@ -21,7 +23,7 @@ func PolicyMatchExactRepository() *PolicyMatchExactRepositoryApplyConfiguration 
 // WithRepository sets the Repository field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Repository field is set to the value of the last call.
-func (b *PolicyMatchExactRepositoryApplyConfiguration) WithRepository(value v1alpha1.IdentityRepositoryPrefix) *PolicyMatchExactRepositoryApplyConfiguration {
+func (b *PolicyMatchExactRepositoryApplyConfiguration) WithRepository(value configv1alpha1.IdentityRepositoryPrefix) *PolicyMatchExactRepositoryApplyConfiguration {
 	b.Repository = &value
 	return b
 }
