@@ -3,20 +3,96 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// TLSSecurityProfileApplyConfiguration represents an declarative configuration of the TLSSecurityProfile type for use
+// TLSSecurityProfileApplyConfiguration represents a declarative configuration of the TLSSecurityProfile type for use
 // with apply.
+//
+// TLSSecurityProfile defines the schema for a TLS security profile. This object
+// is used by operators to apply TLS security settings to operands.
 type TLSSecurityProfileApplyConfiguration struct {
-	Type         *v1.TLSProfileType                  `json:"type,omitempty"`
-	Old          *v1.OldTLSProfile                   `json:"old,omitempty"`
-	Intermediate *v1.IntermediateTLSProfile          `json:"intermediate,omitempty"`
-	Modern       *v1.ModernTLSProfile                `json:"modern,omitempty"`
-	Custom       *CustomTLSProfileApplyConfiguration `json:"custom,omitempty"`
+	// type is one of Old, Intermediate, Modern or Custom. Custom provides the
+	// ability to specify individual TLS security profile parameters.
+	//
+	// The profiles are based on version 5.7 of the Mozilla Server Side TLS
+	// configuration guidelines. The cipher lists consist of the configuration's
+	// "ciphersuites" followed by the Go-specific "ciphers" from the guidelines.
+	// See: https://ssl-config.mozilla.org/guidelines/5.7.json
+	//
+	// The profiles are intent based, so they may change over time as new ciphers are
+	// developed and existing ciphers are found to be insecure. Depending on
+	// precisely which ciphers are available to a process, the list may be reduced.
+	Type *configv1.TLSProfileType `json:"type,omitempty"`
+	// old is a TLS profile for use when services need to be accessed by very old
+	// clients or libraries and should be used only as a last resort.
+	//
+	// This profile is equivalent to a Custom profile specified as:
+	// minTLSVersion: VersionTLS10
+	// ciphers:
+	// - TLS_AES_128_GCM_SHA256
+	// - TLS_AES_256_GCM_SHA384
+	// - TLS_CHACHA20_POLY1305_SHA256
+	// - ECDHE-ECDSA-AES128-GCM-SHA256
+	// - ECDHE-RSA-AES128-GCM-SHA256
+	// - ECDHE-ECDSA-AES256-GCM-SHA384
+	// - ECDHE-RSA-AES256-GCM-SHA384
+	// - ECDHE-ECDSA-CHACHA20-POLY1305
+	// - ECDHE-RSA-CHACHA20-POLY1305
+	// - ECDHE-ECDSA-AES128-SHA256
+	// - ECDHE-RSA-AES128-SHA256
+	// - ECDHE-ECDSA-AES128-SHA
+	// - ECDHE-RSA-AES128-SHA
+	// - ECDHE-ECDSA-AES256-SHA
+	// - ECDHE-RSA-AES256-SHA
+	// - AES128-GCM-SHA256
+	// - AES256-GCM-SHA384
+	// - AES128-SHA256
+	// - AES128-SHA
+	// - AES256-SHA
+	// - DES-CBC3-SHA
+	Old *configv1.OldTLSProfile `json:"old,omitempty"`
+	// intermediate is a TLS profile for use when you do not need compatibility with
+	// legacy clients and want to remain highly secure while being compatible with
+	// most clients currently in use.
+	//
+	// This profile is equivalent to a Custom profile specified as:
+	// minTLSVersion: VersionTLS12
+	// ciphers:
+	// - TLS_AES_128_GCM_SHA256
+	// - TLS_AES_256_GCM_SHA384
+	// - TLS_CHACHA20_POLY1305_SHA256
+	// - ECDHE-ECDSA-AES128-GCM-SHA256
+	// - ECDHE-RSA-AES128-GCM-SHA256
+	// - ECDHE-ECDSA-AES256-GCM-SHA384
+	// - ECDHE-RSA-AES256-GCM-SHA384
+	// - ECDHE-ECDSA-CHACHA20-POLY1305
+	// - ECDHE-RSA-CHACHA20-POLY1305
+	Intermediate *configv1.IntermediateTLSProfile `json:"intermediate,omitempty"`
+	// modern is a TLS security profile for use with clients that support TLS 1.3 and
+	// do not need backward compatibility for older clients.
+	//
+	// This profile is equivalent to a Custom profile specified as:
+	// minTLSVersion: VersionTLS13
+	// ciphers:
+	// - TLS_AES_128_GCM_SHA256
+	// - TLS_AES_256_GCM_SHA384
+	// - TLS_CHACHA20_POLY1305_SHA256
+	Modern *configv1.ModernTLSProfile `json:"modern,omitempty"`
+	// custom is a user-defined TLS security profile. Be extremely careful using a custom
+	// profile as invalid configurations can be catastrophic. An example custom profile
+	// looks like this:
+	//
+	// minTLSVersion: VersionTLS11
+	// ciphers:
+	// - ECDHE-ECDSA-CHACHA20-POLY1305
+	// - ECDHE-RSA-CHACHA20-POLY1305
+	// - ECDHE-RSA-AES128-GCM-SHA256
+	// - ECDHE-ECDSA-AES128-GCM-SHA256
+	Custom *CustomTLSProfileApplyConfiguration `json:"custom,omitempty"`
 }
 
-// TLSSecurityProfileApplyConfiguration constructs an declarative configuration of the TLSSecurityProfile type for use with
+// TLSSecurityProfileApplyConfiguration constructs a declarative configuration of the TLSSecurityProfile type for use with
 // apply.
 func TLSSecurityProfile() *TLSSecurityProfileApplyConfiguration {
 	return &TLSSecurityProfileApplyConfiguration{}
@@ -25,7 +101,7 @@ func TLSSecurityProfile() *TLSSecurityProfileApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *TLSSecurityProfileApplyConfiguration) WithType(value v1.TLSProfileType) *TLSSecurityProfileApplyConfiguration {
+func (b *TLSSecurityProfileApplyConfiguration) WithType(value configv1.TLSProfileType) *TLSSecurityProfileApplyConfiguration {
 	b.Type = &value
 	return b
 }
@@ -33,7 +109,7 @@ func (b *TLSSecurityProfileApplyConfiguration) WithType(value v1.TLSProfileType)
 // WithOld sets the Old field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Old field is set to the value of the last call.
-func (b *TLSSecurityProfileApplyConfiguration) WithOld(value v1.OldTLSProfile) *TLSSecurityProfileApplyConfiguration {
+func (b *TLSSecurityProfileApplyConfiguration) WithOld(value configv1.OldTLSProfile) *TLSSecurityProfileApplyConfiguration {
 	b.Old = &value
 	return b
 }
@@ -41,7 +117,7 @@ func (b *TLSSecurityProfileApplyConfiguration) WithOld(value v1.OldTLSProfile) *
 // WithIntermediate sets the Intermediate field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Intermediate field is set to the value of the last call.
-func (b *TLSSecurityProfileApplyConfiguration) WithIntermediate(value v1.IntermediateTLSProfile) *TLSSecurityProfileApplyConfiguration {
+func (b *TLSSecurityProfileApplyConfiguration) WithIntermediate(value configv1.IntermediateTLSProfile) *TLSSecurityProfileApplyConfiguration {
 	b.Intermediate = &value
 	return b
 }
@@ -49,7 +125,7 @@ func (b *TLSSecurityProfileApplyConfiguration) WithIntermediate(value v1.Interme
 // WithModern sets the Modern field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Modern field is set to the value of the last call.
-func (b *TLSSecurityProfileApplyConfiguration) WithModern(value v1.ModernTLSProfile) *TLSSecurityProfileApplyConfiguration {
+func (b *TLSSecurityProfileApplyConfiguration) WithModern(value configv1.ModernTLSProfile) *TLSSecurityProfileApplyConfiguration {
 	b.Modern = &value
 	return b
 }

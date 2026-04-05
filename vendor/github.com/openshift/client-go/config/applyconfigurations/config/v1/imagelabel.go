@@ -2,14 +2,16 @@
 
 package v1
 
-// ImageLabelApplyConfiguration represents an declarative configuration of the ImageLabel type for use
+// ImageLabelApplyConfiguration represents a declarative configuration of the ImageLabel type for use
 // with apply.
 type ImageLabelApplyConfiguration struct {
-	Name  *string `json:"name,omitempty"`
+	// name defines the name of the label. It must have non-zero length.
+	Name *string `json:"name,omitempty"`
+	// value defines the literal value of the label.
 	Value *string `json:"value,omitempty"`
 }
 
-// ImageLabelApplyConfiguration constructs an declarative configuration of the ImageLabel type for use with
+// ImageLabelApplyConfiguration constructs a declarative configuration of the ImageLabel type for use with
 // apply.
 func ImageLabel() *ImageLabelApplyConfiguration {
 	return &ImageLabelApplyConfiguration{}

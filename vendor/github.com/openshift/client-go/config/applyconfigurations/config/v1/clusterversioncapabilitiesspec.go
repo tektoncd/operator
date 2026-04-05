@@ -3,17 +3,28 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// ClusterVersionCapabilitiesSpecApplyConfiguration represents an declarative configuration of the ClusterVersionCapabilitiesSpec type for use
+// ClusterVersionCapabilitiesSpecApplyConfiguration represents a declarative configuration of the ClusterVersionCapabilitiesSpec type for use
 // with apply.
+//
+// ClusterVersionCapabilitiesSpec selects the managed set of
+// optional, core cluster components.
 type ClusterVersionCapabilitiesSpecApplyConfiguration struct {
-	BaselineCapabilitySet         *v1.ClusterVersionCapabilitySet `json:"baselineCapabilitySet,omitempty"`
-	AdditionalEnabledCapabilities []v1.ClusterVersionCapability   `json:"additionalEnabledCapabilities,omitempty"`
+	// baselineCapabilitySet selects an initial set of
+	// optional capabilities to enable, which can be extended via
+	// additionalEnabledCapabilities.  If unset, the cluster will
+	// choose a default, and the default may change over time.
+	// The current default is vCurrent.
+	BaselineCapabilitySet *configv1.ClusterVersionCapabilitySet `json:"baselineCapabilitySet,omitempty"`
+	// additionalEnabledCapabilities extends the set of managed
+	// capabilities beyond the baseline defined in
+	// baselineCapabilitySet.  The default is an empty set.
+	AdditionalEnabledCapabilities []configv1.ClusterVersionCapability `json:"additionalEnabledCapabilities,omitempty"`
 }
 
-// ClusterVersionCapabilitiesSpecApplyConfiguration constructs an declarative configuration of the ClusterVersionCapabilitiesSpec type for use with
+// ClusterVersionCapabilitiesSpecApplyConfiguration constructs a declarative configuration of the ClusterVersionCapabilitiesSpec type for use with
 // apply.
 func ClusterVersionCapabilitiesSpec() *ClusterVersionCapabilitiesSpecApplyConfiguration {
 	return &ClusterVersionCapabilitiesSpecApplyConfiguration{}
@@ -22,7 +33,7 @@ func ClusterVersionCapabilitiesSpec() *ClusterVersionCapabilitiesSpecApplyConfig
 // WithBaselineCapabilitySet sets the BaselineCapabilitySet field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the BaselineCapabilitySet field is set to the value of the last call.
-func (b *ClusterVersionCapabilitiesSpecApplyConfiguration) WithBaselineCapabilitySet(value v1.ClusterVersionCapabilitySet) *ClusterVersionCapabilitiesSpecApplyConfiguration {
+func (b *ClusterVersionCapabilitiesSpecApplyConfiguration) WithBaselineCapabilitySet(value configv1.ClusterVersionCapabilitySet) *ClusterVersionCapabilitiesSpecApplyConfiguration {
 	b.BaselineCapabilitySet = &value
 	return b
 }
@@ -30,7 +41,7 @@ func (b *ClusterVersionCapabilitiesSpecApplyConfiguration) WithBaselineCapabilit
 // WithAdditionalEnabledCapabilities adds the given value to the AdditionalEnabledCapabilities field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the AdditionalEnabledCapabilities field.
-func (b *ClusterVersionCapabilitiesSpecApplyConfiguration) WithAdditionalEnabledCapabilities(values ...v1.ClusterVersionCapability) *ClusterVersionCapabilitiesSpecApplyConfiguration {
+func (b *ClusterVersionCapabilitiesSpecApplyConfiguration) WithAdditionalEnabledCapabilities(values ...configv1.ClusterVersionCapability) *ClusterVersionCapabilitiesSpecApplyConfiguration {
 	for i := range values {
 		b.AdditionalEnabledCapabilities = append(b.AdditionalEnabledCapabilities, values[i])
 	}

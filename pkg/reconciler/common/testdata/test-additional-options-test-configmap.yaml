@@ -10,7 +10,6 @@ kind: ConfigMap
 metadata:
   name: config-defaults
   namespace: tekton-pipelines
-  creationTimestamp: null
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
@@ -27,7 +26,6 @@ kind: ConfigMap
 metadata:
   name: config-events
   namespace: tekton-pipelines
-  creationTimestamp: null
   labels:
     my-custom-label: bar
 data:
@@ -52,7 +50,6 @@ kind: Deployment
 metadata:
   name: tekton-pipelines-controller
   namespace: tekton-pipelines
-  creationTimestamp: null
   labels:
     app.kubernetes.io/name: controller
 status: {}
@@ -64,7 +61,6 @@ spec:
       app.kubernetes.io/name: controller
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app.kubernetes.io/name: controller
         operator.tekton.dev/deployment-spec-applied-hash: c196123b0ab9de83419d9135b2debdac
@@ -144,7 +140,6 @@ kind: Deployment
 metadata:
   name: tekton-pipelines-webhook
   namespace: tekton-pipelines
-  creationTimestamp: null
   labels:
     app.kubernetes.io/name: webhook
 status: {}
@@ -236,7 +231,6 @@ kind: ConfigMap
 metadata:
   name: config-tracing
   namespace: tekton-pipelines
-  creationTimestamp: null
   labels:
     component: operator
   annotations:

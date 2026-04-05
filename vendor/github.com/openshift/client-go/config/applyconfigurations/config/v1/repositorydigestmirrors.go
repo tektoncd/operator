@@ -3,18 +3,32 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// RepositoryDigestMirrorsApplyConfiguration represents an declarative configuration of the RepositoryDigestMirrors type for use
+// RepositoryDigestMirrorsApplyConfiguration represents a declarative configuration of the RepositoryDigestMirrors type for use
 // with apply.
+//
+// RepositoryDigestMirrors holds cluster-wide information about how to handle mirrors in the registries config.
 type RepositoryDigestMirrorsApplyConfiguration struct {
-	Source            *string     `json:"source,omitempty"`
-	AllowMirrorByTags *bool       `json:"allowMirrorByTags,omitempty"`
-	Mirrors           []v1.Mirror `json:"mirrors,omitempty"`
+	// source is the repository that users refer to, e.g. in image pull specifications.
+	Source *string `json:"source,omitempty"`
+	// allowMirrorByTags if true, the mirrors can be used to pull the images that are referenced by their tags. Default is false, the mirrors only work when pulling the images that are referenced by their digests.
+	// Pulling images by tag can potentially yield different images, depending on which endpoint
+	// we pull from. Forcing digest-pulls for mirrors avoids that issue.
+	AllowMirrorByTags *bool `json:"allowMirrorByTags,omitempty"`
+	// mirrors is zero or more repositories that may also contain the same images.
+	// If the "mirrors" is not specified, the image will continue to be pulled from the specified
+	// repository in the pull spec. No mirror will be configured.
+	// The order of mirrors in this list is treated as the user's desired priority, while source
+	// is by default considered lower priority than all mirrors. Other cluster configuration,
+	// including (but not limited to) other repositoryDigestMirrors objects,
+	// may impact the exact order mirrors are contacted in, or some mirrors may be contacted
+	// in parallel, so this should be considered a preference rather than a guarantee of ordering.
+	Mirrors []configv1.Mirror `json:"mirrors,omitempty"`
 }
 
-// RepositoryDigestMirrorsApplyConfiguration constructs an declarative configuration of the RepositoryDigestMirrors type for use with
+// RepositoryDigestMirrorsApplyConfiguration constructs a declarative configuration of the RepositoryDigestMirrors type for use with
 // apply.
 func RepositoryDigestMirrors() *RepositoryDigestMirrorsApplyConfiguration {
 	return &RepositoryDigestMirrorsApplyConfiguration{}
@@ -39,7 +53,7 @@ func (b *RepositoryDigestMirrorsApplyConfiguration) WithAllowMirrorByTags(value 
 // WithMirrors adds the given value to the Mirrors field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Mirrors field.
-func (b *RepositoryDigestMirrorsApplyConfiguration) WithMirrors(values ...v1.Mirror) *RepositoryDigestMirrorsApplyConfiguration {
+func (b *RepositoryDigestMirrorsApplyConfiguration) WithMirrors(values ...configv1.Mirror) *RepositoryDigestMirrorsApplyConfiguration {
 	for i := range values {
 		b.Mirrors = append(b.Mirrors, values[i])
 	}

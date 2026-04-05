@@ -2,13 +2,17 @@
 
 package v1
 
-// SecretNameReferenceApplyConfiguration represents an declarative configuration of the SecretNameReference type for use
+// SecretNameReferenceApplyConfiguration represents a declarative configuration of the SecretNameReference type for use
 // with apply.
+//
+// SecretNameReference references a secret in a specific namespace.
+// The namespace must be specified at the point of use.
 type SecretNameReferenceApplyConfiguration struct {
+	// name is the metadata.name of the referenced secret
 	Name *string `json:"name,omitempty"`
 }
 
-// SecretNameReferenceApplyConfiguration constructs an declarative configuration of the SecretNameReference type for use with
+// SecretNameReferenceApplyConfiguration constructs a declarative configuration of the SecretNameReference type for use with
 // apply.
 func SecretNameReference() *SecretNameReferenceApplyConfiguration {
 	return &SecretNameReferenceApplyConfiguration{}

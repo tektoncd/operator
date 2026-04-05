@@ -2,14 +2,20 @@
 
 package v1
 
-// ProjectSpecApplyConfiguration represents an declarative configuration of the ProjectSpec type for use
+// ProjectSpecApplyConfiguration represents a declarative configuration of the ProjectSpec type for use
 // with apply.
+//
+// ProjectSpec holds the project creation configuration.
 type ProjectSpecApplyConfiguration struct {
-	ProjectRequestMessage  *string                              `json:"projectRequestMessage,omitempty"`
+	// projectRequestMessage is the string presented to a user if they are unable to request a project via the projectrequest api endpoint
+	ProjectRequestMessage *string `json:"projectRequestMessage,omitempty"`
+	// projectRequestTemplate is the template to use for creating projects in response to projectrequest.
+	// This must point to a template in 'openshift-config' namespace. It is optional.
+	// If it is not specified, a default template is used.
 	ProjectRequestTemplate *TemplateReferenceApplyConfiguration `json:"projectRequestTemplate,omitempty"`
 }
 
-// ProjectSpecApplyConfiguration constructs an declarative configuration of the ProjectSpec type for use with
+// ProjectSpecApplyConfiguration constructs a declarative configuration of the ProjectSpec type for use with
 // apply.
 func ProjectSpec() *ProjectSpecApplyConfiguration {
 	return &ProjectSpecApplyConfiguration{}

@@ -1,10 +1,14 @@
 package resourcemerge
 
 import (
+	errorsstdlib "errors"
+	"fmt"
 	"reflect"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -16,6 +20,48 @@ func EnsureObjectMeta(modified *bool, existing *metav1.ObjectMeta, required meta
 	MergeMap(modified, &existing.Labels, required.Labels)
 	MergeMap(modified, &existing.Annotations, required.Annotations)
 	MergeOwnerRefs(modified, &existing.OwnerReferences, required.OwnerReferences)
+}
+
+func EnsureObjectMetaForUnstructured(modified *bool, existing *unstructured.Unstructured, required *unstructured.Unstructured) error {
+
+	// Ensure metadata field is present on the object.
+	existingObjectMeta, found, err := unstructured.NestedMap(existing.Object, "metadata")
+	if err != nil {
+		return err
+	}
+	if !found {
+		return errorsstdlib.New(fmt.Sprintf("metadata not found in the existing object: %s/%s", existing.GetNamespace(), existing.GetName()))
+	}
+	var requiredObjectMeta map[string]interface{}
+	requiredObjectMeta, found, err = unstructured.NestedMap(required.Object, "metadata")
+	if err != nil {
+		return err
+	}
+	if !found {
+		return errorsstdlib.New(fmt.Sprintf("metadata not found in the required object: %s/%s", required.GetNamespace(), required.GetName()))
+	}
+
+	// Cast the metadata to the correct type.
+	var existingObjectMetaTyped, requiredObjectMetaTyped metav1.ObjectMeta
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(existingObjectMeta, &existingObjectMetaTyped)
+	if err != nil {
+		return err
+	}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(requiredObjectMeta, &requiredObjectMetaTyped)
+	if err != nil {
+		return err
+	}
+
+	// Check if the metadata objects differ. This only checks for selective fields (excluding the resource version, among others).
+	EnsureObjectMeta(modified, &existingObjectMetaTyped, requiredObjectMetaTyped)
+	if *modified {
+		existing.Object["metadata"], err = runtime.DefaultUnstructuredConverter.ToUnstructured(&existingObjectMetaTyped)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // WithCleanLabelsAndAnnotations cleans the metadata off the removal annotations/labels/ownerrefs
@@ -36,10 +82,6 @@ func cleanRemovalKeys(required map[string]string) map[string]string {
 	return required
 }
 
-func stringPtr(val string) *string {
-	return &val
-}
-
 func SetString(modified *bool, existing *string, required string) {
 	if required != *existing {
 		*existing = required
@@ -55,15 +97,6 @@ func SetStringIfSet(modified *bool, existing *string, required string) {
 		*existing = required
 		*modified = true
 	}
-}
-
-func setStringPtr(modified *bool, existing **string, required *string) {
-	if *existing == nil || (required == nil && *existing != nil) {
-		*modified = true
-		*existing = required
-		return
-	}
-	SetString(modified, *existing, *required)
 }
 
 func SetStringSlice(modified *bool, existing *[]string, required []string) {
@@ -83,6 +116,7 @@ func SetStringSliceIfSet(modified *bool, existing *[]string, required []string) 
 	}
 }
 
+// Deprecated: Use k8s.io/utils/ptr.To instead.
 func BoolPtr(val bool) *bool {
 	return &val
 }
@@ -92,19 +126,6 @@ func SetBool(modified *bool, existing *bool, required bool) {
 		*existing = required
 		*modified = true
 	}
-}
-
-func setBoolPtr(modified *bool, existing **bool, required *bool) {
-	if *existing == nil || (required == nil && *existing != nil) {
-		*modified = true
-		*existing = required
-		return
-	}
-	SetBool(modified, *existing, *required)
-}
-
-func int64Ptr(val int64) *int64 {
-	return &val
 }
 
 func SetInt32(modified *bool, existing *int32, required int32) {
@@ -127,15 +148,6 @@ func SetInt64(modified *bool, existing *int64, required int64) {
 		*existing = required
 		*modified = true
 	}
-}
-
-func setInt64Ptr(modified *bool, existing **int64, required *int64) {
-	if *existing == nil || (required == nil && *existing != nil) {
-		*modified = true
-		*existing = required
-		return
-	}
-	SetInt64(modified, *existing, *required)
 }
 
 func MergeMap(modified *bool, existing *map[string]string, required map[string]string) {

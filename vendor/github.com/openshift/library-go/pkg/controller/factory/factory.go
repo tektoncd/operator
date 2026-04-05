@@ -3,6 +3,7 @@ package factory
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/robfig/cron"
@@ -26,18 +27,18 @@ func DefaultQueueKeysFunc(_ runtime.Object) []string {
 // Factory is generator that generate standard Kubernetes controllers.
 // Factory is really generic and should be only used for simple controllers that does not require special stuff..
 type Factory struct {
-	sync                  SyncFunc
-	syncContext           SyncContext
-	syncDegradedClient    operatorv1helpers.OperatorClient
-	resyncInterval        time.Duration
-	resyncSchedules       []string
-	informers             []filteredInformers
-	informerQueueKeys     []informersWithQueueKey
-	bareInformers         []Informer
-	postStartHooks        []PostStartHook
-	namespaceInformers    []*namespaceInformer
-	cachesToSync          []cache.InformerSynced
-	interestingNamespaces sets.String
+	sync                   SyncFunc
+	syncContext            SyncContext
+	syncDegradedClient     operatorv1helpers.OperatorClient
+	resyncInterval         time.Duration
+	resyncSchedules        []string
+	informers              []filteredInformers
+	informerQueueKeys      []informersWithQueueKey
+	bareInformers          []Informer
+	postStartHooks         []PostStartHook
+	namespaceInformers     []*namespaceInformer
+	cachesToSync           []cache.InformerSynced
+	controllerInstanceName string
 }
 
 // Informer represents any structure that allow to register event handlers and informs if caches are synced.
@@ -239,6 +240,18 @@ func (f *Factory) WithSyncDegradedOnError(operatorClient operatorv1helpers.Opera
 	return f
 }
 
+// WithControllerInstanceName specifies the controller instance.
+// Useful when the same controller is used multiple times.
+func (f *Factory) WithControllerInstanceName(controllerInstanceName string) *Factory {
+	f.controllerInstanceName = controllerInstanceName
+	return f
+}
+
+type informerHandleTuple struct {
+	informer Informer
+	filter   uintptr
+}
+
 // Controller produce a runnable controller.
 func (f *Factory) ToController(name string, eventRecorder events.Recorder) Controller {
 	if f.sync == nil {
@@ -268,36 +281,49 @@ func (f *Factory) ToController(name string, eventRecorder events.Recorder) Contr
 	}
 
 	c := &baseController{
-		name:               name,
-		syncDegradedClient: f.syncDegradedClient,
-		sync:               f.sync,
-		resyncEvery:        f.resyncInterval,
-		resyncSchedules:    cronSchedules,
-		cachesToSync:       append([]cache.InformerSynced{}, f.cachesToSync...),
-		syncContext:        ctx,
-		postStartHooks:     f.postStartHooks,
-		cacheSyncTimeout:   defaultCacheSyncTimeout,
+		name:                   name,
+		controllerInstanceName: f.controllerInstanceName,
+		syncDegradedClient:     f.syncDegradedClient,
+		sync:                   f.sync,
+		resyncEvery:            f.resyncInterval,
+		resyncSchedules:        cronSchedules,
+		cachesToSync:           append([]cache.InformerSynced{}, f.cachesToSync...),
+		syncContext:            ctx,
+		postStartHooks:         f.postStartHooks,
+		cacheSyncTimeout:       defaultCacheSyncTimeout,
 	}
 
-	// Warn about too fast resyncs as they might drain the operators QPS.
-	// This event is cheap as it is only emitted on operator startup.
-	if c.resyncEvery.Seconds() < 60 {
-		ctx.Recorder().Warningf("FastControllerResync", "Controller %q resync interval is set to %s which might lead to client request throttling", name, c.resyncEvery)
-	}
-
+	// avoid adding an informer more than once
+	informerQueueKeySet := sets.New[informerHandleTuple]()
 	for i := range f.informerQueueKeys {
 		for d := range f.informerQueueKeys[i].informers {
 			informer := f.informerQueueKeys[i].informers[d]
 			queueKeyFn := f.informerQueueKeys[i].queueKeyFn
-			informer.AddEventHandler(c.syncContext.(syncContext).eventHandler(queueKeyFn, f.informerQueueKeys[i].filter))
+			tuple := informerHandleTuple{
+				informer: informer,
+				filter:   reflect.ValueOf(f.informerQueueKeys[i].filter).Pointer(),
+			}
+			if !informerQueueKeySet.Has(tuple) {
+				sets.Insert(informerQueueKeySet, tuple)
+				informer.AddEventHandler(c.syncContext.(syncContext).eventHandler(queueKeyFn, f.informerQueueKeys[i].filter))
+			}
 			c.cachesToSync = append(c.cachesToSync, informer.HasSynced)
 		}
 	}
 
+	// avoid adding an informer more than once
+	informerSet := sets.New[informerHandleTuple]()
 	for i := range f.informers {
 		for d := range f.informers[i].informers {
 			informer := f.informers[i].informers[d]
-			informer.AddEventHandler(c.syncContext.(syncContext).eventHandler(DefaultQueueKeysFunc, f.informers[i].filter))
+			tuple := informerHandleTuple{
+				informer: informer,
+				filter:   reflect.ValueOf(f.informers[i].filter).Pointer(),
+			}
+			if !informerSet.Has(tuple) {
+				sets.Insert(informerSet, tuple)
+				informer.AddEventHandler(c.syncContext.(syncContext).eventHandler(DefaultQueueKeysFunc, f.informers[i].filter))
+			}
 			c.cachesToSync = append(c.cachesToSync, informer.HasSynced)
 		}
 	}

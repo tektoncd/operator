@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/dynamic"
 
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/resource/resourcehelper"
 )
 
 const (
@@ -101,7 +102,7 @@ func ApplyVolumeSnapshotClass(ctx context.Context, client dynamic.Interface, rec
 		return existing, false, nil
 	}
 
-	if klog.V(4).Enabled() {
+	if klog.V(2).Enabled() {
 		klog.Infof("VolumeSnapshotClass %q changes: %v", required.GetName(), JSONPatchNoError(existing, toUpdate))
 	}
 
@@ -124,6 +125,6 @@ func DeleteVolumeSnapshotClass(ctx context.Context, client dynamic.Interface, re
 	if err != nil {
 		return nil, false, err
 	}
-	reportDeleteEvent(recorder, required, err)
+	resourcehelper.ReportDeleteEvent(recorder, required, err)
 	return nil, true, nil
 }

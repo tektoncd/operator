@@ -11,6 +11,7 @@ import (
 	"k8s.io/klog/v2"
 
 	"github.com/openshift/library-go/pkg/operator/events"
+	"github.com/openshift/library-go/pkg/operator/resource/resourcehelper"
 	"github.com/openshift/library-go/pkg/operator/resource/resourcemerge"
 )
 
@@ -20,30 +21,30 @@ func ApplyPodDisruptionBudget(ctx context.Context, client policyclientv1.PodDisr
 		requiredCopy := required.DeepCopy()
 		actual, err := client.PodDisruptionBudgets(required.Namespace).Create(
 			ctx, resourcemerge.WithCleanLabelsAndAnnotations(requiredCopy).(*policyv1.PodDisruptionBudget), metav1.CreateOptions{})
-		reportCreateEvent(recorder, required, err)
+		resourcehelper.ReportCreateEvent(recorder, required, err)
 		return actual, true, err
 	}
 	if err != nil {
 		return nil, false, err
 	}
 
-	modified := resourcemerge.BoolPtr(false)
+	modified := false
 	existingCopy := existing.DeepCopy()
 
-	resourcemerge.EnsureObjectMeta(modified, &existingCopy.ObjectMeta, required.ObjectMeta)
+	resourcemerge.EnsureObjectMeta(&modified, &existingCopy.ObjectMeta, required.ObjectMeta)
 	contentSame := equality.Semantic.DeepEqual(existingCopy.Spec, required.Spec)
-	if contentSame && !*modified {
+	if contentSame && !modified {
 		return existingCopy, false, nil
 	}
 
 	existingCopy.Spec = required.Spec
 
-	if klog.V(4).Enabled() {
+	if klog.V(2).Enabled() {
 		klog.Infof("PodDisruptionBudget %q changes: %v", required.Name, JSONPatchNoError(existing, existingCopy))
 	}
 
 	actual, err := client.PodDisruptionBudgets(required.Namespace).Update(ctx, existingCopy, metav1.UpdateOptions{})
-	reportUpdateEvent(recorder, required, err)
+	resourcehelper.ReportUpdateEvent(recorder, required, err)
 	return actual, true, err
 }
 
@@ -55,6 +56,6 @@ func DeletePodDisruptionBudget(ctx context.Context, client policyclientv1.PodDis
 	if err != nil {
 		return nil, false, err
 	}
-	reportDeleteEvent(recorder, required, err)
+	resourcehelper.ReportDeleteEvent(recorder, required, err)
 	return nil, true, nil
 }

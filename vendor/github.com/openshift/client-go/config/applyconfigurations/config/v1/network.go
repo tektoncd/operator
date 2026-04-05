@@ -3,24 +3,36 @@
 package v1
 
 import (
-	apiconfigv1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 	internal "github.com/openshift/client-go/config/applyconfigurations/internal"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apismetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
-	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	metav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// NetworkApplyConfiguration represents an declarative configuration of the Network type for use
+// NetworkApplyConfiguration represents a declarative configuration of the Network type for use
 // with apply.
+//
+// Network holds cluster-wide information about Network. The canonical name is `cluster`. It is used to configure the desired network configuration, such as: IP address pools for services/pod IPs, network plugin, etc.
+// Please view network.spec for an explanation on what applies when configuring this resource.
+//
+// Compatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).
 type NetworkApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
-	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *NetworkSpecApplyConfiguration   `json:"spec,omitempty"`
-	Status                           *NetworkStatusApplyConfiguration `json:"status,omitempty"`
+	metav1.TypeMetaApplyConfiguration `json:",inline"`
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	*metav1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
+	// spec holds user settable values for configuration.
+	// As a general rule, this SHOULD NOT be read directly. Instead, you should
+	// consume the NetworkStatus, as it indicates the currently deployed configuration.
+	// Currently, most spec fields are immutable after installation. Please view the individual ones for further details on each.
+	Spec *NetworkSpecApplyConfiguration `json:"spec,omitempty"`
+	// status holds observed values from the cluster. They may not be overridden.
+	Status *NetworkStatusApplyConfiguration `json:"status,omitempty"`
 }
 
-// Network constructs an declarative configuration of the Network type for use with
+// Network constructs a declarative configuration of the Network type for use with
 // apply.
 func Network(name string) *NetworkApplyConfiguration {
 	b := &NetworkApplyConfiguration{}
@@ -30,29 +42,14 @@ func Network(name string) *NetworkApplyConfiguration {
 	return b
 }
 
-// ExtractNetwork extracts the applied configuration owned by fieldManager from
-// network. If no managedFields are found in network for fieldManager, a
-// NetworkApplyConfiguration is returned with only the Name, Namespace (if applicable),
-// APIVersion and Kind populated. It is possible that no managed fields were found for because other
-// field managers have taken ownership of all the fields previously owned by fieldManager, or because
-// the fieldManager never owned fields any fields.
+// ExtractNetworkFrom extracts the applied configuration owned by fieldManager from
+// network for the specified subresource. Pass an empty string for subresource to extract
+// the main resource. Common subresources include "status", "scale", etc.
 // network must be a unmodified Network API object that was retrieved from the Kubernetes API.
-// ExtractNetwork provides a way to perform a extract/modify-in-place/apply workflow.
+// ExtractNetworkFrom provides a way to perform a extract/modify-in-place/apply workflow.
 // Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
 // applied if another fieldManager has updated or force applied any of the previously applied fields.
-// Experimental!
-func ExtractNetwork(network *apiconfigv1.Network, fieldManager string) (*NetworkApplyConfiguration, error) {
-	return extractNetwork(network, fieldManager, "")
-}
-
-// ExtractNetworkStatus is the same as ExtractNetwork except
-// that it extracts the status subresource applied configuration.
-// Experimental!
-func ExtractNetworkStatus(network *apiconfigv1.Network, fieldManager string) (*NetworkApplyConfiguration, error) {
-	return extractNetwork(network, fieldManager, "status")
-}
-
-func extractNetwork(network *apiconfigv1.Network, fieldManager string, subresource string) (*NetworkApplyConfiguration, error) {
+func ExtractNetworkFrom(network *configv1.Network, fieldManager string, subresource string) (*NetworkApplyConfiguration, error) {
 	b := &NetworkApplyConfiguration{}
 	err := managedfields.ExtractInto(network, internal.Parser().Type("com.github.openshift.api.config.v1.Network"), fieldManager, b, subresource)
 	if err != nil {
@@ -65,11 +62,33 @@ func extractNetwork(network *apiconfigv1.Network, fieldManager string, subresour
 	return b, nil
 }
 
+// ExtractNetwork extracts the applied configuration owned by fieldManager from
+// network. If no managedFields are found in network for fieldManager, a
+// NetworkApplyConfiguration is returned with only the Name, Namespace (if applicable),
+// APIVersion and Kind populated. It is possible that no managed fields were found for because other
+// field managers have taken ownership of all the fields previously owned by fieldManager, or because
+// the fieldManager never owned fields any fields.
+// network must be a unmodified Network API object that was retrieved from the Kubernetes API.
+// ExtractNetwork provides a way to perform a extract/modify-in-place/apply workflow.
+// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
+// applied if another fieldManager has updated or force applied any of the previously applied fields.
+func ExtractNetwork(network *configv1.Network, fieldManager string) (*NetworkApplyConfiguration, error) {
+	return ExtractNetworkFrom(network, fieldManager, "")
+}
+
+// ExtractNetworkStatus extracts the applied configuration owned by fieldManager from
+// network for the status subresource.
+func ExtractNetworkStatus(network *configv1.Network, fieldManager string) (*NetworkApplyConfiguration, error) {
+	return ExtractNetworkFrom(network, fieldManager, "status")
+}
+
+func (b NetworkApplyConfiguration) IsApplyConfiguration() {}
+
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kind field is set to the value of the last call.
 func (b *NetworkApplyConfiguration) WithKind(value string) *NetworkApplyConfiguration {
-	b.Kind = &value
+	b.TypeMetaApplyConfiguration.Kind = &value
 	return b
 }
 
@@ -77,7 +96,7 @@ func (b *NetworkApplyConfiguration) WithKind(value string) *NetworkApplyConfigur
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the APIVersion field is set to the value of the last call.
 func (b *NetworkApplyConfiguration) WithAPIVersion(value string) *NetworkApplyConfiguration {
-	b.APIVersion = &value
+	b.TypeMetaApplyConfiguration.APIVersion = &value
 	return b
 }
 
@@ -86,7 +105,7 @@ func (b *NetworkApplyConfiguration) WithAPIVersion(value string) *NetworkApplyCo
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *NetworkApplyConfiguration) WithName(value string) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Name = &value
+	b.ObjectMetaApplyConfiguration.Name = &value
 	return b
 }
 
@@ -95,7 +114,7 @@ func (b *NetworkApplyConfiguration) WithName(value string) *NetworkApplyConfigur
 // If called multiple times, the GenerateName field is set to the value of the last call.
 func (b *NetworkApplyConfiguration) WithGenerateName(value string) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.GenerateName = &value
+	b.ObjectMetaApplyConfiguration.GenerateName = &value
 	return b
 }
 
@@ -104,7 +123,7 @@ func (b *NetworkApplyConfiguration) WithGenerateName(value string) *NetworkApply
 // If called multiple times, the Namespace field is set to the value of the last call.
 func (b *NetworkApplyConfiguration) WithNamespace(value string) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Namespace = &value
+	b.ObjectMetaApplyConfiguration.Namespace = &value
 	return b
 }
 
@@ -113,7 +132,7 @@ func (b *NetworkApplyConfiguration) WithNamespace(value string) *NetworkApplyCon
 // If called multiple times, the UID field is set to the value of the last call.
 func (b *NetworkApplyConfiguration) WithUID(value types.UID) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.UID = &value
+	b.ObjectMetaApplyConfiguration.UID = &value
 	return b
 }
 
@@ -122,7 +141,7 @@ func (b *NetworkApplyConfiguration) WithUID(value types.UID) *NetworkApplyConfig
 // If called multiple times, the ResourceVersion field is set to the value of the last call.
 func (b *NetworkApplyConfiguration) WithResourceVersion(value string) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ResourceVersion = &value
+	b.ObjectMetaApplyConfiguration.ResourceVersion = &value
 	return b
 }
 
@@ -131,25 +150,25 @@ func (b *NetworkApplyConfiguration) WithResourceVersion(value string) *NetworkAp
 // If called multiple times, the Generation field is set to the value of the last call.
 func (b *NetworkApplyConfiguration) WithGeneration(value int64) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Generation = &value
+	b.ObjectMetaApplyConfiguration.Generation = &value
 	return b
 }
 
 // WithCreationTimestamp sets the CreationTimestamp field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the CreationTimestamp field is set to the value of the last call.
-func (b *NetworkApplyConfiguration) WithCreationTimestamp(value metav1.Time) *NetworkApplyConfiguration {
+func (b *NetworkApplyConfiguration) WithCreationTimestamp(value apismetav1.Time) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.CreationTimestamp = &value
+	b.ObjectMetaApplyConfiguration.CreationTimestamp = &value
 	return b
 }
 
 // WithDeletionTimestamp sets the DeletionTimestamp field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the DeletionTimestamp field is set to the value of the last call.
-func (b *NetworkApplyConfiguration) WithDeletionTimestamp(value metav1.Time) *NetworkApplyConfiguration {
+func (b *NetworkApplyConfiguration) WithDeletionTimestamp(value apismetav1.Time) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionTimestamp = &value
+	b.ObjectMetaApplyConfiguration.DeletionTimestamp = &value
 	return b
 }
 
@@ -158,7 +177,7 @@ func (b *NetworkApplyConfiguration) WithDeletionTimestamp(value metav1.Time) *Ne
 // If called multiple times, the DeletionGracePeriodSeconds field is set to the value of the last call.
 func (b *NetworkApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionGracePeriodSeconds = &value
+	b.ObjectMetaApplyConfiguration.DeletionGracePeriodSeconds = &value
 	return b
 }
 
@@ -168,11 +187,11 @@ func (b *NetworkApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) 
 // overwriting an existing map entries in Labels field with the same key.
 func (b *NetworkApplyConfiguration) WithLabels(entries map[string]string) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Labels == nil && len(entries) > 0 {
-		b.Labels = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Labels == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Labels = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Labels[k] = v
+		b.ObjectMetaApplyConfiguration.Labels[k] = v
 	}
 	return b
 }
@@ -183,11 +202,11 @@ func (b *NetworkApplyConfiguration) WithLabels(entries map[string]string) *Netwo
 // overwriting an existing map entries in Annotations field with the same key.
 func (b *NetworkApplyConfiguration) WithAnnotations(entries map[string]string) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Annotations == nil && len(entries) > 0 {
-		b.Annotations = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Annotations == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Annotations = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Annotations[k] = v
+		b.ObjectMetaApplyConfiguration.Annotations[k] = v
 	}
 	return b
 }
@@ -195,13 +214,13 @@ func (b *NetworkApplyConfiguration) WithAnnotations(entries map[string]string) *
 // WithOwnerReferences adds the given value to the OwnerReferences field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the OwnerReferences field.
-func (b *NetworkApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerReferenceApplyConfiguration) *NetworkApplyConfiguration {
+func (b *NetworkApplyConfiguration) WithOwnerReferences(values ...*metav1.OwnerReferenceApplyConfiguration) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithOwnerReferences")
 		}
-		b.OwnerReferences = append(b.OwnerReferences, *values[i])
+		b.ObjectMetaApplyConfiguration.OwnerReferences = append(b.ObjectMetaApplyConfiguration.OwnerReferences, *values[i])
 	}
 	return b
 }
@@ -212,14 +231,14 @@ func (b *NetworkApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerRefer
 func (b *NetworkApplyConfiguration) WithFinalizers(values ...string) *NetworkApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
-		b.Finalizers = append(b.Finalizers, values[i])
+		b.ObjectMetaApplyConfiguration.Finalizers = append(b.ObjectMetaApplyConfiguration.Finalizers, values[i])
 	}
 	return b
 }
 
 func (b *NetworkApplyConfiguration) ensureObjectMetaApplyConfigurationExists() {
 	if b.ObjectMetaApplyConfiguration == nil {
-		b.ObjectMetaApplyConfiguration = &v1.ObjectMetaApplyConfiguration{}
+		b.ObjectMetaApplyConfiguration = &metav1.ObjectMetaApplyConfiguration{}
 	}
 }
 
@@ -237,4 +256,26 @@ func (b *NetworkApplyConfiguration) WithSpec(value *NetworkSpecApplyConfiguratio
 func (b *NetworkApplyConfiguration) WithStatus(value *NetworkStatusApplyConfiguration) *NetworkApplyConfiguration {
 	b.Status = value
 	return b
+}
+
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *NetworkApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *NetworkApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
+// GetName retrieves the value of the Name field in the declarative configuration.
+func (b *NetworkApplyConfiguration) GetName() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *NetworkApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }

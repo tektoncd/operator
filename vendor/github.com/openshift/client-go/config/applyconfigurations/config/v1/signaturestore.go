@@ -2,14 +2,26 @@
 
 package v1
 
-// SignatureStoreApplyConfiguration represents an declarative configuration of the SignatureStore type for use
+// SignatureStoreApplyConfiguration represents a declarative configuration of the SignatureStore type for use
 // with apply.
+//
+// SignatureStore represents the URL of custom Signature Store
 type SignatureStoreApplyConfiguration struct {
-	URL *string                                   `json:"url,omitempty"`
-	CA  *ConfigMapNameReferenceApplyConfiguration `json:"ca,omitempty"`
+	// url contains the upstream custom signature store URL.
+	// url should be a valid absolute http/https URI of an upstream signature store as per rfc1738.
+	// This must be provided and cannot be empty.
+	URL *string `json:"url,omitempty"`
+	// ca is an optional reference to a config map by name containing the PEM-encoded CA bundle.
+	// It is used as a trust anchor to validate the TLS certificate presented by the remote server.
+	// The key "ca.crt" is used to locate the data.
+	// If specified and the config map or expected key is not found, the signature store is not honored.
+	// If the specified ca data is not valid, the signature store is not honored.
+	// If empty, we fall back to the CA configured via Proxy, which is appended to the default system roots.
+	// The namespace for this config map is openshift-config.
+	CA *ConfigMapNameReferenceApplyConfiguration `json:"ca,omitempty"`
 }
 
-// SignatureStoreApplyConfiguration constructs an declarative configuration of the SignatureStore type for use with
+// SignatureStoreApplyConfiguration constructs a declarative configuration of the SignatureStore type for use with
 // apply.
 func SignatureStore() *SignatureStoreApplyConfiguration {
 	return &SignatureStoreApplyConfiguration{}

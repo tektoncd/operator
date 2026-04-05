@@ -2,13 +2,18 @@
 
 package v1
 
-// PowerVSPlatformSpecApplyConfiguration represents an declarative configuration of the PowerVSPlatformSpec type for use
+// PowerVSPlatformSpecApplyConfiguration represents a declarative configuration of the PowerVSPlatformSpec type for use
 // with apply.
+//
+// PowerVSPlatformSpec holds the desired state of the IBM Power Systems Virtual Servers infrastructure provider.
+// This only includes fields that can be modified in the cluster.
 type PowerVSPlatformSpecApplyConfiguration struct {
+	// serviceEndpoints is a list of custom endpoints which will override the default
+	// service endpoints of a Power VS service.
 	ServiceEndpoints []PowerVSServiceEndpointApplyConfiguration `json:"serviceEndpoints,omitempty"`
 }
 
-// PowerVSPlatformSpecApplyConfiguration constructs an declarative configuration of the PowerVSPlatformSpec type for use with
+// PowerVSPlatformSpecApplyConfiguration constructs a declarative configuration of the PowerVSPlatformSpec type for use with
 // apply.
 func PowerVSPlatformSpec() *PowerVSPlatformSpecApplyConfiguration {
 	return &PowerVSPlatformSpecApplyConfiguration{}

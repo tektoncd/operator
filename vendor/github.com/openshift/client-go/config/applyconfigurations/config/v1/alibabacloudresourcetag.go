@@ -2,14 +2,18 @@
 
 package v1
 
-// AlibabaCloudResourceTagApplyConfiguration represents an declarative configuration of the AlibabaCloudResourceTag type for use
+// AlibabaCloudResourceTagApplyConfiguration represents a declarative configuration of the AlibabaCloudResourceTag type for use
 // with apply.
+//
+// AlibabaCloudResourceTag is the set of tags to add to apply to resources.
 type AlibabaCloudResourceTagApplyConfiguration struct {
-	Key   *string `json:"key,omitempty"`
+	// key is the key of the tag.
+	Key *string `json:"key,omitempty"`
+	// value is the value of the tag.
 	Value *string `json:"value,omitempty"`
 }
 
-// AlibabaCloudResourceTagApplyConfiguration constructs an declarative configuration of the AlibabaCloudResourceTag type for use with
+// AlibabaCloudResourceTagApplyConfiguration constructs a declarative configuration of the AlibabaCloudResourceTag type for use with
 // apply.
 func AlibabaCloudResourceTag() *AlibabaCloudResourceTagApplyConfiguration {
 	return &AlibabaCloudResourceTagApplyConfiguration{}

@@ -3,16 +3,27 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// OvirtPlatformLoadBalancerApplyConfiguration represents an declarative configuration of the OvirtPlatformLoadBalancer type for use
+// OvirtPlatformLoadBalancerApplyConfiguration represents a declarative configuration of the OvirtPlatformLoadBalancer type for use
 // with apply.
+//
+// OvirtPlatformLoadBalancer defines the load balancer used by the cluster on Ovirt platform.
 type OvirtPlatformLoadBalancerApplyConfiguration struct {
-	Type *v1.PlatformLoadBalancerType `json:"type,omitempty"`
+	// type defines the type of load balancer used by the cluster on Ovirt platform
+	// which can be a user-managed or openshift-managed load balancer
+	// that is to be used for the OpenShift API and Ingress endpoints.
+	// When set to OpenShiftManagedDefault the static pods in charge of API and Ingress traffic load-balancing
+	// defined in the machine config operator will be deployed.
+	// When set to UserManaged these static pods will not be deployed and it is expected that
+	// the load balancer is configured out of band by the deployer.
+	// When omitted, this means no opinion and the platform is left to choose a reasonable default.
+	// The default value is OpenShiftManagedDefault.
+	Type *configv1.PlatformLoadBalancerType `json:"type,omitempty"`
 }
 
-// OvirtPlatformLoadBalancerApplyConfiguration constructs an declarative configuration of the OvirtPlatformLoadBalancer type for use with
+// OvirtPlatformLoadBalancerApplyConfiguration constructs a declarative configuration of the OvirtPlatformLoadBalancer type for use with
 // apply.
 func OvirtPlatformLoadBalancer() *OvirtPlatformLoadBalancerApplyConfiguration {
 	return &OvirtPlatformLoadBalancerApplyConfiguration{}
@@ -21,7 +32,7 @@ func OvirtPlatformLoadBalancer() *OvirtPlatformLoadBalancerApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *OvirtPlatformLoadBalancerApplyConfiguration) WithType(value v1.PlatformLoadBalancerType) *OvirtPlatformLoadBalancerApplyConfiguration {
+func (b *OvirtPlatformLoadBalancerApplyConfiguration) WithType(value configv1.PlatformLoadBalancerType) *OvirtPlatformLoadBalancerApplyConfiguration {
 	b.Type = &value
 	return b
 }
