@@ -56,20 +56,32 @@ func NewTektonPrunerInformer(client versioned.Interface, resyncPeriod time.Durat
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredTektonPrunerInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().TektonPruners().List(context.TODO(), options)
+				return client.OperatorV1alpha1().TektonPruners().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().TektonPruners().Watch(context.TODO(), options)
+				return client.OperatorV1alpha1().TektonPruners().Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.OperatorV1alpha1().TektonPruners().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.OperatorV1alpha1().TektonPruners().Watch(ctx, options)
+			},
+		}, client),
 		&apisoperatorv1alpha1.TektonPruner{},
 		resyncPeriod,
 		indexers,

@@ -56,20 +56,32 @@ func NewTektonMulticlusterProxyAAEInformer(client versioned.Interface, resyncPer
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredTektonMulticlusterProxyAAEInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().List(context.TODO(), options)
+				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().Watch(context.TODO(), options)
+				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.OperatorV1alpha1().TektonMulticlusterProxyAAEs().Watch(ctx, options)
+			},
+		}, client),
 		&apisoperatorv1alpha1.TektonMulticlusterProxyAAE{},
 		resyncPeriod,
 		indexers,
