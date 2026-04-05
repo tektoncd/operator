@@ -3,30 +3,58 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// PlatformSpecApplyConfiguration represents an declarative configuration of the PlatformSpec type for use
+// PlatformSpecApplyConfiguration represents a declarative configuration of the PlatformSpec type for use
 // with apply.
+//
+// PlatformSpec holds the desired state specific to the underlying infrastructure provider
+// of the current cluster. Since these are used at spec-level for the underlying cluster, it
+// is supposed that only one of the spec structs is set.
 type PlatformSpecApplyConfiguration struct {
-	Type         *v1.PlatformType                         `json:"type,omitempty"`
-	AWS          *AWSPlatformSpecApplyConfiguration       `json:"aws,omitempty"`
-	Azure        *v1.AzurePlatformSpec                    `json:"azure,omitempty"`
-	GCP          *v1.GCPPlatformSpec                      `json:"gcp,omitempty"`
-	BareMetal    *BareMetalPlatformSpecApplyConfiguration `json:"baremetal,omitempty"`
-	OpenStack    *OpenStackPlatformSpecApplyConfiguration `json:"openstack,omitempty"`
-	Ovirt        *v1.OvirtPlatformSpec                    `json:"ovirt,omitempty"`
-	VSphere      *VSpherePlatformSpecApplyConfiguration   `json:"vsphere,omitempty"`
-	IBMCloud     *v1.IBMCloudPlatformSpec                 `json:"ibmcloud,omitempty"`
-	Kubevirt     *v1.KubevirtPlatformSpec                 `json:"kubevirt,omitempty"`
-	EquinixMetal *v1.EquinixMetalPlatformSpec             `json:"equinixMetal,omitempty"`
-	PowerVS      *PowerVSPlatformSpecApplyConfiguration   `json:"powervs,omitempty"`
-	AlibabaCloud *v1.AlibabaCloudPlatformSpec             `json:"alibabaCloud,omitempty"`
-	Nutanix      *NutanixPlatformSpecApplyConfiguration   `json:"nutanix,omitempty"`
-	External     *ExternalPlatformSpecApplyConfiguration  `json:"external,omitempty"`
+	// type is the underlying infrastructure provider for the cluster. This
+	// value controls whether infrastructure automation such as service load
+	// balancers, dynamic volume provisioning, machine creation and deletion, and
+	// other integrations are enabled. If None, no infrastructure automation is
+	// enabled. Allowed values are "AWS", "Azure", "BareMetal", "GCP", "Libvirt",
+	// "OpenStack", "VSphere", "oVirt", "IBMCloud", "KubeVirt", "EquinixMetal",
+	// "PowerVS", "AlibabaCloud", "Nutanix", "External", and "None". Individual
+	// components may not support all platforms, and must handle unrecognized
+	// platforms as None if they do not support that platform.
+	Type *configv1.PlatformType `json:"type,omitempty"`
+	// aws contains settings specific to the Amazon Web Services infrastructure provider.
+	AWS *AWSPlatformSpecApplyConfiguration `json:"aws,omitempty"`
+	// azure contains settings specific to the Azure infrastructure provider.
+	Azure *configv1.AzurePlatformSpec `json:"azure,omitempty"`
+	// gcp contains settings specific to the Google Cloud Platform infrastructure provider.
+	GCP *configv1.GCPPlatformSpec `json:"gcp,omitempty"`
+	// baremetal contains settings specific to the BareMetal platform.
+	BareMetal *BareMetalPlatformSpecApplyConfiguration `json:"baremetal,omitempty"`
+	// openstack contains settings specific to the OpenStack infrastructure provider.
+	OpenStack *OpenStackPlatformSpecApplyConfiguration `json:"openstack,omitempty"`
+	// ovirt contains settings specific to the oVirt infrastructure provider.
+	Ovirt *configv1.OvirtPlatformSpec `json:"ovirt,omitempty"`
+	// vsphere contains settings specific to the VSphere infrastructure provider.
+	VSphere *VSpherePlatformSpecApplyConfiguration `json:"vsphere,omitempty"`
+	// ibmcloud contains settings specific to the IBMCloud infrastructure provider.
+	IBMCloud *IBMCloudPlatformSpecApplyConfiguration `json:"ibmcloud,omitempty"`
+	// kubevirt contains settings specific to the kubevirt infrastructure provider.
+	Kubevirt *configv1.KubevirtPlatformSpec `json:"kubevirt,omitempty"`
+	// equinixMetal contains settings specific to the Equinix Metal infrastructure provider.
+	EquinixMetal *configv1.EquinixMetalPlatformSpec `json:"equinixMetal,omitempty"`
+	// powervs contains settings specific to the IBM Power Systems Virtual Servers infrastructure provider.
+	PowerVS *PowerVSPlatformSpecApplyConfiguration `json:"powervs,omitempty"`
+	// alibabaCloud contains settings specific to the Alibaba Cloud infrastructure provider.
+	AlibabaCloud *configv1.AlibabaCloudPlatformSpec `json:"alibabaCloud,omitempty"`
+	// nutanix contains settings specific to the Nutanix infrastructure provider.
+	Nutanix *NutanixPlatformSpecApplyConfiguration `json:"nutanix,omitempty"`
+	// ExternalPlatformType represents generic infrastructure provider.
+	// Platform-specific components should be supplemented separately.
+	External *ExternalPlatformSpecApplyConfiguration `json:"external,omitempty"`
 }
 
-// PlatformSpecApplyConfiguration constructs an declarative configuration of the PlatformSpec type for use with
+// PlatformSpecApplyConfiguration constructs a declarative configuration of the PlatformSpec type for use with
 // apply.
 func PlatformSpec() *PlatformSpecApplyConfiguration {
 	return &PlatformSpecApplyConfiguration{}
@@ -35,7 +63,7 @@ func PlatformSpec() *PlatformSpecApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *PlatformSpecApplyConfiguration) WithType(value v1.PlatformType) *PlatformSpecApplyConfiguration {
+func (b *PlatformSpecApplyConfiguration) WithType(value configv1.PlatformType) *PlatformSpecApplyConfiguration {
 	b.Type = &value
 	return b
 }
@@ -51,7 +79,7 @@ func (b *PlatformSpecApplyConfiguration) WithAWS(value *AWSPlatformSpecApplyConf
 // WithAzure sets the Azure field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Azure field is set to the value of the last call.
-func (b *PlatformSpecApplyConfiguration) WithAzure(value v1.AzurePlatformSpec) *PlatformSpecApplyConfiguration {
+func (b *PlatformSpecApplyConfiguration) WithAzure(value configv1.AzurePlatformSpec) *PlatformSpecApplyConfiguration {
 	b.Azure = &value
 	return b
 }
@@ -59,7 +87,7 @@ func (b *PlatformSpecApplyConfiguration) WithAzure(value v1.AzurePlatformSpec) *
 // WithGCP sets the GCP field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the GCP field is set to the value of the last call.
-func (b *PlatformSpecApplyConfiguration) WithGCP(value v1.GCPPlatformSpec) *PlatformSpecApplyConfiguration {
+func (b *PlatformSpecApplyConfiguration) WithGCP(value configv1.GCPPlatformSpec) *PlatformSpecApplyConfiguration {
 	b.GCP = &value
 	return b
 }
@@ -83,7 +111,7 @@ func (b *PlatformSpecApplyConfiguration) WithOpenStack(value *OpenStackPlatformS
 // WithOvirt sets the Ovirt field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Ovirt field is set to the value of the last call.
-func (b *PlatformSpecApplyConfiguration) WithOvirt(value v1.OvirtPlatformSpec) *PlatformSpecApplyConfiguration {
+func (b *PlatformSpecApplyConfiguration) WithOvirt(value configv1.OvirtPlatformSpec) *PlatformSpecApplyConfiguration {
 	b.Ovirt = &value
 	return b
 }
@@ -99,15 +127,15 @@ func (b *PlatformSpecApplyConfiguration) WithVSphere(value *VSpherePlatformSpecA
 // WithIBMCloud sets the IBMCloud field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the IBMCloud field is set to the value of the last call.
-func (b *PlatformSpecApplyConfiguration) WithIBMCloud(value v1.IBMCloudPlatformSpec) *PlatformSpecApplyConfiguration {
-	b.IBMCloud = &value
+func (b *PlatformSpecApplyConfiguration) WithIBMCloud(value *IBMCloudPlatformSpecApplyConfiguration) *PlatformSpecApplyConfiguration {
+	b.IBMCloud = value
 	return b
 }
 
 // WithKubevirt sets the Kubevirt field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kubevirt field is set to the value of the last call.
-func (b *PlatformSpecApplyConfiguration) WithKubevirt(value v1.KubevirtPlatformSpec) *PlatformSpecApplyConfiguration {
+func (b *PlatformSpecApplyConfiguration) WithKubevirt(value configv1.KubevirtPlatformSpec) *PlatformSpecApplyConfiguration {
 	b.Kubevirt = &value
 	return b
 }
@@ -115,7 +143,7 @@ func (b *PlatformSpecApplyConfiguration) WithKubevirt(value v1.KubevirtPlatformS
 // WithEquinixMetal sets the EquinixMetal field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the EquinixMetal field is set to the value of the last call.
-func (b *PlatformSpecApplyConfiguration) WithEquinixMetal(value v1.EquinixMetalPlatformSpec) *PlatformSpecApplyConfiguration {
+func (b *PlatformSpecApplyConfiguration) WithEquinixMetal(value configv1.EquinixMetalPlatformSpec) *PlatformSpecApplyConfiguration {
 	b.EquinixMetal = &value
 	return b
 }
@@ -131,7 +159,7 @@ func (b *PlatformSpecApplyConfiguration) WithPowerVS(value *PowerVSPlatformSpecA
 // WithAlibabaCloud sets the AlibabaCloud field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the AlibabaCloud field is set to the value of the last call.
-func (b *PlatformSpecApplyConfiguration) WithAlibabaCloud(value v1.AlibabaCloudPlatformSpec) *PlatformSpecApplyConfiguration {
+func (b *PlatformSpecApplyConfiguration) WithAlibabaCloud(value configv1.AlibabaCloudPlatformSpec) *PlatformSpecApplyConfiguration {
 	b.AlibabaCloud = &value
 	return b
 }

@@ -2,14 +2,18 @@
 
 package v1
 
-// KeystoneIdentityProviderApplyConfiguration represents an declarative configuration of the KeystoneIdentityProvider type for use
+// KeystoneIdentityProviderApplyConfiguration represents a declarative configuration of the KeystoneIdentityProvider type for use
 // with apply.
+//
+// KeystonePasswordIdentityProvider provides identities for users authenticating using keystone password credentials
 type KeystoneIdentityProviderApplyConfiguration struct {
+	// OAuthRemoteConnectionInfo contains information about how to connect to the keystone server
 	OAuthRemoteConnectionInfoApplyConfiguration `json:",inline"`
-	DomainName                                  *string `json:"domainName,omitempty"`
+	// domainName is required for keystone v3
+	DomainName *string `json:"domainName,omitempty"`
 }
 
-// KeystoneIdentityProviderApplyConfiguration constructs an declarative configuration of the KeystoneIdentityProvider type for use with
+// KeystoneIdentityProviderApplyConfiguration constructs a declarative configuration of the KeystoneIdentityProvider type for use with
 // apply.
 func KeystoneIdentityProvider() *KeystoneIdentityProviderApplyConfiguration {
 	return &KeystoneIdentityProviderApplyConfiguration{}
@@ -19,7 +23,7 @@ func KeystoneIdentityProvider() *KeystoneIdentityProviderApplyConfiguration {
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the URL field is set to the value of the last call.
 func (b *KeystoneIdentityProviderApplyConfiguration) WithURL(value string) *KeystoneIdentityProviderApplyConfiguration {
-	b.URL = &value
+	b.OAuthRemoteConnectionInfoApplyConfiguration.URL = &value
 	return b
 }
 
@@ -27,7 +31,7 @@ func (b *KeystoneIdentityProviderApplyConfiguration) WithURL(value string) *Keys
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the CA field is set to the value of the last call.
 func (b *KeystoneIdentityProviderApplyConfiguration) WithCA(value *ConfigMapNameReferenceApplyConfiguration) *KeystoneIdentityProviderApplyConfiguration {
-	b.CA = value
+	b.OAuthRemoteConnectionInfoApplyConfiguration.CA = value
 	return b
 }
 
@@ -35,7 +39,7 @@ func (b *KeystoneIdentityProviderApplyConfiguration) WithCA(value *ConfigMapName
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the TLSClientCert field is set to the value of the last call.
 func (b *KeystoneIdentityProviderApplyConfiguration) WithTLSClientCert(value *SecretNameReferenceApplyConfiguration) *KeystoneIdentityProviderApplyConfiguration {
-	b.TLSClientCert = value
+	b.OAuthRemoteConnectionInfoApplyConfiguration.TLSClientCert = value
 	return b
 }
 
@@ -43,7 +47,7 @@ func (b *KeystoneIdentityProviderApplyConfiguration) WithTLSClientCert(value *Se
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the TLSClientKey field is set to the value of the last call.
 func (b *KeystoneIdentityProviderApplyConfiguration) WithTLSClientKey(value *SecretNameReferenceApplyConfiguration) *KeystoneIdentityProviderApplyConfiguration {
-	b.TLSClientKey = value
+	b.OAuthRemoteConnectionInfoApplyConfiguration.TLSClientKey = value
 	return b
 }
 

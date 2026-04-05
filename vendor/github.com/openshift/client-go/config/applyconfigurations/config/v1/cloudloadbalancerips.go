@@ -3,18 +3,36 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// CloudLoadBalancerIPsApplyConfiguration represents an declarative configuration of the CloudLoadBalancerIPs type for use
+// CloudLoadBalancerIPsApplyConfiguration represents a declarative configuration of the CloudLoadBalancerIPs type for use
 // with apply.
+//
+// CloudLoadBalancerIPs contains the Load Balancer IPs for the cloud's API,
+// API-Int and Ingress Load balancers. They will be populated as soon as the
+// respective Load Balancers have been configured. These values are utilized
+// to configure the DNS solution hosted within the cluster.
 type CloudLoadBalancerIPsApplyConfiguration struct {
-	APIIntLoadBalancerIPs  []v1.IP `json:"apiIntLoadBalancerIPs,omitempty"`
-	APILoadBalancerIPs     []v1.IP `json:"apiLoadBalancerIPs,omitempty"`
-	IngressLoadBalancerIPs []v1.IP `json:"ingressLoadBalancerIPs,omitempty"`
+	// apiIntLoadBalancerIPs holds Load Balancer IPs for the internal API service.
+	// These Load Balancer IP addresses can be IPv4 and/or IPv6 addresses.
+	// Entries in the apiIntLoadBalancerIPs must be unique.
+	// A maximum of 16 IP addresses are permitted.
+	APIIntLoadBalancerIPs []configv1.IP `json:"apiIntLoadBalancerIPs,omitempty"`
+	// apiLoadBalancerIPs holds Load Balancer IPs for the API service.
+	// These Load Balancer IP addresses can be IPv4 and/or IPv6 addresses.
+	// Could be empty for private clusters.
+	// Entries in the apiLoadBalancerIPs must be unique.
+	// A maximum of 16 IP addresses are permitted.
+	APILoadBalancerIPs []configv1.IP `json:"apiLoadBalancerIPs,omitempty"`
+	// ingressLoadBalancerIPs holds IPs for Ingress Load Balancers.
+	// These Load Balancer IP addresses can be IPv4 and/or IPv6 addresses.
+	// Entries in the ingressLoadBalancerIPs must be unique.
+	// A maximum of 16 IP addresses are permitted.
+	IngressLoadBalancerIPs []configv1.IP `json:"ingressLoadBalancerIPs,omitempty"`
 }
 
-// CloudLoadBalancerIPsApplyConfiguration constructs an declarative configuration of the CloudLoadBalancerIPs type for use with
+// CloudLoadBalancerIPsApplyConfiguration constructs a declarative configuration of the CloudLoadBalancerIPs type for use with
 // apply.
 func CloudLoadBalancerIPs() *CloudLoadBalancerIPsApplyConfiguration {
 	return &CloudLoadBalancerIPsApplyConfiguration{}
@@ -23,7 +41,7 @@ func CloudLoadBalancerIPs() *CloudLoadBalancerIPsApplyConfiguration {
 // WithAPIIntLoadBalancerIPs adds the given value to the APIIntLoadBalancerIPs field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the APIIntLoadBalancerIPs field.
-func (b *CloudLoadBalancerIPsApplyConfiguration) WithAPIIntLoadBalancerIPs(values ...v1.IP) *CloudLoadBalancerIPsApplyConfiguration {
+func (b *CloudLoadBalancerIPsApplyConfiguration) WithAPIIntLoadBalancerIPs(values ...configv1.IP) *CloudLoadBalancerIPsApplyConfiguration {
 	for i := range values {
 		b.APIIntLoadBalancerIPs = append(b.APIIntLoadBalancerIPs, values[i])
 	}
@@ -33,7 +51,7 @@ func (b *CloudLoadBalancerIPsApplyConfiguration) WithAPIIntLoadBalancerIPs(value
 // WithAPILoadBalancerIPs adds the given value to the APILoadBalancerIPs field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the APILoadBalancerIPs field.
-func (b *CloudLoadBalancerIPsApplyConfiguration) WithAPILoadBalancerIPs(values ...v1.IP) *CloudLoadBalancerIPsApplyConfiguration {
+func (b *CloudLoadBalancerIPsApplyConfiguration) WithAPILoadBalancerIPs(values ...configv1.IP) *CloudLoadBalancerIPsApplyConfiguration {
 	for i := range values {
 		b.APILoadBalancerIPs = append(b.APILoadBalancerIPs, values[i])
 	}
@@ -43,7 +61,7 @@ func (b *CloudLoadBalancerIPsApplyConfiguration) WithAPILoadBalancerIPs(values .
 // WithIngressLoadBalancerIPs adds the given value to the IngressLoadBalancerIPs field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the IngressLoadBalancerIPs field.
-func (b *CloudLoadBalancerIPsApplyConfiguration) WithIngressLoadBalancerIPs(values ...v1.IP) *CloudLoadBalancerIPsApplyConfiguration {
+func (b *CloudLoadBalancerIPsApplyConfiguration) WithIngressLoadBalancerIPs(values ...configv1.IP) *CloudLoadBalancerIPsApplyConfiguration {
 	for i := range values {
 		b.IngressLoadBalancerIPs = append(b.IngressLoadBalancerIPs, values[i])
 	}

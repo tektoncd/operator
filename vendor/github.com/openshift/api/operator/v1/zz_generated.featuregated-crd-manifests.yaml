@@ -69,10 +69,10 @@ clustercsidrivers.operator.openshift.io:
   Capability: ""
   Category: ""
   FeatureGates:
-  - VSphereDriverConfiguration
+  - VSphereConfigurableMaxAllowedBlockVolumesPerNode
   FilenameOperatorName: csi-driver
   FilenameOperatorOrdering: "01"
-  FilenameRunLevel: "0000_90"
+  FilenameRunLevel: "0000_50"
   GroupName: operator.openshift.io
   HasStatus: true
   KindName: ClusterCSIDriver
@@ -155,7 +155,6 @@ etcds.operator.openshift.io:
   Category: coreoperators
   FeatureGates:
   - EtcdBackendQuota
-  - HardwareSpeed
   FilenameOperatorName: etcd
   FilenameOperatorOrdering: "01"
   FilenameRunLevel: "0000_12"
@@ -218,7 +217,8 @@ kubeapiservers.operator.openshift.io:
   CRDName: kubeapiservers.operator.openshift.io
   Capability: ""
   Category: coreoperators
-  FeatureGates: []
+  FeatureGates:
+  - EventTTL
   FilenameOperatorName: kube-apiserver
   FilenameOperatorOrdering: "01"
   FilenameRunLevel: "0000_20"
@@ -303,8 +303,10 @@ machineconfigurations.operator.openshift.io:
   Capability: ""
   Category: ""
   FeatureGates:
+  - BootImageSkewEnforcement
+  - IrreconcilableMachineConfig
   - ManagedBootImages
-  - NodeDisruptionPolicy
+  - ManagedBootImages+ManagedBootImagesCPMS
   FilenameOperatorName: machine-config
   FilenameOperatorOrdering: "01"
   FilenameRunLevel: "0000_80"
@@ -325,13 +327,12 @@ networks.operator.openshift.io:
   CRDName: networks.operator.openshift.io
   Capability: ""
   Category: ""
-  FeatureGates:
-  - NetworkLiveMigration
+  FeatureGates: []
   FilenameOperatorName: network
   FilenameOperatorOrdering: "01"
   FilenameRunLevel: "0000_70"
   GroupName: operator.openshift.io
-  HasStatus: false
+  HasStatus: true
   KindName: Network
   Labels: {}
   PluralName: networks
@@ -339,6 +340,31 @@ networks.operator.openshift.io:
   Scope: Cluster
   ShortNames: null
   TopLevelFeatureGates: []
+  Version: v1
+
+olms.operator.openshift.io:
+  Annotations:
+    include.release.openshift.io/ibm-cloud-managed: "false"
+    include.release.openshift.io/self-managed-high-availability: "true"
+  ApprovedPRNumber: https://github.com/openshift/api/pull/1504
+  CRDName: olms.operator.openshift.io
+  Capability: OperatorLifecycleManagerV1
+  Category: ""
+  FeatureGates:
+  - NewOLM
+  FilenameOperatorName: operator-lifecycle-manager
+  FilenameOperatorOrdering: "01"
+  FilenameRunLevel: "0000_10"
+  GroupName: operator.openshift.io
+  HasStatus: true
+  KindName: OLM
+  Labels: {}
+  PluralName: olms
+  PrinterColumns: []
+  Scope: Cluster
+  ShortNames: null
+  TopLevelFeatureGates:
+  - NewOLM
   Version: v1
 
 openshiftapiservers.operator.openshift.io:

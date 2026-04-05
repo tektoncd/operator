@@ -3,16 +3,26 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// ProfileCustomizationsApplyConfiguration represents an declarative configuration of the ProfileCustomizations type for use
+// ProfileCustomizationsApplyConfiguration represents a declarative configuration of the ProfileCustomizations type for use
 // with apply.
+//
+// ProfileCustomizations contains various parameters for modifying the default behavior of certain profiles
 type ProfileCustomizationsApplyConfiguration struct {
-	DynamicResourceAllocation *v1.DRAEnablement `json:"dynamicResourceAllocation,omitempty"`
+	// dynamicResourceAllocation allows to enable or disable dynamic resource allocation within the scheduler.
+	// Dynamic resource allocation is an API for requesting and sharing resources between pods and containers inside a pod.
+	// Third-party resource drivers are responsible for tracking and allocating resources.
+	// Different kinds of resources support arbitrary parameters for defining requirements and initialization.
+	// Valid values are Enabled, Disabled and omitted.
+	// When omitted, this means no opinion and the platform is left to choose a reasonable default,
+	// which is subject to change over time.
+	// The current default is Disabled.
+	DynamicResourceAllocation *configv1.DRAEnablement `json:"dynamicResourceAllocation,omitempty"`
 }
 
-// ProfileCustomizationsApplyConfiguration constructs an declarative configuration of the ProfileCustomizations type for use with
+// ProfileCustomizationsApplyConfiguration constructs a declarative configuration of the ProfileCustomizations type for use with
 // apply.
 func ProfileCustomizations() *ProfileCustomizationsApplyConfiguration {
 	return &ProfileCustomizationsApplyConfiguration{}
@@ -21,7 +31,7 @@ func ProfileCustomizations() *ProfileCustomizationsApplyConfiguration {
 // WithDynamicResourceAllocation sets the DynamicResourceAllocation field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the DynamicResourceAllocation field is set to the value of the last call.
-func (b *ProfileCustomizationsApplyConfiguration) WithDynamicResourceAllocation(value v1.DRAEnablement) *ProfileCustomizationsApplyConfiguration {
+func (b *ProfileCustomizationsApplyConfiguration) WithDynamicResourceAllocation(value configv1.DRAEnablement) *ProfileCustomizationsApplyConfiguration {
 	b.DynamicResourceAllocation = &value
 	return b
 }

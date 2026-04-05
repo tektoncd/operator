@@ -2,13 +2,17 @@
 
 package v1
 
-// TemplateReferenceApplyConfiguration represents an declarative configuration of the TemplateReference type for use
+// TemplateReferenceApplyConfiguration represents a declarative configuration of the TemplateReference type for use
 // with apply.
+//
+// TemplateReference references a template in a specific namespace.
+// The namespace must be specified at the point of use.
 type TemplateReferenceApplyConfiguration struct {
+	// name is the metadata.name of the referenced project request template
 	Name *string `json:"name,omitempty"`
 }
 
-// TemplateReferenceApplyConfiguration constructs an declarative configuration of the TemplateReference type for use with
+// TemplateReferenceApplyConfiguration constructs a declarative configuration of the TemplateReference type for use with
 // apply.
 func TemplateReference() *TemplateReferenceApplyConfiguration {
 	return &TemplateReferenceApplyConfiguration{}

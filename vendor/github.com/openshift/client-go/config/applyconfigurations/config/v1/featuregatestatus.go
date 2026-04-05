@@ -3,17 +3,27 @@
 package v1
 
 import (
-	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	metav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// FeatureGateStatusApplyConfiguration represents an declarative configuration of the FeatureGateStatus type for use
+// FeatureGateStatusApplyConfiguration represents a declarative configuration of the FeatureGateStatus type for use
 // with apply.
 type FeatureGateStatusApplyConfiguration struct {
-	Conditions   []v1.ConditionApplyConfiguration       `json:"conditions,omitempty"`
+	// conditions represent the observations of the current state.
+	// Known .status.conditions.type are: "DeterminationDegraded"
+	Conditions []metav1.ConditionApplyConfiguration `json:"conditions,omitempty"`
+	// featureGates contains a list of enabled and disabled featureGates that are keyed by payloadVersion.
+	// Operators other than the CVO and cluster-config-operator, must read the .status.featureGates, locate
+	// the version they are managing, find the enabled/disabled featuregates and make the operand and operator match.
+	// The enabled/disabled values for a particular version may change during the life of the cluster as various
+	// .spec.featureSet values are selected.
+	// Operators may choose to restart their processes to pick up these changes, but remembering past enable/disable
+	// lists is beyond the scope of this API and is the responsibility of individual operators.
+	// Only featureGates with .version in the ClusterVersion.status will be present in this list.
 	FeatureGates []FeatureGateDetailsApplyConfiguration `json:"featureGates,omitempty"`
 }
 
-// FeatureGateStatusApplyConfiguration constructs an declarative configuration of the FeatureGateStatus type for use with
+// FeatureGateStatusApplyConfiguration constructs a declarative configuration of the FeatureGateStatus type for use with
 // apply.
 func FeatureGateStatus() *FeatureGateStatusApplyConfiguration {
 	return &FeatureGateStatusApplyConfiguration{}
@@ -22,7 +32,7 @@ func FeatureGateStatus() *FeatureGateStatusApplyConfiguration {
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *FeatureGateStatusApplyConfiguration) WithConditions(values ...*v1.ConditionApplyConfiguration) *FeatureGateStatusApplyConfiguration {
+func (b *FeatureGateStatusApplyConfiguration) WithConditions(values ...*metav1.ConditionApplyConfiguration) *FeatureGateStatusApplyConfiguration {
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithConditions")

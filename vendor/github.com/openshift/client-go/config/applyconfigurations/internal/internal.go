@@ -3,10 +3,10 @@
 package internal
 
 import (
-	"fmt"
-	"sync"
+	fmt "fmt"
+	sync "sync"
 
-	typed "sigs.k8s.io/structured-merge-diff/v4/typed"
+	typed "sigs.k8s.io/structured-merge-diff/v6/typed"
 )
 
 func Parser() *typed.Parser {
@@ -47,9 +47,17 @@ var schemaYAML = typed.YAMLObject(`types:
 - name: com.github.openshift.api.config.v1.APIServerEncryption
   map:
     fields:
+    - name: kms
+      type:
+        namedType: com.github.openshift.api.config.v1.KMSConfig
     - name: type
       type:
         scalar: string
+    unions:
+    - discriminator: type
+      fields:
+      - fieldName: kms
+        discriminatorValue: KMS
 - name: com.github.openshift.api.config.v1.APIServerNamedServingCert
   map:
     fields:
@@ -125,8 +133,20 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: type
       type:
         scalar: string
+      default: ""
     unions:
     - discriminator: type
+- name: com.github.openshift.api.config.v1.AWSKMSConfig
+  map:
+    fields:
+    - name: keyARN
+      type:
+        scalar: string
+      default: ""
+    - name: region
+      type:
+        scalar: string
+      default: ""
 - name: com.github.openshift.api.config.v1.AWSPlatformSpec
   map:
     fields:
@@ -139,6 +159,15 @@ var schemaYAML = typed.YAMLObject(`types:
 - name: com.github.openshift.api.config.v1.AWSPlatformStatus
   map:
     fields:
+    - name: cloudLoadBalancerConfig
+      type:
+        namedType: com.github.openshift.api.config.v1.CloudLoadBalancerConfig
+      default:
+        dnsType: PlatformDefault
+    - name: ipFamily
+      type:
+        scalar: string
+      default: IPv4
     - name: region
       type:
         scalar: string
@@ -177,6 +206,12 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+- name: com.github.openshift.api.config.v1.AcceptRisk
+  map:
+    fields:
+    - name: name
+      type:
+        scalar: string
 - name: com.github.openshift.api.config.v1.AlibabaCloudPlatformSpec
   map:
     elementType:
@@ -242,6 +277,7 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: profile
       type:
         scalar: string
+      default: ""
 - name: com.github.openshift.api.config.v1.Authentication
   map:
     fields:
@@ -329,9 +365,18 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: armEndpoint
       type:
         scalar: string
+    - name: cloudLoadBalancerConfig
+      type:
+        namedType: com.github.openshift.api.config.v1.CloudLoadBalancerConfig
+      default:
+        dnsType: PlatformDefault
     - name: cloudName
       type:
         scalar: string
+    - name: ipFamily
+      type:
+        scalar: string
+      default: IPv4
     - name: networkResourceGroupName
       type:
         scalar: string
@@ -398,6 +443,9 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: atomic
+    - name: dnsRecordsType
+      type:
+        scalar: string
     - name: ingressIP
       type:
         scalar: string
@@ -573,6 +621,51 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+- name: com.github.openshift.api.config.v1.ClusterImagePolicy
+  map:
+    fields:
+    - name: apiVersion
+      type:
+        scalar: string
+    - name: kind
+      type:
+        scalar: string
+    - name: metadata
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
+      default: {}
+    - name: spec
+      type:
+        namedType: com.github.openshift.api.config.v1.ClusterImagePolicySpec
+      default: {}
+    - name: status
+      type:
+        namedType: com.github.openshift.api.config.v1.ClusterImagePolicyStatus
+      default: {}
+- name: com.github.openshift.api.config.v1.ClusterImagePolicySpec
+  map:
+    fields:
+    - name: policy
+      type:
+        namedType: com.github.openshift.api.config.v1.ImageSigstoreVerificationPolicy
+      default: {}
+    - name: scopes
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: associative
+- name: com.github.openshift.api.config.v1.ClusterImagePolicyStatus
+  map:
+    fields:
+    - name: conditions
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Condition
+          elementRelationship: associative
+          keys:
+          - type
 - name: com.github.openshift.api.config.v1.ClusterNetworkEntry
   map:
     fields:
@@ -630,7 +723,6 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: extension
       type:
         namedType: __untyped_atomic_
-      default: {}
     - name: relatedObjects
       type:
         list:
@@ -649,7 +741,6 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: lastTransitionTime
       type:
         namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Time
-      default: {}
     - name: message
       type:
         scalar: string
@@ -763,6 +854,14 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         namedType: com.github.openshift.api.config.v1.ClusterVersionCapabilitiesStatus
       default: {}
+    - name: conditionalUpdateRisks
+      type:
+        list:
+          elementType:
+            namedType: com.github.openshift.api.config.v1.ConditionalUpdateRisk
+          elementRelationship: associative
+          keys:
+          - name
     - name: conditionalUpdates
       type:
         list:
@@ -893,6 +992,12 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         namedType: com.github.openshift.api.config.v1.Release
       default: {}
+    - name: riskNames
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: associative
     - name: risks
       type:
         list:
@@ -904,6 +1009,14 @@ var schemaYAML = typed.YAMLObject(`types:
 - name: com.github.openshift.api.config.v1.ConditionalUpdateRisk
   map:
     fields:
+    - name: conditions
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Condition
+          elementRelationship: associative
+          keys:
+          - type
     - name: matchingRules
       type:
         list:
@@ -980,6 +1093,17 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+- name: com.github.openshift.api.config.v1.Custom
+  map:
+    fields:
+    - name: configs
+      type:
+        list:
+          elementType:
+            namedType: com.github.openshift.api.config.v1.GathererConfig
+          elementRelationship: associative
+          keys:
+          - name
 - name: com.github.openshift.api.config.v1.CustomFeatureGates
   map:
     fields:
@@ -1153,6 +1277,17 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         namedType: com.github.openshift.api.config.v1.CloudControllerManagerStatus
       default: {}
+- name: com.github.openshift.api.config.v1.ExtraMapping
+  map:
+    fields:
+    - name: key
+      type:
+        scalar: string
+      default: ""
+    - name: valueExpression
+      type:
+        scalar: string
+      default: ""
 - name: com.github.openshift.api.config.v1.FeatureGate
   map:
     fields:
@@ -1303,6 +1438,47 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+- name: com.github.openshift.api.config.v1.GatherConfig
+  map:
+    fields:
+    - name: dataPolicy
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: atomic
+    - name: gatherers
+      type:
+        namedType: com.github.openshift.api.config.v1.Gatherers
+      default: {}
+    - name: storage
+      type:
+        namedType: com.github.openshift.api.config.v1.Storage
+      default: {}
+- name: com.github.openshift.api.config.v1.GathererConfig
+  map:
+    fields:
+    - name: name
+      type:
+        scalar: string
+    - name: state
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1.Gatherers
+  map:
+    fields:
+    - name: custom
+      type:
+        namedType: com.github.openshift.api.config.v1.Custom
+      default: {}
+    - name: mode
+      type:
+        scalar: string
+    unions:
+    - discriminator: mode
+      fields:
+      - fieldName: custom
+        discriminatorValue: Custom
 - name: com.github.openshift.api.config.v1.GitHubIdentityProvider
   map:
     fields:
@@ -1397,16 +1573,15 @@ var schemaYAML = typed.YAMLObject(`types:
         scalar: string
 - name: com.github.openshift.api.config.v1.IBMCloudPlatformSpec
   map:
-    elementType:
-      scalar: untyped
-      list:
-        elementType:
-          namedType: __untyped_atomic_
-        elementRelationship: atomic
-      map:
-        elementType:
-          namedType: __untyped_deduced_
-        elementRelationship: separable
+    fields:
+    - name: serviceEndpoints
+      type:
+        list:
+          elementType:
+            namedType: com.github.openshift.api.config.v1.IBMCloudServiceEndpoint
+          elementRelationship: associative
+          keys:
+          - name
 - name: com.github.openshift.api.config.v1.IBMCloudPlatformStatus
   map:
     fields:
@@ -1602,6 +1777,96 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: value
       type:
         scalar: string
+- name: com.github.openshift.api.config.v1.ImagePolicy
+  map:
+    fields:
+    - name: apiVersion
+      type:
+        scalar: string
+    - name: kind
+      type:
+        scalar: string
+    - name: metadata
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
+      default: {}
+    - name: spec
+      type:
+        namedType: com.github.openshift.api.config.v1.ImagePolicySpec
+      default: {}
+    - name: status
+      type:
+        namedType: com.github.openshift.api.config.v1.ImagePolicyStatus
+      default: {}
+- name: com.github.openshift.api.config.v1.ImagePolicyFulcioCAWithRekorRootOfTrust
+  map:
+    fields:
+    - name: fulcioCAData
+      type:
+        scalar: string
+    - name: fulcioSubject
+      type:
+        namedType: com.github.openshift.api.config.v1.PolicyFulcioSubject
+      default: {}
+    - name: rekorKeyData
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1.ImagePolicyPKIRootOfTrust
+  map:
+    fields:
+    - name: caIntermediatesData
+      type:
+        scalar: string
+    - name: caRootsData
+      type:
+        scalar: string
+    - name: pkiCertificateSubject
+      type:
+        namedType: com.github.openshift.api.config.v1.PKICertificateSubject
+      default: {}
+- name: com.github.openshift.api.config.v1.ImagePolicyPublicKeyRootOfTrust
+  map:
+    fields:
+    - name: keyData
+      type:
+        scalar: string
+    - name: rekorKeyData
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1.ImagePolicySpec
+  map:
+    fields:
+    - name: policy
+      type:
+        namedType: com.github.openshift.api.config.v1.ImageSigstoreVerificationPolicy
+      default: {}
+    - name: scopes
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: associative
+- name: com.github.openshift.api.config.v1.ImagePolicyStatus
+  map:
+    fields:
+    - name: conditions
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Condition
+          elementRelationship: associative
+          keys:
+          - type
+- name: com.github.openshift.api.config.v1.ImageSigstoreVerificationPolicy
+  map:
+    fields:
+    - name: rootOfTrust
+      type:
+        namedType: com.github.openshift.api.config.v1.PolicyRootOfTrust
+      default: {}
+    - name: signedIdentity
+      type:
+        namedType: com.github.openshift.api.config.v1.PolicyIdentity
 - name: com.github.openshift.api.config.v1.ImageSpec
   map:
     fields:
@@ -1621,6 +1886,10 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: atomic
+    - name: imageStreamImportMode
+      type:
+        scalar: string
+      default: ""
     - name: registrySources
       type:
         namedType: com.github.openshift.api.config.v1.RegistrySources
@@ -1634,6 +1903,9 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: atomic
+    - name: imageStreamImportMode
+      type:
+        scalar: string
     - name: internalRegistryHostname
       type:
         scalar: string
@@ -1757,7 +2029,6 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: infrastructureTopology
       type:
         scalar: string
-      default: ""
     - name: platform
       type:
         scalar: string
@@ -1845,6 +2116,30 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+- name: com.github.openshift.api.config.v1.InsightsDataGather
+  map:
+    fields:
+    - name: apiVersion
+      type:
+        scalar: string
+    - name: kind
+      type:
+        scalar: string
+    - name: metadata
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
+      default: {}
+    - name: spec
+      type:
+        namedType: com.github.openshift.api.config.v1.InsightsDataGatherSpec
+      default: {}
+- name: com.github.openshift.api.config.v1.InsightsDataGatherSpec
+  map:
+    fields:
+    - name: gatherConfig
+      type:
+        namedType: com.github.openshift.api.config.v1.GatherConfig
+      default: {}
 - name: com.github.openshift.api.config.v1.IntermediateTLSProfile
   map:
     elementType:
@@ -1857,6 +2152,21 @@ var schemaYAML = typed.YAMLObject(`types:
         elementType:
           namedType: __untyped_deduced_
         elementRelationship: separable
+- name: com.github.openshift.api.config.v1.KMSConfig
+  map:
+    fields:
+    - name: aws
+      type:
+        namedType: com.github.openshift.api.config.v1.AWSKMSConfig
+    - name: type
+      type:
+        scalar: string
+      default: ""
+    unions:
+    - discriminator: type
+      fields:
+      - fieldName: aws
+        discriminatorValue: AWS
 - name: com.github.openshift.api.config.v1.KeystoneIdentityProvider
   map:
     fields:
@@ -2162,21 +2472,24 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: cgroupMode
       type:
         scalar: string
+    - name: minimumKubeletVersion
+      type:
+        scalar: string
+      default: ""
     - name: workerLatencyProfile
       type:
         scalar: string
 - name: com.github.openshift.api.config.v1.NodeStatus
   map:
-    elementType:
-      scalar: untyped
-      list:
-        elementType:
-          namedType: __untyped_atomic_
-        elementRelationship: atomic
-      map:
-        elementType:
-          namedType: __untyped_deduced_
-        elementRelationship: separable
+    fields:
+    - name: conditions
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Condition
+          elementRelationship: associative
+          keys:
+          - type
 - name: com.github.openshift.api.config.v1.NutanixFailureDomain
   map:
     fields:
@@ -2193,9 +2506,7 @@ var schemaYAML = typed.YAMLObject(`types:
         list:
           elementType:
             namedType: com.github.openshift.api.config.v1.NutanixResourceIdentifier
-          elementRelationship: associative
-          keys:
-          - type
+          elementRelationship: atomic
 - name: com.github.openshift.api.config.v1.NutanixPlatformLoadBalancer
   map:
     fields:
@@ -2240,6 +2551,9 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: associative
+    - name: dnsRecordsType
+      type:
+        scalar: string
     - name: ingressIP
       type:
         scalar: string
@@ -2465,6 +2779,14 @@ var schemaYAML = typed.YAMLObject(`types:
           keys:
           - componentNamespace
           - componentName
+    - name: userValidationRules
+      type:
+        list:
+          elementType:
+            namedType: com.github.openshift.api.config.v1.TokenUserValidationRule
+          elementRelationship: associative
+          keys:
+          - expression
 - name: com.github.openshift.api.config.v1.ObjectReference
   map:
     fields:
@@ -2601,6 +2923,9 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: cloudName
       type:
         scalar: string
+    - name: dnsRecordsType
+      type:
+        scalar: string
     - name: ingressIP
       type:
         scalar: string
@@ -2710,6 +3035,9 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: associative
+    - name: dnsRecordsType
+      type:
+        scalar: string
     - name: ingressIP
       type:
         scalar: string
@@ -2725,6 +3053,31 @@ var schemaYAML = typed.YAMLObject(`types:
       default:
         type: OpenShiftManagedDefault
     - name: nodeDNSIP
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1.PKICertificateSubject
+  map:
+    fields:
+    - name: email
+      type:
+        scalar: string
+    - name: hostname
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1.PersistentVolumeClaimReference
+  map:
+    fields:
+    - name: name
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1.PersistentVolumeConfig
+  map:
+    fields:
+    - name: claim
+      type:
+        namedType: com.github.openshift.api.config.v1.PersistentVolumeClaimReference
+      default: {}
+    - name: mountPath
       type:
         scalar: string
 - name: com.github.openshift.api.config.v1.PlatformSpec
@@ -2825,6 +3178,80 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: vsphere
       type:
         namedType: com.github.openshift.api.config.v1.VSpherePlatformStatus
+- name: com.github.openshift.api.config.v1.PolicyFulcioSubject
+  map:
+    fields:
+    - name: oidcIssuer
+      type:
+        scalar: string
+      default: ""
+    - name: signedEmail
+      type:
+        scalar: string
+      default: ""
+- name: com.github.openshift.api.config.v1.PolicyIdentity
+  map:
+    fields:
+    - name: exactRepository
+      type:
+        namedType: com.github.openshift.api.config.v1.PolicyMatchExactRepository
+    - name: matchPolicy
+      type:
+        scalar: string
+      default: ""
+    - name: remapIdentity
+      type:
+        namedType: com.github.openshift.api.config.v1.PolicyMatchRemapIdentity
+    unions:
+    - discriminator: matchPolicy
+      fields:
+      - fieldName: exactRepository
+        discriminatorValue: PolicyMatchExactRepository
+      - fieldName: remapIdentity
+        discriminatorValue: PolicyMatchRemapIdentity
+- name: com.github.openshift.api.config.v1.PolicyMatchExactRepository
+  map:
+    fields:
+    - name: repository
+      type:
+        scalar: string
+      default: ""
+- name: com.github.openshift.api.config.v1.PolicyMatchRemapIdentity
+  map:
+    fields:
+    - name: prefix
+      type:
+        scalar: string
+      default: ""
+    - name: signedPrefix
+      type:
+        scalar: string
+      default: ""
+- name: com.github.openshift.api.config.v1.PolicyRootOfTrust
+  map:
+    fields:
+    - name: fulcioCAWithRekor
+      type:
+        namedType: com.github.openshift.api.config.v1.ImagePolicyFulcioCAWithRekorRootOfTrust
+    - name: pki
+      type:
+        namedType: com.github.openshift.api.config.v1.ImagePolicyPKIRootOfTrust
+    - name: policyType
+      type:
+        scalar: string
+      default: ""
+    - name: publicKey
+      type:
+        namedType: com.github.openshift.api.config.v1.ImagePolicyPublicKeyRootOfTrust
+    unions:
+    - discriminator: policyType
+      fields:
+      - fieldName: fulcioCAWithRekor
+        discriminatorValue: FulcioCAWithRekor
+      - fieldName: pki
+        discriminatorValue: PKI
+      - fieldName: publicKey
+        discriminatorValue: PublicKey
 - name: com.github.openshift.api.config.v1.PowerVSPlatformSpec
   map:
     fields:
@@ -2883,6 +3310,9 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+    - name: expression
+      type:
+        scalar: string
     - name: prefix
       type:
         scalar: string
@@ -3040,6 +3470,9 @@ var schemaYAML = typed.YAMLObject(`types:
 - name: com.github.openshift.api.config.v1.Release
   map:
     fields:
+    - name: architecture
+      type:
+        scalar: string
     - name: channels
       type:
         list:
@@ -3212,6 +3645,21 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+- name: com.github.openshift.api.config.v1.Storage
+  map:
+    fields:
+    - name: persistentVolume
+      type:
+        namedType: com.github.openshift.api.config.v1.PersistentVolumeConfig
+      default: {}
+    - name: type
+      type:
+        scalar: string
+    unions:
+    - discriminator: type
+      fields:
+      - fieldName: persistentVolume
+        discriminatorValue: PersistentVolume
 - name: com.github.openshift.api.config.v1.TLSSecurityProfile
   map:
     fields:
@@ -3252,17 +3700,50 @@ var schemaYAML = typed.YAMLObject(`types:
 - name: com.github.openshift.api.config.v1.TokenClaimMappings
   map:
     fields:
+    - name: extra
+      type:
+        list:
+          elementType:
+            namedType: com.github.openshift.api.config.v1.ExtraMapping
+          elementRelationship: associative
+          keys:
+          - key
     - name: groups
       type:
         namedType: com.github.openshift.api.config.v1.PrefixedClaimMapping
       default: {}
+    - name: uid
+      type:
+        namedType: com.github.openshift.api.config.v1.TokenClaimOrExpressionMapping
     - name: username
       type:
         namedType: com.github.openshift.api.config.v1.UsernameClaimMapping
       default: {}
+- name: com.github.openshift.api.config.v1.TokenClaimOrExpressionMapping
+  map:
+    fields:
+    - name: claim
+      type:
+        scalar: string
+    - name: expression
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1.TokenClaimValidationCELRule
+  map:
+    fields:
+    - name: expression
+      type:
+        scalar: string
+    - name: message
+      type:
+        scalar: string
 - name: com.github.openshift.api.config.v1.TokenClaimValidationRule
   map:
     fields:
+    - name: cel
+      type:
+        namedType: com.github.openshift.api.config.v1.TokenClaimValidationCELRule
+      default: {}
     - name: requiredClaim
       type:
         namedType: com.github.openshift.api.config.v1.TokenRequiredClaim
@@ -3291,6 +3772,9 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: associative
+    - name: discoveryURL
+      type:
+        scalar: string
     - name: issuerCertificateAuthority
       type:
         namedType: com.github.openshift.api.config.v1.ConfigMapNameReference
@@ -3310,9 +3794,26 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+- name: com.github.openshift.api.config.v1.TokenUserValidationRule
+  map:
+    fields:
+    - name: expression
+      type:
+        scalar: string
+    - name: message
+      type:
+        scalar: string
 - name: com.github.openshift.api.config.v1.Update
   map:
     fields:
+    - name: acceptRisks
+      type:
+        list:
+          elementType:
+            namedType: com.github.openshift.api.config.v1.AcceptRisk
+          elementRelationship: associative
+          keys:
+          - name
     - name: architecture
       type:
         scalar: string
@@ -3345,7 +3846,6 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: startedTime
       type:
         namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Time
-      default: {}
     - name: state
       type:
         scalar: string
@@ -3364,7 +3864,9 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: claim
       type:
         scalar: string
-      default: ""
+    - name: expression
+      type:
+        scalar: string
     - name: prefix
       type:
         namedType: com.github.openshift.api.config.v1.UsernamePrefix
@@ -3372,6 +3874,15 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+    unions:
+    - discriminator: prefixPolicy
+      fields:
+      - fieldName: claim
+        discriminatorValue: Claim
+      - fieldName: expression
+        discriminatorValue: Expression
+      - fieldName: prefix
+        discriminatorValue: Prefix
 - name: com.github.openshift.api.config.v1.UsernamePrefix
   map:
     fields:
@@ -3379,6 +3890,45 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+- name: com.github.openshift.api.config.v1.VSphereFailureDomainHostGroup
+  map:
+    fields:
+    - name: hostGroup
+      type:
+        scalar: string
+      default: ""
+    - name: vmGroup
+      type:
+        scalar: string
+      default: ""
+    - name: vmHostRule
+      type:
+        scalar: string
+      default: ""
+- name: com.github.openshift.api.config.v1.VSphereFailureDomainRegionAffinity
+  map:
+    fields:
+    - name: type
+      type:
+        scalar: string
+      default: ""
+    unions:
+    - discriminator: type
+- name: com.github.openshift.api.config.v1.VSphereFailureDomainZoneAffinity
+  map:
+    fields:
+    - name: hostGroup
+      type:
+        namedType: com.github.openshift.api.config.v1.VSphereFailureDomainHostGroup
+    - name: type
+      type:
+        scalar: string
+      default: ""
+    unions:
+    - discriminator: type
+      fields:
+      - fieldName: hostGroup
+        discriminatorValue: HostGroup
 - name: com.github.openshift.api.config.v1.VSpherePlatformFailureDomainSpec
   map:
     fields:
@@ -3390,6 +3940,9 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+    - name: regionAffinity
+      type:
+        namedType: com.github.openshift.api.config.v1.VSphereFailureDomainRegionAffinity
     - name: server
       type:
         scalar: string
@@ -3402,6 +3955,9 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+    - name: zoneAffinity
+      type:
+        namedType: com.github.openshift.api.config.v1.VSphereFailureDomainZoneAffinity
 - name: com.github.openshift.api.config.v1.VSpherePlatformLoadBalancer
   map:
     fields:
@@ -3491,6 +4047,9 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: atomic
+    - name: dnsRecordsType
+      type:
+        scalar: string
     - name: ingressIP
       type:
         scalar: string
@@ -3567,6 +4126,65 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         namedType: com.github.openshift.api.config.v1.SecretNameReference
       default: {}
+- name: com.github.openshift.api.config.v1alpha1.AlertmanagerConfig
+  map:
+    fields:
+    - name: customConfig
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.AlertmanagerCustomConfig
+      default: {}
+    - name: deploymentMode
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1alpha1.AlertmanagerCustomConfig
+  map:
+    fields:
+    - name: logLevel
+      type:
+        scalar: string
+    - name: nodeSelector
+      type:
+        map:
+          elementType:
+            scalar: string
+    - name: resources
+      type:
+        list:
+          elementType:
+            namedType: com.github.openshift.api.config.v1alpha1.ContainerResource
+          elementRelationship: associative
+          keys:
+          - name
+    - name: secrets
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: associative
+    - name: tolerations
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.api.core.v1.Toleration
+          elementRelationship: atomic
+    - name: topologySpreadConstraints
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.api.core.v1.TopologySpreadConstraint
+          elementRelationship: associative
+          keys:
+          - topologyKey
+          - whenUnsatisfiable
+    - name: volumeClaimTemplate
+      type:
+        namedType: io.k8s.api.core.v1.PersistentVolumeClaim
+- name: com.github.openshift.api.config.v1alpha1.Audit
+  map:
+    fields:
+    - name: profile
+      type:
+        scalar: string
 - name: com.github.openshift.api.config.v1alpha1.Backup
   map:
     fields:
@@ -3607,6 +4225,78 @@ var schemaYAML = typed.YAMLObject(`types:
         elementType:
           namedType: __untyped_deduced_
         elementRelationship: separable
+- name: com.github.openshift.api.config.v1alpha1.CRIOCredentialProviderConfig
+  map:
+    fields:
+    - name: apiVersion
+      type:
+        scalar: string
+    - name: kind
+      type:
+        scalar: string
+    - name: metadata
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
+      default: {}
+    - name: spec
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.CRIOCredentialProviderConfigSpec
+    - name: status
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.CRIOCredentialProviderConfigStatus
+      default: {}
+- name: com.github.openshift.api.config.v1alpha1.CRIOCredentialProviderConfigSpec
+  map:
+    fields:
+    - name: matchImages
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: associative
+- name: com.github.openshift.api.config.v1alpha1.CRIOCredentialProviderConfigStatus
+  map:
+    fields:
+    - name: conditions
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Condition
+          elementRelationship: associative
+          keys:
+          - type
+- name: com.github.openshift.api.config.v1alpha1.CategoryOverride
+  map:
+    fields:
+    - name: certificate
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.CertificateConfig
+      default: {}
+    - name: name
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1alpha1.CertificateConfig
+  map:
+    fields:
+    - name: key
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.KeyConfig
+      default: {}
+- name: com.github.openshift.api.config.v1alpha1.CertificateOverride
+  map:
+    fields:
+    - name: category
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.CategoryOverride
+      default: {}
+    - name: type
+      type:
+        scalar: string
+    unions:
+    - discriminator: type
+      fields:
+      - fieldName: category
+        discriminatorValue: Category
 - name: com.github.openshift.api.config.v1alpha1.ClusterImagePolicy
   map:
     fields:
@@ -3633,7 +4323,7 @@ var schemaYAML = typed.YAMLObject(`types:
     fields:
     - name: policy
       type:
-        namedType: com.github.openshift.api.config.v1alpha1.Policy
+        namedType: com.github.openshift.api.config.v1alpha1.ImageSigstoreVerificationPolicy
       default: {}
     - name: scopes
       type:
@@ -3652,6 +4342,96 @@ var schemaYAML = typed.YAMLObject(`types:
           elementRelationship: associative
           keys:
           - type
+- name: com.github.openshift.api.config.v1alpha1.ClusterMonitoring
+  map:
+    fields:
+    - name: apiVersion
+      type:
+        scalar: string
+    - name: kind
+      type:
+        scalar: string
+    - name: metadata
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
+      default: {}
+    - name: spec
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.ClusterMonitoringSpec
+      default: {}
+    - name: status
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.ClusterMonitoringStatus
+      default: {}
+- name: com.github.openshift.api.config.v1alpha1.ClusterMonitoringSpec
+  map:
+    fields:
+    - name: alertmanagerConfig
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.AlertmanagerConfig
+      default: {}
+    - name: metricsServerConfig
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.MetricsServerConfig
+      default: {}
+    - name: prometheusOperatorConfig
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.PrometheusOperatorConfig
+      default: {}
+    - name: userDefined
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.UserDefinedMonitoring
+      default: {}
+- name: com.github.openshift.api.config.v1alpha1.ClusterMonitoringStatus
+  map:
+    elementType:
+      scalar: untyped
+      list:
+        elementType:
+          namedType: __untyped_atomic_
+        elementRelationship: atomic
+      map:
+        elementType:
+          namedType: __untyped_deduced_
+        elementRelationship: separable
+- name: com.github.openshift.api.config.v1alpha1.ContainerResource
+  map:
+    fields:
+    - name: limit
+      type:
+        namedType: io.k8s.apimachinery.pkg.api.resource.Quantity
+    - name: name
+      type:
+        scalar: string
+    - name: request
+      type:
+        namedType: io.k8s.apimachinery.pkg.api.resource.Quantity
+- name: com.github.openshift.api.config.v1alpha1.CustomPKIPolicy
+  map:
+    fields:
+    - name: defaults
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.DefaultCertificateConfig
+      default: {}
+    - name: overrides
+      type:
+        list:
+          elementType:
+            namedType: com.github.openshift.api.config.v1alpha1.CertificateOverride
+          elementRelationship: atomic
+- name: com.github.openshift.api.config.v1alpha1.DefaultCertificateConfig
+  map:
+    fields:
+    - name: key
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.KeyConfig
+      default: {}
+- name: com.github.openshift.api.config.v1alpha1.ECDSAKeyConfig
+  map:
+    fields:
+    - name: curve
+      type:
+        scalar: string
 - name: com.github.openshift.api.config.v1alpha1.EtcdBackupSpec
   map:
     fields:
@@ -3671,19 +4451,6 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
-- name: com.github.openshift.api.config.v1alpha1.FulcioCAWithRekor
-  map:
-    fields:
-    - name: fulcioCAData
-      type:
-        scalar: string
-    - name: fulcioSubject
-      type:
-        namedType: com.github.openshift.api.config.v1alpha1.PolicyFulcioSubject
-      default: {}
-    - name: rekorKeyData
-      type:
-        scalar: string
 - name: com.github.openshift.api.config.v1alpha1.GatherConfig
   map:
     fields:
@@ -3696,6 +4463,9 @@ var schemaYAML = typed.YAMLObject(`types:
           elementType:
             scalar: string
           elementRelationship: atomic
+    - name: storage
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.Storage
 - name: com.github.openshift.api.config.v1alpha1.ImagePolicy
   map:
     fields:
@@ -3717,12 +4487,47 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         namedType: com.github.openshift.api.config.v1alpha1.ImagePolicyStatus
       default: {}
+- name: com.github.openshift.api.config.v1alpha1.ImagePolicyFulcioCAWithRekorRootOfTrust
+  map:
+    fields:
+    - name: fulcioCAData
+      type:
+        scalar: string
+    - name: fulcioSubject
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.PolicyFulcioSubject
+      default: {}
+    - name: rekorKeyData
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1alpha1.ImagePolicyPKIRootOfTrust
+  map:
+    fields:
+    - name: caIntermediatesData
+      type:
+        scalar: string
+    - name: caRootsData
+      type:
+        scalar: string
+    - name: pkiCertificateSubject
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.PKICertificateSubject
+      default: {}
+- name: com.github.openshift.api.config.v1alpha1.ImagePolicyPublicKeyRootOfTrust
+  map:
+    fields:
+    - name: keyData
+      type:
+        scalar: string
+    - name: rekorKeyData
+      type:
+        scalar: string
 - name: com.github.openshift.api.config.v1alpha1.ImagePolicySpec
   map:
     fields:
     - name: policy
       type:
-        namedType: com.github.openshift.api.config.v1alpha1.Policy
+        namedType: com.github.openshift.api.config.v1alpha1.ImageSigstoreVerificationPolicy
       default: {}
     - name: scopes
       type:
@@ -3741,6 +4546,17 @@ var schemaYAML = typed.YAMLObject(`types:
           elementRelationship: associative
           keys:
           - type
+- name: com.github.openshift.api.config.v1alpha1.ImageSigstoreVerificationPolicy
+  map:
+    fields:
+    - name: rootOfTrust
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.PolicyRootOfTrust
+      default: {}
+    - name: signedIdentity
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.PolicyIdentity
+      default: {}
 - name: com.github.openshift.api.config.v1alpha1.InsightsDataGather
   map:
     fields:
@@ -3781,17 +4597,130 @@ var schemaYAML = typed.YAMLObject(`types:
         elementType:
           namedType: __untyped_deduced_
         elementRelationship: separable
-- name: com.github.openshift.api.config.v1alpha1.Policy
+- name: com.github.openshift.api.config.v1alpha1.KeyConfig
   map:
     fields:
-    - name: rootOfTrust
+    - name: algorithm
       type:
-        namedType: com.github.openshift.api.config.v1alpha1.PolicyRootOfTrust
-      default: {}
-    - name: signedIdentity
+        scalar: string
+    - name: ecdsa
       type:
-        namedType: com.github.openshift.api.config.v1alpha1.PolicyIdentity
+        namedType: com.github.openshift.api.config.v1alpha1.ECDSAKeyConfig
       default: {}
+    - name: rsa
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.RSAKeyConfig
+      default: {}
+    unions:
+    - discriminator: algorithm
+      fields:
+      - fieldName: ecdsa
+        discriminatorValue: ECDSA
+      - fieldName: rsa
+        discriminatorValue: RSA
+- name: com.github.openshift.api.config.v1alpha1.MetricsServerConfig
+  map:
+    fields:
+    - name: audit
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.Audit
+      default: {}
+    - name: nodeSelector
+      type:
+        map:
+          elementType:
+            scalar: string
+    - name: resources
+      type:
+        list:
+          elementType:
+            namedType: com.github.openshift.api.config.v1alpha1.ContainerResource
+          elementRelationship: associative
+          keys:
+          - name
+    - name: tolerations
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.api.core.v1.Toleration
+          elementRelationship: atomic
+    - name: topologySpreadConstraints
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.api.core.v1.TopologySpreadConstraint
+          elementRelationship: associative
+          keys:
+          - topologyKey
+          - whenUnsatisfiable
+    - name: verbosity
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1alpha1.PKI
+  map:
+    fields:
+    - name: apiVersion
+      type:
+        scalar: string
+    - name: kind
+      type:
+        scalar: string
+    - name: metadata
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
+      default: {}
+    - name: spec
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.PKISpec
+      default: {}
+- name: com.github.openshift.api.config.v1alpha1.PKICertificateManagement
+  map:
+    fields:
+    - name: custom
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.CustomPKIPolicy
+      default: {}
+    - name: mode
+      type:
+        scalar: string
+    unions:
+    - discriminator: mode
+      fields:
+      - fieldName: custom
+        discriminatorValue: Custom
+- name: com.github.openshift.api.config.v1alpha1.PKICertificateSubject
+  map:
+    fields:
+    - name: email
+      type:
+        scalar: string
+    - name: hostname
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1alpha1.PKISpec
+  map:
+    fields:
+    - name: certificateManagement
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.PKICertificateManagement
+      default: {}
+- name: com.github.openshift.api.config.v1alpha1.PersistentVolumeClaimReference
+  map:
+    fields:
+    - name: name
+      type:
+        scalar: string
+      default: ""
+- name: com.github.openshift.api.config.v1alpha1.PersistentVolumeConfig
+  map:
+    fields:
+    - name: claim
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.PersistentVolumeClaimReference
+      default: {}
+    - name: mountPath
+      type:
+        scalar: string
 - name: com.github.openshift.api.config.v1alpha1.PolicyFulcioSubject
   map:
     fields:
@@ -3846,36 +4775,73 @@ var schemaYAML = typed.YAMLObject(`types:
     fields:
     - name: fulcioCAWithRekor
       type:
-        namedType: com.github.openshift.api.config.v1alpha1.FulcioCAWithRekor
+        namedType: com.github.openshift.api.config.v1alpha1.ImagePolicyFulcioCAWithRekorRootOfTrust
+    - name: pki
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.ImagePolicyPKIRootOfTrust
     - name: policyType
       type:
         scalar: string
       default: ""
     - name: publicKey
       type:
-        namedType: com.github.openshift.api.config.v1alpha1.PublicKey
+        namedType: com.github.openshift.api.config.v1alpha1.ImagePolicyPublicKeyRootOfTrust
     unions:
     - discriminator: policyType
       fields:
       - fieldName: fulcioCAWithRekor
         discriminatorValue: FulcioCAWithRekor
+      - fieldName: pki
+        discriminatorValue: PKI
       - fieldName: publicKey
         discriminatorValue: PublicKey
-- name: com.github.openshift.api.config.v1alpha1.PublicKey
+- name: com.github.openshift.api.config.v1alpha1.PrometheusOperatorConfig
   map:
     fields:
-    - name: keyData
+    - name: logLevel
       type:
         scalar: string
-    - name: rekorKeyData
+    - name: nodeSelector
       type:
-        scalar: string
+        map:
+          elementType:
+            scalar: string
+    - name: resources
+      type:
+        list:
+          elementType:
+            namedType: com.github.openshift.api.config.v1alpha1.ContainerResource
+          elementRelationship: associative
+          keys:
+          - name
+    - name: tolerations
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.api.core.v1.Toleration
+          elementRelationship: atomic
+    - name: topologySpreadConstraints
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.api.core.v1.TopologySpreadConstraint
+          elementRelationship: associative
+          keys:
+          - topologyKey
+          - whenUnsatisfiable
+- name: com.github.openshift.api.config.v1alpha1.RSAKeyConfig
+  map:
+    fields:
+    - name: keySize
+      type:
+        scalar: numeric
 - name: com.github.openshift.api.config.v1alpha1.RetentionNumberConfig
   map:
     fields:
     - name: maxNumberOfBackups
       type:
         scalar: numeric
+      default: 0
 - name: com.github.openshift.api.config.v1alpha1.RetentionPolicy
   map:
     fields:
@@ -3902,6 +4868,139 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: maxSizeOfBackupsGb
       type:
         scalar: numeric
+      default: 0
+- name: com.github.openshift.api.config.v1alpha1.Storage
+  map:
+    fields:
+    - name: persistentVolume
+      type:
+        namedType: com.github.openshift.api.config.v1alpha1.PersistentVolumeConfig
+    - name: type
+      type:
+        scalar: string
+      default: ""
+- name: com.github.openshift.api.config.v1alpha1.UserDefinedMonitoring
+  map:
+    fields:
+    - name: mode
+      type:
+        scalar: string
+      default: ""
+- name: com.github.openshift.api.config.v1alpha2.Custom
+  map:
+    fields:
+    - name: configs
+      type:
+        list:
+          elementType:
+            namedType: com.github.openshift.api.config.v1alpha2.GathererConfig
+          elementRelationship: associative
+          keys:
+          - name
+- name: com.github.openshift.api.config.v1alpha2.GatherConfig
+  map:
+    fields:
+    - name: dataPolicy
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: atomic
+    - name: gatherers
+      type:
+        namedType: com.github.openshift.api.config.v1alpha2.Gatherers
+      default: {}
+    - name: storage
+      type:
+        namedType: com.github.openshift.api.config.v1alpha2.Storage
+- name: com.github.openshift.api.config.v1alpha2.GathererConfig
+  map:
+    fields:
+    - name: name
+      type:
+        scalar: string
+      default: ""
+    - name: state
+      type:
+        scalar: string
+      default: ""
+- name: com.github.openshift.api.config.v1alpha2.Gatherers
+  map:
+    fields:
+    - name: custom
+      type:
+        namedType: com.github.openshift.api.config.v1alpha2.Custom
+    - name: mode
+      type:
+        scalar: string
+      default: ""
+- name: com.github.openshift.api.config.v1alpha2.InsightsDataGather
+  map:
+    fields:
+    - name: apiVersion
+      type:
+        scalar: string
+    - name: kind
+      type:
+        scalar: string
+    - name: metadata
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
+      default: {}
+    - name: spec
+      type:
+        namedType: com.github.openshift.api.config.v1alpha2.InsightsDataGatherSpec
+      default: {}
+    - name: status
+      type:
+        namedType: com.github.openshift.api.config.v1alpha2.InsightsDataGatherStatus
+      default: {}
+- name: com.github.openshift.api.config.v1alpha2.InsightsDataGatherSpec
+  map:
+    fields:
+    - name: gatherConfig
+      type:
+        namedType: com.github.openshift.api.config.v1alpha2.GatherConfig
+      default: {}
+- name: com.github.openshift.api.config.v1alpha2.InsightsDataGatherStatus
+  map:
+    elementType:
+      scalar: untyped
+      list:
+        elementType:
+          namedType: __untyped_atomic_
+        elementRelationship: atomic
+      map:
+        elementType:
+          namedType: __untyped_deduced_
+        elementRelationship: separable
+- name: com.github.openshift.api.config.v1alpha2.PersistentVolumeClaimReference
+  map:
+    fields:
+    - name: name
+      type:
+        scalar: string
+      default: ""
+- name: com.github.openshift.api.config.v1alpha2.PersistentVolumeConfig
+  map:
+    fields:
+    - name: claim
+      type:
+        namedType: com.github.openshift.api.config.v1alpha2.PersistentVolumeClaimReference
+      default: {}
+    - name: mountPath
+      type:
+        scalar: string
+- name: com.github.openshift.api.config.v1alpha2.Storage
+  map:
+    fields:
+    - name: persistentVolume
+      type:
+        namedType: com.github.openshift.api.config.v1alpha2.PersistentVolumeConfig
+    - name: type
+      type:
+        scalar: string
+      default: ""
 - name: io.k8s.api.core.v1.ConfigMapKeySelector
   map:
     fields:
@@ -3912,6 +5011,7 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: name
       type:
         scalar: string
+      default: ""
     - name: optional
       type:
         scalar: boolean
@@ -3938,12 +5038,45 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: fieldRef
       type:
         namedType: io.k8s.api.core.v1.ObjectFieldSelector
+    - name: fileKeyRef
+      type:
+        namedType: io.k8s.api.core.v1.FileKeySelector
     - name: resourceFieldRef
       type:
         namedType: io.k8s.api.core.v1.ResourceFieldSelector
     - name: secretKeyRef
       type:
         namedType: io.k8s.api.core.v1.SecretKeySelector
+- name: io.k8s.api.core.v1.FileKeySelector
+  map:
+    fields:
+    - name: key
+      type:
+        scalar: string
+      default: ""
+    - name: optional
+      type:
+        scalar: boolean
+      default: false
+    - name: path
+      type:
+        scalar: string
+      default: ""
+    - name: volumeName
+      type:
+        scalar: string
+      default: ""
+    elementRelationship: atomic
+- name: io.k8s.api.core.v1.ModifyVolumeStatus
+  map:
+    fields:
+    - name: status
+      type:
+        scalar: string
+      default: ""
+    - name: targetVolumeAttributesClassName
+      type:
+        scalar: string
 - name: io.k8s.api.core.v1.ObjectFieldSelector
   map:
     fields:
@@ -3955,6 +5088,126 @@ var schemaYAML = typed.YAMLObject(`types:
         scalar: string
       default: ""
     elementRelationship: atomic
+- name: io.k8s.api.core.v1.PersistentVolumeClaim
+  map:
+    fields:
+    - name: apiVersion
+      type:
+        scalar: string
+    - name: kind
+      type:
+        scalar: string
+    - name: metadata
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta
+      default: {}
+    - name: spec
+      type:
+        namedType: io.k8s.api.core.v1.PersistentVolumeClaimSpec
+      default: {}
+    - name: status
+      type:
+        namedType: io.k8s.api.core.v1.PersistentVolumeClaimStatus
+      default: {}
+- name: io.k8s.api.core.v1.PersistentVolumeClaimCondition
+  map:
+    fields:
+    - name: lastProbeTime
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Time
+    - name: lastTransitionTime
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Time
+    - name: message
+      type:
+        scalar: string
+    - name: reason
+      type:
+        scalar: string
+    - name: status
+      type:
+        scalar: string
+      default: ""
+    - name: type
+      type:
+        scalar: string
+      default: ""
+- name: io.k8s.api.core.v1.PersistentVolumeClaimSpec
+  map:
+    fields:
+    - name: accessModes
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: atomic
+    - name: dataSource
+      type:
+        namedType: io.k8s.api.core.v1.TypedLocalObjectReference
+    - name: dataSourceRef
+      type:
+        namedType: io.k8s.api.core.v1.TypedObjectReference
+    - name: resources
+      type:
+        namedType: io.k8s.api.core.v1.VolumeResourceRequirements
+      default: {}
+    - name: selector
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector
+    - name: storageClassName
+      type:
+        scalar: string
+    - name: volumeAttributesClassName
+      type:
+        scalar: string
+    - name: volumeMode
+      type:
+        scalar: string
+    - name: volumeName
+      type:
+        scalar: string
+- name: io.k8s.api.core.v1.PersistentVolumeClaimStatus
+  map:
+    fields:
+    - name: accessModes
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: atomic
+    - name: allocatedResourceStatuses
+      type:
+        map:
+          elementType:
+            scalar: string
+          elementRelationship: separable
+    - name: allocatedResources
+      type:
+        map:
+          elementType:
+            namedType: io.k8s.apimachinery.pkg.api.resource.Quantity
+    - name: capacity
+      type:
+        map:
+          elementType:
+            namedType: io.k8s.apimachinery.pkg.api.resource.Quantity
+    - name: conditions
+      type:
+        list:
+          elementType:
+            namedType: io.k8s.api.core.v1.PersistentVolumeClaimCondition
+          elementRelationship: associative
+          keys:
+          - type
+    - name: currentVolumeAttributesClassName
+      type:
+        scalar: string
+    - name: modifyVolumeStatus
+      type:
+        namedType: io.k8s.api.core.v1.ModifyVolumeStatus
+    - name: phase
+      type:
+        scalar: string
 - name: io.k8s.api.core.v1.ResourceClaim
   map:
     fields:
@@ -3962,6 +5215,9 @@ var schemaYAML = typed.YAMLObject(`types:
       type:
         scalar: string
       default: ""
+    - name: request
+      type:
+        scalar: string
 - name: io.k8s.api.core.v1.ResourceFieldSelector
   map:
     fields:
@@ -3971,7 +5227,6 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: divisor
       type:
         namedType: io.k8s.apimachinery.pkg.api.resource.Quantity
-      default: {}
     - name: resource
       type:
         scalar: string
@@ -4008,6 +5263,7 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: name
       type:
         scalar: string
+      default: ""
     - name: optional
       type:
         scalar: boolean
@@ -4030,6 +5286,84 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: value
       type:
         scalar: string
+- name: io.k8s.api.core.v1.TopologySpreadConstraint
+  map:
+    fields:
+    - name: labelSelector
+      type:
+        namedType: io.k8s.apimachinery.pkg.apis.meta.v1.LabelSelector
+    - name: matchLabelKeys
+      type:
+        list:
+          elementType:
+            scalar: string
+          elementRelationship: atomic
+    - name: maxSkew
+      type:
+        scalar: numeric
+      default: 0
+    - name: minDomains
+      type:
+        scalar: numeric
+    - name: nodeAffinityPolicy
+      type:
+        scalar: string
+    - name: nodeTaintsPolicy
+      type:
+        scalar: string
+    - name: topologyKey
+      type:
+        scalar: string
+      default: ""
+    - name: whenUnsatisfiable
+      type:
+        scalar: string
+      default: ""
+- name: io.k8s.api.core.v1.TypedLocalObjectReference
+  map:
+    fields:
+    - name: apiGroup
+      type:
+        scalar: string
+    - name: kind
+      type:
+        scalar: string
+      default: ""
+    - name: name
+      type:
+        scalar: string
+      default: ""
+    elementRelationship: atomic
+- name: io.k8s.api.core.v1.TypedObjectReference
+  map:
+    fields:
+    - name: apiGroup
+      type:
+        scalar: string
+    - name: kind
+      type:
+        scalar: string
+      default: ""
+    - name: name
+      type:
+        scalar: string
+      default: ""
+    - name: namespace
+      type:
+        scalar: string
+- name: io.k8s.api.core.v1.VolumeResourceRequirements
+  map:
+    fields:
+    - name: limits
+      type:
+        map:
+          elementType:
+            namedType: io.k8s.apimachinery.pkg.api.resource.Quantity
+    - name: requests
+      type:
+        map:
+          elementType:
+            namedType: io.k8s.apimachinery.pkg.api.resource.Quantity
 - name: io.k8s.apimachinery.pkg.api.resource.Quantity
   scalar: untyped
 - name: io.k8s.apimachinery.pkg.apis.meta.v1.Condition
@@ -4038,7 +5372,6 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: lastTransitionTime
       type:
         namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Time
-      default: {}
     - name: message
       type:
         scalar: string
@@ -4139,7 +5472,6 @@ var schemaYAML = typed.YAMLObject(`types:
     - name: creationTimestamp
       type:
         namedType: io.k8s.apimachinery.pkg.apis.meta.v1.Time
-      default: {}
     - name: deletionGracePeriodSeconds
       type:
         scalar: numeric

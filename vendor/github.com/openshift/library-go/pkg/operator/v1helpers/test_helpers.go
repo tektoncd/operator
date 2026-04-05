@@ -14,8 +14,12 @@ import (
 	"k8s.io/client-go/kubernetes"
 	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/ptr"
 
 	operatorv1 "github.com/openshift/api/operator/v1"
+	v1 "github.com/openshift/api/operator/v1"
+	applyoperatorv1 "github.com/openshift/client-go/operator/applyconfigurations/operator/v1"
+	"github.com/openshift/library-go/pkg/apiserver/jsonpatch"
 )
 
 // NewFakeSharedIndexInformer returns a fake shared index informer, suitable to use in static pod controller unit tests.
@@ -30,6 +34,10 @@ func (i fakeSharedIndexInformer) AddEventHandler(handler cache.ResourceEventHand
 }
 
 func (i fakeSharedIndexInformer) AddEventHandlerWithResyncPeriod(handler cache.ResourceEventHandler, resyncPeriod time.Duration) (cache.ResourceEventHandlerRegistration, error) {
+	return nil, nil
+}
+
+func (i fakeSharedIndexInformer) AddEventHandlerWithOptions(handler cache.ResourceEventHandler, options cache.HandlerOptions) (cache.ResourceEventHandlerRegistration, error) {
 	return nil, nil
 }
 
@@ -53,6 +61,10 @@ func (fakeSharedIndexInformer) Run(stopCh <-chan struct{}) {
 	panic("implement me")
 }
 
+func (fakeSharedIndexInformer) RunWithContext(ctx context.Context) {
+	panic("implement me")
+}
+
 func (fakeSharedIndexInformer) HasSynced() bool {
 	return true
 }
@@ -73,6 +85,10 @@ func (fakeSharedIndexInformer) SetWatchErrorHandler(handler cache.WatchErrorHand
 	panic("implement me")
 }
 
+func (fakeSharedIndexInformer) SetWatchErrorHandlerWithContext(handler cache.WatchErrorHandlerWithContext) error {
+	panic("implement me")
+}
+
 func (fakeSharedIndexInformer) SetTransform(f cache.TransformFunc) error {
 	panic("implement me")
 }
@@ -81,7 +97,7 @@ func (fakeSharedIndexInformer) SetTransform(f cache.TransformFunc) error {
 func NewFakeStaticPodOperatorClient(
 	staticPodSpec *operatorv1.StaticPodOperatorSpec, staticPodStatus *operatorv1.StaticPodOperatorStatus,
 	triggerStatusErr func(rv string, status *operatorv1.StaticPodOperatorStatus) error,
-	triggerSpecErr func(rv string, spec *operatorv1.StaticPodOperatorSpec) error) StaticPodOperatorClient {
+	triggerSpecErr func(rv string, spec *operatorv1.StaticPodOperatorSpec) error) *fakeStaticPodOperatorClient {
 	return &fakeStaticPodOperatorClient{
 		fakeStaticPodOperatorSpec:   staticPodSpec,
 		fakeStaticPodOperatorStatus: staticPodStatus,
@@ -97,6 +113,8 @@ type fakeStaticPodOperatorClient struct {
 	resourceVersion             string
 	triggerStatusUpdateError    func(rv string, status *operatorv1.StaticPodOperatorStatus) error
 	triggerSpecUpdateError      func(rv string, status *operatorv1.StaticPodOperatorSpec) error
+
+	patchedOperatorStatus *jsonpatch.PatchSet
 }
 
 func (c *fakeStaticPodOperatorClient) Informer() cache.SharedIndexInformer {
@@ -109,6 +127,10 @@ func (c *fakeStaticPodOperatorClient) GetObjectMeta() (*metav1.ObjectMeta, error
 
 func (c *fakeStaticPodOperatorClient) GetStaticPodOperatorState() (*operatorv1.StaticPodOperatorSpec, *operatorv1.StaticPodOperatorStatus, string, error) {
 	return c.fakeStaticPodOperatorSpec, c.fakeStaticPodOperatorStatus, c.resourceVersion, nil
+}
+
+func (c *fakeStaticPodOperatorClient) GetLiveStaticPodOperatorState() (*operatorv1.StaticPodOperatorSpec, *operatorv1.StaticPodOperatorStatus, string, error) {
+	return c.GetStaticPodOperatorState()
 }
 
 func (c *fakeStaticPodOperatorClient) GetStaticPodOperatorStateWithQuorum(ctx context.Context) (*operatorv1.StaticPodOperatorSpec, *operatorv1.StaticPodOperatorStatus, string, error) {
@@ -151,8 +173,59 @@ func (c *fakeStaticPodOperatorClient) UpdateStaticPodOperatorSpec(ctx context.Co
 	return c.fakeStaticPodOperatorSpec, c.resourceVersion, nil
 }
 
+func (c *fakeStaticPodOperatorClient) ApplyOperatorSpec(ctx context.Context, fieldManager string, applyConfiguration *applyoperatorv1.OperatorSpecApplyConfiguration) (err error) {
+	return nil
+}
+
+func (c *fakeStaticPodOperatorClient) ApplyOperatorStatus(ctx context.Context, fieldManager string, applyConfiguration *applyoperatorv1.OperatorStatusApplyConfiguration) (err error) {
+	if c.triggerStatusUpdateError != nil {
+		operatorStatus := &operatorv1.StaticPodOperatorStatus{OperatorStatus: *mergeOperatorStatusApplyConfiguration(&c.fakeStaticPodOperatorStatus.OperatorStatus, applyConfiguration)}
+		if err := c.triggerStatusUpdateError("", operatorStatus); err != nil {
+			return err
+		}
+	}
+	c.fakeStaticPodOperatorStatus = &operatorv1.StaticPodOperatorStatus{
+		OperatorStatus: *mergeOperatorStatusApplyConfiguration(&c.fakeStaticPodOperatorStatus.OperatorStatus, applyConfiguration),
+	}
+	return nil
+}
+
+func (c *fakeStaticPodOperatorClient) ApplyStaticPodOperatorSpec(ctx context.Context, fieldManager string, applyConfiguration *applyoperatorv1.StaticPodOperatorSpecApplyConfiguration) (err error) {
+	return nil
+}
+
+func (c *fakeStaticPodOperatorClient) ApplyStaticPodOperatorStatus(ctx context.Context, fieldManager string, applyConfiguration *applyoperatorv1.StaticPodOperatorStatusApplyConfiguration) (err error) {
+	if c.triggerStatusUpdateError != nil {
+		operatorStatus := mergeStaticPodOperatorStatusApplyConfiguration(&c.fakeStaticPodOperatorStatus.OperatorStatus, applyConfiguration)
+		if err := c.triggerStatusUpdateError("", operatorStatus); err != nil {
+			return err
+		}
+	}
+	c.fakeStaticPodOperatorStatus = mergeStaticPodOperatorStatusApplyConfiguration(&c.fakeStaticPodOperatorStatus.OperatorStatus, applyConfiguration)
+	return nil
+}
+
+func (c *fakeStaticPodOperatorClient) PatchOperatorStatus(ctx context.Context, jsonPatch *jsonpatch.PatchSet) (err error) {
+	return nil
+}
+
+func (c *fakeStaticPodOperatorClient) PatchStaticOperatorStatus(ctx context.Context, jsonPatch *jsonpatch.PatchSet) (err error) {
+	if c.triggerStatusUpdateError != nil {
+		return c.triggerStatusUpdateError("", nil)
+	}
+	c.patchedOperatorStatus = jsonPatch
+	return nil
+}
+
+func (c *fakeStaticPodOperatorClient) GetPatchedOperatorStatus() *jsonpatch.PatchSet {
+	return c.patchedOperatorStatus
+}
+
 func (c *fakeStaticPodOperatorClient) GetOperatorState() (*operatorv1.OperatorSpec, *operatorv1.OperatorStatus, string, error) {
 	return &c.fakeStaticPodOperatorSpec.OperatorSpec, &c.fakeStaticPodOperatorStatus.OperatorStatus, c.resourceVersion, nil
+}
+func (c *fakeStaticPodOperatorClient) GetOperatorStateWithQuorum(ctx context.Context) (*operatorv1.OperatorSpec, *operatorv1.OperatorStatus, string, error) {
+	return c.GetOperatorState()
 }
 func (c *fakeStaticPodOperatorClient) UpdateOperatorSpec(ctx context.Context, s string, p *operatorv1.OperatorSpec) (spec *operatorv1.OperatorSpec, resourceVersion string, err error) {
 	panic("not supported")
@@ -203,11 +276,11 @@ func (n *fakeNodeLister) Get(name string) (*corev1.Node, error) {
 }
 
 // NewFakeOperatorClient returns a fake operator client suitable to use in static pod controller unit tests.
-func NewFakeOperatorClient(spec *operatorv1.OperatorSpec, status *operatorv1.OperatorStatus, triggerErr func(rv string, status *operatorv1.OperatorStatus) error) OperatorClientWithFinalizers {
+func NewFakeOperatorClient(spec *operatorv1.OperatorSpec, status *operatorv1.OperatorStatus, triggerErr func(rv string, status *operatorv1.OperatorStatus) error) *fakeOperatorClient {
 	return NewFakeOperatorClientWithObjectMeta(nil, spec, status, triggerErr)
 }
 
-func NewFakeOperatorClientWithObjectMeta(meta *metav1.ObjectMeta, spec *operatorv1.OperatorSpec, status *operatorv1.OperatorStatus, triggerErr func(rv string, status *operatorv1.OperatorStatus) error) OperatorClientWithFinalizers {
+func NewFakeOperatorClientWithObjectMeta(meta *metav1.ObjectMeta, spec *operatorv1.OperatorSpec, status *operatorv1.OperatorStatus, triggerErr func(rv string, status *operatorv1.OperatorStatus) error) *fakeOperatorClient {
 	return &fakeOperatorClient{
 		fakeOperatorSpec:         spec,
 		fakeOperatorStatus:       status,
@@ -223,6 +296,8 @@ type fakeOperatorClient struct {
 	fakeObjectMeta           *metav1.ObjectMeta
 	resourceVersion          string
 	triggerStatusUpdateError func(rv string, status *operatorv1.OperatorStatus) error
+
+	patchedOperatorStatus *jsonpatch.PatchSet
 }
 
 func (c *fakeOperatorClient) Informer() cache.SharedIndexInformer {
@@ -239,6 +314,10 @@ func (c *fakeOperatorClient) GetObjectMeta() (*metav1.ObjectMeta, error) {
 
 func (c *fakeOperatorClient) GetOperatorState() (*operatorv1.OperatorSpec, *operatorv1.OperatorStatus, string, error) {
 	return c.fakeOperatorSpec, c.fakeOperatorStatus, c.resourceVersion, nil
+}
+
+func (c *fakeOperatorClient) GetOperatorStateWithQuorum(ctx context.Context) (*operatorv1.OperatorSpec, *operatorv1.OperatorStatus, string, error) {
+	return c.GetOperatorState()
 }
 
 func (c *fakeOperatorClient) UpdateOperatorStatus(ctx context.Context, resourceVersion string, status *operatorv1.OperatorStatus) (*operatorv1.OperatorStatus, error) {
@@ -272,6 +351,27 @@ func (c *fakeOperatorClient) UpdateOperatorSpec(ctx context.Context, resourceVer
 	return c.fakeOperatorSpec, c.resourceVersion, nil
 }
 
+func (c *fakeOperatorClient) ApplyOperatorSpec(ctx context.Context, fieldManager string, applyConfiguration *applyoperatorv1.OperatorSpecApplyConfiguration) (err error) {
+	return nil
+}
+
+func (c *fakeOperatorClient) ApplyOperatorStatus(ctx context.Context, fieldManager string, applyConfiguration *applyoperatorv1.OperatorStatusApplyConfiguration) (err error) {
+	c.fakeOperatorStatus = mergeOperatorStatusApplyConfiguration(c.fakeOperatorStatus, applyConfiguration)
+	return nil
+}
+
+func (c *fakeOperatorClient) PatchOperatorStatus(ctx context.Context, jsonPatch *jsonpatch.PatchSet) (err error) {
+	if c.triggerStatusUpdateError != nil {
+		return c.triggerStatusUpdateError("", nil)
+	}
+	c.patchedOperatorStatus = jsonPatch
+	return nil
+}
+
+func (c *fakeOperatorClient) GetPatchedOperatorStatus() *jsonpatch.PatchSet {
+	return c.patchedOperatorStatus
+}
+
 func (c *fakeOperatorClient) EnsureFinalizer(ctx context.Context, finalizer string) error {
 	if c.fakeObjectMeta == nil {
 		c.fakeObjectMeta = &metav1.ObjectMeta{}
@@ -299,4 +399,94 @@ func (c *fakeOperatorClient) RemoveFinalizer(ctx context.Context, finalizer stri
 
 func (c *fakeOperatorClient) SetObjectMeta(meta *metav1.ObjectMeta) {
 	c.fakeObjectMeta = meta
+}
+
+func mergeOperatorStatusApplyConfiguration(currentOperatorStatus *v1.OperatorStatus, applyConfiguration *applyoperatorv1.OperatorStatusApplyConfiguration) *v1.OperatorStatus {
+	status := &v1.OperatorStatus{
+		ObservedGeneration:      ptr.Deref(applyConfiguration.ObservedGeneration, currentOperatorStatus.ObservedGeneration),
+		Version:                 ptr.Deref(applyConfiguration.Version, currentOperatorStatus.Version),
+		ReadyReplicas:           ptr.Deref(applyConfiguration.ReadyReplicas, currentOperatorStatus.ReadyReplicas),
+		LatestAvailableRevision: ptr.Deref(applyConfiguration.LatestAvailableRevision, currentOperatorStatus.LatestAvailableRevision),
+	}
+
+	for _, condition := range applyConfiguration.Conditions {
+		newCondition := operatorv1.OperatorCondition{
+			Type:    ptr.Deref(condition.Type, ""),
+			Status:  ptr.Deref(condition.Status, ""),
+			Reason:  ptr.Deref(condition.Reason, ""),
+			Message: ptr.Deref(condition.Message, ""),
+		}
+		status.Conditions = append(status.Conditions, newCondition)
+	}
+	var existingConditions []v1.OperatorCondition
+	for _, condition := range currentOperatorStatus.Conditions {
+		var foundCondition bool
+		for _, statusCondition := range status.Conditions {
+			if condition.Type == statusCondition.Type {
+				foundCondition = true
+				break
+			}
+		}
+		if !foundCondition {
+			existingConditions = append(existingConditions, condition)
+		}
+	}
+	status.Conditions = append(status.Conditions, existingConditions...)
+
+	for _, generation := range applyConfiguration.Generations {
+		newGeneration := operatorv1.GenerationStatus{
+			Group:          ptr.Deref(generation.Group, ""),
+			Resource:       ptr.Deref(generation.Resource, ""),
+			Namespace:      ptr.Deref(generation.Namespace, ""),
+			Name:           ptr.Deref(generation.Name, ""),
+			LastGeneration: ptr.Deref(generation.LastGeneration, 0),
+			Hash:           ptr.Deref(generation.Hash, ""),
+		}
+		status.Generations = append(status.Generations, newGeneration)
+	}
+	var existingGenerations []v1.GenerationStatus
+	for _, generation := range currentOperatorStatus.Generations {
+		var foundGeneration bool
+		for _, statusGeneration := range status.Generations {
+			if generation.Namespace == statusGeneration.Namespace && generation.Name == statusGeneration.Name {
+				foundGeneration = true
+				break
+			}
+		}
+		if !foundGeneration {
+			existingGenerations = append(existingGenerations, generation)
+		}
+	}
+	status.Generations = append(status.Generations, existingGenerations...)
+
+	return status
+}
+
+func mergeStaticPodOperatorStatusApplyConfiguration(currentOperatorStatus *v1.OperatorStatus, applyConfiguration *applyoperatorv1.StaticPodOperatorStatusApplyConfiguration) *v1.StaticPodOperatorStatus {
+	status := &v1.StaticPodOperatorStatus{
+		OperatorStatus: *mergeOperatorStatusApplyConfiguration(currentOperatorStatus, &applyConfiguration.OperatorStatusApplyConfiguration),
+	}
+
+	for _, nodeStatus := range applyConfiguration.NodeStatuses {
+		newNodeStatus := operatorv1.NodeStatus{
+			NodeName:                 ptr.Deref(nodeStatus.NodeName, ""),
+			CurrentRevision:          ptr.Deref(nodeStatus.CurrentRevision, 0),
+			TargetRevision:           ptr.Deref(nodeStatus.TargetRevision, 0),
+			LastFailedRevision:       ptr.Deref(nodeStatus.LastFailedRevision, 0),
+			LastFailedTime:           nil,
+			LastFailedReason:         ptr.Deref(nodeStatus.LastFailedReason, ""),
+			LastFailedCount:          ptr.Deref(nodeStatus.LastFailedCount, 0),
+			LastFallbackCount:        ptr.Deref(nodeStatus.LastFallbackCount, 0),
+			LastFailedRevisionErrors: nil,
+		}
+		if nodeStatus.LastFailedTime != nil {
+			newNodeStatus.LastFailedTime = nodeStatus.LastFailedTime
+		}
+		for _, curr := range nodeStatus.LastFailedRevisionErrors {
+			newNodeStatus.LastFailedRevisionErrors = append(newNodeStatus.LastFailedRevisionErrors, curr)
+		}
+		status.NodeStatuses = append(status.NodeStatuses, newNodeStatus)
+	}
+
+	return status
 }

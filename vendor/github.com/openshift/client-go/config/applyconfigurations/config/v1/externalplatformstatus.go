@@ -2,13 +2,18 @@
 
 package v1
 
-// ExternalPlatformStatusApplyConfiguration represents an declarative configuration of the ExternalPlatformStatus type for use
+// ExternalPlatformStatusApplyConfiguration represents a declarative configuration of the ExternalPlatformStatus type for use
 // with apply.
+//
+// ExternalPlatformStatus holds the current status of the generic External infrastructure provider.
 type ExternalPlatformStatusApplyConfiguration struct {
+	// cloudControllerManager contains settings specific to the external Cloud Controller Manager (a.k.a. CCM or CPI).
+	// When omitted, new nodes will be not tainted
+	// and no extra initialization from the cloud controller manager is expected.
 	CloudControllerManager *CloudControllerManagerStatusApplyConfiguration `json:"cloudControllerManager,omitempty"`
 }
 
-// ExternalPlatformStatusApplyConfiguration constructs an declarative configuration of the ExternalPlatformStatus type for use with
+// ExternalPlatformStatusApplyConfiguration constructs a declarative configuration of the ExternalPlatformStatus type for use with
 // apply.
 func ExternalPlatformStatus() *ExternalPlatformStatusApplyConfiguration {
 	return &ExternalPlatformStatusApplyConfiguration{}

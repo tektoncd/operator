@@ -2,7 +2,6 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  creationTimestamp: null
   labels:
     controlled-by-options: "true"
   name: web
@@ -15,7 +14,6 @@ spec:
   serviceName: www-n
   template:
     metadata:
-      creationTimestamp: null
       annotations:
         annotation-foo: annotation-bar
       labels:
@@ -90,7 +88,6 @@ spec:
   updateStrategy: {}
   volumeClaimTemplates:
     - metadata:
-        creationTimestamp: null
         name: www
       spec:
         accessModes:
@@ -100,7 +97,6 @@ spec:
             storage: 2Gi
       status: {}
     - metadata:
-        creationTimestamp: null
         name: www-2
       spec:
         accessModes:

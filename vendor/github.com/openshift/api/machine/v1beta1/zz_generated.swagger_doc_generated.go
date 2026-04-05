@@ -12,25 +12,29 @@ package v1beta1
 
 // AUTO-GENERATED FUNCTIONS START HERE
 var map_AWSMachineProviderConfig = map[string]string{
-	"":                       "AWSMachineProviderConfig is the Schema for the awsmachineproviderconfigs API Compatibility level 2: Stable within a major release for a minimum of 9 months or 3 minor releases (whichever is longer).",
-	"ami":                    "AMI is the reference to the AMI from which to create the machine instance.",
-	"instanceType":           "InstanceType is the type of instance to create. Example: m4.xlarge",
-	"tags":                   "Tags is the set of tags to add to apply to an instance, in addition to the ones added by default by the actuator. These tags are additive. The actuator will ensure these tags are present, but will not remove any other tags that may exist on the instance.",
-	"iamInstanceProfile":     "IAMInstanceProfile is a reference to an IAM role to assign to the instance",
-	"userDataSecret":         "UserDataSecret contains a local reference to a secret that contains the UserData to apply to the instance",
-	"credentialsSecret":      "CredentialsSecret is a reference to the secret with AWS credentials. Otherwise, defaults to permissions provided by attached IAM role where the actuator is running.",
-	"keyName":                "KeyName is the name of the KeyPair to use for SSH",
-	"deviceIndex":            "DeviceIndex is the index of the device on the instance for the network interface attachment. Defaults to 0.",
-	"publicIp":               "PublicIP specifies whether the instance should get a public IP. If not present, it should use the default of its subnet.",
-	"networkInterfaceType":   "NetworkInterfaceType specifies the type of network interface to be used for the primary network interface. Valid values are \"ENA\", \"EFA\", and omitted, which means no opinion and the platform chooses a good default which may change over time. The current default value is \"ENA\". Please visit https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html to learn more about the AWS Elastic Fabric Adapter interface option.",
-	"securityGroups":         "SecurityGroups is an array of references to security groups that should be applied to the instance.",
-	"subnet":                 "Subnet is a reference to the subnet to use for this instance",
-	"placement":              "Placement specifies where to create the instance in AWS",
-	"loadBalancers":          "LoadBalancers is the set of load balancers to which the new instance should be added once it is created.",
-	"blockDevices":           "BlockDevices is the set of block device mapping associated to this instance, block device without a name will be used as a root device and only one device without a name is allowed https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/block-device-mapping-concepts.html",
-	"spotMarketOptions":      "SpotMarketOptions allows users to configure instances to be run using AWS Spot instances.",
-	"metadataServiceOptions": "MetadataServiceOptions allows users to configure instance metadata service interaction options. If nothing specified, default AWS IMDS settings will be applied. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_InstanceMetadataOptionsRequest.html",
-	"placementGroupName":     "PlacementGroupName specifies the name of the placement group in which to launch the instance. The placement group must already be created and may use any placement strategy. When omitted, no placement group is used when creating the EC2 instance.",
+	"":                        "AWSMachineProviderConfig is the Schema for the awsmachineproviderconfigs API Compatibility level 2: Stable within a major release for a minimum of 9 months or 3 minor releases (whichever is longer).",
+	"ami":                     "ami is the reference to the AMI from which to create the machine instance.",
+	"instanceType":            "instanceType is the type of instance to create. Example: m4.xlarge",
+	"cpuOptions":              "cpuOptions defines CPU-related settings for the instance, including the confidential computing policy. When omitted, this means no opinion and the AWS platform is left to choose a reasonable default. More info: https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_CpuOptionsRequest.html, https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/cpu-options-supported-instances-values.html",
+	"tags":                    "tags is the set of tags to add to apply to an instance, in addition to the ones added by default by the actuator. These tags are additive. The actuator will ensure these tags are present, but will not remove any other tags that may exist on the instance.",
+	"iamInstanceProfile":      "iamInstanceProfile is a reference to an IAM role to assign to the instance",
+	"userDataSecret":          "userDataSecret contains a local reference to a secret that contains the UserData to apply to the instance",
+	"credentialsSecret":       "credentialsSecret is a reference to the secret with AWS credentials. Otherwise, defaults to permissions provided by attached IAM role where the actuator is running.",
+	"keyName":                 "keyName is the name of the KeyPair to use for SSH",
+	"deviceIndex":             "deviceIndex is the index of the device on the instance for the network interface attachment. Defaults to 0.",
+	"publicIp":                "publicIp specifies whether the instance should get a public IP. If not present, it should use the default of its subnet.",
+	"networkInterfaceType":    "networkInterfaceType specifies the type of network interface to be used for the primary network interface. Valid values are \"ENA\", \"EFA\", and omitted, which means no opinion and the platform chooses a good default which may change over time. The current default value is \"ENA\". Please visit https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa.html to learn more about the AWS Elastic Fabric Adapter interface option.",
+	"securityGroups":          "securityGroups is an array of references to security groups that should be applied to the instance.",
+	"subnet":                  "subnet is a reference to the subnet to use for this instance",
+	"placement":               "placement specifies where to create the instance in AWS",
+	"loadBalancers":           "loadBalancers is the set of load balancers to which the new instance should be added once it is created.",
+	"blockDevices":            "blockDevices is the set of block device mapping associated to this instance, block device without a name will be used as a root device and only one device without a name is allowed https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/block-device-mapping-concepts.html",
+	"spotMarketOptions":       "spotMarketOptions allows users to configure instances to be run using AWS Spot instances.",
+	"metadataServiceOptions":  "metadataServiceOptions allows users to configure instance metadata service interaction options. If nothing specified, default AWS IMDS settings will be applied. https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_InstanceMetadataOptionsRequest.html",
+	"placementGroupName":      "placementGroupName specifies the name of the placement group in which to launch the instance. The placement group must already be created and may use any placement strategy. When omitted, no placement group is used when creating the EC2 instance.",
+	"placementGroupPartition": "placementGroupPartition is the partition number within the placement group in which to launch the instance. This must be an integer value between 1 and 7. It is only valid if the placement group, referred in `PlacementGroupName` was created with strategy set to partition.",
+	"capacityReservationId":   "capacityReservationId specifies the target Capacity Reservation into which the instance should be launched. The field size should be greater than 0 and the field input must start with cr-***",
+	"marketType":              "marketType specifies the type of market for the EC2 instance. Valid values are OnDemand, Spot, CapacityBlock and omitted.\n\nDefaults to OnDemand. When SpotMarketOptions is provided, the marketType defaults to \"Spot\".\n\nWhen set to OnDemand the instance runs as a standard OnDemand instance. When set to Spot the instance runs as a Spot instance. When set to CapacityBlock the instance utilizes pre-purchased compute capacity (capacity blocks) with AWS Capacity Reservations. If this value is selected, capacityReservationID must be specified to identify the target reservation.",
 }
 
 func (AWSMachineProviderConfig) SwaggerDoc() map[string]string {
@@ -47,9 +51,10 @@ func (AWSMachineProviderConfigList) SwaggerDoc() map[string]string {
 
 var map_AWSMachineProviderStatus = map[string]string{
 	"":              "AWSMachineProviderStatus is the type that will be embedded in a Machine.Status.ProviderStatus field. It contains AWS-specific status information. Compatibility level 2: Stable within a major release for a minimum of 9 months or 3 minor releases (whichever is longer).",
-	"instanceId":    "InstanceID is the instance ID of the machine created in AWS",
-	"instanceState": "InstanceState is the state of the AWS instance for this machine",
-	"conditions":    "Conditions is a set of conditions associated with the Machine to indicate errors or other status",
+	"instanceId":    "instanceId is the instance ID of the machine created in AWS",
+	"instanceState": "instanceState is the state of the AWS instance for this machine",
+	"conditions":    "conditions is a set of conditions associated with the Machine to indicate errors or other status",
+	"dedicatedHost": "dedicatedHost tracks the dynamically allocated dedicated host. This field is populated when allocationStrategy is Dynamic (with or without DynamicHostAllocation). When omitted, this indicates that the dedicated host has not yet been allocated, or allocation is in progress.",
 }
 
 func (AWSMachineProviderStatus) SwaggerDoc() map[string]string {
@@ -58,9 +63,9 @@ func (AWSMachineProviderStatus) SwaggerDoc() map[string]string {
 
 var map_AWSResourceReference = map[string]string{
 	"":        "AWSResourceReference is a reference to a specific AWS resource by ID, ARN, or filters. Only one of ID, ARN or Filters may be specified. Specifying more than one will result in a validation error.",
-	"id":      "ID of resource",
-	"arn":     "ARN of resource",
-	"filters": "Filters is a set of filters used to identify a resource",
+	"id":      "id of resource",
+	"arn":     "arn of resource",
+	"filters": "filters is a set of filters used to identify a resource",
 }
 
 func (AWSResourceReference) SwaggerDoc() map[string]string {
@@ -79,14 +84,53 @@ func (BlockDeviceMappingSpec) SwaggerDoc() map[string]string {
 	return map_BlockDeviceMappingSpec
 }
 
+var map_CPUOptions = map[string]string{
+	"":                    "CPUOptions defines CPU-related settings for the instance, including the confidential computing policy. If provided, it must not be empty — at least one field must be set.",
+	"confidentialCompute": "confidentialCompute specifies whether confidential computing should be enabled for the instance, and, if so, which confidential computing technology to use. Valid values are: Disabled, AMDEncryptedVirtualizationNestedPaging and omitted. When set to Disabled, confidential computing will be disabled for the instance. When set to AMDEncryptedVirtualizationNestedPaging, AMD SEV-SNP will be used as the confidential computing technology for the instance. In this case, ensure the following conditions are met: 1) The selected instance type supports AMD SEV-SNP. 2) The selected AWS region supports AMD SEV-SNP. 3) The selected AMI supports AMD SEV-SNP. More details can be checked at https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/sev-snp.html When omitted, this means no opinion and the AWS platform is left to choose a reasonable default, which is subject to change without notice. The current default is Disabled.",
+}
+
+func (CPUOptions) SwaggerDoc() map[string]string {
+	return map_CPUOptions
+}
+
+var map_DedicatedHost = map[string]string{
+	"":                      "DedicatedHost represents the configuration for the usage of dedicated host.",
+	"allocationStrategy":    "allocationStrategy specifies if the dedicated host will be provided by the admin through the id field or if the host will be dynamically allocated. Valid values are UserProvided and Dynamic. When omitted, the value defaults to \"UserProvided\", which requires the id field to be set. When allocationStrategy is set to UserProvided, an ID of the dedicated host to assign must be provided. When allocationStrategy is set to Dynamic, a dedicated host will be allocated and used to assign instances. When allocationStrategy is set to Dynamic, and dynamicHostAllocation is configured, a dedicated host will be allocated and the tags in dynamicHostAllocation will be assigned to that host.",
+	"id":                    "id identifies the AWS Dedicated Host on which the instance must run. The value must start with \"h-\" followed by either 8 or 17 lowercase hexadecimal characters (0-9 and a-f). The use of 8 lowercase hexadecimal characters is for older legacy hosts that may not have been migrated to newer format. Must be either 10 or 19 characters in length. This field is required when allocationStrategy is UserProvided, and forbidden otherwise. When omitted with allocationStrategy set to Dynamic, the platform will dynamically allocate a dedicated host.",
+	"dynamicHostAllocation": "dynamicHostAllocation specifies tags to apply to a dynamically allocated dedicated host. This field is only allowed when allocationStrategy is Dynamic, and is mutually exclusive with id. When specified, a dedicated host will be allocated with the provided tags applied. When omitted (and allocationStrategy is Dynamic), a dedicated host will be allocated without any additional tags.",
+}
+
+func (DedicatedHost) SwaggerDoc() map[string]string {
+	return map_DedicatedHost
+}
+
+var map_DedicatedHostStatus = map[string]string{
+	"":   "DedicatedHostStatus defines the observed state of a dynamically allocated dedicated host associated with an AWSMachine. This struct is used to track the ID of the dedicated host.",
+	"id": "id tracks the dynamically allocated dedicated host ID. This field is populated when allocationStrategy is Dynamic (with or without DynamicHostAllocation). The value must start with \"h-\" followed by either 8 or 17 lowercase hexadecimal characters (0-9 and a-f). The use of 8 lowercase hexadecimal characters is for older legacy hosts that may not have been migrated to newer format. Must be either 10 or 19 characters in length.",
+}
+
+func (DedicatedHostStatus) SwaggerDoc() map[string]string {
+	return map_DedicatedHostStatus
+}
+
+var map_DynamicHostAllocationSpec = map[string]string{
+	"":     "DynamicHostAllocationSpec defines the configuration for dynamic dedicated host allocation. This specification always allocates exactly one dedicated host per machine. At least one property must be specified when this struct is used. Currently only Tags are available for configuring, but in the future more configs may become available.",
+	"tags": "tags specifies a set of key-value pairs to apply to the allocated dedicated host. When omitted, no additional user-defined tags will be applied to the allocated host. A maximum of 50 tags can be specified.",
+}
+
+func (DynamicHostAllocationSpec) SwaggerDoc() map[string]string {
+	return map_DynamicHostAllocationSpec
+}
+
 var map_EBSBlockDeviceSpec = map[string]string{
 	"":                    "EBSBlockDeviceSpec describes a block device for an EBS volume. https://docs.aws.amazon.com/goto/WebAPI/ec2-2016-11-15/EbsBlockDevice",
-	"deleteOnTermination": "Indicates whether the EBS volume is deleted on machine termination.",
+	"deleteOnTermination": "Indicates whether the EBS volume is deleted on machine termination.\n\nDeprecated: setting this field has no effect.",
 	"encrypted":           "Indicates whether the EBS volume is encrypted. Encrypted Amazon EBS volumes may only be attached to machines that support Amazon EBS encryption.",
 	"kmsKey":              "Indicates the KMS key that should be used to encrypt the Amazon EBS volume.",
 	"iops":                "The number of I/O operations per second (IOPS) that the volume supports. For io1, this represents the number of IOPS that are provisioned for the volume. For gp2, this represents the baseline performance of the volume and the rate at which the volume accumulates I/O credits for bursting. For more information about General Purpose SSD baseline performance, I/O credits, and bursting, see Amazon EBS Volume Types (http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html) in the Amazon Elastic Compute Cloud User Guide.\n\nMinimal and maximal IOPS for io1 and gp2 are constrained. Please, check https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html for precise boundaries for individual volumes.\n\nCondition: This parameter is required for requests to create io1 volumes; it is not used in requests to create gp2, st1, sc1, or standard volumes.",
+	"throughputMib":       "throughputMib to provision in MiB/s supported for the volume type. Not applicable to all types.\n\nThis parameter is valid only for gp3 volumes. Valid Range: Minimum value of 125. Maximum value of 2000.\n\nWhen omitted, this means no opinion, and the platform is left to choose a reasonable default, which is subject to change over time. The current default is 125.",
 	"volumeSize":          "The size of the volume, in GiB.\n\nConstraints: 1-16384 for General Purpose SSD (gp2), 4-16384 for Provisioned IOPS SSD (io1), 500-16384 for Throughput Optimized HDD (st1), 500-16384 for Cold HDD (sc1), and 1-1024 for Magnetic (standard) volumes. If you specify a snapshot, the volume size must be equal to or larger than the snapshot size.\n\nDefault: If you're creating the volume from a snapshot and don't specify a volume size, the default is the snapshot size.",
-	"volumeType":          "The volume type: gp2, io1, st1, sc1, or standard. Default: standard",
+	"volumeType":          "volumeType can be of type gp2, gp3, io1, st1, sc1, or standard. Default: standard",
 }
 
 func (EBSBlockDeviceSpec) SwaggerDoc() map[string]string {
@@ -95,12 +139,22 @@ func (EBSBlockDeviceSpec) SwaggerDoc() map[string]string {
 
 var map_Filter = map[string]string{
 	"":       "Filter is a filter used to identify an AWS resource",
-	"name":   "Name of the filter. Filter names are case-sensitive.",
-	"values": "Values includes one or more filter values. Filter values are case-sensitive.",
+	"name":   "name of the filter. Filter names are case-sensitive.",
+	"values": "values includes one or more filter values. Filter values are case-sensitive.",
 }
 
 func (Filter) SwaggerDoc() map[string]string {
 	return map_Filter
+}
+
+var map_HostPlacement = map[string]string{
+	"":              "HostPlacement is the type that will be used to configure the placement of AWS instances.",
+	"affinity":      "affinity specifies the affinity setting for the instance. Allowed values are AnyAvailable and DedicatedHost. When Affinity is set to DedicatedHost, an instance started onto a specific host always restarts on the same host if stopped. In this scenario, the `dedicatedHost` field must be set. When Affinity is set to AnyAvailable, and you stop and restart the instance, it can be restarted on any available host. When Affinity is set to AnyAvailable and the `dedicatedHost` field is defined, it runs on specified Dedicated Host, but may move if stopped.",
+	"dedicatedHost": "dedicatedHost specifies the exact host that an instance should be restarted on if stopped. dedicatedHost is required when 'affinity' is set to DedicatedHost, and optional otherwise.",
+}
+
+func (HostPlacement) SwaggerDoc() map[string]string {
+	return map_HostPlacement
 }
 
 var map_LoadBalancerReference = map[string]string{
@@ -113,7 +167,7 @@ func (LoadBalancerReference) SwaggerDoc() map[string]string {
 
 var map_MetadataServiceOptions = map[string]string{
 	"":               "MetadataServiceOptions defines the options available to a user when configuring Instance Metadata Service (IMDS) Options.",
-	"authentication": "Authentication determines whether or not the host requires the use of authentication when interacting with the metadata service. When using authentication, this enforces v2 interaction method (IMDSv2) with the metadata service. When omitted, this means the user has no opinion and the value is left to the platform to choose a good default, which is subject to change over time. The current default is optional. At this point this field represents `HttpTokens` parameter from `InstanceMetadataOptionsRequest` structure in AWS EC2 API https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_InstanceMetadataOptionsRequest.html",
+	"authentication": "authentication determines whether or not the host requires the use of authentication when interacting with the metadata service. When using authentication, this enforces v2 interaction method (IMDSv2) with the metadata service. When omitted, this means the user has no opinion and the value is left to the platform to choose a good default, which is subject to change over time. The current default is optional. At this point this field represents `HttpTokens` parameter from `InstanceMetadataOptionsRequest` structure in AWS EC2 API https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_InstanceMetadataOptionsRequest.html",
 }
 
 func (MetadataServiceOptions) SwaggerDoc() map[string]string {
@@ -122,9 +176,10 @@ func (MetadataServiceOptions) SwaggerDoc() map[string]string {
 
 var map_Placement = map[string]string{
 	"":                 "Placement indicates where to create the instance in AWS",
-	"region":           "Region is the region to use to create the instance",
-	"availabilityZone": "AvailabilityZone is the availability zone of the instance",
-	"tenancy":          "Tenancy indicates if instance should run on shared or single-tenant hardware. There are supported 3 options: default, dedicated and host.",
+	"region":           "region is the region to use to create the instance",
+	"availabilityZone": "availabilityZone is the availability zone of the instance",
+	"tenancy":          "tenancy indicates if instance should run on shared or single-tenant hardware. There are supported 3 options: default, dedicated and host. When set to default Runs on shared multi-tenant hardware. When dedicated Runs on single-tenant hardware (any dedicated instance hardware). When host and the host object is not provided: Runs on Dedicated Host; best-effort restart on same host. When `host` and `host` object is provided with affinity `dedicatedHost` defined: Runs on specified Dedicated Host.",
+	"host":             "host configures placement on AWS Dedicated Hosts. This allows admins to assign instances to specific host for a variety of needs including for regulatory compliance, to leverage existing per-socket or per-core software licenses (BYOL), and to gain visibility and control over instance placement on a physical server. When omitted, the instance is not constrained to a dedicated host.",
 }
 
 func (Placement) SwaggerDoc() map[string]string {
@@ -142,8 +197,8 @@ func (SpotMarketOptions) SwaggerDoc() map[string]string {
 
 var map_TagSpecification = map[string]string{
 	"":      "TagSpecification is the name/value pair for a tag",
-	"name":  "Name of the tag",
-	"value": "Value of the tag",
+	"name":  "name of the tag. This field is required and must be a non-empty string. Must be between 1 and 128 characters in length.",
+	"value": "value of the tag. When omitted, this creates a tag with an empty string as the value.",
 }
 
 func (TagSpecification) SwaggerDoc() map[string]string {
@@ -152,8 +207,8 @@ func (TagSpecification) SwaggerDoc() map[string]string {
 
 var map_AzureBootDiagnostics = map[string]string{
 	"":                   "AzureBootDiagnostics configures the boot diagnostics settings for the virtual machine. This allows you to configure capturing serial output from the virtual machine on boot. This is useful for debugging software based launch issues.",
-	"storageAccountType": "StorageAccountType determines if the storage account for storing the diagnostics data should be provisioned by Azure (AzureManaged) or by the customer (CustomerManaged).",
-	"customerManaged":    "CustomerManaged provides reference to the customer manager storage account.",
+	"storageAccountType": "storageAccountType determines if the storage account for storing the diagnostics data should be provisioned by Azure (AzureManaged) or by the customer (CustomerManaged).",
+	"customerManaged":    "customerManaged provides reference to the customer manager storage account.",
 }
 
 func (AzureBootDiagnostics) SwaggerDoc() map[string]string {
@@ -162,7 +217,7 @@ func (AzureBootDiagnostics) SwaggerDoc() map[string]string {
 
 var map_AzureCustomerManagedBootDiagnostics = map[string]string{
 	"":                  "AzureCustomerManagedBootDiagnostics provides reference to a customer managed storage account.",
-	"storageAccountURI": "StorageAccountURI is the URI of the customer managed storage account. The URI typically will be `https://<mystorageaccountname>.blob.core.windows.net/` but may differ if you are using Azure DNS zone endpoints. You can find the correct endpoint by looking for the Blob Primary Endpoint in the endpoints tab in the Azure console.",
+	"storageAccountURI": "storageAccountURI is the URI of the customer managed storage account. The URI typically will be `https://<mystorageaccountname>.blob.core.windows.net/` but may differ if you are using Azure DNS zone endpoints. You can find the correct endpoint by looking for the Blob Primary Endpoint in the endpoints tab in the Azure console.",
 }
 
 func (AzureCustomerManagedBootDiagnostics) SwaggerDoc() map[string]string {
@@ -180,33 +235,33 @@ func (AzureDiagnostics) SwaggerDoc() map[string]string {
 
 var map_AzureMachineProviderSpec = map[string]string{
 	"":                           "AzureMachineProviderSpec is the type that will be embedded in a Machine.Spec.ProviderSpec field for an Azure virtual machine. It is used by the Azure machine actuator to create a single Machine. Required parameters such as location that are not specified by this configuration, will be defaulted by the actuator. Compatibility level 2: Stable within a major release for a minimum of 9 months or 3 minor releases (whichever is longer).",
-	"userDataSecret":             "UserDataSecret contains a local reference to a secret that contains the UserData to apply to the instance",
-	"credentialsSecret":          "CredentialsSecret is a reference to the secret with Azure credentials.",
-	"location":                   "Location is the region to use to create the instance",
-	"vmSize":                     "VMSize is the size of the VM to create.",
-	"image":                      "Image is the OS image to use to create the instance.",
-	"osDisk":                     "OSDisk represents the parameters for creating the OS disk.",
+	"userDataSecret":             "userDataSecret contains a local reference to a secret that contains the UserData to apply to the instance",
+	"credentialsSecret":          "credentialsSecret is a reference to the secret with Azure credentials.",
+	"location":                   "location is the region to use to create the instance",
+	"vmSize":                     "vmSize is the size of the VM to create.",
+	"image":                      "image is the OS image to use to create the instance.",
+	"osDisk":                     "osDisk represents the parameters for creating the OS disk.",
 	"dataDisks":                  "DataDisk specifies the parameters that are used to add one or more data disks to the machine.",
-	"sshPublicKey":               "SSHPublicKey is the public key to use to SSH to the virtual machine.",
-	"publicIP":                   "PublicIP if true a public IP will be used",
-	"tags":                       "Tags is a list of tags to apply to the machine.",
+	"sshPublicKey":               "sshPublicKey is the public key to use to SSH to the virtual machine.",
+	"publicIP":                   "publicIP if true a public IP will be used",
+	"tags":                       "tags is a list of tags to apply to the machine.",
 	"securityGroup":              "Network Security Group that needs to be attached to the machine's interface. No security group will be attached if empty.",
 	"applicationSecurityGroups":  "Application Security Groups that need to be attached to the machine's interface. No application security groups will be attached if zero-length.",
-	"subnet":                     "Subnet to use for this instance",
-	"publicLoadBalancer":         "PublicLoadBalancer to use for this instance",
+	"subnet":                     "subnet to use for this instance",
+	"publicLoadBalancer":         "publicLoadBalancer to use for this instance",
 	"internalLoadBalancer":       "InternalLoadBalancerName to use for this instance",
-	"natRule":                    "NatRule to set inbound NAT rule of the load balancer",
-	"managedIdentity":            "ManagedIdentity to set managed identity name",
-	"vnet":                       "Vnet to set virtual network name",
+	"natRule":                    "natRule to set inbound NAT rule of the load balancer",
+	"managedIdentity":            "managedIdentity to set managed identity name",
+	"vnet":                       "vnet to set virtual network name",
 	"zone":                       "Availability Zone for the virtual machine. If nil, the virtual machine should be deployed to no zone",
-	"networkResourceGroup":       "NetworkResourceGroup is the resource group for the virtual machine's network",
-	"resourceGroup":              "ResourceGroup is the resource group for the virtual machine",
-	"spotVMOptions":              "SpotVMOptions allows the ability to specify the Machine should use a Spot VM",
-	"securityProfile":            "SecurityProfile specifies the Security profile settings for a virtual machine.",
-	"ultraSSDCapability":         "UltraSSDCapability enables or disables Azure UltraSSD capability for a virtual machine. This can be used to allow/disallow binding of Azure UltraSSD to the Machine both as Data Disks or via Persistent Volumes. This Azure feature is subject to a specific scope and certain limitations. More informations on this can be found in the official Azure documentation for Ultra Disks: (https://docs.microsoft.com/en-us/azure/virtual-machines/disks-enable-ultra-ssd?tabs=azure-portal#ga-scope-and-limitations).\n\nWhen omitted, if at least one Data Disk of type UltraSSD is specified, the platform will automatically enable the capability. If a Perisistent Volume backed by an UltraSSD is bound to a Pod on the Machine, when this field is ommitted, the platform will *not* automatically enable the capability (unless already enabled by the presence of an UltraSSD as Data Disk). This may manifest in the Pod being stuck in `ContainerCreating` phase. This defaulting behaviour may be subject to change in future.\n\nWhen set to \"Enabled\", if the capability is available for the Machine based on the scope and limitations described above, the capability will be set on the Machine. This will thus allow UltraSSD both as Data Disks and Persistent Volumes. If set to \"Enabled\" when the capability can't be available due to scope and limitations, the Machine will go into \"Failed\" state.\n\nWhen set to \"Disabled\", UltraSSDs will not be allowed either as Data Disks nor as Persistent Volumes. In this case if any UltraSSDs are specified as Data Disks on a Machine, the Machine will go into a \"Failed\" state. If instead any UltraSSDs are backing the volumes (via Persistent Volumes) of any Pods scheduled on a Node which is backed by the Machine, the Pod may get stuck in `ContainerCreating` phase.",
-	"acceleratedNetworking":      "AcceleratedNetworking enables or disables Azure accelerated networking feature. Set to false by default. If true, then this will depend on whether the requested VMSize is supported. If set to true with an unsupported VMSize, Azure will return an error.",
-	"availabilitySet":            "AvailabilitySet specifies the availability set to use for this instance. Availability set should be precreated, before using this field.",
-	"diagnostics":                "Diagnostics configures the diagnostics settings for the virtual machine. This allows you to configure boot diagnostics such as capturing serial output from the virtual machine on boot. This is useful for debugging software based launch issues.",
+	"networkResourceGroup":       "networkResourceGroup is the resource group for the virtual machine's network",
+	"resourceGroup":              "resourceGroup is the resource group for the virtual machine",
+	"spotVMOptions":              "spotVMOptions allows the ability to specify the Machine should use a Spot VM",
+	"securityProfile":            "securityProfile specifies the Security profile settings for a virtual machine.",
+	"ultraSSDCapability":         "ultraSSDCapability enables or disables Azure UltraSSD capability for a virtual machine. This can be used to allow/disallow binding of Azure UltraSSD to the Machine both as Data Disks or via Persistent Volumes. This Azure feature is subject to a specific scope and certain limitations. More informations on this can be found in the official Azure documentation for Ultra Disks: (https://docs.microsoft.com/en-us/azure/virtual-machines/disks-enable-ultra-ssd?tabs=azure-portal#ga-scope-and-limitations).\n\nWhen omitted, if at least one Data Disk of type UltraSSD is specified, the platform will automatically enable the capability. If a Perisistent Volume backed by an UltraSSD is bound to a Pod on the Machine, when this field is ommitted, the platform will *not* automatically enable the capability (unless already enabled by the presence of an UltraSSD as Data Disk). This may manifest in the Pod being stuck in `ContainerCreating` phase. This defaulting behaviour may be subject to change in future.\n\nWhen set to \"Enabled\", if the capability is available for the Machine based on the scope and limitations described above, the capability will be set on the Machine. This will thus allow UltraSSD both as Data Disks and Persistent Volumes. If set to \"Enabled\" when the capability can't be available due to scope and limitations, the Machine will go into \"Failed\" state.\n\nWhen set to \"Disabled\", UltraSSDs will not be allowed either as Data Disks nor as Persistent Volumes. In this case if any UltraSSDs are specified as Data Disks on a Machine, the Machine will go into a \"Failed\" state. If instead any UltraSSDs are backing the volumes (via Persistent Volumes) of any Pods scheduled on a Node which is backed by the Machine, the Pod may get stuck in `ContainerCreating` phase.",
+	"acceleratedNetworking":      "acceleratedNetworking enables or disables Azure accelerated networking feature. Set to false by default. If true, then this will depend on whether the requested VMSize is supported. If set to true with an unsupported VMSize, Azure will return an error.",
+	"availabilitySet":            "availabilitySet specifies the availability set to use for this instance. Availability set should be precreated, before using this field.",
+	"diagnostics":                "diagnostics configures the diagnostics settings for the virtual machine. This allows you to configure boot diagnostics such as capturing serial output from the virtual machine on boot. This is useful for debugging software based launch issues.",
 	"capacityReservationGroupID": "capacityReservationGroupID specifies the capacity reservation group resource id that should be used for allocating the virtual machine. The field size should be greater than 0 and the field input must start with '/'. The input for capacityReservationGroupID must be similar to '/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Microsoft.Compute/capacityReservationGroups/{capacityReservationGroupName}'. The keys which are used should be among 'subscriptions', 'providers' and 'resourcegroups' followed by valid ID or names respectively.",
 }
 
@@ -216,9 +271,9 @@ func (AzureMachineProviderSpec) SwaggerDoc() map[string]string {
 
 var map_AzureMachineProviderStatus = map[string]string{
 	"":           "AzureMachineProviderStatus is the type that will be embedded in a Machine.Status.ProviderStatus field. It contains Azure-specific status information. Compatibility level 2: Stable within a major release for a minimum of 9 months or 3 minor releases (whichever is longer).",
-	"vmId":       "VMID is the ID of the virtual machine created in Azure.",
-	"vmState":    "VMState is the provisioning state of the Azure virtual machine.",
-	"conditions": "Conditions is a set of conditions associated with the Machine to indicate errors or other status.",
+	"vmId":       "vmId is the ID of the virtual machine created in Azure.",
+	"vmState":    "vmState is the provisioning state of the Azure virtual machine.",
+	"conditions": "conditions is a set of conditions associated with the Machine to indicate errors or other status.",
 }
 
 func (AzureMachineProviderStatus) SwaggerDoc() map[string]string {
@@ -236,12 +291,12 @@ func (ConfidentialVM) SwaggerDoc() map[string]string {
 
 var map_DataDisk = map[string]string{
 	"":               "DataDisk specifies the parameters that are used to add one or more data disks to the machine. A Data Disk is a managed disk that's attached to a virtual machine to store application data. It differs from an OS Disk as it doesn't come with a pre-installed OS, and it cannot contain the boot volume. It is registered as SCSI drive and labeled with the chosen `lun`. e.g. for `lun: 0` the raw disk device will be available at `/dev/disk/azure/scsi1/lun0`.\n\nAs the Data Disk disk device is attached raw to the virtual machine, it will need to be partitioned, formatted with a filesystem and mounted, in order for it to be usable. This can be done by creating a custom userdata Secret with custom Ignition configuration to achieve the desired initialization. At this stage the previously defined `lun` is to be used as the \"device\" key for referencing the raw disk device to be initialized. Once the custom userdata Secret has been created, it can be referenced in the Machine's `.providerSpec.userDataSecret`. For further guidance and examples, please refer to the official OpenShift docs.",
-	"nameSuffix":     "NameSuffix is the suffix to be appended to the machine name to generate the disk name. Each disk name will be in format <machineName>_<nameSuffix>. NameSuffix name must start and finish with an alphanumeric character and can only contain letters, numbers, underscores, periods or hyphens. The overall disk name must not exceed 80 chars in length.",
-	"diskSizeGB":     "DiskSizeGB is the size in GB to assign to the data disk.",
-	"managedDisk":    "ManagedDisk specifies the Managed Disk parameters for the data disk. Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is a ManagedDisk with with storageAccountType: \"Premium_LRS\" and diskEncryptionSet.id: \"Default\".",
-	"lun":            "Lun Specifies the logical unit number of the data disk. This value is used to identify data disks within the VM and therefore must be unique for each data disk attached to a VM. This value is also needed for referencing the data disks devices within userdata to perform disk initialization through Ignition (e.g. partition/format/mount). The value must be between 0 and 63.",
-	"cachingType":    "CachingType specifies the caching requirements. Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is CachingTypeNone.",
-	"deletionPolicy": "DeletionPolicy specifies the data disk deletion policy upon Machine deletion. Possible values are \"Delete\",\"Detach\". When \"Delete\" is used the data disk is deleted when the Machine is deleted. When \"Detach\" is used the data disk is detached from the Machine and retained when the Machine is deleted.",
+	"nameSuffix":     "nameSuffix is the suffix to be appended to the machine name to generate the disk name. Each disk name will be in format <machineName>_<nameSuffix>. NameSuffix name must start and finish with an alphanumeric character and can only contain letters, numbers, underscores, periods or hyphens. The overall disk name must not exceed 80 chars in length.",
+	"diskSizeGB":     "diskSizeGB is the size in GB to assign to the data disk.",
+	"managedDisk":    "managedDisk specifies the Managed Disk parameters for the data disk. Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is a ManagedDisk with with storageAccountType: \"Premium_LRS\" and diskEncryptionSet.id: \"Default\".",
+	"lun":            "lun Specifies the logical unit number of the data disk. This value is used to identify data disks within the VM and therefore must be unique for each data disk attached to a VM. This value is also needed for referencing the data disks devices within userdata to perform disk initialization through Ignition (e.g. partition/format/mount). The value must be between 0 and 63.",
+	"cachingType":    "cachingType specifies the caching requirements. Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is CachingTypeNone.",
+	"deletionPolicy": "deletionPolicy specifies the data disk deletion policy upon Machine deletion. Possible values are \"Delete\",\"Detach\". When \"Delete\" is used the data disk is deleted when the Machine is deleted. When \"Detach\" is used the data disk is detached from the Machine and retained when the Machine is deleted.",
 }
 
 func (DataDisk) SwaggerDoc() map[string]string {
@@ -250,8 +305,8 @@ func (DataDisk) SwaggerDoc() map[string]string {
 
 var map_DataDiskManagedDiskParameters = map[string]string{
 	"":                   "DataDiskManagedDiskParameters is the parameters of a DataDisk managed disk.",
-	"storageAccountType": "StorageAccountType is the storage account type to use. Possible values include \"Standard_LRS\", \"Premium_LRS\" and \"UltraSSD_LRS\".",
-	"diskEncryptionSet":  "DiskEncryptionSet is the disk encryption set properties. Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is a DiskEncryptionSet with id: \"Default\".",
+	"storageAccountType": "storageAccountType is the storage account type to use. Possible values include \"Standard_LRS\", \"Premium_LRS\" and \"UltraSSD_LRS\".",
+	"diskEncryptionSet":  "diskEncryptionSet is the disk encryption set properties. Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is a DiskEncryptionSet with id: \"Default\".",
 }
 
 func (DataDiskManagedDiskParameters) SwaggerDoc() map[string]string {
@@ -260,7 +315,7 @@ func (DataDiskManagedDiskParameters) SwaggerDoc() map[string]string {
 
 var map_DiskEncryptionSetParameters = map[string]string{
 	"":   "DiskEncryptionSetParameters is the disk encryption set properties",
-	"id": "ID is the disk encryption set ID Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is: \"Default\".",
+	"id": "id is the disk encryption set ID Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is: \"Default\".",
 }
 
 func (DiskEncryptionSetParameters) SwaggerDoc() map[string]string {
@@ -269,7 +324,7 @@ func (DiskEncryptionSetParameters) SwaggerDoc() map[string]string {
 
 var map_DiskSettings = map[string]string{
 	"":                         "DiskSettings describe ephemeral disk settings for the os disk.",
-	"ephemeralStorageLocation": "EphemeralStorageLocation enables ephemeral OS when set to 'Local'. Possible values include: 'Local'. See https://docs.microsoft.com/en-us/azure/virtual-machines/ephemeral-os-disks for full details. Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is that disks are saved to remote Azure storage.",
+	"ephemeralStorageLocation": "ephemeralStorageLocation enables ephemeral OS when set to 'Local'. Possible values include: 'Local'. See https://docs.microsoft.com/en-us/azure/virtual-machines/ephemeral-os-disks for full details. Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is that disks are saved to remote Azure storage.",
 }
 
 func (DiskSettings) SwaggerDoc() map[string]string {
@@ -278,12 +333,12 @@ func (DiskSettings) SwaggerDoc() map[string]string {
 
 var map_Image = map[string]string{
 	"":           "Image is a mirror of azure sdk compute.ImageReference",
-	"publisher":  "Publisher is the name of the organization that created the image",
-	"offer":      "Offer specifies the name of a group of related images created by the publisher. For example, UbuntuServer, WindowsServer",
-	"sku":        "SKU specifies an instance of an offer, such as a major release of a distribution. For example, 18.04-LTS, 2019-Datacenter",
-	"version":    "Version specifies the version of an image sku. The allowed formats are Major.Minor.Build or 'latest'. Major, Minor, and Build are decimal numbers. Specify 'latest' to use the latest version of an image available at deploy time. Even if you use 'latest', the VM image will not automatically update after deploy time even if a new version becomes available.",
-	"resourceID": "ResourceID specifies an image to use by ID",
-	"type":       "Type identifies the source of the image and related information, such as purchase plans. Valid values are \"ID\", \"MarketplaceWithPlan\", \"MarketplaceNoPlan\", and omitted, which means no opinion and the platform chooses a good default which may change over time. Currently that default is \"MarketplaceNoPlan\" if publisher data is supplied, or \"ID\" if not. For more information about purchase plans, see: https://docs.microsoft.com/en-us/azure/virtual-machines/linux/cli-ps-findimage#check-the-purchase-plan-information",
+	"publisher":  "publisher is the name of the organization that created the image",
+	"offer":      "offer specifies the name of a group of related images created by the publisher. For example, UbuntuServer, WindowsServer",
+	"sku":        "sku specifies an instance of an offer, such as a major release of a distribution. For example, 18.04-LTS, 2019-Datacenter",
+	"version":    "version specifies the version of an image sku. The allowed formats are Major.Minor.Build or 'latest'. Major, Minor, and Build are decimal numbers. Specify 'latest' to use the latest version of an image available at deploy time. Even if you use 'latest', the VM image will not automatically update after deploy time even if a new version becomes available.",
+	"resourceID": "resourceID specifies an image to use by ID",
+	"type":       "type identifies the source of the image and related information, such as purchase plans. Valid values are \"ID\", \"MarketplaceWithPlan\", \"MarketplaceNoPlan\", and omitted, which means no opinion and the platform chooses a good default which may change over time. Currently that default is \"MarketplaceNoPlan\" if publisher data is supplied, or \"ID\" if not. For more information about purchase plans, see: https://docs.microsoft.com/en-us/azure/virtual-machines/linux/cli-ps-findimage#check-the-purchase-plan-information",
 }
 
 func (Image) SwaggerDoc() map[string]string {
@@ -291,11 +346,11 @@ func (Image) SwaggerDoc() map[string]string {
 }
 
 var map_OSDisk = map[string]string{
-	"osType":       "OSType is the operating system type of the OS disk. Possible values include \"Linux\" and \"Windows\".",
-	"managedDisk":  "ManagedDisk specifies the Managed Disk parameters for the OS disk.",
-	"diskSizeGB":   "DiskSizeGB is the size in GB to assign to the data disk.",
-	"diskSettings": "DiskSettings describe ephemeral disk settings for the os disk.",
-	"cachingType":  "CachingType specifies the caching requirements. Possible values include: 'None', 'ReadOnly', 'ReadWrite'. Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is `None`.",
+	"osType":       "osType is the operating system type of the OS disk. Possible values include \"Linux\" and \"Windows\".",
+	"managedDisk":  "managedDisk specifies the Managed Disk parameters for the OS disk.",
+	"diskSizeGB":   "diskSizeGB is the size in GB to assign to the data disk.",
+	"diskSettings": "diskSettings describe ephemeral disk settings for the os disk.",
+	"cachingType":  "cachingType specifies the caching requirements. Possible values include: 'None', 'ReadOnly', 'ReadWrite'. Empty value means no opinion and the platform chooses a default, which is subject to change over time. Currently the default is `None`.",
 }
 
 func (OSDisk) SwaggerDoc() map[string]string {
@@ -304,8 +359,8 @@ func (OSDisk) SwaggerDoc() map[string]string {
 
 var map_OSDiskManagedDiskParameters = map[string]string{
 	"":                   "OSDiskManagedDiskParameters is the parameters of a OSDisk managed disk.",
-	"storageAccountType": "StorageAccountType is the storage account type to use. Possible values include \"Standard_LRS\", \"Premium_LRS\".",
-	"diskEncryptionSet":  "DiskEncryptionSet is the disk encryption set properties",
+	"storageAccountType": "storageAccountType is the storage account type to use. Possible values include \"Standard_LRS\", \"Premium_LRS\".",
+	"diskEncryptionSet":  "diskEncryptionSet is the disk encryption set properties",
 	"securityProfile":    "securityProfile specifies the security profile for the managed disk.",
 }
 
@@ -336,7 +391,7 @@ func (SecuritySettings) SwaggerDoc() map[string]string {
 
 var map_SpotVMOptions = map[string]string{
 	"":         "SpotVMOptions defines the options relevant to running the Machine on Spot VMs",
-	"maxPrice": "MaxPrice defines the maximum price the user is willing to pay for Spot VM instances",
+	"maxPrice": "maxPrice defines the maximum price the user is willing to pay for Spot VM instances",
 }
 
 func (SpotVMOptions) SwaggerDoc() map[string]string {
@@ -374,13 +429,13 @@ func (VMDiskSecurityProfile) SwaggerDoc() map[string]string {
 
 var map_GCPDisk = map[string]string{
 	"":              "GCPDisk describes disks for GCP.",
-	"autoDelete":    "AutoDelete indicates if the disk will be auto-deleted when the instance is deleted (default false).",
-	"boot":          "Boot indicates if this is a boot disk (default false).",
-	"sizeGb":        "SizeGB is the size of the disk (in GB).",
-	"type":          "Type is the type of the disk (eg: pd-standard).",
-	"image":         "Image is the source image to create this disk.",
-	"labels":        "Labels list of labels to apply to the disk.",
-	"encryptionKey": "EncryptionKey is the customer-supplied encryption key of the disk.",
+	"autoDelete":    "autoDelete indicates if the disk will be auto-deleted when the instance is deleted (default false).",
+	"boot":          "boot indicates if this is a boot disk (default false).",
+	"sizeGb":        "sizeGb is the size of the disk (in GB).",
+	"type":          "type is the type of the disk (eg: pd-standard).",
+	"image":         "image is the source image to create this disk.",
+	"labels":        "labels list of labels to apply to the disk.",
+	"encryptionKey": "encryptionKey is the customer-supplied encryption key of the disk.",
 }
 
 func (GCPDisk) SwaggerDoc() map[string]string {
@@ -390,7 +445,7 @@ func (GCPDisk) SwaggerDoc() map[string]string {
 var map_GCPEncryptionKeyReference = map[string]string{
 	"":                     "GCPEncryptionKeyReference describes the encryptionKey to use for a disk's encryption.",
 	"kmsKey":               "KMSKeyName is the reference KMS key, in the format",
-	"kmsKeyServiceAccount": "KMSKeyServiceAccount is the service account being used for the encryption request for the given KMS key. If absent, the Compute Engine default service account is used. See https://cloud.google.com/compute/docs/access/service-accounts#compute_engine_service_account for details on the default service account.",
+	"kmsKeyServiceAccount": "kmsKeyServiceAccount is the service account being used for the encryption request for the given KMS key. If absent, the Compute Engine default service account is used. See https://cloud.google.com/compute/docs/access/service-accounts#compute_engine_service_account for details on the default service account.",
 }
 
 func (GCPEncryptionKeyReference) SwaggerDoc() map[string]string {
@@ -399,8 +454,8 @@ func (GCPEncryptionKeyReference) SwaggerDoc() map[string]string {
 
 var map_GCPGPUConfig = map[string]string{
 	"":      "GCPGPUConfig describes type and count of GPUs attached to the instance on GCP.",
-	"count": "Count is the number of GPUs to be attached to an instance.",
-	"type":  "Type is the type of GPU to be attached to an instance. Supported GPU types are: nvidia-tesla-k80, nvidia-tesla-p100, nvidia-tesla-v100, nvidia-tesla-p4, nvidia-tesla-t4",
+	"count": "count is the number of GPUs to be attached to an instance.",
+	"type":  "type is the type of GPU to be attached to an instance. Supported GPU types are: nvidia-tesla-k80, nvidia-tesla-p100, nvidia-tesla-v100, nvidia-tesla-p4, nvidia-tesla-t4",
 }
 
 func (GCPGPUConfig) SwaggerDoc() map[string]string {
@@ -409,10 +464,10 @@ func (GCPGPUConfig) SwaggerDoc() map[string]string {
 
 var map_GCPKMSKeyReference = map[string]string{
 	"":          "GCPKMSKeyReference gathers required fields for looking up a GCP KMS Key",
-	"name":      "Name is the name of the customer managed encryption key to be used for the disk encryption.",
-	"keyRing":   "KeyRing is the name of the KMS Key Ring which the KMS Key belongs to.",
-	"projectID": "ProjectID is the ID of the Project in which the KMS Key Ring exists. Defaults to the VM ProjectID if not set.",
-	"location":  "Location is the GCP location in which the Key Ring exists.",
+	"name":      "name is the name of the customer managed encryption key to be used for the disk encryption.",
+	"keyRing":   "keyRing is the name of the KMS Key Ring which the KMS Key belongs to.",
+	"projectID": "projectID is the ID of the Project in which the KMS Key Ring exists. Defaults to the VM ProjectID if not set.",
+	"location":  "location is the GCP location in which the Key Ring exists.",
 }
 
 func (GCPKMSKeyReference) SwaggerDoc() map[string]string {
@@ -422,27 +477,28 @@ func (GCPKMSKeyReference) SwaggerDoc() map[string]string {
 var map_GCPMachineProviderSpec = map[string]string{
 	"":                       "GCPMachineProviderSpec is the type that will be embedded in a Machine.Spec.ProviderSpec field for an GCP virtual machine. It is used by the GCP machine actuator to create a single Machine. Compatibility level 2: Stable within a major release for a minimum of 9 months or 3 minor releases (whichever is longer).",
 	"metadata":               "metadata is the standard object's metadata. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata",
-	"userDataSecret":         "UserDataSecret contains a local reference to a secret that contains the UserData to apply to the instance",
-	"credentialsSecret":      "CredentialsSecret is a reference to the secret with GCP credentials.",
-	"canIPForward":           "CanIPForward Allows this instance to send and receive packets with non-matching destination or source IPs. This is required if you plan to use this instance to forward routes.",
-	"deletionProtection":     "DeletionProtection whether the resource should be protected against deletion.",
-	"disks":                  "Disks is a list of disks to be attached to the VM.",
-	"labels":                 "Labels list of labels to apply to the VM.",
+	"userDataSecret":         "userDataSecret contains a local reference to a secret that contains the UserData to apply to the instance",
+	"credentialsSecret":      "credentialsSecret is a reference to the secret with GCP credentials.",
+	"canIPForward":           "canIPForward Allows this instance to send and receive packets with non-matching destination or source IPs. This is required if you plan to use this instance to forward routes.",
+	"deletionProtection":     "deletionProtection whether the resource should be protected against deletion.",
+	"disks":                  "disks is a list of disks to be attached to the VM.",
+	"labels":                 "labels list of labels to apply to the VM.",
 	"gcpMetadata":            "Metadata key/value pairs to apply to the VM.",
-	"networkInterfaces":      "NetworkInterfaces is a list of network interfaces to be attached to the VM.",
-	"serviceAccounts":        "ServiceAccounts is a list of GCP service accounts to be used by the VM.",
-	"tags":                   "Tags list of network tags to apply to the VM.",
-	"targetPools":            "TargetPools are used for network TCP/UDP load balancing. A target pool references member instances, an associated legacy HttpHealthCheck resource, and, optionally, a backup target pool",
-	"machineType":            "MachineType is the machine type to use for the VM.",
-	"region":                 "Region is the region in which the GCP machine provider will create the VM.",
-	"zone":                   "Zone is the zone in which the GCP machine provider will create the VM.",
-	"projectID":              "ProjectID is the project in which the GCP machine provider will create the VM.",
-	"gpus":                   "GPUs is a list of GPUs to be attached to the VM.",
-	"preemptible":            "Preemptible indicates if created instance is preemptible.",
-	"onHostMaintenance":      "OnHostMaintenance determines the behavior when a maintenance event occurs that might cause the instance to reboot. This is required to be set to \"Terminate\" if you want to provision machine with attached GPUs. Otherwise, allowed values are \"Migrate\" and \"Terminate\". If omitted, the platform chooses a default, which is subject to change over time, currently that default is \"Migrate\".",
-	"restartPolicy":          "RestartPolicy determines the behavior when an instance crashes or the underlying infrastructure provider stops the instance as part of a maintenance event (default \"Always\"). Cannot be \"Always\" with preemptible instances. Otherwise, allowed values are \"Always\" and \"Never\". If omitted, the platform chooses a default, which is subject to change over time, currently that default is \"Always\". RestartPolicy represents AutomaticRestart in GCP compute api",
-	"shieldedInstanceConfig": "ShieldedInstanceConfig is the Shielded VM configuration for the VM",
-	"confidentialCompute":    "confidentialCompute Defines whether the instance should have confidential compute enabled. If enabled OnHostMaintenance is required to be set to \"Terminate\". If omitted, the platform chooses a default, which is subject to change over time, currently that default is false.",
+	"networkInterfaces":      "networkInterfaces is a list of network interfaces to be attached to the VM.",
+	"serviceAccounts":        "serviceAccounts is a list of GCP service accounts to be used by the VM.",
+	"tags":                   "tags list of network tags to apply to the VM.",
+	"targetPools":            "targetPools are used for network TCP/UDP load balancing. A target pool references member instances, an associated legacy HttpHealthCheck resource, and, optionally, a backup target pool",
+	"machineType":            "machineType is the machine type to use for the VM.",
+	"region":                 "region is the region in which the GCP machine provider will create the VM.",
+	"zone":                   "zone is the zone in which the GCP machine provider will create the VM.",
+	"projectID":              "projectID is the project in which the GCP machine provider will create the VM.",
+	"gpus":                   "gpus is a list of GPUs to be attached to the VM.",
+	"preemptible":            "preemptible indicates if created instance is preemptible.",
+	"provisioningModel":      "provisioningModel is an optional field that determines the provisioning model for the GCP machine instance. Valid values are \"Spot\" and omitted. When set to Spot, the instance runs as a Google Cloud Spot instance which provides significant cost savings but may be preempted by Google Cloud Platform when resources are needed elsewhere. When omitted, the machine will be provisioned as a standard on-demand instance. This field cannot be used together with the preemptible field.",
+	"onHostMaintenance":      "onHostMaintenance determines the behavior when a maintenance event occurs that might cause the instance to reboot. This is required to be set to \"Terminate\" if you want to provision machine with attached GPUs. Otherwise, allowed values are \"Migrate\" and \"Terminate\". If omitted, the platform chooses a default, which is subject to change over time, currently that default is \"Migrate\".",
+	"restartPolicy":          "restartPolicy determines the behavior when an instance crashes or the underlying infrastructure provider stops the instance as part of a maintenance event (default \"Always\"). Cannot be \"Always\" with preemptible instances. Otherwise, allowed values are \"Always\" and \"Never\". If omitted, the platform chooses a default, which is subject to change over time, currently that default is \"Always\". RestartPolicy represents AutomaticRestart in GCP compute api",
+	"shieldedInstanceConfig": "shieldedInstanceConfig is the Shielded VM configuration for the VM",
+	"confidentialCompute":    "confidentialCompute is an optional field defining whether the instance should have confidential compute enabled or not, and the confidential computing technology of choice. Allowed values are omitted, Disabled, Enabled, AMDEncryptedVirtualization, AMDEncryptedVirtualizationNestedPaging, and IntelTrustedDomainExtensions When set to Disabled, the machine will not be configured to be a confidential computing instance. When set to Enabled, the machine will be configured as a confidential computing instance with no preference on the confidential compute policy used. In this mode, the platform chooses a default that is subject to change over time. Currently, the default is to use AMD Secure Encrypted Virtualization. When set to AMDEncryptedVirtualization, the machine will be configured as a confidential computing instance with AMD Secure Encrypted Virtualization (AMD SEV) as the confidential computing technology. When set to AMDEncryptedVirtualizationNestedPaging, the machine will be configured as a confidential computing instance with AMD Secure Encrypted Virtualization Secure Nested Paging (AMD SEV-SNP) as the confidential computing technology. When set to IntelTrustedDomainExtensions, the machine will be configured as a confidential computing instance with Intel Trusted Domain Extensions (Intel TDX) as the confidential computing technology. If any value other than Disabled is set the selected machine type must support that specific confidential computing technology. The machine series supporting confidential computing technologies can be checked at https://cloud.google.com/confidential-computing/confidential-vm/docs/supported-configurations#all-confidential-vm-instances Currently, AMDEncryptedVirtualization is supported in c2d, n2d, and c3d machines. AMDEncryptedVirtualizationNestedPaging is supported in n2d machines. IntelTrustedDomainExtensions is supported in c3 machines. If any value other than Disabled is set, the selected region must support that specific confidential computing technology. The list of regions supporting confidential computing technologies can be checked at https://cloud.google.com/confidential-computing/confidential-vm/docs/supported-configurations#supported-zones If any value other than Disabled is set onHostMaintenance is required to be set to \"Terminate\". If omitted, the platform chooses a default, which is subject to change over time, currently that default is Disabled.",
 	"resourceManagerTags":    "resourceManagerTags is an optional list of tags to apply to the GCP resources created for the cluster. See https://cloud.google.com/resource-manager/docs/tags/tags-overview for information on tagging GCP resources. GCP supports a maximum of 50 tags per resource.",
 }
 
@@ -452,9 +508,9 @@ func (GCPMachineProviderSpec) SwaggerDoc() map[string]string {
 
 var map_GCPMachineProviderStatus = map[string]string{
 	"":              "GCPMachineProviderStatus is the type that will be embedded in a Machine.Status.ProviderStatus field. It contains GCP-specific status information. Compatibility level 2: Stable within a major release for a minimum of 9 months or 3 minor releases (whichever is longer).",
-	"instanceId":    "InstanceID is the ID of the instance in GCP",
-	"instanceState": "InstanceState is the provisioning state of the GCP Instance.",
-	"conditions":    "Conditions is a set of conditions associated with the Machine to indicate errors or other status",
+	"instanceId":    "instanceId is the ID of the instance in GCP",
+	"instanceState": "instanceState is the provisioning state of the GCP Instance.",
+	"conditions":    "conditions is a set of conditions associated with the Machine to indicate errors or other status",
 }
 
 func (GCPMachineProviderStatus) SwaggerDoc() map[string]string {
@@ -463,8 +519,8 @@ func (GCPMachineProviderStatus) SwaggerDoc() map[string]string {
 
 var map_GCPMetadata = map[string]string{
 	"":      "GCPMetadata describes metadata for GCP.",
-	"key":   "Key is the metadata key.",
-	"value": "Value is the metadata value.",
+	"key":   "key is the metadata key.",
+	"value": "value is the metadata value.",
 }
 
 func (GCPMetadata) SwaggerDoc() map[string]string {
@@ -473,10 +529,10 @@ func (GCPMetadata) SwaggerDoc() map[string]string {
 
 var map_GCPNetworkInterface = map[string]string{
 	"":           "GCPNetworkInterface describes network interfaces for GCP",
-	"publicIP":   "PublicIP indicates if true a public IP will be used",
-	"network":    "Network is the network name.",
-	"projectID":  "ProjectID is the project in which the GCP machine provider will create the VM.",
-	"subnetwork": "Subnetwork is the subnetwork name.",
+	"publicIP":   "publicIP indicates if true a public IP will be used",
+	"network":    "network is the network name.",
+	"projectID":  "projectID is the project in which the GCP machine provider will create the VM.",
+	"subnetwork": "subnetwork is the subnetwork name.",
 }
 
 func (GCPNetworkInterface) SwaggerDoc() map[string]string {
@@ -485,8 +541,8 @@ func (GCPNetworkInterface) SwaggerDoc() map[string]string {
 
 var map_GCPServiceAccount = map[string]string{
 	"":       "GCPServiceAccount describes service accounts for GCP.",
-	"email":  "Email is the service account email.",
-	"scopes": "Scopes list of scopes to be assigned to the service account.",
+	"email":  "email is the service account email.",
+	"scopes": "scopes list of scopes to be assigned to the service account.",
 }
 
 func (GCPServiceAccount) SwaggerDoc() map[string]string {
@@ -495,9 +551,9 @@ func (GCPServiceAccount) SwaggerDoc() map[string]string {
 
 var map_GCPShieldedInstanceConfig = map[string]string{
 	"":                                 "GCPShieldedInstanceConfig describes the shielded VM configuration of the instance on GCP. Shielded VM configuration allow users to enable and disable Secure Boot, vTPM, and Integrity Monitoring.",
-	"secureBoot":                       "SecureBoot Defines whether the instance should have secure boot enabled. Secure Boot verify the digital signature of all boot components, and halting the boot process if signature verification fails. If omitted, the platform chooses a default, which is subject to change over time, currently that default is Disabled.",
-	"virtualizedTrustedPlatformModule": "VirtualizedTrustedPlatformModule enable virtualized trusted platform module measurements to create a known good boot integrity policy baseline. The integrity policy baseline is used for comparison with measurements from subsequent VM boots to determine if anything has changed. This is required to be set to \"Enabled\" if IntegrityMonitoring is enabled. If omitted, the platform chooses a default, which is subject to change over time, currently that default is Enabled.",
-	"integrityMonitoring":              "IntegrityMonitoring determines whether the instance should have integrity monitoring that verify the runtime boot integrity. Compares the most recent boot measurements to the integrity policy baseline and return a pair of pass/fail results depending on whether they match or not. If omitted, the platform chooses a default, which is subject to change over time, currently that default is Enabled.",
+	"secureBoot":                       "secureBoot Defines whether the instance should have secure boot enabled. Secure Boot verify the digital signature of all boot components, and halting the boot process if signature verification fails. If omitted, the platform chooses a default, which is subject to change over time, currently that default is Disabled.",
+	"virtualizedTrustedPlatformModule": "virtualizedTrustedPlatformModule enable virtualized trusted platform module measurements to create a known good boot integrity policy baseline. The integrity policy baseline is used for comparison with measurements from subsequent VM boots to determine if anything has changed. This is required to be set to \"Enabled\" if IntegrityMonitoring is enabled. If omitted, the platform chooses a default, which is subject to change over time, currently that default is Enabled.",
+	"integrityMonitoring":              "integrityMonitoring determines whether the instance should have integrity monitoring that verify the runtime boot integrity. Compares the most recent boot measurements to the integrity policy baseline and return a pair of pass/fail results depending on whether they match or not. If omitted, the platform chooses a default, which is subject to change over time, currently that default is Enabled.",
 }
 
 func (GCPShieldedInstanceConfig) SwaggerDoc() map[string]string {
@@ -517,10 +573,10 @@ func (ResourceManagerTag) SwaggerDoc() map[string]string {
 
 var map_LastOperation = map[string]string{
 	"":            "LastOperation represents the detail of the last performed operation on the MachineObject.",
-	"description": "Description is the human-readable description of the last operation.",
-	"lastUpdated": "LastUpdated is the timestamp at which LastOperation API was last-updated.",
-	"state":       "State is the current status of the last performed operation. E.g. Processing, Failed, Successful etc",
-	"type":        "Type is the type of operation which was last performed. E.g. Create, Delete, Update etc",
+	"description": "description is the human-readable description of the last operation.",
+	"lastUpdated": "lastUpdated is the timestamp at which LastOperation API was last-updated.",
+	"state":       "state is the current status of the last performed operation. E.g. Processing, Failed, Successful etc",
+	"type":        "type is the type of operation which was last performed. E.g. Create, Delete, Update etc",
 }
 
 func (LastOperation) SwaggerDoc() map[string]string {
@@ -529,8 +585,8 @@ func (LastOperation) SwaggerDoc() map[string]string {
 
 var map_LifecycleHook = map[string]string{
 	"":      "LifecycleHook represents a single instance of a lifecycle hook",
-	"name":  "Name defines a unique name for the lifcycle hook. The name should be unique and descriptive, ideally 1-3 words, in CamelCase or it may be namespaced, eg. foo.example.com/CamelCase. Names must be unique and should only be managed by a single entity.",
-	"owner": "Owner defines the owner of the lifecycle hook. This should be descriptive enough so that users can identify who/what is responsible for blocking the lifecycle. This could be the name of a controller (e.g. clusteroperator/etcd) or an administrator managing the hook.",
+	"name":  "name defines a unique name for the lifcycle hook. The name should be unique and descriptive, ideally 1-3 words, in CamelCase or it may be namespaced, eg. foo.example.com/CamelCase. Names must be unique and should only be managed by a single entity.",
+	"owner": "owner defines the owner of the lifecycle hook. This should be descriptive enough so that users can identify who/what is responsible for blocking the lifecycle. This could be the name of a controller (e.g. clusteroperator/etcd) or an administrator managing the hook.",
 }
 
 func (LifecycleHook) SwaggerDoc() map[string]string {
@@ -539,8 +595,8 @@ func (LifecycleHook) SwaggerDoc() map[string]string {
 
 var map_LifecycleHooks = map[string]string{
 	"":             "LifecycleHooks allow users to pause operations on the machine at certain prefedined points within the machine lifecycle.",
-	"preDrain":     "PreDrain hooks prevent the machine from being drained. This also blocks further lifecycle events, such as termination.",
-	"preTerminate": "PreTerminate hooks prevent the machine from being terminated. PreTerminate hooks be actioned after the Machine has been drained.",
+	"preDrain":     "preDrain hooks prevent the machine from being drained. This also blocks further lifecycle events, such as termination.",
+	"preTerminate": "preTerminate hooks prevent the machine from being terminated. PreTerminate hooks be actioned after the Machine has been drained.",
 }
 
 func (LifecycleHooks) SwaggerDoc() map[string]string {
@@ -566,12 +622,13 @@ func (MachineList) SwaggerDoc() map[string]string {
 }
 
 var map_MachineSpec = map[string]string{
-	"":               "MachineSpec defines the desired state of Machine",
-	"metadata":       "ObjectMeta will autopopulate the Node created. Use this to indicate what labels, annotations, name prefix, etc., should be used when creating the Node.",
-	"lifecycleHooks": "LifecycleHooks allow users to pause operations on the machine at certain predefined points within the machine lifecycle.",
-	"taints":         "The list of the taints to be applied to the corresponding Node in additive manner. This list will not overwrite any other taints added to the Node on an ongoing basis by other entities. These taints should be actively reconciled e.g. if you ask the machine controller to apply a taint and then manually remove the taint the machine controller will put it back) but not have the machine controller remove any taints",
-	"providerSpec":   "ProviderSpec details Provider-specific configuration to use during node creation.",
-	"providerID":     "ProviderID is the identification ID of the machine provided by the provider. This field must match the provider ID as seen on the node object corresponding to this machine. This field is required by higher level consumers of cluster-api. Example use case is cluster autoscaler with cluster-api as provider. Clean-up logic in the autoscaler compares machines to nodes to find out machines at provider which could not get registered as Kubernetes nodes. With cluster-api as a generic out-of-tree provider for autoscaler, this field is required by autoscaler to be able to have a provider view of the list of machines. Another list of nodes is queried from the k8s apiserver and then a comparison is done to find out unregistered machines and are marked for delete. This field will be set by the actuators and consumed by higher level entities like autoscaler that will be interfacing with cluster-api as generic provider.",
+	"":                 "MachineSpec defines the desired state of Machine",
+	"metadata":         "ObjectMeta will autopopulate the Node created. Use this to indicate what labels, annotations, name prefix, etc., should be used when creating the Node.",
+	"lifecycleHooks":   "lifecycleHooks allow users to pause operations on the machine at certain predefined points within the machine lifecycle.",
+	"taints":           "The list of the taints to be applied to the corresponding Node in additive manner. This list will not overwrite any other taints added to the Node on an ongoing basis by other entities. These taints should be actively reconciled e.g. if you ask the machine controller to apply a taint and then manually remove the taint the machine controller will put it back) but not have the machine controller remove any taints",
+	"providerSpec":     "providerSpec details Provider-specific configuration to use during node creation.",
+	"providerID":       "providerID is the identification ID of the machine provided by the provider. This field must match the provider ID as seen on the node object corresponding to this machine. This field is required by higher level consumers of cluster-api. Example use case is cluster autoscaler with cluster-api as provider. Clean-up logic in the autoscaler compares machines to nodes to find out machines at provider which could not get registered as Kubernetes nodes. With cluster-api as a generic out-of-tree provider for autoscaler, this field is required by autoscaler to be able to have a provider view of the list of machines. Another list of nodes is queried from the k8s apiserver and then a comparison is done to find out unregistered machines and are marked for delete. This field will be set by the actuators and consumed by higher level entities like autoscaler that will be interfacing with cluster-api as generic provider.",
+	"authoritativeAPI": "authoritativeAPI is the API that is authoritative for this resource. Valid values are MachineAPI and ClusterAPI. When set to MachineAPI, writes to the spec of the machine.openshift.io copy of this resource will be reflected into the cluster.x-k8s.io copy. When set to ClusterAPI, writes to the spec of the cluster.x-k8s.io copy of this resource will be reflected into the machine.openshift.io copy. Updates to the status will be reflected in both copies of the resource, based on the controller implementing the functionality of the API. Currently the authoritative API determines which controller will manage the resource, this will change in a future release. To ensure the change has been accepted, please verify that the `status.authoritativeAPI` field has been updated to the desired value and that the `Synchronized` condition is present and set to `True`.",
 }
 
 func (MachineSpec) SwaggerDoc() map[string]string {
@@ -579,16 +636,19 @@ func (MachineSpec) SwaggerDoc() map[string]string {
 }
 
 var map_MachineStatus = map[string]string{
-	"":               "MachineStatus defines the observed state of Machine",
-	"nodeRef":        "NodeRef will point to the corresponding Node if it exists.",
-	"lastUpdated":    "LastUpdated identifies when this status was last observed.",
-	"errorReason":    "ErrorReason will be set in the event that there is a terminal problem reconciling the Machine and will contain a succinct value suitable for machine interpretation.\n\nThis field should not be set for transitive errors that a controller faces that are expected to be fixed automatically over time (like service outages), but instead indicate that something is fundamentally wrong with the Machine's spec or the configuration of the controller, and that manual intervention is required. Examples of terminal errors would be invalid combinations of settings in the spec, values that are unsupported by the controller, or the responsible controller itself being critically misconfigured.\n\nAny transient errors that occur during the reconciliation of Machines can be added as events to the Machine object and/or logged in the controller's output.",
-	"errorMessage":   "ErrorMessage will be set in the event that there is a terminal problem reconciling the Machine and will contain a more verbose string suitable for logging and human consumption.\n\nThis field should not be set for transitive errors that a controller faces that are expected to be fixed automatically over time (like service outages), but instead indicate that something is fundamentally wrong with the Machine's spec or the configuration of the controller, and that manual intervention is required. Examples of terminal errors would be invalid combinations of settings in the spec, values that are unsupported by the controller, or the responsible controller itself being critically misconfigured.\n\nAny transient errors that occur during the reconciliation of Machines can be added as events to the Machine object and/or logged in the controller's output.",
-	"providerStatus": "ProviderStatus details a Provider-specific status. It is recommended that providers maintain their own versioned API types that should be serialized/deserialized from this field.",
-	"addresses":      "Addresses is a list of addresses assigned to the machine. Queried from cloud provider, if available.",
-	"lastOperation":  "LastOperation describes the last-operation performed by the machine-controller. This API should be useful as a history in terms of the latest operation performed on the specific machine. It should also convey the state of the latest-operation for example if it is still on-going, failed or completed successfully.",
-	"phase":          "Phase represents the current phase of machine actuation. One of: Failed, Provisioning, Provisioned, Running, Deleting",
-	"conditions":     "Conditions defines the current state of the Machine",
+	"":                       "MachineStatus defines the observed state of Machine",
+	"nodeRef":                "nodeRef will point to the corresponding Node if it exists.",
+	"lastUpdated":            "lastUpdated identifies when this status was last observed.",
+	"errorReason":            "errorReason will be set in the event that there is a terminal problem reconciling the Machine and will contain a succinct value suitable for machine interpretation.\n\nThis field should not be set for transitive errors that a controller faces that are expected to be fixed automatically over time (like service outages), but instead indicate that something is fundamentally wrong with the Machine's spec or the configuration of the controller, and that manual intervention is required. Examples of terminal errors would be invalid combinations of settings in the spec, values that are unsupported by the controller, or the responsible controller itself being critically misconfigured.\n\nAny transient errors that occur during the reconciliation of Machines can be added as events to the Machine object and/or logged in the controller's output.",
+	"errorMessage":           "errorMessage will be set in the event that there is a terminal problem reconciling the Machine and will contain a more verbose string suitable for logging and human consumption.\n\nThis field should not be set for transitive errors that a controller faces that are expected to be fixed automatically over time (like service outages), but instead indicate that something is fundamentally wrong with the Machine's spec or the configuration of the controller, and that manual intervention is required. Examples of terminal errors would be invalid combinations of settings in the spec, values that are unsupported by the controller, or the responsible controller itself being critically misconfigured.\n\nAny transient errors that occur during the reconciliation of Machines can be added as events to the Machine object and/or logged in the controller's output.",
+	"providerStatus":         "providerStatus details a Provider-specific status. It is recommended that providers maintain their own versioned API types that should be serialized/deserialized from this field.",
+	"addresses":              "addresses is a list of addresses assigned to the machine. Queried from cloud provider, if available.",
+	"lastOperation":          "lastOperation describes the last-operation performed by the machine-controller. This API should be useful as a history in terms of the latest operation performed on the specific machine. It should also convey the state of the latest-operation for example if it is still on-going, failed or completed successfully.",
+	"phase":                  "phase represents the current phase of machine actuation. One of: Failed, Provisioning, Provisioned, Running, Deleting",
+	"conditions":             "conditions defines the current state of the Machine",
+	"authoritativeAPI":       "authoritativeAPI is the API that is authoritative for this resource. Valid values are MachineAPI, ClusterAPI and Migrating. This value is updated by the migration controller to reflect the authoritative API. Machine API and Cluster API controllers use this value to determine whether or not to reconcile the resource. When set to Migrating, the migration controller is currently performing the handover of authority from one API to the other.",
+	"synchronizedAPI":        "synchronizedAPI holds the last stable value of authoritativeAPI. It is used to detect migration cancellation requests and to restore the resource to its previous state. Valid values are \"MachineAPI\" and \"ClusterAPI\". When omitted, the resource has not yet been reconciled by the migration controller.",
+	"synchronizedGeneration": "synchronizedGeneration is the generation of the authoritative resource that the non-authoritative resource is synchronised with. This field is set when the authoritative resource is updated and the sync controller has updated the non-authoritative resource to match.",
 }
 
 func (MachineStatus) SwaggerDoc() map[string]string {
@@ -618,10 +678,10 @@ func (MachineHealthCheckList) SwaggerDoc() map[string]string {
 var map_MachineHealthCheckSpec = map[string]string{
 	"":                    "MachineHealthCheckSpec defines the desired state of MachineHealthCheck",
 	"selector":            "Label selector to match machines whose health will be exercised. Note: An empty selector will match all machines.",
-	"unhealthyConditions": "UnhealthyConditions contains a list of the conditions that determine whether a node is considered unhealthy.  The conditions are combined in a logical OR, i.e. if any of the conditions is met, the node is unhealthy.",
-	"maxUnhealthy":        "Any farther remediation is only allowed if at most \"MaxUnhealthy\" machines selected by \"selector\" are not healthy. Expects either a postive integer value or a percentage value. Percentage values must be positive whole numbers and are capped at 100%. Both 0 and 0% are valid and will block all remediation.",
+	"unhealthyConditions": "unhealthyConditions contains a list of the conditions that determine whether a node is considered unhealthy.  The conditions are combined in a logical OR, i.e. if any of the conditions is met, the node is unhealthy.",
+	"maxUnhealthy":        "Any farther remediation is only allowed if at most \"MaxUnhealthy\" machines selected by \"selector\" are not healthy. Expects either a postive integer value or a percentage value. Percentage values must be positive whole numbers and are capped at 100%. Both 0 and 0% are valid and will block all remediation. Defaults to 100% if not set.",
 	"nodeStartupTimeout":  "Machines older than this duration without a node will be considered to have failed and will be remediated. To prevent Machines without Nodes from being removed, disable startup checks by setting this value explicitly to \"0\". Expects an unsigned duration string of decimal numbers each with optional fraction and a unit suffix, eg \"300ms\", \"1.5h\" or \"2h45m\". Valid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\".",
-	"remediationTemplate": "RemediationTemplate is a reference to a remediation template provided by an infrastructure provider.\n\nThis field is completely optional, when filled, the MachineHealthCheck controller creates a new object from the template referenced and hands off remediation of the machine to a controller that lives outside of Machine API Operator.",
+	"remediationTemplate": "remediationTemplate is a reference to a remediation template provided by an infrastructure provider.\n\nThis field is completely optional, when filled, the MachineHealthCheck controller creates a new object from the template referenced and hands off remediation of the machine to a controller that lives outside of Machine API Operator.",
 }
 
 func (MachineHealthCheckSpec) SwaggerDoc() map[string]string {
@@ -632,8 +692,8 @@ var map_MachineHealthCheckStatus = map[string]string{
 	"":                    "MachineHealthCheckStatus defines the observed state of MachineHealthCheck",
 	"expectedMachines":    "total number of machines counted by this machine health check",
 	"currentHealthy":      "total number of machines counted by this machine health check",
-	"remediationsAllowed": "RemediationsAllowed is the number of further remediations allowed by this machine health check before maxUnhealthy short circuiting will be applied",
-	"conditions":          "Conditions defines the current state of the MachineHealthCheck",
+	"remediationsAllowed": "remediationsAllowed is the number of further remediations allowed by this machine health check before maxUnhealthy short circuiting will be applied",
+	"conditions":          "conditions defines the current state of the MachineHealthCheck",
 }
 
 func (MachineHealthCheckStatus) SwaggerDoc() map[string]string {
@@ -668,12 +728,13 @@ func (MachineSetList) SwaggerDoc() map[string]string {
 }
 
 var map_MachineSetSpec = map[string]string{
-	"":                "MachineSetSpec defines the desired state of MachineSet",
-	"replicas":        "Replicas is the number of desired replicas. This is a pointer to distinguish between explicit zero and unspecified. Defaults to 1.",
-	"minReadySeconds": "MinReadySeconds is the minimum number of seconds for which a newly created machine should be ready. Defaults to 0 (machine will be considered available as soon as it is ready)",
-	"deletePolicy":    "DeletePolicy defines the policy used to identify nodes to delete when downscaling. Defaults to \"Random\".  Valid values are \"Random, \"Newest\", \"Oldest\"",
-	"selector":        "Selector is a label query over machines that should match the replica count. Label keys and values that must match in order to be controlled by this MachineSet. It must match the machine template's labels. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors",
-	"template":        "Template is the object that describes the machine that will be created if insufficient replicas are detected.",
+	"":                 "MachineSetSpec defines the desired state of MachineSet",
+	"replicas":         "replicas is the number of desired replicas. This is a pointer to distinguish between explicit zero and unspecified. Defaults to 1.",
+	"minReadySeconds":  "minReadySeconds is the minimum number of seconds for which a newly created machine should be ready. Defaults to 0 (machine will be considered available as soon as it is ready)",
+	"deletePolicy":     "deletePolicy defines the policy used to identify nodes to delete when downscaling. Defaults to \"Random\".  Valid values are \"Random, \"Newest\", \"Oldest\"",
+	"selector":         "selector is a label query over machines that should match the replica count. Label keys and values that must match in order to be controlled by this MachineSet. It must match the machine template's labels. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors",
+	"template":         "template is the object that describes the machine that will be created if insufficient replicas are detected.",
+	"authoritativeAPI": "authoritativeAPI is the API that is authoritative for this resource. Valid values are MachineAPI and ClusterAPI. When set to MachineAPI, writes to the spec of the machine.openshift.io copy of this resource will be reflected into the cluster.x-k8s.io copy. When set to ClusterAPI, writes to the spec of the cluster.x-k8s.io copy of this resource will be reflected into the machine.openshift.io copy. Updates to the status will be reflected in both copies of the resource, based on the controller implementing the functionality of the API. Currently the authoritative API determines which controller will manage the resource, this will change in a future release. To ensure the change has been accepted, please verify that the `status.authoritativeAPI` field has been updated to the desired value and that the `Synchronized` condition is present and set to `True`.",
 }
 
 func (MachineSetSpec) SwaggerDoc() map[string]string {
@@ -681,13 +742,17 @@ func (MachineSetSpec) SwaggerDoc() map[string]string {
 }
 
 var map_MachineSetStatus = map[string]string{
-	"":                     "MachineSetStatus defines the observed state of MachineSet",
-	"replicas":             "Replicas is the most recently observed number of replicas.",
-	"fullyLabeledReplicas": "The number of replicas that have labels matching the labels of the machine template of the MachineSet.",
-	"readyReplicas":        "The number of ready replicas for this MachineSet. A machine is considered ready when the node has been created and is \"Ready\".",
-	"availableReplicas":    "The number of available replicas (ready for at least minReadySeconds) for this MachineSet.",
-	"observedGeneration":   "ObservedGeneration reflects the generation of the most recently observed MachineSet.",
-	"errorReason":          "In the event that there is a terminal problem reconciling the replicas, both ErrorReason and ErrorMessage will be set. ErrorReason will be populated with a succinct value suitable for machine interpretation, while ErrorMessage will contain a more verbose string suitable for logging and human consumption.\n\nThese fields should not be set for transitive errors that a controller faces that are expected to be fixed automatically over time (like service outages), but instead indicate that something is fundamentally wrong with the MachineTemplate's spec or the configuration of the machine controller, and that manual intervention is required. Examples of terminal errors would be invalid combinations of settings in the spec, values that are unsupported by the machine controller, or the responsible machine controller itself being critically misconfigured.\n\nAny transient errors that occur during the reconciliation of Machines can be added as events to the MachineSet object and/or logged in the controller's output.",
+	"":                       "MachineSetStatus defines the observed state of MachineSet",
+	"replicas":               "replicas is the most recently observed number of replicas.",
+	"fullyLabeledReplicas":   "The number of replicas that have labels matching the labels of the machine template of the MachineSet.",
+	"readyReplicas":          "The number of ready replicas for this MachineSet. A machine is considered ready when the node has been created and is \"Ready\".",
+	"availableReplicas":      "The number of available replicas (ready for at least minReadySeconds) for this MachineSet.",
+	"observedGeneration":     "observedGeneration reflects the generation of the most recently observed MachineSet.",
+	"errorReason":            "In the event that there is a terminal problem reconciling the replicas, both ErrorReason and ErrorMessage will be set. ErrorReason will be populated with a succinct value suitable for machine interpretation, while ErrorMessage will contain a more verbose string suitable for logging and human consumption.\n\nThese fields should not be set for transitive errors that a controller faces that are expected to be fixed automatically over time (like service outages), but instead indicate that something is fundamentally wrong with the MachineTemplate's spec or the configuration of the machine controller, and that manual intervention is required. Examples of terminal errors would be invalid combinations of settings in the spec, values that are unsupported by the machine controller, or the responsible machine controller itself being critically misconfigured.\n\nAny transient errors that occur during the reconciliation of Machines can be added as events to the MachineSet object and/or logged in the controller's output.",
+	"conditions":             "conditions defines the current state of the MachineSet",
+	"authoritativeAPI":       "authoritativeAPI is the API that is authoritative for this resource. Valid values are MachineAPI, ClusterAPI and Migrating. This value is updated by the migration controller to reflect the authoritative API. Machine API and Cluster API controllers use this value to determine whether or not to reconcile the resource. When set to Migrating, the migration controller is currently performing the handover of authority from one API to the other.",
+	"synchronizedAPI":        "synchronizedAPI holds the last stable value of authoritativeAPI. It is used to detect migration cancellation requests and to restore the resource to its previous state. Valid values are \"MachineAPI\" and \"ClusterAPI\". When omitted, the resource has not yet been reconciled by the migration controller.",
+	"synchronizedGeneration": "synchronizedGeneration is the generation of the authoritative resource that the non-authoritative resource is synchronised with. This field is set when the authoritative resource is updated and the sync controller has updated the non-authoritative resource to match.",
 }
 
 func (MachineSetStatus) SwaggerDoc() map[string]string {
@@ -706,9 +771,9 @@ func (MachineTemplateSpec) SwaggerDoc() map[string]string {
 
 var map_Condition = map[string]string{
 	"":                   "Condition defines an observation of a Machine API resource operational state.",
-	"type":               "Type of condition in CamelCase or in foo.example.com/CamelCase. Many .condition.type values are consistent across resources like Available, but because arbitrary conditions can be useful (see .node.status.conditions), the ability to deconflict is important.",
-	"status":             "Status of the condition, one of True, False, Unknown.",
-	"severity":           "Severity provides an explicit classification of Reason code, so the users or machines can immediately understand the current situation and act accordingly. The Severity field MUST be set only when Status=False.",
+	"type":               "type of condition in CamelCase or in foo.example.com/CamelCase. Many .condition.type values are consistent across resources like Available, but because arbitrary conditions can be useful (see .node.status.conditions), the ability to deconflict is important.",
+	"status":             "status of the condition, one of True, False, Unknown.",
+	"severity":           "severity provides an explicit classification of Reason code, so the users or machines can immediately understand the current situation and act accordingly. The Severity field MUST be set only when Status=False.",
 	"lastTransitionTime": "Last time the condition transitioned from one status to another. This should be when the underlying condition changed. If that is not known, then using the time when the API field changed is acceptable.",
 	"reason":             "The reason for the condition's last transition in CamelCase. The specific API may choose whether or not this field is considered a guaranteed API. This field may not be empty.",
 	"message":            "A human readable message indicating details about the transition. This field may be empty.",
@@ -720,11 +785,11 @@ func (Condition) SwaggerDoc() map[string]string {
 
 var map_ObjectMeta = map[string]string{
 	"":                "ObjectMeta is metadata that all persisted resources must have, which includes all objects users must create. This is a copy of customizable fields from metav1.ObjectMeta.\n\nObjectMeta is embedded in `Machine.Spec`, `MachineDeployment.Template` and `MachineSet.Template`, which are not top-level Kubernetes objects. Given that metav1.ObjectMeta has lots of special cases and read-only fields which end up in the generated CRD validation, having it as a subset simplifies the API and some issues that can impact user experience.\n\nDuring the [upgrade to controller-tools@v2](https://github.com/kubernetes-sigs/cluster-api/pull/1054) for v1alpha2, we noticed a failure would occur running Cluster API test suite against the new CRDs, specifically `spec.metadata.creationTimestamp in body must be of type string: \"null\"`. The investigation showed that `controller-tools@v2` behaves differently than its previous version when handling types from [metav1](k8s.io/apimachinery/pkg/apis/meta/v1) package.\n\nIn more details, we found that embedded (non-top level) types that embedded `metav1.ObjectMeta` had validation properties, including for `creationTimestamp` (metav1.Time). The `metav1.Time` type specifies a custom json marshaller that, when IsZero() is true, returns `null` which breaks validation because the field isn't marked as nullable.\n\nIn future versions, controller-tools@v2 might allow overriding the type and validation for embedded types. When that happens, this hack should be revisited.",
-	"name":            "Name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names",
-	"generateName":    "GenerateName is an optional prefix, used by the server, to generate a unique name ONLY IF the Name field has not been provided. If this field is used, the name returned to the client will be different than the name passed. This value will also be combined with a unique suffix. The provided value has the same validation rules as the Name field, and may be truncated by the length of the suffix required to make the value unique on the server.\n\nIf this field is specified and the generated name exists, the server will NOT return a 409 - instead, it will either return 201 Created or 500 with Reason ServerTimeout indicating a unique name could not be found in the time allotted, and the client should retry (optionally after the time indicated in the Retry-After header).\n\nApplied only if Name is not specified. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#idempotency",
-	"namespace":       "Namespace defines the space within each name must be unique. An empty namespace is equivalent to the \"default\" namespace, but \"default\" is the canonical representation. Not all objects are required to be scoped to a namespace - the value of this field for those objects will be empty.\n\nMust be a DNS_LABEL. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/namespaces",
+	"name":            "name must be unique within a namespace. Is required when creating resources, although some resources may allow a client to request the generation of an appropriate name automatically. Name is primarily intended for creation idempotence and configuration definition. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/identifiers#names",
+	"generateName":    "generateName is an optional prefix, used by the server, to generate a unique name ONLY IF the Name field has not been provided. If this field is used, the name returned to the client will be different than the name passed. This value will also be combined with a unique suffix. The provided value has the same validation rules as the Name field, and may be truncated by the length of the suffix required to make the value unique on the server.\n\nIf this field is specified and the generated name exists, the server will NOT return a 409 - instead, it will either return 201 Created or 500 with Reason ServerTimeout indicating a unique name could not be found in the time allotted, and the client should retry (optionally after the time indicated in the Retry-After header).\n\nApplied only if Name is not specified. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#idempotency",
+	"namespace":       "namespace defines the space within each name must be unique. An empty namespace is equivalent to the \"default\" namespace, but \"default\" is the canonical representation. Not all objects are required to be scoped to a namespace - the value of this field for those objects will be empty.\n\nMust be a DNS_LABEL. Cannot be updated. More info: http://kubernetes.io/docs/user-guide/namespaces",
 	"labels":          "Map of string keys and values that can be used to organize and categorize (scope and select) objects. May match selectors of replication controllers and services. More info: http://kubernetes.io/docs/user-guide/labels",
-	"annotations":     "Annotations is an unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata. They are not queryable and should be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations",
+	"annotations":     "annotations is an unstructured key value map stored with a resource that may be set by external tools to store and retrieve arbitrary metadata. They are not queryable and should be preserved when modifying objects. More info: http://kubernetes.io/docs/user-guide/annotations",
 	"ownerReferences": "List of objects depended by this object. If ALL objects in the list have been deleted, this object will be garbage collected. If this object is managed by a controller, then an entry in this list will point to this controller, with the controller field set to true. There cannot be more than one managing controller.",
 }
 
@@ -734,7 +799,7 @@ func (ObjectMeta) SwaggerDoc() map[string]string {
 
 var map_ProviderSpec = map[string]string{
 	"":      "ProviderSpec defines the configuration to use during node creation.",
-	"value": "Value is an inlined, serialized representation of the resource configuration. It is recommended that providers maintain their own versioned API types that should be serialized/deserialized from this field, akin to component config.",
+	"value": "value is an inlined, serialized representation of the resource configuration. It is recommended that providers maintain their own versioned API types that should be serialized/deserialized from this field, akin to component config.",
 }
 
 func (ProviderSpec) SwaggerDoc() map[string]string {
@@ -767,27 +832,39 @@ func (NetworkDeviceSpec) SwaggerDoc() map[string]string {
 
 var map_NetworkSpec = map[string]string{
 	"":        "NetworkSpec defines the virtual machine's network configuration.",
-	"devices": "Devices defines the virtual machine's network interfaces.",
+	"devices": "devices defines the virtual machine's network interfaces.",
 }
 
 func (NetworkSpec) SwaggerDoc() map[string]string {
 	return map_NetworkSpec
 }
 
+var map_VSphereDisk = map[string]string{
+	"":                 "VSphereDisk describes additional disks for vSphere.",
+	"name":             "name is used to identify the disk definition. name is required needs to be unique so that it can be used to clearly identify purpose of the disk. It must be at most 80 characters in length and must consist only of alphanumeric characters, hyphens and underscores, and must start and end with an alphanumeric character.",
+	"sizeGiB":          "sizeGiB is the size of the disk in GiB. The maximum supported size 16384 GiB.",
+	"provisioningMode": "provisioningMode is an optional field that specifies the provisioning type to be used by this vSphere data disk. Allowed values are \"Thin\", \"Thick\", \"EagerlyZeroed\", and omitted. When set to Thin, the disk will be made using thin provisioning allocating the bare minimum space. When set to Thick, the full disk size will be allocated when disk is created. When set to EagerlyZeroed, the disk will be created using eager zero provisioning. An eager zeroed thick disk has all space allocated and wiped clean of any previous contents on the physical media at creation time. Such disks may take longer time during creation compared to other disk formats. When omitted, no setting will be applied to the data disk and the provisioning mode for the disk will be determined by the default storage policy configured for the datastore in vSphere.",
+}
+
+func (VSphereDisk) SwaggerDoc() map[string]string {
+	return map_VSphereDisk
+}
+
 var map_VSphereMachineProviderSpec = map[string]string{
 	"":                  "VSphereMachineProviderSpec is the type that will be embedded in a Machine.Spec.ProviderSpec field for an VSphere virtual machine. It is used by the vSphere machine actuator to create a single Machine. Compatibility level 2: Stable within a major release for a minimum of 9 months or 3 minor releases (whichever is longer).",
-	"userDataSecret":    "UserDataSecret contains a local reference to a secret that contains the UserData to apply to the instance",
-	"credentialsSecret": "CredentialsSecret is a reference to the secret with vSphere credentials.",
-	"template":          "Template is the name, inventory path, or instance UUID of the template used to clone new machines.",
-	"workspace":         "Workspace describes the workspace to use for the machine.",
-	"network":           "Network is the network configuration for this machine's VM.",
-	"numCPUs":           "NumCPUs is the number of virtual processors in a virtual machine. Defaults to the analogue property value in the template from which this machine is cloned.",
+	"userDataSecret":    "userDataSecret contains a local reference to a secret that contains the UserData to apply to the instance",
+	"credentialsSecret": "credentialsSecret is a reference to the secret with vSphere credentials.",
+	"template":          "template is the name, inventory path, or instance UUID of the template used to clone new machines.",
+	"workspace":         "workspace describes the workspace to use for the machine.",
+	"network":           "network is the network configuration for this machine's VM.",
+	"numCPUs":           "numCPUs is the number of virtual processors in a virtual machine. Defaults to the analogue property value in the template from which this machine is cloned.",
 	"numCoresPerSocket": "NumCPUs is the number of cores among which to distribute CPUs in this virtual machine. Defaults to the analogue property value in the template from which this machine is cloned.",
-	"memoryMiB":         "MemoryMiB is the size of a virtual machine's memory, in MiB. Defaults to the analogue property value in the template from which this machine is cloned.",
-	"diskGiB":           "DiskGiB is the size of a virtual machine's disk, in GiB. Defaults to the analogue property value in the template from which this machine is cloned. This parameter will be ignored if 'LinkedClone' CloneMode is set.",
+	"memoryMiB":         "memoryMiB is the size of a virtual machine's memory, in MiB. Defaults to the analogue property value in the template from which this machine is cloned.",
+	"diskGiB":           "diskGiB is the size of a virtual machine's disk, in GiB. Defaults to the analogue property value in the template from which this machine is cloned. This parameter will be ignored if 'LinkedClone' CloneMode is set.",
 	"tagIDs":            "tagIDs is an optional set of tags to add to an instance. Specified tagIDs must use URN-notation instead of display names. A maximum of 10 tag IDs may be specified.",
-	"snapshot":          "Snapshot is the name of the snapshot from which the VM was cloned",
-	"cloneMode":         "CloneMode specifies the type of clone operation. The LinkedClone mode is only support for templates that have at least one snapshot. If the template has no snapshots, then CloneMode defaults to FullClone. When LinkedClone mode is enabled the DiskGiB field is ignored as it is not possible to expand disks of linked clones. Defaults to FullClone. When using LinkedClone, if no snapshots exist for the source template, falls back to FullClone.",
+	"snapshot":          "snapshot is the name of the snapshot from which the VM was cloned",
+	"cloneMode":         "cloneMode specifies the type of clone operation. The LinkedClone mode is only support for templates that have at least one snapshot. If the template has no snapshots, then CloneMode defaults to FullClone. When LinkedClone mode is enabled the DiskGiB field is ignored as it is not possible to expand disks of linked clones. Defaults to FullClone. When using LinkedClone, if no snapshots exist for the source template, falls back to FullClone.",
+	"dataDisks":         "dataDisks is a list of non OS disks to be created and attached to the VM.  The max number of disk allowed to be attached is currently 29.  The max number of disks for any controller is 30, but VM template will always have OS disk so that will leave 29 disks on any controller type.",
 }
 
 func (VSphereMachineProviderSpec) SwaggerDoc() map[string]string {
@@ -796,10 +873,10 @@ func (VSphereMachineProviderSpec) SwaggerDoc() map[string]string {
 
 var map_VSphereMachineProviderStatus = map[string]string{
 	"":              "VSphereMachineProviderStatus is the type that will be embedded in a Machine.Status.ProviderStatus field. It contains VSphere-specific status information. Compatibility level 2: Stable within a major release for a minimum of 9 months or 3 minor releases (whichever is longer).",
-	"instanceId":    "InstanceID is the ID of the instance in VSphere",
-	"instanceState": "InstanceState is the provisioning state of the VSphere Instance.",
-	"conditions":    "Conditions is a set of conditions associated with the Machine to indicate errors or other status",
-	"taskRef":       "TaskRef is a managed object reference to a Task related to the machine. This value is set automatically at runtime and should not be set or modified by users.",
+	"instanceId":    "instanceId is the ID of the instance in VSphere",
+	"instanceState": "instanceState is the provisioning state of the VSphere Instance.",
+	"conditions":    "conditions is a set of conditions associated with the Machine to indicate errors or other status",
+	"taskRef":       "taskRef is a managed object reference to a Task related to the machine. This value is set automatically at runtime and should not be set or modified by users.",
 }
 
 func (VSphereMachineProviderStatus) SwaggerDoc() map[string]string {
@@ -808,11 +885,12 @@ func (VSphereMachineProviderStatus) SwaggerDoc() map[string]string {
 
 var map_Workspace = map[string]string{
 	"":             "WorkspaceConfig defines a workspace configuration for the vSphere cloud provider.",
-	"server":       "Server is the IP address or FQDN of the vSphere endpoint.",
-	"datacenter":   "Datacenter is the datacenter in which VMs are created/located.",
-	"folder":       "Folder is the folder in which VMs are created/located.",
-	"datastore":    "Datastore is the datastore in which VMs are created/located.",
-	"resourcePool": "ResourcePool is the resource pool in which VMs are created/located.",
+	"server":       "server is the IP address or FQDN of the vSphere endpoint.",
+	"datacenter":   "datacenter is the datacenter in which VMs are created/located.",
+	"folder":       "folder is the folder in which VMs are created/located.",
+	"datastore":    "datastore is the datastore in which VMs are created/located.",
+	"resourcePool": "resourcePool is the resource pool in which VMs are created/located.",
+	"vmGroup":      "vmGroup is the cluster vm group in which virtual machines will be added for vm host group based zonal.",
 }
 
 func (Workspace) SwaggerDoc() map[string]string {

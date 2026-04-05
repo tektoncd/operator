@@ -2,14 +2,22 @@
 
 package v1
 
-// MaxAgePolicyApplyConfiguration represents an declarative configuration of the MaxAgePolicy type for use
+// MaxAgePolicyApplyConfiguration represents a declarative configuration of the MaxAgePolicy type for use
 // with apply.
+//
+// MaxAgePolicy contains a numeric range for specifying a compliant HSTS max-age for the enclosing RequiredHSTSPolicy
 type MaxAgePolicyApplyConfiguration struct {
-	LargestMaxAge  *int32 `json:"largestMaxAge,omitempty"`
+	// The largest allowed value (in seconds) of the RequiredHSTSPolicy max-age
+	// This value can be left unspecified, in which case no upper limit is enforced.
+	LargestMaxAge *int32 `json:"largestMaxAge,omitempty"`
+	// The smallest allowed value (in seconds) of the RequiredHSTSPolicy max-age
+	// Setting max-age=0 allows the deletion of an existing HSTS header from a host.  This is a necessary
+	// tool for administrators to quickly correct mistakes.
+	// This value can be left unspecified, in which case no lower limit is enforced.
 	SmallestMaxAge *int32 `json:"smallestMaxAge,omitempty"`
 }
 
-// MaxAgePolicyApplyConfiguration constructs an declarative configuration of the MaxAgePolicy type for use with
+// MaxAgePolicyApplyConfiguration constructs a declarative configuration of the MaxAgePolicy type for use with
 // apply.
 func MaxAgePolicy() *MaxAgePolicyApplyConfiguration {
 	return &MaxAgePolicyApplyConfiguration{}

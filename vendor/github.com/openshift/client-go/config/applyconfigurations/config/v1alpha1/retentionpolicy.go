@@ -3,18 +3,27 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/openshift/api/config/v1alpha1"
+	configv1alpha1 "github.com/openshift/api/config/v1alpha1"
 )
 
-// RetentionPolicyApplyConfiguration represents an declarative configuration of the RetentionPolicy type for use
+// RetentionPolicyApplyConfiguration represents a declarative configuration of the RetentionPolicy type for use
 // with apply.
+//
+// RetentionPolicy defines the retention policy for retaining and deleting existing backups.
+// This struct is a discriminated union that allows users to select the type of retention policy from the supported types.
 type RetentionPolicyApplyConfiguration struct {
-	RetentionType   *v1alpha1.RetentionType                  `json:"retentionType,omitempty"`
+	// retentionType sets the type of retention policy.
+	// Currently, the only valid policies are retention by number of backups (RetentionNumber), by the size of backups (RetentionSize). More policies or types may be added in the future.
+	// Empty string means no opinion and the platform is left to choose a reasonable default which is subject to change without notice.
+	// The current default is RetentionNumber with 15 backups kept.
+	RetentionType *configv1alpha1.RetentionType `json:"retentionType,omitempty"`
+	// retentionNumber configures the retention policy based on the number of backups
 	RetentionNumber *RetentionNumberConfigApplyConfiguration `json:"retentionNumber,omitempty"`
-	RetentionSize   *RetentionSizeConfigApplyConfiguration   `json:"retentionSize,omitempty"`
+	// retentionSize configures the retention policy based on the size of backups
+	RetentionSize *RetentionSizeConfigApplyConfiguration `json:"retentionSize,omitempty"`
 }
 
-// RetentionPolicyApplyConfiguration constructs an declarative configuration of the RetentionPolicy type for use with
+// RetentionPolicyApplyConfiguration constructs a declarative configuration of the RetentionPolicy type for use with
 // apply.
 func RetentionPolicy() *RetentionPolicyApplyConfiguration {
 	return &RetentionPolicyApplyConfiguration{}
@@ -23,7 +32,7 @@ func RetentionPolicy() *RetentionPolicyApplyConfiguration {
 // WithRetentionType sets the RetentionType field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the RetentionType field is set to the value of the last call.
-func (b *RetentionPolicyApplyConfiguration) WithRetentionType(value v1alpha1.RetentionType) *RetentionPolicyApplyConfiguration {
+func (b *RetentionPolicyApplyConfiguration) WithRetentionType(value configv1alpha1.RetentionType) *RetentionPolicyApplyConfiguration {
 	b.RetentionType = &value
 	return b
 }

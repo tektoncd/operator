@@ -3,22 +3,50 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// ReleaseApplyConfiguration represents an declarative configuration of the Release type for use
+// ReleaseApplyConfiguration represents a declarative configuration of the Release type for use
 // with apply.
+//
+// Release represents an OpenShift release image and associated metadata.
 type ReleaseApplyConfiguration struct {
-	Version  *string  `json:"version,omitempty"`
-	Image    *string  `json:"image,omitempty"`
-	URL      *v1.URL  `json:"url,omitempty"`
+	// architecture is an optional field that indicates the
+	// value of the cluster architecture. In this context cluster
+	// architecture means either a single architecture or a multi
+	// architecture.
+	// Valid values are 'Multi' and empty.
+	Architecture *configv1.ClusterVersionArchitecture `json:"architecture,omitempty"`
+	// version is a semantic version identifying the update version. When this
+	// field is part of spec, version is optional if image is specified.
+	Version *string `json:"version,omitempty"`
+	// image is a container image location that contains the update. When this
+	// field is part of spec, image is optional if version is specified and the
+	// availableUpdates field contains a matching version.
+	Image *string `json:"image,omitempty"`
+	// url contains information about this release. This URL is set by
+	// the 'url' metadata property on a release or the metadata returned by
+	// the update API and should be displayed as a link in user
+	// interfaces. The URL field may not be set for test or nightly
+	// releases.
+	URL *configv1.URL `json:"url,omitempty"`
+	// channels is the set of Cincinnati channels to which the release
+	// currently belongs.
 	Channels []string `json:"channels,omitempty"`
 }
 
-// ReleaseApplyConfiguration constructs an declarative configuration of the Release type for use with
+// ReleaseApplyConfiguration constructs a declarative configuration of the Release type for use with
 // apply.
 func Release() *ReleaseApplyConfiguration {
 	return &ReleaseApplyConfiguration{}
+}
+
+// WithArchitecture sets the Architecture field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Architecture field is set to the value of the last call.
+func (b *ReleaseApplyConfiguration) WithArchitecture(value configv1.ClusterVersionArchitecture) *ReleaseApplyConfiguration {
+	b.Architecture = &value
+	return b
 }
 
 // WithVersion sets the Version field in the declarative configuration to the given value
@@ -40,7 +68,7 @@ func (b *ReleaseApplyConfiguration) WithImage(value string) *ReleaseApplyConfigu
 // WithURL sets the URL field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the URL field is set to the value of the last call.
-func (b *ReleaseApplyConfiguration) WithURL(value v1.URL) *ReleaseApplyConfiguration {
+func (b *ReleaseApplyConfiguration) WithURL(value configv1.URL) *ReleaseApplyConfiguration {
 	b.URL = &value
 	return b
 }
