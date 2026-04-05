@@ -19,88 +19,69 @@ package tektonpipeline
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
-	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
-	"knative.dev/pkg/metrics"
 )
 
 var (
-	pReconcileCount = stats.Float64("pipeline_reconcile_count",
-		"number of pipeline install",
-		stats.UnitDimensionless)
+	pReconcileCount metric.Int64Counter
+	once            sync.Once
+	errInitMetrics  error
 )
+
+func initMetrics() error {
+	meter := otel.Meter("github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline")
+	var err error
+	pReconcileCount, err = meter.Int64Counter(
+		"tekton_operator_lifecycle_pipeline_reconcile_total",
+		metric.WithDescription("number of pipeline install"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create pipeline_reconcile_count counter: %w", err)
+	}
+	return nil
+}
 
 // Recorder holds keys for Tekton metrics
 type Recorder struct {
-	initialized bool
-	status      tag.Key
-	version     tag.Key
-
+	initialized     bool
 	ReportingPeriod time.Duration
 }
 
 // NewRecorder creates a new metrics recorder instance
-// to log the PipelineRun related metrics
 func NewRecorder() (*Recorder, error) {
-	r := &Recorder{
-		initialized: true,
+	once.Do(func() {
+		errInitMetrics = initMetrics()
+	})
+	if errInitMetrics != nil {
+		return nil, errInitMetrics
+	}
 
-		// Default to 30s intervals.
+	r := &Recorder{
+		initialized:     true,
 		ReportingPeriod: 30 * time.Second,
 	}
-
-	status, err := tag.NewKey("status")
-	if err != nil {
-		return nil, err
-	}
-	r.status = status
-
-	version, err := tag.NewKey("version")
-	if err != nil {
-		return nil, err
-	}
-	r.version = version
-
-	err = view.Register(
-		&view.View{
-			Description: pReconcileCount.Description(),
-			Measure:     pReconcileCount,
-			Aggregation: view.Count(),
-			TagKeys:     []tag.Key{r.status, r.version},
-		},
-	)
-
-	if err != nil {
-		r.initialized = false
-		return r, err
-	}
-
 	return r, nil
 }
 
-// Count logs number of times a component (pipeline/trigger atm)
-// has been installed or failed to install.
+// Count logs number of times pipeline has been installed or failed to install.
 func (r *Recorder) Count(status, version string) error {
 	if !r.initialized {
 		return fmt.Errorf(
-			"ignoring the metrics recording for pipelinee failed to initialize the metrics recorder")
+			"failed to initialize metrics recorder for pipeline")
 	}
 
-	ctx, err := tag.New(
-		context.Background(),
-		tag.Insert(r.status, status),
-		tag.Insert(r.version, version),
+	pReconcileCount.Add(context.Background(), 1,
+		metric.WithAttributes(
+			attribute.String("status", status),
+			attribute.String("version", version),
+		),
 	)
-
-	if err != nil {
-		return err
-	}
-
-	metrics.Record(ctx, pReconcileCount.M(1))
 	return nil
 }
 
