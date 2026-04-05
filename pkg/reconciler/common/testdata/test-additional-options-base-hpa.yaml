@@ -29,7 +29,6 @@ spec:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  creationTimestamp: null
   name: test-metrics
   namespace: tekton-pipelines
 spec:
@@ -54,7 +53,6 @@ status:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  creationTimestamp: null
   name: test-max-replicas
   namespace: tekton-pipelines
 spec:
@@ -79,7 +77,6 @@ status:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  creationTimestamp: null
   name: test-min-replicas
   namespace: tekton-pipelines
 spec:

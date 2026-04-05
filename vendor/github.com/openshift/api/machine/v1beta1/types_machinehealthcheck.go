@@ -64,7 +64,7 @@ type MachineHealthCheckSpec struct {
 	// Note: An empty selector will match all machines.
 	Selector metav1.LabelSelector `json:"selector"`
 
-	// UnhealthyConditions contains a list of the conditions that determine
+	// unhealthyConditions contains a list of the conditions that determine
 	// whether a node is considered unhealthy.  The conditions are combined in a
 	// logical OR, i.e. if any of the conditions is met, the node is unhealthy.
 	//
@@ -76,6 +76,7 @@ type MachineHealthCheckSpec struct {
 	// Expects either a postive integer value or a percentage value.
 	// Percentage values must be positive whole numbers and are capped at 100%.
 	// Both 0 and 0% are valid and will block all remediation.
+	// Defaults to 100% if not set.
 	// +kubebuilder:default:="100%"
 	// +kubebuilder:validation:XIntOrString
 	// +kubebuilder:validation:Pattern="^((100|[0-9]{1,2})%|[0-9]+)$"
@@ -89,14 +90,13 @@ type MachineHealthCheckSpec struct {
 	// Expects an unsigned duration string of decimal numbers each with optional
 	// fraction and a unit suffix, eg "300ms", "1.5h" or "2h45m".
 	// Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
-	// +optional
 	// +kubebuilder:default:="10m"
 	// +kubebuilder:validation:Pattern="^0|([0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h))+$"
 	// +kubebuilder:validation:Type:=string
 	// +optional
 	NodeStartupTimeout *metav1.Duration `json:"nodeStartupTimeout,omitempty"`
 
-	// RemediationTemplate is a reference to a remediation template
+	// remediationTemplate is a reference to a remediation template
 	// provided by an infrastructure provider.
 	//
 	// This field is completely optional, when filled, the MachineHealthCheck controller
@@ -130,19 +130,23 @@ type UnhealthyCondition struct {
 type MachineHealthCheckStatus struct {
 	// total number of machines counted by this machine health check
 	// +kubebuilder:validation:Minimum=0
+	// +optional
 	ExpectedMachines *int `json:"expectedMachines"`
 
 	// total number of machines counted by this machine health check
 	// +kubebuilder:validation:Minimum=0
+	// +optional
 	CurrentHealthy *int `json:"currentHealthy"`
 
-	// RemediationsAllowed is the number of further remediations allowed by this machine health check before
+	// remediationsAllowed is the number of further remediations allowed by this machine health check before
 	// maxUnhealthy short circuiting will be applied
 	// +kubebuilder:validation:Minimum=0
 	// +optional
 	RemediationsAllowed int32 `json:"remediationsAllowed"`
 
-	// Conditions defines the current state of the MachineHealthCheck
+	// conditions defines the current state of the MachineHealthCheck
 	// +optional
-	Conditions Conditions `json:"conditions,omitempty"`
+	// +listType=map
+	// +listMapKey=type
+	Conditions []Condition `json:"conditions,omitempty"`
 }

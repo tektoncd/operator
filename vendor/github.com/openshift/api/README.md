@@ -4,7 +4,7 @@ This repo holds the API type definitions and serialization code used by [openshi
 APIs in this repo ship inside OCP payloads.
 
 ## Adding new FeatureGates
-Add your FeatureGate to feature_gates.go.
+Add your FeatureGate to `features.go`.
 The threshold for merging a fully disabled or TechPreview FeatureGate is an open enhancement.
 To promote to Default on any ClusterProfile, the threshold is 99% passing tests on all platforms or QE sign off.
 
@@ -62,7 +62,7 @@ route/
     tests/
       routes.route.openshift.io/
         AAA_ungated.yaml
-        ExternalRouteCertificate.yaml
+        RouteExternalCertificate.yaml
 ```
 Here's an `AAA_ungated.yaml` example:
 ```yaml
@@ -72,12 +72,12 @@ crdName: routes.route.openshift.io
 tests:
 ```
 
-Here's an `ExternalRouteCertificate.yaml` example:
+Here's an `RouteExternalCertificate.yaml` example:
 ```yaml
 apiVersion: apiextensions.k8s.io/v1 # Hack because controller-gen complains if we don't have this.
 name: Route
 crdName: routes.route.openshift.io
-featureGate: ExternalRouteCertificate
+featureGate: RouteExternalCertificate
 tests:
 ```
 
@@ -99,6 +99,8 @@ and then enforces the following rules.
 3. Every test must be run on every TechPreview platform we have jobs for.  (Ask for an exception if your feature doesn't support a variant.)
 4. Every test must run at least 14 times on every platform/variant.
 5. Every test must pass at least 95% of the time on every platform/variant.
+6. Test results are taken from the last 7 days if the test was run at least 14 times during that period. Otherwise, data from the last 14 days is used.
+7. Test flakes (even if the test eventually passes on a retry) are considered failures and negatively impact the pass rate.
 
 If your FeatureGate lacks automated testing, there is an exception process that allows QE to sign off on the promotion by 
 commenting on the PR.
@@ -110,6 +112,25 @@ When defining a new API, please follow [the OpenShift API
 conventions](https://github.com/openshift/enhancements/blob/master/CONVENTIONS.md#api),
 and then follow the instructions below to regenerate CRDs (if necessary) and
 submit a pull request with your new API definitions and generated files.
+
+New APIs (new CRDs) must be added first as an unstable API (v1alpha1).
+Once the feature is more developed, and ready to be promoted to stable, the API can be promoted to v1.
+
+### Why do we start with v1alpha1?
+
+By starting an API as a v1alpha1, we can iterate on the API with the ability to make breaking changes.
+We can make changes to the schema, change validations, change entire types and even serialization without worry.
+
+When changes are made to an API, any existing client code will need to be updated to match.
+If there are breaking changes (such as changing the serialization), then this requires a new version of the API.
+
+If we did not bump the API version for each breaking change, a client, generated prior to the breaking change,
+would panic when it tried to deserialize the new serialization of the API.
+
+If, during development of a feature, we need to make a breaking change, we should move the feature to v1alpha2 (or v1alpha3, etc),
+until we reach a version that we are happy to promote to v1.
+
+Do not make changes to the API when promoting the feature to v1.
 
 ### Adding a new stable API (v1)
 When copying, it matters which `// +foo` markers are two comments blocks up and which are one comment block up.

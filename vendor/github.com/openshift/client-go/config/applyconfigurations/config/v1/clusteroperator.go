@@ -5,22 +5,32 @@ package v1
 import (
 	configv1 "github.com/openshift/api/config/v1"
 	internal "github.com/openshift/client-go/config/applyconfigurations/internal"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apismetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
-	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
+	metav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// ClusterOperatorApplyConfiguration represents an declarative configuration of the ClusterOperator type for use
+// ClusterOperatorApplyConfiguration represents a declarative configuration of the ClusterOperator type for use
 // with apply.
+//
+// ClusterOperator holds the status of a core or optional OpenShift component
+// managed by the Cluster Version Operator (CVO). This object is used by
+// operators to convey their state to the rest of the cluster.
+// Compatibility level 1: Stable within a major release for a minimum of 12 months or 3 minor releases (whichever is longer).
 type ClusterOperatorApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
-	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *configv1.ClusterOperatorSpec            `json:"spec,omitempty"`
-	Status                           *ClusterOperatorStatusApplyConfiguration `json:"status,omitempty"`
+	metav1.TypeMetaApplyConfiguration `json:",inline"`
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	*metav1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
+	// spec holds configuration that could apply to any operator.
+	Spec *configv1.ClusterOperatorSpec `json:"spec,omitempty"`
+	// status holds the information about the state of an operator.  It is consistent with status information across
+	// the Kubernetes ecosystem.
+	Status *ClusterOperatorStatusApplyConfiguration `json:"status,omitempty"`
 }
 
-// ClusterOperator constructs an declarative configuration of the ClusterOperator type for use with
+// ClusterOperator constructs a declarative configuration of the ClusterOperator type for use with
 // apply.
 func ClusterOperator(name string) *ClusterOperatorApplyConfiguration {
 	b := &ClusterOperatorApplyConfiguration{}
@@ -30,29 +40,14 @@ func ClusterOperator(name string) *ClusterOperatorApplyConfiguration {
 	return b
 }
 
-// ExtractClusterOperator extracts the applied configuration owned by fieldManager from
-// clusterOperator. If no managedFields are found in clusterOperator for fieldManager, a
-// ClusterOperatorApplyConfiguration is returned with only the Name, Namespace (if applicable),
-// APIVersion and Kind populated. It is possible that no managed fields were found for because other
-// field managers have taken ownership of all the fields previously owned by fieldManager, or because
-// the fieldManager never owned fields any fields.
+// ExtractClusterOperatorFrom extracts the applied configuration owned by fieldManager from
+// clusterOperator for the specified subresource. Pass an empty string for subresource to extract
+// the main resource. Common subresources include "status", "scale", etc.
 // clusterOperator must be a unmodified ClusterOperator API object that was retrieved from the Kubernetes API.
-// ExtractClusterOperator provides a way to perform a extract/modify-in-place/apply workflow.
+// ExtractClusterOperatorFrom provides a way to perform a extract/modify-in-place/apply workflow.
 // Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
 // applied if another fieldManager has updated or force applied any of the previously applied fields.
-// Experimental!
-func ExtractClusterOperator(clusterOperator *configv1.ClusterOperator, fieldManager string) (*ClusterOperatorApplyConfiguration, error) {
-	return extractClusterOperator(clusterOperator, fieldManager, "")
-}
-
-// ExtractClusterOperatorStatus is the same as ExtractClusterOperator except
-// that it extracts the status subresource applied configuration.
-// Experimental!
-func ExtractClusterOperatorStatus(clusterOperator *configv1.ClusterOperator, fieldManager string) (*ClusterOperatorApplyConfiguration, error) {
-	return extractClusterOperator(clusterOperator, fieldManager, "status")
-}
-
-func extractClusterOperator(clusterOperator *configv1.ClusterOperator, fieldManager string, subresource string) (*ClusterOperatorApplyConfiguration, error) {
+func ExtractClusterOperatorFrom(clusterOperator *configv1.ClusterOperator, fieldManager string, subresource string) (*ClusterOperatorApplyConfiguration, error) {
 	b := &ClusterOperatorApplyConfiguration{}
 	err := managedfields.ExtractInto(clusterOperator, internal.Parser().Type("com.github.openshift.api.config.v1.ClusterOperator"), fieldManager, b, subresource)
 	if err != nil {
@@ -65,11 +60,33 @@ func extractClusterOperator(clusterOperator *configv1.ClusterOperator, fieldMana
 	return b, nil
 }
 
+// ExtractClusterOperator extracts the applied configuration owned by fieldManager from
+// clusterOperator. If no managedFields are found in clusterOperator for fieldManager, a
+// ClusterOperatorApplyConfiguration is returned with only the Name, Namespace (if applicable),
+// APIVersion and Kind populated. It is possible that no managed fields were found for because other
+// field managers have taken ownership of all the fields previously owned by fieldManager, or because
+// the fieldManager never owned fields any fields.
+// clusterOperator must be a unmodified ClusterOperator API object that was retrieved from the Kubernetes API.
+// ExtractClusterOperator provides a way to perform a extract/modify-in-place/apply workflow.
+// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
+// applied if another fieldManager has updated or force applied any of the previously applied fields.
+func ExtractClusterOperator(clusterOperator *configv1.ClusterOperator, fieldManager string) (*ClusterOperatorApplyConfiguration, error) {
+	return ExtractClusterOperatorFrom(clusterOperator, fieldManager, "")
+}
+
+// ExtractClusterOperatorStatus extracts the applied configuration owned by fieldManager from
+// clusterOperator for the status subresource.
+func ExtractClusterOperatorStatus(clusterOperator *configv1.ClusterOperator, fieldManager string) (*ClusterOperatorApplyConfiguration, error) {
+	return ExtractClusterOperatorFrom(clusterOperator, fieldManager, "status")
+}
+
+func (b ClusterOperatorApplyConfiguration) IsApplyConfiguration() {}
+
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kind field is set to the value of the last call.
 func (b *ClusterOperatorApplyConfiguration) WithKind(value string) *ClusterOperatorApplyConfiguration {
-	b.Kind = &value
+	b.TypeMetaApplyConfiguration.Kind = &value
 	return b
 }
 
@@ -77,7 +94,7 @@ func (b *ClusterOperatorApplyConfiguration) WithKind(value string) *ClusterOpera
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the APIVersion field is set to the value of the last call.
 func (b *ClusterOperatorApplyConfiguration) WithAPIVersion(value string) *ClusterOperatorApplyConfiguration {
-	b.APIVersion = &value
+	b.TypeMetaApplyConfiguration.APIVersion = &value
 	return b
 }
 
@@ -86,7 +103,7 @@ func (b *ClusterOperatorApplyConfiguration) WithAPIVersion(value string) *Cluste
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *ClusterOperatorApplyConfiguration) WithName(value string) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Name = &value
+	b.ObjectMetaApplyConfiguration.Name = &value
 	return b
 }
 
@@ -95,7 +112,7 @@ func (b *ClusterOperatorApplyConfiguration) WithName(value string) *ClusterOpera
 // If called multiple times, the GenerateName field is set to the value of the last call.
 func (b *ClusterOperatorApplyConfiguration) WithGenerateName(value string) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.GenerateName = &value
+	b.ObjectMetaApplyConfiguration.GenerateName = &value
 	return b
 }
 
@@ -104,7 +121,7 @@ func (b *ClusterOperatorApplyConfiguration) WithGenerateName(value string) *Clus
 // If called multiple times, the Namespace field is set to the value of the last call.
 func (b *ClusterOperatorApplyConfiguration) WithNamespace(value string) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Namespace = &value
+	b.ObjectMetaApplyConfiguration.Namespace = &value
 	return b
 }
 
@@ -113,7 +130,7 @@ func (b *ClusterOperatorApplyConfiguration) WithNamespace(value string) *Cluster
 // If called multiple times, the UID field is set to the value of the last call.
 func (b *ClusterOperatorApplyConfiguration) WithUID(value types.UID) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.UID = &value
+	b.ObjectMetaApplyConfiguration.UID = &value
 	return b
 }
 
@@ -122,7 +139,7 @@ func (b *ClusterOperatorApplyConfiguration) WithUID(value types.UID) *ClusterOpe
 // If called multiple times, the ResourceVersion field is set to the value of the last call.
 func (b *ClusterOperatorApplyConfiguration) WithResourceVersion(value string) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ResourceVersion = &value
+	b.ObjectMetaApplyConfiguration.ResourceVersion = &value
 	return b
 }
 
@@ -131,25 +148,25 @@ func (b *ClusterOperatorApplyConfiguration) WithResourceVersion(value string) *C
 // If called multiple times, the Generation field is set to the value of the last call.
 func (b *ClusterOperatorApplyConfiguration) WithGeneration(value int64) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Generation = &value
+	b.ObjectMetaApplyConfiguration.Generation = &value
 	return b
 }
 
 // WithCreationTimestamp sets the CreationTimestamp field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the CreationTimestamp field is set to the value of the last call.
-func (b *ClusterOperatorApplyConfiguration) WithCreationTimestamp(value metav1.Time) *ClusterOperatorApplyConfiguration {
+func (b *ClusterOperatorApplyConfiguration) WithCreationTimestamp(value apismetav1.Time) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.CreationTimestamp = &value
+	b.ObjectMetaApplyConfiguration.CreationTimestamp = &value
 	return b
 }
 
 // WithDeletionTimestamp sets the DeletionTimestamp field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the DeletionTimestamp field is set to the value of the last call.
-func (b *ClusterOperatorApplyConfiguration) WithDeletionTimestamp(value metav1.Time) *ClusterOperatorApplyConfiguration {
+func (b *ClusterOperatorApplyConfiguration) WithDeletionTimestamp(value apismetav1.Time) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionTimestamp = &value
+	b.ObjectMetaApplyConfiguration.DeletionTimestamp = &value
 	return b
 }
 
@@ -158,7 +175,7 @@ func (b *ClusterOperatorApplyConfiguration) WithDeletionTimestamp(value metav1.T
 // If called multiple times, the DeletionGracePeriodSeconds field is set to the value of the last call.
 func (b *ClusterOperatorApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionGracePeriodSeconds = &value
+	b.ObjectMetaApplyConfiguration.DeletionGracePeriodSeconds = &value
 	return b
 }
 
@@ -168,11 +185,11 @@ func (b *ClusterOperatorApplyConfiguration) WithDeletionGracePeriodSeconds(value
 // overwriting an existing map entries in Labels field with the same key.
 func (b *ClusterOperatorApplyConfiguration) WithLabels(entries map[string]string) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Labels == nil && len(entries) > 0 {
-		b.Labels = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Labels == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Labels = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Labels[k] = v
+		b.ObjectMetaApplyConfiguration.Labels[k] = v
 	}
 	return b
 }
@@ -183,11 +200,11 @@ func (b *ClusterOperatorApplyConfiguration) WithLabels(entries map[string]string
 // overwriting an existing map entries in Annotations field with the same key.
 func (b *ClusterOperatorApplyConfiguration) WithAnnotations(entries map[string]string) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Annotations == nil && len(entries) > 0 {
-		b.Annotations = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Annotations == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Annotations = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Annotations[k] = v
+		b.ObjectMetaApplyConfiguration.Annotations[k] = v
 	}
 	return b
 }
@@ -195,13 +212,13 @@ func (b *ClusterOperatorApplyConfiguration) WithAnnotations(entries map[string]s
 // WithOwnerReferences adds the given value to the OwnerReferences field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the OwnerReferences field.
-func (b *ClusterOperatorApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerReferenceApplyConfiguration) *ClusterOperatorApplyConfiguration {
+func (b *ClusterOperatorApplyConfiguration) WithOwnerReferences(values ...*metav1.OwnerReferenceApplyConfiguration) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithOwnerReferences")
 		}
-		b.OwnerReferences = append(b.OwnerReferences, *values[i])
+		b.ObjectMetaApplyConfiguration.OwnerReferences = append(b.ObjectMetaApplyConfiguration.OwnerReferences, *values[i])
 	}
 	return b
 }
@@ -212,14 +229,14 @@ func (b *ClusterOperatorApplyConfiguration) WithOwnerReferences(values ...*v1.Ow
 func (b *ClusterOperatorApplyConfiguration) WithFinalizers(values ...string) *ClusterOperatorApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
-		b.Finalizers = append(b.Finalizers, values[i])
+		b.ObjectMetaApplyConfiguration.Finalizers = append(b.ObjectMetaApplyConfiguration.Finalizers, values[i])
 	}
 	return b
 }
 
 func (b *ClusterOperatorApplyConfiguration) ensureObjectMetaApplyConfigurationExists() {
 	if b.ObjectMetaApplyConfiguration == nil {
-		b.ObjectMetaApplyConfiguration = &v1.ObjectMetaApplyConfiguration{}
+		b.ObjectMetaApplyConfiguration = &metav1.ObjectMetaApplyConfiguration{}
 	}
 }
 
@@ -237,4 +254,26 @@ func (b *ClusterOperatorApplyConfiguration) WithSpec(value configv1.ClusterOpera
 func (b *ClusterOperatorApplyConfiguration) WithStatus(value *ClusterOperatorStatusApplyConfiguration) *ClusterOperatorApplyConfiguration {
 	b.Status = value
 	return b
+}
+
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *ClusterOperatorApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *ClusterOperatorApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
+// GetName retrieves the value of the Name field in the declarative configuration.
+func (b *ClusterOperatorApplyConfiguration) GetName() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *ClusterOperatorApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }

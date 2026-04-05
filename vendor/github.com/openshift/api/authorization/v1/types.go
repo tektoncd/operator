@@ -28,21 +28,21 @@ const (
 // PolicyRule holds information that describes a policy rule, but does not contain information
 // about who the rule applies to or which namespace the rule applies to.
 type PolicyRule struct {
-	// Verbs is a list of Verbs that apply to ALL the ResourceKinds and AttributeRestrictions contained in this rule.  VerbAll represents all kinds.
+	// verbs is a list of Verbs that apply to ALL the ResourceKinds and AttributeRestrictions contained in this rule.  VerbAll represents all kinds.
 	Verbs []string `json:"verbs" protobuf:"bytes,1,rep,name=verbs"`
-	// AttributeRestrictions will vary depending on what the Authorizer/AuthorizationAttributeBuilder pair supports.
+	// attributeRestrictions will vary depending on what the Authorizer/AuthorizationAttributeBuilder pair supports.
 	// If the Authorizer does not recognize how to handle the AttributeRestrictions, the Authorizer should report an error.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	AttributeRestrictions kruntime.RawExtension `json:"attributeRestrictions,omitempty" protobuf:"bytes,2,opt,name=attributeRestrictions"`
-	// APIGroups is the name of the APIGroup that contains the resources.  If this field is empty, then both kubernetes and origin API groups are assumed.
+	// apiGroups is the name of the APIGroup that contains the resources.  If this field is empty, then both kubernetes and origin API groups are assumed.
 	// That means that if an action is requested against one of the enumerated resources in either the kubernetes or the origin API group, the request
 	// will be allowed
 	// +optional
 	// +nullable
 	APIGroups []string `json:"apiGroups,omitempty" protobuf:"bytes,3,rep,name=apiGroups"`
-	// Resources is a list of resources this rule applies to.  ResourceAll represents all resources.
+	// resources is a list of resources this rule applies to.  ResourceAll represents all resources.
 	Resources []string `json:"resources" protobuf:"bytes,4,rep,name=resources"`
-	// ResourceNames is an optional white list of names that the rule applies to.  An empty set means that everything is allowed.
+	// resourceNames is an optional white list of names that the rule applies to.  An empty set means that everything is allowed.
 	ResourceNames []string `json:"resourceNames,omitempty" protobuf:"bytes,5,rep,name=resourceNames"`
 	// NonResourceURLsSlice is a set of partial urls that a user should have access to.  *s are allowed, but only as the full, final step in the path
 	// This name is intentionally different than the internal type so that the DefaultConvert works nicely and because the ordering may be different.
@@ -73,7 +73,7 @@ type Role struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Rules holds all the PolicyRules for this Role
+	// rules holds all the PolicyRules for this Role
 	Rules []PolicyRule `json:"rules" protobuf:"bytes,2,rep,name=rules"`
 }
 
@@ -102,26 +102,26 @@ type RoleBinding struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// UserNames holds all the usernames directly bound to the role.
+	// userNames holds all the usernames directly bound to the role.
 	// This field should only be specified when supporting legacy clients and servers.
 	// See Subjects for further details.
 	// +k8s:conversion-gen=false
 	// +optional
 	UserNames OptionalNames `json:"userNames" protobuf:"bytes,2,rep,name=userNames"`
-	// GroupNames holds all the groups directly bound to the role.
+	// groupNames holds all the groups directly bound to the role.
 	// This field should only be specified when supporting legacy clients and servers.
 	// See Subjects for further details.
 	// +k8s:conversion-gen=false
 	// +optional
 	GroupNames OptionalNames `json:"groupNames" protobuf:"bytes,3,rep,name=groupNames"`
-	// Subjects hold object references to authorize with this rule.
+	// subjects hold object references to authorize with this rule.
 	// This field is ignored if UserNames or GroupNames are specified to support legacy clients and servers.
 	// Thus newer clients that do not need to support backwards compatibility should send
 	// only fully qualified Subjects and should omit the UserNames and GroupNames fields.
 	// Clients that need to support backwards compatibility can use this field to build the UserNames and GroupNames.
 	Subjects []corev1.ObjectReference `json:"subjects" protobuf:"bytes,4,rep,name=subjects"`
 
-	// RoleRef can only reference the current namespace and the global namespace.
+	// roleRef can only reference the current namespace and the global namespace.
 	// If the RoleRef cannot be resolved, the Authorizer must return an error.
 	// Since Policy is a singleton, this is sufficient knowledge to locate a role.
 	RoleRef corev1.ObjectReference `json:"roleRef" protobuf:"bytes,5,opt,name=roleRef"`
@@ -129,17 +129,17 @@ type RoleBinding struct {
 
 // NamedRole relates a Role with a name
 type NamedRole struct {
-	// Name is the name of the role
+	// name is the name of the role
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
-	// Role is the role being named
+	// role is the role being named
 	Role Role `json:"role" protobuf:"bytes,2,opt,name=role"`
 }
 
 // NamedRoleBinding relates a role binding with a name
 type NamedRoleBinding struct {
-	// Name is the name of the role binding
+	// name is the name of the role binding
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
-	// RoleBinding is the role binding being named
+	// roleBinding is the role binding being named
 	RoleBinding RoleBinding `json:"roleBinding" protobuf:"bytes,2,opt,name=roleBinding"`
 }
 
@@ -154,16 +154,20 @@ type NamedRoleBinding struct {
 type SelfSubjectRulesReview struct {
 	metav1.TypeMeta `json:",inline"`
 
-	// Spec adds information about how to conduct the check
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,3,opt,name=metadata"`
+
+	// spec adds information about how to conduct the check
 	Spec SelfSubjectRulesReviewSpec `json:"spec" protobuf:"bytes,1,opt,name=spec"`
 
-	// Status is completed by the server to tell which permissions you have
+	// status is completed by the server to tell which permissions you have
 	Status SubjectRulesReviewStatus `json:"status,omitempty" protobuf:"bytes,2,opt,name=status"`
 }
 
 // SelfSubjectRulesReviewSpec adds information about how to conduct the check
 type SelfSubjectRulesReviewSpec struct {
-	// Scopes to use for the evaluation.  Empty means "use the unscoped (full) permissions of the user/groups".
+	// scopes to use for the evaluation.  Empty means "use the unscoped (full) permissions of the user/groups".
 	// Nil means "use the scopes on this request".
 	// +k8s:conversion-gen=false
 	Scopes OptionalScopes `json:"scopes" protobuf:"bytes,1,rep,name=scopes"`
@@ -180,29 +184,35 @@ type SelfSubjectRulesReviewSpec struct {
 type SubjectRulesReview struct {
 	metav1.TypeMeta `json:",inline"`
 
-	// Spec adds information about how to conduct the check
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,3,opt,name=metadata"`
+
+	// spec adds information about how to conduct the check
 	Spec SubjectRulesReviewSpec `json:"spec" protobuf:"bytes,1,opt,name=spec"`
 
-	// Status is completed by the server to tell which permissions you have
+	// status is completed by the server to tell which permissions you have
 	Status SubjectRulesReviewStatus `json:"status,omitempty" protobuf:"bytes,2,opt,name=status"`
 }
 
 // SubjectRulesReviewSpec adds information about how to conduct the check
 type SubjectRulesReviewSpec struct {
-	// User is optional.  At least one of User and Groups must be specified.
+	// user is optional.  At least one of User and Groups must be specified.
 	User string `json:"user" protobuf:"bytes,1,opt,name=user"`
-	// Groups is optional.  Groups is the list of groups to which the User belongs.  At least one of User and Groups must be specified.
+	// groups is optional.  Groups is the list of groups to which the User belongs.  At least one of User and Groups must be specified.
 	Groups []string `json:"groups" protobuf:"bytes,2,rep,name=groups"`
-	// Scopes to use for the evaluation.  Empty means "use the unscoped (full) permissions of the user/groups".
+	// scopes to use for the evaluation.  Empty means "use the unscoped (full) permissions of the user/groups".
 	Scopes OptionalScopes `json:"scopes" protobuf:"bytes,3,opt,name=scopes"`
 }
 
 // SubjectRulesReviewStatus is contains the result of a rules check
 type SubjectRulesReviewStatus struct {
-	// Rules is the list of rules (no particular sort) that are allowed for the subject
+	// rules is the list of rules (no particular sort) that are allowed for the subject
+	// +optional
 	Rules []PolicyRule `json:"rules" protobuf:"bytes,1,rep,name=rules"`
-	// EvaluationError can appear in combination with Rules.  It means some error happened during evaluation
+	// evaluationError can appear in combination with Rules.  It means some error happened during evaluation
 	// that may have prevented additional rules from being populated.
+	// +optional
 	EvaluationError string `json:"evaluationError,omitempty" protobuf:"bytes,2,opt,name=evaluationError"`
 }
 
@@ -215,7 +225,7 @@ type SubjectRulesReviewStatus struct {
 type ResourceAccessReviewResponse struct {
 	metav1.TypeMeta `json:",inline"`
 
-	// Namespace is the namespace used for the access review
+	// namespace is the namespace used for the access review
 	Namespace string `json:"namespace,omitempty" protobuf:"bytes,1,opt,name=namespace"`
 	// UsersSlice is the list of users who can perform the action
 	// +k8s:conversion-gen=false
@@ -232,7 +242,7 @@ type ResourceAccessReviewResponse struct {
 
 // +genclient
 // +genclient:nonNamespaced
-// +genclient:skipVerbs=apply,get,list,create,update,patch,delete,deleteCollection,watch
+// +genclient:skipVerbs=apply,applyStatus,get,list,create,update,updateStatus,patch,delete,deleteCollection,watch
 // +genclient:method=Create,verb=create,result=ResourceAccessReviewResponse
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -243,6 +253,10 @@ type ResourceAccessReviewResponse struct {
 // +openshift:compatibility-gen:level=1
 type ResourceAccessReview struct {
 	metav1.TypeMeta `json:",inline"`
+
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,2,opt,name=metadata"`
 
 	// Action describes the action being tested.
 	Action `json:",inline" protobuf:"bytes,1,opt,name=Action"`
@@ -257,13 +271,13 @@ type ResourceAccessReview struct {
 type SubjectAccessReviewResponse struct {
 	metav1.TypeMeta `json:",inline"`
 
-	// Namespace is the namespace used for the access review
+	// namespace is the namespace used for the access review
 	Namespace string `json:"namespace,omitempty" protobuf:"bytes,1,opt,name=namespace"`
-	// Allowed is required.  True if the action would be allowed, false otherwise.
+	// allowed is required.  True if the action would be allowed, false otherwise.
 	Allowed bool `json:"allowed" protobuf:"varint,2,opt,name=allowed"`
-	// Reason is optional.  It indicates why a request was allowed or denied.
+	// reason is optional.  It indicates why a request was allowed or denied.
 	Reason string `json:"reason,omitempty" protobuf:"bytes,3,opt,name=reason"`
-	// EvaluationError is an indication that some error occurred during the authorization check.
+	// evaluationError is an indication that some error occurred during the authorization check.
 	// It is entirely possible to get an error and be able to continue determine authorization status in spite of it.  This is
 	// most common when a bound role is missing, but enough roles are still present and bound to reason about the request.
 	EvaluationError string `json:"evaluationError,omitempty" protobuf:"bytes,4,opt,name=evaluationError"`
@@ -280,7 +294,7 @@ func (t OptionalScopes) String() string {
 
 // +genclient
 // +genclient:nonNamespaced
-// +genclient:skipVerbs=apply,get,list,create,update,patch,delete,deleteCollection,watch
+// +genclient:skipVerbs=apply,applyStatus,get,list,create,update,updateStatus,patch,delete,deleteCollection,watch
 // +genclient:method=Create,verb=create,result=SubjectAccessReviewResponse
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -291,14 +305,18 @@ func (t OptionalScopes) String() string {
 type SubjectAccessReview struct {
 	metav1.TypeMeta `json:",inline"`
 
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,5,opt,name=metadata"`
+
 	// Action describes the action being tested.
 	Action `json:",inline" protobuf:"bytes,1,opt,name=Action"`
-	// User is optional. If both User and Groups are empty, the current authenticated user is used.
+	// user is optional. If both User and Groups are empty, the current authenticated user is used.
 	User string `json:"user" protobuf:"bytes,2,opt,name=user"`
 	// GroupsSlice is optional. Groups is the list of groups to which the User belongs.
 	// +k8s:conversion-gen=false
 	GroupsSlice []string `json:"groups" protobuf:"bytes,3,rep,name=groups"`
-	// Scopes to use for the evaluation.  Empty means "use the unscoped (full) permissions of the user/groups".
+	// scopes to use for the evaluation.  Empty means "use the unscoped (full) permissions of the user/groups".
 	// Nil for a self-SAR, means "use the scopes on this request".
 	// Nil for a regular SAR, means the same as empty.
 	// +k8s:conversion-gen=false
@@ -306,7 +324,7 @@ type SubjectAccessReview struct {
 }
 
 // +genclient
-// +genclient:skipVerbs=apply,get,list,create,update,patch,delete,deleteCollection,watch
+// +genclient:skipVerbs=apply,applyStatus,get,list,create,update,updateStatus,patch,delete,deleteCollection,watch
 // +genclient:method=Create,verb=create,result=ResourceAccessReviewResponse
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -317,12 +335,16 @@ type SubjectAccessReview struct {
 type LocalResourceAccessReview struct {
 	metav1.TypeMeta `json:",inline"`
 
-	// Action describes the action being tested.  The Namespace element is FORCED to the current namespace.
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,2,opt,name=metadata"`
+
+	// Action describes the action being tested. The Namespace element is FORCED to the current namespace.
 	Action `json:",inline" protobuf:"bytes,1,opt,name=Action"`
 }
 
 // +genclient
-// +genclient:skipVerbs=apply,get,list,create,update,patch,delete,deleteCollection,watch
+// +genclient:skipVerbs=apply,applyStatus,get,list,create,update,updateStatus,patch,delete,deleteCollection,watch
 // +genclient:method=Create,verb=create,result=SubjectAccessReviewResponse
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -333,14 +355,18 @@ type LocalResourceAccessReview struct {
 type LocalSubjectAccessReview struct {
 	metav1.TypeMeta `json:",inline"`
 
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,5,opt,name=metadata"`
+
 	// Action describes the action being tested.  The Namespace element is FORCED to the current namespace.
 	Action `json:",inline" protobuf:"bytes,1,opt,name=Action"`
-	// User is optional.  If both User and Groups are empty, the current authenticated user is used.
+	// user is optional.  If both User and Groups are empty, the current authenticated user is used.
 	User string `json:"user" protobuf:"bytes,2,opt,name=user"`
-	// Groups is optional.  Groups is the list of groups to which the User belongs.
+	// groups is optional.  Groups is the list of groups to which the User belongs.
 	// +k8s:conversion-gen=false
 	GroupsSlice []string `json:"groups" protobuf:"bytes,3,rep,name=groups"`
-	// Scopes to use for the evaluation.  Empty means "use the unscoped (full) permissions of the user/groups".
+	// scopes to use for the evaluation.  Empty means "use the unscoped (full) permissions of the user/groups".
 	// Nil for a self-SAR, means "use the scopes on this request".
 	// Nil for a regular SAR, means the same as empty.
 	// +k8s:conversion-gen=false
@@ -349,9 +375,9 @@ type LocalSubjectAccessReview struct {
 
 // Action describes a request to the API server
 type Action struct {
-	// Namespace is the namespace of the action being requested.  Currently, there is no distinction between no namespace and all namespaces
+	// namespace is the namespace of the action being requested.  Currently, there is no distinction between no namespace and all namespaces
 	Namespace string `json:"namespace" protobuf:"bytes,1,opt,name=namespace"`
-	// Verb is one of: get, list, watch, create, update, delete
+	// verb is one of: get, list, watch, create, update, delete
 	Verb string `json:"verb" protobuf:"bytes,2,opt,name=verb"`
 	// Group is the API group of the resource
 	// Serialized as resourceAPIGroup to avoid confusion with the 'groups' field when inlined
@@ -359,15 +385,15 @@ type Action struct {
 	// Version is the API version of the resource
 	// Serialized as resourceAPIVersion to avoid confusion with TypeMeta.apiVersion and ObjectMeta.resourceVersion when inlined
 	Version string `json:"resourceAPIVersion" protobuf:"bytes,4,opt,name=resourceAPIVersion"`
-	// Resource is one of the existing resource types
+	// resource is one of the existing resource types
 	Resource string `json:"resource" protobuf:"bytes,5,opt,name=resource"`
-	// ResourceName is the name of the resource being requested for a "get" or deleted for a "delete"
+	// resourceName is the name of the resource being requested for a "get" or deleted for a "delete"
 	ResourceName string `json:"resourceName" protobuf:"bytes,6,opt,name=resourceName"`
-	// Path is the path of a non resource URL
+	// path is the path of a non resource URL
 	Path string `json:"path" protobuf:"bytes,8,opt,name=path"`
-	// IsNonResourceURL is true if this is a request for a non-resource URL (outside of the resource hierarchy)
+	// isNonResourceURL is true if this is a request for a non-resource URL (outside of the resource hierarchy)
 	IsNonResourceURL bool `json:"isNonResourceURL" protobuf:"varint,9,opt,name=isNonResourceURL"`
-	// Content is the actual content of the request for create and update
+	// content is the actual content of the request for create and update
 	// +kubebuilder:pruning:PreserveUnknownFields
 	Content kruntime.RawExtension `json:"content,omitempty" protobuf:"bytes,7,opt,name=content"`
 }
@@ -385,7 +411,7 @@ type RoleBindingList struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Items is a list of RoleBindings
+	// items is a list of RoleBindings
 	Items []RoleBinding `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
@@ -402,7 +428,7 @@ type RoleList struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Items is a list of Roles
+	// items is a list of Roles
 	Items []Role `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
@@ -421,10 +447,10 @@ type ClusterRole struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Rules holds all the PolicyRules for this ClusterRole
+	// rules holds all the PolicyRules for this ClusterRole
 	Rules []PolicyRule `json:"rules" protobuf:"bytes,2,rep,name=rules"`
 
-	// AggregationRule is an optional field that describes how to build the Rules for this ClusterRole.
+	// aggregationRule is an optional field that describes how to build the Rules for this ClusterRole.
 	// If AggregationRule is set, then the Rules are controller managed and direct changes to Rules will be
 	// stomped by the controller.
 	AggregationRule *rbacv1.AggregationRule `json:"aggregationRule,omitempty" protobuf:"bytes,3,opt,name=aggregationRule"`
@@ -447,26 +473,26 @@ type ClusterRoleBinding struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// UserNames holds all the usernames directly bound to the role.
+	// userNames holds all the usernames directly bound to the role.
 	// This field should only be specified when supporting legacy clients and servers.
 	// See Subjects for further details.
 	// +k8s:conversion-gen=false
 	// +optional
 	UserNames OptionalNames `json:"userNames" protobuf:"bytes,2,rep,name=userNames"`
-	// GroupNames holds all the groups directly bound to the role.
+	// groupNames holds all the groups directly bound to the role.
 	// This field should only be specified when supporting legacy clients and servers.
 	// See Subjects for further details.
 	// +k8s:conversion-gen=false
 	// +optional
 	GroupNames OptionalNames `json:"groupNames" protobuf:"bytes,3,rep,name=groupNames"`
-	// Subjects hold object references to authorize with this rule.
+	// subjects hold object references to authorize with this rule.
 	// This field is ignored if UserNames or GroupNames are specified to support legacy clients and servers.
 	// Thus newer clients that do not need to support backwards compatibility should send
 	// only fully qualified Subjects and should omit the UserNames and GroupNames fields.
 	// Clients that need to support backwards compatibility can use this field to build the UserNames and GroupNames.
 	Subjects []corev1.ObjectReference `json:"subjects" protobuf:"bytes,4,rep,name=subjects"`
 
-	// RoleRef can only reference the current namespace and the global namespace.
+	// roleRef can only reference the current namespace and the global namespace.
 	// If the ClusterRoleRef cannot be resolved, the Authorizer must return an error.
 	// Since Policy is a singleton, this is sufficient knowledge to locate a role.
 	RoleRef corev1.ObjectReference `json:"roleRef" protobuf:"bytes,5,opt,name=roleRef"`
@@ -474,17 +500,17 @@ type ClusterRoleBinding struct {
 
 // NamedClusterRole relates a name with a cluster role
 type NamedClusterRole struct {
-	// Name is the name of the cluster role
+	// name is the name of the cluster role
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
-	// Role is the cluster role being named
+	// role is the cluster role being named
 	Role ClusterRole `json:"role" protobuf:"bytes,2,opt,name=role"`
 }
 
 // NamedClusterRoleBinding relates a name with a cluster role binding
 type NamedClusterRoleBinding struct {
-	// Name is the name of the cluster role binding
+	// name is the name of the cluster role binding
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
-	// RoleBinding is the cluster role binding being named
+	// roleBinding is the cluster role binding being named
 	RoleBinding ClusterRoleBinding `json:"roleBinding" protobuf:"bytes,2,opt,name=roleBinding"`
 }
 
@@ -501,7 +527,7 @@ type ClusterRoleBindingList struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Items is a list of ClusterRoleBindings
+	// items is a list of ClusterRoleBindings
 	Items []ClusterRoleBinding `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
@@ -518,7 +544,7 @@ type ClusterRoleList struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Items is a list of ClusterRoles
+	// items is a list of ClusterRoles
 	Items []ClusterRole `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
@@ -537,6 +563,7 @@ type ClusterRoleList struct {
 // +openshift:api-approved.openshift.io=https://github.com/openshift/api/pull/470
 // +openshift:file-pattern=cvoRunLevel=0000_03,operatorName=config-operator,operatorOrdering=01
 // +openshift:compatibility-gen:level=1
+// +kubebuilder:metadata:annotations=release.openshift.io/bootstrap-required=true
 type RoleBindingRestriction struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -544,22 +571,22 @@ type RoleBindingRestriction struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Spec defines the matcher.
+	// spec defines the matcher.
 	Spec RoleBindingRestrictionSpec `json:"spec" protobuf:"bytes,2,opt,name=spec"`
 }
 
 // RoleBindingRestrictionSpec defines a rolebinding restriction.  Exactly one
 // field must be non-nil.
 type RoleBindingRestrictionSpec struct {
-	// UserRestriction matches against user subjects.
+	// userrestriction matches against user subjects.
 	// +nullable
 	UserRestriction *UserRestriction `json:"userrestriction" protobuf:"bytes,1,opt,name=userrestriction"`
 
-	// GroupRestriction matches against group subjects.
+	// grouprestriction matches against group subjects.
 	// +nullable
 	GroupRestriction *GroupRestriction `json:"grouprestriction" protobuf:"bytes,2,opt,name=grouprestriction"`
 
-	// ServiceAccountRestriction matches against service-account subjects.
+	// serviceaccountrestriction matches against service-account subjects.
 	// +nullable
 	ServiceAccountRestriction *ServiceAccountRestriction `json:"serviceaccountrestriction" protobuf:"bytes,3,opt,name=serviceaccountrestriction"`
 }
@@ -577,7 +604,7 @@ type RoleBindingRestrictionList struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
 
-	// Items is a list of RoleBindingRestriction objects.
+	// items is a list of RoleBindingRestriction objects.
 	Items []RoleBindingRestriction `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
@@ -585,10 +612,10 @@ type RoleBindingRestrictionList struct {
 // a string match on the name of a group to which the user belongs, or a label
 // selector applied to the user labels.
 type UserRestriction struct {
-	// Users specifies a list of literal user names.
+	// users specifies a list of literal user names.
 	Users []string `json:"users" protobuf:"bytes,1,rep,name=users"`
 
-	// Groups specifies a list of literal group names.
+	// groups specifies a list of literal group names.
 	// +nullable
 	Groups []string `json:"groups" protobuf:"bytes,2,rep,name=groups"`
 
@@ -600,7 +627,7 @@ type UserRestriction struct {
 // GroupRestriction matches a group either by a string match on the group name
 // or a label selector applied to group labels.
 type GroupRestriction struct {
-	// Groups is a list of groups used to match against an individual user's
+	// groups is a list of groups used to match against an individual user's
 	// groups. If the user is a member of one of the whitelisted groups, the user
 	// is allowed to be bound to a role.
 	// +nullable
@@ -615,20 +642,20 @@ type GroupRestriction struct {
 // either the service-account name or the name of the service account's
 // namespace.
 type ServiceAccountRestriction struct {
-	// ServiceAccounts specifies a list of literal service-account names.
+	// serviceaccounts specifies a list of literal service-account names.
 	ServiceAccounts []ServiceAccountReference `json:"serviceaccounts" protobuf:"bytes,1,rep,name=serviceaccounts"`
 
-	// Namespaces specifies a list of literal namespace names.
+	// namespaces specifies a list of literal namespace names.
 	Namespaces []string `json:"namespaces" protobuf:"bytes,2,rep,name=namespaces"`
 }
 
 // ServiceAccountReference specifies a service account and namespace by their
 // names.
 type ServiceAccountReference struct {
-	// Name is the name of the service account.
+	// name is the name of the service account.
 	Name string `json:"name" protobuf:"bytes,1,opt,name=name"`
 
-	// Namespace is the namespace of the service account.  Service accounts from
+	// namespace is the namespace of the service account.  Service accounts from
 	// inside the whitelisted namespaces are allowed to be bound to roles.  If
 	// Namespace is empty, then the namespace of the RoleBindingRestriction in
 	// which the ServiceAccountReference is embedded is used.

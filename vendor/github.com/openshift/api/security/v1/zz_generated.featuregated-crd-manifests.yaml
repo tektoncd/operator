@@ -1,10 +1,12 @@
 securitycontextconstraints.security.openshift.io:
-  Annotations: {}
+  Annotations:
+    release.openshift.io/bootstrap-required: "true"
   ApprovedPRNumber: https://github.com/openshift/api/pull/470
   CRDName: securitycontextconstraints.security.openshift.io
   Capability: ""
   Category: ""
-  FeatureGates: []
+  FeatureGates:
+  - UserNamespacesPodSecurityStandards
   FilenameOperatorName: config-operator
   FilenameOperatorOrdering: "01"
   FilenameRunLevel: "0000_03"

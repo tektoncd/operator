@@ -3,30 +3,59 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// PlatformStatusApplyConfiguration represents an declarative configuration of the PlatformStatus type for use
+// PlatformStatusApplyConfiguration represents a declarative configuration of the PlatformStatus type for use
 // with apply.
+//
+// PlatformStatus holds the current status specific to the underlying infrastructure provider
+// of the current cluster. Since these are used at status-level for the underlying cluster, it
+// is supposed that only one of the status structs is set.
 type PlatformStatusApplyConfiguration struct {
-	Type         *v1.PlatformType                              `json:"type,omitempty"`
-	AWS          *AWSPlatformStatusApplyConfiguration          `json:"aws,omitempty"`
-	Azure        *AzurePlatformStatusApplyConfiguration        `json:"azure,omitempty"`
-	GCP          *GCPPlatformStatusApplyConfiguration          `json:"gcp,omitempty"`
-	BareMetal    *BareMetalPlatformStatusApplyConfiguration    `json:"baremetal,omitempty"`
-	OpenStack    *OpenStackPlatformStatusApplyConfiguration    `json:"openstack,omitempty"`
-	Ovirt        *OvirtPlatformStatusApplyConfiguration        `json:"ovirt,omitempty"`
-	VSphere      *VSpherePlatformStatusApplyConfiguration      `json:"vsphere,omitempty"`
-	IBMCloud     *IBMCloudPlatformStatusApplyConfiguration     `json:"ibmcloud,omitempty"`
-	Kubevirt     *KubevirtPlatformStatusApplyConfiguration     `json:"kubevirt,omitempty"`
+	// type is the underlying infrastructure provider for the cluster. This
+	// value controls whether infrastructure automation such as service load
+	// balancers, dynamic volume provisioning, machine creation and deletion, and
+	// other integrations are enabled. If None, no infrastructure automation is
+	// enabled. Allowed values are "AWS", "Azure", "BareMetal", "GCP", "Libvirt",
+	// "OpenStack", "VSphere", "oVirt", "EquinixMetal", "PowerVS", "AlibabaCloud", "Nutanix" and "None".
+	// Individual components may not support all platforms, and must handle
+	// unrecognized platforms as None if they do not support that platform.
+	//
+	// This value will be synced with to the `status.platform` and `status.platformStatus.type`.
+	// Currently this value cannot be changed once set.
+	Type *configv1.PlatformType `json:"type,omitempty"`
+	// aws contains settings specific to the Amazon Web Services infrastructure provider.
+	AWS *AWSPlatformStatusApplyConfiguration `json:"aws,omitempty"`
+	// azure contains settings specific to the Azure infrastructure provider.
+	Azure *AzurePlatformStatusApplyConfiguration `json:"azure,omitempty"`
+	// gcp contains settings specific to the Google Cloud Platform infrastructure provider.
+	GCP *GCPPlatformStatusApplyConfiguration `json:"gcp,omitempty"`
+	// baremetal contains settings specific to the BareMetal platform.
+	BareMetal *BareMetalPlatformStatusApplyConfiguration `json:"baremetal,omitempty"`
+	// openstack contains settings specific to the OpenStack infrastructure provider.
+	OpenStack *OpenStackPlatformStatusApplyConfiguration `json:"openstack,omitempty"`
+	// ovirt contains settings specific to the oVirt infrastructure provider.
+	Ovirt *OvirtPlatformStatusApplyConfiguration `json:"ovirt,omitempty"`
+	// vsphere contains settings specific to the VSphere infrastructure provider.
+	VSphere *VSpherePlatformStatusApplyConfiguration `json:"vsphere,omitempty"`
+	// ibmcloud contains settings specific to the IBMCloud infrastructure provider.
+	IBMCloud *IBMCloudPlatformStatusApplyConfiguration `json:"ibmcloud,omitempty"`
+	// kubevirt contains settings specific to the kubevirt infrastructure provider.
+	Kubevirt *KubevirtPlatformStatusApplyConfiguration `json:"kubevirt,omitempty"`
+	// equinixMetal contains settings specific to the Equinix Metal infrastructure provider.
 	EquinixMetal *EquinixMetalPlatformStatusApplyConfiguration `json:"equinixMetal,omitempty"`
-	PowerVS      *PowerVSPlatformStatusApplyConfiguration      `json:"powervs,omitempty"`
+	// powervs contains settings specific to the Power Systems Virtual Servers infrastructure provider.
+	PowerVS *PowerVSPlatformStatusApplyConfiguration `json:"powervs,omitempty"`
+	// alibabaCloud contains settings specific to the Alibaba Cloud infrastructure provider.
 	AlibabaCloud *AlibabaCloudPlatformStatusApplyConfiguration `json:"alibabaCloud,omitempty"`
-	Nutanix      *NutanixPlatformStatusApplyConfiguration      `json:"nutanix,omitempty"`
-	External     *ExternalPlatformStatusApplyConfiguration     `json:"external,omitempty"`
+	// nutanix contains settings specific to the Nutanix infrastructure provider.
+	Nutanix *NutanixPlatformStatusApplyConfiguration `json:"nutanix,omitempty"`
+	// external contains settings specific to the generic External infrastructure provider.
+	External *ExternalPlatformStatusApplyConfiguration `json:"external,omitempty"`
 }
 
-// PlatformStatusApplyConfiguration constructs an declarative configuration of the PlatformStatus type for use with
+// PlatformStatusApplyConfiguration constructs a declarative configuration of the PlatformStatus type for use with
 // apply.
 func PlatformStatus() *PlatformStatusApplyConfiguration {
 	return &PlatformStatusApplyConfiguration{}
@@ -35,7 +64,7 @@ func PlatformStatus() *PlatformStatusApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *PlatformStatusApplyConfiguration) WithType(value v1.PlatformType) *PlatformStatusApplyConfiguration {
+func (b *PlatformStatusApplyConfiguration) WithType(value configv1.PlatformType) *PlatformStatusApplyConfiguration {
 	b.Type = &value
 	return b
 }

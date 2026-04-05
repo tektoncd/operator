@@ -3,24 +3,64 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// InfrastructureStatusApplyConfiguration represents an declarative configuration of the InfrastructureStatus type for use
+// InfrastructureStatusApplyConfiguration represents a declarative configuration of the InfrastructureStatus type for use
 // with apply.
+//
+// InfrastructureStatus describes the infrastructure the cluster is leveraging.
 type InfrastructureStatusApplyConfiguration struct {
-	InfrastructureName     *string                           `json:"infrastructureName,omitempty"`
-	Platform               *v1.PlatformType                  `json:"platform,omitempty"`
-	PlatformStatus         *PlatformStatusApplyConfiguration `json:"platformStatus,omitempty"`
-	EtcdDiscoveryDomain    *string                           `json:"etcdDiscoveryDomain,omitempty"`
-	APIServerURL           *string                           `json:"apiServerURL,omitempty"`
-	APIServerInternalURL   *string                           `json:"apiServerInternalURI,omitempty"`
-	ControlPlaneTopology   *v1.TopologyMode                  `json:"controlPlaneTopology,omitempty"`
-	InfrastructureTopology *v1.TopologyMode                  `json:"infrastructureTopology,omitempty"`
-	CPUPartitioning        *v1.CPUPartitioningMode           `json:"cpuPartitioning,omitempty"`
+	// infrastructureName uniquely identifies a cluster with a human friendly name.
+	// Once set it should not be changed. Must be of max length 27 and must have only
+	// alphanumeric or hyphen characters.
+	InfrastructureName *string `json:"infrastructureName,omitempty"`
+	// platform is the underlying infrastructure provider for the cluster.
+	//
+	// Deprecated: Use platformStatus.type instead.
+	Platform *configv1.PlatformType `json:"platform,omitempty"`
+	// platformStatus holds status information specific to the underlying
+	// infrastructure provider.
+	PlatformStatus *PlatformStatusApplyConfiguration `json:"platformStatus,omitempty"`
+	// etcdDiscoveryDomain is the domain used to fetch the SRV records for discovering
+	// etcd servers and clients.
+	// For more info: https://github.com/etcd-io/etcd/blob/329be66e8b3f9e2e6af83c123ff89297e49ebd15/Documentation/op-guide/clustering.md#dns-discovery
+	// deprecated: as of 4.7, this field is no longer set or honored.  It will be removed in a future release.
+	EtcdDiscoveryDomain *string `json:"etcdDiscoveryDomain,omitempty"`
+	// apiServerURL is a valid URI with scheme 'https', address and
+	// optionally a port (defaulting to 443).  apiServerURL can be used by components like the web console
+	// to tell users where to find the Kubernetes API.
+	APIServerURL *string `json:"apiServerURL,omitempty"`
+	// apiServerInternalURL is a valid URI with scheme 'https',
+	// address and optionally a port (defaulting to 443).  apiServerInternalURL can be used by components
+	// like kubelets, to contact the Kubernetes API server using the
+	// infrastructure provider rather than Kubernetes networking.
+	APIServerInternalURL *string `json:"apiServerInternalURI,omitempty"`
+	// controlPlaneTopology expresses the expectations for operands that normally run on control nodes.
+	// The default is 'HighlyAvailable', which represents the behavior operators have in a "normal" cluster.
+	// The 'SingleReplica' mode will be used in single-node deployments
+	// and the operators should not configure the operand for highly-available operation
+	// The 'External' mode indicates that the control plane is hosted externally to the cluster and that
+	// its components are not visible within the cluster.
+	ControlPlaneTopology *configv1.TopologyMode `json:"controlPlaneTopology,omitempty"`
+	// infrastructureTopology expresses the expectations for infrastructure services that do not run on control
+	// plane nodes, usually indicated by a node selector for a `role` value
+	// other than `master`.
+	// The default is 'HighlyAvailable', which represents the behavior operators have in a "normal" cluster.
+	// The 'SingleReplica' mode will be used in single-node deployments
+	// and the operators should not configure the operand for highly-available operation
+	// NOTE: External topology mode is not applicable for this field.
+	InfrastructureTopology *configv1.TopologyMode `json:"infrastructureTopology,omitempty"`
+	// cpuPartitioning expresses if CPU partitioning is a currently enabled feature in the cluster.
+	// CPU Partitioning means that this cluster can support partitioning workloads to specific CPU Sets.
+	// Valid values are "None" and "AllNodes". When omitted, the default value is "None".
+	// The default value of "None" indicates that no nodes will be setup with CPU partitioning.
+	// The "AllNodes" value indicates that all nodes have been setup with CPU partitioning,
+	// and can then be further configured via the PerformanceProfile API.
+	CPUPartitioning *configv1.CPUPartitioningMode `json:"cpuPartitioning,omitempty"`
 }
 
-// InfrastructureStatusApplyConfiguration constructs an declarative configuration of the InfrastructureStatus type for use with
+// InfrastructureStatusApplyConfiguration constructs a declarative configuration of the InfrastructureStatus type for use with
 // apply.
 func InfrastructureStatus() *InfrastructureStatusApplyConfiguration {
 	return &InfrastructureStatusApplyConfiguration{}
@@ -37,7 +77,7 @@ func (b *InfrastructureStatusApplyConfiguration) WithInfrastructureName(value st
 // WithPlatform sets the Platform field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Platform field is set to the value of the last call.
-func (b *InfrastructureStatusApplyConfiguration) WithPlatform(value v1.PlatformType) *InfrastructureStatusApplyConfiguration {
+func (b *InfrastructureStatusApplyConfiguration) WithPlatform(value configv1.PlatformType) *InfrastructureStatusApplyConfiguration {
 	b.Platform = &value
 	return b
 }
@@ -77,7 +117,7 @@ func (b *InfrastructureStatusApplyConfiguration) WithAPIServerInternalURL(value 
 // WithControlPlaneTopology sets the ControlPlaneTopology field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ControlPlaneTopology field is set to the value of the last call.
-func (b *InfrastructureStatusApplyConfiguration) WithControlPlaneTopology(value v1.TopologyMode) *InfrastructureStatusApplyConfiguration {
+func (b *InfrastructureStatusApplyConfiguration) WithControlPlaneTopology(value configv1.TopologyMode) *InfrastructureStatusApplyConfiguration {
 	b.ControlPlaneTopology = &value
 	return b
 }
@@ -85,7 +125,7 @@ func (b *InfrastructureStatusApplyConfiguration) WithControlPlaneTopology(value 
 // WithInfrastructureTopology sets the InfrastructureTopology field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the InfrastructureTopology field is set to the value of the last call.
-func (b *InfrastructureStatusApplyConfiguration) WithInfrastructureTopology(value v1.TopologyMode) *InfrastructureStatusApplyConfiguration {
+func (b *InfrastructureStatusApplyConfiguration) WithInfrastructureTopology(value configv1.TopologyMode) *InfrastructureStatusApplyConfiguration {
 	b.InfrastructureTopology = &value
 	return b
 }
@@ -93,7 +133,7 @@ func (b *InfrastructureStatusApplyConfiguration) WithInfrastructureTopology(valu
 // WithCPUPartitioning sets the CPUPartitioning field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the CPUPartitioning field is set to the value of the last call.
-func (b *InfrastructureStatusApplyConfiguration) WithCPUPartitioning(value v1.CPUPartitioningMode) *InfrastructureStatusApplyConfiguration {
+func (b *InfrastructureStatusApplyConfiguration) WithCPUPartitioning(value configv1.CPUPartitioningMode) *InfrastructureStatusApplyConfiguration {
 	b.CPUPartitioning = &value
 	return b
 }

@@ -3,18 +3,41 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// OpenStackPlatformSpecApplyConfiguration represents an declarative configuration of the OpenStackPlatformSpec type for use
+// OpenStackPlatformSpecApplyConfiguration represents a declarative configuration of the OpenStackPlatformSpec type for use
 // with apply.
+//
+// OpenStackPlatformSpec holds the desired state of the OpenStack infrastructure provider.
+// This only includes fields that can be modified in the cluster.
 type OpenStackPlatformSpecApplyConfiguration struct {
-	APIServerInternalIPs []v1.IP   `json:"apiServerInternalIPs,omitempty"`
-	IngressIPs           []v1.IP   `json:"ingressIPs,omitempty"`
-	MachineNetworks      []v1.CIDR `json:"machineNetworks,omitempty"`
+	// apiServerInternalIPs are the IP addresses to contact the Kubernetes API
+	// server that can be used by components inside the cluster, like kubelets
+	// using the infrastructure rather than Kubernetes networking. These are the
+	// IPs for a self-hosted load balancer in front of the API servers.
+	// In dual stack clusters this list contains two IP addresses, one from IPv4
+	// family and one from IPv6.
+	// In single stack clusters a single IP address is expected.
+	// When omitted, values from the status.apiServerInternalIPs will be used.
+	// Once set, the list cannot be completely removed (but its second entry can).
+	APIServerInternalIPs []configv1.IP `json:"apiServerInternalIPs,omitempty"`
+	// ingressIPs are the external IPs which route to the default ingress
+	// controller. The IPs are suitable targets of a wildcard DNS record used to
+	// resolve default route host names.
+	// In dual stack clusters this list contains two IP addresses, one from IPv4
+	// family and one from IPv6.
+	// In single stack clusters a single IP address is expected.
+	// When omitted, values from the status.ingressIPs will be used.
+	// Once set, the list cannot be completely removed (but its second entry can).
+	IngressIPs []configv1.IP `json:"ingressIPs,omitempty"`
+	// machineNetworks are IP networks used to connect all the OpenShift cluster
+	// nodes. Each network is provided in the CIDR format and should be IPv4 or IPv6,
+	// for example "10.0.0.0/8" or "fd00::/8".
+	MachineNetworks []configv1.CIDR `json:"machineNetworks,omitempty"`
 }
 
-// OpenStackPlatformSpecApplyConfiguration constructs an declarative configuration of the OpenStackPlatformSpec type for use with
+// OpenStackPlatformSpecApplyConfiguration constructs a declarative configuration of the OpenStackPlatformSpec type for use with
 // apply.
 func OpenStackPlatformSpec() *OpenStackPlatformSpecApplyConfiguration {
 	return &OpenStackPlatformSpecApplyConfiguration{}
@@ -23,7 +46,7 @@ func OpenStackPlatformSpec() *OpenStackPlatformSpecApplyConfiguration {
 // WithAPIServerInternalIPs adds the given value to the APIServerInternalIPs field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the APIServerInternalIPs field.
-func (b *OpenStackPlatformSpecApplyConfiguration) WithAPIServerInternalIPs(values ...v1.IP) *OpenStackPlatformSpecApplyConfiguration {
+func (b *OpenStackPlatformSpecApplyConfiguration) WithAPIServerInternalIPs(values ...configv1.IP) *OpenStackPlatformSpecApplyConfiguration {
 	for i := range values {
 		b.APIServerInternalIPs = append(b.APIServerInternalIPs, values[i])
 	}
@@ -33,7 +56,7 @@ func (b *OpenStackPlatformSpecApplyConfiguration) WithAPIServerInternalIPs(value
 // WithIngressIPs adds the given value to the IngressIPs field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the IngressIPs field.
-func (b *OpenStackPlatformSpecApplyConfiguration) WithIngressIPs(values ...v1.IP) *OpenStackPlatformSpecApplyConfiguration {
+func (b *OpenStackPlatformSpecApplyConfiguration) WithIngressIPs(values ...configv1.IP) *OpenStackPlatformSpecApplyConfiguration {
 	for i := range values {
 		b.IngressIPs = append(b.IngressIPs, values[i])
 	}
@@ -43,7 +66,7 @@ func (b *OpenStackPlatformSpecApplyConfiguration) WithIngressIPs(values ...v1.IP
 // WithMachineNetworks adds the given value to the MachineNetworks field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the MachineNetworks field.
-func (b *OpenStackPlatformSpecApplyConfiguration) WithMachineNetworks(values ...v1.CIDR) *OpenStackPlatformSpecApplyConfiguration {
+func (b *OpenStackPlatformSpecApplyConfiguration) WithMachineNetworks(values ...configv1.CIDR) *OpenStackPlatformSpecApplyConfiguration {
 	for i := range values {
 		b.MachineNetworks = append(b.MachineNetworks, values[i])
 	}

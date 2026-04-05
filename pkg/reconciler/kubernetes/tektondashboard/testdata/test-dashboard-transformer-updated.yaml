@@ -365,7 +365,6 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  creationTimestamp: null
   labels:
     app: tekton-dashboard
     app.kubernetes.io/component: dashboard
@@ -396,7 +395,6 @@ spec:
   strategy: {}
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: tekton-dashboard
         app.kubernetes.io/component: dashboard
@@ -404,7 +402,7 @@ spec:
         app.kubernetes.io/name: dashboard
         app.kubernetes.io/part-of: tekton-dashboard
         app.kubernetes.io/version: v0.48.0
-        operator.tekton.dev/deployment-spec-applied-hash: bcc353ffd9dbb45db12ebd80c6abbd27
+        operator.tekton.dev/deployment-spec-applied-hash: 20a3b14943fee04ef3b675dc18ca5a84
       name: tekton-dashboard
     spec:
       containers:

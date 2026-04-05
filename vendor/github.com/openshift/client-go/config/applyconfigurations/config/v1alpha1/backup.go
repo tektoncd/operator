@@ -11,16 +11,24 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// BackupApplyConfiguration represents an declarative configuration of the Backup type for use
+// BackupApplyConfiguration represents a declarative configuration of the Backup type for use
 // with apply.
+//
+// Backup provides configuration for performing backups of the openshift cluster.
+//
+// Compatibility level 4: No compatibility is provided, the API can change at any point for any reason. These capabilities should not be used by applications needing long term support.
 type BackupApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration `json:",inline"`
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *BackupSpecApplyConfiguration `json:"spec,omitempty"`
-	Status                           *configv1alpha1.BackupStatus  `json:"status,omitempty"`
+	// spec holds user settable values for configuration
+	Spec *BackupSpecApplyConfiguration `json:"spec,omitempty"`
+	// status holds observed values from the cluster. They may not be overridden.
+	Status *configv1alpha1.BackupStatus `json:"status,omitempty"`
 }
 
-// Backup constructs an declarative configuration of the Backup type for use with
+// Backup constructs a declarative configuration of the Backup type for use with
 // apply.
 func Backup(name string) *BackupApplyConfiguration {
 	b := &BackupApplyConfiguration{}
@@ -30,29 +38,14 @@ func Backup(name string) *BackupApplyConfiguration {
 	return b
 }
 
-// ExtractBackup extracts the applied configuration owned by fieldManager from
-// backup. If no managedFields are found in backup for fieldManager, a
-// BackupApplyConfiguration is returned with only the Name, Namespace (if applicable),
-// APIVersion and Kind populated. It is possible that no managed fields were found for because other
-// field managers have taken ownership of all the fields previously owned by fieldManager, or because
-// the fieldManager never owned fields any fields.
+// ExtractBackupFrom extracts the applied configuration owned by fieldManager from
+// backup for the specified subresource. Pass an empty string for subresource to extract
+// the main resource. Common subresources include "status", "scale", etc.
 // backup must be a unmodified Backup API object that was retrieved from the Kubernetes API.
-// ExtractBackup provides a way to perform a extract/modify-in-place/apply workflow.
+// ExtractBackupFrom provides a way to perform a extract/modify-in-place/apply workflow.
 // Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
 // applied if another fieldManager has updated or force applied any of the previously applied fields.
-// Experimental!
-func ExtractBackup(backup *configv1alpha1.Backup, fieldManager string) (*BackupApplyConfiguration, error) {
-	return extractBackup(backup, fieldManager, "")
-}
-
-// ExtractBackupStatus is the same as ExtractBackup except
-// that it extracts the status subresource applied configuration.
-// Experimental!
-func ExtractBackupStatus(backup *configv1alpha1.Backup, fieldManager string) (*BackupApplyConfiguration, error) {
-	return extractBackup(backup, fieldManager, "status")
-}
-
-func extractBackup(backup *configv1alpha1.Backup, fieldManager string, subresource string) (*BackupApplyConfiguration, error) {
+func ExtractBackupFrom(backup *configv1alpha1.Backup, fieldManager string, subresource string) (*BackupApplyConfiguration, error) {
 	b := &BackupApplyConfiguration{}
 	err := managedfields.ExtractInto(backup, internal.Parser().Type("com.github.openshift.api.config.v1alpha1.Backup"), fieldManager, b, subresource)
 	if err != nil {
@@ -65,11 +58,33 @@ func extractBackup(backup *configv1alpha1.Backup, fieldManager string, subresour
 	return b, nil
 }
 
+// ExtractBackup extracts the applied configuration owned by fieldManager from
+// backup. If no managedFields are found in backup for fieldManager, a
+// BackupApplyConfiguration is returned with only the Name, Namespace (if applicable),
+// APIVersion and Kind populated. It is possible that no managed fields were found for because other
+// field managers have taken ownership of all the fields previously owned by fieldManager, or because
+// the fieldManager never owned fields any fields.
+// backup must be a unmodified Backup API object that was retrieved from the Kubernetes API.
+// ExtractBackup provides a way to perform a extract/modify-in-place/apply workflow.
+// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
+// applied if another fieldManager has updated or force applied any of the previously applied fields.
+func ExtractBackup(backup *configv1alpha1.Backup, fieldManager string) (*BackupApplyConfiguration, error) {
+	return ExtractBackupFrom(backup, fieldManager, "")
+}
+
+// ExtractBackupStatus extracts the applied configuration owned by fieldManager from
+// backup for the status subresource.
+func ExtractBackupStatus(backup *configv1alpha1.Backup, fieldManager string) (*BackupApplyConfiguration, error) {
+	return ExtractBackupFrom(backup, fieldManager, "status")
+}
+
+func (b BackupApplyConfiguration) IsApplyConfiguration() {}
+
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kind field is set to the value of the last call.
 func (b *BackupApplyConfiguration) WithKind(value string) *BackupApplyConfiguration {
-	b.Kind = &value
+	b.TypeMetaApplyConfiguration.Kind = &value
 	return b
 }
 
@@ -77,7 +92,7 @@ func (b *BackupApplyConfiguration) WithKind(value string) *BackupApplyConfigurat
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the APIVersion field is set to the value of the last call.
 func (b *BackupApplyConfiguration) WithAPIVersion(value string) *BackupApplyConfiguration {
-	b.APIVersion = &value
+	b.TypeMetaApplyConfiguration.APIVersion = &value
 	return b
 }
 
@@ -86,7 +101,7 @@ func (b *BackupApplyConfiguration) WithAPIVersion(value string) *BackupApplyConf
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *BackupApplyConfiguration) WithName(value string) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Name = &value
+	b.ObjectMetaApplyConfiguration.Name = &value
 	return b
 }
 
@@ -95,7 +110,7 @@ func (b *BackupApplyConfiguration) WithName(value string) *BackupApplyConfigurat
 // If called multiple times, the GenerateName field is set to the value of the last call.
 func (b *BackupApplyConfiguration) WithGenerateName(value string) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.GenerateName = &value
+	b.ObjectMetaApplyConfiguration.GenerateName = &value
 	return b
 }
 
@@ -104,7 +119,7 @@ func (b *BackupApplyConfiguration) WithGenerateName(value string) *BackupApplyCo
 // If called multiple times, the Namespace field is set to the value of the last call.
 func (b *BackupApplyConfiguration) WithNamespace(value string) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Namespace = &value
+	b.ObjectMetaApplyConfiguration.Namespace = &value
 	return b
 }
 
@@ -113,7 +128,7 @@ func (b *BackupApplyConfiguration) WithNamespace(value string) *BackupApplyConfi
 // If called multiple times, the UID field is set to the value of the last call.
 func (b *BackupApplyConfiguration) WithUID(value types.UID) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.UID = &value
+	b.ObjectMetaApplyConfiguration.UID = &value
 	return b
 }
 
@@ -122,7 +137,7 @@ func (b *BackupApplyConfiguration) WithUID(value types.UID) *BackupApplyConfigur
 // If called multiple times, the ResourceVersion field is set to the value of the last call.
 func (b *BackupApplyConfiguration) WithResourceVersion(value string) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ResourceVersion = &value
+	b.ObjectMetaApplyConfiguration.ResourceVersion = &value
 	return b
 }
 
@@ -131,7 +146,7 @@ func (b *BackupApplyConfiguration) WithResourceVersion(value string) *BackupAppl
 // If called multiple times, the Generation field is set to the value of the last call.
 func (b *BackupApplyConfiguration) WithGeneration(value int64) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Generation = &value
+	b.ObjectMetaApplyConfiguration.Generation = &value
 	return b
 }
 
@@ -140,7 +155,7 @@ func (b *BackupApplyConfiguration) WithGeneration(value int64) *BackupApplyConfi
 // If called multiple times, the CreationTimestamp field is set to the value of the last call.
 func (b *BackupApplyConfiguration) WithCreationTimestamp(value metav1.Time) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.CreationTimestamp = &value
+	b.ObjectMetaApplyConfiguration.CreationTimestamp = &value
 	return b
 }
 
@@ -149,7 +164,7 @@ func (b *BackupApplyConfiguration) WithCreationTimestamp(value metav1.Time) *Bac
 // If called multiple times, the DeletionTimestamp field is set to the value of the last call.
 func (b *BackupApplyConfiguration) WithDeletionTimestamp(value metav1.Time) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionTimestamp = &value
+	b.ObjectMetaApplyConfiguration.DeletionTimestamp = &value
 	return b
 }
 
@@ -158,7 +173,7 @@ func (b *BackupApplyConfiguration) WithDeletionTimestamp(value metav1.Time) *Bac
 // If called multiple times, the DeletionGracePeriodSeconds field is set to the value of the last call.
 func (b *BackupApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionGracePeriodSeconds = &value
+	b.ObjectMetaApplyConfiguration.DeletionGracePeriodSeconds = &value
 	return b
 }
 
@@ -168,11 +183,11 @@ func (b *BackupApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) *
 // overwriting an existing map entries in Labels field with the same key.
 func (b *BackupApplyConfiguration) WithLabels(entries map[string]string) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Labels == nil && len(entries) > 0 {
-		b.Labels = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Labels == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Labels = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Labels[k] = v
+		b.ObjectMetaApplyConfiguration.Labels[k] = v
 	}
 	return b
 }
@@ -183,11 +198,11 @@ func (b *BackupApplyConfiguration) WithLabels(entries map[string]string) *Backup
 // overwriting an existing map entries in Annotations field with the same key.
 func (b *BackupApplyConfiguration) WithAnnotations(entries map[string]string) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Annotations == nil && len(entries) > 0 {
-		b.Annotations = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Annotations == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Annotations = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Annotations[k] = v
+		b.ObjectMetaApplyConfiguration.Annotations[k] = v
 	}
 	return b
 }
@@ -201,7 +216,7 @@ func (b *BackupApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerRefere
 		if values[i] == nil {
 			panic("nil value passed to WithOwnerReferences")
 		}
-		b.OwnerReferences = append(b.OwnerReferences, *values[i])
+		b.ObjectMetaApplyConfiguration.OwnerReferences = append(b.ObjectMetaApplyConfiguration.OwnerReferences, *values[i])
 	}
 	return b
 }
@@ -212,7 +227,7 @@ func (b *BackupApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerRefere
 func (b *BackupApplyConfiguration) WithFinalizers(values ...string) *BackupApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
-		b.Finalizers = append(b.Finalizers, values[i])
+		b.ObjectMetaApplyConfiguration.Finalizers = append(b.ObjectMetaApplyConfiguration.Finalizers, values[i])
 	}
 	return b
 }
@@ -237,4 +252,26 @@ func (b *BackupApplyConfiguration) WithSpec(value *BackupSpecApplyConfiguration)
 func (b *BackupApplyConfiguration) WithStatus(value configv1alpha1.BackupStatus) *BackupApplyConfiguration {
 	b.Status = &value
 	return b
+}
+
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *BackupApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *BackupApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
+// GetName retrieves the value of the Name field in the declarative configuration.
+func (b *BackupApplyConfiguration) GetName() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *BackupApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }

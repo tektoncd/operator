@@ -3,17 +3,29 @@
 package v1
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
-// NetworkDiagnosticsTargetPlacementApplyConfiguration represents an declarative configuration of the NetworkDiagnosticsTargetPlacement type for use
+// NetworkDiagnosticsTargetPlacementApplyConfiguration represents a declarative configuration of the NetworkDiagnosticsTargetPlacement type for use
 // with apply.
+//
+// NetworkDiagnosticsTargetPlacement defines node scheduling configuration network diagnostics target components
 type NetworkDiagnosticsTargetPlacementApplyConfiguration struct {
+	// nodeSelector is the node selector applied to network diagnostics components
+	//
+	// When omitted, this means the user has no opinion and the platform is left
+	// to choose reasonable defaults. These defaults are subject to change over time.
+	// The current default is `kubernetes.io/os: linux`.
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	Tolerations  []v1.Toleration   `json:"tolerations,omitempty"`
+	// tolerations is a list of tolerations applied to network diagnostics components
+	//
+	// When omitted, this means the user has no opinion and the platform is left
+	// to choose reasonable defaults. These defaults are subject to change over time.
+	// The current default is `- operator: "Exists"` which means that all taints are tolerated.
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 }
 
-// NetworkDiagnosticsTargetPlacementApplyConfiguration constructs an declarative configuration of the NetworkDiagnosticsTargetPlacement type for use with
+// NetworkDiagnosticsTargetPlacementApplyConfiguration constructs a declarative configuration of the NetworkDiagnosticsTargetPlacement type for use with
 // apply.
 func NetworkDiagnosticsTargetPlacement() *NetworkDiagnosticsTargetPlacementApplyConfiguration {
 	return &NetworkDiagnosticsTargetPlacementApplyConfiguration{}
@@ -36,7 +48,7 @@ func (b *NetworkDiagnosticsTargetPlacementApplyConfiguration) WithNodeSelector(e
 // WithTolerations adds the given value to the Tolerations field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Tolerations field.
-func (b *NetworkDiagnosticsTargetPlacementApplyConfiguration) WithTolerations(values ...v1.Toleration) *NetworkDiagnosticsTargetPlacementApplyConfiguration {
+func (b *NetworkDiagnosticsTargetPlacementApplyConfiguration) WithTolerations(values ...corev1.Toleration) *NetworkDiagnosticsTargetPlacementApplyConfiguration {
 	for i := range values {
 		b.Tolerations = append(b.Tolerations, values[i])
 	}

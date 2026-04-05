@@ -2,13 +2,15 @@
 
 package v1
 
-// ConsoleSpecApplyConfiguration represents an declarative configuration of the ConsoleSpec type for use
+// ConsoleSpecApplyConfiguration represents a declarative configuration of the ConsoleSpec type for use
 // with apply.
+//
+// ConsoleSpec is the specification of the desired behavior of the Console.
 type ConsoleSpecApplyConfiguration struct {
 	Authentication *ConsoleAuthenticationApplyConfiguration `json:"authentication,omitempty"`
 }
 
-// ConsoleSpecApplyConfiguration constructs an declarative configuration of the ConsoleSpec type for use with
+// ConsoleSpecApplyConfiguration constructs a declarative configuration of the ConsoleSpec type for use with
 // apply.
 func ConsoleSpec() *ConsoleSpecApplyConfiguration {
 	return &ConsoleSpecApplyConfiguration{}

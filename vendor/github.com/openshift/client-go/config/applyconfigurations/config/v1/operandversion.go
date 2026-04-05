@@ -2,14 +2,18 @@
 
 package v1
 
-// OperandVersionApplyConfiguration represents an declarative configuration of the OperandVersion type for use
+// OperandVersionApplyConfiguration represents a declarative configuration of the OperandVersion type for use
 // with apply.
 type OperandVersionApplyConfiguration struct {
-	Name    *string `json:"name,omitempty"`
+	// name is the name of the particular operand this version is for.  It usually matches container images, not operators.
+	Name *string `json:"name,omitempty"`
+	// version indicates which version of a particular operand is currently being managed.  It must always match the Available
+	// operand.  If 1.0.0 is Available, then this must indicate 1.0.0 even if the operator is trying to rollout
+	// 1.1.0
 	Version *string `json:"version,omitempty"`
 }
 
-// OperandVersionApplyConfiguration constructs an declarative configuration of the OperandVersion type for use with
+// OperandVersionApplyConfiguration constructs a declarative configuration of the OperandVersion type for use with
 // apply.
 func OperandVersion() *OperandVersionApplyConfiguration {
 	return &OperandVersionApplyConfiguration{}

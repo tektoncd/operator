@@ -2,13 +2,18 @@
 
 package v1alpha1
 
-// RetentionSizeConfigApplyConfiguration represents an declarative configuration of the RetentionSizeConfig type for use
+// RetentionSizeConfigApplyConfiguration represents a declarative configuration of the RetentionSizeConfig type for use
 // with apply.
+//
+// RetentionSizeConfig specifies the configuration of the retention policy on the total size of backups
 type RetentionSizeConfigApplyConfiguration struct {
+	// maxSizeOfBackupsGb defines the total size in GB of backups to retain.
+	// If the current total size backups exceeds MaxSizeOfBackupsGb then
+	// the oldest backup will be removed before a new backup is initiated.
 	MaxSizeOfBackupsGb *int `json:"maxSizeOfBackupsGb,omitempty"`
 }
 
-// RetentionSizeConfigApplyConfiguration constructs an declarative configuration of the RetentionSizeConfig type for use with
+// RetentionSizeConfigApplyConfiguration constructs a declarative configuration of the RetentionSizeConfig type for use with
 // apply.
 func RetentionSizeConfig() *RetentionSizeConfigApplyConfiguration {
 	return &RetentionSizeConfigApplyConfiguration{}

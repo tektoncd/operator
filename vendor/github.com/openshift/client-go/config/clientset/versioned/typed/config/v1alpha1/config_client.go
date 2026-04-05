@@ -3,19 +3,22 @@
 package v1alpha1
 
 import (
-	"net/http"
+	http "net/http"
 
-	v1alpha1 "github.com/openshift/api/config/v1alpha1"
-	"github.com/openshift/client-go/config/clientset/versioned/scheme"
+	configv1alpha1 "github.com/openshift/api/config/v1alpha1"
+	scheme "github.com/openshift/client-go/config/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
 type ConfigV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	BackupsGetter
+	CRIOCredentialProviderConfigsGetter
 	ClusterImagePoliciesGetter
+	ClusterMonitoringsGetter
 	ImagePoliciesGetter
 	InsightsDataGathersGetter
+	PKIsGetter
 }
 
 // ConfigV1alpha1Client is used to interact with features provided by the config.openshift.io group.
@@ -27,8 +30,16 @@ func (c *ConfigV1alpha1Client) Backups() BackupInterface {
 	return newBackups(c)
 }
 
+func (c *ConfigV1alpha1Client) CRIOCredentialProviderConfigs() CRIOCredentialProviderConfigInterface {
+	return newCRIOCredentialProviderConfigs(c)
+}
+
 func (c *ConfigV1alpha1Client) ClusterImagePolicies() ClusterImagePolicyInterface {
 	return newClusterImagePolicies(c)
+}
+
+func (c *ConfigV1alpha1Client) ClusterMonitorings() ClusterMonitoringInterface {
+	return newClusterMonitorings(c)
 }
 
 func (c *ConfigV1alpha1Client) ImagePolicies(namespace string) ImagePolicyInterface {
@@ -39,14 +50,16 @@ func (c *ConfigV1alpha1Client) InsightsDataGathers() InsightsDataGatherInterface
 	return newInsightsDataGathers(c)
 }
 
+func (c *ConfigV1alpha1Client) PKIs() PKIInterface {
+	return newPKIs(c)
+}
+
 // NewForConfig creates a new ConfigV1alpha1Client for the given config.
 // NewForConfig is equivalent to NewForConfigAndClient(c, httpClient),
 // where httpClient was generated with rest.HTTPClientFor(c).
 func NewForConfig(c *rest.Config) (*ConfigV1alpha1Client, error) {
 	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
+	setConfigDefaults(&config)
 	httpClient, err := rest.HTTPClientFor(&config)
 	if err != nil {
 		return nil, err
@@ -58,9 +71,7 @@ func NewForConfig(c *rest.Config) (*ConfigV1alpha1Client, error) {
 // Note the http client provided takes precedence over the configured transport values.
 func NewForConfigAndClient(c *rest.Config, h *http.Client) (*ConfigV1alpha1Client, error) {
 	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
+	setConfigDefaults(&config)
 	client, err := rest.RESTClientForConfigAndClient(&config, h)
 	if err != nil {
 		return nil, err
@@ -83,17 +94,15 @@ func New(c rest.Interface) *ConfigV1alpha1Client {
 	return &ConfigV1alpha1Client{c}
 }
 
-func setConfigDefaults(config *rest.Config) error {
-	gv := v1alpha1.SchemeGroupVersion
+func setConfigDefaults(config *rest.Config) {
+	gv := configv1alpha1.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+	config.NegotiatedSerializer = rest.CodecFactoryForGeneratedClient(scheme.Scheme, scheme.Codecs).WithoutConversion()
 
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()
 	}
-
-	return nil
 }
 
 // RESTClient returns a RESTClient that is used to communicate

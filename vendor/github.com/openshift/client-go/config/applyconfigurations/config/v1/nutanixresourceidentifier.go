@@ -3,18 +3,23 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// NutanixResourceIdentifierApplyConfiguration represents an declarative configuration of the NutanixResourceIdentifier type for use
+// NutanixResourceIdentifierApplyConfiguration represents a declarative configuration of the NutanixResourceIdentifier type for use
 // with apply.
+//
+// NutanixResourceIdentifier holds the identity of a Nutanix PC resource (cluster, image, subnet, etc.)
 type NutanixResourceIdentifierApplyConfiguration struct {
-	Type *v1.NutanixIdentifierType `json:"type,omitempty"`
-	UUID *string                   `json:"uuid,omitempty"`
-	Name *string                   `json:"name,omitempty"`
+	// type is the identifier type to use for this resource.
+	Type *configv1.NutanixIdentifierType `json:"type,omitempty"`
+	// uuid is the UUID of the resource in the PC. It cannot be empty if the type is UUID.
+	UUID *string `json:"uuid,omitempty"`
+	// name is the resource name in the PC. It cannot be empty if the type is Name.
+	Name *string `json:"name,omitempty"`
 }
 
-// NutanixResourceIdentifierApplyConfiguration constructs an declarative configuration of the NutanixResourceIdentifier type for use with
+// NutanixResourceIdentifierApplyConfiguration constructs a declarative configuration of the NutanixResourceIdentifier type for use with
 // apply.
 func NutanixResourceIdentifier() *NutanixResourceIdentifierApplyConfiguration {
 	return &NutanixResourceIdentifierApplyConfiguration{}
@@ -23,7 +28,7 @@ func NutanixResourceIdentifier() *NutanixResourceIdentifierApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *NutanixResourceIdentifierApplyConfiguration) WithType(value v1.NutanixIdentifierType) *NutanixResourceIdentifierApplyConfiguration {
+func (b *NutanixResourceIdentifierApplyConfiguration) WithType(value configv1.NutanixIdentifierType) *NutanixResourceIdentifierApplyConfiguration {
 	b.Type = &value
 	return b
 }

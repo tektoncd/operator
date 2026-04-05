@@ -3,21 +3,36 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// IBMCloudPlatformStatusApplyConfiguration represents an declarative configuration of the IBMCloudPlatformStatus type for use
+// IBMCloudPlatformStatusApplyConfiguration represents a declarative configuration of the IBMCloudPlatformStatus type for use
 // with apply.
+//
+// IBMCloudPlatformStatus holds the current status of the IBMCloud infrastructure provider.
 type IBMCloudPlatformStatusApplyConfiguration struct {
-	Location          *string                                     `json:"location,omitempty"`
-	ResourceGroupName *string                                     `json:"resourceGroupName,omitempty"`
-	ProviderType      *v1.IBMCloudProviderType                    `json:"providerType,omitempty"`
-	CISInstanceCRN    *string                                     `json:"cisInstanceCRN,omitempty"`
-	DNSInstanceCRN    *string                                     `json:"dnsInstanceCRN,omitempty"`
-	ServiceEndpoints  []IBMCloudServiceEndpointApplyConfiguration `json:"serviceEndpoints,omitempty"`
+	// location is where the cluster has been deployed
+	Location *string `json:"location,omitempty"`
+	// resourceGroupName is the Resource Group for new IBMCloud resources created for the cluster.
+	ResourceGroupName *string `json:"resourceGroupName,omitempty"`
+	// providerType indicates the type of cluster that was created
+	ProviderType *configv1.IBMCloudProviderType `json:"providerType,omitempty"`
+	// cisInstanceCRN is the CRN of the Cloud Internet Services instance managing
+	// the DNS zone for the cluster's base domain
+	CISInstanceCRN *string `json:"cisInstanceCRN,omitempty"`
+	// dnsInstanceCRN is the CRN of the DNS Services instance managing the DNS zone
+	// for the cluster's base domain
+	DNSInstanceCRN *string `json:"dnsInstanceCRN,omitempty"`
+	// serviceEndpoints is a list of custom endpoints which will override the default
+	// service endpoints of an IBM service. These endpoints are used by components
+	// within the cluster when trying to reach the IBM Cloud Services that have been
+	// overridden. The CCCMO reads in the IBMCloudPlatformSpec and validates each
+	// endpoint is resolvable. Once validated, the cloud config and IBMCloudPlatformStatus
+	// are updated to reflect the same custom endpoints.
+	ServiceEndpoints []IBMCloudServiceEndpointApplyConfiguration `json:"serviceEndpoints,omitempty"`
 }
 
-// IBMCloudPlatformStatusApplyConfiguration constructs an declarative configuration of the IBMCloudPlatformStatus type for use with
+// IBMCloudPlatformStatusApplyConfiguration constructs a declarative configuration of the IBMCloudPlatformStatus type for use with
 // apply.
 func IBMCloudPlatformStatus() *IBMCloudPlatformStatusApplyConfiguration {
 	return &IBMCloudPlatformStatusApplyConfiguration{}
@@ -42,7 +57,7 @@ func (b *IBMCloudPlatformStatusApplyConfiguration) WithResourceGroupName(value s
 // WithProviderType sets the ProviderType field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ProviderType field is set to the value of the last call.
-func (b *IBMCloudPlatformStatusApplyConfiguration) WithProviderType(value v1.IBMCloudProviderType) *IBMCloudPlatformStatusApplyConfiguration {
+func (b *IBMCloudPlatformStatusApplyConfiguration) WithProviderType(value configv1.IBMCloudProviderType) *IBMCloudPlatformStatusApplyConfiguration {
 	b.ProviderType = &value
 	return b
 }
