@@ -17,11 +17,21 @@ limitations under the License.
 package tektonresult
 
 import (
+	"context"
+	"sync"
 	"testing"
 
-	"knative.dev/pkg/metrics/metricstest" // Required to setup metrics env for testing
-	_ "knative.dev/pkg/metrics/testing"
+	"github.com/google/go-cmp/cmp"
+	"go.opentelemetry.io/otel"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
+
+func resetMetrics() {
+	once = sync.Once{}
+	errInitMetrics = nil
+	rReconcileGauge = nil
+}
 
 func TestUninitializedMetrics(t *testing.T) {
 	recorder := Recorder{}
@@ -31,17 +41,54 @@ func TestUninitializedMetrics(t *testing.T) {
 }
 
 func TestMetricsCount(t *testing.T) {
-
-	metricstest.Unregister("results_reconciled")
+	resetMetrics()
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+	otel.SetMeterProvider(provider)
+	t.Cleanup(func() { provider.Shutdown(context.Background()) })
 
 	recorder, err := NewRecorder()
 	if err != nil {
-		t.Errorf("failed to initilized recorder, got %s", err.Error())
+		t.Fatalf("failed to initialize recorder: %v", err)
+	}
 
-	}
 	if err := recorder.Count("v0.1", "GCS"); err != nil {
-		t.Errorf("recorder.Count recording failed got %s", err.Error())
+		t.Fatalf("recorder.Count recording failed: %v", err)
 	}
-	metricstest.CheckStatsReported(t, "results_reconciled")
-	metricstest.CheckLastValueData(t, "results_reconciled", map[string]string{"version": "v0.1", "log_type": "GCS"}, float64(1))
+
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(context.Background(), &rm); err != nil {
+		t.Fatalf("Collect error: %v", err)
+	}
+
+	var found bool
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name == "tekton_operator_lifecycle_results_reconciled" {
+				found = true
+				gauge, ok := m.Data.(metricdata.Gauge[float64])
+				if !ok {
+					t.Fatalf("expected Gauge[float64], got %T", m.Data)
+				}
+				if len(gauge.DataPoints) != 1 {
+					t.Fatalf("expected 1 data point, got %d", len(gauge.DataPoints))
+				}
+				dp := gauge.DataPoints[0]
+				if dp.Value != 1 {
+					t.Errorf("expected value 1, got %v", dp.Value)
+				}
+				gotAttrs := make(map[string]string)
+				for _, kv := range dp.Attributes.ToSlice() {
+					gotAttrs[string(kv.Key)] = kv.Value.AsString()
+				}
+				wantAttrs := map[string]string{"version": "v0.1", "log_type": "GCS"}
+				if d := cmp.Diff(wantAttrs, gotAttrs); d != "" {
+					t.Errorf("attributes diff (-want, +got): %s", d)
+				}
+			}
+		}
+	}
+	if !found {
+		t.Fatal("results_reconciled metric not found")
+	}
 }
