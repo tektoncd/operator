@@ -206,13 +206,18 @@ release_yaml_pac() {
     local version=$3
 
     ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
-    comp_dir=${ko_data}/tekton-addon/pipelines-as-code
+    comp_dir=${ko_data}/pipelines-as-code
     dirPath=${comp_dir}/${version}
 
+    local pac_release_yaml=release.yaml
+    if [[ ${TARGET} != "openshift" ]]; then
+      pac_release_yaml=release.k8s.yaml
+    fi
+
     if [[ ${version} == "stable" ||  ${version} == "nightly" ]]; then
-      url="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/${version}/release.yaml"
+      url="https://raw.githubusercontent.com/tektoncd/pipelines-as-code/${version}/${pac_release_yaml}"
     else
-      url="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/release-${version}/release.yaml"
+      url="https://raw.githubusercontent.com/tektoncd/pipelines-as-code/release-${version}/${pac_release_yaml}"
     fi
 
     dest=${dirPath}/${fileName}.yaml
@@ -247,8 +252,8 @@ release_yaml_pac() {
     do
       echo "fetching PipelineRun template for runtime: $run"
 
-      source="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/${version}/pkg/cmd/tknpac/generate/templates/${run}.yaml"
-      dest_dir="${ko_data}/tekton-addon/pipelines-as-code-templates"
+      source="https://raw.githubusercontent.com/tektoncd/pipelines-as-code/${version}/pkg/cmd/tknpac/generate/templates/${run}.yaml"
+      dest_dir="${ko_data}/pipelines-as-code-templates"
       mkdir -p ${dest_dir} || true
       destination="${dest_dir}/${run}.yaml"
 
@@ -411,9 +416,12 @@ main() {
     # get release YAML for Dashboard
     release_yaml dashboard release-full 00-dashboard ${d_version}
     release_yaml dashboard release 00-dashboard ${d_version}
-  else
-    pac_version=$(go run ./cmd/tool component-version ${CONFIG} pipelines-as-code)
-    release_yaml_pac pipelinesascode release ${pac_version}
+  fi
+
+  pac_version=$(go run ./cmd/tool component-version ${CONFIG} pipelines-as-code)
+  release_yaml_pac pipelinesascode release ${pac_version}
+
+  if [[ ${TARGET} == "openshift" ]]; then
     fetch_openshift_addon_tasks
   fi
 

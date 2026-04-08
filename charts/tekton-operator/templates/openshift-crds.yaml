@@ -111,7 +111,7 @@ spec:
       name: v1alpha1
       schema:
         openAPIV3Schema:
-          description: Schema for the tektonaddons API
+          description: Schema for the tektonaddons API. Supported on OpenShift only.
           type: object
           x-kubernetes-preserve-unknown-fields: true
       served: true

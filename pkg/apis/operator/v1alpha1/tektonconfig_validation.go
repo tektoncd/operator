@@ -56,9 +56,29 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		}
 	}
 
+	// One platform subtree per operator build (PLATFORM=openshift vs unset/other). Reject before PAC
+	// validation so clients get a single admission error (e.g. oc patch / oc edit), not stacked messages.
+	if !IsOpenShiftPlatform() && isOpenShiftPlatformsSectionSet(tc.Spec.Platforms.OpenShift) {
+		return errs.Also(apis.ErrGeneric(
+			"this cluster runs the Kubernetes Tekton Operator; configure Pipelines as Code and SCC-related settings only under spec.platforms.kubernetes. "+
+				"Remove spec.platforms.openshift (including pipelinesAsCode and scc). "+
+				"Do not set both spec.platforms.openshift.pipelinesAsCode and spec.platforms.kubernetes.pipelinesAsCode.",
+			"spec.platforms",
+		))
+	}
+	if IsOpenShiftPlatform() && isKubernetesPlatformsSectionSet(tc.Spec.Platforms.Kubernetes) {
+		return errs.Also(apis.ErrGeneric(
+			"this cluster runs the OpenShift Tekton Operator; configure Pipelines as Code only under spec.platforms.openshift. "+
+				"Remove spec.platforms.kubernetes.pipelinesAsCode.",
+			"spec.platforms",
+		))
+	}
+
+	logger := logging.FromContext(ctx)
 	if IsOpenShiftPlatform() && tc.Spec.Platforms.OpenShift.PipelinesAsCode != nil {
-		logger := logging.FromContext(ctx)
 		errs = errs.Also(tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.validate(logger, "spec.platforms.openshift.pipelinesAsCode"))
+	} else if !IsOpenShiftPlatform() && tc.Spec.Platforms.Kubernetes.PipelinesAsCode != nil {
+		errs = errs.Also(tc.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.validate(logger, "spec.platforms.kubernetes.pipelinesAsCode"))
 	}
 
 	// validate SCC config
@@ -177,6 +197,14 @@ func isValueInArray(arr []string, key string) bool {
 		}
 	}
 	return false
+}
+
+func isOpenShiftPlatformsSectionSet(o OpenShift) bool {
+	return o.PipelinesAsCode != nil || o.SCC != nil
+}
+
+func isKubernetesPlatformsSectionSet(k Kubernetes) bool {
+	return k.PipelinesAsCode != nil
 }
 
 func verifySCCExists(ctx context.Context, sccName string) error {

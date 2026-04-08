@@ -52,12 +52,12 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		logger.Fatalw("Error creating initial manifest", zap.Error(err))
 	}
 
-	pacLocation := filepath.Join(os.Getenv(common.KoEnvKey), "tekton-addon", "pipelines-as-code")
+	pacLocation := filepath.Join(os.Getenv(common.KoEnvKey), common.PipelinesAsCodeManifestDir)
 	if err := common.AppendManifest(&pacManifest, pacLocation); err != nil {
 		logger.Fatalf("failed to fetch PAC manifest: %v", err)
 	}
 
-	prTemplates, err := fetchPipelineRunTemplates()
+	prTemplates, err := FetchPipelineRunTemplates()
 	if err != nil {
 		logger.Fatalf("failed to fetch pipelineRun templates: %v", err)
 	}
@@ -87,7 +87,7 @@ type openshiftExtension struct {
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{
-		injectNamespaceOwnerForPACWebhook(oe.kubeClientSet, comp.GetSpec().GetTargetNamespace()),
+		InjectNamespaceOwnerForPACWebhook(oe.kubeClientSet, comp.GetSpec().GetTargetNamespace()),
 	}
 }
 func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
@@ -125,9 +125,9 @@ func extFilterAndTransform() client.FilterAndTransform {
 	}
 }
 
-// injectNamespaceOwnerForPACWebhook adds namespace ownerReference to PAC webhook
+// InjectNamespaceOwnerForPACWebhook adds namespace ownerReference to PAC webhook
 // to ensure proper cleanup when namespace is deleted (SRVKP-8901)
-func injectNamespaceOwnerForPACWebhook(kubeClient kubernetes.Interface, targetNamespace string) mf.Transformer {
+func InjectNamespaceOwnerForPACWebhook(kubeClient kubernetes.Interface, targetNamespace string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		kind := u.GetKind()
 		name := u.GetName()

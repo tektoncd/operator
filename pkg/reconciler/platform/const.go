@@ -30,6 +30,9 @@ const (
 	ControllerTektonScheduler      ControllerName = "tektonscheduler"
 	ControllerMulticlusterProxyAAE ControllerName = "tektonmulticlusterproxyaae"
 	ControllerSyncerService        ControllerName = "syncerservice"
-	EnvControllerNames             string         = "CONTROLLER_NAMES"
-	EnvSharedMainName              string         = "UNIQUE_PROCESS_NAME"
+	// ControllerOpenShiftPipelinesAsCode is the operand reconciler for OpenShiftPipelinesAsCode;
+	// the same name is used on Kubernetes and OpenShift so -controllers flags stay consistent.
+	ControllerOpenShiftPipelinesAsCode ControllerName = "openshiftpipelinesascode"
+	EnvControllerNames                 string         = "CONTROLLER_NAMES"
+	EnvSharedMainName                  string         = "UNIQUE_PROCESS_NAME"
 )

@@ -1,0 +1,35 @@
+# Role and RoleBinding so authenticated users can read PAC PipelineRun template
+# ConfigMaps in this namespace (same namespace where PostSet installs template CMs).
+# Loaded with runtime templates from pipelines-as-code-templates/; see
+# pkg/reconciler/openshift/openshiftpipelinesascode/pipelinerun_templates.go
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pipelines-as-code-templates
+  labels:
+    app.kubernetes.io/part-of: pipelines-as-code
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+    resourceNames:
+      - pipelines-as-code-pipelinerun-go
+      - pipelines-as-code-pipelinerun-java
+      - pipelines-as-code-pipelinerun-nodejs
+      - pipelines-as-code-pipelinerun-python
+      - pipelines-as-code-pipelinerun-generic
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pipelines-as-code-templates
+  labels:
+    app.kubernetes.io/part-of: pipelines-as-code
+subjects:
+  - kind: Group
+    name: system:authenticated
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pipelines-as-code-templates

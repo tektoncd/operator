@@ -178,21 +178,20 @@ func preUpgradePipelinesAsCodeArtifacts(ctx context.Context, logger *zap.Sugared
 		return err
 	}
 
+	pacSpec := tc.Spec.Platforms.OpenShift.PipelinesAsCode
 	// Check if Pipelines as Code is enabled
-	if tc.Spec.Platforms.OpenShift.PipelinesAsCode == nil ||
-		tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable == nil ||
-		!*tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable {
+	if pacSpec == nil || pacSpec.Enable == nil || !*pacSpec.Enable {
 		logger.Infof("Pipelines as Code is not enabled, skipping artifact upgrade")
 		return nil
 	}
 
 	// Initialize settings if nil
-	if tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings == nil {
-		tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings = make(map[string]string)
+	if pacSpec.PACSettings.Settings == nil {
+		pacSpec.PACSettings.Settings = make(map[string]string)
 	}
 
 	// Fetch PAC settings
-	settings := tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings
+	settings := pacSpec.PACSettings.Settings
 
 	// Set hub-catalog-type to artifacthub if not already set or if it's set to tektonhub
 	if catalogType, exists := settings["hub-catalog-type"]; !exists || catalogType == "tektonhub" {

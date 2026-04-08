@@ -130,6 +130,16 @@ type TektonConfigSpec struct {
 	TargetNamespaceMetadata *NamespaceMetadata `json:"targetNamespaceMetadata,omitempty"`
 }
 
+// PipelinesAsCodeForCurrentPlatform returns the PipelinesAsCode block for the operator build
+// (OpenShift vs Kubernetes, see PLATFORM env). TektonConfig.Validate rejects using the other
+// platform's spec.platforms subtree.
+func (s *TektonConfigSpec) PipelinesAsCodeForCurrentPlatform() *PipelinesAsCode {
+	if IsOpenShiftPlatform() {
+		return s.Platforms.OpenShift.PipelinesAsCode
+	}
+	return s.Platforms.Kubernetes.PipelinesAsCode
+}
+
 // TektonConfigStatus defines the observed state of TektonConfig
 type TektonConfigStatus struct {
 	duckv1.Status `json:",inline"`
@@ -192,4 +202,7 @@ type Platforms struct {
 	// OpenShift allows configuring openshift specific components and configurations
 	// +optional
 	OpenShift OpenShift `json:"openshift,omitempty"`
+	// Kubernetes allows configuring kubernetes specific components and configurations
+	// +optional
+	Kubernetes Kubernetes `json:"kubernetes,omitempty"`
 }
