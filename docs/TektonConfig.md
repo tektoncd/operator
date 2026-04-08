@@ -21,6 +21,7 @@ Other than the above components depending on the platform operator also provides
   - [TektonResult](./TektonResult.md)
 - On Kubernetes
   - [TektonDashboard](./TektonDashboard.md)
+  - [OpenShiftPipelinesAsCode](./OpenShiftPipelinesAsCode.md) (installed via `spec.platforms.kubernetes.pipelinesAsCode`; same CRD/kind as on OpenShift)
 - On OpenShift
   - [TektonAddon](./TektonAddon.md)
   - [OpenShiftPipelinesAsCode](./OpenShiftPipelinesAsCode.md)
@@ -130,7 +131,7 @@ spec:
   trigger:
     disabled: false
 platforms:
-    openshift:
+    openshift:   # or `kubernetes:` on Kubernetes clusters
       pipelinesAsCode:
         additionalPACControllers:
           <controllerName>:
@@ -576,7 +577,7 @@ In the deployment the environment name will be converted as follows,
 
 ### OpenShiftPipelinesAsCode
 
-The PipelinesAsCode section allows you to customize the Pipelines as Code features. When you change the TektonConfig CR, the Operator automatically applies the settings to custom resources and configmaps in your installation.
+The PipelinesAsCode section allows you to customize the Pipelines as Code features on both Kubernetes and OpenShift. When you change the TektonConfig CR, the Operator automatically applies the settings to custom resources and configmaps in your installation. On Kubernetes, configure `spec.platforms.kubernetes.pipelinesAsCode` (the managed CR remains `OpenShiftPipelinesAsCode` for API compatibility).
 
 Some of the fields have default values, so operator will add them if the user hasn't passed in CR. Other fields which
 don't have default values unless the user specifies them. User can find those [here](https://pipelinesascode.com/docs/install/settings/#pipelines-as-code-configuration-settings).
@@ -585,7 +586,7 @@ Example:
 
 ```yaml
 platforms:
-  openshift:
+  openshift:   # or `kubernetes:`
     pipelinesAsCode:
       additionalPACControllers:
         controllername:
@@ -680,7 +681,7 @@ pipelinesascode.tekton.dev/task: "artifact://buildah"
 
 For more details, see the [Pipelines-as-Code Remote Hub Catalogs documentation](https://pipelinesascode.com/docs/install/settings/#remote-hub-catalogs).
 
-**NOTE**: OpenShiftPipelinesAsCode is currently available for the OpenShift Platform only.
+**NOTE**: On Kubernetes clusters, use `spec.platforms.kubernetes.pipelinesAsCode`. The custom resource kind remains `OpenShiftPipelinesAsCode`.
 
 ### Event based pruner 
 

@@ -1,4 +1,4 @@
-# Copyright 2020 The Tekton Authors
+# Copyright 2022 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,17 +15,20 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: tektonaddons.operator.tekton.dev
+  name: openshiftpipelinesascodes.operator.tekton.dev
   labels:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
   group: operator.tekton.dev
   names:
-    kind: TektonAddon
-    listKind: TektonAddonList
-    plural: tektonaddons
-    singular: tektonaddon
+    kind: OpenShiftPipelinesAsCode
+    listKind: OpenShiftPipelinesAsCodeList
+    plural: openshiftpipelinesascodes
+    singular: openshiftpipelinesascode
+    shortNames:
+    - opac
+    - pac
   preserveUnknownFields: false
   scope: Cluster
   versions:
@@ -47,5 +50,5 @@ spec:
     schema:
       openAPIV3Schema:
         type: object
-        description: Schema for the tektonaddons API. Supported on OpenShift only.
+        description: Schema for the OpenShiftPipelinesAsCode API
         x-kubernetes-preserve-unknown-fields: true

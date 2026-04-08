@@ -27,6 +27,11 @@ import (
 )
 
 const (
+	// PipelinesAsCodeManifestDir is the kodata subdirectory for PAC release manifests (not under tekton-addon).
+	PipelinesAsCodeManifestDir = "pipelines-as-code"
+	// PipelinesAsCodeTemplatesDir is the kodata subdirectory for PAC PipelineRun templates embedded as ConfigMaps.
+	PipelinesAsCodeTemplatesDir = "pipelines-as-code-templates"
+
 	PipelineNotReady       = "tekton-pipelines not ready"
 	PipelineNotFound       = "tekton-pipelines not installed"
 	TriggerNotReady        = "tekton-triggers not ready"
