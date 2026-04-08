@@ -35,15 +35,6 @@ type OpenShift struct {
 	EnableCentralTLSConfig bool `json:"enableCentralTLSConfig,omitempty"`
 }
 
-type PipelinesAsCode struct {
-	// Enable or disable pipelines as code by changing this bool
-	// +optional
-	Enable *bool `json:"enable,omitempty"`
-	// PACSettings allows user to configure PAC configurations
-	// +optional
-	PACSettings `json:",inline"`
-}
-
 type SCC struct {
 	// Default contains the default SCC that will be attached to the service
 	// account used for workloads (`pipeline` SA by default) and defined in

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package extension
+package pac
 
 import (
 	"context"
@@ -38,23 +38,17 @@ func TestEnsureOpenShiftPipelinesAsCodeExists(t *testing.T) {
 	t.Setenv("PLATFORM", "openshift")
 
 	tConfig.SetDefaults(ctx)
-	// first invocation should create instance as it is non-existent and return RECONCILE_AGAIN_ERR
 	_, err := EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
-	// during second invocation instance exists but waiting on dependencies (pipeline, triggers)
-	// hence returns DEPENDENCY_UPGRADE_PENDING_ERR
 	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
-	// mark the instance ready
 	markOPACReady(t, ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes())
 
-	// next invocation should return nil error as the instance is ready
 	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, nil)
 
-	// test update propagation from tektonConfig
 	tConfig.Spec.TargetNamespace = "foobar"
 	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
@@ -69,22 +63,17 @@ func TestEnsureOpenShiftPipelinesAsCodeCRNotExists(t *testing.T) {
 
 	t.Setenv("PLATFORM", "openshift")
 
-	// when no instance exists, nil error is returned immediately
 	err := EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes())
 	util.AssertEqual(t, err, nil)
 
-	// create an instance for testing other cases
 	tConfig := pipeline.GetTektonConfig()
 	tConfig.SetDefaults(ctx)
 	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
-	// when an instance exists the first invoacation should make the delete API call and
-	// return RECONCILE_AGAI_ERROR. So that the deletion can be confirmed in a subsequent invocation
 	err = EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes())
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
-	// when the instance is completely removed from a cluster, the function should return nil error
 	err = EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes())
 	util.AssertEqual(t, err, nil)
 }

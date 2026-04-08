@@ -69,14 +69,14 @@ ifeq ($(TARGET), openshift)
 	rm -rf ./cmd/$(TARGET)/operator/kodata/manual-approval-gate
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-pruner
 	rm -rf ./cmd/$(TARGET)/operator/kodata/pruner
-	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code
+	rm -rf ./cmd/$(TARGET)/operator/kodata/pipelines-as-code
 	find ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/06-ecosystem/tasks -type f ! -name "role.yaml" ! -name "rolebinding.yaml" -delete 
 	find ./cmd/$(TARGET)/operator/kodata/tekton-addon/addons/06-ecosystem/stepactions -type f ! -name "role.yaml" ! -name "rolebinding.yaml" -delete
-	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/go.yaml
-	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/java.yaml
-	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/nodejs.yaml
-	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/python.yaml
-	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-addon/pipelines-as-code-templates/generic.yaml
+	rm -f ./cmd/$(TARGET)/operator/kodata/pipelines-as-code-templates/go.yaml
+	rm -f ./cmd/$(TARGET)/operator/kodata/pipelines-as-code-templates/java.yaml
+	rm -f ./cmd/$(TARGET)/operator/kodata/pipelines-as-code-templates/nodejs.yaml
+	rm -f ./cmd/$(TARGET)/operator/kodata/pipelines-as-code-templates/python.yaml
+	rm -f ./cmd/$(TARGET)/operator/kodata/pipelines-as-code-templates/generic.yaml
 else
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton*
 	rm -rf ./cmd/$(TARGET)/operator/kodata/pruner

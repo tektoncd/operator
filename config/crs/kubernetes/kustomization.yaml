@@ -13,3 +13,4 @@ resources:
 - pruner/operator_v1alpha1_pruner_cr.yaml
 - scheduler/operator_v1alpha1_scheduler_cr.yaml
 - multicluster-proxy-aae/operator_v1alpha1_multiclusterproxyaae_cr.yaml
+- pipelinesascode/operator_v1alpha1_pipelinesascode_cr.yaml

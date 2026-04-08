@@ -118,7 +118,7 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 		var results v1alpha1.TektonResult
 		return AppendTarget(ctx, ctrl.Manifest, &results)
 	case "pipelines-as-code":
-		pacLocation := filepath.Join(os.Getenv(KoEnvKey), "tekton-addon", "pipelines-as-code")
+		pacLocation := filepath.Join(os.Getenv(KoEnvKey), PipelinesAsCodeManifestDir)
 		return AppendManifest(ctrl.Manifest, pacLocation)
 	case "manual-approval-gate":
 		var mag v1alpha1.ManualApprovalGate

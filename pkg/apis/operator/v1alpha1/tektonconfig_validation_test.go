@@ -85,6 +85,52 @@ func Test_ValidateTektonConfig_InvalidProfile(t *testing.T) {
 	assert.Equal(t, "invalid value: test: spec.profile", err.Error())
 }
 
+func Test_ValidateTektonConfig_OpenShiftPlatformsOnKubernetes(t *testing.T) {
+	t.Setenv("PLATFORM", "")
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ConfigResourceName,
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Pruner: Prune{Disabled: true},
+			Platforms: Platforms{
+				OpenShift: OpenShift{
+					PipelinesAsCode: &PipelinesAsCode{Enable: ptr.Bool(true)},
+				},
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Assert(t, err != nil)
+}
+
+func Test_ValidateTektonConfig_KubernetesPlatformsOnOpenShift(t *testing.T) {
+	t.Setenv("PLATFORM", "openshift")
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: ConfigResourceName,
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Pruner: Prune{Disabled: true},
+			Platforms: Platforms{
+				Kubernetes: Kubernetes{
+					PipelinesAsCode: &PipelinesAsCode{Enable: ptr.Bool(true)},
+				},
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Assert(t, err != nil)
+}
+
 func Test_ValidateTektonConfig_InvalidPruningResource(t *testing.T) {
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{

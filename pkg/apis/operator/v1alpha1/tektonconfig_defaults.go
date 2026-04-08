@@ -36,27 +36,39 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	tc.Spec.Scheduler.SetDefaults()
 
 	if IsOpenShiftPlatform() {
-		if tc.Spec.Platforms.OpenShift.PipelinesAsCode == nil {
+		// PAC may appear under spec.platforms.kubernetes if the mutating webhook ran without
+		// PLATFORM=openshift (e.g. wrong image/order) or from older releases. Move it to
+		// spec.platforms.openshift so the stored TektonConfig matches the OpenShift operator.
+		if tc.Spec.Platforms.Kubernetes.PipelinesAsCode != nil {
+			if tc.Spec.Platforms.OpenShift.PipelinesAsCode == nil {
+				p := *tc.Spec.Platforms.Kubernetes.PipelinesAsCode
+				tc.Spec.Platforms.OpenShift.PipelinesAsCode = &p
+			}
+			tc.Spec.Platforms.Kubernetes.PipelinesAsCode = nil
+		}
+
+		if tc.Spec.Platforms.OpenShift.PipelinesAsCode != nil {
+			tc.Spec.Addon.EnablePAC = nil
+		} else {
 			tc.Spec.Platforms.OpenShift.PipelinesAsCode = &PipelinesAsCode{
 				Enable: ptr.Bool(true),
 				PACSettings: PACSettings{
 					Settings: map[string]string{},
 				},
 			}
-		} else {
-			tc.Spec.Addon.EnablePAC = nil
 		}
 
-		// check if PAC is disabled through addon before enabling through OpenShiftPipelinesAsCode
+		// check if PAC is disabled through addon before enabling through OpenShift PipelinesAsCode
 		if tc.Spec.Addon.EnablePAC != nil && !*tc.Spec.Addon.EnablePAC {
-			tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable = ptr.Bool(false)
-			tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings = nil
+			if tc.Spec.Platforms.OpenShift.PipelinesAsCode != nil {
+				tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable = ptr.Bool(false)
+				tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings = nil
+			}
 		}
 
-		// pac defaulting
-		if *tc.Spec.Platforms.OpenShift.PipelinesAsCode.Enable {
+		if p := tc.Spec.Platforms.OpenShift.PipelinesAsCode; p != nil && p.Enable != nil && *p.Enable {
 			logger := logging.FromContext(ctx)
-			tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.setPACDefaults(logger)
+			p.PACSettings.setPACDefaults(logger)
 		}
 
 		// SCC defaulting
@@ -69,8 +81,28 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 
 		setAddonDefaults(&tc.Spec.Addon)
 	} else {
-		tc.Spec.Addon = Addon{}
-		tc.Spec.Platforms.OpenShift = OpenShift{}
+		// Kubernetes Platform
+		if tc.Spec.Platforms.Kubernetes.PipelinesAsCode == nil {
+			tc.Spec.Platforms.Kubernetes.PipelinesAsCode = &PipelinesAsCode{
+				Enable: ptr.Bool(true),
+				PACSettings: PACSettings{
+					Settings: map[string]string{},
+				},
+			}
+		} else {
+			tc.Spec.Addon.EnablePAC = nil
+		}
+
+		if tc.Spec.Addon.EnablePAC != nil && !*tc.Spec.Addon.EnablePAC {
+			tc.Spec.Platforms.Kubernetes.PipelinesAsCode.Enable = ptr.Bool(false)
+			tc.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.Settings = nil
+		}
+
+		if *tc.Spec.Platforms.Kubernetes.PipelinesAsCode.Enable {
+			logger := logging.FromContext(ctx)
+			tc.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.setPACDefaults(logger)
+		}
+		setAddonDefaults(&tc.Spec.Addon)
 	}
 
 	// earlier pruner was disabled with empty schedule or empty resources

@@ -1,4 +1,4 @@
-# Copyright 2020 The Tekton Authors
+# Copyright 2025 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,26 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-patches:
-- path: operator.yaml
-  target:
-    kind: Deployment
-    name: tekton-operator
-- path: webhook.yaml
-  target:
-    kind: Deployment
-    name: tekton-operator-webhook
 
-configMapGenerator:
-- name: tekton-config-defaults
-  literals:
-  - DEFAULT_TARGET_NAMESPACE=tekton-pipelines
-  behavior: merge
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-- ../../base/
-- ../../webhooks/
-- 300-operator_v1alpha1_dashboard_crd.yaml
-- operator_service.yaml
-- pipelinesascode.yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: OpenShiftPipelinesAsCode
+metadata:
+  name: pipelines-as-code
+spec:
+  targetNamespace: tekton-pipelines
