@@ -19,7 +19,6 @@
 # The release pipeline builds, publishes images for both kubernetes
 # and openshift platforms, uploads artifacts to the release bucket,
 # and a draft GitHub release is created separately.
----
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:

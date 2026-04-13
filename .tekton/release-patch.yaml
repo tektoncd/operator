@@ -19,7 +19,6 @@
 #
 # The version and release_as_latest parameters are passed dynamically
 # through the incoming webhook payload.
----
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
