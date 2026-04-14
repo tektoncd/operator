@@ -3,25 +3,37 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// IdentityProviderConfigApplyConfiguration represents an declarative configuration of the IdentityProviderConfig type for use
+// IdentityProviderConfigApplyConfiguration represents a declarative configuration of the IdentityProviderConfig type for use
 // with apply.
+//
+// IdentityProviderConfig contains configuration for using a specific identity provider
 type IdentityProviderConfigApplyConfiguration struct {
-	Type          *v1.IdentityProviderType                         `json:"type,omitempty"`
-	BasicAuth     *BasicAuthIdentityProviderApplyConfiguration     `json:"basicAuth,omitempty"`
-	GitHub        *GitHubIdentityProviderApplyConfiguration        `json:"github,omitempty"`
-	GitLab        *GitLabIdentityProviderApplyConfiguration        `json:"gitlab,omitempty"`
-	Google        *GoogleIdentityProviderApplyConfiguration        `json:"google,omitempty"`
-	HTPasswd      *HTPasswdIdentityProviderApplyConfiguration      `json:"htpasswd,omitempty"`
-	Keystone      *KeystoneIdentityProviderApplyConfiguration      `json:"keystone,omitempty"`
-	LDAP          *LDAPIdentityProviderApplyConfiguration          `json:"ldap,omitempty"`
-	OpenID        *OpenIDIdentityProviderApplyConfiguration        `json:"openID,omitempty"`
+	// type identifies the identity provider type for this entry.
+	Type *configv1.IdentityProviderType `json:"type,omitempty"`
+	// basicAuth contains configuration options for the BasicAuth IdP
+	BasicAuth *BasicAuthIdentityProviderApplyConfiguration `json:"basicAuth,omitempty"`
+	// github enables user authentication using GitHub credentials
+	GitHub *GitHubIdentityProviderApplyConfiguration `json:"github,omitempty"`
+	// gitlab enables user authentication using GitLab credentials
+	GitLab *GitLabIdentityProviderApplyConfiguration `json:"gitlab,omitempty"`
+	// google enables user authentication using Google credentials
+	Google *GoogleIdentityProviderApplyConfiguration `json:"google,omitempty"`
+	// htpasswd enables user authentication using an HTPasswd file to validate credentials
+	HTPasswd *HTPasswdIdentityProviderApplyConfiguration `json:"htpasswd,omitempty"`
+	// keystone enables user authentication using keystone password credentials
+	Keystone *KeystoneIdentityProviderApplyConfiguration `json:"keystone,omitempty"`
+	// ldap enables user authentication using LDAP credentials
+	LDAP *LDAPIdentityProviderApplyConfiguration `json:"ldap,omitempty"`
+	// openID enables user authentication using OpenID credentials
+	OpenID *OpenIDIdentityProviderApplyConfiguration `json:"openID,omitempty"`
+	// requestHeader enables user authentication using request header credentials
 	RequestHeader *RequestHeaderIdentityProviderApplyConfiguration `json:"requestHeader,omitempty"`
 }
 
-// IdentityProviderConfigApplyConfiguration constructs an declarative configuration of the IdentityProviderConfig type for use with
+// IdentityProviderConfigApplyConfiguration constructs a declarative configuration of the IdentityProviderConfig type for use with
 // apply.
 func IdentityProviderConfig() *IdentityProviderConfigApplyConfiguration {
 	return &IdentityProviderConfigApplyConfiguration{}
@@ -30,7 +42,7 @@ func IdentityProviderConfig() *IdentityProviderConfigApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *IdentityProviderConfigApplyConfiguration) WithType(value v1.IdentityProviderType) *IdentityProviderConfigApplyConfiguration {
+func (b *IdentityProviderConfigApplyConfiguration) WithType(value configv1.IdentityProviderType) *IdentityProviderConfigApplyConfiguration {
 	b.Type = &value
 	return b
 }

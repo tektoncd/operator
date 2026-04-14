@@ -3,10 +3,10 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/openshift/api/config/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	configv1alpha1 "github.com/openshift/api/config/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ClusterImagePolicyLister helps list ClusterImagePolicies.
@@ -14,39 +14,19 @@ import (
 type ClusterImagePolicyLister interface {
 	// List lists all ClusterImagePolicies in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.ClusterImagePolicy, err error)
+	List(selector labels.Selector) (ret []*configv1alpha1.ClusterImagePolicy, err error)
 	// Get retrieves the ClusterImagePolicy from the index for a given name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.ClusterImagePolicy, error)
+	Get(name string) (*configv1alpha1.ClusterImagePolicy, error)
 	ClusterImagePolicyListerExpansion
 }
 
 // clusterImagePolicyLister implements the ClusterImagePolicyLister interface.
 type clusterImagePolicyLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*configv1alpha1.ClusterImagePolicy]
 }
 
 // NewClusterImagePolicyLister returns a new ClusterImagePolicyLister.
 func NewClusterImagePolicyLister(indexer cache.Indexer) ClusterImagePolicyLister {
-	return &clusterImagePolicyLister{indexer: indexer}
-}
-
-// List lists all ClusterImagePolicies in the indexer.
-func (s *clusterImagePolicyLister) List(selector labels.Selector) (ret []*v1alpha1.ClusterImagePolicy, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.ClusterImagePolicy))
-	})
-	return ret, err
-}
-
-// Get retrieves the ClusterImagePolicy from the index for a given name.
-func (s *clusterImagePolicyLister) Get(name string) (*v1alpha1.ClusterImagePolicy, error) {
-	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("clusterimagepolicy"), name)
-	}
-	return obj.(*v1alpha1.ClusterImagePolicy), nil
+	return &clusterImagePolicyLister{listers.New[*configv1alpha1.ClusterImagePolicy](indexer, configv1alpha1.Resource("clusterimagepolicy"))}
 }

@@ -3,17 +3,22 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/security/v1"
+	securityv1 "github.com/openshift/api/security/v1"
 )
 
-// FSGroupStrategyOptionsApplyConfiguration represents an declarative configuration of the FSGroupStrategyOptions type for use
+// FSGroupStrategyOptionsApplyConfiguration represents a declarative configuration of the FSGroupStrategyOptions type for use
 // with apply.
+//
+// FSGroupStrategyOptions defines the strategy type and options used to create the strategy.
 type FSGroupStrategyOptionsApplyConfiguration struct {
-	Type   *v1.FSGroupStrategyType     `json:"type,omitempty"`
+	// type is the strategy that will dictate what FSGroup is used in the SecurityContext.
+	Type *securityv1.FSGroupStrategyType `json:"type,omitempty"`
+	// ranges are the allowed ranges of fs groups.  If you would like to force a single
+	// fs group then supply a single range with the same start and end.
 	Ranges []IDRangeApplyConfiguration `json:"ranges,omitempty"`
 }
 
-// FSGroupStrategyOptionsApplyConfiguration constructs an declarative configuration of the FSGroupStrategyOptions type for use with
+// FSGroupStrategyOptionsApplyConfiguration constructs a declarative configuration of the FSGroupStrategyOptions type for use with
 // apply.
 func FSGroupStrategyOptions() *FSGroupStrategyOptionsApplyConfiguration {
 	return &FSGroupStrategyOptionsApplyConfiguration{}
@@ -22,7 +27,7 @@ func FSGroupStrategyOptions() *FSGroupStrategyOptionsApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *FSGroupStrategyOptionsApplyConfiguration) WithType(value v1.FSGroupStrategyType) *FSGroupStrategyOptionsApplyConfiguration {
+func (b *FSGroupStrategyOptionsApplyConfiguration) WithType(value securityv1.FSGroupStrategyType) *FSGroupStrategyOptionsApplyConfiguration {
 	b.Type = &value
 	return b
 }

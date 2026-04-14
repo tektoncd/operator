@@ -3,17 +3,22 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/security/v1"
+	securityv1 "github.com/openshift/api/security/v1"
 )
 
-// SupplementalGroupsStrategyOptionsApplyConfiguration represents an declarative configuration of the SupplementalGroupsStrategyOptions type for use
+// SupplementalGroupsStrategyOptionsApplyConfiguration represents a declarative configuration of the SupplementalGroupsStrategyOptions type for use
 // with apply.
+//
+// SupplementalGroupsStrategyOptions defines the strategy type and options used to create the strategy.
 type SupplementalGroupsStrategyOptionsApplyConfiguration struct {
-	Type   *v1.SupplementalGroupsStrategyType `json:"type,omitempty"`
-	Ranges []IDRangeApplyConfiguration        `json:"ranges,omitempty"`
+	// type is the strategy that will dictate what supplemental groups is used in the SecurityContext.
+	Type *securityv1.SupplementalGroupsStrategyType `json:"type,omitempty"`
+	// ranges are the allowed ranges of supplemental groups.  If you would like to force a single
+	// supplemental group then supply a single range with the same start and end.
+	Ranges []IDRangeApplyConfiguration `json:"ranges,omitempty"`
 }
 
-// SupplementalGroupsStrategyOptionsApplyConfiguration constructs an declarative configuration of the SupplementalGroupsStrategyOptions type for use with
+// SupplementalGroupsStrategyOptionsApplyConfiguration constructs a declarative configuration of the SupplementalGroupsStrategyOptions type for use with
 // apply.
 func SupplementalGroupsStrategyOptions() *SupplementalGroupsStrategyOptionsApplyConfiguration {
 	return &SupplementalGroupsStrategyOptionsApplyConfiguration{}
@@ -22,7 +27,7 @@ func SupplementalGroupsStrategyOptions() *SupplementalGroupsStrategyOptionsApply
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *SupplementalGroupsStrategyOptionsApplyConfiguration) WithType(value v1.SupplementalGroupsStrategyType) *SupplementalGroupsStrategyOptionsApplyConfiguration {
+func (b *SupplementalGroupsStrategyOptionsApplyConfiguration) WithType(value securityv1.SupplementalGroupsStrategyType) *SupplementalGroupsStrategyOptionsApplyConfiguration {
 	b.Type = &value
 	return b
 }

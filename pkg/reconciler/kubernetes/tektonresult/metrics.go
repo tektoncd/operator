@@ -19,83 +19,68 @@ package tektonresult
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.uber.org/zap"
-	"knative.dev/pkg/metrics"
 )
 
 var (
-	rReconcileCount = stats.Float64("results_reconciled",
-		"results reconciled with their log type",
-		stats.UnitDimensionless)
-	rReconcilerCountView *view.View
+	rReconcileGauge metric.Float64Gauge
+	once            sync.Once
+	errInitMetrics  error
 
-	errUninitializedRecorder = fmt.Errorf("ignoring the metrics recording for result failed to initialize the metrics recorder")
+	errUninitializedRecorder = fmt.Errorf("failed to initialize metrics recorder for result")
 )
+
+func initMetrics() error {
+	meter := otel.Meter("github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonresult")
+	var err error
+	rReconcileGauge, err = meter.Float64Gauge(
+		"tekton_operator_lifecycle_results_reconciled",
+		metric.WithDescription("results reconciled with their log type"),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create results_reconciled gauge: %w", err)
+	}
+	return nil
+}
 
 // Recorder holds keys for Tekton metrics
 type Recorder struct {
 	initialized bool
-	version     tag.Key
-	logType     tag.Key
 }
 
 // NewRecorder creates a new metrics recorder instance
-// to log the PipelineRun related metrics
 func NewRecorder() (*Recorder, error) {
+	once.Do(func() {
+		errInitMetrics = initMetrics()
+	})
+	if errInitMetrics != nil {
+		return nil, errInitMetrics
+	}
+
 	r := &Recorder{
 		initialized: true,
 	}
-
-	version, err := tag.NewKey("version")
-	if err != nil {
-		return nil, err
-	}
-	r.version = version
-
-	logType, err := tag.NewKey("log_type")
-	if err != nil {
-		return nil, err
-	}
-	r.logType = logType
-
-	rReconcilerCountView = &view.View{
-		Description: rReconcileCount.Description(),
-		Measure:     rReconcileCount,
-		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{r.version, r.logType},
-	}
-
-	err = view.Register(rReconcilerCountView)
-
-	if err != nil {
-		r.initialized = false
-		return r, err
-	}
-
 	return r, nil
 }
 
-// Record the Results reconciled with their log type
+// Count records the Results reconciled with their log type
 func (r *Recorder) Count(version, logType string) error {
 	if !r.initialized {
 		return errUninitializedRecorder
 	}
 
-	ctx, err := tag.New(
-		context.Background(),
-		tag.Insert(r.version, version),
-		tag.Insert(r.logType, logType),
+	rReconcileGauge.Record(context.Background(), 1,
+		metric.WithAttributes(
+			attribute.String("version", version),
+			attribute.String("log_type", logType),
+		),
 	)
-
-	if err != nil {
-		return err
-	}
-	metrics.Record(ctx, rReconcileCount.M(float64(1)))
 	return nil
 }
 

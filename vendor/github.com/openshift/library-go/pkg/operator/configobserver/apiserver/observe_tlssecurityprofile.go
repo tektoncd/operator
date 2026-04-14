@@ -20,6 +20,12 @@ func ObserveTLSSecurityProfile(genericListers configobserver.Listers, recorder e
 	return innerTLSSecurityProfileObservations(genericListers, recorder, existingConfig, []string{"servingInfo", "minTLSVersion"}, []string{"servingInfo", "cipherSuites"})
 }
 
+// ObserveTLSSecurityProfileWithPaths is like ObserveTLSSecurityProfile, but accepts
+// custom paths for ServingInfo.MinTLSVersion and ServingInfo.CipherSuites fields of observed config.
+func ObserveTLSSecurityProfileWithPaths(genericListers configobserver.Listers, recorder events.Recorder, existingConfig map[string]interface{}, minTLSVersionPath, cipherSuitesPath []string) (map[string]interface{}, []error) {
+	return innerTLSSecurityProfileObservations(genericListers, recorder, existingConfig, minTLSVersionPath, cipherSuitesPath)
+}
+
 // ObserveTLSSecurityProfileToArguments observes APIServer.Spec.TLSSecurityProfile field and sets
 // the tls-min-version and tls-cipher-suites fileds of observedConfig.apiServerArguments
 func ObserveTLSSecurityProfileToArguments(genericListers configobserver.Listers, recorder events.Recorder, existingConfig map[string]interface{}) (map[string]interface{}, []error) {
@@ -79,7 +85,7 @@ func innerTLSSecurityProfileObservations(genericListers configobserver.Listers, 
 func getSecurityProfileCiphers(profile *configv1.TLSSecurityProfile) (string, []string) {
 	var profileType configv1.TLSProfileType
 	if profile == nil {
-		profileType = configv1.TLSProfileIntermediateType
+		profileType = crypto.DefaultTLSProfileType
 	} else {
 		profileType = profile.Type
 	}
@@ -95,7 +101,7 @@ func getSecurityProfileCiphers(profile *configv1.TLSSecurityProfile) (string, []
 
 	// nothing found / custom type set but no actual custom spec
 	if profileSpec == nil {
-		profileSpec = configv1.TLSProfiles[configv1.TLSProfileIntermediateType]
+		profileSpec = configv1.TLSProfiles[crypto.DefaultTLSProfileType]
 	}
 
 	// need to remap all Ciphers to their respective IANA names used by Go

@@ -3,19 +3,30 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// OpenIDClaimsApplyConfiguration represents an declarative configuration of the OpenIDClaims type for use
+// OpenIDClaimsApplyConfiguration represents a declarative configuration of the OpenIDClaims type for use
 // with apply.
+//
+// OpenIDClaims contains a list of OpenID claims to use when authenticating with an OpenID identity provider
 type OpenIDClaimsApplyConfiguration struct {
-	PreferredUsername []string         `json:"preferredUsername,omitempty"`
-	Name              []string         `json:"name,omitempty"`
-	Email             []string         `json:"email,omitempty"`
-	Groups            []v1.OpenIDClaim `json:"groups,omitempty"`
+	// preferredUsername is the list of claims whose values should be used as the preferred username.
+	// If unspecified, the preferred username is determined from the value of the sub claim
+	PreferredUsername []string `json:"preferredUsername,omitempty"`
+	// name is the list of claims whose values should be used as the display name. Optional.
+	// If unspecified, no display name is set for the identity
+	Name []string `json:"name,omitempty"`
+	// email is the list of claims whose values should be used as the email address. Optional.
+	// If unspecified, no email is set for the identity
+	Email []string `json:"email,omitempty"`
+	// groups is the list of claims value of which should be used to synchronize groups
+	// from the OIDC provider to OpenShift for the user.
+	// If multiple claims are specified, the first one with a non-empty value is used.
+	Groups []configv1.OpenIDClaim `json:"groups,omitempty"`
 }
 
-// OpenIDClaimsApplyConfiguration constructs an declarative configuration of the OpenIDClaims type for use with
+// OpenIDClaimsApplyConfiguration constructs a declarative configuration of the OpenIDClaims type for use with
 // apply.
 func OpenIDClaims() *OpenIDClaimsApplyConfiguration {
 	return &OpenIDClaimsApplyConfiguration{}
@@ -54,7 +65,7 @@ func (b *OpenIDClaimsApplyConfiguration) WithEmail(values ...string) *OpenIDClai
 // WithGroups adds the given value to the Groups field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Groups field.
-func (b *OpenIDClaimsApplyConfiguration) WithGroups(values ...v1.OpenIDClaim) *OpenIDClaimsApplyConfiguration {
+func (b *OpenIDClaimsApplyConfiguration) WithGroups(values ...configv1.OpenIDClaim) *OpenIDClaimsApplyConfiguration {
 	for i := range values {
 		b.Groups = append(b.Groups, values[i])
 	}

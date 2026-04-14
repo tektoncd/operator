@@ -3,17 +3,22 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// FeatureGateSelectionApplyConfiguration represents an declarative configuration of the FeatureGateSelection type for use
+// FeatureGateSelectionApplyConfiguration represents a declarative configuration of the FeatureGateSelection type for use
 // with apply.
 type FeatureGateSelectionApplyConfiguration struct {
-	FeatureSet      *v1.FeatureSet                        `json:"featureSet,omitempty"`
+	// featureSet changes the list of features in the cluster.  The default is empty.  Be very careful adjusting this setting.
+	// Turning on or off features may cause irreversible changes in your cluster which cannot be undone.
+	FeatureSet *configv1.FeatureSet `json:"featureSet,omitempty"`
+	// customNoUpgrade allows the enabling or disabling of any feature. Turning this feature set on IS NOT SUPPORTED, CANNOT BE UNDONE, and PREVENTS UPGRADES.
+	// Because of its nature, this setting cannot be validated.  If you have any typos or accidentally apply invalid combinations
+	// your cluster may fail in an unrecoverable way.  featureSet must equal "CustomNoUpgrade" must be set to use this field.
 	CustomNoUpgrade *CustomFeatureGatesApplyConfiguration `json:"customNoUpgrade,omitempty"`
 }
 
-// FeatureGateSelectionApplyConfiguration constructs an declarative configuration of the FeatureGateSelection type for use with
+// FeatureGateSelectionApplyConfiguration constructs a declarative configuration of the FeatureGateSelection type for use with
 // apply.
 func FeatureGateSelection() *FeatureGateSelectionApplyConfiguration {
 	return &FeatureGateSelectionApplyConfiguration{}
@@ -22,7 +27,7 @@ func FeatureGateSelection() *FeatureGateSelectionApplyConfiguration {
 // WithFeatureSet sets the FeatureSet field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the FeatureSet field is set to the value of the last call.
-func (b *FeatureGateSelectionApplyConfiguration) WithFeatureSet(value v1.FeatureSet) *FeatureGateSelectionApplyConfiguration {
+func (b *FeatureGateSelectionApplyConfiguration) WithFeatureSet(value configv1.FeatureSet) *FeatureGateSelectionApplyConfiguration {
 	b.FeatureSet = &value
 	return b
 }

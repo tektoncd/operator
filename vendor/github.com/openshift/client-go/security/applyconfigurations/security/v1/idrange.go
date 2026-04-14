@@ -2,14 +2,19 @@
 
 package v1
 
-// IDRangeApplyConfiguration represents an declarative configuration of the IDRange type for use
+// IDRangeApplyConfiguration represents a declarative configuration of the IDRange type for use
 // with apply.
+//
+// IDRange provides a min/max of an allowed range of IDs.
+// TODO: this could be reused for UIDs.
 type IDRangeApplyConfiguration struct {
+	// min is the start of the range, inclusive.
 	Min *int64 `json:"min,omitempty"`
+	// max is the end of the range, inclusive.
 	Max *int64 `json:"max,omitempty"`
 }
 
-// IDRangeApplyConfiguration constructs an declarative configuration of the IDRange type for use with
+// IDRangeApplyConfiguration constructs a declarative configuration of the IDRange type for use with
 // apply.
 func IDRange() *IDRangeApplyConfiguration {
 	return &IDRangeApplyConfiguration{}

@@ -29,7 +29,6 @@ type Config struct {
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	metav1.ObjectMeta `json:"metadata" protobuf:"bytes,1,opt,name=metadata"`
 
-	// +kubebuilder:validation:Required
 	// +required
 	Spec ConfigSpec `json:"spec" protobuf:"bytes,2,opt,name=spec"`
 	// +optional
@@ -105,11 +104,13 @@ type ConfigStatus struct {
 	// the operator back on (i.e. "Managed") when it was previously "Unmanaged".
 	// +patchMergeKey=type
 	// +patchStrategy=merge
+	// +optional
 	ManagementState operatorv1.ManagementState `json:"managementState,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=managementState"`
 	// conditions represents the available maintenance status of the sample
 	// imagestreams and templates.
 	// +patchMergeKey=type
 	// +patchStrategy=merge
+	// +optional
 	Conditions []ConfigCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,2,rep,name=conditions"`
 
 	// samplesRegistry allows for the specification of which registry is accessed
@@ -118,12 +119,14 @@ type ConfigStatus struct {
 	// defaults to registry.redhat.io.
 	// +patchMergeKey=type
 	// +patchStrategy=merge
+	// +optional
 	SamplesRegistry string `json:"samplesRegistry,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,3,rep,name=samplesRegistry"`
 
 	// architectures determine which hardware architecture(s) to install, where x86_64 and ppc64le are the
 	// supported choices.
 	// +patchMergeKey=type
 	// +patchStrategy=merge
+	// +optional
 	Architectures []string `json:"architectures,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,5,rep,name=architectures"`
 
 	// skippedImagestreams specifies names of image streams that should NOT be
@@ -133,6 +136,7 @@ type ConfigStatus struct {
 	// listed here.
 	// +patchMergeKey=type
 	// +patchStrategy=merge
+	// +optional
 	SkippedImagestreams []string `json:"skippedImagestreams,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,6,rep,name=skippedImagestreams"`
 
 	// skippedTemplates specifies names of templates that should NOT be
@@ -142,11 +146,13 @@ type ConfigStatus struct {
 	// listed here.
 	// +patchMergeKey=type
 	// +patchStrategy=merge
+	// +optional
 	SkippedTemplates []string `json:"skippedTemplates,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,7,rep,name=skippedTemplates"`
 
 	// version is the value of the operator's payload based version indicator when it was last successfully processed
 	// +patchMergeKey=type
 	// +patchStrategy=merge
+	// +optional
 	Version string `json:"version,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,8,rep,name=version"`
 }
 
