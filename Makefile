@@ -42,6 +42,10 @@ $(BIN)/kustomize: | $(BIN) ; $(info $(M) getting kustomize)
 	@curl -sSfL https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
 	@mv ./kustomize $(BIN)/kustomize
 
+CONTROLLER_GEN = $(or ${CONTROLLER_GEN_BIN},${CONTROLLER_GEN_BIN},$(BIN)/controller-gen)
+$(BIN)/controller-gen: | $(BIN) ; $(info $(M) getting controller-gen)
+	$Q GOBIN=$(BIN) $(GO) install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.18.0
+
 GOLANGCILINT = $(or ${GOLANGCILINT_BIN},${GOLANGCILINT_BIN},$(BIN)/golangci-lint)
 $(BIN)/golangci-lint: | $(BIN) ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
 	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BIN) $(GOLANGCI_VERSION)
@@ -116,6 +120,15 @@ resolve: | $(KO) $(KUSTOMIZE) get-releases ; $(info $(M) ko resolve on $(TARGET)
 .PHONY: generated
 generated: | vendor ; $(info $(M) update generated files) ## Update generated files
 	$Q ./hack/update-codegen.sh
+
+##@ CRD Generation
+.PHONY: generate-crds
+generate-crds: | $(CONTROLLER_GEN) ; $(info $(M) generating CRDs from Go types…) ## Generate CRD manifests from Go types
+	$Q $(CONTROLLER_GEN) crd:allowDangerousTypes=true paths="./pkg/apis/operator/v1alpha1/..." output:crd:artifacts:config=config/base/generated-crds
+
+.PHONY: sync-helm-crds
+sync-helm-crds: generate-crds ; $(info $(M) syncing CRDs to config and Helm chart…) ## Sync generated CRDs to config/ and Helm chart
+	$Q ./hack/sync-helm-crds.sh
 
 .PHONY: vendor
 vendor: ; $(info $(M) update vendor folder)  ## Update vendor folder
