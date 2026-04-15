@@ -1,4 +1,4 @@
-# Copyright 2022 The Tekton Authors
+# Copyright 2025 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: openshiftpipelinesascodes.operator.tekton.dev
   labels:
     version: "devel"
@@ -25,30 +27,226 @@ spec:
     kind: OpenShiftPipelinesAsCode
     listKind: OpenShiftPipelinesAsCodeList
     plural: openshiftpipelinesascodes
-    singular: openshiftpipelinesascode
     shortNames:
     - opac
     - pac
-  preserveUnknownFields: false
+    singular: openshiftpipelinesascode
   scope: Cluster
   versions:
-  - name: v1alpha1
-    served: true
-    storage: true
-    subresources:
-      status: {}
-    additionalPrinterColumns:
+  - additionalPrinterColumns:
     - jsonPath: .status.version
       name: Version
       type: string
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
-    - jsonPath: ".status.conditions[?(@.type==\"Ready\")].message"
+    - jsonPath: .status.conditions[?(@.type=="Ready")].message
       name: Reason
       type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: OpenShiftPipelinesAsCode is the Schema for the OpenShiftPipelinesAsCode
+          API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: OpenShiftPipelinesAsCodeSpec defines the desired state of
+              OpenShiftPipelinesAsCode
+            properties:
+              additionalPACControllers:
+                additionalProperties:
+                  description: AdditionalPACControllerConfig contains config for additionalPACControllers
+                  properties:
+                    configMapName:
+                      description: Name of the additional controller configMap
+                      type: string
+                    enable:
+                      description: Enable or disable this additional pipelines as
+                        code instance by changing this bool
+                      type: boolean
+                    secretName:
+                      description: Name of the additional controller Secret
+                      type: string
+                    settings:
+                      additionalProperties:
+                        type: string
+                      description: Setting will contains the configMap data
+                      type: object
+                  type: object
+                description: AdditionalPACControllers allows to deploy additional
+                  PAC controller
+                type: object
+              config:
+                properties:
+                  nodeSelector:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  priorityClassName:
+                    description: PriorityClassName holds the priority class to be
+                      set to pod template
+                    type: string
+                  tolerations:
+                    items:
+                      description: |-
+                        The pod this Toleration is attached to tolerates any taint that matches
+                        the triple <key,value,effect> using the matching operator <operator>.
+                      properties:
+                        effect:
+                          description: |-
+                            Effect indicates the taint effect to match. Empty means match all taint effects.
+                            When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                          type: string
+                        key:
+                          description: |-
+                            Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                            If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                          type: string
+                        operator:
+                          description: |-
+                            Operator represents a key's relationship to the value.
+                            Valid operators are Exists and Equal. Defaults to Equal.
+                            Exists is equivalent to wildcard for value, so that a pod can
+                            tolerate all taints of a particular category.
+                          type: string
+                        tolerationSeconds:
+                          description: |-
+                            TolerationSeconds represents the period of time the toleration (which must be
+                            of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                            it is not set, which means tolerate the taint forever (do not evict). Zero and
+                            negative values will be treated as 0 (evict immediately) by the system.
+                          format: int64
+                          type: integer
+                        value:
+                          description: |-
+                            Value is the taint value the toleration matches to.
+                            If the operator is Exists, the value should be empty, otherwise just a regular string.
+                          type: string
+                      type: object
+                    type: array
+                type: object
+              options:
+                description: options holds additions fields and these fields will
+                  be updated on the manifests
+                properties:
+                  configMaps:
+                    x-kubernetes-preserve-unknown-fields: true
+                  deployments:
+                    x-kubernetes-preserve-unknown-fields: true
+                  disabled:
+                    type: boolean
+                  horizontalPodAutoscalers:
+                    x-kubernetes-preserve-unknown-fields: true
+                  statefulSets:
+                    x-kubernetes-preserve-unknown-fields: true
+                  webhookConfigurationOptions:
+                    additionalProperties:
+                      description: WebhookOptions defines options for webhooks
+                      properties:
+                        failurePolicy:
+                          description: FailurePolicyType specifies a failure policy
+                            that defines how unrecognized errors from the admission
+                            endpoint are handled.
+                          type: string
+                        sideEffects:
+                          description: SideEffectClass specifies the types of side
+                            effects a webhook may have.
+                          type: string
+                        timeoutSeconds:
+                          format: int32
+                          type: integer
+                      type: object
+                    type: object
+                type: object
+              settings:
+                additionalProperties:
+                  type: string
+                type: object
+              targetNamespace:
+                description: TargetNamespace is where resources will be installed
+                type: string
+            required:
+            - options
+            type: object
+          status:
+            description: OpenShiftPipelinesAsCodeStatus defines the observed state
+              of OpenShiftPipelinesAsCode
+            properties:
+              annotations:
+                additionalProperties:
+                  type: string
+                description: |-
+                  Annotations is additional Status fields for the Resource to save some
+                  additional State as well as convey more information to the user. This is
+                  roughly akin to Annotations on any k8s resource, just the reconciler conveying
+                  richer information outwards.
+                type: object
+              conditions:
+                description: Conditions the latest available observations of a resource's
+                  current state.
+                items:
+                  description: |-
+                    Condition defines a readiness condition for a Knative resource.
+                    See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        LastTransitionTime is the last time the condition transitioned from one status to another.
+                        We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic
+                        differences (all other things held constant).
+                      type: string
+                    message:
+                      description: A human readable message indicating details about
+                        the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition.
+                      type: string
+                    severity:
+                      description: |-
+                        Severity with which to treat failures of this type of condition.
+                        When this is not specified, it defaults to Error.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type of condition.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the 'Generation' of the Service that
+                  was last processed by the controller.
+                format: int64
+                type: integer
+              version:
+                description: The version of the installed release
+                type: string
+            type: object
         type: object
-        description: Schema for the OpenShiftPipelinesAsCode API
-        x-kubernetes-preserve-unknown-fields: true
+    served: true
+    storage: true
+    subresources:
+      status: {}
