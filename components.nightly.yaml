@@ -25,7 +25,7 @@ hub:
   github: openshift-pipelines/hub
   version: v1.23.9
 pipelines-as-code:
-  github: openshift-pipelines/pipelines-as-code
+  github: tektoncd/pipelines-as-code
   version: nightly
 pruner:
   github: tektoncd/pruner
