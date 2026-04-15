@@ -204,9 +204,9 @@ release_yaml_pac() {
     dirPath=${ko_data}/tekton-addon/pipelines-as-code/${version}
 
     if [[ ${version} == "stable" ||  ${version} == "nightly" ]]; then
-      url="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/${version}/release.yaml"
+      url="https://raw.githubusercontent.com/tektoncd/pipelines-as-code/${version}/release.yaml"
     else
-      url="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/release-${version}/release.yaml"
+      url="https://raw.githubusercontent.com/tektoncd/pipelines-as-code/release-${version}/release.yaml"
     fi
 
     dest=${dirPath}/${fileName}.yaml
@@ -240,7 +240,7 @@ release_yaml_pac() {
     do
       echo "fetching PipelineRun template for runtime: $run"
 
-      source="https://raw.githubusercontent.com/openshift-pipelines/pipelines-as-code/${version}/pkg/cmd/tknpac/generate/templates/${run}.yaml"
+      source="https://raw.githubusercontent.com/tektoncd/pipelines-as-code/${version}/pkg/cmd/tknpac/generate/templates/${run}.yaml"
       dest_dir="${ko_data}/tekton-addon/pipelines-as-code-templates"
       mkdir -p ${dest_dir} || true
       destination="${dest_dir}/${run}.yaml"
