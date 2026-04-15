@@ -43,6 +43,8 @@ replace (
 	github.com/alibabacloud-go/cr-20160607 => github.com/vdemeester/cr-20160607 v1.0.1
 	github.com/go-jose/go-jose/v4 => github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/google/gnostic-models => github.com/google/gnostic-models v0.6.8
+
+	github.com/openshift-pipelines/pipelines-as-code => github.com/tektoncd/pipelines-as-code v0.37.7
 	k8s.io/api => k8s.io/api v0.32.4
 	k8s.io/apimachinery => k8s.io/apimachinery v0.32.4
 	k8s.io/client-go => k8s.io/client-go v0.32.4
