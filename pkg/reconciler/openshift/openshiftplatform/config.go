@@ -36,9 +36,8 @@ import (
 )
 
 const (
-	ControllerTektonAddon              platform.ControllerName = "tektonaddon"
-	ControllerOpenShiftPipelinesAsCode platform.ControllerName = "openshiftpipelinesascode"
-	PlatformNameOpenShift              string                  = "openshift"
+	ControllerTektonAddon platform.ControllerName = "tektonaddon"
+	PlatformNameOpenShift string                  = "openshift"
 )
 
 var (
@@ -77,8 +76,8 @@ var (
 			Name:                  string(ControllerTektonAddon),
 			ControllerConstructor: openshiftAddon.NewController,
 		},
-		ControllerOpenShiftPipelinesAsCode: injection.NamedControllerConstructor{
-			Name:                  string(ControllerOpenShiftPipelinesAsCode),
+		platform.ControllerOpenShiftPipelinesAsCode: injection.NamedControllerConstructor{
+			Name:                  string(platform.ControllerOpenShiftPipelinesAsCode),
 			ControllerConstructor: openshiftpipelinesascode.NewController,
 		},
 		// there is no openshift specific extension for TektonInstallerSet Reconciler (yet 🤓)

@@ -43,10 +43,11 @@ metadata:
 data:
   template: ""`
 
-func fetchPipelineRunTemplates() (*mf.Manifest, error) {
+// FetchPipelineRunTemplates loads kodata PipelineRun templates into a manifest (shared by OpenShift and Kubernetes extensions).
+func FetchPipelineRunTemplates() (*mf.Manifest, error) {
 	prManifests := mf.Manifest{}
 	koDataDir := os.Getenv(common.KoEnvKey)
-	templateLocation := filepath.Join(koDataDir, "tekton-addon", "pipelines-as-code-templates")
+	templateLocation := filepath.Join(koDataDir, common.PipelinesAsCodeTemplatesDir)
 	if err := common.AppendManifest(&prManifests, templateLocation); err != nil {
 		return nil, err
 	}

@@ -26,6 +26,7 @@ import (
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig/extension"
+	pac "github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipelinesascode"
 )
 
 func KubernetesExtension(ctx context.Context) common.Extension {
@@ -58,6 +59,18 @@ func (oe kubernetesExtension) PostReconcile(ctx context.Context, comp v1alpha1.T
 		return extension.EnsureTektonDashboardCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonDashboards())
 	}
 
+	pacSpec := configInstance.Spec.PipelinesAsCodeForCurrentPlatform()
+	if pacSpec != nil && pacSpec.Enable != nil && *pacSpec.Enable {
+		if _, err := pac.EnsureOpenShiftPipelinesAsCodeExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), configInstance, configInstance.Status.Version); err != nil {
+			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("OpenShiftPipelinesAsCode: %s", err.Error()))
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	} else {
+		if err := pac.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 func (oe kubernetesExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
@@ -65,6 +78,14 @@ func (oe kubernetesExtension) Finalize(ctx context.Context, comp v1alpha1.Tekton
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
 		return extension.EnsureTektonDashboardCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonDashboards())
 	}
+
+	pacSpec := configInstance.Spec.PipelinesAsCodeForCurrentPlatform()
+	if pacSpec != nil && pacSpec.Enable != nil && *pacSpec.Enable {
+		if err := pac.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

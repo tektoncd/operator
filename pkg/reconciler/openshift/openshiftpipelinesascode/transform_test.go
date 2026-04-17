@@ -36,11 +36,14 @@ func TestFilterAdditionalControllerManifest(t *testing.T) {
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
 	assert.NilError(t, err)
 
-	filteredManifest := filterAdditionalControllerManifest(manifest)
-	assert.DeepEqual(t, len(filteredManifest.Resources()), 5)
+	filtered := filterAdditionalControllerManifest(manifest)
+	assert.DeepEqual(t, len(filtered.Resources()), 5)
 
-	deployment := filteredManifest.Filter(mf.All(mf.ByKind("Deployment")))
-	assert.DeepEqual(t, deployment.Resources()[0].GetName(), "pipelines-as-code-controller")
+	routes := filtered.Filter(mf.All(mf.ByKind("Route")))
+	assert.DeepEqual(t, len(routes.Resources()), 1)
+
+	sms := filtered.Filter(mf.All(mf.ByKind("ServiceMonitor")))
+	assert.DeepEqual(t, len(sms.Resources()), 1)
 }
 
 func TestUpdateAdditionControllerDeployment(t *testing.T) {

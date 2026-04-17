@@ -31,7 +31,7 @@ spec:
       serviceAccountName: pipelines-as-code-controller
       containers:
         - name: test-pac-controller
-          image: "ghcr.io/openshift-pipelines/pipelines-as-code-controller:v0.23.0"
+          image: "ghcr.io/openshift-pipelines/pipelines-as-code/pipelines-as-code-controller:stable"
           imagePullPolicy: Always
           ports:
             - name: api

@@ -17,6 +17,7 @@ limitations under the License.
 package common
 
 import (
+	"path/filepath"
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
@@ -28,6 +29,7 @@ const (
 	VERSION        = "0.15.2"
 	PRUNER_VERSION = "0.3.5"
 	CHAINS_VERSION = "0.26.2"
+	PAC_VERSION    = "0.2.0"
 )
 
 func TestGetLatestRelease(t *testing.T) {
@@ -42,6 +44,9 @@ func TestGetLatestRelease(t *testing.T) {
 
 	chainsVersion := latestRelease(&v1alpha1.TektonChain{})
 	util.AssertEqual(t, chainsVersion, CHAINS_VERSION)
+
+	pacVersion := latestRelease(&v1alpha1.OpenShiftPipelinesAsCode{})
+	util.AssertEqual(t, pacVersion, PAC_VERSION)
 }
 
 func TestListReleases(t *testing.T) {
@@ -64,6 +69,20 @@ func TestListReleases(t *testing.T) {
 	version, err = allReleases(&v1alpha1.TektonChain{})
 	util.AssertEqual(t, err, nil)
 	util.AssertDeepEqual(t, version, expectedChainsVersions)
+
+	// OpenShift Pipelines as Code (kodata/pipelines-as-code)
+	expectedPACVersions := []string{"0.2.0", "0.1.0"}
+	version, err = allReleases(&v1alpha1.OpenShiftPipelinesAsCode{})
+	util.AssertEqual(t, err, nil)
+	util.AssertDeepEqual(t, version, expectedPACVersions)
+}
+
+func TestComponentDir_OpenShiftPipelinesAsCode(t *testing.T) {
+	koPath := "testdata/kodata"
+	t.Setenv(KoEnvKey, koPath)
+	want := filepath.Join(koPath, PipelinesAsCodeManifestDir)
+	got := ComponentDir(&v1alpha1.OpenShiftPipelinesAsCode{})
+	util.AssertEqual(t, got, want)
 }
 
 func TestAppendManifest(t *testing.T) {

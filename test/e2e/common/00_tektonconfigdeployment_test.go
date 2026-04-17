@@ -54,6 +54,9 @@ var (
 	tektonConfigProfileKubernetes = map[string]TektonProfileResource{
 		v1alpha1.ProfileAll: {
 			Deployments: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
 				"tekton-dashboard",
 				"tekton-operator-proxy-webhook",
 				pipelineControllerDeploymentName,
@@ -64,6 +67,9 @@ var (
 				"tekton-triggers-webhook",
 			},
 			ServiceAccounts: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
 				"tekton-dashboard",
 				"tekton-operators-proxy-webhook",
 				"tekton-pipelines-controller",
@@ -77,6 +83,9 @@ var (
 		},
 		v1alpha1.ProfileBasic: {
 			Deployments: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
 				"tekton-operator-proxy-webhook",
 				pipelineControllerDeploymentName,
 				"tekton-pipelines-remote-resolvers",
@@ -86,6 +95,9 @@ var (
 				"tekton-triggers-webhook",
 			},
 			ServiceAccounts: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
 				"tekton-operators-proxy-webhook",
 				"tekton-pipelines-controller",
 				"tekton-pipelines-resolvers",
@@ -98,12 +110,18 @@ var (
 		},
 		v1alpha1.ProfileLite: {
 			Deployments: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
 				"tekton-operator-proxy-webhook",
 				pipelineControllerDeploymentName,
 				"tekton-pipelines-remote-resolvers",
 				"tekton-pipelines-webhook",
 			},
 			ServiceAccounts: []string{
+				"pipelines-as-code-controller",
+				"pipelines-as-code-watcher",
+				"pipelines-as-code-webhook",
 				"tekton-operators-proxy-webhook",
 				"tekton-pipelines-controller",
 				"tekton-pipelines-resolvers",
@@ -923,13 +941,8 @@ func (s *TektonConfigTestSuite) verifyPAC() {
 		"pipelines-as-code-webhook",
 	}
 
-	// get pac enabled status from TektonConfig resource
-	pacEnabled := false
-	if config.Spec.Platforms.OpenShift.PipelinesAsCode != nil &&
-		config.Spec.Platforms.OpenShift.PipelinesAsCode.Enable != nil &&
-		*config.Spec.Platforms.OpenShift.PipelinesAsCode.Enable {
-		pacEnabled = true
-	}
+	pacSpec := config.Spec.PipelinesAsCodeForCurrentPlatform()
+	pacEnabled := pacSpec != nil && pacSpec.Enable != nil && *pacSpec.Enable
 
 	labelSelector := fmt.Sprintf("%s=OpenShiftPipelinesAsCode", v1alpha1.CreatedByKey)
 	installerSets, err := s.clients.Operator.TektonInstallerSets().List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector})
