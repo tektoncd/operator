@@ -1,4 +1,4 @@
-# Copyright 2022 The Tekton Authors
+# Copyright 2025 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: tektonchains.operator.tekton.dev
   labels:
     version: "devel"
@@ -24,17 +26,11 @@ spec:
   names:
     kind: TektonChain
     listKind: TektonChainList
-    singular: tektonchain
     plural: tektonchains
-  preserveUnknownFields: false
+    singular: tektonchain
   scope: Cluster
   versions:
-  - name: v1alpha1
-    served: true
-    storage: true
-    subresources:
-      status: {}
-    additionalPrinterColumns:
+  - additionalPrinterColumns:
     - jsonPath: .status.version
       name: Version
       type: string
@@ -44,8 +40,422 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="Ready")].message
       name: Reason
       type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: TektonChain is the Schema for the tektonchain API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: TektonChainSpec defines the desired state of TektonChain
+            properties:
+              artifacts.oci.format:
+                description: oci artifacts config
+                type: string
+              artifacts.oci.signer:
+                type: string
+              artifacts.oci.storage:
+                type: string
+              artifacts.pipelinerun.enable-deep-inspection:
+                type: string
+              artifacts.pipelinerun.format:
+                description: pipelinerun artifacts config
+                type: string
+              artifacts.pipelinerun.signer:
+                type: string
+              artifacts.pipelinerun.storage:
+                type: string
+              artifacts.taskrun.format:
+                description: taskrun artifacts config
+                type: string
+              artifacts.taskrun.signer:
+                type: string
+              artifacts.taskrun.storage:
+                type: string
+              builddefinition.buildtype:
+                type: string
+              builder.id:
+                description: builder config
+                type: string
+              config:
+                description: Config holds the configuration for resources created
+                  by TektonChain
+                properties:
+                  nodeSelector:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  priorityClassName:
+                    description: PriorityClassName holds the priority class to be
+                      set to pod template
+                    type: string
+                  tolerations:
+                    items:
+                      description: |-
+                        The pod this Toleration is attached to tolerates any taint that matches
+                        the triple <key,value,effect> using the matching operator <operator>.
+                      properties:
+                        effect:
+                          description: |-
+                            Effect indicates the taint effect to match. Empty means match all taint effects.
+                            When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                          type: string
+                        key:
+                          description: |-
+                            Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                            If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                          type: string
+                        operator:
+                          description: |-
+                            Operator represents a key's relationship to the value.
+                            Valid operators are Exists and Equal. Defaults to Equal.
+                            Exists is equivalent to wildcard for value, so that a pod can
+                            tolerate all taints of a particular category.
+                          type: string
+                        tolerationSeconds:
+                          description: |-
+                            TolerationSeconds represents the period of time the toleration (which must be
+                            of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                            it is not set, which means tolerate the taint forever (do not evict). Zero and
+                            negative values will be treated as 0 (evict immediately) by the system.
+                          format: int64
+                          type: integer
+                        value:
+                          description: |-
+                            Value is the taint value the toleration matches to.
+                            If the operator is Exists, the value should be empty, otherwise just a regular string.
+                          type: string
+                      type: object
+                    type: array
+                type: object
+              controllerEnvs:
+                items:
+                  description: EnvVar represents an environment variable present in
+                    a Container.
+                  properties:
+                    name:
+                      description: Name of the environment variable. Must be a C_IDENTIFIER.
+                      type: string
+                    value:
+                      description: |-
+                        Variable references $(VAR_NAME) are expanded
+                        using the previously defined environment variables in the container and
+                        any service environment variables. If a variable cannot be resolved,
+                        the reference in the input string will be unchanged. Double $$ are reduced
+                        to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e.
+                        "$$(VAR_NAME)" will produce the string literal "$(VAR_NAME)".
+                        Escaped references will never be expanded, regardless of whether the variable
+                        exists or not.
+                        Defaults to "".
+                      type: string
+                    valueFrom:
+                      description: Source for the environment variable's value. Cannot
+                        be used if value is not empty.
+                      properties:
+                        configMapKeyRef:
+                          description: Selects a key of a ConfigMap.
+                          properties:
+                            key:
+                              description: The key to select.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the ConfigMap or its key
+                                must be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        fieldRef:
+                          description: |-
+                            Selects a field of the pod: supports metadata.name, metadata.namespace, `metadata.labels['<KEY>']`, `metadata.annotations['<KEY>']`,
+                            spec.nodeName, spec.serviceAccountName, status.hostIP, status.podIP, status.podIPs.
+                          properties:
+                            apiVersion:
+                              description: Version of the schema the FieldPath is
+                                written in terms of, defaults to "v1".
+                              type: string
+                            fieldPath:
+                              description: Path of the field to select in the specified
+                                API version.
+                              type: string
+                          required:
+                          - fieldPath
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        resourceFieldRef:
+                          description: |-
+                            Selects a resource of the container: only resources limits and requests
+                            (limits.cpu, limits.memory, limits.ephemeral-storage, requests.cpu, requests.memory and requests.ephemeral-storage) are currently supported.
+                          properties:
+                            containerName:
+                              description: 'Container name: required for volumes,
+                                optional for env vars'
+                              type: string
+                            divisor:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: Specifies the output format of the exposed
+                                resources, defaults to "1"
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            resource:
+                              description: 'Required: resource to select'
+                              type: string
+                          required:
+                          - resource
+                          type: object
+                          x-kubernetes-map-type: atomic
+                        secretKeyRef:
+                          description: Selects a key of a secret in the pod's namespace
+                          properties:
+                            key:
+                              description: The key of the secret to select from.  Must
+                                be a valid secret key.
+                              type: string
+                            name:
+                              default: ""
+                              description: |-
+                                Name of the referent.
+                                This field is effectively required, but due to backwards compatibility is
+                                allowed to be empty. Instances of this type with an empty value here are
+                                almost certainly wrong.
+                                More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                              type: string
+                            optional:
+                              description: Specify whether the Secret or its key must
+                                be defined
+                              type: boolean
+                          required:
+                          - key
+                          type: object
+                          x-kubernetes-map-type: atomic
+                      type: object
+                  required:
+                  - name
+                  type: object
+                type: array
+              disabled:
+                description: enable or disable chains feature
+                type: boolean
+              generateSigningSecret:
+                description: generate signing key
+                type: boolean
+              options:
+                description: options holds additions fields and these fields will
+                  be updated on the manifests
+                properties:
+                  configMaps:
+                    x-kubernetes-preserve-unknown-fields: true
+                  deployments:
+                    x-kubernetes-preserve-unknown-fields: true
+                  disabled:
+                    type: boolean
+                  horizontalPodAutoscalers:
+                    x-kubernetes-preserve-unknown-fields: true
+                  statefulSets:
+                    x-kubernetes-preserve-unknown-fields: true
+                  webhookConfigurationOptions:
+                    additionalProperties:
+                      description: WebhookOptions defines options for webhooks
+                      properties:
+                        failurePolicy:
+                          description: FailurePolicyType specifies a failure policy
+                            that defines how unrecognized errors from the admission
+                            endpoint are handled.
+                          type: string
+                        sideEffects:
+                          description: SideEffectClass specifies the types of side
+                            effects a webhook may have.
+                          type: string
+                        timeoutSeconds:
+                          format: int32
+                          type: integer
+                      type: object
+                    type: object
+                type: object
+              performance:
+                description: |-
+                  PerformanceProperties defines the fields which are configurable
+                  to tune the performance of component controller
+                properties:
+                  buckets:
+                    type: integer
+                  disable-ha:
+                    description: if it is true, disables the HA feature
+                    type: boolean
+                  kube-api-burst:
+                    type: integer
+                  kube-api-qps:
+                    description: |-
+                      queries per second (QPS) and burst to the master from rest API client
+                      actually the number multiplied by 2
+                      https://github.com/pierretasci/pipeline/blob/05d67e427c722a2a57e58328d7097e21429b7524/cmd/controller/main.go#L85-L87
+                      defaults: https://github.com/tektoncd/pipeline/blob/34618964300620dca44d10a595e4af84e9903a55/vendor/k8s.io/client-go/rest/config.go#L45-L46
+                    type: number
+                  replicas:
+                    format: int32
+                    type: integer
+                  statefulset-ordinals:
+                    description: if is true, enable StatefulsetOrdinals mode
+                    type: boolean
+                  threads-per-controller:
+                    description: The number of workers to use when processing the
+                      component controller's work queue
+                    type: integer
+                required:
+                - disable-ha
+                type: object
+              signers.kms.auth.address:
+                type: string
+              signers.kms.auth.oidc.path:
+                type: string
+              signers.kms.auth.oidc.role:
+                type: string
+              signers.kms.auth.spire.audience:
+                type: string
+              signers.kms.auth.spire.sock:
+                type: string
+              signers.kms.auth.token:
+                type: string
+              signers.kms.auth.token-path:
+                type: string
+              signers.kms.kmsref:
+                description: kms signer config
+                type: string
+              signers.x509.fulcio.address:
+                type: string
+              signers.x509.fulcio.enabled:
+                description: x509 signer config
+                type: boolean
+              signers.x509.fulcio.issuer:
+                type: string
+              signers.x509.fulcio.provider:
+                type: string
+              signers.x509.identity.token.file:
+                type: string
+              signers.x509.tuf.mirror.url:
+                type: string
+              storage.docdb.mongo-server-url:
+                type: string
+              storage.docdb.mongo-server-url-dir:
+                type: string
+              storage.docdb.url:
+                type: string
+              storage.gcs.bucket:
+                description: storage configs
+                type: string
+              storage.grafeas.notehint:
+                type: string
+              storage.grafeas.noteid:
+                type: string
+              storage.grafeas.projectid:
+                type: string
+              storage.oci.repository:
+                type: string
+              storage.oci.repository.insecure:
+                type: boolean
+              targetNamespace:
+                description: TargetNamespace is where resources will be installed
+                type: string
+              transparency.enabled:
+                type: string
+              transparency.url:
+                type: string
+            required:
+            - disabled
+            - options
+            type: object
+          status:
+            description: TektonChainStatus defines the observed state of TektonChain
+            properties:
+              annotations:
+                additionalProperties:
+                  type: string
+                description: |-
+                  Annotations is additional Status fields for the Resource to save some
+                  additional State as well as convey more information to the user. This is
+                  roughly akin to Annotations on any k8s resource, just the reconciler conveying
+                  richer information outwards.
+                type: object
+              conditions:
+                description: Conditions the latest available observations of a resource's
+                  current state.
+                items:
+                  description: |-
+                    Condition defines a readiness condition for a Knative resource.
+                    See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        LastTransitionTime is the last time the condition transitioned from one status to another.
+                        We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic
+                        differences (all other things held constant).
+                      type: string
+                    message:
+                      description: A human readable message indicating details about
+                        the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition.
+                      type: string
+                    severity:
+                      description: |-
+                        Severity with which to treat failures of this type of condition.
+                        When this is not specified, it defaults to Error.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type of condition.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the 'Generation' of the Service that
+                  was last processed by the controller.
+                format: int64
+                type: integer
+              tektonInstallerSet:
+                description: The current installer set name for TektonChain
+                type: string
+              version:
+                description: The version of the installed release
+                type: string
+            type: object
         type: object
-        description: Schema for the TektonChains API
-        x-kubernetes-preserve-unknown-fields: true
+    served: true
+    storage: true
+    subresources:
+      status: {}

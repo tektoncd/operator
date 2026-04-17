@@ -1,4 +1,4 @@
-# Copyright 2020 The Tekton Authors
+# Copyright 2025 The Tekton Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: tektonpipelines.operator.tekton.dev
   labels:
     version: "devel"
@@ -26,15 +28,9 @@ spec:
     listKind: TektonPipelineList
     plural: tektonpipelines
     singular: tektonpipeline
-  preserveUnknownFields: false
   scope: Cluster
   versions:
-  - name: v1alpha1
-    served: true
-    storage: true
-    subresources:
-      status: {}
-    additionalPrinterColumns:
+  - additionalPrinterColumns:
     - jsonPath: .status.version
       name: Version
       type: string
@@ -44,8 +40,356 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="Ready")].message
       name: Reason
       type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: TektonPipeline is the Schema for the tektonpipelines API
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: TektonPipelineSpec defines the desired state of TektonPipeline
+            properties:
+              await-sidecar-readiness:
+                type: boolean
+              bundles-resolver-config:
+                additionalProperties:
+                  type: string
+                type: object
+              cluster-resolver-config:
+                additionalProperties:
+                  type: string
+                type: object
+              config:
+                description: Config holds the configuration for resources created
+                  by TektonPipeline
+                properties:
+                  nodeSelector:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  priorityClassName:
+                    description: PriorityClassName holds the priority class to be
+                      set to pod template
+                    type: string
+                  tolerations:
+                    items:
+                      description: |-
+                        The pod this Toleration is attached to tolerates any taint that matches
+                        the triple <key,value,effect> using the matching operator <operator>.
+                      properties:
+                        effect:
+                          description: |-
+                            Effect indicates the taint effect to match. Empty means match all taint effects.
+                            When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                          type: string
+                        key:
+                          description: |-
+                            Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                            If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                          type: string
+                        operator:
+                          description: |-
+                            Operator represents a key's relationship to the value.
+                            Valid operators are Exists and Equal. Defaults to Equal.
+                            Exists is equivalent to wildcard for value, so that a pod can
+                            tolerate all taints of a particular category.
+                          type: string
+                        tolerationSeconds:
+                          description: |-
+                            TolerationSeconds represents the period of time the toleration (which must be
+                            of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                            it is not set, which means tolerate the taint forever (do not evict). Zero and
+                            negative values will be treated as 0 (evict immediately) by the system.
+                          format: int64
+                          type: integer
+                        value:
+                          description: |-
+                            Value is the taint value the toleration matches to.
+                            If the operator is Exists, the value should be empty, otherwise just a regular string.
+                          type: string
+                      type: object
+                    type: array
+                type: object
+              coschedule:
+                type: string
+              default-affinity-assistant-pod-template:
+                type: string
+              default-cloud-events-sink:
+                type: string
+              default-forbidden-env:
+                type: string
+              default-managed-by-label-value:
+                type: string
+              default-max-matrix-combinations-count:
+                type: string
+              default-pod-template:
+                type: string
+              default-resolver-type:
+                type: string
+              default-service-account:
+                type: string
+              default-task-run-workspace-binding:
+                type: string
+              default-timeout-minutes:
+                type: integer
+              disable-affinity-assistant:
+                description: |-
+                  Deprecated: DisableAffinityAssistant is deprecated and no longer used.
+                  This field is removed from pipeline component.
+                  Keeping here to maintain API compatibility during upgrades.
+                type: boolean
+              disable-creds-init:
+                type: boolean
+              disable-inline-spec:
+                type: string
+              embedded-status:
+                type: string
+              enable-api-fields:
+                type: string
+              enable-bundles-resolver:
+                type: boolean
+              enable-cel-in-whenexpression:
+                type: boolean
+              enable-cluster-resolver:
+                type: boolean
+              enable-custom-tasks:
+                type: boolean
+              enable-git-resolver:
+                type: boolean
+              enable-hub-resolver:
+                type: boolean
+              enable-param-enum:
+                type: boolean
+              enable-provenance-in-status:
+                type: boolean
+              enable-step-actions:
+                type: boolean
+              enable-tekton-oci-bundles:
+                description: |-
+                  not in use, see: https://github.com/tektoncd/pipeline/pull/7789
+                  this field is removed from pipeline component
+                  keeping here to maintain the API compatibility
+                type: boolean
+              enforce-nonfalsifiability:
+                type: string
+              git-resolver-config:
+                additionalProperties:
+                  type: string
+                type: object
+              hub-resolver-config:
+                additionalProperties:
+                  type: string
+                type: object
+              keep-pod-on-cancel:
+                type: boolean
+              max-result-size:
+                format: int32
+                type: integer
+              metrics.count.enable-reason:
+                type: boolean
+              metrics.pipelinerun.duration-type:
+                type: string
+              metrics.pipelinerun.level:
+                type: string
+              metrics.taskrun.duration-type:
+                type: string
+              metrics.taskrun.level:
+                type: string
+              options:
+                description: options holds additions fields and these fields will
+                  be updated on the manifests
+                properties:
+                  configMaps:
+                    x-kubernetes-preserve-unknown-fields: true
+                  deployments:
+                    x-kubernetes-preserve-unknown-fields: true
+                  disabled:
+                    type: boolean
+                  horizontalPodAutoscalers:
+                    x-kubernetes-preserve-unknown-fields: true
+                  statefulSets:
+                    x-kubernetes-preserve-unknown-fields: true
+                  webhookConfigurationOptions:
+                    additionalProperties:
+                      description: WebhookOptions defines options for webhooks
+                      properties:
+                        failurePolicy:
+                          description: FailurePolicyType specifies a failure policy
+                            that defines how unrecognized errors from the admission
+                            endpoint are handled.
+                          type: string
+                        sideEffects:
+                          description: SideEffectClass specifies the types of side
+                            effects a webhook may have.
+                          type: string
+                        timeoutSeconds:
+                          format: int32
+                          type: integer
+                      type: object
+                    type: object
+                type: object
+              params:
+                description: The params to customize different components of Pipelines
+                items:
+                  description: Param declares an string value to use for the parameter
+                    called name.
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  type: object
+                type: array
+              performance:
+                description: |-
+                  PerformanceProperties defines the fields which are configurable
+                  to tune the performance of component controller
+                properties:
+                  buckets:
+                    type: integer
+                  disable-ha:
+                    description: if it is true, disables the HA feature
+                    type: boolean
+                  kube-api-burst:
+                    type: integer
+                  kube-api-qps:
+                    description: |-
+                      queries per second (QPS) and burst to the master from rest API client
+                      actually the number multiplied by 2
+                      https://github.com/pierretasci/pipeline/blob/05d67e427c722a2a57e58328d7097e21429b7524/cmd/controller/main.go#L85-L87
+                      defaults: https://github.com/tektoncd/pipeline/blob/34618964300620dca44d10a595e4af84e9903a55/vendor/k8s.io/client-go/rest/config.go#L45-L46
+                    type: number
+                  replicas:
+                    format: int32
+                    type: integer
+                  statefulset-ordinals:
+                    description: if is true, enable StatefulsetOrdinals mode
+                    type: boolean
+                  threads-per-controller:
+                    description: The number of workers to use when processing the
+                      component controller's work queue
+                    type: integer
+                required:
+                - disable-ha
+                type: object
+              require-git-ssh-secret-known-hosts:
+                type: boolean
+              results-from:
+                type: string
+              running-in-environment-with-injected-sidecars:
+                type: boolean
+              scope-when-expressions-to-task:
+                description: ScopeWhenExpressionsToTask is deprecated and never used.
+                type: boolean
+              send-cloudevents-for-runs:
+                type: boolean
+              set-security-context:
+                type: boolean
+              targetNamespace:
+                description: TargetNamespace is where resources will be installed
+                type: string
+              traces.credentialsSecret:
+                description: CredentialsSecret is the name of the secret containing
+                  credentials for the tracing endpoint
+                type: string
+              traces.enabled:
+                description: Enabled controls whether tracing is enabled or not
+                type: boolean
+              traces.endpoint:
+                description: Endpoint is the URL for the OpenTelemetry trace collector
+                type: string
+              trusted-resources-verification-no-match-policy:
+                type: string
+              verification-mode:
+                type: string
+            required:
+            - options
+            type: object
+          status:
+            description: TektonPipelineStatus defines the observed state of TektonPipeline
+            properties:
+              annotations:
+                additionalProperties:
+                  type: string
+                description: |-
+                  Annotations is additional Status fields for the Resource to save some
+                  additional State as well as convey more information to the user. This is
+                  roughly akin to Annotations on any k8s resource, just the reconciler conveying
+                  richer information outwards.
+                type: object
+              conditions:
+                description: Conditions the latest available observations of a resource's
+                  current state.
+                items:
+                  description: |-
+                    Condition defines a readiness condition for a Knative resource.
+                    See: https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#typical-status-properties
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        LastTransitionTime is the last time the condition transitioned from one status to another.
+                        We use VolatileTime in place of metav1.Time to exclude this from creating equality.Semantic
+                        differences (all other things held constant).
+                      type: string
+                    message:
+                      description: A human readable message indicating details about
+                        the transition.
+                      type: string
+                    reason:
+                      description: The reason for the condition's last transition.
+                      type: string
+                    severity:
+                      description: |-
+                        Severity with which to treat failures of this type of condition.
+                        When this is not specified, it defaults to Error.
+                      type: string
+                    status:
+                      description: Status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: Type of condition.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+              extTektonInstallerSets:
+                additionalProperties:
+                  type: string
+                description: The installer sets created for extension components
+                type: object
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the 'Generation' of the Service that
+                  was last processed by the controller.
+                format: int64
+                type: integer
+              tektonInstallerSet:
+                description: The current installer set name for TektonPipeline
+                type: string
+              version:
+                description: The version of the installed release
+                type: string
+            type: object
         type: object
-        description: Schema for the tektonpipelines API
-        x-kubernetes-preserve-unknown-fields: true
+    served: true
+    storage: true
+    subresources:
+      status: {}

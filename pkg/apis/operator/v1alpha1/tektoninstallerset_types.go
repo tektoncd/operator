@@ -27,6 +27,11 @@ import (
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`
 type TektonInstallerSet struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -37,6 +42,8 @@ type TektonInstallerSet struct {
 
 // TektonInstallerSetSpec defines the desired state of TektonInstallerSet
 type TektonInstallerSetSpec struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	Manifests mf.Slice `json:"manifests,omitempty"`
 }
 
@@ -46,6 +53,7 @@ type TektonInstallerSetStatus struct {
 }
 
 // TektonInstallerSetList contains a list of TektonInstallerSet
+// +kubebuilder:object:root=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TektonInstallerSetList struct {
 	metav1.TypeMeta `json:",inline"`

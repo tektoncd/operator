@@ -1,33 +1,17 @@
-# Copyright 2025 The Tekton Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
-  name: tektonschedulers.operator.tekton.dev
-  labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+  name: tektonmulticlusterproxyaaes.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: TektonScheduler
-    listKind: TektonSchedulerList
-    plural: tektonschedulers
-    singular: tektonscheduler
+    kind: TektonMulticlusterProxyAAE
+    listKind: TektonMulticlusterProxyAAEList
+    plural: tektonmulticlusterproxyaaes
+    singular: tektonmulticlusterproxyaae
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -43,7 +27,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: TektonScheduler is the Schema for the TektonScheduler API
+        description: TektonMulticlusterProxyAAE is the Schema for the TektonMulticlusterProxyAAE
+          API
         properties:
           apiVersion:
             description: |-
@@ -64,23 +49,8 @@ spec:
             type: object
           spec:
             properties:
-              config.yaml:
-                description: |-
-                  This hold the config data from tekton-kueue. ConfigMap in tekton kueue is loaded as config.yaml so we need to
-                  match the key here
-                x-kubernetes-preserve-unknown-fields: true
-              disabled:
-                description: enable or disable TektonScheduler Component
-                type: boolean
-              multi-cluster-disabled:
-                type: boolean
-              multi-cluster-role:
-                description: |-
-                  MultiClusterRole Define the role of current cluster in multi-cluster environment. The MultiClusterRole
-                  can be one of Hub or Spoke
-                type: string
               options:
-                description: options holds additions fields and these fields will
+                description: options holds additional fields and these fields will
                   be updated on the manifests
                 properties:
                   configMaps:
@@ -116,14 +86,11 @@ spec:
                 description: TargetNamespace is where resources will be installed
                 type: string
             required:
-            - config.yaml
-            - disabled
-            - multi-cluster-disabled
-            - multi-cluster-role
             - options
             type: object
           status:
-            description: TektonSchedulerStatus defines the observed state of TektonScheduler
+            description: TektonMulticlusterProxyAAEStatus defines the observed state
+              of TektonMulticlusterProxyAAE
             properties:
               annotations:
                 additionalProperties:
@@ -177,8 +144,8 @@ spec:
                   was last processed by the controller.
                 format: int64
                 type: integer
-              tekton-scheduler:
-                description: The current installer set name for TektonScheduler
+              tektonInstallerSet:
+                description: The current installer set name for TektonMulticlusterProxyAAE
                 type: string
               version:
                 description: The version of the installed release
