@@ -144,10 +144,11 @@ vendor: ; $(info $(M) update vendor folder)  ## Update vendor folder
 
 ## Tests
 GO           = go
-TEST_UNIT_TARGETS := test-unit-verbose test-unit-race test-unit-failfast
+TEST_UNIT_TARGETS := test-unit-verbose test-unit-race test-unit-failfast test-unit-verbose-and-race
 test-unit-verbose: ARGS=-v
 test-unit-failfast: ARGS=-failfast
 test-unit-race:    ARGS=-race
+test-unit-verbose-and-race: ARGS=-v -race
 $(TEST_UNIT_TARGETS): test-unit
 test-clean:  ## Clean testcache
 	@echo "Cleaning test cache"
@@ -156,8 +157,7 @@ test-clean:  ## Clean testcache
 test: test-clean test-unit ## Run test-unit
 test-unit: ## Run unit tests
 	@echo "Running unit tests..."
-	@set -o pipefail ; \
-		$(GO) test -timeout $(TIMEOUT_UNIT) $(ARGS) ./... | { grep -v 'no test files'; true; }
+	@bash -c 'set -o pipefail && $(GO) test -timeout $(TIMEOUT_UNIT) $(ARGS) ./... | { grep -v "no test files"; true; }'
 
 
 .PHONY: lint
