@@ -36,6 +36,14 @@ var (
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.version`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`
+// +kubebuilder:printcolumn:name="ApiUrl",type=string,JSONPath=`.status.apiUrl`
+// +kubebuilder:printcolumn:name="UiUrl",type=string,JSONPath=`.status.uiUrl`
 type TektonHub struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -152,6 +160,7 @@ func (in *TektonHubStatus) MarkInstallerSetAvailable() {
 }
 
 // TektonHubList contains a list of TektonHub
+// +kubebuilder:object:root=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TektonHubList struct {
 	metav1.TypeMeta `json:",inline"`
