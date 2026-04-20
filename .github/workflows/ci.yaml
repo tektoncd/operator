@@ -1,0 +1,194 @@
+name: ci
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+  pull_request:  # yamllint disable-line rule:empty-values
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull-request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: read
+  checks: write  # Used to annotate code in the PR
+
+jobs:
+  changes:
+    name: categorize changes
+    runs-on: ubuntu-latest
+    outputs:
+      non-docs: ${{ steps.detect.outputs.non-docs }}
+      yaml: ${{ steps.detect.outputs.yaml }}
+    steps:
+    - name: Get base depth
+      id: base-depth
+      run: echo "base-depth=$(expr ${{ github.event.pull_request.commits }} + 1)" >> $GITHUB_OUTPUT
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        fetch-depth: ${{ steps.base-depth.outputs.base-depth }}
+    - name: detect
+      id: detect
+      run: |
+        git fetch origin ${{ github.base_ref }}
+
+        # Store git diff command for reuse
+        GIT_DIFF_CMD="git diff --name-only ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}"
+
+        # Disable pipefail to avoid SIGPIPE (exit 141) when commands like head/grep exit early
+        # SIGPIPE occurs when git diff tries to write but the reading end of the pipe has closed
+        set +o pipefail
+
+        # Show changed files for debugging (limit to first 50 for readability)
+        echo "Changed files (first 50):"
+        $GIT_DIFF_CMD | head -50
+        FILE_COUNT=$($GIT_DIFF_CMD | wc -l)
+        echo "Total files changed: $FILE_COUNT"
+
+        # If no files are changed at all, skip detection
+        # Use git diff output directly to avoid bash variable size limits with large PRs
+        if [[ $FILE_COUNT -gt 0 ]]; then
+          # We only care about grep's exit status (did it find matches?), not the pipe status
+          NON_DOCS=$($GIT_DIFF_CMD | grep -Ev '\.md$' > /dev/null && echo 'true' || echo 'false')
+          YAML=$($GIT_DIFF_CMD | grep -E '\.ya?ml$' > /dev/null && echo 'true' || echo 'false')
+          echo "non-docs=${NON_DOCS}" | tee -a $GITHUB_OUTPUT
+          echo "yaml=${YAML}" | tee -a $GITHUB_OUTPUT
+        fi
+
+        # Re-enable pipefail for subsequent commands
+        set -o pipefail
+
+  build:
+    name: build
+    needs: [changes]
+    runs-on: ubuntu-latest
+    if: ${{ needs.changes.outputs.non-docs == 'true' }}
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+      with:
+        go-version-file: "go.mod"
+    - name: build
+      run: |
+        go build -v ./...
+  linting:
+    needs: [changes]
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+      with:
+        go-version-file: "go.mod"
+    - name: gofmt
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
+      run: |
+        gofmt_out=$(gofmt -d $(find * -name '*.go' ! -path 'vendor/*' ! -path 'third_party/*'))
+        if [[ -n "$gofmt_out" ]]; then
+            failed=1
+        fi
+        echo "$gofmt_out"
+    - name: golangci-lint
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20  # v9.2.0
+      with:
+        version: v2.7.2
+        args: --new-from-merge-base=origin/${{ github.base_ref }} --timeout=10m
+    - name: yamllint
+      if: ${{ needs.changes.outputs.yaml == 'true' }}
+      run: |
+        apt update && apt install -y yamllint
+        yamllint -c .yamllint $(find . -path ./vendor -prune -o -type f -regex ".*y[a]ml" -print | tr '\n' ' ')
+    - name: check-license
+      if: ${{ needs.changes.outputs.non-docs == 'true' }}
+      run: |
+        go install github.com/google/go-licenses@v1.0.0
+        go-licenses check ./...
+  tests:
+    needs: [build]
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+      with:
+        go-version-file: "go.mod"
+    - name: build
+      run: |
+        make test-unit-verbose-and-race
+  generated:
+    needs: [build]
+    name: Check generated code
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+      with:
+        go-version-file: "go.mod"
+    - name: generated
+      run: |
+        ./hack/verify-codegen.sh
+  multi-arch-build:
+    needs: [build]
+    name: Multi-arch build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+    - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5  # v6.2.0
+      with:
+        go-version-file: "go.mod"
+    - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d  # v0.9
+    - name: ko-resolve
+      run: |
+          cat <<EOF > .ko.yaml
+          defaultBaseImage: cgr.dev/chainguard/static
+          baseImageOverrides:
+            github.com/tektoncd/operator/cmd/openshift/operator: registry.access.redhat.com/ubi9/ubi-minimal
+            github.com/tektoncd/operator/cmd/openshift/webhook: registry.access.redhat.com/ubi9/ubi-minimal
+            github.com/tektoncd/operator/cmd/openshift/proxy-webhook: registry.access.redhat.com/ubi9/ubi-minimal
+          EOF
+
+          # Use ko from setup-ko action to avoid Go version mismatch
+          KO_BIN=$(which ko) KO_DOCKER_REPO=example.com make TARGET=kubernetes resolve
+          KO_BIN=$(which ko) KO_DOCKER_REPO=example.com make TARGET=openshift resolve
+  e2e-tests:
+    needs: [build]
+    uses: ./.github/workflows/e2e-matrix.yml
+  ci-summary:
+    name: CI summary
+    needs: [build, linting, tests, generated, multi-arch-build, e2e-tests]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: Check CI results
+      run: |
+        results=(
+          "build=${{ needs.build.result }}"
+          "linting=${{ needs.linting.result }}"
+          "tests=${{ needs.tests.result }}"
+          "generated=${{ needs.generated.result }}"
+          "multi-arch-build=${{ needs.multi-arch-build.result }}"
+          "e2e-tests=${{ needs.e2e-tests.result }}"
+        )
+        failed=0
+        for r in "${results[@]}"; do
+          name="${r%%=*}"
+          result="${r#*=}"
+          echo "${name}: ${result}"
+          if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
+            failed=1
+          fi
+        done
+        if [ "$failed" -eq 1 ]; then
+          echo ""
+          echo "Some CI jobs failed or were cancelled"
+          exit 1
+        fi

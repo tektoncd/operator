@@ -18,6 +18,10 @@
 # and deploy Tekton Pipelines to it for running integration tests.
 set -e
 
+# CI often sets GOTOOLCHAIN=local (e.g. ko-build/setup-ko), which prevents Go from
+# selecting a toolchain that satisfies go.mod. Allow auto selection before any go/make.
+export GOTOOLCHAIN=auto
+
 source $(dirname $0)/e2e-common.sh
 
 # Script entry point.
