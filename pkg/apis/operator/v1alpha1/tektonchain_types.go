@@ -36,6 +36,12 @@ var (
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.version`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`
 type TektonChain struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -134,6 +140,7 @@ type ChainProperties struct {
 	Performance PerformanceProperties `json:"performance,omitempty"`
 }
 
+// +kubebuilder:validation:Type=string
 type BoolValue string
 
 func (bv *BoolValue) UnmarshalJSON(value []byte) error {
@@ -169,6 +176,7 @@ type TektonChainStatus struct {
 }
 
 // TektonChainList contains a list of TektonChain
+// +kubebuilder:object:root=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TektonChainList struct {
 	metav1.TypeMeta `json:",inline"`
