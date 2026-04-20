@@ -333,5 +333,7 @@ else
     source "${E2E_ENV}"
     set +o allexport
   fi
+  # Same as test/e2e-tests.sh: CI may leave GOTOOLCHAIN=local on the runner; go.mod may need newer Go.
+  export GOTOOLCHAIN=auto
   "${E2E_SCRIPT}"
 fi
