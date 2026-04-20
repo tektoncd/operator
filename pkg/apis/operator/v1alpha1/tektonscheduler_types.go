@@ -32,8 +32,12 @@ var (
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
+// +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
-
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.version`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`
 type TektonScheduler struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -53,7 +57,9 @@ type Scheduler struct {
 
 type SchedulerConfig struct {
 	// This hold the config data from tekton-kueue. ConfigMap in tekton kueue is loaded as config.yaml so we need to
-	//match the key here
+	// match the key here
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
 	config.Config `json:"config.yaml"`
 }
 
@@ -68,6 +74,7 @@ type MultiClusterConfig struct {
 type MultiClusterRole string
 
 // TektonSchedulerList contains a list of TektonScheduler
+// +kubebuilder:object:root=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TektonSchedulerList struct {
 	metav1.TypeMeta `json:",inline"`

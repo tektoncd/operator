@@ -1,36 +1,17 @@
-# Copyright 2025 The Tekton Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
-  name: openshiftpipelinesascodes.operator.tekton.dev
-  labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+  name: tektonpipelines.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: OpenShiftPipelinesAsCode
-    listKind: OpenShiftPipelinesAsCodeList
-    plural: openshiftpipelinesascodes
-    shortNames:
-    - opac
-    - pac
-    singular: openshiftpipelinesascode
+    kind: TektonPipeline
+    listKind: TektonPipelineList
+    plural: tektonpipelines
+    singular: tektonpipeline
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -46,8 +27,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: OpenShiftPipelinesAsCode is the Schema for the OpenShiftPipelinesAsCode
-          API
+        description: TektonPipeline is the Schema for the tektonpipelines API
         properties:
           apiVersion:
             description: |-
@@ -67,33 +47,21 @@ spec:
           metadata:
             type: object
           spec:
-            description: OpenShiftPipelinesAsCodeSpec defines the desired state of
-              OpenShiftPipelinesAsCode
+            description: TektonPipelineSpec defines the desired state of TektonPipeline
             properties:
-              additionalPACControllers:
+              await-sidecar-readiness:
+                type: boolean
+              bundles-resolver-config:
                 additionalProperties:
-                  description: AdditionalPACControllerConfig contains config for additionalPACControllers
-                  properties:
-                    configMapName:
-                      description: Name of the additional controller configMap
-                      type: string
-                    enable:
-                      description: Enable or disable this additional pipelines as
-                        code instance by changing this bool
-                      type: boolean
-                    secretName:
-                      description: Name of the additional controller Secret
-                      type: string
-                    settings:
-                      additionalProperties:
-                        type: string
-                      description: Setting will contains the configMap data
-                      type: object
-                  type: object
-                description: AdditionalPACControllers allows to deploy additional
-                  PAC controller
+                  type: string
+                type: object
+              cluster-resolver-config:
+                additionalProperties:
+                  type: string
                 type: object
               config:
+                description: Config holds the configuration for resources created
+                  by TektonPipeline
                 properties:
                   nodeSelector:
                     additionalProperties:
@@ -143,6 +111,91 @@ spec:
                       type: object
                     type: array
                 type: object
+              coschedule:
+                type: string
+              default-affinity-assistant-pod-template:
+                type: string
+              default-cloud-events-sink:
+                type: string
+              default-forbidden-env:
+                type: string
+              default-managed-by-label-value:
+                type: string
+              default-max-matrix-combinations-count:
+                type: string
+              default-pod-template:
+                type: string
+              default-resolver-type:
+                type: string
+              default-service-account:
+                type: string
+              default-task-run-workspace-binding:
+                type: string
+              default-timeout-minutes:
+                type: integer
+              disable-affinity-assistant:
+                description: |-
+                  Deprecated: DisableAffinityAssistant is deprecated and no longer used.
+                  This field is removed from pipeline component.
+                  Keeping here to maintain API compatibility during upgrades.
+                type: boolean
+              disable-creds-init:
+                type: boolean
+              disable-inline-spec:
+                type: string
+              embedded-status:
+                type: string
+              enable-api-fields:
+                type: string
+              enable-bundles-resolver:
+                type: boolean
+              enable-cel-in-whenexpression:
+                type: boolean
+              enable-cluster-resolver:
+                type: boolean
+              enable-custom-tasks:
+                type: boolean
+              enable-git-resolver:
+                type: boolean
+              enable-hub-resolver:
+                type: boolean
+              enable-param-enum:
+                type: boolean
+              enable-provenance-in-status:
+                type: boolean
+              enable-step-actions:
+                type: boolean
+              enable-tekton-oci-bundles:
+                description: |-
+                  not in use, see: https://github.com/tektoncd/pipeline/pull/7789
+                  this field is removed from pipeline component
+                  keeping here to maintain the API compatibility
+                type: boolean
+              enforce-nonfalsifiability:
+                type: string
+              git-resolver-config:
+                additionalProperties:
+                  type: string
+                type: object
+              hub-resolver-config:
+                additionalProperties:
+                  type: string
+                type: object
+              keep-pod-on-cancel:
+                type: boolean
+              max-result-size:
+                format: int32
+                type: integer
+              metrics.count.enable-reason:
+                type: boolean
+              metrics.pipelinerun.duration-type:
+                type: string
+              metrics.pipelinerun.level:
+                type: string
+              metrics.taskrun.duration-type:
+                type: string
+              metrics.taskrun.level:
+                type: string
               options:
                 description: options holds additions fields and these fields will
                   be updated on the manifests
@@ -176,19 +229,85 @@ spec:
                       type: object
                     type: object
                 type: object
-              settings:
-                additionalProperties:
-                  type: string
+              params:
+                description: The params to customize different components of Pipelines
+                items:
+                  description: Param declares an string value to use for the parameter
+                    called name.
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  type: object
+                type: array
+              performance:
+                description: |-
+                  PerformanceProperties defines the fields which are configurable
+                  to tune the performance of component controller
+                properties:
+                  buckets:
+                    type: integer
+                  disable-ha:
+                    description: if it is true, disables the HA feature
+                    type: boolean
+                  kube-api-burst:
+                    type: integer
+                  kube-api-qps:
+                    description: |-
+                      queries per second (QPS) and burst to the master from rest API client
+                      actually the number multiplied by 2
+                      https://github.com/pierretasci/pipeline/blob/05d67e427c722a2a57e58328d7097e21429b7524/cmd/controller/main.go#L85-L87
+                      defaults: https://github.com/tektoncd/pipeline/blob/34618964300620dca44d10a595e4af84e9903a55/vendor/k8s.io/client-go/rest/config.go#L45-L46
+                    type: number
+                  replicas:
+                    format: int32
+                    type: integer
+                  statefulset-ordinals:
+                    description: if is true, enable StatefulsetOrdinals mode
+                    type: boolean
+                  threads-per-controller:
+                    description: The number of workers to use when processing the
+                      component controller's work queue
+                    type: integer
+                required:
+                - disable-ha
                 type: object
+              require-git-ssh-secret-known-hosts:
+                type: boolean
+              results-from:
+                type: string
+              running-in-environment-with-injected-sidecars:
+                type: boolean
+              scope-when-expressions-to-task:
+                description: ScopeWhenExpressionsToTask is deprecated and never used.
+                type: boolean
+              send-cloudevents-for-runs:
+                type: boolean
+              set-security-context:
+                type: boolean
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
+                type: string
+              traces.credentialsSecret:
+                description: CredentialsSecret is the name of the secret containing
+                  credentials for the tracing endpoint
+                type: string
+              traces.enabled:
+                description: Enabled controls whether tracing is enabled or not
+                type: boolean
+              traces.endpoint:
+                description: Endpoint is the URL for the OpenTelemetry trace collector
+                type: string
+              trusted-resources-verification-no-match-policy:
+                type: string
+              verification-mode:
                 type: string
             required:
             - options
             type: object
           status:
-            description: OpenShiftPipelinesAsCodeStatus defines the observed state
-              of OpenShiftPipelinesAsCode
+            description: TektonPipelineStatus defines the observed state of TektonPipeline
             properties:
               annotations:
                 additionalProperties:
@@ -236,12 +355,20 @@ spec:
                   - type
                   type: object
                 type: array
+              extTektonInstallerSets:
+                additionalProperties:
+                  type: string
+                description: The installer sets created for extension components
+                type: object
               observedGeneration:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
                 format: int64
                 type: integer
+              tektonInstallerSet:
+                description: The current installer set name for TektonPipeline
+                type: string
               version:
                 description: The version of the installed release
                 type: string

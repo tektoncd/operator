@@ -26,6 +26,12 @@ import (
 // +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:scope=Cluster,shortName=opac;pac
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Version",type=string,JSONPath=`.status.version`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:printcolumn:name="Reason",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].message`
 type OpenShiftPipelinesAsCode struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -61,6 +67,7 @@ type OpenShiftPipelinesAsCodeStatus struct {
 }
 
 // OpenShiftPipelinesAsCodeList contains a list of OpenShiftPipelinesAsCode
+// +kubebuilder:object:root=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type OpenShiftPipelinesAsCodeList struct {
 	metav1.TypeMeta `json:",inline"`
