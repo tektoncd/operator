@@ -64,10 +64,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		}
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 
-		metrics, err := NewRecorder()
-		if err != nil {
-			logger.Fatal(err)
-		}
+		metrics, _ := common.NoMetrics()
 
 		c := &Reconciler{
 			operatorClientSet:  operatorclient.Get(ctx),
@@ -77,7 +74,6 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			pipelineInformer:   tektonPipelineinformer.Get(ctx),
 			operatorVersion:    operatorVer,
 			chainVersion:       chainVer,
-			recorder:           metrics,
 		}
 		impl := tektonChainreconciler.NewImpl(ctx, c)
 
