@@ -14,6 +14,16 @@
 
 patches:
 - target:
+    kind: ClusterRoleBinding
+    name: tekton-scheduler-rolebinding
+  patch: |-
+    - op: replace
+      path: /subjects
+      value:
+        - kind: ServiceAccount
+          name: openshift-pipelines-operator
+          namespace: openshift-operators
+- target:
     kind: Deployment
     name: tekton-operator
   patch: |-
