@@ -56,10 +56,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 
 		manifest, triggersVer := ctrl.InitController(ctx, common.PayloadOptions{})
 
-		metrics, err := NewRecorder()
-		if err != nil {
-			logger.Errorf("Failed to create trigger metrics recorder %v", err)
-		}
+		metrics, _ := common.NoMetrics()
 
 		operatorVer, err := common.OperatorVersion(ctx)
 		if err != nil {

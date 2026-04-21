@@ -64,17 +64,12 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatal(err)
 		}
 
-		recorder, err := NewRecorder()
-		if err != nil {
-			logger.Fatalw("Error starting Results metrics")
-		}
-
-		metricsWrapper := NewRecorderWrapper(recorder)
+		metrics, _ := common.NoMetrics()
 
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 
 		c := &Reconciler{
-			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, resultsVer, v1alpha1.KindTektonResult, metricsWrapper),
+			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, resultsVer, v1alpha1.KindTektonResult, metrics),
 			kubeClientSet:      kubeclient.Get(ctx),
 			operatorClientSet:  operatorclient.Get(ctx),
 			extension:          generator(ctx),
@@ -82,7 +77,6 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			pipelineInformer:   tektonPipelineInformer.Get(ctx),
 			operatorVersion:    operatorVer,
 			resultsVersion:     resultsVer,
-			recorder:           recorder,
 		}
 		impl := tektonResultReconciler.NewImpl(ctx, c)
 
