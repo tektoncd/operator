@@ -29,6 +29,8 @@ metadata:
     pipelinesascode.tekton.dev/pipeline: "tekton/operator-release-pipeline.yaml"
     pipelinesascode.tekton.dev/max-keep-runs: "5"
 spec:
+  taskRunTemplate:
+    serviceAccountName: release
   pipelineRef:
     name: operator-release
   params:
