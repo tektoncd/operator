@@ -546,17 +546,6 @@ spec:
           PREVIOUS="$(params.previousReleaseTag)"
           NAME="$(params.releaseName)"
 
-          # The create-draft-release-oci task expects:
-          #   <workspace>/repo    -> git checkout
-          #   <workspace>/release -> release artifacts
-          # The release pipeline uses:
-          #   <workspace>/git     -> git checkout
-          #   <workspace>/bucket/<versionTag> -> release artifacts
-          ln -sfn "${WORKAREA}/git" "${WORKAREA}/repo"
-          ln -sfn "${WORKAREA}/bucket/${VERSION}" "${WORKAREA}/release"
-          echo "Created workspace symlinks:"
-          ls -la "${WORKAREA}/repo" "${WORKAREA}/release"
-
           # Strip github.com/ prefix from package for the draft release task
           PACKAGE=$(echo "$(params.package)" | sed 's|^github\.com/||')
           printf '%s' "${PACKAGE}" > "$(results.package.path)"
@@ -603,7 +592,7 @@ spec:
       - name: url
         value: https://github.com/tektoncd/plumbing
       - name: revision
-        value: c6ccd417b39dd9d0c3055795f00cbce051f6bc9e
+        value: 7abffd25eb2e578e6698a9ff13470d04906f79e6
       - name: pathInRepo
         value: tekton/resources/release/base/github_release_oci.yaml
     params:
@@ -619,6 +608,10 @@ spec:
       value: $(tasks.prepare-draft-release.results.previous-tag)
     - name: rekor-uuid
       value: $(tasks.wait-for-chains.results.rekor-uuid)
+    - name: source-subpath
+      value: git
+    - name: release-subpath
+      value: bucket/$(params.versionTag)
     workspaces:
     - name: shared
       workspace: workarea
