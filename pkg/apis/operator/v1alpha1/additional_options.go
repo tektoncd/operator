@@ -25,10 +25,18 @@ import (
 // additional options will be updated on the manifests
 // these values will be final
 type AdditionalOptions struct {
-	Disabled                    *bool                                            `json:"disabled,omitempty"`
-	ConfigMaps                  map[string]corev1.ConfigMap                      `json:"configMaps,omitempty"`
-	Deployments                 map[string]appsv1.Deployment                     `json:"deployments,omitempty"`
-	HorizontalPodAutoscalers    map[string]autoscalingv2.HorizontalPodAutoscaler `json:"horizontalPodAutoscalers,omitempty"`
-	StatefulSets                map[string]appsv1.StatefulSet                    `json:"statefulSets,omitempty"`
-	WebhookConfigurationOptions map[string]WebhookConfigurationOptions           `json:"webhookConfigurationOptions,omitempty"`
+	Disabled *bool `json:"disabled,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	ConfigMaps map[string]corev1.ConfigMap `json:"configMaps,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	Deployments map[string]appsv1.Deployment `json:"deployments,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	HorizontalPodAutoscalers map[string]autoscalingv2.HorizontalPodAutoscaler `json:"horizontalPodAutoscalers,omitempty"`
+	// +kubebuilder:pruning:PreserveUnknownFields
+	// +kubebuilder:validation:Schemaless
+	StatefulSets                map[string]appsv1.StatefulSet          `json:"statefulSets,omitempty"`
+	WebhookConfigurationOptions map[string]WebhookConfigurationOptions `json:"webhookConfigurationOptions,omitempty"`
 }

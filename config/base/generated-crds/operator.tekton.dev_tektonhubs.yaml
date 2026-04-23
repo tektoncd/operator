@@ -1,33 +1,17 @@
-# Copyright 2025 The Tekton Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
-  name: tektonschedulers.operator.tekton.dev
-  labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+  name: tektonhubs.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: TektonScheduler
-    listKind: TektonSchedulerList
-    plural: tektonschedulers
-    singular: tektonscheduler
+    kind: TektonHub
+    listKind: TektonHubList
+    plural: tektonhubs
+    singular: tektonhub
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -40,10 +24,16 @@ spec:
     - jsonPath: .status.conditions[?(@.type=="Ready")].message
       name: Reason
       type: string
+    - jsonPath: .status.apiUrl
+      name: ApiUrl
+      type: string
+    - jsonPath: .status.uiUrl
+      name: UiUrl
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: TektonScheduler is the Schema for the TektonScheduler API
+        description: TektonHub is the Schema for the tektonhub API
         properties:
           apiVersion:
             description: |-
@@ -64,21 +54,63 @@ spec:
             type: object
           spec:
             properties:
-              config.yaml:
-                description: |-
-                  This hold the config data from tekton-kueue. ConfigMap in tekton kueue is loaded as config.yaml so we need to
-                  match the key here
-                x-kubernetes-preserve-unknown-fields: true
-              disabled:
-                description: enable or disable TektonScheduler Component
-                type: boolean
-              multi-cluster-disabled:
-                type: boolean
-              multi-cluster-role:
-                description: |-
-                  MultiClusterRole Define the role of current cluster in multi-cluster environment. The MultiClusterRole
-                  can be one of Hub or Spoke
-                type: string
+              api:
+                properties:
+                  catalogRefreshInterval:
+                    type: string
+                  hubConfigUrl:
+                    description: Deprecated, will be removed in further release
+                    type: string
+                  routeHostUrl:
+                    type: string
+                  secret:
+                    type: string
+                type: object
+              catalogs:
+                items:
+                  properties:
+                    contextDir:
+                      type: string
+                    name:
+                      type: string
+                    org:
+                      type: string
+                    provider:
+                      type: string
+                    revision:
+                      type: string
+                    sshUrl:
+                      type: string
+                    type:
+                      type: string
+                    url:
+                      type: string
+                  type: object
+                type: array
+              categories:
+                items:
+                  type: string
+                type: array
+              customLogo:
+                description: The Base64 Encode data and mediaType of the Custom Logo
+                properties:
+                  base64Data:
+                    type: string
+                  mediaType:
+                    type: string
+                type: object
+              db:
+                properties:
+                  secret:
+                    type: string
+                type: object
+              default:
+                properties:
+                  scopes:
+                    items:
+                      type: string
+                    type: array
+                type: object
               options:
                 description: options holds additions fields and these fields will
                   be updated on the manifests
@@ -112,18 +144,37 @@ spec:
                       type: object
                     type: object
                 type: object
+              params:
+                description: Params is the list of params passed for Hub customization
+                items:
+                  description: Param declares an string value to use for the parameter
+                    called name.
+                  properties:
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  type: object
+                type: array
+              scopes:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    users:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                type: array
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
                 type: string
             required:
-            - config.yaml
-            - disabled
-            - multi-cluster-disabled
-            - multi-cluster-role
             - options
             type: object
           status:
-            description: TektonSchedulerStatus defines the observed state of TektonScheduler
+            description: TektonHubStatus defines the observed state of TektonHub
             properties:
               annotations:
                 additionalProperties:
@@ -134,6 +185,12 @@ spec:
                   roughly akin to Annotations on any k8s resource, just the reconciler conveying
                   richer information outwards.
                 type: object
+              apiUrl:
+                description: The URL route for API which needs to be exposed
+                type: string
+              authUrl:
+                description: The URL route for Auth server
+                type: string
               conditions:
                 description: Conditions the latest available observations of a resource's
                   current state.
@@ -171,14 +228,24 @@ spec:
                   - type
                   type: object
                 type: array
+              hubInstallerSets:
+                additionalProperties:
+                  type: string
+                description: The current installer set name
+                type: object
+              manifests:
+                description: The url links of the manifests, separated by comma
+                items:
+                  type: string
+                type: array
               observedGeneration:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
                 format: int64
                 type: integer
-              tekton-scheduler:
-                description: The current installer set name for TektonScheduler
+              uiUrl:
+                description: The URL route for UI which needs to be exposed
                 type: string
               version:
                 description: The version of the installed release
