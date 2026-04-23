@@ -1,6 +1,6 @@
 chains:
   github: tektoncd/chains
-  version: v0.26.2
+  version: v0.26.3
 dashboard:
   github: tektoncd/dashboard
   version: v0.66.0
@@ -15,7 +15,7 @@ multicluster-proxy-aae:
   version: v0.1.1
 pipeline:
   github: tektoncd/pipeline
-  version: v1.9.2
+  version: v1.9.3
 pipelines-as-code:
   github: tektoncd/pipelines-as-code
   version: v0.42.0
