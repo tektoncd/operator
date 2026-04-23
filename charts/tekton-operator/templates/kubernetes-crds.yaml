@@ -16,7 +16,6 @@ spec:
     singular: manualapprovalgate
     shortNames:
       - mag
-  preserveUnknownFields: false
   scope: Cluster
   versions:
     - name: v1alpha1
@@ -95,7 +94,6 @@ spec:
     listKind: TektonChainList
     plural: tektonchains
     singular: tektonchain
-  preserveUnknownFields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -133,7 +131,6 @@ spec:
     listKind: TektonConfigList
     plural: tektonconfigs
     singular: tektonconfig
-  preserveUnknownFields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -171,7 +168,6 @@ spec:
     listKind: TektonDashboardList
     plural: tektondashboards
     singular: tektondashboard
-  preserveUnknownFields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -209,7 +205,6 @@ spec:
     listKind: TektonHubList
     plural: tektonhubs
     singular: tektonhub
-  preserveUnknownFields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -253,7 +248,6 @@ spec:
     listKind: TektonInstallerSetList
     plural: tektoninstallersets
     singular: tektoninstallerset
-  preserveUnknownFields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -288,7 +282,6 @@ spec:
     listKind: TektonPipelineList
     plural: tektonpipelines
     singular: tektonpipeline
-  preserveUnknownFields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -326,7 +319,6 @@ spec:
     listKind: TektonResultList
     plural: tektonresults
     singular: tektonresult
-  preserveUnknownFields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -364,7 +356,6 @@ spec:
     listKind: TektonTriggerList
     plural: tektontriggers
     singular: tektontrigger
-  preserveUnknownFields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
@@ -402,7 +393,6 @@ spec:
     listKind: TektonPrunerList
     plural: tektonpruners
     singular: tektonpruner
-  preserveUnknownFields: false
   scope: Cluster
   versions:
     - additionalPrinterColumns:
