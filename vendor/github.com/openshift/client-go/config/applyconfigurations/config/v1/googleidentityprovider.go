@@ -2,15 +2,23 @@
 
 package v1
 
-// GoogleIdentityProviderApplyConfiguration represents an declarative configuration of the GoogleIdentityProvider type for use
+// GoogleIdentityProviderApplyConfiguration represents a declarative configuration of the GoogleIdentityProvider type for use
 // with apply.
+//
+// GoogleIdentityProvider provides identities for users authenticating using Google credentials
 type GoogleIdentityProviderApplyConfiguration struct {
-	ClientID     *string                                `json:"clientID,omitempty"`
+	// clientID is the oauth client ID
+	ClientID *string `json:"clientID,omitempty"`
+	// clientSecret is a required reference to the secret by name containing the oauth client secret.
+	// The key "clientSecret" is used to locate the data.
+	// If the secret or expected key is not found, the identity provider is not honored.
+	// The namespace for this secret is openshift-config.
 	ClientSecret *SecretNameReferenceApplyConfiguration `json:"clientSecret,omitempty"`
-	HostedDomain *string                                `json:"hostedDomain,omitempty"`
+	// hostedDomain is the optional Google App domain (e.g. "mycompany.com") to restrict logins to
+	HostedDomain *string `json:"hostedDomain,omitempty"`
 }
 
-// GoogleIdentityProviderApplyConfiguration constructs an declarative configuration of the GoogleIdentityProvider type for use with
+// GoogleIdentityProviderApplyConfiguration constructs a declarative configuration of the GoogleIdentityProvider type for use with
 // apply.
 func GoogleIdentityProvider() *GoogleIdentityProviderApplyConfiguration {
 	return &GoogleIdentityProviderApplyConfiguration{}

@@ -46,7 +46,7 @@ func innerObserveAdditionalCORSAllowedOrigins(genericListers configobserver.List
 		errs = append(errs, err)
 		// keep going on read error from existing config
 	}
-	currentCORSSet := sets.NewString(currentCORSAllowedOrigins...)
+	currentCORSSet := sets.New(currentCORSAllowedOrigins...)
 	currentCORSSet.Insert(clusterDefaultCORSAllowedOrigins...)
 
 	observedConfig := map[string]interface{}{}
@@ -61,14 +61,14 @@ func innerObserveAdditionalCORSAllowedOrigins(genericListers configobserver.List
 		return existingConfig, append(errs, err)
 	}
 
-	newCORSSet := sets.NewString(clusterDefaultCORSAllowedOrigins...)
+	newCORSSet := sets.New(clusterDefaultCORSAllowedOrigins...)
 	newCORSSet.Insert(apiServer.Spec.AdditionalCORSAllowedOrigins...)
-	if err := unstructured.SetNestedStringSlice(observedConfig, newCORSSet.List(), corsAllowedOriginsPath...); err != nil {
+	if err := unstructured.SetNestedStringSlice(observedConfig, sets.List(newCORSSet), corsAllowedOriginsPath...); err != nil {
 		return existingConfig, append(errs, err)
 	}
 
 	if !currentCORSSet.Equal(newCORSSet) {
-		recorder.Eventf("ObserveAdditionalCORSAllowedOrigins", "corsAllowedOrigins changed to %q", newCORSSet.List())
+		recorder.Eventf("ObserveAdditionalCORSAllowedOrigins", "corsAllowedOrigins changed to %q", sets.List(newCORSSet))
 	}
 
 	return observedConfig, errs

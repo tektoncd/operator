@@ -3,17 +3,33 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/config/v1"
+	configv1 "github.com/openshift/api/config/v1"
 )
 
-// AuditCustomRuleApplyConfiguration represents an declarative configuration of the AuditCustomRule type for use
+// AuditCustomRuleApplyConfiguration represents a declarative configuration of the AuditCustomRule type for use
 // with apply.
+//
+// AuditCustomRule describes a custom rule for an audit profile that takes precedence over
+// the top-level profile.
 type AuditCustomRuleApplyConfiguration struct {
-	Group   *string              `json:"group,omitempty"`
-	Profile *v1.AuditProfileType `json:"profile,omitempty"`
+	// group is a name of group a request user must be member of in order to this profile to apply.
+	Group *string `json:"group,omitempty"`
+	// profile specifies the name of the desired audit policy configuration to be deployed to
+	// all OpenShift-provided API servers in the cluster.
+	//
+	// The following profiles are provided:
+	// - Default: the existing default policy.
+	// - WriteRequestBodies: like 'Default', but logs request and response HTTP payloads for
+	// write requests (create, update, patch).
+	// - AllRequestBodies: like 'WriteRequestBodies', but also logs request and response
+	// HTTP payloads for read requests (get, list).
+	// - None: no requests are logged at all, not even oauthaccesstokens and oauthauthorizetokens.
+	//
+	// If unset, the 'Default' profile is used as the default.
+	Profile *configv1.AuditProfileType `json:"profile,omitempty"`
 }
 
-// AuditCustomRuleApplyConfiguration constructs an declarative configuration of the AuditCustomRule type for use with
+// AuditCustomRuleApplyConfiguration constructs a declarative configuration of the AuditCustomRule type for use with
 // apply.
 func AuditCustomRule() *AuditCustomRuleApplyConfiguration {
 	return &AuditCustomRuleApplyConfiguration{}
@@ -30,7 +46,7 @@ func (b *AuditCustomRuleApplyConfiguration) WithGroup(value string) *AuditCustom
 // WithProfile sets the Profile field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Profile field is set to the value of the last call.
-func (b *AuditCustomRuleApplyConfiguration) WithProfile(value v1.AuditProfileType) *AuditCustomRuleApplyConfiguration {
+func (b *AuditCustomRuleApplyConfiguration) WithProfile(value configv1.AuditProfileType) *AuditCustomRuleApplyConfiguration {
 	b.Profile = &value
 	return b
 }

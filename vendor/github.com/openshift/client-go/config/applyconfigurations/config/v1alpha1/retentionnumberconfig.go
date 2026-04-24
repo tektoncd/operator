@@ -2,13 +2,18 @@
 
 package v1alpha1
 
-// RetentionNumberConfigApplyConfiguration represents an declarative configuration of the RetentionNumberConfig type for use
+// RetentionNumberConfigApplyConfiguration represents a declarative configuration of the RetentionNumberConfig type for use
 // with apply.
+//
+// RetentionNumberConfig specifies the configuration of the retention policy on the number of backups
 type RetentionNumberConfigApplyConfiguration struct {
+	// maxNumberOfBackups defines the maximum number of backups to retain.
+	// If the existing number of backups saved is equal to MaxNumberOfBackups then
+	// the oldest backup will be removed before a new backup is initiated.
 	MaxNumberOfBackups *int `json:"maxNumberOfBackups,omitempty"`
 }
 
-// RetentionNumberConfigApplyConfiguration constructs an declarative configuration of the RetentionNumberConfig type for use with
+// RetentionNumberConfigApplyConfiguration constructs a declarative configuration of the RetentionNumberConfig type for use with
 // apply.
 func RetentionNumberConfig() *RetentionNumberConfigApplyConfiguration {
 	return &RetentionNumberConfigApplyConfiguration{}

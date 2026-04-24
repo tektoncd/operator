@@ -3,19 +3,26 @@
 package v1
 
 import (
-	v1 "github.com/openshift/api/security/v1"
+	securityv1 "github.com/openshift/api/security/v1"
 )
 
-// RunAsUserStrategyOptionsApplyConfiguration represents an declarative configuration of the RunAsUserStrategyOptions type for use
+// RunAsUserStrategyOptionsApplyConfiguration represents a declarative configuration of the RunAsUserStrategyOptions type for use
 // with apply.
+//
+// RunAsUserStrategyOptions defines the strategy type and any options used to create the strategy.
 type RunAsUserStrategyOptionsApplyConfiguration struct {
-	Type        *v1.RunAsUserStrategyType `json:"type,omitempty"`
-	UID         *int64                    `json:"uid,omitempty"`
-	UIDRangeMin *int64                    `json:"uidRangeMin,omitempty"`
-	UIDRangeMax *int64                    `json:"uidRangeMax,omitempty"`
+	// type is the strategy that will dictate what RunAsUser is used in the SecurityContext.
+	Type *securityv1.RunAsUserStrategyType `json:"type,omitempty"`
+	// uid is the user id that containers must run as.  Required for the MustRunAs strategy if not using
+	// namespace/service account allocated uids.
+	UID *int64 `json:"uid,omitempty"`
+	// uidRangeMin defines the min value for a strategy that allocates by range.
+	UIDRangeMin *int64 `json:"uidRangeMin,omitempty"`
+	// uidRangeMax defines the max value for a strategy that allocates by range.
+	UIDRangeMax *int64 `json:"uidRangeMax,omitempty"`
 }
 
-// RunAsUserStrategyOptionsApplyConfiguration constructs an declarative configuration of the RunAsUserStrategyOptions type for use with
+// RunAsUserStrategyOptionsApplyConfiguration constructs a declarative configuration of the RunAsUserStrategyOptions type for use with
 // apply.
 func RunAsUserStrategyOptions() *RunAsUserStrategyOptionsApplyConfiguration {
 	return &RunAsUserStrategyOptionsApplyConfiguration{}
@@ -24,7 +31,7 @@ func RunAsUserStrategyOptions() *RunAsUserStrategyOptionsApplyConfiguration {
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *RunAsUserStrategyOptionsApplyConfiguration) WithType(value v1.RunAsUserStrategyType) *RunAsUserStrategyOptionsApplyConfiguration {
+func (b *RunAsUserStrategyOptionsApplyConfiguration) WithType(value securityv1.RunAsUserStrategyType) *RunAsUserStrategyOptionsApplyConfiguration {
 	b.Type = &value
 	return b
 }

@@ -10,7 +10,6 @@ kind: ConfigMap
 metadata:
   name: config-defaults
   namespace: tekton-pipelines
-  creationTimestamp: null
   labels:
     app.kubernetes.io/instance: default
     app.kubernetes.io/part-of: tekton-pipelines
@@ -23,7 +22,6 @@ kind: ConfigMap
 metadata:
   name: config-events
   namespace: tekton-pipelines
-  creationTimestamp: null
 data:
   event1: no-data
 
@@ -46,7 +44,6 @@ kind: Deployment
 metadata:
   name: tekton-pipelines-controller
   namespace: tekton-pipelines
-  creationTimestamp: null
   labels:
     app.kubernetes.io/name: controller
     controlled-by-options: "true"
@@ -61,7 +58,6 @@ spec:
       app.kubernetes.io/name: controller
   template:
     metadata:
-      creationTimestamp: null
       annotations:
         annotation-foo: annotation-bar
       labels:

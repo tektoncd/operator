@@ -56,20 +56,32 @@ func NewTektonHubInformer(client versioned.Interface, resyncPeriod time.Duration
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredTektonHubInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().TektonHubs().List(context.TODO(), options)
+				return client.OperatorV1alpha1().TektonHubs().List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.OperatorV1alpha1().TektonHubs().Watch(context.TODO(), options)
+				return client.OperatorV1alpha1().TektonHubs().Watch(context.Background(), options)
 			},
-		},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.OperatorV1alpha1().TektonHubs().List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.OperatorV1alpha1().TektonHubs().Watch(ctx, options)
+			},
+		}, client),
 		&apisoperatorv1alpha1.TektonHub{},
 		resyncPeriod,
 		indexers,

@@ -2,7 +2,6 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  creationTimestamp: null
   name: web
 spec:
   serviceName: "nginx"
@@ -12,7 +11,6 @@ spec:
       app: nginx
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: nginx
     spec:
@@ -42,7 +40,6 @@ spec:
   updateStrategy: {}
   volumeClaimTemplates:
     - metadata:
-        creationTimestamp: null
         name: www
       spec:
         accessModes:

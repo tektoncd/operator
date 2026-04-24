@@ -20,7 +20,7 @@ func alwaysFulfilledPreconditions() (bool, error) { return true, nil }
 
 type syncRuleSource struct {
 	ResourceLocation
-	syncedKeys               sets.String            // defines the set of keys to sync from source to dest
+	syncedKeys               sets.Set[string]       // defines the set of keys to sync from source to dest
 	preconditionsFulfilledFn preconditionsFulfilled // preconditions to fulfill before syncing the resource
 }
 

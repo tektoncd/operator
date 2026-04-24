@@ -11,16 +11,24 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// ImagePolicyApplyConfiguration represents an declarative configuration of the ImagePolicy type for use
+// ImagePolicyApplyConfiguration represents a declarative configuration of the ImagePolicy type for use
 // with apply.
+//
+// # ImagePolicy holds namespace-wide configuration for image signature verification
+//
+// Compatibility level 4: No compatibility is provided, the API can change at any point for any reason. These capabilities should not be used by applications needing long term support.
 type ImagePolicyApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration `json:",inline"`
+	// metadata is the standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *ImagePolicySpecApplyConfiguration   `json:"spec,omitempty"`
-	Status                           *ImagePolicyStatusApplyConfiguration `json:"status,omitempty"`
+	// spec holds user settable values for configuration
+	Spec *ImagePolicySpecApplyConfiguration `json:"spec,omitempty"`
+	// status contains the observed state of the resource.
+	Status *ImagePolicyStatusApplyConfiguration `json:"status,omitempty"`
 }
 
-// ImagePolicy constructs an declarative configuration of the ImagePolicy type for use with
+// ImagePolicy constructs a declarative configuration of the ImagePolicy type for use with
 // apply.
 func ImagePolicy(name, namespace string) *ImagePolicyApplyConfiguration {
 	b := &ImagePolicyApplyConfiguration{}
@@ -31,29 +39,14 @@ func ImagePolicy(name, namespace string) *ImagePolicyApplyConfiguration {
 	return b
 }
 
-// ExtractImagePolicy extracts the applied configuration owned by fieldManager from
-// imagePolicy. If no managedFields are found in imagePolicy for fieldManager, a
-// ImagePolicyApplyConfiguration is returned with only the Name, Namespace (if applicable),
-// APIVersion and Kind populated. It is possible that no managed fields were found for because other
-// field managers have taken ownership of all the fields previously owned by fieldManager, or because
-// the fieldManager never owned fields any fields.
+// ExtractImagePolicyFrom extracts the applied configuration owned by fieldManager from
+// imagePolicy for the specified subresource. Pass an empty string for subresource to extract
+// the main resource. Common subresources include "status", "scale", etc.
 // imagePolicy must be a unmodified ImagePolicy API object that was retrieved from the Kubernetes API.
-// ExtractImagePolicy provides a way to perform a extract/modify-in-place/apply workflow.
+// ExtractImagePolicyFrom provides a way to perform a extract/modify-in-place/apply workflow.
 // Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
 // applied if another fieldManager has updated or force applied any of the previously applied fields.
-// Experimental!
-func ExtractImagePolicy(imagePolicy *configv1alpha1.ImagePolicy, fieldManager string) (*ImagePolicyApplyConfiguration, error) {
-	return extractImagePolicy(imagePolicy, fieldManager, "")
-}
-
-// ExtractImagePolicyStatus is the same as ExtractImagePolicy except
-// that it extracts the status subresource applied configuration.
-// Experimental!
-func ExtractImagePolicyStatus(imagePolicy *configv1alpha1.ImagePolicy, fieldManager string) (*ImagePolicyApplyConfiguration, error) {
-	return extractImagePolicy(imagePolicy, fieldManager, "status")
-}
-
-func extractImagePolicy(imagePolicy *configv1alpha1.ImagePolicy, fieldManager string, subresource string) (*ImagePolicyApplyConfiguration, error) {
+func ExtractImagePolicyFrom(imagePolicy *configv1alpha1.ImagePolicy, fieldManager string, subresource string) (*ImagePolicyApplyConfiguration, error) {
 	b := &ImagePolicyApplyConfiguration{}
 	err := managedfields.ExtractInto(imagePolicy, internal.Parser().Type("com.github.openshift.api.config.v1alpha1.ImagePolicy"), fieldManager, b, subresource)
 	if err != nil {
@@ -67,11 +60,33 @@ func extractImagePolicy(imagePolicy *configv1alpha1.ImagePolicy, fieldManager st
 	return b, nil
 }
 
+// ExtractImagePolicy extracts the applied configuration owned by fieldManager from
+// imagePolicy. If no managedFields are found in imagePolicy for fieldManager, a
+// ImagePolicyApplyConfiguration is returned with only the Name, Namespace (if applicable),
+// APIVersion and Kind populated. It is possible that no managed fields were found for because other
+// field managers have taken ownership of all the fields previously owned by fieldManager, or because
+// the fieldManager never owned fields any fields.
+// imagePolicy must be a unmodified ImagePolicy API object that was retrieved from the Kubernetes API.
+// ExtractImagePolicy provides a way to perform a extract/modify-in-place/apply workflow.
+// Note that an extracted apply configuration will contain fewer fields than what the fieldManager previously
+// applied if another fieldManager has updated or force applied any of the previously applied fields.
+func ExtractImagePolicy(imagePolicy *configv1alpha1.ImagePolicy, fieldManager string) (*ImagePolicyApplyConfiguration, error) {
+	return ExtractImagePolicyFrom(imagePolicy, fieldManager, "")
+}
+
+// ExtractImagePolicyStatus extracts the applied configuration owned by fieldManager from
+// imagePolicy for the status subresource.
+func ExtractImagePolicyStatus(imagePolicy *configv1alpha1.ImagePolicy, fieldManager string) (*ImagePolicyApplyConfiguration, error) {
+	return ExtractImagePolicyFrom(imagePolicy, fieldManager, "status")
+}
+
+func (b ImagePolicyApplyConfiguration) IsApplyConfiguration() {}
+
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kind field is set to the value of the last call.
 func (b *ImagePolicyApplyConfiguration) WithKind(value string) *ImagePolicyApplyConfiguration {
-	b.Kind = &value
+	b.TypeMetaApplyConfiguration.Kind = &value
 	return b
 }
 
@@ -79,7 +94,7 @@ func (b *ImagePolicyApplyConfiguration) WithKind(value string) *ImagePolicyApply
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the APIVersion field is set to the value of the last call.
 func (b *ImagePolicyApplyConfiguration) WithAPIVersion(value string) *ImagePolicyApplyConfiguration {
-	b.APIVersion = &value
+	b.TypeMetaApplyConfiguration.APIVersion = &value
 	return b
 }
 
@@ -88,7 +103,7 @@ func (b *ImagePolicyApplyConfiguration) WithAPIVersion(value string) *ImagePolic
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *ImagePolicyApplyConfiguration) WithName(value string) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Name = &value
+	b.ObjectMetaApplyConfiguration.Name = &value
 	return b
 }
 
@@ -97,7 +112,7 @@ func (b *ImagePolicyApplyConfiguration) WithName(value string) *ImagePolicyApply
 // If called multiple times, the GenerateName field is set to the value of the last call.
 func (b *ImagePolicyApplyConfiguration) WithGenerateName(value string) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.GenerateName = &value
+	b.ObjectMetaApplyConfiguration.GenerateName = &value
 	return b
 }
 
@@ -106,7 +121,7 @@ func (b *ImagePolicyApplyConfiguration) WithGenerateName(value string) *ImagePol
 // If called multiple times, the Namespace field is set to the value of the last call.
 func (b *ImagePolicyApplyConfiguration) WithNamespace(value string) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Namespace = &value
+	b.ObjectMetaApplyConfiguration.Namespace = &value
 	return b
 }
 
@@ -115,7 +130,7 @@ func (b *ImagePolicyApplyConfiguration) WithNamespace(value string) *ImagePolicy
 // If called multiple times, the UID field is set to the value of the last call.
 func (b *ImagePolicyApplyConfiguration) WithUID(value types.UID) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.UID = &value
+	b.ObjectMetaApplyConfiguration.UID = &value
 	return b
 }
 
@@ -124,7 +139,7 @@ func (b *ImagePolicyApplyConfiguration) WithUID(value types.UID) *ImagePolicyApp
 // If called multiple times, the ResourceVersion field is set to the value of the last call.
 func (b *ImagePolicyApplyConfiguration) WithResourceVersion(value string) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ResourceVersion = &value
+	b.ObjectMetaApplyConfiguration.ResourceVersion = &value
 	return b
 }
 
@@ -133,7 +148,7 @@ func (b *ImagePolicyApplyConfiguration) WithResourceVersion(value string) *Image
 // If called multiple times, the Generation field is set to the value of the last call.
 func (b *ImagePolicyApplyConfiguration) WithGeneration(value int64) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Generation = &value
+	b.ObjectMetaApplyConfiguration.Generation = &value
 	return b
 }
 
@@ -142,7 +157,7 @@ func (b *ImagePolicyApplyConfiguration) WithGeneration(value int64) *ImagePolicy
 // If called multiple times, the CreationTimestamp field is set to the value of the last call.
 func (b *ImagePolicyApplyConfiguration) WithCreationTimestamp(value metav1.Time) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.CreationTimestamp = &value
+	b.ObjectMetaApplyConfiguration.CreationTimestamp = &value
 	return b
 }
 
@@ -151,7 +166,7 @@ func (b *ImagePolicyApplyConfiguration) WithCreationTimestamp(value metav1.Time)
 // If called multiple times, the DeletionTimestamp field is set to the value of the last call.
 func (b *ImagePolicyApplyConfiguration) WithDeletionTimestamp(value metav1.Time) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionTimestamp = &value
+	b.ObjectMetaApplyConfiguration.DeletionTimestamp = &value
 	return b
 }
 
@@ -160,7 +175,7 @@ func (b *ImagePolicyApplyConfiguration) WithDeletionTimestamp(value metav1.Time)
 // If called multiple times, the DeletionGracePeriodSeconds field is set to the value of the last call.
 func (b *ImagePolicyApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionGracePeriodSeconds = &value
+	b.ObjectMetaApplyConfiguration.DeletionGracePeriodSeconds = &value
 	return b
 }
 
@@ -170,11 +185,11 @@ func (b *ImagePolicyApplyConfiguration) WithDeletionGracePeriodSeconds(value int
 // overwriting an existing map entries in Labels field with the same key.
 func (b *ImagePolicyApplyConfiguration) WithLabels(entries map[string]string) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Labels == nil && len(entries) > 0 {
-		b.Labels = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Labels == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Labels = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Labels[k] = v
+		b.ObjectMetaApplyConfiguration.Labels[k] = v
 	}
 	return b
 }
@@ -185,11 +200,11 @@ func (b *ImagePolicyApplyConfiguration) WithLabels(entries map[string]string) *I
 // overwriting an existing map entries in Annotations field with the same key.
 func (b *ImagePolicyApplyConfiguration) WithAnnotations(entries map[string]string) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Annotations == nil && len(entries) > 0 {
-		b.Annotations = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Annotations == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Annotations = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Annotations[k] = v
+		b.ObjectMetaApplyConfiguration.Annotations[k] = v
 	}
 	return b
 }
@@ -203,7 +218,7 @@ func (b *ImagePolicyApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerR
 		if values[i] == nil {
 			panic("nil value passed to WithOwnerReferences")
 		}
-		b.OwnerReferences = append(b.OwnerReferences, *values[i])
+		b.ObjectMetaApplyConfiguration.OwnerReferences = append(b.ObjectMetaApplyConfiguration.OwnerReferences, *values[i])
 	}
 	return b
 }
@@ -214,7 +229,7 @@ func (b *ImagePolicyApplyConfiguration) WithOwnerReferences(values ...*v1.OwnerR
 func (b *ImagePolicyApplyConfiguration) WithFinalizers(values ...string) *ImagePolicyApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
-		b.Finalizers = append(b.Finalizers, values[i])
+		b.ObjectMetaApplyConfiguration.Finalizers = append(b.ObjectMetaApplyConfiguration.Finalizers, values[i])
 	}
 	return b
 }
@@ -239,4 +254,26 @@ func (b *ImagePolicyApplyConfiguration) WithSpec(value *ImagePolicySpecApplyConf
 func (b *ImagePolicyApplyConfiguration) WithStatus(value *ImagePolicyStatusApplyConfiguration) *ImagePolicyApplyConfiguration {
 	b.Status = value
 	return b
+}
+
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *ImagePolicyApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *ImagePolicyApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
+// GetName retrieves the value of the Name field in the declarative configuration.
+func (b *ImagePolicyApplyConfiguration) GetName() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *ImagePolicyApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }

@@ -2,14 +2,21 @@
 
 package v1
 
-// ExternalIPPolicyApplyConfiguration represents an declarative configuration of the ExternalIPPolicy type for use
+// ExternalIPPolicyApplyConfiguration represents a declarative configuration of the ExternalIPPolicy type for use
 // with apply.
+//
+// ExternalIPPolicy configures exactly which IPs are allowed for the ExternalIP
+// field in a Service. If the zero struct is supplied, then none are permitted.
+// The policy controller always allows automatically assigned external IPs.
 type ExternalIPPolicyApplyConfiguration struct {
-	AllowedCIDRs  []string `json:"allowedCIDRs,omitempty"`
+	// allowedCIDRs is the list of allowed CIDRs.
+	AllowedCIDRs []string `json:"allowedCIDRs,omitempty"`
+	// rejectedCIDRs is the list of disallowed CIDRs. These take precedence
+	// over allowedCIDRs.
 	RejectedCIDRs []string `json:"rejectedCIDRs,omitempty"`
 }
 
-// ExternalIPPolicyApplyConfiguration constructs an declarative configuration of the ExternalIPPolicy type for use with
+// ExternalIPPolicyApplyConfiguration constructs a declarative configuration of the ExternalIPPolicy type for use with
 // apply.
 func ExternalIPPolicy() *ExternalIPPolicyApplyConfiguration {
 	return &ExternalIPPolicyApplyConfiguration{}

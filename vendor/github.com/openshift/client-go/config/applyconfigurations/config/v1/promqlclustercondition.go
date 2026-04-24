@@ -2,13 +2,20 @@
 
 package v1
 
-// PromQLClusterConditionApplyConfiguration represents an declarative configuration of the PromQLClusterCondition type for use
+// PromQLClusterConditionApplyConfiguration represents a declarative configuration of the PromQLClusterCondition type for use
 // with apply.
+//
+// PromQLClusterCondition represents a cluster condition based on PromQL.
 type PromQLClusterConditionApplyConfiguration struct {
+	// promql is a PromQL query classifying clusters. This query
+	// query should return a 1 in the match case and a 0 in the
+	// does-not-match case. Queries which return no time
+	// series, or which return values besides 0 or 1, are
+	// evaluation failures.
 	PromQL *string `json:"promql,omitempty"`
 }
 
-// PromQLClusterConditionApplyConfiguration constructs an declarative configuration of the PromQLClusterCondition type for use with
+// PromQLClusterConditionApplyConfiguration constructs a declarative configuration of the PromQLClusterCondition type for use with
 // apply.
 func PromQLClusterCondition() *PromQLClusterConditionApplyConfiguration {
 	return &PromQLClusterConditionApplyConfiguration{}
