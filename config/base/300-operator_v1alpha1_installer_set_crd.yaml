@@ -17,8 +17,8 @@ kind: CustomResourceDefinition
 metadata:
   name: tektoninstallersets.operator.tekton.dev
   labels:
-    version: v0.79.1
-    operator.tekton.dev/release: v0.79.1
+    version: "devel"
+    operator.tekton.dev/release: "devel"
 spec:
   group: operator.tekton.dev
   names:

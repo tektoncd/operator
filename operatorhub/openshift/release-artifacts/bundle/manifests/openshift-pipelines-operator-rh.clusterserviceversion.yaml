@@ -1314,7 +1314,7 @@ spec:
         serviceAccountName: openshift-pipelines-operator
       deployments:
       - label:
-          operator.tekton.dev/release: v0.79.0
+          operator.tekton.dev/release: "devel"
           version: v0.79.0
         name: openshift-pipelines-operator
         spec:
@@ -1447,7 +1447,7 @@ spec:
                   type: RuntimeDefault
               serviceAccountName: openshift-pipelines-operator
       - label:
-          operator.tekton.dev/release: v0.79.0
+          operator.tekton.dev/release: "devel"
           version: v0.79.0
         name: tekton-operator-webhook
         spec:
