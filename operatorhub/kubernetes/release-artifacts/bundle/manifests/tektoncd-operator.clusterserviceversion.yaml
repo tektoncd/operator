@@ -893,7 +893,7 @@ spec:
         serviceAccountName: tekton-operator
       deployments:
       - label:
-          operator.tekton.dev/release: v0.79.0
+          operator.tekton.dev/release: "devel"
           version: v0.79.0
         name: tekton-operator
         spec:
@@ -1007,7 +1007,7 @@ spec:
                     type: RuntimeDefault
               serviceAccountName: tekton-operator
       - label:
-          operator.tekton.dev/release: v0.79.0
+          operator.tekton.dev/release: "devel"
           version: v0.79.0
         name: tekton-operator-webhook
         spec:

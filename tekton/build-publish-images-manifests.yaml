@@ -95,6 +95,27 @@ spec:
       done
       cp ${DOCKER_CONFIG} /workspace/${KUBE_DISTRO}-docker-config.json
 
+  - name: rewrite-devel-in-source
+    image: ghcr.io/tektoncd/plumbing/ko-gcloud:v20240920-6c2a999d36@sha256:1756ca55a09b360028695792e638a7cc366292d7aef44c926a8cb765085664c8
+    script: |
+      #!/usr/bin/env sh
+      set -ex
+
+      # Rewrite VERSION env var value in operator.yaml (not in ko/kustomize output, sed on release.yaml won't catch it)
+      # Uses awk for multi-line: match '- name: VERSION', then rewrite the following 'value:' line
+      # (avoids reliance on GNU sed which is not available in this image)
+      awk '/- name: VERSION/{found=1} found && /value:/{sub(/"?devel"?/, "$(params.versionTag)"); found=0} {print}' \
+        ${PROJECT_ROOT}/config/${KUBE_DISTRO}/base/operator.yaml > /tmp/operator.yaml.tmp
+      cp /tmp/operator.yaml.tmp ${PROJECT_ROOT}/config/${KUBE_DISTRO}/base/operator.yaml
+
+      # Rewrite kodata cabundles (openshift only) - these are baked into the container image
+      # and never appear in release.yaml, so must be updated before ko builds the image
+      if [ -d "${PROJECT_ROOT}/cmd/openshift/operator/kodata/cabundles" ]; then
+        sed -i -E \
+          -e 's/(operator.tekton.dev\/release): "?devel"?/\1: $(params.versionTag)/g' \
+          ${PROJECT_ROOT}/cmd/openshift/operator/kodata/cabundles/*.yaml
+      fi
+
   - name: run-kustomize-ko
     image: ghcr.io/tektoncd/plumbing/ko-gcloud:v20240920-6c2a999d36@sha256:1756ca55a09b360028695792e638a7cc366292d7aef44c926a8cb765085664c8
     env:
@@ -154,9 +175,9 @@ spec:
           --platform=$(params.platforms) ${KO_EXTRA_ARGS} \
           -f - > $OUTPUT_RELEASE_DIR/${FILENAME_PREFIX}release.notags.yaml
 
-      # Rewrite "devel" to params.versionTag
-      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/${FILENAME_PREFIX}release.yaml
-      sed -i -e 's/\(pipeline.tekton.dev\/release\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(app.kubernetes.io\/version\): "devel"/\1: "$(params.versionTag)"/g' -e 's/\(version\): "devel"/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/${FILENAME_PREFIX}release.notags.yaml
+      # Rewrite "devel" (quoted or unquoted) to params.versionTag
+      sed -i -E -e 's/(app.kubernetes.io\/version): "?devel"?/\1: "$(params.versionTag)"/g' -e 's/(operator.tekton.dev\/release): "?devel"?/\1: "$(params.versionTag)"/g' -e 's/(version): "?devel"?/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/${FILENAME_PREFIX}release.yaml
+      sed -i -E -e 's/(app.kubernetes.io\/version): "?devel"?/\1: "$(params.versionTag)"/g' -e 's/(operator.tekton.dev\/release): "?devel"?/\1: "$(params.versionTag)"/g' -e 's/(version): "?devel"?/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/${FILENAME_PREFIX}release.notags.yaml
   - name: koparse
     image: ghcr.io/tektoncd/plumbing/koparse@sha256:194c2ab9dce5f778ed757af13c626d6b85f15452e2c2902c79b0d0f5a0adf4d1
     script: |
