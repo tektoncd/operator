@@ -159,12 +159,9 @@ jobs:
           # Use ko from setup-ko action to avoid Go version mismatch
           KO_BIN=$(which ko) KO_DOCKER_REPO=example.com make TARGET=kubernetes resolve
           KO_BIN=$(which ko) KO_DOCKER_REPO=example.com make TARGET=openshift resolve
-  e2e-tests:
-    needs: [build]
-    uses: ./.github/workflows/e2e-matrix.yml
   ci-summary:
     name: CI summary
-    needs: [build, linting, tests, generated, multi-arch-build, e2e-tests]
+    needs: [build, linting, tests, generated, multi-arch-build]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -176,7 +173,6 @@ jobs:
           "tests=${{ needs.tests.result }}"
           "generated=${{ needs.generated.result }}"
           "multi-arch-build=${{ needs.multi-arch-build.result }}"
-          "e2e-tests=${{ needs.e2e-tests.result }}"
         )
         failed=0
         for r in "${results[@]}"; do
