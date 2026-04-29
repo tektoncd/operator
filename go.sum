@@ -1189,8 +1189,8 @@ github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d h1:vfofYNRScrDd
 github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d/go.mod h1:RRCYJbIwD5jmqPI9XoAFR0OcDxqUctll6zUj/+B4S48=
 github.com/tchap/go-patricia/v2 v2.3.3 h1:xfNEsODumaEcCcY3gI0hYPZ/PcpVv5ju6RMAhgwZDDc=
 github.com/tchap/go-patricia/v2 v2.3.3/go.mod h1:VZRHKAb53DLaG+nA9EaYYiaEx6YztwDlLElMsnSHD4k=
-github.com/tektoncd/pipeline v1.3.3 h1:ZYWQ4Jtw0rnMfoK/F37wSvwg6SL75G7QsjWcAzDrXEo=
-github.com/tektoncd/pipeline v1.3.3/go.mod h1:924mFZJC0FXYruna4kDisnfFnRowJQgRgLpJuGbjNPQ=
+github.com/tektoncd/pipeline v1.3.4 h1:Y8XpHn9NQC7Xj4i6rritZAZ8X4MImhbhVBCVKE/5WxY=
+github.com/tektoncd/pipeline v1.3.4/go.mod h1:W/lKN8J8skBVG7319wU56HJxnXcXunw9TMQr/u55bS4=
 github.com/tektoncd/pipelines-as-code v0.37.7 h1:AEUjQnGWw3+0SoaZaW5fFjjNQijobXhDeTbLuptZXB8=
 github.com/tektoncd/pipelines-as-code v0.37.7/go.mod h1:o0xBfgt16RSYxsH+s9/Lu4hOrtYIa/VL/L5NXDJULl8=
 github.com/tektoncd/plumbing v0.0.0-20250630062957-f863d38f433a h1:a9/eNSSAsC+7N33gPdqubmdvCYZpfVXAzyyo+RPl7ms=
