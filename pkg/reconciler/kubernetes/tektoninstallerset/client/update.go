@@ -88,7 +88,13 @@ func (i *InstallerSetClient) updateSet(ctx context.Context, comp v1alpha1.Tekton
 			return err
 		}
 
-		specHash, err := hash.Compute(comp.GetSpec())
+		specHash, err := hash.Compute(struct {
+			Spec             interface{}
+			PlatformDataHash string
+		}{
+			Spec:             comp.GetSpec(),
+			PlatformDataHash: comp.GetAnnotations()[v1alpha1.PlatformDataHashKey],
+		})
 		if err != nil {
 			return err
 		}

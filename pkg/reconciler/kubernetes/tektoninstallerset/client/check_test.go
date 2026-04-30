@@ -49,7 +49,13 @@ func buildTriggerComponent(disabled bool) *v1alpha1.TektonTrigger {
 }
 
 func computeHash(comp *v1alpha1.TektonTrigger) string {
-	h, err := hash.Compute(comp.GetSpec())
+	h, err := hash.Compute(struct {
+		Spec             interface{}
+		PlatformDataHash string
+	}{
+		Spec:             comp.GetSpec(),
+		PlatformDataHash: comp.GetAnnotations()[v1alpha1.PlatformDataHashKey],
+	})
 	if err != nil {
 		panic("failed to compute hash: " + err.Error())
 	}
