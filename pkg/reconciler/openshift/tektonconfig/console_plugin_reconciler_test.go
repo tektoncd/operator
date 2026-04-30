@@ -22,10 +22,13 @@ import (
 	"sync"
 	"testing"
 
+	configv1 "github.com/openshift/api/config/v1"
+	ocpfake "github.com/openshift/client-go/config/clientset/versioned/fake"
 	"github.com/stretchr/testify/require"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,13 +54,19 @@ func generateNameReactor(action k8sTesting.Action) (bool, apimachineryRuntime.Ob
 
 func TestPostReconcileManifest(t *testing.T) {
 	defaultConsolePluginImage := "ghcr.io/openshift-pipelines/console-plugin:main"
+	defaultConsolePluginLegacyImage := "ghcr.io/openshift-pipelines/console-plugin-pf5:main"
+	defaultOCPVersion := "4.22.0"
+	t.Setenv("IMAGE_PIPELINES_CONSOLE_PLUGIN_LEGACY", defaultConsolePluginLegacyImage)
 
 	tests := []struct {
-		name               string
-		consolePluginImage string
-		operatorVersion    string
-		targetNamespace    string
-		tcConfig           *v1alpha1.Config
+		name                       string
+		consolePluginImage         string
+		consolePluginLegacyImage   string
+		operatorVersion            string
+		targetNamespace            string
+		tcConfig                   *v1alpha1.Config
+		ocpVersion                 string
+		expectedConsolePluginImage string
 	}{
 		{
 			name:            "test-without-console-plugin-image",
@@ -65,16 +74,36 @@ func TestPostReconcileManifest(t *testing.T) {
 			targetNamespace: "foo",
 		},
 		{
-			name:               "test-with-console-plugin-image",
-			consolePluginImage: "custom-image:tag1",
-			operatorVersion:    "0.70.0",
-			targetNamespace:    "bar",
+			name:                       "test-with-legacy-console-plugin-image",
+			operatorVersion:            "1.14.0",
+			targetNamespace:            "foo",
+			consolePluginImage:         defaultConsolePluginImage,
+			consolePluginLegacyImage:   defaultConsolePluginLegacyImage,
+			ocpVersion:                 "4.21.0",
+			expectedConsolePluginImage: defaultConsolePluginLegacyImage,
 		},
 		{
-			name:               "test-with-tc-config",
-			consolePluginImage: "custom-image:tag1",
-			operatorVersion:    "0.70.0",
-			targetNamespace:    "bar",
+			name:                       "test-with-new-console-plugin-image",
+			operatorVersion:            "1.14.0",
+			targetNamespace:            "foo",
+			consolePluginImage:         defaultConsolePluginImage,
+			consolePluginLegacyImage:   defaultConsolePluginLegacyImage,
+			ocpVersion:                 "4.22.0",
+			expectedConsolePluginImage: defaultConsolePluginImage,
+		},
+		{
+			name:                       "test-with-console-plugin-image",
+			consolePluginImage:         "custom-image:tag1",
+			operatorVersion:            "0.70.0",
+			targetNamespace:            "bar",
+			expectedConsolePluginImage: "custom-image:tag1",
+		},
+		{
+			name:                       "test-with-tc-config",
+			consolePluginImage:         "custom-image:tag1",
+			operatorVersion:            "0.70.0",
+			targetNamespace:            "bar",
+			expectedConsolePluginImage: "custom-image:tag1",
 			tcConfig: &v1alpha1.Config{
 				NodeSelector: map[string]string{
 					"node-role.kubernetes.io/infra": "",
@@ -145,6 +174,22 @@ func TestPostReconcileManifest(t *testing.T) {
 					}
 				}
 			}
+			// Mock CV
+			if test.ocpVersion == "" {
+				test.ocpVersion = defaultOCPVersion
+			}
+			mockCV := &configv1.ClusterVersion{
+				ObjectMeta: metav1.ObjectMeta{Name: "version"},
+				Status: configv1.ClusterVersionStatus{
+					Desired: configv1.Release{
+						Version: test.ocpVersion,
+					},
+				},
+			}
+
+			// Openshift Client
+			openshiftFakeClientSet := ocpfake.NewSimpleClientset(mockCV)
+			occommon.SetOpenshiftClient(openshiftFakeClientSet)
 
 			// reconciler reference
 			postReconcile := &consolePluginReconciler{
@@ -175,9 +220,10 @@ func TestPostReconcileManifest(t *testing.T) {
 			// console plugin image
 			consolePluginImage := defaultConsolePluginImage
 			// update image env variable
-			if test.consolePluginImage != "" {
-				t.Setenv("IMAGE_PIPELINES_CONSOLE_PLUGIN", test.consolePluginImage)
-				consolePluginImage = test.consolePluginImage
+			if test.consolePluginImage != "" || test.consolePluginLegacyImage != "" {
+				t.Setenv(PipelinesConsolePluginImageEnvironmentKey, test.consolePluginImage)
+				t.Setenv(PipelinesConsolePluginImageEnvironmentKeyLegacy, test.consolePluginLegacyImage)
+				consolePluginImage = test.expectedConsolePluginImage
 			}
 			// TEST: image name
 			err := postReconcile.reconcile(ctx, tektonConfigCR) // perform reconcile

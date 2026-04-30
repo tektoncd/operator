@@ -19,13 +19,16 @@ package tektonconfig
 import (
 	"context"
 
+	openshiftconfigclient "github.com/openshift/client-go/config/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	openshiftpipelinesascodeinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/openshiftpipelinesascode"
 	tektonAddoninformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonaddon"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
 
@@ -46,5 +49,19 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 	}); err != nil {
 		logger.Panicf("Couldn't register OpenShiftPipelinesAsCode informer event handler: %w", err)
 	}
+	if err := initOpenshiftClient(ctx); err != nil {
+		logger.Panicf("Failed to initialize OpenShift client: %w", err)
+	}
+
 	return ctrl
+}
+
+func initOpenshiftClient(ctx context.Context) error {
+	restConfig := injection.GetConfig(ctx)
+	configClient, err := openshiftconfigclient.NewForConfig(restConfig)
+	if err != nil {
+		return err
+	}
+	occommon.SetOpenshiftClient(configClient)
+	return nil
 }
