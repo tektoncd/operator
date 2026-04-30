@@ -112,7 +112,7 @@ func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.T
 
 	// Use TLS config resolved in PreReconcile
 	if oe.resolvedTLSConfig != nil {
-		transformers = append(transformers, occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", deploymentAPI, []string{apiContainerName}))
+		transformers = append(transformers, occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", deploymentAPI, []string{apiContainerName}, ""))
 	}
 
 	return transformers

@@ -49,6 +49,13 @@ const (
 	// TLS_CURVE_PREFERENCES: comma-separated elliptic curve names (not yet populated;
 	// defaults to Go standard library values until openshift/api#2583 is merged)
 	TLSCurvePreferencesEnvVar = "TLS_CURVE_PREFERENCES"
+
+	// WebhookEnvVarPrefix is prepended to the TLS env var names when injecting into
+	// deployments that use the Knative webhook framework. The Knative webhook binary calls
+	// knativetls.DefaultConfigFromEnv("WEBHOOK_"), so it reads WEBHOOK_TLS_MIN_VERSION,
+	// WEBHOOK_TLS_CIPHER_SUITES, and WEBHOOK_TLS_CURVE_PREFERENCES.
+	// Components that read the env vars directly (e.g. Results API) use no prefix.
+	WebhookEnvVarPrefix = "WEBHOOK_"
 )
 
 // TLSEnvVars holds TLS configuration as environment variable values
@@ -263,13 +270,15 @@ func convertTLSVersionToEnvFormat(version string) (string, error) {
 
 // InjectTLSEnvVars returns a transformer that injects TLS environment variables into
 // the specified containers of a Deployment or StatefulSet matched by name.
-func InjectTLSEnvVars(tlsEnvVars *TLSEnvVars, kind string, resourceName string, containerNames []string) mf.Transformer {
+// envVarPrefix is prepended to each env var name. Use WebhookEnvVarPrefix ("WEBHOOK_") for
+// deployments that run the Knative webhook binary, and "" for all other components.
+func InjectTLSEnvVars(tlsEnvVars *TLSEnvVars, kind string, resourceName string, containerNames []string, envVarPrefix string) mf.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() != kind || u.GetName() != resourceName {
 			return nil
 		}
 
-		envVars := buildTLSEnvVarList(tlsEnvVars)
+		envVars := buildTLSEnvVarList(tlsEnvVars, envVarPrefix)
 		if len(envVars) == 0 {
 			return nil
 		}
@@ -284,16 +293,16 @@ func InjectTLSEnvVars(tlsEnvVars *TLSEnvVars, kind string, resourceName string, 
 	}
 }
 
-func buildTLSEnvVarList(tlsEnvVars *TLSEnvVars) []corev1.EnvVar {
+func buildTLSEnvVarList(tlsEnvVars *TLSEnvVars, prefix string) []corev1.EnvVar {
 	var envVars []corev1.EnvVar
 	if tlsEnvVars.MinVersion != "" {
-		envVars = append(envVars, corev1.EnvVar{Name: TLSMinVersionEnvVar, Value: tlsEnvVars.MinVersion})
+		envVars = append(envVars, corev1.EnvVar{Name: prefix + TLSMinVersionEnvVar, Value: tlsEnvVars.MinVersion})
 	}
 	if tlsEnvVars.CipherSuites != "" {
-		envVars = append(envVars, corev1.EnvVar{Name: TLSCipherSuitesEnvVar, Value: tlsEnvVars.CipherSuites})
+		envVars = append(envVars, corev1.EnvVar{Name: prefix + TLSCipherSuitesEnvVar, Value: tlsEnvVars.CipherSuites})
 	}
 	if tlsEnvVars.CurvePreferences != "" {
-		envVars = append(envVars, corev1.EnvVar{Name: TLSCurvePreferencesEnvVar, Value: tlsEnvVars.CurvePreferences})
+		envVars = append(envVars, corev1.EnvVar{Name: prefix + TLSCurvePreferencesEnvVar, Value: tlsEnvVars.CurvePreferences})
 	}
 	return envVars
 }

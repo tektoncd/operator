@@ -41,7 +41,7 @@ func TestInstallerSetClient_Update(t *testing.T) {
 		},
 	}
 
-	expectedHash, err := hash.Compute(comp.GetSpec())
+	expectedHash, err := hash.Compute(specHashInput(comp))
 	assert.NilError(t, err)
 
 	tests := []struct {
