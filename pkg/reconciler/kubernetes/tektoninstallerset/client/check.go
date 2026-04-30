@@ -135,7 +135,7 @@ func verifyMeta(resourceKind, isType string, logger *zap.SugaredLogger, set v1al
 	// Spec Hash Check
 	logger.Debugf("%v/%v: spec hash check", resourceKind, isType)
 
-	expectedHash, err := hash.Compute(comp.GetSpec())
+	expectedHash, err := hash.Compute(specHashInput(comp))
 	if err != nil {
 		return err
 	}
@@ -148,4 +148,18 @@ func verifyMeta(resourceKind, isType string, logger *zap.SugaredLogger, set v1al
 	}
 
 	return nil
+}
+
+// specHashInput is the canonical input for computing an InstallerSet's spec hash.
+// Including PlatformDataHashKey means that operator-injected platform config
+// (e.g. OpenShift APIServer TLS profile) causes InstallerSets to be refreshed
+// when that config changes, without requiring the component's spec to change.
+func specHashInput(comp v1alpha1.TektonComponent) interface{} {
+	return struct {
+		Spec         interface{}
+		PlatformData string
+	}{
+		Spec:         comp.GetSpec(),
+		PlatformData: comp.GetAnnotations()[v1alpha1.PlatformDataHashKey],
+	}
 }
