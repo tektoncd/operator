@@ -191,7 +191,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 
 	pacSpec := configInstance.Spec.PipelinesAsCodeForCurrentPlatform()
 	if pacSpec != nil && pacSpec.Enable != nil && *pacSpec.Enable {
-		if _, err := pac.EnsureOpenShiftPipelinesAsCodeExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), configInstance, oe.operatorVersion); err != nil {
+		if _, err := pac.EnsureOpenShiftPipelinesAsCodeExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), configInstance, oe.operatorVersion, oe.GetPlatformData()); err != nil {
 			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("OpenShiftPipelinesAsCode: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}

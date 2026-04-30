@@ -38,22 +38,22 @@ func TestEnsureOpenShiftPipelinesAsCodeExists(t *testing.T) {
 	t.Setenv("PLATFORM", "openshift")
 
 	tConfig.SetDefaults(ctx)
-	_, err := EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
+	_, err := EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0", "")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
-	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
+	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0", "")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	markOPACReady(t, ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes())
 
-	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
+	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0", "")
 	util.AssertEqual(t, err, nil)
 
 	tConfig.Spec.TargetNamespace = "foobar"
-	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
+	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0", "")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
-	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
+	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0", "")
 	util.AssertEqual(t, err, nil)
 }
 
@@ -68,7 +68,7 @@ func TestEnsureOpenShiftPipelinesAsCodeCRNotExists(t *testing.T) {
 
 	tConfig := pipeline.GetTektonConfig()
 	tConfig.SetDefaults(ctx)
-	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0")
+	_, err = EnsureOpenShiftPipelinesAsCodeExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), tConfig, "v0.70.0", "")
 	util.AssertEqual(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
 
 	err = EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, c.OperatorV1alpha1().OpenShiftPipelinesAsCodes())
