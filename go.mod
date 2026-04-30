@@ -13,9 +13,9 @@ require (
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
 	github.com/openshift-pipelines/pipelines-as-code v0.43.0
-	github.com/openshift/api v0.0.0-20260306002634-d3bbdada155c
+	github.com/openshift/api v0.0.0-20260429122012-1180c0f5c3e9
 	github.com/openshift/apiserver-library-go v0.0.0-20260303173613-cd3676268d31
-	github.com/openshift/client-go v0.0.0-20260306160707-3935d929fc7d
+	github.com/openshift/client-go v0.0.0-20260429123927-c81f86abfa6a
 	github.com/openshift/library-go v0.0.0-20260303171201-5d9eb6295ff6
 	github.com/sigstore/cosign/v2 v2.6.3
 	github.com/spf13/cobra v1.10.2

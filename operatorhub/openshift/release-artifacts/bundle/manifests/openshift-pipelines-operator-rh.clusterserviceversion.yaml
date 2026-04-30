@@ -973,6 +973,8 @@ spec:
                   value: registry.redhat.io/ubi9/openjdk-17@sha256:d334d3c36867a1eef7daa598af10b5f620394ca0234b12e71b8b7e99bda9224e
                 - name: IMAGE_PIPELINES_CONSOLE_PLUGIN
                   value: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-rhel9@
+                - name: IMAGE_PIPELINES_CONSOLE_PLUGIN_LEGACY
+                  value: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-pf5-rhel9@
                 - name: IMAGE_ADDONS_PREPARE_AND_RUN
                   value: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
                 - image: registry.redhat.io/openshift-pipelines/pipelines-scheduler-rhel9@"
@@ -1230,6 +1232,8 @@ spec:
     name: IMAGE_ADDONS_MAVEN_GOALS
   - image: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-rhel9@
     name: IMAGE_PIPELINES_CONSOLE_PLUGIN
+  - image: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-pf5-rhel9@
+    name: IMAGE_PIPELINES_CONSOLE_PLUGIN_LEGACY
   - image: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel9@
     name: IMAGE_ADDONS_PREPARE_AND_RUN
   replaces: 1.7.0
