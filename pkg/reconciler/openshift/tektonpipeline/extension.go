@@ -25,6 +25,7 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
+	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
@@ -40,6 +41,8 @@ const (
 
 	tektonPipelinesControllerName       = "tekton-pipelines-controller"
 	tektonRemoteResolversControllerName = "tekton-pipelines-remote-resolvers"
+	tektonPipelinesWebhookDeployment    = "tekton-pipelines-webhook"
+	webhookContainerName                = "webhook"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -49,12 +52,13 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		logger.Fatal("Failed to find version from env")
 	}
 
-	ext := openshiftExtension{
+	ext := &openshiftExtension{
 		// component version is used for metrics, passing a dummy
 		// value through extension not going to affect execution
 		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
 			version, "pipelines-ext", v1alpha1.KindTektonPipeline, nil),
-		kubeClientSet: kubeclient.Get(ctx),
+		kubeClientSet:      kubeclient.Get(ctx),
+		tektonConfigLister: tektonConfiginformer.Get(ctx).Lister(),
 	}
 	return ext
 }
@@ -62,9 +66,11 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 type openshiftExtension struct {
 	installerSetClient *client.InstallerSetClient
 	kubeClientSet      kubernetes.Interface
+	tektonConfigLister occommon.TektonConfigLister
+	resolvedTLSConfig  *occommon.TLSEnvVars
 }
 
-func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
+func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	trns := []mf.Transformer{
 		occommon.ApplyCABundlesToDeployment,
 		occommon.RemoveRunAsUser(),
@@ -73,9 +79,28 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.ApplyCABundlesForStatefulSet(tektonPipelinesControllerName),
 		occommon.ApplyCABundlesForStatefulSet(tektonRemoteResolversControllerName),
 	}
+
+	// Inject APIServer TLS profile env vars into the webhook so that it applies
+	// the cluster-wide TLS version and cipher suite policy (PQC readiness).
+	if oe.resolvedTLSConfig != nil {
+		trns = append(trns, occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", tektonPipelinesWebhookDeployment, []string{webhookContainerName}))
+	}
+
 	return trns
 }
-func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
+
+func (oe *openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
+	logger := logging.FromContext(ctx)
+
+	resolvedTLS, err := occommon.ResolveCentralTLSToEnvVars(ctx, oe.tektonConfigLister)
+	if err != nil {
+		return err
+	}
+	oe.resolvedTLSConfig = resolvedTLS
+	if oe.resolvedTLSConfig != nil {
+		logger.Infof("Injecting central TLS config into webhook: MinVersion=%s", oe.resolvedTLSConfig.MinVersion)
+	}
+
 	manifest, err := preManifest()
 	if err != nil {
 		return err
@@ -102,7 +127,7 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Tek
 	return common.ReconcileTargetNamespace(ctx, labels, nil, comp, oe.kubeClientSet)
 }
 
-func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
+func (oe *openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	pipeline := comp.(*v1alpha1.TektonPipeline)
 
 	// Install monitoring if metrics is enabled
@@ -124,7 +149,7 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 
 	return nil
 }
-func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
+func (oe *openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	if err := oe.installerSetClient.CleanupPostSet(ctx); err != nil {
 		return err
 	}
@@ -134,7 +159,7 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 	return nil
 }
 
-func (oe openshiftExtension) GetPlatformData() string {
+func (oe *openshiftExtension) GetPlatformData() string {
 	return ""
 }
 
