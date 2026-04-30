@@ -25,10 +25,10 @@ import (
 
 	"github.com/go-logr/zapr"
 	mf "github.com/manifestival/manifestival"
-
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,7 +41,8 @@ const (
 	// installerSet label value
 	consolePluginReconcileLabelCreatedByValue = "tekton-config-console-plugin-manifests"
 	// pipelines console plugin environment variable key
-	PipelinesConsolePluginImageEnvironmentKey = "IMAGE_PIPELINES_CONSOLE_PLUGIN"
+	PipelinesConsolePluginImageEnvironmentKey       = "IMAGE_PIPELINES_CONSOLE_PLUGIN"
+	PipelinesConsolePluginImageEnvironmentKeyLegacy = "IMAGE_PIPELINES_CONSOLE_PLUGIN_LEGACY"
 	// pipelines console plugin container name, used to replace the image from the environment
 	PipelinesConsolePluginContainerName = "pipelines-console-plugin"
 )
@@ -157,16 +158,30 @@ func (cpr *consolePluginReconciler) updateOnce(ctx context.Context) {
 		cpr.manifest = manifest
 
 		// update pipelines console image details
-		consoleImage, found := os.LookupEnv(PipelinesConsolePluginImageEnvironmentKey)
+
+		// Below logic is to pick Console Plugin Image based on the OCP Version.
+		// OCP versions older than 4.22 uses the legacy Console Plugin.
+		var envKey string
+		ocpVersion, err := occommon.GetOCPVersion(ctx)
+		if err != nil {
+			cpr.logger.Errorf("error getting OCP version: %q", err)
+		} else if ocpVersion.Major() == 4 && ocpVersion.Minor() < 22 {
+			cpr.logger.Infof("Using Legacy Console Plugin on OCP : %v", ocpVersion)
+			envKey = PipelinesConsolePluginImageEnvironmentKeyLegacy
+		} else {
+			envKey = PipelinesConsolePluginImageEnvironmentKey
+		}
+
+		consoleImage, found := os.LookupEnv(envKey)
 		if found {
 			cpr.pipelinesConsolePluginImage = consoleImage
-			cpr.logger.Debugw("pipelines console plugin image found from environment",
+			cpr.logger.Infow("pipelines console plugin image found from environment",
 				"image", consoleImage,
-				"environmentVariable", PipelinesConsolePluginImageEnvironmentKey,
+				"environmentVariable", envKey,
 			)
 		} else {
 			cpr.logger.Warnw("pipelines console plugin image not found from environment, continuing with the default image from the manifest",
-				"environmentVariable", PipelinesConsolePluginImageEnvironmentKey,
+				"environmentVariable", envKey,
 			)
 		}
 	})
