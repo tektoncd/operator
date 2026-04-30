@@ -106,34 +106,46 @@ kubectl delete tektoninstallerset <installer-set-name>
 #### Images supported in OpenShift
 Supports all the images listed above in kubernetes and following are specific to OpenShift
 
-| Component             | Container/Args name               | Environment Variable                                |
-|-----------------------|-----------------------------------|-----------------------------------------------------|
-| Pipeline-as-code      | pac-controller                    | `IMAGE_PAC_PAC_CONTROLLER`                          |
-| Pipeline-as-code      | pac-webhook                       | `IMAGE_PAC_PAC_WEBHOOK`                             |
-| Pipeline-as-code      | pac-watcher                       | `IMAGE_PAC_PAC_WATCHER`                             |
-| Console Plugin        | console-plugin                    | `IMAGE_PIPELINES_CONSOLE_PLUGIN`                    |
-| Results               | retention-policy-agent            | `IMAGE_RESULTS_RETENTION_POLICY_AGENT`              |
-| Addons                |                                   | `IMAGE_ADDONS_BUILD`                                |
-| Addons                |                                   | `IMAGE_ADDONS_GENERATE`                             |
-| Addons                |                                   | `IMAGE_ADDONS_GEN_ENV_FILE`                         |
-| Addons                |                                   | `IMAGE_ADDONS_GIT_RUN`                              |
-| Addons                |                                   | `IMAGE_ADDONS_KN`                                   |
-| Addons                |                                   | `IMAGE_ADDONS_LOAD_SCRIPTS`                         |
-| Addons                |                                   | `IMAGE_ADDONS_MAVEN_GENERATE`                       |
-| Addons                |                                   | `IMAGE_ADDONS_MAVEN_GOALS`                          |
-| Addons                |                                   | `IMAGE_ADDONS_MVN_SETTINGS`                         |
-| Addons                |                                   | `IMAGE_ADDONS_OC`                                   |
-| Addons                |                                   | `IMAGE_ADDONS_PARAM_BUILDER_IMAGE`                  |
-| Addons                |                                   | `IMAGE_ADDONS_PARAM_GITINITIMAGE`                   |
-| Addons                |                                   | `IMAGE_ADDONS_PARAM_KN_IMAGE`                       |
-| Addons                |                                   | `IMAGE_ADDONS_PARAM_MAVEN_IMAGE`                    |
-| Addons                |                                   | `IMAGE_ADDONS_PARAM_TKN_IMAGE`                      |
-| Addons                |                                   | `IMAGE_ADDONS_PREPARE`                              |
-| Addons                |                                   | `IMAGE_ADDONS_REPORT`                               |
-| Addons                |                                   | `IMAGE_ADDONS_S2I_BUILD`                            |
-| Addons                |                                   | `IMAGE_ADDONS_S2I_GENERATE`                         |
-| Addons                |                                   | `IMAGE_ADDONS_SKOPEO_COPY`                          |
-| Addons                |                                   | `IMAGE_ADDONS_SKOPEO_RESULTS`                       |
-| Addons                |                                   | `IMAGE_ADDONS_TKN`                                  |
-| Addons                |                                   | `IMAGE_ADDONS_TKN_CLI_SERVE`                        |
-| Addons                |                                   | `IMAGE_ADDONS_TKN_CLI_SERVE_INIT_CONFIG`            |
+| Component            | Container/Args name               | Environment Variable                      |
+|----------------------|-----------------------------------|-------------------------------------------|
+| Pipeline-as-code     | pac-controller                    | `IMAGE_PAC_PAC_CONTROLLER`                |
+| Pipeline-as-code     | pac-webhook                       | `IMAGE_PAC_PAC_WEBHOOK`                   |
+| Pipeline-as-code     | pac-watcher                       | `IMAGE_PAC_PAC_WATCHER`                   |
+| Console Plugin (PF5) | console-plugin                    | `IMAGE_PIPELINES_CONSOLE_PLUGIN_LEGACY`   |
+| Console Plugin (PF6) | console-plugin                    | `IMAGE_PIPELINES_CONSOLE_PLUGIN`          |
+| Results              | retention-policy-agent            | `IMAGE_RESULTS_RETENTION_POLICY_AGENT`    |
+| Addons               |                                   | `IMAGE_ADDONS_BUILD`                      |
+| Addons               |                                   | `IMAGE_ADDONS_GENERATE`                   |
+| Addons               |                                   | `IMAGE_ADDONS_GEN_ENV_FILE`               |
+| Addons               |                                   | `IMAGE_ADDONS_GIT_RUN`                    |
+| Addons               |                                   | `IMAGE_ADDONS_KN`                         |
+| Addons               |                                   | `IMAGE_ADDONS_LOAD_SCRIPTS`               |
+| Addons               |                                   | `IMAGE_ADDONS_MAVEN_GENERATE`             |
+| Addons               |                                   | `IMAGE_ADDONS_MAVEN_GOALS`                |
+| Addons               |                                   | `IMAGE_ADDONS_MVN_SETTINGS`               |
+| Addons               |                                   | `IMAGE_ADDONS_OC`                         |
+| Addons               |                                   | `IMAGE_ADDONS_PARAM_BUILDER_IMAGE`        |
+| Addons               |                                   | `IMAGE_ADDONS_PARAM_GITINITIMAGE`         |
+| Addons               |                                   | `IMAGE_ADDONS_PARAM_KN_IMAGE`             |
+| Addons               |                                   | `IMAGE_ADDONS_PARAM_MAVEN_IMAGE`          |
+| Addons               |                                   | `IMAGE_ADDONS_PARAM_TKN_IMAGE`            |
+| Addons               |                                   | `IMAGE_ADDONS_PREPARE`                    |
+| Addons               |                                   | `IMAGE_ADDONS_REPORT`                     |
+| Addons               |                                   | `IMAGE_ADDONS_S2I_BUILD`                  |
+| Addons               |                                   | `IMAGE_ADDONS_S2I_GENERATE`               |
+| Addons               |                                   | `IMAGE_ADDONS_SKOPEO_COPY`                |
+| Addons               |                                   | `IMAGE_ADDONS_SKOPEO_RESULTS`             |
+| Addons               |                                   | `IMAGE_ADDONS_TKN`                        |
+| Addons               |                                   | `IMAGE_ADDONS_TKN_CLI_SERVE`              |
+| Addons               |                                   | `IMAGE_ADDONS_TKN_CLI_SERVE_INIT_CONFIG`  |
+
+#### OpenShift Console Plugin Compatibility
+When deploying the Tekton Operator on OpenShift Container Platform (OCP) with the console plugin enabled, you must account for your OCP version.
+
+Starting with **OpenShift 4.22**, the console plugin was upgraded to use PatternFly 6 (PF6), while earlier versions use PatternFly 5 (PF5). To ensure compatibility, you need to provide both of the following environment variables:
+
+`IMAGE_PIPELINES_CONSOLE_PLUGIN`: Point this to the **PF6** image.
+
+`IMAGE_PIPELINES_CONSOLE_PLUGIN_LEGACY`: Point this to the **PF5** image.
+
+**Note:** You do not need to manually configure which image to use at runtime. The operator will automatically detect your OCP version and deploy the correct console plugin image.
