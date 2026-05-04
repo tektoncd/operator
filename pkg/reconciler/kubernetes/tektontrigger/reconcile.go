@@ -34,8 +34,6 @@ import (
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
-const resourceKind = v1alpha1.KindTektonTrigger
-
 // Reconciler implements controller.Reconciler for TektonTrigger resources.
 type Reconciler struct {
 	// kube client to interact with core k8s resources
