@@ -32,9 +32,9 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
-	k8s.io/api v0.35.3
+	k8s.io/api v0.35.4
 	k8s.io/apiextensions-apiserver v0.35.3
-	k8s.io/apimachinery v0.35.3
+	k8s.io/apimachinery v0.35.4
 	k8s.io/client-go v1.5.2
 	k8s.io/code-generator v0.35.3
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2
