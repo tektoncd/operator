@@ -234,10 +234,13 @@ type GroupResourceAccessTokenEvent struct {
 	ObjectAttributes GroupResourceAccessTokenEventObjectAttributes `json:"object_attributes"`
 }
 
+// GroupResourceAccessTokenEventGroup represents a group in a resource access
+// token event.
 type GroupResourceAccessTokenEventGroup struct {
 	GroupID   int64  `json:"group_id"`
 	GroupName string `json:"group_name"`
 	GroupPath string `json:"group_path"`
+	FullPath  string `json:"full_path"`
 }
 
 type GroupResourceAccessTokenEventObjectAttributes struct {
@@ -767,6 +770,8 @@ type MergeEventObjectAttributes struct {
 	Action                      string                      `json:"action"`
 	DetailedMergeStatus         string                      `json:"detailed_merge_status"`
 	OldRev                      string                      `json:"oldrev"`
+	System                      bool                        `json:"system"`
+	SystemAction                string                      `json:"system_action"`
 }
 
 type MergeEventChanges struct {
@@ -839,7 +844,7 @@ type MergeEventChangesTargetProjectID struct {
 	Current  int64 `json:"current"`
 }
 
-// EventUser represents a user record in an event and is used as an even
+// EventUser represents a user record in an event and is used as an event
 // initiator or a merge assignee.
 type EventUser struct {
 	ID        int64  `json:"id"`
@@ -1349,6 +1354,343 @@ type WikiPageEventObjectAttributes struct {
 	URL     string `json:"url"`
 	Action  string `json:"action"`
 	DiffURL string `json:"diff_url"`
+}
+
+// EmojiEvent represents an emoji event.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/user/project/integrations/webhook_events/#emoji-events
+type EmojiEvent struct {
+	ObjectKind       string                     `json:"object_kind"`
+	EventType        string                     `json:"event_type"`
+	User             EventUser                  `json:"user"`
+	ProjectID        int64                      `json:"project_id"`
+	Project          EmojiEventProject          `json:"project"`
+	ObjectAttributes EmojiEventObjectAttributes `json:"object_attributes"`
+	Note             *EmojiEventNote            `json:"note,omitempty"`
+	Issue            *EmojiEventIssue           `json:"issue,omitempty"`
+	MergeRequest     *EmojiEventMergeRequest    `json:"merge_request,omitempty"`
+	ProjectSnippet   *EmojiEventSnippet         `json:"project_snippet,omitempty"`
+	Commit           *EmojiEventCommit          `json:"commit,omitempty"`
+}
+
+// EmojiEventProject represents a project in an emoji event.
+type EmojiEventProject struct {
+	ID                int64  `json:"id"`
+	Name              string `json:"name"`
+	Description       string `json:"description"`
+	WebURL            string `json:"web_url"`
+	AvatarURL         string `json:"avatar_url"`
+	GitSSHURL         string `json:"git_ssh_url"`
+	GitHTTPURL        string `json:"git_http_url"`
+	Namespace         string `json:"namespace"`
+	VisibilityLevel   int64  `json:"visibility_level"`
+	PathWithNamespace string `json:"path_with_namespace"`
+	DefaultBranch     string `json:"default_branch"`
+	CIConfigPath      string `json:"ci_config_path"`
+	Homepage          string `json:"homepage"`
+	URL               string `json:"url"`
+	SSHURL            string `json:"ssh_url"`
+	HTTPURL           string `json:"http_url"`
+}
+
+type EmojiEventObjectAttributes struct {
+	UserID        int64  `json:"user_id"`
+	CreatedAt     string `json:"created_at"`
+	ID            int64  `json:"id"`
+	Name          string `json:"name"`
+	AwardableType string `json:"awardable_type"`
+	AwardableID   int64  `json:"awardable_id"`
+	UpdatedAt     string `json:"updated_at"`
+	Action        string `json:"action"`
+	AwardedOnURL  string `json:"awarded_on_url"`
+}
+
+type EmojiEventNote struct {
+	Attachment       *string       `json:"attachment"`
+	AuthorID         int64         `json:"author_id"`
+	ChangePosition   *NotePosition `json:"change_position"`
+	CommitID         *string       `json:"commit_id"`
+	CreatedAt        string        `json:"created_at"`
+	DiscussionID     string        `json:"discussion_id"`
+	ID               int64         `json:"id"`
+	LineCode         *string       `json:"line_code"`
+	Note             string        `json:"note"`
+	NoteableID       int64         `json:"noteable_id"`
+	NoteableType     string        `json:"noteable_type"`
+	OriginalPosition *NotePosition `json:"original_position"`
+	Position         *NotePosition `json:"position"`
+	ProjectID        int64         `json:"project_id"`
+	ResolvedAt       *string       `json:"resolved_at"`
+	ResolvedByID     *int64        `json:"resolved_by_id"`
+	ResolvedByPush   *bool         `json:"resolved_by_push"`
+	StDiff           *Diff         `json:"st_diff"`
+	System           bool          `json:"system"`
+	Type             *string       `json:"type"`
+	UpdatedAt        string        `json:"updated_at"`
+	UpdatedByID      *int64        `json:"updated_by_id"`
+	Description      string        `json:"description"`
+	URL              string        `json:"url"`
+}
+
+type EmojiEventIssue struct {
+	ID                  int64         `json:"id"`
+	IID                 int64         `json:"iid"`
+	ProjectID           int64         `json:"project_id"`
+	AuthorID            int64         `json:"author_id"`
+	ClosedAt            *string       `json:"closed_at"`
+	Confidential        bool          `json:"confidential"`
+	CreatedAt           string        `json:"created_at"`
+	Description         string        `json:"description"`
+	DiscussionLocked    *bool         `json:"discussion_locked"`
+	DueDate             *ISOTime      `json:"due_date"`
+	LastEditedAt        *string       `json:"last_edited_at"`
+	LastEditedByID      *int64        `json:"last_edited_by_id"`
+	MilestoneID         *int64        `json:"milestone_id"`
+	MovedToID           *int64        `json:"moved_to_id"`
+	DuplicatedToID      *int64        `json:"duplicated_to_id"`
+	RelativePosition    int64         `json:"relative_position"`
+	StateID             StateID       `json:"state_id"`
+	TimeEstimate        int64         `json:"time_estimate"`
+	Title               string        `json:"title"`
+	UpdatedAt           string        `json:"updated_at"`
+	UpdatedByID         *int64        `json:"updated_by_id"`
+	Weight              *int64        `json:"weight"`
+	HealthStatus        *string       `json:"health_status"`
+	URL                 string        `json:"url"`
+	TotalTimeSpent      int64         `json:"total_time_spent"`
+	TimeChange          int64         `json:"time_change"`
+	HumanTotalTimeSpent *string       `json:"human_total_time_spent"`
+	HumanTimeChange     *string       `json:"human_time_change"`
+	HumanTimeEstimate   *string       `json:"human_time_estimate"`
+	AssigneeIDs         []int64       `json:"assignee_ids"`
+	AssigneeID          *int64        `json:"assignee_id"`
+	Labels              []*EventLabel `json:"labels"`
+	State               string        `json:"state"`
+	Severity            string        `json:"severity"`
+}
+
+// EmojiEventMergeRequest represents a merge request in an emoji event.
+type EmojiEventMergeRequest struct {
+	ID                        int64                       `json:"id"`
+	TargetBranch              string                      `json:"target_branch"`
+	SourceBranch              string                      `json:"source_branch"`
+	SourceProjectID           int64                       `json:"source_project_id"`
+	AuthorID                  int64                       `json:"author_id"`
+	AssigneeID                int64                       `json:"assignee_id"`
+	AssigneeIDs               []int64                     `json:"assignee_ids"`
+	ReviewerIDs               []int64                     `json:"reviewer_ids"`
+	Title                     string                      `json:"title"`
+	CreatedAt                 string                      `json:"created_at"`
+	UpdatedAt                 string                      `json:"updated_at"`
+	MilestoneID               int64                       `json:"milestone_id"`
+	State                     string                      `json:"state"`
+	MergeStatus               string                      `json:"merge_status"`
+	TargetProjectID           int64                       `json:"target_project_id"`
+	IID                       int64                       `json:"iid"`
+	Description               string                      `json:"description"`
+	Position                  int64                       `json:"position"`
+	Labels                    []*EventLabel               `json:"labels"`
+	LockedAt                  string                      `json:"locked_at"`
+	UpdatedByID               int64                       `json:"updated_by_id"`
+	MergeError                string                      `json:"merge_error"`
+	MergeParams               *MergeParams                `json:"merge_params"`
+	MergeWhenPipelineSucceeds bool                        `json:"merge_when_pipeline_succeeds"`
+	MergeUserID               int64                       `json:"merge_user_id"`
+	MergeCommitSHA            string                      `json:"merge_commit_sha"`
+	DeletedAt                 string                      `json:"deleted_at"`
+	InProgressMergeCommitSHA  string                      `json:"in_progress_merge_commit_sha"`
+	LockVersion               int64                       `json:"lock_version"`
+	ApprovalsBeforeMerge      string                      `json:"approvals_before_merge"`
+	RebaseCommitSHA           string                      `json:"rebase_commit_sha"`
+	TimeEstimate              int64                       `json:"time_estimate"`
+	Squash                    bool                        `json:"squash"`
+	LastEditedAt              string                      `json:"last_edited_at"`
+	LastEditedByID            int64                       `json:"last_edited_by_id"`
+	Source                    *Repository                 `json:"source"`
+	Target                    *Repository                 `json:"target"`
+	LastCommit                EventMergeRequestLastCommit `json:"last_commit"`
+	WorkInProgress            bool                        `json:"work_in_progress"`
+	TotalTimeSpent            int64                       `json:"total_time_spent"`
+	HeadPipelineID            int64                       `json:"head_pipeline_id"`
+	Assignee                  *EventUser                  `json:"assignee"`
+	DetailedMergeStatus       string                      `json:"detailed_merge_status"`
+	URL                       string                      `json:"url"`
+}
+
+// EmojiEventSnippet represents a snippet in an emoji event.
+type EmojiEventSnippet struct {
+	ID                 int64  `json:"id"`
+	Title              string `json:"title"`
+	Content            string `json:"content"`
+	AuthorID           int64  `json:"author_id"`
+	ProjectID          int64  `json:"project_id"`
+	CreatedAt          string `json:"created_at"`
+	UpdatedAt          string `json:"updated_at"`
+	Filename           string `json:"file_name"`
+	ExpiresAt          string `json:"expires_at"`
+	Type               string `json:"type"`
+	VisibilityLevel    int64  `json:"visibility_level"`
+	Description        string `json:"description"`
+	Secret             bool   `json:"secret"`
+	RepositoryReadOnly bool   `json:"repository_read_only"`
+}
+
+// EmojiEventCommit represents a commit in an emoji event.
+type EmojiEventCommit struct {
+	ID        string            `json:"id"`
+	Title     string            `json:"title"`
+	Message   string            `json:"message"`
+	Timestamp *time.Time        `json:"timestamp"`
+	URL       string            `json:"url"`
+	Author    EventCommitAuthor `json:"author"`
+}
+
+// MilestoneWebhookEvent represents a milestone webhook event.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/user/project/integrations/webhook_events/#milestone-events
+type MilestoneWebhookEvent struct {
+	ObjectKind       string                         `json:"object_kind"`
+	EventType        string                         `json:"event_type"`
+	Project          MilestoneEventProject          `json:"project"`
+	Group            *MilestoneEventGroup           `json:"group,omitempty"`
+	ObjectAttributes MilestoneEventObjectAttributes `json:"object_attributes"`
+	Action           string                         `json:"action"`
+}
+
+type MilestoneEventObjectAttributes struct {
+	ID          int64    `json:"id"`
+	IID         int64    `json:"iid"`
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	State       string   `json:"state"`
+	CreatedAt   string   `json:"created_at"`
+	UpdatedAt   string   `json:"updated_at"`
+	DueDate     *ISOTime `json:"due_date"`
+	StartDate   *ISOTime `json:"start_date"`
+	GroupID     *int64   `json:"group_id"`
+	ProjectID   int64    `json:"project_id"`
+}
+
+// MilestoneEventGroup represents a group in a milestone event.
+type MilestoneEventGroup struct {
+	GroupID   int64  `json:"group_id"`
+	GroupName string `json:"group_name"`
+	GroupPath string `json:"group_path"`
+	FullPath  string `json:"full_path"`
+}
+
+// MilestoneEventProject represents a project in a milestone event.
+type MilestoneEventProject struct {
+	ID                int64  `json:"id"`
+	Name              string `json:"name"`
+	Description       string `json:"description"`
+	WebURL            string `json:"web_url"`
+	AvatarURL         string `json:"avatar_url"`
+	GitSSHURL         string `json:"git_ssh_url"`
+	GitHTTPURL        string `json:"git_http_url"`
+	Namespace         string `json:"namespace"`
+	VisibilityLevel   int64  `json:"visibility_level"`
+	PathWithNamespace string `json:"path_with_namespace"`
+	DefaultBranch     string `json:"default_branch"`
+	CIConfigPath      string `json:"ci_config_path"`
+	Homepage          string `json:"homepage"`
+	URL               string `json:"url"`
+	SSHURL            string `json:"ssh_url"`
+	HTTPURL           string `json:"http_url"`
+}
+
+// ProjectWebhookEvent represents a project webhook event for group webhooks.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/user/project/integrations/webhook_events/#project-events
+type ProjectWebhookEvent struct {
+	EventName            string              `json:"event_name"`
+	CreatedAt            string              `json:"created_at"`
+	UpdatedAt            string              `json:"updated_at"`
+	Name                 string              `json:"name"`
+	Path                 string              `json:"path"`
+	PathWithNamespace    string              `json:"path_with_namespace"`
+	ProjectID            int64               `json:"project_id"`
+	ProjectNamespaceID   int64               `json:"project_namespace_id"`
+	Owners               []ProjectEventOwner `json:"owners"`
+	ProjectVisibility    string              `json:"project_visibility"`
+	OldPathWithNamespace string              `json:"old_path_with_namespace,omitempty"`
+}
+
+type ProjectEventOwner struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+// VulnerabilityEvent represents a vulnerability event.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/user/project/integrations/webhook_events/#vulnerability-events
+type VulnerabilityEvent struct {
+	ObjectKind       string                             `json:"object_kind"`
+	ObjectAttributes VulnerabilityEventObjectAttributes `json:"object_attributes"`
+}
+
+type VulnerabilityEventObjectAttributes struct {
+	ID                      int64                          `json:"id"`
+	URL                     string                         `json:"url"`
+	Title                   string                         `json:"title"`
+	State                   string                         `json:"state"`
+	ProjectID               int64                          `json:"project_id"`
+	Location                VulnerabilityEventLocation     `json:"location"`
+	CVSS                    []VulnerabilityEventCVSS       `json:"cvss"`
+	Severity                string                         `json:"severity"`
+	SeverityOverridden      bool                           `json:"severity_overridden"`
+	Identifiers             []VulnerabilityEventIdentifier `json:"identifiers"`
+	Issues                  []VulnerabilityEventIssue      `json:"issues"`
+	ReportType              string                         `json:"report_type"`
+	Confidence              string                         `json:"confidence"`
+	ConfidenceOverridden    bool                           `json:"confidence_overridden"`
+	ConfirmedAt             string                         `json:"confirmed_at"`
+	ConfirmedByID           int64                          `json:"confirmed_by_id"`
+	DismissedAt             string                         `json:"dismissed_at"`
+	DismissedByID           int64                          `json:"dismissed_by_id"`
+	ResolvedAt              string                         `json:"resolved_at"`
+	ResolvedByID            int64                          `json:"resolved_by_id"`
+	AutoResolved            bool                           `json:"auto_resolved"`
+	ResolvedOnDefaultBranch bool                           `json:"resolved_on_default_branch"`
+	CreatedAt               string                         `json:"created_at"`
+	UpdatedAt               string                         `json:"updated_at"`
+}
+
+type VulnerabilityEventLocation struct {
+	File       string                               `json:"file"`
+	Dependency VulnerabilityEventLocationDependency `json:"dependency"`
+}
+
+type VulnerabilityEventLocationDependency struct {
+	Package VulnerabilityEventLocationDependencyPackage `json:"package"`
+	Version string                                      `json:"version"`
+}
+
+type VulnerabilityEventLocationDependencyPackage struct {
+	Name string `json:"name"`
+}
+
+type VulnerabilityEventCVSS struct {
+	Vector string `json:"vector"`
+	Vendor string `json:"vendor"`
+}
+
+type VulnerabilityEventIdentifier struct {
+	Name         string `json:"name"`
+	ExternalID   string `json:"external_id"`
+	ExternalType string `json:"external_type"`
+	URL          string `json:"url"`
+}
+
+type VulnerabilityEventIssue struct {
+	Title     string `json:"title"`
+	URL       string `json:"url"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // EventLabel represents a label inside a webhook event.

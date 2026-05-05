@@ -18,6 +18,7 @@ package gitlab
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -146,6 +147,19 @@ func WithRequestOptions(options ...RequestOptionFunc) ClientOptionFunc {
 func WithUserAgent(userAgent string) ClientOptionFunc {
 	return func(c *Client) error {
 		c.UserAgent = userAgent
+		return nil
+	}
+}
+
+// WithURLWarningLogger sets a custom logger for URL validation warnings.
+// By default, warnings are logged using slog.Default().
+// Pass slog.New(slog.DiscardHandler) to disable warnings.
+func WithURLWarningLogger(logger *slog.Logger) ClientOptionFunc {
+	return func(c *Client) error {
+		if logger == nil {
+			return errors.New("logger cannot be nil, use slog.New(slog.DiscardHandler) to discard warnings")
+		}
+		c.urlWarningLogger = logger
 		return nil
 	}
 }
