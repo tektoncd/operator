@@ -423,7 +423,7 @@ spec:
       - name: namespace
       results:
       - name: rekor-uuid
-        description: Rekor UUID from Chains transparency log
+        description: Rekor UUID (64-char hex) derived from the Chains transparency log URL
       - name: signed
         description: Whether Chains signing succeeded (true, failed, or timeout)
       steps:
@@ -476,8 +476,12 @@ spec:
                 -o jsonpath='{.metadata.annotations.chains\.tekton\.dev/transparency}' 2>/dev/null || echo "")
 
               if [ -n "${TRANSPARENCY}" ]; then
-                REKOR_UUID=$(echo "${TRANSPARENCY}" | grep -oE 'logIndex=[0-9]+' | cut -d= -f2)
-                if [ -z "${REKOR_UUID}" ]; then
+                echo "Transparency URL: ${TRANSPARENCY}"
+                # Derive the true Rekor UUID from the transparency log URL.
+                # The API response is a map keyed by the 64-char hex UUID, so keys[0] extracts it.
+                REKOR_UUID=$(curl -s "${TRANSPARENCY}" | jq -r 'keys[0]')
+                if [ -z "${REKOR_UUID}" ] || [ "${REKOR_UUID}" = "null" ]; then
+                  echo "WARNING: Could not extract UUID from transparency URL, falling back to URL"
                   REKOR_UUID="${TRANSPARENCY}"
                 fi
                 echo "Rekor UUID: ${REKOR_UUID}"
