@@ -37,8 +37,8 @@ spec:
     description: Platforms to publish for the images (e.g. linux/amd64,linux/arm64)
     default: linux/amd64,linux/arm64,linux/s390x,linux/ppc64le
   - name: koExtraArgs
-    description: Extra args to be passed to ko
-    default: "--preserve-import-paths"
+    description: Extra args to be passed to ko (e.g. --preserve-import-paths)
+    default: "" # No default to avoid breaking existing releases
   - name: serviceAccountImagesPath
     description: The path to the service account file or credentials within the release-images-secret workspace
   - name: runTests
