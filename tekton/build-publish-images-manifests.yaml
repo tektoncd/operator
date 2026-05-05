@@ -41,7 +41,10 @@ spec:
     description: Prefix to be added to release files
     default: ""
   results:
+  # IMAGES result is picked up by Tekton Chains to sign the release.
+  # See https://github.com/tektoncd/plumbing/blob/main/docs/signing.md for more info.
   - name: IMAGES
+    description: Images built and published by this task, used by Tekton Chains to generate signed attestations.
   workspaces:
   - name: source
     description: >-
@@ -229,6 +232,8 @@ spec:
         IMAGE_WITHOUT_SHA=${IMAGE%%@*}
         IMAGE_WITHOUT_SHA_AND_TAG=${IMAGE_WITHOUT_SHA%%:*}
         IMAGE_WITH_SHA=${IMAGE_WITHOUT_SHA_AND_TAG}@${IMAGE##*@}
+
+        echo $IMAGE_WITH_SHA, >> $(results.IMAGES.path)
 
         if [[ "$(params.releaseAsLatest)" == "true" ]]
         then
