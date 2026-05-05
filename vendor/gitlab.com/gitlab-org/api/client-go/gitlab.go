@@ -24,9 +24,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"maps"
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -72,7 +73,28 @@ const (
 	PrivateToken
 )
 
-var ErrNotFound = errors.New("404 Not Found")
+var (
+	// ErrNotFound is returned for 404 Not Found errors
+	ErrNotFound = errors.New("404 Not Found")
+
+	// errUnauthenticated is an internal sentinel error to indicate that the auth source doesn't use any authentication
+	errUnauthenticated = errors.New("unauthenticated")
+)
+
+// URLValidationError wraps URL parsing errors with helpful context
+type URLValidationError struct {
+	URL  string
+	Err  error
+	Hint string
+}
+
+func (e *URLValidationError) Error() string {
+	msg := fmt.Sprintf("invalid base URL %q: %v", e.URL, e.Err)
+	if e.Hint != "" {
+		msg += fmt.Sprintf(" (hint: %s)", e.Hint)
+	}
+	return msg
+}
 
 // A Client manages communication with the GitLab API.
 type Client struct {
@@ -110,6 +132,9 @@ type Client struct {
 	// interceptors contain the stack of *http.Client round tripper builder func
 	// which are used to decorate the http.Client#Transport value.
 	interceptors []Interceptor
+
+	// urlWarningLogger is used to print URL validation warnings
+	urlWarningLogger *slog.Logger
 
 	// User agent used when communicating with the GitLab API.
 	UserAgent string
@@ -179,6 +204,7 @@ type Client struct {
 	GroupMembers                     GroupMembersServiceInterface
 	GroupMilestones                  GroupMilestonesServiceInterface
 	GroupProtectedEnvironments       GroupProtectedEnvironmentsServiceInterface
+	GroupProtectedBranches           GroupProtectedBranchesServiceInterface
 	GroupRelationsExport             GroupRelationsExportServiceInterface
 	GroupReleases                    GroupReleasesServiceInterface
 	GroupRepositoryStorageMove       GroupRepositoryStorageMoveServiceInterface
@@ -256,6 +282,7 @@ type Client struct {
 	ResourceStateEvents              ResourceStateEventsServiceInterface
 	ResourceWeightEvents             ResourceWeightEventsServiceInterface
 	RunnerControllers                RunnerControllersServiceInterface
+	RunnerControllerScopes           RunnerControllerScopesServiceInterface
 	RunnerControllerTokens           RunnerControllerTokensServiceInterface
 	Runners                          RunnersServiceInterface
 	Search                           SearchServiceInterface
@@ -275,6 +302,7 @@ type Client struct {
 	Validate                         ValidateServiceInterface
 	Version                          VersionServiceInterface
 	Wikis                            WikisServiceInterface
+	WorkItems                        WorkItemsServiceInterface
 }
 
 // Interceptor is used to build a *http.Client request pipeline,
@@ -379,8 +407,9 @@ func NewOAuthClient(token string, options ...ClientOptionFunc) (*Client, error) 
 // NewAuthSourceClient returns a new GitLab API client that uses the AuthSource for authentication.
 func NewAuthSourceClient(as AuthSource, options ...ClientOptionFunc) (*Client, error) {
 	c := &Client{
-		UserAgent:  userAgent,
-		authSource: as,
+		UserAgent:        userAgent,
+		authSource:       as,
+		urlWarningLogger: slog.Default(),
 	}
 
 	// Configure the HTTP client.
@@ -497,6 +526,7 @@ func NewAuthSourceClient(as AuthSource, options ...ClientOptionFunc) (*Client, e
 	c.GroupMembers = &GroupMembersService{client: c}
 	c.GroupMilestones = &GroupMilestonesService{client: c}
 	c.GroupProtectedEnvironments = &GroupProtectedEnvironmentsService{client: c}
+	c.GroupProtectedBranches = &GroupProtectedBranchesService{client: c}
 	c.GroupRelationsExport = &GroupRelationsExportService{client: c}
 	c.GroupReleases = &GroupReleasesService{client: c}
 	c.GroupRepositoryStorageMove = &GroupRepositoryStorageMoveService{client: c}
@@ -574,6 +604,7 @@ func NewAuthSourceClient(as AuthSource, options ...ClientOptionFunc) (*Client, e
 	c.ResourceStateEvents = &ResourceStateEventsService{client: c}
 	c.ResourceWeightEvents = &ResourceWeightEventsService{client: c}
 	c.RunnerControllers = &RunnerControllersService{client: c}
+	c.RunnerControllerScopes = &RunnerControllerScopesService{client: c}
 	c.RunnerControllerTokens = &RunnerControllerTokensService{client: c}
 	c.Runners = &RunnersService{client: c}
 	c.Search = &SearchService{client: c}
@@ -593,6 +624,7 @@ func NewAuthSourceClient(as AuthSource, options ...ClientOptionFunc) (*Client, e
 	c.Validate = &ValidateService{client: c}
 	c.Version = &VersionService{client: c}
 	c.Wikis = &WikisService{client: c}
+	c.WorkItems = &WorkItemsService{client: c}
 
 	return c, nil
 }
@@ -736,11 +768,8 @@ func (c *Client) retryHTTPBackoff(min, max time.Duration, attemptNum int, resp *
 // the reset time retrieved from the headers. But if the final wait time is
 // less then min, min will be used instead.
 func rateLimitBackoff(min, max time.Duration, attemptNum int, resp *http.Response) time.Duration {
-	// rnd is used to generate pseudo-random numbers.
-	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	// First create some jitter bounded by the min and max durations.
-	jitter := time.Duration(rnd.Float64() * float64(max-min))
+	jitter := time.Duration(rand.Float64() * float64(max-min))
 
 	if resp != nil {
 		if v := resp.Header.Get(headerRateReset); v != "" {
@@ -798,16 +827,71 @@ func (c *Client) BaseURL() *url.URL {
 	return &u
 }
 
+// validateBaseURL checks for common real-world mistakes and returns them as errors.
+// Returns the parsed URL if validation succeeds.
+func validateBaseURL(baseURL string) (*url.URL, error) {
+	if baseURL == "" {
+		return nil, &URLValidationError{
+			URL:  baseURL,
+			Err:  errors.New("empty URL"),
+			Hint: `provide a valid GitLab instance URL (e.g., "https://gitlab.com")`,
+		}
+	}
+
+	if !strings.Contains(baseURL, "://") {
+		return nil, &URLValidationError{
+			URL:  baseURL,
+			Err:  errors.New("missing scheme"),
+			Hint: fmt.Sprintf(`try "https://%s"`, baseURL),
+		}
+	}
+
+	parsedURL, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, &URLValidationError{
+			URL: baseURL,
+			Err: err,
+			Hint: `possible issues:
+		  - missing hostname
+		  - invalid characters/spaces
+		  - invalid port (must be 1-65535)
+		  - query parameters (?)
+		  - fragments (#)
+		  - invalid URL encoding`,
+		}
+	}
+
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return nil, &URLValidationError{
+			URL:  baseURL,
+			Err:  fmt.Errorf("unsupported scheme %q", parsedURL.Scheme),
+			Hint: fmt.Sprintf(`GitLab API requires http or https (try "https://%s")`, parsedURL.Host),
+		}
+	}
+
+	return parsedURL, nil
+}
+
 // setBaseURL sets the base URL for API requests to a custom endpoint.
 func (c *Client) setBaseURL(urlStr string) error {
-	// Make sure the given URL end with a slash
+	// Make sure the given URL ends with a slash
 	if !strings.HasSuffix(urlStr, "/") {
 		urlStr += "/"
 	}
 
-	baseURL, err := url.Parse(urlStr)
+	// Validate and parse
+	baseURL, err := validateBaseURL(urlStr)
 	if err != nil {
-		return err
+		// Log the validation warning
+		c.urlWarningLogger.Warn("URL validation warning", "error", err)
+
+		// Don't return the error - just warn and continue
+		// Try to parse anyway as a fallback
+		baseURL, err = url.Parse(urlStr)
+		if err != nil {
+			// If we really can't parse it, we have to give up
+			return fmt.Errorf("failed to parse base URL: %w", err)
+		}
 	}
 
 	if !strings.HasSuffix(baseURL.Path, apiVersionPath) {
@@ -886,8 +970,12 @@ func (c *Client) NewRequestToURL(method string, u *url.URL, opt any, options []R
 		}
 	}
 
-	// Set the request specific headers.
-	maps.Copy(req.Header, reqHeaders)
+	// Set the request specific headers if they don't yet exist.
+	for k, v := range reqHeaders {
+		if _, ok := req.Header[k]; !ok {
+			req.Header[k] = v
+		}
+	}
 
 	return req, nil
 }
@@ -985,6 +1073,9 @@ type Response struct {
 	NextLink     string
 	FirstLink    string
 	LastLink     string
+
+	// GraphQL pagination.
+	PageInfo *PageInfo
 }
 
 // newResponse creates a new Response for the provided http.Response.
@@ -1079,12 +1170,15 @@ func (c *Client) Do(req *retryablehttp.Request, v any) (*Response, error) {
 	}
 
 	authKey, authValue, err := c.authSource.Header(req.Context())
-	if err != nil {
+	switch err {
+	case nil:
+		if v := req.Header.Values(authKey); len(v) == 0 {
+			req.Header.Set(authKey, authValue)
+		}
+	case errUnauthenticated: //nolint:errorlint
+		// we simply skip using an auth header
+	default: // err != nil
 		return nil, err
-	}
-
-	if v := req.Header.Values(authKey); len(v) == 0 {
-		req.Header.Set(authKey, authValue)
 	}
 
 	client := c.client
@@ -1184,9 +1278,8 @@ func (e *ErrorResponse) Error() string {
 
 	if e.Message == "" {
 		return fmt.Sprintf("%s %s: %d", e.Response.Request.Method, url, e.Response.StatusCode)
-	} else {
-		return fmt.Sprintf("%s %s: %d %s", e.Response.Request.Method, url, e.Response.StatusCode, e.Message)
 	}
+	return fmt.Sprintf("%s %s: %d %s", e.Response.Request.Method, url, e.Response.StatusCode, e.Message)
 }
 
 func (e *ErrorResponse) HasStatusCode(statusCode int) bool {
@@ -1370,4 +1463,15 @@ func (as *PasswordCredentialsAuthSource) Init(ctx context.Context, client *Clien
 	}
 
 	return nil
+}
+
+// Unauthenticated is an authentication source for unauthenticated clients
+type Unauthenticated struct{}
+
+func (Unauthenticated) Init(context.Context, *Client) error {
+	return nil
+}
+
+func (u Unauthenticated) Header(context.Context) (string, string, error) {
+	return "", "", errUnauthenticated
 }
