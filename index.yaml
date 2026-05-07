@@ -2,6 +2,21 @@ apiVersion: v1
 entries:
   tekton-operator:
   - apiVersion: v2
+    appVersion: v0.79.1
+    created: "2026-05-07T18:06:59.931417471Z"
+    description: A Helm chart to deploy the Tekton Operator and its CRDs
+    digest: 97bdb2cb3429774f4ddd9267e12ab19db3540ea44b9331df3d2aabcab29886c1
+    maintainers:
+    - email: jack.henschel@cern.ch
+      name: Jack Henschel
+    name: tekton-operator
+    sources:
+    - https://github.com/tektoncd/operator
+    type: application
+    urls:
+    - https://github.com/tektoncd/operator/releases/download/tekton-operator-0.79.1/tekton-operator-0.79.1.tgz
+    version: 0.79.1
+  - apiVersion: v2
     appVersion: v0.79.0
     created: "2026-03-05T07:05:22.343364443Z"
     description: A Helm chart to deploy the Tekton Operator and its CRDs
@@ -272,4 +287,4 @@ entries:
     urls:
     - https://github.com/tektoncd/operator/releases/download/tekton-operator-chart-0.61.0/tekton-operator-chart-0.61.0.tgz
     version: 0.61.0
-generated: "2026-03-05T07:05:22.34351273Z"
+generated: "2026-05-07T18:06:59.931576942Z"
