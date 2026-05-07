@@ -73,7 +73,10 @@ func main() {
 		if envVars, err := occommon.TLSEnvVarsFromProfile(tlsProfile); err != nil {
 			log.Printf("WARNING: could not convert TLS profile, using Knative defaults: %v", err)
 		} else if envVars != nil {
-			if envVars.MinVersion != "" {
+			// Knative only accepts "1.2" or "1.3"; skip if the profile allows older versions
+			// (e.g. OpenShift "Old" profile uses VersionTLS10). The webhook will then fall
+			// back to Knative's default minimum of 1.2, which is always safe for admission webhooks.
+			if envVars.MinVersion == "1.2" || envVars.MinVersion == "1.3" {
 				os.Setenv("WEBHOOK_TLS_MIN_VERSION", envVars.MinVersion)
 			}
 			if envVars.CipherSuites != "" {

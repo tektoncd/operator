@@ -17,15 +17,39 @@ limitations under the License.
 package main
 
 import (
+	"os"
+
 	"github.com/tektoncd/operator/pkg/reconciler/proxy"
 	"knative.dev/pkg/injection"
 	"knative.dev/pkg/injection/sharedmain"
+	"knative.dev/pkg/signals"
+	kwebhook "knative.dev/pkg/webhook"
 	"knative.dev/pkg/webhook/certificates"
 )
 
 func main() {
-	sharedmain.WebhookMainWithConfig(proxy.Getctx(), "webhook-operator",
-		injection.ParseAndGetRESTConfigOrDie(),
+	serviceName := os.Getenv("WEBHOOK_SERVICE_NAME")
+	if serviceName == "" {
+		serviceName = "tekton-operator-proxy-webhook"
+	}
+	secretName := os.Getenv("WEBHOOK_SECRET_NAME")
+	if secretName == "" {
+		secretName = "proxy-webhook-certs"
+	}
+	systemNamespace := os.Getenv("SYSTEM_NAMESPACE")
+
+	cfg := injection.ParseAndGetRESTConfigOrDie()
+	ctx := kwebhook.WithOptions(
+		injection.WithNamespaceScope(signals.NewContext(), systemNamespace),
+		kwebhook.Options{
+			ServiceName: serviceName,
+			Port:        8443,
+			SecretName:  secretName,
+		},
+	)
+
+	sharedmain.WebhookMainWithConfig(ctx, "webhook-operator",
+		cfg,
 		certificates.NewController,
 		proxy.NewProxyDefaultingAdmissionController,
 	)
