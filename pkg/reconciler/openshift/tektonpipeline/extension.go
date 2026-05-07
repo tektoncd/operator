@@ -72,6 +72,7 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.RemoveRunAsUserForStatefulSet(tektonRemoteResolversControllerName),
 		occommon.ApplyCABundlesForStatefulSet(tektonPipelinesControllerName),
 		occommon.ApplyCABundlesForStatefulSet(tektonRemoteResolversControllerName),
+		common.ReplaceNamespaceInClusterRoleBinding(comp.GetSpec().GetTargetNamespace()),
 	}
 	return trns
 }

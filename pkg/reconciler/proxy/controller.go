@@ -18,12 +18,8 @@ package proxy
 
 import (
 	"context"
-	"os"
 
 	"knative.dev/pkg/configmap"
-
-	"knative.dev/pkg/injection"
-	"knative.dev/pkg/signals"
 
 	// Injection stuff
 	"k8s.io/apimachinery/pkg/types"
@@ -100,29 +96,6 @@ func NewAdmissionController(
 	return c
 }
 
-func Getctx() context.Context {
-	serviceName := os.Getenv("WEBHOOK_SERVICE_NAME")
-	if serviceName == "" {
-		serviceName = "tekton-operator-proxy-webhook"
-	}
-
-	secretName := os.Getenv("WEBHOOK_SECRET_NAME")
-	if secretName == "" {
-		secretName = "proxy-webhook-certs"
-	}
-	systemNamespace := os.Getenv("SYSTEM_NAMESPACE")
-
-	// Scope informers to the webhook's namespace instead of cluster-wide
-	ctx := injection.WithNamespaceScope(signals.NewContext(), systemNamespace)
-
-	// Set up a signal context with our webhook options
-	ctx = webhook.WithOptions(ctx, webhook.Options{
-		ServiceName: serviceName,
-		Port:        8443,
-		SecretName:  secretName,
-	})
-	return ctx
-}
 
 func NewProxyDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 
