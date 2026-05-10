@@ -330,6 +330,7 @@ var map_NodeExporterCollectorConfig = map[string]string{
 	"ksmd":       "ksmd configures the ksmd collector, which collects statistics from the kernel same-page merger daemon. ksmd is optional. When omitted, this means no opinion and the platform is left to choose a reasonable default, which is subject to change over time. The current default is disabled. Enable on nodes where KSM is in use and you want visibility into merging activity.",
 	"processes":  "processes configures the processes collector, which collects statistics from processes and threads running in the system. processes is optional. When omitted, this means no opinion and the platform is left to choose a reasonable default, which is subject to change over time. The current default is disabled. Enable for process/thread-level insight; can be expensive on busy nodes.",
 	"systemd":    "systemd configures the systemd collector, which collects statistics on the systemd daemon and its managed services. systemd is optional. When omitted, this means no opinion and the platform is left to choose a reasonable default, which is subject to change over time. The current default is disabled. Enabling this collector with a long list of selected units may produce metrics with high cardinality. If you enable this collector, closely monitor the prometheus-k8s deployment for excessive memory usage. Enable when you need metrics for specific units; scope units carefully.",
+	"softirqs":   "softirqs configures the softirqs collector, which exposes detailed softirq statistics from /proc/softirqs. softirqs is optional. When omitted, this means no opinion and the platform is left to choose a reasonable default, which is subject to change over time. The current default is disabled. Enable when you need visibility into kernel softirq processing across CPUs.",
 }
 
 func (NodeExporterCollectorConfig) SwaggerDoc() map[string]string {
@@ -407,6 +408,15 @@ var map_NodeExporterCollectorProcessesConfig = map[string]string{
 
 func (NodeExporterCollectorProcessesConfig) SwaggerDoc() map[string]string {
 	return map_NodeExporterCollectorProcessesConfig
+}
+
+var map_NodeExporterCollectorSoftirqsConfig = map[string]string{
+	"":                 "NodeExporterCollectorSoftirqsConfig provides configuration for the softirqs collector of the node-exporter agent. The softirqs collector exposes detailed softirq statistics from /proc/softirqs. It is disabled by default.",
+	"collectionPolicy": "collectionPolicy declares whether the softirqs collector collects metrics. This field is required. Valid values are \"Collect\" and \"DoNotCollect\". When set to \"Collect\", the softirqs collector is active and softirq statistics are collected. When set to \"DoNotCollect\", the softirqs collector is inactive.",
+}
+
+func (NodeExporterCollectorSoftirqsConfig) SwaggerDoc() map[string]string {
+	return map_NodeExporterCollectorSoftirqsConfig
 }
 
 var map_NodeExporterCollectorSystemdCollectConfig = map[string]string{

@@ -456,6 +456,14 @@ type NodeExporterCollectorConfig struct {
 	// Enable when you need metrics for specific units; scope units carefully.
 	// +optional
 	Systemd NodeExporterCollectorSystemdConfig `json:"systemd,omitempty,omitzero"`
+	// softirqs configures the softirqs collector, which exposes detailed softirq statistics
+	// from /proc/softirqs.
+	// softirqs is optional.
+	// When omitted, this means no opinion and the platform is left to choose a reasonable default,
+	// which is subject to change over time. The current default is disabled.
+	// Enable when you need visibility into kernel softirq processing across CPUs.
+	// +optional
+	Softirqs NodeExporterCollectorSoftirqsConfig `json:"softirqs,omitempty,omitzero"`
 }
 
 // NodeExporterCollectorCpufreqConfig provides configuration for the cpufreq collector
@@ -664,6 +672,20 @@ type NodeExporterCollectorSystemdCollectConfig struct {
 // +kubebuilder:validation:MinLength=1
 // +kubebuilder:validation:MaxLength=1024
 type NodeExporterSystemdUnit string
+
+// NodeExporterCollectorSoftirqsConfig provides configuration for the softirqs collector
+// of the node-exporter agent. The softirqs collector exposes detailed softirq statistics
+// from /proc/softirqs.
+// It is disabled by default.
+type NodeExporterCollectorSoftirqsConfig struct {
+	// collectionPolicy declares whether the softirqs collector collects metrics.
+	// This field is required.
+	// Valid values are "Collect" and "DoNotCollect".
+	// When set to "Collect", the softirqs collector is active and softirq statistics are collected.
+	// When set to "DoNotCollect", the softirqs collector is inactive.
+	// +required
+	CollectionPolicy NodeExporterCollectorCollectionPolicy `json:"collectionPolicy,omitempty"`
+}
 
 // MonitoringPluginConfig provides configuration options for the monitoring plugin
 // that runs as a dynamic plugin of the OpenShift web console.
