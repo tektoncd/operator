@@ -32,6 +32,8 @@ import (
 const (
 	tektonTriggersWebhookDeployment = "tekton-triggers-webhook"
 	webhookContainerName            = "webhook"
+	tektonTriggersCoreInterceptors  = "tekton-triggers-core-interceptors"
+	coreInterceptorsContainerName   = "tekton-triggers-core-interceptors"
 )
 
 // triggersProperties holds fields for configuring runAsUser and runAsGroup.
@@ -70,10 +72,15 @@ func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.T
 		replaceDeploymentArgs("-el-events", "enable"),
 	}
 
-	// Inject APIServer TLS profile env vars into the webhook so that it applies
-	// the cluster-wide TLS version and cipher suite policy (PQC readiness).
+	// Inject APIServer TLS profile env vars into the webhook and core interceptors
+	// so that both apply the cluster-wide TLS version and cipher suite policy (PQC readiness).
 	if oe.resolvedTLSConfig != nil {
-		trns = append(trns, occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", tektonTriggersWebhookDeployment, []string{webhookContainerName}))
+		trns = append(trns,
+			// tekton-triggers-webhook uses the Knative webhook framework which reads WEBHOOK_TLS_* env vars.
+			occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", tektonTriggersWebhookDeployment, []string{webhookContainerName}, occommon.WebhookEnvVarPrefix),
+			// tekton-triggers-core-interceptors uses its own tlsconfig.LoadFromEnv() which reads TLS_* env vars directly (no prefix).
+			occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", tektonTriggersCoreInterceptors, []string{coreInterceptorsContainerName}, ""),
+		)
 	}
 
 	return trns
@@ -88,7 +95,7 @@ func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekt
 	}
 	oe.resolvedTLSConfig = resolvedTLS
 	if oe.resolvedTLSConfig != nil {
-		logger.Infof("Injecting central TLS config into triggers webhook: MinVersion=%s", oe.resolvedTLSConfig.MinVersion)
+		logger.Infof("Injecting central TLS config into triggers webhook and core interceptors: MinVersion=%s", oe.resolvedTLSConfig.MinVersion)
 	}
 
 	return nil

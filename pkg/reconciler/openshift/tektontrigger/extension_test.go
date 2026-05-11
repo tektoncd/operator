@@ -29,20 +29,20 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-// makeTriggersWebhookDeployment returns an unstructured triggers webhook Deployment for transformer tests.
-func makeTriggersWebhookDeployment(t *testing.T) unstructured.Unstructured {
+// makeDeployment returns an unstructured Deployment with the given name and container name.
+func makeDeployment(t *testing.T, deploymentName, containerName string) unstructured.Unstructured {
 	t.Helper()
 
 	d := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      tektonTriggersWebhookDeployment,
+			Name:      deploymentName,
 			Namespace: "openshift-pipelines",
 		},
 		Spec: appsv1.DeploymentSpec{
 			Template: corev1.PodTemplateSpec{
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
-						{Name: webhookContainerName},
+						{Name: containerName},
 					},
 				},
 			},
@@ -56,6 +56,16 @@ func makeTriggersWebhookDeployment(t *testing.T) unstructured.Unstructured {
 	u.SetKind("Deployment")
 	u.SetAPIVersion("apps/v1")
 	return u
+}
+
+// makeTriggersWebhookDeployment returns an unstructured triggers webhook Deployment for transformer tests.
+func makeTriggersWebhookDeployment(t *testing.T) unstructured.Unstructured {
+	return makeDeployment(t, tektonTriggersWebhookDeployment, webhookContainerName)
+}
+
+// makeCoreInterceptorsDeployment returns an unstructured core interceptors Deployment for transformer tests.
+func makeCoreInterceptorsDeployment(t *testing.T) unstructured.Unstructured {
+	return makeDeployment(t, tektonTriggersCoreInterceptors, coreInterceptorsContainerName)
 }
 
 func TestTriggersTransformers_NoTLSConfig(t *testing.T) {
@@ -85,7 +95,8 @@ func TestTriggersTransformers_NoTLSConfig(t *testing.T) {
 			continue
 		}
 		for _, e := range c.Env {
-			if e.Name == occommon.TLSMinVersionEnvVar || e.Name == occommon.TLSCipherSuitesEnvVar {
+			if e.Name == occommon.WebhookEnvVarPrefix+occommon.TLSMinVersionEnvVar ||
+				e.Name == occommon.WebhookEnvVarPrefix+occommon.TLSCipherSuitesEnvVar {
 				t.Errorf("unexpected TLS env var %s set when resolvedTLSConfig is nil", e.Name)
 			}
 		}
@@ -129,11 +140,92 @@ func TestTriggersTransformers_WithTLSConfig_InjectsEnvVarsIntoWebhook(t *testing
 		}
 	}
 
+	webhookMinVersion := occommon.WebhookEnvVarPrefix + occommon.TLSMinVersionEnvVar
+	webhookCipherSuites := occommon.WebhookEnvVarPrefix + occommon.TLSCipherSuitesEnvVar
+
+	if got := envMap[webhookMinVersion]; got != tlsConfig.MinVersion {
+		t.Errorf("%s = %q, want %q", webhookMinVersion, got, tlsConfig.MinVersion)
+	}
+	if got := envMap[webhookCipherSuites]; got != tlsConfig.CipherSuites {
+		t.Errorf("%s = %q, want %q", webhookCipherSuites, got, tlsConfig.CipherSuites)
+	}
+}
+
+func TestTriggersTransformers_WithTLSConfig_InjectsEnvVarsIntoCoreInterceptors(t *testing.T) {
+	tlsConfig := &occommon.TLSEnvVars{
+		MinVersion:   "1.2",
+		CipherSuites: "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_AES_128_GCM_SHA256",
+	}
+	ext := &openshiftExtension{
+		resolvedTLSConfig: tlsConfig,
+	}
+
+	transformers := ext.Transformers(&v1alpha1.TektonTrigger{})
+
+	u := makeCoreInterceptorsDeployment(t)
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{u}))
+	if err != nil {
+		t.Fatalf("failed to build manifest: %v", err)
+	}
+
+	transformed, err := manifest.Transform(transformers...)
+	if err != nil {
+		t.Fatalf("transform failed: %v", err)
+	}
+
+	d := &appsv1.Deployment{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(transformed.Resources()[0].Object, d); err != nil {
+		t.Fatalf("failed to convert back: %v", err)
+	}
+
+	envMap := map[string]string{}
+	for _, c := range d.Spec.Template.Spec.Containers {
+		if c.Name != coreInterceptorsContainerName {
+			continue
+		}
+		for _, e := range c.Env {
+			envMap[e.Name] = e.Value
+		}
+	}
+
 	if got := envMap[occommon.TLSMinVersionEnvVar]; got != tlsConfig.MinVersion {
 		t.Errorf("%s = %q, want %q", occommon.TLSMinVersionEnvVar, got, tlsConfig.MinVersion)
 	}
 	if got := envMap[occommon.TLSCipherSuitesEnvVar]; got != tlsConfig.CipherSuites {
 		t.Errorf("%s = %q, want %q", occommon.TLSCipherSuitesEnvVar, got, tlsConfig.CipherSuites)
+	}
+}
+
+func TestTriggersTransformers_NoTLSConfig_DoesNotInjectIntoCoreInterceptors(t *testing.T) {
+	ext := &openshiftExtension{
+		resolvedTLSConfig: nil,
+	}
+
+	transformers := ext.Transformers(&v1alpha1.TektonTrigger{})
+
+	u := makeCoreInterceptorsDeployment(t)
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{u}))
+	if err != nil {
+		t.Fatalf("failed to build manifest: %v", err)
+	}
+
+	transformed, err := manifest.Transform(transformers...)
+	if err != nil {
+		t.Fatalf("transform failed: %v", err)
+	}
+
+	d := &appsv1.Deployment{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(transformed.Resources()[0].Object, d); err != nil {
+		t.Fatalf("failed to convert back: %v", err)
+	}
+	for _, c := range d.Spec.Template.Spec.Containers {
+		for _, e := range c.Env {
+			if e.Name == occommon.TLSMinVersionEnvVar || e.Name == occommon.TLSCipherSuitesEnvVar ||
+				e.Name == occommon.WebhookEnvVarPrefix+occommon.TLSMinVersionEnvVar ||
+				e.Name == occommon.WebhookEnvVarPrefix+occommon.TLSCipherSuitesEnvVar {
+				t.Errorf("unexpected TLS env var %s set when resolvedTLSConfig is nil", e.Name)
+			}
+		}
 	}
 }
 
@@ -189,7 +281,9 @@ func TestTriggersTransformers_WithTLSConfig_DoesNotInjectIntoOtherDeployments(t 
 
 	for _, c := range result.Spec.Template.Spec.Containers {
 		for _, e := range c.Env {
-			if e.Name == occommon.TLSMinVersionEnvVar || e.Name == occommon.TLSCipherSuitesEnvVar {
+			if e.Name == occommon.TLSMinVersionEnvVar || e.Name == occommon.TLSCipherSuitesEnvVar ||
+				e.Name == occommon.WebhookEnvVarPrefix+occommon.TLSMinVersionEnvVar ||
+				e.Name == occommon.WebhookEnvVarPrefix+occommon.TLSCipherSuitesEnvVar {
 				t.Errorf("unexpected TLS env var %s injected into non-webhook deployment", e.Name)
 			}
 		}
