@@ -667,6 +667,11 @@ func (in *OpenShift) DeepCopyInto(out *OpenShift) {
 		*out = new(SCC)
 		**out = **in
 	}
+	if in.EnableCentralTLSConfig != nil {
+		in, out := &in.EnableCentralTLSConfig, &out.EnableCentralTLSConfig
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 

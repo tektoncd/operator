@@ -71,6 +71,12 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 			p.PACSettings.setPACDefaults(logger)
 		}
 
+		// Central TLS is enabled by default on OpenShift; users may set
+		// enableCentralTLSConfig: false in the CR to opt out.
+		if tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig == nil {
+			tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig = ptr.Bool(true)
+		}
+
 		// SCC defaulting
 		if tc.Spec.Platforms.OpenShift.SCC == nil {
 			tc.Spec.Platforms.OpenShift.SCC = &SCC{}

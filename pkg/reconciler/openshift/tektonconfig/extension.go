@@ -210,7 +210,8 @@ func (oe openshiftExtension) GetPlatformData() string {
 	if err != nil {
 		return ""
 	}
-	if !tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig {
+	if tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig != nil &&
+		!*tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig {
 		return ""
 	}
 	profile, err := occommon.GetTLSProfileFromAPIServer(context.Background())
