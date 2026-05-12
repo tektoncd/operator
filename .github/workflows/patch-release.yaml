@@ -20,6 +20,8 @@ name: Patch Release
     # Weekly on Thursday at 10:00 UTC
     - cron: "0 10 * * 4"
 
+permissions: {}
+
 env:
   PAC_CONTROLLER_URL: "https://pac.infra.tekton.dev"
   PAC_REPOSITORY_NAME: "tektoncd-operator"
@@ -38,6 +40,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Scan release branches for new commits
         id: scan
@@ -126,21 +129,24 @@ jobs:
       - name: Trigger PAC incoming webhook
         env:
           PAC_INCOMING_SECRET: ${{ secrets.PAC_INCOMING_SECRET }}
+          RELEASE_BRANCH: ${{ matrix.release.branch }}
+          RELEASE_VERSION: ${{ matrix.release.version }}
+          RELEASE_AS_LATEST: ${{ matrix.release.release_as_latest }}
         run: |
-          echo "::notice::Triggering release ${{ matrix.release.version }} on ${{ matrix.release.branch }} (latest=${{ matrix.release.release_as_latest }})"
+          echo "::notice::Triggering release ${RELEASE_VERSION} on ${RELEASE_BRANCH} (latest=${RELEASE_AS_LATEST})"
           curl -sf -X POST "${PAC_CONTROLLER_URL}/incoming" \
             -H "Content-Type: application/json" \
             -d '{
               "repository": "'"${PAC_REPOSITORY_NAME}"'",
-              "branch": "${{ matrix.release.branch }}",
+              "branch": "'"${RELEASE_BRANCH}"'",
               "pipelinerun": "release-patch",
               "secret": "'"${PAC_INCOMING_SECRET}"'",
               "params": {
-                "version": "${{ matrix.release.version }}",
-                "release_as_latest": "${{ matrix.release.release_as_latest }}"
+                "version": "'"${RELEASE_VERSION}"'",
+                "release_as_latest": "'"${RELEASE_AS_LATEST}"'"
               }
             }'
-          echo "Release triggered successfully"
+          echo "✅ Release triggered successfully"
 
   trigger-manual-release:
     name: "Trigger ${{ inputs.version }} (${{ inputs.branch }})"
@@ -148,33 +154,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate inputs
+        env:
+          INPUT_BRANCH: ${{ inputs.branch }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           # Validate branch format
-          if [[ ! "${{ inputs.branch }}" =~ ^release-v[0-9]+\.[0-9]+\.x$ ]]; then
-            echo "::error::Invalid branch format: ${{ inputs.branch }}. Expected: release-vX.Y.x"
+          if [[ ! "${INPUT_BRANCH}" =~ ^release-v[0-9]+\.[0-9]+\.x$ ]]; then
+            echo "::error::Invalid branch format: ${INPUT_BRANCH}. Expected: release-vX.Y.x"
             exit 1
           fi
           # Validate version format
-          if [[ ! "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Invalid version format: ${{ inputs.version }}. Expected: vX.Y.Z"
+          if [[ ! "${INPUT_VERSION}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid version format: ${INPUT_VERSION}. Expected: vX.Y.Z"
             exit 1
           fi
 
       - name: Trigger PAC incoming webhook
         env:
           PAC_INCOMING_SECRET: ${{ secrets.PAC_INCOMING_SECRET }}
+          INPUT_BRANCH: ${{ inputs.branch }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_RELEASE_AS_LATEST: ${{ inputs.release_as_latest }}
         run: |
-          echo "::notice::Triggering release ${{ inputs.version }} on ${{ inputs.branch }} (latest=${{ inputs.release_as_latest }})"
+          echo "::notice::Triggering release ${INPUT_VERSION} on ${INPUT_BRANCH} (latest=${INPUT_RELEASE_AS_LATEST})"
           curl -sf -X POST "${PAC_CONTROLLER_URL}/incoming" \
             -H "Content-Type: application/json" \
             -d '{
               "repository": "'"${PAC_REPOSITORY_NAME}"'",
-              "branch": "${{ inputs.branch }}",
+              "branch": "'"${INPUT_BRANCH}"'",
               "pipelinerun": "release-patch",
               "secret": "'"${PAC_INCOMING_SECRET}"'",
               "params": {
-                "version": "${{ inputs.version }}",
-                "release_as_latest": "${{ inputs.release_as_latest }}"
+                "version": "'"${INPUT_VERSION}"'",
+                "release_as_latest": "'"${INPUT_RELEASE_AS_LATEST}"'"
               }
             }'
-          echo "Release triggered successfully"
+          echo "✅ Release triggered successfully"
