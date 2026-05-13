@@ -201,6 +201,20 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		}
 	}
 
+	// Resolve the central TLS profile and push it into the console plugin reconciler
+	// so that the nginx.conf ConfigMap always reflects the current APIServer TLS settings.
+	if configInstance.Spec.Platforms.OpenShift.EnableCentralTLSConfig {
+		tlsConfig, err := occommon.ResolveCentralTLSToEnvVars(ctx, oe.tektonConfigLister)
+		if err != nil {
+			logger := logging.FromContext(ctx)
+			logger.Warnf("failed to resolve central TLS config for console plugin: %v", err)
+		} else {
+			oe.consolePluginReconciler.SetTLSConfig(tlsConfig)
+		}
+	} else {
+		oe.consolePluginReconciler.SetTLSConfig(nil)
+	}
+
 	// execute console plugin reconciler
 	return oe.consolePluginReconciler.reconcile(ctx, configInstance)
 }
