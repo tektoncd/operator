@@ -23,16 +23,15 @@ type OpenShift struct {
 	// SCC allows configuring security context constraints used by workloads
 	// +optional
 	SCC *SCC `json:"scc,omitempty"`
-	// EnableCentralTLSConfig enables TLS configuration inheritance from
-	// the cluster's APIServer TLS security profile. When enabled, TLS settings
-	// (minimum version, cipher suites, curve preferences) are automatically
-	// derived from the cluster-wide security policy and injected into Tekton
-	// component containers that support TLS configuration.
-	// If the APIServer does not have a TLS profile configured, user-specified
-	// TLS settings in component configurations will be used as fallback.
-	// Default: false (opt-in)
+	// EnableCentralTLSConfig controls TLS configuration inheritance from the
+	// cluster's APIServer TLS security profile. When enabled (the default),
+	// TLS settings (minimum version, cipher suites, curve preferences) are
+	// automatically derived from the cluster-wide security policy and injected
+	// into Tekton component containers that support TLS configuration.
+	// Set to false to opt out and manage TLS settings manually.
+	// Default: true (opt-out)
 	// +optional
-	EnableCentralTLSConfig bool `json:"enableCentralTLSConfig,omitempty"`
+	EnableCentralTLSConfig *bool `json:"enableCentralTLSConfig,omitempty"`
 }
 
 type SCC struct {
