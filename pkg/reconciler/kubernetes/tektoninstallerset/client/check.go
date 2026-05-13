@@ -133,9 +133,19 @@ func verifyMeta(resourceKind, isType string, logger *zap.SugaredLogger, set v1al
 	}
 
 	// Spec Hash Check
+	// The hash intentionally includes the platform-data-hash annotation so that
+	// a change to the cluster-wide TLS security profile (which is propagated via
+	// that annotation) triggers an InstallerSet update even when the CR spec is
+	// otherwise unchanged.
 	logger.Debugf("%v/%v: spec hash check", resourceKind, isType)
 
-	expectedHash, err := hash.Compute(comp.GetSpec())
+	expectedHash, err := hash.Compute(struct {
+		Spec             interface{}
+		PlatformDataHash string
+	}{
+		Spec:             comp.GetSpec(),
+		PlatformDataHash: comp.GetAnnotations()[v1alpha1.PlatformDataHashKey],
+	})
 	if err != nil {
 		return err
 	}

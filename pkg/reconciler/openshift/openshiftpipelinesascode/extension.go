@@ -25,8 +25,10 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
+	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -37,7 +39,13 @@ import (
 )
 
 const (
-	openshiftNS = "openshift"
+	openshiftNS                = "openshift"
+	pacControllerDeployment    = "pipelines-as-code-controller"
+	pacControllerContainerName = "pac-controller"
+	pacWatcherDeployment       = "pipelines-as-code-watcher"
+	pacWatcherContainerName    = "pac-watcher"
+	pacWebhookDeployment       = "pipelines-as-code-webhook"
+	pacWebhookContainerName    = "pac-webhook"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -68,13 +76,14 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 	}
 
 	tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
-	return openshiftExtension{
+	return &openshiftExtension{
 		// component version is used for metrics, passing a dummy
 		// value through extension not going to affect execution
 		installerSetClient:   client.NewInstallerSetClient(tisClient, operatorVer, "pipelines-as-code-ext", v1alpha1.KindOpenShiftPipelinesAsCode, nil),
 		pacManifest:          &pacManifest,
 		pipelineRunTemplates: prTemplates,
 		kubeClientSet:        kubeclient.Get(ctx),
+		tektonConfigLister:   tektonConfiginformer.Get(ctx).Lister(),
 	}
 }
 
@@ -83,17 +92,44 @@ type openshiftExtension struct {
 	pacManifest          *mf.Manifest
 	pipelineRunTemplates *mf.Manifest
 	kubeClientSet        kubernetes.Interface
+	tektonConfigLister   occommon.TektonConfigLister
+	resolvedTLSConfig    *occommon.TLSEnvVars
 }
 
-func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return []mf.Transformer{
+func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
+	trns := []mf.Transformer{
 		InjectNamespaceOwnerForPACWebhook(oe.kubeClientSet, comp.GetSpec().GetTargetNamespace()),
 	}
+
+	// Inject APIServer TLS profile env vars into all three PAC deployments so that
+	// they apply the cluster-wide TLS version and cipher suite policy (PQC readiness).
+	if oe.resolvedTLSConfig != nil {
+		trns = append(trns,
+			occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", pacControllerDeployment, []string{pacControllerContainerName}),
+			occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", pacWatcherDeployment, []string{pacWatcherContainerName}),
+			occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", pacWebhookDeployment, []string{pacWebhookContainerName}),
+		)
+	}
+
+	return trns
 }
-func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
+
+func (oe *openshiftExtension) PreReconcile(ctx context.Context, _ v1alpha1.TektonComponent) error {
+	logger := logging.FromContext(ctx)
+
+	resolvedTLS, err := occommon.ResolveCentralTLSToEnvVars(ctx, oe.tektonConfigLister)
+	if err != nil {
+		return err
+	}
+	oe.resolvedTLSConfig = resolvedTLS
+	if oe.resolvedTLSConfig != nil {
+		logger.Infof("Injecting central TLS config into PAC deployments: MinVersion=%s", oe.resolvedTLSConfig.MinVersion)
+	}
+
 	return nil
 }
-func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
+
+func (oe *openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	logger := logging.FromContext(ctx)
 
 	if err := oe.installerSetClient.PostSet(ctx, comp, oe.pipelineRunTemplates, extFilterAndTransform()); err != nil {
@@ -107,11 +143,12 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 	}
 	return nil
 }
-func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
+
+func (oe *openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
 	return nil
 }
 
-func (oe openshiftExtension) GetPlatformData() string {
+func (oe *openshiftExtension) GetPlatformData() string {
 	return ""
 }
 
