@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	configv1 "github.com/openshift/api/config/v1"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -198,7 +199,7 @@ func TestTlsProfileChanged(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "cluster"},
 				Spec:       configv1.APIServerSpec{TLSSecurityProfile: tt.new},
 			}
-			assert.Equal(t, tlsProfileChanged(old, new), tt.expected)
+			assert.Equal(t, occommon.APIServerTLSProfileChanged(old, new), tt.expected)
 		})
 	}
 }
