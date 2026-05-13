@@ -280,7 +280,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	// Ensure Chain CR
-	if !tc.Spec.Chain.Disabled {
+	if !tc.Spec.Chain.Disabled && (tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic) {
 		tektonchain := chain.GetTektonChainCR(tc, r.operatorVersion)
 		logger.Debug("Ensuring TektonChain CR exists")
 		if _, err := chain.EnsureTektonChainExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains(), tektonchain); err != nil {
@@ -302,7 +302,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	}
 
 	// Ensure Result CR
-	if !tc.Spec.Result.Disabled {
+	if !tc.Spec.Result.Disabled && (tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic) {
 		tektonresult := result.GetTektonResultCR(tc, r.operatorVersion)
 		if platformData := r.extension.GetPlatformData(); platformData != "" {
 			if tektonresult.Annotations == nil {
