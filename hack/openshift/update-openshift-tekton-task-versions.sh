@@ -6,12 +6,9 @@ FETCH_SCRIPT="hack/openshift/fetch-tektoncd-catalog-tasks.sh"
 
 # Check if the tektoncd-catalog repo exists
 if [[ ! -d "$TEKTON_CATALOG_DIR" ]]; then
-  echo "Error: tektoncd-catalog repo is missing! Clone it first."
+  echo "Error: tektoncd-catalog repo is missing! Clone it first." >&2
   exit 1
 fi
-
-# Backup the original fetch script before modifying
-cp "$FETCH_SCRIPT" "$FETCH_SCRIPT.bak"
 
 # Track if any updates were made
 updated=false

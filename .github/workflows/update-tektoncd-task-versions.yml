@@ -5,6 +5,8 @@ on:
     - cron: "0 0 * * *"  # Runs daily at midnight
   workflow_dispatch: {}  # Allows manual trigger
 
+permissions: {}
+
 jobs:
   update-task-versions:
     runs-on: ubuntu-latest
@@ -16,7 +18,6 @@ jobs:
       - name: Checkout Operator Repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
-          fetch-depth: 0
           persist-credentials: false
 
       - name: Clone TektonCD Catalog (p branch)
@@ -24,37 +25,16 @@ jobs:
           git clone --branch p https://github.com/openshift-pipelines/tektoncd-catalog.git ../tektoncd-catalog
 
       - name: Update Task Versions
-        id: update
-        run: |
-          ./hack/openshift/update-openshift-tekton-task-versions.sh \
-            --catalog-path ../tektoncd-catalog \
-            --script-path hack/openshift/fetch-tektoncd-catalog-tasks.sh
-          echo "has_changes=$(git diff --name-only | grep -q fetch-tektoncd-catalog-tasks.sh && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-
-      - name: Set up Git config
-        if: steps.update.outputs.has_changes == 'true'
-        run: |
-          git config user.name "tekton-robot"
-          git config user.email "dlorenc+tekton@google.com"
-
-      - name: Commit Changes
-        if: steps.update.outputs.has_changes == 'true'
-        run: |
-          git add hack/openshift/fetch-tektoncd-catalog-tasks.sh
-          if ! git diff --cached --quiet; then
-            git commit -m "Update Tekton task versions"
-          else
-            echo "No changes to commit. Skipping."
-          fi
+        run: ./hack/openshift/update-openshift-tekton-task-versions.sh
 
       - name: Create Pull Request
-        if: steps.update.outputs.has_changes == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.CHATOPS_TOKEN }}
           commit-message: "Update Tekton task versions"
-          committer: Shubham Bhardwaj <shubbhar@redhat.com>
+          committer: tekton-bot <tekton-bot@users.noreply.github.com>
           author: Shubham Bhardwaj <shubbhar@redhat.com>
+          signoff: true
           title: "Update Tekton task versions"
           body: |
             This PR automatically updates the task versions in the `fetch-tektoncd-catalog-tasks.sh` script.
@@ -62,5 +42,7 @@ jobs:
             The versions are pulled from the latest available versions in the [tektoncd-catalog](https://github.com/openshift-pipelines/tektoncd-catalog) repository.
           branch: update-tekton-versions
           base: main
-          labels: automation
+          labels: |
+            automation
+            release-note-none
           delete-branch: true
