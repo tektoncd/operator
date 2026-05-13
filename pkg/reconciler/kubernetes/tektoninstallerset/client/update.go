@@ -88,7 +88,7 @@ func (i *InstallerSetClient) updateSet(ctx context.Context, comp v1alpha1.Tekton
 			return err
 		}
 
-		specHash, err := hash.Compute(comp.GetSpec())
+		specHash, err := hash.Compute(specHashInput(comp))
 		if err != nil {
 			return err
 		}

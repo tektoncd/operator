@@ -131,7 +131,7 @@ func (i *InstallerSetClient) waitForStatus(ctx context.Context, set *v1alpha1.Te
 }
 
 func (i *InstallerSetClient) makeInstallerSet(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest, isName, isType string, customLabels map[string]string) (*v1alpha1.TektonInstallerSet, error) {
-	specHash, err := hash.Compute(comp.GetSpec())
+	specHash, err := hash.Compute(specHashInput(comp))
 	if err != nil {
 		return nil, err
 	}
