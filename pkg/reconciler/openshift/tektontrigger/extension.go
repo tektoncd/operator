@@ -21,10 +21,19 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
+)
+
+const (
+	tektonTriggersWebhookDeployment = "tekton-triggers-webhook"
+	webhookContainerName            = "webhook"
+	tektonTriggersCoreInterceptors  = "tekton-triggers-core-interceptors"
+	coreInterceptorsContainerName   = "tekton-triggers-core-interceptors"
 )
 
 // triggersProperties holds fields for configuring runAsUser and runAsGroup.
@@ -44,30 +53,60 @@ var triggersData = triggersProperties{
 }
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
-	return openshiftExtension{}
+	return &openshiftExtension{
+		tektonConfigLister: tektonConfiginformer.Get(ctx).Lister(),
+	}
 }
 
-type openshiftExtension struct{}
+type openshiftExtension struct {
+	tektonConfigLister occommon.TektonConfigLister
+	resolvedTLSConfig  *occommon.TLSEnvVars
+}
 
-func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return []mf.Transformer{
+func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
+	trns := []mf.Transformer{
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
 		occommon.ApplyCABundlesToDeployment,
 		common.AddConfigMapValues(tektontrigger.ConfigDefaults, triggersData),
 		replaceDeploymentArgs("-el-events", "enable"),
 	}
+
+	// Inject APIServer TLS profile env vars into the webhook and core interceptors
+	// so that both apply the cluster-wide TLS version and cipher suite policy (PQC readiness).
+	if oe.resolvedTLSConfig != nil {
+		trns = append(trns,
+			occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", tektonTriggersWebhookDeployment, []string{webhookContainerName}),
+			occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", tektonTriggersCoreInterceptors, []string{coreInterceptorsContainerName}),
+		)
+	}
+
+	return trns
 }
-func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
-	return nil
-}
-func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
-	return nil
-}
-func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
+
+func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+	logger := logging.FromContext(ctx)
+
+	resolvedTLS, err := occommon.ResolveCentralTLSToEnvVars(ctx, oe.tektonConfigLister)
+	if err != nil {
+		return err
+	}
+	oe.resolvedTLSConfig = resolvedTLS
+	if oe.resolvedTLSConfig != nil {
+		logger.Infof("Injecting central TLS config into triggers webhook and core interceptors: MinVersion=%s", oe.resolvedTLSConfig.MinVersion)
+	}
+
 	return nil
 }
 
-func (oe openshiftExtension) GetPlatformData() string {
+func (oe *openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
+	return nil
+}
+
+func (oe *openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
+	return nil
+}
+
+func (oe *openshiftExtension) GetPlatformData() string {
 	return ""
 }

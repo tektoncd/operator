@@ -260,6 +260,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 	// Ensure Pipeline Trigger
 	if !tc.Spec.Trigger.Disabled && (tc.Spec.Profile == v1alpha1.ProfileAll || tc.Spec.Profile == v1alpha1.ProfileBasic) {
 		tektontrigger := trigger.GetTektonTriggerCR(tc, r.operatorVersion)
+		if platformData := r.extension.GetPlatformData(); platformData != "" {
+			if tektontrigger.Annotations == nil {
+				tektontrigger.Annotations = map[string]string{}
+			}
+			tektontrigger.Annotations[v1alpha1.PlatformDataHashKey] = platformData
+		}
 		logger.Debug("Ensuring TektonTrigger CR exists")
 		if _, err := trigger.EnsureTektonTriggerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonTriggers(), tektontrigger); err != nil {
 			errMsg := fmt.Sprintf("TektonTrigger: %s", err.Error())
