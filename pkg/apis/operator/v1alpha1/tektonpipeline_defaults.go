@@ -57,6 +57,8 @@ func (p *Pipeline) setDefaults() {
 		// EnableCustomTask is always enable
 		p.EnableCustomTasks = ptr.Bool(true)
 	}
+	// Deprecated: send-cloudevents-for-runs is deprecated upstream (pipeline v1.12.0).
+	// Default is now true. Will be removed in a future operator release.
 	if p.SendCloudEventsForRuns == nil {
 		p.SendCloudEventsForRuns = ptr.Bool(config.DefaultSendCloudEventsForRuns)
 	}
