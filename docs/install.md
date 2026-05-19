@@ -30,3 +30,13 @@ To configure images from a custom registry, follow the [Air Gap Configuration](.
     ```
     $ kubectl apply -f https://raw.githubusercontent.com/tektoncd/operator/main/config/crs/kubernetes/config/all/operator_v1alpha1_config_cr.yaml
     ```
+
+## Platform notes
+
+### OpenShift: do not run pipelines in the `default` namespace
+
+On OpenShift, the `default` namespace is classified as a "highly privileged" system namespace. Pod Security Admission (PSA) label synchronization is permanently disabled there by the platform, so even though the operator correctly creates the `pipeline` ServiceAccount and RBAC bindings in `default`, PipelineRuns submitted to that namespace fail with `permissionDenied` errors: PSA enforces the `restricted` profile and the SCC-to-PSA label sync never runs.
+
+User-created namespaces are not affected because the Cluster Policy Controller automatically syncs SCC privileges into PSA labels. The OpenShift documentation has the same guidance ([Do not run workloads in or share access to default projects](https://docs.openshift.com/container-platform/latest/welcome/index.html#about-namespaces)).
+
+Run pipelines in a dedicated namespace instead of `default` on OpenShift. See [tektoncd/operator#3427](https://github.com/tektoncd/operator/issues/3427) for the original report.
