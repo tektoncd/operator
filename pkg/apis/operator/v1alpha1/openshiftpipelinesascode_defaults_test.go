@@ -71,6 +71,9 @@ func TestSetPACControllerDefaultSettings(t *testing.T) {
 		"secret-github-app-scope-extra-repos":        "",
 		"secret-github-app-token-scoped":             "true",
 		"tekton-dashboard-url":                       "",
+		"tracing-label-action":                       "",
+		"tracing-label-application":                  "",
+		"tracing-label-component":                    "",
 	}
 
 	assert.DeepEqual(t, opacCR.Spec.PACSettings.Settings, expectedSettings)
@@ -130,6 +133,9 @@ func TestSetPACControllerLimitedSettings(t *testing.T) {
 		"secret-github-app-scope-extra-repos":        "",
 		"secret-github-app-token-scoped":             "true",
 		"tekton-dashboard-url":                       "",
+		"tracing-label-action":                       "",
+		"tracing-label-application":                  "",
+		"tracing-label-component":                    "",
 	}
 
 	assert.DeepEqual(t, opacCR.Spec.PACSettings.Settings, expectedSettings)
@@ -196,6 +202,9 @@ func TestSetPACControllerDefaultSettingsWithMultipleCatalogs(t *testing.T) {
 		"secret-github-app-scope-extra-repos":        "",
 		"secret-github-app-token-scoped":             "true",
 		"tekton-dashboard-url":                       "",
+		"tracing-label-action":                       "",
+		"tracing-label-application":                  "",
+		"tracing-label-component":                    "",
 	}
 
 	assert.DeepEqual(t, opacCR.Spec.PACSettings.Settings, expectedSettings)
