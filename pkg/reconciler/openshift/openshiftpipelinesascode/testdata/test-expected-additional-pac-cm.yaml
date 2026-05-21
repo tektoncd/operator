@@ -156,6 +156,11 @@ data:
   custom-console-url-pr-details: ""
   custom-console-url-pr-tasklog: ""
 
+  # Tracing label names used for distributed tracing of webhook handling and PipelineRun timing.
+  tracing-label-action: ""
+  tracing-label-application: ""
+  tracing-label-component: ""
+
 kind: ConfigMap
 metadata:
   name: test-config
