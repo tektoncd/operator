@@ -82,6 +82,11 @@ type Settings struct {
 
 	RememberOKToTest   bool `json:"remember-ok-to-test"`
 	RequireOkToTestSHA bool `json:"require-ok-to-test-sha"`
+
+	// Tracing label names. Defaults in config/302-pac-configmap.yaml.
+	TracingLabelAction      string `json:"tracing-label-action"`
+	TracingLabelApplication string `json:"tracing-label-application"`
+	TracingLabelComponent   string `json:"tracing-label-component"`
 }
 
 func (s *Settings) DeepCopy(out *Settings) {
