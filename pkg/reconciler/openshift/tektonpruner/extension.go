@@ -21,32 +21,65 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"knative.dev/pkg/logging"
+)
+
+const (
+	tektonPrunerWebhookDeployment = "tekton-pruner-webhook"
+	webhookContainerName          = "webhook"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
-	return openshiftExtension{}
+	return &openshiftExtension{
+		tektonConfigLister: tektonConfiginformer.Get(ctx).Lister(),
+	}
 }
 
-type openshiftExtension struct{}
+type openshiftExtension struct {
+	tektonConfigLister occommon.TektonConfigLister
+	resolvedTLSConfig  *occommon.TLSEnvVars
+}
 
-func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return []mf.Transformer{
+func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
+	trns := []mf.Transformer{
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
 	}
+
+	if oe.resolvedTLSConfig != nil {
+		trns = append(trns,
+			occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", tektonPrunerWebhookDeployment, []string{webhookContainerName}, occommon.WebhookEnvVarPrefix),
+		)
+	}
+
+	return trns
 }
-func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
-	return nil
-}
-func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
-	return nil
-}
-func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
+
+func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+	logger := logging.FromContext(ctx)
+
+	resolvedTLS, err := occommon.ResolveCentralTLSToEnvVars(ctx, oe.tektonConfigLister)
+	if err != nil {
+		return err
+	}
+	oe.resolvedTLSConfig = resolvedTLS
+	if oe.resolvedTLSConfig != nil {
+		logger.Infof("Injecting central TLS config into pruner webhook: MinVersion=%s", oe.resolvedTLSConfig.MinVersion)
+	}
+
 	return nil
 }
 
-func (oe openshiftExtension) GetPlatformData() string {
+func (oe *openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
+	return nil
+}
+func (oe *openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
+	return nil
+}
+
+func (oe *openshiftExtension) GetPlatformData() string {
 	return ""
 }

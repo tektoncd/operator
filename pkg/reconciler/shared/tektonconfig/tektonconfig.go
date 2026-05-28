@@ -209,8 +209,14 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		tc.Status.MarkComponentNotReady(msg)
 		return v1alpha1.REQUEUE_EVENT_AFTER
 	} else {
-		logger.Infof("TektonPruner is enabled.Creating TektonPipeline CR")
+		logger.Infof("TektonPruner is enabled. Creating TektonPruner CR")
 		tektonPruner := pruner.GetTektonPrunerCR(tc, r.operatorVersion)
+		if platformData := r.extension.GetPlatformData(); platformData != "" {
+			if tektonPruner.Annotations == nil {
+				tektonPruner.Annotations = map[string]string{}
+			}
+			tektonPruner.Annotations[v1alpha1.PlatformDataHashKey] = platformData
+		}
 		if _, err := pruner.EnsureTektonPrunerExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonPruners(), tektonPruner); err != nil {
 			tc.Status.MarkComponentNotReady(fmt.Sprintf("TektonPruner %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
