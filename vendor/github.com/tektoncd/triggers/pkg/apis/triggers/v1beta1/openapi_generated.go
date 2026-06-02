@@ -1441,7 +1441,8 @@ func schema_pkg_apis_triggers_v1beta1_TriggerSpecBinding(ref common.ReferenceCal
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "EventListenerBinding refers to a particular TriggerBinding or ClusterTriggerBinding resource.",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
@@ -1488,7 +1489,8 @@ func schema_pkg_apis_triggers_v1beta1_TriggerSpecTemplate(ref common.ReferenceCa
 	return common.OpenAPIDefinition{
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
-				Type: []string{"object"},
+				Description: "EventListenerTemplate refers to a particular TriggerTemplate resource.",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"ref": {
 						SchemaProps: spec.SchemaProps{
