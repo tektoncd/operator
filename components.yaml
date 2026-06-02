@@ -1,36 +1,36 @@
 chains:
   github: tektoncd/chains
-  version: v0.26.3
+  version: v0.27.0
 dashboard:
   github: tektoncd/dashboard
   version: v0.68.0
 hub:
   github: openshift-pipelines/hub
-  version: v1.23.10
+  version: v1.24.0
 manual-approval-gate:
   github: openshift-pipelines/manual-approval-gate
-  version: v0.8.0
+  version: v0.9.0
 multicluster-proxy-aae:
   github: openshift-pipelines/multicluster-proxy-aae
   version: v0.1.1
 pipeline:
   github: tektoncd/pipeline
-  version: v1.12.0
+  version: v1.13.0
 pipelines-as-code:
   github: tektoncd/pipelines-as-code
-  version: v0.46.0
+  version: v0.47.0
 pruner:
   github: tektoncd/pruner
-  version: v0.3.5
+  version: v0.4.0
 results:
   github: tektoncd/results
   version: v0.18.0
 scheduler:
   github: konflux-ci/tekton-kueue
-  version: v0.3.0
+  version: v0.3.1
 syncer-service:
   github: openshift-pipelines/syncer-service
   version: v0.1.0
 triggers:
   github: tektoncd/triggers
-  version: v0.35.0
+  version: v0.36.0
