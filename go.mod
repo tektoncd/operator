@@ -24,7 +24,7 @@ require (
 	github.com/tektoncd/pipeline v1.12.0
 	github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2
 	github.com/tektoncd/pruner v0.4.0
-	github.com/tektoncd/triggers v0.35.0
+	github.com/tektoncd/triggers v0.36.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90
 	golang.org/x/mod v0.36.0
@@ -164,7 +164,7 @@ require (
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/cel-go v0.28.0 // indirect
+	github.com/google/cel-go v0.28.1 // indirect
 	github.com/google/certificate-transparency-go v1.3.2 // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
 	github.com/google/go-containerregistry v0.21.5 // indirect
@@ -300,7 +300,7 @@ require (
 	google.golang.org/api v0.272.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260406210006-6f92a3bedf2d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d // indirect
-	google.golang.org/grpc v1.80.0 // indirect
+	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

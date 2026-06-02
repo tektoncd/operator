@@ -654,7 +654,7 @@ github.com/golang-jwt/jwt/v4
 # github.com/golang/snappy v0.0.4
 ## explicit
 github.com/golang/snappy
-# github.com/google/cel-go v0.28.0
+# github.com/google/cel-go v0.28.1
 ## explicit; go 1.23.0
 github.com/google/cel-go/cel
 github.com/google/cel-go/checker
@@ -1542,8 +1542,8 @@ github.com/tektoncd/plumbing/scripts
 ## explicit; go 1.25.7
 github.com/tektoncd/pruner/pkg/config
 github.com/tektoncd/pruner/pkg/metrics
-# github.com/tektoncd/triggers v0.35.0
-## explicit; go 1.24.0
+# github.com/tektoncd/triggers v0.36.0
+## explicit; go 1.25.7
 github.com/tektoncd/triggers/pkg/apis/config
 github.com/tektoncd/triggers/pkg/apis/triggers
 github.com/tektoncd/triggers/pkg/apis/triggers/contexts
@@ -1926,8 +1926,8 @@ google.golang.org/genproto/googleapis/api/httpbody
 ## explicit; go 1.25.0
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.80.0
-## explicit; go 1.24.0
+# google.golang.org/grpc v1.81.1
+## explicit; go 1.25.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
 google.golang.org/grpc/backoff
@@ -1982,6 +1982,7 @@ google.golang.org/grpc/internal/status
 google.golang.org/grpc/internal/syscall
 google.golang.org/grpc/internal/transport
 google.golang.org/grpc/internal/transport/networktype
+google.golang.org/grpc/internal/transport/readyreader
 google.golang.org/grpc/keepalive
 google.golang.org/grpc/mem
 google.golang.org/grpc/metadata
