@@ -32,8 +32,6 @@ import (
 )
 
 const (
-	resourceKind = v1alpha1.KindTektonPipeline
-
 	proxyLabel = "operator.tekton.dev/disable-proxy=true"
 )
 

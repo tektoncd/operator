@@ -46,8 +46,6 @@ import (
 )
 
 const (
-	resourceKind = v1alpha1.KindTektonChain
-
 	// Chains ConfigMap
 	ChainsConfig = "chains-config"
 	// Chains Container Name
