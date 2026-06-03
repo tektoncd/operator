@@ -48,7 +48,11 @@ $(BIN)/controller-gen: | $(BIN) ; $(info $(M) getting controller-gen)
 
 GOLANGCILINT = $(or ${GOLANGCILINT_BIN},${GOLANGCILINT_BIN},$(BIN)/golangci-lint)
 $(BIN)/golangci-lint: | $(BIN) ; $(info $(M) getting golangci-lint $(GOLANGCI_VERSION))
-	@curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BIN) $(GOLANGCI_VERSION)
+	@if [ -f $(BIN)/golangci-lint ] && $(BIN)/golangci-lint --version 2>/dev/null | grep -qF "$(GOLANGCI_VERSION)"; then \
+		echo "golangci-lint $(GOLANGCI_VERSION) already installed"; \
+	else \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BIN) $(GOLANGCI_VERSION); \
+	fi
 
 ##@ Clean 
 .PHONY: clean-cluster
@@ -205,13 +209,14 @@ test-unit: ## Run unit tests
 .PHONY: lint
 lint: lint-go lint-yaml ## run all linters
 
+PKG ?= ./...
 .PHONY: lint-go
-lint-go: | $(GOLANGCILINT) ## runs go linter on all go files
+lint-go: | $(GOLANGCILINT) ## runs go linter; set PKG=./some/pkg/... to lint a single package
 	@echo "Linting go files..."
-	@$(GOLANGCILINT) run ./... --modules-download-mode=vendor \
-							--max-issues-per-linter=0 \
-							--max-same-issues=0 \
-							--timeout 5m
+	@$(GOLANGCILINT) run $(PKG) --modules-download-mode=vendor \
+						--max-issues-per-linter=0 \
+						--max-same-issues=0 \
+						--timeout 5m
 
 YAML_FILES := $(shell find . -type f -regex ".*y[a]ml" -print)
 .PHONY: lint-yaml
