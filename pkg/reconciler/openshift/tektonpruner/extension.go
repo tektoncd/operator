@@ -24,21 +24,26 @@ import (
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
 )
 
 const (
-	tektonPrunerWebhookDeployment = "tekton-pruner-webhook"
-	webhookContainerName          = "webhook"
+	tektonPrunerWebhookDeployment    = "tekton-pruner-webhook"
+	tektonPrunerControllerDeployment = "tekton-pruner-controller"
+	webhookContainerName             = "webhook"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	return &openshiftExtension{
+		kubeClientSet:      kubeclient.Get(ctx),
 		tektonConfigLister: tektonConfiginformer.Get(ctx).Lister(),
 	}
 }
 
 type openshiftExtension struct {
+	kubeClientSet      kubernetes.Interface
 	tektonConfigLister occommon.TektonConfigLister
 	resolvedTLSConfig  *occommon.TLSEnvVars
 }
@@ -47,6 +52,10 @@ func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.T
 	trns := []mf.Transformer{
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
+		// mTLS for Prometheus scraping.
+		occommon.InjectMetricsServingCert(tektonPrunerControllerDeployment),
+		occommon.ApplyMetricsTLS("Deployment", tektonPrunerControllerDeployment,
+			occommon.MetricsServingCertSecretName(tektonPrunerControllerDeployment)),
 	}
 
 	if oe.resolvedTLSConfig != nil {

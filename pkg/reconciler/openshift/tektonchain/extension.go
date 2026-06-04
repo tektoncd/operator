@@ -25,21 +25,28 @@ import (
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 )
 
 const (
 	tektonChainsControllerName = "tekton-chains-controller"
+	// tektonChainsMetricsService is the Service that exposes the http-metrics
+	// port for chains; the serving-cert Secret is named after this Service.
+	tektonChainsMetricsService = "tekton-chains-metrics"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	ext := openshiftExtension{
 		operatorClientSet: operatorclient.Get(ctx),
+		kubeClientSet:     kubeclient.Get(ctx),
 	}
 	return ext
 }
 
 type openshiftExtension struct {
 	operatorClientSet versioned.Interface
+	kubeClientSet     kubernetes.Interface
 }
 
 func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -50,9 +57,15 @@ func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Tr
 		occommon.RemoveRunAsGroupForStatefulSet(tektonChainsControllerName),
 		occommon.ApplyCABundlesToDeployment,
 		occommon.ApplyCABundlesForStatefulSet(tektonChainsControllerName),
+		// mTLS for Prometheus scraping.
+		// The metrics Service for chains is "tekton-chains-metrics" (distinct from the
+		// controller Deployment name), so the Secret name is derived from the Service.
+		occommon.InjectMetricsServingCert(tektonChainsMetricsService),
+		occommon.ApplyMetricsTLS("Deployment", tektonChainsControllerName,
+			occommon.MetricsServingCertSecretName(tektonChainsMetricsService)),
 	}
 }
-func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
+func (oe openshiftExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil
 }
 func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {

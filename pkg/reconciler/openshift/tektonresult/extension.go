@@ -35,6 +35,8 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 )
 
 const (
@@ -79,6 +81,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 	ext := &openshiftExtension{
 		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
 			version, "results-ext", v1alpha1.KindTektonResult, nil),
+		kubeClientSet:      kubeclient.Get(ctx),
 		routeManifest:      routeManifest,
 		logsRBACManifest:   logsRBACManifest,
 		tektonConfigLister: tektonConfigLister,
@@ -88,6 +91,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 
 type openshiftExtension struct {
 	installerSetClient *client.InstallerSetClient
+	kubeClientSet      kubernetes.Interface
 	routeManifest      *mf.Manifest
 	logsRBACManifest   *mf.Manifest
 	tektonConfigLister occommon.TektonConfigLister
@@ -108,6 +112,15 @@ func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.T
 		injectLokiStackTLSCACert(instance.Spec.LokiStackProperties),
 		injectResultsAPIServiceCACert(instance.Spec.ResultsAPIProperties),
 		injectPostgresUpgradeSupport(),
+		// mTLS for Prometheus scraping.
+		// tekton-results-watcher is a StatefulSet that exposes a "metrics" port.
+		// tekton-results-api-service is a Deployment that exposes a "prometheus" port.
+		occommon.InjectMetricsServingCertWithPort(tektonResultWatcherName, "metrics"),
+		occommon.ApplyMetricsTLS("StatefulSet", tektonResultWatcherName,
+			occommon.MetricsServingCertSecretName(tektonResultWatcherName)),
+		occommon.InjectMetricsServingCertWithPort(serviceAPI, "prometheus"),
+		occommon.ApplyMetricsTLS("Deployment", deploymentAPI,
+			occommon.MetricsServingCertSecretName(serviceAPI)),
 	}
 
 	// Use TLS config resolved in PreReconcile
@@ -124,6 +137,7 @@ func (oe *openshiftExtension) GetPlatformData() string {
 
 func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	logger := logging.FromContext(ctx)
+
 	result := tc.(*v1alpha1.TektonResult)
 	manifest := mf.Manifest{}
 
