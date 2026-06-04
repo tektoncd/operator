@@ -67,6 +67,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 
 	if err := r.extension.Finalize(ctx, original); err != nil {
 		logger.Error("Failed to finalize platform resources", err)
+		return err
 	}
 
 	if original.Spec.Profile == v1alpha1.ProfileLite {
