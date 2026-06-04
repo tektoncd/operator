@@ -26,6 +26,7 @@ spec:
   endpoints:
     - interval: 10s
       port: http-metrics
+      scheme: http
   jobLabel: app
   namespaceSelector:
     matchNames:
