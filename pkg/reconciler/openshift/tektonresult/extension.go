@@ -35,6 +35,8 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 )
 
 const (
@@ -79,6 +81,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 	ext := &openshiftExtension{
 		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
 			version, "results-ext", v1alpha1.KindTektonResult, nil),
+		kubeClientSet:      kubeclient.Get(ctx),
 		routeManifest:      routeManifest,
 		logsRBACManifest:   logsRBACManifest,
 		tektonConfigLister: tektonConfigLister,
@@ -88,6 +91,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 
 type openshiftExtension struct {
 	installerSetClient *client.InstallerSetClient
+	kubeClientSet      kubernetes.Interface
 	routeManifest      *mf.Manifest
 	logsRBACManifest   *mf.Manifest
 	tektonConfigLister occommon.TektonConfigLister
@@ -108,6 +112,19 @@ func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.T
 		injectLokiStackTLSCACert(instance.Spec.LokiStackProperties),
 		injectResultsAPIServiceCACert(instance.Spec.ResultsAPIProperties),
 		injectPostgresUpgradeSupport(),
+		// mTLS for Prometheus scraping.
+		// Watcher: annotate its Service to get a new serving-cert Secret + rename the port.
+		// API: its Service cert annotation is already owned by injectResultsAPIServiceCACert
+		// (points to "tekton-results-tls"), so we only rename the port to avoid overwriting it.
+		// Both workloads then get the TLS Secret + client-CA ConfigMap mounted via ApplyMetricsTLS.
+		occommon.AnnotateMetricsServingCert(tektonResultWatcherName),
+		occommon.RenameServicePort(tektonResultWatcherName, "metrics", "https-metrics"),
+		occommon.ApplyMetricsTLS("Deployment", tektonResultWatcherName,
+			occommon.MetricsServingCertSecretName(tektonResultWatcherName)),
+		occommon.ApplyMetricsTLS("StatefulSet", tektonResultWatcherName,
+			occommon.MetricsServingCertSecretName(tektonResultWatcherName)),
+		occommon.RenameServicePort(serviceAPI, "prometheus", "https-prometheus"),
+		occommon.ApplyMetricsTLS("Deployment", deploymentAPI, secretAPITLS),
 	}
 
 	// Use TLS config resolved in PreReconcile
@@ -124,6 +141,7 @@ func (oe *openshiftExtension) GetPlatformData() string {
 
 func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	logger := logging.FromContext(ctx)
+
 	result := tc.(*v1alpha1.TektonResult)
 	manifest := mf.Manifest{}
 

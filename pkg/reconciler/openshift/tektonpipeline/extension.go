@@ -43,6 +43,10 @@ const (
 	tektonRemoteResolversControllerName = "tekton-pipelines-remote-resolvers"
 	tektonPipelinesWebhookDeployment    = "tekton-pipelines-webhook"
 	webhookContainerName                = "webhook"
+
+	// tektonEventsControllerName is the Deployment that exposes an http-metrics
+	// Service and must therefore receive the mTLS volumes and env vars.
+	tektonEventsControllerName = "tekton-events-controller"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -79,6 +83,27 @@ func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.T
 		occommon.ApplyCABundlesForStatefulSet(tektonPipelinesControllerName),
 		occommon.ApplyCABundlesForStatefulSet(tektonRemoteResolversControllerName),
 		common.ReplaceNamespaceInClusterRoleBinding(comp.GetSpec().GetTargetNamespace()),
+		// mTLS for Prometheus scraping: annotate metric Services for cert provisioning,
+		// rename their ports, and mount the TLS Secret + client-CA ConfigMap into pods.
+		// The webhook is intentionally omitted: it does not support METRICS_PROMETHEUS_TLS_* env vars.
+		occommon.AnnotateMetricsServingCert(tektonPipelinesControllerName),
+		occommon.RenameServicePort(tektonPipelinesControllerName, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort),
+		occommon.AnnotateMetricsServingCert(tektonEventsControllerName),
+		occommon.RenameServicePort(tektonEventsControllerName, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort),
+		occommon.AnnotateMetricsServingCert(tektonRemoteResolversControllerName),
+		occommon.RenameServicePort(tektonRemoteResolversControllerName, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort),
+		// Cover both Deployment and StatefulSet: pipelines-controller and remote-resolvers
+		// use RemoveRunAsUserForStatefulSet/ApplyCABundlesForStatefulSet, so they can be either.
+		occommon.ApplyMetricsTLS("Deployment", tektonPipelinesControllerName,
+			occommon.MetricsServingCertSecretName(tektonPipelinesControllerName)),
+		occommon.ApplyMetricsTLS("StatefulSet", tektonPipelinesControllerName,
+			occommon.MetricsServingCertSecretName(tektonPipelinesControllerName)),
+		occommon.ApplyMetricsTLS("Deployment", tektonEventsControllerName,
+			occommon.MetricsServingCertSecretName(tektonEventsControllerName)),
+		occommon.ApplyMetricsTLS("Deployment", tektonRemoteResolversControllerName,
+			occommon.MetricsServingCertSecretName(tektonRemoteResolversControllerName)),
+		occommon.ApplyMetricsTLS("StatefulSet", tektonRemoteResolversControllerName,
+			occommon.MetricsServingCertSecretName(tektonRemoteResolversControllerName)),
 	}
 
 	// Inject APIServer TLS profile env vars into the webhook so that it applies
@@ -203,16 +228,16 @@ func filterAndTransform() client.FilterAndTransform {
 	}
 }
 
-// filterAndTransformMonitoring applies ServiceMonitor namespace updates to monitoring manifests
+// filterAndTransformMonitoring applies ServiceMonitor namespace and mTLS
+// updates to monitoring manifests.
 func filterAndTransformMonitoring(comp v1alpha1.TektonComponent) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
 		if err := common.Transform(ctx, manifest, comp); err != nil {
 			return nil, err
 		}
-		// Apply ServiceMonitor namespace transformer specifically for monitoring manifests
-		// This fixes hardcoded namespace in openshift-monitoring ServiceMonitors
+		targetNS := comp.GetSpec().GetTargetNamespace()
 		tfs := []mf.Transformer{
-			occommon.UpdateServiceMonitorTargetNamespace(comp.GetSpec().GetTargetNamespace()),
+			occommon.UpdateServiceMonitorTargetNamespace(targetNS),
 		}
 		if err := common.Transform(ctx, manifest, comp, tfs...); err != nil {
 			return nil, err

@@ -25,7 +25,14 @@ metadata:
 spec:
   endpoints:
     - interval: 10s
-      port: metrics
+      port: https-metrics
+      honorLabels: true
+      scheme: https
+      tlsConfig:
+        caFile: /etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt
+        certFile: /etc/prometheus/secrets/metrics-client-certs/tls.crt
+        keyFile: /etc/prometheus/secrets/metrics-client-certs/tls.key
+        serverName: tekton-results-watcher.openshift-pipelines.svc
   jobLabel: app
   namespaceSelector:
     matchNames:
@@ -47,7 +54,14 @@ metadata:
 spec:
   endpoints:
     - interval: 10s
-      port: prometheus
+      port: https-prometheus
+      honorLabels: true
+      scheme: https
+      tlsConfig:
+        caFile: /etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt
+        certFile: /etc/prometheus/secrets/metrics-client-certs/tls.crt
+        keyFile: /etc/prometheus/secrets/metrics-client-certs/tls.key
+        serverName: tekton-results-api-service.openshift-pipelines.svc
   jobLabel: app
   namespaceSelector:
     matchNames:
