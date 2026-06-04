@@ -256,6 +256,10 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 		}
 	}
 
+	if err := removeOperatorAdmissionWebhooks(ctx, oe.kubeClientSet); err != nil {
+		return err
+	}
+
 	r := rbac{
 		kubeClientSet: oe.kubeClientSet,
 		version:       os.Getenv(versionKey),
