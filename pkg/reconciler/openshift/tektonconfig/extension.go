@@ -187,6 +187,10 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		oe.consolePluginReconciler.SetTLSConfig(nil)
 	}
 
+	if err := occommon.EnsureMetricsClientCA(ctx, oe.kubeClientSet, tc.GetSpec().GetTargetNamespace()); err != nil {
+		return err
+	}
+
 	return r.createResources(ctx)
 }
 
