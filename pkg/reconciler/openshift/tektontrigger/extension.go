@@ -25,15 +25,18 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektontrigger"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
 )
 
 const (
-	tektonTriggersWebhookDeployment = "tekton-triggers-webhook"
-	webhookContainerName            = "webhook"
-	tektonTriggersCoreInterceptors  = "tekton-triggers-core-interceptors"
-	coreInterceptorsContainerName   = "tekton-triggers-core-interceptors"
+	tektonTriggersWebhookDeployment    = "tekton-triggers-webhook"
+	webhookContainerName               = "webhook"
+	tektonTriggersCoreInterceptors     = "tekton-triggers-core-interceptors"
+	coreInterceptorsContainerName      = "tekton-triggers-core-interceptors"
+	tektonTriggersControllerDeployment = "tekton-triggers-controller"
 )
 
 // triggersProperties holds fields for configuring runAsUser and runAsGroup.
@@ -54,11 +57,13 @@ var triggersData = triggersProperties{
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	return &openshiftExtension{
+		kubeClientSet:      kubeclient.Get(ctx),
 		tektonConfigLister: tektonConfiginformer.Get(ctx).Lister(),
 	}
 }
 
 type openshiftExtension struct {
+	kubeClientSet      kubernetes.Interface
 	tektonConfigLister occommon.TektonConfigLister
 	resolvedTLSConfig  *occommon.TLSEnvVars
 }
@@ -70,6 +75,11 @@ func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.T
 		occommon.ApplyCABundlesToDeployment,
 		common.AddConfigMapValues(tektontrigger.ConfigDefaults, triggersData),
 		replaceDeploymentArgs("-el-events", "enable"),
+		// mTLS for Prometheus scraping.
+		occommon.AnnotateMetricsServingCert(tektonTriggersControllerDeployment),
+		occommon.RenameServicePort(tektonTriggersControllerDeployment, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort),
+		occommon.ApplyMetricsTLS("Deployment", tektonTriggersControllerDeployment,
+			occommon.MetricsServingCertSecretName(tektonTriggersControllerDeployment)),
 	}
 
 	// Inject APIServer TLS profile env vars into the webhook and core interceptors
