@@ -310,30 +310,28 @@ func (r *Reconciler) reconcileApiInstallerSet(ctx context.Context, th *v1alpha1.
 		return err
 	}
 
+	apiLocation := filepath.Join(hubDir, manifestDirAPI)
+	apiManifest, err := r.getManifest(ctx, th, apiLocation)
+	if err != nil {
+		return err
+	}
+
+	infoLocation := filepath.Join(hubDir, manifestDirInfo)
+	infoManifest, err := r.getManifest(ctx, th, infoLocation)
+	if err != nil {
+		return err
+	}
+
+	*apiManifest = apiManifest.Append(*infoManifest)
+
+	if err := applyPVC(ctx, apiManifest, th); err != nil {
+		return err
+	}
+
 	if !exist {
 		th.Status.MarkApiInstallerSetNotAvailable("API installer set not available")
-		apiLocation := filepath.Join(hubDir, manifestDirAPI)
 
-		manifest, err := r.getManifest(ctx, th, apiLocation)
-		if err != nil {
-			return err
-		}
-
-		infoLocation := filepath.Join(hubDir, manifestDirInfo)
-
-		infoManifest, err := r.getManifest(ctx, th, infoLocation)
-		if err != nil {
-			return err
-		}
-
-		*manifest = manifest.Append(*infoManifest)
-
-		err = applyPVC(ctx, manifest, th)
-		if err != nil {
-			return err
-		}
-
-		err = r.setUpAndCreateInstallerSet(ctx, *manifest, th, installerSetNameAPI, version, installerSetTypeAPI)
+		err = r.setUpAndCreateInstallerSet(ctx, *apiManifest, th, installerSetNameAPI, version, installerSetTypeAPI)
 		if err != nil {
 			return err
 		}
@@ -479,20 +477,20 @@ func (r *Reconciler) setupDatabase(ctx context.Context, th *v1alpha1.TektonHub, 
 		return err
 	}
 
+	dbLocation := filepath.Join(hubDir, manifestDirDatabase)
+	dbManifest, err := r.getManifest(ctx, th, dbLocation)
+	if err != nil {
+		return err
+	}
+
+	if err := applyPVC(ctx, dbManifest, th); err != nil {
+		return err
+	}
+
 	if !exist {
 		th.Status.MarkDbInstallerSetNotAvailable("DB installer set not available")
-		dbLocation := filepath.Join(hubDir, manifestDirDatabase)
-		manifest, err := r.getManifest(ctx, th, dbLocation)
-		if err != nil {
-			return err
-		}
 
-		err = applyPVC(ctx, manifest, th)
-		if err != nil {
-			return err
-		}
-
-		err = r.setUpAndCreateInstallerSet(ctx, *manifest, th, installerSetNameDatabase, version, installerSetTypeDatabase)
+		err = r.setUpAndCreateInstallerSet(ctx, *dbManifest, th, installerSetNameDatabase, version, installerSetTypeDatabase)
 		if err != nil {
 			return err
 		}
