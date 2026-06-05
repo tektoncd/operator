@@ -157,14 +157,17 @@ var (
 				"tekton-triggers-core-interceptors",
 				"tekton-triggers-webhook",
 			},
-			AddonsInstallerSets: []string{ // installerset addons prefix
-				"addon-custom-clustertask",
-				"addon-custom-communityclustertask",
+			// installerset addons prefix
+			AddonsInstallerSets: []string{
+				"addon-custom-resolvertask",
+				"addon-custom-communityresolvertask",
 				"addon-custom-consolecli",
 				"addon-custom-openshiftconsole",
 				"addon-custom-pipelinestemplate",
+				"addon-custom-resolverstepaction",
 				"addon-custom-triggersresources",
-				"addon-versioned-clustertasks",
+				"addon-versioned-resolvertasks",
+				"addon-versioned-resolverstepactions",
 			},
 		},
 		v1alpha1.ProfileBasic: {
@@ -886,11 +889,11 @@ func (s *TektonConfigTestSuite) verifyAddons() {
 			"addon-custom-triggersresources",
 		}
 
-		expectedAddonsCount := 7
+		expectedAddonsCount := 9
 		expectedAddons := addonsAll
 
 		// if addon disabled
-		if enabledAddonsCount != 3 {
+		if enabledAddonsCount != 4 {
 			expectedAddonsCount = 3
 			expectedAddons = addonsNotByParams
 		}
