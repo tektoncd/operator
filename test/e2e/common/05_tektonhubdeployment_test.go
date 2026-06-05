@@ -82,6 +82,7 @@ func NewTektonHubTestSuite(t *testing.T) *TektonHubTestSuite {
 		},
 		pvcs: []string{
 			"tekton-hub-api",
+			"tekton-hub-db",
 		},
 		dbMigrationJobName: "tekton-hub-db-migration",
 		interval:           5 * time.Second,
