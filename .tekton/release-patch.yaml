@@ -57,7 +57,11 @@ spec:
     - name: releaseAsLatest
       value: "{{ release_as_latest }}"
     - name: koExtraArgs
-      value: "--preserve-import-paths"
+      # Empty: use ko's default --base-import-paths (hash-based image names),
+      # matching the canonical published image paths. Do NOT set
+      # --preserve-import-paths: it pushes to ghcr.io/tektoncd/operator/github.com/...
+      # long paths (private, non-canonical) and breaks the published manifests.
+      value: ""
     - name: serviceAccountImagesPath
       value: credentials
     - name: runTests
