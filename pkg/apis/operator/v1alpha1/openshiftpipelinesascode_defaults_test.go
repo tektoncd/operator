@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"net/http"
 	"testing"
 
 	"go.uber.org/zap"
@@ -24,6 +25,23 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
 )
+
+// mockHTTPClient creates an HTTP client that returns 200 OK for all requests
+func mockHTTPClient() *http.Client {
+	return &http.Client{
+		Transport: &mockTransport{},
+	}
+}
+
+type mockTransport struct{}
+
+func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       http.NoBody,
+		Header:     make(http.Header),
+	}, nil
+}
 
 func TestSetPACControllerDefaultSettings(t *testing.T) {
 	opacCR := &OpenShiftPipelinesAsCode{
@@ -38,7 +56,7 @@ func TestSetPACControllerDefaultSettings(t *testing.T) {
 		},
 	}
 
-	opacCR.Spec.PACSettings.setPACDefaults(zap.NewNop().Sugar())
+	opacCR.Spec.PACSettings.setPACDefaultsWithClient(zap.NewNop().Sugar(), mockHTTPClient())
 
 	expectedSettings := map[string]string{
 		"application-name":                           "Pipelines as Code CI",
@@ -97,7 +115,7 @@ func TestSetPACControllerLimitedSettings(t *testing.T) {
 		},
 	}
 
-	opacCR.Spec.PACSettings.setPACDefaults(zap.NewNop().Sugar())
+	opacCR.Spec.PACSettings.setPACDefaultsWithClient(zap.NewNop().Sugar(), mockHTTPClient())
 
 	expectedSettings := map[string]string{
 		"application-name":                           "Pipelines as Code CI test name",
@@ -155,7 +173,7 @@ func TestSetPACControllerDefaultSettingsWithMultipleCatalogs(t *testing.T) {
 		},
 	}
 
-	opacCR.Spec.PACSettings.setPACDefaults(zap.NewNop().Sugar())
+	opacCR.Spec.PACSettings.setPACDefaultsWithClient(zap.NewNop().Sugar(), mockHTTPClient())
 
 	expectedSettings := map[string]string{
 		"application-name":                           "Pipelines as Code CI",
@@ -217,7 +235,7 @@ func TestSetAdditionalPACControllerDefault(t *testing.T) {
 		},
 	}
 
-	opacCR.Spec.PACSettings.setPACDefaults(zap.NewNop().Sugar())
+	opacCR.Spec.PACSettings.setPACDefaultsWithClient(zap.NewNop().Sugar(), mockHTTPClient())
 
 	assert.Equal(t, true, *opacCR.Spec.PACSettings.AdditionalPACControllers["test"].Enable)
 	assert.Equal(t, "test-pipelines-as-code-configmap", opacCR.Spec.PACSettings.AdditionalPACControllers["test"].ConfigMapName)
@@ -249,7 +267,7 @@ func TestSetAdditionalPACControllerDefaultHavingAdditionalPACController(t *testi
 		},
 	}
 
-	opacCR.Spec.PACSettings.setPACDefaults(zap.NewNop().Sugar())
+	opacCR.Spec.PACSettings.setPACDefaultsWithClient(zap.NewNop().Sugar(), mockHTTPClient())
 
 	assert.Equal(t, false, *opacCR.Spec.PACSettings.AdditionalPACControllers["test"].Enable)
 	assert.Equal(t, "Additional PACController CI", opacCR.Spec.PACSettings.AdditionalPACControllers["test"].Settings["application-name"])
