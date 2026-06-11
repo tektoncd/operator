@@ -31,6 +31,7 @@ import (
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -528,6 +529,18 @@ func (i *installer) ensureResource(ctx context.Context, expected *unstructured.U
 			"expectedHash", expectedHashValue,
 		)
 
+		if selectorChanged, err := deploymentSelectorChanged(expected, existing); err != nil {
+			loggerWithContext.Errorw("failed to compare deployment selectors", "error", err)
+			return err
+		} else if selectorChanged {
+			loggerWithContext.Infow("deployment selector changed, deleting resource before recreate")
+			if err := i.mfClient.Delete(existing); err != nil {
+				loggerWithContext.Errorw("failed to delete deployment with changed selector", "error", err)
+				return v1alpha1.RECONCILE_AGAIN_ERR
+			}
+			return v1alpha1.RECONCILE_AGAIN_ERR
+		}
+
 		err = i.copyResourceFields(expected, existing, reconcileFields...)
 		if err != nil {
 			loggerWithContext.Errorw("failed to copy resource fields", "error", err)
@@ -545,6 +558,24 @@ func (i *installer) ensureResource(ctx context.Context, expected *unstructured.U
 	}
 	loggerWithContext.Debug("no changes detected, resource is up-to-date")
 	return nil
+}
+
+func deploymentSelectorChanged(expected, existing *unstructured.Unstructured) (bool, error) {
+	if expected.GetKind() != "Deployment" {
+		return false, nil
+	}
+
+	expectedDeployment := &appsv1.Deployment{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(expected.Object, expectedDeployment); err != nil {
+		return false, err
+	}
+
+	existingDeployment := &appsv1.Deployment{}
+	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(existing.Object, existingDeployment); err != nil {
+		return false, err
+	}
+
+	return !equality.Semantic.DeepEqual(expectedDeployment.Spec.Selector, existingDeployment.Spec.Selector), nil
 }
 
 func (i *installer) removeExtraKeyInMap(src, dst map[string]string) map[string]string {
