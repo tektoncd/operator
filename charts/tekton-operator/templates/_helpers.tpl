@@ -135,6 +135,13 @@ tekton-operator
 {{- end -}}
 
 
+{{- define "tekton-operator.kubernetesMinVersionEnv" -}}
+{{- if .Values.kubernetesMinVersion }}
+- name: KUBERNETES_MIN_VERSION
+  value: {{ .Values.kubernetesMinVersion | quote }}
+{{- end }}
+{{- end }}
+
 {{- define "tekton-operator.webhook-proxy-image" -}}
 {{- $tag := default .Chart.AppVersion .Values.webhookProxy.image.tag -}}
 {{- $image := "" -}}

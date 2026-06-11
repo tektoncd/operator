@@ -79,6 +79,13 @@ HEADER
   echo "  Updated: ${dest_dir}/${dest_file}"
 }
 
+# strip_int_formats removes "format: int32" and "format: int64" lines from CRD schemas.
+# Kubernetes does not recognize these OpenAPI format strings and emits warnings on apply;
+# dropping them is safe because the Kubernetes API server performs no validation based on them.
+strip_int_formats() {
+  grep -v '^\s*format: int\(32\|64\)$'
+}
+
 # assemble_helm_crds assembles a Helm chart CRD file from multiple generated CRDs
 assemble_helm_crds() {
   local output_file="$1"
@@ -89,7 +96,7 @@ assemble_helm_crds() {
   echo "${condition}" > "$output_file"
   for crd_file in "${crd_files[@]}"; do
     echo "---" >> "$output_file"
-    inject_labels "${GENERATED_DIR}/${crd_file}" | strip_leading_separator >> "$output_file"
+    inject_labels "${GENERATED_DIR}/${crd_file}" | strip_leading_separator | strip_int_formats >> "$output_file"
   done
   echo '{{- end -}}' >> "$output_file"
 
