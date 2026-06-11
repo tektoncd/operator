@@ -29,12 +29,14 @@ jobs:
 
       - name: Update Chart version with release tag
         run: |
-          # Extract tag name, stripping leading 'v' (e.g. v0.79.0 -> 0.79.0)
+          # Extract tag name (e.g. v0.80.0) and chart version without leading 'v' (e.g. 0.80.0).
+          # chart 'version' follows plain semver (no 'v' prefix).
+          # chart 'appVersion' must match the container image tag which carries the 'v' prefix.
           TAG="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG#v}"
           sed -i "s/^version: \"devel\"/version: \"${VERSION}\"/" charts/tekton-operator/Chart.yaml
-          sed -i "s/^appVersion: \"devel\"/appVersion: \"${VERSION}\"/" charts/tekton-operator/Chart.yaml
-          echo "Updated Chart.yaml to version ${VERSION}"
+          sed -i "s/^appVersion: \"devel\"/appVersion: \"${TAG}\"/" charts/tekton-operator/Chart.yaml
+          echo "Updated Chart.yaml: chart version=${VERSION}, appVersion=${TAG}"
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f  # v1.7.0
