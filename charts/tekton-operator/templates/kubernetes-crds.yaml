@@ -82,7 +82,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -146,7 +145,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               tektonInstallerSet:
                 description: The current installer set name for ManualApprovalGate
@@ -282,7 +280,6 @@ spec:
                             of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
                             it is not set, which means tolerate the taint forever (do not evict). Zero and
                             negative values will be treated as 0 (evict immediately) by the system.
-                          format: int64
                           type: integer
                         value:
                           description: |-
@@ -320,7 +317,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -389,7 +385,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               version:
                 description: The version of the installed release
@@ -524,7 +519,6 @@ spec:
                             of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
                             it is not set, which means tolerate the taint forever (do not evict). Zero and
                             negative values will be treated as 0 (evict immediately) by the system.
-                          format: int64
                           type: integer
                         value:
                           description: |-
@@ -724,7 +718,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -749,7 +742,6 @@ spec:
                       defaults: https://github.com/tektoncd/pipeline/blob/34618964300620dca44d10a595e4af84e9903a55/vendor/k8s.io/client-go/rest/config.go#L45-L46
                     type: number
                   replicas:
-                    format: int32
                     type: integer
                   statefulset-ordinals:
                     description: if is true, enable StatefulsetOrdinals mode
@@ -874,7 +866,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               tektonInstallerSet:
                 description: The current installer set name for TektonChain
@@ -1185,7 +1176,6 @@ spec:
                                 side effects a webhook may have.
                               type: string
                             timeoutSeconds:
-                              format: int32
                               type: integer
                           type: object
                         type: object
@@ -1210,7 +1200,6 @@ spec:
                           defaults: https://github.com/tektoncd/pipeline/blob/34618964300620dca44d10a595e4af84e9903a55/vendor/k8s.io/client-go/rest/config.go#L45-L46
                         type: number
                       replicas:
-                        format: int32
                         type: integer
                       statefulset-ordinals:
                         description: if is true, enable StatefulsetOrdinals mode
@@ -1321,7 +1310,6 @@ spec:
                             of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
                             it is not set, which means tolerate the taint forever (do not evict). Zero and
                             negative values will be treated as 0 (evict immediately) by the system.
-                          format: int64
                           type: integer
                         value:
                           description: |-
@@ -1365,7 +1353,6 @@ spec:
                                 side effects a webhook may have.
                               type: string
                             timeoutSeconds:
-                              format: int32
                               type: integer
                           type: object
                         type: object
@@ -1409,7 +1396,6 @@ spec:
                                 side effects a webhook may have.
                               type: string
                             timeoutSeconds:
-                              format: int32
                               type: integer
                           type: object
                         type: object
@@ -1461,7 +1447,6 @@ spec:
                                 side effects a webhook may have.
                               type: string
                             timeoutSeconds:
-                              format: int32
                               type: integer
                           type: object
                         type: object
@@ -1567,7 +1552,6 @@ spec:
                   keep-pod-on-cancel:
                     type: boolean
                   max-result-size:
-                    format: int32
                     type: integer
                   metrics.count.enable-reason:
                     type: boolean
@@ -1607,7 +1591,6 @@ spec:
                                 side effects a webhook may have.
                               type: string
                             timeoutSeconds:
-                              format: int32
                               type: integer
                           type: object
                         type: object
@@ -1644,7 +1627,6 @@ spec:
                           defaults: https://github.com/tektoncd/pipeline/blob/34618964300620dca44d10a595e4af84e9903a55/vendor/k8s.io/client-go/rest/config.go#L45-L46
                         type: number
                       replicas:
-                        format: int32
                         type: integer
                       statefulset-ordinals:
                         description: if is true, enable StatefulsetOrdinals mode
@@ -1756,7 +1738,6 @@ spec:
                                         of side effects a webhook may have.
                                       type: string
                                     timeoutSeconds:
-                                      format: int32
                                       type: integer
                                   type: object
                                 type: object
@@ -1846,7 +1827,6 @@ spec:
                                         of side effects a webhook may have.
                                       type: string
                                     timeoutSeconds:
-                                      format: int32
                                       type: integer
                                   type: object
                                 type: object
@@ -1909,7 +1889,6 @@ spec:
                     description: |-
                       Optional deadline in seconds for starting the job if it misses scheduled time for any reason.
                       Missed jobs executions will be counted as failed ones.
-                    format: int64
                     type: integer
                 required:
                 - disabled
@@ -1928,7 +1907,6 @@ spec:
                   db_name:
                     type: string
                   db_port:
-                    format: int64
                     type: integer
                   db_secret_name:
                     type: string
@@ -1980,7 +1958,6 @@ spec:
                   logs_api:
                     type: boolean
                   logs_buffer_size:
-                    format: int64
                     type: integer
                   logs_path:
                     type: string
@@ -2018,7 +1995,6 @@ spec:
                                 side effects a webhook may have.
                               type: string
                             timeoutSeconds:
-                              format: int32
                               type: integer
                           type: object
                         type: object
@@ -2043,7 +2019,6 @@ spec:
                           defaults: https://github.com/tektoncd/pipeline/blob/34618964300620dca44d10a595e4af84e9903a55/vendor/k8s.io/client-go/rest/config.go#L45-L46
                         type: number
                       replicas:
-                        format: int32
                         type: integer
                       statefulset-ordinals:
                         description: if is true, enable StatefulsetOrdinals mode
@@ -2058,7 +2033,6 @@ spec:
                   prometheus_histogram:
                     type: boolean
                   prometheus_port:
-                    format: int64
                     type: integer
                   route_enabled:
                     description: Route configuration for Results API service exposure
@@ -2075,7 +2049,6 @@ spec:
                       pass it as environment variables to the "tekton-results-api" deployment under "api" container
                     type: string
                   server_port:
-                    format: int64
                     type: integer
                   storage_emulator_host:
                     type: string
@@ -2133,7 +2106,6 @@ spec:
                                 side effects a webhook may have.
                               type: string
                             timeoutSeconds:
-                              format: int32
                               type: integer
                           type: object
                         type: object
@@ -2197,7 +2169,6 @@ spec:
                                 side effects a webhook may have.
                               type: string
                             timeoutSeconds:
-                              format: int32
                               type: integer
                           type: object
                         type: object
@@ -2245,7 +2216,6 @@ spec:
                                 side effects a webhook may have.
                               type: string
                             timeoutSeconds:
-                              format: int32
                               type: integer
                           type: object
                         type: object
@@ -2308,7 +2278,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               profile:
                 description: The profile installed
@@ -2423,7 +2392,6 @@ spec:
                             of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
                             it is not set, which means tolerate the taint forever (do not evict). Zero and
                             negative values will be treated as 0 (evict immediately) by the system.
-                          format: int64
                           type: integer
                         value:
                           description: |-
@@ -2463,7 +2431,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -2532,7 +2499,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               tektonInstallerSet:
                 description: The current installer set name for TektonDashboard
@@ -2690,7 +2656,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -2793,7 +2758,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               uiUrl:
                 description: The URL route for UI which needs to be exposed
@@ -2914,7 +2878,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
             type: object
         type: object
@@ -3028,7 +2991,6 @@ spec:
                             of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
                             it is not set, which means tolerate the taint forever (do not evict). Zero and
                             negative values will be treated as 0 (evict immediately) by the system.
-                          format: int64
                           type: integer
                         value:
                           description: |-
@@ -3111,7 +3073,6 @@ spec:
               keep-pod-on-cancel:
                 type: boolean
               max-result-size:
-                format: int32
                 type: integer
               metrics.count.enable-reason:
                 type: boolean
@@ -3151,7 +3112,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -3188,7 +3148,6 @@ spec:
                       defaults: https://github.com/tektoncd/pipeline/blob/34618964300620dca44d10a595e4af84e9903a55/vendor/k8s.io/client-go/rest/config.go#L45-L46
                     type: number
                   replicas:
-                    format: int32
                     type: integer
                   statefulset-ordinals:
                     description: if is true, enable StatefulsetOrdinals mode
@@ -3291,7 +3250,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               tektonInstallerSet:
                 description: The current installer set name for TektonPipeline
@@ -3405,7 +3363,6 @@ spec:
                             of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
                             it is not set, which means tolerate the taint forever (do not evict). Zero and
                             negative values will be treated as 0 (evict immediately) by the system.
-                          format: int64
                           type: integer
                         value:
                           description: |-
@@ -3422,7 +3379,6 @@ spec:
               db_name:
                 type: string
               db_port:
-                format: int64
                 type: integer
               db_secret_name:
                 type: string
@@ -3474,7 +3430,6 @@ spec:
               logs_api:
                 type: boolean
               logs_buffer_size:
-                format: int64
                 type: integer
               logs_path:
                 type: string
@@ -3512,7 +3467,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -3537,7 +3491,6 @@ spec:
                       defaults: https://github.com/tektoncd/pipeline/blob/34618964300620dca44d10a595e4af84e9903a55/vendor/k8s.io/client-go/rest/config.go#L45-L46
                     type: number
                   replicas:
-                    format: int32
                     type: integer
                   statefulset-ordinals:
                     description: if is true, enable StatefulsetOrdinals mode
@@ -3552,7 +3505,6 @@ spec:
               prometheus_histogram:
                 type: boolean
               prometheus_port:
-                format: int64
                 type: integer
               route_enabled:
                 description: Route configuration for Results API service exposure
@@ -3569,7 +3521,6 @@ spec:
                   pass it as environment variables to the "tekton-results-api" deployment under "api" container
                 type: string
               server_port:
-                format: int64
                 type: integer
               storage_emulator_host:
                 type: string
@@ -3636,7 +3587,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               tektonInstallerSet:
                 description: The current installer set name for TektonResult
@@ -3746,7 +3696,6 @@ spec:
                             of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
                             it is not set, which means tolerate the taint forever (do not evict). Zero and
                             negative values will be treated as 0 (evict immediately) by the system.
-                          format: int64
                           type: integer
                         value:
                           description: |-
@@ -3791,7 +3740,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -3856,7 +3804,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               tektonInstallerSet:
                 description: The current installer set name
@@ -3965,7 +3912,6 @@ spec:
                             of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
                             it is not set, which means tolerate the taint forever (do not evict). Zero and
                             negative values will be treated as 0 (evict immediately) by the system.
-                          format: int64
                           type: integer
                         value:
                           description: |-
@@ -4008,7 +3954,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -4074,7 +4019,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               tektonInstallerSet:
                 description: The current installer set name for TektonPruner
@@ -4184,7 +4128,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -4252,7 +4195,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               tekton-scheduler:
                 description: The current installer set name for TektonScheduler
@@ -4348,7 +4290,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -4413,7 +4354,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               tektonInstallerSet:
                 description: The current installer set name for TektonMulticlusterProxyAAE
@@ -4523,7 +4463,6 @@ spec:
                             of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
                             it is not set, which means tolerate the taint forever (do not evict). Zero and
                             negative values will be treated as 0 (evict immediately) by the system.
-                          format: int64
                           type: integer
                         value:
                           description: |-
@@ -4561,7 +4500,6 @@ spec:
                             effects a webhook may have.
                           type: string
                         timeoutSeconds:
-                          format: int32
                           type: integer
                       type: object
                     type: object
@@ -4623,7 +4561,6 @@ spec:
                 description: |-
                   ObservedGeneration is the 'Generation' of the Service that
                   was last processed by the controller.
-                format: int64
                 type: integer
               syncerServiceInstallerSet:
                 description: The current installer set name for SyncerService
