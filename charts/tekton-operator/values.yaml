@@ -3,6 +3,12 @@
 ## Override the full name of this Helm release
 nameOverride: ""
 
+## Minimum Kubernetes version required to run the operator.
+## Mirrors the KUBERNETES_MIN_VERSION env var honored by knative/pkg.
+## Default aligns with the knative/pkg minimum vendored by this release (v1.34.0).
+## Override to a lower version (e.g. "v1.28.0") only for non-production / testing clusters.
+kubernetesMinVersion: "v1.34.0"
+
 ## Choose between the vanilla Kubernetes flavor and the Openshift flavor of this Helm chart
 ## Container images, RBAC resources and operator settings will be adjusted automatically,
 ## unless explicitly overridden by a Helm value.
@@ -71,6 +77,8 @@ webhook:
   hostNetwork: false
   dnsPolicy: ""
   httpsWebhookPort: 8443
+  # Additional environment variables for the tekton-operator-webhook container
+  additionalEnvs: []
   image:
     # Container image for Tekton operator webhook. Default value depends on the flavor (k8s/openshift).
     repository: ""

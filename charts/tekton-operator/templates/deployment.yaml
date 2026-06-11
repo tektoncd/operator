@@ -70,6 +70,7 @@ spec:
               {{- end }}
             - name: CONFIG_OBSERVABILITY_NAME
               value: {{ include "tekton-operator.fullname" . }}-observability
+            {{- include "tekton-operator.kubernetesMinVersionEnv" . | nindent 12 }}
             {{- range .Values.operator.additionalEnvs }}
             - name: {{ .name }}
               value: {{ .value | quote }}
@@ -127,6 +128,11 @@ spec:
               {{- end }}
             - name: CONFIG_OBSERVABILITY_NAME
               value: {{ include "tekton-operator.fullname" . }}-observability
+            {{- include "tekton-operator.kubernetesMinVersionEnv" . | nindent 12 }}
+            {{- range .Values.operator.additionalEnvs }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
           args:
             - "-controllers"
             - "tektoninstallerset"
@@ -213,6 +219,11 @@ spec:
               value: {{ .Values.webhook.httpsWebhookPort | quote }}
             - name: METRICS_DOMAIN
               value: {{ .Values.service.metricsDomain }}
+            {{- include "tekton-operator.kubernetesMinVersionEnv" . | nindent 12 }}
+            {{- range .Values.webhook.additionalEnvs }}
+            - name: {{ .name }}
+              value: {{ .value | quote }}
+            {{- end }}
           image: {{ include "tekton-operator.webhook-image" . }}
           imagePullPolicy: {{ .Values.webhook.image.pullPolicy }}
           name: {{ include "tekton-operator.operator-name" . -}}-webhook
