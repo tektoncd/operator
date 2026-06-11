@@ -113,7 +113,7 @@ spec:
                 secretKeyRef:
                   key: POSTGRES_USER
                   name: tekton-results-postgres
-          image: registry.redhat.io/rhel9/postgresql-15@sha256:90ec347a35ab8a5d530c8d09f5347b13cc71df04f3b994bfa8b1a409b1171d59
+          image: registry.redhat.io/rhel9/postgresql-15@sha256:7c4e08eb2e68a8f8e1f6561433560cbab61f4f8e18b5af6755c44c5557a26b71
           name: postgres
           ports:
             - containerPort: 5432
