@@ -21,18 +21,43 @@ rules:
       - kueue.x-k8s.io
     resources:
       - resourceflavors
-      - workloads
-      - workloads/finalizers
-      - workloads/status
       - workloadpriorityclasses
     verbs:
       - get
       - list
-      - create
-      - update
-      - delete
-      - patch
       - watch
+  - apiGroups:
+      - kueue.x-k8s.io
+    resources:
+      - workloadpriorityclasses
+    verbs:
+      - create
+  - apiGroups:
+      - kueue.x-k8s.io
+    resources:
+      - workloads
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - kueue.x-k8s.io
+    resources:
+      - workloads/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - kueue.x-k8s.io
+    resources:
+      - workloads/status
+    verbs:
+      - get
+      - patch
+      - update
   - apiGroups:
       - scheduling.k8s.io
     resources:
@@ -49,8 +74,6 @@ rules:
     verbs:
       - get
       - create
-      - update
-      - list
   - nonResourceURLs:
       - /metrics
     verbs:
