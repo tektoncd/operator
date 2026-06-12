@@ -123,7 +123,7 @@ developing and running Pipelines. The recommended configuration is:
 
 To setup a cluster with GKE:
 
-1. [Install required tools and setup GCP project](https://github.com/knative/docs/blob/master/docs/install/Knative-with-GKE.md#before-you-begin)
+1. [Install required tools and create a GKE cluster](https://cloud.google.com/kubernetes-engine/docs/quickstarts/create-cluster)
    (You may find it useful to save the ID of the project in an environment
    variable (e.g. `PROJECT_ID`).
 
