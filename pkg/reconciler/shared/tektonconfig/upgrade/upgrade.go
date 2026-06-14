@@ -39,6 +39,7 @@ var (
 		// TODO: Remove the preUpgradeTektonPruner upgrade function in next operator release
 		preUpgradeTektonPruner,                   // upgrade #5: pre upgrade tekton pruner
 		removeDeprecatedDisableAffinityAssistant, // upgrade #6: remove deprecated DisableAffinityAssistant field from pipeline config
+		removeHubFromTektonConfig,                // upgrade #7: clear deprecated hub field
 	}
 
 	// post upgrade functions

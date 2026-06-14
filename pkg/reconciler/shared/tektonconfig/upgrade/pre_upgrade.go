@@ -380,3 +380,23 @@ func removeDeprecatedDisableAffinityAssistant(ctx context.Context, logger *zap.S
 	logger.Info("Successfully removed deprecated disable-affinity-assistant field from TektonConfig CR")
 	return nil
 }
+
+// removeHubFromTektonConfig removes the deprecated hub field from the TektonConfig spec.
+// TODO: Remove this function in the release-v0.80.x
+func removeHubFromTektonConfig(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	tcCR, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	// Clear the hub spec if it was previously set
+	if len(tcCR.Spec.Hub.Params) > 0 || tcCR.Spec.Hub.Options.Deployments != nil {
+		tcCR.Spec.Hub = v1alpha1.Hub{}
+		_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{})
+		return err
+	}
+	return nil
+}

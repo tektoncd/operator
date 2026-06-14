@@ -28,7 +28,6 @@ type ResourceNames struct {
 	TektonPruner             string
 	TektonResult             string
 	TektonChain              string
-	TektonHub                string
 	Namespace                string
 	TargetNamespace          string
 	OperatorPodSelectorLabel string
@@ -46,7 +45,6 @@ func GetResourceNames() ResourceNames {
 		TektonPruner:             v1alpha1.TektonPrunerResourceName,
 		TektonResult:             v1alpha1.ResultResourceName,
 		TektonChain:              v1alpha1.ChainResourceName,
-		TektonHub:                v1alpha1.HubResourceName,
 		ManualApprovalGate:       v1alpha1.ManualApprovalGates,
 		OpenShiftPipelinesAsCode: v1alpha1.OpenShiftPipelinesAsCodeName,
 		Namespace:                "tekton-operator",

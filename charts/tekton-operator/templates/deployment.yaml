@@ -77,7 +77,7 @@ spec:
             {{- end }}
           args:
             - "-controllers"
-            - {{ .Values.controllers | default "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner,openshiftpipelinesascode" | quote }}
+            - {{ .Values.controllers | default "tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner,openshiftpipelinesascode" | quote }}
             - "-unique-process-name"
             - "tekton-operator-lifecycle"
           image: {{ include "tekton-operator.operator-image" . }}

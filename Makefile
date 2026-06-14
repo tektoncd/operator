@@ -72,7 +72,6 @@ ifeq ($(TARGET), openshift)
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-pipeline
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-trigger
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-chains
-	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-hub
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-results
 	rm -rf ./cmd/$(TARGET)/operator/kodata/manual-approval-gate
 	rm -rf ./cmd/$(TARGET)/operator/kodata/tekton-pruner

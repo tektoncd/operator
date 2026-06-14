@@ -56,10 +56,6 @@ func (c *FakeOperatorV1alpha1) TektonDashboards() v1alpha1.TektonDashboardInterf
 	return newFakeTektonDashboards(c)
 }
 
-func (c *FakeOperatorV1alpha1) TektonHubs() v1alpha1.TektonHubInterface {
-	return newFakeTektonHubs(c)
-}
-
 func (c *FakeOperatorV1alpha1) TektonInstallerSets() v1alpha1.TektonInstallerSetInterface {
 	return newFakeTektonInstallerSets(c)
 }

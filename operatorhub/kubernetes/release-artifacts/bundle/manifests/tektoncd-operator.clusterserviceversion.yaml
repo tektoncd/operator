@@ -16,10 +16,7 @@ metadata:
       \      },\n      \"targetNamespace\": \"tekton-pipelines\"\n    }\n  },\n  {\n\
       \    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n    \"kind\": \"TektonDashboard\"\
       ,\n    \"metadata\": {\n      \"name\": \"dashboard\"\n    },\n    \"spec\"\
-      : {\n      \"targetNamespace\": \"tekton-pipelines\"\n    }\n  },\n  {\n   \
-      \ \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n    \"kind\": \"TektonHub\"\
-      ,\n    \"metadata\": {\n      \"name\": \"hub\"\n    },\n    \"spec\": {\n \
-      \     \"targetNamespace\": \"tekton-pipelines\"\n    }\n  },\n  {\n    \"apiVersion\"\
+      : {\n      \"targetNamespace\": \"tekton-pipelines\"\n    }\n  },\n  {\n    \"apiVersion\"\
       : \"operator.tekton.dev/v1alpha1\",\n    \"kind\": \"TektonInstallerSet\",\n\
       \    \"metadata\": {\n      \"name\": \"foo\"\n    },\n    \"spec\": {\n   \
       \   \"manifests\": []\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
@@ -115,20 +112,6 @@ spec:
       displayName: TektonDashboard
       kind: TektonDashboard
       name: tektondashboards.operator.tekton.dev
-      version: v1alpha1
-    - description: 'TektonHub installs Tekton Hub on a cluster. The operator installs
-        Tekton Hub on a cluster
-
-        if an instance of this CRD is created on your cluster with name `hub`. At
-        present, the operator honors only
-
-        one CustomResource instance with the name `hub` to ensure only one set of
-        Tekton Hub exists on a cluster.
-
-        '
-      displayName: TektonHubs
-      kind: TektonHub
-      name: tektonhubs.operator.tekton.dev
       version: v1alpha1
     - description: 'TektonInstallerSet internal CRD used by other component reconcilers
         to create kubernetes resources from their
@@ -863,7 +846,7 @@ spec:
               containers:
               - args:
                 - -controllers
-                - tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard,manualapprovalgate
+                - tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboard,manualapprovalgate
                 - -unique-process-name
                 - tekton-operator-lifecycle
                 env:
