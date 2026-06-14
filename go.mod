@@ -19,7 +19,6 @@ require (
 	github.com/openshift/library-go v0.0.0-20260303171201-5d9eb6295ff6
 	github.com/sigstore/cosign/v2 v2.6.3
 	github.com/spf13/cobra v1.10.2
-	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	github.com/tektoncd/pipeline v1.12.0
 	github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2
@@ -250,6 +249,7 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/spf13/viper v1.21.0 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect

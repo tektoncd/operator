@@ -204,10 +204,6 @@ func WaitForTektonConfigReady(client operatorV1alpha1.TektonConfigInterface, nam
 		// 2. Even if the Pod has started properly, it may not have entered the
 		//    Reconcile logic yet, which could also lead to instability.
 		//    For example:
-		//      In the testing logic of TektonHub, it immediately deletes the
-		//      CR of TektonHub and then polls whether the CR has been cleaned up.
-		//      At this point, the tekton-operator enters the Reconcile logic and
-		//      automatically creates the CR of TektonHub again, causing the test to fail.
 		return readyCount >= 3, nil
 	}
 

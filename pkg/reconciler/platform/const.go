@@ -22,7 +22,6 @@ const (
 	ControllerTektonPipeline       ControllerName = "tektonpipeline"
 	ControllerTektonTrigger        ControllerName = "tektontrigger"
 	ControllerTektonInstallerSet   ControllerName = "tektoninstallerset"
-	ControllerTektonHub            ControllerName = "tektonhub"
 	ControllerTektonChain          ControllerName = "tektonchain"
 	ControllerTektonResult         ControllerName = "tektonresult"
 	ControllerManualApprovalGate   ControllerName = "manualapprovalgate"
