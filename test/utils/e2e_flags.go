@@ -28,7 +28,6 @@ var (
 	TektonTriggerDeploymentLabel      = labelString(v1alpha1.OperandTektoncdTriggers)
 	TektonDashboardDeploymentLabel    = labelString(v1alpha1.OperandTektoncdDashboard)
 	TektonChainDeploymentLabel        = labelString(v1alpha1.OperandTektoncdChains)
-	TektonHubDeploymentLabel          = labelString(v1alpha1.OperandTektoncdHub)
 	TektonResultsDeploymentLabel      = labelString(v1alpha1.OperandTektoncdResults)
 	ManualApprovalGateDeploymentLabel = labelString(v1alpha1.ManualApprovalGates)
 	TektonPrunerDeploymentLabel       = labelString(v1alpha1.TektonPrunerResourceName)

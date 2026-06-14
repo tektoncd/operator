@@ -45,11 +45,9 @@ func getDebugCommands(resourceNames utils.ResourceNames) []string {
 		"kubectl get tektonpipeline",
 		"kubectl get tektonchain",
 		"kubectl get tektontrigger",
-		"kubectl get tektonhub",
 		"kubectl get tektondashboard",
 		fmt.Sprintf("kubectl get %s --output=wide --namespace=%s", debugNamespacedResources, pipelinesNamespace),
 		fmt.Sprintf("kubectl get %s --output=wide --namespace=%s", debugNamespacedResources, operatorNamespace),
-		fmt.Sprintf("kubectl get %s --output=wide --namespace=hub-external-db", debugNamespacedResources),
 	}
 	if utils.IsOpenShift() {
 		openshiftCommands := []string{

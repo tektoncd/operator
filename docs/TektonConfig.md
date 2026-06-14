@@ -104,15 +104,6 @@ spec:
     # keep-since: 1440
     # NOTE: you can use either "keep" or "keep-since", not both
     prune-per-resource: true
-  hub:
-    params:
-      - name: enable-devconsole-integration
-        value: "true"
-    options:
-      disabled: false
-      configMaps: {}
-      deployments: {}
-      webhookConfigurationOptions: {}
   dashboard:
     readonly: true
     options:
@@ -495,21 +486,6 @@ addon:
 
 **NOTE**: TektonAddon is currently available for OpenShift Platform only. Enabling this for Kubernetes platform is in roadmap
 of Operator.
-
-### Hub
-
-This is to enable/disable showing hub resources in pipeline builder of devconsole(OpenShift UI). By default, the field is
-not there in the config object. If you want to disable the integration, you can add the param like below in config with value `false`.
-The possible values are `true` and `false`.
-
-Example:
-
-```yaml
-hub:
-  params:
-    - name: enable-devconsole-integration
-      value: "false"
-```
 
 ### Dashboard
 

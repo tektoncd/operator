@@ -52,22 +52,6 @@ func TestReconcileTargetNamespace(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "verify-tekton-hub",
-			component: &v1alpha1.TektonHub{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub"},
-				Spec:       v1alpha1.TektonHubSpec{CommonSpec: v1alpha1.CommonSpec{TargetNamespace: namespaceTektonPipelines}},
-			},
-			err: nil,
-		},
-		{
-			name: "verify-custom-target-namespace-tekton-hub",
-			component: &v1alpha1.TektonHub{
-				ObjectMeta: metav1.ObjectMeta{Name: "hub"},
-				Spec:       v1alpha1.TektonHubSpec{CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "custom"}},
-			},
-			err: nil,
-		},
-		{
 			name: "verify-custom-target-namespace",
 			component: &v1alpha1.TektonConfig{
 				ObjectMeta: metav1.ObjectMeta{Name: "config"},

@@ -309,57 +309,6 @@ release_yaml_manualapprovalgate() {
 
 }
 
-release_yaml_hub() {
-  echo fetching '|' component: ${1} '|' version: ${2}
-  local version=$2
-
-  ko_data=${SCRIPT_DIR}/cmd/${TARGET}/operator/kodata
-  if [ ${version} == "latest" ]
-  then
-    version=$(curl -sL https://api.github.com/repos/openshift-pipelines/hub/releases | jq -r ".[].tag_name" | sort -Vr | head -n1)
-    dirPath=${ko_data}/tekton-hub/0.0.0-latest
-  else
-    dirPath=${ko_data}/tekton-hub/${version}
-  fi
-  mkdir -p ${dirPath} || true
-
-  url=""
-  components="db db-migration api ui hub-info"
-
-  for component in ${components}; do
-    echo fetching Hub '|' component: ${component} '|' version: ${2}
-
-    dest=${dirPath}/${component}
-    fileName=${component}.yaml
-    destinationFile=${dest}/${fileName}
-
-    if [ -f "$destinationFile" ] && [ $FORCE_FETCH_RELEASE = "false" ]; then
-          if grep -Eq "$version" $destinationFile;
-          then
-              echo "release file already exist with required version, skipping!"
-              echo ""
-              continue
-          fi
-    fi
-
-    rm -rf ${dest} || true
-    mkdir -p ${dest} || true
-
-    [[ ${component} == "api" ]] || [[ ${component} == "ui" ]] && fileName=${component}-${TARGET}.yaml
-
-    url="https://github.com/openshift-pipelines/hub/releases/download/${version}/${fileName}"
-    echo $url
-    http_response=$(curl -s -L -o ${destinationFile} -w "%{http_code}" ${url})
-    echo url: ${url}
-    if [[ $http_response != "200" ]]; then
-      echo "Error: failed to get ${component} yaml, status code: $http_response"
-      exit 1
-    fi
-    echo "Info: Added Hub/$fileName:$version release yaml !!"
-    echo ""
-  done
-}
-
 fetch_openshift_addon_tasks() {
   fetch_addon_task_script="${SCRIPT_DIR}/hack/openshift"
   local dest_dir='cmd/openshift/operator/kodata/tekton-addon/addons/06-ecosystem/tasks'
@@ -424,9 +373,6 @@ main() {
   if [[ ${TARGET} == "openshift" ]]; then
     fetch_openshift_addon_tasks
   fi
-
-  hub_version=$(go run ./cmd/tool component-version ${CONFIG} hub)
-  release_yaml_hub hub ${hub_version}
 
   mag_version=$(go run ./cmd/tool component-version ${CONFIG} manual-approval-gate)
   release_yaml_manualapprovalgate ${mag_version}

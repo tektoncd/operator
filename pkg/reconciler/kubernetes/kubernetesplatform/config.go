@@ -22,7 +22,6 @@ import (
 	k8sChain "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonchain"
 	k8sConfig "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig"
 	k8sDashboard "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektondashboard"
-	k8sHub "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonhub"
 	k8sInstallerSet "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	k8sMulticlusterProxyAAE "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonmulticlusterproxyaae"
 	k8sPipeline "github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpipeline"
@@ -56,9 +55,6 @@ var (
 			Name:                  string(platform.ControllerTektonTrigger),
 			ControllerConstructor: k8sTrigger.NewController,
 		},
-		platform.ControllerTektonHub: injection.NamedControllerConstructor{
-			Name:                  string(platform.ControllerTektonHub),
-			ControllerConstructor: k8sHub.NewController},
 		platform.ControllerTektonChain: injection.NamedControllerConstructor{
 			Name:                  string(platform.ControllerTektonChain),
 			ControllerConstructor: k8sChain.NewController},

@@ -21,9 +21,6 @@ metadata:
       \        \"resources\": [\n          \"pipelinerun\",\n          \"taskrun\"\
       \n        ],\n        \"schedule\": \"0 8 * * *\"\n      },\n      \"targetNamespace\"\
       : \"openshift-pipelines\"\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
-      ,\n    \"kind\": \"TektonHub\",\n    \"metadata\": {\n      \"name\": \"hub\"\
-      \n    },\n    \"spec\": {\n      \"api\": {\n        \"hubConfigUrl\": \"https://raw.githubusercontent.com/openshift-pipelines/hub/main/config.yaml\"\
-      \n      }\n    }\n  },\n  {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\"\
       ,\n    \"kind\": \"TektonInstallerSet\",\n    \"metadata\": {\n      \"name\"\
       : \"foo\"\n    },\n    \"spec\": {\n      \"manifests\": []\n    }\n  },\n \
       \ {\n    \"apiVersion\": \"operator.tekton.dev/v1alpha1\",\n    \"kind\": \"\
@@ -44,7 +41,7 @@ metadata:
     operators.operatorframework.io/builder: operator-sdk-v1.21.0
     operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev",
       "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev",
-      "tektonhubs.operator.tekton.dev", "tektonchains.operator.tekton.dev"]'
+      "tektonchains.operator.tekton.dev"]'
     operators.operatorframework.io/project_layout: unknown
     repository: https://github.com/openshift/tektoncd-operator
     support: Red Hat
@@ -113,27 +110,6 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:label
       statusDescriptors:
       - description: The version of Operator installed
-        displayName: Version
-        path: version
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:label
-      version: v1alpha1
-    - description: Represents an installation of latest version of Hub
-      displayName: Tekton Hub
-      kind: TektonHub
-      name: tektonhubs.operator.tekton.dev
-      resources:
-      - kind: tektoninstallersets
-        name: ''
-        version: v1alpha1
-      specDescriptors:
-      - description: Namespace where Addons installed
-        displayName: Target Namespace
-        path: targetNamespace
-        x-descriptors:
-        - urn:alm:descriptor:com.tectonic.ui:label
-      statusDescriptors:
-      - description: The version of Addons installed
         displayName: Version
         path: version
         x-descriptors:
@@ -849,8 +825,6 @@ spec:
                       name: tekton-config-defaults
                 - name: CONFIG_OBSERVABILITY_NAME
                   value: tekton-config-observability
-                - name: IMAGE_HUB_TEKTON_HUB_DB
-                  value: registry.redhat.io/rhel9/postgresql-13@sha256:36647bd6d50d2e0e9c99ecf190bd515577c7ce9476e49d927c4d4065011e3441
                 - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
                   value: registry.redhat.io/rhel9/buildah@sha256:841699d5705e752749e5b0b2d6d362aa41596483b9b061363f41eb3c54eb0910
                 - name: IMAGE_ADDONS_PARAM_KN_IMAGE
@@ -945,12 +919,6 @@ spec:
                   value: registry.redhat.io/openshift-pipelines/pipelines-results-api-rhel9@
                 - name: IMAGE_RESULTS_RETENTION_POLICY_AGENT
                   value: registry.redhat.io/openshift-pipelines/pipelines-results-retention-policy-agent-rhel9@
-                - name: IMAGE_HUB_TEKTON_HUB_DB_MIGRATION
-                  value: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel9@
-                - name: IMAGE_HUB_TEKTON_HUB_API
-                  value: registry.redhat.io/openshift-pipelines/pipelines-hub-api-rhel9@
-                - name: IMAGE_HUB_TEKTON_HUB_UI
-                  value: registry.redhat.io/openshift-pipelines/pipelines-hub-ui-rhel9@
                 - name: IMAGE_PAC_TRIGGERTEMPLATE_APPLY_AND_LAUNCH
                   value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
                 - name: IMAGE_MAG_TEKTON_TASKGROUP_CONTROLLER
@@ -1150,14 +1118,6 @@ spec:
     name: TEKTON_OPERATOR_WEBHOOK
   - image: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel9@
     name: IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
-  - image: registry.redhat.io/rhel9/postgresql-13@sha256:36647bd6d50d2e0e9c99ecf190bd515577c7ce9476e49d927c4d4065011e3441
-    name: IMAGE_HUB_TEKTON_HUB_DB
-  - image: registry.redhat.io/openshift-pipelines/pipelines-hub-db-migration-rhel9@
-    name: IMAGE_HUB_TEKTON_HUB_DB_MIGRATION
-  - image: registry.redhat.io/openshift-pipelines/pipelines-hub-api-rhel9@
-    name: IMAGE_HUB_TEKTON_HUB_API
-  - image: registry.redhat.io/openshift-pipelines/pipelines-hub-ui-rhel9@
-    name: IMAGE_HUB_TEKTON_HUB_UI
   - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
     name: IMAGE_PAC_TRIGGERTEMPLATE_APPLY_AND_LAUNCH
   - image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:718e59d9aacacbaa16be3ae247bdb8582dc4fd9cbe0c5314dfdfc8f22e4f3578
