@@ -1056,7 +1056,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-pipelines/pipelines-as-code v0.47.0
+# github.com/openshift-pipelines/pipelines-as-code v0.48.0
 ## explicit; go 1.25.7
 github.com/openshift-pipelines/pipelines-as-code/pkg/cli
 github.com/openshift-pipelines/pipelines-as-code/pkg/configutil
@@ -2640,10 +2640,10 @@ k8s.io/utils/pointer
 k8s.io/utils/ptr
 k8s.io/utils/strings/slices
 k8s.io/utils/trace
-# knative.dev/hack v0.0.0-20260212092700-0126b283bf20
+# knative.dev/hack v0.0.0-20260421155212-aeb7b4a9bf96
 ## explicit; go 1.24
 knative.dev/hack
-# knative.dev/pkg v0.0.0-20260406140200-cb58ae50e894
+# knative.dev/pkg v0.0.0-20260422015212-ec452872dcc1
 ## explicit; go 1.25.0
 knative.dev/pkg/apis
 knative.dev/pkg/apis/duck

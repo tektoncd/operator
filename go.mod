@@ -12,7 +12,7 @@ require (
 	github.com/manifestival/client-go-client v0.6.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
-	github.com/openshift-pipelines/pipelines-as-code v0.47.0
+	github.com/openshift-pipelines/pipelines-as-code v0.48.0
 	github.com/openshift/api v0.0.0-20260429122012-1180c0f5c3e9
 	github.com/openshift/apiserver-library-go v0.0.0-20260303173613-cd3676268d31
 	github.com/openshift/client-go v0.0.0-20260429123927-c81f86abfa6a
@@ -38,7 +38,7 @@ require (
 	k8s.io/client-go v1.5.2
 	k8s.io/code-generator v0.35.5
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
-	knative.dev/pkg v0.0.0-20260406140200-cb58ae50e894
+	knative.dev/pkg v0.0.0-20260422015212-ec452872dcc1
 	sigs.k8s.io/yaml v1.6.0
 )
 
@@ -311,7 +311,7 @@ require (
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-aggregator v0.35.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20260330154417-16be699c7b31 // indirect
-	knative.dev/hack v0.0.0-20260212092700-0126b283bf20 // indirect
+	knative.dev/hack v0.0.0-20260421155212-aeb7b4a9bf96 // indirect
 	sigs.k8s.io/controller-runtime v0.23.1 // indirect
 	sigs.k8s.io/gateway-api v1.5.1 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
