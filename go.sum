@@ -2647,8 +2647,8 @@ github.com/tchap/go-patricia/v2 v2.3.3 h1:xfNEsODumaEcCcY3gI0hYPZ/PcpVv5ju6RMAhg
 github.com/tchap/go-patricia/v2 v2.3.3/go.mod h1:VZRHKAb53DLaG+nA9EaYYiaEx6YztwDlLElMsnSHD4k=
 github.com/tektoncd/pipeline v1.9.3 h1:7Z+V2VX5wjz9LoNa16E1RbgH9mpYy5B1KnAMm3H0czc=
 github.com/tektoncd/pipeline v1.9.3/go.mod h1:pEruzPp4JM8JK8Nnnih46IPgdtxRPot/i9pUZo8lA9I=
-github.com/tektoncd/pipelines-as-code v0.42.1 h1:REUMJhD3891EWd6bp5rqHilCS2fhJT6mg/wuo7G58HE=
-github.com/tektoncd/pipelines-as-code v0.42.1/go.mod h1:jc0edr8Ha0qAmFMmpfGknmasVkNVY1oteV/RtGY/w8E=
+github.com/tektoncd/pipelines-as-code v0.42.2 h1:3ZJguDi/vomy93xxEKdRAQBtmf6rllkF2QyLLBDTn7Q=
+github.com/tektoncd/pipelines-as-code v0.42.2/go.mod h1:+k1bnyV9qwL67n6XerumQImlPsFU2aj24tBFv8XZoyA=
 github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2 h1:v4UPEbe6MEto5i4ELtiXWBxUAUIAWL5U1DznfPhi4WE=
 github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2/go.mod h1:BC6F3DlZc+wpUT9YcwG9MoSfb4tUiH2olB9xYoIsB4I=
 github.com/tektoncd/pruner v0.3.5 h1:eQTgnQ56Par9d/6BICsXfTkR0Ybx8c/0QLZeNoJnaYQ=
