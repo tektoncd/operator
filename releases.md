@@ -36,16 +36,37 @@ Further documentation available:
 
 Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 
-## Releases
+## Release
 
-### In Support
+### v0.79 (LTS)
 
-| Version     | Minimum K8S | Pipeline    | Release Date | End of Life |
-|-------------|-------------|-------------|--------------|-------------|
-| v0.78.x LTS | 1.28.x      | v1.6.x LTS  | 2025-12-08   | 2026-12-08  |
-| v0.77.x LTS | 1.28.x      | v1.3.1 LTS  | 2025-08-21   | 2026-08-21  |
-| v0.76.x LTS | 1.28.x      | v1.0.0 LTS  | 2025-05-27   | 2026-05-27  |
-| v0.75.x LTS | 1.28.x      | v0.68.x LTS | 2025-02-18   | 2026-02-18  |
+| Minimum K8S | Pipeline   | Release Date | End of Life |
+|-------------|------------|--------------|-------------|
+| 1.28.x      | v1.9.x LTS | 2026-04-01   | 2027-04-01  |
+
+### v0.78 (LTS)
+
+| Minimum K8S | Pipeline   | Release Date | End of Life |
+|-------------|------------|--------------|-------------|
+| 1.28.x      | v1.6.x LTS | 2025-12-08   | 2026-12-08  |
+
+### v0.77 (LTS)
+
+| Minimum K8S | Pipeline    | Release Date | End of Life |
+|-------------|-------------|--------------|-------------|
+| 1.28.x      | v1.3.1 LTS  | 2025-08-21   | 2026-08-21  |
+
+### v0.76 (LTS)
+
+| Minimum K8S | Pipeline   | Release Date | End of Life |
+|-------------|------------|--------------|-------------|
+| 1.28.x      | v1.0.0 LTS | 2025-05-27   | 2026-05-27  |
+
+### v0.75 (LTS)
+
+| Minimum K8S | Pipeline    | Release Date | End of Life |
+|-------------|-------------|--------------|-------------|
+| 1.28.x      | v0.68.x LTS | 2025-02-18   | 2026-02-18  |
 
 ### End of Life
 
