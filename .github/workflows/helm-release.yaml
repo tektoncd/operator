@@ -8,6 +8,7 @@ jobs:
   release:
     permissions:
       contents: write
+      packages: write
     runs-on: ubuntu-latest
     if: github.repository_owner == 'tektoncd'  # do not run this elsewhere
     steps:
@@ -37,8 +38,25 @@ jobs:
           sed -i "s/^version: \"devel\"/version: \"${VERSION}\"/" charts/tekton-operator/Chart.yaml
           sed -i "s/^appVersion: \"devel\"/appVersion: \"${TAG}\"/" charts/tekton-operator/Chart.yaml
           echo "Updated Chart.yaml: chart version=${VERSION}, appVersion=${TAG}"
+          echo "CHART_VERSION=${VERSION}" >> "$GITHUB_ENV"
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f  # v1.7.0
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push chart to OCI registry
+        run: |
+          helm package charts/tekton-operator \
+            --version "${CHART_VERSION}" \
+            --destination /tmp/
+          helm push "/tmp/tekton-operator-${CHART_VERSION}.tgz" \
+            oci://ghcr.io/tektoncd/operator/charts
+          echo "Pushed ghcr.io/tektoncd/operator/charts/tekton-operator:${CHART_VERSION}"
