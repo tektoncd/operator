@@ -38,6 +38,12 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 
 ## Release
 
+### v0.80 (LTS)
+
+| Minimum K8S | Pipeline    | Release Date | End of Life |
+|-------------|-------------|--------------|-------------|
+| 1.28.x      | v1.12.x LTS | 2026-06-11   | 2027-06-11  |
+
 ### v0.79 (LTS)
 
 | Minimum K8S | Pipeline   | Release Date | End of Life |
