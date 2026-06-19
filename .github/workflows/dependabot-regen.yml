@@ -54,8 +54,8 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          git config user.name "tekton-robot"
-          git config user.email "tekton-robot@users.noreply.github.com"
+          git config user.name "Jawed khelil"
+          git config user.email "jkhelil@redhat.com"
 
           # Create a new branch
           BRANCH="dependabot-regen-$(date +%Y%m%d-%H%M%S)"
