@@ -134,6 +134,9 @@ type TektonConfigSpec struct {
 	// holds target namespace metadata
 	// +optional
 	TargetNamespaceMetadata *NamespaceMetadata `json:"targetNamespaceMetadata,omitempty"`
+	// NetworkPolicy configures namespace-wide NetworkPolicies for the operand namespace.
+	// +optional
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
 // PipelinesAsCodeForCurrentPlatform returns the PipelinesAsCode block for the operator build
