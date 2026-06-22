@@ -25,6 +25,7 @@ rules:
       - workloads/finalizers
       - workloads/status
       - workloadpriorityclasses
+      - multikueueclusters
     verbs:
       - get
       - list
