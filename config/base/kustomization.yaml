@@ -44,5 +44,3 @@ resources:
 - tekton_result_role_binding.yaml
 - tekton_scheduler_role.yaml
 - tekton_scheduler_role_binding.yaml
-- tekton_multicluster_proxy_aae_role.yaml
-- tekton_multicluster_proxy_aae_role_binding.yaml
