@@ -44,6 +44,52 @@ updates:
         semver-patch-days: 3
     - package-ecosystem: github-actions
       directory: /
+      target-branch: release-v0.80.x
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - github_action
+        - kind/misc
+        - release-note-none
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      cooldown:
+        default-days: 7
+        semver-major-days: 30
+        semver-minor-days: 7
+        semver-patch-days: 3
+    - package-ecosystem: gomod
+      directory: /
+      target-branch: release-v0.80.x
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - kind/misc
+        - release-note-none
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: github.com/openshift/client-go
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      cooldown:
+        default-days: 7
+        semver-major-days: 30
+        semver-minor-days: 7
+        semver-patch-days: 3
+    - package-ecosystem: github-actions
+      directory: /
       target-branch: release-v0.79.x
       schedule:
         interval: weekly

@@ -16,6 +16,7 @@
 # Release branches receive patch-only updates (no major/minor bumps).
 # Check releases.md for the current list of supported releases.
 release-branches:
+  - release-v0.80.x
   - release-v0.79.x
   - release-v0.78.x
   - release-v0.77.x
