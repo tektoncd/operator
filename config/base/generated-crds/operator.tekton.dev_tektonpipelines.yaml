@@ -283,6 +283,13 @@ spec:
                 description: ScopeWhenExpressionsToTask is deprecated and never used.
                 type: boolean
               send-cloudevents-for-runs:
+                description: |-
+                  Deprecated: send-cloudevents-for-runs is deprecated in tektoncd/pipeline v1.12.0
+                  (https://github.com/tektoncd/pipeline/pull/9774) and will be removed in a future release.
+                  CloudEvents for CustomRuns are now enabled by default when a sink is configured in
+                  the config-events ConfigMap. This field only affects CustomRun objects; it has no
+                  effect on TaskRuns or PipelineRuns. Set to false only to suppress duplicate events
+                  when a custom task controller already sends its own CloudEvents.
                 type: boolean
               set-security-context:
                 type: boolean
@@ -303,8 +310,6 @@ spec:
                 type: string
               verification-mode:
                 type: string
-            required:
-            - options
             type: object
           status:
             description: TektonPipelineStatus defines the observed state of TektonPipeline

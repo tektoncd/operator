@@ -52,6 +52,7 @@ type TektonMulticlusterProxyAAESpec struct {
 
 type MulticlusterProxyAAEOptions struct {
 	// options holds additional fields and these fields will be updated on the manifests
+	// +optional
 	Options AdditionalOptions `json:"options"`
 }
 

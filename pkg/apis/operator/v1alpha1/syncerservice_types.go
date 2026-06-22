@@ -67,6 +67,7 @@ type SyncerServiceSpec struct {
 // SyncerServiceOptions defines the fields to customize SyncerService component
 type SyncerServiceOptions struct {
 	// Options holds additions fields and these fields will be updated on the manifests
+	// +optional
 	Options AdditionalOptions `json:"options,omitempty"`
 }
 

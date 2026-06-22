@@ -52,6 +52,7 @@ type Scheduler struct {
 	SchedulerConfig    `json:",inline"`
 	MultiClusterConfig `json:",inline"`
 	// options holds additions fields and these fields will be updated on the manifests
+	// +optional
 	Options AdditionalOptions `json:"options"`
 }
 

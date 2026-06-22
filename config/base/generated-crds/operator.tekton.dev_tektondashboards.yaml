@@ -144,7 +144,6 @@ spec:
                 description: TargetNamespace is where resources will be installed
                 type: string
             required:
-            - options
             - readonly
             type: object
           status:
