@@ -81,6 +81,7 @@ type PACSettings struct {
 	// +optional
 	AdditionalPACControllers map[string]AdditionalPACControllerConfig `json:"additionalPACControllers,omitempty"`
 	// options holds additions fields and these fields will be updated on the manifests
+	// +optional
 	Options AdditionalOptions `json:"options"`
 }
 

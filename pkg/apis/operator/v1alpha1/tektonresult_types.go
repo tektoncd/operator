@@ -78,6 +78,7 @@ type Result struct {
 	// LokiStackProperties holds configuration for LokiStack
 	LokiStackProperties `json:",inline"`
 	// Options holds additions fields and these fields will be updated on the manifests
+	// +optional
 	Options AdditionalOptions `json:"options"`
 	// +optional
 	Performance PerformanceProperties `json:"performance,omitempty"`

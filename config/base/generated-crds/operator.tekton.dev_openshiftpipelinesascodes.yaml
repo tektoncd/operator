@@ -167,8 +167,6 @@ spec:
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
                 type: string
-            required:
-            - options
             type: object
           status:
             description: OpenShiftPipelinesAsCodeStatus defines the observed state

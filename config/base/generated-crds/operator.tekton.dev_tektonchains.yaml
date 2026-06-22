@@ -414,7 +414,6 @@ spec:
                 type: string
             required:
             - disabled
-            - options
             type: object
           status:
             description: TektonChainStatus defines the observed state of TektonChain
