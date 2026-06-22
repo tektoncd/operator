@@ -271,7 +271,6 @@ spec:
             required:
             - disabled
             - is_external_db
-            - options
             type: object
           status:
             description: TektonResultStatus defines the observed state of TektonResult

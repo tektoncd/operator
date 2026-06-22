@@ -104,7 +104,6 @@ spec:
             - disabled
             - multi-cluster-disabled
             - multi-cluster-role
-            - options
             type: object
           status:
             description: TektonSchedulerStatus defines the observed state of TektonScheduler

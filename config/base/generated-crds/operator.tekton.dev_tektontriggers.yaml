@@ -146,7 +146,6 @@ spec:
                 type: string
             required:
             - disabled
-            - options
             type: object
           status:
             description: TektonTriggerStatus defines the observed state of TektonTrigger

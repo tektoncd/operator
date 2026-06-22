@@ -144,7 +144,6 @@ spec:
             required:
             - disabled
             - global-config
-            - options
             type: object
           status:
             description: TektonPrunerStatus defines the observed state of TektonPruner
