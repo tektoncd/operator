@@ -79,6 +79,7 @@ type Chain struct {
 	ChainProperties `json:",inline"`
 	ControllerEnvs  []corev1.EnvVar `json:"controllerEnvs,omitempty"`
 	// options holds additions fields and these fields will be updated on the manifests
+	// +optional
 	Options AdditionalOptions `json:"options"`
 }
 

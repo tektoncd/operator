@@ -170,8 +170,6 @@ spec:
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
                 type: string
-            required:
-            - options
             type: object
           status:
             description: TektonHubStatus defines the observed state of TektonHub
