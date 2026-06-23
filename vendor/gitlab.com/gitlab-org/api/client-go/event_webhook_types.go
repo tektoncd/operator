@@ -886,7 +886,7 @@ type PipelineEvent struct {
 			Email string `json:"email"`
 		} `json:"author"`
 	} `json:"commit"`
-	SourcePipline struct {
+	SourcePipeline struct {
 		Project struct {
 			ID                int    `json:"id"`
 			WebURL            string `json:"web_url"`

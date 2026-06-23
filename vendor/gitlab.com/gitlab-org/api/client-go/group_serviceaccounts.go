@@ -135,18 +135,27 @@ func (s *GroupsService) CreateServiceAccountPersonalAccessToken(gid interface{},
 	return pat, resp, nil
 }
 
+// RotateServiceAccountPersonalAccessTokenOptions represents the available RotateServiceAccountPersonalAccessToken()
+// options.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ee/api/group_service_accounts.html#rotate-a-personal-access-token-for-a-service-account-user
+type RotateServiceAccountPersonalAccessTokenOptions struct {
+	ExpiresAt *ISOTime `url:"expires_at,omitempty" json:"expires_at,omitempty"`
+}
+
 // RotateServiceAccountPersonalAccessToken rotates a Personal Access Token for a
 // service account user for a group.
 //
 // GitLab API docs: https://docs.gitlab.com/ee/api/groups.html#create-personal-access-token-for-service-account-user
-func (s *GroupsService) RotateServiceAccountPersonalAccessToken(gid interface{}, serviceAccount, token int, options ...RequestOptionFunc) (*PersonalAccessToken, *Response, error) {
+func (s *GroupsService) RotateServiceAccountPersonalAccessToken(gid interface{}, serviceAccount, token int, opt *RotateServiceAccountPersonalAccessTokenOptions, options ...RequestOptionFunc) (*PersonalAccessToken, *Response, error) {
 	group, err := parseID(gid)
 	if err != nil {
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("groups/%s/service_accounts/%d/personal_access_tokens/%d/rotate", PathEscape(group), serviceAccount, token)
 
-	req, err := s.client.NewRequest(http.MethodPost, u, nil, options)
+	req, err := s.client.NewRequest(http.MethodPost, u, opt, options)
 	if err != nil {
 		return nil, nil, err
 	}
