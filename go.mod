@@ -4,7 +4,7 @@ go 1.25.11
 
 require (
 	github.com/Masterminds/semver v1.5.0
-	github.com/cert-manager/cert-manager v1.19.4
+	github.com/cert-manager/cert-manager v1.19.5
 	github.com/cli/go-gh/v2 v2.13.0
 	github.com/go-logr/zapr v1.3.0
 	github.com/google/go-cmp v0.7.0
@@ -310,7 +310,7 @@ require (
 	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/api v0.272.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260316180232-0b37fe3546d5 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260316180232-0b37fe3546d5 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260319201613-d00831a3d3e7 // indirect
 	google.golang.org/grpc v1.79.3 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
