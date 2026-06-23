@@ -1187,8 +1187,8 @@ github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d h1:vfofYNRScrDd
 github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d/go.mod h1:RRCYJbIwD5jmqPI9XoAFR0OcDxqUctll6zUj/+B4S48=
 github.com/tchap/go-patricia/v2 v2.3.3 h1:xfNEsODumaEcCcY3gI0hYPZ/PcpVv5ju6RMAhgwZDDc=
 github.com/tchap/go-patricia/v2 v2.3.3/go.mod h1:VZRHKAb53DLaG+nA9EaYYiaEx6YztwDlLElMsnSHD4k=
-github.com/tektoncd/pipeline v1.0.0 h1:qq/BtjwtvZV7qhd6BnL5sGoBM4vVqpCtz/+hMbs6p94=
-github.com/tektoncd/pipeline v1.0.0/go.mod h1:4XV9M4YrbCmsI4yDePcc5V8SM0Uso+S+0km80/dTD1I=
+github.com/tektoncd/pipeline v1.0.3 h1:4YztLYufDhQU+fuAdAsQEV/VZFiDr4qqStQ+AN1VQN0=
+github.com/tektoncd/pipeline v1.0.3/go.mod h1:WIgFi5MhV9DrhWsVNhPtZ2lgfrSyiaSDM9T8qF/kAok=
 github.com/tektoncd/pipelines-as-code v0.35.0 h1:cmsXDkAgrWx/uD46OnufPh+LkqManQ53ZAiKuZbP4rs=
 github.com/tektoncd/pipelines-as-code v0.35.0/go.mod h1:sWw55rgEurnYNKkpItE0iBrczF3Nv/XTUzWEiYSmrVY=
 github.com/tektoncd/plumbing v0.0.0-20250430145243-3b7cd59879c1 h1:nv7BsOAZ1ifQX9Lw1hYFo1f7e62dTDyyVPJBuljgZKw=
@@ -2043,8 +2043,8 @@ honnef.co/go/tools v0.0.1-2020.1.4/go.mod h1:X/FiERA/W4tHapMX5mGpAtMSVEeEUOyHaw9
 k8s.io/api v0.32.4 h1:kw8Y/G8E7EpNy7gjB8gJZl3KJkNz8HM2YHrZPtAZsF4=
 k8s.io/api v0.32.4/go.mod h1:5MYFvLvweRhyKylM3Es/6uh/5hGp0dg82vP34KifX4g=
 k8s.io/apiextensions-apiserver v0.27.7/go.mod h1:x0p+b5a955lfPz9gaDeBy43obM12s+N9dNHK6+dUL+g=
-k8s.io/apiextensions-apiserver v0.32.5 h1:o0aKvmzIIs8Uk54pidk32pxET+Pg2ULnh9WI1PuKTwE=
-k8s.io/apiextensions-apiserver v0.32.5/go.mod h1:5fpedJa3HJJFBukAZ6ur91DEDye5gYuXISPbOiNLYpU=
+k8s.io/apiextensions-apiserver v0.32.13 h1:3M8y1UNKgAp/I+T4TDEeqXiR1wj8nrqzTqgMHRKsO8A=
+k8s.io/apiextensions-apiserver v0.32.13/go.mod h1:IMU3eme+2CoGzlmiHVcl6v08u3dRzebcBTnop09cwpY=
 k8s.io/apimachinery v0.32.4 h1:8EEksaxA7nd7xWJkkwLDN4SvWS5ot9g6Z/VZb3ju25I=
 k8s.io/apimachinery v0.32.4/go.mod h1:GpHVgxoKlTxClKcteaeuF1Ul/lDVb74KpZcxcmLDElE=
 k8s.io/apiserver v0.27.7/go.mod h1:OrLG9RwCOerutAlo8QJW5EHzUG9Dad7k6rgcDUNSO/w=

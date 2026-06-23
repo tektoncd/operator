@@ -18,7 +18,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
-	github.com/tektoncd/pipeline v1.0.0
+	github.com/tektoncd/pipeline v1.0.3
 	github.com/tektoncd/plumbing v0.0.0-20250430145243-3b7cd59879c1
 	github.com/tektoncd/triggers v0.32.0
 	go.opencensus.io v0.24.0
@@ -29,10 +29,10 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	gotest.tools/v3 v3.5.2
 	k8s.io/api v0.34.1
-	k8s.io/apiextensions-apiserver v0.32.5
+	k8s.io/apiextensions-apiserver v0.32.13
 	k8s.io/apimachinery v0.34.1
 	k8s.io/client-go v1.5.2
-	k8s.io/code-generator v0.32.5
+	k8s.io/code-generator v0.32.13
 	knative.dev/pkg v0.0.0-20250424013628-d5e74d29daa3
 	sigs.k8s.io/yaml v1.6.0
 )
