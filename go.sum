@@ -1767,8 +1767,8 @@ github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d h1:vfofYNRScrDd
 github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d/go.mod h1:RRCYJbIwD5jmqPI9XoAFR0OcDxqUctll6zUj/+B4S48=
 github.com/tchap/go-patricia/v2 v2.3.2 h1:xTHFutuitO2zqKAQ5rCROYgUb7Or/+IC3fts9/Yc7nM=
 github.com/tchap/go-patricia/v2 v2.3.2/go.mod h1:VZRHKAb53DLaG+nA9EaYYiaEx6YztwDlLElMsnSHD4k=
-github.com/tektoncd/pipeline v0.68.0 h1:bVzj+HbS/NQAPV2CfEW8HZrREm7uagPCzEggyxVTBdc=
-github.com/tektoncd/pipeline v0.68.0/go.mod h1:MScUtGGW4VeaNcaNrulmNLBSn14EGTXXKy+kh+YZ8Gg=
+github.com/tektoncd/pipeline v0.68.1 h1:/R1qV2ea8BYbhVBNHceDq5SRAGQ8rCc/+0u7SFwG0vk=
+github.com/tektoncd/pipeline v0.68.1/go.mod h1:MScUtGGW4VeaNcaNrulmNLBSn14EGTXXKy+kh+YZ8Gg=
 github.com/tektoncd/plumbing v0.0.0-20250116154805-bf07e665a460 h1:J9Gk3j1x4Yi1qzcUn0w4KekxVdD7qTMdoGCChw3G32A=
 github.com/tektoncd/plumbing v0.0.0-20250116154805-bf07e665a460/go.mod h1:Ks1fp1nPnhJxxT810eOkq2skeIiDuYjq3cIgpS5Gxk4=
 github.com/tektoncd/triggers v0.31.0 h1:UiOn9sjavdJDEoAT+FZf+L3I1QQvzI31oJm8+GpNa7s=
