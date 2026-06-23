@@ -15,19 +15,6 @@ namespace: tekton-operator
 
 resources:
 - 100-namespace.yaml
-- 300-operator_v1alpha1_pipeline_crd.yaml
-- 300-operator_v1alpha1_trigger_crd.yaml
-- 300-operator_v1alpha1_config_crd.yaml
-- 300-operator_v1alpha1_chain_crd.yaml
-- 300-operator_v1alpha1_result_crd.yaml
-- 300-operator_v1alpha1_installer_set_crd.yaml
-- 300-operator_v1alpha1_hub_crd.yaml
-- 300-operator_v1alpha1_manualapprovalgate_crd.yaml
-- 300-operator_v1alpha1_pruner_crd.yaml
-- 300-operator_v1alpha1_scheduler_crd.yaml
-- 300-operator_v1alpha1_multiclusterproxyaae_crd.yaml
-- 300-operator_v1alpha1_syncerservice_crd.yaml
-- 300-operator_v1alpha1_openshiftpipelinesascode_crd.yaml
 - config-logging.yaml
 - config-observability.yaml
 - tekton-config-defaults.yaml
@@ -44,3 +31,18 @@ resources:
 - tekton_result_role_binding.yaml
 - tekton_scheduler_role.yaml
 - tekton_scheduler_role_binding.yaml
+
+# Generated CRDs
+- generated-crds/operator.tekton.dev_manualapprovalgates.yaml
+- generated-crds/operator.tekton.dev_openshiftpipelinesascodes.yaml
+- generated-crds/operator.tekton.dev_syncerservices.yaml
+- generated-crds/operator.tekton.dev_tektonchains.yaml
+- generated-crds/operator.tekton.dev_tektonconfigs.yaml
+- generated-crds/operator.tekton.dev_tektonhubs.yaml
+- generated-crds/operator.tekton.dev_tektoninstallersets.yaml
+- generated-crds/operator.tekton.dev_tektonmulticlusterproxyaaes.yaml
+- generated-crds/operator.tekton.dev_tektonpipelines.yaml
+- generated-crds/operator.tekton.dev_tektonpruners.yaml
+- generated-crds/operator.tekton.dev_tektonresults.yaml
+- generated-crds/operator.tekton.dev_tektonschedulers.yaml
+- generated-crds/operator.tekton.dev_tektontriggers.yaml
