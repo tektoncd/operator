@@ -19,9 +19,6 @@ updates:
         - release-note-none
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /
       schedule:
@@ -60,9 +57,6 @@ updates:
             - version-update:semver-minor
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.80.x
@@ -106,9 +100,6 @@ updates:
             - version-update:semver-minor
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.79.x
@@ -152,9 +143,6 @@ updates:
             - version-update:semver-minor
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.78.x
@@ -198,9 +186,6 @@ updates:
             - version-update:semver-minor
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.77.x
@@ -244,9 +229,6 @@ updates:
             - version-update:semver-minor
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.76.x
@@ -290,9 +272,6 @@ updates:
             - version-update:semver-minor
       cooldown:
         default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.75.x
