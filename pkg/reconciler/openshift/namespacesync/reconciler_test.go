@@ -26,6 +26,7 @@ import (
 	"gotest.tools/v3/assert"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
@@ -676,4 +677,106 @@ func TestEnsureSecretBindings_KeepsUnmanagedSecrets(t *testing.T) {
 	// user-added-secret must be preserved — we do not own it.
 	assert.Equal(t, 1, len(sa.ImagePullSecrets))
 	assert.Equal(t, "user-added-secret", sa.ImagePullSecrets[0].Name)
+}
+
+// ---------------------------------------------------------------------------
+// ClusterInterceptors ClusterRoleBinding tests
+// ---------------------------------------------------------------------------
+
+func TestClusterInterceptors_CreatesCRBWhenSAExists(t *testing.T) {
+	ns := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "my-ns"}}
+	r, kubeClient := newTestReconciler(t, minimalTC(&v1alpha1.NamespaceSyncConfig{}), []corev1.Namespace{ns})
+
+	// Pipeline SA exists — reconcile should add it to the ClusterRoleBinding.
+	_, err := kubeClient.CoreV1().ServiceAccounts("my-ns").Create(context.Background(), &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineSA, Namespace: "my-ns"},
+	}, metav1.CreateOptions{})
+	assert.NilError(t, err)
+
+	assert.NilError(t, r.Reconcile(context.Background(), "my-ns"))
+
+	crb, err := kubeClient.RbacV1().ClusterRoleBindings().Get(context.Background(), clusterInterceptorsClusterRole, metav1.GetOptions{})
+	assert.NilError(t, err)
+	assert.Equal(t, 1, len(crb.Subjects))
+	assert.Equal(t, "my-ns", crb.Subjects[0].Namespace)
+	assert.Equal(t, pipelineSA, crb.Subjects[0].Name)
+}
+
+func TestClusterInterceptors_NoCRBWhenSAAbsent(t *testing.T) {
+	ns := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "my-ns"}}
+	r, kubeClient := newTestReconciler(t, minimalTC(&v1alpha1.NamespaceSyncConfig{
+		CreatePipelineSA: boolPtr(false),
+	}), []corev1.Namespace{ns})
+
+	// No SA — ClusterRoleBinding must not be created.
+	assert.NilError(t, r.Reconcile(context.Background(), "my-ns"))
+
+	_, err := kubeClient.RbacV1().ClusterRoleBindings().Get(context.Background(), clusterInterceptorsClusterRole, metav1.GetOptions{})
+	assert.Assert(t, errors.IsNotFound(err), "expected ClusterRoleBinding to be absent, got: %v", err)
+}
+
+func TestClusterInterceptors_Idempotent(t *testing.T) {
+	ns := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "my-ns"}}
+	r, kubeClient := newTestReconciler(t, minimalTC(&v1alpha1.NamespaceSyncConfig{}), []corev1.Namespace{ns})
+
+	_, err := kubeClient.CoreV1().ServiceAccounts("my-ns").Create(context.Background(), &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineSA, Namespace: "my-ns"},
+	}, metav1.CreateOptions{})
+	assert.NilError(t, err)
+
+	assert.NilError(t, r.Reconcile(context.Background(), "my-ns"))
+	assert.NilError(t, r.Reconcile(context.Background(), "my-ns"))
+
+	crb, err := kubeClient.RbacV1().ClusterRoleBindings().Get(context.Background(), clusterInterceptorsClusterRole, metav1.GetOptions{})
+	assert.NilError(t, err)
+	// Must not have duplicate subjects.
+	count := 0
+	for _, s := range crb.Subjects {
+		if s.Namespace == "my-ns" && s.Name == pipelineSA {
+			count++
+		}
+	}
+	assert.Equal(t, 1, count)
+}
+
+func TestClusterInterceptors_AddsMultipleNamespaces(t *testing.T) {
+	nsA := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-a"}}
+	nsB := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-b"}}
+	r, kubeClient := newTestReconciler(t, minimalTC(&v1alpha1.NamespaceSyncConfig{}), []corev1.Namespace{nsA, nsB})
+
+	for _, nsName := range []string{"ns-a", "ns-b"} {
+		_, err := kubeClient.CoreV1().ServiceAccounts(nsName).Create(context.Background(), &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{Name: pipelineSA, Namespace: nsName},
+		}, metav1.CreateOptions{})
+		assert.NilError(t, err)
+		assert.NilError(t, r.Reconcile(context.Background(), nsName))
+	}
+
+	crb, err := kubeClient.RbacV1().ClusterRoleBindings().Get(context.Background(), clusterInterceptorsClusterRole, metav1.GetOptions{})
+	assert.NilError(t, err)
+	assert.Equal(t, 2, len(crb.Subjects))
+}
+
+func TestClusterInterceptors_RemovesSubjectWhenSADeleted(t *testing.T) {
+	nsA := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-a"}}
+	nsB := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "ns-b"}}
+	r, kubeClient := newTestReconciler(t, minimalTC(&v1alpha1.NamespaceSyncConfig{}), []corev1.Namespace{nsA, nsB})
+
+	// Create SAs in both namespaces and reconcile.
+	for _, nsName := range []string{"ns-a", "ns-b"} {
+		_, err := kubeClient.CoreV1().ServiceAccounts(nsName).Create(context.Background(), &corev1.ServiceAccount{
+			ObjectMeta: metav1.ObjectMeta{Name: pipelineSA, Namespace: nsName},
+		}, metav1.CreateOptions{})
+		assert.NilError(t, err)
+		assert.NilError(t, r.Reconcile(context.Background(), nsName))
+	}
+
+	// Delete ns-a's pipeline SA then reconcile ns-a — its subject must be removed.
+	assert.NilError(t, kubeClient.CoreV1().ServiceAccounts("ns-a").Delete(context.Background(), pipelineSA, metav1.DeleteOptions{}))
+	assert.NilError(t, r.Reconcile(context.Background(), "ns-a"))
+
+	crb, err := kubeClient.RbacV1().ClusterRoleBindings().Get(context.Background(), clusterInterceptorsClusterRole, metav1.GetOptions{})
+	assert.NilError(t, err)
+	assert.Equal(t, 1, len(crb.Subjects))
+	assert.Equal(t, "ns-b", crb.Subjects[0].Namespace)
 }
