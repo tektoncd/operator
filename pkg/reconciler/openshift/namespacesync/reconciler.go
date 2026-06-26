@@ -43,6 +43,7 @@ import (
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/retry"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/reconciler"
 )
 
 const (
@@ -63,6 +64,8 @@ var nsIgnoreRegex = regexp.MustCompile(reconcilerCommon.NamespaceIgnorePattern)
 // current NamespaceSyncConfig from TektonConfig and ensures all declared
 // resources exist and are correct in the given namespace.
 type Reconciler struct {
+	reconciler.LeaderAwareFuncs
+
 	kubeClient         kubernetes.Interface
 	operatorClient     clientset.Interface
 	securityClientSet  security.Interface

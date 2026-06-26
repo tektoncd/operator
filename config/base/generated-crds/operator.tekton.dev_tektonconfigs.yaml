@@ -975,6 +975,53 @@ spec:
                               namespace or in the Default field.
                             type: string
                         type: object
+                      namespaceSync:
+                        description: NamespaceSync controls per-namespace resource
+                          provisioning by the NamespaceSyncController.
+                        properties:
+                          createCABundles:
+                            description: CreateCABundles controls whether the CA bundle
+                              ConfigMaps are created in each namespace.
+                            type: boolean
+                          createEditRoleBinding:
+                            description: CreateEditRoleBinding controls whether the
+                              openshift-pipelines-edit RoleBinding is created in each
+                              namespace.
+                            type: boolean
+                          createPipelineSA:
+                            description: CreatePipelineSA controls whether the pipeline
+                              ServiceAccount is created in each namespace.
+                            type: boolean
+                          createSCCRoleBinding:
+                            description: CreateSCCRoleBinding controls whether the
+                              SCC RoleBinding is created in each namespace.
+                            type: boolean
+                          namespaceSelector:
+                            description: NamespaceSelector is an optional label selector
+                              that restricts which namespaces are synced.
+                            properties:
+                              matchExpressions:
+                                items:
+                                  properties:
+                                    key:
+                                      type: string
+                                    operator:
+                                      type: string
+                                    values:
+                                      items:
+                                        type: string
+                                      type: array
+                                  required:
+                                  - key
+                                  - operator
+                                  type: object
+                                type: array
+                              matchLabels:
+                                additionalProperties:
+                                  type: string
+                                type: object
+                            type: object
+                        type: object
                     type: object
                 type: object
               profile:
