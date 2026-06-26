@@ -26,14 +26,18 @@ import (
 	pkgcommon "github.com/tektoncd/operator/pkg/common"
 
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	nsinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/namespace"
+	secretinformer "knative.dev/pkg/client/injection/kube/informers/core/v1/secret"
 	sainformer "knative.dev/pkg/client/injection/kube/informers/core/v1/serviceaccount"
+	rbinformer "knative.dev/pkg/client/injection/kube/informers/rbac/v1/rolebinding"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
-	secretinformer "knative.dev/pkg/injection/clients/namespacedkube/informers/core/v1/secret"
 	"knative.dev/pkg/logging"
 )
 
@@ -45,6 +49,7 @@ func NewController(ctx context.Context, _ configmap.Watcher) *controller.Impl {
 	nsInf := nsinformer.Get(ctx)
 	saInf := sainformer.Get(ctx)
 	secretInf := secretinformer.Get(ctx)
+	rbInf := rbinformer.Get(ctx)
 	tcInf := tektonConfigInformer.Get(ctx)
 
 	rec := &Reconciler{
@@ -132,15 +137,20 @@ func NewController(ctx context.Context, _ configmap.Watcher) *controller.Impl {
 	//   - A newly created secret that matches a binding rule is bound immediately.
 	//   - A deleted named secret is unbound from the pipeline SA.
 	//
-	// Only trigger re-reconciliation when NamespaceSync has SecretBindings
-	// configured, to avoid a thundering herd on clusters without secret bindings.
+	// We use the cluster-wide kube factory here (NOT the namespacedkube one)
+	// because we need to observe secrets in all user namespaces, not just the
+	// operator's own namespace.
+	//
+	// To avoid a thundering-herd on clusters that don't use secret bindings,
+	// we only enqueue when NamespaceSync has SecretBindings configured AND the
+	// secret name/labels match at least one binding rule.
 	if _, err := secretInf.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			secret, ok := obj.(*corev1.Secret)
 			if !ok {
 				return
 			}
-			if namespaceSyncHasSecretBindings(tcInf.Lister()) {
+			if secretMatchesBinding(secret, tcInf.Lister()) {
 				impl.EnqueueKey(types.NamespacedName{Name: secret.Namespace})
 			}
 		},
@@ -154,12 +164,39 @@ func NewController(ctx context.Context, _ configmap.Watcher) *controller.Impl {
 					return
 				}
 			}
-			if namespaceSyncHasSecretBindings(tcInf.Lister()) {
+			if secretMatchesBinding(secret, tcInf.Lister()) {
 				impl.EnqueueKey(types.NamespacedName{Name: secret.Namespace})
 			}
 		},
 	}); err != nil {
 		logger.Panicf("Couldn't register Secret informer event handler: %v", err)
+	}
+
+	// RoleBinding Delete → re-enqueue the namespace for self-healing.
+	// We only watch the two RoleBindings that NamespaceSyncController owns:
+	// pipelines-scc-rolebinding and openshift-pipelines-edit. Watching all
+	// RoleBindings would be too noisy; we filter by name at the handler level.
+	managedRoleBindings := map[string]struct{}{
+		pipelinesSCCRoleBinding: {},
+		PipelineRoleBinding:     {},
+	}
+	if _, err := rbInf.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		DeleteFunc: func(obj interface{}) {
+			rb, ok := obj.(*rbacv1.RoleBinding)
+			if !ok {
+				if d, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+					rb, ok = d.Obj.(*rbacv1.RoleBinding)
+				}
+				if !ok {
+					return
+				}
+			}
+			if _, watched := managedRoleBindings[rb.Name]; watched {
+				impl.EnqueueKey(types.NamespacedName{Name: rb.Namespace})
+			}
+		},
+	}); err != nil {
+		logger.Panicf("Couldn't register RoleBinding informer event handler: %v", err)
 	}
 
 	// TektonConfig changed → re-enqueue all namespaces only when the NamespaceSync
@@ -190,10 +227,12 @@ func NewController(ctx context.Context, _ configmap.Watcher) *controller.Impl {
 	return impl
 }
 
-// namespaceSyncHasSecretBindings returns true when TektonConfig has at least one
-// SecretBinding configured. Used to short-circuit Secret event handling when
-// no secret binding is needed.
-func namespaceSyncHasSecretBindings(lister interface {
+// secretMatchesBinding returns true when the given secret matches at least one
+// SecretBinding rule in the current TektonConfig. This is used to filter Secret
+// events so we only re-enqueue namespaces for secrets we actually care about,
+// avoiding unnecessary reconciles for the high volume of dockercfg / token
+// secrets that Kubernetes creates automatically.
+func secretMatchesBinding(secret *corev1.Secret, lister interface {
 	Get(string) (*v1alpha1.TektonConfig, error)
 }) bool {
 	tc, err := lister.Get(v1alpha1.ConfigResourceName)
@@ -201,5 +240,22 @@ func namespaceSyncHasSecretBindings(lister interface {
 		return false
 	}
 	cfg := tc.Spec.Platforms.OpenShift.NamespaceSync
-	return cfg != nil && len(cfg.SecretBindings) > 0
+	if cfg == nil || len(cfg.SecretBindings) == 0 {
+		return false
+	}
+	for _, b := range cfg.SecretBindings {
+		if b.SecretName != "" && b.SecretName == secret.Name {
+			return true
+		}
+		if b.LabelSelector != nil {
+			sel, err := metav1.LabelSelectorAsSelector(b.LabelSelector)
+			if err != nil {
+				continue
+			}
+			if sel.Matches(labels.Set(secret.Labels)) {
+				return true
+			}
+		}
+	}
+	return false
 }
