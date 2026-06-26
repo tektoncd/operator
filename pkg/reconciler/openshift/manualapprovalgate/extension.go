@@ -21,38 +21,71 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
-	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
+	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"knative.dev/pkg/logging"
+)
+
+const (
+	// magWebhookDeployment is the name of the MAG webhook Deployment as defined in
+	// the upstream manual-approval-gate config (config/kubernetes/500-webhook.yaml).
+	magWebhookDeployment = "manual-approval-gate-webhook"
+	// magWebhookContainerName is the container name inside the MAG webhook Deployment.
+	magWebhookContainerName = "manual-approval"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
-	ext := openshiftExtension{
-		operatorClientSet: operatorclient.Get(ctx),
+	return &openshiftExtension{
+		tektonConfigLister: tektonConfiginformer.Get(ctx).Lister(),
 	}
-	return ext
 }
 
 type openshiftExtension struct {
-	operatorClientSet versioned.Interface
+	tektonConfigLister occommon.TektonConfigLister
+	resolvedTLSConfig  *occommon.TLSEnvVars
 }
 
-func (oe openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	return []mf.Transformer{}
+func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
+	var trns []mf.Transformer
+
+	// Inject APIServer TLS profile env vars into the MAG webhook so that it
+	// applies the cluster-wide TLS version and cipher suite policy (PQC readiness).
+	// The MAG webhook uses the Knative webhook framework (sharedmain.MainWithConfig),
+	// which calls knativetls.DefaultConfigFromEnv("WEBHOOK_"), so it reads the
+	// WEBHOOK_TLS_* env vars.
+	if oe.resolvedTLSConfig != nil {
+		trns = append(trns,
+			occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", magWebhookDeployment, []string{magWebhookContainerName}, occommon.WebhookEnvVarPrefix),
+		)
+	}
+
+	return trns
 }
 
-func (oe openshiftExtension) PreReconcile(ctx context.Context, mag v1alpha1.TektonComponent) error {
+func (oe *openshiftExtension) PreReconcile(ctx context.Context, _ v1alpha1.TektonComponent) error {
+	logger := logging.FromContext(ctx)
+
+	resolvedTLS, err := occommon.ResolveCentralTLSToEnvVars(ctx, oe.tektonConfigLister)
+	if err != nil {
+		return err
+	}
+	oe.resolvedTLSConfig = resolvedTLS
+	if oe.resolvedTLSConfig != nil {
+		logger.Infof("Injecting central TLS config into MAG webhook: MinVersion=%s", oe.resolvedTLSConfig.MinVersion)
+	}
+
 	return nil
 }
 
-func (oe openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
+func (oe *openshiftExtension) PostReconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil
 }
 
-func (oe openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
+func (oe *openshiftExtension) Finalize(context.Context, v1alpha1.TektonComponent) error {
 	return nil
 }
 
-func (oe openshiftExtension) GetPlatformData() string {
+func (oe *openshiftExtension) GetPlatformData() string {
 	return ""
 }
