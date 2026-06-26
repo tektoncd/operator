@@ -46,14 +46,15 @@ import (
 )
 
 const (
-	pipelineSA               = "pipeline"
-	pipelinesSCCRole         = "pipelines-scc-role"
-	pipelinesSCCClusterRole  = "pipelines-scc-clusterrole"
-	pipelinesSCCRoleBinding  = "pipelines-scc-rolebinding"
-	editRoleBinding          = "openshift-pipelines-edit"
-	editClusterRole          = "edit"
-	serviceCABundleConfigMap = "config-service-cabundle"
-	trustedCABundleConfigMap = "config-trusted-cabundle"
+	pipelineSA                     = "pipeline"
+	pipelinesSCCRole               = "pipelines-scc-role"
+	pipelinesSCCClusterRole        = "pipelines-scc-clusterrole"
+	pipelinesSCCRoleBinding        = "pipelines-scc-rolebinding"
+	editRoleBinding                = "openshift-pipelines-edit"
+	editClusterRole                = "edit"
+	serviceCABundleConfigMap       = "config-service-cabundle"
+	trustedCABundleConfigMap       = "config-trusted-cabundle"
+	clusterInterceptorsClusterRole = "openshift-pipelines-clusterinterceptors"
 )
 
 var nsIgnoreRegex = regexp.MustCompile(reconcilerCommon.NamespaceIgnorePattern)
@@ -117,6 +118,14 @@ func (r *Reconciler) reconcileNamespace(ctx context.Context, ns *corev1.Namespac
 			logger.Errorf("failed to ensure pipeline SA in %s: %v", ns.Name, err)
 			return err
 		}
+	}
+
+	// Keep the cluster-wide ClusterInterceptors ClusterRoleBinding up to date.
+	// This is an incremental patch: add/remove just this namespace's pipeline SA
+	// subject, rather than rebuilding the full subject list on every reconcile.
+	if err := r.ensureClusterInterceptorsSubject(ctx, ns.Name, tc); err != nil {
+		logger.Errorf("failed to sync ClusterInterceptors subject for %s: %v", ns.Name, err)
+		return err
 	}
 
 	if cfg.CreateSCCRoleBinding != nil && *cfg.CreateSCCRoleBinding {
@@ -653,6 +662,111 @@ func bindSecretToSA(sa *corev1.ServiceAccount, secretName string) bool {
 	}
 
 	return changed
+}
+
+// ---------------------------------------------------------------------------
+// ClusterInterceptors ClusterRoleBinding
+// ---------------------------------------------------------------------------
+
+// ensureClusterInterceptorsSubject manages this namespace's pipeline SA in the
+// openshift-pipelines-clusterinterceptors ClusterRoleBinding.
+//
+// EventListeners use ClusterInterceptors (cluster-scoped) to validate webhook
+// payloads. Because ClusterInterceptors are cluster-scoped, only a
+// ClusterRoleBinding can grant access — a namespace RoleBinding is not enough.
+// This method patches exactly one subject (add or remove) per namespace
+// reconcile, replacing the legacy batch-rebuild approach in rbac.go.
+//
+//   - SA exists  → subject is added (idempotent).
+//   - SA absent  → subject is removed (handles SA deletion self-healing).
+func (r *Reconciler) ensureClusterInterceptorsSubject(ctx context.Context, nsName string, tc *v1alpha1.TektonConfig) error {
+	logger := logging.FromContext(ctx)
+	rbacClient := r.kubeClient.RbacV1()
+	ownerRef := tektonConfigOwnerRef(tc)
+
+	// Ensure the static ClusterRole exists (content never changes).
+	if _, err := rbacClient.ClusterRoles().Get(ctx, clusterInterceptorsClusterRole, metav1.GetOptions{}); errors.IsNotFound(err) {
+		logger.Infof("Creating ClusterRole %s", clusterInterceptorsClusterRole)
+		_, err = rbacClient.ClusterRoles().Create(ctx, &rbacv1.ClusterRole{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            clusterInterceptorsClusterRole,
+				OwnerReferences: []metav1.OwnerReference{ownerRef},
+			},
+			Rules: []rbacv1.PolicyRule{{
+				APIGroups: []string{"triggers.tekton.dev"},
+				Resources: []string{"clusterinterceptors"},
+				Verbs:     []string{"get", "list", "watch"},
+			}},
+		}, metav1.CreateOptions{})
+		if err != nil && !errors.IsAlreadyExists(err) {
+			return err
+		}
+	}
+
+	// Determine whether the pipeline SA currently exists in this namespace.
+	_, saErr := r.kubeClient.CoreV1().ServiceAccounts(nsName).Get(ctx, pipelineSA, metav1.GetOptions{})
+	saExists := saErr == nil
+	if saErr != nil && !errors.IsNotFound(saErr) {
+		return saErr
+	}
+
+	subject := rbacv1.Subject{
+		Kind:      rbacv1.ServiceAccountKind,
+		Name:      pipelineSA,
+		Namespace: nsName,
+	}
+
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		crb, err := rbacClient.ClusterRoleBindings().Get(ctx, clusterInterceptorsClusterRole, metav1.GetOptions{})
+		if errors.IsNotFound(err) {
+			if !saExists {
+				return nil // nothing to create when SA is absent
+			}
+			logger.Infof("Creating ClusterRoleBinding %s", clusterInterceptorsClusterRole)
+			_, err = rbacClient.ClusterRoleBindings().Create(ctx, &rbacv1.ClusterRoleBinding{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:            clusterInterceptorsClusterRole,
+					OwnerReferences: []metav1.OwnerReference{ownerRef},
+				},
+				RoleRef: rbacv1.RoleRef{
+					APIGroup: rbacv1.GroupName,
+					Kind:     "ClusterRole",
+					Name:     clusterInterceptorsClusterRole,
+				},
+				Subjects: []rbacv1.Subject{subject},
+			}, metav1.CreateOptions{})
+			return err
+		}
+		if err != nil {
+			return err
+		}
+
+		changed := false
+		if saExists {
+			if !hasSubject(crb.Subjects, subject) {
+				logger.Infof("Adding %s/pipeline to ClusterInterceptors binding", nsName)
+				crb.Subjects = append(crb.Subjects, subject)
+				changed = true
+			}
+		} else {
+			newSubjects := make([]rbacv1.Subject, 0, len(crb.Subjects))
+			for _, s := range crb.Subjects {
+				if s.Kind == rbacv1.ServiceAccountKind && s.Name == pipelineSA && s.Namespace == nsName {
+					logger.Infof("Removing %s/pipeline from ClusterInterceptors binding", nsName)
+					changed = true
+					continue
+				}
+				newSubjects = append(newSubjects, s)
+			}
+			crb.Subjects = newSubjects
+		}
+
+		if !changed {
+			return nil
+		}
+		_, err = rbacClient.ClusterRoleBindings().Update(ctx, crb, metav1.UpdateOptions{})
+		return err
+	})
 }
 
 // ---------------------------------------------------------------------------
