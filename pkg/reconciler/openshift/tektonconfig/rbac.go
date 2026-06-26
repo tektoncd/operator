@@ -549,6 +549,33 @@ func (r *rbac) patchNamespaceLabel(ctx context.Context, ns corev1.Namespace) err
 func (r *rbac) createResources(ctx context.Context) error {
 	logger := logging.FromContext(ctx)
 
+	// When NamespaceSync is configured, the NamespaceSyncController owns all
+	// per-namespace resources (pipeline SA, CA bundles, SCC RoleBinding, edit
+	// RoleBinding). rbac.go only runs cluster-scoped prerequisites and keeps
+	// the ClusterInterceptors ClusterRoleBinding in sync using existing SAs.
+	if r.tektonConfig.Spec.Platforms.OpenShift.NamespaceSync != nil {
+		if err := r.ensurePreRequisites(ctx); err != nil {
+			logger.Errorf("error validating cluster-scoped prerequisites: %v", err)
+			return err
+		}
+		if err := r.removeAndUpdateNSFromCI(ctx); err != nil {
+			logger.Errorf("error cleaning up ClusterInterceptors ClusterRoleBinding: %v", err)
+			return err
+		}
+		nsSAs, err := r.collectExistingPipelineSAs(ctx)
+		if err != nil {
+			logger.Errorf("error collecting existing pipeline SAs: %v", err)
+			return err
+		}
+		if len(nsSAs) > 0 {
+			if err := r.handleClusterRoleBinding(ctx, nsSAs); err != nil {
+				logger.Errorf("error updating ClusterInterceptors ClusterRoleBinding: %v", err)
+				return err
+			}
+		}
+		return nil
+	}
+
 	// Step 1: Check feature flags
 	createCABundles := true
 	createRBACResource := true
@@ -658,6 +685,31 @@ func (r *rbac) createResources(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// collectExistingPipelineSAs lists all pipeline SAs present in non-system namespaces.
+// Used when NamespaceSync is active to keep the ClusterInterceptors ClusterRoleBinding
+// in sync without re-running the full per-namespace RBAC reconciliation loop.
+func (r *rbac) collectExistingPipelineSAs(ctx context.Context) ([]NamespaceServiceAccount, error) {
+	namespaces, err := r.nsInformer.Lister().List(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+	var result []NamespaceServiceAccount
+	for _, ns := range namespaces {
+		if shouldIgnoreNamespace(*ns) {
+			continue
+		}
+		sa, err := r.kubeClientSet.CoreV1().ServiceAccounts(ns.Name).Get(ctx, pipelineSA, metav1.GetOptions{})
+		if errors.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, NamespaceServiceAccount{ServiceAccount: sa, Namespace: *ns})
+	}
+	return result, nil
 }
 
 func (r *rbac) createSCCFailureEventInNamespace(ctx context.Context, namespace string, scc string) error {
