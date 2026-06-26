@@ -24,6 +24,35 @@ import (
 	"knative.dev/pkg/ptr"
 )
 
+// migrateNamespaceSyncParams reads the legacy stringly-typed spec.params entries
+// (createRbacResource, createCABundleConfigMaps, legacyPipelineRbac) and populates
+// the equivalent typed fields in spec.platforms.openshift.namespaceSync, then removes
+// the migrated params from the slice. Params that are already absent are left at their
+// typed-field defaults (true). This runs only on OpenShift.
+func migrateNamespaceSyncParams(tc *TektonConfig) {
+	ns := tc.Spec.Platforms.OpenShift.NamespaceSync
+	remaining := tc.Spec.Params[:0]
+	for _, p := range tc.Spec.Params {
+		switch p.Name {
+		case "createRbacResource":
+			if ns.CreatePipelineSA == nil {
+				ns.CreatePipelineSA = ptr.Bool(p.Value != "false")
+			}
+		case "createCABundleConfigMaps":
+			if ns.CreateCABundles == nil {
+				ns.CreateCABundles = ptr.Bool(p.Value != "false")
+			}
+		case "legacyPipelineRbac":
+			if ns.CreateEditRoleBinding == nil {
+				ns.CreateEditRoleBinding = ptr.Bool(p.Value != "false")
+			}
+		default:
+			remaining = append(remaining, p)
+		}
+	}
+	tc.Spec.Params = remaining
+}
+
 func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	if tc.Spec.Profile == "" {
 		tc.Spec.Profile = ProfileBasic
@@ -83,6 +112,26 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 		}
 		if tc.Spec.Platforms.OpenShift.SCC.Default == "" {
 			tc.Spec.Platforms.OpenShift.SCC.Default = PipelinesSCC
+		}
+
+		// NamespaceSync defaulting: initialise the block if absent, then apply
+		// per-field defaults (all true) and migrate any legacy spec.params entries.
+		if tc.Spec.Platforms.OpenShift.NamespaceSync == nil {
+			tc.Spec.Platforms.OpenShift.NamespaceSync = &NamespaceSyncConfig{}
+		}
+		ns := tc.Spec.Platforms.OpenShift.NamespaceSync
+		migrateNamespaceSyncParams(tc)
+		if ns.CreatePipelineSA == nil {
+			ns.CreatePipelineSA = ptr.Bool(true)
+		}
+		if ns.CreateCABundles == nil {
+			ns.CreateCABundles = ptr.Bool(true)
+		}
+		if ns.CreateEditRoleBinding == nil {
+			ns.CreateEditRoleBinding = ptr.Bool(true)
+		}
+		if ns.CreateSCCRoleBinding == nil {
+			ns.CreateSCCRoleBinding = ptr.Bool(true)
 		}
 
 		setAddonDefaults(&tc.Spec.Addon)
