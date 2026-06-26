@@ -1021,6 +1021,45 @@ spec:
                                   type: string
                                 type: object
                             type: object
+                          secretBindings:
+                            description: SecretBindings declares secrets to be automatically
+                              bound to the pipeline SA in each namespace. Each entry must
+                              set exactly one of labelSelector or secretName.
+                            items:
+                              description: SecretBinding describes a secret or class of
+                                secrets to bind to the pipeline SA.
+                              properties:
+                                labelSelector:
+                                  description: LabelSelector selects secrets by label.
+                                    All matching secrets in a namespace are bound.
+                                  properties:
+                                    matchExpressions:
+                                      items:
+                                        properties:
+                                          key:
+                                            type: string
+                                          operator:
+                                            type: string
+                                          values:
+                                            items:
+                                              type: string
+                                            type: array
+                                        required:
+                                        - key
+                                        - operator
+                                        type: object
+                                      type: array
+                                    matchLabels:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                  type: object
+                                secretName:
+                                  description: SecretName binds a specific named secret
+                                    in each namespace to the pipeline SA.
+                                  type: string
+                              type: object
+                            type: array
                         type: object
                     type: object
                 type: object

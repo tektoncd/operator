@@ -685,6 +685,11 @@ func (in *NamespaceSyncConfig) DeepCopyInto(out *NamespaceSyncConfig) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.NamespaceSelector != nil {
+		in, out := &in.NamespaceSelector, &out.NamespaceSelector
+		*out = new(metav1.LabelSelector)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 

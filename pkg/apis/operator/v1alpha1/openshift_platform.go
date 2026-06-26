@@ -87,6 +87,14 @@ type NamespaceSyncConfig struct {
 	// Each entry must set exactly one of labelSelector or secretName.
 	// +optional
 	SecretBindings []SecretBinding `json:"secretBindings,omitempty"`
+
+	// NamespaceSelector is an optional label selector that restricts which
+	// namespaces are synced. When absent every non-system namespace is synced
+	// (the default). Use matchLabels/matchExpressions to limit sync to a subset
+	// of namespaces, or set it to an empty object ({}) to opt out all namespaces
+	// without touching the individual feature flags.
+	// +optional
+	NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector,omitempty"`
 }
 
 // SecretBinding describes a secret (or class of secrets by label) that the

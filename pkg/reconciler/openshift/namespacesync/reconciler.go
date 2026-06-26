@@ -47,11 +47,14 @@ import (
 )
 
 const (
-	pipelineSA                     = "pipeline"
-	pipelinesSCCRole               = "pipelines-scc-role"
-	pipelinesSCCClusterRole        = "pipelines-scc-clusterrole"
-	pipelinesSCCRoleBinding        = "pipelines-scc-rolebinding"
-	editRoleBinding                = "openshift-pipelines-edit"
+	pipelineSA              = "pipeline"
+	pipelinesSCCRole        = "pipelines-scc-role"
+	pipelinesSCCClusterRole = "pipelines-scc-clusterrole"
+	pipelinesSCCRoleBinding = "pipelines-scc-rolebinding"
+	// PipelineRoleBinding is the name of the edit RoleBinding created in each
+	// user namespace so that the pipeline SA has edit access. Exported for use
+	// in e2e tests.
+	PipelineRoleBinding            = "openshift-pipelines-edit"
 	editClusterRole                = "edit"
 	serviceCABundleConfigMap       = "config-service-cabundle"
 	trustedCABundleConfigMap       = "config-trusted-cabundle"
@@ -107,6 +110,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 
 	if shouldIgnoreNamespace(ns) {
 		logger.Debugf("Ignoring system/terminating namespace: %s", key)
+		return nil
+	}
+
+	if !namespaceMatchesSelector(ns, cfg) {
+		logger.Debugf("Namespace %s excluded by namespaceSelector, skipping", key)
 		return nil
 	}
 
@@ -421,7 +429,7 @@ func (r *Reconciler) ensureEditRoleBinding(ctx context.Context, ns *corev1.Names
 	logger := logging.FromContext(ctx)
 	rbClient := r.kubeClient.RbacV1().RoleBindings(ns.Name)
 
-	_, err := rbClient.Get(ctx, editRoleBinding, metav1.GetOptions{})
+	_, err := rbClient.Get(ctx, PipelineRoleBinding, metav1.GetOptions{})
 	if err == nil {
 		return nil
 	}
@@ -437,7 +445,7 @@ func (r *Reconciler) ensureEditRoleBinding(ctx context.Context, ns *corev1.Names
 	logger.Infof("Creating edit RoleBinding in namespace %s", ns.Name)
 	_, err = rbClient.Create(ctx, &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      editRoleBinding,
+			Name:      PipelineRoleBinding,
 			Namespace: ns.Name,
 		},
 		RoleRef: rbacv1.RoleRef{
@@ -457,7 +465,7 @@ func (r *Reconciler) ensureEditRoleBinding(ctx context.Context, ns *corev1.Names
 // removeEditRoleBindingIfPresent deletes the openshift-pipelines-edit RoleBinding
 // when createEditRoleBinding is disabled.
 func (r *Reconciler) removeEditRoleBindingIfPresent(ctx context.Context, nsName string) error {
-	err := r.kubeClient.RbacV1().RoleBindings(nsName).Delete(ctx, editRoleBinding, metav1.DeleteOptions{})
+	err := r.kubeClient.RbacV1().RoleBindings(nsName).Delete(ctx, PipelineRoleBinding, metav1.DeleteOptions{})
 	if errors.IsNotFound(err) {
 		return nil
 	}
@@ -781,6 +789,23 @@ func shouldIgnoreNamespace(ns *corev1.Namespace) bool {
 		return true
 	}
 	return ns.DeletionTimestamp != nil
+}
+
+// namespaceMatchesSelector returns true when the namespace should be synced
+// according to cfg.NamespaceSelector. When no selector is configured every
+// non-ignored namespace matches (opt-in all by default). Setting the selector
+// to an empty matchLabels ({}) matches nothing, effectively disabling sync for
+// all namespaces without touching the individual feature flags.
+func namespaceMatchesSelector(ns *corev1.Namespace, cfg *v1alpha1.NamespaceSyncConfig) bool {
+	if cfg.NamespaceSelector == nil {
+		return true
+	}
+	sel, err := metav1.LabelSelectorAsSelector(cfg.NamespaceSelector)
+	if err != nil {
+		// Malformed selector — fail open so we don't silently stop syncing.
+		return true
+	}
+	return sel.Matches(labels.Set(ns.Labels))
 }
 
 func tektonConfigOwnerRef(tc *v1alpha1.TektonConfig) metav1.OwnerReference {

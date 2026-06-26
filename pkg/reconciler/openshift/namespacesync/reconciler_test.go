@@ -231,7 +231,7 @@ func TestEnsureEditRoleBinding_CreatesWhenAbsent(t *testing.T) {
 	err = r.Reconcile(context.Background(), "my-ns")
 	assert.NilError(t, err)
 
-	rb, err := kubeClient.RbacV1().RoleBindings("my-ns").Get(context.Background(), editRoleBinding, metav1.GetOptions{})
+	rb, err := kubeClient.RbacV1().RoleBindings("my-ns").Get(context.Background(), PipelineRoleBinding, metav1.GetOptions{})
 	assert.NilError(t, err)
 	assert.Equal(t, editClusterRole, rb.RoleRef.Name)
 	assert.Equal(t, pipelineSA, rb.Subjects[0].Name)
@@ -250,7 +250,7 @@ func TestEnsureEditRoleBinding_IdempotentWhenPresent(t *testing.T) {
 	}, metav1.CreateOptions{})
 	assert.NilError(t, err)
 	_, err = kubeClient.RbacV1().RoleBindings("my-ns").Create(context.Background(), &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{Name: editRoleBinding, Namespace: "my-ns"},
+		ObjectMeta: metav1.ObjectMeta{Name: PipelineRoleBinding, Namespace: "my-ns"},
 		RoleRef:    rbacv1.RoleRef{Kind: "ClusterRole", Name: editClusterRole},
 	}, metav1.CreateOptions{})
 	assert.NilError(t, err)
@@ -270,14 +270,14 @@ func TestRemoveEditRoleBinding_DeletesWhenPresent(t *testing.T) {
 
 	// pre-create the RoleBinding — reconcile must delete it.
 	_, err := kubeClient.RbacV1().RoleBindings("my-ns").Create(context.Background(), &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{Name: editRoleBinding, Namespace: "my-ns"},
+		ObjectMeta: metav1.ObjectMeta{Name: PipelineRoleBinding, Namespace: "my-ns"},
 	}, metav1.CreateOptions{})
 	assert.NilError(t, err)
 
 	err = r.Reconcile(context.Background(), "my-ns")
 	assert.NilError(t, err)
 
-	_, err = kubeClient.RbacV1().RoleBindings("my-ns").Get(context.Background(), editRoleBinding, metav1.GetOptions{})
+	_, err = kubeClient.RbacV1().RoleBindings("my-ns").Get(context.Background(), PipelineRoleBinding, metav1.GetOptions{})
 	assert.ErrorContains(t, err, "not found")
 }
 
