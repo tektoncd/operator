@@ -26,10 +26,10 @@ find_latest_version() {
   echo "$version"
 }
 
-# Get SHA digest for an image:tag
-get_image_sha() {
+# Get manifest list digest for an image:tag (multi-arch)
+get_manifest_list_digest() {
   local image_url=$1
-  skopeo inspect --raw docker://${image_url} | jq -r '.manifests[0].digest // .digest'
+  skopeo inspect --no-tags docker://${image_url} | jq -r '.Digest'
 }
 
 # Update image SHA in YAML files
@@ -59,7 +59,7 @@ main() {
     echo "  Latest version: $latest_version"
 
     image_url="${image_registry}:${latest_version}"
-    image_sha=$(get_image_sha "$image_url")
+    image_sha=$(get_manifest_list_digest "$image_url")
     echo "  SHA: $image_sha"
 
     update_yaml_files "$image_registry" "$image_sha"
