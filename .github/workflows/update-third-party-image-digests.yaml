@@ -59,6 +59,13 @@ jobs:
         if ! command -v skopeo &>/dev/null; then
           sudo apt-get update && sudo apt-get install -y skopeo
         fi
+    - name: fetch script from main
+      env:
+        GH_REPO: ${{ github.repository }}
+      run: |
+        curl -sSfL "https://raw.githubusercontent.com/${GH_REPO}/main/hack/openshift/update-image-sha.sh" \
+          -o hack/openshift/update-image-sha.sh
+        chmod +x hack/openshift/update-image-sha.sh
     - name: update image digests
       run: |
         hack/openshift/update-image-sha.sh
