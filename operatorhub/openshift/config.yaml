@@ -130,7 +130,7 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_TRIGGERS_ARG__EL_IMAGE
-- image: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:aee19896d17a431ba980564fdb73ef08ad1512f586fbdf954cecef6258f7a8df
+- image: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:baed0a26019f39f81714dc6bc221660408b66706b708cf95c0fa912a393ff3df
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
@@ -145,7 +145,7 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_ADDONS_OPC
-- image: registry.redhat.io/rhel9/skopeo@sha256:ecc4e3b3aeaadac17f9c0922ea2d7251303761a2695f7e9e08b6d89c7f057388
+- image: registry.redhat.io/rhel9/skopeo@sha256:ef8492e9040d376b0a1c651a26f58a58efd6faade5d1dd94fabc622e9140a79f
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
@@ -153,7 +153,7 @@ image-substitutions:
         envKeys:
           - IMAGE_ADDONS_SKOPEO_COPY
           - IMAGE_ADDONS_SKOPEO_RESULTS
-- image: registry.redhat.io/rhel9/buildah@sha256:f0432e506a8aea892078322518aedeb12e0f17504dbc29fd293cd8cda06e7f73
+- image: registry.redhat.io/rhel9/buildah@sha256:48a878e4eeaa84d91cc4b6ac3cbd9f1b36ed000589241a78e5ac0aecb881eac2
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
@@ -162,7 +162,7 @@ image-substitutions:
       - IMAGE_ADDONS_PARAM_BUILDER_IMAGE
       - IMAGE_ADDONS_BUILD
       - IMAGE_ADDONS_S2I_BUILD
-- image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:70293cb8a80aa548933ff5f502bac89945a5cd08801c4ca3aac08a10dd01f62f
+- image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:aea2f22b7f61cb32fb82ccde987e8bc36d49c88ae91181fcc6787a6e352c7ee7
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
@@ -171,7 +171,7 @@ image-substitutions:
       - IMAGE_ADDONS_GENERATE
       - IMAGE_ADDONS_GEN_ENV_FILE
       - IMAGE_ADDONS_S2I_GENERATE
-- image: registry.redhat.io/ubi9/ubi-minimal@sha256:5b74fce9d6e629942a0c6dc0f546c193e70d7f974d999a48c948c53dd3d36362
+- image: registry.redhat.io/ubi9/ubi-minimal@sha256:788764c8e05aa28febe41ba1cda9b5c53861743feb11bfaad31809b1ad983ea3
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
@@ -210,7 +210,7 @@ image-substitutions:
         containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
-- image: registry.redhat.io/rhel9/postgresql-15@sha256:327d89e4b62d990dbf55d3c78f271373747816c2e0ab3c943fb016cdcf12f9b5
+- image: registry.redhat.io/rhel9/postgresql-15@sha256:14022d2bfdd787cf9cb16ecbfc8e4142a04ea7a8e3f4b8de75a0be572c98b800
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
@@ -315,7 +315,7 @@ image-substitutions:
         containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_RESULTS_RETENTION_POLICY_AGENT
-- image: registry.redhat.io/ubi9/openjdk-17@sha256:4a1c11377fcd260a2fecfe0ec01e143cc05150c3d9b70b018cdcc68c6f5667a9
+- image: registry.redhat.io/ubi9/openjdk-17@sha256:c54d7a67305912d051232c096e491cae9987624905dbf6e9dda7312446365cf0
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
