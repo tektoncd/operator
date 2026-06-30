@@ -29,6 +29,9 @@ jobs:
           k8s-version: v1.34.x
     env:
       KO_DOCKER_REPO: registry.local:5000/tekton
+      # registry.local:5000 is a plain-HTTP KinD registry; tell ko to skip TLS
+      # so that both image pushes and SBOM writes (ko >=v0.19) use plain HTTP.
+      KO_FLAGS: --insecure-registry
       CLUSTER_DOMAIN: c${{ github.run_id }}.local
       ARTIFACTS: ${{ github.workspace }}/artifacts
 
