@@ -37,6 +37,13 @@ ecosystems:
       - github_action
       - kind/misc
       - release-note-none
+    groups:
+      # Collapse all GitHub Actions bumps into a single weekly PR per branch.
+      # These are low-risk version bumps and were previously opened one PR per
+      # action, flooding the queue (especially on release branches).
+      github-actions:
+        patterns:
+          - "*"
     cooldown:
       default-days: 7
   - package-ecosystem: gomod
