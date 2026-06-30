@@ -337,7 +337,7 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 		expectedNotContains []string
 	}{
 		{
-			name: "all TLS settings provided (cipher suites skipped)",
+			name: "all TLS settings provided",
 			tlsConfig: &occommon.TLSEnvVars{
 				MinVersion:       "1.3",
 				CipherSuites:     "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384",
@@ -346,6 +346,7 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 			expectedContains: []string{
 				"ssl_protocols TLSv1.3;",
 				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+				"ssl_conf_command Ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384;",
 				"ssl_ecdh_curve X25519:prime256v1;",
 			},
 			expectedNotContains: []string{
@@ -361,6 +362,7 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 			expectedContains: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
 				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
 			},
 			expectedNotContains: []string{
 				"ssl_ciphers",
@@ -375,6 +377,7 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 			expectedContains: []string{
 				"ssl_protocols TLSv1.3;",
 				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
 			},
 			expectedNotContains: []string{
 				"ssl_ciphers",
@@ -382,9 +385,6 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 			},
 		},
 		{
-			// MinVersion is empty but we have cipher suites — the default "1.2"
-			// fallback still produces ssl_protocols and the ML-KEM directive.
-			// ssl_ciphers is never set (IANA names not usable in nginx).
 			name: "only cipher suites provided — default ssl_protocols and ML-KEM still emitted",
 			tlsConfig: &occommon.TLSEnvVars{
 				CipherSuites: "TLS_AES_128_GCM_SHA256",
@@ -392,6 +392,7 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 			expectedContains: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
 				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+				"ssl_conf_command Ciphersuites TLS_AES_128_GCM_SHA256;",
 			},
 			expectedNotContains: []string{
 				"ssl_ciphers",
@@ -415,6 +416,7 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 			expectedContains: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
 				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
 			},
 		},
 	}
@@ -464,7 +466,7 @@ http {
 		expectedNotContains []string
 	}{
 		{
-			name: "with TLS configuration (cipher suites skipped, ML-KEM enabled)",
+			name: "with TLS configuration (ML-KEM enabled)",
 			tlsConfig: &occommon.TLSEnvVars{
 				MinVersion:       "1.2",
 				CipherSuites:     "TLS_AES_128_GCM_SHA256",
@@ -474,6 +476,7 @@ http {
 				"server {",
 				"ssl_protocols TLSv1.2 TLSv1.3;",
 				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+				"ssl_conf_command Ciphersuites TLS_AES_128_GCM_SHA256;",
 				"ssl_ecdh_curve X25519;",
 				"listen              8443 ssl;",
 				"ssl_certificate     /var/cert/tls.crt;",
@@ -492,6 +495,7 @@ http {
 				"server {",
 				"ssl_protocols TLSv1.2 TLSv1.3;",
 				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
 				"listen              8443 ssl;",
 				"ssl_certificate     /var/cert/tls.crt;",
 			},
@@ -555,7 +559,7 @@ func TestTransformerNginxTLS(t *testing.T) {
 		expectedContains []string
 	}{
 		{
-			name: "transform nginx ConfigMap with TLS (cipher suites skipped)",
+			name: "transform nginx ConfigMap with TLS",
 			tlsConfig: &occommon.TLSEnvVars{
 				MinVersion:   "1.3",
 				CipherSuites: "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384",
@@ -577,6 +581,7 @@ func TestTransformerNginxTLS(t *testing.T) {
 			},
 			expectedContains: []string{
 				"ssl_protocols TLSv1.3;",
+				"ssl_conf_command Ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384;",
 			},
 		},
 		{
@@ -658,7 +663,7 @@ func TestNginxTLSIntegration(t *testing.T) {
 		notExpected        []string
 	}{
 		{
-			name: "integration test with full TLS config (cipher suites skipped)",
+			name: "integration test with full TLS config",
 			tlsConfig: &occommon.TLSEnvVars{
 				MinVersion:       "1.2",
 				CipherSuites:     "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384",
@@ -666,6 +671,7 @@ func TestNginxTLSIntegration(t *testing.T) {
 			},
 			expectedTLSInNginx: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
+				"ssl_conf_command Ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384;",
 				"ssl_ecdh_curve X25519:prime256v1;",
 			},
 		},
@@ -677,6 +683,7 @@ func TestNginxTLSIntegration(t *testing.T) {
 			expectedTLSInNginx: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
 				"ssl_conf_command Groups X25519MLKEM768:X25519;",
+				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
 			},
 		},
 	}
