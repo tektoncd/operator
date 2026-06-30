@@ -17,6 +17,10 @@ updates:
         - github_action
         - kind/misc
         - release-note-none
+      groups:
+        github-actions:
+            patterns:
+                - '*'
       cooldown:
         default-days: 7
     - package-ecosystem: gomod
@@ -55,6 +59,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+      groups:
+        github-actions:
+            patterns:
+                - '*'
       cooldown:
         default-days: 7
     - package-ecosystem: gomod
@@ -98,6 +106,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+      groups:
+        github-actions:
+            patterns:
+                - '*'
       cooldown:
         default-days: 7
     - package-ecosystem: gomod
@@ -141,6 +153,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+      groups:
+        github-actions:
+            patterns:
+                - '*'
       cooldown:
         default-days: 7
     - package-ecosystem: gomod
@@ -184,6 +200,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+      groups:
+        github-actions:
+            patterns:
+                - '*'
       cooldown:
         default-days: 7
     - package-ecosystem: gomod
@@ -227,6 +247,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+      groups:
+        github-actions:
+            patterns:
+                - '*'
       cooldown:
         default-days: 7
     - package-ecosystem: gomod
@@ -270,6 +294,10 @@ updates:
           update-types:
             - version-update:semver-major
             - version-update:semver-minor
+      groups:
+        github-actions:
+            patterns:
+                - '*'
       cooldown:
         default-days: 7
     - package-ecosystem: gomod
