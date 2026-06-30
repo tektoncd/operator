@@ -145,7 +145,7 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_ADDONS_OPC
-- image: registry.redhat.io/rhel9/skopeo@sha256:993f799d58c48151ecae7a84e63860f6c0039e8e18efed5ad67e7752f4b7e408
+- image: registry.redhat.io/rhel9/skopeo@sha256:ef8492e9040d376b0a1c651a26f58a58efd6faade5d1dd94fabc622e9140a79f
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
@@ -153,7 +153,7 @@ image-substitutions:
         envKeys:
           - IMAGE_ADDONS_SKOPEO_COPY
           - IMAGE_ADDONS_SKOPEO_RESULTS
-- image: registry.redhat.io/rhel9/buildah@sha256:a6e04c061b8d261dba85d01dcb64d3f7dba8c0b9765e03f05ec79850a248d75a
+- image: registry.redhat.io/rhel9/buildah@sha256:48a878e4eeaa84d91cc4b6ac3cbd9f1b36ed000589241a78e5ac0aecb881eac2
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
@@ -162,7 +162,7 @@ image-substitutions:
       - IMAGE_ADDONS_PARAM_BUILDER_IMAGE
       - IMAGE_ADDONS_BUILD
       - IMAGE_ADDONS_S2I_BUILD
-- image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:70293cb8a80aa548933ff5f502bac89945a5cd08801c4ca3aac08a10dd01f62f
+- image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:aea2f22b7f61cb32fb82ccde987e8bc36d49c88ae91181fcc6787a6e352c7ee7
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
@@ -171,7 +171,7 @@ image-substitutions:
       - IMAGE_ADDONS_GENERATE
       - IMAGE_ADDONS_GEN_ENV_FILE
       - IMAGE_ADDONS_S2I_GENERATE
-- image: registry.redhat.io/ubi9/ubi-minimal@sha256:14f14e03d68f7fd5f2b18a13478b6b127c341b346c86b6e0b886ed2b7573b8e0
+- image: registry.redhat.io/ubi9/ubi-minimal@sha256:8201445bebcb5bd4fe23fcc2a76cd5fec029ab401d270926a1563c03b36f0137
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
@@ -284,7 +284,7 @@ image-substitutions:
         containerName: openshift-pipelines-operator-lifecycle
         envKeys:
           - IMAGE_RESULTS_RETENTION_POLICY_AGENT
-- image: registry.redhat.io/ubi9/openjdk-17@sha256:cdbd64ba1b7826d09bc180fa19aa6fbc09ddb5bff5e02b7e1351353bbabebb78
+- image: registry.redhat.io/ubi9/openjdk-17@sha256:c54d7a67305912d051232c096e491cae9987624905dbf6e9dda7312446365cf0
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
