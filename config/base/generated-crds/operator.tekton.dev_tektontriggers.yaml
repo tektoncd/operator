@@ -108,6 +108,23 @@ spec:
                 type: boolean
               enable-api-fields:
                 type: string
+              networkPolicy:
+                description: NetworkPolicy configures NetworkPolicy creation for TektonTrigger
+                  workloads.
+                properties:
+                  disabled:
+                    description: |-
+                      Disabled disables all NetworkPolicy creation for this component.
+                      Existing policies are removed on the next reconcile.
+                    type: boolean
+                  policies:
+                    description: |-
+                      Policies merges with the operator's default NetworkPolicies by name.
+                      A key matching a default policy name replaces that default entirely.
+                      A key not matching any default is added alongside the defaults.
+                      If nil or empty, all operator defaults are applied unchanged.
+                    x-kubernetes-preserve-unknown-fields: true
+                type: object
               options:
                 description: options holds additions fields and these fields will
                   be updated on the manifests

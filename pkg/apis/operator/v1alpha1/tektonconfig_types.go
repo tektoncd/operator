@@ -134,7 +134,10 @@ type TektonConfigSpec struct {
 	// holds target namespace metadata
 	// +optional
 	TargetNamespaceMetadata *NamespaceMetadata `json:"targetNamespaceMetadata,omitempty"`
-	// NetworkPolicy configures namespace-wide NetworkPolicies for the operand namespace.
+	// NetworkPolicy configures NetworkPolicy resources for the operand namespace.
+	// This field is propagated to TektonTrigger, which is the only component with
+	// NetworkPolicy reconciliation implemented. Other components (Pipeline, Chains,
+	// Results, Dashboard) do not yet act on this field.
 	// +optional
 	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
@@ -167,27 +170,27 @@ type TektonConfigStatus struct {
 }
 
 func (in *TektonConfigStatus) MarkInstallerSetReady() {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (in *TektonConfigStatus) MarkInstallerSetNotReady(s string) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (in *TektonConfigStatus) MarkInstallerSetAvailable() {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (in *TektonConfigStatus) MarkPreReconcilerFailed(s string) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (in *TektonConfigStatus) MarkPostReconcilerFailed(s string) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 

@@ -25,6 +25,7 @@ import (
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektontriggerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektontrigger"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,6 +50,8 @@ type Reconciler struct {
 	extension common.Extension
 	// version of triggers which we are installing
 	triggersVersion string
+	// platformParams holds platform-specific values for building NetworkPolicy rules
+	platformParams networkpolicy.PlatformParams
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -81,8 +84,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		return err
 	}
 
-	//Make sure TektonPipeline is installed before proceeding with
-	//TektonTrigger
+	// Make sure TektonPipeline is installed before proceeding with
+	// TektonTrigger
 	logger.Debug("Checking TektonPipeline dependency")
 	if _, err := common.PipelineReady(r.pipelineInformer); err != nil {
 		if err.Error() == common.PipelineNotReady || err == v1alpha1.DEPENDENCY_UPGRADE_PENDING_ERR {
@@ -121,7 +124,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 		return nil
 	}
 
-	//Mark PreReconcile Complete
+	// Mark PreReconcile Complete
 	tt.Status.MarkPreReconcilerComplete()
 	logger.Info("PreReconciliation completed successfully")
 
@@ -139,12 +142,22 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 			logger.Info("Main reconciliation requested requeue")
 			return err
 		}
-		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
+		msg := fmt.Sprintf("Main Reconciliation failed: %s", err.Error())
 		logger.Errorw("Main reconciliation failed", "error", err)
 		tt.Status.MarkInstallerSetNotReady(msg)
 		return nil
 	}
 	logger.Info("Main reconciliation completed successfully")
+
+	if err := r.reconcileNetworkPolicies(ctx, tt); err != nil {
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		msg := fmt.Sprintf("NetworkPolicy reconciliation failed: %s", err.Error())
+		logger.Errorw("NetworkPolicy reconciliation failed", "error", err)
+		tt.Status.MarkInstallerSetNotReady(msg)
+		return nil
+	}
 
 	logger.Debug("Running post-reconciliation steps")
 	if err := r.extension.PostReconcile(ctx, tt); err != nil {

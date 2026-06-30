@@ -177,10 +177,22 @@ func TestInternetEgressRule(t *testing.T) {
 	}
 }
 
-func TestAPIServerEgressRule(t *testing.T) {
-	rule := networkpolicy.APIServerEgressRule()
+func TestAPIServerEgressRule_Kubernetes(t *testing.T) {
+	params := networkpolicy.KubernetesPlatformDefaults()
+	rule := networkpolicy.APIServerEgressRule(params)
+	if len(rule.Ports) != 1 || rule.Ports[0].Port.IntVal != 443 {
+		t.Fatalf("expected port 443 for Kubernetes, got %v", rule.Ports)
+	}
+	if len(rule.To) != 0 {
+		t.Errorf("expected no To restriction for API server egress, got %v", rule.To)
+	}
+}
+
+func TestAPIServerEgressRule_OpenShift(t *testing.T) {
+	params := networkpolicy.OpenShiftPlatformDefaults()
+	rule := networkpolicy.APIServerEgressRule(params)
 	if len(rule.Ports) != 1 || rule.Ports[0].Port.IntVal != 6443 {
-		t.Fatalf("expected port 6443, got %v", rule.Ports)
+		t.Fatalf("expected port 6443 for OpenShift, got %v", rule.Ports)
 	}
 	if len(rule.To) != 0 {
 		t.Errorf("expected no To restriction for API server egress, got %v", rule.To)
@@ -191,7 +203,12 @@ func TestDNSEgressRule_Kubernetes(t *testing.T) {
 	params := networkpolicy.KubernetesPlatformDefaults()
 	rule := networkpolicy.DNSEgressRule(params)
 	if len(rule.Ports) != 2 {
-		t.Fatalf("expected 2 ports (UDP+TCP 5353), got %d", len(rule.Ports))
+		t.Fatalf("expected 2 ports (UDP+TCP 53), got %d", len(rule.Ports))
+	}
+	for _, p := range rule.Ports {
+		if p.Port.IntVal != 53 {
+			t.Errorf("expected DNS port 53 for Kubernetes, got %d", p.Port.IntVal)
+		}
 	}
 	if len(rule.To) != 1 || rule.To[0].NamespaceSelector == nil {
 		t.Fatalf("expected 1 To with NamespaceSelector, got %v", rule.To)
@@ -205,9 +222,17 @@ func TestDNSEgressRule_Kubernetes(t *testing.T) {
 func TestDNSEgressRule_OpenShift(t *testing.T) {
 	params := networkpolicy.OpenShiftPlatformDefaults()
 	rule := networkpolicy.DNSEgressRule(params)
+	if len(rule.To) == 0 || rule.To[0].NamespaceSelector == nil {
+		t.Fatalf("expected 1 To with NamespaceSelector, got %v", rule.To)
+	}
 	nsLabels := rule.To[0].NamespaceSelector.MatchLabels
 	if nsLabels["kubernetes.io/metadata.name"] != "openshift-dns" {
 		t.Errorf("expected openshift-dns namespace selector, got %v", nsLabels)
+	}
+	for _, p := range rule.Ports {
+		if p.Port.IntVal != 5353 {
+			t.Errorf("expected DNS port 5353 for OpenShift, got %d", p.Port.IntVal)
+		}
 	}
 }
 
@@ -221,6 +246,22 @@ func TestPrometheusIngressRule(t *testing.T) {
 	nsLabels := rule.From[0].NamespaceSelector.MatchLabels
 	if nsLabels["kubernetes.io/metadata.name"] != "monitoring" {
 		t.Errorf("expected monitoring namespace, got %v", nsLabels)
+	}
+	if len(rule.Ports) != 1 || rule.Ports[0].Port.IntVal != 9000 {
+		t.Errorf("expected port 9000, got %v", rule.Ports)
+	}
+}
+
+func TestPrometheusIngressRule_OpenShift(t *testing.T) {
+	params := networkpolicy.OpenShiftPlatformDefaults()
+	port := intstr.FromInt32(9000)
+	rule := networkpolicy.PrometheusIngressRule(params, port)
+	if len(rule.From) != 1 || rule.From[0].NamespaceSelector == nil {
+		t.Fatalf("expected 1 From with NamespaceSelector, got %v", rule.From)
+	}
+	nsLabels := rule.From[0].NamespaceSelector.MatchLabels
+	if nsLabels["openshift.io/cluster-monitoring"] != "true" {
+		t.Errorf("expected openshift.io/cluster-monitoring: true, got %v", nsLabels)
 	}
 	if len(rule.Ports) != 1 || rule.Ports[0].Port.IntVal != 9000 {
 		t.Errorf("expected port 9000, got %v", rule.Ports)
