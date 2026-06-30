@@ -1374,21 +1374,21 @@ spec:
                 - name: CONFIG_LEADERELECTION_NAME
                   value: tekton-operator-controller-config-leader-election
                 - name: IMAGE_HUB_TEKTON_HUB_DB
-                  value: registry.redhat.io/rhel9/postgresql-15@sha256:29b21478031fa54887787fb4355b86847558e4f5b1801de8ebe4274b6c1cad9b
+                  value: registry.redhat.io/rhel9/postgresql-15@sha256:14022d2bfdd787cf9cb16ecbfc8e4142a04ea7a8e3f4b8de75a0be572c98b800
                 - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-                  value: registry.redhat.io/rhel9/buildah@sha256:5bd237a9e9f302fd55f7c40fac90cea6c44f4eae0aa5060ee3cfcce0f7f8c49a
+                  value: registry.redhat.io/rhel9/buildah@sha256:48a878e4eeaa84d91cc4b6ac3cbd9f1b36ed000589241a78e5ac0aecb881eac2
                 - name: IMAGE_ADDONS_PARAM_KN_IMAGE
                   value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:baed0a26019f39f81714dc6bc221660408b66706b708cf95c0fa912a393ff3df
                 - name: IMAGE_ADDONS_MVN_SETTINGS
-                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:1ae81b51dcbb0a1cd6a59b3d42b52f98201778c7cd6e9765194574258d3f29de
+                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:8201445bebcb5bd4fe23fcc2a76cd5fec029ab401d270926a1563c03b36f0137
                 - name: IMAGE_ADDONS_SKOPEO_COPY
-                  value: registry.redhat.io/rhel9/skopeo@sha256:6627b93fab28b72f74022d59be3589e0f9c13f4b0337ba6104ffff46db22080d
+                  value: registry.redhat.io/rhel9/skopeo@sha256:ef8492e9040d376b0a1c651a26f58a58efd6faade5d1dd94fabc622e9140a79f
                 - name: IMAGE_ADDONS_GENERATE
                   value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:aea2f22b7f61cb32fb82ccde987e8bc36d49c88ae91181fcc6787a6e352c7ee7
                 - name: IMAGE_ADDONS_GEN_ENV_FILE
                   value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:aea2f22b7f61cb32fb82ccde987e8bc36d49c88ae91181fcc6787a6e352c7ee7
                 - name: IMAGE_ADDONS_PARAM_MAVEN_IMAGE
-                  value: registry.redhat.io/ubi9/openjdk-17@sha256:d729386414248346b936d4e08cb8b0b501666ce2ba10552ab75155bff4c8577a
+                  value: registry.redhat.io/ubi9/openjdk-17@sha256:c54d7a67305912d051232c096e491cae9987624905dbf6e9dda7312446365cf0
                 - name: IMAGE_ADDONS_OC
                   value: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
                 image: ghcr.io/tektoncd/operator/operator-1d69a75f22dd094880847eac907fb2c1@sha256:a90b931d55f7c910c9f5fd1e15193924a9c41d8f1f5b361f78f8d00def9f2543
