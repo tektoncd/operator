@@ -852,35 +852,35 @@ spec:
                 - name: IMAGE_HUB_TEKTON_HUB_DB
                   value: registry.redhat.io/rhel9/postgresql-13@sha256:36647bd6d50d2e0e9c99ecf190bd515577c7ce9476e49d927c4d4065011e3441
                 - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-                  value: registry.redhat.io/rhel9/buildah@sha256:f0432e506a8aea892078322518aedeb12e0f17504dbc29fd293cd8cda06e7f73
+                  value: registry.redhat.io/rhel9/buildah@sha256:48a878e4eeaa84d91cc4b6ac3cbd9f1b36ed000589241a78e5ac0aecb881eac2
                 - name: IMAGE_ADDONS_PARAM_KN_IMAGE
-                  value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:aee19896d17a431ba980564fdb73ef08ad1512f586fbdf954cecef6258f7a8df
+                  value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:baed0a26019f39f81714dc6bc221660408b66706b708cf95c0fa912a393ff3df
                 - name: IMAGE_ADDONS_KN
-                  value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:aee19896d17a431ba980564fdb73ef08ad1512f586fbdf954cecef6258f7a8df
+                  value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:baed0a26019f39f81714dc6bc221660408b66706b708cf95c0fa912a393ff3df
                 - name: IMAGE_ADDONS_SKOPEO_RESULTS
-                  value: registry.redhat.io/rhel9/skopeo@sha256:ecc4e3b3aeaadac17f9c0922ea2d7251303761a2695f7e9e08b6d89c7f057388
+                  value: registry.redhat.io/rhel9/skopeo@sha256:ef8492e9040d376b0a1c651a26f58a58efd6faade5d1dd94fabc622e9140a79f
                 - name: IMAGE_ADDONS_BUILD
-                  value: registry.redhat.io/rhel9/buildah@sha256:f0432e506a8aea892078322518aedeb12e0f17504dbc29fd293cd8cda06e7f73
+                  value: registry.redhat.io/rhel9/buildah@sha256:48a878e4eeaa84d91cc4b6ac3cbd9f1b36ed000589241a78e5ac0aecb881eac2
                 - name: IMAGE_ADDONS_S2I_BUILD
-                  value: registry.redhat.io/rhel9/buildah@sha256:f0432e506a8aea892078322518aedeb12e0f17504dbc29fd293cd8cda06e7f73
+                  value: registry.redhat.io/rhel9/buildah@sha256:48a878e4eeaa84d91cc4b6ac3cbd9f1b36ed000589241a78e5ac0aecb881eac2
                 - name: IMAGE_ADDONS_S2I_GENERATE
-                  value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:70293cb8a80aa548933ff5f502bac89945a5cd08801c4ca3aac08a10dd01f62f
+                  value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:aea2f22b7f61cb32fb82ccde987e8bc36d49c88ae91181fcc6787a6e352c7ee7
                 - name: IMAGE_ADDONS_LOAD_SCRIPTS
-                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:5b74fce9d6e629942a0c6dc0f546c193e70d7f974d999a48c948c53dd3d36362
+                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:788764c8e05aa28febe41ba1cda9b5c53861743feb11bfaad31809b1ad983ea3
                 - name: IMAGE_ADDONS_MAVEN_GENERATE
-                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:5b74fce9d6e629942a0c6dc0f546c193e70d7f974d999a48c948c53dd3d36362
+                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:788764c8e05aa28febe41ba1cda9b5c53861743feb11bfaad31809b1ad983ea3
                 - name: IMAGE_ADDONS_PREPARE
-                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:5b74fce9d6e629942a0c6dc0f546c193e70d7f974d999a48c948c53dd3d36362
+                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:788764c8e05aa28febe41ba1cda9b5c53861743feb11bfaad31809b1ad983ea3
                 - name: IMAGE_ADDONS_MVN_SETTINGS
-                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:5b74fce9d6e629942a0c6dc0f546c193e70d7f974d999a48c948c53dd3d36362
+                  value: registry.redhat.io/ubi9/ubi-minimal@sha256:788764c8e05aa28febe41ba1cda9b5c53861743feb11bfaad31809b1ad983ea3
                 - name: IMAGE_ADDONS_SKOPEO_COPY
-                  value: registry.redhat.io/rhel9/skopeo@sha256:ecc4e3b3aeaadac17f9c0922ea2d7251303761a2695f7e9e08b6d89c7f057388
+                  value: registry.redhat.io/rhel9/skopeo@sha256:ef8492e9040d376b0a1c651a26f58a58efd6faade5d1dd94fabc622e9140a79f
                 - name: IMAGE_ADDONS_GENERATE
-                  value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:70293cb8a80aa548933ff5f502bac89945a5cd08801c4ca3aac08a10dd01f62f
+                  value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:aea2f22b7f61cb32fb82ccde987e8bc36d49c88ae91181fcc6787a6e352c7ee7
                 - name: IMAGE_ADDONS_GEN_ENV_FILE
-                  value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:70293cb8a80aa548933ff5f502bac89945a5cd08801c4ca3aac08a10dd01f62f
+                  value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:aea2f22b7f61cb32fb82ccde987e8bc36d49c88ae91181fcc6787a6e352c7ee7
                 - name: IMAGE_ADDONS_PARAM_MAVEN_IMAGE
-                  value: registry.redhat.io/ubi9/openjdk-17@sha256:4a1c11377fcd260a2fecfe0ec01e143cc05150c3d9b70b018cdcc68c6f5667a9
+                  value: registry.redhat.io/ubi9/openjdk-17@sha256:c54d7a67305912d051232c096e491cae9987624905dbf6e9dda7312446365cf0
                 - name: IMAGE_ADDONS_OC
                   value: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
                 - name: IMAGE_PIPELINES_TEKTON_PIPELINES_CONTROLLER
@@ -970,7 +970,7 @@ spec:
                 - name: IMAGE_PAC_PAC_CLI
                   value: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
                 - name: IMAGE_ADDONS_MAVEN_GOALS
-                  value: registry.redhat.io/ubi9/openjdk-17@sha256:4a1c11377fcd260a2fecfe0ec01e143cc05150c3d9b70b018cdcc68c6f5667a9
+                  value: registry.redhat.io/ubi9/openjdk-17@sha256:c54d7a67305912d051232c096e491cae9987624905dbf6e9dda7312446365cf0
                 - name: IMAGE_PIPELINES_CONSOLE_PLUGIN
                   value: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-rhel9@
                 - name: IMAGE_PIPELINES_CONSOLE_PLUGIN_LEGACY
@@ -1094,15 +1094,15 @@ spec:
   provider:
     name: Red Hat
   relatedImages:
-  - image: registry.redhat.io/rhel9/buildah@sha256:f0432e506a8aea892078322518aedeb12e0f17504dbc29fd293cd8cda06e7f73
+  - image: registry.redhat.io/rhel9/buildah@sha256:48a878e4eeaa84d91cc4b6ac3cbd9f1b36ed000589241a78e5ac0aecb881eac2
     name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-  - image: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:aee19896d17a431ba980564fdb73ef08ad1512f586fbdf954cecef6258f7a8df
+  - image: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:baed0a26019f39f81714dc6bc221660408b66706b708cf95c0fa912a393ff3df
     name: IMAGE_ADDONS_PARAM_KN_IMAGE
-  - image: registry.redhat.io/rhel9/skopeo@sha256:ecc4e3b3aeaadac17f9c0922ea2d7251303761a2695f7e9e08b6d89c7f057388
+  - image: registry.redhat.io/rhel9/skopeo@sha256:ef8492e9040d376b0a1c651a26f58a58efd6faade5d1dd94fabc622e9140a79f
     name: IMAGE_ADDONS_SKOPEO_COPY
-  - image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:70293cb8a80aa548933ff5f502bac89945a5cd08801c4ca3aac08a10dd01f62f
+  - image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:aea2f22b7f61cb32fb82ccde987e8bc36d49c88ae91181fcc6787a6e352c7ee7
     name: IMAGE_ADDONS_GENERATE
-  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:5b74fce9d6e629942a0c6dc0f546c193e70d7f974d999a48c948c53dd3d36362
+  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:788764c8e05aa28febe41ba1cda9b5c53861743feb11bfaad31809b1ad983ea3
     name: IMAGE_ADDONS_MVN_SETTINGS
   - image: registry.redhat.io/openshift-pipelines/pipelines-rhel9-operator@
     name: OPENSHIFT_PIPELINES_OPERATOR
@@ -1136,7 +1136,7 @@ spec:
     name: IMAGE_TRIGGERS_TEKTON_TRIGGERS_CORE_INTERCEPTORS
   - image: registry.redhat.io/openshift-pipelines/pipelines-triggers-eventlistenersink-rhel9@
     name: IMAGE_TRIGGERS_ARG__EL_IMAGE
-  - image: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:aee19896d17a431ba980564fdb73ef08ad1512f586fbdf954cecef6258f7a8df
+  - image: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:baed0a26019f39f81714dc6bc221660408b66706b708cf95c0fa912a393ff3df
     name: IMAGE_ADDONS_KN
   - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel9@
     name: IMAGE_JOB_PRUNER_TKN
@@ -1160,9 +1160,9 @@ spec:
     name: IMAGE_HUB_TEKTON_HUB_UI
   - image: registry.redhat.io/openshift-pipelines/pipelines-pipelines-as-code-rhel9@
     name: IMAGE_PAC_TRIGGERTEMPLATE_APPLY_AND_LAUNCH
-  - image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:70293cb8a80aa548933ff5f502bac89945a5cd08801c4ca3aac08a10dd01f62f
+  - image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:aea2f22b7f61cb32fb82ccde987e8bc36d49c88ae91181fcc6787a6e352c7ee7
     name: IMAGE_ADDONS_GEN_ENV_FILE
-  - image: registry.redhat.io/ubi9/openjdk-17@sha256:4a1c11377fcd260a2fecfe0ec01e143cc05150c3d9b70b018cdcc68c6f5667a9
+  - image: registry.redhat.io/ubi9/openjdk-17@sha256:c54d7a67305912d051232c096e491cae9987624905dbf6e9dda7312446365cf0
     name: IMAGE_ADDONS_PARAM_MAVEN_IMAGE
   - image: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
     name: IMAGE_ADDONS_OC
@@ -1182,19 +1182,19 @@ spec:
     name: IMAGE_ADDONS_CACHE_FETCH
   - image: registry.redhat.io/openshift-pipelines/pipelines-sidecarlogresults-rhel9@
     name: IMAGE_PIPELINES_ARG__SIDECARLOGRESULTS_IMAGE
-  - image: registry.redhat.io/rhel9/skopeo@sha256:ecc4e3b3aeaadac17f9c0922ea2d7251303761a2695f7e9e08b6d89c7f057388
+  - image: registry.redhat.io/rhel9/skopeo@sha256:ef8492e9040d376b0a1c651a26f58a58efd6faade5d1dd94fabc622e9140a79f
     name: IMAGE_ADDONS_SKOPEO_RESULTS
-  - image: registry.redhat.io/rhel9/buildah@sha256:f0432e506a8aea892078322518aedeb12e0f17504dbc29fd293cd8cda06e7f73
+  - image: registry.redhat.io/rhel9/buildah@sha256:48a878e4eeaa84d91cc4b6ac3cbd9f1b36ed000589241a78e5ac0aecb881eac2
     name: IMAGE_ADDONS_BUILD
-  - image: registry.redhat.io/rhel9/buildah@sha256:f0432e506a8aea892078322518aedeb12e0f17504dbc29fd293cd8cda06e7f73
+  - image: registry.redhat.io/rhel9/buildah@sha256:48a878e4eeaa84d91cc4b6ac3cbd9f1b36ed000589241a78e5ac0aecb881eac2
     name: IMAGE_ADDONS_S2I_BUILD
-  - image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:70293cb8a80aa548933ff5f502bac89945a5cd08801c4ca3aac08a10dd01f62f
+  - image: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:aea2f22b7f61cb32fb82ccde987e8bc36d49c88ae91181fcc6787a6e352c7ee7
     name: IMAGE_ADDONS_S2I_GENERATE
-  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:5b74fce9d6e629942a0c6dc0f546c193e70d7f974d999a48c948c53dd3d36362
+  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:788764c8e05aa28febe41ba1cda9b5c53861743feb11bfaad31809b1ad983ea3
     name: IMAGE_ADDONS_LOAD_SCRIPTS
-  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:5b74fce9d6e629942a0c6dc0f546c193e70d7f974d999a48c948c53dd3d36362
+  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:788764c8e05aa28febe41ba1cda9b5c53861743feb11bfaad31809b1ad983ea3
     name: IMAGE_ADDONS_MAVEN_GENERATE
-  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:5b74fce9d6e629942a0c6dc0f546c193e70d7f974d999a48c948c53dd3d36362
+  - image: registry.redhat.io/ubi9/ubi-minimal@sha256:788764c8e05aa28febe41ba1cda9b5c53861743feb11bfaad31809b1ad983ea3
     name: IMAGE_ADDONS_PREPARE
   - image: registry.redhat.io/openshift-pipelines/pipelines-cli-tkn-rhel9@
     name: IMAGE_ADDONS_TKN
@@ -1228,7 +1228,7 @@ spec:
     name: IMAGE_SCHEDULER_WEBHOOK
   - image: registry.redhat.io/openshift-pipelines/pipelines-syncer-service-rhel9@"
     name: IMAGE_SYNCER_SERVICE_WORKLOAD_CONTROLLER
-  - image: registry.redhat.io/ubi9/openjdk-17@sha256:4a1c11377fcd260a2fecfe0ec01e143cc05150c3d9b70b018cdcc68c6f5667a9
+  - image: registry.redhat.io/ubi9/openjdk-17@sha256:c54d7a67305912d051232c096e491cae9987624905dbf6e9dda7312446365cf0
     name: IMAGE_ADDONS_MAVEN_GOALS
   - image: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-rhel9@
     name: IMAGE_PIPELINES_CONSOLE_PLUGIN
