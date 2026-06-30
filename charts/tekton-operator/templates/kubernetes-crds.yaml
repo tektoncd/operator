@@ -89,8 +89,6 @@ spec:
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
                 type: string
-            required:
-            - options
             type: object
           status:
             description: ManualApprovalGateStatus defines the observed state of ManualApprovalGate
@@ -328,8 +326,6 @@ spec:
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
                 type: string
-            required:
-            - options
             type: object
           status:
             description: OpenShiftPipelinesAsCodeStatus defines the observed state
@@ -811,7 +807,6 @@ spec:
                 type: string
             required:
             - disabled
-            - options
             type: object
           status:
             description: TektonChainStatus defines the observed state of TektonChain
@@ -1266,7 +1261,6 @@ spec:
                     type: string
                 required:
                 - disabled
-                - options
                 type: object
               config:
                 description: Config holds the configuration for resources created
@@ -1362,7 +1356,6 @@ spec:
                       in read-only mode
                     type: boolean
                 required:
-                - options
                 - readonly
                 type: object
               hub:
@@ -1412,8 +1405,6 @@ spec:
                           type: string
                       type: object
                     type: array
-                required:
-                - options
                 type: object
               multiclusterProxyAAE:
                 description: MulticlusterProxyAAE holds the customizable options for
@@ -1451,8 +1442,26 @@ spec:
                           type: object
                         type: object
                     type: object
-                required:
-                - options
+                type: object
+              networkPolicy:
+                description: |-
+                  NetworkPolicy configures NetworkPolicy resources for the operand namespace.
+                  This field is propagated to TektonTrigger, which is the only component with
+                  NetworkPolicy reconciliation implemented. Other components (Pipeline, Chains,
+                  Results, Dashboard) do not yet act on this field.
+                properties:
+                  disabled:
+                    description: |-
+                      Disabled disables all NetworkPolicy creation for this component.
+                      Existing policies are removed on the next reconcile.
+                    type: boolean
+                  policies:
+                    description: |-
+                      Policies merges with the operator's default NetworkPolicies by name.
+                      A key matching a default policy name replaces that default entirely.
+                      A key not matching any default is added alongside the defaults.
+                      If nil or empty, all operator defaults are applied unchanged.
+                    x-kubernetes-preserve-unknown-fields: true
                 type: object
               params:
                 description: Params is the list of params passed for all platforms
@@ -1649,6 +1658,13 @@ spec:
                       used.
                     type: boolean
                   send-cloudevents-for-runs:
+                    description: |-
+                      Deprecated: send-cloudevents-for-runs is deprecated in tektoncd/pipeline v1.12.0
+                      (https://github.com/tektoncd/pipeline/pull/9774) and will be removed in a future release.
+                      CloudEvents for CustomRuns are now enabled by default when a sink is configured in
+                      the config-events ConfigMap. This field only affects CustomRun objects; it has no
+                      effect on TaskRuns or PipelineRuns. Set to false only to suppress duplicate events
+                      when a custom task controller already sends its own CloudEvents.
                     type: boolean
                   set-security-context:
                     type: boolean
@@ -1666,8 +1682,6 @@ spec:
                     type: string
                   verification-mode:
                     type: string
-                required:
-                - options
                 type: object
               platforms:
                 description: Platforms allows configuring platform specific configurations
@@ -1746,8 +1760,6 @@ spec:
                             additionalProperties:
                               type: string
                             type: object
-                        required:
-                        - options
                         type: object
                     type: object
                   openshift:
@@ -1756,14 +1768,13 @@ spec:
                     properties:
                       enableCentralTLSConfig:
                         description: |-
-                          EnableCentralTLSConfig enables TLS configuration inheritance from
-                          the cluster's APIServer TLS security profile. When enabled, TLS settings
-                          (minimum version, cipher suites, curve preferences) are automatically
-                          derived from the cluster-wide security policy and injected into Tekton
-                          component containers that support TLS configuration.
-                          If the APIServer does not have a TLS profile configured, user-specified
-                          TLS settings in component configurations will be used as fallback.
-                          Default: false (opt-in)
+                          EnableCentralTLSConfig controls TLS configuration inheritance from the
+                          cluster's APIServer TLS security profile. When enabled (the default),
+                          TLS settings (minimum version, cipher suites, curve preferences) are
+                          automatically derived from the cluster-wide security policy and injected
+                          into Tekton component containers that support TLS configuration.
+                          Set to false to opt out and manage TLS settings manually.
+                          Default: true (opt-out)
                         type: boolean
                       pipelinesAsCode:
                         description: PipelinesAsCode allows configuring PipelinesAsCode
@@ -1835,8 +1846,6 @@ spec:
                             additionalProperties:
                               type: string
                             type: object
-                        required:
-                        - options
                         type: object
                       scc:
                         description: SCC allows configuring security context constraints
@@ -2057,7 +2066,6 @@ spec:
                 required:
                 - disabled
                 - is_external_db
-                - options
                 type: object
               scheduler:
                 description: To enable Pipeline Scheduling on Single Cluster or Multiple
@@ -2115,7 +2123,6 @@ spec:
                 - disabled
                 - multi-cluster-disabled
                 - multi-cluster-role
-                - options
                 type: object
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
@@ -2176,7 +2183,6 @@ spec:
                 required:
                 - disabled
                 - global-config
-                - options
                 type: object
               trigger:
                 description: Trigger holds the customizable option for triggers component
@@ -2222,7 +2228,6 @@ spec:
                     type: object
                 required:
                 - disabled
-                - options
                 type: object
             type: object
           status:
@@ -2443,7 +2448,6 @@ spec:
                 description: TargetNamespace is where resources will be installed
                 type: string
             required:
-            - options
             - readonly
             type: object
           status:
@@ -2686,8 +2690,6 @@ spec:
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
                 type: string
-            required:
-            - options
             type: object
           status:
             description: TektonHubStatus defines the observed state of TektonHub
@@ -3169,6 +3171,13 @@ spec:
                 description: ScopeWhenExpressionsToTask is deprecated and never used.
                 type: boolean
               send-cloudevents-for-runs:
+                description: |-
+                  Deprecated: send-cloudevents-for-runs is deprecated in tektoncd/pipeline v1.12.0
+                  (https://github.com/tektoncd/pipeline/pull/9774) and will be removed in a future release.
+                  CloudEvents for CustomRuns are now enabled by default when a sink is configured in
+                  the config-events ConfigMap. This field only affects CustomRun objects; it has no
+                  effect on TaskRuns or PipelineRuns. Set to false only to suppress duplicate events
+                  when a custom task controller already sends its own CloudEvents.
                 type: boolean
               set-security-context:
                 type: boolean
@@ -3189,8 +3198,6 @@ spec:
                 type: string
               verification-mode:
                 type: string
-            required:
-            - options
             type: object
           status:
             description: TektonPipelineStatus defines the observed state of TektonPipeline
@@ -3532,7 +3539,6 @@ spec:
             required:
             - disabled
             - is_external_db
-            - options
             type: object
           status:
             description: TektonResultStatus defines the observed state of TektonResult
@@ -3712,6 +3718,23 @@ spec:
                 type: boolean
               enable-api-fields:
                 type: string
+              networkPolicy:
+                description: NetworkPolicy configures NetworkPolicy creation for TektonTrigger
+                  workloads.
+                properties:
+                  disabled:
+                    description: |-
+                      Disabled disables all NetworkPolicy creation for this component.
+                      Existing policies are removed on the next reconcile.
+                    type: boolean
+                  policies:
+                    description: |-
+                      Policies merges with the operator's default NetworkPolicies by name.
+                      A key matching a default policy name replaces that default entirely.
+                      A key not matching any default is added alongside the defaults.
+                      If nil or empty, all operator defaults are applied unchanged.
+                    x-kubernetes-preserve-unknown-fields: true
+                type: object
               options:
                 description: options holds additions fields and these fields will
                   be updated on the manifests
@@ -3749,7 +3772,6 @@ spec:
                 type: string
             required:
             - disabled
-            - options
             type: object
           status:
             description: TektonTriggerStatus defines the observed state of TektonTrigger
@@ -3964,7 +3986,6 @@ spec:
             required:
             - disabled
             - global-config
-            - options
             type: object
           status:
             description: TektonPrunerStatus defines the observed state of TektonPruner
@@ -4140,7 +4161,6 @@ spec:
             - disabled
             - multi-cluster-disabled
             - multi-cluster-role
-            - options
             type: object
           status:
             description: TektonSchedulerStatus defines the observed state of TektonScheduler
@@ -4297,8 +4317,6 @@ spec:
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
                 type: string
-            required:
-            - options
             type: object
           status:
             description: TektonMulticlusterProxyAAEStatus defines the observed state

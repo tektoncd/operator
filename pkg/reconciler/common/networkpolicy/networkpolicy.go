@@ -83,15 +83,35 @@ func Generate(
 	return mf.ManifestFrom(mf.Slice(resources))
 }
 
-// DNSEgressRule allows egress to DNS resolver pods on UDP and TCP port 5353.
+// DefaultDenyPolicy returns a default-deny NetworkPolicy scoped to podSelector.
+// Pass an empty metav1.LabelSelector{} for a namespace-wide deny (once all
+// components implement NetworkPolicy support). Until then, each component passes
+// its own selector (e.g. app.kubernetes.io/part-of: tekton-triggers) so only
+// its pods are affected.
+func DefaultDenyPolicy(name string, podSelector metav1.LabelSelector) networkingv1.NetworkPolicy {
+	return networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: networkingv1.NetworkPolicySpec{
+			PodSelector: podSelector,
+			PolicyTypes: []networkingv1.PolicyType{
+				networkingv1.PolicyTypeIngress,
+				networkingv1.PolicyTypeEgress,
+			},
+		},
+	}
+}
+
+// DNSEgressRule allows egress to DNS resolver pods on UDP and TCP using the
+// platform-specific DNS port (53 on Kubernetes, 5353 on OpenShift).
 func DNSEgressRule(p PlatformParams) networkingv1.NetworkPolicyEgressRule {
 	udp := corev1.ProtocolUDP
 	tcp := corev1.ProtocolTCP
-	dnsPort := intstr.FromInt32(5353)
+	udpPort := intstr.FromInt32(p.DNSPort)
+	tcpPort := intstr.FromInt32(p.DNSPort)
 	return networkingv1.NetworkPolicyEgressRule{
 		Ports: []networkingv1.NetworkPolicyPort{
-			{Protocol: &udp, Port: &dnsPort},
-			{Protocol: &tcp, Port: &dnsPort},
+			{Protocol: &udp, Port: &udpPort},
+			{Protocol: &tcp, Port: &tcpPort},
 		},
 		To: []networkingv1.NetworkPolicyPeer{
 			{
@@ -106,11 +126,14 @@ func DNSEgressRule(p PlatformParams) networkingv1.NetworkPolicyEgressRule {
 	}
 }
 
-// APIServerEgressRule allows egress on TCP 6443 to any destination.
-// The API server is typically host-networked so no pod/namespace selector is needed.
-func APIServerEgressRule() networkingv1.NetworkPolicyEgressRule {
+// APIServerEgressRule allows egress to the Kubernetes API server on the platform-specific port.
+// Vanilla Kubernetes exposes the API server via kubernetes.default.svc on port 443 (targetPort 6443).
+// OpenShift exposes it directly on port 6443.
+// No To restriction is set because the API server is typically host-networked or behind a
+// ClusterIP service that does not match a pod/namespace selector.
+func APIServerEgressRule(p PlatformParams) networkingv1.NetworkPolicyEgressRule {
 	tcp := corev1.ProtocolTCP
-	apiPort := intstr.FromInt32(6443)
+	apiPort := intstr.FromInt32(p.APIServerPort)
 	return networkingv1.NetworkPolicyEgressRule{
 		Ports: []networkingv1.NetworkPolicyPort{
 			{Protocol: &tcp, Port: &apiPort},
@@ -120,13 +143,14 @@ func APIServerEgressRule() networkingv1.NetworkPolicyEgressRule {
 
 // InternetEgressRule allows egress on TCP 80 and 443 to any destination.
 func InternetEgressRule() networkingv1.NetworkPolicyEgressRule {
-	tcp := corev1.ProtocolTCP
+	tcpHTTP := corev1.ProtocolTCP
+	tcpHTTPS := corev1.ProtocolTCP
 	httpPort := intstr.FromInt32(80)
 	httpsPort := intstr.FromInt32(443)
 	return networkingv1.NetworkPolicyEgressRule{
 		Ports: []networkingv1.NetworkPolicyPort{
-			{Protocol: &tcp, Port: &httpPort},
-			{Protocol: &tcp, Port: &httpsPort},
+			{Protocol: &tcpHTTP, Port: &httpPort},
+			{Protocol: &tcpHTTPS, Port: &httpsPort},
 		},
 	}
 }

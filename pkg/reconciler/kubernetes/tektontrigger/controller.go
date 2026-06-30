@@ -30,6 +30,7 @@ import (
 	tektonTriggerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektontrigger"
 	tektonTriggerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektontrigger"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
 	"knative.dev/pkg/injection"
@@ -65,6 +66,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 
+		params := networkpolicy.KubernetesPlatformDefaults()
+		if v1alpha1.IsOpenShiftPlatform() {
+			params = networkpolicy.OpenShiftPlatformDefaults()
+		}
+
 		c := &Reconciler{
 			kubeClientSet:      kubeclient.Get(ctx),
 			pipelineInformer:   tektonPipelineinformer.Get(ctx),
@@ -72,6 +78,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			extension:          generator(ctx),
 			manifest:           manifest,
 			triggersVersion:    triggersVer,
+			platformParams:     params,
 		}
 		impl := tektonTriggerreconciler.NewImpl(ctx, c)
 

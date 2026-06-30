@@ -22,6 +22,16 @@ type PlatformParams struct {
 	DNSResolverNamespace     string
 	DNSResolverPodLabel      map[string]string
 	PrometheusNamespaceLabel map[string]string
+	// DNSPort is the port the platform's DNS resolver pods listen on.
+	// Vanilla Kubernetes CoreDNS pods listen on 53.
+	// OpenShift DNS pods listen on 5353 (host-networked daemonset); OVN-Kubernetes
+	// enforces NetworkPolicy after DNAT, so the policy must match the pod port (5353),
+	// not the dns-default service port (53).
+	DNSPort int32
+	// APIServerPort is the port the Kubernetes API server service exposes to pods.
+	// Vanilla Kubernetes exposes the api-server via the kubernetes.default.svc service on
+	// port 443 (targetPort 6443). OpenShift exposes it on port 6443 directly.
+	APIServerPort int32
 }
 
 // KubernetesPlatformDefaults returns PlatformParams for vanilla Kubernetes.
@@ -30,6 +40,8 @@ func KubernetesPlatformDefaults() PlatformParams {
 		DNSResolverNamespace:     "kube-system",
 		DNSResolverPodLabel:      map[string]string{"k8s-app": "kube-dns"},
 		PrometheusNamespaceLabel: map[string]string{"kubernetes.io/metadata.name": "monitoring"},
+		DNSPort:                  53,
+		APIServerPort:            443,
 	}
 }
 
@@ -39,5 +51,7 @@ func OpenShiftPlatformDefaults() PlatformParams {
 		DNSResolverNamespace:     "openshift-dns",
 		DNSResolverPodLabel:      map[string]string{"dns.operator.openshift.io/daemonset-dns": "default"},
 		PrometheusNamespaceLabel: map[string]string{"openshift.io/cluster-monitoring": "true"},
+		DNSPort:                  5353,
+		APIServerPort:            6443,
 	}
 }

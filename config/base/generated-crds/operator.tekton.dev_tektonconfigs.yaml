@@ -570,6 +570,26 @@ spec:
                         type: object
                     type: object
                 type: object
+              networkPolicy:
+                description: |-
+                  NetworkPolicy configures NetworkPolicy resources for the operand namespace.
+                  This field is propagated to TektonTrigger, which is the only component with
+                  NetworkPolicy reconciliation implemented. Other components (Pipeline, Chains,
+                  Results, Dashboard) do not yet act on this field.
+                properties:
+                  disabled:
+                    description: |-
+                      Disabled disables all NetworkPolicy creation for this component.
+                      Existing policies are removed on the next reconcile.
+                    type: boolean
+                  policies:
+                    description: |-
+                      Policies merges with the operator's default NetworkPolicies by name.
+                      A key matching a default policy name replaces that default entirely.
+                      A key not matching any default is added alongside the defaults.
+                      If nil or empty, all operator defaults are applied unchanged.
+                    x-kubernetes-preserve-unknown-fields: true
+                type: object
               params:
                 description: Params is the list of params passed for all platforms
                 items:
