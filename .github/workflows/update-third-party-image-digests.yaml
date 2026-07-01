@@ -119,8 +119,9 @@ jobs:
         token: ${{ secrets.CHATOPS_TOKEN }}
         commit-message: "chore: update third-party image digests"
         committer: tekton-bot <tekton-bot@users.noreply.github.com>
-        author: tekton-bot <tekton-bot@users.noreply.github.com>
+        author: Divyanshu Agrawal <diagrawa@redhat.com>
         signoff: true
+        # author: ${{ github.actor }} <${{ github.actor }}@users.noreply.github.com>
         branch: bot-update-third-party-images-${{ matrix.branch }}
         delete-branch: true
         title: "chore: update third-party image digests (${{ matrix.branch }})"
