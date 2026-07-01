@@ -75,8 +75,9 @@ func GetTektonTriggerCR(config *v1alpha1.TektonConfig, operatorVersion string) *
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Config:  config.Spec.Config,
-			Trigger: config.Spec.Trigger,
+			Config:        config.Spec.Config,
+			Trigger:       config.Spec.Trigger,
+			NetworkPolicy: config.Spec.NetworkPolicy,
 		},
 	}
 }
@@ -112,6 +113,11 @@ func UpdateTrigger(ctx context.Context, old *v1alpha1.TektonTrigger, new *v1alph
 
 	if !reflect.DeepEqual(old.Spec.Config, new.Spec.Config) {
 		old.Spec.Config = new.Spec.Config
+		updated = true
+	}
+
+	if !reflect.DeepEqual(old.Spec.NetworkPolicy, new.Spec.NetworkPolicy) {
+		old.Spec.NetworkPolicy = new.Spec.NetworkPolicy
 		updated = true
 	}
 

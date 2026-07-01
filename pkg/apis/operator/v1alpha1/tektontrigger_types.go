@@ -57,6 +57,9 @@ type TektonTriggerSpec struct {
 	// Config holds the configuration for resources created by TektonTrigger
 	// +optional
 	Config Config `json:"config,omitempty"`
+	// NetworkPolicy configures NetworkPolicy creation for TektonTrigger workloads.
+	// +optional
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
 // TektonTriggerStatus defines the observed state of TektonTrigger
