@@ -43,6 +43,11 @@ func (tp *TektonResult) Validate(ctx context.Context) (errs *apis.FieldError) {
 }
 
 func (trs *TektonResultSpec) validate(path string) (errs *apis.FieldError) {
+	// validate the embedded CommonSpec (e.g. targetNamespace denylist),
+	// which TektonResult would otherwise bypass since it does not call
+	// CommonSpec.validate the way the other components do.
+	errs = errs.Also(trs.CommonSpec.validate(path))
+
 	if trs.LokiStackName != "" {
 		if strings.ToLower(trs.LogsType) != LogsTypeLoki && trs.LogsType != "" {
 			errMsg := fmt.Sprintf("Loki stack is only supported when logs_type is loki or empty, got logs_type: %s", trs.LogsType)
