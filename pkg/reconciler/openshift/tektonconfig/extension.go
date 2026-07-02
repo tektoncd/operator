@@ -217,9 +217,47 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		}
 	}
 
+	// Propagate platform-data-hash to any existing ManualApprovalGate CR.
+	// ManualApprovalGate is a standalone CR (not created by TektonConfig — see
+	// https://github.com/tektoncd/operator/issues/3656), so it never receives
+	// platform-data-hash through the normal child-CR path. We update it here
+	// (same PostReconcile layer as PAC) so that the MAG controller re-applies
+	// the webhook deployment with updated TLS env vars when the cluster TLS
+	// profile changes.
+	oe.propagateMAGPlatformData(ctx)
+
 	// execute console plugin reconciler
 	// TLS config was already resolved and cached in PreReconcile via SetTLSConfig.
 	return oe.consolePluginReconciler.reconcile(ctx, configInstance)
+}
+
+// propagateMAGPlatformData writes the current TLS profile hash into the
+// platform-data-hash annotation of every existing ManualApprovalGate CR.
+// It is a best-effort operation — failures are logged but do not block the
+// TektonConfig reconciliation.
+func (oe openshiftExtension) propagateMAGPlatformData(ctx context.Context) {
+	platformData := oe.GetPlatformData()
+	if platformData == "" {
+		return
+	}
+	logger := logging.FromContext(ctx)
+	magList, err := oe.operatorClientSet.OperatorV1alpha1().ManualApprovalGates().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		logger.Warnf("failed to list ManualApprovalGate CRs for platform-data-hash propagation: %v", err)
+		return
+	}
+	for i := range magList.Items {
+		mag := &magList.Items[i]
+		if mag.Annotations[v1alpha1.PlatformDataHashKey] == platformData {
+			continue
+		}
+		patch := fmt.Sprintf(`{"metadata":{"annotations":{%q:%q}}}`, v1alpha1.PlatformDataHashKey, platformData)
+		if _, patchErr := oe.operatorClientSet.OperatorV1alpha1().ManualApprovalGates().Patch(
+			ctx, mag.Name, types.MergePatchType, []byte(patch), metav1.PatchOptions{},
+		); patchErr != nil {
+			logger.Warnf("failed to patch platform-data-hash on ManualApprovalGate %s: %v", mag.Name, patchErr)
+		}
+	}
 }
 
 func (oe openshiftExtension) GetPlatformData() string {
