@@ -81,6 +81,10 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		errs = errs.Also(tc.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.validate(logger, "spec.platforms.kubernetes.pipelinesAsCode"))
 	}
 
+	if IsOpenShiftPlatform() && tc.Spec.Platforms.OpenShift.NamespaceSync != nil {
+		errs = errs.Also(tc.Spec.Platforms.OpenShift.NamespaceSync.validate("spec.platforms.openshift.namespaceSync"))
+	}
+
 	// validate SCC config
 	if IsOpenShiftPlatform() && tc.Spec.Platforms.OpenShift.SCC != nil {
 		defaultSCC := PipelinesSCC
@@ -200,7 +204,27 @@ func isValueInArray(arr []string, key string) bool {
 }
 
 func isOpenShiftPlatformsSectionSet(o OpenShift) bool {
-	return o.PipelinesAsCode != nil || o.SCC != nil
+	return o.PipelinesAsCode != nil || o.SCC != nil || o.NamespaceSync != nil
+}
+
+func (ns *NamespaceSyncConfig) validate(path string) *apis.FieldError {
+	var errs *apis.FieldError
+	for i, b := range ns.SecretBindings {
+		errs = errs.Also(b.validate(fmt.Sprintf("%s.secretBindings[%d]", path, i)))
+	}
+	return errs
+}
+
+func (b SecretBinding) validate(path string) *apis.FieldError {
+	hasLabel := b.LabelSelector != nil
+	hasName := b.SecretName != ""
+	if hasLabel && hasName {
+		return apis.ErrMultipleOneOf(path+".labelSelector", path+".secretName")
+	}
+	if !hasLabel && !hasName {
+		return apis.ErrMissingOneOf(path+".labelSelector", path+".secretName")
+	}
+	return nil
 }
 
 func isKubernetesPlatformsSectionSet(k Kubernetes) bool {
