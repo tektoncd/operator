@@ -84,10 +84,7 @@ func Generate(
 }
 
 // DefaultDenyPolicy returns a default-deny NetworkPolicy scoped to podSelector.
-// Pass an empty metav1.LabelSelector{} for a namespace-wide deny (once all
-// components implement NetworkPolicy support). Until then, each component passes
-// its own selector (e.g. app.kubernetes.io/part-of: tekton-triggers) so only
-// its pods are affected.
+// Use an empty LabelSelector{} for a namespace-wide deny once all components support NetworkPolicy.
 func DefaultDenyPolicy(name string, podSelector metav1.LabelSelector) networkingv1.NetworkPolicy {
 	return networkingv1.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
@@ -126,11 +123,8 @@ func DNSEgressRule(p PlatformParams) networkingv1.NetworkPolicyEgressRule {
 	}
 }
 
-// APIServerEgressRule allows egress to the Kubernetes API server on the platform-specific port.
-// Vanilla Kubernetes exposes the API server via kubernetes.default.svc on port 443 (targetPort 6443).
-// OpenShift exposes it directly on port 6443.
-// No To restriction is set because the API server is typically host-networked or behind a
-// ClusterIP service that does not match a pod/namespace selector.
+// APIServerEgressRule allows egress to the API server on the platform-specific port (443 on
+// Kubernetes, 6443 on OpenShift). No To restriction — API server is behind a ClusterIP service.
 func APIServerEgressRule(p PlatformParams) networkingv1.NetworkPolicyEgressRule {
 	tcp := corev1.ProtocolTCP
 	apiPort := intstr.FromInt32(p.APIServerPort)
@@ -143,14 +137,13 @@ func APIServerEgressRule(p PlatformParams) networkingv1.NetworkPolicyEgressRule 
 
 // InternetEgressRule allows egress on TCP 80 and 443 to any destination.
 func InternetEgressRule() networkingv1.NetworkPolicyEgressRule {
-	tcpHTTP := corev1.ProtocolTCP
-	tcpHTTPS := corev1.ProtocolTCP
+	tcp := corev1.ProtocolTCP
 	httpPort := intstr.FromInt32(80)
 	httpsPort := intstr.FromInt32(443)
 	return networkingv1.NetworkPolicyEgressRule{
 		Ports: []networkingv1.NetworkPolicyPort{
-			{Protocol: &tcpHTTP, Port: &httpPort},
-			{Protocol: &tcpHTTPS, Port: &httpsPort},
+			{Protocol: &tcp, Port: &httpPort},
+			{Protocol: &tcp, Port: &httpsPort},
 		},
 	}
 }

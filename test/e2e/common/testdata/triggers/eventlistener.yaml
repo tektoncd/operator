@@ -1,0 +1,16 @@
+apiVersion: triggers.tekton.dev/v1beta1
+kind: EventListener
+metadata:
+  name: np-test-listener
+spec:
+  serviceAccountName: np-test-el-sa
+  triggers:
+    - name: np-test-trigger
+      interceptors:
+        - ref:
+            name: cel
+          params:
+            - name: filter
+              value: "body.action == 'push'"
+      template:
+        ref: np-test-template

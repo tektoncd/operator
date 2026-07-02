@@ -16,7 +16,12 @@ limitations under the License.
 
 package v1alpha1
 
-import networkingv1 "k8s.io/api/networking/v1"
+import (
+	"k8s.io/apimachinery/pkg/util/validation"
+	"knative.dev/pkg/apis"
+
+	networkingv1 "k8s.io/api/networking/v1"
+)
 
 // NetworkPolicyConfig configures NetworkPolicy creation for a Tekton component.
 type NetworkPolicyConfig struct {
@@ -33,4 +38,13 @@ type NetworkPolicyConfig struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
 	Policies map[string]networkingv1.NetworkPolicySpec `json:"policies,omitempty"`
+}
+
+func (c NetworkPolicyConfig) validate(path string) (errs *apis.FieldError) {
+	for name := range c.Policies {
+		if msgs := validation.IsDNS1123Subdomain(name); len(msgs) > 0 {
+			errs = errs.Also(apis.ErrInvalidKeyName(name, path+".policies", msgs...))
+		}
+	}
+	return errs
 }

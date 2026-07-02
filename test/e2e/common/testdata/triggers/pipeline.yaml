@@ -1,0 +1,12 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: np-test-pipeline
+spec:
+  tasks:
+    - name: echo
+      taskSpec:
+        steps:
+          - name: echo
+            image: alpine
+            script: echo "NetworkPolicy e2e test passed"

@@ -60,8 +60,7 @@ func triggersDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1
 				},
 				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
 				Ingress: []networkingv1.NetworkPolicyIngressRule{
-					// cidr="" → allow from any source; operator defaults to permissive.
-					// Users can restrict to a specific control-plane CIDR via spec.networkPolicy.policies.
+					// cidr="" → permissive; restrict via spec.networkPolicy.policies if needed.
 					networkpolicy.WebhookIngressRule("", webhookPort),
 					networkpolicy.PrometheusIngressRule(params, metricsPort),
 				},
@@ -93,8 +92,7 @@ func triggersDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1
 				Egress: []networkingv1.NetworkPolicyEgressRule{
 					networkpolicy.DNSEgressRule(params),
 					networkpolicy.APIServerEgressRule(params),
-					// Core interceptors may call external APIs (e.g. GitHub) to fetch files,
-					// verify ownership, or perform other outbound operations.
+					// Allow egress to external APIs (e.g. GitHub) for file fetching and validation.
 					networkpolicy.InternetEgressRule(),
 				},
 			},
@@ -102,24 +100,12 @@ func triggersDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1
 	}
 }
 
-// defaultDenyPolicy returns the default-deny NetworkPolicy for the Tekton namespace.
+// defaultDenyPolicy returns the scoped default-deny for Triggers pods.
 //
-// Naming: the policy is intentionally named "tekton-default-deny" (not
-// "tekton-triggers-default-deny"). The long-term design is for a single
-// namespace-wide deny to be owned by one component (TektonPipeline), so all
-// components converge on the same name. Do NOT rename this to a component-specific
-// name — doing so would leave orphaned per-component deny policies once the
-// namespace-wide policy takes over, and would break the migration path.
-//
-// Temporary placement: this lives here because TektonTrigger is the first component
-// to implement NetworkPolicy support. TektonConfig cannot own it (no InstallerSetClient),
-// so the intended long-term owner is TektonPipeline, which is the foundational component
-// that all others depend on and already has an InstallerSetClient.
-//
-// Migration path: once all components (Pipeline, Chains, Results, Dashboard…) implement
-// NetworkPolicy support, this function should move to the TektonPipeline reconciler,
-// the pod selector should be widened to an empty metav1.LabelSelector{} (namespace-wide
-// deny), and this copy removed.
+// Name is "tekton-default-deny" (not component-specific) because the long-term
+// owner is TektonPipeline, which will replace this with a namespace-wide deny
+// (empty podSelector) once all components implement NetworkPolicy support.
+// Do NOT rename — orphaned policies would result on migration.
 func defaultDenyPolicy() networkingv1.NetworkPolicy {
 	return networkpolicy.DefaultDenyPolicy(
 		"tekton-default-deny",
