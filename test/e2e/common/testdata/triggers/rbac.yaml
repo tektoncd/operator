@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: np-test-el-sa
+---
+# Binds the EventListener SA to the namespaced Triggers ClusterRole so it can
+# read TriggerTemplates and create PipelineRuns in the test namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: np-test-el-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-triggers-eventlistener-roles
+subjects:
+- kind: ServiceAccount
+  name: np-test-el-sa
+---
+# Binds the EventListener SA to the cluster-scoped Triggers ClusterRole so it
+# can read ClusterInterceptors (e.g. cel). Named uniquely to avoid conflicts.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: np-test-el-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-triggers-eventlistener-clusterroles
+subjects:
+- kind: ServiceAccount
+  name: np-test-el-sa
+  namespace: tekton-np-e2e

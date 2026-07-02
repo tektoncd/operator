@@ -25,7 +25,6 @@ import (
 )
 
 func (tr *TektonTrigger) Validate(ctx context.Context) (errs *apis.FieldError) {
-
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
@@ -37,12 +36,12 @@ func (tr *TektonTrigger) Validate(ctx context.Context) (errs *apis.FieldError) {
 
 	// execute common spec validations
 	errs = errs.Also(tr.Spec.CommonSpec.validate("spec"))
+	errs = errs.Also(tr.Spec.NetworkPolicy.validate("spec.networkPolicy"))
 
 	return errs.Also(tr.Spec.TriggersProperties.validate("spec"))
 }
 
 func (tr *TriggersProperties) validate(path string) (errs *apis.FieldError) {
-
 	if tr.EnableApiFields != "" {
 		if tr.EnableApiFields != config.StableAPIFieldValue && tr.EnableApiFields != config.AlphaAPIFieldValue {
 			errs = errs.Also(apis.ErrInvalidValue(tr.EnableApiFields, path+".enable-api-fields"))
