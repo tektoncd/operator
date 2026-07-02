@@ -308,6 +308,13 @@ func (cpr *consolePluginReconciler) generateNginxConfWithTLS(baseConf string) st
 	return result.String()
 }
 
+// defaultTLS13Ciphersuites is the set of TLS 1.3 ciphersuites that matches
+// OpenShift's Intermediate (and Default) TLS security profile.  It is used as the
+// fallback when no explicit cluster TLS configuration is present, and ensures nginx
+// never advertises TLS_AES_128_CCM_SHA256 (nginx's built-in default) which is not
+// part of the OpenShift-approved cipher set.
+const defaultTLS13Ciphersuites = "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256"
+
 // buildNginxTLSDirectives generates nginx TLS directives from the centrally resolved
 // TLS profile. When no explicit profile is configured (cluster uses the "Default"
 // profile), secure Intermediate-equivalent defaults are applied so that PQC
@@ -331,17 +338,31 @@ func (cpr *consolePluginReconciler) buildNginxTLSDirectives() string {
 	// ssl_ecdh_curve does not cover these groups.
 	// X25519MLKEM768 is tried first (PQC); X25519 is the classical fallback for
 	// clients that do not yet support ML-KEM.
+	// ssl_ciphers – translate IANA cipher names from the cluster profile to the
+	// OpenSSL names required by nginx. Only TLS 1.2 ciphers are emitted here;
+	// TLS 1.3 ciphersuites are controlled separately via ssl_conf_command Ciphersuites.
+	if cpr.tlsConfig != nil && cpr.tlsConfig.CipherSuites != "" {
+		opensslCiphers := ianaToOpenSSLCiphers(cpr.tlsConfig.CipherSuites)
+		if opensslCiphers != "" {
+			directives.WriteString(fmt.Sprintf("    ssl_ciphers %s;\n", opensslCiphers))
+			directives.WriteString("    ssl_prefer_server_ciphers on;\n")
+		}
+	}
+
 	directives.WriteString("    ssl_conf_command Groups X25519MLKEM768:X25519;\n")
 
-	// NOTE: IANA cipher suite names (TLS_ECDHE_RSA_…) cannot be used directly in
-	// nginx's ssl_ciphers directive (which uses OpenSSL names) or ssl_conf_command
-	// (which uses a different format). Relying on nginx's own TLS 1.3 defaults is
-	// simpler and equally secure; we intentionally skip cipher configuration here.
+	// ssl_conf_command Ciphersuites – explicitly restrict TLS 1.3 ciphersuites to
+	// those allowed by the cluster profile. nginx's built-in TLS 1.3 defaults
+	// include TLS_AES_128_CCM_SHA256 which is NOT part of OpenShift's
+	// Intermediate/Default profile, so we must enumerate the allowed set explicitly.
+	// ssl_ciphers only controls TLS 1.2; TLS 1.3 suites require this separate directive.
+	tls13Ciphers := defaultTLS13Ciphersuites
 	if cpr.tlsConfig != nil && cpr.tlsConfig.CipherSuites != "" {
-		cpr.logger.Debugw("TLS cipher suites provided but not applied to nginx (using nginx defaults)",
-			"reason", "IANA names are not directly usable in nginx ssl_ciphers",
-		)
+		if extracted := ianaTLS13Ciphersuites(cpr.tlsConfig.CipherSuites); extracted != "" {
+			tls13Ciphers = extracted
+		}
 	}
+	directives.WriteString(fmt.Sprintf("    ssl_conf_command Ciphersuites %s;\n", tls13Ciphers))
 
 	// ssl_ecdh_curve – comma-separated curve names become colon-separated for nginx.
 	// This covers TLS 1.2 classical curves; ML-KEM hybrid groups are handled above
@@ -370,4 +391,80 @@ func convertTLSVersionToNginx(minVersion string) string {
 	default:
 		return "TLSv1.2 TLSv1.3"
 	}
+}
+
+// ianaToOpenSSLCiphers translates a comma-separated list of IANA TLS cipher suite
+// names to the colon-separated OpenSSL names required by nginx's ssl_ciphers
+// directive.
+//
+// The mapping is derived by inverting the openSSLToIANACiphersMap defined in
+// vendor/github.com/openshift/library-go/pkg/crypto/crypto.go, which is the
+// canonical source of truth for OpenShift TLS profile cipher names.
+//
+// TLS 1.3 ciphers (TLS_AES_* / TLS_CHACHA20_*) are omitted here because they
+// must not appear in ssl_ciphers; they are handled separately via
+// ssl_conf_command Ciphersuites in buildNginxTLSDirectives.
+func ianaToOpenSSLCiphers(ianaCiphers string) string {
+	// Inverted from library-go's openSSLToIANACiphersMap (unexported).
+	// Keep in sync with:
+	// vendor/github.com/openshift/library-go/pkg/crypto/crypto.go
+	ianaToOpenSSL := map[string]string{
+		// TLS 1.2 — explicit nginx ssl_ciphers configuration required.
+		"TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256":       "ECDHE-ECDSA-AES128-GCM-SHA256",
+		"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256":         "ECDHE-RSA-AES128-GCM-SHA256",
+		"TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384":       "ECDHE-ECDSA-AES256-GCM-SHA384",
+		"TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384":         "ECDHE-RSA-AES256-GCM-SHA384",
+		"TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256": "ECDHE-ECDSA-CHACHA20-POLY1305",
+		"TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256":   "ECDHE-RSA-CHACHA20-POLY1305",
+		"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256":       "ECDHE-ECDSA-AES128-SHA256",
+		"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256":         "ECDHE-RSA-AES128-SHA256",
+		"TLS_RSA_WITH_AES_128_GCM_SHA256":               "AES128-GCM-SHA256",
+		"TLS_RSA_WITH_AES_256_GCM_SHA384":               "AES256-GCM-SHA384",
+		"TLS_RSA_WITH_AES_128_CBC_SHA256":               "AES128-SHA256",
+		"TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA":          "ECDHE-ECDSA-AES128-SHA",
+		"TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA":            "ECDHE-RSA-AES128-SHA",
+		"TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA":          "ECDHE-ECDSA-AES256-SHA",
+		"TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA":            "ECDHE-RSA-AES256-SHA",
+		"TLS_RSA_WITH_AES_128_CBC_SHA":                  "AES128-SHA",
+		"TLS_RSA_WITH_AES_256_CBC_SHA":                  "AES256-SHA",
+		"TLS_RSA_WITH_3DES_EDE_CBC_SHA":                 "DES-CBC3-SHA",
+		"TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA":           "ECDHE-RSA-DES-CBC3-SHA",
+		// TLS 1.3 — handled via ssl_conf_command Ciphersuites, not ssl_ciphers.
+		"TLS_AES_128_GCM_SHA256":       "",
+		"TLS_AES_256_GCM_SHA384":       "",
+		"TLS_CHACHA20_POLY1305_SHA256": "",
+	}
+
+	var opensslNames []string
+	for _, iana := range strings.Split(ianaCiphers, ",") {
+		iana = strings.TrimSpace(iana)
+		if iana == "" {
+			continue
+		}
+		openssl, known := ianaToOpenSSL[iana]
+		if !known {
+			// Unknown cipher — pass through unchanged; nginx will surface any error.
+			opensslNames = append(opensslNames, iana)
+			continue
+		}
+		if openssl != "" {
+			opensslNames = append(opensslNames, openssl)
+		}
+		// empty string → TLS 1.3 cipher, handled by ianaTLS13Ciphersuites.
+	}
+	return strings.Join(opensslNames, ":")
+}
+
+// ianaTLS13Ciphersuites extracts TLS 1.3 ciphersuite names (TLS_AES_*, TLS_CHACHA20_*)
+// from a comma-separated IANA cipher list and returns them colon-separated for
+// nginx's ssl_conf_command Ciphersuites directive.
+func ianaTLS13Ciphersuites(ianaCiphers string) string {
+	var tls13 []string
+	for _, cipher := range strings.Split(ianaCiphers, ",") {
+		cipher = strings.TrimSpace(cipher)
+		if strings.HasPrefix(cipher, "TLS_AES_") || strings.HasPrefix(cipher, "TLS_CHACHA20_") {
+			tls13 = append(tls13, cipher)
+		}
+	}
+	return strings.Join(tls13, ":")
 }
