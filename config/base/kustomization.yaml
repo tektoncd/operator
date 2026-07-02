@@ -38,7 +38,6 @@ resources:
 - generated-crds/operator.tekton.dev_syncerservices.yaml
 - generated-crds/operator.tekton.dev_tektonchains.yaml
 - generated-crds/operator.tekton.dev_tektonconfigs.yaml
-- generated-crds/operator.tekton.dev_tektonhubs.yaml
 - generated-crds/operator.tekton.dev_tektoninstallersets.yaml
 - generated-crds/operator.tekton.dev_tektonmulticlusterproxyaaes.yaml
 - generated-crds/operator.tekton.dev_tektonpipelines.yaml

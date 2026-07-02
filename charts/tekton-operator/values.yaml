@@ -20,7 +20,7 @@ openshift:
 installCRDs: false
 
 ## Controllers to install
-controllers: "tektonconfig,tektonpipeline,tektontrigger,tektonhub,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner,openshiftpipelinesascode"
+controllers: "tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner,openshiftpipelinesascode"
 
 ## Control the creation of RBAC resources (Serviceaccount, Role, ClusterRole, ClusterRoleBinding)
 rbac:

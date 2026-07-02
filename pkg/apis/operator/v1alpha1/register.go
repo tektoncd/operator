@@ -50,9 +50,6 @@ const (
 	// KindTektonInstallerSet is the Kind of TektonInstallerSet in a GVK context.
 	KindTektonInstallerSet = "TektonInstallerSet"
 
-	// KindTektonHub is the Kind of TektonHub in a GVK context.
-	KindTektonHub = "TektonHub"
-
 	// KindTektonChain is the Kind of Tekton Chain in a GVK context.
 	KindTektonChain = "TektonChain"
 
@@ -98,8 +95,6 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&TektonResultList{},
 		&TektonInstallerSet{},
 		&TektonInstallerSetList{},
-		&TektonHub{},
-		&TektonHubList{},
 		&TektonChain{},
 		&TektonChainList{},
 		&OpenShiftPipelinesAsCode{},

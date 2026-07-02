@@ -38,9 +38,6 @@ const (
 	ResolverTasks          = "resolverTasks"
 	ResolverStepActions    = "resolverStepActions"
 
-	// Hub Params
-	EnableDevconsoleIntegrationParam = "enable-devconsole-integration"
-
 	PlatformDataHashKey             = "operator.tekton.dev/platform-data-hash"
 	LastAppliedHashKey              = "operator.tekton.dev/last-applied-hash"
 	CreatedByKey                    = "operator.tekton.dev/created-by"
@@ -51,7 +48,6 @@ const (
 	InstallerSetType                = "operator.tekton.dev/type"
 	InstallerSetInstallType         = "operator.tekton.dev/installType"
 	LabelOperandName                = "operator.tekton.dev/operand-name"
-	DbSecretHash                    = "operator.tekton.dev/db-secret-hash"
 	DeploymentSpecHashValueLabelKey = "operator.tekton.dev/deployment-spec-applied-hash" // used to recreate pods, if there is a change detected in deployments spec
 	PreUpgradeVersionKey            = "operator.tekton.dev/pre-upgrade-version"          // used to monitor and execute pre upgrade functions
 	PostUpgradeVersionKey           = "operator.tekton.dev/post-upgrade-version"         // used to monitor and execute post upgrade functions
@@ -120,10 +116,6 @@ var (
 		ResolverTasks:          defaultParamValue,
 		ResolverStepActions:    defaultParamValue,
 	}
-
-	HubParams = map[string]ParamValue{
-		EnableDevconsoleIntegrationParam: defaultParamValue,
-	}
 )
 
 const (
@@ -137,8 +129,6 @@ const (
 	AddonResourceName                = "addon"
 	ResultResourceName               = "result"
 	OperandTektoncdResults           = "tektoncd-results"
-	HubResourceName                  = "hub"
-	OperandTektoncdHub               = "tektoncd-hub"
 	ChainResourceName                = "chain"
 	OperandTektoncdChains            = "tektoncd-chains"
 	OpenShiftPipelinesAsCodeName     = "pipelines-as-code"

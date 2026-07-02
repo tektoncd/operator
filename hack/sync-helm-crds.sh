@@ -113,7 +113,6 @@ echo "Step 1: Updating config/ CRD files..."
 write_config_crd "${GENERATED_DIR}/operator.tekton.dev_manualapprovalgates.yaml"         "$BASE_DIR"      "300-operator_v1alpha1_manualapprovalgate_crd.yaml"
 write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonchains.yaml"                "$BASE_DIR"      "300-operator_v1alpha1_chain_crd.yaml"
 write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonconfigs.yaml"               "$BASE_DIR"      "300-operator_v1alpha1_config_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonhubs.yaml"                  "$BASE_DIR"      "300-operator_v1alpha1_hub_crd.yaml"
 write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektoninstallersets.yaml"          "$BASE_DIR"      "300-operator_v1alpha1_installer_set_crd.yaml"
 write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonpipelines.yaml"             "$BASE_DIR"      "300-operator_v1alpha1_pipeline_crd.yaml"
 write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonresults.yaml"               "$BASE_DIR"      "300-operator_v1alpha1_result_crd.yaml"
@@ -143,7 +142,6 @@ assemble_helm_crds \
   "operator.tekton.dev_tektonchains.yaml" \
   "operator.tekton.dev_tektonconfigs.yaml" \
   "operator.tekton.dev_tektondashboards.yaml" \
-  "operator.tekton.dev_tektonhubs.yaml" \
   "operator.tekton.dev_tektoninstallersets.yaml" \
   "operator.tekton.dev_tektonpipelines.yaml" \
   "operator.tekton.dev_tektonresults.yaml" \
@@ -161,7 +159,6 @@ assemble_helm_crds \
   "operator.tekton.dev_tektonaddons.yaml" \
   "operator.tekton.dev_tektonchains.yaml" \
   "operator.tekton.dev_tektonconfigs.yaml" \
-  "operator.tekton.dev_tektonhubs.yaml" \
   "operator.tekton.dev_tektoninstallersets.yaml" \
   "operator.tekton.dev_tektonpipelines.yaml" \
   "operator.tekton.dev_tektonresults.yaml" \

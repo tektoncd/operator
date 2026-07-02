@@ -69,11 +69,7 @@ kubectl delete tektoninstallerset <installer-set-name>
 | Component              | Container/Args name                | Environment Variable                               |
 |------------------------|------------------------------------|----------------------------------------------------|
 | Chains                 | tekton-chains-controller           | `IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER`            |
-| Dashboard              | tekton-dashboard                   | `IMAGE_DASHBOARD_TEKTON_DASHBOARD`                 |
-| Hub                    | tekton-hub-api                     | `IMAGE_HUB_TEKTON_HUB_API`                         |
-| Hub                    | tekton-hub-db                      | `IMAGE_HUB_TEKTON_HUB_DB`                          |
-| Hub                    | tekton-hub-db-migration            | `IMAGE_HUB_TEKTON_HUB_DB_MIGRATION`                |
-| Hub                    | tekton-hub-ui                      | `IMAGE_HUB_TEKTON_HUB_UI`                          |
+| Dashboard              | tekton-dashboard                   | `IMAGE_DASHBOARD_TEKTON_DASHBOARD`                 |                        |
 | Manual Approval Gate   | manual-approval                    | `IMAGE_MAG_MANUAL_APPROVAL`                        |
 | Manual Approval Gate   | tekton-taskgroup-controller        | `IMAGE_MAG_TEKTON_TASKGROUP_CONTROLLER`            |
 | Pipeline               | arg:entrypoint-image               | `IMAGE_PIPELINES_ARG__ENTRYPOINT_IMAGE`            |

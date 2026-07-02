@@ -57,7 +57,6 @@ const (
 	MulticlusterProxyAAEImagePrefix = "IMAGE_MULTICLUSTERPROXYAAE_"
 	SyncerServiceImagePrefix        = "IMAGE_SYNCER_SERVICE_WORKLOAD_"
 	ResultsImagePrefix              = "IMAGE_RESULTS_"
-	HubImagePrefix                  = "IMAGE_HUB_"
 	DashboardImagePrefix            = "IMAGE_DASHBOARD_"
 
 	DefaultTargetNamespace = "tekton-pipelines"
