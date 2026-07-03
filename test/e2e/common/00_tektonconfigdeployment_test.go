@@ -33,7 +33,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	tconfig "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
+	tconfig "github.com/tektoncd/operator/pkg/reconciler/openshift/namespacesync"
 	"github.com/tektoncd/operator/test/client"
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"

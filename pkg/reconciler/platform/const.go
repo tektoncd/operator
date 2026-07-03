@@ -30,6 +30,10 @@ const (
 	ControllerTektonScheduler      ControllerName = "tektonscheduler"
 	ControllerMulticlusterProxyAAE ControllerName = "tektonmulticlusterproxyaae"
 	ControllerSyncerService        ControllerName = "syncerservice"
+	// ControllerNamespaceSync is the OpenShift-only watch-based controller that
+	// ensures Tekton resources (pipeline SA, CA bundles, RoleBindings, secret
+	// bindings) are present and up to date in every user namespace.
+	ControllerNamespaceSync ControllerName = "namespacesync"
 	// ControllerOpenShiftPipelinesAsCode is the operand reconciler for OpenShiftPipelinesAsCode;
 	// the same name is used on Kubernetes and OpenShift so -controllers flags stay consistent.
 	ControllerOpenShiftPipelinesAsCode ControllerName = "openshiftpipelinesascode"

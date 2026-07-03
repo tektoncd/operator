@@ -77,23 +77,6 @@ func makeInstallerSet(tc *v1alpha1.TektonConfig, releaseVersion string) *v1alpha
 	}
 }
 
-func deleteInstallerSet(ctx context.Context, oc versioned.Interface, tc *v1alpha1.TektonConfig, component string) error {
-	labelSelector, err := common.LabelSelector(rbacInstallerSetSelector)
-	if err != nil {
-		return err
-	}
-	err = oc.OperatorV1alpha1().TektonInstallerSets().DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-		LabelSelector: labelSelector,
-	})
-	if err != nil {
-		return err
-	}
-	// clear the name of installer set from TektonConfig status
-	delete(tc.Status.TektonInstallerSet, component)
-
-	return nil
-}
-
 // checkIfInstallerSetExist checks if installer set exists for a component and return true/false based on it
 // and if installer set which already exist is of older version then it deletes and return false to create a new
 // installer set

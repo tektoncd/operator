@@ -575,6 +575,129 @@ In the deployment the environment name will be converted as follows,
 - `tekton-hub-api` => `TEKTON_HUB_API`
 - `artifact-hub-api` => `ARTIFACT_HUB_API`
 
+### NamespaceSync (OpenShift only)
+
+The `namespaceSync` block under `spec.platforms.openshift` controls the **NamespaceSyncController**, which watches every user namespace and ensures Tekton-required resources are present and up to date. It replaces the legacy per-namespace batch loop that was part of the RBAC reconciler.
+
+#### Resources managed per namespace
+
+| Resource | Kind | Purpose |
+|---|---|---|
+| `pipeline` | `ServiceAccount` | Identity for PipelineRun pods |
+| `pipelines-scc-rolebinding` | `RoleBinding` → `pipelines-scc-clusterrole` | Grants the pipeline SA permission to use the default SCC |
+| `openshift-pipelines-edit` | `RoleBinding` → `ClusterRole/edit` | Gives the pipeline SA edit access within its namespace |
+| `config-trusted-cabundle` | `ConfigMap` | CA bundle for custom/internal PKI trust |
+| `config-service-cabundle` | `ConfigMap` | OpenShift service CA bundle |
+| `openshift-pipelines-clusterinterceptors` | `ClusterRoleBinding` subject | Lets the pipeline SA call ClusterInterceptors |
+
+#### Configuration fields
+
+```yaml
+spec:
+  platforms:
+    openshift:
+      namespaceSync:
+        createPipelineSA: true          # create/maintain the pipeline SA
+        createSCCRoleBinding: true      # create/maintain pipelines-scc-rolebinding
+        createEditRoleBinding: true     # create/maintain openshift-pipelines-edit
+        createCABundles: true           # inject CA bundle ConfigMaps
+
+        # Optional: restrict which namespaces are synced.
+        # Omit entirely to sync all non-system namespaces (default).
+        # Set to {} to opt out all namespaces without changing the flags above.
+        namespaceSelector:
+          matchLabels:
+            pipelines.openshift.io/sync: "true"
+
+        # Optional: automatically bind secrets to the pipeline SA.
+        # Use secretName for an exact name, or labelSelector to match by label.
+        secretBindings:
+          - secretName: pipeline-quay-openshift     # Quay Bridge robot account secret
+          - labelSelector:
+              matchLabels:
+                quay-integration: my-quay            # all secrets with this label
+```
+
+All boolean fields default to `true` when the `namespaceSync` block is present.
+
+#### Disabling individual features
+
+Set the flag to `false` to stop managing that resource class. Existing resources
+are **not deleted** — the controller simply stops reconciling them:
+
+```yaml
+spec:
+  platforms:
+    openshift:
+      namespaceSync:
+        createEditRoleBinding: false   # do not create openshift-pipelines-edit
+```
+
+#### Restricting sync to specific namespaces
+
+Use `namespaceSelector` to limit which namespaces the controller acts on.
+Label namespaces you want synced, then configure the selector to match:
+
+```bash
+# Label a namespace to opt in
+oc label namespace my-project pipelines.openshift.io/sync=true
+```
+
+```yaml
+spec:
+  platforms:
+    openshift:
+      namespaceSync:
+        namespaceSelector:
+          matchLabels:
+            pipelines.openshift.io/sync: "true"
+```
+
+To disable sync for **all** namespaces while keeping the feature flags intact,
+set an empty selector:
+
+```yaml
+namespaceSync:
+  namespaceSelector: {}   # matches nothing → no namespace is synced
+```
+
+#### Quay Bridge secret auto-binding
+
+When the [Quay Bridge Operator](https://github.com/quay/quay-bridge-operator) is
+installed, it creates a robot-account secret named `pipeline-quay-openshift` in
+each namespace. Declare a `secretBinding` to have the NamespaceSyncController
+automatically bind that secret to the `pipeline` SA as an image pull secret:
+
+```yaml
+spec:
+  platforms:
+    openshift:
+      namespaceSync:
+        secretBindings:
+          - secretName: pipeline-quay-openshift
+```
+
+Once configured:
+- When the secret appears in a namespace it is added to both `imagePullSecrets`
+  and `secrets` on the `pipeline` SA within seconds.
+- When the secret is deleted the reference is removed automatically.
+
+#### Migration from legacy `spec.params`
+
+Older releases controlled this behaviour through `spec.params` entries. The
+operator automatically migrates these on the first webhook call after an upgrade:
+
+| Legacy `spec.params` | Typed field |
+|---|---|
+| `createRbacResource: "false"` | `createPipelineSA`, `createSCCRoleBinding`, `createEditRoleBinding` all set to `false` |
+| `createCABundleConfigMaps: "false"` | `createCABundles: false` |
+| `legacyPipelineRbac: "false"` | `createEditRoleBinding: false` |
+
+After migration the legacy params are removed from `spec.params` and the typed
+fields take effect. There is no need to manually update the TektonConfig CR.
+
+---
+
 ### OpenShiftPipelinesAsCode
 
 The PipelinesAsCode section allows you to customize the Pipelines as Code features on both Kubernetes and OpenShift. When you change the TektonConfig CR, the Operator automatically applies the settings to custom resources and configmaps in your installation. On Kubernetes, configure `spec.platforms.kubernetes.pipelinesAsCode` (the managed CR remains `OpenShiftPipelinesAsCode` for API compatibility).
