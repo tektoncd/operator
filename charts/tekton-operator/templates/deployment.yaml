@@ -68,6 +68,8 @@ spec:
               value: tekton-pipelines
               {{- end }}
               {{- end }}
+            - name: CONFIG_LOGGING_NAME
+              value: {{ include "tekton-operator.fullname" . }}-config-logging
             - name: CONFIG_OBSERVABILITY_NAME
               value: {{ include "tekton-operator.fullname" . }}-observability
             {{- include "tekton-operator.kubernetesMinVersionEnv" . | nindent 12 }}
@@ -126,6 +128,8 @@ spec:
               value: tekton-pipelines
               {{- end }}
               {{- end }}
+            - name: CONFIG_LOGGING_NAME
+              value: {{ include "tekton-operator.fullname" . }}-config-logging
             - name: CONFIG_OBSERVABILITY_NAME
               value: {{ include "tekton-operator.fullname" . }}-observability
             {{- include "tekton-operator.kubernetesMinVersionEnv" . | nindent 12 }}

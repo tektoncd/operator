@@ -44,12 +44,13 @@ data:
           "callerEncoder": ""
         }
       }
-  loglevel.controller: {{ .Values.operator.logLevel }}
-  loglevel.webhook: {{ .Values.webhook.logLevel }}
+  loglevel.tekton-operator-lifecycle: {{ .Values.operator.logLevel | quote }}
+  loglevel.tekton-operator-cluster-operations: {{ .Values.operator.logLevel | quote }}
+  loglevel.{{ include "tekton-operator.fullname" . }}-webhook: {{ .Values.webhook.logLevel | quote }}
   zap-logger-config: |
     {
-      "level": "debug",
-      "development": true,
+      "level": {{ .Values.operator.logLevel | quote }},
+      "development": false,
       "sampling": {
         "initial": 100,
         "thereafter": 100
