@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "tekton-operator.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.operator.replicas }}
   selector:
     matchLabels:
       {{- include "tekton-operator.operator.selectorLabels" . | nindent 6 }}
@@ -176,7 +176,7 @@ metadata:
   labels:
     {{- include "tekton-operator.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ max 1 (.Values.webhook.replicas | int) }}
   selector:
     matchLabels:
       {{- include "tekton-operator.webhook.selectorLabels" . | nindent 6 }}
