@@ -135,3 +135,16 @@ securityContext: {}
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+## Extra Kubernetes manifests to deploy alongside the operator (rendered as-is).
+## Useful for resources the chart intentionally does not template, e.g. a TektonConfig CR.
+## Note: if you supply a TektonConfig here, set operator.autoInstallComponents to false
+## to avoid racing the operator's own auto-install, which creates TektonConfig/config.
+extraObjects: []
+# extraObjects:
+#   - apiVersion: operator.tekton.dev/v1alpha1
+#     kind: TektonConfig
+#     metadata:
+#       name: config
+#     spec:
+#       profile: all
