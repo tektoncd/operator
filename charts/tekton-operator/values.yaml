@@ -74,6 +74,8 @@ pruner:
 
 ## Configuration for the tekton-operator-webhook pod
 webhook:
+  # Number of replicas for the webhook Deployment.
+  replicas: 1
   hostNetwork: false
   dnsPolicy: ""
   httpsWebhookPort: 8443
