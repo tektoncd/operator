@@ -34,6 +34,10 @@ rbac:
 
 ## Configuration for the tekton-operator pod
 operator:
+  # Number of replicas for the operator Deployment. Knative leader election is
+  # active by default, so >=2 runs active/standby (no duplicate writes). A
+  # config-leader-election ConfigMap is optional; defaults apply if absent.
+  replicas: 1
   # Internal name of the operator. Default value depends on the flavor (k8s/openshift).
   operatorName: ""
   image:
@@ -74,6 +78,10 @@ pruner:
 
 ## Configuration for the tekton-operator-webhook pod
 webhook:
+  # Number of replicas for the webhook Deployment. Floored at 1: a webhook
+  # with 0 pods times out admission calls under failurePolicy: Fail and can
+  # wedge operations on the matched CRs.
+  replicas: 1
   hostNetwork: false
   dnsPolicy: ""
   httpsWebhookPort: 8443
@@ -131,3 +139,16 @@ securityContext: {}
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+## Extra Kubernetes manifests to deploy alongside the operator (rendered as-is).
+## Useful for resources the chart intentionally does not template, e.g. a TektonConfig CR.
+## Note: if you supply a TektonConfig here, set operator.autoInstallComponents to false
+## to avoid racing the operator's own auto-install, which creates TektonConfig/config.
+extraObjects: []
+# extraObjects:
+#   - apiVersion: operator.tekton.dev/v1alpha1
+#     kind: TektonConfig
+#     metadata:
+#       name: config
+#     spec:
+#       profile: all
