@@ -42,12 +42,8 @@ const (
 	openshiftNS                = "openshift"
 	pacControllerDeployment    = "pipelines-as-code-controller"
 	pacControllerContainerName = "pac-controller"
-	pacWatcherDeployment       = "pipelines-as-code-watcher"
 	pacWebhookDeployment       = "pipelines-as-code-webhook"
 	pacWebhookContainerName    = "pac-webhook"
-	// ServiceMonitor names from PAC's own release manifests.
-	pacControllerServiceMonitor = "pipelines-as-code-controller-monitor"
-	pacWatcherServiceMonitor    = "pipelines-as-code-monitor"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
@@ -99,21 +95,8 @@ type openshiftExtension struct {
 }
 
 func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
-	targetNS := comp.GetSpec().GetTargetNamespace()
 	trns := []mf.Transformer{
-		InjectNamespaceOwnerForPACWebhook(oe.kubeClientSet, targetNS),
-		// mTLS for Prometheus scraping.
-		occommon.AnnotateMetricsServingCert(pacControllerDeployment),
-		occommon.RenameServicePort(pacControllerDeployment, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort),
-		occommon.AnnotateMetricsServingCert(pacWatcherDeployment),
-		occommon.RenameServicePort(pacWatcherDeployment, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort),
-		occommon.ApplyMetricsTLS("Deployment", pacControllerDeployment,
-			occommon.MetricsServingCertSecretName(pacControllerDeployment)),
-		occommon.ApplyMetricsTLS("Deployment", pacWatcherDeployment,
-			occommon.MetricsServingCertSecretName(pacWatcherDeployment)),
-		// Update PAC's own ServiceMonitors (from PAC release) to use HTTPS.
-		occommon.UpdateServiceMonitorForMetricsMTLS(pacControllerServiceMonitor, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort, pacControllerDeployment, targetNS),
-		occommon.UpdateServiceMonitorForMetricsMTLS(pacWatcherServiceMonitor, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort, pacWatcherDeployment, targetNS),
+		InjectNamespaceOwnerForPACWebhook(oe.kubeClientSet, comp.GetSpec().GetTargetNamespace()),
 	}
 
 	// Inject APIServer TLS profile env vars into all three PAC deployments so that
@@ -123,6 +106,8 @@ func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.T
 			// pac-webhook uses sharedmain.WebhookMainWithConfig (Knative webhook framework) which
 			// calls knativetls.DefaultConfigFromEnv("WEBHOOK_") → reads WEBHOOK_TLS_* env vars.
 			occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", pacWebhookDeployment, []string{pacWebhookContainerName}, occommon.WebhookEnvVarPrefix),
+			// pac-controller and pac-watcher do not serve a TLS endpoint that reads these env vars;
+			// injecting with no prefix is harmless and keeps them consistent for future use.
 			occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", pacControllerDeployment, []string{pacControllerContainerName}, ""),
 		)
 	}
