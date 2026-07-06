@@ -1,6 +1,6 @@
 chains:
   github: tektoncd/chains
-  version: v0.26.3
+  version: v0.26.5
 dashboard:
   github: tektoncd/dashboard
   version: v0.66.0
@@ -15,7 +15,7 @@ multicluster-proxy-aae:
   version: v0.1.1
 pipeline:
   github: tektoncd/pipeline
-  version: v1.9.3
+  version: v1.9.5
 pipelines-as-code:
   github: tektoncd/pipelines-as-code
   version: v0.42.2
@@ -27,7 +27,7 @@ results:
   version: v0.18.0
 scheduler:
   github: konflux-ci/tekton-kueue
-  version: v0.3.0
+  version: v0.3.1
 syncer-service:
   github: openshift-pipelines/syncer-service
   version: v0.1.0
