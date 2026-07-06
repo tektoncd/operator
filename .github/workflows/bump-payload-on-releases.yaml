@@ -34,37 +34,43 @@ jobs:
     steps:
     - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       with:
-        ref: ${{ matrix.branch }}
+        ref: main
         persist-credentials: false
     - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6.5.0
       with:
         go-version-file: "go.mod"
-    - name: run operator-tool bump-bugfix
+    - name: Build operator tool and cache scripts from main
       run: |
-        export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-        make components/bump-bugfix 2> bump-output.txt || true
+        go build -o /tmp/operator-tool ./cmd/tool
+        cp .github/scripts/generate-bump-message.sh /tmp/generate-bump-message.sh
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      with:
+        ref: ${{ matrix.branch }}
+        persist-credentials: false
+    - name: run operator-tool bump-bugfix
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        /tmp/operator-tool bump --bugfix components.yaml 2> bump-output.txt || true
         cat bump-output.txt >&2
     - name: generate commit message and PR body
       id: generate-message
       run: |
         if [[ -f bump-output.txt ]]; then
-          ./.github/scripts/generate-bump-message.sh bump-output.txt commit-message.txt pr-body.txt
-          if [[ -f commit-message.txt ]]; then
-            COMMIT_MSG=$(cat commit-message.txt)
-            PR_TITLE=$(head -n1 commit-message.txt)
-            echo "commit_message<<EOF" >> $GITHUB_OUTPUT
-            echo "${COMMIT_MSG}" >> $GITHUB_OUTPUT
+          /tmp/generate-bump-message.sh bump-output.txt commit-message.txt pr-body.txt
+        fi
+
+        if [[ -f commit-message.txt ]]; then
+          COMMIT_MSG=$(cat commit-message.txt)
+          PR_TITLE=$(head -n1 commit-message.txt)
+          echo "commit_message<<EOF" >> $GITHUB_OUTPUT
+          echo "${COMMIT_MSG}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "pr_title=${PR_TITLE}" >> $GITHUB_OUTPUT
+          if [[ -f pr-body.txt ]]; then
+            echo "pr_body<<EOF" >> $GITHUB_OUTPUT
+            cat pr-body.txt >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
-            echo "pr_title=${PR_TITLE}" >> $GITHUB_OUTPUT
-            if [[ -f pr-body.txt ]]; then
-              echo "pr_body<<EOF" >> $GITHUB_OUTPUT
-              cat pr-body.txt >> $GITHUB_OUTPUT
-              echo "EOF" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "commit_message=chore: bump payload versions" >> $GITHUB_OUTPUT
-            echo "pr_title=chore: bump payload versions" >> $GITHUB_OUTPUT
-            echo "pr_body=Automated component version bump for ${MATRIX_BRANCH}" >> $GITHUB_OUTPUT
           fi
         else
           echo "commit_message=chore: bump payload versions" >> $GITHUB_OUTPUT
