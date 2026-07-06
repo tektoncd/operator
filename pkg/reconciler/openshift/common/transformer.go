@@ -17,8 +17,6 @@ limitations under the License.
 package common
 
 import (
-	"strings"
-
 	mf "github.com/manifestival/manifestival"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
@@ -178,65 +176,13 @@ func UpdateServiceMonitorTargetNamespace(targetNamespace string) mf.Transformer 
 		if u.GetKind() != "ServiceMonitor" {
 			return nil
 		}
-
-		// Replace the scrape namespace.
-		matchNames, found, err := unstructured.NestedStringSlice(u.Object, "spec", "namespaceSelector", "matchNames")
-		if err != nil {
+		nsSelector, found, err := unstructured.NestedFieldNoCopy(u.Object, "spec", "namespaceSelector")
+		if !found || err != nil {
 			return err
 		}
-		if found && len(matchNames) > 0 {
-			matchNames[0] = targetNamespace
-			if err := unstructured.SetNestedStringSlice(u.Object, matchNames, "spec", "namespaceSelector", "matchNames"); err != nil {
-				return err
-			}
-		}
-
-		// Replace the namespace segment inside any tlsConfig.serverName fields
-		// (format: "<service>.<namespace>.svc") so that the TLS server-name
-		// verification matches the actual cluster DNS name.
-		endpoints, found, err := unstructured.NestedSlice(u.Object, "spec", "endpoints")
-		if err != nil {
-			return err
-		}
-		if found {
-			for i, ep := range endpoints {
-				epMap, ok := ep.(map[string]interface{})
-				if !ok {
-					continue
-				}
-				if tlsCfg, ok := epMap["tlsConfig"].(map[string]interface{}); ok {
-					if sn, ok := tlsCfg["serverName"].(string); ok {
-						tlsCfg["serverName"] = replaceServerNameNamespace(sn, targetNamespace)
-					}
-				}
-				endpoints[i] = epMap
-			}
-			if err := unstructured.SetNestedSlice(u.Object, endpoints, "spec", "endpoints"); err != nil {
-				return err
-			}
-		}
-
+		nsSelector.(map[string]interface{})["matchNames"].([]interface{})[0] = targetNamespace
 		return nil
 	}
-}
-
-// replaceServerNameNamespace replaces the namespace segment in a Kubernetes
-// in-cluster DNS name of the form "<service>.<namespace>.svc[…]" with
-// targetNamespace. Returns the original string unchanged if it does not match.
-func replaceServerNameNamespace(serverName, targetNamespace string) string {
-	// Preserve any suffix after ".svc" (e.g. ".cluster.local").
-	const svcSuffix = ".svc"
-	idx := strings.Index(serverName, svcSuffix)
-	if idx < 0 {
-		return serverName
-	}
-	base := serverName[:idx] // "<service>.<namespace>"
-	tail := serverName[idx:] // ".svc[…]"
-	parts := strings.SplitN(base, ".", 2)
-	if len(parts) != 2 {
-		return serverName
-	}
-	return parts[0] + "." + targetNamespace + tail
 }
 
 // RemoveRunAsUserForStatefulset will remove RunAsUser from all container in a statefulset

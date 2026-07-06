@@ -58,14 +58,8 @@ metadata:
 spec:
   endpoints:
     - interval: 10s
-      port: https-metrics
+      port: http-metrics
       honorLabels: true
-      scheme: https
-      tlsConfig:
-        caFile: /etc/prometheus/configmaps/serving-certs-ca-bundle/service-ca.crt
-        certFile: /etc/prometheus/secrets/metrics-client-certs/tls.crt
-        keyFile: /etc/prometheus/secrets/metrics-client-certs/tls.key
-        serverName: tekton-pipelines-controller.openshift-pipelines.svc
   jobLabel: app
   namespaceSelector:
     matchNames:
