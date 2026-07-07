@@ -193,6 +193,13 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 
+	// Propagate platform-data-hash to any existing ManualApprovalGate CR.
+	// ManualApprovalGate is a standalone CR (not created by TektonConfig — see
+	// https://github.com/tektoncd/operator/issues/3656), so it never receives
+	// platform-data-hash through the normal child-CR path.
+	//
+	oe.propagateMAGPlatformData(ctx)
+
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
 		if _, err := extension.EnsureTektonAddonExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonAddons(), configInstance, oe.operatorVersion); err != nil {
 			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("TektonAddon: %s", err.Error()))
@@ -216,15 +223,6 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 			return err
 		}
 	}
-
-	// Propagate platform-data-hash to any existing ManualApprovalGate CR.
-	// ManualApprovalGate is a standalone CR (not created by TektonConfig — see
-	// https://github.com/tektoncd/operator/issues/3656), so it never receives
-	// platform-data-hash through the normal child-CR path. We update it here
-	// (same PostReconcile layer as PAC) so that the MAG controller re-applies
-	// the webhook deployment with updated TLS env vars when the cluster TLS
-	// profile changes.
-	oe.propagateMAGPlatformData(ctx)
 
 	// execute console plugin reconciler
 	// TLS config was already resolved and cached in PreReconcile via SetTLSConfig.
