@@ -435,14 +435,22 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 		// spec is changed by checking hash stored as annotation on
 		// Tekton Chain InstallerSet with computing new hash of TektonChain Spec
 
-		// Hash of TektonChain Spec
-		expectedSpecHash, err := hash.Compute(tc.Spec)
+		// Hash of TektonChain Spec plus platform-data-hash annotation so that
+		// changes driven by TektonConfig (e.g. enableMetricsMTLS) re-apply
+		// extension transformers even when the spec itself hasn't changed.
+		expectedSpecHash, err := hash.Compute(struct {
+			Spec             v1alpha1.TektonChainSpec
+			PlatformDataHash string
+		}{
+			Spec:             tc.Spec,
+			PlatformDataHash: tc.Annotations[v1alpha1.PlatformDataHashKey],
+		})
 		if err != nil {
 			logger.Errorw("Failed to compute spec hash", "error", err)
 			return err
 		}
 
-		// spec hash stored on installerSet
+		// spec hash stored on main installerSet
 		lastAppliedHash := installedTIS.GetAnnotations()[v1alpha1.LastAppliedHashKey]
 
 		if lastAppliedHash != expectedSpecHash {

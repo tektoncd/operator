@@ -24,6 +24,7 @@ import (
 	mfc "github.com/manifestival/client-go-client"
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
@@ -77,7 +78,8 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		logger.Fatal(err)
 	}
 
-	tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
+	opClient := operatorclient.Get(ctx)
+	tisClient := opClient.OperatorV1alpha1().TektonInstallerSets()
 	return &openshiftExtension{
 		// component version is used for metrics, passing a dummy
 		// value through extension not going to affect execution
@@ -85,6 +87,7 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 		pacManifest:          &pacManifest,
 		pipelineRunTemplates: prTemplates,
 		kubeClientSet:        kubeclient.Get(ctx),
+		operatorClientSet:    opClient,
 		tektonConfigLister:   tektonConfiginformer.Get(ctx).Lister(),
 	}
 }
@@ -94,26 +97,33 @@ type openshiftExtension struct {
 	pacManifest          *mf.Manifest
 	pipelineRunTemplates *mf.Manifest
 	kubeClientSet        kubernetes.Interface
+	operatorClientSet    versioned.Interface
 	tektonConfigLister   occommon.TektonConfigLister
 	resolvedTLSConfig    *occommon.TLSEnvVars
+	metricsMTLSReady     bool
 }
 
 func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	targetNS := comp.GetSpec().GetTargetNamespace()
 	trns := []mf.Transformer{
 		InjectNamespaceOwnerForPACWebhook(oe.kubeClientSet, targetNS),
-		// mTLS for Prometheus scraping.
-		occommon.AnnotateMetricsServingCert(pacControllerDeployment),
-		occommon.RenameServicePort(pacControllerDeployment, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort),
-		occommon.AnnotateMetricsServingCert(pacWatcherDeployment),
-		occommon.RenameServicePort(pacWatcherDeployment, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort),
-		occommon.ApplyMetricsTLS("Deployment", pacControllerDeployment,
-			occommon.MetricsServingCertSecretName(pacControllerDeployment)),
-		occommon.ApplyMetricsTLS("Deployment", pacWatcherDeployment,
-			occommon.MetricsServingCertSecretName(pacWatcherDeployment)),
-		// Update PAC's own ServiceMonitors (from PAC release) to use HTTPS.
-		occommon.UpdateServiceMonitorForMetricsMTLS(pacControllerServiceMonitor, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort, pacControllerDeployment, targetNS),
-		occommon.UpdateServiceMonitorForMetricsMTLS(pacWatcherServiceMonitor, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort, pacWatcherDeployment, targetNS),
+	}
+
+	if oe.metricsMTLSReady {
+		trns = append(trns,
+			// mTLS for Prometheus scraping.
+			occommon.AnnotateMetricsServingCert(pacControllerDeployment),
+			occommon.RenameServicePort(pacControllerDeployment, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort),
+			occommon.AnnotateMetricsServingCert(pacWatcherDeployment),
+			occommon.RenameServicePort(pacWatcherDeployment, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort),
+			occommon.ApplyMetricsTLS("Deployment", pacControllerDeployment,
+				occommon.MetricsServingCertSecretName(pacControllerDeployment)),
+			occommon.ApplyMetricsTLS("Deployment", pacWatcherDeployment,
+				occommon.MetricsServingCertSecretName(pacWatcherDeployment)),
+			// Update PAC's own ServiceMonitors (from PAC release) to use HTTPS.
+			occommon.UpdateServiceMonitorForMetricsMTLS(pacControllerServiceMonitor, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort, pacControllerDeployment, targetNS),
+			occommon.UpdateServiceMonitorForMetricsMTLS(pacWatcherServiceMonitor, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort, pacWatcherDeployment, targetNS),
+		)
 	}
 
 	// Inject APIServer TLS profile env vars into all three PAC deployments so that
@@ -130,7 +140,7 @@ func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.T
 	return trns
 }
 
-func (oe *openshiftExtension) PreReconcile(ctx context.Context, _ v1alpha1.TektonComponent) error {
+func (oe *openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	logger := logging.FromContext(ctx)
 
 	resolvedTLS, err := occommon.ResolveCentralTLSToEnvVars(ctx, oe.tektonConfigLister)
@@ -141,6 +151,12 @@ func (oe *openshiftExtension) PreReconcile(ctx context.Context, _ v1alpha1.Tekto
 	if oe.resolvedTLSConfig != nil {
 		logger.Infof("Injecting central TLS config into PAC deployments: MinVersion=%s", oe.resolvedTLSConfig.MinVersion)
 	}
+
+	ready, err := occommon.ResolveMetricsMTLS(ctx, oe.operatorClientSet, oe.kubeClientSet, comp.GetSpec().GetTargetNamespace())
+	if err != nil {
+		return err
+	}
+	oe.metricsMTLSReady = ready
 
 	return nil
 }

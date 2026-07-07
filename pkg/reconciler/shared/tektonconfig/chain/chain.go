@@ -134,6 +134,16 @@ func UpdateChain(ctx context.Context, old *v1alpha1.TektonChain, new *v1alpha1.T
 		updated = true
 	}
 
+	oldPlatformData := old.ObjectMeta.Annotations[v1alpha1.PlatformDataHashKey]
+	newPlatformData := new.ObjectMeta.Annotations[v1alpha1.PlatformDataHashKey]
+	if oldPlatformData != newPlatformData {
+		if old.ObjectMeta.Annotations == nil {
+			old.ObjectMeta.Annotations = map[string]string{}
+		}
+		old.ObjectMeta.Annotations[v1alpha1.PlatformDataHashKey] = newPlatformData
+		updated = true
+	}
+
 	if updated {
 		_, err := clients.Update(ctx, old, metav1.UpdateOptions{})
 		if err != nil {

@@ -1382,6 +1382,15 @@ spec:
                           Set to false to opt out and manage TLS settings manually.
                           Default: true (opt-out)
                         type: boolean
+                      enableMetricsMTLS:
+                        description: |
+                          EnableMetricsMTLS controls whether Prometheus metrics endpoints use mTLS.
+                          When enabled the operator annotates metric Services for TLS certificate
+                          provisioning, renames ports from http-metrics to https-metrics, mounts
+                          the serving-cert Secret and client-CA ConfigMap into pods, and enforces
+                          client certificate verification. Requires the OpenShift Cluster Monitoring
+                          Operator (CMO). Default: false (opt-in).
+                        type: boolean
                       pipelinesAsCode:
                         description: PipelinesAsCode allows configuring PipelinesAsCode
                           configurations

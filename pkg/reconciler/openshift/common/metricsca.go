@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -48,6 +50,50 @@ const (
 	SystemNamespace     = "kube-system"
 )
 
+// ResolveMetricsMTLS is the single call components make in PreReconcile to
+// determine whether mTLS transformers should be applied this cycle.
+//
+// It reads TektonConfig directly via a live API call (not the lister) to avoid
+// a race condition where the component reconciler fires between the TektonConfig
+// platform-data-hash annotation being updated and the TektonConfig informer
+// cache being refreshed. Using a stale lister in that window would cause the
+// component to stamp the new hash with stale mTLS state, making subsequent
+// reconciles see a matching hash and never correcting the resources.
+func ResolveMetricsMTLS(ctx context.Context, operatorClient versioned.Interface, kubeClient kubernetes.Interface, targetNamespace string) (bool, error) {
+	tc, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("reading TektonConfig: %w", err)
+	}
+	if tc.Spec.Platforms.OpenShift.EnableMetricsMTLS == nil || !*tc.Spec.Platforms.OpenShift.EnableMetricsMTLS {
+		return false, nil
+	}
+
+	_, err = kubeClient.CoreV1().ConfigMaps(targetNamespace).Get(
+		ctx, MetricsClientCAConfigMap, metav1.GetOptions{})
+	if err == nil {
+		return true, nil
+	}
+	if errors.IsNotFound(err) {
+		return false, nil
+	}
+	return false, fmt.Errorf("checking %s/%s: %w", targetNamespace, MetricsClientCAConfigMap, err)
+}
+
+// IsMetricsMTLSEnabled reports whether spec.platforms.openshift.enableMetricsMTLS
+// is explicitly set to true in the TektonConfig CR.
+// Returns false when the CR cannot be read or the field is nil (default = disabled).
+func IsMetricsMTLSEnabled(lister TektonConfigLister) bool {
+	tc, err := lister.Get(v1alpha1.ConfigResourceName)
+	if err != nil {
+		return false
+	}
+	return tc.Spec.Platforms.OpenShift.EnableMetricsMTLS != nil &&
+		*tc.Spec.Platforms.OpenShift.EnableMetricsMTLS
+}
+
 // EnsureMetricsClientCA reads the Prometheus client CA from
 // kube-system/extension-apiserver-authentication and creates-or-updates
 // the metrics-client-ca ConfigMap in targetNamespace.
@@ -60,6 +106,13 @@ func EnsureMetricsClientCA(ctx context.Context, kubeClient kubernetes.Interface,
 
 	src, err := kubeClient.CoreV1().ConfigMaps(SystemNamespace).Get(
 		ctx, SourceConfigMapName, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		return fmt.Errorf(
+			"%s/%s not found — the OpenShift Cluster Monitoring Operator (CMO) may not be "+
+				"installed on this cluster. To resolve, either install CMO or disable metrics mTLS "+
+				"by setting spec.platforms.openshift.enableMetricsMTLS: false in TektonConfig",
+			SystemNamespace, SourceConfigMapName)
+	}
 	if err != nil {
 		return fmt.Errorf("reading %s/%s: %w", SystemNamespace, SourceConfigMapName, err)
 	}
