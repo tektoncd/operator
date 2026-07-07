@@ -361,7 +361,7 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 			},
 			expectedContains: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
-				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
+				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256;",
 			},
 			expectedNotContains: []string{
 				"ssl_ciphers",
@@ -376,7 +376,7 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 			},
 			expectedContains: []string{
 				"ssl_protocols TLSv1.3;",
-				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
+				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256;",
 			},
 			expectedNotContains: []string{
 				"ssl_ciphers",
@@ -416,7 +416,7 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 			tlsConfig: nil,
 			expectedContains: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
-				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
+				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256;",
 			},
 			expectedNotContains: []string{
 				"ssl_conf_command Groups",
@@ -497,7 +497,7 @@ http {
 			expectedContains: []string{
 				"server {",
 				"ssl_protocols TLSv1.2 TLSv1.3;",
-				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
+				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256;",
 				"listen              8443 ssl;",
 				"ssl_certificate     /var/cert/tls.crt;",
 			},
@@ -687,7 +687,7 @@ func TestNginxTLSIntegration(t *testing.T) {
 			tlsConfig: nil,
 			expectedTLSInNginx: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
-				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
+				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256;",
 			},
 			notExpected: []string{
 				"ssl_conf_command Groups",
