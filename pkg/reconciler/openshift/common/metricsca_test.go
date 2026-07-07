@@ -18,8 +18,10 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"gotest.tools/v3/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -128,6 +130,54 @@ func TestEnsureMetricsClientCA_ErrorWhenKeyMissing(t *testing.T) {
 
 	err := EnsureMetricsClientCA(ctx, client, "openshift-pipelines")
 	assert.ErrorContains(t, err, MetricsClientCAKey)
+}
+
+// ---------------------------------------------------------------------------
+// IsMetricsMTLSEnabled
+// ---------------------------------------------------------------------------
+
+// stubTektonConfigLister implements TektonConfigLister for testing.
+type stubTektonConfigLister struct {
+	tc  *v1alpha1.TektonConfig
+	err error
+}
+
+func (s *stubTektonConfigLister) Get(_ string) (*v1alpha1.TektonConfig, error) {
+	return s.tc, s.err
+}
+
+func newTektonConfigWithMTLS(enabled *bool) *v1alpha1.TektonConfig {
+	return &v1alpha1.TektonConfig{
+		Spec: v1alpha1.TektonConfigSpec{
+			Platforms: v1alpha1.Platforms{
+				OpenShift: v1alpha1.OpenShift{
+					EnableMetricsMTLS: enabled,
+				},
+			},
+		},
+	}
+}
+
+func boolPtr(b bool) *bool { return &b }
+
+func TestIsMetricsMTLSEnabled_ReturnsTrueWhenExplicitlySet(t *testing.T) {
+	lister := &stubTektonConfigLister{tc: newTektonConfigWithMTLS(boolPtr(true))}
+	assert.Assert(t, IsMetricsMTLSEnabled(lister))
+}
+
+func TestIsMetricsMTLSEnabled_ReturnsFalseWhenExplicitlyFalse(t *testing.T) {
+	lister := &stubTektonConfigLister{tc: newTektonConfigWithMTLS(boolPtr(false))}
+	assert.Assert(t, !IsMetricsMTLSEnabled(lister))
+}
+
+func TestIsMetricsMTLSEnabled_ReturnsFalseWhenNil(t *testing.T) {
+	lister := &stubTektonConfigLister{tc: newTektonConfigWithMTLS(nil)}
+	assert.Assert(t, !IsMetricsMTLSEnabled(lister))
+}
+
+func TestIsMetricsMTLSEnabled_ReturnsFalseOnListerError(t *testing.T) {
+	lister := &stubTektonConfigLister{err: fmt.Errorf("not found")}
+	assert.Assert(t, !IsMetricsMTLSEnabled(lister))
 }
 
 func TestEnsureMetricsClientCA_DifferentTargetNamespaces(t *testing.T) {

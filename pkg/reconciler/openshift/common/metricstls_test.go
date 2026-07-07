@@ -23,6 +23,8 @@ import (
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
 )
@@ -199,6 +201,185 @@ func TestApplyMetricsTLSStatefulSetIdempotent(t *testing.T) {
 		assert.Equal(t, len(c1.Env), len(c2.Env),
 			"ApplyMetricsTLS should not duplicate env vars")
 	}
+}
+
+// ---------------------------------------------------------------------------
+// AnnotateMetricsServingCert
+// ---------------------------------------------------------------------------
+
+func TestAnnotateMetricsServingCert_AnnotatesMatchingService(t *testing.T) {
+	svc := unstructuredService(t, "tekton-pipelines-controller")
+
+	assert.NilError(t, AnnotateMetricsServingCert("tekton-pipelines-controller")(svc))
+
+	annotations := svc.GetAnnotations()
+	wantSecret := MetricsServingCertSecretName("tekton-pipelines-controller")
+	got := annotations[metricsServingCertAnnotation]
+	assert.Equal(t, wantSecret, got)
+}
+
+func TestAnnotateMetricsServingCert_SkipsWrongName(t *testing.T) {
+	svc := unstructuredService(t, "other-service")
+	before := svc.DeepCopy()
+
+	assert.NilError(t, AnnotateMetricsServingCert("tekton-pipelines-controller")(svc))
+
+	assert.DeepEqual(t, before.GetAnnotations(), svc.GetAnnotations())
+}
+
+func TestAnnotateMetricsServingCert_SkipsNonService(t *testing.T) {
+	ud := unstructuredDeployment(t) // kind=Deployment, name="registry"
+
+	assert.NilError(t, AnnotateMetricsServingCert("registry")(ud))
+
+	// Deployment must remain un-annotated.
+	for k := range ud.GetAnnotations() {
+		if k == metricsServingCertAnnotation {
+			t.Errorf("annotation %q should not be set on a Deployment", metricsServingCertAnnotation)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// RenameServicePort
+// ---------------------------------------------------------------------------
+
+func TestRenameServicePort_RenamesMatchingPort(t *testing.T) {
+	svc := unstructuredService(t, "tekton-chains-metrics",
+		withServicePort("http-metrics", 9090))
+
+	assert.NilError(t, RenameServicePort("tekton-chains-metrics", MetricsHTTPPort, MetricsHTTPSPort)(svc))
+
+	cs := &corev1.Service{}
+	assert.NilError(t, scheme.Scheme.Convert(svc, cs, nil))
+
+	found := false
+	for _, p := range cs.Spec.Ports {
+		if p.Name == MetricsHTTPSPort {
+			found = true
+		}
+		if p.Name == MetricsHTTPPort {
+			t.Errorf("old port name %q should have been renamed", MetricsHTTPPort)
+		}
+	}
+	assert.Assert(t, found, "renamed port %q not found", MetricsHTTPSPort)
+}
+
+func TestRenameServicePort_NoOpWhenPortAbsent(t *testing.T) {
+	svc := unstructuredService(t, "my-svc", withServicePort("other-port", 8080))
+	before := svc.DeepCopy()
+
+	assert.NilError(t, RenameServicePort("my-svc", MetricsHTTPPort, MetricsHTTPSPort)(svc))
+
+	assert.DeepEqual(t, before.Object, svc.Object)
+}
+
+func TestRenameServicePort_SkipsWrongService(t *testing.T) {
+	svc := unstructuredService(t, "wrong-svc", withServicePort(MetricsHTTPPort, 9090))
+	before := svc.DeepCopy()
+
+	assert.NilError(t, RenameServicePort("right-svc", MetricsHTTPPort, MetricsHTTPSPort)(svc))
+
+	assert.DeepEqual(t, before.Object, svc.Object)
+}
+
+// ---------------------------------------------------------------------------
+// UpdateServiceMonitorForMetricsMTLS
+// ---------------------------------------------------------------------------
+
+func TestUpdateServiceMonitorForMetricsMTLS_UpdatesEndpoint(t *testing.T) {
+	sm := unstructuredServiceMonitor(t, "tekton-pac-controller-monitor",
+		"http-metrics", "tekton-pipelines-controller")
+
+	assert.NilError(t, UpdateServiceMonitorForMetricsMTLS(
+		"tekton-pac-controller-monitor",
+		MetricsHTTPPort, MetricsHTTPSPort,
+		"tekton-pac-controller",
+		"openshift-pipelines",
+	)(sm))
+
+	endpoints, _, _ := unstructured.NestedSlice(sm.Object, "spec", "endpoints")
+	assert.Assert(t, len(endpoints) > 0)
+
+	ep := endpoints[0].(map[string]interface{})
+	assert.Equal(t, MetricsHTTPSPort, ep["port"])
+	assert.Equal(t, "https", ep["scheme"])
+
+	tlsCfg, ok := ep["tlsConfig"].(map[string]interface{})
+	assert.Assert(t, ok, "tlsConfig must be set")
+	assert.Equal(t, "tekton-pac-controller.openshift-pipelines.svc", tlsCfg["serverName"])
+	assert.Equal(t, promCAFile, tlsCfg["caFile"])
+}
+
+func TestUpdateServiceMonitorForMetricsMTLS_SkipsWrongName(t *testing.T) {
+	sm := unstructuredServiceMonitor(t, "other-monitor", MetricsHTTPPort, "svc")
+	before := sm.DeepCopy()
+
+	assert.NilError(t, UpdateServiceMonitorForMetricsMTLS(
+		"tekton-pac-controller-monitor",
+		MetricsHTTPPort, MetricsHTTPSPort,
+		"svc", "ns",
+	)(sm))
+
+	assert.DeepEqual(t, before.Object, sm.Object)
+}
+
+func TestUpdateServiceMonitorForMetricsMTLS_Idempotent(t *testing.T) {
+	sm := unstructuredServiceMonitor(t, "sm", MetricsHTTPPort, "svc")
+
+	apply := UpdateServiceMonitorForMetricsMTLS("sm", MetricsHTTPPort, MetricsHTTPSPort, "svc", "ns")
+	assert.NilError(t, apply(sm))
+	snapshot := sm.DeepCopy()
+	assert.NilError(t, apply(sm))
+
+	assert.DeepEqual(t, snapshot.Object, sm.Object)
+}
+
+// ---------------------------------------------------------------------------
+// service helpers
+// ---------------------------------------------------------------------------
+
+type serviceModifier func(*corev1.Service)
+
+func withServicePort(name string, port int32) serviceModifier {
+	return func(s *corev1.Service) {
+		s.Spec.Ports = append(s.Spec.Ports, corev1.ServicePort{Name: name, Port: port})
+	}
+}
+
+func unstructuredService(t *testing.T, name string, modifiers ...serviceModifier) *unstructured.Unstructured {
+	t.Helper()
+	svc := &corev1.Service{
+		TypeMeta:   metav1.TypeMeta{Kind: "Service", APIVersion: "v1"},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+	}
+	for _, m := range modifiers {
+		m(svc)
+	}
+	u, err := runtime.DefaultUnstructuredConverter.ToUnstructured(svc)
+	assert.NilError(t, err)
+	return &unstructured.Unstructured{Object: u}
+}
+
+func unstructuredServiceMonitor(t *testing.T, name, portName, svcName string) *unstructured.Unstructured {
+	t.Helper()
+	obj := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "monitoring.coreos.com/v1",
+			"kind":       "ServiceMonitor",
+			"metadata":   map[string]interface{}{"name": name},
+			"spec": map[string]interface{}{
+				"endpoints": []interface{}{
+					map[string]interface{}{
+						"port":    portName,
+						"scheme":  "http",
+						"service": svcName,
+					},
+				},
+			},
+		},
+	}
+	return obj
 }
 
 // ---------------------------------------------------------------------------
