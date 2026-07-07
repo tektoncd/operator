@@ -24,7 +24,6 @@ import (
 	"sync"
 
 	mf "github.com/manifestival/manifestival"
-	configv1 "github.com/openshift/api/config/v1"
 	openshiftconfigclient "github.com/openshift/client-go/config/clientset/versioned"
 	configv1listers "github.com/openshift/client-go/config/listers/config/v1"
 	"github.com/openshift/library-go/pkg/operator/configobserver/apiserver"
@@ -137,7 +136,6 @@ func GetTLSProfileFromAPIServer(ctx context.Context) (*TLSProfileConfig, error) 
 
 	sharedListerMu.RLock()
 	lister := sharedAPIServerLister
-	client := sharedConfigClient
 	sharedListerMu.RUnlock()
 
 	if lister == nil {
@@ -149,12 +147,12 @@ func GetTLSProfileFromAPIServer(ctx context.Context) (*TLSProfileConfig, error) 
 		lister: lister,
 	}
 
-	// Use library-go's ObserveTLSSecurityProfile to extract TLS config.
-	// Note: ObserveTLSSecurityProfile requires:
-	// - non-nil recorder: it calls recorder.Eventf() to log changes
-	// - non-nil existingConfig: it reads from it via unstructured.NestedString()
-	// TODO: Once library-go is updated to a newer version (with TLS 1.3 cipher support),
-	// the supplementTLS13Ciphers workaround below can be removed.
+	// Use library-go's ObserveTLSSecurityProfile to extract the cluster TLS config.
+	// Requires a non-nil recorder (for Eventf calls) and a non-nil existingConfig
+	// (read via unstructured.NestedString).
+	// The returned cipher list includes both TLS 1.2 and TLS 1.3 IANA names because
+	// library-go's OpenSSLToIANACipherSuites maps TLS 1.3 names (TLS_AES_*,
+	// TLS_CHACHA20_POLY1305_SHA256) as identity values.
 	existingConfig := map[string]interface{}{}
 	observedConfig, errs := apiserver.ObserveTLSSecurityProfile(listers, noOpRecorder{}, existingConfig)
 	if len(errs) > 0 {
@@ -179,17 +177,6 @@ func GetTLSProfileFromAPIServer(ctx context.Context) (*TLSProfileConfig, error) 
 
 	if minVersion == "" && len(cipherSuites) == 0 {
 		return nil, nil
-	}
-
-	// Supplement TLS 1.3 ciphers if needed
-	// TODO: Remove this once library-go is updated with proper TLS 1.3 cipher mapping
-	if client != nil {
-		apiServer, err := lister.Get("cluster")
-		if err != nil {
-			logger.Warnf("Failed to get APIServer for TLS 1.3 cipher supplementation: %v", err)
-		} else if apiServer.Spec.TLSSecurityProfile != nil {
-			cipherSuites = supplementTLS13Ciphers(apiServer.Spec.TLSSecurityProfile, cipherSuites)
-		}
 	}
 
 	return &TLSProfileConfig{
@@ -362,55 +349,3 @@ func mergeEnvVarsIntoContainers(containers []corev1.Container, names []string, e
 	}
 }
 
-// supplementTLS13Ciphers adds TLS 1.3 ciphers that the older library-go version doesn't map.
-// TLS 1.3 ciphers are mandatory per RFC 8446 and are always enabled when TLS 1.3 is used,
-// but we include them explicitly for completeness.
-// TODO: Remove this function once library-go is updated to a version that properly maps TLS 1.3 ciphers.
-func supplementTLS13Ciphers(profile *configv1.TLSSecurityProfile, observedCiphers []string) []string {
-	if profile == nil {
-		return observedCiphers
-	}
-
-	// Get the profile spec that defines the configured ciphers
-	var profileSpec *configv1.TLSProfileSpec
-	switch profile.Type {
-	case configv1.TLSProfileCustomType:
-		if profile.Custom != nil {
-			profileSpec = &profile.Custom.TLSProfileSpec
-		}
-	case configv1.TLSProfileModernType:
-		profileSpec = configv1.TLSProfiles[configv1.TLSProfileModernType]
-	case configv1.TLSProfileIntermediateType:
-		profileSpec = configv1.TLSProfiles[configv1.TLSProfileIntermediateType]
-	case configv1.TLSProfileOldType:
-		profileSpec = configv1.TLSProfiles[configv1.TLSProfileOldType]
-	}
-
-	if profileSpec == nil {
-		return observedCiphers
-	}
-
-	// Build a set of already observed ciphers for quick lookup
-	observedSet := make(map[string]bool)
-	for _, c := range observedCiphers {
-		observedSet[c] = true
-	}
-
-	// TLS 1.3 cipher suite names (IANA names)
-	tls13Ciphers := map[string]bool{
-		"TLS_AES_128_GCM_SHA256":       true,
-		"TLS_AES_256_GCM_SHA384":       true,
-		"TLS_CHACHA20_POLY1305_SHA256": true,
-	}
-
-	// Check configured ciphers for TLS 1.3 ciphers that library-go might have missed
-	result := observedCiphers
-	for _, cipher := range profileSpec.Ciphers {
-		// If it's a TLS 1.3 cipher and not already in observed list, add it
-		if tls13Ciphers[cipher] && !observedSet[cipher] {
-			result = append(result, cipher)
-		}
-	}
-
-	return result
-}

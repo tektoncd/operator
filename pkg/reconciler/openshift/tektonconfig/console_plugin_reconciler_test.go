@@ -345,58 +345,58 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 			},
 			expectedContains: []string{
 				"ssl_protocols TLSv1.3;",
-				"ssl_conf_command Groups X25519MLKEM768:X25519;",
 				"ssl_conf_command Ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384;",
 				"ssl_ecdh_curve X25519:prime256v1;",
 			},
 			expectedNotContains: []string{
 				"ssl_ciphers",
 				"ssl_prefer_server_ciphers",
+				"ssl_conf_command Groups",
 			},
 		},
 		{
-			name: "only min version provided - ML-KEM enabled",
+			name: "only min version provided",
 			tlsConfig: &occommon.TLSEnvVars{
 				MinVersion: "1.2",
 			},
 			expectedContains: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
-				"ssl_conf_command Groups X25519MLKEM768:X25519;",
 				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
 			},
 			expectedNotContains: []string{
 				"ssl_ciphers",
 				"ssl_ecdh_curve",
+				"ssl_conf_command Groups",
 			},
 		},
 		{
-			name: "TLS 1.3 only - ML-KEM enabled",
+			name: "TLS 1.3 only",
 			tlsConfig: &occommon.TLSEnvVars{
 				MinVersion: "1.3",
 			},
 			expectedContains: []string{
 				"ssl_protocols TLSv1.3;",
-				"ssl_conf_command Groups X25519MLKEM768:X25519;",
 				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
 			},
 			expectedNotContains: []string{
 				"ssl_ciphers",
 				"ssl_ecdh_curve",
+				"ssl_conf_command Groups",
 			},
 		},
 		{
-			name: "only cipher suites provided — default ssl_protocols and ML-KEM still emitted",
+			name: "only cipher suites provided — default ssl_protocols still emitted",
 			tlsConfig: &occommon.TLSEnvVars{
 				CipherSuites: "TLS_AES_128_GCM_SHA256",
 			},
 			expectedContains: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
-				"ssl_conf_command Groups X25519MLKEM768:X25519;",
 				"ssl_conf_command Ciphersuites TLS_AES_128_GCM_SHA256;",
 			},
 			expectedNotContains: []string{
 				"ssl_ciphers",
 				"ssl_prefer_server_ciphers",
+				"ssl_conf_command Groups",
 			},
 		},
 		{
@@ -409,14 +409,17 @@ func TestBuildNginxTLSDirectives(t *testing.T) {
 			},
 		},
 		{
-			// With nil tlsConfig (cluster "Default" profile), secure defaults apply:
-			// ssl_protocols TLSv1.2 TLSv1.3 (Intermediate-equivalent) + ML-KEM.
-			name:      "nil TLS config uses Intermediate defaults and always enables ML-KEM",
+			// With nil tlsConfig (cluster "Default" profile), secure Intermediate
+			// defaults are applied so nginx never falls back to its broad built-in
+			// cipher and protocol set.
+			name:      "nil TLS config uses Intermediate defaults",
 			tlsConfig: nil,
 			expectedContains: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
-				"ssl_conf_command Groups X25519MLKEM768:X25519;",
 				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
+			},
+			expectedNotContains: []string{
+				"ssl_conf_command Groups",
 			},
 		},
 	}
@@ -466,7 +469,7 @@ http {
 		expectedNotContains []string
 	}{
 		{
-			name: "with TLS configuration (ML-KEM enabled)",
+			name: "with TLS configuration",
 			tlsConfig: &occommon.TLSEnvVars{
 				MinVersion:       "1.2",
 				CipherSuites:     "TLS_AES_128_GCM_SHA256",
@@ -475,7 +478,6 @@ http {
 			expectedContains: []string{
 				"server {",
 				"ssl_protocols TLSv1.2 TLSv1.3;",
-				"ssl_conf_command Groups X25519MLKEM768:X25519;",
 				"ssl_conf_command Ciphersuites TLS_AES_128_GCM_SHA256;",
 				"ssl_ecdh_curve X25519;",
 				"listen              8443 ssl;",
@@ -484,20 +486,23 @@ http {
 			expectedNotContains: []string{
 				"ssl_ciphers",
 				"ssl_prefer_server_ciphers",
+				"ssl_conf_command Groups",
 			},
 		},
 		{
-			// With nil tlsConfig (cluster "Default" profile), defaults are injected so
-			// ML-KEM is always enabled even without an explicit TLS profile.
-			name:      "nil TLS config injects Intermediate defaults and ML-KEM into nginx.conf",
+			// With nil tlsConfig (cluster "Default" profile), Intermediate defaults
+			// are injected so nginx never falls back to its broad built-in cipher set.
+			name:      "nil TLS config injects Intermediate defaults into nginx.conf",
 			tlsConfig: nil,
 			expectedContains: []string{
 				"server {",
 				"ssl_protocols TLSv1.2 TLSv1.3;",
-				"ssl_conf_command Groups X25519MLKEM768:X25519;",
 				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
 				"listen              8443 ssl;",
 				"ssl_certificate     /var/cert/tls.crt;",
+			},
+			expectedNotContains: []string{
+				"ssl_conf_command Groups",
 			},
 		},
 	}
@@ -676,14 +681,16 @@ func TestNginxTLSIntegration(t *testing.T) {
 			},
 		},
 		{
-			// nil tlsConfig (cluster "Default" profile) — Intermediate defaults and
-			// ML-KEM are always injected so PQC is available on fresh installs.
-			name:      "integration test with nil TLS config injects Intermediate defaults and ML-KEM",
+			// nil tlsConfig (cluster "Default" profile) — Intermediate defaults are
+			// applied so nginx never falls back to its broad built-in cipher set.
+			name:      "integration test with nil TLS config injects Intermediate defaults",
 			tlsConfig: nil,
 			expectedTLSInNginx: []string{
 				"ssl_protocols TLSv1.2 TLSv1.3;",
-				"ssl_conf_command Groups X25519MLKEM768:X25519;",
 				"ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;",
+			},
+			notExpected: []string{
+				"ssl_conf_command Groups",
 			},
 		},
 	}
