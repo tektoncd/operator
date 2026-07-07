@@ -32,6 +32,22 @@ type OpenShift struct {
 	// Default: true (opt-out)
 	// +optional
 	EnableCentralTLSConfig *bool `json:"enableCentralTLSConfig,omitempty"`
+
+	// EnableMetricsMTLS controls whether Prometheus metrics endpoints use mTLS.
+	// When enabled the operator:
+	//   - annotates metric Services for automatic TLS certificate provisioning
+	//     via the OpenShift service-serving-cert controller
+	//   - renames the metrics port from "http-metrics" to "https-metrics"
+	//   - mounts the serving-cert Secret and client-CA ConfigMap into Tekton pods
+	//   - enforces client certificate verification (RequireAndVerifyClientCert)
+	//
+	// Requires the OpenShift Cluster Monitoring Operator (CMO) to be present,
+	// because the client CA bundle is read from
+	// kube-system/extension-apiserver-authentication.
+	//
+	// Default: false (opt-in). Set to true to activate metrics mTLS.
+	// +optional
+	EnableMetricsMTLS *bool `json:"enableMetricsMTLS,omitempty"`
 }
 
 type SCC struct {
