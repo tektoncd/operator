@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"testing"
 
-	configv1 "github.com/openshift/api/config/v1"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 )
 
@@ -56,96 +55,6 @@ func TestConvertTLSVersionToEnvFormat(t *testing.T) {
 	}
 }
 
-func TestSupplementTLS13Ciphers(t *testing.T) {
-	tests := []struct {
-		name            string
-		profile         *configv1.TLSSecurityProfile
-		observedCiphers []string
-		expectContains  []string
-	}{
-		{
-			name:            "Nil profile returns observed ciphers unchanged",
-			profile:         nil,
-			observedCiphers: []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"},
-			expectContains:  []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"},
-		},
-		{
-			name: "Custom profile with TLS 1.3 ciphers supplements missing ones",
-			profile: &configv1.TLSSecurityProfile{
-				Type: configv1.TLSProfileCustomType,
-				Custom: &configv1.CustomTLSProfile{
-					TLSProfileSpec: configv1.TLSProfileSpec{
-						Ciphers: []string{
-							"TLS_AES_128_GCM_SHA256",
-							"TLS_AES_256_GCM_SHA384",
-						},
-					},
-				},
-			},
-			observedCiphers: []string{},
-			expectContains:  []string{"TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384"},
-		},
-		{
-			name: "Mixed ciphers - TLS 1.3 supplemented, TLS 1.2 kept",
-			profile: &configv1.TLSSecurityProfile{
-				Type: configv1.TLSProfileCustomType,
-				Custom: &configv1.CustomTLSProfile{
-					TLSProfileSpec: configv1.TLSProfileSpec{
-						Ciphers: []string{
-							"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-							"TLS_AES_128_GCM_SHA256",
-						},
-					},
-				},
-			},
-			observedCiphers: []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"},
-			expectContains:  []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256"},
-		},
-		{
-			name: "Already present TLS 1.3 ciphers not duplicated",
-			profile: &configv1.TLSSecurityProfile{
-				Type: configv1.TLSProfileCustomType,
-				Custom: &configv1.CustomTLSProfile{
-					TLSProfileSpec: configv1.TLSProfileSpec{
-						Ciphers: []string{
-							"TLS_AES_128_GCM_SHA256",
-						},
-					},
-				},
-			},
-			observedCiphers: []string{"TLS_AES_128_GCM_SHA256"},
-			expectContains:  []string{"TLS_AES_128_GCM_SHA256"},
-		},
-		{
-			name: "Modern profile type uses predefined profile spec",
-			profile: &configv1.TLSSecurityProfile{
-				Type: configv1.TLSProfileModernType,
-			},
-			observedCiphers: []string{},
-			// Modern profile includes TLS 1.3 ciphers in predefined spec
-			expectContains: []string{},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := supplementTLS13Ciphers(tt.profile, tt.observedCiphers)
-
-			for _, expected := range tt.expectContains {
-				found := false
-				for _, cipher := range result {
-					if cipher == expected {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("Expected cipher %s not found in result %v", expected, result)
-				}
-			}
-		})
-	}
-}
 
 func TestTLSEnvVarsFromProfile(t *testing.T) {
 	t.Run("nil config returns nil", func(t *testing.T) {

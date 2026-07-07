@@ -284,8 +284,8 @@ func (cpr *consolePluginReconciler) transformerNginxTLS() mf.Transformer {
 }
 
 // generateNginxConfWithTLS injects TLS directives into nginx configuration.
-// Directives are always produced (ssl_protocols + ML-KEM ssl_conf_command) so
-// this function never returns the unmodified base configuration.
+// Directives are always produced (at minimum ssl_protocols) so this function
+// never returns the unmodified base configuration.
 func (cpr *consolePluginReconciler) generateNginxConfWithTLS(baseConf string) string {
 	tlsDirectives := cpr.buildNginxTLSDirectives()
 
@@ -317,8 +317,8 @@ const defaultTLS13Ciphersuites = "TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_S
 
 // buildNginxTLSDirectives generates nginx TLS directives from the centrally resolved
 // TLS profile. When no explicit profile is configured (cluster uses the "Default"
-// profile), secure Intermediate-equivalent defaults are applied so that PQC
-// directives are always present regardless of cluster configuration.
+// profile), secure Intermediate-equivalent defaults are applied so that nginx never
+// falls back to its built-in cipher and protocol set.
 func (cpr *consolePluginReconciler) buildNginxTLSDirectives() string {
 	var directives strings.Builder
 
@@ -332,12 +332,6 @@ func (cpr *consolePluginReconciler) buildNginxTLSDirectives() string {
 	protocols := convertTLSVersionToNginx(minVersion)
 	directives.WriteString(fmt.Sprintf("    ssl_protocols %s;\n", protocols))
 
-	// Always enable ML-KEM (X25519MLKEM768) hybrid key exchange for PQC readiness.
-	// ssl_conf_command passes OpenSSL configuration directly and is the only nginx
-	// mechanism that supports the post-quantum hybrid groups introduced in OpenSSL 3.x;
-	// ssl_ecdh_curve does not cover these groups.
-	// X25519MLKEM768 is tried first (PQC); X25519 is the classical fallback for
-	// clients that do not yet support ML-KEM.
 	// ssl_ciphers – translate IANA cipher names from the cluster profile to the
 	// OpenSSL names required by nginx. Only TLS 1.2 ciphers are emitted here;
 	// TLS 1.3 ciphersuites are controlled separately via ssl_conf_command Ciphersuites.
@@ -348,8 +342,6 @@ func (cpr *consolePluginReconciler) buildNginxTLSDirectives() string {
 			directives.WriteString("    ssl_prefer_server_ciphers on;\n")
 		}
 	}
-
-	directives.WriteString("    ssl_conf_command Groups X25519MLKEM768:X25519;\n")
 
 	// ssl_conf_command Ciphersuites – explicitly restrict TLS 1.3 ciphersuites to
 	// those allowed by the cluster profile. nginx's built-in TLS 1.3 defaults
@@ -364,9 +356,8 @@ func (cpr *consolePluginReconciler) buildNginxTLSDirectives() string {
 	}
 	directives.WriteString(fmt.Sprintf("    ssl_conf_command Ciphersuites %s;\n", tls13Ciphers))
 
-	// ssl_ecdh_curve – comma-separated curve names become colon-separated for nginx.
-	// This covers TLS 1.2 classical curves; ML-KEM hybrid groups are handled above
-	// via ssl_conf_command Groups.
+	// ssl_ecdh_curve – comma-separated curve names from the cluster profile become
+	// colon-separated for nginx.
 	if cpr.tlsConfig != nil && cpr.tlsConfig.CurvePreferences != "" {
 		curves := strings.ReplaceAll(cpr.tlsConfig.CurvePreferences, ",", ":")
 		directives.WriteString(fmt.Sprintf("    ssl_ecdh_curve %s;\n", curves))
