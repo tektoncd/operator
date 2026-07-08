@@ -172,7 +172,7 @@ metadata:
   labels:
     {{- include "tekton-operator.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.webhook.replicas }}
+  replicas: {{ max 1 (.Values.webhook.replicas | int) }}
   selector:
     matchLabels:
       {{- include "tekton-operator.webhook.selectorLabels" . | nindent 6 }}

@@ -74,7 +74,9 @@ pruner:
 
 ## Configuration for the tekton-operator-webhook pod
 webhook:
-  # Number of replicas for the webhook Deployment.
+  # Number of replicas for the webhook Deployment. Floored at 1: a webhook
+  # with 0 pods times out admission calls under failurePolicy: Fail and can
+  # wedge operations on the matched CRs.
   replicas: 1
   hostNetwork: false
   dnsPolicy: ""
