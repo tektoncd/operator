@@ -145,7 +145,7 @@ image-substitutions:
       containerName: openshift-pipelines-operator-lifecycle
       envKeys:
       - IMAGE_ADDONS_OPC
-- image: registry.redhat.io/rhel9/skopeo@sha256:fc58b8a734a34f1fd1b0b31e7e137a8200c72e233fbe2a67a29b7a665b683ce9
+- image: registry.redhat.io/rhel9/skopeo@sha256:08d8d7618048b8d2d04acffd7951f874c7098e3586500823a4ae6abd42700eef
   replaceLocations:
     envTargets:
       - deploymentName: openshift-pipelines-operator
@@ -153,7 +153,7 @@ image-substitutions:
         envKeys:
           - IMAGE_ADDONS_SKOPEO_COPY
           - IMAGE_ADDONS_SKOPEO_RESULTS
-- image: registry.redhat.io/rhel9/buildah@sha256:c54ea681142034817a77275ec770167cb17e64020f8c2dbb57c054c39b6c514a
+- image: registry.redhat.io/rhel9/buildah@sha256:841699d5705e752749e5b0b2d6d362aa41596483b9b061363f41eb3c54eb0910
   replaceLocations:
     envTargets:
     - deploymentName: openshift-pipelines-operator
