@@ -15,7 +15,6 @@ coverage:
 ignore:
   - "**/zz_generated*.go"
   - "pkg/client/**"
-  - "pkg/apis/**"
   - "hack/**"
   - "cmd/**"
   - "test/**"
