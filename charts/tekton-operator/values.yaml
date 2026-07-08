@@ -34,6 +34,10 @@ rbac:
 
 ## Configuration for the tekton-operator pod
 operator:
+  # Number of replicas for the operator Deployment. Knative leader election is
+  # active by default, so >=2 runs active/standby (no duplicate writes). A
+  # config-leader-election ConfigMap is optional; defaults apply if absent.
+  replicas: 1
   # Internal name of the operator. Default value depends on the flavor (k8s/openshift).
   operatorName: ""
   image:
