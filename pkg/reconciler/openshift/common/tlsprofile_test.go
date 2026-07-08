@@ -55,7 +55,6 @@ func TestConvertTLSVersionToEnvFormat(t *testing.T) {
 	}
 }
 
-
 func TestTLSEnvVarsFromProfile(t *testing.T) {
 	t.Run("nil config returns nil", func(t *testing.T) {
 		result, err := TLSEnvVarsFromProfile(nil)
