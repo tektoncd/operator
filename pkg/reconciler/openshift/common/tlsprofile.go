@@ -348,4 +348,3 @@ func mergeEnvVarsIntoContainers(containers []corev1.Container, names []string, e
 		containers[i].Env = existing
 	}
 }
-

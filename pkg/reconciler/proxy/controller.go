@@ -96,7 +96,6 @@ func NewAdmissionController(
 	return c
 }
 
-
 func NewProxyDefaultingAdmissionController(ctx context.Context, cmw configmap.Watcher) *controller.Impl {
 
 	return NewAdmissionController(ctx,
