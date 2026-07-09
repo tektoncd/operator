@@ -111,5 +111,8 @@ func (p *Pruner) IsDisabled() bool {
 
 func (in *TektonPrunerConfig) DeepCopyInto(out *TektonPrunerConfig) {
 	*out = *in
-	return
+	if in.GlobalConfig != nil {
+		out.GlobalConfig = new(config.GlobalConfig)
+		*out.GlobalConfig = *in.GlobalConfig
+	}
 }
