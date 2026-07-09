@@ -35,5 +35,8 @@ func (p *Pruner) SetDefaults() {
 	if p.GlobalConfig == nil {
 		p.GlobalConfig = &config.GlobalConfig{}
 		p.GlobalConfig.SetDefaults()
+	} else if p.GlobalConfig.EnforcedConfigLevel == nil {
+		v := config.EnforcedConfigLevelGlobal
+		p.GlobalConfig.EnforcedConfigLevel = &v
 	}
 }
