@@ -3,7 +3,7 @@ chains:
   version: v0.27.2
 dashboard:
   github: tektoncd/dashboard
-  version: v0.69.0
+  version: v0.70.0
 hub:
   github: openshift-pipelines/hub
   version: v1.24.1
