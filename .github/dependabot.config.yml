@@ -66,3 +66,22 @@ ecosystems:
       semver-major-days: 30
       semver-minor-days: 7
       semver-patch-days: 3
+  # Keeps the pinned ko/koparse image digests in tekton/build-publish-images-manifests.yaml
+  # in sync so they don't silently drift behind the Go toolchain version required by go.mod
+  # (see https://github.com/tektoncd/chains/pull/1784 for the class of failure this prevents:
+  # "go.mod requires go >= X (running go Y; GOTOOLCHAIN=local)" during release builds).
+  - package-ecosystem: docker
+    directory: /tekton
+    schedule:
+      interval: weekly
+    labels:
+      - ok-to-test
+      - dependencies
+      - kind/misc
+      - release-note-none
+    groups:
+      all:
+        patterns:
+          - "*"
+    cooldown:
+      default-days: 7

@@ -43,6 +43,21 @@ updates:
         semver-major-days: 30
         semver-minor-days: 7
         semver-patch-days: 3
+    - package-ecosystem: docker
+      directory: /tekton
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - kind/misc
+        - release-note-none
+      groups:
+        all:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v0.80.x
@@ -90,6 +105,27 @@ updates:
         semver-major-days: 30
         semver-minor-days: 7
         semver-patch-days: 3
+    - package-ecosystem: docker
+      directory: /tekton
+      target-branch: release-v0.80.x
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - kind/misc
+        - release-note-none
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        all:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v0.79.x
@@ -137,6 +173,27 @@ updates:
         semver-major-days: 30
         semver-minor-days: 7
         semver-patch-days: 3
+    - package-ecosystem: docker
+      directory: /tekton
+      target-branch: release-v0.79.x
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - kind/misc
+        - release-note-none
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        all:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v0.78.x
@@ -184,6 +241,27 @@ updates:
         semver-major-days: 30
         semver-minor-days: 7
         semver-patch-days: 3
+    - package-ecosystem: docker
+      directory: /tekton
+      target-branch: release-v0.78.x
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - kind/misc
+        - release-note-none
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        all:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v0.77.x
@@ -231,6 +309,27 @@ updates:
         semver-major-days: 30
         semver-minor-days: 7
         semver-patch-days: 3
+    - package-ecosystem: docker
+      directory: /tekton
+      target-branch: release-v0.77.x
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - kind/misc
+        - release-note-none
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        all:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v0.76.x
@@ -278,6 +377,27 @@ updates:
         semver-major-days: 30
         semver-minor-days: 7
         semver-patch-days: 3
+    - package-ecosystem: docker
+      directory: /tekton
+      target-branch: release-v0.76.x
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - kind/misc
+        - release-note-none
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        all:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v0.75.x
@@ -325,3 +445,24 @@ updates:
         semver-major-days: 30
         semver-minor-days: 7
         semver-patch-days: 3
+    - package-ecosystem: docker
+      directory: /tekton
+      target-branch: release-v0.75.x
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - kind/misc
+        - release-note-none
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        all:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
