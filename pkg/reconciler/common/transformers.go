@@ -1240,6 +1240,76 @@ func UpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(performanceSpec *v1alp
 	}
 }
 
+// UpdateWatcherFlagsInDeployment injects Tekton Results Watcher configuration
+// as command-line flags on the watcher deployment container.
+func UpdateWatcherFlagsInDeployment(watcher *v1alpha1.ResultsWatcherProperties, deploymentName, containerName string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if watcher == nil {
+			return nil
+		}
+		if u.GetKind() != "Deployment" || u.GetName() != deploymentName {
+			return nil
+		}
+
+		flags := map[string]interface{}{}
+		if err := StructToMap(watcher, &flags); err != nil {
+			return err
+		}
+		if len(flags) == 0 {
+			return nil
+		}
+
+		dep := &appsv1.Deployment{}
+		err := apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, dep)
+		if err != nil {
+			return err
+		}
+
+		podLabels := dep.Spec.Template.Labels
+		if podLabels == nil {
+			podLabels = map[string]string{}
+		}
+		labelKeys := getSortedKeys(flags)
+		for _, key := range labelKeys {
+			labelKey := fmt.Sprintf("%s.data.%s", deploymentName, key)
+			podLabels[labelKey] = fmt.Sprintf("%v", flags[key])
+		}
+		dep.Spec.Template.Labels = podLabels
+
+		flagKeys := getSortedKeys(flags)
+		for containerIndex, container := range dep.Spec.Template.Spec.Containers {
+			if container.Name != containerName {
+				continue
+			}
+			for _, flagKey := range flagKeys {
+				expectedArg := fmt.Sprintf("-%s", flagKey)
+				argStringValue := fmt.Sprintf("%v", flags[flagKey])
+
+				argUpdated := false
+				for argIndex, existingArg := range container.Args {
+					if strings.HasPrefix(existingArg, expectedArg) {
+						container.Args[argIndex] = fmt.Sprintf("%s=%s", expectedArg, argStringValue)
+						argUpdated = true
+						break
+					}
+				}
+				if !argUpdated {
+					container.Args = append(container.Args, fmt.Sprintf("%s=%s", expectedArg, argStringValue))
+				}
+			}
+			dep.Spec.Template.Spec.Containers[containerIndex] = container
+		}
+
+		obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(dep)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(obj)
+
+		return nil
+	}
+}
+
 // sort keys in an order, to get the consistent hash value in installerset
 func getSortedKeys(input map[string]interface{}) []string {
 	keys := []string{}

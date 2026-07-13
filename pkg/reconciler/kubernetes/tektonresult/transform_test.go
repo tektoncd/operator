@@ -17,9 +17,14 @@ limitations under the License.
 package tektonresult
 
 import (
+	"encoding/json"
 	"path"
+	"reflect"
+	"time"
 
 	mf "github.com/manifestival/manifestival"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"fmt"
@@ -390,4 +395,69 @@ func Test_AddConfiguration(t *testing.T) {
 
 	// Verify PriorityClassName was applied
 	assert.Equal(t, deployment.Spec.Template.Spec.PriorityClassName, "system-cluster-critical")
+}
+
+func TestUpdateWatcherFlagsInDeployment(t *testing.T) {
+	gracePeriod := metav1.Duration{Duration: 24 * time.Hour}
+	checkOwner := false
+	disableIncomplete := true
+	storeDeadline := metav1.Duration{Duration: 10 * time.Minute}
+
+	watcher := &v1alpha1.ResultsWatcherProperties{
+		CompletedRunGracePeriod:      &gracePeriod,
+		CheckOwner:                   &checkOwner,
+		DisableStoringIncompleteRuns: &disableIncomplete,
+		StoreDeadline:                &storeDeadline,
+	}
+
+	depInput := &appsv1.Deployment{
+		TypeMeta: metav1.TypeMeta{
+			Kind: "Deployment",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: resultWatcherDeployment,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"app": "tekton-results-watcher"},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: resultWatcherContainer,
+							Args: []string{"-api_addr", "localhost:8080"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	jsonBytes, err := json.Marshal(depInput)
+	assert.NilError(t, err)
+	ud := &unstructured.Unstructured{}
+	err = json.Unmarshal(jsonBytes, ud)
+	assert.NilError(t, err)
+
+	transformer := common.UpdateWatcherFlagsInDeployment(watcher, resultWatcherDeployment, resultWatcherContainer)
+	err = transformer(ud)
+	assert.NilError(t, err)
+
+	outDep := &appsv1.Deployment{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(ud.Object, outDep)
+	assert.NilError(t, err)
+
+	expectedArgs := []string{
+		"-api_addr", "localhost:8080",
+		"-check_owner=false",
+		"-completed_run_grace_period=24h0m0s",
+		"-disable_storing_incomplete_runs=true",
+		"-store_deadline=10m0s",
+	}
+	assert.Equal(t, true, reflect.DeepEqual(outDep.Spec.Template.Spec.Containers[0].Args, expectedArgs),
+		fmt.Sprintf("got args %v", outDep.Spec.Template.Spec.Containers[0].Args))
+
+	assert.Equal(t, outDep.Spec.Template.Labels[resultWatcherDeployment+".data.check_owner"], "false")
+	assert.Equal(t, outDep.Spec.Template.Labels[resultWatcherDeployment+".data.completed_run_grace_period"], "24h0m0s")
 }
