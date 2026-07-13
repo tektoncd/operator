@@ -108,7 +108,69 @@ func TestApplyProxySettingsRemovingProxy(t *testing.T) {
 	assert.DeepEqual(t, actual, expected)
 }
 
+func TestApplyProxySettingsStatefulSetNoProxy(t *testing.T) {
+	actual := unstructuredStatefulSet(t)
+	expected := unstructuredStatefulSet(t)
+
+	if err := ApplyProxySettings(actual); err != nil {
+		t.Fatal(err)
+	}
+
+	assert.DeepEqual(t, actual, expected)
+}
+
+func TestApplyProxySettingsStatefulSetWithProxy(t *testing.T) {
+	proxyEnv := map[string]string{
+		"HTTP_PROXY":  "http://1.2.3.4:30001",
+		"HTTPS_PROXY": "http://1.2.3.4:30002",
+		"NO_PROXY":    "index.docker.io",
+	}
+	actual := unstructuredStatefulSet(t, withStatefulSetEnv(extraEnvVars))
+	expected := unstructuredStatefulSet(t, withStatefulSetEnv(toEnvVar(proxyEnv), extraEnvVars))
+
+	defer env.PatchAll(t, proxyEnv)()
+	if err := ApplyProxySettings(actual); err != nil {
+		t.Fatal(err)
+	}
+
+	assert.DeepEqual(t, actual, expected)
+}
+
+func TestApplyProxySettingsOtherKindIgnored(t *testing.T) {
+	svc := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "registry",
+		},
+	}
+	svc.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   corev1.SchemeGroupVersion.Group,
+		Version: corev1.SchemeGroupVersion.Version,
+		Kind:    "Service",
+	})
+	b, err := json.Marshal(svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actual := &unstructured.Unstructured{}
+	if err := json.Unmarshal(b, actual); err != nil {
+		t.Fatal(err)
+	}
+	expected := actual.DeepCopy()
+
+	proxyEnv := map[string]string{
+		"HTTP_PROXY": "http://1.2.3.4:30001",
+	}
+	defer env.PatchAll(t, proxyEnv)()
+	if err := ApplyProxySettings(actual); err != nil {
+		t.Fatal(err)
+	}
+
+	assert.DeepEqual(t, actual, expected)
+}
+
 type deploymentModifier func(*appsv1.Deployment)
+type statefulSetModifier func(*appsv1.StatefulSet)
 
 func unstructuredDeployment(t *testing.T, modifiers ...deploymentModifier) *unstructured.Unstructured {
 	deploy := &appsv1.Deployment{
@@ -156,6 +218,69 @@ func unstructuredDeployment(t *testing.T, modifiers ...deploymentModifier) *unst
 		t.Fatal(err)
 	}
 	return ud
+}
+
+func unstructuredStatefulSet(t *testing.T, modifiers ...statefulSetModifier) *unstructured.Unstructured {
+	ss := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "foo",
+			Name:      "registry",
+		},
+		Spec: appsv1.StatefulSetSpec{
+			ServiceName: "registry",
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "registry",
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "registry",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name:  "registry",
+						Image: "registry",
+					}},
+				},
+			},
+		},
+	}
+
+	for _, modifier := range modifiers {
+		modifier(ss)
+	}
+
+	ss.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   appsv1.SchemeGroupVersion.Group,
+		Version: appsv1.SchemeGroupVersion.Version,
+		Kind:    "StatefulSet",
+	})
+	b, err := json.Marshal(ss)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ud := &unstructured.Unstructured{}
+	if err := json.Unmarshal(b, ud); err != nil {
+		t.Fatal(err)
+	}
+	return ud
+}
+
+func withStatefulSetEnv(envs ...[]corev1.EnvVar) func(*appsv1.StatefulSet) {
+	return func(ss *appsv1.StatefulSet) {
+		for i, c := range ss.Spec.Template.Spec.Containers {
+			for _, env := range envs {
+				c.Env = append(c.Env, env...)
+			}
+			sort.Slice(c.Env, func(i, j int) bool {
+				return c.Env[i].Name < c.Env[j].Name
+			})
+			ss.Spec.Template.Spec.Containers[i] = c
+		}
+	}
 }
 
 func withEnv(envs ...[]corev1.EnvVar) func(*appsv1.Deployment) {
