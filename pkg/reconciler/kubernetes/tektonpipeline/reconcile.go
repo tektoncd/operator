@@ -24,6 +24,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	tektonpipelinereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
@@ -48,6 +49,8 @@ type Reconciler struct {
 	kubeClientSet kubernetes.Interface
 	// version of pipelines which we are installing
 	pipelineVersion string
+	// platformParams holds platform-specific values for building NetworkPolicy rules
+	platformParams networkpolicy.PlatformParams
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -153,6 +156,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPipel
 		return nil
 	}
 	logger.Debug("Main manifest applied successfully")
+
+	if err := r.reconcileNetworkPolicies(ctx, tp); err != nil {
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		msg := fmt.Sprintf("NetworkPolicy reconciliation failed: %s", err.Error())
+		logger.Errorw("NetworkPolicy reconciliation failed", "error", err)
+		tp.Status.MarkInstallerSetNotReady(msg)
+		return nil
+	}
 
 	logger.Debug("Executing post-reconciliation")
 	if err := r.extension.PostReconcile(ctx, tp); err != nil {

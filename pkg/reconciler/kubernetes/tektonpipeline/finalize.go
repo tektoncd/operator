@@ -45,6 +45,11 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 		return err
 	}
 
+	if err := r.installerSetClient.CleanupCustomSet(ctx, "pipeline-network-policies"); err != nil {
+		logger.Error("failed to cleanup pipeline network policies installerset: ", err)
+		return err
+	}
+
 	if err := r.extension.Finalize(ctx, original); err != nil {
 		logger.Error("Failed to finalize platform resources: ", err)
 	}

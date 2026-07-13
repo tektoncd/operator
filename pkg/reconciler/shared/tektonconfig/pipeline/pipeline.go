@@ -76,8 +76,9 @@ func GetTektonPipelineCR(config *v1alpha1.TektonConfig, operatorVersion string) 
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Pipeline: config.Spec.Pipeline,
-			Config:   config.Spec.Config,
+			Pipeline:      config.Spec.Pipeline,
+			Config:        config.Spec.Config,
+			NetworkPolicy: config.Spec.NetworkPolicy,
 		},
 	}
 }
@@ -113,6 +114,11 @@ func UpdatePipeline(ctx context.Context, old *v1alpha1.TektonPipeline, new *v1al
 
 	if !reflect.DeepEqual(old.Spec.Performance, new.Spec.Performance) {
 		old.Spec.Performance = new.Spec.Performance
+		updated = true
+	}
+
+	if !reflect.DeepEqual(old.Spec.NetworkPolicy, new.Spec.NetworkPolicy) {
+		old.Spec.NetworkPolicy = new.Spec.NetworkPolicy
 		updated = true
 	}
 
