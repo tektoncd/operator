@@ -359,14 +359,66 @@ func (cpr *consolePluginReconciler) buildNginxTLSDirectives() string {
 	}
 	directives.WriteString(fmt.Sprintf("    ssl_conf_command Ciphersuites %s;\n", tls13Ciphers))
 
-	// ssl_ecdh_curve – comma-separated curve names from the cluster profile become
-	// colon-separated for nginx.
-	if cpr.tlsConfig != nil && cpr.tlsConfig.CurvePreferences != "" {
-		curves := strings.ReplaceAll(cpr.tlsConfig.CurvePreferences, ",", ":")
-		directives.WriteString(fmt.Sprintf("    ssl_ecdh_curve %s;\n", curves))
-	}
+	// ssl_ecdh_curve – advertise TLS key-exchange groups for the nginx listener.
+	//
+	// The OpenShift TLS FAQ mandates that every TLS 1.3 server negotiate ML-KEM
+	// if the client supports it (quantum-safe key encapsulation is a mandatory
+	// requirement).  nginx/OpenSSL requires an explicit ssl_ecdh_curve directive
+	// to advertise post-quantum groups; without it only classical curves are
+	// offered and the TLS scanner reports pqc_capable=false.
+	//
+	// Group list is currently hardcoded because library-go's
+	// ObserveTLSSecurityProfile does not yet expose the groups/curve-preferences
+	// field from the APIServer TLS profile (openshift/library-go#2347, open).
+	// Once that lands we will switch to dynamic propagation from the APIServer
+	// profile and remove this function.
+	//
+	// X25519MLKEM768 is not FIPS-approved: OpenSSL's FIPS provider rejects it
+	// with a fatal error, crashing nginx.  We therefore exclude it on FIPS nodes
+	// while keeping it for all other clusters to satisfy the mandatory ML-KEM
+	// requirement.
+	tlsGroups := tlsECDHGroups()
+	directives.WriteString(fmt.Sprintf("    ssl_ecdh_curve %s;\n", tlsGroups))
 
 	return directives.String()
+}
+
+// tlsECDHGroups returns the colon-separated list of TLS key-exchange groups to
+// emit in the nginx ssl_ecdh_curve directive.
+//
+// On FIPS-enabled nodes X25519MLKEM768 is excluded because it is not
+// FIPS-approved and causes OpenSSL to crash nginx with:
+//
+//	nginx: [emerg] SSL_CONF_cmd("Groups","X25519MLKEM768:…") failed
+//
+// On all other nodes X25519MLKEM768 is included first so that TLS 1.3 clients
+// that support ML-KEM perform a post-quantum key exchange (pqc_capable=true).
+func tlsECDHGroups() string {
+	if isFIPSEnabled() {
+		// On FIPS nodes only NIST-approved curves are permitted by OpenSSL's
+		// FIPS provider. Both X25519MLKEM768 and X25519 are rejected; only the
+		// NIST prime curves (P-256, P-384, P-521) are FIPS 140-approved.
+		// Matches the curve list used by cluster-ingress-operator on FIPS.
+		return "P-256:P-384:P-521"
+	}
+	// Matches cluster-ingress-operator's non-FIPS default.
+	return "X25519MLKEM768:X25519:P-256:P-384:P-521"
+}
+
+// fipsEnabledPath is the kernel file that reports FIPS 140 mode status.
+// Overridable in tests via a temp file.
+var fipsEnabledPath = "/proc/sys/crypto/fips_enabled"
+
+// isFIPSEnabled reports whether the host kernel has FIPS 140 mode active.
+// It reads /proc/sys/crypto/fips_enabled which is provided by the Linux kernel
+// and is accessible from inside containers (containers share the host kernel).
+// The value is "1" when FIPS mode is on, "0" otherwise.
+func isFIPSEnabled() bool {
+	data, err := os.ReadFile(fipsEnabledPath)
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(data)) == "1"
 }
 
 // convertTLSVersionToNginx converts the Go crypto/tls minimum version string
