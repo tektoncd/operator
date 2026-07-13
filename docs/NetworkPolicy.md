@@ -63,6 +63,44 @@ to the operand namespace (e.g. `tekton-pipelines` or `openshift-pipelines`):
 | API server port | 443 | 6443 |
 | Prometheus namespace label | `kubernetes.io/metadata.name: monitoring` | `openshift.io/cluster-monitoring: "true"` |
 
+## Operator's own namespace
+
+The operator's own namespace (`tekton-operator` on Kubernetes, `openshift-operators`
+on OpenShift) ships two fixed NetworkPolicies as static manifests alongside the
+operator's Deployment/RBAC — in `config/kubernetes/base/networkpolicy.yaml` and
+`config/openshift/base/networkpolicy.yaml` respectively. These are **not**
+reconciled by a controller and are **not** configurable via `spec.networkPolicy`:
+no CR watches the operator's own namespace, so there is nothing to gate this on.
+They are also not a namespace-wide default-deny — each policy's `podSelector` is
+scoped to one of the operator's own pods (`name: tekton-operator` /
+`name: openshift-pipelines-operator` for the main controller, and
+`name: tekton-operator-webhook` for the CR admission webhook) so that installing
+the operator's bundle never affects unrelated pods that might share the namespace
+(`openshift-operators` in particular is commonly shared by many operators).
+
+| Policy | Direction | Port | Source / Destination |
+|---|---|---|---|
+| `tekton-operator` / `openshift-pipelines-operator` | ingress | TCP/9090 | Prometheus namespace |
+| | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+| | egress | TCP/443 or 6443 | API server |
+| `tekton-operator-webhook` | ingress | TCP/8443 | Any (admission webhook) |
+| | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+| | egress | TCP/443 or 6443 | API server |
+
+**OpenShift caveat**: `openshift-operators` is a shared namespace where OLM installs
+operators from OperatorHub, many of which ship no NetworkPolicy of their own. To
+avoid silently breaking those operators' networking, OpenShift's platform payload
+ships a permissive `default-allow-all` NetworkPolicy in that namespace out of the
+box (labeled `capability.openshift.io/name: OperatorLifecycleManager`), with an
+empty `podSelector` allowing all ingress/egress for every pod in the namespace.
+Because NetworkPolicy rules are additive (a pod's allowed traffic is the union of
+every policy that selects it, not the intersection), this platform-shipped policy
+supersedes the two policies above in practice — the operator's own pods remain
+fully open on a stock OpenShift cluster until a cluster admin removes or replaces
+`default-allow-all`. The `openshift-pipelines` (operand) namespace has no such
+baseline policy, so the `proxy-webhook` policies further up this page are enforced
+as documented without this caveat.
+
 ## Disabling
 
 ```yaml

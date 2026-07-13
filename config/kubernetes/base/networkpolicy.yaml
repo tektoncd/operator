@@ -1,0 +1,89 @@
+# Copyright 2026 The Tekton Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# NetworkPolicy resources for the operator's own namespace (tekton-operator). Unlike the
+# NetworkPolicies documented in docs/NetworkPolicy.md (reconciled dynamically by the operator for
+# operand namespaces such as tekton-pipelines/tekton-triggers), no CR watches the operator's own
+# namespace, so these ship statically with the install manifests/bundle instead. podSelectors are
+# scoped to this operator's own pod labels only — never an empty/namespace-wide selector — so
+# installing this bundle never affects other pods/operators that might share the namespace.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tekton-operator
+spec:
+  podSelector:
+    matchLabels:
+      name: tekton-operator
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - ports:
+    - protocol: TCP
+      port: 443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tekton-operator-webhook
+spec:
+  podSelector:
+    matchLabels:
+      name: tekton-operator-webhook
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Admission webhook callbacks originate from the API server; source IPs vary by cluster
+  # network plugin, so no ingress "from" restriction is applied here.
+  - ports:
+    - protocol: TCP
+      port: 8443
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  - ports:
+    - protocol: TCP
+      port: 443
