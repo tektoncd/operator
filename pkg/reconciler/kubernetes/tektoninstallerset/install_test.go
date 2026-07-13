@@ -155,6 +155,7 @@ var (
 		Spec: appsv1.StatefulSetSpec{
 			Replicas:    ptr.Int32(1),
 			ServiceName: "test",
+			Template:    statefulsetPodTemplate,
 		},
 		Status: appsv1.StatefulSetStatus{
 			Replicas:      1,
@@ -173,10 +174,22 @@ var (
 		Spec: appsv1.StatefulSetSpec{
 			Replicas:    ptr.Int32(1),
 			ServiceName: "test",
+			Template:    statefulsetPodTemplate,
 		},
 		Status: appsv1.StatefulSetStatus{
 			Replicas:      1,
 			ReadyReplicas: 1,
+		},
+	}
+	// statefulsetPodTemplate gives the StatefulSet fixtures above a real container
+	// so that spec.template.spec.containers isn't a JSON null, matching what a
+	// real manifest looks like once ApplyProxySettings processes it.
+	statefulsetPodTemplate = corev1.PodTemplateSpec{
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name:  "test",
+				Image: "test",
+			}},
 		},
 	}
 	readyControllerDeployment = &appsv1.Deployment{
