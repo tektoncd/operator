@@ -2156,6 +2156,7 @@ func (in *TektonPipelineSpec) DeepCopyInto(out *TektonPipelineSpec) {
 	out.CommonSpec = in.CommonSpec
 	in.Pipeline.DeepCopyInto(&out.Pipeline)
 	in.Config.DeepCopyInto(&out.Config)
+	in.NetworkPolicy.DeepCopyInto(&out.NetworkPolicy)
 	return
 }
 

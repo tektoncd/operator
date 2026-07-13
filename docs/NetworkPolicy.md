@@ -7,7 +7,8 @@ weight: 15
 # NetworkPolicy
 
 The operator can manage [NetworkPolicy][np] resources for Tekton component workloads.
-Currently only TektonTrigger is supported; other components will be added later.
+Currently TektonTrigger and TektonPipeline (proxy-webhook only) are supported;
+other components will be added later.
 
 Configuration is available via `TektonConfig`:
 
@@ -30,8 +31,9 @@ spec:
               - port: 9000
 ```
 
-The `networkPolicy` field is propagated from `TektonConfig` to `TektonTrigger`.
-Users can also configure it directly on the `TektonTrigger` CR.
+The `networkPolicy` field is propagated from `TektonConfig` to `TektonTrigger` and
+`TektonPipeline`. Users can also configure it directly on the `TektonTrigger` or
+`TektonPipeline` CR.
 
 ## Default Policies
 
@@ -53,6 +55,17 @@ to the operand namespace (e.g. `tekton-pipelines` or `openshift-pipelines`):
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
 | | egress | TCP/443 or 6443 | API server |
 | | egress | TCP/80, 443 | Any (external APIs e.g. GitHub) |
+| `tekton-proxy-webhook-default-deny` | deny all | — | All pods with `name: tekton-operator` (proxy-webhook) in the Pipeline target namespace |
+| `proxy-webhook` | ingress | TCP/8443 | Any (admission webhook) |
+| | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+| | egress | TCP/443 or 6443 | API server |
+
+The `proxy-webhook` policies apply to the TektonPipeline target namespace (e.g.
+`tekton-pipelines` or `openshift-pipelines`), where the operator deploys the
+proxy-webhook Deployment. They do not cover the operator's own namespace
+(`tekton-operator` / `openshift-operators`), which ships fixed, non-configurable
+NetworkPolicies as part of the operator's own install manifests/bundle (see
+[Operator's own namespace](#operators-own-namespace) below).
 
 ### Platform differences
 
