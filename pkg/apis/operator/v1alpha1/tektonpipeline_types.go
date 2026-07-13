@@ -56,6 +56,10 @@ type TektonPipelineSpec struct {
 	// Config holds the configuration for resources created by TektonPipeline
 	// +optional
 	Config Config `json:"config,omitempty"`
+	// NetworkPolicy configures NetworkPolicy creation for the proxy-webhook
+	// workload deployed by TektonPipeline.
+	// +optional
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
 // TektonPipelineStatus defines the observed state of TektonPipeline
