@@ -1,0 +1,90 @@
+# Copyright 2026 The Tekton Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# NetworkPolicy resources for the operator's own namespace (openshift-operators). Unlike the
+# NetworkPolicies documented in docs/NetworkPolicy.md (reconciled dynamically by the operator for
+# operand namespaces such as openshift-pipelines), no CR watches the operator's own namespace, so
+# these ship statically with the install manifests/OLM bundle instead. podSelectors are scoped to
+# this operator's own pod labels only — never an empty/namespace-wide selector, per the OLM bundle
+# guidance — so installing this bundle never affects other operators that may share the namespace
+# (openshift-operators is typically shared across many cluster-scoped operators).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: openshift-pipelines-operator
+spec:
+  podSelector:
+    matchLabels:
+      name: openshift-pipelines-operator
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          openshift.io/cluster-monitoring: "true"
+    ports:
+    - protocol: TCP
+      port: 9090
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: openshift-dns
+      podSelector:
+        matchLabels:
+          dns.operator.openshift.io/daemonset-dns: default
+    ports:
+    - protocol: UDP
+      port: 5353
+    - protocol: TCP
+      port: 5353
+  - ports:
+    - protocol: TCP
+      port: 6443
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tekton-operator-webhook
+spec:
+  podSelector:
+    matchLabels:
+      name: tekton-operator-webhook
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Admission webhook callbacks originate from the API server; source IPs vary by cluster
+  # network plugin, so no ingress "from" restriction is applied here.
+  - ports:
+    - protocol: TCP
+      port: 8443
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: openshift-dns
+      podSelector:
+        matchLabels:
+          dns.operator.openshift.io/daemonset-dns: default
+    ports:
+    - protocol: UDP
+      port: 5353
+    - protocol: TCP
+      port: 5353
+  - ports:
+    - protocol: TCP
+      port: 6443
