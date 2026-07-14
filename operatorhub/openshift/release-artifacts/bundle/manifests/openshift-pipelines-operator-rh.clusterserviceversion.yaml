@@ -1304,7 +1304,7 @@ spec:
                 - name: IMAGE_HUB_TEKTON_HUB_DB
                   value: registry.redhat.io/rhel9/postgresql-15@sha256:5675bd5859ffc1e16eb4aa5e43f519964a0bba688db7922b3540022259db34dc
                 - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-                  value: registry.redhat.io/rhel9/buildah@sha256:841699d5705e752749e5b0b2d6d362aa41596483b9b061363f41eb3c54eb0910
+                  value: registry.redhat.io/rhel9/buildah@sha256:ed9497f3dcbf63e4f05524b313213cd1431bf643e1c8ecfc9fd03f042d87cbb3
                 - name: IMAGE_ADDONS_PARAM_KN_IMAGE
                   value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:aee19896d17a431ba980564fdb73ef08ad1512f586fbdf954cecef6258f7a8df
                 - name: IMAGE_ADDONS_MVN_SETTINGS
