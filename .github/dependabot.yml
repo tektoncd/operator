@@ -63,6 +63,8 @@ updates:
       target-branch: release-v0.80.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.80.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -85,6 +87,8 @@ updates:
       target-branch: release-v0.80.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.80.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -110,6 +114,8 @@ updates:
       target-branch: release-v0.80.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.80.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -131,6 +137,8 @@ updates:
       target-branch: release-v0.79.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.79.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -153,6 +161,8 @@ updates:
       target-branch: release-v0.79.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.79.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -178,6 +188,8 @@ updates:
       target-branch: release-v0.79.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.79.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -199,6 +211,8 @@ updates:
       target-branch: release-v0.78.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.78.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -221,6 +235,8 @@ updates:
       target-branch: release-v0.78.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.78.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -246,6 +262,8 @@ updates:
       target-branch: release-v0.78.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.78.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -267,6 +285,8 @@ updates:
       target-branch: release-v0.77.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.77.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -289,6 +309,8 @@ updates:
       target-branch: release-v0.77.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.77.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -314,6 +336,8 @@ updates:
       target-branch: release-v0.77.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.77.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -335,6 +359,8 @@ updates:
       target-branch: release-v0.76.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.76.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -357,6 +383,8 @@ updates:
       target-branch: release-v0.76.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.76.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -382,6 +410,8 @@ updates:
       target-branch: release-v0.76.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.76.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -403,6 +433,8 @@ updates:
       target-branch: release-v0.75.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.75.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -425,6 +457,8 @@ updates:
       target-branch: release-v0.75.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.75.x] '
       labels:
         - ok-to-test
         - dependencies
@@ -450,6 +484,8 @@ updates:
       target-branch: release-v0.75.x
       schedule:
         interval: weekly
+      commit-message:
+        prefix: '[release-v0.75.x] '
       labels:
         - ok-to-test
         - dependencies
