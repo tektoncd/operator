@@ -88,15 +88,15 @@ spec:
         - name: CONFIG_LEADERELECTION_NAME
           value: tekton-operator-controller-config-leader-election
         - name: IMAGE_HUB_TEKTON_HUB_DB
-          value: registry.redhat.io/rhel9/postgresql-15@sha256:5675bd5859ffc1e16eb4aa5e43f519964a0bba688db7922b3540022259db34dc
+          value: registry.redhat.io/rhel9/postgresql-15@sha256:9e1ae1b250fa5bd732f573b2c924e503328e61dd341cf6a41c67aeb5f26cbc38
         - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-          value: registry.redhat.io/rhel9/buildah@sha256:ed9497f3dcbf63e4f05524b313213cd1431bf643e1c8ecfc9fd03f042d87cbb3
+          value: registry.redhat.io/rhel9/buildah@sha256:b9a21eafe26e81ade7a49fe8e67192a35ce3a15a95ae71fc3b1203fcc4ea4472
         - name: IMAGE_ADDONS_PARAM_KN_IMAGE
           value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:aee19896d17a431ba980564fdb73ef08ad1512f586fbdf954cecef6258f7a8df
         - name: IMAGE_ADDONS_MVN_SETTINGS
           value: registry.redhat.io/ubi9/ubi-minimal@sha256:463cae32c6f6f5594b11a5c22de275016bd8545ce58a6373388e8b24f13fc15c
         - name: IMAGE_ADDONS_SKOPEO_COPY
-          value: registry.redhat.io/rhel9/skopeo@sha256:08d8d7618048b8d2d04acffd7951f874c7098e3586500823a4ae6abd42700eef
+          value: registry.redhat.io/rhel9/skopeo@sha256:028883ab919f8288b2a542f53a7fa07ac1294887bcebd34d620dc75c089a846b
         - name: IMAGE_ADDONS_GENERATE
           value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:718e59d9aacacbaa16be3ae247bdb8582dc4fd9cbe0c5314dfdfc8f22e4f3578
         - name: IMAGE_ADDONS_GEN_ENV_FILE
