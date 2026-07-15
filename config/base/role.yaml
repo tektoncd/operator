@@ -127,6 +127,8 @@ rules:
   - delete
   - list
   - watch
+  - bind
+  - escalate
 - apiGroups:
   - ""
   resources:
