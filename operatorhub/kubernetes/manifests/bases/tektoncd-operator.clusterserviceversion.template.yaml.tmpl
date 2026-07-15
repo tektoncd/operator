@@ -51,14 +51,6 @@ spec:
       name: tektontriggers.operator.tekton.dev
       version: v1alpha1
     - description: |
-        TektonHub installs Tekton Hub on a cluster. The operator installs Tekton Hub on a cluster
-        if an instance of this CRD is created on your cluster with name `hub`. At present, the operator honors only
-        one CustomResource instance with the name `hub` to ensure only one set of Tekton Hub exists on a cluster.
-      displayName: TektonHubs
-      kind: TektonHub
-      name: tektonhubs.operator.tekton.dev
-      version: v1alpha1
-    - description: |
         TektonInstallerSet internal CRD used by other component reconcilers to create kubernetes resources from their
         release manifests
       displayName: TektonInstallerSets
