@@ -24,10 +24,10 @@ import (
 )
 
 // ApplyProxySettings is a transformer that propagate any proxy environment variables
-// set on the operator deployment to the underlying deployment.
+// set on the operator deployment to the underlying deployment or statefulset.
 func ApplyProxySettings(u *unstructured.Unstructured) error {
-	if u.GetKind() != "Deployment" {
-		// Don't do anything on something else than Deployment
+	if u.GetKind() != "Deployment" && u.GetKind() != "StatefulSet" {
+		// Don't do anything on something else than Deployment or StatefulSet
 		return nil
 	}
 
@@ -48,7 +48,7 @@ func ApplyProxySettings(u *unstructured.Unstructured) error {
 		return err
 	}
 	if !found {
-		// No containers in the deployment, it is weird but let's not fail
+		// No containers in the resource, it is weird but let's not fail
 		return nil
 	}
 	for _, c := range containers {
