@@ -16,7 +16,7 @@ jobs:
     steps:
     - id: set-matrix
       run: |
-        SUPPORTED_BRANCHES=$(git ls-remote --heads https://github.com/tektoncd/operator 'release-*' | grep -v 'v0.2[0-9].*\|v0.5[0-9]\.*\|v0.6[0-7]\.*' | awk '{ print $2 }' | cut -d/ -f3- | jq -cRs 'split("\n")[:-1]')
+        SUPPORTED_BRANCHES=$(git ls-remote --heads https://github.com/tektoncd/operator 'release-*' | awk '{ print $2 }' | cut -d/ -f3- | grep '^release-v[0-9]\+\.[0-9]\+' | grep -v '^release-v0\.2[0-9]\|^release-v0\.5[0-9]\|^release-v0\.6[0-7]' | jq -cRs 'split("\n")[:-1]')
         echo "Supported Branches: ${SUPPORTED_BRANCHES}"
         echo "branches=${SUPPORTED_BRANCHES}" >> $GITHUB_OUTPUT
     outputs:
