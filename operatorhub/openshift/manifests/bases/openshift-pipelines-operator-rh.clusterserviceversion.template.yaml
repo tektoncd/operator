@@ -20,7 +20,7 @@ metadata:
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "false"
     features.operators.openshift.io/csi: "false"
-    operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev", "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev", "tektonresults.operator.tekton.dev", "tektonchains.operator.tekton.dev", "openshiftpipelinesascodes.operator.tekton.dev", "manualapprovalgates.operator.tekton.dev","tektonpruners.operator.tekton.dev","tektonschedulers.operator.tekton.dev","tektonmulticlusterproxyaaes.operator.tekton.dev","syncerservices.operator.tekton.dev"]'
+    operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev", "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev", "tektonhubs.operator.tekton.dev", "tektonresults.operator.tekton.dev", "tektonchains.operator.tekton.dev", "openshiftpipelinesascodes.operator.tekton.dev", "manualapprovalgates.operator.tekton.dev","tektonpruners.operator.tekton.dev","tektonschedulers.operator.tekton.dev","tektonmulticlusterproxyaaes.operator.tekton.dev","syncerservices.operator.tekton.dev"]'
     repository: https://github.com/tektoncd/operator
     support: Red Hat
   labels:
@@ -160,6 +160,27 @@ spec:
       displayName: Tekton Results
       kind: TektonResult
       name: tektonresults.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
+      specDescriptors:
+      - description: Namespace where Addons installed
+        displayName: Target Namespace
+        path: targetNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Addons installed
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
+    - description: Represents an installation of latest version of Hub
+      displayName: Tekton Hub
+      kind: TektonHub
+      name: tektonhubs.operator.tekton.dev
       resources:
       - kind: tektoninstallersets
         name: ''
@@ -379,7 +400,7 @@ spec:
     - Tekton Triggers: v0.36.0
     - Pipelines as Code: v0.49.0
     - Tekton Chains: v0.28.0
-    - Tekton Hub (tech-preview): v1.24.1
+    - Tekton Hub (tech-preview): 
     - Tekton Results: v0.19.0
     - Manual Approval Gate (tech-preview): v0.9.0
     - Tekton Pruner: v0.4.1
