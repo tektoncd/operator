@@ -95,10 +95,15 @@ the operator's bundle never affects unrelated pods that might share the namespac
 |---|---|---|---|
 | `tekton-operator` / `openshift-pipelines-operator` | ingress | TCP/9090 | Prometheus namespace |
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
-| | egress | TCP/443 or 6443 | API server |
+| | egress | all | API server (see note below) |
 | `tekton-operator-webhook` | ingress | TCP/8443 | Any (admission webhook) |
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
-| | egress | TCP/443 or 6443 | API server |
+| | egress | all | API server (see note below) |
+
+The API server egress rule is unrestricted (no port/destination filter) rather than
+scoped to TCP/443 or 6443: NetworkPolicy cannot select host-network endpoints, and the
+API server's port is configurable (some SDNs use a different port), so a port-scoped
+rule would be unreliable across clusters.
 
 **OpenShift caveat**: `openshift-operators` is a shared namespace where OLM installs
 operators from OperatorHub, many of which ship no NetworkPolicy of their own. To

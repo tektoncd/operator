@@ -51,9 +51,11 @@ spec:
       port: 5353
     - protocol: TCP
       port: 5353
-  - ports:
-    - protocol: TCP
-      port: 6443
+  # Allow all egress for API server access: NetworkPolicy cannot select host-network
+  # endpoints, and the API server port is configurable (some SDNs use a different
+  # port), so an empty rule (no ports/to) is required here rather than restricting to
+  # TCP/6443.
+  - {}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -85,6 +87,8 @@ spec:
       port: 5353
     - protocol: TCP
       port: 5353
-  - ports:
-    - protocol: TCP
-      port: 6443
+  # Allow all egress for API server access: NetworkPolicy cannot select host-network
+  # endpoints, and the API server port is configurable (some SDNs use a different
+  # port), so an empty rule (no ports/to) is required here rather than restricting to
+  # TCP/6443.
+  - {}
