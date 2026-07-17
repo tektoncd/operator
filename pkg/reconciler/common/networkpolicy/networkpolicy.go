@@ -123,16 +123,11 @@ func DNSEgressRule(p PlatformParams) networkingv1.NetworkPolicyEgressRule {
 	}
 }
 
-// APIServerEgressRule allows egress to the API server on the platform-specific port (443 on
-// Kubernetes, 6443 on OpenShift). No To restriction — API server is behind a ClusterIP service.
-func APIServerEgressRule(p PlatformParams) networkingv1.NetworkPolicyEgressRule {
-	tcp := corev1.ProtocolTCP
-	apiPort := intstr.FromInt32(p.APIServerPort)
-	return networkingv1.NetworkPolicyEgressRule{
-		Ports: []networkingv1.NetworkPolicyPort{
-			{Protocol: &tcp, Port: &apiPort},
-		},
-	}
+// APIServerEgressRule allows all egress so pods can reach the API server.
+// NetworkPolicy cannot select host-network endpoints, and the API server
+// port is configurable, so we must allow unrestricted egress.
+func APIServerEgressRule() networkingv1.NetworkPolicyEgressRule {
+	return networkingv1.NetworkPolicyEgressRule{}
 }
 
 // InternetEgressRule allows egress on TCP 80 and 443 to any destination.

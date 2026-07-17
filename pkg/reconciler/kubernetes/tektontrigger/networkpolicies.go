@@ -48,7 +48,7 @@ func triggersDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1
 				},
 				Egress: []networkingv1.NetworkPolicyEgressRule{
 					networkpolicy.DNSEgressRule(params),
-					networkpolicy.APIServerEgressRule(params),
+					networkpolicy.APIServerEgressRule(),
 				},
 			},
 		},
@@ -66,7 +66,7 @@ func triggersDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1
 				},
 				Egress: []networkingv1.NetworkPolicyEgressRule{
 					networkpolicy.DNSEgressRule(params),
-					networkpolicy.APIServerEgressRule(params),
+					networkpolicy.APIServerEgressRule(),
 				},
 			},
 		},
@@ -91,7 +91,7 @@ func triggersDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1
 				},
 				Egress: []networkingv1.NetworkPolicyEgressRule{
 					networkpolicy.DNSEgressRule(params),
-					networkpolicy.APIServerEgressRule(params),
+					networkpolicy.APIServerEgressRule(),
 					// Allow egress to external APIs (e.g. GitHub) for file fetching and validation.
 					networkpolicy.InternetEgressRule(),
 				},

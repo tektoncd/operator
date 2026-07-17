@@ -45,20 +45,20 @@ to the operand namespace (e.g. `tekton-pipelines` or `openshift-pipelines`):
 | `tekton-default-deny` | deny all | — | All pods with `app.kubernetes.io/part-of: tekton-triggers` |
 | `triggers-controller` | ingress | TCP/9000 | Prometheus namespace |
 | | egress | UDP+TCP/53 (K8s) or 5353 (OpenShift) | DNS resolver pods |
-| | egress | TCP/443 (K8s) or 6443 (OpenShift) | API server |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 | `triggers-webhook` | ingress | TCP/8443 | Any (admission webhook) |
 | | ingress | TCP/9000 | Prometheus namespace |
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
-| | egress | TCP/443 or 6443 | API server |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 | `triggers-core-interceptors` | ingress | TCP/8443 | All namespaces (EventListeners) |
 | | ingress | TCP/9000 | Prometheus namespace |
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
-| | egress | TCP/443 or 6443 | API server |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 | | egress | TCP/80, 443 | Any (external APIs e.g. GitHub) |
 | `tekton-proxy-webhook-default-deny` | deny all | — | All pods with `name: tekton-operator` (proxy-webhook) in the Pipeline target namespace |
 | `proxy-webhook` | ingress | TCP/8443 | Any (admission webhook) |
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
-| | egress | TCP/443 or 6443 | API server |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 
 The `proxy-webhook` policies apply to the TektonPipeline target namespace (e.g.
 `tekton-pipelines` or `openshift-pipelines`), where the operator deploys the
@@ -73,7 +73,6 @@ NetworkPolicies as part of the operator's own install manifests/bundle (see
 |---|---|---|
 | DNS port | 53 | 5353 |
 | DNS namespace | `kube-system` | `openshift-dns` |
-| API server port | 443 | 6443 |
 | Prometheus namespace label | `kubernetes.io/metadata.name: monitoring` | `openshift.io/cluster-monitoring: "true"` |
 
 ## Operator's own namespace
@@ -95,10 +94,10 @@ the operator's bundle never affects unrelated pods that might share the namespac
 |---|---|---|---|
 | `tekton-operator` / `openshift-pipelines-operator` | ingress | TCP/9090 | Prometheus namespace |
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
-| | egress | TCP/443 or 6443 | API server |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 | `tekton-operator-webhook` | ingress | TCP/8443 | Any (admission webhook) |
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
-| | egress | TCP/443 or 6443 | API server |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 
 **OpenShift caveat**: `openshift-operators` is a shared namespace where OLM installs
 operators from OperatorHub, many of which ship no NetworkPolicy of their own. To
