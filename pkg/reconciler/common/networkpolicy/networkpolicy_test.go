@@ -177,25 +177,13 @@ func TestInternetEgressRule(t *testing.T) {
 	}
 }
 
-func TestAPIServerEgressRule_Kubernetes(t *testing.T) {
-	params := networkpolicy.KubernetesPlatformDefaults()
-	rule := networkpolicy.APIServerEgressRule(params)
-	if len(rule.Ports) != 1 || rule.Ports[0].Port.IntVal != 443 {
-		t.Fatalf("expected port 443 for Kubernetes, got %v", rule.Ports)
+func TestAPIServerEgressRule(t *testing.T) {
+	rule := networkpolicy.APIServerEgressRule()
+	if len(rule.Ports) != 0 {
+		t.Errorf("expected no port restriction (allow all), got %v", rule.Ports)
 	}
 	if len(rule.To) != 0 {
-		t.Errorf("expected no To restriction for API server egress, got %v", rule.To)
-	}
-}
-
-func TestAPIServerEgressRule_OpenShift(t *testing.T) {
-	params := networkpolicy.OpenShiftPlatformDefaults()
-	rule := networkpolicy.APIServerEgressRule(params)
-	if len(rule.Ports) != 1 || rule.Ports[0].Port.IntVal != 6443 {
-		t.Fatalf("expected port 6443 for OpenShift, got %v", rule.Ports)
-	}
-	if len(rule.To) != 0 {
-		t.Errorf("expected no To restriction for API server egress, got %v", rule.To)
+		t.Errorf("expected no To restriction (allow all), got %v", rule.To)
 	}
 }
 

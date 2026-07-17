@@ -58,7 +58,7 @@ func proxyWebhookDefaultPolicies(params networkpolicy.PlatformParams) []networki
 				},
 				Egress: []networkingv1.NetworkPolicyEgressRule{
 					networkpolicy.DNSEgressRule(params),
-					networkpolicy.APIServerEgressRule(params),
+					networkpolicy.APIServerEgressRule(),
 				},
 			},
 		},
