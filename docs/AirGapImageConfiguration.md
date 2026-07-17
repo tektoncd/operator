@@ -40,7 +40,7 @@ spec:
 Behavior and precedence:
 
 - If `TEKTON_REGISTRY_OVERRIDE` is unset, images are taken from per-image env vars (if set) or from the shipped defaults.
-- If `TEKTON_REGISTRY_OVERRIDE` is set, the operator rewrites the registry host for all resolved images (from per-image env vars and defaults). The repository path and tag/digest are preserved.
+- If `TEKTON_REGISTRY_OVERRIDE` is set, the operator rewrites the registry host for all resolved images (from per-image env vars and defaults, including images with no matching per-image env var), for every component. The repository path and tag/digest are preserved.
 - There is currently no per-image opt-out when the global override is set. To exempt specific images, do not set `TEKTON_REGISTRY_OVERRIDE` and rely solely on per-image env vars.
 
 ## Rewrite image one by one
@@ -56,7 +56,9 @@ example.com/tektoncd/dashboard:v0.48.0
 
 ### Tekton instance update
 
-If you update an existing instance of tekton, you will need also to refresh the `TektonInstallerSets` so the new value can be taken into account.
+Changing `TEKTON_REGISTRY_OVERRIDE` on an existing installation is picked up automatically: the operator refreshes the affected `TektonInstallerSets` on its next reconcile, no manual action needed.
+
+If you instead change one of the per-image environment variables (`IMAGE_*`) without touching `TEKTON_REGISTRY_OVERRIDE`, you will need to refresh the `TektonInstallerSets` manually so the new value can be taken into account.
 
 ```bash
 kubectl delete tektoninstallerset <installer-set-name>

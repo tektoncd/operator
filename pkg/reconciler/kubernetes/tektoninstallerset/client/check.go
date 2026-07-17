@@ -19,9 +19,11 @@ package client
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	"go.uber.org/zap"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -154,12 +156,17 @@ func verifyMeta(resourceKind, isType string, logger *zap.SugaredLogger, set v1al
 // Including PlatformDataHashKey means that operator-injected platform config
 // (e.g. OpenShift APIServer TLS profile) causes InstallerSets to be refreshed
 // when that config changes, without requiring the component's spec to change.
+// Including RegistryOverride means that changing TEKTON_REGISTRY_OVERRIDE on
+// the operator triggers a refresh of existing InstallerSets on the next
+// reconcile, instead of silently keeping the previously applied images.
 func specHashInput(comp v1alpha1.TektonComponent) interface{} {
 	return struct {
-		Spec         interface{}
-		PlatformData string
+		Spec             interface{}
+		PlatformData     string
+		RegistryOverride string
 	}{
-		Spec:         comp.GetSpec(),
-		PlatformData: comp.GetAnnotations()[v1alpha1.PlatformDataHashKey],
+		Spec:             comp.GetSpec(),
+		PlatformData:     comp.GetAnnotations()[v1alpha1.PlatformDataHashKey],
+		RegistryOverride: os.Getenv(common.ImageRegistryOverride),
 	}
 }
