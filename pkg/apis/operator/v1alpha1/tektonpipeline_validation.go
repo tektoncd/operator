@@ -36,7 +36,6 @@ var (
 )
 
 func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) {
-
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
@@ -53,11 +52,12 @@ func (tp *TektonPipeline) Validate(ctx context.Context) (errs *apis.FieldError) 
 
 	errs = errs.Also(tp.Spec.Options.validate("spec"))
 
+	errs = errs.Also(tp.Spec.NetworkPolicy.validate("spec.networkPolicy"))
+
 	return errs
 }
 
 func (p *PipelineProperties) validate(path string) (errs *apis.FieldError) {
-
 	if !validatePipelineAllowedApiFields.Has(p.EnableApiFields) {
 		errs = errs.Also(apis.ErrInvalidValue(p.EnableApiFields, fmt.Sprintf("%s.enable-api-fields", path)))
 	}

@@ -177,6 +177,19 @@ func TestInternetEgressRule(t *testing.T) {
 	}
 }
 
+func TestSSHEgressRule(t *testing.T) {
+	rule := networkpolicy.SSHEgressRule()
+	if len(rule.Ports) != 1 {
+		t.Fatalf("expected 1 port, got %d", len(rule.Ports))
+	}
+	if rule.Ports[0].Port.IntVal != 22 {
+		t.Errorf("expected port 22, got %v", rule.Ports[0].Port.IntVal)
+	}
+	if len(rule.To) != 0 {
+		t.Errorf("expected no To restriction for SSH egress, got %v", rule.To)
+	}
+}
+
 func TestAPIServerEgressRule(t *testing.T) {
 	rule := networkpolicy.APIServerEgressRule()
 	if len(rule.Ports) != 0 {
