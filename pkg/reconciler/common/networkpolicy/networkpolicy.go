@@ -143,6 +143,17 @@ func InternetEgressRule() networkingv1.NetworkPolicyEgressRule {
 	}
 }
 
+// SSHEgressRule allows TCP egress on port 22 for git clone over SSH.
+func SSHEgressRule() networkingv1.NetworkPolicyEgressRule {
+	tcp := corev1.ProtocolTCP
+	sshPort := intstr.FromInt32(22)
+	return networkingv1.NetworkPolicyEgressRule{
+		Ports: []networkingv1.NetworkPolicyPort{
+			{Protocol: &tcp, Port: &sshPort},
+		},
+	}
+}
+
 // PrometheusIngressRule allows ingress from the monitoring namespace on the given port.
 func PrometheusIngressRule(p PlatformParams, port intstr.IntOrString) networkingv1.NetworkPolicyIngressRule {
 	tcp := corev1.ProtocolTCP

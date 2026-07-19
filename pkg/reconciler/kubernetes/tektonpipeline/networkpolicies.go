@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -72,18 +73,113 @@ func proxyWebhookDefaultDenyPolicy() networkingv1.NetworkPolicy {
 	return networkpolicy.DefaultDenyPolicy("tekton-proxy-webhook-default-deny", proxyWebhookPodSelector)
 }
 
-// reconcileNetworkPolicies reconciles every NetworkPolicy owned by TektonPipeline as a
-// single CustomSet. Currently that's just the proxy-webhook's; as more workloads gain
-// NetworkPolicy support, append their <workload>DefaultDenyPolicy/<workload>DefaultPolicies
-// results into defaults below rather than renaming or overloading these.
+func pipelineDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1.NetworkPolicy {
+	metricsPort := intstr.FromInt32(9090)
+	webhookPort := intstr.FromInt32(8443)
+	resolverPort := intstr.FromInt32(8080)
+	tcp := corev1.ProtocolTCP
+
+	return []networkingv1.NetworkPolicy{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline-controller"},
+			Spec: networkingv1.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"app": "tekton-pipelines-controller"},
+				},
+				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
+				Ingress: []networkingv1.NetworkPolicyIngressRule{
+					networkpolicy.PrometheusIngressRule(params, metricsPort),
+				},
+				Egress: []networkingv1.NetworkPolicyEgressRule{
+					networkpolicy.DNSEgressRule(params),
+					networkpolicy.APIServerEgressRule(),
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline-webhook"},
+			Spec: networkingv1.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"app": "tekton-pipelines-webhook"},
+				},
+				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
+				Ingress: []networkingv1.NetworkPolicyIngressRule{
+					networkpolicy.WebhookIngressRule("", webhookPort),
+					networkpolicy.PrometheusIngressRule(params, metricsPort),
+				},
+				Egress: []networkingv1.NetworkPolicyEgressRule{
+					networkpolicy.DNSEgressRule(params),
+					networkpolicy.APIServerEgressRule(),
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline-events-controller"},
+			Spec: networkingv1.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"app": "tekton-events-controller"},
+				},
+				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
+				Ingress: []networkingv1.NetworkPolicyIngressRule{
+					networkpolicy.PrometheusIngressRule(params, metricsPort),
+				},
+				Egress: []networkingv1.NetworkPolicyEgressRule{
+					networkpolicy.DNSEgressRule(params),
+					networkpolicy.APIServerEgressRule(),
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "pipeline-resolvers"},
+			Spec: networkingv1.NetworkPolicySpec{
+				PodSelector: metav1.LabelSelector{
+					MatchLabels: map[string]string{"app": "tekton-pipelines-resolvers"},
+				},
+				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
+				Ingress: []networkingv1.NetworkPolicyIngressRule{
+					{
+						From: []networkingv1.NetworkPolicyPeer{
+							{PodSelector: &metav1.LabelSelector{
+								MatchLabels: map[string]string{"app": "tekton-pipelines-controller"},
+							}},
+						},
+						Ports: []networkingv1.NetworkPolicyPort{
+							{Protocol: &tcp, Port: &resolverPort},
+						},
+					},
+					networkpolicy.PrometheusIngressRule(params, metricsPort),
+				},
+				Egress: []networkingv1.NetworkPolicyEgressRule{
+					networkpolicy.DNSEgressRule(params),
+					networkpolicy.APIServerEgressRule(),
+					networkpolicy.InternetEgressRule(),
+					networkpolicy.SSHEgressRule(),
+				},
+			},
+		},
+	}
+}
+
+func pipelineDefaultDenyPolicy() networkingv1.NetworkPolicy {
+	return networkpolicy.DefaultDenyPolicy(
+		"pipeline-default-deny",
+		metav1.LabelSelector{
+			MatchLabels: map[string]string{"app.kubernetes.io/part-of": "tekton-pipelines"},
+		},
+	)
+}
+
 func (r *Reconciler) reconcileNetworkPolicies(ctx context.Context, tp *v1alpha1.TektonPipeline) error {
 	if tp.Spec.NetworkPolicy.Disabled {
 		return r.installerSetClient.CleanupCustomSet(ctx, "pipeline-network-policies")
 	}
-	defaults := append(
-		[]networkingv1.NetworkPolicy{proxyWebhookDefaultDenyPolicy()},
-		proxyWebhookDefaultPolicies(r.platformParams)...,
-	)
+	defaults := []networkingv1.NetworkPolicy{
+		proxyWebhookDefaultDenyPolicy(),
+		pipelineDefaultDenyPolicy(),
+	}
+	defaults = append(defaults, proxyWebhookDefaultPolicies(r.platformParams)...)
+	defaults = append(defaults, pipelineDefaultPolicies(r.platformParams)...)
+
 	manifest, err := networkpolicy.Generate(
 		tp.Spec.NetworkPolicy,
 		tp.Spec.GetTargetNamespace(),
