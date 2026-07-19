@@ -10,6 +10,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: ManualApprovalGate
@@ -167,6 +168,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: OpenShiftPipelinesAsCode
@@ -402,6 +404,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonChain
@@ -885,6 +888,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonConfig
@@ -2312,6 +2316,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonDashboard
@@ -2527,6 +2532,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonInstallerSet
@@ -2641,6 +2647,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonPipeline
@@ -3042,6 +3049,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonResult
@@ -3378,6 +3386,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonTrigger
@@ -3611,6 +3620,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonPruner
@@ -3825,6 +3835,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonScheduler
@@ -4000,6 +4011,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonMulticlusterProxyAAE
@@ -4157,6 +4169,7 @@ metadata:
     version: "devel"
     operator.tekton.dev/release: "devel"
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: SyncerService
