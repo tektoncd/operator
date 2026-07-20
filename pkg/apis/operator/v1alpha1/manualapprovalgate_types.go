@@ -51,9 +51,23 @@ type ManualApprovalGateSpec struct {
 }
 
 type ManualApproval struct {
+	// enable or disable manual approval gate feature
+	// +optional
+	Disabled *bool `json:"disabled,omitempty"`
 	// options holds additions fields and these fields will be updated on the manifests
 	// +optional
 	Options AdditionalOptions `json:"options"`
+}
+
+func (m *ManualApproval) setDefaults() {
+	if m.Disabled == nil {
+		disabled := true
+		m.Disabled = &disabled
+	}
+}
+
+func (m *ManualApproval) IsDisabled() bool {
+	return m.Disabled == nil || *m.Disabled
 }
 
 // ManualApprovalGateList contains a list of ManualApprovalGate
