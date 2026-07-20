@@ -16,25 +16,19 @@ limitations under the License.
 
 package v1alpha1
 
-import (
-	"context"
-	"fmt"
+import "context"
 
-	"knative.dev/pkg/apis"
-)
+func (mag *ManualApprovalGate) SetDefaults(_ context.Context) {
+	mag.Spec.ManualApproval.setDefaults()
+}
 
-func (mag *ManualApprovalGate) Validate(ctx context.Context) (errs *apis.FieldError) {
-	if apis.IsInDelete(ctx) {
-		return nil
+func (m *ManualApproval) setDefaults() {
+	if m.Disabled == nil {
+		disabled := true
+		m.Disabled = &disabled
 	}
+}
 
-	if mag.GetName() != ManualApprovalGates {
-		errMsg := fmt.Sprintf("metadata.name, Only one instance of ManualApprovalGate is allowed by name, %s", ManualApprovalGates)
-		errs = errs.Also(apis.ErrInvalidValue(mag.GetName(), errMsg))
-	}
-
-	errs = errs.Also(mag.Spec.CommonSpec.validate("spec"))
-	errs = errs.Also(mag.Spec.NetworkPolicy.validate("spec.networkPolicy"))
-
-	return errs
+func (m *ManualApproval) IsDisabled() bool {
+	return m.Disabled == nil || *m.Disabled
 }

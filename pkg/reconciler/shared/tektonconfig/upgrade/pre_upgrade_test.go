@@ -760,6 +760,135 @@ func TestUpdateOpenShiftPipelinesAsCodeCR_NotFound(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestPreUpgradeManualApprovalGate(t *testing.T) {
+	ctx := context.TODO()
+	logger := logging.FromContext(ctx).Named("unit-test")
+
+	t.Run("no TektonConfig CR", func(t *testing.T) {
+		operatorClient := operatorFake.NewSimpleClientset()
+		err := preUpgradeManualApprovalGate(ctx, logger, nil, operatorClient, nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("MAG already enabled in TektonConfig", func(t *testing.T) {
+		operatorClient := operatorFake.NewSimpleClientset()
+		tc := &v1alpha1.TektonConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: v1alpha1.ConfigResourceName,
+			},
+			Spec: v1alpha1.TektonConfigSpec{
+				ManualApproval: v1alpha1.ManualApproval{
+					Disabled: ptr.Bool(false),
+				},
+			},
+		}
+		_, err := operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		err = preUpgradeManualApprovalGate(ctx, logger, nil, operatorClient, nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("no standalone MAG CR exists", func(t *testing.T) {
+		operatorClient := operatorFake.NewSimpleClientset()
+		tc := &v1alpha1.TektonConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: v1alpha1.ConfigResourceName,
+			},
+		}
+		_, err := operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		err = preUpgradeManualApprovalGate(ctx, logger, nil, operatorClient, nil)
+		assert.NoError(t, err)
+
+		// verify MAG is still disabled
+		updated, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+		assert.NoError(t, err)
+		assert.True(t, updated.Spec.ManualApproval.IsDisabled())
+	})
+
+	t.Run("MAG CR exists with ownerRef - skip adoption", func(t *testing.T) {
+		operatorClient := operatorFake.NewSimpleClientset()
+		tc := &v1alpha1.TektonConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: v1alpha1.ConfigResourceName,
+			},
+		}
+		_, err := operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		mag := &v1alpha1.ManualApprovalGate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: v1alpha1.ManualApprovalGates,
+				OwnerReferences: []metav1.OwnerReference{
+					{Name: v1alpha1.ConfigResourceName, Kind: "TektonConfig"},
+				},
+			},
+		}
+		_, err = operatorClient.OperatorV1alpha1().ManualApprovalGates().Create(ctx, mag, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		err = preUpgradeManualApprovalGate(ctx, logger, nil, operatorClient, nil)
+		assert.NoError(t, err)
+
+		// verify MAG is still disabled in TektonConfig
+		updated, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+		assert.NoError(t, err)
+		assert.True(t, updated.Spec.ManualApproval.IsDisabled())
+	})
+
+	t.Run("standalone MAG CR adopted with config preserved", func(t *testing.T) {
+		operatorClient := operatorFake.NewSimpleClientset()
+		tc := &v1alpha1.TektonConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: v1alpha1.ConfigResourceName,
+			},
+			Spec: v1alpha1.TektonConfigSpec{
+				CommonSpec: v1alpha1.CommonSpec{
+					TargetNamespace: "tekton-pipelines",
+				},
+			},
+		}
+		_, err := operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		// create standalone MAG CR with user config (Options with configMaps)
+		mag := &v1alpha1.ManualApprovalGate{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: v1alpha1.ManualApprovalGates,
+			},
+			Spec: v1alpha1.ManualApprovalGateSpec{
+				CommonSpec: v1alpha1.CommonSpec{
+					TargetNamespace: "tekton-pipelines",
+				},
+				ManualApproval: v1alpha1.ManualApproval{
+					Options: v1alpha1.AdditionalOptions{
+						ConfigMaps: map[string]v1.ConfigMap{
+							"manual-approval-gate-config": {
+								Data: map[string]string{
+									"custom-key": "custom-value",
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		_, err = operatorClient.OperatorV1alpha1().ManualApprovalGates().Create(ctx, mag, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		err = preUpgradeManualApprovalGate(ctx, logger, nil, operatorClient, nil)
+		assert.NoError(t, err)
+
+		// verify TektonConfig now has MAG enabled with user's config preserved
+		updated, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+		assert.NoError(t, err)
+		assert.False(t, updated.Spec.ManualApproval.IsDisabled())
+		assert.Equal(t, "custom-value", updated.Spec.ManualApproval.Options.ConfigMaps["manual-approval-gate-config"].Data["custom-key"])
+	})
+}
+
 func TestRemoveDeprecatedDisableAffinityAssistant(t *testing.T) {
 	ctx := context.TODO()
 	logger := logging.FromContext(ctx).Named("unit-test")

@@ -40,6 +40,7 @@ var (
 		preUpgradeTektonPruner,                   // upgrade #5: pre upgrade tekton pruner
 		removeDeprecatedDisableAffinityAssistant, // upgrade #6: remove deprecated DisableAffinityAssistant field from pipeline config
 		removeHubFromTektonConfig,                // upgrade #7: clear deprecated hub field
+		preUpgradeManualApprovalGate,             // upgrade #8: adopt standalone MAG config into TektonConfig
 	}
 
 	// post upgrade functions

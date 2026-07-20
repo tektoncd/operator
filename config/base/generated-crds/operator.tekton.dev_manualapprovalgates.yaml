@@ -50,6 +50,9 @@ spec:
             type: object
           spec:
             properties:
+              disabled:
+                description: enable or disable manual approval gate feature
+                type: boolean
               networkPolicy:
                 description: |-
                   NetworkPolicy configures NetworkPolicy creation for the controller

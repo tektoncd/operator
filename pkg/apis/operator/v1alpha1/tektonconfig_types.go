@@ -116,6 +116,9 @@ type TektonConfigSpec struct {
 	// Chain holds the customizable option for chains component
 	// +optional
 	Chain Chain `json:"chain,omitempty"`
+	// ManualApproval holds the customizable options for the ManualApprovalGate component
+	// +optional
+	ManualApproval ManualApproval `json:"manualApproval,omitempty"`
 	// Result holds the customize option for results component
 	// +optional
 	Result Result `json:"result,omitempty"`

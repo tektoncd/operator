@@ -287,6 +287,37 @@ func Test_ValidateTektonConfig_InvalidPipelineOptions(t *testing.T) {
 	assert.Equal(t, "invalid value: InvalidPolicy: spec.pipeline.options.webhookconfigurationoptions.failurePolicy", err.Error())
 }
 
+func Test_ValidateTektonConfig_InvalidManualApprovalOptions(t *testing.T) {
+	invalidPolicy := admissionregistrationv1.FailurePolicyType("InvalidPolicy")
+	sideEffectUnknown := admissionregistrationv1.SideEffectClassUnknown
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "config",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Profile: "all",
+			ManualApproval: ManualApproval{
+				Options: AdditionalOptions{
+					WebhookConfigurationOptions: map[string]WebhookConfigurationOptions{
+						"validation.webhook.manualapproval.dev": {
+							FailurePolicy: &invalidPolicy,
+							SideEffects:   &sideEffectUnknown,
+						},
+					},
+				},
+			},
+			Pruner: Prune{Disabled: true},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Equal(t, "invalid value: InvalidPolicy: spec.manualApproval.options.webhookconfigurationoptions.failurePolicy", err.Error())
+}
+
 func Test_ValidateTektonConfig_InvalidTriggerProperties(t *testing.T) {
 
 	tc := &TektonConfig{

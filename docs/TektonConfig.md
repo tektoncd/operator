@@ -19,6 +19,7 @@ Other than the above components depending on the platform operator also provides
 - On both Kubernetes and OpenShift
   - [TektonChain](./TektonChain.md)
   - [TektonResult](./TektonResult.md)
+  - [ManualApprovalGate](./ManualApprovalGate.md)
 - On Kubernetes
   - [TektonDashboard](./TektonDashboard.md)
   - [OpenShiftPipelinesAsCode](./OpenShiftPipelinesAsCode.md) (installed via `spec.platforms.kubernetes.pipelinesAsCode`; same CRD/kind as on OpenShift)
@@ -47,6 +48,8 @@ spec:
     priorityClassName: system-cluster-critical
   chain:
     disabled: false
+  manualApproval:
+    disabled: true
   pipeline:
     await-sidecar-readiness: true
     coschedule: workspaces
@@ -305,6 +308,23 @@ chain:
   transparency.enabled: #value (boolean - true/false)
   transparency.url: #value
 ```
+
+### Manual Approval Gate
+
+Manual Approval Gate section allows user to enable or disable the [ManualApprovalGate](./ManualApprovalGate.md) component through TektonConfig. When enabled, the operator installs and manages the ManualApprovalGate CR automatically.
+
+Example:
+
+```yaml
+manualApproval:
+  disabled: true # - `disabled` : if the value set as `true`, ManualApprovalGate will not be installed (default: `true`)
+  options:
+    disabled: false
+    deployments: {}
+```
+
+- `disabled`: if set to `true`, the ManualApprovalGate component will not be installed. Default is `true` (disabled).
+- `options`: allows customizing the ManualApprovalGate deployments and configmaps. See [Additional fields as options](#additional-fields-as-options) for details.
 
 ### Result
 

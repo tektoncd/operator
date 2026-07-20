@@ -52,10 +52,13 @@ func EnsureTektonConfigExists(kubeClientSet *kubernetes.Clientset, clients opera
 	tcCR, err := clients.Get(context.TODO(), names.TektonConfig, metav1.GetOptions{})
 
 	if cm.Data["AUTOINSTALL_COMPONENTS"] == "true" {
-		if err != nil {
+		if err != nil && !apierrs.IsNotFound(err) {
 			return nil, err
 		}
-		return tcCR, nil
+		if err == nil {
+			return tcCR, nil
+		}
+		// Fall through to create it if not found
 	}
 
 	if apierrs.IsNotFound(err) {
