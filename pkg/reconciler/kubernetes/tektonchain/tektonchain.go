@@ -31,6 +31,7 @@ import (
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektonchainreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonchain"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
@@ -78,6 +79,8 @@ type Reconciler struct {
 	// pipelineInformer provides access to a shared informer and lister for
 	// TektonPipelines
 	pipelineInformer pipelineinformer.TektonPipelineInformer
+	// platformParams holds platform-specific values for building NetworkPolicy rules
+	platformParams networkpolicy.PlatformParams
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -620,7 +623,17 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonChain
 
 	// Mark InstallerSet Ready
 	tc.Status.MarkInstallerSetReady()
-	logger.Infow("InstallerSet not ready", "name", installedTIS.Name, "message", ready.Message)
+	logger.Infow("InstallerSet ready", "name", installedTIS.Name, "message", ready.Message)
+
+	if err := r.reconcileNetworkPolicies(ctx, tc); err != nil {
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		msg := fmt.Sprintf("NetworkPolicy reconciliation failed: %s", err.Error())
+		logger.Errorw("NetworkPolicy reconciliation failed", "error", err)
+		tc.Status.MarkInstallerSetNotReady(msg)
+		return nil
+	}
 
 	if err := r.extension.PostReconcile(ctx, tc); err != nil {
 		errMsg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
@@ -663,6 +676,11 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 			LabelSelector: labelSelector,
 		}); err != nil {
 		logger.Error("Failed to delete installer set created by TektonChain", err)
+		return err
+	}
+
+	if err := r.installerSetClient.CleanupCustomSet(ctx, "chain-network-policies"); err != nil {
+		logger.Error("failed to cleanup chain network policies installerset: ", err)
 		return err
 	}
 
