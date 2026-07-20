@@ -170,3 +170,46 @@ spec:
           port: 443
   i18n:
     loadType: Preload   # options: Preload, Lazy
+
+# NetworkPolicy: default-deny for console plugin pods
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pipelines-console-plugin-deny
+  namespace: openshift-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-config
+spec:
+  podSelector:
+    matchLabels:
+      app: pipelines-console-plugin
+  policyTypes:
+  - Ingress
+  - Egress
+
+# NetworkPolicy: allow ingress from OpenShift Console only.
+# The plugin is a static file server (nginx) with no outbound connections —
+# all API calls run in the user's browser via the Console's proxy.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pipelines-console-plugin
+  namespace: openshift-pipelines
+  labels:
+    app.kubernetes.io/part-of: tekton-config
+spec:
+  podSelector:
+    matchLabels:
+      app: pipelines-console-plugin
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: openshift-console
+    ports:
+    - protocol: TCP
+      port: 8443
