@@ -17,7 +17,7 @@ require (
 	github.com/openshift/apiserver-library-go v0.0.0-20260303173613-cd3676268d31
 	github.com/openshift/client-go v0.0.0-20260429123927-c81f86abfa6a
 	github.com/openshift/library-go v0.0.0-20260303171201-5d9eb6295ff6
-	github.com/sigstore/cosign/v2 v2.6.3
+	github.com/sigstore/cosign/v2 v2.6.4
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
