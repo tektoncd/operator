@@ -112,6 +112,11 @@ func UpdateChain(ctx context.Context, old *v1alpha1.TektonChain, new *v1alpha1.T
 		updated = true
 	}
 
+	if !reflect.DeepEqual(old.Spec.NetworkPolicy, new.Spec.NetworkPolicy) {
+		old.Spec.NetworkPolicy = new.Spec.NetworkPolicy
+		updated = true
+	}
+
 	if !reflect.DeepEqual(old.Spec.Chain.Options, new.Spec.Chain.Options) {
 		old.Spec.Chain.Options = new.Spec.Chain.Options
 		updated = true
@@ -163,8 +168,9 @@ func GetTektonChainCR(config *v1alpha1.TektonConfig, operatorVersion string) *v1
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Config: config.Spec.Config,
-			Chain:  config.Spec.Chain,
+			Config:        config.Spec.Config,
+			Chain:         config.Spec.Chain,
+			NetworkPolicy: config.Spec.NetworkPolicy,
 		},
 	}
 }

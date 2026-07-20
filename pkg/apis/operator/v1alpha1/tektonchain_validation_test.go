@@ -22,6 +22,7 @@ import (
 
 	"gotest.tools/v3/assert"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/apis"
 )
@@ -411,5 +412,90 @@ func Test_ValidateTektonChain_ValidControllerEnv(t *testing.T) {
 	err := tc.Validate(context.TODO())
 	if err != nil {
 		t.Errorf("ValidateTektonChain: %v", err)
+	}
+}
+
+func Test_ValidateTektonChain_NetworkPolicyEmpty(t *testing.T) {
+	tc := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+		},
+	}
+	err := tc.Validate(context.TODO())
+	if err != nil {
+		t.Errorf("expected no error for empty NetworkPolicy, got: %v", err)
+	}
+}
+
+func Test_ValidateTektonChain_NetworkPolicyDisabled(t *testing.T) {
+	tc := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			NetworkPolicy: NetworkPolicyConfig{
+				Disabled: true,
+			},
+		},
+	}
+	err := tc.Validate(context.TODO())
+	if err != nil {
+		t.Errorf("expected no error for disabled NetworkPolicy, got: %v", err)
+	}
+}
+
+func Test_ValidateTektonChain_NetworkPolicyValidPolicyName(t *testing.T) {
+	tc := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			NetworkPolicy: NetworkPolicyConfig{
+				Policies: map[string]networkingv1.NetworkPolicySpec{
+					"my-custom-policy": {},
+				},
+			},
+		},
+	}
+	err := tc.Validate(context.TODO())
+	if err != nil {
+		t.Errorf("expected no error for valid policy name, got: %v", err)
+	}
+}
+
+func Test_ValidateTektonChain_NetworkPolicyInvalidPolicyName(t *testing.T) {
+	tc := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			NetworkPolicy: NetworkPolicyConfig{
+				Policies: map[string]networkingv1.NetworkPolicySpec{
+					"INVALID_NAME!": {},
+				},
+			},
+		},
+	}
+	err := tc.Validate(context.TODO())
+	if err == nil {
+		t.Error("expected error for invalid policy name, got nil")
 	}
 }

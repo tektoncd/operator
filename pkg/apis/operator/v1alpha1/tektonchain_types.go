@@ -67,6 +67,9 @@ type TektonChainSpec struct {
 	// Config holds the configuration for resources created by TektonChain
 	// +optional
 	Config Config `json:"config,omitempty"`
+	// NetworkPolicy configures NetworkPolicy creation for TektonChain workloads.
+	// +optional
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
 type Chain struct {

@@ -26,6 +26,7 @@ import (
 	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	tektonChainreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonchain"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
@@ -66,6 +67,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 
 		metrics, _ := common.NoMetrics()
 
+		params := networkpolicy.KubernetesPlatformDefaults()
+		if v1alpha1.IsOpenShiftPlatform() {
+			params = networkpolicy.OpenShiftPlatformDefaults()
+		}
+
 		c := &Reconciler{
 			operatorClientSet:  operatorclient.Get(ctx),
 			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, chainVer, v1alpha1.KindTektonChain, metrics),
@@ -74,6 +80,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			pipelineInformer:   tektonPipelineinformer.Get(ctx),
 			operatorVersion:    operatorVer,
 			chainVersion:       chainVer,
+			platformParams:     params,
 		}
 		impl := tektonChainreconciler.NewImpl(ctx, c)
 

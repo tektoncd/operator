@@ -123,11 +123,16 @@ func DNSEgressRule(p PlatformParams) networkingv1.NetworkPolicyEgressRule {
 	}
 }
 
+// EgressToAll returns an unrestricted egress rule (empty rule = allow all).
+func EgressToAll() networkingv1.NetworkPolicyEgressRule {
+	return networkingv1.NetworkPolicyEgressRule{}
+}
+
 // APIServerEgressRule allows all egress so pods can reach the API server.
 // NetworkPolicy cannot select host-network endpoints, and the API server
 // port is configurable, so we must allow unrestricted egress.
 func APIServerEgressRule() networkingv1.NetworkPolicyEgressRule {
-	return networkingv1.NetworkPolicyEgressRule{}
+	return EgressToAll()
 }
 
 // InternetEgressRule allows egress on TCP 80 and 443 to any destination.

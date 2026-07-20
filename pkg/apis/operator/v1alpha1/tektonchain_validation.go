@@ -50,7 +50,11 @@ func (tc *TektonChain) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// execute common spec validations
 	errs = errs.Also(tc.Spec.CommonSpec.validate("spec"))
 
-	return errs.Also(tc.Spec.ValidateControllerEnv(), tc.Spec.ValidateChainConfig("spec"))
+	return errs.Also(
+		tc.Spec.ValidateControllerEnv(),
+		tc.Spec.ValidateChainConfig("spec"),
+		tc.Spec.NetworkPolicy.validate("spec.networkPolicy"),
+	)
 }
 
 func (tcs *TektonChainSpec) ValidateControllerEnv() (errs *apis.FieldError) {

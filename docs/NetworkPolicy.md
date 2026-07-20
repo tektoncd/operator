@@ -8,7 +8,7 @@ weight: 15
 
 The operator can manage [NetworkPolicy][np] resources for Tekton component workloads.
 Currently TektonPipeline (core controllers, resolvers, and proxy-webhook),
-TektonTrigger, and Pipelines-as-Code are supported; other components
+TektonTrigger, TektonChain, and Pipelines-as-Code are supported; other components
 will be added later.
 
 Configuration is available via `TektonConfig`:
@@ -32,9 +32,9 @@ spec:
               - port: 9000
 ```
 
-The `networkPolicy` field is propagated from `TektonConfig` to `TektonTrigger` and
-`TektonPipeline`. Users can also configure it directly on the `TektonTrigger` or
-`TektonPipeline` CR.
+The `networkPolicy` field is propagated from `TektonConfig` to `TektonTrigger`,
+`TektonPipeline`, and `TektonChain`. Users can also configure it directly on the
+individual component CRs.
 
 ## Default Policies
 
@@ -85,6 +85,14 @@ to the operand namespace (e.g. `tekton-pipelines` or `openshift-pipelines`):
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
 | | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 | | egress | TCP/80, 443 | Any (external APIs e.g. GitHub) |
+
+### TektonChain
+
+| Policy | Direction | Port | Source / Destination |
+|---|---|---|---|
+| `chains-controller-default-deny` | deny all | — | All pods matching Chains controller selector |
+| `chains-controller` | ingress | TCP/9090 | Prometheus namespace |
+| | egress | all | Unrestricted (API server, OCI registries, Sigstore, KMS, storage backends — NP cannot select host-network endpoints) |
 
 ### OpenShift Pipelines-as-Code
 
