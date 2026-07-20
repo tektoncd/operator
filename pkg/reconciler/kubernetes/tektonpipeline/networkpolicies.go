@@ -126,6 +126,7 @@ func pipelineDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1
 				Egress: []networkingv1.NetworkPolicyEgressRule{
 					networkpolicy.DNSEgressRule(params),
 					networkpolicy.APIServerEgressRule(),
+					networkpolicy.InternetEgressRule(),
 				},
 			},
 		},

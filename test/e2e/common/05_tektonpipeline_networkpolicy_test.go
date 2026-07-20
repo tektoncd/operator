@@ -28,6 +28,7 @@ import (
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -55,6 +56,11 @@ func TestTektonPipelineNetworkPolicy(t *testing.T) {
 	expectedPolicies := []string{
 		"tekton-proxy-webhook-default-deny",
 		"proxy-webhook",
+		"pipeline-default-deny",
+		"pipeline-controller",
+		"pipeline-webhook",
+		"pipeline-events-controller",
+		"pipeline-resolvers",
 	}
 
 	t.Run("default-policies-created", func(t *testing.T) {
@@ -70,7 +76,8 @@ func TestTektonPipelineNetworkPolicy(t *testing.T) {
 	t.Run("proxy-webhook-functional-with-networkpolicies", func(t *testing.T) {
 		taskRun := createNetworkPolicyProbeTaskRun(crNames.TargetNamespace)
 		createdTaskRun, err := clients.TektonClient.TaskRuns(crNames.TargetNamespace).Create(
-			context.TODO(), taskRun, metav1.CreateOptions{})
+			context.TODO(), taskRun, metav1.CreateOptions{},
+		)
 		if err != nil {
 			t.Fatalf("failed to create TaskRun: %v", err)
 		}
@@ -91,6 +98,99 @@ func TestTektonPipelineNetworkPolicy(t *testing.T) {
 		); err != nil {
 			t.Fatalf("TaskRun did not complete successfully under NetworkPolicy: %v", err)
 		}
+	})
+
+	t.Run("resolvers-functional-with-networkpolicies", func(t *testing.T) {
+		t.Run("cluster-resolver", func(t *testing.T) {
+			task := &pipelinev1.Task{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "np-e2e-cluster-task",
+					Namespace: crNames.TargetNamespace,
+				},
+				Spec: pipelinev1.TaskSpec{
+					Steps: []pipelinev1.Step{{
+						Name: "echo", Image: "busybox:stable",
+						Command: []string{"echo"}, Args: []string{"cluster resolver works"},
+					}},
+				},
+			}
+			if _, err := clients.TektonClient.Tasks(crNames.TargetNamespace).Create(
+				context.TODO(), task, metav1.CreateOptions{},
+			); err != nil {
+				t.Fatalf("failed to create Task: %v", err)
+			}
+			defer clients.TektonClient.Tasks(crNames.TargetNamespace).Delete(
+				context.TODO(), task.Name, metav1.DeleteOptions{},
+			)
+
+			tr := &pipelinev1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: "np-e2e-cluster-resolver-",
+					Namespace:    crNames.TargetNamespace,
+				},
+				Spec: pipelinev1.TaskRunSpec{
+					TaskRef: &pipelinev1.TaskRef{
+						ResolverRef: pipelinev1.ResolverRef{
+							Resolver: "cluster",
+							Params: []pipelinev1.Param{
+								{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
+								{Name: "name", Value: *pipelinev1.NewStructuredValues("np-e2e-cluster-task")},
+								{Name: "namespace", Value: *pipelinev1.NewStructuredValues(crNames.TargetNamespace)},
+							},
+						},
+					},
+				},
+			}
+			created, err := clients.TektonClient.TaskRuns(crNames.TargetNamespace).Create(
+				context.TODO(), tr, metav1.CreateOptions{},
+			)
+			if err != nil {
+				t.Fatalf("failed to create TaskRun: %v", err)
+			}
+			if err := resources.WaitForTaskRunHappy(clients.TektonClient, crNames.TargetNamespace,
+				created.Name, taskRunSucceeded); err != nil {
+				t.Fatalf("cluster resolver TaskRun failed: %v", err)
+			}
+		})
+
+		t.Run("hub-resolver", func(t *testing.T) {
+			tr := &pipelinev1.TaskRun{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: "np-e2e-hub-resolver-",
+					Namespace:    crNames.TargetNamespace,
+				},
+				Spec: pipelinev1.TaskRunSpec{
+					TaskRef: &pipelinev1.TaskRef{
+						ResolverRef: pipelinev1.ResolverRef{
+							Resolver: "hub",
+							Params: []pipelinev1.Param{
+								{Name: "catalog", Value: *pipelinev1.NewStructuredValues("tekton-catalog-tasks")},
+								{Name: "type", Value: *pipelinev1.NewStructuredValues("artifact")},
+								{Name: "kind", Value: *pipelinev1.NewStructuredValues("task")},
+								{Name: "name", Value: *pipelinev1.NewStructuredValues("git-clone")},
+								{Name: "version", Value: *pipelinev1.NewStructuredValues("0.9")},
+							},
+						},
+					},
+					Workspaces: []pipelinev1.WorkspaceBinding{
+						{Name: "output", EmptyDir: &corev1.EmptyDirVolumeSource{}},
+					},
+					Params: []pipelinev1.Param{
+						{Name: "url", Value: *pipelinev1.NewStructuredValues("https://github.com/tektoncd/pipeline")},
+					},
+				},
+			}
+			created, err := clients.TektonClient.TaskRuns(crNames.TargetNamespace).Create(
+				context.TODO(), tr, metav1.CreateOptions{},
+			)
+			if err != nil {
+				t.Fatalf("failed to create TaskRun: %v", err)
+			}
+			if err := resources.WaitForTaskRunHappy(clients.TektonClient, crNames.TargetNamespace,
+				created.Name, taskRunSucceeded); err != nil {
+				t.Fatalf("hub resolver TaskRun failed: %v", err)
+			}
+		})
 	})
 
 	t.Run("disable-removes-policies", func(t *testing.T) {
@@ -118,6 +218,16 @@ func TestTektonPipelineNetworkPolicy(t *testing.T) {
 		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
 		resources.AssertNetworkPoliciesExist(t, clients, crNames.TargetNamespace, expectedPolicies)
 	})
+}
+
+func taskRunSucceeded(tr *pipelinev1.TaskRun) (bool, error) {
+	if tr.IsDone() {
+		if tr.IsSuccessful() {
+			return true, nil
+		}
+		return false, fmt.Errorf("TaskRun %s failed", tr.Name)
+	}
+	return false, nil
 }
 
 // createNetworkPolicyProbeTaskRun creates a minimal TaskRun whose Pod triggers the
