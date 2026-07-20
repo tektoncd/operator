@@ -60,12 +60,18 @@ to the operand namespace (e.g. `tekton-pipelines` or `openshift-pipelines`):
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
 | | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 
-The `proxy-webhook` policies apply to the TektonPipeline target namespace (e.g.
-`tekton-pipelines` or `openshift-pipelines`), where the operator deploys the
-proxy-webhook Deployment. They do not cover the operator's own namespace
-(`tekton-operator` / `openshift-operators`), which ships fixed, non-configurable
-NetworkPolicies as part of the operator's own install manifests/bundle (see
-[Operator's own namespace](#operators-own-namespace) below).
+### Console Plugin (OpenShift only)
+
+The console plugin is a static file server (nginx) — all API calls run in the
+user's browser via the OpenShift Console's proxy, not on this pod.
+
+| Policy | Direction | Port | Source / Destination |
+|---|---|---|---|
+| `pipelines-console-plugin-deny` | deny all | — | All pods with `app: pipelines-console-plugin` |
+| `pipelines-console-plugin` | ingress | TCP/8443 | `openshift-console` namespace |
+
+These are static manifests shipped with the TektonConfig console plugin resources,
+not reconciled via `spec.networkPolicy`.
 
 ### Platform differences
 
