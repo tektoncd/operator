@@ -360,6 +360,11 @@ result:
 
 Watcher-specific settings are configured under `result.watcher`. These map to command-line flags on the `tekton-results-watcher` deployment. See [Results Watcher documentation](https://tekton.dev/docs/results/watcher/) for behavior details.
 
+Not every watcher flag is exposed under `result.watcher`:
+- Performance flags (`threadiness`, `qps`, `burst`, `disable-ha`) are configured under `result.performance`.
+- Operator-managed flags (`api_addr`, `auth_mode`, `namespace`) are set by the operator and must not be overridden.
+- Secrets (`token`) must not be stored in the CR; use Secrets / `auth_mode` instead.
+
 Example:
 
 ```yaml

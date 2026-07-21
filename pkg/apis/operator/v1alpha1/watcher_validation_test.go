@@ -52,3 +52,52 @@ func TestTektonResultWatcherPropertiesValidate(t *testing.T) {
 	assert.Assert(t, errs != nil)
 	assert.Assert(t, errs.Error() != "")
 }
+
+func TestResultsWatcherPropertiesValidate_NegativeDurations(t *testing.T) {
+	negative := metav1.Duration{Duration: -time.Second}
+
+	tests := []struct {
+		name    string
+		watcher ResultsWatcherProperties
+		field   string
+	}{
+		{
+			name:    "store_deadline",
+			watcher: ResultsWatcherProperties{StoreDeadline: &negative},
+			field:   "store_deadline",
+		},
+		{
+			name:    "requeue_interval",
+			watcher: ResultsWatcherProperties{RequeueInterval: &negative},
+			field:   "requeue_interval",
+		},
+		{
+			name:    "forward_buffer",
+			watcher: ResultsWatcherProperties{ForwardBuffer: &negative},
+			field:   "forward_buffer",
+		},
+		{
+			name:    "update_log_timeout",
+			watcher: ResultsWatcherProperties{UpdateLogTimeout: &negative},
+			field:   "update_log_timeout",
+		},
+		{
+			name:    "dynamic_reconcile_timeout",
+			watcher: ResultsWatcherProperties{DynamicReconcileTimeout: &negative},
+			field:   "dynamic_reconcile_timeout",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			errs := tt.watcher.Validate("spec.watcher")
+			assert.Assert(t, errs != nil)
+			assert.ErrorContains(t, errs, tt.field)
+		})
+	}
+}
+
+func TestResultsWatcherPropertiesValidate_NilReceiver(t *testing.T) {
+	var w *ResultsWatcherProperties
+	assert.Assert(t, w.Validate("spec.watcher") == nil)
+}

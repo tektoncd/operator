@@ -18,6 +18,7 @@ package result
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
@@ -235,6 +236,58 @@ func TestGetTektonResultCR_HubClusterConfig(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestUpdateResult_WatcherPropagation(t *testing.T) {
+	ctx, _ := ts.SetupFakeContext(t)
+	clients := fake.Get(ctx).OperatorV1alpha1().TektonResults()
+
+	checkOwner := true
+	old := &v1alpha1.TektonResult{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1alpha1.ResultResourceName,
+			Labels: map[string]string{
+				v1alpha1.ReleaseVersionKey: "v0.70.0",
+			},
+		},
+		Spec: v1alpha1.TektonResultSpec{
+			CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "tekton-pipelines"},
+			Result: v1alpha1.Result{
+				Watcher: v1alpha1.ResultsWatcherProperties{
+					CheckOwner: &checkOwner,
+				},
+			},
+		},
+	}
+	_, err := clients.Create(ctx, old, metav1.CreateOptions{})
+	util.AssertNoError(t, err)
+
+	gracePeriod := metav1.Duration{Duration: 24 * time.Hour}
+	newCheckOwner := false
+	updated := old.DeepCopy()
+	updated.Spec.Watcher = v1alpha1.ResultsWatcherProperties{
+		CompletedRunGracePeriod: &gracePeriod,
+		CheckOwner:              &newCheckOwner,
+		SummaryLabels:           "tekton.dev/pipeline",
+	}
+
+	_, err = UpdateResult(ctx, old, updated, clients)
+	// UpdateResult returns RECONCILE_AGAIN_ERR after a successful update.
+	if err != v1alpha1.RECONCILE_AGAIN_ERR {
+		t.Fatalf("expected RECONCILE_AGAIN_ERR after watcher update, got %v", err)
+	}
+
+	got, err := clients.Get(ctx, v1alpha1.ResultResourceName, metav1.GetOptions{})
+	util.AssertNoError(t, err)
+	if got.Spec.Watcher.CheckOwner == nil || *got.Spec.Watcher.CheckOwner != false {
+		t.Errorf("expected CheckOwner=false after update, got %v", got.Spec.Watcher.CheckOwner)
+	}
+	if got.Spec.Watcher.CompletedRunGracePeriod == nil || got.Spec.Watcher.CompletedRunGracePeriod.Duration != 24*time.Hour {
+		t.Errorf("expected CompletedRunGracePeriod=24h after update, got %v", got.Spec.Watcher.CompletedRunGracePeriod)
+	}
+	if got.Spec.Watcher.SummaryLabels != "tekton.dev/pipeline" {
+		t.Errorf("expected SummaryLabels to be updated, got %q", got.Spec.Watcher.SummaryLabels)
 	}
 }
 

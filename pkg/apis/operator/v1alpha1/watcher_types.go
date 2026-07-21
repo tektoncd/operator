@@ -21,6 +21,13 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 // ResultsWatcherProperties defines configuration for the Tekton Results Watcher
 // controller. These map to command-line flags on the tekton-results-watcher
 // deployment.
+//
+// Not every watcher flag is exposed here on purpose:
+//   - Performance flags (threadiness, qps, burst, disable-ha) live under
+//     spec.result.performance (PerformanceProperties).
+//   - Operator-managed flags (api_addr, auth_mode, namespace) are set by the
+//     operator from cluster state and must not be overridden by users.
+//   - Secrets (token) must not be stored in the CR; use Secrets / auth_mode.
 type ResultsWatcherProperties struct {
 	// Grace period before completed TaskRuns/PipelineRuns are deleted from the
 	// cluster after being stored in Results. 0 disables deletion. Negative
