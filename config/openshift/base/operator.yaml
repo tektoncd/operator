@@ -94,7 +94,7 @@ spec:
         - name: IMAGE_ADDONS_PARAM_KN_IMAGE
           value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel8@sha256:0fa6d15d38601f266347cdd098e80bec9893f7e6b06e84efc4a8c50b3ff3c6cc
         - name: IMAGE_ADDONS_MVN_SETTINGS
-          value: registry.redhat.io/ubi9/ubi-minimal@sha256:062c52ff973065752b0965787649db2bcf551a6c727a00e95a3eb42cebadbdab
+          value: registry.redhat.io/ubi9/ubi-minimal@sha256:6c79f4fb38a20d496c859025d57e4074835e849d5d14819c4e021ad78446bce8
         - name: IMAGE_ADDONS_SKOPEO_COPY
           value: registry.redhat.io/rhel9/skopeo@sha256:028883ab919f8288b2a542f53a7fa07ac1294887bcebd34d620dc75c089a846b
         - name: IMAGE_ADDONS_GENERATE
