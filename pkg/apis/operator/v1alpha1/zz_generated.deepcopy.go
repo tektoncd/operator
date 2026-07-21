@@ -2367,6 +2367,7 @@ func (in *TektonPrunerSpec) DeepCopyInto(out *TektonPrunerSpec) {
 	out.CommonSpec = in.CommonSpec
 	in.Pruner.DeepCopyInto(&out.Pruner)
 	in.Config.DeepCopyInto(&out.Config)
+	in.NetworkPolicy.DeepCopyInto(&out.NetworkPolicy)
 	return
 }
 

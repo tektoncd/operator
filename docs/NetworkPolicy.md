@@ -8,8 +8,8 @@ weight: 15
 
 The operator can manage [NetworkPolicy][np] resources for Tekton component workloads.
 Currently TektonPipeline (core controllers, resolvers, and proxy-webhook),
-TektonTrigger, TektonChain, Pipelines-as-Code, and ManualApprovalGate are
-supported; other components will be added later.
+TektonTrigger, TektonChain, Pipelines-as-Code, ManualApprovalGate, and TektonPruner
+are supported; other components will be added later.
 
 Configuration is available via `TektonConfig`:
 
@@ -33,8 +33,8 @@ spec:
 ```
 
 The `networkPolicy` field is propagated from `TektonConfig` to `TektonTrigger`,
-`TektonPipeline`, and `TektonChain`. Users can also configure it directly on the
-individual component CRs.
+`TektonPipeline`, `TektonChain`, and `TektonPruner`. Users can also configure it
+directly on the individual component CRs.
 
 ## Default Policies
 
@@ -139,6 +139,18 @@ spec:
     disabled: false
 ```
 
+### TektonPruner
+
+| Policy | Direction | Port | Source / Destination |
+|---|---|---|---|
+| `tekton-pruner-default-deny` | deny all | — | All pods with `app.kubernetes.io/part-of: tekton-pruner` |
+| `pruner-controller` | ingress | TCP/9090 | Prometheus namespace |
+| | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
+| `pruner-webhook` | ingress | TCP/8443 | Any (admission webhook) |
+| | ingress | TCP/9090 | Prometheus namespace |
+| | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 ### Console Plugin (OpenShift only)
 
 The console plugin is a static file server (nginx) — all API calls run in the
