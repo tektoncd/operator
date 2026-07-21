@@ -3,8 +3,8 @@ name: Update third-party image digests
 on:  # yamllint disable-line rule:truthy
   workflow_dispatch: {}
   schedule:
-  # Run daily at 3AM UTC
-  - cron: '0 3 * * *'
+  # Run every Wednesday at 3AM UTC
+  - cron: '0 3 * * 3'
 
 permissions: {}
 
