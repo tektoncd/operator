@@ -76,6 +76,10 @@ type TektonPrunerSpec struct {
 	// Config holds the configuration for resources created by TektonPruner
 	// +optional
 	Config Config `json:"config,omitempty"`
+	// NetworkPolicy configures NetworkPolicy creation for the controller
+	// and webhook workloads deployed by TektonPruner.
+	// +optional
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
 // TektonPrunerStatus defines the observed state of TektonPruner
