@@ -44,6 +44,8 @@ func (tp *TektonPruner) Validate(ctx context.Context) (errs *apis.FieldError) {
 	// Validate pruner configuration using direct struct validation
 	errs = errs.Also(tp.Spec.Pruner.validate("spec.pruner"))
 
+	errs = errs.Also(tp.Spec.NetworkPolicy.validate("spec.networkPolicy"))
+
 	return errs
 }
 

@@ -26,6 +26,7 @@ import (
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektonprunerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonpruner"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
@@ -50,6 +51,8 @@ type Reconciler struct {
 	// version of pruner which we are installing
 	prunerVersion   string
 	operatorVersion string
+	// platformParams holds platform-specific values for building NetworkPolicy rules
+	platformParams networkpolicy.PlatformParams
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -111,6 +114,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tp *v1alpha1.TektonPrune
 	//  Create/Update Required TektonInstallerSets
 	if err := r.ensureInstallerSets(ctx, tp); err != nil {
 		return err
+	}
+
+	if err := r.reconcileNetworkPolicies(ctx, tp); err != nil {
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		msg := fmt.Sprintf("NetworkPolicy reconciliation failed: %s", err.Error())
+		logger.Errorw("NetworkPolicy reconciliation failed", "error", err)
+		tp.Status.MarkInstallerSetNotReady(msg)
+		return nil
 	}
 
 	if err := r.extension.PostReconcile(ctx, tp); err != nil {
