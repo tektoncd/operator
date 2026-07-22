@@ -1,6 +1,6 @@
 chains:
   github: tektoncd/chains
-  version: v0.27.3
+  version: v0.27.4
 dashboard:
   github: tektoncd/dashboard
   version: v0.68.0
@@ -18,7 +18,7 @@ pipeline:
   version: v1.12.2
 pipelines-as-code:
   github: tektoncd/pipelines-as-code
-  version: v0.48.0
+  version: v0.48.1
 pruner:
   github: tektoncd/pruner
   version: v0.4.1
