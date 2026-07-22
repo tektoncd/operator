@@ -53,6 +53,28 @@ jobs:
       run: |
         /tmp/operator-tool bump --bugfix components.yaml 2> bump-output.txt || true
         cat bump-output.txt >&2
+    - name: sync go.mod with bumped components
+      run: |
+        if [[ ! -f bump-output.txt ]]; then exit 0; fi
+        IN_UPDATES=false
+        UPDATED=false
+        while IFS= read -r line; do
+          if [[ "${line}" == "BUMP_UPDATES_START" ]]; then IN_UPDATES=true; continue; fi
+          if [[ "${line}" == "BUMP_UPDATES_END" ]]; then IN_UPDATES=false; continue; fi
+          if [[ "${IN_UPDATES}" == "true" ]]; then
+            IFS='|' read -r name old_version new_version github <<< "${line}"
+            module="github.com/${github}"
+            if grep -q "^[[:space:]]*${module} " go.mod; then
+              echo "Updating go.mod: ${module} ${old_version} → ${new_version}"
+              go get "${module}@${new_version}"
+              UPDATED=true
+            fi
+          fi
+        done < bump-output.txt
+        if [[ "${UPDATED}" == "true" ]]; then
+          go mod tidy
+          go mod vendor
+        fi
     - name: generate commit message and PR body
       id: generate-message
       run: |
