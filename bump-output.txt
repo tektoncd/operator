@@ -1,5 +1,0 @@
-BUMP_UPDATES_START
-hub|v1.23.5|v1.23.6|tektoncd/hub
-pipelines-as-code|v0.39.2|v0.39.3|openshift-pipelines/pipelines-as-code
-results|v0.17.1|v0.17.2|tektoncd/results
-BUMP_UPDATES_END
