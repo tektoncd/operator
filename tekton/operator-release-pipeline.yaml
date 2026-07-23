@@ -56,6 +56,13 @@ spec:
   - name: components
     description: Components file to use
     default: components.yaml
+  - name: draft
+    description: |
+      Whether to create the GitHub release as a draft for manual review
+      (the default, preserving existing behavior). Set to "false" to
+      publish the release directly instead, e.g. for routine patch
+      releases that don't need manual curation.
+    default: "true"
   workspaces:
   - name: workarea
     description: The workspace where the repo will be cloned.
@@ -612,6 +619,8 @@ spec:
       value: $(tasks.prepare-draft-release.results.previous-tag)
     - name: rekor-uuid
       value: $(tasks.wait-for-chains.results.rekor-uuid)
+    - name: draft
+      value: $(params.draft)
     - name: source-subpath
       value: git
     - name: release-subpath
