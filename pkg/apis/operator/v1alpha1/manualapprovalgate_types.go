@@ -48,6 +48,10 @@ type ManualApprovalGate struct {
 type ManualApprovalGateSpec struct {
 	CommonSpec     `json:",inline"`
 	ManualApproval `json:",inline"`
+	// NetworkPolicy configures NetworkPolicy creation for the controller
+	// and webhook workloads deployed by ManualApprovalGate.
+	// +optional
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
 type ManualApproval struct {

@@ -26,6 +26,7 @@ import (
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	manualapprovalgatereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/manualapprovalgate"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
@@ -51,6 +52,8 @@ type Reconciler struct {
 	// pipelineInformer provides access to a shared informer and lister for
 	// TektonPipelines
 	pipelineInformer pipelineinformer.TektonPipelineInformer
+	// platformParams holds platform-specific values for building NetworkPolicy rules
+	platformParams networkpolicy.PlatformParams
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -135,6 +138,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, mag *v1alpha1.ManualAppr
 		return nil
 	}
 	logger.Info("Main manifest applied successfully")
+
+	if err := r.reconcileNetworkPolicies(ctx, mag); err != nil {
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		msg := fmt.Sprintf("NetworkPolicy reconciliation failed: %s", err.Error())
+		logger.Errorw("NetworkPolicy reconciliation failed", "error", err)
+		mag.Status.MarkInstallerSetNotReady(msg)
+		return nil
+	}
 
 	logger.Debug("Executing post-reconciliation")
 	if err := r.extension.PostReconcile(ctx, mag); err != nil {

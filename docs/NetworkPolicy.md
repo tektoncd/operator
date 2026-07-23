@@ -7,8 +7,9 @@ weight: 15
 # NetworkPolicy
 
 The operator can manage [NetworkPolicy][np] resources for Tekton component workloads.
-Currently TektonPipeline (core controllers, resolvers, and proxy-webhook) and
-TektonTrigger are supported; other components will be added later.
+Currently TektonPipeline (core controllers, resolvers, and proxy-webhook),
+TektonTrigger, and ManualApprovalGate are supported; other components will be
+added later.
 
 Configuration is available via `TektonConfig`:
 
@@ -84,6 +85,32 @@ to the operand namespace (e.g. `tekton-pipelines` or `openshift-pipelines`):
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
 | | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 | | egress | TCP/80, 443 | Any (external APIs e.g. GitHub) |
+
+### ManualApprovalGate
+
+| Policy | Direction | Port | Source / Destination |
+|---|---|---|---|
+| `mag-default-deny` | deny all | — | All pods with `app.kubernetes.io/part-of: openshift-pipelines-manual-approval-gates` |
+| `mag-controller` | ingress | TCP/9090 | Prometheus namespace |
+| | egress | UDP+TCP/53 (K8s) or 5353 (OpenShift) | DNS resolver pods |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
+| `mag-webhook` | ingress | TCP/8443 | Any (admission webhook) |
+| | ingress | TCP/9090 | Prometheus namespace |
+| | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
+
+The `networkPolicy` field is available directly on the `ManualApprovalGate` CR
+(MAG is a standalone CR, not managed through `TektonConfig`):
+
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: ManualApprovalGate
+metadata:
+  name: manual-approval-gate
+spec:
+  networkPolicy:
+    disabled: false
+```
 
 ### Console Plugin (OpenShift only)
 
