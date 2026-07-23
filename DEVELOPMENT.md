@@ -1,304 +1,213 @@
 # Development Guide
 
-## Development Prerequisites
-1. [`go`](https://golang.org/doc/install)
-1. [`git`](https://help.github.com/articles/set-up-git/)
-1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-1. [`ko`](https://github.com/google/ko)
-1. [`kustomize`](https://github.com/kubernetes-sigs/kustomize)
+## Prerequisites
 
-## Getting started
+Before you begin, ensure you have the following tools installed:
 
-- [Development Guide](#development-guide)
-  - [Development Prerequisites](#development-prerequisites)
-  - [Getting started](#getting-started)
-    - [Ramp up](#ramp-up)
-      - [Ramp up on CRDs](#ramp-up-on-crds)
-      - [Ramp up on Tekton Pipelines](#ramp-up-on-tekton-pipelines)
-      - [Ramp up on Kubernetes Operators](#ramp-up-on-kubernetes-operators)
-    - [Checkout your fork](#checkout-your-fork)
-    - [Requirements](#requirements)
-  - [Kubernetes cluster](#kubernetes-cluster)
-  - [Environment Setup](#environment-setup)
-  - [Iterating](#iterating)
-    - [Install Operator](#install-operator)
-  - [Accessing logs](#accessing-logs)
-  - [Running Codegen](#running-codegen)
-  - [Setup development environment on localhost](#setup-development-environment-on-localhost)
-    - [Pre-requests](#pre-requests)
-    - [setup with docker runtime](#setup-with-docker-runtime)
-    - [setup with podman runtime](#setup-with-podman-runtime)
-  - [Running Operator (Development)](#running-operator-development)
-    - [Reset (Clean) Cluster](#reset-clean-cluster)
-    - [Setup](#setup)
-    - [Run operator](#run-operator)
-    - [Install Tekton components](#install-tekton-components)
-  - [Running Tests](#running-tests)
+1. [`Go`](https://go.dev/doc/install): The language the Tekton Operator is built in (1.20 or later recommended)
+2. [`git`](https://git-scm.com/): For source control
+3. [`ko`](https://ko.build/): For building and deploying Go applications to Kubernetes
+4. [`kubectl`](https://kubernetes.io/docs/tasks/tools/): For interacting with the cluster
+5. A local Kubernetes environment like [`kind (Kubernetes in Docker)`](https://kind.sigs.k8s.io/) or [`minikube`](https://minikube.sigs.k8s.io/docs/)
+6. A container runtime: [`docker`](https://www.docker.com/) or [`podman`](https://podman.io/)
 
-### Ramp up
+## Local Development Environment (Recommended)
 
-Welcome to the project!! You may find these resources helpful to ramp up on some
-of the technology this project is built on.
+For first-time contributors and daily development, a local `kind` cluster is the fastest and easiest way to test your changes.
 
-#### Ramp up on CRDs
+### Setting up with Docker runtime
 
-This project extends Kubernetes (aka
-`k8s`) with Custom Resource Definitions (CRDSs). To find out more:
+If you are using Docker, set up your local cluster and local registry with the following commands:
 
-- [The Kubernetes docs on Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/) -
-  These will orient you on what words like "Resource" and "Controller"
-  concretely mean
-- [Understanding Kubernetes objects](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/) -
-  This will further solidify k8s nomenclature
-- [API conventions - Types(kinds)](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#types-kinds) -
-  Another useful set of words describing words. "Objects" and "Lists" in k8s
-  land
-- [Extend the Kubernetes API with CustomResourceDefinitions](https://kubernetes.io/docs/tasks/access-kubernetes-api/custom-resources/custom-resource-definitions/)-
-  A tutorial demonstrating how a Custom Resource Definition can be added to
-  Kubernetes without anything actually "happening" beyond being able to list
-  Objects of that kind
-
-#### Ramp up on Tekton Pipelines
-
-- [Tekton Pipelines README](https://github.com/tektoncd/pipeline/blob/master/docs/README.md) -
-  Some of the terms here may make more sense!
-- Install via
-  [official installation docs](https://github.com/tektoncd/pipeline/blob/master/docs/install.md)
-  or continue though [getting started for development](#getting-started)
-- [Tekton Pipeline "Hello World" tutorial](https://tekton.dev/docs/getting-started) -
-  Define `Tasks`, `Pipelines`, and `PipelineResources`, see what happens when
-  they are run
-
-#### Ramp up on Kubernetes Operators
-
-- [Operator Getting Started](https://operatorhub.io/getting-started)
-
-### Checkout your fork
-
-The Go tools require that you clone the repository to the
-`src/github.com/tektoncd/operator` directory in your
-[`GOPATH`](https://github.com/golang/go/wiki/SettingGOPATH).
-
-To check out this repository:
-
-1. Create your own
-   [fork of this repo](https://help.github.com/articles/fork-a-repo/)
-1. Clone it to your machine:
-
-```shell
-mkdir -p ${GOPATH}/src/github.com/tektoncd
-cd ${GOPATH}/src/github.com/tektoncd
-git clone git@github.com:${YOUR_GITHUB_USERNAME}/operator.git
-cd operator
-git remote add upstream git@github.com:tektoncd/operator.git
-git remote set-url --push upstream no_push
-```
-
-_Adding the `upstream` remote sets you up nicely for regularly
-[syncing your fork](https://help.github.com/articles/syncing-a-fork/)._
-
-### Requirements
-
-You must install these tools:
-
-1. [`go`](https://golang.org/doc/install): The language Tekton Pipelines is
-   built in
-1. [`git`](https://help.github.com/articles/set-up-git/): For source control
-1. [`dep`](https://github.com/golang/dep): For managing external Go
-   dependencies. - Please Install dep v0.5.0 or greater.
-1. [`kubectl`](https://kubernetes.io/docs/tasks/tools/install-kubectl/): For
-   interacting with your kube cluster
-
-Your [`$GOPATH`] setting is critical for `go` to function properly.
-
-## Kubernetes cluster
-
-Docker for Desktop using an edge version has been proven to work for both
-developing and running Pipelines. The recommended configuration is:
-
-- Kubernetes version 1.11 or later
-- 4 vCPU nodes (`n1-standard-4`)
-- Node autoscaling, up to 3 nodes
-- API scopes for cloud-platform
-
-To setup a cluster with GKE:
-
-1. [Install required tools and setup GCP project](https://github.com/knative/docs/blob/master/docs/install/Knative-with-GKE.md#before-you-begin)
-   (You may find it useful to save the ID of the project in an environment
-   variable (e.g. `PROJECT_ID`).
-
-1. Create a GKE cluster (with `--cluster-version=latest` but you can use any
-   version 1.11 or later):
-
-   ```bash
-   export PROJECT_ID=my-gcp-project
-   export CLUSTER_NAME=mycoolcluster
-
-   gcloud container clusters create $CLUSTER_NAME \
-    --enable-autoscaling \
-    --min-nodes=1 \
-    --max-nodes=3 \
-    --scopes=cloud-platform \
-    --enable-basic-auth \
-    --no-issue-client-certificate \
-    --project=$PROJECT_ID \
-    --region=us-central1 \
-    --machine-type=n1-standard-4 \
-    --image-type=cos \
-    --num-nodes=1 \
-    --cluster-version=latest
-   ```
-
-   Note that
-   [the `--scopes` argument to `gcloud container cluster create`](https://cloud.google.com/sdk/gcloud/reference/container/clusters/create#--scopes)
-   controls what GCP resources the cluster's default service account has access
-   to; for example to give the default service account full access to your GCR
-   registry, you can add `storage-full` to your `--scopes` arg.
-
-1. Grant cluster-admin permissions to the current user:
-
-   ```bash
-   kubectl create clusterrolebinding cluster-admin-binding \
-   --clusterrole=cluster-admin \
-   --user=$(gcloud config get-value core/account)
-   ```
-
-## Environment Setup
-
-To [run/test your operator](#install-operator) you'll need to set these
-environment variables (we recommend adding them to your `.bashrc`):
-
-1. `GOPATH`: If you don't have one, simply pick a directory and add
-   `export GOPATH=...`
-1. `$GOPATH/bin` on `PATH`: This is so that tooling installed via `go get` will
-   work properly.
-
-`.bashrc` example:
-
-```shell
-export GOPATH="$HOME/go"
-export PATH="${PATH}:${GOPATH}/bin"
-```
-
-## Iterating
-
-While iterating on the project, you may need to:
-
-1. [Install/Run Operator](#install-operator)
-1. Verify it's working by [looking at the logs](#accessing-logs)
-1. Update your (external) dependencies with: `./hack/update-deps.sh`.
-
-   **Running dep ensure manually, will pull a bunch of scripts deleted
-   [here](./hack/update-deps.sh#L29)**
-
-1. Update your type definitions with: `./hack/update-codegen.sh`.
-1. [Add new CRD types](#adding-new-types)
-1. [Add and run tests](./test/README.md#tests)
-
-### Install Operator
-
-**Note: this needs to be completed! We don't yet have any code or config to deploy,
-watch this space!**
-
-## Accessing logs
-
-**Note: this needs to be completed! We don't yet have any code or config to deploy,
-watch this space!**
-
-## Running Codegen
-
-If the files in `pkg/apis` are updated we need to run `codegen` scripts
-
-```shell script
-./hack/update-codegen.sh
-```
-
-## Setup development environment on localhost
-Here are the steps to setup development environment on your localhost with local registry
-
-### Pre-requests
-   - either `docker` or `podman` runtime
-   - [kind](https://github.com/kubernetes-sigs/kind)
-
-### setup with docker runtime
-```bash
+```go
 export KO_DOCKER_REPO="localhost:5000"
+```
 
+```go
 make dev-setup
 ```
-kubernetes cluster ports used
-* `8443` - cluster api access
-* `80` - ingress http
-* `443` - ingress https
 
-### setup with podman runtime
-`podman` is a daemonless container engine. You have to setup a socket service on user space.
+_Kubernetes cluster ports used:_
+
+- `8443` - cluster api access
+
+- `80` - ingress http
+
+- `443` - ingress https
+
+### Setting up with Podman runtime
+
+`podman` is a daemonless container engine. You must set up a socket service in user space before creating the cluster:
+
+```go
+export KO_DOCKER_REPO="localhost:5000"
+export CONTAINER_RUNTIME=podman
+systemctl --user start podman.socket
+export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
+```
+
 ```bash
-$ export KO_DOCKER_REPO="localhost:5000"
-$ export CONTAINER_RUNTIME=podman
-$ systemctl --user start podman.socket
-$ export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
-
-$ make dev-setup
-```
-kubernetes cluster ports used
-* `8443` - cluster api access
-* `7080` - ingress http
-* `7443` - ingress https
-
-
-## Running Operator (Development)
-
-### Reset (Clean) Cluster
-
-**Target: Kubernetes**
-```shell script
-    make clean
+make dev-setup
 ```
 
-**Target Openshift**
-```shell script
-    make TARGET=openshift clean
+_Kubernetes cluster ports used:_
+
+- `8443` - cluster api access
+
+- `7080` - ingress http
+
+- `7443` - ingress https
+
+## Building and Deploying
+
+The Tekton Operator uses `ko` to build container images and deploy them directly to your cluster.
+
+### Setup `ko`
+
+Ensure your `KO_DOCKER_REPO` environment variable is set (e.g., to your local registry `localhost:5000` created in the previous step). If you want to use a local image rather than pushing the image to a registry, you can set the flags with `export KO_FLAGS=--local`.
+
+### Run the Operator
+
+Target: Kubernetes
+
+```go
+make apply
 ```
 
-### Setup
-- Set `KO_DOCKER_REPO` environment variable ([ko#usage](https://github.com/google/ko#usage))
-- If you want to use local image rather than pushing image to registry you can set flags with `KO_FLAGS=--local` when you run operator
+Target: OpenShift
 
-### Run operator
-
-**Target: Kubernetes**
-```shell script
-    make apply
+```go
+make TARGET=openshift apply
 ```
 
-**Target Openshift**
-```shell script
-    make TARGET=openshift apply
-```
 ### Install Tekton components
-Operator provides an option to choose which components needs to be installed by specifying `profile`.
 
-`profile` is an optional field and supported `profile` are
-* **lite**
-* **basic**
-* **all**
+The Operator provides an option to choose which components need to be installed by specifying a `profile`.
 
-1. If profile is `lite` **TektonPipeline** will be installed
-1. If profile is `basic` **TektonPipeline** and **TektonTrigger** will be installed
-1. If profile is `all` then all the Tekton Components installed
+`profile` is an optional field. Supported profiles are:
 
-To create Tekton Components run
-```shell script
+- `lite`: Installs TektonPipeline
+
+- `basic`: Installs TektonPipeline and TektonTrigger
+
+- `all`: Installs all Tekton Components
+
+To create Tekton Components, run:
+
+```go
 make apply-cr
-make CR=config/basic apply-cr
 ```
-To delete installed Tekton Components run
-```shell script
-make clean-cr
+
+Or specify a `profile`:
+
+```go
 make CR=config/basic clean-cr
 ```
 
-## Running Tests
+To delete installed Tekton Components, run:
 
-[test docs](test/README.md)
+```go
+make clean-cr
+```
+
+Or specify a profile:
+
+```go
+make CR=config/basic clean-cr
+```
+
+### Reset (Clean) Cluster
+
+To wipe the operator and clean the cluster:
+
+Target: Kubernetes
+
+```go
+make clean
+```
+
+Target: OpenShift
+
+```go
+make TARGET=openshift clean
+```
+
+## Iterating and Testing
+
+While iterating on the project, you may need to update your dependencies or generated code:
+
+1. Update your (external) dependencies with: `./hack/update-deps.sh`.
+
+2. Update your type definitions (if files in `pkg/apis` are updated): `./hack/update-codegen.sh`.
+
+### Running Tests
+
+For full documentation on running unit and E2E tests, see the [test documentation](test/README.md).
+
+## Cloud Environments (Advanced)
+
+If you need to test the operator against a specific cloud provider for integration validation, follow the setup instructions below.
+
+**NOTE**: For daily development, the local `kind` cluster detailed above is highly recommended.
+
+### Google Kubernetes Engine (GKE)
+
+To set up a cluster with GKE, you must first install the required CLI tools and configure your Google Cloud project:
+
+#### Prerequisites
+
+1. Install the [`Google Cloud CLI (gcloud)`](https://cloud.google.com/sdk/docs/install)
+2. Create a [`Google Cloud Project with billing enabled`](https://docs.cloud.google.com/billing/docs/how-to/modify-project)
+
+#### Environment Setup
+
+Authenticate your local environment and set your target project ID. (You may find it useful to save the ID of the project in an environment variable, e.g., `PROJECT_ID`).
+
+```go
+gcloud auth login
+export PROJECT_ID="<YOUR_PROJECT_ID>"
+export CLUSTER_NAME="tekton-operator-dev"
+gcloud config set project $PROJECT_ID
+```
+
+#### Create the GKE cluster
+
+Once your tools are configured, run the following script to spin up the GKE cluster.
+
+**NOTE**: This uses the `regular` release channel to ensure a modern, supported Kubernetes version.
+
+```go
+gcloud container clusters create $CLUSTER_NAME \
+  --enable-autoscaling \
+  --min-nodes=1 \
+  --max-nodes=3 \
+  --enable-basic-auth \
+  --no-issue-client-certificate \
+  --project=$PROJECT_ID \
+  --zone=us-central1 \
+  --machine-type=n1-standard-4 \
+  --image-type=cos \
+  --num-nodes=1 \
+  --release-channel=regular \
+  --scopes=cloud-platform \
+```
+
+**NOTE**: The `--scopes` argument for `gcloud container cluster create` controls what GCP resources the cluster's default service account has access to; for example, to give the default service account full access to your GCR registry, you can add `storage-full` to your `--scopes` arg.
+
+#### Grant Permissions
+
+Grant cluster-admin permissions to the current user so the operator can deploy components:
+
+```go
+kubectl create clusterrolebinding cluster-admin-binding \
+  --clusterrole=cluster-admin \
+  --user=$(gcloud config get-value core/account)
+```
+
+## Additional Resources
+
+Welcome to the project! You may find these resources helpful to ramp up on some of the technology this project is built on:
+
+- [`Tekton "Hello World" tutorial`](https://tekton.dev/docs/getting-started/tasks/)
+- [`Tekton Operator Concepts`](docs/README.md)
+- CRDs: [`The Kubernetes docs on Custom Resources`](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/)
