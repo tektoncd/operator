@@ -462,6 +462,7 @@ func (in *ManualApprovalGateSpec) DeepCopyInto(out *ManualApprovalGateSpec) {
 	*out = *in
 	out.CommonSpec = in.CommonSpec
 	in.ManualApproval.DeepCopyInto(&out.ManualApproval)
+	in.NetworkPolicy.DeepCopyInto(&out.NetworkPolicy)
 	return
 }
 

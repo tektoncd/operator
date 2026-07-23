@@ -45,6 +45,11 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Manual
 		return err
 	}
 
+	if err := r.installerSetClient.CleanupCustomSet(ctx, "mag-network-policies"); err != nil {
+		logger.Error("failed to cleanup mag network policies installerset: ", err)
+		return err
+	}
+
 	if err := r.extension.Finalize(ctx, original); err != nil {
 		logger.Error("Failed to finalize platform resources", err)
 	}
