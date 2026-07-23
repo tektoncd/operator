@@ -75,6 +75,13 @@ spec:
       value: ""
     - name: releaseName
       value: ""
+    # Publish patch releases directly instead of leaving an unpublished
+    # draft behind: draft GitHub releases don't push a real git tag, so
+    # leaving this at the pipeline's "true" default would silently skip
+    # the tag push that triggers helm-release.yaml (and any other
+    # tag-triggered workflows).
+    - name: draft
+      value: "false"
   timeouts:
     pipeline: 3h0m0s
   workspaces:
