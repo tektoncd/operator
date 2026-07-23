@@ -1,30 +1,45 @@
 # Tekton Operator Helm Chart
 
 This Helm chart installs the [Tekton Operator](https://tekton.dev/docs/operator/) into your Kubernetes (v1.16+) or Openshift cluster (v4.3+).
-Once this chart is published it can be installed directly, until then [helm-git](https://github.com/aslafy-z/helm-git) can be used.
+
+Starting with `v0.80.0`, the Tekton Operator Helm chart is published to the GitHub Container
+Registry as an OCI artifact:
+
+```
+oci://ghcr.io/tektoncd/operator/charts/tekton-operator
+```
+
+> **Note:** older versions of this README documented installing via the
+> [helm-git](https://github.com/aslafy-z/helm-git) plugin and a `charts` git branch/ref
+> (e.g. `git+https://github.com/tektoncd/operator@charts?ref=main`). That branch no longer
+> exists and this method no longer works. Use the OCI registry below instead.
 
 ## TL;DR
 
-Install [helm-git](https://github.com/aslafy-z/helm-git) plugin.
+OCI-based Helm installs don't require a `helm repo add` step; reference the registry URL directly:
 
 ```sh
-# Add the repo to helm (typically use a tag rather than main):
-helm repo add tektoncd "git+https://github.com/tektoncd/operator@charts?ref=main"
-
-# Install the operator
+# Install the operator (use --version to pin a release, e.g. 0.80.0):
 helm install tekton-operator \
-  -n tekton-operator \
+  oci://ghcr.io/tektoncd/operator/charts/tekton-operator \
+  --version <chart-version> \
+  --namespace tekton-operator \
   --create-namespace \
-  --set installCRDs=true \
-  tektoncd/tekton-operator
+  --set installCRDs=true
 
 # or install the Openshift flavor:
 helm install tekton-operator \
-  -n openshift-operators \
+  oci://ghcr.io/tektoncd/operator/charts/tekton-operator \
+  --version <chart-version> \
+  --namespace openshift-operators \
+  --create-namespace \
   --set openshift.enabled=true \
-  --set installCRDs=true \
-  tektoncd/tekton-operator
+  --set installCRDs=true
 ```
+
+See the [Tekton Operator Releases page](https://github.com/tektoncd/operator/releases) for the
+list of available chart versions (the chart version matches the release tag without the leading `v`,
+e.g. release `v0.80.0` -> chart version `0.80.0`).
 
 ## Introduction
 
@@ -65,10 +80,7 @@ Now you can use Helm to uninstall the Tekton operator:
 helm uninstall --namespace tekton-operator tekton-operator --wait
 kubectl delete namespace tekton-operator
 # for Openshift:
-helm uninstall --namespace openshift-operators --wait
-
-# optionally remove repository from helm:
-helm repo remove tektoncd
+helm uninstall --namespace openshift-operators tekton-operator --wait
 ```
 
 **Important:** if you installed the CRDs with the Helm chart (by setting `installCRDs=true`), the CRDs will be removed as well: this means any remaining Tekton resources (e.g. Tekton Pipelines) in the cluster will be deleted!
