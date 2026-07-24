@@ -1639,6 +1639,7 @@ func (in *TektonChainSpec) DeepCopyInto(out *TektonChainSpec) {
 	out.CommonSpec = in.CommonSpec
 	in.Chain.DeepCopyInto(&out.Chain)
 	in.Config.DeepCopyInto(&out.Config)
+	in.NetworkPolicy.DeepCopyInto(&out.NetworkPolicy)
 	return
 }
 
