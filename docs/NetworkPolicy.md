@@ -32,8 +32,10 @@ spec:
 ```
 
 The `networkPolicy` field is propagated from `TektonConfig` to `TektonTrigger`,
-`TektonPipeline`, and `TektonResult`. Users can also configure it directly on
-those CRs.
+`TektonPipeline`, and `TektonResult`. When those component CRs are managed by
+`TektonConfig` (the usual install path), **TektonConfig is the source of truth**:
+edits to `spec.networkPolicy` on the component CRs alone are overwritten on the
+next Config reconcile. Configure NetworkPolicy via `TektonConfig.spec.networkPolicy`.
 
 ## Default Policies
 
