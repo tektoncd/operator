@@ -6,7 +6,7 @@ dashboard:
   version: v0.68.0
 hub:
   github: openshift-pipelines/hub
-  version: v1.24.1
+  version: v1.24.2
 manual-approval-gate:
   github: openshift-pipelines/manual-approval-gate
   version: v0.9.0
