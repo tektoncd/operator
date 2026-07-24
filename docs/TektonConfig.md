@@ -365,6 +365,11 @@ Not every watcher flag is exposed under `result.watcher`:
 - Operator-managed flags (`api_addr`, `auth_mode`, `namespace`) are set by the operator and must not be overridden.
 - Secrets (`token`) must not be stored in the CR; use Secrets / `auth_mode` instead.
 
+For optional string fields (`summary_labels`, `summary_annotations`, `label_selector`):
+- omit the field to keep the watcher binary default
+- set a non-empty value to override
+- set `""` to clear the default (operator passes an empty flag value)
+
 Example:
 
 ```yaml
@@ -391,9 +396,9 @@ result:
 | `logs_api` | `-logs_api` | `false` | Send logs to the Results API (separate from API server `logs_api`). |
 | `logs_timestamps` | `-logs_timestamps` | `false` | Include timestamps in stored logs. |
 | `store_event` | `-store_event` | `false` | Store Kubernetes events related to Runs. |
-| `summary_labels` | `-summary_labels` | `tekton.dev/pipeline` | Comma-separated labels copied into Result summary. |
-| `summary_annotations` | `-summary_annotations` | `""` | Comma-separated annotations copied into Result summary. |
-| `label_selector` | `-label_selector` | `""` | Label selector for Runs eligible for post-grace deletion. |
+| `summary_labels` | `-summary_labels` | `tekton.dev/pipeline` | Comma-separated labels copied into Result summary. Omit to keep default; `""` clears it. |
+| `summary_annotations` | `-summary_annotations` | `""` | Comma-separated annotations copied into Result summary. Omit to keep default; `""` clears it. |
+| `label_selector` | `-label_selector` | `""` | Label selector for Runs eligible for post-grace deletion. Omit to keep default; `""` clears it. |
 | `requeue_interval` | `-requeue_interval` | `10m` | Requeue delay for certain watcher events. |
 | `forward_buffer` | `-forward_buffer` | `150s` | Wait time for log forwarder after TaskRun completion. |
 | `update_log_timeout` | `-update_log_timeout` | `300s` | Timeout for log storage operations. |

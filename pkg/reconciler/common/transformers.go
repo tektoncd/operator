@@ -1324,8 +1324,9 @@ func replaceOrAppendContainerArg(args []string, flagKey, value string) []string 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == expectedArg || strings.HasPrefix(arg, expectedArg+"=") {
-			// Skip a separate value entry from the two-element form.
-			if arg == expectedArg && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+			// Skip a separate value entry from the two-element form, including
+			// negative durations like "-1h" that also start with '-'.
+			if arg == expectedArg && i+1 < len(args) && isFlagValueToken(args[i+1]) {
 				i++
 			}
 			if !replaced {
@@ -1340,6 +1341,25 @@ func replaceOrAppendContainerArg(args []string, flagKey, value string) []string 
 		out = append(out, newArg)
 	}
 	return out
+}
+
+// isFlagValueToken reports whether s is a value for a bare "-flag" form.
+// Flag names start with a letter after the dash (e.g. -api_addr). Values may
+// start with '-' when they are negative numbers/durations (e.g. -1h).
+func isFlagValueToken(s string) bool {
+	if s == "" {
+		return true
+	}
+	if strings.HasPrefix(s, "--") {
+		return false
+	}
+	if strings.HasPrefix(s, "-") && len(s) > 1 {
+		c := s[1]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			return false
+		}
+	}
+	return true
 }
 
 // sort keys in an order, to get the consistent hash value in installerset

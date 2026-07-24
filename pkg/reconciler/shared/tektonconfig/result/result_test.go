@@ -27,6 +27,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 	ts "knative.dev/pkg/reconciler/testing"
 )
 
@@ -269,7 +270,7 @@ func TestUpdateResult_WatcherPropagation(t *testing.T) {
 	updated.Spec.Watcher = v1alpha1.ResultsWatcherProperties{
 		CompletedRunGracePeriod: &gracePeriod,
 		CheckOwner:              &newCheckOwner,
-		SummaryLabels:           "tekton.dev/pipeline",
+		SummaryLabels:           ptr.String("tekton.dev/pipeline"),
 	}
 
 	_, err = UpdateResult(ctx, old, updated, clients)
@@ -286,8 +287,8 @@ func TestUpdateResult_WatcherPropagation(t *testing.T) {
 	if got.Spec.Watcher.CompletedRunGracePeriod == nil || got.Spec.Watcher.CompletedRunGracePeriod.Duration != 24*time.Hour {
 		t.Errorf("expected CompletedRunGracePeriod=24h after update, got %v", got.Spec.Watcher.CompletedRunGracePeriod)
 	}
-	if got.Spec.Watcher.SummaryLabels != "tekton.dev/pipeline" {
-		t.Errorf("expected SummaryLabels to be updated, got %q", got.Spec.Watcher.SummaryLabels)
+	if got.Spec.Watcher.SummaryLabels == nil || *got.Spec.Watcher.SummaryLabels != "tekton.dev/pipeline" {
+		t.Errorf("expected SummaryLabels to be updated, got %v", got.Spec.Watcher.SummaryLabels)
 	}
 }
 

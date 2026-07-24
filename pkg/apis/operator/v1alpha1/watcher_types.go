@@ -64,15 +64,15 @@ type ResultsWatcherProperties struct {
 
 	// Comma-separated label keys copied into the Result summary.
 	// +optional
-	SummaryLabels string `json:"summary_labels,omitempty"`
+	SummaryLabels *string `json:"summary_labels,omitempty"`
 
 	// Comma-separated annotation keys copied into the Result summary.
 	// +optional
-	SummaryAnnotations string `json:"summary_annotations,omitempty"`
+	SummaryAnnotations *string `json:"summary_annotations,omitempty"`
 
 	// Label selector for Runs eligible for deletion after the grace period.
 	// +optional
-	LabelSelector string `json:"label_selector,omitempty"`
+	LabelSelector *string `json:"label_selector,omitempty"`
 
 	// How long the Watcher waits before reprocessing keys on certain events.
 	// +optional

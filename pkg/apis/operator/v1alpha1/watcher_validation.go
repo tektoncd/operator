@@ -26,9 +26,9 @@ func (w *ResultsWatcherProperties) Validate(path string) (errs *apis.FieldError)
 		return nil
 	}
 
-	if w.LabelSelector != "" {
-		if _, err := labels.Parse(w.LabelSelector); err != nil {
-			errs = errs.Also(apis.ErrInvalidValue(w.LabelSelector, path+".label_selector", err.Error()))
+	if w.LabelSelector != nil && *w.LabelSelector != "" {
+		if _, err := labels.Parse(*w.LabelSelector); err != nil {
+			errs = errs.Also(apis.ErrInvalidValue(*w.LabelSelector, path+".label_selector", err.Error()))
 		}
 	}
 

@@ -531,6 +531,8 @@ spec:
                           type: string
                       type: object
                     type: array
+                required:
+                - options
                 type: object
               multiclusterProxyAAE:
                 description: MulticlusterProxyAAE holds the customizable options for

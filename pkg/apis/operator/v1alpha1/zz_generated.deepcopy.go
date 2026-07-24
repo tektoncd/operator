@@ -1337,6 +1337,21 @@ func (in *ResultsWatcherProperties) DeepCopyInto(out *ResultsWatcherProperties) 
 		*out = new(bool)
 		**out = **in
 	}
+	if in.SummaryLabels != nil {
+		in, out := &in.SummaryLabels, &out.SummaryLabels
+		*out = new(string)
+		**out = **in
+	}
+	if in.SummaryAnnotations != nil {
+		in, out := &in.SummaryAnnotations, &out.SummaryAnnotations
+		*out = new(string)
+		**out = **in
+	}
+	if in.LabelSelector != nil {
+		in, out := &in.LabelSelector, &out.LabelSelector
+		*out = new(string)
+		**out = **in
+	}
 	if in.RequeueInterval != nil {
 		in, out := &in.RequeueInterval, &out.RequeueInterval
 		*out = new(metav1.Duration)

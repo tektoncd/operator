@@ -316,6 +316,8 @@ Watcher behavior is configured under `spec.watcher` on TektonConfig or TektonRes
 
 Performance-related flags remain under `spec.performance`. Operator-managed flags (`api_addr`, `auth_mode`, `namespace`) and secrets (`token`) are not exposed here.
 
+For `summary_labels`, `summary_annotations`, and `label_selector`: omit the field to keep the watcher default, set a value to override, or set `""` to clear the default.
+
 ```yaml
 spec:
   # omitted other fields ...

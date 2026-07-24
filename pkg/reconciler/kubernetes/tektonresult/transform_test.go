@@ -398,14 +398,16 @@ func TestUpdateWatcherFlagsInDeployment(t *testing.T) {
 	checkOwner := false
 	disableIncomplete := true
 	storeDeadline := metav1.Duration{Duration: 10 * time.Minute}
+	summaryLabels := "tekton.dev/pipeline"
+	labelSelector := "app=foo,env=prod"
 
 	watcher := &v1alpha1.ResultsWatcherProperties{
 		CompletedRunGracePeriod:      &gracePeriod,
 		CheckOwner:                   &checkOwner,
 		DisableStoringIncompleteRuns: &disableIncomplete,
 		StoreDeadline:                &storeDeadline,
-		SummaryLabels:                "tekton.dev/pipeline",
-		LabelSelector:                "app=foo,env=prod",
+		SummaryLabels:                &summaryLabels,
+		LabelSelector:                &labelSelector,
 	}
 
 	depInput := &appsv1.Deployment{
@@ -473,7 +475,8 @@ func TestUpdateWatcherFlagsInDeployment(t *testing.T) {
 	assert.Equal(t, len(outDep.Spec.Template.Labels[resultWatcherDeployment+".data.check_owner"]), 32)
 
 	// Changing a value must change the hash (forces pod restart).
-	watcher.SummaryLabels = "tekton.dev/task"
+	updatedSummary := "tekton.dev/task"
+	watcher.SummaryLabels = &updatedSummary
 	ud2 := &unstructured.Unstructured{}
 	err = json.Unmarshal(jsonBytes, ud2)
 	assert.NilError(t, err)
@@ -483,6 +486,80 @@ func TestUpdateWatcherFlagsInDeployment(t *testing.T) {
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(ud2.Object, outDep2)
 	assert.NilError(t, err)
 	assert.Assert(t, outDep.Spec.Template.Labels[summaryLabelKey] != outDep2.Spec.Template.Labels[summaryLabelKey])
+}
+
+func TestUpdateWatcherFlagsInDeployment_NegativeDurationTwoElementForm(t *testing.T) {
+	gracePeriod := metav1.Duration{Duration: 24 * time.Hour}
+	watcher := &v1alpha1.ResultsWatcherProperties{
+		CompletedRunGracePeriod: &gracePeriod,
+	}
+
+	depInput := &appsv1.Deployment{
+		TypeMeta:   metav1.TypeMeta{Kind: "Deployment"},
+		ObjectMeta: metav1.ObjectMeta{Name: resultWatcherDeployment},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": "tekton-results-watcher"}},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name: resultWatcherContainer,
+						Args: []string{
+							"-completed_run_grace_period", "-1h",
+							"-api_addr", "localhost:8080",
+						},
+					}},
+				},
+			},
+		},
+	}
+
+	jsonBytes, err := json.Marshal(depInput)
+	assert.NilError(t, err)
+	ud := &unstructured.Unstructured{}
+	assert.NilError(t, json.Unmarshal(jsonBytes, ud))
+	assert.NilError(t, common.UpdateWatcherFlagsInDeployment(watcher, resultWatcherDeployment, resultWatcherContainer)(ud))
+
+	outDep := &appsv1.Deployment{}
+	assert.NilError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(ud.Object, outDep))
+	args := outDep.Spec.Template.Spec.Containers[0].Args
+	assert.Assert(t, containsArg(args, "-completed_run_grace_period=24h0m0s"))
+	assert.Assert(t, containsArg(args, "-api_addr"))
+	assert.Assert(t, containsArg(args, "localhost:8080"))
+	assert.Assert(t, !containsArg(args, "-1h"))
+	assert.Assert(t, !containsArg(args, "-completed_run_grace_period"))
+}
+
+func TestUpdateWatcherFlagsInDeployment_EmptySummaryLabelsClearsDefault(t *testing.T) {
+	empty := ""
+	watcher := &v1alpha1.ResultsWatcherProperties{
+		SummaryLabels: &empty,
+	}
+
+	depInput := &appsv1.Deployment{
+		TypeMeta:   metav1.TypeMeta{Kind: "Deployment"},
+		ObjectMeta: metav1.ObjectMeta{Name: resultWatcherDeployment},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"app": "tekton-results-watcher"}},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name: resultWatcherContainer,
+						Args: []string{"-api_addr", "localhost:8080"},
+					}},
+				},
+			},
+		},
+	}
+
+	jsonBytes, err := json.Marshal(depInput)
+	assert.NilError(t, err)
+	ud := &unstructured.Unstructured{}
+	assert.NilError(t, json.Unmarshal(jsonBytes, ud))
+	assert.NilError(t, common.UpdateWatcherFlagsInDeployment(watcher, resultWatcherDeployment, resultWatcherContainer)(ud))
+
+	outDep := &appsv1.Deployment{}
+	assert.NilError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(ud.Object, outDep))
+	assert.Assert(t, containsArg(outDep.Spec.Template.Spec.Containers[0].Args, "-summary_labels="))
 }
 
 func TestUpdateWatcherFlagsInDeployment_NoOp(t *testing.T) {

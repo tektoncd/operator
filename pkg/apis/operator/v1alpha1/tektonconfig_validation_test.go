@@ -428,7 +428,7 @@ func Test_ValidateTektonConfig_ResultWatcher(t *testing.T) {
 			Pruner:  Prune{Disabled: true},
 			Result: Result{
 				Watcher: ResultsWatcherProperties{
-					LabelSelector: "not a valid selector==",
+					LabelSelector: ptr.String("not a valid selector=="),
 				},
 			},
 		},

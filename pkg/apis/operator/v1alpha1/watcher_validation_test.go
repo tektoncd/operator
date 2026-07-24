@@ -23,6 +23,7 @@ import (
 
 	"gotest.tools/v3/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"knative.dev/pkg/ptr"
 )
 
 func TestTektonResultWatcherPropertiesValidate(t *testing.T) {
@@ -42,15 +43,22 @@ func TestTektonResultWatcherPropertiesValidate(t *testing.T) {
 	tr.Spec.Watcher = ResultsWatcherProperties{
 		CompletedRunGracePeriod: &gracePeriod,
 		CheckOwner:              &checkOwner,
-		LabelSelector:           "app=foo",
+		LabelSelector:           ptr.String("app=foo"),
+		SummaryLabels:           ptr.String("tekton.dev/pipeline"),
+		SummaryAnnotations:      ptr.String(""),
 	}
 	errs := tr.Validate(context.TODO())
 	assert.Equal(t, "", errs.Error())
 
-	tr.Spec.Watcher.LabelSelector = "not a valid selector=="
+	// Explicit empty selector is allowed (clears default); only non-empty invalid values fail.
+	tr.Spec.Watcher.LabelSelector = ptr.String("")
+	errs = tr.Validate(context.TODO())
+	assert.Equal(t, "", errs.Error())
+
+	tr.Spec.Watcher.LabelSelector = ptr.String("not a valid selector==")
 	errs = tr.Validate(context.TODO())
 	assert.Assert(t, errs != nil)
-	assert.Assert(t, errs.Error() != "")
+	assert.ErrorContains(t, errs, "label_selector")
 }
 
 func TestResultsWatcherPropertiesValidate_NegativeDurations(t *testing.T) {
@@ -99,5 +107,10 @@ func TestResultsWatcherPropertiesValidate_NegativeDurations(t *testing.T) {
 
 func TestResultsWatcherPropertiesValidate_NilReceiver(t *testing.T) {
 	var w *ResultsWatcherProperties
+	assert.Assert(t, w.Validate("spec.watcher") == nil)
+}
+
+func TestResultsWatcherPropertiesValidate_NilLabelSelector(t *testing.T) {
+	w := &ResultsWatcherProperties{LabelSelector: nil}
 	assert.Assert(t, w.Validate("spec.watcher") == nil)
 }
