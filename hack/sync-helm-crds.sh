@@ -86,6 +86,21 @@ strip_int_formats() {
   grep -v '^\s*format: int\(32\|64\)$'
 }
 
+# inject_preserve_unknown_false adds `preserveUnknownFields: false` under spec.
+# Kube fills this in server-side on v1 CRDs where omitted; making it explicit
+# prevents ArgoCD server-side-apply from flagging every CRD as OutOfSync.
+inject_preserve_unknown_false() {
+  while IFS= read -r line; do
+    if [[ "$line" == "  preserveUnknownFields:"* ]]; then
+      continue
+    fi
+    printf '%s\n' "$line"
+    if [ "$line" = "spec:" ]; then
+      printf '  preserveUnknownFields: false\n'
+    fi
+  done
+}
+
 # assemble_helm_crds assembles a Helm chart CRD file from multiple generated CRDs
 assemble_helm_crds() {
   local output_file="$1"
@@ -131,8 +146,22 @@ write_config_crd "${GENERATED_DIR}/operator.tekton.dev_openshiftpipelinesascodes
 
 echo ""
 
-# Step 2: Assemble Helm chart CRDs
-echo "Step 2: Assembling Helm chart CRD files..."
+# Step 2: Inject preserveUnknownFields: false into every generated CRD in-place.
+echo "Step 2: Injecting preserveUnknownFields: false into generated CRDs..."
+
+# Kube fills `spec.preserveUnknownFields: false` in server-side on v1 CRDs where
+# omitted, causing ArgoCD server-side-apply to flag every CRD as OutOfSync.
+# Injecting it here covers both kustomize consumers (which read generated-crds/
+# directly) and the Helm chart pipeline (assembled below), and keeps the field
+# sticky across future `make generate-crds` runs.
+for crd_file in "${GENERATED_DIR}"/*.yaml; do
+  inject_preserve_unknown_false < "$crd_file" > "${crd_file}.tmp" && mv "${crd_file}.tmp" "$crd_file"
+done
+
+echo ""
+
+# Step 3: Assemble Helm chart CRDs
+echo "Step 3: Assembling Helm chart CRD files..."
 
 assemble_helm_crds \
   "${HELM_DIR}/kubernetes-crds.yaml" \
@@ -168,8 +197,8 @@ assemble_helm_crds \
   "operator.tekton.dev_tektonmulticlusterproxyaaes.yaml" \
   "operator.tekton.dev_syncerservices.yaml"
 
-# Step 3: Validate CRD sizes (etcd has a 256KB object size limit)
-echo "Step 3: Validating CRD sizes..."
+# Step 4: Validate CRD sizes (etcd has a 256KB object size limit)
+echo "Step 4: Validating CRD sizes..."
 
 MAX_SIZE=262144 # 256KB
 FAILED=0
