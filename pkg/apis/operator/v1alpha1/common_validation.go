@@ -22,16 +22,38 @@ import (
 	"knative.dev/pkg/apis"
 )
 
+var reservedSystemNamespaces = []string{
+	"kube-system",
+	"kube-public",
+	"kube-node-lease",
+	"default",
+}
+
 func (ta *CommonSpec) validate(path string) *apis.FieldError {
 	var errs *apis.FieldError
+	targetNamespace := ta.GetTargetNamespace()
 	targetNamespacePath := fmt.Sprintf("%s.targetNamespace", path)
-	if ta.GetTargetNamespace() == "" {
+	if targetNamespace == "" {
 		errs = errs.Also(apis.ErrMissingField(targetNamespacePath))
-	} else if IsOpenShiftPlatform() {
-		// "openshift-operators" namespace restricted in openshift environment
-		if ta.GetTargetNamespace() == "openshift-operators" {
-			errs = errs.Also(apis.ErrInvalidValue(ta.GetTargetNamespace(), targetNamespacePath, "'openshift-operators' namespace is not allowed"))
+	} else {
+		if isReservedSystemNamespace(targetNamespace) {
+			errs = errs.Also(apis.ErrInvalidValue(targetNamespace, targetNamespacePath, fmt.Sprintf("'%s' is a reserved system namespace and is not allowed", targetNamespace)))
+		}
+		if IsOpenShiftPlatform() {
+			// "openshift-operators" namespace restricted in openshift environment
+			if targetNamespace == "openshift-operators" {
+				errs = errs.Also(apis.ErrInvalidValue(targetNamespace, targetNamespacePath, "'openshift-operators' namespace is not allowed"))
+			}
 		}
 	}
 	return errs
+}
+
+func isReservedSystemNamespace(namespace string) bool {
+	for _, reservedNamespace := range reservedSystemNamespaces {
+		if namespace == reservedNamespace {
+			return true
+		}
+	}
+	return false
 }
