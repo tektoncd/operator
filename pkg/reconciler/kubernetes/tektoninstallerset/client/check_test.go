@@ -56,6 +56,20 @@ func computeHash(comp *v1alpha1.TektonTrigger) string {
 	return h
 }
 
+func TestSpecHashInput_ChangesWithRegistryOverride(t *testing.T) {
+	comp := buildTriggerComponent(false)
+
+	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "")
+	hashWithoutOverride := computeHash(comp)
+
+	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "custom-registry.io/custom-path")
+	hashWithOverride := computeHash(comp)
+
+	if hashWithoutOverride == hashWithOverride {
+		t.Fatalf("expected spec hash to change when TEKTON_REGISTRY_OVERRIDE changes, got same hash %q for both", hashWithOverride)
+	}
+}
+
 func TestInstallerSetClient_Check(t *testing.T) {
 	releaseVersion := "devel"
 

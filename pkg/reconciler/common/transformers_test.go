@@ -261,6 +261,48 @@ func TestImageRegistryDomainOverride(t *testing.T) {
 	}
 }
 
+func TestDeploymentImagesRegistryOverrideFallback(t *testing.T) {
+	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "custom-registry.io/custom-path")
+	// no per-image env var matches any container in the manifest
+	images := map[string]string{
+		"some_other_image": "foo.bar/unrelated",
+	}
+	testData := path.Join("testdata", "test-replace-image.yaml")
+
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoError(t, err)
+	newManifest, err := manifest.Transform(DeploymentImages(images))
+	assertNoError(t, err)
+	assertDeployContainersHasImage(t, newManifest.Resources(), "controller-deployment", "custom-registry.io/custom-path/busybox")
+	assertDeployContainersHasImage(t, newManifest.Resources(), "sidecar", "custom-registry.io/custom-path/busybox")
+}
+
+func TestTaskImagesRegistryOverrideFallback(t *testing.T) {
+	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "custom-registry.io/custom-path")
+	images := map[string]string{}
+	testData := path.Join("testdata", "test-replace-addon-image.yaml")
+
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoError(t, err)
+	newManifest, err := manifest.Transform(TaskImages(context.TODO(), images))
+	assertNoError(t, err)
+	assertTaskImage(t, newManifest.Resources(), "push", "custom-registry.io/custom-path/buildah")
+	// Tekton variable substitutions must never be rewritten
+	assertTaskImage(t, newManifest.Resources(), "build", "$(inputs.params.BUILDER_IMAGE)")
+}
+
+func TestStepActionImagesRegistryOverrideFallback(t *testing.T) {
+	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "custom-registry.io/custom-path")
+	images := map[string]string{}
+	testData := path.Join("testdata", "test-replace-stepaction-image.yaml")
+
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoError(t, err)
+	newManifest, err := manifest.Transform(StepActionImages(context.TODO(), images))
+	assertNoError(t, err)
+	assertStepActionImage(t, newManifest.Resources(), "git-clone", "custom-registry.io/custom-path/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.40.2")
+}
+
 func TestImageRegistryDomainWithoutOverride(t *testing.T) {
 	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "")
 	// Array of images to be replaced

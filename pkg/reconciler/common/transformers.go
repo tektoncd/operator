@@ -188,19 +188,35 @@ func ImageRegistryDomainOverride(images map[string]string) map[string]string {
 	registry := os.Getenv(ImageRegistryOverride)
 	if registry == "" {
 		return images
-	} else {
-		for key, imageName := range images {
-			parts := strings.Split(imageName, "/")
-			if len(parts) > 1 {
-				// if image has registry part, replace it
-				images[key] = registry + "/" + strings.Join(parts[1:], "/")
-			} else {
-				// if image does not have registry part, add it
-				images[key] = registry + "/" + imageName
-			}
-		}
-		return images
 	}
+	for key, imageName := range images {
+		images[key] = overrideImageRegistry(registry, imageName)
+	}
+	return images
+}
+
+// overrideImageRegistry rewrites the registry domain of a single image
+// reference. It is also used as a fallback by the manifest-level image
+// transformers (containers, task steps, step actions) so that
+// TEKTON_REGISTRY_OVERRIDE alone applies to every image, including the
+// defaults baked into component manifests that have no matching per-image
+// env var.
+func overrideImageRegistry(registry, imageName string) string {
+	if registry == "" || imageName == "" {
+		return imageName
+	}
+	// Tekton variable substitutions (e.g. "$(params.builder-image)") are not
+	// literal image references and must be left untouched.
+	if strings.Contains(imageName, "$(") {
+		return imageName
+	}
+	parts := strings.Split(imageName, "/")
+	if len(parts) > 1 {
+		// if image has registry part, replace it
+		return registry + "/" + strings.Join(parts[1:], "/")
+	}
+	// if image does not have registry part, add it
+	return registry + "/" + imageName
 }
 
 // ToLowerCaseKeys converts key value to lower cases.
@@ -296,10 +312,13 @@ func JobImages(images map[string]string) mf.Transformer {
 }
 
 func replaceContainerImages(containers []corev1.Container, images map[string]string) {
+	registry := os.Getenv(ImageRegistryOverride)
 	for i, container := range containers {
 		name := formKey("", container.Name)
 		if url, exist := images[name]; exist {
 			containers[i].Image = url
+		} else {
+			containers[i].Image = overrideImageRegistry(registry, containers[i].Image)
 		}
 
 		replaceContainersArgsImage(&container, images)
@@ -393,7 +412,10 @@ func replaceStepActionImages(stepActionSpec map[string]interface{}, override map
 	name = formKey("", name)
 	image, found := override[name]
 	if !found || image == "" {
-		logger.Debugf("Image not found in stepaction %s action skip", name)
+		logger.Debugf("Image not found in stepaction %s, applying registry override only", name)
+		if existing, ok := stepActionSpec["image"].(string); ok {
+			stepActionSpec["image"] = overrideImageRegistry(os.Getenv(ImageRegistryOverride), existing)
+		}
 		return
 	}
 	// Replace the image in the stepActionSpec if the key exists.
@@ -415,7 +437,10 @@ func replaceStepsImages(steps []interface{}, override map[string]string, logger 
 		name = formKey("", name)
 		image, found := override[name]
 		if !found || image == "" {
-			logger.Debugf("Image not found step %s action skip", name)
+			logger.Debugf("Image not found step %s, applying registry override only", name)
+			if existing, ok := step["image"].(string); ok {
+				step["image"] = overrideImageRegistry(os.Getenv(ImageRegistryOverride), existing)
+			}
 			continue
 		}
 		step["image"] = image
