@@ -136,8 +136,8 @@ type TektonConfigSpec struct {
 	TargetNamespaceMetadata *NamespaceMetadata `json:"targetNamespaceMetadata,omitempty"`
 	// NetworkPolicy configures NetworkPolicy resources for the operand namespace.
 	// This field is propagated to TektonTrigger, TektonPipeline, TektonChain,
-	// and TektonPruner, which are the components with NetworkPolicy reconciliation
-	// implemented. Other components (Results, Dashboard) do not yet act on this field.
+	// TektonPruner, and TektonResult, which implement NetworkPolicy reconciliation.
+	// Other components (Dashboard) do not yet act on this field.
 	// +optional
 	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }

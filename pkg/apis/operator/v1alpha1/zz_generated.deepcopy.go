@@ -2465,6 +2465,7 @@ func (in *TektonResultSpec) DeepCopyInto(out *TektonResultSpec) {
 	out.CommonSpec = in.CommonSpec
 	in.Result.DeepCopyInto(&out.Result)
 	in.Config.DeepCopyInto(&out.Config)
+	in.NetworkPolicy.DeepCopyInto(&out.NetworkPolicy)
 	return
 }
 

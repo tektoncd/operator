@@ -8,8 +8,8 @@ weight: 15
 
 The operator can manage [NetworkPolicy][np] resources for Tekton component workloads.
 Currently TektonPipeline (core controllers, resolvers, and proxy-webhook),
-TektonTrigger, TektonChain, Pipelines-as-Code, ManualApprovalGate, and TektonPruner
-are supported; other components will be added later.
+TektonTrigger, TektonChain, Pipelines-as-Code, ManualApprovalGate, TektonPruner,
+and TektonResult are supported; other components will be added later.
 
 Configuration is available via `TektonConfig`:
 
@@ -33,8 +33,11 @@ spec:
 ```
 
 The `networkPolicy` field is propagated from `TektonConfig` to `TektonTrigger`,
-`TektonPipeline`, `TektonChain`, and `TektonPruner`. Users can also configure it
-directly on the individual component CRs.
+`TektonPipeline`, `TektonChain`, `TektonPruner`, and `TektonResult`. When those
+component CRs are managed by `TektonConfig` (the usual install path),
+**TektonConfig is the source of truth**: edits to `spec.networkPolicy` on the
+component CRs alone are overwritten on the next Config reconcile. Configure
+NetworkPolicy via `TektonConfig.spec.networkPolicy`.
 
 ## Default Policies
 
@@ -151,6 +154,95 @@ spec:
 | | ingress | TCP/9090 | Prometheus namespace |
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
 | | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
+
+### TektonResult
+
+| Policy | Direction | Port | Source / Destination |
+|---|---|---|---|
+| `results-default-deny` | deny all | — | Pods with `app.kubernetes.io/name` in Results API, watcher, retention-policy-agent, postgres |
+| `results-api` | ingress | TCP/8080 | All namespaces (Console Plugin, CLI, routes, watcher, internal clients) |
+| | ingress | TCP/9090 | Prometheus namespace |
+| | egress | UDP+TCP/53 (K8s) or 5353 (OpenShift) | DNS resolver pods |
+| | egress | TCP/`db_port` (default 5432) | Any destination (in-cluster or external DB; port from Results Spec) |
+| | egress | all | API server (auth token review / impersonation) |
+| `results-watcher` | ingress | TCP/9090 | Prometheus namespace |
+| | egress | UDP+TCP/53 (K8s) or 5353 (OpenShift) | DNS resolver pods |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints; also covers Results API) |
+| `results-retention-policy-agent` | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+| | egress | TCP/`db_port` (default 5432) | Any destination (in-cluster or external DB) |
+| `results-postgres` | ingress | TCP/`db_port` | Results API and retention-policy-agent pods only |
+| | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+
+API and retention DB egress is **port-only** (no pod/CIDR peer). NetworkPolicy cannot
+match on hostname or JDBC URL, so restricting `To` to in-cluster postgres pods would
+break external databases. Configure `db_host` / `db_port` as usual; when `db_port`
+changes in the Results Spec, the operator regenerates these policies on reconcile.
+No custom NetworkPolicy is required for an external database.
+
+#### Administrative / debug access to in-cluster Postgres
+
+`results-postgres` ingress allows only Results API and retention-policy-agent pods.
+One-off workloads (DB migrations, `psql` debug pods) are otherwise dropped once
+NetworkPolicy is enabled.
+
+**Recommended:** add a dedicated temporary NetworkPolicy that allows a dedicated
+admin label. Do **not** reuse `app: tekton-results-api` on a debug pod — that label
+is also used by the Results API Service selector and can route API traffic to the
+wrong pod.
+
+Apply directly:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: results-postgres-admin
+  namespace: tekton-pipelines   # or openshift-pipelines
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: tekton-results-postgres
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: tekton-results-db-admin
+      ports:
+        - protocol: TCP
+          port: 5432   # match Spec db_port when customized
+```
+
+Or the same rule via `spec.networkPolicy.policies` (use a new name so you do not
+replace a managed default):
+
+```yaml
+spec:
+  networkPolicy:
+    policies:
+      results-postgres-admin:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: tekton-results-postgres
+        policyTypes: [Ingress]
+        ingress:
+          - from:
+              - podSelector:
+                  matchLabels:
+                    app: tekton-results-db-admin
+            ports:
+              - protocol: TCP
+                port: 5432
+```
+
+Label the migration/`psql` pod with `app: tekton-results-db-admin`, then remove the
+policy (or the `policies` entry) when finished.
+
+**Emergency only:** temporarily set `spec.networkPolicy.disabled: true` (on
+`TektonConfig` when Config manages Results), run the admin work, then set
+`disabled: false` again. Prefer the dedicated admin NetworkPolicy above so other
+workloads stay locked down.
+
 ### Console Plugin (OpenShift only)
 
 The console plugin is a static file server (nginx) — all API calls run in the
