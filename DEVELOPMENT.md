@@ -4,7 +4,8 @@
 
 Before you begin, ensure you have the following tools installed:
 
-1. [`Go`](https://go.dev/doc/install): The language the Tekton Operator is built in (1.20 or later recommended)
+1. [`Go`](https://go.dev/doc/install): The language the Tekton Operator is built in (see [go.mod](go.mod#L3) for the minimum supported version)
+
 2. [`git`](https://git-scm.com/): For source control
 3. [`ko`](https://ko.build/): For building and deploying Go applications to Kubernetes
 4. [`kubectl`](https://kubernetes.io/docs/tasks/tools/): For interacting with the cluster
@@ -19,11 +20,11 @@ For first-time contributors and daily development, a local `kind` cluster is the
 
 If you are using Docker, set up your local cluster and local registry with the following commands:
 
-```go
+```shell
 export KO_DOCKER_REPO="localhost:5000"
 ```
 
-```go
+```make
 make dev-setup
 ```
 
@@ -39,14 +40,14 @@ _Kubernetes cluster ports used:_
 
 `podman` is a daemonless container engine. You must set up a socket service in user space before creating the cluster:
 
-```go
+```shell
 export KO_DOCKER_REPO="localhost:5000"
 export CONTAINER_RUNTIME=podman
 systemctl --user start podman.socket
 export DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock
 ```
 
-```bash
+```make
 make dev-setup
 ```
 
@@ -70,13 +71,13 @@ Ensure your `KO_DOCKER_REPO` environment variable is set (e.g., to your local re
 
 Target: Kubernetes
 
-```go
+```make
 make apply
 ```
 
 Target: OpenShift
 
-```go
+```make
 make TARGET=openshift apply
 ```
 
@@ -94,7 +95,7 @@ The Operator provides an option to choose which components need to be installed 
 
 To create Tekton Components, run:
 
-```go
+```make
 make apply-cr
 ```
 
@@ -106,13 +107,13 @@ make CR=config/basic apply-cr
 
 To delete installed Tekton Components, run:
 
-```go
+```make
 make clean-cr
 ```
 
 Or specify a profile:
 
-```go
+```make
 make CR=config/basic clean-cr
 ```
 
@@ -122,13 +123,13 @@ To wipe the operator and clean the cluster:
 
 Target: Kubernetes
 
-```go
+```make
 make clean
 ```
 
 Target: OpenShift
 
-```go
+```make
 make TARGET=openshift clean
 ```
 
@@ -163,7 +164,7 @@ To set up a cluster with GKE, you must first install the required CLI tools and 
 
 Authenticate your local environment and set your target project ID. (You may find it useful to save the ID of the project in an environment variable, e.g., `PROJECT_ID`).
 
-```go
+```shell
 gcloud auth login
 export PROJECT_ID="<YOUR_PROJECT_ID>"
 export CLUSTER_NAME="tekton-operator-dev"
@@ -176,7 +177,7 @@ Once your tools are configured, run the following script to spin up the GKE clus
 
 **NOTE**: This uses the `regular` release channel to ensure a modern, supported Kubernetes version.
 
-```go
+```shell
 gcloud container clusters create $CLUSTER_NAME \
   --enable-autoscaling \
   --min-nodes=1 \
@@ -198,7 +199,7 @@ gcloud container clusters create $CLUSTER_NAME \
 
 Grant cluster-admin permissions to the current user so the operator can deploy components:
 
-```go
+```shell
 kubectl create clusterrolebinding cluster-admin-binding \
   --clusterrole=cluster-admin \
   --user=$(gcloud config get-value core/account)
