@@ -292,6 +292,56 @@ func TestUpdateAPIEnv(t *testing.T) {
 	assert.Equal(t, true, containerFound, "container not found")
 }
 
+func TestUpdateApiEnvDeterministicOrder(t *testing.T) {
+	testData := path.Join("testdata", "api-deployment.yaml")
+	boolVal := true
+	intVal := int64(12345)
+	spec := v1alpha1.TektonResultSpec{
+		Result: v1alpha1.Result{
+			ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+				DBHost:                "localhost",
+				DBName:                "test",
+				ServerPort:            &intVal,
+				DBEnableAutoMigration: &boolVal,
+				AuthDisable:           &boolVal,
+				LogLevel:              "warn",
+				LogsAPI:               &boolVal,
+				LogsPath:              "/logs/test",
+				LogsType:              "S3",
+				LogsBufferSize:        &intVal,
+			},
+		},
+	}
+
+	envNames := func() []string {
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assert.NilError(t, err)
+		manifest, err = manifest.Transform(updateApiEnv(spec))
+		assert.NilError(t, err)
+		deployment := &appsv1.Deployment{}
+		err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, deployment)
+		assert.NilError(t, err)
+		for _, container := range deployment.Spec.Template.Spec.Containers {
+			if container.Name != apiContainerName {
+				continue
+			}
+			names := make([]string, 0, len(container.Env))
+			for _, env := range container.Env {
+				names = append(names, env.Name)
+			}
+			return names
+		}
+		t.Fatal("api container not found")
+		return nil
+	}
+
+	first := envNames()
+	for i := 0; i < 10; i++ {
+		got := envNames()
+		assert.DeepEqual(t, first, got)
+	}
+}
+
 func TestUpdateEnvWithDBSecretName(t *testing.T) {
 	testData := path.Join("testdata", "api-deployment.yaml")
 	manifest, err := mf.ManifestFrom(mf.Recursive(testData))

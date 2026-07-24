@@ -145,6 +145,11 @@ func UpdateResult(ctx context.Context, old *v1alpha1.TektonResult, new *v1alpha1
 		updated = true
 	}
 
+	if !reflect.DeepEqual(old.Spec.NetworkPolicy, new.Spec.NetworkPolicy) {
+		old.Spec.NetworkPolicy = new.Spec.NetworkPolicy
+		updated = true
+	}
+
 	if old.ObjectMeta.OwnerReferences == nil {
 		old.ObjectMeta.OwnerReferences = new.ObjectMeta.OwnerReferences
 		updated = true
@@ -202,8 +207,9 @@ func GetTektonResultCR(config *v1alpha1.TektonConfig, operatorVersion string) *v
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Result: result,
-			Config: config.Spec.Config,
+			Result:        result,
+			Config:        config.Spec.Config,
+			NetworkPolicy: config.Spec.NetworkPolicy,
 		},
 	}
 }

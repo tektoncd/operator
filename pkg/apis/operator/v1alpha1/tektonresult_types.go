@@ -62,6 +62,9 @@ type TektonResultSpec struct {
 	// Config holds the configuration for resources created by TektonResult
 	// +optional
 	Config Config `json:"config,omitempty"`
+	// NetworkPolicy configures NetworkPolicy creation for TektonResult workloads.
+	// +optional
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
 type LokiStackProperties struct {

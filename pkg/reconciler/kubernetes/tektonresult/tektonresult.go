@@ -41,6 +41,7 @@ import (
 	pipelineInformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	tektonresultconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonresult"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	corev1 "k8s.io/api/core/v1"
@@ -80,6 +81,8 @@ type Reconciler struct {
 
 	operatorVersion string
 	resultsVersion  string
+	// platformParams holds platform-specific values for building NetworkPolicy rules
+	platformParams networkpolicy.PlatformParams
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -110,6 +113,11 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 			LabelSelector: labelSelector,
 		}); err != nil {
 		logger.Error("Failed to delete installer set created by TektonResult", err)
+		return err
+	}
+
+	if err := r.installerSetClient.CleanupCustomSet(ctx, "results-network-policies"); err != nil {
+		logger.Error("failed to cleanup results network policies installerset: ", err)
 		return err
 	}
 
@@ -397,6 +405,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	// MarkInstallerSetReady
 	tr.Status.MarkInstallerSetReady()
 	logger.Infow("Installer set is ready", "name", installedTIS.Name)
+
+	if err := r.reconcileNetworkPolicies(ctx, tr); err != nil {
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		msg := fmt.Sprintf("NetworkPolicy reconciliation failed: %s", err.Error())
+		logger.Errorw("NetworkPolicy reconciliation failed", "error", err)
+		tr.Status.MarkInstallerSetNotReady(msg)
+		return nil
+	}
 
 	if err := r.extension.PostReconcile(ctx, tr); err != nil {
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {

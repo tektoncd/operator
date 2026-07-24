@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -387,12 +388,18 @@ func updateApiEnv(s v1alpha1.TektonResultSpec) mf.Transformer {
 			}
 
 			replaceEnv(existingContainerEnv, prop)
-			for k, v := range prop {
-				newEnv := corev1.EnvVar{
+			// Sort keys so env order is stable across transforms. Unordered map
+			// iteration would change Deployment Spec hashes and roll pods.
+			keys := make([]string, 0, len(prop))
+			for k := range prop {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				existingContainerEnv = append(existingContainerEnv, corev1.EnvVar{
 					Name:  k,
-					Value: v,
-				}
-				existingContainerEnv = append(existingContainerEnv, newEnv)
+					Value: prop[k],
+				})
 			}
 			dep.Spec.Template.Spec.Containers[containerIndex].Env = existingContainerEnv
 			break
