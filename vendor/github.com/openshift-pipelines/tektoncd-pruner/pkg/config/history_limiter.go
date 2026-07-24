@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"slices"
 	"strconv"
 	"time"
@@ -78,7 +77,7 @@ func NewHistoryLimiter(resourceFn HistoryLimiterResourceFuncs) (*HistoryLimiter,
 // or failed resources
 func (hl *HistoryLimiter) ProcessEvent(ctx context.Context, resource metav1.Object) error {
 	logger := logging.FromContext(ctx)
-	logger.Debugw("processing an event for limit logic", "resource", hl.resourceFn.Type(), "namespace", resource.GetNamespace(), "name", resource.GetName())
+	logger.Debugw("processing an event", "resource", hl.resourceFn.Type(), "namespace", resource.GetNamespace(), "name", resource.GetName())
 
 	// if the resource is on deletion state, no action needed
 	if resource.GetDeletionTimestamp() != nil {
@@ -191,119 +190,77 @@ func (hl *HistoryLimiter) isSuccessfulResource(resource metav1.Object) bool {
 	return hl.resourceFn.IsCompleted(resource) && hl.resourceFn.IsSuccessful(resource)
 }
 
-func (hl *HistoryLimiter) doResourceCleanup(ctx context.Context, resource metav1.Object, historyLimitAnnotation string, getHistoryLimitFn func(string, string, SelectorSpec) (*int32, string), getResourceFilterFn func(metav1.Object) bool) error {
+/*func (hl *HistoryLimiter) doResourceCleanup_old(ctx context.Context, resource metav1.Object, historyLimitAnnotation string, getHistoryLimitFn func(string, string, SelectorSpec) *int32, getResourceFilterFn func(metav1.Object) bool) error {
 	logger := logging.FromContext(ctx)
 
 	// get the label key and resource name
 	labelKey := getResourceNameLabelKey(resource, hl.resourceFn.GetDefaultLabelKey())
 	resourceName := getResourceName(resource, labelKey)
-
 	// Get Annotations and Labels
 	resourceAnnotations := resource.GetAnnotations()
 	resourceLabels := resource.GetLabels()
 
 	// Construct the selectors with both matchLabels and matchAnnotations
 	resourceSelectors := SelectorSpec{}
+
 	if len(resourceAnnotations) > 0 {
 		resourceSelectors.MatchAnnotations = resourceAnnotations
 	}
+
 	if len(resourceLabels) > 0 {
 		resourceSelectors.MatchLabels = resourceLabels
 	}
 
-	// Get enforced config level first
+	// step1: evaluate the configstore to get the enforcedConfigLevel.
 	enforcedConfigLevel := hl.resourceFn.GetEnforcedConfigLevel(resource.GetNamespace(), resourceName, resourceSelectors)
 	logger.Debugw("enforcedConfigLevel for the resource is", "resourceName", resourceName, "enforcedlevel", enforcedConfigLevel)
 
-	// Get configured history limit
+	// 5. Get History Limit:
 	var historyLimit *int32
-	var identifiedBy string
-	configHistoryLimit, configIdentifiedBy := getHistoryLimitFn(resource.GetNamespace(), resourceName, resourceSelectors)
-
-	// For resource-level enforcement, check annotation only if it matches config
 	annotations := resource.GetAnnotations()
 	if enforcedConfigLevel == EnforcedConfigLevelResource && len(annotations) != 0 && annotations[historyLimitAnnotation] != "" {
-		annotationLimit, err := strconv.Atoi(annotations[historyLimitAnnotation])
+		_limit, err := strconv.Atoi(annotations[historyLimitAnnotation])
 		if err != nil {
-			logger.Errorw("error converting history limit annotation to int",
-				"resource", hl.resourceFn.Type(),
-				"namespace", resource.GetNamespace(),
-				"name", resource.GetName(),
-				"annotation", historyLimitAnnotation,
-				"value", annotations[historyLimitAnnotation],
+			logger.Errorw("error on converting history limit to int", "resource", hl.resourceFn.Type(),
+				"namespace", resource.GetNamespace(), "name", resource.GetName(), "historyLimitAnnotation", historyLimitAnnotation,
+				"historyLimitValue", annotations[historyLimitAnnotation],
 				zap.Error(err))
 			return err
 		}
-		// Check bounds before converting to int32
-		if annotationLimit < 0 || annotationLimit > math.MaxInt32 {
-			logger.Errorw("history limit annotation value out of bounds for int32",
-				"resource", hl.resourceFn.Type(),
-				"namespace", resource.GetNamespace(),
-				"name", resource.GetName(),
-				"annotation", historyLimitAnnotation,
-				"value", annotationLimit)
-			return fmt.Errorf("history limit value %d is out of bounds for type int32", annotationLimit)
-		}
-
-		// Only use annotation value if it matches configured value
-		if configHistoryLimit != nil && annotationLimit == int(*configHistoryLimit) {
-			historyLimit = ptr.Int32(int32(annotationLimit))
-			identifiedBy = "identifiedBy_resource_ann"
-		} else {
-			historyLimit = configHistoryLimit
-			identifiedBy = configIdentifiedBy
-		}
+		historyLimit = ptr.Int32(int32(_limit))
 	} else {
-		historyLimit = configHistoryLimit
-		identifiedBy = configIdentifiedBy
+		historyLimit = getHistoryLimitFn(resource.GetNamespace(), resourceName, resourceSelectors)
 	}
 
-	logger.Debugw("historylimit for the resource", "resourcename", resourceName, "limit", historyLimit, "identifiedBy", identifiedBy)
+	logger.Debugw("historylimit for the resource", "resourcename", resourceName, "limit", historyLimit)
 
 	if historyLimit == nil || *historyLimit < 0 {
 		return nil
 	}
 
-	// List Resources (using appropriate selector based on enforcement level and identifier)
+	// 6. List Resources (using matchLabels or label selector):
 	var resources []metav1.Object
 	var err error
 
-	if enforcedConfigLevel == EnforcedConfigLevelResource {
-		switch identifiedBy {
-		case "identifiedBy_resource_name":
-			label := fmt.Sprintf("%s=%s", labelKey, resourceName)
-			resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), label)
-		case "identifiedBy_resource_ann":
-			labelSelector := ""
-			for k, v := range resourceAnnotations {
-				if labelSelector != "" {
-					labelSelector += ","
-				}
-				labelSelector += fmt.Sprintf("%s=%s", k, v)
+	if len(resourceLabels) > 0 {
+		labelSelector := ""
+		for k, v := range resourceLabels {
+			if labelSelector != "" {
+				labelSelector += ","
 			}
-			resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), labelSelector)
-		case "identifiedBy_resource_label":
-			labelSelector := ""
-			for k, v := range resourceLabels {
-				if labelSelector != "" {
-					labelSelector += ","
-				}
-				labelSelector += fmt.Sprintf("%s=%s", k, v)
-			}
-			resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), labelSelector)
-		default:
-			resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), "")
+			labelSelector += fmt.Sprintf("%s=%s", k, v)
 		}
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), labelSelector)
 	} else {
-		// For namespace or global level, list all resources in namespace
-		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), "")
+		label := fmt.Sprintf("%s=%s", labelKey, resourceName)
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), label)
 	}
 
 	if err != nil {
 		return err
 	}
 
-	// Filter resources by status (success/failed)
+	// 7. Filter, Sort, and Delete:
 	resourcesFiltered := []metav1.Object{}
 	for _, res := range resources {
 		if getResourceFilterFn(res) {
@@ -316,7 +273,6 @@ func (hl *HistoryLimiter) doResourceCleanup(ctx context.Context, resource metav1
 		return nil
 	}
 
-	// Sort resources by creation timestamp (newest first)
 	slices.SortStableFunc(resources, func(a, b metav1.Object) int {
 		objA := a.GetCreationTimestamp()
 		objB := b.GetCreationTimestamp()
@@ -328,33 +284,157 @@ func (hl *HistoryLimiter) doResourceCleanup(ctx context.Context, resource metav1
 		return 0
 	})
 
-	// Select resources to delete (keep newest up to historyLimit)
 	var selectionForDeletion []metav1.Object
+
 	if *historyLimit == 0 {
 		selectionForDeletion = resources
 	} else {
 		selectionForDeletion = resources[*historyLimit:]
 	}
 
-	// Delete selected resources
-	for _, res := range selectionForDeletion {
-		logger.Debugw("deleting resource",
-			"resource", hl.resourceFn.Type(),
-			"namespace", res.GetNamespace(),
-			"name", res.GetName(),
-			"creationTimestamp", res.GetCreationTimestamp(),
+	for _, _res := range selectionForDeletion {
+		logger.Debugw("deleting a resource",
+			"resource", hl.resourceFn.Type(), "namespace", _res.GetNamespace(), "name", _res.GetName(),
+			"resourceCreationTimestamp", _res.GetCreationTimestamp(),
 		)
-		if err := hl.resourceFn.Delete(ctx, res.GetNamespace(), res.GetName()); err != nil {
+		err := hl.resourceFn.Delete(ctx, _res.GetNamespace(), _res.GetName())
+		if err != nil {
 			if errors.IsNotFound(err) {
-				continue
+				return nil
 			}
-			logger.Errorw("error deleting resource",
-				"resource", hl.resourceFn.Type(),
-				"namespace", res.GetNamespace(),
-				"name", res.GetName(),
+			logger.Errorw("error on removing a resource",
+				"resource", hl.resourceFn.Type(), "namespace", _res.GetNamespace(), "name", _res.GetName(),
 				zap.Error(err),
 			)
+		}
+	}
+
+	return nil
+}
+*/
+
+func (hl *HistoryLimiter) doResourceCleanup(ctx context.Context, resource metav1.Object, historyLimitAnnotation string, getHistoryLimitFn func(string, string, SelectorSpec) (*int32, string), getResourceFilterFn func(metav1.Object) bool) error {
+	logger := logging.FromContext(ctx)
+
+	// get the label key and resource name
+	labelKey := getResourceNameLabelKey(resource, hl.resourceFn.GetDefaultLabelKey())
+	resourceName := getResourceName(resource, labelKey)
+	// Get Annotations and Labels
+	resourceAnnotations := resource.GetAnnotations()
+	resourceLabels := resource.GetLabels()
+
+	// Construct the selectors with both matchLabels and matchAnnotations
+	resourceSelectors := SelectorSpec{}
+
+	if len(resourceAnnotations) > 0 {
+		resourceSelectors.MatchAnnotations = resourceAnnotations
+	}
+
+	if len(resourceLabels) > 0 {
+		resourceSelectors.MatchLabels = resourceLabels
+	}
+
+	// step1: evaluate the configstore to get the enforcedConfigLevel.
+	enforcedConfigLevel := hl.resourceFn.GetEnforcedConfigLevel(resource.GetNamespace(), resourceName, resourceSelectors)
+	logger.Debugw("enforcedConfigLevel for the resource is", "resourceName", resourceName, "enforcedlevel", enforcedConfigLevel)
+
+	// 5. Get History Limit:
+	var historyLimit *int32
+
+	var identifiedBy string
+
+	annotations := resource.GetAnnotations()
+	if enforcedConfigLevel == EnforcedConfigLevelResource && len(annotations) != 0 && annotations[historyLimitAnnotation] != "" {
+		_limit, err := strconv.Atoi(annotations[historyLimitAnnotation])
+		if err != nil {
+			logger.Errorw("error on converting history limit to int", "resource", hl.resourceFn.Type(),
+				"namespace", resource.GetNamespace(), "name", resource.GetName(), "historyLimitAnnotation", historyLimitAnnotation,
+				"historyLimitValue", annotations[historyLimitAnnotation],
+				zap.Error(err))
 			return err
+		}
+		historyLimit = ptr.Int32(int32(_limit))
+	} else {
+		historyLimit, identifiedBy = getHistoryLimitFn(resource.GetNamespace(), resourceName, resourceSelectors)
+	}
+
+	logger.Debugw("historylimit for the resource", "resourcename", resourceName, "limit", historyLimit, "identifiedBy", identifiedBy)
+
+	if historyLimit == nil || *historyLimit < 0 {
+		return nil
+	}
+
+	// 6. List Resources (using matchLabels or label selector):
+	var resources []metav1.Object
+	var err error
+
+	label := fmt.Sprintf("%s=%s", labelKey, resourceName)
+
+	if enforcedConfigLevel == EnforcedConfigLevelResource && len(annotations) != 0 && annotations[historyLimitAnnotation] != "" {
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), label)
+	} else if enforcedConfigLevel == EnforcedConfigLevelResource && identifiedBy == "identifiedBy_resource_name" {
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), label)
+	} else if enforcedConfigLevel == EnforcedConfigLevelResource && identifiedBy == "identifiedBy_resource_ann" {
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), label) //This needs a fix. We need to pass the annotations
+	} else if enforcedConfigLevel == EnforcedConfigLevelResource && identifiedBy == "identifiedBy_resource_label" {
+		label := fmt.Sprintf("%s=%s", labelKey, resourceName)
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), label) //This needs a fix. We need to pass the labels
+	} else if identifiedBy == "identified_by_ns" {
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), "")
+	} else if identifiedBy == "identified_by_global" {
+		resources, err = hl.resourceFn.List(ctx, resource.GetNamespace(), "")
+	}
+
+	if err != nil {
+		return err
+	}
+
+	// 7. Filter, Sort, and Delete:
+	resourcesFiltered := []metav1.Object{}
+	for _, res := range resources {
+		if getResourceFilterFn(res) {
+			resourcesFiltered = append(resourcesFiltered, res)
+		}
+	}
+	resources = resourcesFiltered
+
+	if int(*historyLimit) > len(resources) {
+		return nil
+	}
+
+	slices.SortStableFunc(resources, func(a, b metav1.Object) int {
+		objA := a.GetCreationTimestamp()
+		objB := b.GetCreationTimestamp()
+		if objA.Time.Before(objB.Time) {
+			return 1
+		} else if objA.Time.After(objB.Time) {
+			return -1
+		}
+		return 0
+	})
+
+	var selectionForDeletion []metav1.Object
+
+	if *historyLimit == 0 {
+		selectionForDeletion = resources
+	} else {
+		selectionForDeletion = resources[*historyLimit:]
+	}
+
+	for _, _res := range selectionForDeletion {
+		logger.Debugw("deleting a resource",
+			"resource", hl.resourceFn.Type(), "namespace", _res.GetNamespace(), "name", _res.GetName(),
+			"resourceCreationTimestamp", _res.GetCreationTimestamp(),
+		)
+		err := hl.resourceFn.Delete(ctx, _res.GetNamespace(), _res.GetName())
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return nil
+			}
+			logger.Errorw("error on removing a resource",
+				"resource", hl.resourceFn.Type(), "namespace", _res.GetNamespace(), "name", _res.GetName(),
+				zap.Error(err),
+			)
 		}
 	}
 

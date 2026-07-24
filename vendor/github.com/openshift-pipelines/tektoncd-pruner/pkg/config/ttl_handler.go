@@ -31,13 +31,6 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-const (
-	// NoTTL represents a TTL value that indicates no TTL should be applied
-	NoTTL = "-1"
-	// DefaultTTL represents the default TTL duration if none is specified
-	DefaultTTL = 0
-)
-
 // TTLResourceFuncs defines the set of functions that should be implemented for
 // resources that are subject to Time-To-Live (TTL) management, including determining
 // whether a resource is completed, updating or deleting the resource, and handling
@@ -85,13 +78,22 @@ func NewTTLHandler(clock clockUtil.Clock, resourceFn TTLResourceFuncs) (*TTLHand
 // It evaluates the resource's state, checks whether it should be cleaned up,
 // and updates the TTL annotation if needed
 func (th *TTLHandler) ProcessEvent(ctx context.Context, resource metav1.Object) error {
+	logger := logging.FromContext(ctx)
+	logger.Debugw("processing an event for TTLLOGIC",
+		"resource", th.resourceFn.Type(), "namespace", resource.GetNamespace(), "name", resource.GetName(),
+	)
+
 	// if a resource is in deletion state, no further action needed
 	if resource.GetDeletionTimestamp() != nil {
+		logger.Debugw("resource is in deletion state, no action needed",
+			"resource", th.resourceFn.Type(), "namespace", resource.GetNamespace(), "name", resource.GetName())
 		return nil
 	}
 
 	// if a resource is not completed state, no further action needed
 	if !th.resourceFn.IsCompleted(resource) && th.resourceFn.Ignore(resource) {
+		logger.Debugw("resource is ignored",
+			"resource", th.resourceFn.Type(), "namespace", resource.GetNamespace(), "name", resource.GetName())
 		return nil
 	}
 
@@ -107,163 +109,189 @@ func (th *TTLHandler) ProcessEvent(ctx context.Context, resource metav1.Object) 
 	}
 
 	return th.removeResource(ctx, resource)
+
 }
 
-// updateAnnotationTTLSeconds updates the TTL annotation of a resource if needed
+// updates the TTL of a Resource
 func (th *TTLHandler) updateAnnotationTTLSeconds(ctx context.Context, resource metav1.Object) error {
 	logger := logging.FromContext(ctx)
+	needsUpdate := false
+	// get the annotations
+	annotations := resource.GetAnnotations()
+	if annotations == nil {
+		needsUpdate = true
+		annotations = map[string]string{}
+	}
+	if annotations[AnnotationTTLSecondsAfterFinished] == "" {
+		needsUpdate = true
+	}
 
-	// get resource name and selectors first to avoid redundant work if no update needed
+	// get resource name, with user defined label key, if not available, go with default label key
 	labelKey := getResourceNameLabelKey(resource, th.resourceFn.GetDefaultLabelKey())
 	resourceName := getResourceName(resource, labelKey)
-	resourceSelectors := th.getResourceSelectors(resource)
 
-	// Check enforced config level early
-	enforcedLevel := th.resourceFn.GetEnforcedConfigLevel(resource.GetNamespace(), resourceName, resourceSelectors)
-	logger.Debugw("checking TTL configuration",
-		"resource", th.resourceFn.Type(),
-		"namespace", resource.GetNamespace(),
-		"name", resourceName,
-		"enforced_level", enforcedLevel)
+	// Construct the selectors with both matchLabels and matchAnnotations
+	resourceSelectors := SelectorSpec{}
 
-	// Check if update is needed
-	if !th.needsTTLUpdate(resource, enforcedLevel) {
-		return nil
+	// Get Annotations and Labels
+	resourceAnnotations := resource.GetAnnotations()
+	if len(resourceAnnotations) > 0 {
+		resourceSelectors.MatchAnnotations = resourceAnnotations
 	}
 
-	// Get TTL value
-	ttl, identifiedBy := th.resourceFn.GetTTLSecondsAfterFinished(resource.GetNamespace(), resourceName, resourceSelectors)
-	logger.Debugw("TTL configuration found",
-		"ttl", ttl,
-		"source", identifiedBy,
-		"resource", th.resourceFn.Type(),
-		"namespace", resource.GetNamespace(),
-		"name", resourceName)
+	resourceLabels := resource.GetLabels()
+	if len(resourceLabels) > 0 {
+		resourceSelectors.MatchLabels = resourceLabels
+	}
 
-	// Get latest version of resource to avoid conflicts
-	resourceLatest, err := th.resourceFn.Get(ctx, resource.GetNamespace(), resource.GetName())
-	if err != nil {
-		if errors.IsNotFound(err) {
+	th_enforcedlevel := th.resourceFn.GetEnforcedConfigLevel(resource.GetNamespace(), resourceName, resourceSelectors)
+	logger.Debugw("CHECKING-ENFORCED-CONFIG-TTL", "enforced_level", th_enforcedlevel,
+		"namespace", resource.GetNamespace(), "name", resourceName, "selectors", resourceSelectors)
+
+	// if the "enforceConfigLevel" is not resource level, do not consider ttl from the resource annotation
+	// take it from namespace config or global config
+	if th.resourceFn.GetEnforcedConfigLevel(resource.GetNamespace(), resourceName, resourceSelectors) != EnforcedConfigLevelResource {
+		needsUpdate = true
+	}
+
+	if needsUpdate {
+		ttl, _ := th.resourceFn.GetTTLSecondsAfterFinished(resource.GetNamespace(), resourceName, resourceSelectors)
+		logger.Debugw("TTL processing", "ttl", ttl, "namespace", resource.GetNamespace(), "name", resourceName, "selectors", resourceSelectors)
+		if ttl == nil {
+			logger.Debugw("ttl is not defined for this resource, no further action needed",
+				"resource", th.resourceFn.Type(), "namespace", resource.GetNamespace(), "name", resource.GetName(),
+				"resourceLabelKey", labelKey, "resourceLabelValue", resourceName,
+			)
 			return nil
 		}
-		return fmt.Errorf("failed to get resource: %w", err)
-	}
-
-	// Update annotations
-	annotations := resourceLatest.GetAnnotations()
-	if annotations == nil {
-		annotations = make(map[string]string)
-	}
-
-	if ttl == nil {
-		// If TTL is nil, remove the annotation if it exists
-		if _, exists := annotations[AnnotationTTLSecondsAfterFinished]; exists {
-			delete(annotations, AnnotationTTLSecondsAfterFinished)
-			logger.Debugw("removing TTL annotation - no TTL configuration found",
-				"resource", th.resourceFn.Type(),
-				"namespace", resource.GetNamespace(),
-				"name", resource.GetName())
-		}
-	} else {
-		// Set new TTL annotation
 		newTTL := strconv.Itoa(int(*ttl))
-		currentTTL, hasCurrentTTL := annotations[AnnotationTTLSecondsAfterFinished]
-		if !hasCurrentTTL || currentTTL != newTTL {
-			annotations[AnnotationTTLSecondsAfterFinished] = newTTL
-			logger.Debugw("updating TTL annotation",
-				"resource", th.resourceFn.Type(),
-				"namespace", resource.GetNamespace(),
-				"name", resource.GetName(),
-				"oldTTL", currentTTL,
-				"newTTL", newTTL,
-				"hadPreviousTTL", hasCurrentTTL)
-		} else {
+		previousTTL := annotations[AnnotationTTLSecondsAfterFinished]
+		if newTTL == previousTTL {
+			// there is no change on the TTL, update action not needed
 			return nil
 		}
-	}
+		/*
+			resource.SetAnnotations(annotations)
+			logger.Debugw("updating ttl of a resource",
+				"resource", th.resourceFn.Type(), "namespace", resource.GetNamespace(), "name", resource.GetName(), "ttl", ttl,
+			)
+			return th.resourceFn.Update(ctx, resource)
+		*/
+		// Prepare the annotation update
+		resourceLatest, err := th.resourceFn.Get(ctx, resource.GetNamespace(), resource.GetName())
+		if err != nil {
+			if errors.IsNotFound(err) {
+				return err
+			}
+			logger.Errorw("error getting resource", "resource", th.resourceFn.Type(),
+				"namespace", resource.GetNamespace(), "name", resource.GetName(), zap.Error(err))
+			return err
+		}
+		annotations := resourceLatest.GetAnnotations()
+		if annotations == nil {
+			annotations = map[string]string{}
+		}
+		annotations[AnnotationTTLSecondsAfterFinished] = newTTL
+		// Create a patch with the new annotations
+		patchData := map[string]interface{}{
+			"metadata": map[string]interface{}{
+				"annotations": annotations,
+			},
+		}
 
-	patchData := map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"annotations": annotations,
-		},
-	}
+		// Convert patchData to JSON
+		patchBytes, err := json.Marshal(patchData)
+		if err != nil {
+			logger.Errorw("error marshaling patch data", zap.Error(err))
+			return err
+		}
 
-	patchBytes, err := json.Marshal(patchData)
-	if err != nil {
-		return fmt.Errorf("failed to marshal patch data: %w", err)
+		// Apply the patch
+		err = th.resourceFn.Patch(ctx, resourceLatest.GetNamespace(), resourceLatest.GetName(), patchBytes)
+		if err != nil {
+			logger.Errorw("error patching resource with 'mark as processed' annotation",
+				"resource", th.resourceFn.Type(), "namespace", resourceLatest.GetNamespace(), "name", resourceLatest.GetName(), zap.Error(err))
+		}
 	}
-
-	if err := th.resourceFn.Patch(ctx, resourceLatest.GetNamespace(), resourceLatest.GetName(), patchBytes); err != nil {
-		return fmt.Errorf("failed to patch resource with TTL annotation: %w", err)
-	}
-
 	return nil
 }
 
 // needsCleanup checks whether a Resource has finished and has a TTL set.
 func (th *TTLHandler) needsCleanup(resource metav1.Object) bool {
-	// Check completion state first as it's likely to be the most expensive operation
+	// get the annotations
+	annotations := resource.GetAnnotations()
+	// if there is no annotations present, the resource is not available for cleanup
+	if annotations == nil {
+		return false
+	}
+	// if there is no ttl present, the resource is not available for cleanup [or]
+	// if the ttl is "-1", no further action needed on this Resource
+	if annotations[AnnotationTTLSecondsAfterFinished] == "" || annotations[AnnotationTTLSecondsAfterFinished] == "-1" {
+		return false
+	}
+
+	// if the resource is not in completed state, cleanup not needed
 	if !th.resourceFn.IsCompleted(resource) {
 		return false
 	}
 
-	// get the annotations
-	annotations := resource.GetAnnotations()
-	if annotations == nil {
-		return false
-	}
-
-	ttlValue := annotations[AnnotationTTLSecondsAfterFinished]
-	return ttlValue != "" && ttlValue != NoTTL
+	return true
 }
 
-// removeResource checks the TTL and deletes the Resource if it has expired
+// checks the ttl and deletes the Resource, if the Resource reaches the expire time
 func (th *TTLHandler) removeResource(ctx context.Context, resource metav1.Object) error {
 	logger := logging.FromContext(ctx)
-	logger.Debugw("checking resource cleanup eligibility",
-		"resourceType", th.resourceFn.Type(),
-		"namespace", resource.GetNamespace(),
-		"name", resource.GetName(),
+	logger.Debugw("checking if the resource is ready for cleanup",
+		"resource", th.resourceFn.Type(), "namespace", resource.GetNamespace(), "name", resource.GetName(),
 	)
 
 	// check the resource ttl status
 	expiredAt, err := th.processTTL(logger, resource)
 	if err != nil {
-		return fmt.Errorf("failed to process TTL: %w", err)
-	}
-	if expiredAt == nil {
+		return err
+	} else if expiredAt == nil {
 		return nil
 	}
 
-	// Verify TTL hasn't been modified before deletion
+	// The Resource's TTL is assumed to have expired, but the Resource TTL might be stale.
+	// Before deleting the Resource, do a final sanity check.
+	// If TTL is modified before we do this check, we cannot be sure if the TTL truly expires.
+	// The latest Resource may have a different UID, but it's fine because the checks will be run again.
 	freshResource, err := th.resourceFn.Get(ctx, resource.GetNamespace(), resource.GetName())
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		return fmt.Errorf("failed to get fresh resource: %w", err)
+	if errors.IsNotFound(err) {
+		return nil
 	}
-
+	if err != nil {
+		return err
+	}
+	// use the latest Resource TTL to see if the TTL truly expires.
 	expiredAt, err = th.processTTL(logger, freshResource)
 	if err != nil {
-		return fmt.Errorf("failed to process TTL for fresh resource: %w", err)
-	}
-	if expiredAt == nil {
+		return err
+	} else if expiredAt == nil {
 		return nil
 	}
 
-	logger.Debugw("cleaning up expired resource",
-		"resourceType", th.resourceFn.Type(),
-		"namespace", resource.GetNamespace(),
-		"name", resource.GetName(),
-		"expiredAt", expiredAt,
+	// TODO: Cascade deletes the Resources if TTL truly expires.
+	// policy := metav1.DeletePropagationForeground
+	// options := &client.DeleteOptions{
+	// 	PropagationPolicy: &policy,
+	// 	Preconditions:     &metav1.Preconditions{UID: &fresh.UID},
+	// }
+	logger.Debugw("cleaning up a resource",
+		"resource", th.resourceFn.Type(), "namespace", resource.GetNamespace(), "name", resource.GetName(),
 	)
-
-	if err := th.resourceFn.Delete(ctx, resource.GetNamespace(), resource.GetName()); err != nil {
+	err = th.resourceFn.Delete(ctx, resource.GetNamespace(), resource.GetName())
+	if err != nil {
+		// ignore the error, if the resource is not found
 		if errors.IsNotFound(err) {
 			return nil
 		}
-		return fmt.Errorf("failed to delete resource: %w", err)
+		logger.Error("error on removing a resource",
+			"resource", th.resourceFn.Type(), "namespace", resource.GetNamespace(), "name", resource.GetName(),
+			zap.Error(err),
+		)
+		return err
 	}
 	return nil
 }
@@ -342,14 +370,8 @@ func (th *TTLHandler) getTTLSeconds(resource metav1.Object) (*time.Duration, err
 
 	ttl, err := strconv.Atoi(ttlString)
 	if err != nil {
-		return nil, fmt.Errorf("invalid TTL value %q: %w", ttlString, err)
+		return nil, err
 	}
-
-	// Check for negative TTL values (except -1 which means no TTL)
-	if ttl < -1 {
-		return nil, fmt.Errorf("TTL value %d must be >= -1", ttl)
-	}
-
 	ttlDuration := time.Duration(ttl) * time.Second
 	return &ttlDuration, nil
 }
@@ -361,45 +383,4 @@ func (th *TTLHandler) enqueueAfter(logger *zap.SugaredLogger, resource metav1.Ob
 		"resource", th.resourceFn.Type(), "namespace", resource.GetNamespace(), "name", resource.GetName(), "waitDuration", after,
 	)
 	return controller.NewRequeueAfter(after)
-}
-
-// getResourceSelectors constructs the selector spec for a resource
-func (th *TTLHandler) getResourceSelectors(resource metav1.Object) SelectorSpec {
-	selectors := SelectorSpec{}
-	if annotations := resource.GetAnnotations(); len(annotations) > 0 {
-		selectors.MatchAnnotations = annotations
-	}
-	if labels := resource.GetLabels(); len(labels) > 0 {
-		selectors.MatchLabels = labels
-	}
-	return selectors
-}
-
-// needsTTLUpdate determines if a resource needs its TTL annotation updated
-func (th *TTLHandler) needsTTLUpdate(resource metav1.Object, enforcedLevel EnforcedConfigLevel) bool {
-	annotations := resource.GetAnnotations()
-	if annotations == nil {
-		return true
-	}
-
-	currentTTL, exists := annotations[AnnotationTTLSecondsAfterFinished]
-	if !exists {
-		return true
-	}
-
-	// Get the current TTL from config
-	labelKey := getResourceNameLabelKey(resource, th.resourceFn.GetDefaultLabelKey())
-	resourceName := getResourceName(resource, labelKey)
-	resourceSelectors := th.getResourceSelectors(resource)
-
-	configTTL, _ := th.resourceFn.GetTTLSecondsAfterFinished(resource.GetNamespace(), resourceName, resourceSelectors)
-
-	// If there's no config TTL, we should remove the annotation
-	if configTTL == nil {
-		return true
-	}
-
-	// Compare current TTL with config TTL
-	configTTLStr := strconv.Itoa(int(*configTTL))
-	return currentTTL != configTTLStr
 }
