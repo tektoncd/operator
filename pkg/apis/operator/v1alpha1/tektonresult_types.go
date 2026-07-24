@@ -82,6 +82,9 @@ type Result struct {
 	Options AdditionalOptions `json:"options"`
 	// +optional
 	Performance PerformanceProperties `json:"performance,omitempty"`
+	// Watcher holds configuration for the Tekton Results Watcher controller.
+	// +optional
+	Watcher ResultsWatcherProperties `json:"watcher,omitempty"`
 }
 
 // ResultsAPIProperties defines the fields which are configurable for

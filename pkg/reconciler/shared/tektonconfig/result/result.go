@@ -140,6 +140,11 @@ func UpdateResult(ctx context.Context, old *v1alpha1.TektonResult, new *v1alpha1
 		updated = true
 	}
 
+	if !reflect.DeepEqual(old.Spec.Watcher, new.Spec.Watcher) {
+		old.Spec.Watcher = new.Spec.Watcher
+		updated = true
+	}
+
 	if !reflect.DeepEqual(old.Spec.Config, new.Spec.Config) {
 		old.Spec.Config = new.Spec.Config
 		updated = true

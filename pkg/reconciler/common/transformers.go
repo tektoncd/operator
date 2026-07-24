@@ -18,6 +18,7 @@ package common
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"reflect"
@@ -1238,6 +1239,127 @@ func UpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(performanceSpec *v1alp
 
 		return nil
 	}
+}
+
+// UpdateWatcherFlagsInDeployment injects Tekton Results Watcher configuration
+// as command-line flags on the watcher deployment container.
+func UpdateWatcherFlagsInDeployment(watcher *v1alpha1.ResultsWatcherProperties, deploymentName, containerName string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if watcher == nil {
+			return nil
+		}
+		if u.GetKind() != "Deployment" || u.GetName() != deploymentName {
+			return nil
+		}
+
+		flags := map[string]interface{}{}
+		if err := StructToMap(watcher, &flags); err != nil {
+			return err
+		}
+		if len(flags) == 0 {
+			return nil
+		}
+
+		dep := &appsv1.Deployment{}
+		err := apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(u.Object, dep)
+		if err != nil {
+			return err
+		}
+
+		podLabels := dep.Spec.Template.Labels
+		if podLabels == nil {
+			podLabels = map[string]string{}
+		}
+		// Hash label values so free-text settings (summary_labels, label_selector, etc.)
+		// always produce valid Kubernetes label values. Labels only force a pod restart
+		// when config changes; they do not need to be human-readable.
+		labelKeys := getSortedKeys(flags)
+		for _, key := range labelKeys {
+			labelKey := fmt.Sprintf("%s.data.%s", deploymentName, key)
+			podLabels[labelKey] = hashLabelValue(fmt.Sprintf("%v", flags[key]))
+		}
+		dep.Spec.Template.Labels = podLabels
+
+		flagKeys := getSortedKeys(flags)
+		for containerIndex, container := range dep.Spec.Template.Spec.Containers {
+			if container.Name != containerName {
+				continue
+			}
+			for _, flagKey := range flagKeys {
+				argStringValue := fmt.Sprintf("%v", flags[flagKey])
+				container.Args = replaceOrAppendContainerArg(container.Args, flagKey, argStringValue)
+			}
+			dep.Spec.Template.Spec.Containers[containerIndex] = container
+		}
+
+		obj, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(dep)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(obj)
+
+		return nil
+	}
+}
+
+// hashLabelValue returns a short SHA-256 hex digest that is always a valid
+// Kubernetes label value (letters/digits only, within the 63-char limit).
+func hashLabelValue(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	// Full SHA-256 hex is 64 chars; Kubernetes label values max out at 63.
+	const hashLabelLen = 32
+	return fmt.Sprintf("%x", sum)[:hashLabelLen]
+}
+
+// replaceOrAppendContainerArg updates container args for flagKey.
+// It handles both "-flag=value" and two-element ("-flag", "value") forms by
+// removing any existing match (and its separate value, if present) before
+// appending the combined "-flag=value" form.
+func replaceOrAppendContainerArg(args []string, flagKey, value string) []string {
+	expectedArg := fmt.Sprintf("-%s", flagKey)
+	newArg := fmt.Sprintf("%s=%s", expectedArg, value)
+
+	out := make([]string, 0, len(args)+1)
+	replaced := false
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == expectedArg || strings.HasPrefix(arg, expectedArg+"=") {
+			// Skip a separate value entry from the two-element form, including
+			// negative durations like "-1h" that also start with '-'.
+			if arg == expectedArg && i+1 < len(args) && isFlagValueToken(args[i+1]) {
+				i++
+			}
+			if !replaced {
+				out = append(out, newArg)
+				replaced = true
+			}
+			continue
+		}
+		out = append(out, arg)
+	}
+	if !replaced {
+		out = append(out, newArg)
+	}
+	return out
+}
+
+// isFlagValueToken reports whether s is a value for a bare "-flag" form.
+// Flag names start with a letter after the dash (e.g. -api_addr). Values may
+// start with '-' when they are negative numbers/durations (e.g. -1h).
+func isFlagValueToken(s string) bool {
+	if s == "" {
+		return true
+	}
+	if strings.HasPrefix(s, "--") {
+		return false
+	}
+	if strings.HasPrefix(s, "-") && len(s) > 1 {
+		c := s[1]
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') {
+			return false
+		}
+	}
+	return true
 }
 
 // sort keys in an order, to get the consistent hash value in installerset

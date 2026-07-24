@@ -531,6 +531,8 @@ spec:
                           type: string
                       type: object
                     type: array
+                required:
+                - options
                 type: object
               multiclusterProxyAAE:
                 description: MulticlusterProxyAAE holds the customizable options for
@@ -1202,6 +1204,74 @@ spec:
                     type: string
                   tls_hostname_override:
                     type: string
+                  watcher:
+                    description: Watcher holds configuration for the Tekton Results
+                      Watcher controller.
+                    properties:
+                      check_owner:
+                        description: |-
+                          When true, resources with owner references are not deleted after the grace
+                          period. When false, owner references are ignored for deletion.
+                        type: boolean
+                      completed_run_grace_period:
+                        description: |-
+                          Grace period before completed TaskRuns/PipelineRuns are deleted from the
+                          cluster after being stored in Results. 0 disables deletion. Negative
+                          values delete immediately after completion.
+                        type: string
+                      disable_crd_update:
+                        description: Disable updating Tekton CRD annotations during
+                          reconcile.
+                        type: boolean
+                      disable_storing_incomplete_runs:
+                        description: |-
+                          When true, only store Runs after they complete. When false, store Runs on
+                          every update throughout their lifecycle.
+                        type: boolean
+                      dynamic_reconcile_timeout:
+                        description: Timeout for the dynamic reconciler to process
+                          an event.
+                        type: string
+                      forward_buffer:
+                        description: Duration to wait for log forwarder to finish
+                          after TaskRun completion.
+                        type: string
+                      label_selector:
+                        description: Label selector for Runs eligible for deletion
+                          after the grace period.
+                        type: string
+                      logs_api:
+                        description: Enable sending TaskRun/PipelineRun logs to the
+                          Results API.
+                        type: boolean
+                      logs_timestamps:
+                        description: Collect logs with timestamps.
+                        type: boolean
+                      requeue_interval:
+                        description: How long the Watcher waits before reprocessing
+                          keys on certain events.
+                        type: string
+                      store_deadline:
+                        description: |-
+                          Maximum time to wait for a Run to be stored before clearing the finalizer
+                          during deletion.
+                        type: string
+                      store_event:
+                        description: Store Kubernetes events related to TaskRuns and
+                          PipelineRuns.
+                        type: boolean
+                      summary_annotations:
+                        description: Comma-separated annotation keys copied into the
+                          Result summary.
+                        type: string
+                      summary_labels:
+                        description: Comma-separated label keys copied into the Result
+                          summary.
+                        type: string
+                      update_log_timeout:
+                        description: Timeout for storing logs before aborting.
+                        type: string
+                    type: object
                 required:
                 - disabled
                 - is_external_db

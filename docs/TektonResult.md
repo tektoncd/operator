@@ -310,6 +310,27 @@ These fields are optional and there is no default values. If user passes them, o
 > #### Note:
 > * if you modify or remove any of the performance properties, `tekton-results-watcher` deployment and `tekton-results-config-leader-election` config-map (if `buckets` changed) will be updated, and `tekton-results-watcher` pods will be recreated
 
+### Tekton Result Watcher Configuration
+
+Watcher behavior is configured under `spec.result.watcher` on TektonConfig, or `spec.watcher` on TektonResult. These settings are passed as command-line flags to the `tekton-results-watcher` deployment. Updating these fields reconciles the watcher Deployment and recreates pods so the new configuration takes effect.
+
+Performance-related flags remain under `spec.result.performance` (TektonConfig) / `spec.performance` (TektonResult). Operator-managed flags (`api_addr`, `auth_mode`, `namespace`) and secrets (`token`) are not exposed here.
+
+For `summary_labels`, `summary_annotations`, and `label_selector`: omit the field to keep the watcher default, set a value to override, or set `""` to clear the default.
+
+```yaml
+spec:
+  # omitted other fields ...
+  watcher:
+    completed_run_grace_period: 24h
+    check_owner: true
+    store_deadline: 10m
+    disable_storing_incomplete_runs: true
+    logs_api: true
+```
+
+See [TektonConfig Result Watcher section](./TektonConfig.md#tekton-results-watcher-configuration) for the full list of supported fields.
+
 ### Debugging
 
 #### Debugging gRPC
