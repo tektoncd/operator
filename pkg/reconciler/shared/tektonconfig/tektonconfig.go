@@ -26,6 +26,7 @@ import (
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chain"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/manualapprovalgate"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/multiclusterproxyaae"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pruner"
@@ -78,6 +79,9 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 			return err
 		}
 		if err := chain.EnsureTektonChainCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains()); err != nil {
+			return err
+		}
+		if err := manualapprovalgate.EnsureManualApprovalGateCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().ManualApprovalGates()); err != nil {
 			return err
 		}
 		if err := result.EnsureTektonResultCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonResults()); err != nil {
@@ -318,6 +322,45 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		logger.Debug("TektonChain CR removal reconciled successfully")
+	}
+
+	// Ensure ManualApprovalGate CR
+	// On upgrade: if a standalone MAG CR exists (no ownerRef, from a previous version),
+	// adopt it under TektonConfig regardless of the disabled setting.
+	// On fresh install: MAG is disabled by default and not created.
+	magEnabled := !tc.Spec.ManualApproval.IsDisabled()
+	if !magEnabled {
+		existingMAG, err := manualapprovalgate.GetManualApprovalGate(ctx, r.operatorClientSet.OperatorV1alpha1().ManualApprovalGates(), v1alpha1.ManualApprovalGates)
+		if err == nil && len(existingMAG.OwnerReferences) == 0 {
+			logger.Debug("Found standalone ManualApprovalGate CR from previous version, adopting under TektonConfig")
+			magEnabled = true
+		}
+	}
+	if magEnabled {
+		magCR := manualapprovalgate.GetManualApprovalGateCR(tc, r.operatorVersion)
+		if platformData := r.extension.GetPlatformData(); platformData != "" {
+			if magCR.Annotations == nil {
+				magCR.Annotations = map[string]string{}
+			}
+			magCR.Annotations[v1alpha1.PlatformDataHashKey] = platformData
+		}
+		logger.Debug("Ensuring ManualApprovalGate CR exists")
+		if _, err := manualapprovalgate.EnsureManualApprovalGateExists(ctx, r.operatorClientSet.OperatorV1alpha1().ManualApprovalGates(), magCR); err != nil {
+			errMsg := fmt.Sprintf("ManualApprovalGate: %s", err.Error())
+			logger.Errorw("Failed to ensure ManualApprovalGate exists", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		logger.Debug("ManualApprovalGate CR reconciled successfully")
+	} else {
+		logger.Debugw("Ensuring ManualApprovalGate CR doesn't exist", "manualApprovalDisabled", tc.Spec.ManualApproval.IsDisabled())
+		if err := manualapprovalgate.EnsureManualApprovalGateCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().ManualApprovalGates()); err != nil {
+			errMsg := fmt.Sprintf("ManualApprovalGate: %s", err.Error())
+			logger.Errorw("Failed to ensure ManualApprovalGate has been deleted", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		logger.Debug("ManualApprovalGate CR removal reconciled successfully")
 	}
 
 	// Ensure Result CR

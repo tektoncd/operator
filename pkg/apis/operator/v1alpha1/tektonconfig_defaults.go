@@ -34,6 +34,7 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	tc.Spec.Result.setDefaults()
 	tc.Spec.TektonPruner.SetDefaults()
 	tc.Spec.Scheduler.SetDefaults()
+	tc.Spec.ManualApproval.setDefaults()
 
 	if IsOpenShiftPlatform() {
 		// PAC may appear under spec.platforms.kubernetes if the mutating webhook ran without
