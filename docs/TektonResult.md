@@ -312,9 +312,9 @@ These fields are optional and there is no default values. If user passes them, o
 
 ### Tekton Result Watcher Configuration
 
-Watcher behavior is configured under `spec.watcher` on TektonConfig or TektonResult. These settings are passed as command-line flags to the `tekton-results-watcher` deployment. Updating these fields reconciles the watcher Deployment and recreates pods so the new configuration takes effect.
+Watcher behavior is configured under `spec.result.watcher` on TektonConfig, or `spec.watcher` on TektonResult. These settings are passed as command-line flags to the `tekton-results-watcher` deployment. Updating these fields reconciles the watcher Deployment and recreates pods so the new configuration takes effect.
 
-Performance-related flags remain under `spec.performance`. Operator-managed flags (`api_addr`, `auth_mode`, `namespace`) and secrets (`token`) are not exposed here.
+Performance-related flags remain under `spec.result.performance` (TektonConfig) / `spec.performance` (TektonResult). Operator-managed flags (`api_addr`, `auth_mode`, `namespace`) and secrets (`token`) are not exposed here.
 
 For `summary_labels`, `summary_annotations`, and `label_selector`: omit the field to keep the watcher default, set a value to override, or set `""` to clear the default.
 
