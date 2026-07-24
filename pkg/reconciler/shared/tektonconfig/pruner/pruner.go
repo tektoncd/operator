@@ -77,8 +77,9 @@ func GetTektonPrunerCR(config *v1alpha1.TektonConfig, operatorVersion string) *v
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Config: config.Spec.Config,
-			Pruner: config.Spec.TektonPruner,
+			Config:        config.Spec.Config,
+			Pruner:        config.Spec.TektonPruner,
+			NetworkPolicy: config.Spec.NetworkPolicy,
 		},
 	}
 }
@@ -113,6 +114,11 @@ func UpdatePruner(ctx context.Context, old *v1alpha1.TektonPruner, new *v1alpha1
 
 	if !reflect.DeepEqual(old.Spec.Config, new.Spec.Config) {
 		old.Spec.Config = new.Spec.Config
+		updated = true
+	}
+
+	if !reflect.DeepEqual(old.Spec.NetworkPolicy, new.Spec.NetworkPolicy) {
+		old.Spec.NetworkPolicy = new.Spec.NetworkPolicy
 		updated = true
 	}
 
