@@ -101,7 +101,7 @@ make apply-cr
 Or specify a `profile`:
 
 ```go
-make CR=config/basic clean-cr
+make CR=config/basic apply-cr
 ```
 
 To delete installed Tekton Components, run:
@@ -184,7 +184,7 @@ gcloud container clusters create $CLUSTER_NAME \
   --enable-basic-auth \
   --no-issue-client-certificate \
   --project=$PROJECT_ID \
-  --zone=us-central1 \
+  --region=us-central1 \
   --machine-type=n1-standard-4 \
   --image-type=cos \
   --num-nodes=1 \
