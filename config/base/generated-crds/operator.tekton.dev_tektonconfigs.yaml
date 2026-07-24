@@ -531,6 +531,8 @@ spec:
                           type: string
                       type: object
                     type: array
+                required:
+                - options
                 type: object
               multiclusterProxyAAE:
                 description: MulticlusterProxyAAE holds the customizable options for
@@ -573,9 +575,9 @@ spec:
               networkPolicy:
                 description: |-
                   NetworkPolicy configures NetworkPolicy resources for the operand namespace.
-                  This field is propagated to TektonTrigger, which is the only component with
-                  NetworkPolicy reconciliation implemented. Other components (Pipeline, Chains,
-                  Results, Dashboard) do not yet act on this field.
+                  This field is propagated to TektonTrigger, TektonPipeline, and TektonResult,
+                  which implement NetworkPolicy reconciliation. Other components (Chains,
+                  Dashboard) do not yet act on this field.
                 properties:
                   disabled:
                     description: |-

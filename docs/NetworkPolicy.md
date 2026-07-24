@@ -7,8 +7,8 @@ weight: 15
 # NetworkPolicy
 
 The operator can manage [NetworkPolicy][np] resources for Tekton component workloads.
-Currently TektonPipeline (core controllers, resolvers, and proxy-webhook) and
-TektonTrigger are supported; other components will be added later.
+Currently TektonPipeline (core controllers, resolvers, and proxy-webhook),
+TektonTrigger, and TektonResult are supported; other components will be added later.
 
 Configuration is available via `TektonConfig`:
 
@@ -31,9 +31,11 @@ spec:
               - port: 9000
 ```
 
-The `networkPolicy` field is propagated from `TektonConfig` to `TektonTrigger` and
-`TektonPipeline`. Users can also configure it directly on the `TektonTrigger` or
-`TektonPipeline` CR.
+The `networkPolicy` field is propagated from `TektonConfig` to `TektonTrigger`,
+`TektonPipeline`, and `TektonResult`. When those component CRs are managed by
+`TektonConfig` (the usual install path), **TektonConfig is the source of truth**:
+edits to `spec.networkPolicy` on the component CRs alone are overwritten on the
+next Config reconcile. Configure NetworkPolicy via `TektonConfig.spec.networkPolicy`.
 
 ## Default Policies
 
@@ -84,6 +86,27 @@ to the operand namespace (e.g. `tekton-pipelines` or `openshift-pipelines`):
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
 | | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 | | egress | TCP/80, 443 | Any (external APIs e.g. GitHub) |
+
+### TektonResult
+
+| Policy | Direction | Port | Source / Destination |
+|---|---|---|---|
+| `results-default-deny` | deny all | — | Pods with `app.kubernetes.io/name` in Results API, watcher, retention-policy-agent, postgres |
+| `results-api` | ingress | TCP/8080 | All namespaces (Console Plugin, CLI, watcher, internal clients) |
+| | ingress | TCP/9090 | Prometheus namespace |
+| | egress | UDP+TCP/53 (K8s) or 5353 (OpenShift) | DNS resolver pods |
+| | egress | TCP/5432 | Postgres pods (`app.kubernetes.io/name: tekton-results-postgres`) |
+| | egress | all | API server (auth token review / impersonation) |
+| `results-watcher` | ingress | TCP/9090 | Prometheus namespace |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints; watcher also reaches Results API / DNS) |
+| `results-retention-policy-agent` | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+| | egress | TCP/5432 | Postgres pods |
+| `results-postgres` | ingress | TCP/5432 | Results API and retention-policy-agent pods |
+| | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+
+For an external database, override `results-api` / `results-retention-policy-agent`
+egress via `spec.networkPolicy.policies` (CIDR or peer) so traffic is not limited
+to in-cluster postgres pods.
 
 ### Console Plugin (OpenShift only)
 
