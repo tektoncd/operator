@@ -769,6 +769,12 @@ There is a field called `options` available in all the components.<br>
 > **NOTE:** There is a possibility to have two different values for a field.<br>
 > An example: with a pre-defined field you can set value and the same field may be defined under `options` as well. In that case value from `options` will be final.
 
+> **NOTE:** The embedded objects are not merged as a whole. The operator copies a
+> known set of fields onto the manifest, and the per-kind lists below are
+> exhaustive - a field outside them is ignored silently, with no error or warning.
+> If a field you set under `options` has no effect, it is most likely not
+> supported yet - please open an issue.
+
 A sample `options` field,
 
 ```yaml
@@ -822,6 +828,11 @@ options:
           custom-annotation: "foo"
       spec:
         replicas: 2
+        strategy:
+          type: RollingUpdate
+          rollingUpdate:
+            maxSurge: 0
+            maxUnavailable: 1
         template:
           spec:
             containers:
@@ -838,6 +849,10 @@ options:
           custom-annotation: foo
       spec:
         replicas: 3
+        updateStrategy:
+          type: RollingUpdate
+          rollingUpdate:
+            partition: 1
         template:
           spec:
             containers:
@@ -895,6 +910,7 @@ The following fields are supported in `deployment`
   - `annotations` - supports add and update
 - `spec`
   - `replicas` - updates deployment replicas count
+  - `strategy` - replaces the existing deployment strategy with this, if `type` is not empty
   - `template`
     - `metadata`
       - `labels` - supports add and update
@@ -929,6 +945,7 @@ The following fields are supported in `StatefulSet`
   - `annotations` - supports add and update
 - `spec`
   - `replicas` - updates statefulSets replicas count
+  - `updateStrategy` - replaces the existing statefulSet update strategy with this, if `type` is not empty
   - `serviceName` - updates service name
   - `podManagementPolicy` - updates pod management policy
   - `volumeClaimTemplates` - updates volume claim templates

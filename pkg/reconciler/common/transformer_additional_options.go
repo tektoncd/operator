@@ -287,6 +287,15 @@ func (ot *OptionsTransformer) updateDeployments(u *unstructured.Unstructured) er
 		targetDeployment.Spec.Replicas = ptr.Int32(*deploymentOptions.Spec.Replicas)
 	}
 
+	// update deployment strategy
+	// The whole struct is replaced instead of merged field by field: "rollingUpdate"
+	// may not be set when the type is "Recreate", so merging would leave the
+	// rollingUpdate block from the base manifest behind and the API server would
+	// reject the resulting deployment.
+	if deploymentOptions.Spec.Strategy.Type != "" {
+		targetDeployment.Spec.Strategy = deploymentOptions.Spec.Strategy
+	}
+
 	// update affinity
 	if deploymentOptions.Spec.Template.Spec.Affinity != nil {
 		targetDeployment.Spec.Template.Spec.Affinity = deploymentOptions.Spec.Template.Spec.Affinity
@@ -587,6 +596,15 @@ func (ot *OptionsTransformer) updateStatefulSets(u *unstructured.Unstructured) e
 	// update replicas
 	if statefulSetOptions.Spec.Replicas != nil {
 		targetStatefulSet.Spec.Replicas = ptr.Int32(*statefulSetOptions.Spec.Replicas)
+	}
+
+	// update statefulSet update strategy
+	// The whole struct is replaced instead of merged field by field: "rollingUpdate"
+	// may not be set when the type is "OnDelete", so merging would leave the
+	// rollingUpdate block from the base manifest behind and the API server would
+	// reject the resulting statefulSet.
+	if statefulSetOptions.Spec.UpdateStrategy.Type != "" {
+		targetStatefulSet.Spec.UpdateStrategy = statefulSetOptions.Spec.UpdateStrategy
 	}
 
 	// update affinity

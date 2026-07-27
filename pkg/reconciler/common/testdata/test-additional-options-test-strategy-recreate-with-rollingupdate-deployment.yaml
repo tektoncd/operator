@@ -1,0 +1,29 @@
+---
+# The options asked for Recreate while also supplying a rollingUpdate block.
+# The transformer passes both through untouched rather than silently dropping
+# one of them; the API server is the component that rejects the combination.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-pipelines-controller
+  namespace: tekton-pipelines
+status: {}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: controller
+    spec:
+      containers:
+        - name: tekton-pipelines-controller
+          image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/controller:v0.50.1
+          resources: {}
