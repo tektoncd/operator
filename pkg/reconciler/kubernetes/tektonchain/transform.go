@@ -48,6 +48,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.AddConfigMapValues(ChainsConfig, chainCR.Spec.Chain.ChainProperties),
 			common.AddDeploymentRestrictedPSA(),
 			AddControllerEnv(chainCR.Spec.Chain.ControllerEnvs),
+			common.AddConfigMapValues(leaderElectionChainConfig, chainCR.Spec.Chain.Performance.PerformanceLeaderElectionConfig),
 			common.UpdatePerformanceFlagsInDeploymentAndLeaderConfigMap(&chainCR.Spec.Performance, leaderElectionChainConfig, chainControllerDeployment, chainControllerContainer),
 		}
 		if chainCR.Spec.GenerateSigningSecret {
