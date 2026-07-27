@@ -104,6 +104,143 @@ spec:
                 description: enable or disable TektonPruner Component
                 type: boolean
               global-config:
+                description: |-
+                  GlobalConfig represents the global ConfigMap (tekton-pruner-default-spec)
+                  Root-level fields are defaults; Namespaces map is for per-namespace defaults
+                  NOTE: Selector support (PipelineRuns/TaskRuns arrays) is IGNORED in global ConfigMap
+                properties:
+                  enforcedConfigLevel:
+                    description: 'EnforcedConfigLevel allowed values: global, namespace
+                      (default: namespace)'
+                    type: string
+                  failedHistoryLimit:
+                    format: int32
+                    type: integer
+                  historyLimit:
+                    format: int32
+                    type: integer
+                  namespaces:
+                    additionalProperties:
+                      description: |-
+                        NamespaceSpec is used to hold the pruning config of a specific namespace and its resources
+                        Used in both global ConfigMap (tekton-pruner-default-spec) and namespace ConfigMap (tekton-pruner-namespace-spec)
+                        Selector support (PipelineRuns/TaskRuns arrays) ONLY works in namespace ConfigMaps
+                      properties:
+                        enforcedConfigLevel:
+                          description: 'EnforcedConfigLevel allowed values: global,
+                            namespace (default: namespace)'
+                          type: string
+                        failedHistoryLimit:
+                          format: int32
+                          type: integer
+                        historyLimit:
+                          format: int32
+                          type: integer
+                        pipelineRuns:
+                          items:
+                            description: |-
+                              ResourceSpec is used to hold the config of a specific resource
+                              Only used in namespace-level ConfigMaps (tekton-pruner-namespace-spec), NOT in global ConfigMaps
+                            properties:
+                              enforcedConfigLevel:
+                                description: 'EnforcedConfigLevel allowed values:
+                                  global, namespace (default: namespace)'
+                                type: string
+                              failedHistoryLimit:
+                                format: int32
+                                type: integer
+                              historyLimit:
+                                format: int32
+                                type: integer
+                              name:
+                                type: string
+                              selector:
+                                items:
+                                  description: |-
+                                    SelectorSpec allows specifying selectors for matching resources like PipelineRun or TaskRun
+                                    Only applicable in namespace-level ConfigMaps, NOT in global ConfigMaps
+                                  properties:
+                                    matchAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                    matchLabels:
+                                      additionalProperties:
+                                        type: string
+                                      description: Match by labels AND annotations.
+                                        If both are specified, BOTH must match (AND
+                                        logic)
+                                      type: object
+                                  type: object
+                                type: array
+                              successfulHistoryLimit:
+                                format: int32
+                                type: integer
+                              ttlSecondsAfterFinished:
+                                format: int32
+                                type: integer
+                            type: object
+                          type: array
+                        successfulHistoryLimit:
+                          format: int32
+                          type: integer
+                        taskRuns:
+                          items:
+                            description: |-
+                              ResourceSpec is used to hold the config of a specific resource
+                              Only used in namespace-level ConfigMaps (tekton-pruner-namespace-spec), NOT in global ConfigMaps
+                            properties:
+                              enforcedConfigLevel:
+                                description: 'EnforcedConfigLevel allowed values:
+                                  global, namespace (default: namespace)'
+                                type: string
+                              failedHistoryLimit:
+                                format: int32
+                                type: integer
+                              historyLimit:
+                                format: int32
+                                type: integer
+                              name:
+                                type: string
+                              selector:
+                                items:
+                                  description: |-
+                                    SelectorSpec allows specifying selectors for matching resources like PipelineRun or TaskRun
+                                    Only applicable in namespace-level ConfigMaps, NOT in global ConfigMaps
+                                  properties:
+                                    matchAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                    matchLabels:
+                                      additionalProperties:
+                                        type: string
+                                      description: Match by labels AND annotations.
+                                        If both are specified, BOTH must match (AND
+                                        logic)
+                                      type: object
+                                  type: object
+                                type: array
+                              successfulHistoryLimit:
+                                format: int32
+                                type: integer
+                              ttlSecondsAfterFinished:
+                                format: int32
+                                type: integer
+                            type: object
+                          type: array
+                        ttlSecondsAfterFinished:
+                          format: int32
+                          type: integer
+                      type: object
+                    type: object
+                  successfulHistoryLimit:
+                    format: int32
+                    type: integer
+                  ttlSecondsAfterFinished:
+                    format: int32
+                    type: integer
+                type: object
                 x-kubernetes-preserve-unknown-fields: true
               options:
                 description: options holds additions fields and these fields will

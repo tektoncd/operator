@@ -36,7 +36,6 @@ type NetworkPolicyConfig struct {
 	// If nil or empty, all operator defaults are applied unchanged.
 	// +optional
 	// +kubebuilder:pruning:PreserveUnknownFields
-	// +kubebuilder:validation:Schemaless
 	Policies map[string]networkingv1.NetworkPolicySpec `json:"policies,omitempty"`
 }
 
