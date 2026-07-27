@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"knative.dev/pkg/ptr"
 )
 
@@ -41,6 +42,8 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 	ignorePolicy := admissionregistrationv1.Ignore
 	failPolicy := admissionregistrationv1.Fail
 	sideEffectUnknown := admissionregistrationv1.SideEffectClassUnknown
+	maxSurgeZero := intstr.FromInt32(0)
+	maxUnavailableOne := intstr.FromInt32(1)
 
 	// verify the changes applied on the manifest
 
@@ -576,6 +579,188 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			expectedResultFilename: "./testdata/test-additional-options-test-webhook.yaml",
 		},
 		{
+			// switching to Recreate must drop the rollingUpdate block coming from
+			// the base manifest, otherwise the API server rejects the deployment
+			name: "test-strategy-recreate-for-deployments",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Strategy: appsv1.DeploymentStrategy{
+								Type: appsv1.RecreateDeploymentStrategyType,
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-strategy-deployment.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-strategy-recreate-deployment.yaml",
+		},
+		{
+			name: "test-strategy-rollingupdate-tuning-for-deployments",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Strategy: appsv1.DeploymentStrategy{
+								Type: appsv1.RollingUpdateDeploymentStrategyType,
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &maxSurgeZero,
+									MaxUnavailable: &maxUnavailableOne,
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-strategy-deployment.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-strategy-rollingupdate-deployment.yaml",
+		},
+		{
+			// a deployment present in options but without a strategy must keep
+			// the strategy defined in the base manifest untouched
+			name: "test-strategy-not-set-for-deployments",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Replicas: ptr.Int32(2),
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-strategy-deployment.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-strategy-unset-deployment.yaml",
+		},
+		{
+			// switching back from Recreate must bring the rollingUpdate block in,
+			// proving the replacement works in both directions
+			name: "test-strategy-recreate-to-rollingupdate-for-deployments",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Strategy: appsv1.DeploymentStrategy{
+								Type: appsv1.RollingUpdateDeploymentStrategyType,
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &maxSurgeZero,
+									MaxUnavailable: &maxUnavailableOne,
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-strategy-recreate-deployment.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-strategy-recreate-to-rollingupdate-deployment.yaml",
+		},
+		{
+			// a rollingUpdate without a strategy type is deliberately ignored:
+			// the type drives the decision and an empty type means "keep the base"
+			name: "test-strategy-rollingupdate-without-type-is-ignored-for-deployments",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Replicas: ptr.Int32(2),
+							Strategy: appsv1.DeploymentStrategy{
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &maxSurgeZero,
+									MaxUnavailable: &maxUnavailableOne,
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-strategy-deployment.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-strategy-unset-deployment.yaml",
+		},
+		{
+			// a self-contradictory strategy from options is passed through as given
+			// rather than partially dropped; rejecting it is the API server's job
+			name: "test-strategy-recreate-with-rollingupdate-is-passed-through-for-deployments",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				Deployments: map[string]appsv1.Deployment{
+					"tekton-pipelines-controller": {
+						Spec: appsv1.DeploymentSpec{
+							Strategy: appsv1.DeploymentStrategy{
+								Type: appsv1.RecreateDeploymentStrategyType,
+								RollingUpdate: &appsv1.RollingUpdateDeployment{
+									MaxSurge:       &maxSurgeZero,
+									MaxUnavailable: &maxUnavailableOne,
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-strategy-deployment.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-strategy-recreate-with-rollingupdate-deployment.yaml",
+		},
+		{
+			name: "test-updatestrategy-partition-tuning-for-statefulsets",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				StatefulSets: map[string]appsv1.StatefulSet{
+					"web": {
+						Spec: appsv1.StatefulSetSpec{
+							UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+								Type: appsv1.RollingUpdateStatefulSetStrategyType,
+								RollingUpdate: &appsv1.RollingUpdateStatefulSetStrategy{
+									Partition: ptr.Int32(2),
+								},
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-updatestrategy-statefulset.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-updatestrategy-partition-statefulset.yaml",
+		},
+		{
+			// a statefulSet present in options but without an update strategy must
+			// keep the strategy defined in the base manifest untouched
+			name: "test-updatestrategy-not-set-for-statefulsets",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				StatefulSets: map[string]appsv1.StatefulSet{
+					"web": {
+						Spec: appsv1.StatefulSetSpec{
+							Replicas: ptr.Int32(3),
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-updatestrategy-statefulset.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-updatestrategy-unset-statefulset.yaml",
+		},
+		{
+			// switching to OnDelete must drop the rollingUpdate block coming from
+			// the base manifest, otherwise the API server rejects the statefulSet
+			name: "test-updatestrategy-ondelete-for-statefulsets",
+			additionalOptions: v1alpha1.AdditionalOptions{
+				Disabled: ptr.Bool(false),
+				StatefulSets: map[string]appsv1.StatefulSet{
+					"web": {
+						Spec: appsv1.StatefulSetSpec{
+							UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
+								Type: appsv1.OnDeleteStatefulSetStrategyType,
+							},
+						},
+					},
+				},
+			},
+			inputFilename:          "./testdata/test-additional-options-base-updatestrategy-statefulset.yaml",
+			expectedResultFilename: "./testdata/test-additional-options-test-updatestrategy-ondelete-statefulset.yaml",
+		},
+		{
 			name: "test-runtimeclassname-for-deployments",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
@@ -860,4 +1045,66 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			}
 		})
 	}
+}
+
+// The pod-template hash label drives pod recreation: it is recomputed from the
+// deployment spec, but updateDeploymentHashValue() deliberately zeroes the
+// strategy before hashing. Changing only the strategy must therefore leave the
+// hash untouched, so switching the rollout strategy does not restart the pods.
+// The table test above strips this label before comparing, so it is asserted here.
+func TestDeploymentStrategyDoesNotAffectSpecHash(t *testing.T) {
+	ctx := context.TODO()
+	targetNamespace := "tekton-pipelines"
+	inputFile := "./testdata/test-additional-options-base-strategy-deployment.yaml"
+
+	hashOf := func(t *testing.T, options v1alpha1.AdditionalOptions) string {
+		t.Helper()
+		manifest, err := Fetch(inputFile)
+		require.NoError(t, err)
+		require.NoError(t, ExecuteAdditionalOptionsTransformer(ctx, &manifest, targetNamespace, options))
+
+		for _, resource := range manifest.Resources() {
+			if resource.GetKind() != "Deployment" {
+				continue
+			}
+			labels, found, err := unstructured.NestedStringMap(resource.Object, "spec", "template", "metadata", "labels")
+			require.NoError(t, err)
+			require.True(t, found, "pod template labels not found")
+			hash, found := labels[v1alpha1.DeploymentSpecHashValueLabelKey]
+			require.True(t, found, "spec hash label not found")
+			return hash
+		}
+		t.Fatal("no deployment found in manifest")
+		return ""
+	}
+
+	baseline := hashOf(t, v1alpha1.AdditionalOptions{Disabled: ptr.Bool(false)})
+
+	strategyOnly := hashOf(t, v1alpha1.AdditionalOptions{
+		Disabled: ptr.Bool(false),
+		Deployments: map[string]appsv1.Deployment{
+			"tekton-pipelines-controller": {
+				Spec: appsv1.DeploymentSpec{
+					Strategy: appsv1.DeploymentStrategy{
+						Type: appsv1.RecreateDeploymentStrategyType,
+					},
+				},
+			},
+		},
+	})
+	require.Equal(t, baseline, strategyOnly, "changing the strategy must not change the spec hash")
+
+	// a change outside the strategy must still be reflected in the hash,
+	// otherwise the assertion above would hold vacuously
+	replicasChanged := hashOf(t, v1alpha1.AdditionalOptions{
+		Disabled: ptr.Bool(false),
+		Deployments: map[string]appsv1.Deployment{
+			"tekton-pipelines-controller": {
+				Spec: appsv1.DeploymentSpec{
+					Replicas: ptr.Int32(5),
+				},
+			},
+		},
+	})
+	require.NotEqual(t, baseline, replicasChanged, "changing the replicas must change the spec hash")
 }
