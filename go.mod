@@ -20,7 +20,7 @@ require (
 	github.com/sigstore/cosign/v2 v2.6.4
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
-	github.com/tektoncd/pipeline v1.14.0
+	github.com/tektoncd/pipeline v1.14.1
 	github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2
 	github.com/tektoncd/pruner v0.4.1
 	github.com/tektoncd/triggers v0.36.0
