@@ -23,6 +23,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knative.dev/pkg/ptr"
@@ -116,5 +117,64 @@ func TestUpdateStatefulSetOrdinalsForChains(t *testing.T) {
 			t.Error("Expected Deployment to be removed from manifest")
 			break
 		}
+	}
+}
+
+func TestUpdateLeaderElectionConfigMapForChains(t *testing.T) {
+	desiredBuckets := uint(5)
+	cr := &v1alpha1.TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chains",
+			Namespace: "tekton-pipelines",
+		},
+		Spec: v1alpha1.TektonChainSpec{
+			CommonSpec: v1alpha1.CommonSpec{
+				TargetNamespace: "tekton-chains",
+			},
+			Chain: v1alpha1.Chain{
+				ChainProperties: v1alpha1.ChainProperties{
+					Performance: v1alpha1.PerformanceProperties{
+						PerformanceLeaderElectionConfig: v1alpha1.PerformanceLeaderElectionConfig{
+							Buckets: &desiredBuckets,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	manifest, err := common.Fetch("../../common/testdata/test-chain-leader-election-configmap.yaml")
+	if err != nil {
+		t.Fatalf("Failed to fetch test data: %v", err)
+	}
+
+	extension := common.NoExtension(ctx)
+	transformers := filterAndTransform(extension)
+	result, err := transformers(ctx, &manifest, cr)
+	if err != nil {
+		t.Fatalf("Error applying transformers: %v", err)
+	}
+
+	foundConfigMap := false
+	for _, resource := range result.Resources() {
+		if resource.GetKind() == "ConfigMap" && resource.GetName() == leaderElectionChainConfig {
+			foundConfigMap = true
+
+			cm := &corev1.ConfigMap{}
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, cm); err != nil {
+				t.Fatalf("Failed to convert resource to ConfigMap: %v", err)
+			}
+
+			expectedBuckets := "5"
+			if cm.Data["buckets"] != expectedBuckets {
+				t.Errorf("Expected ConfigMap %s data[buckets] to be %q, got %q", leaderElectionChainConfig, expectedBuckets, cm.Data["buckets"])
+			}
+			break
+		}
+	}
+
+	if !foundConfigMap {
+		t.Errorf("Expected to find ConfigMap %s in the transformed manifest, but none was found", leaderElectionChainConfig)
 	}
 }

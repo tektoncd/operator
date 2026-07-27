@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-chains-controller
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/name: tekton-chains
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-chains
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tekton-chains
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: default
+      app.kubernetes.io/part-of: tekton-chains
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tekton-chains
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/instance: default
+        app.kubernetes.io/part-of: tekton-chains
+    spec:
+      serviceAccountName: tekton-chains-controller
+      containers:
+      - name: tekton-chains-controller
+        image: gcr.io/tekton-releases/github.com/tektoncd/chains/cmd/controller:latest
+        args:
+        - -disable-ha=true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tekton-chains-config-leader-election
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/part-of: tekton-chains
+data:
+  buckets: "1"
