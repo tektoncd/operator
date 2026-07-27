@@ -47,7 +47,6 @@ type TektonPruner struct {
 
 type TektonPrunerConfig struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
-	// +kubebuilder:validation:Schemaless
 	GlobalConfig *config.GlobalConfig `json:"global-config"`
 }
 

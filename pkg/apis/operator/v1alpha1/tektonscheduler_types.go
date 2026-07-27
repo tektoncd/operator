@@ -60,7 +60,6 @@ type SchedulerConfig struct {
 	// This hold the config data from tekton-kueue. ConfigMap in tekton kueue is loaded as config.yaml so we need to
 	// match the key here
 	// +kubebuilder:pruning:PreserveUnknownFields
-	// +kubebuilder:validation:Schemaless
 	config.Config `json:"config.yaml"`
 }
 

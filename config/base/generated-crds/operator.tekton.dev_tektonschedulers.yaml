@@ -52,6 +52,19 @@ spec:
                 description: |-
                   This hold the config data from tekton-kueue. ConfigMap in tekton kueue is loaded as config.yaml so we need to
                   match the key here
+                properties:
+                  cel:
+                    properties:
+                      expressions:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  multiKueueOverride:
+                    type: boolean
+                  queueName:
+                    type: string
+                type: object
                 x-kubernetes-preserve-unknown-fields: true
               disabled:
                 description: enable or disable TektonScheduler Component
