@@ -2169,7 +2169,7 @@ k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextension
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1/fake
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1
 k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1/fake
-# k8s.io/apimachinery v0.36.2
+# k8s.io/apimachinery v0.36.3
 ## explicit; go 1.26.0
 k8s.io/apimachinery/pkg/api/equality
 k8s.io/apimachinery/pkg/api/errors
@@ -2782,7 +2782,7 @@ sigs.k8s.io/randfill/bytesource
 # sigs.k8s.io/release-utils v0.12.4
 ## explicit; go 1.24.0
 sigs.k8s.io/release-utils/version
-# sigs.k8s.io/structured-merge-diff/v6 v6.3.2
+# sigs.k8s.io/structured-merge-diff/v6 v6.3.3
 ## explicit; go 1.23
 sigs.k8s.io/structured-merge-diff/v6/fieldpath
 sigs.k8s.io/structured-merge-diff/v6/merge
