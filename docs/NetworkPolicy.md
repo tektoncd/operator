@@ -7,8 +7,9 @@ weight: 15
 # NetworkPolicy
 
 The operator can manage [NetworkPolicy][np] resources for Tekton component workloads.
-Currently TektonPipeline (core controllers, resolvers, and proxy-webhook) and
-TektonTrigger are supported; other components will be added later.
+Currently TektonPipeline (core controllers, resolvers, and proxy-webhook),
+TektonTrigger, and Pipelines-as-Code are supported; other components
+will be added later.
 
 Configuration is available via `TektonConfig`:
 
@@ -84,6 +85,25 @@ to the operand namespace (e.g. `tekton-pipelines` or `openshift-pipelines`):
 | | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
 | | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 | | egress | TCP/80, 443 | Any (external APIs e.g. GitHub) |
+
+### OpenShift Pipelines-as-Code
+
+| Policy | Direction | Port | Source / Destination |
+|---|---|---|---|
+| `pac-default-deny` | deny all | — | All pods with `app.kubernetes.io/part-of: pipelines-as-code` |
+| `pac-controller` | ingress | TCP/9090 | Prometheus namespace |
+| | ingress | TCP/8082 | Any (Git provider webhooks via Route/Ingress) |
+| | egress | UDP+TCP/53 (K8s) or 5353 (OpenShift) | DNS resolver pods |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
+| | egress | TCP/80, 443 | Any (Git provider APIs: GitHub, GitLab, Bitbucket, Gitea) |
+| `pac-watcher` | ingress | TCP/9090 | Prometheus namespace |
+| | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
+| | egress | TCP/80, 443 | Any (reporting status to Git providers) |
+| `pac-webhook` | ingress | TCP/8443 | Any (admission webhook) |
+| | ingress | TCP/9090 | Prometheus namespace |
+| | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 
 ### Console Plugin (OpenShift only)
 

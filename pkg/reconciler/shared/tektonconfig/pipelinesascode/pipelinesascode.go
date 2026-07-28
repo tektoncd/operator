@@ -91,8 +91,9 @@ func createOPAC(ctx context.Context, clients op.OpenShiftPipelinesAsCodeInterfac
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Config:      config.Spec.Config,
-			PACSettings: pacSettings,
+			Config:        config.Spec.Config,
+			PACSettings:   pacSettings,
+			NetworkPolicy: config.Spec.NetworkPolicy,
 		},
 	}
 
@@ -140,6 +141,11 @@ func updateOPAC(ctx context.Context, opacCR *v1alpha1.OpenShiftPipelinesAsCode, 
 			opacCR.Spec.PACSettings.AdditionalPACControllers = p.PACSettings.AdditionalPACControllers
 			updated = true
 		}
+	}
+
+	if !reflect.DeepEqual(opacCR.Spec.NetworkPolicy, config.Spec.NetworkPolicy) {
+		opacCR.Spec.NetworkPolicy = config.Spec.NetworkPolicy
+		updated = true
 	}
 
 	if opacCR.ObjectMeta.OwnerReferences == nil {

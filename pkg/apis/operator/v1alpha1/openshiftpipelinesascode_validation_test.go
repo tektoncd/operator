@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"gotest.tools/v3/assert"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -132,6 +133,37 @@ func TestValidateAddtionalPACControllerInvalidNameLength(t *testing.T) {
 	}
 	err := opacCR.Validate(context.TODO())
 	assert.Equal(t, fmt.Sprintf("invalid value: invalid resource name %q: length must be no more than 25 characters: name: spec.additionalPACControllers", "testlengthwhichexceedsthemaximumlength"), err.Error())
+}
+
+func TestValidateNetworkPolicyValidConfig(t *testing.T) {
+	cfg := NetworkPolicyConfig{
+		Policies: map[string]networkingv1.NetworkPolicySpec{
+			"pac-controller": {},
+			"custom-policy":  {},
+		},
+	}
+	if err := cfg.validate("spec.networkPolicy"); err != nil {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
+}
+
+func TestValidateNetworkPolicyInvalidPolicyName(t *testing.T) {
+	cfg := NetworkPolicyConfig{
+		Policies: map[string]networkingv1.NetworkPolicySpec{
+			"Invalid_Name": {},
+		},
+	}
+	err := cfg.validate("spec.networkPolicy")
+	assert.ErrorContains(t, err, "invalid key name \"Invalid_Name\"")
+}
+
+func TestValidateNetworkPolicyDisabled(t *testing.T) {
+	cfg := NetworkPolicyConfig{
+		Disabled: true,
+	}
+	if err := cfg.validate("spec.networkPolicy"); err != nil {
+		t.Fatalf("unexpected validation error: %v", err)
+	}
 }
 
 func TestValidateAddtionalPACControllerInvalidSetting(t *testing.T) {
