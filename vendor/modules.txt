@@ -659,7 +659,7 @@ github.com/golang-jwt/jwt/v4
 # github.com/golang/snappy v0.0.4
 ## explicit
 github.com/golang/snappy
-# github.com/google/cel-go v0.28.1
+# github.com/google/cel-go v0.29.0
 ## explicit; go 1.23.0
 github.com/google/cel-go/cel
 github.com/google/cel-go/checker
