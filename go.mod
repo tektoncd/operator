@@ -33,7 +33,7 @@ require (
 	gotest.tools/v3 v3.5.2
 	k8s.io/api v0.35.7
 	k8s.io/apiextensions-apiserver v0.35.6
-	k8s.io/apimachinery v0.36.2
+	k8s.io/apimachinery v0.36.3
 	k8s.io/client-go v1.5.2
 	k8s.io/code-generator v0.35.6
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
@@ -318,5 +318,5 @@ require (
 	sigs.k8s.io/kube-storage-version-migrator v0.0.6-0.20230721195810-5c8923c5ff96 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/release-utils v0.12.4 // indirect
-	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
+	sigs.k8s.io/structured-merge-diff/v6 v6.3.3 // indirect
 )
