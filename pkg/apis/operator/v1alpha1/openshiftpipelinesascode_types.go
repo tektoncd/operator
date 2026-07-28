@@ -55,6 +55,10 @@ type OpenShiftPipelinesAsCodeSpec struct {
 	CommonSpec  `json:",inline"`
 	Config      Config `json:"config,omitempty"`
 	PACSettings `json:",inline"`
+	// NetworkPolicy configures NetworkPolicy creation for the controller,
+	// watcher and webhook workloads deployed by OpenShiftPipelinesAsCode.
+	// +optional
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
 // OpenShiftPipelinesAsCodeStatus defines the observed state of OpenShiftPipelinesAsCode

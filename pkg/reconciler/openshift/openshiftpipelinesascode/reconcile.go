@@ -26,6 +26,7 @@ import (
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	pacreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/openshiftpipelinesascode"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
@@ -53,6 +54,8 @@ type Reconciler struct {
 	pacVersion string
 	// additionalPACManifest has the source manifest for the additional Openshift Pipelines As Code Controller
 	additionalPACManifest mf.Manifest
+	// platformParams holds platform-specific values for building NetworkPolicy rules
+	platformParams networkpolicy.PlatformParams
 }
 
 // Check that our Reconciler implements controller.Reconciler
@@ -101,6 +104,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, pac *v1alpha1.OpenShiftP
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
 			return err
 		}
+		pac.Status.MarkInstallerSetNotReady(msg)
+		return nil
+	}
+
+	if err := r.reconcileNetworkPolicies(ctx, pac); err != nil {
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		msg := fmt.Sprintf("NetworkPolicy reconciliation failed: %s", err.Error())
+		logger.Errorw("NetworkPolicy reconciliation failed", "error", err)
 		pac.Status.MarkInstallerSetNotReady(msg)
 		return nil
 	}

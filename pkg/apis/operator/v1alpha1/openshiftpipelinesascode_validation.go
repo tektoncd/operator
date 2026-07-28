@@ -46,6 +46,7 @@ func (pac *OpenShiftPipelinesAsCode) Validate(ctx context.Context) *apis.FieldEr
 	errs = errs.Also(pac.Spec.CommonSpec.validate("spec"))
 
 	errs = errs.Also(pac.Spec.PACSettings.validate(logger, "spec"))
+	errs = errs.Also(pac.Spec.NetworkPolicy.validate("spec.networkPolicy"))
 
 	return errs
 }

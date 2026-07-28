@@ -675,6 +675,7 @@ func (in *OpenShiftPipelinesAsCodeSpec) DeepCopyInto(out *OpenShiftPipelinesAsCo
 	out.CommonSpec = in.CommonSpec
 	in.Config.DeepCopyInto(&out.Config)
 	in.PACSettings.DeepCopyInto(&out.PACSettings)
+	in.NetworkPolicy.DeepCopyInto(&out.NetworkPolicy)
 	return
 }
 

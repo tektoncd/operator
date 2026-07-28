@@ -26,6 +26,7 @@ import (
 	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	pacreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/openshiftpipelinesascode"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/tools/cache"
 	"knative.dev/pkg/configmap"
@@ -65,6 +66,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Errorf("Failed to create trigger metrics recorder %v", err)
 		}
 
+		params := networkpolicy.KubernetesPlatformDefaults()
+		if v1alpha1.IsOpenShiftPlatform() {
+			params = networkpolicy.OpenShiftPlatformDefaults()
+		}
+
 		c := &Reconciler{
 			pipelineInformer:      tektonPipelineinformer.Get(ctx),
 			installerSetClient:    client.NewInstallerSetClient(tisClient, operatorVer, pacVersion, v1alpha1.KindOpenShiftPipelinesAsCode, metrics),
@@ -72,6 +78,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			manifest:              manifest,
 			additionalPACManifest: filterAdditionalControllerManifest(manifest),
 			pacVersion:            pacVersion,
+			platformParams:        params,
 		}
 		impl := pacreconciler.NewImpl(ctx, c)
 
