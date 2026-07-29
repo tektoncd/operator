@@ -176,7 +176,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	if err != nil {
 		logger.Errorw("StatefulSet resources installation failed", "error", err)
 		installerSet.Status.MarkStatefulSetNotReady(err.Error())
-		return r.handleError(err, installerSet)
+		// StatefulSet "not ready" is inherently transient (pods starting up, first-time
+		// DB initialization, etc.). Return a fixed 10-second requeue instead of letting
+		// Knative's exponential backoff push retry intervals to 128s+, which causes
+		// profile transitions (e.g. lite → basic) to time out waiting for postgres.
+		// Real API errors on the ensureResource path are also safe to retry at 10s.
+		return v1alpha1.REQUEUE_EVENT_AFTER
 	}
 
 	// Update Status for StatefulSet Resources
