@@ -42,6 +42,7 @@ import (
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 )
 
 const (
@@ -304,10 +305,26 @@ func (s *TektonConfigTestSuite) Test01_AutoInstall() {
 
 // change the profile "spec.profile" to different values and verify resources
 func (s *TektonConfigTestSuite) Test02_ChangeProfile() {
+	t := s.T()
+
 	// switch to "lite"
 	newProfile := v1alpha1.ProfileLite
 	s.changeProfile(newProfile)
 	s.verifyProfile(newProfile, true)
+
+	// Verify that Chain and Result CRs are absent on lite profile.
+	// Regression test for https://github.com/tektoncd/operator/issues/2781:
+	// lite was incorrectly creating these CRs because the profile guard was missing.
+	_, err := s.clients.TektonChains().Get(context.TODO(), s.resourceNames.TektonChain, metav1.GetOptions{})
+	require.True(t, apierrs.IsNotFound(err), "TektonChain CR must not exist on lite profile, got: %v", err)
+	_, err = s.clients.TektonResult().Get(context.TODO(), s.resourceNames.TektonResult, metav1.GetOptions{})
+	require.True(t, apierrs.IsNotFound(err), "TektonResult CR must not exist on lite profile, got: %v", err)
+
+	// Delete the stale postgres PVC now while TektonResult CR is absent.
+	// When we switch to basic, the operator creates a new TektonResult CR and
+	// generates a new random postgres password. If the old PVC (initialised with
+	// the previous password) is still present, postgres authentication fails.
+	s.cleanupResultPostgres()
 
 	// switch to "basic"
 	newProfile = v1alpha1.ProfileBasic
@@ -754,11 +771,17 @@ func (s *TektonConfigTestSuite) verifyResources(expectedProfile string, verifyPr
 	require.Equal(t, expectedProfile, configCR.Spec.Profile, "verify profile match")
 
 	// verify tektonConfig status
-	// workaround - starts
-	err := resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, interval, 3*time.Minute)
-	if err != nil {
-		// fix this issue and remove the following workaround.
-		s.logger.Warnw("***WARNING*** fix the issue in product. running with workaround. restarting the operator pod",
+	// Use a longer initial wait to cover postgres cold-start (first-time DB initialisation
+	// on KIND CI takes 2-4 min). The previous 3-minute timeout was too tight: when it
+	// expired the workaround below restarted the operator pod, which resets Knative's
+	// controller backoff counters and made convergence worse, not better.
+	err := resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, interval, 7*time.Minute)
+	if err != nil && utils.IsOpenShift() {
+		// OpenShift-specific workaround for occasional addons InstallerSet reconciliation
+		// stall (https://github.com/tektoncd/operator/issues/1441, closed Dec 2024).
+		// Operator restart is NOT applied on Kubernetes — it resets backoff counters and
+		// is counterproductive when the only thing needed is to wait for postgres to start.
+		s.logger.Warnw("***WARNING*** OpenShift: addons InstallerSet reconciliation stall; restarting operator pod",
 			"issue", "https://github.com/tektoncd/operator/issues/1441",
 		)
 		retryCount := 3
@@ -766,21 +789,17 @@ func (s *TektonConfigTestSuite) verifyResources(expectedProfile string, verifyPr
 			if retryCount == 0 {
 				break
 			}
-			// delete operator pod
 			err = resources.DeletePodByLabelSelector(s.clients.KubeClient, s.resourceNames.OperatorPodSelectorLabel, s.resourceNames.Namespace)
 			require.NoError(t, err, "delete operator pod")
-
-			// wait for tektonConfig ready status
 			err = resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, interval, 2*time.Minute)
 			if err == nil {
 				break
 			}
 			retryCount--
 		}
-		// workaround - ends
 		err = resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, interval, timeout)
-		require.NoError(t, err, "waiting for tektonConfig ready status")
 	}
+	require.NoError(t, err, "waiting for tektonConfig ready status")
 	s.logger.Debug("tektonConfig becomes ready")
 
 	profileResources, found := profiles[configCR.Spec.Profile]
@@ -1082,6 +1101,7 @@ func (s *TektonConfigTestSuite) getDefaultConfig() *v1alpha1.TektonConfig {
 			},
 		},
 	}
+
 	configCR.SetDefaults(context.TODO())
 
 	return configCR
@@ -1093,15 +1113,77 @@ func (s *TektonConfigTestSuite) resetToDefaults() {
 	timeout := s.timeout
 
 	tc := s.getCurrentConfig(timeout)
-
 	defaultTC := s.getDefaultConfig()
-	// update to defaults
-	tc.Spec = defaultTC.Spec
 
-	_, err := s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	// If the profile is already correct and TektonConfig is Ready, skip the
+	// Update call. A no-op Update still triggers a reconcile loop which makes
+	// the status transiently not-ready, forcing a full verifyProfile wait
+	// (up to 3 min on KIND CI while postgres re-proves it is healthy).
+	if tc.Spec.Profile == defaultTC.Spec.Profile {
+		err := resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, s.interval, 30*time.Second)
+		if err == nil {
+			s.logger.Debug("already at default profile and config is ready, skipping reset")
+			return
+		}
+		// Not ready yet — fall through to the full update+verify path.
+	}
+
+	// Before switching to the new profile: if TektonResult CR is currently absent
+	// (e.g. cluster was left in lite profile), delete the stale postgres PVC so the
+	// operator initialises postgres fresh with the new secret it will generate.
+	s.cleanupResultPostgres()
+
+	// Update to defaults with retry-on-conflict: the operator may update TektonConfig
+	// status between our getCurrentConfig() call and our Update(), causing a 409
+	// Conflict. On conflict we re-fetch the latest version and retry.
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		tc = s.getCurrentConfig(timeout)
+		tc.Spec = defaultTC.Spec
+		_, updateErr := s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+		return updateErr
+	})
 	require.NoError(t, err)
 
 	s.verifyProfile(tc.Spec.Profile, true)
+}
+
+// cleanupResultPostgres deletes the postgres PVC when the TektonResult CR is
+// absent. When a profile switch causes the TektonResult CR to be deleted,
+// Kubernetes GC also removes the postgres Secret (ownerRef). The postgres PVC
+// has no ownerRef and survives. On the next profile switch that re-creates
+// TektonResult, the operator generates a new random password — but postgres
+// finds the old data directory and rejects the new credentials (SASL auth
+// failure). Deleting the PVC while the CR is absent lets postgres initialise
+// cleanly with the new secret.
+//
+// This is a no-op when TektonResult CR currently exists (secret is intact,
+// no stale PVC issue).
+func (s *TektonConfigTestSuite) cleanupResultPostgres() {
+	ctx := context.TODO()
+
+	_, err := s.clients.TektonResult().Get(ctx, s.resourceNames.TektonResult, metav1.GetOptions{})
+	if err == nil {
+		// CR exists — postgres secret is intact, no stale-PVC risk.
+		return
+	}
+	if !apierrs.IsNotFound(err) {
+		// Unexpected API error — log and carry on; not worth failing the test here.
+		s.logger.Warnw("unexpected error checking TektonResult CR", "error", err)
+		return
+	}
+
+	// TektonResult CR is gone. Delete the PVC; ignore NotFound.
+	const pvcName = "postgredb-tekton-results-postgres-0"
+	targetNS := s.resourceNames.TargetNamespace
+	pvcErr := s.clients.KubeClient.CoreV1().PersistentVolumeClaims(targetNS).
+		Delete(ctx, pvcName, metav1.DeleteOptions{})
+	if pvcErr != nil && !apierrs.IsNotFound(pvcErr) {
+		s.logger.Warnw("failed to delete stale postgres PVC", "name", pvcName, "namespace", targetNS, "error", pvcErr)
+		return
+	}
+	if pvcErr == nil {
+		s.logger.Debugw("deleted stale postgres PVC", "name", pvcName, "namespace", targetNS)
+	}
 }
 
 // deletes the operator pod

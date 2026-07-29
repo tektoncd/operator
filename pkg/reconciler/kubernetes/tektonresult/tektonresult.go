@@ -278,6 +278,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 		return err
 	}
 
+	// If the installer set is being deleted (e.g. leftover from a previous profile
+	// that included Result, such as lite → basic transition), wait for it to be
+	// fully removed before proceeding. Using a dying set causes the reconciler to
+	// loop forever because the set can never become Ready.
+	if installedTIS.DeletionTimestamp != nil {
+		logger.Infow("Existing installer set is being deleted, waiting for cleanup", "name", existingInstallerSet)
+		tr.Status.MarkInstallerSetNotReady("Waiting for previous installer set to be deleted")
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	}
+
 	installerSetTargetNamespace := installedTIS.Annotations[v1alpha1.TargetNamespaceKey]
 	installerSetReleaseVersion := installedTIS.Labels[v1alpha1.ReleaseVersionKey]
 
