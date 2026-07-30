@@ -22,10 +22,12 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"knative.dev/pkg/ptr"
 )
 
 func TestResultsDefaultPolicies(t *testing.T) {
-	policies := resultsDefaultPolicies(networkpolicy.OpenShiftPlatformDefaults())
+	policies := resultsDefaultPolicies(networkpolicy.OpenShiftPlatformDefaults(), v1alpha1.ResultsAPIProperties{})
 	wantNames := []string{
 		"results-api",
 		"results-watcher",
@@ -35,25 +37,77 @@ func TestResultsDefaultPolicies(t *testing.T) {
 	if len(policies) != len(wantNames) {
 		t.Fatalf("expected %d policies, got %d", len(wantNames), len(policies))
 	}
+	byName := map[string]networkingv1.NetworkPolicy{}
 	for i, name := range wantNames {
 		if policies[i].Name != name {
 			t.Errorf("policy[%d]: expected %q, got %q", i, name, policies[i].Name)
 		}
+		byName[policies[i].Name] = policies[i]
 	}
 
-	watcher := policies[1]
-	if got := len(watcher.Spec.Egress); got != 1 {
-		t.Fatalf("results-watcher: expected 1 egress rule (allow-all), got %d", got)
+	api := byName["results-api"]
+	assertIngressHasPort(t, "results-api", api.Spec.Ingress, 8080)
+	assertIngressHasPort(t, "results-api", api.Spec.Ingress, 9090)
+	assertEgressHasPortToPostgres(t, "results-api", api.Spec.Egress, 5432)
+
+	watcher := byName["results-watcher"]
+	if got := len(watcher.Spec.Egress); got != 2 {
+		t.Fatalf("results-watcher: expected 2 egress rules (DNS + allow-all), got %d", got)
 	}
-	if len(watcher.Spec.Egress[0].Ports) != 0 || len(watcher.Spec.Egress[0].To) != 0 {
-		t.Errorf("results-watcher: expected empty allow-all egress rule, got %#v", watcher.Spec.Egress[0])
+	assertEgressHasDNS(t, "results-watcher", watcher.Spec.Egress)
+	assertEgressHasAllowAll(t, "results-watcher", watcher.Spec.Egress)
+	assertIngressHasPort(t, "results-watcher", watcher.Spec.Ingress, 9090)
+
+	retention := byName["results-retention-policy-agent"]
+	assertEgressHasDNS(t, "results-retention-policy-agent", retention.Spec.Egress)
+	assertEgressHasPortToPostgres(t, "results-retention-policy-agent", retention.Spec.Egress, 5432)
+
+	postgres := byName["results-postgres"]
+	assertIngressHasPort(t, "results-postgres", postgres.Spec.Ingress, 5432)
+	assertIngressFromApp(t, "results-postgres", postgres.Spec.Ingress, "tekton-results-api")
+	assertIngressFromApp(t, "results-postgres", postgres.Spec.Ingress, "tekton-results-retention-policy-agent")
+}
+
+func TestResultsDefaultPoliciesUsesSpecPorts(t *testing.T) {
+	props := v1alpha1.ResultsAPIProperties{
+		ServerPort:     ptr.Int64(18080),
+		PrometheusPort: ptr.Int64(19090),
+		DBPort:         ptr.Int64(15432),
+	}
+	policies := resultsDefaultPolicies(networkpolicy.KubernetesPlatformDefaults(), props)
+	byName := map[string]networkingv1.NetworkPolicy{}
+	for _, p := range policies {
+		byName[p.Name] = p
+	}
+
+	assertIngressHasPort(t, "results-api", byName["results-api"].Spec.Ingress, 18080)
+	assertIngressHasPort(t, "results-api", byName["results-api"].Spec.Ingress, 19090)
+	assertEgressHasPortToPostgres(t, "results-api", byName["results-api"].Spec.Egress, 15432)
+	assertIngressHasPort(t, "results-watcher", byName["results-watcher"].Spec.Ingress, 19090)
+	assertEgressHasPortToPostgres(t, "results-retention-policy-agent", byName["results-retention-policy-agent"].Spec.Egress, 15432)
+	assertIngressHasPort(t, "results-postgres", byName["results-postgres"].Spec.Ingress, 15432)
+}
+
+func TestPortOrDefault(t *testing.T) {
+	if got := portOrDefault(nil, 8080); got != 8080 {
+		t.Errorf("nil: got %d", got)
+	}
+	if got := portOrDefault(ptr.Int64(9090), 8080); got != 9090 {
+		t.Errorf("set: got %d", got)
+	}
+}
+
+func TestResultsDefaultDenyPolicy(t *testing.T) {
+	deny := defaultDenyPolicy()
+	if deny.Name != "results-default-deny" {
+		t.Fatalf("expected name results-default-deny, got %q", deny.Name)
 	}
 }
 
 func TestGenerateResultsNetworkPolicies(t *testing.T) {
 	defaults := append(
 		[]networkingv1.NetworkPolicy{defaultDenyPolicy()},
-		resultsDefaultPolicies(networkpolicy.KubernetesPlatformDefaults())...,
+		resultsDefaultPolicies(networkpolicy.KubernetesPlatformDefaults(), v1alpha1.ResultsAPIProperties{})...,
 	)
 	m, err := networkpolicy.Generate(v1alpha1.NetworkPolicyConfig{}, "tekton-pipelines", defaults)
 	if err != nil {
@@ -74,4 +128,72 @@ func TestGenerateResultsNetworkPolicies(t *testing.T) {
 	if got := len(disabled.Resources()); got != 0 {
 		t.Errorf("expected empty manifest when disabled, got %d", got)
 	}
+}
+
+func assertIngressHasPort(t *testing.T, policy string, rules []networkingv1.NetworkPolicyIngressRule, port int32) {
+	t.Helper()
+	want := intstr.FromInt32(port)
+	for _, rule := range rules {
+		for _, p := range rule.Ports {
+			if p.Port != nil && *p.Port == want {
+				return
+			}
+		}
+	}
+	t.Errorf("%s: expected ingress port %d", policy, port)
+}
+
+func assertEgressHasPortToPostgres(t *testing.T, policy string, rules []networkingv1.NetworkPolicyEgressRule, port int32) {
+	t.Helper()
+	want := intstr.FromInt32(port)
+	for _, rule := range rules {
+		hasPort := false
+		for _, p := range rule.Ports {
+			if p.Port != nil && *p.Port == want {
+				hasPort = true
+				break
+			}
+		}
+		if !hasPort {
+			continue
+		}
+		for _, peer := range rule.To {
+			if peer.PodSelector != nil && peer.PodSelector.MatchLabels["app.kubernetes.io/name"] == "tekton-results-postgres" {
+				return
+			}
+		}
+	}
+	t.Errorf("%s: expected egress TCP/%d to tekton-results-postgres", policy, port)
+}
+
+func assertEgressHasDNS(t *testing.T, policy string, rules []networkingv1.NetworkPolicyEgressRule) {
+	t.Helper()
+	for _, rule := range rules {
+		if len(rule.Ports) > 0 && len(rule.To) > 0 {
+			return
+		}
+	}
+	t.Errorf("%s: expected DNS egress rule", policy)
+}
+
+func assertEgressHasAllowAll(t *testing.T, policy string, rules []networkingv1.NetworkPolicyEgressRule) {
+	t.Helper()
+	for _, rule := range rules {
+		if len(rule.Ports) == 0 && len(rule.To) == 0 {
+			return
+		}
+	}
+	t.Errorf("%s: expected allow-all egress rule", policy)
+}
+
+func assertIngressFromApp(t *testing.T, policy string, rules []networkingv1.NetworkPolicyIngressRule, app string) {
+	t.Helper()
+	for _, rule := range rules {
+		for _, peer := range rule.From {
+			if peer.PodSelector != nil && peer.PodSelector.MatchLabels["app"] == app {
+				return
+			}
+		}
+	}
+	t.Errorf("%s: expected ingress From app=%s", policy, app)
 }
