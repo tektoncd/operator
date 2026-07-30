@@ -18,6 +18,7 @@ package tektonresult
 
 import (
 	"context"
+	"math"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -29,10 +30,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func resultsDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1.NetworkPolicy {
-	apiPort := intstr.FromInt32(8080)
-	metricsPort := intstr.FromInt32(9090)
-	postgresPort := intstr.FromInt32(5432)
+const (
+	defaultAPIPort        int32 = 8080
+	defaultPrometheusPort int32 = 9090
+	defaultDBPort         int32 = 5432
+)
+
+func resultsDefaultPolicies(params networkpolicy.PlatformParams, props v1alpha1.ResultsAPIProperties) []networkingv1.NetworkPolicy {
+	apiPort := intstr.FromInt32(portOrDefault(props.ServerPort, defaultAPIPort))
+	metricsPort := intstr.FromInt32(portOrDefault(props.PrometheusPort, defaultPrometheusPort))
+	postgresPort := intstr.FromInt32(portOrDefault(props.DBPort, defaultDBPort))
 	tcp := corev1.ProtocolTCP
 
 	postgresPeer := networkingv1.NetworkPolicyPeer{
@@ -93,9 +100,10 @@ func resultsDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1.
 				Ingress: []networkingv1.NetworkPolicyIngressRule{
 					networkpolicy.PrometheusIngressRule(params, metricsPort),
 				},
-				// Allow-all egress: NetworkPolicy cannot target the API server on
-				// the host network; address/port are not fixed (SRVKP-12055).
+				// Keep an explicit DNS egress rule in addition to allow-all so DNS
+				// keeps working if the API-server egress rule is later tightened.
 				Egress: []networkingv1.NetworkPolicyEgressRule{
+					networkpolicy.DNSEgressRule(params),
 					networkpolicy.APIServerEgressRule(),
 				},
 			},
@@ -160,6 +168,14 @@ func resultsDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1.
 	}
 }
 
+// portOrDefault returns *p as int32 when set and positive, otherwise def.
+func portOrDefault(p *int64, def int32) int32 {
+	if p != nil && *p > 0 && *p <= math.MaxInt32 {
+		return int32(*p)
+	}
+	return def
+}
+
 // defaultDenyPolicy scopes deny-all to Results pods only.
 // Do not reuse "tekton-default-deny" — Triggers already owns that name.
 // Pod templates use app.kubernetes.io/name (not part-of) on the pod itself.
@@ -189,7 +205,7 @@ func (r *Reconciler) reconcileNetworkPolicies(ctx context.Context, tr *v1alpha1.
 	}
 	defaults := append(
 		[]networkingv1.NetworkPolicy{defaultDenyPolicy()},
-		resultsDefaultPolicies(r.platformParams)...,
+		resultsDefaultPolicies(r.platformParams, tr.Spec.ResultsAPIProperties)...,
 	)
 	manifest, err := networkpolicy.Generate(
 		tr.Spec.NetworkPolicy,
