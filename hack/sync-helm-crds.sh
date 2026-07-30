@@ -14,9 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# This script syncs generated CRDs from config/base/generated-crds/ into:
-#   1. config/base/, config/kubernetes/base/, config/openshift/base/ (kustomize source-of-truth)
-#   2. charts/tekton-operator/templates/ (Helm chart CRDs)
+# This script syncs generated CRDs from config/base/generated-crds/ into
+# charts/tekton-operator/templates/ (Helm chart CRDs).
+#
+# kustomize consumes config/base/generated-crds/*.yaml directly (see
+# config/base/kustomization.yaml, config/kubernetes/base/kustomization.yaml,
+# config/openshift/base/kustomization.yaml) — there is no separate manual copy
+# to keep in sync there. See commit 1ae0906b3 ("Cleanup manual CRDs and use
+# generated CRDs in kustomize"), which removed those manual config/*_crd.yaml
+# files; this script must not recreate them.
 #
 # Prerequisites: Run `make generate-crds` first (or use `make sync-helm-crds` which calls this).
 
@@ -24,9 +30,6 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GENERATED_DIR="${REPO_ROOT}/config/base/generated-crds"
-BASE_DIR="${REPO_ROOT}/config/base"
-K8S_DIR="${REPO_ROOT}/config/kubernetes/base"
-OPENSHIFT_DIR="${REPO_ROOT}/config/openshift/base"
 HELM_DIR="${REPO_ROOT}/charts/tekton-operator/templates"
 
 # inject_labels adds the standard labels after the metadata.name line in a generated CRD
@@ -50,33 +53,6 @@ inject_labels() {
 # strip_leading_separator removes the leading "---" from controller-gen output
 strip_leading_separator() {
   sed '1{/^---$/d;}'
-}
-
-# write_config_crd writes a CRD to the appropriate config/ directory with copyright header and labels
-write_config_crd() {
-  local src_file="$1"
-  local dest_dir="$2"
-  local dest_file="$3"
-
-  cat > "${dest_dir}/${dest_file}" <<'HEADER'
-# Copyright 2025 The Tekton Authors
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-HEADER
-
-  inject_labels "$src_file" | strip_leading_separator >> "${dest_dir}/${dest_file}"
-  echo "  Updated: ${dest_dir}/${dest_file}"
 }
 
 # strip_int_formats removes "format: int32" and "format: int64" lines from CRD schemas.
@@ -106,33 +82,8 @@ assemble_helm_crds() {
 echo "Syncing generated CRDs..."
 echo ""
 
-# Step 1: Update config/ directories
-echo "Step 1: Updating config/ CRD files..."
-
-# base CRDs (common to both kubernetes and openshift)
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_manualapprovalgates.yaml"         "$BASE_DIR"      "300-operator_v1alpha1_manualapprovalgate_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonchains.yaml"                "$BASE_DIR"      "300-operator_v1alpha1_chain_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonconfigs.yaml"               "$BASE_DIR"      "300-operator_v1alpha1_config_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektoninstallersets.yaml"          "$BASE_DIR"      "300-operator_v1alpha1_installer_set_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonpipelines.yaml"             "$BASE_DIR"      "300-operator_v1alpha1_pipeline_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonresults.yaml"               "$BASE_DIR"      "300-operator_v1alpha1_result_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektontriggers.yaml"              "$BASE_DIR"      "300-operator_v1alpha1_trigger_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonpruners.yaml"               "$BASE_DIR"      "300-operator_v1alpha1_pruner_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonschedulers.yaml"            "$BASE_DIR"      "300-operator_v1alpha1_scheduler_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonmulticlusterproxyaaes.yaml" "$BASE_DIR"      "300-operator_v1alpha1_multiclusterproxyaae_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_syncerservices.yaml"              "$BASE_DIR"      "300-operator_v1alpha1_syncerservice_crd.yaml"
-
-# kubernetes-only CRDs
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektondashboards.yaml"            "$K8S_DIR"       "300-operator_v1alpha1_dashboard_crd.yaml"
-
-# openshift-only CRDs
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_tektonaddons.yaml"                "$OPENSHIFT_DIR" "300-operator_v1alpha1_addon_crd.yaml"
-write_config_crd "${GENERATED_DIR}/operator.tekton.dev_openshiftpipelinesascodes.yaml"   "$OPENSHIFT_DIR" "300-operator_v1alpha1_openshiftpipelinesascode_crd.yaml"
-
-echo ""
-
-# Step 2: Assemble Helm chart CRDs
-echo "Step 2: Assembling Helm chart CRD files..."
+# Step 1: Assemble Helm chart CRDs
+echo "Step 1: Assembling Helm chart CRD files..."
 
 assemble_helm_crds \
   "${HELM_DIR}/kubernetes-crds.yaml" \
@@ -168,8 +119,8 @@ assemble_helm_crds \
   "operator.tekton.dev_tektonmulticlusterproxyaaes.yaml" \
   "operator.tekton.dev_syncerservices.yaml"
 
-# Step 3: Validate CRD sizes (etcd has a 256KB object size limit)
-echo "Step 3: Validating CRD sizes..."
+# Step 2: Validate CRD sizes (etcd has a 256KB object size limit)
+echo "Step 2: Validating CRD sizes..."
 
 MAX_SIZE=262144 # 256KB
 FAILED=0
