@@ -1033,6 +1033,15 @@ func TestAddConfiguration(t *testing.T) {
 	assert.Equal(t, d.Spec.Template.Spec.NodeSelector["foo"], config.NodeSelector["foo"])
 	assert.Equal(t, d.Spec.Template.Spec.Tolerations[0].Key, config.Tolerations[0].Key)
 	assert.Equal(t, d.Spec.Template.Spec.PriorityClassName, config.PriorityClassName)
+
+	// StatefulSets (e.g. tekton-results-postgres) must receive the same
+	// NodeSelector/Tolerations/PriorityClassName propagation as Deployments.
+	s := &appsv1.StatefulSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[1].Object, s)
+	assertNoError(t, err)
+	assert.Equal(t, s.Spec.Template.Spec.NodeSelector["foo"], config.NodeSelector["foo"])
+	assert.Equal(t, s.Spec.Template.Spec.Tolerations[0].Key, config.Tolerations[0].Key)
+	assert.Equal(t, s.Spec.Template.Spec.PriorityClassName, config.PriorityClassName)
 }
 
 func TestAddPSA(t *testing.T) {

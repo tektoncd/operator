@@ -725,27 +725,48 @@ func InjectLabelOnNamespace(label string) mf.Transformer {
 	}
 }
 
+// AddConfiguration propagates NodeSelector, Tolerations and PriorityClassName from
+// the component Config onto workload pod templates. It handles both Deployment and
+// StatefulSet so that components which run as a StatefulSet natively (e.g. postgres)
+// or switch between the two at runtime (e.g. horizontal scaling via StatefulsetOrdinals)
+// are covered without depending on transformer ordering.
 func AddConfiguration(config v1alpha1.Config) mf.Transformer {
+	applyConfig := func(spec *corev1.PodSpec) {
+		spec.NodeSelector = config.NodeSelector
+		spec.Tolerations = config.Tolerations
+		spec.PriorityClassName = config.PriorityClassName
+	}
+
 	return func(u *unstructured.Unstructured) error {
-		if u.GetKind() != "Deployment" {
-			return nil
-		}
+		switch u.GetKind() {
+		case "Deployment":
+			d := &appsv1.Deployment{}
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d); err != nil {
+				return err
+			}
 
-		d := &appsv1.Deployment{}
-		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d)
-		if err != nil {
-			return err
-		}
+			applyConfig(&d.Spec.Template.Spec)
 
-		d.Spec.Template.Spec.NodeSelector = config.NodeSelector
-		d.Spec.Template.Spec.Tolerations = config.Tolerations
-		d.Spec.Template.Spec.PriorityClassName = config.PriorityClassName
+			unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+			if err != nil {
+				return err
+			}
+			u.SetUnstructuredContent(unstrObj)
 
-		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
-		if err != nil {
-			return err
+		case "StatefulSet":
+			s := &appsv1.StatefulSet{}
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, s); err != nil {
+				return err
+			}
+
+			applyConfig(&s.Spec.Template.Spec)
+
+			unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(s)
+			if err != nil {
+				return err
+			}
+			u.SetUnstructuredContent(unstrObj)
 		}
-		u.SetUnstructuredContent(unstrObj)
 
 		return nil
 	}
