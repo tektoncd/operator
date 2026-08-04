@@ -408,6 +408,10 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 
 	// Post-reconcile extension hooks
 	if err := r.extension.PostReconcile(ctx, tc); err != nil {
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			logger.Infow("Post-reconcile hook requested requeue", "error", err)
+			return err
+		}
 		logger.Errorw("Post-reconcile hook failed", "error", err)
 		return err
 	}
