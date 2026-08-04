@@ -291,6 +291,27 @@ func TestDeploymentImagesRegistryOverrideFallback(t *testing.T) {
 	assertDeployContainersHasImage(t, newManifest.Resources(), "sidecar", "custom-registry.io/custom-path/busybox")
 }
 
+func TestDeploymentContainerArgsImagesRegistryOverrideFallback(t *testing.T) {
+	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "custom-registry.io/custom-path")
+	// no per-image env var matches any arg in the manifest
+	images := map[string]string{
+		"some_other_image": "foo.bar/unrelated",
+	}
+	testData := path.Join("testdata", "test-replace-image.yaml")
+
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assertNoError(t, err)
+	newManifest, err := manifest.Transform(DeploymentImages(images))
+	assertNoError(t, err)
+	// "-bash-image" ends in "-image", so the registry override fallback applies.
+	assertDeployContainerArgsHasImage(t, newManifest.Resources(), "-bash-image", "custom-registry.io/custom-path/busybox")
+	// "-shell-image-win" contains "-image" but doesn't end with it (real example
+	// from the Tekton Pipeline controller manifest); the fallback must still apply.
+	assertDeployContainerArgsHasImage(t, newManifest.Resources(), "-shell-image-win", "custom-registry.io/custom-path/powershell:nanoserver")
+	// "-git" does not look like an image flag and must be left untouched.
+	assertDeployContainerArgsHasImage(t, newManifest.Resources(), "-git", "git")
+}
+
 func TestTaskImagesRegistryOverrideFallback(t *testing.T) {
 	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "custom-registry.io/custom-path")
 	images := map[string]string{}
