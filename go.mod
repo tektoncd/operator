@@ -1,6 +1,6 @@
 module github.com/tektoncd/operator
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/Masterminds/semver v1.5.0
@@ -294,7 +294,7 @@ require (
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/term v0.44.0 // indirect
-	golang.org/x/text v0.38.0 // indirect
+	golang.org/x/text v0.39.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.47.0 // indirect
 	google.golang.org/api v0.280.0 // indirect
