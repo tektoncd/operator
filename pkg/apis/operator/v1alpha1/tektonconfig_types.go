@@ -59,7 +59,7 @@ type Prune struct {
 	Disabled bool `json:"disabled"`
 	// apply the prune job to the individual resources
 	// +optional
-	PrunePerResource bool `json:"prune-per-resource,omitempty"`
+	PrunePerResource bool `json:"prune-per-resource"`
 	// The resources which need to be pruned
 	Resources []string `json:"resources,omitempty"`
 	// The number of resource to keep
