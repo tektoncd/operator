@@ -321,16 +321,23 @@ func replaceContainerImages(containers []corev1.Container, images map[string]str
 			containers[i].Image = overrideImageRegistry(registry, containers[i].Image)
 		}
 
-		replaceContainersArgsImage(&container, images)
+		replaceContainersArgsImage(&container, images, registry)
 	}
 }
 
-func replaceContainersArgsImage(container *corev1.Container, images map[string]string) {
+// replaceContainersArgsImage replaces image references passed as container
+// args (e.g. "-workingdirinit-image", "gcr.io/..."). If no per-image env var
+// matches a given "*-image*" flag (e.g. "-shell-image-win"), it falls back
+// to rewriting just the registry domain, so TEKTON_REGISTRY_OVERRIDE alone
+// also applies to arg-based images and not only to container.Image.
+func replaceContainersArgsImage(container *corev1.Container, images map[string]string, registry string) {
 	for a, arg := range container.Args {
 		if argVal, hasArg := SplitsByEqual(arg); hasArg {
 			argument := formKey(ArgPrefix, argVal[0])
 			if url, exist := images[argument]; exist {
 				container.Args[a] = argVal[0] + "=" + url
+			} else if strings.Contains(argument, "_image") {
+				container.Args[a] = argVal[0] + "=" + overrideImageRegistry(registry, argVal[1])
 			}
 			continue
 		}
@@ -338,6 +345,8 @@ func replaceContainersArgsImage(container *corev1.Container, images map[string]s
 		argument := formKey(ArgPrefix, arg)
 		if url, exist := images[argument]; exist {
 			container.Args[a+1] = url
+		} else if strings.Contains(argument, "_image") {
+			container.Args[a+1] = overrideImageRegistry(registry, container.Args[a+1])
 		}
 	}
 }

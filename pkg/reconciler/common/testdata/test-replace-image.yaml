@@ -17,7 +17,8 @@ spec:
           name: controller-deployment
           args: [
             "-bash-image", "busybox",
-            "-nop=nop"
+            "-nop=nop",
+            "-shell-image-win", "mcr.microsoft.com/powershell:nanoserver"
           ]
         - image: busybox
           name: sidecar
