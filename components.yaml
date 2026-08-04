@@ -1,6 +1,6 @@
 chains:
   github: tektoncd/chains
-  version: v0.26.7
+  version: v0.26.8
 dashboard:
   github: tektoncd/dashboard
   version: v0.63.1
