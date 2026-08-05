@@ -1,6 +1,6 @@
 chains:
   github: tektoncd/chains
-  version: v0.28.1
+  version: v0.29.0
 dashboard:
   github: tektoncd/dashboard
   version: v0.70.0
@@ -21,7 +21,7 @@ pruner:
   version: v0.4.1
 results:
   github: tektoncd/results
-  version: v0.19.0
+  version: v0.20.0
 scheduler:
   github: konflux-ci/tekton-kueue
   version: v0.3.1
