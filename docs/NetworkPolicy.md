@@ -188,7 +188,7 @@ NetworkPolicy is enabled.
 **Recommended:** add a dedicated temporary NetworkPolicy that allows a dedicated
 admin label. Do **not** reuse `app: tekton-results-api` on a debug pod — that label
 is also used by the Results API Service selector and can route API traffic to the
-wrong pod.
+wrong pod. A dedicated label (below) avoids that.
 
 Apply directly:
 
