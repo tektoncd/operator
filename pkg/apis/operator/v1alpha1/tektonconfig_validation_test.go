@@ -413,3 +413,28 @@ func Test_ValidateTektonConfig_PrunerConfig_Invalid(t *testing.T) {
 	err := tc.Validate(context.TODO())
 	assert.ErrorContains(t, err, "pruner config validation failed")
 }
+
+func Test_ValidateTektonConfig_ResultWatcher(t *testing.T) {
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "config",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Profile: "all",
+			Pruner:  Prune{Disabled: true},
+			Result: Result{
+				Watcher: ResultsWatcherProperties{
+					LabelSelector: ptr.String("not a valid selector=="),
+				},
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Assert(t, err != nil)
+	assert.ErrorContains(t, err, "spec.result.watcher.label_selector")
+}

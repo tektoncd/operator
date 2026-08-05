@@ -57,5 +57,8 @@ func (trs *TektonResultSpec) validate(path string) (errs *apis.FieldError) {
 	// validate performance properties
 	errs = errs.Also(trs.Performance.Validate(fmt.Sprintf("%s.performance", path)))
 
+	// validate watcher properties
+	errs = errs.Also(trs.Watcher.Validate(fmt.Sprintf("%s.watcher", path)))
+
 	return errs
 }
