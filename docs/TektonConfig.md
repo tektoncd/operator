@@ -349,7 +349,61 @@ result:
   loki_stack_namespace: #optional
   prometheus_port: 9090
   prometheus_histogram: false
+  watcher:
+    completed_run_grace_period: 24h
+    check_owner: true
+    store_deadline: 10m
+    disable_storing_incomplete_runs: true
 ```
+
+#### Tekton Results Watcher configuration
+
+Watcher-specific settings are configured under `result.watcher`. These map to command-line flags on the `tekton-results-watcher` deployment. See [Results Watcher documentation](https://tekton.dev/docs/results/watcher/) for behavior details.
+
+Not every watcher flag is exposed under `result.watcher`:
+- Performance flags (`threadiness`, `qps`, `burst`, `disable-ha`) are configured under `result.performance`.
+- Operator-managed flags (`api_addr`, `auth_mode`, `namespace`) are set by the operator and must not be overridden.
+- Secrets (`token`) must not be stored in the CR; use Secrets / `auth_mode` instead.
+
+For optional string fields (`summary_labels`, `summary_annotations`, `label_selector`):
+- omit the field to keep the watcher binary default
+- set a non-empty value to override
+- set `""` to clear the default (operator passes an empty flag value)
+
+Example:
+
+```yaml
+result:
+  disabled: false
+  watcher:
+    completed_run_grace_period: 24h
+    check_owner: true
+    store_deadline: 10m
+    disable_storing_incomplete_runs: true
+    logs_api: true
+    logs_timestamps: false
+    store_event: false
+    summary_labels: tekton.dev/pipeline
+    label_selector: ""
+```
+
+| Field | Watcher flag | Default | Description |
+|---|---|---|---|
+| `completed_run_grace_period` | `-completed_run_grace_period` | `0` | Time after completion before deleting Runs from the cluster. `0` disables deletion. |
+| `check_owner` | `-check_owner` | `true` | Skip deletion when the Run has owner references. |
+| `store_deadline` | `-store_deadline` | `10m` | Max wait to store a Run before clearing its finalizer on delete. |
+| `disable_storing_incomplete_runs` | `-disable_storing_incomplete_runs` | `false` | Only store Runs after they complete. |
+| `logs_api` | `-logs_api` | `false` | Send logs to the Results API (separate from API server `logs_api`). |
+| `logs_timestamps` | `-logs_timestamps` | `false` | Include timestamps in stored logs. |
+| `store_event` | `-store_event` | `false` | Store Kubernetes events related to Runs. |
+| `summary_labels` | `-summary_labels` | `tekton.dev/pipeline` | Comma-separated labels copied into Result summary. Omit to keep default; `""` clears it. |
+| `summary_annotations` | `-summary_annotations` | `""` | Comma-separated annotations copied into Result summary. Omit to keep default; `""` clears it. |
+| `label_selector` | `-label_selector` | `""` | Label selector for Runs eligible for post-grace deletion. Omit to keep default; `""` clears it. |
+| `requeue_interval` | `-requeue_interval` | `10m` | Requeue delay for certain watcher events. |
+| `forward_buffer` | `-forward_buffer` | `150s` | Wait time for log forwarder after TaskRun completion. |
+| `update_log_timeout` | `-update_log_timeout` | `300s` | Timeout for log storage operations. |
+| `dynamic_reconcile_timeout` | `-dynamic_reconcile_timeout` | `30s` | Timeout for dynamic reconciler processing. |
+| `disable_crd_update` | `-disable_crd_update` | `false` | Disable Tekton CRD annotation updates during reconcile. |
 
 User can configure custom database secret name for internal/external database via Tekton Config CR.
 
