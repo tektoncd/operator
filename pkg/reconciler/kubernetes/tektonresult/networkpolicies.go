@@ -42,11 +42,13 @@ func resultsDefaultPolicies(params networkpolicy.PlatformParams, props v1alpha1.
 	postgresPort := intstr.FromInt32(portOrDefault(props.DBPort, defaultDBPort))
 	tcp := corev1.ProtocolTCP
 
-	postgresPeer := networkingv1.NetworkPolicyPeer{
-		PodSelector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{
-				"app.kubernetes.io/name": "tekton-results-postgres",
-			},
+	// DB egress is port-only (no pod/CIDR peer). NetworkPolicy cannot match on
+	// hostname/URL, so restricting To in-cluster postgres would break external DB
+	// deployments. Any destination on db_port is allowed; for in-cluster postgres,
+	// results-postgres ingress still limits who may connect.
+	dbEgress := networkingv1.NetworkPolicyEgressRule{
+		Ports: []networkingv1.NetworkPolicyPort{
+			{Protocol: &tcp, Port: &postgresPort},
 		},
 	}
 
@@ -63,7 +65,7 @@ func resultsDefaultPolicies(params networkpolicy.PlatformParams, props v1alpha1.
 				},
 				Ingress: []networkingv1.NetworkPolicyIngressRule{
 					{
-						// Console Plugin, CLI, watcher, and other internal clients
+						// Console Plugin, CLI, routes, watcher, and other clients
 						// live in many namespaces — allow from all namespaces.
 						From: []networkingv1.NetworkPolicyPeer{
 							{NamespaceSelector: &metav1.LabelSelector{}},
@@ -76,12 +78,7 @@ func resultsDefaultPolicies(params networkpolicy.PlatformParams, props v1alpha1.
 				},
 				Egress: []networkingv1.NetworkPolicyEgressRule{
 					networkpolicy.DNSEgressRule(params),
-					{
-						Ports: []networkingv1.NetworkPolicyPort{
-							{Protocol: &tcp, Port: &postgresPort},
-						},
-						To: []networkingv1.NetworkPolicyPeer{postgresPeer},
-					},
+					dbEgress,
 					// Auth token review / impersonation talks to the API server.
 					networkpolicy.APIServerEgressRule(),
 				},
@@ -120,12 +117,7 @@ func resultsDefaultPolicies(params networkpolicy.PlatformParams, props v1alpha1.
 				},
 				Egress: []networkingv1.NetworkPolicyEgressRule{
 					networkpolicy.DNSEgressRule(params),
-					{
-						Ports: []networkingv1.NetworkPolicyPort{
-							{Protocol: &tcp, Port: &postgresPort},
-						},
-						To: []networkingv1.NetworkPolicyPeer{postgresPeer},
-					},
+					dbEgress,
 				},
 			},
 		},

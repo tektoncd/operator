@@ -48,7 +48,7 @@ func TestResultsDefaultPolicies(t *testing.T) {
 	api := byName["results-api"]
 	assertIngressHasPort(t, "results-api", api.Spec.Ingress, 8080)
 	assertIngressHasPort(t, "results-api", api.Spec.Ingress, 9090)
-	assertEgressHasPortToPostgres(t, "results-api", api.Spec.Egress, 5432)
+	assertEgressHasDBPort(t, "results-api", api.Spec.Egress, 5432)
 
 	watcher := byName["results-watcher"]
 	if got := len(watcher.Spec.Egress); got != 2 {
@@ -60,7 +60,7 @@ func TestResultsDefaultPolicies(t *testing.T) {
 
 	retention := byName["results-retention-policy-agent"]
 	assertEgressHasDNS(t, "results-retention-policy-agent", retention.Spec.Egress)
-	assertEgressHasPortToPostgres(t, "results-retention-policy-agent", retention.Spec.Egress, 5432)
+	assertEgressHasDBPort(t, "results-retention-policy-agent", retention.Spec.Egress, 5432)
 
 	postgres := byName["results-postgres"]
 	assertIngressHasPort(t, "results-postgres", postgres.Spec.Ingress, 5432)
@@ -82,9 +82,9 @@ func TestResultsDefaultPoliciesUsesSpecPorts(t *testing.T) {
 
 	assertIngressHasPort(t, "results-api", byName["results-api"].Spec.Ingress, 18080)
 	assertIngressHasPort(t, "results-api", byName["results-api"].Spec.Ingress, 19090)
-	assertEgressHasPortToPostgres(t, "results-api", byName["results-api"].Spec.Egress, 15432)
+	assertEgressHasDBPort(t, "results-api", byName["results-api"].Spec.Egress, 15432)
 	assertIngressHasPort(t, "results-watcher", byName["results-watcher"].Spec.Ingress, 19090)
-	assertEgressHasPortToPostgres(t, "results-retention-policy-agent", byName["results-retention-policy-agent"].Spec.Egress, 15432)
+	assertEgressHasDBPort(t, "results-retention-policy-agent", byName["results-retention-policy-agent"].Spec.Egress, 15432)
 	assertIngressHasPort(t, "results-postgres", byName["results-postgres"].Spec.Ingress, 15432)
 }
 
@@ -143,27 +143,22 @@ func assertIngressHasPort(t *testing.T, policy string, rules []networkingv1.Netw
 	t.Errorf("%s: expected ingress port %d", policy, port)
 }
 
-func assertEgressHasPortToPostgres(t *testing.T, policy string, rules []networkingv1.NetworkPolicyEgressRule, port int32) {
+// assertEgressHasDBPort checks for a port-only DB egress rule (no To peer), so
+// in-cluster and external databases both work without a custom NetworkPolicy.
+func assertEgressHasDBPort(t *testing.T, policy string, rules []networkingv1.NetworkPolicyEgressRule, port int32) {
 	t.Helper()
 	want := intstr.FromInt32(port)
 	for _, rule := range rules {
-		hasPort := false
-		for _, p := range rule.Ports {
-			if p.Port != nil && *p.Port == want {
-				hasPort = true
-				break
-			}
-		}
-		if !hasPort {
+		if len(rule.To) != 0 {
 			continue
 		}
-		for _, peer := range rule.To {
-			if peer.PodSelector != nil && peer.PodSelector.MatchLabels["app.kubernetes.io/name"] == "tekton-results-postgres" {
+		for _, p := range rule.Ports {
+			if p.Port != nil && *p.Port == want {
 				return
 			}
 		}
 	}
-	t.Errorf("%s: expected egress TCP/%d to tekton-results-postgres", policy, port)
+	t.Errorf("%s: expected port-only egress TCP/%d (no To peer)", policy, port)
 }
 
 func assertEgressHasDNS(t *testing.T, policy string, rules []networkingv1.NetworkPolicyEgressRule) {
