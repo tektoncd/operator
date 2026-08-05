@@ -27,6 +27,7 @@ import (
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	TektonSchedulerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonscheduler"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
@@ -48,6 +49,8 @@ type Reconciler struct {
 	manifest mf.Manifest
 	// Platform-specific behavior to affect the transform
 	extension common.Extension
+	// platformParams holds platform-specific values for building NetworkPolicy rules
+	platformParams networkpolicy.PlatformParams
 	// version of scheduler which we are installing
 	tektonSchedulerVersion string
 	operatorVersion        string
@@ -64,7 +67,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, TektonScheduler *v1alpha
 	TektonScheduler.Status.SetVersion(r.tektonSchedulerVersion)
 
 	if TektonScheduler.GetName() != v1alpha1.TektonSchedulerResourceName {
-		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
+		msg := fmt.Sprintf(
+			"Resource ignored, Expected Name: %s, Got Name: %s",
 			v1alpha1.TektonSchedulerResourceName,
 			TektonScheduler.GetName(),
 		)
@@ -108,6 +112,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, TektonScheduler *v1alpha
 		return err
 	}
 
+	if err := r.reconcileNetworkPolicies(ctx, TektonScheduler); err != nil {
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		msg := fmt.Sprintf("NetworkPolicy reconciliation failed: %s", err.Error())
+		logger.Errorw("NetworkPolicy reconciliation failed", "error", err)
+		TektonScheduler.Status.MarkInstallerSetNotReady(msg)
+		return nil
+	}
+
 	if err := r.extension.PostReconcile(ctx, TektonScheduler); err != nil {
 		msg := fmt.Sprintf("PostReconciliation failed: %s", err.Error())
 		logger.Error(msg)
@@ -143,5 +157,4 @@ func (r *Reconciler) ensureDependenciesInstalled(TektonScheduler *v1alpha1.Tekto
 	}
 
 	return nil
-
 }

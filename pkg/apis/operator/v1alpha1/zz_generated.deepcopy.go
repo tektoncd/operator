@@ -1533,6 +1533,7 @@ func (in *SyncerServiceSpec) DeepCopyInto(out *SyncerServiceSpec) {
 	out.CommonSpec = in.CommonSpec
 	in.SyncerServiceOptions.DeepCopyInto(&out.SyncerServiceOptions)
 	in.Config.DeepCopyInto(&out.Config)
+	in.NetworkPolicy.DeepCopyInto(&out.NetworkPolicy)
 	return
 }
 
@@ -2155,6 +2156,7 @@ func (in *TektonMulticlusterProxyAAESpec) DeepCopyInto(out *TektonMulticlusterPr
 	*out = *in
 	out.CommonSpec = in.CommonSpec
 	in.MulticlusterProxyAAEOptions.DeepCopyInto(&out.MulticlusterProxyAAEOptions)
+	in.NetworkPolicy.DeepCopyInto(&out.NetworkPolicy)
 	return
 }
 
@@ -2562,6 +2564,7 @@ func (in *TektonSchedulerSpec) DeepCopyInto(out *TektonSchedulerSpec) {
 	*out = *in
 	out.CommonSpec = in.CommonSpec
 	in.Scheduler.DeepCopyInto(&out.Scheduler)
+	in.NetworkPolicy.DeepCopyInto(&out.NetworkPolicy)
 	return
 }
 

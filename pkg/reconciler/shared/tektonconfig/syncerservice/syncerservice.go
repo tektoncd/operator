@@ -137,6 +137,11 @@ func UpdateSyncerService(ctx context.Context, old *v1alpha1.SyncerService, new *
 		updated = true
 	}
 
+	if !reflect.DeepEqual(old.Spec.NetworkPolicy, new.Spec.NetworkPolicy) {
+		old.Spec.NetworkPolicy = new.Spec.NetworkPolicy
+		updated = true
+	}
+
 	if old.ObjectMeta.OwnerReferences == nil {
 		old.ObjectMeta.OwnerReferences = new.ObjectMeta.OwnerReferences
 		updated = true
@@ -174,7 +179,8 @@ func GetSyncerServiceCR(config *v1alpha1.TektonConfig, operatorVersion string) *
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Config: config.Spec.Config,
+			Config:        config.Spec.Config,
+			NetworkPolicy: config.Spec.NetworkPolicy,
 		},
 	}
 }

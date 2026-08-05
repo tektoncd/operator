@@ -85,6 +85,8 @@ type TektonSchedulerList struct {
 type TektonSchedulerSpec struct {
 	CommonSpec `json:",inline"`
 	Scheduler  `json:",inline"`
+	// +optional
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
 // TektonSchedulerStatus defines the observed state of TektonScheduler

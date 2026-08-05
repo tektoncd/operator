@@ -48,6 +48,8 @@ type TektonMulticlusterProxyAAE struct {
 type TektonMulticlusterProxyAAESpec struct {
 	CommonSpec                  `json:",inline"`
 	MulticlusterProxyAAEOptions `json:",inline"`
+	// +optional
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
 type MulticlusterProxyAAEOptions struct {

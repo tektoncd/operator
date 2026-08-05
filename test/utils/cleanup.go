@@ -27,9 +27,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-type crDeleteVerifier wait.ConditionFunc
-type deploymentDeleteVerifier wait.ConditionFunc
-type crGetFunc func(ctx context.Context) error
+type (
+	crDeleteVerifier         wait.ConditionFunc
+	deploymentDeleteVerifier wait.ConditionFunc
+	crGetFunc                func(ctx context.Context) error
+)
 
 // CleanupOnInterrupt will execute the function cleanup if an interrupt signal is caught
 func CleanupOnInterrupt(cleanup func()) {
@@ -169,7 +171,6 @@ func TearDownAddon(clients *Clients, name string) {
 	if err != nil {
 		fmt.Printf("error waiting from tearDown of TektonAddon resource, name: %s, error: %v", name, err)
 	}
-
 }
 
 // TearDownNamespace will delete created test Namespace
@@ -204,7 +205,6 @@ func TearDownNamespace(clients *Clients, name string) {
 		}
 		return false, nil
 	})
-
 	if err != nil {
 		fmt.Printf("error waiting from tearDown of Namespace resource, name: %s, error: %v", name, err)
 	}
@@ -336,6 +336,7 @@ func TearDownManualApprovalGate(clients *Clients, name string) {
 		fmt.Printf("error waiting from tearDown of ManualApprovalGate resource, name: %s, error: %v", name, err)
 	}
 }
+
 func TearDownTektonPruner(clients *Clients, name string) {
 	ctx := context.Background()
 	if clients == nil || clients.Operator == nil {
@@ -367,6 +368,99 @@ func TearDownTektonPruner(clients *Clients, name string) {
 	}
 }
 
+func TearDownScheduler(clients *Clients, name string) {
+	ctx := context.Background()
+	if clients == nil || clients.Operator == nil {
+		return
+	}
+
+	ts, err := clients.TektonSchedulers().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			fmt.Printf("error trying to get TektonScheduler instance during teardown, name: %s, error: %v", name, err)
+		}
+		return
+	}
+	targetNamespace := ts.Spec.TargetNamespace
+
+	err = clients.TektonSchedulers().Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		fmt.Printf("error trying to delete TektonScheduler during teardown, name: %s, error: %v", name, err)
+		return
+	}
+	crdf := newCRDeleteVerifier(ctx, func(ctx context.Context) error {
+		_, err := clients.TektonSchedulers().Get(ctx, name, metav1.GetOptions{})
+		return err
+	})
+	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, TektonSchedulerDeploymentLabel)
+	err = waitUntilFullDeletion(crdf, ddf)
+	if err != nil {
+		fmt.Printf("error waiting from tearDown of TektonScheduler resource, name: %s, error: %v", name, err)
+	}
+}
+
+func TearDownMulticlusterProxyAAE(clients *Clients, name string) {
+	ctx := context.Background()
+	if clients == nil || clients.Operator == nil {
+		return
+	}
+
+	proxy, err := clients.TektonMulticlusterProxyAAEs().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			fmt.Printf("error trying to get TektonMulticlusterProxyAAE instance during teardown, name: %s, error: %v", name, err)
+		}
+		return
+	}
+	targetNamespace := proxy.Spec.TargetNamespace
+
+	err = clients.TektonMulticlusterProxyAAEs().Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		fmt.Printf("error trying to delete TektonMulticlusterProxyAAE during teardown, name: %s, error: %v", name, err)
+		return
+	}
+	crdf := newCRDeleteVerifier(ctx, func(ctx context.Context) error {
+		_, err := clients.TektonMulticlusterProxyAAEs().Get(ctx, name, metav1.GetOptions{})
+		return err
+	})
+	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, TektonMulticlusterProxyAAEDeploymentLabel)
+	err = waitUntilFullDeletion(crdf, ddf)
+	if err != nil {
+		fmt.Printf("error waiting from tearDown of TektonMulticlusterProxyAAE resource, name: %s, error: %v", name, err)
+	}
+}
+
+func TearDownSyncerService(clients *Clients, name string) {
+	ctx := context.Background()
+	if clients == nil || clients.Operator == nil {
+		return
+	}
+
+	ss, err := clients.SyncerServices().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			fmt.Printf("error trying to get SyncerService instance during teardown, name: %s, error: %v", name, err)
+		}
+		return
+	}
+	targetNamespace := ss.Spec.TargetNamespace
+
+	err = clients.SyncerServices().Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		fmt.Printf("error trying to delete SyncerService during teardown, name: %s, error: %v", name, err)
+		return
+	}
+	crdf := newCRDeleteVerifier(ctx, func(ctx context.Context) error {
+		_, err := clients.SyncerServices().Get(ctx, name, metav1.GetOptions{})
+		return err
+	})
+	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, SyncerServiceDeploymentLabel)
+	err = waitUntilFullDeletion(crdf, ddf)
+	if err != nil {
+		fmt.Printf("error waiting from tearDown of SyncerService resource, name: %s, error: %v", name, err)
+	}
+}
+
 func newCRDeleteVerifier(ctx context.Context, f crGetFunc) crDeleteVerifier {
 	return func() (bool, error) {
 		err := f(ctx)
@@ -385,7 +479,6 @@ func newDeploymentDeleteVerifier(ctx context.Context, c *Clients, namespace, lab
 		deployemnts, err := c.KubeClient.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labelSelector,
 		})
-
 		if err != nil {
 			return false, err
 		}

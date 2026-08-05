@@ -18,11 +18,22 @@ package v1alpha1
 
 import (
 	"context"
+	"fmt"
 
 	"knative.dev/pkg/apis"
 )
 
-// Validate implements the validation contract for the webhook. Reserved for future use.
+// Validate implements the validation contract for the webhook.
 func (t *TektonMulticlusterProxyAAE) Validate(ctx context.Context) (errs *apis.FieldError) {
-	return nil
+	if apis.IsInDelete(ctx) {
+		return nil
+	}
+
+	if t.GetName() != MultiClusterProxyAAEResourceName {
+		errMsg := fmt.Sprintf("metadata.name, Only one instance of TektonMulticlusterProxyAAE is allowed by name, %s", MultiClusterProxyAAEResourceName)
+		errs = errs.Also(apis.ErrInvalidValue(t.GetName(), errMsg))
+	}
+
+	errs = errs.Also(t.Spec.NetworkPolicy.validate("spec.networkPolicy"))
+	return errs
 }

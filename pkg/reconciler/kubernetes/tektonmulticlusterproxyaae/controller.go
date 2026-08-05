@@ -21,6 +21,7 @@ import (
 
 	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
 	tektonPipelineinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -61,6 +62,11 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			logger.Fatal("Error while getting operator version", err)
 		}
 
+		params := networkpolicy.KubernetesPlatformDefaults()
+		if v1alpha1.IsOpenShiftPlatform() {
+			params = networkpolicy.OpenShiftPlatformDefaults()
+		}
+
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 		metrics, _ := NewRecorder()
 		c := &Reconciler{
@@ -70,6 +76,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			pipelineInformer:            tektonPipelineinformer.Get(ctx),
 			extension:                   generator(ctx),
 			manifest:                    manifest,
+			platformParams:              params,
 			multiclusterProxyAAEVersion: proxyAAEVer,
 			operatorVersion:             operatorVer,
 		}

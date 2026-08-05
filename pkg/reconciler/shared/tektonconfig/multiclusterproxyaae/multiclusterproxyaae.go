@@ -119,6 +119,7 @@ func GetTektonMulticlusterProxyAAECR(config *v1alpha1.TektonConfig, operatorVers
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
 			MulticlusterProxyAAEOptions: config.Spec.MulticlusterProxyAAE,
+			NetworkPolicy:               config.Spec.NetworkPolicy,
 		},
 	}
 }
@@ -146,6 +147,10 @@ func UpdateTektonMulticlusterProxyAAE(ctx context.Context, old, new *v1alpha1.Te
 	}
 	if !reflect.DeepEqual(old.Spec.Options, new.Spec.Options) {
 		old.Spec.Options = new.Spec.Options
+		updated = true
+	}
+	if !reflect.DeepEqual(old.Spec.NetworkPolicy, new.Spec.NetworkPolicy) {
+		old.Spec.NetworkPolicy = new.Spec.NetworkPolicy
 		updated = true
 	}
 	if old.ObjectMeta.OwnerReferences == nil {

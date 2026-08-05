@@ -33,5 +33,6 @@ func (ss *SyncerService) Validate(ctx context.Context) (errs *apis.FieldError) {
 		return errs.Also(apis.ErrInvalidValue(ss.GetName(), errMsg))
 	}
 
+	errs = errs.Also(ss.Spec.NetworkPolicy.validate("spec.networkPolicy"))
 	return errs
 }

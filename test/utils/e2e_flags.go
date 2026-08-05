@@ -24,14 +24,17 @@ import (
 )
 
 var (
-	TektonPipelineDeploymentLabel     = labelString(v1alpha1.OperandTektoncdPipeline)
-	TektonTriggerDeploymentLabel      = labelString(v1alpha1.OperandTektoncdTriggers)
-	TektonDashboardDeploymentLabel    = labelString(v1alpha1.OperandTektoncdDashboard)
-	TektonChainDeploymentLabel        = labelString(v1alpha1.OperandTektoncdChains)
-	TektonResultsDeploymentLabel      = labelString(v1alpha1.OperandTektoncdResults)
-	ManualApprovalGateDeploymentLabel = labelString(v1alpha1.ManualApprovalGates)
-	TektonPrunerDeploymentLabel       = labelString(v1alpha1.TektonPrunerResourceName)
-	TektonAddonDeploymentLabel        = labelString(openshift.OperandOpenShiftPipelinesAddons)
+	TektonPipelineDeploymentLabel             = labelString(v1alpha1.OperandTektoncdPipeline)
+	TektonTriggerDeploymentLabel              = labelString(v1alpha1.OperandTektoncdTriggers)
+	TektonDashboardDeploymentLabel            = labelString(v1alpha1.OperandTektoncdDashboard)
+	TektonChainDeploymentLabel                = labelString(v1alpha1.OperandTektoncdChains)
+	TektonResultsDeploymentLabel              = labelString(v1alpha1.OperandTektoncdResults)
+	ManualApprovalGateDeploymentLabel         = labelString(v1alpha1.ManualApprovalGates)
+	TektonPrunerDeploymentLabel               = labelString(v1alpha1.TektonPrunerResourceName)
+	TektonAddonDeploymentLabel                = labelString(openshift.OperandOpenShiftPipelinesAddons)
+	TektonSchedulerDeploymentLabel            = labelString(v1alpha1.TektonSchedulerResourceName)
+	TektonMulticlusterProxyAAEDeploymentLabel = labelString(v1alpha1.MultiClusterProxyAAEResourceName)
+	SyncerServiceDeploymentLabel              = labelString(v1alpha1.OperandSyncerService)
 )
 
 func labelString(operandName string) string {
