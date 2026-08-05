@@ -7,9 +7,10 @@ weight: 15
 # NetworkPolicy
 
 The operator can manage [NetworkPolicy][np] resources for Tekton component workloads.
-Currently TektonPipeline (core controllers, resolvers, and proxy-webhook),
-TektonTrigger, TektonChain, Pipelines-as-Code, ManualApprovalGate, TektonPruner,
-and TektonResult are supported; other components will be added later.
+TektonPipeline (core controllers, resolvers, and proxy-webhook), TektonTrigger,
+TektonChain, Pipelines-as-Code, ManualApprovalGate, TektonPruner, TektonResult,
+and MultiCluster components (TektonScheduler, TektonMulticlusterProxyAAE,
+SyncerService) are supported; other components will be added later.
 
 Configuration is available via `TektonConfig`:
 
@@ -32,12 +33,12 @@ spec:
               - port: 9000
 ```
 
-The `networkPolicy` field is propagated from `TektonConfig` to `TektonTrigger`,
-`TektonPipeline`, `TektonChain`, `TektonPruner`, and `TektonResult`. When those
-component CRs are managed by `TektonConfig` (the usual install path),
-**TektonConfig is the source of truth**: edits to `spec.networkPolicy` on the
-component CRs alone are overwritten on the next Config reconcile. Configure
-NetworkPolicy via `TektonConfig.spec.networkPolicy`.
+The `networkPolicy` field is propagated from `TektonConfig` to `TektonPipeline`,
+`TektonTrigger`, `TektonChain`, `TektonPruner`, `TektonResult`, Pipelines-as-Code,
+and MultiCluster components. When those component CRs are managed by `TektonConfig`
+(the usual install path), **TektonConfig is the source of truth**: edits to
+`spec.networkPolicy` on the component CRs alone are overwritten on the next Config
+reconcile. Configure NetworkPolicy via `TektonConfig.spec.networkPolicy`.
 
 ## Default Policies
 
@@ -256,8 +257,49 @@ user's browser via the OpenShift Console's proxy, not on this pod.
 These are static manifests shipped with the TektonConfig console plugin resources,
 not reconciled via `spec.networkPolicy`.
 
-All policies above are applied to the operand namespace (e.g. `tekton-pipelines`
-or `openshift-pipelines`). They do not cover the operator's own namespace
+### TektonScheduler
+
+Policies are applied to the operand namespace (`tekton-pipelines` or `openshift-pipelines`).
+
+| Policy | Direction | Port | Source / Destination |
+|---|---|---|---|
+| `scheduler-controller-default-deny` | deny all | — | Scheduler controller pods |
+| `scheduler-webhook-default-deny` | deny all | — | Scheduler webhook pods |
+| `scheduler-controller` | ingress | TCP/8443 | Prometheus namespace |
+| | egress | UDP+TCP/53 (K8s) or 5353 (OpenShift) | DNS resolver pods |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
+| `scheduler-webhook` | ingress | TCP/9443 | Any (admission webhook) |
+| | ingress | TCP/8443 | Prometheus namespace |
+| | egress | UDP+TCP/53 or 5353 | DNS resolver pods |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
+
+### TektonMulticlusterProxyAAE
+
+Policies are applied to the operand namespace (`tekton-pipelines` or `openshift-pipelines`).
+Deployed only when the scheduler is enabled with multi-cluster role = Hub.
+
+| Policy | Direction | Port | Source / Destination |
+|---|---|---|---|
+| `proxy-aae-default-deny` | deny all | — | Proxy-AAE pods (`app: proxy-aae`) |
+| `proxy-aae` | ingress | TCP/8080 | Any (spoke clusters connect via service 443→8080) |
+| | egress | UDP+TCP/53 (K8s) or 5353 (OpenShift) | DNS resolver pods |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
+
+### SyncerService (OpenShift only)
+
+Policies are applied to the operand namespace (`openshift-pipelines`).
+Deployed only when the scheduler is enabled with multi-cluster role = Hub.
+
+| Policy | Direction | Port | Source / Destination |
+|---|---|---|---|
+| `syncer-service-default-deny` | deny all | — | SyncerService pods (`app: workload-controller`) |
+| `syncer-service-controller` | egress | UDP+TCP/5353 | DNS resolver pods (OpenShift) |
+| | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
+
+All component policies (TektonPipeline, TektonTrigger, TektonScheduler,
+TektonMulticlusterProxyAAE, SyncerService, and Console Plugin) are applied to the
+operand namespace (e.g. `tekton-pipelines` or `openshift-pipelines`).
+None of these cover the operator's own namespace
 (`tekton-operator` / `openshift-operators`), which ships fixed, non-configurable
 NetworkPolicies as part of the operator's own install manifests/bundle (see
 [Operator's own namespace](#operators-own-namespace) below).

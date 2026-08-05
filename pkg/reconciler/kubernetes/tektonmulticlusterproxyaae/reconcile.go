@@ -26,6 +26,7 @@ import (
 	pipelineinformer "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	proxyAAEreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonmulticlusterproxyaae"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
@@ -40,6 +41,7 @@ type Reconciler struct {
 	pipelineInformer            pipelineinformer.TektonPipelineInformer
 	manifest                    mf.Manifest
 	extension                   common.Extension
+	platformParams              networkpolicy.PlatformParams
 	multiclusterProxyAAEVersion string
 	operatorVersion             string
 }
@@ -54,7 +56,8 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, proxy *v1alpha1.TektonMu
 	proxy.Status.SetVersion(r.multiclusterProxyAAEVersion)
 
 	if proxy.GetName() != v1alpha1.MultiClusterProxyAAEResourceName {
-		msg := fmt.Sprintf("Resource ignored, Expected Name: %s, Got Name: %s",
+		msg := fmt.Sprintf(
+			"Resource ignored, Expected Name: %s, Got Name: %s",
 			v1alpha1.MultiClusterProxyAAEResourceName,
 			proxy.GetName(),
 		)
@@ -98,6 +101,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, proxy *v1alpha1.TektonMu
 		}
 		proxy.Status.MarkInstallerSetNotReady(msg)
 		return err
+	}
+
+	if err := r.reconcileNetworkPolicies(ctx, proxy); err != nil {
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		msg := fmt.Sprintf("NetworkPolicy reconciliation failed: %s", err.Error())
+		logger.Errorw("NetworkPolicy reconciliation failed", "error", err)
+		proxy.Status.MarkInstallerSetNotReady(msg)
+		return nil
 	}
 
 	if err := r.extension.PostReconcile(ctx, proxy); err != nil {

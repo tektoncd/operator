@@ -25,7 +25,6 @@ import (
 )
 
 func (ts *TektonScheduler) Validate(ctx context.Context) (errs *apis.FieldError) {
-
 	if apis.IsInDelete(ctx) {
 		return nil
 	}
@@ -37,6 +36,7 @@ func (ts *TektonScheduler) Validate(ctx context.Context) (errs *apis.FieldError)
 
 	// execute common spec validations
 	errs = errs.Also(ts.Spec.MultiClusterConfig.validate())
+	errs = errs.Also(ts.Spec.NetworkPolicy.validate("spec.networkPolicy"))
 	return errs
 }
 

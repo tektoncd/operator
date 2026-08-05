@@ -20,36 +20,42 @@ import "github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 
 // ResourceNames holds names of various resources.
 type ResourceNames struct {
-	TektonPipeline           string
-	TektonTrigger            string
-	TektonDashboard          string
-	TektonAddon              string
-	TektonConfig             string
-	TektonPruner             string
-	TektonResult             string
-	TektonChain              string
-	Namespace                string
-	TargetNamespace          string
-	OperatorPodSelectorLabel string
-	OpenShiftPipelinesAsCode string
-	ManualApprovalGate       string
+	TektonPipeline             string
+	TektonTrigger              string
+	TektonDashboard            string
+	TektonAddon                string
+	TektonConfig               string
+	TektonPruner               string
+	TektonResult               string
+	TektonChain                string
+	TektonScheduler            string
+	TektonMulticlusterProxyAAE string
+	SyncerService              string
+	Namespace                  string
+	TargetNamespace            string
+	OperatorPodSelectorLabel   string
+	OpenShiftPipelinesAsCode   string
+	ManualApprovalGate         string
 }
 
 func GetResourceNames() ResourceNames {
 	resourceNames := ResourceNames{
-		TektonConfig:             v1alpha1.ConfigResourceName,
-		TektonPipeline:           v1alpha1.PipelineResourceName,
-		TektonTrigger:            v1alpha1.TriggerResourceName,
-		TektonDashboard:          v1alpha1.DashboardResourceName,
-		TektonAddon:              v1alpha1.AddonResourceName,
-		TektonPruner:             v1alpha1.TektonPrunerResourceName,
-		TektonResult:             v1alpha1.ResultResourceName,
-		TektonChain:              v1alpha1.ChainResourceName,
-		ManualApprovalGate:       v1alpha1.ManualApprovalGates,
-		OpenShiftPipelinesAsCode: v1alpha1.OpenShiftPipelinesAsCodeName,
-		Namespace:                "tekton-operator",
-		TargetNamespace:          "tekton-pipelines",
-		OperatorPodSelectorLabel: "name=tekton-operator",
+		TektonConfig:               v1alpha1.ConfigResourceName,
+		TektonPipeline:             v1alpha1.PipelineResourceName,
+		TektonTrigger:              v1alpha1.TriggerResourceName,
+		TektonDashboard:            v1alpha1.DashboardResourceName,
+		TektonAddon:                v1alpha1.AddonResourceName,
+		TektonPruner:               v1alpha1.TektonPrunerResourceName,
+		TektonResult:               v1alpha1.ResultResourceName,
+		TektonChain:                v1alpha1.ChainResourceName,
+		TektonScheduler:            v1alpha1.TektonSchedulerResourceName,
+		TektonMulticlusterProxyAAE: v1alpha1.MultiClusterProxyAAEResourceName,
+		SyncerService:              v1alpha1.SyncerServiceResourceName,
+		ManualApprovalGate:         v1alpha1.ManualApprovalGates,
+		OpenShiftPipelinesAsCode:   v1alpha1.OpenShiftPipelinesAsCodeName,
+		Namespace:                  "tekton-operator",
+		TargetNamespace:            "tekton-pipelines",
+		OperatorPodSelectorLabel:   "name=tekton-operator",
 	}
 	if IsOpenShift() {
 		resourceNames.Namespace = "openshift-operators"

@@ -89,7 +89,8 @@ func buildClientConfig(kubeConfigPath string, clusterName string) (*rest.Config,
 	}
 	return clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeConfigPath},
-		&overrides).ClientConfig()
+		&overrides,
+	).ClientConfig()
 }
 
 func newTektonOperatorAlphaClients(cfg *rest.Config) (operatorv1alpha1.OperatorV1alpha1Interface, error) {
@@ -131,6 +132,7 @@ func (c *Clients) TektonDashboard() operatorv1alpha1.TektonDashboardInterface {
 func (c *Clients) TektonDashboardAll() operatorv1alpha1.TektonDashboardInterface {
 	return c.Operator.TektonDashboards()
 }
+
 func (c *Clients) TektonAddon() operatorv1alpha1.TektonAddonInterface {
 	return c.Operator.TektonAddons()
 }
@@ -162,9 +164,11 @@ func (c *Clients) TektonChains() operatorv1alpha1.TektonChainInterface {
 func (c *Clients) TektonChainsAll() operatorv1alpha1.TektonChainInterface {
 	return c.Operator.TektonChains()
 }
+
 func (c *Clients) TektonPruner() operatorv1alpha1.TektonPrunerInterface {
 	return c.Operator.TektonPruners()
 }
+
 func (c *Clients) TektonPrunerAll() operatorv1alpha1.TektonPrunerInterface {
 	return c.Operator.TektonPruners()
 }
@@ -187,4 +191,28 @@ func (c *Clients) TektonInstallerSetAll() operatorv1alpha1.TektonInstallerSetInt
 
 func (c *Clients) OpenShiftPipelinesAsCode() operatorv1alpha1.OpenShiftPipelinesAsCodeInterface {
 	return c.Operator.OpenShiftPipelinesAsCodes()
+}
+
+func (c *Clients) TektonSchedulers() operatorv1alpha1.TektonSchedulerInterface {
+	return c.Operator.TektonSchedulers()
+}
+
+func (c *Clients) TektonSchedulersAll() operatorv1alpha1.TektonSchedulerInterface {
+	return c.Operator.TektonSchedulers()
+}
+
+func (c *Clients) TektonMulticlusterProxyAAEs() operatorv1alpha1.TektonMulticlusterProxyAAEInterface {
+	return c.Operator.TektonMulticlusterProxyAAEs()
+}
+
+func (c *Clients) TektonMulticlusterProxyAAEsAll() operatorv1alpha1.TektonMulticlusterProxyAAEInterface {
+	return c.Operator.TektonMulticlusterProxyAAEs()
+}
+
+func (c *Clients) SyncerServices() operatorv1alpha1.SyncerServiceInterface {
+	return c.Operator.SyncerServices()
+}
+
+func (c *Clients) SyncerServicesAll() operatorv1alpha1.SyncerServiceInterface {
+	return c.Operator.SyncerServices()
 }

@@ -26,6 +26,7 @@ import (
 	tektonPipelineInformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonpipeline"
 	syncerServiceReconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/syncerservice"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/tools/cache"
 	kubeclient "knative.dev/pkg/client/injection/kube/client"
@@ -63,6 +64,7 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 		operatorClientSet:  operatorclient.Get(ctx),
 		extension:          OpenShiftExtension(ctx),
 		manifest:           manifest,
+		platformParams:     networkpolicy.OpenShiftPlatformDefaults(),
 		pipelineInformer:   tektonPipelineInformer.Get(ctx),
 		operatorVersion:    operatorVer,
 		syncerVersion:      syncerVer,

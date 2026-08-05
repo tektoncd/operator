@@ -62,6 +62,8 @@ type SyncerServiceSpec struct {
 	// Config holds the configuration for resources created by SyncerService
 	// +optional
 	Config Config `json:"config,omitempty"`
+	// +optional
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
 // SyncerServiceOptions defines the fields to customize SyncerService component
@@ -89,7 +91,8 @@ func (sss *SyncerServiceStatus) MarkPreReconcilerFailed(msg string) {
 	syncerServiceCondSet.Manage(sss).MarkFalse(
 		PreReconciler,
 		"Error",
-		msg)
+		msg,
+	)
 }
 
 func (sss *SyncerServiceStatus) MarkPostReconcilerFailed(msg string) {
@@ -97,7 +100,8 @@ func (sss *SyncerServiceStatus) MarkPostReconcilerFailed(msg string) {
 	syncerServiceCondSet.Manage(sss).MarkFalse(
 		PostReconciler,
 		"Error",
-		msg)
+		msg,
+	)
 }
 
 // SyncerServiceList contains a list of SyncerService

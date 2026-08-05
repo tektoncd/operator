@@ -27,6 +27,7 @@ import (
 	operatorv1alpha1 "github.com/tektoncd/operator/pkg/client/informers/externalversions/operator/v1alpha1"
 	syncerservicereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/syncerservice"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
+	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/logging"
@@ -40,6 +41,7 @@ type Reconciler struct {
 	installerSetClient *client.InstallerSetClient
 	manifest           mf.Manifest
 	extension          common.Extension
+	platformParams     networkpolicy.PlatformParams
 	pipelineInformer   operatorv1alpha1.TektonPipelineInformer
 	operatorVersion    string
 	syncerVersion      string
@@ -110,6 +112,16 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, ss *v1alpha1.SyncerServi
 	// Create/Update InstallerSet
 	if err := r.ensureInstallerSet(ctx, ss); err != nil {
 		return err
+	}
+
+	if err := r.reconcileNetworkPolicies(ctx, ss); err != nil {
+		if err == v1alpha1.REQUEUE_EVENT_AFTER {
+			return err
+		}
+		msg := fmt.Sprintf("NetworkPolicy reconciliation failed: %s", err.Error())
+		logger.Errorw("NetworkPolicy reconciliation failed", "error", err)
+		ss.Status.MarkInstallerSetNotReady(msg)
+		return nil
 	}
 
 	if err := r.extension.PostReconcile(ctx, ss); err != nil {

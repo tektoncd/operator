@@ -36,7 +36,6 @@ const (
 )
 
 func EnsureTektonSchedulerExists(ctx context.Context, clients op.TektonSchedulerInterface, newScheduler *v1alpha1.TektonScheduler) (*v1alpha1.TektonScheduler, error) {
-
 	// Update MultiKueueOverride
 	// If MultiCluster is enabled and MultiClusterRole=Hub then MultiKueueOverride should be true
 	newScheduler.Spec.Config.MultiKueueOverride = !newScheduler.Spec.MultiClusterDisabled && strings.EqualFold(string(newScheduler.Spec.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub))
@@ -86,7 +85,8 @@ func GetTektonSchedulerCR(config *v1alpha1.TektonConfig, operatorVersion string)
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Scheduler: config.Spec.Scheduler,
+			Scheduler:     config.Spec.Scheduler,
+			NetworkPolicy: config.Spec.NetworkPolicy,
 		},
 	}
 }
@@ -126,6 +126,11 @@ func UpdateScheduler(ctx context.Context, old *v1alpha1.TektonScheduler, new *v1
 
 	if !reflect.DeepEqual(old.Spec.MultiClusterConfig, new.Spec.MultiClusterConfig) {
 		old.Spec.MultiClusterConfig = new.Spec.MultiClusterConfig
+		updated = true
+	}
+
+	if !reflect.DeepEqual(old.Spec.NetworkPolicy, new.Spec.NetworkPolicy) {
+		old.Spec.NetworkPolicy = new.Spec.NetworkPolicy
 		updated = true
 	}
 

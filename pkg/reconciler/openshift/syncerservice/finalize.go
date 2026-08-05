@@ -45,6 +45,11 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Syncer
 		return err
 	}
 
+	if err := r.installerSetClient.CleanupCustomSet(ctx, syncerServiceCustomSet); err != nil {
+		logger.Error("Failed to cleanup network policy installerset", err)
+		return err
+	}
+
 	if err := r.extension.Finalize(ctx, original); err != nil {
 		logger.Error("Failed to finalize platform resources", err)
 	}
