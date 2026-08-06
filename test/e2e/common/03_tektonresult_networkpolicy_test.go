@@ -28,7 +28,9 @@ import (
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 // TestTektonResultNetworkPolicy verifies NetworkPolicies are created by default
@@ -42,8 +44,8 @@ func TestTektonResultNetworkPolicy(t *testing.T) {
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownPipeline(clients, crNames.TektonPipeline) })
 	utils.CleanupOnInterrupt(func() { utils.TearDownResult(clients, crNames.TektonResult) })
-	defer utils.TearDownResult(clients, crNames.TektonResult)
 	defer utils.TearDownPipeline(clients, crNames.TektonPipeline)
+	defer utils.TearDownResult(clients, crNames.TektonResult)
 
 	resources.EnsureNoTektonConfigInstance(t, clients, crNames)
 
@@ -81,6 +83,7 @@ func TestTektonResultNetworkPolicy(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to create TaskRun: %v", err)
 		}
+		defer deleteResultNPProbeTaskRun(t, clients, crNames.TargetNamespace, createdTaskRun.Name)
 
 		if err := resources.WaitForTaskRunHappy(
 			clients.TektonClient,
@@ -128,6 +131,27 @@ func TestTektonResultNetworkPolicy(t *testing.T) {
 		resources.AssertTektonResultCRReadyStatus(t, clients, crNames)
 		resources.AssertNetworkPoliciesExist(t, clients, crNames.TargetNamespace, expectedPolicies)
 	})
+}
+
+// deleteResultNPProbeTaskRun deletes the probe TaskRun and waits until it is
+// fully gone. Must run while TektonResult is still installed so the Results
+// watcher can clear results.tekton.dev/taskrun.
+func deleteResultNPProbeTaskRun(t *testing.T, clients *utils.Clients, namespace, name string) {
+	t.Helper()
+	ctx := context.Background()
+	err := clients.TektonClient.TaskRuns(namespace).Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil && !apierrs.IsNotFound(err) {
+		t.Fatalf("failed to delete probe TaskRun %q: %v", name, err)
+	}
+	if err := wait.PollUntilContextTimeout(ctx, utils.Interval, utils.Timeout, true, func(ctx context.Context) (bool, error) {
+		_, getErr := clients.TektonClient.TaskRuns(namespace).Get(ctx, name, metav1.GetOptions{})
+		if apierrs.IsNotFound(getErr) {
+			return true, nil
+		}
+		return false, getErr
+	}); err != nil {
+		t.Fatalf("probe TaskRun %q was not fully deleted (Results finalizer may be stuck): %v", name, err)
+	}
 }
 
 // createResultNPProbeTaskRun creates a minimal TaskRun that completes quickly.

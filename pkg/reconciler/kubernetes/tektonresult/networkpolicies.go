@@ -18,7 +18,6 @@ package tektonresult
 
 import (
 	"context"
-	"math"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -160,9 +159,11 @@ func resultsDefaultPolicies(params networkpolicy.PlatformParams, props v1alpha1.
 	}
 }
 
-// portOrDefault returns *p as int32 when set and positive, otherwise def.
+// portOrDefault returns *p as int32 when set to a valid TCP/UDP port (1–65535),
+// otherwise def. Values outside that range (e.g. 99999) would produce NetworkPolicy
+// objects Kubernetes rejects.
 func portOrDefault(p *int64, def int32) int32 {
-	if p != nil && *p > 0 && *p <= math.MaxInt32 {
+	if p != nil && *p >= 1 && *p <= 65535 {
 		return int32(*p)
 	}
 	return def
