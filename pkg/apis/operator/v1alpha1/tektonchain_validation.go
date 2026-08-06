@@ -34,6 +34,7 @@ var (
 	allowedArtifactsStorage                         = sets.NewString("", "tekton", "oci", "gcs", "docdb", "grafeas", "kafka")
 	allowedControllerEnvs                           = sets.NewString("MONGO_SERVER_URL")
 	allowedBuildDefinitionType                      = sets.NewString("", "https://tekton.dev/chains/v2/slsa", "https://tekton.dev/chains/v2/slsa-tekton")
+	allowedStorageOCIEncodingFormat                 = sets.NewString("", "dsse", "sigstore-bundle")
 )
 
 func (tc *TektonChain) Validate(ctx context.Context) (errs *apis.FieldError) {
@@ -130,6 +131,10 @@ func (tcs *TektonChainSpec) ValidateChainConfig(path string) (errs *apis.FieldEr
 		if tcs.ArtifactsOCISigner != "x509" && tcs.ArtifactsOCISigner != "kms" {
 			errs = errs.Also(apis.ErrInvalidValue(tcs.ArtifactsOCISigner, path+".artifacts.oci.signer"))
 		}
+	}
+
+	if !allowedStorageOCIEncodingFormat.Has(tcs.StorageOCIEncodingFormat) {
+		errs = errs.Also(apis.ErrInvalidValue(tcs.StorageOCIEncodingFormat, path+".storage.oci.encoding-format"))
 	}
 
 	if !allowedX509SignerFulcioProvider.Has(tcs.X509SignerFulcioProvider) {

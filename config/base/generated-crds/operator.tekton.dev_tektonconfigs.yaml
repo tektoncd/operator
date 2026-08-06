@@ -374,6 +374,8 @@ spec:
                     type: string
                   storage.grafeas.projectid:
                     type: string
+                  storage.oci.encoding-format:
+                    type: string
                   storage.oci.repository:
                     type: string
                   storage.oci.repository.insecure:
