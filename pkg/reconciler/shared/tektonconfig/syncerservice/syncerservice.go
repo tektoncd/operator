@@ -29,16 +29,16 @@ import (
 	"knative.dev/pkg/apis"
 )
 
-// IsSyncerServiceEnabled checks if syncer-service should be deployed based on scheduler config
+// IsSyncerServiceEnabled checks if syncer-service should be deployed based on Tekton Kueue config
 // Syncer-service is enabled when:
 // 1. Multi-cluster is NOT disabled (i.e., multi-cluster is enabled)
 // 2. The role is Hub
-func IsSyncerServiceEnabled(scheduler *v1alpha1.Scheduler) bool {
-	if scheduler == nil {
+func IsSyncerServiceEnabled(kueue *v1alpha1.Kueue) bool {
+	if kueue == nil {
 		return false
 	}
-	return !scheduler.MultiClusterDisabled &&
-		strings.EqualFold(string(scheduler.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub))
+	return !kueue.MultiClusterDisabled &&
+		strings.EqualFold(string(kueue.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub))
 }
 
 // EnsureSyncerServiceExists ensures the SyncerService CR exists if conditions are met

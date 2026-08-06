@@ -368,34 +368,34 @@ func TearDownTektonPruner(clients *Clients, name string) {
 	}
 }
 
-func TearDownScheduler(clients *Clients, name string) {
+func TearDownKueue(clients *Clients, name string) {
 	ctx := context.Background()
 	if clients == nil || clients.Operator == nil {
 		return
 	}
 
-	ts, err := clients.TektonSchedulers().Get(ctx, name, metav1.GetOptions{})
+	tk, err := clients.TektonKueues().Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			fmt.Printf("error trying to get TektonScheduler instance during teardown, name: %s, error: %v", name, err)
+			fmt.Printf("error trying to get TektonKueue instance during teardown, name: %s, error: %v", name, err)
 		}
 		return
 	}
-	targetNamespace := ts.Spec.TargetNamespace
+	targetNamespace := tk.Spec.TargetNamespace
 
-	err = clients.TektonSchedulers().Delete(ctx, name, metav1.DeleteOptions{})
+	err = clients.TektonKueues().Delete(ctx, name, metav1.DeleteOptions{})
 	if err != nil {
-		fmt.Printf("error trying to delete TektonScheduler during teardown, name: %s, error: %v", name, err)
+		fmt.Printf("error trying to delete TektonKueue during teardown, name: %s, error: %v", name, err)
 		return
 	}
 	crdf := newCRDeleteVerifier(ctx, func(ctx context.Context) error {
-		_, err := clients.TektonSchedulers().Get(ctx, name, metav1.GetOptions{})
+		_, err := clients.TektonKueues().Get(ctx, name, metav1.GetOptions{})
 		return err
 	})
-	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, TektonSchedulerDeploymentLabel)
+	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, TektonKueueDeploymentLabel)
 	err = waitUntilFullDeletion(crdf, ddf)
 	if err != nil {
-		fmt.Printf("error waiting from tearDown of TektonScheduler resource, name: %s, error: %v", name, err)
+		fmt.Printf("error waiting from tearDown of TektonKueue resource, name: %s, error: %v", name, err)
 	}
 }
 

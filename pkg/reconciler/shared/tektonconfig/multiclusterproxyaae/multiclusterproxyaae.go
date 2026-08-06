@@ -30,17 +30,17 @@ import (
 )
 
 // IsMulticlusterProxyAAEEnabled returns true when TektonMulticlusterProxyAAE should be deployed:
-// scheduler is not disabled, multi-cluster is enabled, and role is Hub.
+// Tekton Kueue is not disabled, multi-cluster is enabled, and role is Hub.
 func IsMulticlusterProxyAAEEnabled(tc *v1alpha1.TektonConfig) bool {
-	if tc.Spec.Scheduler.IsDisabled() {
+	if tc.Spec.Kueue.IsDisabled() {
 		return false
 	}
-	return !tc.Spec.Scheduler.MultiClusterDisabled &&
-		strings.EqualFold(string(tc.Spec.Scheduler.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub))
+	return !tc.Spec.Kueue.MultiClusterDisabled &&
+		strings.EqualFold(string(tc.Spec.Kueue.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub))
 }
 
 // EnsureTektonMulticlusterProxyAAEComponent ensures TektonMulticlusterProxyAAE CR exists or is removed
-// based on TektonConfig scheduler spec (multi-cluster enabled + Hub role).
+// based on TektonConfig Tekton Kueue spec (multi-cluster enabled + Hub role).
 func EnsureTektonMulticlusterProxyAAEComponent(ctx context.Context, tc *v1alpha1.TektonConfig, clients op.TektonMulticlusterProxyAAEInterface, operatorVersion string) error {
 	if !IsMulticlusterProxyAAEEnabled(tc) {
 		return EnsureTektonMulticlusterProxyAAECRNotExists(ctx, clients)

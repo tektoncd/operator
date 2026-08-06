@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonscheduler
+package tektonkueue
 
 import (
 	"context"
@@ -31,41 +31,41 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-func (r *Reconciler) ensureInstallerSets(ctx context.Context, tektonScheduler *v1alpha1.TektonScheduler) error {
+func (r *Reconciler) ensureInstallerSets(ctx context.Context, tektonKueue *v1alpha1.TektonKueue) error {
 	logger := logging.FromContext(ctx)
 
 	// Create Config Installset Before Main Set
-	if err := r.ensureConfigInstallerSet(ctx, tektonScheduler); err != nil {
+	if err := r.ensureConfigInstallerSet(ctx, tektonKueue); err != nil {
 		msg := fmt.Sprintf("Config InstallerSet Reconcilation failed: %s", err.Error())
 		logger.Error(msg)
 		if errors.Is(err, v1alpha1.REQUEUE_EVENT_AFTER) {
 			return err
 		}
-		tektonScheduler.Status.MarkInstallerSetNotReady(msg)
+		tektonKueue.Status.MarkInstallerSetNotReady(msg)
 		return err
 	}
 
 	// Main Installerset Should not contain the configMap as it is already created by config installerset
-	filteredManifest := r.manifest.Filter(mf.Not(mf.All(mf.ByKind("ConfigMap"), mf.ByName(v1alpha1.SchedulerConfigMapName))))
-	if err := r.installerSetClient.MainSet(ctx, tektonScheduler, &filteredManifest, filterAndTransform(r.extension)); err != nil {
+	filteredManifest := r.manifest.Filter(mf.Not(mf.All(mf.ByKind("ConfigMap"), mf.ByName(v1alpha1.KueueConfigMapName))))
+	if err := r.installerSetClient.MainSet(ctx, tektonKueue, &filteredManifest, filterAndTransform(r.extension)); err != nil {
 		msg := fmt.Sprintf("Main Reconcilation failed: %s", err.Error())
 		logger.Error(msg)
 		if errors.Is(err, v1alpha1.REQUEUE_EVENT_AFTER) {
 			return err
 		}
-		tektonScheduler.Status.MarkInstallerSetNotReady(msg)
+		tektonKueue.Status.MarkInstallerSetNotReady(msg)
 	}
 	return nil
 }
 
-func (r *Reconciler) ensureConfigInstallerSet(ctx context.Context, tektonScheduler *v1alpha1.TektonScheduler) error {
+func (r *Reconciler) ensureConfigInstallerSet(ctx context.Context, tektonKueue *v1alpha1.TektonKueue) error {
 	logger := logging.FromContext(ctx)
 	labelSelector := metav1.LabelSelector{
 		MatchLabels: getLabels(),
 	}
 	configLabelSector, err := common.LabelSelector(labelSelector)
 	if err != nil {
-		logger.Errorw("Invalid Scheduler config label selector", "error", err)
+		logger.Errorw("Invalid Kueue config label selector", "error", err)
 		return err
 	}
 	existingConfigInstallerSet, err := tektoninstallerset.CurrentInstallerSetName(ctx, r.operatorClientSet, configLabelSector)
@@ -74,17 +74,17 @@ func (r *Reconciler) ensureConfigInstallerSet(ctx context.Context, tektonSchedul
 		return err
 	}
 	if existingConfigInstallerSet == "" {
-		tektonScheduler.Status.MarkInstallerSetNotAvailable(v1alpha1.SchedulerConfigInstallerSet + " InstallerSet not available")
-		logger.Infow("Creating new InstallerSet", v1alpha1.SchedulerConfigInstallerSet, "targetNamespace", tektonScheduler.Spec.TargetNamespace)
+		tektonKueue.Status.MarkInstallerSetNotAvailable(v1alpha1.KueueConfigInstallerSet + " InstallerSet not available")
+		logger.Infow("Creating new InstallerSet", v1alpha1.KueueConfigInstallerSet, "targetNamespace", tektonKueue.Spec.TargetNamespace)
 
-		_, err := r.createConfigInstallerSet(ctx, tektonScheduler)
+		_, err := r.createConfigInstallerSet(ctx, tektonKueue)
 		if err != nil {
 			logger.Errorw("Failed to create Config InstallerSet", "error", err)
 			return err
 		}
 
 	} else {
-		// If exists, then fetch the Tekton Scheduler Config InstallerSet
+		// If exists, then fetch the Tekton Kueue Config InstallerSet
 		installedConfigTIS, err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 			Get(ctx, existingConfigInstallerSet, metav1.GetOptions{})
 		if err != nil {
@@ -96,15 +96,15 @@ func (r *Reconciler) ensureConfigInstallerSet(ctx context.Context, tektonSchedul
 		configInstallerSetTargetNamespace := installedConfigTIS.Annotations[v1alpha1.TargetNamespaceKey]
 		configInstallerSetReleaseVersion := installedConfigTIS.Labels[v1alpha1.ReleaseVersionKey]
 
-		if configInstallerSetTargetNamespace != tektonScheduler.Spec.TargetNamespace || configInstallerSetReleaseVersion != r.operatorVersion {
+		if configInstallerSetTargetNamespace != tektonKueue.Spec.TargetNamespace || configInstallerSetReleaseVersion != r.operatorVersion {
 			logger.Infow("Config InstallerSet needs update",
 				"name", existingConfigInstallerSet,
 				"currentNamespace", configInstallerSetTargetNamespace,
-				"expectedNamespace", tektonScheduler.Spec.TargetNamespace,
+				"expectedNamespace", tektonKueue.Spec.TargetNamespace,
 				"currentVersion", configInstallerSetReleaseVersion,
 				"expectedVersion", r.operatorVersion)
 
-			// Delete the existing Tekton Scheduler InstallerSet
+			// Delete the existing Tekton Kueue InstallerSet
 			err := r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 				Delete(ctx, existingConfigInstallerSet, metav1.DeleteOptions{})
 			if err != nil {
@@ -112,11 +112,11 @@ func (r *Reconciler) ensureConfigInstallerSet(ctx context.Context, tektonSchedul
 				return err
 			}
 
-			// Make sure the Tekton Scheduler Config InstallerSet is deleted
+			// Make sure the Tekton Kueue Config InstallerSet is deleted
 			_, err = r.operatorClientSet.OperatorV1alpha1().TektonInstallerSets().
 				Get(ctx, existingConfigInstallerSet, metav1.GetOptions{})
 			if err == nil {
-				tektonScheduler.Status.MarkNotReady("Waiting for previous installer set to get deleted")
+				tektonKueue.Status.MarkNotReady("Waiting for previous installer set to get deleted")
 				logger.Debugw("Config InstallerSet deletion pending", "name", existingConfigInstallerSet)
 				return v1alpha1.REQUEUE_EVENT_AFTER
 			}
@@ -127,12 +127,12 @@ func (r *Reconciler) ensureConfigInstallerSet(ctx context.Context, tektonSchedul
 			return nil
 
 		} else {
-			// If target namespace and version are not changed then check if Scheduler
+			// If target namespace and version are not changed then check if Kueue
 			// spec is changed by checking hash stored as annotation on
-			// Tekton Scheduler InstallerSet with computing new hash of TektonScheduler Spec
+			// Tekton Kueue InstallerSet with computing new hash of TektonKueue Spec
 
-			// Hash of TektonScheduler Spec
-			expectedSpecHash, err := hash.Compute(tektonScheduler.Spec)
+			// Hash of TektonKueue Spec
+			expectedSpecHash, err := hash.Compute(tektonKueue.Spec)
 			if err != nil {
 				logger.Errorw("Failed to compute spec hash", "error", err)
 				return err
@@ -162,27 +162,27 @@ func (r *Reconciler) ensureConfigInstallerSet(ctx context.Context, tektonSchedul
 	return nil
 }
 
-func (r *Reconciler) createConfigInstallerSet(ctx context.Context, tektonScheduler *v1alpha1.TektonScheduler) (*v1alpha1.TektonInstallerSet, error) {
+func (r *Reconciler) createConfigInstallerSet(ctx context.Context, tektonKueue *v1alpha1.TektonKueue) (*v1alpha1.TektonInstallerSet, error) {
 	logger := logging.FromContext(ctx)
 	manifest := r.manifest
-	manifest = manifest.Filter(mf.ByKind("ConfigMap"), mf.ByName(v1alpha1.SchedulerConfigMapName))
+	manifest = manifest.Filter(mf.ByKind("ConfigMap"), mf.ByName(v1alpha1.KueueConfigMapName))
 
-	logger.Infow("Creating a new SchedulerConfigInstallerSet", "manifest", manifest.Resources())
+	logger.Infow("Creating a new KueueConfigInstallerSet", "manifest", manifest.Resources())
 
 	transformer := filterAndTransform(r.extension)
-	if _, err := transformer(ctx, &manifest, tektonScheduler); err != nil {
-		tektonScheduler.Status.MarkNotReady("transformation failed: " + err.Error())
+	if _, err := transformer(ctx, &manifest, tektonKueue); err != nil {
+		tektonKueue.Status.MarkNotReady("transformation failed: " + err.Error())
 		return nil, err
 	}
 
 	// generate installer set
-	tis := r.makeInstallerSet(tektonScheduler, manifest, v1alpha1.SchedulerConfigInstallerSet)
+	tis := r.makeInstallerSet(tektonKueue, manifest, v1alpha1.KueueConfigInstallerSet)
 
 	// compute the hash of  spec and store as an annotation
-	// in further reconciliation we compute hash of tektonScheduler spec and check with
+	// in further reconciliation we compute hash of tektonKueue spec and check with
 	// annotation, if they are same then we skip updating the object
 	// otherwise we update the manifest
-	specHash, err := hash.Compute(tektonScheduler.Spec)
+	specHash, err := hash.Compute(tektonKueue.Spec)
 	if err != nil {
 		return nil, err
 	}
@@ -197,7 +197,7 @@ func (r *Reconciler) createConfigInstallerSet(ctx context.Context, tektonSchedul
 	return createdIs, nil
 }
 
-func (r *Reconciler) makeInstallerSet(tc *v1alpha1.TektonScheduler, manifest mf.Manifest, installerSetType string) *v1alpha1.TektonInstallerSet {
+func (r *Reconciler) makeInstallerSet(tc *v1alpha1.TektonKueue, manifest mf.Manifest, installerSetType string) *v1alpha1.TektonInstallerSet {
 	ownerRef := *metav1.NewControllerRef(tc, tc.GetGroupVersionKind())
 	labels := getLabels()
 
@@ -220,8 +220,8 @@ func (r *Reconciler) makeInstallerSet(tc *v1alpha1.TektonScheduler, manifest mf.
 
 func getLabels() map[string]string {
 	labels := map[string]string{
-		v1alpha1.CreatedByKey:     v1alpha1.SchedulerCreatedByValue,
-		v1alpha1.InstallerSetType: v1alpha1.SchedulerConfigInstallerSet,
+		v1alpha1.CreatedByKey:     v1alpha1.KueueCreatedByValue,
+		v1alpha1.InstallerSetType: v1alpha1.KueueConfigInstallerSet,
 	}
 	return labels
 }

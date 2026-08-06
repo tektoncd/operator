@@ -382,8 +382,8 @@ main() {
   pruner_version=$(go run ./cmd/tool component-version ${CONFIG} pruner)
   release_yaml pruner release 00-pruner ${pruner_version}
 
-  # Tekton Scheduler
-  release_yaml_github scheduler
+  # Tekton Kueue
+  release_yaml_github kueue
 
   # Tekton Multicluster Proxy AAE
   release_yaml_github multicluster-proxy-aae

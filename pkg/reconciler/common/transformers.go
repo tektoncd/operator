@@ -53,7 +53,7 @@ const (
 	ChainsImagePrefix               = "IMAGE_CHAINS_"
 	ManualApprovalGatePrefix        = "IMAGE_MAG_"
 	PrunerImagePrefix               = "IMAGE_PRUNER_"
-	SchedulerImagePrefix            = "IMAGE_SCHEDULER_"
+	KueueImagePrefix                = "IMAGE_KUEUE_"
 	MulticlusterProxyAAEImagePrefix = "IMAGE_MULTICLUSTERPROXYAAE_"
 	SyncerServiceImagePrefix        = "IMAGE_SYNCER_SERVICE_WORKLOAD_"
 	ResultsImagePrefix              = "IMAGE_RESULTS_"

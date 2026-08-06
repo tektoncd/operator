@@ -26,7 +26,7 @@ SyncerService is automatically installed when **both** of the following conditio
 
 ### Installation via TektonConfig
 
-Configure your TektonConfig with the scheduler settings to automatically deploy SyncerService:
+Configure your TektonConfig with the Tekton Kueue settings to automatically deploy SyncerService:
 
 ```yaml
 apiVersion: operator.tekton.dev/v1alpha1
@@ -36,30 +36,17 @@ metadata:
 spec:
   profile: all
   targetNamespace: openshift-pipelines
-  scheduler:
+  kueue:
     disabled: false
     multi-cluster-disabled: false
     multi-cluster-role: Hub
+    config.yaml:
+      queueName: pipelines-queue
 ```
 
 When this configuration is applied, the operator will:
-1. Deploy TektonScheduler component
+1. Deploy TektonKueue component
 2. Automatically deploy SyncerService component (because `multi-cluster-role: Hub`)
-
-### Installation via TektonScheduler CR
-
-Alternatively, you can configure via TektonScheduler CR directly:
-
-```yaml
-apiVersion: operator.tekton.dev/v1alpha1
-kind: TektonScheduler
-metadata:
-  name: scheduler
-spec:
-  disabled: false
-  multi-cluster-disabled: false
-  multi-cluster-role: Hub
-```
 
 ## Uninstallation
 
@@ -81,7 +68,7 @@ kind: TektonConfig
 metadata:
   name: config
 spec:
-  scheduler:
+  kueue:
     multi-cluster-disabled: true
 ```
 
@@ -92,14 +79,14 @@ kind: TektonConfig
 metadata:
   name: config
 spec:
-  scheduler:
+  kueue:
     multi-cluster-disabled: false
     multi-cluster-role: Spoke
 ```
 
 ## Pre-Requisites
 
-SyncerService has the same pre-requisites as TektonScheduler:
+SyncerService has the same pre-requisites as TektonKueue:
 
 * [Kueue](https://kueue.sigs.k8s.io) must be installed
 * [cert-manager](https://github.com/cert-manager/cert-manager) CRDs must be installed
@@ -109,7 +96,7 @@ SyncerService has the same pre-requisites as TektonScheduler:
 * **Automatic Secret Syncing**: Syncs Git authentication secrets from hub to spoke clusters
 * **Multi-Cluster Support**: Works with Kueue's MultiKueue for distributed workload execution
 * **Selective Processing**: Only handles Workloads owned by Tekton PipelineRuns
-* **Lifecycle Management**: Automatically managed by the Tekton Operator based on scheduler configuration
+* **Lifecycle Management**: Automatically managed by the Tekton Operator based on Tekton Kueue configuration
 
 ## SyncerService CR
 
@@ -124,7 +111,7 @@ spec:
   targetNamespace: openshift-pipelines
 ```
 
-> **Note:** Users should not create or modify SyncerService CR directly. It is managed automatically by the operator based on TektonScheduler configuration.
+> **Note:** Users should not create or modify SyncerService CR directly. It is managed automatically by the operator based on TektonKueue configuration.
 
 ## Troubleshooting
 
@@ -136,10 +123,10 @@ kubectl get syncerservice syncer-service -o yaml
 
 ### Check if SyncerService Should Be Installed
 
-Verify your scheduler configuration:
+Verify your Tekton Kueue configuration:
 
 ```bash
-kubectl get tektonconfig config -o jsonpath='{.spec.scheduler}'
+kubectl get tektonconfig config -o jsonpath='{.spec.kueue}'
 ```
 
 For SyncerService to be deployed, you should see:
@@ -158,6 +145,6 @@ kubectl logs -n openshift-pipelines -l app=syncer-service -f
 * [Kueue Documentation](https://kueue.sigs.k8s.io)
 * [Kueue MultiKueue](https://kueue.sigs.k8s.io/docs/concepts/multikueue/)
 * [Tekton Pipelines](https://tekton.dev)
-* [TektonScheduler Documentation](./TektonScheduler.md)
+* [TektonKueue Documentation](./TektonKueue.md)
 
 [SyncerService]: https://github.com/openshift-pipelines/syncer-service

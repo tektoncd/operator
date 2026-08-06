@@ -193,12 +193,12 @@ func (c *Clients) OpenShiftPipelinesAsCode() operatorv1alpha1.OpenShiftPipelines
 	return c.Operator.OpenShiftPipelinesAsCodes()
 }
 
-func (c *Clients) TektonSchedulers() operatorv1alpha1.TektonSchedulerInterface {
-	return c.Operator.TektonSchedulers()
+func (c *Clients) TektonKueues() operatorv1alpha1.TektonKueueInterface {
+	return c.Operator.TektonKueues()
 }
 
-func (c *Clients) TektonSchedulersAll() operatorv1alpha1.TektonSchedulerInterface {
-	return c.Operator.TektonSchedulers()
+func (c *Clients) TektonKueuesAll() operatorv1alpha1.TektonKueueInterface {
+	return c.Operator.TektonKueues()
 }
 
 func (c *Clients) TektonMulticlusterProxyAAEs() operatorv1alpha1.TektonMulticlusterProxyAAEInterface {
