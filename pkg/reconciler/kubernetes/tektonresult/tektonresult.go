@@ -417,9 +417,6 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tr *v1alpha1.TektonResul
 	logger.Infow("Installer set is ready", "name", installedTIS.Name)
 
 	if err := r.reconcileNetworkPolicies(ctx, tr); err != nil {
-		if err == v1alpha1.REQUEUE_EVENT_AFTER {
-			return err
-		}
 		msg := fmt.Sprintf("NetworkPolicy reconciliation failed: %s", err.Error())
 		logger.Errorw("NetworkPolicy reconciliation failed", "error", err)
 		tr.Status.MarkInstallerSetNotReady(msg)

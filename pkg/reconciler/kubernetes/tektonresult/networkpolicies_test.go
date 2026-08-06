@@ -21,6 +21,7 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common/networkpolicy"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"knative.dev/pkg/ptr"
@@ -54,12 +55,12 @@ func TestResultsDefaultPolicies(t *testing.T) {
 	if got := len(watcher.Spec.Egress); got != 2 {
 		t.Fatalf("results-watcher: expected 2 egress rules (DNS + allow-all), got %d", got)
 	}
-	assertEgressHasDNS(t, "results-watcher", watcher.Spec.Egress)
+	assertEgressHasDNS(t, "results-watcher", watcher.Spec.Egress, 5353)
 	assertEgressHasAllowAll(t, "results-watcher", watcher.Spec.Egress)
 	assertIngressHasPort(t, "results-watcher", watcher.Spec.Ingress, 9090)
 
 	retention := byName["results-retention-policy-agent"]
-	assertEgressHasDNS(t, "results-retention-policy-agent", retention.Spec.Egress)
+	assertEgressHasDNS(t, "results-retention-policy-agent", retention.Spec.Egress, 5353)
 	assertEgressHasDBPort(t, "results-retention-policy-agent", retention.Spec.Egress, 5432)
 
 	postgres := byName["results-postgres"]
@@ -94,6 +95,15 @@ func TestPortOrDefault(t *testing.T) {
 	}
 	if got := portOrDefault(ptr.Int64(9090), 8080); got != 9090 {
 		t.Errorf("set: got %d", got)
+	}
+	if got := portOrDefault(ptr.Int64(0), 8080); got != 8080 {
+		t.Errorf("zero: got %d, want default", got)
+	}
+	if got := portOrDefault(ptr.Int64(99999), 5432); got != 5432 {
+		t.Errorf("above max port: got %d, want default", got)
+	}
+	if got := portOrDefault(ptr.Int64(65535), 5432); got != 65535 {
+		t.Errorf("max valid port: got %d", got)
 	}
 }
 
@@ -161,14 +171,30 @@ func assertEgressHasDBPort(t *testing.T, policy string, rules []networkingv1.Net
 	t.Errorf("%s: expected port-only egress TCP/%d (no To peer)", policy, port)
 }
 
-func assertEgressHasDNS(t *testing.T, policy string, rules []networkingv1.NetworkPolicyEgressRule) {
+func assertEgressHasDNS(t *testing.T, policy string, rules []networkingv1.NetworkPolicyEgressRule, dnsPort int32) {
 	t.Helper()
+	want := intstr.FromInt32(dnsPort)
 	for _, rule := range rules {
-		if len(rule.Ports) > 0 && len(rule.To) > 0 {
+		if len(rule.To) == 0 {
+			continue
+		}
+		hasUDP, hasTCP := false, false
+		for _, p := range rule.Ports {
+			if p.Port == nil || *p.Port != want || p.Protocol == nil {
+				continue
+			}
+			switch *p.Protocol {
+			case corev1.ProtocolUDP:
+				hasUDP = true
+			case corev1.ProtocolTCP:
+				hasTCP = true
+			}
+		}
+		if hasUDP && hasTCP {
 			return
 		}
 	}
-	t.Errorf("%s: expected DNS egress rule", policy)
+	t.Errorf("%s: expected DNS egress rule with UDP+TCP/%d", policy, dnsPort)
 }
 
 func assertEgressHasAllowAll(t *testing.T, policy string, rules []networkingv1.NetworkPolicyEgressRule) {
