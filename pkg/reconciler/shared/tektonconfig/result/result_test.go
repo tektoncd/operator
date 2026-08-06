@@ -198,7 +198,7 @@ func TestGetTektonResultCR_HubClusterConfig(t *testing.T) {
 					CommonSpec: v1alpha1.CommonSpec{
 						TargetNamespace: "tekton-pipelines",
 					},
-					Scheduler: v1alpha1.Scheduler{
+					Kueue: v1alpha1.Kueue{
 						MultiClusterConfig: v1alpha1.MultiClusterConfig{
 							MultiClusterDisabled: tt.multiClusterDisabled,
 							MultiClusterRole:     tt.multiClusterRole,

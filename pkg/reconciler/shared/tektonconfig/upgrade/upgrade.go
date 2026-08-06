@@ -32,8 +32,9 @@ import (
 var (
 	// pre upgrade functions
 	preUpgradeFunctions = []upgradeFunc{
-		resetTektonConfigConditions, // upgrade #1: removes conditions from TektonConfig CR, clears outdated conditions
-		upgradePipelineProperties,   // upgrade #2: update default value of enable-step-actions from false to true
+		resetTektonConfigConditions,         // upgrade #1: removes conditions from TektonConfig CR, clears outdated conditions
+		migrateTektonSchedulerToTektonKueue, // upgrade #2: migrates the deprecated scheduler API and TektonConfig field
+		upgradePipelineProperties,           // upgrade #3: update default value of enable-step-actions from false to true
 		// Todo: Remove the deleteTektonResultsTLSSecret upgrade function in next operator release
 		deleteTektonResultsTLSSecret, // upgrade #5: deletes default tekton results tls certificate
 		// TODO: Remove the preUpgradeTektonPruner upgrade function in next operator release

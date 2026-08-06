@@ -27,7 +27,10 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: TektonScheduler is the Schema for the TektonScheduler API
+        description: |-
+          TektonScheduler is the deprecated predecessor of TektonKueue. It is retained
+          temporarily so existing resources remain readable while pre-upgrade migration
+          copies their configuration to TektonKueue.
         properties:
           apiVersion:
             description: |-
@@ -47,11 +50,12 @@ spec:
           metadata:
             type: object
           spec:
+            description: TektonSchedulerSpec defines the desired state of the deprecated
+              TektonScheduler API.
             properties:
               config.yaml:
-                description: |-
-                  This hold the config data from tekton-kueue. ConfigMap in tekton kueue is loaded as config.yaml so we need to
-                  match the key here
+                description: This holds the config data loaded by tekton-kueue as
+                  config.yaml.
                 properties:
                   cel:
                     properties:
@@ -608,7 +612,8 @@ spec:
             - multi-cluster-role
             type: object
           status:
-            description: TektonSchedulerStatus defines the observed state of TektonScheduler
+            description: TektonSchedulerStatus defines the observed state of the deprecated
+              TektonScheduler API.
             properties:
               annotations:
                 additionalProperties:

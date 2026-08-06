@@ -18,11 +18,25 @@ package v1alpha1
 
 import (
 	"context"
+	"reflect"
 	"strings"
 
 	"knative.dev/pkg/logging"
 	"knative.dev/pkg/ptr"
 )
+
+// MigrateScheduler copies the deprecated scheduler configuration to kueue.
+// An explicitly configured kueue field takes precedence.
+func (spec *TektonConfigSpec) MigrateScheduler() bool {
+	if reflect.DeepEqual(spec.Scheduler, Scheduler{}) {
+		return false
+	}
+	if reflect.DeepEqual(spec.Kueue, Kueue{}) {
+		spec.Kueue = spec.Scheduler.ToKueue()
+	}
+	spec.Scheduler = Scheduler{}
+	return true
+}
 
 func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	if tc.Spec.Profile == "" {
@@ -33,7 +47,8 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	tc.Spec.Chain.setDefaults()
 	tc.Spec.Result.setDefaults()
 	tc.Spec.TektonPruner.SetDefaults()
-	tc.Spec.Scheduler.SetDefaults()
+	tc.Spec.MigrateScheduler()
+	tc.Spec.Kueue.SetDefaults()
 
 	if IsOpenShiftPlatform() {
 		// PAC may appear under spec.platforms.kubernetes if the mutating webhook ran without

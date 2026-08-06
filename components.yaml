@@ -22,8 +22,8 @@ pruner:
 results:
   github: tektoncd/results
   version: v0.20.0
-scheduler:
-  github: konflux-ci/tekton-kueue
+kueue:
+  github: tektoncd/tekton-kueue
   version: v0.4.0
 syncer-service:
   github: openshift-pipelines/syncer-service

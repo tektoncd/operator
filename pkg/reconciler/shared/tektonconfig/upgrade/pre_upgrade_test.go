@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorFake "github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
 	"knative.dev/pkg/logging"
@@ -68,6 +69,75 @@ func TestResetTektonConfigConditions(t *testing.T) {
 	_tc, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 	assert.NoError(t, err)
 	assert.Empty(t, _tc.Status.Conditions)
+}
+
+func TestMigrateTektonSchedulerToTektonKueue(t *testing.T) {
+	ctx := context.TODO()
+	operatorClient := operatorFake.NewSimpleClientset(
+		&v1alpha1.TektonConfig{
+			ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ConfigResourceName},
+			Spec: v1alpha1.TektonConfigSpec{
+				Scheduler: v1alpha1.Scheduler{
+					Disabled: ptr.Bool(false),
+					MultiClusterConfig: v1alpha1.MultiClusterConfig{
+						MultiClusterDisabled: true,
+					},
+				},
+			},
+		},
+		&v1alpha1.TektonScheduler{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:       v1alpha1.TektonSchedulerResourceName,
+				Finalizers: []string{deprecatedTektonSchedulerFinalizer, "example.dev/preserve"},
+			},
+			Spec: v1alpha1.TektonSchedulerSpec{
+				CommonSpec: v1alpha1.CommonSpec{TargetNamespace: "tekton-pipelines"},
+				Scheduler: v1alpha1.Scheduler{
+					Disabled: ptr.Bool(false),
+					MultiClusterConfig: v1alpha1.MultiClusterConfig{
+						MultiClusterDisabled: true,
+					},
+				},
+				NetworkPolicy: v1alpha1.NetworkPolicyConfig{Disabled: true},
+			},
+		},
+		&v1alpha1.TektonInstallerSet{ObjectMeta: metav1.ObjectMeta{
+			Name: "scheduler-main",
+			Labels: map[string]string{
+				v1alpha1.CreatedByKey: v1alpha1.SchedulerCreatedByValue,
+			},
+		}},
+	)
+	logger := logging.FromContext(ctx).Named("unit-test")
+
+	// The migration advances one durable API operation per reconciliation.
+	for range 4 {
+		err := migrateTektonSchedulerToTektonKueue(ctx, logger, nil, operatorClient, nil)
+		assert.ErrorIs(t, err, v1alpha1.RECONCILE_AGAIN_ERR)
+	}
+	legacy, err := operatorClient.OperatorV1alpha1().TektonSchedulers().Get(ctx, v1alpha1.TektonSchedulerResourceName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"example.dev/preserve"}, legacy.Finalizers)
+
+	assert.NoError(t, migrateTektonSchedulerToTektonKueue(ctx, logger, nil, operatorClient, nil))
+
+	tc, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, false, tc.Spec.Kueue.IsDisabled())
+	assert.Equal(t, v1alpha1.Scheduler{}, tc.Spec.Scheduler)
+
+	installerSets, err := operatorClient.OperatorV1alpha1().TektonInstallerSets().List(ctx, metav1.ListOptions{})
+	assert.NoError(t, err)
+	assert.Empty(t, installerSets.Items)
+
+	kueue, err := operatorClient.OperatorV1alpha1().TektonKueues().Get(ctx, v1alpha1.TektonKueueResourceName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, "tekton-pipelines", kueue.Spec.TargetNamespace)
+	assert.Equal(t, false, kueue.Spec.Kueue.IsDisabled())
+	assert.True(t, kueue.Spec.NetworkPolicy.Disabled)
+
+	_, err = operatorClient.OperatorV1alpha1().TektonSchedulers().Get(ctx, v1alpha1.TektonSchedulerResourceName, metav1.GetOptions{})
+	assert.True(t, apierrs.IsNotFound(err))
 }
 
 func TestUpgradePipelineProperties(t *testing.T) {

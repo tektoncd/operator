@@ -27,18 +27,18 @@ import (
 
 func TestIsSyncerServiceEnabled(t *testing.T) {
 	tests := []struct {
-		name      string
-		scheduler *v1alpha1.Scheduler
-		expected  bool
+		name     string
+		kueue    *v1alpha1.Kueue
+		expected bool
 	}{
 		{
-			name:      "nil scheduler returns false",
-			scheduler: nil,
-			expected:  false,
+			name:     "nil kueue returns false",
+			kueue:    nil,
+			expected: false,
 		},
 		{
 			name: "multi-cluster enabled with Hub role returns true",
-			scheduler: &v1alpha1.Scheduler{
+			kueue: &v1alpha1.Kueue{
 				MultiClusterConfig: v1alpha1.MultiClusterConfig{
 					MultiClusterDisabled: false,
 					MultiClusterRole:     v1alpha1.MultiClusterRoleHub,
@@ -48,7 +48,7 @@ func TestIsSyncerServiceEnabled(t *testing.T) {
 		},
 		{
 			name: "multi-cluster enabled with Spoke role returns false",
-			scheduler: &v1alpha1.Scheduler{
+			kueue: &v1alpha1.Kueue{
 				MultiClusterConfig: v1alpha1.MultiClusterConfig{
 					MultiClusterDisabled: false,
 					MultiClusterRole:     v1alpha1.MultiClusterRoleSpoke,
@@ -58,7 +58,7 @@ func TestIsSyncerServiceEnabled(t *testing.T) {
 		},
 		{
 			name: "multi-cluster disabled with Hub role returns false",
-			scheduler: &v1alpha1.Scheduler{
+			kueue: &v1alpha1.Kueue{
 				MultiClusterConfig: v1alpha1.MultiClusterConfig{
 					MultiClusterDisabled: true,
 					MultiClusterRole:     v1alpha1.MultiClusterRoleHub,
@@ -68,7 +68,7 @@ func TestIsSyncerServiceEnabled(t *testing.T) {
 		},
 		{
 			name: "multi-cluster disabled with Spoke role returns false",
-			scheduler: &v1alpha1.Scheduler{
+			kueue: &v1alpha1.Kueue{
 				MultiClusterConfig: v1alpha1.MultiClusterConfig{
 					MultiClusterDisabled: true,
 					MultiClusterRole:     v1alpha1.MultiClusterRoleSpoke,
@@ -78,7 +78,7 @@ func TestIsSyncerServiceEnabled(t *testing.T) {
 		},
 		{
 			name: "multi-cluster enabled with empty role returns false",
-			scheduler: &v1alpha1.Scheduler{
+			kueue: &v1alpha1.Kueue{
 				MultiClusterConfig: v1alpha1.MultiClusterConfig{
 					MultiClusterDisabled: false,
 					MultiClusterRole:     "",
@@ -88,7 +88,7 @@ func TestIsSyncerServiceEnabled(t *testing.T) {
 		},
 		{
 			name: "multi-cluster disabled with empty role returns false",
-			scheduler: &v1alpha1.Scheduler{
+			kueue: &v1alpha1.Kueue{
 				MultiClusterConfig: v1alpha1.MultiClusterConfig{
 					MultiClusterDisabled: true,
 					MultiClusterRole:     "",
@@ -97,15 +97,15 @@ func TestIsSyncerServiceEnabled(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:      "empty scheduler (zero values) returns false",
-			scheduler: &v1alpha1.Scheduler{},
-			expected:  false,
+			name:     "empty kueue (zero values) returns false",
+			kueue:    &v1alpha1.Kueue{},
+			expected: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := IsSyncerServiceEnabled(tt.scheduler)
+			result := IsSyncerServiceEnabled(tt.kueue)
 			if result != tt.expected {
 				t.Errorf("IsSyncerServiceEnabled() = %v, expected %v", result, tt.expected)
 			}

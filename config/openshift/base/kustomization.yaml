@@ -15,7 +15,7 @@
 patches:
 - target:
     kind: ClusterRoleBinding
-    name: tekton-scheduler-rolebinding
+    name: tekton-kueue-rolebinding
   patch: |-
     - op: replace
       path: /subjects
