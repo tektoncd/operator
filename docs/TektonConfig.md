@@ -283,6 +283,7 @@ chain:
   storage.gcs.bucket: #value
   storage.oci.repository: #value
   storage.oci.repository.insecure: #value (boolean - true/false)
+  storage.oci.encoding-format: #value (dsse or sigstore-bundle, default: dsse)
   storage.docdb.url: #value
   storage.grafeas.projectid: #value
   storage.grafeas.noteid: #value

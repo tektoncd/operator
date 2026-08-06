@@ -108,6 +108,7 @@ type ChainProperties struct {
 	StorageGCSBucket              string `json:"storage.gcs.bucket,omitempty"`
 	StorageOCIRepository          string `json:"storage.oci.repository,omitempty"`
 	StorageOCIRepositoryInsecure  *bool  `json:"storage.oci.repository.insecure,omitempty"`
+	StorageOCIEncodingFormat      string `json:"storage.oci.encoding-format,omitempty"`
 	StorageDocDBURL               string `json:"storage.docdb.url,omitempty"`
 	StorageDocDBMongoServerURL    string `json:"storage.docdb.mongo-server-url,omitempty"`
 	StorageDocDBMongoServerURLDir string `json:"storage.docdb.mongo-server-url-dir,omitempty"`
