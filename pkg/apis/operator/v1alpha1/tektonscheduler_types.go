@@ -27,9 +27,10 @@ var (
 	_ TektonComponentSpec = (*TektonSchedulerSpec)(nil)
 )
 
-// TektonScheduler is the Schema for the TektonScheduler API
+// TektonScheduler is the deprecated predecessor of TektonKueue. It is retained
+// temporarily so existing resources remain readable while pre-upgrade migration
+// copies their configuration to TektonKueue.
 // +genclient
-// +genreconciler:krshapedlogic=false
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient:nonNamespaced
 // +kubebuilder:object:root=true
@@ -45,7 +46,7 @@ type TektonScheduler struct {
 	Status            TektonSchedulerStatus `json:"status,omitempty"`
 }
 
-// Scheduler Configuration  to manage Scheduler Configuration.
+// Scheduler defines the deprecated TektonScheduler configuration.
 type Scheduler struct {
 	// enable or disable TektonScheduler Component
 	Disabled           *bool `json:"disabled"`
@@ -56,24 +57,26 @@ type Scheduler struct {
 	Options AdditionalOptions `json:"options"`
 }
 
+// SchedulerConfig contains the deprecated TektonScheduler operand configuration.
 type SchedulerConfig struct {
-	// This hold the config data from tekton-kueue. ConfigMap in tekton kueue is loaded as config.yaml so we need to
-	// match the key here
+	// This holds the config data loaded by tekton-kueue as config.yaml.
 	// +kubebuilder:pruning:PreserveUnknownFields
 	config.Config `json:"config.yaml"`
 }
 
-// MultiClusterConfig Configuration to enable/disable MultiCluster Configuration
-type MultiClusterConfig struct {
-	MultiClusterDisabled bool             `json:"multi-cluster-disabled"`
-	MultiClusterRole     MultiClusterRole `json:"multi-cluster-role"`
+// ToKueue converts deprecated scheduler configuration to its replacement.
+func (s Scheduler) ToKueue() Kueue {
+	return Kueue{
+		Disabled: s.Disabled,
+		KueueConfig: KueueConfig{
+			Config: s.Config,
+		},
+		MultiClusterConfig: s.MultiClusterConfig,
+		Options:            s.Options,
+	}
 }
 
-// MultiClusterRole Define the role of current cluster in multi-cluster environment. The MultiClusterRole
-// can be one of Hub or Spoke
-type MultiClusterRole string
-
-// TektonSchedulerList contains a list of TektonScheduler
+// TektonSchedulerList contains a list of deprecated TektonScheduler resources.
 // +kubebuilder:object:root=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TektonSchedulerList struct {
@@ -82,6 +85,7 @@ type TektonSchedulerList struct {
 	Items           []TektonScheduler `json:"items"`
 }
 
+// TektonSchedulerSpec defines the desired state of the deprecated TektonScheduler API.
 type TektonSchedulerSpec struct {
 	CommonSpec `json:",inline"`
 	Scheduler  `json:",inline"`
@@ -89,7 +93,7 @@ type TektonSchedulerSpec struct {
 	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
 }
 
-// TektonSchedulerStatus defines the observed state of TektonScheduler
+// TektonSchedulerStatus defines the observed state of the deprecated TektonScheduler API.
 type TektonSchedulerStatus struct {
 	duckv1.Status `json:",inline"`
 
@@ -102,20 +106,12 @@ type TektonSchedulerStatus struct {
 	TektonScheduler string `json:"tekton-scheduler,omitempty"`
 }
 
-// GetSpec implements TektonComponent
-func (tp *TektonScheduler) GetSpec() TektonComponentSpec {
-	return &tp.Spec
+// GetSpec implements TektonComponent.
+func (ts *TektonScheduler) GetSpec() TektonComponentSpec {
+	return &ts.Spec
 }
 
-func (tp *TektonScheduler) GetStatus() TektonComponentStatus {
-	return &tp.Status
-}
-
-// IsDisabled returns true if the TektonScheduler is disabled
-func (p *Scheduler) IsDisabled() bool {
-	if p == nil || p.Disabled == nil {
-		// When the Scheduler is nil or Disabled is nil, we assume it is the default state.
-		return DefaultSchedulerDisabled
-	}
-	return *p.Disabled
+// GetStatus implements TektonComponent.
+func (ts *TektonScheduler) GetStatus() TektonComponentStatus {
+	return &ts.Status
 }

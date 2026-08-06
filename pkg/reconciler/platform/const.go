@@ -26,7 +26,7 @@ const (
 	ControllerTektonResult         ControllerName = "tektonresult"
 	ControllerManualApprovalGate   ControllerName = "manualapprovalgate"
 	ControllerTektonPruner         ControllerName = "tektonpruner"
-	ControllerTektonScheduler      ControllerName = "tektonscheduler"
+	ControllerTektonKueue          ControllerName = "tektonkueue"
 	ControllerMulticlusterProxyAAE ControllerName = "tektonmulticlusterproxyaae"
 	ControllerSyncerService        ControllerName = "syncerservice"
 	// ControllerOpenShiftPipelinesAsCode is the operand reconciler for OpenShiftPipelinesAsCode;

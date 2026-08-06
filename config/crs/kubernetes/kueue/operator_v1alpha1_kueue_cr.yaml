@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonKueue
 metadata:
-  name: tekton-scheduler-rolebinding
-subjects:
-  - kind: ServiceAccount
-    name: tekton-operator
-    namespace: tekton-operator
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: tekton-scheduler-role
+  name: kueue
+spec:
+  targetNamespace: tekton-pipelines
+  disabled: false
+  multi-cluster-disabled: true
+  multi-cluster-role: ""
+  config.yaml:
+    queueName: pipelines-queue

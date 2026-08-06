@@ -15,7 +15,7 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: tekton-scheduler-role
+  name: tekton-kueue-role
 rules:
   - apiGroups:
       - kueue.x-k8s.io
@@ -51,6 +51,7 @@ rules:
       - get
       - create
       - update
+      - delete
       - list
   - nonResourceURLs:
       - /metrics

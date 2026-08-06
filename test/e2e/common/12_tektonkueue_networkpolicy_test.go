@@ -31,7 +31,7 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-func TestTektonSchedulerNetworkPolicy(t *testing.T) {
+func TestTektonKueueNetworkPolicy(t *testing.T) {
 	crNames := utils.GetResourceNames()
 	clients := client.Setup(t, crNames.TargetNamespace)
 
@@ -42,8 +42,8 @@ func TestTektonSchedulerNetworkPolicy(t *testing.T) {
 		t.Skipf("Kueue API (kueue.x-k8s.io/v1beta1) not available, skipping: %v", err)
 	}
 
-	utils.CleanupOnInterrupt(func() { utils.TearDownScheduler(clients, crNames.TektonScheduler) })
-	defer utils.TearDownScheduler(clients, crNames.TektonScheduler)
+	utils.CleanupOnInterrupt(func() { utils.TearDownKueue(clients, crNames.TektonKueue) })
+	defer utils.TearDownKueue(clients, crNames.TektonKueue)
 
 	utils.CleanupOnInterrupt(func() { resources.DeleteDummyWorkerCluster(clients) })
 	defer resources.DeleteDummyWorkerCluster(clients)
@@ -55,7 +55,7 @@ func TestTektonSchedulerNetworkPolicy(t *testing.T) {
 		Spec: v1alpha1.TektonConfigSpec{
 			Profile:    v1alpha1.ProfileAll,
 			CommonSpec: v1alpha1.CommonSpec{TargetNamespace: crNames.TargetNamespace},
-			Scheduler: v1alpha1.Scheduler{
+			Kueue: v1alpha1.Kueue{
 				Disabled: ptr.To(false),
 				MultiClusterConfig: v1alpha1.MultiClusterConfig{
 					MultiClusterDisabled: false,
@@ -70,7 +70,7 @@ func TestTektonSchedulerNetworkPolicy(t *testing.T) {
 	resources.EnsureDummyWorkerCluster(t, clients)
 
 	resources.AssertTektonConfigCRReadyStatus(t, clients, crNames)
-	resources.AssertTektonSchedulerCRReadyStatus(t, clients, crNames)
+	resources.AssertTektonKueueCRReadyStatus(t, clients, crNames)
 
 	expectedPolicies := []string{
 		"scheduler-controller-default-deny",
@@ -84,28 +84,28 @@ func TestTektonSchedulerNetworkPolicy(t *testing.T) {
 	})
 
 	t.Run("disable-removes-policies", func(t *testing.T) {
-		ts, err := clients.TektonSchedulers().Get(context.TODO(), crNames.TektonScheduler, metav1.GetOptions{})
+		tk, err := clients.TektonKueues().Get(context.TODO(), crNames.TektonKueue, metav1.GetOptions{})
 		if err != nil {
-			t.Fatalf("failed to get TektonScheduler: %v", err)
+			t.Fatalf("failed to get TektonKueue: %v", err)
 		}
-		ts.Spec.NetworkPolicy.Disabled = true
-		if _, err := clients.TektonSchedulers().Update(context.TODO(), ts, metav1.UpdateOptions{}); err != nil {
-			t.Fatalf("failed to disable NetworkPolicy on TektonScheduler: %v", err)
+		tk.Spec.NetworkPolicy.Disabled = true
+		if _, err := clients.TektonKueues().Update(context.TODO(), tk, metav1.UpdateOptions{}); err != nil {
+			t.Fatalf("failed to disable NetworkPolicy on TektonKueue: %v", err)
 		}
-		resources.AssertTektonSchedulerCRReadyStatus(t, clients, crNames)
+		resources.AssertTektonKueueCRReadyStatus(t, clients, crNames)
 		resources.AssertNetworkPoliciesAbsent(t, clients, crNames.TargetNamespace, expectedPolicies)
 	})
 
 	t.Run("reenable-restores-policies", func(t *testing.T) {
-		ts, err := clients.TektonSchedulers().Get(context.TODO(), crNames.TektonScheduler, metav1.GetOptions{})
+		tk, err := clients.TektonKueues().Get(context.TODO(), crNames.TektonKueue, metav1.GetOptions{})
 		if err != nil {
-			t.Fatalf("failed to get TektonScheduler: %v", err)
+			t.Fatalf("failed to get TektonKueue: %v", err)
 		}
-		ts.Spec.NetworkPolicy.Disabled = false
-		if _, err := clients.TektonSchedulers().Update(context.TODO(), ts, metav1.UpdateOptions{}); err != nil {
-			t.Fatalf("failed to re-enable NetworkPolicy on TektonScheduler: %v", err)
+		tk.Spec.NetworkPolicy.Disabled = false
+		if _, err := clients.TektonKueues().Update(context.TODO(), tk, metav1.UpdateOptions{}); err != nil {
+			t.Fatalf("failed to re-enable NetworkPolicy on TektonKueue: %v", err)
 		}
-		resources.AssertTektonSchedulerCRReadyStatus(t, clients, crNames)
+		resources.AssertTektonKueueCRReadyStatus(t, clients, crNames)
 		resources.AssertNetworkPoliciesExist(t, clients, crNames.TargetNamespace, expectedPolicies)
 	})
 }

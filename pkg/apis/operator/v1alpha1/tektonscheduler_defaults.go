@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-	http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,23 +19,19 @@ package v1alpha1
 import (
 	"context"
 
-	"github.com/konflux-ci/tekton-kueue/pkg/common"
 	"k8s.io/utils/ptr"
 )
 
 const (
-	SchedulerConfigMapName                       = common.ConfigMapName
-	SchedulerConfigInstallerSet                  = "scheduler-config"
-	DefaultQueueName                             = "pipelines-queue"
-	DefaultMultiClusterDisabled                  = true
-	DefaultSchedulerDisabled                     = true
-	SchedulerCreatedByValue                      = "TektonScheduler"
-	MultiClusterRoleSpoke       MultiClusterRole = "Spoke"
-	MultiClusterRoleHub         MultiClusterRole = "Hub"
+	SchedulerConfigMapName      = KueueConfigMapName
+	SchedulerConfigInstallerSet = "scheduler-config"
+	DefaultSchedulerDisabled    = DefaultKueueDisabled
+	SchedulerCreatedByValue     = "TektonScheduler"
 )
 
-func (tp *TektonScheduler) SetDefaults(_ context.Context) {
-	tp.Spec.Scheduler.SetDefaults()
+// SetDefaults retains admission compatibility for the deprecated API.
+func (ts *TektonScheduler) SetDefaults(_ context.Context) {
+	ts.Spec.Scheduler.SetDefaults()
 }
 
 func (s *Scheduler) SetDefaults() {
@@ -44,4 +40,12 @@ func (s *Scheduler) SetDefaults() {
 		s.MultiClusterDisabled = DefaultMultiClusterDisabled
 		s.QueueName = DefaultQueueName
 	}
+}
+
+// IsDisabled returns true if the deprecated TektonScheduler is disabled.
+func (s *Scheduler) IsDisabled() bool {
+	if s == nil || s.Disabled == nil {
+		return DefaultSchedulerDisabled
+	}
+	return *s.Disabled
 }

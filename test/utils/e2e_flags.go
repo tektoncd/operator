@@ -32,7 +32,7 @@ var (
 	ManualApprovalGateDeploymentLabel         = labelString(v1alpha1.ManualApprovalGates)
 	TektonPrunerDeploymentLabel               = labelString(v1alpha1.TektonPrunerResourceName)
 	TektonAddonDeploymentLabel                = labelString(openshift.OperandOpenShiftPipelinesAddons)
-	TektonSchedulerDeploymentLabel            = labelString(v1alpha1.TektonSchedulerResourceName)
+	TektonKueueDeploymentLabel                = labelString(v1alpha1.TektonKueueResourceName)
 	TektonMulticlusterProxyAAEDeploymentLabel = labelString(v1alpha1.MultiClusterProxyAAEResourceName)
 	SyncerServiceDeploymentLabel              = labelString(v1alpha1.OperandSyncerService)
 )

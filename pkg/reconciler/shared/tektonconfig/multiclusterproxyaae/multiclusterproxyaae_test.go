@@ -92,11 +92,11 @@ func TestIsMulticlusterProxyAAEEnabled(t *testing.T) {
 		want bool
 	}{
 		{
-			name: "scheduler disabled returns false",
+			name: "Tekton Kueue disabled returns false",
 			tc: &v1alpha1.TektonConfig{
 				ObjectMeta: metav1.ObjectMeta{Name: "config"},
 				Spec: v1alpha1.TektonConfigSpec{
-					Scheduler: v1alpha1.Scheduler{
+					Kueue: v1alpha1.Kueue{
 						Disabled: ptr.Bool(true),
 					},
 				},
@@ -104,11 +104,11 @@ func TestIsMulticlusterProxyAAEEnabled(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "scheduler enabled but multi-cluster disabled returns false",
+			name: "Tekton Kueue enabled but multi-cluster disabled returns false",
 			tc: &v1alpha1.TektonConfig{
 				ObjectMeta: metav1.ObjectMeta{Name: "config"},
 				Spec: v1alpha1.TektonConfigSpec{
-					Scheduler: v1alpha1.Scheduler{
+					Kueue: v1alpha1.Kueue{
 						Disabled: ptr.Bool(false),
 						MultiClusterConfig: v1alpha1.MultiClusterConfig{
 							MultiClusterDisabled: true,
@@ -120,11 +120,11 @@ func TestIsMulticlusterProxyAAEEnabled(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "scheduler enabled, multi-cluster enabled, role Spoke returns false",
+			name: "Tekton Kueue enabled, multi-cluster enabled, role Spoke returns false",
 			tc: &v1alpha1.TektonConfig{
 				ObjectMeta: metav1.ObjectMeta{Name: "config"},
 				Spec: v1alpha1.TektonConfigSpec{
-					Scheduler: v1alpha1.Scheduler{
+					Kueue: v1alpha1.Kueue{
 						Disabled: ptr.Bool(false),
 						MultiClusterConfig: v1alpha1.MultiClusterConfig{
 							MultiClusterDisabled: false,
@@ -136,11 +136,11 @@ func TestIsMulticlusterProxyAAEEnabled(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "scheduler enabled, multi-cluster enabled, role Hub returns true",
+			name: "Tekton Kueue enabled, multi-cluster enabled, role Hub returns true",
 			tc: &v1alpha1.TektonConfig{
 				ObjectMeta: metav1.ObjectMeta{Name: "config"},
 				Spec: v1alpha1.TektonConfigSpec{
-					Scheduler: v1alpha1.Scheduler{
+					Kueue: v1alpha1.Kueue{
 						Disabled: ptr.Bool(false),
 						MultiClusterConfig: v1alpha1.MultiClusterConfig{
 							MultiClusterDisabled: false,
@@ -152,11 +152,11 @@ func TestIsMulticlusterProxyAAEEnabled(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "scheduler enabled, multi-cluster enabled, role hub (lowercase) returns true",
+			name: "Tekton Kueue enabled, multi-cluster enabled, role hub (lowercase) returns true",
 			tc: &v1alpha1.TektonConfig{
 				ObjectMeta: metav1.ObjectMeta{Name: "config"},
 				Spec: v1alpha1.TektonConfigSpec{
-					Scheduler: v1alpha1.Scheduler{
+					Kueue: v1alpha1.Kueue{
 						Disabled: ptr.Bool(false),
 						MultiClusterConfig: v1alpha1.MultiClusterConfig{
 							MultiClusterDisabled: false,

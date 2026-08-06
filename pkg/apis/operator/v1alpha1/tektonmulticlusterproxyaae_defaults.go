@@ -20,6 +20,6 @@ import (
 	"context"
 )
 
-// No fields are defaulted here as the enablement is driven by TektonScheduler
+// No fields are defaulted here as the enablement is driven by TektonKueue
 // which is multi-cluster-disabled: false and multi-cluster-role: Hub
 func (t *TektonMulticlusterProxyAAE) SetDefaults(_ context.Context) {}

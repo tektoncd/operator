@@ -24,11 +24,11 @@ import (
 	openshiftAddon "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon"
 	openshiftChain "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonchain"
 	openshiftConfig "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
+	openshiftKueue "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonkueue"
 	openshiftMulticlusterProxyAAE "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonmulticlusterproxyaae"
 	openshiftPipeline "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpipeline"
 	openshiftPruner "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonpruner"
 	openshiftResult "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonresult"
-	openshiftScheduler "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonscheduler"
 	openshiftTrigger "github.com/tektoncd/operator/pkg/reconciler/openshift/tektontrigger"
 	"github.com/tektoncd/operator/pkg/reconciler/platform"
 	"knative.dev/pkg/injection"
@@ -84,9 +84,9 @@ var (
 			Name:                  string(platform.ControllerTektonPruner),
 			ControllerConstructor: openshiftPruner.NewController,
 		},
-		platform.ControllerTektonScheduler: injection.NamedControllerConstructor{
-			Name:                  string(platform.ControllerTektonScheduler),
-			ControllerConstructor: openshiftScheduler.NewController,
+		platform.ControllerTektonKueue: injection.NamedControllerConstructor{
+			Name:                  string(platform.ControllerTektonKueue),
+			ControllerConstructor: openshiftKueue.NewController,
 		},
 		platform.ControllerMulticlusterProxyAAE: injection.NamedControllerConstructor{
 			Name:                  string(platform.ControllerMulticlusterProxyAAE),

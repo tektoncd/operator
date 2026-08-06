@@ -62,7 +62,10 @@ const (
 	// KindTektonPruner is the Kind of TektonPruner in a GVK context.
 	KindTektonPruner = "TektonPruner"
 
-	// KindTektonScheduler is the Kind of TektonScheduler in a GVK context.
+	// KindTektonKueue is the Kind of TektonKueue in a GVK context.
+	KindTektonKueue = "TektonKueue"
+
+	// KindTektonScheduler is retained for deprecated API compatibility.
 	KindTektonScheduler = "TektonScheduler"
 
 	// KindTektonMulticlusterProxyAAE is the Kind of TektonMulticlusterProxyAAE in a GVK context.
@@ -103,6 +106,8 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&ManualApprovalGateList{},
 		&TektonPruner{},
 		&TektonPrunerList{},
+		&TektonKueue{},
+		&TektonKueueList{},
 		&TektonScheduler{},
 		&TektonSchedulerList{},
 		&TektonMulticlusterProxyAAE{},

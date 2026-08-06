@@ -98,6 +98,7 @@ assemble_helm_crds \
   "operator.tekton.dev_tektonresults.yaml" \
   "operator.tekton.dev_tektontriggers.yaml" \
   "operator.tekton.dev_tektonpruners.yaml" \
+  "operator.tekton.dev_tektonkueues.yaml" \
   "operator.tekton.dev_tektonschedulers.yaml" \
   "operator.tekton.dev_tektonmulticlusterproxyaaes.yaml" \
   "operator.tekton.dev_syncerservices.yaml"
@@ -115,6 +116,7 @@ assemble_helm_crds \
   "operator.tekton.dev_tektonresults.yaml" \
   "operator.tekton.dev_tektontriggers.yaml" \
   "operator.tekton.dev_tektonpruners.yaml" \
+  "operator.tekton.dev_tektonkueues.yaml" \
   "operator.tekton.dev_tektonschedulers.yaml" \
   "operator.tekton.dev_tektonmulticlusterproxyaaes.yaml" \
   "operator.tekton.dev_syncerservices.yaml"

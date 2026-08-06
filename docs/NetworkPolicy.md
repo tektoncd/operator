@@ -9,7 +9,7 @@ weight: 15
 The operator can manage [NetworkPolicy][np] resources for Tekton component workloads.
 TektonPipeline (core controllers, resolvers, and proxy-webhook), TektonTrigger,
 TektonChain, Pipelines-as-Code, ManualApprovalGate, TektonPruner, TektonResult,
-and MultiCluster components (TektonScheduler, TektonMulticlusterProxyAAE,
+and MultiCluster components (TektonKueue, TektonMulticlusterProxyAAE,
 SyncerService) are supported; other components will be added later.
 
 Configuration is available via `TektonConfig`:
@@ -257,14 +257,15 @@ user's browser via the OpenShift Console's proxy, not on this pod.
 These are static manifests shipped with the TektonConfig console plugin resources,
 not reconciled via `spec.networkPolicy`.
 
-### TektonScheduler
+### TektonKueue
 
 Policies are applied to the operand namespace (`tekton-pipelines` or `openshift-pipelines`).
+Policy names retain the `scheduler-` prefix for compatibility.
 
 | Policy | Direction | Port | Source / Destination |
 |---|---|---|---|
-| `scheduler-controller-default-deny` | deny all | — | Scheduler controller pods |
-| `scheduler-webhook-default-deny` | deny all | — | Scheduler webhook pods |
+| `scheduler-controller-default-deny` | deny all | — | Tekton Kueue controller pods |
+| `scheduler-webhook-default-deny` | deny all | — | Tekton Kueue webhook pods |
 | `scheduler-controller` | ingress | TCP/8443 | Prometheus namespace |
 | | egress | UDP+TCP/53 (K8s) or 5353 (OpenShift) | DNS resolver pods |
 | | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
@@ -276,7 +277,7 @@ Policies are applied to the operand namespace (`tekton-pipelines` or `openshift-
 ### TektonMulticlusterProxyAAE
 
 Policies are applied to the operand namespace (`tekton-pipelines` or `openshift-pipelines`).
-Deployed only when the scheduler is enabled with multi-cluster role = Hub.
+Deployed only when Tekton Kueue is enabled with multi-cluster role = Hub.
 
 | Policy | Direction | Port | Source / Destination |
 |---|---|---|---|
@@ -288,7 +289,7 @@ Deployed only when the scheduler is enabled with multi-cluster role = Hub.
 ### SyncerService (OpenShift only)
 
 Policies are applied to the operand namespace (`openshift-pipelines`).
-Deployed only when the scheduler is enabled with multi-cluster role = Hub.
+Deployed only when Tekton Kueue is enabled with multi-cluster role = Hub.
 
 | Policy | Direction | Port | Source / Destination |
 |---|---|---|---|
@@ -296,7 +297,7 @@ Deployed only when the scheduler is enabled with multi-cluster role = Hub.
 | `syncer-service-controller` | egress | UDP+TCP/5353 | DNS resolver pods (OpenShift) |
 | | egress | all | API server (all egress allowed — NP cannot select host-network endpoints) |
 
-All component policies (TektonPipeline, TektonTrigger, TektonScheduler,
+All component policies (TektonPipeline, TektonTrigger, TektonKueue,
 TektonMulticlusterProxyAAE, SyncerService, and Console Plugin) are applied to the
 operand namespace (e.g. `tekton-pipelines` or `openshift-pipelines`).
 

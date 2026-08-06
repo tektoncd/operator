@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonscheduler
+package tektonkueue
 
 import (
 	"context"
@@ -28,8 +28,8 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
-	tektonschedulerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonscheduler"
-	tektonschedulerreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonscheduler"
+	tektonkueueinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonkueue"
+	tektonkueuereconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonkueue"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"knative.dev/pkg/configmap"
 	"knative.dev/pkg/controller"
@@ -37,7 +37,7 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-const versionConfigMap = v1alpha1.TektonSchedulerResourceName + "-info"
+const versionConfigMap = v1alpha1.TektonKueueResourceName + "-info"
 
 // NewController initializes the controller and is called by the generated code
 // Registers eventhandlers to enqueue events
@@ -53,7 +53,7 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 			Logger:           logger,
 			VersionConfigMap: versionConfigMap,
 		}
-		manifest, schedulerVer := ctrl.InitController(ctx, common.PayloadOptions{})
+		manifest, kueueVer := ctrl.InitController(ctx, common.PayloadOptions{})
 		operatorVer, err := common.OperatorVersion(ctx)
 		if err != nil {
 			logger.Fatal("Error while getting operator version", err)
@@ -67,26 +67,26 @@ func NewExtendedController(generator common.ExtensionGenerator) injection.Contro
 		tisClient := operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets()
 		metrics, _ := NewRecorder()
 		c := &Reconciler{
-			operatorClientSet:      operatorclient.Get(ctx),
-			kubeClientSet:          kubeclient.Get(ctx),
-			pipelineInformer:       tektonPipelineinformer.Get(ctx),
-			installerSetClient:     client.NewInstallerSetClient(tisClient, operatorVer, schedulerVer, v1alpha1.KindTektonScheduler, metrics),
-			extension:              generator(ctx),
-			manifest:               manifest,
-			platformParams:         params,
-			tektonSchedulerVersion: schedulerVer,
-			operatorVersion:        operatorVer,
+			operatorClientSet:  operatorclient.Get(ctx),
+			kubeClientSet:      kubeclient.Get(ctx),
+			pipelineInformer:   tektonPipelineinformer.Get(ctx),
+			installerSetClient: client.NewInstallerSetClient(tisClient, operatorVer, kueueVer, v1alpha1.KindTektonKueue, metrics),
+			extension:          generator(ctx),
+			manifest:           manifest,
+			platformParams:     params,
+			tektonKueueVersion: kueueVer,
+			operatorVersion:    operatorVer,
 		}
-		impl := tektonschedulerreconciler.NewImpl(ctx, c)
+		impl := tektonkueuereconciler.NewImpl(ctx, c)
 
-		logger.Debug("Setting up event handlers for TektonScheduler")
+		logger.Debug("Setting up event handlers for TektonKueue")
 
-		if _, err := tektonschedulerinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
-			logger.Panicf("Couldn't register TektonScheduler informer event handler: %w", err)
+		if _, err := tektonkueueinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(impl.Enqueue)); err != nil {
+			logger.Panicf("Couldn't register TektonKueue informer event handler: %w", err)
 		}
 
 		if _, err := tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
-			FilterFunc: controller.FilterController(&v1alpha1.TektonScheduler{}),
+			FilterFunc: controller.FilterController(&v1alpha1.TektonKueue{}),
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		}); err != nil {
 			logger.Panicf("Couldn't register TektonInstallerSet informer event handler: %w", err)
