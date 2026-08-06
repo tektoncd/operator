@@ -34,6 +34,8 @@ type TektonDashboardExpansion interface{}
 
 type TektonInstallerSetExpansion interface{}
 
+type TektonKueueExpansion interface{}
+
 type TektonMulticlusterProxyAAEExpansion interface{}
 
 type TektonPipelineExpansion interface{}

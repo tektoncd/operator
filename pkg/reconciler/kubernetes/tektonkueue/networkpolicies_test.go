@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonscheduler
+package tektonkueue
 
 import (
 	"testing"
@@ -24,14 +24,14 @@ import (
 )
 
 func TestConstants(t *testing.T) {
-	if schedulerCustomSet != "scheduler-network-policies" {
-		t.Errorf("expected custom set scheduler-network-policies, got %q", schedulerCustomSet)
+	if kueueCustomSet != "scheduler-network-policies" {
+		t.Errorf("expected custom set scheduler-network-policies, got %q", kueueCustomSet)
 	}
 }
 
-func TestSchedulerControllerDefaultPolicies(t *testing.T) {
+func TestKueueControllerDefaultPolicies(t *testing.T) {
 	params := networkpolicy.KubernetesPlatformDefaults()
-	policies := schedulerControllerDefaultPolicies(params)
+	policies := kueueControllerDefaultPolicies(params)
 
 	if len(policies) != 1 {
 		t.Fatalf("expected 1 policy, got %d", len(policies))
@@ -69,9 +69,9 @@ func TestSchedulerControllerDefaultPolicies(t *testing.T) {
 	}
 }
 
-func TestSchedulerWebhookDefaultPolicies(t *testing.T) {
+func TestKueueWebhookDefaultPolicies(t *testing.T) {
 	params := networkpolicy.KubernetesPlatformDefaults()
-	policies := schedulerWebhookDefaultPolicies(params)
+	policies := kueueWebhookDefaultPolicies(params)
 
 	if len(policies) != 1 {
 		t.Fatalf("expected 1 policy, got %d", len(policies))
@@ -105,8 +105,8 @@ func TestSchedulerWebhookDefaultPolicies(t *testing.T) {
 	}
 }
 
-func TestSchedulerDefaultDenyPolicies(t *testing.T) {
-	policies := schedulerDefaultDenyPolicies()
+func TestKueueDefaultDenyPolicies(t *testing.T) {
+	policies := kueueDefaultDenyPolicies()
 
 	if len(policies) != 2 {
 		t.Fatalf("expected 2 default-deny policies, got %d", len(policies))
@@ -129,9 +129,9 @@ func TestSchedulerDefaultDenyPolicies(t *testing.T) {
 	}
 }
 
-func TestSchedulerControllerPolicies_OpenShift(t *testing.T) {
+func TestKueueControllerPolicies_OpenShift(t *testing.T) {
 	params := networkpolicy.OpenShiftPlatformDefaults()
-	policies := schedulerControllerDefaultPolicies(params)
+	policies := kueueControllerDefaultPolicies(params)
 
 	if len(policies) != 1 {
 		t.Fatalf("expected 1 policy, got %d", len(policies))

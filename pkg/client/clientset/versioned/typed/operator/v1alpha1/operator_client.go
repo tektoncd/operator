@@ -36,6 +36,7 @@ type OperatorV1alpha1Interface interface {
 	TektonConfigsGetter
 	TektonDashboardsGetter
 	TektonInstallerSetsGetter
+	TektonKueuesGetter
 	TektonMulticlusterProxyAAEsGetter
 	TektonPipelinesGetter
 	TektonPrunersGetter
@@ -79,6 +80,10 @@ func (c *OperatorV1alpha1Client) TektonDashboards() TektonDashboardInterface {
 
 func (c *OperatorV1alpha1Client) TektonInstallerSets() TektonInstallerSetInterface {
 	return newTektonInstallerSets(c)
+}
+
+func (c *OperatorV1alpha1Client) TektonKueues() TektonKueueInterface {
+	return newTektonKueues(c)
 }
 
 func (c *OperatorV1alpha1Client) TektonMulticlusterProxyAAEs() TektonMulticlusterProxyAAEInterface {

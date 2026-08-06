@@ -25,7 +25,7 @@ Other than the above components depending on the platform operator also provides
 - On OpenShift
   - [TektonAddon](./TektonAddon.md)
   - [OpenShiftPipelinesAsCode](./OpenShiftPipelinesAsCode.md)
-- When scheduler multi-cluster is enabled with Hub role (both Kubernetes and OpenShift)
+- When Tekton Kueue multi-cluster is enabled with Hub role (both Kubernetes and OpenShift)
   - [TektonMulticlusterProxyAAE](./TektonMulticlusterProxyAAE.md)
 
 The TektonConfig CR provides the following features
@@ -466,33 +466,39 @@ By default pruner job will be created from the global pruner config (`spec.prune
 >
 > if a global value is not present the following values will be consider as default value <br> > `resources: pipelinerun` <br> > `keep: 100` <br>
 
-### Scheduler
+### Tekton Kueue
 
-Scheduler section allows you to install and manage the [Tekton Scheduler](./TektonScheduler.md) through TektonConfig. The Scheduler component uses [Kueue](https://kueue.sigs.k8s.io) and [cert-manager](https://github.com/cert-manager/cert-manager); you must install Kueue and cert-manager CRDs before enabling the scheduler. For full pre-requisites and multi-cluster configuration details, see [Tekton Scheduler](./TektonScheduler.md).
+The `spec.kueue` section allows you to install and manage the [Tekton Kueue](./TektonKueue.md) through TektonConfig. The Tekton Kueue component uses [Kueue](https://kueue.sigs.k8s.io) and [cert-manager](https://github.com/cert-manager/cert-manager); you must install Kueue and cert-manager CRDs before enabling Tekton Kueue. For full pre-requisites and multi-cluster configuration details, see [Tekton Kueue](./TektonKueue.md).
 
-Scheduler can be enabled by setting `disabled` to `false` in the scheduler section. If you are working with multi-cluster pipelines, you can enable multi-cluster from the scheduler config. In a multi-cluster environment a cluster can play the role of **Hub** or **Spoke**. The TektonConfig settings for Scheduler for Hub and Spoke are defined below.
+The deprecated `spec.scheduler` field is migrated automatically to `spec.kueue` during pre-upgrade reconciliation. If both fields are configured, `spec.kueue` takes precedence.
+
+Tekton Kueue can be enabled by setting `disabled` to `false` in the kueue section. If you are working with multi-cluster pipelines, you can enable multi-cluster from the kueue config. In a multi-cluster environment a cluster can play the role of **Hub** or **Spoke**. The TektonConfig settings for Tekton Kueue for Hub and Spoke are defined below.
 
 #### Hub cluster
 
 ```yaml
-scheduler:
+kueue:
   disabled: false
   multi-cluster-disabled: false
   multi-cluster-role: Hub
+  config.yaml:
+    queueName: pipelines-queue
   options: {}
 ```
 
 #### Spoke cluster
 
 ```yaml
-scheduler:
+kueue:
   disabled: false
   multi-cluster-disabled: false
   multi-cluster-role: Spoke
+  config.yaml:
+    queueName: pipelines-queue
   options: {}
 ```
 
-- `disabled`: set to `false` to enable the Scheduler component (default is `true`).
+- `disabled`: set to `false` to enable the Tekton Kueue component (default is `true`).
 - `multi-cluster-disabled`: when `false`, multi-cluster features are enabled (default is `true`).
 - `multi-cluster-role`: `Hub` or `Spoke`. When set to **Hub**, TektonConfig also creates and manages the [TektonMulticlusterProxyAAE](./TektonMulticlusterProxyAAE.md) component automatically (the proxy is used to communicate with spoke clusters, e.g. for [Kueue MultiKueue](https://kueue.sigs.k8s.io/docs/concepts/multikueue/)). On spoke clusters use `Spoke`; the proxy is not installed there.
 

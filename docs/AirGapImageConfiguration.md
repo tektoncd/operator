@@ -95,8 +95,8 @@ kubectl delete tektoninstallerset <installer-set-name>
 | Pruner CronJob         | image used in pruner cronJob       | `IMAGE_JOB_PRUNER_TKN`                             |
 | Tekton Pruner          | image used by pruner controller    | `IMAGE_PRUNER_CONTROLLER`                          |
 | Tekton Pruner          | image used by pruner webhook       | `IMAGE_PRUNER_WEBHOOK`                             |
-| Tekton Scheduler       | image used by scheduler controller | `IMAGE_SCHEDULER_MANAGER`                          |
-| Tekton Scheduler       | image used by scheduler webhook    | `IMAGE_SCHEDULER_WEBHOOK`                          |
+| Tekton Kueue           | controller                         | `IMAGE_KUEUE_MANAGER`                             |
+| Tekton Kueue           | webhook                            | `IMAGE_KUEUE_WEBHOOK`                             |
 | Multicluster Proxy AAE | proxy-aae                          | `IMAGE_MULTICLUSTERPROXYAAE_PROXY_AAE`          |
 | Syncer Service         | workload-controller                | `IMAGE_SYNCER_SERVICE_WORKLOAD_CONTROLLER`         |
 
