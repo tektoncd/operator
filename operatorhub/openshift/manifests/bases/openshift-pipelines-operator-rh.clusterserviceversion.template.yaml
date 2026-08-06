@@ -376,8 +376,8 @@ spec:
     ### Components
 
     - Tekton Pipelines: v1.15.0
-    - Tekton Triggers: v0.36.0
-    - Pipelines as Code: v0.49.0
+    - Tekton Triggers: v0.37.0
+    - Pipelines as Code: v0.50.0
     - Tekton Chains: v0.29.0
     - Tekton Results (tech-preview): v0.20.0
     - Manual Approval Gate (tech-preview): v0.9.0
