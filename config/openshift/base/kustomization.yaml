@@ -52,7 +52,6 @@ patchesStrategicMerge:
 
 resources:
 - ../../base/
-- ../../base/generated-crds/operator.tekton.dev_tektonaddons.yaml
 - ../../webhooks
 - operator_service.yaml
 - operator_servicemonitor.yaml
