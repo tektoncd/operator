@@ -44,4 +44,6 @@ resources:
 - generated-crds/operator.tekton.dev_tektonpruners.yaml
 - generated-crds/operator.tekton.dev_tektonresults.yaml
 - generated-crds/operator.tekton.dev_tektonschedulers.yaml
+- generated-crds/operator.tekton.dev_tektondashboards.yaml
+- generated-crds/operator.tekton.dev_tektonaddons.yaml
 - generated-crds/operator.tekton.dev_tektontriggers.yaml
