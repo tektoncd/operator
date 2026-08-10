@@ -99,7 +99,7 @@ spec:
       cp ${DOCKER_CONFIG} /workspace/${KUBE_DISTRO}-docker-config.json
 
   - name: rewrite-devel-in-source
-    image: ghcr.io/tektoncd/plumbing/ko@sha256:7561ceb48cbc9492b855da5560586274c1dd4bab403746db0fe56fb06bb32020
+    image: ghcr.io/tektoncd/plumbing/ko@sha256:976eb63239884a047d64ddfe3691e82359262a6fec8bfacd74dcb9861ffbeec3
     script: |
       #!/usr/bin/env sh
       set -ex
@@ -120,7 +120,7 @@ spec:
       fi
 
   - name: run-kustomize-ko
-    image: ghcr.io/tektoncd/plumbing/ko@sha256:7561ceb48cbc9492b855da5560586274c1dd4bab403746db0fe56fb06bb32020
+    image: ghcr.io/tektoncd/plumbing/ko@sha256:976eb63239884a047d64ddfe3691e82359262a6fec8bfacd74dcb9861ffbeec3
     env:
     - name: KO_DOCKER_REPO
       value: $(params.imageRegistry)/$(params.imageRegistryPath)
@@ -186,7 +186,7 @@ spec:
       sed -i -E -e 's/(app.kubernetes.io\/version): "?devel"?/\1: "$(params.versionTag)"/g' -e 's/(operator.tekton.dev\/release): "?devel"?/\1: "$(params.versionTag)"/g' -e 's/(version): "?devel"?/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/${FILENAME_PREFIX}release.yaml
       sed -i -E -e 's/(app.kubernetes.io\/version): "?devel"?/\1: "$(params.versionTag)"/g' -e 's/(operator.tekton.dev\/release): "?devel"?/\1: "$(params.versionTag)"/g' -e 's/(version): "?devel"?/\1: "$(params.versionTag)"/g' ${OUTPUT_RELEASE_DIR}/${FILENAME_PREFIX}release.notags.yaml
   - name: koparse
-    image: ghcr.io/tektoncd/plumbing/koparse@sha256:6cf5d09b76e47c1f75f1e00195d6332cb94c467446a3fdf508a686f8aaeae90e
+    image: ghcr.io/tektoncd/plumbing/koparse@sha256:e060328da881ec03dee8f0a729677cdb9c6b26788e48988162b452f5158c5bce
     script: |
       set -ex
 
