@@ -443,6 +443,10 @@ func replaceStepsImages(steps []interface{}, override map[string]string, logger 
 			}
 			continue
 		}
+		if existing, ok := step["image"].(string); ok && (strings.Contains(existing, "$(params.") || strings.Contains(existing, "$(inputs.params.")) {
+			logger.Debugf("Skipping image replacement for step %s, image contains param substitution", name)
+			continue
+		}
 		step["image"] = image
 	}
 }
