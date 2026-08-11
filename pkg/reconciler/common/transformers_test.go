@@ -223,6 +223,20 @@ func TestReplaceImages(t *testing.T) {
 		assertStatefulSetContainersHasImage(t, newManifest.Resources(), "sidecar", "busybox")
 	})
 
+	t.Run("skip replacement when step image contains param substitution", func(t *testing.T) {
+		image := "foo.bar/image/builder"
+		images := map[string]string{
+			"build": image,
+		}
+		testData := path.Join("testdata", "test-replace-addon-image.yaml")
+
+		manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+		assertNoError(t, err)
+		newManifest, err := manifest.Transform(TaskImages(context.TODO(), images))
+		assertNoError(t, err)
+		assertTaskImage(t, newManifest.Resources(), "build", "$(inputs.params.BUILDER_IMAGE)")
+	})
+
 	t.Run("replace task addons param image", func(t *testing.T) {
 		paramName := ParamPrefix + "builder_image"
 		image := "foo.bar/image/buildah"
