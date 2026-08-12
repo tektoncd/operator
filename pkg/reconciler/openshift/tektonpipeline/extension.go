@@ -276,6 +276,10 @@ func filterAndTransformMonitoring(comp v1alpha1.TektonComponent, metricsMTLSRead
 					"openshift-pruner-monitor",
 					occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort,
 					"tekton-pruner-controller", targetNS),
+				occommon.UpdateServiceMonitorForMetricsMTLS(
+					"openshift-pipelines-resolvers-monitor",
+					occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort,
+					tektonRemoteResolversControllerName, targetNS),
 				// TektonResult's watcher ServiceMonitor ships in this same shared
 				// openshift-monitoring manifest set (owned by the TektonPipeline
 				// PostSet), so it must be upgraded here too, in lockstep with the
