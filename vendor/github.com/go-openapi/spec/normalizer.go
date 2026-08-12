@@ -84,7 +84,7 @@ func denormalizeRef(ref *Ref, originalRelativeBase, id string) Ref {
 	if id != "" {
 		idBaseURL, err := parseURL(id)
 		if err == nil { // if the schema id is not usable as a URI, ignore it
-			if ref, ok := rebase(ref, idBaseURL, true); ok { // rebase, but keep references to root unchaged (do not want $ref: "")
+			if ref, ok := rebase(ref, idBaseURL, true); ok { // rebase, but keep references to root unchanged (do not want $ref: "")
 				// $ref relative to the ID of the schema in the root document
 				return ref
 			}
@@ -138,7 +138,7 @@ func rebase(ref *Ref, v *url.URL, notEqual bool) (Ref, bool) {
 	return MustCreateRef(newBase.String()), true
 }
 
-// normalizeRef canonicalize a Ref, using a canonical relativeBase as its absolute anchor
+// normalizeRef canonicalize a Ref, using a canonical relativeBase as its absolute anchor.
 func normalizeRef(ref *Ref, relativeBase string) *Ref {
 	r := MustCreateRef(normalizeURI(ref.String(), relativeBase))
 	return &r
