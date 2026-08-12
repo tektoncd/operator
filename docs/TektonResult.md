@@ -296,19 +296,19 @@ spec:
     statefulset-ordinals: false
 
 ```
-These fields are optional and there is no default values. If user passes them, operator will include most of fields into the deployment `tekton-results-watcher` under the container `watcher` as arguments(duplicate name? No, container and deployment has the same name), otherwise result watcher controller's default values will be considered. and `buckets` field is updated into `tekton-results-config-leader-election` config-map under the namespace `tekton-pipelines`.
+These fields are optional and there is no default values. If user passes them, operator will include most of fields into the `tekton-results-watcher` workload (Deployment by default, or StatefulSet when `statefulset-ordinals` is enabled) under the container `watcher` as arguments, otherwise results watcher controller's default values will be considered. The `buckets` field is updated into `tekton-results-config-leader-election` config-map under the namespace `tekton-pipelines`.
 
 * `disable-ha` - enable or disable ha feature, defaults in results watcher controller is `disable-ha=false`
-* `buckets` - buckets is the number of buckets used to partition key space of each reconciler. If this number is M and the replica number of the controller is N, the N replicas will compete for the M buckets. The owner of a bucket will take care of the reconciling for the keys partitioned into that bucket. The maximum value of `buckets` at this time is `10`. default value in pipeline controller is `1`
-* `replicas` - results watcher controller deployment replicas count
-* `statefulset-ordinals` - enables StatefulSet Ordinals mode for the Tekton Results Watcher Controller. When set to true, the Results Watcher Controller is deployed as a StatefulSet, allowing for multiple replicas to be configured with a load-balancing mode. This ensures that the load is evenly distributed across replicas, and the number of buckets is enforced to match the number of replicas.
-  Moreover, There are two mechanisms available for scaling Results Watcher Controller horizontally:
+* `buckets` - buckets is the number of buckets used to partition key space of each reconciler. If this number is M and the replica number of the controller is N, the N replicas will compete for the M buckets. The owner of a bucket will take care of the reconciling for the keys partitioned into that bucket. The maximum value of `buckets` at this time is `10`. Default value in results watcher controller is `1`. When `statefulset-ordinals` is enabled and `replicas` is greater than 1, `buckets` is automatically defaulted to match `replicas` (consistent with Pipeline's behavior).
+* `replicas` - results watcher controller replicas count
+* `statefulset-ordinals` - enables StatefulSet Ordinals mode for the Tekton Results Watcher Controller. When set to true, the Results Watcher Controller is deployed as a StatefulSet instead of a Deployment, allowing for multiple replicas to be configured with a load-balancing mode. This ensures that the load is evenly distributed across replicas, and the number of buckets is enforced to match the number of replicas.
+Moreover, There are two mechanisms available for scaling Results Watcher Controller horizontally:
 - Using leader election, which allows for failover, but can result in hot-spotting.
 - Using StatefulSet ordinals, which doesn't allow for failover, but guarantees load is evenly spread across replicas.
 
 
 > #### Note:
-> * if you modify or remove any of the performance properties, `tekton-results-watcher` deployment and `tekton-results-config-leader-election` config-map (if `buckets` changed) will be updated, and `tekton-results-watcher` pods will be recreated
+> * If you modify or remove any of the performance properties, the `tekton-results-watcher` workload (Deployment or StatefulSet) and `tekton-results-config-leader-election` config-map (if `buckets` changed) will be updated, and `tekton-results-watcher` pods will be recreated
 
 ### Tekton Result Watcher Configuration
 
