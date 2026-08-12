@@ -14,7 +14,7 @@ as follows:
     - The first Tekton Operator LTS release will be **v0.63.0** in November 2022
 
 Tekton Operator produces nightly builds, publicly available on
-`ghcr.io/tektoncd/operator`. 
+`ghcr.io/tektoncd/operator`.
 
 More details are available in the [Tekton Operator release documentation][tekton-releases-docs].
 
@@ -37,6 +37,12 @@ Further documentation available:
 Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 
 ## Release
+
+### v0.81 (LTS)
+
+| Minimum K8S | Pipeline    | Release Date | End of Life |
+|-------------|-------------|--------------|-------------|
+| 1.28.x      | v1.14.x LTS | 2026-08-10   | 2027-08-10  |
 
 ### v0.80 (LTS)
 
@@ -62,22 +68,12 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 |-------------|-------------|--------------|-------------|
 | 1.28.x      | v1.3.1 LTS  | 2025-08-21   | 2026-08-21  |
 
-### v0.76 (LTS)
-
-| Minimum K8S | Pipeline   | Release Date | End of Life |
-|-------------|------------|--------------|-------------|
-| 1.28.x      | v1.0.0 LTS | 2025-05-27   | 2026-05-27  |
-
-### v0.75 (LTS)
-
-| Minimum K8S | Pipeline    | Release Date | End of Life |
-|-------------|-------------|--------------|-------------|
-| 1.28.x      | v0.68.x LTS | 2025-02-18   | 2026-02-18  |
-
 ### End of Life
 
 | Version     | Minimum K8S | Pipeline    | Release Date | End of Life |
 |-------------|-------------|-------------|--------------|-------------|
+| v0.76.x LTS | 1.28.x      | v0.1.0.x LTS| 2025-05-27   | 2026-05-27  |
+| v0.75.x LTS | 1.28.x      | v0.65.x LTS | 2025-02-18   | 2026-02-18  |
 | v0.74.x LTS | 1.28.x      | v0.65.x     | 2024-11-22   | 2025-11-22  |
 | v0.73.x     | 1.28.x      | v0.62.x     | 2024-10-01   | 2025-10-01  |
 | v0.71.x     | 1.27.x      | v0.59.x     | 2024-06-06   | 2025-06-06  |
@@ -103,7 +99,7 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 | v0.51.x     | 1.19.x      | v0.29.x     | 2021-11-03   | 2022-03-03  |
 | v0.50.x     | 1.19.x      | v0.28.x     | 2021-10-19   | 2022-02-19  |
 
-## Documentation References 
+## Documentation References
 
 [release-policy]: https://github.com/tektoncd/community/blob/main/releases.md
 [sigstore]: https://sigstore.dev
