@@ -25,6 +25,7 @@ func (tp *TektonResult) SetDefaults(ctx context.Context) {
 	if tp.Spec.TLSHostnameOverride != "" {
 		tp.Spec.TLSHostnameOverride = ""
 	}
+	tp.Spec.Result.setPerformanceDefaults()
 }
 
 // Sets default values of Result
@@ -38,5 +39,18 @@ func (c *Result) setDefaults() {
 
 	if c.RouteTLSTermination == "" {
 		c.RouteTLSTermination = "edge"
+	}
+
+	c.setPerformanceDefaults()
+}
+
+func (c *Result) setPerformanceDefaults() {
+	// Statefulset Ordinals
+	// if StatefulSet Ordinals mode, buckets should be equal to replicas
+	if c.Performance.StatefulsetOrdinals != nil && *c.Performance.StatefulsetOrdinals {
+		if c.Performance.Replicas != nil && *c.Performance.Replicas > 1 {
+			replicas := uint(*c.Performance.Replicas)
+			c.Performance.Buckets = &replicas
+		}
 	}
 }

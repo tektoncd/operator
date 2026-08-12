@@ -17,6 +17,7 @@ limitations under the License.
 package tektonresult
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"path"
@@ -32,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"knative.dev/pkg/ptr"
 )
 
 func Test_enablePVCLogging(t *testing.T) {
@@ -711,4 +713,98 @@ func containsArg(args []string, want string) bool {
 		}
 	}
 	return false
+}
+
+func TestUpdateStatefulSetOrdinalsForResults(t *testing.T) {
+	fixtureReplicas := int32(3)
+	cr := &v1alpha1.TektonResult{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "result",
+			Namespace: "tekton-pipelines",
+		},
+		Spec: v1alpha1.TektonResultSpec{
+			CommonSpec: v1alpha1.CommonSpec{
+				TargetNamespace: "tekton-pipelines",
+			},
+			Result: v1alpha1.Result{
+				Performance: v1alpha1.PerformanceProperties{
+					PerformanceStatefulsetOrdinalsConfig: v1alpha1.PerformanceStatefulsetOrdinalsConfig{
+						StatefulsetOrdinals: ptr.Bool(true),
+					},
+				},
+			},
+		},
+	}
+
+	ctx := context.Background()
+	manifest, err := common.Fetch("../../common/testdata/test-convert-result-deployment-to-statefulset.yaml")
+	if err != nil {
+		t.Fatalf("Failed to fetch test data: %v", err)
+	}
+
+	r := &Reconciler{extension: common.NoExtension(ctx)}
+	err = r.transform(ctx, &manifest, cr)
+	if err != nil {
+		t.Fatalf("Error applying transformers: %v", err)
+	}
+
+	foundStatefulSet := false
+	for _, resource := range manifest.Resources() {
+		if resource.GetKind() == "StatefulSet" && resource.GetName() == tektonResultWatcherName {
+			foundStatefulSet = true
+
+			sts := &appsv1.StatefulSet{}
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, sts); err != nil {
+				t.Fatalf("Failed to convert resource to StatefulSet: %v", err)
+			}
+
+			if sts.Spec.Replicas == nil || *sts.Spec.Replicas != fixtureReplicas {
+				t.Errorf("Expected StatefulSet replicas to be %d, got %v", fixtureReplicas, sts.Spec.Replicas)
+			}
+
+			if sts.Spec.ServiceName != tektonResultWatcherServiceName {
+				t.Errorf("Expected StatefulSet serviceName to be %s, got %s", tektonResultWatcherServiceName, sts.Spec.ServiceName)
+			}
+
+			foundOrdinalEnv := false
+			foundServiceEnv := false
+			for _, container := range sts.Spec.Template.Spec.Containers {
+				for _, env := range container.Env {
+					if env.Name == tektonResultWatcherStatefulControllerOrdinal {
+						foundOrdinalEnv = true
+						if env.ValueFrom == nil || env.ValueFrom.FieldRef == nil || env.ValueFrom.FieldRef.FieldPath != "metadata.name" {
+							t.Errorf("Expected %s to use fieldRef metadata.name", tektonResultWatcherStatefulControllerOrdinal)
+						}
+					}
+					if env.Name == tektonResultWatcherStatefulServiceName {
+						foundServiceEnv = true
+						if env.Value != tektonResultWatcherServiceName {
+							t.Errorf("Expected %s value to be %s, got %s", tektonResultWatcherStatefulServiceName, tektonResultWatcherServiceName, env.Value)
+						}
+					}
+				}
+			}
+
+			if !foundOrdinalEnv {
+				t.Errorf("Expected to find environment variable %s", tektonResultWatcherStatefulControllerOrdinal)
+			}
+
+			if !foundServiceEnv {
+				t.Errorf("Expected to find environment variable %s", tektonResultWatcherStatefulServiceName)
+			}
+
+			break
+		}
+	}
+
+	if !foundStatefulSet {
+		t.Error("Expected to find a StatefulSet in the transformed manifest, but none was found")
+	}
+
+	for _, resource := range manifest.Resources() {
+		if resource.GetKind() == "Deployment" && resource.GetName() == tektonResultWatcherName {
+			t.Error("Expected Deployment to be removed from manifest")
+			break
+		}
+	}
 }
