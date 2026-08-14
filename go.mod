@@ -1,6 +1,6 @@
 module github.com/tektoncd/operator
 
-go 1.26.5
+go 1.26.6
 
 require (
 	github.com/Masterminds/semver v1.5.0
