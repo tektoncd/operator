@@ -51,7 +51,7 @@ $(BIN)/golangci-lint: | $(BIN) ; $(info $(M) getting golangci-lint $(GOLANGCI_VE
 	@if [ -f $(BIN)/golangci-lint ] && $(BIN)/golangci-lint --version 2>/dev/null | grep -qF "$(GOLANGCI_VERSION)"; then \
 		echo "golangci-lint $(GOLANGCI_VERSION) already installed"; \
 	else \
-		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(BIN) $(GOLANGCI_VERSION); \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/main/install.sh | sh -s -- -b $(BIN) $(GOLANGCI_VERSION); \
 	fi
 
 ##@ Clean 
