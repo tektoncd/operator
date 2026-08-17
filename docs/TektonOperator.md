@@ -106,4 +106,24 @@ to domains which use self-signed or private certificates for TLS.
 Documentation on configuring custom certificates for Openshift Proxy can
 be found in the [Openshift Network Configuration documentation][openshift-proxy-configuration].
 
+#### Known Limitations
+Due to limitations with mounting custom certificate bundles at runtime, custom CA Certificates have limitations in their compatibility with TaskRun pods.
+The certificate bundle is mounted and referenced using `SSL_CERT_DIR` as `SSL_CERT_DIR=<custom-ca-bundle-dir>:/etc/ssl/certs:/etc/pki/tls/certs` (where `/etc/ssl/certs` and `/etc/pki/tls/certs` reference default OpenSSL directories for various Linux flavors).
+This works for most cases, but is slightly incorrect from [OpenSSL's spec][open-ssl-spec].
+Most software accepts the incorrect spec usage, but software which strictly adheres to OpenSSL spec or doesn't use these variables at all may not behave as expected.
+
+See https://github.com/tektoncd/operator/issues/3442
+
+##### Examples
+- When a custom CA bundle is configured, Python's [httpx][httpx] library on Fedora based images fails to load any `SSL_CERT_DIR` and cannot make TLS connections.
+- git does not honor `SSL_CERT_DIR` at all and will not honor the custom certificates when mounted.
+
+##### Workarounds
+The workaround depends on the specific software's expectations. Here are three common workarounds:
+- Custom CA bundle is required; custom CA bundle contains _all certs_, custom and common; and software strictly adheres to OpenSSL spec (e.g. [httpx][httpx]): set env `SSL_CERT_FILE=/tekton-custom-certs/ca-bundle.crt`.
+- Custom CA bundle is required; custom CA bundle contains _all certs_, custom and common; and software doesn't honor OpenSSL ENV vars (e.g. git): set any software-specific environment variable for the SSL CA bundle. For git, this is `GIT_SSL_CAINFO=/tekton-custom-certs/ca-bundle.crt`.
+- Custom CA bundle broke SSL entirely but the custom certs aren't required: disable the proxy at the namespace level as documented in [the Proxy documentation](./Proxy.md).
+
 [openshift-proxy-configuration]: https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/configuring_network_settings/configuring-a-custom-pki
+[open-ssl-spec]: https://docs.openssl.org/master/man3/SSL_CTX_load_verify_locations/#description
+[httpx]: https://www.python-httpx.org/
