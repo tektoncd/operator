@@ -19,7 +19,7 @@ require (
 	github.com/openshift/library-go v0.0.0-20260303171201-5d9eb6295ff6
 	github.com/sigstore/cosign/v2 v2.6.5
 	github.com/spf13/cobra v1.10.2
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	github.com/tektoncd/pipeline v1.15.0
 	github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2
 	github.com/tektoncd/pruner v0.4.1
