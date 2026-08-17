@@ -64,6 +64,84 @@ updates:
         default-days: 7
     - package-ecosystem: github-actions
       directory: /
+      target-branch: release-v0.81.x
+      schedule:
+        interval: weekly
+      commit-message:
+        prefix: '[release-v0.81.x] '
+      labels:
+        - ok-to-test
+        - dependencies
+        - github_action
+        - kind/misc
+        - release-note-none
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        github-actions:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
+    - package-ecosystem: gomod
+      directory: /
+      target-branch: release-v0.81.x
+      schedule:
+        interval: weekly
+      commit-message:
+        prefix: '[release-v0.81.x] '
+      labels:
+        - ok-to-test
+        - dependencies
+        - kind/misc
+        - release-note-none
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: github.com/openshift/client-go
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      cooldown:
+        default-days: 7
+        semver-major-days: 30
+        semver-minor-days: 7
+        semver-patch-days: 3
+    - package-ecosystem: docker
+      directory: /tekton
+      target-branch: release-v0.81.x
+      schedule:
+        interval: weekly
+      commit-message:
+        prefix: '[release-v0.81.x] '
+      labels:
+        - ok-to-test
+        - dependencies
+        - kind/misc
+        - release-note-none
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        all:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
+    - package-ecosystem: github-actions
+      directory: /
       target-branch: release-v0.80.x
       schedule:
         interval: weekly
@@ -358,162 +436,6 @@ updates:
         interval: weekly
       commit-message:
         prefix: '[release-v0.77.x] '
-      labels:
-        - ok-to-test
-        - dependencies
-        - kind/misc
-        - release-note-none
-      ignore:
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      groups:
-        all:
-            patterns:
-                - '*'
-      cooldown:
-        default-days: 7
-    - package-ecosystem: github-actions
-      directory: /
-      target-branch: release-v0.76.x
-      schedule:
-        interval: weekly
-      commit-message:
-        prefix: '[release-v0.76.x] '
-      labels:
-        - ok-to-test
-        - dependencies
-        - github_action
-        - kind/misc
-        - release-note-none
-      ignore:
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      groups:
-        github-actions:
-            patterns:
-                - '*'
-      cooldown:
-        default-days: 7
-    - package-ecosystem: gomod
-      directory: /
-      target-branch: release-v0.76.x
-      schedule:
-        interval: weekly
-      commit-message:
-        prefix: '[release-v0.76.x] '
-      labels:
-        - ok-to-test
-        - dependencies
-        - kind/misc
-        - release-note-none
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: go.opentelemetry.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: github.com/openshift/client-go
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
-    - package-ecosystem: docker
-      directory: /tekton
-      target-branch: release-v0.76.x
-      schedule:
-        interval: weekly
-      commit-message:
-        prefix: '[release-v0.76.x] '
-      labels:
-        - ok-to-test
-        - dependencies
-        - kind/misc
-        - release-note-none
-      ignore:
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      groups:
-        all:
-            patterns:
-                - '*'
-      cooldown:
-        default-days: 7
-    - package-ecosystem: github-actions
-      directory: /
-      target-branch: release-v0.75.x
-      schedule:
-        interval: weekly
-      commit-message:
-        prefix: '[release-v0.75.x] '
-      labels:
-        - ok-to-test
-        - dependencies
-        - github_action
-        - kind/misc
-        - release-note-none
-      ignore:
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      groups:
-        github-actions:
-            patterns:
-                - '*'
-      cooldown:
-        default-days: 7
-    - package-ecosystem: gomod
-      directory: /
-      target-branch: release-v0.75.x
-      schedule:
-        interval: weekly
-      commit-message:
-        prefix: '[release-v0.75.x] '
-      labels:
-        - ok-to-test
-        - dependencies
-        - kind/misc
-        - release-note-none
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: go.opentelemetry.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: github.com/openshift/client-go
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
-    - package-ecosystem: docker
-      directory: /tekton
-      target-branch: release-v0.75.x
-      schedule:
-        interval: weekly
-      commit-message:
-        prefix: '[release-v0.75.x] '
       labels:
         - ok-to-test
         - dependencies
