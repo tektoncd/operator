@@ -48,6 +48,10 @@ spec:
               value: tekton-operator
               {{- end }}
               {{- end }}
+            {{- if .Values.openshift.enabled }}
+            - name: PLATFORM
+              value: openshift
+            {{- end }}
             - name: IMAGE_PIPELINES_PROXY
               value: {{ include "tekton-operator.webhook-proxy-image" . }}
             - name: IMAGE_JOB_PRUNER_TKN
@@ -209,6 +213,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            {{- if .Values.openshift.enabled }}
+            - name: PLATFORM
+              value: openshift
+            {{- end }}
             - name: CONFIG_LOGGING_NAME
               value: {{ include "tekton-operator.fullname" . }}-config-logging
             - name: WEBHOOK_POD_NAME
