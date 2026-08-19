@@ -76,6 +76,8 @@ spec:
               value: {{ include "tekton-operator.fullname" . }}-config-logging
             - name: CONFIG_OBSERVABILITY_NAME
               value: {{ include "tekton-operator.fullname" . }}-observability
+            - name: CONFIG_LEADERELECTION_NAME
+              value: {{ include "tekton-operator.fullname" . }}-controller-config-leader-election
             {{- include "tekton-operator.kubernetesMinVersionEnv" . | nindent 12 }}
             {{- range .Values.operator.additionalEnvs }}
             - name: {{ .name }}
@@ -114,28 +116,18 @@ spec:
               value: tekton-operator
               {{- end }}
               {{- end }}
-            - name: IMAGE_PIPELINES_PROXY
-              value: {{ include "tekton-operator.webhook-proxy-image" . }}
+            - name: PROFILING_PORT
+              value: "9009"
             - name: METRICS_DOMAIN
               value: {{ .Values.service.metricsDomain }}
             - name: VERSION
               value: {{ .Values.webhook.image.tag | default .Chart.AppVersion | quote }}
-            - name: AUTOINSTALL_COMPONENTS
-              value: {{ .Values.operator.autoInstallComponents | quote }}
-            - name: DEFAULT_TARGET_NAMESPACE
-              {{- if .Values.operator.defaultTargetNamespace }}
-              value: {{ .Values.operator.defaultTargetNamespace | quote }}
-              {{- else }}
-              {{- if .Values.openshift.enabled }}
-              value: openshift-pipelines
-              {{- else }}
-              value: tekton-pipelines
-              {{- end }}
-              {{- end }}
             - name: CONFIG_LOGGING_NAME
               value: {{ include "tekton-operator.fullname" . }}-config-logging
             - name: CONFIG_OBSERVABILITY_NAME
               value: {{ include "tekton-operator.fullname" . }}-observability
+            - name: CONFIG_LEADERELECTION_NAME
+              value: {{ include "tekton-operator.fullname" . }}-controller-config-leader-election
             {{- include "tekton-operator.kubernetesMinVersionEnv" . | nindent 12 }}
             {{- range .Values.operator.additionalEnvs }}
             - name: {{ .name }}
@@ -227,6 +219,8 @@ spec:
               value: {{ include "tekton-operator.fullname" . }}-webhook
             - name: WEBHOOK_SECRET_NAME
               value: {{ .Values.webhook.certSecret.name | default (include "tekton-operator.fullname" .) }}-webhook-certs
+            - name: CONFIG_LEADERELECTION_NAME
+              value: {{ include "tekton-operator.fullname" . }}-webhook-config-leader-election
             - name: WEBHOOK_PORT
               value: {{ .Values.webhook.httpsWebhookPort | quote }}
             - name: METRICS_DOMAIN
