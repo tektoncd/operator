@@ -14,11 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package common provides shared constants and utilities used across the
+// controller, webhook, and mutate packages.
 package common
 
 const (
+	// ManagedByMultiKueueLabel is set on PipelineRuns when multiKueue is enabled,
+	// telling Kueue to dispatch the workload to a remote worker cluster.
 	ManagedByMultiKueueLabel = "kueue.x-k8s.io/multikueue"
-	QueueLabel               = "kueue.x-k8s.io/queue-name"
-	ConfigKey                = "config.yaml"
-	ConfigMapName            = "tekton-kueue-config"
+
+	// QueueLabel is the standard Kueue label used to assign workloads to a LocalQueue.
+	QueueLabel = "kueue.x-k8s.io/queue-name"
+
+	// ConfigKey is the key within the tekton-kueue-config ConfigMap that holds
+	// the YAML configuration.
+	ConfigKey = "config.yaml"
+
+	// ConfigMapName is the name of the ConfigMap that configures the webhook.
+	ConfigMapName = "tekton-kueue-config"
 )
