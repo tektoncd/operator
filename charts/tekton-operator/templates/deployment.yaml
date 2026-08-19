@@ -232,7 +232,7 @@ spec:
             {{- end }}
           image: {{ include "tekton-operator.webhook-image" . }}
           imagePullPolicy: {{ .Values.webhook.image.pullPolicy }}
-          name: {{ include "tekton-operator.operator-name" . -}}-webhook
+          name: {{ include "tekton-operator.fullname" . -}}-webhook
           resources:
             {{- toYaml .Values.webhook.resources | nindent 12 }}
           {{- with .Values.securityContext }}
