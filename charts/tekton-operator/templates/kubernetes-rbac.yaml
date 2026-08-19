@@ -6,39 +6,6 @@ metadata:
   name: {{ include "tekton-operator.fullname" . }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: {{ include "tekton-operator.fullname" . }}-info
-  labels:
-    {{- include "tekton-operator.labels" . | nindent 4 }}
-rules:
-  - apiGroups:
-      - ""
-    resourceNames:
-      - tekton-operator-info
-    resources:
-      - configmaps
-    verbs:
-      - get
-      - describe
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: tekton-config-read-role
-  labels:
-    {{- include "tekton-operator.labels" . | nindent 4 }}
-rules:
-  - apiGroups:
-      - operator.tekton.dev
-    resources:
-      - tektonconfigs
-    verbs:
-      - get
-      - watch
-      - list
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: {{ include "tekton-operator.fullname" . }}
@@ -467,34 +434,6 @@ rules:
       - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  labels:
-    app.kubernetes.io/instance: default
-  name: {{ include "tekton-operator.fullname" . }}-info
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: {{ include "tekton-operator.fullname" . }}-info
-subjects:
-  - apiGroup: rbac.authorization.k8s.io
-    kind: Group
-    name: system:authenticated
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: tekton-config-read-rolebinding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: tekton-config-read-role
-subjects:
-  - apiGroup: rbac.authorization.k8s.io
-    kind: Group
-    name: system:authenticated
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{ include "tekton-operator.fullname" . }}
@@ -532,7 +471,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ include "tekton-operator.fullname" . }}-pac-controller-role-binding
+  name: {{ include "tekton-operator.fullname" . }}-pac-controller-rolebinding
   labels:
     {{- include "tekton-operator.labels" . | nindent 4 }}
 roleRef:
