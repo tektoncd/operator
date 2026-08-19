@@ -27,14 +27,11 @@ installCRDs: false
 
 ## Controllers to install (comma-separated list passed to the operator's
 ## -controllers flag). Leave empty for the flavor default:
-##   kubernetes: tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,
-##               tektondashboard,manualapprovalgate,tektonpruner,tektonscheduler,
-##               tektonmulticlusterproxyaae,openshiftpipelinesascode
-##   openshift:  tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonaddon,
-##               tektonresult,openshiftpipelinesascode,manualapprovalgate,tektonpruner,
-##               tektonscheduler,tektonmulticlusterproxyaae,syncerservice
-## Note: the previous kubernetes default was missing tektonscheduler and
-## tektonmulticlusterproxyaae; the new default adds them (additive change).
+##   common:     tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,
+##               manualapprovalgate,tektonpruner,tektonscheduler,tektonmulticlusterproxyaae,
+##               openshiftpipelinesascode
+##   kubernetes: common + tektondashboard
+##   openshift:  common + tektonaddon,syncerservice
 controllers: ""
 
 ## Control the creation of RBAC resources (Serviceaccount, Role, ClusterRole, ClusterRoleBinding)
