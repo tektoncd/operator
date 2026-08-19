@@ -506,4 +506,41 @@ subjects:
   - kind: ServiceAccount
     name: {{ include "tekton-operator.fullname" . }}
     namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "tekton-operator.fullname" . }}-pac-controller-role
+  labels:
+    {{- include "tekton-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - pipelinesascode.tekton.dev
+    resources:
+      - repositories
+      - webhooks
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+      - deletecollection
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "tekton-operator.fullname" . }}-pac-controller-role-binding
+  labels:
+    {{- include "tekton-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "tekton-operator.fullname" . }}-pac-controller-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "tekton-operator.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
 {{- end -}}

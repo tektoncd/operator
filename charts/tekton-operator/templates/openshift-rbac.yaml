@@ -66,6 +66,12 @@ rules:
   - apiGroups:
       - ""
     resources:
+      - nodes
+    verbs:
+      - list
+  - apiGroups:
+      - ""
+    resources:
       - pods
       - services
       - endpoints
@@ -270,6 +276,7 @@ rules:
       - tekton.dev
       - triggers.tekton.dev
       - operator.tekton.dev
+      - pipelinesascode.tekton.dev
     resources:
       - '*'
     verbs:
@@ -303,9 +310,19 @@ rules:
     verbs:
       - use
       - get
+      - list
       - create
       - update
       - delete
+  - apiGroups:
+      - config.openshift.io
+    resources:
+      - apiservers
+      - clusterversions
+    verbs:
+      - get
+      - list
+      - watch
   - apiGroups:
       - route.openshift.io
     resources:
@@ -313,6 +330,31 @@ rules:
     verbs:
       - delete
       - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - route.openshift.io
+    resources:
+      - routes/custom-host
+    verbs:
+      - create
+      - update
+  - apiGroups:
+      - events.k8s.io
+    resources:
+      - events
+    verbs:
+      - create
+  - apiGroups:
+      - console.openshift.io
+    resources:
+      - consoleplugins
+    verbs:
+      - delete
       - create
       - patch
       - get
@@ -409,12 +451,15 @@ rules:
       - resolution.tekton.dev
     resources:
       - resolutionrequests
+      - resolutionrequests/status
     verbs:
       - get
       - list
       - watch
       - create
       - delete
+      - update
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
