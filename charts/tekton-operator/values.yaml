@@ -66,6 +66,11 @@ operator:
   autoInstallComponents: true
   # The namespace in which Tekton components should be deployed
   # Defaults to "tekton-pipelines" for Kubernetes and to "openshift-pipelines" for Openshift flavor.
+  # First-install-only: it seeds the auto-created TektonConfig CR; once the CR exists,
+  # the operator never re-reads this value. To change it later, set spec.targetNamespace
+  # on the TektonConfig CR (requires deleting and recreating the CR).
+  # On the Openshift flavor it must be "openshift-pipelines": the addon sample pipelines
+  # hardcode that namespace, so the chart fails to render with any other value.
   defaultTargetNamespace: ""
   # Log level of the operator
   logLevel: info

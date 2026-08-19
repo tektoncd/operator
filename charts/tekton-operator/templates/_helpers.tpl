@@ -104,6 +104,12 @@ tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboa
 {{- end -}}
 {{- end -}}
 
+{{- define "tekton-operator.validateTargetNamespace" -}}
+{{- if and .Values.openshift.enabled .Values.operator.defaultTargetNamespace (ne .Values.operator.defaultTargetNamespace "openshift-pipelines") -}}
+{{- fail (printf "operator.defaultTargetNamespace must be \"openshift-pipelines\" when openshift.enabled=true (got %q). The openshift addon sample pipelines hardcode that namespace, so a custom value breaks them; this is also first-install-only - once the TektonConfig CR exists the operator never re-reads it. To change the target namespace, set spec.targetNamespace on the TektonConfig CR (requires deleting and recreating the CR)." .Values.operator.defaultTargetNamespace) -}}
+{{- end -}}
+{{- end -}}
+
 {{- define "tekton-operator.operator-image" -}}
 {{- $tag := default .Chart.AppVersion .Values.operator.image.tag -}}
 {{- $image := "" -}}
