@@ -1,3 +1,4 @@
+{{- include "tekton-operator.validateTargetNamespace" . -}}
 ---
 apiVersion: apps/v1
 kind: Deployment
