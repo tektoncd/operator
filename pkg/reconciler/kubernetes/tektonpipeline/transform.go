@@ -18,7 +18,9 @@ package tektonpipeline
 
 import (
 	"context"
+	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	mf "github.com/manifestival/manifestival"
@@ -113,9 +115,51 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, pipeline.Spec.GetTargetNamespace(), pipeline.Spec.Options); err != nil {
 			return &mf.Manifest{}, err
 		}
+		if pipeline.Spec.Performance.StatefulsetOrdinals != nil && *pipeline.Spec.Performance.StatefulsetOrdinals {
+			if err := validateResolverStatefulSetOrdinals(manifest); err != nil {
+				return &mf.Manifest{}, err
+			}
+		}
 
 		return manifest, nil
 	}
+}
+
+func validateResolverStatefulSetOrdinals(manifest *mf.Manifest) error {
+	configMaps := manifest.Filter(mf.All(mf.ByKind(common.KindConfigMap), mf.ByName(leaderElectionResolversConfig))).Resources()
+	statefulSets := manifest.Filter(mf.All(mf.ByKind(common.KindStatefulSet), mf.ByName(tektonRemoteResolversControllerName))).Resources()
+	if len(configMaps) == 0 || len(statefulSets) == 0 {
+		return nil
+	}
+
+	configMap := &corev1.ConfigMap{}
+	if err := apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(configMaps[0].Object, configMap); err != nil {
+		return fmt.Errorf("convert %s ConfigMap: %w", leaderElectionResolversConfig, err)
+	}
+	statefulSet := &appsv1.StatefulSet{}
+	if err := apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(statefulSets[0].Object, statefulSet); err != nil {
+		return fmt.Errorf("convert %s StatefulSet: %w", tektonRemoteResolversControllerName, err)
+	}
+
+	buckets := int64(1)
+	if configured, ok := configMap.Data["buckets"]; ok {
+		var err error
+		buckets, err = strconv.ParseInt(configured, 10, 32)
+		if err != nil {
+			return fmt.Errorf("invalid %s data.buckets %q: %w", leaderElectionResolversConfig, configured, err)
+		}
+	}
+	if buckets < 1 || buckets > v1alpha1.MaxBuckets {
+		return fmt.Errorf("%s data.buckets must be between 1 and %d, got %d", leaderElectionResolversConfig, v1alpha1.MaxBuckets, buckets)
+	}
+	replicas := int64(1)
+	if statefulSet.Spec.Replicas != nil {
+		replicas = int64(*statefulSet.Spec.Replicas)
+	}
+	if buckets != replicas {
+		return fmt.Errorf("statefulset ordinal mode requires %s data.buckets (%d) to equal %s spec.replicas (%d)", leaderElectionResolversConfig, buckets, tektonRemoteResolversControllerName, replicas)
+	}
+	return nil
 }
 
 // updates resolver config environment variables
