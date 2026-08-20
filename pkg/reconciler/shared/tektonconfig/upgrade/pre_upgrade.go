@@ -350,6 +350,45 @@ func updateOpenShiftPipelinesAsCodeCR(ctx context.Context, logger *zap.SugaredLo
 	return nil
 }
 
+// preUpgradeManualApprovalGate adopts a standalone ManualApprovalGate CR into TektonConfig.
+// If a MAG CR exists without ownerReferences (from a previous version where MAG was installed
+// independently), copy its config into TektonConfig.Spec.ManualApproval and enable it.
+// This ensures the user's existing MAG configuration (Options, etc.) is preserved across the upgrade.
+func preUpgradeManualApprovalGate(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	tc, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	if !tc.Spec.ManualApproval.IsDisabled() {
+		logger.Infof("ManualApprovalGate already enabled in TektonConfig, skipping pre-upgrade adoption")
+		return nil
+	}
+
+	magCR, err := operatorClient.OperatorV1alpha1().ManualApprovalGates().Get(ctx, v1alpha1.ManualApprovalGates, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			logger.Infof("No standalone ManualApprovalGate CR found, skipping pre-upgrade adoption")
+			return nil
+		}
+		return err
+	}
+
+	if len(magCR.OwnerReferences) > 0 {
+		logger.Infof("ManualApprovalGate CR already has ownerReferences, skipping pre-upgrade adoption")
+		return nil
+	}
+
+	logger.Infof("Found standalone ManualApprovalGate CR, adopting config into TektonConfig")
+	tc.Spec.ManualApproval = magCR.Spec.ManualApproval
+	tc.Spec.ManualApproval.Disabled = ptr.Bool(false)
+	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{})
+	return err
+}
+
 // removeDeprecatedDisableAffinityAssistant removes the deprecated DisableAffinityAssistant field from tektonConfig CR spec during pre upgrade
 // TODO: Remove this upgrade function in the release-v0.80.x
 func removeDeprecatedDisableAffinityAssistant(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {

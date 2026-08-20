@@ -26,6 +26,7 @@ import (
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chain"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/manualapprovalgate"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/multiclusterproxyaae"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pruner"
@@ -38,6 +39,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"knative.dev/pkg/apis"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/ptr"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
@@ -78,6 +80,9 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 			return err
 		}
 		if err := chain.EnsureTektonChainCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonChains()); err != nil {
+			return err
+		}
+		if err := manualapprovalgate.EnsureManualApprovalGateCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().ManualApprovalGates()); err != nil {
 			return err
 		}
 		if err := result.EnsureTektonResultCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonResults()); err != nil {
@@ -324,6 +329,49 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		logger.Debug("TektonChain CR removal reconciled successfully")
+	}
+
+	// Ensure ManualApprovalGate CR
+	// If a standalone MAG CR exists (no ownerRef, from a previous version),
+	// adopt its config into TektonConfig and enable it.
+	if tc.Spec.ManualApproval.IsDisabled() {
+		existingMAG, err := manualapprovalgate.GetManualApprovalGate(ctx, r.operatorClientSet.OperatorV1alpha1().ManualApprovalGates(), v1alpha1.ManualApprovalGates)
+		if err == nil && len(existingMAG.OwnerReferences) == 0 {
+			logger.Infow("Found standalone ManualApprovalGate CR from previous version, adopting into TektonConfig")
+			tc.Spec.ManualApproval = existingMAG.Spec.ManualApproval
+			tc.Spec.ManualApproval.Disabled = ptr.Bool(false)
+			if _, err := r.operatorClientSet.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{}); err != nil {
+				logger.Errorw("Failed to adopt standalone MAG into TektonConfig", "error", err)
+				return v1alpha1.REQUEUE_EVENT_AFTER
+			}
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	}
+	if !tc.Spec.ManualApproval.IsDisabled() {
+		magCR := manualapprovalgate.GetManualApprovalGateCR(tc, r.operatorVersion)
+		if platformData := r.extension.GetPlatformData(); platformData != "" {
+			if magCR.Annotations == nil {
+				magCR.Annotations = map[string]string{}
+			}
+			magCR.Annotations[v1alpha1.PlatformDataHashKey] = platformData
+		}
+		logger.Debug("Ensuring ManualApprovalGate CR exists")
+		if _, err := manualapprovalgate.EnsureManualApprovalGateExists(ctx, r.operatorClientSet.OperatorV1alpha1().ManualApprovalGates(), magCR); err != nil {
+			errMsg := fmt.Sprintf("ManualApprovalGate: %s", err.Error())
+			logger.Errorw("Failed to ensure ManualApprovalGate exists", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		logger.Debug("ManualApprovalGate CR reconciled successfully")
+	} else {
+		logger.Debugw("Ensuring ManualApprovalGate CR doesn't exist", "manualApprovalDisabled", tc.Spec.ManualApproval.IsDisabled())
+		if err := manualapprovalgate.EnsureManualApprovalGateCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().ManualApprovalGates()); err != nil {
+			errMsg := fmt.Sprintf("ManualApprovalGate: %s", err.Error())
+			logger.Errorw("Failed to ensure ManualApprovalGate has been deleted", "error", err)
+			tc.Status.MarkComponentNotReady(errMsg)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+		logger.Debug("ManualApprovalGate CR removal reconciled successfully")
 	}
 
 	// Ensure Result CR
