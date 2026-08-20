@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/pipeline/test/diff"
@@ -262,6 +263,141 @@ func TestUpdateResolverConfigEnvironmentsInDeployment(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestValidateStatefulSetOrdinalsAfterOptions(t *testing.T) {
+	controllers := []struct {
+		name, configMap, statefulSet string
+	}{
+		{"Pipelines controller", leaderElectionPipelineConfig, tektonPipelinesControllerName},
+		{"resolver controller", leaderElectionResolversConfig, tektonRemoteResolversControllerName},
+	}
+	tests := []struct {
+		name                string
+		statefulSetOrdinals bool
+		optionBuckets       string
+		optionReplicas      *int32
+		wantError           string
+		wantStatefulSet     bool
+	}{
+		{
+			name:                "reject mismatched bucket override",
+			statefulSetOrdinals: true,
+			optionBuckets:       "8",
+			wantError:           " data.buckets (8) to equal",
+			wantStatefulSet:     true,
+		},
+		{
+			name:                "reject mismatched replica override",
+			statefulSetOrdinals: true,
+			optionReplicas:      ptr.Int32(8),
+			wantError:           " data.buckets (4) to equal",
+			wantStatefulSet:     true,
+		},
+		{
+			name:                "allow matching overrides",
+			statefulSetOrdinals: true,
+			optionBuckets:       "8",
+			optionReplicas:      ptr.Int32(8),
+		},
+		{
+			name:                "reject out-of-range matching overrides",
+			statefulSetOrdinals: true,
+			optionBuckets:       "11",
+			optionReplicas:      ptr.Int32(11),
+			wantError:           " data.buckets must be between 1 and 10, got 11",
+		},
+		{
+			name:          "allow different bucket count with dynamic leader election",
+			optionBuckets: "8",
+		},
+	}
+
+	for _, controller := range controllers {
+		t.Run(controller.name, func(t *testing.T) {
+			for _, test := range tests {
+				t.Run(test.name, func(t *testing.T) {
+					buckets := uint(4)
+					replicas := int32(4)
+					pipeline := &v1alpha1.TektonPipeline{
+						Spec: v1alpha1.TektonPipelineSpec{
+							Pipeline: v1alpha1.Pipeline{
+								PipelineProperties: v1alpha1.PipelineProperties{
+									Performance: v1alpha1.PerformanceProperties{
+										PerformanceLeaderElectionConfig:      v1alpha1.PerformanceLeaderElectionConfig{Buckets: &buckets},
+										PerformanceStatefulsetOrdinalsConfig: v1alpha1.PerformanceStatefulsetOrdinalsConfig{StatefulsetOrdinals: ptr.Bool(test.statefulSetOrdinals)},
+										Replicas:                             &replicas,
+									},
+								},
+							},
+						},
+					}
+					if test.optionBuckets != "" {
+						pipeline.Spec.Options.ConfigMaps = map[string]corev1.ConfigMap{
+							controller.configMap: {Data: map[string]string{"buckets": test.optionBuckets}},
+						}
+					}
+					if test.optionReplicas != nil {
+						pipeline.Spec.Options.StatefulSets = map[string]appsv1.StatefulSet{
+							controller.statefulSet: {Spec: appsv1.StatefulSetSpec{Replicas: test.optionReplicas}},
+						}
+					}
+
+					manifest := ordinalManifest(t)
+					_, err := filterAndTransform(common.NoExtension(t.Context()))(t.Context(), &manifest, pipeline)
+					if test.wantError == "" {
+						assert.NilError(t, err)
+					} else {
+						assert.ErrorContains(t, err, controller.configMap+test.wantError)
+						if test.wantStatefulSet {
+							assert.ErrorContains(t, err, controller.statefulSet)
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
+func ordinalManifest(t *testing.T) mf.Manifest {
+	t.Helper()
+	objects := []interface{}{
+		&corev1.ConfigMap{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: common.KindConfigMap},
+			ObjectMeta: metav1.ObjectMeta{Name: leaderElectionPipelineConfig},
+			Data:       map[string]string{"buckets": "1"},
+		},
+		&appsv1.Deployment{
+			TypeMeta:   metav1.TypeMeta{APIVersion: appsv1.SchemeGroupVersion.String(), Kind: common.KindDeployment},
+			ObjectMeta: metav1.ObjectMeta{Name: tektonPipelinesControllerName},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: ptr.Int32(1),
+				Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: pipelinesControllerContainer}}}},
+			},
+		},
+		&corev1.ConfigMap{
+			TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: common.KindConfigMap},
+			ObjectMeta: metav1.ObjectMeta{Name: leaderElectionResolversConfig},
+			Data:       map[string]string{"buckets": "1"},
+		},
+		&appsv1.Deployment{
+			TypeMeta:   metav1.TypeMeta{APIVersion: appsv1.SchemeGroupVersion.String(), Kind: common.KindDeployment},
+			ObjectMeta: metav1.ObjectMeta{Name: tektonRemoteResolversControllerName},
+			Spec: appsv1.DeploymentSpec{
+				Replicas: ptr.Int32(1),
+				Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: pipelinesRemoteResolverControllerContainer}}}},
+			},
+		},
+	}
+	resources := make([]unstructured.Unstructured, 0, len(objects))
+	for _, object := range objects {
+		content, err := apimachineryRuntime.DefaultUnstructuredConverter.ToUnstructured(object)
+		assert.NilError(t, err)
+		resources = append(resources, unstructured.Unstructured{Object: content})
+	}
+	manifest, err := mf.ManifestFrom(mf.Slice(resources))
+	assert.NilError(t, err)
+	return manifest
 }
 
 // not in use, see: https://github.com/tektoncd/pipeline/pull/7789
