@@ -41,6 +41,14 @@ func (c *Result) setDefaults() {
 		c.RouteTLSTermination = "edge"
 	}
 
+	// The Watcher only forwards logs to the API server when its own
+	// logs_api flag is set; enabling the API server's logs_api alone does
+	// not do this. Default the Watcher to match unless the user set
+	// watcher.logs_api explicitly.
+	if c.LogsAPI != nil && c.Watcher.LogsAPI == nil {
+		c.Watcher.LogsAPI = c.LogsAPI
+	}
+
 	c.setPerformanceDefaults()
 }
 

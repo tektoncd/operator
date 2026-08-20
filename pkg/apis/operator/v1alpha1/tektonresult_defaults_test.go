@@ -127,6 +127,98 @@ func TestResult_SetDefaultsRoutes(t *testing.T) {
 	}
 }
 
+func TestResult_SetDefaultsWatcherLogsAPI(t *testing.T) {
+	tests := []struct {
+		name string
+		r    *Result
+		want *Result
+	}{
+		{
+			name: "propagates enabled logs_api to watcher when unset",
+			r: &Result{
+				ResultsAPIProperties: ResultsAPIProperties{
+					LogsAPI:      ptr.Bool(true),
+					RouteEnabled: ptr.Bool(true),
+				},
+			},
+			want: &Result{
+				ResultsAPIProperties: ResultsAPIProperties{
+					LogsAPI:             ptr.Bool(true),
+					RouteEnabled:        ptr.Bool(true),
+					RouteTLSTermination: "edge",
+				},
+				Watcher: ResultsWatcherProperties{
+					LogsAPI: ptr.Bool(true),
+				},
+			},
+		},
+		{
+			name: "propagates disabled logs_api to watcher when unset",
+			r: &Result{
+				ResultsAPIProperties: ResultsAPIProperties{
+					LogsAPI:      ptr.Bool(false),
+					RouteEnabled: ptr.Bool(true),
+				},
+			},
+			want: &Result{
+				ResultsAPIProperties: ResultsAPIProperties{
+					LogsAPI:             ptr.Bool(false),
+					RouteEnabled:        ptr.Bool(true),
+					RouteTLSTermination: "edge",
+				},
+				Watcher: ResultsWatcherProperties{
+					LogsAPI: ptr.Bool(false),
+				},
+			},
+		},
+		{
+			name: "does not override an explicit watcher logs_api",
+			r: &Result{
+				ResultsAPIProperties: ResultsAPIProperties{
+					LogsAPI:      ptr.Bool(true),
+					RouteEnabled: ptr.Bool(true),
+				},
+				Watcher: ResultsWatcherProperties{
+					LogsAPI: ptr.Bool(false),
+				},
+			},
+			want: &Result{
+				ResultsAPIProperties: ResultsAPIProperties{
+					LogsAPI:             ptr.Bool(true),
+					RouteEnabled:        ptr.Bool(true),
+					RouteTLSTermination: "edge",
+				},
+				Watcher: ResultsWatcherProperties{
+					LogsAPI: ptr.Bool(false),
+				},
+			},
+		},
+		{
+			name: "leaves watcher logs_api unset when API logs_api is unset",
+			r: &Result{
+				ResultsAPIProperties: ResultsAPIProperties{
+					RouteEnabled: ptr.Bool(true),
+				},
+			},
+			want: &Result{
+				ResultsAPIProperties: ResultsAPIProperties{
+					RouteEnabled:        ptr.Bool(true),
+					RouteTLSTermination: "edge",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.r.setDefaults()
+			if d := cmp.Diff(tt.want, tt.r); d != "" {
+				t.Errorf("failed to set defaults %s", diff.PrintWantGot(d))
+			}
+		})
+	}
+}
+
 func TestResult_SetDefaultsBucketsAutoDefaulting(t *testing.T) {
 	threeReplicas := int32(3)
 	threeBuckets := uint(3)
