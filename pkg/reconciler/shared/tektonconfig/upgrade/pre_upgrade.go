@@ -36,6 +36,8 @@ import (
 	"knative.dev/pkg/ptr"
 )
 
+const deprecatedTektonSchedulerFinalizer = "tektonschedulers.operator.tekton.dev"
+
 // previous version of tekton operator uses a condition type called "InstallSucceeded" in status
 // but in the recent version we do not have that field, hence "InstallSucceeded" condition never updated.
 // for some reason, if it was in failed state, tektonConfig CR always in failed state
@@ -57,6 +59,99 @@ func resetTektonConfigConditions(ctx context.Context, logger *zap.SugaredLogger,
 	// update the status
 	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().UpdateStatus(ctx, tcCR, metav1.UpdateOptions{})
 	return err
+}
+
+// migrateTektonSchedulerToTektonKueue preserves the deprecated API long enough
+// to migrate existing configuration. The old CRD remains served, but no longer
+// reconciles operand resources.
+func migrateTektonSchedulerToTektonKueue(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	tc, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil && !apierrs.IsNotFound(err) {
+		return err
+	}
+	if err == nil && tc.Spec.MigrateScheduler() {
+		if _, err := operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tc, metav1.UpdateOptions{}); err != nil {
+			return err
+		}
+		logger.Info("Migrated TektonConfig spec.scheduler to spec.kueue")
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
+
+	legacySelector := metav1.FormatLabelSelector(&metav1.LabelSelector{MatchLabels: map[string]string{
+		v1alpha1.CreatedByKey: v1alpha1.SchedulerCreatedByValue,
+	}})
+	legacyInstallerSets, err := operatorClient.OperatorV1alpha1().TektonInstallerSets().List(ctx, metav1.ListOptions{LabelSelector: legacySelector})
+	if err != nil {
+		return err
+	}
+	if len(legacyInstallerSets.Items) > 0 {
+		for _, installerSet := range legacyInstallerSets.Items {
+			if err := operatorClient.OperatorV1alpha1().TektonInstallerSets().Delete(ctx, installerSet.Name, metav1.DeleteOptions{}); err != nil && !apierrs.IsNotFound(err) {
+				return err
+			}
+		}
+		logger.Infof("Removed %d deprecated TektonScheduler InstallerSets", len(legacyInstallerSets.Items))
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
+
+	legacy, err := operatorClient.OperatorV1alpha1().TektonSchedulers().Get(ctx, v1alpha1.TektonSchedulerResourceName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	if _, err := operatorClient.OperatorV1alpha1().TektonKueues().Get(ctx, v1alpha1.TektonKueueResourceName, metav1.GetOptions{}); apierrs.IsNotFound(err) {
+		kueue := &v1alpha1.TektonKueue{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: v1alpha1.SchemeGroupVersion.String(),
+				Kind:       v1alpha1.KindTektonKueue,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            v1alpha1.TektonKueueResourceName,
+				Labels:          legacy.Labels,
+				Annotations:     legacy.Annotations,
+				OwnerReferences: legacy.OwnerReferences,
+			},
+			Spec: v1alpha1.TektonKueueSpec{
+				CommonSpec:    legacy.Spec.CommonSpec,
+				Kueue:         legacy.Spec.Scheduler.ToKueue(),
+				NetworkPolicy: legacy.Spec.NetworkPolicy,
+			},
+		}
+		if _, err := operatorClient.OperatorV1alpha1().TektonKueues().Create(ctx, kueue, metav1.CreateOptions{}); err != nil {
+			return err
+		}
+		logger.Info("Migrated TektonScheduler resource to TektonKueue")
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	} else if err != nil {
+		return err
+	}
+
+	finalizers := make([]string, 0, len(legacy.Finalizers))
+	for _, finalizer := range legacy.Finalizers {
+		if finalizer != deprecatedTektonSchedulerFinalizer {
+			finalizers = append(finalizers, finalizer)
+		}
+	}
+	if len(finalizers) != len(legacy.Finalizers) {
+		patch, err := json.Marshal(map[string]interface{}{"metadata": map[string]interface{}{"finalizers": finalizers}})
+		if err != nil {
+			return err
+		}
+		if _, err := operatorClient.OperatorV1alpha1().TektonSchedulers().Patch(ctx, legacy.Name, types.MergePatchType, patch, metav1.PatchOptions{}); err != nil {
+			return err
+		}
+		logger.Info("Removed the operator finalizer from migrated TektonScheduler resource")
+		return v1alpha1.RECONCILE_AGAIN_ERR
+	}
+
+	if err := operatorClient.OperatorV1alpha1().TektonSchedulers().Delete(ctx, legacy.Name, metav1.DeleteOptions{}); err != nil && !apierrs.IsNotFound(err) {
+		return err
+	}
+	logger.Info("Requested deletion of migrated TektonScheduler resource")
+	return nil
 }
 
 // previous version of the tekton operator uses default value which is false for enable-step-actions.

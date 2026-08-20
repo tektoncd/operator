@@ -26,11 +26,11 @@ import (
 	tektonConfigreconciler "github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/chain"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/kueue"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/multiclusterproxyaae"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipeline"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pruner"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/result"
-	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/scheduler"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/syncerservice"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/trigger"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/upgrade"
@@ -224,18 +224,18 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		}
 	}
 
-	// Ensure TektonMulticlusterProxyAAE CR (conditional based on scheduler multi-cluster config).
-	// Run before EnsureSchedulerComponent so the CR is created even when scheduler component
+	// Ensure TektonMulticlusterProxyAAE CR (conditional based on kueue multi-cluster config).
+	// Run before EnsureKueueComponent so the CR is created even when kueue component
 	// is blocked (e.g. cert-manager or Kueue not installed). Multicluster-proxy-aae is deployed only when:
-	// - Scheduler is enabled (not disabled)
+	// - Kueue is enabled (not disabled)
 	// - multi-cluster-disabled: false
 	// - multi-cluster-role: Hub
 	proxyAAEEnabled := multiclusterproxyaae.IsMulticlusterProxyAAEEnabled(tc)
 	logger.Infow("TektonMulticlusterProxyAAE enablement",
 		"enabled", proxyAAEEnabled,
-		"schedulerDisabled", tc.Spec.Scheduler.IsDisabled(),
-		"multiClusterDisabled", tc.Spec.Scheduler.MultiClusterDisabled,
-		"multiClusterRole", tc.Spec.Scheduler.MultiClusterRole)
+		"kueueDisabled", tc.Spec.Kueue.IsDisabled(),
+		"multiClusterDisabled", tc.Spec.Kueue.MultiClusterDisabled,
+		"multiClusterRole", tc.Spec.Kueue.MultiClusterRole)
 	if proxyAAEEnabled {
 		proxyCR := multiclusterproxyaae.GetTektonMulticlusterProxyAAECR(tc, r.operatorVersion)
 		logger.Debug("Ensuring TektonMulticlusterProxyAAE CR exists (multi-cluster enabled with Hub role)")
@@ -251,9 +251,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		logger.Debug("TektonMulticlusterProxyAAE CR reconciled successfully")
 	} else {
 		logger.Debugw("Ensuring TektonMulticlusterProxyAAE CR doesn't exist",
-			"schedulerDisabled", tc.Spec.Scheduler.IsDisabled(),
-			"multiClusterDisabled", tc.Spec.Scheduler.MultiClusterDisabled,
-			"multiClusterRole", tc.Spec.Scheduler.MultiClusterRole)
+			"kueueDisabled", tc.Spec.Kueue.IsDisabled(),
+			"multiClusterDisabled", tc.Spec.Kueue.MultiClusterDisabled,
+			"multiClusterRole", tc.Spec.Kueue.MultiClusterRole)
 		if err := multiclusterproxyaae.EnsureTektonMulticlusterProxyAAECRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().TektonMulticlusterProxyAAEs()); err != nil {
 			if err == v1alpha1.RECONCILE_AGAIN_ERR {
 				return v1alpha1.REQUEUE_EVENT_AFTER
@@ -266,7 +266,7 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		logger.Debug("TektonMulticlusterProxyAAE CR removal reconciled successfully")
 	}
 
-	if err := r.EnsureSchedulerComponent(ctx, tc); err != nil {
+	if err := r.EnsureKueueComponent(ctx, tc); err != nil {
 		return err
 	}
 
@@ -354,12 +354,12 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		logger.Debug("TektonResult CR removal reconciled successfully")
 	}
 
-	// Ensure SyncerService CR (conditional based on scheduler multi-cluster config)
+	// Ensure SyncerService CR (conditional based on kueue multi-cluster config)
 	// Syncer-service is deployed only when:
-	// - Scheduler is enabled (not disabled)
+	// - Kueue is enabled (not disabled)
 	// - multi-cluster-disabled: false
 	// - multi-cluster-role: Hub
-	if syncerservice.IsSyncerServiceEnabled(&tc.Spec.Scheduler) {
+	if syncerservice.IsSyncerServiceEnabled(&tc.Spec.Kueue) {
 		syncerServiceCR := syncerservice.GetSyncerServiceCR(tc, r.operatorVersion)
 		logger.Debug("Ensuring SyncerService CR exists (multi-cluster enabled with Hub role)")
 		if _, err := syncerservice.EnsureSyncerServiceExists(ctx, r.operatorClientSet.OperatorV1alpha1().SyncerServices(), syncerServiceCR); err != nil {
@@ -371,9 +371,9 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tc *v1alpha1.TektonConfi
 		logger.Debug("SyncerService CR reconciled successfully")
 	} else {
 		logger.Debugw("Ensuring SyncerService CR doesn't exist",
-			"schedulerDisabled", tc.Spec.Scheduler.IsDisabled(),
-			"multiClusterDisabled", tc.Spec.Scheduler.MultiClusterDisabled,
-			"multiClusterRole", tc.Spec.Scheduler.MultiClusterRole)
+			"kueueDisabled", tc.Spec.Kueue.IsDisabled(),
+			"multiClusterDisabled", tc.Spec.Kueue.MultiClusterDisabled,
+			"multiClusterRole", tc.Spec.Kueue.MultiClusterRole)
 		if err := syncerservice.EnsureSyncerServiceCRNotExists(ctx, r.operatorClientSet.OperatorV1alpha1().SyncerServices()); err != nil {
 			errMsg := fmt.Sprintf("SyncerService: %s", err.Error())
 			logger.Errorw("Failed to ensure SyncerService has been deleted", "error", err)
@@ -464,6 +464,6 @@ func (r *Reconciler) markUpgrade(ctx context.Context, tc *v1alpha1.TektonConfig)
 	return v1alpha1.RECONCILE_AGAIN_ERR
 }
 
-func (r *Reconciler) EnsureSchedulerComponent(ctx context.Context, tc *v1alpha1.TektonConfig) error {
-	return scheduler.EnsureTektonComponent(ctx, tc, r.operatorClientSet, r.operatorVersion)
+func (r *Reconciler) EnsureKueueComponent(ctx context.Context, tc *v1alpha1.TektonConfig) error {
+	return kueue.EnsureTektonComponent(ctx, tc, r.operatorClientSet, r.operatorVersion)
 }

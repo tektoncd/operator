@@ -14,29 +14,29 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonscheduler
+package tektonkueue
 
 import (
 	"context"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
-	"github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonscheduler"
+	"github.com/tektoncd/operator/pkg/client/injection/reconciler/operator/v1alpha1/tektonkueue"
 	"knative.dev/pkg/logging"
 	pkgreconciler "knative.dev/pkg/reconciler"
 )
 
-var _ tektonscheduler.Finalizer = (*Reconciler)(nil)
+var _ tektonkueue.Finalizer = (*Reconciler)(nil)
 
-// FinalizeKind removes all resources after deletion of a TektonScheduler CR.
-func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonScheduler) pkgreconciler.Event {
+// FinalizeKind removes all resources after deletion of a TektonKueue CR.
+func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.TektonKueue) pkgreconciler.Event {
 	logger := logging.FromContext(ctx)
 
 	// Delete CRDs before deleting rest of resources so that any instance
 	// of CRDs which has finalizer set will get deleted before we remove
 	// the controller;s deployment for it
 	if err := r.manifest.Filter(mf.CRDs).Delete(); err != nil {
-		logger.Error("Failed to deleted CRDs for TektonScheduler")
+		logger.Error("Failed to deleted CRDs for TektonKueue")
 		return err
 	}
 
@@ -45,7 +45,7 @@ func (r *Reconciler) FinalizeKind(ctx context.Context, original *v1alpha1.Tekton
 		return err
 	}
 
-	if err := r.installerSetClient.CleanupCustomSet(ctx, schedulerCustomSet); err != nil {
+	if err := r.installerSetClient.CleanupCustomSet(ctx, kueueCustomSet); err != nil {
 		logger.Error("failed to cleanup network policy installerset: ", err)
 		return err
 	}

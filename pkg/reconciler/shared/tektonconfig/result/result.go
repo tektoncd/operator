@@ -195,8 +195,8 @@ func GetTektonResultCR(config *v1alpha1.TektonConfig, operatorVersion string) *v
 
 	// For Hub clusters (multicluster enabled AND role is Hub), set replicas to 0
 	// for watcher and retention-policy-agent deployments
-	if !config.Spec.Scheduler.MultiClusterDisabled &&
-		strings.EqualFold(string(config.Spec.Scheduler.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub)) {
+	if !config.Spec.Kueue.MultiClusterDisabled &&
+		strings.EqualFold(string(config.Spec.Kueue.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub)) {
 		result = disableWatcherAndRetentionAgentOnHubCluster(result)
 	}
 
