@@ -30,11 +30,11 @@ You can find details on our automation infrastructure in
 
 For more Operator specific guidelines, see:
 
-- [The Tekton Operator ZenHub project](#zenhub-project)
+- [The Tekton Operator ZenHub project](#zenhub-project).
 
-See also [the Tekton Pipelines roadmap](http://github.com/tektoncd/pipeline/blob/master/roadmap-2019.md)
+See also [the Tekton Pipelines roadmap](http://github.com/tektoncd/pipeline/blob/master/roadmap-2019.md).
 
-## ZenHub project
+## ZenHub Project
 
 You can see project details (including a burndown, issues in epics, etc.) on
 [our ZenHub board](https://app.zenhub.com/workspaces/tektoncd-operator-5d2701743789a254b99ef6a3).
