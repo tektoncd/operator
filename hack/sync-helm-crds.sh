@@ -42,8 +42,8 @@ inject_labels() {
     # After the "  name: ..." line under metadata, inject labels
     if echo "$line" | grep -qE '^  name: .*\.operator\.tekton\.dev$'; then
       echo '  labels:' >> "$tmpfile"
-      echo '    version: "devel"' >> "$tmpfile"
-      echo '    operator.tekton.dev/release: "devel"' >> "$tmpfile"
+      echo '    version: {{ .Chart.AppVersion | quote }}' >> "$tmpfile"
+      echo '    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}' >> "$tmpfile"
     fi
   done < "$input_file"
   cat "$tmpfile"

@@ -7,8 +7,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: manualapprovalgates.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -652,8 +652,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: openshiftpipelinesascodes.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -1375,8 +1375,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: tektonchains.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -2347,8 +2347,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: tektonconfigs.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -4449,8 +4449,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: tektondashboards.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -4664,8 +4664,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: tektoninstallersets.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -4778,8 +4778,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: tektonpipelines.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -5649,8 +5649,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: tektonresults.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -6538,8 +6538,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: tektontriggers.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -7241,8 +7241,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: tektonpruners.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -8064,8 +8064,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: tektonschedulers.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -8739,8 +8739,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: tektonmulticlusterproxyaaes.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
@@ -9383,8 +9383,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.18.0
   name: syncerservices.operator.tekton.dev
   labels:
-    version: "devel"
-    operator.tekton.dev/release: "devel"
+    version: {{ .Chart.AppVersion | quote }}
+    operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
   group: operator.tekton.dev
   names:
