@@ -148,9 +148,15 @@ type TektonConfigSpec struct {
 // platform's spec.platforms subtree.
 func (s *TektonConfigSpec) PipelinesAsCodeForCurrentPlatform() *PipelinesAsCode {
 	if IsOpenShiftPlatform() {
-		return s.Platforms.OpenShift.PipelinesAsCode
+		if s.Platforms.OpenShift != nil {
+			return s.Platforms.OpenShift.PipelinesAsCode
+		}
+		return nil
 	}
-	return s.Platforms.Kubernetes.PipelinesAsCode
+	if s.Platforms.Kubernetes != nil {
+		return s.Platforms.Kubernetes.PipelinesAsCode
+	}
+	return nil
 }
 
 // TektonConfigStatus defines the observed state of TektonConfig
@@ -215,10 +221,10 @@ type Config struct {
 type Platforms struct {
 	// OpenShift allows configuring openshift specific components and configurations
 	// +optional
-	OpenShift OpenShift `json:"openshift,omitempty"`
+	OpenShift *OpenShift `json:"openshift,omitempty"`
 	// Kubernetes allows configuring kubernetes specific components and configurations
 	// +optional
-	Kubernetes Kubernetes `json:"kubernetes,omitempty"`
+	Kubernetes *Kubernetes `json:"kubernetes,omitempty"`
 }
 
 type Hub struct {

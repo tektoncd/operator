@@ -64,7 +64,7 @@ func TestCreateResources(t *testing.T) {
 						{Name: "createCABundleConfigMaps", Value: "false"},
 					},
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							SCC: &v1alpha1.SCC{
 								Default: "pipelines-scc",
 							},
@@ -98,7 +98,7 @@ func TestCreateResources(t *testing.T) {
 						{Name: "createCABundleConfigMaps", Value: "false"},
 					},
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							SCC: &v1alpha1.SCC{
 								Default: "pipelines-scc",
 							},
@@ -167,7 +167,7 @@ func TestCreateResources(t *testing.T) {
 						{Name: "createCABundleConfigMaps", Value: "true"},
 					},
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							SCC: &v1alpha1.SCC{
 								Default: "pipelines-scc",
 							},
@@ -201,7 +201,7 @@ func TestCreateResources(t *testing.T) {
 						TargetNamespace: "test-ns",
 					},
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							SCC: &v1alpha1.SCC{
 								Default: "pipelines-scc",
 							},
@@ -235,7 +235,7 @@ func TestCreateResources(t *testing.T) {
 						TargetNamespace: "test-ns",
 					},
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							SCC: &v1alpha1.SCC{
 								Default: "pipelines-scc",
 							},
