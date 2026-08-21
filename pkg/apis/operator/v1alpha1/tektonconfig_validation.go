@@ -75,14 +75,14 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 	}
 
 	logger := logging.FromContext(ctx)
-	if IsOpenShiftPlatform() && tc.Spec.Platforms.OpenShift.PipelinesAsCode != nil {
+	if IsOpenShiftPlatform() && tc.Spec.Platforms.OpenShift != nil && tc.Spec.Platforms.OpenShift.PipelinesAsCode != nil {
 		errs = errs.Also(tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.validate(logger, "spec.platforms.openshift.pipelinesAsCode"))
-	} else if !IsOpenShiftPlatform() && tc.Spec.Platforms.Kubernetes.PipelinesAsCode != nil {
+	} else if !IsOpenShiftPlatform() && tc.Spec.Platforms.Kubernetes != nil && tc.Spec.Platforms.Kubernetes.PipelinesAsCode != nil {
 		errs = errs.Also(tc.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.validate(logger, "spec.platforms.kubernetes.pipelinesAsCode"))
 	}
 
 	// validate SCC config
-	if IsOpenShiftPlatform() && tc.Spec.Platforms.OpenShift.SCC != nil {
+	if IsOpenShiftPlatform() && tc.Spec.Platforms.OpenShift != nil && tc.Spec.Platforms.OpenShift.SCC != nil {
 		defaultSCC := PipelinesSCC
 		if tc.Spec.Platforms.OpenShift.SCC.Default != "" {
 			defaultSCC = tc.Spec.Platforms.OpenShift.SCC.Default
@@ -195,12 +195,12 @@ func isValueInArray(arr []string, key string) bool {
 	return false
 }
 
-func isOpenShiftPlatformsSectionSet(o OpenShift) bool {
-	return o.PipelinesAsCode != nil || o.SCC != nil
+func isOpenShiftPlatformsSectionSet(o *OpenShift) bool {
+	return o != nil && (o.PipelinesAsCode != nil || o.SCC != nil)
 }
 
-func isKubernetesPlatformsSectionSet(k Kubernetes) bool {
-	return k.PipelinesAsCode != nil
+func isKubernetesPlatformsSectionSet(k *Kubernetes) bool {
+	return k != nil && k.PipelinesAsCode != nil
 }
 
 func verifySCCExists(ctx context.Context, sccName string) error {

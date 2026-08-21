@@ -36,16 +36,20 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	tc.Spec.Scheduler.SetDefaults()
 
 	if IsOpenShiftPlatform() {
+		if tc.Spec.Platforms.OpenShift == nil {
+			tc.Spec.Platforms.OpenShift = &OpenShift{}
+		}
+
 		// PAC may appear under spec.platforms.kubernetes if the mutating webhook ran without
 		// PLATFORM=openshift (e.g. wrong image/order) or from older releases. Move it to
 		// spec.platforms.openshift so the stored TektonConfig matches the OpenShift operator.
-		if tc.Spec.Platforms.Kubernetes.PipelinesAsCode != nil {
+		if tc.Spec.Platforms.Kubernetes != nil && tc.Spec.Platforms.Kubernetes.PipelinesAsCode != nil {
 			if tc.Spec.Platforms.OpenShift.PipelinesAsCode == nil {
 				p := *tc.Spec.Platforms.Kubernetes.PipelinesAsCode
 				tc.Spec.Platforms.OpenShift.PipelinesAsCode = &p
 			}
-			tc.Spec.Platforms.Kubernetes.PipelinesAsCode = nil
 		}
+		tc.Spec.Platforms.Kubernetes = nil
 
 		if tc.Spec.Platforms.OpenShift.PipelinesAsCode != nil {
 			tc.Spec.Addon.EnablePAC = nil
@@ -88,6 +92,11 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 		setAddonDefaults(&tc.Spec.Addon)
 	} else {
 		// Kubernetes Platform
+		if tc.Spec.Platforms.Kubernetes == nil {
+			tc.Spec.Platforms.Kubernetes = &Kubernetes{}
+		}
+		tc.Spec.Platforms.OpenShift = nil
+
 		if tc.Spec.Platforms.Kubernetes.PipelinesAsCode == nil {
 			tc.Spec.Platforms.Kubernetes.PipelinesAsCode = &PipelinesAsCode{
 				Enable: ptr.Bool(true),

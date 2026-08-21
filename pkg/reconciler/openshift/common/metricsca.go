@@ -67,7 +67,7 @@ func ResolveMetricsMTLS(ctx context.Context, operatorClient versioned.Interface,
 		}
 		return false, fmt.Errorf("reading TektonConfig: %w", err)
 	}
-	if tc.Spec.Platforms.OpenShift.EnableMetricsMTLS == nil || !*tc.Spec.Platforms.OpenShift.EnableMetricsMTLS {
+	if tc.Spec.Platforms.OpenShift == nil || tc.Spec.Platforms.OpenShift.EnableMetricsMTLS == nil || !*tc.Spec.Platforms.OpenShift.EnableMetricsMTLS {
 		return false, nil
 	}
 
@@ -90,7 +90,8 @@ func IsMetricsMTLSEnabled(lister TektonConfigLister) bool {
 	if err != nil {
 		return false
 	}
-	return tc.Spec.Platforms.OpenShift.EnableMetricsMTLS != nil &&
+	return tc.Spec.Platforms.OpenShift != nil &&
+		tc.Spec.Platforms.OpenShift.EnableMetricsMTLS != nil &&
 		*tc.Spec.Platforms.OpenShift.EnableMetricsMTLS
 }
 

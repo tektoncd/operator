@@ -17,7 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"gotest.tools/v3/assert"
@@ -46,4 +48,44 @@ func TestPrune_PrunePerResourceJSONRoundTrip(t *testing.T) {
 
 	_, present := roundTripped["prune-per-resource"]
 	assert.Assert(t, present, "prune-per-resource key was dropped from marshaled JSON when false: %s", string(out))
+}
+
+func TestPlatforms_OmitEmptyOppositeplatform(t *testing.T) {
+	tests := []struct {
+		name       string
+		platform   string
+		absentKey  string
+		presentKey string
+	}{
+		{
+			name:       "OpenShift should omit kubernetes from serialized JSON",
+			platform:   "openshift",
+			absentKey:  "kubernetes",
+			presentKey: "openshift",
+		},
+		{
+			name:       "Kubernetes should omit openshift from serialized JSON",
+			platform:   "kubernetes",
+			absentKey:  "openshift",
+			presentKey: "kubernetes",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PLATFORM", tt.platform)
+
+			tc := &TektonConfig{}
+			tc.SetDefaults(context.TODO())
+
+			out, err := json.Marshal(tc.Spec.Platforms)
+			assert.NilError(t, err)
+
+			serialized := string(out)
+			assert.Assert(t, !strings.Contains(serialized, tt.absentKey),
+				"expected %q to be absent from serialized platforms JSON, got: %s", tt.absentKey, serialized)
+			assert.Assert(t, strings.Contains(serialized, tt.presentKey),
+				"expected %q to be present in serialized platforms JSON, got: %s", tt.presentKey, serialized)
+		})
+	}
 }
