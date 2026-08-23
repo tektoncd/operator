@@ -37,6 +37,23 @@ func TestTektonResult_Validate(t *testing.T) {
 	assert.Equal(t, "invalid value: wrong-name: metadata.name, Only one instance of TektonResult is allowed by name, result", err.Error())
 }
 
+func TestTektonResult_ValidateTargetNamespaceDenylist(t *testing.T) {
+	tr := &TektonResult{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "result",
+			Namespace: "namespace",
+		},
+		Spec: TektonResultSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "kube-system",
+			},
+		},
+	}
+
+	errs := tr.Validate(context.TODO())
+	assert.Equal(t, "invalid value: kube-system: spec.targetNamespace\n'kube-system' is a reserved system namespace and is not allowed", errs.Error())
+}
+
 func TestTektonResultWatcherPerformancePropertiesValidate(t *testing.T) {
 	tr := &TektonResult{
 		ObjectMeta: metav1.ObjectMeta{
