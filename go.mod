@@ -31,7 +31,7 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
-	k8s.io/api v0.35.7
+	k8s.io/api v0.35.8
 	k8s.io/apiextensions-apiserver v0.35.7
 	k8s.io/apimachinery v0.36.3
 	k8s.io/client-go v1.5.2
