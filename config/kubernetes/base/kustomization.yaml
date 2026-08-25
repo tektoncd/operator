@@ -12,6 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 patches:
+- target:
+    group: apiextensions.k8s.io
+    version: v1
+    kind: CustomResourceDefinition
+    name: tektonaddons.operator.tekton.dev
+  patch: |-
+    - op: add
+      path: /metadata/annotations/config.kubernetes.io~1local-config
+      value: "true"
 - path: operator.yaml
   target:
     kind: Deployment
