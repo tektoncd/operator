@@ -41,7 +41,7 @@ metadata:
     operators.operatorframework.io/builder: operator-sdk-v1.21.0
     operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev",
       "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev",
-      "tektonchains.operator.tekton.dev"]'
+      "tektonchains.operator.tekton.dev","tektondashboards.operator.tekton.dev"]'
     operators.operatorframework.io/project_layout: unknown
     repository: https://github.com/openshift/tektoncd-operator
     support: Red Hat
