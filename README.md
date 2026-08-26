@@ -2,6 +2,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/tektoncd/operator)](https://goreportcard.com/report/tektoncd/operator)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/6548/badge)](https://bestpractices.coreinfrastructure.org/projects/6548)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ftektoncd%2Foperator.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Ftektoncd%2Foperator?ref=badge_shield)
 
 <p align="center">
 <img width="250" height="325"  src="tekton-operator.png" alt="Operator Icon" title="Operator Icon"></img>
@@ -80,3 +81,7 @@ We are so excited to have you!
 | v0.52.x     | 1.20.x      | v0.30.x     | 2021-11-26   | 2022-03-26  |
 | v0.51.x     | 1.19.x      | v0.29.x     | 2021-11-03   | 2022-03-03  |
 | v0.50.x     | 1.19.x      | v0.28.x     | 2021-10-19   | 2022-02-19  |
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Ftektoncd%2Foperator.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Ftektoncd%2Foperator?ref=badge_large)
