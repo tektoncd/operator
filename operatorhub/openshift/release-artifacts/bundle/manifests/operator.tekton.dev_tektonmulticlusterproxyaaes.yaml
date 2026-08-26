@@ -4,16 +4,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
   creationTimestamp: null
-  name: manualapprovalgates.operator.tekton.dev
+  name: tektonmulticlusterproxyaaes.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: ManualApprovalGate
-    listKind: ManualApprovalGateList
-    plural: manualapprovalgates
-    shortNames:
-    - mag
-    singular: manualapprovalgate
+    kind: TektonMulticlusterProxyAAE
+    listKind: TektonMulticlusterProxyAAEList
+    plural: tektonmulticlusterproxyaaes
+    singular: tektonmulticlusterproxyaae
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -29,7 +27,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ManualApprovalGate is the Schema for the ManualApprovalGate API
+        description: TektonMulticlusterProxyAAE is the Schema for the TektonMulticlusterProxyAAE
+          API
         properties:
           apiVersion:
             description: |-
@@ -51,9 +50,8 @@ spec:
           spec:
             properties:
               networkPolicy:
-                description: |-
-                  NetworkPolicy configures NetworkPolicy creation for the controller
-                  and webhook workloads deployed by ManualApprovalGate.
+                description: NetworkPolicyConfig configures NetworkPolicy creation
+                  for a Tekton component.
                 properties:
                   disabled:
                     description: |-
@@ -541,7 +539,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               options:
-                description: options holds additions fields and these fields will
+                description: options holds additional fields and these fields will
                   be updated on the manifests
                 properties:
                   configMaps:
@@ -578,7 +576,8 @@ spec:
                 type: string
             type: object
           status:
-            description: ManualApprovalGateStatus defines the observed state of ManualApprovalGate
+            description: TektonMulticlusterProxyAAEStatus defines the observed state
+              of TektonMulticlusterProxyAAE
             properties:
               annotations:
                 additionalProperties:
@@ -633,7 +632,7 @@ spec:
                 format: int64
                 type: integer
               tektonInstallerSet:
-                description: The current installer set name for ManualApprovalGate
+                description: The current installer set name for TektonMulticlusterProxyAAE
                 type: string
               version:
                 description: The version of the installed release
