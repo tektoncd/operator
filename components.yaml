@@ -27,7 +27,7 @@ scheduler:
   version: v0.4.0
 syncer-service:
   github: openshift-pipelines/syncer-service
-  version: v0.1.0
+  version: v0.1.1
 triggers:
   github: tektoncd/triggers
   version: v0.37.0
