@@ -4,16 +4,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
   creationTimestamp: null
-  name: manualapprovalgates.operator.tekton.dev
+  name: tektonpruners.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: ManualApprovalGate
-    listKind: ManualApprovalGateList
-    plural: manualapprovalgates
-    shortNames:
-    - mag
-    singular: manualapprovalgate
+    kind: TektonPruner
+    listKind: TektonPrunerList
+    plural: tektonpruners
+    singular: tektonpruner
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -29,7 +27,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ManualApprovalGate is the Schema for the ManualApprovalGate API
+        description: TektonPruner is the Schema for the TektonPruner API
         properties:
           apiVersion:
             description: |-
@@ -50,10 +48,204 @@ spec:
             type: object
           spec:
             properties:
+              config:
+                description: Config holds the configuration for resources created
+                  by TektonPruner
+                properties:
+                  nodeSelector:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  priorityClassName:
+                    description: PriorityClassName holds the priority class to be
+                      set to pod template
+                    type: string
+                  tolerations:
+                    items:
+                      description: |-
+                        The pod this Toleration is attached to tolerates any taint that matches
+                        the triple <key,value,effect> using the matching operator <operator>.
+                      properties:
+                        effect:
+                          description: |-
+                            Effect indicates the taint effect to match. Empty means match all taint effects.
+                            When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                          type: string
+                        key:
+                          description: |-
+                            Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                            If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                          type: string
+                        operator:
+                          description: |-
+                            Operator represents a key's relationship to the value.
+                            Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
+                            Exists is equivalent to wildcard for value, so that a pod can
+                            tolerate all taints of a particular category.
+                            Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
+                          type: string
+                        tolerationSeconds:
+                          description: |-
+                            TolerationSeconds represents the period of time the toleration (which must be
+                            of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                            it is not set, which means tolerate the taint forever (do not evict). Zero and
+                            negative values will be treated as 0 (evict immediately) by the system.
+                          format: int64
+                          type: integer
+                        value:
+                          description: |-
+                            Value is the taint value the toleration matches to.
+                            If the operator is Exists, the value should be empty, otherwise just a regular string.
+                          type: string
+                      type: object
+                    type: array
+                type: object
+              disabled:
+                description: enable or disable TektonPruner Component
+                type: boolean
+              global-config:
+                description: |-
+                  GlobalConfig represents the global ConfigMap (tekton-pruner-default-spec)
+                  Root-level fields are defaults; Namespaces map is for per-namespace defaults
+                  NOTE: Selector support (PipelineRuns/TaskRuns arrays) is IGNORED in global ConfigMap
+                properties:
+                  enforcedConfigLevel:
+                    description: 'EnforcedConfigLevel allowed values: global, namespace
+                      (default: namespace)'
+                    type: string
+                  failedHistoryLimit:
+                    format: int32
+                    type: integer
+                  historyLimit:
+                    format: int32
+                    type: integer
+                  namespaces:
+                    additionalProperties:
+                      description: |-
+                        NamespaceSpec is used to hold the pruning config of a specific namespace and its resources
+                        Used in both global ConfigMap (tekton-pruner-default-spec) and namespace ConfigMap (tekton-pruner-namespace-spec)
+                        Selector support (PipelineRuns/TaskRuns arrays) ONLY works in namespace ConfigMaps
+                      properties:
+                        enforcedConfigLevel:
+                          description: 'EnforcedConfigLevel allowed values: global,
+                            namespace (default: namespace)'
+                          type: string
+                        failedHistoryLimit:
+                          format: int32
+                          type: integer
+                        historyLimit:
+                          format: int32
+                          type: integer
+                        pipelineRuns:
+                          items:
+                            description: |-
+                              ResourceSpec is used to hold the config of a specific resource
+                              Only used in namespace-level ConfigMaps (tekton-pruner-namespace-spec), NOT in global ConfigMaps
+                            properties:
+                              enforcedConfigLevel:
+                                description: 'EnforcedConfigLevel allowed values:
+                                  global, namespace (default: namespace)'
+                                type: string
+                              failedHistoryLimit:
+                                format: int32
+                                type: integer
+                              historyLimit:
+                                format: int32
+                                type: integer
+                              name:
+                                type: string
+                              selector:
+                                items:
+                                  description: |-
+                                    SelectorSpec allows specifying selectors for matching resources like PipelineRun or TaskRun
+                                    Only applicable in namespace-level ConfigMaps, NOT in global ConfigMaps
+                                  properties:
+                                    matchAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                    matchLabels:
+                                      additionalProperties:
+                                        type: string
+                                      description: Match by labels AND annotations.
+                                        If both are specified, BOTH must match (AND
+                                        logic)
+                                      type: object
+                                  type: object
+                                type: array
+                              successfulHistoryLimit:
+                                format: int32
+                                type: integer
+                              ttlSecondsAfterFinished:
+                                format: int32
+                                type: integer
+                            type: object
+                          type: array
+                        successfulHistoryLimit:
+                          format: int32
+                          type: integer
+                        taskRuns:
+                          items:
+                            description: |-
+                              ResourceSpec is used to hold the config of a specific resource
+                              Only used in namespace-level ConfigMaps (tekton-pruner-namespace-spec), NOT in global ConfigMaps
+                            properties:
+                              enforcedConfigLevel:
+                                description: 'EnforcedConfigLevel allowed values:
+                                  global, namespace (default: namespace)'
+                                type: string
+                              failedHistoryLimit:
+                                format: int32
+                                type: integer
+                              historyLimit:
+                                format: int32
+                                type: integer
+                              name:
+                                type: string
+                              selector:
+                                items:
+                                  description: |-
+                                    SelectorSpec allows specifying selectors for matching resources like PipelineRun or TaskRun
+                                    Only applicable in namespace-level ConfigMaps, NOT in global ConfigMaps
+                                  properties:
+                                    matchAnnotations:
+                                      additionalProperties:
+                                        type: string
+                                      type: object
+                                    matchLabels:
+                                      additionalProperties:
+                                        type: string
+                                      description: Match by labels AND annotations.
+                                        If both are specified, BOTH must match (AND
+                                        logic)
+                                      type: object
+                                  type: object
+                                type: array
+                              successfulHistoryLimit:
+                                format: int32
+                                type: integer
+                              ttlSecondsAfterFinished:
+                                format: int32
+                                type: integer
+                            type: object
+                          type: array
+                        ttlSecondsAfterFinished:
+                          format: int32
+                          type: integer
+                      type: object
+                    type: object
+                  successfulHistoryLimit:
+                    format: int32
+                    type: integer
+                  ttlSecondsAfterFinished:
+                    format: int32
+                    type: integer
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
               networkPolicy:
                 description: |-
                   NetworkPolicy configures NetworkPolicy creation for the controller
-                  and webhook workloads deployed by ManualApprovalGate.
+                  and webhook workloads deployed by TektonPruner.
                 properties:
                   disabled:
                     description: |-
@@ -576,9 +768,12 @@ spec:
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
                 type: string
+            required:
+            - disabled
+            - global-config
             type: object
           status:
-            description: ManualApprovalGateStatus defines the observed state of ManualApprovalGate
+            description: TektonPrunerStatus defines the observed state of TektonPruner
             properties:
               annotations:
                 additionalProperties:
@@ -633,7 +828,7 @@ spec:
                 format: int64
                 type: integer
               tektonInstallerSet:
-                description: The current installer set name for ManualApprovalGate
+                description: The current installer set name for TektonPruner
                 type: string
               version:
                 description: The version of the installed release

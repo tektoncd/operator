@@ -4,16 +4,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
   creationTimestamp: null
-  name: manualapprovalgates.operator.tekton.dev
+  name: syncerservices.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: ManualApprovalGate
-    listKind: ManualApprovalGateList
-    plural: manualapprovalgates
-    shortNames:
-    - mag
-    singular: manualapprovalgate
+    kind: SyncerService
+    listKind: SyncerServiceList
+    plural: syncerservices
+    singular: syncerservice
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -29,7 +27,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ManualApprovalGate is the Schema for the ManualApprovalGate API
+        description: SyncerService is the Schema for the syncerservices API
         properties:
           apiVersion:
             description: |-
@@ -49,11 +47,63 @@ spec:
           metadata:
             type: object
           spec:
+            description: SyncerServiceSpec defines the desired state of SyncerService
             properties:
+              config:
+                description: Config holds the configuration for resources created
+                  by SyncerService
+                properties:
+                  nodeSelector:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  priorityClassName:
+                    description: PriorityClassName holds the priority class to be
+                      set to pod template
+                    type: string
+                  tolerations:
+                    items:
+                      description: |-
+                        The pod this Toleration is attached to tolerates any taint that matches
+                        the triple <key,value,effect> using the matching operator <operator>.
+                      properties:
+                        effect:
+                          description: |-
+                            Effect indicates the taint effect to match. Empty means match all taint effects.
+                            When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.
+                          type: string
+                        key:
+                          description: |-
+                            Key is the taint key that the toleration applies to. Empty means match all taint keys.
+                            If the key is empty, operator must be Exists; this combination means to match all values and all keys.
+                          type: string
+                        operator:
+                          description: |-
+                            Operator represents a key's relationship to the value.
+                            Valid operators are Exists, Equal, Lt, and Gt. Defaults to Equal.
+                            Exists is equivalent to wildcard for value, so that a pod can
+                            tolerate all taints of a particular category.
+                            Lt and Gt perform numeric comparisons (requires feature gate TaintTolerationComparisonOperators).
+                          type: string
+                        tolerationSeconds:
+                          description: |-
+                            TolerationSeconds represents the period of time the toleration (which must be
+                            of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default,
+                            it is not set, which means tolerate the taint forever (do not evict). Zero and
+                            negative values will be treated as 0 (evict immediately) by the system.
+                          format: int64
+                          type: integer
+                        value:
+                          description: |-
+                            Value is the taint value the toleration matches to.
+                            If the operator is Exists, the value should be empty, otherwise just a regular string.
+                          type: string
+                      type: object
+                    type: array
+                type: object
               networkPolicy:
-                description: |-
-                  NetworkPolicy configures NetworkPolicy creation for the controller
-                  and webhook workloads deployed by ManualApprovalGate.
+                description: NetworkPolicyConfig configures NetworkPolicy creation
+                  for a Tekton component.
                 properties:
                   disabled:
                     description: |-
@@ -541,7 +591,7 @@ spec:
                     x-kubernetes-preserve-unknown-fields: true
                 type: object
               options:
-                description: options holds additions fields and these fields will
+                description: Options holds additions fields and these fields will
                   be updated on the manifests
                 properties:
                   configMaps:
@@ -578,7 +628,7 @@ spec:
                 type: string
             type: object
           status:
-            description: ManualApprovalGateStatus defines the observed state of ManualApprovalGate
+            description: SyncerServiceStatus defines the observed state of SyncerService
             properties:
               annotations:
                 additionalProperties:
@@ -632,8 +682,8 @@ spec:
                   was last processed by the controller.
                 format: int64
                 type: integer
-              tektonInstallerSet:
-                description: The current installer set name for ManualApprovalGate
+              syncerServiceInstallerSet:
+                description: The current installer set name for SyncerService
                 type: string
               version:
                 description: The version of the installed release

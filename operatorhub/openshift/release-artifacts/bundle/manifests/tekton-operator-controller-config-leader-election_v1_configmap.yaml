@@ -34,4 +34,4 @@ metadata:
   labels:
     app.kubernetes.io/instance: default
     operator.tekton.dev/release: devel
-  name: tekton-operator-webhook-config-leader-election
+  name: tekton-operator-controller-config-leader-election
