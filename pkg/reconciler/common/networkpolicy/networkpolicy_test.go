@@ -211,20 +211,37 @@ func TestDNSEgressRule_Kubernetes(t *testing.T) {
 			t.Errorf("expected DNS port 53 for Kubernetes, got %d", p.Port.IntVal)
 		}
 	}
-	if len(rule.To) != 1 || rule.To[0].NamespaceSelector == nil {
-		t.Fatalf("expected 1 To with NamespaceSelector, got %v", rule.To)
+	if len(rule.To) != 3 || rule.To[0].NamespaceSelector == nil {
+		t.Fatalf("expected 3 To peers (kube-dns selector + 2 ipBlocks), got %v", rule.To)
 	}
 	nsLabels := rule.To[0].NamespaceSelector.MatchLabels
 	if nsLabels["kubernetes.io/metadata.name"] != "kube-system" {
 		t.Errorf("expected kube-system namespace selector, got %v", nsLabels)
+	}
+	wantCIDRs := map[string]bool{"169.254.169.254/32": false, "169.254.20.10/32": false}
+	for _, peer := range rule.To[1:] {
+		if peer.IPBlock == nil {
+			t.Errorf("expected ipBlock peer, got %v", peer)
+			continue
+		}
+		if _, ok := wantCIDRs[peer.IPBlock.CIDR]; !ok {
+			t.Errorf("unexpected ipBlock CIDR %s", peer.IPBlock.CIDR)
+			continue
+		}
+		wantCIDRs[peer.IPBlock.CIDR] = true
+	}
+	for cidr, seen := range wantCIDRs {
+		if !seen {
+			t.Errorf("missing ipBlock peer for %s", cidr)
+		}
 	}
 }
 
 func TestDNSEgressRule_OpenShift(t *testing.T) {
 	params := networkpolicy.OpenShiftPlatformDefaults()
 	rule := networkpolicy.DNSEgressRule(params)
-	if len(rule.To) == 0 || rule.To[0].NamespaceSelector == nil {
-		t.Fatalf("expected 1 To with NamespaceSelector, got %v", rule.To)
+	if len(rule.To) != 1 || rule.To[0].NamespaceSelector == nil {
+		t.Fatalf("expected exactly 1 To peer with NamespaceSelector (no ipBlocks on OpenShift), got %v", rule.To)
 	}
 	nsLabels := rule.To[0].NamespaceSelector.MatchLabels
 	if nsLabels["kubernetes.io/metadata.name"] != "openshift-dns" {

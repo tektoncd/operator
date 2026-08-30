@@ -306,7 +306,24 @@ operand namespace (e.g. `tekton-pipelines` or `openshift-pipelines`).
 |---|---|---|
 | DNS port | 53 | 5353 |
 | DNS namespace | `kube-system` | `openshift-dns` |
+| DNS link-local ipBlocks | `169.254.169.254/32`, `169.254.20.10/32` | none |
 | Prometheus namespace label | `kubernetes.io/metadata.name: monitoring` | `openshift.io/cluster-monitoring: "true"` |
+
+On Kubernetes, every DNS egress rule also allows UDP+TCP 53 to the link-local
+resolvers above. Some clusters point pods at a resolver that is not the kube-dns
+Service: GKE clusters using [Cloud DNS][clouddns] write `169.254.169.254` (the
+node-local metadata server running the Cloud DNS data plane) into every pod's
+resolv.conf, and clusters with [NodeLocal DNSCache][nodelocal] (default on GKE
+Autopilot) use `169.254.20.10`. These are host-network endpoints that no
+`podSelector`/`namespaceSelector` can match, so they are allowed via `ipBlock`
+peers instead. The peers are port-scoped to DNS (53) only — other ports on the
+metadata server, such as IMDS on 80, remain blocked. On clusters not using
+these resolvers the peers never match. If you run NodeLocal DNSCache with a
+non-default `localip`, allow that address by overriding the policy by name
+(see [Overriding a policy](#overriding-a-policy)).
+
+[clouddns]: https://cloud.google.com/kubernetes-engine/docs/how-to/cloud-dns
+[nodelocal]: https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/
 
 ## Disabling
 

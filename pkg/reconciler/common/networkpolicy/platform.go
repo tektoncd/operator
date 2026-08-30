@@ -19,8 +19,14 @@ package networkpolicy
 // PlatformParams holds platform-specific values for building default NetworkPolicy rules.
 // It is an internal type — it never appears in CRD API fields.
 type PlatformParams struct {
-	DNSResolverNamespace     string
-	DNSResolverPodLabel      map[string]string
+	DNSResolverNamespace string
+	DNSResolverPodLabel  map[string]string
+	// DNSResolverIPBlocks are link-local resolver IPs kubelet may write into pod
+	// resolv.conf instead of the kube-dns Service: GKE Cloud DNS (169.254.169.254)
+	// and NodeLocal DNSCache (169.254.20.10, GKE Autopilot default). They are
+	// host-network endpoints no pod selector can match, so only ipBlock peers can
+	// allow them. Empty on OpenShift.
+	DNSResolverIPBlocks      []string
 	PrometheusNamespaceLabel map[string]string
 	// DNSPort is the DNS resolver pod port. Kubernetes CoreDNS uses 53; OpenShift DNS
 	// uses 5353 (OVN-K8s enforces NetworkPolicy after DNAT, so pod port applies).
@@ -32,6 +38,7 @@ func KubernetesPlatformDefaults() PlatformParams {
 	return PlatformParams{
 		DNSResolverNamespace:     "kube-system",
 		DNSResolverPodLabel:      map[string]string{"k8s-app": "kube-dns"},
+		DNSResolverIPBlocks:      []string{"169.254.169.254/32", "169.254.20.10/32"},
 		PrometheusNamespaceLabel: map[string]string{"kubernetes.io/metadata.name": "monitoring"},
 		DNSPort:                  53,
 	}
