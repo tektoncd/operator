@@ -99,27 +99,36 @@ func DefaultDenyPolicy(name string, podSelector metav1.LabelSelector) networking
 }
 
 // DNSEgressRule allows egress to DNS resolver pods on UDP and TCP using the
-// platform-specific DNS port (53 on Kubernetes, 5353 on OpenShift).
+// platform-specific DNS port (53 on Kubernetes, 5353 on OpenShift). On
+// Kubernetes it also allows the same ports to link-local resolvers (GKE Cloud
+// DNS, NodeLocal DNSCache) via ipBlock — those are host-network endpoints that
+// no pod selector can match.
 func DNSEgressRule(p PlatformParams) networkingv1.NetworkPolicyEgressRule {
 	udp := corev1.ProtocolUDP
 	tcp := corev1.ProtocolTCP
 	udpPort := intstr.FromInt32(p.DNSPort)
 	tcpPort := intstr.FromInt32(p.DNSPort)
+	to := []networkingv1.NetworkPolicyPeer{
+		{
+			NamespaceSelector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"kubernetes.io/metadata.name": p.DNSResolverNamespace},
+			},
+			PodSelector: &metav1.LabelSelector{
+				MatchLabels: p.DNSResolverPodLabel,
+			},
+		},
+	}
+	for _, cidr := range p.DNSResolverIPBlocks {
+		to = append(to, networkingv1.NetworkPolicyPeer{
+			IPBlock: &networkingv1.IPBlock{CIDR: cidr},
+		})
+	}
 	return networkingv1.NetworkPolicyEgressRule{
 		Ports: []networkingv1.NetworkPolicyPort{
 			{Protocol: &udp, Port: &udpPort},
 			{Protocol: &tcp, Port: &tcpPort},
 		},
-		To: []networkingv1.NetworkPolicyPeer{
-			{
-				NamespaceSelector: &metav1.LabelSelector{
-					MatchLabels: map[string]string{"kubernetes.io/metadata.name": p.DNSResolverNamespace},
-				},
-				PodSelector: &metav1.LabelSelector{
-					MatchLabels: p.DNSResolverPodLabel,
-				},
-			},
-		},
+		To: to,
 	}
 }
 
