@@ -2643,8 +2643,8 @@ github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d h1:vfofYNRScrDd
 github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d/go.mod h1:RRCYJbIwD5jmqPI9XoAFR0OcDxqUctll6zUj/+B4S48=
 github.com/tchap/go-patricia/v2 v2.3.3 h1:xfNEsODumaEcCcY3gI0hYPZ/PcpVv5ju6RMAhgwZDDc=
 github.com/tchap/go-patricia/v2 v2.3.3/go.mod h1:VZRHKAb53DLaG+nA9EaYYiaEx6YztwDlLElMsnSHD4k=
-github.com/tektoncd/pipeline v1.9.6 h1:j/yUWklZwuhF6HaM6jyjlf+pmLMcW8+WLksqhb2/j9I=
-github.com/tektoncd/pipeline v1.9.6/go.mod h1:4MjJtAih3kPpeV3a+LZyWk+Mz1XvM4os+9wOI4ksU3o=
+github.com/tektoncd/pipeline v1.9.7 h1:0tP/dconIbDzw5USbhR7vfpzePGE1abzrHjB6JPEKN8=
+github.com/tektoncd/pipeline v1.9.7/go.mod h1:wBASNtCCNWeuRwQtfsbw7igSfiiC7be+L1aFZ2tkeno=
 github.com/tektoncd/pipelines-as-code v0.42.2 h1:3ZJguDi/vomy93xxEKdRAQBtmf6rllkF2QyLLBDTn7Q=
 github.com/tektoncd/pipelines-as-code v0.42.2/go.mod h1:+k1bnyV9qwL67n6XerumQImlPsFU2aj24tBFv8XZoyA=
 github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2 h1:v4UPEbe6MEto5i4ELtiXWBxUAUIAWL5U1DznfPhi4WE=
@@ -3888,8 +3888,8 @@ google.golang.org/protobuf v1.33.0/go.mod h1:c6P6GXX6sHbq/GpV6MGZEdwhWPcYBgnhAHh
 google.golang.org/protobuf v1.34.1/go.mod h1:c6P6GXX6sHbq/GpV6MGZEdwhWPcYBgnhAHhKbcUYpos=
 google.golang.org/protobuf v1.34.2/go.mod h1:qYOHts0dSfpeUzUFpOMr/WGzszTmLH+DiWniOlNbLDw=
 google.golang.org/protobuf v1.35.1/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
-google.golang.org/protobuf v1.36.11 h1:fV6ZwhNocDyBLK0dj+fg8ektcVegBBuEolpbTQyBNVE=
-google.golang.org/protobuf v1.36.11/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
+google.golang.org/protobuf v1.36.12 h1:pJOKDDOyeXErUroCihFAd5LQuwXBSpVnKGrj5o/fwxc=
+google.golang.org/protobuf v1.36.12/go.mod h1:HTf+CrKn2C3g5S8VImy6tdcUvCska2kB7j23XfzDpco=
 gopkg.in/alecthomas/kingpin.v2 v2.2.6/go.mod h1:FMv+mEhP44yOT+4EoQTLFTRgOQ1FBLkstjWtayDeSgw=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
