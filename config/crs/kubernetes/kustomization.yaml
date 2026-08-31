@@ -10,6 +10,6 @@ resources:
 - chain/operator_v1alpha1_chain_cr.yaml
 - manualapprovalgate/operator_v1alpha1_manualapprovalgate_cr.yaml
 - pruner/operator_v1alpha1_pruner_cr.yaml
-- scheduler/operator_v1alpha1_scheduler_cr.yaml
+- kueue/operator_v1alpha1_kueue_cr.yaml
 - multicluster-proxy-aae/operator_v1alpha1_multiclusterproxyaae_cr.yaml
 - pipelinesascode/operator_v1alpha1_pipelinesascode_cr.yaml

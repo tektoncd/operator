@@ -19,11 +19,11 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"knative.dev/pkg/apis"
 )
 
+// Validate retains admission compatibility for the deprecated API.
 func (ts *TektonScheduler) Validate(ctx context.Context) (errs *apis.FieldError) {
 	if apis.IsInDelete(ctx) {
 		return nil
@@ -38,16 +38,5 @@ func (ts *TektonScheduler) Validate(ctx context.Context) (errs *apis.FieldError)
 	errs = errs.Also(ts.Spec.CommonSpec.validate("spec"))
 	errs = errs.Also(ts.Spec.MultiClusterConfig.validate())
 	errs = errs.Also(ts.Spec.NetworkPolicy.validate("spec.networkPolicy"))
-	return errs
-}
-
-func (mcc *MultiClusterConfig) validate() (errs *apis.FieldError) {
-	if mcc.MultiClusterDisabled && mcc.MultiClusterRole != "" {
-		errs = errs.Also(apis.ErrInvalidValue("MultiClusterConfig", "multicluster-role",
-			"multicluster-role should be blank when MultiClusterConfig.MultiClusterDisabled is true"))
-	} else if !mcc.MultiClusterDisabled && !(strings.EqualFold(string(mcc.MultiClusterRole), string(MultiClusterRoleHub)) || strings.EqualFold(string(mcc.MultiClusterRole), string(MultiClusterRoleSpoke))) {
-		errs = errs.Also(apis.ErrInvalidValue("MultiClusterConfig", "multicluster-role",
-			"multicluster-role should be 'Hub' or 'Spoke' (case-insensitive) when MultiClusterConfig.MultiClusterDisabled is false"))
-	}
 	return errs
 }

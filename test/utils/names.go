@@ -28,7 +28,7 @@ type ResourceNames struct {
 	TektonPruner               string
 	TektonResult               string
 	TektonChain                string
-	TektonScheduler            string
+	TektonKueue                string
 	TektonMulticlusterProxyAAE string
 	SyncerService              string
 	Namespace                  string
@@ -48,7 +48,7 @@ func GetResourceNames() ResourceNames {
 		TektonPruner:               v1alpha1.TektonPrunerResourceName,
 		TektonResult:               v1alpha1.ResultResourceName,
 		TektonChain:                v1alpha1.ChainResourceName,
-		TektonScheduler:            v1alpha1.TektonSchedulerResourceName,
+		TektonKueue:                v1alpha1.TektonKueueResourceName,
 		TektonMulticlusterProxyAAE: v1alpha1.MultiClusterProxyAAEResourceName,
 		SyncerService:              v1alpha1.SyncerServiceResourceName,
 		ManualApprovalGate:         v1alpha1.ManualApprovalGates,

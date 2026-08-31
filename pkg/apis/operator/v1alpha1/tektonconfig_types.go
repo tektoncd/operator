@@ -97,9 +97,13 @@ type TektonConfigSpec struct {
 	Pruner Prune `json:"pruner,omitempty"`
 	// New EventBasedPruner which provides more granular control over TaskRun and PipelineRuns
 	TektonPruner Pruner `json:"tektonpruner,omitempty"`
-	// To enable Pipeline Scheduling on Single Cluster or Multiple Clusters
+	// To enable Pipeline queueing on Single Cluster or Multiple Clusters
 	// +optional
-	Scheduler  Scheduler `json:"scheduler,omitempty"`
+	Kueue Kueue `json:"kueue,omitempty"`
+	// Scheduler is the deprecated predecessor of Kueue. Pre-upgrade migration
+	// copies this configuration to Kueue and clears the field.
+	// +optional
+	Scheduler  Scheduler `json:"scheduler,omitempty,omitzero"`
 	CommonSpec `json:",inline"`
 	// Addon holds the addons config
 	// +optional
@@ -137,7 +141,7 @@ type TektonConfigSpec struct {
 	// NetworkPolicy configures NetworkPolicy resources for the operand namespace.
 	// This field is propagated to TektonPipeline, TektonTrigger, TektonChain,
 	// TektonPruner, TektonResult, Pipelines-as-Code, and MultiCluster components
-	// (TektonScheduler, TektonMulticlusterProxyAAE, SyncerService).
+	// (TektonKueue, TektonMulticlusterProxyAAE, SyncerService).
 	// Other components (Dashboard) do not yet act on this field.
 	// +optional
 	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`

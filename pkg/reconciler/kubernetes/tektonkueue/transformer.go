@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonscheduler
+package tektonkueue
 
 import (
 	"context"
@@ -35,32 +35,32 @@ const (
 
 func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 	return func(ctx context.Context, manifest *mf.Manifest, comp v1alpha1.TektonComponent) (*mf.Manifest, error) {
-		schedulerCR := comp.(*v1alpha1.TektonScheduler)
+		kueueCR := comp.(*v1alpha1.TektonKueue)
 
-		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.SchedulerImagePrefix))
-		schedulerImages := common.ImageRegistryDomainOverride(imagesRaw)
+		imagesRaw := common.ToLowerCaseKeys(common.ImagesFromEnv(common.KueueImagePrefix))
+		kueueImages := common.ImageRegistryDomainOverride(imagesRaw)
 		extra := []mf.Transformer{
-			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.TektonSchedulerResourceName),
-			common.DeploymentImages(schedulerImages),
+			common.InjectOperandNameLabelOverwriteExisting(v1alpha1.TektonKueueResourceName),
+			common.DeploymentImages(kueueImages),
 			common.AddDeploymentRestrictedPSA(),
-			common.AddConfigMapValues(v1alpha1.SchedulerConfigMapName, schedulerCR.Spec.SchedulerConfig),
-			CertificateTransformer(schedulerCR.GetSpec().GetTargetNamespace()),
-			MutatingWebhookConfigurationTransformer(ctx, schedulerCR.GetSpec().GetTargetNamespace()),
+			common.AddConfigMapValues(v1alpha1.KueueConfigMapName, kueueCR.Spec.KueueConfig),
+			CertificateTransformer(kueueCR.GetSpec().GetTargetNamespace()),
+			MutatingWebhookConfigurationTransformer(ctx, kueueCR.GetSpec().GetTargetNamespace()),
 		}
-		extra = append(extra, extension.Transformers(schedulerCR)...)
-		err := common.Transform(ctx, manifest, schedulerCR, extra...)
+		extra = append(extra, extension.Transformers(kueueCR)...)
+		err := common.Transform(ctx, manifest, kueueCR, extra...)
 		if err != nil {
 			return &mf.Manifest{}, err
 		}
 
 		// additional options transformer
 		// always execute as last transformer, so that the values in options will be final update values on the manifests
-		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, schedulerCR.Spec.GetTargetNamespace(), schedulerCR.Spec.Options); err != nil {
+		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, kueueCR.Spec.GetTargetNamespace(), kueueCR.Spec.Options); err != nil {
 			return &mf.Manifest{}, err
 		}
 
-		// Now Remove the TargetNamespace from manifest as same is not owned by Scheduler.
-		filteredManifest := manifest.Filter(mf.Not(mf.ByKind("Namespace")), mf.Not(mf.ByName(schedulerCR.GetSpec().GetTargetNamespace())))
+		// Now Remove the TargetNamespace from manifest as same is not owned by Kueue.
+		filteredManifest := manifest.Filter(mf.Not(mf.ByKind("Namespace")), mf.Not(mf.ByName(kueueCR.GetSpec().GetTargetNamespace())))
 
 		return &filteredManifest, nil
 	}

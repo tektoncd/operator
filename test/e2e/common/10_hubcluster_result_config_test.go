@@ -111,8 +111,8 @@ func (s *HubClusterResultConfigTestSuite) Test01_HubClusterResultConfig() {
 	tc, err = s.clients.TektonConfig().Get(context.TODO(), s.resourceNames.TektonConfig, metav1.GetOptions{})
 	require.NoError(t, err, "failed to get TektonConfig")
 
-	tc.Spec.Scheduler.MultiClusterDisabled = false
-	tc.Spec.Scheduler.MultiClusterRole = v1alpha1.MultiClusterRoleHub
+	tc.Spec.Kueue.MultiClusterDisabled = false
+	tc.Spec.Kueue.MultiClusterRole = v1alpha1.MultiClusterRoleHub
 
 	_, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
 	require.NoError(t, err, "failed to update TektonConfig with Hub role")
@@ -151,8 +151,8 @@ func (s *HubClusterResultConfigTestSuite) Test02_SpokeClusterResultConfig() {
 	tc, err = s.clients.TektonConfig().Get(context.TODO(), s.resourceNames.TektonConfig, metav1.GetOptions{})
 	require.NoError(t, err, "failed to get TektonConfig")
 
-	tc.Spec.Scheduler.MultiClusterDisabled = false
-	tc.Spec.Scheduler.MultiClusterRole = v1alpha1.MultiClusterRoleSpoke
+	tc.Spec.Kueue.MultiClusterDisabled = false
+	tc.Spec.Kueue.MultiClusterRole = v1alpha1.MultiClusterRoleSpoke
 
 	_, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
 	require.NoError(t, err, "failed to update TektonConfig with Spoke role")
@@ -192,8 +192,8 @@ func (s *HubClusterResultConfigTestSuite) Test03_MultiClusterDisabled() {
 	tc, err = s.clients.TektonConfig().Get(context.TODO(), s.resourceNames.TektonConfig, metav1.GetOptions{})
 	require.NoError(t, err, "failed to get TektonConfig")
 
-	tc.Spec.Scheduler.MultiClusterDisabled = true
-	tc.Spec.Scheduler.MultiClusterRole = v1alpha1.MultiClusterRoleHub // Even with Hub role, should not apply when disabled
+	tc.Spec.Kueue.MultiClusterDisabled = true
+	tc.Spec.Kueue.MultiClusterRole = v1alpha1.MultiClusterRoleHub // Even with Hub role, should not apply when disabled
 
 	_, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
 	require.NoError(t, err, "failed to update TektonConfig with multicluster disabled")
@@ -218,8 +218,8 @@ func (s *HubClusterResultConfigTestSuite) resetMultiClusterConfig() {
 	}
 
 	// Reset to default disabled state
-	tc.Spec.Scheduler.MultiClusterDisabled = true
-	tc.Spec.Scheduler.MultiClusterRole = ""
+	tc.Spec.Kueue.MultiClusterDisabled = true
+	tc.Spec.Kueue.MultiClusterRole = ""
 
 	_, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
 	if err != nil {

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package tektonscheduler
+package tektonkueue
 
 import (
 	"context"
@@ -28,16 +28,16 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-const schedulerCustomSet = "scheduler-network-policies"
+const kueueCustomSet = "scheduler-network-policies"
 
-func schedulerControllerDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1.NetworkPolicy {
+func kueueControllerDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1.NetworkPolicy {
 	metricsPort := intstr.FromInt32(8443)
 
 	return []networkingv1.NetworkPolicy{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: "scheduler-controller"},
 			Spec: networkingv1.NetworkPolicySpec{
-				PodSelector: schedulerControllerSelector,
+				PodSelector: kueueControllerSelector,
 				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
 				Ingress: []networkingv1.NetworkPolicyIngressRule{
 					networkpolicy.PrometheusIngressRule(params, metricsPort),
@@ -51,7 +51,7 @@ func schedulerControllerDefaultPolicies(params networkpolicy.PlatformParams) []n
 	}
 }
 
-func schedulerWebhookDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1.NetworkPolicy {
+func kueueWebhookDefaultPolicies(params networkpolicy.PlatformParams) []networkingv1.NetworkPolicy {
 	webhookPort := intstr.FromInt32(9443)
 	metricsPort := intstr.FromInt32(8443)
 
@@ -59,7 +59,7 @@ func schedulerWebhookDefaultPolicies(params networkpolicy.PlatformParams) []netw
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: "scheduler-webhook"},
 			Spec: networkingv1.NetworkPolicySpec{
-				PodSelector: schedulerWebhookSelector,
+				PodSelector: kueueWebhookSelector,
 				PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
 				Ingress: []networkingv1.NetworkPolicyIngressRule{
 					networkpolicy.WebhookIngressRule("", webhookPort),
@@ -74,44 +74,44 @@ func schedulerWebhookDefaultPolicies(params networkpolicy.PlatformParams) []netw
 	}
 }
 
-var schedulerControllerSelector = metav1.LabelSelector{
+var kueueControllerSelector = metav1.LabelSelector{
 	MatchLabels: map[string]string{
 		"app.kubernetes.io/name": "tekton-kueue",
 		"control-plane":          "controller-manager",
 	},
 }
 
-var schedulerWebhookSelector = metav1.LabelSelector{
+var kueueWebhookSelector = metav1.LabelSelector{
 	MatchLabels: map[string]string{
 		"app.kubernetes.io/name": "tekton-kueue-webhook",
 		"control-plane":          "controller-manager",
 	},
 }
 
-func schedulerDefaultDenyPolicies() []networkingv1.NetworkPolicy {
+func kueueDefaultDenyPolicies() []networkingv1.NetworkPolicy {
 	return []networkingv1.NetworkPolicy{
-		networkpolicy.DefaultDenyPolicy("scheduler-controller-default-deny", schedulerControllerSelector),
-		networkpolicy.DefaultDenyPolicy("scheduler-webhook-default-deny", schedulerWebhookSelector),
+		networkpolicy.DefaultDenyPolicy("scheduler-controller-default-deny", kueueControllerSelector),
+		networkpolicy.DefaultDenyPolicy("scheduler-webhook-default-deny", kueueWebhookSelector),
 	}
 }
 
-func (r *Reconciler) reconcileNetworkPolicies(ctx context.Context, ts *v1alpha1.TektonScheduler) error {
-	if ts.Spec.NetworkPolicy.Disabled {
-		return r.installerSetClient.CleanupCustomSet(ctx, schedulerCustomSet)
+func (r *Reconciler) reconcileNetworkPolicies(ctx context.Context, tk *v1alpha1.TektonKueue) error {
+	if tk.Spec.NetworkPolicy.Disabled {
+		return r.installerSetClient.CleanupCustomSet(ctx, kueueCustomSet)
 	}
-	defaults := schedulerDefaultDenyPolicies()
-	defaults = append(defaults, schedulerControllerDefaultPolicies(r.platformParams)...)
-	defaults = append(defaults, schedulerWebhookDefaultPolicies(r.platformParams)...)
+	defaults := kueueDefaultDenyPolicies()
+	defaults = append(defaults, kueueControllerDefaultPolicies(r.platformParams)...)
+	defaults = append(defaults, kueueWebhookDefaultPolicies(r.platformParams)...)
 
 	manifest, err := networkpolicy.Generate(
-		ts.Spec.NetworkPolicy,
-		ts.Spec.GetTargetNamespace(),
+		tk.Spec.NetworkPolicy,
+		tk.Spec.GetTargetNamespace(),
 		defaults,
 	)
 	if err != nil {
 		return err
 	}
-	return r.installerSetClient.CustomSet(ctx, ts, schedulerCustomSet, &manifest, passthroughTransform, nil)
+	return r.installerSetClient.CustomSet(ctx, tk, kueueCustomSet, &manifest, passthroughTransform, nil)
 }
 
 func passthroughTransform(_ context.Context, m *mf.Manifest, _ v1alpha1.TektonComponent) (*mf.Manifest, error) {

@@ -534,6 +534,86 @@ spec:
                       type: object
                     type: array
                 type: object
+              kueue:
+                description: To enable Pipeline queueing on Single Cluster or Multiple
+                  Clusters
+                properties:
+                  config.yaml:
+                    description: |-
+                      This holds the config data from tekton-kueue. ConfigMap in tekton-kueue is loaded as config.yaml so we need to
+                      match the key here.
+                    properties:
+                      cel:
+                        description: CEL contains optional CEL expressions for dynamic
+                          PipelineRun mutation.
+                        properties:
+                          expressions:
+                            items:
+                              type: string
+                            type: array
+                        type: object
+                      multiKueueOverride:
+                        description: |-
+                          MultiKueueOverride, when true, sets the PipelineRun's managedBy field
+                          to "kueue.x-k8s.io/multikueue", enabling Kueue to dispatch the
+                          PipelineRun to a remote worker cluster.
+                        type: boolean
+                      queueName:
+                        description: |-
+                          QueueName is the Kueue LocalQueue that PipelineRuns are assigned to.
+                          This is set as the "kueue.x-k8s.io/queue-name" label on each PipelineRun.
+                        type: string
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  disabled:
+                    description: enable or disable TektonKueue Component
+                    type: boolean
+                  multi-cluster-disabled:
+                    type: boolean
+                  multi-cluster-role:
+                    description: |-
+                      MultiClusterRole Define the role of current cluster in multi-cluster environment. The MultiClusterRole
+                      can be one of Hub or Spoke
+                    type: string
+                  options:
+                    description: options holds additions fields and these fields will
+                      be updated on the manifests
+                    properties:
+                      configMaps:
+                        x-kubernetes-preserve-unknown-fields: true
+                      deployments:
+                        x-kubernetes-preserve-unknown-fields: true
+                      disabled:
+                        type: boolean
+                      horizontalPodAutoscalers:
+                        x-kubernetes-preserve-unknown-fields: true
+                      statefulSets:
+                        x-kubernetes-preserve-unknown-fields: true
+                      webhookConfigurationOptions:
+                        additionalProperties:
+                          description: WebhookOptions defines options for webhooks
+                          properties:
+                            failurePolicy:
+                              description: FailurePolicyType specifies a failure policy
+                                that defines how unrecognized errors from the admission
+                                endpoint are handled.
+                              type: string
+                            sideEffects:
+                              description: SideEffectClass specifies the types of
+                                side effects a webhook may have.
+                              type: string
+                            timeoutSeconds:
+                              format: int32
+                              type: integer
+                          type: object
+                        type: object
+                    type: object
+                required:
+                - config.yaml
+                - disabled
+                - multi-cluster-disabled
+                - multi-cluster-role
+                type: object
               multiclusterProxyAAE:
                 description: MulticlusterProxyAAE holds the customizable options for
                   the multicluster-proxy-aae component
@@ -577,7 +657,7 @@ spec:
                   NetworkPolicy configures NetworkPolicy resources for the operand namespace.
                   This field is propagated to TektonPipeline, TektonTrigger, TektonChain,
                   TektonPruner, TektonResult, Pipelines-as-Code, and MultiCluster components
-                  (TektonScheduler, TektonMulticlusterProxyAAE, SyncerService).
+                  (TektonKueue, TektonMulticlusterProxyAAE, SyncerService).
                   Other components (Dashboard) do not yet act on this field.
                 properties:
                   disabled:
@@ -1383,13 +1463,20 @@ spec:
                           Default: true (opt-out)
                         type: boolean
                       enableMetricsMTLS:
-                        description: |
+                        description: |-
                           EnableMetricsMTLS controls whether Prometheus metrics endpoints use mTLS.
-                          When enabled the operator annotates metric Services for TLS certificate
-                          provisioning, renames ports from http-metrics to https-metrics, mounts
-                          the serving-cert Secret and client-CA ConfigMap into pods, and enforces
-                          client certificate verification. Requires the OpenShift Cluster Monitoring
-                          Operator (CMO). Default: false (opt-in).
+                          When enabled the operator:
+                            - annotates metric Services for automatic TLS certificate provisioning
+                              via the OpenShift service-serving-cert controller
+                            - renames the metrics port from "http-metrics" to "https-metrics"
+                            - mounts the serving-cert Secret and client-CA ConfigMap into Tekton pods
+                            - enforces client certificate verification (RequireAndVerifyClientCert)
+
+                          Requires the OpenShift Cluster Monitoring Operator (CMO) to be present,
+                          because the client CA bundle is read from
+                          kube-system/extension-apiserver-authentication.
+
+                          Default: false (opt-in). Set to true to activate metrics mTLS.
                         type: boolean
                       pipelinesAsCode:
                         description: PipelinesAsCode allows configuring PipelinesAsCode
@@ -1759,15 +1846,17 @@ spec:
                 - is_external_db
                 type: object
               scheduler:
-                description: To enable Pipeline Scheduling on Single Cluster or Multiple
-                  Clusters
+                description: |-
+                  Scheduler is the deprecated predecessor of Kueue. Pre-upgrade migration
+                  copies this configuration to Kueue and clears the field.
                 properties:
                   config.yaml:
-                    description: |-
-                      This hold the config data from tekton-kueue. ConfigMap in tekton kueue is loaded as config.yaml so we need to
-                      match the key here
+                    description: This holds the config data loaded by tekton-kueue
+                      as config.yaml.
                     properties:
                       cel:
+                        description: CEL contains optional CEL expressions for dynamic
+                          PipelineRun mutation.
                         properties:
                           expressions:
                             items:
@@ -1775,8 +1864,15 @@ spec:
                             type: array
                         type: object
                       multiKueueOverride:
+                        description: |-
+                          MultiKueueOverride, when true, sets the PipelineRun's managedBy field
+                          to "kueue.x-k8s.io/multikueue", enabling Kueue to dispatch the
+                          PipelineRun to a remote worker cluster.
                         type: boolean
                       queueName:
+                        description: |-
+                          QueueName is the Kueue LocalQueue that PipelineRuns are assigned to.
+                          This is set as the "kueue.x-k8s.io/queue-name" label on each PipelineRun.
                         type: string
                     type: object
                     x-kubernetes-preserve-unknown-fields: true

@@ -43,9 +43,9 @@ func TestTektonMulticlusterProxyAAENetworkPolicy(t *testing.T) {
 	}
 
 	utils.CleanupOnInterrupt(func() { utils.TearDownMulticlusterProxyAAE(clients, crNames.TektonMulticlusterProxyAAE) })
-	utils.CleanupOnInterrupt(func() { utils.TearDownScheduler(clients, crNames.TektonScheduler) })
+	utils.CleanupOnInterrupt(func() { utils.TearDownKueue(clients, crNames.TektonKueue) })
 	defer utils.TearDownMulticlusterProxyAAE(clients, crNames.TektonMulticlusterProxyAAE)
-	defer utils.TearDownScheduler(clients, crNames.TektonScheduler)
+	defer utils.TearDownKueue(clients, crNames.TektonKueue)
 
 	utils.CleanupOnInterrupt(func() { resources.DeleteDummyWorkerCluster(clients) })
 	defer resources.DeleteDummyWorkerCluster(clients)
@@ -57,7 +57,7 @@ func TestTektonMulticlusterProxyAAENetworkPolicy(t *testing.T) {
 		Spec: v1alpha1.TektonConfigSpec{
 			Profile:    v1alpha1.ProfileAll,
 			CommonSpec: v1alpha1.CommonSpec{TargetNamespace: crNames.TargetNamespace},
-			Scheduler: v1alpha1.Scheduler{
+			Kueue: v1alpha1.Kueue{
 				Disabled: ptr.To(false),
 				MultiClusterConfig: v1alpha1.MultiClusterConfig{
 					MultiClusterDisabled: false,
@@ -72,7 +72,7 @@ func TestTektonMulticlusterProxyAAENetworkPolicy(t *testing.T) {
 	resources.EnsureDummyWorkerCluster(t, clients)
 
 	resources.AssertTektonConfigCRReadyStatus(t, clients, crNames)
-	resources.AssertTektonSchedulerCRReadyStatus(t, clients, crNames)
+	resources.AssertTektonKueueCRReadyStatus(t, clients, crNames)
 	resources.AssertTektonMulticlusterProxyAAECRReadyStatus(t, clients, crNames)
 
 	expectedPolicies := []string{
