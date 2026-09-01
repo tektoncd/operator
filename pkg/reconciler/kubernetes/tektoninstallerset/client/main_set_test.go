@@ -65,8 +65,14 @@ func TestInstallerSetClient_MainSet_NewInstallation(t *testing.T) {
 		assert.NilError(t, err)
 	}
 
+	// Regression test for a reconcile hot-loop bug: when an installer set is known
+	// to be NotReady (e.g. its deployment isn't ready yet), MainSet must return the
+	// v1alpha1.REQUEUE_EVENT_AFTER sentinel so callers requeue with backoff instead
+	// of falling through to their "mark status NotReady and return nil" branch,
+	// which causes an immediate, un-throttled re-reconcile via the status-update
+	// informer event (see SRVKP-12674).
 	err = client.MainSet(ctx, comp, &manifest, filterAndTransform(nil))
-	assert.Assert(t, err != nil)
+	assert.Equal(t, err, v1alpha1.REQUEUE_EVENT_AFTER)
 
 	// set installer sets as false
 	createdSets, err = fakeClient.List(ctx, metav1.ListOptions{})

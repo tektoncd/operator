@@ -54,8 +54,11 @@ func TestInstallerSetClient_PreSet_NewInstallation(t *testing.T) {
 		assert.NilError(t, err)
 	}
 
+	// Regression test for a reconcile hot-loop bug: a known NotReady installer set
+	// must yield v1alpha1.REQUEUE_EVENT_AFTER (proper backoff), not a plain error
+	// that callers swallow into a status update + nil return (see SRVKP-12674).
 	err = client.PreSet(ctx, comp, &manifest, filterAndTransform(nil))
-	assert.Assert(t, err != nil)
+	assert.Equal(t, err, v1alpha1.REQUEUE_EVENT_AFTER)
 
 	// set installer sets as false
 	createdSets, err = fakeClient.List(ctx, metav1.ListOptions{})
