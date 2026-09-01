@@ -18,8 +18,6 @@ package client
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
@@ -112,9 +110,8 @@ func (i *InstallerSetClient) statusCheck(logger *zap.SugaredLogger, setType stri
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 		if !ready.IsTrue() {
-			msg := fmt.Sprintf("%v/%v: installer set not ready, will retry: %v", i.resourceKind, setType, ready.Message)
-			logger.Debugf(msg)
-			return errors.New(msg)
+			logger.Debugf("%v/%v: installer set not ready, will retry: %v", i.resourceKind, setType, ready.Message)
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
 	return nil
