@@ -88,19 +88,19 @@ spec:
         - name: CONFIG_LEADERELECTION_NAME
           value: tekton-operator-controller-config-leader-election
         - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-          value: registry.redhat.io/rhel9/buildah@sha256:ef9c46b570264bc22c08e88864fae1be9e5a7d2738dbda409da747740f9e412a
+          value: registry.redhat.io/rhel9/buildah@sha256:91757d2dd609be57de95a82e52336f71e5db45c736972a81635532860c6dc6da
         - name: IMAGE_ADDONS_PARAM_KN_IMAGE
           value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel9@sha256:aee19896d17a431ba980564fdb73ef08ad1512f586fbdf954cecef6258f7a8df
         - name: IMAGE_ADDONS_MVN_SETTINGS
-          value: registry.redhat.io/ubi9/ubi-minimal@sha256:580752f96d36c4132bffd30f9c34865bf4bd87f6aa161c969d117f21732e50f7
+          value: registry.redhat.io/ubi9/ubi-minimal@sha256:7fbeae18dc9476399f565e68255f602a3374ea8614ba3d14843565131a13ff93
         - name: IMAGE_ADDONS_SKOPEO_COPY
-          value: registry.redhat.io/rhel9/skopeo@sha256:577a988b42ae430f0f9d99bae5232b517ceaea6a7b884ec443fe8e636528e291
+          value: registry.redhat.io/rhel9/skopeo@sha256:f1973be55cc54b1e9ebb6ddb9fd145173eb72f7dbbb793e974b40e8db9667eb3
         - name: IMAGE_ADDONS_GENERATE
           value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:798e0e860df8e3ca1ff5f8aa796940d6dbd4b739ccfc35c6f4c9bc046d5f0c12
         - name: IMAGE_ADDONS_GEN_ENV_FILE
           value: registry.redhat.io/source-to-image/source-to-image-rhel9@sha256:798e0e860df8e3ca1ff5f8aa796940d6dbd4b739ccfc35c6f4c9bc046d5f0c12
         - name: IMAGE_ADDONS_PARAM_MAVEN_IMAGE
-          value: registry.redhat.io/ubi9/openjdk-17@sha256:fa4e4b80c828c01bfa8b0cf703f5353f512ebead1d69d4b6fb0e20e2da832070
+          value: registry.redhat.io/ubi9/openjdk-17@sha256:b27abdd00b14fd8fa2d96feb39b9903ee5a969c6e060b5471c1d99fc803f803d
         - name: IMAGE_ADDONS_OC
           value: image-registry.openshift-image-registry.svc:5000/openshift/cli:latest
       - name: openshift-pipelines-operator-cluster-operations  # tektoninstallerset reconciler
