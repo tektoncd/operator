@@ -60,8 +60,12 @@ func TestResultsDefaultPolicies(t *testing.T) {
 	assertIngressHasPort(t, "results-watcher", watcher.Spec.Ingress, 9090)
 
 	retention := byName["results-retention-policy-agent"]
+	if got := len(retention.Spec.Egress); got != 3 {
+		t.Fatalf("results-retention-policy-agent: expected 3 egress rules (DNS + DB + allow-all), got %d", got)
+	}
 	assertEgressHasDNS(t, "results-retention-policy-agent", retention.Spec.Egress, 5353)
 	assertEgressHasDBPort(t, "results-retention-policy-agent", retention.Spec.Egress, 5432)
+	assertEgressHasAllowAll(t, "results-retention-policy-agent", retention.Spec.Egress)
 
 	postgres := byName["results-postgres"]
 	assertIngressHasPort(t, "results-postgres", postgres.Spec.Ingress, 5432)

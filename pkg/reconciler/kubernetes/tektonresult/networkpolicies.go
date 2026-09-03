@@ -114,9 +114,13 @@ func resultsDefaultPolicies(params networkpolicy.PlatformParams, props v1alpha1.
 					networkingv1.PolicyTypeIngress,
 					networkingv1.PolicyTypeEgress,
 				},
+				// The agent watches its ConfigMap (schedule, retention policy) via the
+				// API server, so it needs the same API-server egress as results-api/
+				// results-watcher, in addition to DNS and DB access.
 				Egress: []networkingv1.NetworkPolicyEgressRule{
 					networkpolicy.DNSEgressRule(params),
 					dbEgress,
+					networkpolicy.APIServerEgressRule(),
 				},
 			},
 		},
