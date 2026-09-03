@@ -43,6 +43,7 @@ var (
 		removeDeprecatedDisableAffinityAssistant, // upgrade #6: remove deprecated DisableAffinityAssistant field from pipeline config
 		removeHubFromTektonConfig,                // upgrade #7: clear deprecated hub field
 		preUpgradeManualApprovalGate,             // upgrade #8: adopt standalone MAG config into TektonConfig
+		migrateLegacyNamespaceSyncParams,         // upgrade #9: persist createRbacResource/createCABundleConfigMaps/legacyPipelineRbac migration to namespaceSync
 	}
 
 	// post upgrade functions
