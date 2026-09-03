@@ -715,8 +715,11 @@ Once configured:
 
 #### Migration from legacy `spec.params`
 
-Older releases controlled this behaviour through `spec.params` entries. The
-operator automatically migrates these on the first webhook call after an upgrade:
+Older releases controlled this behaviour through `spec.params` entries. These
+are deprecated: the operator continues to honor them for backward
+compatibility, but they should be migrated to the typed fields below. The
+operator automatically migrates and persists them during the first
+reconcile after an upgrade:
 
 | Legacy `spec.params` | Typed field |
 |---|---|

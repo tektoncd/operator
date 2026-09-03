@@ -272,6 +272,99 @@ func Test_SetDefaults_PipelineAsCode(t *testing.T) {
 	}
 }
 
+func Test_MigrateLegacyNamespaceSyncParams(t *testing.T) {
+	tests := []struct {
+		name           string
+		inputParams    []Param
+		wantChanged    bool
+		wantParams     []Param
+		wantPipelineSA *bool
+		wantCABundles  *bool
+		wantEditRB     *bool
+	}{
+		{
+			name:        "no legacy params present: nothing changes",
+			inputParams: []Param{{Name: "other-param", Value: "x"}},
+			wantChanged: false,
+			wantParams:  []Param{{Name: "other-param", Value: "x"}},
+		},
+		{
+			name: "legacy params are migrated and removed",
+			inputParams: []Param{
+				{Name: "createRbacResource", Value: "true"},
+				{Name: "createCABundleConfigMaps", Value: "false"},
+				{Name: "legacyPipelineRbac", Value: "true"},
+				{Name: "unrelated-param", Value: "keep-me"},
+			},
+			wantChanged:    true,
+			wantParams:     []Param{{Name: "unrelated-param", Value: "keep-me"}},
+			wantPipelineSA: ptr.Bool(true),
+			wantCABundles:  ptr.Bool(false),
+			wantEditRB:     ptr.Bool(true),
+		},
+		{
+			name: "createRbacResource=false disables SCC and edit RoleBinding too",
+			inputParams: []Param{
+				{Name: "createRbacResource", Value: "false"},
+			},
+			wantChanged:    true,
+			wantParams:     []Param{},
+			wantPipelineSA: ptr.Bool(false),
+			wantEditRB:     ptr.Bool(false),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			tc := &TektonConfig{
+				Spec: TektonConfigSpec{
+					Params: test.inputParams,
+				},
+			}
+
+			changed := MigrateLegacyNamespaceSyncParams(tc)
+			if changed != test.wantChanged {
+				t.Errorf("MigrateLegacyNamespaceSyncParams() changed = %v, want %v", changed, test.wantChanged)
+			}
+			if !cmp.Equal(tc.Spec.Params, test.wantParams) {
+				t.Errorf("Spec.Params = %+v, want %+v", tc.Spec.Params, test.wantParams)
+			}
+			ns := tc.Spec.Platforms.OpenShift.NamespaceSync
+			if test.wantPipelineSA != nil && (ns.CreatePipelineSA == nil || *ns.CreatePipelineSA != *test.wantPipelineSA) {
+				t.Errorf("CreatePipelineSA = %v, want %v", ns.CreatePipelineSA, *test.wantPipelineSA)
+			}
+			if test.wantCABundles != nil && (ns.CreateCABundles == nil || *ns.CreateCABundles != *test.wantCABundles) {
+				t.Errorf("CreateCABundles = %v, want %v", ns.CreateCABundles, *test.wantCABundles)
+			}
+			if test.wantEditRB != nil && (ns.CreateEditRoleBinding == nil || *ns.CreateEditRoleBinding != *test.wantEditRB) {
+				t.Errorf("CreateEditRoleBinding = %v, want %v", ns.CreateEditRoleBinding, *test.wantEditRB)
+			}
+		})
+	}
+}
+
+// Calling MigrateLegacyNamespaceSyncParams a second time (e.g. a retried
+// upgrade) must be a no-op: once the legacy params are gone, "changed"
+// should report false and previously-migrated typed fields must be left
+// untouched rather than being reset to new defaults.
+func Test_MigrateLegacyNamespaceSyncParams_Idempotent(t *testing.T) {
+	tc := &TektonConfig{
+		Spec: TektonConfigSpec{
+			Params: []Param{{Name: "createRbacResource", Value: "false"}},
+		},
+	}
+
+	if changed := MigrateLegacyNamespaceSyncParams(tc); !changed {
+		t.Fatalf("expected first migration to report changed")
+	}
+	if changed := MigrateLegacyNamespaceSyncParams(tc); changed {
+		t.Fatalf("expected second migration to be a no-op")
+	}
+	if ns := tc.Spec.Platforms.OpenShift.NamespaceSync; ns.CreatePipelineSA == nil || *ns.CreatePipelineSA {
+		t.Errorf("expected CreatePipelineSA to remain false after second migration, got %v", ns.CreatePipelineSA)
+	}
+}
+
 func Test_SetDefaults_SCC(t *testing.T) {
 	t.Setenv("PLATFORM", "openshift")
 

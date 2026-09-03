@@ -83,6 +83,25 @@ func migrateNamespaceSyncParams(tc *TektonConfig) {
 	tc.Spec.Params = remaining
 }
 
+// MigrateLegacyNamespaceSyncParams is the exported entry point used by the
+// pre-upgrade job (pkg/reconciler/shared/tektonconfig/upgrade) to persist the
+// same createRbacResource/createCABundleConfigMaps/legacyPipelineRbac →
+// namespaceSync migration that SetDefaults already applies in-memory on every
+// reconcile. SetDefaults never writes back to the stored CR, so without this,
+// the deprecated params would remain in spec.params forever. It reports
+// whether tc was actually changed, so the caller only issues an Update when
+// there is something to persist.
+// TODO: Remove this function once createRbacResource/createCABundleConfigMaps/
+// legacyPipelineRbac are no longer supported.
+func MigrateLegacyNamespaceSyncParams(tc *TektonConfig) bool {
+	before := len(tc.Spec.Params)
+	if tc.Spec.Platforms.OpenShift.NamespaceSync == nil {
+		tc.Spec.Platforms.OpenShift.NamespaceSync = &NamespaceSyncConfig{}
+	}
+	migrateNamespaceSyncParams(tc)
+	return len(tc.Spec.Params) != before
+}
+
 func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 	if tc.Spec.Profile == "" {
 		tc.Spec.Profile = ProfileBasic

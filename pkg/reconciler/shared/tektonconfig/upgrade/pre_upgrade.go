@@ -381,6 +381,39 @@ func removeDeprecatedDisableAffinityAssistant(ctx context.Context, logger *zap.S
 	return nil
 }
 
+// migrateLegacyNamespaceSyncParams persists the createRbacResource/
+// createCABundleConfigMaps/legacyPipelineRbac → spec.platforms.openshift.
+// namespaceSync migration onto the stored TektonConfig CR. TektonConfig.
+// SetDefaults already performs this same migration, but only in-memory on a
+// deep copy on every reconcile (see docs/plans/2026-06-26-namespace-sync-
+// controller-design.md) — it never writes the result back, so the deprecated
+// params would otherwise remain in spec.params indefinitely. Running this
+// once per upgrade cleans up the stored spec so it reflects the typed fields
+// that are actually in effect.
+// TODO: Remove this upgrade function once createRbacResource/
+// createCABundleConfigMaps/legacyPipelineRbac are no longer supported.
+func migrateLegacyNamespaceSyncParams(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	if !v1alpha1.IsOpenShiftPlatform() {
+		return nil
+	}
+
+	tcCR, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	if !v1alpha1.MigrateLegacyNamespaceSyncParams(tcCR) {
+		return nil
+	}
+
+	logger.Info("Migrating legacy NamespaceSync spec.params to spec.platforms.openshift.namespaceSync")
+	_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{})
+	return err
+}
+
 // removeHubFromTektonConfig removes the deprecated hub field from the TektonConfig spec.
 // TODO: Remove this function in the release-v0.80.x
 func removeHubFromTektonConfig(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
