@@ -33,7 +33,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
-	tconfig "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig"
+	tconfig "github.com/tektoncd/operator/pkg/reconciler/openshift/namespacesync"
 	"github.com/tektoncd/operator/test/client"
 	"github.com/tektoncd/operator/test/resources"
 	"github.com/tektoncd/operator/test/utils"
@@ -1249,4 +1249,131 @@ func (s *TektonConfigTestSuite) Test07_DisableTriggerInstallation() {
 		}
 		return len(list.Items) > 0, nil
 	}), "Trigger installersets should come back when enabled")
+}
+
+// Test08_NamespaceSyncSecretBinding verifies that
+// spec.platforms.openshift.namespaceSync.secretBindings automatically binds
+// registry secrets (the RFE-7814 "Quay Robot credential" use case) to the
+// pipeline ServiceAccount in a synced namespace, for both the named-secret
+// and labelSelector forms, and unbinds them again once the Secret (or its
+// matching label) goes away.
+func (s *TektonConfigTestSuite) Test08_NamespaceSyncSecretBinding() {
+	t := s.T()
+	if !utils.IsOpenShift() {
+		t.Skip("skipped: NamespaceSync is only supported in OpenShift")
+	}
+
+	interval := s.interval
+	timeout := s.timeout
+	const pipelineSA = "pipeline"
+
+	nsName := common.SimpleNameGenerator.RestrictLengthWithRandomSuffix("e2e-tests-secretbinding")
+	require.NoError(t, resources.CreateNamespace(s.clients.KubeClient, nsName))
+	defer func() {
+		require.NoError(t, resources.DeleteNamespaceAndWait(s.clients.KubeClient, nsName, interval, timeout))
+	}()
+
+	// The namespace must be synced (pipeline SA created) before secretBindings
+	// has anything to bind to.
+	require.NoError(t, resources.WaitForServiceAccount(s.clients.KubeClient, pipelineSA, nsName, interval, timeout))
+
+	tc := s.getCurrentConfig(timeout)
+	if tc.Spec.Platforms.OpenShift.NamespaceSync == nil {
+		tc.Spec.Platforms.OpenShift.NamespaceSync = &v1alpha1.NamespaceSyncConfig{}
+	}
+	originalSecretBindings := tc.Spec.Platforms.OpenShift.NamespaceSync.SecretBindings
+	defer func() {
+		tc := s.getCurrentConfig(timeout)
+		tc.Spec.Platforms.OpenShift.NamespaceSync.SecretBindings = originalSecretBindings
+		_, err := s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+		require.NoError(t, err)
+		require.NoError(t, resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, interval, timeout))
+	}()
+
+	// --- named-secret binding ---
+
+	namedSecret := "e2e-quay-robot"
+	tc.Spec.Platforms.OpenShift.NamespaceSync.SecretBindings = []v1alpha1.SecretBinding{
+		{SecretName: namedSecret},
+	}
+	_, err := s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	require.NoError(t, resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, interval, timeout))
+
+	// The Secret does not exist yet — the SA must not reference it.
+	require.NoError(t, resources.WaitForServiceAccountImagePullSecret(s.clients.KubeClient, pipelineSA, nsName, namedSecret, false, interval, timeout))
+
+	// Create the Secret — it must get bound.
+	_, err = s.clients.KubeClient.CoreV1().Secrets(nsName).Create(context.TODO(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: namedSecret},
+		Type:       corev1.SecretTypeDockerConfigJson,
+		Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte("{}")},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	require.NoError(t, resources.WaitForServiceAccountImagePullSecret(s.clients.KubeClient, pipelineSA, nsName, namedSecret, true, interval, timeout))
+
+	// Delete the Secret — the reference must be removed again.
+	require.NoError(t, s.clients.KubeClient.CoreV1().Secrets(nsName).Delete(context.TODO(), namedSecret, metav1.DeleteOptions{}))
+	require.NoError(t, resources.WaitForServiceAccountImagePullSecret(s.clients.KubeClient, pipelineSA, nsName, namedSecret, false, interval, timeout))
+
+	// --- labelSelector binding ---
+
+	tc = s.getCurrentConfig(timeout)
+	labelKey, labelValue := "e2e-tests.tekton.dev/quay-robot", "true"
+	tc.Spec.Platforms.OpenShift.NamespaceSync.SecretBindings = []v1alpha1.SecretBinding{
+		{LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{labelKey: labelValue}}},
+	}
+	_, err = s.clients.TektonConfig().Update(context.TODO(), tc, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	require.NoError(t, resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, interval, timeout))
+
+	labeledSecret := "e2e-quay-robot-labeled"
+	_, err = s.clients.KubeClient.CoreV1().Secrets(nsName).Create(context.TODO(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   labeledSecret,
+			Labels: map[string]string{labelKey: labelValue},
+		},
+		Type: corev1.SecretTypeDockerConfigJson,
+		Data: map[string][]byte{corev1.DockerConfigJsonKey: []byte("{}")},
+	}, metav1.CreateOptions{})
+	require.NoError(t, err)
+	require.NoError(t, resources.WaitForServiceAccountImagePullSecret(s.clients.KubeClient, pipelineSA, nsName, labeledSecret, true, interval, timeout))
+
+	// Removing the matching label — without touching the binding rule itself —
+	// must unbind the Secret on the next reconcile.
+	secret, err := s.clients.KubeClient.CoreV1().Secrets(nsName).Get(context.TODO(), labeledSecret, metav1.GetOptions{})
+	require.NoError(t, err)
+	delete(secret.Labels, labelKey)
+	_, err = s.clients.KubeClient.CoreV1().Secrets(nsName).Update(context.TODO(), secret, metav1.UpdateOptions{})
+	require.NoError(t, err)
+	require.NoError(t, resources.WaitForServiceAccountImagePullSecret(s.clients.KubeClient, pipelineSA, nsName, labeledSecret, false, interval, timeout))
+}
+
+// Test09_NamespaceSyncNamespaceDeletion verifies that deleting a synced
+// namespace removes its pipeline ServiceAccount subject from the
+// cluster-scoped openshift-pipelines-clusterinterceptors ClusterRoleBinding.
+// That RoleBinding is cluster-scoped, so it is not garbage-collected by
+// Kubernetes when the namespace goes away and must be cleaned up explicitly.
+func (s *TektonConfigTestSuite) Test09_NamespaceSyncNamespaceDeletion() {
+	t := s.T()
+	if !utils.IsOpenShift() {
+		t.Skip("skipped: NamespaceSync is only supported in OpenShift")
+	}
+
+	interval := s.interval
+	timeout := s.timeout
+	const pipelineSA = "pipeline"
+	const clusterInterceptorsCRB = "openshift-pipelines-clusterinterceptors"
+
+	nsName := common.SimpleNameGenerator.RestrictLengthWithRandomSuffix("e2e-tests-nsdeletion")
+	require.NoError(t, resources.CreateNamespace(s.clients.KubeClient, nsName))
+
+	// The namespace must be synced (pipeline SA created) and its subject
+	// present on the cluster-scoped CRB.
+	require.NoError(t, resources.WaitForServiceAccount(s.clients.KubeClient, pipelineSA, nsName, interval, timeout))
+	require.NoError(t, resources.WaitForClusterRoleBindingSubject(s.clients.KubeClient, clusterInterceptorsCRB, nsName, pipelineSA, true, interval, timeout))
+
+	// Deleting the namespace must remove its subject from the CRB.
+	require.NoError(t, resources.DeleteNamespaceAndWait(s.clients.KubeClient, nsName, interval, timeout))
+	require.NoError(t, resources.WaitForClusterRoleBindingSubject(s.clients.KubeClient, clusterInterceptorsCRB, nsName, pipelineSA, false, interval, timeout))
 }
