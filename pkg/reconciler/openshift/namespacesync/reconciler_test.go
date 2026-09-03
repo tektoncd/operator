@@ -1082,14 +1082,14 @@ func TestClusterInterceptors_RemovesSubjectWhenSADeleted(t *testing.T) {
 // namespace cannot escalate its privileges by requesting a less-restrictive SCC
 // via annotation.
 func TestSCCAnnotation_EmptyMaxAllowedBlocksEscalation(t *testing.T) {
-	// Build SCCs with explicit priorities so sort order is deterministic:
-	//   restricted (priority 1) < pipelines-scc (priority 5) < anyuid (priority 10) < privileged (priority 100)
-	p := func(v int32) *int32 { return &v }
+	// Build SCCs with distinct policy fields so ByRestrictions sort is deterministic.
+	// Resulting order (most → least restrictive, ascending point-score):
+	//   restricted (0 pts)  <  pipelines-scc (30k pts)  <  anyuid (40k pts)  <  privileged (1.6M pts)
 	sccs := []securityv1.SecurityContextConstraints{
-		{ObjectMeta: metav1.ObjectMeta{Name: "restricted"}, Priority: p(1)},
-		{ObjectMeta: metav1.ObjectMeta{Name: "pipelines-scc"}, Priority: p(5)},
-		{ObjectMeta: metav1.ObjectMeta{Name: "anyuid"}, Priority: p(10)},
-		{ObjectMeta: metav1.ObjectMeta{Name: "privileged"}, Priority: p(100)},
+		{ObjectMeta: metav1.ObjectMeta{Name: "restricted"}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "pipelines-scc"}, RunAsUser: securityv1.RunAsUserStrategyOptions{Type: securityv1.RunAsUserStrategyMustRunAsNonRoot}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "anyuid"}, RunAsUser: securityv1.RunAsUserStrategyOptions{Type: securityv1.RunAsUserStrategyRunAsAny}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "privileged"}, AllowPrivilegedContainer: true},
 	}
 
 	tests := []struct {
