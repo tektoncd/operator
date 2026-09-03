@@ -142,6 +142,7 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 	errs = errs.Also(tc.Spec.Trigger.Options.validate("spec.trigger.options"))
 	errs = errs.Also(tc.Spec.Result.Options.validate("spec.result.options"))
 	errs = errs.Also(tc.Spec.Result.Watcher.Validate("spec.result.watcher"))
+	errs = errs.Also(tc.Spec.Result.ResultsAPIProperties.validateRouteTLSTermination("spec.result"))
 	errs = errs.Also(tc.Spec.MulticlusterProxyAAE.Options.validate("spec.multiclusterProxyAAE.options"))
 
 	return errs.Also(tc.Spec.Trigger.TriggersProperties.validate("spec.trigger"))

@@ -60,15 +60,7 @@ func (trs *TektonResultSpec) validate(path string) (errs *apis.FieldError) {
 	}
 
 	// validate route TLS termination
-	if trs.RouteTLSTermination != "" {
-		switch trs.RouteTLSTermination {
-		case "edge", "reencrypt", "passthrough":
-			// valid
-		default:
-			errMsg := fmt.Sprintf("unsupported route TLS termination type %q, must be one of: edge, reencrypt, passthrough", trs.RouteTLSTermination)
-			errs = errs.Also(apis.ErrInvalidValue(trs.RouteTLSTermination, fmt.Sprintf("%s.route_tls_termination", path), errMsg))
-		}
-	}
+	errs = errs.Also(trs.ResultsAPIProperties.validateRouteTLSTermination(path))
 
 	// validate performance properties
 	errs = errs.Also(trs.Performance.Validate(fmt.Sprintf("%s.performance", path)))
@@ -79,4 +71,20 @@ func (trs *TektonResultSpec) validate(path string) (errs *apis.FieldError) {
 	errs = errs.Also(trs.NetworkPolicy.validate(fmt.Sprintf("%s.networkPolicy", path)))
 
 	return errs
+}
+
+// validateRouteTLSTermination validates that the route TLS termination type is one of the
+// supported values. It is called from both TektonResult and TektonConfig validators so that
+// unsupported values are rejected at the parent (TektonConfig) level as well.
+func (props ResultsAPIProperties) validateRouteTLSTermination(path string) *apis.FieldError {
+	if props.RouteTLSTermination == "" {
+		return nil
+	}
+	switch props.RouteTLSTermination {
+	case "edge", "reencrypt", "passthrough":
+		return nil
+	default:
+		errMsg := fmt.Sprintf("unsupported route TLS termination type %q, must be one of: edge, reencrypt, passthrough", props.RouteTLSTermination)
+		return apis.ErrInvalidValue(props.RouteTLSTermination, fmt.Sprintf("%s.route_tls_termination", path), errMsg)
+	}
 }
