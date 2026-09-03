@@ -59,6 +59,17 @@ func (trs *TektonResultSpec) validate(path string) (errs *apis.FieldError) {
 		}
 	}
 
+	// validate route TLS termination
+	if trs.RouteTLSTermination != "" {
+		switch trs.RouteTLSTermination {
+		case "edge", "reencrypt", "passthrough":
+			// valid
+		default:
+			errMsg := fmt.Sprintf("unsupported route TLS termination type %q, must be one of: edge, reencrypt, passthrough", trs.RouteTLSTermination)
+			errs = errs.Also(apis.ErrInvalidValue(trs.RouteTLSTermination, fmt.Sprintf("%s.route_tls_termination", path), errMsg))
+		}
+	}
+
 	// validate performance properties
 	errs = errs.Also(trs.Performance.Validate(fmt.Sprintf("%s.performance", path)))
 

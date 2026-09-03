@@ -116,7 +116,7 @@ func TestResult_SetDefaultsRoutes(t *testing.T) {
 	want := &Result{
 		ResultsAPIProperties: ResultsAPIProperties{
 			RouteEnabled:        ptr.Bool(true),
-			RouteTLSTermination: "edge",
+			RouteTLSTermination: "reencrypt",
 		},
 	}
 
