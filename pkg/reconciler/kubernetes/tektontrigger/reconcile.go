@@ -128,16 +128,22 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, tt *v1alpha1.TektonTrigg
 	tt.Status.MarkPreReconcilerComplete()
 	logger.Info("PreReconciliation completed successfully")
 
+	// Namespace is created in TektonConfig reconciler; filtering it out here
+	// so that deleting TektonTrigger does not delete the target namespace.
+	// Using a local copy also prevents in-place transformer mutations (e.g.
+	// RenameServicePort for mTLS) from permanently polluting r.manifest.
+	manifest := r.manifest.Filter(mf.Not(mf.ByKind("Namespace")))
+
 	// Ensure webhook deadlock prevention before applying the manifest
 	logger.Debugw("Preventing webhook deadlock")
-	if err := common.PreemptDeadlock(ctx, &r.manifest, r.kubeClientSet, v1alpha1.TriggerResourceName); err != nil {
+	if err := common.PreemptDeadlock(ctx, &manifest, r.kubeClientSet, v1alpha1.TriggerResourceName); err != nil {
 		logger.Error("Webhook deadlock prevention failed", "error", err)
 		return err
 	}
 	logger.Debugw("Webhook deadlock prevention successful")
 
 	logger.Debugw("Running main reconciliation with installer set")
-	if err := r.installerSetClient.MainSet(ctx, tt, &r.manifest, filterAndTransform(r.extension)); err != nil {
+	if err := r.installerSetClient.MainSet(ctx, tt, &manifest, filterAndTransform(r.extension)); err != nil {
 		if err == v1alpha1.REQUEUE_EVENT_AFTER {
 			logger.Info("Main reconciliation requested requeue")
 			return err

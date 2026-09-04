@@ -21,32 +21,51 @@ import (
 
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
+	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 	"knative.dev/pkg/logging"
 )
 
 const (
-	tektonPrunerWebhookDeployment = "tekton-pruner-webhook"
-	webhookContainerName          = "webhook"
+	tektonPrunerWebhookDeployment    = "tekton-pruner-webhook"
+	tektonPrunerControllerDeployment = "tekton-pruner-controller"
+	webhookContainerName             = "webhook"
 )
 
 func OpenShiftExtension(ctx context.Context) common.Extension {
 	return &openshiftExtension{
+		kubeClientSet:      kubeclient.Get(ctx),
+		operatorClientSet:  operatorclient.Get(ctx),
 		tektonConfigLister: tektonConfiginformer.Get(ctx).Lister(),
 	}
 }
 
 type openshiftExtension struct {
+	kubeClientSet      kubernetes.Interface
+	operatorClientSet  versioned.Interface
 	tektonConfigLister occommon.TektonConfigLister
 	resolvedTLSConfig  *occommon.TLSEnvVars
+	metricsMTLSReady   bool
 }
 
 func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	trns := []mf.Transformer{
 		occommon.RemoveRunAsUser(),
 		occommon.RemoveRunAsGroup(),
+	}
+
+	if oe.metricsMTLSReady {
+		trns = append(trns,
+			occommon.AnnotateMetricsServingCert(tektonPrunerControllerDeployment),
+			occommon.RenameServicePort(tektonPrunerControllerDeployment, occommon.MetricsHTTPPort, occommon.MetricsHTTPSPort),
+			occommon.ApplyMetricsTLS("Deployment", tektonPrunerControllerDeployment,
+				occommon.MetricsServingCertSecretName(tektonPrunerControllerDeployment)),
+		)
 	}
 
 	if oe.resolvedTLSConfig != nil {
@@ -69,6 +88,12 @@ func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekt
 	if oe.resolvedTLSConfig != nil {
 		logger.Infof("Injecting central TLS config into pruner webhook: MinVersion=%s", oe.resolvedTLSConfig.MinVersion)
 	}
+
+	ready, err := occommon.ResolveMetricsMTLS(ctx, oe.operatorClientSet, oe.kubeClientSet, tc.GetSpec().GetTargetNamespace())
+	if err != nil {
+		return err
+	}
+	oe.metricsMTLSReady = ready
 
 	return nil
 }

@@ -30,11 +30,14 @@ import (
 	"knative.dev/pkg/logging"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	"github.com/tektoncd/operator/pkg/client/clientset/versioned"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektoninstallerset/client"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
+	"k8s.io/client-go/kubernetes"
+	kubeclient "knative.dev/pkg/client/injection/kube/client"
 )
 
 const (
@@ -75,10 +78,13 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 
 	// Get TektonConfig lister to check EnableCentralTLSConfig flag
 	tektonConfigLister := tektonConfiginformer.Get(ctx).Lister()
+	opClient := operatorclient.Get(ctx)
 
 	ext := &openshiftExtension{
-		installerSetClient: client.NewInstallerSetClient(operatorclient.Get(ctx).OperatorV1alpha1().TektonInstallerSets(),
+		installerSetClient: client.NewInstallerSetClient(opClient.OperatorV1alpha1().TektonInstallerSets(),
 			version, "results-ext", v1alpha1.KindTektonResult, nil),
+		kubeClientSet:      kubeclient.Get(ctx),
+		operatorClientSet:  opClient,
 		routeManifest:      routeManifest,
 		logsRBACManifest:   logsRBACManifest,
 		tektonConfigLister: tektonConfigLister,
@@ -88,10 +94,13 @@ func OpenShiftExtension(ctx context.Context) common.Extension {
 
 type openshiftExtension struct {
 	installerSetClient *client.InstallerSetClient
+	kubeClientSet      kubernetes.Interface
+	operatorClientSet  versioned.Interface
 	routeManifest      *mf.Manifest
 	logsRBACManifest   *mf.Manifest
 	tektonConfigLister occommon.TektonConfigLister
 	resolvedTLSConfig  *occommon.TLSEnvVars
+	metricsMTLSReady   bool
 }
 
 func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
@@ -110,6 +119,26 @@ func (oe *openshiftExtension) Transformers(comp v1alpha1.TektonComponent) []mf.T
 		injectPostgresUpgradeSupport(),
 	}
 
+	if oe.metricsMTLSReady {
+		// mTLS for Prometheus scraping.
+		// Watcher: annotate its Service to get a new serving-cert Secret + rename the
+		// port, then mount the TLS Secret + client-CA ConfigMap via ApplyMetricsTLS.
+		//
+		// API is intentionally excluded here: its Prometheus metrics endpoint is a
+		// bare net/http server hardcoded in tektoncd/results (cmd/api/main.go) that
+		// never reads METRICS_PROMETHEUS_TLS_* env vars, so it cannot serve mTLS.
+		// Wiring the cert/CA/port-rename into it would only break scraping. Its
+		// Service/ServiceMonitor stay on plain HTTP regardless of this flag.
+		transformers = append(transformers,
+			occommon.AnnotateMetricsServingCert(tektonResultWatcherName),
+			occommon.RenameServicePort(tektonResultWatcherName, "metrics", "https-metrics"),
+			occommon.ApplyMetricsTLS("Deployment", tektonResultWatcherName,
+				occommon.MetricsServingCertSecretName(tektonResultWatcherName)),
+			occommon.ApplyMetricsTLS("StatefulSet", tektonResultWatcherName,
+				occommon.MetricsServingCertSecretName(tektonResultWatcherName)),
+		)
+	}
+
 	// Use TLS config resolved in PreReconcile
 	if oe.resolvedTLSConfig != nil {
 		transformers = append(transformers, occommon.InjectTLSEnvVars(oe.resolvedTLSConfig, "Deployment", deploymentAPI, []string{apiContainerName}, ""))
@@ -124,6 +153,7 @@ func (oe *openshiftExtension) GetPlatformData() string {
 
 func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.TektonComponent) error {
 	logger := logging.FromContext(ctx)
+
 	result := tc.(*v1alpha1.TektonResult)
 	manifest := mf.Manifest{}
 
@@ -140,6 +170,12 @@ func (oe *openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekt
 	if oe.resolvedTLSConfig != nil {
 		logger.Infof("Injecting central TLS config: MinVersion=%s", oe.resolvedTLSConfig.MinVersion)
 	}
+
+	ready, err := occommon.ResolveMetricsMTLS(ctx, oe.operatorClientSet, oe.kubeClientSet, tc.GetSpec().GetTargetNamespace())
+	if err != nil {
+		return err
+	}
+	oe.metricsMTLSReady = ready
 
 	return oe.installerSetClient.PreSet(ctx, tc, &manifest, filterAndTransform())
 }

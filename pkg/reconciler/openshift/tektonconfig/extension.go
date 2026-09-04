@@ -187,6 +187,12 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		oe.consolePluginReconciler.SetTLSConfig(nil)
 	}
 
+	if occommon.IsMetricsMTLSEnabled(oe.tektonConfigLister) {
+		if err := occommon.EnsureMetricsClientCA(ctx, oe.kubeClientSet, tc.GetSpec().GetTargetNamespace()); err != nil {
+			return err
+		}
+	}
+
 	return r.createResources(ctx)
 }
 
@@ -259,19 +265,51 @@ func (oe openshiftExtension) propagateMAGPlatformData(ctx context.Context) {
 }
 
 func (oe openshiftExtension) GetPlatformData() string {
-	tc, err := oe.tektonConfigLister.Get("config")
+	// Use a direct API call (not the lister) so that changes to enableMetricsMTLS
+	// are reflected immediately. The lister can lag behind after the user patches
+	// TektonConfig, causing GetPlatformData to return a stale hash and leaving
+	// component CRs with an incorrect platform-data-hash annotation.
+	ctx := context.Background()
+	tc, err := oe.operatorClientSet.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
 		return ""
 	}
-	if tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig != nil &&
-		!*tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig {
+
+	// Collect the TLS profile only when central TLS config is not explicitly disabled.
+	var tlsProfile interface{}
+	tlsDisabled := tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig != nil &&
+		!*tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig
+	if !tlsDisabled {
+		if profile, err := occommon.GetTLSProfileFromAPIServer(ctx); err == nil {
+			tlsProfile = profile
+		}
+	}
+
+	// Read the synced CA bundle so that when TektonConfig creates/rotates
+	// metrics-client-ca the hash changes and all component CRs get their
+	// annotation bumped, immediately triggering their reconcilers.
+	var metricsCABundle string
+	if tc.Spec.Platforms.OpenShift.EnableMetricsMTLS != nil && *tc.Spec.Platforms.OpenShift.EnableMetricsMTLS {
+		if cm, err := oe.kubeClientSet.CoreV1().ConfigMaps(tc.GetSpec().GetTargetNamespace()).Get(
+			ctx, occommon.MetricsClientCAConfigMap, metav1.GetOptions{}); err == nil {
+			metricsCABundle = cm.Data[occommon.MetricsClientCAKey]
+		}
+	}
+
+	// Return "" when all OpenShift platform settings are at their defaults so
+	// that components without a platform-data-hash annotation are not
+	// unnecessarily re-reconciled on upgrade.
+	if tlsProfile == nil && metricsCABundle == "" {
 		return ""
 	}
-	profile, err := occommon.GetTLSProfileFromAPIServer(context.Background())
-	if err != nil || profile == nil {
-		return ""
-	}
-	h, err := hash.Compute(profile)
+
+	h, err := hash.Compute(struct {
+		TLSProfile      interface{}
+		MetricsCABundle string
+	}{
+		TLSProfile:      tlsProfile,
+		MetricsCABundle: metricsCABundle,
+	})
 	if err != nil {
 		return ""
 	}

@@ -26,6 +26,7 @@ spec:
   endpoints:
     - interval: 10s
       port: metrics
+      honorLabels: true
   jobLabel: app
   namespaceSelector:
     matchNames:
@@ -48,6 +49,7 @@ spec:
   endpoints:
     - interval: 10s
       port: prometheus
+      honorLabels: true
   jobLabel: app
   namespaceSelector:
     matchNames:
