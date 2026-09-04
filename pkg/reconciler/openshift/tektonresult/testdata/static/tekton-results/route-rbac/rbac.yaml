@@ -27,7 +27,7 @@ rules:
   verbs:
   - get
   resourceNames:
-  - tekton-results-api-service
+  - tekton-results-api
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -58,5 +58,5 @@ spec:
   port:
     targetPort: 8080
   tls:
-    termination: edge
+    termination: reencrypt
     insecureEdgeTerminationPolicy: Redirect

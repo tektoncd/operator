@@ -438,3 +438,28 @@ func Test_ValidateTektonConfig_ResultWatcher(t *testing.T) {
 	assert.Assert(t, err != nil)
 	assert.ErrorContains(t, err, "spec.result.watcher.label_selector")
 }
+
+func Test_ValidateTektonConfig_InvalidResultRouteTLSTermination(t *testing.T) {
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "config",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Profile: "all",
+			Pruner:  Prune{Disabled: true},
+			Result: Result{
+				ResultsAPIProperties: ResultsAPIProperties{
+					RouteTLSTermination: "invalid",
+				},
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Assert(t, err != nil)
+	assert.ErrorContains(t, err, "spec.result.route_tls_termination")
+}

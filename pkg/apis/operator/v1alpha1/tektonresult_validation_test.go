@@ -54,6 +54,46 @@ func TestTektonResult_ValidateTargetNamespaceDenylist(t *testing.T) {
 	assert.Equal(t, "invalid value: kube-system: spec.targetNamespace\n'kube-system' is a reserved system namespace and is not allowed", errs.Error())
 }
 
+func TestTektonResult_ValidateRouteTLSTermination(t *testing.T) {
+	tests := []struct {
+		name        string
+		termination string
+		expectError bool
+	}{
+		{name: "valid edge", termination: "edge", expectError: false},
+		{name: "valid reencrypt", termination: "reencrypt", expectError: false},
+		{name: "valid passthrough", termination: "passthrough", expectError: false},
+		{name: "empty is valid", termination: "", expectError: false},
+		{name: "invalid value", termination: "invalid", expectError: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tr := &TektonResult{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "result",
+				},
+				Spec: TektonResultSpec{
+					CommonSpec: CommonSpec{
+						TargetNamespace: "foo",
+					},
+					Result: Result{
+						ResultsAPIProperties: ResultsAPIProperties{
+							RouteTLSTermination: tt.termination,
+						},
+					},
+				},
+			}
+			errs := tr.Validate(context.TODO())
+			if tt.expectError {
+				assert.Assert(t, errs != nil, "expected validation error for termination %q", tt.termination)
+			} else {
+				assert.Assert(t, errs == nil, "unexpected validation error for termination %q: %v", tt.termination, errs)
+			}
+		})
+	}
+}
+
 func TestTektonResultWatcherPerformancePropertiesValidate(t *testing.T) {
 	tr := &TektonResult{
 		ObjectMeta: metav1.ObjectMeta{
