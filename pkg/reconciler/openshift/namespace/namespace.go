@@ -190,6 +190,9 @@ func (ac *reconciler) admissionAllowed(ctx context.Context, req *admissionv1.Adm
 	}
 
 	// Check if the SCC requested in namespace is in line with the maxAllowed SCC in TektonConfig
+	if tc.Spec.Platforms.OpenShift == nil || tc.Spec.Platforms.OpenShift.SCC == nil {
+		return true, nil, nil
+	}
 	maxAllowedSCC := tc.Spec.Platforms.OpenShift.SCC.MaxAllowed
 
 	// If no maxAllowed is set, no problem

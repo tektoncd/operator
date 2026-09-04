@@ -40,16 +40,16 @@ func Test_SetDefaults_OpenShift_MigratesKubernetesPipelinesAsCode(t *testing.T) 
 		Spec: TektonConfigSpec{
 			CommonSpec: CommonSpec{TargetNamespace: "ns"},
 			Platforms: Platforms{
-				Kubernetes: Kubernetes{PipelinesAsCode: kpac},
+				Kubernetes: &Kubernetes{PipelinesAsCode: kpac},
 			},
 		},
 	}
 	tc.SetDefaults(context.TODO())
-	if tc.Spec.Platforms.Kubernetes.PipelinesAsCode != nil {
-		t.Fatalf("expected kubernetes.pipelinesAsCode cleared after migration, got %+v", tc.Spec.Platforms.Kubernetes.PipelinesAsCode)
+	if tc.Spec.Platforms.Kubernetes != nil {
+		t.Fatalf("expected kubernetes platform nil after migration, got %+v", tc.Spec.Platforms.Kubernetes)
 	}
-	if tc.Spec.Platforms.OpenShift.PipelinesAsCode == nil || tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings["application-name"] != "test" {
-		t.Fatalf("expected PAC migrated to openshift, got %+v", tc.Spec.Platforms.OpenShift.PipelinesAsCode)
+	if tc.Spec.Platforms.OpenShift == nil || tc.Spec.Platforms.OpenShift.PipelinesAsCode == nil || tc.Spec.Platforms.OpenShift.PipelinesAsCode.PACSettings.Settings["application-name"] != "test" {
+		t.Fatalf("expected PAC migrated to openshift, got %+v", tc.Spec.Platforms.OpenShift)
 	}
 }
 
@@ -211,7 +211,7 @@ func Test_SetDefaults_PipelineAsCode(t *testing.T) {
 				Spec: TektonConfigSpec{
 					Addon: Addon{EnablePAC: ptr.Bool(false)},
 					Platforms: Platforms{
-						OpenShift: OpenShift{
+						OpenShift: &OpenShift{
 							PipelinesAsCode: &PipelinesAsCode{Enable: ptr.Bool(true)},
 						},
 					},
@@ -227,7 +227,7 @@ func Test_SetDefaults_PipelineAsCode(t *testing.T) {
 				Spec: TektonConfigSpec{
 					Addon: Addon{EnablePAC: ptr.Bool(false)},
 					Platforms: Platforms{
-						Kubernetes: Kubernetes{
+						Kubernetes: &Kubernetes{
 							PipelinesAsCode: &PipelinesAsCode{Enable: ptr.Bool(true)},
 						},
 					},
@@ -319,7 +319,7 @@ func Test_SetDefaults_SCC(t *testing.T) {
 		tektonConfig := TektonConfig{
 			Spec: TektonConfigSpec{
 				Platforms: Platforms{
-					OpenShift: OpenShift{
+					OpenShift: &OpenShift{
 						SCC: test.inputSCC,
 					},
 				},
