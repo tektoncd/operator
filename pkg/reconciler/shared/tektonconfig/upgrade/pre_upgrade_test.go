@@ -798,3 +798,64 @@ func TestRemoveDeprecatedDisableAffinityAssistant(t *testing.T) {
 		}
 	}
 }
+
+func TestMigrateLegacyNamespaceSyncParams(t *testing.T) {
+	ctx := context.TODO()
+	logger := logging.FromContext(ctx).Named("unit-test")
+
+	t.Run("non-openshift platform: no-op", func(t *testing.T) {
+		operatorClient := operatorFake.NewSimpleClientset()
+		err := migrateLegacyNamespaceSyncParams(ctx, logger, nil, operatorClient, nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("no TektonConfig CR: no-op", func(t *testing.T) {
+		t.Setenv("PLATFORM", "openshift")
+		operatorClient := operatorFake.NewSimpleClientset()
+		err := migrateLegacyNamespaceSyncParams(ctx, logger, nil, operatorClient, nil)
+		assert.NoError(t, err)
+	})
+
+	t.Run("no legacy params: no update issued", func(t *testing.T) {
+		t.Setenv("PLATFORM", "openshift")
+		operatorClient := operatorFake.NewSimpleClientset()
+		tc := &v1alpha1.TektonConfig{
+			ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ConfigResourceName},
+		}
+		_, err := operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		err = migrateLegacyNamespaceSyncParams(ctx, logger, nil, operatorClient, nil)
+		assert.NoError(t, err)
+
+		got, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(got.Spec.Params))
+	})
+
+	t.Run("legacy params are migrated and persisted", func(t *testing.T) {
+		t.Setenv("PLATFORM", "openshift")
+		operatorClient := operatorFake.NewSimpleClientset()
+		tc := &v1alpha1.TektonConfig{
+			ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ConfigResourceName},
+			Spec: v1alpha1.TektonConfigSpec{
+				Params: []v1alpha1.Param{
+					{Name: "createRbacResource", Value: "false"},
+				},
+			},
+		}
+		_, err := operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
+		assert.NoError(t, err)
+
+		err = migrateLegacyNamespaceSyncParams(ctx, logger, nil, operatorClient, nil)
+		assert.NoError(t, err)
+
+		got, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(got.Spec.Params))
+		ns := got.Spec.Platforms.OpenShift.NamespaceSync
+		if ns == nil || ns.CreatePipelineSA == nil || *ns.CreatePipelineSA {
+			t.Fatalf("expected namespaceSync.createPipelineSA=false, got %+v", ns)
+		}
+	})
+}
