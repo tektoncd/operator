@@ -101,24 +101,34 @@ func (tc *TektonConfig) Validate(ctx context.Context) (errs *apis.FieldError) {
 		maxAllowedSCC := tc.Spec.Platforms.OpenShift.SCC.MaxAllowed
 		if maxAllowedSCC != "" {
 			// verify maxAllowed SCC exists on the cluster
-			if err := verifySCCExists(ctx, maxAllowedSCC); err != nil {
-				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error verifying SCC exists: %s - %v", maxAllowedSCC, err), "spec.platforms.openshift.scc.maxAllowed"))
+			// we don't want to verify pipelines-scc here as it will be created
+			// later when the RBAC reconciler will be run
+			if maxAllowedSCC != PipelinesSCC {
+				if err := verifySCCExists(ctx, maxAllowedSCC); err != nil {
+					errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error verifying SCC exists: %s - %v", maxAllowedSCC, err), "spec.platforms.openshift.scc.maxAllowed"))
+				}
 			}
 
 			// Check that maxAllowed SCC and default SCC are compatible wrt priority
-			hasPriority, err := compareSCCAMoreRestrictiveThanB(ctx, defaultSCC, maxAllowedSCC)
-			if err != nil {
-				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error comparing priority between maxAllowed and default SCC in TektonConfig: %v", err), "spec.platforms.openshift.scc.maxAllowed"))
-			} else if !hasPriority {
-				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("maxAllowed SCC (%s) must be less restrictive than the default SCC (%s)", maxAllowedSCC, defaultSCC), "spec.platforms.openshift.scc.maxAllowed"))
+			// Skip this check if either is pipelines-scc (will be created later)
+			if defaultSCC != PipelinesSCC && maxAllowedSCC != PipelinesSCC {
+				hasPriority, err := compareSCCAMoreRestrictiveThanB(ctx, defaultSCC, maxAllowedSCC)
+				if err != nil {
+					errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error comparing priority between maxAllowed and default SCC in TektonConfig: %v", err), "spec.platforms.openshift.scc.maxAllowed"))
+				} else if !hasPriority {
+					errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("maxAllowed SCC (%s) must be less restrictive than the default SCC (%s)", maxAllowedSCC, defaultSCC), "spec.platforms.openshift.scc.maxAllowed"))
+				}
 			}
 
 			// Now validate maxAllowed SCC config with namespaces
-			sccErrors, err := compareSCCsWithAllNamespaces(ctx, maxAllowedSCC)
-			if err != nil {
-				errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error comparing priority between maxAllowed and SCCs requested in all namespaces: %v", err), "spec.platforms.openshift.scc.maxAllowed"))
+			// Skip this check if maxAllowed is pipelines-scc (will be created later)
+			if maxAllowedSCC != PipelinesSCC {
+				sccErrors, err := compareSCCsWithAllNamespaces(ctx, maxAllowedSCC)
+				if err != nil {
+					errs = errs.Also(apis.ErrGeneric(fmt.Sprintf("error comparing priority between maxAllowed and SCCs requested in all namespaces: %v", err), "spec.platforms.openshift.scc.maxAllowed"))
+				}
+				errs = errs.Also(sccErrors)
 			}
-			errs = errs.Also(sccErrors)
 		}
 	}
 

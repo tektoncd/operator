@@ -84,6 +84,11 @@ func (tc *TektonConfig) SetDefaults(ctx context.Context) {
 		if tc.Spec.Platforms.OpenShift.SCC.Default == "" {
 			tc.Spec.Platforms.OpenShift.SCC.Default = PipelinesSCC
 		}
+		//Security: Default maxAllowed to match default SCC to prevent privilege escalation
+		// via namespace annotations. Empty maxAllowed previously allowed ANY SCC.
+		if tc.Spec.Platforms.OpenShift.SCC.MaxAllowed == "" {
+			tc.Spec.Platforms.OpenShift.SCC.MaxAllowed = tc.Spec.Platforms.OpenShift.SCC.Default
+		}
 
 		setAddonDefaults(&tc.Spec.Addon)
 	} else {

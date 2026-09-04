@@ -284,14 +284,16 @@ func Test_SetDefaults_SCC(t *testing.T) {
 			name:     "default SCC is set to 'pipelines-scc' when nothing is set",
 			inputSCC: nil,
 			expectedSCC: &SCC{
-				Default: PipelinesSCC,
+				Default:    PipelinesSCC,
+				MaxAllowed: PipelinesSCC,
 			},
 		},
 		{
 			name:     "defaulting works when default SCC is empty",
 			inputSCC: &SCC{},
 			expectedSCC: &SCC{
-				Default: PipelinesSCC,
+				Default:    PipelinesSCC,
+				MaxAllowed: PipelinesSCC,
 			},
 		},
 		{
@@ -310,7 +312,41 @@ func Test_SetDefaults_SCC(t *testing.T) {
 				Default: "alreadyExistingSCC",
 			},
 			expectedSCC: &SCC{
-				Default: "alreadyExistingSCC",
+				Default:    "alreadyExistingSCC",
+				MaxAllowed: "alreadyExistingSCC",
+			},
+		},
+		{
+			name: "maxAllowed defaults to default SCC when only default is set",
+			inputSCC: &SCC{
+				Default:    "custom-scc",
+				MaxAllowed: "",
+			},
+			expectedSCC: &SCC{
+				Default:    "custom-scc",
+				MaxAllowed: "custom-scc",
+			},
+		},
+		{
+			name: "maxAllowed is not overridden when explicitly set",
+			inputSCC: &SCC{
+				Default:    PipelinesSCC,
+				MaxAllowed: "privileged",
+			},
+			expectedSCC: &SCC{
+				Default:    PipelinesSCC,
+				MaxAllowed: "privileged",
+			},
+		},
+		{
+			name: "empty maxAllowed gets defaulted to prevent escalation",
+			inputSCC: &SCC{
+				Default:    PipelinesSCC,
+				MaxAllowed: "",
+			},
+			expectedSCC: &SCC{
+				Default:    PipelinesSCC,
+				MaxAllowed: PipelinesSCC,
 			},
 		},
 	}
