@@ -26,6 +26,7 @@ import (
 	mf "github.com/manifestival/manifestival"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
+	tektonManualApprovalGateinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/manualapprovalgate"
 	tektonChaininformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonchain"
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
@@ -111,6 +112,12 @@ func NewExtensibleController(generator common.ExtensionGenerator) injection.Cont
 			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
 		}); err != nil {
 			logger.Panicf("Couldn't register TektonResult informer event handler: %w", err)
+		}
+		if _, err := tektonManualApprovalGateinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		}); err != nil {
+			logger.Panicf("Couldn't register TektonManualApprovalGate informer event handler: %w", err)
 		}
 
 		if _, err := tektonInstallerinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
