@@ -110,6 +110,9 @@ tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboa
 {{- end -}}
 {{- end -}}
 
+{{/* Image repositories are the ko-published binary slugs from the v0.81.0
+     release assets; the tag follows Chart.AppVersion. If a release renames
+     the slugs, update all three (operator/webhook/proxy-webhook). */}}
 {{- define "tekton-operator.operator-image" -}}
 {{- $tag := default .Chart.AppVersion .Values.operator.image.tag -}}
 {{- $image := "" -}}
@@ -117,10 +120,10 @@ tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboa
   {{- $image = .Values.operator.image.repository }}
 {{- else -}}
 {{- if .Values.openshift.enabled -}}
-  {{- $image = "ghcr.io/tektoncd/operator/operator-1d69a75f22dd094880847eac907fb2c1" -}}
-  {{- else -}}
-  {{- $image = "ghcr.io/tektoncd/operator/operator-303303c315a48490ba6517859ef65b77" -}}
-  {{- end -}}
+{{- $image = "ghcr.io/tektoncd/operator/operator-1d69a75f22dd094880847eac907fb2c1" -}}
+{{- else -}}
+{{- $image = "ghcr.io/tektoncd/operator/operator-303303c315a48490ba6517859ef65b77" -}}
+{{- end -}}
 {{- end -}}
 {{- printf "%s:%s" $image $tag -}}
 {{- end -}}
@@ -140,10 +143,10 @@ tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboa
   {{- $image = .Values.webhook.image.repository }}
 {{- else -}}
 {{- if .Values.openshift.enabled -}}
-  {{- $image = "ghcr.io/tektoncd/operator/webhook-340ad78e88ca5477447aa144fedfe1a1" -}}
-  {{- else -}}
-  {{- $image = "ghcr.io/tektoncd/operator/webhook-f2bb711aa8f0c0892856a4cbf6d9ddd8" -}}
-  {{- end -}}
+{{- $image = "ghcr.io/tektoncd/operator/webhook-340ad78e88ca5477447aa144fedfe1a1" -}}
+{{- else -}}
+{{- $image = "ghcr.io/tektoncd/operator/webhook-f2bb711aa8f0c0892856a4cbf6d9ddd8" -}}
+{{- end -}}
 {{- end -}}
 {{- printf "%s:%s" $image $tag -}}
 {{- end -}}
@@ -163,10 +166,10 @@ tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboa
   {{- $image = .Values.webhookProxy.image.repository }}
 {{- else -}}
 {{- if .Values.openshift.enabled -}}
-  {{- $image = "ghcr.io/tektoncd/operator/proxy-webhook-f8f95c9cea9508fe8915ae3d012d15fb" -}}
-  {{- else -}}
-  {{- $image = "ghcr.io/tektoncd/operator/proxy-webhook-f6167da7bc41b96a27c5529f850e63d1" -}}
-  {{- end -}}
+{{- $image = "ghcr.io/tektoncd/operator/proxy-webhook-f8f95c9cea9508fe8915ae3d012d15fb" -}}
+{{- else -}}
+{{- $image = "ghcr.io/tektoncd/operator/proxy-webhook-f6167da7bc41b96a27c5529f850e63d1" -}}
+{{- end -}}
 {{- end -}}
 {{- printf "%s:%s" $image $tag -}}
 {{- end -}}
