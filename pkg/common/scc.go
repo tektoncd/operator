@@ -25,15 +25,16 @@ import (
 	sccSort "github.com/openshift/apiserver-library-go/pkg/securitycontextconstraints/util/sort"
 	security "github.com/openshift/client-go/security/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
+	//"k8s.io/client-go/rest"
+	"knative.dev/pkg/injection"
 	"knative.dev/pkg/logging"
 )
 
 func GetSecurityClient(ctx context.Context) security.Interface {
-	restConfig, err := rest.InClusterConfig()
-	if err != nil {
-		logging.FromContext(ctx).Panic(err)
-	}
+	restConfig := injection.GetConfig(ctx)
+	//if err != nil {
+	//	logging.FromContext(ctx).Panic(err)
+	//}
 	securityClient, err := security.NewForConfig(restConfig)
 	if err != nil {
 		logging.FromContext(ctx).Panic(err)

@@ -22,6 +22,10 @@ type ManualApprovalGateExpansion interface{}
 
 type OpenShiftPipelinesAsCodeExpansion interface{}
 
+type SharedResourceExpansion interface{}
+
+type ShipwrightBuildExpansion interface{}
+
 type SyncerServiceExpansion interface{}
 
 type TektonAddonExpansion interface{}

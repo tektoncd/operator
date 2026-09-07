@@ -34,6 +34,8 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/tektonconfig/extension"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/hash"
 	pac "github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipelinesascode"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/sharedresource"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/shipwrightbuild"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	nsV1 "k8s.io/client-go/informers/core/v1"
@@ -200,6 +202,36 @@ func (oe openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.Te
 		}
 	}
 
+	// Ensure Shipwright Build CR
+	if shipwrightbuild.IsEnabled(configInstance) {
+		if _, err := shipwrightbuild.CreateOrUpdate(ctx, oe.operatorClientSet.OperatorV1alpha1().ShipwrightBuilds(), configInstance, configInstance.Status.Version); err != nil {
+			message := fmt.Sprintf("ShipwrightBuild: %s", err.Error())
+			configInstance.Status.MarkComponentNotReady(message)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	} else {
+		if err := shipwrightbuild.DeleteIfExists(ctx, oe.operatorClientSet.OperatorV1alpha1().ShipwrightBuilds()); err != nil {
+			message := fmt.Sprintf("ShipwrightBuild: %s", err.Error())
+			configInstance.Status.MarkComponentNotReady(message)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	}
+
+	// Ensure Shared Resource CR
+	if sharedresource.IsEnabled(configInstance) {
+		if _, err := sharedresource.CreateOrUpdate(ctx, oe.operatorClientSet.OperatorV1alpha1().SharedResources(), configInstance, configInstance.Status.Version); err != nil {
+			message := fmt.Sprintf("SharedResource: %s", err.Error())
+			configInstance.Status.MarkComponentNotReady(message)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	} else {
+		if err := sharedresource.DeleteIfExists(ctx, oe.operatorClientSet.OperatorV1alpha1().SharedResources()); err != nil {
+			message := fmt.Sprintf("SharedResource: %s", err.Error())
+			configInstance.Status.MarkComponentNotReady(message)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	}
+
 	// execute console plugin reconciler
 	// TLS config was already resolved and cached in PreReconcile via SetTLSConfig.
 	return oe.consolePluginReconciler.reconcile(ctx, configInstance)
@@ -296,6 +328,18 @@ func (oe openshiftExtension) Finalize(ctx context.Context, comp v1alpha1.TektonC
 	pacSpec := configInstance.Spec.PipelinesAsCodeForCurrentPlatform()
 	if pacSpec != nil && pacSpec.Enable != nil && *pacSpec.Enable {
 		if err := pac.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
+			return err
+		}
+	}
+
+	if shipwrightbuild.IsEnabled(configInstance) {
+		if err := shipwrightbuild.DeleteIfExists(ctx, oe.operatorClientSet.OperatorV1alpha1().ShipwrightBuilds()); err != nil {
+			return err
+		}
+	}
+
+	if sharedresource.IsEnabled(configInstance) {
+		if err := sharedresource.DeleteIfExists(ctx, oe.operatorClientSet.OperatorV1alpha1().SharedResources()); err != nil {
 			return err
 		}
 	}
