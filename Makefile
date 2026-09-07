@@ -56,7 +56,7 @@ $(BIN)/golangci-lint: | $(BIN) ; $(info $(M) getting golangci-lint $(GOLANGCI_VE
 
 ##@ Clean 
 .PHONY: clean-cluster
-clean-cluster: | $(KO) $(KUSTOMIZE) clean-cr; $(info $(M) clean $(TARGET)…) @ ## Cleanup cluster
+clean-cluster: | $(KO) $(KUSTOMIZE) clean-cr; $(info $(M) clean $(TARGET)) @ ## Cleanup cluster
 	@ ## --load-restrictor LoadRestrictionsNone is needed in kustomize build as files which not in child tree of kustomize base are pulled
 	@ ## https://github.com/kubernetes-sigs/kustomize/issues/766
 	-$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/$(TARGET)/overlays/default | $(KO) delete -f -
@@ -126,11 +126,11 @@ generated: | vendor ; $(info $(M) update generated files) ## Update generated fi
 
 ##@ CRD Generation
 .PHONY: generate-crds
-generate-crds: | $(CONTROLLER_GEN) ; $(info $(M) generating CRDs from Go types…) ## Generate CRD manifests from Go types
+generate-crds: | $(CONTROLLER_GEN) ; $(info $(M) generating CRDs from Go types) ## Generate CRD manifests from Go types
 	$Q $(CONTROLLER_GEN) crd:allowDangerousTypes=true paths="./pkg/apis/operator/v1alpha1/..." output:crd:artifacts:config=config/base/generated-crds
 
 .PHONY: sync-helm-crds
-sync-helm-crds: generate-crds ; $(info $(M) syncing CRDs to config and Helm chart…) ## Sync generated CRDs to config/ and Helm chart
+sync-helm-crds: generate-crds ; $(info $(M) syncing CRDs to config and Helm chart) ## Sync generated CRDs to config/ and Helm chart
 	$Q ./hack/sync-helm-crds.sh
 
 .PHONY: vendor

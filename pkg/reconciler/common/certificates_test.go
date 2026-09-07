@@ -17,8 +17,10 @@ limitations under the License.
 package common
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"gotest.tools/v3/assert"
 	corev1 "k8s.io/api/core/v1"
@@ -623,5 +625,28 @@ func TestAddCABundleConfigMapsToVolumesOptional(t *testing.T) {
 				assert.DeepEqual(t, *volume.ConfigMap.Optional, true)
 			}
 		}
+	}
+}
+
+func TestNewCertificateSecret(t *testing.T) {
+	ctx := context.Background()
+	const (
+		serviceName = "my-webhook"
+		secretName  = "my-webhook-cert"
+		namespace   = "tekton-pipelines"
+	)
+
+	secret, err := NewCertificateSecret(ctx, serviceName, secretName, namespace, 365*24*time.Hour)
+	assert.NilError(t, err)
+
+	// The secret carries the requested name and namespace.
+	assert.Equal(t, secret.Name, secretName)
+	assert.Equal(t, secret.Namespace, namespace)
+
+	// The generated keypair is stored under the well-known data keys and is non-empty.
+	for _, key := range []string{ServerKey, ServerCert, CACert} {
+		data, ok := secret.Data[key]
+		assert.Assert(t, ok, "expected secret to contain data key %q", key)
+		assert.Assert(t, len(data) > 0, "expected non-empty data for key %q", key)
 	}
 }

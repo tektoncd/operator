@@ -75,6 +75,18 @@ func TestListReleases(t *testing.T) {
 	version, err = allReleases(&v1alpha1.OpenShiftPipelinesAsCode{})
 	util.AssertEqual(t, err, nil)
 	util.AssertDeepEqual(t, version, expectedPACVersions)
+
+	// Shared Resource (kodata/shared-resource)
+	expectedSharedResourceVersions := []string{"0.2.0", "0.1.0"}
+	version, err = allReleases(&v1alpha1.SharedResource{})
+	util.AssertEqual(t, err, nil)
+	util.AssertDeepEqual(t, version, expectedSharedResourceVersions)
+
+	// Shipwright Build (kodata/shipwright-build)
+	expectedShipwrightBuildVersions := []string{"0.21.0", "0.20.0"}
+	version, err = allReleases(&v1alpha1.ShipwrightBuild{})
+	util.AssertEqual(t, err, nil)
+	util.AssertDeepEqual(t, version, expectedShipwrightBuildVersions)
 }
 
 func TestComponentDir_OpenShiftPipelinesAsCode(t *testing.T) {

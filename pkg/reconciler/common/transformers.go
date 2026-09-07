@@ -58,6 +58,8 @@ const (
 	SyncerServiceImagePrefix        = "IMAGE_SYNCER_SERVICE_WORKLOAD_"
 	ResultsImagePrefix              = "IMAGE_RESULTS_"
 	DashboardImagePrefix            = "IMAGE_DASHBOARD_"
+	ShipwrightBuildImagePrefix = "IMAGE_SHIPWRIGHT_BUILD_"
+	SharedResourceImagePrefix = "IMAGE_SHARED_RESOURCE_"
 
 	DefaultTargetNamespace = "tekton-pipelines"
 
@@ -1379,6 +1381,55 @@ func ReplaceNamespaceInWebhookNamespaceSelector(targetNamespace string) mf.Trans
 				u.Object["webhooks"] = webhooks
 			}
 		}
+		return nil
+	}
+}
+
+// AddContainerArgs returns a transformer that sets command-line arguments on a
+// specific container of a Deployment. It lets a reconciler inject runtime flags
+// (for example the component version or TLS settings passed to the ShipwrightBuild
+// webhook) without editing the shipped manifests. An empty deploymentName matches
+// any Deployment; replace overwrites the existing args instead of appending to them.
+func AddContainerArgs(deploymentName, containerName string, arguments []string, replace bool) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		// Only Deployments carry containers; skip everything else.
+		if u.GetKind() != KindDeployment {
+			return nil
+		}
+		// When a name is given, only touch the matching Deployment.
+		if deploymentName != "" && u.GetName() != deploymentName {
+			return nil
+		}
+
+		deployment := &appsv1.Deployment{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, deployment); err != nil {
+			return err
+		}
+
+		// Locate the target container and apply the arguments to it.
+		containers := deployment.Spec.Template.Spec.Containers
+		found := false
+		for i := range containers {
+			if containers[i].Name == containerName {
+				found = true
+				if replace {
+					containers[i].Args = arguments
+				} else {
+					containers[i].Args = append(containers[i].Args, arguments...)
+				}
+				break
+			}
+		}
+		// Leave the manifest untouched if the container is absent.
+		if !found {
+			return nil
+		}
+
+		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(deployment)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(obj)
 		return nil
 	}
 }
