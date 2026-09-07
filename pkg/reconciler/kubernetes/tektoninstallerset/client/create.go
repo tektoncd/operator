@@ -58,8 +58,11 @@ func (i *InstallerSetClient) create(ctx context.Context, comp v1alpha1.TektonCom
 }
 
 func (i *InstallerSetClient) makeMainSets(ctx context.Context, comp v1alpha1.TektonComponent, manifest *mf.Manifest) ([]v1alpha1.TektonInstallerSet, error) {
-	staticManifest := manifest.Filter(mf.Not(mf.ByKind("Deployment")), mf.Not(mf.ByKind("Service")))
-	deploymentManifest := manifest.Filter(mf.Any(mf.ByKind("Deployment"), mf.ByKind("Service")))
+	// DaemonSets are workloads like Deployments, so they go in the deployment
+	// sub-set (applied after the static set is ready) and are kept out of the
+	// static set.
+	staticManifest := manifest.Filter(mf.Not(mf.ByKind("Deployment")), mf.Not(mf.ByKind("Service")), mf.Not(mf.ByKind("DaemonSet")))
+	deploymentManifest := manifest.Filter(mf.Any(mf.ByKind("Deployment"), mf.ByKind("Service"), mf.ByKind("DaemonSet")))
 	statefulSetManifest := manifest.Filter(mf.Any(mf.ByKind("StatefulSet"), mf.Any(mf.ByKind("Deployment")), mf.ByKind("Service")))
 
 	kind := strings.ToLower(strings.TrimPrefix(i.resourceKind, "Tekton"))

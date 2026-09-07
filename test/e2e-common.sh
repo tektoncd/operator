@@ -26,6 +26,28 @@ set -e
 
 source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
 
+# cert-manager version to install for Kubernetes e2e runs. Override with the
+# CERT_MANAGER_VERSION env var.
+CERT_MANAGER_VERSION=${CERT_MANAGER_VERSION:-"v1.16.5"}
+
+# install_cert_manager installs cert-manager and waits for it to become ready.
+# cert-manager is only installed on Kubernetes; on OpenShift it is skipped since
+# that platform does not rely on it for the e2e suite.
+function install_cert_manager() {
+  echo ">> Installing cert-manager ${CERT_MANAGER_VERSION}"
+  kubectl apply -f "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml" \
+  || fail_test "cert-manager installation failed"
+
+  echo ">> Waiting for cert-manager to be ready"
+  # Wait for the Deployments to report Available so webhook calls do not race the
+  # cert-manager webhook coming up.
+  kubectl wait --for=condition=Available --timeout=300s \
+    deployment/cert-manager deployment/cert-manager-webhook deployment/cert-manager-cainjector \
+    -n cert-manager || fail_test "cert-manager did not become ready"
+
+  wait_until_pods_running cert-manager || fail_test "cert-manager pods did not come up"
+}
+
 function install_operator_resources() {
 
   echo :Payload Targets:
