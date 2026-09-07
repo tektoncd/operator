@@ -94,6 +94,7 @@ func markStatusReady(is *v1alpha1.TektonInstallerSet) {
 	is.Status.MarkClustersScopedResourcesInstalled()
 	is.Status.MarkDeploymentsAvailable()
 	is.Status.MarkStatefulSetReady()
+	is.Status.MarkDaemonSetReady()
 	is.Status.MarkControllerReady()
 	is.Status.MarkWebhookReady()
 	is.Status.MarkAllDeploymentsReady()

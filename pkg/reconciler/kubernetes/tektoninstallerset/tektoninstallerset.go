@@ -188,6 +188,22 @@ func (r *Reconciler) ReconcileKind(ctx context.Context, installerSet *v1alpha1.T
 	installerSet.Status.MarkStatefulSetReady()
 	logger.Debug("StatefulSet resources installed successfully")
 
+	// Install DaemonSet Resources
+	logger.Debug("Installing daemonset resources")
+	err = installer.EnsureDaemonSetResources(ctx)
+	if err != nil {
+		logger.Errorw("DaemonSet resources installation failed", "error", err)
+		installerSet.Status.MarkDaemonSetNotReady(err.Error())
+		// DaemonSet "not ready" is inherently transient (pods starting up on each
+		// node, image pulls, etc.). Use a fixed short requeue like StatefulSet rather
+		// than letting Knative's exponential backoff stretch retry intervals out.
+		return v1alpha1.REQUEUE_EVENT_AFTER
+	}
+
+	// Update Status for DaemonSet Resources
+	installerSet.Status.MarkDaemonSetReady()
+	logger.Debug("DaemonSet resources installed successfully")
+
 	// Check if webhook is ready
 	logger.Debugw("Checking webhook readiness")
 	err = installer.IsWebhookReady()
