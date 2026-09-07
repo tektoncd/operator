@@ -4,16 +4,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.18.0
   creationTimestamp: null
-  name: manualapprovalgates.operator.tekton.dev
+  name: tektonschedulers.operator.tekton.dev
 spec:
   group: operator.tekton.dev
   names:
-    kind: ManualApprovalGate
-    listKind: ManualApprovalGateList
-    plural: manualapprovalgates
-    shortNames:
-    - mag
-    singular: manualapprovalgate
+    kind: TektonScheduler
+    listKind: TektonSchedulerList
+    plural: tektonschedulers
+    singular: tektonscheduler
   scope: Cluster
   versions:
   - additionalPrinterColumns:
@@ -29,7 +27,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ManualApprovalGate is the Schema for the ManualApprovalGate API
+        description: TektonScheduler is the Schema for the TektonScheduler API
         properties:
           apiVersion:
             description: |-
@@ -50,10 +48,37 @@ spec:
             type: object
           spec:
             properties:
-              networkPolicy:
+              config.yaml:
                 description: |-
-                  NetworkPolicy configures NetworkPolicy creation for the controller
-                  and webhook workloads deployed by ManualApprovalGate.
+                  This hold the config data from tekton-kueue. ConfigMap in tekton kueue is loaded as config.yaml so we need to
+                  match the key here
+                properties:
+                  cel:
+                    properties:
+                      expressions:
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  multiKueueOverride:
+                    type: boolean
+                  queueName:
+                    type: string
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+              disabled:
+                description: enable or disable TektonScheduler Component
+                type: boolean
+              multi-cluster-disabled:
+                type: boolean
+              multi-cluster-role:
+                description: |-
+                  MultiClusterRole Define the role of current cluster in multi-cluster environment. The MultiClusterRole
+                  can be one of Hub or Spoke
+                type: string
+              networkPolicy:
+                description: NetworkPolicyConfig configures NetworkPolicy creation
+                  for a Tekton component.
                 properties:
                   disabled:
                     description: |-
@@ -576,9 +601,14 @@ spec:
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
                 type: string
+            required:
+            - config.yaml
+            - disabled
+            - multi-cluster-disabled
+            - multi-cluster-role
             type: object
           status:
-            description: ManualApprovalGateStatus defines the observed state of ManualApprovalGate
+            description: TektonSchedulerStatus defines the observed state of TektonScheduler
             properties:
               annotations:
                 additionalProperties:
@@ -632,8 +662,8 @@ spec:
                   was last processed by the controller.
                 format: int64
                 type: integer
-              tektonInstallerSet:
-                description: The current installer set name for ManualApprovalGate
+              tekton-scheduler:
+                description: The current installer set name for TektonScheduler
                 type: string
               version:
                 description: The version of the installed release
