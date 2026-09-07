@@ -57,7 +57,7 @@ metadata:
     certified: 'false'
     console.openshift.io/plugins: '["pipelines-console-plugin"]'
     containerImage: registry.redhat.io/openshift-pipelines/pipelines-rhel9-operator@
-    createdAt: '2026-08-26T15:37:49Z'
+    createdAt: '2026-09-07T10:58:53Z'
     description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for
       building pipelines using Tekton concepts which run natively on OpenShift and
       Kubernetes.
@@ -71,6 +71,8 @@ metadata:
     features.operators.openshift.io/token-auth-aws: 'false'
     features.operators.openshift.io/token-auth-azure: 'false'
     features.operators.openshift.io/token-auth-gcp: 'false'
+    olm.skipRange: '>=1.6.0 <1.7.0'
+    operators.openshift.io/infrastructure-features: '["disconnected","proxy-aware"]'
     operators.operatorframework.io/builder: operator-sdk-v1.37.0
     operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev",
       "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev",
@@ -84,7 +86,7 @@ metadata:
     operatorframework.io/arch.arm64: supported
     operatorframework.io/arch.ppc64le: supported
     operatorframework.io/arch.s390x: supported
-  name: openshift-pipelines-operator-rh.v1.8.0
+  name: openshift-pipelines-operator-rh.v1.7.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -461,19 +463,19 @@ spec:
     ### Components
 
 
-    - Tekton Pipelines: v1.15.0
+    - Tekton Pipelines: v1.16.0
 
     - Tekton Triggers: v0.37.0
 
     - Pipelines as Code: v0.50.0
 
-    - Tekton Chains: v0.29.2
+    - Tekton Chains: v0.29.3
 
     - Tekton Results (tech-preview): v0.20.0
 
     - Manual Approval Gate (tech-preview): v0.9.0
 
-    - Tekton Pruner: v0.4.1
+    - Tekton Pruner: v0.4.3
 
     - Tekton Scheduler (tech-preview): v0.4.0
 
@@ -1806,4 +1808,4 @@ spec:
     name: IMAGE_PIPELINES_CONSOLE_PLUGIN
   - image: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-pf5-rhel9@
     name: IMAGE_PIPELINES_CONSOLE_PLUGIN_LEGACY
-  version: 1.8.0
+  version: 1.7.0
