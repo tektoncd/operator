@@ -21,6 +21,8 @@ import (
 	openshiftManualApprovalGate "github.com/tektoncd/operator/pkg/reconciler/openshift/manualapprovalgate"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/namespacesync"
 	"github.com/tektoncd/operator/pkg/reconciler/openshift/openshiftpipelinesascode"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift/sharedresource"
+	"github.com/tektoncd/operator/pkg/reconciler/openshift/shipwrightbuild"
 	openshiftSyncerService "github.com/tektoncd/operator/pkg/reconciler/openshift/syncerservice"
 	openshiftAddon "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonaddon"
 	openshiftChain "github.com/tektoncd/operator/pkg/reconciler/openshift/tektonchain"
@@ -100,6 +102,16 @@ var (
 		platform.ControllerNamespaceSync: injection.NamedControllerConstructor{
 			Name:                  string(platform.ControllerNamespaceSync),
 			ControllerConstructor: namespacesync.NewController,
+		},
+		// Register the Shipwright Build and Shared Resource controllers so the
+		// OpenShift operator can reconcile these openshift-builds components.
+		platform.ControllerShipwrightBuild: injection.NamedControllerConstructor{
+			Name:                  string(platform.ControllerShipwrightBuild),
+			ControllerConstructor: shipwrightbuild.NewController,
+		},
+		platform.ControllerSharedResource: injection.NamedControllerConstructor{
+			Name:                  string(platform.ControllerSharedResource),
+			ControllerConstructor: sharedresource.NewController,
 		},
 	}
 )

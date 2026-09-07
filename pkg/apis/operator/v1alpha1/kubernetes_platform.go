@@ -20,4 +20,8 @@ type Kubernetes struct {
 	// PipelinesAsCode allows configuring PipelinesAsCode configurations
 	// +optional
 	PipelinesAsCode *PipelinesAsCode `json:"pipelinesAsCode,omitempty"`
+
+	// ShipwrightBuild holds the customizable options for Shipwright Build component
+	// +optional
+	ShipwrightBuild *ShipwrightBuildConfig `json:"shipwrightBuild,omitempty"`
 }

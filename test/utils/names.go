@@ -36,6 +36,8 @@ type ResourceNames struct {
 	OperatorPodSelectorLabel   string
 	OpenShiftPipelinesAsCode   string
 	ManualApprovalGate         string
+	ShipwrightBuild            string
+	SharedResource             string
 }
 
 func GetResourceNames() ResourceNames {
@@ -52,6 +54,8 @@ func GetResourceNames() ResourceNames {
 		TektonMulticlusterProxyAAE: v1alpha1.MultiClusterProxyAAEResourceName,
 		SyncerService:              v1alpha1.SyncerServiceResourceName,
 		ManualApprovalGate:         v1alpha1.ManualApprovalGates,
+		ShipwrightBuild:            v1alpha1.ShipwrightBuildResourceName,
+		SharedResource:             v1alpha1.SharedResourceResourceName,
 		OpenShiftPipelinesAsCode:   v1alpha1.OpenShiftPipelinesAsCodeName,
 		Namespace:                  "tekton-operator",
 		TargetNamespace:            "tekton-pipelines",

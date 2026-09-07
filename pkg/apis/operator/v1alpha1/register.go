@@ -73,6 +73,12 @@ const (
 
 	// KindSyncerService is the Kind of SyncerService in a GVK context.
 	KindSyncerService = "SyncerService"
+
+	// KindShipwrightBuild is the Kind of ShipwrightBuild in a GVK context.
+	KindShipwrightBuild = "ShipwrightBuild"
+
+	// KindSharedResource is the Kind of SharedResource in a GVK context.
+	KindSharedResource = "SharedResource"
 )
 
 // Resource takes an unqualified resource and returns a Group qualified GroupResource
@@ -114,6 +120,10 @@ func addKnownTypes(s *runtime.Scheme) error {
 		&TektonMulticlusterProxyAAEList{},
 		&SyncerService{},
 		&SyncerServiceList{},
+		&ShipwrightBuild{},
+		&ShipwrightBuildList{},
+		&SharedResource{},
+		&SharedResourceList{},
 	)
 	metav1.AddToGroupVersion(s, SchemeGroupVersion)
 	return nil

@@ -44,7 +44,7 @@ linters:
         - fmt.Fprintln
         - (io.Closer).Close
         - updateConfigMap
-    gomodguard:
+    gomodguard_v2:
       blocked:
         modules:
           - github.com/ghodss/yaml:
