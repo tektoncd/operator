@@ -98,9 +98,9 @@ tekton-operator
 
 {{- define "tekton-operator.controllers" -}}
 {{- if .Values.openshift.enabled -}}
-tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonaddon,tektonresult,openshiftpipelinesascode,manualapprovalgate,tektonpruner,tektonscheduler,tektonmulticlusterproxyaae,syncerservice
+tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonaddon,tektonresult,openshiftpipelinesascode,manualapprovalgate,tektonpruner,tektonkueue,tektonmulticlusterproxyaae,syncerservice,shipwrightbuild,sharedresource
 {{- else -}}
-tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner,tektonscheduler,tektonmulticlusterproxyaae,openshiftpipelinesascode
+tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner,tektonkueue,tektonmulticlusterproxyaae,openshiftpipelinesascode,shipwrightbuild
 {{- end -}}
 {{- end -}}
 
@@ -119,7 +119,7 @@ tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboa
 {{- define "tekton-operator.validateControllers" -}}
 {{- $root := . -}}
 {{- $list := .Values.controllers | default (include "tekton-operator.controllers" .) -}}
-{{- $invalid := list "tektonaddon" "syncerservice" -}}
+{{- $invalid := list "tektonaddon" "syncerservice" "sharedresource" -}}
 {{- if .Values.openshift.enabled -}}
 {{- $invalid = list "tektondashboard" -}}
 {{- end -}}

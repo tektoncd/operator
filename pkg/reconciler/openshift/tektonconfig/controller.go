@@ -22,6 +22,7 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	openshiftpipelinesascodeinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/openshiftpipelinesascode"
+	sharedresourceinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/sharedresource"
 	tektonAddoninformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonaddon"
 	occommon "github.com/tektoncd/operator/pkg/reconciler/openshift/common"
 	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig"
@@ -49,6 +50,16 @@ func NewController(ctx context.Context, cmw configmap.Watcher) *controller.Impl 
 		Handler:    controller.HandleAll(ctrl.EnqueueControllerOf),
 	}); err != nil {
 		logger.Panicf("Couldn't register OpenShiftPipelinesAsCode informer event handler: %w", err)
+	}
+
+	// SharedResource is OpenShift-only. Registering its informer here (rather than in
+	// the shared tektonconfig controller) keeps the Kubernetes operator from importing
+	// and starting an informer for a CRD that is not installed on Kubernetes.
+	if _, err := sharedresourceinformer.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+		FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
+		Handler:    controller.HandleAll(ctrl.EnqueueControllerOf),
+	}); err != nil {
+		logger.Panicf("Couldn't register SharedResource informer event handler: %w", err)
 	}
 
 	// Setup APIServer TLS profile watcher

@@ -60,6 +60,7 @@ type installer struct {
 	namespaceScoped []unstructured.Unstructured
 	deployment      []unstructured.Unstructured
 	statefulset     []unstructured.Unstructured
+	daemonset       []unstructured.Unstructured
 	job             []unstructured.Unstructured
 }
 
@@ -74,6 +75,7 @@ func NewInstaller(manifest *mf.Manifest, mfClient mf.Client, kubeClientSet kuber
 		namespaceScoped: []unstructured.Unstructured{},
 		deployment:      []unstructured.Unstructured{},
 		statefulset:     []unstructured.Unstructured{},
+		daemonset:       []unstructured.Unstructured{},
 		job:             []unstructured.Unstructured{},
 	}
 
@@ -90,6 +92,9 @@ func NewInstaller(manifest *mf.Manifest, mfClient mf.Client, kubeClientSet kuber
 			continue
 		} else if res.GetKind() == "StatefulSet" {
 			installer.statefulset = append(installer.statefulset, res)
+			continue
+		} else if res.GetKind() == "DaemonSet" {
+			installer.daemonset = append(installer.daemonset, res)
 			continue
 		} else if res.GetKind() == "Job" {
 			installer.job = append(installer.job, res)
@@ -472,6 +477,18 @@ func (i *installer) EnsureStatefulSetResources(ctx context.Context) error {
 	return nil
 }
 
+func (i *installer) EnsureDaemonSetResources(ctx context.Context) error {
+	for _, d := range i.daemonset {
+		if err := i.ensureResource(ctx, &d); err != nil {
+			return err
+		}
+		if err := i.isDaemonSetAvailable(&d); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (i *installer) EnsureDeploymentResources(ctx context.Context) error {
 	for _, d := range i.deployment {
 		if err := i.ensureResource(ctx, &d); err != nil {
@@ -488,7 +505,7 @@ func (i *installer) EnsureJobResources(installerSetName string) error {
 // list of fields should be reconciled
 func (i *installer) resourceReconcileFields(u *unstructured.Unstructured) []string {
 	switch u.GetKind() {
-	case "Deployment", "StatefulSet":
+	case "Deployment", "StatefulSet", "DaemonSet":
 		return []string{
 			annotationsPath,
 			labelsPath,
@@ -934,6 +951,25 @@ func (i *installer) isStatefulSetAvailable(sfs *unstructured.Unstructured) error
 	return nil
 }
 
+func (i *installer) isDaemonSetAvailable(ds *unstructured.Unstructured) error {
+	resource, err := i.mfClient.Get(ds)
+	if err != nil {
+		return err
+	}
+
+	daemonSet := &appsv1.DaemonSet{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, daemonSet)
+	if err != nil {
+		return err
+	}
+
+	if !isDaemonSetReady(daemonSet) {
+		i.logger.Infof("daemonset %v not ready, returning will retry!", daemonSet.GetName())
+		return fmt.Errorf("%s daemonset is not ready", daemonSet.GetName())
+	}
+	return nil
+}
+
 func (i *installer) isDeploymentReady(d *unstructured.Unstructured) error {
 	resource, err := i.mfClient.Get(d)
 	if err != nil {
@@ -990,6 +1026,21 @@ func isStatefulSetReady(sfs *appsv1.StatefulSet) bool {
 	return false
 }
 
+// isDaemonSetReady reports whether the DaemonSet has finished rolling out: every
+// node that should run a pod has an updated pod that is available. DaemonSets have
+// no replica count, so readiness is derived from the desired/available scheduling
+// status instead.
+func isDaemonSetReady(ds *appsv1.DaemonSet) bool {
+	status := ds.Status
+	// A freshly created DaemonSet may not have its status populated yet; treat
+	// desiredNumberScheduled == 0 with no updates observed as not-ready.
+	if status.ObservedGeneration < ds.Generation {
+		return false
+	}
+	return status.DesiredNumberScheduled == status.NumberAvailable &&
+		status.UpdatedNumberScheduled == status.DesiredNumberScheduled
+}
+
 func isJobCompleted(d *batchv1.Job) bool {
 	for _, c := range d.Status.Conditions {
 		if c.Type == batchv1.JobComplete && c.Status == corev1.ConditionTrue {
@@ -1014,6 +1065,9 @@ func (i *installer) DeleteResources() error {
 		return err
 	}
 	if err := i.delete(i.deployment); err != nil {
+		return err
+	}
+	if err := i.delete(i.daemonset); err != nil {
 		return err
 	}
 	return nil

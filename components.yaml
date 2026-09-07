@@ -31,3 +31,13 @@ syncer-service:
 triggers:
   github: tektoncd/triggers
   version: v0.38.0
+shipwright-build:
+  github: shipwright-io/build
+  version: v0.21.10
+  openshift:
+    - github: redhat-openshift-builds/strategies
+      version: v0.21.0
+      files: [strategies.yaml]
+shared-resource:
+  github: openshift/csi-driver-shared-resource
+  version: v0.4.9

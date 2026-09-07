@@ -1,0 +1,7 @@
+# Test fixture for allReleases(); only the version directory needs to exist.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shipwright-build
+data:
+  version: 0.20.0

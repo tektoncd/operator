@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorclient "github.com/tektoncd/operator/pkg/client/injection/client"
 	tektonManualApprovalGateinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/manualapprovalgate"
+	"github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/shipwrightbuild"
 	tektonChaininformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonchain"
 	tektonConfiginformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektonconfig"
 	tektonInstallerinformer "github.com/tektoncd/operator/pkg/client/injection/informers/operator/v1alpha1/tektoninstallerset"
@@ -126,6 +127,17 @@ func NewExtensibleController(generator common.ExtensionGenerator) injection.Cont
 		}); err != nil {
 			logger.Panicf("Couldn't register TektonInstallerSet informer event handler: %w", err)
 		}
+
+		if _, err := shipwrightbuild.Get(ctx).Informer().AddEventHandler(cache.FilteringResourceEventHandler{
+			FilterFunc: controller.FilterController(&v1alpha1.TektonConfig{}),
+			Handler:    controller.HandleAll(impl.EnqueueControllerOf),
+		}); err != nil {
+			logger.Panicf("Couldn't register ShipwrightBuild informer event handler: %w", err)
+		}
+
+		// SharedResource is OpenShift-only; its informer event handler is registered
+		// in the OpenShift tektonconfig controller so the Kubernetes operator never
+		// imports/starts the SharedResource informer (its CRD is not installed there).
 
 		if _, err := namespaceinformer.Get(ctx).Informer().AddEventHandler(controller.HandleAll(enqueueCustomName(impl, v1alpha1.ConfigResourceName))); err != nil {
 			logger.Panicf("Couldn't register Namespace informer event handler: %w", err)
