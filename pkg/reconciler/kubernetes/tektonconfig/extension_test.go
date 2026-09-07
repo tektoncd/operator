@@ -25,6 +25,7 @@ import (
 	"gotest.tools/v3/assert"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func TestPostReconcilePipelinesAsCode(t *testing.T) {
@@ -70,4 +71,84 @@ func TestPostReconcilePipelinesAsCode(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestPostReconcileShipwrightBuild verifies that PostReconcile creates the
+// ShipwrightBuild CR when it is enabled in the Kubernetes platform spec, and
+// deletes it (via DeleteIfExists) when it is disabled or the block is absent.
+func TestPostReconcileShipwrightBuild(t *testing.T) {
+	tests := []struct {
+		name        string
+		shipwright  *v1alpha1.ShipwrightBuildConfig
+		preexisting bool
+		wantCR      bool
+	}{
+		{name: "enabled creates CR", shipwright: &v1alpha1.ShipwrightBuildConfig{Enabled: true}, wantCR: true},
+		{name: "disabled removes existing CR", shipwright: &v1alpha1.ShipwrightBuildConfig{Enabled: false}, preexisting: true, wantCR: false},
+		{name: "absent block removes existing CR", shipwright: nil, preexisting: true, wantCR: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			var seed []runtime.Object
+			if tt.preexisting {
+				seed = append(seed, &v1alpha1.ShipwrightBuild{
+					ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ShipwrightBuildResourceName},
+				})
+			}
+			client := fake.NewSimpleClientset(seed...)
+			ke := kubernetesExtension{operatorClientSet: client}
+			config := &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ConfigResourceName},
+				Spec: v1alpha1.TektonConfigSpec{
+					Profile: v1alpha1.ProfileBasic,
+					CommonSpec: v1alpha1.CommonSpec{
+						TargetNamespace: "tekton-pipelines",
+					},
+					Platforms: v1alpha1.Platforms{
+						Kubernetes: &v1alpha1.Kubernetes{
+							ShipwrightBuild: tt.shipwright,
+						},
+					},
+				},
+			}
+
+			// Creating the CR requeues until it is ready; only the resulting CR state matters.
+			_ = ke.PostReconcile(ctx, config)
+
+			_, err := client.OperatorV1alpha1().ShipwrightBuilds().Get(ctx, v1alpha1.ShipwrightBuildResourceName, metav1.GetOptions{})
+			if tt.wantCR {
+				assert.NilError(t, err)
+			} else {
+				assert.Assert(t, apierrs.IsNotFound(err), "unexpected ShipwrightBuild: %v", err)
+			}
+		})
+	}
+}
+
+// TestFinalizeShipwrightBuild verifies that Finalize removes the ShipwrightBuild
+// CR when it is enabled (non-All profile path).
+func TestFinalizeShipwrightBuild(t *testing.T) {
+	ctx := context.Background()
+	client := fake.NewSimpleClientset(&v1alpha1.ShipwrightBuild{
+		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ShipwrightBuildResourceName},
+	})
+	ke := kubernetesExtension{operatorClientSet: client}
+	config := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ConfigResourceName},
+		Spec: v1alpha1.TektonConfigSpec{
+			Profile: v1alpha1.ProfileBasic,
+			Platforms: v1alpha1.Platforms{
+				Kubernetes: &v1alpha1.Kubernetes{
+					ShipwrightBuild: &v1alpha1.ShipwrightBuildConfig{Enabled: true},
+				},
+			},
+		},
+	}
+
+	// Deleting the CR requeues; only the resulting (absent) CR state matters.
+	_ = ke.Finalize(ctx, config)
+
+	_, err := client.OperatorV1alpha1().ShipwrightBuilds().Get(ctx, v1alpha1.ShipwrightBuildResourceName, metav1.GetOptions{})
+	assert.Assert(t, apierrs.IsNotFound(err), "expected ShipwrightBuild to be deleted, got %v", err)
 }

@@ -461,6 +461,70 @@ func TearDownSyncerService(clients *Clients, name string) {
 	}
 }
 
+// TearDownShipwrightBuild will delete created ShipwrightBuild CRs using clients.
+func TearDownShipwrightBuild(clients *Clients, name string) {
+	ctx := context.Background()
+	if clients == nil || clients.Operator == nil {
+		return
+	}
+
+	sb, err := clients.ShipwrightBuild().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			fmt.Printf("error trying to get ShipwrightBuild instance during teardown, name: %s, error: %v", name, err)
+		}
+		return
+	}
+	targetNamespace := sb.Spec.TargetNamespace
+
+	err = clients.ShipwrightBuild().Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		fmt.Printf("error trying to delete ShipwrightBuild during teardown, name: %s, error: %v", name, err)
+		return
+	}
+	crdf := newCRDeleteVerifier(ctx, func(ctx context.Context) error {
+		_, err := clients.ShipwrightBuild().Get(ctx, name, metav1.GetOptions{})
+		return err
+	})
+	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, ShipwrightBuildDeploymentLabel)
+	err = waitUntilFullDeletion(crdf, ddf)
+	if err != nil {
+		fmt.Printf("error waiting from tearDown of ShipwrightBuild resource, name: %s, error: %v", name, err)
+	}
+}
+
+// TearDownSharedResource will delete created SharedResource CRs using clients.
+func TearDownSharedResource(clients *Clients, name string) {
+	ctx := context.Background()
+	if clients == nil || clients.Operator == nil {
+		return
+	}
+
+	sr, err := clients.SharedResource().Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			fmt.Printf("error trying to get SharedResource instance during teardown, name: %s, error: %v", name, err)
+		}
+		return
+	}
+	targetNamespace := sr.Spec.TargetNamespace
+
+	err = clients.SharedResource().Delete(ctx, name, metav1.DeleteOptions{})
+	if err != nil {
+		fmt.Printf("error trying to delete SharedResource during teardown, name: %s, error: %v", name, err)
+		return
+	}
+	crdf := newCRDeleteVerifier(ctx, func(ctx context.Context) error {
+		_, err := clients.SharedResource().Get(ctx, name, metav1.GetOptions{})
+		return err
+	})
+	ddf := newDeploymentDeleteVerifier(ctx, clients, targetNamespace, SharedResourceDeploymentLabel)
+	err = waitUntilFullDeletion(crdf, ddf)
+	if err != nil {
+		fmt.Printf("error waiting from tearDown of SharedResource resource, name: %s, error: %v", name, err)
+	}
+}
+
 func newCRDeleteVerifier(ctx context.Context, f crGetFunc) crDeleteVerifier {
 	return func() (bool, error) {
 		err := f(ctx)

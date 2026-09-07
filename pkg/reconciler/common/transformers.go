@@ -58,6 +58,8 @@ const (
 	SyncerServiceImagePrefix        = "IMAGE_SYNCER_SERVICE_WORKLOAD_"
 	ResultsImagePrefix              = "IMAGE_RESULTS_"
 	DashboardImagePrefix            = "IMAGE_DASHBOARD_"
+	ShipwrightBuildImagePrefix      = "IMAGE_SHIPWRIGHT_BUILD_"
+	SharedResourceImagePrefix       = "IMAGE_SHARED_RESOURCE_"
 
 	DefaultTargetNamespace = "tekton-pipelines"
 
@@ -323,6 +325,71 @@ func JobImages(images map[string]string) mf.Transformer {
 	}
 }
 
+// DaemonSetImages replaces container and args images.
+func DaemonSetImages(images map[string]string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "DaemonSet" {
+			return nil
+		}
+
+		ds := &appsv1.DaemonSet{}
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, ds)
+		if err != nil {
+			return err
+		}
+
+		containers := ds.Spec.Template.Spec.Containers
+		replaceContainerImages(containers, images)
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ds)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
+// EnvImages replaces image references carried in the environment
+// variables of a Deployment's containers (and init containers). Unlike
+// DeploymentImages — which rewrites the container image and CLI args — this
+// targets images delivered through env vars: an env var whose name maps to an
+// entry in images (keyed with EnvPrefix, e.g. IMAGE_<COMPONENT>_SIDECAR_IMAGE)
+// is set to that image; otherwise image-like env vars have just their registry
+// domain rewritten via TEKTON_REGISTRY_OVERRIDE. It is a separate, opt-in
+// transformer so components only apply it when they ship an image through an env
+// var.
+func EnvImages(images map[string]string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "Deployment" {
+			return nil
+		}
+
+		d := &appsv1.Deployment{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, d); err != nil {
+			return err
+		}
+
+		containers := d.Spec.Template.Spec.Containers
+		for i := range containers {
+			replaceContainersEnvImage(&containers[i], images)
+		}
+		initContainers := d.Spec.Template.Spec.InitContainers
+		for i := range initContainers {
+			replaceContainersEnvImage(&initContainers[i], images)
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(d)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+
+		return nil
+	}
+}
+
 func replaceContainerImages(containers []corev1.Container, images map[string]string) {
 	registry := os.Getenv(ImageRegistryOverride)
 	for i, container := range containers {
@@ -334,6 +401,29 @@ func replaceContainerImages(containers []corev1.Container, images map[string]str
 		}
 
 		replaceContainersArgsImage(&container, images, registry)
+	}
+}
+
+// replaceContainersEnvImage replaces image references passed as container
+// environment variables. An env var whose name maps to an entry in images
+// (keyed with EnvPrefix, e.g. IMAGE_<COMPONENT>_ENV_SIDECAR_IMAGE) is set to
+// that image. Otherwise, env vars whose name looks like an image (its key
+// contains "_image") have just their registry domain rewritten, so
+// TEKTON_REGISTRY_OVERRIDE alone also applies to env-based images and not only
+// to container.Image. Env vars sourced from ValueFrom carry no literal image
+// and are skipped.
+func replaceContainersEnvImage(container *corev1.Container, images map[string]string) {
+	registry := os.Getenv(ImageRegistryOverride)
+	for e := range container.Env {
+		if container.Env[e].ValueFrom != nil {
+			continue
+		}
+		key := formKey("", container.Env[e].Name)
+		if url, exist := images[key]; exist {
+			container.Env[e].Value = url
+		} else if strings.Contains(key, "_image") {
+			container.Env[e].Value = overrideImageRegistry(registry, container.Env[e].Value)
+		}
 	}
 }
 
@@ -1403,6 +1493,55 @@ func ReplaceNamespaceInWebhookNamespaceSelector(targetNamespace string) mf.Trans
 				u.Object["webhooks"] = webhooks
 			}
 		}
+		return nil
+	}
+}
+
+// AddContainerArgs returns a transformer that sets command-line arguments on a
+// specific container of a Deployment. It lets a reconciler inject runtime flags
+// (for example the component version or TLS settings passed to the ShipwrightBuild
+// webhook) without editing the shipped manifests. An empty deploymentName matches
+// any Deployment; replace overwrites the existing args instead of appending to them.
+func AddContainerArgs(deploymentName, containerName string, arguments []string, replace bool) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		// Only Deployments carry containers; skip everything else.
+		if u.GetKind() != KindDeployment {
+			return nil
+		}
+		// When a name is given, only touch the matching Deployment.
+		if deploymentName != "" && u.GetName() != deploymentName {
+			return nil
+		}
+
+		deployment := &appsv1.Deployment{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, deployment); err != nil {
+			return err
+		}
+
+		// Locate the target container and apply the arguments to it.
+		containers := deployment.Spec.Template.Spec.Containers
+		found := false
+		for i := range containers {
+			if containers[i].Name == containerName {
+				found = true
+				if replace {
+					containers[i].Args = arguments
+				} else {
+					containers[i].Args = append(containers[i].Args, arguments...)
+				}
+				break
+			}
+		}
+		// Leave the manifest untouched if the container is absent.
+		if !found {
+			return nil
+		}
+
+		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(deployment)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(obj)
 		return nil
 	}
 }

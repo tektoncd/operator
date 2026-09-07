@@ -437,3 +437,36 @@ rules:
   - deletecollection
   - patch
   - watch
+# Permission for managing Shipwright Build Strategies
+- apiGroups:
+    - shipwright.io
+  resources:
+    - clusterbuildstrategies
+    - buildstrategies
+  verbs:
+    - delete
+    - deletecollection
+    - create
+    - patch
+    - get
+    - list
+    - update
+# Cert-Manager resource permission to manage certificates
+- apiGroups:
+    - cert-manager.io
+  resources:
+    - certificates
+    - certificates/status
+    - issuers
+    - issuers/status
+    - clusterissuers
+    - clusterissuers/status
+    - certificaterequests
+    - certificaterequests/status
+  verbs:
+    - get
+    - list
+    - create
+    - update
+    - patch
+    - delete

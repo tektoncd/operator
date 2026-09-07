@@ -216,3 +216,19 @@ func (c *Clients) SyncerServices() operatorv1alpha1.SyncerServiceInterface {
 func (c *Clients) SyncerServicesAll() operatorv1alpha1.SyncerServiceInterface {
 	return c.Operator.SyncerServices()
 }
+
+func (c *Clients) ShipwrightBuild() operatorv1alpha1.ShipwrightBuildInterface {
+	return c.Operator.ShipwrightBuilds()
+}
+
+func (c *Clients) ShipwrightBuildAll() operatorv1alpha1.ShipwrightBuildInterface {
+	return c.Operator.ShipwrightBuilds()
+}
+
+func (c *Clients) SharedResource() operatorv1alpha1.SharedResourceInterface {
+	return c.Operator.SharedResources()
+}
+
+func (c *Clients) SharedResourceAll() operatorv1alpha1.SharedResourceInterface {
+	return c.Operator.SharedResources()
+}

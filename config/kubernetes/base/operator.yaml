@@ -33,7 +33,7 @@ spec:
         image: ko://github.com/tektoncd/operator/cmd/kubernetes/operator
         args:
         - "-controllers"
-        - "tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner,tektonkueue,tektonmulticlusterproxyaae,openshiftpipelinesascode"
+        - "tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner,tektonkueue,tektonmulticlusterproxyaae,openshiftpipelinesascode,shipwrightbuild"
         - "-unique-process-name"
         - "tekton-operator-lifecycle"
         imagePullPolicy: IfNotPresent

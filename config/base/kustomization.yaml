@@ -35,6 +35,8 @@ resources:
 # Generated CRDs
 - generated-crds/operator.tekton.dev_manualapprovalgates.yaml
 - generated-crds/operator.tekton.dev_openshiftpipelinesascodes.yaml
+- generated-crds/operator.tekton.dev_sharedresources.yaml
+- generated-crds/operator.tekton.dev_shipwrightbuilds.yaml
 - generated-crds/operator.tekton.dev_syncerservices.yaml
 - generated-crds/operator.tekton.dev_tektonchains.yaml
 - generated-crds/operator.tekton.dev_tektonconfigs.yaml
