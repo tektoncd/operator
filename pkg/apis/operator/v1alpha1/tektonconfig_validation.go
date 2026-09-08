@@ -216,6 +216,17 @@ func isOpenShiftPlatformsSectionSet(o OpenShift) bool {
 
 func (ns *NamespaceSyncConfig) validate(path string) *apis.FieldError {
 	var errs *apis.FieldError
+
+	// Validate namespaceSelector is a well-formed label selector.
+	if ns.NamespaceSelector != nil {
+		if _, err := metav1.LabelSelectorAsSelector(ns.NamespaceSelector); err != nil {
+			errs = errs.Also(apis.ErrGeneric(
+				fmt.Sprintf("invalid label selector: %v", err),
+				path+".namespaceSelector",
+			))
+		}
+	}
+
 	for i, b := range ns.SecretBindings {
 		errs = errs.Also(b.validate(fmt.Sprintf("%s.secretBindings[%d]", path, i)))
 	}
@@ -230,6 +241,16 @@ func (b SecretBinding) validate(path string) *apis.FieldError {
 	}
 	if !hasLabel && !hasName {
 		return apis.ErrMissingOneOf(path+".labelSelector", path+".secretName")
+	}
+
+	// Validate the label selector is well-formed when present.
+	if hasLabel {
+		if _, err := metav1.LabelSelectorAsSelector(b.LabelSelector); err != nil {
+			return apis.ErrGeneric(
+				fmt.Sprintf("invalid label selector: %v", err),
+				path+".labelSelector",
+			)
+		}
 	}
 	return nil
 }

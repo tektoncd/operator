@@ -660,8 +660,8 @@ spec:
         createCABundles: true           # inject CA bundle ConfigMaps
 
         # Optional: restrict which namespaces are synced.
-        # Omit entirely to sync all non-system namespaces (default).
-        # Set to {} to opt out all namespaces without changing the flags above.
+        # Omit entirely (or set to {}) to sync all non-system namespaces (default).
+        # Use matchLabels/matchExpressions to restrict to a subset.
         namespaceSelector:
           matchLabels:
             pipelines.openshift.io/sync: "true"
@@ -711,12 +711,17 @@ spec:
 ```
 
 To disable sync for **all** namespaces while keeping the feature flags intact,
-set an empty selector:
+set all individual flags to `false`:
 
 ```yaml
 namespaceSync:
-  namespaceSelector: {}   # matches nothing → no namespace is synced
+  createPipelineSA: false
+  createCABundles: false
+  createEditRoleBinding: false
+  createSCCRoleBinding: false
 ```
+
+Or remove the `namespaceSync` field entirely to fall back to operator defaults.
 
 #### Quay Bridge secret auto-binding
 
