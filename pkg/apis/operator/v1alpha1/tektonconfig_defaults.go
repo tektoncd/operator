@@ -36,6 +36,8 @@ func (spec *TektonConfigSpec) MigrateScheduler() bool {
 	}
 	spec.Scheduler = Scheduler{}
 	return true
+}
+
 // migrateNamespaceSyncParams reads the legacy stringly-typed spec.params entries
 // (createRbacResource, createCABundleConfigMaps, legacyPipelineRbac) and populates
 // the equivalent typed fields in spec.platforms.openshift.namespaceSync, then removes

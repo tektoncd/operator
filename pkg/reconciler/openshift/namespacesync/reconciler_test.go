@@ -18,6 +18,8 @@ package namespacesync
 
 import (
 	"context"
+	"fmt"
+	"sort"
 	"testing"
 
 	securityv1 "github.com/openshift/api/security/v1"
@@ -30,8 +32,10 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	kubeinformers "k8s.io/client-go/informers"
 	kubefake "k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 )
 
 func boolPtr(b bool) *bool { return &b }
@@ -232,13 +236,19 @@ func TestNamespaceMatchesSelector_NilSelectorMatchesAll(t *testing.T) {
 	assert.Equal(t, true, namespaceMatchesSelector(ns, cfg))
 }
 
-// An explicit-but-empty selector ({}) must match no namespace, per its
-// documented behaviour, even though metav1.LabelSelectorAsSelector on its own
-// would treat it as "match everything".
-func TestNamespaceMatchesSelector_EmptySelectorMatchesNone(t *testing.T) {
+// An explicit-but-empty selector ({}) must match ALL namespaces, consistent
+// with standard Kubernetes label-selector semantics.
+func TestNamespaceMatchesSelector_EmptySelectorMatchesAll(t *testing.T) {
 	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "my-ns", Labels: map[string]string{"team": "a"}}}
 	cfg := &v1alpha1.NamespaceSyncConfig{NamespaceSelector: &metav1.LabelSelector{}}
-	assert.Equal(t, false, namespaceMatchesSelector(ns, cfg))
+	assert.Equal(t, true, namespaceMatchesSelector(ns, cfg))
+}
+
+// An empty selector must also match a namespace with no labels (matches-all means matches-all).
+func TestNamespaceMatchesSelector_EmptySelectorMatchesUnlabelledNamespace(t *testing.T) {
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "my-ns"}}
+	cfg := &v1alpha1.NamespaceSyncConfig{NamespaceSelector: &metav1.LabelSelector{}}
+	assert.Equal(t, true, namespaceMatchesSelector(ns, cfg))
 }
 
 func TestNamespaceMatchesSelector_MatchLabelsMatches(t *testing.T) {
@@ -517,6 +527,81 @@ func TestEnsureSecretBindings_ByName_SkipsWhenSecretAbsent(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, 0, len(sa.ImagePullSecrets))
 	assert.Equal(t, 0, len(sa.Secrets))
+}
+
+func TestEnsureSecretBindings_RetriesOnConflictPreservesConcurrentSecrets(t *testing.T) {
+	tc := minimalTC(&v1alpha1.NamespaceSyncConfig{
+		CreatePipelineSA: boolPtr(false),
+		SecretBindings:   []v1alpha1.SecretBinding{{SecretName: "quay-robot"}},
+	})
+	ns := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "my-ns"}}
+	r, kubeClient := newTestReconciler(t, tc, []corev1.Namespace{ns})
+
+	_, err := kubeClient.CoreV1().ServiceAccounts("my-ns").Create(context.Background(), &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelineSA, Namespace: "my-ns"},
+	}, metav1.CreateOptions{})
+	assert.NilError(t, err)
+	_, err = kubeClient.CoreV1().Secrets("my-ns").Create(context.Background(), &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "quay-robot", Namespace: "my-ns"},
+	}, metav1.CreateOptions{})
+	assert.NilError(t, err)
+
+	updateAttempts := 0
+	kubeClient.PrependReactor("update", "serviceaccounts", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		updateAction, ok := action.(k8stesting.UpdateAction)
+		if !ok {
+			return false, nil, nil
+		}
+		sa := updateAction.GetObject().(*corev1.ServiceAccount)
+		updateAttempts++
+		if updateAttempts != 1 {
+			return false, nil, nil
+		}
+
+		// Simulate OpenShift's registry controller (or oc secrets link) winning
+		// the race: its dockercfg binding is persisted even though our update
+		// fails with a conflict.
+		gvr := corev1.SchemeGroupVersion.WithResource("serviceaccounts")
+		obj, getErr := kubeClient.Tracker().Get(gvr, sa.Namespace, sa.Name)
+		if getErr != nil {
+			return true, nil, getErr
+		}
+		concurrent := obj.(*corev1.ServiceAccount).DeepCopy()
+		concurrent.ImagePullSecrets = append(concurrent.ImagePullSecrets, corev1.LocalObjectReference{Name: "pipeline-dockercfg-abcde"})
+		concurrent.Secrets = append(concurrent.Secrets, corev1.ObjectReference{Name: "pipeline-dockercfg-abcde"})
+		concurrent.ResourceVersion = "2"
+		if updateErr := kubeClient.Tracker().Update(gvr, concurrent, sa.Namespace); updateErr != nil {
+			return true, nil, updateErr
+		}
+		return true, nil, errors.NewConflict(corev1.Resource("serviceaccounts"), sa.Name, fmt.Errorf("simulated concurrent update"))
+	})
+
+	err = r.Reconcile(context.Background(), "my-ns")
+	assert.NilError(t, err)
+	assert.Equal(t, 2, updateAttempts)
+
+	sa, err := kubeClient.CoreV1().ServiceAccounts("my-ns").Get(context.Background(), pipelineSA, metav1.GetOptions{})
+	assert.NilError(t, err)
+	assert.DeepEqual(t, []string{"pipeline-dockercfg-abcde", "quay-robot"}, sortedSecretRefNames(sa.ImagePullSecrets))
+	assert.DeepEqual(t, []string{"pipeline-dockercfg-abcde", "quay-robot"}, sortedObjectRefNames(sa.Secrets))
+}
+
+func sortedSecretRefNames(refs []corev1.LocalObjectReference) []string {
+	names := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		names = append(names, ref.Name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func sortedObjectRefNames(refs []corev1.ObjectReference) []string {
+	names := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		names = append(names, ref.Name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 func TestEnsureSecretBindings_Idempotent(t *testing.T) {

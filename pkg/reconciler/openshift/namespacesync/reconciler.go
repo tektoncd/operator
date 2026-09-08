@@ -621,102 +621,65 @@ func (r *Reconciler) ensureCABundles(ctx context.Context, ns *corev1.Namespace) 
 
 // ensureSecretBindings reconciles secret bindings on the pipeline SA:
 //   - Adds secrets that match a binding rule and currently exist in the namespace.
-//   - Removes secrets that were managed by a named binding but whose Secret was deleted.
-//   - Removes secrets whose binding rule was changed or removed entirely from
-//     spec.platforms.openshift.namespaceSync.secretBindings, by comparing against
-//     the set of secret names this controller managed on the previous reconcile
-//     (persisted in managedSecretBindingsAnnotation on the SA itself).
-//   - Label-based bindings are cleaned up the same way: if a secret that used
-//     to match a labelSelector stops matching it (deleted, or its label is
-//     removed/changed) the reference is dropped on the next reconcile that
-//     re-evaluates that binding, because the previous reconcile's match is
-//     remembered via managedSecretBindingsAnnotation even though the binding
-//     rule itself never changed. This relies on that namespace actually being
-//     re-reconciled after the secret's labels change — see the Secret
-//     informer's UpdateFunc in controller.go.
+//   - Removes secrets that were managed by a named binding but whose Secret was
+//     deleted, relabelled, or whose binding rule was changed or removed entirely
+//     from spec.platforms.openshift.namespaceSync.secretBindings.
+//
+// The set of names this controller is responsible for is persisted in
+// managedSecretBindingsAnnotation on the SA, so a later reconcile can detect
+// that a rule — or a labelSelector match — went away even when the current
+// spec no longer mentions that name. See the Secret informer's UpdateFunc in
+// controller.go for how label changes trigger re-reconciliation.
 func (r *Reconciler) ensureSecretBindings(ctx context.Context, ns *corev1.Namespace, bindings []v1alpha1.SecretBinding) error {
 	logger := logging.FromContext(ctx)
 
-	sa, err := r.kubeClient.CoreV1().ServiceAccounts(ns.Name).Get(ctx, pipelineSA, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
-		// pipeline SA not yet created — SA watch will re-trigger this reconcile.
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
+	// resolveSecretBindingTargets depends only on TektonConfig bindings and
+	// live Secrets; it does not touch the SA, so it can safely live outside
+	// the retry loop.
 	expected, currentlyManaged, err := r.resolveSecretBindingTargets(ctx, ns.Name, bindings)
 	if err != nil {
 		return err
 	}
-
-	// A name is stale — and must be dropped from the SA — if this controller
-	// has managed it before (now, or on a previous reconcile per
-	// managedSecretBindingsAnnotation) but it is no longer expected. This
-	// covers a deleted/relabeled Secret, a changed binding rule, or the whole
-	// secretBindings list being cleared from spec.
-	stale := map[string]bool{}
-	for name := range currentlyManaged {
-		if !expected[name] {
-			stale[name] = true
-		}
-	}
-	for _, name := range parseManagedSecrets(sa.Annotations[managedSecretBindingsAnnotation]) {
-		if !expected[name] {
-			stale[name] = true
-		}
-	}
-
-	pullKept, pullRemoved := removeStaleImagePullSecrets(sa.ImagePullSecrets, stale)
-	secretKept, secretRemoved := removeStaleSecretRefs(sa.Secrets, stale)
-	sa.ImagePullSecrets = pullKept
-	sa.Secrets = secretKept
-
-	changed := len(pullRemoved) > 0 || len(secretRemoved) > 0
-	if changed {
-		logger.Infof("Removing stale secret bindings %v from pipeline SA %s/%s", append(pullRemoved, secretRemoved...), ns.Name, pipelineSA)
-	}
-
-	// Add expected secrets that are not yet bound.
-	for name := range expected {
-		if bindSecretToSA(sa, name) {
-			logger.Infof("Binding secret %s/%s to pipeline SA", ns.Name, name)
-			changed = true
-		}
-	}
-
 	newAnnotation := serializeManagedSecrets(currentlyManaged)
-	if sa.Annotations[managedSecretBindingsAnnotation] != newAnnotation {
-		changed = true
-	}
-
-	if !changed {
-		return nil
-	}
-
-	imagePullSecrets := sa.ImagePullSecrets
-	secretRefs := sa.Secrets
 
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		// Re-fetch on every attempt: reusing the ServiceAccount object from
-		// outside this closure would retry with the same stale resourceVersion
-		// and fail with the same conflict every time.
-		latest, err := r.kubeClient.CoreV1().ServiceAccounts(ns.Name).Get(ctx, pipelineSA, metav1.GetOptions{})
+		sa, err := r.kubeClient.CoreV1().ServiceAccounts(ns.Name).Get(ctx, pipelineSA, metav1.GetOptions{})
+		if errors.IsNotFound(err) {
+			// SA watch will re-enqueue this namespace once it is created.
+			return nil
+		}
 		if err != nil {
 			return err
 		}
-		latest.ImagePullSecrets = imagePullSecrets
-		latest.Secrets = secretRefs
-		if newAnnotation == "" {
-			delete(latest.Annotations, managedSecretBindingsAnnotation)
-		} else {
-			if latest.Annotations == nil {
-				latest.Annotations = map[string]string{}
-			}
-			latest.Annotations[managedSecretBindingsAnnotation] = newAnnotation
+
+		// Build stale set: names this controller has managed (this reconcile or
+		// a previous one) that are no longer expected. The union of
+		// currentlyManaged and the previous annotation is used so that names
+		// removed from spec — or secrets whose labels changed — are cleaned up
+		// even though they no longer appear in the current binding rules.
+		previouslyManaged := parseManagedSecrets(sa.Annotations[managedSecretBindingsAnnotation])
+		stale := staleSecretNames(expected, currentlyManaged, previouslyManaged)
+
+		// Remove stale references.
+		var removed []string
+		sa.ImagePullSecrets, _ = filterLocalRefs(sa.ImagePullSecrets, stale)
+		sa.Secrets, removed = filterObjRefs(sa.Secrets, stale)
+		if len(removed) > 0 {
+			logger.Infof("Removing stale secret bindings %v from pipeline SA %s/%s", removed, ns.Name, pipelineSA)
 		}
-		_, err = r.kubeClient.CoreV1().ServiceAccounts(ns.Name).Update(ctx, latest, metav1.UpdateOptions{})
+
+		// Add expected references that are not yet present.
+		for name := range expected {
+			if bindSecretToSA(sa, name) {
+				logger.Infof("Binding secret %s/%s to pipeline SA", ns.Name, name)
+			}
+		}
+
+		// Persist the managed-secrets annotation so future reconciles can detect
+		// names that are no longer referenced by any binding rule.
+		sa.Annotations = setOrDeleteAnnotation(sa.Annotations, managedSecretBindingsAnnotation, newAnnotation)
+
+		_, err = r.kubeClient.CoreV1().ServiceAccounts(ns.Name).Update(ctx, sa, metav1.UpdateOptions{})
 		return err
 	})
 }
@@ -764,9 +727,27 @@ func (r *Reconciler) resolveSecretBindingTargets(ctx context.Context, namespace 
 	return expected, currentlyManaged, nil
 }
 
-// removeStaleImagePullSecrets filters out refs whose name is in stale,
-// returning the kept refs and the names that were dropped.
-func removeStaleImagePullSecrets(refs []corev1.LocalObjectReference, stale map[string]bool) (kept []corev1.LocalObjectReference, removed []string) {
+// staleSecretNames returns the set of secret names this controller has
+// managed (currentlyManaged ∪ previously stored in the annotation) that are
+// no longer expected.
+func staleSecretNames(expected, currentlyManaged map[string]bool, previouslyManaged []string) map[string]bool {
+	stale := map[string]bool{}
+	for name := range currentlyManaged {
+		if !expected[name] {
+			stale[name] = true
+		}
+	}
+	for _, name := range previouslyManaged {
+		if !expected[name] {
+			stale[name] = true
+		}
+	}
+	return stale
+}
+
+// filterLocalRefs returns the LocalObjectReferences whose Name is not in
+// stale, plus the names that were dropped.
+func filterLocalRefs(refs []corev1.LocalObjectReference, stale map[string]bool) (kept []corev1.LocalObjectReference, removed []string) {
 	kept = make([]corev1.LocalObjectReference, 0, len(refs))
 	for _, ref := range refs {
 		if stale[ref.Name] {
@@ -778,9 +759,9 @@ func removeStaleImagePullSecrets(refs []corev1.LocalObjectReference, stale map[s
 	return kept, removed
 }
 
-// removeStaleSecretRefs is the corev1.ObjectReference equivalent of
-// removeStaleImagePullSecrets, for sa.Secrets.
-func removeStaleSecretRefs(refs []corev1.ObjectReference, stale map[string]bool) (kept []corev1.ObjectReference, removed []string) {
+// filterObjRefs returns the ObjectReferences whose Name is not in stale,
+// plus the names that were dropped.
+func filterObjRefs(refs []corev1.ObjectReference, stale map[string]bool) (kept []corev1.ObjectReference, removed []string) {
 	kept = make([]corev1.ObjectReference, 0, len(refs))
 	for _, ref := range refs {
 		if stale[ref.Name] {
@@ -790,6 +771,20 @@ func removeStaleSecretRefs(refs []corev1.ObjectReference, stale map[string]bool)
 		kept = append(kept, ref)
 	}
 	return kept, removed
+}
+
+// setOrDeleteAnnotation returns the annotations map with key set to value, or
+// with key removed when value is empty. A nil map is allocated as needed.
+func setOrDeleteAnnotation(annotations map[string]string, key, value string) map[string]string {
+	if value == "" {
+		delete(annotations, key)
+		return annotations
+	}
+	if annotations == nil {
+		annotations = map[string]string{}
+	}
+	annotations[key] = value
+	return annotations
 }
 
 // parseManagedSecrets splits the comma-separated managedSecretBindingsAnnotation
@@ -973,20 +968,18 @@ func shouldIgnoreNamespace(ns *corev1.Namespace) bool {
 }
 
 // namespaceMatchesSelector returns true when the namespace should be synced
-// according to cfg.NamespaceSelector. When no selector is configured every
-// non-ignored namespace matches (opt-in all by default). Setting the selector
-// to an empty matchLabels ({}) matches nothing, effectively disabling sync for
-// all namespaces without touching the individual feature flags — note that
-// metav1.LabelSelectorAsSelector treats an empty-but-non-nil selector as
-// "match everything", so that case is special-cased below to get the intended
-// "match nothing" behaviour. A malformed selector fails closed (matches no
-// namespace) so a typo cannot accidentally widen sync to the whole cluster.
+// according to cfg.NamespaceSelector.
+//
+// Semantics follow standard Kubernetes label-selector conventions:
+//   - nil (field omitted)  → match every non-system namespace (default)
+//   - {}  (empty selector) → match every namespace (same as Kubernetes)
+//   - {matchLabels: ...}   → match only namespaces with those labels
+//
+// A malformed selector fails closed (matches no namespace) so that a typo
+// cannot silently widen sync to the whole cluster.
 func namespaceMatchesSelector(ns *corev1.Namespace, cfg *v1alpha1.NamespaceSyncConfig) bool {
 	if cfg.NamespaceSelector == nil {
 		return true
-	}
-	if len(cfg.NamespaceSelector.MatchLabels) == 0 && len(cfg.NamespaceSelector.MatchExpressions) == 0 {
-		return false
 	}
 	sel, err := metav1.LabelSelectorAsSelector(cfg.NamespaceSelector)
 	if err != nil {

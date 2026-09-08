@@ -105,10 +105,12 @@ type NamespaceSyncConfig struct {
 	SecretBindings []SecretBinding `json:"secretBindings,omitempty"`
 
 	// NamespaceSelector is an optional label selector that restricts which
-	// namespaces are synced. When absent every non-system namespace is synced
-	// (the default). Use matchLabels/matchExpressions to limit sync to a subset
-	// of namespaces, or set it to an empty object ({}) to opt out all namespaces
-	// without touching the individual feature flags.
+	// namespaces are synced. Follows standard Kubernetes label-selector
+	// semantics: when absent (nil) every non-system namespace is synced;
+	// an empty selector ({}) also matches every namespace; use
+	// matchLabels/matchExpressions to restrict sync to a subset of namespaces.
+	// To disable namespace sync entirely, set namespaceSync to null or set all
+	// individual feature flags (createPipelineSA, createCABundles, etc.) to false.
 	// +optional
 	NamespaceSelector *metav1.LabelSelector `json:"namespaceSelector,omitempty"`
 }
