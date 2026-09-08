@@ -18,7 +18,7 @@ spec:
       text: Download tkn and tkn-pac for Mac x86_64
     - href: https://testserver.com/tkn/tkn-macos-arm64.tar.gz
       text: Download tkn and tkn-pac for Mac ARM 64
-    - href: https://testserver.com/tkn/tkn-windows-amd64.tar.gz
+    - href: https://testserver.com/tkn/tkn-windows-amd64.zip
       text: Download tkn and tkn-pac for Windows x86_64
-    - href: https://testserver.com/tkn/tkn-windows-arm64.tar.gz
+    - href: https://testserver.com/tkn/tkn-windows-arm64.zip
       text: Download tkn and tkn-pac for Windows ARM 64
