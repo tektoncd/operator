@@ -36,6 +36,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.DeploymentImages(prunerImages),
 			common.AddDeploymentRestrictedPSA(),
 			common.AddConfigMapValues(PrunerConfigMapName, prunerCR.Spec.TektonPrunerConfig),
+			common.AddDefaultResourceRequirements(DefaultResourcesMap),
 		}
 		extra = append(extra, extension.Transformers(prunerCR)...)
 		err := common.Transform(ctx, manifest, prunerCR, extra...)
