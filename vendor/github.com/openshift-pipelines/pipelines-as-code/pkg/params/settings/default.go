@@ -38,6 +38,9 @@ func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[st
 		Type:  config[HubCatalogTypeKey],
 	}
 	catalogs.Store("default", hc)
+	if hc.Type == hubtypes.TektonHubType {
+		logger.Warnf("CONFIG: Tekton Hub catalog type is deprecated and will be removed in a future release. Please migrate to Artifact Hub. See https://pipelinesascode.com/docs/guides/pipeline-resolution/")
+	}
 
 	for k := range config {
 		m := hubCatalogNameRegex.FindStringSubmatch(k)
@@ -90,6 +93,9 @@ func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[st
 					URL:   catalogURL,
 					Type:  catalogType,
 				})
+				if catalogType == hubtypes.TektonHubType {
+					logger.Warnf("CONFIG: custom catalog %s uses Tekton Hub type, which is deprecated and will be removed in a future release. Please migrate to Artifact Hub.", catalogID)
+				}
 			}
 		}
 	}
