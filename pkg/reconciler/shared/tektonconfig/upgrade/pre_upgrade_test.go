@@ -213,7 +213,7 @@ func TestPreUpgradePipelinesAsCodeArtifacts(t *testing.T) {
 				},
 				Spec: v1alpha1.TektonConfigSpec{
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
 								Enable: ptr.Bool(true),
 							},
@@ -233,7 +233,7 @@ func TestPreUpgradePipelinesAsCodeArtifacts(t *testing.T) {
 				},
 				Spec: v1alpha1.TektonConfigSpec{
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
 								Enable: ptr.Bool(true),
 								PACSettings: v1alpha1.PACSettings{
@@ -259,7 +259,7 @@ func TestPreUpgradePipelinesAsCodeArtifacts(t *testing.T) {
 				},
 				Spec: v1alpha1.TektonConfigSpec{
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
 								Enable: ptr.Bool(true),
 								PACSettings: v1alpha1.PACSettings{
@@ -285,7 +285,7 @@ func TestPreUpgradePipelinesAsCodeArtifacts(t *testing.T) {
 				},
 				Spec: v1alpha1.TektonConfigSpec{
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
 								Enable: ptr.Bool(true),
 								PACSettings: v1alpha1.PACSettings{
@@ -311,7 +311,7 @@ func TestPreUpgradePipelinesAsCodeArtifacts(t *testing.T) {
 				},
 				Spec: v1alpha1.TektonConfigSpec{
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
 								Enable: ptr.Bool(true),
 								PACSettings: v1alpha1.PACSettings{
@@ -338,7 +338,7 @@ func TestPreUpgradePipelinesAsCodeArtifacts(t *testing.T) {
 				},
 				Spec: v1alpha1.TektonConfigSpec{
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							PipelinesAsCode: &v1alpha1.PipelinesAsCode{
 								Enable: ptr.Bool(true),
 								PACSettings: v1alpha1.PACSettings{
@@ -399,7 +399,6 @@ func TestPreUpgradePipelinesAsCodeArtifacts(t *testing.T) {
 }
 
 func TestPreUpgradePipelinesAsCodeArtifacts_NonOpenShift(t *testing.T) {
-	// Test on non-OpenShift platform
 	t.Setenv("PLATFORM", "kubernetes")
 
 	ctx := context.TODO()
@@ -407,9 +406,43 @@ func TestPreUpgradePipelinesAsCodeArtifacts_NonOpenShift(t *testing.T) {
 	operatorClient := operatorFake.NewSimpleClientset()
 	k8sClient := k8sFake.NewSimpleClientset()
 
-	// Should return early without error on non-OpenShift platform
-	err := preUpgradePipelinesAsCodeArtifacts(ctx, logger, k8sClient, operatorClient, nil)
+	// Create a TektonConfig CR with Kubernetes platform PipelinesAsCode with tektonhub settings
+	tc := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1alpha1.ConfigResourceName,
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Platforms: v1alpha1.Platforms{
+				Kubernetes: &v1alpha1.Kubernetes{
+					PipelinesAsCode: &v1alpha1.PipelinesAsCode{
+						Enable: ptr.Bool(true),
+						PACSettings: v1alpha1.PACSettings{
+							Settings: map[string]string{
+								"hub-catalog-type": "tektonhub",
+								"hub-url":          "https://api.hub.tekton.dev/v1",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	_, err := operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
 	assert.NoError(t, err)
+
+	// Run the upgrade function
+	err = preUpgradePipelinesAsCodeArtifacts(ctx, logger, k8sClient, operatorClient, nil)
+	assert.NoError(t, err)
+
+	// Verify the settings were updated to artifacthub
+	tcData, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.NotNil(t, tcData.Spec.Platforms.Kubernetes.PipelinesAsCode)
+	assert.NotNil(t, tcData.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.Settings)
+
+	settings := tcData.Spec.Platforms.Kubernetes.PipelinesAsCode.PACSettings.Settings
+	assert.Equal(t, "artifacthub", settings["hub-catalog-type"])
+	assert.Equal(t, "https://artifacthub.io", settings["hub-url"])
 }
 
 func TestPreUpgradePipelinesAsCodeArtifacts_NoTektonConfig(t *testing.T) {

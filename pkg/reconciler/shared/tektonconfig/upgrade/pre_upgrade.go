@@ -156,16 +156,10 @@ func preUpgradeTektonPruner(ctx context.Context, logger *zap.SugaredLogger, k8sC
 
 // preUpgradePipelinesAsCodeArtifacts checks if Pipelines as Code is installed and updates
 // the hub catalog settings to use the artifact hub URL. It cleans up hub-catalog-name from:
-// 1. TektonConfig CR settings
-// 2. OpenShiftPipelinesAsCode CR settings
+// 1. TektonConfig CR settings (both OpenShift and Kubernetes platforms)
+// 2. OpenShiftPipelinesAsCode CR settings (OpenShift only)
 // 3. pipelines-as-code config map
 func preUpgradePipelinesAsCodeArtifacts(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
-	// Only run on OpenShift platform
-	if !v1alpha1.IsOpenShiftPlatform() {
-		logger.Infof("Not on OpenShift platform, skipping Pipelines as Code artifact upgrade")
-		return nil
-	}
-
 	// Get TektonConfig CR
 	logger.Infof("Performing preupgrade for Pipelines as Code artifact settings")
 	tc, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
@@ -178,7 +172,18 @@ func preUpgradePipelinesAsCodeArtifacts(ctx context.Context, logger *zap.Sugared
 		return err
 	}
 
-	pacSpec := tc.Spec.Platforms.OpenShift.PipelinesAsCode
+	// Get PaC spec for the current platform
+	var pacSpec *v1alpha1.PipelinesAsCode
+	if v1alpha1.IsOpenShiftPlatform() {
+		if tc.Spec.Platforms.OpenShift != nil {
+			pacSpec = tc.Spec.Platforms.OpenShift.PipelinesAsCode
+		}
+	} else {
+		if tc.Spec.Platforms.Kubernetes != nil {
+			pacSpec = tc.Spec.Platforms.Kubernetes.PipelinesAsCode
+		}
+	}
+
 	// Check if Pipelines as Code is enabled
 	if pacSpec == nil || pacSpec.Enable == nil || !*pacSpec.Enable {
 		logger.Infof("Pipelines as Code is not enabled, skipping artifact upgrade")
@@ -218,11 +223,13 @@ func preUpgradePipelinesAsCodeArtifacts(ctx context.Context, logger *zap.Sugared
 		return err
 	}
 
-	// Also check and update the OpenShiftPipelinesAsCode CR if it exists
-	err = updateOpenShiftPipelinesAsCodeCR(ctx, logger, operatorClient)
-	if err != nil {
-		logger.Errorw("error updating OpenShiftPipelinesAsCode CR", err)
-		return err
+	// Also check and update the OpenShiftPipelinesAsCode CR if it exists (OpenShift only)
+	if v1alpha1.IsOpenShiftPlatform() {
+		err = updateOpenShiftPipelinesAsCodeCR(ctx, logger, operatorClient)
+		if err != nil {
+			logger.Errorw("error updating OpenShiftPipelinesAsCode CR", err)
+			return err
+		}
 	}
 
 	// Also check and update the deployed pipelines-as-code config map if it exists
@@ -232,7 +239,7 @@ func preUpgradePipelinesAsCodeArtifacts(ctx context.Context, logger *zap.Sugared
 		return err
 	}
 
-	logger.Infof("Successfully updated Pipelines as Code artifact settings in TektonConfig CR, OpenShiftPipelinesAsCode CR, and config map")
+	logger.Infof("Successfully updated Pipelines as Code artifact settings")
 	return nil
 }
 
