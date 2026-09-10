@@ -8,7 +8,6 @@ require (
 	github.com/cli/go-gh/v2 v2.13.0
 	github.com/go-logr/zapr v1.3.0
 	github.com/google/go-cmp v0.7.0
-	github.com/konflux-ci/tekton-kueue v0.4.0
 	github.com/manifestival/client-go-client v0.6.0
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
@@ -23,6 +22,7 @@ require (
 	github.com/tektoncd/pipeline v1.16.0
 	github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2
 	github.com/tektoncd/pruner v0.4.3
+	github.com/tektoncd/tekton-kueue v0.4.0
 	github.com/tektoncd/triggers v0.37.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/exp v0.0.0-20260718201538-764159d718ef
@@ -40,6 +40,8 @@ require (
 	knative.dev/pkg v0.0.0-20260622140654-39ebae2ee2dc
 	sigs.k8s.io/yaml v1.6.0
 )
+
+replace github.com/tektoncd/tekton-kueue => github.com/konflux-ci/tekton-kueue v0.4.0
 
 replace k8s.io/client-go => k8s.io/client-go v0.35.2
 

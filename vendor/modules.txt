@@ -853,10 +853,6 @@ github.com/klauspost/compress/internal/le
 github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
-# github.com/konflux-ci/tekton-kueue v0.4.0
-## explicit; go 1.26.4
-github.com/konflux-ci/tekton-kueue/pkg/common
-github.com/konflux-ci/tekton-kueue/pkg/config
 # github.com/lestrrat-go/blackmagic v1.0.4
 ## explicit; go 1.23
 github.com/lestrrat-go/blackmagic
@@ -1560,6 +1556,10 @@ github.com/tektoncd/plumbing/scripts
 ## explicit; go 1.25.7
 github.com/tektoncd/pruner/pkg/config
 github.com/tektoncd/pruner/pkg/metrics
+# github.com/tektoncd/tekton-kueue v0.4.0 => github.com/konflux-ci/tekton-kueue v0.4.0
+## explicit; go 1.26.4
+github.com/tektoncd/tekton-kueue/pkg/common
+github.com/tektoncd/tekton-kueue/pkg/config
 # github.com/tektoncd/triggers v0.37.0
 ## explicit; go 1.26.4
 github.com/tektoncd/triggers/pkg/apis/config
@@ -2787,4 +2787,5 @@ sigs.k8s.io/structured-merge-diff/v6/value
 # sigs.k8s.io/yaml v1.6.0
 ## explicit; go 1.22
 sigs.k8s.io/yaml
+# github.com/tektoncd/tekton-kueue => github.com/konflux-ci/tekton-kueue v0.4.0
 # k8s.io/client-go => k8s.io/client-go v0.35.2
