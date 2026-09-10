@@ -26,10 +26,10 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	k8sFake "k8s.io/client-go/kubernetes/fake"
 
-	"github.com/konflux-ci/tekton-kueue/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	operatorFake "github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
+	"github.com/tektoncd/tekton-kueue/pkg/config"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	duckv1 "knative.dev/pkg/apis/duck/v1"
@@ -181,6 +181,31 @@ func TestMigrateTektonSchedulerToTektonKueueDisabled(t *testing.T) {
 
 	_, err = operatorClient.OperatorV1alpha1().TektonKueues().Get(ctx, v1alpha1.TektonKueueResourceName, metav1.GetOptions{})
 	assert.True(t, apierrs.IsNotFound(err))
+}
+
+func TestMigrateTektonSchedulerToTektonKueueKueueTakesPrecedence(t *testing.T) {
+	ctx := context.TODO()
+	operatorClient := operatorFake.NewSimpleClientset(&v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ConfigResourceName},
+		Spec: v1alpha1.TektonConfigSpec{
+			Scheduler: v1alpha1.Scheduler{
+				Disabled: ptr.Bool(false),
+				SchedulerConfig: v1alpha1.SchedulerConfig{Config: config.Config{
+					QueueName: "legacy-queue",
+				}},
+			},
+			Kueue: v1alpha1.Kueue{Disabled: ptr.Bool(true)},
+		},
+	})
+	logger := logging.FromContext(ctx).Named("unit-test")
+
+	assert.ErrorIs(t, migrateTektonSchedulerToTektonKueue(ctx, logger, nil, operatorClient, nil), v1alpha1.REQUEUE_EVENT_AFTER)
+
+	tc, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, ptr.Bool(true), tc.Spec.Kueue.Disabled)
+	assert.Empty(t, tc.Spec.Kueue.QueueName)
+	assert.Equal(t, v1alpha1.Scheduler{}, tc.Spec.Scheduler)
 }
 
 func TestUpgradePipelineProperties(t *testing.T) {

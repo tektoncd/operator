@@ -19,7 +19,7 @@ package v1alpha1
 import (
 	"context"
 
-	"github.com/konflux-ci/tekton-kueue/pkg/common"
+	"github.com/tektoncd/tekton-kueue/pkg/common"
 	"k8s.io/utils/ptr"
 )
 

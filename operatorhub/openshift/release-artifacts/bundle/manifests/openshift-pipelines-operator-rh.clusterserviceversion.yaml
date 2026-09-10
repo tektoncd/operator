@@ -57,7 +57,7 @@ metadata:
     certified: 'false'
     console.openshift.io/plugins: '["pipelines-console-plugin"]'
     containerImage: registry.redhat.io/openshift-pipelines/pipelines-rhel9-operator@
-    createdAt: '2026-09-07T10:58:53Z'
+    createdAt: '2026-09-10T18:48:22Z'
     description: Red Hat OpenShift Pipelines is a cloud-native CI/CD solution for
       building pipelines using Tekton concepts which run natively on OpenShift and
       Kubernetes.
@@ -77,7 +77,7 @@ metadata:
     operators.operatorframework.io/internal-objects: '["tektoninstallersets.operator.tekton.dev",
       "tektonconfigs.operator.tekton.dev","tektonpipelines.operator.tekton.dev","tektontriggers.operator.tekton.dev","tektonaddons.operator.tekton.dev",
       "tektonresults.operator.tekton.dev", "tektonchains.operator.tekton.dev", "openshiftpipelinesascodes.operator.tekton.dev",
-      "manualapprovalgates.operator.tekton.dev","tektonpruners.operator.tekton.dev","tektonschedulers.operator.tekton.dev","tektonmulticlusterproxyaaes.operator.tekton.dev","syncerservices.operator.tekton.dev","tektondashboards.operator.tekton.dev"]'
+      "manualapprovalgates.operator.tekton.dev","tektonpruners.operator.tekton.dev","tektonkueues.operator.tekton.dev","tektonschedulers.operator.tekton.dev","tektonmulticlusterproxyaaes.operator.tekton.dev","syncerservices.operator.tekton.dev","tektondashboards.operator.tekton.dev"]'
     operators.operatorframework.io/project_layout: unknown
     repository: https://github.com/tektoncd/operator
     support: Red Hat
@@ -290,6 +290,27 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
+    - description: Represents an installation of latest version of Tekton Kueue
+      displayName: Tekton Kueue
+      kind: TektonKueue
+      name: tektonkueues.operator.tekton.dev
+      resources:
+      - kind: tektoninstallersets
+        name: ''
+        version: v1alpha1
+      specDescriptors:
+      - description: Namespace where Tekton Kueue installed
+        displayName: Target Namespace
+        path: targetNamespace
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      statusDescriptors:
+      - description: The version of Tekton Kueue installed
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:label
+      version: v1alpha1
     - description: Represents an installation of the multicluster-proxy-aae component
         for multi-cluster
       displayName: Tekton Multicluster Proxy AAE
@@ -375,8 +396,8 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
       version: v1alpha1
-    - description: Represents an installation of latest version of Tekton Scheduler
-      displayName: Tekton Scheduler
+    - description: Deprecated compatibility API; configuration is migrated to TektonKueue
+      displayName: Tekton Scheduler (deprecated)
       kind: TektonScheduler
       name: tektonschedulers.operator.tekton.dev
       resources:
@@ -384,13 +405,13 @@ spec:
         name: ''
         version: v1alpha1
       specDescriptors:
-      - description: Namespace where Tekton Scheduler installed
+      - description: Namespace where Tekton Scheduler was installed
         displayName: Target Namespace
         path: targetNamespace
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:label
       statusDescriptors:
-      - description: The version of Tekton Scheduler installed
+      - description: The version of Tekton Scheduler previously installed
         displayName: Version
         path: version
         x-descriptors:
@@ -477,7 +498,7 @@ spec:
 
     - Tekton Pruner: v0.4.3
 
-    - Tekton Scheduler (tech-preview): v0.4.0
+    - Tekton Kueue (tech-preview): v0.4.0
 
     - Multicluster Proxy AAE (tech-preview): v0.1.1
 
@@ -911,6 +932,46 @@ spec:
       clusterPermissions:
       - rules:
         - apiGroups:
+          - kueue.x-k8s.io
+          resources:
+          - resourceflavors
+          - workloads
+          - workloads/finalizers
+          - workloads/status
+          - workloadpriorityclasses
+          - multikueueclusters
+          verbs:
+          - get
+          - list
+          - create
+          - update
+          - delete
+          - patch
+          - watch
+        - apiGroups:
+          - scheduling.k8s.io
+          resources:
+          - priorityclasses
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - cert-manager.io
+          resources:
+          - certificates
+          - issuers
+          verbs:
+          - get
+          - create
+          - update
+          - delete
+          - list
+        - nonResourceURLs:
+          - /metrics
+          verbs:
+          - get
+        - apiGroups:
           - ''
           resources:
           - nodes
@@ -1307,45 +1368,6 @@ spec:
           - get
           - list
           - watch
-        - apiGroups:
-          - kueue.x-k8s.io
-          resources:
-          - resourceflavors
-          - workloads
-          - workloads/finalizers
-          - workloads/status
-          - workloadpriorityclasses
-          - multikueueclusters
-          verbs:
-          - get
-          - list
-          - create
-          - update
-          - delete
-          - patch
-          - watch
-        - apiGroups:
-          - scheduling.k8s.io
-          resources:
-          - priorityclasses
-          verbs:
-          - get
-          - list
-          - watch
-        - apiGroups:
-          - cert-manager.io
-          resources:
-          - certificates
-          - issuers
-          verbs:
-          - get
-          - create
-          - update
-          - list
-        - nonResourceURLs:
-          - /metrics
-          verbs:
-          - get
         serviceAccountName: openshift-pipelines-operator
       deployments:
       - label:
@@ -1368,7 +1390,7 @@ spec:
               containers:
               - args:
                 - -controllers
-                - tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonaddon,tektonresult,openshiftpipelinesascode,manualapprovalgate,tektonpruner,tektonscheduler,tektonmulticlusterproxyaae,syncerservice
+                - tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonaddon,tektonresult,openshiftpipelinesascode,manualapprovalgate,tektonpruner,tektonkueue,tektonmulticlusterproxyaae,syncerservice
                 - -unique-process-name
                 - tekton-operator-lifecycle
                 env:
@@ -1502,9 +1524,9 @@ spec:
                   value: registry.redhat.io/openshift-pipelines/pipelines-manual-approval-gate-rhel9@
                 - name: IMAGE_PRUNER_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-pruner-controller-rhel9@
-                - name: IMAGE_SCHEDULER_MANAGER
+                - name: IMAGE_KUEUE_MANAGER
                   value: registry.redhat.io/openshift-pipelines/pipelines-scheduler-controller-rhel9@
-                - name: IMAGE_SCHEDULER_WEBHOOK
+                - name: IMAGE_KUEUE_WEBHOOK
                   value: registry.redhat.io/openshift-pipelines/pipelines-scheduler-controller-rhel9@
                 - name: IMAGE_MULTICLUSTERPROXYAAE_PROXY_AAE
                   value: registry.redhat.io/openshift-pipelines/pipelines-multicluster-proxy-aae-rhel9@
@@ -1777,9 +1799,9 @@ spec:
   - image: registry.redhat.io/openshift-pipelines/pipelines-pruner-controller-rhel9@
     name: IMAGE_PRUNER_CONTROLLER
   - image: registry.redhat.io/openshift-pipelines/pipelines-scheduler-controller-rhel9@
-    name: IMAGE_SCHEDULER_MANAGER
+    name: IMAGE_KUEUE_MANAGER
   - image: registry.redhat.io/openshift-pipelines/pipelines-scheduler-controller-rhel9@
-    name: IMAGE_SCHEDULER_WEBHOOK
+    name: IMAGE_KUEUE_WEBHOOK
   - image: registry.redhat.io/openshift-pipelines/pipelines-multicluster-proxy-aae-rhel9@
     name: IMAGE_MULTICLUSTERPROXYAAE_PROXY_AAE
   - image: registry.redhat.io/openshift-pipelines/pipelines-syncer-service-rhel9@
@@ -1808,4 +1830,5 @@ spec:
     name: IMAGE_PIPELINES_CONSOLE_PLUGIN
   - image: registry.redhat.io/openshift-pipelines/pipelines-console-plugin-pf5-rhel9@
     name: IMAGE_PIPELINES_CONSOLE_PLUGIN_LEGACY
+  replaces: 1.6.0
   version: 1.7.0

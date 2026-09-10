@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/konflux-ci/tekton-kueue/pkg/config"
+	"github.com/tektoncd/tekton-kueue/pkg/config"
 
 	"gotest.tools/v3/assert"
 	"knative.dev/pkg/ptr"
