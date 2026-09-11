@@ -175,7 +175,8 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	// console plugin reconciler. PostReconcile consumes the cached value without
 	// re-reading the APIServer. The APIServer watch in controller.go ensures that
 	// a TLS profile change triggers a new reconcile, so the cache is always fresh.
-	if config.Spec.Platforms.OpenShift.EnableCentralTLSConfig != nil &&
+	if config.Spec.Platforms.OpenShift != nil &&
+		config.Spec.Platforms.OpenShift.EnableCentralTLSConfig != nil &&
 		*config.Spec.Platforms.OpenShift.EnableCentralTLSConfig {
 		tlsConfig, err := occommon.ResolveCentralTLSToEnvVars(ctx, oe.tektonConfigLister)
 		if err != nil {
@@ -277,7 +278,8 @@ func (oe openshiftExtension) GetPlatformData() string {
 
 	// Collect the TLS profile only when central TLS config is not explicitly disabled.
 	var tlsProfile interface{}
-	tlsDisabled := tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig != nil &&
+	tlsDisabled := tc.Spec.Platforms.OpenShift != nil &&
+		tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig != nil &&
 		!*tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig
 	if !tlsDisabled {
 		if profile, err := occommon.GetTLSProfileFromAPIServer(ctx); err == nil {
@@ -289,7 +291,8 @@ func (oe openshiftExtension) GetPlatformData() string {
 	// metrics-client-ca the hash changes and all component CRs get their
 	// annotation bumped, immediately triggering their reconcilers.
 	var metricsCABundle string
-	if tc.Spec.Platforms.OpenShift.EnableMetricsMTLS != nil && *tc.Spec.Platforms.OpenShift.EnableMetricsMTLS {
+	if tc.Spec.Platforms.OpenShift != nil &&
+		tc.Spec.Platforms.OpenShift.EnableMetricsMTLS != nil && *tc.Spec.Platforms.OpenShift.EnableMetricsMTLS {
 		if cm, err := oe.kubeClientSet.CoreV1().ConfigMaps(tc.GetSpec().GetTargetNamespace()).Get(
 			ctx, occommon.MetricsClientCAConfigMap, metav1.GetOptions{}); err == nil {
 			metricsCABundle = cm.Data[occommon.MetricsClientCAKey]

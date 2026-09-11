@@ -223,6 +223,9 @@ func (r *rbac) ensurePreRequisites(ctx context.Context) error {
 	r.ownerRef = configOwnerRef(*rbacISet)
 
 	// make sure default SCC is in place
+	if r.tektonConfig.Spec.Platforms.OpenShift == nil || r.tektonConfig.Spec.Platforms.OpenShift.SCC == nil {
+		return fmt.Errorf("tektonConfig.Spec.Platforms.OpenShift.SCC cannot be nil")
+	}
 	defaultSCC := r.tektonConfig.Spec.Platforms.OpenShift.SCC.Default
 	if defaultSCC == "" {
 		// Should not really happen due to defaulting, but okay...

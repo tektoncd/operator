@@ -150,7 +150,7 @@ func newTektonConfigWithMTLS(enabled *bool) *v1alpha1.TektonConfig {
 	return &v1alpha1.TektonConfig{
 		Spec: v1alpha1.TektonConfigSpec{
 			Platforms: v1alpha1.Platforms{
-				OpenShift: v1alpha1.OpenShift{
+				OpenShift: &v1alpha1.OpenShift{
 					EnableMetricsMTLS: enabled,
 				},
 			},
