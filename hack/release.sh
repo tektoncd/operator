@@ -55,6 +55,16 @@ function set_version_label() {
     -e "s/(app.kubernetes.io\/version: )\"?${old_version}\"?/\1${operator_version}/g" \
     -e "s/(version: )\"?${old_version}\"?/\1${operator_version}/g" \
     -e "s/(\"-version\"), \"?${old_version}\"?/\1, ${operator_version}/g" cmd/openshift/operator/kodata/cabundles/*.yaml
+
+  # Update the Helm chart. Chart.yaml's "version" (plain semver, no "v"
+  # prefix) and "appVersion" (matches the release tag) are the only fields
+  # that need updating: every templates/*.yaml label is already rendered
+  # from .Chart.AppVersion.
+  echo updating charts/tekton-operator/Chart.yaml from version: ${old_version} to version: ${operator_version}
+  sed -i -E \
+    -e "s/^version: \"?${old_version#v}\"?/version: ${operator_version#v}/" \
+    -e "s/^appVersion: \"?${old_version}\"?/appVersion: ${operator_version}/" \
+    charts/tekton-operator/Chart.yaml
 }
 
 
@@ -64,6 +74,7 @@ function commit_changes() {
 
   git add -u cmd/
   git add -u config/
+  git add -u charts/
   git commit -m "Freezing Component versions and updating version labels"
 }
 
