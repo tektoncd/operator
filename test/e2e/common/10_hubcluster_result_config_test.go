@@ -32,12 +32,10 @@ import (
 	"github.com/tektoncd/operator/test/utils"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-// HubClusterResultConfigTestSuite tests the hub cluster result configuration
-// When multicluster is enabled and role is Hub, the TektonResult CR should have
-// zero replicas for watcher and retention-policy-agent deployments
+// HubClusterResultConfigTestSuite tests that TektonResult is completely installed
+// on both Hub and Spoke clusters (watcher and retention-policy-agent running).
 type HubClusterResultConfigTestSuite struct {
 	resourceNames utils.ResourceNames
 	suite.Suite
@@ -88,7 +86,7 @@ func (s *HubClusterResultConfigTestSuite) TearDownTest() {
 }
 
 // Test01_HubClusterResultConfig tests that when multicluster is enabled with Hub role,
-// the TektonResult CR has zero replicas for watcher and retention-policy-agent
+// TektonResult is completely installed (watcher and retention-policy-agent running).
 func (s *HubClusterResultConfigTestSuite) Test01_HubClusterResultConfig() {
 	t := s.T()
 
@@ -121,14 +119,18 @@ func (s *HubClusterResultConfigTestSuite) Test01_HubClusterResultConfig() {
 	err = resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, s.interval, s.timeout)
 	require.NoError(t, err, "TektonConfig failed to become ready")
 
-	// Verify TektonResult CR has zero replicas for watcher and retention-policy-agent
-	s.logger.Debug("verifying TektonResult CR has zero replicas for watcher and retention-policy-agent")
-	s.verifyResultDeploymentReplicas("tekton-results-watcher", 0)
-	s.verifyResultDeploymentReplicas("tekton-results-retention-policy-agent", 0)
+	// Verify TektonResult CR does NOT force zero replicas (complete install)
+	s.logger.Debug("verifying TektonResult CR has complete install on Hub role")
+	s.verifyResultDeploymentReplicasNotZero("tekton-results-watcher")
+	s.verifyResultDeploymentReplicasNotZero("tekton-results-retention-policy-agent")
+
+	// Verify watcher and retention-policy-agent deployments are actually running
+	s.logger.Debug("verifying watcher and retention-policy-agent deployments are available on Hub")
+	s.verifyDeploymentsAvailable()
 }
 
 // Test02_SpokeClusterResultConfig tests that when multicluster is enabled with Spoke role,
-// the TektonResult CR does NOT have zero replicas forced for watcher and retention-policy-agent
+// the TektonResult CR is completely installed.
 func (s *HubClusterResultConfigTestSuite) Test02_SpokeClusterResultConfig() {
 	t := s.T()
 
@@ -161,15 +163,18 @@ func (s *HubClusterResultConfigTestSuite) Test02_SpokeClusterResultConfig() {
 	err = resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, s.interval, s.timeout)
 	require.NoError(t, err, "TektonConfig failed to become ready")
 
-	// Verify TektonResult CR does NOT have zero replicas forced
-	// (replicas should be default or user-specified, not 0)
-	s.logger.Debug("verifying TektonResult CR does not have forced zero replicas for Spoke role")
+	// Verify TektonResult CR is completely installed
+	s.logger.Debug("verifying TektonResult CR has complete install on Spoke role")
 	s.verifyResultDeploymentReplicasNotZero("tekton-results-watcher")
 	s.verifyResultDeploymentReplicasNotZero("tekton-results-retention-policy-agent")
+
+	// Verify watcher and retention-policy-agent deployments are actually running
+	s.logger.Debug("verifying watcher and retention-policy-agent deployments are available on Spoke")
+	s.verifyDeploymentsAvailable()
 }
 
 // Test03_MultiClusterDisabled tests that when multicluster is disabled,
-// the TektonResult CR does NOT have zero replicas forced
+// the TektonResult CR is completely installed.
 func (s *HubClusterResultConfigTestSuite) Test03_MultiClusterDisabled() {
 	t := s.T()
 
@@ -202,8 +207,8 @@ func (s *HubClusterResultConfigTestSuite) Test03_MultiClusterDisabled() {
 	err = resources.WaitForTektonConfigReady(s.clients.TektonConfig(), s.resourceNames.TektonConfig, s.interval, s.timeout)
 	require.NoError(t, err, "TektonConfig failed to become ready")
 
-	// Verify TektonResult CR does NOT have zero replicas forced
-	s.logger.Debug("verifying TektonResult CR does not have forced zero replicas when multicluster is disabled")
+	// Verify TektonResult CR is completely installed
+	s.logger.Debug("verifying TektonResult CR has complete install when multicluster is disabled")
 	s.verifyResultDeploymentReplicasNotZero("tekton-results-watcher")
 	s.verifyResultDeploymentReplicasNotZero("tekton-results-retention-policy-agent")
 }
@@ -234,41 +239,6 @@ func (s *HubClusterResultConfigTestSuite) resetMultiClusterConfig() {
 	}
 }
 
-func (s *HubClusterResultConfigTestSuite) verifyResultDeploymentReplicas(deploymentName string, expectedReplicas int32) {
-	t := s.T()
-
-	// Wait for TektonResult CR to be updated with the expected replicas
-	err := wait.PollUntilContextTimeout(context.TODO(), s.interval, s.timeout, true, func(ctx context.Context) (bool, error) {
-		result, err := s.clients.TektonResult().Get(context.TODO(), v1alpha1.ResultResourceName, metav1.GetOptions{})
-		if err != nil {
-			return false, nil
-		}
-
-		deployment, exists := result.Spec.Options.Deployments[deploymentName]
-		if !exists {
-			s.logger.Debugw("deployment not found in TektonResult CR", "deployment", deploymentName)
-			return false, nil
-		}
-
-		if deployment.Spec.Replicas == nil {
-			s.logger.Debugw("deployment replicas not set", "deployment", deploymentName)
-			return false, nil
-		}
-
-		if *deployment.Spec.Replicas == expectedReplicas {
-			return true, nil
-		}
-
-		s.logger.Debugw("waiting for deployment replicas to be updated",
-			"deployment", deploymentName,
-			"expected", expectedReplicas,
-			"actual", *deployment.Spec.Replicas)
-		return false, nil
-	})
-
-	require.NoError(t, err, "TektonResult CR %s deployment replicas did not reach expected value %d", deploymentName, expectedReplicas)
-}
-
 func (s *HubClusterResultConfigTestSuite) verifyResultDeploymentReplicasNotZero(deploymentName string) {
 	t := s.T()
 
@@ -285,5 +255,14 @@ func (s *HubClusterResultConfigTestSuite) verifyResultDeploymentReplicasNotZero(
 
 	if deployment.Spec.Replicas != nil && *deployment.Spec.Replicas == 0 {
 		t.Errorf("expected %s deployment replicas to NOT be forced to 0, but it was", deploymentName)
+	}
+}
+
+func (s *HubClusterResultConfigTestSuite) verifyDeploymentsAvailable() {
+	t := s.T()
+
+	for _, deploymentName := range []string{"tekton-results-watcher", "tekton-results-retention-policy-agent"} {
+		err := resources.WaitForDeploymentAvailable(s.clients.KubeClient, deploymentName, s.resourceNames.TargetNamespace, s.interval, s.timeout)
+		require.NoError(t, err, "deployment %s did not become available (complete install expected)", deploymentName)
 	}
 }

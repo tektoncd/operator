@@ -24,12 +24,9 @@ import (
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
-	appsv1 "k8s.io/api/apps/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"knative.dev/pkg/apis"
-	"knative.dev/pkg/logging"
 )
 
 // This Ensure TektonResult CR is exist or not
@@ -191,15 +188,6 @@ func UpdateResult(ctx context.Context, old *v1alpha1.TektonResult, new *v1alpha1
 func GetTektonResultCR(config *v1alpha1.TektonConfig, operatorVersion string) *v1alpha1.TektonResult {
 	ownerRef := *metav1.NewControllerRef(config, config.GroupVersionKind())
 
-	result := config.Spec.Result
-
-	// For Hub clusters (multicluster enabled AND role is Hub), set replicas to 0
-	// for watcher and retention-policy-agent deployments
-	if !config.Spec.Kueue.MultiClusterDisabled &&
-		strings.EqualFold(string(config.Spec.Kueue.MultiClusterRole), string(v1alpha1.MultiClusterRoleHub)) {
-		result = disableWatcherAndRetentionAgentOnHubCluster(result)
-	}
-
 	return &v1alpha1.TektonResult{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            v1alpha1.ResultResourceName,
@@ -212,42 +200,9 @@ func GetTektonResultCR(config *v1alpha1.TektonConfig, operatorVersion string) *v
 			CommonSpec: v1alpha1.CommonSpec{
 				TargetNamespace: config.Spec.TargetNamespace,
 			},
-			Result:        result,
+			Result:        config.Spec.Result,
 			Config:        config.Spec.Config,
 			NetworkPolicy: config.Spec.NetworkPolicy,
 		},
 	}
-}
-
-// disableWatcherAndRetentionAgentOnHubCluster modifies the Result options to set replicas to 0
-// for watcher and retention-policy-agent deployments on Hub clusters.
-//
-// This function injects deployment overrides into Options.Deployments. These overrides are applied
-// during reconciliation and will force the specified deployments to use 0 replicas, regardless of
-// the default values from the release manifests.
-//
-// Note: Even if the Deployments map is empty or nil, we create new entries with zero-value Deployment
-// structs that only have Spec.Replicas set. This is intentional - accessing a non-existent map key
-// returns a zero-value struct, which we then modify and insert as an override.
-func disableWatcherAndRetentionAgentOnHubCluster(result v1alpha1.Result) v1alpha1.Result {
-	logging.FromContext(context.Background()).Debug("Disabling watcher and retention-policy-agent for Hub cluster")
-
-	// Initialize the Deployments map if nil
-	if result.Options.Deployments == nil {
-		result.Options.Deployments = make(map[string]appsv1.Deployment)
-	}
-
-	zeroReplicas := ptr.To(int32(0))
-
-	// Set watcher replicas to 0
-	watcherDeployment := result.Options.Deployments["tekton-results-watcher"]
-	watcherDeployment.Spec.Replicas = zeroReplicas
-	result.Options.Deployments["tekton-results-watcher"] = watcherDeployment
-
-	// Set retention-policy-agent replicas to 0
-	retentionDeployment := result.Options.Deployments["tekton-results-retention-policy-agent"]
-	retentionDeployment.Spec.Replicas = zeroReplicas
-	result.Options.Deployments["tekton-results-retention-policy-agent"] = retentionDeployment
-
-	return result
 }
