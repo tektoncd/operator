@@ -116,7 +116,7 @@ func TestResult_SetDefaultsRoutes(t *testing.T) {
 	want := &Result{
 		ResultsAPIProperties: ResultsAPIProperties{
 			RouteEnabled:        ptr.Bool(true),
-			RouteTLSTermination: "edge",
+			RouteTLSTermination: "reencrypt",
 		},
 	}
 
@@ -149,7 +149,7 @@ func TestResult_SetDefaultsBucketsAutoDefaulting(t *testing.T) {
 			want: Result{
 				ResultsAPIProperties: ResultsAPIProperties{
 					RouteEnabled:        ptr.Bool(IsOpenShiftPlatform()),
-					RouteTLSTermination: "edge",
+					RouteTLSTermination: "reencrypt",
 				},
 				Performance: PerformanceProperties{
 					PerformanceStatefulsetOrdinalsConfig: PerformanceStatefulsetOrdinalsConfig{
@@ -175,7 +175,7 @@ func TestResult_SetDefaultsBucketsAutoDefaulting(t *testing.T) {
 			want: Result{
 				ResultsAPIProperties: ResultsAPIProperties{
 					RouteEnabled:        ptr.Bool(IsOpenShiftPlatform()),
-					RouteTLSTermination: "edge",
+					RouteTLSTermination: "reencrypt",
 				},
 				Performance: PerformanceProperties{
 					PerformanceStatefulsetOrdinalsConfig: PerformanceStatefulsetOrdinalsConfig{
@@ -198,7 +198,7 @@ func TestResult_SetDefaultsBucketsAutoDefaulting(t *testing.T) {
 			want: Result{
 				ResultsAPIProperties: ResultsAPIProperties{
 					RouteEnabled:        ptr.Bool(IsOpenShiftPlatform()),
-					RouteTLSTermination: "edge",
+					RouteTLSTermination: "reencrypt",
 				},
 				Performance: PerformanceProperties{
 					PerformanceStatefulsetOrdinalsConfig: PerformanceStatefulsetOrdinalsConfig{
@@ -218,7 +218,7 @@ func TestResult_SetDefaultsBucketsAutoDefaulting(t *testing.T) {
 			want: Result{
 				ResultsAPIProperties: ResultsAPIProperties{
 					RouteEnabled:        ptr.Bool(IsOpenShiftPlatform()),
-					RouteTLSTermination: "edge",
+					RouteTLSTermination: "reencrypt",
 				},
 				Performance: PerformanceProperties{
 					Replicas: &threeReplicas,
@@ -237,7 +237,7 @@ func TestResult_SetDefaultsBucketsAutoDefaulting(t *testing.T) {
 			want: Result{
 				ResultsAPIProperties: ResultsAPIProperties{
 					RouteEnabled:        ptr.Bool(IsOpenShiftPlatform()),
-					RouteTLSTermination: "edge",
+					RouteTLSTermination: "reencrypt",
 				},
 				Performance: PerformanceProperties{
 					PerformanceStatefulsetOrdinalsConfig: PerformanceStatefulsetOrdinalsConfig{
@@ -262,7 +262,7 @@ func TestResult_SetDefaultsBucketsAutoDefaulting(t *testing.T) {
 			want: Result{
 				ResultsAPIProperties: ResultsAPIProperties{
 					RouteEnabled:        ptr.Bool(IsOpenShiftPlatform()),
-					RouteTLSTermination: "edge",
+					RouteTLSTermination: "reencrypt",
 				},
 				Performance: PerformanceProperties{
 					PerformanceStatefulsetOrdinalsConfig: PerformanceStatefulsetOrdinalsConfig{

@@ -199,6 +199,28 @@ func Test_ResultsAPIInjectRout(t *testing.T) {
 	assert.Equal(t, route.Spec.Path, "/api")
 }
 
+func Test_ResultsAPIInjectRouteReencrypt(t *testing.T) {
+	testData := path.Join("testdata", "static/tekton-results", "route-rbac", "rbac.yaml")
+	manifest, err := mf.ManifestFrom(mf.Recursive(testData))
+	assert.NilError(t, err)
+	filteredManifest := manifest.Filter(mf.ByKind("Route"))
+
+	route := &routev1.Route{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(filteredManifest.Resources()[0].Object, route)
+	assertNoError(t, err)
+
+	props := v1alpha1.ResultsAPIProperties{RouteEnabled: ptr.Bool(true), RouteTLSTermination: "reencrypt", RouteHost: "results.example.com"}
+	manifest, err = filteredManifest.Transform(injectResultsAPIRoute(props))
+	assert.NilError(t, err)
+
+	route = &routev1.Route{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, route)
+	assert.NilError(t, err)
+
+	assert.Equal(t, route.Spec.TLS.Termination, routev1.TLSTerminationType("reencrypt"))
+	assert.Equal(t, route.Spec.Host, "results.example.com")
+}
+
 func Test_isEnableRoute(t *testing.T) {
 	tests := []struct {
 		name         string

@@ -78,6 +78,45 @@ These properties are analogous to the one in configmap of tekton results api `te
 [result]:https://github.com/tektoncd/results
 
 
+### Property "route_tls_termination" (OpenShift only)
+
+On OpenShift, the operator exposes the Results API through an OpenShift `Route`. The
+`route_tls_termination` property controls how TLS is terminated on that route:
+
+```yaml
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonResult
+metadata:
+  name: result
+spec:
+  route_tls_termination: reencrypt
+```
+
+If the property is left empty, the operator defaults it to `reencrypt`.
+
+> **Only `reencrypt` is supported.** The Results API pod serves HTTPS only. `reencrypt`
+> terminates TLS at the router and re-encrypts traffic to the HTTPS backend, giving
+> correct end-to-end TLS. It is the default and the recommended value.
+>
+> Other values are not recommended. `edge` terminates TLS at the router and forwards plain
+> HTTP to the HTTPS-only backend; this breaks the route outright and no client flag can
+> fix it (`--insecure` only disables the client's verification of the router certificate,
+> it cannot repair the router-to-backend connection). `passthrough` also produces a working
+> route, but the client connects directly to the backend, which presents the OpenShift
+> service-serving certificate; clients must therefore trust the cluster's service CA (or
+> pass `--insecure`).
+>
+> With `reencrypt` the client sees the ingress router certificate instead. Note this is
+> not necessarily publicly trusted either — by default the ingress certificate is
+> cluster-signed, so clients may still need the cluster's ingress CA (or `--insecure`)
+> unless the router is configured with a publicly trusted certificate. The advantage of
+> `reencrypt` is that it works out of the box and keeps end-to-end TLS; do not change this
+> property away from `reencrypt`.
+
+> **Note:** On upgrade, existing installs that still carry the previous `edge` default are
+> automatically migrated to `reencrypt`.
+
+
 ### Property "secret_name":
 `secret_name` - name of your custom secret or leave it as empty. It an optional property. The secret should be created by the user on the `targetNamespace`. The secret can contain `S3_` prefixed keys from the [result API properties](https://github.com/tektoncd/results/blob/fded140081468e418aeb860d16aca3306c675d8b/cmd/api/README.md). Please note: the key of the secret should be in UPPER_CASE and values should be in `string` format.
 The following keys are supported by this secret.
