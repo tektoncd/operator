@@ -1,12 +1,12 @@
 chains:
   github: tektoncd/chains
-  version: v0.29.3
+  version: v0.29.4
 dashboard:
   github: tektoncd/dashboard
   version: v0.72.0
 manual-approval-gate:
   github: openshift-pipelines/manual-approval-gate
-  version: v0.9.0
+  version: v0.9.1
 multicluster-proxy-aae:
   github: openshift-pipelines/multicluster-proxy-aae
   version: v0.1.1
@@ -15,7 +15,7 @@ pipeline:
   version: v1.16.0
 pipelines-as-code:
   github: tektoncd/pipelines-as-code
-  version: v0.50.0
+  version: v0.51.0
 pruner:
   github: tektoncd/pruner
   version: v0.4.3
