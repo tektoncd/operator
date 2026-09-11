@@ -270,6 +270,101 @@ func TestUpgradePipelineProperties(t *testing.T) {
 	}
 }
 
+func TestMigrateResultsRouteTLSToReencrypt(t *testing.T) {
+	tests := []struct {
+		name        string
+		termination string
+		expected    string
+	}{
+		{
+			name:        "edge is migrated to reencrypt",
+			termination: "edge",
+			expected:    "reencrypt",
+		},
+		{
+			name:        "reencrypt is left untouched",
+			termination: "reencrypt",
+			expected:    "reencrypt",
+		},
+		{
+			name:        "passthrough is left untouched",
+			termination: "passthrough",
+			expected:    "passthrough",
+		},
+		{
+			name:        "empty is left untouched",
+			termination: "",
+			expected:    "",
+		},
+	}
+
+	ctx := context.TODO()
+	logger := logging.FromContext(ctx).Named("unit-test")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("PLATFORM", "openshift")
+			operatorClient := operatorFake.NewSimpleClientset()
+
+			// no TektonConfig CR -> no error
+			err := migrateResultsRouteTLSToReencrypt(ctx, logger, nil, operatorClient, nil)
+			assert.NoError(t, err)
+
+			tc := &v1alpha1.TektonConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: v1alpha1.ConfigResourceName,
+				},
+				Spec: v1alpha1.TektonConfigSpec{
+					Result: v1alpha1.Result{
+						ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+							RouteTLSTermination: tt.termination,
+						},
+					},
+				},
+			}
+			_, err = operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
+			assert.NoError(t, err)
+
+			err = migrateResultsRouteTLSToReencrypt(ctx, logger, nil, operatorClient, nil)
+			assert.NoError(t, err)
+
+			tcData, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expected, tcData.Spec.Result.RouteTLSTermination)
+		})
+	}
+}
+
+func TestMigrateResultsRouteTLSToReencrypt_NonOpenShift(t *testing.T) {
+	t.Setenv("PLATFORM", "kubernetes")
+	ctx := context.TODO()
+	logger := logging.FromContext(ctx).Named("unit-test")
+	operatorClient := operatorFake.NewSimpleClientset()
+
+	tc := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1alpha1.ConfigResourceName,
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Result: v1alpha1.Result{
+				ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+					RouteTLSTermination: "edge",
+				},
+			},
+		},
+	}
+	_, err := operatorClient.OperatorV1alpha1().TektonConfigs().Create(ctx, tc, metav1.CreateOptions{})
+	assert.NoError(t, err)
+
+	// On non-OpenShift platforms the migration is a no-op and leaves edge untouched.
+	err = migrateResultsRouteTLSToReencrypt(ctx, logger, nil, operatorClient, nil)
+	assert.NoError(t, err)
+
+	tcData, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	assert.NoError(t, err)
+	assert.Equal(t, "edge", tcData.Spec.Result.RouteTLSTermination)
+}
+
 func TestPreUpgradeTektonPruner(t *testing.T) {
 	ctx := context.TODO()
 	operatorClient := operatorFake.NewSimpleClientset()

@@ -584,3 +584,28 @@ func containsFieldError(err *apis.FieldError, pathFragment string) bool {
 	}
 	return strings.Contains(err.Error(), pathFragment)
 }
+
+func Test_ValidateTektonConfig_InvalidResultRouteTLSTermination(t *testing.T) {
+	tc := &TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "config",
+			Namespace: "namespace",
+		},
+		Spec: TektonConfigSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+			Profile: "all",
+			Pruner:  Prune{Disabled: true},
+			Result: Result{
+				ResultsAPIProperties: ResultsAPIProperties{
+					RouteTLSTermination: "invalid",
+				},
+			},
+		},
+	}
+
+	err := tc.Validate(context.TODO())
+	assert.Assert(t, err != nil)
+	assert.ErrorContains(t, err, "spec.result.route_tls_termination")
+}

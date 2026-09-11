@@ -330,6 +330,8 @@ manualApproval:
 
 Result section allows user to customize the Tekton Result component, Refer to [Result Spec](https://github.com/tektoncd/operator/blob/main/docs/TektonResult.md#spec) section in TektonResult for available options.
 
+On OpenShift, `route_tls_termination` controls TLS termination on the Results route. Only `reencrypt` is supported (and is the default). `edge` breaks the route outright (no client flag can fix it). `passthrough` also works, but the client connects to the backend's service-serving certificate, so it must trust the cluster's service CA (or pass `--insecure`). `reencrypt` instead presents the ingress router certificate; note that by default this is cluster-signed rather than publicly trusted, so clients may still need the cluster's ingress CA (or `--insecure`) unless the router uses a publicly trusted certificate. See [route_tls_termination](https://github.com/tektoncd/operator/blob/main/docs/TektonResult.md#property-route_tls_termination-openshift-only) for details.
+
 Default Result configuration in TektonConfig looks like following if user doesn't specified any configuration options
 
 Example:
@@ -370,6 +372,7 @@ result:
   loki_stack_namespace: #optional
   prometheus_port: 9090
   prometheus_histogram: false
+  route_tls_termination: reencrypt # OpenShift only; only reencrypt is supported (default: reencrypt)
   watcher:
     completed_run_grace_period: 24h
     check_owner: true
