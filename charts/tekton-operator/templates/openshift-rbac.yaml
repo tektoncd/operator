@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: openshift-pipelines-operator
+  name: {{ include "tekton-operator.serviceAccountName" . }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -24,45 +24,18 @@ rules:
       - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: tekton-operator-info
-  labels:
-    {{- include "tekton-operator.labels" . | nindent 4 }}
-rules:
-  - apiGroups:
-      - ""
-    resourceNames:
-      - tekton-operator-info
-    resources:
-      - configmaps
-    verbs:
-      - get
-      - describe
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: tekton-config-read-role
-  labels:
-    {{- include "tekton-operator.labels" . | nindent 4 }}
-rules:
-  - apiGroups:
-      - operator.tekton.dev
-    resources:
-      - tektonconfigs
-    verbs:
-      - get
-      - watch
-      - list
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: tekton-operator
   labels:
     {{- include "tekton-operator.labels" . | nindent 4 }}
 rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - list
   - apiGroups:
       - ""
     resources:
@@ -270,6 +243,7 @@ rules:
       - tekton.dev
       - triggers.tekton.dev
       - operator.tekton.dev
+      - pipelinesascode.tekton.dev
     resources:
       - '*'
     verbs:
@@ -303,9 +277,19 @@ rules:
     verbs:
       - use
       - get
+      - list
       - create
       - update
       - delete
+  - apiGroups:
+      - config.openshift.io
+    resources:
+      - apiservers
+      - clusterversions
+    verbs:
+      - get
+      - list
+      - watch
   - apiGroups:
       - route.openshift.io
     resources:
@@ -313,6 +297,31 @@ rules:
     verbs:
       - delete
       - deletecollection
+      - create
+      - patch
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - route.openshift.io
+    resources:
+      - routes/custom-host
+    verbs:
+      - create
+      - update
+  - apiGroups:
+      - events.k8s.io
+    resources:
+      - events
+    verbs:
+      - create
+  - apiGroups:
+      - console.openshift.io
+    resources:
+      - consoleplugins
+    verbs:
+      - delete
       - create
       - patch
       - get
@@ -409,12 +418,15 @@ rules:
       - resolution.tekton.dev
     resources:
       - resolutionrequests
+      - resolutionrequests/status
     verbs:
       - get
       - list
       - watch
       - create
       - delete
+      - update
+      - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -430,34 +442,6 @@ subjects:
     namespace: openshift-monitoring
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  labels:
-    app.kubernetes.io/instance: default
-  name: tekton-operator-info
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: tekton-operator-info
-subjects:
-  - apiGroup: rbac.authorization.k8s.io
-    kind: Group
-    name: system:authenticated
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: tekton-config-read-rolebinding
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: tekton-config-read-role
-subjects:
-  - apiGroup: rbac.authorization.k8s.io
-    kind: Group
-    name: system:authenticated
----
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: tekton-operator
@@ -467,6 +451,6 @@ roleRef:
   name: tekton-operator
 subjects:
   - kind: ServiceAccount
-    name: openshift-pipelines-operator
+    name: {{ include "tekton-operator.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 {{- end -}}
