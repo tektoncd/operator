@@ -835,7 +835,44 @@ spec:
 - The event-based pruner responds to resource events in real-time, providing more efficient cleanup
 - When `enforcedConfigLevel` is set to `namespace`, individual namespaces can override these settings using ConfigMaps
 
+#### Resource Limits
 
+The operator applies default resource limits to pruner deployments based on benchmark data:
+
+**Controller:** `requests: 100m CPU, 256Mi memory` | `limits: 2Gi memory`  
+**Webhook:** `requests: 50m CPU, 64Mi memory` | `limits: 512Mi memory`
+
+CPU limits are omitted to avoid CFS throttling during reconciliation bursts. Memory limits are based on linear growth (~13.6 MB per 1k resident PipelineRuns). The 2Gi controller limit supports up to ~50k runs with some safety margin.
+
+**Benchmark data:**
+
+| Scale | Resident PRs | Heap (MB) | Container (MB) |
+|-------|--------------|-----------|----------------|
+| Baseline | 0 | 23 | - |
+| Low | 1,000 | 65 | 58 |
+| Medium | 6,000 | 148 | 69 |
+| High | 16,000 | 301 | 104 |
+| Production | 41,000 | 579 | 170 |
+
+
+**Override via options:**
+```yaml
+  tektonpruner:
+    options:
+      deployments:
+        tekton-pruner-controller:
+          spec:
+            template:
+              spec:
+                containers:
+                - name: controller
+                  resources:
+                    limits:
+                      memory: 4Gi
+                      cpu: 1000m
+```
+
+For >50k resident runs, calculate required memory: `memory_mb = 23 + (13.6 × runs_in_thousands)` and apply 1.5x safety factor.
 
 ### Additional fields as `options`
 
