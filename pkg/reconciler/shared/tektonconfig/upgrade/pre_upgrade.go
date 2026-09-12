@@ -570,6 +570,51 @@ func migrateLegacyNamespaceSyncParams(ctx context.Context, logger *zap.SugaredLo
 	return err
 }
 
+// migrateResultsRouteTLSToReencrypt updates the Results route TLS termination from the
+// previous default "edge" to "reencrypt". With "edge" the router terminates TLS and
+// forwards plain HTTP to the Results API, which serves HTTPS only. That mismatch breaks
+// the route outright: there is no client flag that fixes it, since --insecure only
+// disables the client's verification of the router certificate and cannot repair the
+// router's plaintext connection to a TLS-only backend. "reencrypt" restores correct
+// end-to-end TLS.
+//
+// Only "edge" is migrated: it was the previous SetDefaults value and is persisted on
+// essentially every existing install, and it is broken against the HTTPS-only backend.
+// Other values ("reencrypt", "passthrough", empty) are left untouched -- "passthrough"
+// was never auto-persisted and is a valid choice when set manually (it works, but the
+// client connects to the service-serving certificate and must trust the cluster's service
+// CA, or pass --insecure). The change is made on TektonConfig (the source of truth) which
+// then syncs to the TektonResult CR.
+func migrateResultsRouteTLSToReencrypt(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
+	// Route TLS termination is only relevant on OpenShift.
+	if !v1alpha1.IsOpenShiftPlatform() {
+		return nil
+	}
+
+	tcCR, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
+	if err != nil {
+		if apierrs.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+
+	// Only migrate the previous default. Any other value (reencrypt, passthrough, empty)
+	// is left untouched.
+	if tcCR.Spec.Result.RouteTLSTermination != "edge" {
+		return nil
+	}
+
+	tcCR.Spec.Result.RouteTLSTermination = "reencrypt"
+	if _, err := operatorClient.OperatorV1alpha1().TektonConfigs().Update(ctx, tcCR, metav1.UpdateOptions{}); err != nil {
+		logger.Errorw("error migrating Results route TLS termination from edge to reencrypt", "error", err)
+		return err
+	}
+
+	logger.Info("Migrated Results route TLS termination from edge to reencrypt")
+	return nil
+}
+
 // removeHubFromTektonConfig removes the deprecated hub field from the TektonConfig spec.
 // TODO: Remove this function in the release-v0.80.x
 func removeHubFromTektonConfig(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {

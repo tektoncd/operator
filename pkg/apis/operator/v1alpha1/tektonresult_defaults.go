@@ -38,7 +38,7 @@ func (c *Result) setDefaults() {
 	}
 
 	if c.RouteTLSTermination == "" {
-		c.RouteTLSTermination = "edge"
+		c.RouteTLSTermination = "reencrypt"
 	}
 
 	c.setPerformanceDefaults()
