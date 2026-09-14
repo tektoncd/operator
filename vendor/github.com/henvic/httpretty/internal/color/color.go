@@ -84,14 +84,13 @@ const (
 // Format text for terminal.
 // You can pass an arbitrary number of Attribute or []Attribute followed by any other values,
 // that can either be a string or something else (that is converted to string using fmt.Sprint).
-func Format(s ...interface{}) string {
+func Format(s ...any) string {
 	if len(s) == 0 {
 		return ""
 	}
 
 	params := []Attribute{}
 	in := -1
-
 	for i, v := range s {
 		switch vt := v.(type) {
 		case []Attribute:
@@ -112,19 +111,18 @@ func Format(s ...interface{}) string {
 			}
 		}
 	}
-
 	if in == -1 || len(s[in:]) == 0 {
 		return ""
 	}
 	return wrap(params, fmt.Sprint(s[in:]...))
 }
 
-func printExtraColorAttribute(v interface{}) string {
+func printExtraColorAttribute(v any) string {
 	return fmt.Sprintf("(EXTRA color.Attribute=%v)", v)
 }
 
 // StripAttributes from input arguments and return unformatted text.
-func StripAttributes(s ...interface{}) (raw string) {
+func StripAttributes(s ...any) (raw string) {
 	in := -1
 	for i, v := range s {
 		switch v.(type) {
@@ -146,7 +144,7 @@ func StripAttributes(s ...interface{}) (raw string) {
 
 // Escape text for terminal.
 func Escape(s string) string {
-	return strings.Replace(s, escape, unescape, -1)
+	return strings.ReplaceAll(s, escape, unescape)
 }
 
 // sequence returns a formated SGR sequence to be plugged into a "\x1b[...m"

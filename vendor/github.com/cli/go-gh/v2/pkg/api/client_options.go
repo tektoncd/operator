@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/cli/go-gh/v2/pkg/auth"
@@ -13,6 +15,24 @@ import (
 
 // ClientOptions holds available options to configure API clients.
 type ClientOptions struct {
+	// APIHost overrides the hostname that REST and GraphQL API requests are
+	// sent to instead of the default Host. It must be a bare
+	// hostname, without a scheme or port, for example "api.example.com".
+	//
+	// When empty, the api_host value configured for Host in gh config is used,
+	// if there is one. Client construction fails when the resulting value,
+	// whether set here or read from gh config, is not a bare hostname.
+	//
+	// If AuthToken is not provided, the Host will be used for token lookup,
+	// and requests to APIHost will be allowed to include that token. APIHost
+	// must therefore be a trusted endpoint. Configuring APIHost does not prevent
+	// the token from being sent to Host or its subdomains.
+	//
+	// Absolute URLs passed to RESTClient methods are requested as given
+	// and are never rewritten to APIHost. They are authenticated when they
+	// target Host or one of its subdomains, or the exact APIHost.
+	APIHost string
+
 	// AuthToken is the authorization token that will be used
 	// to authenticate against API endpoints.
 	AuthToken string
@@ -24,6 +44,15 @@ type ClientOptions struct {
 	// CacheTTL is the time that cached API requests are valid for.
 	// Default is 24 hours.
 	CacheTTL time.Duration
+
+	// CheckRedirect specifies the policy for handling redirects.
+	// If nil, the default http.Client CheckRedirect policy is used.
+	//
+	// This matters for requests where following a redirect silently changes
+	// the meaning of the request. For example, Go's default policy converts a
+	// DELETE into a GET when it follows a 301, so a caller deleting a renamed
+	// resource can receive a success response having deleted nothing.
+	CheckRedirect func(*http.Request, []*http.Request) error
 
 	// EnableCache specifies if API requests will be cached or not.
 	// Default is no caching.
@@ -103,4 +132,45 @@ func resolveOptions(opts ClientOptions) (ClientOptions, error) {
 		opts.UnixDomainSocket, _ = cfg.Get([]string{"http_unix_socket"})
 	}
 	return opts, nil
+}
+
+func resolveAPIHost(opts ClientOptions) (ClientOptions, error) {
+	if opts.APIHost == "" {
+		configuredAPIHost, ok := apiHost(opts.Host)
+		if !ok {
+			return opts, nil
+		}
+
+		opts.APIHost = configuredAPIHost
+	}
+
+	if err := validAPIHost(opts.APIHost); err != nil {
+		return ClientOptions{}, fmt.Errorf(
+			`invalid api_host for %s: %v`,
+			opts.Host,
+			err,
+		)
+	}
+
+	return opts, nil
+}
+
+func validAPIHost(apiHost string) error {
+	invalidHostnameError := fmt.Errorf(`%q must be a hostname without a scheme or port, for example "api.example.com"`, apiHost)
+
+	// A bare hostname has no surrounding whitespace, and no port or IPv6 literal.
+	if apiHost == "" || strings.TrimSpace(apiHost) != apiHost || strings.Contains(apiHost, ":") {
+		return invalidHostnameError
+	}
+
+	// Parsing as a scheme relative URL rejects userinfo, paths, queries and fragments,
+	// since any of those make the parsed host differ from the input.
+	u, err := url.Parse("//" + apiHost)
+	if err != nil {
+		return invalidHostnameError
+	}
+	if u.Host != apiHost || u.Hostname() == "" {
+		return invalidHostnameError
+	}
+	return nil
 }
