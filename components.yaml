@@ -15,13 +15,13 @@ multicluster-proxy-aae:
   version: v0.1.1
 pipeline:
   github: tektoncd/pipeline
-  version: v1.9.7
+  version: v1.9.8
 pipelines-as-code:
   github: tektoncd/pipelines-as-code
-  version: v0.42.3
+  version: v0.42.4
 pruner:
   github: tektoncd/pruner
-  version: v0.3.6
+  version: v0.3.7
 results:
   github: tektoncd/results
   version: v0.18.0
