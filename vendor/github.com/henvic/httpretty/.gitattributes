@@ -1,0 +1,4 @@
+# Golden files are embedded and compared byte-for-byte against logger output,
+# so they must keep LF line endings on checkout (Windows defaults to CRLF).
+*.golden text eol=lf
+*.txtar text eol=lf

@@ -17,8 +17,9 @@ import (
 // GraphQLClient wraps methods for the different types of
 // API requests that are supported by the server.
 type GraphQLClient struct {
-	client     *graphql.Client
-	host       string
+	client *graphql.Client
+	// endpoint is the full URL to the GraphQL endpoint (e.g. https://api.github.com/graphql).
+	endpoint   string
 	httpClient *http.Client
 }
 
@@ -32,12 +33,17 @@ func DefaultGraphQLClient() (*GraphQLClient, error) {
 // and unix domain socket are resolved from the gh environment configuration.
 // These behaviors can be overridden using the opts argument.
 func NewGraphQLClient(opts ClientOptions) (*GraphQLClient, error) {
+	var err error
 	if optionsNeedResolution(opts) {
-		var err error
 		opts, err = resolveOptions(opts)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	opts, err = resolveAPIHost(opts)
+	if err != nil {
+		return nil, err
 	}
 
 	httpClient, err := NewHTTPClient(opts)
@@ -46,10 +52,13 @@ func NewGraphQLClient(opts ClientOptions) (*GraphQLClient, error) {
 	}
 
 	endpoint := graphQLEndpoint(opts.Host)
+	if opts.APIHost != "" {
+		endpoint = swapHost(endpoint, opts.APIHost)
+	}
 
 	return &GraphQLClient{
 		client:     graphql.NewClient(endpoint, httpClient),
-		host:       endpoint,
+		endpoint:   endpoint,
 		httpClient: httpClient,
 	}, nil
 }
@@ -62,7 +71,7 @@ func (c *GraphQLClient) DoWithContext(ctx context.Context, query string, variabl
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", c.host, bytes.NewBuffer(reqBody))
+	req, err := http.NewRequestWithContext(ctx, "POST", c.endpoint, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return err
 	}

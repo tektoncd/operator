@@ -1,5 +1,5 @@
 # httpretty
-[![GoDoc](https://godoc.org/github.com/henvic/httpretty?status.svg)](https://godoc.org/github.com/henvic/httpretty) [![Build Status](https://travis-ci.org/henvic/httpretty.svg?branch=master)](https://travis-ci.org/henvic/httpretty) [![Coverage Status](https://coveralls.io/repos/henvic/httpretty/badge.svg)](https://coveralls.io/r/henvic/httpretty) [![Go Report Card](https://goreportcard.com/badge/github.com/henvic/httpretty)](https://goreportcard.com/report/github.com/henvic/httpretty) [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3669/badge)](https://bestpractices.coreinfrastructure.org/projects/3669)
+[![Go Reference](https://pkg.go.dev/badge/github.com/henvic/httpretty.svg)](https://pkg.go.dev/github.com/henvic/httpretty) [![Build Status](https://github.com/henvic/httpretty/workflows/Tests/badge.svg)](https://github.com/henvic/httpretty/actions?query=workflow%3ATests) [![Coverage Status](https://coveralls.io/repos/henvic/httpretty/badge.svg)](https://coveralls.io/r/henvic/httpretty) [![Go Report Card](https://goreportcard.com/badge/github.com/henvic/httpretty)](https://goreportcard.com/report/github.com/henvic/httpretty) [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/3669/badge)](https://bestpractices.coreinfrastructure.org/projects/3669)
 
 Package httpretty prints the HTTP requests of your Go programs pretty on your terminal screen. It is mostly inspired in [curl](https://curl.haxx.se)'s `--verbose` mode, and also on the [httputil.DumpRequest](https://golang.org/pkg/net/http/httputil/) and similar functions.
 
@@ -86,7 +86,7 @@ logger.SetFilter(func filteredURIs(req *http.Request) (bool, error) {
 		return true, nil
 	}
 
-	if path := req.URL.Path; path == "/debug" | strings.HasPrefix(path, "/debug/") {
+	if path := req.URL.Path; path == "/debug" || strings.HasPrefix(path, "/debug/") {
 		return true, nil
 	}
 

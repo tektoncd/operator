@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"runtime/debug"
@@ -22,6 +23,8 @@ import (
 const (
 	accept          = "Accept"
 	authorization   = "Authorization"
+	apiVersion      = "X-GitHub-Api-Version"
+	apiVersionValue = "2022-11-28"
 	contentType     = "Content-Type"
 	github          = "github.com"
 	jsonContentType = "application/json; charset=utf-8"
@@ -42,18 +45,23 @@ func DefaultHTTPClient() (*http.Client, error) {
 // As part of the configuration a hostname, auth token, default set of headers,
 // and unix domain socket are resolved from the gh environment configuration.
 // These behaviors can be overridden using the opts argument. In this instance
-// providing opts.Host will not change the destination of your request as it is
-// the responsibility of the consumer to configure this. However, if opts.Host
-// does not match the request host, the auth token will not be added to the headers.
-// This is to protect against the case where tokens could be sent to an arbitrary
-// host.
+// providing opts.Host or opts.APIHost will not change the destination of your
+// request, as it is the responsibility of the consumer to configure this. The auth
+// token is only added to requests targeting opts.Host or one of its subdomains, or
+// the exact opts.APIHost when configured. This prevents tokens from being sent to
+// arbitrary hosts.
 func NewHTTPClient(opts ClientOptions) (*http.Client, error) {
+	var err error
 	if optionsNeedResolution(opts) {
-		var err error
 		opts, err = resolveOptions(opts)
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	opts, err = resolveAPIHost(opts)
+	if err != nil {
+		return nil, err
 	}
 
 	transport := http.DefaultTransport
@@ -112,11 +120,11 @@ func NewHTTPClient(opts ClientOptions) (*http.Client, error) {
 		opts.Headers = map[string]string{}
 	}
 	if !opts.SkipDefaultHeaders {
-		resolveHeaders(opts.Headers)
+		setDefaultHeaders(opts.Headers)
 	}
-	transport = newHeaderRoundTripper(opts.Host, opts.AuthToken, opts.Headers, transport)
+	transport = newHeaderRoundTripper(opts.Host, opts.APIHost, opts.AuthToken, opts.Headers, transport)
 
-	return &http.Client{Transport: transport, Timeout: opts.Timeout}, nil
+	return &http.Client{Transport: transport, Timeout: opts.Timeout, CheckRedirect: opts.CheckRedirect}, nil
 }
 
 func inspectableMIMEType(t string) bool {
@@ -131,6 +139,19 @@ func isSameDomain(requestHost, domain string) bool {
 	return (requestHost == domain) || strings.HasSuffix(requestHost, "."+domain)
 }
 
+// swapHost returns rawURL with its host replaced by apiHost.
+func swapHost(rawURL, apiHost string) string {
+	if apiHost == "" {
+		return rawURL
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	u.Host = apiHost
+	return u.String()
+}
+
 func isGarage(host string) bool {
 	return strings.EqualFold(host, "garage.github.com")
 }
@@ -138,10 +159,11 @@ func isGarage(host string) bool {
 type headerRoundTripper struct {
 	headers map[string]string
 	host    string
+	apiHost string
 	rt      http.RoundTripper
 }
 
-func resolveHeaders(headers map[string]string) {
+func setDefaultHeaders(headers map[string]string) {
 	if _, ok := headers[contentType]; !ok {
 		headers[contentType] = jsonContentType
 	}
@@ -163,6 +185,9 @@ func resolveHeaders(headers map[string]string) {
 			headers[timeZone] = tz
 		}
 	}
+	if _, ok := headers[apiVersion]; !ok {
+		headers[apiVersion] = apiVersionValue
+	}
 	if _, ok := headers[accept]; !ok {
 		// Preview for PullRequest.mergeStateStatus.
 		a := "application/vnd.github.merge-info-preview+json"
@@ -172,23 +197,32 @@ func resolveHeaders(headers map[string]string) {
 	}
 }
 
-func newHeaderRoundTripper(host string, authToken string, headers map[string]string, rt http.RoundTripper) http.RoundTripper {
+func newHeaderRoundTripper(host string, apiHost string, authToken string, headers map[string]string, rt http.RoundTripper) http.RoundTripper {
 	if _, ok := headers[authorization]; !ok && authToken != "" {
 		headers[authorization] = fmt.Sprintf("token %s", authToken)
 	}
 	if len(headers) == 0 {
 		return rt
 	}
-	return headerRoundTripper{host: host, headers: headers, rt: rt}
+	return headerRoundTripper{
+		host:    host,
+		apiHost: apiHost,
+		headers: headers,
+		rt:      rt,
+	}
 }
 
 func (hrt headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	for k, v := range hrt.headers {
-		// If the authorization header has been set and the request
-		// host is not in the same domain that was specified in the ClientOptions
-		// then do not add the authorization header to the request.
-		if k == authorization && !isSameDomain(req.URL.Hostname(), hrt.host) {
-			continue
+		// If the default headers include an authorization header, only add it when
+		// the request targets the canonical host or one of its subdomains, or the
+		// exact configured API host.
+		requestHost := req.URL.Hostname()
+		if k == authorization {
+			isAPIHost := hrt.apiHost != "" && strings.EqualFold(requestHost, hrt.apiHost)
+			if !isSameDomain(requestHost, hrt.host) && !isAPIHost {
+				continue
+			}
 		}
 
 		// If the header is already set in the request, don't overwrite it.
