@@ -399,7 +399,7 @@ spec:
         description: The full URL of the release file (no tag, platform - OpenShift) in the bucket
       steps:
       - name: create-results
-        image: docker.io/library/alpine:3.20.3@sha256:beefdbd8a1da6d2915566fde36db9db0b524eb737fc57cd1367effd16dc0d06d
+        image: docker.io/library/alpine:3.20.10@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
         script: |
           BASE_URL=$(echo "$(params.releaseBucket)/previous/$(params.versionTag)")
           # Oracle Cloud Storage: Construct public URL
@@ -435,7 +435,7 @@ spec:
         description: Whether Chains signing succeeded (true, failed, or timeout)
       steps:
       - name: wait-and-extract
-        image: docker.io/alpine/k8s:1.32.2
+        image: docker.io/alpine/k8s:1.32.13
         script: |
           #!/bin/sh
           set -e
@@ -546,7 +546,7 @@ spec:
       - name: workarea
       steps:
       - name: setup
-        image: docker.io/library/alpine:3.21@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d
+        image: docker.io/library/alpine:3.20.10@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
         script: |
           #!/bin/sh
           set -e
