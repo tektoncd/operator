@@ -98,7 +98,7 @@ func Test_ValidateTektonConfig_OpenShiftPlatformsOnKubernetes(t *testing.T) {
 			},
 			Pruner: Prune{Disabled: true},
 			Platforms: Platforms{
-				OpenShift: OpenShift{
+				OpenShift: &OpenShift{
 					PipelinesAsCode: &PipelinesAsCode{Enable: ptr.Bool(true)},
 				},
 			},
@@ -121,7 +121,7 @@ func Test_ValidateTektonConfig_KubernetesPlatformsOnOpenShift(t *testing.T) {
 			},
 			Pruner: Prune{Disabled: true},
 			Platforms: Platforms{
-				Kubernetes: Kubernetes{
+				Kubernetes: &Kubernetes{
 					PipelinesAsCode: &PipelinesAsCode{Enable: ptr.Bool(true)},
 				},
 			},
@@ -483,7 +483,7 @@ func makeSyncTC(ns *NamespaceSyncConfig) *TektonConfig {
 			Profile:    "all",
 			Pruner:     Prune{Disabled: true},
 			Platforms: Platforms{
-				OpenShift: OpenShift{NamespaceSync: ns},
+				OpenShift: &OpenShift{NamespaceSync: ns},
 			},
 		},
 	}
