@@ -450,19 +450,26 @@ func (r *rbac) handleSCCInNamespace(ctx context.Context, ns *corev1.Namespace) e
 	// Make sure SCC requested in the namespace has a lower or equal priority
 	// than the SCC mentioned in maxAllowed
 	maxAllowedSCC := r.tektonConfig.Spec.Platforms.OpenShift.SCC.MaxAllowed
-	if maxAllowedSCC != "" {
-		prioritizedSCCList, err := common.GetSCCRestrictiveList(ctx, r.securityClientSet)
-		if err != nil {
-			return err
-		}
-		isPriority, err := common.SCCAMoreRestrictiveThanB(prioritizedSCCList, nsSCC, maxAllowedSCC)
-		if err != nil {
-			return err
-		}
-		logger.Infof("Is maxAllowed SCC: %s less restrictive than namespace SCC: %s? %t", maxAllowedSCC, nsSCC, isPriority)
-		if !isPriority {
-			return fmt.Errorf("namespace: %s has requested SCC: %s, but it is less restrictive than the 'maxAllowed' SCC: %s", nsName, nsSCC, maxAllowedSCC)
-		}
+	defaultSCC := r.tektonConfig.Spec.Platforms.OpenShift.SCC.Default
+
+	// Security: Treat empty maxAllowed as "only default SCC allowed" to prevent privilege
+	// escalation. Empty maxAllowed previously allowed ANY SCC.
+	effectiveMaxAllowed := maxAllowedSCC
+	if effectiveMaxAllowed == "" {
+		effectiveMaxAllowed = defaultSCC
+	}
+
+	prioritizedSCCList, err := common.GetSCCRestrictiveList(ctx, r.securityClientSet)
+	if err != nil {
+		return err
+	}
+	isPriority, err := common.SCCAMoreRestrictiveThanB(prioritizedSCCList, nsSCC, effectiveMaxAllowed)
+	if err != nil {
+		return err
+	}
+	logger.Infof("Is effective maxAllowed SCC: %s less restrictive than namespace SCC: %s? %t", effectiveMaxAllowed, nsSCC, isPriority)
+	if !isPriority {
+		return fmt.Errorf("namespace: %s has requested SCC: %s, but it is less restrictive than the effective 'maxAllowed' SCC: %s", nsName, nsSCC, effectiveMaxAllowed)
 	}
 
 	// Make sure a Role exists with the SCC attached in the namespace

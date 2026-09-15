@@ -65,8 +65,20 @@ spec:
 - `spec.platforms.openshift.scc.default` specifies the default SCC that
 will be attached to the service account used for workloads (`pipeline` SA by
 default)
-- `spec.platforms.openshift.scc.maxAllowed` specifies the highest SCC that can 
-be requested for in any namespace
+- `spec.platforms.openshift.scc.maxAllowed` specifies the highest (least
+restrictive) SCC that can be requested via a namespace annotation
+
+If `maxAllowed` is not set, the operator defaults it to the value of `default`.
+This means that, out of the box, a namespace can only request an SCC that is
+equally or more restrictive than the default SCC. To allow a namespace to
+request a less restrictive SCC (for example `anyuid`), you must explicitly set
+`maxAllowed` to that SCC (or a less restrictive one) in `TektonConfig`.
+
+> **Security note:** In earlier releases, leaving `maxAllowed` empty allowed a
+> namespace to request *any* SCC — including `privileged` — via the
+> `operator.tekton.dev/scc` annotation. This allowed privilege escalation and
+> has been fixed: an empty `maxAllowed` is now treated as "only the default SCC
+> is allowed".
 
 Note that the SCC specified in `default` field cannot be of a higher priority 
 than the one specified in `maxAllowed` field.
@@ -102,6 +114,14 @@ Tekton needs elevated privileges like running as root and elevated Linux
 capabilities. Users can request for `anyuid` SCC in one namespace without
 impacting permissions of Tekton workloads running in other namespaces.
 
-**Note: The SCC requested by the `operator.tekton.dev/scc` can not have a 
-higher priority than the one specified in `TektonConfig.Spec.Platforms.OpenShift.
-SCC.MaxAllowed` field.**
+Requesting a less restrictive SCC such as `anyuid` this way requires
+`maxAllowed` to permit it. Because `maxAllowed` defaults to the `default` SCC
+(`pipelines-scc` by default), you must first set
+`spec.platforms.openshift.scc.maxAllowed` to `anyuid` (or a less restrictive
+SCC) in `TektonConfig`; otherwise the namespace annotation is rejected.
+
+**Note: The SCC requested by the `operator.tekton.dev/scc` annotation can not
+have a higher priority (be less restrictive) than the one specified in
+`TektonConfig.Spec.Platforms.OpenShift.SCC.MaxAllowed`. If `maxAllowed` is not
+set, it defaults to the `default` SCC, so only the default SCC (or a more
+restrictive one) can be requested via the annotation.**
