@@ -64,6 +64,11 @@ ecosystems:
           - version-update:semver-major
           - version-update:semver-minor
       - dependency-name: "github.com/openshift/client-go"
+    groups:
+      sigstore:
+        patterns:
+          - github.com/sigstore/sigstore
+          - github.com/sigstore/sigstore/*
     cooldown:
       default-days: 7
       semver-major-days: 30
