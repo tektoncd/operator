@@ -31,6 +31,7 @@ import (
 	"github.com/openshift/library-go/pkg/operator/resourcesynccontroller"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/cache"
@@ -212,11 +213,18 @@ type TektonConfigLister interface {
 
 // ResolveCentralTLSToEnvVars checks whether central TLS config is enabled in TektonConfig,
 // fetches the raw profile from the shared APIServer lister, and converts it to env vars.
-// Returns (nil, nil) if central TLS is disabled or no TLS config is available.
+// Returns (nil, nil) if the TektonConfig is absent, central TLS is disabled, or no TLS
+// config is available. Other lister and profile errors are returned to the caller.
 func ResolveCentralTLSToEnvVars(ctx context.Context, lister TektonConfigLister) (*TLSEnvVars, error) {
 	tc, err := lister.Get(v1alpha1.ConfigResourceName)
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil, nil
+		}
 		return nil, err
+	}
+	if tc == nil {
+		return nil, nil
 	}
 
 	// nil means the field was not set → treat as true (default-on after SetDefaults).

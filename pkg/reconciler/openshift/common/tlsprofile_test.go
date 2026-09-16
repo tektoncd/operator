@@ -18,10 +18,12 @@ package common
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func TestConvertTLSVersionToEnvFormat(t *testing.T) {
@@ -136,10 +138,36 @@ func (f *fakeTektonConfigLister) Get(_ string) (*v1alpha1.TektonConfig, error) {
 }
 
 func TestResolveCentralTLSToEnvVars_TektonConfigNotFound(t *testing.T) {
-	lister := &fakeTektonConfigLister{err: fmt.Errorf("tektonconfigs.operator.tekton.dev \"config\" not found")}
+	lister := &fakeTektonConfigLister{err: apierrors.NewNotFound(
+		schema.GroupResource{Group: "operator.tekton.dev", Resource: "tektonconfigs"},
+		v1alpha1.ConfigResourceName,
+	)}
 	result, err := ResolveCentralTLSToEnvVars(context.Background(), lister)
-	if err == nil {
-		t.Error("Expected error when TektonConfig not found, got nil")
+	if err != nil {
+		t.Errorf("Unexpected error when TektonConfig is absent: %v", err)
+	}
+	if result != nil {
+		t.Errorf("Expected nil result, got %v", result)
+	}
+}
+
+func TestResolveCentralTLSToEnvVars_NilTektonConfig(t *testing.T) {
+	lister := &fakeTektonConfigLister{}
+	result, err := ResolveCentralTLSToEnvVars(context.Background(), lister)
+	if err != nil {
+		t.Errorf("Unexpected error when TektonConfig is nil: %v", err)
+	}
+	if result != nil {
+		t.Errorf("Expected nil result, got %v", result)
+	}
+}
+
+func TestResolveCentralTLSToEnvVars_ListerError(t *testing.T) {
+	wantErr := errors.New("lister unavailable")
+	lister := &fakeTektonConfigLister{err: wantErr}
+	result, err := ResolveCentralTLSToEnvVars(context.Background(), lister)
+	if !errors.Is(err, wantErr) {
+		t.Errorf("Expected lister error %v, got %v", wantErr, err)
 	}
 	if result != nil {
 		t.Errorf("Expected nil result, got %v", result)
