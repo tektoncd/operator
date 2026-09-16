@@ -194,3 +194,26 @@ func TestValidateAddtionalPACControllerInvalidSetting(t *testing.T) {
 	err := opacCR.Validate(context.TODO())
 	assert.Equal(t, "invalid value: invalid value: invalid value for URL, error: parse \"test/path\": invalid URI for request: validation failed for field custom-console-url: spec.additionalPACControllers.settings", err.Error())
 }
+
+// TestValidateNilSettings guards against a regression where a nil
+// PACSettings.Settings map (as left behind when PAC is disabled via
+// SetDefaults) reaches SyncConfig and panics with "assignment to entry in
+// nil map".
+func TestValidateNilSettings(t *testing.T) {
+	opacCR := &OpenShiftPipelinesAsCode{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: OpenShiftPipelinesAsCodeSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "openshift-pipelines",
+			},
+			PACSettings: PACSettings{
+				Settings: nil,
+			},
+		},
+	}
+	err := opacCR.Validate(context.TODO())
+	assert.Assert(t, err == nil, "unexpected validation error: %v", err)
+}
