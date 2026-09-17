@@ -268,7 +268,7 @@ func TestReconciler_admissionAllowed_SCCEscalationPrevention(t *testing.T) {
 				},
 				Spec: v1alpha1.TektonConfigSpec{
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							SCC: &v1alpha1.SCC{
 								Default:    tt.defaultSCC,
 								MaxAllowed: tt.maxAllowedSCC,
