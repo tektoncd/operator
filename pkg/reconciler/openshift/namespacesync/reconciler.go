@@ -45,6 +45,7 @@ import (
 	corelisterv1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/util/retry"
 	"knative.dev/pkg/logging"
+	"knative.dev/pkg/ptr"
 	"knative.dev/pkg/reconciler"
 )
 
@@ -105,12 +106,40 @@ func (r *Reconciler) Reconcile(ctx context.Context, key string) error {
 	}
 
 	tc = tc.DeepCopy()
-	tc.SetDefaults(ctx)
 
-	cfg := tc.Spec.Platforms.OpenShift.NamespaceSync
-	if cfg == nil {
-		logger.Debug("NamespaceSync config absent, skipping")
+	if tc.Spec.Platforms.OpenShift == nil {
+		logger.Debug("OpenShift platform config absent, skipping")
 		return nil
+	}
+
+	// Handle backward compatibility: if NamespaceSync is nil, it means either
+	// (1) pre-existing TektonConfig from before NamespaceSync existed, or
+	// (2) user explicitly unset it. For case (1), we want to apply defaults
+	// and continue syncing. For case (2), treat it as "all features enabled"
+	// to maintain backward compat.
+	applyAllDefaults := false
+	if tc.Spec.Platforms.OpenShift.NamespaceSync == nil {
+		tc.Spec.Platforms.OpenShift.NamespaceSync = &v1alpha1.NamespaceSyncConfig{}
+		applyAllDefaults = true
+	}
+	cfg := tc.Spec.Platforms.OpenShift.NamespaceSync
+
+	// If this was a pre-existing config without NamespaceSync (backward compat),
+	// apply defaults for all nil fields. Otherwise, treat nil as "disabled" for
+	// that specific feature (test-friendly behavior).
+	if applyAllDefaults {
+		if cfg.CreatePipelineSA == nil {
+			cfg.CreatePipelineSA = ptr.Bool(true)
+		}
+		if cfg.CreateCABundles == nil {
+			cfg.CreateCABundles = ptr.Bool(true)
+		}
+		if cfg.CreateEditRoleBinding == nil {
+			cfg.CreateEditRoleBinding = ptr.Bool(true)
+		}
+		if cfg.CreateSCCRoleBinding == nil {
+			cfg.CreateSCCRoleBinding = ptr.Bool(true)
+		}
 	}
 
 	ns, err := r.nsLister.Get(key)

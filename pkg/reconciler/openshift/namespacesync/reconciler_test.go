@@ -74,7 +74,7 @@ func minimalTC(cfg *v1alpha1.NamespaceSyncConfig) *v1alpha1.TektonConfig {
 		ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ConfigResourceName},
 		Spec: v1alpha1.TektonConfigSpec{
 			Platforms: v1alpha1.Platforms{
-				OpenShift: v1alpha1.OpenShift{
+				OpenShift: &v1alpha1.OpenShift{
 					NamespaceSync: cfg,
 				},
 			},
@@ -1167,6 +1167,7 @@ func TestClusterInterceptors_RemovesSubjectWhenSADeleted(t *testing.T) {
 // namespace cannot escalate its privileges by requesting a less-restrictive SCC
 // via annotation.
 func TestSCCAnnotation_EmptyMaxAllowedBlocksEscalation(t *testing.T) {
+	t.Setenv("PLATFORM", "openshift")
 	// Build SCCs with distinct policy fields so ByRestrictions sort is deterministic.
 	// Resulting order (most → least restrictive, ascending point-score):
 	//   restricted (0 pts)  <  pipelines-scc (30k pts)  <  anyuid (40k pts)  <  privileged (1.6M pts)
@@ -1239,14 +1240,16 @@ func TestSCCAnnotation_EmptyMaxAllowedBlocksEscalation(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: v1alpha1.ConfigResourceName},
 				Spec: v1alpha1.TektonConfigSpec{
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							SCC: &v1alpha1.SCC{
 								Default:    tt.defaultSCC,
 								MaxAllowed: tt.maxAllowedSCC,
 							},
 							NamespaceSync: &v1alpha1.NamespaceSyncConfig{
-								CreatePipelineSA:     boolPtr(false),
-								CreateSCCRoleBinding: boolPtr(true),
+								CreatePipelineSA:      boolPtr(false),
+								CreateCABundles:       boolPtr(false),
+								CreateEditRoleBinding: boolPtr(false),
+								CreateSCCRoleBinding:  boolPtr(true),
 							},
 						},
 					},

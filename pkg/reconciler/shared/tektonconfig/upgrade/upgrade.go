@@ -45,6 +45,7 @@ var (
 		preUpgradeManualApprovalGate,             // upgrade #8: adopt standalone MAG config into TektonConfig
 		migrateLegacyNamespaceSyncParams,         // upgrade #9: persist createRbacResource/createCABundleConfigMaps/legacyPipelineRbac migration to namespaceSync
 		migrateResultsRouteTLSToReencrypt,        // upgrade #10: migrate Results route TLS termination from edge to reencrypt
+		preUpgradePipelinesAsCodeArtifacts,       // upgrade #11: migrate PaC hub catalog settings to artifacthub
 	}
 
 	// post upgrade functions
