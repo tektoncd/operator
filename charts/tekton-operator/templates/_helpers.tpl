@@ -110,6 +110,27 @@ tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboa
 {{- end -}}
 {{- end -}}
 
+{{/* validateControllers fails the render when the controllers value contains a
+     name the selected operator binary does not register — each binary exits
+     fatally at startup on unknown names (openshift has no tektondashboard,
+     kubernetes has no tektonaddon/syncerservice). Catches the v0.81.1
+     --reuse-values upgrade path, where the old chart's hardcoded kubernetes
+     list crash-loops the openshift operator. */}}
+{{- define "tekton-operator.validateControllers" -}}
+{{- $root := . -}}
+{{- $list := .Values.controllers | default (include "tekton-operator.controllers" .) -}}
+{{- $invalid := list "tektonaddon" "syncerservice" -}}
+{{- if .Values.openshift.enabled -}}
+{{- $invalid = list "tektondashboard" -}}
+{{- end -}}
+{{- range $raw := splitList "," $list -}}
+{{- $c := trim $raw -}}
+{{- if and $c (has $c $invalid) -}}
+{{- fail (printf "controllers must not contain %q: the %s operator binary does not register it and exits fatally at startup. This usually happens when upgrading with --reuse-values from a chart that hardcoded the kubernetes list; set controllers to \"\" to use the flavor default." $c (ternary "openshift" "kubernetes" $root.Values.openshift.enabled)) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
 {{/* Image repositories are the ko-published binary slugs from the v0.81.0
      release assets; the tag follows Chart.AppVersion. If a release renames
      the slugs, update all three (operator/webhook/proxy-webhook). */}}
