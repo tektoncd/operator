@@ -287,7 +287,7 @@ func TestReconciler_admissionAllowed_SCCEscalationPrevention(t *testing.T) {
 			assert.NilError(t, err)
 
 			// Create fake security client and add common SCCs
-			securityClient := fakesecurity.NewClientset()
+			securityClient := fakesecurity.NewSimpleClientset()
 			commonSCCs := []securityv1.SecurityContextConstraints{
 				{ObjectMeta: metav1.ObjectMeta{Name: "pipelines-scc"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "custom-scc"}},
