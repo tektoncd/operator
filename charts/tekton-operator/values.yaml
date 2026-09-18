@@ -23,6 +23,8 @@ openshift:
 
 ## If the Tekton-operator CRDs should automatically be installed and upgraded
 ## Setting this to true will cause a cascade deletion of all Tekton resources when you uninstall the chart - danger!
+## Note: on a cluster without the Tekton CRDs already present, the webhook pod
+## CrashLoops until they are served — keep this true (or pre-apply the CRDs) on fresh clusters.
 installCRDs: false
 
 ## Controllers to install (comma-separated list passed to the operator's
