@@ -67,6 +67,10 @@ const (
 	runAsNonRootValue              = true
 	allowPrivilegedEscalationValue = false
 	pipelinesControllerDeployment  = "tekton-pipelines-controller"
+
+	// knative/pkg StatefulSet ordinal leader-election env vars
+	statefulControllerOrdinalEnv = "STATEFUL_CONTROLLER_ORDINAL"
+	statefulReplicaCountEnv      = "STATEFUL_REPLICA_COUNT"
 )
 
 // transformers that are common to all components.
@@ -1178,6 +1182,10 @@ func AddStatefulEnvVars(controllerName, serviceName, statefulServiceEnvVar, cont
 					},
 				},
 			},
+			{
+				Name:  statefulReplicaCountEnv,
+				Value: statefulReplicaCountValue(ss),
+			},
 		}
 
 		if len(ss.Spec.Template.Spec.Containers) > 0 {
@@ -1193,6 +1201,75 @@ func AddStatefulEnvVars(controllerName, serviceName, statefulServiceEnvVar, cont
 
 		return nil
 	}
+}
+
+// statefulReplicaCountValue returns the effective replica count for a StatefulSet.
+// Kubernetes treats a nil spec.replicas as 1.
+func statefulReplicaCountValue(ss *appsv1.StatefulSet) string {
+	replicas := int32(1)
+	if ss.Spec.Replicas != nil {
+		replicas = *ss.Spec.Replicas
+	}
+	return strconv.Itoa(int(replicas))
+}
+
+func containerHasEnv(container corev1.Container, name string) bool {
+	for _, env := range container.Env {
+		if env.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func upsertEnvVar(envs []corev1.EnvVar, env corev1.EnvVar) []corev1.EnvVar {
+	for i := range envs {
+		if envs[i].Name == env.Name {
+			envs[i] = env
+			return envs
+		}
+	}
+	return append(envs, env)
+}
+
+// SyncStatefulReplicaCountEnv updates STATEFUL_REPLICA_COUNT on StatefulSets that
+// already have STATEFUL_CONTROLLER_ORDINAL, using the rendered spec.replicas.
+// It does not enable ordinal mode; it only keeps the replica env in sync after
+// later transformers (such as additional options) may have changed replicas.
+func SyncStatefulReplicaCountEnv(manifest *mf.Manifest) error {
+	updated, err := manifest.Transform(func(u *unstructured.Unstructured) error {
+		if u.GetKind() != KindStatefulSet {
+			return nil
+		}
+
+		ss := &appsv1.StatefulSet{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, ss); err != nil {
+			return err
+		}
+		if len(ss.Spec.Template.Spec.Containers) == 0 {
+			return nil
+		}
+		if !containerHasEnv(ss.Spec.Template.Spec.Containers[0], statefulControllerOrdinalEnv) {
+			return nil
+		}
+
+		ss.Spec.Template.Spec.Containers[0].Env = upsertEnvVar(ss.Spec.Template.Spec.Containers[0].Env, corev1.EnvVar{
+			Name:  statefulReplicaCountEnv,
+			Value: statefulReplicaCountValue(ss),
+		})
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ss)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	*manifest = updated
+	return nil
 }
 
 // updates performance flags/args into deployment and container given as args

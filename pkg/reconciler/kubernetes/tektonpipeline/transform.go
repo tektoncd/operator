@@ -115,6 +115,9 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 		if err := common.ExecuteAdditionalOptionsTransformer(ctx, manifest, pipeline.Spec.GetTargetNamespace(), pipeline.Spec.Options); err != nil {
 			return &mf.Manifest{}, err
 		}
+		if err := common.SyncStatefulReplicaCountEnv(manifest); err != nil {
+			return &mf.Manifest{}, err
+		}
 		if pipeline.Spec.Performance.StatefulsetOrdinals != nil && *pipeline.Spec.Performance.StatefulsetOrdinals {
 			if err := validateStatefulSetOrdinals(manifest, leaderElectionPipelineConfig, tektonPipelinesControllerName); err != nil {
 				return &mf.Manifest{}, err
