@@ -85,6 +85,7 @@ func TestUpdateStatefulSetOrdinalsForChains(t *testing.T) {
 
 			foundOrdinalEnv := false
 			foundServiceEnv := false
+			foundReplicaCountEnv := false
 			if len(sts.Spec.Template.Spec.Containers) > 0 {
 				for _, env := range sts.Spec.Template.Spec.Containers[0].Env {
 					if env.Name == tektonChainsControllerStatefulControllerOrdinal {
@@ -92,6 +93,12 @@ func TestUpdateStatefulSetOrdinalsForChains(t *testing.T) {
 					}
 					if env.Name == tektonChainsControllerStatefulServiceName {
 						foundServiceEnv = true
+					}
+					if env.Name == "STATEFUL_REPLICA_COUNT" {
+						foundReplicaCountEnv = true
+						if env.Value != "3" {
+							t.Errorf("Expected STATEFUL_REPLICA_COUNT to be %q, got %q", "3", env.Value)
+						}
 					}
 				}
 			}
@@ -102,6 +109,10 @@ func TestUpdateStatefulSetOrdinalsForChains(t *testing.T) {
 
 			if !foundServiceEnv {
 				t.Errorf("Expected to find environment variable %s", tektonChainsControllerStatefulServiceName)
+			}
+
+			if !foundReplicaCountEnv {
+				t.Errorf("Expected to find environment variable STATEFUL_REPLICA_COUNT")
 			}
 
 			break
