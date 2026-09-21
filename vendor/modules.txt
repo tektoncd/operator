@@ -430,7 +430,7 @@ github.com/chrismellard/docker-credential-acr-env/pkg/token
 # github.com/clbanning/mxj/v2 v2.7.0
 ## explicit; go 1.15
 github.com/clbanning/mxj/v2
-# github.com/cli/go-gh/v2 v2.16.0
+# github.com/cli/go-gh/v2 v2.16.1
 ## explicit; go 1.25.0
 github.com/cli/go-gh/v2/internal/set
 github.com/cli/go-gh/v2/internal/yamlmap
