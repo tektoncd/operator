@@ -80,6 +80,26 @@ type NodeExporterCollectorConfigApplyConfiguration struct {
 	// for excessive memory usage.
 	// Enable when you need metrics for specific units; scope units carefully.
 	Systemd *NodeExporterCollectorSystemdConfigApplyConfiguration `json:"systemd,omitempty"`
+	// softirqs configures the softirqs collector, which exposes detailed softirq statistics
+	// from /proc/softirqs.
+	// softirqs is optional.
+	// When omitted, this means no opinion and the platform is left to choose a reasonable default,
+	// which is subject to change over time. The current default is disabled.
+	// Enable when you need visibility into kernel softirq processing across CPUs.
+	Softirqs *NodeExporterCollectorSoftirqsConfigApplyConfiguration `json:"softirqs,omitempty"`
+	// deviceMapperMultipath configures the dmmultipath collector, which collects statistics
+	// about DM-Multipath devices.
+	// deviceMapperMultipath is optional.
+	// When omitted, this means no opinion and the platform is left to choose a reasonable default,
+	// which is subject to change over time. The current default is enabled.
+	DeviceMapperMultipath *NodeExporterCollectorDeviceMapperMultipathConfigApplyConfiguration `json:"deviceMapperMultipath,omitempty"`
+	// zoneinfo configures the zoneinfo collector, which exposes per-zone memory page counts,
+	// watermarks, and protection thresholds from /proc/zoneinfo.
+	// zoneinfo is optional.
+	// When omitted, this means no opinion and the platform is left to choose a reasonable default,
+	// which is subject to change over time. The current default is to not collect zoneinfo metrics.
+	// Enable when you need visibility into kernel memory zone allocation and pressure.
+	Zoneinfo *NodeExporterCollectorZoneinfoConfigApplyConfiguration `json:"zoneinfo,omitempty"`
 }
 
 // NodeExporterCollectorConfigApplyConfiguration constructs a declarative configuration of the NodeExporterCollectorConfig type for use with
@@ -165,5 +185,29 @@ func (b *NodeExporterCollectorConfigApplyConfiguration) WithProcesses(value *Nod
 // If called multiple times, the Systemd field is set to the value of the last call.
 func (b *NodeExporterCollectorConfigApplyConfiguration) WithSystemd(value *NodeExporterCollectorSystemdConfigApplyConfiguration) *NodeExporterCollectorConfigApplyConfiguration {
 	b.Systemd = value
+	return b
+}
+
+// WithSoftirqs sets the Softirqs field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Softirqs field is set to the value of the last call.
+func (b *NodeExporterCollectorConfigApplyConfiguration) WithSoftirqs(value *NodeExporterCollectorSoftirqsConfigApplyConfiguration) *NodeExporterCollectorConfigApplyConfiguration {
+	b.Softirqs = value
+	return b
+}
+
+// WithDeviceMapperMultipath sets the DeviceMapperMultipath field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the DeviceMapperMultipath field is set to the value of the last call.
+func (b *NodeExporterCollectorConfigApplyConfiguration) WithDeviceMapperMultipath(value *NodeExporterCollectorDeviceMapperMultipathConfigApplyConfiguration) *NodeExporterCollectorConfigApplyConfiguration {
+	b.DeviceMapperMultipath = value
+	return b
+}
+
+// WithZoneinfo sets the Zoneinfo field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Zoneinfo field is set to the value of the last call.
+func (b *NodeExporterCollectorConfigApplyConfiguration) WithZoneinfo(value *NodeExporterCollectorZoneinfoConfigApplyConfiguration) *NodeExporterCollectorConfigApplyConfiguration {
+	b.Zoneinfo = value
 	return b
 }

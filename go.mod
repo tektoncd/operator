@@ -12,10 +12,10 @@ require (
 	github.com/manifestival/manifestival v0.7.2
 	github.com/markbates/inflect v1.0.4
 	github.com/openshift-pipelines/pipelines-as-code v0.49.0
-	github.com/openshift/api v0.0.0-20260429122012-1180c0f5c3e9
+	github.com/openshift/api v0.0.0-20260825094607-13a84dedc5a3
 	github.com/openshift/apiserver-library-go v0.0.0-20260303173613-cd3676268d31
-	github.com/openshift/client-go v0.0.0-20260429123927-c81f86abfa6a
-	github.com/openshift/library-go v0.0.0-20260303171201-5d9eb6295ff6
+	github.com/openshift/client-go v0.0.0-20260806041845-b74fb348f1e7
+	github.com/openshift/library-go v0.0.0-20260915203445-79b4826daec4
 	github.com/sigstore/cosign/v2 v2.6.5
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
@@ -31,19 +31,19 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
-	k8s.io/api v0.35.8
-	k8s.io/apiextensions-apiserver v0.35.8
+	k8s.io/api v0.36.2
+	k8s.io/apiextensions-apiserver v0.36.2
 	k8s.io/apimachinery v0.36.4
-	k8s.io/client-go v1.5.2
-	k8s.io/code-generator v0.35.8
-	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
+	k8s.io/client-go v0.36.2
+	k8s.io/code-generator v0.36.2
+	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 	knative.dev/pkg v0.0.0-20260622140654-39ebae2ee2dc
 	sigs.k8s.io/yaml v1.6.0
 )
 
 replace github.com/tektoncd/tekton-kueue => github.com/konflux-ci/tekton-kueue v0.4.0
 
-replace k8s.io/client-go => k8s.io/client-go v0.35.2
+replace k8s.io/client-go => k8s.io/client-go v0.36.2
 
 require (
 	cel.dev/expr v0.25.2 // indirect
@@ -305,12 +305,12 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.2 // indirect
-	k8s.io/apiserver v0.35.8 // indirect
-	k8s.io/component-base v0.35.8 // indirect
+	k8s.io/apiserver v0.36.2 // indirect
+	k8s.io/component-base v0.36.2 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
-	k8s.io/kube-aggregator v0.35.2 // indirect
-	k8s.io/kube-openapi v0.0.0-20260330154417-16be699c7b31 // indirect
+	k8s.io/kube-aggregator v0.36.2 // indirect
+	k8s.io/kube-openapi v0.0.0-20260519202549-bbf5c5577288 // indirect
 	knative.dev/hack v0.0.0-20260421155212-aeb7b4a9bf96 // indirect
 	sigs.k8s.io/controller-runtime v0.23.1 // indirect
 	sigs.k8s.io/gateway-api v1.5.1 // indirect
