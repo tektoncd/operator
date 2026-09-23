@@ -30,4 +30,4 @@ syncer-service:
   version: v0.1.1
 triggers:
   github: tektoncd/triggers
-  version: v0.37.0
+  version: v0.37.1
