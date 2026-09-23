@@ -17,14 +17,19 @@ limitations under the License.
 package tektonhub
 
 import (
+	"context"
 	"path"
 	"strings"
 	"testing"
 
 	mf "github.com/manifestival/manifestival"
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	kubefake "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestUpdateDbDeployment(t *testing.T) {
@@ -103,4 +108,119 @@ func TestInjectPostgresUpgradeSupport(t *testing.T) {
 		}
 	}
 	assert.Equal(t, upgradeScriptsVolumeFound, true)
+}
+
+func TestSetAuthAndREDIRECTURIBaseURL(t *testing.T) {
+	ctx := context.Background()
+	targetNamespace := "tekton-hub"
+
+	t.Run("sets REDIRECT_URI when missing", func(t *testing.T) {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tekton-hub-api",
+				Namespace: targetNamespace,
+			},
+			Data: map[string][]byte{
+				"GH_CLIENT_ID": []byte("test-client-id"),
+			},
+		}
+
+		kc := kubefake.NewClientset(secret)
+		oe := openshiftExtension{
+			kubeClientSet: kc,
+		}
+
+		th := &v1alpha1.TektonHub{
+			Spec: v1alpha1.TektonHubSpec{
+				CommonSpec: v1alpha1.CommonSpec{
+					TargetNamespace: targetNamespace,
+				},
+			},
+		}
+		th.Status.SetUiRoute("https://ui.example.com")
+		th.Status.SetAuthRoute("https://auth.example.com")
+
+		err := oe.SetAuthAndREDIRECTURIBaseURL(ctx, th)
+		assert.NilError(t, err)
+
+		// Verify REDIRECT_URI was set in StringData
+		updatedSecret, err := kc.CoreV1().Secrets(targetNamespace).Get(ctx, "tekton-hub-api", metav1.GetOptions{})
+		assert.NilError(t, err)
+		assert.Equal(t, updatedSecret.StringData["REDIRECT_URI"], "https://ui.example.com")
+		assert.Equal(t, updatedSecret.StringData["AUTH_BASE_URL"], "https://auth.example.com")
+	})
+
+	t.Run("updates REDIRECT_URI when changed", func(t *testing.T) {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tekton-hub-api",
+				Namespace: targetNamespace,
+			},
+			Data: map[string][]byte{
+				"GH_CLIENT_ID": []byte("test-client-id"),
+				"REDIRECT_URI": []byte("https://old-ui.example.com"),
+			},
+		}
+
+		kc := kubefake.NewClientset(secret)
+		oe := openshiftExtension{
+			kubeClientSet: kc,
+		}
+
+		th := &v1alpha1.TektonHub{
+			Spec: v1alpha1.TektonHubSpec{
+				CommonSpec: v1alpha1.CommonSpec{
+					TargetNamespace: targetNamespace,
+				},
+			},
+		}
+		th.Status.SetUiRoute("https://new-ui.example.com")
+		th.Status.SetAuthRoute("https://auth.example.com")
+
+		err := oe.SetAuthAndREDIRECTURIBaseURL(ctx, th)
+		assert.NilError(t, err)
+
+		// Verify REDIRECT_URI was updated
+		updatedSecret, err := kc.CoreV1().Secrets(targetNamespace).Get(ctx, "tekton-hub-api", metav1.GetOptions{})
+		assert.NilError(t, err)
+		assert.Equal(t, updatedSecret.StringData["REDIRECT_URI"], "https://new-ui.example.com")
+	})
+
+	t.Run("skips update when REDIRECT_URI is already correct", func(t *testing.T) {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tekton-hub-api",
+				Namespace: targetNamespace,
+			},
+			Data: map[string][]byte{
+				"GH_CLIENT_ID":  []byte("test-client-id"),
+				"AUTH_BASE_URL": []byte("https://auth.example.com"),
+				"REDIRECT_URI":  []byte("https://ui.example.com"),
+			},
+		}
+
+		kc := kubefake.NewClientset(secret)
+		oe := openshiftExtension{
+			kubeClientSet: kc,
+		}
+
+		th := &v1alpha1.TektonHub{
+			Spec: v1alpha1.TektonHubSpec{
+				CommonSpec: v1alpha1.CommonSpec{
+					TargetNamespace: targetNamespace,
+				},
+			},
+		}
+		th.Status.SetUiRoute("https://ui.example.com")
+		th.Status.SetAuthRoute("https://auth.example.com")
+
+		err := oe.SetAuthAndREDIRECTURIBaseURL(ctx, th)
+		assert.NilError(t, err)
+
+		// Verify no update occurred - StringData should be nil or empty
+		updatedSecret, err := kc.CoreV1().Secrets(targetNamespace).Get(ctx, "tekton-hub-api", metav1.GetOptions{})
+		assert.NilError(t, err)
+		// When no update is needed, StringData won't be set
+		assert.Equal(t, len(updatedSecret.StringData), 0)
+	})
 }
