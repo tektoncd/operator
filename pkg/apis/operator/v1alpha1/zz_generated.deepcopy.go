@@ -24,8 +24,6 @@ package v1alpha1
 import (
 	manifestival "github.com/manifestival/manifestival"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
-	appsv1 "k8s.io/api/apps/v1"
-	v2 "k8s.io/api/autoscaling/v2"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,28 +40,28 @@ func (in *AdditionalOptions) DeepCopyInto(out *AdditionalOptions) {
 	}
 	if in.ConfigMaps != nil {
 		in, out := &in.ConfigMaps, &out.ConfigMaps
-		*out = make(map[string]v1.ConfigMap, len(*in))
+		*out = make(map[string]runtime.RawExtension, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	if in.Deployments != nil {
 		in, out := &in.Deployments, &out.Deployments
-		*out = make(map[string]appsv1.Deployment, len(*in))
+		*out = make(map[string]runtime.RawExtension, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	if in.HorizontalPodAutoscalers != nil {
 		in, out := &in.HorizontalPodAutoscalers, &out.HorizontalPodAutoscalers
-		*out = make(map[string]v2.HorizontalPodAutoscaler, len(*in))
+		*out = make(map[string]runtime.RawExtension, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
 		}
 	}
 	if in.StatefulSets != nil {
 		in, out := &in.StatefulSets, &out.StatefulSets
-		*out = make(map[string]appsv1.StatefulSet, len(*in))
+		*out = make(map[string]runtime.RawExtension, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
 		}

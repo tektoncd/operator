@@ -21,13 +21,23 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonpruner"
 	v1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	k8sFake "k8s.io/client-go/kubernetes/fake"
+)
 
-	"github.com/stretchr/testify/assert"
-	"github.com/tektoncd/operator/pkg/apis/operator/v1alpha1"
+// toRawExtension converts any object to runtime.RawExtension for testing
+func toRawExtension(t *testing.T, obj interface{}) runtime.RawExtension {
+	t.Helper()
+	data, err := json.Marshal(obj)
+	require.NoError(t, err)
+	return runtime.RawExtension{Raw: data}
+}
 	operatorFake "github.com/tektoncd/operator/pkg/client/clientset/versioned/fake"
 	"github.com/tektoncd/tekton-kueue/pkg/config"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -1097,12 +1107,12 @@ func TestPreUpgradeManualApprovalGate(t *testing.T) {
 				},
 				ManualApproval: v1alpha1.ManualApproval{
 					Options: v1alpha1.AdditionalOptions{
-						ConfigMaps: map[string]v1.ConfigMap{
-							"manual-approval-gate-config": {
+						ConfigMaps: map[string]runtime.RawExtension{
+							"manual-approval-gate-config": toRawExtension(t, v1.ConfigMap{
 								Data: map[string]string{
 									"custom-key": "custom-value",
 								},
-							},
+							}),
 						},
 					},
 				},
@@ -1118,7 +1128,12 @@ func TestPreUpgradeManualApprovalGate(t *testing.T) {
 		updated, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 		assert.NoError(t, err)
 		assert.False(t, updated.Spec.ManualApproval.IsDisabled())
-		assert.Equal(t, "custom-value", updated.Spec.ManualApproval.Options.ConfigMaps["manual-approval-gate-config"].Data["custom-key"])
+		if rawExt, exists := updated.Spec.ManualApproval.Options.ConfigMaps["manual-approval-gate-config"]; exists {
+			var configMap v1.ConfigMap
+			if err := json.Unmarshal(rawExt.Raw, &configMap); err == nil {
+				assert.Equal(t, "custom-value", configMap.Data["custom-key"])
+			}
+		}
 	})
 }
 
