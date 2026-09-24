@@ -367,58 +367,153 @@ func (cpr *consolePluginReconciler) buildNginxTLSDirectives() string {
 	// to advertise post-quantum groups; without it only classical curves are
 	// offered and the TLS scanner reports pqc_capable=false.
 	//
-	// Group list is currently hardcoded because library-go's
-	// ObserveTLSSecurityProfile does not yet expose the groups/curve-preferences
-	// field from the APIServer TLS profile (openshift/library-go#2347, open).
-	// Once that lands we will switch to dynamic propagation from the APIServer
-	// profile and remove this function.
-	//
-	// X25519MLKEM768 is not FIPS-approved: OpenSSL's FIPS provider rejects it
-	// with a fatal error, crashing nginx.  We therefore exclude it on FIPS nodes
-	// while keeping it for all other clusters to satisfy the mandatory ML-KEM
-	// requirement.
-	tlsGroups := tlsECDHGroups()
+	// Groups come from the APIServer TLSSecurityProfile (via CurvePreferences)
+	// when central TLS has resolved them. Otherwise Intermediate-equivalent
+	// defaults are used. On FIPS nodes X25519-based groups are stripped as a
+	// safety net because OpenSSL's FIPS provider rejects them and crashes nginx.
+	tlsGroups := nginxECDHCurve(cpr.tlsConfig)
 	directives.WriteString(fmt.Sprintf("    ssl_ecdh_curve %s;\n", tlsGroups))
 
 	return directives.String()
 }
 
-// tlsECDHGroups returns the colon-separated list of TLS key-exchange groups to
-// emit in the nginx ssl_ecdh_curve directive.
+// nginxECDHCurve returns the colon-separated OpenSSL group list for nginx's
+// ssl_ecdh_curve directive. Prefer CurvePreferences from the APIServer profile
+// when present; otherwise fall back to Intermediate-equivalent defaults.
 //
-// On FIPS-enabled nodes X25519MLKEM768 is excluded because it is not
-// FIPS-approved and causes OpenSSL to crash nginx with:
+// FIPS / CrashLoopBackOff (nginx):
+//   - On FIPS, OpenSSL rejects X25519 and X25519MLKEM768 as TLS groups.
+//   - That makes nginx fail at startup ([emerg]) and the console-plugin CrashLoops.
+//   - We saw this with ssl_conf_command Groups …; ssl_ecdh_curve uses the same
+//     OpenSSL Groups path.
+//   - So we:
+//   - set groups only via ssl_ecdh_curve (never ssl_conf_command Groups)
+//   - on FIPS, allow only P-256, P-384, P-521
+//   - if FIPS status is unknown, treat as FIPS (fail closed)
+func nginxECDHCurve(tlsConfig *occommon.TLSEnvVars) string {
+	groups := defaultNginxECDHGroups()
+	if tlsConfig != nil && tlsConfig.CurvePreferences != "" {
+		if converted := apiTLSGroupsToNginxECDHCurve(tlsConfig.CurvePreferences); converted != "" {
+			groups = converted
+		}
+	}
+	if isFIPSEnabled() {
+		if filtered := filterFIPSNginxECDHGroups(groups); filtered != "" {
+			return filtered
+		}
+		return defaultFIPSNginxECDHGroups
+	}
+	return groups
+}
+
+// defaultNginxECDHGroups is the Intermediate-equivalent fallback used when the
+// APIServer profile has not yet provided curve preferences. Matches
+// cluster-ingress-operator's non-FIPS default.
+const defaultNginxECDHGroupsList = "X25519MLKEM768:X25519:P-256:P-384:P-521"
+
+// defaultFIPSNginxECDHGroups is the NIST-only fallback for FIPS nodes.
+const defaultFIPSNginxECDHGroups = "P-256:P-384:P-521"
+
+func defaultNginxECDHGroups() string {
+	return defaultNginxECDHGroupsList
+}
+
+// apiTLSGroupsToNginxECDHCurve converts a comma-separated list of OpenShift API
+// TLSGroup names into the colon-separated OpenSSL names nginx expects.
+func apiTLSGroupsToNginxECDHCurve(apiGroups string) string {
+	parts := strings.Split(apiGroups, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		out = append(out, apiTLSGroupToOpenSSL(p))
+	}
+	return strings.Join(out, ":")
+}
+
+// apiTLSGroupToOpenSSL maps a curve name to the OpenSSL identifier used by
+// nginx ssl_ecdh_curve / SSL_CONF Groups. Accepts OpenShift API TLSGroup names
+// (secp256r1) and Knative/env names (P-256) so nginx works whether called with
+// raw profile groups or already-converted CurvePreferences.
+func apiTLSGroupToOpenSSL(group string) string {
+	switch group {
+	case "secp256r1", "P-256", "CurveP256":
+		return "P-256"
+	case "secp384r1", "P-384", "CurveP384":
+		return "P-384"
+	case "secp521r1", "P-521", "CurveP521":
+		return "P-521"
+	default:
+		// X25519, X25519MLKEM768, SecP256r1MLKEM768, …
+		return group
+	}
+}
+
+// filterFIPSNginxECDHGroups keeps only NIST P-curves that OpenSSL's FIPS
+// provider accepts. Allowlist (not blocklist) so unknown/future group names
+// cannot reach nginx and trigger:
 //
 //	nginx: [emerg] SSL_CONF_cmd("Groups","X25519MLKEM768:…") failed
-//
-// On all other nodes X25519MLKEM768 is included first so that TLS 1.3 clients
-// that support ML-KEM perform a post-quantum key exchange (pqc_capable=true).
-func tlsECDHGroups() string {
-	if isFIPSEnabled() {
-		// On FIPS nodes only NIST-approved curves are permitted by OpenSSL's
-		// FIPS provider. Both X25519MLKEM768 and X25519 are rejected; only the
-		// NIST prime curves (P-256, P-384, P-521) are FIPS 140-approved.
-		// Matches the curve list used by cluster-ingress-operator on FIPS.
-		return "P-256:P-384:P-521"
+func filterFIPSNginxECDHGroups(groups string) string {
+	var out []string
+	for _, g := range strings.Split(groups, ":") {
+		switch g {
+		case "P-256", "P-384", "P-521":
+			out = append(out, g)
+		}
 	}
-	// Matches cluster-ingress-operator's non-FIPS default.
-	return "X25519MLKEM768:X25519:P-256:P-384:P-521"
+	return strings.Join(out, ":")
+}
+
+// tlsECDHGroups returns the colon-separated default TLS key-exchange groups
+// for nginx when no API-driven CurvePreferences are available.
+//
+// Deprecated path kept for tests that exercise the FIPS default list directly.
+func tlsECDHGroups() string {
+	return nginxECDHCurve(nil)
 }
 
 // fipsEnabledPath is the kernel file that reports FIPS 140 mode status.
 // Overridable in tests via a temp file.
 var fipsEnabledPath = "/proc/sys/crypto/fips_enabled"
 
-// isFIPSEnabled reports whether the host kernel has FIPS 140 mode active.
-// It reads /proc/sys/crypto/fips_enabled which is provided by the Linux kernel
-// and is accessible from inside containers (containers share the host kernel).
-// The value is "1" when FIPS mode is on, "0" otherwise.
+// lookupEnv is os.LookupEnv, overridable in tests.
+var lookupEnv = os.LookupEnv
+
+// isFIPSEnabled reports whether we must use FIPS-safe TLS groups for nginx.
+//
+// Detection order:
+//  1. FIPS_ENABLED env var when set (true/false/1/0)
+//  2. /proc/sys/crypto/fips_enabled ("1" = on, "0" = off)
+//
+// If status cannot be determined (missing file, unreadable, or unparseable
+// env), this returns true. That fail-closed default avoids advertising
+// X25519MLKEM768 on a FIPS OpenSSL provider, which CrashLoopBackOffs nginx.
+// Prefer a false pqc_capable over a crash when unsure.
 func isFIPSEnabled() bool {
+	if v, ok := lookupEnv("FIPS_ENABLED"); ok {
+		switch strings.ToLower(strings.TrimSpace(v)) {
+		case "1", "true", "yes":
+			return true
+		case "0", "false", "no":
+			return false
+		}
+		// Unparseable value → assume FIPS.
+		return true
+	}
 	data, err := os.ReadFile(fipsEnabledPath)
 	if err != nil {
-		return false
+		return true
 	}
-	return strings.TrimSpace(string(data)) == "1"
+	switch strings.TrimSpace(string(data)) {
+	case "0":
+		return false
+	default:
+		// "1" or anything unexpected → treat as FIPS.
+		return true
+	}
 }
 
 // convertTLSVersionToNginx converts the Go crypto/tls minimum version string
