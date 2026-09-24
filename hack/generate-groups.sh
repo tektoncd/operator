@@ -69,7 +69,7 @@ done
 
 if [ "${GENS}" = "all" ] || grep -qw "deepcopy" <<<"${GENS}"; then
   echo "Generating deepcopy funcs for ${GROUPS_WITH_VERSIONS}"
-  "${PREFIX}/deepcopy-gen" --output-file zz_generated.deepcopy.go --bounding-dirs "${APIS_PKG}" "$@" $(codegen::join " " "${FQ_APIS[@]}")
+  "${PREFIX}/deepcopy-gen" --output-file zz_generated.deepcopy.go "$@" $(codegen::join " " "${FQ_APIS[@]}")
 fi
 
 if [ "${GENS}" = "all" ] || grep -qw "client" <<<"${GENS}"; then

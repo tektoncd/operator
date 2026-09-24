@@ -68,8 +68,9 @@ func TestTLSEnvVarsFromProfile(t *testing.T) {
 
 	t.Run("valid TLS 1.2 profile", func(t *testing.T) {
 		cfg := &TLSProfileConfig{
-			MinTLSVersion: "VersionTLS12",
-			CipherSuites:  []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256"},
+			MinTLSVersion:    "VersionTLS12",
+			CipherSuites:     []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256"},
+			CurvePreferences: []string{"X25519MLKEM768", "X25519", "secp256r1"},
 		}
 		result, err := TLSEnvVarsFromProfile(cfg)
 		if err != nil {
@@ -80,6 +81,37 @@ func TestTLSEnvVarsFromProfile(t *testing.T) {
 		}
 		if result.CipherSuites != "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_AES_128_GCM_SHA256" {
 			t.Errorf("CipherSuites = %s, want TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_AES_128_GCM_SHA256", result.CipherSuites)
+		}
+		if result.CurvePreferences != "X25519MLKEM768,X25519,P-256" {
+			t.Errorf("CurvePreferences = %s, want X25519MLKEM768,X25519,P-256", result.CurvePreferences)
+		}
+	})
+
+	t.Run("drops API groups unknown to knative", func(t *testing.T) {
+		cfg := &TLSProfileConfig{
+			MinTLSVersion:    "VersionTLS12",
+			CurvePreferences: []string{"X25519", "SecP256r1MLKEM768", "secp384r1"},
+		}
+		result, err := TLSEnvVarsFromProfile(cfg)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+		if result.CurvePreferences != "X25519,P-384" {
+			t.Errorf("CurvePreferences = %s, want X25519,P-384", result.CurvePreferences)
+		}
+	})
+
+	t.Run("normalizes Knative aliases via curvesByName-style map", func(t *testing.T) {
+		cfg := &TLSProfileConfig{
+			MinTLSVersion:    "VersionTLS12",
+			CurvePreferences: []string{"CurveP256", "P-384", "X25519"},
+		}
+		result, err := TLSEnvVarsFromProfile(cfg)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
+		}
+		if result.CurvePreferences != "P-256,P-384,X25519" {
+			t.Errorf("CurvePreferences = %s, want P-256,P-384,X25519", result.CurvePreferences)
 		}
 	})
 
