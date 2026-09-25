@@ -9,51 +9,32 @@
 #
 # Manual regeneration:
 # 1. Edit the 'ecosystems' section to change what packages to monitor
-# 2. Edit the 'release-branches' section to add/remove active release branches
+# 2. Edit the 'release-branches' section to add/remove branches
 # 3. Run: ./hack/generate-dependabot.sh
 
-# Active release branches to monitor (in addition to main).
-# Release branches receive patch-only updates (no major/minor bumps).
-# Check releases.md for the current list of supported releases.
+# List of release branches to monitor (in addition to main branch)
+# These should be active LTS release branches
+# Check releases.md for the current list of supported releases
 release-branches:
   - release-v0.81.x
   - release-v0.80.x
   - release-v0.79.x
   - release-v0.78.x
   - release-v0.77.x
-# Package ecosystems to monitor.
+# Package ecosystems to monitor
 # Each ecosystem will be configured for:
-# - main branch: all updates (subject to ignore rules below)
-# - release branches: patch updates only (major/minor blocked via extra ignore rule)
+# - main branch: all updates (major, minor, patch)
+# - release branches: patch updates only
 ecosystems:
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-    labels:
-      - ok-to-test
-      - dependencies
-      - github_action
-      - kind/misc
-      - release-note-none
-    groups:
-      # Collapse all GitHub Actions bumps into a single weekly PR per branch.
-      # These are low-risk version bumps and were previously opened one PR per
-      # action, flooding the queue (especially on release branches).
-      github-actions:
-        patterns:
-          - "*"
-    cooldown:
-      default-days: 7
   - package-ecosystem: gomod
     directory: /
     schedule:
-      interval: weekly
+      interval: daily
     labels:
       - ok-to-test
       - dependencies
-      - kind/misc
       - release-note-none
+      - kind/misc
     ignore:
       - dependency-name: "k8s.io/*"
         update-types:
@@ -63,8 +44,17 @@ ecosystems:
         update-types:
           - version-update:semver-major
           - version-update:semver-minor
+      # Pseudo-version only; Dependabot cannot resolve a semver bump for it.
       - dependency-name: "github.com/openshift/client-go"
     groups:
+      kubernetes:
+        patterns:
+          - k8s.io/*
+      opentelemetry:
+        patterns:
+          - go.opentelemetry.io/*
+          - go.opentelemetry.io/contrib/*
+          - knative.dev/pkg
       sigstore:
         patterns:
           - github.com/sigstore/sigstore
@@ -74,6 +64,26 @@ ecosystems:
       semver-major-days: 30
       semver-minor-days: 7
       semver-patch-days: 3
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - ok-to-test
+      - dependencies
+      - release-note-none
+      - kind/misc
+    groups:
+      # Collapse all GitHub Actions bumps into a single weekly PR per branch.
+      # These are low-risk version bumps and were previously opened one PR per
+      # action, flooding the queue (especially on release branches).
+      # Also keeps github/codeql-action/* sub-actions on the same version (the
+      # CodeQL bundle refuses to run when init and analyze diverge).
+      github-actions:
+        patterns:
+          - "*"
+    cooldown:
+      default-days: 7
   # Keeps the pinned ko/koparse image digests in tekton/build-publish-images-manifests.yaml
   # in sync so they don't silently drift behind the Go toolchain version required by go.mod
   # (see https://github.com/tektoncd/chains/pull/1784 for the class of failure this prevents:
@@ -85,8 +95,8 @@ ecosystems:
     labels:
       - ok-to-test
       - dependencies
-      - kind/misc
       - release-note-none
+      - kind/misc
     groups:
       all:
         patterns:

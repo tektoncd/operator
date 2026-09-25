@@ -7,31 +7,15 @@
 #
 version: 2
 updates:
-    - package-ecosystem: github-actions
-      directory: /
-      schedule:
-        interval: weekly
-      labels:
-        - ok-to-test
-        - dependencies
-        - github_action
-        - kind/misc
-        - release-note-none
-      groups:
-        github-actions:
-            patterns:
-                - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: gomod
       directory: /
       schedule:
-        interval: weekly
+        interval: daily
       labels:
         - ok-to-test
         - dependencies
-        - kind/misc
         - release-note-none
+        - kind/misc
       ignore:
         - dependency-name: k8s.io/*
           update-types:
@@ -43,6 +27,14 @@ updates:
             - version-update:semver-minor
         - dependency-name: github.com/openshift/client-go
       groups:
+        kubernetes:
+            patterns:
+                - k8s.io/*
+        opentelemetry:
+            patterns:
+                - go.opentelemetry.io/*
+                - go.opentelemetry.io/contrib/*
+                - knative.dev/pkg
         sigstore:
             patterns:
                 - github.com/sigstore/sigstore
@@ -52,6 +44,21 @@ updates:
         semver-major-days: 30
         semver-minor-days: 7
         semver-patch-days: 3
+    - package-ecosystem: github-actions
+      directory: /
+      schedule:
+        interval: weekly
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      groups:
+        github-actions:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
     - package-ecosystem: docker
       directory: /tekton
       schedule:
@@ -59,14 +66,58 @@ updates:
       labels:
         - ok-to-test
         - dependencies
-        - kind/misc
         - release-note-none
+        - kind/misc
       groups:
         all:
             patterns:
                 - '*'
       cooldown:
         default-days: 7
+    - package-ecosystem: gomod
+      directory: /
+      target-branch: release-v0.81.x
+      schedule:
+        interval: daily
+      commit-message:
+        prefix: '[release-v0.81.x] '
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: github.com/openshift/client-go
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        kubernetes:
+            patterns:
+                - k8s.io/*
+        opentelemetry:
+            patterns:
+                - go.opentelemetry.io/*
+                - go.opentelemetry.io/contrib/*
+                - knative.dev/pkg
+        sigstore:
+            patterns:
+                - github.com/sigstore/sigstore
+                - github.com/sigstore/sigstore/*
+      cooldown:
+        default-days: 7
+        semver-major-days: 30
+        semver-minor-days: 7
+        semver-patch-days: 3
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v0.81.x
@@ -77,9 +128,8 @@ updates:
       labels:
         - ok-to-test
         - dependencies
-        - github_action
-        - kind/misc
         - release-note-none
+        - kind/misc
       ignore:
         - dependency-name: '*'
           update-types:
@@ -91,42 +141,6 @@ updates:
                 - '*'
       cooldown:
         default-days: 7
-    - package-ecosystem: gomod
-      directory: /
-      target-branch: release-v0.81.x
-      schedule:
-        interval: weekly
-      commit-message:
-        prefix: '[release-v0.81.x] '
-      labels:
-        - ok-to-test
-        - dependencies
-        - kind/misc
-        - release-note-none
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: go.opentelemetry.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: github.com/openshift/client-go
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      groups:
-        sigstore:
-            patterns:
-                - github.com/sigstore/sigstore
-                - github.com/sigstore/sigstore/*
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: docker
       directory: /tekton
       target-branch: release-v0.81.x
@@ -137,8 +151,8 @@ updates:
       labels:
         - ok-to-test
         - dependencies
-        - kind/misc
         - release-note-none
+        - kind/misc
       ignore:
         - dependency-name: '*'
           update-types:
@@ -150,6 +164,50 @@ updates:
                 - '*'
       cooldown:
         default-days: 7
+    - package-ecosystem: gomod
+      directory: /
+      target-branch: release-v0.80.x
+      schedule:
+        interval: daily
+      commit-message:
+        prefix: '[release-v0.80.x] '
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: k8s.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: go.opentelemetry.io/*
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+        - dependency-name: github.com/openshift/client-go
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        kubernetes:
+            patterns:
+                - k8s.io/*
+        opentelemetry:
+            patterns:
+                - go.opentelemetry.io/*
+                - go.opentelemetry.io/contrib/*
+                - knative.dev/pkg
+        sigstore:
+            patterns:
+                - github.com/sigstore/sigstore
+                - github.com/sigstore/sigstore/*
+      cooldown:
+        default-days: 7
+        semver-major-days: 30
+        semver-minor-days: 7
+        semver-patch-days: 3
     - package-ecosystem: github-actions
       directory: /
       target-branch: release-v0.80.x
@@ -160,9 +218,8 @@ updates:
       labels:
         - ok-to-test
         - dependencies
-        - github_action
-        - kind/misc
         - release-note-none
+        - kind/misc
       ignore:
         - dependency-name: '*'
           update-types:
@@ -174,42 +231,6 @@ updates:
                 - '*'
       cooldown:
         default-days: 7
-    - package-ecosystem: gomod
-      directory: /
-      target-branch: release-v0.80.x
-      schedule:
-        interval: weekly
-      commit-message:
-        prefix: '[release-v0.80.x] '
-      labels:
-        - ok-to-test
-        - dependencies
-        - kind/misc
-        - release-note-none
-      ignore:
-        - dependency-name: k8s.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: go.opentelemetry.io/*
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-        - dependency-name: github.com/openshift/client-go
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      groups:
-        sigstore:
-            patterns:
-                - github.com/sigstore/sigstore
-                - github.com/sigstore/sigstore/*
-      cooldown:
-        default-days: 7
-        semver-major-days: 30
-        semver-minor-days: 7
-        semver-patch-days: 3
     - package-ecosystem: docker
       directory: /tekton
       target-branch: release-v0.80.x
@@ -220,8 +241,8 @@ updates:
       labels:
         - ok-to-test
         - dependencies
-        - kind/misc
         - release-note-none
+        - kind/misc
       ignore:
         - dependency-name: '*'
           update-types:
@@ -233,42 +254,18 @@ updates:
                 - '*'
       cooldown:
         default-days: 7
-    - package-ecosystem: github-actions
-      directory: /
-      target-branch: release-v0.79.x
-      schedule:
-        interval: weekly
-      commit-message:
-        prefix: '[release-v0.79.x] '
-      labels:
-        - ok-to-test
-        - dependencies
-        - github_action
-        - kind/misc
-        - release-note-none
-      ignore:
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      groups:
-        github-actions:
-            patterns:
-                - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.79.x
       schedule:
-        interval: weekly
+        interval: daily
       commit-message:
         prefix: '[release-v0.79.x] '
       labels:
         - ok-to-test
         - dependencies
-        - kind/misc
         - release-note-none
+        - kind/misc
       ignore:
         - dependency-name: k8s.io/*
           update-types:
@@ -284,6 +281,14 @@ updates:
             - version-update:semver-major
             - version-update:semver-minor
       groups:
+        kubernetes:
+            patterns:
+                - k8s.io/*
+        opentelemetry:
+            patterns:
+                - go.opentelemetry.io/*
+                - go.opentelemetry.io/contrib/*
+                - knative.dev/pkg
         sigstore:
             patterns:
                 - github.com/sigstore/sigstore
@@ -293,6 +298,29 @@ updates:
         semver-major-days: 30
         semver-minor-days: 7
         semver-patch-days: 3
+    - package-ecosystem: github-actions
+      directory: /
+      target-branch: release-v0.79.x
+      schedule:
+        interval: weekly
+      commit-message:
+        prefix: '[release-v0.79.x] '
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        github-actions:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
     - package-ecosystem: docker
       directory: /tekton
       target-branch: release-v0.79.x
@@ -303,8 +331,8 @@ updates:
       labels:
         - ok-to-test
         - dependencies
-        - kind/misc
         - release-note-none
+        - kind/misc
       ignore:
         - dependency-name: '*'
           update-types:
@@ -316,42 +344,18 @@ updates:
                 - '*'
       cooldown:
         default-days: 7
-    - package-ecosystem: github-actions
-      directory: /
-      target-branch: release-v0.78.x
-      schedule:
-        interval: weekly
-      commit-message:
-        prefix: '[release-v0.78.x] '
-      labels:
-        - ok-to-test
-        - dependencies
-        - github_action
-        - kind/misc
-        - release-note-none
-      ignore:
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      groups:
-        github-actions:
-            patterns:
-                - '*'
-      cooldown:
-        default-days: 7
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.78.x
       schedule:
-        interval: weekly
+        interval: daily
       commit-message:
         prefix: '[release-v0.78.x] '
       labels:
         - ok-to-test
         - dependencies
-        - kind/misc
         - release-note-none
+        - kind/misc
       ignore:
         - dependency-name: k8s.io/*
           update-types:
@@ -367,6 +371,14 @@ updates:
             - version-update:semver-major
             - version-update:semver-minor
       groups:
+        kubernetes:
+            patterns:
+                - k8s.io/*
+        opentelemetry:
+            patterns:
+                - go.opentelemetry.io/*
+                - go.opentelemetry.io/contrib/*
+                - knative.dev/pkg
         sigstore:
             patterns:
                 - github.com/sigstore/sigstore
@@ -376,8 +388,8 @@ updates:
         semver-major-days: 30
         semver-minor-days: 7
         semver-patch-days: 3
-    - package-ecosystem: docker
-      directory: /tekton
+    - package-ecosystem: github-actions
+      directory: /
       target-branch: release-v0.78.x
       schedule:
         interval: weekly
@@ -386,32 +398,8 @@ updates:
       labels:
         - ok-to-test
         - dependencies
-        - kind/misc
         - release-note-none
-      ignore:
-        - dependency-name: '*'
-          update-types:
-            - version-update:semver-major
-            - version-update:semver-minor
-      groups:
-        all:
-            patterns:
-                - '*'
-      cooldown:
-        default-days: 7
-    - package-ecosystem: github-actions
-      directory: /
-      target-branch: release-v0.77.x
-      schedule:
-        interval: weekly
-      commit-message:
-        prefix: '[release-v0.77.x] '
-      labels:
-        - ok-to-test
-        - dependencies
-        - github_action
         - kind/misc
-        - release-note-none
       ignore:
         - dependency-name: '*'
           update-types:
@@ -423,18 +411,41 @@ updates:
                 - '*'
       cooldown:
         default-days: 7
+    - package-ecosystem: docker
+      directory: /tekton
+      target-branch: release-v0.78.x
+      schedule:
+        interval: weekly
+      commit-message:
+        prefix: '[release-v0.78.x] '
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        all:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
     - package-ecosystem: gomod
       directory: /
       target-branch: release-v0.77.x
       schedule:
-        interval: weekly
+        interval: daily
       commit-message:
         prefix: '[release-v0.77.x] '
       labels:
         - ok-to-test
         - dependencies
-        - kind/misc
         - release-note-none
+        - kind/misc
       ignore:
         - dependency-name: k8s.io/*
           update-types:
@@ -450,6 +461,14 @@ updates:
             - version-update:semver-major
             - version-update:semver-minor
       groups:
+        kubernetes:
+            patterns:
+                - k8s.io/*
+        opentelemetry:
+            patterns:
+                - go.opentelemetry.io/*
+                - go.opentelemetry.io/contrib/*
+                - knative.dev/pkg
         sigstore:
             patterns:
                 - github.com/sigstore/sigstore
@@ -459,6 +478,29 @@ updates:
         semver-major-days: 30
         semver-minor-days: 7
         semver-patch-days: 3
+    - package-ecosystem: github-actions
+      directory: /
+      target-branch: release-v0.77.x
+      schedule:
+        interval: weekly
+      commit-message:
+        prefix: '[release-v0.77.x] '
+      labels:
+        - ok-to-test
+        - dependencies
+        - release-note-none
+        - kind/misc
+      ignore:
+        - dependency-name: '*'
+          update-types:
+            - version-update:semver-major
+            - version-update:semver-minor
+      groups:
+        github-actions:
+            patterns:
+                - '*'
+      cooldown:
+        default-days: 7
     - package-ecosystem: docker
       directory: /tekton
       target-branch: release-v0.77.x
@@ -469,8 +511,8 @@ updates:
       labels:
         - ok-to-test
         - dependencies
-        - kind/misc
         - release-note-none
+        - kind/misc
       ignore:
         - dependency-name: '*'
           update-types:
