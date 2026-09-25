@@ -221,7 +221,8 @@ func ResolveCentralTLSToEnvVars(ctx context.Context, lister TektonConfigLister) 
 
 	// nil means the field was not set → treat as true (default-on after SetDefaults).
 	// Explicitly false means the user opted out.
-	if tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig != nil &&
+	if tc.Spec.Platforms.OpenShift != nil &&
+		tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig != nil &&
 		!*tc.Spec.Platforms.OpenShift.EnableCentralTLSConfig {
 		return nil, nil
 	}

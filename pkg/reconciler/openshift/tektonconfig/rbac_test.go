@@ -31,7 +31,7 @@ func TestCreateResources_EnsuresPrerequisites(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "config"},
 		Spec: v1alpha1.TektonConfigSpec{
 			Platforms: v1alpha1.Platforms{
-				OpenShift: v1alpha1.OpenShift{
+				OpenShift: &v1alpha1.OpenShift{
 					SCC:           &v1alpha1.SCC{Default: "pipelines-scc"},
 					NamespaceSync: &v1alpha1.NamespaceSyncConfig{},
 				},
@@ -67,7 +67,7 @@ func TestCreateResources_WithInstallerSet(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "config"},
 		Spec: v1alpha1.TektonConfigSpec{
 			Platforms: v1alpha1.Platforms{
-				OpenShift: v1alpha1.OpenShift{
+				OpenShift: &v1alpha1.OpenShift{
 					SCC:           &v1alpha1.SCC{Default: "pipelines-scc"},
 					NamespaceSync: &v1alpha1.NamespaceSyncConfig{},
 				},
@@ -245,7 +245,7 @@ func TestHandleSCCInNamespace_SecurityEscalationPrevention(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "config"},
 				Spec: v1alpha1.TektonConfigSpec{
 					Platforms: v1alpha1.Platforms{
-						OpenShift: v1alpha1.OpenShift{
+						OpenShift: &v1alpha1.OpenShift{
 							SCC: &v1alpha1.SCC{
 								Default:    tt.defaultSCC,
 								MaxAllowed: tt.maxAllowedSCC,
