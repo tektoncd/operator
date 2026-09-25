@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build ignore
+//go:build tools
 
 package main
 
@@ -30,15 +30,6 @@ type Config struct {
 	Ecosystems      []Ecosystem `yaml:"ecosystems"`
 }
 
-// Cooldown defines minimum age requirements before Dependabot opens a PR,
-// reducing supply-chain risk by giving security vendors time to flag compromises.
-type Cooldown struct {
-	DefaultDays     int `yaml:"default-days,omitempty"`
-	SemverMajorDays int `yaml:"semver-major-days,omitempty"`
-	SemverMinorDays int `yaml:"semver-minor-days,omitempty"`
-	SemverPatchDays int `yaml:"semver-patch-days,omitempty"`
-}
-
 // Ecosystem represents a package ecosystem configuration
 type Ecosystem struct {
 	PackageEcosystem string                   `yaml:"package-ecosystem"`
@@ -47,7 +38,7 @@ type Ecosystem struct {
 	Labels           []string                 `yaml:"labels"`
 	Ignore           []map[string]interface{} `yaml:"ignore,omitempty"`
 	Groups           map[string]interface{}   `yaml:"groups,omitempty"`
-	Cooldown         *Cooldown                `yaml:"cooldown,omitempty"`
+	Cooldown         map[string]interface{}   `yaml:"cooldown,omitempty"`
 }
 
 // CommitMessage configures the prefix for Dependabot commit messages and PR titles
@@ -71,7 +62,7 @@ type Update struct {
 	Labels           []string                 `yaml:"labels"`
 	Ignore           []map[string]interface{} `yaml:"ignore,omitempty"`
 	Groups           map[string]interface{}   `yaml:"groups,omitempty"`
-	Cooldown         *Cooldown                `yaml:"cooldown,omitempty"`
+	Cooldown         map[string]interface{}   `yaml:"cooldown,omitempty"`
 }
 
 func main() {
