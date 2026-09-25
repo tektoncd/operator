@@ -55,6 +55,14 @@ type OpenShift struct {
 	// and registry secret bindings).
 	// +optional
 	NamespaceSync *NamespaceSyncConfig `json:"namespaceSync,omitempty"`
+
+	// ShipwrightBuild holds the customizable options for Shipwright Build component
+	// +optional
+	ShipwrightBuild *ShipwrightBuildConfig `json:"shipwrightBuild,omitempty"`
+
+	// SharedResource holds the customizable options for Shared Resource component
+	// +optional
+	SharedResource *SharedResourceConfig `json:"sharedResource,omitempty"`
 }
 
 // NamespaceSyncConfig configures the NamespaceSyncController which watches

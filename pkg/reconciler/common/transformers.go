@@ -57,7 +57,8 @@ const (
 	MulticlusterProxyAAEImagePrefix = "IMAGE_MULTICLUSTERPROXYAAE_"
 	SyncerServiceImagePrefix        = "IMAGE_SYNCER_SERVICE_WORKLOAD_"
 	ResultsImagePrefix              = "IMAGE_RESULTS_"
-	DashboardImagePrefix            = "IMAGE_DASHBOARD_"
+	DashboardImagePrefix       = "IMAGE_DASHBOARD_"
+	ShipwrightBuildImagePrefix = "IMAGE_SHIPWRIGHT_BUILD_"
 
 	DefaultTargetNamespace = "tekton-pipelines"
 
@@ -1379,6 +1380,48 @@ func ReplaceNamespaceInWebhookNamespaceSelector(targetNamespace string) mf.Trans
 				u.Object["webhooks"] = webhooks
 			}
 		}
+		return nil
+	}
+}
+
+
+
+func AddContainerArgs(deploymentName, containerName string, arguments []string, replace bool) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != KindDeployment {
+			return nil
+		}
+		if deploymentName != "" && u.GetName() != deploymentName {
+			return nil
+		}
+
+		deployment := &appsv1.Deployment{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, deployment); err != nil {
+			return err
+		}
+
+		containers := deployment.Spec.Template.Spec.Containers
+		found := false
+		for i := range containers {
+			if containers[i].Name == containerName {
+				found = true
+				if replace {
+					containers[i].Args = arguments
+				} else {
+					containers[i].Args = append(containers[i].Args, arguments...)
+				}
+				break
+			}
+		}
+		if !found {
+			return nil
+		}
+
+		obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(deployment)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(obj)
 		return nil
 	}
 }

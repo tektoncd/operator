@@ -27,6 +27,7 @@ import (
 	"github.com/tektoncd/operator/pkg/reconciler/common"
 	"github.com/tektoncd/operator/pkg/reconciler/kubernetes/tektonconfig/extension"
 	pac "github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/pipelinesascode"
+	"github.com/tektoncd/operator/pkg/reconciler/shared/tektonconfig/shipwrightbuild"
 )
 
 func KubernetesExtension(ctx context.Context) common.Extension {
@@ -39,49 +40,70 @@ type kubernetesExtension struct {
 	operatorClientSet versioned.Interface
 }
 
-func (oe kubernetesExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
+func (ke kubernetesExtension) Transformers(comp v1alpha1.TektonComponent) []mf.Transformer {
 	return []mf.Transformer{}
 }
-func (oe kubernetesExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
+func (ke kubernetesExtension) PreReconcile(context.Context, v1alpha1.TektonComponent) error {
 	return nil
 }
-func (oe kubernetesExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
+func (ke kubernetesExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
-		if _, err := extension.EnsureTektonDashboardExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonDashboards(), configInstance); err != nil {
+		if _, err := extension.EnsureTektonDashboardExists(ctx, ke.operatorClientSet.OperatorV1alpha1().TektonDashboards(), configInstance); err != nil {
 			configInstance.Status.MarkPostInstallFailed(fmt.Sprintf("TektonDashboard: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
 
 	if configInstance.Spec.Profile == v1alpha1.ProfileLite || configInstance.Spec.Profile == v1alpha1.ProfileBasic {
-		return extension.EnsureTektonDashboardCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonDashboards())
+		return extension.EnsureTektonDashboardCRNotExists(ctx, ke.operatorClientSet.OperatorV1alpha1().TektonDashboards())
 	}
 
 	pacSpec := configInstance.Spec.PipelinesAsCodeForCurrentPlatform()
 	if pacSpec != nil && pacSpec.Enable != nil && *pacSpec.Enable {
-		if _, err := pac.EnsureOpenShiftPipelinesAsCodeExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), configInstance, configInstance.Status.Version, ""); err != nil {
+		if _, err := pac.EnsureOpenShiftPipelinesAsCodeExists(ctx, ke.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes(), configInstance, configInstance.Status.Version, ""); err != nil {
 			configInstance.Status.MarkComponentNotReady(fmt.Sprintf("OpenShiftPipelinesAsCode: %s", err.Error()))
 			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	} else {
-		if err := pac.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
+		if err := pac.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, ke.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
 			return err
+		}
+	}
+
+	// Ensure Shipwright Build CR
+	if shipwrightbuild.IsEnabled(configInstance) {
+		if _, err := shipwrightbuild.CreateOrUpdate(ctx, ke.operatorClientSet.OperatorV1alpha1().ShipwrightBuilds(), configInstance, configInstance.Status.Version); err != nil {
+			msg := fmt.Sprintf("ShipwrightBuild: %s", err.Error())
+			configInstance.Status.MarkComponentNotReady(msg)
+			return v1alpha1.REQUEUE_EVENT_AFTER
+		}
+	} else {
+		if err := shipwrightbuild.DeleteIfExists(ctx, ke.operatorClientSet.OperatorV1alpha1().ShipwrightBuilds()); err != nil {
+			msg := fmt.Sprintf("ShipwrightBuild: %s", err.Error())
+			configInstance.Status.MarkComponentNotReady(msg)
+			return v1alpha1.REQUEUE_EVENT_AFTER
 		}
 	}
 
 	return nil
 }
-func (oe kubernetesExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
+func (ke kubernetesExtension) Finalize(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	configInstance := comp.(*v1alpha1.TektonConfig)
 	if configInstance.Spec.Profile == v1alpha1.ProfileAll {
-		return extension.EnsureTektonDashboardCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().TektonDashboards())
+		return extension.EnsureTektonDashboardCRNotExists(ctx, ke.operatorClientSet.OperatorV1alpha1().TektonDashboards())
 	}
 
 	pacSpec := configInstance.Spec.PipelinesAsCodeForCurrentPlatform()
 	if pacSpec != nil && pacSpec.Enable != nil && *pacSpec.Enable {
-		if err := pac.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, oe.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
+		if err := pac.EnsureOpenShiftPipelinesAsCodeCRNotExists(ctx, ke.operatorClientSet.OperatorV1alpha1().OpenShiftPipelinesAsCodes()); err != nil {
+			return err
+		}
+	}
+
+	if shipwrightbuild.IsEnabled(configInstance) {
+		if err := shipwrightbuild.DeleteIfExists(ctx, ke.operatorClientSet.OperatorV1alpha1().ShipwrightBuilds()); err != nil {
 			return err
 		}
 	}
@@ -89,6 +111,6 @@ func (oe kubernetesExtension) Finalize(ctx context.Context, comp v1alpha1.Tekton
 	return nil
 }
 
-func (oe kubernetesExtension) GetPlatformData() string {
+func (ke kubernetesExtension) GetPlatformData() string {
 	return ""
 }
