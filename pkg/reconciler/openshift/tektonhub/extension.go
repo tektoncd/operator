@@ -157,11 +157,6 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	}
 	th.Status.SetApiRoute(fmt.Sprintf("https://%s", apiRoute))
 
-	// Set Auth Url in Tekton Hub Status
-	if err := oe.SetAuthBaseURL(ctx, th, apiRouteManifest); err != nil {
-		return err
-	}
-
 	// Create UI route based on the value of ui i.e. false/true
 	uiHubDir := filepath.Join(common.ComponentDir(th), common.TargetVersion(th), tektonHubUiResourceKey)
 	uiManifest := oe.manifest.Append()
@@ -189,6 +184,20 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 	}
 
 	th.Status.SetUiRoute(fmt.Sprintf("https://%s", uiRoute))
+
+	// Get the auth route and set it in status
+	authRoute, err := getRouteHost(&apiRouteManifest, "tekton-hub-auth")
+	if err != nil {
+		return err
+	}
+	if authRoute != "" {
+		th.Status.SetAuthRoute(fmt.Sprintf("https://%s", authRoute))
+	}
+
+	// Update secret with AUTH_BASE_URL and REDIRECT_URI after both routes are available
+	if err := oe.SetAuthAndREDIRECTURIBaseURL(ctx, th); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -418,33 +427,37 @@ func UpdateDbDeployment() mf.Transformer {
 	}
 }
 
-func (oe openshiftExtension) SetAuthBaseURL(ctx context.Context, th *v1alpha1.TektonHub, apiRouteManifest mf.Manifest) error {
+func (oe openshiftExtension) SetAuthAndREDIRECTURIBaseURL(ctx context.Context, th *v1alpha1.TektonHub) error {
 	// Get the api secret
 	secret, err := oe.kubeClientSet.CoreV1().Secrets(th.Spec.GetTargetNamespace()).Get(ctx, "tekton-hub-api", metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			th.Status.SetAuthRoute("")
-		} else {
-			return err
+			return nil
 		}
+		return err
 	}
 
 	if len(secret.Data["GH_CLIENT_ID"]) != 0 || len(secret.Data["GL_CLIENT_ID"]) != 0 || len(secret.Data["BB_CLIENT_ID"]) != 0 {
-		// Get the host of Auth route
-		authRoute, err := getRouteHost(&apiRouteManifest, "tekton-hub-auth")
-		if err != nil {
-			return err
+		needsUpdate := false
+		if secret.StringData == nil {
+			secret.StringData = make(map[string]string)
 		}
-		th.Status.SetAuthRoute(fmt.Sprintf("https://%s", authRoute))
 
+		// Check if AUTH_BASE_URL needs to be updated
 		if secret.Data == nil || string(secret.Data["AUTH_BASE_URL"]) != th.Status.AuthRouteUrl {
-
-			if secret.StringData == nil {
-				secret.StringData = make(map[string]string)
-			}
-
 			secret.StringData["AUTH_BASE_URL"] = th.Status.AuthRouteUrl
+			needsUpdate = true
+		}
 
+		// Check if REDIRECT_URI needs to be updated
+		if secret.Data == nil || string(secret.Data["REDIRECT_URI"]) != th.Status.UiRouteUrl {
+			secret.StringData["REDIRECT_URI"] = th.Status.UiRouteUrl
+			needsUpdate = true
+		}
+
+		// Perform a single update if any field changed
+		if needsUpdate {
 			_, err = oe.kubeClientSet.CoreV1().Secrets(th.Spec.GetTargetNamespace()).Update(ctx, secret, metav1.UpdateOptions{})
 			if err != nil {
 				return err
