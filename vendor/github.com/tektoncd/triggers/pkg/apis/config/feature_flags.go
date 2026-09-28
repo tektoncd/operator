@@ -32,6 +32,9 @@ const (
 	DefaultEnableAPIFields = StableAPIFieldValue
 
 	labelsExclusionPattern = "labels-exclusion-pattern"
+
+	interceptorsGitHubUseEnterpriseHostAllowlistKey     = "interceptors.github.use-enterprise-host-allowlist"
+	defaultInterceptorsGitHubUseEnterpriseHostAllowlist = false
 )
 
 // FeatureFlags holds the features configurations
@@ -43,6 +46,12 @@ type FeatureFlags struct {
 	// LabelsExclusionPattern determines the regex pattern to use to exclude
 	// labels being propagated to resources created by the EventListener
 	LabelsExclusionPattern string
+	// UseEnterpriseHostAllowlist determines if the GitHub core interceptor
+	// validates the X-Github-Enterprise-Host header against the
+	// setting `github.enterprise-host-allowlist`.
+	// It is strongly encouraged to be enabled for security, and will be removed
+	// and always enforced in a later version
+	InterceptorsGitHubUseEnterpriseHostAllowlist bool
 }
 
 // GetFeatureFlagsConfigName returns the name of the configmap containing all
@@ -56,17 +65,23 @@ func GetFeatureFlagsConfigName() string {
 
 // NewFeatureFlagsFromMap returns a Config given a map corresponding to a ConfigMap
 func NewFeatureFlagsFromMap(cfgMap map[string]string) (*FeatureFlags, error) {
-	tc := FeatureFlags{}
+	ff := FeatureFlags{}
 	var err error
-	if tc.EnableAPIFields, err = getEnabledAPI(cfgMap); err != nil {
+	if ff.EnableAPIFields, err = getEnabledAPI(cfgMap); err != nil {
 		return nil, err
 	}
 
-	if tc.LabelsExclusionPattern, err = getLabelsExclusionPattern(cfgMap); err != nil {
+	if ff.LabelsExclusionPattern, err = getLabelsExclusionPattern(cfgMap); err != nil {
 		return nil, err
 	}
 
-	return &tc, nil
+	if v, ok := cfgMap[interceptorsGitHubUseEnterpriseHostAllowlistKey]; ok {
+		ff.InterceptorsGitHubUseEnterpriseHostAllowlist = strings.EqualFold(v, "true")
+	} else {
+		ff.InterceptorsGitHubUseEnterpriseHostAllowlist = defaultInterceptorsGitHubUseEnterpriseHostAllowlist
+	}
+
+	return &ff, nil
 }
 
 // getLabelsExclusionPattern gets the "labels-exclusion-pattern" flag based on the content of a given map.
