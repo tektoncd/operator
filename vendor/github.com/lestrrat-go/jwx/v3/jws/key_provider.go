@@ -2,12 +2,15 @@ package jws
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"sync"
 
 	"github.com/lestrrat-go/jwx/v3/jwa"
 	"github.com/lestrrat-go/jwx/v3/jwk"
+	"github.com/lestrrat-go/jwx/v3/jws/internal/keyalg"
 )
 
 // KeyProvider is responsible for providing key(s) to sign or verify a payload.
@@ -76,7 +79,7 @@ type KeySink interface {
 }
 
 type algKeyPair struct {
-	alg jwa.KeyAlgorithm
+	alg jwa.SignatureAlgorithm
 	key any
 }
 
@@ -109,112 +112,181 @@ type keySetProvider struct {
 	multipleKeysPerKeyID bool // true if we should attempt to match multiple keys per key ID. if false we assume that only one key exists for a given key ID
 }
 
-func (kp *keySetProvider) selectKey(sink KeySink, key jwk.Key, sig *Signature, _ *Message) error {
+// selectKey examines a single key and, if it is suitable for the given
+// signature, adds one or more (algorithm, key) pairs to the sink.
+// It returns true if at least one pair was added, false if the key was
+// filtered out (e.g. wrong usage, no matching algorithm).
+func (kp *keySetProvider) selectKey(sink KeySink, key jwk.Key, sig *Signature, _ *Message) (bool, error) {
+	if uk, ok := key.(jwk.UnsupportedKey); ok {
+		return false, unsupportedKeyError(uk, `signature verification`)
+	}
+
 	if usage, ok := key.KeyUsage(); ok {
 		// it's okay if use: "". we'll assume it's "sig"
 		if usage != "" && usage != jwk.ForSignature.String() {
-			return nil
+			kid, _ := key.KeyID()
+			return false, fmt.Errorf(`key with kid %q is marked use=%q, not usable for signature verification (expected %q)`, kid, usage, jwk.ForSignature.String())
 		}
 	}
 
 	if v, ok := key.Algorithm(); ok {
 		salg, ok := jwa.LookupSignatureAlgorithm(v.String())
 		if !ok {
-			return fmt.Errorf(`invalid signature algorithm %q`, v)
+			return false, fmt.Errorf(`invalid signature algorithm %q`, v)
 		}
 
 		sink.Key(salg, key)
-		return nil
+		return true, nil
 	}
 
-	if kp.inferAlgorithm {
-		algs, err := AlgorithmsForKey(key)
-		if err != nil {
-			return fmt.Errorf(`failed to get a list of signature methods for key type %s: %w`, key.KeyType(), err)
-		}
+	if !kp.inferAlgorithm {
+		return false, nil
+	}
 
-		// bail out if the JWT has a `alg` field, and it doesn't match
-		if tokAlg, ok := sig.ProtectedHeaders().Algorithm(); ok {
-			for _, alg := range algs {
-				if tokAlg == alg {
-					sink.Key(alg, key)
-					return nil
-				}
-			}
-			return fmt.Errorf(`algorithm in the message does not match any of the inferred algorithms`)
-		}
+	algs, err := keyalg.Candidates(key)
+	if err != nil {
+		return false, fmt.Errorf(`failed to get a list of signature methods for key type %s: %w`, key.KeyType(), err)
+	}
 
-		// Yes, you get to try them all!!!!!!!
+	// bail out if the JWT has a `alg` field, and it doesn't match
+	if tokAlg, ok := sig.ProtectedHeaders().Algorithm(); ok {
 		for _, alg := range algs {
-			sink.Key(alg, key)
+			if tokAlg == alg {
+				sink.Key(alg, key)
+				return true, nil
+			}
 		}
-		return nil
+		return false, fmt.Errorf(`algorithm in the message does not match any of the inferred algorithms`)
 	}
-	return nil
+
+	// Yes, you get to try them all!!!!!!!
+	for _, alg := range algs {
+		sink.Key(alg, key)
+	}
+	return len(algs) > 0, nil
 }
 
 func (kp *keySetProvider) FetchKeys(_ context.Context, sink KeySink, sig *Signature, msg *Message) error {
 	if kp.requireKid {
 		wantedKid, ok := sig.ProtectedHeaders().KeyID()
 		if !ok {
-			// If the kid is NOT specified... kp.useDefault needs to be true, and the
-			// JWKs must have exactly one key in it
-			if !kp.useDefault {
-				return fmt.Errorf(`failed to find matching key: no key ID ("kid") specified in token`)
-			} else if kp.useDefault && kp.set.Len() > 1 {
-				return fmt.Errorf(`failed to find matching key: no key ID ("kid") specified in token but multiple keys available in key set`)
-			}
-
-			// if we got here, then useDefault == true AND there is exactly
-			// one key in the set.
-			key, ok := kp.set.Key(0)
-			if !ok {
-				return fmt.Errorf(`failed to get key at index 0 (empty JWKS?)`)
-			}
-			return kp.selectKey(sink, key, sig, msg)
+			return kp.fetchDefaultKey(sink, sig, msg)
 		}
+		return kp.fetchKeysByKid(sink, sig, msg, wantedKid)
+	}
+	return kp.fetchAllKeys(sink, sig, msg)
+}
 
-		// Otherwise we better be able to look up the key.
-		// <= v2.0.3 backwards compatible case: only match a single key
-		// whose key ID matches `wantedKid`
-		if !kp.multipleKeysPerKeyID {
-			key, ok := kp.set.LookupKeyID(wantedKid)
-			if !ok {
-				return fmt.Errorf(`failed to find key with key ID %q in key set`, wantedKid)
-			}
-			return kp.selectKey(sink, key, sig, msg)
-		}
+// fetchDefaultKey handles the case where kid is required but the token
+// has no kid field. It uses the sole key in the set when useDefault is true.
+func (kp *keySetProvider) fetchDefaultKey(sink KeySink, sig *Signature, msg *Message) error {
+	if !kp.useDefault {
+		return fmt.Errorf(`failed to find matching key: no key ID ("kid") specified in token`)
+	}
+	if kp.set.Len() > 1 {
+		return fmt.Errorf(`failed to find matching key: no key ID ("kid") specified in token but multiple keys available in key set`)
+	}
 
-		// if multipleKeysPerKeyID is true, we attempt all keys whose key ID matches
-		// the wantedKey
-		ok = false
-		for i := range kp.set.Len() {
-			key, _ := kp.set.Key(i)
-			if kid, ok := key.KeyID(); !ok || kid != wantedKid {
-				continue
-			}
+	key, ok := kp.set.Key(0)
+	if !ok {
+		return fmt.Errorf(`failed to get key at index 0 (empty JWKS?)`)
+	}
+	_, err := kp.selectKey(sink, key, sig, msg)
+	return err
+}
 
-			if err := kp.selectKey(sink, key, sig, msg); err != nil {
-				continue
-			}
-			ok = true
-			// continue processing so that we try all keys with the same key ID
-		}
+// fetchKeysByKid looks up keys by their key ID and adds matching ones to the sink.
+func (kp *keySetProvider) fetchKeysByKid(sink KeySink, sig *Signature, msg *Message, wantedKid string) error {
+	// <= v2.0.3 backwards compatible case: only match a single key
+	// whose key ID matches `wantedKid`
+	if !kp.multipleKeysPerKeyID {
+		key, ok := kp.set.LookupKeyID(wantedKid)
 		if !ok {
 			return fmt.Errorf(`failed to find key with key ID %q in key set`, wantedKid)
 		}
-		return nil
+		_, err := kp.selectKey(sink, key, sig, msg)
+		return err
 	}
 
-	// Otherwise just try all keys
+	// multipleKeysPerKeyID: attempt all keys whose key ID matches
+	found := false
+	var errs []error
+	for i := range kp.set.Len() {
+		key, _ := kp.set.Key(i)
+		if kid, ok := key.KeyID(); !ok || kid != wantedKid {
+			continue
+		}
+
+		added, err := kp.selectKey(sink, key, sig, msg)
+		if err != nil {
+			errs = append(errs, fmt.Errorf(`key #%d: %w`, i, err))
+			continue
+		}
+		if added {
+			found = true
+		}
+	}
+	if !found {
+		if len(errs) > 0 {
+			return fmt.Errorf(`failed to select any key with key ID %q: %w`, wantedKid, errors.Join(errs...))
+		}
+		return fmt.Errorf(`failed to find key with key ID %q in key set`, wantedKid)
+	}
+	return nil
+}
+
+// fetchAllKeys iterates all keys in the set and adds suitable ones to the sink.
+//
+// When the protected header advertises an `alg`, keys whose type cannot
+// produce that algorithm are skipped before reaching selectKey
+// (unsupported-key placeholders excepted — see the comment at the check
+// below). This bounds verification fan-out to N_keys_of_matching_type
+// instead of N_keys when `WithRequireKid(false)` is used against a
+// heterogeneous JWKS. The skip is semantics-preserving:
+// validateAlgorithmForKey in verify_context would reject the
+// incompatible (alg, key) pair before running any verifier anyway.
+//
+// The allowed-KeyType set is looked up once per FetchKeys call via the
+// precomputed inverse map in keyalg, so the per-key check is
+// a cheap KeyType equality over a tiny slice (typically 1 element).
+// When allowedKtys is nil (no header alg, or alg has no registered
+// key type), the filter is skipped.
+func (kp *keySetProvider) fetchAllKeys(sink KeySink, sig *Signature, msg *Message) error {
+	var allowedKtys []jwa.KeyType
+	if hdrAlg, ok := sig.ProtectedHeaders().Algorithm(); ok {
+		allowedKtys = keyalg.KeyTypesFor(hdrAlg)
+	}
+	found := false
+	var errs []error
 	for i := range kp.set.Len() {
 		key, ok := kp.set.Key(i)
 		if !ok {
 			return fmt.Errorf(`failed to get key at index %d`, i)
 		}
-		if err := kp.selectKey(sink, key, sig, msg); err != nil {
+		// Unsupported-key placeholders are exempt from the prefilter:
+		// their raw kty is never a registered KeyType, so the filter
+		// would silently skip them and the caller would only see a
+		// generic "no keys worked" error. Letting them reach selectKey
+		// records the per-key rejection (kid, kty, retained parse
+		// reason) in errs instead.
+		if allowedKtys != nil && !slices.Contains(allowedKtys, key.KeyType()) && !jwk.IsUnsupportedKey(key) {
 			continue
 		}
+		added, err := kp.selectKey(sink, key, sig, msg)
+		if err != nil {
+			errs = append(errs, fmt.Errorf(`key #%d: %w`, i, err))
+			continue
+		}
+		if added {
+			found = true
+		}
+	}
+	// Only when no candidate reached the sink do the collected per-key
+	// errors become the outcome: a key that was skipped without error
+	// (e.g. no "alg" member and inference disabled) must not mask the
+	// named rejections of the keys that did fail.
+	if !found && len(errs) > 0 {
+		return fmt.Errorf(`no key in the key set was usable: %w`, errors.Join(errs...))
 	}
 	return nil
 }
@@ -256,29 +328,45 @@ func (kp jkuProvider) FetchKeys(ctx context.Context, sink KeySink, sig *Signatur
 
 	key, ok := set.LookupKeyID(kid)
 	if !ok {
-		// It is not an error if the key with the kid doesn't exist
-		return nil
+		return fmt.Errorf(`jku: key with "kid" %q not found in JWKS fetched from %q`, kid, u)
 	}
 
-	algs, err := AlgorithmsForKey(key)
+	if uk, ok := key.(jwk.UnsupportedKey); ok {
+		return fmt.Errorf(`jku: key with "kid" %q from %q has unsupported key type %q and cannot be used for signature verification; an extension module may be required to parse it: %w`, kid, u, uk.KeyType().String(), uk.Reason())
+	}
+
+	if usage, ok := key.KeyUsage(); ok {
+		if usage != "" && usage != jwk.ForSignature.String() {
+			return fmt.Errorf(`key with kid %q is marked use=%q, not usable for signature verification (expected %q)`, kid, usage, jwk.ForSignature.String())
+		}
+	}
+
+	algs, err := keyalg.Candidates(key)
 	if err != nil {
 		return fmt.Errorf(`failed to get a list of signature methods for key type %s: %w`, key.KeyType(), err)
 	}
 
 	hdrAlg, ok := sig.ProtectedHeaders().Algorithm()
-	if ok {
-		for _, alg := range algs {
-			// if we have an "alg" field in the JWS, we can only proceed if
-			// the inferred algorithm matches
-			if hdrAlg != alg {
-				continue
-			}
-
-			sink.Key(alg, key)
-			break
-		}
+	if !ok {
+		// The jku provider routes a key by matching both "kid" and
+		// "alg" against the JWS protected header. With no alg in the
+		// header there's nothing to pin the signature algorithm to,
+		// so reject explicitly rather than returning no keys and
+		// letting the outer verify loop surface a generic "could not
+		// be verified with any of the keys" message.
+		return fmt.Errorf(`use of "jku" requires that the protected header contain an "alg" field`)
 	}
-	return nil
+
+	for _, alg := range algs {
+		if hdrAlg != alg {
+			continue
+		}
+
+		sink.Key(alg, key)
+		return nil
+	}
+
+	return fmt.Errorf(`algorithm %q in JWS header does not match any algorithm for key type %s from jku`, hdrAlg, key.KeyType())
 }
 
 // KeyProviderFunc is a type of KeyProvider that is implemented by

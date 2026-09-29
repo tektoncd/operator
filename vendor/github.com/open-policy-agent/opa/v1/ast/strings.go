@@ -48,6 +48,10 @@ func ValueName(x Value) string {
 		return "objectcomprehension"
 	case *SetComprehension:
 		return "setcomprehension"
+	case *TemplateString:
+		return "templatestring"
+	case *Not:
+		return "not"
 	}
 
 	return TypeName(x)

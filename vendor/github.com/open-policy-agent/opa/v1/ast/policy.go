@@ -6,7 +6,6 @@ package ast
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -37,6 +36,8 @@ var FunctionArgRootDocument = VarTerm("args")
 // features.
 var FutureRootDocument = VarTerm("future")
 
+var FutureKeywordsRef = Ref{FutureRootDocument, InternedTerm("keywords")}
+
 // RegoRootDocument names the document containing new, to-become-default,
 // features in a future versioned release.
 var RegoRootDocument = VarTerm("rego")
@@ -56,10 +57,14 @@ var RootDocumentNames = NewSet(
 // All refs to data in the policy engine's storage layer are prefixed with this ref.
 var DefaultRootRef = Ref{DefaultRootDocument}
 
+var DefaultRootRefTerm = NewTerm(DefaultRootRef)
+
 // InputRootRef is a reference to the root of the input document.
 //
 // All refs to query arguments are prefixed with this ref.
 var InputRootRef = Ref{InputRootDocument}
+
+var InputRootRefTerm = NewTerm(InputRootRef)
 
 // SchemaRootRef is a reference to the root of the schema document.
 //
@@ -70,10 +75,7 @@ var SchemaRootRef = Ref{SchemaRootDocument}
 
 // RootDocumentRefs contains the prefixes of top-level documents that all
 // non-local references start with.
-var RootDocumentRefs = NewSet(
-	NewTerm(DefaultRootRef),
-	NewTerm(InputRootRef),
-)
+var RootDocumentRefs = NewSet(DefaultRootRefTerm, InputRootRefTerm)
 
 // SystemDocumentKey is the name of the top-level key that identifies the system
 // document.
@@ -86,7 +88,11 @@ var ReservedVars = NewVarSet(
 )
 
 // Wildcard represents the wildcard variable as defined in the language.
-var Wildcard = &Term{Value: Var("_")}
+var (
+	WildcardString       = "_"
+	WildcardValue  Value = Var(WildcardString)
+	Wildcard             = &Term{Value: WildcardValue}
+)
 
 // WildcardPrefix is the special character that all wildcard variables are
 // prefixed with when the statement they are contained in is parsed.
@@ -221,7 +227,6 @@ type (
 	// Rule represents a rule as defined in the language. Rules define the
 	// content of documents that represent policy decisions.
 	Rule struct {
-		Default     bool           `json:"default,omitempty"`
 		Head        *Head          `json:"head"`
 		Body        Body           `json:"body"`
 		Else        *Rule          `json:"else,omitempty"`
@@ -234,6 +239,7 @@ type (
 		// on the rule (e.g., printing, comparison, visiting, etc.)
 		Module *Module `json:"-"`
 
+		Default       bool `json:"default,omitempty"`
 		generatedBody bool
 	}
 
@@ -269,6 +275,11 @@ type (
 
 		generatedFrom *Expr
 		generates     []*Expr
+
+		// fromAssignment marks an equality expression that was rewritten from
+		// `:=`, so the safety checker can keep the RHS from being made safe
+		// through the LHS. See reorderBodyForSafety.
+		fromAssignment bool
 	}
 
 	// SomeDecl represents a variable declaration statement. The symbols are variables.
@@ -283,6 +294,24 @@ type (
 		Domain   *Term     `json:"domain"`
 		Body     Body      `json:"body"`
 		Location *Location `json:"location,omitempty"`
+	}
+
+	// LogicalAnd represents a logical conjunction (`lhs and rhs`).
+	LogicalAnd struct {
+		Lhs         Body      `json:"lhs"`
+		Rhs         Body      `json:"rhs"`
+		ExplicitLhs bool      `json:"explicit_lhs,omitempty"`
+		ExplicitRhs bool      `json:"explicit_rhs,omitempty"`
+		Location    *Location `json:"location,omitempty"`
+	}
+
+	// LogicalOr represents a logical disjunction (`lhs or rhs`).
+	LogicalOr struct {
+		Lhs         Body      `json:"lhs"`
+		Rhs         Body      `json:"rhs"`
+		ExplicitLhs bool      `json:"explicit_lhs,omitempty"`
+		ExplicitRhs bool      `json:"explicit_rhs,omitempty"`
+		Location    *Location `json:"location,omitempty"`
 	}
 
 	// With represents a modifier on an expression.
@@ -312,13 +341,13 @@ func (mod *Module) Compare(other *Module) int {
 	if cmp := mod.Package.Compare(other.Package); cmp != 0 {
 		return cmp
 	}
-	if cmp := importsCompare(mod.Imports, other.Imports); cmp != 0 {
+	if cmp := slices.CompareFunc(mod.Imports, other.Imports, (*Import).Compare); cmp != 0 {
 		return cmp
 	}
-	if cmp := annotationsCompare(mod.Annotations, other.Annotations); cmp != 0 {
+	if cmp := slices.CompareFunc(mod.Annotations, other.Annotations, (*Annotations).Compare); cmp != 0 {
 		return cmp
 	}
-	return rulesCompare(mod.Rules, other.Rules)
+	return slices.CompareFunc(mod.Rules, other.Rules, (*Rule).Compare)
 }
 
 // Copy returns a deep copy of mod.
@@ -363,75 +392,23 @@ func (mod *Module) Copy() *Module {
 
 // Equal returns true if mod equals other.
 func (mod *Module) Equal(other *Module) bool {
-	return mod.Compare(other) == 0
+	return mod == other || mod.Compare(other) == 0
 }
 
 func (mod *Module) String() string {
-	byNode := map[Node][]*Annotations{}
-	for _, a := range mod.Annotations {
-		byNode[a.node] = append(byNode[a.node], a)
-	}
-
-	appendAnnotationStrings := func(buf []string, node Node) []string {
-		if as, ok := byNode[node]; ok {
-			for i := range as {
-				buf = append(buf, "# METADATA")
-				buf = append(buf, "# "+as[i].String())
-			}
-		}
-		return buf
-	}
-
-	buf := []string{}
-	buf = appendAnnotationStrings(buf, mod.Package)
-	buf = append(buf, mod.Package.String())
-
-	if len(mod.Imports) > 0 {
-		buf = append(buf, "")
-		for _, imp := range mod.Imports {
-			buf = appendAnnotationStrings(buf, imp)
-			buf = append(buf, imp.String())
-		}
-	}
-	if len(mod.Rules) > 0 {
-		buf = append(buf, "")
-		for _, rule := range mod.Rules {
-			buf = appendAnnotationStrings(buf, rule)
-			buf = append(buf, rule.stringWithOpts(toStringOpts{regoVersion: mod.regoVersion}))
-		}
-	}
-	return strings.Join(buf, "\n")
+	buf, _ := mod.AppendText(make([]byte, 0, mod.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // RuleSet returns a RuleSet containing named rules in the mod.
 func (mod *Module) RuleSet(name Var) RuleSet {
 	rs := NewRuleSet()
 	for _, rule := range mod.Rules {
-		if rule.Head.Name.Equal(name) {
+		if rule.Head.Name == name {
 			rs.Add(rule)
 		}
 	}
 	return rs
-}
-
-// UnmarshalJSON parses bs and stores the result in mod. The rules in the module
-// will have their module pointer set to mod.
-func (mod *Module) UnmarshalJSON(bs []byte) error {
-
-	// Declare a new type and use a type conversion to avoid recursively calling
-	// Module#UnmarshalJSON.
-	type module Module
-
-	if err := util.UnmarshalJSON(bs, (*module)(mod)); err != nil {
-		return err
-	}
-
-	WalkRules(mod, func(rule *Rule) bool {
-		rule.Module = mod
-		return false
-	})
-
-	return nil
 }
 
 func (mod *Module) regoV1Compatible() bool {
@@ -469,14 +446,14 @@ func (c *Comment) SetLoc(loc *Location) {
 }
 
 func (c *Comment) String() string {
-	return "#" + string(c.Text)
+	buf, _ := c.AppendText(make([]byte, 0, c.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // Copy returns a deep copy of c.
 func (c *Comment) Copy() *Comment {
 	cpy := *c
-	cpy.Text = make([]byte, len(c.Text))
-	copy(cpy.Text, c.Text)
+	cpy.Text = slices.Clone(c.Text)
 	return &cpy
 }
 
@@ -484,13 +461,13 @@ func (c *Comment) Copy() *Comment {
 // Unlike other equality checks on AST nodes, comment equality
 // depends on location.
 func (c *Comment) Equal(other *Comment) bool {
-	return c.Location.Equal(other.Location) && bytes.Equal(c.Text, other.Text)
+	return c == other || (c.Location.Equal(other.Location) && bytes.Equal(c.Text, other.Text))
 }
 
 // Compare returns an integer indicating whether pkg is less than, equal to,
 // or greater than other.
 func (pkg *Package) Compare(other *Package) int {
-	return termSliceCompare(pkg.Path, other.Path)
+	return slices.CompareFunc(pkg.Path, other.Path, TermValueCompare)
 }
 
 // Copy returns a deep copy of pkg.
@@ -502,7 +479,7 @@ func (pkg *Package) Copy() *Package {
 
 // Equal returns true if pkg is equal to other.
 func (pkg *Package) Equal(other *Package) bool {
-	return pkg.Compare(other) == 0
+	return pkg == other || pkg.Compare(other) == 0
 }
 
 // Loc returns the location of the Package in the definition.
@@ -519,30 +496,8 @@ func (pkg *Package) SetLoc(loc *Location) {
 }
 
 func (pkg *Package) String() string {
-	if pkg == nil {
-		return "<illegal nil package>"
-	} else if len(pkg.Path) <= 1 {
-		return fmt.Sprintf("package <illegal path %q>", pkg.Path)
-	}
-	// Omit head as all packages have the DefaultRootDocument prepended at parse time.
-	path := make(Ref, len(pkg.Path)-1)
-	path[0] = VarTerm(string(pkg.Path[1].Value.(String)))
-	copy(path[1:], pkg.Path[2:])
-	return fmt.Sprintf("package %v", path)
-}
-
-func (pkg *Package) MarshalJSON() ([]byte, error) {
-	data := map[string]any{
-		"path": pkg.Path,
-	}
-
-	if astJSON.GetOptions().MarshalOptions.IncludeLocation.Package {
-		if pkg.Location != nil {
-			data["location"] = pkg.Location
-		}
-	}
-
-	return json.Marshal(data)
+	buf, _ := pkg.AppendText(make([]byte, 0, pkg.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // IsValidImportPath returns an error indicating if the import path is invalid.
@@ -557,10 +512,8 @@ func IsValidImportPath(v Value) (err error) {
 		if err := IsValidImportPath(v[0].Value); err != nil {
 			return fmt.Errorf("invalid path %v: path must begin with input or data", v)
 		}
-		for _, e := range v[1:] {
-			if _, ok := e.Value.(String); !ok {
-				return fmt.Errorf("invalid path %v: path elements must be strings", v)
-			}
+		if !util.Every(v[1:], TermValueIs[String]) {
+			return fmt.Errorf("invalid path %v: path elements must be strings", v)
 		}
 	default:
 		return fmt.Errorf("invalid path %v: path must be ref or var", v)
@@ -579,7 +532,7 @@ func (imp *Import) Compare(other *Import) int {
 	} else if other == nil {
 		return 1
 	}
-	if cmp := Compare(imp.Path, other.Path); cmp != 0 {
+	if cmp := imp.Path.Value.Compare(other.Path.Value); cmp != 0 {
 		return cmp
 	}
 
@@ -595,7 +548,7 @@ func (imp *Import) Copy() *Import {
 
 // Equal returns true if imp is equal to other.
 func (imp *Import) Equal(other *Import) bool {
-	return imp.Compare(other) == 0
+	return imp == other || imp.Compare(other) == 0
 }
 
 // Loc returns the location of the Import in the definition.
@@ -615,7 +568,7 @@ func (imp *Import) SetLoc(loc *Location) {
 // document. This is the alias if defined otherwise the last element in the
 // path.
 func (imp *Import) Name() Var {
-	if len(imp.Alias) != 0 {
+	if imp.Alias != "" {
 		return imp.Alias
 	}
 	switch v := imp.Path.Value.(type) {
@@ -631,29 +584,8 @@ func (imp *Import) Name() Var {
 }
 
 func (imp *Import) String() string {
-	buf := []string{"import", imp.Path.String()}
-	if len(imp.Alias) > 0 {
-		buf = append(buf, "as", imp.Alias.String())
-	}
-	return strings.Join(buf, " ")
-}
-
-func (imp *Import) MarshalJSON() ([]byte, error) {
-	data := map[string]any{
-		"path": imp.Path,
-	}
-
-	if len(imp.Alias) != 0 {
-		data["alias"] = imp.Alias
-	}
-
-	if astJSON.GetOptions().MarshalOptions.IncludeLocation.Import {
-		if imp.Location != nil {
-			data["location"] = imp.Location
-		}
-	}
-
-	return json.Marshal(data)
+	buf, _ := imp.AppendText(make([]byte, 0, imp.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // Compare returns an integer indicating whether rule is less than, equal to,
@@ -680,7 +612,7 @@ func (rule *Rule) Compare(other *Rule) int {
 		return cmp
 	}
 
-	if cmp := annotationsCompare(rule.Annotations, other.Annotations); cmp != 0 {
+	if cmp := slices.CompareFunc(rule.Annotations, other.Annotations, (*Annotations).Compare); cmp != 0 {
 		return cmp
 	}
 
@@ -708,7 +640,7 @@ func (rule *Rule) Copy() *Rule {
 
 // Equal returns true if rule is equal to other.
 func (rule *Rule) Equal(other *Rule) bool {
-	return rule.Compare(other) == 0
+	return rule == other || rule.Compare(other) == 0
 }
 
 // Loc returns the location of the Rule in the definition.
@@ -726,6 +658,7 @@ func (rule *Rule) SetLoc(loc *Location) {
 
 // Path returns a ref referring to the document produced by this rule. If rule
 // is not contained in a module, this function panics.
+//
 // Deprecated: Poor handling of ref rules. Use `(*Rule).Ref()` instead.
 func (rule *Rule) Path() Ref {
 	if rule.Module == nil {
@@ -745,11 +678,12 @@ func (rule *Rule) Ref() Ref {
 }
 
 func (rule *Rule) String() string {
-	regoVersion := DefaultRegoVersion
+	opts := toStringOpts{}
 	if rule.Module != nil {
-		regoVersion = rule.Module.RegoVersion()
+		opts.regoVersion = rule.Module.RegoVersion()
 	}
-	return rule.stringWithOpts(toStringOpts{regoVersion: regoVersion})
+	buf, _ := rule.appendWithOpts(opts, make([]byte, 0, rule.stringLengthWithOpts(opts)))
+	return util.ByteSliceToString(buf)
 }
 
 type toStringOpts struct {
@@ -763,78 +697,8 @@ func (o toStringOpts) RegoVersion() RegoVersion {
 	return o.regoVersion
 }
 
-func (rule *Rule) stringWithOpts(opts toStringOpts) string {
-	buf := []string{}
-	if rule.Default {
-		buf = append(buf, "default")
-	}
-	buf = append(buf, rule.Head.stringWithOpts(opts))
-	if !rule.Default {
-		switch opts.RegoVersion() {
-		case RegoV1, RegoV0CompatV1:
-			buf = append(buf, "if")
-		}
-		buf = append(buf, "{", rule.Body.String(), "}")
-	}
-	if rule.Else != nil {
-		buf = append(buf, rule.Else.elseString(opts))
-	}
-	return strings.Join(buf, " ")
-}
-
 func (rule *Rule) isFunction() bool {
 	return len(rule.Head.Args) > 0
-}
-
-func (rule *Rule) MarshalJSON() ([]byte, error) {
-	data := map[string]any{
-		"head": rule.Head,
-		"body": rule.Body,
-	}
-
-	if rule.Default {
-		data["default"] = true
-	}
-
-	if rule.Else != nil {
-		data["else"] = rule.Else
-	}
-
-	if astJSON.GetOptions().MarshalOptions.IncludeLocation.Rule {
-		if rule.Location != nil {
-			data["location"] = rule.Location
-		}
-	}
-
-	if len(rule.Annotations) != 0 {
-		data["annotations"] = rule.Annotations
-	}
-
-	return json.Marshal(data)
-}
-
-func (rule *Rule) elseString(opts toStringOpts) string {
-	var buf []string
-
-	buf = append(buf, "else")
-
-	value := rule.Head.Value
-	if value != nil {
-		buf = append(buf, "=", value.String())
-	}
-
-	switch opts.RegoVersion() {
-	case RegoV1, RegoV0CompatV1:
-		buf = append(buf, "if")
-	}
-
-	buf = append(buf, "{", rule.Body.String(), "}")
-
-	if rule.Else != nil {
-		buf = append(buf, rule.Else.elseString(opts))
-	}
-
-	return strings.Join(buf, " ")
 }
 
 // NewHead returns a new Head object. If args are provided, the first will be
@@ -958,19 +822,19 @@ func (head *Head) Compare(other *Head) int {
 	} else if !head.Assign && other.Assign {
 		return 1
 	}
-	if cmp := Compare(head.Args, other.Args); cmp != 0 {
+	if cmp := slices.CompareFunc(head.Args, other.Args, TermValueCompare); cmp != 0 {
 		return cmp
 	}
-	if cmp := Compare(head.Reference, other.Reference); cmp != 0 {
+	if cmp := slices.CompareFunc(head.Reference, other.Reference, TermValueCompare); cmp != 0 {
 		return cmp
 	}
 	if cmp := VarCompare(head.Name, other.Name); cmp != 0 {
 		return cmp
 	}
-	if cmp := Compare(head.Key, other.Key); cmp != 0 {
+	if cmp := TermValueCompare(head.Key, other.Key); cmp != 0 {
 		return cmp
 	}
-	return Compare(head.Value, other.Value)
+	return TermValueCompare(head.Value, other.Value)
 }
 
 // Copy returns a deep copy of head.
@@ -981,12 +845,13 @@ func (head *Head) Copy() *Head {
 	cpy.Key = head.Key.Copy()
 	cpy.Value = head.Value.Copy()
 	cpy.keywords = nil
+	cpy.Assign = head.Assign
 	return &cpy
 }
 
 // Equal returns true if this head equals other.
 func (head *Head) Equal(other *Head) bool {
-	return head.Compare(other) == 0
+	return head == other || head.Compare(other) == 0
 }
 
 func (head *Head) String() string {
@@ -994,58 +859,8 @@ func (head *Head) String() string {
 }
 
 func (head *Head) stringWithOpts(opts toStringOpts) string {
-	buf := strings.Builder{}
-	buf.WriteString(head.Ref().String())
-	containsAdded := false
-
-	switch {
-	case len(head.Args) != 0:
-		buf.WriteString(head.Args.String())
-	case len(head.Reference) == 1 && head.Key != nil:
-		switch opts.RegoVersion() {
-		case RegoV0:
-			buf.WriteRune('[')
-			buf.WriteString(head.Key.String())
-			buf.WriteRune(']')
-		default:
-			containsAdded = true
-			buf.WriteString(" contains ")
-			buf.WriteString(head.Key.String())
-		}
-	}
-	if head.Value != nil {
-		if head.Assign {
-			buf.WriteString(" := ")
-		} else {
-			buf.WriteString(" = ")
-		}
-		buf.WriteString(head.Value.String())
-	} else if !containsAdded && head.Name == "" && head.Key != nil {
-		buf.WriteString(" contains ")
-		buf.WriteString(head.Key.String())
-	}
-	return buf.String()
-}
-
-func (head *Head) MarshalJSON() ([]byte, error) {
-	var loc *Location
-	if astJSON.GetOptions().MarshalOptions.IncludeLocation.Head && head.Location != nil {
-		loc = head.Location
-	}
-
-	// NOTE(sr): we do this to override the rendering of `head.Reference`.
-	// It's still what'll be used via the default means of encoding/json
-	// for unmarshaling a json object into a Head struct!
-	type h Head
-	return json.Marshal(struct {
-		h
-		Ref      Ref       `json:"ref"`
-		Location *Location `json:"location,omitempty"`
-	}{
-		h:        h(*head),
-		Ref:      head.Ref(),
-		Location: loc,
-	})
+	buf, _ := head.appendWithOpts(opts, make([]byte, 0, head.stringLengthWithOpts(opts)))
+	return util.ByteSliceToString(buf)
 }
 
 // Vars returns a set of vars found in the head.
@@ -1087,19 +902,12 @@ func (head *Head) HasDynamicRef() bool {
 
 // Copy returns a deep copy of a.
 func (a Args) Copy() Args {
-	cpy := Args{}
-	for _, t := range a {
-		cpy = append(cpy, t.Copy())
-	}
-	return cpy
+	return termSliceCopy(a)
 }
 
 func (a Args) String() string {
-	buf := make([]string, 0, len(a))
-	for _, t := range a {
-		buf = append(buf, t.String())
-	}
-	return "(" + strings.Join(buf, ", ") + ")"
+	buf, _ := a.AppendText(make([]byte, 0, a.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // Loc returns the Location of a.
@@ -1133,17 +941,6 @@ func NewBody(exprs ...*Expr) Body {
 	return Body(exprs)
 }
 
-// MarshalJSON returns JSON encoded bytes representing body.
-func (body Body) MarshalJSON() ([]byte, error) {
-	// Serialize empty Body to empty array. This handles both the empty case and the
-	// nil case (whereas by default the result would be null if body was nil.)
-	if len(body) == 0 {
-		return []byte(`[]`), nil
-	}
-	ret, err := json.Marshal([]*Expr(body))
-	return ret, err
-}
-
 // Append adds the expr to the body and updates the expr's index accordingly.
 func (body *Body) Append(expr *Expr) {
 	n := len(*body)
@@ -1163,28 +960,12 @@ func (body Body) Set(expr *Expr, pos int) {
 //
 // If body is a subset of other, it is considered less than (and vice versa).
 func (body Body) Compare(other Body) int {
-	minLen := min(len(other), len(body))
-	for i := range minLen {
-		if cmp := body[i].Compare(other[i]); cmp != 0 {
-			return cmp
-		}
-	}
-	if len(body) < len(other) {
-		return -1
-	}
-	if len(other) < len(body) {
-		return 1
-	}
-	return 0
+	return slices.CompareFunc(body, other, (*Expr).Compare)
 }
 
 // Copy returns a deep copy of body.
 func (body Body) Copy() Body {
-	cpy := make(Body, len(body))
-	for i := range body {
-		cpy[i] = body[i].Copy()
-	}
-	return cpy
+	return util.Map(body, (*Expr).Copy)
 }
 
 // Contains returns true if this body contains the given expression.
@@ -1194,7 +975,7 @@ func (body Body) Contains(x *Expr) bool {
 
 // Equal returns true if this Body is equal to the other Body.
 func (body Body) Equal(other Body) bool {
-	return body.Compare(other) == 0
+	return slices.EqualFunc(body, other, (*Expr).Equal)
 }
 
 // Hash returns the hash code for the Body.
@@ -1208,12 +989,7 @@ func (body Body) Hash() int {
 
 // IsGround returns true if all of the expressions in the Body are ground.
 func (body Body) IsGround() bool {
-	for _, e := range body {
-		if !e.IsGround() {
-			return false
-		}
-	}
-	return true
+	return util.Every(body, (*Expr).IsGround)
 }
 
 // Loc returns the location of the Body in the definition.
@@ -1232,11 +1008,8 @@ func (body Body) SetLoc(loc *Location) {
 }
 
 func (body Body) String() string {
-	buf := make([]string, 0, len(body))
-	for _, v := range body {
-		buf = append(buf, v.String())
-	}
-	return strings.Join(buf, "; ")
+	buf, _ := body.AppendText(make([]byte, 0, body.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // Vars returns a VarSet containing variables in body. The params can be set to
@@ -1250,7 +1023,7 @@ func (body Body) Vars(params VarVisitorParams) VarSet {
 // NewExpr returns a new Expr object.
 func NewExpr(terms any) *Expr {
 	switch terms.(type) {
-	case *SomeDecl, *Every, *Term, []*Term: // ok
+	case *SomeDecl, *Every, *Not, *LogicalAnd, *LogicalOr, *Term, []*Term: // ok
 	default:
 		panic("unreachable")
 	}
@@ -1263,7 +1036,14 @@ func NewExpr(terms any) *Expr {
 }
 
 // Complement returns a copy of this expression with the negation flag flipped.
+// Note: complementing an expression containing an ast.Not term is invalid, as this will create a double negation;
+// ast.Not terms may contain multiple expressions, and can therefore not be un-negated to a single *ast.Expr; use ast.Complement() instead.
+// Passing an expression containing an ast.Not with multiple expressions in its body will cause a panic.
 func (expr *Expr) Complement() *Expr {
+	if n, ok := expr.Terms.(*Not); ok && len(n.Body) > 1 {
+		panic(fmt.Errorf("cannot complement %T containing multiple expressions (%s)", n, n))
+	}
+
 	cpy := *expr
 	cpy.Negated = !cpy.Negated
 	return &cpy
@@ -1281,7 +1061,7 @@ func (expr *Expr) ComplementNoWith() *Expr {
 
 // Equal returns true if this Expr equals the other Expr.
 func (expr *Expr) Equal(other *Expr) bool {
-	return expr.Compare(other) == 0
+	return expr == other || expr.Compare(other) == 0
 }
 
 // Compare returns an integer indicating whether expr is less than, equal to,
@@ -1296,14 +1076,13 @@ func (expr *Expr) Equal(other *Expr) bool {
 //
 // Otherwise, the expression terms are compared normally. If both expressions
 // have the same terms, the modifiers are compared.
-func (expr *Expr) Compare(other *Expr) int {
-
-	if expr == nil {
-		if other == nil {
-			return 0
-		}
+func (expr *Expr) Compare(other *Expr) (c int) {
+	switch {
+	case expr == other:
+		return 0
+	case expr == nil:
 		return -1
-	} else if other == nil {
+	case other == nil:
 		return 1
 	}
 
@@ -1331,24 +1110,25 @@ func (expr *Expr) Compare(other *Expr) int {
 
 	switch t := expr.Terms.(type) {
 	case *Term:
-		if cmp := Compare(t.Value, other.Terms.(*Term).Value); cmp != 0 {
-			return cmp
-		}
+		c = TermValueCompare(t, other.Terms.(*Term))
 	case []*Term:
-		if cmp := termSliceCompare(t, other.Terms.([]*Term)); cmp != 0 {
-			return cmp
-		}
+		c = slices.CompareFunc(t, other.Terms.([]*Term), TermValueCompare)
 	case *SomeDecl:
-		if cmp := Compare(t, other.Terms.(*SomeDecl)); cmp != 0 {
-			return cmp
-		}
+		c = t.Compare(other.Terms.(*SomeDecl))
 	case *Every:
-		if cmp := Compare(t, other.Terms.(*Every)); cmp != 0 {
-			return cmp
-		}
+		c = t.Compare(other.Terms.(*Every))
+	case *Not:
+		c = t.Compare(other.Terms.(*Not))
+	case *LogicalAnd:
+		c = t.Compare(other.Terms.(*LogicalAnd))
+	case *LogicalOr:
+		c = t.Compare(other.Terms.(*LogicalOr))
 	}
 
-	return withSliceCompare(expr.With, other.With)
+	if c == 0 {
+		c = slices.CompareFunc(expr.With, other.With, (*With).Compare)
+	}
+	return c
 }
 
 func (expr *Expr) sortOrder() int {
@@ -1361,6 +1141,12 @@ func (expr *Expr) sortOrder() int {
 		return 2
 	case *Every:
 		return 3
+	case *Not:
+		return 4
+	case *LogicalAnd:
+		return 5
+	case *LogicalOr:
+		return 6
 	}
 	return -1
 }
@@ -1381,7 +1167,6 @@ func (expr *Expr) CopyWithoutTerms() *Expr {
 
 // Copy returns a deep copy of expr.
 func (expr *Expr) Copy() *Expr {
-
 	cpy := expr.CopyWithoutTerms()
 
 	switch ts := expr.Terms.(type) {
@@ -1392,6 +1177,12 @@ func (expr *Expr) Copy() *Expr {
 	case *Term:
 		cpy.Terms = ts.Copy()
 	case *Every:
+		cpy.Terms = ts.Copy()
+	case *Not:
+		cpy.Terms = ts.Copy()
+	case *LogicalAnd:
+		cpy.Terms = ts.Copy()
+	case *LogicalOr:
 		cpy.Terms = ts.Copy()
 	}
 
@@ -1405,11 +1196,13 @@ func (expr *Expr) Hash() int {
 	case *SomeDecl:
 		s += ts.Hash()
 	case []*Term:
-		for _, t := range ts {
-			s += t.Value.Hash()
-		}
+		s += termSliceHash(ts)
 	case *Term:
 		s += ts.Value.Hash()
+	case *LogicalAnd:
+		s += ts.Hash()
+	case *LogicalOr:
+		s += ts.Hash()
 	}
 	if expr.Negated {
 		s++
@@ -1456,9 +1249,32 @@ func (expr *Expr) IsEvery() bool {
 	return ok
 }
 
+// IsNot returns true if this expression is a 'not' expression.
+func (expr *Expr) IsNot() bool {
+	_, ok := expr.Terms.(*Not)
+	return ok
+}
+
+// IsNegated returns true if Negated or IsNot() returns true for this expression
+func (expr *Expr) IsNegated() bool {
+	return expr.Negated || expr.IsNot()
+}
+
 // IsSome returns true if this expression is a 'some' expression.
 func (expr *Expr) IsSome() bool {
 	_, ok := expr.Terms.(*SomeDecl)
+	return ok
+}
+
+// IsAnd returns true if this expression is a logical 'and' expression.
+func (expr *Expr) IsAnd() bool {
+	_, ok := expr.Terms.(*LogicalAnd)
+	return ok
+}
+
+// IsOr returns true if this expression is a logical 'or' expression.
+func (expr *Expr) IsOr() bool {
+	_, ok := expr.Terms.(*LogicalOr)
 	return ok
 }
 
@@ -1469,7 +1285,11 @@ func (expr *Expr) Operator() Ref {
 	if op == nil {
 		return nil
 	}
-	return op.Value.(Ref)
+	ref, ok := op.Value.(Ref)
+	if !ok {
+		return nil
+	}
+	return ref
 }
 
 // OperatorTerm returns the name of the function or built-in this expression
@@ -1509,13 +1329,17 @@ func (expr *Expr) Operands() []*Term {
 func (expr *Expr) IsGround() bool {
 	switch ts := expr.Terms.(type) {
 	case []*Term:
-		for _, t := range ts[1:] {
-			if !t.IsGround() {
-				return false
-			}
+		if !util.Every(ts[1:], (*Term).IsGround) {
+			return false
 		}
 	case *Term:
 		return ts.IsGround()
+	case *Not:
+		return ts.IsGround()
+	case *LogicalAnd:
+		return ts.Lhs.IsGround() && ts.Rhs.IsGround()
+	case *LogicalOr:
+		return ts.Lhs.IsGround() && ts.Rhs.IsGround()
 	}
 	return true
 }
@@ -1547,62 +1371,8 @@ func (expr *Expr) SetLoc(loc *Location) {
 }
 
 func (expr *Expr) String() string {
-	buf := make([]string, 0, 2+len(expr.With))
-	if expr.Negated {
-		buf = append(buf, "not")
-	}
-	switch t := expr.Terms.(type) {
-	case []*Term:
-		if expr.IsEquality() && validEqAssignArgCount(expr) {
-			buf = append(buf, fmt.Sprintf("%v %v %v", t[1], Equality.Infix, t[2]))
-		} else {
-			buf = append(buf, Call(t).String())
-		}
-	case fmt.Stringer:
-		buf = append(buf, t.String())
-	}
-
-	for i := range expr.With {
-		buf = append(buf, expr.With[i].String())
-	}
-
-	return strings.Join(buf, " ")
-}
-
-func (expr *Expr) MarshalJSON() ([]byte, error) {
-	data := map[string]any{
-		"terms": expr.Terms,
-		"index": expr.Index,
-	}
-
-	if len(expr.With) > 0 {
-		data["with"] = expr.With
-	}
-
-	if expr.Generated {
-		data["generated"] = true
-	}
-
-	if expr.Negated {
-		data["negated"] = true
-	}
-
-	if astJSON.GetOptions().MarshalOptions.IncludeLocation.Expr {
-		if expr.Location != nil {
-			data["location"] = expr.Location
-		}
-	}
-
-	return json.Marshal(data)
-}
-
-// UnmarshalJSON parses the byte array and stores the result in expr.
-func (expr *Expr) UnmarshalJSON(bs []byte) error {
-	v := map[string]any{}
-	if err := util.UnmarshalJSON(bs, &v); err != nil {
-		return err
-	}
-	return unmarshalExpr(expr, v)
+	buf, _ := expr.AppendText(make([]byte, 0, expr.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // Vars returns a VarSet containing variables in expr. The params can be set to
@@ -1621,6 +1391,7 @@ func NewBuiltinExpr(terms ...*Term) *Expr {
 
 func (expr *Expr) CogeneratedExprs() []*Expr {
 	visited := map[*Expr]struct{}{}
+	var result []*Expr
 	visitCogeneratedExprs(expr, func(e *Expr) bool {
 		if expr.Equal(e) {
 			return true
@@ -1629,13 +1400,13 @@ func (expr *Expr) CogeneratedExprs() []*Expr {
 			return true
 		}
 		visited[e] = struct{}{}
+		// Append during visitation so the result order is deterministic; iterating
+		// the 'visited' map here would randomize the order and, in turn, make
+		// dependent output (e.g. PrettyEvent's --var-values) nondeterministic.
+		result = append(result, e)
 		return false
 	})
 
-	result := make([]*Expr, 0, len(visited))
-	for e := range visited {
-		result = append(result, e)
-	}
 	return result
 }
 
@@ -1660,17 +1431,8 @@ func visitCogeneratedExprs(expr *Expr, f func(*Expr) bool) {
 }
 
 func (d *SomeDecl) String() string {
-	if call, ok := d.Symbols[0].Value.(Call); ok {
-		if len(call) == 4 {
-			return "some " + call[1].String() + ", " + call[2].String() + " in " + call[3].String()
-		}
-		return "some " + call[1].String() + " in " + call[2].String()
-	}
-	buf := make([]string, len(d.Symbols))
-	for i := range buf {
-		buf[i] = d.Symbols[i].String()
-	}
-	return "some " + strings.Join(buf, ", ")
+	buf, _ := d.AppendText(make([]byte, 0, d.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // SetLoc sets the Location on d.
@@ -1693,7 +1455,7 @@ func (d *SomeDecl) Copy() *SomeDecl {
 // Compare returns an integer indicating whether d is less than, equal to, or
 // greater than other.
 func (d *SomeDecl) Compare(other *SomeDecl) int {
-	return termSliceCompare(d.Symbols, other.Symbols)
+	return slices.CompareFunc(d.Symbols, other.Symbols, TermValueCompare)
 }
 
 // Hash returns a hash code of d.
@@ -1701,32 +1463,20 @@ func (d *SomeDecl) Hash() int {
 	return termSliceHash(d.Symbols)
 }
 
-func (d *SomeDecl) MarshalJSON() ([]byte, error) {
-	data := map[string]any{
-		"symbols": d.Symbols,
-	}
-
-	if astJSON.GetOptions().MarshalOptions.IncludeLocation.SomeDecl {
-		if d.Location != nil {
-			data["location"] = d.Location
-		}
-	}
-
-	return json.Marshal(data)
-}
-
 func (q *Every) String() string {
+	b := bytes.NewBufferString("every ")
 	if q.Key != nil {
-		return fmt.Sprintf("every %s, %s in %s { %s }",
-			q.Key,
-			q.Value,
-			q.Domain,
-			q.Body)
+		util.WriteAppender(b, q.Key)
+		b.WriteString(", ")
 	}
-	return fmt.Sprintf("every %s in %s { %s }",
-		q.Value,
-		q.Domain,
-		q.Body)
+	util.WriteAppender(b, q.Value)
+	b.WriteString(" in ")
+	util.WriteAppender(b, q.Domain)
+	b.WriteString(" { ")
+	util.WriteAppender(b, q.Body)
+	b.WriteString(" }")
+
+	return b.String()
 }
 
 func (q *Every) Loc() *Location {
@@ -1753,7 +1503,7 @@ func (q *Every) Compare(other *Every) int {
 		{q.Value, other.Value},
 		{q.Domain, other.Domain},
 	} {
-		if d := Compare(terms[0], terms[1]); d != 0 {
+		if d := TermValueCompare(terms[0], terms[1]); d != 0 {
 			return d
 		}
 	}
@@ -1771,47 +1521,181 @@ func (q *Every) KeyValueVars() VarSet {
 	return vis.vars
 }
 
-func (q *Every) MarshalJSON() ([]byte, error) {
-	data := map[string]any{
-		"key":    q.Key,
-		"value":  q.Value,
-		"domain": q.Domain,
-		"body":   q.Body,
+func (a *LogicalAnd) String() string {
+	return formatBinaryLogical("and", a.Lhs, a.Rhs, a.ExplicitLhs, a.ExplicitRhs)
+}
+
+func (a *LogicalAnd) Loc() *Location {
+	return a.Location
+}
+
+func (a *LogicalAnd) SetLoc(l *Location) {
+	a.Location = l
+}
+
+func (a *LogicalAnd) Copy() *LogicalAnd {
+	cpy := *a
+	cpy.Lhs = a.Lhs.Copy()
+	cpy.Rhs = a.Rhs.Copy()
+	return &cpy
+}
+
+// Compare returns an integer indicating whether a is less than, equal to, or
+// greater than other. The ExplicitLhs/ExplicitRhs fields are ignored, as they
+// describe surface syntax rather than semantic content.
+func (a *LogicalAnd) Compare(other *LogicalAnd) int {
+	if cmp := a.Lhs.Compare(other.Lhs); cmp != 0 {
+		return cmp
+	}
+	return a.Rhs.Compare(other.Rhs)
+}
+
+func (a *LogicalAnd) Hash() int {
+	return a.Lhs.Hash() + a.Rhs.Hash()
+}
+
+func (o *LogicalOr) String() string {
+	return formatBinaryLogical("or", o.Lhs, o.Rhs, o.ExplicitLhs, o.ExplicitRhs)
+}
+
+func (o *LogicalOr) Loc() *Location {
+	return o.Location
+}
+
+func (o *LogicalOr) SetLoc(l *Location) {
+	o.Location = l
+}
+
+func (o *LogicalOr) Copy() *LogicalOr {
+	cpy := *o
+	cpy.Lhs = o.Lhs.Copy()
+	cpy.Rhs = o.Rhs.Copy()
+	return &cpy
+}
+
+// Compare returns an integer indicating whether o is less than, equal to, or
+// greater than other. The ExplicitLhs/ExplicitRhs fields are ignored, as they
+// describe surface syntax rather than semantic content.
+func (o *LogicalOr) Compare(other *LogicalOr) int {
+	if cmp := o.Lhs.Compare(other.Lhs); cmp != 0 {
+		return cmp
+	}
+	return o.Rhs.Compare(other.Rhs)
+}
+
+func (o *LogicalOr) Hash() int {
+	return o.Lhs.Hash() + o.Rhs.Hash()
+}
+
+func formatBinaryLogical(op string, lhs, rhs Body, explicitLhs, explicitRhs bool) string {
+	return formatLogicalOperand(lhs, explicitLhs, op, false) + " " + op + " " + formatLogicalOperand(rhs, explicitRhs, op, true)
+}
+
+func formatLogicalOperand(b Body, explicit bool, parentOp string, rhs bool) string {
+	if explicit || len(b) != 1 {
+		return "{ " + b.String() + " }"
 	}
 
-	if astJSON.GetOptions().MarshalOptions.IncludeLocation.Every {
-		if q.Location != nil {
-			data["location"] = q.Location
-		}
+	if logicalOperandNeedsParens(b, parentOp, rhs) {
+		return "(" + b.String() + ")"
 	}
 
-	return json.Marshal(data)
+	return b.String()
+}
+
+func logicalOperandNeedsParens(b Body, parentOp string, rhs bool) bool {
+	if len(b) != 1 {
+		return false
+	}
+
+	e := b[0]
+	if len(e.With) > 0 {
+		return true
+	}
+
+	switch t := e.Terms.(type) {
+	case *LogicalOr:
+		// `or` binds looser than `and`: always parenthesize under `and`; under
+		// `or`, parenthesize only the rhs to preserve right-nesting.
+		return parentOp == "and" || rhs
+	case *LogicalAnd:
+		// `and` binds tighter: no parens under `or`; under `and`, parenthesize
+		// only the rhs to preserve right-nesting.
+		return parentOp == "and" && rhs
+	case *Term:
+		return rendersWithLeadingBrace(t.Value)
+	}
+	return false
+}
+
+func notBodyNeedsParens(b Body) bool {
+	if len(b) != 1 {
+		return false
+	}
+
+	e := b[0]
+	if len(e.With) > 0 {
+		return true
+	}
+
+	switch t := e.Terms.(type) {
+	case *LogicalOr, *LogicalAnd:
+		// `not` binds tighter than `and`/`or`
+		return true
+	case *Not:
+		// `not not x` doesn't parse: the operand of a `not` must be parenthesized
+		// for the inner negation to be read back as a body.
+		return true
+	case *Term:
+		return rendersWithLeadingBrace(t.Value)
+	}
+
+	return false
+}
+
+// rendersWithLeadingBrace reports whether v renders starting with a `{`. Such a
+// value needs parens in an operand position, as bare braces there are read as an
+// explicit body.
+func rendersWithLeadingBrace(v Value) bool {
+	switch t := v.(type) {
+	case Set:
+		// The empty set renders as `set()`.
+		return t.Len() > 0
+	case Object, *SetComprehension, *ObjectComprehension:
+		return true
+	case Ref:
+		return len(t) > 0 && rendersWithLeadingBrace(t[0].Value)
+	}
+
+	return false
 }
 
 func (w *With) String() string {
-	return "with " + w.Target.String() + " as " + w.Value.String()
+	buf, _ := w.AppendText(make([]byte, 0, w.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // Equal returns true if this With is equals the other With.
 func (w *With) Equal(other *With) bool {
-	return Compare(w, other) == 0
+	return w == other || w.Compare(other) == 0
 }
 
 // Compare returns an integer indicating whether w is less than, equal to, or
 // greater than other.
 func (w *With) Compare(other *With) int {
+	if w == other {
+		return 0
+	}
 	if w == nil {
-		if other == nil {
-			return 0
-		}
 		return -1
-	} else if other == nil {
+	}
+	if other == nil {
 		return 1
 	}
-	if cmp := Compare(w.Target, other.Target); cmp != 0 {
+	if cmp := TermValueCompare(w.Target, other.Target); cmp != 0 {
 		return cmp
 	}
-	return Compare(w.Value, other.Value)
+	return TermValueCompare(w.Value, other.Value)
 }
 
 // Copy returns a deep copy of w.
@@ -1846,21 +1730,6 @@ func (w *With) SetLoc(loc *Location) {
 	w.Location = loc
 }
 
-func (w *With) MarshalJSON() ([]byte, error) {
-	data := map[string]any{
-		"target": w.Target,
-		"value":  w.Value,
-	}
-
-	if astJSON.GetOptions().MarshalOptions.IncludeLocation.With {
-		if w.Location != nil {
-			data["location"] = w.Location
-		}
-	}
-
-	return json.Marshal(data)
-}
-
 // Copy returns a deep copy of the AST node x. If x is not an AST node, x is returned unmodified.
 func Copy(x any) any {
 	switch x := x.(type) {
@@ -1886,6 +1755,8 @@ func Copy(x any) any {
 		return x.Copy()
 	case *Every:
 		return x.Copy()
+	case *Not:
+		return x.Copy()
 	case *Term:
 		return x.Copy()
 	case *ArrayComprehension:
@@ -1893,6 +1764,12 @@ func Copy(x any) any {
 	case *SetComprehension:
 		return x.Copy()
 	case *ObjectComprehension:
+		return x.Copy()
+	case *LogicalAnd:
+		return x.Copy()
+	case *LogicalOr:
+		return x.Copy()
+	case *TemplateString:
 		return x.Copy()
 	case Set:
 		return x.Copy()
@@ -1934,12 +1811,7 @@ func (rs *RuleSet) Add(rule *Rule) {
 
 // Contains returns true if rs contains rule.
 func (rs RuleSet) Contains(rule *Rule) bool {
-	for i := range rs {
-		if rs[i].Equal(rule) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(rs, rule.Equal)
 }
 
 // Diff returns a new RuleSet containing rules in rs that are not in other.
@@ -1960,10 +1832,7 @@ func (rs RuleSet) Equal(other RuleSet) bool {
 
 // Merge returns a ruleset containing the union of rules from rs an other.
 func (rs RuleSet) Merge(other RuleSet) RuleSet {
-	result := NewRuleSet()
-	for i := range rs {
-		result.Add(rs[i])
-	}
+	result := NewRuleSet(rs...)
 	for i := range other {
 		result.Add(other[i])
 	}
@@ -1971,11 +1840,7 @@ func (rs RuleSet) Merge(other RuleSet) RuleSet {
 }
 
 func (rs RuleSet) String() string {
-	buf := make([]string, 0, len(rs))
-	for _, rule := range rs {
-		buf = append(buf, rule.String())
-	}
-	return "{" + strings.Join(buf, ", ") + "}"
+	return "{" + strings.Join(util.Map(rs, (*Rule).String), ", ") + "}"
 }
 
 // Returns true if the equality or assignment expression referred to by expr
@@ -1992,14 +1857,6 @@ func isGlobalBuiltin(expr *Expr, name Var) bool {
 		return false
 	}
 
-	// NOTE(tsandall): do not use Term#Equal or Value#Compare to avoid
-	// allocation here.
 	ref, ok := terms[0].Value.(Ref)
-	if !ok || len(ref) != 1 {
-		return false
-	}
-	if head, ok := ref[0].Value.(Var); ok {
-		return head.Equal(name)
-	}
-	return false
+	return ok && len(ref) == 1 && name.Equal(ref[0].Value)
 }

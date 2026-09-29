@@ -7,7 +7,6 @@ package topdown
 import (
 	"context"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"math/rand"
 
@@ -54,6 +53,8 @@ type (
 		PrintHook                   print.Hook                 // provides callback function to use for printing
 		RoundTripper                CustomizeRoundTripper      // customize transport to use for HTTP requests
 		DistributedTracingOpts      tracing.Options            // options to be used by distributed tracing.
+		RequestMetadata             map[string]any             // metadata from the caller, for use by wrapping projects
+		ResponseMetadata            map[string]any             // metadata for the response, populated by wrapping projects
 		rand                        *rand.Rand                 // randomization source for non-security-sensitive operations
 		Capabilities                *ast.Capabilities
 	}
@@ -71,7 +72,6 @@ type (
 // function. If a random number generator cannot be created, an error is
 // returned.
 func (bctx *BuiltinContext) Rand() (*rand.Rand, error) {
-
 	if bctx.rand != nil {
 		return bctx.rand, nil
 	}
@@ -178,26 +178,18 @@ func functionalWrapper4(name string, fn FunctionalBuiltin4) BuiltinFunc {
 }
 
 func handleBuiltinErr(name string, loc *ast.Location, err error) error {
+	var code string
 	switch err := err.(type) {
 	case BuiltinEmpty:
 		return nil
 	case *Error, Halt:
 		return err
 	case builtins.ErrOperand:
-		e := &Error{
-			Code:     TypeErr,
-			Message:  fmt.Sprintf("%v: %v", name, err.Error()),
-			Location: loc,
-		}
-		return e.Wrap(err)
+		code = TypeErr
 	default:
-		e := &Error{
-			Code:     BuiltinErr,
-			Message:  fmt.Sprintf("%v: %v", name, err.Error()),
-			Location: loc,
-		}
-		return e.Wrap(err)
+		code = BuiltinErr
 	}
+	return (&Error{Code: code, Message: name + ": " + err.Error(), Location: loc}).Wrap(err)
 }
 
 func readInt64(r io.Reader) (int64, error) {

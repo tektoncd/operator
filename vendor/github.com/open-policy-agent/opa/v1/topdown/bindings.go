@@ -6,10 +6,10 @@ package topdown
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/open-policy-agent/opa/v1/ast"
+	"github.com/open-policy-agent/opa/v1/util"
 )
 
 type undo struct {
@@ -35,13 +35,20 @@ type bindings struct {
 	instr  *Instrumentation
 }
 
-func newBindings(id uint64, instr *Instrumentation) *bindings {
+func newBindings(instr *Instrumentation) *bindings {
 	values := newBindingsArrayHashmap()
+	return &bindings{0, values, instr}
+}
+
+// newBindingsWithSize creates bindings pre-sized for the expected number of entries.
+// This avoids over-allocation when the binding count is known in advance (e.g., function arguments).
+// For sizeHint <= maxLinearScan, it uses array mode; for larger hints, it pre-allocates a map.
+func newBindingsWithSize(id uint64, instr *Instrumentation, sizeHint int) *bindings {
+	values := newBindingsArrayHashmapWithSize(sizeHint)
 	return &bindings{id, values, instr}
 }
 
 func (u *bindings) Iter(caller *bindings, iter func(*ast.Term, *ast.Term) error) error {
-
 	var err error
 
 	u.values.Iter(func(k *ast.Term, _ value) bool {
@@ -77,6 +84,10 @@ func (u *bindings) PlugNamespaced(a *ast.Term, caller *bindings) *ast.Term {
 	}
 
 	return u.plugNamespaced(a, caller)
+}
+
+func (u *bindings) size() int {
+	return u.values.size()
 }
 
 func (u *bindings) plugNamespaced(a *ast.Term, caller *bindings) *ast.Term {
@@ -181,12 +192,12 @@ func (u *bindings) namespaceVar(v *ast.Term, caller *bindings) *ast.Term {
 	if !ok {
 		panic("illegal value")
 	}
-	if caller != nil && caller != u {
-		// Root documents (i.e., data, input) should never be namespaced because they
-		// are globally unique.
-		if !ast.RootDocumentNames.Contains(v) {
-			return ast.VarTerm(string(name) + strconv.FormatUint(u.id, 10))
-		}
+	if caller != nil && caller != u && !ast.RootDocumentNames.Contains(v) {
+		// Root documents (i.e., data, input) should never be namespaced
+		// because they are globally unique.
+		len := len(name) + util.NumDigitsUint(u.id)
+		buf := util.AppendInt(append(make([]byte, 0, len), name...), u.id)
+		return ast.VarTerm(util.ByteSliceToString(buf))
 	}
 	return v
 }
@@ -216,16 +227,25 @@ func (vis namespacingVisitor) Visit(x any) bool {
 	switch x := x.(type) {
 	case *ast.ArrayComprehension:
 		x.Term = vis.namespaceTerm(x.Term)
-		ast.NewGenericVisitor(vis.Visit).Walk(x.Body)
+		vis := ast.NewGenericVisitor(vis.Visit)
+		for _, expr := range x.Body {
+			vis.Walk(expr)
+		}
 		return true
 	case *ast.SetComprehension:
 		x.Term = vis.namespaceTerm(x.Term)
-		ast.NewGenericVisitor(vis.Visit).Walk(x.Body)
+		vis := ast.NewGenericVisitor(vis.Visit)
+		for _, expr := range x.Body {
+			vis.Walk(expr)
+		}
 		return true
 	case *ast.ObjectComprehension:
 		x.Key = vis.namespaceTerm(x.Key)
 		x.Value = vis.namespaceTerm(x.Value)
-		ast.NewGenericVisitor(vis.Visit).Walk(x.Body)
+		vis := ast.NewGenericVisitor(vis.Visit)
+		for _, expr := range x.Body {
+			vis.Walk(expr)
+		}
 		return true
 	case *ast.Expr:
 		switch terms := x.Terms.(type) {
@@ -279,11 +299,7 @@ func (vis namespacingVisitor) namespaceTerm(a *ast.Term) *ast.Term {
 		return &cpy
 	case ast.Ref:
 		cpy := *a
-		ref := make(ast.Ref, len(v))
-		for i := range ref {
-			ref[i] = vis.namespaceTerm(v[i])
-		}
-		cpy.Value = ref
+		cpy.Value = ast.Ref(util.Map(v, vis.namespaceTerm))
 		return &cpy
 	}
 	return a
@@ -291,12 +307,16 @@ func (vis namespacingVisitor) namespaceTerm(a *ast.Term) *ast.Term {
 
 const maxLinearScan = 16
 
-// bindingsArrayHashMap uses an array with linear scan instead
+// bindingsArrayHashMap uses a dynamically growing slice with linear scan instead
 // of a hash map for smaller # of entries. Hash maps start to
 // show off their performance advantage only after 16 keys.
+//
+// Memory optimization: The slice grows incrementally (2 -> 4 -> 8 -> 16) to avoid
+// wasting memory when only a few bindings are used. This is critical for scenarios
+// like comprehensions and functions with few arguments that are called thousands of times.
 type bindingsArrayHashmap struct {
-	n int // Entries in the array.
-	a *[maxLinearScan]bindingArrayKeyValue
+	n int // Entries in the slice.
+	a []bindingArrayKeyValue
 	m map[ast.Var]bindingArrayKeyValue
 }
 
@@ -309,29 +329,74 @@ func newBindingsArrayHashmap() bindingsArrayHashmap {
 	return bindingsArrayHashmap{}
 }
 
+// newBindingsArrayHashmapWithSize creates a bindingsArrayHashmap pre-sized for the expected number of entries.
+// This optimization reduces memory waste when the binding count is known in advance.
+//
+// Size selection strategy:
+// - sizeHint == 0: lazy allocation (no pre-allocation)
+// - sizeHint <= maxLinearScan: pre-allocate slice with exact capacity to avoid reallocation
+// - sizeHint > maxLinearScan: pre-allocate map with exact capacity
+//
+// Memory impact example:
+// - Without hint: dynamic growth 0 -> 2 -> 4 -> 8 -> 16 (saves memory for small counts)
+// - With hint=2: pre-allocates slice with capacity 2 (exact fit, no waste)
+// - With hint=20: pre-allocates map with capacity 20 (saves array allocation + reallocation)
+func newBindingsArrayHashmapWithSize(sizeHint int) bindingsArrayHashmap {
+	if sizeHint <= 0 {
+		// For unknown sizes, use default lazy allocation with dynamic growth.
+		return bindingsArrayHashmap{}
+	}
+
+	if sizeHint <= maxLinearScan {
+		// For small known sizes, pre-allocate slice with exact capacity to avoid growth overhead.
+		return bindingsArrayHashmap{
+			a: make([]bindingArrayKeyValue, 0, sizeHint),
+		}
+	}
+
+	// For larger sizes, pre-allocate map to avoid array allocation + transition cost.
+	return bindingsArrayHashmap{
+		m: make(map[ast.Var]bindingArrayKeyValue, sizeHint),
+	}
+}
+
 func (b *bindingsArrayHashmap) Put(key *ast.Term, value value) {
 	if b.m == nil {
-		if b.a == nil {
-			b.a = new([maxLinearScan]bindingArrayKeyValue)
-		} else if i := b.find(key); i >= 0 {
+		// Check if key already exists and update value
+		if i := b.find(key); i >= 0 {
 			b.a[i].value = value
 			return
 		}
 
+		// Still room in slice mode (< maxLinearScan)
 		if b.n < maxLinearScan {
-			b.a[b.n] = bindingArrayKeyValue{key, value}
+			// Grow slice if needed using exponential growth strategy
+			if b.n == cap(b.a) {
+				newCap := cap(b.a) * 2
+				if newCap == 0 {
+					newCap = 2 // Start with 2 elements
+				}
+				if newCap > maxLinearScan {
+					newCap = maxLinearScan
+				}
+				newA := make([]bindingArrayKeyValue, b.n, newCap)
+				copy(newA, b.a)
+				b.a = newA
+			}
+			b.a = append(b.a, bindingArrayKeyValue{key, value})
 			b.n++
 			return
 		}
 
-		// Array is full, revert to using the hash map instead.
-
+		// Slice is full (reached maxLinearScan), transition to map mode.
 		b.m = make(map[ast.Var]bindingArrayKeyValue, maxLinearScan+1)
-		for _, kv := range *b.a {
+		for _, kv := range b.a {
 			b.m[kv.key.Value.(ast.Var)] = bindingArrayKeyValue{kv.key, kv.value}
 		}
 		b.m[key.Value.(ast.Var)] = bindingArrayKeyValue{key, value}
 
+		// Clear slice to allow GC
+		b.a = nil
 		b.n = 0
 		return
 	}
@@ -363,7 +428,8 @@ func (b *bindingsArrayHashmap) Delete(key *ast.Term) {
 			if i < n {
 				b.a[i] = b.a[n]
 			}
-
+			// Shrink slice to reflect deletion
+			b.a = b.a[:n]
 			b.n = n
 		}
 		return
@@ -374,9 +440,11 @@ func (b *bindingsArrayHashmap) Delete(key *ast.Term) {
 
 func (b *bindingsArrayHashmap) Iter(f func(k *ast.Term, v value) bool) {
 	if b.m == nil {
-		for i := range b.n {
-			if f(b.a[i].key, b.a[i].value) {
-				return
+		if b.a != nil {
+			for i := range b.n {
+				if f(b.a[i].key, b.a[i].value) {
+					return
+				}
 			}
 		}
 		return
@@ -389,7 +457,17 @@ func (b *bindingsArrayHashmap) Iter(f func(k *ast.Term, v value) bool) {
 	}
 }
 
+func (b *bindingsArrayHashmap) size() int {
+	if b.m == nil {
+		return b.n
+	}
+	return len(b.m)
+}
+
 func (b *bindingsArrayHashmap) find(key *ast.Term) int {
+	if b.a == nil || b.n == 0 {
+		return -1
+	}
 	v := key.Value.(ast.Var)
 	for i := range b.n {
 		if b.a[i].key.Value.(ast.Var) == v {

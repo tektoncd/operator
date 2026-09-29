@@ -2,7 +2,6 @@
 // Use of this source code is governed by an Apache2
 // license that can be found in the LICENSE file.
 
-// nolint: deadcode // Public API.
 package ast
 
 import (
@@ -13,7 +12,6 @@ import (
 	"io"
 	"math"
 	"net/url"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,12 +19,26 @@ import (
 	"unicode"
 
 	"github.com/cespare/xxhash/v2"
-	astJSON "github.com/open-policy-agent/opa/v1/ast/json"
 	"github.com/open-policy-agent/opa/v1/ast/location"
 	"github.com/open-policy-agent/opa/v1/util"
 )
 
-var errFindNotFound = errors.New("find: not found")
+// maxBindingsEstimate is the cap for binding count estimates in comprehensions.
+// This value aligns with maxLinearScan in topdown/bindings.go.
+const maxBindingsEstimate = 16
+
+// EstimateBodyBindingCount returns an estimate of the number of bindings needed
+// for evaluating a comprehension body. It uses the body length as a heuristic,
+// capped at maxBindingsEstimate.
+func EstimateBodyBindingCount(body Body) (estimate int) {
+	return min(len(body), maxBindingsEstimate)
+}
+
+var (
+	NullValue Value = Null{}
+
+	errFindNotFound = errors.New("find: not found")
+)
 
 // Location records a position in source code.
 type Location = location.Location
@@ -44,12 +56,15 @@ func NewLocation(text []byte, file string, row int, col int) *Location {
 // - Variables, References
 // - Array, Set, and Object Comprehensions
 // - Calls
+// - Template Strings
 type Value interface {
 	Compare(other Value) int      // Compare returns <0, 0, or >0 if this Value is less than, equal to, or greater than other, respectively.
 	Find(path Ref) (Value, error) // Find returns value referred to by path or an error if path is not found.
 	Hash() int                    // Returns hash code of the value.
 	IsGround() bool               // IsGround returns true if this value is not a variable or contains no variables.
 	String() string               // String returns a human readable string representation of the value.
+
+	StringLengther // All Values must be able to report their string length during optimization.
 }
 
 // InterfaceToValue converts a native Go value x to a Value.
@@ -60,7 +75,7 @@ func InterfaceToValue(x any) (Value, error) {
 	case nil:
 		return NullValue, nil
 	case bool:
-		return InternedValue(x), nil
+		return internedBooleanValue(x), nil
 	case json.Number:
 		if interned := InternedIntNumberTermFromString(string(x)); interned != nil {
 			return interned.Value, nil
@@ -75,7 +90,7 @@ func InterfaceToValue(x any) (Value, error) {
 	case float64:
 		return floatNumber(x), nil
 	case string:
-		return String(x), nil
+		return internedStringValue(x), nil
 	case []any:
 		r := util.NewPtrSlice[Term](len(x))
 		for i, e := range x {
@@ -89,14 +104,14 @@ func InterfaceToValue(x any) (Value, error) {
 	case []string:
 		r := util.NewPtrSlice[Term](len(x))
 		for i, e := range x {
-			r[i].Value = String(e)
+			r[i].Value = internedStringValue(e)
 		}
 		return NewArray(r...), nil
 	case map[string]any:
 		kvs := util.NewPtrSlice[Term](len(x) * 2)
 		idx := 0
 		for k, v := range x {
-			kvs[idx].Value = String(k)
+			kvs[idx].Value = internedStringValue(k)
 			v, err := InterfaceToValue(v)
 			if err != nil {
 				return nil, err
@@ -110,11 +125,7 @@ func InterfaceToValue(x any) (Value, error) {
 		}
 		return NewObject(tuples...), nil
 	case map[string]string:
-		r := newobject(len(x))
-		for k, v := range x {
-			r.Insert(StringTerm(k), StringTerm(v))
-		}
-		return r, nil
+		return MapToObject(x, nil, InternedTerm), nil
 	default:
 		ptr := util.Reference(x)
 		if err := util.RoundTrip(ptr); err != nil {
@@ -135,7 +146,12 @@ func ValueFromReader(r io.Reader) (Value, error) {
 
 // As converts v into a Go native type referred to by x.
 func As(v Value, x any) error {
-	return util.NewJSONDecoder(strings.NewReader(v.String())).Decode(x)
+	sr := StringReaderPool.Get()
+	defer StringReaderPool.Put(sr)
+
+	sr.Reset(v.String())
+
+	return util.NewJSONDecoder(sr).Decode(x)
 }
 
 // Resolver defines the interface for resolving references to native Go values.
@@ -186,7 +202,7 @@ func valueToInterface(v Value, resolver Resolver, opt JSONOpt) (any, error) {
 	case String:
 		return string(v), nil
 	case *Array:
-		buf := []any{}
+		buf := make([]any, 0, v.Len())
 		for i := range v.Len() {
 			x1, err := valueToInterface(v.Elem(i).Value, resolver, opt)
 			if err != nil {
@@ -228,7 +244,7 @@ func valueToInterface(v Value, resolver Resolver, opt JSONOpt) (any, error) {
 		}
 		return v.native, nil
 	case Set:
-		buf := []any{}
+		buf := make([]any, 0, v.Len())
 		iter := func(x *Term) error {
 			x1, err := valueToInterface(x.Value, resolver, opt)
 			if err != nil {
@@ -334,45 +350,46 @@ func (term *Term) Copy() *Term {
 	}
 
 	cpy := *term
-
-	switch v := term.Value.(type) {
-	case Null, Boolean, Number, String, Var:
-		cpy.Value = v
-	case Ref:
-		cpy.Value = v.Copy()
-	case *Array:
-		cpy.Value = v.Copy()
-	case Set:
-		cpy.Value = v.Copy()
-	case *object:
-		cpy.Value = v.Copy()
-	case *ArrayComprehension:
-		cpy.Value = v.Copy()
-	case *ObjectComprehension:
-		cpy.Value = v.Copy()
-	case *SetComprehension:
-		cpy.Value = v.Copy()
-	case Call:
-		cpy.Value = v.Copy()
-	}
+	cpy.Value = CopyValue(term.Value)
 
 	return &cpy
+}
+
+// CopyValue returns a deep copy of v. The Value interface doesn't require a
+// Copy method, so this dispatches on the known value types. Values of any other
+// type are returned as-is.
+func CopyValue(v Value) Value {
+	switch v := v.(type) {
+	case Null, Boolean, Number, String, Var:
+		// Scalars are immutable, no copy needed.
+		return v
+	case Ref:
+		return v.Copy()
+	case *Array:
+		return v.Copy()
+	case Set:
+		return v.Copy()
+	case *object:
+		return v.Copy()
+	case *ArrayComprehension:
+		return v.Copy()
+	case *ObjectComprehension:
+		return v.Copy()
+	case *SetComprehension:
+		return v.Copy()
+	case *TemplateString:
+		return v.Copy()
+	case Call:
+		return v.Copy()
+	}
+
+	return v
 }
 
 // Equal returns true if this term equals the other term. Equality is
 // defined for each kind of term, and does not compare the Location.
 func (term *Term) Equal(other *Term) bool {
-	if term == nil && other != nil {
-		return false
-	}
-	if term != nil && other == nil {
-		return false
-	}
-	if term == other {
-		return true
-	}
-
-	return ValueEqual(term.Value, other.Value)
+	return term == other || (term != nil && other != nil && ValueEqual(term.Value, other.Value))
 }
 
 // Get returns a value referred to by name from the term.
@@ -405,48 +422,8 @@ func (term *Term) IsGround() bool {
 	return term.Value.IsGround()
 }
 
-// MarshalJSON returns the JSON encoding of the term.
-//
-// Specialized marshalling logic is required to include a type hint for Value.
-func (term *Term) MarshalJSON() ([]byte, error) {
-	d := map[string]any{
-		"type":  ValueName(term.Value),
-		"value": term.Value,
-	}
-	jsonOptions := astJSON.GetOptions().MarshalOptions
-	if jsonOptions.IncludeLocation.Term {
-		if term.Location != nil {
-			d["location"] = term.Location
-		}
-	}
-	return json.Marshal(d)
-}
-
 func (term *Term) String() string {
 	return term.Value.String()
-}
-
-// UnmarshalJSON parses the byte array and stores the result in term.
-// Specialized unmarshalling is required to handle Value and Location.
-func (term *Term) UnmarshalJSON(bs []byte) error {
-	v := map[string]any{}
-	if err := util.UnmarshalJSON(bs, &v); err != nil {
-		return err
-	}
-	val, err := unmarshalValue(v)
-	if err != nil {
-		return err
-	}
-	term.Value = val
-
-	if loc, ok := v["location"].(map[string]any); ok {
-		term.Location = &Location{}
-		err := unmarshalLocation(term.Location, loc)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Vars returns a VarSet with variables contained in this term.
@@ -456,8 +433,32 @@ func (term *Term) Vars() VarSet {
 	return vis.vars
 }
 
+// TermValueIs is a functional predicate to check if the term's Value is of type T.
+func TermValueIs[T Value](term *Term) (ok bool) {
+	if ok = term != nil; ok {
+		_, ok = term.Value.(T)
+	}
+	return ok
+}
+
+// ToTerm exists solely to be able to map concrete Value
+// implementations to *Term in util.Map, util.MapKeys, etc.
+func ToTerm[T Value](v T) *Term {
+	return NewTerm(v)
+}
+
 // IsConstant returns true if the AST value is constant.
+// Note that this is only a shallow check as we currently don't have a real
+// notion of constant "vars" in the AST implementation. Meaning that while we could
+// derive that a reference to a constant value is also constant, we currently don't.
 func IsConstant(v Value) bool {
+	switch v.(type) {
+	case Null, Boolean, Number, String:
+		return true
+	case Var, Ref, *ArrayComprehension, *ObjectComprehension, *SetComprehension, Call:
+		return false
+	}
+
 	found := false
 	vis := GenericVisitor{
 		func(x any) bool {
@@ -529,10 +530,109 @@ func IsScalar(v Value) bool {
 	return false
 }
 
+// Not is both a Term and a Node
+type Not struct {
+	Body         Body      `json:"body"`
+	ExplicitBody bool      `json:"explicit_body,omitempty"`
+	Location     *Location `json:"location,omitempty"`
+}
+
+func NewNot(exprs ...*Expr) *Not {
+	return &Not{
+		Body: NewBody(exprs...),
+	}
+}
+
+func NotTerm(exprs ...*Expr) *Term {
+	return NewTerm(NewNot(exprs...))
+}
+
+func NotExpr(exprs ...*Expr) *Expr {
+	return NewExpr(&Not{
+		Body: NewBody(exprs...),
+	})
+}
+
+func Complement(expr *Expr) []*Expr {
+	if expr.Negated {
+		// Legacy negation
+		return []*Expr{expr.Complement()}
+	}
+
+	if n, ok := expr.Terms.(*Not); ok {
+		b := make([]*Expr, 0, len(n.Body))
+		for _, e := range n.Body {
+			cpy := *e
+
+			for _, w := range expr.With {
+				cpy.With = append(cpy.With, w.Copy())
+			}
+
+			b = append(b, &cpy)
+		}
+		return b
+	}
+
+	return []*Expr{NotExpr(expr)}
+}
+
+// Copy returns a deep copy of n.
+func (n *Not) Copy() *Not {
+	cpy := *n
+	cpy.Body = n.Body.Copy()
+	return &cpy
+}
+
+func (n *Not) Loc() *Location {
+	return n.Location
+}
+
+func (n *Not) SetLoc(l *Location) {
+	n.Location = l
+}
+
+func (n *Not) Equal(other Value) bool {
+	return n.Compare(other) == 0
+}
+
+func (n *Not) Compare(other Value) int {
+	switch o := other.(type) {
+	case *Not:
+		// We don't consider the ExplicitBody field, as it has no effect on expression negation
+		return n.Body.Compare(o.Body)
+	default:
+		return -1
+	}
+}
+
+func (n *Not) Find(path Ref) (Value, error) {
+	if len(path) == 0 {
+		return n, nil
+	}
+	return nil, errFindNotFound
+}
+
+func (n *Not) Hash() int {
+	return 1 + n.Body.Hash()
+}
+
+func (n *Not) IsGround() bool {
+	return n.Body.IsGround()
+}
+
+func (n *Not) String() string {
+	if !n.ExplicitBody && len(n.Body) == 1 {
+		if notBodyNeedsParens(n.Body) {
+			return "not (" + n.Body.String() + ")"
+		}
+		return "not " + n.Body.String()
+	}
+
+	return "not {" + n.Body.String() + "}"
+}
+
 // Null represents the null value defined by JSON.
 type Null struct{}
-
-var NullValue Value = Null{}
 
 // NullTerm creates a new Term with a Null value.
 func NullTerm() *Term {
@@ -541,12 +641,8 @@ func NullTerm() *Term {
 
 // Equal returns true if the other term Value is also Null.
 func (Null) Equal(other Value) bool {
-	switch other.(type) {
-	case Null:
-		return true
-	default:
-		return false
-	}
+	_, ok := other.(Null)
+	return ok
 }
 
 // Compare compares null to other, return <0, 0, or >0 if it is less than, equal to,
@@ -590,12 +686,8 @@ func BooleanTerm(b bool) *Term {
 
 // Equal returns true if the other Value is a Boolean and is equal.
 func (bol Boolean) Equal(other Value) bool {
-	switch other := other.(type) {
-	case Boolean:
-		return bol == other
-	default:
-		return false
-	}
+	_, ok := other.(Boolean)
+	return ok && bol == other
 }
 
 // Compare compares bol to other, return <0, 0, or >0 if it is less than, equal to,
@@ -651,8 +743,9 @@ func NumberTerm(n json.Number) *Term {
 }
 
 // IntNumberTerm creates a new Term with an integer Number value.
+// For values between -1 and 512, returns a cached Term to reduce allocations.
 func IntNumberTerm(i int) *Term {
-	return &Term{Value: newIntNumberValue(i)}
+	return internedIntNumberTerm(i)
 }
 
 // UIntNumberTerm creates a new Term with an unsigned integer Number value.
@@ -677,12 +770,10 @@ func (num Number) Equal(other Value) bool {
 // Compare compares num to other, return <0, 0, or >0 if it is less than, equal to,
 // or greater than other.
 func (num Number) Compare(other Value) int {
-	// Optimize for the common case, as calling Compare allocates on heap.
 	if otherNum, yes := other.(Number); yes {
 		return NumberCompare(num, otherNum)
 	}
-
-	return Compare(num, other)
+	return valueTypeCompare(num, other)
 }
 
 // Find returns the current value or a not found error.
@@ -696,7 +787,7 @@ func (num Number) Find(path Ref) (Value, error) {
 // Hash returns the hash code for the Value.
 func (num Number) Hash() int {
 	if len(num) < 4 {
-		if i, err := strconv.Atoi(string(num)); err == nil {
+		if i, ok := util.Atoi(string(num)); ok {
 			return i
 		}
 	}
@@ -714,11 +805,7 @@ func (num Number) Int() (int, bool) {
 
 // Int64 returns the int64 representation of num if possible.
 func (num Number) Int64() (int64, bool) {
-	i, err := json.Number(num).Int64()
-	if err != nil {
-		return 0, false
-	}
-	return i, true
+	return util.Atoi64(string(num))
 }
 
 // Float64 returns the float64 representation of num if possible.
@@ -733,11 +820,6 @@ func (num Number) Float64() (float64, bool) {
 // IsGround always returns true.
 func (Number) IsGround() bool {
 	return true
-}
-
-// MarshalJSON returns JSON encoded bytes representing num.
-func (num Number) MarshalJSON() ([]byte, error) {
-	return json.Marshal(json.Number(num))
 }
 
 func (num Number) String() string {
@@ -781,9 +863,6 @@ func (str String) Equal(other Value) bool {
 // Compare compares str to other, return <0, 0, or >0 if it is less than, equal to,
 // or greater than other.
 func (str String) Compare(other Value) int {
-	// Optimize for the common case of one string being compared to another by
-	// using a direct comparison of values. This avoids the allocation performed
-	// when calling Compare and its any argument conversion.
 	if otherStr, ok := other.(String); ok {
 		if str == otherStr {
 			return 0
@@ -794,7 +873,7 @@ func (str String) Compare(other Value) int {
 		return 1
 	}
 
-	return Compare(str, other)
+	return valueTypeCompare(str, other)
 }
 
 // Find returns the current value or a not found error.
@@ -819,12 +898,159 @@ func (str String) Hash() int {
 	return int(xxhash.Sum64String(string(str)))
 }
 
+type TemplateString struct {
+	Parts     []Node `json:"parts"`
+	MultiLine bool   `json:"multi_line"`
+}
+
+func (ts *TemplateString) Copy() *TemplateString {
+	cpy := &TemplateString{MultiLine: ts.MultiLine, Parts: make([]Node, len(ts.Parts))}
+	for i, p := range ts.Parts {
+		switch v := p.(type) {
+		case *Expr:
+			cpy.Parts[i] = v.Copy()
+		case *Term:
+			cpy.Parts[i] = v.Copy()
+		}
+	}
+	return cpy
+}
+
+func (ts *TemplateString) Equal(other Value) bool {
+	if o, ok := other.(*TemplateString); ok && ts.MultiLine == o.MultiLine && len(ts.Parts) == len(o.Parts) {
+		for i, p := range ts.Parts {
+			switch v := p.(type) {
+			case *Expr:
+				if ope, ok := o.Parts[i].(*Expr); !ok || !v.Equal(ope) {
+					return false
+				}
+			case *Term:
+				if opt, ok := o.Parts[i].(*Term); !ok || !v.Equal(opt) {
+					return false
+				}
+			default:
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
+func (ts *TemplateString) Compare(other Value) int {
+	if ots, ok := other.(*TemplateString); ok {
+		if ts.MultiLine != ots.MultiLine {
+			if !ts.MultiLine {
+				return -1
+			}
+			return 1
+		}
+
+		if len(ts.Parts) != len(ots.Parts) {
+			return len(ts.Parts) - len(ots.Parts)
+		}
+
+		for i := range ts.Parts {
+			if cmp := Compare(ts.Parts[i], ots.Parts[i]); cmp != 0 {
+				return cmp
+			}
+		}
+
+		return 0
+	}
+	return valueTypeCompare(ts, other)
+}
+
+func (ts *TemplateString) Find(path Ref) (Value, error) {
+	if len(path) == 0 {
+		return ts, nil
+	}
+	return nil, errFindNotFound
+}
+
+func (ts *TemplateString) Hash() int {
+	hash := 0
+	for _, p := range ts.Parts {
+		switch x := p.(type) {
+		case *Expr:
+			hash += x.Hash()
+		case *Term:
+			hash += x.Value.Hash()
+		default:
+			panic(fmt.Sprintf("invalid template part type %T", p))
+		}
+	}
+	return hash
+}
+
+func (*TemplateString) IsGround() bool {
+	return false
+}
+
+func (ts *TemplateString) String() string {
+	buf, _ := ts.AppendText(make([]byte, 0, ts.StringLength()))
+	return util.ByteSliceToString(buf)
+}
+
+func TemplateStringTerm(multiLine bool, parts ...Node) *Term {
+	return &Term{Value: &TemplateString{MultiLine: multiLine, Parts: parts}}
+}
+
+// EscapeTemplateStringStringPart escapes unescaped left curly braces in s - i.e "{" becomes "\{".
+// The internal representation of string terms within a template string does **NOT**
+// treat '{' as special, but expects code dealing with template strings to escape them when
+// required, such as when serializing the complete template string. Code that programmatically
+// constructs template strings should not pre-escape left curly braces in string term parts.
+//
+// // TODO(anders): a future optimization would be to combine this with the other escaping done
+// // for strings (e.g. escaping quotes, backslashes, and JSON control characters) in a single operation
+// // to avoid multiple passes and allocations over the same string. That's currently done by
+// // strconv.Quote, so we would need to re-implement that logic in code of our own.
+// // NOTE(anders): I would love to come up with a better name for this component than
+// // "TemplateStringStringPart"..
+func EscapeTemplateStringStringPart(s string) string {
+	numUnescaped := countUnescapedLeftCurly(s)
+	if numUnescaped == 0 {
+		return s
+	}
+
+	return util.ByteSliceToString(AppendEscapedTemplateStringStringPart(make([]byte, 0, len(s)+numUnescaped), s))
+}
+
+func AppendEscapedTemplateStringStringPart(buf []byte, s string) []byte {
+	if s[0] == '{' {
+		buf = append(buf, '\\', s[0])
+	} else {
+		buf = append(buf, s[0])
+	}
+
+	for i := 1; i < len(s); i++ {
+		if s[i] == '{' && s[i-1] != '\\' {
+			buf = append(buf, '\\', s[i])
+		} else {
+			buf = append(buf, s[i])
+		}
+	}
+
+	return buf
+}
+
+func countUnescapedLeftCurly(s string) (n int) {
+	// Note(anders): while not the functions I'd intuitively reach for to solve this,
+	// they are hands down the fastest option here, as they're done in assembly, which
+	// performs about an order of magnitude better than a manual loop in Go.
+	if n = strings.Count(s, "{"); n > 0 {
+		n -= strings.Count(s, `\{`)
+	}
+	return n
+}
+
 // Var represents a variable as defined by the language.
 type Var string
 
 // VarTerm creates a new Term with a Variable value.
 func VarTerm(v string) *Term {
-	return &Term{Value: Var(v)}
+	return &Term{Value: InternedVarValue(v)}
 }
 
 // Equal returns true if the other Value is a Variable and has the same value
@@ -844,7 +1070,7 @@ func (v Var) Compare(other Value) int {
 	if otherVar, ok := other.(Var); ok {
 		return strings.Compare(string(v), string(otherVar))
 	}
-	return Compare(v, other)
+	return valueTypeCompare(v, other)
 }
 
 // Find returns the current value or a not found error.
@@ -881,7 +1107,7 @@ func (v Var) String() string {
 	// illegal variable name character (WildcardPrefix) to avoid conflicts. When
 	// we serialize the variable here, we need to make sure it's parseable.
 	if v.IsWildcard() {
-		return Wildcard.String()
+		return WildcardString
 	}
 	return string(v)
 }
@@ -952,14 +1178,14 @@ func (ref Ref) Insert(x *Term, pos int) Ref {
 // Extend returns a copy of ref with the terms from other appended. The head of
 // other will be converted to a string.
 func (ref Ref) Extend(other Ref) Ref {
-	dst := make(Ref, len(ref)+len(other))
+	offset := len(ref)
+	dst := make(Ref, offset+len(other))
 	copy(dst, ref)
 
 	head := other[0].Copy()
 	head.Value = String(head.Value.(Var))
-	offset := len(ref)
-	dst[offset] = head
 
+	dst[offset] = head
 	copy(dst[offset+1:], other[1:])
 	return dst
 }
@@ -977,8 +1203,7 @@ func (ref Ref) Concat(terms []*Term) Ref {
 
 // Dynamic returns the offset of the first non-constant operand of ref.
 func (ref Ref) Dynamic() int {
-	switch ref[0].Value.(type) {
-	case Call:
+	if TermValueIs[Call](ref[0]) {
 		return 0
 	}
 	for i := 1; i < len(ref); i++ {
@@ -994,10 +1219,10 @@ func (ref Ref) Copy() Ref {
 	return termSliceCopy(ref)
 }
 
-// CopyNonGround returns a new ref with deep copies of the non-ground parts and shallow
-// copies of the ground parts. This is a *much* cheaper operation than Copy for operations
-// that only intend to modify (e.g. plug) the non-ground parts. The head element of the ref
-// is always shallow copied.
+// CopyNonGround returns a new ref with shallow copies of ground parts and deep
+// copies of non-ground parts. The head element is always shallow copied. This is
+// cheaper than Copy for operations that only modify non-ground parts (e.g. plugging)
+// or metadata (e.g. Location).
 func (ref Ref) CopyNonGround() Ref {
 	cpy := make(Ref, len(ref))
 	cpy[0] = ref[0]
@@ -1015,30 +1240,17 @@ func (ref Ref) CopyNonGround() Ref {
 
 // Equal returns true if ref is equal to other.
 func (ref Ref) Equal(other Value) bool {
-	switch o := other.(type) {
-	case Ref:
-		if len(ref) == len(o) {
-			for i := range ref {
-				if !ref[i].Equal(o[i]) {
-					return false
-				}
-			}
-
-			return true
-		}
-	}
-
-	return false
+	o, ok := other.(Ref)
+	return ok && slices.EqualFunc(ref, o, (*Term).Equal)
 }
 
 // Compare compares ref to other, return <0, 0, or >0 if it is less than, equal to,
 // or greater than other.
 func (ref Ref) Compare(other Value) int {
 	if o, ok := other.(Ref); ok {
-		return termSliceCompare(ref, o)
+		return slices.CompareFunc(ref, o, TermValueCompare)
 	}
-
-	return Compare(ref, other)
+	return valueTypeCompare(ref, other)
 }
 
 // Find returns the current value or a "not found" error.
@@ -1071,42 +1283,38 @@ func (ref Ref) HasPrefix(other Ref) bool {
 func (ref Ref) ConstantPrefix() Ref {
 	i := ref.Dynamic()
 	if i < 0 {
-		return ref.Copy()
+		return ref
 	}
-	return ref[:i].Copy()
+	return ref[:i]
 }
 
+// StringPrefix returns the string portion of the ref starting from the head.
 func (ref Ref) StringPrefix() Ref {
 	for i := 1; i < len(ref); i++ {
 		switch ref[i].Value.(type) {
 		case String: // pass
 		default: // cut off
-			return ref[:i].Copy()
+			return ref[:i]
 		}
 	}
 
-	return ref.Copy()
+	return ref
 }
 
 // GroundPrefix returns the ground portion of the ref starting from the head. By
 // definition, the head of the reference is always ground.
 func (ref Ref) GroundPrefix() Ref {
-	if ref.IsGround() {
-		return ref
-	}
-
-	prefix := make(Ref, 0, len(ref))
-
-	for i, x := range ref {
-		if i > 0 && !x.IsGround() {
-			break
+	for i := range ref {
+		if i > 0 && !ref[i].IsGround() {
+			return ref[:i]
 		}
-		prefix = append(prefix, x)
 	}
 
-	return prefix
+	return ref
 }
 
+// DynamicSuffix returns the dynamic portion of the ref.
+// If the ref is not dynamic, nil is returned.
 func (ref Ref) DynamicSuffix() Ref {
 	i := ref.Dynamic()
 	if i < 0 {
@@ -1117,105 +1325,96 @@ func (ref Ref) DynamicSuffix() Ref {
 
 // IsGround returns true if all of the parts of the Ref are ground.
 func (ref Ref) IsGround() bool {
-	if len(ref) == 0 {
-		return true
-	}
-	return termSliceIsGround(ref[1:])
+	return len(ref) < 2 || util.Every(ref[1:], (*Term).IsGround)
 }
 
 // IsNested returns true if this ref contains other Refs.
 func (ref Ref) IsNested() bool {
-	for _, x := range ref {
-		if _, ok := x.Value.(Ref); ok {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(ref, TermValueIs[Ref])
 }
 
 // Ptr returns a slash-separated path string for this ref. If the ref
 // contains non-string terms this function returns an error. Path
 // components are escaped.
 func (ref Ref) Ptr() (string, error) {
-	parts := make([]string, 0, len(ref)-1)
-	for _, term := range ref[1:] {
-		if str, ok := term.Value.(String); ok {
-			parts = append(parts, url.PathEscape(string(str)))
-		} else {
+	buf := &strings.Builder{}
+	tail := ref[1:]
+
+	l := max(len(tail)-1, 0) // number of '/' to add
+	for i := range tail {
+		str, ok := tail[i].Value.(String)
+		if !ok {
 			return "", errors.New("invalid path value type")
 		}
+		l += len(str)
 	}
-	return strings.Join(parts, "/"), nil
+	buf.Grow(l)
+
+	for i := range tail {
+		if i > 0 {
+			buf.WriteByte('/')
+		}
+		str := string(tail[i].Value.(String))
+		// Sadly, the url package does not expose an appender for this.
+		buf.WriteString(url.PathEscape(str))
+	}
+	return buf.String(), nil
 }
 
-var varRegexp = regexp.MustCompile("^[[:alpha:]_][[:alpha:][:digit:]_]*$")
-
+// IsVarCompatibleString returns true if s is a valid variable name. String s is a valid variable
+// name if it starts with a letter (a-z or A-Z) or underscore (_) and is followed by
+// letters (a-z or A-Z), digits (0-9), and underscores.
 func IsVarCompatibleString(s string) bool {
-	return varRegexp.MatchString(s)
-}
+	l := len(s)
+	if l == 0 {
+		return false
+	}
+	// not exactly easy on the eyes, but often orders of magnitude faster
+	// than using a compiled regex (see benchmarks in term_bench_test.go)
+	is_letter := func(c byte) bool {
+		return (c > 96 && c < 123) || (c > 64 && c < 91)
+	}
+	is_digit := func(c byte) bool {
+		return c > 47 && c < 58
+	}
 
-var bbPool = &sync.Pool{
-	New: func() any {
-		return new(bytes.Buffer)
-	},
+	// first character must be a letter or underscore
+	c := s[0]
+	if !(is_letter(c) || c == 95) {
+		return false
+	}
+
+	// remaining characters must be letters, digits, or underscores
+	for i := 1; i < l; i++ {
+		if c = s[i]; !(is_letter(c) || is_digit(c) || c == 95) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (ref Ref) String() string {
-	// Note(anderseknert):
-	// Options tried in the order of cheapness, where after some effort,
-	// only the last option now requires a (single) allocation:
-	// 1. empty ref
-	// 2. single var ref
-	// 3. built-in function ref
-	// 4. concatenated parts
-	reflen := len(ref)
-	if reflen == 0 {
+	l := len(ref)
+	// First check for zero-alloc options, as making the buffer for AppendText
+	// always costs an allocation.
+	if l == 0 {
 		return ""
 	}
-	if reflen == 1 {
+	if l == 1 {
+		if s, ok := ref[0].Value.(String); ok {
+			// Ref head should normally be a Var, but if for some reason
+			// it's a string, don't quote it.
+			return string(s)
+		}
 		return ref[0].Value.String()
 	}
 	if name, ok := BuiltinNameFromRef(ref); ok {
 		return name
 	}
 
-	_var := ref[0].Value.String()
-
-	bb := bbPool.Get().(*bytes.Buffer)
-	bb.Reset()
-
-	defer bbPool.Put(bb)
-
-	bb.Grow(len(_var) + len(ref[1:])*7) // rough estimate
-	bb.WriteString(_var)
-
-	for _, p := range ref[1:] {
-		switch p := p.Value.(type) {
-		case String:
-			str := string(p)
-			if IsVarCompatibleString(str) && !IsKeyword(str) {
-				bb.WriteByte('.')
-				bb.WriteString(str)
-			} else {
-				bb.WriteByte('[')
-				// Determine whether we need the full JSON-escaped form
-				if strings.ContainsFunc(str, isControlOrBackslash) {
-					bb.Write(strconv.AppendQuote(bb.AvailableBuffer(), str))
-				} else {
-					bb.WriteByte('"')
-					bb.WriteString(str)
-					bb.WriteByte('"')
-				}
-				bb.WriteByte(']')
-			}
-		default:
-			bb.WriteByte('[')
-			bb.WriteString(p.String())
-			bb.WriteByte(']')
-		}
-	}
-
-	return bb.String()
+	buf, _ := ref.AppendText(make([]byte, 0, ref.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // OutputVars returns a VarSet containing variables that would be bound by evaluating
@@ -1253,9 +1452,18 @@ func NewArray(a ...*Term) *Array {
 	for i, e := range a {
 		hs[i] = e.Value.Hash()
 	}
-	arr := &Array{elems: a, hashs: hs, ground: termSliceIsGround(a)}
+	arr := &Array{elems: a, hashs: hs, ground: util.Every(a, (*Term).IsGround)}
 	arr.rehash()
 	return arr
+}
+
+// NewArrayWithCapacity returns a new empty Array with the given capacity pre-allocated.
+func NewArrayWithCapacity(capacity int) *Array {
+	return &Array{
+		elems:  make([]*Term, 0, capacity),
+		hashs:  make([]int, 0, capacity),
+		ground: true,
+	}
 }
 
 // Array represents an array as defined by the language. Arrays are similar to the
@@ -1270,13 +1478,12 @@ type Array struct {
 
 // Copy returns a deep copy of arr.
 func (arr *Array) Copy() *Array {
-	cpy := make([]int, len(arr.elems))
-	copy(cpy, arr.hashs)
 	return &Array{
 		elems:  termSliceCopy(arr.elems),
-		hashs:  cpy,
+		hashs:  slices.Clone(arr.hashs),
 		hash:   arr.hash,
-		ground: arr.IsGround()}
+		ground: arr.ground,
+	}
 }
 
 // Equal returns true if arr is equal to other.
@@ -1301,19 +1508,10 @@ func (arr *Array) Equal(other Value) bool {
 // or greater than other.
 func (arr *Array) Compare(other Value) int {
 	if b, ok := other.(*Array); ok {
-		return termSliceCompare(arr.elems, b.elems)
+		return slices.CompareFunc(arr.elems, b.elems, TermValueCompare)
 	}
 
-	sortA := sortOrder(arr)
-	sortB := sortOrder(other)
-
-	if sortA < sortB {
-		return -1
-	} else if sortB < sortA {
-		return 1
-	}
-
-	return Compare(arr, other)
+	return valueTypeCompare(arr, other)
 }
 
 // Find returns the value at the index or an out-of-range error.
@@ -1363,9 +1561,11 @@ func (arr *Array) Sorted() *Array {
 
 	slices.SortFunc(cpy, TermValueCompare)
 
-	a := NewArray(cpy...)
-	a.hashs = arr.hashs
-	return a
+	// NewArray has already hashed cpy in its own order. Taking arr.hashs over
+	// that would leave hashs[i] holding the hash of some other element, which
+	// Array.set relies on, and would share the slice with arr so that setting
+	// an element here corrupted arr.
+	return NewArray(cpy...)
 }
 
 // Hash returns the hash code for the Value.
@@ -1378,30 +1578,9 @@ func (arr *Array) IsGround() bool {
 	return arr.ground
 }
 
-// MarshalJSON returns JSON encoded bytes representing arr.
-func (arr *Array) MarshalJSON() ([]byte, error) {
-	if len(arr.elems) == 0 {
-		return []byte(`[]`), nil
-	}
-	return json.Marshal(arr.elems)
-}
-
 func (arr *Array) String() string {
-	sb := sbPool.Get()
-	sb.Grow(len(arr.elems) * 16)
-
-	defer sbPool.Put(sb)
-
-	sb.WriteByte('[')
-	for i, e := range arr.elems {
-		if i > 0 {
-			sb.WriteString(", ")
-		}
-		sb.WriteString(e.String())
-	}
-	sb.WriteByte(']')
-
-	return sb.String()
+	buf, _ := arr.AppendText(make([]byte, 0, arr.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // Len returns the number of elements in the array.
@@ -1431,14 +1610,25 @@ func (arr *Array) rehash() {
 func (arr *Array) set(i int, v *Term) {
 	arr.ground = arr.ground && v.IsGround()
 	arr.elems[i] = v
-	arr.hashs[i] = v.Value.Hash()
-	arr.rehash()
+
+	// arr.hash is the sum of arr.hashs, so swapping one element's hash in is
+	// enough -- rehashing the whole array here makes building an array of n
+	// elements O(n^2), which is felt on the large arrays that appear in
+	// generated policies.
+	h := v.Value.Hash()
+	arr.hash += h - arr.hashs[i]
+	arr.hashs[i] = h
 }
 
 // Slice returns a slice of arr starting from i index to j. -1
 // indicates the end of the array. The returned value array is not a
 // copy and any modifications to either of arrays may be reflected to
 // the other.
+//
+// Set on the returned slice writes through to arr's element and to its
+// hash, but not to arr's cached sum of those hashes, so arr.Hash() is
+// stale from then on and anything holding arr as a map key or set member
+// stops finding it. Copy the slice before writing to it.
 func (arr *Array) Slice(i, j int) *Array {
 	var elems []*Term
 	var hashs []int
@@ -1451,7 +1641,7 @@ func (arr *Array) Slice(i, j int) *Array {
 	}
 	// If arr is ground, the slice is, too.
 	// If it's not, the slice could still be.
-	gr := arr.ground || termSliceIsGround(elems)
+	gr := arr.ground || util.Every(elems, (*Term).IsGround)
 
 	s := &Array{elems: elems, hashs: hashs, ground: gr}
 	s.rehash()
@@ -1483,10 +1673,11 @@ func (arr *Array) Foreach(f func(*Term)) {
 
 // Append appends a term to arr, returning the appended array.
 func (arr *Array) Append(v *Term) *Array {
+	vhs := v.Value.Hash()
 	cpy := *arr
 	cpy.elems = append(arr.elems, v)
-	cpy.hashs = append(arr.hashs, v.Value.Hash())
-	cpy.hash = arr.hash + v.Value.Hash()
+	cpy.hashs = append(arr.hashs, vhs)
+	cpy.hash += vhs
 	cpy.ground = arr.ground && v.IsGround()
 	return &cpy
 }
@@ -1517,6 +1708,11 @@ func NewSet(t ...*Term) Set {
 		s.insert(term, false)
 	}
 	return s
+}
+
+// NewSetWithCapacity returns a new empty Set with the given capacity pre-allocated.
+func NewSetWithCapacity(capacity int) Set {
+	return newset(capacity)
 }
 
 func newset(n int) *set {
@@ -1555,13 +1751,28 @@ type set struct {
 
 // Copy returns a deep copy of s.
 func (s *set) Copy() Set {
-	terms := make([]*Term, len(s.keys))
-	for i := range s.keys {
-		terms[i] = s.keys[i].Copy()
+	n := len(s.keys)
+	cpy := &set{
+		hash:      s.hash,
+		ground:    s.ground,
+		sortGuard: sync.Once{},
+		elems:     make(map[int]*Term, n),
+		keys:      make([]*Term, n),
 	}
-	cpy := NewSet(terms...).(*set)
-	cpy.hash = s.hash
-	cpy.ground = s.ground
+
+	if n > 0 {
+		// Batch-allocate all Term structs in a single contiguous block.
+		buf := make([]Term, n)
+		i := 0
+		for hash, elem := range s.elems {
+			buf[i] = *elem
+			deepCopyTermValue(&buf[i])
+			cpy.elems[hash] = &buf[i]
+			cpy.keys[i] = &buf[i]
+			i++
+		}
+	}
+
 	return cpy
 }
 
@@ -1576,25 +1787,8 @@ func (s *set) Hash() int {
 }
 
 func (s *set) String() string {
-	if s.Len() == 0 {
-		return "set()"
-	}
-
-	sb := sbPool.Get()
-	sb.Grow(s.Len() * 16)
-
-	defer sbPool.Put(sb)
-
-	sb.WriteByte('{')
-	for i := range s.sortedKeys() {
-		if i > 0 {
-			sb.WriteString(", ")
-		}
-		sb.WriteString(s.keys[i].Value.String())
-	}
-	sb.WriteByte('}')
-
-	return sb.String()
+	buf, _ := s.AppendText(make([]byte, 0, s.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 func (s *set) sortedKeys() []*Term {
@@ -1607,15 +1801,11 @@ func (s *set) sortedKeys() []*Term {
 // Compare compares s to other, return <0, 0, or >0 if it is less than, equal to,
 // or greater than other.
 func (s *set) Compare(other Value) int {
-	o1 := sortOrder(s)
-	o2 := sortOrder(other)
-	if o1 < o2 {
-		return -1
-	} else if o1 > o2 {
-		return 1
+	if t, ok := other.(*set); ok {
+		return slices.CompareFunc(s.sortedKeys(), t.sortedKeys(), TermValueCompare)
 	}
-	t := other.(*set)
-	return termSliceCompare(s.sortedKeys(), t.sortedKeys())
+
+	return valueTypeCompare(s, other)
 }
 
 // Find returns the set or dereferences the element itself.
@@ -1630,19 +1820,21 @@ func (s *set) Find(path Ref) (Value, error) {
 }
 
 // Diff returns elements in s that are not in other.
+// A returned empty set will be an interned representation that
+// should not be modified without copying.
 func (s *set) Diff(other Set) Set {
 	if s.Compare(other) == 0 {
-		return NewSet()
+		return InternedEmptySetValue.(Set)
 	}
 
-	terms := make([]*Term, 0, len(s.keys))
-	for _, term := range s.sortedKeys() {
+	result := newset(len(s.keys))
+	for _, term := range s.keys {
 		if !other.Contains(term) {
-			terms = append(terms, term)
+			result.insert(term, false)
 		}
 	}
 
-	return NewSet(terms...)
+	return result
 }
 
 // Intersect returns the set containing elements in both s and other.
@@ -1657,21 +1849,28 @@ func (s *set) Intersect(other Set) Set {
 		n = m
 	}
 
-	terms := make([]*Term, 0, n)
-	for _, term := range ss.sortedKeys() {
+	result := newset(n)
+	for _, term := range ss.keys {
 		if so.Contains(term) {
-			terms = append(terms, term)
+			result.insert(term, false)
 		}
 	}
 
-	return NewSet(terms...)
+	return result
 }
 
 // Union returns the set containing all elements of s and other.
 func (s *set) Union(other Set) Set {
-	r := NewSet()
-	s.Foreach(r.Add)
-	other.Foreach(r.Add)
+	o := other.(*set)
+	// Pre-allocate with max size - avoids over-allocation for overlapping sets
+	// while only requiring one potential grow for disjoint sets.
+	r := newset(max(len(s.keys), len(o.keys)))
+	for _, term := range s.keys {
+		r.insert(term, false)
+	}
+	for _, term := range o.keys {
+		r.insert(term, false)
+	}
 	return r
 }
 
@@ -1705,13 +1904,9 @@ func (s *set) Foreach(f func(*Term)) {
 
 // Map returns a new Set obtained by applying f to each value in s.
 func (s *set) Map(f func(*Term) (*Term, error)) (Set, error) {
-	mapped := make([]*Term, 0, len(s.keys))
-	for _, x := range s.sortedKeys() {
-		term, err := f(x)
-		if err != nil {
-			return nil, err
-		}
-		mapped = append(mapped, term)
+	mapped, err := util.TryMap(s.sortedKeys(), f)
+	if err != nil {
+		return nil, err
 	}
 	return NewSet(mapped...), nil
 }
@@ -1720,13 +1915,9 @@ func (s *set) Map(f func(*Term) (*Term, error)) (Set, error) {
 // argument to f is the reduced value (starting with i) and the second argument
 // to f is the element in s.
 func (s *set) Reduce(i *Term, f func(*Term, *Term) (*Term, error)) (*Term, error) {
-	err := s.Iter(func(x *Term) error {
-		var err error
+	err := s.Iter(func(x *Term) (err error) {
 		i, err = f(i, x)
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	})
 	return i, err
 }
@@ -1739,14 +1930,6 @@ func (s *set) Contains(t *Term) bool {
 // Len returns the number of elements in the set.
 func (s *set) Len() int {
 	return len(s.keys)
-}
-
-// MarshalJSON returns JSON encoded bytes representing s.
-func (s *set) MarshalJSON() ([]byte, error) {
-	if s.keys == nil {
-		return []byte(`[]`), nil
-	}
-	return json.Marshal(s.sortedKeys())
 }
 
 // Sorted returns an Array that contains the sorted elements of s.
@@ -1838,11 +2021,50 @@ type Object interface {
 
 // NewObject creates a new Object with t.
 func NewObject(t ...[2]*Term) Object {
-	obj := newobject(len(t))
-	for i := range t {
-		obj.insert(t[i][0], t[i][1], false)
+	var keys []*objectElem
+	n := len(t)
+	if n > 0 {
+		keys = make([]*objectElem, n)
 	}
+	obj := &object{
+		elems:     make(map[int]*objectElem, n),
+		keys:      keys,
+		sortGuard: sync.Once{},
+	}
+
+	// NOTE(anders): The code below is convoluted, but necessary
+	// since creating objects is something we do a lot and often
+	// on hot paths, this avoids allocating one objectElem per
+	// key-value pair, in favor of a single contiguous block of
+	// memory. The same technique is used in (*object).Copy(),
+	// for the same reasons.
+	elems := make([]objectElem, n)
+	for i, kv := range t {
+		key, val := kv[0], kv[1]
+		elems[i] = objectElem{key: key, value: val}
+		obj.keys[i] = &elems[i]
+
+		keyHash := key.Hash()
+		if head, ok := obj.elems[keyHash]; ok {
+			elems[i].next = head
+		}
+		obj.hash += keyHash + val.Hash()
+
+		if key.IsGround() {
+			obj.ground++
+		}
+		if val.IsGround() {
+			obj.ground++
+		}
+		obj.elems[keyHash] = &elems[i]
+	}
+
 	return obj
+}
+
+// NewObjectWithCapacity returns a new empty Object with the given capacity pre-allocated.
+func NewObjectWithCapacity(capacity int) Object {
+	return newobject(capacity)
 }
 
 // ObjectTerm creates a new Term with an Object value.
@@ -1860,80 +2082,72 @@ type lazyObj struct {
 	native map[string]any
 }
 
-func (l *lazyObj) force() Object {
-	if l.strict == nil {
-		l.strict = MustInterfaceToValue(l.native).(Object)
+func (lob *lazyObj) force() Object {
+	if lob.strict == nil {
+		lob.strict = MustInterfaceToValue(lob.native).(Object)
 		// NOTE(jf): a possible performance improvement here would be to check how many
 		// entries have been realized to AST in the cache, and if some threshold compared to the
 		// total number of keys is exceeded, realize the remaining entries and set l.strict to l.cache.
-		l.cache = map[string]Value{} // We don't need the cache anymore; drop it to free up memory.
+		lob.cache = map[string]Value{} // We don't need the cache anymore; drop it to free up memory.
 	}
-	return l.strict
+	return lob.strict
 }
 
-func (l *lazyObj) Compare(other Value) int {
-	o1 := sortOrder(l)
-	o2 := sortOrder(other)
-	if o1 < o2 {
-		return -1
-	} else if o2 < o1 {
-		return 1
+func (lob *lazyObj) Compare(other Value) int {
+	if c := valueTypeCompare(lob, other); c != 0 {
+		return c
 	}
-	return l.force().Compare(other)
+	return lob.force().Compare(other)
 }
 
-func (l *lazyObj) Copy() Object {
-	return l
+func (lob *lazyObj) Copy() Object {
+	return lob
 }
 
-func (l *lazyObj) Diff(other Object) Object {
-	return l.force().Diff(other)
+func (lob *lazyObj) Diff(other Object) Object {
+	return lob.force().Diff(other)
 }
 
-func (l *lazyObj) Intersect(other Object) [][3]*Term {
-	return l.force().Intersect(other)
+func (lob *lazyObj) Intersect(other Object) [][3]*Term {
+	return lob.force().Intersect(other)
 }
 
-func (l *lazyObj) Iter(f func(*Term, *Term) error) error {
-	return l.force().Iter(f)
+func (lob *lazyObj) Iter(f func(*Term, *Term) error) error {
+	return lob.force().Iter(f)
 }
 
-func (l *lazyObj) Until(f func(*Term, *Term) bool) bool {
+func (lob *lazyObj) Until(f func(*Term, *Term) bool) bool {
 	// NOTE(sr): there could be benefits in not forcing here -- if we abort because
 	// `f` returns true, we could save us from converting the rest of the object.
-	return l.force().Until(f)
+	return lob.force().Until(f)
 }
 
-func (l *lazyObj) Foreach(f func(*Term, *Term)) {
-	l.force().Foreach(f)
+func (lob *lazyObj) Foreach(f func(*Term, *Term)) {
+	lob.force().Foreach(f)
 }
 
-func (l *lazyObj) Filter(filter Object) (Object, error) {
-	return l.force().Filter(filter)
+func (lob *lazyObj) Filter(filter Object) (Object, error) {
+	return lob.force().Filter(filter)
 }
 
-func (l *lazyObj) Map(f func(*Term, *Term) (*Term, *Term, error)) (Object, error) {
-	return l.force().Map(f)
+func (lob *lazyObj) Map(f func(*Term, *Term) (*Term, *Term, error)) (Object, error) {
+	return lob.force().Map(f)
 }
 
-func (l *lazyObj) MarshalJSON() ([]byte, error) {
-	return l.force().(*object).MarshalJSON()
+func (lob *lazyObj) Merge(other Object) (Object, bool) {
+	return lob.force().Merge(other)
 }
 
-func (l *lazyObj) Merge(other Object) (Object, bool) {
-	return l.force().Merge(other)
+func (lob *lazyObj) MergeWith(other Object, conflictResolver func(v1, v2 *Term) (*Term, bool)) (Object, bool) {
+	return lob.force().MergeWith(other, conflictResolver)
 }
 
-func (l *lazyObj) MergeWith(other Object, conflictResolver func(v1, v2 *Term) (*Term, bool)) (Object, bool) {
-	return l.force().MergeWith(other, conflictResolver)
+func (lob *lazyObj) Len() int {
+	return len(lob.native)
 }
 
-func (l *lazyObj) Len() int {
-	return len(l.native)
-}
-
-func (l *lazyObj) String() string {
-	return l.force().String()
+func (lob *lazyObj) String() string {
+	return lob.force().String()
 }
 
 // get is merely there to implement the Object interface -- `get` there serves the
@@ -1942,16 +2156,16 @@ func (*lazyObj) get(*Term) *objectElem {
 	return nil
 }
 
-func (l *lazyObj) Get(k *Term) *Term {
-	if l.strict != nil {
-		return l.strict.Get(k)
+func (lob *lazyObj) Get(k *Term) *Term {
+	if lob.strict != nil {
+		return lob.strict.Get(k)
 	}
 	if s, ok := k.Value.(String); ok {
-		if v, ok := l.cache[string(s)]; ok {
+		if v, ok := lob.cache[string(s)]; ok {
 			return NewTerm(v)
 		}
 
-		if val, ok := l.native[string(s)]; ok {
+		if val, ok := lob.native[string(s)]; ok {
 			var converted Value
 			switch val := val.(type) {
 			case map[string]any:
@@ -1959,40 +2173,34 @@ func (l *lazyObj) Get(k *Term) *Term {
 			default:
 				converted = MustInterfaceToValue(val)
 			}
-			l.cache[string(s)] = converted
+			lob.cache[string(s)] = converted
 			return NewTerm(converted)
 		}
 	}
 	return nil
 }
 
-func (l *lazyObj) Insert(k, v *Term) {
-	l.force().Insert(k, v)
+func (lob *lazyObj) Insert(k, v *Term) {
+	lob.force().Insert(k, v)
 }
 
 func (*lazyObj) IsGround() bool {
 	return true
 }
 
-func (l *lazyObj) Hash() int {
-	return l.force().Hash()
+func (lob *lazyObj) Hash() int {
+	return lob.force().Hash()
 }
 
-func (l *lazyObj) Keys() []*Term {
-	if l.strict != nil {
-		return l.strict.Keys()
+func (lob *lazyObj) Keys() []*Term {
+	if lob.strict != nil {
+		return lob.strict.Keys()
 	}
-	ret := make([]*Term, 0, len(l.native))
-	for k := range l.native {
-		ret = append(ret, StringTerm(k))
-	}
-	slices.SortFunc(ret, TermValueCompare)
-
-	return ret
+	return util.SortedFunc(util.MapKeys(lob.native, InternedTerm), TermValueCompare)
 }
 
-func (l *lazyObj) KeysIterator() ObjectKeysIterator {
-	return &lazyObjKeysIterator{keys: l.Keys()}
+func (lob *lazyObj) KeysIterator() ObjectKeysIterator {
+	return &lazyObjKeysIterator{keys: lob.Keys()}
 }
 
 type lazyObjKeysIterator struct {
@@ -2008,19 +2216,19 @@ func (ki *lazyObjKeysIterator) Next() (*Term, bool) {
 	return ki.keys[ki.current-1], true
 }
 
-func (l *lazyObj) Find(path Ref) (Value, error) {
-	if l.strict != nil {
-		return l.strict.Find(path)
+func (lob *lazyObj) Find(path Ref) (Value, error) {
+	if lob.strict != nil {
+		return lob.strict.Find(path)
 	}
 	if len(path) == 0 {
-		return l, nil
+		return lob, nil
 	}
 	if p0, ok := path[0].Value.(String); ok {
-		if v, ok := l.cache[string(p0)]; ok {
+		if v, ok := lob.cache[string(p0)]; ok {
 			return v.Find(path[1:])
 		}
 
-		if v, ok := l.native[string(p0)]; ok {
+		if v, ok := lob.native[string(p0)]; ok {
 			var converted Value
 			switch v := v.(type) {
 			case map[string]any:
@@ -2028,7 +2236,7 @@ func (l *lazyObj) Find(path Ref) (Value, error) {
 			default:
 				converted = MustInterfaceToValue(v)
 			}
-			l.cache[string(p0)] = converted
+			lob.cache[string(p0)] = converted
 			return converted.Find(path[1:])
 		}
 	}
@@ -2082,12 +2290,8 @@ func (obj *object) Compare(other Value) int {
 	if x, ok := other.(*lazyObj); ok {
 		other = x.force()
 	}
-	o1 := sortOrder(obj)
-	o2 := sortOrder(other)
-	if o1 < o2 {
-		return -1
-	} else if o2 < o1 {
-		return 1
+	if c := valueTypeCompare(obj, other); c != 0 {
+		return c
 	}
 	a := obj
 	b := other.(*object)
@@ -2099,27 +2303,46 @@ func (obj *object) Compare(other Value) int {
 		minLen = len(bkeys)
 	}
 	for i := range minLen {
-		keysCmp := Compare(akeys[i].key, bkeys[i].key)
-		if keysCmp < 0 {
-			return -1
+		if c := akeys[i].key.Value.Compare(bkeys[i].key.Value); c != 0 {
+			return c
 		}
-		if keysCmp > 0 {
-			return 1
-		}
-		valA := akeys[i].value
-		valB := bkeys[i].value
-		valCmp := Compare(valA, valB)
-		if valCmp != 0 {
-			return valCmp
+		if c := akeys[i].value.Value.Compare(bkeys[i].value.Value); c != 0 {
+			return c
 		}
 	}
-	if len(akeys) < len(bkeys) {
-		return -1
+	return len(akeys) - len(bkeys)
+}
+
+func (obj *object) Equal(other Value) bool {
+	var ob2 *object
+	switch v := other.(type) {
+	case *object:
+		ob2 = v
+	case *lazyObj:
+		return obj.Equal(v.force())
 	}
-	if len(bkeys) < len(akeys) {
-		return 1
+
+	if obj == ob2 {
+		return true
 	}
-	return 0
+	if obj == nil || ob2 == nil || len(obj.keys) != len(ob2.keys) {
+		return false
+	}
+	elems1, elems2 := obj.sortedKeys(), ob2.sortedKeys()
+	// Note(anderseknert):
+	// Go can't (easily) know that the above calls don't modify the length
+	// checked before. Doing it once more here is cheap and ensures that the
+	// loop is evaluated without additional nil and bounds checks
+	if len(elems1) != len(elems2) {
+		return false
+	}
+
+	for i, elem := range elems1 {
+		if !elem.key.Equal(elems2[i].key) || !elem.value.Equal(elems2[i].value) {
+			return false
+		}
+	}
+	return true
 }
 
 // Find returns the value at the key or undefined.
@@ -2174,7 +2397,7 @@ func KeyHashEqual(x, y Value) bool {
 		}
 	}
 
-	return Compare(x, y) == 0
+	return x.Compare(y) == 0
 }
 
 // Hash returns the hash code for the Value.
@@ -2189,10 +2412,43 @@ func (obj *object) IsGround() bool {
 
 // Copy returns a deep copy of obj.
 func (obj *object) Copy() Object {
-	cpy, _ := obj.Map(func(k, v *Term) (*Term, *Term, error) {
-		return k.Copy(), v.Copy(), nil
-	})
-	cpy.(*object).hash = obj.hash
+	n := len(obj.keys)
+	cpy := &object{
+		elems:     make(map[int]*objectElem, n),
+		sortGuard: sync.Once{},
+		hash:      obj.hash,
+		ground:    obj.ground,
+	}
+
+	if n == 0 {
+		return cpy
+	}
+
+	// Batch-allocate all objectElems and keys/value pairs in contiguous blocks
+	// (2 allocations instead of 3N).
+	elems := make([]objectElem, n)
+	pairs := make([]Term, n*2)
+	keys := pairs[:n]
+	vals := pairs[n:]
+
+	cpy.keys = make([]*objectElem, n)
+
+	for i, srcElem := range obj.keys {
+		keys[i] = *srcElem.key
+		deepCopyTermValue(&keys[i])
+		vals[i] = *srcElem.value
+		deepCopyTermValue(&vals[i])
+
+		elems[i] = objectElem{key: &keys[i], value: &vals[i]}
+		cpy.keys[i] = &elems[i]
+
+		hash := keys[i].Hash()
+		if head, ok := cpy.elems[hash]; ok {
+			elems[i].next = head
+		}
+		cpy.elems[hash] = &elems[i]
+	}
+
 	return cpy
 }
 
@@ -2283,15 +2539,6 @@ func (obj *object) KeysIterator() ObjectKeysIterator {
 	return newobjectKeysIterator(obj)
 }
 
-// MarshalJSON returns JSON encoded bytes representing obj.
-func (obj *object) MarshalJSON() ([]byte, error) {
-	sl := make([][2]*Term, obj.Len())
-	for i, node := range obj.sortedKeys() {
-		sl[i] = Item(node.key, node.value)
-	}
-	return json.Marshal(sl)
-}
-
 // Merge returns a new Object containing the non-overlapping keys of obj and other. If there are
 // overlapping keys between obj and other, the values of associated with the keys are merged. Only
 // objects can be merged with other objects. If the values cannot be merged, the second turn value
@@ -2316,19 +2563,21 @@ func (obj *object) Merge(other Object) (Object, bool) {
 // is called. The conflictResolver can return a merged value and a boolean
 // indicating if the merge has failed and should stop.
 func (obj *object) MergeWith(other Object, conflictResolver func(v1, v2 *Term) (*Term, bool)) (Object, bool) {
-	result := NewObject()
+	// Might overallocate assuming no conflicts is the common case,
+	// but that's typically faster than iterating over each object twice.
+	result := newobject(obj.Len() + other.Len())
 	stop := obj.Until(func(k, v *Term) bool {
 		v2 := other.Get(k)
 		// The key didn't exist in other, keep the original value
 		if v2 == nil {
-			result.Insert(k, v)
+			result.insert(k, v, false)
 			return false
 		}
 
 		// The key exists in both, resolve the conflict if possible
 		merged, stop := conflictResolver(v, v2)
 		if !stop {
-			result.Insert(k, merged)
+			result.insert(k, merged, false)
 		}
 		return stop
 	})
@@ -2340,7 +2589,7 @@ func (obj *object) MergeWith(other Object, conflictResolver func(v1, v2 *Term) (
 	// Copy in any values from other for keys that don't exist in obj
 	other.Foreach(func(k, v *Term) {
 		if v2 := obj.Get(k); v2 == nil {
-			result.Insert(k, v)
+			result.insert(k, v, false)
 		}
 	})
 	return result, true
@@ -2363,24 +2612,8 @@ func (obj *object) Len() int {
 }
 
 func (obj *object) String() string {
-	sb := sbPool.Get()
-	sb.Grow(obj.Len() * 32)
-
-	defer sbPool.Put(sb)
-
-	sb.WriteByte('{')
-
-	for i, elem := range obj.sortedKeys() {
-		if i > 0 {
-			sb.WriteString(", ")
-		}
-		sb.WriteString(elem.key.String())
-		sb.WriteString(": ")
-		sb.WriteString(elem.value.String())
-	}
-	sb.WriteByte('}')
-
-	return sb.String()
+	buf, _ := obj.AppendText(make([]byte, 0, obj.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 func (*object) get(*Term) *objectElem {
@@ -2451,7 +2684,7 @@ func filterObject(o Value, filter Value) (Value, error) {
 	case String, Number, Boolean, Null:
 		return o, nil
 	case *Array:
-		values := NewArray()
+		values := make([]*Term, 0, v.Len())
 		for i := range v.Len() {
 			subFilter := filteredObj.Get(InternedIntegerString(i))
 			if subFilter != nil {
@@ -2459,10 +2692,10 @@ func filterObject(o Value, filter Value) (Value, error) {
 				if err != nil {
 					return nil, err
 				}
-				values = values.Append(NewTerm(filteredValue))
+				values = append(values, NewTerm(filteredValue))
 			}
 		}
-		return values, nil
+		return NewArray(values...), nil
 	case Set:
 		terms := make([]*Term, 0, v.Len())
 		for _, t := range v.Slice() {
@@ -2557,13 +2790,19 @@ func (ac *ArrayComprehension) Copy() *ArrayComprehension {
 
 // Equal returns true if ac is equal to other.
 func (ac *ArrayComprehension) Equal(other Value) bool {
-	return Compare(ac, other) == 0
+	return ac.Compare(other) == 0
 }
 
 // Compare compares ac to other, return <0, 0, or >0 if it is less than, equal to,
 // or greater than other.
 func (ac *ArrayComprehension) Compare(other Value) int {
-	return Compare(ac, other)
+	if bc, ok := other.(*ArrayComprehension); ok {
+		if c := ac.Term.Value.Compare(bc.Term.Value); c != 0 {
+			return c
+		}
+		return ac.Body.Compare(bc.Body)
+	}
+	return valueTypeCompare(ac, other)
 }
 
 // Find returns the current value or a not found error.
@@ -2585,7 +2824,8 @@ func (ac *ArrayComprehension) IsGround() bool {
 }
 
 func (ac *ArrayComprehension) String() string {
-	return "[" + ac.Term.String() + " | " + ac.Body.String() + "]"
+	buf, _ := ac.AppendText(make([]byte, 0, ac.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // ObjectComprehension represents an object comprehension as defined in the language.
@@ -2617,13 +2857,22 @@ func (oc *ObjectComprehension) Copy() *ObjectComprehension {
 
 // Equal returns true if oc is equal to other.
 func (oc *ObjectComprehension) Equal(other Value) bool {
-	return Compare(oc, other) == 0
+	return oc.Compare(other) == 0
 }
 
 // Compare compares oc to other, return <0, 0, or >0 if it is less than, equal to,
 // or greater than other.
 func (oc *ObjectComprehension) Compare(other Value) int {
-	return Compare(oc, other)
+	if bc, ok := other.(*ObjectComprehension); ok {
+		if c := oc.Key.Value.Compare(bc.Key.Value); c != 0 {
+			return c
+		}
+		if c := oc.Value.Value.Compare(bc.Value.Value); c != 0 {
+			return c
+		}
+		return oc.Body.Compare(bc.Body)
+	}
+	return valueTypeCompare(oc, other)
 }
 
 // Find returns the current value or a not found error.
@@ -2645,7 +2894,8 @@ func (oc *ObjectComprehension) IsGround() bool {
 }
 
 func (oc *ObjectComprehension) String() string {
-	return "{" + oc.Key.String() + ": " + oc.Value.String() + " | " + oc.Body.String() + "}"
+	buf, _ := oc.AppendText(make([]byte, 0, oc.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // SetComprehension represents a set comprehension as defined in the language.
@@ -2674,13 +2924,19 @@ func (sc *SetComprehension) Copy() *SetComprehension {
 
 // Equal returns true if sc is equal to other.
 func (sc *SetComprehension) Equal(other Value) bool {
-	return Compare(sc, other) == 0
+	return sc.Compare(other) == 0
 }
 
 // Compare compares sc to other, return <0, 0, or >0 if it is less than, equal to,
 // or greater than other.
 func (sc *SetComprehension) Compare(other Value) int {
-	return Compare(sc, other)
+	if oc, ok := other.(*SetComprehension); ok {
+		if c := sc.Term.Value.Compare(oc.Term.Value); c != 0 {
+			return c
+		}
+		return sc.Body.Compare(oc.Body)
+	}
+	return valueTypeCompare(sc, other)
 }
 
 // Find returns the current value or a not found error.
@@ -2702,7 +2958,8 @@ func (sc *SetComprehension) IsGround() bool {
 }
 
 func (sc *SetComprehension) String() string {
-	return "{" + sc.Term.String() + " | " + sc.Body.String() + "}"
+	buf, _ := sc.AppendText(make([]byte, 0, sc.StringLength()))
+	return util.ByteSliceToString(buf)
 }
 
 // Call represents as function call in the language.
@@ -2722,7 +2979,10 @@ func (c Call) Copy() Call {
 // Compare compares c to other, return <0, 0, or >0 if it is less than, equal to,
 // or greater than other.
 func (c Call) Compare(other Value) int {
-	return Compare(c, other)
+	if oc, ok := other.(Call); ok {
+		return slices.CompareFunc(c, oc, TermValueCompare)
+	}
+	return valueTypeCompare(c, other)
 }
 
 // Find returns the current value or a not found error.
@@ -2737,41 +2997,77 @@ func (c Call) Hash() int {
 
 // IsGround returns true if the Value is ground.
 func (c Call) IsGround() bool {
-	return termSliceIsGround(c)
+	return util.Every(c, (*Term).IsGround)
 }
 
-// MakeExpr returns an ew Expr from this call.
+// MakeExpr returns a new Expr from this call.
 func (c Call) MakeExpr(output *Term) *Expr {
 	terms := []*Term(c)
 	return NewExpr(append(terms, output))
 }
 
-func (c Call) String() string {
-	args := make([]string, len(c)-1)
-	for i := 1; i < len(c); i++ {
-		args[i-1] = c[i].String()
+func (c Call) Operator() Ref {
+	if len(c) == 0 {
+		return nil
 	}
-	return fmt.Sprintf("%v(%v)", c[0], strings.Join(args, ", "))
+
+	return c[0].Value.(Ref)
+}
+
+func (c Call) Operands() []*Term {
+	if len(c) < 1 {
+		return nil
+	}
+
+	return c[1:]
+}
+
+func (c Call) String() string {
+	buf, _ := c.AppendText(make([]byte, 0, c.StringLength()))
+	return util.ByteSliceToString(buf)
+}
+
+// deepCopyTermValue deep copies the Value of term in-place.
+// Scalar values (Null, Boolean, Number, String, Var) are already
+// copied by struct assignment, so only container types need work.
+func deepCopyTermValue(term *Term) {
+	switch v := term.Value.(type) {
+	case Null, Boolean, Number, String, Var:
+		// Already copied by *term = *src struct assignment.
+	case Ref:
+		term.Value = v.Copy()
+	case *Array:
+		term.Value = v.Copy()
+	case Set:
+		term.Value = v.Copy()
+	case *object:
+		term.Value = v.Copy()
+	case *ArrayComprehension:
+		term.Value = v.Copy()
+	case *ObjectComprehension:
+		term.Value = v.Copy()
+	case *SetComprehension:
+		term.Value = v.Copy()
+	case *TemplateString:
+		term.Value = v.Copy()
+	case Call:
+		term.Value = v.Copy()
+	}
 }
 
 func termSliceCopy(a []*Term) []*Term {
-	cpy := make([]*Term, len(a))
-	for i := range a {
-		cpy[i] = a[i].Copy()
+	n := len(a)
+	if n == 0 {
+		return make([]*Term, 0)
+	}
+	// Batch allocate all Term structs in a single contiguous slice (2 allocs
+	// instead of N+1) using the same pattern as util.NewPtrSlice.
+	cpy := util.NewPtrSlice[Term](n)
+	for i := range n {
+		*cpy[i] = *a[i]           // copy Term struct (Value + Location)
+		deepCopyTermValue(cpy[i]) // deep copy container Values in-place
 	}
 	return cpy
-}
-
-func termSliceEqual(a, b []*Term) bool {
-	if len(a) == len(b) {
-		for i := range a {
-			if !a[i].Equal(b[i]) {
-				return false
-			}
-		}
-		return true
-	}
-	return false
 }
 
 func termSliceHash(a []*Term) int {
@@ -2780,15 +3076,6 @@ func termSliceHash(a []*Term) int {
 		hash += v.Value.Hash()
 	}
 	return hash
-}
-
-func termSliceIsGround(a []*Term) bool {
-	for _, v := range a {
-		if !v.IsGround() {
-			return false
-		}
-	}
-	return true
 }
 
 // Detect when String() need to use expensive JSON‐escaped form
@@ -2803,6 +3090,29 @@ func isControlOrBackslash(r rune) bool {
 // the error messages should be revisited. The current approach focuses
 // on the happy path and treats all errors the same. If better error
 // reporting is needed, the error paths will need to be fleshed out.
+
+// UnmarshalJSON parses the byte array and stores the result in term.
+// Specialized unmarshalling is required to handle Value and Location.
+func (term *Term) UnmarshalJSON(bs []byte) error {
+	v := map[string]any{}
+	if err := util.UnmarshalJSON(bs, &v); err != nil {
+		return err
+	}
+	val, err := unmarshalValue(v)
+	if err != nil {
+		return err
+	}
+	term.Value = val
+
+	if loc, ok := v["location"].(map[string]any); ok {
+		term.Location = &Location{}
+		err := unmarshalLocation(term.Location, loc)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 func unmarshalBody(b []any) (Body, error) {
 	buf := Body{}
@@ -2842,11 +3152,32 @@ func unmarshalExpr(expr *Expr, v map[string]any) error {
 	}
 	switch ts := v["terms"].(type) {
 	case map[string]any:
-		t, err := unmarshalTerm(ts)
-		if err != nil {
-			return err
+		switch tt, _ := ts["type"].(string); tt {
+		case "not":
+			n := &Not{}
+			if err := unmarshalNot(n, ts); err != nil {
+				return err
+			}
+			expr.Terms = n
+		case "and":
+			a := &LogicalAnd{}
+			if err := unmarshalLogical("and", &a.Lhs, &a.Rhs, &a.ExplicitLhs, &a.ExplicitRhs, ts); err != nil {
+				return err
+			}
+			expr.Terms = a
+		case "or":
+			o := &LogicalOr{}
+			if err := unmarshalLogical("or", &o.Lhs, &o.Rhs, &o.ExplicitLhs, &o.ExplicitRhs, ts); err != nil {
+				return err
+			}
+			expr.Terms = o
+		default:
+			t, err := unmarshalTerm(ts)
+			if err != nil {
+				return err
+			}
+			expr.Terms = t
 		}
-		expr.Terms = t
 	case []any:
 		terms, err := unmarshalTermSlice(ts)
 		if err != nil {
@@ -2987,6 +3318,45 @@ func unmarshalWith(i any) (*With, error) {
 	return nil, errors.New(`ast: unable to unmarshal with modifier (expected {"target": {...}, "value": {...}})`)
 }
 
+func unmarshalLogical(typeName string, lhs, rhs *Body, explicitLhs, explicitRhs *bool, v map[string]any) error {
+	lhsRaw, ok := v["lhs"].([]any)
+	if !ok {
+		return fmt.Errorf("ast: unable to unmarshal %s, invalid lhs field type: %T (expected list)", typeName, v["lhs"])
+	}
+	l, err := unmarshalBody(lhsRaw)
+	if err != nil {
+		return fmt.Errorf("ast: unable to unmarshal %s lhs: %w", typeName, err)
+	}
+	*lhs = l
+
+	rhsRaw, ok := v["rhs"].([]any)
+	if !ok {
+		return fmt.Errorf("ast: unable to unmarshal %s, invalid rhs field type: %T (expected list)", typeName, v["rhs"])
+	}
+	r, err := unmarshalBody(rhsRaw)
+	if err != nil {
+		return fmt.Errorf("ast: unable to unmarshal %s rhs: %w", typeName, err)
+	}
+	*rhs = r
+
+	if x, ok := v["explicit_lhs"]; ok {
+		b, ok := x.(bool)
+		if !ok {
+			return fmt.Errorf("ast: unable to unmarshal %s explicit_lhs field with type: %T (expected true or false)", typeName, x)
+		}
+		*explicitLhs = b
+	}
+	if x, ok := v["explicit_rhs"]; ok {
+		b, ok := x.(bool)
+		if !ok {
+			return fmt.Errorf("ast: unable to unmarshal %s explicit_rhs field with type: %T (expected true or false)", typeName, x)
+		}
+		*explicitRhs = b
+	}
+
+	return nil
+}
+
 func unmarshalValue(d map[string]any) (Value, error) {
 	v := d["value"]
 	switch d["type"] {
@@ -3103,4 +3473,29 @@ func unmarshalValue(d map[string]any) (Value, error) {
 	}
 unmarshal_error:
 	return nil, errors.New("ast: unable to unmarshal term")
+}
+
+func unmarshalNot(n *Not, v map[string]any) error {
+	var eb bool
+	if x, ok := v["explicit_body"]; ok {
+		eb, ok = x.(bool)
+		if !ok {
+			return fmt.Errorf("ast: unable to unmarshal explicit_body field with type: %T (expected true or false)", v["explicit_body"])
+		}
+	}
+
+	b, ok := v["body"].([]any)
+	if !ok {
+		return fmt.Errorf("ast: unable to unmarshal not, invalid body field type: %T (expected list)", v["body"])
+	}
+
+	body, err := unmarshalBody(b)
+	if err != nil {
+		return fmt.Errorf("ast: unable to unmarshal not body: %w", err)
+	}
+
+	n.ExplicitBody = eb
+	n.Body = body
+
+	return nil
 }

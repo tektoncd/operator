@@ -15,7 +15,7 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -112,12 +112,10 @@ func deriveKeyFromAccessKeyPair(accessKey, secretKey string) (*ecdsa.PrivateKey,
 	}
 	d = d.Add(d, one)
 
-	priv := new(ecdsa.PrivateKey)
-	priv.PublicKey.Curve = p256
-	priv.D = d
-	priv.PublicKey.X, priv.PublicKey.Y = p256.ScalarBaseMult(d.Bytes())
+	dBytes := make([]byte, 32)
+	d.FillBytes(dBytes)
 
-	return priv, nil
+	return ecdsa.ParseRawPrivateKey(p256, dBytes)
 }
 
 // v4aCredentials is Context, ECDSA, and Optional Session Token that can be used
@@ -199,7 +197,7 @@ func (s *httpSigner) Build() (signedRequest, error) {
 
 	// Sort Each Query Key's Values
 	for key := range query {
-		sort.Strings(query[key])
+		slices.Sort(query[key])
 	}
 
 	v4Internal.SanitizeHostForHeader(req)
@@ -307,7 +305,7 @@ func (*httpSigner) buildCanonicalHeaders(host string, rule v4Internal.Rule, head
 		headers = append(headers, lowerCaseKey)
 		signed[lowerCaseKey] = v
 	}
-	sort.Strings(headers)
+	slices.Sort(headers)
 
 	signedHeaders = strings.Join(headers, ";")
 
