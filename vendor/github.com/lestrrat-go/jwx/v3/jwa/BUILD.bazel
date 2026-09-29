@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "compression_gen.go",
         "content_encryption_gen.go",
+        "ed448.go",
         "elliptic_gen.go",
         "jwa.go",
         "key_encryption_gen.go",
@@ -23,19 +24,20 @@ go_library(
 go_test(
     name = "jwa_test",
     srcs = [
+        "builtin_registry_test.go",
         "compression_gen_test.go",
         "content_encryption_gen_test.go",
+        "cross_kind_test.go",
         "elliptic_gen_test.go",
         "jwa_test.go",
         "key_encryption_gen_test.go",
         "key_type_gen_test.go",
+        "options_gen_test.go",
+        "registry_snapshot_test.go",
         "signature_gen_test.go",
     ],
-    deps = [
-        ":jwa",
-        "@com_github_stretchr_testify//require",
-        "@com_github_lestrrat_go_option_v2//:option",
-    ],
+    embed = [":jwa"],
+    deps = ["@com_github_stretchr_testify//require"],
 )
 
 alias(

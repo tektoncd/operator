@@ -3,11 +3,11 @@ package location
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"unicode/utf8"
 
-	astJSON "github.com/open-policy-agent/opa/v1/ast/json"
+	"github.com/open-policy-agent/opa/v1/util"
 )
 
 // Location records a position in source code
@@ -28,10 +28,13 @@ func NewLocation(text []byte, file string, row int, col int) *Location {
 
 // Equal checks if two locations are equal to each other.
 func (loc *Location) Equal(other *Location) bool {
-	return bytes.Equal(loc.Text, other.Text) &&
-		loc.File == other.File &&
+	if loc == nil || other == nil {
+		return loc == other
+	}
+	return loc.File == other.File &&
 		loc.Row == other.Row &&
-		loc.Col == other.Col
+		loc.Col == other.Col &&
+		bytes.Equal(loc.Text, other.Text)
 }
 
 // Errorf returns a new error value with a message formatted to include the location
@@ -57,13 +60,68 @@ func (loc *Location) Format(f string, a ...any) string {
 }
 
 func (loc *Location) String() string {
-	if len(loc.File) > 0 {
-		return fmt.Sprintf("%v:%v", loc.File, loc.Row)
+	buf, _ := loc.AppendText(make([]byte, 0, loc.StringLength()))
+	return util.ByteSliceToString(buf)
+}
+
+func (loc *Location) AppendText(buf []byte) ([]byte, error) {
+	if loc != nil {
+		switch {
+		case len(loc.File) > 0:
+			buf = util.AppendInt(append(append(buf, loc.File...), ':'), loc.Row)
+		case len(loc.Text) > 0:
+			buf = append(buf, loc.Text...)
+		default:
+			buf = util.AppendInt(append(util.AppendInt(buf, loc.Row), ':'), loc.Col)
+		}
 	}
-	if len(loc.Text) > 0 {
-		return string(loc.Text)
+	return buf, nil
+}
+
+func (loc *Location) StringLength() (n int) {
+	if loc != nil {
+		if l := len(loc.File); l > 0 {
+			n = l + 1 + util.NumDigitsInt(loc.Row)
+		} else if l := len(loc.Text); l > 0 {
+			n = l
+		} else {
+			n = util.NumDigitsInt(loc.Row) + 1 + util.NumDigitsInt(loc.Col)
+		}
 	}
-	return fmt.Sprintf("%v:%v", loc.Row, loc.Col)
+	return n
+}
+
+// HasFile reports whether loc carries a non-empty File. Safe to call on a
+// nil receiver.
+func (loc *Location) HasFile() bool {
+	return loc != nil && loc.File != ""
+}
+
+// End determines the end position of loc.
+func (loc *Location) End() (row, col int) {
+	if loc == nil {
+		return 0, 0
+	}
+	return EndOf(loc.Row, loc.Col, loc.Text)
+}
+
+// EndOf returns the end (row, col) position reached by starting at (row, col)
+// and advancing through text.
+func EndOf(row, col int, text []byte) (endRow, endCol int) {
+	if len(text) == 0 {
+		return row, col
+	}
+
+	endRow = row + bytes.Count(text, []byte{'\n'})
+	endCol = col
+
+	lastLine := text
+	if endRow != row {
+		endCol = 1
+		lastLine = text[bytes.LastIndex(text, []byte{'\n'})+1:]
+	}
+
+	return endRow, endCol + utf8.RuneCount(lastLine)
 }
 
 // Compare returns -1, 0, or 1 to indicate if this loc is less than, equal to,
@@ -71,7 +129,7 @@ func (loc *Location) String() string {
 // column of the Location (but not on the text.) Nil locations are greater than
 // non-nil locations.
 func (loc *Location) Compare(other *Location) int {
-	if loc == nil && other == nil {
+	if loc == other { //nolint:gocritic // this is fine as an ifElseChain
 		return 0
 	} else if loc == nil {
 		return 1
@@ -91,42 +149,4 @@ func (loc *Location) Compare(other *Location) int {
 		return 1
 	}
 	return 0
-}
-
-func (loc *Location) MarshalJSON() ([]byte, error) {
-	// structs are used here to preserve the field ordering of the original Location struct
-	jsonOptions := astJSON.GetOptions().MarshalOptions
-	if jsonOptions.ExcludeLocationFile {
-		data := struct {
-			Row  int    `json:"row"`
-			Col  int    `json:"col"`
-			Text []byte `json:"text,omitempty"`
-		}{
-			Row: loc.Row,
-			Col: loc.Col,
-		}
-
-		if jsonOptions.IncludeLocationText {
-			data.Text = loc.Text
-		}
-
-		return json.Marshal(data)
-	}
-
-	data := struct {
-		File string `json:"file"`
-		Row  int    `json:"row"`
-		Col  int    `json:"col"`
-		Text []byte `json:"text,omitempty"`
-	}{
-		Row:  loc.Row,
-		Col:  loc.Col,
-		File: loc.File,
-	}
-
-	if jsonOptions.IncludeLocationText {
-		data.Text = loc.Text
-	}
-
-	return json.Marshal(data)
 }

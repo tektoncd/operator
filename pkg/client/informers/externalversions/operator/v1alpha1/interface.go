@@ -25,35 +25,35 @@ import (
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// ManualApprovalGates returns a ManualApprovalGateInformer.
-	ManualApprovalGates() ManualApprovalGateInformer
+	ManualApprovalGates() TypedManualApprovalGateInformer
 	// OpenShiftPipelinesAsCodes returns a OpenShiftPipelinesAsCodeInformer.
-	OpenShiftPipelinesAsCodes() OpenShiftPipelinesAsCodeInformer
+	OpenShiftPipelinesAsCodes() TypedOpenShiftPipelinesAsCodeInformer
 	// SyncerServices returns a SyncerServiceInformer.
-	SyncerServices() SyncerServiceInformer
+	SyncerServices() TypedSyncerServiceInformer
 	// TektonAddons returns a TektonAddonInformer.
-	TektonAddons() TektonAddonInformer
+	TektonAddons() TypedTektonAddonInformer
 	// TektonChains returns a TektonChainInformer.
-	TektonChains() TektonChainInformer
+	TektonChains() TypedTektonChainInformer
 	// TektonConfigs returns a TektonConfigInformer.
-	TektonConfigs() TektonConfigInformer
+	TektonConfigs() TypedTektonConfigInformer
 	// TektonDashboards returns a TektonDashboardInformer.
-	TektonDashboards() TektonDashboardInformer
+	TektonDashboards() TypedTektonDashboardInformer
 	// TektonInstallerSets returns a TektonInstallerSetInformer.
-	TektonInstallerSets() TektonInstallerSetInformer
+	TektonInstallerSets() TypedTektonInstallerSetInformer
 	// TektonKueues returns a TektonKueueInformer.
-	TektonKueues() TektonKueueInformer
+	TektonKueues() TypedTektonKueueInformer
 	// TektonMulticlusterProxyAAEs returns a TektonMulticlusterProxyAAEInformer.
-	TektonMulticlusterProxyAAEs() TektonMulticlusterProxyAAEInformer
+	TektonMulticlusterProxyAAEs() TypedTektonMulticlusterProxyAAEInformer
 	// TektonPipelines returns a TektonPipelineInformer.
-	TektonPipelines() TektonPipelineInformer
+	TektonPipelines() TypedTektonPipelineInformer
 	// TektonPruners returns a TektonPrunerInformer.
-	TektonPruners() TektonPrunerInformer
+	TektonPruners() TypedTektonPrunerInformer
 	// TektonResults returns a TektonResultInformer.
-	TektonResults() TektonResultInformer
+	TektonResults() TypedTektonResultInformer
 	// TektonSchedulers returns a TektonSchedulerInformer.
-	TektonSchedulers() TektonSchedulerInformer
+	TektonSchedulers() TypedTektonSchedulerInformer
 	// TektonTriggers returns a TektonTriggerInformer.
-	TektonTriggers() TektonTriggerInformer
+	TektonTriggers() TypedTektonTriggerInformer
 }
 
 type version struct {
@@ -67,77 +67,77 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// ManualApprovalGates returns a ManualApprovalGateInformer.
-func (v *version) ManualApprovalGates() ManualApprovalGateInformer {
+// ManualApprovalGates returns a TypedManualApprovalGateInformer.
+func (v *version) ManualApprovalGates() TypedManualApprovalGateInformer {
 	return &manualApprovalGateInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// OpenShiftPipelinesAsCodes returns a OpenShiftPipelinesAsCodeInformer.
-func (v *version) OpenShiftPipelinesAsCodes() OpenShiftPipelinesAsCodeInformer {
+// OpenShiftPipelinesAsCodes returns a TypedOpenShiftPipelinesAsCodeInformer.
+func (v *version) OpenShiftPipelinesAsCodes() TypedOpenShiftPipelinesAsCodeInformer {
 	return &openShiftPipelinesAsCodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// SyncerServices returns a SyncerServiceInformer.
-func (v *version) SyncerServices() SyncerServiceInformer {
+// SyncerServices returns a TypedSyncerServiceInformer.
+func (v *version) SyncerServices() TypedSyncerServiceInformer {
 	return &syncerServiceInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonAddons returns a TektonAddonInformer.
-func (v *version) TektonAddons() TektonAddonInformer {
+// TektonAddons returns a TypedTektonAddonInformer.
+func (v *version) TektonAddons() TypedTektonAddonInformer {
 	return &tektonAddonInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonChains returns a TektonChainInformer.
-func (v *version) TektonChains() TektonChainInformer {
+// TektonChains returns a TypedTektonChainInformer.
+func (v *version) TektonChains() TypedTektonChainInformer {
 	return &tektonChainInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonConfigs returns a TektonConfigInformer.
-func (v *version) TektonConfigs() TektonConfigInformer {
+// TektonConfigs returns a TypedTektonConfigInformer.
+func (v *version) TektonConfigs() TypedTektonConfigInformer {
 	return &tektonConfigInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonDashboards returns a TektonDashboardInformer.
-func (v *version) TektonDashboards() TektonDashboardInformer {
+// TektonDashboards returns a TypedTektonDashboardInformer.
+func (v *version) TektonDashboards() TypedTektonDashboardInformer {
 	return &tektonDashboardInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonInstallerSets returns a TektonInstallerSetInformer.
-func (v *version) TektonInstallerSets() TektonInstallerSetInformer {
+// TektonInstallerSets returns a TypedTektonInstallerSetInformer.
+func (v *version) TektonInstallerSets() TypedTektonInstallerSetInformer {
 	return &tektonInstallerSetInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonKueues returns a TektonKueueInformer.
-func (v *version) TektonKueues() TektonKueueInformer {
+// TektonKueues returns a TypedTektonKueueInformer.
+func (v *version) TektonKueues() TypedTektonKueueInformer {
 	return &tektonKueueInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonMulticlusterProxyAAEs returns a TektonMulticlusterProxyAAEInformer.
-func (v *version) TektonMulticlusterProxyAAEs() TektonMulticlusterProxyAAEInformer {
+// TektonMulticlusterProxyAAEs returns a TypedTektonMulticlusterProxyAAEInformer.
+func (v *version) TektonMulticlusterProxyAAEs() TypedTektonMulticlusterProxyAAEInformer {
 	return &tektonMulticlusterProxyAAEInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonPipelines returns a TektonPipelineInformer.
-func (v *version) TektonPipelines() TektonPipelineInformer {
+// TektonPipelines returns a TypedTektonPipelineInformer.
+func (v *version) TektonPipelines() TypedTektonPipelineInformer {
 	return &tektonPipelineInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonPruners returns a TektonPrunerInformer.
-func (v *version) TektonPruners() TektonPrunerInformer {
+// TektonPruners returns a TypedTektonPrunerInformer.
+func (v *version) TektonPruners() TypedTektonPrunerInformer {
 	return &tektonPrunerInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonResults returns a TektonResultInformer.
-func (v *version) TektonResults() TektonResultInformer {
+// TektonResults returns a TypedTektonResultInformer.
+func (v *version) TektonResults() TypedTektonResultInformer {
 	return &tektonResultInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonSchedulers returns a TektonSchedulerInformer.
-func (v *version) TektonSchedulers() TektonSchedulerInformer {
+// TektonSchedulers returns a TypedTektonSchedulerInformer.
+func (v *version) TektonSchedulers() TypedTektonSchedulerInformer {
 	return &tektonSchedulerInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
-// TektonTriggers returns a TektonTriggerInformer.
-func (v *version) TektonTriggers() TektonTriggerInformer {
+// TektonTriggers returns a TypedTektonTriggerInformer.
+func (v *version) TektonTriggers() TypedTektonTriggerInformer {
 	return &tektonTriggerInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }

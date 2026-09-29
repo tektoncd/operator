@@ -3,7 +3,6 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "pool",
     srcs = [
-        "big_int.go",
         "byte_slice.go",
         "bytes_buffer.go",
         "error_slice.go",
@@ -22,9 +21,7 @@ alias(
 
 go_test(
     name = "pool_test",
-    srcs = [
-        "byte_slice_test.go",
-    ],
+    srcs = ["byte_slice_test.go"],
     deps = [
         ":pool",
         "@com_github_stretchr_testify//require",

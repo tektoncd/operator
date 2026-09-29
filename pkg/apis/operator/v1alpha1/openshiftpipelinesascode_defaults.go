@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"reflect"
 	"strconv"
 	"strings"
@@ -61,7 +60,7 @@ func (set *PACSettings) setPACDefaults(logger *zap.SugaredLogger) {
 	}
 	defaultPacSettings := pacSettings.Settings{}
 
-	err := pacSettings.SyncConfig(logger, &defaultPacSettings, set.Settings, map[string]func(string) error{}, http.DefaultClient)
+	err := pacSettings.SyncConfig(logger, &defaultPacSettings, set.Settings, map[string]func(string) error{})
 	if err != nil {
 		logger.Error("error on applying default PAC settings", err)
 	}
@@ -131,7 +130,6 @@ func ConvertPacStructToConfigMap(settings *pacSettings.Settings) map[string]stri
 					catalogData := value.(pacSettings.HubCatalog)
 					if key == "default" {
 						config[pacSettings.HubURLKey] = catalogData.URL
-						config[pacSettings.HubCatalogTypeKey] = catalogData.Type
 						if catalogData.Name != "" {
 							config[pacSettings.HubCatalogNameKey] = catalogData.Name
 						}
@@ -140,7 +138,6 @@ func ConvertPacStructToConfigMap(settings *pacSettings.Settings) map[string]stri
 					config[fmt.Sprintf("%s-%s-%s", "catalog", catalogData.Index, "id")] = key.(string)
 					config[fmt.Sprintf("%s-%s-%s", "catalog", catalogData.Index, "name")] = catalogData.Name
 					config[fmt.Sprintf("%s-%s-%s", "catalog", catalogData.Index, "url")] = catalogData.URL
-					config[fmt.Sprintf("%s-%s-%s", "catalog", catalogData.Index, "type")] = catalogData.Type
 					return true
 				})
 			}

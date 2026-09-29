@@ -29,9 +29,10 @@ type Value struct {
 	Comment  *CommentGroup
 
 	// Require validation
-	Definition         *Definition
-	VariableDefinition *VariableDefinition
-	ExpectedType       *Type
+	Definition             *Definition
+	VariableDefinition     *VariableDefinition
+	ExpectedType           *Type
+	ExpectedTypeHasDefault bool
 }
 
 type ChildValue struct {
@@ -41,7 +42,19 @@ type ChildValue struct {
 	Comment  *CommentGroup
 }
 
-func (v *Value) Value(vars map[string]interface{}) (interface{}, error) {
+// isUnsetVariable reports whether v is a variable reference with no supplied
+// value and no default — it should be treated as absent, not null.
+func (v *Value) isUnsetVariable(vars map[string]any) bool {
+	if v.Kind != Variable {
+		return false
+	}
+	if _, ok := vars[v.Raw]; ok {
+		return false
+	}
+	return v.VariableDefinition == nil || v.VariableDefinition.DefaultValue == nil
+}
+
+func (v *Value) Value(vars map[string]any) (any, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -65,7 +78,7 @@ func (v *Value) Value(vars map[string]interface{}) (interface{}, error) {
 	case NullValue:
 		return nil, nil
 	case ListValue:
-		var val []interface{}
+		var val []any
 		for _, elem := range v.Children {
 			elemVal, err := elem.Value.Value(vars)
 			if err != nil {
@@ -75,8 +88,11 @@ func (v *Value) Value(vars map[string]interface{}) (interface{}, error) {
 		}
 		return val, nil
 	case ObjectValue:
-		val := map[string]interface{}{}
+		val := map[string]any{}
 		for _, elem := range v.Children {
+			if elem.Value.isUnsetVariable(vars) {
+				continue
+			}
 			elemVal, err := elem.Value.Value(vars)
 			if err != nil {
 				return val, err

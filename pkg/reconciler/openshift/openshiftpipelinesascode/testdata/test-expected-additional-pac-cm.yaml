@@ -29,9 +29,6 @@ data:
   # Tekton HUB API urls
   hub-url: "https://custom-hub-catalog.com"
 
-  # Tekton HUB catalog type
-  hub-catalog-type: "tektonhub"
-
   # Additional Hub Catalogs is supported, for example:
   #
   # catalog-1-id: anotherhub
@@ -160,6 +157,19 @@ data:
   tracing-label-action: ""
   tracing-label-application: ""
   tracing-label-component: ""
+
+  # Whether to retry API requests on rate limits and transient errors
+  enable-api-retry: "false"
+
+  # Maximum number of retry attempts for API requests (when enable-api-retry is true)
+  api-retry-max-attempts: "4"
+
+  # Maximum wait time in seconds between API retry attempts
+  api-retry-max-wait-seconds: "120"
+
+  # Comma-separated allowlist of hosted VCS hostnames that this controller
+  # is allowed to send credentials to
+  trusted-provider-hostnames: ""
 
 kind: ConfigMap
 metadata:

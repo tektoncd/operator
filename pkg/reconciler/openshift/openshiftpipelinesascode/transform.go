@@ -19,7 +19,6 @@ package openshiftpipelinesascode
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	mf "github.com/manifestival/manifestival"
 	pacSettings "github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
@@ -237,7 +236,7 @@ func updateAdditionControllerConfigMap(config v1alpha1.AdditionalPACControllerCo
 		}
 
 		defaultPacSettings := pacSettings.Settings{}
-		err := pacSettings.SyncConfig(zap.NewNop().Sugar(), &defaultPacSettings, config.Settings, pacSettings.DefaultValidators(), http.DefaultClient)
+		err := pacSettings.SyncConfig(zap.NewNop().Sugar(), &defaultPacSettings, config.Settings, pacSettings.DefaultValidators())
 		if err != nil {
 			return err
 		}

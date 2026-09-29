@@ -1,19 +1,14 @@
 package settings
 
 import (
-	"context"
 	"fmt"
-	"net/http"
 	"net/url"
-	"strings"
 	"sync"
-	"time"
 
-	hubtypes "github.com/openshift-pipelines/pipelines-as-code/pkg/hub/vars"
 	"go.uber.org/zap"
 )
 
-func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[string]string, httpClient *http.Client) *sync.Map {
+func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[string]string) *sync.Map {
 	if catalogs == nil {
 		catalogs = &sync.Map{}
 	}
@@ -22,25 +17,12 @@ func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[st
 		logger.Infof("CONFIG: using default hub url %s", ArtifactHubURLDefaultValue)
 	}
 
-	if hubType, ok := config[HubCatalogTypeKey]; !ok || hubType == "" {
-		config[HubCatalogTypeKey] = hubtypes.ArtifactHubType
-		if config[HubURLKey] != "" {
-			config[HubCatalogTypeKey] = getHubCatalogTypeViaAPI(config[HubURLKey], httpClient)
-		}
-	} else if hubType != hubtypes.ArtifactHubType && hubType != hubtypes.TektonHubType {
-		logger.Warnf("CONFIG: invalid hub type %s, defaulting to %s", hubType, hubtypes.ArtifactHubType)
-		config[HubCatalogTypeKey] = hubtypes.ArtifactHubType
-	}
 	hc := HubCatalog{
 		Index: "default",
 		Name:  config[HubCatalogNameKey],
 		URL:   config[HubURLKey],
-		Type:  config[HubCatalogTypeKey],
 	}
 	catalogs.Store("default", hc)
-	if hc.Type == hubtypes.TektonHubType {
-		logger.Warnf("CONFIG: Tekton Hub catalog type is deprecated and will be removed in a future release. Please migrate to Artifact Hub. See https://pipelinesascode.com/docs/guides/pipeline-resolution/")
-	}
 
 	for k := range config {
 		m := hubCatalogNameRegex.FindStringSubmatch(k)
@@ -50,7 +32,6 @@ func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[st
 			skip := false
 			for _, kk := range []string{"id", "name", "url"} {
 				cKey := fmt.Sprintf("%s-%s", cPrefix, kk)
-				// check if key exist in config
 				if _, ok := config[cKey]; !ok {
 					logger.Warnf("CONFIG: hub %v should have the key %s, skipping catalog configuration", index, cKey)
 					skip = true
@@ -65,24 +46,20 @@ func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[st
 				catalogID := config[fmt.Sprintf("%s-id", cPrefix)]
 				if catalogID == "http" || catalogID == "https" {
 					logger.Warnf("CONFIG: custom hub catalog name cannot be %s, skipping catalog configuration", catalogID)
-					break
+					continue
 				}
 				catalogURL := config[fmt.Sprintf("%s-url", cPrefix)]
 				u, err := url.Parse(catalogURL)
 				if err != nil || u.Scheme == "" || u.Host == "" {
 					logger.Warnf("CONFIG: custom hub %s, catalog url %s is not valid, skipping catalog configuration", catalogID, catalogURL)
-					break
+					continue
 				}
 				catalogName := config[fmt.Sprintf("%s-name", cPrefix)]
-				catalogType := config[fmt.Sprintf("%s-type", cPrefix)]
-				if catalogType == "" {
-					catalogType = getHubCatalogTypeViaAPI(config[fmt.Sprintf("%s-url", cPrefix)], httpClient)
-				}
 
 				value, ok := catalogs.Load(catalogID)
 				if ok {
 					catalogValues, ok := value.(HubCatalog)
-					if ok && (catalogValues.Name == catalogName) && (catalogValues.URL == catalogURL) && (catalogValues.Index == index) && (catalogValues.Type == catalogType) {
+					if ok && (catalogValues.Name == catalogName) && (catalogValues.URL == catalogURL) && (catalogValues.Index == index) {
 						continue
 					}
 				}
@@ -91,38 +68,9 @@ func getHubCatalogs(logger *zap.SugaredLogger, catalogs *sync.Map, config map[st
 					Index: index,
 					Name:  catalogName,
 					URL:   catalogURL,
-					Type:  catalogType,
 				})
-				if catalogType == hubtypes.TektonHubType {
-					logger.Warnf("CONFIG: custom catalog %s uses Tekton Hub type, which is deprecated and will be removed in a future release. Please migrate to Artifact Hub.", catalogID)
-				}
 			}
 		}
 	}
 	return catalogs
-}
-
-func getHubCatalogTypeViaAPI(hubURL string, httpClient *http.Client) string {
-	statsURL := fmt.Sprintf("%s/api/v1/stats", strings.TrimSuffix(hubURL, "/"))
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, statsURL, nil)
-	if err != nil {
-		return hubtypes.TektonHubType
-	}
-
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return hubtypes.TektonHubType
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		return hubtypes.ArtifactHubType
-	}
-
-	// if the API call fails, return Tekton Hub type
-	return hubtypes.TektonHubType
 }
