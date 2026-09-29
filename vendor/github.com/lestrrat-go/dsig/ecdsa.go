@@ -12,7 +12,6 @@ import (
 	"github.com/lestrrat-go/dsig/internal/ecutil"
 )
 
-
 func ecdsaGetSignerKey(key any) (*ecdsa.PrivateKey, crypto.Signer, bool, error) {
 	cs, isCryptoSigner := key.(crypto.Signer)
 	if isCryptoSigner {
@@ -124,6 +123,47 @@ func SignECDSA(key *ecdsa.PrivateKey, payload []byte, h crypto.Hash, rr io.Reade
 	return PackECDSASignature(r, s, key.Curve.Params().BitSize)
 }
 
+// SignECDSADER generates an ECDSA signature in ASN.1 DER-encoded Ecdsa-Sig-Value
+// format (RFC 3279 §2.2.3), as required by X.509/PKIX and composite signature
+// schemes such as draft-ietf-lamps-pq-composite-sigs. For the fixed-length
+// JWS r||s format (RFC 7515 §3.4), use SignECDSA instead.
+//
+// The payload is hashed with h before signing. rr provides randomness; if nil,
+// rand.Reader is used.
+func SignECDSADER(key *ecdsa.PrivateKey, payload []byte, h crypto.Hash, rr io.Reader) ([]byte, error) {
+	if !isValidECDSAKey(key) {
+		return nil, fmt.Errorf(`invalid key type %T for ECDSA algorithm`, key)
+	}
+	hh := h.New()
+	if _, err := hh.Write(payload); err != nil {
+		return nil, fmt.Errorf(`failed to write payload using ecdsa: %w`, err)
+	}
+	digest := hh.Sum(nil)
+
+	if rr == nil {
+		rr = rand.Reader
+	}
+
+	sig, err := ecdsa.SignASN1(rr, key, digest)
+	if err != nil {
+		return nil, fmt.Errorf(`failed to sign payload using ecdsa: %w`, err)
+	}
+	return sig, nil
+}
+
+// VerifyECDSADER verifies an ECDSA signature in ASN.1 DER-encoded
+// Ecdsa-Sig-Value format. See SignECDSADER for the format distinction. The
+// payload is hashed with h before verification.
+func VerifyECDSADER(key *ecdsa.PublicKey, payload, signature []byte, h crypto.Hash) error {
+	hh := h.New()
+	hh.Write(payload)
+	digest := hh.Sum(nil)
+	if !ecdsa.VerifyASN1(key, digest, signature) {
+		return NewVerificationError("invalid ECDSA signature")
+	}
+	return nil
+}
+
 // SignECDSACryptoSigner generates an ECDSA signature using a crypto.Signer interface.
 // This function works with hardware security modules and other crypto.Signer implementations.
 // The signature is converted from ASN.1 format to JWS format (r||s).
@@ -174,6 +214,21 @@ func VerifyECDSA(key *ecdsa.PublicKey, payload, signature []byte, h crypto.Hash)
 	}
 
 	return ecdsaVerify(key, payload, h, &r, &s)
+}
+
+// VerifyECDSADigest verifies an ECDSA signature given a pre-computed digest.
+// The caller is responsible for hashing the signing input with the correct
+// hash function for the algorithm (e.g. SHA-256 for ES256). This function
+// does not validate the digest length.
+func VerifyECDSADigest(key *ecdsa.PublicKey, digest, signature []byte) error {
+	var r, s big.Int
+	if err := UnpackECDSASignature(signature, key, &r, &s); err != nil {
+		return fmt.Errorf("dsig.VerifyECDSADigest: %w", err)
+	}
+	if !ecdsa.Verify(key, digest, &r, &s) {
+		return NewVerificationError("invalid ECDSA signature")
+	}
+	return nil
 }
 
 // VerifyECDSACryptoSigner verifies an ECDSA signature for crypto.Signer implementations.
