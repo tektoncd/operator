@@ -6,10 +6,13 @@ package topdown
 
 import (
 	"errors"
-	"fmt"
+	"strconv"
 
 	"github.com/open-policy-agent/opa/v1/ast"
+	"github.com/open-policy-agent/opa/v1/util"
 )
+
+var cancelErr = &Error{Code: CancelErr}
 
 // Halt is a special error type that built-in function implementations return to indicate
 // that policy evaluation should stop immediately.
@@ -29,11 +32,16 @@ type Error struct {
 	Code     string        `json:"code"`
 	Message  string        `json:"message"`
 	Location *ast.Location `json:"location,omitempty"`
-	err      error         `json:"-"`
+
+	// StackTrace is the stack of queries being evaluated when the error occurred.
+	// Only populated when enabled (see Query.WithStackTraces), and left out of
+	// Error() so enabling it doesn't change the messages callers display.
+	StackTrace StackTrace `json:"stack_trace,omitempty"`
+
+	err error `json:"-"`
 }
 
 const (
-
 	// InternalErr represents an unknown evaluation error.
 	InternalErr string = "eval_internal_error"
 
@@ -61,34 +69,47 @@ const (
 
 // IsError returns true if the err is an Error.
 func IsError(err error) bool {
-	var e *Error
-	return errors.As(err, &e)
+	_, ok := errors.AsType[*Error](err)
+	return ok
 }
 
 // IsCancel returns true if err was caused by cancellation.
 func IsCancel(err error) bool {
-	return errors.Is(err, &Error{Code: CancelErr})
+	return errors.Is(err, cancelErr)
 }
 
 // Is allows matching topdown errors using errors.Is (see IsCancel).
 func (e *Error) Is(target error) bool {
-	var t *Error
-	if errors.As(target, &t) {
+	if t, ok := errors.AsType[*Error](target); ok {
 		return (t.Code == "" || e.Code == t.Code) &&
 			(t.Message == "" || e.Message == t.Message) &&
-			(t.Location == nil || t.Location.Compare(e.Location) == 0)
+			(t.Location == nil || t.Location.Equal(e.Location))
 	}
 	return false
 }
 
 func (e *Error) Error() string {
-	msg := fmt.Sprintf("%v: %v", e.Code, e.Message)
+	buf, _ := e.AppendText(make([]byte, 0, e.StringLength()))
+	return util.ByteSliceToString(buf)
+}
 
+func (e *Error) AppendText(buf []byte) ([]byte, error) {
 	if e.Location != nil {
-		msg = e.Location.String() + ": " + msg
+		buf, _ := e.Location.AppendText(buf)
+		buf = append(append(buf, ": "...), e.Code...)
+		buf = append(append(buf, ": "...), e.Message...)
+		return buf, nil
 	}
 
-	return msg
+	return append(append(append(buf, e.Code...), ": "...), e.Message...), nil
+}
+
+func (e *Error) StringLength() int {
+	l := len(e.Code) + 2 + len(e.Message)
+	if e.Location != nil {
+		l += e.Location.StringLength() + 2
+	}
+	return l
 }
 
 func (e *Error) Wrap(err error) *Error {
@@ -124,11 +145,11 @@ func objectDocKeyConflictErr(loc *ast.Location) error {
 	}
 }
 
-func unsupportedBuiltinErr(loc *ast.Location) error {
+func unsupportedBuiltinErr(loc *ast.Location, name string) error {
 	return &Error{
 		Code:     InternalErr,
 		Location: loc,
-		Message:  "unsupported built-in",
+		Message:  "unsupported built-in: " + name,
 	}
 }
 
@@ -137,6 +158,18 @@ func mergeConflictErr(loc *ast.Location) error {
 		Code:     WithMergeErr,
 		Location: loc,
 		Message:  "real and replacement data could not be merged",
+	}
+}
+
+// unevaluatedOperandErr is returned when a built-in function would have been
+// called with an operand that requires evaluation, which indicates a bug in OPA
+// rather than in the policy being evaluated.
+func unevaluatedOperandErr(loc *ast.Location, name string, pos int, operand *ast.Term) error {
+	return &Error{
+		Code:     InternalErr,
+		Location: loc,
+		Message: "built-in function " + name + " called with operand " + strconv.Itoa(pos) +
+			" that requires evaluation: " + operand.String(),
 	}
 }
 
