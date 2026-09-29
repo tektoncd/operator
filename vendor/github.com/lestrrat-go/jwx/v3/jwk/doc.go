@@ -22,14 +22,14 @@
 //
 //	jwkKey, _ := jwk.Import(rsaPrivateKey)
 //	var rawKey *rsa.PRrivateKey
-//	jwkKey.Raw(&rawKey)
+//	jwk.Export(jwkKey, &rawKey)
 //
 // You can use them to sign/verify/encrypt/decrypt:
 //
 //	jws.Sign([]byte(`...`), jws.WithKey(jwa.RS256, jwkKey))
 //	jwe.Encrypt([]byte(`...`), jwe.WithKey(jwa.RSA_OAEP, jwkKey))
 //
-// See examples/jwk_parse_example_test.go and other files in the exmaples/ directory for more.
+// See examples/jwk_parse_example_test.go and other files in the examples/ directory for more.
 //
 // # Advanced Usage: Registering a custom key type and conversion routines
 //
@@ -177,9 +177,9 @@
 //	     var hint string
 //	     if err := probe.Get("MyHint", &hint); err != nil {
 //	        // if it doesn't have the `my_hint` field, it probably means
-//	        // it's not for us, so we return ContinueParseError so that
+//	        // it's not for us, so we return ContinueError so that
 //	        // the next parser can pick it up
-//	        return nil, jwk.ContinueParseError()
+//	        return nil, jwk.ContinueError()
 //	     }
 //
 //	     // Use hint to determine concrete key type
@@ -190,7 +190,7 @@
 //			  ...
 //	     }
 //
-//	     return unmarshaler.Unmarshal(data, key)
+//	     return unmarshaler.UnmarshalKey(data, key)
 //	   }
 //
 // ## Registering KeyImporter/KeyExporter

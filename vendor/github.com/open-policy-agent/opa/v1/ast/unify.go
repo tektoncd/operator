@@ -11,12 +11,11 @@ func isRefSafe(ref Ref, safe VarSet) bool {
 	case Call:
 		return isCallSafe(head, safe)
 	default:
-		for v := range ref[0].Vars() {
-			if !safe.Contains(v) {
-				return false
-			}
-		}
-		return true
+		vis := varVisitorPool.Get().WithParams(SafetyCheckVisitorParams)
+		vis.Walk(ref[0])
+		isSafe := vis.Vars().DiffCount(safe) == 0
+		varVisitorPool.Put(vis)
+		return isSafe
 	}
 }
 
@@ -116,8 +115,7 @@ func (u *unifier) unify(a *Term, b *Term) {
 			u.markAllSafe(b)
 		}
 	case *SetComprehension:
-		switch b := b.Value.(type) {
-		case Var:
+		if b, ok := b.Value.(Var); ok {
 			u.markSafe(b)
 		}
 
@@ -167,9 +165,8 @@ func (u *unifier) unify(a *Term, b *Term) {
 		}
 
 	default:
-		switch b := b.Value.(type) {
-		case Var:
-			u.markSafe(b)
+		if v, ok := b.Value.(Var); ok {
+			u.markSafe(v)
 		}
 	}
 }

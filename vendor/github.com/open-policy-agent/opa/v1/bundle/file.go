@@ -3,17 +3,19 @@ package bundle
 import (
 	"archive/tar"
 	"bytes"
+	"cmp"
 	"compress/gzip"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 
 	"github.com/open-policy-agent/opa/v1/loader/filter"
+	"github.com/open-policy-agent/opa/v1/util"
 
 	"github.com/open-policy-agent/opa/v1/storage"
 )
@@ -193,20 +195,17 @@ func (d *dirLoader) WithFollowSymlinks(followSymlinks bool) DirectoryLoader {
 func formatPath(fileName string, root string, pathFormat PathFormat) string {
 	switch pathFormat {
 	case SlashRooted:
-		if !strings.HasPrefix(fileName, string(filepath.Separator)) {
-			return string(filepath.Separator) + fileName
-		}
-		return fileName
+		return util.WithPrefix(fileName, string(filepath.Separator))
 	case Chrooted:
 		// Trim off the root directory and return path as if chrooted
 		result := strings.TrimPrefix(fileName, filepath.FromSlash(root))
-		if root == "." && filepath.Base(fileName) == ManifestExt {
+		// TrimPrefix at root="." strips the leading dot from dotfile manifests
+		// (".manifest" → "manifest"), which then misses the Reader's HasSuffix
+		// check. Restore the original name for both manifest forms.
+		if root == "." && (filepath.Base(fileName) == ManifestExt || filepath.Base(fileName) == ManifestProtoExt) {
 			result = fileName
 		}
-		if !strings.HasPrefix(result, string(filepath.Separator)) {
-			result = string(filepath.Separator) + result
-		}
-		return result
+		return util.WithPrefix(result, string(filepath.Separator))
 	case Passthrough:
 		fallthrough
 	default:
@@ -352,12 +351,10 @@ func (t *tarballLoader) NextFile() (*Descriptor, error) {
 
 		for {
 			header, err := t.tr.Next()
-
-			if err == io.EOF {
-				break
-			}
-
 			if err != nil {
+				if err == io.EOF {
+					break
+				}
 				return nil, err
 			}
 
@@ -365,7 +362,6 @@ func (t *tarballLoader) NextFile() (*Descriptor, error) {
 			if header.Typeflag == tar.TypeReg {
 
 				if t.filter != nil {
-
 					if t.filter(filepath.ToSlash(header.Name), header.FileInfo(), getdepth(header.Name, false)) {
 						continue
 					}
@@ -444,13 +440,13 @@ func (it *iterator) Next() (*storage.Update, error) {
 			}
 
 			f.path = p
-
 			f.raw = item.Value
-
 			it.files = append(it.files, f)
 		}
 
-		sortFilePathAscend(it.files)
+		slices.SortFunc(it.files, func(a, b file) int {
+			return cmp.Compare(len(a.path), len(b.path))
+		})
 	}
 
 	// If done reading files then just return io.EOF
@@ -487,26 +483,25 @@ func NewIterator(raw []Raw) storage.Iterator {
 	return &it
 }
 
-func sortFilePathAscend(files []file) {
-	sort.Slice(files, func(i, j int) bool {
-		return len(files[i].path) < len(files[j].path)
-	})
-}
-
 func getdepth(path string, isDir bool) int {
 	if isDir {
 		cleanedPath := strings.Trim(filepath.ToSlash(path), "/")
-		return len(strings.Split(cleanedPath, "/"))
+		return segmentCount(cleanedPath)
 	}
 
 	basePath := strings.Trim(filepath.Dir(filepath.ToSlash(path)), "/")
-	return len(strings.Split(basePath, "/"))
+	return segmentCount(basePath)
+}
+
+// segmentCount avoids the []string allocation of len(strings.Split(path, "/")).
+func segmentCount(path string) int {
+	return strings.Count(path, "/") + 1
 }
 
 func getFileStoragePath(path string) (storage.Path, error) {
-	fpath := strings.TrimLeft(normalizePath(filepath.Dir(path)), "/.")
+	fpath := strings.TrimLeft(filepath.ToSlash(filepath.Dir(path)), "/.")
 	if strings.HasSuffix(path, RegoExt) {
-		fpath = strings.Trim(normalizePath(path), "/")
+		fpath = strings.Trim(filepath.ToSlash(path), "/")
 	}
 
 	p, ok := storage.ParsePathEscaped("/" + fpath)

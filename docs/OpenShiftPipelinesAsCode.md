@@ -80,14 +80,15 @@ Details of the field can be found in [OpenShift Pipelines As Code Settings][pac-
 
 Pipelines as Code supports configuring remote hub catalogs to fetch tasks and pipelines. You can configure custom catalogs using the `catalog-{INDEX}-*` settings pattern.
 
-Each custom catalog requires the following four fields:
+Each custom catalog requires the following three fields:
 
 | Field | Description | Required |
 |-------|-------------|----------|
 | `catalog-{INDEX}-id` | Unique identifier for the catalog. Users reference tasks from this catalog using this ID as prefix (e.g., `custom://task-name`) | Yes |
 | `catalog-{INDEX}-name` | Name of the catalog within the hub | Yes |
 | `catalog-{INDEX}-url` | Full URL endpoint of the hub API | Yes |
-| `catalog-{INDEX}-type` | Type of hub: `artifacthub` (for Artifact Hub) or `tektonhub` (for Tekton Hub) | Yes |
+
+`catalog-{INDEX}-type` and `hub-catalog-type` were removed in Pipelines as Code 0.51.0. On upgrade, the operator deletes `hub-catalog-type` from TektonConfig, the OpenShiftPipelinesAsCode CR, and the `pipelines-as-code` ConfigMap.
 
 Where `{INDEX}` is a number that can be incremented to add multiple catalogs (e.g., `1`, `2`, `3`).
 
@@ -104,7 +105,6 @@ spec:
     catalog-1-id: "custom"
     catalog-1-name: "tekton"
     catalog-1-url: "https://api.custom.hub/v1"
-    catalog-1-type: "tektonhub"
   targetNamespace: openshift-pipelines
 ```
 
@@ -123,11 +123,9 @@ spec:
     catalog-1-id: "custom"
     catalog-1-name: "tekton"
     catalog-1-url: "https://api.custom.hub/v1"
-    catalog-1-type: "tektonhub"
     catalog-2-id: "artifact"
     catalog-2-name: "tekton-catalog-tasks"
     catalog-2-url: "https://artifacthub.io"
-    catalog-2-type: "artifacthub"
   targetNamespace: openshift-pipelines
 ```
 

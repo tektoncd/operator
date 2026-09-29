@@ -14,7 +14,10 @@ import (
 
 // TypeEnv contains type info for static analysis such as type checking.
 type TypeEnv struct {
-	tree       *typeTreeNode
+	tree *typeTreeNode
+	// vars is the tree the types inferred for variables are stored in, which is
+	// tree except in the environments created for with modifiers.
+	vars       *typeTreeNode
 	next       *TypeEnv
 	newChecker func() *typeChecker
 }
@@ -22,13 +25,16 @@ type TypeEnv struct {
 // newTypeEnv returns an empty TypeEnv. The constructor is not exported because
 // type environments should only be created by the type checker.
 func newTypeEnv(f func() *typeChecker) *TypeEnv {
+	tree := newTypeTree()
 	return &TypeEnv{
-		tree:       newTypeTree(),
+		tree:       tree,
+		vars:       tree,
 		newChecker: f,
 	}
 }
 
 // Get returns the type of x.
+//
 // Deprecated: Use GetByValue or GetByRef instead, as they are more efficient.
 func (env *TypeEnv) Get(x any) types.Type {
 	if term, ok := x.(*Term); ok {
@@ -53,23 +59,17 @@ func (env *TypeEnv) GetByValue(v Value) types.Type {
 		return types.B
 	case Number:
 		return types.N
-	case String:
+	case String, *TemplateString:
 		return types.S
 
 	// Composites.
 	case *Array:
 		static := make([]types.Type, x.Len())
 		for i := range static {
-			tpe := env.GetByValue(x.Elem(i).Value)
-			static[i] = tpe
+			static[i] = env.GetByValue(x.Elem(i).Value)
 		}
 
-		var dynamic types.Type
-		if len(static) == 0 {
-			dynamic = types.A
-		}
-
-		return types.NewArray(static, dynamic)
+		return types.NewArray(static, nil)
 
 	case *lazyObj:
 		return env.GetByValue(x.force())
@@ -79,33 +79,22 @@ func (env *TypeEnv) GetByValue(v Value) types.Type {
 
 		x.Foreach(func(k, v *Term) {
 			if IsConstant(k.Value) {
-				kjson, err := JSON(k.Value)
-				if err == nil {
-					tpe := env.GetByValue(v.Value)
-					static = append(static, types.NewStaticProperty(kjson, tpe))
+				if kjson, err := JSON(k.Value); err == nil {
+					static = append(static, types.NewStaticProperty(kjson, env.GetByValue(v.Value)))
 					return
 				}
 			}
 			// Can't handle it as a static property, fallback to dynamic
-			typeK := env.GetByValue(k.Value)
-			typeV := env.GetByValue(v.Value)
-			dynamic = types.NewDynamicProperty(typeK, typeV)
+			dynamic = types.NewDynamicProperty(env.GetByValue(k.Value), env.GetByValue(v.Value))
 		})
-
-		if len(static) == 0 && dynamic == nil {
-			dynamic = types.NewDynamicProperty(types.A, types.A)
-		}
 
 		return types.NewObject(static, dynamic)
 
-	case Set:
+	case *set:
 		var tpe types.Type
 		x.Foreach(func(elem *Term) {
 			tpe = types.Or(tpe, env.GetByValue(elem.Value))
 		})
-		if tpe == nil {
-			tpe = types.A
-		}
 		return types.NewSet(tpe)
 
 	// Comprehensions.
@@ -161,12 +150,13 @@ func (env *TypeEnv) GetByRef(ref Ref) types.Type {
 }
 
 func (env *TypeEnv) getRefFallback(ref Ref) types.Type {
-
 	if env.next != nil {
 		return env.next.GetByRef(ref)
 	}
 
 	if RootDocumentNames.Contains(ref[0]) {
+		// types.A is an empty types.Any
+		// this is used to represent a potential non-local reference
 		return types.A
 	}
 
@@ -234,7 +224,17 @@ func (env *TypeEnv) wrap() *TypeEnv {
 	cpy := *env
 	cpy.next = env
 	cpy.tree = newTypeTree()
+	cpy.vars = cpy.tree
 	return &cpy
+}
+
+// wrapWith returns a TypeEnv for checking a single expression carrying with
+// modifiers: unlike wrap, the types it infers for variables are kept in the
+// enclosing environment, as those variables outlive the expression.
+func (env *TypeEnv) wrapWith() *TypeEnv {
+	cpy := env.wrap()
+	cpy.vars = env.vars
+	return cpy
 }
 
 // typeTreeNode is used to store type information in a tree.
@@ -298,15 +298,11 @@ func (n *typeTreeNode) PutOne(key Value, tpe types.Type) {
 func (n *typeTreeNode) Put(path Ref, tpe types.Type) {
 	curr := n
 	for _, term := range path {
-		c, ok := curr.children.Get(term.Value)
-
-		var child *typeTreeNode
+		child, ok := curr.children.Get(term.Value)
 		if !ok {
 			child = newTypeTree()
 			child.key = term.Value
 			curr.children.Put(child.key, child)
-		} else {
-			child = c
 		}
 
 		curr = child
@@ -320,23 +316,22 @@ func (n *typeTreeNode) Put(path Ref, tpe types.Type) {
 func (n *typeTreeNode) Insert(path Ref, tpe types.Type, env *TypeEnv) {
 	curr := n
 	for i, term := range path {
-		c, ok := curr.children.Get(term.Value)
-
-		var child *typeTreeNode
+		child, ok := curr.children.Get(term.Value)
 		if !ok {
 			child = newTypeTree()
 			child.key = term.Value
 			curr.children.Put(child.key, child)
-		} else {
-			child = c
-			if child.value != nil && i+1 < len(path) {
-				// If child has an object value, merge the new value into it.
-				if o, ok := child.value.(*types.Object); ok {
-					var err error
-					child.value, err = insertIntoObject(o, path[i+1:], tpe, env)
-					if err != nil {
-						panic(fmt.Errorf("unreachable, insertIntoObject: %w", err))
-					}
+		} else if child.value != nil && i+1 < len(path) {
+			// If child has an object value, merge the new value into it.
+			cv := child.value
+			if r, ok := cv.(*types.Recursive); ok {
+				cv = r.Unwrap()
+			}
+			if o, ok := cv.(*types.Object); ok {
+				var err error
+				child.value, err = insertIntoObject(o, path[i+1:], tpe, env)
+				if err != nil {
+					panic(fmt.Errorf("unreachable, insertIntoObject: %w", err))
 				}
 			}
 		}
@@ -346,16 +341,26 @@ func (n *typeTreeNode) Insert(path Ref, tpe types.Type, env *TypeEnv) {
 
 	curr.value = mergeTypes(curr.value, tpe)
 
-	if _, ok := tpe.(*types.Object); ok && curr.children.Len() > 0 {
+	_, isObj := tpe.(*types.Object)
+	if !isObj {
+		if r, ok := tpe.(*types.Recursive); ok {
+			_, isObj = r.Unwrap().(*types.Object)
+		}
+	}
+	if isObj && curr.children.Len() > 0 {
 		// merge all leafs into the inserted object
-		leafs := curr.Leafs()
-		for p, t := range leafs {
+		cv := curr.value
+		if r, ok := cv.(*types.Recursive); ok {
+			cv = r.Unwrap()
+		}
+		for p, t := range curr.Leafs() {
 			var err error
-			curr.value, err = insertIntoObject(curr.value.(*types.Object), *p, t, env)
+			cv, err = insertIntoObject(cv.(*types.Object), *p, t, env)
 			if err != nil {
 				panic(fmt.Errorf("unreachable, insertIntoObject: %w", err))
 			}
 		}
+		curr.value = cv
 	}
 }
 
@@ -366,6 +371,8 @@ func (n *typeTreeNode) Insert(path Ref, tpe types.Type, env *TypeEnv) {
 // with an types.Or, instead of being merged.
 // If 'a' is an Any containing an Object, and 'b' is an Object (or vice versa); AND both objects have no
 // static properties, they are merged.
+// If either object has neither static nor dynamic properties, it is the empty object type, and the other
+// type is returned unchanged.
 // If 'a' and 'b' are different types, they are joined with an types.Or.
 func mergeTypes(a, b types.Type) types.Type {
 	if a == nil {
@@ -376,26 +383,43 @@ func mergeTypes(a, b types.Type) types.Type {
 		return a
 	}
 
+	// Unwrap recursive types so they merge as their underlying type.
+	if r, ok := a.(*types.Recursive); ok {
+		a = r.Unwrap()
+	}
+	if r, ok := b.(*types.Recursive); ok {
+		b = r.Unwrap()
+	}
+
 	switch a := a.(type) {
 	case *types.Object:
+		aDynProps := a.DynamicProperties()
 		if bObj, ok := b.(*types.Object); ok && len(a.StaticProperties()) == 0 && len(bObj.StaticProperties()) == 0 {
-			if len(a.StaticProperties()) > 0 || len(bObj.StaticProperties()) > 0 {
-				return types.Or(a, bObj)
+			bDynProps := bObj.DynamicProperties()
+
+			// An object type with neither static nor dynamic properties is the
+			// empty object, which the other object type already covers.
+			if aDynProps == nil {
+				return bObj
+			}
+			if bDynProps == nil {
+				return a
 			}
 
-			aDynProps := a.DynamicProperties()
-			bDynProps := bObj.DynamicProperties()
 			dynProps := types.NewDynamicProperty(
 				types.Or(aDynProps.Key, bDynProps.Key),
-				mergeTypes(aDynProps.Value, bDynProps.Value))
+				mergeTypes(aDynProps.Value, bDynProps.Value),
+			)
 			return types.NewObject(nil, dynProps)
-		} else if bAny, ok := b.(types.Any); ok && len(a.StaticProperties()) == 0 {
+		} else if bAny, ok := b.(types.Any); ok && len(a.StaticProperties()) == 0 && aDynProps != nil {
 			// If a is an object type with no static components ...
 			for _, t := range bAny {
 				if tObj, ok := t.(*types.Object); ok && len(tObj.StaticProperties()) == 0 {
 					// ... and b is a types.Any containing an object with no static components, we merge them.
-					aDynProps := a.DynamicProperties()
 					tDynProps := tObj.DynamicProperties()
+					if tDynProps == nil {
+						continue
+					}
 					tDynProps.Key = types.Or(tDynProps.Key, aDynProps.Key)
 					tDynProps.Value = types.Or(tDynProps.Value, aDynProps.Value)
 					return bAny
@@ -416,14 +440,14 @@ func mergeTypes(a, b types.Type) types.Type {
 }
 
 func (n *typeTreeNode) String() string {
-	b := strings.Builder{}
+	b := &strings.Builder{}
 
+	key := "-"
 	if k := n.key; k != nil {
-		b.WriteString(k.String())
-	} else {
-		b.WriteString("-")
+		key = k.String()
 	}
 
+	b.WriteString(key)
 	if v := n.value; v != nil {
 		b.WriteString(": ")
 		b.WriteString(v.String())
@@ -431,9 +455,7 @@ func (n *typeTreeNode) String() string {
 
 	n.children.Iter(func(_ Value, child *typeTreeNode) bool {
 		b.WriteString("\n\t+ ")
-		s := child.String()
-		s = strings.ReplaceAll(s, "\n", "\n\t")
-		b.WriteString(s)
+		b.WriteString(strings.ReplaceAll(child.String(), "\n", "\n\t"))
 
 		return false
 	})
@@ -484,7 +506,8 @@ func (n *typeTreeNode) Leafs() map[*Ref]types.Type {
 func collectLeafs(n *typeTreeNode, path Ref, leafs map[*Ref]types.Type) {
 	nPath := append(path, NewTerm(n.key))
 	if n.Leaf() {
-		leafs[&nPath] = n.Value()
+		npc := nPath // copy of else nPath escapes to heap even if !n.Leaf()
+		leafs[&npc] = n.Value()
 		return
 	}
 	n.children.Iter(func(_ Value, v *typeTreeNode) bool {
@@ -512,7 +535,6 @@ func selectConstant(tpe types.Type, term *Term) types.Type {
 // contains vars or refs, then the returned type will be a union of the
 // possible types.
 func selectRef(tpe types.Type, ref Ref) types.Type {
-
 	if tpe == nil || len(ref) == 0 {
 		return tpe
 	}
