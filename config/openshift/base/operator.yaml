@@ -90,13 +90,13 @@ spec:
         - name: IMAGE_HUB_TEKTON_HUB_DB
           value: registry.redhat.io/rhel9/postgresql-13@sha256:36647bd6d50d2e0e9c99ecf190bd515577c7ce9476e49d927c4d4065011e3441
         - name: IMAGE_ADDONS_PARAM_BUILDER_IMAGE
-          value: registry.redhat.io/rhel9/buildah@sha256:f2ee079da81e8558324d687db93e9d241ac09cdb085c37392554e03ae5ed986a
+          value: registry.redhat.io/rhel9/buildah@sha256:ad3ac00db8e39f9837e364d965d36056f740fc2a1eec0c6607da7f06b014f172
         - name: IMAGE_ADDONS_PARAM_KN_IMAGE
           value: registry.redhat.io/openshift-serverless-1/kn-client-kn-rhel8@sha256:0fa6d15d38601f266347cdd098e80bec9893f7e6b06e84efc4a8c50b3ff3c6cc
         - name: IMAGE_ADDONS_MVN_SETTINGS
-          value: registry.redhat.io/ubi9/ubi-minimal@sha256:8ebe2ad8fdf3cab3e5a53c1edc69194c98209cfadab24b884f4ad9ebcf7bbbfc
+          value: registry.redhat.io/ubi9/ubi-minimal@sha256:beeada7dd17903dfb69fd5f6916c054720bf28a52daaa2f7a1910a1394244bd2
         - name: IMAGE_ADDONS_SKOPEO_COPY
-          value: registry.redhat.io/rhel9/skopeo@sha256:ef42cf11dc744bceb2dc5a3c7ddce1ce750df0ad9020c2006c159d5475bab55b
+          value: registry.redhat.io/rhel9/skopeo@sha256:268ac4eb2c711a9313069096b638997cae2ce6a8139f04d65dce0fe9c17f09c7
         - name: IMAGE_ADDONS_GENERATE
           value: registry.redhat.io/source-to-image/source-to-image-rhel8@sha256:3696cf724ce7865626ae408d82fd87727c741e4d3eb3475c271ec6d56f0882a4
         - name: IMAGE_ADDONS_GEN_ENV_FILE
