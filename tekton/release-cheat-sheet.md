@@ -51,6 +51,25 @@ on the shared Tekton infrastructure cluster.
    curl -s https://infra.tekton.dev/tekton-releases/operator/previous/${TEKTON_RELEASE_VERSION}/openshift-release.yaml | head
    ```
 
+1. Update Helm charts with the new version:
+
+   `hack/release-setup-branch.sh` already sets `version` and `appVersion` in
+   `charts/tekton-operator/Chart.yaml` on the branch it prepares, so on that
+   branch these commands change nothing. They are kept as a manual reference,
+   for example for a branch prepared without the script.
+
+   ```bash
+   # Update labels in YAML files under templates directory
+   find charts/tekton-operator/templates -type f -name '*.yaml' -exec sed -i \
+     "s/operator\.tekton\.dev\/release: \"devel\"/operator.tekton.dev\/release: ${TEKTON_RELEASE_VERSION}/g" {} +
+   find charts/tekton-operator/templates -type f -name '*.yaml' -exec sed -i \
+     "s/version: \"devel\"/version: ${TEKTON_RELEASE_VERSION}/g" {} +
+
+   # Update Chart.yaml
+   sed -i "s/^version: \"devel\"/version: ${TEKTON_RELEASE_VERSION#v}/" charts/tekton-operator/Chart.yaml
+   sed -i "s/^appVersion: \"devel\"/appVersion: ${TEKTON_RELEASE_VERSION}/" charts/tekton-operator/Chart.yaml
+   ```
+
 ### Patch Release (bugfix)
 
 Patch releases can be triggered manually or automatically.
