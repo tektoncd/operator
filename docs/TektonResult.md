@@ -70,9 +70,17 @@ spec:
   loki_stack_namespace: #optional
   prometheus_port: 9090
   prometheus_histogram: false
+  watcher:
+    logs_api: true # leave unset when another forwarder stores logs; see the note below
 ```
 
 These properties are analogous to the one in configmap of tekton results api `tekton-results-api-config` documented at [api.md](https://github.com/tektoncd/results/blob/4472848a0fb7c1473cfca8b647553170efac78a1/cmd/api/README.md)
+
+> **Note:** `logs_api: true` enables the logs API on the Results API server only. The watcher forwards TaskRun and
+> PipelineRun logs to it only when `watcher.logs_api` is also `true` (it defaults to `false`). With only the top-level
+> field set, no logs are stored, for example with the `logs_type: File` and `logging_pvc_name` setup above. Leave
+> `watcher.logs_api` unset when another forwarder stores the logs, such as Vector or Fluentd with
+> [LokiStack](#lokistack--tektonresult). Log forwarding by the watcher is expected to be removed in a future release.
 
 ### Further API settings
 
@@ -111,7 +119,6 @@ spec:
 `logging_plugin_container_key`, `logging_plugin_json_map`, and `logging_plugin_line_format` are for Loki. The JSON map names fields to pull out of a log line. The line format is the template used when a line is returned. The other `logging_plugin_*` fields are described with the Loki section below.
 
 Kubernetes client QPS is `spec.result.performance.kube-api-qps` and `kube-api-burst`. The API receives them as `K8S_QPS` and `K8S_BURST`. The API only accepts a whole number, so a fractional QPS is truncated. The watcher receives the same values as `-qps` and `-burst`, and keeps the fractional QPS. Leave both unset to keep the Results defaults, 5 and 10. The other performance fields (`replicas`, `threads-per-controller`, and so on) still apply to the watcher only.
-
 
 
 [result]:https://github.com/tektoncd/results
