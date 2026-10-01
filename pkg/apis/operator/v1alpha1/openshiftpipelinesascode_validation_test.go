@@ -216,4 +216,5 @@ func TestValidateNilSettings(t *testing.T) {
 	}
 	err := opacCR.Validate(context.TODO())
 	assert.Assert(t, err == nil, "unexpected validation error: %v", err)
+	assert.Assert(t, opacCR.Spec.PACSettings.Settings == nil, "Validate must not mutate the CR")
 }

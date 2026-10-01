@@ -55,13 +55,15 @@ func (ps *PACSettings) validate(logger *zap.SugaredLogger, path string) *apis.Fi
 	var errs *apis.FieldError
 
 	// Settings may be nil when PAC is disabled (SetDefaults nils it out), but
-	// SyncConfig writes into it unconditionally, so guard against a nil map here.
-	if ps.Settings == nil {
-		ps.Settings = map[string]string{}
+	// SyncConfig writes into it unconditionally. Use a local map so the CR
+	// being validated is not mutated.
+	settings := ps.Settings
+	if settings == nil {
+		settings = map[string]string{}
 	}
 
 	defaultPacSettings := pacSettings.Settings{}
-	if err := pacSettings.SyncConfig(logger, &defaultPacSettings, ps.Settings, pacSettings.DefaultValidators(), http.DefaultClient); err != nil {
+	if err := pacSettings.SyncConfig(logger, &defaultPacSettings, settings, pacSettings.DefaultValidators(), http.DefaultClient); err != nil {
 		errs = errs.Also(apis.ErrInvalidValue(err, fmt.Sprintf("%s.settings", path)))
 	}
 
