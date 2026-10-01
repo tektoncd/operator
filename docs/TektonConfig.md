@@ -355,6 +355,7 @@ result:
     check_owner: true
     store_deadline: 10m
     disable_storing_incomplete_runs: true
+    logs_api: true # leave unset when another forwarder stores logs; see the logs_api note in TektonResult.md
 ```
 
 #### Tekton Results Watcher configuration
@@ -394,7 +395,7 @@ result:
 | `check_owner` | `-check_owner` | `true` | Skip deletion when the Run has owner references. |
 | `store_deadline` | `-store_deadline` | `10m` | Max wait to store a Run before clearing its finalizer on delete. |
 | `disable_storing_incomplete_runs` | `-disable_storing_incomplete_runs` | `false` | Only store Runs after they complete. |
-| `logs_api` | `-logs_api` | `false` | Send logs to the Results API (separate from API server `logs_api`). |
+| `logs_api` | `-logs_api` | `false` | Send logs to the Results API (separate from API server `logs_api`). Without it, the top-level `logs_api` stores no logs unless another forwarder sends them. Expected to be removed in a future release. |
 | `logs_timestamps` | `-logs_timestamps` | `false` | Include timestamps in stored logs. |
 | `store_event` | `-store_event` | `false` | Store Kubernetes events related to Runs. |
 | `summary_labels` | `-summary_labels` | `tekton.dev/pipeline` | Comma-separated labels copied into Result summary. Omit to keep default; `""` clears it. |
