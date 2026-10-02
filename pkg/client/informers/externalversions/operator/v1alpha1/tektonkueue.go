@@ -34,11 +34,39 @@ import (
 )
 
 // TektonKueueInformer provides access to a shared informer and lister for
-// TektonKueues.
+// TektonKueues. Prefer using the type-safe variant (see [TypedTektonKueueInformer]).
 type TektonKueueInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() operatorv1alpha1.TektonKueueLister
 }
+
+// TypedTektonKueueInformer provides access to a shared informer and lister for
+// TektonKueues, including the type-safe TypedInformer variant.
+// It is a superset of TektonKueueInformer.
+type TypedTektonKueueInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() TektonKueueIndexInformer
+	Lister() operatorv1alpha1.TektonKueueLister
+}
+
+// TektonKueueIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type TektonKueueIndexInformer cache.TypedSharedIndexInformer[*apisoperatorv1alpha1.TektonKueue]
+
+// TektonKueueHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for TektonKueue.
+type TektonKueueHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisoperatorv1alpha1.TektonKueue]
+
+// TektonKueueDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for TektonKueue.
+type TektonKueueDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisoperatorv1alpha1.TektonKueue]
+
+// TektonKueueFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for TektonKueue.
+type TektonKueueFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisoperatorv1alpha1.TektonKueue]
+
+// TektonKueueIndexers is a specialization of [cache.TypedIndexers] for TektonKueue.
+type TektonKueueIndexers = cache.TypedIndexers[*apisoperatorv1alpha1.TektonKueue]
+
+// DeletedTektonKueue is a specialization of [cache.DeletedObject] for TektonKueue.
+type DeletedTektonKueue = cache.DeletedObject[*apisoperatorv1alpha1.TektonKueue]
 
 type tektonKueueInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -48,25 +76,49 @@ type tektonKueueInformer struct {
 // NewTektonKueueInformer constructs a new informer for TektonKueue type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonKueueInformer]).
 func NewTektonKueueInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewTektonKueueInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedTektonKueueInformer constructs a new informer for TektonKueue type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonKueueInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonKueueIndexers) TektonKueueIndexInformer {
+	return NewTypedTektonKueueInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredTektonKueueInformer constructs a new informer for TektonKueue type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredTektonKueueInformer]).
 func NewFilteredTektonKueueInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewTektonKueueInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedTektonKueueInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredTektonKueueInformer constructs a new informer for TektonKueue type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredTektonKueueInformer(client versioned.Interface, resyncPeriod time.Duration, indexers TektonKueueIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) TektonKueueIndexInformer {
+	return NewTypedTektonKueueInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewTektonKueueInformerWithOptions constructs a new informer for TektonKueue type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedTektonKueueInformerWithOptions]).
 func NewTektonKueueInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedTektonKueueInformerWithOptions(client, options)
+}
+
+// NewTypedTektonKueueInformerWithOptions constructs a new informer for TektonKueue type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedTektonKueueInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) TektonKueueIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "operator.tekton.dev", Version: "v1alpha1", Resource: "tektonkueues"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonKueue](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -99,17 +151,57 @@ func NewTektonKueueInformerWithOptions(client versioned.Interface, options inter
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *tektonKueueInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewTektonKueueInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedTektonKueueInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *tektonKueueInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisoperatorv1alpha1.TektonKueue{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *tektonKueueInformer) TypedInformer() TektonKueueIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonKueue](f.factory.InformerFor(&apisoperatorv1alpha1.TektonKueue{}, f.defaultInformer))
 }
 
 func (f *tektonKueueInformer) Lister() operatorv1alpha1.TektonKueueLister {
 	return operatorv1alpha1.NewTektonKueueLister(f.Informer().GetIndexer())
+}
+
+// ToTypedTektonKueueInformer converts an untyped informer into a TypedTektonKueueInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonKueue. If that is not the case, calling type-safe methods of the returned
+// TypedTektonKueueInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedTektonKueueInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedTektonKueueInformer(informer TektonKueueInformer) TypedTektonKueueInformer {
+	if informer, ok := informer.(TypedTektonKueueInformer); ok {
+		return informer
+	}
+	return &tektonKueueTypedInformerAdapter{informer}
+}
+
+type tektonKueueTypedInformerAdapter struct {
+	TektonKueueInformer
+}
+
+func (a *tektonKueueTypedInformerAdapter) TypedInformer() TektonKueueIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonKueue](a.Informer())
+}
+
+// ToTektonKueueIndexInformer converts an untyped informer into a TektonKueueIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *TektonKueue. If that is not the case, calling type-safe methods of the returned
+// TektonKueueIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a TektonKueueIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTektonKueueIndexInformer(informer cache.SharedIndexInformer) TektonKueueIndexInformer {
+	if informer, ok := informer.(TektonKueueIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.TektonKueue](informer)
 }
