@@ -19,6 +19,7 @@ package tektonpipeline
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -344,9 +345,12 @@ func TestValidateStatefulSetOrdinalsAfterOptions(t *testing.T) {
 					}
 
 					manifest := ordinalManifest(t)
-					_, err := filterAndTransform(common.NoExtension(t.Context()))(t.Context(), &manifest, pipeline)
+					gotManifest, err := filterAndTransform(common.NoExtension(t.Context()))(t.Context(), &manifest, pipeline)
 					if test.wantError == "" {
 						assert.NilError(t, err)
+						if test.statefulSetOrdinals && test.optionReplicas != nil {
+							assertStatefulReplicaCountEnv(t, gotManifest, controller.statefulSet, *test.optionReplicas)
+						}
 					} else {
 						assert.ErrorContains(t, err, controller.configMap+test.wantError)
 						if test.wantStatefulSet {
@@ -398,6 +402,37 @@ func ordinalManifest(t *testing.T) mf.Manifest {
 	manifest, err := mf.ManifestFrom(mf.Slice(resources))
 	assert.NilError(t, err)
 	return manifest
+}
+
+func assertStatefulReplicaCountEnv(t *testing.T, manifest *mf.Manifest, statefulSetName string, wantReplicas int32) {
+	t.Helper()
+	found := false
+	for _, resource := range manifest.Resources() {
+		if resource.GetKind() != common.KindStatefulSet || resource.GetName() != statefulSetName {
+			continue
+		}
+		found = true
+		sts := &appsv1.StatefulSet{}
+		err := apimachineryRuntime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, sts)
+		assert.NilError(t, err)
+		if sts.Spec.Replicas == nil || *sts.Spec.Replicas != wantReplicas {
+			t.Errorf("%s spec.replicas = %v, want %d", statefulSetName, sts.Spec.Replicas, wantReplicas)
+		}
+		got := ""
+		if len(sts.Spec.Template.Spec.Containers) > 0 {
+			for _, env := range sts.Spec.Template.Spec.Containers[0].Env {
+				if env.Name == "STATEFUL_REPLICA_COUNT" {
+					got = env.Value
+					break
+				}
+			}
+		}
+		assert.Equal(t, got, strconv.Itoa(int(wantReplicas)))
+		return
+	}
+	if !found {
+		t.Errorf("StatefulSet %s not found", statefulSetName)
+	}
 }
 
 // not in use, see: https://github.com/tektoncd/pipeline/pull/7789
