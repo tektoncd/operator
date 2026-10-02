@@ -10,6 +10,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: ManualApprovalGate
@@ -658,6 +659,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: OpenShiftPipelinesAsCode
@@ -1381,6 +1383,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonChain
@@ -2353,6 +2356,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonConfig
@@ -4599,6 +4603,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonDashboard
@@ -4814,6 +4819,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonInstallerSet
@@ -4928,6 +4934,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonPipeline
@@ -5799,6 +5806,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonResult
@@ -6688,6 +6696,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonTrigger
@@ -7391,6 +7400,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonPruner
@@ -8214,6 +8224,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonKueue
@@ -9587,6 +9598,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: TektonMulticlusterProxyAAE
@@ -10231,6 +10243,7 @@ metadata:
     version: {{ .Chart.AppVersion | quote }}
     operator.tekton.dev/release: {{ .Chart.AppVersion | quote }}
 spec:
+  preserveUnknownFields: false
   group: operator.tekton.dev
   names:
     kind: SyncerService
