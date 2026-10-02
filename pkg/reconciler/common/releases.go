@@ -110,6 +110,10 @@ func ComponentDir(instance v1alpha1.TektonComponent) string {
 		return filepath.Join(koDataDir, "tekton-multicluster-proxy-aae")
 	case *v1alpha1.SyncerService:
 		return filepath.Join(koDataDir, "syncer-service")
+	case *v1alpha1.SharedResource:
+		return filepath.Join(koDataDir, "shared-resource")
+	case *v1alpha1.ShipwrightBuild:
+		return filepath.Join(koDataDir, "shipwright-build")
 	}
 	return ""
 }

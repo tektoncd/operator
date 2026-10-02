@@ -140,5 +140,7 @@ const (
 	TektonSchedulerResourceName      = "scheduler"
 	MultiClusterProxyAAEResourceName = "multicluster-proxy-aae"
 	SyncerServiceResourceName        = "syncer-service"
-	OperandSyncerService             = "syncer-service"
+	OperandSyncerService        	= "syncer-service"
+	ShipwrightBuildResourceName 	= "shipwright-build"
+	SharedResourceResourceName 		= "shared-resource"
 )

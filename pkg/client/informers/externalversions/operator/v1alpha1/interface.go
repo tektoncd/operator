@@ -28,6 +28,10 @@ type Interface interface {
 	ManualApprovalGates() ManualApprovalGateInformer
 	// OpenShiftPipelinesAsCodes returns a OpenShiftPipelinesAsCodeInformer.
 	OpenShiftPipelinesAsCodes() OpenShiftPipelinesAsCodeInformer
+	// SharedResources returns a SharedResourceInformer.
+	SharedResources() SharedResourceInformer
+	// ShipwrightBuilds returns a ShipwrightBuildInformer.
+	ShipwrightBuilds() ShipwrightBuildInformer
 	// SyncerServices returns a SyncerServiceInformer.
 	SyncerServices() SyncerServiceInformer
 	// TektonAddons returns a TektonAddonInformer.
@@ -75,6 +79,16 @@ func (v *version) ManualApprovalGates() ManualApprovalGateInformer {
 // OpenShiftPipelinesAsCodes returns a OpenShiftPipelinesAsCodeInformer.
 func (v *version) OpenShiftPipelinesAsCodes() OpenShiftPipelinesAsCodeInformer {
 	return &openShiftPipelinesAsCodeInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// SharedResources returns a SharedResourceInformer.
+func (v *version) SharedResources() SharedResourceInformer {
+	return &sharedResourceInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+}
+
+// ShipwrightBuilds returns a ShipwrightBuildInformer.
+func (v *version) ShipwrightBuilds() ShipwrightBuildInformer {
+	return &shipwrightBuildInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // SyncerServices returns a SyncerServiceInformer.
