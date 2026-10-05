@@ -435,7 +435,7 @@ spec:
         description: Whether Chains signing succeeded (true, failed, or timeout)
       steps:
       - name: wait-and-extract
-        image: docker.io/alpine/k8s:1.37.0
+        image: docker.io/alpine/k8s:1.37.1
         script: |
           #!/bin/sh
           set -e
