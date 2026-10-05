@@ -39,41 +39,45 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 ## Release
 
 ### v0.81 (LTS)
-
-| Minimum K8S | Pipeline    | Release Date | End of Life |
-|-------------|-------------|--------------|-------------|
-| 1.28.x      | v1.14.x LTS | 2026-08-10   | 2027-08-10  |
+- **Latest Release**: [v0.81.1][v0.81-1] (2026-08-20) ([docs][v0.81-1-docs])
+- **Initial Release**: [v0.81.0][v0.81-0] (2026-08-10)
+- **End of Life**: 2027-08-10
+- **Patch Releases**: [v0.81.0][v0.81-0], [v0.81.1][v0.81-1]
+- **Minimum Kubernetes**: 1.28.x
+- **Pipeline**: v1.14.x LTS
 
 ### v0.80 (LTS)
-
-| Minimum K8S | Pipeline    | Release Date | End of Life |
-|-------------|-------------|--------------|-------------|
-| 1.28.x      | v1.12.x LTS | 2026-06-11   | 2027-06-11  |
+- **Latest Release**: [v0.80.0][v0.80-0] (2026-06-24) ([docs][v0.80-0-docs])
+- **Initial Release**: [v0.80.0][v0.80-0] (2026-06-24)
+- **End of Life**: 2027-06-11
+- **Patch Releases**: [v0.80.0][v0.80-0]
+- **Minimum Kubernetes**: 1.28.x
+- **Pipeline**: v1.12.x LTS
 
 ### v0.79 (LTS)
-
-| Minimum K8S | Pipeline   | Release Date | End of Life |
-|-------------|------------|--------------|-------------|
-| 1.28.x      | v1.9.x LTS | 2026-04-01   | 2027-04-01  |
+- **Latest Release**: [v0.79.2][v0.79-2] (2026-07-13) ([docs][v0.79-2-docs])
+- **Initial Release**: [v0.79.0][v0.79-0] (2026-03-05)
+- **End of Life**: 2027-04-01
+- **Patch Releases**: [v0.79.0][v0.79-0], [v0.79.1][v0.79-1], [v0.79.2][v0.79-2]
+- **Minimum Kubernetes**: 1.28.x
+- **Pipeline**: v1.9.x LTS
 
 ### v0.78 (LTS)
+- **Latest Release**: [v0.78.2][v0.78-2] (2026-07-13) ([docs][v0.78-2-docs])
+- **Initial Release**: [v0.78.0][v0.78-0] (2025-12-08)
+- **End of Life**: 2026-12-08
+- **Patch Releases**: [v0.78.0][v0.78-0], [v0.78.1][v0.78-1], [v0.78.2][v0.78-2]
+- **Minimum Kubernetes**: 1.28.x
+- **Pipeline**: v1.6.x LTS
 
-| Minimum K8S | Pipeline   | Release Date | End of Life |
-|-------------|------------|--------------|-------------|
-| 1.28.x      | v1.6.x LTS | 2025-12-08   | 2026-12-08  |
-
-### v0.77 (LTS)
-
-| Minimum K8S | Pipeline    | Release Date | End of Life |
-|-------------|-------------|--------------|-------------|
-| 1.28.x      | v1.3.1 LTS  | 2025-08-21   | 2026-08-21  |
 
 ### End of Life
 
 | Version     | Minimum K8S | Pipeline    | Release Date | End of Life |
 |-------------|-------------|-------------|--------------|-------------|
-| v0.76.x LTS | 1.28.x      | v0.1.0.x LTS| 2025-05-27   | 2026-05-27  |
-| v0.75.x LTS | 1.28.x      | v0.65.x LTS | 2025-02-18   | 2026-02-18  |
+| v0.77.x LTS | 1.28.x      | v1.3.1      | 2025-08-21   | 2026-08-21  |
+| v0.76.x LTS | 1.28.x      | v0.1.0.x    | 2025-05-27   | 2026-05-27  |
+| v0.75.x LTS | 1.28.x      | v0.65.x     | 2025-02-18   | 2026-02-18  |
 | v0.74.x LTS | 1.28.x      | v0.65.x     | 2024-11-22   | 2025-11-22  |
 | v0.73.x     | 1.28.x      | v0.62.x     | 2024-10-01   | 2025-10-01  |
 | v0.71.x     | 1.27.x      | v0.59.x     | 2024-06-06   | 2025-06-06  |
@@ -111,3 +115,23 @@ Older releases are EOL and available on [GitHub][tekton-pipeline-releases].
 [tekton-installation]: docs/install.md
 [release-notes-standards]:
     https://github.com/tektoncd/community/blob/main/standards.md#release-notes
+
+[v0.81-1]: https://github.com/tektoncd/operator/releases/tag/v0.81.1
+[v0.81-0]: https://github.com/tektoncd/operator/releases/tag/v0.81.0
+[v0.80-0]: https://github.com/tektoncd/operator/releases/tag/v0.80.0
+[v0.79-2]: https://github.com/tektoncd/operator/releases/tag/v0.79.2
+[v0.79-1]: https://github.com/tektoncd/operator/releases/tag/v0.79.1
+[v0.79-0]: https://github.com/tektoncd/operator/releases/tag/v0.79.0
+[v0.78-2]: https://github.com/tektoncd/operator/releases/tag/v0.78.2
+[v0.78-1]: https://github.com/tektoncd/operator/releases/tag/v0.78.1
+[v0.78-0]: https://github.com/tektoncd/operator/releases/tag/v0.78.0
+[v0.77-2]: https://github.com/tektoncd/operator/releases/tag/v0.77.2
+[v0.77-1]: https://github.com/tektoncd/operator/releases/tag/v0.77.1
+[v0.77-0]: https://github.com/tektoncd/operator/releases/tag/v0.77.0
+
+[v0.81-1-docs]: https://github.com/tektoncd/operator/tree/v0.81.1/docs
+[v0.80-0-docs]: https://github.com/tektoncd/operator/tree/v0.80.0/docs
+[v0.79-2-docs]: https://github.com/tektoncd/operator/tree/v0.79.2/docs
+[v0.78-2-docs]: https://github.com/tektoncd/operator/tree/v0.78.2/docs
+[v0.77-2-docs]: https://github.com/tektoncd/operator/tree/v0.77.2/docs
+
