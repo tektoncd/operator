@@ -376,7 +376,8 @@ func Initialize(_ context.Context, mirror string, root []byte) error {
 func isValidTarget(testTarget []byte, validMeta data.TargetFileMeta) (bool, error) {
 	localMeta, err := util.GenerateTargetFileMeta(
 		bytes.NewReader(testTarget),
-		"sha256", "sha512")
+		"sha256", "sha512",
+	)
 	if err != nil {
 		return false, err
 	}
