@@ -14,6 +14,15 @@
 
 patches:
 - target:
+    group: apiextensions.k8s.io
+    version: v1
+    kind: CustomResourceDefinition
+    name: tektondashboards.operator.tekton.dev
+  patch: |-
+    - op: add
+      path: /metadata/annotations/config.kubernetes.io~1local-config
+      value: "true"
+- target:
     kind: ClusterRoleBinding
     name: tekton-scheduler-rolebinding
   patch: |-
