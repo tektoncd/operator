@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
-	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -98,10 +97,25 @@ func NewFromReaderWithOpts(r io.Reader, opts ...Opt) storage.Store {
 	return NewFromObjectWithOpts(data, opts...)
 }
 
+// NewFromASTObject returns a new in-memory store from the supplied AST object, with
+// [OptReturnASTValuesOnRead] enabled. This allows avoiding the overhead of an extra AST
+// -> map[string]any -> AST round trip for callers whose data already exists in AST form.
+// Note that data passed is **not** copied and it is the responsibility of the caller to
+// ensure either that ownership of the data is transferred fully  to the store, or when
+// that's not possible, that a deep copy of the original data is passed.
+func NewFromASTObject(data ast.Object) storage.Store {
+	return &store{
+		data:                  data,
+		triggers:              map[*handle]storage.TriggerConfig{},
+		policies:              map[string][]byte{},
+		returnASTValuesOnRead: true,
+	}
+}
+
 type store struct {
 	rmu      sync.RWMutex                      // reader-writer lock
 	wmu      sync.Mutex                        // writer lock
-	xid      uint64                            // last generated transaction id
+	xid      atomic.Uint64                     // last generated transaction id
 	data     any                               // raw or AST data
 	policies map[string][]byte                 // raw policies
 	triggers map[*handle]storage.TriggerConfig // registered triggers
@@ -122,7 +136,7 @@ type handle struct {
 
 func (db *store) NewTransaction(_ context.Context, params ...storage.TransactionParams) (storage.Transaction, error) {
 	txn := &transaction{
-		xid: atomic.AddUint64(&db.xid, uint64(1)),
+		xid: db.xid.Add(1),
 		db:  db,
 	}
 
@@ -158,7 +172,7 @@ func (db *store) Truncate(ctx context.Context, txn storage.Transaction, params s
 		}
 
 		if update.IsPolicy {
-			err = underlying.UpsertPolicy(strings.TrimLeft(update.Path.String(), "/"), update.Value)
+			err = underlying.UpsertPolicy(update.Path.PolicyID(), update.Value)
 			if err != nil {
 				return err
 			}
@@ -168,11 +182,8 @@ func (db *store) Truncate(ctx context.Context, txn storage.Transaction, params s
 				return err
 			}
 
-			var key []string
-			dirpath := strings.TrimLeft(update.Path.String(), "/")
-			if len(dirpath) > 0 {
-				key = strings.Split(dirpath, "/")
-			}
+			// Do not round trip via String() to avoid URL encoding.
+			key := []string(update.Path)
 
 			if value != nil {
 				obj, err := mktree(key, value)
@@ -304,6 +315,14 @@ func (db *store) Register(_ context.Context, txn storage.Transaction, config sto
 	return h, nil
 }
 
+func (db *store) MakeDir(_ context.Context, txn storage.Transaction, path storage.Path) error {
+	underlying, err := db.underlying(txn)
+	if err != nil {
+		return err
+	}
+	return underlying.makeDir(path)
+}
+
 func (db *store) Read(_ context.Context, txn storage.Transaction, path storage.Path) (any, error) {
 	underlying, err := db.underlying(txn)
 	if err != nil {
@@ -326,7 +345,7 @@ func (db *store) Write(_ context.Context, txn storage.Transaction, op storage.Pa
 
 	val := util.Reference(value)
 	if db.roundTripOnWrite {
-		if err := util.RoundTrip(val); err != nil {
+		if err := util.RoundTripFast(val); err != nil {
 			return err
 		}
 	}
@@ -349,10 +368,25 @@ func (h *handle) Unregister(_ context.Context, txn storage.Transaction) {
 }
 
 func (db *store) runOnCommitTriggers(ctx context.Context, txn storage.Transaction, event storage.TriggerEvent) {
-	if db.returnASTValuesOnRead && len(db.triggers) > 0 {
-		// FIXME: Not very performant for large data.
+	// While it's unlikely, the API allows one trigger to be configured to want
+	// data conversion, and another that doesn't. So let's handle that properly.
+	var wantsDataConversion bool
+	if db.returnASTValuesOnRead && len(event.Data) > 0 {
+		for _, t := range db.triggers {
+			if !t.SkipDataConversion {
+				wantsDataConversion = true
+				break
+			}
+		}
+	}
 
-		dataEvents := make([]storage.DataEvent, 0, len(event.Data))
+	var converted storage.TriggerEvent
+	if wantsDataConversion {
+		converted = storage.TriggerEvent{
+			Policy:  event.Policy,
+			Data:    make([]storage.DataEvent, 0, len(event.Data)),
+			Context: event.Context,
+		}
 
 		for _, dataEvent := range event.Data {
 			if astData, ok := dataEvent.Data.(ast.Value); ok {
@@ -360,25 +394,21 @@ func (db *store) runOnCommitTriggers(ctx context.Context, txn storage.Transactio
 				if err != nil {
 					panic(err)
 				}
-				dataEvents = append(dataEvents, storage.DataEvent{
+				converted.Data = append(converted.Data, storage.DataEvent{
 					Path:    dataEvent.Path,
 					Data:    jsn,
 					Removed: dataEvent.Removed,
 				})
-			} else {
-				dataEvents = append(dataEvents, dataEvent)
 			}
-		}
-
-		event = storage.TriggerEvent{
-			Policy:  event.Policy,
-			Data:    dataEvents,
-			Context: event.Context,
 		}
 	}
 
 	for _, t := range db.triggers {
-		t.OnCommit(ctx, txn, event)
+		if wantsDataConversion && !t.SkipDataConversion {
+			t.OnCommit(ctx, txn, converted)
+		} else {
+			t.OnCommit(ctx, txn, event)
+		}
 	}
 }
 
