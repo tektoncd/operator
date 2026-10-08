@@ -106,7 +106,8 @@ jobs:
       if: ${{ needs.changes.outputs.non-docs == 'true' }}
       uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a  # v9.3.0
       with:
-        version: v2.12.2
+        # v2.12.2 binaries are built with go1.26 and reject go 1.27 modules.
+        version: v2.14.0
         args: --new-from-merge-base=origin/${{ github.base_ref }} --timeout=10m
     - name: yamllint
       if: ${{ needs.changes.outputs.yaml == 'true' }}
