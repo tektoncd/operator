@@ -32,19 +32,17 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.2
-	k8s.io/api v0.36.5
-	k8s.io/apiextensions-apiserver v0.36.5
+	k8s.io/api v0.37.1
+	k8s.io/apiextensions-apiserver v0.37.1
 	k8s.io/apimachinery v0.37.1
-	k8s.io/client-go v0.36.5
-	k8s.io/code-generator v0.36.5
+	k8s.io/client-go v0.37.1
+	k8s.io/code-generator v0.37.1
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 	knative.dev/pkg v0.0.0-20260622140654-39ebae2ee2dc
 	sigs.k8s.io/yaml v1.6.0
 )
 
 replace github.com/tektoncd/tekton-kueue => github.com/konflux-ci/tekton-kueue v0.4.0
-
-replace k8s.io/client-go => k8s.io/client-go v0.36.2
 
 require (
 	cel.dev/cel-go v0.32.0 // indirect
@@ -224,11 +222,11 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_golang v1.23.2 // indirect
+	github.com/prometheus/client_golang v1.24.0 // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
 	github.com/prometheus/common v0.71.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
-	github.com/prometheus/procfs v0.21.0 // indirect
+	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/protocolbuffers/txtpbfmt v0.0.0-20251016062345-16587c79cd91 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
@@ -306,9 +304,9 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.67.2 // indirect
-	k8s.io/apiserver v0.36.5 // indirect
-	k8s.io/component-base v0.36.5 // indirect
-	k8s.io/gengo/v2 v2.0.0-20250922181213-ec3ebc5fd46b // indirect
+	k8s.io/apiserver v0.37.1 // indirect
+	k8s.io/component-base v0.37.1 // indirect
+	k8s.io/gengo/v2 v2.0.0-20260408192533-25e2208e0dc3 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-aggregator v0.36.2 // indirect
 	k8s.io/kube-openapi v0.0.0-20260821135717-be32def86098 // indirect
