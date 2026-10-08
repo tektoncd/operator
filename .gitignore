@@ -69,8 +69,10 @@ anaconda-mode/
 Session.vim
 # temporary
 .netrwhist
-# auto-generated tag files
+# auto-generated ctags files (do not ignore Go packages named "tags", e.g. gengo)
 tags
+!**/tags/
+!**/tags/**
 ### VisualStudioCode ###
 .vscode/*
 .history
