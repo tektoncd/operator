@@ -30,6 +30,7 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/retry"
 )
 
 // TestTektonPipelineNetworkPolicy verifies NetworkPolicies are created by default
@@ -194,12 +195,17 @@ func TestTektonPipelineNetworkPolicy(t *testing.T) {
 	})
 
 	t.Run("disable-removes-policies", func(t *testing.T) {
-		tp, err := clients.TektonPipeline().Get(context.TODO(), crNames.TektonPipeline, metav1.GetOptions{})
+		// Retry on conflict: the operator may update TektonPipeline between Get and Update.
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			tp, getErr := clients.TektonPipeline().Get(context.TODO(), crNames.TektonPipeline, metav1.GetOptions{})
+			if getErr != nil {
+				return getErr
+			}
+			tp.Spec.NetworkPolicy.Disabled = true
+			_, updateErr := clients.TektonPipeline().Update(context.TODO(), tp, metav1.UpdateOptions{})
+			return updateErr
+		})
 		if err != nil {
-			t.Fatalf("failed to get TektonPipeline: %v", err)
-		}
-		tp.Spec.NetworkPolicy.Disabled = true
-		if _, err := clients.TektonPipeline().Update(context.TODO(), tp, metav1.UpdateOptions{}); err != nil {
 			t.Fatalf("failed to disable NetworkPolicy on TektonPipeline: %v", err)
 		}
 		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)
@@ -207,12 +213,16 @@ func TestTektonPipelineNetworkPolicy(t *testing.T) {
 	})
 
 	t.Run("reenable-restores-policies", func(t *testing.T) {
-		tp, err := clients.TektonPipeline().Get(context.TODO(), crNames.TektonPipeline, metav1.GetOptions{})
+		err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			tp, getErr := clients.TektonPipeline().Get(context.TODO(), crNames.TektonPipeline, metav1.GetOptions{})
+			if getErr != nil {
+				return getErr
+			}
+			tp.Spec.NetworkPolicy.Disabled = false
+			_, updateErr := clients.TektonPipeline().Update(context.TODO(), tp, metav1.UpdateOptions{})
+			return updateErr
+		})
 		if err != nil {
-			t.Fatalf("failed to get TektonPipeline: %v", err)
-		}
-		tp.Spec.NetworkPolicy.Disabled = false
-		if _, err := clients.TektonPipeline().Update(context.TODO(), tp, metav1.UpdateOptions{}); err != nil {
 			t.Fatalf("failed to re-enable NetworkPolicy on TektonPipeline: %v", err)
 		}
 		resources.AssertTektonPipelineCRReadyStatus(t, clients, crNames)

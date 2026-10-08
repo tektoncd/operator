@@ -34,11 +34,39 @@ import (
 )
 
 // OpenShiftPipelinesAsCodeInformer provides access to a shared informer and lister for
-// OpenShiftPipelinesAsCodes.
+// OpenShiftPipelinesAsCodes. Prefer using the type-safe variant (see [TypedOpenShiftPipelinesAsCodeInformer]).
 type OpenShiftPipelinesAsCodeInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() operatorv1alpha1.OpenShiftPipelinesAsCodeLister
 }
+
+// TypedOpenShiftPipelinesAsCodeInformer provides access to a shared informer and lister for
+// OpenShiftPipelinesAsCodes, including the type-safe TypedInformer variant.
+// It is a superset of OpenShiftPipelinesAsCodeInformer.
+type TypedOpenShiftPipelinesAsCodeInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() OpenShiftPipelinesAsCodeIndexInformer
+	Lister() operatorv1alpha1.OpenShiftPipelinesAsCodeLister
+}
+
+// OpenShiftPipelinesAsCodeIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type OpenShiftPipelinesAsCodeIndexInformer cache.TypedSharedIndexInformer[*apisoperatorv1alpha1.OpenShiftPipelinesAsCode]
+
+// OpenShiftPipelinesAsCodeHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for OpenShiftPipelinesAsCode.
+type OpenShiftPipelinesAsCodeHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisoperatorv1alpha1.OpenShiftPipelinesAsCode]
+
+// OpenShiftPipelinesAsCodeDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for OpenShiftPipelinesAsCode.
+type OpenShiftPipelinesAsCodeDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisoperatorv1alpha1.OpenShiftPipelinesAsCode]
+
+// OpenShiftPipelinesAsCodeFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for OpenShiftPipelinesAsCode.
+type OpenShiftPipelinesAsCodeFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisoperatorv1alpha1.OpenShiftPipelinesAsCode]
+
+// OpenShiftPipelinesAsCodeIndexers is a specialization of [cache.TypedIndexers] for OpenShiftPipelinesAsCode.
+type OpenShiftPipelinesAsCodeIndexers = cache.TypedIndexers[*apisoperatorv1alpha1.OpenShiftPipelinesAsCode]
+
+// DeletedOpenShiftPipelinesAsCode is a specialization of [cache.DeletedObject] for OpenShiftPipelinesAsCode.
+type DeletedOpenShiftPipelinesAsCode = cache.DeletedObject[*apisoperatorv1alpha1.OpenShiftPipelinesAsCode]
 
 type openShiftPipelinesAsCodeInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -48,25 +76,49 @@ type openShiftPipelinesAsCodeInformer struct {
 // NewOpenShiftPipelinesAsCodeInformer constructs a new informer for OpenShiftPipelinesAsCode type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedOpenShiftPipelinesAsCodeInformer]).
 func NewOpenShiftPipelinesAsCodeInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewOpenShiftPipelinesAsCodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedOpenShiftPipelinesAsCodeInformer constructs a new informer for OpenShiftPipelinesAsCode type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedOpenShiftPipelinesAsCodeInformer(client versioned.Interface, resyncPeriod time.Duration, indexers OpenShiftPipelinesAsCodeIndexers) OpenShiftPipelinesAsCodeIndexInformer {
+	return NewTypedOpenShiftPipelinesAsCodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredOpenShiftPipelinesAsCodeInformer constructs a new informer for OpenShiftPipelinesAsCode type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredOpenShiftPipelinesAsCodeInformer]).
 func NewFilteredOpenShiftPipelinesAsCodeInformer(client versioned.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewOpenShiftPipelinesAsCodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedOpenShiftPipelinesAsCodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredOpenShiftPipelinesAsCodeInformer constructs a new informer for OpenShiftPipelinesAsCode type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredOpenShiftPipelinesAsCodeInformer(client versioned.Interface, resyncPeriod time.Duration, indexers OpenShiftPipelinesAsCodeIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) OpenShiftPipelinesAsCodeIndexInformer {
+	return NewTypedOpenShiftPipelinesAsCodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewOpenShiftPipelinesAsCodeInformerWithOptions constructs a new informer for OpenShiftPipelinesAsCode type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedOpenShiftPipelinesAsCodeInformerWithOptions]).
 func NewOpenShiftPipelinesAsCodeInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedOpenShiftPipelinesAsCodeInformerWithOptions(client, options)
+}
+
+// NewTypedOpenShiftPipelinesAsCodeInformerWithOptions constructs a new informer for OpenShiftPipelinesAsCode type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedOpenShiftPipelinesAsCodeInformerWithOptions(client versioned.Interface, options internalinterfaces.InformerOptions) OpenShiftPipelinesAsCodeIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "operator.tekton.dev", Version: "v1alpha1", Resource: "openshiftpipelinesascodes"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.OpenShiftPipelinesAsCode](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -99,17 +151,57 @@ func NewOpenShiftPipelinesAsCodeInformerWithOptions(client versioned.Interface, 
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *openShiftPipelinesAsCodeInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewOpenShiftPipelinesAsCodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedOpenShiftPipelinesAsCodeInformerWithOptions(client, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *openShiftPipelinesAsCodeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisoperatorv1alpha1.OpenShiftPipelinesAsCode{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *openShiftPipelinesAsCodeInformer) TypedInformer() OpenShiftPipelinesAsCodeIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.OpenShiftPipelinesAsCode](f.factory.InformerFor(&apisoperatorv1alpha1.OpenShiftPipelinesAsCode{}, f.defaultInformer))
 }
 
 func (f *openShiftPipelinesAsCodeInformer) Lister() operatorv1alpha1.OpenShiftPipelinesAsCodeLister {
 	return operatorv1alpha1.NewOpenShiftPipelinesAsCodeLister(f.Informer().GetIndexer())
+}
+
+// ToTypedOpenShiftPipelinesAsCodeInformer converts an untyped informer into a TypedOpenShiftPipelinesAsCodeInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *OpenShiftPipelinesAsCode. If that is not the case, calling type-safe methods of the returned
+// TypedOpenShiftPipelinesAsCodeInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedOpenShiftPipelinesAsCodeInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedOpenShiftPipelinesAsCodeInformer(informer OpenShiftPipelinesAsCodeInformer) TypedOpenShiftPipelinesAsCodeInformer {
+	if informer, ok := informer.(TypedOpenShiftPipelinesAsCodeInformer); ok {
+		return informer
+	}
+	return &openShiftPipelinesAsCodeTypedInformerAdapter{informer}
+}
+
+type openShiftPipelinesAsCodeTypedInformerAdapter struct {
+	OpenShiftPipelinesAsCodeInformer
+}
+
+func (a *openShiftPipelinesAsCodeTypedInformerAdapter) TypedInformer() OpenShiftPipelinesAsCodeIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.OpenShiftPipelinesAsCode](a.Informer())
+}
+
+// ToOpenShiftPipelinesAsCodeIndexInformer converts an untyped informer into a OpenShiftPipelinesAsCodeIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *OpenShiftPipelinesAsCode. If that is not the case, calling type-safe methods of the returned
+// OpenShiftPipelinesAsCodeIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a OpenShiftPipelinesAsCodeIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToOpenShiftPipelinesAsCodeIndexInformer(informer cache.SharedIndexInformer) OpenShiftPipelinesAsCodeIndexInformer {
+	if informer, ok := informer.(OpenShiftPipelinesAsCodeIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisoperatorv1alpha1.OpenShiftPipelinesAsCode](informer)
 }
