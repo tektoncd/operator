@@ -70,9 +70,17 @@ spec:
   loki_stack_namespace: #optional
   prometheus_port: 9090
   prometheus_histogram: false
+  watcher:
+    logs_api: true # leave unset when another forwarder stores logs; see the note below
 ```
 
 These properties are analogous to the one in configmap of tekton results api `tekton-results-api-config` documented at [api.md](https://github.com/tektoncd/results/blob/4472848a0fb7c1473cfca8b647553170efac78a1/cmd/api/README.md)
+
+> **Note:** `logs_api: true` enables the logs API on the Results API server only. The watcher forwards TaskRun and
+> PipelineRun logs to it only when `watcher.logs_api` is also `true` (it defaults to `false`). With only the top-level
+> field set, no logs are stored, for example with the `logs_type: File` and `logging_pvc_name` setup above. Leave
+> `watcher.logs_api` unset when another forwarder stores the logs, such as Vector or Fluentd with
+> [LokiStack](#lokistack--tektonresult). Log forwarding by the watcher is expected to be removed in a future release.
 
 
 [result]:https://github.com/tektoncd/results
