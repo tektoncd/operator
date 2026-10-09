@@ -76,6 +76,33 @@ them as per their need.
 
 Details of the field can be found in [OpenShift Pipelines As Code Settings][pac-config]
 
+#### Trusted Provider Hostnames
+
+`trusted-provider-hostnames` is an administrator-owned allowlist of git provider hostnames to which the controller may
+send provider credentials. It can be set in `settings` of the `OpenShiftPipelinesAsCode` CR, or through `TektonConfig`
+(`spec.platforms.openshift.pipelinesAsCode.settings`), and for every entry of `additionalPACControllers`.
+
+```yaml
+spec:
+  platforms:
+    openshift:
+      pipelinesAsCode:
+        settings:
+          trusted-provider-hostnames: "ghe.example.com,gitlab.example.com"
+```
+
+When the list is empty, known public provider hosts remain trusted and each controller may learn a publicly routable
+self-hosted hostname from an authenticated GitHub App webhook. Learned hosts are stored by the controller in the
+`pipelinesascode.tekton.dev/auto-trusted-provider-hostnames` annotation of its own ConfigMap; the operator preserves this
+annotation. When the list is not empty it is authoritative and no host is learned.
+
+Every enabled additional controller gets a Role and RoleBinding allowing the `pipelines-as-code-controller` ServiceAccount to
+`get`, `update` and `patch` only that controller's ConfigMap (not created when the controller uses the `pipelines-as-code` ConfigMap).
+
+> **Upgrade note:** self-hosted providers using per-repository or incoming webhooks cannot teach the controller a hostname,
+> so configure `trusted-provider-hostnames` before upgrading. GitHub.com installations need no additional configuration.
+> This requires a Pipelines as Code release that includes `trusted-provider-hostnames`.
+
 #### Remote Hub Catalogs
 
 Pipelines as Code supports configuring remote hub catalogs to fetch tasks and pipelines. You can configure custom catalogs using the `catalog-{INDEX}-*` settings pattern.
