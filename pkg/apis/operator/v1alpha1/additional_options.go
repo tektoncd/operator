@@ -17,9 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	appsv1 "k8s.io/api/apps/v1"
-	autoscalingv2 "k8s.io/api/autoscaling/v2"
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // additional options will be updated on the manifests
@@ -28,15 +26,15 @@ type AdditionalOptions struct {
 	Disabled *bool `json:"disabled,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
-	ConfigMaps map[string]corev1.ConfigMap `json:"configMaps,omitempty"`
+	ConfigMaps map[string]runtime.RawExtension `json:"configMaps,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
-	Deployments map[string]appsv1.Deployment `json:"deployments,omitempty"`
+	Deployments map[string]runtime.RawExtension `json:"deployments,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
-	HorizontalPodAutoscalers map[string]autoscalingv2.HorizontalPodAutoscaler `json:"horizontalPodAutoscalers,omitempty"`
+	HorizontalPodAutoscalers map[string]runtime.RawExtension `json:"horizontalPodAutoscalers,omitempty"`
 	// +kubebuilder:pruning:PreserveUnknownFields
 	// +kubebuilder:validation:Schemaless
-	StatefulSets                map[string]appsv1.StatefulSet          `json:"statefulSets,omitempty"`
+	StatefulSets                map[string]runtime.RawExtension        `json:"statefulSets,omitempty"`
 	WebhookConfigurationOptions map[string]WebhookConfigurationOptions `json:"webhookConfigurationOptions,omitempty"`
 }

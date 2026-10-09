@@ -74,8 +74,8 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-configmap",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				ConfigMaps: map[string]corev1.ConfigMap{
-					"config-defaults": {
+				ConfigMaps: map[string]runtime.RawExtension{
+					"config-defaults": toRawExtension(t, corev1.ConfigMap{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels:      map[string]string{"new-label": "foo"},
 							Annotations: map[string]string{"custom-annotation": "hello"},
@@ -83,13 +83,13 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 						Data: map[string]string{
 							"user-data1": "top-secret",
 						},
-					},
-					"config-events": {
+					}),
+					"config-events": toRawExtension(t, corev1.ConfigMap{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{"my-custom-label": "bar"},
 						},
-					},
-					"config-tracing": {
+					}),
+					"config-tracing": toRawExtension(t, corev1.ConfigMap{
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
 								"component": "operator",
@@ -102,7 +102,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 							"hostname": "localhost",
 							"port":     "14560",
 						},
-					},
+					}),
 				},
 			},
 			inputFilename:          "./testdata/test-additional-options-base.yaml",
@@ -118,7 +118,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-deployment",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -259,7 +259,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "empty-labels-and-annotations",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				ConfigMaps: map[string]corev1.ConfigMap{
+				ConfigMaps: map[string]runtime.RawExtension{
 					"config-defaults": {
 						ObjectMeta: metav1.ObjectMeta{
 							Labels:      map[string]string{},
@@ -275,7 +275,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-statefulsets",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				StatefulSets: map[string]appsv1.StatefulSet{
+				StatefulSets: map[string]runtime.RawExtension{
 					"web": {
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -447,7 +447,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-hpa",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				HorizontalPodAutoscalers: map[string]autoscalingv2.HorizontalPodAutoscaler{
+				HorizontalPodAutoscalers: map[string]runtime.RawExtension{
 					"new-hpa": {
 						ObjectMeta: metav1.ObjectMeta{
 							Labels: map[string]string{
@@ -585,7 +585,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-strategy-recreate-for-deployments",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Strategy: appsv1.DeploymentStrategy{
@@ -602,7 +602,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-strategy-rollingupdate-tuning-for-deployments",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Strategy: appsv1.DeploymentStrategy{
@@ -625,7 +625,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-strategy-not-set-for-deployments",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Replicas: ptr.Int32(2),
@@ -642,7 +642,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-strategy-recreate-to-rollingupdate-for-deployments",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Strategy: appsv1.DeploymentStrategy{
@@ -665,7 +665,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-strategy-rollingupdate-without-type-is-ignored-for-deployments",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Replicas: ptr.Int32(2),
@@ -688,7 +688,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-strategy-recreate-with-rollingupdate-is-passed-through-for-deployments",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Strategy: appsv1.DeploymentStrategy{
@@ -709,7 +709,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-updatestrategy-partition-tuning-for-statefulsets",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				StatefulSets: map[string]appsv1.StatefulSet{
+				StatefulSets: map[string]runtime.RawExtension{
 					"web": {
 						Spec: appsv1.StatefulSetSpec{
 							UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
@@ -731,7 +731,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-updatestrategy-not-set-for-statefulsets",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				StatefulSets: map[string]appsv1.StatefulSet{
+				StatefulSets: map[string]runtime.RawExtension{
 					"web": {
 						Spec: appsv1.StatefulSetSpec{
 							Replicas: ptr.Int32(3),
@@ -748,7 +748,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-updatestrategy-ondelete-for-statefulsets",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				StatefulSets: map[string]appsv1.StatefulSet{
+				StatefulSets: map[string]runtime.RawExtension{
 					"web": {
 						Spec: appsv1.StatefulSetSpec{
 							UpdateStrategy: appsv1.StatefulSetUpdateStrategy{
@@ -765,7 +765,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-runtimeclassname-for-deployments",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Template: corev1.PodTemplateSpec{
@@ -784,7 +784,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-runtimeclassname-for-deployments-add-container",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Template: corev1.PodTemplateSpec{
@@ -821,7 +821,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-runtimeclassname-for-deployments-add-init-container",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Template: corev1.PodTemplateSpec{
@@ -859,7 +859,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-runtimeclassname-for-statefulsets",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				StatefulSets: map[string]appsv1.StatefulSet{
+				StatefulSets: map[string]runtime.RawExtension{
 					"web": {
 						Spec: appsv1.StatefulSetSpec{
 							Template: corev1.PodTemplateSpec{
@@ -870,7 +870,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 						},
 					},
 				},
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Template: corev1.PodTemplateSpec{
@@ -889,7 +889,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-runtimeclassname-for-statefulsets-add-container",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				StatefulSets: map[string]appsv1.StatefulSet{
+				StatefulSets: map[string]runtime.RawExtension{
 					"web": {
 						Spec: appsv1.StatefulSetSpec{
 							Template: corev1.PodTemplateSpec{
@@ -926,7 +926,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "test-runtimeclassname-for-statefulsets-add-initContainers",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				StatefulSets: map[string]appsv1.StatefulSet{
+				StatefulSets: map[string]runtime.RawExtension{
 					"web": {
 						Spec: appsv1.StatefulSetSpec{
 							Template: corev1.PodTemplateSpec{
@@ -964,7 +964,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "args-dedup-and-replace",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Template: corev1.PodTemplateSpec{
@@ -988,7 +988,7 @@ func TestExecuteAdditionalOptionsTransformer(t *testing.T) {
 			name: "args-pair-form-update-preserve-style",
 			additionalOptions: v1alpha1.AdditionalOptions{
 				Disabled: ptr.Bool(false),
-				Deployments: map[string]appsv1.Deployment{
+				Deployments: map[string]runtime.RawExtension{
 					"tekton-pipelines-controller": {
 						Spec: appsv1.DeploymentSpec{
 							Template: corev1.PodTemplateSpec{
@@ -1083,7 +1083,7 @@ func TestDeploymentStrategyDoesNotAffectSpecHash(t *testing.T) {
 
 	strategyOnly := hashOf(t, v1alpha1.AdditionalOptions{
 		Disabled: ptr.Bool(false),
-		Deployments: map[string]appsv1.Deployment{
+		Deployments: map[string]runtime.RawExtension{
 			"tekton-pipelines-controller": {
 				Spec: appsv1.DeploymentSpec{
 					Strategy: appsv1.DeploymentStrategy{
@@ -1099,7 +1099,7 @@ func TestDeploymentStrategyDoesNotAffectSpecHash(t *testing.T) {
 	// otherwise the assertion above would hold vacuously
 	replicasChanged := hashOf(t, v1alpha1.AdditionalOptions{
 		Disabled: ptr.Bool(false),
-		Deployments: map[string]appsv1.Deployment{
+		Deployments: map[string]runtime.RawExtension{
 			"tekton-pipelines-controller": {
 				Spec: appsv1.DeploymentSpec{
 					Replicas: ptr.Int32(5),
