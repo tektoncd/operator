@@ -106,10 +106,22 @@ type ResultsAPIProperties struct {
 	PrometheusPort        *int64 `json:"prometheus_port,omitempty"`
 	PrometheusHistogram   *bool  `json:"prometheus_histogram,omitempty"`
 	LogLevel              string `json:"log_level,omitempty"`
+	SQLLogLevel           string `json:"sql_log_level,omitempty"`
+	DBMaxIdleConnections  *int64 `json:"db_max_idle_connections,omitempty"`
+	DBMaxOpenConnections  *int64 `json:"db_max_open_connections,omitempty"`
+	TLSPath               string `json:"tls_path,omitempty"`
+	TLSMinVersion         string `json:"tls_min_version,omitempty"`
+	TLSCipherSuites       string `json:"tls_cipher_suites,omitempty"`
+	TLSCurvePreferences   string `json:"tls_curve_preferences,omitempty"`
+	FeatureGates          string `json:"feature_gates,omitempty"`
+	GRPCWorkerPool        *int64 `json:"grpc_worker_pool,omitempty"`
 	LogsAPI               *bool  `json:"logs_api,omitempty"`
 	LogsType              string `json:"logs_type,omitempty"`
 	LogsBufferSize        *int64 `json:"logs_buffer_size,omitempty"`
 	LogsPath              string `json:"logs_path,omitempty"`
+	LogsTimestamps        *bool  `json:"logs_timestamps,omitempty"`
+	Profiling             *bool  `json:"profiling,omitempty"`
+	ProfilingPort         string `json:"profiling_port,omitempty"`
 	TLSHostnameOverride   string `json:"tls_hostname_override,omitempty"`
 	AuthDisable           *bool  `json:"auth_disable,omitempty"`
 	AuthImpersonate       *bool  `json:"auth_impersonate,omitempty"`
@@ -134,6 +146,11 @@ type ResultsAPIProperties struct {
 	LoggingPluginQueryLimit             *uint  `json:"logging_plugin_query_limit,omitempty"`
 	LoggingPluginQueryParams            string `json:"logging_plugin_query_params,omitempty"`
 	LoggingPluginMultipartRegex         string `json:"logging_plugin_multipart_regex,omitempty"`
+	LoggingPluginContainerKey           string `json:"logging_plugin_container_key,omitempty"`
+	LoggingPluginJSONMap                string `json:"logging_plugin_json_map,omitempty"`
+	LoggingPluginLineFormat             string `json:"logging_plugin_line_format,omitempty"`
+	ConverterEnable                     *bool  `json:"converter_enable,omitempty"`
+	ConverterDBLimit                    *int64 `json:"converter_db_limit,omitempty"`
 
 	// Route configuration for Results API service exposure
 	RouteEnabled *bool  `json:"route_enabled,omitempty"`

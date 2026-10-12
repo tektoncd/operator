@@ -293,3 +293,68 @@ func TestGetTektonResultCR_ConfigPropagation(t *testing.T) {
 		t.Errorf("expected priorityClassName to be propagated from TektonConfig, got %q", result.Spec.Config.PriorityClassName)
 	}
 }
+
+func TestGetTektonResultCR_PropagatesResultsAPIFields(t *testing.T) {
+	idle := int64(20)
+	open := int64(40)
+	profiling := true
+	qps := float32(25)
+	burst := 40
+	config := &v1alpha1.TektonConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: v1alpha1.ConfigResourceName,
+		},
+		Spec: v1alpha1.TektonConfigSpec{
+			Profile: v1alpha1.ProfileAll,
+			CommonSpec: v1alpha1.CommonSpec{
+				TargetNamespace: "tekton-pipelines",
+			},
+			Result: v1alpha1.Result{
+				ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+					DBMaxIdleConnections:    &idle,
+					DBMaxOpenConnections:    &open,
+					SQLLogLevel:             "info",
+					FeatureGates:            "PartialResponse=true",
+					Profiling:               &profiling,
+					LoggingPluginJSONMap:    `{"timestamp":"@timestamp"}`,
+					LoggingPluginLineFormat: "{{.timestamp}}: {{.message}}",
+				},
+				Performance: v1alpha1.PerformanceProperties{
+					DeploymentPerformanceArgs: v1alpha1.DeploymentPerformanceArgs{
+						KubeApiQPS:   &qps,
+						KubeApiBurst: &burst,
+					},
+				},
+			},
+		},
+	}
+
+	result := GetTektonResultCR(config, "v0.70.0")
+	if result.Spec.DBMaxIdleConnections == nil || *result.Spec.DBMaxIdleConnections != 20 {
+		t.Fatalf("db_max_idle_connections was not copied, got %v", result.Spec.DBMaxIdleConnections)
+	}
+	if result.Spec.DBMaxOpenConnections == nil || *result.Spec.DBMaxOpenConnections != 40 {
+		t.Fatalf("db_max_open_connections was not copied, got %v", result.Spec.DBMaxOpenConnections)
+	}
+	if result.Spec.SQLLogLevel != "info" {
+		t.Fatalf("sql_log_level was not copied, got %q", result.Spec.SQLLogLevel)
+	}
+	if result.Spec.FeatureGates != "PartialResponse=true" {
+		t.Fatalf("feature_gates was not copied, got %q", result.Spec.FeatureGates)
+	}
+	if result.Spec.Profiling == nil || !*result.Spec.Profiling {
+		t.Fatalf("profiling was not copied, got %v", result.Spec.Profiling)
+	}
+	if result.Spec.LoggingPluginJSONMap != `{"timestamp":"@timestamp"}` {
+		t.Fatalf("logging_plugin_json_map was not copied, got %q", result.Spec.LoggingPluginJSONMap)
+	}
+	if result.Spec.LoggingPluginLineFormat != "{{.timestamp}}: {{.message}}" {
+		t.Fatalf("logging_plugin_line_format was not copied, got %q", result.Spec.LoggingPluginLineFormat)
+	}
+	if result.Spec.Performance.KubeApiQPS == nil || *result.Spec.Performance.KubeApiQPS != 25 {
+		t.Fatalf("kube-api-qps was not copied, got %v", result.Spec.Performance.KubeApiQPS)
+	}
+	if result.Spec.Performance.KubeApiBurst == nil || *result.Spec.Performance.KubeApiBurst != 40 {
+		t.Fatalf("kube-api-burst was not copied, got %v", result.Spec.Performance.KubeApiBurst)
+	}
+}

@@ -1533,7 +1533,9 @@ spec:
                           description: Selects a key of a ConfigMap.
                           properties:
                             key:
-                              description: The key to select.
+                              description: |-
+                                The key to select from the ConfigMap's Data field.
+                                Keys in the BinaryData field are not currently propagated to container env vars.
                               type: string
                             name:
                               default: ""
@@ -2478,7 +2480,9 @@ spec:
                               description: Selects a key of a ConfigMap.
                               properties:
                                 key:
-                                  description: The key to select.
+                                  description: |-
+                                    The key to select from the ConfigMap's Data field.
+                                    Keys in the BinaryData field are not currently propagated to container env vars.
                                   type: string
                                 name:
                                   default: ""
@@ -3852,6 +3856,170 @@ spec:
 
                           Default: false (opt-in). Set to true to activate metrics mTLS.
                         type: boolean
+                      namespaceSync:
+                        description: |-
+                          NamespaceSync controls what the Tekton Operator synchronises into each
+                          user namespace on OpenShift (pipeline SA, CA bundles, edit RoleBinding,
+                          and registry secret bindings).
+                        properties:
+                          createCABundles:
+                            description: |-
+                              CreateCABundles controls whether the CA bundle ConfigMaps
+                              (config-trusted-cabundle, config-service-cabundle) are injected into
+                              each namespace for TLS trust.
+                              Replaces the legacy spec.params entry createCABundleConfigMaps.
+                              Default: true
+                            type: boolean
+                          createEditRoleBinding:
+                            description: |-
+                              CreateEditRoleBinding controls whether a RoleBinding named
+                              openshift-pipelines-edit is created in each namespace, binding the
+                              pipeline SA to the built-in edit ClusterRole. Set to false for
+                              least-privilege environments where PipelineRuns should not have
+                              broad write permissions in their namespace.
+                              Replaces the legacy spec.params entry legacyPipelineRbac.
+                              Default: true
+                            type: boolean
+                          createPipelineSA:
+                            description: |-
+                              CreatePipelineSA controls whether the pipeline ServiceAccount is created
+                              in each namespace. Disable only if you manage the pipeline SA externally.
+                              Replaces the legacy spec.params entry createRbacResource.
+                              Default: true
+                            type: boolean
+                          createSCCRoleBinding:
+                            description: |-
+                              CreateSCCRoleBinding controls whether the pipelines-scc-rolebinding
+                              RoleBinding (and, when a namespace-level SCC is requested via the
+                              operator.tekton.dev/scc annotation, the pipelines-scc-role Role) is
+                              managed in each namespace. When enabled, the pipeline SA is granted
+                              permission to use the cluster-wide default SCC (pipelines-scc by
+                              default) or a namespace-specific SCC when the annotation is present.
+                              Default: true
+                            type: boolean
+                          namespaceSelector:
+                            description: |-
+                              NamespaceSelector is an optional label selector that restricts which
+                              namespaces are synced. Follows standard Kubernetes label-selector
+                              semantics: when absent (nil) every non-system namespace is synced;
+                              an empty selector ({}) also matches every namespace; use
+                              matchLabels/matchExpressions to restrict sync to a subset of namespaces.
+                              To disable namespace sync entirely, set namespaceSync to null or set all
+                              individual feature flags (createPipelineSA, createCABundles, etc.) to false.
+                            properties:
+                              matchExpressions:
+                                description: matchExpressions is a list of label selector
+                                  requirements. The requirements are ANDed.
+                                items:
+                                  description: |-
+                                    A label selector requirement is a selector that contains values, a key, and an operator that
+                                    relates the key and values.
+                                  properties:
+                                    key:
+                                      description: key is the label key that the selector
+                                        applies to.
+                                      type: string
+                                    operator:
+                                      description: |-
+                                        operator represents a key's relationship to a set of values.
+                                        Valid operators are In, NotIn, Exists and DoesNotExist.
+                                      type: string
+                                    values:
+                                      description: |-
+                                        values is an array of string values. If the operator is In or NotIn,
+                                        the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                        the values array must be empty. This array is replaced during a strategic
+                                        merge patch.
+                                      items:
+                                        type: string
+                                      type: array
+                                      x-kubernetes-list-type: atomic
+                                  required:
+                                  - key
+                                  - operator
+                                  type: object
+                                type: array
+                                x-kubernetes-list-type: atomic
+                              matchLabels:
+                                additionalProperties:
+                                  type: string
+                                description: |-
+                                  matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                  map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                  operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                type: object
+                            type: object
+                            x-kubernetes-map-type: atomic
+                          secretBindings:
+                            description: |-
+                              SecretBindings declares secrets that should be automatically bound to
+                              the pipeline SA in every namespace. When a secret matching a binding
+                              appears in a namespace it is added to both imagePullSecrets and secrets
+                              on the pipeline SA. When the secret is deleted the reference is removed.
+                              Each entry must set exactly one of labelSelector or secretName.
+                            items:
+                              description: |-
+                                SecretBinding describes a secret (or class of secrets by label) that the
+                                NamespaceSyncController should bind to the pipeline SA in every namespace.
+                                Exactly one of LabelSelector or SecretName must be set.
+                              properties:
+                                labelSelector:
+                                  description: |-
+                                    LabelSelector selects secrets by label. All secrets matching this
+                                    selector in a given namespace are bound to the pipeline SA.
+                                  properties:
+                                    matchExpressions:
+                                      description: matchExpressions is a list of label
+                                        selector requirements. The requirements are
+                                        ANDed.
+                                      items:
+                                        description: |-
+                                          A label selector requirement is a selector that contains values, a key, and an operator that
+                                          relates the key and values.
+                                        properties:
+                                          key:
+                                            description: key is the label key that
+                                              the selector applies to.
+                                            type: string
+                                          operator:
+                                            description: |-
+                                              operator represents a key's relationship to a set of values.
+                                              Valid operators are In, NotIn, Exists and DoesNotExist.
+                                            type: string
+                                          values:
+                                            description: |-
+                                              values is an array of string values. If the operator is In or NotIn,
+                                              the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                                              the values array must be empty. This array is replaced during a strategic
+                                              merge patch.
+                                            items:
+                                              type: string
+                                            type: array
+                                            x-kubernetes-list-type: atomic
+                                        required:
+                                        - key
+                                        - operator
+                                        type: object
+                                      type: array
+                                      x-kubernetes-list-type: atomic
+                                    matchLabels:
+                                      additionalProperties:
+                                        type: string
+                                      description: |-
+                                        matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                                        map is equivalent to an element of matchExpressions, whose key field is "key", the
+                                        operator is "In", and the values array contains only "value". The requirements are ANDed.
+                                      type: object
+                                  type: object
+                                  x-kubernetes-map-type: atomic
+                                secretName:
+                                  description: |-
+                                    SecretName binds a specific named secret in each namespace to the
+                                    pipeline SA. The secret is bound when it exists and unbound when deleted.
+                                  type: string
+                              type: object
+                            type: array
+                        type: object
                       pipelinesAsCode:
                         description: PipelinesAsCode allows configuring PipelinesAsCode
                           configurations
@@ -3985,10 +4153,18 @@ spec:
                     type: boolean
                   auth_impersonate:
                     type: boolean
+                  converter_db_limit:
+                    type: integer
+                  converter_enable:
+                    type: boolean
                   db_enable_auto_migration:
                     type: boolean
                   db_host:
                     type: string
+                  db_max_idle_connections:
+                    type: integer
+                  db_max_open_connections:
+                    type: integer
                   db_name:
                     type: string
                   db_port:
@@ -4006,12 +4182,16 @@ spec:
                   disabled:
                     description: enable or disable Result Component
                     type: boolean
+                  feature_gates:
+                    type: string
                   gcs_bucket_name:
                     type: string
                   gcs_creds_secret_key:
                     type: string
                   gcs_creds_secret_name:
                     type: string
+                  grpc_worker_pool:
+                    type: integer
                   is_external_db:
                     type: boolean
                   log_level:
@@ -4020,8 +4200,14 @@ spec:
                     type: string
                   logging_plugin_ca_cert:
                     type: string
+                  logging_plugin_container_key:
+                    type: string
                   logging_plugin_forwarder_delay_duration:
                     type: integer
+                  logging_plugin_json_map:
+                    type: string
+                  logging_plugin_line_format:
+                    type: string
                   logging_plugin_multipart_regex:
                     type: string
                   logging_plugin_namespace_key:
@@ -4046,6 +4232,8 @@ spec:
                     type: integer
                   logs_path:
                     type: string
+                  logs_timestamps:
+                    type: boolean
                   logs_type:
                     type: string
                   loki_stack_name:
@@ -4115,6 +4303,10 @@ spec:
                     required:
                     - disable-ha
                     type: object
+                  profiling:
+                    type: boolean
+                  profiling_port:
+                    type: string
                   prometheus_histogram:
                     type: boolean
                   prometheus_port:
@@ -4135,9 +4327,19 @@ spec:
                     type: string
                   server_port:
                     type: integer
+                  sql_log_level:
+                    type: string
                   storage_emulator_host:
                     type: string
+                  tls_cipher_suites:
+                    type: string
+                  tls_curve_preferences:
+                    type: string
                   tls_hostname_override:
+                    type: string
+                  tls_min_version:
+                    type: string
+                  tls_path:
                     type: string
                   watcher:
                     description: Watcher holds configuration for the Tekton Results
@@ -5897,10 +6099,18 @@ spec:
                       type: object
                     type: array
                 type: object
+              converter_db_limit:
+                type: integer
+              converter_enable:
+                type: boolean
               db_enable_auto_migration:
                 type: boolean
               db_host:
                 type: string
+              db_max_idle_connections:
+                type: integer
+              db_max_open_connections:
+                type: integer
               db_name:
                 type: string
               db_port:
@@ -5918,12 +6128,16 @@ spec:
               disabled:
                 description: enable or disable Result Component
                 type: boolean
+              feature_gates:
+                type: string
               gcs_bucket_name:
                 type: string
               gcs_creds_secret_key:
                 type: string
               gcs_creds_secret_name:
                 type: string
+              grpc_worker_pool:
+                type: integer
               is_external_db:
                 type: boolean
               log_level:
@@ -5932,8 +6146,14 @@ spec:
                 type: string
               logging_plugin_ca_cert:
                 type: string
+              logging_plugin_container_key:
+                type: string
               logging_plugin_forwarder_delay_duration:
                 type: integer
+              logging_plugin_json_map:
+                type: string
+              logging_plugin_line_format:
+                type: string
               logging_plugin_multipart_regex:
                 type: string
               logging_plugin_namespace_key:
@@ -5958,6 +6178,8 @@ spec:
                 type: integer
               logs_path:
                 type: string
+              logs_timestamps:
+                type: boolean
               logs_type:
                 type: string
               loki_stack_name:
@@ -6514,6 +6736,10 @@ spec:
                 required:
                 - disable-ha
                 type: object
+              profiling:
+                type: boolean
+              profiling_port:
+                type: string
               prometheus_histogram:
                 type: boolean
               prometheus_port:
@@ -6534,12 +6760,22 @@ spec:
                 type: string
               server_port:
                 type: integer
+              sql_log_level:
+                type: string
               storage_emulator_host:
                 type: string
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
                 type: string
+              tls_cipher_suites:
+                type: string
+              tls_curve_preferences:
+                type: string
               tls_hostname_override:
+                type: string
+              tls_min_version:
+                type: string
+              tls_path:
                 type: string
               watcher:
                 description: Watcher holds configuration for the Tekton Results Watcher
