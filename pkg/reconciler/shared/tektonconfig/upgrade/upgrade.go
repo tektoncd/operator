@@ -30,32 +30,121 @@ import (
 	"knative.dev/pkg/logging"
 )
 
-var (
-	// pre upgrade functions
-	preUpgradeFunctions = []upgradeFunc{
-		resetTektonConfigConditions,         // upgrade #1: removes conditions from TektonConfig CR, clears outdated conditions
-		migrateTektonSchedulerToTektonKueue, // upgrade #2: migrates the deprecated scheduler API and TektonConfig field
-		upgradePipelineProperties,           // upgrade #3: update default value of enable-step-actions from false to true
-		// Todo: Remove the deleteTektonResultsTLSSecret upgrade function in next operator release
-		deleteTektonResultsTLSSecret, // upgrade #5: deletes default tekton results tls certificate
-		// TODO: Remove the preUpgradeTektonPruner upgrade function in next operator release
-		preUpgradeTektonPruner,                   // upgrade #5: pre upgrade tekton pruner
-		removeDeprecatedDisableAffinityAssistant, // upgrade #6: remove deprecated DisableAffinityAssistant field from pipeline config
-		removeHubFromTektonConfig,                // upgrade #7: clear deprecated hub field
-		preUpgradeManualApprovalGate,             // upgrade #8: adopt standalone MAG config into TektonConfig
-		migrateLegacyNamespaceSyncParams,         // upgrade #9: persist createRbacResource/createCABundleConfigMaps/legacyPipelineRbac migration to namespaceSync
-		migrateResultsRouteTLSToReencrypt,        // upgrade #10: migrate Results route TLS termination from edge to reencrypt
-		preUpgradePipelinesAsCodeArtifacts,       // upgrade #11: migrate PaC hub catalog settings to artifacthub
-	}
+// preUpgradeMigrations is the pre-upgrade registry.
+// To remove an entry: confirm DeletableFrom has shipped and every supported
+// upgrade source has already applied the migration, then delete the entry here.
+var preUpgradeMigrations = []Migration{
+	{
+		Name:          "resetTektonConfigConditions",
+		Introduced:    "0.67.0",
+		DeletableFrom: "0.69.0",
+		Description:   "removes stale InstallSucceeded conditions from TektonConfig CR",
+		Fn:            resetTektonConfigConditions,
+	},
+	{
+		Name:          "migrateTektonSchedulerToTektonKueue",
+		Introduced:    "0.82.0",
+		DeletableFrom: "0.84.0",
+		Description:   "migrates deprecated scheduler API / TektonConfig field to TektonKueue",
+		Fn:            migrateTektonSchedulerToTektonKueue,
+	},
+	{
+		Name:          "upgradePipelineProperties",
+		Introduced:    "0.74.0",
+		DeletableFrom: "0.76.0",
+		Description:   "updates default enable-step-actions from false to true",
+		Fn:            upgradePipelineProperties,
+	},
+	{
+		Name:          "deleteTektonResultsTLSSecret",
+		Introduced:    "0.77.0",
+		DeletableFrom: "0.79.0",
+		Description:   "deletes default tekton-results TLS certificate secret",
+		Fn:            deleteTektonResultsTLSSecret,
+	},
+	{
+		Name:          "preUpgradeTektonPruner",
+		Introduced:    "0.77.0",
+		DeletableFrom: "0.79.0",
+		Description:   "migrates TektonPruner configuration from ConfigMap into TektonConfig",
+		Fn:            preUpgradeTektonPruner,
+	},
+	{
+		Name:          "removeDeprecatedDisableAffinityAssistant",
+		Introduced:    "0.79.0",
+		DeletableFrom: "0.81.0",
+		Description:   "removes deprecated DisableAffinityAssistant from pipeline config",
+		Fn:            removeDeprecatedDisableAffinityAssistant,
+	},
+	{
+		Name:          "removeHubFromTektonConfig",
+		Introduced:    "0.81.0",
+		DeletableFrom: "0.83.0",
+		Description:   "clears deprecated hub field from TektonConfig",
+		Fn:            removeHubFromTektonConfig,
+	},
+	{
+		Name:          "preUpgradeManualApprovalGate",
+		Introduced:    "0.82.0",
+		DeletableFrom: "0.84.0",
+		Description:   "adopts standalone ManualApprovalGate config into TektonConfig",
+		Fn:            preUpgradeManualApprovalGate,
+	},
+	{
+		Name:          "migrateLegacyNamespaceSyncParams",
+		Introduced:    "0.82.0",
+		DeletableFrom: "0.84.0",
+		Description:   "persists legacy namespaceSync params into typed TektonConfig fields",
+		Fn:            migrateLegacyNamespaceSyncParams,
+	},
+	{
+		Name:          "migrateResultsRouteTLSToReencrypt",
+		Introduced:    "0.82.0",
+		DeletableFrom: "0.84.0",
+		Description:   "migrates Results route TLS termination from edge to reencrypt",
+		Fn:            migrateResultsRouteTLSToReencrypt,
+	},
+	{
+		Name:          "preUpgradePipelinesAsCodeArtifacts",
+		Introduced:    "0.79.0",
+		DeletableFrom: "0.81.0",
+		Description:   "migrates PaC hub catalog settings to artifacthub",
+		Fn:            preUpgradePipelinesAsCodeArtifacts,
+	},
+}
 
-	// post upgrade functions
-	postUpgradeFunctions = []upgradeFunc{
-		upgradeStorageVersion,                   // upgrade #1: performs storage version migration
-		removeClusterTaskInstallerSets,          // upgrade #2: removes the clusterTask installerset
-		removeVersionedTaskInstallerSets,        // upgrade #3: remove the older versioned resolver task installersets
-		removeVersionedStepActionsInstallerSets, // upgrade #4: remove the older versioned step action resolver installersets
-	}
-)
+// postUpgradeMigrations is the post-upgrade registry.
+// Removal rules are the same as for preUpgradeMigrations.
+var postUpgradeMigrations = []Migration{
+	{
+		Name:          "upgradeStorageVersion",
+		Introduced:    "0.67.0",
+		DeletableFrom: "0.69.0",
+		Description:   "performs storage version migration for operator CRDs",
+		Fn:            upgradeStorageVersion,
+	},
+	{
+		Name:          "removeClusterTaskInstallerSets",
+		Introduced:    "0.74.0",
+		DeletableFrom: "0.76.0",
+		Description:   "removes deprecated clusterTask installersets",
+		Fn:            removeClusterTaskInstallerSets,
+	},
+	{
+		Name:          "removeVersionedTaskInstallerSets",
+		Introduced:    "0.74.0",
+		DeletableFrom: "0.76.0",
+		Description:   "removes older versioned resolver task installersets",
+		Fn:            removeVersionedTaskInstallerSets,
+	},
+	{
+		Name:          "removeVersionedStepActionsInstallerSets",
+		Introduced:    "0.74.0",
+		DeletableFrom: "0.76.0",
+		Description:   "removes older versioned step action resolver installersets",
+		Fn:            removeVersionedStepActionsInstallerSets,
+	},
+}
 
 type upgradeFunc = func(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error
 
@@ -77,16 +166,18 @@ func New(operatorVersion string, k8sClient kubernetes.Interface, operatorClient 
 }
 
 func (ug *Upgrade) RunPreUpgrade(ctx context.Context) error {
-	return ug.executeUpgrade(ctx, preUpgradeFunctions, true)
+	return ug.executeUpgrade(ctx, preUpgradeMigrations, true)
 }
 
 func (ug *Upgrade) RunPostUpgrade(ctx context.Context) error {
-	return ug.executeUpgrade(ctx, postUpgradeFunctions, false)
+	return ug.executeUpgrade(ctx, postUpgradeMigrations, false)
 }
 
-func (ug *Upgrade) executeUpgrade(ctx context.Context, upgradeFunctions []upgradeFunc, isPreUpgrade bool) error {
+func (ug *Upgrade) executeUpgrade(ctx context.Context, migrations []Migration, isPreUpgrade bool) error {
 	// update logger
 	ug.logger = logging.FromContext(ctx).Named("upgrade")
+
+	upgradeFunctions := migrationFns(migrations)
 
 	// if upgrade not required return from here
 	isUpgradeRequired, err := ug.isUpgradeRequired(ctx, isPreUpgrade)
@@ -110,13 +201,14 @@ func (ug *Upgrade) executeUpgrade(ctx context.Context, upgradeFunctions []upgrad
 	}
 
 	// execute upgrade functions
-	for _, _upgradeFunc := range upgradeFunctions {
+	for i, _upgradeFunc := range upgradeFunctions {
+		name := migrations[i].Name
 		if err := _upgradeFunc(ctx, ug.logger, ug.k8sClient, ug.operatorClient, ug.restConfig); err != nil {
 			if errors.Is(err, v1alpha1.REQUEUE_EVENT_AFTER) {
-				ug.logger.Debugw("upgrade requested requeue", "error", err)
+				ug.logger.Debugw("upgrade requested requeue", "migration", name, "error", err)
 				return err
 			}
-			ug.logger.Error("error on upgrade", err)
+			ug.logger.Errorw("error on upgrade", "migration", name, "error", err)
 			return err
 		}
 	}
