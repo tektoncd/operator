@@ -79,6 +79,28 @@ func Test_ValidateTektonChain_ConfigTaskRunFormat(t *testing.T) {
 	assert.Equal(t, "invalid value: test: spec.artifacts.taskrun.format", err.Error())
 }
 
+func Test_ValidateTektonChain_ConfigTaskRunFormatValid(t *testing.T) {
+	td := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+		},
+	}
+
+	for _, format := range []string{"in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3", "slsa/v2alpha4"} {
+		td.Spec.Chain.ChainProperties.ArtifactsTaskRunFormat = format
+		err := td.Validate(context.TODO())
+		if err != nil {
+			t.Errorf("ValidateTektonChain.Validate() expected no error for taskrun format %q, but got: %v", format, err)
+		}
+	}
+}
+
 func Test_ValidateTektonChain_ConfigTaskRunStorage(t *testing.T) {
 	value := "test"
 	td := &TektonChain{
@@ -154,6 +176,28 @@ func Test_ValidateTektonChain_ConfigPipelineRunFormat(t *testing.T) {
 	td.Spec.Chain.ChainProperties.ArtifactsPipelineRunFormat = "test"
 	err := td.Validate(context.TODO())
 	assert.Equal(t, "invalid value: test: spec.artifacts.pipelinerun.format", err.Error())
+}
+
+func Test_ValidateTektonChain_ConfigPipelineRunFormatValid(t *testing.T) {
+	td := &TektonChain{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "chain",
+			Namespace: "namespace",
+		},
+		Spec: TektonChainSpec{
+			CommonSpec: CommonSpec{
+				TargetNamespace: "namespace",
+			},
+		},
+	}
+
+	for _, format := range []string{"in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3", "slsa/v2alpha4"} {
+		td.Spec.Chain.ChainProperties.ArtifactsPipelineRunFormat = format
+		err := td.Validate(context.TODO())
+		if err != nil {
+			t.Errorf("ValidateTektonChain.Validate() expected no error for pipelinerun format %q, but got: %v", format, err)
+		}
+	}
 }
 
 func Test_ValidateTektonChain_ConfigPipelineRunStorage(t *testing.T) {
