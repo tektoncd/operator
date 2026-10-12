@@ -20,7 +20,6 @@ release-branches:
   - release-v0.80.x
   - release-v0.79.x
   - release-v0.78.x
-  - release-v0.77.x
 # Package ecosystems to monitor
 # Each ecosystem will be configured for:
 # - main branch: all updates (major, minor, patch)
