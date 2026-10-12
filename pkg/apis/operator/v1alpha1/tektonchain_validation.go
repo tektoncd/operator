@@ -26,8 +26,8 @@ import (
 )
 
 var (
-	allowedArtifactsTaskRunFormat                   = sets.NewString("", "in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3")
-	allowedArtifactsPipelineRunFormat               = sets.NewString("", "in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3")
+	allowedArtifactsTaskRunFormat                   = sets.NewString("", "in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3", "slsa/v2alpha4")
+	allowedArtifactsPipelineRunFormat               = sets.NewString("", "in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3", "slsa/v2alpha4")
 	allowedX509SignerFulcioProvider                 = sets.NewString("", "google", "spiffe", "github", "filesystem")
 	allowedTransparencyConfigEnabled                = sets.NewString("", "true", "false", "manual")
 	allowedArtifactsPipelineRunEnableDeepInspection = sets.NewString("", "true", "false")
