@@ -23,7 +23,7 @@ require (
 	github.com/tektoncd/pipeline v1.9.8
 	github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2
 	github.com/tektoncd/pruner v0.3.7
-	github.com/tektoncd/triggers v0.35.0
+	github.com/tektoncd/triggers v0.35.3
 	go.opencensus.io v0.24.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96
