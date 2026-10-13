@@ -51,6 +51,10 @@ func (e kubernetesExtension) PreReconcile(context.Context, v1alpha1.TektonCompon
 
 func (e kubernetesExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	logger := logging.FromContext(ctx)
+	if err := pacctrl.RemoveHubCatalogTypeFromConfigMap(ctx, e.kubeClientSet, comp.GetSpec().GetTargetNamespace()); err != nil {
+		logger.Error("failed to remove hub-catalog-type from pipelines-as-code config map: ", err)
+		return err
+	}
 	if err := e.installerSetClient.PostSet(ctx, comp, e.pipelineRunTemplates, kubernetesTemplateFilter()); err != nil {
 		logger.Error("failed post set creation: ", err)
 		return err
