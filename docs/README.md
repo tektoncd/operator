@@ -52,7 +52,7 @@ Tekton Operator defines the following entities:
   </tr>
   <tr>
     <td><code>OpenShiftPipelinesAsCode</code></td>
-    <td>Configure the <a HREF="https://github.com/openshift-pipelines/pipelines-as-code">Pipelines as Code</a> component to be installed and managed.</td>
+    <td>Configure the <a HREF="https://github.com/tektoncd/pipelines-as-code">Pipelines as Code</a> component to be installed and managed.</td>
   </tr>
   <tr>
     <td><code>TektonAddon</code></td>

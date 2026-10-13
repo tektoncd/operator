@@ -193,5 +193,5 @@ pipelinesAsCode:
       secretName: second-secret
 ```
 
-[PipelinesAsCode]:https://github.com/openshift-pipelines/pipelines-as-code
+[PipelinesAsCode]:https://github.com/tektoncd/pipelines-as-code
 [pac-config]:https://pipelinesascode.com/docs/install/settings/#pipelines-as-code-configuration-settings
