@@ -94,6 +94,47 @@ func TestTektonResult_ValidateRouteTLSTermination(t *testing.T) {
 	}
 }
 
+func TestTektonResult_ValidateAPISettings(t *testing.T) {
+	negative := int64(-1)
+	zero := int64(0)
+	tests := []struct {
+		name        string
+		props       ResultsAPIProperties
+		expectError string
+	}{
+		{name: "empty is valid", props: ResultsAPIProperties{}},
+		{name: "known sql log level", props: ResultsAPIProperties{SQLLogLevel: "info"}},
+		{name: "known tls min version", props: ResultsAPIProperties{TLSMinVersion: "1.2"}},
+		{name: "tls alias", props: ResultsAPIProperties{TLSMinVersion: "TLSv1.3"}},
+		{name: "zero connection limit", props: ResultsAPIProperties{DBMaxIdleConnections: &zero}},
+		{name: "unknown sql log level", props: ResultsAPIProperties{SQLLogLevel: "debug"}, expectError: "spec.sql_log_level"},
+		{name: "unknown tls min version", props: ResultsAPIProperties{TLSMinVersion: "1.4"}, expectError: "spec.tls_min_version"},
+		{name: "negative idle connections", props: ResultsAPIProperties{DBMaxIdleConnections: &negative}, expectError: "spec.db_max_idle_connections"},
+		{name: "negative open connections", props: ResultsAPIProperties{DBMaxOpenConnections: &negative}, expectError: "spec.db_max_open_connections"},
+		{name: "negative grpc pool", props: ResultsAPIProperties{GRPCWorkerPool: &negative}, expectError: "spec.grpc_worker_pool"},
+		{name: "negative converter limit", props: ResultsAPIProperties{ConverterDBLimit: &negative}, expectError: "spec.converter_db_limit"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tr := &TektonResult{
+				ObjectMeta: metav1.ObjectMeta{Name: "result"},
+				Spec: TektonResultSpec{
+					CommonSpec: CommonSpec{TargetNamespace: "foo"},
+					Result:     Result{ResultsAPIProperties: tt.props},
+				},
+			}
+			errs := tr.Validate(context.TODO())
+			if tt.expectError == "" {
+				assert.Assert(t, errs == nil, "unexpected validation error: %v", errs)
+				return
+			}
+			assert.Assert(t, errs != nil)
+			assert.ErrorContains(t, errs, tt.expectError)
+		})
+	}
+}
+
 func TestTektonResultWatcherPerformancePropertiesValidate(t *testing.T) {
 	tr := &TektonResult{
 		ObjectMeta: metav1.ObjectMeta{
