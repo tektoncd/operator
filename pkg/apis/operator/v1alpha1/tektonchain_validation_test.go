@@ -92,7 +92,7 @@ func Test_ValidateTektonChain_ConfigTaskRunFormatValid(t *testing.T) {
 		},
 	}
 
-	for _, format := range []string{"in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3", "slsa/v2alpha4"} {
+	for _, format := range allowedArtifactsTaskRunFormat.List() {
 		td.Spec.Chain.ChainProperties.ArtifactsTaskRunFormat = format
 		err := td.Validate(context.TODO())
 		if err != nil {
@@ -191,7 +191,7 @@ func Test_ValidateTektonChain_ConfigPipelineRunFormatValid(t *testing.T) {
 		},
 	}
 
-	for _, format := range []string{"in-toto", "slsa/v1", "slsa/v2alpha2", "slsa/v2alpha3", "slsa/v2alpha4"} {
+	for _, format := range allowedArtifactsPipelineRunFormat.List() {
 		td.Spec.Chain.ChainProperties.ArtifactsPipelineRunFormat = format
 		err := td.Validate(context.TODO())
 		if err != nil {
