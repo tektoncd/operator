@@ -211,12 +211,18 @@ func overrideImageRegistry(registry, imageName string) string {
 		return imageName
 	}
 	parts := strings.Split(imageName, "/")
-	if len(parts) > 1 {
+	if len(parts) > 1 && isRegistryHost(parts[0]) {
 		// if image has registry part, replace it
 		return registry + "/" + strings.Join(parts[1:], "/")
 	}
-	// if image does not have registry part, add it
+	// no registry part (e.g. "bitnami/postgresql"): prepend the registry
 	return registry + "/" + imageName
+}
+
+// isRegistryHost uses the Docker rule: a registry host contains "." or ":",
+// or is "localhost". Otherwise it is a namespace, e.g. "bitnami".
+func isRegistryHost(component string) bool {
+	return strings.ContainsAny(component, ".:") || component == "localhost"
 }
 
 // ToLowerCaseKeys converts key value to lower cases.
@@ -330,8 +336,14 @@ func replaceContainerImages(containers []corev1.Container, images map[string]str
 // matches a given "*-image*" flag (e.g. "-shell-image-win"), it falls back
 // to rewriting just the registry domain, so TEKTON_REGISTRY_OVERRIDE alone
 // also applies to arg-based images and not only to container.Image.
+// Only flags are matched; a flag's value is never treated as a flag.
 func replaceContainersArgsImage(container *corev1.Container, images map[string]string, registry string) {
-	for a, arg := range container.Args {
+	for a := 0; a < len(container.Args); a++ {
+		arg := container.Args[a]
+		if !strings.HasPrefix(arg, "-") {
+			continue
+		}
+
 		if argVal, hasArg := SplitsByEqual(arg); hasArg {
 			argument := formKey(ArgPrefix, argVal[0])
 			if url, exist := images[argument]; exist {
@@ -342,12 +354,18 @@ func replaceContainersArgsImage(container *corev1.Container, images map[string]s
 			continue
 		}
 
+		if a+1 >= len(container.Args) || strings.HasPrefix(container.Args[a+1], "-") {
+			// flag without a value
+			continue
+		}
+
 		argument := formKey(ArgPrefix, arg)
 		if url, exist := images[argument]; exist {
 			container.Args[a+1] = url
 		} else if strings.Contains(argument, "_image") {
 			container.Args[a+1] = overrideImageRegistry(registry, container.Args[a+1])
 		}
+		a++ // skip the value
 	}
 }
 

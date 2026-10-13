@@ -22,6 +22,11 @@ installCRDs: false
 ## Controllers to install
 controllers: "tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboard,manualapprovalgate,tektonpruner,openshiftpipelinesascode"
 
+## Registry mirror (host[:port][/path]) for all images, e.g. for air-gapped clusters.
+## Rewrites the operator's own images and sets TEKTON_REGISTRY_OVERRIDE for the
+## components it installs (unless set in operator.additionalEnvs).
+registry: ""
+
 ## Control the creation of RBAC resources (Serviceaccount, Role, ClusterRole, ClusterRoleBinding)
 rbac:
   create: true
