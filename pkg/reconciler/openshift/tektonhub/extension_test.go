@@ -223,4 +223,45 @@ func TestSetAuthSecretURL(t *testing.T) {
 		// When no update is needed, StringData won't be set
 		assert.Equal(t, len(updatedSecret.StringData), 0)
 	})
+
+	t.Run("sets REDIRECT_URI on upgrade when oauth is not configured", func(t *testing.T) {
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "tekton-hub-api",
+				Namespace: targetNamespace,
+			},
+			Data: map[string][]byte{
+				"GH_CLIENT_ID":  []byte(""),
+				"GL_CLIENT_ID":  []byte(""),
+				"BB_CLIENT_ID":  []byte(""),
+				"AUTH_BASE_URL": []byte(""),
+			},
+		}
+
+		kc := kubefake.NewClientset(secret)
+		oe := openshiftExtension{
+			kubeClientSet: kc,
+		}
+
+		th := &v1alpha1.TektonHub{
+			Spec: v1alpha1.TektonHubSpec{
+				CommonSpec: v1alpha1.CommonSpec{
+					TargetNamespace: targetNamespace,
+				},
+			},
+		}
+		th.Status.SetUiRoute("https://ui.example.com")
+		th.Status.SetAuthRoute("https://auth.example.com")
+
+		err := oe.setAuthSecretURL(ctx, th)
+		assert.NilError(t, err)
+
+		updatedSecret, err := kc.CoreV1().Secrets(targetNamespace).Get(ctx, "tekton-hub-api", metav1.GetOptions{})
+		assert.NilError(t, err)
+		assert.Equal(t, updatedSecret.StringData["REDIRECT_URI"], "https://ui.example.com")
+		// AUTH_BASE_URL stays untouched when OAuth clients are not configured.
+		_, authUpdated := updatedSecret.StringData["AUTH_BASE_URL"]
+		assert.Equal(t, authUpdated, false)
+		assert.Equal(t, th.Status.GetAuthRoute(), "")
+	})
 }
