@@ -172,7 +172,9 @@ func (oe openshiftExtension) PreReconcile(ctx context.Context, tc v1alpha1.Tekto
 		th.Status.SetAuthRoute(fmt.Sprintf("https://%s", authRoute))
 	}
 
-	// Update secret with AUTH_BASE_URL and REDIRECT_URI after both routes are available
+	// Update secret with AUTH_BASE_URL and REDIRECT_URI after both routes are available.
+	// REDIRECT_URI is also written when OAuth is not configured so an upgrade from a
+	// release that did not have the key can start the API pod.
 	if err := oe.setAuthSecretURL(ctx, th); err != nil {
 		return err
 	}
@@ -403,7 +405,7 @@ func UpdateDbDeployment() mf.Transformer {
 
 func (oe openshiftExtension) setAuthSecretURL(ctx context.Context, th *v1alpha1.TektonHub) error {
 	// Get the api secret
-	secret, err := oe.kubeClientSet.CoreV1().Secrets(th.Spec.GetTargetNamespace()).Get(ctx, "tekton-hub-api", metav1.GetOptions{})
+	secret, err := oe.kubeClientSet.CoreV1().Secrets(th.Spec.GetTargetNamespace()).Get(ctx, v1alpha1.HubApiSecretName, metav1.GetOptions{})
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			th.Status.SetAuthRoute("")
@@ -412,36 +414,47 @@ func (oe openshiftExtension) setAuthSecretURL(ctx context.Context, th *v1alpha1.
 		return err
 	}
 
-	if len(secret.Data["GH_CLIENT_ID"]) != 0 || len(secret.Data["GL_CLIENT_ID"]) != 0 || len(secret.Data["BB_CLIENT_ID"]) != 0 {
-		needsUpdate := false
-		if secret.StringData == nil {
-			secret.StringData = make(map[string]string)
-		}
+	if secret.StringData == nil {
+		secret.StringData = make(map[string]string)
+	}
 
+	needsUpdate := false
+	if secretHasOAuthClient(secret) {
 		// Check if AUTH_BASE_URL needs to be updated
-		if secret.Data == nil || string(secret.Data["AUTH_BASE_URL"]) != th.Status.AuthRouteUrl {
+		if string(secret.Data["AUTH_BASE_URL"]) != th.Status.AuthRouteUrl {
 			secret.StringData["AUTH_BASE_URL"] = th.Status.AuthRouteUrl
 			needsUpdate = true
-		}
-
-		// Check if REDIRECT_URI needs to be updated
-		if secret.Data == nil || string(secret.Data["REDIRECT_URI"]) != th.Status.UiRouteUrl {
-			secret.StringData["REDIRECT_URI"] = th.Status.UiRouteUrl
-			needsUpdate = true
-		}
-
-		// Perform a single update if any field changed
-		if needsUpdate {
-			_, err = oe.kubeClientSet.CoreV1().Secrets(th.Spec.GetTargetNamespace()).Update(ctx, secret, metav1.UpdateOptions{})
-			if err != nil {
-				return err
-			}
 		}
 	} else {
 		th.Status.SetAuthRoute("")
 	}
 
-	return nil
+	// REDIRECT_URI is required by the API deployment. Older releases did not
+	// store the key, so add it on upgrade even when OAuth clients are unset.
+	// When the UI route is known, keep the value aligned with that route.
+	if redirectURINeedsUpdate(secret, th.Status.UiRouteUrl) {
+		secret.StringData["REDIRECT_URI"] = th.Status.UiRouteUrl
+		needsUpdate = true
+	}
+
+	if !needsUpdate {
+		return nil
+	}
+
+	_, err = oe.kubeClientSet.CoreV1().Secrets(th.Spec.GetTargetNamespace()).Update(ctx, secret, metav1.UpdateOptions{})
+	return err
+}
+
+func secretHasOAuthClient(secret *corev1.Secret) bool {
+	return len(secret.Data["GH_CLIENT_ID"]) != 0 || len(secret.Data["GL_CLIENT_ID"]) != 0 || len(secret.Data["BB_CLIENT_ID"]) != 0
+}
+
+func redirectURINeedsUpdate(secret *corev1.Secret, redirectURI string) bool {
+	current, exists := secret.Data["REDIRECT_URI"]
+	if !exists {
+		return true
+	}
+	return redirectURI != "" && string(current) != redirectURI
 }
 
 func replaceProbeCommand(data []string) {

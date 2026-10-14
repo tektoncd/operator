@@ -45,6 +45,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			addConfigMapKeyValue(uiConfigMapName, "AUTH_BASE_URL", hubCR.Status.AuthRouteUrl),
 			addConfigMapKeyValue(uiConfigMapName, "API_VERSION", "v1"),
 			addConfigMapKeyValue(uiConfigMapName, "REDIRECT_URI", hubCR.Status.UiRouteUrl),
+			addSecretKeyValue(v1alpha1.HubApiSecretName, "REDIRECT_URI", hubCR.Status.UiRouteUrl),
 			addConfigMapKeyValue(uiConfigMapName, "CUSTOM_LOGO_BASE64_DATA", hubCR.Spec.CustomLogo.Base64Data),
 			addConfigMapKeyValue(uiConfigMapName, "CUSTOM_LOGO_MEDIA_TYPE", hubCR.Spec.CustomLogo.MediaType),
 			common.AddDeploymentRestrictedPSA(),
