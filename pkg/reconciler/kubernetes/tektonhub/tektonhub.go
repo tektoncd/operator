@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -121,6 +122,9 @@ var (
 	}
 
 	dbKeys = []string{secretKeyPostgresHost, secretKeyPostgresDB, secretKeyPostgresUser, secretKeyPostgresPassword, secretKeyPostgresPort}
+
+	// required keys on the Hub API secret, checked by validateApiDependencies
+	apiSecretKeys = []string{"GH_CLIENT_ID", "GH_CLIENT_SECRET", "JWT_SIGNING_KEY", "ACCESS_JWT_EXPIRES_IN", "REFRESH_JWT_EXPIRES_IN", "GHE_URL"}
 )
 
 type Data struct {
@@ -545,29 +549,110 @@ func (r *Reconciler) validateOrCreateDBSecrets(ctx context.Context, th *v1alpha1
 	return nil
 }
 
-// TektonHub expects API secrets to be created before installing Tekton Hub API
+// TektonHub expects API secrets to be created before installing Tekton Hub API.
+// Secrets are excluded from installer sets so user credentials survive upgrades.
+// Keys added in a newer Hub release, such as REDIRECT_URI, are therefore copied
+// onto an existing secret here. Existing values are left unchanged.
 func (r *Reconciler) validateApiDependencies(ctx context.Context, th *v1alpha1.TektonHub, hubDir, comp string) error {
 	logger := logging.FromContext(ctx)
-	apiSecretKeys := []string{"GH_CLIENT_ID", "GH_CLIENT_SECRET", "JWT_SIGNING_KEY", "ACCESS_JWT_EXPIRES_IN", "REFRESH_JWT_EXPIRES_IN", "GHE_URL"}
 
 	th.Status.MarkApiDependencyInstalling("checking for api secrets in the namespace and creating the ConfigMap")
 
-	_, err := r.getSecret(ctx, th.Spec.Api.ApiSecretName, th.Spec.GetTargetNamespace(), apiSecretKeys)
+	targetNamespace := th.Spec.GetTargetNamespace()
+	secret, err := r.kubeClientSet.CoreV1().Secrets(targetNamespace).Get(ctx, th.Spec.Api.ApiSecretName, metav1.GetOptions{})
+	if apierrors.IsNotFound(err) {
+		return r.createApiSecret(ctx, th, hubDir, comp)
+	}
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			if err := r.createApiSecret(ctx, th, hubDir, comp); err != nil {
-				return err
-			}
-		}
-		if err == errKeyMissing {
+		logger.Error(err)
+		return err
+	}
+
+	for _, key := range apiSecretKeys {
+		if _, ok := secret.Data[key]; !ok {
 			th.Status.MarkApiDependencyMissing(fmt.Sprintf("%s secret is missing the keys", th.Spec.Api.ApiSecretName))
-			return err
-		} else {
-			logger.Error(err)
-			return err
+			return errKeyMissing
 		}
 	}
-	return nil
+
+	return r.updateExistingApiSecret(ctx, th, secret, hubDir, comp)
+}
+
+// updateExistingApiSecret updates the live Hub API secret from the secret
+// rendered for this release. The new secret includes REDIRECT_URI, which
+// older installs do not have. Keys already stored on the existing secret,
+// including user OAuth credentials, are left unchanged.
+func (r *Reconciler) updateExistingApiSecret(ctx context.Context, th *v1alpha1.TektonHub, existing *corev1.Secret, hubDir, comp string) error {
+	logger := logging.FromContext(ctx)
+
+	manifest, err := r.getHubManifest(ctx, th, hubDir, comp)
+	if err != nil {
+		return err
+	}
+
+	desired, err := secretDataFromManifest(manifest, v1alpha1.HubApiSecretName)
+	if err != nil {
+		return err
+	}
+	if _, exists := existing.Data["AUTH_BASE_URL"]; !exists && th.Status.AuthRouteUrl != "" {
+		desired["AUTH_BASE_URL"] = []byte(th.Status.AuthRouteUrl)
+	}
+
+	added := mergeMissingSecretKeys(existing, desired)
+	if len(added) == 0 {
+		return nil
+	}
+
+	logger.Infow("updating existing tekton hub api secret from the current release secret",
+		"secret", existing.Name,
+		"namespace", existing.Namespace,
+		"keys", added,
+	)
+
+	_, err = r.kubeClientSet.CoreV1().Secrets(existing.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
+	return err
+}
+
+func secretDataFromManifest(manifest *mf.Manifest, name string) (map[string][]byte, error) {
+	for _, res := range manifest.Filter(mf.ByKind("Secret")).Resources() {
+		if res.GetName() != name {
+			continue
+		}
+		secret := &corev1.Secret{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(res.Object, secret); err != nil {
+			return nil, err
+		}
+		data := make(map[string][]byte, len(secret.Data)+len(secret.StringData))
+		for key, value := range secret.Data {
+			data[key] = value
+		}
+		for key, value := range secret.StringData {
+			data[key] = []byte(value)
+		}
+		return data, nil
+	}
+	return map[string][]byte{}, nil
+}
+
+// mergeMissingSecretKeys copies keys from desired onto secret when the live
+// secret does not already have them. Existing values are preserved.
+func mergeMissingSecretKeys(secret *corev1.Secret, desired map[string][]byte) []string {
+	if len(desired) == 0 {
+		return nil
+	}
+	if secret.Data == nil {
+		secret.Data = map[string][]byte{}
+	}
+	added := make([]string, 0, len(desired))
+	for key, value := range desired {
+		if _, ok := secret.Data[key]; ok {
+			continue
+		}
+		secret.Data[key] = value
+		added = append(added, key)
+	}
+	sort.Strings(added)
+	return added
 }
 
 func (r *Reconciler) getManifest(ctx context.Context, th *v1alpha1.TektonHub, manifestLocation string) (*mf.Manifest, error) {
@@ -836,6 +921,34 @@ func createDbSecret(name, namespace string, existingSecret *corev1.Secret, th *v
 // Get an ownerRef of TektonHub
 func getOwnerRef(th *v1alpha1.TektonHub) metav1.OwnerReference {
 	return *metav1.NewControllerRef(th, th.GroupVersionKind())
+}
+
+// addSecretKeyValue sets a key on the named Secret manifest.
+// stringData is used so the value stays a plain string, matching the Hub secret manifest.
+func addSecretKeyValue(secretName, key, value string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		kind := strings.ToLower(u.GetKind())
+		if kind != "secret" || u.GetName() != secretName {
+			return nil
+		}
+
+		secret := &corev1.Secret{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, secret); err != nil {
+			return err
+		}
+		if secret.StringData == nil {
+			secret.StringData = map[string]string{}
+		}
+		secret.StringData[key] = value
+		delete(secret.Data, key)
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(secret)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
 }
 
 // add key value pair to the given configmap name
