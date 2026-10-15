@@ -74,6 +74,46 @@ spec:
 
 These properties are analogous to the one in configmap of tekton results api `tekton-results-api-config` documented at [api.md](https://github.com/tektoncd/results/blob/4472848a0fb7c1473cfca8b647553170efac78a1/cmd/api/README.md)
 
+### Further API settings
+
+Leave a field unset when the Results default is fine. The operator writes a set field into `tekton-results-api-config` and into the `api` container.
+
+```yaml
+spec:
+  db_max_idle_connections: 10
+  db_max_open_connections: 10
+  sql_log_level: warn
+  tls_path: /etc/tls
+  tls_min_version: "1.2"
+  tls_cipher_suites: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+  tls_curve_preferences: X25519,P256
+  feature_gates: PartialResponse=true
+  grpc_worker_pool: 2
+  logs_timestamps: false
+  profiling: false
+  profiling_port: "6060"
+  converter_enable: false
+  converter_db_limit: 50
+  logging_plugin_container_key: kubernetes.container_name
+  logging_plugin_json_map: '{"timestamp":"@timestamp"}'
+  logging_plugin_line_format: "{{.timestamp}}: {{.message}}"
+```
+
+`db_max_idle_connections` and `db_max_open_connections` size the Postgres connection pool. `sql_log_level` is the database logger. Use one of `silent`, `error`, `warn`, or `info`. `feature_gates` is a comma-separated list such as `PartialResponse=true`.
+
+`tls_min_version`, `tls_cipher_suites`, and `tls_curve_preferences` configure the certificate the API serves. On OpenShift the cluster TLS profile is applied to those same environment variables and replaces what you set here. `tls_path` is the directory that holds `tls.crt` and `tls.key`.
+
+`grpc_worker_pool` is how many goroutines the API keeps ready for gRPC calls. `profiling` turns on the pprof server, which listens on localhost only. `profiling_port` is that port. The usual value is `6060`.
+
+`logs_timestamps` asks the API to keep timestamps on log lines. The watcher has a separate flag, `spec.result.watcher.logs_timestamps`.
+
+`converter_enable` starts the job that rewrites older TaskRun and PipelineRun records. `converter_db_limit` is how many records it handles in one transaction.
+
+`logging_plugin_container_key`, `logging_plugin_json_map`, and `logging_plugin_line_format` are for Loki. The JSON map names fields to pull out of a log line. The line format is the template used when a line is returned. The other `logging_plugin_*` fields are described with the Loki section below.
+
+Kubernetes client QPS is `spec.result.performance.kube-api-qps` and `kube-api-burst`. The API receives them as `K8S_QPS` and `K8S_BURST`. The API only accepts a whole number, so a fractional QPS is truncated. The watcher receives the same values as `-qps` and `-burst`, and keeps the fractional QPS. Leave both unset to keep the Results defaults, 5 and 10. The other performance fields (`replicas`, `threads-per-controller`, and so on) still apply to the watcher only.
+
+
 
 [result]:https://github.com/tektoncd/results
 

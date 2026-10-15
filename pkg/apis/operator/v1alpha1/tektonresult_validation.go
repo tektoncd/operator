@@ -59,8 +59,8 @@ func (trs *TektonResultSpec) validate(path string) (errs *apis.FieldError) {
 		}
 	}
 
-	// validate route TLS termination
-	errs = errs.Also(trs.ResultsAPIProperties.validateRouteTLSTermination(path))
+	// validate Results API settings, including route TLS termination
+	errs = errs.Also(trs.ResultsAPIProperties.validate(path))
 
 	// validate performance properties
 	errs = errs.Also(trs.Performance.Validate(fmt.Sprintf("%s.performance", path)))
@@ -71,6 +71,41 @@ func (trs *TektonResultSpec) validate(path string) (errs *apis.FieldError) {
 	errs = errs.Also(trs.NetworkPolicy.validate(fmt.Sprintf("%s.networkPolicy", path)))
 
 	return errs
+}
+
+// validate checks Results API fields that have a fixed set of values or a
+// numeric range.
+func (props ResultsAPIProperties) validate(path string) (errs *apis.FieldError) {
+	errs = errs.Also(props.validateRouteTLSTermination(path))
+
+	if props.SQLLogLevel != "" {
+		switch props.SQLLogLevel {
+		case "silent", "error", "warn", "info":
+		default:
+			errs = errs.Also(apis.ErrInvalidValue(props.SQLLogLevel, fmt.Sprintf("%s.sql_log_level", path), "must be one of: silent, error, warn, info"))
+		}
+	}
+
+	if props.TLSMinVersion != "" {
+		switch props.TLSMinVersion {
+		case "1.0", "1.1", "1.2", "1.3", "TLS1.0", "TLS1.1", "TLS1.2", "TLS1.3", "TLSv1.0", "TLSv1.1", "TLSv1.2", "TLSv1.3":
+		default:
+			errs = errs.Also(apis.ErrInvalidValue(props.TLSMinVersion, fmt.Sprintf("%s.tls_min_version", path), "must be one of: 1.0, 1.1, 1.2, 1.3"))
+		}
+	}
+
+	errs = errs.Also(validateNonNegativeInt(props.DBMaxIdleConnections, fmt.Sprintf("%s.db_max_idle_connections", path)))
+	errs = errs.Also(validateNonNegativeInt(props.DBMaxOpenConnections, fmt.Sprintf("%s.db_max_open_connections", path)))
+	errs = errs.Also(validateNonNegativeInt(props.GRPCWorkerPool, fmt.Sprintf("%s.grpc_worker_pool", path)))
+	errs = errs.Also(validateNonNegativeInt(props.ConverterDBLimit, fmt.Sprintf("%s.converter_db_limit", path)))
+	return errs
+}
+
+func validateNonNegativeInt(value *int64, field string) *apis.FieldError {
+	if value == nil || *value >= 0 {
+		return nil
+	}
+	return apis.ErrInvalidValue(*value, field, "must be greater than or equal to 0")
 }
 
 // validateRouteTLSTermination validates that the route TLS termination type is one of the

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"strings"
 	"testing"
 	"time"
 
@@ -807,4 +808,325 @@ func TestUpdateStatefulSetOrdinalsForResults(t *testing.T) {
 			break
 		}
 	}
+}
+
+func TestUpdateApiConfigNewFields(t *testing.T) {
+	idle := int64(4)
+	workers := int64(8)
+	limit := int64(25)
+	timestamps := true
+	profiling := true
+	converter := true
+	spec := v1alpha1.TektonResultSpec{
+		Result: v1alpha1.Result{
+			ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+				DBMaxIdleConnections:      &idle,
+				SQLLogLevel:               "info",
+				TLSPath:                   "/etc/tls",
+				TLSMinVersion:             "1.2",
+				TLSCipherSuites:           "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+				TLSCurvePreferences:       "X25519,P256",
+				FeatureGates:              "PartialResponse=true",
+				GRPCWorkerPool:            &workers,
+				LogsTimestamps:            &timestamps,
+				Profiling:                 &profiling,
+				ProfilingPort:             "6061",
+				ConverterEnable:           &converter,
+				ConverterDBLimit:          &limit,
+				LoggingPluginContainerKey: "kubernetes.container_name",
+				LoggingPluginJSONMap:      `{"timestamp":"@timestamp"}`,
+				LoggingPluginLineFormat:   "{{.timestamp}}: {{.message}}",
+			},
+		},
+	}
+
+	// DB_MAX_OPEN_CONNECTIONS is intentionally unset and must keep its default.
+	input := strings.Join([]string{
+		"DB_MAX_IDLE_CONNECTIONS=10",
+		"DB_MAX_OPEN_CONNECTIONS=10",
+		"SQL_LOG_LEVEL=warn",
+		"TLS_PATH=/etc/tls",
+		"TLS_MIN_VERSION=",
+		"TLS_CIPHER_SUITES=",
+		"TLS_CURVE_PREFERENCES=",
+		"FEATURE_GATES=",
+		"GRPC_WORKER_POOL=2",
+		"LOGS_TIMESTAMPS=false",
+		"PROFILING=false",
+		"PROFILING_PORT=6060",
+		"CONVERTER_ENABLE=false",
+		"CONVERTER_DB_LIMIT=50",
+		"LOGGING_PLUGIN_CONTAINER_KEY=",
+		"LOGGING_PLUGIN_JSON_MAP=",
+		"LOGGING_PLUGIN_LINE_FORMAT=",
+		"K8S_QPS=5",
+	}, "\n")
+	cm := configMapWith(t, input)
+	assert.NilError(t, updateApiConfig(spec)(cm))
+
+	got := configText(t, cm)
+	assert.Equal(t, got, strings.Join([]string{
+		"DB_MAX_IDLE_CONNECTIONS=4",
+		"DB_MAX_OPEN_CONNECTIONS=10",
+		"SQL_LOG_LEVEL=info",
+		"TLS_PATH=/etc/tls",
+		"TLS_MIN_VERSION=1.2",
+		"TLS_CIPHER_SUITES=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+		"TLS_CURVE_PREFERENCES=X25519,P256",
+		"FEATURE_GATES=PartialResponse=true",
+		"GRPC_WORKER_POOL=8",
+		"LOGS_TIMESTAMPS=true",
+		"PROFILING=true",
+		"PROFILING_PORT=6061",
+		"CONVERTER_ENABLE=true",
+		"CONVERTER_DB_LIMIT=25",
+		"LOGGING_PLUGIN_CONTAINER_KEY=kubernetes.container_name",
+		`LOGGING_PLUGIN_JSON_MAP={"timestamp":"@timestamp"}`,
+		"LOGGING_PLUGIN_LINE_FORMAT={{.timestamp}}: {{.message}}",
+		"K8S_QPS=5",
+	}, "\n"))
+}
+
+func TestUpdateApiEnvNewFields(t *testing.T) {
+	idle := int64(4)
+	open := int64(16)
+	workers := int64(8)
+	limit := int64(25)
+	timestamps := false
+	profiling := true
+	converter := false
+	spec := v1alpha1.TektonResultSpec{
+		Result: v1alpha1.Result{
+			ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
+				// Keep the existing DB_HOST env. An internal DB would overwrite it.
+				IsExternalDB:              true,
+				DBMaxIdleConnections:      &idle,
+				DBMaxOpenConnections:      &open,
+				SQLLogLevel:               "error",
+				TLSMinVersion:             "1.3",
+				FeatureGates:              "PartialResponse=true",
+				GRPCWorkerPool:            &workers,
+				LogsTimestamps:            &timestamps,
+				Profiling:                 &profiling,
+				ProfilingPort:             "6061",
+				ConverterEnable:           &converter,
+				ConverterDBLimit:          &limit,
+				LoggingPluginContainerKey: "kubernetes.container_name",
+				LoggingPluginJSONMap:      `{"timestamp":"@timestamp"}`,
+				LoggingPluginLineFormat:   "{{.timestamp}}: {{.message}}",
+			},
+		},
+	}
+
+	dep := deploymentWith(t, deploymentAPI, []corev1.Container{
+		{Name: "sidecar", Env: []corev1.EnvVar{{Name: "UNRELATED", Value: "keep"}}},
+		{Name: apiContainerName, Env: []corev1.EnvVar{{Name: "DB_HOST", Value: "postgres"}}},
+	})
+	assert.NilError(t, updateApiEnv(spec)(dep))
+
+	containers := deploymentContainers(t, dep)
+	assert.Equal(t, containers[0].Env[0].Name, "UNRELATED")
+	assert.Equal(t, containers[0].Env[0].Value, "keep")
+	assert.Equal(t, len(containers[0].Env), 1)
+
+	got := envMap(containers[1].Env)
+	assert.Equal(t, got["DB_HOST"], "postgres")
+	assert.Equal(t, got["DB_MAX_IDLE_CONNECTIONS"], "4")
+	assert.Equal(t, got["DB_MAX_OPEN_CONNECTIONS"], "16")
+	assert.Equal(t, got["SQL_LOG_LEVEL"], "error")
+	assert.Equal(t, got["TLS_MIN_VERSION"], "1.3")
+	assert.Equal(t, got["FEATURE_GATES"], "PartialResponse=true")
+	assert.Equal(t, got["GRPC_WORKER_POOL"], "8")
+	assert.Equal(t, got["LOGS_TIMESTAMPS"], "false")
+	assert.Equal(t, got["PROFILING"], "true")
+	assert.Equal(t, got["PROFILING_PORT"], "6061")
+	assert.Equal(t, got["CONVERTER_ENABLE"], "false")
+	assert.Equal(t, got["CONVERTER_DB_LIMIT"], "25")
+	assert.Equal(t, got["LOGGING_PLUGIN_CONTAINER_KEY"], "kubernetes.container_name")
+	assert.Equal(t, got["LOGGING_PLUGIN_JSON_MAP"], `{"timestamp":"@timestamp"}`)
+	assert.Equal(t, got["LOGGING_PLUGIN_LINE_FORMAT"], "{{.timestamp}}: {{.message}}")
+
+	// A second pass must not append the same names again.
+	before := len(deploymentContainers(t, dep)[1].Env)
+	assert.NilError(t, updateApiEnv(spec)(dep))
+	assert.Equal(t, len(deploymentContainers(t, dep)[1].Env), before)
+}
+
+func TestUpdateApiEnvOmitsUnsetFields(t *testing.T) {
+	spec := v1alpha1.TektonResultSpec{}
+	dep := deploymentWith(t, deploymentAPI, []corev1.Container{{
+		Name: apiContainerName,
+		Env:  []corev1.EnvVar{{Name: "DB_HOST", Value: "postgres"}},
+	}})
+	assert.NilError(t, updateApiEnv(spec)(dep))
+	got := envMap(deploymentContainers(t, dep)[0].Env)
+	for _, name := range []string{
+		"DB_MAX_IDLE_CONNECTIONS",
+		"DB_MAX_OPEN_CONNECTIONS",
+		"SQL_LOG_LEVEL",
+		"TLS_MIN_VERSION",
+		"FEATURE_GATES",
+		"GRPC_WORKER_POOL",
+		"LOGS_TIMESTAMPS",
+		"PROFILING",
+		"PROFILING_PORT",
+		"CONVERTER_ENABLE",
+		"CONVERTER_DB_LIMIT",
+		"LOGGING_PLUGIN_JSON_MAP",
+		"LOGGING_PLUGIN_LINE_FORMAT",
+		"K8S_QPS",
+		"K8S_BURST",
+	} {
+		_, ok := got[name]
+		assert.Equal(t, ok, false, name)
+	}
+}
+
+func TestApplyResultAPIPerformance(t *testing.T) {
+	qps := float32(40.9)
+	burst := 80
+	perf := v1alpha1.PerformanceProperties{}
+	perf.KubeApiQPS = &qps
+	perf.KubeApiBurst = &burst
+
+	dep := deploymentWith(t, deploymentAPI, []corev1.Container{
+		{Name: resultWatcherContainer, Env: []corev1.EnvVar{{Name: "K8S_QPS", Value: "1"}}},
+		{Name: apiContainerName, Env: []corev1.EnvVar{{Name: "K8S_QPS", Value: "5"}, {Name: "DB_HOST", Value: "postgres"}}},
+	})
+	assert.NilError(t, applyResultAPIPerformance(perf)(dep))
+	containers := deploymentContainers(t, dep)
+	assert.Equal(t, containers[0].Env[0].Value, "1")
+	apiEnv := envMap(containers[1].Env)
+	assert.Equal(t, apiEnv["K8S_QPS"], "40")
+	assert.Equal(t, apiEnv["K8S_BURST"], "80")
+	assert.Equal(t, apiEnv["DB_HOST"], "postgres")
+	assert.Equal(t, countEnv(containers[1].Env, "K8S_QPS"), 1)
+	assert.Equal(t, countEnv(containers[1].Env, "K8S_BURST"), 1)
+
+	cm := configMapWith(t, strings.Join([]string{"K8S_QPS=5", "K8S_BURST=10", "LOG_LEVEL=info"}, "\n"))
+	assert.NilError(t, applyResultAPIPerformance(perf)(cm))
+	assert.Equal(t, configText(t, cm), strings.Join([]string{"K8S_QPS=40", "K8S_BURST=80", "LOG_LEVEL=info"}, "\n"))
+
+	// The watcher deployment gets -qps and -burst, not the Pipeline flag names.
+	watcher := deploymentWith(t, resultWatcherDeployment, []corev1.Container{{
+		Name: resultWatcherContainer,
+		Args: []string{"-api_addr=localhost:8080", "-qps=5"},
+	}})
+	assert.NilError(t, applyResultAPIPerformance(perf)(watcher))
+	watcherContainers := deploymentContainers(t, watcher)
+	assert.Equal(t, len(watcherContainers[0].Env), 0)
+	assert.Equal(t, strings.Join(watcherContainers[0].Args, " "), "-api_addr=localhost:8080 -qps=40.9 -burst=80")
+
+	// A different deployment and configmap are left alone.
+	other := deploymentWith(t, "something-else", []corev1.Container{{
+		Name: resultWatcherContainer,
+		Args: []string{"-qps=5"},
+	}})
+	assert.NilError(t, applyResultAPIPerformance(perf)(other))
+	assert.Equal(t, strings.Join(deploymentContainers(t, other)[0].Args, " "), "-qps=5")
+
+	otherCM := &corev1.ConfigMap{
+		TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "ConfigMap"},
+		ObjectMeta: metav1.ObjectMeta{Name: "something-else"},
+		Data:       map[string]string{"config": "K8S_QPS=5"},
+	}
+	u := toUnstructured(t, otherCM)
+	assert.NilError(t, applyResultAPIPerformance(perf)(u))
+	assert.Equal(t, configText(t, u), "K8S_QPS=5")
+}
+
+func TestApplyResultAPIPerformancePartialAndEmpty(t *testing.T) {
+	qps := float32(25)
+	onlyQPS := v1alpha1.PerformanceProperties{}
+	onlyQPS.KubeApiQPS = &qps
+	dep := deploymentWith(t, deploymentAPI, []corev1.Container{{Name: apiContainerName}})
+	assert.NilError(t, applyResultAPIPerformance(onlyQPS)(dep))
+	got := envMap(deploymentContainers(t, dep)[0].Env)
+	assert.Equal(t, got["K8S_QPS"], "25")
+	_, hasBurst := got["K8S_BURST"]
+	assert.Equal(t, hasBurst, false)
+
+	burst := 15
+	onlyBurst := v1alpha1.PerformanceProperties{}
+	onlyBurst.KubeApiBurst = &burst
+	cm := configMapWith(t, strings.Join([]string{"LOG_LEVEL=info", "K8S_BURST=10"}, "\n"))
+	assert.NilError(t, applyResultAPIPerformance(onlyBurst)(cm))
+	assert.Equal(t, configText(t, cm), strings.Join([]string{"LOG_LEVEL=info", "K8S_BURST=15"}, "\n"))
+
+	empty := deploymentWith(t, deploymentAPI, []corev1.Container{{
+		Name: apiContainerName,
+		Env:  []corev1.EnvVar{{Name: "K8S_QPS", Value: "5"}},
+	}})
+	assert.NilError(t, applyResultAPIPerformance(v1alpha1.PerformanceProperties{})(empty))
+	assert.Equal(t, deploymentContainers(t, empty)[0].Env[0].Value, "5")
+	assert.Equal(t, len(deploymentContainers(t, empty)[0].Env), 1)
+}
+
+func toUnstructured(t *testing.T, obj interface{}) *unstructured.Unstructured {
+	t.Helper()
+	m, err := runtime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	assert.NilError(t, err)
+	return &unstructured.Unstructured{Object: m}
+}
+
+func configMapWith(t *testing.T, config string) *unstructured.Unstructured {
+	t.Helper()
+	u := toUnstructured(t, &corev1.ConfigMap{
+		TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "ConfigMap"},
+		ObjectMeta: metav1.ObjectMeta{Name: configAPI},
+		Data:       map[string]string{"config": config},
+	})
+	u.SetAPIVersion("v1")
+	u.SetKind("ConfigMap")
+	u.SetName(configAPI)
+	return u
+}
+
+func deploymentWith(t *testing.T, name string, containers []corev1.Container) *unstructured.Unstructured {
+	t.Helper()
+	u := toUnstructured(t, &appsv1.Deployment{
+		TypeMeta:   metav1.TypeMeta{APIVersion: "apps/v1", Kind: "Deployment"},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: appsv1.DeploymentSpec{
+			Template: corev1.PodTemplateSpec{
+				Spec: corev1.PodSpec{Containers: containers},
+			},
+		},
+	})
+	u.SetAPIVersion("apps/v1")
+	u.SetKind("Deployment")
+	u.SetName(name)
+	return u
+}
+
+func configText(t *testing.T, u *unstructured.Unstructured) string {
+	t.Helper()
+	cm := &corev1.ConfigMap{}
+	assert.NilError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm))
+	return cm.Data["config"]
+}
+
+func deploymentContainers(t *testing.T, u *unstructured.Unstructured) []corev1.Container {
+	t.Helper()
+	dep := &appsv1.Deployment{}
+	assert.NilError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, dep))
+	return dep.Spec.Template.Spec.Containers
+}
+
+func envMap(envs []corev1.EnvVar) map[string]string {
+	out := make(map[string]string, len(envs))
+	for _, env := range envs {
+		out[env.Name] = env.Value
+	}
+	return out
+}
+
+func countEnv(envs []corev1.EnvVar, name string) int {
+	n := 0
+	for _, env := range envs {
+		if env.Name == name {
+			n++
+		}
+	}
+	return n
 }
