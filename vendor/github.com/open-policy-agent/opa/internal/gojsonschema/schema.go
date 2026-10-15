@@ -31,7 +31,10 @@ import (
 	"errors"
 	"math/big"
 	"regexp"
-	"text/template"
+
+	// Method-less copy of text/template; see the import note in errors.go
+	// (golang/go#72895, #7903). ErrorTemplateFuncs below is its FuncMap.
+	template "github.com/open-policy-agent/opa/internal/methodlesstemplate"
 
 	"github.com/xeipuuv/gojsonreference"
 )
@@ -56,6 +59,7 @@ type Schema struct {
 	RootSchema        *SubSchema
 	Pool              *schemaPool
 	ReferencePool     *schemaReferencePool
+	validatePatterns  bool
 }
 
 func (d *Schema) parse(document any, draft Draft) error {
@@ -516,12 +520,23 @@ func (d *Schema) parseSchema(documentNode any, currentSchema *SubSchema) error {
 		}
 	}
 
-	// NOTE: Regex compilation step removed as we don't use "pattern" attribute for
-	// type checking, and this would cause schemas to fail if they included patterns
-	// that were valid ECMA regex dialect but not known to Go (i.e. the regexp.Compile
-	// function), such as patterns with negative lookahead
-	if _, err := getString(m, KeyPattern); err != nil {
+	// The "pattern" keyword is only compiled into a regex when
+	// validatePatterns is set. It is off by default because many real-world
+	// schemas use ECMA-262 regex features (such as negative lookahead) that
+	// Go's RE2-based regexp package cannot compile; callers that don't need
+	// runtime pattern enforcement can leave it off and still load such
+	// schemas without error.
+	if pattern, err := getString(m, KeyPattern); err != nil {
 		return err
+	} else if pattern != nil && d.validatePatterns {
+		regexpObject, err := regexp.Compile(*pattern)
+		if err != nil {
+			return errors.New(formatErrorDescription(
+				Locale.MustBeValidRegex(),
+				ErrorDetails{"key": KeyPattern},
+			))
+		}
+		currentSchema.pattern = regexpObject
 	}
 
 	if format, err := getString(m, KeyFormat); err != nil {
@@ -661,18 +676,24 @@ func (d *Schema) parseSchema(documentNode any, currentSchema *SubSchema) error {
 	if err != nil {
 		return err
 	}
-	for _, v := range enum {
-		is, err := marshalWithoutNumber(v)
-		if err != nil {
-			return err
+	// Distinguish a present empty enum from a missing enum keyword.
+	// JSON Schema: enum validation succeeds only if the instance equals one of
+	// the listed values, so {"enum": []} is unsatisfiable (always fails).
+	if enum != nil {
+		currentSchema.enum = make([]string, 0, len(enum))
+		for _, v := range enum {
+			is, err := marshalWithoutNumber(v)
+			if err != nil {
+				return err
+			}
+			if isStringInSlice(currentSchema.enum, *is) {
+				return errors.New(formatErrorDescription(
+					Locale.KeyItemsMustBeUnique(),
+					ErrorDetails{"key": KeyEnum},
+				))
+			}
+			currentSchema.enum = append(currentSchema.enum, *is)
 		}
-		if isStringInSlice(currentSchema.enum, *is) {
-			return errors.New(formatErrorDescription(
-				Locale.KeyItemsMustBeUnique(),
-				ErrorDetails{"key": KeyEnum},
-			))
-		}
-		currentSchema.enum = append(currentSchema.enum, *is)
 	}
 
 	// validation : SubSchema

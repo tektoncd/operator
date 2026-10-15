@@ -1,6 +1,7 @@
 package jwe
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"strings"
@@ -71,8 +72,7 @@ func (r *stdRecipient) MarshalJSON() ([]byte, error) {
 	buf.WriteString(base64.EncodeToString(r.encryptedKey))
 	buf.WriteString(`"}`)
 
-	ret := make([]byte, buf.Len())
-	copy(ret, buf.Bytes())
+	ret := bytes.Clone(buf.Bytes())
 	return ret, nil
 }
 
@@ -227,33 +227,23 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 		})
 	}
 
-	var encodedProtectedHeaders []byte
 	if h := m.ProtectedHeaders(); h != nil {
 		v, err := h.Encode()
 		if err != nil {
 			return nil, fmt.Errorf(`failed to encode protected headers: %w`, err)
 		}
 
-		encodedProtectedHeaders = v
-		if len(encodedProtectedHeaders) <= 2 { // '{}'
-			encodedProtectedHeaders = nil
-		} else {
+		if len(v) > 2 { // '{}'
 			fields = append(fields, jsonKV{
 				Key:   ProtectedHeadersKey,
-				Value: fmt.Sprintf("%q", encodedProtectedHeaders),
+				Value: fmt.Sprintf("%q", v),
 			})
 		}
 	}
 
 	if aad := m.AuthenticatedData(); len(aad) > 0 {
-		aad = base64.Encode(aad)
-		if encodedProtectedHeaders != nil {
-			tmp := append(encodedProtectedHeaders, tokens.Period)
-			aad = append(tmp, aad...)
-		}
-
 		buf.Reset()
-		if err := enc.Encode(aad); err != nil {
+		if err := enc.Encode(base64.EncodeToString(aad)); err != nil {
 			return nil, fmt.Errorf(`failed to encode %s field: %w`, AuthenticatedDataKey, err)
 		}
 		fields = append(fields, jsonKV{
@@ -265,14 +255,23 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 	if recipients := m.Recipients(); len(recipients) > 0 {
 		if len(recipients) == 1 { // Use flattened format
 			if hdrs := recipients[0].Headers(); hdrs != nil {
-				buf.Reset()
-				if err := enc.Encode(hdrs); err != nil {
-					return nil, fmt.Errorf(`failed to encode %s field: %w`, HeadersKey, err)
+				var skipHeaders bool
+				if zeroer, ok := hdrs.(isZeroer); ok {
+					if zeroer.isZero() {
+						skipHeaders = true
+					}
 				}
-				fields = append(fields, jsonKV{
-					Key:   HeadersKey,
-					Value: strings.TrimSpace(buf.String()),
-				})
+
+				if !skipHeaders {
+					buf.Reset()
+					if err := enc.Encode(hdrs); err != nil {
+						return nil, fmt.Errorf(`failed to encode %s field: %w`, HeadersKey, err)
+					}
+					fields = append(fields, jsonKV{
+						Key:   HeadersKey,
+						Value: strings.TrimSpace(buf.String()),
+					})
+				}
 			}
 
 			if ek := recipients[0].EncryptedKey(); len(ek) > 0 {
@@ -335,8 +334,7 @@ func (m *Message) MarshalJSON() ([]byte, error) {
 	}
 	fmt.Fprintf(buf, `}`)
 
-	ret := make([]byte, buf.Len())
-	copy(ret, buf.Bytes())
+	ret := bytes.Clone(buf.Bytes())
 	return ret, nil
 }
 
@@ -369,13 +367,18 @@ func (m *Message) UnmarshalJSON(buf []byte) error {
 	// field. TODO: do both of these conditions need to meet, or just one?
 	if proxy.Headers != nil || len(proxy.EncryptedKey) > 0 {
 		recipient := NewRecipient()
-		hdrs := NewHeaders()
-		if err := json.Unmarshal(proxy.Headers, hdrs); err != nil {
-			return fmt.Errorf(`failed to decode headers field: %w`, err)
-		}
 
-		if err := recipient.SetHeaders(hdrs); err != nil {
-			return fmt.Errorf(`failed to set new headers: %w`, err)
+		// `"headers"` could be empty. If that's the case, just skip the
+		// following unmarshaling step
+		if proxy.Headers != nil {
+			hdrs := NewHeaders()
+			if err := json.Unmarshal(proxy.Headers, hdrs); err != nil {
+				return fmt.Errorf(`failed to decode headers field: %w`, err)
+			}
+
+			if err := recipient.SetHeaders(hdrs); err != nil {
+				return fmt.Errorf(`failed to set new headers: %w`, err)
+			}
 		}
 
 		if v := proxy.EncryptedKey; len(v) > 0 {
@@ -408,29 +411,36 @@ func (m *Message) UnmarshalJSON(buf []byte) error {
 		m.authenticatedData = v
 	}
 
-	if src := proxy.CipherText; len(src) > 0 {
-		v, err := base64.DecodeString(src)
-		if err != nil {
-			return fmt.Errorf(`failed to decode "ciphertext": %w`, err)
-		}
-		m.cipherText = v
+	// RFC 7516 §7.2: "ciphertext", "iv", and "tag" MUST be present and
+	// non-empty for any AEAD-protected JWE. Reject missing/empty values
+	// here so that a zero-length authentication tag cannot reach the
+	// AEAD verification code path.
+	if len(proxy.CipherText) == 0 {
+		return fmt.Errorf(`missing or empty "ciphertext" field`)
 	}
+	ctbuf, err := base64.DecodeString(proxy.CipherText)
+	if err != nil {
+		return fmt.Errorf(`failed to decode "ciphertext": %w`, err)
+	}
+	m.cipherText = ctbuf
 
-	if src := proxy.InitializationVector; len(src) > 0 {
-		v, err := base64.DecodeString(src)
-		if err != nil {
-			return fmt.Errorf(`failed to decode "iv": %w`, err)
-		}
-		m.initializationVector = v
+	if len(proxy.InitializationVector) == 0 {
+		return fmt.Errorf(`missing or empty "iv" field`)
 	}
+	ivbuf, err := base64.DecodeString(proxy.InitializationVector)
+	if err != nil {
+		return fmt.Errorf(`failed to decode "iv": %w`, err)
+	}
+	m.initializationVector = ivbuf
 
-	if src := proxy.Tag; len(src) > 0 {
-		v, err := base64.DecodeString(src)
-		if err != nil {
-			return fmt.Errorf(`failed to decode "tag": %w`, err)
-		}
-		m.tag = v
+	if len(proxy.Tag) == 0 {
+		return fmt.Errorf(`missing or empty "tag" field`)
 	}
+	tagbuf, err := base64.DecodeString(proxy.Tag)
+	if err != nil {
+		return fmt.Errorf(`failed to decode "tag": %w`, err)
+	}
+	m.tag = tagbuf
 
 	m.protectedHeaders = h
 	if m.storeProtectedHeaders {
@@ -540,7 +550,26 @@ func Compact(m *Message, _ ...CompactOption) ([]byte, error) {
 	buf.WriteByte(tokens.Period)
 	buf.Write(tag)
 
-	result := make([]byte, buf.Len())
-	copy(result, buf.Bytes())
+	result := bytes.Clone(buf.Bytes())
 	return result, nil
+}
+
+// compactSerialize assembles a JWE compact serialization from pre-encoded
+// protected headers (aad) and raw binary fields. This avoids the redundant
+// Clone/Merge/Encode cycle that Compact() performs.
+func compactSerialize(aad, encryptedKey, iv, ciphertext, tag []byte) []byte {
+	size := len(aad) + base64.EncodedLen(len(encryptedKey)) + base64.EncodedLen(len(iv)) + base64.EncodedLen(len(ciphertext)) + base64.EncodedLen(len(tag)) + 4
+	buf := make([]byte, 0, size)
+
+	buf = append(buf, aad...)
+	buf = append(buf, tokens.Period)
+	buf = base64.AppendEncode(buf, encryptedKey)
+	buf = append(buf, tokens.Period)
+	buf = base64.AppendEncode(buf, iv)
+	buf = append(buf, tokens.Period)
+	buf = base64.AppendEncode(buf, ciphertext)
+	buf = append(buf, tokens.Period)
+	buf = base64.AppendEncode(buf, tag)
+
+	return buf
 }

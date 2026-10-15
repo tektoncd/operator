@@ -164,6 +164,11 @@ func (oe *openshiftExtension) PreReconcile(ctx context.Context, comp v1alpha1.Te
 func (oe *openshiftExtension) PostReconcile(ctx context.Context, comp v1alpha1.TektonComponent) error {
 	logger := logging.FromContext(ctx)
 
+	if err := RemoveHubCatalogTypeFromConfigMap(ctx, oe.kubeClientSet, comp.GetSpec().GetTargetNamespace()); err != nil {
+		logger.Error("failed to remove hub-catalog-type from pipelines-as-code config map: ", err)
+		return err
+	}
+
 	if err := oe.installerSetClient.PostSet(ctx, comp, oe.pipelineRunTemplates, extFilterAndTransform()); err != nil {
 		logger.Error("failed post set creation: ", err)
 		return err
