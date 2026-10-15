@@ -235,7 +235,7 @@ func deleteTektonResultsTLSSecret(ctx context.Context, logger *zap.SugaredLogger
 	return nil
 }
 
-// TODO: Remove the preUpgradeTektonPruner upgrade function in next operator release
+// Retention: see preUpgradeMigrations ("preUpgradeTektonPruner").
 func preUpgradeTektonPruner(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 	// get tektonConfig CR
 	logger.Infof("Performing Preupgrade for TektonPruner")
@@ -513,8 +513,8 @@ func preUpgradeManualApprovalGate(ctx context.Context, logger *zap.SugaredLogger
 	return err
 }
 
-// removeDeprecatedDisableAffinityAssistant removes the deprecated DisableAffinityAssistant field from tektonConfig CR spec during pre upgrade
-// TODO: Remove this upgrade function in the release-v0.80.x
+// removeDeprecatedDisableAffinityAssistant removes the deprecated DisableAffinityAssistant field from tektonConfig CR spec during pre upgrade.
+// Retention: see preUpgradeMigrations ("removeDeprecatedDisableAffinityAssistant").
 func removeDeprecatedDisableAffinityAssistant(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 	// use merge patch to remove the deprecated field from the stored CR
 	patch := map[string]interface{}{
@@ -553,8 +553,7 @@ func removeDeprecatedDisableAffinityAssistant(ctx context.Context, logger *zap.S
 // params would otherwise remain in spec.params indefinitely. Running this
 // once per upgrade cleans up the stored spec so it reflects the typed fields
 // that are actually in effect.
-// TODO: Remove this upgrade function once createRbacResource/
-// createCABundleConfigMaps/legacyPipelineRbac are no longer supported.
+// Retention: see preUpgradeMigrations ("migrateLegacyNamespaceSyncParams").
 func migrateLegacyNamespaceSyncParams(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 	if !v1alpha1.IsOpenShiftPlatform() {
 		return nil
@@ -623,7 +622,7 @@ func migrateResultsRouteTLSToReencrypt(ctx context.Context, logger *zap.SugaredL
 }
 
 // removeHubFromTektonConfig removes the deprecated hub field from the TektonConfig spec.
-// TODO: Remove this function in the release-v0.80.x
+// Retention: see preUpgradeMigrations ("removeHubFromTektonConfig").
 func removeHubFromTektonConfig(ctx context.Context, logger *zap.SugaredLogger, k8sClient kubernetes.Interface, operatorClient versioned.Interface, restConfig *rest.Config) error {
 	tcCR, err := operatorClient.OperatorV1alpha1().TektonConfigs().Get(ctx, v1alpha1.ConfigResourceName, metav1.GetOptions{})
 	if err != nil {
