@@ -2,3 +2,30 @@ namespace: openshift-operators
 resources:
 - ../../base/
 - service_account.yaml
+# Development install (make apply). The operator picks the console plugin image
+# from these variables by OCP version: IMAGE_PIPELINES_CONSOLE_PLUGIN on 4.22
+# and newer (PatternFly 6, master branch of openshift-pipelines/console-plugin)
+# and IMAGE_PIPELINES_CONSOLE_PLUGIN_LEGACY below 4.22 (PatternFly 5, main
+# branch). Without them the operator falls back to the manifest default
+# (console-plugin:main, PatternFly 5), which does not work on OCP 4.22.
+# The operatorhub overlay does not set them here: the release tooling injects
+# the product images.
+patches:
+- target:
+    kind: Deployment
+    name: openshift-pipelines-operator
+  patch: |-
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: openshift-pipelines-operator
+    spec:
+      template:
+        spec:
+          containers:
+          - name: openshift-pipelines-operator-lifecycle
+            env:
+            - name: IMAGE_PIPELINES_CONSOLE_PLUGIN
+              value: ghcr.io/openshift-pipelines/console-plugin:master
+            - name: IMAGE_PIPELINES_CONSOLE_PLUGIN_LEGACY
+              value: ghcr.io/openshift-pipelines/console-plugin:main
