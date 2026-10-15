@@ -17,6 +17,7 @@ package result
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ import (
 	op "github.com/tektoncd/operator/pkg/client/clientset/versioned/typed/operator/v1alpha1"
 	"github.com/tektoncd/operator/pkg/client/injection/client/fake"
 	util "github.com/tektoncd/operator/pkg/reconciler/common/testing"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"knative.dev/pkg/ptr"
@@ -187,14 +189,20 @@ func TestGetTektonResultCR_CompleteInstallBothRoles(t *testing.T) {
 			result := GetTektonResultCR(config, "v0.70.0")
 
 			// Complete install: no forced zero replicas for watcher or retention-policy-agent
-			if watcherDeployment, exists := result.Spec.Options.Deployments["tekton-results-watcher"]; exists {
-				if watcherDeployment.Spec.Replicas != nil && *watcherDeployment.Spec.Replicas == 0 {
-					t.Error("did not expect watcher replicas to be forced to 0")
+			if rawExt, exists := result.Spec.Options.Deployments["tekton-results-watcher"]; exists {
+				var watcherDeployment appsv1.Deployment
+				if err := json.Unmarshal(rawExt.Raw, &watcherDeployment); err == nil {
+					if watcherDeployment.Spec.Replicas != nil && *watcherDeployment.Spec.Replicas == 0 {
+						t.Error("did not expect watcher replicas to be forced to 0")
+					}
 				}
 			}
-			if retentionDeployment, exists := result.Spec.Options.Deployments["tekton-results-retention-policy-agent"]; exists {
-				if retentionDeployment.Spec.Replicas != nil && *retentionDeployment.Spec.Replicas == 0 {
-					t.Error("did not expect retention-policy-agent replicas to be forced to 0")
+			if rawExt, exists := result.Spec.Options.Deployments["tekton-results-retention-policy-agent"]; exists {
+				var retentionDeployment appsv1.Deployment
+				if err := json.Unmarshal(rawExt.Raw, &retentionDeployment); err == nil {
+					if retentionDeployment.Spec.Replicas != nil && *retentionDeployment.Spec.Replicas == 0 {
+						t.Error("did not expect retention-policy-agent replicas to be forced to 0")
+					}
 				}
 			}
 		})
