@@ -68,12 +68,12 @@ jobs:
           --e2e-env ./test/e2e-tests-kind.env
 
     - name: Upload test results
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
       with:
         name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}
         path: ${{ env.ARTIFACTS }}
 
-    - uses: chainguard-dev/actions/kind-diag@84b1be4c638f12d4256ddddef17af98853b6d0d9  # v1.6.40
+    - uses: chainguard-dev/actions/kind-diag@3403a578b543fd3f0debdaef9dd989ae54e3fcef  # v1.6.41
       if: ${{ failure() }}
       with:
         artifact-name: ${{ matrix.k8s-version }}-${{ matrix.feature-flags }}-logs
