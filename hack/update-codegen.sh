@@ -18,6 +18,10 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+# Force GOTOOLCHAIN=auto so knative.dev/toolbox tools (modscope@latest) can
+# download a newer Go than go.mod when CI sets GOTOOLCHAIN=local via setup-go.
+export GOTOOLCHAIN=auto
+
 source $(git rev-parse --show-toplevel)/vendor/knative.dev/hack/codegen-library.sh
 source "${CODEGEN_PKG}/kube_codegen.sh"
 
