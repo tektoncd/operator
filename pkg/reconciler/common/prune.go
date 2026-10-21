@@ -172,7 +172,7 @@ func (pr *Pruner) reconcile(ctx context.Context) error {
 	if tknImageFromEnv == "" {
 		return fmt.Errorf("tkn image '%s' environment variable is not set", prunerContainerImageEnvKey)
 	}
-	pr.tknImage = tknImageFromEnv
+	pr.tknImage = overrideImageRegistry(os.Getenv(ImageRegistryOverride), tknImageFromEnv)
 
 	// reconcile cron jobs
 	err := pr.reconcileCronJobs(ctx)

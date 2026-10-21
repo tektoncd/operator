@@ -73,6 +73,7 @@ spec:
             - name: CONFIG_OBSERVABILITY_NAME
               value: {{ include "tekton-operator.fullname" . }}-observability
             {{- include "tekton-operator.kubernetesMinVersionEnv" . | nindent 12 }}
+            {{- include "tekton-operator.registryOverrideEnv" . | nindent 12 }}
             {{- range .Values.operator.additionalEnvs }}
             - name: {{ .name }}
               value: {{ .value | quote }}
@@ -133,6 +134,7 @@ spec:
             - name: CONFIG_OBSERVABILITY_NAME
               value: {{ include "tekton-operator.fullname" . }}-observability
             {{- include "tekton-operator.kubernetesMinVersionEnv" . | nindent 12 }}
+            {{- include "tekton-operator.registryOverrideEnv" . | nindent 12 }}
             {{- range .Values.operator.additionalEnvs }}
             - name: {{ .name }}
               value: {{ .value | quote }}
