@@ -8,11 +8,12 @@ import (
 	"strings"
 
 	"github.com/agnivade/levenshtein"
+
 	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-func Message(msg string, args ...interface{}) ErrorOption {
+func Message(msg string, args ...any) ErrorOption {
 	return func(err *gqlerror.Error) {
 		err.Message += fmt.Sprintf(msg, args...)
 	}
@@ -27,13 +28,17 @@ func At(position *ast.Position) ErrorOption {
 			Line:   position.Line,
 			Column: position.Column,
 		})
+		recordSourceLocation(err, gqlerror.Location{
+			Line:   position.Line,
+			Column: position.Column,
+		}, position.Src)
 		if position.Src.Name != "" {
 			err.SetFile(position.Src.Name)
 		}
 	}
 }
 
-func SuggestListQuoted(prefix string, typed string, suggestions []string) ErrorOption {
+func SuggestListQuoted(prefix, typed string, suggestions []string) ErrorOption {
 	suggested := SuggestionList(typed, suggestions)
 	return func(err *gqlerror.Error) {
 		if len(suggested) > 0 {
@@ -42,7 +47,7 @@ func SuggestListQuoted(prefix string, typed string, suggestions []string) ErrorO
 	}
 }
 
-func SuggestListUnquoted(prefix string, typed string, suggestions []string) ErrorOption {
+func SuggestListUnquoted(prefix, typed string, suggestions []string) ErrorOption {
 	suggested := SuggestionList(typed, suggestions)
 	return func(err *gqlerror.Error) {
 		if len(suggested) > 0 {
@@ -51,7 +56,7 @@ func SuggestListUnquoted(prefix string, typed string, suggestions []string) Erro
 	}
 }
 
-func Suggestf(suggestion string, args ...interface{}) ErrorOption {
+func Suggestf(suggestion string, args ...any) ErrorOption {
 	return func(err *gqlerror.Error) {
 		err.Message += " Did you mean " + fmt.Sprintf(suggestion, args...) + "?"
 	}
@@ -117,12 +122,8 @@ func SuggestionList(input string, options []string) []string {
 func calcThreshold(a string) (threshold int) {
 	// the logic is copied from here
 	// https://github.com/graphql/graphql-js/blob/47bd8c8897c72d3efc17ecb1599a95cee6bac5e8/src/jsutils/suggestionList.ts#L14
-	threshold = int(math.Floor(float64(len(a))*0.4) + 1)
-
-	if threshold < 1 {
-		threshold = 1
-	}
-	return
+	threshold = max(int(math.Floor(float64(len(a))*0.4)+1), 1)
+	return threshold
 }
 
 // Computes the lexical distance between strings A and B.
@@ -136,7 +137,7 @@ func calcThreshold(a string) (threshold int) {
 // as a single edit which helps identify mis-cased values with an edit distance
 // of 1.
 //
-// This distance can be useful for detecting typos in input or sorting
+// This distance can be useful for detecting typos in input or sorting.
 func lexicalDistance(a, b string) int {
 	if a == b {
 		return 0
