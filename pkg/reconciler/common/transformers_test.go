@@ -1616,3 +1616,111 @@ func TestGetSortedKeys(t *testing.T) {
 	out := getSortedKeys(in)
 	assert.Equal(t, true, reflect.DeepEqual(out, expectedOut))
 }
+
+func TestOverrideImageRegistry(t *testing.T) {
+	const registry = "nexus.example.com:5000"
+	tests := []struct {
+		image string
+		want  string
+	}{
+		{"ghcr.io/tektoncd/pipeline/nop:v1@sha256:abcd", registry + "/tektoncd/pipeline/nop:v1@sha256:abcd"},
+		{"cgr.dev/chainguard/busybox@sha256:abcd", registry + "/chainguard/busybox@sha256:abcd"},
+		{"localhost/foo/bar:v1", registry + "/foo/bar:v1"},
+		{"localhost:5000/foo:v1", registry + "/foo:v1"},
+		// no registry host: keep the namespace
+		{"bitnami/postgresql@sha256:abcd", registry + "/bitnami/postgresql@sha256:abcd"},
+		{"busybox", registry + "/busybox"},
+		{"$(params.builder-image)", "$(params.builder-image)"},
+		{"", ""},
+	}
+	for _, tt := range tests {
+		if got := overrideImageRegistry(registry, tt.image); got != tt.want {
+			t.Errorf("overrideImageRegistry(%q) = %q, want %q", tt.image, got, tt.want)
+		}
+	}
+	if got := overrideImageRegistry("", "ghcr.io/foo:v1"); got != "ghcr.io/foo:v1" {
+		t.Errorf("empty registry must not change the image, got %q", got)
+	}
+}
+
+// A second pass must be a no-op, including when the registry carries a path.
+func TestOverrideImageRegistryIdempotent(t *testing.T) {
+	for _, registry := range []string{"nexus.example.com:5000", "nexus.example.com/mirror", "nexus.example.com/mirror/"} {
+		for _, image := range []string{"ghcr.io/tektoncd/pipeline/nop:v1", "bitnami/postgresql", "busybox"} {
+			once := overrideImageRegistry(registry, image)
+			if twice := overrideImageRegistry(registry, once); twice != once {
+				t.Errorf("registry %q: second pass on %q = %q, want %q", registry, once, twice, once)
+			}
+		}
+	}
+}
+
+// TEKTON_REGISTRY_OVERRIDE alone must rewrite container, arg and StatefulSet images.
+func TestRegistryOverrideOnlyAirgapped(t *testing.T) {
+	const registry = "nexus.example.com:5000"
+	t.Setenv("TEKTON_REGISTRY_OVERRIDE", registry)
+	images := ImageRegistryDomainOverride(map[string]string{})
+
+	manifest, err := mf.ManifestFrom(mf.Recursive(path.Join("testdata", "test-replace-image-airgapped.yaml")))
+	assertNoError(t, err)
+	newManifest, err := manifest.Transform(DeploymentImages(images), StatefulSetImages(images))
+	assertNoError(t, err)
+
+	wantArgs := map[string][]string{
+		"tekton-pipelines-controller": {
+			"-entrypoint-image", registry + "/tektoncd/pipeline/entrypoint-bff0a22da108bc2f16c818c97641a296:v1.15.0@sha256:bbbb",
+			"-nop-image", registry + "/tektoncd/pipeline/nop-8eac7c133edad5df719dc37b36b62482:v1.15.0@sha256:cccc",
+			"-sidecarlogresults-image", registry + "/tektoncd/pipeline/sidecarlogresults-7501c6a20d741631510a448b48ab098f:v1.15.0@sha256:dddd",
+			"-workingdirinit-image", registry + "/tektoncd/pipeline/workingdirinit-0c558922ec6a1b739e550e349f2d5fc1:v1.15.0@sha256:eeee",
+			"-shell-image", registry + "/chainguard/busybox@sha256:ffff",
+			"-shell-image-win", registry + "/powershell:nanoserver@sha256:9999",
+			"-disable-ha=false",
+			"-trailing-image",
+		},
+		"tekton-triggers-controller": {
+			"-logtostderr",
+			"-stderrthreshold", "INFO",
+			"-el-image", registry + "/tektoncd/triggers/eventlistenersink-7ad1faa98cddbcb0c24990303b220bb8:v0.37.0@sha256:1111",
+			"-el-port", "8080",
+			"-el-security-context=true",
+			"-el-events", "disable",
+		},
+	}
+	wantImages := map[string]string{
+		"tekton-pipelines-controller": registry + "/tektoncd/pipeline/controller-10a3e32792f33651396d02b6855a6e36:v1.15.0@sha256:aaaa",
+		"tekton-triggers-controller":  registry + "/tektoncd/triggers/controller-13c3e5ef5e0ad5a6b2a5de1fa6d5a9a4:v0.37.0",
+	}
+
+	for _, u := range newManifest.Resources() {
+		switch u.GetKind() {
+		case "Deployment":
+			d := deploymentFor(t, u)
+			c := d.Spec.Template.Spec.Containers[0]
+			if c.Image != wantImages[d.Name] {
+				t.Errorf("%s image: got %q, want %q", d.Name, c.Image, wantImages[d.Name])
+			}
+			if diff := cmp.Diff(wantArgs[d.Name], c.Args); diff != "" {
+				t.Errorf("%s args mismatch (-want +got):\n%s", d.Name, diff)
+			}
+		case "StatefulSet":
+			got, _, _ := unstructured.NestedSlice(u.Object, "spec", "template", "spec", "containers")
+			img := got[0].(map[string]interface{})["image"]
+			if want := registry + "/bitnami/postgresql@sha256:2222"; img != want {
+				t.Errorf("postgres image: got %q, want %q", img, want)
+			}
+		}
+	}
+}
+
+func TestDeploymentContainerArgsImageValueNotTreatedAsFlag(t *testing.T) {
+	t.Setenv("TEKTON_REGISTRY_OVERRIDE", "nexus.example.com")
+	containers := []corev1.Container{{
+		Name: "c",
+		Args: []string{"-foo-image", "ghcr.io/org/my-image:v1", "-port", "8080"},
+	}}
+	replaceContainerImages(containers, map[string]string{})
+	want := []string{"-foo-image", "nexus.example.com/org/my-image:v1", "-port", "8080"}
+	if diff := cmp.Diff(want, containers[0].Args); diff != "" {
+		t.Errorf("args mismatch (-want +got):\n%s", diff)
+	}
+}

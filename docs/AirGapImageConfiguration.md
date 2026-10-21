@@ -42,6 +42,19 @@ Behavior and precedence:
 - If `TEKTON_REGISTRY_OVERRIDE` is unset, images are taken from per-image env vars (if set) or from the shipped defaults.
 - If `TEKTON_REGISTRY_OVERRIDE` is set, the operator rewrites the registry host for all resolved images (from per-image env vars and defaults, including images with no matching per-image env var), for every component. The repository path and tag/digest are preserved.
 - There is currently no per-image opt-out when the global override is set. To exempt specific images, do not set `TEKTON_REGISTRY_OVERRIDE` and rely solely on per-image env vars.
+- Images passed to a controller as `*-image*` flags (e.g. `-entrypoint-image`, `-shell-image`, `-el-image`) are rewritten too, as is the `tkn` image of the legacy pruner CronJob (`IMAGE_JOB_PRUNER_TKN`).
+- The rewrite is idempotent: an image that already starts with `<override>/` is left unchanged.
+- The first path component is treated as the registry host only if it contains a `.` or a `:`, or is `localhost`. Images without a registry host keep their full path: `bitnami/postgresql` becomes `<override>/bitnami/postgresql`.
+
+### Helm chart
+
+With the Helm chart, set `registry` instead of the env var. It rewrites the registry of the operator's own images (operator and webhook) and sets `TEKTON_REGISTRY_OVERRIDE` on the operator, which then rewrites the webhook proxy (`IMAGE_PIPELINES_PROXY`) and pruner `tkn` (`IMAGE_JOB_PRUNER_TKN`) images at runtime:
+
+```yaml
+registry: my-internal-registry.io/my-tekton-folder
+```
+
+A `TEKTON_REGISTRY_OVERRIDE` entry in `operator.additionalEnvs` takes precedence over `registry`.
 
 ## Rewrite image one by one
 

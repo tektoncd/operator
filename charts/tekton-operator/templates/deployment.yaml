@@ -81,6 +81,7 @@ spec:
             - name: CONFIG_LEADERELECTION_NAME
               value: {{ include "tekton-operator.fullname" . }}-controller-config-leader-election
             {{- include "tekton-operator.kubernetesMinVersionEnv" . | nindent 12 }}
+            {{- include "tekton-operator.registryOverrideEnv" . | nindent 12 }}
             {{- range .Values.operator.additionalEnvs }}
             - name: {{ .name }}
               value: {{ .value | quote }}
@@ -131,6 +132,7 @@ spec:
             - name: CONFIG_LEADERELECTION_NAME
               value: {{ include "tekton-operator.fullname" . }}-controller-config-leader-election
             {{- include "tekton-operator.kubernetesMinVersionEnv" . | nindent 12 }}
+            {{- include "tekton-operator.registryOverrideEnv" . | nindent 12 }}
             {{- range .Values.operator.additionalEnvs }}
             - name: {{ .name }}
               value: {{ .value | quote }}
