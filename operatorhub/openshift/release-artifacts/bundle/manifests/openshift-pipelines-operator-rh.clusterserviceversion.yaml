@@ -1495,7 +1495,7 @@ spec:
                 - name: IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel9@
                 - name: IMAGE_RESULTS_POSTGRES
-                  value: registry.redhat.io/rhel9/postgresql-15@sha256:a30e89f17c0c9b061c129b1a62b30ad3544baad7407c791058e0452604041ab5
+                  value: registry.redhat.io/rhel9/postgresql-15@sha256:accc0970a3adaaae64517e3a11dd1012f094edd95b05c0514e529bf94240c76b
                 - name: IMAGE_MAG_TEKTON_TASKGROUP_CONTROLLER
                   value: registry.redhat.io/openshift-pipelines/pipelines-manual-approval-gate-rhel9@
                 - name: IMAGE_MAG_MANUAL_APPROVAL
@@ -1768,7 +1768,7 @@ spec:
     name: TEKTON_OPERATOR_WEBHOOK
   - image: registry.redhat.io/openshift-pipelines/pipelines-chains-controller-rhel9@
     name: IMAGE_CHAINS_TEKTON_CHAINS_CONTROLLER
-  - image: registry.redhat.io/rhel9/postgresql-15@sha256:a30e89f17c0c9b061c129b1a62b30ad3544baad7407c791058e0452604041ab5
+  - image: registry.redhat.io/rhel9/postgresql-15@sha256:accc0970a3adaaae64517e3a11dd1012f094edd95b05c0514e529bf94240c76b
     name: IMAGE_RESULTS_POSTGRES
   - image: registry.redhat.io/openshift-pipelines/pipelines-manual-approval-gate-rhel9@
     name: IMAGE_MAG_TEKTON_TASKGROUP_CONTROLLER
