@@ -135,6 +135,10 @@ func (ctrl Controller) fetchSourceManifests(ctx context.Context, opts PayloadOpt
 	case v1alpha1.SyncerServiceResourceName:
 		var syncerService v1alpha1.SyncerService
 		return AppendTarget(ctx, ctrl.Manifest, &syncerService)
+	case v1alpha1.SharedResourceResourceName:
+		return AppendTarget(ctx, ctrl.Manifest, &v1alpha1.SharedResource{})
+	case v1alpha1.ShipwrightBuildResourceName:
+		return AppendTarget(ctx, ctrl.Manifest, &v1alpha1.ShipwrightBuild{})
 	}
 
 	return nil

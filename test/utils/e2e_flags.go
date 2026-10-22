@@ -35,6 +35,8 @@ var (
 	TektonKueueDeploymentLabel                = labelString(v1alpha1.TektonKueueResourceName)
 	TektonMulticlusterProxyAAEDeploymentLabel = labelString(v1alpha1.MultiClusterProxyAAEResourceName)
 	SyncerServiceDeploymentLabel              = labelString(v1alpha1.OperandSyncerService)
+	ShipwrightBuildDeploymentLabel            = labelString(v1alpha1.ShipwrightBuildResourceName)
+	SharedResourceDeploymentLabel             = labelString(v1alpha1.SharedResourceResourceName)
 )
 
 func labelString(operandName string) string {

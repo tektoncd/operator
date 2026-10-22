@@ -26,6 +26,14 @@ type ManualApprovalGateListerExpansion interface{}
 // OpenShiftPipelinesAsCodeLister.
 type OpenShiftPipelinesAsCodeListerExpansion interface{}
 
+// SharedResourceListerExpansion allows custom methods to be added to
+// SharedResourceLister.
+type SharedResourceListerExpansion interface{}
+
+// ShipwrightBuildListerExpansion allows custom methods to be added to
+// ShipwrightBuildLister.
+type ShipwrightBuildListerExpansion interface{}
+
 // SyncerServiceListerExpansion allows custom methods to be added to
 // SyncerServiceLister.
 type SyncerServiceListerExpansion interface{}
