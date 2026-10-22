@@ -1,6 +1,6 @@
 chains:
   github: tektoncd/chains
-  version: v0.29.7
+  version: v0.29.9
 dashboard:
   github: tektoncd/dashboard
   version: v0.73.0
@@ -30,4 +30,4 @@ syncer-service:
   version: v0.1.1
 triggers:
   github: tektoncd/triggers
-  version: v0.37.1
+  version: v0.37.2
