@@ -26,6 +26,7 @@ import (
 	"github.com/tektoncd/pipeline/pkg/apis/validate"
 	"github.com/tektoncd/pipeline/pkg/internal/resultref"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/strings/slices"
@@ -60,6 +61,9 @@ func (pr *PipelineRun) Validate(ctx context.Context) *apis.FieldError {
 
 // Validate pipelinerun spec
 func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError) {
+	// Validate the spec changes
+	errs = errs.Also(ps.ValidateUpdate(ctx))
+
 	// Must have exactly one of pipelineRef and pipelineSpec.
 	if ps.PipelineRef == nil && ps.PipelineSpec == nil {
 		errs = errs.Also(apis.ErrMissingOneOf("pipelineRef", "pipelineSpec"))
@@ -140,6 +144,46 @@ func (ps *PipelineRunSpec) Validate(ctx context.Context) (errs *apis.FieldError)
 	}
 	if ps.Resources != nil {
 		errs = errs.Also(apis.ErrDisallowedFields("resources"))
+	}
+
+	return errs
+}
+
+// ValidateUpdate validates the update of a PipelineRunSpec
+func (ps *PipelineRunSpec) ValidateUpdate(ctx context.Context) (errs *apis.FieldError) {
+	if !apis.IsInUpdate(ctx) {
+		return errs
+	}
+	oldObj, ok := apis.GetBaseline(ctx).(*PipelineRun)
+	if !ok || oldObj == nil {
+		return errs
+	}
+	if oldObj.IsDone() {
+		// try comparing without any copying first
+		// this handles the common case where only finalizers changed
+		if equality.Semantic.DeepEqual(&oldObj.Spec, ps) {
+			return nil // Specs identical, allow update
+		}
+
+		// Specs differ, this could be due to different defaults after upgrade
+		// Apply current defaults to old spec to normalize
+		oldCopy := oldObj.Spec.DeepCopy()
+		oldCopy.SetDefaults(ctx)
+
+		if equality.Semantic.DeepEqual(oldCopy, ps) {
+			return nil // Difference was only defaults, allow update
+		}
+
+		// Real spec changes detected, reject update
+		errs = errs.Also(apis.ErrInvalidValue("Once the PipelineRun is complete, no updates are allowed", ""))
+		return errs
+	}
+
+	// Handle started but not done case
+	old := oldObj.Spec.DeepCopy()
+	old.Status = ps.Status
+	if !equality.Semantic.DeepEqual(old, ps) {
+		errs = errs.Also(apis.ErrInvalidValue("Once the PipelineRun has started, only status updates are allowed", ""))
 	}
 
 	return errs
@@ -335,11 +379,11 @@ func (ps *PipelineRunSpec) validatePipelineTimeout(timeout time.Duration, errorM
 
 func validateTaskRunSpec(ctx context.Context, trs PipelineTaskRunSpec) (errs *apis.FieldError) {
 	if trs.StepOverrides != nil {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepOverrides", config.AlphaAPIFields).ViaField("stepOverrides"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "stepOverrides", config.BetaAPIFields).ViaField("stepOverrides"))
 		errs = errs.Also(validateStepOverrides(trs.StepOverrides).ViaField("stepOverrides"))
 	}
 	if trs.SidecarOverrides != nil {
-		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.AlphaAPIFields).ViaField("sidecarOverrides"))
+		errs = errs.Also(config.ValidateEnabledAPIFields(ctx, "sidecarOverrides", config.BetaAPIFields).ViaField("sidecarOverrides"))
 		errs = errs.Also(validateSidecarOverrides(trs.SidecarOverrides).ViaField("sidecarOverrides"))
 	}
 	if trs.ComputeResources != nil {

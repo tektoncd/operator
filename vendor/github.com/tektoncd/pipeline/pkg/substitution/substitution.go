@@ -1,3 +1,5 @@
+//go:build !disable_tls
+
 /*
 Copyright 2019 The Tekton Authors
 
@@ -54,6 +56,16 @@ var intIndexRegex = regexp.MustCompile(intIndex)
 // - prefix: the prefix of the substitutable variable, e.g. "params" or "context.pipeline"
 // - vars: names of known variables
 func ValidateNoReferencesToUnknownVariables(value, prefix string, vars sets.String) *apis.FieldError {
+	return validateNoReferencesToUnknownVariables(value, prefix, vars, false)
+}
+
+// ValidateNoReferencesToUnknownVariablesWithDetail same as ValidateNoReferencesToUnknownVariables
+// but with more prefix detailed error message
+func ValidateNoReferencesToUnknownVariablesWithDetail(value, prefix string, vars sets.String) *apis.FieldError {
+	return validateNoReferencesToUnknownVariables(value, prefix, vars, true)
+}
+
+func validateNoReferencesToUnknownVariables(value, prefix string, vars sets.String, withDetail bool) *apis.FieldError {
 	if vs, present, errString := ExtractVariablesFromString(value, prefix); present {
 		if errString != "" {
 			return &apis.FieldError{
@@ -64,8 +76,14 @@ func ValidateNoReferencesToUnknownVariables(value, prefix string, vars sets.Stri
 		for _, v := range vs {
 			v = TrimArrayIndex(v)
 			if !vars.Has(v) {
+				var msg string
+				if withDetail {
+					msg = fmt.Sprintf("non-existent variable `%s` in %q", v, value)
+				} else {
+					msg = fmt.Sprintf("non-existent variable in %q", value)
+				}
 				return &apis.FieldError{
-					Message: fmt.Sprintf("non-existent variable in %q", value),
+					Message: msg,
 					// Empty path is required to make the `ViaField`, … work
 					Paths: []string{""},
 				}
@@ -288,45 +306,6 @@ func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {
 		groups[name] = matches[i+1]
 	}
 	return groups
-}
-
-// ApplyReplacements returns a string with references to parameters replaced,
-// based on the mapping provided in replacements.
-// For example, if the input string is "foo: $(params.foo)", and replacements maps "params.foo" to "bar",
-// the output would be "foo: bar".
-func ApplyReplacements(in string, replacements map[string]string) string {
-	replacementsList := []string{}
-	for k, v := range replacements {
-		replacementsList = append(replacementsList, fmt.Sprintf("$(%s)", k), v)
-	}
-	// strings.Replacer does all replacements in one pass, preventing multiple replacements
-	// See #2093 for an explanation on why we need to do this.
-	replacer := strings.NewReplacer(replacementsList...)
-	return replacer.Replace(in)
-}
-
-// ApplyArrayReplacements takes an input string, and output an array of strings related to possible arrayReplacements. If there aren't any
-// areas where the input can be split up via arrayReplacements, then just return an array with a single element,
-// which is ApplyReplacements(in, replacements).
-func ApplyArrayReplacements(in string, stringReplacements map[string]string, arrayReplacements map[string][]string) []string {
-	for k, v := range arrayReplacements {
-		stringToReplace := fmt.Sprintf("$(%s)", k)
-
-		// If the input string matches a replacement's key (without padding characters), return the corresponding array.
-		// Note that the webhook should prevent all instances where this could evaluate to false.
-		if (strings.Count(in, stringToReplace) == 1) && len(in) == len(stringToReplace) {
-			return v
-		}
-
-		// same replace logic for star array expressions
-		starStringtoReplace := fmt.Sprintf("$(%s[*])", k)
-		if (strings.Count(in, starStringtoReplace) == 1) && len(in) == len(starStringtoReplace) {
-			return v
-		}
-	}
-
-	// Otherwise return a size-1 array containing the input string with standard stringReplacements applied.
-	return []string{ApplyReplacements(in, stringReplacements)}
 }
 
 // TrimArrayIndex replaces all `[i]` and `[*]` to "".

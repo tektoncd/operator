@@ -28,6 +28,14 @@
             "default": ""
           }
         },
+        "priorityClassName": {
+          "description": "If specified, indicates the pod's priority. \"system-node-critical\" and \"system-cluster-critical\" are two special keywords which indicate the highest priorities with the former being the highest priority. Any other name must be defined by creating a PriorityClass object with that name. If not specified, the pod priority will be default or zero if there is no default.",
+          "type": "string"
+        },
+        "securityContext": {
+          "description": "SecurityContext sets the security context for the pod",
+          "$ref": "#/definitions/v1.PodSecurityContext"
+        },
         "tolerations": {
           "description": "If specified, the pod's tolerations.",
           "type": "array",
@@ -44,7 +52,7 @@
       "type": "object",
       "properties": {
         "affinity": {
-          "description": "If specified, the pod's scheduling constraints",
+          "description": "If specified, the pod's scheduling constraints. See Pod.spec.affinity (API version: v1)",
           "$ref": "#/definitions/v1.Affinity"
         },
         "automountServiceAccountToken": {
@@ -117,7 +125,7 @@
           "type": "string"
         },
         "securityContext": {
-          "description": "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field.",
+          "description": "SecurityContext holds pod-level security attributes and common container settings. Optional: Defaults to empty.  See type description for default values of each field. See Pod.spec.securityContext (API version: v1)",
           "$ref": "#/definitions/v1.PodSecurityContext"
         },
         "tolerations": {
@@ -139,7 +147,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "volumes": {
-          "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes",
+          "description": "List of volumes that can be mounted by containers belonging to the pod. More info: https://kubernetes.io/docs/concepts/storage/volumes See Pod.spec.volumes (API version: v1)",
           "type": "array",
           "items": {
             "default": {},
@@ -155,11 +163,16 @@
       "description": "TaskRunStepArtifact represents an artifact produced or used by a step within a task run. It directly uses the Artifact type for its structure.",
       "type": "object",
       "properties": {
+        "buildOutput": {
+          "description": "Indicate if the artifact is a build output or a by-product",
+          "type": "boolean"
+        },
         "name": {
+          "description": "The artifact's identifying category name",
           "type": "string"
         },
         "values": {
-          "description": "The artifact's identifying category name",
+          "description": "A collection of values related to the artifact",
           "type": "array",
           "items": {
             "default": {},
@@ -281,57 +294,6 @@
         }
       }
     },
-    "v1beta1.ClusterTask": {
-      "description": "ClusterTask is a Task with a cluster scope. ClusterTasks are used to represent Tasks that should be publicly addressable from any namespace in the cluster.\n\nDeprecated: Please use the cluster resolver instead.",
-      "type": "object",
-      "properties": {
-        "apiVersion": {
-          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-          "type": "string"
-        },
-        "kind": {
-          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-          "type": "string"
-        },
-        "metadata": {
-          "default": {},
-          "$ref": "#/definitions/v1.ObjectMeta"
-        },
-        "spec": {
-          "description": "Spec holds the desired state of the Task from the client",
-          "default": {},
-          "$ref": "#/definitions/v1beta1.TaskSpec"
-        }
-      }
-    },
-    "v1beta1.ClusterTaskList": {
-      "description": "ClusterTaskList contains a list of ClusterTask",
-      "type": "object",
-      "required": [
-        "items"
-      ],
-      "properties": {
-        "apiVersion": {
-          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
-          "type": "string"
-        },
-        "items": {
-          "type": "array",
-          "items": {
-            "default": {},
-            "$ref": "#/definitions/v1beta1.ClusterTask"
-          }
-        },
-        "kind": {
-          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
-          "type": "string"
-        },
-        "metadata": {
-          "default": {},
-          "$ref": "#/definitions/v1.ListMeta"
-        }
-      }
-    },
     "v1beta1.ConfigSource": {
       "description": "ConfigSource contains the information that can uniquely identify where a remote built definition came from i.e. Git repositories, Tekton Bundles in OCI registry and hub.",
       "type": "object",
@@ -345,7 +307,7 @@
           }
         },
         "entryPoint": {
-          "description": "EntryPoint identifies the entry point into the build. This is often a path to a build definition file and/or a target label within that file. Example: \"task/git-clone/0.8/git-clone.yaml\"",
+          "description": "EntryPoint identifies the entry point into the build. This is often a path to a build definition file and/or a target label within that file. Example: \"task/git-clone/0.10/git-clone.yaml\"",
           "type": "string"
         },
         "uri": {
@@ -475,7 +437,6 @@
         },
         "spec": {
           "description": "Spec is a specification of a custom task",
-          "default": {},
           "$ref": "#/definitions/k8s.io.apimachinery.pkg.runtime.RawExtension"
         }
       }
@@ -535,7 +496,6 @@
         },
         "spec": {
           "description": "Spec is a specification of a custom task",
-          "default": {},
           "$ref": "#/definitions/k8s.io.apimachinery.pkg.runtime.RawExtension"
         },
         "stepTemplate": {
@@ -552,7 +512,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "volumes": {
-          "description": "Volumes is a collection of volumes that are available to mount into the steps of the build.",
+          "description": "Volumes is a collection of volumes that are available to mount into the steps of the build. See Pod.spec.volumes (API version: v1)",
           "type": "array",
           "items": {
             "default": {},
@@ -662,7 +622,6 @@
           "default": ""
         },
         "value": {
-          "default": {},
           "$ref": "#/definitions/v1beta1.ParamValue"
         }
       }
@@ -829,7 +788,7 @@
           "type": "string"
         },
         "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
+          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead. The field is staying there for go client backward compatibility, but is not used/allowed anymore.",
           "type": "string"
         },
         "name": {
@@ -894,7 +853,6 @@
         },
         "value": {
           "description": "Value the expression used to retrieve the value",
-          "default": {},
           "$ref": "#/definitions/v1beta1.ParamValue"
         }
       }
@@ -965,7 +923,6 @@
         },
         "value": {
           "description": "Value is the result returned from the execution of this PipelineRun",
-          "default": {},
           "$ref": "#/definitions/v1beta1.ParamValue"
         }
       }
@@ -1010,7 +967,7 @@
           "$ref": "#/definitions/v1beta1.PipelineRef"
         },
         "pipelineSpec": {
-          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
+          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag. See Pipeline.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "podTemplate": {
@@ -1115,7 +1072,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "pipelineSpec": {
-          "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
+          "description": "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "provenance": {
@@ -1190,7 +1147,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "pipelineSpec": {
-          "description": "PipelineRunSpec contains the exact spec used to instantiate the run",
+          "description": "PipelineSpec contains the exact spec used to instantiate the run. See Pipeline.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "provenance": {
@@ -1363,7 +1320,7 @@
           "$ref": "#/definitions/v1beta1.PipelineRef"
         },
         "pipelineSpec": {
-          "description": "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag..",
+          "description": "PipelineSpec is a specification of a pipeline Note: PipelineSpec is in preview mode and not yet supported Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag. See Pipeline.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.PipelineSpec"
         },
         "resources": {
@@ -1389,7 +1346,7 @@
           "$ref": "#/definitions/v1beta1.TaskRef"
         },
         "taskSpec": {
-          "description": "TaskSpec is a specification of a task Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag..",
+          "description": "TaskSpec is a specification of a task Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag. See Task.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.EmbeddedTask"
         },
         "timeout": {
@@ -1645,7 +1602,7 @@
           }
         },
         "entryPoint": {
-          "description": "EntryPoint identifies the entry point into the build. This is often a path to a build definition file and/or a target label within that file. Example: \"task/git-clone/0.8/git-clone.yaml\"",
+          "description": "EntryPoint identifies the entry point into the build. This is often a path to a build definition file and/or a target label within that file. Example: \"task/git-clone/0.10/git-clone.yaml\"",
           "type": "string"
         },
         "uri": {
@@ -1722,6 +1679,10 @@
             "$ref": "#/definitions/v1.Param"
           },
           "x-kubernetes-list-type": "atomic"
+        },
+        "url": {
+          "description": "URL is the runtime url passed to the resolver to help it figure out how to resolver the resource being requested. This is currently at an ALPHA stability level and subject to alpha API compatibility policies.",
+          "type": "string"
         }
       }
     },
@@ -1932,6 +1893,10 @@
           "description": "Compute Resources required by this Sidecar. Cannot be updated. More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/",
           "default": {},
           "$ref": "#/definitions/v1.ResourceRequirements"
+        },
+        "restartPolicy": {
+          "description": "RestartPolicy refers to kubernetes RestartPolicy. It can only be set for an initContainer and must have it's policy set to \"Always\". It is currently left optional to help support Kubernetes versions prior to 1.29 when this feature was introduced.",
+          "type": "string"
         },
         "script": {
           "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command or Args.",
@@ -2166,7 +2131,7 @@
           "$ref": "#/definitions/v1.ResourceRequirements"
         },
         "results": {
-          "description": "Results declares StepResults produced by the Step.\n\nThis is field is at an ALPHA stability level and gated by \"enable-step-actions\" feature flag.\n\nIt can be used in an inlined Step when used to store Results to $(step.results.resultName.path). It cannot be used when referencing StepActions using [v1beta1.Step.Ref]. The Results declared by the StepActions will be stored here instead.",
+          "description": "Results declares StepResults produced by the Step.\n\nIt can be used in an inlined Step when used to store Results to $(step.results.resultName.path). It cannot be used when referencing StepActions using [v1beta1.Step.Ref]. The Results declared by the StepActions will be stored here instead.",
           "type": "array",
           "items": {
             "default": {},
@@ -2240,6 +2205,13 @@
           "x-kubernetes-patch-merge-key": "mountPath",
           "x-kubernetes-patch-strategy": "merge"
         },
+        "when": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.WhenExpression"
+          }
+        },
         "workingDir": {
           "description": "Step's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
           "type": "string"
@@ -2252,6 +2224,141 @@
             "$ref": "#/definitions/v1beta1.WorkspaceUsage"
           },
           "x-kubernetes-list-type": "atomic"
+        }
+      }
+    },
+    "v1beta1.StepAction": {
+      "description": "StepAction represents the actionable components of Step. The Step can only reference it from the cluster or using remote resolution.",
+      "type": "object",
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ObjectMeta"
+        },
+        "spec": {
+          "description": "Spec holds the desired state of the Step from the client",
+          "default": {},
+          "$ref": "#/definitions/v1beta1.StepActionSpec"
+        }
+      }
+    },
+    "v1beta1.StepActionList": {
+      "description": "StepActionList contains a list of StepActions",
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "properties": {
+        "apiVersion": {
+          "description": "APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources",
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1beta1.StepAction"
+          }
+        },
+        "kind": {
+          "description": "Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds",
+          "type": "string"
+        },
+        "metadata": {
+          "default": {},
+          "$ref": "#/definitions/v1.ListMeta"
+        }
+      }
+    },
+    "v1beta1.StepActionSpec": {
+      "description": "StepActionSpec contains the actionable components of a step.",
+      "type": "object",
+      "properties": {
+        "args": {
+          "description": "Arguments to the entrypoint. The image's CMD is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "command": {
+          "description": "Entrypoint array. Not executed within a shell. The image's ENTRYPOINT is used if this is not provided. Variable references $(VAR_NAME) are expanded using the container's environment. If a variable cannot be resolved, the reference in the input string will be unchanged. Double $$ are reduced to a single $, which allows for escaping the $(VAR_NAME) syntax: i.e. \"$$(VAR_NAME)\" will produce the string literal \"$(VAR_NAME)\". Escaped references will never be expanded, regardless of whether the variable exists or not. Cannot be updated. More info: https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/#running-a-command-in-a-shell",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "description": {
+          "description": "Description is a user-facing description of the stepaction that may be used to populate a UI.",
+          "type": "string"
+        },
+        "env": {
+          "description": "List of environment variables to set in the container. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.EnvVar"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "name",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "image": {
+          "description": "Image reference name to run for this StepAction. More info: https://kubernetes.io/docs/concepts/containers/images",
+          "type": "string"
+        },
+        "params": {
+          "description": "Params is a list of input parameters required to run the stepAction. Params must be supplied as inputs in Steps unless they declare a defaultvalue.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.ParamSpec"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "results": {
+          "description": "Results are values that this StepAction can output",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.StepResult"
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
+        "script": {
+          "description": "Script is the contents of an executable file to execute.\n\nIf Script is not empty, the Step cannot have an Command and the Args will be passed to the Script.",
+          "type": "string"
+        },
+        "securityContext": {
+          "description": "SecurityContext defines the security options the Step should be run with. If set, the fields of SecurityContext override the equivalent fields of PodSecurityContext. More info: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/ The value set in StepAction will take precedence over the value from Task.",
+          "$ref": "#/definitions/v1.SecurityContext"
+        },
+        "volumeMounts": {
+          "description": "Volumes to mount into the Step's filesystem. Cannot be updated.",
+          "type": "array",
+          "items": {
+            "default": {},
+            "$ref": "#/definitions/v1.VolumeMount"
+          },
+          "x-kubernetes-list-type": "atomic",
+          "x-kubernetes-patch-merge-key": "mountPath",
+          "x-kubernetes-patch-strategy": "merge"
+        },
+        "workingDir": {
+          "description": "Step's working directory. If not specified, the container runtime's default will be used, which might be configured in the container image. Cannot be updated.",
+          "type": "string"
         }
       }
     },
@@ -2291,6 +2398,9 @@
             "default": {},
             "$ref": "#/definitions/v1beta1.Artifact"
           }
+        },
+        "provenance": {
+          "$ref": "#/definitions/v1beta1.Provenance"
         },
         "results": {
           "type": "array",
@@ -2486,6 +2596,14 @@
       "description": "TaskBreakpoints defines the breakpoint config for a particular Task",
       "type": "object",
       "properties": {
+        "beforeSteps": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "default": ""
+          },
+          "x-kubernetes-list-type": "atomic"
+        },
         "onFailure": {
           "description": "if enabled, pause TaskRun on failure of a step failed step will not exit",
           "type": "string"
@@ -2529,11 +2647,11 @@
           "type": "string"
         },
         "bundle": {
-          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead.",
+          "description": "Bundle url reference to a Tekton Bundle.\n\nDeprecated: Please use ResolverRef with the bundles resolver instead. The field is staying there for go client backward compatibility, but is not used/allowed anymore.",
           "type": "string"
         },
         "kind": {
-          "description": "TaskKind indicates the Kind of the Task: 1. Namespaced Task when Kind is set to \"Task\". If Kind is \"\", it defaults to \"Task\". 2. Cluster-Scoped Task when Kind is set to \"ClusterTask\" 3. Custom Task when Kind is non-empty and APIVersion is non-empty",
+          "description": "TaskKind indicates the Kind of the Task: 1. Namespaced Task when Kind is set to \"Task\". If Kind is \"\", it defaults to \"Task\". 2. Custom Task when Kind is non-empty and APIVersion is non-empty",
           "type": "string"
         },
         "name": {
@@ -2801,7 +2919,6 @@
         },
         "value": {
           "description": "Value the given value of the result",
-          "default": {},
           "$ref": "#/definitions/v1beta1.ParamValue"
         }
       }
@@ -2893,7 +3010,7 @@
           "$ref": "#/definitions/v1beta1.TaskRef"
         },
         "taskSpec": {
-          "description": "Specifying PipelineSpec can be disabled by setting `disable-inline-spec` feature flag..",
+          "description": "Specifying TaskSpec can be disabled by setting `disable-inline-spec` feature flag. See Task.spec (API version: tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.TaskSpec"
         },
         "timeout": {
@@ -2973,7 +3090,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "retriesStatus": {
-          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant. See TaskRun.status (API version: tekton.dev/v1beta1)",
           "type": "array",
           "items": {
             "default": {},
@@ -3021,7 +3138,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
-          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. See Task.spec (API version tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.TaskSpec"
         }
       }
@@ -3065,7 +3182,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "retriesStatus": {
-          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant.",
+          "description": "RetriesStatus contains the history of TaskRunStatus in case of a retry in order to keep record of failures. All TaskRunStatus stored in RetriesStatus will have no date within the RetriesStatus as is redundant. See TaskRun.status (API version: tekton.dev/v1beta1)",
           "type": "array",
           "items": {
             "default": {},
@@ -3113,7 +3230,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "taskSpec": {
-          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun.",
+          "description": "TaskSpec contains the Spec from the dereferenced Task definition used to instantiate this TaskRun. See Task.spec (API version tekton.dev/v1beta1)",
           "$ref": "#/definitions/v1beta1.TaskSpec"
         }
       }
@@ -3195,7 +3312,7 @@
           "x-kubernetes-list-type": "atomic"
         },
         "volumes": {
-          "description": "Volumes is a collection of volumes that are available to mount into the steps of the build.",
+          "description": "Volumes is a collection of volumes that are available to mount into the steps of the build. See Pod.spec.volumes (API version: v1)",
           "type": "array",
           "items": {
             "default": {},
@@ -3300,7 +3417,7 @@
           "type": "string"
         },
         "volumeClaimTemplate": {
-          "description": "VolumeClaimTemplate is a template for a claim that will be created in the same namespace. The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun.",
+          "description": "VolumeClaimTemplate is a template for a claim that will be created in the same namespace. The PipelineRun controller is responsible for creating a unique claim for each instance of PipelineRun. See PersistentVolumeClaim (API version: v1)",
           "$ref": "#/definitions/v1.PersistentVolumeClaim"
         }
       }

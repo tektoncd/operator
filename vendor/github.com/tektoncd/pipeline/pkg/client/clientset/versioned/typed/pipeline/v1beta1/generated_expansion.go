@@ -18,13 +18,13 @@ limitations under the License.
 
 package v1beta1
 
-type ClusterTaskExpansion interface{}
-
 type CustomRunExpansion interface{}
 
 type PipelineExpansion interface{}
 
 type PipelineRunExpansion interface{}
+
+type StepActionExpansion interface{}
 
 type TaskExpansion interface{}
 
