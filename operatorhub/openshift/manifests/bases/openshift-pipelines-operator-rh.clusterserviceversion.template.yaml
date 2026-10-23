@@ -399,10 +399,10 @@ spec:
     - Tekton Pipelines: v1.12.2
     - Tekton Triggers: v0.36.5
     - Pipelines as Code: v0.48.3
-    - Tekton Chains: v0.27.8
-    - Tekton Hub (tech-preview): v1.24.5
+    - Tekton Chains: v0.27.9
+    - Tekton Hub (tech-preview): v1.24.6
     - Tekton Results: v0.19.0
-    - Manual Approval Gate (tech-preview): v0.9.1
+    - Manual Approval Gate (tech-preview): v0.9.2
     - Tekton Pruner: v0.4.3
     - Tekton Scheduler (tech-preview): v0.3.1
     - Multicluster Proxy AAE (tech-preview): v0.1.1
