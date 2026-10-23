@@ -18,7 +18,7 @@ pipelines-as-code:
   version: v0.50.2
 pruner:
   github: tektoncd/pruner
-  version: v0.4.3
+  version: v0.4.4
 results:
   github: tektoncd/results
   version: v0.20.0
