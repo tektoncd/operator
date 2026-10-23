@@ -1,0 +1,32 @@
+name: Helm Chart
+
+# Called from ci.yaml when the chart or this file changes, so the result is gated by `CI summary`
+on:  # yamllint disable-line rule:truthy
+  - workflow_call
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: helm lint
+    runs-on: ubuntu-latest
+    # Lint takes well under a minute; don't let a hung run hold `CI summary` for the 6h default
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310  # v5.0.1
+        with:
+          version: v3.8.1
+
+      - name: Lint chart
+        run: |
+          # Chart.yaml carries "devel" until helm-release.yaml stamps the release version,
+          # and helm rejects non-SemVer versions, so lint with a placeholder instead
+          sed -i 's/^version: "devel"/version: "0.0.0-ci"/' charts/tekton-operator/Chart.yaml
+          helm lint --strict charts/tekton-operator
