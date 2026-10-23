@@ -9,7 +9,7 @@ kueue:
   version: v0.4.0
 manual-approval-gate:
   github: openshift-pipelines/manual-approval-gate
-  version: v0.9.1
+  version: v0.9.2
 multicluster-proxy-aae:
   github: openshift-pipelines/multicluster-proxy-aae
   version: v0.1.1
