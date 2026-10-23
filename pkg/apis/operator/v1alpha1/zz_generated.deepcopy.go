@@ -1365,6 +1365,21 @@ func (in *ResultsAPIProperties) DeepCopyInto(out *ResultsAPIProperties) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.DBMaxIdleConnections != nil {
+		in, out := &in.DBMaxIdleConnections, &out.DBMaxIdleConnections
+		*out = new(int64)
+		**out = **in
+	}
+	if in.DBMaxOpenConnections != nil {
+		in, out := &in.DBMaxOpenConnections, &out.DBMaxOpenConnections
+		*out = new(int64)
+		**out = **in
+	}
+	if in.GRPCWorkerPool != nil {
+		in, out := &in.GRPCWorkerPool, &out.GRPCWorkerPool
+		*out = new(int64)
+		**out = **in
+	}
 	if in.LogsAPI != nil {
 		in, out := &in.LogsAPI, &out.LogsAPI
 		*out = new(bool)
@@ -1373,6 +1388,16 @@ func (in *ResultsAPIProperties) DeepCopyInto(out *ResultsAPIProperties) {
 	if in.LogsBufferSize != nil {
 		in, out := &in.LogsBufferSize, &out.LogsBufferSize
 		*out = new(int64)
+		**out = **in
+	}
+	if in.LogsTimestamps != nil {
+		in, out := &in.LogsTimestamps, &out.LogsTimestamps
+		*out = new(bool)
+		**out = **in
+	}
+	if in.Profiling != nil {
+		in, out := &in.Profiling, &out.Profiling
+		*out = new(bool)
 		**out = **in
 	}
 	if in.AuthDisable != nil {
@@ -1393,6 +1418,16 @@ func (in *ResultsAPIProperties) DeepCopyInto(out *ResultsAPIProperties) {
 	if in.LoggingPluginQueryLimit != nil {
 		in, out := &in.LoggingPluginQueryLimit, &out.LoggingPluginQueryLimit
 		*out = new(uint)
+		**out = **in
+	}
+	if in.ConverterEnable != nil {
+		in, out := &in.ConverterEnable, &out.ConverterEnable
+		*out = new(bool)
+		**out = **in
+	}
+	if in.ConverterDBLimit != nil {
+		in, out := &in.ConverterDBLimit, &out.ConverterDBLimit
+		*out = new(int64)
 		**out = **in
 	}
 	if in.RouteEnabled != nil {

@@ -105,10 +105,21 @@ spec:
                       type: object
                     type: array
                 type: object
+              converter_db_limit:
+                format: int64
+                type: integer
+              converter_enable:
+                type: boolean
               db_enable_auto_migration:
                 type: boolean
               db_host:
                 type: string
+              db_max_idle_connections:
+                format: int64
+                type: integer
+              db_max_open_connections:
+                format: int64
+                type: integer
               db_name:
                 type: string
               db_port:
@@ -127,12 +138,17 @@ spec:
               disabled:
                 description: enable or disable Result Component
                 type: boolean
+              feature_gates:
+                type: string
               gcs_bucket_name:
                 type: string
               gcs_creds_secret_key:
                 type: string
               gcs_creds_secret_name:
                 type: string
+              grpc_worker_pool:
+                format: int64
+                type: integer
               is_external_db:
                 type: boolean
               log_level:
@@ -141,8 +157,14 @@ spec:
                 type: string
               logging_plugin_ca_cert:
                 type: string
+              logging_plugin_container_key:
+                type: string
               logging_plugin_forwarder_delay_duration:
                 type: integer
+              logging_plugin_json_map:
+                type: string
+              logging_plugin_line_format:
+                type: string
               logging_plugin_multipart_regex:
                 type: string
               logging_plugin_namespace_key:
@@ -168,6 +190,8 @@ spec:
                 type: integer
               logs_path:
                 type: string
+              logs_timestamps:
+                type: boolean
               logs_type:
                 type: string
               loki_stack_name:
@@ -728,6 +752,10 @@ spec:
                 required:
                 - disable-ha
                 type: object
+              profiling:
+                type: boolean
+              profiling_port:
+                type: string
               prometheus_histogram:
                 type: boolean
               prometheus_port:
@@ -750,12 +778,22 @@ spec:
               server_port:
                 format: int64
                 type: integer
+              sql_log_level:
+                type: string
               storage_emulator_host:
                 type: string
               targetNamespace:
                 description: TargetNamespace is where resources will be installed
                 type: string
+              tls_cipher_suites:
+                type: string
+              tls_curve_preferences:
+                type: string
               tls_hostname_override:
+                type: string
+              tls_min_version:
+                type: string
+              tls_path:
                 type: string
               watcher:
                 description: Watcher holds configuration for the Tekton Results Watcher
