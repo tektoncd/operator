@@ -67,7 +67,7 @@ func TestValidateApiDependenciesAddsRedirectURIOnUpgrade(t *testing.T) {
 		"AUTH_BASE_URL":          []byte("https://auth.example.com"),
 	})
 
-	kc := kubefake.NewClientset(secret)
+	kc := kubefake.NewSimpleClientset(secret)
 	r := &Reconciler{
 		kubeClientSet: kc,
 		extension:     common.NoExtension(ctx),
@@ -104,7 +104,7 @@ func TestValidateApiDependenciesKeepsExistingRedirectURI(t *testing.T) {
 		"REDIRECT_URI":           []byte("https://custom.example.com"),
 	})
 
-	kc := kubefake.NewClientset(secret)
+	kc := kubefake.NewSimpleClientset(secret)
 	r := &Reconciler{
 		kubeClientSet: kc,
 		extension:     common.NoExtension(ctx),
@@ -127,7 +127,7 @@ func TestValidateApiDependenciesMissingRequiredKey(t *testing.T) {
 		"GH_CLIENT_SECRET": []byte("user-client-secret"),
 	})
 
-	kc := kubefake.NewClientset(secret)
+	kc := kubefake.NewSimpleClientset(secret)
 	r := &Reconciler{
 		kubeClientSet: kc,
 		extension:     common.NoExtension(ctx),

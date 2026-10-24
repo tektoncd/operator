@@ -183,7 +183,7 @@ func TestSetAuthSecretURL(t *testing.T) {
 			},
 		}
 
-		kc := kubefake.NewClientset(secret)
+		kc := kubefake.NewSimpleClientset(secret)
 		oe := openshiftExtension{
 			kubeClientSet: kc,
 		}
