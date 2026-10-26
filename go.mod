@@ -21,7 +21,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/tektoncd/pipeline v1.17.0
 	github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2
-	github.com/tektoncd/pruner v0.4.3
+	github.com/tektoncd/pruner v0.4.4
 	github.com/tektoncd/tekton-kueue v0.4.0
 	github.com/tektoncd/triggers v0.37.1
 	go.uber.org/zap v1.28.0
