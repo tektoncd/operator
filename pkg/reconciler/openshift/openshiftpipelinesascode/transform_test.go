@@ -17,6 +17,7 @@ limitations under the License.
 package openshiftpipelinesascode
 
 import (
+	"context"
 	"path"
 	"testing"
 
@@ -28,7 +29,10 @@ import (
 	"gotest.tools/v3/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestFilterAdditionalControllerManifest(t *testing.T) {
@@ -187,4 +191,97 @@ func TestUpdateAdditionControllerConfigMap(t *testing.T) {
 	if d := cmp.Diff(cm, expectedCM); d != "" {
 		t.Errorf("failed to update additional pac controller route %s", diff.PrintWantGot(d))
 	}
+}
+
+func TestDropConfigMapDataKeys(t *testing.T) {
+	manifest := configMapManifest(t, pipelinesAsCodeCM, map[string]string{
+		"hub-url":          "https://artifacthub.io",
+		hubCatalogTypeKey:  "artifacthub",
+		"application-name": "Pipelines as Code CI",
+	})
+
+	updated, err := manifest.Transform(dropConfigMapDataKeys(pipelinesAsCodeCM, hubCatalogTypeKey))
+	assert.NilError(t, err)
+
+	cm := configMapFromManifest(t, updated)
+	_, exists := cm.Data[hubCatalogTypeKey]
+	assert.DeepEqual(t, exists, false)
+	assert.DeepEqual(t, cm.Data["hub-url"], "https://artifacthub.io")
+	assert.DeepEqual(t, cm.Data["application-name"], "Pipelines as Code CI")
+
+	other := configMapManifest(t, "other-config", map[string]string{hubCatalogTypeKey: "artifacthub"})
+	unchanged, err := other.Transform(dropConfigMapDataKeys(pipelinesAsCodeCM, hubCatalogTypeKey))
+	assert.NilError(t, err)
+	assert.DeepEqual(t, configMapFromManifest(t, unchanged).Data[hubCatalogTypeKey], "artifacthub")
+}
+
+func TestUpdateAdditionControllerConfigMapDropsHubCatalogType(t *testing.T) {
+	manifest := configMapManifest(t, pipelinesAsCodeCM, map[string]string{
+		hubCatalogTypeKey: "artifacthub",
+		"hub-url":         "https://artifacthub.io/api/v1",
+	})
+
+	updated, err := manifest.Transform(updateAdditionControllerConfigMap(v1alpha1.AdditionalPACControllerConfig{
+		ConfigMapName: "custom-pac",
+		Settings:      map[string]string{"hub-url": "https://artifacthub.io"},
+	}))
+	assert.NilError(t, err)
+
+	cm := configMapFromManifest(t, updated)
+	assert.DeepEqual(t, cm.GetName(), "custom-pac")
+	_, exists := cm.Data[hubCatalogTypeKey]
+	assert.DeepEqual(t, exists, false)
+	assert.DeepEqual(t, cm.Data["hub-url"], "https://artifacthub.io")
+}
+
+func TestRemoveHubCatalogTypeFromConfigMap(t *testing.T) {
+	ctx := context.Background()
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{Name: pipelinesAsCodeCM, Namespace: "openshift-pipelines"},
+		Data: map[string]string{
+			"hub-url":          "https://artifacthub.io",
+			hubCatalogTypeKey:  "artifacthub",
+			"application-name": "Pipelines as Code CI",
+		},
+	}
+	client := k8sfake.NewSimpleClientset(cm)
+
+	assert.NilError(t, RemoveHubCatalogTypeFromConfigMap(ctx, client, "openshift-pipelines"))
+
+	got, err := client.CoreV1().ConfigMaps("openshift-pipelines").Get(ctx, pipelinesAsCodeCM, metav1.GetOptions{})
+	assert.NilError(t, err)
+	_, exists := got.Data[hubCatalogTypeKey]
+	assert.DeepEqual(t, exists, false)
+	assert.DeepEqual(t, got.Data["hub-url"], "https://artifacthub.io")
+	assert.DeepEqual(t, got.Data["application-name"], "Pipelines as Code CI")
+
+	assert.NilError(t, RemoveHubCatalogTypeFromConfigMap(ctx, client, "openshift-pipelines"))
+	assert.NilError(t, RemoveHubCatalogTypeFromConfigMap(ctx, k8sfake.NewSimpleClientset(), "openshift-pipelines"))
+	assert.NilError(t, RemoveHubCatalogTypeFromConfigMap(ctx, client, ""))
+}
+
+func configMapManifest(t *testing.T, name string, data map[string]string) mf.Manifest {
+	t.Helper()
+	cm := &corev1.ConfigMap{
+		TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "ConfigMap"},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Data:       data,
+	}
+	obj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+	assert.NilError(t, err)
+	u := unstructured.Unstructured{Object: obj}
+	u.SetAPIVersion("v1")
+	u.SetKind("ConfigMap")
+	u.SetName(name)
+	manifest, err := mf.ManifestFrom(mf.Slice([]unstructured.Unstructured{u}))
+	assert.NilError(t, err)
+	return manifest
+}
+
+func configMapFromManifest(t *testing.T, manifest mf.Manifest) *corev1.ConfigMap {
+	t.Helper()
+	cm := &corev1.ConfigMap{}
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(manifest.Resources()[0].Object, cm)
+	assert.NilError(t, err)
+	return cm
 }

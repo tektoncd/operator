@@ -318,3 +318,7 @@ require (
 	sigs.k8s.io/release-utils v0.12.4 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
 )
+
+// gobwas/glob v1.0.0 renamed Glob to Pattern; OPA v1.10.1 still expects Glob.
+// Pin until OPA is bumped. Keep pipelines-as-code at v0.52.0.
+replace github.com/gobwas/glob => github.com/gobwas/glob v0.2.3

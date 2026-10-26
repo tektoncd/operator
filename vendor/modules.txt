@@ -664,11 +664,16 @@ github.com/gobuffalo/envy
 # github.com/gobuffalo/flect v1.0.3
 ## explicit; go 1.16
 github.com/gobuffalo/flect
-# github.com/gobwas/glob v1.0.0
-## explicit; go 1.22.0
+# github.com/gobwas/glob v1.0.0 => github.com/gobwas/glob v0.2.3
+## explicit
 github.com/gobwas/glob
-github.com/gobwas/glob/internal/debug
+github.com/gobwas/glob/compiler
+github.com/gobwas/glob/match
 github.com/gobwas/glob/syntax
+github.com/gobwas/glob/syntax/ast
+github.com/gobwas/glob/syntax/lexer
+github.com/gobwas/glob/util/runes
+github.com/gobwas/glob/util/strings
 # github.com/goccy/go-json v0.10.5
 ## explicit; go 1.19
 github.com/goccy/go-json
@@ -2814,3 +2819,4 @@ sigs.k8s.io/structured-merge-diff/v6/value
 ## explicit; go 1.22
 sigs.k8s.io/yaml
 # github.com/tektoncd/tekton-kueue => github.com/konflux-ci/tekton-kueue v0.4.0
+# github.com/gobwas/glob => github.com/gobwas/glob v0.2.3
