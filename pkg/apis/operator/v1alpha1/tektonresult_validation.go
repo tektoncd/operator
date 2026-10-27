@@ -94,6 +94,7 @@ func (props ResultsAPIProperties) validate(path string) (errs *apis.FieldError) 
 		}
 	}
 
+	errs = errs.Also(validatePort(props.ProfilingPort, fmt.Sprintf("%s.profiling_port", path)))
 	errs = errs.Also(validateNonNegativeInt(props.DBMaxIdleConnections, fmt.Sprintf("%s.db_max_idle_connections", path)))
 	errs = errs.Also(validateNonNegativeInt(props.DBMaxOpenConnections, fmt.Sprintf("%s.db_max_open_connections", path)))
 	errs = errs.Also(validateNonNegativeInt(props.GRPCWorkerPool, fmt.Sprintf("%s.grpc_worker_pool", path)))
@@ -106,6 +107,13 @@ func validateNonNegativeInt(value *int64, field string) *apis.FieldError {
 		return nil
 	}
 	return apis.ErrInvalidValue(*value, field, "must be greater than or equal to 0")
+}
+
+func validatePort(value *int64, field string) *apis.FieldError {
+	if value == nil || (*value >= 1 && *value <= 65535) {
+		return nil
+	}
+	return apis.ErrInvalidValue(*value, field, "must be between 1 and 65535")
 }
 
 // validateRouteTLSTermination validates that the route TLS termination type is one of the

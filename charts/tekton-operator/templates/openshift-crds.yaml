@@ -4500,7 +4500,7 @@ spec:
                   profiling:
                     type: boolean
                   profiling_port:
-                    type: string
+                    type: integer
                   prometheus_histogram:
                     type: boolean
                   prometheus_port:
@@ -4532,8 +4532,6 @@ spec:
                   tls_hostname_override:
                     type: string
                   tls_min_version:
-                    type: string
-                  tls_path:
                     type: string
                   watcher:
                     description: Watcher holds configuration for the Tekton Results
@@ -6718,7 +6716,7 @@ spec:
               profiling:
                 type: boolean
               profiling_port:
-                type: string
+                type: integer
               prometheus_histogram:
                 type: boolean
               prometheus_port:
@@ -6753,8 +6751,6 @@ spec:
               tls_hostname_override:
                 type: string
               tls_min_version:
-                type: string
-              tls_path:
                 type: string
               watcher:
                 description: Watcher holds configuration for the Tekton Results Watcher

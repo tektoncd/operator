@@ -97,6 +97,9 @@ func TestTektonResult_ValidateRouteTLSTermination(t *testing.T) {
 func TestTektonResult_ValidateAPISettings(t *testing.T) {
 	negative := int64(-1)
 	zero := int64(0)
+	port := int64(6060)
+	maxPort := int64(65535)
+	tooBig := int64(65536)
 	tests := []struct {
 		name        string
 		props       ResultsAPIProperties
@@ -107,12 +110,17 @@ func TestTektonResult_ValidateAPISettings(t *testing.T) {
 		{name: "known tls min version", props: ResultsAPIProperties{TLSMinVersion: "1.2"}},
 		{name: "tls alias", props: ResultsAPIProperties{TLSMinVersion: "TLSv1.3"}},
 		{name: "zero connection limit", props: ResultsAPIProperties{DBMaxIdleConnections: &zero}},
+		{name: "profiling port", props: ResultsAPIProperties{ProfilingPort: &port}},
+		{name: "profiling port max", props: ResultsAPIProperties{ProfilingPort: &maxPort}},
 		{name: "unknown sql log level", props: ResultsAPIProperties{SQLLogLevel: "debug"}, expectError: "spec.sql_log_level"},
 		{name: "unknown tls min version", props: ResultsAPIProperties{TLSMinVersion: "1.4"}, expectError: "spec.tls_min_version"},
 		{name: "negative idle connections", props: ResultsAPIProperties{DBMaxIdleConnections: &negative}, expectError: "spec.db_max_idle_connections"},
 		{name: "negative open connections", props: ResultsAPIProperties{DBMaxOpenConnections: &negative}, expectError: "spec.db_max_open_connections"},
 		{name: "negative grpc pool", props: ResultsAPIProperties{GRPCWorkerPool: &negative}, expectError: "spec.grpc_worker_pool"},
 		{name: "negative converter limit", props: ResultsAPIProperties{ConverterDBLimit: &negative}, expectError: "spec.converter_db_limit"},
+		{name: "profiling port zero", props: ResultsAPIProperties{ProfilingPort: &zero}, expectError: "spec.profiling_port"},
+		{name: "profiling port too big", props: ResultsAPIProperties{ProfilingPort: &tooBig}, expectError: "spec.profiling_port"},
+		{name: "profiling port negative", props: ResultsAPIProperties{ProfilingPort: &negative}, expectError: "spec.profiling_port"},
 	}
 
 	for _, tt := range tests {

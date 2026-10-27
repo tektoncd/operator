@@ -109,7 +109,6 @@ type ResultsAPIProperties struct {
 	SQLLogLevel           string `json:"sql_log_level,omitempty"`
 	DBMaxIdleConnections  *int64 `json:"db_max_idle_connections,omitempty"`
 	DBMaxOpenConnections  *int64 `json:"db_max_open_connections,omitempty"`
-	TLSPath               string `json:"tls_path,omitempty"`
 	TLSMinVersion         string `json:"tls_min_version,omitempty"`
 	TLSCipherSuites       string `json:"tls_cipher_suites,omitempty"`
 	TLSCurvePreferences   string `json:"tls_curve_preferences,omitempty"`
@@ -121,7 +120,7 @@ type ResultsAPIProperties struct {
 	LogsPath              string `json:"logs_path,omitempty"`
 	LogsTimestamps        *bool  `json:"logs_timestamps,omitempty"`
 	Profiling             *bool  `json:"profiling,omitempty"`
-	ProfilingPort         string `json:"profiling_port,omitempty"`
+	ProfilingPort         *int64 `json:"profiling_port,omitempty"`
 	TLSHostnameOverride   string `json:"tls_hostname_override,omitempty"`
 	AuthDisable           *bool  `json:"auth_disable,omitempty"`
 	AuthImpersonate       *bool  `json:"auth_impersonate,omitempty"`

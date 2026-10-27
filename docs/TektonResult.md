@@ -83,7 +83,6 @@ spec:
   db_max_idle_connections: 10
   db_max_open_connections: 10
   sql_log_level: warn
-  tls_path: /etc/tls
   tls_min_version: "1.2"
   tls_cipher_suites: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
   tls_curve_preferences: X25519,P256
@@ -91,7 +90,7 @@ spec:
   grpc_worker_pool: 2
   logs_timestamps: false
   profiling: false
-  profiling_port: "6060"
+  profiling_port: 6060
   converter_enable: false
   converter_db_limit: 50
   logging_plugin_container_key: kubernetes.container_name
@@ -101,9 +100,9 @@ spec:
 
 `db_max_idle_connections` and `db_max_open_connections` size the Postgres connection pool. `sql_log_level` is the database logger. Use one of `silent`, `error`, `warn`, or `info`. `feature_gates` is a comma-separated list such as `PartialResponse=true`.
 
-`tls_min_version`, `tls_cipher_suites`, and `tls_curve_preferences` configure the certificate the API serves. On OpenShift the cluster TLS profile is applied to those same environment variables and replaces what you set here. `tls_path` is the directory that holds `tls.crt` and `tls.key`.
+`tls_min_version`, `tls_cipher_suites`, and `tls_curve_preferences` set the TLS profile the API serves. On OpenShift, while `spec.platforms.openshift.enableCentralTLSConfig` is true, the cluster profile replaces these values. Set that flag to false to use the values here. On Kubernetes these fields are how you set the profile. The certificate directory stays `/etc/tls`, where `tekton-results-tls` is already mounted. A different directory needs a volume, set with `spec.result.options.deployments`.
 
-`grpc_worker_pool` is how many goroutines the API keeps ready for gRPC calls. `profiling` turns on the pprof server, which listens on localhost only. `profiling_port` is that port. The usual value is `6060`.
+`grpc_worker_pool` is how many goroutines the API keeps ready for gRPC calls. `profiling` turns on the pprof server, which listens on localhost only. `profiling_port` is that port, a number from 1 to 65535. Leave it unset to keep 6060.
 
 `logs_timestamps` asks the API to keep timestamps on log lines. The watcher has a separate flag, `spec.result.watcher.logs_timestamps`.
 
