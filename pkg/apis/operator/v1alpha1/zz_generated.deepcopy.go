@@ -1400,6 +1400,11 @@ func (in *ResultsAPIProperties) DeepCopyInto(out *ResultsAPIProperties) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ProfilingPort != nil {
+		in, out := &in.ProfilingPort, &out.ProfilingPort
+		*out = new(int64)
+		**out = **in
+	}
 	if in.AuthDisable != nil {
 		in, out := &in.AuthDisable, &out.AuthDisable
 		*out = new(bool)

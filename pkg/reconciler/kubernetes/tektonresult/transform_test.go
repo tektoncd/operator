@@ -814,6 +814,7 @@ func TestUpdateApiConfigNewFields(t *testing.T) {
 	idle := int64(4)
 	workers := int64(8)
 	limit := int64(25)
+	port := int64(6061)
 	timestamps := true
 	profiling := true
 	converter := true
@@ -822,7 +823,6 @@ func TestUpdateApiConfigNewFields(t *testing.T) {
 			ResultsAPIProperties: v1alpha1.ResultsAPIProperties{
 				DBMaxIdleConnections:      &idle,
 				SQLLogLevel:               "info",
-				TLSPath:                   "/etc/tls",
 				TLSMinVersion:             "1.2",
 				TLSCipherSuites:           "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
 				TLSCurvePreferences:       "X25519,P256",
@@ -830,7 +830,7 @@ func TestUpdateApiConfigNewFields(t *testing.T) {
 				GRPCWorkerPool:            &workers,
 				LogsTimestamps:            &timestamps,
 				Profiling:                 &profiling,
-				ProfilingPort:             "6061",
+				ProfilingPort:             &port,
 				ConverterEnable:           &converter,
 				ConverterDBLimit:          &limit,
 				LoggingPluginContainerKey: "kubernetes.container_name",
@@ -892,6 +892,7 @@ func TestUpdateApiEnvNewFields(t *testing.T) {
 	open := int64(16)
 	workers := int64(8)
 	limit := int64(25)
+	port := int64(6061)
 	timestamps := false
 	profiling := true
 	converter := false
@@ -908,7 +909,7 @@ func TestUpdateApiEnvNewFields(t *testing.T) {
 				GRPCWorkerPool:            &workers,
 				LogsTimestamps:            &timestamps,
 				Profiling:                 &profiling,
-				ProfilingPort:             "6061",
+				ProfilingPort:             &port,
 				ConverterEnable:           &converter,
 				ConverterDBLimit:          &limit,
 				LoggingPluginContainerKey: "kubernetes.container_name",
@@ -964,7 +965,10 @@ func TestUpdateApiEnvOmitsUnsetFields(t *testing.T) {
 		"DB_MAX_IDLE_CONNECTIONS",
 		"DB_MAX_OPEN_CONNECTIONS",
 		"SQL_LOG_LEVEL",
+		"TLS_PATH",
 		"TLS_MIN_VERSION",
+		"TLS_CIPHER_SUITES",
+		"TLS_CURVE_PREFERENCES",
 		"FEATURE_GATES",
 		"GRPC_WORKER_POOL",
 		"LOGS_TIMESTAMPS",

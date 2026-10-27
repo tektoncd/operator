@@ -612,6 +612,7 @@ func Test_ValidateTektonConfig_InvalidResultRouteTLSTermination(t *testing.T) {
 
 func Test_ValidateTektonConfig_InvalidResultAPISettings(t *testing.T) {
 	negative := int64(-1)
+	port := int64(0)
 	tc := &TektonConfig{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "config",
@@ -627,6 +628,7 @@ func Test_ValidateTektonConfig_InvalidResultAPISettings(t *testing.T) {
 				ResultsAPIProperties: ResultsAPIProperties{
 					SQLLogLevel:          "debug",
 					DBMaxOpenConnections: &negative,
+					ProfilingPort:        &port,
 				},
 			},
 		},
@@ -636,4 +638,5 @@ func Test_ValidateTektonConfig_InvalidResultAPISettings(t *testing.T) {
 	assert.Assert(t, err != nil)
 	assert.ErrorContains(t, err, "spec.result.sql_log_level")
 	assert.ErrorContains(t, err, "spec.result.db_max_open_connections")
+	assert.ErrorContains(t, err, "spec.result.profiling_port")
 }
