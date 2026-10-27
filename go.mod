@@ -23,7 +23,7 @@ require (
 	github.com/tektoncd/plumbing v0.0.0-20250805154627-25448098dea2
 	github.com/tektoncd/pruner v0.4.4
 	github.com/tektoncd/tekton-kueue v0.4.0
-	github.com/tektoncd/triggers v0.37.1
+	github.com/tektoncd/triggers v0.37.2
 	go.uber.org/zap v1.28.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/exp v0.0.0-20260718201538-764159d718ef
