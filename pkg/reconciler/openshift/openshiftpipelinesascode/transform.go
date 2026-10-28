@@ -19,7 +19,7 @@ package openshiftpipelinesascode
 import (
 	"context"
 	"fmt"
-	"net/http"
+	"strings"
 
 	mf "github.com/manifestival/manifestival"
 	pacSettings "github.com/openshift-pipelines/pipelines-as-code/pkg/params/settings"
@@ -39,6 +39,8 @@ import (
 const (
 	pipelinesAsCodeCM                 = "pipelines-as-code"
 	additionalPACControllerNameSuffix = "-pac-controller"
+	// Pipelines as Code 0.51.0 removed this ConfigMap key.
+	hubCatalogTypeKey = "hub-catalog-type"
 )
 
 var isOpenShiftPlatform = v1alpha1.IsOpenShiftPlatform
@@ -59,6 +61,7 @@ func filterAndTransform(extension common.Extension) client.FilterAndTransform {
 			common.DeploymentEnvVarKubernetesMinVersion(),
 			common.AddConfiguration(pac.Spec.Config),
 			common.CopyConfigMap(pipelinesAsCodeCM, pac.Spec.Settings),
+			dropConfigMapDataKeys(pipelinesAsCodeCM, hubCatalogTypeKey),
 		}
 
 		if isOpenShiftPlatform() {
@@ -237,7 +240,7 @@ func updateAdditionControllerConfigMap(config v1alpha1.AdditionalPACControllerCo
 		}
 
 		defaultPacSettings := pacSettings.Settings{}
-		err := pacSettings.SyncConfig(zap.NewNop().Sugar(), &defaultPacSettings, config.Settings, pacSettings.DefaultValidators(), http.DefaultClient)
+		err := pacSettings.SyncConfig(zap.NewNop().Sugar(), &defaultPacSettings, config.Settings, pacSettings.DefaultValidators())
 		if err != nil {
 			return err
 		}
@@ -256,6 +259,7 @@ func updateAdditionControllerConfigMap(config v1alpha1.AdditionalPACControllerCo
 		for key, value := range config.Settings {
 			cm.Data[key] = value
 		}
+		delete(cm.Data, hubCatalogTypeKey)
 		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
 		if err != nil {
 			return err
@@ -333,4 +337,41 @@ func replaceEnvInDeployment(envs []corev1.EnvVar, envInfo v1alpha1.AdditionalPAC
 		}
 	}
 	return envs
+}
+
+// dropConfigMapDataKeys removes obsolete keys from a ConfigMap in the manifest.
+// CopyConfigMap only adds keys, and a later apply keeps live data keys that the
+// release manifest no longer contains.
+func dropConfigMapDataKeys(configMapName string, keys ...string) mf.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if strings.ToLower(u.GetKind()) != "configmap" || u.GetName() != configMapName {
+			return nil
+		}
+
+		cm := &corev1.ConfigMap{}
+		if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, cm); err != nil {
+			return err
+		}
+		if len(cm.Data) == 0 {
+			return nil
+		}
+
+		removed := false
+		for _, key := range keys {
+			if _, ok := cm.Data[key]; ok {
+				delete(cm.Data, key)
+				removed = true
+			}
+		}
+		if !removed {
+			return nil
+		}
+
+		unstrObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(cm)
+		if err != nil {
+			return err
+		}
+		u.SetUnstructuredContent(unstrObj)
+		return nil
+	}
 }
