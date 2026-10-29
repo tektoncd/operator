@@ -29,13 +29,14 @@ source $(dirname $0)/../vendor/github.com/tektoncd/plumbing/scripts/e2e-tests.sh
 function install_operator_resources() {
 
   echo :Payload Targets:
-  echo Pipelines: ${TEKTON_PIPELINE_VERSION}
-  echo Triggers: ${TEKTON_TRIGGERS_VERSION}
-  echo Chains: ${TEKTON_CHAINS_VERSION}
-  echo Hub: ${TEKTON_HUB_VERSION}
+  # Optional debug vars (may be unset); use :- so callers with `set -u` are fine.
+  echo Pipelines: ${TEKTON_PIPELINE_VERSION:-}
+  echo Triggers: ${TEKTON_TRIGGERS_VERSION:-}
+  echo Chains: ${TEKTON_CHAINS_VERSION:-}
+  echo Hub: ${TEKTON_HUB_VERSION:-}
   if [[ ${TARGET} != "openshift" ]]; then
-    echo Results: ${TEKTON_RESULTS_VERSION}
-    echo Dashboard: ${TEKTON_DASHBOARD_VERSION}
+    echo Results: ${TEKTON_RESULTS_VERSION:-}
+    echo Dashboard: ${TEKTON_DASHBOARD_VERSION:-}
   fi
   echo '------------------------------'
 

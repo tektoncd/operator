@@ -1,0 +1,120 @@
+# Upgrade tests (scenario B):
+#   latest release → create workloads → upgrade to HEAD → assert upgrade versions
+#   and re-check workloads.
+#
+# Triggers:
+#   - nightly schedule (periodic; does not run on every PR)
+#   - workflow_dispatch (manual)
+#   - /test upgrade slash command on a PR (see slash.yml; listens for test-command)
+
+name: Upgrade tests
+
+on:  # yamllint disable-line rule:truthy
+  schedule:
+  # Nightly at 02:00 UTC
+  - cron: '0 2 * * *'
+  workflow_dispatch: {}
+  repository_dispatch:
+    types: [test-command]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  upgrade-tests:
+    name: upgrade e2e
+    runs-on: ubuntu-latest
+    # Nightly/manual: always. Slash /test upgrade: only when first unnamed arg is "upgrade".
+    if: |
+      github.repository_owner == 'tektoncd' && (
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'repository_dispatch' &&
+          github.event.client_payload.slash_command.command == 'test' &&
+          github.event.client_payload.slash_command.args.unnamed.arg1 == 'upgrade'
+        )
+      )
+    concurrency:
+      group: upgrade-tests-${{ github.event.client_payload.pull_request.number || github.ref }}
+      cancel-in-progress: true
+    env:
+      KO_DOCKER_REPO: registry.local:5000/tekton
+      KO_FLAGS: --insecure-registry
+      CLUSTER_DOMAIN: c${{ github.run_id }}.local
+      ARTIFACTS: ${{ github.workspace }}/artifacts
+      TARGET: kubernetes
+
+    steps:
+    - name: Create run URL
+      if: github.event_name == 'repository_dispatch'
+      id: vars
+      run: echo "run-url=https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+
+    - name: Comment that upgrade tests started
+      if: github.event_name == 'repository_dispatch'
+      uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+      with:
+        token: ${{ secrets.CHATOPS_TOKEN }}
+        repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+        issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+        body: |
+          Running upgrade tests… ([run](${{ steps.vars.outputs.run-url }}))
+
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        # For /test upgrade: check out the PR head (supports forks).
+        repository: ${{ github.event.client_payload.pull_request.head.repo.full_name || github.repository }}
+        ref: ${{ github.event.client_payload.pull_request.head.sha || github.sha }}
+        persist-credentials: false
+
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+      with:
+        go-version-file: "go.mod"
+
+    - uses: ko-build/setup-ko@61b4d1d396f5b2e7d6bb6fefdce3dc38d1a13445  # v0.10
+
+    - name: Install Dependencies
+      run: |
+        echo '::group:: created required folders'
+        mkdir -p "${ARTIFACTS}"
+        echo '::endgroup::'
+        echo "${GOPATH}/bin" >> "$GITHUB_PATH"
+
+    - name: Run upgrade tests
+      run: |
+        ./hack/setup-kind.sh \
+          --registry-url $(echo ${KO_DOCKER_REPO} | cut -d'/' -f 1) \
+          --cluster-suffix c${{ github.run_id }}.local \
+          --nodes 3 \
+          --k8s-version v1.34.x \
+          --e2e-script ./test/upgrade-tests.sh \
+          --e2e-env ./test/e2e-tests-kind.env
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+      with:
+        name: upgrade-tests-artifacts
+        path: ${{ env.ARTIFACTS }}
+
+    - uses: chainguard-dev/actions/kind-diag@84b1be4c638f12d4256ddddef17af98853b6d0d9  # v1.6.40
+      if: ${{ failure() }}
+      with:
+        artifact-name: upgrade-tests-logs
+
+    - name: Comment result on PR
+      if: always() && github.event_name == 'repository_dispatch'
+      uses: peter-evans/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043  # v4.0.0
+      with:
+        token: ${{ secrets.CHATOPS_TOKEN }}
+        repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+        issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+        body: |
+          Upgrade tests **${{ job.status }}** ([run](${{ steps.vars.outputs.run-url }}))
