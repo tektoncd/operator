@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-pipelines-controller
+spec:
+  selector:
+    matchLabels:
+      app: tekton-pipelines-controller
+  template:
+    metadata:
+      labels:
+        app: tekton-pipelines-controller
+    spec:
+      containers:
+        - name: tekton-pipelines-controller
+          image: ghcr.io/tektoncd/pipeline/controller-10a3e32792f33651396d02b6855a6e36:v1.15.0@sha256:aaaa
+          args: [
+            "-entrypoint-image", "ghcr.io/tektoncd/pipeline/entrypoint-bff0a22da108bc2f16c818c97641a296:v1.15.0@sha256:bbbb",
+            "-nop-image", "ghcr.io/tektoncd/pipeline/nop-8eac7c133edad5df719dc37b36b62482:v1.15.0@sha256:cccc",
+            "-sidecarlogresults-image", "ghcr.io/tektoncd/pipeline/sidecarlogresults-7501c6a20d741631510a448b48ab098f:v1.15.0@sha256:dddd",
+            "-workingdirinit-image", "ghcr.io/tektoncd/pipeline/workingdirinit-0c558922ec6a1b739e550e349f2d5fc1:v1.15.0@sha256:eeee",
+            "-shell-image", "cgr.dev/chainguard/busybox@sha256:ffff",
+            "-shell-image-win", "mcr.microsoft.com/powershell:nanoserver@sha256:9999",
+            "-disable-ha=false",
+            "-trailing-image"
+          ]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tekton-triggers-controller
+spec:
+  selector:
+    matchLabels:
+      app: tekton-triggers-controller
+  template:
+    metadata:
+      labels:
+        app: tekton-triggers-controller
+    spec:
+      containers:
+        - name: tekton-triggers-controller
+          image: ghcr.io/tektoncd/triggers/controller-13c3e5ef5e0ad5a6b2a5de1fa6d5a9a4:v0.37.0
+          args: [
+            "-logtostderr",
+            "-stderrthreshold", "INFO",
+            "-el-image", "ghcr.io/tektoncd/triggers/eventlistenersink-7ad1faa98cddbcb0c24990303b220bb8:v0.37.0@sha256:1111",
+            "-el-port", "8080",
+            "-el-security-context=true",
+            "-el-events", "disable"
+          ]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tekton-results-postgres
+spec:
+  selector:
+    matchLabels:
+      app: tekton-results-postgres
+  serviceName: tekton-results-postgres
+  template:
+    metadata:
+      labels:
+        app: tekton-results-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: bitnami/postgresql@sha256:2222

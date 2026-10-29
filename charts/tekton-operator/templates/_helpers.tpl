@@ -146,15 +146,17 @@ tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboa
 {{- $image = "ghcr.io/tektoncd/operator/operator-303303c315a48490ba6517859ef65b77" -}}
 {{- end -}}
 {{- end -}}
-{{- printf "%s:%s" $image $tag -}}
+{{- include "tekton-operator.withRegistry" (dict "image" (printf "%s:%s" $image $tag) "registry" .Values.registry) -}}
 {{- end -}}
 
 {{- define "tekton-operator.pruner-image" -}}
+{{- $image := "" -}}
 {{- if contains "sha256:" .Values.pruner.image.tag -}}
-{{- printf "%s@%s" .Values.pruner.image.repository .Values.pruner.image.tag -}}
+{{- $image = printf "%s@%s" .Values.pruner.image.repository .Values.pruner.image.tag -}}
 {{- else -}}
-{{- printf "%s:%s" .Values.pruner.image.repository .Values.pruner.image.tag -}}
+{{- $image = printf "%s:%s" .Values.pruner.image.repository .Values.pruner.image.tag -}}
 {{- end -}}
+{{- $image -}}
 {{- end -}}
 
 {{- define "tekton-operator.webhook-image" -}}
@@ -169,7 +171,7 @@ tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboa
 {{- $image = "ghcr.io/tektoncd/operator/webhook-f2bb711aa8f0c0892856a4cbf6d9ddd8" -}}
 {{- end -}}
 {{- end -}}
-{{- printf "%s:%s" $image $tag -}}
+{{- include "tekton-operator.withRegistry" (dict "image" (printf "%s:%s" $image $tag) "registry" .Values.registry) -}}
 {{- end -}}
 
 
@@ -193,4 +195,37 @@ tektonconfig,tektonpipeline,tektontrigger,tektonchain,tektonresult,tektondashboa
 {{- end -}}
 {{- end -}}
 {{- printf "%s:%s" $image $tag -}}
+{{- end -}}
+
+{{/*
+Replace the image's registry host with .Values.registry (same rule as TEKTON_REGISTRY_OVERRIDE).
+Images already under .Values.registry are left unchanged.
+*/}}
+{{- define "tekton-operator.withRegistry" -}}
+{{- $image := .image -}}
+{{- $registry := .registry | default "" | trimSuffix "/" -}}
+{{- if and $registry (not (hasPrefix (printf "%s/" $registry) $image)) -}}
+{{- $parts := splitList "/" $image -}}
+{{- $first := first $parts -}}
+{{- if and (gt (len $parts) 1) (or (contains "." $first) (contains ":" $first) (eq $first "localhost")) -}}
+{{- $image = printf "%s/%s" $registry (join "/" (rest $parts)) -}}
+{{- else -}}
+{{- $image = printf "%s/%s" $registry $image -}}
+{{- end -}}
+{{- end -}}
+{{- $image -}}
+{{- end -}}
+
+{{/*
+TEKTON_REGISTRY_OVERRIDE from .Values.registry, unless set in operator.additionalEnvs.
+*/}}
+{{- define "tekton-operator.registryOverrideEnv" -}}
+{{- $userDefined := false -}}
+{{- range .Values.operator.additionalEnvs -}}
+{{- if eq .name "TEKTON_REGISTRY_OVERRIDE" -}}{{- $userDefined = true -}}{{- end -}}
+{{- end -}}
+{{- if and .Values.registry (not $userDefined) }}
+- name: TEKTON_REGISTRY_OVERRIDE
+  value: {{ .Values.registry | trimSuffix "/" | quote }}
+{{- end }}
 {{- end -}}
